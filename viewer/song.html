@@ -38,6 +38,9 @@
   textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
   textarea::placeholder, input::placeholder { color:var(--mut); }
   #optwrap[hidden], #out[hidden], #lout[hidden] { display:none; }
+  .edfocus { animation:edfocus 2.2s ease both; border-radius:var(--r-m); }   /* 알림 ?done=<id> 착지 결과 강조(edit/thumb .thfocus 정본 계승 · radius=근접토큰) */
+  @keyframes edfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
+  @media (prefers-reduced-motion:reduce){ .edfocus { animation:none; } }
 
   /* 선택자 = 도형 나열 폐지 → 소머리 줄 인라인 텍스트 값 + 촤르륵 팝업(썸네일 .onoff/.platpop/.gpbtn 기틀 계승 · 운영자 260712) */
   .selwrap { position:relative; }
@@ -704,6 +707,23 @@ function pollVoice(id, t0, minTs){   // 학습 폴 — pollSong 미러(voice_out
   tick();
 }
 vcLoad();   // 부팅 로드 — 플레이리스트 재생만 해도 [보이스 입히기]가 뜨게
+
+// ── 완료 푸시 딥링크(?done=<id> · Access 재로그인 하드 리다이렉트서 해시 유실·쿼리 생존 · #done 호환) — 그 곡 결과로 직행+강조(edit/thumb 정본 계승 · voice 커버도 song_out 공용) ──
+function edFocus(sel){ const el=$(sel); if(!el||el.hidden) return; try{ el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'}); }catch(e){} el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); }
+(function(){
+  const id=(location.search.match(/[?&]done=([0-9]{12}-[0-9a-f]{6})\b/)||[])[1]||(location.hash.match(/^#done=([0-9]{12}-[0-9a-f]{6})$/)||[])[1];
+  if(!id) return;
+  USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
+  (async()=>{
+    try{
+      const r=await fetch('song_out/'+id+'/song.json?t='+Date.now());
+      if(r.ok){ const tx=await r.text(); if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
+        if(d&&d.url){ SONG_ID=id; showLyria(d,0); edFocus('#lout'); return; } } }   // 곡·보이스커버 결과 = showLyria 공용(engine rvc/lyria 분기 내장)
+      const er=await fetch('song_out/'+id+'/error.log?t='+Date.now());
+      if(er.ok){ const em=await er.text(); if(em&&em.trim()&&!/^\s*</.test(em)){ $('#sstatus').innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); $('#sstatus').classList.add('err'); } }
+    }catch(e){}   // 학습(train) 등 곡 없는 잡 = song.json 부재 → 조용히 통상 오픈(pend/이력이 커버)
+  })();
+})();
 
 // ── 재개(pend) — 리로드/재진입 시 진행 중 생성 폴 이어받기(conv 문법 · 24h 게이트) ──
 (function(){
