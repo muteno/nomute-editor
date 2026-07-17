@@ -1,0 +1,33 @@
+name: push-test
+
+# 수동 전용 — 전 제작 도구 완료 알림을 한 번에 발송(딥링크 착지 라이브 점검 · 운영자 260717 "알람 다 보내봐 각 메뉴로 이동하게끔").
+#   실제 샘플 산출 id로 링크 = 탭하면 그 결과 화면까지 착지 테스트. push_send.py --notify 재사용(구독자 전원 = 프로필 알림 ON · dedup 미기록).
+#   ⚠️ 실발송 = 구독자 폰에 알림 6건. 자동 경로 부착 금지(수동 dispatch 전용 · breaking-judge --test 성격).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: 전 도구 완료 알림 발송 (각 메뉴 딥링크)
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 발송 생략"; exit 0; }
+          send(){ echo "→ $1"; python3 .github/scripts/push_send.py --notify "$1" "$2" --url "$3" --tag "$4" || echo "::warning::$1 발송 실패(비치명)"; }
+          # 제목 = 도구별(잠금화면 구분) · URL = 실샘플 ?done=<id>(탭 → 그 결과 화면 착지) · tag 고유 = 6건 누적(안 덮음)
+          send "영상"   "영상 완성 · 자막 삽입 완료 · 14초 — 탭해서 확인" "/edit.html?done=260616072626-275e1a"  "nomute-test-edit"
+          send "변환"   "변환 완료 — 탭해서 확인"                          "/conv.html?done=260710180000-c04a1b"  "nomute-test-conv"
+          send "노래"   "곡 완성 — 탭해서 듣기"                            "/song.html?done=260712204726-706a23"  "nomute-test-song"
+          send "이미지" "포스트 제작 완료 — 탭해서 확인"                   "/thumb.html?done=260615125151-036c1a" "nomute-test-thumb"
+          send "트래킹" "트래킹 렌더 완료 — 탭해서 확인"                   "/track.html?done=260710055933-b06ec5" "nomute-test-track"
+          send "보이스" "보이스 커버 완성 — 탭해서 듣기"                   "/song.html?done=260712204726-706a23"  "nomute-test-voice"
+          echo "발송 시도 6건 완료(구독자 없으면 각 건 '구독자 없음' 로그)."
