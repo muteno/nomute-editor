@@ -987,12 +987,12 @@
   @keyframes karaSweep { from { background-position:100% 0; } to { background-position:-150% 0; } }
   @media (prefers-reduced-motion:reduce) { .tsk-more::after { animation:none; background:var(--accent); } }
   .tsk-more:active { transform:translateY(-50%) scale(var(--press-m,.9)); }
-  .tstk-g .tsk { opacity:0; }
-  .tstk-g.roll .tsk { opacity:1; animation:tskIn .34s cubic-bezier(.22,.61,.36,1) backwards; }   /* 촤르륵 = 진입 스태거(cardIn 커브 계승) */
+  .tstk-g .tsk { opacity:1; }   /* 기본 = 불투명(운영자 260717 "유지하며 촤르르") — 구 opacity:0 = 재렌더마다 투명 생성 → .roll 붙기 전 1프레임 번쩍 진범 */
+  .tstk-g.roll .tsk { animation:tskIn .34s cubic-bezier(.22,.61,.36,1) backwards; }   /* 촤르륵 = 가로 슬라이드 스태거(opacity 무접촉 = 넘김마다 번쩍 0) */
   .tstk-g.roll .tstk-mini .tsk:nth-child(1) { animation-delay:.05s; }
   .tstk-g.roll .tstk-mini .tsk:nth-child(2) { animation-delay:.1s; }
   .tstk-g.roll .tstk-mini .tsk:nth-child(3) { animation-delay:.15s; }
-  @keyframes tskIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+  @keyframes tskIn { from { transform:translateX(18px); } to { transform:none; } }   /* opacity 무접촉 슬라이드(우→제자리 · 번쩍 차단) · 촤르르 = 스태거 유지 */
   @media (prefers-reduced-motion:reduce) { .tstk-g .tsk { opacity:1; } .tstk-g.roll .tsk { animation:none; } }
   /* 모달 세로 항행(운영자 260712 "모달 안 인라인 넘김") — iframe이 터치 삼킴 = 우측 엣지 존+셰브론 2버튼(.carnav 항행 예외축 계승) */
   .tv-swz { position:absolute; top:0; right:0; bottom:0; width:34px; touch-action:none; }
@@ -9687,7 +9687,7 @@ function renderSnsTrends() {
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)}${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tlist">' + topShow.map((it, i) =>
       `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
-    (TR_TOPF === 'all' ? '<div class="tstk-wrap" id="tstk"></div>' : ''), stale, topSeg);   // 스택(순위 흐름) = 종합 축 데이터라 플랫폼 필터 중 숨김(다른 데이터인 척 금지 = 정직) · stale = 종전 hstale 유지
+    '<div class="tstk-wrap" id="tstk"></div>', stale, topSeg);   // 스택(순위 흐름) = 전체·플랫폼 필터 공통 노출(운영자 260717 "플랫폼별 순위도 쭉") — 플랫폼 = 그 mono 순위 시퀀스(topShow 축 = TOP 리스트와 동일 데이터 = 정직) · stale = 종전 hstale 유지
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   const _sv2 = $('#snsview'); if (_sv2 && box.contains(_sv2)) $('#trendview').appendChild(_sv2);   // 재구축 전 대피(innerHTML 소실 방지)
   box.innerHTML = h;
@@ -9837,8 +9837,10 @@ function renderSnsTrends() {
     box.querySelectorAll('.tgroup').forEach(g => box._trIO.observe(g));
   }
   // ── 앨범 스택(운영자 260712 "TOP1 크게+2·3만 · 위로 촤르륵 · 앨범 중첩 느낌") — TOP1 = 좌측 대형(세로 2행 스팬) · 2·3 = 우측 미니 · 순환 = mod(TOP10 끝 = 처음 랩) · 더보기 = 11위+(풀 확장·안 누르면 1위 랩) · 복귀 = 넘김 화살표 순환·꼬리 끝 ↻·11위+ ↻ 미니(구 '처음' pill·'처음|중간' 세그 폐지 260716·260717) · 입력 = main 스와이프/호버 휠 + 6s 자동(인터랙션 12s 홀드·화면 밖/탭 숨김 정지·reduced-motion 무효) ──
-  box._tsSeq = top; box._tsSeqX = top.concat(pool.filter(x2 => top.indexOf(x2) < 0).slice(0, 20));   // 확장 풀 = 캡 밖 잔여 순위순(최대 +20)
-  if (box._tsO === undefined) { box._tsO = 0; box._tsMore = false; box._tsLast = 0; }
+  const _tsF = TR_TOPF === 'all' ? pool : pool.filter(x2 => x2.mono === TR_TOPF);   // 스택 소스 = 필터별(전체=종합 pool · 플랫폼=해당 mono만 · 운영자 260717 "플랫폼별 순위도 쭉")
+  box._tsSeq = topShow;   // 상위 10 = TOP 리스트와 동일 축(전체=플랫폼캡 top · 플랫폼=pool.filter 상위10)
+  box._tsSeqX = TR_TOPF === 'all' ? top.concat(pool.filter(x2 => top.indexOf(x2) < 0).slice(0, 20)) : _tsF.slice(0, 30);   // 확장 = 전체는 종전(top+잔여20=최대30) · 플랫폼은 그 플랫폼 순위 최대 30
+  if (box._tsO === undefined || box._tsTopf !== TR_TOPF) { box._tsO = 0; box._tsMore = false; box._tsLast = 0; box._tsTopf = TR_TOPF; }   // 첫 진입·필터 전환 = 스택 1위로 리셋(다른 시퀀스라 오프셋 이월 금지)
   const stkEl = box.querySelector('#tstk');
   if (stkEl) {
     const sArr = () => (box._tsMore ? box._tsSeqX : box._tsSeq);
@@ -9858,20 +9860,19 @@ function renderSnsTrends() {
     };
     box._tsDraw = () => {   // 부분 재렌더(스택만 — 페이지 스크롤 무간섭 §7-1-6 정신)
       const O = box._tsO, i0 = sIdx(O);
-      const rk = i0 + 1;   // 전역 1-based 순위(top 10·확장 30 공통 = i0+1)
-      const home5 = rk >= 10 && rk % 5 === 0;   // '처음으로' ↻ = 10위부터 5위 간격(10·15·20·25·30위 · 운영자 260717 "5위 단위") · 그 사이(11~14 등)는 < > 만
+      const rk = i0 + 1;   // 히어로(큰 카드) 1-based 순위
+      const lead = rk + 3;   // 오른쪽 끝(선두) 카드 순위 = 히어로 + 미니 3칸
+      const home5 = lead % 5 === 0 && lead >= 10 && lead <= sN();   // '처음으로' ↻ = 오른쪽 끝 카드가 10·15·20·25·30위일 때(운영자 260717 "3~4개 빼고 계산" = 선두 기준 · ↻ 바로 옆 카드가 딱 그 숫자) · lead<=sN = 짧은 플랫폼(구글8 등) 헛발 차단
       const mAt = off => (box._tsMore && i0 + off >= sN()) ? null : sAt(O + off);   // 확장 모드 꼬리 = 랩 채움 금지(빈 셀) · 1~10 순환 = 종전 랩
       stkEl.innerHTML =
-        `<div class="tstk-g">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), sIdx(O + 1), 'mini')}${skCard(mAt(2), sIdx(O + 2), 'mini')}${skCard(mAt(3), sIdx(O + 3), 'mini')}</div>` +
+        `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), sIdx(O + 1), 'mini')}${skCard(mAt(2), sIdx(O + 2), 'mini')}${skCard(mAt(3), sIdx(O + 3), 'mini')}</div>` +
         (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
         (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${rk}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
         (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
         `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>` + `</div>`;   // > = 항상 노출 · 꼬리 끝 = 전진 로직이 처음 랩(_tsAdv · 운영자 260717) · .feednav 정본 계승(운영자 260713)
       const ts2 = [sAt(O), mAt(1), mAt(2), mAt(3)].filter(Boolean);
       stkEl.querySelectorAll('.tsk-t').forEach((el2, k2) => { el2.textContent = ts2[k2] ? ts2[k2].t : ''; });
-      const g = stkEl.querySelector('.tstk-g');
-      requestAnimationFrame(() => g && g.classList.add('roll'));   // 촤르륵 = 진입 스태거(cardIn 커브 계승 · reduced-motion 무효)
-    };
+    };   // 촤르르 = .tstk-g에 roll 직접 부여(신규 노드라 부착 즉시 재생 · 구 rAF classList.add 폐지 = opacity 0 안 거침 = 번쩍 0 · 운영자 260717)
     box._tsDraw();
     box._tsAdv = d => {   // 전진 단일 축(운영자 260716 — 화살표·스와이프·휠·드래그·6s 자동 공통): ① 10위서 +1 = 11위 연속 진입(구 '더보기' 흡수) ② 확장 꼬리 끝 +1 = 자연스럽게 처음 복귀(모드 리셋) ③ 그 외 = 종전 mod 순환 · _tsLast는 호출부 책임(자동 6s가 스스로 12s 홀드 걸던 축 차단)
       const cur = sIdx(box._tsO);
