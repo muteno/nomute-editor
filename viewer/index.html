@@ -9597,6 +9597,24 @@ function renderSnsTrends() {
     return /전$|^방금$/.test(String(p).trim()) ? String(p).trim() : '';
   };
   const relT = x => relP(x.published) || relP(x.time) || relP(x.started) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ started(구글 트렌드 시작시각 = 급상승 실제 나이 · 운영자 260717 "n시간 전 맞나" 직답 — 수집기 gt만 보유·first_seen보다 우선) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행·무started 소스 폴백)
+  const FRESH_MAX_H = 12;   // 실시간 TOP 신선 상한(운영자 260718 "12시간 내 벌어진 일인지 검증") — 뉴스 보도색 12h 경계(3792)·시간가속 반값 12h(9031)와 동축 · env 아닌 상수(뷰어 즉시 반영)
+  const _ageOf = p => {   // 발행값 → 경과 h(숫자) = relP 문자열 파서의 수치판(신선검증 원료) · 무효/미상 = NaN(파싱 실패 ≠ 오래됨 = fail-soft 유지)
+    if (p == null || p === '') return NaN;
+    const s = String(p).trim();
+    if (typeof p === 'number' || /^\d{9,13}$/.test(s)) { const n = +p; return (Date.now() - (n < 1e12 ? n * 1000 : n)) / 3600e3; }   // epoch 초/밀리초(틱톡 create_time 등)
+    const h2 = (Date.now() - new Date(s).getTime()) / 3600e3;   // ISO/RFC(yt published·gt started)
+    if (isFinite(h2)) return h2;
+    let m;   // 기성 상대문자열(쇼츠·AI영상 수집원문 "N시간 전 / N일 전 …") 근사 파싱 — new Date 미파싱분
+    if (/^방금/.test(s)) return 0;
+    if ((m = s.match(/(\d+)\s*분/))) return +m[1] / 60;
+    if ((m = s.match(/(\d+)\s*시간/))) return +m[1];
+    if ((m = s.match(/(\d+)\s*일/))) return +m[1] * 24;
+    if ((m = s.match(/(\d+)\s*주/))) return +m[1] * 168;
+    if ((m = s.match(/(\d+)\s*개월/))) return +m[1] * 720;
+    if ((m = s.match(/(\d+)\s*년/))) return +m[1] * 8760;
+    return NaN;
+  };
+  const ageVerH = x => { for (const p of [x.published, x.time, x.started, x.create_time]) { const h = _ageOf(p); if (isFinite(h)) return h; } return NaN; };   // 실발행 나이 = "벌어진 일" 기준 · first_seen 제외(수집관측 도장 ≠ 사건시각 · 운영자 260718 검증 취지) · 전부 미상 = NaN
   const zig = arr => { const hh = Math.ceil(arr.length / 2), o = []; for (let z = 0; z < hh; z++) { o.push(arr[z]); if (arr[z + hh]) o.push(arr[z + hh]); } return o; };   // 레일 2행 = grid-auto-flow:column(세로 우선) → [1,6,2,7,…] 인터리브로 윗줄 1~5·아랫줄 6~10 보장(운영자 선택값 · 스모크 시각 실측 260712)
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
     `<a class="tpc" data-ri="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
@@ -9647,7 +9665,7 @@ function renderSnsTrends() {
   const pool = [], seenU = new Set();
   const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
   const tkMap = v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백
-  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
+  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; if (ageVerH(x) >= FRESH_MAX_H) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
   lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
   lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
