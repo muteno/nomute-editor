@@ -1653,7 +1653,7 @@ function bindFile(inp, lab, store) {
   const handler = e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => applyImg(r.result, f.name);
+    r.onload = () => normalizeImg(r.result, f.name).then(({ url, name }) => applyImg(url, name));   // 정규화(HEIC·AVIF·GIF·초대형→JPEG) = 카드뉴스 배경도 합성 서버가 읽는 포맷 보장(운영자 260717)
     r.readAsDataURL(f);
   };
   const applyRef = (url) => {   // 합성본 빗금 참고본(원본 없음·타 기기) — store 비움(재렌더 시 재선택 필요)
@@ -1670,7 +1670,7 @@ function bindFile(inp, lab, store) {
     if (!lab.offsetParent) return;   // 슬롯 숨김(#imgBox.none = 비-app5)이면 무시 = 타 탭 슬롯과 충돌 0
     const f = _imgFromClipboard(e); if (!f) return;
     e.preventDefault();
-    const r = new FileReader(); r.onload = () => applyImg(r.result, f.name || '붙여넣기.png'); r.readAsDataURL(f);
+    const r = new FileReader(); r.onload = () => normalizeImg(r.result, f.name || '붙여넣기.png').then(({ url, name }) => applyImg(url, name)); r.readAsDataURL(f);   // 붙여넣기도 정규화(운영자 260717)
   });
   lab._reset = reset;   // 수정 복원 시 이미지 위젯 비우기(외부 호출용)
   lab._set = applyImg;   // 수정 복원 시 원본 이미지 주입(외부 호출용)
@@ -1678,6 +1678,33 @@ function bindFile(inp, lab, store) {
 }
 bindFile($('#file'), $('#fileLab'), IMG);
 // 이미지 슬롯(텍스트 2/3 우측 1/3) — 기본(자막)·오버레이 공용 바인더. 미선택=사진 픽토그램 / 선택=썸네일+X. input은 슬롯 밖(innerHTML 교체에 안전)·rfab b3도 직접 click.
+// ── 사진 정규화(운영자 260717 "여기서 사진 넣으면 합성이 안됨") — 합성 서버(functions/api/thumb·compose·resize·upscale)와 백엔드 PIL/cv2는 JPG·PNG·WEBP만 읽는다.
+//   아이폰 기본 HEIC·AVIF·GIF를 그대로 올리면 업로드 502(구 thumb/compose)·형식오류로 '합성 안됨'. 트리거 2가지만:
+//   ① 포맷 문제(비-JPG/PNG/WEBP) = canvas로 JPEG 변환 · 이때 해상도는 유지(치수만 큰 건 축소 안 함 = 업스케일/리사이즈 소스 무손실 · 평의회 260717 회귀지적 반영)
+//   ② 서버 12M base64 캡 초과 용량 = 이때만 2560으로 축소(안 하면 서버 400 = 축소가 무손실 실패보다 나음) · 정상 JPG/PNG/WEBP·용량OK = 무변환.
+//   디코드 불가(안드로이드 HEIC 등)면 원본 유지 → 서버가 명확 안내. 파일 다운로드 아님(입구 단일 정규화).
+function normalizeImg(dataURL, name) {
+  return new Promise(resolve => {
+    const keep = () => resolve({ url: dataURL, name });
+    const m = /^data:image\/([a-z0-9.+-]+);base64,/i.exec(dataURL || '');
+    const fmt = m ? m[1].toLowerCase() : '';
+    const okFmt = fmt === 'jpeg' || fmt === 'jpg' || fmt === 'png' || fmt === 'webp';   // 서버·백엔드가 읽는 3종
+    const tooBig = (dataURL || '').length >= 10_500_000;   // ≈7.8MB 바이너리 = 서버 12M base64 캡 초과 위험
+    if (okFmt && !tooBig) return keep();   // 정상 사진 = 손대지 않음(무변환 · 해상도·화질 그대로)
+    const img = new Image();
+    img.onload = () => {
+      const sc = tooBig ? Math.min(1, 2560 / Math.max(img.naturalWidth, img.naturalHeight)) : 1;   // 용량 초과일 때만 축소(포맷만 문제면 원해상도 유지)
+      const w = Math.max(1, Math.round(img.naturalWidth * sc)), h = Math.max(1, Math.round(img.naturalHeight * sc));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const cx = cv.getContext('2d'); if (!cx) return keep();
+      cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);   // 흰 배경 채움 = 투명 PNG의 JPEG 검정 눌림 방지(평의회 260717)
+      let out; try { out = cv.toDataURL('image/jpeg', 0.9); } catch { return keep(); }
+      resolve({ url: out, name: String(name || 'photo').replace(/\.[^.]+$/, '') + '.jpg' });
+    };
+    img.onerror = keep;   // 디코드 불가 = 원본 유지(서버 형식오류 메시지가 안내 담당)
+    img.src = dataURL;
+  });
+}
 function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 첨부/삭제 훅(선택 · 편집 옵션 소스 동기 = ieSrcSync · 운영자 260713)
   const slot = $(slotSel), inp = $(inputSel); if (!slot || !inp) return;
   const PHOTO = '<span class="covimg-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></span><span class="covimg-t">이미지</span>';
@@ -1692,7 +1719,7 @@ function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 
   const read = (f) => {   // 파일 → store·미리보기(파일선택·붙여넣기 공용 · 운영자 260713)
     if (!f || !/^image\//.test(f.type || '')) return;
     const r = new FileReader();
-    r.onload = () => { store.b64 = r.result; store.name = f.name || '붙여넣기.png'; filled(r.result, Math.round(f.size / 1024)); };
+    r.onload = () => { normalizeImg(r.result, f.name || '붙여넣기.png').then(({ url, name }) => { store.b64 = url; store.name = name; filled(url, Math.round((url.length * 0.75) / 1024)); }); };   // 정규화(HEIC·AVIF·GIF·초대형→JPEG) 후 저장 = 합성 서버가 읽는 포맷 보장(운영자 260717) · KB = base64 길이 환산(변환 후 실크기)
     r.readAsDataURL(f);
   };
   inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); };

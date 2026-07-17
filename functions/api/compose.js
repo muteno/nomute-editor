@@ -31,10 +31,16 @@ export async function onRequestPost({ request, env }) {
 
   // 이미지 base64(dataURL 허용) — ≤9MB
   let b64 = String(body.imageB64 || '');
-  const dm = b64.match(/^data:image\/(?:png|jpe?g|webp);base64,(.+)$/);
+  const dm = b64.match(/^data:[^;,]*;base64,(.+)$/);   // 접두어(png·jpg·webp·heic·avif·gif…) 무관 제거 — 좁은 화이트리스트 미매칭 시 깨진 base64 업로드 → 502 유발 버그 봉합(운영자 260717 · resize/upscale 매직바이트 게이트 계승)
   if (dm) b64 = dm[1];
   if (!b64 || b64.length > 12_000_000) return json({ error: '이미지가 필요해(≤9MB)' }, 400);
-  const ext = /\.(png|jpe?g|webp)$/i.test(body.name || '') ? body.name.match(/\.(png|jpe?g|webp)$/i)[0].toLowerCase() : '.jpg';
+  let head = '';
+  try { head = atob(b64.slice(0, 24)); } catch { return json({ error: '이미지 디코드 실패 — JPG·PNG·WEBP로 저장해 올려줘' }, 400); }
+  const isJpg = head.charCodeAt(0) === 0xff && head.charCodeAt(1) === 0xd8;
+  const isPng = head.charCodeAt(0) === 0x89 && head.slice(1, 4) === 'PNG';
+  const isWebp = head.slice(0, 4) === 'RIFF' && head.slice(8, 12) === 'WEBP';
+  if (!isJpg && !isPng && !isWebp) return json({ error: '이미지 형식 오류 — JPG·PNG·WEBP만(아이폰 HEIC·AVIF·GIF는 JPG로 저장해 올려줘)' }, 400);   // 합성 백엔드(PIL/cv2)가 못 읽는 포맷 = 발사 전 명확 안내(구 502 대체)
+  const ext = isPng ? '.png' : isWebp ? '.webp' : '.jpg';   // 확장자 = 매직바이트 기준(파일명 신뢰 금지)
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙) · -rand=동초 충돌 방지
   const imgPath = `uploads/${id}/src${ext}`;
