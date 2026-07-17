@@ -107,6 +107,33 @@
 
 - 파일 간 문법 차이(edit 카드 vs ly 칩 vs sb 글자토글 vs k 박스) = **결함 아님·동결 정본**(각 탭 = 그날 운영자 승인 스펙 · 260717 평의회 7:1). 파일을 넘는 부품 통일·공용 부품 CSS 신설·문법 자동게이트 = 비채택.
 
+## 🌳 모달·팝업 글래스 계승 트리 (운영자 260717 · 셸 배경 계승도 정본)
+> **"관련 1차 팝업모달을 일괄 변경할 때 어디를 만지나"의 지도.** 값 정본 = `viewer/index.html :root`(여긴 계승 *구조*만 · 알파 실체는 :root). **[계승] = 셸 토큰 1곳 이동 = 동반 변경** · **[override] = 개별 이탈(의도)**. ⚠️ **셸 ≠ 실제 비침**: 실제 비침은 *셸 위 내용부 바닥*이 결정(아래 진짜 변경점).
+
+```
+:root 글래스 토큰 4종 (값 SSOT = viewer/index.html)
+├─ --modal-glass         [중앙 <dialog> 셸 · 딤 있음]
+│  ├─ [계승] base dialog{} 자동 상속(자체 배경 미지정 모달):
+│  │    #tooldlg(Image Studio ·⚠내용부 불투명) · #genidlg(이미지 생성 ·✅비침 기준)
+│  │    #askdlg · #pubdlg · #snsaccdlg · #trviewdlg · #chdaydlg · #chpostdlg
+│  │    #trefdlg · #tredodlg · #pastedlg
+│  └─ [override] 자체 배경 = 계승 이탈(의도적 불투명):
+│       #dlg     요약 리더    — 얇은 스크림(라이브 배경 비침 · 특수 글래스)
+│       #pindlg  PIN          — 근불투명
+│       #editdlg 편집         — 거의 불투명
+│       .revdlg  수정·카드수정 — 완전 불투명(뒤 #dlg 글자 차단 의도)
+├─ --modal-glass-anchor  [앵커 팝업 div 셸 · 딤 없음 → 더 투명]
+│  └─ [계승] index 셸 SSOT 그룹: #linkpop(설정) · .msgpop(메시지함)
+│       .filterpop(필터) · .pubpop(발행본) · .sc-rsn(사유) · .min-pick(최소화) · .failmenu(실패)
+│       ※ .qpop(대기열)은 자기값 오버라이드(무채 글래스)
+├─ --modal-head-bg       [헤더 띠 .modal-head · 항상 근불투명 = 타이틀 가독]
+└─ --modal-tabs-bg       [탭 띠 .modal-tabs + 내용부 바닥(.toolfr/.genihost)]
+                          └ Image Studio(#2) 불투명의 실제 레버 = 여기
+```
+
+- **셸 ≠ 비침(진짜 변경점)**: `#genidlg`(#3)는 내용부 투명 → 셸 그대로 비침 = 글래스. `#tooldlg`(#2)는 셸은 계승이나 **내용부 바닥**(thumb iframe 솔리드 본문 / `--modal-tabs-bg`)이 불투명 → 셸 죽임. **글래스화 = 셸 아닌 내용부 바닥부터.**
+- **일괄 변경 범위**: 통일 대상 = 만들기/조회 계열(계승 그룹) · **제외** = `#pindlg`·`#editdlg`·`.revdlg`(보안·가독 위해 의도적 불투명) · **2차 앵커**(`--modal-glass-anchor`)는 별도 축(같이 안 움직임).
+
 ## 적용 절차 (새 컴포넌트·이식)
 1. 이 표에서 해당 행 찾기 → **정본 셀렉터를 그대로 계승**(클래스 추가만, 재설계 금지).
 2. 표에 없는 새 컴포넌트면 → 위 표기 규칙대로 만들고 **이 표에 행 추가**(인덱스 갱신 = 등재).
