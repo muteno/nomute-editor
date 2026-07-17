@@ -675,14 +675,18 @@ def bsky_hot(limit=12):
 def signal_kw(limit=10):
     """⑨ 시그널 실시간 검색어(운영자 260712 버튼 승인 · 구 네이버 실검의 실질 대체재) — api.signal.bz
     순수 JSON(무키·파싱 리스크 최소 · 컨테이너 실측 260712 top10 정상). 구글 검색어(RSS 저단위 버킷)의
-    국내 실검 보완축. 실패 = [] (fail-soft — main()이 직전분 보존). 항목 = {query, state}."""
+    국내 실검 보완축. 실패 = [] (fail-soft — main()이 직전분 보존). 항목 = {query, state, kid}.
+    · state = signal.bz 원본 순위 상태(정본 기준 · 뷰어 배지 = 이 값) : n=신규 · +=상승 · -=하락 · s=유지
+    · kid = 요약 URL의 안정 토픽ID(운영자 260717 실측 = 표시 keyword는 AI 재작성으로 매 수집 churn하나 이 ID는 불변)
+      → first_seen 추적 키(query churn이 매 런 가짜 NEW/방금 찍던 오염 봉합 · 없으면 query 폴백)."""
     try:
         j = json.loads(_get("https://api.signal.bz/news/realtime"))
         out = []
         for t in (j.get("top10") or [])[:limit]:
             q = (t.get("keyword") or "").strip()
             if q:
-                out.append({"query": q, "state": (t.get("state") or "")})
+                m = re.search(r"[?&]keyword=(-?\d+)", t.get("summary") or "")   # 안정 토픽ID(요약 URL) — 표시 keyword churn 무관 first_seen 앵커
+                out.append({"query": q, "state": (t.get("state") or ""), "kid": m.group(1) if m else ""})
         return out
     except Exception as e:  # noqa: BLE001
         print(f"::warning::signal 수집 실패(스킵): {e}", file=sys.stderr)
@@ -1126,7 +1130,7 @@ def main():
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
     _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
     _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
-    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("query"))   # ⑨⑩⑪ 동일 규격(운영자 260712)
+    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
