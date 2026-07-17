@@ -84,4 +84,4 @@
 - [9] 평의회 대상 예 = docs/디자인기틀_SSOT.md · viewer/index.html의 :root 토큰·구조·동작 로직 · 상비 게이트 = shared/check_refs.py + bash shared/smoke_all.sh(UI 표면).
 - [11] 딥링크 관례 = 완료 알림 = 해당 스튜디오 `?done=<id>`(thumb·edit 정본) · 확인 = 웹앱 라이브 링크 제공.
 
-※ 이식 노트: 마커 구간(SYNC-COMMON-START~END) = 전 레포 공통 골격 · 정본 편집 = 이 레포(muteno/nomute-editor)에서만 — main 머지 시 `.github/workflows/claude-sync.yml`이 타 레포에 PR 자동 전파(구 수동 복붙 = docs/기틀_복제팩_마스터라우터.md, 신규 레포 최초 이식 용도로만 유지). [15]~[16] = 레포 고유(전파 제외 · 새 레포 것으로 치환). 신규 레포 편입 = ① 그 레포 CLAUDE.md에 마커 구간 1회 이식 + 【레포 바인딩】 작성(필수키 = [4] 진입점·팔레트 예외·계정 축 / [5] 플레이그라운드 / [6] 원장·예시 / [9] 평의회 예·상비 게이트 / [11] 딥링크 — 없으면 '없음' 명시) ② 워크플로 TARGETS에 추가.
+※ 이식 노트: 마커 구간(SYNC-COMMON-START~END) = 전 레포 공통 골격 · 정본 편집 = 이 레포(muteno/nomute-editor)에서만 — main 머지 시 `.github/workflows/claude-sync.yml`이 타 레포에 PR 자동 전파(구 수동 복붙팩 docs/기틀_복제팩_마스터라우터.md = 레거시 참고 — 마커·바인딩 미반영이라 신규 편입 정본은 아래 절차). [15]~[16] = 레포 고유(전파 제외 · 새 레포 것으로 치환). 신규 레포 편입 = ① 그 레포 CLAUDE.md에 마커 구간 1회 이식 + 【레포 바인딩】 작성(필수키 = [4] 진입점·팔레트 예외·계정 축 / [5] 플레이그라운드 / [6] 원장·예시 / [9] 평의회 예·상비 게이트 / [11] 딥링크 — 없으면 '없음' 명시) ② 워크플로 TARGETS에 추가.
