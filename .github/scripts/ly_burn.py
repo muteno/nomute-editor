@@ -1041,6 +1041,7 @@ def run(vid_id, video, outdir):
         ed_note,
         "받아쓴 자막(원문)으로 합성" if (src_kind == "stt" and not no_burn) else "",   # no_burn = 전사는 컷 계산용일 뿐(자막 합성 아님)
         bgm_note, cut_note] + edit_notes if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷 → 편집기(트림/보간/음량)
+    sub_burned = bool(segs) and not no_burn   # 자막이 실제로 번인됐는가 — 완료 알림 표면화용(운영자 260717 "자막 삽입 포함 알람"). 컷단독(no_burn)·전사없음·구간내 자막0(segs 소거) = False = 정직
     snap = {k: opts[k] for k in EDIT_KEYS if k in opts}   # 재입히기 승계 스냅샷 — 성공 산출에 도장(reburn이 읽어 병합)
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
@@ -1061,14 +1062,14 @@ def run(vid_id, video, outdir):
     if tg.R2_ON:
         url = tg.r2_upload(data, "ly_out/{}/subbed.mp4".format(vid_id), "video/mp4")
         if url:
-            out_json(outdir, dict({"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note},
+            out_json(outdir, dict({"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note, "sub": sub_burned},
                                   **({"edit_opts": snap} if snap else {}))); return 0
         print("::warning::R2 업로드 실패 — git 폴백 시도")
     if len(data) <= GIT_FALLBACK_MAX:
         with open(os.path.join(outdir, "subbed.mp4"), "wb") as f:
             f.write(data)
         out_json(outdir, dict({"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
-                               "note": (note + " · " if note else "") + "git 저장(R2 미설정)"},
+                               "note": (note + " · " if note else "") + "git 저장(R2 미설정)", "sub": sub_burned},
                               **({"edit_opts": snap} if snap else {}))); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0

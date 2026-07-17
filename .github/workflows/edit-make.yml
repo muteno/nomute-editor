@@ -372,7 +372,10 @@ jobs:
             [ "$OK" = "1" ] || MSG="$(python3 -c "import json;d=json.load(open('$VJ'));print((d.get('error') or d.get('skip') or '')[:60])" 2>/dev/null || true)"
           fi
           if [ "$OK" != "1" ] && [ -z "$MSG" ] && [ -s "$EL" ]; then MSG="$(head -c 60 "$EL")"; fi
-          if [ "$OK" = "1" ]; then BODY="편집 완료 — 탭해서 확인"; else BODY="편집 실패 — ${MSG:-로그 확인}"; fi
+          if [ "$OK" = "1" ]; then
+            SUB="$(python3 -c "import json;print(1 if json.load(open('$VJ')).get('sub') else 0)" 2>/dev/null || echo 0)"   # 자막 실제 번인 여부(ly_burn 도장) — 알림에 '자막 삽입' 표면화(운영자 260717)
+            if [ "$SUB" = "1" ]; then BODY="영상 완성 · 자막 삽입 완료 — 탭해서 확인"; else BODY="영상 완성 — 탭해서 확인"; fi
+          else BODY="편집 실패 — ${MSG:-로그 확인}"; fi
           python3 .github/scripts/push_send.py --notify "알림" "$BODY" --url "/edit.html#done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
 
       - name: 업로드 브랜치 정리

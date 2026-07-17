@@ -291,6 +291,49 @@ def main():
                 print(f"      · z{(((x.get('_rank') or x.get('cross') or 0) - med) / sd):.1f} cr{x.get('cross')} rc{x.get('report_count')} {str(x.get('title') or '')[:36]}")
     except Exception as e:
         print(f"  · OUT 계기판 계산 실패(비치명): {e}")
+    # 긴급부스트 신선창 계기판(260717 §8 — 24h 풀 ×3.0 폐지 → 1~6h 이징 전환의 실전 궤적 축적 · OUT 계기판 선례)
+    #  근사 = scScore 6항 중 dedup·병합(_rankCross)·픽/확인·OUT하한 미반영(±) — cross^1.3·timeAcc·연속보도·경중·신곡선부스트·ageMul만 재현.
+    #  부스트 창 <6h·이징 g12 = viewer BOOST_RAMP_END_H·BOOST_EASE_G 동값(§★ — 곡선 재조정 시 여기도 동기). 나이 = max(발행,first_seen).
+    #  기준 = '12h+ 긴급 top5 잔존' 0(신선창 전환 취지 — 운영자 3회 육안 포착 패턴의 기계화) · ≥1 = 곡선 무력화/타항 부양 의심 → §8 260717 재점검.
+    try:
+        import math
+        def _ba(x):   # 발행 우선 나이(timeAcc 축·scTs 요지)
+            v = age_h(x.get("published"), now)
+            return v if v is not None else age_h(x.get("first_seen"), now)
+        def _brk_ok(x):
+            g = x.get("grade")
+            return bool(x.get("breaking")) and (g is None or g >= 2)
+        def _scr(x):   # 누적 scScore 근사(신곡선 부스트 포함)
+            cr = x.get("cross") or 0
+            rk = _iss_age(x) or 99
+            ta = 1 / (1 + (max(_ba(x) or 99, 0) / 13) ** 3.0)
+            fol = 1 + 0.5 * math.log2(1 + (x.get("report_count") or 0))
+            g = x.get("grade")
+            gw = 1.0 if g is None else {0: 0.5, 1: 0.7, 2: 1.0, 3: 1.8}.get(g, 1.0)
+            bb = 1.0
+            if _brk_ok(x) and rk < 6:
+                if rk < 1:
+                    bb = 3.0
+                else:
+                    s = lambda v: 1 / (1 + math.exp(-v))
+                    t = (rk - 1) / 5
+                    bb = 1 + 2 * (s(12 * (.5 - t)) - s(-6)) / (s(6) - s(-6))
+            am = 0.12 + 0.88 / (1 + math.exp((rk - 13) / 3.8))
+            return cr ** 1.3 * ta * fol * gw * bb * am
+        cum = [x for x in c if (_ba(x) or 0) >= 4 and ((x.get("cross") or 0) >= 8 or _brk_ok(x)
+               or ((x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6 and x.get("grade") != 0))]
+        brks = [x for x in cum if _brk_ok(x)]
+        fresh = [x for x in brks if (_iss_age(x) or 99) < 6]
+        top5 = sorted(cum, key=_scr, reverse=True)[:5]
+        linger = [x for x in top5 if _brk_ok(x) and (_iss_age(x) or 0) >= 12]
+        f = "⚠️" if linger else "✅"
+        print(f"  {f} 긴급부스트 신선창: 누적 breaking {len(brks)}건 · 부스트 수혜(<6h) {len(fresh)}건 · 12h+ top5 잔존(근사) {len(linger)}건"
+              + ("  (←잔존 = 신곡선 무력화/타항 부양 의심 → §8 260717 재점검)" if linger
+                 else "  (기준 잔존 0 · 260717 신선창 전환)"))
+        for x in linger[:2]:
+            print(f"      · {(_iss_age(x) or 0):.1f}h cr{x.get('cross')} rc{x.get('report_count')} {str(x.get('title') or '')[:36]}")
+    except Exception as e:
+        print(f"  · 부스트 계기판 계산 실패(비치명): {e}")
     # 독점률(도배 재발 감지 — 6/28형 '단일사건 상단 도배'를 숫자로 · ≥30%면 §7 접기(fold)안 검토 신호)
     try:
         dom = _dominance(c, now)
