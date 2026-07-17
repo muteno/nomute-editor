@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko" data-pg-template="rail-body-shift-v1"><!-- 플레이그라운드 세대 스탬프(check_refs 게이트 대상) -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>좌측 레일 ↔ 본문 우측 이동 튜너 — SNS DIGEST 몸통 오프셋 (2026-07-18 06:55 KST)</title>
+<style>
+  /* 값 = viewer/index.html :root 거울(정본 SSOT · 플레이그라운드 자기완결 위해 인라인 · §핵심명령 3-a 예외) */
+  :root{
+    --bg:#121212; --glass2:rgba(18,19,22,.55); --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#00EED2; --accent-2:#d8ff3d; --fg:#eef7f0; --mut:#8fa697;
+    --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
+    --fs-label:13px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+    /* ── 정본 레이아웃 값(경고 기준) ── */
+    --pad-x:16px;        /* .trendview/.snsview/.scrapview 좌우 패딩 = 4탭 동일(운영자 260712) */
+    --rail-w:30px;       /* .trailwrap 실효 폭(.trail-i 22 + 패딩·보더) */
+    --rail-left:4px;     /* 폰 .trailwrap left:max(4px+safe, 50vw-464) */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;padding:16px 14px 40px;line-height:1.5}
+  h1{font-size:17px;font-weight:var(--fw-x);margin:0 0 4px}
+  .sub{color:var(--mut);font-size:var(--fs-sm);margin:0 0 16px}
+  .wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+
+  /* ── 미리보기(sticky 고정 — 스크롤해도 따라옴 · [5]) ── */
+  .stage{flex:1 1 320px;min-width:300px;position:sticky;top:10px}
+  .device{position:relative;width:100%;max-width:360px;margin:0 auto;height:520px;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#0f1a16,#121212)}
+  .device .status{height:26px}
+  /* 좌측 레일(fixed 미러 — device 내부 absolute로 재현) */
+  .rail{position:absolute;top:50%;transform:translateY(-50%);left:var(--rail-left);width:var(--rail-w);display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 2px;border:1px solid rgba(255,255,255,.14);border-radius:var(--r-pill);background:rgba(8,15,11,.55);z-index:5}
+  .rail i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:var(--mut);font-size:9px;font-weight:var(--fw-x);font-style:normal}
+  .rail i.on{color:var(--accent)}
+  .rail .div{width:12px;height:1px;background:rgba(255,255,255,.16);margin:1px 0}
+  /* 본문(.trendview 미러 — padding-left에 이동량 가산) */
+  .body{position:absolute;inset:26px 0 0 0;overflow:hidden;padding:10px var(--pad-x) 20px;padding-left:calc(var(--pad-x) + var(--shift,0px));transition:padding-left .18s ease}
+  .card{background:var(--glass2);border:1px solid var(--line);border-radius:var(--r-l);padding:12px 14px;backdrop-filter:blur(6px)}
+  .card + .card{margin-top:9px}
+  .lbl{display:flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:var(--fw-x);margin:0 0 9px}
+  .lbl::before{content:'•';color:var(--accent);font-weight:var(--fw-b)}
+  .lbl .u{color:var(--mut);font-weight:400;font-size:var(--fs-xs)}
+  .row{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:8px;padding:5px 0;font-size:var(--fs-sm)}
+  .row + .row{border-top:1px solid var(--line2)}
+  .row .rk{color:var(--accent);font-weight:var(--fw-b);font-variant-numeric:tabular-nums;text-align:center}
+  .row .q{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .tm{color:var(--mut);font-size:var(--fs-xs);font-variant-numeric:tabular-nums}
+  .row .badge{color:var(--accent-2);font-size:9px;font-weight:var(--fw-x);margin-left:4px}
+  /* 가이드 오버레이(레일 레인·본문 시작선·이동량) */
+  .guide{position:absolute;inset:26px 0 0 0;pointer-events:none;z-index:6}
+  .guide .rl{position:absolute;top:0;bottom:0;left:0;width:calc(var(--rail-left) + var(--rail-w));background:repeating-linear-gradient(45deg,rgba(0,238,210,.06),rgba(0,238,210,.06) 5px,transparent 5px,transparent 10px);border-right:1px dashed rgba(0,238,210,.4)}
+  .guide .start{position:absolute;top:0;bottom:0;left:calc(var(--pad-x) + var(--shift,0px));width:1px;background:rgba(216,255,61,.7)}
+  .guide .cap{position:absolute;left:calc(var(--pad-x) + var(--shift,0px) + 3px);top:4px;font-size:9px;color:var(--accent-2);background:rgba(0,0,0,.5);padding:1px 4px;border-radius:4px;white-space:nowrap}
+  .glabel{position:absolute;left:3px;top:4px;font-size:9px;color:var(--accent);background:rgba(0,0,0,.5);padding:1px 4px;border-radius:4px}
+
+  /* ── 컨트롤 ── */
+  .ctrl{flex:1 1 300px;min-width:280px}
+  .panel{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:rgba(255,255,255,.02)}
+  .panel h2{font-size:var(--fs-label);font-weight:var(--fw-x);margin:0 0 10px;color:var(--accent)}
+  .big{font-size:30px;font-weight:var(--fw-x);font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .big small{font-size:14px;color:var(--mut);font-weight:400;margin-left:2px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:12px 0 6px}
+  .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .presets button{padding:7px 12px;border-radius:var(--r-pill);border:1px solid var(--line);background:transparent;color:var(--fg);font-size:var(--fs-sm);font-family:inherit;cursor:pointer;transition:transform .1s}
+  .presets button:active{transform:scale(.95)}
+  .presets button.sel{border-color:var(--accent);color:var(--accent);background:rgba(0,238,210,.08)}
+  .vp{display:flex;gap:6px;margin-top:4px}
+  .vp button{flex:1;padding:7px;border-radius:var(--r-s);border:1px solid var(--line);background:transparent;color:var(--mut);font-size:var(--fs-sm);font-family:inherit;cursor:pointer}
+  .vp button.sel{border-color:var(--accent);color:var(--accent)}
+  .verdict{font-size:var(--fs-sm);padding:10px 12px;border-radius:9px;margin-top:8px;line-height:1.6}
+  .verdict.ok{background:rgba(0,238,210,.08);border:1px solid rgba(0,238,210,.3)}
+  .verdict.warn{background:rgba(216,255,61,.09);border:1px solid rgba(216,255,61,.35);color:#f0ffc0}
+  .baseline{font-size:var(--fs-xs);color:var(--mut);line-height:1.9}
+  .baseline b{color:var(--fg);font-weight:var(--fw-b)}
+  #copy{width:100%;margin-top:10px;padding:11px;border-radius:var(--r-pill);border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:var(--fs-label);font-weight:var(--fw-b);font-family:inherit;cursor:pointer}
+  #copy:active{transform:scale(.98)}
+  #copy.done{background:var(--accent);color:#04201d}
+  .note{font-size:var(--fs-xs);color:var(--mut);line-height:1.85;margin-top:6px}
+  .note b{color:var(--accent-2)}
+  .note code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px;color:var(--fg)}
+</style>
+</head>
+<body>
+<h1>좌측 레일 ↔ 본문 우측 이동 튜너</h1>
+<p class="sub">SNS DIGEST(트렌드) 몸통을 레일 너비만큼 우측으로 밀면 어떤지 — 실제 기하(레일 30px·본문 패딩 16px)로 미리보기. 값 확정 시 복사해 전달.</p>
+
+<div class="wrap">
+  <!-- 미리보기(sticky) -->
+  <div class="stage">
+    <div class="device" data-pg-preview>
+      <div class="status"></div>
+      <div class="rail">
+        <i class="on">↑</i><i>G</i><i>▶</i><i>♪</i><i>X</i><div class="div"></div><i>◈</i><i>▨</i>
+      </div>
+      <div class="body" id="body">
+        <div class="card">
+          <div class="lbl">실시간 검색어 <span class="u">· 시그널</span></div>
+          <div class="row"><span class="rk">1</span><span class="q">김부장, 공존의 모델</span><span class="tm">8시간 전</span></div>
+          <div class="row"><span class="rk">2</span><span class="q">멕시코 7.4 지진 쓰나미</span><span class="tm">59분 전</span></div>
+          <div class="row"><span class="rk">3</span><span class="q">투개월 도대윤 조울증<span class="badge">NEW</span></span><span class="tm">방금</span></div>
+          <div class="row"><span class="rk">4</span><span class="q">진성준</span><span class="tm">방금</span></div>
+          <div class="row"><span class="rk">5</span><span class="q">중대본 1단계 가동</span><span class="tm">방금</span></div>
+        </div>
+        <div class="card">
+          <div class="lbl">유튜브 <span class="u">· 조회수</span></div>
+          <div class="row"><span class="rk">1</span><span class="q">인기 급상승 영상 제목</span><span class="tm">3시간 전</span></div>
+          <div class="row"><span class="rk">2</span><span class="q">두 번째 영상</span><span class="tm">5시간 전</span></div>
+        </div>
+      </div>
+      <div class="guide">
+        <div class="rl"></div><div class="glabel">레일 레인 34px</div>
+        <div class="start"></div><div class="cap" id="cap">본문 시작 16px</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 컨트롤 -->
+  <div class="ctrl">
+    <div class="panel">
+      <h2>① 몸통 우측 이동량</h2>
+      <div class="big"><span id="val">0</span><small>px</small></div>
+      <input type="range" id="sh" min="0" max="48" step="1" value="0">
+      <div class="presets" data-pg-presets>
+        <button data-v="0" class="sel">0 · 현재(정본)</button>
+        <button data-v="15">15 · 절반</button>
+        <button data-v="30">30 · 레일폭</button>
+        <button data-v="34">34 · 레일 우변</button>
+      </div>
+      <div class="verdict ok" id="verdict">정본 계승 — 4탭 동일 폭 유지</div>
+    </div>
+
+    <div class="panel">
+      <h2>② 미리보기 뷰포트</h2>
+      <div class="vp" data-vp>
+        <button data-w="360" class="sel">폰 360</button>
+        <button data-w="300">협폭 300</button>
+      </div>
+      <p class="baseline" style="margin-top:10px">폰에서는 본문이 화면 전폭(max-width 860 미적용)이라 우측 여백은 패딩 16px뿐 — 우측 이동 = 본문 폭 축소 + 좌측 비대칭. PC(≥860)는 중앙정렬이라 이동 = 탈중앙.</p>
+    </div>
+
+    <div class="panel" data-pg-baseline>
+      <h2>③ 정본 값(SSOT · 벗어나면 경고)</h2>
+      <p class="baseline">
+        · <b>본문 좌우 패딩</b> = <code>16px</code> (레거시·뉴스·SNS·채널 <b>4탭 동일</b> · 운영자 260712 "창 크기 일치")<br>
+        · <b>본문 최대폭</b> = <code>860px</code> 중앙정렬<br>
+        · <b>레일 실효폭</b> ≈ <code>30px</code>, 좌변 <code>4px</code> → 우변 ≈ <code>34px</code><br>
+        · 현행 = 레일이 본문 좌측 패딩 위에 <b>책갈피처럼</b> 얹힘(레일 우변 30 ≈ 텍스트 시작선 = 충돌 0)
+      </p>
+    </div>
+
+    <button id="copy" data-pg-copy>이 값 복사</button>
+    <p class="note" data-pg-note>
+      <b>⚠ 한계·주의</b><br>
+      · 레일이 있는 탭 = <b>SNS DIGEST·채널요약 2개뿐</b>(레거시·뉴스엔 레일 없음). 이 둘만 밀면 그 둘끼리는 맞지만 나머지 2탭과 폭이 어긋남 = <b>260712 "4탭 동일 폭" 정본 이탈</b>.<br>
+      · 폰 기준 미리보기. 실제 반영은 이 값을 뷰 규칙(padding-left 가산 or 좌측 margin)으로 배선 — 확정 값만 주면 즉시 반영.<br>
+      · 색·모서리·글꼴 = viewer :root 토큰 거울(창작 0).
+    </p>
+  </div>
+</div>
+
+<script>
+  // near() = 정본 계승 판정(현행 16px 기준 ±2px = 계승 · 그 밖 = 이탈 경고) — check_refs 게이트 계승판정 마커
+  const near = (v, base, tol=2) => Math.abs(v - base) <= tol;
+  const $ = s => document.querySelector(s);
+  const body = $('#body'), sh = $('#sh'), val = $('#val'), cap = $('#cap'), verdict = $('#verdict');
+  let shift = 0;
+
+  function render(){
+    const prev = body.scrollTop;                 // 재렌더 스크롤 보존(운영자 260712 실측 튕김 방지)
+    document.documentElement.style.setProperty('--shift', shift + 'px');
+    val.textContent = shift;
+    cap.textContent = '본문 시작 ' + (16 + shift) + 'px';
+    // 프리셋 선택 표시
+    document.querySelectorAll('[data-pg-presets] button').forEach(b => b.classList.toggle('sel', +b.dataset.v === shift));
+    // 판정: 0(±2) = 정본 / 그 외 = 이탈 경고
+    if (near(shift, 0)) {
+      verdict.className = 'verdict ok';
+      verdict.textContent = '✓ 정본 계승 — 4탭(레거시·뉴스·SNS·채널) 동일 폭 유지';
+    } else {
+      verdict.className = 'verdict warn';
+      verdict.textContent = '⚠ 정본 이탈 +' + shift + 'px — SNS DIGEST가 다른 탭보다 본문 ' + shift + 'px 좁아짐·좌측 비대칭(레일 전용 레인은 확보). "4탭 동일 폭" 260712 위배 여부 확인 요';
+    }
+    body.scrollTop = prev;
+  }
+  sh.addEventListener('input', () => { shift = +sh.value; render(); });
+  document.querySelectorAll('[data-pg-presets] button').forEach(b =>
+    b.addEventListener('click', () => { shift = +b.dataset.v; sh.value = shift; render(); }));
+  document.querySelectorAll('[data-vp] button').forEach(b =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-vp] button').forEach(x => x.classList.remove('sel'));
+      b.classList.add('sel');
+      $('.device').style.maxWidth = b.dataset.w + 'px';
+    }));
+  $('#copy').addEventListener('click', () => {
+    const txt = 'SNS DIGEST 본문 우측 이동 = ' + shift + 'px (0=정본유지) · 기준: 패딩16·레일30·max860';
+    navigator.clipboard && navigator.clipboard.writeText(txt);
+    const c = $('#copy'); c.classList.add('done'); c.textContent = '복사됨: ' + shift + 'px';
+    setTimeout(() => { c.classList.remove('done'); c.textContent = '이 값 복사'; }, 1400);
+  });
+  render();
+</script>
+</body>
+</html>
