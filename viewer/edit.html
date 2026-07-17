@@ -364,6 +364,9 @@
   .lyjob .jt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
   .lyjob .jst { flex:none; font-size:12px; font-weight:800; color:var(--mut); }
   .lyjob .jst.done { color:var(--accent); } .lyjob .jst.fail { color:var(--danger); }
+  .edfocus { animation:edfocus 2.2s ease both; border-radius:var(--r-m); }   /* 알림 ?done=<id> 착지 결과 강조 = '해당 작업' 식별(thumb .thfocus 정본 계승 · radius = 근접토큰 자동계승) */
+  @keyframes edfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
+  @media (prefers-reduced-motion:reduce){ .edfocus { animation:none; } }
   /* 작업 내역 접기 토글 — 이미지 도구(thumb) '이전 제작' 접기 문법 계승(운영자 260712 "영상도 계승 — 토글 접힌채로, 펼치면 촤르륵") · 헤더 = 라임 블릿+개수+쉐브론(이력색 마커) · 펼침 = 행 스태거 histIn · 닫힘 = histOut 후 hidden */
   .lyjobs-h:active { transform:scale(var(--press-l)); }   /* 접기 헤더 눌림 마감(전수감사 260713) */
   .lyjobs-h { width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; color:var(--fg); cursor:pointer; padding:10px 2px; font:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); -webkit-tap-highlight-color:transparent; }
@@ -1800,7 +1803,7 @@ async function editSubsInit(id){   // 완료 후 자막 편집기 활성(pollEdi
     EDIT_SUB=true;
     $('#vwrap').hidden=true; $('#dlVid').hidden=true;   // 자막 작업 = 완성 영상·저장을 lyBurn(다시 입히기 UI 동반)이 전담
     await lyResult(out, md, false);   // 복원 모드(랜딩 스크롤 없음) — 편집 스냅샷(nm_lyedit_<id>) 있으면 그대로 이어짐(ly 탭과 키 공유 = 의도)
-    lyVidCheck(out);   // video.json 있으면 lyBurnShow(완성 영상 + 다시 입히기·삭제 컷 노출)
+    await lyVidCheck(out);   // video.json 있으면 lyBurnShow(완성 영상 + 다시 입히기·삭제 컷 노출) — await = 딥링크 포커싱이 #lyBurn 최종 라우팅을 잡게(레이스 봉합)
   }catch(e){}
 }
 
@@ -1913,7 +1916,7 @@ async function openJob(id){
     const r=await fetch('ly_out/'+id+'/video.json?t='+Date.now());
     if(r.ok){ const tx=await r.text();
       if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
-        if(d&&d.url){ showResult(d,0); editSubsInit(id); return true; }   // 과거 잡도 자막 편집기 활성(B-2 딥링크 동일)
+        if(d&&d.url){ showResult(d,0); await editSubsInit(id); return true; }   // 과거 잡도 자막 편집기 활성(B-2 딥링크 동일) · await = 자막 라우팅(#vwrap→#lyBurn) 완료 후 반환 = 포커싱이 최종 화면 잡음
         if(d&&(d.error||d.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); st.classList.add('err'); return false; } } }
     const rc=await fetch('ly_out/'+id+'/clips.json?t='+Date.now());   // 클리퍼 잡 — 후보 목록 직행(260711)
     if(rc.ok){ const tc=await rc.text();
@@ -1927,11 +1930,19 @@ async function openJob(id){
   return false;
 }
 
-/* ══ 완료 푸시 딥링크(#done=<id>) — 알림 탭 = 그 작업 결과로 직행(thumb #done 문법 · 발송 = edit-make 완료 푸시 스텝) ══ */
+/* ══ 완료 푸시 딥링크(?done=<id> · 구 #done 호환) — 알림 탭 = 그 작업 결과로 직행+강조(thumb 정본 계승 · 발송 = edit-make 완료 푸시 스텝) ══ */
+function edFocusResult(tries){   // 완성 결과 컨테이너로 스크롤+강조 = '그 작업' 핀포인트(thumb flashEl 미러). 우선순위 = 자막영상(#lyBurn) > 편집영상(#vwrap) > 클립(#cliplist) > 자막탭(#lyTabs) > 개요(#out) — editSubsInit(subs.md 라우팅)이 async라 보일 때까지 짧게 폴
+  const el=['#lyBurn','#vwrap','#cliplist','#lyTabs','#out'].map(s=>$(s)).find(e=>e&&!e.hidden&&e.offsetParent!==null);
+  if(el){ try{ el.scrollIntoView({behavior:LY_RM.matches?'auto':'smooth',block:'center'}); }catch(e){}
+    el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); return; }
+  if(tries>0) setTimeout(()=>edFocusResult(tries-1),200);   // 아직 라우팅 전 = 재시도(캡 ~1.6s)
+}
 (function(){
-  const m=(location.hash||'').match(/^#done=([0-9]{12}-[0-9a-f]{6})$/); if(!m) return;
+  const q=(location.search.match(/[?&]done=([0-9]{12}-[0-9a-f]{6})\b/)||[])[1];   // ?done= = 정본(Cloudflare Access 재로그인 하드 리다이렉트서 해시는 유실·쿼리는 생존 · thumb 260710)
+  const h=(location.hash.match(/^#done=([0-9]{12}-[0-9a-f]{6})$/)||[])[1];        // #done= = 기 발송 알림 호환
+  const id=q||h; if(!id) return;
   USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
-  openJob(m[1]);
+  (async()=>{ if(await openJob(id)) edFocusResult(8); })();   // 결과 열리면 완성 화면으로 이동+강조
 })();
 
 /* ══ 재개(pend) — conv 문법(24h 게이트·폴 창 클램프·신선도 분리) ══ */
