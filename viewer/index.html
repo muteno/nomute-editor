@@ -1563,6 +1563,8 @@
   #linkpop .lp-filtersub .chipbar { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding-left:0; }   /* raw-ok: gap4 = 칩 2열 간격 기존값(전체<>이슈 유지) · padding-left 24→0 = 칩 좌측이 상위 항목 라인 정렬(chip 자체 padding-left var(--sp-4)가 24 담당=이중 24 제거 · 운영자 260713 "세부 선택지 상위 레벨과 정렬") */
   #linkpop .lp-filtersub .chip { font-size:var(--fs-label); padding-left:var(--sp-4); text-align:left; }   /* 칩 크기 = 상위 레벨(.lp-btn 13px=var(--fs-label))과 동등(구 12.5px) · 좌측 = padding-left var(--sp-4=24) 상위 항목 라인 정렬 + text-align:left 명시(칩=버튼 UA 기본 center → 그리드 1fr 칸 안에서 가운데 렌더되던 것 교정 · 구 filterpop .chip text-align:left 계승 · 운영자 260713 "계정·인스타그램과 동일 좌측정렬") */
   #linkpop #msgbtn { border-top:1px solid var(--line2); margin-top:4px; padding-top:9px; }   /* 앱기능 첫 항목(메시지) = SNS 링크군과 구분선(옛 .lp-set 구분선 계승) */
+  #linkpop .lp-ver { display:block; width:100%; text-align:right; background:none; border:none; border-top:1px solid var(--line2); margin-top:6px; padding:7px 4px 1px; color:var(--mut); font:inherit; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; letter-spacing:.2px; cursor:pointer; }   /* raw-ok: pad 7/4/1·ls .2 = 구분선 여백 광학값(#msgbtn 구분선 문법 계승) · 배포 버전 도장(운영자 Q44) = 무채 --mut 최소 존재감(설정 하단 스샷 legible) · 색·크기 토큰 계승 */
+  #linkpop .lp-ver:hover { color:var(--fg); }   /* 탭 어포던스(hover = 밝아짐 · lp-btn:hover 문법 계승) */
   .bpop b { font-size:13px; font-weight:800; color:var(--fg); padding:0 4px 8px 2px; }   /* 무채색(상단 초록 제거·운영자 260629) · padding-bottom 8 = 헤더↔첫 항목 간격을 항목간(19px)과 균일하게(운영자) */
   .bpop b svg { vertical-align:-2px; margin-right:4px; }   /* 피드 탐색 앞 돋보기 — 초록 accent 상속(currentColor) */
   .bpop span { font-size:11.5px; color:var(--mut); line-height:1.5; }
@@ -3509,6 +3511,7 @@ try {
     <div class="pushrow" id="pinchgrow"><span class="pl">PIN</span><button class="pushbtn" id="pinChgBtn" type="button">변경</button></div><!-- PIN 변경 = 설정 직하위 독립 항목(요구6·7) · [라벨][우측버튼] = 알림/AI썸네일 행과 동형(§디자인 k 버튼패밀리 계승 = 어포던스 확보 · 평의회 감사6) · 버튼=lkSettingsRefresh 동적('변경'/'설정') · 현재PIN→새PIN→재입력(떠오르는 모션)·오답 흔들림 · 구 lockpop 내 lkRowPin(진입 불명확) 대체 -->
     <div class="pushrow" id="genimgrow"><span class="pl">AI 썸네일</span><button class="pushbtn" id="genImgOnBtn" type="button">ON</button></div><!-- AI 썸네일 전역 디폴트(서버 NM_SET.genImgOn·PIN 1회 게이트 = 잠금 lkVerifyOldPin 계승 요구3) — 검색 이미지는 무관(항상 수집) · 요약창 '이미지' 토글 = 그 건 한정 오버라이드(운영자 260709) -->
   </div>
+  <button class="lp-ver" id="lpVer" type="button" aria-label="앱 버전 — 탭하면 복사"></button><!-- 배포 버전 도장(운영자 Q44) — stamp-version.yml이 BUILD_STAMP 치환·JS stampVer가 채움 · 설정 열면 스샷에 찍혀 구버전/미해결 판별 -->
 </div>
 <!-- 대기열 — 뉴스요약 버튼 길게 누르면. 분석 대기/중(pending/) 기사: 들어온시각 · 주요내용 · 전달방식 -->
 <div class="bpop qpop" id="qpop" hidden>
@@ -6836,6 +6839,20 @@ function openMsgbox(highlightId) {
     if (el) { el.scrollIntoView({ block: 'nearest' }); el.classList.add('flash'); }
   });
 }
+
+// ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
+//    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
+//    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
+const BUILD_STAMP = 'dev';  /*BUILDSTAMP*/
+(function stampVer(){
+  const el = document.getElementById('lpVer'); if (!el) return;
+  const dev = (BUILD_STAMP === 'dev');
+  el.textContent = dev ? 'dev · 미배포' : ('버전 ' + BUILD_STAMP);
+  el.title = dev ? '로컬/미배포 빌드' : '탭하면 버전 복사 — 버그 제보 때 이 값을 붙여줘';
+  if (!dev) el.onclick = async () => {   // 탭 = 복사(클립보드 관례 계승) → 제보 시 붙여넣기 = 구버전/미해결 10초 판별
+    try { await navigator.clipboard.writeText(BUILD_STAMP); const o = el.textContent; el.textContent = '복사됨 ✓'; setTimeout(() => { el.textContent = o; }, 1200); } catch {}
+  };
+})();
 
 // ── SW 상시 등록 = HTML 셸 캐시(콜드부트 즉시 페인트 → OS 스플래시 한 깜빡·운영자 승인 260706) ──
 // 옛날엔 푸시 켤 때만 등록 → 캐시 SW가 전 사용자에 안 깔림. 등록은 멱등(같은 sw.js = no-op)·푸시 플로우 재등록과 충돌 0.
