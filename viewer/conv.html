@@ -61,6 +61,9 @@
   .go.err { color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
   .go.shake { animation:shake .32s; }
   @keyframes shake { 20%{ transform:translateX(-5px);} 45%{ transform:translateX(4px);} 70%{ transform:translateX(-3px);} 90%{ transform:translateX(2px);} }
+  .edfocus { animation:edfocus 2.2s ease both; border-radius:var(--r-m); }   /* 알림 ?done=<id> 착지 결과 강조(edit/thumb .thfocus 정본 계승 · radius=근접토큰) */
+  @keyframes edfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
+  @media (prefers-reduced-motion:reduce){ .edfocus { animation:none; } }
   .go.glive.firing { animation:none;
     background-image:linear-gradient(90deg, rgba(var(--accent-rgb),.34), rgba(var(--accent-rgb),.34)), linear-gradient(90deg, var(--accent-dim), var(--accent-dim));
     background-size:0% 100%, 100% 100%; background-repeat:no-repeat;
@@ -478,6 +481,23 @@ $('#dlVid').addEventListener('click',e=>{
   a.download=name; document.body.appendChild(a); a.click(); a.remove();
   b.classList.add('dl-done');
 });
+
+// ── 완료 푸시 딥링크(?done=<id> · Access 재로그인 하드 리다이렉트서 해시 유실·쿼리 생존 · #done 호환) — 그 잡 결과로 직행+강조(edit/thumb 정본 계승) ──
+function edFocus(sel){ const el=$(sel); if(!el||el.hidden) return; try{ el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'}); }catch(e){} el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); }
+(function(){
+  const id=(location.search.match(/[?&]done=([0-9]{12}-[0-9a-f]{6})\b/)||[])[1]||(location.hash.match(/^#done=([0-9]{12}-[0-9a-f]{6})$/)||[])[1];
+  if(!id) return;
+  USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
+  (async()=>{
+    try{
+      const r=await fetch('conv_out/'+id+'/video.json?t='+Date.now());
+      if(r.ok){ const tx=await r.text(); if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
+        if(d&&d.url){ CONV_ID=id; showResult(d,0); edFocus('#vwrap'); return; } } }
+      const er=await fetch('conv_out/'+id+'/error.log?t='+Date.now());
+      if(er.ok){ const em=await er.text(); if(em&&em.trim()&&!/^\s*</.test(em)){ $('#cstatus').innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); $('#cstatus').classList.add('err'); } }
+    }catch(e){}
+  })();
+})();
 
 // ── 재개(pend) — 리로드/재진입 시 진행 중 변환 폴 이어받기(track 문법 · 클램프 = 소프트 예산) ──
 (function(){
