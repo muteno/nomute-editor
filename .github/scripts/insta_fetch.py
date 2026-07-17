@@ -66,17 +66,21 @@ def parse_ins(j):
 
 
 def insights(path, metrics, **params):
-    """지표 묶음 조회 — 묶음 실패 시 낱개 폴백. 반환 = (수집분, 드랍 목록)."""
+    """지표 묶음 조회 — 묶음 실패 OR 묶음 성공이어도 응답 누락분은 낱개 폴백. 반환 = (수집분, 드랍 목록).
+    ⚠ Meta는 metric_type별 미지원 지표를 200 응답에서 '무성 생략'한다(260717 실측: 계정 time_series가
+    reach만 주고 views·profile_views 등은 조용히 빠뜨림 → 종전 로직은 묶음 200이면 dropped 0으로 통과 →
+    daily_series views가 5일간 None인데 아무 경보 없이 방치됨). 교정 = 요청했는데 응답에 없는 지표는 낱개
+    재시도(솔로로는 될 수도) → 그래도 없으면 dropped에 명시 = 조용한 누락을 가시 경보로. (미래 개폐 자가 적응.)"""
     j, err = api(path, metric=','.join(metrics), **params)
-    if j is not None:
-        return parse_ins(j), []
-    got, dropped = {}, []
-    for m in metrics:
+    got = parse_ins(j) if j is not None else {}
+    dropped = []
+    for m in [x for x in metrics if x not in got]:   # 묶음에 빠진 지표(실패 = 전부 · 부분 = 누락분)만 낱개 재시도
         j1, e1 = api(path, metric=m, **params)
-        if j1 is None:
-            dropped.append(f'{m} ({e1})')
+        g1 = parse_ins(j1) if j1 is not None else {}
+        if m in g1:
+            got.update(g1)
         else:
-            got.update(parse_ins(j1))
+            dropped.append(f'{m} ({e1 or "200-응답미포함"})')
     return got, dropped
 
 
