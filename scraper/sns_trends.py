@@ -971,7 +971,37 @@ def expressway(limit=10):
         return []
 
 
-def _annotate_rank(cur, prev, keyfn):
+_SIG_STOP = {"되다", "한다", "했다", "속보", "오늘", "근황", "최근", "공식", "논란", "전격", "확인"}   # ⑨ 실검 헤드라인 상투어(토픽 식별 무의미 · 퍼지 매칭서 제외)
+
+
+def _sig_tokens(q):
+    return set(t for t in re.sub(r"[^0-9A-Za-z가-힣 ]", " ", q or "").split() if len(t) >= 2 and t not in _SIG_STOP)
+
+
+def _sig_fuzzy(x, prev):
+    """⑨ 실검 토픽 퍼지 매칭(운영자 260718 — kid·query 정확매칭 폴백) : signal.bz가 AI로 헤드라인을 매 런
+    재작성 → 요약 URL kid마저 churn(실측: 지속 토픽 '김부장 공존 모델'도 6h간 승계율 1~2/10 = 대부분 가짜
+    '방금' 리셋). 핵심 토큰(2자+·상투어 제외) 겹침으로 같은 토픽 인식 → first_seen 진짜 나이 승계(위 급상승
+    검색어와 동일한 다양한 시간대). 반환 = 최적 prev 항목(승계원) or None. 임계 = 공통 토큰 2개+ 또는
+    (공통 1개 & 자카드≥0.34) — 단일 공통어(예 '지진'만 겹침)의 오매칭 차단(과거 7스냅샷 실측 검증 260718:
+    김부장 8h37m·도대윤 3h43m 정확 추적 · 신규 진성준·중대본·배달 = 방금 유지 · 오매칭 0)."""
+    tq = _sig_tokens(x.get("query"))
+    if not tq:
+        return None
+    best, bestj = None, 0.0
+    for p in prev:
+        tp = _sig_tokens(p.get("query"))
+        if not tp:
+            continue
+        inter = len(tq & tp)
+        union = len(tq | tp)
+        j = inter / union if union else 0.0
+        if (inter >= 2 or (inter >= 1 and j >= 0.34)) and j > bestj:
+            best, bestj = p, j
+    return best
+
+
+def _annotate_rank(cur, prev, keyfn, fuzzy=None):
     """직전 스냅샷(prev) 대비 순위 변동 + 순위 이력(rh)을 cur 각 항목에 주입(운영자 260711 평의회4 · 260712 스파크라인).
     delta = prev순위 - 현재순위(양수=상승·음수=하락·0/미표기=유지) · isNew = prev에 없던 신규 진입.
     rh = 최근 순위 배열(직전 항목의 rh에 이어붙임 · 최대 16점 = 30분 크론 ×16 ≈ 8h — 뷰어 TOP 10 스파크라인 원료·표시 전용·랭킹 무영향).
@@ -987,20 +1017,26 @@ def _annotate_rank(cur, prev, keyfn):
     pmap = {keyfn(x): (i, x) for i, x in enumerate(prev) if keyfn(x)}
     for i, x in enumerate(cur):
         k = keyfn(x)
-        if not k:
-            continue
-        if k in pmap:
-            pi, px = pmap[k]
+        hit = pmap.get(k) if k else None
+        if hit is None and fuzzy is not None:   # 정확 키 미스 = 퍼지 폴백(⑨ 실검 헤드라인 churn 대응 · 운영자 260718 · 미지정 소스는 무발동 = 종전 동일)
+            fx = fuzzy(x, prev)
+            if fx is not None:
+                fi = next((j for j, p in enumerate(prev) if p is fx), None)
+                if fi is not None:
+                    hit = (fi, fx)
+        if hit is not None:
+            pi, px = hit
             dl = pi - i
             if dl:
                 x["delta"] = dl   # 유지(0)는 미표기 = 배지 없음(뷰어 깔끔)
             ph = px.get("rh") if isinstance(px, dict) else None   # 구 스냅샷(rh 없음) = 직전 순위 1점 폴백
             x["rh"] = (ph or [pi + 1])[-15:] + [i + 1]
             x["first_seen"] = (px.get("first_seen") if isinstance(px, dict) else None) or now_iso
-        else:
+        elif k:
             x["isNew"] = True
             x["rh"] = [i + 1]
             x["first_seen"] = now_iso
+        # else: 무키·무매칭 = 종전대로 스킵(필드 미설정)
     return cur
 
 
@@ -1130,7 +1166,7 @@ def main():
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
     _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
     _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
-    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
+    _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"), fuzzy=_sig_fuzzy)   # ⑨ 실검 first_seen = kid 정확매칭 1순위 + 토픽 퍼지 폴백(운영자 260718 — signal.bz가 헤드라인·요약URL kid를 매 런 AI 재작성 → kid단독 승계 실측 1~2/10 = 지속 토픽도 가짜 "방금" 리셋 → 퍼지가 핵심토큰 겹침으로 같은 토픽 인식해 진짜 나이 승계 · 과거 7스냅샷 실측 김부장 8h·도대윤 3.7h) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용 = 퍼지 무영향)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
