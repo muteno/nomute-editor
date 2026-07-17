@@ -927,6 +927,44 @@ def check_conflict_markers():
     return bad
 
 
+# 원장 Q번호 역사 중복 베이스라인(260717 게이트 신설 시점 실측 — 세션 갈래별 번호가 병존하던 시절 유산 면책).
+# 규약(운영자 260717 승인 "게이트 ㄱ"): 이후 신규 부여 = 파일 전체 최대 Q+1(전역 유일). 중복이 '늘 때만' rc=1(래칫 —
+# 디자인 토큰 baseline 관용구). 정당 사유(중복 행 정리 등)로 재베이스라인 시 아래를 게이트 파서 실측값으로 갱신 + 사유 기록.
+_QDUP_BASE = {1: 41, 2: 19, 3: 17, 4: 16, 5: 14, 6: 13, 7: 12, 8: 9, 9: 8, 10: 6, 11: 5, 12: 5, 13: 4, 14: 2, 16: 2, 18: 2, 19: 2, 23: 2}
+
+
+def check_qledger_unique():
+    """지시 원장(docs/요구사항_큐.md) Q번호 유일성 게이트(운영자 260717 Q29 승인 — 동시 세션이 각자 '다음 번호'를
+    추측 부여 → 같은 번호 경합 = 완료 보고 [Q.NN]↔원장 1:1 참조(CLAUDE.md [6]) 모호. 260717 실사고: Q24 이중 부여
+    → 머지 후에야 발견 → 교정 커밋 2회). 행 규격 = 줄머리 '- <상태> QNN·' 또는 'QNN~MM·'(범위 전개). 역사적 중복
+    (Q01×41 등 = 갈래 병존 유산)은 _QDUP_BASE 면책 · 그 밖의/그 이상 중복 = rc=1 + 파일 최대+1 재부여 안내.
+    ⚠️ 커밋 전 로컬 파일 검사라 '남의 세션이 이미 main에 올린 번호'는 최신 main에서 브랜치를 새로 딴 상태에서만 보임
+    — 원장 append 전 fetch+재기점(머지된 브랜치 재시작 규약)이 짝이다. fail-closed(원장 못 읽으면 차단)."""
+    try:
+        lines = open(os.path.join(ROOT, 'docs', '요구사항_큐.md'), encoding='utf-8').read().splitlines()
+    except Exception as e:
+        print('❌ check_qledger_unique 원장 읽기 실패(fail-closed):', e); return 1
+    rx = re.compile(r'^- [^Q]{0,4}Q(\d+)(?:~(\d+))?·')
+    cnt = {}
+    for ln in lines:
+        m = rx.match(ln)
+        if not m:
+            continue
+        a, b = int(m.group(1)), int(m.group(2)) if m.group(2) else int(m.group(1))
+        for n in range(a, b + 1):
+            cnt[n] = cnt.get(n, 0) + 1
+    if not cnt:
+        print('❌ 원장 Q행 0건 파싱 — 행 규격 변경 시 이 게이트 정규식도 갱신(fail-closed)'); return 1
+    over = {n: c for n, c in cnt.items() if c > _QDUP_BASE.get(n, 1)}
+    nxt = max(cnt) + 1
+    if over:
+        print('❌ 원장 Q번호 신규 중복(동시 세션 번호 경합): %s → 내 행만 Q%d(파일 최대+1)로 재부여하라(타 세션 행 무접촉 · [Q.NN] 1:1 참조 보전)'
+              % (' · '.join('Q%02d ×%d(면책 %d)' % (n, c, _QDUP_BASE.get(n, 1)) for n, c in sorted(over.items())), nxt))
+        return 1
+    print('✅ 원장 Q번호 유일성 — 신규 중복 0(역사 중복 %d종 면책 · 현재 최대 Q%d · 다음 부여 = Q%d).' % (len(_QDUP_BASE), max(cnt), nxt))
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1048,6 +1086,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_playground 스킵:', e)
+    try:
+        if check_qledger_unique() != 0:   # 원장 Q번호 유일성(하드 게이트 — 동시 세션 번호 경합 = [Q.NN] 1:1 참조 모호 · 신규 중복만 래칫 차단 · 운영자 260717 승인)
+            rc = 1
+    except Exception as e:
+        print('❌ check_qledger_unique 예외(fail-closed — 게이트 무력화 방지):', e); rc = 1
     return rc
 
 
