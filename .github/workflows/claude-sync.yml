@@ -1,13 +1,19 @@
 # claude-sync — CLAUDE.md 공통 골격(SYNC-COMMON 마커 구간) 전 레포 자동 전파
 # 정본 = 이 레포 CLAUDE.md 마커 구간. main에 CLAUDE.md 변경이 머지되면 타 레포에 교체 PR을 자동 생성한다.
-# 직접 push 금지 설계 — 타 레포 반영은 언제나 PR(운영자 머지)로만.
+# 직접 push 금지 설계 — 타 레포 반영은 언제나 PR 경유. 머지 = 자동(운영자 260717 Q61 "동기화 자동머지" 승인 = 무접촉).
+#   리뷰모드가 필요하면 수동 dispatch에서 automerge=false(PR만 열림). 정본 오염 방어선 = nomute-editor main 머지 시점(운영자)·마커 밖 무접촉(코드 보장).
 # 인증 = secrets.KIT_SYNC_TOKEN (kit-fanout.yml과 공용 · 전 레포 Contents/PR RW 파인그레인드 · 만기 2026-10-14).
 name: claude-sync
 on:
   push:
     branches: [main]
     paths: [CLAUDE.md]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      automerge:
+        description: "전파 PR 자동 머지 (기본 true = 무접촉 · false = 리뷰모드로 PR만 열기)"
+        type: boolean
+        default: true
 concurrency:
   group: claude-sync
   cancel-in-progress: false
@@ -19,6 +25,7 @@ jobs:
     env:
       TZ: Asia/Seoul
       GH_TOKEN: ${{ secrets.KIT_SYNC_TOKEN }}
+      AUTOMERGE: ${{ github.event.inputs.automerge || 'true' }}
       TARGETS: muteno/YETA muteno/Saju muteno/yeulmaru-promo muteno/nomute_homepage muteno/TS
     steps:
       - uses: actions/checkout@v4
