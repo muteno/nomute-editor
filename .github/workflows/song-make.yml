@@ -58,6 +58,7 @@ concurrency:
 
 permissions:
   contents: write
+  checks: read   # 배포 게이트(deploy-then-notify) — Pages 'Cloudflare Pages' 체크런 조회용(thumb/edit-make 정본 계승 · §완료알림 기틀)
 
 jobs:
   song:
@@ -129,23 +130,6 @@ jobs:
           [ -s "viewer/song_out/${IN_ID}/error.log" ] || echo "음원 생성 실패 — Actions 로그를 확인해줘." > "viewer/song_out/${IN_ID}/error.log"
           echo "error.log: $(cat viewer/song_out/${IN_ID}/error.log)"
 
-      # 곡 완성 푸시(lyria만 — 옵션/수노 텍스트는 수초 내라 노이즈) · track-make 푸시 문법 미러 · 비치명
-      - name: 완료 푸시 (pywebpush)
-        if: ${{ always() && inputs.mode == 'lyria' }}
-        env:
-          IN_ID: ${{ inputs.id }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
-        run: |
-          [ -n "$IN_ID" ] || exit 0
-          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
-          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
-          D="viewer/song_out/${IN_ID}"; OK=0
-          if [ -s "$D/song.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/song.json')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
-          if [ "$OK" = "1" ]; then BODY="곡 완성 — 탭해서 듣기"; else
-            MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="곡 생성 실패 — ${MSG:-로그 확인}"; fi
-          python3 .github/scripts/push_send.py --notify "노래" "$BODY" --url "/song.html" --tag "nomute-song-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
-
       - name: Commit output
         if: always()
         env:
@@ -165,3 +149,48 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((i*3))
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      # 배포 게이트(deploy-then-notify · §완료알림 기틀 · thumb/edit-make 정본 계승 · 운영자 260717 "나머지 도구도 같은 로직") —
+      #   ⚠️ song은 구조상 완료 푸시가 Commit output *앞*이었음(전파 전 발송) → 푸시를 커밋 뒤로 재배열 + 게이트 삽입 = 산출(song.json) 전파 후에만 통지.
+      #   lyria만(수노 텍스트는 수초라 무푸시) · 산출 커밋 포함 Pages 빌드 success 확인 후 진행 · 전 경로 exit 0 = 비치명.
+      - name: 배포 게이트 (Pages 반영 확인)
+        if: ${{ always() && inputs.mode == 'lyria' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          DEADLINE=$((SECONDS+480)); SEEN=0
+          chk() {
+            local out; out=$(gh api "repos/${{ github.repository }}/commits/$1/check-runs?per_page=50" \
+              --jq '[.check_runs[] | select(.name=="Cloudflare Pages")][0] | (.status//"")+"/"+(.conclusion//"")' 2>/dev/null || echo '')
+            [ -n "$out" ] && [ "$out" != "/" ] && SEEN=1
+            [ "$out" = "completed/success" ]
+          }
+          while [ $SECONDS -lt $DEADLINE ]; do
+            chk "$SHA" && { echo "배포 확인 — 산출 커밋 빌드 success (${SECONDS}s)"; exit 0; }
+            git fetch -q origin main 2>/dev/null || true
+            H=$(git rev-parse origin/main 2>/dev/null || echo '')
+            if [ -n "$H" ] && [ "$H" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$H" 2>/dev/null; then
+              chk "$H" && { echo "배포 확인 — 후속 커밋($H) 빌드에 포함 success (${SECONDS}s)"; exit 0; }
+            fi
+            [ $SECONDS -ge 180 ] && [ $SEEN -eq 0 ] && { echo "::warning::Cloudflare Pages 체크런 미관측 — 180s 폴백 통과(뷰어 재시도 사다리가 커버)"; exit 0; }
+            sleep 15
+          done
+          echo "::warning::배포 success 8분 미확인 — 폴백 통과(뷰어 재시도 사다리가 커버)"
+
+      # 곡 완성 푸시(lyria만 — 옵션/수노 텍스트는 수초 내라 노이즈) · 배포 게이트 뒤 = 전파 후 발송 · 비치명
+      - name: 완료 푸시 (pywebpush)
+        if: ${{ always() && inputs.mode == 'lyria' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          D="viewer/song_out/${IN_ID}"; OK=0
+          if [ -s "$D/song.json" ]; then OK="$(python3 -c "import json;print(1 if json.load(open('$D/song.json')).get('url') else 0)" 2>/dev/null || echo 0)"; fi
+          if [ "$OK" = "1" ]; then BODY="곡 완성 — 탭해서 듣기"; else
+            MSG=""; [ -s "$D/error.log" ] && MSG="$(head -c 60 "$D/error.log")"; BODY="곡 생성 실패 — ${MSG:-로그 확인}"; fi
+          python3 .github/scripts/push_send.py --notify "노래" "$BODY" --url "/song.html" --tag "nomute-song-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
