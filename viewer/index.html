@@ -6861,6 +6861,7 @@ let _shellUpdShown = false, _shellUpdT = 0, _shellUpdApplying = false;
 //   토스트가 배포 수만큼 반복되던 것(1탭=1세대 전진)을, 최신 셸을 직접 fetch→SW 캐시에 꽂고 reload = 몇 건이든 1탭 종결로 교정(운영자 260717).
 async function applyShellUpdate(t) {
   if (_shellUpdApplying) return; _shellUpdApplying = true;   // 더블탭 = fetch 중복 발사 차단(reload 직전 짧은 창 · 리셋 불요 = 어차피 reload)
+  try { sessionStorage.setItem('nmUpdScrollY', String(Math.round(window.scrollY || (document.scrollingElement || {}).scrollTop || 0))); } catch {}   // 탭 시점 스크롤 저장 → reload 후 복원(시각 튜닝 시 맨위 튕김 방지 · 복원 = 아래 restoreUpdScroll · 운영자 260717)
   const m = t && t.querySelector('.ft-msg'); if (m) m.innerHTML = '반영중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   // 처리중 = gdots 점모션 정본 계승(§디자인 g · pushToggle '변경중' 문법 = 붙여쓰기 가족 표기 동일 · 평의회 260717-8) — 느린 망에서 탭이 먹통처럼 안 보이게
   try {
     const res = await fetch(location.pathname, { cache: 'no-store', signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined });   // 비내비게이션 fetch = SW fetch 핸들러 불간섭(mode≠navigate) = 순수 네트워크 최신 · 4s 상한 = 무한 대기 차단
@@ -6884,6 +6885,19 @@ function showUpdateToast() {
   t.querySelector('[data-bt="x"]').onclick = ev => { ev.stopPropagation(); if (_shellUpdApplying) return; t.classList.remove('show'); _shellUpdShown = false; };   // ✗ = 숨김 + 래치 해제 = 다음 배포(재검증) 감지 시 재알림(주석·의도 정합·평의회 260717) · 적용 중엔 무시 — 숨긴 직후 돌연 리로드되는 title 약속("이번 접속 동안만 숨김") 배신 차단(평의회 260717-8)
   requestAnimationFrame(() => t.classList.add('show'));   // 상주형(자동닫힘 없음) = 사용자가 탭할 때까지 대기(§CII 토스트 행)
 }
+// '탭하면 반영' reload 후 스크롤 복원(운영자 260717 — 시각 튜닝 시 맨위 튕김 방지) · 세션 1회성 · 콘텐츠 async 렌더라 충분히 길어질 때(또는 2.5s)까지 rAF 대기 후 복원 · 앱 재렌더 scrollY 보존 관례(12347 등) 계승
+(function restoreUpdScroll() {
+  let y; try { y = sessionStorage.getItem('nmUpdScrollY'); if (y != null) sessionStorage.removeItem('nmUpdScrollY'); } catch { return; }
+  if (y == null) return; y = +y; if (!(y > 0)) return;
+  try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}   // 브라우저 자동복원과 충돌 차단(내가 콘텐츠 준비 후 복원)
+  const t0 = Date.now();
+  const step = () => {
+    const se = document.scrollingElement || document.documentElement;
+    if ((se && se.scrollHeight >= y + window.innerHeight) || Date.now() - t0 > 2500) { window.scrollTo(0, y); return; }   // 콘텐츠 충분히 김 or 2.5s 타임아웃 = 복원
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+})();
 
 // ── 긴급 속보 웹푸시(구독) — service worker(sw.js) + PushManager. 발송 = push_send.py. VAPID 공개키 박음(비밀 아님). 정본 = CLAUDE.md §🚨 ──
 const VAPID_PUB = 'BORNTh3cNd05vsxi2fZ-BykxM0NwKGTvIETz81g757RVFL6cDu29aAv5I7uit0WbGOmiZ4hlyMOEvb8B2HptU-I';
