@@ -9010,17 +9010,14 @@ const timeAccOut = c => {   // 아웃라이어면 시간항 하한(램프 블렌
 };
 // 누적(좌) 정렬 = cross 볼록가점 × 시간 가속감점(발행) × 연속보도(scFollow) × AI 경중(gradeW). 다수동시+최신+계속+양질=상단.
 const BREAKING_RANK_BOOST = 3.0;   // 누적 긴급 부스트 — 긴급(isBreaking) 사건은 누적칼럼서도 가시성↑(운영자 260628 "긴급할수록 가시성 높인다" 목적). **1.5→3.0(260628 A/B 분신술 10인·7일치 전수)**: ×1.5는 죽은 파라미터(churn0·대형재난 묻힘)였음 → ×3.0이 긴급 top20 2→3·일본강진 39→19·화성화재 15→3·베네수920 52→28. 안전 확증(옛긴급 top20진입 0[timeAcc가 누름]·비긴급오염 0[breaking에만 곱]·breaking오탐 0[grade≥2 게이트]·중요훼손 top20밖 96%). 조정 가능. ⏳후속(라운드2): 저cross 신선긴급=effective cross floor(#7)·老 대형재난(rc큰 g3 52h+)=g3한정 timeAcc 연장(#4/#5) — 곱셈만으론 timeAcc 못 이김.
-const BOOST_FLAT_H = 1, BOOST_RAMP_END_H = 6, BOOST_EASE_G = 12.0;   // 신선창 곡선(운영자 260717 플레이그라운드 회신 "이거로 갈게" · §8): 풀 ×3.0 유지 ~1h · 1~6h 이징 착지 · 6h+ ×1. 구 24/48 선형 램프(260710) 대체 — "12h+ 긴급 눌러앉음"(260713 ⚠️ 운영자 대기) 종결. 이징강도 g(0=직선·클수록 S커브) · 조정 가능 · 튜너 = docs/reports/260717_긴급부스트곡선_플레이그라운드.html.
-const brkBoost = c => {   // 긴급 부스트 = 신선창 전용(운영자 260717 "긴급인데 아직 뜨기 전인 걸 확 알기 쉽게" — 누적 진입 4h 직후 ×1.46 테이퍼 → 6h ×1.00 · 12h+ 부스트 0 = 눌러앉음 원천 소멸 · 12h+ 가시성은 배지·핀·푸시 축 전담). 정규화 로지스틱 이징(260717 튜너 곡선식 그대로) · 나이축 = 배지·OUT과 동일 max(발행, 수집). 0~4h 구간은 신규 칼럼(핀·fastScore) 무대라 누적 실효 없음(명목 유지).
+const BOOST_RAMP_END_H = 48;   // 부스트 착지 나이(h) — 24h(BADGE_MAX_AGE_H)부터 여기까지 선형 하강(운영자 260710 "오래된 속보 부스트 다듬기" · 절벽 금지 = OUT z 램프와 동일 취지). 조정 가능.
+const brkBoost = c => {   // 긴급 부스트 나이 램프: <24h = ×3.0 그대로(260628 A/B 검증 창 무변) · 24~48h 선형 ×3.0→×1 · 48h+ = ×1(구 영구 부스트 폐지 — 부스트가 나이 무관 평생 ~10h 젊게 취급하던 것 종료 · 분신술 260710 감사 ⑧ · 운영자 승인). 나이축 = 배지·OUT과 동일 max(발행, 수집).
   if (!isBreaking(c)) return 1;
   const pubAge = (Date.now() - scTs(c)) / 3600000, fsT = Date.parse(c.first_seen || ''),
     ageH = isNaN(fsT) ? pubAge : Math.max(pubAge, (Date.now() - fsT) / 3600000);
-  if (ageH < BOOST_FLAT_H) return BREAKING_RANK_BOOST;
+  if (ageH < BADGE_MAX_AGE_H) return BREAKING_RANK_BOOST;
   if (ageH >= BOOST_RAMP_END_H) return 1;
-  const t = (ageH - BOOST_FLAT_H) / (BOOST_RAMP_END_H - BOOST_FLAT_H), g = BOOST_EASE_G,
-    sg = x => 1 / (1 + Math.exp(-x)),
-    f = g < .05 ? 1 - t : (sg(g * (.5 - t)) - sg(-g / 2)) / (sg(g / 2) - sg(-g / 2));   // g→0 = 직선 폴백(0 나눗셈 가드)
-  return 1 + (BREAKING_RANK_BOOST - 1) * f;
+  return 1 + (BREAKING_RANK_BOOST - 1) * (BOOST_RAMP_END_H - ageH) / (BOOST_RAMP_END_H - BADGE_MAX_AGE_H);
 };
 // ── 나이 감쇠(ageMul = 시그모이드 · 운영자 260713 3차 "특정 시간 명시 싫다 — 23h와 24h가 넘사가 되면 안 됨 · 이징 곡선이 스펙"): 경계 0개 연속 곡선 ──
 //    문제(스샷): cross^1.3 볼록가점이 timeAcc를 압도 — cr59·24h(통일부 대북협조)가 누적 1위 점유. timeAcc(24h)=.137인데 crossConvex(59)≈200으로 신규 다매체(cross~10=20)의 10배 → 시간이 매체수를 못 이김.
@@ -9028,7 +9025,7 @@ const brkBoost = c => {   // 긴급 부스트 = 신선창 전용(운영자 26071
 //    ageMul(a) = FLOOR + (1-FLOOR)/(1+e^((a-MID)/STEEP)) — 어디에도 하드 경계 없음(전 구간 미분 가능·1h 차이는 항상 점진 차이).
 //    확정값(운영자 260713 플레이그라운드 회신 = 반영 스펙 · §플레이그라운드 d): MID 13h(변곡 = 기울기 최대 지점 — 이른 시작) · STEEP 3.8(넓은 이징 = 완만하게 오래) · FLOOR .12(잔존 하한 = "바닥까지는 아니고"). [초판 18·2.2는 §8 이력]
 //    실측(회신값 · rank_sim): sig = 4h .925 · 8h .814 · 12h .618 · 16h .395 · 20h .240 · 24h .166 · 30h .130 → 통일부 cr59: 18h 56.3 → 19h~ 기준선(44.1) 교차 → 24h 15.3 · 23h 18.4 vs 24h 15.3(연속·넘사 없음) · 극단 cr100·24h 31.5 · 속보 부스트 중첩 cr40·25h 39.0 전부 기준선 밑 = 상위권 밖(순위 게이트 없이 곡선 깊이만으로) · FLOOR 덕에 36h에도 잔존(소멸 아님). ⚠️ 정직: 넓은 이징이라 젊은 구간도 완만 감점(4h −7.5%·8h −18.6%·12h −38.2% — 운영자 선택 = 신선 우대 강화·나이 오름차 감점 = 누적 칼럼 내 상대 순위로만 작용).
-//    시간 경계는 배지·긴급/이슈 분리에만 잔존(운영자 "분류엔 시간 기준 OK") — 랭킹 축은 이 곡선과 timeAcc(역시 연속 Hill)만. OUT(12~16h 대형보호)·brkBoost(신선창 1~6h 이징 — 260717 · 12h+ 긴급 가시성은 배지 축 전담)와 역할분리. 신규 칼럼(fastScore)·진입·배지·글로우·표시 cross 0 변경 = 누적 랭킹 전용(§8 260713).
+//    시간 경계는 배지·긴급/이슈 분리에만 잔존(운영자 "분류엔 시간 기준 OK") — 랭킹 축은 이 곡선과 timeAcc(역시 연속 Hill)만. OUT(12~16h 대형보호)·brkBoost(<24h 긴급 가시성 — 24h 경계는 배지 축)와 역할분리. 신규 칼럼(fastScore)·진입·배지·글로우·표시 cross 0 변경 = 누적 랭킹 전용(§8 260713).
 const AGE_MID_H = 13, AGE_STEEP = 3.8, AGE_FLOOR = 0.12;   // 변곡 나이(h) · 기울기 시상수(작을수록 가파름) · 잔존 하한("바닥까지는 아니고"). 운영자 260713 플레이그라운드 회신값 배선(초판 18·2.2 → 13·3.8 = 이른 변곡·넓은 이징 · 재튜닝 = docs/reports/260713_나이감쇠곡선_플레이그라운드.html). 조정 가능(§8 260713).
 const scAgeH = c => {   // 랭킹 나이(h) = 배지·OUT·부스트와 동일 max(발행,수집)축 — first_seen 승계 역전 방어(§5 ②-b).
   const fsT = Date.parse(c.first_seen || ''), pubAge = Math.max(0, (Date.now() - scTs(c)) / 3600000);
