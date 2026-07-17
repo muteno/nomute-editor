@@ -9639,8 +9639,8 @@ function renderSnsTrends() {
   const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkR = { kr: bySort(byReg(stk, 'kr'), stkS).slice(0, 10), gl: bySort(byReg(stk, 'gl'), stkS).slice(0, 10) };
   const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreR = { kr: bySort(byReg(sre, 'kr'), sreS).slice(0, 10), gl: bySort(byReg(sre, 'gl'), sreS).slice(0, 10) };
   const sytR = { kr: byReg(syt, 'kr').slice(0, 8), gl: byReg(syt, 'gl').slice(0, 8) };
-  const shL = shv.slice(0, 12).map(t => ({ ...t, cover: t.thumb, account: t.channel }));
-  const aiL = aiv.slice(0, 12).map(t => ({ ...t, cover: t.thumb, account: t.channel }));
+  const shL = shv.slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만" — 구 12)
+  const aiL = aiv.slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만" — 구 12)
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
@@ -9664,8 +9664,8 @@ function renderSnsTrends() {
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = yt.slice(0, 10).map(v => ({ ...v, cover: v.thumb }));
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="trend-grid wd">' + ytGrid.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
-  if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="trend-grid">' + ytnL.map((t, i) => card(t, i)).join('') + '</div>');   // 뉴스 = 쇼츠 카드 완전 동일(운영자 260717 "뉴스 썸네일 쇼츠랑 동일하게" — 구 tpg 1:1 레일은 세로 쇼츠 썸네일 레터박스 노출 · .tcard 3/4 커버 크롭 계승) · 뉴스 소재 훑기 온-미션(평의회10 결판)
-  if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid">' + shL.map((t, i) => card(t, i)).join('') + '</div>');
+  if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
+  if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
     row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
