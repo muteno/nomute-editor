@@ -9578,9 +9578,9 @@ function renderSnsTrends() {
   let stale = false;   // 수집 65분+ 밀림 = 크론 지연/사망(정직 신호 · 평의회6 — 크론 주기 30분×2 + 지터 여유)
   if (d.updated) { const am = (Date.now() - new Date(d.updated).getTime()) / 60000; stale = am > 65; }
   // 순위 변동 배지(직전 스냅샷 대비 · 평의회4) — isNew=신규진입 / delta>0=상승 / delta<0=하락 / 유지=미표시
-  const chg = x => x.state ? (x.state === 'n' ? '<span class="trend-chg nw"><i>NEW</i></span>'
-      : x.state === '+' ? `<span class="trend-chg up"><i>${TRI_UP_SVG}</i></span>`
-        : x.state === '-' ? `<span class="trend-chg dn"><i>${TRI_DN_SVG}</i></span>` : '')   // ⑨ 실검(signal) = source 순위 상태 정본(운영자 260717 — n=신규 NEW·+=상승·-=하락·s=유지 미표기) · signal만 state 보유라 타 섹션 무영향 · 상승/하락은 수치 없는 방향 배지(변동 크기 미제공 소스)
+  const chg = x => (x.state === 'n' || x.state === '+' || x.state === '-' || x.state === 's') ? (x.state === 'n' ? '<span class="trend-chg nw"><i>NEW</i></span>'
+      : x.state === '+' ? `<span class="trend-chg up" aria-label="순위 상승"><i>${TRI_UP_SVG}</i></span>`
+        : x.state === '-' ? `<span class="trend-chg dn" aria-label="순위 하락"><i>${TRI_DN_SVG}</i></span>` : '')   // ⑨ 실검(signal) = source 순위 상태 정본(운영자 260717 — n=신규 NEW·+=상승·-=하락·s=유지 미표기) · 진입 = state 화이트리스트(n/+/-/s만 · 범용 x.state truthy 아님 = 미래 타 섹션이 state 필드 달아도 배지 하이재킹 원천 차단 · 예상밖/빈 state = 파생 분기 낙하) · 상승/하락은 수치 없는 방향 배지(변동 크기 미제공 소스)
     : x.isNew ? '<span class="trend-chg nw"><i>NEW</i></span>'
     : (x.delta > 0 ? `<span class="trend-chg up"><i>${TRI_UP_SVG}${x.delta}</i></span>`
       : (x.delta < 0 ? `<span class="trend-chg dn"><i>${TRI_DN_SVG}${-x.delta}</i></span>` : ''));   // 이너 <i> = 잉크 전용 서브픽셀 보정 앵커(운영자 260717 Q06 — 세로 잉크는 베이스라인 1px 스냅이라 패딩 무력·transform만 통과 실측) · 플렉스 문법(gap1)은 .trend-chg > i가 계승
@@ -9593,7 +9593,7 @@ function renderSnsTrends() {
     if (isFinite(h2)) return relAge(h2);
     return /전$|^방금$/.test(String(p).trim()) ? String(p).trim() : '';
   };
-  const relT = x => relP(x.published) || relP(x.time) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행 소스 폴백)
+  const relT = x => relP(x.published) || relP(x.time) || relP(x.started) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ started(구글 트렌드 시작시각 = 급상승 실제 나이 · 운영자 260717 "n시간 전 맞나" 직답 — 수집기 gt만 보유·first_seen보다 우선) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행·무started 소스 폴백)
   const zig = arr => { const hh = Math.ceil(arr.length / 2), o = []; for (let z = 0; z < hh; z++) { o.push(arr[z]); if (arr[z + hh]) o.push(arr[z + hh]); } return o; };   // 레일 2행 = grid-auto-flow:column(세로 우선) → [1,6,2,7,…] 인터리브로 윗줄 1~5·아랫줄 6~10 보장(운영자 선택값 · 스모크 시각 실측 260712)
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
     `<a class="tpc" data-ri="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
@@ -9654,9 +9654,10 @@ function renderSnsTrends() {
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   const mkgg = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', mono: 'gg', plat: '구글', x: g, ago: relT(g) });   // 구글 = 유튜브와 동일 카드 레일(운영자 260716 "구글도 관련이미지로 동일한 형태") — 커버 = 수집기 관련이미지(picture · TOP 10 lane과 동일 매핑) · 없으면 tpc 로고 밑층 폴백(onerror 은닉 = 로고 타일)
-  const ggZ = zig(gt.slice(0, 10).map((g, i) => [g, i]));   // 1~10 = RSS 신선축 = 구글 이미지 피드가 커버 주는 유일 구간 → 이미지 카드 레일
-  const ggTail = gt.slice(10, 25);   // 11~25 = 트렌딩나우 API 꼬리 = 이미지 소스 자체 없음 → 회색 로고 타일 대신 텍스트 행(아래 실시간 검색어 row() 계승)
-  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 25), '<div class="tpg">' + ggZ.map(z => tpc(mkgg(z[0]), z[1], 0)).join('') + '</div>' + ggTail.map((g, i) => row(i + 10, (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), tfmt(g.traffic), g, '')).join(''));   // 혼합 = 1~10 이미지 카드 + 11~25 텍스트 행(운영자 260717 "이미지 안 들어와져" — 구글 커버 피드는 RSS 상위 10만 제공, 꼬리는 소스 부재라 회색 타일 유발 → tpg 카드는 커버 있는 10만·꼬리는 row() 텍스트 계승) · 25개 유지(순위 z[1]/i+10 원순위 · 우측 = 검색량 tfmt · 배지 chg/시간 relT 계승) · 신규 요소 0(기존 tpc·row·fillT 조합)
+  const gtR = gt.slice(0, 25).map((g, i) => [g, i]);   // [항목, 원순위 index] · 25위 유지(운영자 260717 "25위 ㄱ")
+  const ggCards = gtR.filter(z => z[0].picture), ggTail = gtR.filter(z => !z[0].picture);   // 분기 기준 = 커버(picture) 유무(매직 인덱스 10 아님 · 평의회 260717 — 구글 RSS 커버 개수는 구글이 통제·10 보장 아님이라 인덱스 분기는 커버<10 시 회색 타일 재출현/커버>10 시 이미지 폐기 위험 → 커버 있음=이미지 카드·없음=텍스트 행으로 자기정렬 = 회색 타일 원천 차단)
+  const ggZ = zig(ggCards);
+  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 25), '<div class="tpg">' + ggZ.map(z => tpc(mkgg(z[0]), z[1], 0)).join('') + '</div>' + ggTail.map(z => row(z[1], (z[0].news && z[0].news[0] && z[0].news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(z[0].query || '')), tfmt(z[0].traffic), z[0], '')).join(''));   // 혼합 = 커버 있는 항목 이미지 카드(tpg) + 커버 없는 항목 텍스트 행(row() = 아래 실시간 검색어 계승 · 회색 로고 타일 대신) · 원순위 z[1] 보존 · 우측 = 검색량 tfmt · 배지 chg/시간 relT 계승 · 신규 요소 0(기존 tpc·row·fillT 조합) · 운영자 260717 "구글 이미지 안 들어와져" 근본 봉합
   const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="tpg">' + ytZ.map(z => tpc(mkyt(z[0]), z[1], 0)).join('') + '</div>');   // TOP 10과 동일 카드·10위(운영자 260712) · ytimg 핫링크 자유(평의회5)
@@ -9786,7 +9787,7 @@ function renderSnsTrends() {
     }
   }
   fillT('gt', '.tpc-t', ggZ.map(z => z[0].query || ''));   // 구글 카드 레일 제목 = zig 순서 동승(운영자 260716 카드 통일)
-  fillT('gt', '.trend-q', ggTail.map(g => g.query || ''));   // 구글 꼬리(11~25위) 텍스트 행 검색어 = row() .trend-q 주입(카드는 .tpc-t·행은 .trend-q라 선택자 안 겹침 · textContent = XSS 안전)
+  fillT('gt', '.trend-q', ggTail.map(z => z[0].query || ''));   // 구글 커버 없는 항목 텍스트 행 검색어 = row() .trend-q 주입(ggTail = [항목,원순위] 쌍이라 z[0].query · 카드는 .tpc-t·행은 .trend-q라 선택자 안 겹침 · textContent = XSS 안전)
   fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.query || ''));   // ⑨ 시그널 실검(운영자 260712)
   fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.query || ''));   // ⑩ X 실시간 트렌드
   fillT('yt', '.tpc-t', ytZ.map(z => z[0].title || ''));
