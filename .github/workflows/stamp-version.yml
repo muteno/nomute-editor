@@ -6,8 +6,11 @@ name: stamp-version
 #   "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 못 가렸다.
 #   index.html 자체에 구우므로, SW-캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여준다 = 스샷이 스스로 신원을 밝힌다.
 #   (별도 파일 fetch로 하면 네트워크-최신을 보여줘 캐시된 옛 화면을 '최신'으로 오판 → index 내장이 정답.)
-# ── 루프 차단 ──
-#   도장 커밋도 index.html을 바꿔 이 워크플로를 재트리거하므로, 커밋 메시지 [stamp] 마커를 job if로 걸러 재실행 0.
+# ── 루프 차단(작성자 기준 · 260717 재부팅) ──
+#   도장 커밋도 index.html을 바꿔 이 워크플로를 재트리거하므로 재실행을 걸러야 한다. 가드 = **커밋 작성자**가 nomute-bot이면 스킵.
+#   ⚠️ 옛 가드(커밋 메시지에 '[stamp]' 문자열 포함 여부)는 실패했다(첫 배포 run 29567437001 = skipped): 이 기능을 *소개하는* 커밋 본문이
+#      "[stamp] 마커 if로 루프차단"이라고 [stamp]를 *서술*해서 contains가 오매칭 → 자기 자신을 스킵 = 도장 영영 안 찍힘("조치했다는데 안 됨"의 실사례).
+#      작성자 기준은 산문으로 못 속인다(도장 커밋만 nomute-bot 저자 · 병렬머지·기능커밋은 운영자/GitHub 저자 = 실행). 봇 커밋은 애초에 paths(viewer HTML) 무접촉이라 무관.
 #   ⚠️ Cloudflare Pages 빌드 skip 키워드([skip ci]/[CI Skip] 등) 사용 금지 = 도장 커밋도 정상 배포돼야 화면에 반영됨.
 # ── 트레이드(수용) ──
 #   코드 변경당 배포 2회(코드 커밋 → 도장 커밋) + SW 새버전 토스트가 도장분에 1회 더 뜰 수 있음(탭 1회로 최신 수렴 = 무해).
@@ -20,6 +23,7 @@ on:
       - 'viewer/*.html'
       - 'viewer/sw.js'
       - 'functions/**'
+  workflow_dispatch:   # 수동 도장(백필·검증용 · paths 무관 상시 실행 · 첫 배포 스킵 사고 후 즉시 검증 경로로 추가)
 permissions:
   contents: write
 concurrency:
@@ -27,7 +31,7 @@ concurrency:
   cancel-in-progress: true   # 연속 코드 커밋 = 최신만 도장(중간분 취소 무해 — 최종 배포본 SHA만 의미)
 jobs:
   stamp:
-    if: ${{ !contains(github.event.head_commit.message, '[stamp]') }}   # 도장 커밋 재트리거 차단(무한루프 봉쇄 · CF 배포는 정상)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.head_commit.author.name != 'nomute-bot' }}   # 도장 커밋(nomute-bot 저자) 재트리거 차단(무한루프 봉쇄 · 산문 오매칭 불가 · CF 배포는 정상) · 수동 발사는 항상 실행
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
