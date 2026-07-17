@@ -229,6 +229,10 @@
   .makerow > .gowrap { flex:1 1 0; min-width:140px; }   /* 제작 버튼 = 우측 짧게 */
   .makerow > .gowrap .go { margin-top:0; }
   .makerow > #imgBox:not(.none):has(.file.has) { flex-basis:100%; }   /* 이미지 선택 → 슬롯 전체폭, 버튼 다음 줄 전폭(미리보기 펼침) */
+  /* 발사 하단 고정바(운영자 260717 "이미지 제작 버튼 고정nav 따라다니게") — 미리보기 .cpprev가 top:0 독점(260717 "위에는 고정")이라 발사 슬롯 = 하단 · .cpprev/.pvsec 액자 mat 정본을 상하 flip 계승(top→bottom) · .out 가로질러 sticky(=.wrap 직계 컨테이닝블록) */
+  .gobar { position:sticky; bottom:0; z-index:6; margin:var(--sp-1) -16px 0; padding:var(--sp-2) 16px calc(var(--sp-2) + env(safe-area-inset-bottom)); background:#121212; }   /* raw-ok: mat = .cpprev/.pvsec 정본 동일값 계승(#121212 스포티파이 블랙 액자 · 좌우 -16 = .wrap padding-x 상쇄 브레이크아웃 · 상단 gap --sp-1·padding = 액자 문법 flip) · sticky bottom:0 = 상단 미리보기의 하단 짝 · z6 = 로컬 콘텐츠 최상(스크롤 결과 위·rfab z70 아래) */
+  .gobar::before { content:''; position:absolute; bottom:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(0deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 페이드 스커트 = .cpprev::after 정본 flip 계승(top→bottom · 콘텐츠가 액자 위로 서서히 잠김 · 18,18,18 = mat RGB 알파변주 · h14 동일) */
+  .gobar .makerow { margin-top:0; }   /* 바 안 상단 gap = .gobar padding 전담(makerow 자체 margin 중복 제거) · 맞춤법칩(#spellChips)은 정본 .spellchips 규칙 그대로 계승 */
   /* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 칩)에서 '길게 눌러 붙여넣기' (통일 기틀·운영자 260628) · dialog=top-layer */
   .pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
   .pastefb::backdrop { background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
@@ -839,19 +843,7 @@
       <textarea id="warnLines" class="none" placeholder="안내문 텍스트"></textarea>
     </div>
     <!-- 합성 미리보기(운영자 260712) = 패널 최상단으로 이주(운영자 260713 상단 고정 · 위 <div class="panel"> 직후) — 여기는 이주 흔적(구 makeRow 위 원위치) -->
-    <div class="makerow" id="makeRow">
-      <!-- 카드뉴스 배경 이미지(/5만 표시) — 제작 버튼과 한 행(ly 통일·260628) -->
-      <div id="imgBox" class="none">
-        <label class="file" id="fileLab" aria-label="이미지 선택" title="탭해서 이미지 선택"><span class="filepic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span>
-          <input type="file" accept="image/*" id="file" style="display:none">
-        </label>
-      </div>
-      <div class="gowrap">
-        <button class="go" id="go">이미지 제작</button>
-        <label class="chk go-abbr" id="abbrBox" title="이 → 李 · 윤 → 尹 · ... → ⋯"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약</label>
-      </div>
-    </div>
-    <div class="spellchips" id="spellChips" hidden></div>
+    <!-- 발사행(#makeRow)·맞춤법칩(#spellChips) = .out 아래 .gobar(하단 고정바)로 이주(운영자 260717 "이미지 제작 버튼 고정nav 따라다니게") — 미리보기 .cpprev가 top:0 독점(CII 합성미리보기쉘·260717 "위에는 고정")이라 발사 슬롯 = 하단 짝 · id·핸들러·게이지 불변 -->
   </div>
 
   <div class="out">
@@ -889,6 +881,23 @@
         <div class="hist-grid" id="histGrid"></div>
       </div>
     </div>
+  </div>
+
+  <!-- 발사 하단 고정바(운영자 260717) — #makeRow(발사 버튼)·#spellChips = 구 .panel 말미서 이주 · .out(결과·이전제작)을 가로질러 하단 고정(=.wrap 직계라 sticky 컨테이닝블록 = 전체 스크롤) · 상단 미리보기 .cpprev(top:0 독점·260717 "위에는 고정")의 하단 짝 mat · 위치 = 영상 .firebar(.wrap 말미) 계보 계승 -->
+  <div class="gobar" id="goBar">
+    <div class="makerow" id="makeRow">
+      <!-- 카드뉴스 배경 이미지(/5만 표시) — 제작 버튼과 한 행(ly 통일·260628) -->
+      <div id="imgBox" class="none">
+        <label class="file" id="fileLab" aria-label="이미지 선택" title="탭해서 이미지 선택"><span class="filepic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></span>
+          <input type="file" accept="image/*" id="file" style="display:none">
+        </label>
+      </div>
+      <div class="gowrap">
+        <button class="go" id="go">이미지 제작</button>
+        <label class="chk go-abbr" id="abbrBox" title="이 → 李 · 윤 → 尹 · ... → ⋯"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약</label>
+      </div>
+    </div>
+    <div class="spellchips" id="spellChips" hidden></div>
   </div>
 </div>
 
