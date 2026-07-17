@@ -772,7 +772,7 @@
   .tgroup[open]::details-content, .trend-sec[open]::details-content { block-size:auto; }
   .tgroup-h { transition:margin-bottom .32s var(--ease); }   /* 헤더 하단 간격도 동반 슬라이드(펼침 14→0 스냅 방지) */
   @media (prefers-reduced-motion:reduce) { .tgroup::details-content, .trend-sec::details-content, .tgroup-h { transition:none; } }
-  .tgroup-h .tdash-time { margin-left:12px; margin-right:auto; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 */
+  .tgroup-h .tdash-time { margin-left:var(--sp-2); margin-right:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* 수집시각 = 타이틀 옆 유지 · 체브론(ml:auto)과 공존 = 시각이 좌측군 · 협폭 = 말줄임(우측 칩 예약 패딩(--chu-r)에 밀릴 때 겹침 대신 축약 · 운영자 260717) */
   .tgroup-h i { flex:none; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; font-style:normal; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--accent); font-variant-numeric:tabular-nums; }   /* 단위 순번 = 원 배지 탈피·숫자만(운영자 260715 "동그라미 안 숫자 다 빼고 그냥 숫자로") — 24px 박스 유지 = 타이틀 좌측 정렬선·픽토(.gpic) 형제 정렬 보존 · 색 = 강조색(.trend-rank 계승) */
   .tgroup-h .gpic { background:none; border:none; }   /* ✨AI요약·📈TOP 픽토그램 = 원 배지 탈피(운영자 260714 "원 도형 빼줘") — 24px 플렉스 박스는 유지 = 형제(순번 원 배지) 타이틀 좌측 정렬선 보존 */
   .tgroup-h .gpic svg { width:16px; height:16px; display:block; overflow:visible; }   /* 14→16 = 원 소거 광학 보정(배지 무게 감쇠분 복원) · overflow = 라이트 라운드캡 에지 클립 방지 */
@@ -893,6 +893,7 @@
   .chu > .tb-seg { position:absolute; right:48px; top:35px; transform:translateY(-50%); margin-left:0; max-width:calc(100% - 265px); min-width:64px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; touch-action:pan-x; }   /* raw-ok: right48·top35 = .chu>.tsk-more 앵커 원문(체브론 회피·헤더 중심 일치) · 265 = 좌측 픽토+타이틀+시각 클러스터 예약·64 = 최소 칩 창 — 협폭(폰) = 칩 존만 가로 스크롤(전광판 문법·base overflow:hidden 해제) */
   .chu > .tb-seg::-webkit-scrollbar { display:none; }
   .chu > .tb-seg button { flex:none; }   /* 스크롤 존 칩 압착 방지(라벨 온전) */
+  .chu > details > .tgroup-h { padding-right:var(--chu-r, 12px); }   /* raw-ok: 12 = .tgroup-h 원문 padding 우측값 폴백(칩 없을 때 종전 유지) — 칩 실폭 예약(--chu-r = 렌더 후 chuFit 실측)으로 absolute 칩이 좌측 시각 텍스트를 덮는 겹침 차단(운영자 260717 폰 실측) */
   .tb-div { border-top:1px solid var(--line2); margin:var(--sp-2) 0; }   /* 구분선 = .tbrief-prop 상단선(line2) 문법 계승 — 운영자 "구분선" 명시 요소 */
   .tb-allwrap[hidden] { display:none; }   /* (3) 전체 총론 = '전체' 탭 선택 시 (2)와 중복 → 숨김(JS hidden 토글) */
   /* ── 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿 분리") — 채널 브리프 전략 줄('→ ') 전용 분리 판 · 라벨 = .tbrief-lbl 정본 계승 ── */
@@ -6897,10 +6898,12 @@ async function applyShellUpdate(t) {
     }
   } catch {}   // 오프라인·quota·타임아웃 = 캐시 무접촉 → 아래 reload가 통지 시점 셸로 종전과 동일 동작(fail-soft · 최소 1세대는 전진)
   if (window._nmAuthKicked) return;   // fetch 창(≤4s)에 Access 만료 자가치유(nosw replace)가 발사됐으면 reload로 밟지 않음(평의회 260717-7)
+  try { sessionStorage.setItem('nmUpdCoolT', String(Date.now())); } catch {}   // 반영 직후 90s 재알림 억제 도장(무한루프 회로차단기 · 운영자 260717) — 그 사이 실배포가 와도 SWR 재검증 put이 캐시를 조용히 갱신 = 다음 진입 반영(수렴 보장 · 억제 = 표시만)
   location.reload();   // 성공 = 방금 꽂은 '현재 최신' 셸 즉시 서빙 + SWR 재검증도 동일 바이트 = 재알림 없음
 }
 function showUpdateToast() {
   if (_shellUpdShown || _shellUpdApplying) return;   // 표시 중 1회 = 중복 postMessage·재검증 반복 무해화(✗ 누르면 해제 = 다음 배포 재알림) · 적용 중 재알림 = 무시('반영중' 문구를 '탭하면 반영'으로 되감아 죽은 탭처럼 오도하는 창 봉쇄 · 평의회 260717-2)
+  try { if (Date.now() - (+sessionStorage.getItem('nmUpdCoolT') || 0) < 90000) return; } catch {}   // 반영 탭 후 90s = 재알림 억제(회로차단기 · 운영자 260717 "탭하면 반영 무한루프") — 잔여 미지 변이가 있어도 루프 절단 · 캐시는 SW put이 계속 수렴
   if (_toastC || document.querySelector('#nmToast.show, #sysFreshToast.show, #nmFailToast.show')) { clearTimeout(_shellUpdT); _shellUpdT = setTimeout(showUpdateToast, 4000); return; }   // 긴급·경보 우선 = 양보 후 재시도(단일 타이머 clear→set = 다중 메시지 재시도 체인 중첩 차단·평의회 260717)
   _shellUpdShown = true;
   let t = document.getElementById('nmUpdateToast');
@@ -9415,6 +9418,7 @@ function showTab(tab) {
   if (snv) snv.hidden = (tab !== 'trend') || !snv.closest('#snsHost');   // 구 메뉴2 = 트렌드 그룹① 국내 커뮤니티로 reparent(운영자 260713) · 신규 구조(#snsHost) 장착 전 = 계속 숨김(운영자 260716 "이전 버전이 안뜨게" — 트렌드 도착 전 구버전 맨몸 노출 차단 · 해금 = renderSnsTrends 장착 시)
   if (tv) tv.hidden = (tab !== 'trend');
   const cv = $('#chanview'); if (cv) cv.hidden = (tab !== 'chan');   // 메뉴4 채널 요약(운영자 260713)
+  if (tab === 'trend' || tab === 'chan') requestAnimationFrame(() => chuFit(document));   // 숨김(hidden) 중 렌더된 헤더 칩은 offsetWidth=0이라 예약 미측정 → 가시화 직후 재실측(평의회 260717-⑥ ③ 봉합 · 시그니처 가드 무접촉)
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
   document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
@@ -9545,6 +9549,13 @@ const TR_REG_SVG = {   // 지역 세그 픽토 — 국내 = 태극 픽토그램(
 const TR_PCOL = { gg: 'var(--cat-eco)', yt: 'var(--cat-intl)', tk: 'var(--cat-soc)', ig: 'var(--cat-cul)', x: 'var(--cat-pol)' };   // 플랫폼 구분자 색 = cat 팔레트 재지정(운영자 260712 플레이그라운드 회신 = 기틀 갱신 승인 · 구글=레몬 --cat-eco[260712 2차 · 구 코랄서 분리 — 유튜브와 색 구분]·유튜브=코랄·틱톡=민트·인스타=핑크·X=스카이) — §디자인 d 캡슐 예외 등재·CII 정합
 function fmtK12(s) { s = String(s || ''); const mo = +s.slice(5, 7), dd = +s.slice(8, 10), H = +s.slice(11, 13); return (mo && dd && Number.isFinite(H)) ? `${mo}월 ${dd}일 ${H % 12 || 12}:${s.slice(14, 16)}${H < 12 ? 'AM' : 'PM'}` : ''; }   // 단위 헤더 시각 공통 표기 = "7월 16일 2:18PM"(운영자 260716 "0월 00일 2:00PM 이런식으로만 · 시간표시 동일하게" — 메뉴3 AI 요약·TOP 10 + 메뉴4 AI 요약·프로필 공용) · KST ISO 문자열 직파싱(naive new Date() 금지 = 기기 TZ 무관 · CLAUDE.md [12]) · 무효 = '' fail-soft
 let TR_TOPF = 'all';   // TOP 10 플랫폼 필터(운영자 260716 "선택하면 top10 플랫폼별로") — 'all' = 종합(종전) · mono 키 = 플랫폼별 풀 TOP 10 · 세션 한정(CHAN_BSEC 문법 미러)
+// 헤더 우측 칩(.chu>.tb-seg = absolute 오버레이)이 좌측 시각(.tdash-time)을 덮는 겹침 방지(운영자 260717 폰 실측 — "전체 틱톡 토글 안겹치게") —
+//   칩 실폭 + 48(칩 우측 앵커 원문) + 10(광학 간격)만큼 summary 우측 패딩 예약(--chu-r) · 시각은 부족 시 말줄임(.tdash-time #775) · 칩 부재 = 12px 폴백 · 렌더 직후 1회 실측(칩 폭 = 렌더당 상수)
+const chuFit = (box = document) => box.querySelectorAll('.chu').forEach(w => { const s = w.querySelector(':scope > .tb-seg'); if (s && s.offsetWidth) w.style.setProperty('--chu-r', (48 + s.offsetWidth + 10) + 'px'); });   /* raw-ok: 48 = .chu>.tb-seg right 앵커 원문 짝(#893) · 10 = 1회성 광학 간격 */
+// 재실측 3훅(평의회 260717-⑥ ①~③) — 회전·리사이즈(칩 %클램프 폭 변동), 폰트 스왑(측정 시점 폴백 메트릭), 숨김 렌더(showTab 가시화 직후는 showTab 쪽 훅). offsetWidth=0 가드로 숨김 뷰는 무접촉 = 비용 미미.
+try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => chuFit(document)); } catch {}
+let _chuRz = 0;
+window.addEventListener('resize', () => { clearTimeout(_chuRz); _chuRz = setTimeout(() => chuFit(document), 150); });   /* raw-ok: 150ms = 리사이즈 디바운스 관용값(연속 이벤트 합침 · 1회성) */
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
   // 첫 방문(TRENDS 미로드) = 빈 화면 대신 로딩 표시 — showTab('trend')의 캐시 즉시 렌더는 첫 방문엔 캐시가 없어 트렌드·AI 요약 영역이 통째 빈칸 → loadTrends 완료(~수초·폰 느린망) 후 갑툭 팝인 = "다른 화면 떴다가 AI 요약으로" 증상(운영자 260715). 로딩 표기 = 아래 renderSns "불러오는 중…"(.empty) 패턴 계승. TRENDS 도착 시 실렌더가 교체(_trSig 미설정 = 무조건 재구축).
@@ -9736,6 +9747,7 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.textContent = topShow[i] ? topShow[i].t : ''; });
   box.querySelectorAll('[data-tf]').forEach(b2 => b2.addEventListener('click', () => { TR_TOPF = b2.dataset.tf; const y2 = window.scrollY; renderSnsTrends(); window.scrollTo(0, y2); }));   // TOP 플랫폼 책갈피(운영자 260716) — 재렌더·스크롤 보존 = 메뉴4 data-bs 문법 미러 · _trSig에 TR_TOPF 동승이라 시그니처 가드 통과
+  chuFit(box);   // 헤더 우측 칩 실폭 예약(시각 텍스트 겹침 차단 · 운영자 260717)
   const bt = box.querySelector('.tbrief-t');   // 단위 헤더 'AI 요약'이 라벨 겸함(판 내부 중복 라벨 제거 · §디자인 e)
   if (bt && BRIEF) {   // **별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line · 채널 브리프(renderChan parseInto)와 강조 2층 통일(운영자 260714 "모두 통일")
     bt.textContent = '';
@@ -10444,6 +10456,7 @@ function renderChan() {
   geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
   box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체) — [data-bs] 통합 셀렉터(우상단 세그→세로 내비 미니바 이관(260716)에도 불변) · 재렌더·스크롤 보존
   box.querySelectorAll('.ch-rangeseg:not(.tb-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그(data-r 없음)가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
+  chuFit(box);   // 헤더 우측 칩 실폭 예약(시각 텍스트 겹침 차단 · 운영자 260717 — 메뉴3과 동일 배선)
   const wrap = $('#chChartWrap'), tip = $('#chTip'), dot = $('#chDot');
   if (wrap && tip) {
     const place = (x, y) => { const r = wrap.getBoundingClientRect(); return [x / 600 * r.width, y / 150 * r.height]; };   // SVG좌표(600×150)→픽셀(툴팁·호버점 공용)
