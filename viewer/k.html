@@ -123,7 +123,7 @@
   .krailrow { display:flex; align-items:center; gap:var(--sp-2); margin-top:var(--sp-4); }
   .krailrow > label.fl { flex:none; margin:0; }
   .geni-railwrap { flex:1 1 0; min-width:0; display:flex; align-items:center; }
-  .geni-railwrap.edge { border-left:1px solid var(--line); padding-left:var(--sp-1); }
+  .geni-railwrap.edge { border-left:1px solid var(--line); padding-left:var(--sp-1); }   /* k엔 --line2 미정의 → 가장 가까운 토큰 --line 자동 계승(정본 index는 --line2 · 적대검증 260717 실측: k :root·tokens.css 모두 --line2 부재 = --line이 정답) */
   .geni-rail { flex:1 1 0; min-width:0; display:flex; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; cursor:grab; touch-action:pan-x; --rail-fade:22px; -webkit-mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black calc(100% - var(--rail-fade)),transparent 100%); }   /* raw-ok: index .geni-rail 동일값 계승(--rail-fade 22px 끝선 페이드 마스크) */
   .geni-rail::-webkit-scrollbar { display:none; }
   .geni-rail.grabbing { cursor:grabbing; }
@@ -453,7 +453,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
   // ── 화풍 가로 레일(운영자 260717 "표현 = 화풍 레일") = index .geni-rail 정본 배선 계승(드래그·‹›·끝선 페이드) ──
   const NAV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
   const NAV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
-  function geniRailUpd(rail) { const max = rail.scrollWidth - rail.clientWidth; rail.classList.toggle('atStart', rail.scrollLeft <= 1); rail.classList.toggle('atEnd', max <= 1 || rail.scrollLeft >= max - 1); const wrap = rail.closest('.geni-railwrap'); if (wrap) { const nv = wrap.querySelectorAll('.geni-nav'); if (nv[0]) nv[0].disabled = rail.scrollLeft <= 1; if (nv[1]) nv[1].disabled = max <= 1 || rail.scrollLeft >= max - 1; } }
+  function geniRailUpd(rail) { if (!rail) return; const max = rail.scrollWidth - rail.clientWidth; rail.classList.toggle('atStart', rail.scrollLeft <= 1); rail.classList.toggle('atEnd', max <= 1 || rail.scrollLeft >= max - 1); const wrap = rail.closest('.geni-railwrap'); if (wrap) { const nv = wrap.querySelectorAll('.geni-nav'); if (nv[0]) nv[0].disabled = rail.scrollLeft <= 1; if (nv[1]) nv[1].disabled = max <= 1 || rail.scrollLeft >= max - 1; } }
   function geniRailSetup(rail) { if (!rail || rail._railSet) return; rail._railSet = true; let down = false, moved = false, sx = 0, sl = 0; rail.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; down = true; moved = false; sx = e.clientX; sl = rail.scrollLeft; rail.classList.add('grabbing'); }); rail.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 4) moved = true; rail.scrollLeft = sl - dx; }); const end = () => { down = false; rail.classList.remove('grabbing'); }; rail.addEventListener('pointerup', end); rail.addEventListener('pointerleave', end); rail.addEventListener('click', e => { if (moved) { e.preventDefault(); e.stopPropagation(); } }, true); rail.addEventListener('scroll', () => geniRailUpd(rail), { passive: true }); const wrap = rail.closest('.geni-railwrap'); if (wrap) wrap.querySelectorAll('.geni-nav').forEach(btn => btn.addEventListener('click', () => rail.scrollBy({ left: (+btn.dataset.dir) * Math.max(110, rail.clientWidth * 0.7), behavior: 'smooth' }))); geniRailUpd(rail); }
   function railRow(name, vals, isOn, onPick, railId) {
     const w = document.createElement('div'); w.className = 'axrow';
@@ -465,7 +465,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
       const it = document.createElement('span'); it.className = 'geni-subit';
       if (i) { const sp = document.createElement('span'); sp.className = 'geni-sep'; sp.setAttribute('aria-hidden', 'true'); sp.textContent = '|'; it.appendChild(sp); }
       const b = document.createElement('button'); b.type = 'button'; b.className = 'geni-opt' + (isOn(v) ? ' on' : ''); b.textContent = v; b.setAttribute('aria-pressed', String(isOn(v))); b.dataset.fk = 'rail|' + railId + '|' + v;
-      b.addEventListener('click', () => { kFocusKey = b.dataset.fk; onPick(v, b); });
+      b.addEventListener('click', () => { onPick(v, b); });   // kFocusKey = render 부르는 onPick만 자기 세팅(적대검증 260717 — 제자리 토글[표현3]이 스테일 키로 다음 render서 포커스 도난하던 것 구조적 차단)
       it.appendChild(b); rail.appendChild(it);
     });
     wrap.appendChild(rail);
@@ -563,9 +563,9 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
       const marks = document.createElement('div'); marks.className = 'lmarks';
       const curT = segTotal(), isDir = kSet['길이'] === '직접';
       PRE.forEach(v => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'lmark' + (!isDir && curT === v ? ' on' : ''); b.textContent = v + 's';
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'lmark' + (!isDir && curT === v ? ' on' : ''); b.textContent = v + 's'; b.dataset.fk = 'lmark|' + v;
         b.style.left = ((v - 3) / 12 * 100) + '%'; b.setAttribute('aria-pressed', String(!isDir && curT === v));
-        b.addEventListener('click', () => { kSet['길이'] = v + 's'; kLen = v; segValid(); render(); });
+        b.addEventListener('click', () => { kFocusKey = b.dataset.fk; kSet['길이'] = v + 's'; kLen = v; segValid(); render(); });   // 자기 fk 세팅 = render 후 길이 버튼에 포커스 복원(적대검증 260717 · 스테일 키 상속 차단)
         marks.appendChild(b);
       });
       const sl = document.createElement('div'); sl.className = 'lenslide show';
@@ -601,11 +601,11 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
       w.appendChild(lb); w.appendChild(bm); axes.appendChild(w);
     }
     { // 표현1 = 화풍 레일(운영자 260717 "표현1·표현2 = 화풍 레일")
-      const { row, rail } = railRow('표현1 — 실사 베이스', K_VALS['표현1'], v => kSet['표현1'] === v, v => { kSet['표현1'] = v; render(); }, 'kEx1Rail');
+      const { row, rail } = railRow('표현1 — 실사 베이스', K_VALS['표현1'], v => kSet['표현1'] === v, (v, b) => { kFocusKey = b.dataset.fk; kSet['표현1'] = v; render(); }, 'kEx1Rail');
       axes.appendChild(row); kRails.push(rail);
     }
     { // 표현2 = 화풍 레일(운영자 260717) · 세부 = 보유 화풍일 때 칩 행(레일 아래) · 웹툰 토글 = 종전 · 값·전송 계약(K_VALS) 불변
-      const { row, rail } = railRow('표현2 — 화풍 치환', K_VALS['표현2'], v => kSet['표현2'] === v, v => { kSet['표현2'] = v; if (!(K_SUB[v] || []).includes(kSet['세부'])) kSet['세부'] = '기본'; render(); }, 'kEx2Rail');
+      const { row, rail } = railRow('표현2 — 화풍 치환', K_VALS['표현2'], v => kSet['표현2'] === v, (v, b) => { kFocusKey = b.dataset.fk; kSet['표현2'] = v; if (!(K_SUB[v] || []).includes(kSet['세부'])) kSet['세부'] = '기본'; render(); }, 'kEx2Rail');
       kRails.push(rail);
       const subs = K_SUB[kSet['표현2']] || [];
       if (subs.length) { const l2 = document.createElement('label'); l2.className = 'fl'; l2.textContent = '세부 화풍'; l2.style.marginTop = 'var(--sp-1)'; row.appendChild(l2);
@@ -619,7 +619,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
       row.appendChild(tg); axes.appendChild(row);
     }
     { // 표현3 = 네거티브 다중선택 화풍 레일(운영자 260717 "표현3도 마찬가지로") · 토글 = 재렌더 없이 색만(스크롤 보존) · 값 계약(kNeg) 불변 · Avoid·🚫 블록 합류 = 종전
-      const { row, rail } = railRow('표현3 — 네거티브', K_VALS['네거티브'], v => kNeg.includes(v), (v, b) => { kNeg = kNeg.includes(v) ? kNeg.filter(x => x !== v) : kNeg.concat(v); const on = kNeg.includes(v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); drawSpec(); save(); }, 'kEx3Rail');
+      const { row, rail } = railRow('표현3 — 네거티브', K_VALS['네거티브'], v => kNeg.includes(v), (v, b) => { kNeg = kNeg.includes(v) ? kNeg.filter(x => x !== v) : kNeg.concat(v); const on = kNeg.includes(v); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); geniRailUpd(b.closest('.geni-rail')); drawSpec(); save(); }, 'kEx3Rail');   // geniRailUpd = 폭 변동 후 끝선 페이드·화살표 재계산(적대검증 260717 · 제자리 토글은 render 안 하므로 명시 갱신)
       axes.appendChild(row); kRails.push(rail);
     }
     { // 오디오(기본 의성어만 = 한글 정확도 · 대사 삽입 = 입력칸 노출[비우면 AI 제안·📌 표시] · 운영자 260710)
