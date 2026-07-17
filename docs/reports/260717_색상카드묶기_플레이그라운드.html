@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ko" data-pg-template="색상카드묶기-260717"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자막 색 카드 묶기 — 플레이그라운드</title>
+<style>
+:root{
+  --bg:#121212; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-rgb:0,238,210; --fg:#eef7f0; --mut:#8fa697;
+  --r-s:9px; --r-pill:999px; --sp-1:6px; --sp-2:12px;
+  --fs-label:13px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+  /* 색 팔레트 정본(index :root 계승 — cpin 맵과 1:1) */
+  --c-green:#0FFD02; --c-white:#ffffff; --c-black:#000000; --c-pink:#FF5EC8; --c-blue:#3a6ddb; --c-yellow:#FFE13D; --c-red:#e23b2a;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:radial-gradient(120% 60% at 50% -10%, rgba(var(--accent-rgb),.06), transparent 55%), var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+.hd{ max-width:960px; margin:0 auto; padding:18px 16px 4px; }
+.hd h1{ font-size:18px; margin:0 0 4px; }
+.hd p{ margin:0; color:var(--mut); font-size:13px; }
+.wrap{ max-width:960px; margin:0 auto; padding:12px 16px 40px; display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
+.stagewrap{ flex:1 1 300px; position:sticky; top:12px; }
+.stagecap{ color:var(--mut); font-size:12px; margin-top:8px; text-align:center; }
+.frame{ aspect-ratio:9/16; max-height:70vh; margin:0 auto; border-radius:16px; overflow:hidden; position:relative; border:1px solid var(--line);
+  background:linear-gradient(160deg,#3a4a63,#7d6a8a 45%,#b98a6a 80%); }
+.frame::after{ content:""; position:absolute; inset:0; background:radial-gradient(120% 80% at 30% 20%, rgba(255,255,255,.12), transparent 60%); }
+.cap{ position:absolute; left:6.5%; right:6.5%; bottom:14%; text-align:center; z-index:2; }
+.capband{ display:inline-block; max-width:100%; padding:.28em .7em; border-radius:10px; line-height:1.32; font-weight:800; letter-spacing:.01em;
+  font-size:clamp(15px,5.6vw,26px); word-break:keep-all; transition:background .18s; }
+.cap .base{ position:absolute; left:0; right:0; bottom:118%; opacity:.5; }
+.cap .base .capband{ font-size:clamp(11px,3.6vw,15px); }
+.baselbl{ display:block; color:#fff; font-size:10px; font-weight:700; opacity:.7; margin-bottom:3px; letter-spacing:.04em; }
+
+.console{ flex:1 1 320px; min-width:280px; }
+.csec{ border-top:1px solid var(--line); padding-top:var(--sp-2); margin-top:var(--sp-2); }
+.csec:first-child{ border-top:none; margin-top:0; padding-top:0; }
+.csec > .lbl{ font-weight:var(--fw-x); font-size:var(--fs-label); margin-bottom:8px; }
+.csec > .lbl::before{ content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+.sub{ color:var(--mut); font-size:12px; margin:2px 0 8px; }
+
+.pills{ display:flex; gap:6px; flex-wrap:wrap; }
+.pill{ height:32px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font:inherit; font-size:12px; font-weight:700; cursor:pointer; transition:transform .12s,color .15s,border-color .15s,background .15s; }
+.pill:active{ transform:scale(.95); }
+.pill.on{ color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.06); }
+.pill .star{ color:var(--accent); }
+
+/* ly 카드 룩 계승 = 제안 색상 카드 실물 재현 */
+.lycard{ border:1px solid var(--line2); border-radius:var(--r-s); background:rgba(255,255,255,.015); padding:var(--sp-2); }
+.crow{ display:flex; align-items:center; gap:var(--sp-2); }
+.crow + .crow{ margin-top:9px; }
+.crow .k{ flex:none; min-width:44px; color:var(--mut); font-size:var(--fs-xs); }
+.dots{ display:flex; gap:var(--sp-2); flex-wrap:wrap; }
+.dot{ position:relative; width:22px; height:22px; border-radius:50%; border:1px solid rgba(255,255,255,.25); cursor:pointer; padding:0; background:var(--sw); transition:transform .1s; }
+.dot::after{ content:""; position:absolute; inset:-6px; }
+.dot:active{ transform:scale(.9); }
+.dot.on{ box-shadow:inset 0 0 0 1px rgba(255,255,255,.18), 0 0 0 2px var(--bg), 0 0 0 3px var(--accent); }
+
+.scatter{ display:none; }
+.scatter.show{ display:block; }
+.group.hide{ display:none; }
+.ghost{ border:1px dashed var(--line); border-radius:var(--r-s); padding:10px 12px; margin-bottom:9px; opacity:.85; }
+.ghost .gh{ font-weight:800; font-size:12px; margin-bottom:6px; color:var(--fg); }
+.ghost .gh::before{ content:'• '; color:var(--accent); }
+.ghost .gmini{ color:var(--mut); font-size:11px; }
+.arrow{ text-align:center; color:var(--mut); font-size:11px; margin:2px 0 9px; }
+
+.range{ display:grid; grid-template-columns:44px 1fr 42px; align-items:center; gap:9px; margin-top:9px; font-size:var(--fs-xs); }
+.range .k{ color:var(--mut); }
+.range input[type=range]{ width:100%; accent-color:var(--accent); }
+.range .v{ text-align:right; color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
+
+pre{ background:#0e0f11; border:1px solid var(--line); border-radius:var(--r-s); padding:12px; font-size:12px; line-height:1.55; color:var(--fg); white-space:pre-wrap; overflow-x:auto; margin:0 0 8px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+.copy{ width:100%; height:40px; border-radius:var(--r-pill); border:1px solid rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.06); color:var(--accent); font:inherit; font-weight:800; cursor:pointer; }
+.copy:active{ transform:scale(.98); }
+.tag{ display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px; margin-left:6px; }
+.tag.keep{ color:var(--accent); background:rgba(var(--accent-rgb),.12); }
+.tag.chg{ color:#FFE13D; background:rgba(255,225,61,.14); }
+.note{ color:var(--mut); font-size:12px; line-height:1.7; }
+.note b{ color:var(--fg); }
+</style></head>
+<body>
+<div class="hd">
+  <h1>자막 색 3핀을 한 카드로 — 만져보는 미리보기</h1>
+  <p>지금은 <b style="color:#eef7f0">글자색·강조색·색상(음영/배경)</b> 이 서로 다른 카드에 흩어져 있어 조합을 한눈에 못 맞춰봐. 제안 = <b style="color:#eef7f0">'색상' 카드 하나</b>에 [글자ㆍ강조ㆍ배경] 3줄로 모으기. 아래에서 색을 눌러 자막에 바로 비춰봐.</p>
+</div>
+<div class="wrap">
+  <!-- ① 실물 재현 미리보기(sticky) -->
+  <div class="stagewrap">
+    <div class="frame" data-pg-preview>
+      <div class="cap" id="cap">
+        <div class="base" data-pg-baseline><span class="baselbl">현행(흰ㆍ라임ㆍ무배경)</span><span class="capband" id="baseband"></span></div>
+        <span class="capband" id="band"></span>
+      </div>
+    </div>
+    <div class="stagecap">위 = 선택값 · 흐린 위쪽 = 현행 기준(비교용)</div>
+  </div>
+
+  <!-- 콘솔 -->
+  <aside class="console">
+    <!-- 보기 토글: 배치 비교 -->
+    <div class="csec">
+      <div class="lbl">배치</div>
+      <div class="pills" id="layoutPills"></div>
+      <div class="sub" id="layoutSub"></div>
+    </div>
+
+    <!-- ② 프리셋 -->
+    <div class="csec" data-pg-presets>
+      <div class="lbl">프리셋</div>
+      <div class="pills" id="presets"></div>
+    </div>
+
+    <!-- ③ 색 카드(제안 실물) / 현행 흩어짐 다이어그램 -->
+    <div class="csec">
+      <div class="lbl">색</div>
+      <div class="group" id="groupView">
+        <div class="lycard" id="colorCard"><!-- 채워짐(JS) — 제안 '색상' 카드 --></div>
+      </div>
+      <div class="scatter" id="scatterView">
+        <div class="ghost"><div class="gh">음영ㆍ배경 카드</div><div class="gmini">음영 크기 · 배경 · <b style="color:#eef7f0">색상(음영)</b></div></div>
+        <div class="arrow">⋯ 다른 카드 2개 건너 ⋯</div>
+        <div class="ghost"><div class="gh">디자인 — 자막 카드</div><div class="gmini">빠른 · 모양 · 폰트 · <b style="color:#eef7f0">강조 색</b> · <b style="color:#eef7f0">글자색</b></div></div>
+        <div class="sub">→ 색이 세 곳에 흩어져 조합을 한 화면에서 못 맞춤. '배치'를 <b>제안</b>으로 바꿔봐.</div>
+      </div>
+    </div>
+
+    <!-- 배경 세기(음영/불투명) — 색 조합 미리보기용 알파 축 -->
+    <div class="csec">
+      <div class="lbl">배경 세기</div>
+      <div class="range"><span class="k">배경</span><input type="range" id="bg" min="0" max="100" step="1"><span class="v" id="bgv"></span></div>
+      <div class="sub">0% = 배경 없음(글자 외곽선만) · 올리면 색상 핀 색으로 줄박스</div>
+    </div>
+
+    <!-- ④ 선택값 출력 + 복사 -->
+    <div class="csec" data-pg-copy>
+      <div class="lbl">선택값</div>
+      <pre id="out"></pre>
+      <button class="copy" id="copy">선택값 복사</button>
+    </div>
+
+    <!-- ⑤ 재현 한계 각주 -->
+    <div class="csec note" data-pg-note>
+      <div class="lbl">재현 한계</div>
+      <b>·</b> 배경 영상은 실제 업로드본이 아니라 그라데이션 대체(색 대비만 확인용).<br>
+      <b>·</b> 음영/외곽선 두께(음영 크기 게이지)는 여기선 고정 근사 — 실렌더는 서버 번인이 정본.<br>
+      <b>·</b> 색은 팔레트 폐쇄(자유 hex 없음) = 실제 자막 렌더 닫힌 색 집합과 동일.<br>
+      <b>·</b> 이 파일은 <b>제안 미리보기</b>일 뿐, 아직 코드 미반영 — "색 카드로 묶어 ㄱ" 하면 ly.html에 배선.
+    </div>
+  </aside>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const CMAP = { white:'#ffffff', black:'#000000', green:'#0FFD02', pink:'#FF5EC8', blue:'#3a6ddb', yellow:'#FFE13D', red:'#e23b2a' };
+const CLBL = { white:'흰', black:'검정', green:'그린', pink:'핑크', blue:'블루', yellow:'레몬', red:'레드' };
+const FG_OPTS  = ['white','yellow','green','pink','blue','black'];
+const KWC_OPTS = ['green','white','pink','blue','yellow','red'];
+const OC_OPTS  = ['black','white','green','pink','blue','yellow','red'];
+
+const DEFAULTS = { fg:'white', kwc:'green', oc:'black', bg:0, layout:'group' };  // 색 기본 = 현행 실측(ly LY_OPT_DEF)
+const PRESETS = [
+  { id:'cur', nm:'현행', st:{ fg:'white', kwc:'green', oc:'black', bg:0 } },
+  { id:'reels', nm:'릴스(흰+라임)', st:{ fg:'white', kwc:'green', oc:'black', bg:0 } },
+  { id:'box', nm:'정보 박스', star:'★', st:{ fg:'white', kwc:'yellow', oc:'black', bg:44 } },
+  { id:'pink', nm:'핑크 팝', st:{ fg:'white', kwc:'pink', oc:'black', bg:0 } },
+  { id:'blue', nm:'블루 박스', st:{ fg:'yellow', kwc:'white', oc:'blue', bg:36 } },
+];
+const LAYOUTS = [ { id:'group', nm:'제안(색상 카드)', star:'★' }, { id:'scatter', nm:'현행(3곳 흩어짐)' } ];
+
+let state = { ...DEFAULTS };
+const near = (a,b) => a === b;   // 색 = 이산 키 동일 판정(계승)
+
+function dotRow(k, opts, cur){
+  return '<div class="crow"><span class="k">'+ ({fg:'글자',kwc:'강조',oc:'배경'}[k]) +'</span><div class="dots" data-k="'+k+'">'
+    + opts.map(v => '<button class="dot'+(cur===v?' on':'')+'" data-v="'+v+'" title="'+CLBL[v]+'" aria-label="'+CLBL[v]+'" style="--sw:'+CMAP[v]+'"></button>').join('')
+    + '</div></div>';
+}
+function buildCard(){
+  const card = $('#colorCard');
+  const sc = card.scrollTop;   // 재렌더 스크롤 보존(§플레이그라운드)
+  card.innerHTML = dotRow('fg', FG_OPTS, state.fg) + dotRow('kwc', KWC_OPTS, state.kwc) + dotRow('oc', OC_OPTS, state.oc);
+  card.scrollTop = sc;
+}
+function pillRow(el, arr, cur, onPick){
+  el.innerHTML = arr.map(p => '<button class="pill'+(cur===p.id?' on':'')+'" data-id="'+p.id+'">'+(p.star?'<span class="star">★</span>':'')+p.nm+'</button>').join('');
+  el.querySelectorAll('.pill').forEach(b => b.onclick = () => onPick(b.dataset.id));
+}
+function paintPreview(){
+  const band = $('#band'), base = $('#baseband');
+  const T = ['자막이 이렇게 ', '강조', '돼'];
+  const fg = CMAP[state.fg], kw = CMAP[state.kwc], oc = CMAP[state.oc], a = state.bg/100;
+  const html = '<span style="color:'+fg+'">'+T[0]+'</span><span style="color:'+kw+'">'+T[1]+'</span><span style="color:'+fg+'">'+T[2]+'</span>';
+  band.innerHTML = html;
+  if (a > 0){ band.style.background = hexA(oc, a); band.style.textShadow = 'none'; }
+  else { band.style.background = 'transparent'; band.style.textShadow = outline(oc); }
+  // 현행 기준(비교) = 고정
+  base.innerHTML = '<span style="color:#ffffff">'+T[0]+'</span><span style="color:'+CMAP.green+'">'+T[1]+'</span><span style="color:#ffffff">'+T[2]+'</span>';
+  base.style.background = 'transparent'; base.style.textShadow = outline('#000000');
+}
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1),16); const r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  return 'rgba('+r+','+g+','+b+','+a.toFixed(2)+')';
+}
+function outline(c){ return '0 0 2px '+c+',0 0 2px '+c+',1px 1px 2px '+c+',-1px -1px 2px '+c; }
+
+function markCustom(){
+  const cur = PRESETS.find(p => Object.keys(p.st).every(k => state[k] === p.st[k]));
+  $('#presets').querySelectorAll('.pill').forEach(b => b.classList.toggle('on', !!cur && b.dataset.id===cur.id));
+}
+function buildOut(){
+  const line = (label, k, defv) => {
+    const keep = near(state[k], defv);
+    return label + ' : ' + CLBL[state[k]] + '  ' + (keep ? '[현행 유지]' : '[변경 · 현행 '+CLBL[defv]+']');
+  };
+  const bgNote = state.bg===0 ? '[현행 0 · 외곽선]' : '[변경 · 현행 0]';
+  $('#out').textContent =
+`[자막 색 — 선택값]
+배치 : ${state.layout==='group' ? '제안 — 색상 카드 하나로 [글자·강조·배경]' : '현행 — 3곳 흩어짐'}
+${line('글자색', 'fg', DEFAULTS.fg)}
+${line('강조색', 'kwc', DEFAULTS.kwc)}
+${line('배경색', 'oc', DEFAULTS.oc)}
+배경 세기 : ${state.bg}%  ${bgNote}
+
+※ 배치 '제안' = ly.html의 강조색·글자색·색상(음영) 3핀을
+   '색상' 카드 하나 [글자|강조|배경] 3줄로 통합(편집 탭 카드 문법 유지).`;
+}
+function apply(){
+  buildCard();
+  buildOut();
+  paintPreview();
+  markCustom();
+  $('#bg').value = state.bg; $('#bgv').textContent = state.bg + '%';
+  $('#groupView').classList.toggle('hide', state.layout!=='group');
+  $('#scatterView').classList.toggle('show', state.layout==='scatter');
+  $('#layoutSub').textContent = state.layout==='group'
+    ? '색 3핀이 한 카드에 모여 조합을 한눈에 조율 — CapCut 텍스트 색 패널 문법.'
+    : '지금 화면(색이 두 카드에 흩어짐).';
+  $('#layoutPills').querySelectorAll('.pill').forEach(b => b.classList.toggle('on', b.dataset.id===state.layout));
+}
+
+// 바인딩
+$('#colorCard').addEventListener('click', e => {
+  const d = e.target.closest('.dot'); if(!d) return;
+  const k = d.closest('.dots').dataset.k; state[k] = d.dataset.v; apply();
+});
+$('#bg').addEventListener('input', e => { state.bg = +e.target.value; apply(); });
+pillRow($('#presets'), PRESETS, null, id => { const p = PRESETS.find(x=>x.id===id); state = { ...state, ...p.st }; apply(); });
+pillRow($('#layoutPills'), LAYOUTS, state.layout, id => { state.layout = id; apply(); });
+
+$('#copy').addEventListener('click', async () => {
+  const t = $('#out').textContent;
+  try { await navigator.clipboard.writeText(t); }
+  catch(_){ const r=document.createRange(); r.selectNode($('#out')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy'); s.removeAllRanges(); }
+  const b=$('#copy'); const o=b.textContent; b.textContent='복사됨 ✓'; setTimeout(()=>b.textContent=o,1200);
+});
+
+apply();
+</script>
+</body></html>
