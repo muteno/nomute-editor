@@ -1,0 +1,52 @@
+name: stamp-version
+# 배포 버전 도장 — main에 앱 코드(뷰어 HTML·sw.js·functions)가 바뀌면 그 커밋 SHA·KST 시각을
+# viewer/index.html 의 BUILD_STAMP 상수에 구워, 화면(설정 메뉴 하단 .lp-ver)에 '지금 돌아가는 버전'을 박는다.
+# ── 왜(운영자 Q43~44 "고쳤는데 그대로 · 조치됐다는데 안 됨") ──
+#   커밋 SHA는 깃허브에만 있고 화면엔 없다 + SW 셸 캐시(sw.js)가 옛 index를 서빙할 수 있어,
+#   "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 못 가렸다.
+#   index.html 자체에 구우므로, SW-캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여준다 = 스샷이 스스로 신원을 밝힌다.
+#   (별도 파일 fetch로 하면 네트워크-최신을 보여줘 캐시된 옛 화면을 '최신'으로 오판 → index 내장이 정답.)
+# ── 루프 차단 ──
+#   도장 커밋도 index.html을 바꿔 이 워크플로를 재트리거하므로, 커밋 메시지 [stamp] 마커를 job if로 걸러 재실행 0.
+#   ⚠️ Cloudflare Pages 빌드 skip 키워드([skip ci]/[CI Skip] 등) 사용 금지 = 도장 커밋도 정상 배포돼야 화면에 반영됨.
+# ── 트레이드(수용) ──
+#   코드 변경당 배포 2회(코드 커밋 → 도장 커밋) + SW 새버전 토스트가 도장분에 1회 더 뜰 수 있음(탭 1회로 최신 수렴 = 무해).
+# ── 롤백 ──
+#   이 파일 삭제 = 도장 '갱신'만 멈춤(마지막 값 잔존·무해) · 완전 원복 = index.html BUILDSTAMP 줄을 'dev'로 환원.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'viewer/*.html'
+      - 'viewer/sw.js'
+      - 'functions/**'
+permissions:
+  contents: write
+concurrency:
+  group: stamp-version
+  cancel-in-progress: true   # 연속 코드 커밋 = 최신만 도장(중간분 취소 무해 — 최종 배포본 SHA만 의미)
+jobs:
+  stamp:
+    if: ${{ !contains(github.event.head_commit.message, '[stamp]') }}   # 도장 커밋 재트리거 차단(무한루프 봉쇄 · CF 배포는 정상)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 도장 굽기(커밋 SHA·KST → index.html BUILD_STAMP)
+        run: |
+          SHA=$(git rev-parse --short=7 HEAD)               # 지금 배포되는 코드 커밋(도장 커밋 이전 HEAD)
+          TS=$(TZ='Asia/Seoul' date '+%y%m%d_%H%M')          # KST(러너=UTC라 TZ 강제 · CLAUDE.md [12])
+          # BUILDSTAMP 마커 줄만 치환 = 마커 영속(다음 배포도 재매칭) · 값은 'dev' 또는 직전 도장 무관하게 통째 교체
+          sed -i "s|const BUILD_STAMP = '[^']*';\(.*\)/\*BUILDSTAMP\*/|const BUILD_STAMP = '${SHA} · ${TS}';\1/*BUILDSTAMP*/|" viewer/index.html
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add viewer/index.html
+          git diff --cached --quiet && { echo "도장 변동 없음 — 생략"; exit 0; }
+          git commit -m "chore(stamp): ${SHA} 배포 버전 도장 [stamp]"
+          for i in 1 2 3 4; do
+            git pull --rebase -X ours origin main 2>/dev/null || true
+            git push origin HEAD:main && exit 0 || { echo "도장 push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::도장 push 실패(재시도 소진) — 다음 코드 배포서 재도장"
