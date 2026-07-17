@@ -9401,6 +9401,7 @@ function showTab(tab) {
   if (snv) snv.hidden = (tab !== 'trend') || !snv.closest('#snsHost');   // 구 메뉴2 = 트렌드 그룹① 국내 커뮤니티로 reparent(운영자 260713) · 신규 구조(#snsHost) 장착 전 = 계속 숨김(운영자 260716 "이전 버전이 안뜨게" — 트렌드 도착 전 구버전 맨몸 노출 차단 · 해금 = renderSnsTrends 장착 시)
   if (tv) tv.hidden = (tab !== 'trend');
   const cv = $('#chanview'); if (cv) cv.hidden = (tab !== 'chan');   // 메뉴4 채널 요약(운영자 260713)
+  if (tab === 'trend' || tab === 'chan') requestAnimationFrame(() => chuFit(document));   // 숨김(hidden) 중 렌더된 헤더 칩은 offsetWidth=0이라 예약 미측정 → 가시화 직후 재실측(평의회 260717-⑥ ③ 봉합 · 시그니처 가드 무접촉)
   // 배너(2겹)·프로필 컬러 = body.tab-scrap가 CSS로 구동(스크랩=앰버 디졸브 / 그 외=초록). SNS 전용 배너는 추후.
   document.body.classList.toggle('tab-scrap', tab === 'scrap');
   document.body.dataset.tab = tab;   // 카드만 토글 = 피드 탭에서만 표시(CSS body[data-tab=feed])
@@ -9533,7 +9534,11 @@ function fmtK12(s) { s = String(s || ''); const mo = +s.slice(5, 7), dd = +s.sli
 let TR_TOPF = 'all';   // TOP 10 플랫폼 필터(운영자 260716 "선택하면 top10 플랫폼별로") — 'all' = 종합(종전) · mono 키 = 플랫폼별 풀 TOP 10 · 세션 한정(CHAN_BSEC 문법 미러)
 // 헤더 우측 칩(.chu>.tb-seg = absolute 오버레이)이 좌측 시각(.tdash-time)을 덮는 겹침 방지(운영자 260717 폰 실측 — "전체 틱톡 토글 안겹치게") —
 //   칩 실폭 + 48(칩 우측 앵커 원문) + 10(광학 간격)만큼 summary 우측 패딩 예약(--chu-r) · 시각은 부족 시 말줄임(.tdash-time #775) · 칩 부재 = 12px 폴백 · 렌더 직후 1회 실측(칩 폭 = 렌더당 상수)
-const chuFit = box => box.querySelectorAll('.chu').forEach(w => { const s = w.querySelector(':scope > .tb-seg'); if (s && s.offsetWidth) w.style.setProperty('--chu-r', (48 + s.offsetWidth + 10) + 'px'); });   /* raw-ok: 48 = .chu>.tb-seg right 앵커 원문 짝(#893) · 10 = 1회성 광학 간격 */
+const chuFit = (box = document) => box.querySelectorAll('.chu').forEach(w => { const s = w.querySelector(':scope > .tb-seg'); if (s && s.offsetWidth) w.style.setProperty('--chu-r', (48 + s.offsetWidth + 10) + 'px'); });   /* raw-ok: 48 = .chu>.tb-seg right 앵커 원문 짝(#893) · 10 = 1회성 광학 간격 */
+// 재실측 3훅(평의회 260717-⑥ ①~③) — 회전·리사이즈(칩 %클램프 폭 변동), 폰트 스왑(측정 시점 폴백 메트릭), 숨김 렌더(showTab 가시화 직후는 showTab 쪽 훅). offsetWidth=0 가드로 숨김 뷰는 무접촉 = 비용 미미.
+try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => chuFit(document)); } catch {}
+let _chuRz = 0;
+window.addEventListener('resize', () => { clearTimeout(_chuRz); _chuRz = setTimeout(() => chuFit(document), 150); });   /* raw-ok: 150ms = 리사이즈 디바운스 관용값(연속 이벤트 합침 · 1회성) */
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
   // 첫 방문(TRENDS 미로드) = 빈 화면 대신 로딩 표시 — showTab('trend')의 캐시 즉시 렌더는 첫 방문엔 캐시가 없어 트렌드·AI 요약 영역이 통째 빈칸 → loadTrends 완료(~수초·폰 느린망) 후 갑툭 팝인 = "다른 화면 떴다가 AI 요약으로" 증상(운영자 260715). 로딩 표기 = 아래 renderSns "불러오는 중…"(.empty) 패턴 계승. TRENDS 도착 시 실렌더가 교체(_trSig 미설정 = 무조건 재구축).
