@@ -19,10 +19,12 @@ on:
           - MUTENO
           - EMS1130G
 
-# 동시 실행 충돌 방지 — 순차 처리(진행 중 작업 취소 안 함).
-concurrency:
-  group: news-analyze
-  cancel-in-progress: false
+# 동시 실행 충돌 방지 — ⚠️ 잠금은 '잡' 레벨(운영자 260717 대기열 기아 실측): 종전 워크플로(런) 레벨 그룹은
+#   card_plan(상한 165분)이 끝날 때까지 런 전체가 그룹을 쥐고 있어, 그 사이 제출된 pending이 분석 착수조차
+#   못 하고 스피너로 수 시간 대기(10~15분 실패 표면화 계약 파괴 · 실측 = 15:38 런의 card_plan이 17:28 제출 3건을
+#   2.5h 인질). analyze 잡만 자기 그룹으로 직렬화하면 카드 생성 중에도 새 분석·실패 격리가 즉시 돈다.
+#   card_plan(card-make)·thumb_gen(thumb-make)은 원래 자기 잡 그룹 보유 = 공유 자원별 직렬화는 종전과 동일.
+#   그룹명 news-analyze → news-analyze-job 개명 = 구 런(런 레벨 잠금 보유 중)과의 전환기 교착 회피.
 
 permissions:
   contents: write
@@ -31,6 +33,9 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 90   # 6건 직렬 분석 대비(건당 timeout 900s — 콘텐츠 초안 포함이라 상향)
+    concurrency:
+      group: news-analyze-job   # pending 소비·queue/ 커밋 직렬화(위 헤더 주석 = 잡 레벨 사유)
+      cancel-in-progress: false
     outputs:
       force_stems: ${{ steps.force.outputs.stems }}   # force 재분석(전문 직접 입력)으로 덮어쓴 카드 stem(공백 구분) → card_plan 이 단일 프롬프트 갱신(운영자 260628)
     steps:
