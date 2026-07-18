@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오디오 연결 체크리스트 v3</title>
+<style>
+  :root{
+    --bg:#0e1117; --card:#171c26; --card2:#1e2532; --line:#2a3242;
+    --fg:#e8edf5; --mut:#93a0b4; --dim:#6b7688;
+    --green:#43c98a; --blue:#57a8ff; --amber:#f5b53d; --red:#ff6b6b; --violet:#a78bfa;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#eef1f6; --card:#fff; --card2:#f3f6fb; --line:#d7dee9;
+      --fg:#141a24; --mut:#54617a; --dim:#8894a8; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",Pretendard,Roboto,"Segoe UI",sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;padding:0 13px 60px}
+  .wrap{max-width:560px;margin:0 auto}
+  h1{font-size:20px;margin:18px 0 3px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:12.5px;margin:0 0 12px}
+
+  /* sticky progress */
+  .prog{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0 8px;margin-bottom:6px}
+  .bar{height:9px;border-radius:20px;background:var(--card2);border:1px solid var(--line);overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));
+    transition:width .3s ease}
+  .pr0w{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+  .cnt{font-size:12.5px;color:var(--mut);font-family:var(--mono)}
+  .cnt b{color:var(--fg)}
+  .rst{font-size:11.5px;color:var(--dim);background:none;border:1px solid var(--line);
+    border-radius:8px;padding:4px 9px;cursor:pointer}
+  .rst:active{transform:scale(.96)}
+  .done .cnt b{color:var(--green)}
+
+  .legend{display:flex;gap:7px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--mut);margin:0 0 16px}
+  .g{font-family:var(--mono);font-size:10.5px;font-weight:700;border-radius:5px;padding:1.5px 6px;white-space:nowrap}
+  .g.male{background:rgba(87,168,255,.16);color:var(--blue);border:1px solid rgba(87,168,255,.4)}
+  .g.fem{background:rgba(245,181,61,.14);color:var(--amber);border:1px solid rgba(245,181,61,.4)}
+
+  /* mini map */
+  .map{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:20px;
+    font-family:var(--mono);font-size:12px;color:var(--mut);line-height:1.85;overflow-x:auto}
+  .map b{color:var(--fg)} .map .m{color:var(--blue)} .map .f{color:var(--amber)}
+
+  h2{font-size:13.5px;margin:22px 0 9px;color:var(--mut);letter-spacing:.02em;text-transform:uppercase;font-weight:800}
+
+  .item{display:flex;gap:11px;align-items:flex-start;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:12px 13px;margin-bottom:8px;cursor:pointer;user-select:none;
+    transition:opacity .2s,background .2s}
+  .item:active{background:var(--card2)}
+  .item input{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:22px;height:22px;margin:1px 0 0;
+    border:2px solid var(--dim);border-radius:7px;cursor:pointer;position:relative;transition:.15s}
+  .item input:checked{background:var(--green);border-color:var(--green)}
+  .item input:checked::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;
+    border:solid #0e1117;border-width:0 3px 3px 0;transform:rotate(45deg)}
+  .item .tx{font-size:13.5px}
+  .item .tx small{display:block;color:var(--dim);font-size:11.5px;margin-top:2px;font-family:var(--mono)}
+  .item.checked{opacity:.5}
+  .item.checked .tx>span:first-child{text-decoration:line-through}
+  .item.crit{border-color:rgba(255,107,107,.45)}
+  .item.crit .tx>span:first-child{color:var(--red);font-weight:700}
+
+  .volnote{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-size:12.5px;color:var(--mut);margin-top:6px}
+  .volnote b{color:var(--fg)}
+  .foot{color:var(--dim);font-size:11px;text-align:center;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔊 오디오 연결 체크리스트</h1>
+  <p class="sub">누르면 체크됨 · 폰에 저장돼서 껐다 켜도 유지 · 위→아래 순서대로</p>
+
+  <div class="prog" id="prog">
+    <div class="bar"><i id="fill"></i></div>
+    <div class="pr0w">
+      <span class="cnt"><b id="dn">0</b>/<span id="tot">0</span> 완료</span>
+      <button class="rst" id="reset">초기화</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span class="g male">♂ 수=플러그</span><span class="g fem">♀ 암=구멍</span><span>· 수 → 암에 꽂음</span>
+  </div>
+
+  <!-- mini map -->
+  <div class="map">
+💻맥 · 🖥️윈 <span class="m">→</span> <b>Dell U2725QE</b> (KVM 허브)<br>
+&nbsp;&nbsp;└ <b>KA11</b> <span class="m">USB-C♂</span>→모니터 <span class="f">USB-C♀</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;└ KA11 <span class="f">출력3.5♀</span> ─ AUX선<span class="m">♂3.5–3.5♂</span> ─ 젠더<span class="f">♀3.5</span><span class="m">→6.35♂</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└ <b>HA400</b> <span class="f">입력6.35♀</span> → 출력1·2 <span class="f">6.35♀</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└ YYTCG젠더<span class="m">♂6.35</span><span class="f">→3.5♀</span> ─ 스피커선<span class="m">♂3.5</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└ 🔈에디파이어 · 📦JBL
+  </div>
+
+  <!-- checklist -->
+  <h2>1 · 사기 전 확인</h2>
+  <label class="item crit" data-id="c1"><input type="checkbox">
+    <span class="tx"><span>JBL에 3.5mm 구멍(AUX) 있는지 확인</span><small>없으면 그 스피커만 블루투스 → 모델명 알려줘</small></span></label>
+  <label class="item crit" data-id="c2"><input type="checkbox">
+    <span class="tx"><span>윈도우 USB 업스트림 선이 모니터에 꽂혔는지 확인</span><small>DP만 꽂으면 소리가 윈도우로 안 넘어감</small></span></label>
+  <label class="item" data-id="c3"><input type="checkbox">
+    <span class="tx"><span>유그린 3.5mm AUX 케이블 1m 도착</span><small>이미 주문함 ✓</small></span></label>
+  <label class="item" data-id="c4"><input type="checkbox">
+    <span class="tx"><span>HA400 분배기 준비 (없으면 구매)</span></span></label>
+
+  <h2>2 · 조립 (연결 순서)</h2>
+  <label class="item" data-id="a1"><input type="checkbox">
+    <span class="tx"><span>KA11 USB-C(♂) → 모니터 뒷면 USB-C 다운스트림(♀)</span><small>모니터에 바로 꽂힘 · 추가선 없음</small></span></label>
+  <label class="item" data-id="a2"><input type="checkbox">
+    <span class="tx"><span>AUX선 한쪽(♂3.5) → KA11 출력 구멍(♀3.5)</span></span></label>
+  <label class="item" data-id="a3"><input type="checkbox">
+    <span class="tx"><span>AUX선 반대쪽(♂3.5) → 유그린 젠더(♀3.5→♂6.35)</span><small>입력용 젠더 · 이게 있어야 HA400에 들어감</small></span></label>
+  <label class="item" data-id="a4"><input type="checkbox">
+    <span class="tx"><span>그 젠더(♂6.35) → HA400 입력(INPUT, ♀6.35)</span></span></label>
+  <label class="item" data-id="a5"><input type="checkbox">
+    <span class="tx"><span>YYTCG 젠더 2개(♂6.35) → HA400 출력 1·2(♀6.35)</span></span></label>
+  <label class="item" data-id="a6"><input type="checkbox">
+    <span class="tx"><span>에디파이어 선(♂3.5) → 출력1 젠더 구멍(♀3.5)</span></span></label>
+  <label class="item" data-id="a7"><input type="checkbox">
+    <span class="tx"><span>JBL 선(♂3.5) → 출력2 젠더 구멍(♀3.5)</span></span></label>
+
+  <h2>3 · 최초 설정 (한 번만)</h2>
+  <label class="item" data-id="s1"><input type="checkbox">
+    <span class="tx"><span>맥: 시스템 설정 › 사운드 › 출력 = FiiO KA11</span></span></label>
+  <label class="item" data-id="s2"><input type="checkbox">
+    <span class="tx"><span>윈: 소리 › 출력 장치 = FiiO KA11</span></span></label>
+  <label class="item" data-id="s3"><input type="checkbox">
+    <span class="tx"><span>모니터 KVM 짝: DP+USB-C업스트림=윈 / 썬더볼트=맥</span></span></label>
+  <label class="item" data-id="s4"><input type="checkbox">
+    <span class="tx"><span>볼륨 세팅: 컴퓨터 80~100% · 스피커 50~60% · HA400 노브로 조절</span></span></label>
+
+  <div class="volnote">🎉 다 체크되면 끝 — 맥/윈 화면 바꿀 때마다 소리도 KA11 따라 자동 전환. 전환 순간 잠깐 끊겼다 잡히는 건 정상.</div>
+
+  <p class="foot" id="foot">진행 상황은 이 폰(브라우저)에 저장됩니다</p>
+</div>
+
+<script>
+(function(){
+  var KEY='audiomap_v3';
+  var items=[].slice.call(document.querySelectorAll('.item'));
+  var fill=document.getElementById('fill'), dn=document.getElementById('dn'),
+      tot=document.getElementById('tot'), prog=document.getElementById('prog'),
+      foot=document.getElementById('foot');
+  tot.textContent=items.length;
+
+  function load(){ try{return JSON.parse(localStorage.getItem(KEY))||{};}catch(e){return {};} }
+  function save(s){ try{localStorage.setItem(KEY,JSON.stringify(s));}catch(e){} }
+  var state=load();
+  var persists=true;
+  try{localStorage.setItem('__t','1');localStorage.removeItem('__t');}catch(e){persists=false;}
+  if(!persists){ foot.textContent='⚠️ 이 화면은 저장이 안 되는 모드 — 체크는 이번에만 유지돼요'; }
+
+  function render(){
+    var done=0;
+    items.forEach(function(el){
+      var id=el.getAttribute('data-id'), cb=el.querySelector('input'), on=!!state[id];
+      cb.checked=on; el.classList.toggle('checked',on); if(on)done++;
+    });
+    var pct=items.length?Math.round(done/items.length*100):0;
+    fill.style.width=pct+'%'; dn.textContent=done;
+    prog.classList.toggle('done',done===items.length&&items.length>0);
+  }
+  items.forEach(function(el){
+    var cb=el.querySelector('input'), id=el.getAttribute('data-id');
+    cb.addEventListener('change',function(){ state[id]=cb.checked; save(state); render(); });
+  });
+  document.getElementById('reset').addEventListener('click',function(){
+    state={}; save(state); render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
