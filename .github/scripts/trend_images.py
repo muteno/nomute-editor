@@ -17,6 +17,8 @@ import hashlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import thumb_gen as tg   # __main__ 가드 有 = import 안전. fetch_article_images·http_image·r2_upload·_is_logo_card·_norm_key·R2_ON 재사용.
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "shared")))
+from claude_py import run_claude   # 폴오버 SSOT(쿼터 한도 시 백업계정 4체인 자동 전환 · breaking_judge·gate_judge 공용 · 운영자 260718 "전사 적용")
 
 OUT = os.path.join("viewer", "sns_trends.json")
 MODEL = os.environ.get("TREND_IMG_MODEL", "claude-sonnet-5")   # 운영자 260718 "사진 안 중요하니 소넷으로"
@@ -66,35 +68,16 @@ def main():
 각 줄에 `검색어<TAB>기사URL` 형태로 하나씩(검색어와 URL 사이는 탭 문자). 설명·번호·마크다운·따옴표 없이 URL만.""".format(
         qlist="\n".join("- " + q for q in queries))
 
-    # 워크스페이스 신뢰 도장(헤드리스 trust dialog 우회 — claude rc=1 stderr가 명시한 fix) · 미신뢰 워크스페이스서
-    # .claude/settings.json permissions 무시+진행불가 방어. analyze는 통과하나 방어적 명시(무해·hedge).
-    try:
-        _cj = os.path.expanduser("~/.claude.json")
-        _cfg = {}
-        if os.path.exists(_cj):
-            try:
-                _cfg = json.load(open(_cj, encoding="utf-8")) or {}
-            except Exception:  # noqa: BLE001
-                _cfg = {}
-        _cfg.setdefault("projects", {}).setdefault(os.getcwd(), {})["hasTrustDialogAccepted"] = True
-        json.dump(_cfg, open(_cj, "w", encoding="utf-8"))
-    except Exception as _e:  # noqa: BLE001
-        print("trust 도장 스킵(무해): {}".format(_e))
-
     print("Claude({}) 트렌드 키워드 {}개 대표 뉴스 URL 배치 검색".format(MODEL, len(queries)), flush=True)
-    try:
-        res = subprocess.run(
-            ["claude", "-p", "--model", MODEL, "--safe-mode",   # --safe-mode = CLAUDE.md/스킬/MCP 비활성·내장 WebSearch/WebFetch는 유지(불요 컨텍스트 차단) · ⚠ --bare 절대 금지 = OAuth 즉사(sns_brief §📰-d 선례 · Q126 카나리아 rc=1 실측 260718)
-               "--allowedTools", "WebFetch,WebSearch",
-               "--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite",
-               "--max-turns", "50"],
-            input=prompt, capture_output=True, text=True, timeout=600)
-        out = res.stdout or ""
-        if res.returncode != 0:
-            print("::warning::claude rc={} · stderr: {}".format(res.returncode, (res.stderr or "")[:2000]), flush=True)   # 전체 stderr(진짜 원인 노출 · 구 [:300]이 trust 노이즈 뒤 원인 가림)
-            print("::warning::claude stdout(head): {}".format((out or "")[:800]), flush=True)
-    except Exception as e:  # noqa: BLE001
-        print("::warning::claude 호출 실패(러너 미설치/인증/타임아웃?): {}".format(e))
+    _args = ["claude", "-p", "--model", MODEL, "--safe-mode",   # --safe-mode = CLAUDE.md/스킬/MCP 비활성·내장 WebSearch/WebFetch 유지 · --bare 금지(OAuth 즉사) · --effort 미부여(sonnet 비호환)
+             "--allowedTools", "WebFetch,WebSearch",
+             "--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite",
+             "--max-turns", "50"]
+    # 폴오버 SSOT 경유 — 주계정 쿼터(주간한도) 시 백업 4계정 자동 전환(Q126 카나리아 rc=1 = "You've hit your weekly limit" 실측 → 전사 폴오버 배선 · 운영자 260718)
+    res, rc, err = run_claude(_args, prompt, timeout=600, source="trend")
+    out = (res.stdout if res else "") or ""
+    if rc != 0 or not out.strip():
+        print("::warning::claude rc={} · stderr: {} · stdout(head): {}".format(rc, (err or "")[:600], out[:600]), flush=True)
         return
 
     # 파싱: '검색어\tURL' (탭 없으면 '검색어 ... URL' 폴백) — 검색어는 목록 매칭으로만 수용(환각 방어).

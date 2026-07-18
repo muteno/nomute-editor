@@ -791,7 +791,7 @@ def check_claude_failover():
     경유 = claude_failover(셸 SSOT 호출) 또는 claude_py/run_claude(파이썬 SSOT = is_quota+failover 내장)."""
     rc = 0
     miss = []
-    INVOKE = re.compile(r'^(?!\s*#).*(claude_meter|run_claude\(|claude -p)', re.M)   # 실제(비-주석) Claude 호출만 — run_claude는 호출`(`만(import·docstring 제외)·주석 속 'claude -p' 멘션(ly_stt 등) 제외
+    INVOKE = re.compile(r'''^(?!\s*#).*(claude_meter|run_claude\(|claude -p|["']claude["']\s*,\s*["']-p["'])''', re.M)   # 실제(비-주석) Claude 호출 + 리스트형 raw subprocess(["claude","-p"…]) 우회 탐지(운영자 260718 "전사 폴오버" — trend_images·more_images가 리스트형으로 게이트 우회→주계정 쿼터 즉사 실측 봉합) · run_claude는 호출`(`만(import·docstring 제외)
     COMPLY = re.compile(r'claude_failover|claude_py|run_claude')                     # 셸=claude_failover 호출 / 파이썬=claude_py(run_claude) SSOT 경유
     # 스캔 범위 = 파이프라인 스크립트 2곳(의도) — shared/는 미스캔: shared/summary_repair.sh 의 보강 콜은
     #   1콜 상한·fail-soft(실패=원본 유지)라 폴오버 불요 = 문서화된 예외(평의회3 260705). shared/에 폴오버가
@@ -937,7 +937,7 @@ def check_conflict_markers():
 #   박제분 면책 승계(origin/main 자체가 ×2 실측 · 본 세션 신규 행 = Q41 유일 · 다음 부여 = Q42).
 # 재베이스라인 260717 23:40(사유): Q91 ×2 — 두 타 세션 머지분(요구사항 프로토콜 [1]~[15] 등재 #2458 · 22:05 규칙 주입 요약)이
 #   각자 main 머지 완료 = origin/main 자체가 ×2 실측(재부여 불가[양쪽 박제]라 면책 승계 · 본 세션 신규 행 = Q104 유일 · 다음 부여 = Q105).
-_QDUP_BASE = {1: 41, 2: 19, 3: 17, 4: 16, 5: 14, 6: 13, 7: 12, 8: 9, 9: 8, 10: 6, 11: 5, 12: 5, 13: 5, 14: 3, 15: 2, 16: 3, 17: 2, 18: 2, 19: 2, 23: 2, 39: 2, 43: 2, 49: 2, 63: 2, 64: 2, 91: 2}   # 43·49·63·64 :2 = 260717 병렬 머지 병존(각 번호를 두 세션이 각자 부여·둘 다 main 실재 = 갈래 유산 · 재부여 불가[양쪽 머지 완료]라 면책 기록 · 43=스크림#2422+편집알림 / 49=평의회분신술+PAT후속 / 63·64=동시 세션 원장 경합 · 91=요구사항 프로토콜#2458+22:05 규칙주입 동시 부여)
+_QDUP_BASE = {1: 41, 2: 19, 3: 17, 4: 16, 5: 14, 6: 13, 7: 12, 8: 9, 9: 8, 10: 6, 11: 5, 12: 5, 13: 5, 14: 3, 15: 2, 16: 3, 17: 2, 18: 2, 19: 2, 23: 2, 39: 2, 43: 2, 49: 2, 63: 2, 64: 2, 91: 2, 132: 2}   # 132:2 = 재베이스라인 260718 16:30(Q132 ×2 — #2495 전사폴오버·#2496 옵션카드가 각자 진짜 main d8099fa에 머지 완료 = 박제 ×2 실측 · 재부여 불가[양쪽 박제] · 본 세션 신규 행 = Q133 · 다음 부여 = Q134 · 로컬 origin/main 스테일(2dde7be) 실측 오도 주의) · 43·49·63·64 :2 = 260717 병렬 머지 병존(각 번호를 두 세션이 각자 부여·둘 다 main 실재 = 갈래 유산 · 재부여 불가[양쪽 머지 완료]라 면책 기록 · 43=스크림#2422+편집알림 / 49=평의회분신술+PAT후속 / 63·64=동시 세션 원장 경합 · 91=요구사항 프로토콜#2458+22:05 규칙주입 동시 부여)
 
 
 def check_qledger_unique():
