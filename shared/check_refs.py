@@ -157,7 +157,7 @@ def check_viewer_js():
     if not node:
         print('⚠️ viewer JS 구문검사 스킵(node 없음)'); return 0
     rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html'):
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html'):   # nb·sb 편입(평의회 Q163 — 색 baseline엔 있는데 JS 구문 게이트만 누락이던 커버리지 드리프트 봉합 · 현행 rc=0 실측)
         try:
             html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
         except Exception:
@@ -227,7 +227,7 @@ def check_icon_ssot():
     if not shared:
         print('⚠️ nm-svg.js에 공유 상수 0 — 게이트 스킵'); return 0
     rc = 0
-    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html'):
+    for rel in ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html'):   # nb·sb 편입(평의회 Q163 — 아이콘 SSOT 게이트 정합 · 현행 위반 0 실측)
         try:
             html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
         except Exception:
@@ -706,7 +706,7 @@ def check_x_char():
 
 def check_tokens_link():
     """공유 구조토큰 tokens.css 배선 하드게이트(§🎨 STAGE3·분신술7·260628).
-    4뷰어(thumb/ly/k/comp)가 viewer/tokens.css를 <link>로 로드하는지 검증 — 미링크면 신규 컴포넌트가
+    도구 뷰어들(코드 튜플이 정본 · comp 폐지 260710 = 평의회 Q163 표기 정정)이 viewer/tokens.css를 <link>로 로드하는지 검증 — 미링크면 신규 컴포넌트가
     var(--r-m 등) 구조토큰을 못 써 raw로 새거나(드리프트), 옛 링크가 깨지면 침묵(check_paths가 HTML <link>
     미검증)이라 여기서 잡는다. tokens.css 파일 부재면 게이트 무력(아직 미생성=스킵)."""
     if not os.path.exists(os.path.join(ROOT, 'viewer', 'tokens.css')):
