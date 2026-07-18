@@ -791,7 +791,7 @@ def check_claude_failover():
     경유 = claude_failover(셸 SSOT 호출) 또는 claude_py/run_claude(파이썬 SSOT = is_quota+failover 내장)."""
     rc = 0
     miss = []
-    INVOKE = re.compile(r'^(?!\s*#).*(claude_meter|run_claude\(|claude -p)', re.M)   # 실제(비-주석) Claude 호출만 — run_claude는 호출`(`만(import·docstring 제외)·주석 속 'claude -p' 멘션(ly_stt 등) 제외
+    INVOKE = re.compile(r'''^(?!\s*#).*(claude_meter|run_claude\(|claude -p|["']claude["']\s*,\s*["']-p["'])''', re.M)   # 실제(비-주석) Claude 호출 + 리스트형 raw subprocess(["claude","-p"…]) 우회 탐지(운영자 260718 "전사 폴오버" — trend_images·more_images가 리스트형으로 게이트 우회→주계정 쿼터 즉사 실측 봉합) · run_claude는 호출`(`만(import·docstring 제외)
     COMPLY = re.compile(r'claude_failover|claude_py|run_claude')                     # 셸=claude_failover 호출 / 파이썬=claude_py(run_claude) SSOT 경유
     # 스캔 범위 = 파이프라인 스크립트 2곳(의도) — shared/는 미스캔: shared/summary_repair.sh 의 보강 콜은
     #   1콜 상한·fail-soft(실패=원본 유지)라 폴오버 불요 = 문서화된 예외(평의회3 260705). shared/에 폴오버가
