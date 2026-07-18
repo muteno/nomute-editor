@@ -528,7 +528,19 @@ def main():
         last = daily[-1] if daily else {}
         posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'fp', 'exp', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
         med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
-        thumbs = [{'th': m.get('thumbnail_url') or m.get('media_url'), 'u': m.get('permalink'),
+        def _thumb_src(m):
+            """썸네일 이미지 URL — 커버(thumbnail_url) 우선. 영상(릴스) media_url은 mp4 스트림이라
+            <img>로 못 그림 → 커버 없는 릴스는 '' 반환(뷰어가 캡션 텍스트 타일로 대체 · 운영자 260718 승인).
+            이미지·캐러셀만 media_url 폴백(그건 실제 이미지). 커버 재조회(대개 복구) = insta_fetch."""
+            tu = m.get('thumbnail_url')
+            if tu:
+                return tu
+            mu = m.get('media_url') or ''
+            if m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS' or '/o1/v/' in mu or '/v/t2/' in mu:
+                return ''
+            return mu
+        # 최신 12개 원순서 유지 — 커버 없는 릴스도 제자리 보존(th='' → 뷰어가 캡션 텍스트 타일 · t 동봉). 영상URL 폴백·앞자름 결손 = 종식.
+        thumbs = [{'th': _thumb_src(m), 'u': m.get('permalink'),
                    't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
