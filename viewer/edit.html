@@ -262,7 +262,6 @@
   .ghost.dlbtn { margin-left:auto; width:38px; height:38px; padding:0; justify-content:center; }
   #dlVid[hidden], .sheet[hidden], .sheetdim[hidden] { display:none; }
   /* 크롭 위치 미리보기 = conv .scrub 이식(track 키잉 스크럽 계승) — 변환 탭은 260711 2차 복원(convTab=restore) · 진입 버튼은 미노출(scrubBtn=off · 코드 보존) */
-  .poshint { margin-top:6px; } .poshint[hidden] { display:none; }
   .cta { background:var(--accent); color:var(--on-accent); font-weight:var(--fw-x); font-size:14px; font-family:inherit; border:none; border-radius:var(--r-pill); padding:11px 22px; cursor:pointer; transition:transform .12s; }
   .cta:active { transform:scale(var(--press-l)); }
   .scrub { position:fixed; inset:0; z-index:var(--z-float); background:rgba(8,9,10,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:18px; }
@@ -1211,19 +1210,6 @@ function fmtClock(s) { s = Math.max(0, Math.round(s || 0)); const h = (s / 3600)
 function srtTime(s) { const ms = Math.max(0, Math.round((s || 0) * 1000)); const p = (n, l) => String(n).padStart(l, '0'); return p((ms / 3600000) | 0, 2) + ':' + p(((ms % 3600000) / 60000) | 0, 2) + ':' + p(((ms % 60000) / 1000) | 0, 2) + ',' + p(ms % 1000, 3); }
 const lyJoin = () => /^(ja|zh|yue|th|lo|my|km)$/.test(LY_LANG) ? '' : ' ';   // 무공백 문자권(일·중 등) = 붙여 재조립(단어 join 시 엉뚱한 공백 방지)
 const lySegText = sg => sg.w.filter(w => w.on).map(w => w.t).join(lyJoin());
-function parseCues(txt) {   // SRT/VTT → 조각(s·e·텍스트) — SRT 업로드 경로는 서버 STT가 없어 클라에서 타이밍 확보
-  if (!txt || txt.indexOf('-->') < 0) return null;
-  const t = String(txt).replace(/\r/g, '');
-  const re = /(?:^|\n)[^\S\n]*(?:\d+[^\S\n]*\n)?[^\S\n]*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[.,](\d{1,3})[^\S\n]*-->[^\S\n]*(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[.,](\d{1,3})[^\n]*\n([\s\S]*?)(?=\n[^\S\n]*\n|$)/g;
-  const sec = (h, m, s, ms) => (parseInt(h || '0', 10) || 0) * 3600 + parseInt(m, 10) * 60 + parseInt(s, 10) + parseInt(String(ms).padEnd(3, '0'), 10) / 1000;
-  const segs = []; let m;
-  while ((m = re.exec(t))) {
-    const body = m[9].split('\n').map(x => x.trim()).filter(x => x && !/^WEBVTT|^NOTE\b/i.test(x)).join(' ').replace(/<[^>]+>/g, '').trim();
-    if (!body) continue;
-    segs.push({ s: +sec(m[1], m[2], m[3], m[4]).toFixed(2), e: +sec(m[5], m[6], m[7], m[8]).toFixed(2), t: body, w: null });
-  }
-  return segs.length ? segs : null;
-}
 function lyModel(rawSegs) {   // 원시 세그먼트 → 편집 모델(단어 칩 상태 탑재) — word 없으면 공백 분할(타이밍 null 칩)
   return (rawSegs || []).map(sg => ({
     s: sg.s != null ? sg.s : null, e: sg.e != null ? sg.e : null, del: false, sel: false,
@@ -1240,9 +1226,6 @@ function lyPrune() {   // 편집 스냅샷 = 최근 8개만 유지(localStorage 
     if (ks.length > 8) ks.map(k => { let ts = 0; try { ts = (JSON.parse(localStorage.getItem(k) || '{}').ts) || 0; } catch (e) {} return { k, ts }; }).sort((a, b) => a.ts - b.ts).slice(0, ks.length - 8).forEach(o => localStorage.removeItem(o.k)); } catch (e) {}
 }
 // ── 평의회R2 채택분 인프라 ──
-const LY_PEND_KEY = 'nm_editsub_pend';   // ly 탭과 키 격리(어댑터 — 원문 nm_ly_pend)   // 진행 중 생성 영속화(C1) — 리로드·탭전환 리로드·타임아웃 뒤에도 완성본 0 유실
-function lyPendSet(out, heavy, vid) { try { localStorage.setItem(LY_PEND_KEY, JSON.stringify({ out, b: !!heavy, v: !!vid, t0: Date.now() })); } catch (e) {} }
-function lyPendClear() { try { localStorage.removeItem(LY_PEND_KEY); } catch (e) {} }
 let LY_UNDO = null, LY_UNDO_T = null;   // 원스텝 undo(A2) — 파괴 액션(병합·모두바꾸기·단어지움·초기화·군더더기) 직전 스냅샷 1단계 · url-undo 10초 문법 · 병합 셀 롤백은 상주 분리 버튼(sg.mg — 동시 세션 구현 채택 260707)이 담당
 function lyUndoCap() { if (LY_SEGS) LY_UNDO = { j: JSON.stringify(LY_SEGS), lang: LY_LANG }; }
 function lyUndoNow() {   // 스냅샷 복원 — 상태줄 칩 진입점(공용화 리팩터 260707 · 동작 종전 동일)
@@ -1310,14 +1293,6 @@ async function lyResult(outPath, md, fresh, preSegs) {   // 완료(fresh 생략=
     if (wasEarly) { LY_EARLY = ''; if ($('#lyTabs').classList.contains('show')) lyTab(true); }   // renderResult의 기본 개요 전환을 상세로 되돌림(조기 흐름 유지) · 탭바 없으면(segs 로드 실패 엣지) 종전 개요 폴백 그대로
     else { const tgt = $('#lyTabs').classList.contains('show') ? $('#lyTabs') : $('#out'); try { tgt.scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {} }
   }
-}
-async function lyResultErr(outPath) {   // 의역 실패여도 STT 세그먼트가 커밋돼 있으면 복구 표시(받아쓴 자막 유실 방지)
-  const seq = ++LY_SEQ;
-  const raw = await lyFetchSegs(outPath); if (!raw || seq !== LY_SEQ) return;
-  LY_OUT = outPath; LY_ID = (outPath.match(/ly_out\/([^\/]+)\//) || [])[1] || ''; LY_ORIG = raw; LY_LANG = raw.lang || '';
-  renderResult('', lyModel(raw.segs));
-  $('#cstatus').innerHTML += ' — 받아쓴 자막은 살아있어(아래 상세)';
-  try { $('#lyTabs').scrollIntoView({ block: 'start', behavior: LY_RM.matches ? 'auto' : 'smooth' }); } catch (e) {}   // 복구도 랜딩(평의회R2 B2)
 }
 function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그먼트 없으면 종전(renderMd 단독) 경로 그대로
   LY_MD = md || '';
@@ -1623,7 +1598,6 @@ function lyPickSegs() { if (!LY_SEGS) return []; const alive = LY_SEGS.filter(sg
 function lyPvSet(f) {   // 미리보기 = 이 세션 첨부 파일 한정(objectURL·업로드/호스팅 0) — URL·복원 잡은 미리보기 없음(정직)
   const pv = $('#lyPv'), v = $('#lyVid'); if (!pv || !v) return;
   if (LY_MEDIA_URL) { try { URL.revokeObjectURL(LY_MEDIA_URL); } catch (e) {} LY_MEDIA_URL = ''; }
-  const opv = $('#lyOptPv'); if (opv) opv.style.removeProperty('--lypv-arn');   // 파일 교체/해제 = 예시 비율을 9:16 기본으로 리셋(새 영상은 아래 loadedmetadata가 실측 재설정 · 운영자 260710)
   if (!f) { try { v.pause(); } catch (e) {} v.removeAttribute('src'); try { v.load(); } catch (e) {} pv.hidden = true; $('#lyCap').hidden = true; $('#lyPvRow').hidden = true; return; }
   LY_MEDIA_URL = URL.createObjectURL(f); v.src = LY_MEDIA_URL; pv.hidden = false; lyPvSync();
 }
@@ -1632,10 +1606,6 @@ function lySeek(t) { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || !v.sr
 function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || $('#lyCap').hidden || !LY_SEGS) return; const t = v.currentTime; const sg = LY_SEGS.find(s => s.s != null && t >= s.s && t < s.e); $('#lyCap').textContent = (sg && !sg.del) ? lySegText(sg) : ''; }
 (function () {   // 미리보기 싱크 — 캡션·현재 조각 하이라이트·컷 스킵·속도·자막 크기
   const v = $('#lyVid'); if (!v) return; let last = -9;
-  v.addEventListener('loadedmetadata', () => {   // 첨부 영상 실비율 → 예시 미리보기 박스(운영자 260710 "항상 내가 선택한 비율만큼") · 음성(비디오 트랙 0) = 9:16 기본 유지
-    const opv = $('#lyOptPv'); if (!opv) return;
-    if (v.videoWidth > 0 && v.videoHeight > 0) opv.style.setProperty('--lypv-arn', (v.videoWidth / v.videoHeight).toFixed(4));
-  });
   v.addEventListener('timeupdate', () => {
     if (!LY_SEGS || $('#lyPv').hidden) return;
     const t = v.currentTime; let cur = -1, curDel = -1;

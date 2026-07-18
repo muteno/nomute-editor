@@ -3,6 +3,7 @@
 # 입력 = v2 원본(전구·120% 이전): _versions/260703_2119_배너_LOVE마퀴펫/love_marquee.webp
 # 출력 = viewer/love_marquee.webp. 전구 테두리+크림 패널+플레이트+펫 = 유지 · LOVE♥ = v2 원본 크롭(원본 크기)을 원위치 합성.
 # 펫 복원 = 정적 기준프레임(f70) 차분 + 공간 게이트(x≥188 ∨ 플레이트 위) — 옛 텍스트 고스트 차단.
+# ⚠ 수동 실행 전용(워크플로·훅 미배선 — 평의회 o9 260718) · 기본 산출 viewer/love_marquee.webp = Q169에서 레포 제거(소비 0·마퀴 폐지 260705) — 재생성 = 로컬 확인용, 커밋 재개는 운영자 지시로만.
 import math, sys
 import numpy as np
 from PIL import Image, ImageDraw
