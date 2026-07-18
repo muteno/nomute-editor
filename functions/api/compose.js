@@ -57,7 +57,7 @@ export async function onRequestPost({ request, env }) {
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/comp-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, image: imgPath, image_sha: imgSha, lines: JSON.stringify(lines), src_json: (body.src ? JSON.stringify(body.src) : '') },   // src_json = 제작 조건 스냅샷 → comp-make가 _src.json 커밋(기기 간 카드뉴스 '수정' 복원 · 260713)
+    ref: REF, inputs: { id, image: imgPath, image_sha: imgSha, lines: JSON.stringify(lines), size: (['720p', 'FHD', '2K', '4K'].includes(body.size) ? body.size : 'FHD'), src_json: (body.src ? JSON.stringify(body.src) : '') },   // size = 산출 짧은변 목표(운영자 260718 · 기본 FHD) · src_json = 제작 조건 스냅샷 → comp-make가 _src.json 커밋(기기 간 카드뉴스 '수정' 복원 · 260713)
   });
   if (r.status === 204) return json({ ok: true, id, out: `comp_out/${id}/card.jpg` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
