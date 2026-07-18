@@ -678,6 +678,9 @@
   .trend-cnt { display:none; color:var(--mut); font-weight:400; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
   .trend-sec:not([open]) .trend-cnt { display:inline; }   /* 접힘일 때만 개수 배지 노출(펼침 = 행이 곧 개수) */
   .trend-unit { color:var(--mut); font-weight:400; font-size:var(--fs-xs); }   /* 섹션 라벨 우측 단위 선언(열 헤더 원리 · 행 반복 0 · 평의회4 — "200+ 순위 오해" 지뢰 해소) */
+  .rt2col { display:grid; grid-template-columns:1fr 1fr; column-gap:22px; align-items:start; }   /* raw-ok: .trend-sec 형제 리듬 22(671) 동값 계승 */   /* 구글|시그널 실검 좌우 매칭(운영자 260718) */
+  .rt2col > .trend-sec + .trend-sec { margin-top:0; padding-top:0; border-top:0; }   /* 2열에선 옆자리라 형제 구분선(671) 해제 */
+  @media (max-width:640px) { .rt2col { grid-template-columns:1fr; } .rt2col > .trend-sec + .trend-sec { margin-top:22px; padding-top:20px; border-top:1px solid var(--line2); } }   /* raw-ok: 671 정본값(22/20) 그대로 원복 — 토큰 24/18로 갈면 형제와 어긋남 */   /* 모바일 = 1열 스택(640 = .tlr 관례) */
   .tdash-time { margin-left:12px; color:var(--mut); font-size:var(--fs-xs); font-weight:400; letter-spacing:0; line-height:1; font-variant-numeric:tabular-nums; }   /* 수집 시각 = TOP 10 타이틀 옆(운영자 260712 "간격 확보·높이 중앙정렬" — 부모 h3 flex align-center + 양쪽 line-height:1 = 픽셀 중앙) · "살아있냐" 신호(평의회10) */
   .tdash-time.stale { color:var(--warn); }   /* 수집 65분+ 밀림 = 정직 신호(크론 지연/사망 · 평의회6 · warn 의미색 계승) */
   .trend-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; text-decoration:none; color:var(--fg); font-size:var(--fs-sm); -webkit-tap-highlight-color:transparent; }
@@ -6913,7 +6916,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'ede0384 · 260718_1926';  /*BUILDSTAMP*/
+const BUILD_STAMP = '9640e48 · 260718_2315';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -9752,7 +9755,9 @@ function renderSnsTrends() {
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   const ggUrl = g => (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));   // 구글 클릭 = 대표 뉴스 ∥ 구글 검색 폴백(관용구)
   const gtR = freshFirst(gt).slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 텍스트 행) · freshFirst = 신선 먼저(운영자 260718 "다른 화면에도")
-  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 10), gtR.map(z => row(z[1], ggUrl(z[0]), tfmt(z[0].traffic), z[0], '')).join(''));   // 이미지 제거(운영자 260718 첨부4) = 실시간 검색어(시그널)·레딧과 동일 텍스트 행 계승(썸네일 '' = 무커버) — 좌: 순위·검색어 / 우: 변동배지·검색량 tfmt·시각 relT(started) · 신규 컴포넌트 0
+  const rtBase = tm ? `<span class="fin-base">· ${esc(tm)} 기준</span>` : '';   // 기준 시각 캡션(운영자 260718 "몇시 기준 — 위 시간 표시 기틀 따름") = 단위 헤더 공통 표기 fmtK12(d.updated) + .fin-base 기준점 문법 계승(금융 동축) · tm 결측 = 미표기 fail-soft
+  const brow = (i, url) => `<a class="trend-row" href="${escUrl(url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q"></span></a>`;   // 순위+검색어만(운영자 260718 "순위 빼고 다 없애자") — 변동배지·검색량·시각 열 제거 · .trend-row/-rank/-q 계승 = 임베드 시퀀스·fillT 무영향 · 신규 컴포넌트 0
+  const gtSec = gt.length ? sec('gt', '구글 실시간 검색어', rtBase, Math.min(gt.length, 10), gtR.map(z => brow(z[1], ggUrl(z[0]))).join('')) : '';   // 부제 개명(운영자 260718 "급상승 → 구글 실시간 검색어") · 검색량 tfmt = 미표기 전환(정의는 폴백 보존 = cma 관용구) · 좌열(2열 매칭은 sig 합류부)
   const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
   const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = freshFirst(ytn).slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = freshFirst(yt).slice(0, 10).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = freshFirst 신선 먼저(운영자 260718 "다른 화면에도")
@@ -9771,8 +9776,9 @@ function renderSnsTrends() {
   REGS.forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '구독', '· ' + REGN[r], L.length, sortbar('stk', V3, stkS) + '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일(운영자 260717 "틱톡 동일하게")
   REGS.forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '구독 릴스', '· ' + REGN[r], L.length, sortbar('sre', V3, sreS) + '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일(운영자 260717 트렌드 카드 전역 16:9)
   REGS.forEach(r => { const L = sxR[r]; if (L.length) gX += sec('sx-' + r, '구독 게시물', '· ' + REGN[r], L.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 한국/세계 2군
-  if (sig.length) gGG += sec('sig', '실시간 검색어', '· 시그널', Math.min(sig.length, 10), sig.slice(0, 10).map((g, i) =>
-    row(i, 'https://www.google.com/search?q=' + encodeURIComponent(g.query || ''), '', g, '')).join(''));   // ⑨ 시그널 실검(운영자 260712 · 기존 그룹 안 배치 승인) — 클릭 = 구글 검색(기존 검색어 폴백 관용구)
+  const sigSec = sig.length ? sec('sig', '시그널 실시간 검색어', rtBase, Math.min(sig.length, 10), sig.slice(0, 10).map((g, i) =>
+    brow(i, 'https://www.google.com/search?q=' + encodeURIComponent(g.query || ''))).join('')) : '';   // ⑨ 시그널 실검 부제 개명(운영자 260718) — 클릭 = 구글 검색(기존 검색어 폴백 관용구) · 순위+검색어만(brow)
+  gGG += (gtSec && sigSec) ? '<div class="rt2col">' + gtSec + sigSec + '</div>' : gtSec + sigSec;   // 구글|시그널 좌우 2열 매칭(운영자 260718 · 모바일 1열 스택 = .rt2col 미디어) — 한쪽 결측 = 그리드 없이 단독(조용한 공백 동축)
   if (xtr.length) gX += sec('xtr', '실시간 트렌드', '', Math.min(xtr.length, 15), xtr.slice(0, 15).map((g, i) =>
     row(i, 'https://x.com/search?q=' + encodeURIComponent(g.query || ''), '', g, '')).join(''));   // ⑩ X 실시간 트렌드 — 클릭 = X 검색(새 탭 · 임베드 비대상)
   let gCM = '';   // ⑪ 커뮤니티 그룹(신설 접이 · 운영자 260712 배치 승인 — 기존 접이·순번 문법 그대로 · 레일 아이콘 = 텍스트 폴백)
@@ -9804,7 +9810,7 @@ function renderSnsTrends() {
   let gMV = '';   // ⑮ 문화 그룹(박스오피스 = 카드뉴스·릴스 소재 · 키 게이트)
   if (kob.length) gMV += sec('kob', '박스오피스', '· 어제', Math.min(kob.length, 10), kob.slice(0, 10).map((p2, i) => row(i, p2.url || '#', p2.audi ? vfmt(p2.audi) + '명' : '', p2, '')).join(''));
   const gKC = (SOCIAL_LOADED && !(typeof SOCIAL !== 'undefined' && SOCIAL.length)) ? '' : sec('kcomm-l', '커뮤니티 공론', '', (typeof SOCIAL !== 'undefined' && SOCIAL ? SOCIAL.length : 0), '<div id="snsHost" class="kcomm-host"></div>');   // 국내 커뮤니티(운영자 260713 극좌 = ① 편성) — 소셜 전무 확정 시만 미등장(조용한 공백) · 단위 라벨 = 빈 값(운영자 260717 "버스트 삭제" — xtr 관용구)
-  const GRPS = [['kcomm', '국내 커뮤니티', gKC], ['gg', '구글 검색', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['bsk', '블루스카이', gBS], ['sth', '스레드', gTH], ['fin', '금융', gFI], ['hn', '해커뉴스', gHN], ['mv', '문화', gMV], ['sf', '안전', gSF], ['comm', '커뮤니티', gCM]].filter(g => g[2]);   // 신규 5종(운영자 260713 "ㄱ") = X·SNS 뒤 · 데이터 구동 = 빈 그룹 자동 제외 · 레일 = 첫 글자 폴백
+  const GRPS = [['kcomm', '국내 커뮤니티', gKC], ['gg', '실시간 검색어', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['bsk', '블루스카이', gBS], ['sth', '스레드', gTH], ['fin', '금융', gFI], ['hn', '해커뉴스', gHN], ['mv', '문화', gMV], ['sf', '안전', gSF], ['comm', '커뮤니티', gCM]].filter(g => g[2]);   // 신규 5종(운영자 260713 "ㄱ") = X·SNS 뒤 · 데이터 구동 = 빈 그룹 자동 제외 · 레일 = 첫 글자 폴백
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
   h += '<div class="trailwrap" id="trendRailWrap">' +
