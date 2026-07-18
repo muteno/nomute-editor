@@ -528,8 +528,20 @@ def main():
         last = daily[-1] if daily else {}
         posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'fp', 'exp', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
         med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
-        thumbs = [{'th': m.get('thumbnail_url') or m.get('media_url'), 'u': m.get('permalink'),
-                   't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
+        def _thumb_src(m):
+            """썸네일 이미지 URL — 커버(thumbnail_url) 우선. 영상(릴스) media_url은 mp4 스트림이라
+            <img>로 못 그림(깨진 타일=onerror 은닉) → 커버 없는 릴스는 '' 반환해 그리드서 제외(다음 게시물 백필).
+            이미지·캐러셀만 media_url 폴백(그건 실제 이미지). 근본 복구 = insta_fetch 커버 재조회(운영자 260718)."""
+            tu = m.get('thumbnail_url')
+            if tu:
+                return tu
+            mu = m.get('media_url') or ''
+            if m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS' or '/o1/v/' in mu or '/v/t2/' in mu:
+                return ''
+            return mu
+        # 커버 있는 게시물만 골라 최신 12개(구 [:12] 앞자름 = 그 안 커버없는 릴스면 12→11 결손 · 백필 없음 → 전수 스캔 후 유효분 12)
+        thumbs = [t for t in ({'th': _thumb_src(m), 'u': m.get('permalink'),
+                               't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])) if t['th']][:12]
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
                 **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용

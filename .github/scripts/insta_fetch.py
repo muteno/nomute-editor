@@ -127,6 +127,13 @@ def main():
         mm = dict(m)
         if isinstance(mm.get('caption'), str):
             mm['caption'] = mm['caption'][:120]
+        # 릴스 커버 회수(운영자 260718) — /media 목록 응답이 일부 릴스의 thumbnail_url을 무성 생략(실측 2/25).
+        # 누락 시 media_url은 mp4 스트림뿐이라 뷰어 <img>가 깨져 '최근 게시물' 타일이 조용히 사라짐 →
+        # 미디어 노드 직접 재조회로 커버 복구(빠진 것만 · 대개 0~2콜) · 그래도 없으면 무접촉(fail-soft).
+        if not mm.get('thumbnail_url') and (m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS'):
+            tj, _terr = api(m['id'], fields='thumbnail_url')
+            if tj and tj.get('thumbnail_url'):
+                mm['thumbnail_url'] = tj['thumbnail_url']
         base = ['views', 'reach', 'likes', 'comments', 'saved', 'shares', 'total_interactions']
         if m.get('media_product_type') == 'REELS':
             base += ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
