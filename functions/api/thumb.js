@@ -44,9 +44,9 @@ export async function onRequestPost({ request, env }) {
     if (app === '1') {
       for (const k of ['offset_x', 'offset_y']) if (Number.isFinite(+p[k]) && p[k] !== '') params[k] = Math.trunc(+p[k]);
       if (Number.isFinite(+p.scale) && p.scale !== '') params.scale = Math.max(0.1, Math.min(5, +p.scale));
-      // opas[] = 다중 선택(투명도 토글) · 하위호환 단일 opacity 도 통과. 1~100만(0 드롭 — /2와 통일).
+      // opas[] = 다중 선택(투명도 토글) · 하위호환 단일 opacity 도 통과. 0~100(0 허용 = 스크림 없음 · 운영자 260718 2차 "0까지 쭉 나열" — 렌더러 generate()는 원래 max(0,…) 0 안전 · /2와 통일).
       if (Array.isArray(p.opas) && p.opas.length) {
-        const opas = p.opas.map(o => Math.trunc(+o)).filter(o => Number.isFinite(o) && o >= 1 && o <= 100);
+        const opas = p.opas.map(o => Math.trunc(+o)).filter(o => Number.isFinite(o) && o >= 0 && o <= 100);
         if (opas.length) params.opas = [...new Set(opas)];
       }
       if (Number.isFinite(+p.opacity) && p.opacity !== '') params.opacity = Math.max(0, Math.min(100, Math.trunc(+p.opacity)));
@@ -61,9 +61,9 @@ export async function onRequestPost({ request, env }) {
     } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
       const lines = cleanLines(p.lines);
       if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
-      // 선택된 opa(60·30·직접입력 멀티·최소1) — 프론트가 점등분만 보냄. 정리(정수·1~100만·중복제거·0 드롭).
+      // 선택된 opa(칩 60~0 멀티·최소1) — 프론트가 점등분만 보냄. 정리(정수·0~100·중복제거 — 0 허용 = 스크림 없음 · 운영자 260718 2차 · 렌더러 max(0,…) 0 안전).
       let opas = [...new Set((Array.isArray(p.opas) ? p.opas : [])
-        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n) && n >= 1 && n <= 100))];
+        .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n) && n >= 0 && n <= 100))];
       if (!opas.length) opas = [60, 30];   // 폴백 — 빈 입력/구 클라(extraOpa) 안전망
       params = { mode, lines, opas };
     }

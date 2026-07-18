@@ -5,7 +5,9 @@
 import { rateGate } from './_rate.js';   // 발사 레이트리밋(파이프 공통 문법 · 평의회 260713 ⑦ 소급 — 연타 = 고아 업로드+런 낭비 차단)
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
-const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 21:9 = 비율 순환 신설(운영자 260713 · 러너 resize_image.py ASPECTS와 한 쌍)
+const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 프리셋(21:9 = 260713 신설 유지 — UI 칩에선 260718 '직접'이 겸함·구 이력 재발사 호환) · 러너 resize_image.py ASPECTS와 한 쌍
+// 직접 비율(운영자 260718 "AI 생성 비율 따라가기" — genidlg 직접 N:N 계약 미러): W:H 각 1~99 정수 + 비율 1:4~4:1(극단값 후처리 병리 차단 · genimg.js 동일 계약) — 러너 pad_canvas는 W:H 문자열 일반 파싱이라 값 전달만 완화
+function customAspectOk(a) { const m = /^([1-9][0-9]?):([1-9][0-9]?)$/.exec(String(a || '')); if (!m) return false; const r = (+m[1]) / (+m[2]); return r >= 0.25 && r <= 4; }
 const SIZES = ['1K', '2K'];
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
@@ -25,7 +27,7 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
-  const aspect = ASPECTS.includes(body.aspect) ? body.aspect : '16:9';
+  const aspect = ASPECTS.includes(body.aspect) ? body.aspect : (customAspectOk(body.aspect) ? body.aspect : '16:9');   // 프리셋 우선 · 직접 N:N(260718) 검증 통과분 허용 · 그 외 = 16:9 폴백(종전)
   const size = SIZES.includes(body.size) ? body.size : '1K';
   const lock = body.lock !== false;   // 기본 ON(원본 보존)
 
