@@ -252,7 +252,8 @@
   .optstrip { margin:0 0 var(--sp-2); padding:8px 13px /* raw-ok: 세로8·좌우13 = .scard>.csec 카드 정본(edit .scard .hd) 동일 계승 */; background:#000; border:1px solid var(--line); border-radius:var(--r-s); }
   .optstrip .gospec { margin:0; padding:0; font-size:11.25px /* raw-ok: 구 #goSpec 명세 활자값 이주(운영자 260624 90%+한 줄) */; line-height:1.9; }
   .optstrip .gs-sep { color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = .csec .ovsep 정본 동값 계승 */; }
-  .optstrip .gs-opav { padding:0 3px /* raw-ok: 탭영역 3 = .csec .onoff 세로패딩 정본 동값(도형 없는 텍스트 토글 관례) */; }
+  .optstrip .gs-opav { padding:0 3px /* raw-ok: 탭영역 3 = .csec .onoff 세로패딩 정본 동값(도형 없는 텍스트 토글 관례) */; cursor:ns-resize; font-variant-numeric:tabular-nums; touch-action:pan-y; transition:color .2s ease; }   /* OPA 값 = 그 자리 조절(마우스 휠·상하드래그·방향키 ±1 · 모바일 ±스테퍼) 계승 — 구 .gs-opa 문법(260718 칩 재편으로 유실 → 운영자 260718 복원) · 터치 = 세로 스크롤 양보(값조절은 ±스테퍼) */
+  .optstrip .gospec .gs-opav.opa-adjusting { color:var(--mut); }   /* 조절 중 mut → 멈추면 accent 복귀(구 .gs-opa.opa-adjusting 계승 · specificity 0,4,0으로 .gs-v.on 이김) */
   /* • 오버레이 포맷 토글 — 포스트=시안 / 릴스=레몬(운영자 260624) */
   .csec .ovsep { color:var(--mut); font-weight:400; margin:0 5px; }
   .csec .ovfmt { cursor:pointer; font-weight:800; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:3px 5px; transition:color .15s, transform .1s; }   /* 패딩 = 폰 탭 영역 확보(도형 없이 · 분신술8) */
@@ -1581,7 +1582,11 @@ function updateGoSpec() {
       syncOnOff('#gsBg', $('#cBg').checked);            // 배경(nobg 헤더) OFF/ON — 흰칸 고정, 배경 추가 여부
       const bgc = $('#cBgChip'); if (bgc) { bgc.classList.toggle('on', $('#cBg').checked); bgc.setAttribute('aria-pressed', $('#cBg').checked); }   // 오버레이 행 워드칩 동기(운영자 260718 "배경 합성 — ON=글자 점등")
       const ovo = $('#gsOvOnly'); if (ovo) { ovo.textContent = ovOnly ? 'ON' : 'OFF'; ovo.classList.toggle('on', ovOnly); }   // 오버레이만(운영자 260718) — ON=사진 합성 안 함
-      const ops = $('#gsOpas'); if (ops) ops.innerHTML = cOpaSel.map(v => '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-v="' + v + '" title="탭=이 OPA 끄기(최소 1개)">' + v + '</span>').join(' ');   // 선택한 만큼 나열(운영자 260718) · 탭=끄기
+      const ops = $('#gsOpas'); if (ops) ops.innerHTML = cOpaSel.map((v, i) =>   // 값마다 −/값/+ 그룹(운영자 260718 복원 — 구 gsOpa2 조절 문법) · data-i = 슬롯 · 값탭=끄기 / 휠·드래그·방향키·±스테퍼=조절
+        '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-i="' + i + '" data-d="-5" title="탭=−5">−</span>'
+        + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-i="' + i + '" data-v="' + v + '" title="휠·상하드래그·방향키=값 조절 · 탭=이 OPA 끄기(최소 1개)">' + v + '</span>'
+        + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-i="' + i + '" data-d="5" title="탭=+5">+</span>'
+      ).join(' <span class="gs-sep">|</span> ');
       syncAbbrSpec('#gsAbbr');
     }
   }
@@ -1618,10 +1623,40 @@ $('#abbr').addEventListener('change', updateGoSpec);
   bindAbbr('#psAbbr');   // 포스트 축약(짧게토글·길게등록)
   const ovo = $('#gsOvOnly');   // 오버레이만(운영자 260718 신설 · ⚠배치 = 스트립 3번째) — ON=사진과 합성 안 함(오버레이 단독) · OFF=사진 첨부 시 합성본
   if (ovo) { const f = () => { ovOnly = !ovOnly; updateGoSpec(); }; ovo.addEventListener('click', f); ovo.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); }
-  const ops = $('#gsOpas');   // OPA 나열값 탭=끄기(최소 1개 유지 · 켜기는 옵션 OPA 칩)
-  if (ops) { const off = t => { const v = parseInt(t.dataset.v, 10); if (cOpaSel.length > 1) { cOpaSel = cOpaSel.filter(x => x !== v); opaPaint(); updateGoSpec(); } };
-    ops.addEventListener('click', e => { const t = e.target.closest('.gs-opav'); if (t) off(t); });
-    ops.addEventListener('keydown', e => { const t = e.target.closest('.gs-opav'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); off(t); } }); }
+  // OPA 스트립 = 값 그 자리 조절(마우스 휠·상하드래그·방향키 ±1 · ±스테퍼 ±5) + 탭=끄기(최소 1개) — 구 gsOpa2 조절 문법 계승(260718 칩 재편으로 유실 → 운영자 260718 복원)
+  const ops = $('#gsOpas');
+  if (ops) {
+    const valSpan = i => ops.querySelector('.gs-opav[data-i="' + i + '"]');
+    const _adjT = {};
+    const flash = span => { if (!span) return; span.classList.add('opa-adjusting'); clearTimeout(_adjT[span.dataset.i]); _adjT[span.dataset.i] = setTimeout(() => span.classList.remove('opa-adjusting'), 420); };   // 조절 중 mut → 420ms 후 accent 복귀(구 setVal 계승)
+    const adj = (i, d) => {   // 슬롯 i 값 ±d(0~70 클램프 · 중복 금지=값마다 오버레이 1장) — 그 자리 갱신(updateGoSpec 재빌드 회피 = 드래그·휠 제스처 유지 · renderCpPrev만 = 미리보기 스크림 실시간)
+      if (i < 0 || i >= cOpaSel.length) return false;
+      const nv = Math.max(0, Math.min(70, cOpaSel[i] + d));
+      if (nv === cOpaSel[i]) return false;                                     // 경계
+      if (cOpaSel.some((x, j) => j !== i && x === nv)) return false;           // 다른 슬롯과 중복 불가
+      cOpaSel = cOpaSel.slice(); cOpaSel[i] = nv;
+      const span = valSpan(i); if (span) { span.textContent = nv; span.dataset.v = nv; flash(span); }
+      opaPaint(); renderCpPrev();                                             // 칩 점등 동기 + 미리보기(스트립 innerHTML 재빌드는 생략 = 제스처 유지)
+      return true;
+    };
+    const off = i => { if (cOpaSel.length > 1) { cOpaSel = cOpaSel.filter((_, j) => j !== i); opaPaint(); updateGoSpec(); } };   // 탭=끄기(최소 1개)
+    ops.addEventListener('click', e => {
+      const st = e.target.closest('.gsop-step'); if (st) { e.stopPropagation(); adj(+st.dataset.i, +st.dataset.d); return; }   // ±스테퍼(모바일 조절)
+      const v = e.target.closest('.gs-opav'); if (v) { if (v._moved) { v._moved = false; return; } off(+v.dataset.i); }        // 드래그로 움직였으면 끄기 억제
+    });
+    ops.addEventListener('keydown', e => {
+      const st = e.target.closest('.gsop-step'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); adj(+st.dataset.i, +st.dataset.d); return; }
+      const v = e.target.closest('.gs-opav'); if (!v) return; const i = +v.dataset.i;
+      if (e.key === 'ArrowUp') { e.preventDefault(); adj(i, 1); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); adj(i, -1); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(i); }
+    });
+    ops.addEventListener('wheel', e => { const v = e.target.closest('.gs-opav'); if (!v) return; e.preventDefault(); adj(+v.dataset.i, e.deltaY < 0 ? 1 : -1); }, { passive: false });   // 휠 ±1(마우스)
+    let py = null, acc = 0, di = -1;   // 마우스 상하 드래그(12px=1) — 터치는 세로 스크롤 양보(값은 ±스테퍼 · 운영자 260704 '스크롤 안먹음' 교정 계승)
+    ops.addEventListener('pointerdown', e => { const v = e.target.closest('.gs-opav'); if (!v || e.pointerType !== 'mouse') return; py = e.clientY; acc = 0; di = +v.dataset.i; v._moved = false; try { v.setPointerCapture(e.pointerId); } catch (_) {} });
+    ops.addEventListener('pointermove', e => { if (py === null) return; acc += (py - e.clientY); py = e.clientY; const v = valSpan(di); while (acc >= 12) { if (adj(di, 1) && v) v._moved = true; acc -= 12; } while (acc <= -12) { if (adj(di, -1) && v) v._moved = true; acc += 12; } });
+    const end = () => { py = null; di = -1; }; ops.addEventListener('pointerup', end); ops.addEventListener('pointercancel', end);
+  }
 })();
 
 // ── 축약어 등록 다이얼로그 — 사용자 커스텀 치환쌍(축약 전→후) CRUD. 기본 4종은 불변(항상 적용). ──
@@ -1679,7 +1714,7 @@ $('#cBg').addEventListener('change', updateGoSpec);     // 배경 → 헤더 nob
 // ── 카드 생성 OPA = 60·50·40·30 칩 다중선택(운영자 260718 "기본으로 아예 깔아줘 · AI 생성 화풍 표기방법 · 2개까지") · 최소 1·최대 2(3번째 = 먼저 켠 것 교체) — 구 60고정+보조 스크롤 조절 폐지 ──
 const OPA_CHIPS = [70, 60, 50, 40, 30, 20, 10, 0];   // 70부터 0까지 십단위 전열(운영자 260718 3차 "70부터 시작 · 60 기본값 그대로") · 기본 선택 = 60(cOpaSel 초기값) · 0 = 스크림 없음
 function opaPaint() { document.querySelectorAll('#opaChips .ropt').forEach(b => b.classList.toggle('on', cOpaSel.includes(parseInt(b.dataset.v, 10)))); }
-function opaSet(vals) { cOpaSel = (vals || []).map(v => parseInt(v, 10)).filter(v => OPA_CHIPS.includes(v)).slice(0, 2); if (!cOpaSel.length) cOpaSel = [60]; opaPaint(); updateGoSpec(); }
+function opaSet(vals) { cOpaSel = [...new Set((vals || []).map(v => parseInt(v, 10)).filter(v => Number.isFinite(v) && v >= 0 && v <= 70))].slice(0, 2); if (!cOpaSel.length) cOpaSel = [60]; opaPaint(); updateGoSpec(); }   // 0~70 범위(구 OPA_CHIPS.includes 전용 → 스트립 조절값[예 55]도 이력 복원 보존 · 운영자 260718) · 중복 제거
 (function () {
   const wrap = $('#opaChips'); if (!wrap) return;
   const pick = v => {
