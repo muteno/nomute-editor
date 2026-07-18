@@ -85,7 +85,7 @@
   /* 카드 안 파라미터 — 칩·세그 = 라운드 --r-s(9 · 운영자 선택값) · 종속 dim .47 */
   .prow { display:flex; gap:5px; flex-wrap:wrap; margin-top:9px; }
   .plbl { flex-basis:100%; color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-x); margin-top:9px; }
-  .plbl.plbl-nm { color:var(--fg); font-size:var(--fs-label); }   /* 동급 라벨 = 카드 제목(.scard .nm fg·fs-label·fw-x) 미러 — 방식 = 비율과 동급 상향(운영자 260712 3차) */
+  .plbl.plbl-nm { color:var(--fg); font-size:var(--fs-label); font-weight:var(--fw-b); }   /* 동급 라벨 = 카드 제목(.scard .nm fg·fs-label·fw-b) 미러 — 방식 = 비율과 동급 상향(운영자 260712 3차) · fw-b 동행 = .nm 800→700 전향(260718 스튜디오 정합)에 선언 미러 짝 맞춤(평의회5 — 방치 시 같은 카드 안 700/800 위계 어긋남) */
   .pc { height:var(--btn); padding:0 11px; display:inline-flex; align-items:center; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); font-family:inherit; cursor:pointer; user-select:none; transition:transform .12s, color .15s, border-color .15s, background .15s; }
   .pc:active { transform:scale(var(--press-m)); }
   .pc.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.04); }   /* 켜짐 틴트 .04(운영자 260711 onA — 같은 토큰 알파 변주) */
@@ -156,7 +156,7 @@
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
   .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .go.checking { display:grid; place-items:center; }
-  .go .gck { width:26px; height:26px; }   /* = thumb 정본 26px 복원(260712 6차 pill·padding 14로 바 높이가 thumb과 동일 — 구 40px 바 비율 축소 20px 폐지) */
+  .go .gck { width:26px; height:26px; }   /* = thumb #go 정본 26px 동값 — 260718 #editGo r-m·sp-1·fs-label 전향 후에도 thumb과 동일 지오메트리(구 근거 'pill·padding 14' = 260712 시절 이력 · 평의회1 주석 부패 정정) */
   .go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
   @keyframes goTick { to { stroke-dashoffset:0; } }
   @media (prefers-reduced-motion:reduce) { .go .gck path { animation:none; stroke-dashoffset:0; } }
@@ -681,13 +681,15 @@ const IA=[['리사이징',['screen','res','fps']],['영상 편집',['cut','clip'
 const CYC={ ar:['off','9:16','1:1','4:5','16:9'], fit:['crop','pad','blur'], res:['off','src','1080','720'], fps:['off','60i','30'], cutlv:['off','soft','std','hard'], clip:['off','on'], bgm:['off','on'], anorm:['off','on'], trim:['off','on'] };   // 24fps 삭제(운영자 260712) · trim = OFF/ON 토글(운영자 260713 — 상시노출→토글)
 const CYL={ ar:{off:'원본','9:16':'9:16','1:1':'1:1','4:5':'4:5','16:9':'16:9'}, fit:{crop:'자르기',pad:'검정 여백',blur:'블러 여백'}, res:{off:'원본',src:'4K','1080':'1080p','720':'720p'}, fps:{off:'원본','60i':'60fps 보간','30':'30fps'}, cutlv:{off:'OFF',soft:'살짝',std:'기본',hard:'많이'}, clip:{off:'OFF',on:'후보 스캔'}, bgm:{off:'OFF',on:'목소리만'}, anorm:{off:'OFF',on:'ON'}, trim:{off:'OFF',on:'ON'} };   // 말 통일(운영자 260712 5차): 미적용 = 비율과 동일 '원본'(res·fps — 구 '그대로' 폐지 · src는 '4K'로 개명 = '원본' 중복 회피·의미 동일 3840캡) · 이진/세기 축 미적용 = 'OFF'(구 '끔' — 이미지 모달 OFF/ON 문법 계승) · 적용 = 실값 or 'ON'
 const HALF=new Set(['res','fps','cut','clip','bgm','anorm']);   // 반폭 페어 대상(단일 순환축 = 해상도|프레임 / 컷 편집|클리퍼(260712 5차) / 배경음|음량)
-const AXNM={ ar:'비율', fit:'방식', res:'해상도', fps:'프레임', cutlv:'컷 세기', clip:'클리퍼', bgm:'배경음', anorm:'음량' };   // 축 이름(a11y — CARD 키와 별개: ar/fit/cutlv는 CARD에 없음)
+const AXNM={ ar:'비율', fit:'방식', res:'해상도', fps:'프레임', cutlv:'컷 세기', trim:'구간', clip:'클리퍼', bgm:'배경음', anorm:'음량' };   // 축 이름(a11y+스트립 어휘 — CARD 키와 별개: ar/fit/cutlv는 CARD에 없음 · trim = 스트립 라벨 정식 등재 = 무언 폴백 제거 · 평의회2 260718)
 function curCyc(k){ if(k==='ar')return ON.screen?P.ar:'off'; if(k==='res')return ON.res?P.res:'off'; if(k==='fps')return ON.fps?P.fps:'off'; if(k==='cutlv')return ON.cut?P.cutlv:'off'; if(k==='clip')return ON.clip?'on':'off'; if(k==='bgm')return ON.bgm?'on':'off'; if(k==='anorm')return ON.anorm?'on':'off'; if(k==='trim')return ON.trim?'on':'off'; if(k==='fit')return P.fit; return P[k]; }
 function cyv(k){ const v=curCyc(k); return '<span class="cyv'+(v==='off'?' off':'')+'" data-cyc="'+k+'" role="button" tabindex="0" aria-label="'+(AXNM[k]||k)+'">'+esc(CYL[k][v]||v)+'</span>'; }
 // ── 선택 요약 스트립 리드백(운영자 260718 "이미지 스튜디오 통일 규격 → 비디오 정합") — thumb #editSpec 문법 계승: Q128 모든 옵션 나열·OFF도 표기 + Q144 슬래시 구분자·활성값(적용 중) .on accent · 값 어휘 = CYL·curCyc(카드와 동일 SSOT = 이중정의 0) · 방식 = 비율 ON일 때만(카드 조건부 등장 문법 동조) · 구 #pvAttr 명세줄 대체(도먼트) ──
 function updateOptStrip(){
   const el=document.getElementById('editSpec'); if(!el) return;
   const axes=['ar','fit','res','fps','cutlv','trim','clip','bgm','anorm'];   // 순서 = ORDER 캐노니컬(screen→res→fps→cut→trim→clip→bgm→anorm) 동조 · fit = 비율 종속
+  const sig=axes.map(k=>k+':'+curCyc(k)).join('|')+(ON.screen?'|s':'');   // 서명 캐시 = 게이지 드래그(pvSync 연타 ~60/s) 중 동일 내용 innerHTML 재생성 낭비 제거(평의회7 260718 · 값 불변 = 조기 return)
+  if(el._sig===sig) return; el._sig=sig;
   el.innerHTML=axes.filter(k=>k!=='fit'||ON.screen).map(k=>{
     const v=curCyc(k);
     return '<span class="gs-lbl">'+(AXNM[k]||'구간')+'</span> <span class="gs-v'+((k==='fit'||v!=='off')?' on':'')+'">'+esc(CYL[k][v]||String(v))+'</span>';
@@ -745,7 +747,7 @@ function pvSync(){
   if(pv.parentElement!==slot) slot.appendChild(pv);   // 영속 노드 이주(재렌더에도 video 리로드 0)
   pv.hidden=false; if(sec) sec.hidden=false;
   const _sr=document.querySelector('.srcrow'); if(_sr) _sr.style.display='none';   // 소스 행 → PREVIEW가 대체(운영자 260712 4차 "영상 입력하면 PREVIEW로 바뀜·항상 상단 고정" — 소스 전제라 빈 편집 없음)
-  const _pa=document.getElementById('pvAttr');   // 속성 명세줄 = 설정마다 갱신(선택한 속성이 프리뷰에 붙음)
+  const _pa=document.getElementById('pvAttr');   // (도먼트) 구 속성 명세줄 — 기록 로직만 유지·표시는 도크 스트립(#optStrip)이 전담(260718 이주 · 복원 = .pvattr display:none 제거 · 평의회8 주석 정합)
   if(_pa){ const _t=ORDER.filter(x=>ON[x]).map(x=>x==='anorm'?'음량':x==='bgm'?'배경음 제거':sum(x)); _pa.innerHTML=_t.length?('<b>'+_t.map(esc).join('</b> · <b>')+'</b>'):''; }
   if(vv.getAttribute('src')!==FILE_URL){ vv.src=FILE_URL; if(vv.play) vv.play().catch(()=>{}); }
   else if(vv.paused&&vv.getAttribute('src')){ vv.play().catch(()=>{}); }   // DOM 이주는 재생을 멈춤(스펙) → 재개(muted 루프)
