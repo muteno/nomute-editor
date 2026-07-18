@@ -87,6 +87,10 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
+  // 해상도(운영자 260718 "카드 생성 해상도 = AI 생성부 따라가") — 산출물 출력 짧은변 목표(720p·FHD·2K·4K · AI 생성 GENI_DICT.size 동일) · 러너(thumb-make) SIZE_SHORT 스냅 · 기본 FHD=1080=현행 무변화 · 전 앱 공통 통과
+  const SIZES = ['720p', 'FHD', '2K', '4K'];
+  if (SIZES.includes(p.size)) params.size = p.size;
+
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙 · build-viewer thIdTs가 +09:00로 파싱 = 제작시각 정확) · -rand=동초 충돌 방지
 
   // 배경 이미지 업로드(uploads/<id>/src.*) — /1·/2 오버레이 모두 옵션(이미지 있을 때만 업로드)

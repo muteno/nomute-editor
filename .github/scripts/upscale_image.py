@@ -4,7 +4,9 @@
 
 엔진 = apps/fx/fx_upscale FX10 사다리(Real-ESRGAN > FSRCNN > Lanczos · auto 자동 폴백).
        모델 = 워크플로 FX_ESRGAN=1 이 sha256 핀 드롭(setup.sh) · 없으면 Lanczos로도 항상 성공.
-입력(env): UPSCALE_ID · UPSCALE_SRC(uploads/<id>/src.ext) · UPSCALE_OPTS(JSON {scale})
+입력(env): UPSCALE_ID · UPSCALE_SRC(uploads/<id>/src.ext) · UPSCALE_OPTS(JSON {size})
+   size = 목표 해상도 라벨(720p·FHD·2K·4K = 짧은변 720/1080/1440/2160 · AI 생성 GENI_DICT.size 동일 · 운영자 260718).
+   목표 > 현재 짧은변 = FX10 업스케일(정수배율 ceil 후 목표로 Lanczos 스냅) · 목표 ≤ 현재 = Lanczos 다운스케일.
 산출: R2 upscale/<id>/… (미설정 시 git viewer/gen_out/) → viewer/gen_out/upscale.json prepend(캡 24)
       + /tmp/upscale_new.json(race-heal · resize_image 계승).
 불변: workflow_dispatch 전용 · KST(§📐).
@@ -13,6 +15,7 @@ import datetime
 import hashlib
 import io
 import json
+import math
 import os
 import sys
 import tempfile
@@ -26,7 +29,17 @@ from fx_upscale import upscale as fx_upscale
 from PIL import Image, ImageOps
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
-SCALES = (2, 3, 4)
+SIZE_SHORT = {"720p": 720, "FHD": 1080, "2K": 1440, "4K": 2160}   # 목표 짧은변 px = AI 생성 gen_image SIZE_SHORT 동일(운영자 260718)
+FX_SCALES = (2, 3, 4)   # fx_upscale 정수 배율 사다리(목표까지 최소 배율 선택 후 Lanczos 스냅)
+
+
+def snap_short(img, target):   # 짧은변 = target으로 등비 스냅(비율 보존 · Lanczos)
+    w, h = img.size
+    cur = min(w, h)
+    if cur == target:
+        return img
+    r = target / float(cur)
+    return img.resize((max(1, round(w * r)), max(1, round(h * r))), Image.LANCZOS)
 
 
 def jpg_bytes(img, q=94):
@@ -43,12 +56,8 @@ def main():
         opts = json.loads(os.environ.get("UPSCALE_OPTS") or "{}")
     except Exception:
         opts = {}
-    try:
-        scale = int(opts.get("scale", 2))
-    except Exception:
-        scale = 2
-    if scale not in SCALES:
-        scale = 2
+    size = opts.get("size") if opts.get("size") in SIZE_SHORT else "FHD"   # 목표 해상도(운영자 260718 · 기본 FHD)
+    target = SIZE_SHORT[size]
 
     src_path = os.path.join(ROOT, src)
     if not uid or not os.path.isfile(src_path):
@@ -57,22 +66,32 @@ def main():
 
     # EXIF 회전 정규화(폰 세로사진 눕음 방지) — cv2 전에 PIL로 바로세워 임시 저장
     img0 = ImageOps.exif_transpose(Image.open(src_path)).convert("RGB")
-    with tempfile.TemporaryDirectory() as td:
-        norm = os.path.join(td, "src.png")
-        img0.save(norm)
-        out_png = os.path.join(td, "up.png")
-        try:
-            r = fx_upscale(norm, out_png, scale=scale, engine="auto")   # Real-ESRGAN>FSRCNN>Lanczos
-        except Exception as e:  # noqa: BLE001 — FX 캡 초과 등 정직 거절(§FX 기틀 3)
-            print("::error::업스케일 실패: {}".format(e))
-            sys.exit(1)
-        engine, dim = r.get("engine"), r.get("size")
-        out_img = Image.open(out_png).convert("RGB")
+    cur_short = min(img0.size)
+    if target <= cur_short:   # 목표 ≤ 현재 = 순수 축소(FX 불필요 · Lanczos 등비)
+        out_img = snap_short(img0, target)
+        engine, dim = "lanczos-down", "{}x{}".format(*out_img.size)
+        print("축소: 짧은변 {} → {} (Lanczos)".format(cur_short, target), flush=True)
+    else:   # 목표 > 현재 = FX10 업스케일(목표 충족 최소 정수배율) 후 목표로 스냅
+        need = target / float(cur_short)
+        scale = next((s for s in FX_SCALES if s >= need), FX_SCALES[-1])   # 2·3·4 중 목표 충족 최소(4배 상한)
+        with tempfile.TemporaryDirectory() as td:
+            norm = os.path.join(td, "src.png")
+            img0.save(norm)
+            out_png = os.path.join(td, "up.png")
+            try:
+                r = fx_upscale(norm, out_png, scale=scale, engine="auto")   # Real-ESRGAN>FSRCNN>Lanczos
+            except Exception as e:  # noqa: BLE001 — FX 캡 초과 등 정직 거절(§FX 기틀 3)
+                print("::error::업스케일 실패: {}".format(e))
+                sys.exit(1)
+            up = Image.open(out_png).convert("RGB")
+        out_img = snap_short(up, target)   # 정수배율 초과분 = 목표 짧은변으로 정확 스냅(4배 상한 미달 시 근접 확대)
+        engine, dim = r.get("engine"), "{}x{}".format(*out_img.size)
+        print("업스케일: 짧은변 {} → {} (x{} {} → snap)".format(cur_short, target, scale, r.get("engine")), flush=True)
 
     # ── 저장(R2 → git 폴백 · resize 패턴) + upscale.json prepend ──
     out_bytes = jpg_bytes(out_img)
     h8 = hashlib.sha1(out_bytes).hexdigest()[:8]
-    key = "x{}".format(scale)
+    key = size   # 파일 키 = 해상도 라벨(운영자 260718 · 구 x{배율})
     url = tg.r2_upload(out_bytes, "upscale/{}/{}-{}.jpg".format(uid, key, h8), "image/jpeg") if tg.R2_ON else None
     tdir = os.path.join(ROOT, "viewer", "gen_out")
     os.makedirs(tdir, exist_ok=True)
@@ -83,8 +102,8 @@ def main():
         url = "gen_out/" + fname
         print("  ⚠️ R2 불가 — git 폴백 저장: " + url, flush=True)
 
-    item = {"url": url, "srcUrl": src, "scale": scale, "engine": engine, "size": dim,
-            "id": uid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
+    item = {"url": url, "srcUrl": src, "res": size, "engine": engine, "size": dim,
+            "id": uid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}   # res = 해상도 라벨(운영자 260718 · 구 scale)
     sjson = os.path.join(tdir, "upscale.json")
     cur = []
     if os.path.exists(sjson):

@@ -150,7 +150,7 @@ const STUB_FN = `(on) => {
     if (!tf) throw new Error('thumb iframe 미발견 — 잡 카드 검증 불가(셸 로드 순서 확인)');
     await pg.evaluate('(' + STUB_FN + ')(true)');   // 부모 발사 성공 흉내(genfree-fired 실경로 격발)
     await pg.evaluate(S => document.querySelector(S.host + ' ' + S.go).click(), SEL);
-    await pg.waitForTimeout(700);
+    await pg.waitForTimeout(1600);   // 발사 피드백 시퀀스 대기(운영자 260718 Q137 ③ — free 모드 #geniGo도 게이지→✓ 노출 후 geniLeave = 폼 원복 지연[구 즉시 700ms → 게이지·✓ 후 recede] · 계약[폼 원복+잡카드]은 유지·시점만 후행 · thumb #go goFire 리듬 계승)
     await pg.evaluate('(' + STUB_FN + ')(false)');
     const s10p = await pg.evaluate(S => ({ hostHidden: document.querySelector(S.host).hidden, frameActive: !!document.querySelector(S.frActive) }), SEL);
     const s10f = await tf.evaluate(S => {

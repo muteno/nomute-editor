@@ -2,11 +2,11 @@
 // 흐름: 브라우저 base64 이미지+배율 POST → ① uploads/<id>/src.ext 레포 커밋(contents API·SHA 회수)
 //        → ② img-upscale.yml dispatch(src_sha 레이스 가드) → 러너 FX10(Real-ESRGAN>FSRCNN>Lanczos)
 //        → viewer/gen_out/upscale.json → 뷰어 폴링.
-// env: GH_TOKEN(기존 PAT 재사용). 배율 화이트리스트 = 러너(upscale_image.py)와 이중 검증(resize 계승).
+// env: GH_TOKEN(기존 PAT 재사용). 해상도 화이트리스트 = 러너(upscale_image.py)와 이중 검증(resize 계승).
 import { rateGate } from './_rate.js';   // 발사 레이트리밋(파이프 공통 · 연타 = 고아 업로드+런 낭비 차단)
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';
-const SCALES = [2, 3, 4];   // 러너 upscale_image.py SCALES와 한 쌍
+const SIZES = ['720p', 'FHD', '2K', '4K'];   // 목표 해상도 = AI 생성 GENI_DICT.size 동일(운영자 260718 · 러너 upscale_image.py SIZE_SHORT와 한 쌍) · 작으면 축소·크면 FX10 업스케일
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
   headers: {
@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
 
-  const scale = SCALES.includes(Number(body.scale)) ? Number(body.scale) : 2;
+  const size = SIZES.includes(body.size) ? body.size : 'FHD';   // 목표 해상도(720p·FHD·2K·4K · 운영자 260718) · 기본 FHD
 
   // 이미지 base64(dataURL 허용) — ≤9MB + 매직바이트(JPG/PNG/WEBP · resize.js 계승 = 저장형 비이미지 차단)
   let b64 = String(body.imageB64 || '');
@@ -58,7 +58,7 @@ export async function onRequestPost({ request, env }) {
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/img-upscale.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify({ scale }) },
+    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify({ size }) },
   });
   if (r.status === 204) return json({ ok: true, id });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
