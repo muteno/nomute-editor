@@ -49,7 +49,7 @@ on:
         default: '0'
         required: false
       gt_img:
-        description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 1=ON (카나리아 · 실측 승격 전 cron은 OFF)'
+        description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 기본 ON 승격(카나리아 run 29634967139 실측: 폴오버로 백업계정 전환·R2 10개 채움 · 운영자 "30분마다 실검 반영·소넷으로") · schedule=inputs 없음→ON · dispatch gt_img=0=일시 OFF · 롤백=step || 1 제거'
         default: '0'
         required: false
 
@@ -63,7 +63,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 33   # 20→33(260717 · chan_brief 이틀 정지 사고 미러): 스텝 상한 합 실산 = 수집 840s + 브리프 자기제한 ~10.5분(600s 타임아웃 1회 = fail-soft) + 번역 300s + 커밋·설치 ≈ 31.7분 > 종전 20분 = 최악 경로에서 LLM 스텝·2차 커밋 하드킬 사각(12:38 3연쇄 cancelled 실증 · 01:47 런 브리프 완료 +14분 실측 = 턱밑). 33 = 합+여유 · 30분 주기 초과분 ≤3분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한(600/300s)·품질 노브 전부 무접촉. 구독 2군 확장분(예산 480s) 수용(260712)
+    timeout-minutes: 36   # 33→36(260718 · 트렌드 이미지 상시 스텝 추가 수용): 종전 실산 ≈ 31.7분(수집 840s + 브리프 600s + 번역 300s + 커밋·설치) + 트렌드 이미지(Sonnet WebSearch timeout 240s) ≈ 35.7분 → 36 = 합+여유. 20→33(260717 chan_brief 이틀 정지 사고 미러). 30분 주기 초과분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한 무접촉
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,7 +104,7 @@ jobs:
           done
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
-        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)도 CLI 필요(운영자 260713·260718 · 미포함 시 카나리아 rc=127)
+        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)도 CLI 필요(운영자 260713·260718 · gt_img 상시 ON 승격 = || '1')
         run: npm install -g @anthropic-ai/claude-code
 
       - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
@@ -127,7 +127,7 @@ jobs:
 
       - name: 트렌드 이미지 백필(Q126 · 구글 급상승 꼬리 카드 커버 · 운영자 260718)
         env:
-          TREND_IMG: ${{ inputs.gt_img || '0' }}   # cron 기본 OFF(inputs 없음→'0') · dispatch gt_img='1'=카나리아 ON · 실측 승격 시 || '1'
+          TREND_IMG: ${{ inputs.gt_img || '1' }}   # 기본 ON 승격(운영자 260718 "30분마다 실검 반영·소넷으로" · schedule=inputs 없음→'1' · dispatch gt_img='0'=일시 OFF) · 롤백 = || '0'
           TREND_IMG_MODEL: claude-sonnet-5   # 운영자 260718 "사진 안 중요하니 소넷으로"
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
