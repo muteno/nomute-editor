@@ -35,6 +35,20 @@ analyzer = sub(analyzer,
     '<script src="enneagram_transcripts.js"></script>',
     '<script>\n' + tx + '\n</script>', 'transcripts <script src>')
 
+# 2.5) inline the saju day-pillar map (saju_map.js) the same way. Its <script src>
+#      tag lands in analyzer via a parallel edit — missing source/tag = warn + flag
+#      (saju_inlined:False below), never a hard crash of the whole merge.
+SAJU_TAG = '<script src="saju_map.js"></script>'
+saju_path = os.path.join(DESK, 'saju_map.js')
+saju_inlined = False
+if os.path.exists(saju_path) and SAJU_TAG in analyzer:
+    sj = io.open(saju_path, encoding='utf-8').read().replace('</', '<\\/')
+    analyzer = analyzer.replace(SAJU_TAG, '<script>\n' + sj + '\n</script>', 1)
+    saju_inlined = True
+else:
+    print('WARN: saju_map.js not inlined (source exists: %s / tag in analyzer: %s)'
+          % (os.path.exists(saju_path), SAJU_TAG in analyzer))
+
 # analyzer: swap Pretendard CDN links for the embedded @font-face
 analyzer = sub(analyzer, FONT_LINKS, FONT_HEAD, 'analyzer CDN->embedded font')
 
@@ -86,3 +100,4 @@ print('size_kb=%d  (analyzer+transcripts+book)' % (len(analyzer.encode('utf-8'))
 print('has_book_tab:', "label:'이론'" in analyzer)
 print('has_renderBook:', 'function renderBook' in analyzer)
 print('transcripts_inlined:', 'window.LECTURES=' in analyzer and 'src="enneagram_transcripts.js"' not in analyzer)
+print('saju_inlined:', saju_inlined and 'root.NMSaju' in analyzer and 'src="saju_map.js"' not in analyzer)

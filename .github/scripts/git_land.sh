@@ -17,6 +17,14 @@ set -u
 MSG="${1:-chore: bot commit}"; shift || true
 PATHS=("$@")
 [ "${#PATHS[@]}" -gt 0 ] || { echo "git_land: 대상 경로 없음 — no-op"; exit 0; }
+# 실존 경로만 남김(페이블 검증단 260718 격리 실증) — git add는 결측 pathspec이 1개라도 있으면 전체를
+# 원자 abort(exit 128 · 스테이징 0)해서 유효 경로 산출물까지 통째 무음 드롭된다(`2>/dev/null || true`는
+# 에러 은닉만 = 복구 아님 · fb_data.json 스캐폴드[시크릿 미등록 = 파일 미생성]가 트리거였음).
+# 아직 안 태어난 스캐폴드 산출물은 여기서 자연 탈락 → 전 경로 실존 케이스 = 종전 동작 바이트 동일.
+LIVE=()
+for p in "${PATHS[@]}"; do [ -e "$p" ] && LIVE+=("$p") || echo "git_land: 경로 결측 스킵 — $p"; done
+[ "${#LIVE[@]}" -gt 0 ] || { echo "git_land: 실존 대상 0 — no-op"; exit 0; }
+PATHS=("${LIVE[@]}")
 git config user.name "nomute-bot"
 git config user.email "bot@users.noreply.github.com"
 

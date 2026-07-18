@@ -1,0 +1,220 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>일일 추이 차트 개선 — 정본준수 플레이그라운드</title>
+<style>
+/* ⚠️ :root = viewer/index.html 실측 사본(형식 재현 전용 · 값 정본은 viewer :root · 이 보고서는 check_refs 비대상) */
+:root{
+ --bg:#121212;--fg:#eef7f0;--accent:#00EED2;--accent-rgb:0,238,210;--accent-bright:#5AFFE6;--accent-2:#d8ff3d;--mut:#8fa697;--on-accent:#032322;
+ --line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.06);
+ --r-s:9px;--r-m:11px;--r-l:16px;--r-pill:999px;--sp-1:6px;--sp-2:12px;--sp-3:18px;--sp-4:24px;
+ --glass2:rgba(18,19,22,.55);--blur-s:8px;--modal-glass:rgba(17,18,20,.64);
+ --fs-display:22px;--fs-h1:19px;--fs-h2:15px;--fs-h3:14px;--fs-label:13px;--fs-body:15px;--fs-sm:12px;--fs-xs:11px;--fw-b:700;--fw-x:800;--lh-base:1.5;
+ --ease:cubic-bezier(.2,.7,.3,1);--dur:.18s;--dur-fast:.12s;--dur-acc:.26s;--gauge-ease:cubic-bezier(.22,.61,.36,1);
+ --z-float:60;--z-toast:90;
+}
+*{margin:0;box-sizing:border-box;-webkit-font-smoothing:antialiased}
+body{background:#0d0d0d;color:var(--fg);font-family:'Pretendard',system-ui,sans-serif;line-height:var(--lh-base);padding:20px 18px 40px;max-width:1180px;margin:0 auto}
+h1{font-size:var(--fs-display);font-weight:var(--fw-x);letter-spacing:-.02em;text-wrap:balance}
+.lead{color:var(--mut);font-size:var(--fs-sm);margin:6px 0 16px;line-height:1.55}
+.lead b{color:var(--accent-2)}
+.wrap{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+/* ── 미리보기(PC 좌·모바일 상단 고정) ── */
+.preview{position:sticky;top:12px}
+@media(max-width:820px){.preview{position:sticky;top:0;z-index:5;background:#0d0d0d;padding-bottom:8px}}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-l);padding:16px 16px 12px;position:relative;overflow:hidden}
+.hd{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.hd .lab{color:var(--accent);font-weight:var(--fw-x);font-size:var(--fs-h2)}
+.hd .sep{color:var(--mut);opacity:.4}.hd .m{color:var(--mut);font-weight:var(--fw-b);font-size:var(--fs-h3)}
+.big{font-size:var(--fs-h1);font-weight:var(--fw-x);font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:9px 0 2px}
+.big .u{font-size:var(--fs-xs);color:var(--mut);font-weight:var(--fw-b);margin-left:5px}
+.big .avg{font-size:var(--fs-xs);color:var(--mut);font-weight:var(--fw-b);margin-left:4px}
+.chartwrap{position:relative;margin-top:8px}
+.chartwrap svg{display:block;width:100%;height:auto}
+/* 게시물 링킹 팝오버 = 글래스·z-float(모달 top-layer 대체 데모) */
+.pop{position:absolute;pointer-events:auto;background:var(--modal-glass);backdrop-filter:blur(var(--blur-s));-webkit-backdrop-filter:blur(var(--blur-s));border:1px solid var(--line);border-radius:var(--r-m);padding:9px 10px;z-index:var(--z-float);opacity:0;transform:translateY(6px) scale(.985);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);min-width:184px;max-width:230px;box-shadow:0 12px 34px rgba(0,0,0,.5)}
+.pop.on{opacity:1;transform:none}
+.pop .ph{font-size:var(--fs-xs);color:var(--mut);font-weight:var(--fw-b);margin-bottom:6px;font-variant-numeric:tabular-nums}
+.pop a.row{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:var(--r-s);text-decoration:none;color:var(--fg);background:rgba(255,255,255,.03);margin-bottom:4px}
+.pop a.row:last-child{margin-bottom:0}
+.pop .rk{flex:none;width:15px;height:15px;display:grid;place-items:center;border-radius:var(--r-pill);background:rgba(var(--accent-rgb),.14);color:var(--accent);font-size:9px;font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.pop .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-xs)}
+.pop .vv{flex:none;color:var(--mut);font-size:var(--fs-xs);font-variant-numeric:tabular-nums}
+.pop .none{font-size:var(--fs-xs);color:var(--mut);padding:2px}
+.rlg{margin-top:11px;display:flex;flex-wrap:wrap;gap:6px 10px;font-size:var(--fs-xs);color:var(--mut)}
+.rlg span{display:inline-flex;align-items:center;gap:5px}
+.rlg .sw{width:16px;height:0;flex:none}
+/* ── 컨트롤 ── */
+.ctrl{display:flex;flex-direction:column;gap:var(--sp-2)}
+.sec{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:12px 13px}
+.sec h3{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--mut);letter-spacing:.04em;text-transform:uppercase;margin-bottom:9px}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.pchip{font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);color:var(--mut);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:var(--r-pill);padding:5px 12px;cursor:pointer;transition:color var(--dur-fast) var(--ease),background var(--dur-fast) var(--ease)}
+.pchip:active{transform:scale(.96)}
+.pchip.on{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line2)}
+.tog:first-of-type{border-top:0}
+.tog .tl{min-width:0}
+.tog .tl b{font-size:var(--fs-sm);font-weight:var(--fw-b);display:block}
+.tog .tl span{font-size:var(--fs-xs);color:var(--mut);display:block;margin-top:1px}
+.tog .tl .pr{color:var(--accent);font-weight:var(--fw-x)}
+.sw2{flex:none;width:40px;height:23px;border-radius:var(--r-pill);background:rgba(255,255,255,.09);border:1px solid var(--line);cursor:pointer;position:relative;transition:background var(--dur) var(--ease)}
+.sw2::after{content:'';position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:var(--mut);transition:transform var(--dur) var(--ease),background var(--dur) var(--ease)}
+.sw2.on{background:rgba(var(--accent-rgb),.28);border-color:rgba(var(--accent-rgb),.4)}
+.sw2.on::after{transform:translateX(17px);background:var(--accent)}
+.warn{margin-top:9px;font-size:var(--fs-xs);color:var(--accent-2);background:rgba(216,255,61,.08);border:1px solid rgba(216,255,61,.22);border-radius:var(--r-s);padding:7px 9px;display:none;line-height:1.5}
+.warn.on{display:block}
+.copy{font:inherit;font-size:var(--fs-xs);font-weight:var(--fw-b);color:var(--fg);background:rgba(var(--accent-rgb),.13);border:1px solid rgba(var(--accent-rgb),.34);border-radius:var(--r-s);padding:8px 12px;cursor:pointer;width:100%;text-align:center}
+.copy:active{transform:scale(.98)}
+.cfg{margin-top:8px;font-size:10.5px;color:var(--mut);font-family:ui-monospace,monospace;word-break:break-all;background:rgba(0,0,0,.25);border-radius:var(--r-s);padding:7px 8px;line-height:1.5}
+/* ── 각주(정본 게이트) ── */
+.foot{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.foot h2{font-size:var(--fs-h3);font-weight:var(--fw-x);margin-bottom:4px}
+.foot .fg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media(max-width:820px){.foot .fg{grid-template-columns:1fr}}
+.fbox{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-m);padding:11px 13px;font-size:var(--fs-xs);line-height:1.6}
+.fbox h4{font-size:var(--fs-sm);font-weight:var(--fw-x);margin-bottom:6px}
+.fbox.no h4{color:var(--mut)}
+.fbox ul{margin:0;padding-left:16px;color:var(--mut)}
+.fbox li{margin:3px 0}.fbox li b{color:var(--fg)}
+.gate{display:inline-block;font-size:9px;font-weight:var(--fw-x);padding:1px 6px;border-radius:var(--r-pill);vertical-align:1px;margin-left:4px}
+.gate.ok{background:rgba(var(--accent-rgb),.16);color:var(--accent)}
+.gate.no{background:rgba(255,255,255,.06);color:var(--mut)}
+</style></head>
+<body>
+<h1>일일 추이 차트 개선 — 정본준수 플레이그라운드</h1>
+<div class="lead">실데이터 7일 조회수(07/06~12) · viewer <code>:root</code> 토큰 실측 계승(색·타이포·모션·z 전부 <code>var()</code>) · Opus10+감독+Fable 리서치 70건 → 감독 랭킹 → <b>정본 게이트 통과분만</b> 토글. 신규 색·컴포넌트·keyframe·z = 0. 켜고 끄며 골라줘.</div>
+<div class="wrap">
+  <!-- ① 실물 재현 미리보기(고정) -->
+  <div class="preview">
+    <div class="card">
+      <div class="hd"><span class="lab">조회수</span><span class="sep">|</span><span class="m">도달 · 방문 · 상호작용 · 팔로우 · 게시</span></div>
+      <div class="big">2,677,936<span class="u">회 · 최근일</span><span class="avg" id="avgLbl"></span></div>
+      <div class="chartwrap" id="cw"><svg id="chart" viewBox="0 0 600 160"></svg><div class="pop" id="pop"></div></div>
+      <div class="rlg" id="legend"></div>
+    </div>
+  </div>
+  <!-- ②③④ 컨트롤 -->
+  <div class="ctrl">
+    <div class="sec"><h3>② 프리셋</h3><div class="presets">
+      <button class="pchip" data-preset="cur">현재(기준)</button>
+      <button class="pchip on" data-preset="rec">추천(P0)</button>
+      <button class="pchip" data-preset="full">풀(밀도 실험)</button>
+    </div></div>
+    <div class="sec"><h3>③ 레이어 토글 — 정본 게이트 통과분</h3>
+      <div class="tog" data-k="avgLbl"><div class="tl"><b>헤더 평균 병기 <span class="pr">P0</span></b><span>대값 옆 '· 평균 973K'(비-% · 260718 판례 정합)</span></div><div class="sw2 on" data-k="avgLbl"></div></div>
+      <div class="tog" data-k="extrema"><div class="tl"><b>극값 마커 <span class="pr">P0</span></b><span>피크(민트)·트로프(무채) 자동 콜아웃 · 라벨 clamp</span></div><div class="sw2 on" data-k="extrema"></div></div>
+      <div class="tog" data-k="ghost"><div class="tl"><b>직전기간 고스트선 <span class="pr">P0</span></b><span>전주(무채 점선·저알파) 겹쳐보기 = '나아졌나?'</span></div><div class="sw2 on" data-k="ghost"></div></div>
+      <div class="tog" data-k="linking"><div class="tl"><b>게시물 링킹 <span class="pr">Fable</span></b><span>게시일 러그 탭 → 그날 게시물(수집분 정직표기)</span></div><div class="sw2 on" data-k="linking"></div></div>
+      <div class="tog" data-k="band"><div class="tl"><b>정상범위 밴드 <span style="color:var(--mut)">P1</span></b><span>평균±1σ 옅은 무채 밴드(밴드 vs 고스트 밀도 주의)</span></div><div class="sw2" data-k="band"></div></div>
+      <div class="tog" data-k="spark"><div class="tl"><b>6지표 미니 스파크 <span style="color:var(--mut)">P1·조건</span></b><span>지표 레일에 초소형 라인(폰 폭 실측 통과 시만)</span></div><div class="sw2" data-k="spark"></div></div>
+      <div class="warn" id="densWarn">⚠️ 밀도 예산 초과 — <b>밴드 + 고스트 동시 ON</b> = 150px 배경 소음. 감독 gap 지적: 상호배타 후보(둘 중 하나 권장).</div>
+    </div>
+    <div class="sec"><h3>④ 선택값 복사</h3>
+      <button class="copy" id="copyBtn">이 조합 복사</button>
+      <div class="cfg" id="cfg"></div>
+    </div>
+  </div>
+</div>
+<!-- ⑤ 한계 각주 = 정본 게이트 -->
+<div class="foot">
+  <h2>⑤ 정본 게이트 — 무엇을 넣고 뺐나 (한계·근거)</h2>
+  <div class="lead" style="margin:6px 0 0">리서치 70건 → 감독(Opus4.8 max) 적대검증 → 큐레이터(Fable) 배치 → <b>내 디자인 정본 재확인</b>. 아래 ❌는 <b>기틀·판례 충돌로 자동 제외</b>(토글에 없음).</div>
+  <div class="fg">
+    <div class="fbox"><h4>✅ 채택 = 정본 계승 확인<span class="gate ok">GATE PASS</span></h4><ul>
+      <li><b>헤더 평균 병기</b> — 260718 stat 타일 '평균 N회' 관용구의 수평 확장(창작 0).</li>
+      <li><b>극값 마커</b> — 기존 데이터점 마커 문법 + 이벤트 리더 라벨 계승 · <b>값 텍스트는 clamp/툴팁</b>(끝점 상시 라벨 아님).</li>
+      <li><b>고스트선</b> — 라인 path 1회 더 · 무채 점선(평균선과 대시 차별 2 4)·최하단 draw order·저알파.</li>
+      <li><b>게시물 링킹</b> — <b>.ch-ev 투명밴드 + #chdaydlg 모달 + .chp-row + .ch-tip</b> 전부 기존 셀렉터 · <code>posts[].iso↔date 100/100</code> · 파이프라인 = <code>insta_signals.py</code> post_refs 재생성(손편집 0).</li>
+      <li><b>정상범위 밴드/스파크</b> — <code>chSpark()</code> 기존 가동 · 단 밀도 예산·폰 폭 실측 게이트.</li>
+    </ul></div>
+    <div class="fbox no"><h4>❌ 제외 = 정본·판례 충돌<span class="gate no">GATE DROP</span></h4><ul>
+      <li><b>델타 %배지(▲▼N%)</b> — 리서치 최다 합의였으나 <b>운영자 260718 명시 폐지</b>('88% 하락'→절대값). 내 감사 = 충돌, 감독 = 기각 일치.</li>
+      <li><b>끝점 상시 값 라벨</b> — <b>260713 '따로노는 글씨' 제거 판례 역행</b> → 툴팁으로.</li>
+      <li><b>자동 언어 인사이트 캡션</b> — 차트 위 AI요약(chan_brief)과 중복.</li>
+      <li><b>baseline 색전환·그라디언트·예측밴드·브러시</b> — 민트1색 오독/과함/모바일 충돌.</li>
+      <li><b>구간 밴드·목표선</b> — 데이터 스키마·저장축 신설 필요 = 동작로직 → 대화 후 별건.</li>
+    </ul></div>
+  </div>
+  <div class="lead" style="margin-top:12px">📐 <b>레이어 참사 방지</b> — SVG draw order(밴드→격자→고스트→평균→면적→라인→러그→마커→극값→끝점) + 팝오버 <code>--z-float</code>·글래스 = 데이터 가림 0. <b>촤르륵</b> = 마커가 <code>cardIn</code> 커브·<code>--i</code> 스태거로 좌→우 등장(신규 keyframe 0). 밀도 예산 = 밴드↔고스트/스무딩 상호배타(감독 gap).</div>
+</div>
+<script>
+const CUR=[261024,71839,45215,70921,732986,2947670,2677936];
+const PREV=[2101228,1409099,780991,584281,435615,571582,609767];
+const DATES=['07/06','07/07','07/08','07/09','07/10','07/11','07/12'];
+const POSTS_CNT={0:3,1:1,4:2}; // 게시일 러그(07/06:3, 07/07:1, 07/10:2 · daily_series posts 실측)
+const LINKS={ // 그날 링크 가능 게시물(TOP100 부분집합 실측 · 없으면 수집분 0 fail-soft)
+ 0:{cnt:3,refs:[{rk:1,tt:'인천시장 귤찬대가 당원존이 생긴 기쁨을 노래로…',vv:'8.4만',u:'https://www.instagram.com/reel/DabAbIszhvN/'}]},
+ 1:{cnt:1,refs:[]}, 4:{cnt:2,refs:[]}
+};
+const W=600,H=160,mL=46,mR=16,mT=16,mB=30,pw=W-mL-mR,ph=H-mT-mB;
+const mx=Math.max(...CUR,...PREV)*1.08, X=i=>mL+pw*i/(CUR.length-1), Y=v=>mT+ph*(1-v/mx);
+const fmtK=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':''+n;
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length, MV=mean(CUR), SD=Math.sqrt(CUR.reduce((s,v)=>s+(v-MV)**2,0)/CUR.length);
+function curve(p){let d='M'+p[0][0].toFixed(1)+' '+p[0][1].toFixed(1);for(let i=0;i<p.length-1;i++){const a=p[i-1]||p[i],b=p[i],c=p[i+1],e=p[i+2]||p[i+1];d+=' C'+(b[0]+(c[0]-a[0])/6).toFixed(1)+' '+(b[1]+(c[1]-a[1])/6).toFixed(1)+' '+(c[0]-(e[0]-b[0])/6).toFixed(1)+' '+(c[1]-(e[1]-b[1])/6).toFixed(1)+' '+c[0].toFixed(1)+' '+c[1].toFixed(1);}return d;}
+const S={avgLbl:1,extrema:1,ghost:1,linking:1,band:0,spark:0};
+function render(){
+ const pts=CUR.map((v,i)=>[X(i),Y(v)]), line=curve(pts), my=Y(MV);
+ let s='';
+ // 밴드(최배경) — draw order 최하
+ if(S.band){const hi=Y(MV+SD),lo=Y(MV-SD);s+=`<rect x="${mL}" y="${hi.toFixed(1)}" width="${pw}" height="${Math.max(0,lo-hi).toFixed(1)}" fill="rgba(var(--accent-rgb),.05)"/>`;
+  s+=`<text x="${W-mR}" y="${(hi-3).toFixed(1)}" text-anchor="end" font-size="8" fill="var(--mut)" opacity=".7">정상범위 ±1σ</text>`;}
+ // 격자+Y라벨
+ for(let g=0;g<=3;g++){const v=mx*g/3,y=Y(v);s+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1"/><text x="${mL-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--mut)">${fmtK(v)}</text>`;}
+ s+=`<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${H-mB}" stroke="var(--line)"/>`;
+ // 고스트선(평균 아래·데이터 뒤) — 대시 2 4로 평균선(4 3)과 차별
+ if(S.ghost){const gp=PREV.map((v,i)=>[X(i),Y(v)]);s+=`<path d="${curve(gp)}" fill="none" stroke="var(--mut)" stroke-width="1.4" stroke-dasharray="2 4" opacity=".45" stroke-linejoin="round"/><text x="${X(2).toFixed(1)}" y="${(Y(PREV[2])-5).toFixed(1)}" font-size="8" fill="var(--mut)" opacity=".7">전주</text>`;}
+ // 평균선
+ s+=`<line x1="${mL}" y1="${my.toFixed(1)}" x2="${W-mR}" y2="${my.toFixed(1)}" stroke="var(--mut)" stroke-width="1" stroke-dasharray="4 3" opacity=".6"/><text x="${mL+4}" y="${(my-4).toFixed(1)}" font-size="9" fill="var(--mut)">평균 ${fmtK(MV)}</text>`;
+ // 면적+라인
+ s+=`<path d="${line} L${pts[6][0]} ${H-mB} L${pts[0][0]} ${H-mB} Z" fill="rgba(var(--accent-rgb),.10)"/>`;
+ s+=`<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+ // 러그(게시일) — linking이면 탭 히트밴드(≥40px는 밴드 폭+차트폴백)
+ Object.keys(POSTS_CNT).forEach(k=>{const i=+k,x=X(i);s+=`<line x1="${x.toFixed(1)}" y1="${(H-mB).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(H-mB-5).toFixed(1)}" stroke="var(--accent-2)" stroke-width="2" stroke-linecap="round" opacity=".75"/>`;
+  if(S.linking)s+=`<rect class="hit" data-i="${i}" x="${(x-13).toFixed(1)}" y="${(H-mB-11).toFixed(1)}" width="26" height="22" fill="transparent" style="cursor:pointer"/>`;});
+ // 데이터점 마커 — 촤르륵(cardIn 스태거) · ≤16점
+ pts.forEach((p,i)=>{s+=`<circle class="mk" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.6" style="animation:cardIn var(--dur-acc) var(--ease) backwards;animation-delay:${(i*0.04).toFixed(2)}s"/>`;});
+ // 극값(피크/트로프) — 값은 라벨(clamp: 상단 넘침 방지)
+ if(S.extrema){const hi=CUR.indexOf(Math.max(...CUR)),lo=CUR.indexOf(Math.min(...CUR));
+  const hy=Math.max(mT+9,Y(CUR[hi])-8);s+=`<circle cx="${X(hi).toFixed(1)}" cy="${Y(CUR[hi]).toFixed(1)}" r="4.2" fill="var(--accent-bright)" stroke="var(--bg)" stroke-width="2"/><text x="${X(hi).toFixed(1)}" y="${hy.toFixed(1)}" font-size="8.5" fill="var(--accent-bright)" text-anchor="middle" font-weight="700">피크 ${fmtK(CUR[hi])}</text>`;
+  s+=`<circle cx="${X(lo).toFixed(1)}" cy="${Y(CUR[lo]).toFixed(1)}" r="3" fill="none" stroke="var(--mut)" stroke-width="1.5"/><text x="${X(lo).toFixed(1)}" y="${(Y(CUR[lo])+13).toFixed(1)}" font-size="8" fill="var(--mut)" text-anchor="middle">최저 ${fmtK(CUR[lo])}</text>`;}
+ // 끝점 강조
+ s+=`<circle cx="${pts[6][0]}" cy="${pts[6][1].toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"/>`;
+ // 날짜축
+ s+=`<text x="${mL}" y="${H-8}" font-size="9" fill="var(--mut)">${DATES[0]}</text><text x="${W-mR}" y="${H-8}" text-anchor="end" font-size="9" fill="var(--mut)">${DATES[6]}</text>`;
+ document.getElementById('chart').innerHTML=s;
+ // 헤더 평균 병기
+ document.getElementById('avgLbl').textContent=S.avgLbl?('· 평균 '+fmtK(MV)+' 회'):'';
+ // 스파크(지표 레일 데모)
+ document.querySelector('.hd .m').innerHTML=S.spark?'도달<sub>▁▃▅</sub> · 방문<sub>▂▂▁</sub> · 상호<sub>▁▂▄</sub> · 팔로우<sub>▃▂▂</sub> · 게시<sub>▁▁▂</sub>':'도달 · 방문 · 상호작용 · 팔로우 · 게시';
+ // 범례
+ const lg=[];if(S.ghost)lg.push(['var(--mut)','2 4','전주 고스트']);lg.push(['var(--mut)','4 3','평균선']);if(S.band)lg.push(['rgba(var(--accent-rgb),.4)','0','정상범위']);lg.push(['var(--accent)','0','조회수']);
+ document.getElementById('legend').innerHTML=lg.map(([c,d,t])=>`<span><svg class="sw" viewBox="0 0 16 2"><line x1="0" y1="1" x2="16" y2="1" stroke="${c}" stroke-width="2" ${d!=='0'?`stroke-dasharray="${d}"`:''}/></svg>${t}</span>`).join('');
+ // 밀도 경고
+ document.getElementById('densWarn').classList.toggle('on', S.band&&S.ghost);
+ // 링킹 히트 배선
+ if(S.linking)document.querySelectorAll('.hit').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();showPop(+r.dataset.i,r);}));
+ updCfg();
+}
+const pop=document.getElementById('pop');
+function showPop(i,rectEl){const L=LINKS[i]||{cnt:POSTS_CNT[i]||0,refs:[]};
+ let h=`<div class="ph">${DATES[i]} · 게시 ${L.cnt}개 · 수집분 ${L.refs.length}건</div>`;
+ if(L.refs.length)h+=L.refs.map(r=>`<a class="row" href="${r.u}" target="_blank" rel="noopener"><span class="rk">${r.rk}</span><span class="tt">${r.tt}</span><span class="vv">${r.vv}</span></a>`).join('');
+ else h+=`<div class="none">수집분 0 — TOP100 밖(다음 백필 재생성 시 승격 · fail-soft)</div>`;
+ pop.innerHTML=h;
+ const cw=document.getElementById('cw').getBoundingClientRect(),rb=rectEl.getBoundingClientRect();
+ let lx=rb.left-cw.left+rb.width/2-100;lx=Math.max(4,Math.min(cw.width-208,lx));
+ pop.style.left=lx+'px';pop.style.top=Math.max(4,rb.top-cw.top-8-(L.refs.length?64:52))+'px';
+ pop.classList.add('on');}
+document.addEventListener('click',()=>pop.classList.remove('on'));
+pop.addEventListener('click',e=>e.stopPropagation());
+// 토글
+document.querySelectorAll('.sw2').forEach(sw=>sw.addEventListener('click',()=>{const k=sw.dataset.k;S[k]=S[k]?0:1;sw.classList.toggle('on',!!S[k]);clearPreset();render();}));
+// 프리셋
+const PRE={cur:{avgLbl:0,extrema:0,ghost:0,linking:0,band:0,spark:0},rec:{avgLbl:1,extrema:1,ghost:1,linking:1,band:0,spark:0},full:{avgLbl:1,extrema:1,ghost:1,linking:1,band:1,spark:1}};
+document.querySelectorAll('.pchip').forEach(c=>c.addEventListener('click',()=>{const p=PRE[c.dataset.preset];Object.assign(S,p);syncSw();document.querySelectorAll('.pchip').forEach(x=>x.classList.toggle('on',x===c));render();}));
+function syncSw(){document.querySelectorAll('.sw2').forEach(sw=>sw.classList.toggle('on',!!S[sw.dataset.k]));}
+function clearPreset(){document.querySelectorAll('.pchip').forEach(x=>x.classList.remove('on'));}
+function updCfg(){const on=Object.keys(S).filter(k=>S[k]);document.getElementById('cfg').textContent='layers: ['+on.join(', ')+']  ·  tokens: var(--accent)/--mut/--accent-bright · cardIn stagger · z-float popover · draw-order safe';}
+document.getElementById('copyBtn').addEventListener('click',()=>{const t=document.getElementById('cfg').textContent;navigator.clipboard&&navigator.clipboard.writeText(t);document.getElementById('copyBtn').textContent='복사됨 ✓';setTimeout(()=>document.getElementById('copyBtn').textContent='이 조합 복사',1200);});
+render();
+</script></body></html>
