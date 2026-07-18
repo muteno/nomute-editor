@@ -568,6 +568,7 @@
   .hist.open .hist-ttl { color:var(--accent); text-shadow:0 0 10px rgba(var(--accent-rgb),.45); }   /* 펼침 = '이전 제작' 네온그린 점등(운영자 260626) */
   .hist { scroll-margin-top:14px; }   /* 자동 스크롤 시 상단 약간의 여백 */
   .hist-cnt { color:var(--mut); font-weight:600; font-size:12px; }
+  .hist-empty { color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); padding:14px 2px 6px /* raw-ok: 빈 상태 안내 여백(운영자 260718 "아직 제작한 게 없습니다") */; text-align:center; }   /* 결과·이전 제작 빈 상태 안내 = 상시 노출(구 hidden 숨김 대체) */
   .hist-ar { margin-left:auto; color:var(--hist-accent); transition:transform .2s, color .3s ease; }   /* 접이 affordance = 이력색(중요 버튼 마커·운영자 260626) */
   .hist.open .hist-ar { transform:rotate(180deg); }
   /* 이전 제작 리모트 접기 — 펼쳐지고 헤더가 위로 지나가면 하단 중앙에 등장(스크롤 업 없이 접기 · 이력색=접기 마커 톤 · 운영자 260626) */
@@ -886,8 +887,8 @@
     <div class="status" id="status"></div>
     <!-- /7 변환 중 = 발사 버튼(#go) 자체로 점등(별도 박스 폐지 · 작업 1건씩 = 버튼 대체 · 운영자 260710) — 잡 카드는 작업내역이라 별개 유지 -->
     <!-- 결과(미리보기) 접기 헤더 — 부팅 자동복원 시 기본 접힘(헤더만) · 알림 딥링크(#done)·새 제작은 펼침 · 접으면 상단 폼 복귀(이전 제작 접기 로직 미러 · 운영자 260710 "결과 기본 접힘 · 알림 링크는 이미지 보이게" — 구 260706 기본 펼침을 접힘으로) -->
-    <button class="hist-h car-h" id="carH" type="button" aria-expanded="true" hidden>
-      <span class="hist-ttl"><span class="car-bul" aria-hidden="true">•</span>결과 <span class="hist-cnt" id="carHCnt"></span></span>
+    <button class="hist-h car-h" id="carH" type="button" aria-expanded="true">
+      <span class="hist-ttl"><span class="car-bul" aria-hidden="true">•</span>결과 <span class="hist-cnt" id="carHCnt">(0)</span></span>
       <svg class="hist-ar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <!-- N/N장 카운터 = 대기열 위(요약 · 운영자) -->
@@ -905,15 +906,17 @@
         <button class="imgdl caruse" id="carUse" type="button" aria-label="소스로 재첨부" title="이 결과를 소스로 재첨부" hidden></button><!-- 편집(리사이즈) 결과 → 원탭 재첨부 체인(운영자 260713 "그 한수" · reuse 플래그 슬라이드만) -->
       </div>
     </div>
+    <div class="hist-empty" id="carEmpty">아직 제작한 게 없습니다</div><!-- 결과 빈 상태(운영자 260718 "div 살리되 아직 제작한게 없습니다") — carHSync가 슬라이드 유무로 토글 -->
     <!-- 이전 제작 — 전 기기·전체 보관(서버 인덱스 thumb-hist.json = 만료 없음·캡 400 · 로컬 12h는 빌드랙 브리지)·맨아래 접힘 토글(운영자 260621 신설 · 260712 12h 표시창 폐지) -->
-    <div class="hist" id="hist" hidden>
+    <div class="hist" id="hist">
       <button class="hist-h" id="histH" type="button" aria-expanded="false">
-        <span class="hist-ttl"><span class="hist-bul" aria-hidden="true">•</span>이전 제작 <span class="hist-cnt" id="histCnt"></span></span>
+        <span class="hist-ttl"><span class="hist-bul" aria-hidden="true">•</span>이전 제작 <span class="hist-cnt" id="histCnt">(0)</span></span>
         <span class="hist-note">전 기기 제작 내역</span>
         <svg class="hist-ar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="hist-body" id="histBody" hidden>
-        <div class="hist-tools"><button class="hist-clr" id="histClr" type="button">기록 지우기</button></div>
+        <div class="hist-empty" id="histEmpty" hidden>아직 제작한 게 없습니다</div><!-- 이전 제작 빈 상태(운영자 260718) — renderHist가 항목 유무로 토글 -->
+        <div class="hist-tools" id="histTools"><button class="hist-clr" id="histClr" type="button">기록 지우기</button></div>
         <div class="hist-grid" id="histGrid"></div>
       </div>
     </div>
@@ -2621,9 +2624,11 @@ function renderHist() {
   if (CARSLIDES.length) { const carK = new Set(CARSLIDES.map(x => histKey(x.url))); a = a.filter(e => !carK.has(histKey(e.url))); }   // fresh(현재 결과 캐러셀에 뜬) 제작도 '이전 제작'서 제외 = 캐러셀+그리드 이중노출 차단(복원 경로와 대칭 · 버그5 "같은 제작 두 번" 봉합)
   if (_deadUrls.size) a = a.filter(e => !_deadUrls.has(histKey(e.url)));   // 세션 내 확인된 죽은(404) 항목 제외(재표시·깜빡임·histCnt 허수 차단 · 재검증)
   const hist = $('#hist'); if (!hist) return;
-  if (!a.length) { hist.hidden = true; return; }
-  hist.hidden = false; $('#histCnt').textContent = '(' + a.length + ')';
+  hist.hidden = false; $('#histCnt').textContent = '(' + a.length + ')';   // 이전 제작 헤더 상시 노출·카운트 0 포함(운영자 260718 "기본으로 있게 · 없으면 안내")
   const grid = $('#histGrid'); grid.innerHTML = '';
+  const _histEm = $('#histEmpty'), _histTools = $('#histTools');
+  if (!a.length) { if (_histEm) _histEm.hidden = false; if (_histTools) _histTools.hidden = true; return; }   // 빈 상태 = 안내 노출·지우기 숨김(펼침 시 표시 · 그리드 비움 유지)
+  if (_histEm) _histEm.hidden = true; if (_histTools) _histTools.hidden = false;
   a.forEach(e => {   // 최신 먼저(이미 정렬됨)
     const it = document.createElement('div'); it.className = 'hist-it'; it.dataset.thid = thIdOf(e.url);   // 작업 id 태그 = 알림 done=<id> → 이 이력 항목으로 핀포인트(콜드스타트 주경로)
     const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
@@ -2714,9 +2719,16 @@ $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b
 });
 window.addEventListener('hashchange', () => maybeOpenHist());   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀜) 펼치게 · ()=래핑 = Event가 tries 인자로 새 안 들어가게(재시도 무력화 차단)
 // 결과(미리보기) 접기 — 이전 제작(histH) 로직 미러 · 부팅 자동복원=접힘/딥링크·새제작=펼침(운영자 260710 · 구 260706 기본 펼침)
-function carHSync(open) { const h = $('#carH'); if (!h) return; h.hidden = !CARSLIDES.length; const c = $('#carHCnt'); if (c) c.textContent = CARSLIDES.length ? '(' + CARSLIDES.length + ')' : ''; if (open) { h.setAttribute('aria-expanded', 'true'); $('#carwrap').hidden = false; $('#carbar').hidden = false; } else if (CARSLIDES.length) { h.setAttribute('aria-expanded', 'false'); } }   // 접힌 채 복원(부팅 자동복원) = 헤더는 노출·내용은 접힘 → aria 동기(내용 hidden은 초기 HTML 상태 유지 · 운영자 260710)
+function carHSync(open) { const h = $('#carH'); if (!h) return; h.hidden = false; const c = $('#carHCnt'); if (c) c.textContent = '(' + CARSLIDES.length + ')'; const em = $('#carEmpty');   // 결과 헤더 상시 노출·카운트 0 포함(운영자 260718 "결과 기본으로 있게 · 없으면 안내")
+  if (!CARSLIDES.length) { if (em) em.hidden = h.getAttribute('aria-expanded') === 'false'; return; }   // 빈 상태 = 캐러셀 없음·안내만(펼침 시 노출)
+  if (em) em.hidden = true;
+  if (open) { h.setAttribute('aria-expanded', 'true'); $('#carwrap').hidden = false; $('#carbar').hidden = false; } else { h.setAttribute('aria-expanded', 'false'); } }   // 접힌 채 복원(부팅 자동복원) = 헤더는 노출·내용은 접힘 → aria 동기(내용 hidden은 초기 HTML 상태 유지 · 운영자 260710)
 let _carCloseT = null;   // 결과 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(index popOut 패턴 계승)
 $('#carH').addEventListener('click', () => {
+  if (!CARSLIDES.length) {   // 빈 상태 = 안내만 접기(운영자 260718 · 접을 캐러셀 없음)
+    const em = $('#carEmpty'), willOpen = $('#carH').getAttribute('aria-expanded') !== 'true';
+    $('#carH').setAttribute('aria-expanded', willOpen ? 'true' : 'false'); if (em) em.hidden = !willOpen; return;
+  }
   const cw = $('#carwrap'), cb = $('#carbar'), open = cw.hidden;   // hidden이면 지금 펼치는 동작
   clearTimeout(_carCloseT); cw.classList.remove('closing'); cb.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
   if (open) {   // 펼침
