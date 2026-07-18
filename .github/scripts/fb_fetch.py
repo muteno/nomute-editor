@@ -3,7 +3,8 @@
 # (운영자 260718 Q155 "채널 요약 1-1 인스타 / 1-2 페이스북" · insta_fetch.py 자매 — 등록 절차 = docs/페이스북_직결_세팅.md · 구 Q148 표기 = 원장 재부여 전 스테일 앵커 정정[페이블 검증단])
 # 출력 = viewer/fb_data.json — **insta_data.json 스키마 미러**(profile/account_day/daily_series/posts/thumbs)라
 # 뷰어 renderChan이 소스 무관 공용 동작(결측 유닛 = 자동 미표시 · 뷰어 분기 코드 0).
-# 게이트: FB_PAGE_TOKEN(시크릿)+FB_PAGE_ID(변수) 없으면 스킵(rc 0) — 단 FB_PAGE_TOKEN 부재 + IG_ACCESS_TOKEN 존재 시
+# 게이트: FB_PAGE_TOKEN(시크릿) 없으면 스킵(rc 0) · FB_PAGE_ID = 자동 해석(260718 1값 온보딩 — 유저 토큰 = me/accounts
+#        페이지 토큰 자동 교체 · 페이지 토큰 = me 직독 · 변수 등록 시 그 값 고정) — FB_PAGE_TOKEN 부재 + IG_ACCESS_TOKEN 존재 시
 #        겸용 프로브(me/accounts 페이지 토큰 자동 수급 · 페북 로그인 경로 토큰만 성립 · 실패 = 종전 no-op) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
 # 인사이트 메트릭별 독립 fail-soft(Graph 메트릭 개폐가 잦아 하나 죽어도 나머지 수집).
 import json, os, sys, urllib.request, urllib.parse, datetime, statistics
@@ -38,8 +39,28 @@ def main():
                 print('fb-fetch: IG 토큰 유효하나 페이지 0개(페이지 권한 없음) — 전용 페이지 토큰 필요(세팅 문서 §1~3)')
         except Exception as e:
             print(f'fb-fetch: IG 토큰 겸용 불가 = 인스타 전용(Instagram Login) 판정 — {e}')
+    if TOK and not PID:
+        # 1값 온보딩(운영자 260718 "끌어와서 지속 반영") — FB_PAGE_TOKEN만 등록해도 페이지 ID 자동 해석:
+        # ⓐ 유저 토큰(pages 권한)이면 me/accounts가 페이지 목록+페이지 토큰을 반환 → 페이지 토큰으로 자동 교체
+        # ⓑ 페이지 토큰이면 me = 페이지 자신 → id 직독. 둘 다 실패 = 종전 no-op(fail-soft · 토큰 원문 미출력).
+        try:
+            pages = api('me/accounts', fields='id,name,access_token').get('data') or []
+            hit = next((p for p in pages if p.get('access_token')), None)
+            if hit:
+                TOK, PID = hit['access_token'], hit['id']
+                print(f"fb-fetch: 유저 토큰 판정 — 페이지 '{hit.get('name')}'({PID}) 토큰 자동 교체")
+        except Exception:
+            pass
+        if not PID:
+            try:
+                me = api('me', fields='id,name')
+                PID = me.get('id') or ''
+                if PID:
+                    print(f"fb-fetch: 페이지 토큰 판정 — 페이지 '{me.get('name')}'({PID}) 자동 인식")
+            except Exception as e:
+                print(f'fb-fetch: 토큰 유효성 실패(만료·권한 확인 필요) — {e}')
     if not TOK or not PID:
-        print('fb-fetch: 시크릿 미등록(FB_PAGE_TOKEN/FB_PAGE_ID) — no-op 스캐폴드 스킵'); return 0
+        print('fb-fetch: 시크릿 미등록(FB_PAGE_TOKEN 필수 · FB_PAGE_ID = 자동/선택) — no-op 스캐폴드 스킵'); return 0
     now = datetime.datetime.now(KST)
     d = {'generated_kst': now.isoformat(timespec='seconds'), 'src': 'facebook'}
     try:
