@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오디오 연결 지도 — Mac/Win KVM → 스피커 2대</title>
+<style>
+  :root{
+    --bg:#0e1117; --card:#171c26; --card2:#1e2532; --line:#2a3242;
+    --fg:#e8edf5; --mut:#93a0b4; --dim:#6b7688;
+    --green:#43c98a; --blue:#57a8ff; --amber:#f5b53d; --red:#ff6b6b; --violet:#a78bfa;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:light){
+    :root{ --bg:#eef1f6; --card:#ffffff; --card2:#f3f6fb; --line:#d7dee9;
+      --fg:#141a24; --mut:#54617a; --dim:#8894a8; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",Roboto,"Segoe UI",sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;padding:22px 14px 60px}
+  .wrap{max-width:640px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13.5px;margin:0 0 18px}
+  .verdict{background:linear-gradient(135deg,rgba(67,201,138,.16),rgba(87,168,255,.10));
+    border:1px solid rgba(67,201,138,.4);border-radius:14px;padding:14px 16px;margin-bottom:22px}
+  .verdict b{color:var(--green)}
+  .verdict p{margin:6px 0 0;font-size:13.5px;color:var(--mut)}
+
+  /* flow */
+  .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .node{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:12px 14px;width:100%;max-width:340px;position:relative}
+  .node.half{max-width:164px;flex:1 1 150px}
+  .node .ic{font-size:22px;line-height:1}
+  .node .nm{font-weight:700;font-size:15px;margin-top:3px}
+  .node .sp{font-family:var(--mono);font-size:11.5px;color:var(--dim);margin-top:3px}
+  .conn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 0}
+  .conn .cbl{font-size:11.5px;color:var(--mut);font-family:var(--mono);
+    background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;text-align:center;max-width:92%}
+  .arw{color:var(--dim);font-size:15px;line-height:1}
+  .merge{color:var(--dim);font-size:12px;margin:2px 0 -2px}
+
+  .chip{display:inline-block;font-size:10.5px;font-weight:700;border-radius:20px;
+    padding:1.5px 8px;margin-top:8px;letter-spacing:.01em}
+  .c-have{background:rgba(87,168,255,.16);color:var(--blue)}
+  .c-box{background:rgba(67,201,138,.16);color:var(--green)}
+  .c-buy{background:rgba(245,181,61,.16);color:var(--amber)}
+  .c-chk{background:rgba(255,107,107,.16);color:var(--red)}
+
+  h2{font-size:15px;margin:30px 0 10px;letter-spacing:-.01em;display:flex;align-items:center;gap:7px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+  .card.warn{border-color:rgba(255,107,107,.45);background:rgba(255,107,107,.06)}
+  .card.tip{border-color:rgba(87,168,255,.35)}
+  ul{margin:6px 0 0;padding-left:18px}
+  li{font-size:13.5px;margin:5px 0}
+  .k{font-family:var(--mono);font-size:12px;background:var(--card2);border:1px solid var(--line);
+    border-radius:6px;padding:1px 6px}
+  .big{font-size:15px;font-weight:800}
+  .muted{color:var(--mut)}
+  .num{display:inline-flex;width:19px;height:19px;border-radius:50%;background:var(--violet);
+    color:#0e1117;font-size:11px;font-weight:800;align-items:center;justify-content:center;margin-right:5px}
+  table{width:100%;border-collapse:collapse;margin-top:4px}
+  td{font-size:13px;padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{color:var(--mut);white-space:nowrap;padding-right:10px}
+  .foot{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+  .foot b{color:var(--mut)}
+  del{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🔊 오디오 연결 지도</h1>
+  <p class="sub">Mac + Windows (KVM 한 대) → DAC → 분배기 → 스피커 2대 · 2026-07-18</p>
+
+  <div class="verdict">
+    ✅ <b>이 구성, 잘 골랐어.</b> 목적(모니터 잡음 제거 + 두 스피커 동시 + 맥/윈 자동전환)에 딱 맞고 돈도 안 샜음.
+    <p>딱 <b style="color:var(--red)">2가지</b>만 확인하면 끝 — 아래 ⚠️ 빨간 카드 2개.</p>
+  </div>
+
+  <!-- ===== FLOW MAP ===== -->
+  <div class="row">
+    <div class="node half">
+      <div class="ic">💻</div><div class="nm">맥북 프로</div>
+      <div class="sp">소스 1</div><span class="chip c-have">보유</span>
+    </div>
+    <div class="node half">
+      <div class="ic">🖥️</div><div class="nm">윈도우 데스크탑</div>
+      <div class="sp">소스 2 · Win 11</div><span class="chip c-have">보유</span>
+    </div>
+  </div>
+
+  <div class="conn">
+    <div class="cbl">맥: 썬더볼트4 1선 &nbsp;|&nbsp; 윈: DP + <b style="color:var(--red)">USB 업스트림</b></div>
+    <div class="merge">↘ &nbsp; ↙</div>
+  </div>
+
+  <div class="row">
+    <div class="node">
+      <div class="ic">🖵</div><div class="nm">Dell U2725QE 모니터</div>
+      <div class="sp">KVM 허브 내장 · 화면 바꾸면 USB(=DAC)도 같이 넘어감</div>
+      <span class="chip c-have">보유</span>
+    </div>
+  </div>
+
+  <div class="conn"><div class="arw">▼</div><div class="cbl">모니터 뒷면 <b>USB-C 다운스트림</b> 포트에 직결</div><div class="arw">▼</div></div>
+
+  <div class="row">
+    <div class="node">
+      <div class="ic">🎧</div><div class="nm">FiiO KA11 (외장 DAC)</div>
+      <div class="sp">CS43131 · 3.5mm 출력 · 잡음의 근원(모니터 아날로그) 우회</div>
+      <span class="chip c-box">고름</span>
+    </div>
+  </div>
+
+  <div class="conn"><div class="arw">▼</div><div class="cbl">UGREEN 3.5mm AUX 케이블 1m</div><div class="arw">▼</div></div>
+  <div class="conn"><div class="cbl">UGREEN 6.35↔3.5 젠더 → HA400 <b>INPUT(6.35mm)</b>에 꾹</div><div class="arw">▼</div></div>
+
+  <div class="row">
+    <div class="node">
+      <div class="ic">🎚️</div><div class="nm">Behringer HA400 분배기</div>
+      <div class="sp">1입력 → 4출력 · 채널별 볼륨 노브 (여기서 최종 음량 조절)</div>
+      <span class="chip c-have">보유/계획</span>
+    </div>
+  </div>
+
+  <div class="conn"><div class="merge">OUT1 ↙ &nbsp;&nbsp; ↘ OUT2</div>
+    <div class="cbl">각 출력에 6.35→3.5 젠더</div></div>
+
+  <div class="row">
+    <div class="node half">
+      <div class="ic">🔈</div><div class="nm">에디파이어</div>
+      <div class="sp">액티브(자체 앰프)</div><span class="chip c-have">보유</span>
+    </div>
+    <div class="node half">
+      <div class="ic">📦</div><div class="nm">JBL 사운드박스</div>
+      <div class="sp">AUX 입력 필요</div><span class="chip c-chk">확인!</span>
+    </div>
+  </div>
+
+  <!-- ===== 2 MUST-CHECKS ===== -->
+  <h2>⚠️ 사기 전 / 조립 전에 딱 2개만 확인</h2>
+
+  <div class="card warn">
+    <div class="big">① JBL 사운드박스에 <span style="color:var(--red)">3.5mm 구멍(AUX)</span> 있어?</div>
+    <ul>
+      <li>스피커 뒤·옆·바닥에 고무 덮개 열어서 <b>이어폰 구멍(⌀ / AUX / LINE-IN)</b> 있는지 봐.</li>
+      <li><b>있으면</b> → 에디파이어랑 똑같이 젠더로 물리면 끝. 계획대로 OK.</li>
+      <li><b>없으면</b>(요즘 JBL 다수 = BT 전용) → 그 스피커만 <b>블루투스</b>로 가야 함.
+        단 BT는 KVM 자동전환이 안 돼서 PC 바꿀 때마다 재연결이 귀찮음.</li>
+      <li>👉 모델명 알려주면 있는지 없는지 바로 확정해줌.</li>
+    </ul>
+  </div>
+
+  <div class="card warn">
+    <div class="big">② 윈도우 PC에 <span style="color:var(--red)">USB 업스트림 선</span> 꽂혀 있어?</div>
+    <ul>
+      <li>윈도우는 <b>DP(화면)만</b> 꽂으면 소리(DAC)가 윈도우로 <b>안 넘어와.</b></li>
+      <li>PC USB → 모니터 <span class="k">USB-C KVM 업스트림</span> 포트, 이 선이 반드시 있어야 KVM 전환 때 소리·키보드·마우스가 같이 넘어감.</li>
+      <li>맥북은 썬더볼트 한 선이 이걸 다 해서 신경 안 써도 됨.</li>
+    </ul>
+  </div>
+
+  <!-- ===== SHOPPING ===== -->
+  <h2>🛒 부품 현황 (뭐가 동봉이고 뭘 사야 하나)</h2>
+  <div class="card">
+    <table>
+      <tr><td>KA11 → 컴퓨터 선</td><td>KA11에 <b>USB-C 꼬리선 일체형</b>. 모니터 USB-C 포트에 바로 꽂음 → <b>추가 선 0</b>.
+        <span class="muted">(C→A 어댑터는 동봉이 들쭉날쭉이라 아예 USB-C 포트 쓰는 게 깔끔)</span></td></tr>
+      <tr><td>KA11 → HA400 선</td><td>3.5mm AUX 케이블 1m <span class="chip c-buy" style="margin:0">삼 ✓</span> + 6.35 젠더 <span class="chip c-have" style="margin:0">보유</span></td></tr>
+      <tr><td>HA400 → 스피커 ×2</td><td>6.35→3.5 젠더 2개 <span class="chip c-have" style="margin:0">보유</span>
+        <span class="muted">— 젠더는 길이 0이라, 스피커 자체 선이 HA400까지 닿아야 함</span></td></tr>
+      <tr><td>맥·윈 ↔ 모니터</td><td>썬더볼트4 / DP / USB 업스트림 <span class="chip c-have" style="margin:0">기존 그대로</span></td></tr>
+    </table>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">결론: <b style="color:var(--fg)">새로 살 건 이미 산 AUX 케이블 1개뿐.</b> (HA400 아직 없으면 그것만 추가)</p>
+  </div>
+
+  <!-- ===== SETUP ===== -->
+  <h2>🔧 도착하면: 딱 한 번만 설정</h2>
+  <div class="card tip">
+    <ul style="padding-left:0;list-style:none">
+      <li><span class="num">1</span>맥: <span class="k">시스템 설정 › 사운드 › 출력</span> = <b>FiiO KA11</b> 선택</li>
+      <li><span class="num">2</span>윈: <span class="k">소리 › 출력 장치</span> = <b>FiiO KA11</b> 선택</li>
+      <li><span class="num">3</span>모니터 KVM 짝: <b>「DP입력 + USB-C업스트림 = 윈도우」 / 「썬더볼트 = 맥」</b></li>
+    </ul>
+    <p class="muted" style="font-size:12.5px;margin:8px 0 0">이후엔 KVM 버튼 하나로 화면·USB·소리가 통째로 전환. 전환 순간 <b>잠깐 뚝 끊겼다 다시 잡히는 건 정상.</b></p>
+  </div>
+
+  <!-- ===== VOLUME ===== -->
+  <h2>🎛️ 잡음 없는 볼륨 공식</h2>
+  <div class="card">
+    <table>
+      <tr><td>① 컴퓨터(맥/윈)</td><td><b>높게 80~100%</b> 고정 <span class="muted">(소리 갈라지면=클리핑, 그때만 조금 낮춤)</span></td></tr>
+      <tr><td>② 스피커 자체 볼륨</td><td><b>중간 50~60%</b>에 고정하고 손 안 댐</td></tr>
+      <tr><td>③ 실제 조절</td><td><b>HA400 노브 1·2번</b>으로 최종 음량 + 두 스피커 밸런스</td></tr>
+    </table>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0">이유: <b style="color:var(--fg)">맨 끝(스피커)을 키우면 앞단 잡음까지 다 같이 커짐.</b>
+      그래서 끝은 중간에 두고, 앞쪽에서 조절하는 게 제일 조용함.</p>
+  </div>
+
+  <!-- ===== FOOTER: 검증 근거 · 오해 정정 ===== -->
+  <div class="foot">
+    <p><b>🔍 검증 요약 —</b> 왜 이 구성이 맞는지 / 흔한 오해 정정</p>
+    <p>• <b>HA400 쓴 거 잘한 선택.</b> 그냥 Y자 2구 젠더로 쪼개면 신호가 약해지고 두 스피커 볼륨을 못 맞춤. HA400은 버퍼+채널별 볼륨이라 이 용도에 오히려 정답.</p>
+    <p>• <del>"컴퓨터 볼륨 낮추면 데이터가 삭제된다"</del> → 반은 틀린 말. 요즘 OS는 손실 거의 없음. 볼륨 높게 두는 <b>진짜 이유는 '노이즈'</b>(위 볼륨 공식 참고).</p>
+    <p>• <del>"DAC는 모니터 말고 본체에 꽂아야 음질 좋다"</del> → USB는 디지털이라 <b>모니터 허브나 본체나 음질 동일.</b> 모니터 허브에 꽂아야 KVM 자동전환이 되니 <b>지금 방식이 맞음.</b></p>
+    <p>• <b>완벽판이 궁금하면:</b> KA11(헤드폰출력)→HA400(헤드폰앰프)→액티브스피커 = 앰프가 3번 겹침. 동작·음질에 실제 문제는 없고 체감차도 거의 0. 완벽주의로 가면 라인아웃(RCA) 달린 거치형(Topping DX1류)이 한 끗 깔끔하지만, <b>네 목적엔 KA11로 충분 = 돈 더 쓸 필요 없음.</b></p>
+  </div>
+
+</div>
+</body>
+</html>
