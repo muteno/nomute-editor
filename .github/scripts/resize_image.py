@@ -18,6 +18,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +30,15 @@ import numpy as np
 KST = datetime.timezone(datetime.timedelta(hours=9))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
-ASPECTS = ("16:9", "9:16", "4:5", "1:1", "21:9")   # 21:9 신설(운영자 260713 비율 순환 · api/resize ASPECTS와 한 쌍 · Gemini 실패 시 3층 라우팅 폴백(blur_pad)이 결정론 커버)
+ASPECTS = ("16:9", "9:16", "4:5", "1:1", "21:9")   # 프리셋(21:9 = 260713 · 구 이력 재발사 호환) · api/resize ASPECTS와 한 쌍 · Gemini 실패 시 3층 라우팅 폴백(blur_pad)이 결정론 커버
+
+
+def custom_aspect_ok(a):   # 직접 비율 N:N(운영자 260718 "AI 생성 비율 따라가기" — genidlg 직접 계약 미러): 각 1~99 정수 + 비율 1:4~4:1 · pad_canvas는 W:H 일반 파싱이라 검증만 완화
+    m = re.fullmatch(r"([1-9][0-9]?):([1-9][0-9]?)", str(a or ""))
+    if not m:
+        return False
+    r = int(m.group(1)) / int(m.group(2))
+    return 0.25 <= r <= 4
 SIZES = ("1K", "2K")
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 
@@ -166,7 +175,7 @@ def main():
         opts = json.loads(os.environ.get("RESIZE_OPTS") or "{}")
     except Exception:
         opts = {}
-    aspect = opts.get("aspect") if opts.get("aspect") in ASPECTS else "16:9"
+    aspect = opts.get("aspect") if opts.get("aspect") in ASPECTS else (opts.get("aspect") if custom_aspect_ok(opts.get("aspect")) else "16:9")   # 직접 N:N(운영자 260718 · api/resize customAspectOk와 한 쌍) 허용 · 그 외 16:9 폴백(종전)
     size = opts.get("size") if opts.get("size") in SIZES else "1K"
     lock = bool(opts.get("lock", True))
 
