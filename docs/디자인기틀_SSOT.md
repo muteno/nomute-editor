@@ -90,7 +90,7 @@
 ## 5. 거울·빌더 (파생 — 직접수정 금지)
 | 파일 | 역할 |
 |---|---|
-| **`viewer/tokens.css`** | `:root` 구조토큰(색 제외) 거울 — 4뷰어 `<link>` 계승용. **build 산출 = 직접수정 금지**(다음 build에 덮어씀). |
+| **`viewer/tokens.css`** | `:root` 구조토큰(색 제외) 거울 — 도구 뷰어들 `<link>` 계승용(로더 전수 = grep 실측이 정본 · 구 '4뷰어' 표기 = comp 폐지로 스테일 — 평의회 Q163 정정). **build 산출 = 직접수정 금지**(다음 build에 덮어씀). |
 | **`구성도/base.css`** (`AUTO-MIRROR` 블록) | `:root` 전체 거울 — 구성도 HTML 상속. **build 산출 = 직접수정 금지.** |
 | **`shared/build_design_mirror.py`** | 거울 빌더 — `build`(SSOT→거울 투영) · `lock`(토큰 락 갱신) · `check`(거울 정합 검사 = 거울 부정합 하드차단). |
 
