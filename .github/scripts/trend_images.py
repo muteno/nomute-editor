@@ -69,11 +69,9 @@ def main():
     print("Claude({}) 트렌드 키워드 {}개 대표 뉴스 URL 배치 검색".format(MODEL, len(queries)), flush=True)
     try:
         res = subprocess.run(
-            ["claude", "-p"]
-            + (["--bare"] if os.environ.get("CLAUDE_BARE", "0").strip().lower() not in ("0", "false", "no", "off", "") else [])   # 라우터 auto-discovery 스킵(불요 ~37k 누수 차단 · more_images 관용구)
-            + ["--model", MODEL,
+            ["claude", "-p", "--model", MODEL, "--safe-mode",   # --safe-mode = CLAUDE.md/스킬/MCP 비활성·내장 WebSearch/WebFetch는 유지(불요 컨텍스트 차단) · ⚠ --bare 절대 금지 = OAuth 즉사(sns_brief §📰-d 선례 · Q126 카나리아 rc=1 실측 260718)
                "--allowedTools", "WebFetch,WebSearch",
-               "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task",
+               "--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite",
                "--max-turns", "50"],
             input=prompt, capture_output=True, text=True, timeout=600)
         out = res.stdout or ""
