@@ -951,6 +951,12 @@ def check_qledger_unique():
         lines = open(os.path.join(ROOT, 'docs', '요구사항_큐.md'), encoding='utf-8').read().splitlines()
     except Exception as e:
         print('❌ check_qledger_unique 원장 읽기 실패(fail-closed):', e); return 1
+    # (260718 경합 소멸 · 운영자 승인) 착수 중 임시 행 = 'Q??(세션 꼬리표)·' 스텁 — 커밋 전 파일 최대+1 실번호로 확정 필수.
+    # 스텁 잔존 커밋 = 미확정 번호가 main에 박제되는 사고라 차단(세칙 = 큐 헤더 규칙 6 · 확정 직전 fetch+재기점 규약과 짝).
+    stubs = [ln[:60] for ln in lines if re.match(r'^- [^Q]{0,4}Q\?\?', ln)]
+    if stubs:
+        print('❌ 원장 Q?? 스텁 미확정 %d행 — 커밋 전 파일 최대+1 실번호로 확정하라(경합 소멸 규칙 · 큐 헤더 규칙 6): %s' % (len(stubs), stubs[0]))
+        return 1
     rx = re.compile(r'^- [^Q]{0,4}Q(\d+)(?:~(\d+))?·')
     cnt = {}
     for ln in lines:
