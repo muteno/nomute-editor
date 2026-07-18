@@ -1,0 +1,32 @@
+# 페이스북 페이지 직결 수집(채널 요약 1-2) — Meta Graph API · LLM 0콜 · 시크릿(FB_PAGE_TOKEN/FB_PAGE_ID) 미등록 = no-op 스캐폴드
+# 전용 30분 레인(운영자 260718 "SNS 30분 갱신 편승") — insta-fetch.yml 내 편승 스텝(3시간 크론)의 상향 캐던스 자매.
+# 스크립트 = 기존 .github/scripts/fb_fetch.py 재사용(운영자 260718 Q155 · insta_data.json 스키마 미러 = 뷰어 renderChan 공용 — 본 워크플로는 호출 레인만 신설).
+# 세팅 = docs/페이스북_직결_세팅.md · 롤백 = schedule 블록 제거(수동 전용) 또는 파일 삭제 · 수집분(viewer/fb_data.json)은 잔존.
+name: fb-fetch
+on:
+  schedule:
+    - cron: '9,39 * * * *'   # 30분마다(:09/:39 오프셋 = 정각 크론 봇 혼잡 회피 · insta-fetch :25 관례 계승) — 운영자 260718 "SNS 30분 갱신 편승"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: fb-fetch
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 수집(시크릿 게이트 · stdlib only = 설치 0 · 미등록 = no-op rc 0)
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ vars.FB_PAGE_ID }}
+        run: python3 .github/scripts/fb_fetch.py
+      - name: 커밋(git_land = 최신 main 재기점 재적층 · insta-fetch 관용구)
+        # 경로 = fb_fetch.py 실산출 실측분만(OUT = viewer/fb_data.json 단일 · 'w' 덮어쓰기 스냅샷형 — apps/ 산출 없음).
+        # viewer/fb_data.json = insta-fetch 3h 동승 스텝과 이중 기록자 — 동일 생성기의 덮어쓰기 스냅샷이라 이중 실행 무해(최신 수렴).
+        run: |
+          bash .github/scripts/git_land.sh "fb: 페이지 인사이트 스냅샷 (bot)" viewer/fb_data.json
