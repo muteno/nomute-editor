@@ -52,6 +52,11 @@
   .filerow { display:flex; gap:10px; align-items:stretch; margin-top:6px; }
   .filerow .file { flex:1.4 1 0; min-width:0; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; }
   .filerow .go { flex:1 1 0; width:auto; margin-top:0; white-space:nowrap; }
+  .topdock { position:sticky; top:0; z-index:6; margin:0 -16px; padding:16px 16px var(--sp-2); background:#121212; }   /* raw-ok: 상단 도크 = 영상 미리보기+발사(인물 분석) 한 몸 sticky(운영자 260718 "트래킹도 영상 미리보기 · 영상 편집이랑 동일하게") = edit .topdock 정본 미러 · #121212 스포티파이 블랙(edit 동일)·전폭{-16 = .wrap padding-x 상쇄}·padding 16/16/--sp-2·z6 */
+  .topdock::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 하단 페이드 스커트 = 콘텐츠가 도크 밑으로 서서히 잠김 · h14·18,18,18 = edit .topdock::after 미러 */
+  .trkpv { position:relative; width:100%; border:1px solid var(--line); border-radius:var(--r-l); overflow:hidden; background:#000; margin-bottom:var(--sp-2); }   /* raw-ok: 업로드 영상 미리보기 프레임 = edit .pvstage 미러(--line 테두리·--r-l 라운드·#000 레터박스 · 첨부 영상 실물 표시 · URL은 픽셀 부재로 미리보기 불가 = edit 동일 정직) */
+  .trkpv[hidden] { display:none; }
+  .trkpv video { display:block; width:100%; max-height:min(40svh,340px); max-height:min(40vh,340px); object-fit:contain; background:#000; }   /* raw-ok: #000 레터박스 = edit .pvstage 미러 · svh = 주소창 변동 고정(edit 높이캡 결 계승) · contain = 원본비 유지 */
   #fileTxt { display:flex; align-items:center; justify-content:center; min-width:0; max-width:100%; }
   #fileTxt .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .ftype { display:inline-block; flex:none; font-size:11px; font-weight:800; line-height:1; padding:4px 9px; border-radius:999px; margin-right:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(8px); }
@@ -218,6 +223,10 @@
 
   <!-- STEP 1 = ly.html 폼 계승(URL·파일·버튼) -->
   <div class="pane on" id="p0">
+    <!-- 상단 도크 = 업로드 영상 미리보기 + 입력 + 발사(인물 분석) 한 몸 sticky(운영자 260718 "트래킹도 영상 미리보기 · 영상 편집이랑 동일하게" — edit .topdock 정본 미러) -->
+    <div class="topdock" id="topDock">
+    <label class="fl" id="pvLbl" hidden>미리보기</label>
+    <div class="trkpv" id="trkPv" hidden><video id="trkPvVid" playsinline muted loop preload="metadata" aria-label="첨부 영상 미리보기"></video></div>
     <label class="fl" for="url">URL</label>
     <div class="urlwrap">
       <input type="url" id="url" placeholder="https://…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
@@ -231,6 +240,7 @@
       </label>
       <button class="go" id="analyze">인물 분석</button>
     </div>
+    </div><!-- /.topdock (미리보기+입력+발사 한 몸 상단 고정 · 페이드 스커트는 이 아래) -->
     <div class="filmstage" id="filmstage" hidden><div class="scanline"></div></div>
     <div class="status" id="astatus" role="status"></div>
   </div>
@@ -352,11 +362,15 @@ const pendReady=()=>pendSet({id:TK.id, st:'ready', t0:Date.now(), mode:TK.mode, 
 
 // ── STEP1 입력 (ly 문법 계승) ──
 const FILE_ICON=$('#fileTxt').innerHTML;   // 빈 슬롯 픽토그램 원본(초과 리셋 복원용)
+// 업로드 영상 실물 미리보기(운영자 260718 "트래킹도 영상 미리보기 · 영상 편집이랑 동일하게") — objectURL로 .trkpv <video> 표시(edit 결 계승 · 크롭/키잉 지정 전 눈으로 확인) · URL 소스는 픽셀 부재로 미리보기 불가(edit 동일 정직) · 미리보기=objectURL / 전송=B64 독립축
+let TRK_PVURL='';
+function trkPvHide(){ const pv=$('#trkPv'),vv=$('#trkPvVid'),lb=$('#pvLbl'); if(vv){ try{vv.pause();}catch(e){} vv.removeAttribute('src'); try{vv.load();}catch(e){} } if(TRK_PVURL){ try{URL.revokeObjectURL(TRK_PVURL);}catch(e){} TRK_PVURL=''; } if(pv)pv.hidden=true; if(lb)lb.hidden=true; }
+function trkPvShow(f){ const pv=$('#trkPv'),vv=$('#trkPvVid'),lb=$('#pvLbl'); if(!pv||!vv)return; try{ if(TRK_PVURL)URL.revokeObjectURL(TRK_PVURL); TRK_PVURL=URL.createObjectURL(f); vv.src=TRK_PVURL; if(vv.play)vv.play().catch(()=>{}); pv.hidden=false; if(lb)lb.hidden=false; }catch(e){} }
 $('#file').addEventListener('change',()=>{
   const f=$('#file').files[0]; if(!f) return;
   FILE_B64=''; FILE_NAME='';   // 새 선택 즉시 이전 파일 무효화 — 읽는 중 발사 = 옛 파일 전송 레이스 차단(평의회5)
-  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
-  FILE_NAME=f.name;
+  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; trkPvHide(); return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
+  FILE_NAME=f.name; trkPvShow(f);   // 영상 미리보기 즉시 표시(base64 읽기와 독립)
   const btn=$('#analyze'); btn.disabled=true;   // 읽는 동안 발사 잠금(불완전 B64 전송 차단)
   const rd=new FileReader();
   rd.onload=()=>{ FILE_B64=String(rd.result||''); btn.disabled=false; $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
