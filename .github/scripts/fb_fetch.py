@@ -3,24 +3,41 @@
 # (운영자 260718 Q155 "채널 요약 1-1 인스타 / 1-2 페이스북" · insta_fetch.py 자매 — 등록 절차 = docs/페이스북_직결_세팅.md · 구 Q148 표기 = 원장 재부여 전 스테일 앵커 정정[페이블 검증단])
 # 출력 = viewer/fb_data.json — **insta_data.json 스키마 미러**(profile/account_day/daily_series/posts/thumbs)라
 # 뷰어 renderChan이 소스 무관 공용 동작(결측 유닛 = 자동 미표시 · 뷰어 분기 코드 0).
-# 게이트: FB_PAGE_TOKEN(시크릿)+FB_PAGE_ID(변수) 없으면 스킵(rc 0) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
+# 게이트: FB_PAGE_TOKEN(시크릿)+FB_PAGE_ID(변수) 없으면 스킵(rc 0) — 단 FB_PAGE_TOKEN 부재 + IG_ACCESS_TOKEN 존재 시
+#        겸용 프로브(me/accounts 페이지 토큰 자동 수급 · 페북 로그인 경로 토큰만 성립 · 실패 = 종전 no-op) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
 # 인사이트 메트릭별 독립 fail-soft(Graph 메트릭 개폐가 잦아 하나 죽어도 나머지 수집).
 import json, os, sys, urllib.request, urllib.parse, datetime, statistics
 
 TOK = os.environ.get('FB_PAGE_TOKEN', '').strip()
 PID = os.environ.get('FB_PAGE_ID', '').strip()
+IGTOK = os.environ.get('IG_ACCESS_TOKEN', '').strip()   # 겸용 프로브 폴백(운영자 260718 "인스타 API가 메타였는데 못 끌어와?" — 세팅 문서 §0)
 OUT = 'viewer/fb_data.json'
 G = 'https://graph.facebook.com/v21.0'
 KST = datetime.timezone(datetime.timedelta(hours=9))   # 시각 = KST 강제(CLAUDE.md [12] · naive now 금지)
 
 
-def api(path, **params):
-    params['access_token'] = TOK
+def api(path, tok=None, **params):
+    params['access_token'] = tok or TOK
     with urllib.request.urlopen(f"{G}/{path}?{urllib.parse.urlencode(params)}", timeout=30) as r:
         return json.loads(r.read().decode())
 
 
 def main():
+    global TOK, PID
+    if not TOK and IGTOK:
+        # IG 토큰 겸용 프로브(운영자 260718) — 기존 인스타 직결 토큰이 '페이스북 로그인' 경로 토큰이면
+        # me/accounts가 페이지 토큰을 돌려줘 추가 등록 0으로 자동 연동. 현 세팅 문서(인스타_직결_세팅.md 1행)는
+        # 'Instagram Login' 경로 = graph.facebook.com에서 거부가 정상 → 종전 no-op 유지 · 아래 로그 = 판별 증거(토큰 원문 미출력).
+        try:
+            pages = api('me/accounts', IGTOK, fields='id,name,access_token').get('data') or []
+            hit = next((p for p in pages if (not PID or p.get('id') == PID) and p.get('access_token')), None)
+            if hit:
+                TOK, PID = hit['access_token'], hit['id']
+                print(f"fb-fetch: IG 토큰 = 메타(페북 로그인) 겸용 판정 — 페이지 '{hit.get('name')}'({PID}) 자동 연동")
+            else:
+                print('fb-fetch: IG 토큰 유효하나 페이지 0개(페이지 권한 없음) — 전용 페이지 토큰 필요(세팅 문서 §1~3)')
+        except Exception as e:
+            print(f'fb-fetch: IG 토큰 겸용 불가 = 인스타 전용(Instagram Login) 판정 — {e}')
     if not TOK or not PID:
         print('fb-fetch: 시크릿 미등록(FB_PAGE_TOKEN/FB_PAGE_ID) — no-op 스캐폴드 스킵'); return 0
     now = datetime.datetime.now(KST)
