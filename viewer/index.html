@@ -10299,7 +10299,9 @@ function renderSns() {
 
 // ── 채널 요약(메뉴4 · 운영자 260713) — 인스타 직결 신호 뷰: 데이터 = insta_data.json(insta-fetch 봇 일 1회) · 수치 정본 = insta_signals 모듈(지침 §4-7 분업 — 여기선 표시만·재계산 금지)
 //    대시보드 확장(운영자 260713 2차): 일일 추이 SVG 차트(예울프로모 로직 계승·시안 = docs/reports/260713_인스타일일추이_플레이그라운드) · 타일 = 평균 대비 델타+스파크 · 포맷/주제/3기 요약 · 실크 글래스 = 메뉴3 계승 ──
-let CHAN = null, CHANB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3';   // CHAN_FB/CHAN_SRC = 채널 소스(1-1 인스타/1-2 페이스북 · 운영자 260718 Q148 큐잉분 — fb_data.json = insta 스키마 미러라 renderChan 공용 · 결측 유닛 자동 미표시)   // CHANB = 채널 AI 브리프(chan_brief.json · insta-fetch 봇 — SNS sns_brief와 별개 축) · CHAN_BSEC = 브리프 기간 탭(운영자 260714 2차 확정 = 3일/7일/28일/3개월/전체 총론 · 기본 = 3일 — 결측 시 renderChan 가드가 첫 섹션 폴백)
+let CHAN = null, CHANB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3';
+const chActive = () => CHAN_SRC === 'fb' ? CHAN_FB : CHAN;   // 활성 소스 데이터(인라인·심층 모달 공용 — 페이블 검증단 260718: 모달 전역 CHAN 하드코딩 = fb 뷰에서 인스타 상세 뜨는 소스 불일치 교정)
+// CHAN_FB/CHAN_SRC = 채널 소스(1-1 인스타/1-2 페이스북 · 운영자 260718 Q155 큐잉분 — fb_data.json = insta 스키마 미러라 renderChan 공용 · 결측 유닛 자동 미표시) · CHANB = 채널 AI 브리프(chan_brief.json · insta-fetch 봇 — SNS sns_brief와 별개 축) · CHAN_BSEC = 브리프 기간 탭(운영자 260714 2차 확정 = 3일/7일/28일/3개월/전체 총론 · 기본 = 3일 — 결측 시 renderChan 가드가 첫 섹션 폴백)
 const CH_MET = { views: ['조회수', '회'], reach: ['도달', '계정'], profile_views: ['방문', '회'], interactions: ['상호작용', '회'], follows: ['팔로우', '명'], posts: ['게시', '개'] };
 const chFmtK = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e4 ? (n / 1e3).toFixed(0) + 'K' : Math.round(n).toLocaleString();
 const chVf = n => n == null ? '—' : n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') + '만' : String(n);   // 한국어 만 단위(타일·심층 모달 공용)
@@ -10431,7 +10433,7 @@ async function loadChan() {
   if (CHAN && Date.now() - CHAN_AT < 300e3) { renderChan(); return; }
   CHAN_LOADING = true;
   try {
-    const [r, rb, rf] = await Promise.all([fetch('insta_data.json?ts=' + Date.now()), fetch('chan_brief.json?ts=' + Date.now()).catch(() => null), fetch('fb_data.json?ts=' + Date.now()).catch(() => null)]);   // 브리프·페이스북(1-2 · Q148) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
+    const [r, rb, rf] = await Promise.all([fetch('insta_data.json?ts=' + Date.now()), fetch('chan_brief.json?ts=' + Date.now()).catch(() => null), fetch('fb_data.json?ts=' + Date.now()).catch(() => null)]);   // 브리프·페이스북(1-2 · Q155) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
     if (r.ok) { CHAN = await r.json(); CHAN_AT = Date.now(); }
     if (rb && rb.ok) CHANB = await rb.json();
     if (rf && rf.ok) { try { CHAN_FB = await rf.json(); } catch {} }
@@ -10440,16 +10442,16 @@ async function loadChan() {
 }
 function renderChan() {
   const box = $('#chanBox'); if (!box) return;
-  // 채널 소스 세그(1-1 인스타 / 1-2 페이스북 · 운영자 260718 Q148 큐잉분) — .ch-rangeseg 정본 계승(신규 CSS 0) · cs-seg = 일일추이 기간 세그 셀렉터 제외 훅 · 데이터 결측 소스여도 세그는 상시(전환 복귀 경로) · fb 미수집 = 아래 조용한 공백(§디자인 e-가)
+  // 채널 소스 세그(1-1 인스타 / 1-2 페이스북 · 운영자 260718 Q155 큐잉분) — .ch-rangeseg 정본 계승(신규 CSS 0) · cs-seg = 일일추이 기간 세그 셀렉터 제외 훅 · 데이터 결측 소스여도 세그는 상시(전환 복귀 경로) · fb 미수집 = 아래 조용한 공백(§디자인 e-가)
   const srcSeg = `<div class="ch-seg"><span class="ch-rangeseg cs-seg">` + [['ig', '1-1 인스타'], ['fb', '1-2 페이스북']].map(s => `<button type="button" data-cs="${s[0]}"${CHAN_SRC === s[0] ? ' class="on"' : ''}>${s[1]}</button>`).join('') + '</span></div>';
-  const csWire = () => box.querySelectorAll('[data-cs]').forEach(b => b.addEventListener('click', () => { CHAN_SRC = b.dataset.cs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 소스 전환 = 재렌더·스크롤 보존(기간 세그 문법 미러)
+  const csWire = () => box.querySelectorAll('[data-cs]').forEach(b => b.addEventListener('click', () => { CHAN_SRC = b.dataset.cs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); if (CHAN_SRC === 'fb' && !CHAN_FB && !CHAN_LOADING) { CHAN_AT = 0; loadChan(); } }));   // 소스 전환 = 재렌더·스크롤 보존(기간 세그 문법 미러) · fb 미적재 전환 = 캐시 무효화 후 재적재(첫 결합 fetch 실패가 5분 ig 캐시에 묶여 fb 공백 고착되던 것 · 페이블 검증단 LOW)
   const d = CHAN_SRC === 'fb' ? CHAN_FB : CHAN;
   if (!d || !d.profile) { box.innerHTML = srcSeg; csWire(); return; }   // 빈 상태 = 세그만 + 조용한 공백(§디자인 e-가)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const vf = chVf;
   const p = d.profile, a = d.account_day || {}, series = d.daily_series || [], avg = d.avg || {};
   const stUnit = k => (CH_MET[k] ? CH_MET[k][1] : '회');   // 지표 단위 = 일일추이 차트(CH_MET)와 동일 어휘 계승(조회=회·도달=계정)
-  const vu = (n, u) => n == null ? '—' : vf(n) + ' ' + u;   // 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q148)
+  const vu = (n, u) => n == null ? '—' : vf(n) + ' ' + u;   // 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
   // 델타(▲▼N%) 폐지(운영자 260718 "팔로워 옆 88% 하락 = 팔로워가 88% 빠진 걸로 오해") — '평소 대비 %'는 하락처럼 읽혀 → 전기간 평균값 병기로 대체(수치 = avg.avg_all 실측 · 창작 0)
   const st = (lb, v, key) => {
     const sp = key && series.length ? chSpark(series, key) : '';
@@ -10477,7 +10479,7 @@ function renderChan() {
   const _b12 = CHANB ? fmtK12(CHANB.updated) : '';   // 표기 = fmtK12 공통("7월 16일 2:18PM" · 운영자 260716 "이런식으로만 · 시간표시 동일하게")
   const btm = _b12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_b12)}</span>` : '';   // 분석 시각 = 단위 헤더 합류(운영자 260716 "표기한대로 가장 위로") — prof 단위 .tdash-time 정본 계승 · stale = 수집 26h+ 죽음 warn(:has 빛멎음(#779)과 동축 = hdr-stale 이중 안전)
   const bseg = bsegs ? `<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span>` : null;   // 기간 책갈피(3일~전체) = 헤더 우측 extra(운영자 260716 "옵션 선택지를 세부 NAV(우측 상단)에") — .chu 심층 필 앵커 계승(summary 밖 = 접기 오클릭 0 · 접힘에도 노출) · 세그 = .ch-rangeseg 정본
-  if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약${btm}`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q148)
+  if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약${btm}`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q155)
     // 구 ① 분석시각+세그 행(.tb-segrow) 폐지(운영자 260716 "가장 위로 + 옵션 선택지는 세부 NAV로") — 시각 = 헤더 좌(타이틀 옆) · 기간 세그 = 헤더 우측 칩(extra) · 본문 = 분석 텍스트부터 즉시 시작(상단 구분선도 동반 제거)
     `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
@@ -10487,7 +10489,7 @@ function renderChan() {
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(fmtK12(d.generated_kst))}</span>`, '<div class="ch-stats">' +
     // 팔로워 = 정밀 카운트(운영자 260718 "6.4만 옆 88% 하락 말고 63,956명 이런식으로") — 축약(6.4만)·오해성 델타 제거 · 명 단위 · 재고량이라 평균 병기 안 함(키 미전달)
     st('팔로워', p.followers_count != null ? p.followers_count.toLocaleString() + '명' : '—') +
-    // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기 · vu = 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q148)
+    // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기 · vu = 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
     st('조회수', vu(a.views, '회'), 'views') + st('도달', vu(a.reach, '계정'), 'reach') +
     st('공유', vu(a.shares, '회')) + st('저장', vu(a.saves, '회')) + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views') + '</div>');
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
@@ -10538,9 +10540,9 @@ function renderChan() {
     : `<a class="ch-th txt" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${REELGLYPH}<span class="cap">${esc(x.t || '')}</span></a>`).join('') + '</div>');
   // 좌측 책갈피 레일 = 메뉴3 .trailwrap/.trail 원문 계승(운영자 260713 "일치할수록 좋아" — CSS 클래스 공유 = 신규 스타일 0 · fixed는 chanview[hidden] 조상 연동 자동 소거 = trendview 동일 메커니즘) · 버튼 = TOP 위화살(정본 SVG path 동일) + 단위 순번 숫자(헤더 배지 정체성 · 숫자 = 문자 렌더 허용 축)
   box.innerHTML = (RAIL.length > 1 ? '<div class="trailwrap"><nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
-    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + srcSeg + h;   // srcSeg = 채널 소스 세그(1-1/1-2 · Q148) — 콘텐츠 최상단(레일 = fixed라 순서 무영향)
+    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + srcSeg + h;   // srcSeg = 채널 소스 세그(1-1/1-2 · Q155) — 콘텐츠 최상단(레일 = fixed라 순서 무영향)
   csWire();   // 소스 세그 배선(전체 렌더 경로 · 빈 상태 경로와 쌍)
-  box.querySelector('.ch-nm').textContent = p.username ? '@' + p.username : (p.name || '');   // fb 페이지 = username 없을 수 있음 → 페이지명 폴백(Q148)
+  box.querySelector('.ch-nm').textContent = p.username ? '@' + p.username : (p.name || '');   // fb 페이지 = username 없을 수 있음 → 페이지명 폴백(Q155)
   const bt = box.querySelector('.tbrief-t');   // 브리프 본문 주입 = *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href 검증만 = XSS 안전 · 메뉴3 파서 미러 — 스크랩 refs 축만 제외 · 줄바꿈 = .tbrief-t pre-line)
   if (bt && CHANB) {
     bt.textContent = '';
@@ -10596,7 +10598,7 @@ function renderChan() {
   box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
   geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
   box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체) — [data-bs] 통합 셀렉터(우상단 세그→세로 내비 미니바 이관(260716)에도 불변) · 재렌더·스크롤 보존
-  box.querySelectorAll('.ch-rangeseg:not(.tb-seg):not(.cs-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그 · :not(.cs-seg) = 채널 소스 세그(Q148) — data-r 없는 세그가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
+  box.querySelectorAll('.ch-rangeseg:not(.tb-seg):not(.cs-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그 · :not(.cs-seg) = 채널 소스 세그(Q155) — data-r 없는 세그가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
   chuFit(box);   // 헤더 우측 칩 실폭 예약(시각 텍스트 겹침 차단 · 운영자 260717 — 메뉴3과 동일 배선)
   const wrap = $('#chChartWrap'), tip = $('#chTip'), dot = $('#chDot');
   if (wrap && tip) {
@@ -10679,7 +10681,7 @@ window.addEventListener('popstate', () => {
   dg.querySelector('.dlg-x').addEventListener('click', () => dg.close());
 });
 function openChDay() {   // 일별 상세 = 전 기간 표(최신 위 · 게시>0 = 강조)
-  const rows = ((CHAN || {}).daily_series || []).slice().reverse();
+  const rows = ((chActive() || {}).daily_series || []).slice().reverse();   // 활성 소스(1-1/1-2) 상세 — 전역 CHAN 하드코딩 정정(Q155 후속 · 페이블 검증단)
   if (!rows.length) return;
   let h = '<table class="chd-t"><thead><tr><th>날짜</th><th>게시</th><th>조회</th><th>도달</th><th>방문</th><th>팔로우</th></tr></thead><tbody>';
   rows.forEach(r => {
@@ -10692,14 +10694,14 @@ function openChDay() {   // 일별 상세 = 전 기간 표(최신 위 · 게시>
 }
 let CHP = { sort: 'views', fmt: '전체', cat: '전체' };   // 게시물 탐색 상태(정렬·포맷·주제)
 function renderChPost() {
-  const all = (CHAN || {}).posts || [];
+  const all = (chActive() || {}).posts || [];   // 활성 소스 게시물(1-1/1-2)
   const cats = ['전체', ...new Set(all.map(x => x.cat).filter(Boolean))];
   $('#chpFmt').innerHTML = ['전체', '릴스', '피드'].map(f => `<button class="ch-mchip${CHP.fmt === f ? ' on' : ''}" type="button" data-f="${f}">${f}</button>`).join('');
   $('#chpCat').innerHTML = cats.map(c => `<button class="ch-mchip${CHP.cat === c ? ' on' : ''}" type="button" data-c="${c}">${c}</button>`).join('');
   $('#chpSort').innerHTML = [['views', '조회수'], ['share_pm', '공유율'], ['save_pm', '저장률'], ['new', '최신']].map(s0 => `<button type="button" data-s="${s0[0]}"${CHP.sort === s0[0] ? ' class="on"' : ''}>${s0[1]}</button>`).join('');
   let list = all.filter(x => (CHP.fmt === '전체' || x.format === CHP.fmt) && (CHP.cat === '전체' || x.cat === CHP.cat));
   list = list.slice().sort((a, b) => CHP.sort === 'new' ? String(b.iso || '').localeCompare(String(a.iso || '')) : (b[CHP.sort] || 0) - (a[CHP.sort] || 0));
-  const tmed = (CHAN || {}).topics || {};
+  const tmed = (chActive() || {}).topics || {};   // 활성 소스 주제 중앙값(fb = 결측이라 배지 자동 미표시)
   $('#chpList').innerHTML = list.map((x, i) => {
     const tm = tmed[x.cat], ratio = tm && tm.views_med ? x.views / tm.views_med : null;   // 주제 중앙값 대비 배율(운영자 260713 한 수 ㄱㄱ) — 같은 주제 안 특출도
     const rt = ratio != null ? ` <i class="${ratio >= 10 ? 'hot' : ''}">×${ratio.toFixed(1)}</i>` : '';   // hot = ×10+(TOP100 분포 실측 p90 17.4·중앙 2.3 — 상위 20%만 점등)
@@ -10708,7 +10710,7 @@ function renderChPost() {
   const nms = $('#chpList').querySelectorAll('[data-nm]'); list.forEach((x, i) => { if (nms[i]) nms[i].textContent = x.name || '(무캡션)'; });   // 캡션 = textContent 주입(XSS 안전 관용구)
   $('#chpN').textContent = list.length + '/' + all.length;
 }
-function openChPost() { if (!((CHAN || {}).posts || []).length) return; renderChPost(); chDlgOpen($('#chpostdlg')); }
+function openChPost() { if (!((chActive() || {}).posts || []).length) return; renderChPost(); chDlgOpen($('#chpostdlg')); }   // 활성 소스 게이트(fb 게시물 없으면 조용 무동작 유지)
 (() => { const w = $('#chpostdlg'); if (!w) return;   // 칩·세그 = 위임 1회 배선(재렌더 무관)
   w.addEventListener('click', e => {
     const f = e.target.closest('[data-f]'), c = e.target.closest('[data-c]'), s0 = e.target.closest('[data-s]');

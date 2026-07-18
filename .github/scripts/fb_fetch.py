@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 노뮤트 페이스북 페이지 직결 수집(1-2) — Meta Graph API · LLM 0콜 · 시크릿 미등록 = no-op 스캐폴드
-# (운영자 260718 Q148 "채널 요약 1-1 인스타 / 1-2 페이스북" · insta_fetch.py 자매 — 등록 절차 = docs/페이스북_직결_세팅.md)
+# (운영자 260718 Q155 "채널 요약 1-1 인스타 / 1-2 페이스북" · insta_fetch.py 자매 — 등록 절차 = docs/페이스북_직결_세팅.md · 구 Q148 표기 = 원장 재부여 전 스테일 앵커 정정[페이블 검증단])
 # 출력 = viewer/fb_data.json — **insta_data.json 스키마 미러**(profile/account_day/daily_series/posts/thumbs)라
 # 뷰어 renderChan이 소스 무관 공용 동작(결측 유닛 = 자동 미표시 · 뷰어 분기 코드 0).
 # 게이트: FB_PAGE_TOKEN(시크릿)+FB_PAGE_ID(변수) 없으면 스킵(rc 0) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
