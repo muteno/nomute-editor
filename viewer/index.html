@@ -4775,16 +4775,19 @@ function geniInit() {
     try { localStorage.setItem('GENI_OPTS2', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷 — 구 GENI_OPTS 키는 스키마 변경으로 폐기(260710)
     if (c.free) {   // 자유 생성(도구 /6 탭 · 운영자 260707): 기사 카러셀 없음 → api 직접 발사 + 도구 iframe에 통지(그쪽 그리드가 폴링)
       if (!wish) { $('#geniWish').focus(); return; }   // 장면 소재 0 방지(서버도 동일 검증) — 문구 입력칸 폐지로 주문이 단일 필수(260710)
-      const gb = $('#geniGo'); if (gb.disabled) return; gb.disabled = true;
+      const gb = $('#geniGo'); if (gb.disabled) return; gb.disabled = true; askHideCheck(gb); gaugeStart(gb);   // 게이지 = 발사 즉시 채움(운영자 260718 Q134 ③ "생성 버튼 액티브 동작 = 1번[#go] 역공유") — free 모드도 게이지·✓·복귀 배선(구 무피드백 = '게이지 동작 안함' 버그축) · article 모드/thumb goFire와 동일 헬퍼
       try {
         geniFreqBump('style', _geniSel.style); geniFreqBump('sub', _geniSel.sub);   // 이식 모드 발사도 제작빈도 +1(genImgGo 경로와 동일 · 운영자 260713)
         const r = await fetch('api/genimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ free: true, opts }) });
         if (!r.ok) throw 0;
-        if (!$('#geniHost').hidden) { geniLeave(); if (toolMeta.thumb) toolMeta.thumb.geniFired = true; }   // 이식 모드 발사 = 폼 원복 + 작업내역(iframe) 노출(잡 카드 진행 가시 · genfree-fired가 selApp 6 유지 · 260713 B) · geniFired = 최소화→복원이 그리드를 폼으로 덮지 않게(해제 = geniMount 재이식 때 · fable)
-        else $('#genidlg').close();
         const { refB64: _rb, ...optsLite } = opts;   // 잡 카드는 count·요약만 씀 → 48KB base64는 브로드캐스트서 제외(구조화복제 경량화 · 평의회5)
-        document.querySelectorAll('#tooldlg .toolfr').forEach(f => { try { f.contentWindow.postMessage({ nm: 'genfree-fired', count: opts.count, opts: optsLite }, '*'); } catch (err) {} });   // count·opts(경량) 동봉 = /6 표준 잡 카드(장수·재시도) 재료(운영자 260710 축11 작업내역 합류 · 구 thumb 캐시는 무시해도 무해)
-      } catch (err) { if (typeof _flashBtn === 'function') _flashBtn(gb, 'err'); }
+        document.querySelectorAll('#tooldlg .toolfr').forEach(f => { try { f.contentWindow.postMessage({ nm: 'genfree-fired', count: opts.count, opts: optsLite }, '*'); } catch (err) {} });   // 도구 폴링 즉시 시작(피드백 딜레이와 무관 · count·opts[경량] 동봉 = /6 표준 잡 카드 재료 · 운영자 260710 축11)
+        gaugeDone(gb); setTimeout(() => askShowCheck(gb), 300);   // 게이지 현위치→100%→✓ 팝(멈칫 제거 · thumb goFire okdone/체크 리듬 미러)
+        await new Promise(res => setTimeout(res, 1100));   // 게이지·✓ 피드백 노출(thumb goFire 900+체크 리듬) 후 결과 전환
+        if (!$('#geniHost').hidden) { geniLeave(); if (toolMeta.thumb) toolMeta.thumb.geniFired = true; }   // 이식 모드 발사 = 폼 원복 + 작업내역(iframe) 노출(잡 카드 진행 가시 = 결과 표시축 · 260713 B) · geniFired = 최소화→복원이 그리드를 폼으로 덮지 않게
+        else $('#genidlg').close();
+        gaugeClear(gb); askHideCheck(gb);   // 버튼 원복(다음 발사 깨끗 · 이식 모드는 close 핸들러 미경유 = 명시 리셋)
+      } catch (err) { gaugeClear(gb); askHideCheck(gb); if (typeof _flashBtn === 'function') _flashBtn(gb, 'err'); }   // 실패 = 게이지/체크 원복 + 실패 플래시(errflash · 운영자 "실패 문구")
       finally { gb.disabled = false; }
       return;
     }
