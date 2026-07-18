@@ -818,6 +818,7 @@
   .ch-st { display:flex; flex-direction:column; gap:2px; padding:8px 10px; background:rgba(255,255,255,.03); border-radius:var(--r-m); }
   .ch-st b { font-size:var(--fs-h2); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
   .ch-st span { color:var(--mut); font-size:var(--fs-xs); }
+  .ch-st .ch-avg { font-variant-numeric:tabular-nums; }   /* 평균 병기(운영자 260718 델타 대체) — 색·크기는 .ch-st span 계승 · 숫자 정렬용 tab-nums만 추가 */
   .ch-sig, .ch-post { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r-m); background:rgba(255,255,255,.03); margin-bottom:6px; font-size:var(--fs-sm); }
   .ch-sig.low { opacity:.5; }
   .ch-ax { flex:none; color:var(--mut); font-size:var(--fs-xs); }
@@ -3504,10 +3505,10 @@ try {
 
 <!-- S 하단 네비(미래 탭 스캐폴드) — 클릭 시 그 위에 작은 팝업 -->
 <nav class="bnav" id="bnav">
-  <button class="bnav-i" data-tab="scrap" aria-label="LEGACY MEDIA(레거시)"><span class="nv-en">LEGACY MEDIA</span></button><!-- 1번 = LEGACY MEDIA(운영자 260714 "레거시 > LEGACY MEDIA" — 네비 라벨도 헤더 영문 정식명으로 승격) -->
+  <button class="bnav-i" data-tab="scrap" aria-label="LEGACY(레거시)"><span class="nv-en">LEGACY</span></button><!-- 1번 = LEGACY(운영자 260718 "맨 아래 줄 LEGACY만" — 하단 네비 라벨 축약 · 구 'LEGACY MEDIA'(260714) · 헤더 VIEWHEAD는 'LEGACY MEDIA' 유지 = "나머지 동일") -->
   <button class="bnav-i active" data-tab="feed" aria-label="뉴스 요약"><span class="feedtab">뉴스 요약<span class="qbadge" id="qbadge" title="분석 대기열 — 탭하면 열림" hidden></span></span></button><!-- 2번 = 뉴스 요약(운영자 260714 "레거시·뉴스 요약 좌측" — 구 3번서 ＋ 왼쪽으로 · active = 기본 착지 탭 유지 · qbadge 동행) -->
   <button class="bnav-fab" id="toolfab" type="button" aria-label="제작 도구"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-  <button class="bnav-i" id="linkfab" data-tab="trend" aria-label="SNS DIGEST"><span class="nv-en">SNS DIGEST</span></button><!-- 3번 = SNS DIGEST(운영자 260714 "SNS DIGEST·채널 요약 우측" + "SNS > SNS DIGEST" 라벨 승격 · 쌍 구조 · id linkfab = 불변(참조 정본·앵커 폴백) · data-tab=trend로 showTab 합류) -->
+  <button class="bnav-i" id="linkfab" data-tab="trend" aria-label="SNS"><span class="nv-en">SNS</span></button><!-- 3번 = SNS(운영자 260718 "SNS는 SNS만" — 하단 네비 라벨 축약 · 구 'SNS DIGEST'(260714) · id linkfab = 불변(참조 정본·앵커 폴백) · data-tab=trend로 showTab 합류 · 헤더 VIEWHEAD는 'SNS DIGEST' 유지) -->
   <button class="bnav-i" data-tab="chan" aria-label="채널 요약(인스타 분석)"><span>채널 요약</span></button><!-- 4번 = 채널 요약(운영자 260713 쌍 구조 · 인스타 직결 신호 · 260714 우측 유지) -->
 </nav>
 <!-- 제작 도구 = FAB(+) 위로 3버튼 반원 펼침(라디얼). 좌상 요약 요청(구 라벨 뉴스 요약 — 운영자 260712 개명 = 메뉴3명과 중첩 해소) · 12시 이미지 · 우상 영상. 버튼=.sbtn 투명 글래스 계승. 세부 분기는 도구 안 탭(이미지=오버레이 생성기 탭 / 영상=자막↔영상프롬프트 탭). -->
@@ -10395,14 +10396,12 @@ function renderChan() {
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const vf = chVf;
   const p = d.profile, a = d.account_day || {}, series = d.daily_series || [], avg = d.avg || {};
-  const delta = k => {   // 평균 대비 델타(운영자 실사용 핵심 — 최근 7일 ÷ 전 기간 평균 · avg = 신호 모듈 산출)
-    const v = avg[k]; if (!v || v.ratio_7d == null) return '';
-    const pct = Math.round((v.ratio_7d - 1) * 100), up = pct >= 0;
-    return `<span class="ch-delta ${up ? 'up' : 'dn'}" title="평소 평균 대비 최근 7일">${up ? TRI_UP_SVG : TRI_DN_SVG}${Math.abs(pct)}%</span>`;
-  };
+  const stUnit = k => (CH_MET[k] ? CH_MET[k][1] : '회');   // 지표 단위 = 일일추이 차트(CH_MET)와 동일 어휘 계승(조회=회·도달=계정)
+  // 델타(▲▼N%) 폐지(운영자 260718 "팔로워 옆 88% 하락 = 팔로워가 88% 빠진 걸로 오해") — '평소 대비 %'는 하락처럼 읽혀 → 전기간 평균값 병기로 대체(수치 = avg.avg_all 실측 · 창작 0)
   const st = (lb, v, key) => {
     const sp = key && series.length ? chSpark(series, key) : '';
-    return `<div class="ch-st"><div class="ch-strow"><b>${v}</b>${key ? delta(key) : ''}</div><span>${lb}</span>${sp ? `<div class="ch-spark">${sp}</div>` : ''}</div>`;
+    const av = key && avg[key] && avg[key].avg_all != null ? `<span class="ch-avg">평균 ${vf(Math.round(avg[key].avg_all))} ${stUnit(key)}</span>` : '';
+    return `<div class="ch-st"><div class="ch-strow"><b>${v}</b></div><span>${lb}</span>${av}${sp ? `<div class="ch-spark">${sp}</div>` : ''}</div>`;
   };
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
@@ -10433,8 +10432,11 @@ function renderChan() {
          : (bhasAll ? `<div class="tb-allwrap"${CHAN_BSEC === 'all' ? ' hidden' : ''}><div class="tb-div"></div><span class="tbrief-lbl">전체 총론</span><p class="tbrief-t tb-allt"></p></div>` : '')) +
     `</div>`, bseg, chanStale);   // bseg = 헤더 우측 기간 칩(extra · 운영자 260716) · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭)
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(fmtK12(d.generated_kst))}</span>`, '<div class="ch-stats">' +
-    st('팔로워', vf(p.followers_count), 'follows') + st('조회수', vf(a.views), 'views') + st('도달', vf(a.reach), 'reach') +
-    st('공유', vf(a.shares)) + st('저장', vf(a.saves)) + st('프로필 방문', vf(a.profile_views), 'profile_views') + '</div>');
+    // 팔로워 = 정밀 카운트(운영자 260718 "6.4만 옆 88% 하락 말고 63,956명 이런식으로") — 축약(6.4만)·오해성 델타 제거 · 명 단위 · 재고량이라 평균 병기 안 함(키 미전달)
+    st('팔로워', (p.followers_count != null ? p.followers_count.toLocaleString() : '—') + '명') +
+    // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기
+    st('조회수', vf(a.views) + ' 회', 'views') + st('도달', vf(a.reach) + ' 계정', 'reach') +
+    st('공유', vf(a.shares) + ' 회') + st('저장', vf(a.saves) + ' 회') + st('프로필 방문', vf(a.profile_views) + ' 회', 'profile_views') + '</div>');
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
