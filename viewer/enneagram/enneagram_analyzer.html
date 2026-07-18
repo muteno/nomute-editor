@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에니어그램 결과 분석기</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#ffffff;
+    --ink:#2b2a28;
+    --sub:#7c766c;
+    --line:#e7dfd1;
+    --line2:#efe8db;
+    --shadow:0 6px 24px rgba(60,45,20,.07);
+    /* 유형별 색 (구분성 우선, 따뜻한 톤 유지) */
+    --c1:#e0654a; --c1t:#ffffff;
+    --c2:#e8973c; --c2t:#ffffff;
+    --c3:#e3c247; --c3t:#5c4d0f;
+    --c4:#9b6fb0; --c4t:#ffffff;
+    --c5:#4a86b0; --c5t:#ffffff;
+    --c6:#4faaa0; --c6t:#ffffff;
+    --c7:#77b95f; --c7t:#ffffff;
+    --c8:#b0413e; --c8t:#ffffff;
+    --c9:#d0a25e; --c9t:#4a3616;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:'Pretendard Variable','Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    min-height:100vh;
+  }
+  /* ===== 헤더 & 네비 ===== */
+  header{
+    position:sticky;top:0;z-index:30;
+    background:rgba(255,255,255,.9);backdrop-filter:blur(10px);
+    border-bottom:1.5px solid var(--line);
+  }
+  .head-top{display:flex;align-items:center;gap:12px;padding:14px 5vw 0;max-width:1100px;margin:0 auto;}
+  .logo-dot{width:34px;height:34px;border-radius:50%;flex-shrink:0;
+    background:conic-gradient(var(--c1),var(--c2),var(--c3),var(--c7),var(--c6),var(--c5),var(--c4),var(--c8),var(--c9),var(--c1));}
+  .head-top h1{font-size:19px;font-weight:900;letter-spacing:-.5px;}
+  .head-top .sub{font-size:12px;color:var(--sub);font-weight:600;margin-left:2px;}
+  nav{display:flex;gap:4px;padding:10px 5vw 0;max-width:1100px;margin:0 auto;overflow-x:auto;}
+  nav::-webkit-scrollbar{height:0;}
+  .tab{
+    padding:10px 16px;border:none;background:transparent;cursor:pointer;
+    font-family:inherit;font-size:14.5px;font-weight:700;color:var(--sub);
+    border-bottom:3px solid transparent;white-space:nowrap;transition:all .18s;
+    display:flex;align-items:center;gap:7px;
+  }
+  .tab:hover{color:var(--ink);}
+  .tab.active{color:var(--ink);border-bottom-color:var(--ink);}
+  .tab .cnt{font-size:11px;background:var(--ink);color:#fff;border-radius:10px;padding:1px 7px;font-family:Georgia,serif;}
+  /* ===== 본문 ===== */
+  main{max-width:1100px;margin:0 auto;padding:26px 5vw 80px;}
+  .view{display:none;animation:fade .4s ease;}
+  .view.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  .view-head{margin-bottom:22px;}
+  .eyebrow{font-size:11.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--sub);font-weight:800;}
+  .view-head h2{font-size:27px;font-weight:900;letter-spacing:-.8px;margin-top:6px;}
+  .view-head p{color:var(--sub);font-size:14px;margin-top:8px;max-width:640px;line-height:1.65;}
+  /* 카드 */
+  .card{background:var(--panel);border:1.5px solid var(--line);border-radius:18px;box-shadow:var(--shadow);}
+  .pad{padding:22px 24px;}
+  .grid{display:grid;gap:16px;}
+  @media(min-width:720px){.g2{grid-template-columns:1fr 1fr;}.g3{grid-template-columns:repeat(3,1fr);}}
+  /* 버튼 */
+  .btn{padding:12px 22px;border-radius:30px;border:none;background:var(--ink);color:#fff;
+    font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;
+    text-decoration:none;display:inline-flex;align-items:center;gap:7px;}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.16);}
+  .btn:active{transform:none;}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);}
+  .btn.ghost:hover{background:#fff;border-color:var(--ink);box-shadow:none;transform:translateY(-2px);}
+  .btn.sm{padding:8px 16px;font-size:13px;}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn.danger{background:#fff;color:#b0413e;border:1.5px solid #e7c4c0;}
+  .btn.danger:hover{background:#fdf3f2;}
+  /* 유형 배지/칩 */
+  .pill{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+    border-radius:50%;font-family:Georgia,serif;font-weight:900;font-size:15px;flex-shrink:0;}
+  .pill.lg{width:44px;height:44px;font-size:22px;}
+  .tchip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px 5px 6px;border-radius:20px;
+    background:#fff;border:1.5px solid var(--line);font-weight:700;font-size:13.5px;}
+  /* ===== 홈 ===== */
+  .hero{display:flex;gap:30px;align-items:center;flex-wrap:wrap;}
+  .hero .enn{width:min(46vw,300px);flex-shrink:0;}
+  .hero-txt{flex:1;min-width:240px;}
+  .hero-txt h3{font-size:23px;font-weight:900;letter-spacing:-.5px;margin-bottom:10px;}
+  .hero-txt p{color:var(--sub);font-size:14.5px;line-height:1.7;margin-bottom:8px;}
+  .stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;}
+  .stat{background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:12px 20px;text-align:center;min-width:96px;}
+  .stat b{display:block;font-size:26px;font-weight:900;font-family:Georgia,serif;line-height:1;}
+  .stat span{font-size:11px;color:var(--sub);font-weight:700;letter-spacing:.5px;}
+  .type-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;}
+  @media(max-width:520px){.type-mini-grid{grid-template-columns:repeat(2,1fr);}}
+  .tm{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:14px;
+    background:var(--panel);border:1.5px solid var(--line);cursor:pointer;transition:all .18s;}
+  .tm:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--ink);}
+  .tm b{font-size:14px;font-weight:800;}
+  .tm span{font-size:11.5px;color:var(--sub);display:block;font-weight:600;}
+  /* ===== 테스트 ===== */
+  .steps{display:flex;flex-direction:column;gap:12px;}
+  .step{display:flex;gap:14px;align-items:flex-start;}
+  .step .num{width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0;}
+  .step h4{font-size:15.5px;font-weight:800;margin-bottom:3px;}
+  .step p{font-size:13.5px;color:var(--sub);line-height:1.6;}
+  .note{background:#f6efe2;border:1.5px solid var(--line);border-radius:14px;padding:14px 18px;
+    font-size:13px;color:var(--ink);line-height:1.65;}
+  .note b{font-weight:800;}
+  /* 퀴즈 */
+  .q-count{font-size:12.5px;letter-spacing:1.5px;color:var(--sub);font-weight:800;margin-bottom:12px;}
+  .qbar{height:6px;background:var(--line2);border-radius:6px;margin-bottom:20px;overflow:hidden;}
+  .qbar>i{display:block;height:100%;background:var(--ink);border-radius:6px;transition:width .4s ease;}
+  .q-text{font-size:20px;font-weight:800;line-height:1.4;margin-bottom:20px;letter-spacing:-.4px;}
+  .options{display:flex;flex-direction:column;gap:10px;}
+  .opt{padding:15px 18px;border-radius:14px;border:1.5px solid var(--line);background:#fff;
+    font-size:15px;font-weight:600;cursor:pointer;text-align:left;transition:all .18s;font-family:inherit;color:var(--ink);}
+  .opt:hover{border-color:var(--ink);transform:translateX(5px);background:#fffdf8;}
+  .quiz-result{text-align:center;padding:8px;}
+  .quiz-result .rface{width:120px;height:120px;border-radius:50%;margin:0 auto 14px;
+    display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-weight:900;font-size:64px;}
+  /* ===== 결과 저장 (위저드) ===== */
+  .wz-row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
+  .wz-col{flex:1;min-width:240px;}
+  .wz-label{font-size:12px;font-weight:800;color:var(--sub);letter-spacing:.5px;margin-bottom:9px;
+    display:flex;align-items:center;gap:6px;}
+  .wz-label .n{width:18px;height:18px;border-radius:50%;background:var(--ink);color:#fff;font-size:11px;
+    display:inline-flex;align-items:center;justify-content:center;font-weight:800;}
+  .inp{width:100%;font-family:inherit;font-size:14.5px;padding:11px 13px;border-radius:11px;
+    border:1.5px solid var(--line);background:#fff;color:var(--ink);}
+  .inp:focus{outline:none;border-color:var(--ink);}
+  .type-picker{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;}
+  @media(max-width:560px){.type-picker{grid-template-columns:repeat(5,1fr);}}
+  .tp{aspect-ratio:1;border-radius:12px;border:1.5px solid var(--line);background:#fff;
+    font-family:Georgia,serif;font-weight:900;font-size:17px;cursor:pointer;color:var(--ink);
+    display:flex;align-items:center;justify-content:center;transition:all .15s;}
+  .tp:hover{transform:scale(1.08);border-color:var(--ink);}
+  .tp.sel{border-color:transparent;transform:scale(1.08);box-shadow:0 4px 12px rgba(0,0,0,.2);}
+  .wing-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .wing-btn{padding:9px 16px;border-radius:12px;border:1.5px solid var(--line);background:#fff;
+    font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink);transition:all .15s;}
+  .wing-btn:hover{border-color:var(--ink);}
+  .wing-btn.sel{background:var(--ink);color:#fff;border-color:transparent;}
+  .wz-preview{font-size:16px;font-weight:800;min-height:24px;letter-spacing:.3px;}
+  .wz-preview .muted{color:var(--sub);font-weight:600;}
+  /* 저장 목록 */
+  .people-list{display:flex;flex-direction:column;gap:8px;}
+  .prow{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;
+    background:#fff;border:1.5px solid var(--line);transition:all .15s;}
+  .prow:hover{border-color:var(--ink);}
+  .prow .nm{font-weight:800;font-size:15px;flex:1;}
+  .prow .ty{font-family:Georgia,serif;font-weight:800;font-size:14px;color:var(--sub);}
+  .prow .acts{display:flex;gap:6px;}
+  .icon-btn{width:32px;height:32px;border-radius:9px;border:1.5px solid var(--line);background:#fff;
+    cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--sub);}
+  .icon-btn:hover{border-color:var(--ink);color:var(--ink);}
+  .empty{text-align:center;padding:40px 20px;color:var(--sub);}
+  .empty .big{font-size:40px;margin-bottom:10px;opacity:.6;}
+  /* ===== 개인 분석 ===== */
+  .person-select{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+  .psel{padding:8px 15px 8px 8px;border-radius:22px;border:1.5px solid var(--line);background:#fff;
+    cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;color:var(--ink);
+    display:flex;align-items:center;gap:8px;transition:all .15s;}
+  .psel:hover{border-color:var(--ink);transform:translateY(-2px);}
+  .psel.sel{border-color:transparent;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+  .analysis{display:grid;gap:16px;}
+  @media(min-width:820px){.analysis{grid-template-columns:1.1fr .9fr;align-items:start;}}
+  .type-hero{border-radius:18px;padding:26px 26px 24px;color:#fff;position:relative;overflow:hidden;}
+  .type-hero .bignum{position:absolute;right:-10px;top:-30px;font-family:Georgia,serif;font-weight:900;
+    font-size:180px;opacity:.16;line-height:1;}
+  .type-hero .nick{font-size:13px;font-weight:800;letter-spacing:1.5px;opacity:.85;text-transform:uppercase;}
+  .type-hero h3{font-size:30px;font-weight:900;margin:4px 0 6px;letter-spacing:-.5px;}
+  .type-hero .wingtag{display:inline-block;background:rgba(255,255,255,.22);padding:4px 12px;border-radius:16px;
+    font-size:13px;font-weight:800;margin-bottom:14px;}
+  .type-hero .motive{font-size:14.5px;line-height:1.65;opacity:.95;position:relative;}
+  .fear-desire{display:flex;gap:10px;margin-top:16px;position:relative;flex-wrap:wrap;}
+  .fd{flex:1;min-width:130px;background:rgba(255,255,255,.16);border-radius:12px;padding:11px 13px;}
+  .fd .lb{font-size:10.5px;font-weight:800;letter-spacing:1px;opacity:.8;margin-bottom:3px;}
+  .fd .vl{font-size:12.5px;font-weight:600;line-height:1.5;}
+  .sec{margin-bottom:18px;}
+  .sec-t{font-size:12px;font-weight:800;letter-spacing:1px;color:var(--sub);margin-bottom:10px;
+    text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+  .tag-list{display:flex;flex-wrap:wrap;gap:7px;}
+  .tag-list span{font-size:13px;font-weight:600;padding:6px 12px;border-radius:14px;background:#f4ede0;}
+  .tag-list.neg span{background:#fbeeed;color:#8a3a37;}
+  .tag-list.pos span{background:#eef5ec;color:#3f6b38;}
+  /* 성장/스트레스 방향 */
+  .arrow-box{display:flex;gap:12px;flex-wrap:wrap;}
+  .arrow-card{flex:1;min-width:150px;border-radius:14px;padding:14px 16px;border:1.5px solid var(--line);}
+  .arrow-card.grow{background:#eef5ec;border-color:#cfe3c9;}
+  .arrow-card.stress{background:#fbeeed;border-color:#eecfcc;}
+  .arrow-card .dir{font-size:11.5px;font-weight:800;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .arrow-card.grow .dir{color:#3f6b38;}
+  .arrow-card.stress .dir{color:#a2413d;}
+  .arrow-card .to{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
+  .arrow-card .to b{font-size:14.5px;font-weight:800;}
+  .arrow-card p{font-size:12.5px;color:var(--ink);line-height:1.55;}
+  .shared{display:flex;flex-wrap:wrap;gap:7px;}
+  .shared .sc{font-size:13px;font-weight:700;padding:5px 12px;border-radius:16px;background:#fff;border:1.5px solid var(--line);}
+  /* 관계 지도 */
+  .relmap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;}
+  .relmap-svg{flex:1;min-width:280px;max-width:460px;margin:0 auto;}
+  .relmap-info{flex:1;min-width:262px;display:flex;flex-direction:column;gap:12px;}
+  .rel-line{border-radius:14px;padding:12px 15px;border:1.5px solid var(--line);}
+  .rel-line.grow{background:#eef5ec;border-color:#cfe3c9;}
+  .rel-line.stress{background:#fbeeed;border-color:#eecfcc;}
+  .rl-head{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13.5px;margin-bottom:9px;}
+  .rl-people{display:flex;flex-wrap:wrap;gap:6px;}
+  .rl-note{font-size:11.5px;color:var(--sub);margin-top:8px;line-height:1.5;}
+  .rchip{font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:15px;background:#fff;
+    border:1.5px solid var(--line);cursor:pointer;transition:all .15s;color:var(--ink);}
+  .rchip b{font-family:Georgia,serif;font-weight:800;font-size:11px;opacity:.75;margin-left:1px;}
+  .rchip:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+  .rempty{font-size:12px;color:var(--sub);font-style:italic;}
+  .rel-compat{border-radius:14px;padding:12px 15px;border:1.5px solid var(--line);background:var(--panel);}
+  .rc-t{font-size:13px;font-weight:800;margin-bottom:11px;}
+  .rc-t span{font-size:11px;color:var(--sub);font-weight:600;}
+  .rc-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+  .rc-row:last-child{margin-bottom:0;}
+  .rc-lb{font-size:12.5px;font-weight:700;width:120px;flex-shrink:0;padding-top:5px;}
+  .rc-row>div{display:flex;flex-wrap:wrap;gap:6px;flex:1;}
+  .relmap-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:16px;
+    padding-top:14px;border-top:1px solid var(--line2);}
+  .relmap-legend .lg{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--sub);}
+  .relmap-legend .lg i{width:13px;height:13px;border-radius:50%;display:inline-block;border:2px solid var(--line);}
+  /* 강의 라이브러리 */
+  .lec-search{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .lec-search input{flex:1;min-width:220px;font-family:inherit;font-size:15px;padding:12px 16px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);}
+  .lec-search input:focus{outline:none;border-color:var(--ink);}
+  .lec-typefilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;}
+  .lec-tf{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-family:Georgia,serif;font-weight:900;font-size:15px;cursor:pointer;color:var(--ink);transition:all .15s;}
+  .lec-tf:hover{border-color:var(--ink);}
+  .lec-tf.sel{border-color:transparent;transform:scale(1.08);box-shadow:0 3px 10px rgba(0,0,0,.2);}
+  .lec-tf.all{width:auto;padding:0 14px;font-family:inherit;font-size:13px;font-weight:800;}
+  .lec-tf.all.sel{background:var(--ink);color:#fff;}
+  .lec-count{font-size:12.5px;color:var(--sub);font-weight:700;margin-bottom:12px;}
+  .lec-list{display:flex;flex-direction:column;gap:8px;}
+  .lec-row{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;border-radius:13px;background:var(--panel);border:1.5px solid var(--line);cursor:pointer;transition:all .15s;}
+  .lec-row:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:var(--shadow);}
+  .lec-idx{width:26px;height:26px;border-radius:7px;background:#f2ece0;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-weight:800;font-size:12.5px;color:var(--sub);flex-shrink:0;margin-top:1px;}
+  .lec-main{flex:1;min-width:0;}
+  .lec-title{font-size:14.5px;font-weight:700;line-height:1.42;}
+  .lec-meta{font-size:11.5px;color:var(--sub);margin-top:5px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+  .lec-types{display:flex;gap:3px;}
+  .lec-tp{width:19px;height:19px;border-radius:50%;font-family:Georgia,serif;font-weight:900;font-size:10.5px;display:flex;align-items:center;justify-content:center;}
+  .lec-snip{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.5;background:#f7f1e6;padding:7px 10px;border-radius:8px;}
+  .lec-snip mark,.lec-title mark{background:#ffe08a;color:var(--ink);padding:0 2px;border-radius:3px;}
+  .lec-mini{display:flex;flex-direction:column;gap:6px;}
+  .lec-mini-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;background:#fff;border:1.5px solid var(--line);cursor:pointer;transition:all .15s;}
+  .lec-mini-row:hover{border-color:var(--ink);transform:translateX(3px);}
+  .lec-mini-title{flex:1;font-size:13px;font-weight:600;line-height:1.35;}
+  .lec-go{font-size:11.5px;color:var(--sub);font-weight:700;flex-shrink:0;}
+  /* 강의 모달 */
+  .modal-bg{position:fixed;inset:0;background:rgba(30,25,15,.5);backdrop-filter:blur(3px);z-index:70;display:none;align-items:center;justify-content:center;padding:4vh 4vw;}
+  .modal-bg.show{display:flex;}
+  .modal{position:relative;background:var(--bg);border-radius:20px;max-width:760px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;}
+  .modal-head{padding:20px 56px 16px 24px;border-bottom:1.5px solid var(--line);}
+  .modal-head .mt{font-size:18px;font-weight:800;line-height:1.35;}
+  .modal-head .mm{font-size:12px;color:var(--sub);margin-top:9px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .modal-close{position:absolute;top:15px;right:16px;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line);background:#fff;cursor:pointer;font-size:16px;color:var(--sub);display:flex;align-items:center;justify-content:center;}
+  .modal-close:hover{border-color:var(--ink);color:var(--ink);}
+  .modal-body{padding:20px 24px;overflow-y:auto;}
+  .modal-note{font-size:11.5px;color:var(--sub);background:#f4ede0;padding:10px 14px;border-radius:10px;margin-bottom:16px;line-height:1.5;}
+  .modal-body p{font-size:14.5px;line-height:1.85;color:var(--ink);margin-bottom:13px;word-break:break-word;}
+  .modal-body mark{background:#ffe08a;padding:0 2px;border-radius:3px;}
+  /* ===== 그룹 분석 ===== */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  @media(max-width:640px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:16px 14px;text-align:center;}
+  .kpi b{display:block;font-size:30px;font-weight:900;font-family:Georgia,serif;line-height:1;}
+  .kpi span{font-size:11.5px;color:var(--sub);font-weight:700;letter-spacing:.3px;display:block;margin-top:6px;}
+  .kpi small{font-size:11px;color:var(--sub);}
+  .bar-chart{display:flex;flex-direction:column;gap:9px;}
+  .bar-row{display:flex;align-items:center;gap:10px;}
+  .bar-row .lbl{width:74px;flex-shrink:0;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .bar-track{flex:1;height:26px;background:var(--line2);border-radius:8px;overflow:hidden;position:relative;}
+  .bar-fill{height:100%;border-radius:8px;transition:width .6s cubic-bezier(.2,.8,.2,1);min-width:2px;}
+  .bar-row .val{width:56px;text-align:right;font-size:12.5px;font-weight:800;font-family:Georgia,serif;flex-shrink:0;}
+  .center-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  @media(max-width:640px){.center-cards{grid-template-columns:1fr;}}
+  .cc{border-radius:15px;padding:16px;border:1.5px solid var(--line);background:var(--panel);}
+  .cc .ico{font-size:24px;}
+  .cc h4{font-size:15px;font-weight:800;margin:6px 0 2px;}
+  .cc .who{font-size:12px;color:var(--sub);margin-bottom:8px;font-weight:600;}
+  .cc .cbar{height:8px;border-radius:5px;background:var(--line2);overflow:hidden;}
+  .cc .cbar>i{display:block;height:100%;border-radius:5px;}
+  .cc .pct{font-size:22px;font-weight:900;font-family:Georgia,serif;margin-top:8px;}
+  .group-list{display:flex;flex-direction:column;gap:14px;}
+  .gl-type{}
+  .gl-type .gh{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .gl-type .gh b{font-size:15px;font-weight:800;}
+  .gl-type .gh span{font-size:12px;color:var(--sub);font-weight:600;}
+  .gl-names{display:flex;flex-wrap:wrap;gap:6px;padding-left:40px;}
+  .gl-names .gn{font-size:13px;font-weight:700;padding:5px 12px;border-radius:15px;background:#fff;border:1.5px solid var(--line);cursor:pointer;transition:all .15s;}
+  .gl-names .gn:hover{border-color:var(--ink);}
+  .section-title{font-size:14px;font-weight:800;margin:26px 0 12px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px;}
+  /* enneagram svg */
+  .enn-node{cursor:default;}
+  .enn text{font-family:Georgia,serif;font-weight:900;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+  .legend .lg{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--sub);}
+  .legend .lg i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--ink);color:#fff;padding:13px 24px;border-radius:30px;font-weight:700;font-size:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);z-index:60;transition:transform .35s cubic-bezier(.2,.9,.3,1.2);pointer-events:none;}
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .hidden{display:none!important;}
+  /* ===== 이론 카드 (개인 분석 심화) ===== */
+  .theory-head{margin:28px 4px 14px;}
+  .theory-head h3{font-size:18px;font-weight:900;letter-spacing:-.3px;}
+  .theory-head p{font-size:13px;color:var(--sub);margin-top:5px;line-height:1.55;}
+  .theory-cat{margin-bottom:20px;}
+  .cat-h{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:15px;font-weight:800;color:var(--ink);margin:6px 4px 11px;padding-bottom:8px;border-bottom:2px solid var(--line);}
+  .cat-n{font-size:11px;font-weight:900;letter-spacing:.8px;color:var(--panel);background:var(--ink);border-radius:20px;padding:3px 11px;}
+  .cat-tag{font-size:11.5px;font-weight:700;color:var(--sub);}
+  .theory-grid{display:grid;gap:14px;grid-template-columns:1fr;}
+  @media(min-width:720px){.theory-grid{grid-template-columns:1fr 1fr;}}
+  .th-card{background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:16px 17px;box-shadow:var(--shadow);}
+  .th-h{display:flex;gap:10px;align-items:flex-start;margin-bottom:11px;}
+  .th-ico{font-size:20px;line-height:1.1;}
+  .th-t{font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--sub);text-transform:uppercase;}
+  .th-s{font-size:15.5px;font-weight:800;color:var(--ink);margin-top:2px;line-height:1.3;}
+  .th-tag{font-size:11.5px;font-weight:700;color:var(--sub);}
+  .th-members{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+  .mtp{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:800;flex-shrink:0;}
+  .mtp.on{outline:2px solid var(--ink);outline-offset:1.5px;}
+  .th-mnote{font-size:11.5px;color:var(--sub);font-weight:600;margin-left:3px;}
+  .th-desc{font-size:13.5px;line-height:1.65;margin:4px 0 10px;}
+  .th-you{font-size:13px;font-weight:700;background:#f4ede0;border-radius:10px;padding:8px 11px;margin-bottom:9px;line-height:1.5;}
+  .th-care{font-size:12.5px;line-height:1.6;background:#eef5ec;border-radius:10px;padding:8px 11px;}
+  .th-clb{display:block;font-size:11px;font-weight:800;color:#3f6b38;margin-bottom:2px;}
+  .th-arrow{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.55;margin-bottom:8px;}
+  .th-arrow>div{flex:1;}
+  .th-arrow.grow b{color:#3f6b38;}
+  .th-arrow.stress b{color:#b0413e;}
+  .th-principle{font-size:11.5px;color:var(--sub);line-height:1.55;background:var(--bg);border-radius:9px;padding:7px 10px;margin-top:2px;}
+  .th-badge{display:inline-block;font-size:11px;font-weight:800;color:var(--sub);background:#f4ede0;border-radius:20px;padding:4px 11px;margin-bottom:9px;}
+  .th-facade{display:flex;gap:22px;margin-bottom:8px;}
+  .fb{display:flex;align-items:center;gap:7px;}
+  .fblb{font-size:11.5px;font-weight:700;color:var(--sub);}
+  .sub3{display:grid;gap:7px;margin-bottom:10px;}
+  .sub1{font-size:13px;padding:8px 11px;background:var(--bg);border-radius:10px;line-height:1.4;}
+  .sub1q{color:var(--sub);font-weight:600;margin-left:6px;font-size:12px;}
+  .sub1 em{display:block;font-style:normal;color:var(--sub);font-size:12px;margin-top:3px;}
+  .life-row{display:flex;gap:10px;font-size:13.5px;line-height:1.55;padding:8px 0;border-bottom:1px solid var(--line);}
+  .life-row:last-child{border-bottom:none;}
+  .life-lb{flex-shrink:0;width:34px;font-weight:800;color:var(--sub);font-size:12px;padding-top:1px;}
+  .lec-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line);}
+  .lec-chip{font-size:11.5px;font-weight:700;color:var(--ink);background:#f4ede0;border:none;border-radius:14px;padding:5px 10px;cursor:pointer;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:all .15s;}
+  .lec-chip:hover{background:var(--ink);color:var(--bg);}
+  .ico-tps{display:flex;gap:5px;justify-content:center;margin-bottom:6px;}
+  /* 강의 원문 발췌 인용 — .lec-snip(#f7f1e6) 발췌색 + 유형색 좌측선 계승(새 색 0) */
+  .th-quote{position:relative;background:#f7f1e6;border-radius:10px;border-left:3px solid var(--qc,var(--line));padding:9px 12px;margin-bottom:9px;overflow:hidden;}
+  .th-quote .qmark{position:absolute;top:0;right:9px;font-family:Georgia,serif;font-weight:900;font-size:34px;line-height:1.2;color:var(--line);pointer-events:none;user-select:none;}
+  .th-qlb{display:block;font-size:10px;font-weight:800;letter-spacing:.5px;color:var(--sub);margin-bottom:3px;}
+  .th-qt{font-size:12.5px;line-height:1.6;color:var(--ink);position:relative;z-index:1;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+  .th-qsrc{display:flex;justify-content:flex-end;margin-top:6px;}
+  .th-axis{font-size:12.5px;line-height:1.55;background:var(--bg);border-radius:10px;padding:8px 11px;margin-bottom:9px;}
+  .th-axis .th-clb{color:var(--sub);}
+  .sub1bio{font-size:11px;color:var(--sub);font-weight:700;margin-right:4px;}
+  .tri-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .tri-code{display:inline-flex;gap:2px;background:var(--bg);border-radius:8px;padding:3px;}
+  .tri-d{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;font-size:11.5px;font-weight:800;}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-top">
+    <div class="logo-dot"></div>
+    <div>
+      <h1>에니어그램 결과 분석기</h1>
+      <div class="sub">테스트 · 저장 · 개인 분석 · 그룹 분석</div>
+    </div>
+  </div>
+  <nav id="nav"></nav>
+</header>
+
+<main>
+  <!-- 홈 -->
+  <section class="view active" id="view-home">
+    <div class="view-head">
+      <div class="eyebrow">Overview</div>
+      <h2>한눈에 보기</h2>
+    </div>
+    <div class="card pad" style="margin-bottom:16px;">
+      <div class="hero">
+        <div class="enn" id="homeEnn"></div>
+        <div class="hero-txt">
+          <h3>사람을 9가지 성격으로 나누는 지도</h3>
+          <p>각 유형이 <b>무엇을 원하고, 무엇을 두려워하며, 그래서 무엇을 싫어하는지</b>를 통해 &ldquo;왜 그렇게 행동하는가&rdquo;를 설명합니다.</p>
+          <p>IDRlabs 등에서 테스트한 <b>주유형 · 날개(예: 8w7)</b>를 저장하고, 개인·그룹 단위로 분석해 보세요.</p>
+          <div class="stat-row" id="homeStats"></div>
+        </div>
+      </div>
+      <div class="type-mini-grid" id="homeTypes"></div>
+    </div>
+  </section>
+
+  <!-- 테스트 -->
+  <section class="view" id="view-test">
+    <div class="view-head">
+      <div class="eyebrow">Step 1 · Test</div>
+      <h2>테스트로 유형 확인</h2>
+      <p>정확한 진단은 전문 테스트를 권장합니다. 빠르게 감을 잡고 싶다면 아래 30초 간이 테스트를 이용하세요.</p>
+    </div>
+    <div class="grid g2">
+      <div class="card pad">
+        <div class="sec-t">🔗 정식 테스트 (권장)</div>
+        <div class="steps" style="margin-bottom:16px;">
+          <div class="step"><div class="num">1</div><div><h4>IDRlabs 열린 에니어그램</h4><p>무료·무가입, 36문항 약 5~8분.</p></div></div>
+          <div class="step"><div class="num">2</div><div><h4>원형 차트 읽기</h4><p>조각이 가장 큰 유형 = <b>주(主)유형</b>, 그 양옆 중 큰 쪽 = <b>날개</b>.</p></div></div>
+          <div class="step"><div class="num">3</div><div><h4>결과 저장 탭에 입력</h4><p>이름 → 주유형 → 날개 순으로 <b>8w7</b> 형태로 저장.</p></div></div>
+        </div>
+        <a class="btn" href="https://www.idrlabs.com/kr/open-enneagram/test.php" target="_blank" rel="noopener">🔗 IDRlabs 테스트 열기</a>
+      </div>
+      <div class="card pad">
+        <div class="sec-t">⚡ 30초 간이 테스트</div>
+        <div id="quizIntro">
+          <p style="font-size:13.5px;color:var(--sub);line-height:1.65;margin-bottom:16px;">
+            7개의 &lsquo;싫어하는 것&rsquo; 문항으로 가장 가까운 유형을 추정합니다. 재미로 감을 잡는 용도예요.</p>
+          <button class="btn ghost" id="startQuiz">간이 테스트 시작 →</button>
+        </div>
+        <div id="quizBox" class="hidden">
+          <div class="q-count" id="qcount"></div>
+          <div class="qbar"><i id="qbarfill"></i></div>
+          <div class="q-text" id="qtext"></div>
+          <div class="options" id="qopts"></div>
+        </div>
+        <div id="quizResult" class="hidden quiz-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 결과 저장 -->
+  <section class="view" id="view-save">
+    <div class="view-head">
+      <div class="eyebrow">Step 2 · Save</div>
+      <h2>결과 저장</h2>
+      <p>이름 → 주유형 → 날개 순으로 선택해 저장합니다. 저장한 데이터는 이 브라우저에 자동 보관됩니다.</p>
+    </div>
+    <div class="card pad" style="margin-bottom:16px;">
+      <div class="wz-row">
+        <div class="wz-col" style="max-width:280px;">
+          <div class="wz-label"><span class="n">1</span> 이름</div>
+          <input class="inp" id="wzName" list="rosterList" placeholder="이름 입력 또는 선택" autocomplete="off">
+          <datalist id="rosterList"></datalist>
+        </div>
+        <div class="wz-col">
+          <div class="wz-label"><span class="n">2</span> 주유형</div>
+          <div class="type-picker" id="wzTypes"></div>
+        </div>
+      </div>
+      <div class="wz-row" style="margin-top:16px;">
+        <div class="wz-col" style="max-width:280px;">
+          <div class="wz-label"><span class="n">3</span> 날개 <span style="font-weight:600;color:var(--sub)">(선택)</span></div>
+          <div class="wing-row" id="wzWings"><span style="font-size:13px;color:var(--sub);align-self:center;">주유형을 먼저 선택</span></div>
+        </div>
+        <div class="wz-col" style="display:flex;flex-direction:column;justify-content:flex-end;">
+          <div class="wz-preview" id="wzPreview"></div>
+          <div style="display:flex;gap:10px;margin-top:12px;">
+            <button class="btn" id="wzSave" disabled>저장 ✓</button>
+            <button class="btn ghost sm" id="wzClear">지우기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div class="sec-t" style="margin:0;">💾 저장된 결과 <span id="savedCount" style="color:var(--ink)"></span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost sm" id="csvBtn">⬇ CSV 내보내기</button>
+          <button class="btn ghost sm" id="sampleBtn">샘플 불러오기</button>
+          <button class="btn danger sm" id="clearBtn">전체 삭제</button>
+        </div>
+      </div>
+      <div class="people-list" id="peopleList"></div>
+    </div>
+  </section>
+
+  <!-- 개인 분석 -->
+  <section class="view" id="view-person">
+    <div class="view-head">
+      <div class="eyebrow">Step 3 · Individual</div>
+      <h2>개인 분석</h2>
+      <p>저장된 사람을 선택하면 유형의 동기·강점·성장 방향까지 상세히 분석합니다.</p>
+    </div>
+    <div class="person-select" id="personSelect"></div>
+    <div id="personAnalysis"></div>
+  </section>
+
+  <!-- 그룹 분석 -->
+  <section class="view" id="view-group">
+    <div class="view-head">
+      <div class="eyebrow">Step 4 · Group</div>
+      <h2>저장된 사람들 분석</h2>
+      <p>전체 인원의 유형 분포, 중심(장·가슴·머리) 성향, 유형별 구성원을 한눈에.</p>
+    </div>
+    <div id="groupBody"></div>
+  </section>
+
+  <!-- 강의 라이브러리 -->
+  <section class="view" id="view-lecture">
+    <div class="view-head">
+      <div class="eyebrow">Library</div>
+      <h2>강의 자료 <span id="lecTotal" style="font-size:16px;color:var(--sub);font-weight:700"></span></h2>
+      <p>유튜브 재생목록 강의의 자막을 추출해 담았습니다. 제목·본문을 검색하거나 유형별로 모아 볼 수 있어요. <b>자동 자막(음성 인식)</b>이라 전문용어·고유명사에 오탈자가 있을 수 있습니다.</p>
+    </div>
+    <div id="lecBody"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="lecModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeLecture()">✕</button>
+    <div class="modal-head"><div class="mt" id="lecMT"></div><div class="mm" id="lecMM"></div></div>
+    <div class="modal-body" id="lecMB"></div>
+  </div>
+</div>
+
+<script src="enneagram_transcripts.js"></script>
+<script>
+/* ============ 유형 데이터 ============ */
+const TYPES = [
+  {n:1,name:"개혁가",en:"The Reformer",center:"본능(장)",emo:"분노",cvar:"--c1",tvar:"--c1t",
+   desire:"올바르고 완전한 사람이 되는 것",fear:"부패하거나 결함 있는 사람이 되는 것",
+   motive:"옳고 바르게 살고자 합니다. 원칙·기준·완벽을 추구하며, 결함 있는 사람이 되는 걸 가장 두려워합니다.",
+   strengths:["정직·성실","높은 기준","강한 책임감","자기 절제","공정함"],
+   growthAreas:["완벽주의 내려놓기","자기·타인 비판 완화","실수를 허용하기"],
+   dislikes:["원칙 없이 일하는 것","통제가 안 되는 것","돈·시간 낭비","내 방식이 아닌 것","우유부단한 것"],
+   grow:7,stress:4},
+  {n:2,name:"조력가",en:"The Helper",center:"가슴",emo:"수치심",cvar:"--c2",tvar:"--c2t",
+   desire:"사랑받고 필요한 존재가 되는 것",fear:"사랑받을 가치가 없어지는 것",
+   motive:"사랑받고 필요한 존재가 되고자 합니다. 남을 돕는 데 헌신하며, 사랑받지 못하는 걸 두려워합니다.",
+   strengths:["따뜻한 공감","헌신·배려","관계 지향","너그러움","눈치·센스"],
+   growthAreas:["자기 욕구 인정하기","건강한 경계 세우기","대가 없이 베풀기"],
+   dislikes:["소외되는 것","사랑받지 못하는 것","이기적인 것","고마운 줄 모르는 것","쓸모없어지는 것"],
+   grow:4,stress:8},
+  {n:3,name:"성취자",en:"The Achiever",center:"가슴",emo:"수치심",cvar:"--c3",tvar:"--c3t",
+   desire:"가치 있고 인정받는 존재가 되는 것",fear:"무가치하게 여겨지는 것",
+   motive:"가치 있고 유능해 보이고자 합니다. 성공과 인정에 몰두하며, 무가치해 보이는 걸 두려워합니다.",
+   strengths:["강한 추진력","적응력","효율성","목표 지향","자신감"],
+   growthAreas:["진정성 회복하기","속도 조절","이미지보다 존재에 집중"],
+   dislikes:["매너 없는 것","돋보이지 않는 것","수준 떨어지는 것","목표가 없는 것","무식해 보이는 것"],
+   grow:6,stress:9},
+  {n:4,name:"개인주의자",en:"The Individualist",center:"가슴",emo:"수치심",cvar:"--c4",tvar:"--c4t",
+   desire:"자신만의 정체성과 의미를 찾는 것",fear:"정체성·의미 없는 평범한 존재가 되는 것",
+   motive:"자신만의 정체성을 찾고자 합니다. 특별하고 깊이 있는 존재이길 원하며, 평범함과 결핍을 두려워합니다.",
+   strengths:["창의성","깊은 감수성","진정성","높은 공감력","심미안"],
+   growthAreas:["평범함 수용하기","질투·비교 완화","감정을 실천으로"],
+   dislikes:["평범해 보이는 것","둔감한 것","감정에 상처 주는 것","직설적인 표현","일이 우선인 것"],
+   grow:1,stress:2},
+  {n:5,name:"탐구자",en:"The Investigator",center:"머리",emo:"두려움",cvar:"--c5",tvar:"--c5t",
+   desire:"유능하고 이해력 있는 존재가 되는 것",fear:"무능하고 압도당하는 것",
+   motive:"지식과 이해를 추구합니다. 관찰·분석으로 세상을 파악하며, 무능하고 압도당하는 걸 두려워합니다.",
+   strengths:["통찰력","객관성","깊은 집중","독립성","전문성"],
+   growthAreas:["감정 나누기","머리에서 몸으로(실행)","관계에 참여하기"],
+   dislikes:["일반적인 스킨십","감정적인 것","소리 큰 것","두 번 말하는 것","핵심 없는 것"],
+   grow:8,stress:7},
+  {n:6,name:"충성가",en:"The Loyalist",center:"머리",emo:"두려움",cvar:"--c6",tvar:"--c6t",
+   desire:"안전과 지지를 얻는 것",fear:"지지와 안전을 잃는 것",
+   motive:"안전과 안정을 추구합니다. 위험을 미리 대비하고 신뢰에 헌신하며, 지지받지 못하는 걸 두려워합니다.",
+   strengths:["성실함","강한 책임감","충성심","위기 대비력","팀워크"],
+   growthAreas:["불안 다스리기","자기 신뢰 키우기","최악의 시나리오에서 벗어나기"],
+   dislikes:["불안전한 것","안정되지 못한 것","남에게 피해 주는 것","준비성 없는 것","예절 없는 것"],
+   grow:9,stress:3},
+  {n:7,name:"열정가",en:"The Enthusiast",center:"머리",emo:"두려움",cvar:"--c7",tvar:"--c7t",
+   desire:"만족과 자유를 얻는 것",fear:"결핍과 고통에 갇히는 것",
+   motive:"즐거움과 자유를 추구합니다. 새로운 자극과 가능성을 좇으며, 고통·결핍·지루함을 두려워합니다.",
+   strengths:["낙천성","다재다능","열정","상상력","넘치는 에너지"],
+   growthAreas:["집중과 마무리","고통 직면하기","깊이 더하기"],
+   dislikes:["재미없는 것","자유롭지 않은 것","반복적인 것","부정적 표현","길게 말하는 것"],
+   grow:5,stress:1},
+  {n:8,name:"도전자",en:"The Challenger",center:"본능(장)",emo:"분노",cvar:"--c8",tvar:"--c8t",
+   desire:"스스로를 지키고 통제력을 갖는 것",fear:"타인에게 지배·통제당하는 것",
+   motive:"힘과 통제력을 추구합니다. 강인하게 스스로를 지키며, 약함을 드러내거나 지배당하는 걸 두려워합니다.",
+   strengths:["리더십","결단력","보호 본능","정의감","강한 추진력"],
+   growthAreas:["취약함 수용하기","부드러움 표현","타인 배려"],
+   dislikes:["복잡하게 말하는 것","답답한 것","변명하는 것","약하게 보이는 것","복종 안 하는 것"],
+   grow:2,stress:5},
+  {n:9,name:"평화주의자",en:"The Peacemaker",center:"본능(장)",emo:"분노",cvar:"--c9",tvar:"--c9t",
+   desire:"내면의 평화와 안정을 유지하는 것",fear:"단절되고 상실되는 것",
+   motive:"평화와 조화를 추구합니다. 갈등을 피하고 안정을 지키며, 단절되고 혼자 남겨지는 걸 두려워합니다.",
+   strengths:["수용력","포용력","중재력","안정감","편안한 공감"],
+   growthAreas:["자기 주장하기","우선순위 세우기","갈등 직면하기"],
+   dislikes:["경쟁하는 것","몰아세우는 것","나서는 것","다툼","각자 생각하는 것"],
+   grow:3,stress:6},
+];
+const WINGS={1:[9,2],2:[1,3],3:[2,4],4:[3,5],5:[4,6],6:[5,7],7:[6,8],8:[7,9],9:[8,1]};
+const T = n => TYPES.find(t=>t.n===n);
+const cvar = n => `var(${T(n).cvar})`;
+const tvar = n => `var(${T(n).tvar})`;
+// 한글 받침 판별 조사 (예: 사고→'가' / 감정·본능→'이')
+const josa=(w,a,b)=>{const c=w.charCodeAt(w.length-1);return w+((c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28!==0)?a:b);};
+
+/* ============ 교재(이론) 데이터 — enneagram_book.html 원문 기반. 개인/그룹 분석에 녹임 ============ */
+// ① 호나이 3분법(사회적 태도) — '억압된 중심'으로 묶은 세 그룹
+const HORNEY = {
+  compliant:{name:'컴플라이언트', tag:'순응·의무형', types:[1,2,6], repressed:'사고',
+    desc:'본능과 감정이 손잡아 <b>연대감</b>이 강합니다. 책임감·의무감이 크고 "착한 사람"이 되려 하며, 세상을 선/악으로 또렷이 나눕니다 — \'우리\'의 뜻을 자기 생각보다 앞세우죠.',
+    care:'혼자 있을 때 떠오르는 생각을 판단 없이 \'바라보기\'.', lec:[11,13,8]},
+  assertive:{name:'어썰티브', tag:'주장·독립형 (셀프타입)', types:[3,7,8], repressed:'감정',
+    desc:'사고와 본능이 손잡아 <b>현실의 게임</b>에 능합니다. 계산이 빠르고 대담하죠. 감정 다루기가 서툴러, 감정으로 할 소통을 <b>일(3)·놀이(7)·싸움(8)</b>으로 대신합니다.',
+    care:'나를 잘 아는 한 사람과, 아무것도 안 하고 조용히 함께 있어 보기.', lec:[10,8]},
+  withdrawn:{name:'위드드로운', tag:'후퇴·내면형', types:[4,5,9], repressed:'본능',
+    desc:'사고와 감정이 손잡아 <b>상상·이미지·관념의 세계</b>에 삽니다. 과학·예술·철학이 홈그라운드죠. 몸·현실·돈 감각이 약해 늘 한 박자 늦은 듯 보입니다.',
+    care:'운동·감각으로 \'몸\'을 직접 느껴 보기.', lec:[12,8]},
+};
+const HORNEY_OF={1:'compliant',2:'compliant',6:'compliant',3:'assertive',7:'assertive',8:'assertive',4:'withdrawn',5:'withdrawn',9:'withdrawn'};
+const HORNEY_MOTIVE={1:'시스템 수호',2:'좋은 사람',6:'자기 불신',3:'자기 이미지',7:'재미',8:'영역 과시',4:'감각이 다름',5:'더 알아야',9:'건드리지 마'};
+
+// ② 하모닉 그룹(갈등·감정 처리 방식) — '통제되는 기능'으로 묶은 세 그룹
+const HARMONIC = {
+  positive:{name:'낙관 그룹', tag:'본능이 길들여짐 · 밝음', types:[2,7,9], ctrl:'본능',
+    desc:'어두운 면을 잘 안 보고 <b>긍정적으로 재구성</b>합니다. "괜찮아, 잘 될 거야." 심각해지지 않고 재미있어 개그 기질도 많죠. 다만 덮어둔 감정이 뒤늦게 새어나오기도.',
+    care:'무거운 직면보다, 정작 외면해 온 진짜 욕구·몸의 신호를 살며시 짚어봐 주기.', lec:[29,32,33,34]},
+  competent:{name:'역량 그룹', tag:'감정이 통제됨 · 담백', types:[1,3,5], ctrl:'감정',
+    desc:'감정을 옆으로 치워두고 <b>문제 자체를 해결</b>합니다. 드라이·사무적으로 보이지만(츤데레), 감정이 없는 게 아니라 조절되는 것 — "프로의 세계가 냉정한" 이유.',
+    care:'감정 과잉보다 <b>구체적 해결책과 약간의 거리</b>를.', lec:[30,36,37]},
+  reactive:{name:'반응 그룹', tag:'사고가 제어됨 · 강렬', types:[4,6,8], ctrl:'사고',
+    desc:'가장 <b>드라마틱한</b> 그룹. \'진심 vs 현실\'의 갈등이 강렬한 감정과 묘한 긴장감을 만듭니다. 감정을 피하지 않고 똑바로 보죠. 대표 행동은 <b>밀당</b>.',
+    care:'해결책보다 <b>"나도 화나"라는 진심 어린 공명</b>을.', lec:[31,38,39,40]},
+};
+const HARMONIC_OF={2:'positive',7:'positive',9:'positive',1:'competent',3:'competent',5:'competent',4:'reactive',6:'reactive',8:'reactive'};
+
+// ③ 통합(성장) 방향의 계기 — book ch8 원문. 분열 방향은 TYPES.stress 로 렌더.
+const INTEGRATE={
+  1:'"무조건적 복종은 위험할 수 있다"를 스스로 깨달을 때 → 7번(선택의 자유).',
+  2:'베풂의 대가를 바라지 않게 될 때 → 4번(외면하던 내 감정).',
+  3:'이미지를 놓아 사람이 따르고 \'우리\'를 위해 일할 때 → 6번(공헌).',
+  4:'소외감이 만인의 감정임을 깨달을 때 → 1번(기준이 되는 사람).',
+  5:'지식이 현실에 드러날 때 → 8번(아는 것이 힘).',
+  6:'"이젠 실패 안 해" 안심할 때 → 9번(평온).',
+  7:'질주를 스스로 알아차릴 때 → 5번(지혜).',
+  8:'힘을 약자를 위해 쓸 때 → 2번(약자의 보호자).',
+  9:'잊고 있던 자기 의지를 꺼낼 때 → 3번(능동적 창조).',
+};
+const ARROW_LEC={1:[43,41],8:[43,41],2:[44,41],7:[44,41],4:[45,41],5:[45,41],3:[42,41],6:[42,41],9:[42,41]};
+const ARROW_PRINCIPLE='<b>분열은 무의식</b>(자기도 모르게 빠짐), <b>통합은 의식</b>(알아차리는 순간 찾아옴). "놓으면 통합, 버티면 분열."';
+
+// ④ 도형 구조 — 겉(전략)·속(모티브)·1차/2차 (book ch2)
+const FACADE={
+  1:{primary:false, face:6, core:9, note:'겉은 6번(대비)의 전략, 속은 9번(내 영역)의 모티브.'},
+  2:{primary:false, face:6, core:3, note:'겉은 6번의 전략, 속은 3번(인정)의 모티브.'},
+  3:{primary:true, blend:'사고+본능', irony:'감정이 <b>동기</b>인데 정작 일할 땐 감정을 끄고 <b>성능 좋은 로봇처럼</b> 효율만 좇는다.'},
+  4:{primary:false, face:9, core:3, note:'겉은 9번의 전략, 속은 3번의 모티브.'},
+  5:{primary:false, face:9, core:6, note:'겉은 9번의 전략, 속은 6번의 모티브.'},
+  6:{primary:true, blend:'감정+본능', irony:'사고 유형인데 생각이 너무 많아 오히려 <b>맹목적 충성</b>처럼 보인다(연대감→의무감).'},
+  7:{primary:false, face:3, core:6, note:'겉은 3번의 전략, 속은 6번의 모티브.'},
+  8:{primary:false, face:3, core:9, note:'겉은 3번의 전략, 속은 9번(내 영역을 지키려는 본능)의 모티브.'},
+  9:{primary:true, blend:'사고+감정', irony:'본능 유형인데 본능(휴식)이 지어낸 <b>거대한 관념 세계</b>(몽상·운명론)에 산다.'},
+};
+const FACADE_LEC=[18,8,3];
+
+// ⑤ 하위유형(본능 변형) — 공통 3결
+const SUBTYPE=[
+  {name:'자기보존', bio:'개체 유지 본능', q:'안전·건강·재물·공간', tell:'방에 들어가면 온도·자리부터 본다'},
+  {name:'사회적', bio:'종족(동족) 유지 본능', q:'집단·지위·내 역할', tell:'사람 관계와 그 속 내 위치를 본다'},
+  {name:'일대일', bio:'성적(끌림) 본능', q:'끌리는 특정 한 사람과의 강렬함', tell:'눈에 꽂히는 한 사람을 본다'},
+];
+const SUBTYPE_LEC=[48,47,49];
+
+// ⑥ 생활영역 — 돈·시간·성공 (book ch10)
+const MONEY={1:'선악·바름의 문제 — 낭비는 죄',2:'내 사람에게 쓰는 것',3:'유능함의 증표 — 겉은 부자, 속은 빚일 수도',4:'남과 다른 나를 위한 차별화',5:'독립의 방벽으로서의 축적(수집가형)',6:'모자라도 남아도 걱정 — 양쪽 다 불안',7:'경험을 사는 자유(지름신)',8:'힘·영역(나와바리)의 도구',9:'배고파봐야 안다 — 습관의 동물'};
+const TIME_CENTER={'본능(장)':{when:'현재',desc:'지금의 흐름·감각에 산다'},'가슴':{when:'과거',desc:'지나온 감정에 뿌리를 둔다'},'머리':{when:'미래',desc:'앞으로를 내다보고 대비한다'}};
+const SUCCESS_HORNEY={assertive:'실현·정복 — 손에 쥐는 성취',withdrawn:'의미·깊이 — 남다른 나의 완성',compliant:'\'나\'가 아닌 \'우리\'의 문제 — 정의 실현·가까운 이의 성공·공동체의 성공'};
+const LIFE_LEC={money:[25,26],time:[22,23,24],success:[27,28]};
+
+/* ============ 교재 이론 데이터 (2차 심화) — 분열·거울쌍·캐릭터·도형축·트라이타입 + 강의 발췌 ============ */
+// 분열(스트레스) 방향 계기 — book ch8, INTEGRATE의 대칭. (기존 dislikes 오용을 교체)
+const DISINTEGRATE={
+  1:'옳은 말만 했는데 다 떠난다 느끼며, 자기도 모르게 4번의 고립·우울로 가라앉는다.',
+  2:'베풂을 몰라준다는 억울함이 쌓이면, 8번처럼 강압적으로 요구하고 조종하려 든다.',
+  3:'성과가 무너질 위기에 몰리면, 9번처럼 방전·잠수·무기력으로 손을 놓는다.',
+  4:'버림받을까 두려우면, 2번처럼 상대에게 매달리고 인정을 갈구한다.',
+  5:'압도당하면, 7번처럼 산만해지고 세상을 비웃는 블랙 유머로 달아난다.',
+  6:'실패 공포가 과열되면, 3번처럼 일중독·이미지로 불안을 덮으려 한다.',
+  7:'결핍에 갇힐까 두려우면, 1번처럼 경직되고 남을 비판하며 통제하려 든다.',
+  8:'통제를 잃을까 두려우면, 5번처럼 숨어들어 고립·냉소·의심에 빠진다.',
+  9:'단절이 두려우면, 6번처럼 불안·의심·걱정에 안절부절못한다.',
+};
+// 마주보는 거울쌍(통합·분열 방향이 대칭). 1차유형(3·6·9)은 삼각형이라 짝 없음.
+const MIRROR={1:8,8:1,2:7,7:2,4:5,5:4};
+// 역량 그룹(1·3·5)이 눌러 둔 감정 — book ch6. 낙관·반응은 그룹 단위라 생략.
+const HARMONIC_EMO={1:'허탈·좌절',3:'초라함',5:'공허·고독'};
+// 유형별 친숙한 캐릭터 — book ch11 (강연자의 예시적 해석)
+const CHAR={1:'캡틴 아메리카',2:'스파이더맨',3:'아이언맨',4:'완다',5:'비전',6:'블랙위도',7:'스타로드',8:'토르(8w7)',9:'헐크'};
+// 도형 위치 — 상하축(현실↔블랙홀)·좌우축(주관↔객관), book ch2·강의#18
+const AXIS={
+  8:'상단 · 오감으로 겪는 현실 세계의 최전선',1:'상단 · 오감으로 겪는 현실 세계의 최전선',9:'상단 · 현실 세계 한복판의 완충지대',
+  3:'오른쪽 · 주관·감정(자기 이미지)의 꼭짓점',2:'오른쪽 위 · 주관·감정 쪽',
+  6:'왼쪽 · 객관·사고(세계·언어)의 꼭짓점',7:'왼쪽 위 · 객관·사고 쪽',
+  4:'최하단 · 주관의 밑바닥, ‘존재의 구멍’에 가장 가까운 예술·심리의 자리',5:'최하단 · 객관의 밑바닥, ‘존재의 구멍’에 가장 가까운 과학의 자리',
+};
+// 트라이타입 — 세 중심 대표 1개씩(코어 고정, 나머지 두 센터에서 조합 = 9코드)
+const CENTERS3={gut:[8,9,1],heart:[2,3,4],head:[5,6,7]};
+// 강의 발췌 인용 — 손 큐레이션(유튜브 자동자막 재구성, 축자 인용 아님). {t, lec}
+const LQUOTE={
+  compliant:{t:'어른이 되고도 여전히 나한테 이래라저래라 하는 존재가 있는데, 그게 나를 포함한 더 큰 나, ‘우리’예요. 그래서 자기 생각을 젖혀 두고 전체의 뜻을 따르려 하죠.',lec:11},
+  assertive:{t:'이 사람들이 감정이 없는 게 아니에요. 아주 격한 감정이 있는데, 다만 그걸 타인과 나누기가 어려운 거죠.',lec:10},
+  withdrawn:{t:'현실을 몸으로 직접 겪는 게 아니라 사고와 감정을 거쳐 ‘해석’해요. 그래서 같은 공간에 있어도 늘 한 박자 늦은 듯 보이죠.',lec:12},
+  positive:{t:'‘괜찮아, 진짜 괜찮아’라고 하지만 사실 괜찮지 않아요. 그냥 ‘괜찮아’로 덮는, 일종의 정신승리죠.',lec:32},
+  competent:{t:'문제 앞에서 움직이지 않고 침착하게 생각해요. 감정 스위치를 내리고 오직 능력으로 상황을 돌파하려 하죠.',lec:36},
+  reactive:{t:'자기 영역에 들어온 침입자에 반응하는 야생동물처럼, 선을 넘으면 튕겨내다가도 넘지 않으면 갑자기 얌전해져요.',lec:38},
+  arrow:{t:'고착을 의식해서 내려놓으면 통합, 끝까지 붙들면 분열이에요. 분열은 무의식적이라 자기가 그러는 줄도 몰라요.',lec:42},
+  arrow9:{t:'9번은 늘 자기를 내려놓으려 하죠. 그런데 그 ‘내려놓음’ 자체가 고착이에요 — 내려놓는 것 자체를 내려놓아야 합니다.',lec:42},
+  facade:{t:'겉모습은 극과 극으로 달라도 속은 비슷한 사람들이에요 — 본능이 모티브가 되는 사람들이죠.',lec:8},
+  facade_low:{t:'4번·5번은 도형 가장 아래, 그 아래가 열려 있어요. 이걸 ‘존재의 구멍’, 블랙홀이라 부릅니다.',lec:18},
+  subtype:{t:'방에 들어갔을 때 제일 먼저 관심이 가는 게 뭔지 — 그게 하위유형을 가릅니다.',lec:48},
+  tritype:{t:'세 중심에서 하나씩 골라 코드를 만들어요. 125라면 코어는 1번인데 감정은 2번, 사고는 5번으로 쓰는 사람이죠.',lec:49},
+  money:{t:'‘어머니는 짜장면이 싫다고 하셨어’죠. 착해서라기보다, 자기 이미지가 ‘착한 사람’이라 그렇게 쓰는 거예요.',lec:25},
+};
+
+/* ============ 데이터 저장 ============ */
+const STORAGE_KEY='enneagram_people_v1';
+const SAMPLE=[
+  {name:"한상범",type:8,wing:7},{name:"박은필",type:8,wing:7},
+  {name:"강명희",type:3,wing:2},{name:"문지혜",type:3,wing:2},
+  {name:"김해진",type:8,wing:7},{name:"황세웅",type:1,wing:2},
+  {name:"고아라",type:2,wing:3},{name:"이지은",type:7,wing:8},
+  {name:"윤주원",type:4,wing:5},{name:"심희은",type:5,wing:6},
+];
+let people=[];
+function load(){
+  try{const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){people=JSON.parse(raw);return;}
+  }catch(e){}
+  people=SAMPLE.map(p=>({...p}));   // 최초 실행 시 샘플 시드
+  save();
+}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(people));}catch(e){}}
+
+/* ============ 에니어그램 SVG ============ */
+const ANG={9:270,1:310,2:350,3:30,4:70,5:110,6:150,7:190,8:230};
+function pos(n,cx,cy,r){const a=ANG[n]*Math.PI/180;return{x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)};}
+/* opts: {highlight, grow, stress, counts, size} */
+function ennSVG(opts={}){
+  const S=opts.size||400, cx=S/2, cy=S/2, r=S*0.4, nr=S*0.058;
+  const P={}; for(let i=1;i<=9;i++)P[i]=pos(i,cx,cy,r);
+  const line=(a,b,col,w,dash='')=>`<line x1="${P[a].x.toFixed(1)}" y1="${P[a].y.toFixed(1)}" x2="${P[b].x.toFixed(1)}" y2="${P[b].y.toFixed(1)}" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''} stroke-linecap="round"/>`;
+  let svg=`<svg viewBox="0 0 ${S} ${S}" xmlns="http://www.w3.org/2000/svg" class="enn">`;
+  svg+=`<defs>
+    <marker id="agrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4a8a3e"/></marker>
+    <marker id="astress" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#b0413e"/></marker>
+  </defs>`;
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="1.5"/>`;
+  // 삼각형 3-6-9, 헥사드 1-4-2-8-5-7-1
+  [[9,3],[3,6],[6,9]].forEach(([a,b])=>svg+=line(a,b,'var(--line)',1.5));
+  [[1,4],[4,2],[2,8],[8,5],[5,7],[7,1]].forEach(([a,b])=>svg+=line(a,b,'var(--line)',1.5));
+  // 개인: 성장/스트레스 화살표
+  if(opts.highlight){
+    const h=opts.highlight;
+    if(opts.grow){const g=P[opts.grow],s=P[h];
+      const dx=g.x-s.x,dy=g.y-s.y,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
+      svg+=`<line x1="${(s.x+ux*nr).toFixed(1)}" y1="${(s.y+uy*nr).toFixed(1)}" x2="${(g.x-ux*nr*1.3).toFixed(1)}" y2="${(g.y-uy*nr*1.3).toFixed(1)}" stroke="#4a8a3e" stroke-width="3" marker-end="url(#agrow)"/>`;}
+    if(opts.stress){const g=P[opts.stress],s=P[h];
+      const dx=g.x-s.x,dy=g.y-s.y,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L;
+      svg+=`<line x1="${(s.x+ux*nr).toFixed(1)}" y1="${(s.y+uy*nr).toFixed(1)}" x2="${(g.x-ux*nr*1.3).toFixed(1)}" y2="${(g.y-uy*nr*1.3).toFixed(1)}" stroke="#b0413e" stroke-width="3" stroke-dasharray="5 4" marker-end="url(#astress)"/>`;}
+  }
+  // 노드
+  const maxC=opts.counts?Math.max(1,...Object.values(opts.counts)):1;
+  for(let i=1;i<=9;i++){
+    const p=P[i]; let rad=nr, fill=cvar(i), op=1, stroke='#fff', sw=2;
+    let label=i, lcol=tvar(i);
+    if(opts.counts){
+      const c=opts.counts[i]||0;
+      rad = nr*(0.55+0.45*(c/maxC));
+      op = c===0?0.2:1;
+      if(c===0){fill='#fff';stroke='var(--line)';lcol='var(--sub)';}
+    }
+    if(opts.highlight){
+      if(i===opts.highlight){rad=nr*1.15;sw=3;stroke='var(--ink)';}
+      else if(i===opts.grow){stroke='#4a8a3e';sw=2.5;}
+      else if(i===opts.stress){stroke='#b0413e';sw=2.5;}
+      else{op=0.35;}
+    }
+    svg+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${fill}" opacity="${op}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    svg+=`<text x="${p.x.toFixed(1)}" y="${(p.y+rad*0.36).toFixed(1)}" text-anchor="middle" font-size="${(rad*0.9).toFixed(1)}" fill="${lcol}" opacity="${op}">${label}</text>`;
+    if(opts.counts&&(opts.counts[i]||0)>0){
+      const lp=pos(i,cx,cy,r+nr*1.6);
+      svg+=`<text x="${lp.x.toFixed(1)}" y="${(lp.y+4).toFixed(1)}" text-anchor="middle" font-size="${(S*0.032).toFixed(1)}" fill="var(--sub)">${opts.counts[i]}명</text>`;
+    }
+  }
+  svg+=`</svg>`;
+  return svg;
+}
+/* 관계 수준: 주유형 focus에서 본 상대 유형 b의 관계 */
+function relLevel(focus,b){
+  if(b===focus)return'twin';
+  const t=T(focus);
+  if(b===t.grow)return'grow';
+  if(b===t.stress)return'stress';
+  if(WINGS[focus].includes(b))return'wing';
+  if(T(b).center===t.center)return'center';
+  return'far';
+}
+/* focus 인물 기준 관계 지도 — 저장된 실제 인물 이름을 노드에 배치 */
+function relationMap(focus,focusName,size){
+  size=size||440;
+  const S=size,cx=S/2,cy=S*0.42,r=S*0.30,nr=S*0.05;
+  const P={};for(let i=1;i<=9;i++)P[i]=pos(i,cx,cy,r);
+  const t=T(focus),grow=t.grow,stress=t.stress,wings=WINGS[focus];
+  const role=i=> i===focus?'self':i===grow?'grow':i===stress?'stress':wings.includes(i)?'wing':(T(i).center===t.center?'center':'far');
+  const nameCol={self:'var(--ink)',grow:'#3f8a34',stress:'#b0413e',wing:'#7c766c',center:'#7c766c',far:'#b3a891'};
+  const ringCol={self:'var(--ink)',grow:'#3f8a34',stress:'#b0413e',wing:'#fff',center:'#fff',far:'#fff'};
+  const L=(a,b,col,w,dash)=>`<line x1="${P[a].x.toFixed(1)}" y1="${P[a].y.toFixed(1)}" x2="${P[b].x.toFixed(1)}" y2="${P[b].y.toFixed(1)}" stroke="${col}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''} stroke-linecap="round"/>`;
+  let svg=`<svg viewBox="0 0 ${S} ${S}" xmlns="http://www.w3.org/2000/svg" class="enn">`;
+  svg+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="1.5"/>`;
+  [[9,3],[3,6],[6,9]].forEach(([a,b])=>svg+=L(a,b,'var(--line2)',1.5));
+  [[1,4],[4,2],[2,8],[8,5],[5,7],[7,1]].forEach(([a,b])=>svg+=L(a,b,'var(--line2)',1.5));
+  svg+=L(focus,grow,'#3f8a34',2.5);
+  svg+=L(focus,stress,'#b0413e',2.5,'5 4');
+  const lh=S*0.037;
+  for(let i=1;i<=9;i++){
+    const pp=P[i],rl=role(i);
+    const rad=rl==='self'?nr*1.18:(rl==='far'?nr*0.82:nr);
+    const op=rl==='far'?0.5:1;
+    const sw=rl==='self'?3.5:(rl==='grow'||rl==='stress'?2.5:2);
+    svg+=`<circle cx="${pp.x.toFixed(1)}" cy="${pp.y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${cvar(i)}" opacity="${op}" stroke="${ringCol[rl]}" stroke-width="${sw}"/>`;
+    svg+=`<text x="${pp.x.toFixed(1)}" y="${(pp.y+rad*0.34).toFixed(1)}" text-anchor="middle" font-size="${(rad*0.85).toFixed(1)}" fill="${tvar(i)}" opacity="${op}">${i}</text>`;
+    let names=people.filter(x=>x.type===i).map(x=>x.name);
+    if(i===focus)names=[focusName].concat(names.filter(n=>n!==focusName));
+    if(!names.length)continue;
+    const a=ANG[i]*Math.PI/180;
+    const lx=cx+Math.cos(a)*(r+nr+7),ly=cy+Math.sin(a)*(r+nr+7);
+    const anchor=Math.cos(a)>0.35?'start':(Math.cos(a)<-0.35?'end':'middle');
+    names.forEach((nm,k)=>{
+      const yy=ly+(k-(names.length-1)/2)*lh+lh*0.32;
+      const isFocus=(i===focus&&k===0);
+      const disp=isFocus?('★ '+nm):nm;
+      svg+=`<text x="${lx.toFixed(1)}" y="${yy.toFixed(1)}" text-anchor="${anchor}" style="font-family:'Pretendard Variable','Pretendard','Malgun Gothic',sans-serif;font-weight:${isFocus?900:700}" font-size="${(S*0.032).toFixed(1)}" fill="${nameCol[rl]}" paint-order="stroke" stroke="var(--bg)" stroke-width="3.2">${disp}</text>`;
+    });
+  }
+  svg+=`</svg>`;
+  return svg;
+}
+
+/* ============ 네비 / 라우팅 ============ */
+const VIEWS=[
+  {id:'home',icon:'🏠',label:'홈'},
+  {id:'test',icon:'🎯',label:'테스트'},
+  {id:'save',icon:'💾',label:'결과 저장'},
+  {id:'person',icon:'👤',label:'개인 분석'},
+  {id:'group',icon:'👥',label:'그룹 분석'},
+  {id:'lecture',icon:'📚',label:'강의'},
+];
+const nav=document.getElementById('nav');
+VIEWS.forEach(v=>{
+  const b=document.createElement('button');
+  b.className='tab';b.dataset.v=v.id;
+  b.innerHTML=`<span>${v.icon}</span>${v.label}${v.id==='save'?`<span class="cnt" id="tabCnt"></span>`:''}`;
+  b.onclick=()=>show(v.id);
+  nav.appendChild(b);
+});
+let current='home';
+function show(id){
+  current=id;
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+id));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.v===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='home')renderHome();
+  if(id==='save')renderSave();
+  if(id==='person')renderPerson();
+  if(id==='group')renderGroup();
+  if(id==='lecture')renderLecture();
+}
+
+/* ============ 홈 ============ */
+function renderHome(){
+  document.getElementById('homeEnn').innerHTML=ennSVG({size:300});
+  const centers={'본능(장)':0,'가슴':0,'머리':0};
+  people.forEach(p=>centers[T(p.type).center]++);
+  const topCenter=Object.entries(centers).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('homeStats').innerHTML=`
+    <div class="stat"><b>${people.length}</b><span>저장된 인원</span></div>
+    <div class="stat"><b>${new Set(people.map(p=>p.type)).size}</b><span>등장 유형 수</span></div>
+    <div class="stat"><b>${people.length?topCenter[0].replace('(장)',''):'—'}</b><span>주요 중심</span></div>`;
+  const grid=document.getElementById('homeTypes');grid.innerHTML='';
+  TYPES.forEach(t=>{
+    const el=document.createElement('div');el.className='tm';
+    el.innerHTML=`<span class="pill" style="background:${cvar(t.n)};color:${tvar(t.n)}">${t.n}</span>
+      <div><b>${t.name}</b><span>${t.center.replace('(장)','')} · ${t.emo}</span></div>`;
+    el.onclick=()=>{ // 유형 대표 인물이 있으면 개인분석, 없으면 그냥 그룹
+      const who=people.find(p=>p.type===t.n);
+      if(who){selectedPerson=who.name;show('person');}
+      else show('group');
+    };
+    grid.appendChild(el);
+  });
+}
+
+/* ============ 테스트 (간이 퀴즈) ============ */
+const QUIZ=[
+  {q:"팀플에서 가장 짜증 나는 순간은?",opts:[["아무 원칙 없이 대충 굴러갈 때",1],["내 노력을 아무도 안 알아줄 때",2],["성과가 안 나고 존재감 없을 때",3],["시끄럽고 내 시간을 뺏길 때",5]]},
+  {q:"이런 사람이 제일 별로다:",opts:[["변명하고 약한 척하는 사람",8],["매너 없고 수준 떨어지는 사람",3],["준비 안 하고 민폐 끼치는 사람",6],["둔감하게 감정 상처 주는 사람",4]]},
+  {q:"대화할 때 제일 답답한 건?",opts:[["빙빙 돌려 복잡하게 말하는 것",8],["핵심 없이 두 번 말하는 것",5],["부정적이고 길게 늘어지는 것",7],["나를 몰아세우며 다투는 것",9]]},
+  {q:"내가 절대 못 참는 상황:",opts:[["자유가 없고 반복만 하는 것",7],["불안정하고 앞이 안 보이는 것",6],["평범하게 묻혀버리는 것",4],["내 방식대로 통제가 안 되는 것",1]]},
+  {q:"관계에서 가장 상처받는 건?",opts:[["소외되고 사랑 못 받을 때",2],["갈등이 생겨 사이가 틀어질 때",9],["이기적으로 나를 이용할 때",2],["나를 무시하고 지배하려 들 때",8]]},
+  {q:"'이건 좀…' 싶은 태도:",opts:[["감정에 휘둘려 소리 지르는 것",5],["나서서 경쟁하고 튀는 것",9],["돈·시간을 함부로 쓰는 것",1],["돋보이려 허세 부리는 것",3]]},
+  {q:"스트레스 폭발 지점은?",opts:[["재미없고 지루하게 묶여 있을 때",7],["예절 없고 무책임할 때",6],["직설적으로 내 감정 후벼팔 때",4],["약자 무시하고 복종 강요할 때",8]]},
+];
+let qIdx=0,scores={};
+document.getElementById('startQuiz').onclick=()=>{
+  qIdx=0;scores={};
+  document.getElementById('quizIntro').classList.add('hidden');
+  document.getElementById('quizResult').classList.add('hidden');
+  document.getElementById('quizBox').classList.remove('hidden');
+  renderQ();
+};
+function renderQ(){
+  const q=QUIZ[qIdx];
+  document.getElementById('qcount').textContent=`Q${qIdx+1} / ${QUIZ.length}`;
+  document.getElementById('qbarfill').style.width=(qIdx/QUIZ.length*100)+'%';
+  document.getElementById('qtext').textContent=q.q;
+  const box=document.getElementById('qopts');box.innerHTML='';
+  [...q.opts].sort(()=>Math.random()-.5).forEach(([label,type])=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=label;
+    b.onclick=()=>{scores[type]=(scores[type]||0)+1;qIdx++;
+      if(qIdx<QUIZ.length){box.style.opacity=0;setTimeout(()=>{renderQ();box.style.opacity=1;},160);}
+      else quizDone();};
+    box.appendChild(b);
+  });
+}
+function quizDone(){
+  let best=1,mx=-1;for(let i=1;i<=9;i++){if((scores[i]||0)>mx){mx=scores[i]||0;best=i;}}
+  const t=T(best);
+  document.getElementById('quizBox').classList.add('hidden');
+  const box=document.getElementById('quizResult');box.classList.remove('hidden');
+  box.innerHTML=`
+    <div class="rface" style="background:${cvar(best)};color:${tvar(best)}">${best}</div>
+    <div class="eyebrow">간이 결과 · 추정</div>
+    <h3 style="font-size:22px;font-weight:900;margin:6px 0;">${best}번 · ${t.name}</h3>
+    <p style="font-size:13.5px;color:var(--sub);line-height:1.6;max-width:380px;margin:0 auto 16px;">${t.motive}</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn sm" onclick="quizToSave(${best})">이 결과 저장하러 →</button>
+      <button class="btn ghost sm" onclick="document.getElementById('startQuiz').click()">다시 하기</button>
+    </div>`;
+}
+window.quizToSave=(n)=>{show('save');selectType(n);};
+
+/* ============ 결과 저장 (위저드) ============ */
+let wz={name:'',type:null,wing:null};
+function renderSave(){
+  // datalist
+  document.getElementById('rosterList').innerHTML=[...new Set([...SAMPLE.map(s=>s.name),...people.map(p=>p.name)])].map(n=>`<option value="${n}">`).join('');
+  // 유형 버튼
+  const tb=document.getElementById('wzTypes');
+  if(!tb.dataset.built){
+    for(let i=1;i<=9;i++){
+      const b=document.createElement('button');b.className='tp';b.textContent=i;b.dataset.t=i;
+      b.onclick=()=>selectType(i);tb.appendChild(b);
+    }
+    tb.dataset.built='1';
+  }
+  updateWzUI();
+  renderPeopleList();
+}
+document.getElementById('wzName').addEventListener('input',e=>{wz.name=e.target.value.trim();updatePreview();checkSave();});
+function selectType(i){
+  wz.type=i;wz.wing=null;
+  updateWzUI();
+  const wb=document.getElementById('wzWings');wb.innerHTML='';
+  WINGS[i].forEach(w=>{
+    const b=document.createElement('button');b.className='wing-btn';b.textContent=`${i}w${w}`;b.dataset.w=w;
+    b.onclick=()=>selectWing(w);wb.appendChild(b);
+  });
+  const nb=document.createElement('button');nb.className='wing-btn';nb.textContent='날개 없음';nb.dataset.w='';
+  nb.onclick=()=>selectWing(null);wb.appendChild(nb);
+  updatePreview();checkSave();
+}
+function selectWing(w){
+  wz.wing=w;
+  document.querySelectorAll('#wzWings .wing-btn').forEach(b=>
+    b.classList.toggle('sel',(b.dataset.w===''&&w===null)||(+b.dataset.w===w)));
+  updatePreview();
+}
+function updateWzUI(){
+  document.querySelectorAll('#wzTypes .tp').forEach(b=>{
+    const on=+b.dataset.t===wz.type;b.classList.toggle('sel',on);
+    b.style.background=on?cvar(wz.type):'#fff';b.style.color=on?tvar(wz.type):'var(--ink)';
+  });
+}
+function updatePreview(){
+  const p=document.getElementById('wzPreview');
+  if(!wz.type){p.innerHTML='<span class="muted">유형을 선택하세요</span>';return;}
+  const label=wz.wing!==null?`${wz.type}w${wz.wing}`:`${wz.type}번`;
+  const exist=people.find(x=>x.name===wz.name);
+  p.innerHTML=`<span style="color:var(--sub);font-weight:700">${wz.name||'(이름?)'}</span> →
+    <span class="pill" style="background:${cvar(wz.type)};color:${tvar(wz.type)};width:26px;height:26px;font-size:13px;vertical-align:middle">${wz.type}</span>
+    <span style="margin-left:4px">${label}</span>
+    ${exist?'<span class="muted" style="font-size:12px"> · 기존 값 덮어쓰기</span>':''}`;
+}
+function checkSave(){document.getElementById('wzSave').disabled=!(wz.name&&wz.type);}
+document.getElementById('wzSave').onclick=()=>{
+  if(!wz.name||!wz.type)return;
+  const ex=people.find(p=>p.name===wz.name);
+  if(ex){ex.type=wz.type;ex.wing=wz.wing;}
+  else people.push({name:wz.name,type:wz.type,wing:wz.wing});
+  save();
+  toast(`${wz.name} 저장됨 ✓`);
+  clearWz();
+  renderPeopleList();updateCounts();
+};
+document.getElementById('wzClear').onclick=clearWz;
+function clearWz(){
+  wz={name:'',type:null,wing:null};
+  document.getElementById('wzName').value='';
+  document.getElementById('wzWings').innerHTML='<span style="font-size:13px;color:var(--sub);align-self:center;">주유형을 먼저 선택</span>';
+  updateWzUI();updatePreview();checkSave();
+}
+function renderPeopleList(){
+  const list=document.getElementById('peopleList');
+  document.getElementById('savedCount').textContent=`(${people.length}명)`;
+  if(!people.length){list.innerHTML=`<div class="empty"><div class="big">📭</div>저장된 결과가 없습니다.<br>위에서 이름·유형을 선택해 저장하거나 <b>샘플 불러오기</b>를 눌러보세요.</div>`;return;}
+  list.innerHTML='';
+  [...people].sort((a,b)=>a.type-b.type).forEach(p=>{
+    const label=p.wing!==null?`${p.type}w${p.wing}`:`${p.type}번`;
+    const row=document.createElement('div');row.className='prow';
+    row.innerHTML=`
+      <span class="pill" style="background:${cvar(p.type)};color:${tvar(p.type)}">${p.type}</span>
+      <div class="nm">${p.name} <span class="ty">${label}</span></div>
+      <div style="font-size:12px;color:var(--sub);font-weight:600">${T(p.type).name}</div>
+      <div class="acts">
+        <button class="icon-btn" title="개인 분석">📊</button>
+        <button class="icon-btn" title="삭제">🗑</button>
+      </div>`;
+    row.querySelector('[title="개인 분석"]').onclick=()=>{selectedPerson=p.name;show('person');};
+    row.querySelector('[title="삭제"]').onclick=()=>{
+      people=people.filter(x=>x.name!==p.name);save();renderPeopleList();updateCounts();
+      toast(`${p.name} 삭제됨`);
+    };
+    list.appendChild(row);
+  });
+}
+document.getElementById('csvBtn').onclick=()=>{
+  let csv='이름,주유형,날개,표기\n';
+  people.forEach(p=>{
+    const label=p.wing!==null?`${p.type}w${p.wing}`:`${p.type}`;
+    csv+=`${p.name},${p.type},${p.wing!==null?p.wing:''},${label}\n`;
+  });
+  const blob=new Blob(["﻿"+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='에니어그램_결과.csv';a.click();URL.revokeObjectURL(a.href);
+};
+document.getElementById('sampleBtn').onclick=()=>{
+  if(people.length && !confirm('현재 데이터를 샘플로 교체할까요?'))return;
+  people=SAMPLE.map(p=>({...p}));save();renderPeopleList();updateCounts();toast('샘플 데이터 불러옴');
+};
+document.getElementById('clearBtn').onclick=()=>{
+  if(!confirm('저장된 모든 결과를 삭제할까요?'))return;
+  people=[];save();renderPeopleList();updateCounts();toast('전체 삭제됨');
+};
+
+/* ============ 개인 분석 ============ */
+let selectedPerson=null;
+function renderPerson(){
+  const sel=document.getElementById('personSelect');
+  if(!people.length){
+    sel.innerHTML='';
+    document.getElementById('personAnalysis').innerHTML=`<div class="card pad"><div class="empty"><div class="big">👤</div>먼저 <b>결과 저장</b> 탭에서 사람을 추가하세요.</div></div>`;
+    return;
+  }
+  if(!selectedPerson||!people.find(p=>p.name===selectedPerson))selectedPerson=people[0].name;
+  sel.innerHTML='';
+  [...people].sort((a,b)=>a.type-b.type).forEach(p=>{
+    const el=document.createElement('button');
+    el.className='psel'+(p.name===selectedPerson?' sel':'');
+    if(p.name===selectedPerson){el.style.background=cvar(p.type);el.style.color=tvar(p.type);}
+    el.innerHTML=`<span class="pill" style="background:${p.name===selectedPerson?'rgba(255,255,255,.3)':cvar(p.type)};color:${p.name===selectedPerson?tvar(p.type):tvar(p.type)};width:24px;height:24px;font-size:12px">${p.type}</span>${p.name}`;
+    el.onclick=()=>{selectedPerson=p.name;renderPerson();};
+    sel.appendChild(el);
+  });
+  drawAnalysis();
+}
+function drawAnalysis(){
+  const p=people.find(x=>x.name===selectedPerson);
+  const t=T(p.type);
+  const wingLabel=p.wing!==null?`${p.type}w${p.wing}`:`${p.type}번 (날개 없음)`;
+  const gt=T(t.grow),st=T(t.stress);
+  const wingDesc=p.wing!==null
+    ? `${t.n}번 <b>${t.name}</b>를 기반으로 ${p.wing}번 <b>${T(p.wing).name}</b>의 성향이 더해진 유형입니다.`
+    : `순수한 ${t.n}번 <b>${t.name}</b> 성향입니다.`;
+  // 다른 사람들을 관계별로 분류
+  const others=people.filter(x=>x.name!==p.name);
+  const bk={grow:[],stress:[],good:[],far:[]};
+  others.forEach(o=>{
+    const lv=relLevel(p.type,o.type);
+    if(lv==='grow')bk.grow.push(o);
+    else if(lv==='stress')bk.stress.push(o);
+    else if(lv==='far')bk.far.push(o);
+    else bk.good.push(o); // twin·wing·center
+  });
+  const chip=(o,col)=>`<span class="rchip" style="${col?`border-color:${col}`:''}" onclick="selectedPerson='${o.name}';renderPerson();">${o.name} <b>${o.wing!==null?o.type+'w'+o.wing:o.type+'번'}</b></span>`;
+  const chips=(arr,col,empty)=>arr.length?arr.map(o=>chip(o,col)).join(''):`<span class="rempty">${empty}</span>`;
+
+  document.getElementById('personAnalysis').innerHTML=`
+  <div class="analysis">
+    <div>
+      <div class="type-hero" style="background:${cvar(p.type)};color:${tvar(p.type)}">
+        <div class="bignum">${p.type}</div>
+        <div class="nick">${p.name} · ${t.en}</div>
+        <h3>${t.n}번 ${t.name}</h3>
+        <div class="wingtag">${wingLabel} · ${t.center.replace('(장)','장')} 중심 · ${t.emo} · 🎬 ${CHAR[p.type]}</div>
+        <p class="motive">${t.motive}</p>
+        <div class="fear-desire">
+          <div class="fd"><div class="lb">기본 욕구</div><div class="vl">${t.desire}</div></div>
+          <div class="fd"><div class="lb">기본 두려움</div><div class="vl">${t.fear}</div></div>
+        </div>
+      </div>
+      <div class="card pad" style="margin-top:16px;">
+        <div class="sec" style="margin-bottom:0">
+          <div class="sec-t">🪶 날개 (Wing)</div>
+          <p style="font-size:13.5px;line-height:1.6;">${wingDesc}</p>
+        </div>
+      </div>
+    </div>
+    <div class="card pad">
+      <div class="sec">
+        <div class="sec-t">💪 강점</div>
+        <div class="tag-list pos">${t.strengths.map(s=>`<span>${s}</span>`).join('')}</div>
+      </div>
+      <div class="sec">
+        <div class="sec-t">✕ 싫어하는 것</div>
+        <div class="tag-list neg">${t.dislikes.map(s=>`<span>${s}</span>`).join('')}</div>
+      </div>
+      <div class="sec" style="margin-bottom:0">
+        <div class="sec-t">🌱 성장 포인트</div>
+        <div class="tag-list">${t.growthAreas.map(s=>`<span>${s}</span>`).join('')}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card pad" style="margin-top:16px;">
+    <div class="sec-t" style="margin-bottom:4px;">🧭 관계 지도 — 다각형 위 실제 인물</div>
+    <p style="font-size:12.5px;color:var(--sub);margin-bottom:14px;line-height:1.55;">
+      <b style="color:var(--ink)">${p.name}(${wingLabel})</b> 기준으로 저장된 사람들을 에니어그램 위에 배치했습니다.
+      <span style="color:#3f8a34;font-weight:700">초록 선 = 성장 방향</span>,
+      <span style="color:#b0413e;font-weight:700">빨강 선 = 스트레스 방향</span>.</p>
+    <div class="relmap">
+      <div class="relmap-svg">${relationMap(p.type,p.name)}</div>
+      <div class="relmap-info">
+        <div class="rel-line grow">
+          <div class="rl-head"><span class="pill" style="background:${cvar(t.grow)};color:${tvar(t.grow)};width:24px;height:24px;font-size:12px">${t.grow}</span>▲ 성장하면 · ${gt.name}처럼</div>
+          <div class="rl-people">${chips(bk.grow,'#3f8a34',`이 그룹엔 ${t.grow}번(${gt.name})이 없어요`)}</div>
+          <p class="rl-note">이렇게 성장 → ${gt.strengths.slice(0,3).join(' · ')}</p>
+        </div>
+        <div class="rel-line stress">
+          <div class="rl-head"><span class="pill" style="background:${cvar(t.stress)};color:${tvar(t.stress)};width:24px;height:24px;font-size:12px">${t.stress}</span>▼ 스트레스받으면 · ${st.name}의 그늘</div>
+          <div class="rl-people">${chips(bk.stress,'#b0413e',`이 그룹엔 ${t.stress}번(${st.name})이 없어요`)}</div>
+          <p class="rl-note">지치면 → ${DISINTEGRATE[p.type]}</p>
+        </div>
+        <div class="rel-compat">
+          <div class="rc-t">궁합 <span>· 일반적 경향, 재미로</span></div>
+          <div class="rc-row"><span class="rc-lb">💚 잘 통함<br><span style="font-size:10.5px;color:var(--sub);font-weight:600">같은 유형·날개·같은 중심</span></span><div>${chips(bk.good,'',' — 없음')}</div></div>
+          <div class="rc-row"><span class="rc-lb">🧡 안 맞을 수 있음<br><span style="font-size:10.5px;color:var(--sub);font-weight:600">연결 없는 다른 결</span></span><div>${chips(bk.far,'#c77b3a',' — 없음')}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="relmap-legend">
+      <span class="lg"><i style="border-color:var(--ink);background:${cvar(p.type)}"></i>★ ${p.name} (본인)</span>
+      <span class="lg"><i style="border-color:#3f8a34"></i>성장 방향</span>
+      <span class="lg"><i style="border-color:#b0413e"></i>스트레스 방향</span>
+      <span class="lg"><i style="border-color:#d8cdb8"></i>연결 약함(다른 결)</span>
+    </div>
+  </div>
+  ${theoryCards(p.type)}
+  ${relatedLectureCard(p.type)}`;
+}
+
+/* ===== 이론 카드 (개인 분석 심화) — 교재 5렌즈를 유형에 맞춰 ===== */
+function lecChips(ids,exclude){
+  if(!LEC.length||!ids)return '';
+  let f=ids.map(i=>LEC.find(l=>l.i===i)).filter(Boolean);
+  if(exclude)f=f.filter(x=>x.i!==exclude);
+  if(!f.length)return '';
+  return `<div class="lec-chips">${f.map(x=>`<button class="lec-chip" onclick="openLecture(${x.i})" title="${esc(lecTitleClean(x.title))}">▶ ${esc(lecTitleClean(x.title))}</button>`).join('')}</div>`;
+}
+function miniTps(nums,active){
+  return nums.map(n=>`<span class="mtp${n===active?' on':''}" style="background:${cvar(n)};color:${tvar(n)}">${n}</span>`).join('');
+}
+// 강의 원문 발췌 인용 블록 (figure/blockquote; #f7f1e6 발췌색 + 유형색 좌측선 계승)
+function theoryQuote(key,type){
+  const q=LQUOTE[key]; if(!q)return '';
+  const src=LEC.find(l=>l.i===q.lec);
+  return `<figure class="th-quote" style="--qc:${cvar(type)}"><span class="qmark">&rdquo;</span>
+    <figcaption class="th-qlb">❝ 강의 원문 발췌</figcaption>
+    <blockquote class="th-qt">${q.t}</blockquote>
+    ${src?`<div class="th-qsrc"><button class="lec-chip" onclick="openLecture(${src.i})" title="${esc(lecTitleClean(src.title))}">▶ ${esc(lecTitleClean(src.title))}</button></div>`:''}</figure>`;
+}
+const centerOf=n=>{for(const k in CENTERS3)if(CENTERS3[k].includes(n))return k;};
+function tritypeCodes(core){
+  const mine=centerOf(core), o=Object.keys(CENTERS3).filter(k=>k!==mine), r=[];
+  CENTERS3[o[0]].forEach(a=>CENTERS3[o[1]].forEach(b=>r.push(''+core+a+b)));
+  return r;
+}
+function theoryCards(type){
+  const t=T(type);
+  const hk=HORNEY_OF[type], mk=HARMONIC_OF[type];
+  const h=HORNEY[hk], m=HARMONIC[mk], fc=FACADE[type];
+  const tc=TIME_CENTER[t.center], mir=MIRROR[type], emo=HARMONIC_EMO[type];
+  const c1=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🧩</span><div><div class="th-t">사회적 태도 · 호나이 3분법</div><div class="th-s">${h.name} <span class="th-tag">${h.tag} · ${josa(h.repressed,'이','가')} 왕따</span></div></div></div>
+    <div class="th-members">${miniTps(h.types,type)}<span class="th-mnote">겉(전략)이 같은 셋</span></div>
+    <p class="th-desc">${h.desc}</p>
+    ${theoryQuote(hk,type)}
+    <div class="th-you">${type}번의 속마음(동기) &nbsp;→&nbsp; <b style="color:${cvar(type)}">${HORNEY_MOTIVE[type]}</b></div>
+    <div class="th-care"><span class="th-clb">🌱 왕따 된 기능 깨우기</span>${h.care}</div>
+    ${lecChips(h.lec,LQUOTE[hk].lec)}</div>`;
+  const c2=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🎭</span><div><div class="th-t">감정 처리 · 하모닉 그룹</div><div class="th-s">${m.name} <span class="th-tag">${m.tag}</span></div></div></div>
+    <div class="th-members">${miniTps(m.types,type)}<span class="th-mnote">힘들 때 반응이 닮은 셋</span></div>
+    <p class="th-desc">${m.desc}</p>
+    ${emo?`<div class="th-you">${type}번이 눌러 둔 감정 &nbsp;→&nbsp; <b style="color:${cvar(type)}">${emo}</b> <span class="th-mnote">스위치를 켜면 이게 올라옵니다</span></div>`:''}
+    ${theoryQuote(mk,type)}
+    <div class="th-care"><span class="th-clb">💬 이 사람이 힘들어할 때</span>${m.care}</div>
+    ${lecChips(m.lec,LQUOTE[mk].lec)}</div>`;
+  const c3=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🧭</span><div><div class="th-t">통합과 분열 · 선을 따라</div><div class="th-s">놓으면 ${t.grow}번처럼 · 버티면 ${t.stress}번처럼</div></div></div>
+    <div class="th-arrow grow"><span class="mtp" style="background:${cvar(t.grow)};color:${tvar(t.grow)}">${t.grow}</span><div><b>▲ 통합(성장)</b> ${INTEGRATE[type]}</div></div>
+    <div class="th-arrow stress"><span class="mtp" style="background:${cvar(t.stress)};color:${tvar(t.stress)}">${t.stress}</span><div><b>▼ 분열(스트레스)</b> ${DISINTEGRATE[type]}</div></div>
+    ${theoryQuote(type===9?'arrow9':'arrow',type)}
+    <div class="th-principle">${ARROW_PRINCIPLE} 변신은 새 성격이 아니라 원래 잠재된 성향이 상황 따라 드러나는 것.${mir?` <b>거울쌍 ${mir}번</b>과 방향이 대칭이죠.`:''}</div>
+    ${lecChips(ARROW_LEC[type],42)}</div>`;
+  let fbody;
+  if(fc.primary){
+    fbody=`<div class="th-badge">1차(주) 유형 · 삼각형 꼭짓점</div>
+      <p class="th-desc">대장인 기능이 동시에 왕따라(고착), 인격이 두 부분으로 갈린 <b>이중성</b>을 갖습니다. 합쳐진 두 기능: <b>${fc.blend}</b>.</p>
+      <div class="th-you">겉보기 역설 &nbsp;→&nbsp; ${fc.irony}</div>`;
+  }else{
+    fbody=`<div class="th-badge">2차 유형 · 겉과 속의 조합</div>
+      <div class="th-facade"><div class="fb"><span class="fblb">겉 · 전략</span><span class="mtp" style="background:${cvar(fc.face)};color:${tvar(fc.face)}">${fc.face}</span></div><div class="fb"><span class="fblb">속 · 모티브</span><span class="mtp" style="background:${cvar(fc.core)};color:${tvar(fc.core)}">${fc.core}</span></div></div>
+      <p class="th-desc">${fc.note}</p>`;
+  }
+  const c4=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🔺</span><div><div class="th-t">도형 구조 · 겉과 속</div><div class="th-s">${fc.primary?'1차 유형(3·6·9)':'2차 유형'}</div></div></div>
+    ${fbody}
+    <div class="th-axis"><span class="th-clb">📐 도형에서의 위치</span>${AXIS[type]}</div>
+    ${theoryQuote((type===4||type===5)?'facade_low':'facade',type)}
+    ${lecChips(FACADE_LEC,(type===4||type===5)?18:8)}</div>`;
+  const c5=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🔍</span><div><div class="th-t">하위유형 · 본능 변형</div><div class="th-s">같은 ${type}번도 세 갈래</div></div></div>
+    <div class="sub3">${SUBTYPE.map(s=>`<div class="sub1"><b>${s.name}</b> <span class="sub1bio">${s.bio}</span><span class="sub1q">${s.q}</span><em>“${s.tell}”</em></div>`).join('')}</div>
+    ${theoryQuote('subtype',type)}
+    <div class="th-care"><span class="th-clb">＃ 표기·감별</span>보통 둘을 스택으로 <b>9w8 sx</b>처럼 씁니다. 하위유형이 유형을 가리기도 — 확실한 ‘일대일 5번’은 드라이한 관찰자처럼 안 보이죠.</div>
+    ${lecChips(SUBTYPE_LEC,48)}</div>`;
+  const c6=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">💰</span><div><div class="th-t">삶에서 · 돈·시간·성공</div><div class="th-s">일상에서 드러나는 결</div></div></div>
+    <div class="life-row"><span class="life-lb">돈</span><span>${MONEY[type]}</span></div>
+    <div class="life-row"><span class="life-lb">시간</span><span><b>${tc.when}</b>를 산다 — ${tc.desc} <span class="th-mnote">${t.center.replace('(장)','장')} 중심</span></span></div>
+    <div class="life-row"><span class="life-lb">성공</span><span>${SUCCESS_HORNEY[hk]}</span></div>
+    ${theoryQuote('money',type)}
+    ${lecChips([...LIFE_LEC.money,...LIFE_LEC.time,...LIFE_LEC.success],25)}</div>`;
+  const codes=tritypeCodes(type);
+  const c7=`<div class="th-card">
+    <div class="th-h"><span class="th-ico">🧬</span><div><div class="th-t">트라이타입 · 세 중심의 조합</div><div class="th-s">코어 ${type}번 고정 · 나머지 두 축이 갈린다</div></div></div>
+    <p class="th-desc">세 중심(장·가슴·머리)에서 대표를 하나씩 골라 세 자리 코드를 만듭니다. <b>코어 ${type}번은 고정</b>, 감정·사고 포인트는 상황 따라 달라지죠. ${type}번이 가질 수 있는 9가지 조합:</p>
+    <div class="tri-grid">${codes.map(c=>`<span class="tri-code">${[...c].map(d=>`<span class="tri-d" style="background:${cvar(+d)};color:${tvar(+d)}">${d}</span>`).join('')}</span>`).join('')}</div>
+    ${theoryQuote('tritype',type)}</div>`;
+  return `<div class="theory-wrap">
+    <div class="theory-head"><h3>🎓 이론으로 더 깊이 — <span style="color:${cvar(type)}">${type}번 ${t.name}</span></h3>
+      <p>교재를 세 갈래로 묶어 흐름대로 봅니다 — <b>① 구조</b>(뼈대) → <b>② 관계</b>(핵심) → <b>③ 삶</b>(적용). 각 카드의 <b>❝ 발췌</b>는 자동자막을 뜻이 통하게 다듬은 것, <b>▶</b>로 원 강의를 볼 수 있어요.</p></div>
+    <div class="theory-cat">
+      <div class="cat-h"><span class="cat-n">1 · 구조</span>이 유형은 무엇으로 이뤄졌나 — 겉과 속, 세 중심의 조합</div>
+      <div class="theory-grid">${c4}${c7}</div>
+    </div>
+    <div class="theory-cat">
+      <div class="cat-h"><span class="cat-n">2 · 관계</span>남들 사이에서 어떻게 서고, 어떻게 변하는가<span class="cat-tag">· 에니어그램의 심장</span></div>
+      <div class="theory-grid">${c1}${c2}${c3}</div>
+    </div>
+    <div class="theory-cat">
+      <div class="cat-h"><span class="cat-n">3 · 삶</span>더 정밀하게, 그리고 일상으로</div>
+      <div class="theory-grid">${c5}${c6}</div>
+    </div>
+  </div>`;
+}
+
+/* 그룹 분석 — 3분법·하모닉 렌즈 분포 카드 */
+function groupLens(title, DEF, cnt, total){
+  return `<div class="section-title">${title} 분포</div>
+  <div class="center-cards">${Object.keys(DEF).map(k=>{
+    const d=DEF[k],who=cnt[k],pct=total?Math.round(who.length/total*100):0,col=cvar(d.types[0]);
+    return `<div class="cc">
+      <div class="ico ico-tps">${miniTps(d.types)}</div>
+      <h4>${d.name} <span style="font-size:11.5px;color:var(--sub);font-weight:600">${d.tag}</span></h4>
+      <div class="who">${who.length?who.join(', '):'해당 없음'}</div>
+      <div class="cbar"><i style="width:${pct}%;background:${col}"></i></div>
+      <div class="pct" style="color:${col}">${who.length}명 <span style="font-size:13px;color:var(--sub)">· ${pct}%</span></div>
+    </div>`;}).join('')}</div>`;
+}
+
+/* ============ 그룹 분석 ============ */
+function renderGroup(){
+  const body=document.getElementById('groupBody');
+  if(!people.length){
+    body.innerHTML=`<div class="card pad"><div class="empty"><div class="big">👥</div>분석할 데이터가 없습니다.<br><b>결과 저장</b> 탭에서 사람을 추가하세요.</div></div>`;
+    return;
+  }
+  const counts={};for(let i=1;i<=9;i++)counts[i]=0;
+  people.forEach(p=>counts[p.type]++);
+  // 3분법·하모닉 그룹 분포
+  const horneyCnt={compliant:[],assertive:[],withdrawn:[]},harmCnt={positive:[],competent:[],reactive:[]};
+  people.forEach(p=>{horneyCnt[HORNEY_OF[p.type]].push(p.name);harmCnt[HARMONIC_OF[p.type]].push(p.name);});
+  const centers={'본능(장)':{n:0,who:[]},'가슴':{n:0,who:[]},'머리':{n:0,who:[]}};
+  people.forEach(p=>{const c=T(p.type).center;centers[c].n++;centers[c].who.push(p.name);});
+  const total=people.length;
+  const sorted=Object.entries(counts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
+  const topType=sorted[0];
+  const topCenter=Object.entries(centers).sort((a,b)=>b[1].n-a[1].n)[0];
+  // 날개 통계
+  const withWing=people.filter(p=>p.wing!==null).length;
+
+  let html=`
+  <div class="kpi-row">
+    <div class="kpi"><b>${total}</b><span>전체 인원</span></div>
+    <div class="kpi"><b>${sorted.length}</b><span>등장 유형</span></div>
+    <div class="kpi"><b style="color:${cvar(+topType[0])}">${topType[0]}</b><span>최다 유형 · ${topType[1]}명</span></div>
+    <div class="kpi"><b>${topCenter[0].replace('(장)','')}</b><span>주요 중심 · ${topCenter[1].n}명</span></div>
+  </div>
+
+  <div class="grid g2">
+    <div class="card pad">
+      <div class="sec-t">📊 유형 분포</div>
+      <div class="bar-chart">${TYPES.map(t=>{
+        const c=counts[t.n],pct=total?c/total*100:0,maxC=Math.max(...Object.values(counts));
+        return `<div class="bar-row">
+          <div class="lbl"><span class="pill" style="background:${cvar(t.n)};color:${tvar(t.n)};width:22px;height:22px;font-size:12px">${t.n}</span>${t.name}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${maxC?c/maxC*100:0}%;background:${cvar(t.n)};opacity:${c?1:0}"></div></div>
+          <div class="val">${c?c+'명':'—'}</div>
+        </div>`;}).join('')}</div>
+    </div>
+    <div class="card pad" style="display:flex;flex-direction:column;">
+      <div class="sec-t">🔵 에니어그램 지도</div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:8px;">
+        <div style="width:min(80%,320px)">${ennSVG({size:340,counts})}</div>
+      </div>
+      <p style="font-size:12px;color:var(--sub);text-align:center;">원이 클수록 해당 유형 인원이 많습니다.</p>
+    </div>
+  </div>
+
+  <div class="section-title">🧭 중심(에너지) 분포</div>
+  <div class="center-cards">
+    ${[['본능(장)','🔥','의지·통제·분노 — 자율성과 힘','--c8'],['가슴','🫀','이미지·감정·수치심 — 인정과 관계','--c2'],['머리','🧠','사고·계획·두려움 — 안전과 이해','--c5']].map(([k,ico,desc,cv])=>{
+      const c=centers[k],pct=total?Math.round(c.n/total*100):0;
+      return `<div class="cc">
+        <div class="ico">${ico}</div>
+        <h4>${k.replace('(장)','')} 중심 <span style="font-size:12px;color:var(--sub);font-weight:600">${['본능(장)'].includes(k)?'8·9·1':k==='가슴'?'2·3·4':'5·6·7'}</span></h4>
+        <div class="who">${c.who.length?c.who.join(', '):'해당 없음'}</div>
+        <div style="font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:8px">${desc}</div>
+        <div class="cbar"><i style="width:${pct}%;background:var(${cv})"></i></div>
+        <div class="pct" style="color:var(${cv})">${c.n}명 <span style="font-size:13px;color:var(--sub)">· ${pct}%</span></div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  ${groupLens('🧩 사회적 태도 · 호나이 3분법', HORNEY, horneyCnt, total)}
+  ${groupLens('🎭 감정 처리 · 하모닉 그룹', HARMONIC, harmCnt, total)}
+
+  <div class="section-title">🗂 유형별 구성원</div>
+  <div class="card pad">
+    <div class="group-list">
+      ${sorted.map(([n,c])=>{
+        n=+n;const members=people.filter(p=>p.type===n);
+        return `<div class="gl-type">
+          <div class="gh"><span class="pill" style="background:${cvar(n)};color:${tvar(n)}">${n}</span>
+            <b>${n}번 ${T(n).name}</b><span>· ${c}명 · ${T(n).center.replace('(장)','장')} 중심</span></div>
+          <div class="gl-names">${members.map(m=>`<span class="gn" onclick="selectedPerson='${m.name}';show('person');">${m.name} · ${m.wing!==null?m.type+'w'+m.wing:m.type+'번'}</span>`).join('')}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div class="section-title">🪶 날개 입력 현황</div>
+  <div class="card pad" style="font-size:13.5px;color:var(--sub);line-height:1.6;">
+    전체 ${total}명 중 <b style="color:var(--ink)">${withWing}명</b>이 날개까지 기록되었습니다.
+    ${withWing<total?`나머지 ${total-withWing}명은 <b>결과 저장</b>에서 날개를 추가할 수 있어요.`:'모든 인원의 날개가 기록되었습니다 ✓'}
+  </div>`;
+  body.innerHTML=html;
+  // 막대 애니메이션 재생
+  requestAnimationFrame(()=>{document.querySelectorAll('.bar-fill').forEach(b=>{const w=b.style.width;b.style.width='0';requestAnimationFrame(()=>b.style.width=w);});});
+}
+
+/* ============ 강의 라이브러리 ============ */
+const LEC = (typeof window!=='undefined' && window.LECTURES) ? window.LECTURES : [];
+let lecFilter={q:'',type:null};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function lecTitleClean(t){
+  return t.replace(/^\[(에니어그램|Enneagram)\]\s*/i,'')
+          .replace(/\s*\|\s*(에니어그램[^|]*|Enneagram[^|]*)$/i,'').trim()||t;
+}
+function hl(text,q){
+  if(!q)return esc(text);
+  const i=text.toLowerCase().indexOf(q);
+  if(i<0)return esc(text);
+  return esc(text.slice(0,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length));
+}
+function hlAll(text,q){
+  if(!q)return esc(text);
+  let out='',low=text.toLowerCase(),i=0,idx;
+  while((idx=low.indexOf(q,i))>=0){out+=esc(text.slice(i,idx))+'<mark>'+esc(text.slice(idx,idx+q.length))+'</mark>';i=idx+q.length;}
+  return out+esc(text.slice(i));
+}
+function lecSnippet(text,q){
+  const i=text.toLowerCase().indexOf(q);
+  if(i<0)return '';
+  const s=Math.max(0,i-28),e=Math.min(text.length,i+q.length+56);
+  return (s>0?'…':'')+esc(text.slice(s,i))+'<mark>'+esc(text.slice(i,i+q.length))+'</mark>'+esc(text.slice(i+q.length,e))+(e<text.length?'…':'');
+}
+function renderLecture(){
+  const body=document.getElementById('lecBody');
+  document.getElementById('lecTotal').textContent=LEC.length?`· 총 ${LEC.length}강`:'';
+  if(!LEC.length){
+    body.innerHTML=`<div class="card pad"><div class="empty"><div class="big">📚</div>
+      강의 라이브러리 파일(<b>enneagram_transcripts.js</b>)을 찾을 수 없습니다.<br>
+      이 HTML과 <b>같은 폴더</b>에 두어야 불러올 수 있어요.</div></div>`;
+    return;
+  }
+  body.innerHTML=`
+    <div class="lec-search">
+      <input id="lecQ" placeholder="🔍 제목·본문 검색 (예: 날개, 하모닉, 통합, 돈)" value="${esc(lecFilter.q).replace(/"/g,'&quot;')}">
+    </div>
+    <div class="lec-typefilter">
+      <button class="lec-tf all${lecFilter.type===null?' sel':''}" data-t="all">전체</button>
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="lec-tf${lecFilter.type===n?' sel':''}" data-t="${n}" style="${lecFilter.type===n?`background:${cvar(n)};color:${tvar(n)}`:''}">${n}</button>`).join('')}
+    </div>
+    <div class="lec-count" id="lecCount"></div>
+    <div class="lec-list" id="lecList"></div>`;
+  const q=document.getElementById('lecQ');
+  q.oninput=()=>{lecFilter.q=q.value;lecListRender();};
+  q.onkeydown=e=>{if(e.key==='Escape'){q.value='';lecFilter.q='';lecListRender();}};
+  document.querySelectorAll('.lec-tf').forEach(b=>b.onclick=()=>{
+    lecFilter.type=b.dataset.t==='all'?null:+b.dataset.t;renderLecture();
+  });
+  lecListRender();
+}
+function lecListRender(){
+  const q=lecFilter.q.trim().toLowerCase();
+  let list=LEC.slice();
+  if(lecFilter.type!==null)list=list.filter(x=>x.types&&x.types.includes(lecFilter.type));
+  if(q)list=list.filter(x=>x.title.toLowerCase().includes(q)||x.text.toLowerCase().includes(q));
+  document.getElementById('lecCount').textContent=
+    `${list.length}개`+(lecFilter.type!==null?` · ${lecFilter.type}번 유형`:'')+(q?` · "${lecFilter.q}" 검색`:'');
+  const box=document.getElementById('lecList');
+  if(!list.length){box.innerHTML=`<div class="empty" style="padding:30px">검색 결과가 없습니다.</div>`;return;}
+  box.innerHTML=list.map(x=>{
+    const snip=q&&x.text.toLowerCase().includes(q)?lecSnippet(x.text,q):'';
+    return `<div class="lec-row" onclick="openLecture(${x.i})">
+      <span class="lec-idx">${x.i}</span>
+      <div class="lec-main">
+        <div class="lec-title">${hl(lecTitleClean(x.title),q)}</div>
+        <div class="lec-meta">
+          ${x.types&&x.types.length?`<span class="lec-types">${x.types.map(n=>`<span class="lec-tp" style="background:${cvar(n)};color:${tvar(n)}">${n}</span>`).join('')}</span>`:'<span>기초 · 전체</span>'}
+          <span>${x.text.split(' ').length.toLocaleString()}단어</span>
+        </div>
+        ${snip?`<div class="lec-snip">${snip}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+function relatedLectureCard(type){
+  if(!LEC.length)return '';
+  const rel=LEC.filter(x=>x.types&&x.types.includes(type));
+  if(!rel.length)return '';
+  return `<div class="card pad" style="margin-top:16px;">
+    <div class="sec-t">📚 ${type}번 관련 강의 <span style="color:var(--sub);font-weight:600">· ${rel.length}개</span></div>
+    <div class="lec-mini">${rel.map(x=>`<div class="lec-mini-row" onclick="openLecture(${x.i})"><span class="lec-idx">${x.i}</span><span class="lec-mini-title">${esc(lecTitleClean(x.title))}</span><span class="lec-go">읽기 →</span></div>`).join('')}</div>
+  </div>`;
+}
+function openLecture(i){
+  const x=LEC.find(l=>l.i===i);if(!x)return;
+  document.getElementById('lecMT').textContent=lecTitleClean(x.title);
+  document.getElementById('lecMM').innerHTML=`
+    ${x.types&&x.types.length?x.types.map(n=>`<span class="lec-tp" style="background:${cvar(n)};color:${tvar(n)}">${n}</span>`).join(' '):''}
+    <span>${x.text.split(' ').length.toLocaleString()}단어</span>
+    <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--ink);font-weight:700">▶ 유튜브에서 보기</a>`;
+  const q=lecFilter.q.trim().toLowerCase();
+  const w=x.text.split(' ');const chunks=[];
+  for(let k=0;k<w.length;k+=48)chunks.push(w.slice(k,k+48).join(' '));
+  const bodyHtml=chunks.map(c=>`<p>${q?hlAll(c,q):esc(c)}</p>`).join('');
+  document.getElementById('lecMB').innerHTML=
+    `<div class="modal-note">⚠️ 유튜브 자동 자막(음성 인식)에서 추출한 텍스트입니다. 전문용어·고유명사에 오탈자가 있을 수 있어요.</div>${bodyHtml}`;
+  document.getElementById('lecModal').classList.add('show');
+  document.getElementById('lecMB').scrollTop=0;
+}
+function closeLecture(){document.getElementById('lecModal').classList.remove('show');}
+document.getElementById('lecModal').addEventListener('click',e=>{if(e.target.id==='lecModal')closeLecture();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLecture();});
+
+/* ============ 공통 ============ */
+function updateCounts(){
+  const c=document.getElementById('tabCnt');if(c)c.textContent=people.length;
+}
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1900);
+}
+
+/* ============ 초기화 ============ */
+load();
+updateCounts();
+renderHome();
+</script>
+</body>
+</html>
