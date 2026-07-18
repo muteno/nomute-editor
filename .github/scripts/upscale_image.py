@@ -29,7 +29,7 @@ from fx_upscale import upscale as fx_upscale
 from PIL import Image, ImageOps
 
 KST = datetime.timezone(datetime.timedelta(hours=9))
-SIZE_SHORT = {"720p": 720, "FHD": 1080, "2K": 1440, "4K": 2160}   # 목표 짧은변 px = AI 생성 gen_image SIZE_SHORT 동일(운영자 260718)
+from img_sizes import SIZE_SHORT   # 목표 짧은변 px 정본(운영자 260718 "한 상수파일" · 4러너 공통 SSOT · 같은 디렉토리)
 FX_SCALES = (2, 3, 4)   # fx_upscale 정수 배율 사다리(목표까지 최소 배율 선택 후 Lanczos 스냅)
 
 
