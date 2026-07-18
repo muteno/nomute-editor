@@ -1112,6 +1112,8 @@
   body.booted .viewhead { transition-delay:.06s; }   /* 부팅 노출 = 검색·필터 픽토그램도 콘텐츠 촤르륵 초반 슬롯 동승(.06s = 탭 전환 vh-enter와 동일 슬롯 · 운영자 260707 2차 "따로 편성 말고 같이" — 구 .3s 후행 갱신) · 먼저 뜨는 건 vh-ready 홀드가 계속 차단 · booted opacity 게이트(113 .2s)에 delay만 얹음(콘텐츠·배너는 delay 0 유지) */
   @media (prefers-reduced-motion:reduce){ body.booted .viewhead { transition-delay:0s; } }   /* 전정계 = 딜레이 없이 즉시(booted transition:none과 정합) */
   /* (구 .vh-filters 좌측 묶음 규칙 삭제 — 260706 3차 8: 필터 버튼이 .vh-acts 우측 한도 슬롯으로 이주·카드만 토글은 필터 팝업 헤더로 편입) */
+  .vh-acts #chanSrcSeg { display:none; }   /* 채널 소스 세그 = 채널요약 탭 전용(Q157) — display 축(우측 픽토 무리는 right 앵커 우측정렬이라 좌측 형제 유무에 위치 불변 · filterBtn visibility 슬롯 관례와 구분 사유) · 세로 = .vh-acts align-items:center가 픽토와 4분할 중앙 동선(실측 프로브 Δ≤0.5px 의무) */
+  body[data-tab="chan"] .vh-acts #chanSrcSeg { display:flex; }
   .vh-acts #filterBtn { visibility:hidden; }   /* 필터 = 피드 탭에서만 *표시* · display:none 아닌 visibility = 슬롯(공간) 항상 확보 → 검색 픽토 위치가 탭 무관 완전 고정(운영자 260708 "메뉴마다 검색 위치 고정 · 필터만 간격 유지하며 우측 등장" — display:none이면 필터 없는 탭서 검색이 최우측으로 당겨져 탭마다 위치 흔들림 = FAIL 교정) · 무속성(부팅 직후)·scrap·sns = 안 보이나 슬롯 유지(그 자리 빈칸) · display:grid는 .vh-fbtn가 상속(공간 유지) */
   body[data-tab="feed"] .vh-acts #filterBtn { visibility:visible; }
   /* 무테 픽토그램 아이콘 버튼 = .ts-toggle 패턴(글래스 플레이트·테두리 없음·픽토그램만) · 탭영역 ≥44 확장(::after) */
@@ -3213,6 +3215,7 @@ try {
 <div class="viewhead" id="viewhead">
   <div class="vh-row"><!-- 타이틀 라인(운영자 260706 3차 재편·260707 필터 스왑): 타이틀 = 워드마크 서브로 이주(.topbanner.slim .vh-title) · 우측 클러스터(.vh-acts) = [검색][필터](새로고침·기어 도먼트 · 마진 한도 = 구 새로고침 슬롯) -->
     <div class="vh-acts"><!-- 우상단 클러스터(운영자 260706 3차·260707 스왑): 피드 탭 = [검색][필터] 2개(DOM·시각 순 = 검색 먼저 · 필터 = 최우측 한도 슬롯 = 구 새로고침 자리 · 검색 = 그 왼쪽) · 그 외 탭 = 검색만(한도 슬롯) — 새로고침은 DOM 도먼트(CSS display:none · JS 불변) · 기어(설정)는 활성(260712 원복 · 표시 여부 정본 = .vh-acts .profile 규칙) · 클러스터 우측정렬 한도 = 구 새로고침 슬롯 -->
+      <span class="ch-rangeseg cs-seg" id="chanSrcSeg" role="group" aria-label="채널 소스"><button type="button" data-cs="ig" class="on">1-1 인스타</button><button type="button" data-cs="fb">1-2 페이스북</button></span><!-- 채널 소스 세그(1-1/1-2 · Q155→헤더 이주 Q157) = 채널요약 탭 전용(body[data-tab=chan] CSS = filterBtn 문법 계승) · 운영자 260718 "우상단 픽토그램 설정이랑 같은 라인 · 4분할 중앙 높이 정렬" — 구 콘텐츠부 인라인(renderChan 주입) 폐지 · 정적 1회 배선 -->
       <div class="topsearch" id="topsearch"><!-- #q 입력은 중앙 오버레이(#sovl)로 이주(운영자 260706 5차) — 여기는 토글 픽토그램만 · 피드 탭 = 검색이 필터 왼쪽(운영자 260707 [검색][필터] 스왑) · 그 외 탭 = 검색만(한도 슬롯) -->
         <button class="ts-toggle" id="searchToggle" type="button" aria-label="검색" aria-expanded="false"><svg class="ts-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
         <button class="ts-toggle ts-rf" id="topRefresh" type="button" aria-label="강제 새로고침" title="강제 새로고침"><svg class="ts-ico" viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5"/></svg></button>
@@ -10442,11 +10445,10 @@ async function loadChan() {
 }
 function renderChan() {
   const box = $('#chanBox'); if (!box) return;
-  // 채널 소스 세그(1-1 인스타 / 1-2 페이스북 · 운영자 260718 Q155 큐잉분) — .ch-rangeseg 정본 계승(신규 CSS 0) · cs-seg = 일일추이 기간 세그 셀렉터 제외 훅 · 데이터 결측 소스여도 세그는 상시(전환 복귀 경로) · fb 미수집 = 아래 조용한 공백(§디자인 e-가)
-  const srcSeg = `<div class="ch-seg"><span class="ch-rangeseg cs-seg">` + [['ig', '1-1 인스타'], ['fb', '1-2 페이스북']].map(s => `<button type="button" data-cs="${s[0]}"${CHAN_SRC === s[0] ? ' class="on"' : ''}>${s[1]}</button>`).join('') + '</span></div>';
-  const csWire = () => box.querySelectorAll('[data-cs]').forEach(b => b.addEventListener('click', () => { CHAN_SRC = b.dataset.cs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); if (CHAN_SRC === 'fb' && !CHAN_FB && !CHAN_LOADING) { CHAN_AT = 0; loadChan(); } }));   // 소스 전환 = 재렌더·스크롤 보존(기간 세그 문법 미러) · fb 미적재 전환 = 캐시 무효화 후 재적재(첫 결합 fetch 실패가 5분 ig 캐시에 묶여 fb 공백 고착되던 것 · 페이블 검증단 LOW)
+  // 채널 소스 세그(1-1/1-2) = 헤더 .vh-acts 정적 요소로 이주(Q157 · 운영자 260718 "우상단 픽토그램과 같은 라인") — 여기선 on 상태 동기만(콘텐츠부 인라인 주입 폐지 · 배선 = 하단 전역 1회)
+  document.querySelectorAll('#chanSrcSeg [data-cs]').forEach(b => b.classList.toggle('on', b.dataset.cs === CHAN_SRC));
   const d = CHAN_SRC === 'fb' ? CHAN_FB : CHAN;
-  if (!d || !d.profile) { box.innerHTML = srcSeg; csWire(); return; }   // 빈 상태 = 세그만 + 조용한 공백(§디자인 e-가)
+  if (!d || !d.profile) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(§디자인 e-가 · 전환 복귀 경로 = 헤더 세그 상시)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const vf = chVf;
   const p = d.profile, a = d.account_day || {}, series = d.daily_series || [], avg = d.avg || {};
@@ -10540,8 +10542,7 @@ function renderChan() {
     : `<a class="ch-th txt" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${REELGLYPH}<span class="cap">${esc(x.t || '')}</span></a>`).join('') + '</div>');
   // 좌측 책갈피 레일 = 메뉴3 .trailwrap/.trail 원문 계승(운영자 260713 "일치할수록 좋아" — CSS 클래스 공유 = 신규 스타일 0 · fixed는 chanview[hidden] 조상 연동 자동 소거 = trendview 동일 메커니즘) · 버튼 = TOP 위화살(정본 SVG path 동일) + 단위 순번 숫자(헤더 배지 정체성 · 숫자 = 문자 렌더 허용 축)
   box.innerHTML = (RAIL.length > 1 ? '<div class="trailwrap"><nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
-    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + srcSeg + h;   // srcSeg = 채널 소스 세그(1-1/1-2 · Q155) — 콘텐츠 최상단(레일 = fixed라 순서 무영향)
-  csWire();   // 소스 세그 배선(전체 렌더 경로 · 빈 상태 경로와 쌍)
+    RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + h;   // 소스 세그 = 헤더 이주(Q157)로 콘텐츠부 주입 폐지
   box.querySelector('.ch-nm').textContent = p.username ? '@' + p.username : (p.name || '');   // fb 페이지 = username 없을 수 있음 → 페이지명 폴백(Q155)
   const bt = box.querySelector('.tbrief-t');   // 브리프 본문 주입 = *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href 검증만 = XSS 안전 · 메뉴3 파서 미러 — 스크랩 refs 축만 제외 · 줄바꿈 = .tbrief-t pre-line)
   if (bt && CHANB) {
@@ -10711,6 +10712,12 @@ function renderChPost() {
   $('#chpN').textContent = list.length + '/' + all.length;
 }
 function openChPost() { if (!((chActive() || {}).posts || []).length) return; renderChPost(); chDlgOpen($('#chpostdlg')); }   // 활성 소스 게이트(fb 게시물 없으면 조용 무동작 유지)
+// 채널 소스 세그(헤더 정적 · Q157) 전역 1회 배선 — 전환 = 재렌더·스크롤 보존 · fb 미적재 = 캐시 무효화 재적재(페이블 검증단 LOW 유지)
+document.querySelectorAll('#chanSrcSeg [data-cs]').forEach(b => b.addEventListener('click', () => {
+  if (CHAN_SRC === b.dataset.cs) return;
+  CHAN_SRC = b.dataset.cs; const y = window.scrollY; renderChan(); window.scrollTo(0, y);
+  if (CHAN_SRC === 'fb' && !CHAN_FB && !CHAN_LOADING) { CHAN_AT = 0; loadChan(); }
+}));
 (() => { const w = $('#chpostdlg'); if (!w) return;   // 칩·세그 = 위임 1회 배선(재렌더 무관)
   w.addEventListener('click', e => {
     const f = e.target.closest('[data-f]'), c = e.target.closest('[data-c]'), s0 = e.target.closest('[data-s]');
