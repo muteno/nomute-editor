@@ -140,7 +140,7 @@ if ls_warn:
 
 if rc:
     sys.stderr.write(
-        '🎨 디자인 게이트 위반 — 계승이 디폴트(CLAUDE.md §디자인·실행 계약 5). raw 값 창작 금지 → viewer/index.html :root의 '
+        '🎨 디자인 게이트 위반 — 계승이 디폴트(디자인기틀_SSOT.md §0·실행 계약 5). raw 값 창작 금지 → viewer/index.html :root의 '
         'var() 토큰 사용(정확 토큰이 없어도 가장 가까운 토큰 자동 계승 = 안 물음). 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승. '
         '진짜 새 단이 필요하면 (갱신) 정문 = 기틀 승인 경로, 1회성 광학 보정은 같은 줄 `/* raw-ok: 사유 */`:\n' + out)
     sys.exit(2)

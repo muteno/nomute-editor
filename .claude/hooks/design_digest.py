@@ -20,7 +20,7 @@ if '--if-ui-prompt' in sys.argv:
     print('[🎨 UI 작업 감지 — 노뮤트 디자인 계약 리마인더] 계승이 디폴트: raw 값 창작 금지, '
           'viewer/index.html :root var() 토큰 사용, 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승, '
           '버튼 패턴은 구성도/00_가이드북_버튼인터랙션.html. 디자인 기틀 정본 위치 단일 진입점 = docs/디자인기틀_SSOT.md(규칙2번). '
-          '규칙 전문 = CLAUDE.md §핵심명령(제1 핵심명령)+§디자인 + nomute-design 스킬. '
+          '규칙 요약 단일본 = docs/디자인기틀_SSOT.md §0(디자인 착수 전 정독) · 폴리시 = nomute-design 스킬 · 최상위 = CLAUDE.md §핵심명령(제1 핵심명령). '
           '디자인 제안·시안·N안·튜닝 요청 = 정적 이미지·텍스트 나열 금지 → 만지는 플레이그라운드 HTML(5요소) = CLAUDE.md §플레이그라운드(골격 docs/플레이그라운드_포터블.md §3 · 확신 변경은 시안 없이 바로 반영 = §검증 마).')
     sys.exit(0)
 
