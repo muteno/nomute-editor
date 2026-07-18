@@ -9615,6 +9615,8 @@ function renderSnsTrends() {
     return NaN;
   };
   const ageVerH = x => { for (const p of [x.published, x.time, x.started, x.create_time]) { const h = _ageOf(p); if (isFinite(h)) return h; } return NaN; };   // 실발행 나이 = "벌어진 일" 기준 · first_seen 제외(수집관측 도장 ≠ 사건시각 · 운영자 260718 검증 취지) · 전부 미상 = NaN
+  const isFreshItem = t => { const h = ageVerH(t); return !(isFinite(h) && h >= FRESH_MAX_H); };   // 신선 = 12h 미만 · 미상(NaN)=신선 취급(fail-soft — 타임스탬프 없다고 후순위로 침몰 금지)
+  const freshFirst = arr => arr.filter(isFreshItem).concat(arr.filter(t => !isFreshItem(t)));   // 안정 분할 = 신선분 위로(내부 순서 보존) → 오래된 것 아래로 차순위 채움(운영자 260718 "신선 없으면 차순위 top 위로 · 빈칸 없이") · 옆 relT 나이표기(N시간 전)는 불변 = 오래된 건 정직하게 표기
   const zig = arr => { const hh = Math.ceil(arr.length / 2), o = []; for (let z = 0; z < hh; z++) { o.push(arr[z]); if (arr[z + hh]) o.push(arr[z + hh]); } return o; };   // 레일 2행 = grid-auto-flow:column(세로 우선) → [1,6,2,7,…] 인터리브로 윗줄 1~5·아랫줄 6~10 보장(운영자 선택값 · 스모크 시각 실측 260712)
   const tpc = (it, i, cat) =>   // TOP 카드(운영자 260712 선택값: 1:1 커버·r-s·순위 필 h15/fs10·구분자행(cat색)→제목 2줄→원시 조회+우측 시간 · 변동 = NEW만) — 제목 = textContent 후주입(XSS 안전) · 로고 = img 밑층 폴백
     `<a class="tpc" data-ri="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
@@ -9651,21 +9653,21 @@ function renderSnsTrends() {
   const V3 = [['views', '조회수'], ['likes', '좋아요'], ['cmts', '댓글']];
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
-  const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views'), tkL = tkCov ? bySort(tkv, tkS).slice(0, 10) : [];
+  const tkS = sortOf('tk', ['views', 'likes', 'cmts'], 'views'), tkL = tkCov ? freshFirst(bySort(tkv, tkS)).slice(0, 10) : [];   // freshFirst = 선택 정렬(조회수/좋아요/댓글) 안에서 신선 먼저(운영자 260718)
   const REGN = { kr: '한국', gl: '세계' }, byReg = (arr, r) => (arr || []).filter(t => (t.region === 'kr') === (r === 'kr'));   // 구독 한국/세계 접이 분리(운영자 260712 "한국 전용·세계 전용") — region 미도장(구 데이터) = 세계
   const REGS = TRREG === 'kr' ? ['kr'] : ['kr', 'gl'];   // 국내 모드 = 구독 한국군만 표시 · 월드 = 양군(운영자 260712 2모드)
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
   const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkR = { kr: bySort(byReg(stk, 'kr'), stkS).slice(0, 10), gl: bySort(byReg(stk, 'gl'), stkS).slice(0, 10) };
   const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreR = { kr: bySort(byReg(sre, 'kr'), sreS).slice(0, 10), gl: bySort(byReg(sre, 'gl'), sreS).slice(0, 10) };
   const sytR = { kr: byReg(syt, 'kr').slice(0, 8), gl: byReg(syt, 'gl').slice(0, 8) };
-  const shL = shv.slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만" — 구 12)
-  const aiL = aiv.slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만" — 구 12)
+  const shL = freshFirst(shv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만") · freshFirst = 신선 먼저·오래된 것 아래로(운영자 260718 "다른 화면에도")
+  const aiL = freshFirst(aiv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만") · freshFirst 적용
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
   const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
   const tkMap = v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백
-  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; if (ageVerH(x) >= FRESH_MAX_H) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
+  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
   lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
   lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
@@ -9675,17 +9677,17 @@ function renderSnsTrends() {
   // 확장 레인(플랫폼 필터·스택 심화 전용 · 코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 구글 11~25·틱톡 11~15, sc≤0(정렬 최하위 침강 = pcap4가 통합 진입 차단 · 필터/스택만 소비)
   lane('구글', 'gg', gt, 25, ggMap, 10, 10);   // 구글 11~25위(급상승 그룹 gt.slice(0,25) 동일 소스 · 운영자 260717 "구글 10개밖에 · 11,12 쭉 · 처음으로↻ 15·20·25")
   lane('틱톡', 'tk', tkv, 15, tkMap, 10, 10);   // 틱톡 11~15위(월드 모드 최대 15 · 국내 9 = off 10 초과분 없어 무변)
-  pool.sort((a, b2) => (b2.sc - a.sc) || (b2.ht - a.ht));
+  pool.sort((a, b2) => ((b2._fresh ? 1 : 0) - (a._fresh ? 1 : 0)) || (b2.sc - a.sc) || (b2.ht - a.ht));   // 신선분 우선(운영자 260718 "신선 없으면 차순위 top 위로") → 소스순위(sc) → 조회수(ht) · 스테일 = 침몰하되 하드컷 안 함 = 빈칸 0(TOP 10 항상 채움)
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   const ggUrl = g => (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));   // 구글 클릭 = 대표 뉴스 ∥ 구글 검색 폴백(관용구)
-  const gtR = gt.slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 키워드성 검색어는 정확한 관련이미지 확보난 → 썸네일 카드 폐지)
-  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 10), gtR.map(z => row(z[1], ggUrl(z[0]), tfmt(z[0].traffic), z[0], '')).join(''));   // 이미지 제거(운영자 260718 첨부4) = 아래 실시간 검색어(시그널)·레딧과 동일 텍스트 행 계승(썸네일 인자 '' = 무커버) — 좌: 순위·검색어 / 우: 변동배지·검색량 tfmt·시각 relT(started) · 신규 컴포넌트 0(기존 row·fillT 조합)
+  const gtR = freshFirst(gt).slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 텍스트 행) · freshFirst = 신선 먼저(운영자 260718 "다른 화면에도")
+  if (gt.length) gGG += sec('gt', '급상승 검색어', '· 검색량≈', Math.min(gt.length, 10), gtR.map(z => row(z[1], ggUrl(z[0]), tfmt(z[0].traffic), z[0], '')).join(''));   // 이미지 제거(운영자 260718 첨부4) = 실시간 검색어(시그널)·레딧과 동일 텍스트 행 계승(썸네일 '' = 무커버) — 좌: 순위·검색어 / 우: 변동배지·검색량 tfmt·시각 relT(started) · 신규 컴포넌트 0
   const mkyt = v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', mono: 'yt', plat: '유튜브', x: v, ago: relT(v) });   // 조회수 = vfmt(000만 · 운영자 260712 #6 · 구 cma 원시콤마 89,697,957 → 만단위)
-  const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = ytn.slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
-  const ytGrid = yt.slice(0, 10).map(v => ({ ...v, cover: v.thumb }));
+  const ytZ = zig(yt.slice(0, 10).map((v, i) => [v, i])), ytnL = freshFirst(ytn).slice(0, 10).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
+  const ytGrid = freshFirst(yt).slice(0, 10).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = freshFirst 신선 먼저(운영자 260718 "다른 화면에도")
   if (yt.length) gYT += sec('yt', '인기', '· 조회수', Math.min(yt.length, 10), '<div class="trend-grid wd">' + ytGrid.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
