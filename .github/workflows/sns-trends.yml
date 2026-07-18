@@ -48,6 +48,10 @@ on:
         description: '블루스카이 인기글 자동 번역(⑦ topic·ko · opus high 1콜 · 증분 carry · 운영자 260713) — 1=ON (§📰-e 카나리아 · dispatch 실측 승격 전 cron은 OFF)'
         default: '0'
         required: false
+      gt_img:
+        description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 1=ON (카나리아 · 실측 승격 전 cron은 OFF)'
+        default: '0'
+        required: false
 
 permissions:
   contents: write
@@ -100,7 +104,7 @@ jobs:
           done
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
-        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)도 CLI 필요(운영자 260713 · 미포함 시 카나리아 rc=127)
+        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '0') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)도 CLI 필요(운영자 260713·260718 · 미포함 시 카나리아 rc=127)
         run: npm install -g @anthropic-ai/claude-code
 
       - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
@@ -120,6 +124,22 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
         run: bash .github/scripts/bsky_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
+
+      - name: 트렌드 이미지 백필(Q126 · 구글 급상승 꼬리 카드 커버 · 운영자 260718)
+        env:
+          TREND_IMG: ${{ inputs.gt_img || '0' }}   # cron 기본 OFF(inputs 없음→'0') · dispatch gt_img='1'=카나리아 ON · 실측 승격 시 || '1'
+          TREND_IMG_MODEL: claude-sonnet-5   # 운영자 260718 "사진 안 중요하니 소넷으로"
+          CLAUDE_BARE: '1'   # 라우터/CLAUDE.md auto-load 스킵(WebSearch 단발 = repo 컨텍스트 불요·토큰 절감)
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: python3 .github/scripts/trend_images.py   # 게이트(TREND_IMG)·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
 
       - name: Commit
         run: |
