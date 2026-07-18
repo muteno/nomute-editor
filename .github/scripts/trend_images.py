@@ -66,6 +66,21 @@ def main():
 각 줄에 `검색어<TAB>기사URL` 형태로 하나씩(검색어와 URL 사이는 탭 문자). 설명·번호·마크다운·따옴표 없이 URL만.""".format(
         qlist="\n".join("- " + q for q in queries))
 
+    # 워크스페이스 신뢰 도장(헤드리스 trust dialog 우회 — claude rc=1 stderr가 명시한 fix) · 미신뢰 워크스페이스서
+    # .claude/settings.json permissions 무시+진행불가 방어. analyze는 통과하나 방어적 명시(무해·hedge).
+    try:
+        _cj = os.path.expanduser("~/.claude.json")
+        _cfg = {}
+        if os.path.exists(_cj):
+            try:
+                _cfg = json.load(open(_cj, encoding="utf-8")) or {}
+            except Exception:  # noqa: BLE001
+                _cfg = {}
+        _cfg.setdefault("projects", {}).setdefault(os.getcwd(), {})["hasTrustDialogAccepted"] = True
+        json.dump(_cfg, open(_cj, "w", encoding="utf-8"))
+    except Exception as _e:  # noqa: BLE001
+        print("trust 도장 스킵(무해): {}".format(_e))
+
     print("Claude({}) 트렌드 키워드 {}개 대표 뉴스 URL 배치 검색".format(MODEL, len(queries)), flush=True)
     try:
         res = subprocess.run(
@@ -76,7 +91,8 @@ def main():
             input=prompt, capture_output=True, text=True, timeout=600)
         out = res.stdout or ""
         if res.returncode != 0:
-            print("::warning::claude rc={} · stderr(head): {}".format(res.returncode, (res.stderr or "")[:300]), flush=True)
+            print("::warning::claude rc={} · stderr: {}".format(res.returncode, (res.stderr or "")[:2000]), flush=True)   # 전체 stderr(진짜 원인 노출 · 구 [:300]이 trust 노이즈 뒤 원인 가림)
+            print("::warning::claude stdout(head): {}".format((out or "")[:800]), flush=True)
     except Exception as e:  # noqa: BLE001
         print("::warning::claude 호출 실패(러너 미설치/인증/타임아웃?): {}".format(e))
         return
