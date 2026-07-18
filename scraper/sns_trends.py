@@ -1164,6 +1164,16 @@ def main():
     _annotate_rank(ai, prev.get("aivid"), lambda v: v.get("id"))
     _annotate_rank(rd, prev.get("reddit"), lambda t: t.get("url"))   # ⑥⑦ 신규 축도 델타·이력 규격 동일(표시 전용)
     _annotate_rank(bs, prev.get("bsky"), lambda t: t.get("url"))
+    # ⑦ 블스 번역 승계(운영자 260718 "영문 없애 번역본만") — 직전분 topic·ko·tv를 url+text 동일 항목에 이식.
+    #   근본: 수집(1차 커밋)→번역 스텝 사이 창에서 기번역분의 ko가 증발해 영문 회귀/비노출 플랩 나던 구멍 봉합
+    #   (뷰어는 ko 보유분만 노출 260718 · 번역 생성 정본 = .github/scripts/bsky_brief.sh — 여긴 승계만·LLM 0).
+    _pko = {p.get("url"): p for p in (prev.get("bsky") or []) if p.get("url") and p.get("ko")}
+    for _t in bs:
+        _p = _pko.get(_t.get("url"))
+        if _p and (_p.get("text") or "") == (_t.get("text") or ""):
+            for _k in ("topic", "ko", "tv"):
+                if _p.get(_k):
+                    _t[_k] = _p[_k]
     _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
