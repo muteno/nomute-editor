@@ -937,7 +937,7 @@ def check_conflict_markers():
 #   박제분 면책 승계(origin/main 자체가 ×2 실측 · 본 세션 신규 행 = Q41 유일 · 다음 부여 = Q42).
 # 재베이스라인 260717 23:40(사유): Q91 ×2 — 두 타 세션 머지분(요구사항 프로토콜 [1]~[15] 등재 #2458 · 22:05 규칙 주입 요약)이
 #   각자 main 머지 완료 = origin/main 자체가 ×2 실측(재부여 불가[양쪽 박제]라 면책 승계 · 본 세션 신규 행 = Q104 유일 · 다음 부여 = Q105).
-_QDUP_BASE = {1: 41, 2: 19, 3: 17, 4: 16, 5: 14, 6: 13, 7: 12, 8: 9, 9: 8, 10: 6, 11: 5, 12: 5, 13: 5, 14: 3, 15: 2, 16: 3, 17: 2, 18: 2, 19: 2, 23: 2, 39: 2, 43: 2, 49: 2, 63: 2, 64: 2, 91: 2, 132: 2}   # 132:2 = 재베이스라인 260718 16:30(Q132 ×2 — #2495 전사폴오버·#2496 옵션카드가 각자 진짜 main d8099fa에 머지 완료 = 박제 ×2 실측 · 재부여 불가[양쪽 박제] · 본 세션 신규 행 = Q133 · 다음 부여 = Q134 · 로컬 origin/main 스테일(2dde7be) 실측 오도 주의) · 43·49·63·64 :2 = 260717 병렬 머지 병존(각 번호를 두 세션이 각자 부여·둘 다 main 실재 = 갈래 유산 · 재부여 불가[양쪽 머지 완료]라 면책 기록 · 43=스크림#2422+편집알림 / 49=평의회분신술+PAT후속 / 63·64=동시 세션 원장 경합 · 91=요구사항 프로토콜#2458+22:05 규칙주입 동시 부여)
+_QDUP_BASE = {1: 41, 2: 19, 3: 17, 4: 16, 5: 14, 6: 13, 7: 12, 8: 9, 9: 8, 10: 6, 11: 5, 12: 5, 13: 5, 14: 3, 15: 2, 16: 3, 17: 2, 18: 2, 19: 2, 23: 2, 39: 2, 43: 2, 49: 2, 63: 2, 64: 2, 91: 2, 132: 2, 135: 2, 136: 2}   # 135·136:2 = 재베이스라인 260718 17:44(각 번호를 두 타 세션이 각자 main 박제 ×2 실측 · 재부여 불가[양쪽 머지] · 본 세션 신규 행 = Q147 유일 · 다음 부여 = Q148) · 132:2 = 재베이스라인 260718 16:30(Q132 ×2 — #2495 전사폴오버·#2496 옵션카드가 각자 진짜 main d8099fa에 머지 완료 = 박제 ×2 실측 · 재부여 불가[양쪽 박제] · 본 세션 신규 행 = Q133 · 다음 부여 = Q134 · 로컬 origin/main 스테일(2dde7be) 실측 오도 주의) · 43·49·63·64 :2 = 260717 병렬 머지 병존(각 번호를 두 세션이 각자 부여·둘 다 main 실재 = 갈래 유산 · 재부여 불가[양쪽 머지 완료]라 면책 기록 · 43=스크림#2422+편집알림 / 49=평의회분신술+PAT후속 / 63·64=동시 세션 원장 경합 · 91=요구사항 프로토콜#2458+22:05 규칙주입 동시 부여)
 
 
 def check_qledger_unique():
@@ -969,6 +969,50 @@ def check_qledger_unique():
               % (' · '.join('Q%02d ×%d(면책 %d)' % (n, c, _QDUP_BASE.get(n, 1)) for n, c in sorted(over.items())), nxt))
         return 1
     print('✅ 원장 Q번호 유일성 — 신규 중복 0(역사 중복 %d종 면책 · 현재 최대 Q%d · 다음 부여 = Q%d).' % (len(_QDUP_BASE), max(cnt), nxt))
+    return 0
+
+
+def check_anchor_liveness():
+    """기틀 문서 → 문서 한정(§) 앵커 생존 게이트(운영자 260718 Q146 승인 "차단되고 영향 100% 없음 증명").
+    사고 부류 = CLAUDE.md 개편(260701 이모지 섹션 해체) 때 그걸 가리키던 기틀 문서들이 안 따라와 죽은 앵커 잔존
+    (Q146 감사서 수동 발견 11건) → 재발을 커밋 단계 자동 차단. 스코프 = 아래 화이트리스트 기틀 문서 안에서
+    '문서명 §토큰' 꼴(50자 내 근접)의 **문서 한정 참조만** — 맨몸 §🎨 k 류(앱 지침 섹션 인용)·원장/이력(append-only
+    역사)은 비대상 = 오탐 0 설계. 역사 서술 줄(해체·폐지·(구)·구 §·구 `)은 스킵(의도된 잔존 = Q146 관례).
+    생존 판정 = 대상 문서에 '§토큰' 실존 or (숫자 토큰) '## N.' 헤딩 실존 or (2자+ 비숫자 토큰) 본문 실존 ·
+    자기 파일 참조 = 스킵(참조 줄 자신이 매칭되는 순환 차단). fail-closed(화이트리스트 파일 못 읽으면 차단)."""
+    FILES = ['CLAUDE.md', 'docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md',
+             'docs/플레이그라운드_포터블.md', 'docs/실행계약_전문.md',
+             '구성도/00_가이드북_버튼인터랙션.html', '구성도/00_가이드북_버튼인터랙션.md', '구성도/진행 결과 상태.html']
+    DOCMAP = {'CLAUDE.md': 'CLAUDE.md', '디자인기틀_SSOT.md': 'docs/디자인기틀_SSOT.md',
+              'CII_컴포넌트계승인덱스.md': 'docs/CII_컴포넌트계승인덱스.md',
+              '플레이그라운드_포터블.md': 'docs/플레이그라운드_포터블.md', '실행계약_전문.md': 'docs/실행계약_전문.md'}
+    HIST = re.compile(r'해체|폐지|\(구\)|구 §|구 `')
+    REF = re.compile(r'(CLAUDE\.md|디자인기틀_SSOT\.md|CII_컴포넌트계승인덱스\.md|플레이그라운드_포터블\.md|실행계약_전문\.md)[^§\n]{0,50}§([^\s·,)\]<>*`|]{1,20})')
+    texts = {}
+    try:
+        for p in set(FILES) | set(DOCMAP.values()):
+            texts[p] = open(os.path.join(ROOT, p), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_anchor_liveness 기틀 파일 읽기 실패(fail-closed):', e); return 1
+    bad = []
+    for src in FILES:
+        for i, ln in enumerate(texts[src].splitlines(), 1):
+            if HIST.search(ln): continue
+            for m in REF.finditer(ln):
+                tgt = DOCMAP[m.group(1)]
+                if tgt == src: continue
+                tok, body = m.group(2), texts[tgt]
+                ok = ('§' + tok) in body
+                if not ok and re.fullmatch(r'[0-9][0-9\-]*', tok):
+                    ok = re.search(r'^#+\s*%s[.\s)]' % re.escape(tok.split('-')[0]), body, re.M) is not None
+                if not ok and len(tok) >= 2 and not tok.isdigit():
+                    ok = tok in body
+                if not ok: bad.append('%s:%d → %s §%s' % (src, i, m.group(1), tok))
+    if bad:
+        print('❌ 기틀 앵커 생존 게이트 — 죽은 문서 한정 앵커(대상 문서에 §토큰 부재 · 역사 서술이면 줄에 해체/폐지/(구) 명기):')
+        for b in bad: print('   ·', b)
+        return 1
+    print('✅ 기틀 앵커 생존 게이트 — 문서 한정 § 참조 전건 도달 가능(화이트리스트 %d파일 · 역사 서술 스킵).' % len(FILES))
     return 0
 
 
@@ -1094,6 +1138,8 @@ def main():
     except Exception as e:
         print('⚠️ check_playground 스킵:', e)
     try:
+        if check_anchor_liveness() != 0:   # 기틀 앵커 생존(하드 게이트 — CLAUDE.md 개편 시 기틀 문서의 죽은 § 앵커 잔존 자동 차단 · 운영자 260718 Q146 승인)
+            rc = 1
         if check_qledger_unique() != 0:   # 원장 Q번호 유일성(하드 게이트 — 동시 세션 번호 경합 = [Q.NN] 1:1 참조 모호 · 신규 중복만 래칫 차단 · 운영자 260717 승인)
             rc = 1
     except Exception as e:
