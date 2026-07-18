@@ -540,8 +540,11 @@ def main():
                 return ''
             return mu
         # 최신 12개 원순서 유지 — 커버 없는 릴스도 제자리 보존(th='' → 뷰어가 캡션 텍스트 타일 · t 동봉). 영상URL 폴백·앞자름 결손 = 종식.
+        # r = 릴스 플래그(뷰어가 릴스 커버에 ▶ 표식 · 피드 무표식 = 포맷 판별 · 운영자 260718)
         thumbs = [{'th': _thumb_src(m), 'u': m.get('permalink'),
-                   't': first_line(m.get('caption'))[:40]} for m in (med.get('media') or [])[:12]]
+                   't': first_line(m.get('caption'))[:40],
+                   'r': 1 if (m.get('media_product_type') == 'REELS' or m.get('media_type') == 'VIDEO') else 0}
+                  for m in (med.get('media') or [])[:12]]
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
                 **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용

@@ -831,7 +831,7 @@
   .ch-th img { width:100%; height:100%; object-fit:cover; display:block; }
   .ch-th.txt { display:flex; flex-direction:column; justify-content:flex-end; padding:var(--sp-2); text-decoration:none; background:linear-gradient(155deg, rgba(var(--accent-rgb),.15), rgba(255,255,255,.03)); border:1px solid rgba(var(--accent-rgb),.22); }   /* 커버 없는 릴스 폴백 타일(운영자 260718 승인) — 인스타가 thumbnail_url 미제공 시 캡션 노출 = 최근 게시물 100% 가시 */
   .ch-th.txt .cap { font-size:var(--fs-xs); line-height:1.34; color:var(--fg); font-weight:600; letter-spacing:-.01em; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
-  .ch-th .rl { position:absolute; top:7px; left:7px; z-index:2; }   /* 릴스 표식(커버 없는 릴스 텍스트 타일) */
+  .ch-th .rl { position:absolute; top:7px; left:7px; z-index:2; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }   /* 릴스 표식 ▶ — 커버 릴스 + 텍스트 타일 공용(drop-shadow = 밝은 커버 위 가독) */
   .chanview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }   /* raw-ok: .trendview(메뉴3) 원문 계승 복사 — 좌우 여백·폭 일맥상통(운영자 260713) */
   /* ── 채널 요약 대시보드 확장(운영자 260713 — 추이 차트·평균 대비·포맷/주제/3기 · 시안 = docs/reports/260713_인스타일일추이_플레이그라운드) ── */
   .ch-strow { display:flex; align-items:baseline; gap:var(--sp-1); flex-wrap:wrap; }
@@ -10477,9 +10477,10 @@ function renderChan() {
   if (posts.length) h += gsec('tpost', 'TOP 게시물', posts.map((x, i) => `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-pt"></span><span class="ch-pm">공유 ${x.share_pm != null ? (+x.share_pm).toFixed(1) : '—'}/1천뷰 · ${vf(x.views)}회</span></a>`).join(''),
     '<button class="tsk-more" type="button" id="chPostMore" aria-label="게시물 탐색">내역 확인</button>');
   const th = (d.thumbs || []).slice(0, 12);   // 커버 없는 릴스도 보존(th='' → 캡션 텍스트 타일 · 운영자 260718)
+  const REELGLYPH = '<svg class="rl" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.42)"/><path d="M10 8.5v7l6-3.5z" fill="rgba(255,255,255,.96)"/></svg>';   // 릴스 표식 ▶ — 커버 릴스·텍스트 타일 공용(운영자 260718 통일 · 피드 무표식 = 포맷 판별)
   if (th.length) h += gsec('recent', '최근 게시물', '<div class="ch-grid">' + th.map(x => x.th
-    ? `<a class="ch-th" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(x.th)}" onerror="this.parentNode.style.display='none'" alt=""></a>`
-    : `<a class="ch-th txt" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener"><svg class="rl" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.42)"/><path d="M10 8.5v7l6-3.5z" fill="rgba(255,255,255,.96)"/></svg><span class="cap">${esc(x.t || '')}</span></a>`).join('') + '</div>');
+    ? `<a class="ch-th" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${x.r ? REELGLYPH : ''}<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(x.th)}" onerror="this.parentNode.style.display='none'" alt=""></a>`
+    : `<a class="ch-th txt" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${REELGLYPH}<span class="cap">${esc(x.t || '')}</span></a>`).join('') + '</div>');
   // 좌측 책갈피 레일 = 메뉴3 .trailwrap/.trail 원문 계승(운영자 260713 "일치할수록 좋아" — CSS 클래스 공유 = 신규 스타일 0 · fixed는 chanview[hidden] 조상 연동 자동 소거 = trendview 동일 메커니즘) · 버튼 = TOP 위화살(정본 SVG path 동일) + 단위 순번 숫자(헤더 배지 정체성 · 숫자 = 문자 렌더 허용 축)
   box.innerHTML = (RAIL.length > 1 ? '<div class="trailwrap"><nav class="trail" id="chanRail" aria-label="단위 바로가기"><button type="button" class="trail-i" data-tg="top" aria-label="맨 위"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>' +
     RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + h;
