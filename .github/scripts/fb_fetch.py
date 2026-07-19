@@ -7,7 +7,7 @@
 #        페이지 토큰 자동 교체 · 페이지 토큰 = me 직독 · 변수 등록 시 그 값 고정) — FB_PAGE_TOKEN 부재 + IG_ACCESS_TOKEN 존재 시
 #        겸용 프로브(me/accounts 페이지 토큰 자동 수급 · 페북 로그인 경로 토큰만 성립 · 실패 = 종전 no-op) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
 # 인사이트 메트릭별 독립 fail-soft(Graph 메트릭 개폐가 잦아 하나 죽어도 나머지 수집).
-import json, os, sys, urllib.request, urllib.parse, datetime, statistics
+import json, os, sys, urllib.request, urllib.error, urllib.parse, datetime, statistics
 
 TOK = os.environ.get('FB_PAGE_TOKEN', '').strip()
 PID = os.environ.get('FB_PAGE_ID', '').strip()
@@ -19,8 +19,18 @@ KST = datetime.timezone(datetime.timedelta(hours=9))   # 시각 = KST 강제(CLA
 
 def api(path, tok=None, **params):
     params['access_token'] = tok or TOK
-    with urllib.request.urlopen(f"{G}/{path}?{urllib.parse.urlencode(params)}", timeout=30) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(f"{G}/{path}?{urllib.parse.urlencode(params)}", timeout=30) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        # Graph 에러 본문을 예외 메시지에 승격(260719 — "HTTP 400"만으론 권한 누락 vs 지표 폐지 진단 불가 · insta_fetch 관용구 미러)
+        try:
+            err = (json.loads(e.read().decode('utf-8', 'replace')).get('error') or {})
+            raise RuntimeError(f"{e.code}/{err.get('code')}: {err.get('message', 'HTTP error')[:200]}") from None
+        except RuntimeError:
+            raise
+        except Exception:
+            raise RuntimeError(f'{e.code}: HTTP error(본문 파싱 불가)') from None
 
 
 def main():
