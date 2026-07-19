@@ -68,6 +68,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime   # x_subs 최신순 정렬(created_at 파싱 · 260720)
 
 KST = timezone(timedelta(hours=9))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -99,8 +100,8 @@ def youtube(category_id=None, limit=15, region="KR"):
     """인기 급상승 — 공식 API(키 게이트 · region 파라미터화 = 월드 축 · 운영자 260712). 실패/무키 = [] (fail-soft)."""
     if not YT_KEY:
         return []
-    q = {"part": "snippet,statistics", "chart": "mostPopular", "regionCode": region,
-         "maxResults": str(limit), "key": YT_KEY}
+    q = {"part": "snippet,statistics,contentDetails", "chart": "mostPopular", "regionCode": region,
+         "maxResults": str(limit), "key": YT_KEY}   # contentDetails = duration(260720 평의회 F3 — 쇼츠/롱폼 길이 축 · 쿼터 동일 1unit)
     if category_id:
         q["videoCategoryId"] = str(category_id)
     try:
@@ -111,7 +112,9 @@ def youtube(category_id=None, limit=15, region="KR"):
             th = ((sn.get("thumbnails") or {}).get("medium") or {}).get("url") or ""
             out.append({"id": it.get("id"), "title": sn.get("title") or "", "channel": sn.get("channelTitle") or "",
                         "views": int(st.get("viewCount") or 0), "published": sn.get("publishedAt") or "",
-                        "thumb": th, "url": "https://www.youtube.com/watch?v=" + (it.get("id") or "")})
+                        "likes": int(st.get("likeCount") or 0), "cmts": int(st.get("commentCount") or 0),
+                        "dur": ((it.get("contentDetails") or {}).get("duration")) or "",
+                        "thumb": th, "url": "https://www.youtube.com/watch?v=" + (it.get("id") or "")})   # likes·cmts·dur = 이미 받는 응답에서 버려지던 필드 저장(260720 평의회 F3 — 표시는 후속 배치 판단)
         return out
     except Exception as e:  # noqa: BLE001
         print(f"::warning::youtube 수집 실패(스킵): {e}", file=sys.stderr)
@@ -477,7 +480,12 @@ def x_subs(accounts, limit=10, deadline=None):
                             "url": "https://x.com/%s/status/%s" % (acc, tid)})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::x @{acc} 실패(스킵): {e}", file=sys.stderr)
-    return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
+    def _tts(s):   # created_at("Wed Oct 10 20:19:24 +0000 2018") → epoch · 실패 = 0(침몰)
+        try:
+            return parsedate_to_datetime(s).timestamp()
+        except Exception:  # noqa: BLE001
+            return 0.0
+    return sorted(out, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순(260720 평의회 F2 실측 — 구 좋아요순은 신디케이션 타임라인의 핀·역대 바이럴 구작(1~10년 전)이 항상 상위 독식 = '구독 최신 피드' 취지 위반 · 핀 구작은 시간순에서 자연 침몰 · 표시 정렬은 뷰어 정렬바 그대로)
 
 
 def tiktok_subs(accounts, limit=10, deadline=None):
