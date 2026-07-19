@@ -103,22 +103,32 @@ def main():
         except Exception as e:
             print(f'fb-fetch: 인사이트 {m} 스킵({e})')
     posts, thumbs = [], []
+    # 게시물 반응 필드 = 인사이트 API와 별개 축(260719 — 탐침 결과 인사이트 후보 전멸 · Graph 필드는 생존):
+    # reactions+comments+shares 합계로 상호작용 일별 시리즈 재구성 → 일일 추이 '상호작용' 칩·평균 병기 실데이터.
+    # ⚠ 리치 필드(반응·댓글 요약)는 pages_read_user_content 권한 필요(실측 260719 런15 "(#10)") → 2단 폴백:
+    #   권한 없으면 기본 필드로 재시도 = 게시물 목록·썸네일은 무슨 일이 있어도 보존(빈 덮어쓰기 재발 방지).
+    _BASE_F = 'message,permalink_url,created_time,full_picture'
+    rows = []
     try:
-        # 게시물 반응 필드 = 인사이트 API와 별개 축(260719 — 탐침 결과 인사이트 후보 전멸 · Graph 필드는 생존):
-        # reactions+comments+shares 합계로 상호작용 일별 시리즈 재구성 → 일일 추이 '상호작용' 칩·평균 병기 실데이터.
-        for x in api(f'{PID}/posts', fields='message,permalink_url,created_time,full_picture,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=10).get('data', []):
-            nm = (x.get('message') or '(무캡션)').split('\n')[0][:60]
-            posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None})
-            thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
-            dt = str(x.get('created_time', ''))[:10]
-            if dt:
-                series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
+        rows = api(f'{PID}/posts', fields=_BASE_F + ',reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=10).get('data', [])
+    except Exception as e:
+        print(f'fb-fetch: 게시물 리치 필드 불가(pages_read_user_content 권한 추가 시 상호작용 점등 — 세팅 문서 §2) → 기본 필드 폴백: {e}')
+        try:
+            rows = api(f'{PID}/posts', fields=_BASE_F, limit=10).get('data', [])
+        except Exception as e2:
+            print('fb-fetch: 게시물 스킵:', e2)
+    for x in rows:
+        nm = (x.get('message') or '(무캡션)').split('\n')[0][:60]
+        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None})
+        thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
+        dt = str(x.get('created_time', ''))[:10]
+        if dt:
+            series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
+            if ('reactions' in x) or ('comments' in x) or ('shares' in x):
                 eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
                     + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
                     + ((x.get('shares') or {}).get('count') or 0)
                 series[dt]['interactions'] = (series[dt].get('interactions') or 0) + eng
-    except Exception as e:
-        print('fb-fetch: 게시물 스킵:', e)
     d['posts'], d['thumbs'] = posts, thumbs
     if a.get('interactions') is None:
         idays = sorted(dt for dt in series if 'interactions' in series[dt])
