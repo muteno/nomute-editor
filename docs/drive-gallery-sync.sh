@@ -1,5 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/sh
-# 드라이브 → 갤러리 다운싱크 (v1.2 · 정본 실물 — 문서 미러 = 드라이브싱크 플레이북 §1)
+# 드라이브 → 갤러리 다운싱크 (v1.3 · 정본 실물 — 문서 미러 = 드라이브싱크 플레이북 §1)
 # 설치(폰 한 줄): curl -fsSL https://raw.githubusercontent.com/muteno/nomute-editor/main/docs/drive-gallery-sync.sh -o ~/.termux/tasker/drive-gallery-sync.sh && chmod +x ~/.termux/tasker/drive-gallery-sync.sh
 REMOTE="gdrive:Shared"
 LOCAL="/sdcard/Pictures/DriveSync"
@@ -20,8 +20,11 @@ if [ -s "$NEW" ]; then
       --transfers 4 --log-file "$LOG" --log-level INFO; then
     cat "$NEW" >> "$SEEN"
   else
+    DF=$(head -1 "$NEW"); DN=$(wc -l < "$NEW")
+    DM="$DF"
+    [ "$DN" -gt 1 ] && DM="$DF 외 $((DN-1))건"
     termux-notification --id drivesync-fail -t "드라이브싱크 실패 ⚠️" \
-      -c "복사 실패 — 다음 실행 때 자동 재시도 (tail ~/.drivesync.log)" 2>/dev/null || true
+      -c "$(TZ='Asia/Seoul' date '+[%I:%M %p]') $DM" 2>/dev/null || true
   fi
   termux-media-scan -r "$LOCAL"
 fi
