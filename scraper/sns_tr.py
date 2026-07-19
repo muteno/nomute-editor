@@ -30,7 +30,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OUT = os.environ.get("SNS_TRENDS_PATH") or os.path.join(ROOT, "viewer", "sns_trends.json")   # 경로 오버라이드 = 테스트/드라이런용(미설정 = 정본)
 _HANGUL = re.compile(r"[가-힣]")
 _LETTER = re.compile(r"[^\W\d_]", re.UNICODE)
-MAX_CALLS = 120           # 런당 gtx 상한(폭주 방어 · 캐리로 실 대상은 통상 한 자릿수~십수 건) — 초과분은 다음 런 흡수
+MAX_CALLS = 200           # 런당 gtx 상한(폭주 방어 · 캐리로 실 대상은 통상 한 자릿수~십수 건 · 최초 전량 런 = 검색어 포함 ~110 실측) — 초과분은 다음 런 흡수
 MAX_Q = 900               # gtx GET q 길이 캡(URL 한계 · 초과분 잘라 번역 = 긴 X/스레드 본문 방어)
 GTX = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ko&dt=t&q="
 
@@ -47,11 +47,14 @@ def _targets(data):
         (subs.get("x") or [], "text"), (subs.get("tiktok") or [], "title"),
         (subs.get("youtube") or [], "title"), (subs.get("insta") or [], "title"),
         (subs.get("threads") or [], "text"),
+        # 실시간 검색어(query) — 운영자 260719 "검색어 상위에 있는것도 번역"(구글=TOP 10 상위 · 시그널·X트렌드) · 표시만 ko, 클릭 검색링크는 원문 query 유지(뷰어 ggMap/fillT) · 한글 검색어=자동 스킵
+        (data.get("gtrends") or [], "query"), (data.get("gtrends_gl") or [], "query"),
+        (data.get("signal") or [], "query"), (data.get("xtrends") or [], "query"),
     ]
 
 
 def _key(it):
-    return it.get("url") or it.get("id") or ""
+    return it.get("url") or it.get("id") or it.get("query") or ""   # query = 검색어 소스 캐리 키(url/id 없음)
 
 
 def _is_korean(s):

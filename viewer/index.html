@@ -9780,7 +9780,7 @@ function renderSnsTrends() {
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
-  const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
+  const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.ko || g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 표시=ko(번역) 우선(운영자 260719 "검색어도 번역") · 클릭 URL은 원문 query 유지   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
   const tkMap = v => ({ url: v.url || '', t: v.ko || v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백 · ko = 외국어 제목 한글 자동번역(tiktok_tr.py · 운영자 260719 "원어 표기 안해도됨") 우선, 없으면 원어 title
   const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
@@ -9934,9 +9934,9 @@ function renderSnsTrends() {
       lh.addEventListener('click', () => { const op = lh.getAttribute('aria-expanded') === 'true'; lh.setAttribute('aria-expanded', String(!op)); lw.toggleAttribute('inert', op); });   // 개폐 = grid-rows CSS 전이 · inert = 접힘 시 SR/tab 제거(.geni-camsub 계승) · ⚠ 채널 브리프로 이식 시 id=tbLedL 파생 필수(tbLedL-chan 등 — 평의회 호환성)
     }
   }
-  fillT('gt', '.trend-q', gtR.map(z => z[0].query || ''));   // 구글 급상승 = 전량 텍스트 행 검색어(운영자 260718 이미지 제거 · .trend-q = 실검/레딧 계승 · textContent = XSS 안전)
-  fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.query || ''));   // ⑨ 시그널 실검(운영자 260712)
-  fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.query || ''));   // ⑩ X 실시간 트렌드
+  fillT('gt', '.trend-q', gtR.map(z => z[0].ko || z[0].query || ''));   // 구글 실시간 검색어 = ko(번역) 우선(운영자 260719 "검색어도 번역" · facebook→페이스북) · .trend-q textContent = XSS 안전 · 클릭 URL은 원문 query(ggUrl)
+  fillT('sig', '.trend-q', sig.slice(0, 10).map(g => g.ko || g.query || ''));   // ⑨ 시그널 실검 · ko 우선
+  fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.ko || g.query || ''));   // ⑩ X 실시간 트렌드 · ko 우선
   fillT('yt', '.tcard-t', yt.slice(0, 10).map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = 자연순서(출력형식 통일 260717)
   fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서)
   document.querySelectorAll('[data-sec=ytn] .tcard-cov img').forEach(im => {   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
