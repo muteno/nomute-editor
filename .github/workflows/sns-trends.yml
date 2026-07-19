@@ -48,6 +48,10 @@ on:
         description: '블루스카이 인기글 자동 번역(⑦ topic·ko · opus high 1콜 · 증분 carry · 운영자 260713) — 1=ON (§📰-e 카나리아 · dispatch 실측 승격 전 cron은 OFF)'
         default: '0'
         required: false
+      tiktok_tr:
+        description: '틱톡 외국어 제목 한글 자동번역(무키 gtx · LLM 0·과금 0 · 증분 carry · 실패=원문 유지 · 운영자 260719 "원어 표기 안해도됨") — 1=ON · dispatch tiktok_tr=0=일시 OFF'
+        default: '1'
+        required: false
       gt_img:
         description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 기본 ON 승격(카나리아 run 29634967139 실측: 폴오버로 백업계정 전환·R2 10개 채움 · 운영자 "30분마다 실검 반영·소넷으로") · schedule=inputs 없음→ON · dispatch gt_img=0=일시 OFF · 롤백=step || 1 제거'
         default: '0'
@@ -124,6 +128,11 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
         run: bash .github/scripts/bsky_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
+
+      - name: 틱톡 제목 한글 번역(외국어 캡션 → ko · 무키 gtx · 증분 carry · 대상 0=스킵 · 실패=원문 유지 · 운영자 260719)
+        env:
+          TIKTOK_TR: ${{ inputs.tiktok_tr || '1' }}   # 기본 ON(무키 gtx·LLM 0·과금 0 = bsky와 동일 fail-soft 클래스라 카나리아 단계 생략 · schedule=inputs 없음→'1') · dispatch tiktok_tr='0' = 일시 OFF 롤백 · carry는 git HEAD(1차 커밋분) 기준 = 재번역 0 · sns_trends.json 직접 병합(맨끝 Commit git add 커버)
+        run: python3 scraper/tiktok_tr.py   # 게이트·스킵·carry·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단 · Claude CLI 불요 = 무키 gtx)
 
       - name: 트렌드 이미지 백필(Q126 · 구글 급상승 꼬리 카드 커버 · 운영자 260718)
         env:
