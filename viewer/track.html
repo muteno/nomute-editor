@@ -57,6 +57,8 @@
   .trkpv { position:relative; width:100%; border:1px solid var(--line); border-radius:var(--r-l); overflow:hidden; background:#000; margin-bottom:var(--sp-2); }   /* raw-ok: 업로드 영상 미리보기 프레임 = edit .pvstage 미러(--line 테두리·--r-l 라운드·#000 레터박스 · 첨부 영상 실물 표시 · URL은 픽셀 부재로 미리보기 불가 = edit 동일 정직) */
   .trkpv[hidden] { display:none; }
   .trkpv video { display:block; width:100%; max-height:min(40vh,340px); max-height:min(40svh,340px); object-fit:contain; background:#000; }   /* raw-ok: #000 레터박스 = edit .pvstage 미러 · svh = 주소창 변동 고정(edit 높이캡 결 계승) · contain = 원본비 유지 */
+  .edfocus { animation:edfocus 2.2s ease both; border-radius:var(--r-m); }   /* 알림 ?done=<id> 착지 결과 강조(conv/edit/thumb .edfocus 정본 계승 · Q170 — track만 빠져 있던 형제 계약 합류) */
+  @keyframes edfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
   #fileTxt { display:flex; align-items:center; justify-content:center; min-width:0; max-width:100%; }
   #fileTxt .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .ftype { display:inline-block; flex:none; font-size:11px; font-weight:800; line-height:1; padding:4px 9px; border-radius:999px; margin-right:7px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(8px); }
@@ -902,6 +904,23 @@ try{ const _xp=JSON.parse(localStorage.getItem('nm_track_preset')||'null');   //
 moSync();   // 부팅 1회 = MO_DFLT 단일 출처화(HTML value 속성과의 이중정의 드리프트 차단 · 평의회C F5)
 fxSync();   // 실루엣·크로마 부팅 동기(moSync 대칭 · 260712)
 $('#keFeather').value=TK.kfe; $('#keFeatherV').textContent=TK.kfe;   // 키잉 페더 부팅 동기(운영자 260711 기본 0 — 구 HTML value=3 이중정의 차단 · moSync 대칭)
+
+// ── 완료 푸시 딥링크(?done=<id> · Access 재로그인 하드 리다이렉트서 해시 유실·쿼리 생존 · #done 호환) — 그 잡 결과로 직행+강조(conv/edit/thumb 정본 계승 · 파서 = thumb doneReq 문법 [\w-] · Q170) · pend 재개보다 우선 ──
+function edFocus(sel){ const el=$(sel); if(!el) return; try{ el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'}); }catch(e){} el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); }
+(function(){
+  const id=(location.search.match(/[?&]done=([\w-]+)\b/)||[])[1]||(location.hash.match(/^#done=([\w-]+)$/)||[])[1];
+  if(!id) return;
+  USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩 · conv 동형)
+  (async()=>{
+    try{
+      const r=await fetch('track_out/'+id+'/video.json?t='+Date.now());
+      if(r.ok){ const tx=await r.text(); if(tx&&!/^\s*</.test(tx)){ let d=null; try{ d=JSON.parse(tx); }catch(e){}
+        if(d&&!d.error&&(d.url||d.preview)){ TK.id=id; unlocked[2]=true; go(2); showResult(d,0); edFocus('#vwrap'); return; } } }   // 결과 = 3단계 화면이라 단계 해금+전환 후 표시(pend render 복원 경로 동형)
+      const er=await fetch('track_out/'+id+'/error.log?t='+Date.now());
+      if(er.ok){ const em=await er.text(); if(em&&em.trim()&&!/^\s*</.test(em)){ unlocked[2]=true; go(2); $('#rstatus').innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); $('#rstatus').classList.add('err'); } }
+    }catch(e){}
+  })();
+})();
 
 // ── 진행 이어받기(리로드·서브탭 전환·재진입) — pend 단계별 복원(0 유실 · 평의회5 상⑨) ──
 // analyze: t0을 소프트 예산 직전으로 클램프 — draw()의 하드 타임아웃이 tick()보다 먼저 걸려 완성 결과를
