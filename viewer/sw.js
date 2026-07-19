@@ -49,6 +49,11 @@ self.addEventListener('fetch', event => {
       }
       return res;
     });
+    if (cached && (req.cache === 'no-cache' || req.cache === 'reload')) {   // 명시적 새로고침(Ctrl+R·당겨서 새로고침) = 네트워크 우선 3s 캡(운영자 260720 평의회 F6 — "머지했는데 안 보임" 구조 봉합: SWR이 매 진입 직전판 셸을 먼저 서빙 · 새로고침 제스처만 "즉시 새 셸" 계약 신설 · 일반 진입 = 아래 SWR 유지 = 스플래시 최단화 계약 불변)
+      const winner = await Promise.race([netP.catch(() => null), new Promise(r => setTimeout(() => r(null), 3000))]);
+      if (winner) return winner;                                            // 3s 내 도착 = 새 셸 즉시(netP가 캐시 put·통지까지 수행)
+      event.waitUntil(netP.catch(() => {})); return cached;                 // 미도착(오프라인·지연) = 캐시 폴백(깨진 앱 방지 · 갱신은 백그라운드 지속)
+    }
     if (cached) { event.waitUntil(netP.catch(() => {})); return cached; }   // 캐시 즉시 응답 + 뒤에서 갱신
     return netP.catch(() => Response.error());                              // 첫 방문 = 네트워크 그대로
   })());
