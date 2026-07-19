@@ -307,6 +307,7 @@ def compute(media_doc, audience=None):
         'generated_kst': datetime.datetime.now(KST).isoformat(timespec='seconds'),
         'source_fetched_kst': media_doc.get('fetched_kst'),
         'n_posts': len(posts), 'span': [span[0], span[-1]],
+        'posts_view_avg': round(statistics.mean([p['views'] for p in posts])),   # 뷰어 TOP 게시물 '평균 대비 편차' 기준값(전 표본 조회 평균 · 운영자 260719)
         'weights': W, 'global_median': {k: round(v, 3) for k, v in g_med.items()},
         'axes': axes,
         'format_summary': fmt_sum, 'topic_summary': topic_sum, 'era_summary': era_sum,
@@ -555,13 +556,25 @@ def _echo_block(topic_sum, man):
 
 
 def main():
-    # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악") 우선 — 인사이트 유표본 30 미만 = 최근 25개 폴백
+    # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악")에 최근 수집(media_latest) top-up 병합.
+    # ⚠ 백필(insta_backfill.py)은 수동 dispatch 전용이라 정규 3h 크론에선 media_all이 안 늘어, 백필일 이후
+    #   올린 새 게시물이 TOP 게시물·점수·전 축 분석에서 통째 누락됐다(260719 실측: 7/17 449만뷰 릴스가
+    #   media_all(최신 7/13 동결) 부재로 미반영 · media_latest엔 있는데 refs 축만 최신, 주 표본은 옛것). 교정 =
+    #   위 post_refs가 이미 쓰는 media_all ∪ media_latest 관용구를 주 표본에도 적용(id 충돌 = latest 승 =
+    #   최신 조회수 · fetched_kst = 최신본 = enrich 경과일 기준 · MIN_AGE_D 신생 속도 가드 유지).
+    #   인사이트 유표본 30 미만(백필 부재/부족) = 종전대로 media_latest 단독 폴백.
     mall = jload('media_all.json')
-    media = None
+    mlat = jload('media_latest.json')
     if mall and sum(1 for m in (mall.get('media') or []) if (m.get('insights') or {}).get('views')) >= 30:
-        media = mall
-    media = media or jload('media_latest.json')
-    if not media:
+        by_id = {}
+        for src in (mall, mlat):   # mlat을 뒤에 = 같은 id면 최신 수집이 덮음(신선 인사이트 · refs _collect_refs 순서 동일)
+            for m in (src.get('media') or []) if src else []:
+                if m.get('id'):
+                    by_id[m['id']] = m
+        media = {'fetched_kst': (mlat or mall).get('fetched_kst'), 'media': list(by_id.values())}
+    else:
+        media = mlat
+    if not media or not media.get('media'):
         print('데이터 없음 — insta-fetch 수집분(apps/insta/data/media_latest.json)부터 필요')
         return 1
     aud = jload('audience.json') or {}
@@ -605,6 +618,7 @@ def main():
         vdoc['daily_series'] = series_daily
         vdoc['daily_meta'] = daily_meta
         vdoc['avg'] = _avg_signals(series_daily)   # 평균 게시량·평균 대비 현재(운영자 실사용 핵심)
+        vdoc['posts_view_avg'] = sig.get('posts_view_avg')   # TOP 게시물 '평균 대비 편차' 기준값(뷰어 = 부재 시 표시분 평균 폴백)
         vdoc['fmt'] = sig.get('format_summary')    # 릴스·피드 절대 요약
         vdoc['topics'] = sig.get('topic_summary')  # 주제별 반응률(뉴스 분류기 계승)
         vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
