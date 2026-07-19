@@ -982,6 +982,7 @@
   .tlr-p { justify-self:start; font-size:var(--fs-xs); font-weight:var(--fw-x); white-space:nowrap; }   /* 플랫폼 컬럼 = 좌측 정렬(제목에 안 붙고 고정 컬럼서 시작 · TR_PCOL cat 재지정 승인 260712) */
   .tlr-v { justify-self:start; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 조회수 컬럼 = 좌측 정렬(tabular) */
   .tlr-tm { justify-self:start; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 시간 컬럼 = 좌측 정렬(.tlr-v 문법 계승 · relAge · 결측 = 빈 칸 유지 = 열 불변) */
+  .tlr-tm.old, .tsk .tpc-tm.old { opacity:.45; }   /* raw-ok: .45 = 스테일 시간 광학 강하 1회성(dim 티어 토큰 부재 · .fin-base .7보다 한 단 더) */   /* TOP10 스테일 항목(12h+ · _fresh:false) = 시간만 흐림(운영자 260720 평의회 F4·F7 P1 — "실시간" 라벨 아래 2개월 전 항목이 무경고 상주 · freshFirst 침몰·빈칸0 채움은 불변 = 표시 전용) */
   @media (max-width:640px) { .tlr { grid-template-columns:18px minmax(0,1fr) 46px 64px; } .tlr-tm { display:none; } }   /* 모바일 = 시간 열 접기(운영자 260712 Q1-ⓐ 절충 승인 — 평의회⑤ 실측: 5열이 제목을 6~11자로 압박 · 시간은 TOP 카드 레일·플랫폼 섹션에 유지 = 정보 손실 0 · PC 5열 불변) */
   .feednav.tstk-rst-sm { width:28px; height:28px; top:auto; bottom:calc(50% + 40px); right:15px; transform:none; }   /* raw-ok: 11위+ ↻ 미니(운영자 260716 "넘김 버튼의 2/3 · 같은 열 축") — 28 = PC 티어 .feednav 42(#1826 hover 미디어)×⅔ 정수 · right15 = 넘김(right8+반경21) 픽토 중심 x 29 정합(15+14) · bottom = 카운터 상변(50%+36)+간격4(카운터 신설로 27→40 상향 · 운영자 260716 "카운터 ㄱ") · 특이도 0,2,0 = 후행 hover 42 티어 재상속 차단 · .feednav display 게이트로 PC 전용 = 42 티어와 항상 짝 */
   .tstk-g .tstk-cnt { position:absolute; right:8px; bottom:calc(50% + 25px); width:42px; display:none; text-align:center; z-index:4; font-size:var(--fs-xs); font-weight:var(--fw-b); line-height:1; color:var(--mut); font-variant-numeric:tabular-nums; pointer-events:none; }   /* raw-ok: 순위 카운터(운영자 260716 "↻와 > 사이 열 축") — right8+width42 = 넘김 버튼 동폭 박스 → 텍스트 중심 x 29 자동 정합 · bottom = next 상변(50%+21)+간격4 · tabular = 자릿수 흔들림 0 */
@@ -9877,7 +9878,7 @@ function renderSnsTrends() {
   const topSeg = tfl.length > 1 ? `<span class="ch-rangeseg tb-seg"><button type="button" data-tf="all"${TR_TOPF === 'all' ? ' class="on"' : ''}>전체</button>${tfl.map(z => `<button type="button" data-tf="${esc(z.k)}"${TR_TOPF === z.k ? ' class="on"' : ''}>${esc(z.lb)} ${Math.min(z.n, 10)}</button>`).join('')}</span>` : null;
   if (top.length) h += gsec('top', `실시간 TOP 10${tm ? `<span class="tdash-time${stale ? ' stale' : ''}">${esc(tm)}${stale ? ' · 지연' : ''}</span>` : ''}`,
     '<div class="tlist">' + topShow.map((it, i) =>
-      `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
+      `<a class="tlr" data-si="${i}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="tlr-t"></span><span class="tlr-p" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tlr-v">${esc(it.rv || '')}</span><span class="tlr-tm${it._fresh ? '' : ' old'}">${esc(it.ago || '')}</span></a>`).join('') + '</div>' +
     '<div class="tstk-wrap" id="tstk"></div>', stale, topSeg);   // 스택(순위 흐름) = 전체·플랫폼 필터 공통 노출(운영자 260717 "플랫폼별 순위도 쭉") — 플랫폼 = 그 mono 순위 시퀀스(topShow 축 = TOP 리스트와 동일 데이터 = 정직) · stale = 종전 hstale 유지
   h += GRPS.map(g => gsec(g[0], g[1], g[2])).join('');
   const _sv2 = $('#snsview'); if (_sv2 && box.contains(_sv2)) $('#trendview').appendChild(_sv2);   // 재구축 전 대피(innerHTML 소실 방지)
@@ -10070,7 +10071,7 @@ function renderSnsTrends() {
       const isHero = mode === 'hero';
       if (!it) return '<span class="tsk mini tsk-empty" aria-hidden="true"></span>';   // 확장 꼬리 끝 = 빈 셀 유지(랩 채움 금지 — 운영자 260716 "그 뒤에 셀들이 비어버릴 텐데" 수용 · 레이아웃 3열 보존)
       const bd = `<span class="tpc-cat" style="color:${TR_PCOL[it.mono] || 'var(--mut)'}">${it.plat}</span><span class="tsk-t tpc-t${isHero ? '' : ' one'}"></span>` +
-        `<span class="tpc-m"><span>${esc(it.rv || '')}</span>${it.ago ? `<span class="tpc-tm">${esc(it.ago)}</span>` : ''}</span>`;
+        `<span class="tpc-m"><span>${esc(it.rv || '')}</span>${it.ago ? `<span class="tpc-tm${it._fresh ? '' : ' old'}">${esc(it.ago)}</span>` : ''}</span>`;
       return `<a class="tsk ${isHero ? 'main mag' : 'mini'}" data-si="${r}"${it.pt ? ' data-pt="1"' : ''} href="${escUrl(it.url)}" target="_blank" rel="noopener">` +
         `<span class="tsk-cov"><b>${TR_LOGO[it.mono] || ''}</b>${it.th ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(it.th)}" onerror="this.style.display='none'" alt="">` : ''}` +
         `<span class="tpc-rank${r < 3 ? ' top' : ''}">${r + 1}</span>` +
