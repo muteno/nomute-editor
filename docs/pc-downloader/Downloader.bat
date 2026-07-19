@@ -5,12 +5,15 @@ setlocal enabledelayedexpansion
 REM === 인자 모드 (v5.1): 단축키 등으로 URL을 넘기면 그 URL을 첫 입력으로 자동 처리 ===
 REM     처리 후 종료하지 않고 계속 다음 URL 입력 대기 (q로 종료)
 REM === v5.3: [자동] 괄호 이스케이프(파서 픽스) + CP949 저장(깨진문자 커맨드 픽스) + 자막=영상제목 폴더 ===
+REM === v5.5: ESC 2번 = 창 닫기 (안정판: 키 감지는 단일키 게이트만, URL 입력은 원본 set /p 유지) ===
+REM === v5.6: 구글드라이브 자동 탐지(아무 드라이브 문자/한·영 UI/폴더·미러 마운트) - 계정 무관 Shared 복사 ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.3
+echo   만능 다운로더 v5.6
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
+echo   ESC 2번 연속 = 창 닫기
 echo ===============================================
 echo.
 
@@ -25,9 +28,21 @@ REM === 경로 설정 ===
 set "YTDLP=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\yt-dlp"
 set "GDL=%YTDLP%\gallery-dl.exe"
 set "COOKIES=%YTDLP%\cookies.txt"
-REM === 클라우드 저장 = 구글드라이브 (v5.2) - USERPROFILE 기준이라 PC 계정명 무관 ===
-set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
-set "CLOUD=%GDRIVE%\Shared"
+REM === 클라우드 저장 = 구글드라이브 자동 탐지 (v5.6) - PC 계정명/드라이브 문자/UI 언어 무관 ===
+REM     탐지 순서: 1) 구버전 폴더 마운트 2) 드라이브 문자 마운트(G: 우선, 아무 문자 OK) 3) 폴더/미러 흔한 위치
+set "GDRIVE="
+if exist "%USERPROFILE%\Google Drive 스트리밍\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
+if not defined GDRIVE for %%D in (G H I J K L M N O P Q R S T U V W X Y Z E F) do (
+    if not defined GDRIVE (
+        if exist "%%D:\내 드라이브\" set "GDRIVE=%%D:\내 드라이브"
+        if not defined GDRIVE if exist "%%D:\My Drive\" set "GDRIVE=%%D:\My Drive"
+    )
+)
+if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive\내 드라이브"
+if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\My Drive\" set "GDRIVE=%USERPROFILE%\Google Drive\My Drive"
+if not defined GDRIVE if exist "%USERPROFILE%\내 드라이브\" set "GDRIVE=%USERPROFILE%\내 드라이브"
+if not defined GDRIVE if exist "%USERPROFILE%\My Drive\" set "GDRIVE=%USERPROFILE%\My Drive"
+if defined GDRIVE set "CLOUD=%GDRIVE%\Shared"
 set "LOCAL=%USERPROFILE%\Downloads\yt-dlp"
 set "GTEMP=%LOCAL%\_gallery_temp"
 
@@ -79,11 +94,12 @@ REM === 클라우드 사전 검증 ===
 echo.
 echo [검증] 클라우드 쓰기 테스트...
 set "DUAL=0"
-if not exist "%GDRIVE%" (
-    echo [알림] 구글드라이브 폴더 없음: %GDRIVE%
-    echo        구글드라이브 미설치/미로그인 - 이번엔 로컬에만 저장
+if not defined GDRIVE (
+    echo [알림] 구글드라이브를 어디서도 못 찾음 - 미설치/미로그인 가능성
+    echo        이번엔 로컬에만 저장
     goto cloud_done
 )
+echo [확인] 구글드라이브 감지: %GDRIVE%
 if not exist "%CLOUD%" mkdir "%CLOUD%" 2>nul
 if not exist "%CLOUD%" goto cloud_done
 echo test_%RANDOM% > "%CLOUD%\_write_test.tmp" 2>nul
@@ -105,10 +121,18 @@ if defined ARGURL (
     set "URL=!ARGURL!"
     set "ARGURL="
     echo [자동] !ARGSRC! 첫 URL 사용 ^(이후 계속 입력 가능^)
-) else (
-    set "URL="
-    set /p URL=URL 붙여넣기 ^(q=종료^): 
+    goto url_have
 )
+REM === v5.5: 단일키 게이트 - ESC 2번=창닫기 / Q=종료 / 그 외 아무 키=URL 입력 ===
+REM     powershell 실행 실패 시(errorlevel 9009 등) 그냥 URL 입력으로 진행됨 = 안전
+echo [아무 키 = URL 입력 / Q = 종료 / ESC 2번 = 창 닫기]
+powershell -noprofile -c "$e=0;while($true){$k=[Console]::ReadKey($true);if($k.Key -eq 'Escape'){$e=$e+1;if($e -ge 2){exit 27}}elseif($k.KeyChar -eq 'q' -or $k.KeyChar -eq 'Q'){exit 113}else{exit 0}}"
+if !errorlevel! equ 27 goto esc_exit
+if !errorlevel! equ 113 goto end
+set "URL="
+set /p URL=URL 붙여넣기 ^(q=종료^): 
+
+:url_have
 if /i "!URL!"=="q" goto end
 if "!URL!"=="" goto loop
 
@@ -284,9 +308,13 @@ echo   로컬:    %LOCAL%
 if "!DUAL!"=="1" echo   클라우드: %CLOUD%
 echo ===============================================
 echo.
-echo [다음 URL 입력 가능. 종료는 q]
-pause
 goto loop
+
+:esc_exit
+echo.
+echo [ESC 2번] 창을 닫습니다.
+endlocal
+exit
 
 :end
 echo.
