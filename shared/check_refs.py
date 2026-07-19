@@ -1003,7 +1003,7 @@ def check_qledger_unique():
     if stubs:
         print('❌ 원장 Q?? 스텁 미확정 %d행 — 커밋 전 파일 최대+1 실번호로 확정하라(경합 소멸 규칙 · 큐 헤더 규칙 6): %s' % (len(stubs), stubs[0]))
         return 1
-    rx = re.compile(r'^- [^Q]{0,4}Q(\d+)(?:~(\d+))?·')
+    rx = re.compile(r'^- [^Q]{0,4}Q(\d+)(?:~(\d+))?(?:\([^)]*\))?·')   # (?:\(…\))? = 경합 재부여 주석형 'QNN(구 QMM …)·' 허용(260719 — 구판은 이 행을 아예 못 세서 최대·중복 계산 누락 = 재부여 번호가 무방비로 재발급될 틈 · 새 번호로 계수하고 괄호 안 구번호는 해제된 번호라 미계수가 정답)
     cnt = {}
     for ln in lines:
         m = rx.match(ln)
