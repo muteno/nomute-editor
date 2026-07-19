@@ -116,6 +116,7 @@
   2. 좌②: 소주제 **제목 글자 시작** = 내용 행 **글자 시작**(소주제 헤더 = 내용 행과 동일 박스모델 = `padding-left:13` + 24px 첫칸 + `gap:8` 미러 → `.trend-lbl`이 `.trend-row` 복제).
   3. 우: 소주제 접기 토글(체브론) = 중분류 접기 토글(소주제 `summary padding-right:12` = 중분류 `.tgroup-h padding-right` 미러).
   - 순위 `.trend-rank`는 15px 우측정렬이 기본이나, 배지 정렬 필요 목록은 `24px 중앙`으로 계승(채널 `.ch-post`·SNS `.trend-row` 실증).
+- **헤더 세그 배치(기간·플랫폼 선택 · 반응형 1구조 · 운영자 260719)**: gsec `extra` = details 첫 자식 `.chseg-row`(summary 밖 = 인터랙티브 중첩 0). **PC(≥641px)** = `.chu`(relative) 앵커 abspos 헤더 우상단 오버레이(`::details-content` 클립 이탈 = 접힘에도 노출) + 좌측 클러스터 예약 `padding-right:var(--chu-r)`(chuFit 실측 · tb-seg=시각 있는 헤더만). **모바일(≤640px)** = 타이틀 아래 좌정렬 흐름 행(세그도 내용 세로선 `padding-left:13` 계승 · 시각 온전 노출). ⚠ **한 쌍 규칙**: 체브론 상쇄 `.tgroup-h::after margin-right:calc(12px - var(--chu-r))`는 예약 `padding-right`과 반드시 동일 스코프(둘 다 PC only) — 상쇄만 남으면 폰서 --chu-r 음수마진이 체브론을 우측 밖으로 밀어 오토마진 폭주=가로 오버플로(260719 실측 봉합).
 
 ## 적용 절차 (새 컴포넌트·이식)
 1. 이 표에서 해당 행 찾기 → **정본 셀렉터를 그대로 계승**(클래스 추가만, 재설계 금지).
