@@ -3582,11 +3582,10 @@ function applySpellReview() {   // 2차 누름 = 점등된 교정만 적용. _sp
 }
 // ── 편집(app='8') 피사체 모자이크 — apps/imgedit 백엔드(track 미러) · 검출 → 이미지 위 박스 탭 지정 → 모자이크 2티어(운영자 260712) ──
 const IE = { id: '', items: [], sel: new Set(), meta: null, phase: 'idle', busy: false, poll: null, lastImg: '', pxw: 9, shape: 'ellipse', precise: false };
-function ieReset() {   // 결과·검출 초기화(새 이미지·탭 재진입)
+function ieReset() {   // 결과·검출·진행 폴링 전체 초기화(새 이미지 = ieRender 진입부가 호출 · Q170 배선 — 재렌더는 호출측 ieRender가 이어서 수행하므로 여기서 ieRender 재호출 금지 = 재귀 차단)
   IE.id = ''; IE.items = []; IE.sel.clear(); IE.meta = null; IE.phase = 'idle'; IE.busy = false;
   if (IE.poll) { clearInterval(IE.poll); IE.poll = null; }
   const rz = $('#ieResult'); if (rz) { rz.classList.add('none'); rz.innerHTML = ''; }
-  ieRender();
 }
 function ieSyncGo() {
   if (APP !== '8') return;
@@ -3601,9 +3600,8 @@ function ieSyncGo() {
 }
 function ieRender() {
   if (APP !== '8') return;
-  if (CIMG.b64 && CIMG.b64 !== IE.lastImg) {   // 새 이미지 첨부 = 검출 초기화(스테일 박스 차단 · 소스 = app2 첨부 CIMG · 운영자 260713)
-    IE.lastImg = CIMG.b64; IE.items = []; IE.sel.clear(); IE.meta = null; IE.phase = 'idle';
-    const rz = $('#ieResult'); if (rz) { rz.classList.add('none'); rz.innerHTML = ''; }
+  if (CIMG.b64 && CIMG.b64 !== IE.lastImg) {   // 새 이미지 첨부 = 전체 초기화(스테일 박스 차단 · 소스 = app2 첨부 CIMG · 운영자 260713 → Q170: 구 부분 리셋은 진행 폴링·busy·id 잔존이라 미배선 ieReset로 승격 — 이미지 교체 중이던 검출/모자이크 폴링까지 정리)
+    IE.lastImg = CIMG.b64; ieReset();
   }
   const stage = $('#ieStage'), hint = $('#ieHint'), opts = $('#ieOpts');
   if (hint) hint.classList.toggle('none', !!(CIMG.b64 && IE.items.length));   // 힌트 줄 폐지(260712 §디자인 e) — null 가드 = 도먼트 복원 호환
