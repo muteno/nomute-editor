@@ -867,6 +867,7 @@
   .ch-charttop .ct-u { font-size:var(--fs-xs); color:var(--mut); }
   .ch-chartwrap { position:relative; }
   .ch-chartwrap svg { display:block; width:100%; height:auto; }
+  @media (max-width:640px) { .ch-chartwrap:not(.sig-chartwrap) svg text { font-size:15px; } }   /* raw-ok: 15 = SVG 좌표계(600 고정) 값 — 폰 실폭 ~330 스케일 0.55× 후 유효 ≈8.3px(구 8~9 → 유효 4.4~4.9px 판독불가 · 260720 평의회 F5 P1 · 라인차트 겹침 0 실측) · 시그널 버킷 차트 제외 = 2줄 라벨(버킷명+n=) y간격이 8px 기준 설계라 12px도 겹침 14쌍 실측 — 확대는 y 재배치(후속) 없인 불가라 원 크기 유지 */
   .ch-tip { position:absolute; pointer-events:none; background:var(--glass2); backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); border:1px solid var(--line); border-radius:var(--r-s); padding:6px 8px; font-size:var(--fs-xs); color:var(--fg); white-space:nowrap; opacity:0; transition:opacity var(--dur-fast); z-index:5; transform:translate(-50%,-118%); }   /* raw-ok: 툴팁 광학 패딩(시안 실측 계승) */
   .ch-tip.ev { white-space:normal; max-width:210px; line-height:1.45; }   /* raw-ok: 변곡 주석 호버 툴팁 = 요약(note) 줄바꿈 허용(운영자 260715) */
   .ch-dot { position:absolute; width:9px; height:9px; border-radius:50%; background:var(--fg); border:1.5px solid var(--accent); transform:translate(-50%,-50%); opacity:0; pointer-events:none; transition:opacity var(--dur-fast); z-index:4; }   /* raw-ok: 크로스헤어 호버점 = 흰 필(--fg)·강조색 얇은 테두리(운영자 260715 "지점 작은 흰색·강조색 얇은 테두리") */
@@ -1084,6 +1085,12 @@
   .tv-body.wd { aspect-ratio:16/9; }   /* 가로 — 도먼트(운영자 260712 세로 통일로 유튜브도 pt 이동 = 사용처 0 · 넓게 보기 재도입 = trEmbed k:'wd' 롤백 한 글자) */
   .tv-body.tw { height:58dvh; background:var(--bg); }   /* X 임베드 = 높이 가변 카드 → 고정 프레임 내부 스크롤 */
   .tv-foot { flex:none; display:flex; align-items:center; gap:8px; padding:10px 12px; border-top:1px solid var(--line2); }   /* 액션 행(운영자 260711 "바로 다운로드·영상 소스·요약 요청") — 버튼 = .ed-go 글래스 고스트 계승·텍스트 단독 */
+  .tv-cmts { flex:none; max-height:132px; overflow-y:auto; display:flex; flex-direction:column; gap:var(--sp-1); padding:9px 12px; border-top:1px solid var(--line2); }   /* raw-ok: padding 9/12·max-h 132 = .tv-foot(10/12) 형제 리듬 미러 + 댓글 3행 상한 근사 */   /* 인기 댓글(260720 평의회 F3 — 유튜브·뉴스·쇼츠 상위 3편 수집분 표시) */
+  .tv-cmh { font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--fg); }
+  .tv-cmt { display:flex; gap:var(--sp-1); align-items:baseline; font-size:var(--fs-xs); color:var(--mut); line-height:1.45; }
+  .tv-cmt i { font-style:normal; flex:none; display:inline-flex; align-items:center; gap:3px; color:var(--accent); font-variant-numeric:tabular-nums; }   /* raw-ok: gap 3 = .tcard-m i(지표 픽토+숫자) 정본 미러 */
+  .tv-cmt i svg { width:11px; height:11px; display:block; opacity:.85; }   /* raw-ok: 11 = .tcard-m svg 지표 픽토 정본 미러 */
+  .tv-cmt span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-width:0; word-break:break-word; }
   .tv-status { flex:1; min-width:0; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* 다운로드 진행·실패 1줄(행위 피드백 = §🎨 e-가 예외) */
   .tv-status.err { color:var(--warn); }
   .tv-foot .ed-go { min-width:0; padding:7px 12px; font-size:12px; }
@@ -3359,6 +3366,7 @@ try {
 <dialog id="trviewdlg" aria-label="트렌드 보기">
   <div class="modal-head"><b id="tvTitle"></b><a class="tv-open" id="tvOpen" href="#" target="_blank" rel="noopener" title="원문 열기" aria-label="원문 열기"><svg class="src-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="src-base" pathLength="1" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><g class="src-arrow"><path class="src-shaft" pathLength="1" d="M10 14 21 3"/><path class="src-tip" d="M15 3h6v6"/></g></svg></a><button class="tool-x dlg-x" type="button" id="tvX" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="tv-body pt"><iframe id="tvFrame" title="임베드 콘텐츠" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><!-- referrerpolicy = strict-origin-when-cross-origin(브라우저 기본): 유튜브 임베드 플레이어는 부모 origin(referrer)로 도메인 임베드 허가를 검증 → no-referrer면 referrer 통째 제거돼 '오류 153 동영상 플레이어 구성 오류'로 재생 불가(운영자 260712 스샷 실측·수리). strict-origin은 경로는 감추고 origin(https://apps.nomute.kr)만 전송 = 도메인 검증 충족하면서 타 플랫폼(틱톡·릴스·X) 임베드 무영향(원래 referrer 안 봄). --><div class="tv-swz" id="tvSwz" aria-hidden="true"></div><div class="tv-nav" id="tvNavBox" hidden><button class="tv-nv" id="tvPrev" type="button" aria-label="이전 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button><button class="tv-nv" id="tvNext" type="button" aria-label="다음 순위"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div></div>
+  <div class="tv-cmts" id="tvCmts" hidden></div><!-- 인기 댓글(운영자 260714 "가장 좋은 건 댓글 반응" → 260720 평의회 F3 발굴: 수집·저장만 되고 미표시던 comments 표시 · 데이터 있을 때만 노출 = 조용한 공백 · 주입 = textContent DOM 조립(XSS 안전) -->
   <div class="tv-foot"><span class="tv-status" id="tvStatus" role="status" aria-live="polite"></span><button class="ed-go" id="tvDl" type="button">다운로드</button><button class="ed-go" id="tvSrc" type="button">편집기</button><button class="ed-go" id="tvAsk" type="button">요약 요청</button></div>
 </dialog>
 
@@ -9647,6 +9655,7 @@ const TRI_UP_SVG = '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="tr
 // (구 TRI_DN_SVG ▼ = 260720 chg 배지 전면 제거로 고아화 → 삭제 · 재도입 = git 이력 · ▲ TRI_UP_SVG는 해커뉴스 스코어로 생존)
 // 카드 지표 픽토 3종(24뷰박스·stroke2·round 규격 §🎨 q · index 로컬 — 조회수는 nm-svg SSOT의 EYE_SVG 재사용 = 인라인 재선언 금지 게이트)
 const HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
+const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n < 1e5 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') : String(Math.round(n / 1e4))) + '만' : n > 0 ? (n / 1e4).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '만' : '';   // 전 지표 만단위 통일(운영자 260712 "모두 만단위") — 10만 미만 = 소수1(1.6만) · 구 renderSnsTrends 내부 → 전역 승격(260720 임베드 댓글 공용)
 const CMT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 const RT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
 // 플랫폼 로고 픽토그램(운영자 260712 "레일 = 로고 픽토그램화하면 완벽") — 단색 currentColor(색 = 컨텍스트 계승·팔레트 반입 0) · 로고 지오메트리 = 서드파티 원형(§핵심명령 3-a 예외축) · index 전용 로컬 상수(nm-svg 공유 18종과 별개·레일+대시보드 모노그램 폴백 공용)
@@ -9699,7 +9708,7 @@ function renderSnsTrends() {
   const rdd = d.reddit || [], bsk = d.bsky || [], sth = sb.threads || [];   // ⑥⑦⑧ 레딧·블루스카이·스레드 구독(운영자 260713 "추천대로" 배치 승인 — 레딧 = 커뮤니티 그룹 · 블스·스레드 = 새 그룹)
   const hnl = d.hackernews || [], finc = d.finance || {}, finR = finc.rates || [], finC = finc.coins || [], finI = finc.indices || [], finS = finc.stocks || [], dsl = d.disaster || [], kob = d.kobis || [], exw = d.expressway || [];   // ⑫⑬⑭⑮⑯ 해커뉴스·금융(환율/코인/증시/종목 · 운영자 260717 2x2)·재난문자·박스오피스·고속도로 돌발(운영자 260713 "ㄱ" · 데이터 있을 때만 그룹 등장 = 조용한 공백)
   if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length && !sig.length && !xtr.length && !rdd.length && !bsk.length && !sth.length && !hnl.length && !finR.length && !finC.length && !dsl.length && !kob.length && !exw.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지) · HN·금융·재난·박스오피스·고속도로 5키 누락 봉합(260720 평의회 F1 — 이 그룹들만 데이터일 때 통삭제 잠복)
-  const vfmt = n => n >= 1e8 ? (n / 1e8).toFixed(1) + '억' : n >= 1e4 ? (n < 1e5 ? (n / 1e4).toFixed(1).replace(/\.0$/, '') : String(Math.round(n / 1e4))) + '만' : n > 0 ? (n / 1e4).toFixed(2).replace(/0$/, '').replace(/\.0$/, '') + '만' : '';   // 전 지표 만단위 통일(운영자 260712 "모두 만단위") — 10만 미만 = 소수1(1.6만) · 1만 미만 = 소수2(0.05만) = 정상 수집이면 미도달(잔존 = 수집 저단위 신호·gtrends RSS 이슈 보고 260712)
+  // vfmt = 전역 승격(260720 평의회 후속 — 임베드 모달 인기 댓글도 사용 · 정의 = renderSnsTrends 위 전역 1곳)
   const tfmt = s => { const n2 = parseInt(String(s || '').replace(/[^0-9]/g, ''), 10); return n2 > 0 ? vfmt(n2) + '+' : ''; };   // 구글 검색량 문자열 "20,000+"→"2만+" 만단위 통일 — 천단위 원값은 RSS approx_traffic 저단위 버킷(수집기 교체 검토 = 운영자 결정 대기)
   const tm = fmtK12(String(d.updated || ''));   // 수집 시각(살아있냐 신호 · 평의회10) — 표기 = "7월 16일 2:18PM" 공통(운영자 260716 "시간표시 동일하게")
   let stale = false;   // 수집 65분+ 밀림 = 크론 지연/사망(정직 신호 · 평의회6 — 크론 주기 30분×2 + 지터 여유)
@@ -10194,6 +10203,17 @@ function openTrView(emb, a, seq) {
   tvReset();
   _tvSeq = (seq && seq.arr && seq.arr.length > 1) ? seq : null;
   $('#tvNavBox').hidden = !_tvSeq;
+  // 인기 댓글(260720 평의회 F3 — 운영자 260714 "가장 좋은 건 댓글 반응" 수집분을 임베드 모달에 표시 · url 매칭 · 없으면 숨김 = 조용한 공백)
+  const _cmBox = $('#tvCmts');
+  if (_cmBox) {
+    let _cm = null; const _d2 = TRENDS || {};
+    for (const L of [_d2.youtube, _d2.youtube_news, _d2.shorts]) { const hit = (L || []).find(v => v && v.url === _tvUrl && v.comments && v.comments.length); if (hit) { _cm = hit.comments.slice(0, 3); break; } }
+    _cmBox.hidden = !_cm; _cmBox.textContent = '';
+    if (_cm) {
+      const h = document.createElement('b'); h.className = 'tv-cmh'; h.textContent = '인기 댓글'; _cmBox.appendChild(h);
+      _cm.forEach(c => { const row = document.createElement('div'); row.className = 'tv-cmt'; const i = document.createElement('i'); i.innerHTML = HEART_SVG; i.appendChild(document.createTextNode(c.likes > 0 ? vfmt(c.likes) : '0')); const sp = document.createElement('span'); sp.textContent = c.text || ''; row.append(i, sp); _cmBox.appendChild(row); });   // textContent 주입 = XSS 안전 · HEART_SVG = met() 지표 픽토 정본 계승
+    }
+  }
   trviewdlg.querySelector('.tv-body').className = 'tv-body ' + emb.k;
   $('#tvFrame').src = emb.src;
   const tw0 = emb.k === 'tw'; $('#tvDl').hidden = tw0; $('#tvSrc').hidden = tw0;   // X 트윗 = 영상 아님 → 다운로드·편집기 숨김(평의회④ "예정된 실패 버튼" · 요약 요청은 유지)
@@ -10648,8 +10668,8 @@ function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일
       let best = hits[0], bd = 1e9;
       hits.forEach(pt => { const dd = Math.abs(pt.x - px); if (dd < bd) { bd = dd; best = pt; } });
       const [tx, ty] = place(best.x, best.y);
-      tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
       tip.innerHTML = `<b>${esc(best.bucket)}</b><br><span style="color:var(--mut);font-size:10px">공유 ×${best.share ?? '—'} · 저장 ×${best.save ?? '—'} · n=${best.n}${best.low ? ' · 표본부족' : ''}</span>`;
+      const _hw = (tip.offsetWidth || 110) / 2; tip.style.left = Math.max(_hw + 2, Math.min(r.width - _hw - 2, tx)) + 'px'; tip.style.top = ty + 'px';   // 좌우 클램프(260720 평의회 F5 — translate(-50%)라 엣지 포인트서 화면 밖 잘림 실측 · innerHTML 후 실폭 측정)
       tip.style.opacity = '1';
       if (dot) { dot.style.left = tx + 'px'; dot.style.top = ty + 'px'; dot.style.opacity = '1'; }
     };
@@ -10865,9 +10885,9 @@ function renderChan() {
       CH_HIT.forEach(pt => { const dd = Math.abs(pt.x - px); if (dd < bd) { bd = dd; best = pt; } });
       const [tx, ty] = place(best.x, best.y);
       tip.classList.remove('ev');
-      tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
       const bref = best.refs && best.refs.length ? ` · ${esc(best.refs[0].name || '(무캡션)')}${best.refs.length > 1 ? ` 외 ${best.refs.length - 1}` : ''}` : '';   // 그날 게시물 제목 미리보기(운영자 260718 "어떤 게시물 올렸는지 확인" · 링크는 러그 탭 팝오버가 담당)
       tip.innerHTML = `<b>${best.v.toLocaleString()}</b> ${esc(CH_MET[CHAN_MET][1])}${best.pc ? ` · 게시 ${best.pc}개` : ''}<br><span style="color:var(--mut);font-size:10px">${esc(best.day)}${bref}</span>`;
+      const _hw = (tip.offsetWidth || 110) / 2; tip.style.left = Math.max(_hw + 2, Math.min(r.width - _hw - 2, tx)) + 'px'; tip.style.top = ty + 'px';   // 좌우 클램프(260720 평의회 F5 — 좌단 -73px 화면 밖 실측 봉합 · innerHTML 후 실폭 측정)
       tip.style.opacity = '1';
       showDot(best.x, best.y);
     };
@@ -10881,8 +10901,10 @@ function renderChan() {
         const e = CH_EV[+g.getAttribute('data-ei')]; if (!e) return;
         const [tx, ty] = place(e.x, e.y);
         tip.classList.add('ev');
-        tip.style.left = tx + 'px'; tip.style.top = ty + 'px';
+        const _wr = wrap.getBoundingClientRect();
+        tip.style.top = ty + 'px';
         tip.innerHTML = `<b>${esc(e.label)}</b><br><span style="color:var(--mut);font-size:10px">${esc(e.date)}${e.v != null ? ` · <span style="color:var(--accent)">${e.v.toLocaleString()} ${esc(CH_MET[CHAN_MET][1])}</span>` : ''}</span>${e.note ? `<br><span style="color:var(--mut);font-size:10px;opacity:.85">${esc(e.note)}</span>` : ''}`;
+        const _hw = (tip.offsetWidth || 110) / 2; tip.style.left = Math.max(_hw + 2, Math.min(_wr.width - _hw - 2, tx)) + 'px';   // 좌우 클램프(260720 평의회 F5 · 크로스헤어 툴팁 동일 문법)
         tip.style.opacity = '1';
         if (e.v != null) showDot(e.x, e.y); else if (dot) dot.style.opacity = '0';
       };
