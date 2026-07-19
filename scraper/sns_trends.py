@@ -419,11 +419,15 @@ def _load_accounts():
 
 
 def _i(v):
-    """수치 강제(int) — 상류 API가 문자열·콤마 수치를 실어도 항목/계정 단위로 안전(평의회1·6)."""
-    if isinstance(v, int):
-        return v
+    """수치 강제(int) — 상류 API가 문자열·콤마 수치를 실어도 항목/계정 단위로 안전(평의회1·6).
+    ⚠ float·소수문자열 = 소수부 절단(운영자 260719 봉인): 업비트 trade_price 등 `95318000.0` .0 float를
+    구 콤마제거 정규식이 '.'까지 지워 `953180000`으로 0 하나 더 붙던 버그(코인 전반 10배 오표기)의 원흉."""
+    if isinstance(v, bool):   # bool = int 서브클래스 → 명시 처리(True/False 오수치 방지)
+        return int(v)
+    if isinstance(v, (int, float)):
+        return int(v)   # float 직접 절단(str 경유 시 소수점이 자릿수로 오염 = 10배 사고)
     try:
-        return int(re.sub(r"[^\d]", "", str(v)) or 0)
+        return int(re.sub(r"[^\d]", "", str(v).split(".")[0]) or 0)   # 문자열 = 소수부 절단 후 콤마 등 제거(기존 관용 유지)
     except Exception:  # noqa: BLE001
         return 0
 
@@ -1114,8 +1118,16 @@ def main():
         # wall-clock 예산(기본 240s·env SNS_SUBS_BUDGET — 워크플로가 480 지정 = 지역 2군 확장분) — 최악(전 콜 타임아웃 직렬)이
         # workflow timeout을 넘겨 레거시 수집분까지 dump 못 하고 버리는 시나리오 차단(평의회2·9) · 초과 = 잔여 계정 스킵(수집분 사용)
         dl = time.monotonic() + (_i(os.environ.get("SNS_SUBS_BUDGET")) or 240)   # 비수치 env = 240 폴백(파스 크래시 가드 · 재검증1)
-        subs_new = {"x": x_subs(acc["x"], limit=20, deadline=dl), "tiktok": tiktok_subs(acc["tiktok"], limit=20, deadline=dl),
-                    "insta": insta_subs(acc["insta"], limit=20, deadline=dl), "youtube": yt_subs(acc["youtube"], limit=20, deadline=dl),
+        # 지역별 독립 수집(운영자 260719 "구독 한국 3개만 나옴" 봉인) — 종전 = 전 계정 1콜 후 조회수 글로벌 캡(limit=20)이라
+        # 해외 메가계정(mrbeast·zachking 수억 뷰)이 한국(newjeans 1877만 등)을 상위 20 밖으로 밀어내 KR 3건만 잔존.
+        # 근본교정 = 계정을 지역으로 갈라 각 지역 top-N 독립 수집(KR 먼저 = 예산 소진 시에도 한국 보장) → 뷰어 지역 슬라이스가 굶지 않음.
+        def _rsubs(fn, plat, per=12):
+            reg = accreg.get(plat, {})
+            kr = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) == "kr"]
+            gl = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) != "kr"]
+            return fn(kr, limit=per, deadline=dl) + fn(gl, limit=per, deadline=dl)
+        subs_new = {"x": _rsubs(x_subs, "x"), "tiktok": _rsubs(tiktok_subs, "tiktok"),
+                    "insta": _rsubs(insta_subs, "insta"), "youtube": _rsubs(yt_subs, "youtube"),
                     "threads": []}   # ⑧ 스레드 = 러너 미수집(Meta 데센 IP 차단 — 인스타 동류) · 폰/맥 채택(아래)이 유일 공급원
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
