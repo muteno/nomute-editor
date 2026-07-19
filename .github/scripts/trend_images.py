@@ -74,7 +74,7 @@ def main():
              "--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite",
              "--max-turns", "50"]
     # 폴오버 SSOT 경유 — 주계정 쿼터(주간한도) 시 백업 4계정 자동 전환(Q126 카나리아 rc=1 = "You've hit your weekly limit" 실측 → 전사 폴오버 배선 · 운영자 260718)
-    res, rc, err = run_claude(_args, prompt, timeout=240, source="trend")   # 240s = WebSearch 실측 ~80s의 3배 여유 · 상시가동(30분 크론) 시 런타임 보호(구 600은 과다 · 쿼터계정은 ~2s 즉답이라 폴오버 체인도 빠름)
+    res, rc, err = run_claude(_args, prompt, timeout=600, source="trend")   # 600s(검증값 · 카나리아4 성공값) — ⚠ 240 회귀실측: 상시 크론(run 29640230240)서 폴오버(서브1 전환)는 성공했으나 14키워드 WebSearch가 240s 초과→TimeoutExpired→0충전. 14개 배치 검색은 변동 크게 240s 넘김 → 600 필수(잡 timeout 36이 수용)
     out = (res.stdout if res else "") or ""
     if rc != 0 or not out.strip():
         print("::warning::claude rc={} · stderr: {} · stdout(head): {}".format(rc, (err or "")[:600], out[:600]), flush=True)
