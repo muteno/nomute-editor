@@ -130,6 +130,15 @@ def main():
                     + ((x.get('shares') or {}).get('count') or 0)
                 series[dt]['interactions'] = (series[dt].get('interactions') or 0) + eng
     d['posts'], d['thumbs'] = posts, thumbs
+    # fb 전용 집계(운영자 260719 "죽은 지표만 유의미 대체" — 뷰어 1-2 6칸 중 반응·댓글·공유 카드 원천) = 최근 10게시물 합.
+    # 리치 필드 성립(pages_read_user_content 有) 시에만 — 권한 없으면 키 자체 생략 = 뷰어 '—' 폴백.
+    _tr = [x for x in rows if ('reactions' in x) or ('comments' in x) or ('shares' in x)]
+    if _tr:
+        d['fb_totals'] = {
+            'reactions': sum((((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) for x in _tr),
+            'comments': sum((((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) for x in _tr),
+            'shares': sum(((x.get('shares') or {}).get('count') or 0) for x in _tr),
+            'n_posts': len(_tr)}
     if a.get('interactions') is None:
         idays = sorted(dt for dt in series if 'interactions' in series[dt])
         if idays: a['interactions'] = series[idays[-1]]['interactions']

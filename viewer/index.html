@@ -10500,8 +10500,15 @@ function renderChan() {
     st('팔로워', p.followers_count != null ? p.followers_count.toLocaleString() + '명' : '—') +
     // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기 · vu = 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
     // 저장 → 일 평균 게시(운영자 260719 "저장 > 일 평균 게시 현황으로 변경") — 값 = avg.posts.avg_7d(최근 7일 하루평균 · 라벨에 창 병기) · st() 평균줄 = 전체 일평균 대비 · 스파크 = posts 14일(둔화/재개 현황이 한 칸에)
-    st('조회수', vu(a.views, '회'), 'views') + st('도달', vu(a.reach, '계정'), 'reach') +
-    flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views') + '</div>');
+    (d.src === 'facebook'
+      // fb 6칸(운영자 260719 "인스타 페이지에서 보여준 그대로 · 죽은 지표만 제일 유의미한 걸로 대체") — 메타 페이지 인사이트 폐지로 조회·도달·팔로우증감·방문 = 수집 불가 실측 → 생존 축 대체: 반응·댓글·공유(최근 10게시물 합 · fb_totals) + 상호작용(일별 시리즈 = 스파크·평균) · 골격·컴포넌트 = 인스타 st() 그대로(분기 = 라벨·키만)
+      ? st('반응 (최근 10게시물)', (d.fb_totals && d.fb_totals.reactions != null) ? vf(d.fb_totals.reactions) + ' 회' : '—') +
+        st('댓글 (최근 10게시물)', (d.fb_totals && d.fb_totals.comments != null) ? vf(d.fb_totals.comments) + ' 회' : '—') +
+        st('공유 (최근 10게시물)', (d.fb_totals && d.fb_totals.shares != null) ? vf(d.fb_totals.shares) + ' 회' : '—') +
+        st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') +
+        st('상호작용', vu(a.interactions, '회'), 'interactions')
+      : st('조회수', vu(a.views, '회'), 'views') + st('도달', vu(a.reach, '계정'), 'reach') +
+        flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views')) + '</div>');
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
