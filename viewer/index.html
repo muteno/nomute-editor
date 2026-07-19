@@ -9779,7 +9779,7 @@ function renderSnsTrends() {
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
   const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
-  const tkMap = v => ({ url: v.url || '', t: v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백
+  const tkMap = v => ({ url: v.url || '', t: v.ko || v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백 · ko = 외국어 제목 한글 자동번역(tiktok_tr.py · 운영자 260719 "원어 표기 안해도됨") 우선, 없으면 원어 title
   const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
   lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
@@ -9809,7 +9809,7 @@ function renderSnsTrends() {
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
     row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
-  const mktk = t => ({ url: t.url || '', t: t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1 });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법)
+  const mktk = t => ({ url: t.url || '', t: t.ko || t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1 });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법)
   const tkZ = zig(tkL.map((t, i) => [t, i]));
   if (tkv.length && tkCov) gTK += sec('tk', '인기', '· 조회수', tkL.length, sortbar('tk', V3, tkS) + '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → 16:9 wd 그리드(운영자 260717 "틱톡도 동일하게" · AI영상 계승) · 정렬바 존치 · 단위 라벨 = '· 조회수'
   else if (tkv.length) gTK += sec('tk', '인기', '· 조회수', Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
@@ -9946,13 +9946,13 @@ function renderSnsTrends() {
       if (im.src.includes('hq720') && im.naturalWidth < 640) return down();   // hq720 회색 플레이스홀더(120×90) 방어
     };
   });
-  if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT)
+  if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT) · ko = 한글 번역 우선
   ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.trend-q', sytR[r].map(v => v.title || '')));
-  if (tkL.length) { fillT('tk', '.tcard-t', tkL.map(t => t.title || ('@' + (t.account || '')))); }   // 틱톡 인기 그리드 제목 = 자연순서(출력형식 통일 260717)
+  if (tkL.length) { fillT('tk', '.tcard-t', tkL.map(t => t.ko || t.title || ('@' + (t.account || '')))); }   // 틱톡 인기 그리드 제목 = 자연순서(출력형식 통일 260717) · ko = 한글 번역 우선(외국어 캡션 → 한글 · 운영자 260719)
   ['kr', 'gl'].forEach(r => {   // 구독 한국/세계 2군 주입(운영자 260712)
     fillT('sx-' + r, '.xcard-h b', sxR[r].map(t => '@' + (t.account || '')));
     fillH('sx-' + r, '.xcard-tx', sxR[r].map(t => xlink(t.text || '')));   // 링크 mut 래핑(블스 표현법 · 운영자 260717)
-    fillT('stk-' + r, '.tcard-t', stkR[r].map(t => t.title || ('@' + (t.account || ''))));
+    fillT('stk-' + r, '.tcard-t', stkR[r].map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 틱톡 구독 그리드 = ko 한글 번역 우선
     fillT('sre-' + r, '.tcard-t', sreR[r].map(t => t.title || ('@' + (t.account || ''))));
     fillT('sth-' + r, '.xcard-h b', sthR[r].map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
     fillH('sth-' + r, '.xcard-tx', sthR[r].map(t => xlink(t.text || '')));   // 스레드도 동일(xcard 공유 · 링크 mut 래핑)
