@@ -810,6 +810,7 @@
   .ch-fmt.post { color:var(--bias-l1); }     /* 포스트 = 시안(thumb .ovfmt.post 계승) */
   .ch-vw { flex:none; width:78px; text-align:right; font-size:var(--fs-sm); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 조회수 만회 = 고정폭 우측정렬(자릿수 컬럼 정합) */
   .ch-dev { flex:none; width:58px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 평균 대비 편차 = 고정폭 우측정렬 */
+  .tp-segrow { display:flex; margin:0 0 var(--sp-1); }   /* TOP 게시물 기간 세그 행 = 우측정렬(.ch-rangeseg margin-left:auto) · 하단 리듬 --sp-1(운영자 260719) */
   /* 순위 좌변 = 헤더 그룹번호 배지(.tgroup-h i 24px 중앙) 형상·좌변 계승(운영자 260719 "7이랑 같은 좌변" · 픽셀 실측 정렬) — 릴스는 자동 우측 이동·gap 균일 유지 */
   .ch-post .trend-rank { width:24px; text-align:center; }
   .ch-post { padding-left:13px; }   /* raw-ok: 13 = 순위 박스 좌변 ↔ 헤더 배지 좌변 픽셀 정렬 실측값(헤더 padding12 + 컨테이너 1px 상쇄 · 운영자 260719 "7이랑 같은 좌변") */
@@ -10350,7 +10351,7 @@ function renderSns() {
 
 // ── 채널 요약(메뉴4 · 운영자 260713) — 인스타 직결 신호 뷰: 데이터 = insta_data.json(insta-fetch 봇 일 1회) · 수치 정본 = insta_signals 모듈(지침 §4-7 분업 — 여기선 표시만·재계산 금지)
 //    대시보드 확장(운영자 260713 2차): 일일 추이 SVG 차트(예울프로모 로직 계승·시안 = docs/reports/260713_인스타일일추이_플레이그라운드) · 타일 = 평균 대비 델타+스파크 · 포맷/주제/3기 요약 · 실크 글래스 = 메뉴3 계승 ──
-let CHAN = null, CHANB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3';
+let CHAN = null, CHANB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3', CHAN_TPR = '7';   // CHAN_TPR = TOP 게시물 기간 필터(7/30/90/all · 기본 7일 · 운영자 260719 "일일 추이처럼 일자별·대표 7일")
 const chActive = () => CHAN_SRC === 'fb' ? CHAN_FB : CHAN;   // 활성 소스 데이터(인라인·심층 모달 공용 — 페이블 검증단 260718: 모달 전역 CHAN 하드코딩 = fb 뷰에서 인스타 상세 뜨는 소스 불일치 교정)
 // CHAN_FB/CHAN_SRC = 채널 소스(1-1 인스타/1-2 페이스북 · 운영자 260718 Q155 큐잉분 — fb_data.json = insta 스키마 미러라 renderChan 공용 · 결측 유닛 자동 미표시) · CHANB = 채널 AI 브리프(chan_brief.json · insta-fetch 봇 — SNS sns_brief와 별개 축) · CHAN_BSEC = 브리프 기간 탭(운영자 260714 2차 확정 = 3일/7일/28일/3개월/전체 총론 · 기본 = 3일 — 결측 시 renderChan 가드가 첫 섹션 폴백)
 const CH_MET = { views: ['조회수', '회'], reach: ['도달', '계정'], profile_views: ['방문', '회'], interactions: ['상호작용', '회'], follows: ['팔로우', '명'], posts: ['게시', '개'] };
@@ -10739,9 +10740,14 @@ function renderChan() {
   // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·평균 대비 편차. 정렬 = 순수 조회수순 · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 편차 기준 = posts_view_avg(부재 시 표시분 평균 폴백) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
   const _pAll = (d.posts || []).filter(x => !q || String(x.name || '').toLowerCase().includes(q));
   const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (x.views || 0), 0) / _pAll.length : 0);
-  const posts = _pAll.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+  // 기간 필터(운영자 260719 "일일 추이처럼 일자별 · 기본 7일") — 최신 게시일 앵커 기준 직전 N일 창(일일추이 종료앵커 관례 계승 · 앵커 게시물은 어느 창에도 포함이라 공란 없음) · 전체 = 무필터
+  const _tpAnc = _pAll.reduce((m, x) => { const i = String(x.iso || ''); return i > m ? i : m; }, '');
+  const _tpCut = (() => { if (CHAN_TPR === 'all' || !_tpAnc) return ''; const dt = new Date(_tpAnc + 'T00:00:00Z'); dt.setUTCDate(dt.getUTCDate() - (parseInt(CHAN_TPR, 10) - 1)); return dt.toISOString().slice(0, 10); })();
+  const _pf = CHAN_TPR === 'all' ? _pAll : _pAll.filter(x => String(x.iso || '') >= _tpCut);
+  const posts = _pf.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
   const chVwR = n => n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(Math.round(n || 0));   // 조회수 = 반올림 정수 만(운영자 260719 "소수 빼고 6만회 식")
-  if (posts.length) h += gsec('tpost', 'TOP 게시물', posts.map((x, i) => {
+  const tpSeg = `<div class="tp-segrow"><span class="ch-rangeseg tp-seg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-tpr="${r[0]}"${CHAN_TPR === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span></div>';   // TOP 게시물 기간 세그 = 일일추이 .ch-rangeseg 계승(운영자 260719) · data-tpr = CHAN_TPR 축(daily data-r과 분리)
+  if (posts.length) h += gsec('tpost', 'TOP 게시물', tpSeg + posts.map((x, i) => {
     const rl = x.format === '릴스';
     const dev = _avgV > 0 && x.views ? '×' + (x.views / _avgV).toFixed(1) : '—';   // 편차 = ×배수만(운영자 260719 "평균 빼고")
     return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-vw">${chVwR(x.views)}</span><span class="ch-dev">${dev}</span></a>`;
@@ -10809,7 +10815,8 @@ function renderChan() {
   box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
   geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
   box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체) — [data-bs] 통합 셀렉터(우상단 세그→세로 내비 미니바 이관(260716)에도 불변) · 재렌더·스크롤 보존
-  box.querySelectorAll('.ch-rangeseg:not(.tb-seg):not(.cs-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그 · :not(.cs-seg) = 채널 소스 세그(Q155) — data-r 없는 세그가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
+  box.querySelectorAll('.ch-rangeseg:not(.tb-seg):not(.cs-seg):not(.tp-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그 · :not(.cs-seg) = 채널 소스 세그(Q155) · :not(.tp-seg) = TOP 게시물 기간 세그(CHAN_TPR 별축) — data-r 없는 세그가 CHAN_RANGE를 undefined 오염하는 것 차단(일일추이 기간 세그만)
+  box.querySelectorAll('.tp-seg button').forEach(b => b.addEventListener('click', () => { CHAN_TPR = b.dataset.tpr; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // TOP 게시물 기간 필터(7/30/90/all · 운영자 260719) — data-tpr 별축 · 스크롤 보존
   chuFit(box);   // 헤더 우측 칩 실폭 예약(시각 텍스트 겹침 차단 · 운영자 260717 — 메뉴3과 동일 배선)
   const wrap = $('#chChartWrap'), tip = $('#chTip'), dot = $('#chDot');
   if (wrap && tip) {
