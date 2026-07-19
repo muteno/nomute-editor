@@ -9780,7 +9780,8 @@ function renderSnsTrends() {
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
   const stkR = { kr: bySort(byReg(stk, 'kr'), 'views').slice(0, 10), gl: bySort(byReg(stk, 'gl'), 'views').slice(0, 10) };   // 조회수 고정(260720 평의회 — 정렬바 없는데 sortOf가 과거 저장 픽을 계속 존중하던 유령 정렬 제거)
   const sreR = { kr: bySort(byReg(sre, 'kr'), 'views').slice(0, 10), gl: bySort(byReg(sre, 'gl'), 'views').slice(0, 10) };   // 조회수 고정(260720 평의회 · stkR 동일 — 유령 정렬 제거)
-  const sytR = { kr: bySort(byReg(syt, 'kr'), 'views').slice(0, 10).map(v => ({ ...v, cover: v.thumb })), gl: bySort(byReg(syt, 'gl'), 'views').slice(0, 10).map(v => ({ ...v, cover: v.thumb })) };   // 카드 그리드용 cover=thumb 매핑(AI영상 aiL 미러 · 운영자 260719 "AI 영상처럼") · 상한 10 + 조회수 정렬 = 구독 3종(syt·stk·sre) 파이프 완전 통일(260720 평의회 — 구 수집기 순서 의존은 순서 바뀌면 N위 축이 홀로 다른 의미가 되던 잠복)
+  const _sytCov = v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault') });   // 구독 커버 = 세로원본(oar) 선요청(운영자 260720 "썸네일 다 16:9로" — 구 mqdefault는 쇼츠 세로 썸네일 양옆에 유튜브가 잡음 패딩 박은 320px라 16:9 프레임이 지저분 · ytn 승급 사다리(운영자 260717 Q03) 미러 · 가로 영상 = 폴백 hq720 = 16:9 원본)
+  const sytR = { kr: bySort(byReg(syt, 'kr'), 'views').slice(0, 10).map(_sytCov), gl: bySort(byReg(syt, 'gl'), 'views').slice(0, 10).map(_sytCov) };   // 카드 그리드용 cover=thumb 매핑(AI영상 aiL 미러 · 운영자 260719 "AI 영상처럼") · 상한 10 + 조회수 정렬 = 구독 3종(syt·stk·sre) 파이프 완전 통일(260720 평의회 — 구 수집기 순서 의존은 순서 바뀌면 N위 축이 홀로 다른 의미가 되던 잠복)
   const shL = freshFirst(shv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만") · freshFirst = 신선 먼저·오래된 것 아래로(운영자 260718 "다른 화면에도")
   const aiL = freshFirst(aiv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만") · freshFirst 적용
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
@@ -9943,7 +9944,7 @@ function renderSnsTrends() {
   fillT('xtr', '.trend-q', xtr.slice(0, 15).map(g => g.ko || g.query || ''));   // ⑩ X 실시간 트렌드 · ko 우선
   fillT('yt', '.tcard-t', yt.slice(0, 10).map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = 자연순서(출력형식 통일 260717)
   fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서)
-  document.querySelectorAll('[data-sec=ytn] .tcard-cov img').forEach(im => {   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
+  document.querySelectorAll('[data-sec=ytn] .tcard-cov img, [data-sec^="syt-"] .tcard-cov img').forEach(im => {   // 구독(syt)도 동일 사다리 합류(운영자 260720 "썸네일 다 16:9" — oar 세로원본 → 16:9 cover 중앙 크롭 = Q04 "크롭되어도 되니까 동일하게" 판례 동축)   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
     const steps = [im.src.replace('oardefault', 'hq720'), im.src.replace('oardefault', 'mqdefault')];
     const down = () => { const nx = steps.shift(); if (nx) im.src = nx; else { im.onerror = null; im.style.display = 'none'; } };
     im.onerror = down;
