@@ -1,0 +1,143 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>드라이브싱크 응급 진단 가이드</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{background:#0b0d0c;color:#eef7f0;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;margin:0;padding:18px 14px 60px;line-height:1.6;font-size:15px;max-width:680px;margin:0 auto}
+h1{font-size:19px;margin:8px 0 4px;color:#00EED2}
+.sub{color:#9aa7a1;font-size:12.5px;margin-bottom:6px}
+.prog{position:sticky;top:0;background:rgba(11,13,12,.92);backdrop-filter:blur(10px);padding:10px 2px;margin:0 -2px 10px;z-index:5;border-bottom:1px solid rgba(255,255,255,.07)}
+.prog .bar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.prog .fill{height:100%;width:0;background:#00EED2;border-radius:999px;transition:width .3s ease}
+.prog .lbl{font-size:11.5px;color:#9aa7a1;margin-top:5px;font-variant-numeric:tabular-nums}
+.step{background:rgba(18,19,22,.55);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 15px;margin:12px 0;position:relative}
+.step.done{border-color:rgba(0,238,210,.35)}
+.shead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.num{flex:none;width:26px;height:26px;border-radius:8px;background:rgba(0,238,210,.12);color:#00EED2;display:grid;place-items:center;font-weight:800;font-size:13px}
+.stitle{font-weight:800;font-size:15px;flex:1}
+.chk{flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid rgba(255,255,255,.25);background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
+.chk svg{width:14px;height:14px;stroke:#00EED2;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .15s}
+.step.done .chk{border-color:rgba(0,238,210,.6);background:rgba(0,238,210,.10)}
+.step.done .chk svg{opacity:1}
+.desc{color:#cfd8d3;font-size:13.5px;margin:4px 0 8px}
+.desc b{color:#eef7f0}
+.desc a{color:#38C6FF}
+.codebox{position:relative;background:#101314;border:1px solid rgba(255,255,255,.09);border-radius:11px;margin:8px 0;overflow:hidden}
+.codebox pre{margin:0;padding:11px 52px 11px 13px;overflow-x:auto;font-size:12.5px;line-height:1.55;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;color:#d8fff8}
+.cp{position:absolute;top:7px;right:7px;width:34px;height:30px;border-radius:8px;border:1px solid rgba(0,238,210,.3);background:rgba(0,238,210,.10);color:#00EED2;cursor:pointer;display:grid;place-items:center;padding:0}
+.cp:active{transform:scale(.88)}
+.cp svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.expect{border:1px dashed rgba(0,238,210,.35);border-radius:11px;padding:9px 12px;font-size:12.5px;margin:8px 0;background:rgba(0,238,210,.04)}
+.expect .k{color:#00EED2;font-weight:800;font-size:11.5px;display:block;margin-bottom:3px}
+.expect code{color:#d8fff8;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.note{font-size:12.5px;color:#FFE13D;background:rgba(255,225,61,.06);border:1px solid rgba(255,225,61,.2);border-radius:10px;padding:8px 11px;margin:8px 0}
+.branch{border-left:2px solid rgba(255,255,255,.14);padding-left:11px;margin:9px 0}
+.branch .bl{font-weight:800;font-size:12.5px;color:#38C6FF;margin-bottom:3px}
+details{background:rgba(18,19,22,.55);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:11px 14px;margin:9px 0}
+summary{font-weight:800;font-size:13.5px;cursor:pointer;color:#eef7f0}
+details p{font-size:13px;color:#cfd8d3;margin:8px 0 2px}
+code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace}
+.fin{border:1px solid rgba(0,238,210,.4);background:rgba(0,238,210,.06);border-radius:16px;padding:14px 15px;margin:16px 0;font-size:14px;display:none}
+.fin.on{display:block}
+h2{font-size:14.5px;margin:22px 0 6px;color:#9aa7a1;font-weight:800}
+</style>
+
+<h1>드라이브싱크 응급 진단 — 이미지가 안 올 때</h1>
+<div class="sub">260720 · 폰 Termux 열고 <b>0번부터 순서대로</b> · 명령은 복사 버튼 → 붙여넣기 · 끝낸 단계는 우측 체크 · 정본 = 플레이북 §5·§6</div>
+
+<div class="prog"><div class="bar"><div class="fill" id="fill"></div></div><div class="lbl" id="plbl">0 / 6 완료</div></div>
+
+<div class="step" data-k="s0">
+  <div class="shead"><span class="num">0</span><span class="stitle">10초 판별 — 범인 반 가르기</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">마지막으로 언제 돌았는지 + 로그 꼬리:</div>
+  <div class="codebox"><pre>[ -f ~/.drivesync.last ] && echo "$(( ($(date +%s) - $(cat ~/.drivesync.last)) / 60 ))분 전 마지막 실행" || echo "실행 기록 없음"</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="codebox"><pre>tail -20 ~/.drivesync.log</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="branch"><div class="bl">A. "3분 안"으로 나옴</div>폰·Tasker는 무죄 → 범인은 드라이브/rclone 쪽 = <b>1번</b>으로.</div>
+  <div class="branch"><div class="bl">B. 한참 전 / 기록 없음</div>Tasker가 안 쏘는 것 = <b>4번</b>으로.</div>
+  <div class="note">로그 시각은 UTC(한국시간 −9). 아침 7시 사고가 로그엔 <code>22:xx</code>로 찍혀 있어.</div>
+</div>
+
+<div class="step" data-k="s1">
+  <div class="shead"><span class="num">1</span><span class="stitle">인증 생사 (이번 1순위 용의자)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="codebox"><pre>rclone lsf gdrive:</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="expect"><span class="k">정상이면</span><code>Shared/</code> 같은 폴더 목록이 뜬다 → <b>2번</b>으로. (노란 NOTICE "client_id … retired during 2026"은 <b>에러가 아니라 예고 경고</b> — 무시하고 그 다음 줄을 본다)</div>
+  <div class="branch"><div class="bl">NOTICE만 뜨고 다음 줄이 안 나옴 (= 지금 폰 화면)</div>공용 출입증(client_id)이 이미 막히기 시작한 증상(응답 지연·재시도 루프). <b>1분 기다려</b> 최종 출력 확인 → 폴더 뜨면 2번 · 에러 뜨면 아래 처방 · 계속 무반응이면 <code>Ctrl+C</code> 후 한 번 재실행 — 또 멈추면 자체 client_id 전환(아래 노란 박스)이 정답.</div>
+  <div class="branch"><div class="bl">token · 401 · unauthorized 에러가 뜨면</div>토큰 만료 — 재연결(브라우저 동의 1회):
+    <div class="codebox"><pre>rclone config reconnect gdrive:</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  </div>
+  <div class="note"><b>reconnect까지 invalid_client류로 실패하면 = rclone 공용 출입증(client_id) 은퇴 확정</b>(어제 예고한 폭탄). 이때는 자체 client_id 발급(15분 1회성)이 유일한 길: <a href="https://rclone.org/drive/#making-your-own-client-id">rclone.org 발급 절차</a> → 발급 후 아래 2줄(&lt;ID&gt;·&lt;SECRET&gt; 교체). 어려우면 채팅에 "가이드 ㄱ" — 단계별로 만들어줄게.</div>
+  <div class="codebox"><pre>rclone config update gdrive: client_id &lt;ID&gt; client_secret &lt;SECRET&gt;
+rclone config reconnect gdrive:</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+</div>
+
+<div class="step" data-k="s2">
+  <div class="shead"><span class="num">2</span><span class="stitle">파일이 제자리(내 드라이브/Shared)에 있나</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="codebox"><pre>rclone lsf -R gdrive:Shared | tail -20</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="branch"><div class="bl">오늘 넣은 파일이 안 보임</div>PC가 또 "컴퓨터 백업"으로 저장 중(전과 2회) — <a href="https://drive.google.com">드라이브 웹</a> 좌측 <b>[컴퓨터]</b> 탭에 새 Shared가 생겼는지 확인 → 두 PC 모두 "내 드라이브 스트림" + 백업 탭에서 그 폴더 제거(플레이북 §4).</div>
+  <div class="branch"><div class="bl">파일은 보이는데 갤러리에 없음</div><b>3번</b>으로.</div>
+</div>
+
+<div class="step" data-k="s3">
+  <div class="shead"><span class="num">3</span><span class="stitle">그저께 밤 대이동 후폭풍 (2순위)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">컴퓨터탭 잔재를 Shared로 옮긴 게 전부 "새 파일"로 잡혀, 매번 그 큰 덩어리를 물고 늘어질 수 있어:</div>
+  <div class="codebox"><pre>wc -l ~/.drivesync.new; tail -5 ~/.drivesync.log</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="desc">NEW가 수백 건이면 — 옛 이동분은 폰에 받을 게 아니니 <b>전량 장부 등록 + 최근 24시간 것만 회수</b>:</div>
+  <div class="codebox"><pre>rclone lsf -R --files-only gdrive:Shared >> ~/.drivesync.seen
+rclone copy gdrive:Shared /sdcard/Pictures/DriveSync --max-age 24h --inplace -v
+termux-media-scan -r /sdcard/Pictures/DriveSync</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="note">⚠ 지금 상태에서 <code>echo "__init__" &gt; ~/.drivesync.seen</code> 리셋은 <b>금지</b> — 이동분 전체를 폰으로 재다운로드하는 폭탄이 된다.</div>
+</div>
+
+<div class="step" data-k="s4">
+  <div class="shead"><span class="num">4</span><span class="stitle">Tasker 축 (0번이 "한참 전"일 때)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">손으로 직접 한 번 돌려보기(디바운스 지우고):</div>
+  <div class="codebox"><pre>rm -f ~/.drivesync.last && bash ~/.termux/tasker/drive-gallery-sync.sh; echo rc=$?</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="branch"><div class="bl">수동은 되는데 자동만 안 됨</div>Termux 배터리 최적화 제외 + <code>allow-external-apps</code> 확인(큐 플레이북 §3-1) + Tasker 프로필 2개(3분마다·잠금해제) 살아있는지.</div>
+  <div class="branch"><div class="bl">수동도 에러</div>에러 문구 그대로 채팅에 붙여줘 — 바로 다음 처방 줄게.</div>
+</div>
+
+<div class="step" data-k="s5">
+  <div class="shead"><span class="num">5</span><span class="stitle">마지막 한 줄 — v1.4 업그레이드 (원인 불문 무조건 실행)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">오늘 고친 버전: 앞으로 <b>연결이 죽으면 9분 안에 "드라이브싱크 실패" 알림</b>이 떠서, 이렇게 조용히 멈추는 일이 다시는 안 생겨. 스크립트가 깨졌던 경우의 재설치 겸용.</div>
+  <div class="codebox"><pre>curl -fsSL https://raw.githubusercontent.com/muteno/nomute-editor/main/docs/drive-gallery-sync.sh -o ~/.termux/tasker/drive-gallery-sync.sh && chmod +x ~/.termux/tasker/drive-gallery-sync.sh && sh -n ~/.termux/tasker/drive-gallery-sync.sh && echo 설치OK</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+</div>
+
+<div class="fin" id="fin">🎉 <b>진단 완료.</b> 각 단계에서 나온 결과(특히 1번 에러 문구)를 채팅에 붙여주면 원인 확정하고 후속 조치 바로 간다.</div>
+
+<h2>문제 생기면</h2>
+<details><summary>뭘 회신하면 돼?</summary><p>① 0번 결과("N분 전") ② 1번에서 뜬 에러 문구 ③ <code>tail -20 ~/.drivesync.log</code> 몇 줄 — 이 셋이면 원인 확정 가능.</p></details>
+<details><summary>정본은 어디?</summary><p>이 가이드는 따라하기용 사본. 정본 = 레포 <code>docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md</code> §5(진단)·§6(고장표) — 달라지면 그쪽이 맞음. 스크립트 실물 = <code>docs/drive-gallery-sync.sh</code>(v1.4).</p></details>
+
+<script>
+(function(){
+  var KEY='nm_drivesync_diag_260720';
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  var steps=[].slice.call(document.querySelectorAll('.step'));
+  function paint(){
+    var done=0;
+    steps.forEach(function(s){ if(saved[s.dataset.k]){s.classList.add('done');done++;} else s.classList.remove('done'); });
+    document.getElementById('fill').style.width=(done/steps.length*100)+'%';
+    document.getElementById('plbl').textContent=done+' / '+steps.length+' 완료';
+    document.getElementById('fin').classList.toggle('on',done===steps.length);
+  }
+  steps.forEach(function(s){
+    s.querySelector('.chk').addEventListener('click',function(){
+      saved[s.dataset.k]=!saved[s.dataset.k];
+      try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}
+      paint();
+    });
+  });
+  paint();
+  var CHECK='<svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg>';
+  [].slice.call(document.querySelectorAll('.codebox')).forEach(function(box){
+    var btn=box.querySelector('.cp'), pre=box.querySelector('pre'), orig=btn.innerHTML, t;
+    btn.addEventListener('click',function(){
+      var txt=pre.textContent;
+      function ok(){ btn.innerHTML=CHECK; clearTimeout(t); t=setTimeout(function(){btn.innerHTML=orig;},1200); }
+      function fb(){ var ta=document.createElement('textarea'); ta.value=txt; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(ta); }
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok,function(){fb()}); } else fb();
+    });
+  });
+})();
+</script>
