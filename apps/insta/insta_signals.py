@@ -307,6 +307,7 @@ def compute(media_doc, audience=None):
         'generated_kst': datetime.datetime.now(KST).isoformat(timespec='seconds'),
         'source_fetched_kst': media_doc.get('fetched_kst'),
         'n_posts': len(posts), 'span': [span[0], span[-1]],
+        'posts_view_avg': round(statistics.mean([p['views'] for p in posts])),   # 뷰어 TOP 게시물 '평균 대비 편차' 기준값(전 표본 조회 평균 · 운영자 260719)
         'weights': W, 'global_median': {k: round(v, 3) for k, v in g_med.items()},
         'axes': axes,
         'format_summary': fmt_sum, 'topic_summary': topic_sum, 'era_summary': era_sum,
@@ -603,6 +604,7 @@ def main():
         vdoc['daily_series'] = series_daily
         vdoc['daily_meta'] = daily_meta
         vdoc['avg'] = _avg_signals(series_daily)   # 평균 게시량·평균 대비 현재(운영자 실사용 핵심)
+        vdoc['posts_view_avg'] = sig.get('posts_view_avg')   # TOP 게시물 '평균 대비 편차' 기준값(뷰어 = 부재 시 표시분 평균 폴백)
         vdoc['fmt'] = sig.get('format_summary')    # 릴스·피드 절대 요약
         vdoc['topics'] = sig.get('topic_summary')  # 주제별 반응률(뉴스 분류기 계승)
         vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
