@@ -30,26 +30,13 @@ REM === 경로 설정 ===
 set "YTDLP=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\yt-dlp"
 set "GDL=%YTDLP%\gallery-dl.exe"
 set "COOKIES=%YTDLP%\cookies.txt"
-REM === 클라우드 저장 = 구글드라이브 자동 탐지 (v5.7) - PC 계정명/드라이브 문자/UI 언어 무관 ===
-REM     v5.7: 앱(GoogleDriveFS) 실행 중일 때만 + 드라이브 문자(라이브 마운트) 우선
-REM     - 옛 'Google Drive 스트리밍' 같은 죽은 잔재 폴더에 복사 = 클라우드 미도달 사고 차단
-set "GDRIVE="
+REM === 클라우드 저장 = 고정 경로 (v5.9 · 운영자 260719 Q226) - 유저명만 %USERPROFILE%로 범용 ===
+REM     자동 탐지 폐기 → 항상 %USERPROFILE%\Google Drive 스트리밍\내 드라이브\Shared 로 복사
+REM     GDFS_ON(앱 실행 체크)은 유지: 앱 꺼짐 시 로컬만(죽은 잔재 폴더 생성 방지) · 다른 PC = 한글 UI·같은 스트리밍 마운트 가정
 set "GDFS_ON=0"
 tasklist /fi "imagename eq GoogleDriveFS.exe" 2>nul | find /i "GoogleDriveFS.exe" >nul && set "GDFS_ON=1"
-REM 1) 드라이브 문자 마운트(G: 관례, 아무 문자 OK) - 한/영 UI 모두
-if "%GDFS_ON%"=="1" for %%D in (G H I J K L M N O P Q R S T U V W X Y Z E F) do (
-    if not defined GDRIVE (
-        if exist "%%D:\내 드라이브\" set "GDRIVE=%%D:\내 드라이브"
-        if not defined GDRIVE if exist "%%D:\My Drive\" set "GDRIVE=%%D:\My Drive"
-    )
-)
-REM 2) 폴더 마운트(구버전 설정)·미러 관례 위치 - 앱 실행 중일 때만 신뢰
-if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive 스트리밍\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
-if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive\내 드라이브"
-if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\My Drive\" set "GDRIVE=%USERPROFILE%\Google Drive\My Drive"
-if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\내 드라이브\" set "GDRIVE=%USERPROFILE%\내 드라이브"
-if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\My Drive\" set "GDRIVE=%USERPROFILE%\My Drive"
-if defined GDRIVE set "CLOUD=%GDRIVE%\Shared"
+REM 클라우드 = 고정 경로(유저명만 %USERPROFILE%로 범용 · 운영자 260719 Q226)
+set "CLOUD=%USERPROFILE%\Google Drive 스트리밍\내 드라이브\Shared"
 set "LOCAL=%USERPROFILE%\Downloads\yt-dlp"
 set "GTEMP=%LOCAL%\_gallery_temp"
 
@@ -108,13 +95,7 @@ if "%GDFS_ON%"=="0" (
     set "GD_WHY=드라이브 앱 꺼짐/미로그인 - 시작메뉴에서 Google Drive 실행"
     goto cloud_done
 )
-if not defined GDRIVE (
-    echo [알림] 구글드라이브 앱은 켜져 있는데 '내 드라이브' 위치를 못 찾음
-    echo        앱 로그인/동기화 상태 확인. 이번엔 로컬에만 저장
-    set "GD_WHY=내 드라이브 마운트 못 찾음"
-    goto cloud_done
-)
-echo [확인] 구글드라이브 감지: %GDRIVE%
+echo [확인] 클라우드(고정): %CLOUD%
 set "GD_WHY=Shared 폴더 생성/쓰기 실패"
 if not exist "%CLOUD%" mkdir "%CLOUD%" 2>nul
 if not exist "%CLOUD%" goto cloud_done
