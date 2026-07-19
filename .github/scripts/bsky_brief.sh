@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# ⑦ 블루스카이 인기 게시물 자동 번역 — 각 게시물에 topic(주제·부제)·ko(한국어 번역) 필드 부착(운영자 260713).
-# 뷰어 bcard 렌더: [순위] 주제(부제) → 번역(제목) → @계정·원문(mut). 원문(text)은 그대로 보존(뷰어가 mut 병기).
+# ⑦ 블루스카이 인기 게시물 자동 번역 — 각 게시물에 topic(주제)·ko(한국어 번역 · **키워드** 볼드 마커)·tv(번역 스키마 버전) 부착(운영자 260713 · 260718 첨부2 통일).
+# 뷰어 bcard 렌더(260718 "첨부2처럼"): [순위]@계정 → 번역 본문만(영문 원문 병기 폐지 · **마커** = <b> 볼드 · 미번역 = 비노출). 원문(text)은 데이터 보존(번역 입력·carry 키).
 # 게이트 3중(sns_brief.sh 계승): ① BSKY_TR=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 번역 대상 0 = 스킵(토큰 0) ③ 실패 = fail-soft(직전 번역 carry 유지 · rc 0 = 커밋 비차단).
-# 증분: 직전 커밋(git HEAD)의 bsky[]에서 url+text 동일 항목의 topic/ko를 carry → 신규·본문변경분만 LLM(재번역 낭비 0 · sns_brief '입력 동일 스킵' 정신).
+# 증분: 직전 커밋(git HEAD)의 bsky[]에서 url+text 동일 항목의 topic/ko/tv를 carry → 신규·본문변경분 + 구판(tv<2 = 키워드 마킹 이전)만 LLM(재번역 낭비 0 · 구판은 1회 업그레이드 후 수렴 · sns_brief '입력 동일 스킵' 정신).
 # 모델 = PIPE_MODEL(opus 4.8 · shared/model_env.sh — 생성/하드작업 축) · effort high(번역=판단 경량 · 리서치 아님) · turns 1 · timeout 300.
 # --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장도구 활성 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
 set -u
@@ -39,10 +39,13 @@ except Exception:
 targets, lines = [], []
 for i, it in enumerate(cur):
     p = prev_map.get(it.get('url'))
-    if p and (p.get('text') or '') == (it.get('text') or '') and p.get('ko'):
+    ok = bool(p and (p.get('text') or '') == (it.get('text') or '') and p.get('ko'))
+    if ok:
         it['topic'] = p.get('topic') or ''   # carry(재번역 0)
         it['ko'] = p.get('ko') or ''
-    else:
+        if p.get('tv'):
+            it['tv'] = p.get('tv')
+    if not ok or int((p.get('tv') if p else 0) or 0) < 2:   # 대상 = 신규·본문변경 + 구판(tv<2 = 키워드 볼드 마킹 이전 · 260718) 1회 업그레이드 — carry 선반영이라 LLM 실패해도 구번역 유지(fail-soft)
         txt = (it.get('text') or '').replace('\t', ' ').replace('\n', ' ').strip()
         if txt:
             targets.append(i)
@@ -65,6 +68,7 @@ PROMPT="아래는 블루스카이(주로 영어권 SNS) 인기 게시물이다. 
 
 규칙:
 - 번역(ko) = 자연스러운 한국어. 원문 톤·뉘앙스 살리되 딱딱한 직역투 금지. 이모지·고유명사는 보존. 원문이 이미 한국어면 그대로.
+- 번역(ko) 속 핵심 키워드(인물·기관·사건·작품·핵심 수치 등 명사구 1~3곳)는 **키워드** 처럼 별표 2개로 감싸라(볼드 마커). 과다 금지 — 문장 절반 이상 감싸면 실패. 마커 용도 외 별표 금지.
 - 주제(topic) = 5~16자 명사구(문장 아님). 예: '린지 그레이엄 발언 지적', '노르웨이 축구팀 찬사', '우울증 극복 감사 인사'. 인물·사건·감정의 핵심을 잡아라.
 - 출력 = 게시물당 딱 한 줄 JSON: {\"i\":번호, \"topic\":\"주제\", \"ko\":\"번역\"}
 - i(번호)는 입력의 앞 숫자 그대로. 순서·개수 그대로. JSON 줄들만 출력(설명·마크다운·코드펜스 금지).
@@ -112,7 +116,8 @@ for ln in raw.splitlines():
         by_i[i] = r
 for i, r in by_i.items():
     cur[i]['topic'] = str(r.get('topic') or '').strip()[:40]
-    cur[i]['ko'] = str(r.get('ko') or '').strip()[:300]
+    cur[i]['ko'] = str(r.get('ko') or '').strip()[:320]   # 320 = 구 300 + **마커 오버헤드 여유(컷 파손 잔여 마커는 뷰어 mdb가 제거)
+    cur[i]['tv'] = 2   # 번역 스키마 버전(2 = 키워드 볼드 마킹 · 260718) — carry 게이트가 tv<2 구판을 1회 업그레이드 대상으로 잡는 도장
     n += 1
 json.dump(d, open(path, 'w', encoding='utf-8'), ensure_ascii=False)
 print('bsky-tr: 번역 병합', n, '건 저장')

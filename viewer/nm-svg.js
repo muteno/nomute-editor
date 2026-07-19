@@ -1,5 +1,5 @@
 // nm-svg.js — 노뮤트 뷰어 공유 아이콘 SSOT (운영자 260628 · "하나 바꾸면 관련된 거 다 바뀜")
-// 5뷰어(index·thumb·ly·k·comp)가 <script src="nm-svg.js"> 로 로드. 여기 정의가 단일 정본 —
+// 뷰어 다수가 <script src="nm-svg.js"> 로 로드(로더 전수 = grep 실측이 정본 · 개수 열거 폐지 — 평의회 Q165, 구 '5뷰어' 표기는 comp 폐지·후속 뷰어 신설로 스테일). 여기 정의가 단일 정본 —
 // 같은 아이콘을 뷰어마다 인라인 복제하지 말고 이 파일을 고친다(드리프트 차단·CII P1).
 // classic script 전역 const = 이후 인라인 스크립트에서 그대로 참조(모듈 아님). currentColor 상속.
 // 정본 선정: DOWNLOAD=14px(thumb는 CSS로 12px 재지정=무관) · WARN=index/ly/k 다수본(vertical-align).

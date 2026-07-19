@@ -343,6 +343,20 @@ def _daily_timeseries(daily):
             put(d, k, r.get(k))
     for row in daily:
         fd = (row.get('fetched_kst') or '')[:10]
+        # 팔로우/취소 분해 스냅샷(운영자 260719 Q171 · fetch follows_split — 어제 00:00~오늘 00:00 KST 명시창 = 완결일 확정 귀속) →
+        # UNFOLLOWER → unfollows(뷰어 취소 라인 신설 축) · FOLLOWER → follows. follower_count_series보다 먼저 처리(put 선점자 우선):
+        # 같은 날짜는 명시창 분해값이 신뢰축(follower_count = 창 경계 모호 + 260713 스톨 때 가짜 0 실측 — 0도 값이라 후순위론 못 이김) ·
+        # 과거 시드는 이 루프 이전 선점이라 종전대로 불변 · 분해 없는 날짜는 follower_count가 종전대로 채움.
+        fs = row.get('follows_split') or {}
+        d0 = fs.get('date') or ''
+        raw = fs.get('raw')
+        for br in (raw if isinstance(raw, list) else []):
+            for res in (br.get('results') or []):
+                dv = ' '.join(str(x) for x in (res.get('dimension_values') or [])).upper()
+                if 'UNFOLLOW' in dv:
+                    put(d0, 'unfollows', res.get('value'))
+                elif 'FOLLOW' in dv:
+                    put(d0, 'follows', res.get('value'))
         for p in (row.get('follower_count_series') or []):
             put((p.get('end_time') or '')[:10], 'follows', p.get('value'))
         ts = row.get('account_daily') or {}
@@ -376,6 +390,44 @@ def _daily_timeseries(daily):
             for d in list(merged):
                 if d < fetch_d and 'posts' not in merged[d]:
                     merged[d]['posts'] = 0
+    # 게시별 참조(post_refs · 운영자 260718 "ㄱㄱ 하" · 게시일↔실제 게시물 링킹) — 개수(위 posts)는 전투검증 로직이라 무접촉, refs는 있는 날짜에만 붙는 additive 별도 축(refs 단독 새 행 금지 = 차트 축 불변) · media_all(백필 984) ∪ media_latest(최근 25 신선 · 백필 정지 7/13 이후 날짜 top-up)·id 충돌 = latest 승 · fail-soft(refs 버그 = refs만 탈락, vdoc 전체 무피해)
+    try:
+        def _first_line(c):
+            for ln in (c or '').split('\n'):
+                if ln.strip():
+                    return ln.strip()
+            return ''
+        refmap = {}   # date → {media_id: {ts, permalink, name, views, r}}
+        lo0 = min(merged) if merged else '0000-00-00'
+        def _collect_refs(src):
+            fetch_d = (src.get('fetched_kst') or '')[:10] or '9999-99-99'   # 수집일 당일 = 진행 중 부분 → 제외(개수 로직 동일 게이트)
+            for m in (src.get('media') or []):
+                ts, mid = m.get('timestamp'), m.get('id')
+                if not ts or not mid:
+                    continue
+                try:
+                    d = datetime.datetime.fromisoformat(ts.replace('+0000', '+00:00')).astimezone(KST).date().isoformat()
+                except ValueError:
+                    continue
+                if not (lo0 <= d < fetch_d):
+                    continue
+                ins = m.get('insights') if isinstance(m.get('insights'), dict) else {}
+                refmap.setdefault(d, {})[mid] = {'ts': ts, 'permalink': m.get('permalink') or '',
+                    'name': _first_line(m.get('caption'))[:40], 'views': ins.get('views'),
+                    'r': 1 if m.get('media_product_type') == 'REELS' else 0}   # r = 릴스 플래그(뷰어 ▶ 픽토 분기용)
+        if mall and mall.get('media'):
+            _collect_refs(mall)
+        mlat = jload('media_latest.json')   # 최근 25 = 백필 정지 이후 신선 top-up(같은 id = 뒤 호출이 덮음 = latest 최신 조회수)
+        if mlat and mlat.get('media'):
+            _collect_refs(mlat)
+        for d, byid in refmap.items():
+            if d in merged:   # 시계열 안 날짜에만(축 불변) · ts 오름차순(그날 게시 순서) · permalink 있는 것만
+                refs = sorted(byid.values(), key=lambda x: x['ts'])
+                lst = [{'permalink': r['permalink'], 'name': r['name'], 'views': r['views'], 'r': r['r']} for r in refs if r['permalink']]
+                if lst:
+                    merged[d]['post_refs'] = lst
+    except Exception as e:
+        print('post_refs 부착 실패(fail-soft · refs만 탈락 · 개수·vdoc 무피해):', e)
     # ② 보충 = media_count 인접일 차분(백필 없을 때 · 연속한 날만)
     mc = {}
     for row in daily:
@@ -403,7 +455,7 @@ def _avg_signals(series):
     """평균 신호(운영자 260713 — 실사용 핵심 ①): 지표별 {전 기간 일평균 · 최근 7일 평균 · 배율 · 표본일}.
     posts 포함 = *평균적으로 몇 개 올렸나* + *요즘이 평소 대비 어디냐*를 수치로."""
     out = {}
-    for k in ('posts', 'views', 'reach', 'profile_views', 'interactions', 'follows'):
+    for k in ('posts', 'views', 'reach', 'profile_views', 'interactions', 'follows', 'unfollows'):
         vals = [r[k] for r in series if r.get(k) is not None]
         if len(vals) < 8:
             continue

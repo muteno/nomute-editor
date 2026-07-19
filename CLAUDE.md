@@ -100,7 +100,7 @@
 
 [15] 웹앱 구조 (레포 고유 — 타 레포 이식 시 [15]·[16]만 갈아끼운다. 세부 규칙 전문 = docs/라우터_법령전문.md, 필요할 때만 연다)
 - viewer/ = 라이브 웹앱. index.html = 메인 뷰어 + :root 디자인 토큰 SSOT · 스튜디오 = edit(영상 편집)·song·track(트래킹)·nb(자료화)·ly(가사)·k·conv·thumb .html
-- 🔒 라이브 데이터 json(viewer/*.json = sns_trends·candidates·social_candidates·insta_data·chan_brief·sns_brief 등 스크래퍼/브리프 산출) = 세션 수기 편집 금지 · 값 변경은 scraper/*.py나 뷰어 코드로 우회. (260716 네이트판 제거 실증: sns_trends.json 손편집이 크론 자동커밋과 병합 레이스 → json 편집 떼고 뷰어 pann-blind로 우회해 해소)
+- 🔒 라이브 데이터 json(viewer/*.json = sns_trends·candidates·social_candidates·insta_data·fb_data·chan_brief·sns_brief 등 스크래퍼/브리프 산출) = 세션 수기 편집 금지 · 값 변경은 scraper/*.py나 뷰어 코드로 우회. 예외 = viewer/soc_lean.json(운영자 수기 성향 config — 스크래퍼 미기록·손편집 허용 · 평의회 Q165 o8). (260716 네이트판 제거 실증: sns_trends.json 손편집이 크론 자동커밋과 병합 레이스 → json 편집 떼고 뷰어 pann-blind로 우회해 해소)
 - apps/ = 앱별 두뇌(지침) · shared/ = 기계 게이트·빌더(check_refs.py = 커밋 전 rc=0 필수 · build_design_mirror.py = 토큰 거울·락 · smoke_*.js = UI 표면 상비 실측{배치·계약 회귀의 기계화 · 운영자 260714 Q04} — 담당 표면(각 파일 헤더 선언) 변경 시 커밋 전 실행 rc=0 필수 · 어서션 = 기하·computedStyle·동일 런 픽셀 프로브만{환경 간 스크린샷 베이스라인 diff 금지} · '대기' 티어 세칙·승격 = 파일 헤더{승격 커밋 = 도구 정비 · [9] 평의회 비대상} · 훅·pre-commit 편입 금지{수동 실행 전용 — 저장·커밋마다 브라우저 부팅 사고 차단} · 정본 = smoke_geni.js·smoke_preview.js)
 - docs/ = 기틀·원장{요구사항_큐.md = 지시 원장 · 작업이력.md = 작업 원장(append-only) · reports/ = 보고서·플레이그라운드}
 - _versions/ = 수정 전 백업 · 구성도/ = 가이드북·거울(build 산출 파일 직접 수정 금지)
@@ -111,7 +111,7 @@
 - [4] 계정 축 정본 = `functions/api/seen.js` → `viewer/toast-seen.json` · 상태형 정본 구현 = index `srvFreshAckTs` · 세션 한정 의미 정본 = CII 토스트 행.
 - [4-1] 상호작용→정본 부품 표 = docs/CII_컴포넌트계승인덱스.md §상호작용→정본 부품(3단: 새 화면 신설 = index `#genidlg` `.geni-row`/`.geni-opt` 계승[운영자 260714 확립·sb 실증] · 기존 화면 안 신설 = 그 화면 확립 문법[k `.axchip`·edit `.prow .pc` 등] · 무형제 폴백 = k `.axchip`) · 기존 5탭(edit·ly·sb·k·song) = 레거시 동결(소급 재작업 금지) · 게이트 등재 현황 = shared/check_refs.py `_DESIGN_BASELINE`.
 - [5] 플레이그라운드 산출 = docs/reports/{yymmdd}_{라벨}_플레이그라운드.html(커밋 + 채팅 첨부 · 라이브 서빙 경로 없음 = 파일 폴백) · 골격 = docs/플레이그라운드_포터블.md §3.
-- [6] 지시 원장 = docs/요구사항_큐.md(보고 골격 = 최우선 2의 6단 · 예시 블록 폐지).
+- [6] 지시 원장 = docs/요구사항_큐.md(보고 골격 = 최우선 2의 6단 · 예시 블록 폐지 · **번호 = 커밋 직전 파일 최대+1 확정, 착수 중 `Q??` 스텁**{260718 경합 소멸 · 세칙 = 큐 헤더 규칙 6 · 스텁 잔존 = check_refs 차단}).
 - [9] 평의회 대상 예 = docs/디자인기틀_SSOT.md · viewer/index.html의 :root 토큰·구조·동작 로직 · 상비 게이트 = shared/check_refs.py + bash shared/smoke_all.sh(UI 표면).
 - [11] 딥링크 관례 = 완료 알림 = 해당 스튜디오 `?done=<id>`(thumb·edit 정본) · 확인 = 웹앱 라이브 링크 제공.
 - [E1/E9] 실행 계약 전문·복사문구 = docs/실행계약_전문.md(마커 밖·비전파 · 타 세션 붙여넣기 = §2) · [E1] 디자인 진입점·[E9] 플레이그라운드 정본 = 위 [4]/[5] 등재분 재사용(별도 신설 없음).
