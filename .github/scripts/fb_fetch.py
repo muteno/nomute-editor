@@ -81,18 +81,28 @@ def main():
         print('::warning::fb-fetch 프로필 실패 — 직전 유지:', e); return 0
     series, a = {}, {}
     since = (now - datetime.timedelta(days=30)).date().isoformat()
-    MET = {'page_impressions': 'views', 'page_impressions_unique': 'reach', 'page_fan_adds': 'follows'}
+    # 생존 지표 자동 탐침(260719 — 메타 2025-11 페이지 인사이트 대정리로 구 3종 전멸 실측 "(#100) valid insights metric"
+    # · 후보를 넓게 쏘고 살아있는 것만 자동 채택[낱개 fail-soft = 자가 적응] · 같은 키 복수 후보 = 먼저 생존한 것 채택 · 죽은 후보 = 로그만)
+    MET = {'page_impressions': 'views', 'page_views_total': 'views',
+           'page_impressions_unique': 'reach',
+           'page_fan_adds': 'follows', 'page_daily_follows_unique': 'follows', 'page_follows': 'follows',
+           'page_post_engagements': 'interactions', 'page_total_actions': 'interactions'}
+    got = set()
     for m, k in MET.items():
+        if k in got:
+            continue
         try:
             for row in api(f'{PID}/insights', metric=m, period='day', since=since, until=now.date().isoformat()).get('data', []):
                 for v in row.get('values', []):
                     dt = str(v.get('end_time', ''))[:10]
                     if dt: series.setdefault(dt, {})[k] = v.get('value')
             days = sorted(dt for dt in series if k in series[dt])
-            if days: a[k] = series[days[-1]][k]
+            if days:
+                a[k] = series[days[-1]][k]; got.add(k)
+                print(f'fb-fetch: 지표 생존 — {m} → {k}({len(days)}일)')
         except Exception as e:
             print(f'fb-fetch: 인사이트 {m} 스킵({e})')
-    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach')}
+    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach'), 'interactions': a.get('interactions')}
     posts, thumbs = [], []
     try:
         for x in api(f'{PID}/posts', fields='message,permalink_url,created_time,full_picture', limit=10).get('data', []):
@@ -110,7 +120,7 @@ def main():
     # Graph 미수집이라 이식 ㄴ(운영자 원칙 "데이터 일치하면 해주고 애매하면 시도 ㄴ") → 뷰어 평균 병기·결측 유닛 자동 미표시와 정합.
     srows = d['daily_series']
     avg = {}
-    for k in ('views', 'reach', 'follows', 'posts'):
+    for k in ('views', 'reach', 'follows', 'interactions', 'posts'):
         vals = [(r.get(k) or 0) for r in srows] if k == 'posts' else [r[k] for r in srows if r.get(k) is not None]
         if len(vals) >= 2:
             a_all = statistics.mean(vals)
