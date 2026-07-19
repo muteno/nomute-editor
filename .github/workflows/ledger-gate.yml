@@ -1,0 +1,19 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ledger-gate — PR 정합 게이트(운영자 260719 승인 = Q160 한 수 · 평의회8 만장)
+#   목적: 동시 세션의 원장 Q번호 경합(260718 실증 2연속: Q156·Q159)이 main에 착지하기 전
+#   PR 단계에서 check_refs 전체 게이트(원장 Q 유일성 포함)를 자동 실행해 붉은 체크로 노출.
+#   머지 주체(세션·운영자)는 이 체크가 red면 리베이스 후 게이트 재실행 절차(작업이력 260718 ⑤)로 해소하고 머지.
+#   범위: pull_request(main 대상) — 크론 직푸시(스크래퍼)는 PR이 아니라 무접촉 · 과금 = 기존 Actions 축(신규 경로 아님).
+# ═══════════════════════════════════════════════════════════════════════════════
+name: ledger-gate
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  check-refs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: check_refs 전체 게이트(원장 Q번호 유일성 포함)
+        run: python3 shared/check_refs.py
