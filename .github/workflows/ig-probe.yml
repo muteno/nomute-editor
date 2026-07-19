@@ -1,0 +1,24 @@
+# 인스타 인사이트 경로 비교 프로브(운영자 260719) — 수동 dispatch 전용 진단 · 크론 없음 · 파일 산출·커밋 없음(READ-ONLY).
+# 신경로(FB_PAGE_TOKEN 페북 로그인) vs 구경로(IG_ACCESS_TOKEN 인스타그램 로그인 = 현행 insta-fetch) 지표 생존 비교를 런 로그로 출력.
+# 롤백 = 파일 삭제(ig_probe.py 동반).
+name: ig-probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ig-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 비교 프로브(stdlib only · 토큰 원문 미출력)
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: python3 .github/scripts/ig_probe.py
