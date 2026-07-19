@@ -10470,7 +10470,7 @@ function renderChan() {
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
   const DEFF = { sig: 1, recent: 1 };   // 첫 방문 기본 접힘 = 데이터 큰 꼬리 유닛(⑥호응 신호·⑧최근 게시물 — 운영자 260713 "기본 접힘 ㄱ") · nm_chan_gfold 기억값 있으면 그게 우선
-  const RLAB = { prof: '프로필', daily: '일일 추이', fmt: '릴스·피드', topic: '주제별 반응', era: '알고리즘 3기', sig: '호응 신호', tpost: 'TOP 게시물', recent: '최근 게시물' };   // 책갈피 레일 aria 라벨(운영자 260713 "레일 여기도 · 일치할수록 좋아")
+  const RLAB = { prof: '프로필', daily: '일일 추이', topic: '주제별 반응', sig: '호응 신호', tpost: 'TOP 게시물', recent: '최근 게시물' };   // 책갈피 레일 aria 라벨(운영자 260713 "레일 여기도 · 일치할수록 좋아") · 릴스·피드/알고리즘 3기 유닛 = 폐지(운영자 260719 "호응 신호 말고 다른거 날려")
   const RAIL = [];   // 렌더된 단위 수집(순번 = 헤더 배지와 자동 동기 · 데이터 결측 유닛 = 레일서도 자동 제외) → 좌측 책갈피 레일
   const GPIC = { brief: AISPARK_SVG };   // ✨ AI 요약 = 숫자 대신 픽토그램·순번 밖·레일 제외(메뉴3 GPIC 문법 미러)
   let gno = 0, gfirst = true;
@@ -10522,13 +10522,9 @@ function renderChan() {
       `<div class="ch-chartwrap" id="chChartWrap">${chChart(series, CHAN_MET, events)}<div class="ch-tip" id="chTip"></div><div class="ch-dot" id="chDot"></div><div class="ch-postpop" id="chPostPop"></div></div>`,
       '<button class="tsk-more" type="button" id="chDayMore" aria-label="일별 상세">내역 확인</button>');
   }
-  // ── 반응 분석 단위들(릴스·피드 / 주제별 게이지 / 알고리즘 3기 — 신호 모듈 절대 요약 소비 · 구 한 카드 3소머리 → 단위 승격) ──
-  const fmt = d.fmt || {}, topics = d.topics || {}, eras = d.eras || {};
-  const fkeys = Object.keys(fmt), tkeys = Object.keys(topics).filter(k => topics[k].n >= 5).sort((x, y) => topics[y].views_med - topics[x].views_med);
-  if (fkeys.length) h += gsec('fmt', '릴스 · 피드', fkeys.map(k => {
-    const v = fmt[k];
-    return `<div class="ch-sig"><span class="ch-bk">${esc(k)}</span><span class="ch-lf">중앙 ${vf(v.views_med)}회 · 공유율 ${v.share_pm_med} · n=${v.n}</span></div>`;
-  }).join(''));
+  // ── 반응 분석 단위(주제별 게이지 — 신호 모듈 절대 요약 소비) · 릴스·피드/알고리즘 3기 유닛 = 표시 폐지(운영자 260719 "호응 신호 말고 다른거 날려" — 산출 데이터 fmt·eras는 보존 = 🔒 [15] 뷰어 코드 우회 원칙) ──
+  const topics = d.topics || {};
+  const tkeys = Object.keys(topics).filter(k => topics[k].n >= 5).sort((x, y) => topics[y].views_med - topics[x].views_med);
   if (tkeys.length) {
     const tmax = topics[tkeys[0]].views_med || 1;
     h += gsec('topic', '주제별 반응', tkeys.map(k => {
@@ -10536,11 +10532,6 @@ function renderChan() {
       return `<div class="ch-trow"><span class="tl">${esc(k)}</span><span class="ch-bar"><i style="width:${Math.max(4, Math.round(v.views_med / tmax * 100))}%"></i></span><span class="tv">${vf(v.views_med)} · n=${v.n}</span></div>`;
     }).join(''));
   }
-  const ekeys = Object.keys(eras).sort();   // 부흥<침체<회복 = 코드포인트순이 곧 시간순(라벨 개편 시 재확인)
-  if (ekeys.length >= 2) h += gsec('era', '알고리즘 3기', ekeys.map(k => {
-    const v = eras[k];
-    return `<div class="ch-sig"><span class="ch-bk">${esc(k)}</span><span class="ch-lf">중앙 ${vf(v.views_med)}회 · 공유율 ${v.share_pm_med} · n=${v.n}</span></div>`;
-  }).join(''));
   const axes = (d.signals || {}).axes || {}, AXL = [['format', '포맷'], ['naming_style', '네이밍'], ['hour_band', '시간대'], ['dow', '요일']];
   let sg = '';
   AXL.forEach(ax => (axes[ax[0]] || []).slice(0, 3).forEach(b => {
