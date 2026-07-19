@@ -19,9 +19,13 @@ on:
           - MUTENO
           - EMS1130G
 
-concurrency:
-  group: news-ask
-  cancel-in-progress: false
+# 동시 실행 충돌 방지 — ⚠️ 잠금은 '잡' 레벨(analyze 260717 대기열 기아 픽스 미러 · 260720 ask 실측):
+#   종전 워크플로(런) 레벨 그룹(news-ask)은 card_plan(상한 165분)이 끝날 때까지 런 전체가 그룹을 쥐고 있어,
+#   그 사이 제출된 ✨요약요청이 착수조차 못 하고 스피너로 수 시간 대기(실측 260720 = 06:45 KST 런의 ask 잡은
+#   7분 만에 성공했는데 card_plan 꼬리가 그룹을 쥐어 08:03 KST 제출 런이 pending 인질 — 뷰어 '처리중' 31분+).
+#   ask 잡만 자기 그룹으로 직렬화하면 카드 생성 중에도 새 요약·실패 격리가 즉시 돈다.
+#   card_plan(card-make)·thumb_gen(thumb-make)은 원래 자기 잡 그룹 보유 = 공유 자원별 직렬화는 종전과 동일.
+#   그룹명 news-ask → news-ask-job 개명 = 구 런(런 레벨 잠금 보유 중)과의 전환기 교착 회피(analyze와 동일 수법).
 
 permissions:
   contents: write
@@ -30,11 +34,18 @@ jobs:
   ask:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    concurrency:
+      group: news-ask-job   # asks 소비·queue/ 커밋 직렬화(위 헤더 주석 = 잡 레벨 사유 · news-analyze-job 미러)
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0   # 최신 main 기준(순차 큐에서 옛 커밋 체크아웃 방지)
+          fetch-depth: 0
+          # 트리거 커밋(github.sha)이 아니라 체크아웃 시점의 최신 main을 받는다 — 순차 큐에서 뒤 run이 옛 커밋을
+          # 체크아웃하면 앞 run이 이미 처리한 ask를 재분석(중복 다이제스트·add/add 충돌 · analyze run#5 동일 원인).
+          # 구 주석은 fetch-depth:0 만으로 '최신 main 기준'이라 적었으나 ref 없으면 github.sha 고정 = 오인.
+          ref: main
 
       - name: Setup Node
         uses: actions/setup-node@v5
