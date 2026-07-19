@@ -8,10 +8,11 @@ REM === v5.3: [자동] 괄호 이스케이프(파서 픽스) + CP949 저장(깨진문자 커맨드 픽�
 REM === v5.5: ESC 2번 = 창 닫기 (안정판: 키 감지는 단일키 게이트만, URL 입력은 원본 set /p 유지) ===
 REM === v5.6: 구글드라이브 자동 탐지(아무 드라이브 문자/한·영 UI/폴더·미러 마운트) - 계정 무관 Shared 복사 ===
 REM === v5.7: 라이브 마운트 우선+앱 구동 체크(잔재 폴더 오탐 픽스) + 자막 Shared 바닥 평평 복사 ===
+REM === v5.8: 끝 화면에 GDRIVE 전송 결과 상시 표시(도착 개수 실측 / 미전송 사유) ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.7
+echo   만능 다운로더 v5.8
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
@@ -100,23 +101,28 @@ REM === 클라우드 사전 검증 ===
 echo.
 echo [검증] 클라우드 쓰기 테스트...
 set "DUAL=0"
+set "GD_WHY="
 if "%GDFS_ON%"=="0" (
     echo [알림] 구글드라이브 앱이 실행 중이 아님 - 미설치/꺼짐/로그인 전
     echo        앱 켜고 로그인하면 클라우드 복사 활성화. 이번엔 로컬에만 저장
+    set "GD_WHY=드라이브 앱 꺼짐/미로그인 - 시작메뉴에서 Google Drive 실행"
     goto cloud_done
 )
 if not defined GDRIVE (
     echo [알림] 구글드라이브 앱은 켜져 있는데 '내 드라이브' 위치를 못 찾음
     echo        앱 로그인/동기화 상태 확인. 이번엔 로컬에만 저장
+    set "GD_WHY=내 드라이브 마운트 못 찾음"
     goto cloud_done
 )
 echo [확인] 구글드라이브 감지: %GDRIVE%
+set "GD_WHY=Shared 폴더 생성/쓰기 실패"
 if not exist "%CLOUD%" mkdir "%CLOUD%" 2>nul
 if not exist "%CLOUD%" goto cloud_done
 echo test_%RANDOM% > "%CLOUD%\_write_test.tmp" 2>nul
 if not exist "%CLOUD%\_write_test.tmp" goto cloud_done
 del "%CLOUD%\_write_test.tmp" >nul 2>&1
 set "DUAL=1"
+set "GD_WHY="
 echo [확인] 클라우드 쓰기 가능
 
 :cloud_done
@@ -303,17 +309,21 @@ goto copy_done
 :copy_fail
 echo [복사 실패] robocopy errorlevel=!RC_CODE!
 echo      로컬 파일은 안전: %LOCAL%
+set "GD_WHY=robocopy 오류 rc=!RC_CODE!"
 goto copy_done
 
 :copy_skip
 echo [복사] 클라우드 비활성화 - 로컬만 저장
 
 :copy_done
+set /a GD_CNT=0
+if "!DUAL!"=="1" for /f %%c in ('dir /b "%CLOUD%\!TS!_!PLAT!_*" 2^>nul ^| find /c /v ""') do set "GD_CNT=%%c"
 echo.
 echo ===============================================
 echo   다운로드 완료
 echo   로컬:    %LOCAL%
-if "!DUAL!"=="1" echo   클라우드: %CLOUD%
+if "!DUAL!"=="1" echo   GDRIVE : 전송 완료 !GD_CNT!개 - %CLOUD%
+if "!DUAL!"=="0" echo   GDRIVE : 미전송 - !GD_WHY!
 echo ===============================================
 echo.
 goto loop
