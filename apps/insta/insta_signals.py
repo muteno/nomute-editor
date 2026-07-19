@@ -541,13 +541,25 @@ def _echo_block(topic_sum, man):
 
 
 def main():
-    # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악") 우선 — 인사이트 유표본 30 미만 = 최근 25개 폴백
+    # 표본 = 전 게시물 백필(media_all · 운영자 260713 "기존꺼 파악")에 최근 수집(media_latest) top-up 병합.
+    # ⚠ 백필(insta_backfill.py)은 수동 dispatch 전용이라 정규 3h 크론에선 media_all이 안 늘어, 백필일 이후
+    #   올린 새 게시물이 TOP 게시물·점수·전 축 분석에서 통째 누락됐다(260719 실측: 7/17 449만뷰 릴스가
+    #   media_all(최신 7/13 동결) 부재로 미반영 · media_latest엔 있는데 refs 축만 최신, 주 표본은 옛것). 교정 =
+    #   위 post_refs가 이미 쓰는 media_all ∪ media_latest 관용구를 주 표본에도 적용(id 충돌 = latest 승 =
+    #   최신 조회수 · fetched_kst = 최신본 = enrich 경과일 기준 · MIN_AGE_D 신생 속도 가드 유지).
+    #   인사이트 유표본 30 미만(백필 부재/부족) = 종전대로 media_latest 단독 폴백.
     mall = jload('media_all.json')
-    media = None
+    mlat = jload('media_latest.json')
     if mall and sum(1 for m in (mall.get('media') or []) if (m.get('insights') or {}).get('views')) >= 30:
-        media = mall
-    media = media or jload('media_latest.json')
-    if not media:
+        by_id = {}
+        for src in (mall, mlat):   # mlat을 뒤에 = 같은 id면 최신 수집이 덮음(신선 인사이트 · refs _collect_refs 순서 동일)
+            for m in (src.get('media') or []) if src else []:
+                if m.get('id'):
+                    by_id[m['id']] = m
+        media = {'fetched_kst': (mlat or mall).get('fetched_kst'), 'media': list(by_id.values())}
+    else:
+        media = mlat
+    if not media or not media.get('media'):
         print('데이터 없음 — insta-fetch 수집분(apps/insta/data/media_latest.json)부터 필요')
         return 1
     aud = jload('audience.json') or {}
