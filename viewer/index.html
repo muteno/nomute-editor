@@ -703,7 +703,7 @@
   .tsort button { background:none; border:0; padding:2px; font:600 12px inherit; color:var(--mut); cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .tsort button.on { color:var(--accent); font-weight:800; }
   .tsort button:active { transform:scale(var(--press-m,.9)); }
-  .trend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(145px,calc(50% - 4px)),1fr)); gap:12px 8px; }   /* 커버 몰입 ★채택(운영자 260711 — 플레이그라운드 2안) = 폰 2열 고정·PC 자동 확장 — min(145, 50%-반갭) 오버플로 세이프: 레일 차선 36+카드 패딩 28 빼면 폰 콘텐츠 275~298px라 고정 145는 1열로 무너짐(스모크 실측 260712) */
+  .trend-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(145px,calc(50% - 4px)),1fr)); gap:12px 8px; padding-left:13px; }   /* raw-ok: padding-left 13 = 블릿·순위 박스 좌변(.trend-lbl/.trend-row 미러) → 카드 그리드 좌변 ↔ 블릿 동일 세로선(운영자 260719 "블릿하고 그 아래 내용 좌측 정렬 같게") · min(145,50%-4) 오버플로 세이프는 콘텐츠박스(패딩 후) 기준이라 2열 불변 */   /* 커버 몰입 ★채택(운영자 260711 — 플레이그라운드 2안) = 폰 2열 고정·PC 자동 확장 — min(145, 50%-반갭) 오버플로 세이프: 레일 차선 36+카드 패딩 28 빼면 폰 콘텐츠 275~298px라 고정 145는 1열로 무너짐(스모크 실측 260712) */
   .trend-grid.wd { grid-template-columns:repeat(auto-fill,minmax(min(145px,calc(50% - 4px)),1fr)); }   /* AI 가로 카드 = 동일 문법(2열 유지) */
   .tcard { display:block; text-decoration:none; color:var(--fg); min-width:0; -webkit-tap-highlight-color:transparent; }
   .tcard:active { opacity:.7; }
@@ -721,7 +721,7 @@
   .tcard-m svg { width:11px; height:11px; display:block; opacity:.85; }
   .tcard-ago { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* N일전 = 조회수 우측(뉴스식 메타 · 운영자 260712 #6 · 구 .tcard-acc 업로더 폐지) */
   /* X 트윗 카드 — 전문 + 지표(원본급) · 무채 글래스 셸(soc-item 톤 축소·색 창작 0) */
-  .xgrid { display:grid; grid-template-columns:1fr; gap:8px; }
+  .xgrid { display:grid; grid-template-columns:1fr; gap:8px; padding-left:13px; }   /* raw-ok: padding-left 13 = 블릿·순위 박스 좌변 미러(.trend-grid 동일) → X·블스·스레드 구독 카드 좌변 ↔ 블릿 동일 세로선(운영자 260719 "블릿하고 그 아래 내용 좌측 정렬 같게") */
   @media (min-width:560px) { .xgrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   .xcard { display:flex; flex-direction:column; text-decoration:none; color:var(--fg); min-width:0; padding:10px 12px; border-radius:var(--r-m); background:rgba(255,255,255,.04); border:1px solid var(--line); -webkit-tap-highlight-color:transparent; }   /* flex 컬럼 = 메타행 바닥 고정(2열 그리드에서 본문 줄수 달라도 옆 카드와 메타 y 일렬 · 운영자 260712 "삐뚤하면 안 됨") */
   .xcard:active { opacity:.7; }
@@ -9779,7 +9779,7 @@ function renderSnsTrends() {
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
   const stkS = sortOf('stk', ['views', 'likes', 'cmts'], 'views'), stkR = { kr: bySort(byReg(stk, 'kr'), stkS).slice(0, 10), gl: bySort(byReg(stk, 'gl'), stkS).slice(0, 10) };
   const sreS = sortOf('sre', ['views', 'likes', 'cmts'], 'views'), sreR = { kr: bySort(byReg(sre, 'kr'), sreS).slice(0, 10), gl: bySort(byReg(sre, 'gl'), sreS).slice(0, 10) };
-  const sytR = { kr: byReg(syt, 'kr').slice(0, 8), gl: byReg(syt, 'gl').slice(0, 8) };
+  const sytR = { kr: byReg(syt, 'kr').slice(0, 8).map(v => ({ ...v, cover: v.thumb })), gl: byReg(syt, 'gl').slice(0, 8).map(v => ({ ...v, cover: v.thumb })) };   // 카드 그리드용 cover=thumb 매핑(AI영상 aiL·틱톡 구독 미러 · 운영자 260719 "AI 영상처럼")
   const shL = freshFirst(shv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만") · freshFirst = 신선 먼저·오래된 것 아래로(운영자 260718 "다른 화면에도")
   const aiL = freshFirst(aiv).slice(0, 10).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만") · freshFirst 적용
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
@@ -9814,8 +9814,7 @@ function renderSnsTrends() {
   if (ytn.length) gYT += sec('ytn', '뉴스', '· 조회수', Math.min(ytn.length, 10), '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', '· 조회수', shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gYT += sec('ai', 'AI 영상', '· 조회수', aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
-  REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, L.map((v, i) =>
-    row(i, v.url || '#', v.views ? vfmt(v.views) : '', v, v.thumb || '')).join('')); });   // 한국/세계 접이 2군(운영자 260712) — 빈 군 = 미표기(조용한 공백)
+  REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '구독', '· ' + REGN[r], L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 카드(운영자 260719 "구독도 AI 영상처럼 표현 구성 동일" — 구 row 리스트 → 틱톡·인스타 구독과 동일 그리드 계승) · 빈 군 = 미표기(조용한 공백)
   const mktk = t => ({ url: t.url || '', t: t.ko || t.title || ('@' + (t.account || '')), rv: t.views ? vfmt(t.views) : '', th: t.cover || '', mono: 'tk', plat: '틱톡', x: t, ago: relT(t), pt: 1 });   // 틱톡 = 유튜브와 동일 카드 레일(운영자 260716 "틱톡도 유튜브처럼") — TOP 10 lane 매핑 미러 · pt = 세로 커버 표식(TOP 문법)
   const tkZ = zig(tkL.map((t, i) => [t, i]));
   if (tkv.length && tkCov) gTK += sec('tk', '인기', '· 조회수', tkL.length, sortbar('tk', V3, tkS) + '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → 16:9 wd 그리드(운영자 260717 "틱톡도 동일하게" · AI영상 계승) · 정렬바 존치 · 단위 라벨 = '· 조회수'
@@ -9955,7 +9954,7 @@ function renderSnsTrends() {
     };
   });
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT) · ko = 한글 번역 우선
-  ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.trend-q', sytR[r].map(v => v.title || '')));
+  ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.tcard-t', sytR[r].map(v => v.title || '')));   // 구독 유튜브 그리드 제목(운영자 260719 카드화 · 틱톡 구독 stk '.tcard-t' 미러)
   if (tkL.length) { fillH('tk', '.tcard-t', tkL.map(t => dimTags(t.ko || t.title || ('@' + (t.account || ''))))); }   // 틱톡 인기 그리드 제목 = ko 한글 우선 + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전 · 운영자 260719)
   ['kr', 'gl'].forEach(r => {   // 구독 한국/세계 2군 주입(운영자 260712)
     fillT('sx-' + r, '.xcard-h b', sxR[r].map(t => '@' + (t.account || '')));
