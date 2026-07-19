@@ -5,8 +5,10 @@
 // 중심」의 기계화 · smoke_geni/preview/winnav 문법 계승 · 등재 = docs/디자인기틀_SSOT.md §6)
 //
 // 담당 표면: viewer/index.html 텍스트 필·배지 = {.tcard-rank("N위" · 뉴스/쇼츠/AI/구독 그리드 공용) ·
-//   .tpc-rank(숫자 · 인기/급상승/틱톡 tpg 레일) · .tcard-cov .trend-chg(NEW·▲▼ 변동 · 커버 우상단) ·
-//   .tpc-new(NEW · tpg 레일) · .bnav-i .qbadge/.vh-qbtn .qbadge-head(대기열 숫자)}
+//   .tpc-rank(숫자 · TOP 스택/리스트) · .tcard-cov .trend-chg(NEW·▲▼) · .tpc-new(NEW) ·
+//   .bnav-i .qbadge/.vh-qbtn .qbadge-head(대기열 숫자)}
+// ⚠ 260720 Q228: NEW·▲▼(.trend-chg)·.tpc-new = 라이브 렌더 0(chg()='' 스텁·tpc-new 스팬 제거 · CSS는 존치).
+//   본 스모크의 해당 타깃 = 합성 스테이지 재도입 보험(광학 보정값 회귀 가드) — 죽은 어서션 아님·라이브 표면 주장 아님.
 // 원커맨드:  node shared/smoke_rank.js            (종료코드 0 = 코어 전부 PASS)
 //
 // 방법(260717 Q04 확립 · 원장 참조): 정수 좌표 격리 스테이지 — 정본 클래스 필을 정수 좌표에 복제
@@ -78,7 +80,7 @@ const TARGETS = [
   { label: 'tcard-rank "10위"', cls: 'tcard-rank', html: '10위', ink: 'bright' },
   { label: 'tpc-rank "1"', cls: 'tpc-rank', html: '1', ink: 'bright' },
   { label: 'tpc-rank "10"', cls: 'tpc-rank', html: '10', ink: 'bright' },
-  { label: 'cov NEW', wrap: 'tcard-cov', cls: 'trend-chg nw', html: '<i>NEW</i>', ink: 'bright' },   // <i> = 라이브 chg() 마크업 미러(잉크 서브픽셀 보정 앵커 · 260717 Q06)
+  { label: 'cov NEW', wrap: 'tcard-cov', cls: 'trend-chg nw', html: '<i>NEW</i>', ink: 'bright' },   // <i> = 구 chg() 마크업 미러(260720 Q228 라이브 스텁 — 합성 재도입 보험 · 잉크 앵커 260717 Q06)
   { label: 'cov ▲1', wrap: 'tcard-cov', cls: 'trend-chg up', html: '<i>' + TRI_UP + '1</i>', ink: 'bright' },
   { label: 'cov ▼1', wrap: 'tcard-cov', cls: 'trend-chg dn', html: '<i>' + TRI_DN + '1</i>', ink: 'bright' },
   { label: 'tpc-new NEW', cls: 'tpc-new', html: 'NEW', ink: 'bright' },

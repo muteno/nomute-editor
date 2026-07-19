@@ -82,8 +82,8 @@ def _ladders():
                         o.append((k, float(mm.group(1))))
             return o
         lad = {'font-size': px('--fs-'), 'border-radius': px('--r-'),
-               'gap': px('--sp-'), 'padding': px('--sp-'), 'margin': px('--sp-'),
-               'blur': px('--blur-')}
+               'gap': px('--sp-'), 'padding': px('--sp-', '--trend-'), 'margin': px('--sp-', '--trend-'),
+               'blur': px('--blur-')}   # --trend-indent(13px) 사다리 편입(260720 평의회 — raw 13px에 --sp-2(12) 오제안하던 것을 정확 제안으로 = CII "자동 제안" 문구 실체화)
     except Exception:
         pass
     return lad
