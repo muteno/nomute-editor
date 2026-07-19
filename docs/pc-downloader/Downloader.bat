@@ -11,11 +11,12 @@ REM === v5.7: 라이브 마운트 우선+앱 구동 체크(잔재 폴더 오탐 픽스) + 자막 Shared
 REM === v5.8: 끝 화면에 GDRIVE 전송 결과 상시 표시(도착 개수 실측 / 미전송 사유) ===
 REM === v5.9: 클라우드 경로 고정 - 유저프로필\Google Drive 스트리밍\내 드라이브\Shared (자동탐지 폐기 · Q226) ===
 REM === v5.9.1: 스트리밍 폴더 실존 게이트(유령 로컬 폴더 차단) + 끝화면 robocopy 실패 오보 봉합 - 오퍼스 3인 검증 반영 ===
+REM === v5.9.2: 낙오자 재송 스위프 - 시작 시 지난 7일 미전송분 자동 재송(날짜 = 파일명 앞 8자리 · 아이데이션 Q229 반영) ===
 REM === 주의: 이 파일은 CP949/ANSI로만 저장할 것 - UTF-8 재저장 시 한글 고정경로가 깨져 유령 폴더 생성 ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.9.1
+echo   만능 다운로더 v5.9.2
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
@@ -114,6 +115,13 @@ del "%CLOUD%\_write_test.tmp" >nul 2>&1
 set "DUAL=1"
 set "GD_WHY="
 echo [확인] 클라우드 쓰기 가능
+REM v5.9.2: 낙오자 재송 스위프 - 지난 실행에서 클라우드에 못 간 파일(앱 꺼짐·robocopy 실패) 자동 재송
+REM         날짜 필터 = 파일명 TS 앞 8자리. mtime /MAXAGE 금지 - yt-dlp가 mtime을 영상 업로드일로 바꿔 최신 파일도 옛날로 보임
+REM         동명·동크기·동시각 = robocopy 자동 스킵(이미 간 파일 재복사 0) · 자막 제목폴더 = 무 /S라 비대상 · PS 실패 시 = 스위프 건너뜀
+set "SWEEP_PATS="
+for /f "usebackq delims=" %%d in (`powershell -noprofile -c "foreach($i in 0..7){ (Get-Date).AddDays(-$i).ToString('yyyyMMdd')+'_*' }"`) do set "SWEEP_PATS=!SWEEP_PATS! %%d"
+if defined SWEEP_PATS echo [스위프] 지난 7일 미전송분 재송 확인...
+if defined SWEEP_PATS robocopy "%LOCAL%" "%CLOUD%" !SWEEP_PATS! /R:2 /W:2 /NJH /NJS /NDL /NC /NS /NP
 
 :cloud_done
 echo [확인] 로컬: %LOCAL%
