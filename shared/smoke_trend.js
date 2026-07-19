@@ -142,6 +142,36 @@ const SEL = {
     ok('T6 PC 2열 기하(1280 — 나란·열폭 동일·gap 22 · 결측=단독 폴백)',
       t6.fallback ? !t6.wrap : (t6.wrap && t6.cols === 2 && t6.side && t6.yD <= 2 && t6.wD <= 2 && Math.abs(t6.gap - 22) <= 1), JSON.stringify(t6));
 
+    // ── 중첩 리스트 세로정렬(CII 🪆 위계 규칙 기계 락 · 운영자 260719 "세로정렬 규칙 승격 + 모바일 확인") ──
+    //   좌: 중분류 배지숫자 = 소주제 블릿 = 내용 순위 중심(동일 세로선) · 글자: 소주제 제목시작 = 내용 쿼리시작 · 우: 중분류 체브론 = 소주제 체브론.
+    //   라이브 박스 기하(getBoundingClientRect·::before 폭·paddingRight·::after marginRight)만 · Δ≤0.5px. full=1열(모바일)서 배지·체브론까지(2열은 우측 소주제가 배지서 오프셋되므로 미러만).
+    const alignAt = async (label, full) => {
+      const a = await pg.evaluate(S => {
+        const cxOf = e => e ? (r => +(r.left + r.width / 2).toFixed(2))(e.getBoundingClientRect()) : null;
+        const chevR = summ => { if (!summ) return null; const r = summ.getBoundingClientRect(), s = getComputedStyle(summ), af = getComputedStyle(summ, '::after'); return +(r.right - parseFloat(s.paddingRight || 0) - parseFloat(af.marginRight || 0)).toFixed(2); };
+        const m = sel => {
+          const g = document.querySelector(sel); if (!g) return null;
+          const grp = g.closest('.tgroup'), lbl = g.querySelector('.trend-lbl'), row = g.querySelector('a.trend-row'); if (!lbl || !row) return null;
+          const rank = row.querySelector(S.rank), q = row.querySelector(S.q);
+          const lr = lbl.getBoundingClientRect(), cs = getComputedStyle(lbl);
+          const bw = parseFloat(getComputedStyle(lbl, '::before').width) || 0;
+          let titleL = null; const tn = [...lbl.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+          if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); titleL = +rg.getBoundingClientRect().left.toFixed(2); }
+          return { badgeCx: cxOf(grp && grp.querySelector(':scope > summary > i')), bulletCx: +(lr.left + parseFloat(cs.paddingLeft) + bw / 2).toFixed(2), rankCx: cxOf(rank),
+            titleL, queryL: q ? +q.getBoundingClientRect().left.toFixed(2) : null, grpChev: chevR(grp && grp.querySelector(':scope > summary')), subChev: chevR(g.querySelector(':scope > summary')) };
+        };
+        // 중분류마다 배지숫자 = 같은 세로선(전 .tgroup 숫자배지 center 편차)
+        const badges = [...document.querySelectorAll('.tgroup > summary > i')].map(cxOf).filter(v => v != null);
+        const bSpread = badges.length > 1 ? +(Math.max(...badges) - Math.min(...badges)).toFixed(2) : 0;
+        return { gt: m(S.gt), sig: m(S.sig), bSpread, nBadge: badges.length };
+      }, SEL);
+      const D = (x, y) => x != null && y != null && Math.abs(x - y) <= 0.5;
+      const chk = o => !o || (D(o.bulletCx, o.rankCx) && D(o.titleL, o.queryL) && (!full || (D(o.badgeCx, o.bulletCx) && D(o.badgeCx, o.rankCx) && D(o.grpChev, o.subChev))));
+      const badgesOk = !full || a.bSpread <= 0.5;
+      ok(label, (a.gt || a.sig) && chk(a.gt) && chk(a.sig) && badgesOk, JSON.stringify(a));
+    };
+    await alignAt('T9 세로정렬@1280(소주제 블릿↔순위·제목↔쿼리 Δ≤0.5)', false);
+
     await pg.setViewportSize({ width: 390, height: 844 }); await pg.waitForTimeout(400);
     const t7 = await pg.evaluate(S => {
       const g = document.querySelector(S.gt), s = document.querySelector(S.sig);
@@ -152,6 +182,8 @@ const SEL = {
     }, SEL);
     ok('T7 모바일 스택(390 — 1열·오버플로 0·구분선 671 원복)',
       t7.fallback ? t7.noX : (t7.noX && t7.stack && t7.bt === '1px' && t7.mt === '22px' && t7.pt === '20px'), JSON.stringify(t7));
+
+    await alignAt('T9m 세로정렬@390 모바일(중분류 배지=블릿=순위 세로선·제목=쿼리·중분류 체브론=소주제 체브론 + 중분류간 배지 정렬 Δ≤0.5)', true);
 
     let t8 = { skip: true };
     if (gtN) {
