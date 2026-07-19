@@ -39,13 +39,19 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_USER_ID: ${{ vars.IG_USER_ID }}
         run: python3 .github/scripts/insta_backfill.py
+      - name: 페이스북 페이지 수집(채널 요약 1-2 · 시크릿 게이트 = 미등록 no-op · 운영자 260718 Q155 — 세팅 = docs/페이스북_직결_세팅.md)
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ vars.FB_PAGE_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}   # 겸용 프로브(운영자 260718 · fb-fetch.yml 동조 — FB 토큰 부재 시 IG 토큰 페이지 자동 연동 시도)
+        run: python3 .github/scripts/fb_fetch.py || true
       - name: 신호 계산(뷰어 소비본 포함 · fail-soft)
         run: python3 apps/insta/insta_signals.py || true
       # ── 수집·신호분 즉시 커밋(1차) — 뒤 채널 브리프(chan_brief.sh · LLM 1콜 timeout 600s) 스텝이 job timeout/하드킬로 죽어도 insta_data·신호(메뉴4 데이터)는 이미 라이브 확보(운영자 260714 "데이터 잘 받아오게" 인스타 점검 = sns-trends.yml 1차 커밋 미러). 근본원인 = 맨끝 단일 커밋이라 LLM 단계 사망 시 하루치 수집분 동반 유실 · insta는 cron 1일 1회라 유실 = 종일 공백(트렌드보다 타격 큼 · Q11 벽시계 캡은 부분 봉합이었음). insta-fetch는 push 트리거 없음(cron만) = 재트리거 0. 브리프분(chan_brief.json)은 맨끝 커밋이 2차로 마저 커밋.
       - name: 커밋 수집분(1차 · 유실 방지)
         # git_land = 최신 main 재기점 재적층(구 `pull --rebase -X ours`+4회 재시도의 리베이스 꼬임·경쟁 소진 → 산출물 no-op 유실 봉합 · 260716 브리프 3일 정지 사고 근본교정). insta 산출물 단독 소유라 재적층 안전.
         run: |
-          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json
+          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json viewer/fb_data.json
       - name: Install Claude Code CLI (채널 브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기 · sns-trends.yml 관용구)
         if: ${{ (inputs.brief || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 29263671640 실측 260714: rc=0·브리프 1,355자 생성·chan_brief.json 커밋 00:51 KST 6d958cd) · 롤백 = || '0'
         run: npm install -g @anthropic-ai/claude-code
@@ -60,4 +66,4 @@ jobs:
       - name: 커밋(브리프 포함 · 맨끝 2차)
         # 브리프분(chan_brief.json·아카이브 로그)까지 최신 main 재기점 재적층으로 착지. 종전 관용구는 같은 파일을 다른 봇이 먼저 밀면 꼬인 리베이스로 브리프가 증발(→ 화면 정지)하던 자리 = git_land가 원천 봉합. chan_brief_log.jsonl도 add 대상 편입(종전 누락).
         run: |
-          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json viewer/chan_brief.json viewer/chan_brief_log.jsonl
+          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json viewer/fb_data.json viewer/chan_brief.json viewer/chan_brief_log.jsonl

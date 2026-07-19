@@ -56,7 +56,7 @@ _TOKENS_HEADER = (
     "/* ⚠️ 자동생성 — 직접수정 금지. 값 SSOT = viewer/index.html :root. 다음 build에 덮어씀.\n"
     "   생성: shared/build_design_mirror.py build (§🎨 STAGE3 · 분신술10 260628).\n"
     "   내용 = index :root의 *구조 토큰만*(반지름·간격·blur·버튼·타이포·모션·z·눌림). 색/팔레트는 제외 —\n"
-    "   각 뷰어가 자기 :root에 인라인 유지(뷰어별 정체성). 4뷰어(thumb/ly/k/comp)가 link해 신규 var() 통일. */"
+    "   각 뷰어가 자기 :root에 인라인 유지(뷰어별 정체성). 도구 뷰어들이 link해 신규 var() 통일(로더 전수 = grep 실측 · comp 폐지 260710 — 평의회 Q165 표기 정정). */"
 )
 # 구조 토큰 판정 — 색/의미색/팔레트와 접두사가 겹치지 않음(검증: --bg/--glass/--line/--accent/--fg/--mut/
 #   --danger/--warn/--amber/--info/--bias/--on-*/--hist/--arm/--thumb 중 아래 접두사로 시작하는 것 0).

@@ -42,7 +42,7 @@ def die(msg, code=1):
 # 260710 개요 개편(운영자): 해상도 = 픽셀 라벨(720p/FHD/2K/4K · 기본 FHD) · 비율 = 자유 N:N(각 1~99) · 품질 = PNG/JPG90.
 NATIVE_ASPECTS = ("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")   # Gemini imageConfig.aspectRatio 실지원 집합 — 커스텀 비율은 근접 네이티브로 렌더 → post_process가 정확 크롭
 SIZE_RENDER = {"720p": "1K", "FHD": "1K", "2K": "2K", "4K": "4K"}   # 렌더 호출 크기 — FHD도 1K 렌더 후 보간(기본 과금 = 현행 1K 동일 · 문구 살리기 ON이면 main()이 2K 플로어)
-SIZE_SHORT = {"720p": 720, "FHD": 1080, "2K": 1440, "4K": 2160}    # 목표 = 짧은 변 px(비율 무관 단일 기준 · 4:5 FHD = 1080×1350 = 카드 표준)
+from img_sizes import SIZE_SHORT    # 짧은변 목표 px 정본(운영자 260718 "한 상수파일" · gen_image·upscale·thumb-make·comp-make 공통 SSOT · 같은 디렉토리)
 ASPECT_EN = {"4:5": "vertical 4:5 portrait", "1:1": "square 1:1", "3:4": "vertical 3:4 portrait",
              "9:16": "tall vertical 9:16 story format", "16:9": "wide horizontal 16:9",
              "21:9": "cinematic ultrawide 21:9", "7:3": "cinematic ultrawide 21:9"}   # 21:9 = gcd 정규화로 내부 "7:3" → 둘 다 동일 문구(평의회3 · 렌더 비율은 render_aspect가 이미 정확 강제)
