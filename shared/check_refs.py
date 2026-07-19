@@ -750,7 +750,7 @@ def check_dangling_var():
     rc = 0
     try:
         tkp = os.path.join(ROOT, 'viewer', 'tokens.css')
-        _strip = lambda t: re.sub(r'/\*.*?\*/', '', t, flags=re.S)   # 블록 주석 제거 후 수집(주석 속 '--x:'를 정의로 오인해 실깨짐을 가리는 틈 봉합 · W-A 노트 → Q170) — // 라인 주석은 URL(http://) 오폭 위험이라 보존, defs·uses 동일 스트립본이라 정합
+        _strip = lambda t: re.sub(r'/\*.*?\*/', '', t, flags=re.S)   # 블록 주석 제거 후 수집(주석 속 '--x:'를 정의로 오인해 실깨짐을 가리는 틈 봉합 · W-A 노트 → Q176) — // 라인 주석은 URL(http://) 오폭 위험이라 보존, defs·uses 동일 스트립본이라 정합
         tk_defs = set(_VAR_DEF_ANY.findall(_strip(open(tkp, encoding='utf-8').read()))) if os.path.exists(tkp) else set()
         for rel in VIEWERS_ALL:
             try:
