@@ -102,6 +102,14 @@ def main():
          'likes', 'comments', 'shares', 'saves', 'replies'],
         period='day', metric_type='total_value')
     fc, _ = insights(f'{uid}/insights', ['follower_count'], period='day')
+    # 팔로우/취소 분해(운영자 260719 Q171 — 뷰어 '팔로워 증감' 카드 취소 라인 데이터원) — follows_and_unfollows
+    # = total_value 전용(일별 시계열 미지원)이라 어제 00:00~오늘 00:00 KST 1창을 명시해 달력일 확정 귀속.
+    # FOLLOWER 값 = follower_count 결측일 보강 겸용(병합은 선점자 우선 = 기존 수집 무접촉) · 실패 = dropped 가시 경보.
+    day0 = datetime.datetime.now(KST).replace(hour=0, minute=0, second=0, microsecond=0)
+    fu, drop4 = insights(f'{uid}/insights', ['follows_and_unfollows'],
+                         period='day', metric_type='total_value', breakdown='follow_type',
+                         since=str(int((day0 - datetime.timedelta(days=1)).timestamp())),
+                         until=str(int(day0.timestamp())))
     onl, _ = insights(f'{uid}/insights', ['online_followers'], period='lifetime')
     # 일별 버킷(time_series · 운영자 260713 일일 추이) — since/until 명시 = 진짜 달력일 배열.
     # 지난 3일 창 = 결측일 자가치유 · 미지원 지표 = insights() 낱개 폴백이 dropped 기록 = fail-soft(기존 수집 무접촉).
@@ -142,10 +150,12 @@ def main():
         items.append(mm)
 
     stamp = now_kst()
-    dropped = drop1 + drop2 + drop3
+    dropped = drop1 + drop2 + drop3 + drop4
     with open(f'{OUT}/insights_daily.jsonl', 'a', encoding='utf-8') as f:
         f.write(json.dumps({'fetched_kst': stamp, 'profile': prof, 'account_day': acc,
                             'follower_count_series': fc.get('follower_count'),
+                            'follows_split': {'date': (day0 - datetime.timedelta(days=1)).date().isoformat(),
+                                              'raw': fu.get('follows_and_unfollows')},
                             'account_daily': ts,
                             'dropped': dropped}, ensure_ascii=False) + '\n')
     with open(f'{OUT}/media_latest.json', 'w', encoding='utf-8') as f:

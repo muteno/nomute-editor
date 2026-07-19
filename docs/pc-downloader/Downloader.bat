@@ -5,12 +5,17 @@ setlocal enabledelayedexpansion
 REM === 인자 모드 (v5.1): 단축키 등으로 URL을 넘기면 그 URL을 첫 입력으로 자동 처리 ===
 REM     처리 후 종료하지 않고 계속 다음 URL 입력 대기 (q로 종료)
 REM === v5.3: [자동] 괄호 이스케이프(파서 픽스) + CP949 저장(깨진문자 커맨드 픽스) + 자막=영상제목 폴더 ===
+REM === v5.5: ESC 2번 = 창 닫기 (안정판: 키 감지는 단일키 게이트만, URL 입력은 원본 set /p 유지) ===
+REM === v5.6: 구글드라이브 자동 탐지(아무 드라이브 문자/한·영 UI/폴더·미러 마운트) - 계정 무관 Shared 복사 ===
+REM === v5.7: 라이브 마운트 우선+앱 구동 체크(잔재 폴더 오탐 픽스) + 자막 Shared 바닥 평평 복사 ===
+REM === v5.8: 끝 화면에 GDRIVE 전송 결과 상시 표시(도착 개수 실측 / 미전송 사유) ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.3
+echo   만능 다운로더 v5.8
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
+echo   ESC 2번 연속 = 창 닫기
 echo ===============================================
 echo.
 
@@ -25,9 +30,26 @@ REM === 경로 설정 ===
 set "YTDLP=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\yt-dlp"
 set "GDL=%YTDLP%\gallery-dl.exe"
 set "COOKIES=%YTDLP%\cookies.txt"
-REM === 클라우드 저장 = 구글드라이브 (v5.2) - USERPROFILE 기준이라 PC 계정명 무관 ===
-set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
-set "CLOUD=%GDRIVE%\Shared"
+REM === 클라우드 저장 = 구글드라이브 자동 탐지 (v5.7) - PC 계정명/드라이브 문자/UI 언어 무관 ===
+REM     v5.7: 앱(GoogleDriveFS) 실행 중일 때만 + 드라이브 문자(라이브 마운트) 우선
+REM     - 옛 'Google Drive 스트리밍' 같은 죽은 잔재 폴더에 복사 = 클라우드 미도달 사고 차단
+set "GDRIVE="
+set "GDFS_ON=0"
+tasklist /fi "imagename eq GoogleDriveFS.exe" 2>nul | find /i "GoogleDriveFS.exe" >nul && set "GDFS_ON=1"
+REM 1) 드라이브 문자 마운트(G: 관례, 아무 문자 OK) - 한/영 UI 모두
+if "%GDFS_ON%"=="1" for %%D in (G H I J K L M N O P Q R S T U V W X Y Z E F) do (
+    if not defined GDRIVE (
+        if exist "%%D:\내 드라이브\" set "GDRIVE=%%D:\내 드라이브"
+        if not defined GDRIVE if exist "%%D:\My Drive\" set "GDRIVE=%%D:\My Drive"
+    )
+)
+REM 2) 폴더 마운트(구버전 설정)·미러 관례 위치 - 앱 실행 중일 때만 신뢰
+if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive 스트리밍\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive 스트리밍\내 드라이브"
+if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\내 드라이브\" set "GDRIVE=%USERPROFILE%\Google Drive\내 드라이브"
+if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\Google Drive\My Drive\" set "GDRIVE=%USERPROFILE%\Google Drive\My Drive"
+if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\내 드라이브\" set "GDRIVE=%USERPROFILE%\내 드라이브"
+if "%GDFS_ON%"=="1" if not defined GDRIVE if exist "%USERPROFILE%\My Drive\" set "GDRIVE=%USERPROFILE%\My Drive"
+if defined GDRIVE set "CLOUD=%GDRIVE%\Shared"
 set "LOCAL=%USERPROFILE%\Downloads\yt-dlp"
 set "GTEMP=%LOCAL%\_gallery_temp"
 
@@ -79,17 +101,28 @@ REM === 클라우드 사전 검증 ===
 echo.
 echo [검증] 클라우드 쓰기 테스트...
 set "DUAL=0"
-if not exist "%GDRIVE%" (
-    echo [알림] 구글드라이브 폴더 없음: %GDRIVE%
-    echo        구글드라이브 미설치/미로그인 - 이번엔 로컬에만 저장
+set "GD_WHY="
+if "%GDFS_ON%"=="0" (
+    echo [알림] 구글드라이브 앱이 실행 중이 아님 - 미설치/꺼짐/로그인 전
+    echo        앱 켜고 로그인하면 클라우드 복사 활성화. 이번엔 로컬에만 저장
+    set "GD_WHY=드라이브 앱 꺼짐/미로그인 - 시작메뉴에서 Google Drive 실행"
     goto cloud_done
 )
+if not defined GDRIVE (
+    echo [알림] 구글드라이브 앱은 켜져 있는데 '내 드라이브' 위치를 못 찾음
+    echo        앱 로그인/동기화 상태 확인. 이번엔 로컬에만 저장
+    set "GD_WHY=내 드라이브 마운트 못 찾음"
+    goto cloud_done
+)
+echo [확인] 구글드라이브 감지: %GDRIVE%
+set "GD_WHY=Shared 폴더 생성/쓰기 실패"
 if not exist "%CLOUD%" mkdir "%CLOUD%" 2>nul
 if not exist "%CLOUD%" goto cloud_done
 echo test_%RANDOM% > "%CLOUD%\_write_test.tmp" 2>nul
 if not exist "%CLOUD%\_write_test.tmp" goto cloud_done
 del "%CLOUD%\_write_test.tmp" >nul 2>&1
 set "DUAL=1"
+set "GD_WHY="
 echo [확인] 클라우드 쓰기 가능
 
 :cloud_done
@@ -105,10 +138,18 @@ if defined ARGURL (
     set "URL=!ARGURL!"
     set "ARGURL="
     echo [자동] !ARGSRC! 첫 URL 사용 ^(이후 계속 입력 가능^)
-) else (
-    set "URL="
-    set /p URL=URL 붙여넣기 ^(q=종료^): 
+    goto url_have
 )
+REM === v5.5: 단일키 게이트 - ESC 2번=창닫기 / Q=종료 / 그 외 아무 키=URL 입력 ===
+REM     powershell 실행 실패 시(errorlevel 9009 등) 그냥 URL 입력으로 진행됨 = 안전
+echo [아무 키 = URL 입력 / Q = 종료 / ESC 2번 = 창 닫기]
+powershell -noprofile -c "$e=0;while($true){$k=[Console]::ReadKey($true);if($k.Key -eq 'Escape'){$e=$e+1;if($e -ge 2){exit 27}}elseif($k.KeyChar -eq 'q' -or $k.KeyChar -eq 'Q'){exit 113}else{exit 0}}"
+if !errorlevel! equ 27 goto esc_exit
+if !errorlevel! equ 113 goto end
+set "URL="
+set /p URL=URL 붙여넣기 ^(q=종료^): 
+
+:url_have
 if /i "!URL!"=="q" goto end
 if "!URL!"=="" goto loop
 
@@ -188,15 +229,11 @@ if "!HAS_COOKIES!"=="1" (
 set "YT_RC=!errorlevel!"
 if !YT_RC! neq 0 echo [yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성.
 
-REM === 자막 srt -^> txt 변환 (v4.9) ===
+REM === 자막 후처리 (v4.9 txt 변환 + v5.7 Shared 바닥 평평 복사) ===
+REM     폰 파이프라인은 Shared 바닥만 훑으므로 자막을 '시각_플랫폼_업로더_제목.언어.확장자'로 바닥에 복사(로컬은 제목 폴더 유지)
 echo.
-if "!MAKE_SUBTXT!"=="0" goto sub_skip
-echo [자막] srt -^> txt 변환 시도...
-powershell -noprofile -c "Get-ChildItem -LiteralPath '%LOCAL%' -Filter '!TS!_!PLAT!_*.srt' -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $t = $_.FullName -replace '\.srt$','.txt'; $ls = Get-Content -LiteralPath $_.FullName -Encoding UTF8 | Where-Object { $_ -notmatch '^\d+$' -and $_ -notmatch '-->' -and $_.Trim() -ne '' } | ForEach-Object { ($_ -replace '<[^>]+>','').Trim() }; $o = New-Object System.Collections.ArrayList; foreach($l in $ls){ if($o.Count -eq 0 -or $o[$o.Count-1] -ne $l){ [void]$o.Add($l) } }; if($o.Count -gt 0){ Set-Content -LiteralPath $t -Value $o -Encoding UTF8; Write-Output ('  [txt] ' + (Split-Path $t -Leaf)) } }"
-goto sub_done
-:sub_skip
-echo [자막] txt 변환 비활성화 - srt만 유지
-:sub_done
+echo [자막] 후처리: txt 변환=!MAKE_SUBTXT! / Shared 평평 복사=!DUAL!...
+powershell -noprofile -c "$mk='%MAKE_SUBTXT%'; $dual='!DUAL!'; $cloud='%CLOUD%'; $root='%LOCAL%'; Get-ChildItem -LiteralPath $root -Filter '!TS!_!PLAT!_*.srt' -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $t = $_.FullName -replace '\.srt$','.txt'; if($mk -eq '1'){ $ls = Get-Content -LiteralPath $_.FullName -Encoding UTF8 | Where-Object { $_ -notmatch '^\d+$' -and $_ -notmatch '-->' -and $_.Trim() -ne '' } | ForEach-Object { ($_ -replace '<[^>]+>','').Trim() }; $o = New-Object System.Collections.ArrayList; foreach($l in $ls){ if($o.Count -eq 0 -or $o[$o.Count-1] -ne $l){ [void]$o.Add($l) } }; if($o.Count -gt 0){ Set-Content -LiteralPath $t -Value $o -Encoding UTF8; Write-Output ('  [txt] ' + (Split-Path $t -Leaf)) } }; if($dual -eq '1'){ $fn=$_.Name; if($_.DirectoryName -ine $root){ $i=$fn.IndexOf('.'); $fn=$fn.Substring(0,$i)+'_'+$_.Directory.Name+$fn.Substring($i) }; Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $cloud $fn) -Force -ErrorAction SilentlyContinue; if(Test-Path -LiteralPath $t){ Copy-Item -LiteralPath $t -Destination (Join-Path $cloud ($fn -replace '\.srt$','.txt')) -Force -ErrorAction SilentlyContinue }; Write-Output ('  [Shared 자막] ' + $fn) } }"
 
 REM === [2/2] gallery-dl 이미지 시도 ===
 echo.
@@ -257,7 +294,8 @@ REM === 클라우드 복사 ===
 echo.
 if "!DUAL!"=="0" goto copy_skip
 echo [복사] robocopy 동기화...
-robocopy "%LOCAL%" "%CLOUD%" "!TS!_!PLAT!_*.*" /S /R:5 /W:2 /NJH /NJS /NDL /NC /NS /NP /MT:4
+REM v5.7: /S 제거 = Shared는 바닥 평평 유지(자막은 자막 후처리가 제목 포함 이름으로 이미 바닥 복사)
+robocopy "%LOCAL%" "%CLOUD%" "!TS!_!PLAT!_*.*" /R:5 /W:2 /NJH /NJS /NDL /NC /NS /NP /MT:4
 set "RC_CODE=!errorlevel!"
 if !RC_CODE! geq 8 goto copy_fail
 if !RC_CODE! geq 1 goto copy_ok
@@ -271,22 +309,30 @@ goto copy_done
 :copy_fail
 echo [복사 실패] robocopy errorlevel=!RC_CODE!
 echo      로컬 파일은 안전: %LOCAL%
+set "GD_WHY=robocopy 오류 rc=!RC_CODE!"
 goto copy_done
 
 :copy_skip
 echo [복사] 클라우드 비활성화 - 로컬만 저장
 
 :copy_done
+set /a GD_CNT=0
+if "!DUAL!"=="1" for /f %%c in ('dir /b "%CLOUD%\!TS!_!PLAT!_*" 2^>nul ^| find /c /v ""') do set "GD_CNT=%%c"
 echo.
 echo ===============================================
 echo   다운로드 완료
 echo   로컬:    %LOCAL%
-if "!DUAL!"=="1" echo   클라우드: %CLOUD%
+if "!DUAL!"=="1" echo   GDRIVE : 전송 완료 !GD_CNT!개 - %CLOUD%
+if "!DUAL!"=="0" echo   GDRIVE : 미전송 - !GD_WHY!
 echo ===============================================
 echo.
-echo [다음 URL 입력 가능. 종료는 q]
-pause
 goto loop
+
+:esc_exit
+echo.
+echo [ESC 2번] 창을 닫습니다.
+endlocal
+exit
 
 :end
 echo.
