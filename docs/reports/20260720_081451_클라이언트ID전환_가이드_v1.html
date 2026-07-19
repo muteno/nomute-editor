@@ -1,0 +1,146 @@
+<meta name="color-scheme" content="dark">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rclone 자체 client_id 전환 가이드</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{background:#0b0d0c;color:#eef7f0;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;margin:0;padding:18px 14px 60px;line-height:1.6;font-size:15px;max-width:680px;margin:0 auto}
+h1{font-size:19px;margin:8px 0 4px;color:#00EED2}
+.sub{color:#9aa7a1;font-size:12.5px;margin-bottom:6px}
+.prog{position:sticky;top:0;background:rgba(11,13,12,.92);backdrop-filter:blur(10px);padding:10px 2px;margin:0 -2px 10px;z-index:5;border-bottom:1px solid rgba(255,255,255,.07)}
+.prog .bar{height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.prog .fill{height:100%;width:0;background:#00EED2;border-radius:999px;transition:width .3s ease}
+.prog .lbl{font-size:11.5px;color:#9aa7a1;margin-top:5px;font-variant-numeric:tabular-nums}
+.step{background:rgba(18,19,22,.55);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 15px;margin:12px 0;position:relative}
+.step.done{border-color:rgba(0,238,210,.35)}
+.shead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.num{flex:none;width:26px;height:26px;border-radius:8px;background:rgba(0,238,210,.12);color:#00EED2;display:grid;place-items:center;font-weight:800;font-size:13px}
+.stitle{font-weight:800;font-size:15px;flex:1}
+.chk{flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid rgba(255,255,255,.25);background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
+.chk svg{width:14px;height:14px;stroke:#00EED2;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .15s}
+.step.done .chk{border-color:rgba(0,238,210,.6);background:rgba(0,238,210,.10)}
+.step.done .chk svg{opacity:1}
+.desc{color:#cfd8d3;font-size:13.5px;margin:4px 0 8px}
+.desc b{color:#eef7f0}
+.desc a{color:#38C6FF;word-break:break-all}
+.codebox{position:relative;background:#101314;border:1px solid rgba(255,255,255,.09);border-radius:11px;margin:8px 0;overflow:hidden}
+.codebox pre{margin:0;padding:11px 52px 11px 13px;overflow-x:auto;font-size:12.5px;line-height:1.55;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;color:#d8fff8}
+.cp{position:absolute;top:7px;right:7px;width:34px;height:30px;border-radius:8px;border:1px solid rgba(0,238,210,.3);background:rgba(0,238,210,.10);color:#00EED2;cursor:pointer;display:grid;place-items:center;padding:0}
+.cp:active{transform:scale(.88)}
+.cp svg{width:15px;height:15px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.expect{border:1px dashed rgba(0,238,210,.35);border-radius:11px;padding:9px 12px;font-size:12.5px;margin:8px 0;background:rgba(0,238,210,.04)}
+.expect .k{color:#00EED2;font-weight:800;font-size:11.5px;display:block;margin-bottom:3px}
+.expect code{color:#d8fff8;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.note{font-size:12.5px;color:#FFE13D;background:rgba(255,225,61,.06);border:1px solid rgba(255,225,61,.2);border-radius:10px;padding:8px 11px;margin:8px 0}
+.branch{border-left:2px solid rgba(255,255,255,.14);padding-left:11px;margin:9px 0}
+.branch .bl{font-weight:800;font-size:12.5px;color:#38C6FF;margin-bottom:3px}
+details{background:rgba(18,19,22,.55);border:1px solid rgba(255,255,255,.07);border-radius:13px;padding:11px 14px;margin:9px 0}
+summary{font-weight:800;font-size:13.5px;cursor:pointer;color:#eef7f0}
+details p{font-size:13px;color:#cfd8d3;margin:8px 0 2px}
+code{background:rgba(255,255,255,.08);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace}
+.fin{border:1px solid rgba(0,238,210,.4);background:rgba(0,238,210,.06);border-radius:16px;padding:14px 15px;margin:16px 0;font-size:14px;display:none}
+.fin.on{display:block}
+h2{font-size:14.5px;margin:22px 0 6px;color:#9aa7a1;font-weight:800}
+</style>
+
+<h1>rclone 자체 client_id 전환 — 15분 1회성</h1>
+<div class="sub">260720 · 공용 출입증(shared client_id)이 은퇴 예고+스로틀로 죽어가는 중 → 내 전용 출입증으로 교체하면 이 증상 자체가 소멸 · 폰 하나로 끝(1~4번은 폰 크롬, 5번부터 Termux) · 정본 = 플레이북 §2</div>
+
+<div class="prog"><div class="bar"><div class="fill" id="fill"></div></div><div class="lbl" id="plbl">0 / 7 완료</div></div>
+
+<div class="step" data-k="s0">
+  <div class="shead"><span class="num">0</span><span class="stitle">걸려 있는 명령 정리 + 30초 확진</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">멈춰 있는 lsf부터 끊기: 하단 <b>CTRL</b> 누르고 <b>c</b>. 그다음 수다쟁이 모드로 30초 재실행 — 뭐에 막히는지 실토하게:</div>
+  <div class="codebox"><pre>rclone lsf gdrive: -vv --contimeout 15s --timeout 30s 2>&1 | tail -30</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="branch"><div class="bl">403 · rateLimitExceeded · quota 반복</div>공용 출입증 스로틀 <b>확정</b> → 이 가이드 그대로 진행.</div>
+  <div class="branch"><div class="bl">invalid_grant · unauthorized · token 에러</div>토큰 사망 → 역시 이 가이드 그대로(6번 재인증에서 같이 해결됨).</div>
+  <div class="branch"><div class="bl">dial tcp · i/o timeout · connection refused</div>폰→구글 네트워크 문제(VPN·사설 DNS·데이터 절약 모드 확인). 아래로 판별 — <code>200</code> 나오면 네트워크 무죄 = 출입증 축:</div>
+  <div class="codebox"><pre>curl -sS -m 10 -o /dev/null -w "%{http_code}\n" https://www.googleapis.com/discovery/v1/apis</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+</div>
+
+<div class="step" data-k="s1">
+  <div class="shead"><span class="num">1</span><span class="stitle">구글 클라우드 프로젝트 만들기 (폰 크롬)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc"><a href="https://console.cloud.google.com/projectcreate">console.cloud.google.com/projectcreate</a> 열기 — <b>드라이브 쓰는 그 구글 계정</b>으로 로그인. 프로젝트 이름 붙여넣고 [만들기]:</div>
+  <div class="codebox"><pre>nomute-rclone</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+</div>
+
+<div class="step" data-k="s2">
+  <div class="shead"><span class="num">2</span><span class="stitle">Drive API 켜기</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc"><a href="https://console.cloud.google.com/apis/library/drive.googleapis.com">Drive API 페이지</a> 열고 파란 <b>[사용(Enable)]</b> 버튼 한 번. (방금 만든 nomute-rclone 프로젝트가 상단에 선택돼 있는지 확인)</div>
+</div>
+
+<div class="step" data-k="s3">
+  <div class="shead"><span class="num">3</span><span class="stitle">동의 화면 — 외부 + 프로덕션 게시 ⚠핵심</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc"><a href="https://console.cloud.google.com/apis/credentials/consent">OAuth 동의 화면</a> → 유형 = <b>외부(External)</b> → 앱 이름 <code>nomute-rclone</code>·지원 이메일 = 본인 → 나머지는 전부 [저장 후 계속]으로 통과.</div>
+  <div class="note"><b>게시 상태를 반드시 "프로덕션(앱 게시)"으로 전환</b> — 테스트 상태로 두면 <b>7일마다 토큰이 죽는 함정</b>(레포 §2 판례). "확인되지 않은 앱" 경고 문구는 개인용이라 무시해도 됨. 메뉴 위치가 다르게 보이면 동의 화면의 [대상/Audience] 탭에서 [앱 게시] 버튼.</div>
+</div>
+
+<div class="step" data-k="s4">
+  <div class="shead"><span class="num">4</span><span class="stitle">출입증 발급 — OAuth 클라이언트 ID</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc"><a href="https://console.cloud.google.com/apis/credentials">사용자 인증 정보</a> → <b>[+ 사용자 인증 정보 만들기]</b> → <b>OAuth 클라이언트 ID</b> → 애플리케이션 유형 = <b>데스크톱 앱</b> → [만들기].</div>
+  <div class="expect"><span class="k">뜨는 팝업에서</span><b>클라이언트 ID</b>(<code>…apps.googleusercontent.com</code>)와 <b>클라이언트 보안 비밀</b>(<code>GOCSPX-…</code>) 둘 다 복사해 메모장에 잠깐 보관.</div>
+</div>
+
+<div class="step" data-k="s5">
+  <div class="shead"><span class="num">5</span><span class="stitle">폰 rclone에 심기 (Termux)</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">아래 붙여넣고 <b>&lt;ID&gt;·&lt;SECRET&gt; 두 곳만 4번에서 복사한 값으로 교체</b> 후 엔터:</div>
+  <div class="codebox"><pre>rclone config update gdrive: client_id &lt;ID&gt; client_secret &lt;SECRET&gt;</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+</div>
+
+<div class="step" data-k="s6">
+  <div class="shead"><span class="num">6</span><span class="stitle">재인증 — 새 출입증으로 동의 1회</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="codebox"><pre>rclone config reconnect gdrive:</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="desc">질문은 엔터(기본값)로 통과 → <code>http://127.0.0.1:53682/auth…</code> 링크가 뜨면 자동으로 브라우저가 열리거나, 안 열리면 링크 길게 눌러 복사 → 크롬에 붙여넣기 → 계정 선택.</div>
+  <div class="note">"Google에서 확인하지 않은 앱" 화면이 나오면 정상 — <b>[고급] → [nomute-rclone(안전하지 않음)으로 이동]</b> → [허용] → "Success!" 뜨면 Termux로 복귀. scope 질문이 나오면 <b>drive(전체)</b> 유지.</div>
+</div>
+
+<div class="step" data-k="s7">
+  <div class="shead"><span class="num">7</span><span class="stitle">검증 + 밀린 것 회수</span><button class="chk" aria-label="완료 체크"><svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg></button></div>
+  <div class="desc">NOTICE 경고 없이 <b>바로</b> 목록이 뜨면 전환 성공:</div>
+  <div class="codebox"><pre>rclone lsf gdrive:Shared | tail -5</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="desc">싱크 한 바퀴 + 막혀 있던 최근 24시간 치 즉시 회수:</div>
+  <div class="codebox"><pre>rm -f ~/.drivesync.last && bash ~/.termux/tasker/drive-gallery-sync.sh; echo rc=$?
+rclone copy gdrive:Shared /sdcard/Pictures/DriveSync --max-age 24h --inplace -v
+termux-media-scan -r /sdcard/Pictures/DriveSync</pre><button class="cp" aria-label="복사"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button></div>
+  <div class="desc">갤러리에 이미지 왔는지 확인하면 끝. (드라이브 데스크톱 쓰는 PC들은 자기 인증이라 <b>손댈 것 없음</b> — 이 교체는 폰 rclone만)</div>
+</div>
+
+<div class="fin" id="fin">🎉 <b>전환 완료.</b> 이제 공용 출입증 은퇴·스로틀과 무관해졌고, 혹시 또 죽어도 v1.4가 9분 안에 알림을 쏜다. 각 단계 막힌 데 있으면 그 화면 스크린샷 + 0번 출력 채팅으로.</div>
+
+<h2>문제 생기면</h2>
+<details><summary>0번에서 curl도 200이 안 나와</summary><p>폰→구글 API 네트워크가 막힌 것 — VPN·사설 DNS(1.1.1.1 등)·데이터 절약 모드·와이파이 공유기 차단 순으로 끄고 재시도. 이건 출입증 문제가 아니라서 1~7번 해도 안 풀림.</p></details>
+<details><summary>reconnect 링크가 크롬에서 안 열려</summary><p>Success 리다이렉트는 폰 안(127.0.0.1)으로 돌아오는 구조라 <b>같은 폰</b>에서 열어야 함. 크롬 말고 삼성인터넷도 가능. 그래도 안 되면 그 화면 스크린샷 회신.</p></details>
+<details><summary>정본은 어디?</summary><p>플레이북 <code>docs/드라이브싱크_갤러리_폰파이프라인_v1.0.md</code> §2 · 공식 절차 = <a href="https://rclone.org/drive/#making-your-own-client-id">rclone.org/drive #making-your-own-client-id</a> — 콘솔 화면이 개편되면 공식 문서가 맞음(상단 검색에 "OAuth" 치면 다 나옴).</p></details>
+
+<script>
+(function(){
+  var KEY='nm_clientid_guide_260720';
+  var saved={}; try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
+  var steps=[].slice.call(document.querySelectorAll('.step'));
+  function paint(){
+    var done=0;
+    steps.forEach(function(s){ if(saved[s.dataset.k]){s.classList.add('done');done++;} else s.classList.remove('done'); });
+    document.getElementById('fill').style.width=(done/steps.length*100)+'%';
+    document.getElementById('plbl').textContent=done+' / '+steps.length+' 완료';
+    document.getElementById('fin').classList.toggle('on',done===steps.length);
+  }
+  steps.forEach(function(s){
+    s.querySelector('.chk').addEventListener('click',function(){
+      saved[s.dataset.k]=!saved[s.dataset.k];
+      try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(e){}
+      paint();
+    });
+  });
+  paint();
+  var CHECK='<svg viewBox="0 0 24 24"><path d="M4 12.5 10 18.5 20 6.5"/></svg>';
+  [].slice.call(document.querySelectorAll('.codebox')).forEach(function(box){
+    var btn=box.querySelector('.cp'), pre=box.querySelector('pre'), orig=btn.innerHTML, t;
+    btn.addEventListener('click',function(){
+      var txt=pre.textContent;
+      function ok(){ btn.innerHTML=CHECK; clearTimeout(t); t=setTimeout(function(){btn.innerHTML=orig;},1200); }
+      function fb(){ var ta=document.createElement('textarea'); ta.value=txt; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(ta); }
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok,function(){fb()}); } else fb();
+    });
+  });
+})();
+</script>
