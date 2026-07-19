@@ -25,7 +25,8 @@
     border:2px solid var(--bg); background-clip:padding-box; }
   ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,.6); background-clip:padding-box; }
   button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; }
+  @font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:local('Pretendard Variable'),url(assets/fonts/pretendard.woff2) format('woff2-variations')}   /* 본문 폰트 = index 정본 이식(운영자 260719 승인 = Q160 잔여 4탭 폰트 확장 · thumb/edit 동문 — iframe이라 부모 index Pretendard 미상속) */
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing:-.2px /* raw-ok: 자간 = index body 정본 exact 계승 */; -webkit-font-smoothing:antialiased; }   /* 폰트 = index body 정본 문자단위 exact 계승(M1 판례 — 구 시스템 스택 폐지 · 콘텐츠 폰트는 개별 명시라 무접촉) */
   html.inmodal, html.inmodal body { background:transparent; }
   .wrap { max-width:600px; margin:0 auto; padding:18px 16px 40px; }   /* 상단 18 = 도구 모달 첫 소머리 화면선(ly·k 기준 · §표기표준 나) */
   .songsh { position:sticky; top:0; z-index:7; margin:-18px -16px var(--sp-2); padding:16px 16px 0; background:var(--bg); }   /* raw-ok: 16/-18/-16 = ly .lysh 정본 동일값(.wrap padding 18/16 미러 브레이크아웃 · 스크롤 0에서도 뷰포트 밀착) · Contents 액자째 최상단 sticky(운영자 260717 "자막처럼 맨 위 고정") · bg=--bg 토큰(쉘 필러) · z7 = 장르 팝업(.selpop z9) 아래 · padding-bottom 0 = 버튼 margin이 하단 여백 전담 */
@@ -94,6 +95,8 @@
 
   /* 발사 버튼 = thumb .go(=index .mkbtn 통일) verbatim 계승 — 글래스 고스트·pill·풀필 게이지·체크 드로우(운영자 260713 "버튼도 다 계승") */
   .go { width:100%; margin-top:16px; padding:12px; background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:999px; font-weight:800; font-size:14px; font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; transition:transform .12s ease, background .15s ease, border-color .15s ease; }   /* 배경 .05→.02(운영자 260713 B) · padding 18→12 = "9→6 줄어든 만큼"(⅔·33%↓ · 운영자 260713 2차 · 높이 52→40 · 18→12=sp-3→sp-2) + line-height:1 = thumb .go 발사 게이지바 정본 계승(글자 정중앙 dy0 · 8뷰어 통일) */
+  #optGo, #sunoGo, #lyriaGo, #vApply { border-radius:var(--r-m); padding:var(--sp-1); font-size:var(--fs-label); overflow:visible; }   /* 생성·발사 버튼 4형제 일괄 = Image Studio 정본 합류(#geniGo→thumb #go 사다리 = r-m 11·sp-1 6·fs-label 13 · 운영자 260719 승인 = PR 2518 §3③ 형상 사인오프(주석 PR번호 = hex 오탐 회피 표기) · 같은 화면 형제라 4개 동시 = [4] 형제 통일 · 공유 .go 원형 무접촉 = id 스코프 동문) · overflow:visible = 히트슬롭 통로(게이지 = background 애니라 시각 불변) */
+  #optGo::before, #sunoGo::before, #lyriaGo::before, #vApply::before { content:''; position:absolute; left:0; right:0; top:-9px; bottom:-9px; }   /* 탭존 45px(시각 27 불변) = 44px 관례 복원 · raw-ok: ±9 = .rm 히트슬롭 정본 동값(평의회3 260718) */
   /* hover 전경 fill 없음·:active만 피드백(index .mkbtn 계승 · 터치 stuck-hover 차단) — scale = 게이지 화이트리스트 예외(CII) */
   .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
   .go:disabled { opacity:.5; cursor:default; transform:none; }
@@ -718,7 +721,7 @@ vcLoad();   // 부팅 로드 — 플레이리스트 재생만 해도 [보이스 
 // ── 완료 푸시 딥링크(?done=<id> · Access 재로그인 하드 리다이렉트서 해시 유실·쿼리 생존 · #done 호환) — 그 곡 결과로 직행+강조(edit/thumb 정본 계승 · voice 커버도 song_out 공용) ──
 function edFocus(sel){ const el=$(sel); if(!el||el.hidden) return; try{ el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'center'}); }catch(e){} el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); }
 (function(){
-  const id=(location.search.match(/[?&]done=([0-9]{12}-[0-9a-f]{6})\b/)||[])[1]||(location.hash.match(/^#done=([0-9]{12}-[0-9a-f]{6})$/)||[])[1];
+  const id=(location.search.match(/[?&]done=([\w-]+)\b/)||[])[1]||(location.hash.match(/^#done=([\w-]+)$/)||[])[1];   // 패턴 = thumb doneReq [\w-] 통일(Q176 — id 형식 변경 내성·경로 주입 동일 차단)
   if(!id) return;
   USER_ACT=true; pendClear();   // 딥링크 = pend 재개보다 우선(그 작업 확정 랜딩)
   (async()=>{
