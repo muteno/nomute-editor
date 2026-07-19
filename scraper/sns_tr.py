@@ -34,6 +34,18 @@ MAX_CALLS = 200           # 런당 gtx 상한(폭주 방어 · 캐리로 실 대
 MAX_Q = 900               # gtx GET q 길이 캡(URL 한계 · 초과분 잘라 번역 = 긴 X/스레드 본문 방어)
 GTX = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ko&dt=t&q="
 
+# 고정용어 교정 사전(gtx 오역 방지 · 무비용 · 운영자 260719 "사전 스캐폴드") — scraper/tr_glossary.json(운영자 편집 가능)
+try:
+    GLOSS = {k.lower(): v for k, v in (json.load(open(os.path.join(ROOT, "scraper", "tr_glossary.json"), encoding="utf-8")) or {}).items() if not k.startswith("_") and v}
+except Exception:                         # noqa: BLE001 — 사전 부재·파손 = 교정 없이 진행(fail-soft)
+    GLOSS = {}
+_GLOSS_RX = re.compile(r"\b(" + "|".join(re.escape(k) for k in sorted(GLOSS, key=len, reverse=True)) + r")\b", re.I) if GLOSS else None
+
+
+def _gloss(text):
+    """gtx 앞단 고정용어 교정 — 소스의 등재 용어를 정본 한글로 치환(고유명사 왜곡 방지)."""
+    return _GLOSS_RX.sub(lambda m: GLOSS.get(m.group(0).lower(), m.group(0)), text) if _GLOSS_RX else text
+
 
 def _targets(data):
     """[(배열, 표시필드)] — title/text 보유 외국어-가능 소스 전체(bsky·query류 제외)."""
@@ -66,15 +78,28 @@ def _is_korean(s):
 
 
 def _translate(text):
-    """gtx 무키 번역 → (ko, src). 소스=ko·무의미 = (None, src) — 원문 폴백."""
-    req = urllib.request.Request(GTX + urllib.parse.quote(text[:MAX_Q]), headers={"User-Agent": "Mozilla/5.0"})
+    """gtx 무키 번역(+사전 센티넬 보호 교정) → (ko, src). 무개선(원문과 동일) = (None, src).
+
+    고정용어를 사설영역 센티넬(U+E000~)로 치환 → gtx가 나머지만 번역(센티넬은 통과 실측) → 정본 한글로 복원.
+    치환→직접한글이면 gtx가 그 문장을 한국어로 봐 나머지 영어를 안 옮기는 문제 회피(운영자 260719).
+    """
+    terms = []
+
+    def _protect(m):
+        terms.append(GLOSS.get(m.group(0).lower(), m.group(0)))
+        return chr(0xE000 + len(terms) - 1)   # 고유 센티넬(gtx 통과 실측 · 제목당 용어 수 « 사설영역 6400)
+
+    q = _GLOSS_RX.sub(_protect, text) if _GLOSS_RX else text
+    req = urllib.request.Request(GTX + urllib.parse.quote(q[:MAX_Q]), headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=15) as r:
         j = json.loads(r.read().decode("utf-8", "replace"))
     src = (j[2] if len(j) > 2 else "") or ""
-    if src == "ko":
-        return None, src
     ko = "".join(seg[0] for seg in (j[0] or []) if seg and seg[0]).strip()
-    return (ko or None), src
+    if src == "ko" or not ko:             # gtx 미번역(센티넬뿐이라 한국어로 봄 등) → 보호 문자열(q)이 최선
+        ko = q
+    for i, term in enumerate(terms):      # 센티넬 → 정본 한글 복원
+        ko = ko.replace(chr(0xE000 + i), term)
+    return (ko if ko and ko != text else None), src   # 원문과 다르면(번역 or 교정) 채택 · 무개선 = None(스킵)
 
 
 def _carry_map():
