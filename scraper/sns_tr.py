@@ -6,9 +6,9 @@
 그리드·썸네일 캡션이 미얀마어·태국어·영어로 노출 = 안 읽힘. 각 항목의 표시 필드(title 또는 text)를
 한국어로 번역해 `ko` 부착 → 뷰어는 ko 있으면 그걸 노출(원어는 데이터 보존·화면 미표기 = "원어 표기 안해도됨").
 
-대상(_TARGETS) = title/text 보유 외국어-가능 소스 전체. 제외:
+대상(_TARGETS) = title/text/query 보유 외국어-가능 소스 전체(검색어 포함 = 운영자 260719 "검색어도 번역"). 제외:
   · bsky = 자체 LLM 번역(bsky_brief.sh ko·**키워드** 마커) 별도 경로 → 중복 방지 위해 미포함.
-  · gtrends·signal·xtrends = query(검색어·트렌드 키워드)라 번역 대상 아님(고유명사 왜곡 위험).
+  · 검색어(gtrends·signal·xtrends의 query) = 표시만 ko 번역 · 클릭 검색 URL은 원문 query 유지(뷰어 ggMap/fillT · 번역어로 검색 깨짐 방지).
 불변(틱톡 스크래퍼 "LLM 0콜·과금 0·무키" 정신 계승):
   · 무키 gtx(translate.googleapis.com/translate_a/single?client=gtx) = LLM 0·과금 0.
   · 한글 필드/소스감지 'ko' = 스킵(API 0콜).
