@@ -102,18 +102,28 @@ def main():
                 print(f'fb-fetch: 지표 생존 — {m} → {k}({len(days)}일)')
         except Exception as e:
             print(f'fb-fetch: 인사이트 {m} 스킵({e})')
-    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach'), 'interactions': a.get('interactions')}
     posts, thumbs = [], []
     try:
-        for x in api(f'{PID}/posts', fields='message,permalink_url,created_time,full_picture', limit=10).get('data', []):
+        # 게시물 반응 필드 = 인사이트 API와 별개 축(260719 — 탐침 결과 인사이트 후보 전멸 · Graph 필드는 생존):
+        # reactions+comments+shares 합계로 상호작용 일별 시리즈 재구성 → 일일 추이 '상호작용' 칩·평균 병기 실데이터.
+        for x in api(f'{PID}/posts', fields='message,permalink_url,created_time,full_picture,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=10).get('data', []):
             nm = (x.get('message') or '(무캡션)').split('\n')[0][:60]
             posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None})
             thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
             dt = str(x.get('created_time', ''))[:10]
-            series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
+            if dt:
+                series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
+                eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
+                    + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
+                    + ((x.get('shares') or {}).get('count') or 0)
+                series[dt]['interactions'] = (series[dt].get('interactions') or 0) + eng
     except Exception as e:
         print('fb-fetch: 게시물 스킵:', e)
     d['posts'], d['thumbs'] = posts, thumbs
+    if a.get('interactions') is None:
+        idays = sorted(dt for dt in series if 'interactions' in series[dt])
+        if idays: a['interactions'] = series[idays[-1]]['interactions']
+    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach'), 'interactions': a.get('interactions')}
     d['daily_series'] = [{'date': k, **v} for k, v in sorted(series.items())]
     # 집계 이식(운영자 260718 "집계 이식 ㄱ") — insta_signals.py avg 산식 미러(L410-413: mean 전체·최근7·ratio) ·
     # daily_series 실측 축(views/reach/follows/posts)만 = 확실한 데이터. per-post 지표가 필요한 topics/signals/eras/fmt는
