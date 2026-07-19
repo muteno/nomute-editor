@@ -9679,6 +9679,8 @@ function renderSnsTrends() {
   const _trSig = [d.updated, (typeof BRIEF !== 'undefined' && BRIEF && BRIEF.updated) || '', TRREG, TR_TOPF, localStorage.getItem('nm_trend_sort') || '', localStorage.getItem('nm_trend_gfold') || '', localStorage.getItem('nm_trend_fold') || ''].join('|');   // 시그니처 가드(평의회⑧ — 무가드 통재구축이 폴링마다 재부양·토글 랙 유발) = 수집함 _scSig 문법 계승 · 데이터·지역·정렬·접힘 동일 = 무접촉
   if (_trSig === box._trSig && box.childElementCount) return;
   const mrg = (a3, b3, key) => { const s3 = new Set(a3.map(key)), o3 = a3.slice(); (b3 || []).forEach(x3 => { const k3 = key(x3); if (k3 && !s3.has(k3)) { s3.add(k3); o3.push(x3); } }); return o3; };
+  // 외국어 제목·본문 한글 번역 노출(운영자 260719 "미리 다 달아놔") — 서버 sns_tr.py(무키 gtx)가 부착한 ko를 표시 필드(title/text)에 반영 = 전 소비처 자동 한글화(원어는 데이터 보존·미표기) · bsk=자체 LLM ko 경로라 제외 · gt/sig/xtr=검색어라 제외 · 틱톡 매퍼의 ko|| 폴백은 이 패스가 상위 대체(무해 중복) · idempotent(ko 불변 = 재렌더 안전)
+  { const _sb = d.subs || {}; [[d.youtube, 'title'], [d.youtube_gl, 'title'], [(d.tiktok || {}).videos, 'title'], [d.shorts, 'title'], [d.aivid, 'title'], [d.reddit, 'title'], [d.hackernews, 'title'], [_sb.x, 'text'], [_sb.tiktok, 'title'], [_sb.youtube, 'title'], [_sb.insta, 'title'], [_sb.threads, 'text']].forEach(p3 => { if (Array.isArray(p3[0])) p3[0].forEach(it3 => { if (it3 && it3.ko) it3[p3[1]] = it3.ko; }); }); }
   const gt = TRREG === 'kr' ? (d.gtrends || []) : mrg(d.gtrends || [], d.gtrends_gl, g3 => (g3.query || '').toLowerCase());
   const yt = TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15);
   const ytn = d.youtube_news || [];   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시)
