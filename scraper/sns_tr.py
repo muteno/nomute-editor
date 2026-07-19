@@ -119,6 +119,17 @@ def _carry_map():
     return m
 
 
+_CAPWORD = re.compile(r"\b[A-Z][A-Za-z]{2,}\b")
+
+
+def _propnoun(s):
+    """고유명사 후보 = 대문자 시작 라틴 단어 포함 + 짧은 구(≤4어) — 사전(tr_glossary) 오역 검토 대상 자동 수집."""
+    s = s or ""
+    if not _CAPWORD.search(s) or len(s.split()) > 4:
+        return False
+    return not (_GLOSS_RX and _GLOSS_RX.search(s))   # 이미 사전 등재분은 제외
+
+
 def main():
     if os.environ.get("SNS_TR", "1") != "1":
         print("sns-tr: 게이트 OFF(SNS_TR≠1) — 스킵")
@@ -134,6 +145,7 @@ def main():
 
     carry = _carry_map()
     calls = done = skipped = failed = 0
+    audit = []                            # 고유명사 후보 자동 수집(사전 오역 검토용 · 운영자 260719 "해해")
     for arr, f in _targets(data):
         for it in arr:
             val = (it.get(f) or "").strip()
@@ -159,6 +171,8 @@ def main():
                 if ko and ko != val:
                     it["ko"] = ko
                     done += 1
+                    if _propnoun(val):    # 대문자 라틴 고유명사 포함 짧은 구 = 오역 나기 쉬운 자리 → 검토 후보
+                        audit.append((val, ko))
                 else:
                     it.pop("ko", None)
                     skipped += 1
@@ -168,6 +182,13 @@ def main():
 
     json.dump(data, open(OUT, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(f"✅ sns-tr: 번역/승계 {done}건 · 스킵(한글·무의미) {skipped} · 실패 {failed} · gtx콜 {calls}")
+    # 고유명사 후보 자동 수집 리포트(사전 오역 검토용) — Actions 로그서 'tr-audit' grep해 오역이면 tr_glossary.json 추가(무비용 사전 성장)
+    if audit:
+        seen_a = set()
+        uniq = [(s, k) for s, k in audit if not (s.lower() in seen_a or seen_a.add(s.lower()))]
+        print(f"::notice::tr-audit: 고유명사 후보 {len(uniq)}건(사전 검토 대상 — 오역이면 tr_glossary.json 한 줄 추가)")
+        for s, k in uniq[:30]:
+            print(f"  tr-audit | {s[:44]} → {k[:44]}")
 
 
 if __name__ == "__main__":
