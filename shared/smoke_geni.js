@@ -124,7 +124,7 @@ const STUB_FN = `(on) => {
     }, SEL);
     ok('S6 이식 모드 폼 상호작용(칩→요약 리드백)', s6.found && s6.on === 'watercolor' && s6.sum.includes(SEL.styleAltKo), JSON.stringify(s6));
 
-    await pg.fill(SEL.wish, 'QA스모크 장면');
+    await pg.evaluate(S => { const w = document.querySelector(S.wish); w.value = 'QA스모크 장면'; w.dispatchEvent(new Event('input', { bubbles: true })); }, SEL);   // 텍스트칸 260719 hidden 이주(운영자 "프리뷰 위에 텍스트 보낼테니 일단 빼봐") → fill(visible 요구)이 hidden에 타임아웃 → value 직접 주입(close 스냅샷 보존 로직은 살아있음 = DOM 생존·복원 시 재노출이라 S5 재진입 보존 계약 유효)
     await pg.click(SEL.tab2); await pg.waitForTimeout(350);
     const s4 = await pg.evaluate(S => ({
       hostHidden: document.querySelector(S.host).hidden,
