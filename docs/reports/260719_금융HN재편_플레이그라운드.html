@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>금융·해커뉴스/문화 재편 — 전후 시안 v2</title>
+<style>
+:root{
+  /* viewer/index.html :root 정본 사본 (계승 · 임의창작 0) */
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-3:#e23b2a; --bias-l2:#3a6ddb; --bias-l1:#38C6FF;
+  --glass2:rgba(18,19,22,.55); --modal-glass:rgba(17,18,20,.64);
+  --r-m:11px; --r-s:9px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-h3:14px; --fs-label:13px; --fs-body:15px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800;
+  --tune-unitgap:4px;   /* #5 숫자↔단위 간격(현행 1px → 4px) */
+  --tune-spd:5s;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased;padding:0 0 80px}
+h1{font-size:20px;font-weight:var(--fw-x);margin:0 0 4px;letter-spacing:-.01em}
+h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin:0}
+header{padding:22px 20px 16px;border-bottom:1px solid var(--line)}
+.wrap{display:grid;grid-template-columns:280px 1fr}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.console{padding:18px 20px;border-right:1px solid var(--line);position:sticky;top:0;align-self:start;background:var(--bg)}
+@media(max-width:820px){.console{border-right:0;border-bottom:1px solid var(--line);z-index:9;background:var(--modal-glass);backdrop-filter:blur(12px)}}
+.cgrp{margin-bottom:16px}
+.cgrp>label{display:block;font-size:var(--fs-xs);color:var(--mut);font-weight:var(--fw-b);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.row .rl{flex:1;font-size:var(--fs-sm)}
+.row .rv{font-variant-numeric:tabular-nums;font-size:var(--fs-sm);color:var(--accent);font-weight:var(--fw-b);min-width:42px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.btn{background:var(--accent);color:#04201d;border:0;border-radius:var(--r-pill);padding:7px 14px;font-size:var(--fs-sm);font-weight:var(--fw-b);cursor:pointer;font-family:inherit;width:100%}
+.chk{font-size:var(--fs-sm);color:var(--fg);line-height:1.85}
+.chk b{color:var(--accent)}
+.note{font-size:var(--fs-xs);color:var(--mut);line-height:1.6;margin-top:6px}
+
+.stage{padding:20px}
+.secttl{font-size:var(--fs-h3);font-weight:var(--fw-x);margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+.secttl:first-child{margin-top:0}
+.secttl .tag{font-size:var(--fs-xs);color:var(--mut);font-weight:var(--fw-b);border:1px solid var(--line);border-radius:var(--r-pill);padding:2px 9px}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.ba{grid-template-columns:1fr}}
+.pane{border:1px solid var(--line);border-radius:var(--r-m);background:var(--glass2);padding:14px 15px;min-width:0}
+.pane.after{border-color:rgba(0,238,210,.28)}
+.plab{font-size:var(--fs-xs);font-weight:var(--fw-x);letter-spacing:.03em;margin-bottom:12px;display:inline-block;padding:2px 9px;border-radius:var(--r-pill)}
+.plab.b{background:rgba(255,255,255,.06);color:var(--mut)}
+.plab.a{background:rgba(0,238,210,.14);color:var(--accent)}
+
+.gh{font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--fg);margin:0 0 3px;display:flex;align-items:center;gap:6px}
+.gh .u{color:var(--mut);font-weight:400;font-size:var(--fs-xs)}
+.gh .base{opacity:.7;color:var(--mut);font-weight:400;font-size:var(--fs-xs)}
+.gh .st{margin-left:auto;font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-b)}
+.gh::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);flex:none}
+
+/* 금융 행 (.fin-* 정본 계승) + 표형 grid */
+.fin-rows{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.fin-row{display:grid;grid-template-columns:18px 1fr auto 56px;align-items:center;column-gap:8px;padding:3px 0;font-size:var(--fs-sm);color:var(--fg);
+  transition:opacity .22s ease,transform .22s ease}
+.fin-row.swap{opacity:0;transform:translateY(-5px)}
+.fin-ico{align-self:center;margin-block:-3px;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:var(--r-pill);background:var(--line2);color:var(--fg);font-size:var(--fs-xs);font-weight:var(--fw-x);line-height:1}
+.fin-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fin-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--fw-b)}
+.fin-v i{color:var(--mut);font-style:normal;font-size:var(--fs-xs);margin-left:var(--tune-unitgap)}
+.fin-chg{text-align:right;font-size:var(--fs-xs);font-variant-numeric:tabular-nums;color:var(--mut)}
+.fin-chg.up{color:var(--accent-3)} .fin-chg.dn{color:var(--bias-l2)}
+.fin-split-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+@media(max-width:520px){.fin-split-2{grid-template-columns:1fr}}
+.subgrp{margin-top:12px}
+
+/* 순위 행 (실검 rt2col 계승) */
+.rt2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:520px){.rt2{grid-template-columns:1fr}}
+.trow{display:grid;grid-template-columns:20px 1fr auto;align-items:baseline;column-gap:10px;padding:5px 0;font-size:var(--fs-sm);
+  transition:opacity .22s ease,transform .22s ease}
+.trow.swap{opacity:0;transform:translateY(-5px)}
+.trank{text-align:center;color:var(--accent);font-weight:var(--fw-x);font-variant-numeric:tabular-nums}
+.tq{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tq .en{display:block;color:var(--mut);font-size:var(--fs-xs);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.taud{text-align:right;font-size:var(--fs-xs);color:var(--mut);font-variant-numeric:tabular-nums}
+.tokrow{font-size:var(--fs-xs);color:var(--mut);margin-top:16px;line-height:1.7;border-top:1px solid var(--line);padding-top:12px}
+.tokrow code{color:var(--fg)} .warn{color:var(--accent-3)}
+</style>
+</head>
+<body>
+<header>
+  <h1>금융 · 해커뉴스/문화 <b>재편 v2</b> — 리파인 반영</h1>
+  <p class="sub">좌우배치=확정값 락 · 이번 확인 = <b style="color:var(--accent)">촤르륵 전환 모션</b>(전광판 플립→행별 크로스페이드) + 종목 3상태 회전</p>
+</header>
+<div class="wrap">
+  <aside class="console">
+    <div class="cgrp">
+      <label>반영된 리파인 8</label>
+      <div class="chk">
+        ① <b>좌우2열·표형 락</b><br>
+        ② 박스오피스 <b>관객수</b> 우측<br>
+        ③ 해커뉴스 <b>촤르륵</b>(위→아래 페이드)<br>
+        ④ 코스피·코스닥 <b>pt</b><br>
+        ⑤ 숫자↔단위 간격 ↑<br>
+        ⑥ 종목도 <b>촤르륵 5s</b><br>
+        ⑦ 전환 시 <b>시총</b><br>
+        ⑧ 3번째 = <b>달러 환산</b>
+      </div>
+    </div>
+    <div class="cgrp">
+      <label>숫자 ↔ 단위 간격 (#5)</label>
+      <div class="row"><span class="rl">unit-gap</span><span class="rv" id="vGap">4</span></div>
+      <input type="range" id="rGap" min="1" max="10" step="1" value="4">
+      <p class="note">정본 <code>1px</code> → 제안 <code>4px</code></p>
+    </div>
+    <div class="cgrp">
+      <label>전환 주기</label>
+      <div class="row"><span class="rl">회전</span><span class="rv" id="vSpd">5.0s</span></div>
+      <input type="range" id="rSpd" min="3" max="8" step="1" value="5">
+      <button class="btn" id="btnNow">지금 전환 ▸</button>
+      <p class="note">해커뉴스 1~7↔8~14 · 종목 가격→시총→달러</p>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <!-- ① 금융 -->
+    <div class="secttl">① 금융</div>
+    <div class="ba">
+      <div class="pane"><span class="plab b">현행</span>
+        <div class="gh">암호화폐 <span class="u">· 업비트</span></div>
+        <div class="fin-rows" style="grid-template-columns:none">
+          <div style="display:flex;gap:8px;font-size:var(--fs-sm);padding:3px 0"><span class="fin-ico">B</span><span style="flex:1">BTC</span><b>953,180,000<span style="color:var(--mut);font-size:11px">원</span></b></div>
+        </div>
+        <p class="note warn">⚠ BTC 10배 · 1열 · 단위 붙음 · 지수 pt 없음</p>
+      </div>
+      <div class="pane after"><span class="plab a">신안 v2</span>
+        <div class="fin-split-2">
+          <div>
+            <div class="gh">환율 <span class="u">· 원화</span> <span class="base">· 전일 대비</span></div>
+            <div class="fin-rows">
+              <div class="fin-row"><span class="fin-ico">$</span><span class="fin-nm">미국 달러</span><span class="fin-v">1,490<i>원</i></span><span class="fin-chg up">+0.10%</span></div>
+              <div class="fin-row"><span class="fin-ico">¥</span><span class="fin-nm">일본 엔</span><span class="fin-v">9.17<i>원</i></span><span class="fin-chg dn">-0.10%</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="gh">암호화폐 <span class="u">· 업비트</span> <span class="base">· 전일 대비</span></div>
+            <div class="fin-rows">
+              <div class="fin-row"><span class="fin-ico">B</span><span class="fin-nm">BTC</span><span class="fin-v">95,318,000<i>원</i></span><span class="fin-chg dn">-0.17%</span></div>
+              <div class="fin-row"><span class="fin-ico">E</span><span class="fin-nm">ETH</span><span class="fin-v">2,752,000<i>원</i></span><span class="fin-chg up">+0.33%</span></div>
+            </div>
+          </div>
+          <div class="subgrp">
+            <div class="gh">증시 <span class="u">· 지수</span> <span class="base">· 전일 대비</span></div>
+            <div class="fin-rows">
+              <div class="fin-row"><span class="fin-ico">코</span><span class="fin-nm">코스피</span><span class="fin-v">6,820.60<i>pt</i></span><span class="fin-chg dn">-6.37%</span></div>
+              <div class="fin-row"><span class="fin-ico">닥</span><span class="fin-nm">코스닥</span><span class="fin-v">791.84<i>pt</i></span><span class="fin-chg dn">-4.53%</span></div>
+              <div class="fin-row"><span class="fin-ico">나</span><span class="fin-nm">나스닥 종합</span><span class="fin-v">25,520.24<i>pt</i></span><span class="fin-chg dn">-1.40%</span></div>
+              <div class="fin-row"><span class="fin-ico">S</span><span class="fin-nm">S&amp;P 500</span><span class="fin-v">7,457.69<i>pt</i></span><span class="fin-chg dn">-1.01%</span></div>
+            </div>
+          </div>
+          <div class="subgrp">
+            <div class="gh">종목 <span class="u">· 주요</span> <span class="base">· 전일 대비</span><span class="st" id="stkState">가격</span></div>
+            <div class="fin-rows" id="stkRows"></div>
+          </div>
+        </div>
+        <p class="note">✓ 좌우2열·표형 · 코인 정상 · 지수 pt · 종목 촤르륵(가격→시총→$)</p>
+      </div>
+    </div>
+
+    <!-- ② 해커뉴스·문화 -->
+    <div class="secttl">② 해커뉴스 · 문화 <span class="tag">블릿 ⑧⑨ → ⑧ 좌우 2열</span></div>
+    <div class="ba">
+      <div class="pane"><span class="plab b">현행</span>
+        <div class="gh">해커뉴스 <span class="u">· 톱 스토리</span></div>
+        <div class="trow" style="grid-template-columns:20px 1fr"><span class="trank">1</span><span class="tq">The hidden cost of microservices</span></div>
+        <div class="gh" style="margin-top:10px">문화 <span class="u">· 박스오피스</span></div>
+        <div class="trow" style="grid-template-columns:20px 1fr"><span class="trank">1</span><span class="tq">1. 호프</span></div>
+        <p class="note warn">⚠ 블릿 분리 · 영문만 · "1." 중복 · 관객수 없음</p>
+      </div>
+      <div class="pane after"><span class="plab a">신안 v2</span>
+        <div class="rt2">
+          <div>
+            <div class="gh">해커뉴스 <span class="u">· IT · Tech</span><span class="st" id="hnState">1~7위</span></div>
+            <div class="fin-rows" id="hnRows" style="gap:0"></div>
+          </div>
+          <div>
+            <div class="gh">박스오피스 <span class="u">· 어제</span></div>
+            <div class="fin-rows" id="mvRows" style="gap:0"></div>
+          </div>
+        </div>
+        <p class="note">✓ 좌우2열 · 번역+영문mut · 촤르륵 1~7↔8~14 · 박스오피스 제목+관객수</p>
+      </div>
+    </div>
+
+    <div class="tokrow">
+      <b>정본 계승</b>: 상승 <code>#e23b2a</code>/하락 <code>#3a6ddb</code> · <code>.fin-row</code> tabular-nums · <code>.rt2col</code> 실검 2열 · 모노그램 18px.<br>
+      <b>재현 한계(⑤)</b>: 번역문·시총·환산은 <span class="warn">예시값</span>(실제 = 스크래퍼 산출) · 시총 소스 = 네이버 <code>stockItemTotalInfos</code>(테슬라 "1조4,303억") · 달러환산 = 원가÷추산환율(1,490).
+    </div>
+  </main>
+</div>
+
+<script>
+var $=function(s){return document.querySelector(s)};
+var FX=1490;
+// ── 종목 데이터: 가격(native) · 시총 · 달러 ──
+var STK=[
+ {ico:'삼',nm:'삼성전자',   krw:255000, cap:'152.2조', usd:171,  chg:-8.77},
+ {ico:'두',nm:'두산에너빌리티',krw:69700, cap:'44.6조',  usd:47,   chg:+0.43},
+ {ico:'한',nm:'한화에어로스페이스',krw:943000,cap:'47.8조',usd:633, chg:+1.51},
+ {ico:'T',nm:'테슬라',  usd:380.84, cap:'1.43조$', chg:-2.61},
+ {ico:'N',nm:'엔비디아', usd:184.20, cap:'4.49조$', chg:+1.20},
+ {ico:'P',nm:'팔란티어', usd:158.30, cap:'3,730억$',chg:+2.05},
+ {ico:'X',nm:'스페이스X',usd:123.99, cap:'2,800억$',chg:+3.40}
+];
+var STK_STATES=['가격','시가총액','달러 환산'];
+function comma(n){return n.toLocaleString('en-US')}
+function stkCell(s,st){
+  if(st===0){ return s.krw!=null ? comma(s.krw)+'<i>원</i>' : s.usd.toFixed(2)+'<i>$</i>'; }
+  if(st===1){ return s.cap.indexOf('$')>=0 ? s.cap.replace('$','')+'<i>$</i>' : s.cap+'<i>원</i>'; }
+  // 달러 환산
+  var u = s.krw!=null ? Math.round(s.krw/FX) : s.usd;
+  return (s.krw!=null?comma(u):u.toFixed(2))+'<i>$</i>';
+}
+function chg(v){return '<span class="fin-chg '+(v>0?'up':'dn')+'">'+(v>0?'+':'')+v+'%</span>'}
+// ── 해커뉴스 데이터 14 ──
+var HN=[
+ ['러스트로 데이터베이스를 만들었습니다','Show HN: I built a database in Rust'],
+ ['마이크로서비스의 숨은 비용','The hidden cost of microservices'],
+ ['우리가 쿠버네티스를 떠난 이유','Why we moved off Kubernetes'],
+ ['SQLite가 프로덕션에 충분한 이유','SQLite is enough for production'],
+ ['한 페이지짜리 컴파일러','A compiler in one page'],
+ ['로컬 우선 소프트웨어 선언','Local-first software manifesto'],
+ ['브라우저는 어떻게 폰트를 렌더링하나','How browsers render fonts'],
+ ['포스트그레스 인덱싱 완벽 가이드','The complete guide to Postgres indexing'],
+ ['왜 아직도 이메일이 어려운가','Why email is still hard'],
+ ['CRDT를 밑바닥부터 구현하기','Implementing CRDTs from scratch'],
+ ['터미널 이스케이프 코드의 역사','A history of terminal escape codes'],
+ ['WASM 컴포넌트 모델 설명','The WASM component model explained'],
+ ['암호화 없이 개인정보 지키기','Privacy without encryption'],
+ ['10년간 배운 성능 교훈','Performance lessons from a decade']
+];
+var MV=[['호프','1,240만'],['미니언즈 & 몬스터즈','980만'],['모아나','870만'],['토이 스토리 5','640만'],['눈동자','410만'],['웡카 2','330만'],['인사이드 아웃 3','280만']];
+
+// ── 초기 렌더 ──
+function stkRow(s,st){return '<div class="fin-row"><span class="fin-ico">'+s.ico+'</span><span class="fin-nm">'+s.nm+'</span><span class="fin-v">'+stkCell(s,st)+'</span>'+chg(s.chg)+'</div>'}
+function hnRow(i,d){return '<div class="trow"><span class="trank">'+(i+1)+'</span><span class="tq">'+d[0]+'<span class="en">'+d[1]+'</span></span></div>'}
+function mvRow(i,d){return '<div class="trow"><span class="trank">'+(i+1)+'</span><span class="tq">'+d[0]+'</span><span class="taud">'+d[1]+'명</span></div>'}
+var stkSt=0, hnPage=0;
+function renderStk(){$('#stkRows').innerHTML=STK.map(function(s){return stkRow(s,stkSt)}).join('');$('#stkState').textContent=STK_STATES[stkSt]}
+function renderHN(){var base=hnPage*7;$('#hnRows').innerHTML=HN.slice(base,base+7).map(function(d,i){return hnRow(base+i,d)}).join('');$('#hnState').textContent=(base+1)+'~'+(base+7)+'위'}
+$('#mvRows').innerHTML=MV.map(function(d,i){return mvRow(i,d)}).join('');
+renderStk();renderHN();
+
+// ── 촤르륵 크로스페이드(위→아래 스태거) ──
+function cascade(container,applyFn){
+  var rows=container.children;
+  for(var i=0;i<rows.length;i++){(function(row,i){
+    setTimeout(function(){
+      row.classList.add('swap');
+      setTimeout(function(){applyFn(i);row.classList.remove('swap')},210);
+    },i*70);
+  })(rows[i],i)}
+}
+function tick(){
+  // 해커뉴스 페이지 토글
+  cascade($('#hnRows'),function(i){
+    var next=(hnPage+1)%2, base=next*7, d=HN[base+i];
+    var r=$('#hnRows').children[i];
+    if(d){r.innerHTML='<span class="trank">'+(base+i+1)+'</span><span class="tq">'+d[0]+'<span class="en">'+d[1]+'</span></span>'; r.style.visibility=''}
+    else r.style.visibility='hidden';
+    if(i===6){hnPage=next;$('#hnState').textContent=(base+1)+'~'+(base+7)+'위'}
+  });
+  // 종목 상태 순환
+  cascade($('#stkRows'),function(i){
+    var next=(stkSt+1)%3;
+    $('#stkRows').children[i].querySelector('.fin-v').innerHTML=stkCell(STK[i],next);
+    if(i===STK.length-1){stkSt=next;$('#stkState').textContent=STK_STATES[stkSt]}
+  });
+}
+var spd=5000,timer=null;
+function arm(){if(timer)clearInterval(timer);timer=setInterval(tick,spd)}
+$('#rSpd').addEventListener('input',function(){spd=this.value*1000;$('#vSpd').textContent=(+this.value).toFixed(1)+'s';arm()});
+$('#rGap').addEventListener('input',function(){document.documentElement.style.setProperty('--tune-unitgap',this.value+'px');$('#vGap').textContent=this.value});
+$('#btnNow').addEventListener('click',tick);
+arm();
+</script>
+</body>
+</html>

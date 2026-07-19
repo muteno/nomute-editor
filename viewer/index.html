@@ -679,13 +679,16 @@
   .trend-traffic { display:inline-flex; align-items:center; gap:1px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
   .trend-traffic svg { width:8px; height:8px; display:block; }   /* HN 스코어 유니코드 ▲ → TRI_UP_SVG(§🔒 3-1) — .trend-chg svg 규격 계승 */
   .trend-tm { flex:none; min-width:52px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 행 우측 끝 시간 열(고정폭 우정렬 = 전 행 끝 x 일렬 · relAge 사다리 계승 · 운영자 260712 "모든 것에 시간 기록") */
-  .fin-split { display:grid; grid-template-columns:1fr; gap:var(--sp-3); align-items:start; }   /* ⑬ 금융 세로 스택 = 한 줄에 한 블릿(운영자 260717 "한 줄에 한 블릿씩·블릿 침범 노") — 구 2x2(1fr 1fr)는 반폭서 긴 시세(927,980,000원)가 잘려 이웃 침범 → 1열 전폭으로 잘림·침범 해소 */
+  .fin-split { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); align-items:start; }   /* ⑬ 금융 2x2(운영자 260719 좌우 재개) — 환율|암호화폐 / 증시|종목 · 코인 10배버그 봉인으로 반폭 시세 정상(95,318,000원)이라 구 1열 회귀 사유 소멸 · 표형 셀 그리드로 잘림 방지 */
+  @media (max-width:640px){ .fin-split { grid-template-columns:1fr; } }   /* 폰 = 1열 스택(.tlr 관례) */
   .fin-rows { display:flex; flex-direction:column; gap:2px; }   /* ⑬ 금융 시세 행(운영자 260713) — 통화·시세·변동률 · trend-row 리듬 계승 */
-  .fin-row { display:flex; align-items:baseline; gap:8px; padding:3px 0; font-size:var(--fs-sm); color:var(--fg); }
-  .fin-nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .fin-v { flex:none; font-variant-numeric:tabular-nums; font-weight:var(--fw-b); }
-  .fin-v i { color:var(--mut); font-style:normal; font-size:var(--fs-xs); margin-left:1px; }
-  .fin-chg { flex:none; min-width:52px; text-align:right; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; color:var(--mut); }
+  .fin-row { display:grid; grid-template-columns:18px 1fr auto 56px; align-items:center; column-gap:var(--sp-1); padding:3px 0; font-size:var(--fs-sm); color:var(--fg); transition:opacity .22s ease, transform .22s ease; }   /* raw-ok: 표형 4열(모노그램 18·이름·값·등락 56)·행패딩 3 = 기존 fin-row 광학 정본 계승(운영자 260719 flex→grid 표형 "일정 열간격") · column-gap = var(--sp-1) 계승(구 8→6 확 줄임) · transition = 종목 회전 촤르륵 */
+  .fin-row.fin-swap { opacity:0; transform:translateY(-5px); }   /* ⑬ 종목 3상태 회전 전환 프레임(가격→시총→달러 · 위→아래 스태거) */
+  .fin-nm { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fin-v { text-align:right; font-variant-numeric:tabular-nums; font-weight:var(--fw-b); }
+  .fin-v i { color:var(--mut); font-style:normal; font-size:var(--fs-xs); margin-left:var(--fin-unitgap, 4px); }   /* ⑬ 숫자↔단위 간격(운영자 260719 "조금 더 벌려") 1→4px */
+  .fin-rot-st { margin-left:auto; font-size:var(--fs-xs); color:var(--accent); font-weight:var(--fw-b); }   /* ⑬ 종목 회전 상태 라벨(가격/시가총액/달러 환산) */
+  .fin-chg { min-width:52px; text-align:right; font-size:var(--fs-xs); font-variant-numeric:tabular-nums; color:var(--mut); }
   .fin-chg.up { color:var(--accent-3); }   /* 상승 = 레드(한국 관례) · 하락 = 딥블루 */
   .fin-chg.dn { color:var(--bias-l2); }
   .fin-base { opacity:.7; }   /* ⑬ 기준점 캡션(· MM/DD 00:00 대비) = 단위 라벨(.trend-unit) 안 종속 · 소스(원화·업비트)보다 한 톤 낮춰 속삭임(운영자 260716 "기준점 미려하게") */
@@ -6973,7 +6976,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'be4e849 · 260719_2242';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'ca54303 · 260720_0016';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -9842,11 +9845,12 @@ function renderSnsTrends() {
   let gFI = '';   // ⑬ 금융 그룹(환율·코인 = 시세 행 · sec 문법 · 표시 전용) — 순위/변동배지 무의미 = 커스텀 행
   const fxHasChg = finR.some(x => typeof x.chg === 'number');   // ⑬ 환율 등락(직전 거래일 종가 대비 · Frankfurter) — 결측(첫 수집·소스 실패) = 등락 열·기준점 캡션 미표기(fail-soft)
   const finBaseTxt = '전일 대비';   // ⑬ 대비 기준 통일(운영자 260719 "증시=전일대비인데 환율·암호화폐는 00:00대비 — 맞게") — 업비트 signed_change_rate·네이버 fluctuationsRatio 둘 다 실제 = 전일 종가 대비라 증시·종목(전일 대비)과 동일 표기로 정합(구 "MM/DD 00:00 대비" = 근사 오표기 폐지)
-  const FIN_ICO = { USD: '$', EUR: '€', JPY: '¥', CNY: '元', BTC: 'B', ETH: 'E', XRP: 'X', SOL: 'S', KOSPI: '코', KOSDAQ: '닥', '005930': '삼', '000660': 'SK' };   // ⑬ 통화·코인·지수·종목 모노그램(운영자 260717 안B) — 통화기호+코인 첫글자+지수/종목 한글 약칭(코·닥·삼·SK) · 전부 안정 글리프
+  const FIN_ICO = { USD: '$', EUR: '€', JPY: '¥', CNY: '元', BTC: 'B', ETH: 'E', XRP: 'X', SOL: 'S', KOSPI: '코', KOSDAQ: '닥', '.IXIC': '나', '.INX': 'S', '005930': '삼', '000660': 'SK', '034020': '두', '012450': '한', 'TSLA.O': 'T', 'NVDA.O': 'N', 'PLTR.O': 'P', 'SPCX.O': 'X' };   // ⑬ 통화·코인·지수·종목 모노그램(운영자 260717 안B · 260719 종목6·지수2 확장) — 통화기호+코인 첫글자+지수/종목 한글·영문 약칭 · 전부 안정 글리프
   const fxSec = finR.length ? sec('fin-fx', '환율', '· 원화' + (fxHasChg ? ` <span class="fin-base">· ${finBaseTxt}</span>` : ''), finR.length, '<div class="fin-rows">' + finR.map(x => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[x.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${esc(x.krw >= 100 ? Math.round(x.krw).toLocaleString() : x.krw)}<i>원</i></span>${fxHasChg ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${typeof x.chg === 'number' ? (x.chg > 0 ? '+' : '') + esc(x.chg) + '%' : ''}</span>` : ''}</div>`).join('') + '</div>') : '';
   const ccSec = finC.length ? sec('fin-cc', '암호화폐', `· 업비트 <span class="fin-base">· ${finBaseTxt}</span>`, finC.length, '<div class="fin-rows">' + finC.map(c => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[c.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${esc(Math.round(c.krw).toLocaleString())}<i>원</i></span><span class="fin-chg ${c.chg > 0 ? 'up' : c.chg < 0 ? 'dn' : ''}">${c.chg > 0 ? '+' : ''}${esc(c.chg)}%</span></div>`).join('') + '</div>') : '';
-  const idxSec = finI.length ? sec('fin-idx', '증시', '· 지수 <span class="fin-base">· 전일 대비</span>', finI.length, '<div class="fin-rows">' + finI.map(x => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[x.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${esc((typeof x.val === 'number' ? x.val : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</span>${typeof x.chg === 'number' ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${x.chg > 0 ? '+' : ''}${esc(x.chg)}%</span>` : ''}</div>`).join('') + '</div>') : '';   // ⑬ 국내증시 지수(코스피·코스닥 · 포인트 = 원 접미 없음 · 전일 종가 대비)
-  const stkSec = finS.length ? sec('fin-stk', '종목', '· 반도체 <span class="fin-base">· 전일 대비</span>', finS.length, '<div class="fin-rows">' + finS.map(x => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[x.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${esc((typeof x.val === 'number' ? x.val : 0).toLocaleString())}<i>원</i></span>${typeof x.chg === 'number' ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${x.chg > 0 ? '+' : ''}${esc(x.chg)}%</span>` : ''}</div>`).join('') + '</div>') : '';   // ⑬ 주요종목(삼성전자·SK하이닉스 · 원 · 운영자 260717 네이버 경제 통합)
+  const idxSec = finI.length ? sec('fin-idx', '증시', '· 지수 <span class="fin-base">· 전일 대비</span>', finI.length, '<div class="fin-rows">' + finI.map(x => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[x.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${esc((typeof x.val === 'number' ? x.val : 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}<i>pt</i></span>${typeof x.chg === 'number' ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${x.chg > 0 ? '+' : ''}${esc(x.chg)}%</span>` : ''}</div>`).join('') + '</div>') : '';   // ⑬ 증시 지수(코스피·코스닥·나스닥·S&P500 · pt · 전일 종가 대비 · 운영자 260719 pt 접미)
+  const finStkVal = x => { const v = typeof x.val === 'number' ? x.val : 0; return x.cur === 'USD' ? esc(v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })) + '<i>$</i>' : esc(Math.round(v).toLocaleString()) + '<i>원</i>'; };   // ⑬ 종목 통화 인식 = 국내 원(정수) / 해외 달러(소수2 · 운영자 260719)
+  const stkSec = finS.length ? sec('fin-stk', '종목', '· 주요 <span class="fin-base">· 전일 대비</span><span class="fin-rot-st">가격</span>', finS.length, '<div class="fin-rows">' + finS.map(x => `<div class="fin-row"><span class="fin-ico">${FIN_ICO[x.code] || ''}</span><span class="fin-nm"></span><span class="fin-v">${finStkVal(x)}</span>${typeof x.chg === 'number' ? `<span class="fin-chg ${x.chg > 0 ? 'up' : x.chg < 0 ? 'dn' : ''}">${x.chg > 0 ? '+' : ''}${esc(x.chg)}%</span>` : ''}</div>`).join('') + '</div>') : '';   // ⑬ 주요종목(삼성·SK·두산·한화 원 + 테슬라·엔비디아·팔란티어·스페이스x 달러 · 회전 = 가격→시총→달러 · 운영자 260719)
   const finSecs = [fxSec, ccSec, idxSec, stkSec].filter(Boolean);   // ⑬ 금융 2x2 그리드(운영자 260717) — 환율·코인·증시·종목 · fin-split 2열 → 4개면 2x2 · 결측 그룹 자동 제외(조용한 공백)
   gFI = finSecs.length > 1 ? '<div class="fin-split">' + finSecs.join('') + '</div>' : (finSecs[0] || '');
   let gSF = '';   // ⑭⑯ 재난·안전 그룹(재난문자·고속도로 돌발 = 팩트 신호 · 키 게이트라 키 없으면 미등장)
@@ -9971,7 +9975,31 @@ function renderSnsTrends() {
   { const nm = box.querySelectorAll('[data-sec=fin-fx] .fin-nm'); finR.forEach((x, i) => { if (nm[i]) nm[i].textContent = x.name || x.code; }); }   // ⑬ 환율 통화명(XSS 안전)
   { const nm = box.querySelectorAll('[data-sec=fin-cc] .fin-nm'); finC.forEach((c, i) => { if (nm[i]) nm[i].textContent = c.code; }); }   // ⑬ 코인 심볼
   { const nm = box.querySelectorAll('[data-sec=fin-idx] .fin-nm'); finI.forEach((x, i) => { if (nm[i]) nm[i].textContent = x.name || x.code; }); }   // ⑬ 지수명(코스피·코스닥 · XSS 안전)
-  { const nm = box.querySelectorAll('[data-sec=fin-stk] .fin-nm'); finS.forEach((x, i) => { if (nm[i]) nm[i].textContent = x.name || x.code; }); }   // ⑬ 종목명(삼성전자·SK하이닉스 · XSS 안전)
+  { const nm = box.querySelectorAll('[data-sec=fin-stk] .fin-nm'); finS.forEach((x, i) => { if (nm[i]) nm[i].textContent = x.name || x.code; }); }   // ⑬ 종목명(XSS 안전)
+  // ⑬ 종목 3상태 촤르륵 회전(운영자 260719 · 가격→시가총액→달러환산 · 5s · 위→아래 스태거 크로스페이드) — 재렌더마다 타이머 정리·재장전(누수 방지) · box 이탈 시 자가 해제 · fail-soft
+  try {
+    (window._finRot || (window._finRot = [])).forEach(clearInterval); window._finRot = [];
+    const _stkRows = box.querySelectorAll('[data-sec=fin-stk] .fin-row'), _rotSt = box.querySelector('[data-sec=fin-stk] .fin-rot-st');
+    if (_stkRows.length && finS.length > 1) {
+      const _fxUsd = (finR.find(x => x.code === 'USD') || {}).krw || 1490, _stName = ['가격', '시가총액', '달러 환산'];
+      const _stCell = (x, st) => {
+        if (st === 1) return x.cap ? (x.cur === 'USD' ? esc(String(x.cap).replace(/\s*USD$/, '')) + '<i>$</i>' : esc(x.cap) + '<i>원</i>') : finStkVal(x);   // 시총 결측 = 가격 폴백
+        if (st === 2) { const u = x.cur === 'USD' ? x.val : (x.val || 0) / _fxUsd; return esc(x.cur === 'USD' ? u.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(u).toLocaleString()) + '<i>$</i>'; }
+        return finStkVal(x);
+      };
+      let _si = 0;
+      const _t = setInterval(() => {
+        try {
+          if (!document.body.contains(_stkRows[0])) { clearInterval(_t); return; }   // box 이탈(재렌더로 교체·타 메뉴) = 자가 해제
+          const _ns = (_si + 1) % 3;
+          _stkRows.forEach((r, i) => setTimeout(() => { r.classList.add('fin-swap'); setTimeout(() => { const v = r.querySelector('.fin-v'); if (v && finS[i]) v.innerHTML = _stCell(finS[i], _ns); r.classList.remove('fin-swap'); }, 210); }, i * 60));
+          _si = _ns;
+          if (_rotSt) setTimeout(() => { _rotSt.textContent = _stName[_si]; }, _stkRows.length * 60 + 210);
+        } catch (e) { clearInterval(_t); }
+      }, 5000);
+      window._finRot.push(_t);
+    }
+  } catch (e) {}
   fillH('sh', '.tcard-t', shL.map(t => dimTags(t.title || '')));   // 쇼츠 제목 = ko(정규화 패스) + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전)
   fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
   box.querySelectorAll('.trend-tag').forEach((el2, i) => { el2.textContent = '#' + ((tk[i] || {}).tag || ''); });

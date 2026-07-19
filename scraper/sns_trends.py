@@ -807,8 +807,63 @@ def _kr_mkt_open(now):
     return 540 <= hm <= 930   # 09:00(540) ~ 15:30(930)
 
 
+# ⑬ 금융 종목·지수 정본(운영자 260719 "종목 6개·지수 2개 추가") — 국내 원/해외 달러 2축 · 시총·통화 도장
+_FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"), ("034020", "두산에너빌리티"), ("012450", "한화에어로스페이스"))
+_FIN_STOCKS_US = (("TSLA.O", "테슬라"), ("NVDA.O", "엔비디아"), ("PLTR.O", "팔란티어"), ("SPCX.O", "스페이스X"))   # 스페이스x = 2026-06-12 나스닥 상장(SPCX.O · 실측)
+_FIN_INDICES = (("KOSPI", "코스피", "KRW"), ("KOSDAQ", "코스닥", "KRW"), (".IXIC", "나스닥", "USD"), (".INX", "S&P500", "USD"))
+
+
+def _fin_stock_kr(code, name):
+    """국내 종목 = m.stock basic(가격·등락) + integration(시총 code=marketValue). 원(정수)."""
+    j = _naver_json(f"https://m.stock.naver.com/api/stock/{code}/basic")
+    v, chg = _i(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))
+    if not v:
+        return None
+    row = {"code": code, "name": name, "val": v, "cur": "KRW"}
+    if chg is not None:
+        row["chg"] = round(chg, 2)
+    try:   # 시총(종목 회전 상태B) = integration.totalInfos code=marketValue · fail-soft(결측 = 회전서 스킵)
+        ig = _naver_json(f"https://m.stock.naver.com/api/stock/{code}/integration")
+        for it in (ig.get("totalInfos") or []):
+            if isinstance(it, dict) and it.get("code") == "marketValue" and it.get("value"):
+                row["cap"] = str(it["value"]).strip()
+                break
+    except Exception:  # noqa: BLE001
+        pass
+    return row
+
+
+def _fin_stock_us(reuters, name):
+    """해외 종목 = api.stock basic(가격·등락·통화·시총 key=시총). 달러(소수 2자리)."""
+    j = _naver_json(f"https://api.stock.naver.com/stock/{reuters}/basic")
+    v, chg = _fnum(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))
+    if v is None:
+        return None
+    row = {"code": reuters, "name": name, "val": round(v, 2), "cur": (j.get("currencyType") or {}).get("code") or "USD"}
+    if chg is not None:
+        row["chg"] = round(chg, 2)
+    for it in (j.get("stockItemTotalInfos") or []):   # 시총 = "1조 4,303억 USD" 포맷 문자열 그대로 표시
+        if isinstance(it, dict) and str(it.get("key")) == "시총" and it.get("value"):
+            row["cap"] = str(it["value"]).strip()
+            break
+    return row
+
+
+def _fin_index(code, name, cur):
+    """지수 = 국내(m.stock)·해외(api.stock) basic(closePrice·fluctuationsRatio)."""
+    host = "m.stock.naver.com/api/index" if cur == "KRW" else "api.stock.naver.com/index"
+    j = _naver_json(f"https://{host}/{code}/basic")
+    v, chg = _fnum(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))
+    if v is None:
+        return None
+    row = {"code": code, "name": name, "val": round(v, 2), "cur": cur}
+    if chg is not None:
+        row["chg"] = round(chg, 2)
+    return row
+
+
 def finance(prev_fin=None):
-    """⑬ 금융 = 환율·코인·국내증시(지수)·주요종목 — 전부 무키. 소스: 네이버 금융(환율 하나은행·코스피/코스닥·개별종목) + 업비트(코인).
+    """⑬ 금융 = 환율·코인·국내외증시(지수)·주요종목 — 전부 무키. 소스: 네이버 금융(환율 하나은행·코스피/코스닥·나스닥/S&P·개별종목) + 업비트(코인).
     갱신 주기 throttle(운영자 260717 "너무 자주 필요 없음"): 환율 3h · 지수/종목 1h(장중만 · 마감 시 종가 고정) · 코인 매 run(실시간).
     prev_fin의 _ts(그룹별 마지막 수집 KST) 참조해 주기 안이면 직전값 유지(네이버 과호출 억제). 각 그룹 독립 fail-soft(실패=직전값).
     반환 {rates:[{code,name,krw,chg?}], coins:[{code,krw,chg}], indices:[{code,name,val,chg?}], stocks:[{code,name,val,chg?}], _ts:{그룹:iso}}."""
@@ -848,42 +903,40 @@ def finance(prev_fin=None):
         if got:
             rates, out_ts["rates"] = got, now_iso
 
-    mkt_open = _kr_mkt_open(now)
-    # ── 국내증시 지수(코스피·코스닥) — 장중 1h throttle · 마감 시 마지막 종가 고정(운영자 260717) · 최초 1회는 마감이어도 종가 씨앗 ──
+    # 갱신 창(운영자 260719 국내외 2축) = KR장 or 美장(대략 22~06 KST) · 마감 시 종가 고정 = throttle+창 밖이면 직전값 유지
+    _fin_open = _kr_mkt_open(now) or now.hour >= 22 or now.hour < 6
+    # ── 증시 지수(코스피·코스닥 원 + 나스닥·S&P500 달러 · 운영자 260719) — 1h throttle · 마감 시 마지막 종가 고정 · 최초 1회는 마감이어도 씨앗 ──
     indices = list(prev_fin.get("indices") or [])
-    if not indices or (mkt_open and _stale("indices", 1)):
+    if not indices or (_fin_open and _stale("indices", 1)):
         got = []
-        for code, name in (("KOSPI", "코스피"), ("KOSDAQ", "코스닥")):
+        for code, name, cur in _FIN_INDICES:
             try:
-                j = _naver_json(f"https://m.stock.naver.com/api/index/{code}/basic")
-                v, chg = _fnum(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))
-                if v is None:
-                    continue
-                row = {"code": code, "name": name, "val": round(v, 2)}
-                if chg is not None:
-                    row["chg"] = round(chg, 2)
-                got.append(row)
+                r = _fin_index(code, name, cur)
+                if r:
+                    got.append(r)
             except Exception as e:  # noqa: BLE001
                 print(f"::warning::지수 {code} 실패(스킵): {e}", file=sys.stderr)
         if got:
             indices, out_ts["indices"] = got, now_iso
 
-    # ── 주요종목(삼성전자·SK하이닉스 = 반도체) — 지수와 동일 주기(운영자 260717 "네이버 경제 1일1회 보던 것 통합") ──
+    # ── 주요종목(삼성·SK·두산·한화 원 + 테슬라·엔비디아·팔란티어·스페이스x 달러 · 운영자 260719) — 시총·통화 도장 · 지수와 동일 주기 ──
     stocks = list(prev_fin.get("stocks") or [])
-    if not stocks or (mkt_open and _stale("stocks", 1)):
+    if not stocks or (_fin_open and _stale("stocks", 1)):
         got = []
-        for code, name in (("005930", "삼성전자"), ("000660", "SK하이닉스")):
+        for code, name in _FIN_STOCKS_KR:
             try:
-                j = _naver_json(f"https://m.stock.naver.com/api/stock/{code}/basic")
-                v, chg = _i(j.get("closePrice")), _fnum(j.get("fluctuationsRatio"))   # 종목가 = 정수 원(콤마 문자열 → _i)
-                if not v:
-                    continue
-                row = {"code": code, "name": name, "val": v}
-                if chg is not None:
-                    row["chg"] = round(chg, 2)
-                got.append(row)
+                r = _fin_stock_kr(code, name)
+                if r:
+                    got.append(r)
             except Exception as e:  # noqa: BLE001
                 print(f"::warning::종목 {code} 실패(스킵): {e}", file=sys.stderr)
+        for reuters, name in _FIN_STOCKS_US:
+            try:
+                r = _fin_stock_us(reuters, name)
+                if r:
+                    got.append(r)
+            except Exception as e:  # noqa: BLE001
+                print(f"::warning::종목 {reuters} 실패(스킵): {e}", file=sys.stderr)
         if got:
             stocks, out_ts["stocks"] = got, now_iso
 
