@@ -17,19 +17,25 @@ export async function onRequestPost({ request, env }) {
   if (!/^\d{6}-\d{4}-[A-Za-z0-9._-]{1,80}$/.test(file)) return json({ error: '잘못된 대상(file)' }, 400);
   if (!instruction) return json({ error: '빈 지시 — 어떻게 고칠지 적어줘' }, 400);
 
-  const r = await fetch(
-    'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/news-revise.yml/dispatches',
-    {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${env.GH_TOKEN}`,
-        accept: 'application/vnd.github+json',
-        'user-agent': 'nomute-viewer',
-        'x-github-api-version': '2022-11-28',
+  // 디스패치 fetch 자체가 throw(깃허브 접속 불가)하면 CF 기본 에러 페이지(비JSON)가 나가 뷰어에 맨몸 '서버 502'만 뜬다
+  // → try로 감싸 항상 우리 JSON 에러(원인 문구)로 응답(260720 깃허브 장애 실증 — 러너 정지 + API 5xx 동시).
+  let r;
+  try {
+    r = await fetch(
+      'https://api.github.com/repos/muteno/nomute-editor/actions/workflows/news-revise.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${env.GH_TOKEN}`,
+          accept: 'application/vnd.github+json',
+          'user-agent': 'nomute-viewer',
+          'x-github-api-version': '2022-11-28',
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { file, instruction } }),
       },
-      body: JSON.stringify({ ref: 'main', inputs: { file, instruction } }),
-    },
-  );
+    );
+  } catch { return json({ error: 'GitHub 접속 실패(깃허브 장애 가능성) — 잠시 후 다시' }, 503); }
   if (r.status === 204) return json({ ok: true });
+  if (r.status >= 500) return json({ error: `GitHub 서버 장애(${r.status}) — 잠시 후 다시` }, 503);
   return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}` }, 502);
 }

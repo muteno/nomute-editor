@@ -345,14 +345,16 @@ def og_image(url, timeout=6):
         return ""
 
 
-def tiktok(limit=15, calls=6):
+def tiktok(limit=15, calls=10):
     """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
     피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup 상위 limit.
     정렬 = KR 우선(운영자 260712 "한국 제일 핫한" — region=KR 파라미터가 실효 약해 글로벌 혼합
     [상위5 = US·GB·CH·PK·US 실측 260712]인 것을 항목 region 필드로 후정렬 보완 · KR끼리/글로벌끼리 = 조회수)
-    · calls 4→6 = KR 누적 풀 확대(콜당 실 KR 2~4개 · +4s).
+    · KR 소스 강화(운영자 260720 "틱톡만 KR소스 강화"): calls 6→10 = 누적 풀 확대(콜당 실 KR 2~4개 · +8s)
+      + 한글 제목 감지 → region KR 재분류(tikwm region 태그가 놓친 국내 콘텐츠를 국내 모드 인기로 회수).
     개별 콜 실패 = 무시(누적분 사용) · 전체 0건 = [] (fail-soft — main()이 기존 값 보존)."""
     seen = {}
+    _HANGUL = re.compile(r'[가-힣]')   # 한글(음절) 감지 = 국내 콘텐츠 신호 → KR 재분류(운영자 260720 KR 소스 강화)
     for i in range(calls):
         if i:
             time.sleep(2)   # free tier 레이트리밋(연속 콜 타임아웃 실측 260711)
@@ -367,11 +369,15 @@ def tiktok(limit=15, calls=6):
                 a = v.get("author") or {}
                 handle = a.get("unique_id") or ""
                 ct = _i(v.get("create_time"))   # 발행시각 → 뷰어 카드 "N시간 전"(relAge) 원료(운영자 260712 · 없으면 공란 fail-soft)
-                seen[vid] = {"title": (v.get("title") or "").strip(), "account": handle,
+                _tt = (v.get("title") or "").strip()
+                _reg = v.get("region") or ""
+                if _reg != "KR" and _HANGUL.search(_tt):
+                    _reg = "KR"   # 한글 제목 = 국내 콘텐츠 → KR 재분류(tikwm region 태그 실효 약함 보완 · 운영자 260720) — 국내 모드 인기·통합 TOP 채움
+                seen[vid] = {"title": _tt, "account": handle,
                              "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
                              "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
                              "published": (datetime.fromtimestamp(ct, KST).isoformat() if ct else ""),
-                             "region": v.get("region") or "",
+                             "region": _reg,
                              "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
