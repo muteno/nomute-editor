@@ -47,6 +47,7 @@ RETRY = 3
 WORKERS = 4
 
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / "viewer" / "tbs_data.json"
+SKIP_COMMUNITIES = {"ILB"}  # 일베 = 사이트 폐쇄(운영자 260720) — API도 영구 빈 응답이라 수집 제외
 
 
 def log(msg):
@@ -67,12 +68,12 @@ def get_json(session, url, params=None):
 
 
 def to_kst(iso_str):
-    """API의 UTC ISO 시각 → 'YYYY-MM-DD HH:MM' KST 문자열."""
+    """API의 UTC ISO 시각 → KST ISO(+09:00) 문자열 — 뷰어 relP(new Date) 기기 TZ 무관 파싱."""
     if not iso_str:
         return None
     try:
         dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        return dt.astimezone(KST).strftime("%Y-%m-%d %H:%M")
+        return dt.astimezone(KST).strftime("%Y-%m-%dT%H:%M:%S+09:00")
     except ValueError:
         return iso_str
 
@@ -118,7 +119,8 @@ def main():
     session = requests.Session()
     session.headers.update({"User-Agent": UA, "Accept": "application/json"})
 
-    coms = [c for c in get_json(session, f"{BASE}/communities") if c.get("useYn") == "Y"]
+    coms = [c for c in get_json(session, f"{BASE}/communities")
+            if c.get("useYn") == "Y" and c.get("communityId") not in SKIP_COMMUNITIES]
     log(f"커뮤니티 {len(coms)}개 · 커뮤니티당 {args.limit}건 수집 시작")
 
     results, failed = [], []
