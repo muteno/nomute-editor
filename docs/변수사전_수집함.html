@@ -1,0 +1,129 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>수집함 알고리즘 변수사전 — 정본 열람 거울 (260720)</title>
+<style>
+:root{--bg:#121212;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.08);--acc:#00EED2;--amb:#ffc31f;--dgr:#ff5b5b;--g3:#c9a7ff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;padding:14px;max-width:900px;margin:0 auto}
+h1{font-size:17px;margin-bottom:4px}
+.sub{color:var(--mut);font-size:11.5px;margin-bottom:10px;line-height:1.6}
+.sub b{color:var(--amb)}
+.nav{position:sticky;top:0;z-index:9;background:rgba(18,18,18,.96);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap}
+.nav a{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--fg);text-decoration:none;white-space:nowrap}
+.nav a:active{border-color:var(--acc);color:var(--acc)}
+h2{font-size:14px;margin:22px 0 8px;color:var(--acc)}
+h2 .ln{color:var(--mut);font-size:10.5px;font-weight:400;margin-left:6px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}
+th{color:var(--mut);font-weight:700;font-size:11px;text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:top}
+td.v{color:var(--acc);font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+td.n{white-space:nowrap;font-weight:700}
+td.m{color:var(--mut);font-size:10.5px;white-space:nowrap}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;padding:4px 6px;background:rgba(255,255,255,.03);margin-bottom:10px}
+pre{font:11.5px/1.7 ui-monospace,Menlo,monospace;white-space:pre-wrap;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;overflow-x:auto}
+.note{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:16px}
+.note li{margin:3px 0 3px 14px}
+.k0{color:var(--dgr)}.k1{color:var(--amb)}.k2{color:var(--acc)}.k3{color:var(--g3)}
+.tag{display:inline-block;font-size:10px;border:1px solid var(--line);border-radius:6px;padding:0 5px;color:var(--mut);margin-left:4px}
+</style></head><body>
+<h1>📖 수집함 알고리즘 변수사전</h1>
+<div class="sub">알고리즘 논의 = 이 사전 펴놓고. <b>값의 정본(SSOT) = 코드</b>(viewer/index.html 상수 · .github/scripts/gate_judge.py · scraper/to_candidates.py)와 docs/curation-algorithm.md §★ — 이 파일은 <b>사람 열람용 거울</b>이라 상수를 바꾸면 여기도 같이 갱신한다(갱신 이력 하단). 초판 = 260720(게이트 grade 거부권 폐지 반영판).</div>
+<nav class="nav">
+<a href="#a">A 원료신호</a><a href="#b">B 문(입장)</a><a href="#c">C 누적순위</a><a href="#d">D 신규정렬</a><a href="#e">E 정리장치</a><a href="#f">F 긴급·배지</a><a href="#g">G 수집기</a><a href="#h">H grade 지도</a><a href="#i">I 순위식 한 줄</a>
+</nav>
+
+<h2 id="a">A. 원료 신호 — 기사(클러스터)마다 서버가 재는 값 <span class="ln">스크래퍼 산출 · 15~20분 주기</span></h2>
+<div class="tbl"><table>
+<tr><th>신호</th><th>뜻</th><th>비고</th></tr>
+<tr><td class="n">cross</td><td>몇 개 <b>매체</b>가 이 사건을 썼나(중복 매체 제외)</td><td class="m">되감기 결함 실측(5→4) — 고수위 수술 대기</td></tr>
+<tr><td class="n">report_count (rc)</td><td>수집 사이클마다 <b>기사가 또 늘어난</b> 횟수(같은 매체여도 +1)</td><td class="m">"계속 보도되나"</td></tr>
+<tr><td class="n">burst</td><td><b>15분 사이클 안</b>에 동시에 터진 기사 수</td><td class="m">"지금 막 터졌나"</td></tr>
+<tr><td class="n">breaking / breaking_candidate</td><td>속보 확정 / 속보 후보 도장</td><td class="m">breaking_judge 판정</td></tr>
+<tr><td class="n">grade</td><td>AI 경중 도장 <span class="k0">0 비뉴스</span>·<span class="k1">1 경미</span>·<span class="k2">2 주목</span>·<span class="k3">3 대형</span></td><td class="m">제목 한 줄만 입력 · 긴급탐지용</td></tr>
+<tr><td class="n">cat</td><td>6분류: 정치·사회·경제·문화·국제·테크</td><td class="m">cross≥2부터 AI 판정</td></tr>
+<tr><td class="n">gossip</td><td>문화 AND 결혼·연애 어휘 7종(열애|결별|파혼|재혼|결혼|이혼|♥) 매치</td><td class="m">정규식(AI 아님) · gate_judge:192</td></tr>
+<tr><td class="n">나이</td><td>발행시각 기준(발행이 미래로 오기록이면 수집시각)</td><td class="m">모든 시간 감점의 축</td></tr>
+</table></div>
+
+<h2 id="b">B. 문(입장 조건) — 통과해야 화면에 존재 <span class="ln">grade 무관 = 운영자 260720 "표시는 전부"</span></h2>
+<div class="tbl"><table>
+<tr><th>문</th><th>조건 (현행)</th><th>근거</th></tr>
+<tr><td class="n">신규 칼럼 (&lt;4h)</td><td>긴급(isBreaking) OR (<b>cross≥2</b> AND 잡음마커 아님 fbJunk)</td><td class="m">index scFast</td></tr>
+<tr><td class="n">누적 칼럼 (4h+)</td><td><b>cross≥8</b> 단독선 OR 긴급 이력 OR 보조문(<b>cross≥4 AND [rc≥6 OR rc≥3+강지문≥2.0]</b> — 지문 완화 260720)</td><td class="m">index CROSS_MIN·followEnters</td></tr>
+<tr><td class="n">AI 채점 대상 선발</td><td>cross≥<b>3</b> 노출권(grade+cat) · cross≥<b>2</b> cat만 · 런당 cat 최소 <b>40</b>슬롯</td><td class="m">gate_judge:43-47</td></tr>
+</table></div>
+
+<h2 id="c">C. 누적(4h+) 순위 — 6항 곱 <span class="ln">index scScore · 전부 조정 가능</span></h2>
+<div class="tbl"><table>
+<tr><th>항</th><th>현행값</th><th>쉬운 말</th></tr>
+<tr><td class="n">① 매체수 볼록 crossConvex</td><td class="v">cross^1.3</td><td>많이 받아쓸수록 가속 가점 (병합카드는 1.5배 초과분 75%만)</td></tr>
+<tr><td class="n">② 시간 가속감점 timeAcc</td><td class="v">반값 13h · 지수 3.0</td><td>6h=.91 · 12h=.56 · 24h=.14 — 12h 넘으면 가속 추락</td></tr>
+<tr><td class="n">②′ 대형 보호하한 OUT</td><td class="v">z 2.5~3.5 램프</td><td>압도적 다매체(강건 z) AND rc≥6 AND 배지자격 AND &lt;24h AND 미픽 → 하한 .56→.137 나이 램프</td></tr>
+<tr><td class="n">③ 후속보도 scFollow</td><td class="v">1 + 0.5·log₂(1+rc)</td><td>또 보도될수록 가점</td></tr>
+<tr><td class="n">④ 등급가중 gradeW</td><td class="v"><span class="k0">×0.5</span> / <span class="k1">×0.7</span> / <span class="k2">×1.0</span> / <span class="k3">×1.8</span></td><td>미채점 ×1 · 잡음마커(fbJunk) ×0.5 — 자리만 밀고 당김</td></tr>
+<tr><td class="n">⑤ 긴급부스트 brkBoost</td><td class="v">×3.0 → 1h 풀 · 6h ×1 착지</td><td>확정 긴급(g≥2)만 · 이징 강도 12</td></tr>
+<tr><td class="n">⑥ 나이감쇠 ageMul</td><td class="v">변곡 13h · 완만 3.8 · 바닥 0.12</td><td>경계 없는 S곡선 — 늙으면 부드럽게 침몰(소멸 안 함)</td></tr>
+<tr><td class="n">⑦ 지문 가점 fpW <span class="tag">260720 신설</span></td><td class="v">1 + 0.25×(지문점수/4)</td><td>SNS 발행 이력 결 매칭(사전 = docs/sns_지문사전.md · fail-soft: 사전 없으면 ×1) — 신규·누적 공용 소폭 가점</td></tr>
+</table></div>
+
+<h2 id="d">D. 신규(&lt;4h) 정렬 — 핀 → 점수 → 최신순 <span class="ln">index fastScore · ⚠ cross 항 없음</span></h2>
+<div class="tbl"><table>
+<tr><th>요소</th><th>현행값</th><th>쉬운 말</th></tr>
+<tr><td class="n">⓪ 속보 핀 pinFresh</td><td class="v">긴급 &amp; 미픽 &amp; &lt;4h</td><td>점수 무관 무조건 최상단</td></tr>
+<tr><td class="n">① 분출 기본항</td><td class="v">burst + (속보면 +5)</td><td>"지금 막 터졌나"가 신규의 왕</td></tr>
+<tr><td class="n">② 반감 감점</td><td class="v">0.5^(나이/2h)</td><td>신규는 시간이 두 배로 가혹</td></tr>
+<tr><td class="n">③④ 후속보도·등급가중</td><td class="v">C와 공용</td><td>—</td></tr>
+<tr><td class="n">⑤ 동률</td><td class="v">최신순</td><td>비속보·무분출은 전부 0점 동률 → 평시 신규 ≈ 최신순</td></tr>
+</table></div>
+
+<h2 id="e">E. 정리 장치 — 자르거나 접는 것 <span class="ln">순위에 안 곱함</span></h2>
+<div class="tbl"><table>
+<tr><th>장치</th><th>조건 (현행)</th></tr>
+<tr><td class="n">검증대기 접기</td><td>(미채점 OR <span class="k0">0점</span>) AND cross≤<b>3</b> AND burst&lt;<b>3</b> AND 비속보·비픽 AND 나이≥<b>1.5h</b> → 하단 접힘 묶음. 발동 = 접힐 게 <b>4건↑</b> AND 활성 <b>10건↑</b>일 때만 · 검색 중 비활성</td></tr>
+<tr><td class="n">중복 접기 scDedup</td><td><b>12h</b> 안 동일 제목 = 1장(cross 큰 쪽 보존)</td></tr>
+<tr><td class="n">잡음마커 fbJunk</td><td>면제 = cross≥8 OR rc≥6 OR <b>grade 1~3</b>(260720 평의회 수리: 0점은 검사 대상) · 마커 = {경제·테크 홍보구(품목허가·인증획득·론칭·MOU·특허…) / 부동산 청약·줍줍 / 문화 가십 어휘(화보·열애·♥…)} · 금융·정책기관 주체는 면제 가드</td></tr>
+<tr><td class="n">정형컷 JUNK_HEAD</td><td>[포토]·[사설]·[시황]류 괄호 머리표 → 풀 자체에서 제외(유일한 원천 컷)</td></tr>
+<tr><td class="n">병합 댐핑</td><td>병합 cross 기준의 1.5배 초과분은 <b>75%</b>만 랭킹 반영(표시·게이트는 원값)</td></tr>
+<tr><td class="n">페이지네이션</td><td>칼럼당 첫 <b>150</b>장 · 스크롤 시 +150</td></tr>
+</table></div>
+
+<h2 id="f">F. 긴급 사다리 · 배지 <span class="ln">grade의 주 일자리 · 표시 장식은 순위 무관</span></h2>
+<div class="tbl"><table>
+<tr><th>장치</th><th>조건 (현행)</th></tr>
+<tr><td class="n">🚨 긴급 (배지·핀·부스트)</td><td>breaking AND grade≥<b>2</b>(또는 미채점) AND &lt;4h — isBreaking</td></tr>
+<tr><td class="n">📢 앱푸시·토스트·자동요약</td><td>breaking AND grade≥<b>3</b> — isAlert</td></tr>
+<tr><td class="n">⚡ 이슈 배지</td><td>cross≥<b>10</b>(3점이면 <b>8</b>) AND grade(미채점‖≥2) AND <b>4~24h</b> AND 시황·PR 정형(BJ 4종) 아님</td></tr>
+<tr><td class="n">테두리 점등</td><td>cross≥<b>16</b> AND &lt;<b>12h</b> AND 이슈 자격 상속</td></tr>
+<tr><td class="n">배지 소멸선</td><td><b>24h</b> (BADGE_MAX — OUT 완화와 공용 단일출처)</td></tr>
+</table></div>
+
+<h2 id="g">G. 수집기 상수 <span class="ln">scraper·서버 쪽</span></h2>
+<div class="tbl"><table>
+<tr><th>상수</th><th>값</th><th>뜻</th></tr>
+<tr><td class="n">병합 상한 MEGA_CROSS</td><td class="v">18</td><td>클러스터 cross 상한(과병합 방지)</td></tr>
+<tr><td class="n">저장 예산 MAX_BYTES</td><td class="v">950KB</td><td>candidates.json 총량(≈800건 롤링 · 초과 시 꼬리 트림)</td></tr>
+<tr><td class="n">보관 창</td><td class="v">~10일</td><td>이후 자연 탈락(대형 위주 잔존)</td></tr>
+<tr><td class="n">관측 원장 obs/</td><td class="v">일별 jsonl</td><td>클러스터별 [cross, burst] 시계열 — 되감기·추이 분석의 원료</td></tr>
+<tr><td class="n">수집원 feeds.csv</td><td class="v">170줄 / 38매체</td><td>연예·스포츠 전용은 ~12줄(전용 매체 3곳) — 증편 후보</td></tr>
+</table></div>
+
+<h2 id="h">H. grade는 어디로 가나 — 소비처 지도 <span class="ln">260720 개정: 입장(문)에서만 퇴출</span></h2>
+<div class="tbl"><table>
+<tr><th>#</th><th>일자리</th><th>내용</th></tr>
+<tr><td>1</td><td class="n">긴급 사다리</td><td><span class="k2">2점</span>부터 🚨배지·핀·긴급부스트 · <span class="k3">3점</span>부터 📢푸시·토스트·자동요약</td></tr>
+<tr><td>2</td><td class="n">랭킹 가중</td><td>누적·신규 양쪽 점수에 ×0.5~×1.8</td></tr>
+<tr><td>3</td><td class="n">접힘 판단</td><td><span class="k0">0점</span>·미채점 + 저신호 = 접힘 후보</td></tr>
+<tr><td>4</td><td class="n">잡음검사 면제권</td><td>1~3점은 fbJunk 마커 검사 면제</td></tr>
+<tr><td>5</td><td class="n">배지·장식 자격</td><td>⚡이슈·점등 자격(미채점‖≥2 · 3점은 cross 완화 특전)</td></tr>
+<tr><td>6</td><td class="n">백엔드 미러</td><td>자동픽(g≥2)·푸시 발송기(g≥3)·계기판(daily_health)</td></tr>
+</table></div>
+
+<h2 id="i">I. 순위식 한 줄 요약</h2>
+<pre>누적(4h+) = cross^1.3 × 시간감점(13h·3.0 + 대형하한) × 후속보도(1+0.5·log₂(1+rc)) × 등급가중(0.5~1.8) × 긴급부스트(≤×3.0) × 나이감쇠(S곡선 13h) × 지문(1+0.25·지문/4)
+신규(&lt;4h) = 핀(긴급 최상단) → (burst + 속보5) × 0.5^(나이/2h) × 후속보도 × 등급가중 → 동률은 최신순   ⚠ cross 항 없음
+문(입장)   = 신규: cross≥2 + 잡음마커 아님 · 누적: cross≥8 OR 긴급이력 OR (cross≥4 AND rc≥6)   ※ grade 무관(260720)</pre>
+
+<div class="note"><b>갱신 이력 · 규약</b><ul>
+<li>260720 초판 — 게이트 grade 거부권 폐지(#2644)·평의회 후속수리(#2645) 반영 상태를 기준으로 작성.</li>
+<li>이 파일은 <b>사람 열람용 거울</b> — 값의 정본은 코드(viewer/index.html 상수·gate_judge.py·to_candidates.py)와 curation-algorithm.md §★. 상수·게이트를 바꾸는 커밋은 이 사전도 같은 커밋에서 갱신한다.</li>
+<li>기계 정합: 숫자 상수는 check_refs "큐레이션 상수↔문서 정합" 게이트가 §★ 기준으로 감시 중 — 이 사전의 게이트 등재는 추후 도구 정비 항목.</li></ul></div>
+</body></html>

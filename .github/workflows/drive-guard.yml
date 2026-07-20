@@ -1,0 +1,29 @@
+# 드라이브 Shared 가드 — 자리 사고 자동 치유 (원장 Q278 · 운영자 260720 승인 "ㅇㅇ")
+# Shared 밖에 떨어진 새 미디어(최근 6h·image/video만)를 내 드라이브/Shared로 이동만 한다(삭제 0).
+# → 폰 드라이브싱크가 다음 3분 틱에 줍는다. 실패 = 런 적색(조용한 실패 금지).
+name: drive-guard
+
+on:
+  schedule:
+    - cron: '9,39 * * * *'   # 30분 주기(다른 크론 17,47과 분산)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: drive-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - name: Shared 밖 새 미디어 → Shared 이송
+        env:
+          GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+        run: python3 .github/scripts/drive_shared_guard.py

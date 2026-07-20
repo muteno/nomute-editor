@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>인스타 채널요약 대시보드 DIY — 팔로워 증감·인구통계·연령 (플레이그라운드)</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 템플릿 v1 (운영자 260713 정본 · §플레이그라운드 0-1)
+  ─ 사용법: 이 파일을 docs/reports/{yymmdd}_{라벨}_플레이그라운드.html로 복사한 뒤
+    맨 아래 "CONFIG(세션이 채우는 전부)" 블록만 교체한다.
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 양방향 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 스크롤 보존 · 한글 열맞춤.
+    골격을 손으로 다시 쓰면 위반 = check_refs.check_playground() 게이트(rc=1).
+  ─ 철학(운영자): 완제품을 부품으로 쪼개 미세조정 = 무의미.
+    부품 1개당 "방식 N가지"를 실물로 나란히(변형 갤러리 = 발산) → 선택 → 7축 미세조정(수렴).
+    핵심 7축 = 자간 · 폰트 크기 · 위치 · 불투명도 · 블러 · 라인 · 액티브 효과.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측값의 복사(자기완결 스냅샷 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer/index.html :root 실측 사본(260720 스냅샷 · 값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#121212; --pg-fg:#eef7f0; --pg-mut:#8fa697;
+  --pg-accent:#00EED2; --pg-accent-rgb:0,238,210; --pg-accent-bright:#5AFFE6;
+  --pg-lime:#d8ff3d; --pg-lime-rgb:216,255,61;            /* --hist-accent(체브론·라임) = accent-2 */
+  --pg-danger:#e23b2a; --pg-danger-rgb:226,59,42;          /* --danger = accent-3 */
+  --pg-warn:#FFE13D; --pg-warn-rgb:255,225,61;            /* --warn/--amber = accent-4 */
+  --pg-pink:#FF5EC8; --pg-pink-rgb:255,94,200;            /* --accent-6 */
+  --pg-green:#0FFD02;                                      /* --accent-5 */
+  --pg-line:rgba(255,255,255,.08);                        /* --line */
+  --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-pill:999px; --pg-r-modal:22px;
+  --pg-fs-xs:11px; --pg-fs-sm:12px; --pg-fs-label:13px; --pg-fs-h3:14px; --pg-fs-h2:15px; --pg-fs-h1:19px;
+  --pg-fw-b:700; --pg-fw-x:800;
+  --pg-sp-1:6px; --pg-sp-2:12px; --pg-sp-3:18px;
+  --pg-blur-s:8px; --pg-blur-m:14px; --pg-blur-l:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 미리보기 = 인스타 채널요약 prof 카드 재현(viewer/index.html .tgroup/.ch-* 실측 계승 · --t-* = 튜닝축, 폴백 = 현행 실측값 · 세션 교체 영역) ── */
+.pvroot{padding:10px;font-size:13px;color:var(--pg-fg);line-height:1.5}
+.tgroup{margin:0 0 var(--t-cardgap,12px);padding:var(--t-cardpv,12px) var(--t-cardph,14px);border:1px solid rgba(255,255,255,var(--t-linea,.08));border-radius:var(--t-cardrad,16px);background:linear-gradient(135deg,rgba(18,30,34,calc(.18 + var(--t-cardbga,0))),rgba(11,19,23,calc(.20 + var(--t-cardbga,0))))}
+.tgroup:last-child{margin-bottom:0}
+.tgroup-h{display:flex;align-items:center;gap:var(--t-hdrgap,7px);margin:0 0 12px;padding:9px var(--t-hdrpad,12px);font-size:var(--t-hdrfs,15px);font-weight:800;letter-spacing:var(--t-hdrls,-.2px);color:var(--pg-fg);border:1px solid rgba(255,255,255,.10);border-radius:11px;background:rgba(8,15,11,var(--t-hdrbga,.20));backdrop-filter:blur(var(--t-hdrblur,22px));-webkit-backdrop-filter:blur(var(--t-hdrblur,22px));white-space:nowrap}
+.tgroup-h .badge{flex:none;display:inline-flex;align-items:center;justify-content:center;width:var(--t-badgesz,24px);height:var(--t-badgesz,24px);font-size:12px;font-weight:700;color:var(--pg-accent);font-variant-numeric:tabular-nums}
+.tgroup-h .badge.pico svg{width:16px;height:16px;display:block}
+.tgroup-h .badge.circle{border:1.5px solid rgba(var(--pg-accent-rgb),.5);border-radius:50%}
+.tgroup-h .badge.hide{display:none}
+.ch-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}
+.tdash-time{margin-left:12px;margin-right:auto;color:var(--pg-mut);font-size:var(--t-timefs,11px);font-weight:400;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chev{flex:none;margin-left:auto;width:12px;height:12px;background:var(--pg-lime);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center/contain no-repeat}
+/* 타일 그리드 */
+.ch-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--t-tilegap,8px)}
+.ch-stats.c2{grid-template-columns:repeat(2,1fr)}
+.ch-stats.c1{grid-template-columns:1fr}
+.ch-stats.cauto{grid-template-columns:repeat(auto-fill,minmax(94px,1fr))}
+.ch-st{display:flex;flex-direction:column;gap:var(--t-vlgap,2px);padding:var(--t-tilepv,8px) var(--t-tileph,10px);background:rgba(255,255,255,var(--t-tilebg,.03));border-radius:var(--t-tilerad,11px);transition:transform .12s ease;box-shadow:0 2px 8px rgba(0,0,0,var(--t-tilesh,0))}
+.ch-st:active{transform:scale(var(--t-presfx,1))}
+.ch-st.outline{background:none;border:1px solid rgba(255,255,255,var(--t-linea,.08))}
+.ch-st.flat{background:none}
+.ch-st.tint{background:rgba(var(--pg-accent-rgb),.06)}
+.ch-st.span2{grid-column:span 2}
+.ch-strow{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.ch-st b{font-size:var(--t-valfs,15px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:var(--t-valls,0px);line-height:var(--t-vallh,1.2)}
+.ch-st .lb{color:var(--pg-mut);font-size:var(--t-lblfs,11px)}
+.ch-st .lb.fg{color:var(--pg-fg)}
+.ch-avg{color:var(--pg-mut);font-size:var(--t-avgfs,11px);font-variant-numeric:tabular-nums;line-height:var(--t-avglh,1.5)}
+.ch-avg.hide{display:none}
+.ch-avg .cmpbar{display:inline-block;vertical-align:middle;width:34px;height:5px;border-radius:999px;background:rgba(255,255,255,.08);position:relative;margin-left:5px;overflow:hidden}
+.ch-avg .cmpbar i{position:absolute;left:0;top:0;bottom:0;background:var(--pg-accent);border-radius:999px}
+/* 스파크 */
+.ch-spark{margin-top:var(--t-sparkgap,4px)}
+.ch-spark svg{display:block;width:100%;height:var(--t-sparkh,26px)}
+.ch-spark .spk-area{fill:rgba(var(--pg-accent-rgb),var(--t-sparkarea,.10))}
+.ch-spark .spk-line{fill:none;stroke:var(--pg-accent);stroke-width:var(--t-sparksw,1.8);stroke-linejoin:round;stroke-linecap:round}
+.ch-spark .spk-bar{fill:var(--pg-accent);opacity:.7}
+.ch-spark .spk-dot{fill:var(--pg-accent);r:var(--t-sparkdot,2.6px)}
+/* 팔로워 증감(신규 팔로워 · 24h/3d/7d/30d) */
+.dl-wrap{margin-top:var(--t-dltop,4px)}
+.dl-row{display:flex;gap:var(--t-dlgap,6px);flex-wrap:wrap}
+.dl-row.col{flex-direction:column;gap:calc(var(--t-dlgap,6px) / 1.5)}
+.dl-chip{display:flex;flex-direction:column;gap:1px;padding:var(--t-dlpadv,3px) var(--t-dlpadh,6px);border-radius:var(--t-dlrad,9px);background:rgba(255,255,255,.03);font-variant-numeric:tabular-nums;min-width:0}
+.dl-chip.pill{border-radius:999px;flex-direction:row;align-items:baseline;gap:5px}
+.dl-chip.plain{background:none;padding:0}
+.dl-chip .w{color:var(--pg-mut);font-size:var(--t-dllblfs,10px);white-space:nowrap}
+.dl-chip .d{font-size:var(--t-dlfs,13px);font-weight:700;white-space:nowrap}
+.dl-hero{font-size:var(--t-dlherofs,19px);font-weight:800;font-variant-numeric:tabular-nums}
+.dl-sub{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.dl-sub span{color:var(--pg-mut);font-size:var(--t-dllblfs,10px);font-variant-numeric:tabular-nums}
+.dl-tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;margin-top:3px}
+.dl-tbl td{padding:2px 0;font-size:var(--t-dlfs,12px)}
+.dl-tbl td:first-child{color:var(--pg-mut);font-size:var(--t-dllblfs,10px)}
+.dl-tbl td:last-child{text-align:right;font-weight:700}
+.dl-arrow{display:inline-flex;width:9px;height:9px;vertical-align:baseline}
+.dl-arrow svg{width:100%;height:100%}
+/* 증감 색 규칙(gallery deltacolor) */
+.dcol-acdn .dl-up{color:rgba(var(--pg-accent-rgb),var(--t-dlupa,1))}.dcol-acdn .dl-dn{color:var(--pg-danger)}.dcol-acdn .dl-zero{color:var(--pg-mut)}
+.dcol-mono .dl-up,.dcol-mono .dl-dn,.dcol-mono .dl-zero{color:var(--pg-mut)}
+.dcol-all .dl-up,.dcol-all .dl-dn,.dcol-all .dl-zero{color:rgba(var(--pg-accent-rgb),var(--t-dlupa,1))}
+.dcol-amb .dl-up{color:rgba(var(--pg-accent-rgb),var(--t-dlupa,1))}.dcol-amb .dl-dn{color:var(--pg-danger)}.dcol-amb .dl-zero{color:var(--pg-warn)}
+/* 인구통계·연령 바(viewer .ch-trow/.ch-bar 계승) */
+.ch-trow{display:flex;align-items:center;gap:8px;padding:var(--t-bargap,6px) 0;font-size:12px}
+.ch-trow .tl{flex:none;width:var(--t-tlw,64px);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-barwrap{flex:1;max-width:var(--t-barmaxw,none)}
+.ch-bar{position:relative;height:var(--t-barh,9px);border-radius:var(--t-barrad,999px);background:rgba(255,255,255,var(--t-barbg,.08));overflow:hidden}
+.ch-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--pg-accent-bright),var(--pg-accent))}
+.ch-bar i.f{background:linear-gradient(90deg,var(--pg-pink),rgba(var(--pg-pink-rgb),.7))}
+.ch-bar i.u{background:linear-gradient(90deg,var(--pg-mut),rgba(143,166,151,.6))}
+.ch-trow .tv{flex:none;color:var(--pg-mut);font-size:var(--t-pctfs,11px);font-variant-numeric:tabular-nums;min-width:var(--t-tvw,56px);text-align:right}
+.dsub{color:var(--pg-mut);font-size:var(--t-sublblfs,11px);margin:0 0 var(--t-subgap,8px)}
+/* 100% 스택 바 */
+.stack100{display:flex;height:var(--t-stackh,16px);border-radius:999px;overflow:hidden;margin:6px 0}
+.stack100 i{height:100%}
+.stack100 i:nth-child(1){background:var(--pg-accent)}
+.stack100 i:nth-child(2){background:var(--pg-accent-bright)}
+.stack100 i:nth-child(3){background:rgba(var(--pg-accent-rgb),.5)}
+.stack100 i:nth-child(4){background:rgba(255,255,255,.14)}
+.stack-lgd{display:flex;gap:var(--t-stacklgdgap,10px);flex-wrap:wrap;color:var(--pg-mut);font-size:var(--t-stacklgdfs,11px)}
+.stack-lgd i{display:inline-flex;align-items:center;gap:4px;font-style:normal}
+.stack-lgd i::before{content:'';width:8px;height:8px;border-radius:2px;background:currentColor;opacity:.8}
+/* 도넛 */
+.donut-wrap{display:flex;align-items:center;gap:var(--t-donutwrapgap,14px);flex-wrap:wrap}
+.donut{flex:none;width:var(--t-donutsize,68px);height:var(--t-donutsize,68px)}
+.donut circle{stroke-width:var(--t-donutth,10px)}
+.donut-lgd{display:flex;flex-direction:column;gap:var(--t-donutlgdgap,4px);color:var(--pg-mut);font-size:var(--t-donutlgdfs,11px)}
+.donut-lgd i{display:inline-flex;align-items:center;gap:6px;font-style:normal;font-variant-numeric:tabular-nums}
+.donut-lgd i b{color:var(--pg-fg);font-weight:700}
+.donut-lgd i::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--dc,var(--pg-accent))}
+/* 칩 나열 */
+.demo-chips{display:flex;gap:var(--t-chipgap,6px);flex-wrap:wrap}
+.demo-chip{display:inline-flex;align-items:baseline;gap:5px;padding:4px var(--t-chippadh,9px);border-radius:999px;background:rgba(var(--pg-accent-rgb),.08);border:1px solid rgba(var(--pg-accent-rgb),.25);font-size:11px;font-variant-numeric:tabular-nums}
+.demo-chip b{font-weight:700}
+/* 인구 피라미드 */
+.pyr{display:flex;flex-direction:column;gap:var(--t-pyrgap,5px)}
+.pyr-row{display:grid;grid-template-columns:1fr var(--t-pyrcw,46px) 1fr;align-items:center;gap:6px}
+.pyr-l,.pyr-r{height:var(--t-pyrh,12px);display:flex}
+.pyr-l{justify-content:flex-end}
+.pyr-l i,.pyr-r i{height:100%;border-radius:3px}
+.pyr-l i{background:linear-gradient(90deg,rgba(var(--pg-accent-rgb),.6),var(--pg-accent))}
+.pyr-r i{background:linear-gradient(90deg,var(--pg-pink),rgba(var(--pg-pink-rgb),.6))}
+.pyr-age{text-align:center;color:var(--pg-mut);font-size:var(--t-pyragefs,10px);font-variant-numeric:tabular-nums}
+.pyr-head{display:flex;justify-content:space-between;color:var(--pg-mut);font-size:11px;margin-bottom:4px}
+/* 히트맵 그리드 */
+.heat{display:grid;grid-template-columns:auto repeat(3,1fr);gap:var(--t-heatgap,3px);font-size:10px;font-variant-numeric:tabular-nums}
+.heat .hh{color:var(--pg-mut);text-align:center;padding:2px}
+.heat .hr{color:var(--pg-mut);display:flex;align-items:center}
+.heat .hc{border-radius:4px;padding:var(--t-heatpad,5px) 2px;text-align:center;color:var(--pg-fg);font-weight:700}
+/* 성별 도트 */
+.gdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.gdot.m{background:var(--pg-accent)}.gdot.f{background:var(--pg-pink)}.gdot.u{background:var(--pg-mut)}
+/* 갤러리 미니데모 축소 */
+.demo .tgroup{margin:0;padding:7px 8px}
+.demo .tgroup-h{margin:0 0 6px;padding:5px 7px;font-size:11px;backdrop-filter:none;-webkit-backdrop-filter:none}
+.demo .ch-stats{gap:4px}
+.demo .ch-st{padding:5px 6px}
+.demo .ch-st b{font-size:12px}
+.demo .ch-st .lb{font-size:9px}
+.demo .ch-spark svg{height:16px}
+.demo .ch-trow{padding:3px 0;font-size:10px}
+.demo .ch-trow .tl{width:38px}
+.demo .ch-trow .tv{min-width:30px}
+.demo .dl-chip .d{font-size:11px}.demo .dl-chip .w{font-size:8px}
+.demo .dsub{display:none}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>인스타 채널요약 <span style="color:var(--pg-accent)">대시보드 DIY</span></h1>
+<p class="sub">캡쳐한 카드 전체(팔로워·조회·도달·게시·방문 + <b>팔로워 24h/3d/7d/30d 증감</b> + <b>인구통계</b> + <b>연령·성별</b>)를 실물로 만져 고른다. 방식 선택(변형 갤러리) → 미세조정 축 → [선택값 복사]. 데이터 = viewer/insta_data.json 260720 실측 · 기본값 = 현행 · 선택지 150+.</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 부품별 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (7축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 인스타 채널요약 대시보드 DIY (viewer/index.html renderChan() prof 유닛 재현) ═══════════ */
+/* 실측 샘플 데이터 = viewer/insta_data.json 260720 스냅샷(값 창작 0 · 🔒[15]). follows = 일별 신규 팔로워(누적/언팔로우 미수집 = 각주). */
+const D={
+  user:'no_mute', time:'7월 20일 2:04PM', followers:64086,
+  account:{views:1471163, reach:857802, profile_views:2643},
+  avg:{views:{a:3132329,n:254}, reach:{a:1514237,n:261}, profile_views:{a:8353,n:254}, postsAll:3.8, postsN:261}, posts7d:0.7,
+  spk:{ // 최근 14일 실측 시리즈
+    views:[2101228,1409099,780991,584281,435615,571582,609767,261024,71839,45215,70921,732986,2947670,2677936],
+    reach:[101990,34461,23968,36145,401423,1520111,1474668,648644,198354,139806,185390,1191416,362408,166810],
+    profile_views:[3875,1782,800,656,438,731,878,387,233,240,241,1268,5117,6118],
+    posts:[3,1,0,0,2,0,0,0,0,0,2,1,0,2] },
+  follows:[["06-17",38],["06-18",60],["06-19",72],["06-20",32],["06-21",40],["06-22",39],["06-23",67],["06-24",47],["06-25",24],["06-26",24],["06-27",30],["06-28",42],["06-29",115],["06-30",107],["07-01",43],["07-02",31],["07-03",28],["07-04",29],["07-05",52],["07-06",27],["07-07",21],["07-08",18],["07-09",20],["07-10",55],["07-11",299],["07-12",0],["07-13",0],["07-14",0],["07-15",0],["07-16",0],["07-17",0],["07-18",0],["07-19",0],["07-20",null]],
+  country:[['KR',90.7],['US',2.2],['ID',0.8]],
+  city:[['Seoul',25.1],['Busan',7.0],['Incheon',6.4]],
+  ageGender:[['25-34','M',16.4],['35-44','M',12.9],['25-34','U',11.9],['35-44','U',9.8],['35-44','F',7.9]],
+};
+const KORC={KR:'한국',US:'미국',ID:'인도네시아'}, KORCITY={Seoul:'서울',Busan:'부산',Incheon:'인천'};
+const ARR_UP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg>';
+const ARR_DN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>';
+const PERSON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-3.6 3.6-6 8-6s8 2.4 8 6"/></svg>';
+/* ── 포맷·집계 헬퍼 ── */
+function vfmt(n){ if(n==null) return '—'; const a=Math.abs(n); const s=n<0?'-':''; return a>=1e8?s+(a/1e8).toFixed(1).replace(/\.0$/,'')+'억':a>=1e4?s+(a/1e4).toFixed(1).replace(/\.0$/,'')+'만':s+Math.round(a).toLocaleString(); }
+function money(n,mode){ if(n==null) return '—'; if(mode==='full') return n.toLocaleString(); if(mode==='abbr') return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(0)+'K':String(n); if(mode==='kunit') return n>=1e3?Math.round(n/1e3).toLocaleString()+'K':String(n); return vfmt(n); }
+function anchorIdx(mode){ const F=D.follows; if(mode==='peak'){ const j=F.findIndex(r=>r[0]==='07-11'); return j<0?F.length-1:j; } for(let i=F.length-1;i>=0;i--) if(F[i][1]!=null) return i; return F.length-1; }
+function winSums(idx){ const F=D.follows, out={}; [['24h',1],['3d',3],['7d',7],['30d',30]].forEach(([k,n])=>{ let t=0,c=0; for(let i=idx;i>idx-n&&i>=0;i--){ const v=F[i][1]; if(v!=null){t+=v;c++;} } out[k]={sum:t,days:c}; }); return out; }
+function dfmt(n,mode){ const num=vfmt(Math.abs(n)); const sign=n>0?'+':(n<0?'−':'±'); if(mode==='plusN') return sign+num; if(mode==='plusMyeong') return sign+num+'명'; if(mode==='compact') return sign+num; if(mode==='arrow'){ const ar=n>0?ARR_UP:(n<0?ARR_DN:''); return '<span class="dl-arrow">'+ar+'</span>'+num; } if(mode==='pct'){ const p=n/D.followers*100; return sign+num+' <span style="opacity:.7">('+p.toFixed(p&&Math.abs(p)<1?2:1)+'%)</span>'; } if(mode==='signcolor') return num; return sign+num; }
+function spark(vals,mode){ if(mode==='none'||!vals||vals.length<2) return ''; const W=120,H=26,pad=3; let mn=Math.min(...vals),mx=Math.max(...vals); if(mx-mn<1)mx=mn+1; const X=i=>pad+(W-2*pad)*i/(vals.length-1), Y=v=>H-pad-(H-2*pad)*(v-mn)/(mx-mn); const pts=vals.map((v,i)=>[X(i),Y(v)]); const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' '); let s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-hidden="true">'; if(mode==='bars'){ const bw=(W-2*pad)/vals.length*0.68; s+=vals.map((v,i)=>'<rect class="spk-bar" x="'+(X(i)-bw/2).toFixed(1)+'" y="'+Y(v).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(H-pad-Y(v)).toFixed(1)+'" rx="1"/>').join(''); } else if(mode==='dots'){ s+=pts.map(p=>'<circle class="spk-dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'"/>').join(''); } else { if(mode==='area') s+='<path class="spk-area" d="'+line+' L'+pts[pts.length-1][0].toFixed(1)+' '+(H-pad)+' L'+pts[0][0].toFixed(1)+' '+(H-pad)+' Z"/>'; s+='<path class="spk-line" d="'+line+'" vector-effect="non-scaling-stroke"/><circle class="spk-dot" cx="'+pts[pts.length-1][0].toFixed(1)+'" cy="'+pts[pts.length-1][1].toFixed(1)+'"/>'; } return s+'</svg>'; }
+/* ── 상태 헬퍼(갤러리 데모 = 자기 변형 오버라이드) ── */
+function baseS(){ const v={},a={}; for(const k in CONFIG.DEFAULTS){ if(k.slice(0,2)==='v_') v[k.slice(2)]=CONFIG.DEFAULTS[k]; else a[k]=CONFIG.DEFAULTS[k]; } return {v,a}; }
+function mkS(over){ const s=baseS(); if(over) for(const k in over) s.v[k]=over[k]; return s; }
+/* ── 팔로워 증감(신규) inner ── */
+function flwDeltaInner(s){ const variant=s.v.flwdelta; if(variant==='none') return ''; const w=winSums(anchorIdx(s.v.dataAnchor)), fmt=s.v.deltafmt, colcls='dcol-'+s.v.deltacolor;
+  const C=[['24시간','24h'],['3일','3d'],['7일','7d'],['30일','30d']].map(([lbl,k])=>{ const n=w[k].sum; return {lbl,n,cls:n>0?'dl-up':(n<0?'dl-dn':'dl-zero'),txt:dfmt(n,fmt)}; });
+  const chip=c=>'<div class="dl-chip"><span class="w">'+c.lbl+'</span><span class="d '+c.cls+'">'+c.txt+'</span></div>';
+  const pill=c=>'<div class="dl-chip pill"><span class="w">'+c.lbl+'</span><span class="d '+c.cls+'">'+c.txt+'</span></div>';
+  let inner='';
+  switch(variant){
+    case 'inline4': inner='<div class="dl-row">'+C.map(chip).join('')+'</div>'; break;
+    case 'stack4': inner='<div class="dl-row col">'+C.map(pill).join('')+'</div>'; break;
+    case 'grid22': inner='<div class="dl-row" style="display:grid;grid-template-columns:1fr 1fr">'+C.map(chip).join('')+'</div>'; break;
+    case 'hero24': { const h=C[0]; inner='<div class="dl-hero '+h.cls+'">'+h.txt+'<span style="font-size:10px;color:var(--pg-mut);font-weight:400"> /24시간</span></div><div class="dl-sub">'+C.slice(1).map(c=>'<span>'+c.lbl+' <b class="'+c.cls+'">'+c.txt+'</b></span>').join('')+'</div>'; break; }
+    case 'pillrow': inner='<div class="dl-row">'+C.map(pill).join('')+'</div>'; break;
+    case 'table': inner='<table class="dl-tbl">'+C.map(c=>'<tr><td>'+c.lbl+'</td><td class="'+c.cls+'">'+c.txt+'</td></tr>').join('')+'</table>'; break;
+    case 'badges': inner='<div class="dl-row">'+C.map(c=>'<div class="dl-chip" style="background:rgba(var(--pg-accent-rgb),.07);flex-direction:row;align-items:baseline;gap:4px;padding:3px 8px;border-radius:999px"><span class="w">'+c.lbl+'</span><span class="d '+c.cls+'">'+c.txt+'</span></div>').join('')+'</div>'; break;
+    case 'bars': { const mx=Math.max(1,...C.map(c=>Math.abs(c.n))); inner='<div class="dl-row col" style="gap:4px">'+C.map(c=>'<div style="display:flex;align-items:center;gap:6px"><span class="w" style="width:34px">'+c.lbl+'</span><span class="ch-bar" style="height:7px;flex:1"><i style="width:'+Math.max(3,Math.abs(c.n)/mx*100)+'%"></i></span><span class="d '+c.cls+'" style="font-size:11px;min-width:36px;text-align:right">'+c.txt+'</span></div>').join('')+'</div>'; break; }
+    case 'vbars': { const mx=Math.max(1,...C.map(c=>Math.abs(c.n))); inner='<div style="display:flex;gap:8px;align-items:flex-end;height:46px;margin-top:4px">'+C.map(c=>'<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1"><span class="d '+c.cls+'" style="font-size:10px">'+c.txt+'</span><span style="width:100%;background:rgba(var(--pg-accent-rgb),.5);border-radius:3px 3px 0 0;height:'+Math.max(4,Math.abs(c.n)/mx*30)+'px"></span><span class="w">'+c.lbl+'</span></div>').join('')+'</div>'; break; }
+    case 'spark': { const fol=D.follows.map(r=>r[1]).filter(v=>v!=null).slice(-14); inner='<div class="ch-spark">'+spark(fol,'area')+'</div><div class="dl-sub">'+C.map(c=>'<span>'+c.lbl+' <b class="'+c.cls+'">'+c.txt+'</b></span>').join('')+'</div>'; break; }
+    default: inner='<div class="dl-row">'+C.map(chip).join('');
+  }
+  return '<div class="dl-wrap '+colcls+'">'+inner+'</div>';
+}
+/* ── 타일 ── */
+function tileCls(s){ return {glass:'',outline:' outline',flat:' flat',tint:' tint'}[s.v.tilestyle]||''; }
+function avgLine(s,today,a,unit){ const m=s.v.avgline; if(m==='hidden') return '<span class="ch-avg hide"></span>'; if(m==='short') return '<span class="ch-avg">평균 '+vfmt(a.a)+' '+unit+'</span>'; if(m==='barcmp'){ const p=Math.max(4,Math.min(100,Math.round(today/(a.a||1)*100))); return '<span class="ch-avg">평균비 <span class="cmpbar"><i style="width:'+p+'%"></i></span> '+p+'%</span>'; } return '<span class="ch-avg">전체 '+a.n+'일 일평균 '+vfmt(a.a)+' '+unit+'</span>'; }
+function followerTile(s){ const wide=(['inline4','hero24','table','bars','spark','vbars'].includes(s.v.flwdelta))&&s.v.tilecols!=='c1'; return '<div class="ch-st'+tileCls(s)+(wide?' span2':'')+'"><div class="ch-strow"><b>'+money(D.followers,s.v.numfmt)+'명</b></div><span class="lb fg">팔로워</span>'+flwDeltaInner(s)+'</div>'; }
+function metricTile(s,key){ const cls=tileCls(s);
+  if(key==='posts'){ const spk=spark(D.spk.posts,s.v.spark); return '<div class="ch-st'+cls+'"><div class="ch-strow"><b>'+D.posts7d+' 개</b></div><span class="lb">일 평균 게시 (7일)</span>'+avgLine(s,D.posts7d,{a:D.avg.postsAll,n:D.avg.postsN},'개')+(spk?'<div class="ch-spark">'+spk+'</div>':'')+'</div>'; }
+  const map={views:['조회수',D.account.views,'회',D.avg.views],reach:['도달',D.account.reach,'계정',D.avg.reach],profile_views:['프로필 방문',D.account.profile_views,'회',D.avg.profile_views]};
+  const [lb,v,u,a]=map[key], spk=spark(D.spk[key],s.v.spark);
+  return '<div class="ch-st'+cls+'"><div class="ch-strow"><b>'+money(v,s.v.numfmt)+' '+u+'</b></div><span class="lb">'+lb+'</span>'+avgLine(s,v,a,u)+(spk?'<div class="ch-spark">'+spk+'</div>':'')+'</div>';
+}
+function profCard(s){ const cols={c3:'',c2:' c2',c1:' c1',auto:' cauto'}[s.v.tilecols]||''; const badge=s.v.header;
+  const bh=badge==='hide'?'<span class="badge hide"></span>':badge==='pico'?'<span class="badge pico">'+PERSON+'</span>':badge==='circle'?'<span class="badge circle">1</span>':'<span class="badge">1</span>';
+  const order=({default:['follower','views','reach','posts','profile_views'],flwfirst:['follower','views','reach','posts','profile_views'],perf:['views','reach','profile_views','posts','follower']})[s.v.tileorder]||['follower','views','reach','posts','profile_views'];
+  const tiles=order.map(k=>k==='follower'?followerTile(s):metricTile(s,k)).join('');
+  return '<div class="tgroup"><div class="tgroup-h">'+bh+'<b class="ch-nm">@'+D.user+'</b><span class="tdash-time">'+D.time+'</span><span class="chev"></span></div><div class="ch-stats'+cols+'">'+tiles+'</div></div>';
+}
+/* ── 인구통계 유닛 ── */
+function clab(code,mode){ const K=KORC[code]||KORCITY[code]||code; if(mode==='kor') return K; if(mode==='both') return (KORC[code]||KORCITY[code])?K+' ('+code+')':code; return code; }
+function withOthers(items,on){ if(!on) return items; const sum=items.reduce((a,b)=>a+b[1],0); return sum<99.4?items.concat([['기타',+(100-sum).toFixed(1)]]):items; }
+function barRows(items,s,icls){ const mx=Math.max(...items.map(i=>i[1])); return items.map(it=>'<div class="ch-trow"><span class="tl">'+clab(it[0],s.v.country_label)+'</span><span class="ch-barwrap"><span class="ch-bar"><i class="'+(icls||'')+'" style="width:'+Math.max(4,it[1]/mx*100)+'%"></i></span></span><span class="tv">'+it[1]+'%</span></div>').join(''); }
+function donutSvg(items,cols){ const R=28,C=2*Math.PI*R,cx=34,cy=34; let off=0,circ=''; items.forEach((it,i)=>{ const len=C*it[1]/100; circ+='<circle cx="'+cx+'" cy="'+cy+'" r="'+R+'" fill="none" stroke="'+(cols[i]||'rgba(255,255,255,.12)')+'" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 '+cx+' '+cy+')"/>'; off+=len; }); return '<svg class="donut" width="68" height="68" viewBox="0 0 68 68">'+circ+'</svg>'; }
+function donutBlock(items,s){ const cols=['var(--pg-accent)','var(--pg-accent-bright)','rgba(var(--pg-accent-rgb),.5)','rgba(255,255,255,.14)']; const it=withOthers(items,+s.a.demo_others); return '<div class="donut-wrap">'+donutSvg(it,cols)+'<div class="donut-lgd">'+it.map((x,i)=>'<i style="--dc:'+cols[i]+'">'+clab(x[0],s.v.country_label)+' <b>'+x[1]+'%</b></i>').join('')+'</div></div>'; }
+function demoUnit(s){ const layout=s.v.demo, others=+s.a.demo_others; const ctry=withOthers(D.country,others);
+  let body='';
+  if(layout==='barCountry') body='<p class="dsub">국가 상위</p>'+barRows(ctry,s);
+  else if(layout==='barCity') body='<p class="dsub">도시 상위</p>'+barRows(D.city,s);
+  else if(layout==='twocol') body='<div style="display:flex;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:120px"><p class="dsub">국가</p>'+barRows(D.country,s)+'</div><div style="flex:1;min-width:120px"><p class="dsub">도시</p>'+barRows(D.city,s)+'</div></div>';
+  else if(layout==='stack100'){ const it=withOthers(D.country,1); body='<p class="dsub">국가 구성</p><div class="stack100">'+it.map(x=>'<i style="width:'+x[1]+'%"></i>').join('')+'</div><div class="stack-lgd">'+it.map(x=>'<i>'+clab(x[0],s.v.country_label)+' '+x[1]+'%</i>').join('')+'</div>'; }
+  else if(layout==='donut') body='<p class="dsub">국가 분포</p>'+donutBlock(D.country,s);
+  else if(layout==='chips') body='<p class="dsub">국가 상위</p><div class="demo-chips">'+ctry.map(x=>'<span class="demo-chip">'+clab(x[0],s.v.country_label)+' <b>'+x[1]+'%</b></span>').join('')+'</div>';
+  else if(layout==='combo') body='<p class="dsub">국가</p>'+barRows(D.country,s)+'<p class="dsub" style="margin-top:8px">도시</p>'+barRows(D.city,s,'u');
+  else if(layout==='table') body='<table class="dl-tbl" style="width:100%"><tr><td>국가</td><td></td></tr>'+ctry.map(x=>'<tr><td>'+clab(x[0],s.v.country_label)+'</td><td>'+x[1]+'%</td></tr>').join('')+'</table>';
+  return '<div class="tgroup"><div class="tgroup-h"><span class="badge">2</span><b class="ch-nm">인구통계</b><span class="tdash-time">'+D.time+'</span><span class="chev"></span></div>'+body+'</div>';
+}
+/* ── 연령·성별 유닛 ── */
+function gmark(g,mode){ const KM={M:'남',F:'여',U:'미상'}; if(mode==='korMFU') return KM[g]; if(mode==='dotMFU') return '<span class="gdot '+g.toLowerCase()+'"></span>'+KM[g]; return g; }
+function gcolIcls(g){ return g==='F'?'f':g==='U'?'u':''; }
+function ageUnit(s){ const layout=s.v.agelayout, gm=s.v.gendermark, n=+s.a.age_count||5; const AG=D.ageGender.slice(0,n);
+  let body='';
+  if(layout==='barAG'){ const mx=Math.max(...AG.map(x=>x[2])); body='<p class="dsub">연령·성별 상위</p>'+AG.map(x=>'<div class="ch-trow"><span class="tl" style="width:auto;min-width:64px">'+x[0]+'·'+gmark(x[1],gm)+'</span><span class="ch-barwrap"><span class="ch-bar"><i class="'+gcolIcls(x[1])+'" style="width:'+Math.max(4,x[2]/mx*100)+'%"></i></span></span><span class="tv">'+x[2]+'%</span></div>').join(''); }
+  else if(layout==='pyramid'){ const bands=[...new Set(AG.map(x=>x[0]))]; const mx=Math.max(...AG.map(x=>x[2]),1); const get=(b,g)=>{const f=AG.find(x=>x[0]===b&&x[1]===g);return f?f[2]:0;};
+    body='<div class="pyr-head"><span>'+(gm==='korMFU'||gm==='dotMFU'?'남':'M')+'</span><span>연령</span><span>'+(gm==='korMFU'||gm==='dotMFU'?'여':'F')+'</span></div><div class="pyr">'+bands.map(b=>'<div class="pyr-row"><div class="pyr-l"><i style="width:'+get(b,'M')/mx*100+'%"></i></div><div class="pyr-age">'+b+'</div><div class="pyr-r"><i style="width:'+get(b,'F')/mx*100+'%"></i></div></div>').join('')+'</div><p class="dsub" style="margin-top:6px">미상(U): '+AG.filter(x=>x[1]==='U').map(x=>x[0]+' '+x[2]+'%').join(' · ')+'</p>'; }
+  else if(layout==='genderGroup'){ const gs=['M','F','U']; body=gs.map(g=>{ const rows=AG.filter(x=>x[1]===g); if(!rows.length) return ''; const mx=Math.max(...AG.map(x=>x[2])); return '<p class="dsub" style="margin:6px 0 3px">'+gmark(g,gm)+'</p>'+rows.map(x=>'<div class="ch-trow"><span class="tl">'+x[0]+'</span><span class="ch-barwrap"><span class="ch-bar"><i class="'+gcolIcls(g)+'" style="width:'+Math.max(4,x[2]/mx*100)+'%"></i></span></span><span class="tv">'+x[2]+'%</span></div>').join(''); }).join(''); }
+  else if(layout==='ageBand'){ const bands={}; AG.forEach(x=>bands[x[0]]=(bands[x[0]]||0)+x[2]); const arr=Object.entries(bands); const mx=Math.max(...arr.map(x=>x[1])); body='<p class="dsub">연령대(성별 합산 · top-5 부분합)</p>'+arr.map(x=>'<div class="ch-trow"><span class="tl">'+x[0]+'</span><span class="ch-barwrap"><span class="ch-bar"><i style="width:'+Math.max(4,x[1]/mx*100)+'%"></i></span></span><span class="tv">'+x[1].toFixed(1)+'%</span></div>').join(''); }
+  else if(layout==='stackAG'){ body='<p class="dsub">연령·성별 구성</p><div class="stack100">'+AG.map(x=>'<i style="width:'+(x[2]/AG.reduce((a,b)=>a+b[2],0)*100)+'%"></i>').join('')+'</div><div class="stack-lgd">'+AG.map(x=>'<i>'+x[0]+'·'+gmark(x[1],gm==='dotMFU'?'korMFU':gm)+' '+x[2]+'%</i>').join('')+'</div>'; }
+  else if(layout==='gridAG'){ const bands=[...new Set(AG.map(x=>x[0]))], gs=['M','F','U']; const mx=Math.max(...AG.map(x=>x[2])); const get=(b,g)=>{const f=AG.find(x=>x[0]===b&&x[1]===g);return f?f[2]:0;};
+    body='<div class="heat"><div class="hh"></div>'+gs.map(g=>'<div class="hh">'+gmark(g,gm==='dotMFU'?'korMFU':gm)+'</div>').join('')+bands.map(b=>'<div class="hr">'+b+'</div>'+gs.map(g=>{const v=get(b,g);return '<div class="hc" style="background:rgba(var(--pg-accent-rgb),'+(0.08+v/mx*0.5).toFixed(2)+')">'+(v||'·')+(v?'%':'')+'</div>';}).join('')).join('')+'</div>'; }
+  else if(layout==='donutAge') body='<p class="dsub">연령·성별 분포</p>'+(function(){const cols=['var(--pg-accent)','var(--pg-accent-bright)','rgba(var(--pg-accent-rgb),.6)','var(--pg-pink)','rgba(var(--pg-pink-rgb),.6)'];return '<div class="donut-wrap">'+donutSvg(AG.map(x=>[x[0],x[2]]),cols)+'<div class="donut-lgd">'+AG.map((x,i)=>'<i style="--dc:'+cols[i]+'">'+x[0]+'·'+gmark(x[1],gm==='dotMFU'?'korMFU':gm)+' <b>'+x[2]+'%</b></i>').join('')+'</div></div>';})();
+  return '<div class="tgroup"><div class="tgroup-h"><span class="badge">3</span><b class="ch-nm">연령·성별</b><span class="tdash-time">'+D.time+'</span><span class="chev"></span></div>'+body+'</div>';
+}
+/* ── 미니 데모 래퍼(갤러리 카드) ── */
+function miniFlw(id){ const s=mkS({flwdelta:id,dataAnchor:'peak'}); return '<div style="text-align:left;width:100%">'+flwDeltaInner(s)+'</div>'; }
+const CONFIG={
+  META:{label:'인스타 채널요약 대시보드 DIY', frame:{w:344,h:600}, ssot:'viewer/index.html :root · insta_data.json',
+    notes:[
+      '미리보기 = viewer/index.html renderChan() prof 유닛 + 신규 인구통계·연령 유닛의 근사 재현. 값 정본은 항상 viewer :root · 데이터 = insta_data.json 260720 실측(창작 0).',
+      '팔로워 증감 = <b>신규 팔로워(follows) 기간 합</b>. 누적 팔로워·언팔로우(취소)는 현 스크래퍼 미수집 → 순증감(신규−취소)은 그 필드 수집 후에만 가능(현행 코드 유지). 24h/3d/7d는 최근 수집 정체로 실측 +0 · 30일 = 실측 +'+winSums(anchorIdx('cur'))['30d'].sum.toLocaleString()+'명. 「데이터 기준」 갤러리를 <b>활발기(7/11)</b>로 두면 실측 활발구간(24h +299 등)으로 레이아웃을 확인할 수 있다.',
+      '인구통계·연령 = <b>신규 유닛</b>(현행 카드엔 없음) — [현행] 토글은 이 유닛들을 숨긴다. audience_sample은 <b>상위 N개 표본</b>이라 100%로 합산되지 않음(전체 분포·전 연령대는 완전 오디언스 인사이트 풀 필요) · 국가/도시 각 3개·연령·성별 5개만 실측.',
+      '성별 U = 미상(Instagram 미분류). 국기·성별 색은 팔레트 토큰만(자유 hex 금지). 폰트·프레임 렌더는 실기기와 다를 수 있음.'
+    ]},
+  /* ── 변형 갤러리(발산) — 부품 1개당 방식 N개 ── */
+  GALLERY:[
+    {comp:'flwdelta', nm:'① 팔로워 증감 표시', desc:'24h·3d·7d·30일 — 데모 수치=활발기(7/11) 실측', variants:[
+      {id:'none', nm:'카운트만', tag:'현행', r:()=>'<div style="font-weight:800;font-size:15px">64,086명</div>'},
+      {id:'inline4', nm:'인라인 4칸', tag:'가로 나열', r:()=>miniFlw('inline4')},
+      {id:'stack4', nm:'세로 스택', tag:'필 4행', r:()=>miniFlw('stack4')},
+      {id:'grid22', nm:'2×2 그리드', tag:'4칸 격자', r:()=>miniFlw('grid22')},
+      {id:'hero24', nm:'24h 히어로', tag:'대값+서브', r:()=>miniFlw('hero24')},
+      {id:'pillrow', nm:'필 행', tag:'라운드 칩', r:()=>miniFlw('pillrow')},
+      {id:'badges', nm:'배지', tag:'틴트 칩', r:()=>miniFlw('badges')},
+      {id:'table', nm:'미니 표', tag:'기간|증감', r:()=>miniFlw('table')},
+      {id:'bars', nm:'가로 막대', tag:'상대 크기', r:()=>miniFlw('bars')},
+      {id:'vbars', nm:'세로 막대', tag:'차트형', r:()=>miniFlw('vbars')},
+      {id:'spark', nm:'스파크+합', tag:'14일 추이', r:()=>miniFlw('spark')},
+    ]},
+    {comp:'deltafmt', nm:'② 증감 숫자 표기', desc:'부호·단위·화살표', variants:[
+      {id:'plusN', nm:'+N', tag:'부호+수', r:()=>'<span class="dl-up" style="font-weight:700">'+dfmt(299,'plusN')+'</span>'},
+      {id:'plusMyeong', nm:'+N명', tag:'단위 병기', r:()=>'<span class="dl-up" style="font-weight:700">'+dfmt(299,'plusMyeong')+'</span>'},
+      {id:'arrow', nm:'▲N', tag:'SVG 화살표', r:()=>'<span class="dl-up" style="font-weight:700;display:inline-flex;align-items:center;gap:2px">'+dfmt(299,'arrow')+'</span>'},
+      {id:'pct', nm:'+N (%)', tag:'모수 대비', r:()=>'<span class="dl-up" style="font-weight:700">'+dfmt(299,'pct')+'</span>'},
+      {id:'compact', nm:'+N 간결', tag:'만·억 축약', r:()=>'<span class="dl-up" style="font-weight:700">'+dfmt(1158,'compact')+'</span>'},
+    ]},
+    {comp:'deltacolor', nm:'③ 증감 색 규칙', desc:'상승/정체/하락', variants:[
+      {id:'acdn', nm:'상승·하락 대비', tag:'accent/danger', r:()=>'<div class="dcol-acdn" style="display:flex;gap:6px;font-weight:700"><span class="dl-up">+299</span><span class="dl-zero">±0</span></div>'},
+      {id:'mono', nm:'단색', tag:'무채', r:()=>'<div class="dcol-mono" style="display:flex;gap:6px;font-weight:700"><span class="dl-up">+299</span><span class="dl-zero">±0</span></div>'},
+      {id:'all', nm:'전부 강조', tag:'accent', r:()=>'<div class="dcol-all" style="display:flex;gap:6px;font-weight:700"><span class="dl-up">+299</span><span class="dl-zero">±0</span></div>'},
+      {id:'amb', nm:'정체=앰버', tag:'3색', r:()=>'<div class="dcol-amb" style="display:flex;gap:6px;font-weight:700"><span class="dl-up">+299</span><span class="dl-zero">±0</span></div>'},
+    ]},
+    {comp:'demo', nm:'④ 인구통계 레이아웃', desc:'국가·도시 (신규 유닛)', variants:[
+      {id:'barCountry', nm:'국가 바', tag:'막대 리스트', r:()=>barRows(D.country,mkS())},
+      {id:'barCity', nm:'도시 바', tag:'막대 리스트', r:()=>barRows(D.city,mkS())},
+      {id:'twocol', nm:'국가+도시', tag:'2열', r:()=>'<div style="display:flex;gap:6px">'+barRows(D.country.slice(0,2),mkS())+'</div>'},
+      {id:'stack100', nm:'100% 스택', tag:'가로 바', r:()=>'<div class="stack100">'+withOthers(D.country,1).map(x=>'<i style="width:'+x[1]+'%"></i>').join('')+'</div>'},
+      {id:'donut', nm:'도넛', tag:'원형', r:()=>donutSvg(withOthers(D.country,1),['var(--pg-accent)','var(--pg-accent-bright)','rgba(var(--pg-accent-rgb),.5)','rgba(255,255,255,.14)'])},
+      {id:'chips', nm:'칩 나열', tag:'배지', r:()=>'<div class="demo-chips">'+D.country.map(x=>'<span class="demo-chip">'+x[0]+' <b>'+x[1]+'%</b></span>').join('')+'</div>'},
+      {id:'combo', nm:'국가+도시 서브', tag:'2단', r:()=>barRows(D.country.slice(0,2),mkS())+barRows(D.city.slice(0,1),mkS(),'u')},
+      {id:'table', nm:'표', tag:'수치형', r:()=>'<table class="dl-tbl">'+D.country.map(x=>'<tr><td>'+x[0]+'</td><td>'+x[1]+'%</td></tr>').join('')+'</table>'},
+    ]},
+    {comp:'country_label', nm:'⑤ 국가·도시 표기', desc:'코드/한글', variants:[
+      {id:'code', nm:'코드', tag:'KR·US', r:()=>'<div style="font-size:12px">KR · US · ID</div>'},
+      {id:'kor', nm:'한글', tag:'한국·미국', r:()=>'<div style="font-size:12px">한국 · 미국 · 인도네시아</div>'},
+      {id:'both', nm:'한글(코드)', tag:'병기', r:()=>'<div style="font-size:12px">한국 (KR)</div>'},
+    ]},
+    {comp:'agelayout', nm:'⑥ 연령·성별 레이아웃', desc:'신규 유닛 · top-5 표본', variants:[
+      {id:'barAG', nm:'연령·성별 바', tag:'막대', r:()=>'<div style="font-size:10px">'+barRows(D.ageGender.slice(0,3).map(x=>[x[0]+'·'+x[1],x[2]]),mkS())+'</div>'},
+      {id:'pyramid', nm:'인구 피라미드', tag:'남↔여', r:()=>'<div class="pyr"><div class="pyr-row"><div class="pyr-l"><i style="width:80%"></i></div><div class="pyr-age">25-34</div><div class="pyr-r"><i style="width:0"></i></div></div><div class="pyr-row"><div class="pyr-l"><i style="width:63%"></i></div><div class="pyr-age">35-44</div><div class="pyr-r"><i style="width:39%"></i></div></div></div>'},
+      {id:'genderGroup', nm:'성별 그룹', tag:'남/여/미상', r:()=>'<div style="font-size:10px"><p class="dsub" style="margin:0 0 2px">남</p>'+barRows([['25-34',16.4]],mkS())+'</div>'},
+      {id:'ageBand', nm:'연령대 집계', tag:'성별 합산', r:()=>'<div style="font-size:10px">'+barRows([['25-34',28.3],['35-44',30.6]],mkS())+'</div>'},
+      {id:'stackAG', nm:'가로 스택', tag:'구성비', r:()=>'<div class="stack100">'+D.ageGender.map(x=>'<i style="width:'+(x[2]/57*100)+'%"></i>').join('')+'</div>'},
+      {id:'gridAG', nm:'히트맵', tag:'연령×성별', r:()=>'<div class="heat" style="font-size:8px"><div class="hh"></div><div class="hh">M</div><div class="hh">F</div><div class="hh">U</div><div class="hr">25-34</div><div class="hc" style="background:rgba(var(--pg-accent-rgb),.5)">16</div><div class="hc" style="background:rgba(var(--pg-accent-rgb),.1)">·</div><div class="hc" style="background:rgba(var(--pg-accent-rgb),.4)">12</div></div>'},
+      {id:'donutAge', nm:'도넛', tag:'원형', r:()=>donutSvg(D.ageGender.map(x=>[x[0],x[2]]),['var(--pg-accent)','var(--pg-accent-bright)','rgba(var(--pg-accent-rgb),.6)','var(--pg-pink)','rgba(var(--pg-pink-rgb),.6)'])},
+    ]},
+    {comp:'gendermark', nm:'⑦ 성별 표기·색', desc:'M/F/U', variants:[
+      {id:'MFU', nm:'M/F/U', tag:'코드', r:()=>'<div style="font-size:12px">M · F · U</div>'},
+      {id:'korMFU', nm:'남/여/미상', tag:'한글', r:()=>'<div style="font-size:12px">남 · 여 · 미상</div>'},
+      {id:'colorMF', nm:'성별 색', tag:'남=청·여=핑크', r:()=>'<div style="font-size:12px"><span style="color:var(--pg-accent)">남</span> <span style="color:var(--pg-pink)">여</span> <span style="color:var(--pg-mut)">미상</span></div>'},
+      {id:'dotMFU', nm:'색 도트', tag:'도트+라벨', r:()=>'<div style="font-size:12px"><span class="gdot m"></span>남 <span class="gdot f"></span>여 <span class="gdot u"></span>미상</div>'},
+    ]},
+    {comp:'tilecols', nm:'⑧ 타일 그리드 열', desc:'열 수', variants:[
+      {id:'c3', nm:'3열', tag:'현행', r:()=>'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px">'+'<i style="background:rgba(255,255,255,.1);height:16px;border-radius:3px"></i>'.repeat(3)+'</div>'},
+      {id:'c2', nm:'2열', tag:'넓게', r:()=>'<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">'+'<i style="background:rgba(255,255,255,.1);height:16px;border-radius:3px"></i>'.repeat(2)+'</div>'},
+      {id:'c1', nm:'1열', tag:'세로', r:()=>'<div style="display:grid;gap:3px">'+'<i style="background:rgba(255,255,255,.1);height:11px;border-radius:3px"></i>'.repeat(2)+'</div>'},
+      {id:'auto', nm:'자동', tag:'반응형', r:()=>'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(24px,1fr));gap:3px">'+'<i style="background:rgba(255,255,255,.1);height:16px;border-radius:3px"></i>'.repeat(4)+'</div>'},
+    ]},
+    {comp:'spark', nm:'⑨ 스파크라인 방식', desc:'지표 미니 추이', variants:[
+      {id:'area', nm:'면적', tag:'현행', r:()=>'<div class="ch-spark">'+spark(D.spk.reach,'area')+'</div>'},
+      {id:'line', nm:'라인', tag:'선만', r:()=>'<div class="ch-spark">'+spark(D.spk.reach,'line')+'</div>'},
+      {id:'bars', nm:'막대', tag:'바', r:()=>'<div class="ch-spark">'+spark(D.spk.reach,'bars')+'</div>'},
+      {id:'dots', nm:'점', tag:'도트', r:()=>'<div class="ch-spark">'+spark(D.spk.reach,'dots')+'</div>'},
+      {id:'none', nm:'없음', tag:'숨김', r:()=>'<div style="color:var(--pg-mut);font-size:10px">— 없음 —</div>'},
+    ]},
+    {comp:'avgline', nm:'⑩ 평균 병기 방식', desc:'전기간 평균', variants:[
+      {id:'full', nm:'전체 N일 일평균', tag:'현행', r:()=>'<span class="ch-avg" style="font-size:10px">전체 261일 일평균 151.4만 계정</span>'},
+      {id:'short', nm:'평균 N', tag:'간략', r:()=>'<span class="ch-avg" style="font-size:10px">평균 151.4만 계정</span>'},
+      {id:'barcmp', nm:'평균비 막대', tag:'대비 바', r:()=>'<span class="ch-avg" style="font-size:10px">평균비 <span class="cmpbar"><i style="width:57%"></i></span> 57%</span>'},
+      {id:'hidden', nm:'숨김', tag:'값만', r:()=>'<span style="color:var(--pg-mut);font-size:10px">— 숨김 —</span>'},
+    ]},
+    {comp:'header', nm:'⑪ 헤더 배지', desc:'단위 순번', variants:[
+      {id:'num', nm:'숫자', tag:'현행', r:()=>'<span class="badge">1</span>'},
+      {id:'pico', nm:'픽토', tag:'사람 아이콘', r:()=>'<span class="badge pico">'+PERSON+'</span>'},
+      {id:'circle', nm:'원형', tag:'테두리 원', r:()=>'<span class="badge circle">1</span>'},
+      {id:'hide', nm:'숨김', tag:'배지 없음', r:()=>'<span style="color:var(--pg-mut);font-size:10px">— 없음 —</span>'},
+    ]},
+    {comp:'tilestyle', nm:'⑫ 타일 표면', desc:'배경', variants:[
+      {id:'glass', nm:'글래스', tag:'현행', r:()=>'<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px;font-size:10px">타일</div>'},
+      {id:'outline', nm:'테두리', tag:'라인', r:()=>'<div style="border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px;font-size:10px">타일</div>'},
+      {id:'flat', nm:'무배경', tag:'플랫', r:()=>'<div style="padding:8px;font-size:10px">타일</div>'},
+      {id:'tint', nm:'강조 틴트', tag:'accent', r:()=>'<div style="background:rgba(var(--pg-accent-rgb),.06);border-radius:8px;padding:8px;font-size:10px">타일</div>'},
+    ]},
+    {comp:'numfmt', nm:'⑬ 대값 숫자 표기', desc:'조회·도달·방문', variants:[
+      {id:'man', nm:'만·억', tag:'현행', r:()=>'<div style="font-weight:800">'+money(1471163,'man')+'</div>'},
+      {id:'abbr', nm:'K·M', tag:'영문 축약', r:()=>'<div style="font-weight:800">'+money(1471163,'abbr')+'</div>'},
+      {id:'full', nm:'전체 자리', tag:'콤마', r:()=>'<div style="font-weight:800;font-size:12px">'+money(1471163,'full')+'</div>'},
+      {id:'kunit', nm:'K 단위', tag:'천', r:()=>'<div style="font-weight:800">'+money(1471163,'kunit')+'</div>'},
+    ]},
+    {comp:'dataAnchor', nm:'⑭ 미리보기 데이터 기준', desc:'증감 표본 구간', variants:[
+      {id:'cur', nm:'현행(오늘)', tag:'24h+0·30일+1158', r:()=>'<div style="font-size:11px;color:var(--pg-mut)">최근 정체<br>24h <b style="color:var(--pg-mut)">±0</b> · 30일 <b style="color:var(--pg-accent)">+1,158</b></div>'},
+      {id:'peak', nm:'활발기(7/11)', tag:'24h+299', r:()=>'<div style="font-size:11px;color:var(--pg-mut)">스파이크일<br>24h <b style="color:var(--pg-accent)">+299</b> · 7일 <b style="color:var(--pg-accent)">+492</b></div>'},
+    ]},
+    {comp:'tileorder', nm:'⑮ 타일 순서', desc:'배치 순', variants:[
+      {id:'default', nm:'팔로워 우선', tag:'현행류', r:()=>'<div style="font-size:10px;color:var(--pg-mut)">팔로워 › 조회 › 도달 › 게시 › 방문</div>'},
+      {id:'flwfirst', nm:'팔로워 강조', tag:'상단 넓게', r:()=>'<div style="font-size:10px;color:var(--pg-mut)">[팔로워 넓게] › 나머지</div>'},
+      {id:'perf', nm:'성과 우선', tag:'조회·도달 앞', r:()=>'<div style="font-size:10px;color:var(--pg-mut)">조회 › 도달 › 방문 › 게시 › 팔로워</div>'},
+    ]},
+  ],
+  /* ── 미세조정 축(수렴) — lad=확립 사다리 실측, tokn/tokv=대응 토큰, eps=계승판정 오차, free=알파 자유 ── */
+  AXES:[
+    // 카드·헤더
+    {k:'cardpv', nm:'카드 세로패딩', grp:'카드·헤더', type:'range', min:6, max:24, step:1, u:'px', lad:[6,12,18,24], tokn:'--sp-2', tokv:12, tok:'--sp 사다리(6/12/18/24)', eps:0.5},
+    {k:'cardph', nm:'카드 가로패딩', grp:'카드·헤더', type:'range', min:6, max:24, step:1, u:'px', tok:'현행 14(광학 · --sp 근접 12)', eps:0.5},
+    {k:'cardrad', nm:'카드 라운드', grp:'카드·헤더', type:'range', min:8, max:26, step:1, u:'px', lad:[9,11,16,22], tokn:'--r-l', tokv:16, tok:'--r-s/m/l/modal(9/11/16/22)', eps:0.5},
+    {k:'hdrfs', nm:'헤더 폰트', grp:'카드·헤더', type:'range', min:12, max:22, step:0.5, u:'px', lad:[13,14,15,19], tokn:'--fs-h2', tokv:15, tok:'--fs-* 사다리(13/14/15/19)', eps:0.26},
+    {k:'hdrls', nm:'헤더 자간', grp:'카드·헤더', type:'range', min:-1, max:1, step:0.1, u:'px', tok:'광학 보정 — 현행 -0.2', eps:0.05},
+    {k:'hdrpad', nm:'헤더 가로패딩', grp:'카드·헤더', type:'range', min:6, max:20, step:1, u:'px', tok:'현행 12', eps:0.5},
+    {k:'hdrblur', nm:'헤더 블러', grp:'카드·헤더', type:'range', min:0, max:34, step:1, u:'px', lad:[8,14,22,30], tokn:'--blur-l', tokv:22, tok:'--blur-s/m/l/xl(8/14/22/30)', eps:0.5},
+    {k:'hdrbga', nm:'헤더 배경알파', grp:'카드·헤더', type:'range', min:0, max:0.5, step:0.02, u:'', free:true, tok:'글래스 알파 변주(현행 .20)', eps:0.01},
+    {k:'hdrgap', nm:'배지↔타이틀', grp:'카드·헤더', type:'range', min:2, max:14, step:1, u:'px', tok:'현행 7', eps:0.5},
+    {k:'badgesz', nm:'배지 크기', grp:'카드·헤더', type:'range', min:16, max:32, step:1, u:'px', tok:'현행 24', eps:0.5},
+    {k:'timefs', nm:'수집시각 폰트', grp:'카드·헤더', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tokn:'--fs-xs', tokv:11, tok:'--fs-xs/sm(11/12)', eps:0.26},
+    // 타일
+    {k:'tilepv', nm:'타일 세로패딩', grp:'타일', type:'range', min:4, max:16, step:1, u:'px', tok:'현행 8', eps:0.5},
+    {k:'tileph', nm:'타일 가로패딩', grp:'타일', type:'range', min:4, max:16, step:1, u:'px', tok:'현행 10', eps:0.5},
+    {k:'tilegap', nm:'타일 간격', grp:'타일', type:'range', min:2, max:16, step:1, u:'px', tok:'현행 8', eps:0.5},
+    {k:'tilerad', nm:'타일 라운드', grp:'타일', type:'range', min:6, max:20, step:1, u:'px', lad:[9,11,16], tokn:'--r-m', tokv:11, tok:'--r-s/m/l(9/11/16)', eps:0.5},
+    {k:'tilebg', nm:'타일 배경알파', grp:'타일', type:'range', min:0, max:0.16, step:0.005, u:'', free:true, tok:'화이트 알파 변주(현행 .03)', eps:0.003},
+    {k:'valfs', nm:'값 폰트', grp:'타일', type:'range', min:11, max:24, step:0.5, u:'px', lad:[13,14,15,19], tokn:'--fs-h2', tokv:15, tok:'--fs-* 사다리', eps:0.26},
+    {k:'lblfs', nm:'라벨 폰트', grp:'타일', type:'range', min:9, max:15, step:0.5, u:'px', lad:[11,12,13], tokn:'--fs-xs', tokv:11, tok:'--fs-xs/sm/label', eps:0.26},
+    {k:'avgfs', nm:'평균 폰트', grp:'타일', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tokn:'--fs-xs', tokv:11, tok:'--fs-xs/sm', eps:0.26},
+    {k:'vlgap', nm:'값↔라벨 간격', grp:'타일', type:'range', min:0, max:8, step:1, u:'px', tok:'현행 2', eps:0.5},
+    {k:'valls', nm:'값 자간', grp:'타일', type:'range', min:-1, max:1, step:0.1, u:'px', tok:'현행 0', eps:0.05},
+    {k:'vallh', nm:'값 행높이', grp:'타일', type:'range', min:1, max:1.6, step:0.05, u:'', tok:'현행 1.2', eps:0.03},
+    {k:'avglh', nm:'평균 행높이', grp:'타일', type:'range', min:1, max:1.8, step:0.05, u:'', tok:'현행 1.5', eps:0.03},
+    // 스파크
+    {k:'sparkh', nm:'스파크 높이', grp:'스파크', type:'range', min:14, max:44, step:1, u:'px', tok:'현행 26', eps:0.5},
+    {k:'sparksw', nm:'스파크 선두께', grp:'스파크', type:'range', min:1, max:3, step:0.1, u:'', tok:'현행 1.8', eps:0.05},
+    {k:'sparkarea', nm:'면적 알파', grp:'스파크', type:'range', min:0, max:0.4, step:0.01, u:'', free:true, tok:'accent 알파 변주(현행 .10)', eps:0.005},
+    {k:'sparkgap', nm:'스파크 상단간격', grp:'스파크', type:'range', min:0, max:12, step:1, u:'px', tok:'현행 4', eps:0.5},
+    {k:'sparkdot', nm:'종점 점 크기', grp:'스파크', type:'range', min:0, max:5, step:0.2, u:'px', tok:'현행 2.6', eps:0.1},
+    // 팔로워 증감
+    {k:'dlfs', nm:'증감 값 폰트', grp:'팔로워 증감', type:'range', min:10, max:20, step:0.5, u:'px', lad:[12,13,14], tok:'--fs 사다리', eps:0.26},
+    {k:'dlherofs', nm:'히어로 폰트', grp:'팔로워 증감', type:'range', min:14, max:28, step:0.5, u:'px', lad:[15,19], tokn:'--fs-h1', tokv:19, tok:'--fs-h1(19)', eps:0.26},
+    {k:'dlgap', nm:'증감 항목간격', grp:'팔로워 증감', type:'range', min:2, max:16, step:1, u:'px', tok:'현행 6', eps:0.5},
+    {k:'dlpadv', nm:'증감 칩 세로패딩', grp:'팔로워 증감', type:'range', min:0, max:10, step:1, u:'px', tok:'현행 3', eps:0.5},
+    {k:'dlpadh', nm:'증감 칩 가로패딩', grp:'팔로워 증감', type:'range', min:0, max:14, step:1, u:'px', tok:'현행 6', eps:0.5},
+    {k:'dlrad', nm:'증감 칩 라운드', grp:'팔로워 증감', type:'range', min:0, max:16, step:1, u:'px', lad:[9,11], tokn:'--r-s', tokv:9, tok:'--r-s/m(9/11)', eps:0.5},
+    {k:'dlupa', nm:'상승색 알파', grp:'팔로워 증감', type:'range', min:0.3, max:1, step:0.02, u:'', free:true, tok:'accent 알파 변주(현행 1)', eps:0.01},
+    {k:'dllblfs', nm:'기간 라벨 폰트', grp:'팔로워 증감', type:'range', min:8, max:13, step:0.5, u:'px', tok:'현행 10(--fs-xs 근접 11)', eps:0.26},
+    {k:'dltop', nm:'증감 상단간격', grp:'팔로워 증감', type:'range', min:0, max:14, step:1, u:'px', tok:'현행 4', eps:0.5},
+    // 인구통계·연령 바
+    {k:'barh', nm:'바 높이', grp:'인구통계·연령', type:'range', min:4, max:20, step:1, u:'px', lad:[9], tok:'게이지 현행 9', eps:0.5},
+    {k:'barrad', nm:'바 라운드', grp:'인구통계·연령', type:'range', min:0, max:12, step:1, u:'px', tok:'--r-pill(현행 필)', eps:0.5},
+    {k:'barbg', nm:'트랙 알파', grp:'인구통계·연령', type:'range', min:0, max:0.2, step:0.005, u:'', free:true, tok:'화이트 알파(현행 .08)', eps:0.003},
+    {k:'bargap', nm:'행 간격', grp:'인구통계·연령', type:'range', min:2, max:14, step:1, u:'px', tok:'현행 6', eps:0.5},
+    {k:'tlw', nm:'라벨 열폭', grp:'인구통계·연령', type:'range', min:36, max:110, step:2, u:'px', tok:'현행 64', eps:1},
+    {k:'tvw', nm:'수치 열폭', grp:'인구통계·연령', type:'range', min:30, max:90, step:2, u:'px', tok:'현행 56', eps:1},
+    {k:'pctfs', nm:'퍼센트 폰트', grp:'인구통계·연령', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tok:'--fs-xs/sm', eps:0.26},
+    {k:'barmaxw', nm:'바 최대폭', grp:'인구통계·연령', type:'range', min:40, max:100, step:2, u:'%', tok:'현행 100', eps:1},
+    {k:'donutth', nm:'도넛 두께', grp:'인구통계·연령', type:'range', min:4, max:18, step:1, u:'px', tok:'현행 10', eps:0.5},
+    {k:'donutsize', nm:'도넛 크기(뷰박스 무관 시각)', grp:'인구통계·연령', type:'range', min:52, max:96, step:2, u:'px', tok:'현행 68', eps:1},
+    {k:'pyrh', nm:'피라미드 바높이', grp:'인구통계·연령', type:'range', min:6, max:22, step:1, u:'px', tok:'현행 12', eps:0.5},
+    {k:'pyrgap', nm:'피라미드 행간격', grp:'인구통계·연령', type:'range', min:2, max:12, step:1, u:'px', tok:'현행 5', eps:0.5},
+    {k:'stackh', nm:'스택바 높이', grp:'인구통계·연령', type:'range', min:8, max:28, step:1, u:'px', tok:'현행 16', eps:0.5},
+    {k:'age_count', nm:'연령 항목수', grp:'인구통계·연령', type:'seg', sg:[['3','상위3'],['5','상위5']], lad:[3,5], tok:'표본 = 5개', eps:0.1},
+    {k:'demo_others', nm:'기타(잔여) 표시', grp:'인구통계·연령', type:'seg', sg:[['0','끔'],['1','켬']], lad:[0,1], tok:'상위합 밖 잔여', eps:0.1},
+    // 세부 요소(유닛 간격·범례·소제목·히트맵·피라미드)
+    {k:'cardgap', nm:'유닛 카드 간격', grp:'세부 요소', type:'range', min:4, max:24, step:1, u:'px', lad:[6,12,18], tokn:'--sp-2', tokv:12, tok:'--sp 사다리', eps:0.5},
+    {k:'sublblfs', nm:'소제목 폰트', grp:'세부 요소', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tok:'--fs-xs/sm', eps:0.26},
+    {k:'subgap', nm:'소제목 하단간격', grp:'세부 요소', type:'range', min:2, max:16, step:1, u:'px', tok:'현행 8', eps:0.5},
+    {k:'chipgap', nm:'칩 간격', grp:'세부 요소', type:'range', min:2, max:14, step:1, u:'px', tok:'현행 6', eps:0.5},
+    {k:'chippadh', nm:'칩 가로패딩', grp:'세부 요소', type:'range', min:4, max:18, step:1, u:'px', tok:'현행 9', eps:0.5},
+    {k:'donutwrapgap', nm:'도넛↔범례 간격', grp:'세부 요소', type:'range', min:4, max:26, step:1, u:'px', tok:'현행 14', eps:0.5},
+    {k:'donutlgdfs', nm:'도넛 범례 폰트', grp:'세부 요소', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tok:'--fs-xs/sm', eps:0.26},
+    {k:'donutlgdgap', nm:'도넛 범례 행간격', grp:'세부 요소', type:'range', min:2, max:12, step:1, u:'px', tok:'현행 4', eps:0.5},
+    {k:'stacklgdfs', nm:'스택 범례 폰트', grp:'세부 요소', type:'range', min:9, max:14, step:0.5, u:'px', lad:[11,12], tok:'--fs-xs/sm', eps:0.26},
+    {k:'stacklgdgap', nm:'스택 범례 간격', grp:'세부 요소', type:'range', min:4, max:20, step:1, u:'px', tok:'현행 10', eps:0.5},
+    {k:'heatgap', nm:'히트맵 간격', grp:'세부 요소', type:'range', min:1, max:8, step:1, u:'px', tok:'현행 3', eps:0.5},
+    {k:'heatpad', nm:'히트맵 셀 패딩', grp:'세부 요소', type:'range', min:2, max:12, step:1, u:'px', tok:'현행 5', eps:0.5},
+    {k:'pyragefs', nm:'피라미드 연령 폰트', grp:'세부 요소', type:'range', min:8, max:14, step:0.5, u:'px', tok:'현행 10(--fs-xs 근접 11)', eps:0.26},
+    {k:'pyrcw', nm:'피라미드 중앙폭', grp:'세부 요소', type:'range', min:30, max:70, step:2, u:'px', tok:'현행 46', eps:1},
+    // 표면·모션
+    {k:'linea', nm:'테두리 알파', grp:'표면·모션', type:'range', min:0, max:0.3, step:0.005, u:'', free:true, tok:'--line 변주(현행 .08)', eps:0.003},
+    {k:'cardbga', nm:'카드 배경 가중', grp:'표면·모션', type:'range', min:-0.1, max:0.3, step:0.01, u:'', free:true, tok:'글래스 그라디언트 가중(현행 0)', eps:0.005},
+    {k:'tilesh', nm:'타일 그림자', grp:'표면·모션', type:'range', min:0, max:0.4, step:0.02, u:'', free:true, tok:'현행 0(깊이=글래스)', eps:0.01},
+    {k:'presfx', nm:'타일 눌림 scale', grp:'표면·모션', type:'range', min:0.82, max:1, step:0.01, u:'', tok:'현행 1(눌림 없음) · 추가 시 --press 사다리(.98/.96/.94/.9/.85) 계승', eps:0.005},
+  ],
+  DEFAULTS:{ // ★ 현행 실측(추천값 금지) — 팔로워 증감 none·인구통계/연령은 신규 유닛(항상 제안뷰 렌더)
+    v_flwdelta:'none', v_deltafmt:'plusN', v_deltacolor:'acdn', v_demo:'barCountry', v_country_label:'code',
+    v_agelayout:'barAG', v_gendermark:'MFU', v_tilecols:'c3', v_spark:'area', v_avgline:'full',
+    v_header:'num', v_tilestyle:'glass', v_numfmt:'man', v_dataAnchor:'cur', v_tileorder:'default',
+    cardpv:12, cardph:14, cardrad:16, hdrfs:15, hdrls:-0.2, hdrpad:12, hdrblur:22, hdrbga:0.20, hdrgap:7, badgesz:24, timefs:11,
+    tilepv:8, tileph:10, tilegap:8, tilerad:11, tilebg:0.03, valfs:15, lblfs:11, avgfs:11, vlgap:2, valls:0, vallh:1.2, avglh:1.5,
+    sparkh:26, sparksw:1.8, sparkarea:0.10, sparkgap:4, sparkdot:2.6,
+    dlfs:13, dlherofs:19, dlgap:6, dlpadv:3, dlpadh:6, dlrad:9, dlupa:1, dllblfs:10, dltop:4,
+    barh:9, barrad:6, barbg:0.08, bargap:6, tlw:64, tvw:56, pctfs:11, barmaxw:100, donutth:10, donutsize:68, pyrh:12, pyrgap:5, stackh:16, age_count:5, demo_others:1,
+    cardgap:12, sublblfs:11, subgap:8, chipgap:6, chippadh:9, donutwrapgap:14, donutlgdfs:11, donutlgdgap:4, stacklgdfs:11, stacklgdgap:10, heatgap:3, heatpad:5, pyragefs:10, pyrcw:46,
+    linea:0.08, cardbga:0, tilesh:0, presfx:1 },
+  PRESETS:[
+    {nm:'현행(비교 기준)', st:{}},
+    {nm:'대시보드 리치', star:1, st:{v_flwdelta:'inline4', v_demo:'twocol', v_agelayout:'pyramid', v_deltacolor:'acdn', tilegap:6, tilepv:7, barh:10}},
+    {nm:'컴팩트', st:{v_flwdelta:'stack4', v_tilecols:'c2', v_spark:'none', v_avgline:'short', valfs:14, tilepv:6, tilegap:6}},
+    {nm:'증감 강조', st:{v_flwdelta:'hero24', v_deltafmt:'arrow', v_deltacolor:'acdn', dlherofs:22}},
+    {nm:'인구통계 중심', st:{v_demo:'donut', v_agelayout:'donutAge', v_gendermark:'colorMF', v_country_label:'kor'}},
+    {nm:'미니멀', st:{v_flwdelta:'pillrow', v_tilestyle:'flat', v_spark:'none', v_avgline:'hidden', v_header:'hide'}},
+    {nm:'활발기 데이터', st:{v_dataAnchor:'peak', v_flwdelta:'inline4', v_deltafmt:'plusMyeong'}},
+    {nm:'프로페셔널', st:{v_flwdelta:'table', v_demo:'twocol', v_agelayout:'barAG', v_numfmt:'full', v_spark:'line', v_country_label:'both'}},
+  ],
+  renderPreview(s){ return '<div class="pvroot">'+profCard(s)+demoUnit(s)+ageUnit(s)+'</div>'; },
+  renderBaseline(){ const cur=mkS(); return '<div class="pvroot">'+profCard(cur)+'<div style="color:var(--pg-mut);font-size:11px;padding:4px 2px">— 현행 카드엔 인구통계·연령 유닛이 없음(신규 제안 유닛) · 팔로워 증감도 미표시 —</div></div>'; },
+};
+boot();
+</script>
+</body>
+</html>

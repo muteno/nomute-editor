@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>헤더 픽토 전수 정렬 · 플레이그라운드 (260720)</title>
+<style>
+  :root{
+    --bg:#0f1115; --stage:#1a2339; --panel:#171a1f; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --fg:#eef7f0; --line:#2a2c31; --warn:#ffb020; --ok:#00ff9c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'Pretendard Variable',Pretendard,system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;}
+  .hd{padding:15px 16px 6px;}
+  .hd h1{font-size:15.5px;margin:0 0 4px;font-weight:800;letter-spacing:-.01em;}
+  .hd p{margin:0;font-size:12px;color:var(--mut);line-height:1.5;}
+  .wrap{display:flex;flex-wrap:wrap;gap:13px;padding:8px 13px 46px;align-items:flex-start;}
+  .stagewrap{flex:1 1 330px;position:sticky;top:8px;z-index:5;}
+  .frame{background:var(--stage);border:1px solid var(--line);border-radius:14px;overflow:hidden;background-image:radial-gradient(120% 90% at 80% -10%, #24304f 0%, #1a2339 55%, #141b2e 100%);}
+  .barrow{height:76px;display:flex;align-items:center;justify-content:flex-end;padding:0 16px;position:relative;}
+  .cluster{display:flex;align-items:center;}
+  .cluster>*{flex:none;}
+  .ig{font:inherit;font-weight:700;letter-spacing:.02em;color:var(--accent);background:none;border:none;padding:0;position:relative;line-height:1;filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.35));}
+  .fb{display:grid;place-items:center;position:relative;background:none;border:none;padding:0;}
+  .fb svg{stroke:var(--mut);fill:none;stroke-linecap:round;stroke-linejoin:round;display:block;}
+  .xh{position:absolute;pointer-events:none;top:0;left:0;width:100%;height:100%;}
+  .xh .v{position:absolute;width:1px;background:#ff3860;top:12px;bottom:12px;opacity:.85;}
+  .xh .base{position:absolute;height:1px;background:var(--ok);left:0;right:0;opacity:.9;}
+  .xh .dot{position:absolute;width:4px;height:4px;border-radius:50%;background:#ff3860;transform:translate(-50%,-50%);}
+  .xh .sq{position:absolute;border:1px solid rgba(255,212,0,.8);}
+  .stagecap{margin-top:7px;font-size:11.5px;color:var(--mut);text-align:center;line-height:1.5;}
+  /* 라이브 델타 표 */
+  .live{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:11.5px;}
+  .live table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  .live th,.live td{text-align:right;padding:2px 4px;}
+  .live th:first-child,.live td:first-child{text-align:left;color:var(--mut);}
+  .live th{color:var(--mut);font-weight:600;border-bottom:1px solid var(--line);}
+  .live .bad{color:var(--warn);font-weight:700;} .live .good{color:var(--ok);}
+  .console{flex:1 1 320px;min-width:min(100%,330px);display:flex;flex-direction:column;gap:11px;}
+  .csec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;}
+  .csec h3{margin:0 0 9px;font-size:11.5px;color:var(--mut);font-weight:700;letter-spacing:.03em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+  .csec h3 .pic{width:22px;height:22px;display:grid;place-items:center;} .csec h3 .pic svg{width:16px;height:16px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;} .csec h3 .pic .igt{color:var(--accent);font-weight:800;font-size:12px;}
+  .toggles{display:flex;gap:7px;flex-wrap:wrap;}
+  .tg{font-size:12px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:#11141a;color:var(--mut);cursor:pointer;}
+  .tg.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.08);}
+  .presets{display:flex;gap:7px;flex-wrap:wrap;}
+  .pf{font-size:12px;padding:7px 11px;border-radius:9px;border:1px solid var(--line);background:#11141a;color:var(--fg);cursor:pointer;}
+  .pf.on{background:rgba(var(--accent-rgb),.12);border-color:rgba(var(--accent-rgb),.55);color:var(--accent);}
+  .sld{margin:9px 0;}
+  .sld .lb{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;}
+  .sld .lb .vl{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700;}
+  input[type=range]{width:100%;-webkit-appearance:none;height:5px;border-radius:3px;background:linear-gradient(var(--accent),var(--accent)) 0/var(--p,50%) 100% no-repeat,#22262d;outline:none;margin:0;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18);}
+  pre#out{margin:0 0 9px;font-size:11.5px;line-height:1.6;color:var(--fg);white-space:pre-wrap;font-family:ui-monospace,'SF Mono',Menlo,monospace;}
+  .btn{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12);color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;}
+  .btn:active{transform:scale(.98);}
+  .note{font-size:11px;color:var(--mut);line-height:1.6;} .note b{color:var(--fg);}
+  .copied{color:var(--accent);font-size:12px;text-align:center;margin-top:6px;height:14px;}
+  details{margin:0;} summary{cursor:pointer;font-size:12px;color:var(--fg);padding:2px 0;list-style:none;display:flex;align-items:center;gap:7px;}
+  summary::-webkit-details-marker{display:none;} summary .chev{transition:transform .2s;color:var(--mut);}
+  details[open] summary .chev{transform:rotate(90deg);}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>헤더 우상단 픽토 — 전수 정렬 플레이그라운드</h1>
+  <p>돋보기·IG·대기열·기어를 <b>각각 {크기·세로·좌우}</b> 튜닝. 아래 표가 각 픽토 잉크중심의 기준선 대비 편심을 <b>실시간</b>으로 보여줌. 맘에 들면 [복사]. 탭 = 검색탭(돋보기)/채널탭(IG) 전환.</p>
+</div>
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame">
+      <div class="barrow">
+        <div class="cluster" id="cluster">
+          <button class="ig" id="ig" data-k="ig" hidden>IG</button>
+          <button class="fb" id="search" data-k="search"><svg id="s_search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+          <button class="fb" id="queue" data-k="queue"><svg id="s_queue" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
+          <button class="fb" id="gear" data-k="gear"><svg id="s_gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        </div>
+        <div class="xh" id="xh"></div>
+      </div>
+    </div>
+    <div class="stagecap">초록=기준선(대기열·기어 잉크중심) · 빨강=각 잉크중심 · 노랑=정사각형</div>
+    <div class="live">
+      <table><thead><tr><th>픽토</th><th>잉크크기</th><th>세로 Δ</th><th>좌우 Δ</th></tr></thead><tbody id="liveBody"></tbody></table>
+      <div style="font-size:10.5px;color:var(--mut);margin-top:6px;line-height:1.5">* IG 세로 Δ = 폰트 근사(시스템 폰트라 과장됨) — <b style="color:var(--fg)">실제 앱(Pretendard) = 라인 +0.1px 확정</b>(⑥ 머지분). IG는 <b style="color:var(--fg)">크기</b>만 참고.</div>
+    </div>
+  </div>
+  <aside class="console">
+    <div class="csec">
+      <h3>보기</h3>
+      <div class="toggles">
+        <button class="tg on" id="tgTab" data-tab="search">검색탭(돋보기)</button>
+        <button class="tg" id="tgTab2" data-tab="chan">채널탭(IG)</button>
+        <button class="tg on" id="tgXh">십자선</button>
+        <button class="tg" id="tgBig">3배</button>
+      </div>
+    </div>
+    <div class="csec"><h3>프리셋</h3><div class="presets" id="presets"></div></div>
+    <div id="groups"></div>
+    <div class="csec">
+      <pre id="out"></pre>
+      <button class="btn" id="copy">선택값 복사</button>
+      <div class="copied" id="copied"></div>
+    </div>
+    <div class="csec note">
+      <b>실측 현행(폰390):</b> 돋보기 잉크 14.2·기어 18.3(4px 차이 = 기어가 큼) · 돋보기 세로+0.42/좌우+0.42(원+손잡이 비대칭) · 대기열·기어 세로 0 · IG는 top=1로 라인+0.1(⑥ 머지분).<br><br>
+      <b>재현 한계:</b> ① 폰트가 라이브(Pretendard)와 다르면 IG 폭·캡 위치 ±0.5px 오차 — 나머지 SVG는 정확. ② SVG 크기 = 박스 안 place-items:center라 크기 바꿔도 중심 유지. ③ 실제는 우측정렬 클러스터. <b>크기·nudge 값은 그대로 적용 가능.</b>
+    </div>
+  </aside>
+</div>
+<script>
+const $=s=>document.querySelector(s), xh=$('#xh'), cl=$('#cluster');
+// 현행 실측 기본값 — 크기(svg px)·nudge(세로 top / 좌우 left)·간격
+const DEF={
+  search:{sz:20,dy:0,dx:0}, ig:{sz:13,dy:1,dx:0}, queue:{sz:21,dy:0,dx:0}, gear:{sz:20,dy:0,dx:0},
+  gapS:4, gapQ:4, gapG:4
+};
+let state=structuredClone(DEF), tab='search', showXh=true, big=false;
+const PICS=[
+  {k:'search',nm:'돋보기(검색)',icon:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'},
+  {k:'ig',nm:'IG(글자)',icon:'<span class="igt">IG</span>'},
+  {k:'queue',nm:'대기열',icon:'<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>'},
+  {k:'gear',nm:'기어(설정)',icon:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>'},
+];
+const AXES=[
+  {a:'sz',nm:'크기',unit:'px',min:12,max:30,step:.5},
+  {a:'dy',nm:'세로 보정',unit:'px',min:-4,max:4,step:.1},
+  {a:'dx',nm:'좌우 보정',unit:'px',min:-4,max:4,step:.1},
+];
+const PRESETS=[
+  {id:'now',nm:'현행 실측 ★',st:structuredClone(DEF)},
+  {id:'size16',nm:'잉크크기 ~통일',fn:()=>{const s=structuredClone(state);s.search.sz=22.5;s.queue.sz=22;s.gear.sz=17.5;s.ig.sz=13;return s;}},
+  {id:'center',nm:'돋보기 중심보정',fn:()=>{const s=structuredClone(state);s.search.dy=-0.4;s.search.dx=-0.4;return s;}},
+  {id:'reset',nm:'모두 0 보정',fn:()=>{const s=structuredClone(state);['search','ig','queue','gear'].forEach(k=>{s[k].dy=0;s[k].dx=0;});return s;}},
+];
+
+// 그룹(픽토별 컨트롤) 빌드
+$('#groups').innerHTML=PICS.map((p,i)=>`<div class="csec"><details ${i===0?'open':''}><summary><span class="chev">▶</span><span class="pic">${p.icon}</span>${p.nm}</summary><div id="g_${p.k}"></div></details></div>`).join('')
+ +`<div class="csec"><h3>간격 (박스갭)</h3><div id="g_gap"></div></div>`;
+PICS.forEach(p=>{
+  $('#g_'+p.k).innerHTML=AXES.map(ax=>`<div class="sld"><div class="lb"><span>${ax.nm}</span><span class="vl" id="v_${p.k}_${ax.a}"></span></div><input type="range" id="s_${p.k}_${ax.a}" min="${ax.min}" max="${ax.max}" step="${ax.step}"></div>`).join('');
+});
+$('#g_gap').innerHTML=[['gapS','← 돋보기/IG'],['gapQ','← 대기열'],['gapG','← 기어']].map(([k,nm])=>`<div class="sld"><div class="lb"><span>${nm} 앞</span><span class="vl" id="v_${k}"></span></div><input type="range" id="s_${k}" min="0" max="16" step=".5"></div>`).join('');
+$('#presets').innerHTML=PRESETS.map(p=>`<button class="pf" data-id="${p.id}">${p.nm}</button>`).join('');
+
+function inkOf(el){
+  const fr=xh.getBoundingClientRect();
+  const svg=el.querySelector('svg');
+  if(svg){const bb=svg.getBBox();const m=svg.getScreenCTM();const P=(x,y)=>{const p=svg.createSVGPoint();p.x=x;p.y=y;return p.matrixTransform(m);};
+    const a=P(bb.x,bb.y),c=P(bb.x+bb.width,bb.y+bb.height);
+    return {l:a.x-fr.left,t:a.y-fr.top,r:c.x-fr.left,b:c.y-fr.top,cx:(a.x+c.x)/2-fr.left,cy:(a.y+c.y)/2-fr.top,w:c.x-a.x,h:c.y-a.y};}
+  const r=el.getBoundingClientRect();return {l:r.left-fr.left,t:r.top-fr.top,r:r.right-fr.left,b:r.bottom-fr.top,cx:(r.left+r.right)/2-fr.left,cy:(r.top+r.bottom)/2-fr.top,w:r.width,h:r.height};
+}
+function visiblePics(){return [tab==='chan'?'ig':'search','queue','gear'];}
+function draw(){
+  xh.innerHTML=''; if(!showXh) return;
+  const ks=visiblePics(); const ink={}; ks.forEach(k=>ink[k]=inkOf($('#'+(k==='ig'?'ig':k))));
+  const base=(ink.queue.cy+ink.gear.cy)/2;
+  const bl=document.createElement('div');bl.className='base';bl.style.top=base+'px';xh.appendChild(bl);
+  ks.forEach(k=>{const c=ink[k];const side=Math.max(c.r-c.l,c.b-c.t);
+    const sq=document.createElement('div');sq.className='sq';sq.style.cssText=`left:${c.cx-side/2}px;top:${c.cy-side/2}px;width:${side}px;height:${side}px;`;xh.appendChild(sq);
+    const v=document.createElement('div');v.className='v';v.style.left=c.cx+'px';xh.appendChild(v);
+    const d=document.createElement('div');d.className='dot';d.style.cssText=`left:${c.cx}px;top:${c.cy}px;`;xh.appendChild(d);});
+  // 라이브 표
+  const NM={search:'돋보기',ig:'IG',queue:'대기열',gear:'기어'};
+  $('#liveBody').innerHTML=ks.map(k=>{const c=ink[k];const dy=(c.cy-base);const ig=k==='ig';const cls=ig?'':(Math.abs(dy)>0.5?'bad':'good');
+    return `<tr><td>${NM[k]}${ig?'*':''}</td><td>${c.w.toFixed(1)}×${c.h.toFixed(1)}</td><td class="${cls}">${dy>=0?'+':''}${dy.toFixed(2)}${ig?'*':''}</td><td>${ig?'—':''}</td></tr>`;}).join('');
+}
+function apply(){
+  $('#ig').style.display = tab==='chan' ? 'inline-block' : 'none'; $('#search').style.display = tab==='chan' ? 'none' : 'grid';
+  // 크기
+  $('#s_search').style.cssText=`width:${state.search.sz}px;height:${state.search.sz}px;stroke-width:2.2`;
+  $('#s_queue').style.cssText=`width:${state.queue.sz}px;height:${state.queue.sz}px;stroke-width:2`;
+  $('#s_gear').style.cssText=`width:${state.gear.sz}px;height:${state.gear.sz}px;stroke-width:2.2`;
+  $('#ig').style.fontSize=state.ig.sz+'px';
+  // 박스 = btn-sm 30 고정, 아이콘만 크기/nudge
+  ['search','queue','gear'].forEach(k=>{const el=$('#'+k);el.style.width='30px';el.style.height='30px';
+    el.style.transform=`translate(${state[k].dx}px,${state[k].dy}px)`;});
+  $('#ig').style.transform=`translate(${state.ig.dx}px,${state.ig.dy}px)`;
+  // 간격(앞 마진)
+  const firstK = tab==='chan'?'ig':'search';
+  $('#'+firstK).style.marginLeft='0';
+  $('#queue').style.marginLeft=state.gapQ+'px';
+  $('#gear').style.marginLeft=state.gapG+'px';
+  $('#ig').style.marginRight='0'; // 첫 요소
+  // 슬라이더 UI
+  PICS.forEach(p=>AXES.forEach(ax=>{const el=$('#s_'+p.k+'_'+ax.a);if(!el)return;el.value=state[p.k][ax.a];
+    el.style.setProperty('--p',((state[p.k][ax.a]-ax.min)/(ax.max-ax.min)*100)+'%');$('#v_'+p.k+'_'+ax.a).textContent=state[p.k][ax.a]+ax.unit;}));
+  [['gapS',state.gapS],['gapQ',state.gapQ],['gapG',state.gapG]].forEach(([k,val])=>{const el=$('#s_'+k);el.value=val;el.style.setProperty('--p',(val/16*100)+'%');$('#v_'+k).textContent=val+'px';});
+  requestAnimationFrame(draw); buildOut();
+}
+function buildOut(){
+  const f=k=>`${k}: 크기 ${state[k].sz}${k==='ig'?'px(font)':'px'}, 세로 ${state[k].dy>=0?'+':''}${state[k].dy}, 좌우 ${state[k].dx>=0?'+':''}${state[k].dx}`;
+  $('#out').textContent=
+`[헤더 픽토 전수 — 선택값]
+${f('search')}
+${f('ig')}
+${f('queue')}
+${f('gear')}
+박스갭: 대기열앞 ${state.gapQ} · 기어앞 ${state.gapG}
+
+* 크기 = svg width/height (IG=font-size)
+* 세로/좌우 = translate 보정(px) · 박스 30 고정`;
+}
+function markCustom(){document.querySelectorAll('.pf').forEach(b=>b.classList.remove('on'));}
+PICS.forEach(p=>AXES.forEach(ax=>{const el=$('#s_'+p.k+'_'+ax.a);if(el)el.addEventListener('input',e=>{state[p.k][ax.a]=parseFloat(e.target.value);markCustom();apply();});}));
+['gapS','gapQ','gapG'].forEach(k=>$('#s_'+k).addEventListener('input',e=>{state[k]=parseFloat(e.target.value);markCustom();apply();}));
+document.querySelectorAll('.pf').forEach(b=>b.addEventListener('click',()=>{const p=PRESETS.find(x=>x.id===b.dataset.id);
+  document.querySelectorAll('.pf').forEach(x=>x.classList.remove('on'));b.classList.add('on');state=p.fn?p.fn():structuredClone(p.st);apply();}));
+$('#tgTab').addEventListener('click',()=>{tab='search';$('#tgTab').classList.add('on');$('#tgTab2').classList.remove('on');apply();});
+$('#tgTab2').addEventListener('click',()=>{tab='chan';$('#tgTab2').classList.add('on');$('#tgTab').classList.remove('on');apply();});
+$('#tgXh').addEventListener('click',e=>{showXh=!showXh;e.target.classList.toggle('on',showXh);draw();});
+$('#tgBig').addEventListener('click',e=>{big=!big;e.target.classList.toggle('on',big);cl.style.transform=big?'scale(2.6)':'none';cl.style.transformOrigin='right center';requestAnimationFrame(draw);});
+$('#copy').addEventListener('click',()=>navigator.clipboard.writeText($('#out').textContent).then(()=>{$('#copied').textContent='✓ 복사됨 — 붙여넣어 줘';setTimeout(()=>$('#copied').textContent='',2200);}));
+document.querySelector('.pf').classList.add('on');
+window.addEventListener('resize',()=>requestAnimationFrame(draw));
+apply(); setTimeout(apply,150);
+</script>
+</body>
+</html>

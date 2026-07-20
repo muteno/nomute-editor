@@ -130,6 +130,7 @@
   .xtr .xgo { margin-top:var(--sp-2); width:100%; padding:9px 15px; border-radius:var(--r-pill); background:var(--accent-dim); border:1px solid rgba(var(--accent-rgb),.4); color:var(--accent); font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); cursor:pointer; transition:transform .12s; }   /* 강조(발사류) = 구 .go 틴트 계승(운영자 260712 xtrGoStyle=acc — 구 ghost 폐지) · radius = pill(발사류 모서리 .go와 통일 · 260712 6차 이미지 기준 — 크기·색은 유지 = 최종 발사와 위계 구분) */
   .xtr .xgo:active { transform:scale(var(--press-l)); }
   .xtr .xgo:disabled { opacity:.32; cursor:default; transform:none; }   /* 기능 미선택 = 흐림(.pc.dim 값 계승) — 어포던스로 설명(산문 0) */
+  .xtr.fnlock { opacity:.32; pointer-events:none; }   /* 번역 기능 선택 중 = 가림(모자이크) 계열 배타 잠금(운영자 260720 "번역 on = 모자이크 무조건 비활성화") · 흐림값 .32 = .pc.dim/.scard.dim 계승 · pointer-events:none = 재점등 차단(=비활성화 의미) */
   .xnote { margin-top:6px; color:var(--mut); font-size:var(--fs-xs); line-height:1.5; }   /* 기타 기능+카드 공용 노트(컷 STT-only 노트 재사용 — 신규 클래스 창작 회피 · 평의회 260711 3차) */
   .firebar { position:static; padding:0; background:none; }   /* 상단 도크(.topdock) 안 = 미리보기 바로 아래 발사바(운영자 260718 "미리보기에 붙이면") · 미리보기↔버튼 gap = .pvsec margin-bottom(sp-2) 전담(thumb .topdock .makerow margin-top:0 미러) · 무파일 시 도크 padding-top(16)이 버튼 위 여백 · 구 하단 인라인 14/6+safe 폐지 */
   .firebar .inner { max-width:600px; margin:0 auto; }
@@ -478,6 +479,7 @@
   <!-- 레시피 행 = 프리뷰 좌하단 Preset 오버레이(#pvPre)로 이관(운영자 260712 2차 "프리뷰 위에 오버레이·여닫이") — .recrow/.rec CSS는 도먼트 보존(롤백 = 이 행 복원) · 첨부 전엔 프리뷰가 없어 프리셋도 비노출(첨부 후 흐름 전제) -->
 
 <!-- '처리 스택' 소머리 폐지(260712 섹션 상시형 — 번호 섹션 헤더 .sech가 IA를 직접 표기) -->
+  <div id="funcsec"></div><!-- 기능(모자이크|번역) 배타 선택 = 상단 모드 셀렉터(운영자 260720 "기능 토글 · 좌 모자이크 · 우 번역") · 렌더 = renderFunc · .sech/.prow/.pc 계승 · 번역 = 가림 계열(#xtrsec) 배타 잠금 -->
   <div class="stack" id="stack"></div>
   <button class="addbtn" id="addbtn" type="button" hidden>+ 처리 추가</button><!-- 섹션 상시형(260712 시안 IA)으로 시트 추가 경로 도먼트 — 복원 = hidden 제거 --->
   <div class="xtr" id="xtrsec"></div><!-- 기타 옵션 = 4번 섹션·스택 최하단(운영자 260712 2차 "번호 매겨 제일 아래" — 소스 아래 1차 선택 뒤집음) · 렌더 = renderXtr · 발사 옵션 아님 · 트래킹 진입은 여기가 유일 -->
@@ -942,6 +944,34 @@ $('#xtrsec').addEventListener('click',e=>{
 });
 $('#xtrsec').addEventListener('input',e=>{ const g=e.target.closest('[data-xg]'); if(!g) return; XTR[g.dataset.xg]=+g.value; const v=g.parentElement.querySelector('.v'); if(v) v.textContent=g.value+(g.dataset.xg==='size'?'%':''); });
 renderXtr();
+
+/* ══ 기능(모자이크 ↔ 번역) 배타 선택 = 상단 모드 셀렉터(운영자 260720 "편집에 기능이 많아 동시에 못하는 경우 — 기능 토글 하나로 좌 모자이크·우 번역 · 번역 on = 모자이크 무조건 off · 해상도는 공존") ══
+   · 세그 = N택1 → .pc 칩(가림 모양 네모|타원 정본 결) · 헤더 .sech · 노트 .xnote 계승(신규 컴포넌트 창작 0)
+   · 배타 = 번역이면 가림 계열(#xtrsec 모자이크·실루엣·키잉·크로마키·트래킹) 전부 OFF + .fnlock(흐림+비상호작용) 잠금 · 리사이징(해상도 등)은 무접촉 공존 */
+let FUNC='mosaic';   // 'mosaic'(기본 = 종전 동작 불변) | 'trans'
+function renderFunc(){
+  const el=$('#funcsec'); if(!el) return;
+  const chip=(v,l)=>'<button class="pc'+(FUNC===v?' on':'')+'" type="button" data-fn="'+v+'" aria-pressed="'+(FUNC===v?'true':'false')+'">'+l+'</button>';
+  el.innerHTML=
+    '<div class="sech"><span class="nm">기능</span></div>'
+    +'<div class="prow">'+chip('mosaic','모자이크')+chip('trans','번역')+'</div>'
+    +(FUNC==='trans' ? '<div class="xnote">외국어 문서·이미지 위에 <b>한국어 번역</b>을 덮어 씌우는 기능 — 형광 강조 옆에 번역 박스가 붙어. 번역을 켜면 <b>모자이크(가림 계열)는 자동으로 꺼지고</b>, 해상도는 함께 쓸 수 있어.</div>' : '');
+}
+function applyFunc(){   // 배타 반영 = setAxis(발사 축)와 별개 계층(모드 셀렉터) · 리사이징/컷/소리 축은 불변
+  const xt=$('#xtrsec');
+  if(FUNC==='trans'){
+    XTR.mosaic=XTR.pinset=XTR.keying=XTR.silh=XTR.chroma=false; renderXtr();   // "번역 on = 모자이크 무조건 off"(운영자 260720)
+    if(xt){ xt.classList.add('fnlock'); xt.setAttribute('aria-disabled','true'); }
+  }else{
+    if(xt){ xt.classList.remove('fnlock'); xt.removeAttribute('aria-disabled'); }
+  }
+}
+$('#funcsec').addEventListener('click',e=>{
+  const t=e.target.closest('[data-fn]'); if(!t) return;
+  const v=(t.dataset.fn==='trans')?'trans':'mosaic'; if(v===FUNC) return;
+  FUNC=v; applyFunc(); renderFunc();
+});
+applyFunc(); renderFunc();   // 초기 = 모자이크(가림 계열 활성 · 종전 동작 불변)
 
 /* ══ 입력(파일 좌·URL 우 — 운영자 260710 · .file 픽토 계승) ══ */
 const FILE_ICON=$('#fileTxt').innerHTML;
