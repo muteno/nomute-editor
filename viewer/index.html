@@ -10711,10 +10711,12 @@ function renderChan() {
   const vu = (n, u) => n == null ? '—' : vf(n) + ' ' + u;   // 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
   // 델타(▲▼N%) 폐지(운영자 260718 "팔로워 옆 88% 하락 = 팔로워가 88% 빠진 걸로 오해") — '평소 대비 %'는 하락처럼 읽혀 → 전기간 평균값 병기로 대체(수치 = avg.avg_all 실측 · 창작 0)
   const rnd = x => x >= 100 ? Math.round(x) : Math.round(x * 10) / 10;   // 소수 지표(게시 3.8개/일) 정수 반올림 시 0/4로 뭉개짐 → 100 미만만 1자리 보존
-  const st = (lb, v, key, sp2, lgd) => {
+  const st = (lb, v, key, sp2, lgd, avgWin) => {
     const sp = sp2 != null ? sp2 : (key && series.length ? chSpark(series, key) : '');
     const A = key ? avg[key] : null;
-    const av = A && A.avg_all != null ? `<span class="ch-avg">전체${A.n_days ? ' ' + A.n_days + '일' : ''} 일평균 ${vf(rnd(A.avg_all))} ${stUnit(key)}</span>` : '';   // 평균 창 명시(운영자 260719 "월평균인지 그런걸 나타내") — avg_all = 수집 전 기간 하루치 평균 = 「전체 N일 일평균」 · N = avg.n_days 실측 병기(창 추측·창작 0 · 지표별 결측 달라 N도 지표별)
+    const use7 = avgWin === '7d' && A && A.avg_7d != null;   // 조회·도달·방문 = 최근 7일 일평균 대비(운영자 260720 "당일값이 전체평균 대비 폭락처럼 보임" 교정) — 당일값은 롤링 24h(부분 아님)인데 옆 avg_all은 전성기까지 포함한 역대평균이라 사과-오렌지 → 요즘 baseline(avg_7d)과 비교로 정정 · avg_7d 결측 = avg_all 폴백(fail-soft)
+    const aval = A ? (use7 ? A.avg_7d : A.avg_all) : null;
+    const av = aval != null ? `<span class="ch-avg">${use7 ? '최근 7일 일평균' : `전체${A.n_days ? ' ' + A.n_days + '일' : ''} 일평균`} ${vf(rnd(aval))} ${stUnit(key)}</span>` : '';   // 평균 창 명시(운영자 260719 "월평균인지 그런걸") — 기본 avg_all=「전체 N일 일평균」(N=지표별 실측·결측 달라 N도 지표별) · avgWin='7d'=avg_7d=「최근 7일 일평균」(당일 vs 요즘 사과-사과)
     return `<div class="ch-st"><div class="ch-strow"><b>${v}</b></div><span>${lb}</span>${av}${lgd || ''}${sp ? `<div class="ch-spark">${sp}</div>` : ''}</div>`;
   };
   // 팔로워 증감 카드(운영자 260719 "공유 → 신규 팔로워·팔로워 취소 추이 겹쳐 대비 = 팔로워 칸 확장판") — 신규 = 일별 follows 실측 · 취소 = unfollows(현 수집기 미기록 = 범례 '취소 —' + 라인 자동 대기 · 수기 창작 0 = 🔒 [15]) · 값 = 최근 실측일 · 위치 = 팔로워 칸 직하(구 공유 자리 = 확장판 배치)
@@ -10767,8 +10769,8 @@ function renderChan() {
         st('공유 (최근 10게시물)', (d.fb_totals && d.fb_totals.shares != null) ? vf(d.fb_totals.shares) + ' 회' : '—') +
         st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') +
         st('상호작용', vu(a.interactions, '회'), 'interactions')
-      : st('조회수', vu(a.views, '회'), 'views') + st('도달', vu(a.reach, '계정'), 'reach') +
-        flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views')) + '</div>');
+      : st('조회수', vu(a.views, '회'), 'views', null, null, '7d') + st('도달', vu(a.reach, '계정'), 'reach', null, null, '7d') +
+        flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views', null, null, '7d')) + '</div>');
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
