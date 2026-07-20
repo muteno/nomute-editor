@@ -54,6 +54,7 @@ def build():
            'cross_bonus': 1.0, 'dict': {k: round(v, 3) for k, v in top.items()},
            'persons': {k: round(v, 3) for k, v in pw.most_common(60)}}
     json.dump(out, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False, indent=None, separators=(',', ':'))
+    json.dump(out, open(os.path.join(ROOT, 'viewer/fp_dict.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=None, separators=(',', ':'))   # 뷰어 소비용 사본(fail-soft 대상 · Q286)
     print(f'사전 생성: 문화·연예 게시물 {n_posts}건 → 어휘 {len(top)}개 (반감기 {HALF_D}일) → {os.path.relpath(OUT, ROOT)}')
     return out
 
