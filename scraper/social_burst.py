@@ -380,10 +380,63 @@ def fetch_naver(now):
     return posts
 
 
+# ── 오늘의베스트(todaybeststory) 어댑터 (운영자 260721 "따로 두지 말고 기존 만든 형태에 반영") ──
+# 21개 커뮤니티 베스트글(공개 API)을 공론 교차소스로 편입 — 수집 코어 = scraper/tbs_scraper.py 재사용(드리프트0).
+# '적당량' = 커뮤니티당 SOCIAL_TBS_N건(기본 10)만 인테이크 · '가점' = 신규 배점 없음 — 기존 수집량 정규화
+# (NORM_REF)·정치/노이즈/공론화 게이트·MIN_SOURCES·플랫폼폭 가중을 그대로 통과(3조 임의 규칙 금지).
+# 표시명 = 이슈링크 COMMUNITY_NAMES 표시명에 정합(같은 커뮤 = 같은 칩·같은 src_total 병합·(source,제목) dedup 성립).
+TBS_ON = os.environ.get("SOCIAL_TBS", "1") == "1"   # 무키·무료 = 기본 ON(네이버와 달리 시크릿 불요) · 끄기 = SOCIAL_TBS=0
+TBS_N = int(os.environ.get("SOCIAL_TBS_N", "10"))
+TBS_NAME_ALIGN = {"엠엘비파크": "엠팍", "웃긴대학": "웃대", "오늘의유머": "오유", "에스엘알클럽": "SLR", "디시인사이드": "디시"}
+TBS_EXCLUDE = {"네이트판"}   # 네이트판 = 전면 배제(운영자 260716 "다 없애" — 이슈링크 natepann 컷과 동일 판례)
+
+
+def fetch_tbs(now):
+    """오늘의베스트 공개 API — 커뮤당 최신 TBS_N건. 전멸·예외 = 빈 목록(기존 소스만으로 계속 = fail-soft)."""
+    if not TBS_ON:
+        return []
+    try:
+        import requests
+        import tbs_scraper as T
+    except Exception:
+        print("::warning::tbs 어댑터 로드 실패 — 생략")
+        return []
+    posts = []
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        sess = requests.Session()
+        sess.headers.update({"User-Agent": T.UA, "Accept": "application/json"})
+        coms = [c for c in T.get_json(sess, f"{T.BASE}/communities")
+                if c.get("useYn") == "Y" and c.get("communityId") not in T.SKIP_COMMUNITIES]
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            futs = {ex.submit(T.fetch_community_posts, sess, c, TBS_N): c for c in coms}
+            for fut in as_completed(futs, timeout=240):   # 전체 예산 4분 — 저쪽 콜드쿼리 20s+ 대비 상한(초과 = 모은 것만)
+                try:
+                    r = fut.result()
+                except Exception as ex2:  # noqa: BLE001
+                    print(f"::warning::tbs {futs[fut].get('communityName')} 실패: {ex2}")
+                    continue
+                src = TBS_NAME_ALIGN.get(r["name"], r["name"])
+                if src in TBS_EXCLUDE:
+                    continue
+                for p in r["posts"]:
+                    ts = None
+                    if p.get("time"):
+                        try:
+                            ts = datetime.fromisoformat(p["time"])
+                        except ValueError:
+                            ts = None
+                    posts.append({"title": p.get("title") or "", "source": src, "url": p.get("url") or "", "ts": ts})
+    except Exception as ex3:  # noqa: BLE001
+        print(f"::warning::tbs 수집 중단: {ex3} (모은 {len(posts)}건은 사용)")
+    print(f"오늘의베스트: {len(posts)}건 · {len({p['source'] for p in posts})}개 커뮤니티")
+    return posts
+
+
 def fetch_live(now):
-    """라이브 수집 = 어그리게이터(이슈링크·다중 커뮤니티) + 직접 RSS(뽐뿌 등) + 네이버(기본 OFF). (source, 제목) 중복 제거."""
+    """라이브 수집 = 어그리게이터(이슈링크·다중 커뮤니티) + 직접 RSS(뽐뿌 등) + 네이버(기본 OFF) + 오늘의베스트. (source, 제목) 중복 제거."""
     import re
-    posts = fetch_issuelink(now) + fetch_rss(now) + fetch_naver(now)
+    posts = fetch_issuelink(now) + fetch_rss(now) + fetch_naver(now) + fetch_tbs(now)
     seen, out = set(), []
     for p in posts:
         key = (p["source"], re.sub(r"\s+", "", p.get("title", ""))[:40])
