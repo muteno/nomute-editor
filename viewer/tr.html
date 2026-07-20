@@ -101,6 +101,8 @@
   </div>
   <input type="file" id="srcFile" accept="image/*" hidden>
   <div class="geni-sum" id="selSum">이미지 위를 드래그 = 발췌 영역 선택 (미선택 = 전체)</div>
+  <button type="button" class="go" id="autoGo" disabled>자동 마커 번역 (AI)</button><!-- 원버튼 자동 엔진(운영자 260720 Q274 "이미지 딱 주면 딱 나오게") — OCR→AI 강조·번역→형광펜+칩 오버레이 -->
+  <div class="geni-sum" id="autoSum" hidden></div>
   <button type="button" class="go" id="addCut" disabled>발췌를 카드에 추가</button>
 
   <label class="fl">번역 밴드</label>
@@ -401,6 +403,114 @@ function compose(){
   else { const s = TH / totalH, w = Math.round(TR_W * s); ctx.drawImage(off, Math.round((TR_W - w) / 2), 0, w, TH); }
 }
 
+/* ── 자동 마커 번역(운영자 260720 Q274 — "이미지 딱 주면 딱 나오게") ──
+   브라우저 OCR(tesseract.js 지연 로드 · 이미지·좌표는 서버로 안 감) → /api/tr(러너 claude = 강조 선정+한글 번역 · k 파이프 그대로)
+   → tr_out/<id>/plan.json 폴링 → 형광펜(multiply 50%)+검정 각칩 오버레이 합성(운영자 승인 시안 dsp_ov3 '그대로') → 스택 편입(기존 미리보기·PNG 저장 재사용).
+   콘텐츠 산출물 색 상수(캔버스 전용 raw — TR_GREEN 선례·발행 콘텐츠 색 축): */
+const OV_MARK = 'rgba(120,240,90,.5)';   /* 형광펜 = 50% 반투명(multiply = 진짜 형광펜 질감) */
+const OV_CHIP = 'rgba(18,18,18,.9)';     /* 칩 = 스포티파이 블랙 90%(반전) */
+const OV_LINE = 'rgba(255,255,255,.13)';
+const OV_TEXT = '#f4f7f4';
+const OV_EMPH = '#8dff6a';               /* 칩 안 강조(형광펜 동계열 초록) */
+let ocrLines = null;                     // [{i,t,b:{x,y,w,h}}] natural 좌표(브라우저 보관)
+let autoBusy = false;
+
+function loadTess(){   /* OCR 라이브러리 = 누를 때만 지연 로드(평시 페이지 무게 0) */
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = res; s.onerror = () => rej(new Error('OCR 라이브러리 로드 실패 — 네트워크 확인'));
+    document.head.appendChild(s);
+  });
+}
+async function runOcr(){
+  await loadTess();
+  const w = await Tesseract.createWorker('eng');
+  const { data } = await w.recognize(img);
+  await w.terminate();
+  return (data.lines || [])
+    .map((l, i) => ({ i, t: (l.text || '').trim(), b: { x: l.bbox.x0, y: l.bbox.y0, w: l.bbox.x1 - l.bbox.x0, h: l.bbox.y1 - l.bbox.y0 } }))
+    .filter(l => l.t.length > 1 && l.b.w > 8 && l.b.h > 6);
+}
+function chipLayout(ctx, t, fs, maxW){   /* 칩 줄배치 — *별표* 강조 = parseRuns 재사용(초록만) · 단어 단위 줄바꿈 */
+  const toks = [];
+  parseRuns(t).forEach(r => { r.tx.split(/(\s+)/).forEach(p => { if (p) toks.push({ tx: p, m: r.m === 'g' ? 'g' : 'n' }); }); });
+  const lines = [[]]; let w = 0;
+  toks.forEach(tk => {
+    const tw = ctx.measureText(tk.tx).width;
+    if (w + tw > maxW && lines[lines.length - 1].length) { lines.push([]); w = 0; if (/^\s+$/.test(tk.tx)) return; }
+    lines[lines.length - 1].push({ ...tk, w: tw }); w += tw;
+  });
+  const lw = Math.max(...lines.map(l => l.reduce((a, x) => a + x.w, 0)), 1);
+  return { lines, w: lw, lh: Math.round(fs * 1.38) };
+}
+function composeOverlay(plan){
+  const s = TR_W / img.naturalWidth;
+  const H = Math.round(img.naturalHeight * s);
+  const cv = document.createElement('canvas'); cv.width = TR_W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0, TR_W, H);
+  const bmap = new Map(ocrLines.map(l => [l.i, l.b]));
+  ctx.globalCompositeOperation = 'multiply';   /* 형광펜 = 글자 박스에 딱(줄간격 제외 — 승인 시안 260720) */
+  ctx.fillStyle = OV_MARK;
+  (plan.hl || []).forEach(i => { const b = bmap.get(i); if (!b) return;
+    ctx.fillRect(Math.round(b.x * s) - 3, Math.round(b.y * s) - 2, Math.round(b.w * s) + 6, Math.round(b.h * s) + 4); });
+  ctx.globalCompositeOperation = 'source-over';
+  const fs = 28, padX = 11, padY = 6, maxW = 880;   /* 칩 = 각지게·내용폭·마진 절반(형사사건 조사 뉴스 결 — 승인 시안 값) */
+  ctx.font = `800 ${fs}px 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif`;
+  ctx.textBaseline = 'alphabetic';
+  const placed = [];
+  (plan.chips || []).forEach(c => {
+    const b = bmap.get(c.a);
+    const L = chipLayout(ctx, String(c.t || ''), fs, maxW);
+    const bw = Math.min(L.w, maxW) + padX * 2, bh = L.lines.length * L.lh + padY * 2;
+    let x = b ? Math.max(24, Math.min(Math.round(b.x * s), TR_W - bw - 24)) : 30;
+    let y = b ? Math.round((b.y + b.h) * s) + 10 : 30;
+    placed.forEach(r => { if (x < r.x + r.w && x + bw > r.x && y < r.y + r.h && y + bh > r.y) y = r.y + r.h + 8; });   /* 겹침 = 아래로 밀기(중요 내용 가림 회피 v1) */
+    if (y + bh > H - 8) y = Math.max(8, (b ? Math.round(b.y * s) : H) - bh - 10);   /* 바닥 넘침 = 앵커 위로 */
+    placed.push({ x, y, w: bw, h: bh });
+    ctx.fillStyle = OV_CHIP; ctx.fillRect(x, y, bw, bh);
+    ctx.strokeStyle = OV_LINE; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, bw - 1, bh - 1);
+    let ty = y + padY + Math.round(fs * .82);
+    L.lines.forEach(ln => { let tx2 = x + padX;
+      ln.forEach(tk => { ctx.fillStyle = tk.m === 'g' ? OV_EMPH : OV_TEXT; ctx.fillText(tk.tx, tx2, ty); tx2 += tk.w; });
+      ty += L.lh; });
+  });
+  return cv;
+}
+async function pollPlan(id){   /* k_out 폴링 문법 계승 — 커밋→Pages 배포 지연 포함 6분 캡 */
+  for (let k = 0; k < 60; k++) {
+    await new Promise(r => setTimeout(r, 6000));
+    try { const r = await fetch(`tr_out/${id}/plan.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (r.ok) return await r.json(); } catch (_) {}
+    try { const e = await fetch(`tr_out/${id}/error.log?t=${Date.now()}`, { cache: 'no-store' });
+      if (e.ok) throw new Error('AI 생성 실패 — 잠시 후 다시 시도해줘'); } catch (er) { if (String(er.message).startsWith('AI')) throw er; }
+  }
+  throw new Error('대기 시간 초과(6분) — 잠시 후 다시');
+}
+const autoGo = $('autoGo'), autoSum = $('autoSum');
+function aStat(t){ autoSum.hidden = !t; autoSum.textContent = t || ''; }
+autoGo.addEventListener('click', async () => {
+  if (!img || autoBusy) return;
+  autoBusy = true; autoGo.disabled = true;
+  try {
+    aStat('① 글자 위치 읽는 중(OCR)…');
+    ocrLines = await runOcr();
+    if (ocrLines.length < 3) throw new Error('글자를 못 읽었어 — 더 선명한 문서 이미지로 시도해줘');
+    aStat(`② 번역·강조 선정 요청 중… (라인 ${ocrLines.length}개)`);
+    const r = await fetch('/api/tr', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lines: ocrLines.map(l => ({ i: l.i, t: l.t })) }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
+    aStat('③ AI 번역 중… (약 2~4분 — 끝나면 자동 합성)');
+    const plan = await pollPlan(j.id);
+    stack.push({ t: 'cut', cv: composeOverlay(plan) });
+    aStat('✓ 완성 — 아래 미리보기 확인 후 PNG 저장');
+    upd();
+  } catch (e) { aStat('✗ ' + e.message); }
+  autoBusy = false; autoGo.disabled = !img;
+});
+
 /* ── 저장(파일명 = KST 강제 · CLAUDE.md [12] — naive 로컬시각 금지) ── */
 $('saveBtn').addEventListener('click', () => {
   const k = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });   /* KST 강제 포맷 */
@@ -415,6 +525,7 @@ $('saveBtn').addEventListener('click', () => {
 /* ── 갱신 ── */
 function upd(){
   $('addCut').disabled = !img;
+  autoGo.disabled = !img || autoBusy;
   $('selSum').textContent = sel ? `선택 ${sel.w}×${sel.h}` : '이미지 위를 드래그 = 발췌 영역 선택 (미선택 = 전체)';
   $('saveBtn').disabled = !stack.length;
   renderStack();
