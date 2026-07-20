@@ -5,14 +5,14 @@
 // 원커맨드:  node shared/smoke_trend.js        (레포 루트 어디서든 · 종료코드 0=전부 PASS · 1=실패/중단)
 //
 // 담당 표면: viewer/index.html 트렌드 그룹 'gg'(실시간 검색어) — renderSnsTrends의 gt·sig 섹션
-//   (.rt2col 2열 그리드 · brow 순위+검색어 행 · rtBase 기준 시각 캡션) + .trend-row 행 문법 회귀 가드.
+//   (.rt2col 2열 그리드 · brow 순위+검색어 행 · 소분류 기준 시각 캡션 제거[운영자 260720]) + .trend-row 행 문법 회귀 가드.
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
 // 무엇을 검증하나 — 8시나리오(유래 = 260718 Q162 페이블 병렬 7호 하네스 승격):
 //   T2 진입(trend 탭 주입·gt/sig 렌더·행수=데이터 동치·검색어 전행 채움[fillT])
 //   → T3 순위만(변동배지·검색량·시각 열 0 · 행 자식 = rank+q 뿐)
 //   → T4 회귀 가드(타 섹션 xtr 시각 열 잔존 = 메타 제거의 월경 없음)
-//   → T5 기준 캡션(.fin-base = '· '+fmtK12(updated)+' 기준' · 페이지 정본 함수 라이브 대조 · 양측 동일)
+//   → T5 소분류 기준 캡션 제거(gt·sig 무캡션 = 수집시각 좌상단 #vhTime 1회 집약 · 운영자 260720)
 //   → T6 PC 2열 기하(1280 — 좌우 나란·열폭 동일·gap 22 · 한쪽 결측 = 그리드 없이 단독 폴백)
 //   → T7 모바일 스택(390 — 1열·가로 오버플로 0·구분선 671 정본값 원복)
 //   → T8 접힘 토글(nm_trend_fold 기록·복원) → T1 페이지 에러 0
@@ -91,7 +91,7 @@ const SEL = {
     // 기대값 = 라이브 데이터 동치(수집 변동 플레이크 차단 — 빈 리스트면 폴백 경로를 검증)
     const DATA = JSON.parse(fs.readFileSync(path.join(VIEWER, 'sns_trends.json'), 'utf8'));
     const gtN = Math.min((DATA.gtrends || []).length, 10), sigN = Math.min((DATA.signal || []).length, 10);
-    const xtrN = Math.min((DATA.xtrends || []).length, 15), UPD = String(DATA.updated || '');
+    const xtrN = Math.min((DATA.xtrends || []).length, 15);
 
     const { chromium } = loadPlaywright();
     const st = await startServer(); srv = st.srv;
@@ -128,9 +128,8 @@ const SEL = {
       const cap = sec => { const el = document.querySelector(sec + ' ' + S.base); return el ? el.textContent.trim() : ''; };
       return { gt: cap(S.gt), sig: cap(S.sig) };
     }, SEL);
-    const expCap = await pg.evaluate(u => (typeof fmtK12 === 'function' && u) ? ('· ' + fmtK12(u) + ' 기준') : '', UPD);   // 기대값 = 페이지 정본 함수 라이브 호출(재구현 드리프트 0)
-    const capOk = (gtN ? t5.gt === expCap : t5.gt === '') && (sigN ? t5.sig === expCap : t5.sig === '') && (!gtN || !sigN || t5.gt === t5.sig) && (!!expCap || !UPD);
-    ok('T5 기준 캡션(fmtK12 라이브 대조·양측 동일)', capOk, JSON.stringify({ gt: t5.gt, sig: t5.sig, exp: expCap }));
+    const capOk = t5.gt === '' && t5.sig === '';   // 소분류 "· HH:MM 기준" 캡션 제거(운영자 260720 후속 — 수집시각 = 좌상단 #vhTime 1회 집약 · gt·sig·yt·tk 소분류 반복 시각 폐지) · 잔존 = 회귀
+    ok('T5 소분류 기준 캡션 제거(gt·sig 무캡션 · 수집시각 = 좌상단 #vhTime)', capOk, JSON.stringify({ gt: t5.gt, sig: t5.sig }));
 
     const t6 = await pg.evaluate(S => {
       const w = document.querySelector(S.wrap), g = document.querySelector(S.gt), s = document.querySelector(S.sig);
