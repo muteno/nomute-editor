@@ -8934,12 +8934,12 @@ function renderScrap() {
     if (key === 'new') {   // 신규 칼럼 = 최신분만. scFast(속보 OR 2+매체 양질) AND 발생 4h 내. 4h 지난 건 신규서 빠져 누적行(거기서 찾음). 정렬 = 핀 → fastScore → 최신순.
       arr = pool.filter(c => _untri(c) && (scFast(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) < FAST_MAX_H * 3600000);   // 신규 = scFast AND 발생 <FAST_MAX_H(4h). 4h+ 는 누적行(아래). · 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross 낮아도 자격 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, p: pinFresh(c), f: fastScore(c), t: scTs(c) })).sort((a, b) => (b.p - a.p) || (b.f - a.f) || (b.t - a.t)).map(x => x.c);   // 최신 속보 핀 → fastScore decay 하강(톱 독차지 방지). 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시. ⚡버퍼 260701: Schwartzian(정렬키 요소당 1회 사전계산) — 비교당 재계산(Math.pow·Date.parse ~2·log₂n회) 제거·순서 동일.
-      // 검증대기 접기(Q-1 · 운영자 승인 260702): 미채점(grade null)·cross≤3·burst<3·비속보(확정/후보)·비액션(픽/재시도)은
+      // 검증대기 접기(Q-1 · 운영자 승인 260702 · 260720 grade0 포함 확장): 미채점·비뉴스(grade null/0)·cross≤3·burst<3·비속보(확정/후보)·비액션(픽/재시도)은
       // 하단 접힘 묶음 — 신규 표시분의 85%가 이런 미채점 소규모 보도자료(실측 142/168)라 스크롤 절반 잠식(fable2).
       // 컷 아닌 접기 = 소실 0(§1 보수성 무위반) · 랭킹/신호/수집 0 변경(순수 표시층) · 펼침 = 기존 더보기 페이지네이션에 그대로 합류.
       _scFoldN = 0;
       if (!q) {   // 검색 중엔 접기 비활성(브라우즈 중 = 전부 표시)
-        const heldIds = new Set(arr.filter(c => c.grade == null && (c.cross || 0) <= 3 && (c.burst || 0) < 3
+        const heldIds = new Set(arr.filter(c => (c.grade == null || c.grade === 0) && (c.cross || 0) <= 3 && (c.burst || 0) < 3
           && !c.breaking && !c.breaking_candidate && !failRequeued(c) && !pickState(c)
           && (Date.now() - scTs(c)) >= FRESH_UNFOLD_H * 3600000).map(candId));   // 갓 뜬(<1.5h) 기사 = 미채점이어도 접지 않음(운영자 260710 "30분 전 기사가 안 올라옴" — 실시간 이슈 = 핵심 기능인데 신선분이 전부 접힘 트레이에 갇혀 2~3h짜리만 보이던 근본. judge가 ~15분 내 채점하면 자연 재분류라 노이즈 노출 창 짧음·cross≥2는 이미 통과한 것들)
         if (heldIds.size >= 4 && (arr.length - heldIds.size) >= 10) {   // 3건 이하면 접을 가치 없음(버튼이 더 시끄러움) · 접기 미발동 기준 = 검증대기 뺀 *활성 표시분*이 10건 미만이면 접지 않고 다 펼침(적은 날 = 활성 2건인데 검증대기만 접히면 칼럼이 "검증대기 +N 펼치기" 하나로 휑·기사 안 들어온 인상 → 활성이 적을수록 검증대기라도 채워 보여줌 · 접기 목적=활성 많은 날 스크롤 잠식 방지라 활성<10은 접을 이유 없음 · 운영자 260705)
@@ -8947,7 +8947,7 @@ function renderScrap() {
           else { arr = arr.filter(c => !heldIds.has(candId(c))); _scFoldN = heldIds.size; }
         }
       }
-    } else {   // 누적 = 9시뉴스감(좌측·넓은 누적). 발생 4h↑(신규서 졸업) AND (cross≥8 OR 긴급[breaking] OR 연속보도 보조진입[followEnters: cross≥4 AND rc≥6 AND grade∉0,1]). 최신(<4h)과 시간 배타. ⚠️ 긴급이었던 건 cross<8이어도 누적 합류(사라지는 구멍 차단·운영자 260617) → 일반 누적 점수(scScore)로 랭킹. 중요도순.
+    } else {   // 누적 = 9시뉴스감(좌측·넓은 누적). 발생 4h↑(신규서 졸업) AND (cross≥8 OR 긴급[breaking] OR 연속보도 보조진입[followEnters: cross≥4 AND rc≥6 — grade 조건 없음·운영자 260720 "grade는 긴급용"]). 최신(<4h)과 시간 배타. ⚠️ 긴급이었던 건 cross<8이어도 누적 합류(사라지는 구멍 차단·운영자 260617) → 일반 누적 점수(scScore)로 랭킹. 중요도순.
       arr = pool.filter(c => _untri(c) && ((c.cross || 0) >= CROSS_MIN || isBreaking(c) || followEnters(c) || failRequeued(c) || pickState(c)) && (Date.now() - scTs(c)) >= FAST_MAX_H * 3600000);   // + 실패 체크복귀(failRequeued)·픽 이력(pickState=picking[재시도 포함]/settled[완료]) = cross<8·non-breaking이라 원래 자격 없어도 면제 = 리스트 유지(재시도 Picking 중·완료도 안 사라짐) · 정렬은 아래 scScore 그대로라 가산점 순위 제자리(강제 상단 X · 운영자 260701)
       arr = arr.map(c => ({ c, s: scScore(c), t: scTs(c) })).sort((a, b) => (b.s - a.s) || (b.t - a.t)).map(x => x.c);   // 순수 scScore 순. 픽은 가라앉히지 않음 — 제자리 유지·PICKED 표시(운영자 인식 필요). ⚠️ 강제핀(pinB) 제거(260617): 오래된 breaking이 최신 고득점 위에 박혀 시간 가속감점을 무력화하던 것 차단(실측: 밀양 28h·score9.5가 최신 score71 위 점유). ⚡이슈 배지는 유지(찾기 가능)·최신 pinFresh(최신속보 핀)는 별개 유지. ⚡버퍼 260701: Schwartzian(scScore 요소당 1회) — 비교당 재계산 제거·순서 동일. ⚠️ 24h+ 순위 게이트(260713 v2)는 같은 날 v3서 폐지 — 운영자 "23h↔24h 1시간 차가 넘사(하드 경계)면 안 됨" = 하드 컷 재도입 금지(ageMul 연속 시그모이드가 전담·§8 260713).
     }
@@ -9129,18 +9129,18 @@ const scTs = c => {
   if (!isNaN(f)) return f;                                                               // 발행 미래(오기록) 또는 rc낮은 역전 → 수집시각(존재 확인된 상한)
   return isNaN(p) ? 0 : p;
 };
-// ── 최신 게이트(scFast): 최신한 '속보 OR 양질의 다매체 보도'. = breaking(속보) OR (2+매체 cross≥2 AND 잡음아님 grade∉{0,1}). 보도자료/경미(0/1)만 빼고, 미채점·주목(2)·대형(3)·속보 다 포함. 랭킹에서 연속보도(scFollow)·품질(gradeW)로 양질이 상단. ──
+// ── 최신 게이트(scFast): 속보 OR 다매체(cross≥2·fbJunk 제외). grade는 진입 조건 아님(운영자 260720 "표시는 전부·grade는 긴급용") — 저신호는 접힘, 랭킹에서 연속보도(scFollow)·경중(gradeW)이 정렬. ──
 const BADGE_MAX_AGE_H = 24;   // 배지(⚡이슈)·OUT 완화 공용 소멸선(1일) — brkIssueKind(피드)·scBadgeType(수집함)·OUT_MAX_AGE_H 단일출처. 맨 리터럴 24가 두 곳에 이중 존재해 OUT만 바꾸면 "배지·완화 동시 소멸" 계약이 조용히 깨지던 드리프트 지뢰 봉합(분신술 10인 감사·260710). 조정 가능.
 const CROSS_MIN = 8;   // 누적 진입선 = 8개 매체 이상(운영자 260617: 5→8 엄선 — 어중간한 건 컷·DB엔 잔존). renderScrap(진입·OUT 통계)·fbJunk veto 공용 — 함수 로컬이던 것을 top-level 승격해 fbJunk의 맨 리터럴 8 제거(의미 같은 값 이중 정의 봉합·분신술 260710). 조정 가능.
 const FRESH_UNFOLD_H = 1.5;   // 신선 접기 면제 나이(h) — 이보다 어린 기사는 검증대기 접기 비대상(운영자 260710 "30분 전 기사" 실시간성 · 조정 가능)
 const FAST_MAX_H = 4, FAST_HALF_H = 2;   // ⏱ 신규↔누적 칼럼 경계 = 발생 4h(운영자 정본 260617: 최신=나이<4h=화면 '3시간 전'까지 / 누적=나이≥4h='4시간 전'부터). 자리(칼럼)=신규·누적 / 사건(배지)=긴급=속보[breaking] = 별개 축 — 긴급 사건은 나이 들면 *자리만* 신규→누적로 이동(개념 불변). 이 한 상수가 최신진입·누적진입·속보핀·토스트·배지(🚨긴급↔⚡이슈)를 전부 결정 = 단일출처(드리프트 차단). FAST_HALF_H=하강 반감기. 조정 가능.
-const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && c.grade !== 0 && !fbJunk(c));   // 신규 진입: grade1(경미) 구제(운영자 260628) · grade0(비뉴스)만 fast-track 제외 + 피드백 잡음(fbJunk·아래 정의·grade=null 사각 홍보/청약/연예) 거르기(운영자 260701·구조게이팅이라 대형뉴스 무영향).
+const scFast = c => isBreaking(c) || ((c.cross || 0) >= 2 && !fbJunk(c));   // 신규 진입 = 구조 신호만(cross≥2 + fbJunk 잡음컷). grade 거부권 폐지(운영자 260720 "일단 모든 게 다 나오는 게 맞고 grade는 긴급용" — grade0이 월드컵 결승·영화 흥행 등 문화 전면 차단하던 사각 해소·구 260628 grade0 제외 조항 폐기). grade0 정리 = 검증대기 접기(cross≤3 접힘)+랭킹 가중(×0.5)이 담당 · 긴급 축(isBreaking g≥2)은 원목적(중대 속보 감지) 그대로.
 const FOLLOW_W = 0.5;   // 연속보도 가점 가중 — 또 보도될수록↑(0.2→0.5·260628 Stage2 보름치 검증: §★ '연속보도 제일 무겁게'가 cross^POW에 묻히던 것 교정 — rank×연속보도 상관 0.098→0.162·호르무즈 선박 cr5·rc16이 26→12위). 조정 가능.
 // 연속보도 가점 = report_count(arts=기사 수 증가 사이클 = '또 보도됨', 같은 매체 1곳이여도 +1). seen_count(12h 윈도우 존재만으로도 올라 결함) 대체. 보도 끊기면 안 오름 → 시간 decay에 밀림(보도자료 자연 침몰).
 const scFollow = c => 1 + FOLLOW_W * Math.log2(1 + (c.report_count || 0));
 // 누적 '연속보도' 보조진입 — cross<8이어도 계속 또 보도되면(report_count↑) + AI 양질(grade≥2)이면 9시뉴스감 합류. ⚠️ cross≥8 단독선은 *불변*, 이건 rc+grade 동반 *보조* 진입로(§1 "cross 임계 낮추기" 아님 — cross·연속·품질 3중 게이트). §★·§5 '연속보도=제일 무거운 신호'를 진입에도 관철(260618 · cross-only서 rc=14짜리 지속보도 누락 실측·Opus 5인 검증).
-const FOLLOW_CROSS_MIN = 4, FOLLOW_RC_MIN = 6;   // 보조진입 임계(보수: 4매체+ AND 6회+ 후속보도 AND 비뉴스[grade0]만 제외 — grade1 구제·운영자 260628 · 구 "grade0/1 제외" 주석은 stale 정정 260710). 조정 가능.
-const followEnters = c => (c.cross || 0) >= FOLLOW_CROSS_MIN && (c.report_count || 0) >= FOLLOW_RC_MIN && c.grade !== 0;   // 보조진입: grade1 구제(운영자 260628 재정의) · grade0(비뉴스)만 제외 유지.
+const FOLLOW_CROSS_MIN = 4, FOLLOW_RC_MIN = 6;   // 보조진입 임계(4매체+ AND 6회+ 후속보도 — grade 조건 없음·운영자 260720). 조정 가능.
+const followEnters = c => (c.cross || 0) >= FOLLOW_CROSS_MIN && (c.report_count || 0) >= FOLLOW_RC_MIN;   // 보조진입 = 발행량 2축 순수(다매체 AND 연속보도). grade 거부권 폐지(운영자 260720 — §★ "곡선이 임계 넘으면 입장, 등급은 자리만". PR 살포는 rc가 거름: 260720 실측 rc≥6 통과 = 3건/일·호프cr22 rc2 탈락).
 // AI 경중 게이트 가중 — gate_judge가 grade 0~3 채점(0 비뉴스/보도자료 · 1 경미 · 2 주목 · 3 대형). 구조가 못 가르는 보도자료·잡음 침몰·대형 부상. 미채점(grade 없음)=중립 1(콜드스타트=구조만). docs §2.5.
 const GRADE_W = { 0: 0.5, 1: 0.7, 2: 1.0, 3: 1.8 };   // ★재정의(운영자 260628·분신술2차 전수검증): grade=긴급탐지 도구지 경중 도구 아님 → 경중·랭킹은 발행량(cross·연속보도)이 정함. floor 0.05→0.5(곱셈 지배 제거): 보도자료/비뉴스는 ×0.5 약한 감점(JUNK_HEAD가 정형잡음 별도 컷·rc 낮아 시간감점 침몰), 대형(3)만 ×1.8 소폭 부상. 옛 ×0.05는 cross17·rc11 전국민 대세(홍명보·송영길 축구)를 1/20로 짓밟던 드리프트(문화 452건 grade2·3=0건·드리프트 541건 실측). 긴급축(isBreaking g≥2·isAlert g≥3)은 raw grade 직독이라 불변.
 // ── 피드백 학습 감점/거르기 (운영자 가치없음·홍보성 마킹 공통패턴 · 260701 적대 10인 평의회) ──
