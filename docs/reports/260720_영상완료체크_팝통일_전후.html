@@ -1,0 +1,48 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영상 생성 완료체크 팝 통일 — 전/후 (260720)</title>
+<style>
+  :root{ --bg:#121212; --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322; --line:rgba(255,255,255,.08); --r-m:11px; --mut:#8a8f8d; --fg:#e9edec; --gauge-pop:1.15; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif; padding:22px 16px 60px; }
+  h1{ font-size:19px; margin:0 0 4px; } .sub{ color:var(--mut); font-size:13px; margin:0 0 22px; max-width:600px; }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:640px; }
+  @media(max-width:560px){ .grid{ grid-template-columns:1fr; } }
+  .card{ border:1px solid var(--line); border-radius:14px; padding:18px 12px; text-align:center; background:rgba(255,255,255,.02); }
+  .card h2{ font-size:13px; margin:0 0 2px; } .tag{ font-size:11px; color:var(--mut); margin:0 0 16px; min-height:28px; }
+  .tag b{ color:var(--accent); } .tag.flat b{ color:#ff9d6b; }
+  .stage{ height:70px; display:grid; place-items:center; }
+  .btn{ position:relative; display:grid; place-items:center; overflow:visible; background:var(--accent); color:var(--on-accent); border:1px solid var(--accent); border-radius:var(--r-m); font-weight:800; font-size:13px; padding:8px 34px; }
+  .gck{ width:26px; height:26px; display:block; }
+  .gck path{ fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; }
+  /* 이미지 기준 = ack 팝(19px) */
+  .ref .gck{ width:19px; height:19px; }
+  .ref.play .gck{ animation:pop .44s cubic-bezier(.18,1.5,.4,1) forwards; }
+  /* 영상 전 = 선그리기만(팝 없음) */
+  .before .gck path{ stroke-dasharray:24; stroke-dashoffset:24; }
+  .before.play .gck path{ animation:draw .38s .04s ease forwards; }
+  /* 영상 후 = 팝 + 선그리기(이미지 통일) */
+  .after.play .gck{ animation:pop .44s cubic-bezier(.18,1.5,.4,1) forwards; }
+  .after .gck path{ stroke-dasharray:24; stroke-dashoffset:24; }
+  .after.play .gck path{ animation:draw .38s .04s ease forwards; }
+  @keyframes pop{ 0%{transform:scale(0)} 60%{transform:scale(var(--gauge-pop))} 100%{transform:scale(1)} }
+  @keyframes draw{ to{ stroke-dashoffset:0; } }
+  .metric{ margin-top:14px; font-size:12px; } .metric b{ font-size:14px; } .metric.flat{ color:#ff9d6b; } .metric.pop{ color:var(--accent); }
+  .replay{ margin:22px 0 0; background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:999px; padding:8px 18px; font-size:12px; font-weight:700; cursor:pointer; }
+  .note{ max-width:640px; margin:22px 0 0; padding:14px 16px; border-left:3px solid var(--accent); background:rgba(var(--accent-rgb),.06); border-radius:0 10px 10px 0; font-size:13px; color:#cfe; }
+  .note b{ color:var(--accent); } code{ background:rgba(255,255,255,.08); padding:1px 5px; border-radius:4px; font-size:12px; }
+</style></head><body>
+  <h1>영상 생성 버튼 완료체크(✓) — 이미지 팝 모션으로 통일</h1>
+  <p class="sub">이미지·영상 생성 버튼은 사다리로 생김새는 같았지만 완료 <b>모션</b>이 갈라져 있었어요(이미지=팝 / 영상=선 그리기). 영상을 이미지의 "튀는 팝"으로 통일했습니다.</p>
+  <div class="grid">
+    <div class="card"><h2>이미지 (기준)</h2><p class="tag">.ack 스케일팝 · <b>1.237×</b></p><div class="stage"><div class="btn ref" id="b1"><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div></div><div class="metric pop">✓ 팝(튀는 모션)</div></div>
+    <div class="card"><h2>영상 (전)</h2><p class="tag flat">.gck 선그리기만 · 팝 <b>1.000×</b></p><div class="stage"><div class="btn before" id="b2"><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div></div><div class="metric flat">✓ 팝 없음(밋밋)</div></div>
+    <div class="card"><h2>영상 (후)</h2><p class="tag">팝+선그리기 · <b>1.242×</b></p><div class="stage"><div class="btn after" id="b3"><svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div></div><div class="metric pop">✓ 팝(이미지와 통일)</div></div>
+  </div>
+  <button class="replay" onclick="playAll()">▶ 다시 재생</button>
+  <p class="note"><b>하나만 바꾸면 둘 다</b>: 팝 크기를 <code>--gauge-pop</code> 토큰 하나로 뽑아 이미지(<code>ackPop</code>)·영상(<code>gckPop</code>)이 공유합니다. 이 값 한 곳만 바꾸면 두 버튼이 동시에 바뀝니다. 영상은 기존 선 그리기를 유지하면서 팝만 얹어(팝+드로우) 이미지와 같은 이중 모션이 됐습니다.</p>
+<script>
+  function playAll(){ ['b1','b2','b3'].forEach(function(id){ var e=document.getElementById(id); e.classList.remove('play'); void e.offsetWidth; e.classList.add('play'); }); }
+  window.addEventListener('load',function(){ setTimeout(playAll,300); });
+</script>
+</body></html>
