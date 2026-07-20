@@ -30,10 +30,45 @@ ASK_FAIL_RUN="${RUNNER_TEMP:-/tmp}/ask_fail_run"; : > "$ASK_FAIL_RUN"
 : > /tmp/analyzed_fail_msgs.txt   # 실패 푸시용 — 실패 base 적재 → notify_fail.sh 웹푸시(analyze.sh 미러 · 운영자 260629 ask 경로 푸시 통일)
 : > /tmp/analyzed_files.txt    # 완료 푸시용 — 생성된 queue 파일명(베이스) → ?a=<파일> 딥링크(titles와 같은 순서)
 
+# ── 처리 대상 선정(병렬 안전 스코프 · 운영자 260720 "여러 개 동시에" ) ──
+# ASK_ONLY(개행 구분 경로 목록)가 있으면 = push 트리거 런: '이 푸시가 추가한 파일만' 처리.
+#   → 런들이 concurrency 그룹 없이 병렬로 떠도 각자 자기 몫만 집어 중복 소비·이중 과금이 없다.
+#   목록 파일이 작업트리(ref:main 최신)에 없으면 = 이미 다른 경로가 처리(삭제/격리)한 것 → 스킵.
+#   (구 런 re-run 도 같은 원리로 전건 스킵 = 안전 no-op.)
+# ASK_ONLY 비면 = workflow_dispatch(수동 구출·pending-sweep 백스톱): 잔류 전건 스윕(종전 동작).
+#   스윕이 인플라이트 파일과 겹치는 극단 코너에서도 산출 파일명이 결정적(스탬프+base유래 id)이라
+#   자기-덮어쓰기로 수렴(피드 중복 0 · 토큰만 소모) — 스윕 쪽은 45분 나이 임계가 1차로 배제.
 shopt -s nullglob
-files=(asks/*.json)
+if [ -n "${ASK_ONLY:-}" ]; then
+  files=()
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    case "$p" in asks/*/*) echo "· 하위 디렉터리(failed 격리본 등) — 스킵: $p"; continue;; esac   # pathspec 월경 이중 방어(적대검증 C5ⓒ)
+    if [ ! -f "$p" ]; then echo "· 스코프 파일 부재(이미 처리/격리) — 스킵: $p"; continue; fi
+    files+=("$p")
+  done <<< "$ASK_ONLY"
+  echo "스코프 모드: 이 푸시가 추가한 ${#files[@]}건만 처리(병렬 런 각자 자기 몫)"
+else
+  # 스윕(dispatch) — ASK_MIN_AGE_MIN 분 미만 신선 건은 스킵(자기 스코프 런이 처리 중일 개연성 — 겹침 이중과금 배제 ·
+  #   적대검증 A5③/C3). 0(수동 기본) = 전건. 무타임스탬프 = 나이 미상 → 처리(유실 0 우선).
+  files=()
+  _now="$(date +%s)"
+  for p in asks/*.json; do
+    if [ "${ASK_MIN_AGE_MIN:-0}" != "0" ]; then
+      _b="$(basename "$p" .json)"
+      if [[ "$_b" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2}) ]]; then
+        _ts=$(date -u -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:00Z" +%s 2>/dev/null || echo 0)
+        if [ "${_ts:-0}" -gt 0 ] && [ $(( (_now - _ts) / 60 )) -lt "${ASK_MIN_AGE_MIN}" ]; then
+          echo "· 신선 ask($(( (_now - _ts) / 60 ))분<${ASK_MIN_AGE_MIN}분) — 스킵(자기 런 처리 중 추정): $p"; continue
+        fi
+      fi
+    fi
+    files+=("$p")
+  done
+  echo "스윕 모드: 잔류 ${#files[@]}건 처리(dispatch 구출·백스톱 · MIN_AGE=${ASK_MIN_AGE_MIN:-0}분)"
+fi
 if [ ${#files[@]} -eq 0 ]; then
-  echo "asks 비어있음 — 종료"
+  echo "처리할 요약요청 없음 — 종료"
   exit 0
 fi
 
@@ -185,6 +220,7 @@ else:
   # 규격·자수 기계 린트(비차단 · analyze.sh 미러 · 분신술② NEW-1 · 260703) — ask 경로 다이제스트 사각지대 해소(검증4). 가드 뒤 = 최종본 실측.
   python3 shared/digest_guard.py "$outfile" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$f"
+  rm -f "asks/failed/${base}.json" "asks/failed/${base}.log"   # 성공이 격리를 이긴다 — 병렬 중복 런의 성공/실패 발산 시 '피드 성공+대기열 FAIL' 공존 차단(적대검증 B1 · git add asks 가 삭제도 스테이지)
   title="$(grep -m1 '^title:' <<<"$out" | sed -E 's/^title:[[:space:]]*//; s/^"//; s/"$//')"
   title_ko="$(grep -m1 '^title_ko:' <<<"$out" | sed -E 's/^title_ko:[[:space:]]*//; s/^"//; s/"$//')"   # 외신 한국어 번역 제목(완료 푸시 우선 · analyze.sh 미러 · 260703)
   echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt
