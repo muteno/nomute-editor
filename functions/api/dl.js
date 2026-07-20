@@ -14,6 +14,15 @@ function _blockedHost(host) {
   if (!host) return true;
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
       || host.endsWith('.internal') || host === 'metadata.google.internal') return true;
+  // 대체 IP 표기 차단 — fetch/OS 리졸버는 hex(0x7f000001)·10진정수(2130706433)·octal(0177.0.0.1)·축약(127.1)·혼합(0x7f.0.0.1)도
+  //   127.0.0.1/169.254.169.254 등으로 해석 → 점4개 10진 정규식만으론 우회됨. 정상 도메인(문자 라벨·정규 TLD)은 아래 어디에도 안 걸림.
+  if (!host.includes(':')) {                                   // IPv6 리터럴은 아래 별도 처리
+    if (/(^|\.)0x[0-9a-f]+/i.test(host)) return true;          // hex 리터럴 라벨(0x7f000001 · 0x7f.0.0.1)
+    const labels = host.split('.');
+    if (labels.some(l => /^0\d+$/.test(l))) return true;       // octal형 라벨(0177 등 — 0으로 시작하는 다자리 숫자)
+    if (/^\d+$/.test(host)) return true;                       // 순수 10진정수 호스트(2130706433)
+    if (labels.length < 4 && /^\d{1,3}(\.\d{1,3}){0,3}$/.test(host)) return true;   // 축약 IPv4(점4개 미만·전부 숫자 — 127.1·10.1)
+  }
   const m4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (m4) {
     const o = m4.slice(1).map(Number);

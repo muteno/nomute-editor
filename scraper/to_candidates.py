@@ -133,6 +133,8 @@ def cat_force(title):
     if POL_FORCE_RE.search(t):   # 3차 정치 강마커 = 무조건 정치(정치인 실명·정치전용어 → 국제·경제 활동도 정치 · 운영자 260701)
         return "정치"
     if CULTURE_FORCE_RE.search(t):   # 3차 문화 강마커 = 무조건 문화(정치 다음 · 충돌없는 고유명만 · 운영자 260701)
+        if CRIME_OVERRIDE_RE.search(t) or JUDICIAL_OVERRIDE_RE.search(t):   # 단 셀럽이라도 실제 범죄·사법 절차(음주운전·구속영장·체포·헌재 등)면 문화 아닌 사회(운영자 260627·260628 하드가드 · line 166/185와 동일 컨벤션 — 조기반환이 이 가드를 건너뛰던 버그 봉합: '손흥민 음주운전 입건'이 문화로 새던 것)
+            return "사회"
         return "문화"
     if STOCK_FORCE_RE.search(t):   # 주식 전문어(상한가·하한가·목표가·사이드카·서킷브레이커) = 경제 무조건(운영자 260701)
         return "경제"

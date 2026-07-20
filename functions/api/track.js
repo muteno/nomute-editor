@@ -21,6 +21,7 @@ export async function onRequestPost({ request, env }) {
 
   let body;
   try { body = await request.json(); } catch { return json({ error: '잘못된 요청' }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ error: '잘못된 요청' }, 400);   // null/비객체 본문 = body.render 역참조 500 크래시 차단(미디어 파이프 동형 가드 · 실측 260720)
 
   // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
   const _r0 = (body.render && typeof body.render === 'object') ? body.render : null;
@@ -135,6 +136,15 @@ export async function onRequestPost({ request, env }) {
   const name = String(body.name || '');
   if (!url && !fileB64) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
   if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
+  if (url) {
+    // 러너發 SSRF 가드(edit.js 원본 동형) — 이 분석 url은 러너가 그대로 fetch하므로 IP리터럴·내부·메타데이터 호스트 거부.
+    if (/[\r\n\t]/.test(url)) return json({ error: '잘못된 URL' }, 400);
+    let uh = '';
+    try { const x = new URL(url); if (x.protocol !== 'http:' && x.protocol !== 'https:') return json({ error: 'URL은 http(s)로 시작해야 해' }, 400); uh = x.hostname.toLowerCase(); } catch { return json({ error: '잘못된 URL' }, 400); }
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(uh) || uh === 'localhost' || uh.endsWith('.local') || uh.startsWith('[')
+      || uh === 'metadata.google.internal' || uh.endsWith('.internal') || uh === 'instance-data'
+      || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(uh)) return json({ error: '지원하지 않는 URL 호스트' }, 400);
+  }
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
 
