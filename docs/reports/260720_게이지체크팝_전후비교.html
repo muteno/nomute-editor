@@ -1,0 +1,84 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게이지 버튼 완료체크 팝 — 전/후 비교 (260720)</title>
+<style>
+  :root{ --bg:#121212; --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+    --line:rgba(255,255,255,.08); --r-m:11px; --mut:#8a8f8d; --fg:#e9edec; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif; padding:22px 16px 60px; }
+  h1{ font-size:19px; margin:0 0 4px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 22px; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:560px; }
+  @media(max-width:520px){ .grid{ grid-template-columns:1fr; } }
+  .card{ border:1px solid var(--line); border-radius:14px; padding:20px 16px; text-align:center; background:rgba(255,255,255,.02); }
+  .card h2{ font-size:14px; margin:0 0 3px; }
+  .tag{ font-size:12px; color:var(--mut); margin:0 0 18px; }
+  .tag.bad b{ color:#ff6b6b; } .tag.good b{ color:var(--accent); }
+  .stage{ height:96px; display:grid; place-items:center; position:relative; }
+  /* 실제 게이지 버튼 계승 — asksend/geni-go 톤 */
+  .btn{ position:relative; display:grid; place-items:center; line-height:1; overflow:hidden;
+    background:var(--accent); color:var(--on-accent); border:1px solid var(--accent); border-radius:var(--r-m);
+    font-weight:800; font-size:13px; padding:8px 40px; min-width:120px; }
+  .btn .ack{ position:absolute; inset:0; display:grid; place-items:center; }
+  .btn .ack svg{ width:19px; height:19px; }
+  .btn .ack path{ fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; }
+  /* 안착(19px) 크기 기준 점선 — 오버슛이 이 선을 얼마나 넘는지 보이게 */
+  .refline{ position:absolute; width:19px; height:19px; border:1px dashed rgba(255,255,255,.35); border-radius:3px; pointer-events:none; }
+  /* 전(현행): 1.28 키프레임 + 스프링 이징 = 실측 1.38배 */
+  .play-bad .ack{ animation:popBad .44s cubic-bezier(.18,1.5,.4,1) forwards; }
+  @keyframes popBad{ 0%{transform:scale(0)} 60%{transform:scale(1.28)} 100%{transform:scale(1)} }
+  /* 후(수정): 1.15 키프레임(dlAckPop 정본) = 실측 1.24배 */
+  .play-good .ack{ animation:popGood .44s cubic-bezier(.18,1.5,.4,1) forwards; }
+  @keyframes popGood{ 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }
+  .metric{ margin-top:16px; font-size:12px; color:var(--mut); }
+  .metric b{ font-size:15px; }
+  .bad b{ color:#ff6b6b; } .good b{ color:var(--accent); }
+  .replay{ margin-top:14px; background:transparent; border:1px solid var(--line); color:var(--fg);
+    border-radius:999px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; }
+  .replay:active{ transform:scale(.95); }
+  .note{ max-width:560px; margin:26px 0 0; padding:14px 16px; border-left:3px solid var(--accent);
+    background:rgba(var(--accent-rgb),.06); border-radius:0 10px 10px 0; font-size:13px; color:#cfe; }
+  .note b{ color:var(--accent); }
+  .bars{ max-width:560px; margin:18px 0 0; }
+  .bar-row{ display:flex; align-items:center; gap:10px; margin:7px 0; font-size:12px; }
+  .bar-row .lbl{ width:64px; color:var(--mut); flex:none; }
+  .bar-track{ flex:1; height:14px; background:rgba(255,255,255,.05); border-radius:7px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:7px; }
+  .bar-fill.bad{ width:100%; background:linear-gradient(90deg,#ff6b6b,#ff9d6b); }
+  .bar-fill.good{ width:89.9%; background:linear-gradient(90deg,var(--accent),#7ff5e6); }
+  .bar-row .val{ width:52px; text-align:right; flex:none; }
+</style></head><body>
+  <h1>게이지 버튼 완료체크(✓) 팝 — 전/후</h1>
+  <p class="sub">이미지스튜디오 <b>생성</b> 버튼: 발사 후 게이지가 다 차면 뜨는 완료 체크가 "확 커졌다" 줄던 현상. 버튼 박스는 안 변하고 <b>✓ 글리프만</b> 튀던 것.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>전 (현행)</h2>
+      <p class="tag bad">키프레임 1.28 + 스프링 이징 중첩 → 실측 <b>1.38배</b></p>
+      <div class="stage"><span class="refline"></span><div class="btn play-bad" id="btnBad"><span class="ack"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></div></div>
+      <div class="metric bad">✓ 19px → 순간 <b>26.3px</b></div>
+      <button class="replay" onclick="rep('btnBad','play-bad')">▶ 다시 재생</button>
+    </div>
+    <div class="card">
+      <h2>후 (수정)</h2>
+      <p class="tag good">레포 정본 dlAckPop(1.15)에 정렬 → 실측 <b>1.24배</b></p>
+      <div class="stage"><span class="refline"></span><div class="btn play-good" id="btnGood"><span class="ack"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></div></div>
+      <div class="metric good">✓ 19px → 순간 <b>23.6px</b></div>
+      <button class="replay" onclick="rep('btnGood','play-good')">▶ 다시 재생</button>
+    </div>
+  </div>
+
+  <div class="bars">
+    <div class="bar-row"><span class="lbl">전</span><span class="bar-track"><span class="bar-fill bad"></span></span><span class="val bad">1.38×</span></div>
+    <div class="bar-row"><span class="lbl">후</span><span class="bar-track"><span class="bar-fill good"></span></span><span class="val good">1.24×</span></div>
+    <div class="bar-row"><span class="lbl">형제정본</span><span class="bar-track"><span class="bar-fill good" style="width:89.6%;opacity:.5"></span></span><span class="val" style="color:var(--mut)">1.24×</span></div>
+  </div>
+
+  <p class="note">점선 사각형 = ✓ 안착 크기(19px). <b>전</b>은 점선을 훌쩍 넘어 부풀었다 줄어들고, <b>후</b>는 넘침이 절반으로 줄어 차분하게 톡 뜬다. 다운로드 완료 체크(dlAckPop, 레포 4곳 공통)와 같은 세기로 통일 — 값 창작 아님.</p>
+
+<script>
+  function rep(id, cls){ var b=document.getElementById(id); b.classList.remove(cls); void b.offsetWidth; b.classList.add(cls); }
+  // 진입 시 1회 자동 재생
+  window.addEventListener('load',function(){ setTimeout(function(){ rep('btnBad','play-bad'); rep('btnGood','play-good'); }, 300); });
+</script>
+</body></html>
