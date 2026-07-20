@@ -946,6 +946,7 @@
   .tbrief-t { margin:0; font-size:var(--fs-sm); line-height:1.85; color:var(--fg); word-break:break-word; white-space:pre-line; }   /* 줄간격 확대·요점별 개행 보존(white-space:pre-line) — 운영자 260712 #7 */
   .tbrief-t b { color:var(--accent); font-weight:var(--fw-x); }   /* *별표1* 강조 = 강조색 굵게(1층 = 제일 중요·핵심 포인트·수치) */
   .tbrief-t b.tb-em, .tbrief-prop li b.tb-em { color:var(--fg); font-weight:var(--fw-b); }   /* **별표2** 강조 = 강조색 없이 볼드만(2층 = 어느정도 중요 · 본문색 유지·700 = 강조색 800보다 한 단 아래 · 운영자 260714 "강조색 볼드만큼은 아니지만 볼드로") */
+  .tbrief-t .tb-starwarn, .tbrief-prop .tb-starwarn { color:var(--warn); font-weight:var(--fw-b); text-decoration:underline dotted; text-underline-offset:2px; cursor:help; }   /* 짝 없는 단일 별표(경계 인접 = 마커 오탈자 의심) = 경고색+점선밑줄로 "확인해" 신호(운영자 260720 "안 닫힌 * = 오탈자 취급해 보이게") · 숫자/글자 사이 단일 *(수식 3*4)는 리터럴 유지(오탐 방지) */
   .tbrief-t a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; text-decoration-color:rgba(var(--accent-rgb),.5); word-break:break-all; }   /* 원인·이상치 관련 링크(운영자 260712 v6) */
   .tbrief-t a.tbrief-ref { color:var(--accent-4); font-style:italic; font-weight:400; text-decoration-color:rgba(var(--accent-4-rgb),.45); word-break:keep-all; }   /* 스크랩 토픽(인앱 팝업) = 네온 골드레몬+이탤릭·볼드 없음(운영자 260712 "노란색·강조 없이·이탤릭") — 외부 직링크(강조색)와 시각 구분 */
   /* 단위 헤더 세그(구 .chu>.tb-seg 우측 오버레이) = .chseg-row로 통합 이관(운영자 260719 모바일 세로 스택 · 위 .chseg-row 정본) — 앵커·스크롤·--chu-r 예약 규칙 = .chseg-row 블록 참조 */
@@ -9945,7 +9946,17 @@ function renderSnsTrends() {
   if (bt && BRIEF) {   // **별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a> (텍스트노드/href검증만 = XSS 안전) · 줄바꿈은 white-space:pre-line · 채널 브리프(renderChan parseInto)와 강조 2층 통일(운영자 260714 "모두 통일")
     bt.textContent = '';
     const txt = BRIEF.text || '', TOK = /(\*\*[^*\n]+\*\*)|(\*{2,})|(\*[^*\n]+\*(?!\*))|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;   // 2층(**..**) 먼저 → 안 닫힌 **런 = 리터럴(strip) → 1층(*..*·닫기 (?!\*) = **의 첫 별표 안 삼킴) → 링크/URL · 운영자 260720 과흡수 봉합: 안 닫힌 단일 *가 ** 앞에 오면 **첫 별표와 짝지어 중간 흡수하던 것 차단(룩어헤드만 = 사파리 호환)
-    const addText = z => { if (z) bt.appendChild(document.createTextNode(z)); };
+    const addText = z => {   // 짝 없는 경계 단일 * = 오탈자 플래그(tb-starwarn) · 숫자/글자 사이 *(수식 3*4)는 리터럴(오탐 방지) · 운영자 260720
+      if (!z) return;
+      if (z.indexOf('*') < 0) { bt.appendChild(document.createTextNode(z)); return; }
+      const A = z.split(/(\*)/), aln = c => c && /[0-9A-Za-z가-힣]/.test(c);
+      A.forEach((p, i) => {
+        if (p === '*') {
+          if (aln((A[i - 1] || '').slice(-1)) && aln((A[i + 1] || '')[0])) bt.appendChild(document.createTextNode('*'));
+          else { const w = document.createElement('span'); w.className = 'tb-starwarn'; w.textContent = '*'; w.title = '짝 없는 별표 — 오탈자 확인'; bt.appendChild(w); }
+        } else if (p) bt.appendChild(document.createTextNode(p));
+      });
+    };
     const refKey = u => String(u || '').replace(/[)\].,!?"']+$/, '').replace(/\/+$/, '');   // URL 매칭 정규화(꼬리 구두점·슬래시 관용 — LLM 출력 편차 흡수)
     const REFM = {}; (BRIEF.refs || []).forEach((r, i) => { if (r && r.url) REFM[refKey(r.url)] = i; });   // 스크랩 카드 짝(url → refs 인덱스 · 운영자 260712 "참고 기사 = 인앱 팝업")
     const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = label; const ri2 = REFM[refKey(u.href)]; if (ri2 !== undefined) { a.classList.add('tbrief-ref'); a.dataset.tref = ri2; }; bt.appendChild(a); } catch { addText(label); } };
@@ -10879,7 +10890,17 @@ function renderChan() {
     const bcur = bsecs ? bsecs.find(s => s.k === CHAN_BSEC) : null;   // 기간 탭 선택분(운영자 260714) — sections 없으면 종전 전문(text)
     const parseInto = (el, s) => {   // 인라인 파서(**별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러) · ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(운영자 260714 2층 강조)
       const TOK = /(\*\*[^*\n]+\*\*)|(\*{2,})|(\*[^*\n]+\*(?!\*))|(\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))|(https?:\/\/[^\s)]+)/g;   // 2층(**..**) 먼저 → 안 닫힌 **런 = 리터럴(strip) → 1층(*..*·닫기 (?!\*) = **의 첫 별표 안 삼킴) → 링크/URL · 운영자 260720 과흡수 봉합(SNS 미러와 통일 · 룩어헤드만 = 사파리 호환)
-      const addText = z => { if (z) el.appendChild(document.createTextNode(z)); };
+      const addText = z => {   // 짝 없는 경계 단일 * = 오탈자 플래그(tb-starwarn) · 숫자/글자 사이 *(수식 3*4)는 리터럴(오탐 방지) · SNS 미러와 통일 · 운영자 260720
+        if (!z) return;
+        if (z.indexOf('*') < 0) { el.appendChild(document.createTextNode(z)); return; }
+        const A = z.split(/(\*)/), aln = c => c && /[0-9A-Za-z가-힣]/.test(c);
+        A.forEach((p, i) => {
+          if (p === '*') {
+            if (aln((A[i - 1] || '').slice(-1)) && aln((A[i + 1] || '')[0])) el.appendChild(document.createTextNode('*'));
+            else { const w = document.createElement('span'); w.className = 'tb-starwarn'; w.textContent = '*'; w.title = '짝 없는 별표 — 오탈자 확인'; el.appendChild(w); }
+          } else if (p) el.appendChild(document.createTextNode(p));
+        });
+      };
       const addLink = (label, url) => { try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') return addText(label); const a2 = document.createElement('a'); a2.href = u.href; a2.target = '_blank'; a2.rel = 'noopener noreferrer'; a2.textContent = label; el.appendChild(a2); } catch { addText(label); } };
       let last = 0, m;
       while ((m = TOK.exec(s))) {
