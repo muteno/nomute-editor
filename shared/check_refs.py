@@ -1088,6 +1088,37 @@ def check_html_charset():
     return rc
 
 
+
+def check_fp_parity():
+    """지문(fp) 축 패리티 하드게이트(260720 평의회C M3 — 수동 미러 3면 감시).
+    ① CROSS_RE(py) ↔ FP_CROSS_RE(js) 패턴 문자열 동일 ② fp_dict.json ↔ fp_culture_dict.json 파싱 동일
+    ③ persons 정규화 상한(÷10 캡) py↔js 동일. 미러 드리프트 = 시운전(py)과 라이브(js) 점수 괴리 사고원."""
+    rc = 0
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        g = open(os.path.join(ROOT, 'scraper', 'fp_culture_dict.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('⚠️ check_fp_parity 스킵(파일):', e); return 0
+    m1 = re.search(r'const FP_CROSS_RE = /(.+?)/;', v)
+    m2 = re.search(r"CROSS_RE = re\.compile\(r'(.+?)'\)", g)
+    if not m1 or not m2 or m1.group(1) != m2.group(1):
+        print('❌ fp 크로스어 패리티 — viewer FP_CROSS_RE ≠ scraper CROSS_RE (문자열 동일 유지 필수)'); rc = 1
+    try:
+        import json as _json
+        a = _json.load(open(os.path.join(ROOT, 'viewer', 'fp_dict.json'), encoding='utf-8'))
+        b = _json.load(open(os.path.join(ROOT, 'apps', 'insta', 'data', 'fp_culture_dict.json'), encoding='utf-8'))
+        if a != b:
+            print('❌ fp 사전 사본 불일치 — viewer/fp_dict.json ≠ apps/insta/data/fp_culture_dict.json (python3 scraper/fp_culture_dict.py 재실행으로 동기)'); rc = 1
+    except Exception as e:
+        print('⚠️ check_fp_parity 사전 파싱 스킵:', e)
+    cj = re.search(r'Math\.min\(p / 10, ([\d.]+)\)', v)
+    cp = re.search(r'\) for t in ts\) / 10, ([\d.]+)\)', g)
+    if cj and cp and float(cj.group(1)) != float(cp.group(1)):
+        print(f'❌ fp persons 상한 불일치 — js {cj.group(1)} ≠ py {cp.group(1)}'); rc = 1
+    if rc == 0:
+        print('✅ fp 지문축 패리티 — 크로스어·사전 사본·persons 상한 py↔js 동일')
+    return rc
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1170,6 +1201,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_curation_constants 스킵:', e)
+    try:
+        if check_fp_parity() != 0:   # 지문축 py↔js 미러 패리티(260720 평의회C M3 — fp 트라이어드 무가드 사각 봉합)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_fp_parity 스킵:', e)
     try:
         if check_cat_kw() != 0:   # CAT_KW 카테고리 키워드사전 py↔js 정합(하드 게이트 — 키워드 한쪽만 고침=분류 오분류 근본·260628 C9)
             rc = 1
