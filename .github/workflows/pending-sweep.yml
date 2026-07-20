@@ -70,6 +70,57 @@ jobs:
           done
           [ "$ok" = 1 ] || echo "::warning::news-analyze 디스패치 3회 실패(다음 sweep 재시도)"
 
+      # 고아 asks 백스톱(운영자 260720 병렬화 짝) — news-ask 병렬화(그룹 폐지·푸시 스코프)로 각 요청은 자기 런이
+      #   전담한다. 그 런이 증발(러너 유실·트리거 누락·범위 산출 실패 스킵)하면 그 ask 는 아무도 안 집는 고아 →
+      #   여기서 45분+ 잔류 감지 시 news-ask 스윕 디스패치(ASK_ONLY 없음 = 잔류 전건). ⚠️ analyze식 '활성 런
+      #   게이트'는 의도적으로 미적용 — card_plan 꼬리(상한 165분)가 런을 '활성'으로 만들어 구출을 수 시간 막는
+      #   호스티지 사각(260720 실측)의 재생산이라서. 대신 나이 임계 45분(단건 인플라이트 최악 ~30분 + 여유)이
+      #   처리 중인 신선한 ask 를 배제하고, 극단 겹침도 산출 파일명 결정적 = 자기-덮어쓰기(피드 중복 0)로 수렴.
+      - name: 고아 asks 백스톱 — news-ask 재디스패치
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASK_THRESH_MIN: '45'
+        run: |
+          now=$(date +%s)
+          orphans=0
+          shopt -s nullglob
+          for f in asks/*.json; do
+            base=$(basename "$f" .json)
+            # 파일명 YYYY-MM-DD-HHMM…(submit.js toISOString = UTC · api/pending.js askTime 과 동일 규약) → epoch.
+            if [[ "$base" =~ ^([0-9]{4})-([0-9]{2})-([0-9]{2})-([0-9]{2})([0-9]{2}) ]]; then
+              ts=$(date -u -d "${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]}T${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:00Z" +%s 2>/dev/null || echo 0)
+            else
+              ts=0
+            fi
+            if [ "$ts" = 0 ]; then
+              # 무타임스탬프 = 정체불명 — fresh 로 흘리면 영구 미검출(orphan pending 스텝과 동일 방어) → 고아 간주.
+              echo "orphan(무타임스탬프): $base"; orphans=$((orphans + 1)); continue
+            fi
+            age=$(( (now - ts) / 60 ))
+            if [ "$age" -ge "${ASK_THRESH_MIN}" ]; then
+              echo "orphan: $base (${age}분)"; orphans=$((orphans + 1))
+            fi
+          done
+          shopt -u nullglob
+          if [ "$orphans" -eq 0 ]; then echo "asks orphan 없음 — 정상"; exit 0; fi
+          # 디스패치 폭풍 가드(적대검증 A5②·C4): 구출 런은 커밋을 런 끝에 몰아 해 처리 중에도 고아가 main 에
+          #   남아 보인다(최대 ~40-60분) → 매 10분 cron 이 같은 고아로 중복 발사하던 것을 '최근 55분 내 생성된
+          #   news-ask dispatch 런 존재 시 스킵'으로 차단. status 아닌 createdAt 창 = card_plan 꼬리(165분 활성)
+          #   호스티지 사각 회피 · push 런은 안 셈(고아는 dispatch 만 구출하므로 정상 트래픽이 구출을 안 막음).
+          recent=$(gh run list --workflow=news-ask.yml --event=workflow_dispatch --limit 10 --json createdAt \
+                   -q '[.[] | select((now - (.createdAt | fromdateiso8601)) < 3300)] | length' 2>/dev/null || echo 0)
+          if [ "${recent:-0}" -gt 0 ]; then
+            echo "최근 55분 내 news-ask 구출 디스패치 ${recent}건 — 이번 사이클 스킵(폭풍 가드)"; exit 0
+          fi
+          echo "asks orphan ${orphans}건 → news-ask 스윕 디스패치(min_age 40분 = 신선 인플라이트 배제)"
+          ok=0
+          for i in 1 2 3; do                       # 단발 silent-fail 방지 — 위 analyze 스텝 패턴 계승
+            if gh workflow run news-ask.yml -f min_age_min=40; then ok=1; break; fi
+            sleep $((i * 3))
+          done
+          [ "$ok" = 1 ] || echo "::warning::news-ask 디스패치 3회 실패(다음 sweep 재시도)"
+
       # 판정(judge) 백로그 백스톱(260713 평의회6 P1) — breaking-judge 기동이 scrape.yml 디스패치 *한 곳*뿐이라
       #   그 단발이 실패·유실되면 미판정 적체가 다음 신규 유입까지 방치되던 사각. 미판정>0 AND judge 비활성일 때만
       #   재디스패치(빈 런 no-op · concurrency 'breaking-judge'가 직렬화 · 실측 260713: 미판정 최근 40%가 이 정황).
