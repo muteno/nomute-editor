@@ -146,7 +146,7 @@ let img = null;                     // HTMLImageElement (natural size)
 let sel = null;                     // {x,y,w,h} natural coords
 let stack = [];                     // {t:'cut', cv} | {t:'band', tx, style:'dark'|'light', fs}
 let bandStyleV = 'dark';
-let sizeV = '1080x1350';
+let sizeV = 'auto';   /* 기본 = 자동 높이(운영자 260720 "결과물 이상" — 고정 규격 기본은 짧은 콘텐츠가 거대 레터박스에 뜨는 사고) */
 let bgV = 'black';
 
 /* ── 원본 이미지 로드 ── */
@@ -243,7 +243,7 @@ function chips(host, opts, cur, fn){
   });
 }
 const drawStyle = () => chips($('bandStyle'), [['dark','검정 밴드'],['light','흰 밴드']], bandStyleV, v => { bandStyleV = v; drawStyle(); });
-const drawSize = () => chips($('sizeChips'), [['1080x1350','1080×1350'],['1080x1080','1080×1080'],['1080x1920','1080×1920'],['auto','자동 높이']], sizeV, v => { sizeV = v; drawSize(); upd(); });
+const drawSize = () => chips($('sizeChips'), [['auto','자동 높이'],['1080x1350','1080×1350'],['1080x1080','1080×1080'],['1080x1920','1080×1920']], sizeV, v => { sizeV = v; drawSize(); upd(); });
 const drawBg = () => chips($('bgChips'), [['black','검정'],['white','흰색']], bgV, v => { bgV = v; drawBg(); upd(); });
 drawStyle(); drawSize(); drawBg();
 $('bandFs').addEventListener('input', e => { $('bandFsV').textContent = e.target.value; });
@@ -317,6 +317,7 @@ function parseRuns(line){
 function tokens(runs){
   const out = [];
   runs.forEach(r => {
+    if (r.m !== 'n') { out.push({ tx: r.tx, m: r.m }); return; }   /* 강조 구간 = 통짜 토큰(줄바꿈으로 박스 두 동강 방지 — 운영자 260720 "결과물 이상" 보정) */
     let cur = '';
     const flush = () => { if (cur) { out.push({ tx: cur, m: r.m }); cur = ''; } };
     for (const ch of r.tx) {
@@ -338,11 +339,16 @@ function layoutBand(b){
   const lines = [];
   b.tx.split('\n').forEach(raw => {
     let line = [], w = 0;
-    tokens(parseRuns(raw)).forEach(tk => {
+    const put = tk => {
       const tw = mc.measureText(tk.tx).width;
       if (w + tw > mx && line.length) { lines.push(line); line = []; w = 0; if (tk.tx === ' ') return; }
+      if (tw > mx && tk.tx.length > 1) {   /* 한 줄보다 긴 통짜 강조 = 글자 단위 폴백(스타일 유지) */
+        [...tk.tx].forEach(ch => put({ tx: ch, m: tk.m }));
+        return;
+      }
       line.push({ ...tk, w: tw }); w += tw;
-    });
+    };
+    tokens(parseRuns(raw)).forEach(put);
     lines.push(line);
   });
   const padY = Math.round(b.fs * 1.05);
