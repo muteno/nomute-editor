@@ -11,6 +11,10 @@ const REPO = 'muteno/nomute-editor';
 const STUCK_MIN = 20;            // pending 잔류 이 분 이상 + 처리 런 비활성 = FAIL(stuck) 표시(운영자 260619 · 활성런 예외 260703)
 const ACTIVE_STUCK_MIN = 120;    // 처리 런이 살아 있어도 이 분 이상 잔류 = FAIL(방어 상한). ⚠️ 잡 timeout(90분)보다 커야 함 —
                                  //   배치 꼬리 항목은 '파일 생성 후 대기(누적 창)+런 처리'라 90=timeout이면 정상 처리 중 거짓 FAIL(평의회7 P4)
+const ASK_ACTIVE_STUCK_MIN = 75; // ✨요약요청(ask) 전용 활성런 완화 상한 — ask 병렬 스코프 체제(260720)에선 "런 활성 = 내 것도
+                                 //   곧 처리" 전제가 약함(각 런 = 자기 푸시 몫만 · card 꼬리도 런을 활성으로 유지) → 120(analyze
+                                 //   잡 90분 기준)은 진짜 고아를 2시간 가리는 과대치. ask 잡 timeout 60분 + 여유 = 75(적대검증 C6·B5).
+                                 //   고아 구출 자체는 pending-sweep 45분 백스톱이 수행 — 이 값은 FAIL '표면화' 상한.
 const RECENT_MS = 24 * 3600e3;  // failed/queue 최근 창(24h — 폰 밤샘 실패도 대기열에 잔존·표면화, 운영자 260620 분신술)
 const CAP_PEND = 25, CAP_FAIL = 12, CAP_QUEUE = 20;
 
@@ -150,7 +154,7 @@ export async function onRequestGet({ env }) {
     try { const j = JSON.parse(await raw('asks/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); } catch {}
     const ageMin = t ? (now - t) / 60000 : 0;
     const askActive = await askActiveP;
-    const stuck = !!t && ageMin >= (askActive === true ? ACTIVE_STUCK_MIN : STUCK_MIN);   // 런 활성 = 배치 대기(처리중) · 비활성 20분+ = 미처리(stuck) FAIL
+    const stuck = !!t && ageMin >= (askActive === true ? ASK_ACTIVE_STUCK_MIN : STUCK_MIN);   // 런 활성 = 처리중 유예(ask 전용 75분 — 병렬 스코프 체제 과대유예 축소) · 비활성 20분+ = 미처리(stuck) FAIL
     items.push({
       id: f.name.replace(/\.json$/i, ''), t, status: stuck ? 'fail' : 'processing',
       via: '요약요청', src: '',

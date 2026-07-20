@@ -801,6 +801,16 @@
   .ch-st b { font-size:var(--fs-h2); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
   .ch-st span { color:var(--mut); font-size:var(--fs-xs); }
   .ch-st .ch-avg { font-variant-numeric:tabular-nums; }   /* 평균 병기(운영자 260718 델타 대체) — 색·크기는 .ch-st span 계승 · 숫자 정렬용 tab-nums만 추가 */
+  /* ── 팔로워 히어로(운영자 Q253 · UI 전문가 자문) = 모바일 풀블리드 밴드 / 데스크톱 좌측 2트랙 세로 · 숫자 = clamp 히어로 티어(루트 토큰 최대 22px 초과 = 의도된 신 티어 · 근접 토큰 없음) ── */
+  .ch-hero { grid-column:1 / -1; display:flex; flex-direction:column; gap:var(--sp-1); min-width:0; padding:var(--sp-2); background:rgba(255,255,255,.03); border-radius:var(--r-l); }   /* 간격·패딩 = 토큰 계승(--sp-1/--sp-2) · 배경 = .ch-st 형제 동값 · radius = 큰 블록이라 --r-l 승격 */
+  .ch-hero-n { font-size:clamp(50px, 20vw, 76px); line-height:.92; letter-spacing:-.03em; font-weight:var(--fw-x); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* raw-ok: 히어로 숫자 clamp = UI 전문가 자문 신 티어(토큰 스케일 밖·근접 없음) · nowrap+tab-nums = 자릿수 늘어도 줄바꿈/폭요동 0(6자리 전폰 안전·1M+ 320px만 엣지 → 그때 15vw 강하) */
+  .ch-hero-l { color:var(--mut); font-size:var(--fs-sm); }
+  .ch-hero-sub { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--sp-1); font-size:var(--fs-sm); color:var(--mut); font-variant-numeric:tabular-nums; }   /* 전일대비·일평균 = 숫자 아래 한 줄 나란히(3줄 방지 = 히어로 높이 컴팩트) · 상단 간격 = 부모 flex gap 계승(중복 margin 제거) */
+  .ch-hero-d.up { color:var(--accent); }   /* 순증 = 강조색(긍정) */
+  .ch-hero-d.dn { color:var(--danger); }   /* 순감 = 위험 의미색 */
+  .ch-hero-sep { color:var(--line2); font-style:normal; }
+  @media (max-width:680px){ .ch-st--delta { grid-column:span 2; } }   /* 모바일 = 증감이 6번째 셀(3열 Row3 = 증감 2칸 + 방문 1칸 = 고아 0) + 신규/취소 범례 폭 확보(재색칠 금지 = 범례가 구분 · [4]) */
+  @media (min-width:681px){ .ch-stats { grid-template-columns:minmax(300px,2fr) repeat(5,1fr); } .ch-hero { grid-column:1; grid-row:1 / -1; } }   /* 데스크톱 = 히어로 좌측 2트랙 세로(=운영자 '2칸' 리터럴) + 5지표 KPI 스트립(YouTube Studio 패턴) */
   .ch-sig, .ch-post { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r-m); background:rgba(255,255,255,.03); margin-bottom:6px; font-size:var(--fs-sm); }
   .ch-sig.low { opacity:.5; }
   .ch-ax { flex:none; color:var(--mut); font-size:var(--fs-xs); }
@@ -10712,11 +10722,11 @@ function renderChan() {
   const vu = (n, u) => n == null ? '—' : vf(n) + ' ' + u;   // 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
   // 델타(▲▼N%) 폐지(운영자 260718 "팔로워 옆 88% 하락 = 팔로워가 88% 빠진 걸로 오해") — '평소 대비 %'는 하락처럼 읽혀 → 전기간 평균값 병기로 대체(수치 = avg.avg_all 실측 · 창작 0)
   const rnd = x => x >= 100 ? Math.round(x) : Math.round(x * 10) / 10;   // 소수 지표(게시 3.8개/일) 정수 반올림 시 0/4로 뭉개짐 → 100 미만만 1자리 보존
-  const st = (lb, v, key, sp2, lgd) => {
+  const st = (lb, v, key, sp2, lgd, cls) => {
     const sp = sp2 != null ? sp2 : (key && series.length ? chSpark(series, key) : '');
     const A = key ? avg[key] : null;
     const av = A && A.avg_all != null ? `<span class="ch-avg">전체${A.n_days ? ' ' + A.n_days + '일' : ''} 일평균 ${vf(rnd(A.avg_all))} ${stUnit(key)}</span>` : '';   // 평균 창 명시(운영자 260719 "월평균인지 그런걸 나타내") — avg_all = 수집 전 기간 하루치 평균 = 「전체 N일 일평균」 · N = avg.n_days 실측 병기(창 추측·창작 0 · 지표별 결측 달라 N도 지표별)
-    return `<div class="ch-st"><div class="ch-strow"><b>${v}</b></div><span>${lb}</span>${av}${lgd || ''}${sp ? `<div class="ch-spark">${sp}</div>` : ''}</div>`;
+    return `<div class="ch-st${cls ? ' ' + cls : ''}"><div class="ch-strow"><b>${v}</b></div><span>${lb}</span>${av}${lgd || ''}${sp ? `<div class="ch-spark">${sp}</div>` : ''}</div>`;   // cls = 선택 부가 클래스(팔로워 증감 = ch-st--delta 모바일 span2 · 운영자 Q253)
   };
   // 팔로워 증감 카드(운영자 260719 "공유 → 신규 팔로워·팔로워 취소 추이 겹쳐 대비 = 팔로워 칸 확장판") — 신규 = 일별 follows 실측 · 취소 = unfollows(현 수집기 미기록 = 범례 '취소 —' + 라인 자동 대기 · 수기 창작 0 = 🔒 [15]) · 값 = 최근 실측일 · 위치 = 팔로워 칸 직하(구 공유 자리 = 확장판 배치)
   const flwSt = () => {
@@ -10724,7 +10734,20 @@ function renderChan() {
     const nf = lastNN('follows'), uf = lastNN('unfollows');
     const v = nf == null && uf == null ? '—' : `+${vf(nf || 0)}${uf != null ? ` −${vf(uf)}` : ''} 명`;
     const lgd = `<span class="ch-lgd"><i class="lg-in">신규</i><i class="lg-out">취소${uf != null ? '' : ' —'}</i></span>`;
-    return st('팔로워 증감', v, 'follows', chSpark2(series, 'follows', 'unfollows'), lgd);
+    return st('팔로워 증감', v, 'follows', chSpark2(series, 'follows', 'unfollows'), lgd, 'ch-st--delta');   // ch-st--delta = 모바일 span2(차트 스트립 6번째 셀 채움·고아 방지 · 운영자 Q253 · 증감 스파크는 히어로서 이전돼 여기 잔류)
+  };
+  // ── 팔로워 히어로(운영자 Q253 "숫자 크게·2칸 병합·전일대비+일평균·증감 차트 이전" · UI 전문가 자문 = 모바일 풀블리드 밴드/데스크톱 좌측 2트랙 · 숫자 clamp 히어로 티어[토큰 최대 22px 초과 = 의도된 신 티어]) ──
+  const chHero = () => {
+    const lastNN = k => { for (let i = series.length - 1; i >= 0; i--) if (series[i][k] != null) return series[i][k]; return null; };
+    const nf = lastNN('follows'), uf = lastNN('unfollows');
+    const net = (nf == null && uf == null) ? null : (nf || 0) - (uf || 0);   // 전일대비 = 순증(신규−취소 · 취소 미수집 = 신규분 · 창작 0)
+    const dcls = net == null ? '' : (net > 0 ? ' up' : net < 0 ? ' dn' : '');
+    const dtxt = net == null ? '' : `<span class="ch-hero-d${dcls}">전일대비 ${net < 0 ? '−' : '+'}${vf(Math.abs(net))}명</span>`;
+    const A = avg.follows;
+    const atxt = A && A.avg_all != null ? `<span class="ch-hero-a">일평균 ${vf(rnd(A.avg_all))}명</span>` : '';   // 일평균 = avg.follows.avg_all(전체 N일 하루평균 · 창작 0)
+    const sub = (dtxt || atxt) ? `<div class="ch-hero-sub">${dtxt}${dtxt && atxt ? '<i class="ch-hero-sep" aria-hidden="true">·</i>' : ''}${atxt}</div>` : '';
+    const num = (p && p.followers_count != null) ? p.followers_count.toLocaleString() : '—';
+    return `<div class="ch-hero"><b class="ch-hero-n">${num}</b><span class="ch-hero-l">팔로워</span>${sub}</div>`;
   };
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
@@ -10756,7 +10779,7 @@ function renderChan() {
     `</div>`, bseg, chanStale);   // bseg = 헤더 우측 기간 칩(extra · 운영자 260716) · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭)
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(fmtK12(d.generated_kst))}</span>`, '<div class="ch-stats">' +
     // 팔로워 = 정밀 카운트(운영자 260718 "6.4만 옆 88% 하락 말고 63,956명 이런식으로") — 축약(6.4만)·오해성 델타 제거 · 명 단위 · 재고량이라 평균 병기 안 함(키 미전달)
-    st('팔로워', p.followers_count != null ? p.followers_count.toLocaleString() + '명' : '—') +
+    chHero() +   // 팔로워 = 히어로 헤드(구 st('팔로워') 대체 · 운영자 Q253 · 숫자 크게 + 전일대비·일평균 · 증감 스파크는 아래 차트 스트립으로 이전)
     // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기 · vu = 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
     // 저장 → 일 평균 게시(운영자 260719 "저장 > 일 평균 게시 현황으로 변경") — 값 = avg.posts.avg_7d(최근 7일 하루평균 · 라벨에 창 병기) · st() 평균줄 = 전체 일평균 대비 · 스파크 = posts 14일(둔화/재개 현황이 한 칸에)
     (d.src === 'facebook'
@@ -10767,7 +10790,7 @@ function renderChan() {
         st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') +
         st('상호작용', vu(a.interactions, '회'), 'interactions')
       : st('조회수', vu(a.views, '회'), 'views') + st('도달', vu(a.reach, '계정'), 'reach') +
-        flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views')) + '</div>');
+        st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + flwSt() + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views')) + '</div>');   // 순서(운영자 Q253 · UI 전문가) = 히어로 → 조회·도달·일평균게시 → 증감(span2) → 방문 : 모바일 3열서 증감 span2가 6번째 셀 채워 고아 0
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
