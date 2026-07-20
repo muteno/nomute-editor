@@ -136,6 +136,21 @@ if diff_hits:
     out += '\n🚫 diff 게이트 — 이 편집이 새로 넣은 raw(기존분 무관·추가 줄만 검사):\n' + '\n'.join('  · ' + h for h in diff_hits[:12])
 if ls_warn:
     out += '\n⚠ ' + '\n⚠ '.join(ls_warn[:4])
+
+# ── 재사용 자가검증(260720 운영자 "새로 만들 때 기존 유사부품 계승했나를 혈관 돌듯 상시 셀프모니터 — 규격 외 부산물 차단") ──
+# 260717 평의회가 '컨트롤 유사도 자동판정 하드게이트'(CII P3)를 오탐·유지비 이유로 폐기 → 기계는 유사도를 판정하지 않는다(비차단).
+# 대신 '새 클릭 컨트롤 정의' 신호(cursor:pointer 신규 = 기존 부품 재사용이면 부모서 상속돼 새로 안 씀)를 트리거로 CII 표를 띄워
+# '재사용 먼저 확인' 판단을 모델에게 상시 강제 = 혈관 돌듯. 의식적 확정 = 같은 편집 내 `reuse-ok:`(raw-ok 미러) → 침묵.
+_ra = _added_lines()
+_reuse_ack = any('reuse-ok' in l for l in _ra)
+_ctrl_new = [l.strip()[:70] for l in _ra if re.search(r'cursor\s*:\s*pointer', l) and 'reuse-ok' not in l]
+if _ctrl_new and not _reuse_ack:
+    out += ('\n🔁 재사용 자가검증(새 클릭 컨트롤 감지 · `%s`): 만들기 전에 docs/CII_컴포넌트계승인덱스.md '
+            '§상호작용→정본 부품에서 계승 가능한지 먼저 확인 —' % _ctrl_new[0]
+            + '\n   N택1=그 화면 확립 칩(k .axchip·edit .prow .pc·sb .geni-opt) · ON/OFF=그 화면 토글 · '
+            '연속값=<input range> 슬라이더(edit .grow) · 새 폼 골격=index #genidlg .geni-row/.geni-opt.'
+            + '\n   재사용으로 되면 정본 계승(생김새 창작 금지) · 진짜 신설이면 같은 줄 `/* reuse-ok: 계승원 or 신설 사유 */`로 '
+            '확정(= 무단 부산물 차단). ※ 비차단 리마인더(유사도 판정 아님 · 260717 판례).')
 # ──────────────────────────────────────────────────────────────────────────────
 
 if rc:
