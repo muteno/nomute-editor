@@ -802,6 +802,11 @@
   .ch-st b { font-size:var(--fs-h2); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }
   .ch-st span { color:var(--mut); font-size:var(--fs-xs); }
   .ch-st .ch-avg { font-variant-numeric:tabular-nums; }   /* 평균 병기(운영자 260718 델타 대체) — 색·크기는 .ch-st span 계승 · 숫자 정렬용 tab-nums만 추가 */
+  .ch-st:has(.ch-fdelta) { grid-column:span 2; }   /* 팔로워 증감 한 줄 = 폭 확보 2칸(운영자 260720 Q278 · 절제형 플그 계승 · 구 팔로워 증감 타일 폴드) */
+  .ch-st .ch-fdelta .fd-v { font-weight:var(--fw-b); color:var(--mut); }   /* 증감 값 = 무채(.ch-avg 톤 계승) · 양수만 강조 */
+  .ch-st .ch-fdelta .fd-up { color:var(--accent); }
+  .ch-st .ch-fdelta .fd-zero { opacity:.7; }
+  .ch-st .ch-fdelta .fd-sep { font-style:normal; opacity:.5; margin:0 4px; }   /* raw-ok: · 구분점 광학 간격(.ch-lgd 4px 톤 계승) */
   .ch-sig, .ch-post { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r-m); background:rgba(255,255,255,.03); margin-bottom:6px; font-size:var(--fs-sm); }
   .ch-sig.low { opacity:.5; }
   .ch-ax { flex:none; color:var(--mut); font-size:var(--fs-xs); }
@@ -10729,6 +10734,14 @@ function renderChan() {
     const lgd = `<span class="ch-lgd"><i class="lg-in">신규</i><i class="lg-out">취소${uf != null ? '' : ' —'}</i></span>`;
     return st('팔로워 증감', v, 'follows', chSpark2(series, 'follows', 'unfollows'), lgd);
   };
+  // 팔로워 24h/3d/7d/30일 증감(운영자 260720 Q278 "팔로워 밑에 24h·3일·7일·30일 다 보고싶다") — 신규 팔로워(follows) 기간 합 · 기존 평균줄(.ch-avg) 무채 톤 한 줄 · 양수만 강조 · 누적/언팔로우 미수집이라 순증감 아님(신규 합 · 🔒[15]) · 앵커 = 마지막 실측일 · 구 flwSt(팔로워 증감 타일) 폴드해 팔로워 칸에 통합(절제형 플그 승인안)
+  const flwDelta = () => {
+    let idx = -1; for (let i = series.length - 1; i >= 0; i--) if (series[i].follows != null) { idx = i; break; }
+    if (idx < 0) return '';
+    const wsum = n => { let t = 0, has = false; for (let i = idx; i > idx - n && i >= 0; i--) { const v = series[i].follows; if (v != null) { t += v; has = true; } } return has ? t : null; };
+    const cell = (lb, n) => { const s2 = wsum(n); const txt = s2 == null ? '—' : s2 > 0 ? '+' + s2.toLocaleString() : s2 < 0 ? '−' + Math.abs(s2).toLocaleString() : '±0'; const c = s2 > 0 ? ' fd-up' : s2 === 0 ? ' fd-zero' : ''; return `${esc(lb)} <b class="fd-v${c}">${txt}</b>`; };
+    return `<span class="ch-avg ch-fdelta">${[['24h', 1], ['3일', 3], ['7일', 7], ['30일', 30]].map(([l, n]) => cell(l, n)).join('<i class="fd-sep">·</i>')}</span>`;
+  };
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
   const DEFF = { sig: 1, recent: 1 };   // 첫 방문 기본 접힘 = 데이터 큰 꼬리 유닛(시간대별 반응[구 호응 신호]·최근 게시물 — 운영자 260713 "기본 접힘 ㄱ") · nm_chan_gfold 기억값 있으면 그게 우선
@@ -10761,7 +10774,7 @@ function renderChan() {
     `</div>`, bseg, chanStale);   // bseg = 헤더 우측 기간 칩(extra · 운영자 260716) · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭)
   h += gsec('prof', `<b class="ch-nm"></b><span class="tdash-time">${esc(fmtK12(d.generated_kst))}</span>`, '<div class="ch-stats">' +
     // 팔로워 = 정밀 카운트(운영자 260718 "6.4만 옆 88% 하락 말고 63,956명 이런식으로") — 축약(6.4만)·오해성 델타 제거 · 명 단위 · 재고량이라 평균 병기 안 함(키 미전달)
-    st('팔로워', p.followers_count != null ? p.followers_count.toLocaleString() + '명' : '—') +
+    st('팔로워', p.followers_count != null ? p.followers_count.toLocaleString() + '명' : '—', null, null, flwDelta()) +
     // 조회·도달 등 = 당일값 + 단위 + 전기간 평균 병기(운영자 260718 "000만 회/평균 이런식 · 수치 다르면 가져와줘") — 델타(하락%) 자리에 avg.avg_all 실측 병기 · vu = 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
     // 저장 → 일 평균 게시(운영자 260719 "저장 > 일 평균 게시 현황으로 변경") — 값 = avg.posts.avg_7d(최근 7일 하루평균 · 라벨에 창 병기) · st() 평균줄 = 전체 일평균 대비 · 스파크 = posts 14일(둔화/재개 현황이 한 칸에)
     (d.src === 'facebook'
@@ -10772,7 +10785,7 @@ function renderChan() {
         st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') +
         st('상호작용', vu(a.interactions, '회'), 'interactions')
       : st('조회수', vu(a.views, '회'), 'views', null, null, '7d') + st('도달', vu(a.reach, '계정'), 'reach', null, null, '7d') +
-        flwSt() + st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views', null, null, '7d')) + '</div>');
+        st('일 평균 게시 (7일)', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—', 'posts') + st('프로필 방문', vu(a.profile_views, '회'), 'profile_views', null, null, '7d')) + '</div>');   // 팔로워 증감(24h/3d/7d/30일) = 팔로워 타일에 통합(flwDelta) · 구 flwSt 별도 타일 폴드(운영자 260720 Q278)
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
