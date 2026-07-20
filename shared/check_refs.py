@@ -1119,6 +1119,49 @@ def check_fp_parity():
         print('✅ fp 지문축 패리티 — 크로스어·사전 사본·persons 상한 py↔js 동일')
     return rc
 
+
+# ── 발사(생성) 버튼 규격 게이트 (운영자 260720 "생성 버튼은 통일 · 그냥 기존 걸 따라해라 · 모조품 만들지 마" 한 수 실체화) ──
+#   스튜디오 launch 버튼 = Image Studio 사다리 정본(r-m 11·sp-1 6·fs-label 13 · PR 2518 §3③ 전 스튜디오 형상 사인오프 · 정본 = edit #editGo).
+#   신규/변경 발사 버튼이 이 규격을 벗어나면(=모조품) rc=1로 커밋 차단. 신규 발사 버튼 편입 = 아래 _LAUNCH_BTNS 레지스트리에 selector 1줄 추가.
+#   ⚙ 왜 '공용 클래스' 아닌 게이트인가(운영자 한 수 원문 = "공용 한 클래스로 승격"): 뷰어별 <style> 자립 구조라 8뷰어가 .go를 각자 정의 =
+#      '진짜 전역 공용 클래스'가 물리적으로 없다(tokens.css = 구조토큰 거울·컴포넌트 불가). 클래스만으론 '붙이는 걸 잊으면' 모조품 부활 →
+#      게이트가 커밋서 규격 이탈을 차단해야 비로소 '원천 봉쇄'(상시·우회 불가). 값은 이미 통일(PR 2518)이라 이 게이트가 그 상태를 동결·수호한다.
+_LAUNCH_SPEC = ('border-radius:var(--r-m)', 'padding:var(--sp-1)', 'font-size:var(--fs-label)')   # 생성 규격 3속성(사다리 정본 값)
+_LAUNCH_BTNS = {   # 스튜디오 발사 버튼 레지스트리(selector → 규격 강제 대상) · 신규 발사 버튼 = 여기 1줄 추가로 편입
+    'viewer/thumb.html': ['#go'],
+    'viewer/k.html':     ['#go'],
+    'viewer/ly.html':    ['#go'],
+    'viewer/edit.html':  ['#editGo', '.xtr .xgo'],
+    'viewer/track.html': ['#analyze'],
+    'viewer/song.html':  ['#optGo', '#sunoGo', '#lyriaGo', '#vApply'],
+}
+_CSS_RULE = re.compile(r'^([^\n{}]*?)\{([^{}]*)\}', re.M)   # 단일레벨 CSS 규칙(prelude{body}) — 발사 규칙은 전부 한 줄
+
+def check_launch_spec():
+    rc = 0; n = 0
+    for rel, sels in _LAUNCH_BTNS.items():
+        try:
+            css = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)   # 주석 제거(주석 속 셀렉터 오탐 차단)
+        for sel in sels:
+            n += 1
+            body = ''
+            for m in _CSS_RULE.finditer(css):
+                if sel in [p.strip() for p in m.group(1).split(',')]:   # 그룹 셀렉터(콤마)도 토큰 일치로 포착
+                    body += m.group(2)
+            body_ns = re.sub(r'\s+', '', body)   # 공백 정규화(`padding: var` 표기차 흡수)
+            if not body:
+                print('❌ 발사버튼 규격 게이트 — %s의 「%s」 규칙 미발견(레지스트리 오등록? selector 확인)' % (rel, sel)); rc = 1; continue
+            miss = [p for p in _LAUNCH_SPEC if p not in body_ns]
+            if miss:
+                print('❌ 발사버튼 규격 이탈(모조품) — %s 「%s」 누락: %s → 생성 규격(r-m·sp-1·fs-label · #editGo 정본) 계승하라'
+                      % (rel, sel, ', '.join(miss))); rc = 1
+    if rc == 0:
+        print('✅ 발사버튼 규격 게이트 — 스튜디오 발사 버튼 %d개 전부 생성 규격(r-m·sp-1·fs-label) 계승(모조품 0 · 신규 편입 = _LAUNCH_BTNS).' % n)
+    return rc
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1162,6 +1205,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_design 스킵:', e)
+    try:
+        if check_launch_spec() != 0:   # 발사(생성) 버튼 규격 통일 하드게이트(운영자 260720 "생성 버튼 통일·모조품 차단" 한 수 — 신규 발사 버튼 규격 이탈 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 발사버튼 규격 게이트 스킵:', e)
     try:
         if check_html_charset() != 0:   # docs HTML 첫 1KB <meta charset> 필수(하드 게이트 — 폰 로컬 열람 한글 깨짐 · [7] 260720)
             rc = 1
