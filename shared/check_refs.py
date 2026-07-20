@@ -1069,6 +1069,25 @@ def check_anchor_liveness():
     return 0
 
 
+def check_html_charset():
+    # HTML 전달물 charset 게이트(하드) — docs/**/*.html 첫 1024B 안 <meta charset> 필수(CLAUDE.md [7] 운영자 260720).
+    # 근거: 폰 로컬(file://) 열람은 서버 인코딩 헤더가 없어 무선언 = 한글 깨짐 · 브라우저 prescan 창 = 정확히 첫 1024바이트라 창 기준 실측(창 밖 선언 = 연극 차단 · 평의회 8인 260720).
+    rc = 0; bad = []
+    for p in glob.glob(os.path.join(ROOT, 'docs', '**', '*.html'), recursive=True):
+        try:
+            with open(p, 'rb') as fh:
+                head = fh.read(1024)
+        except OSError:
+            continue
+        if b'charset' not in head.lower():
+            bad.append(os.path.relpath(p, ROOT)); rc = 1
+    if bad:
+        print('❌ HTML charset 게이트 — 첫 1KB 안 <meta charset="utf-8"> 없음 %d건(폰 열람 깨짐): %s' % (len(bad), ', '.join(bad[:5])))
+    else:
+        print('✅ HTML charset 게이트 — docs HTML 전량 첫 1KB 안 선언(폰 로컬 열람 한글 안전).')
+    return rc
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1112,6 +1131,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_design 스킵:', e)
+    try:
+        if check_html_charset() != 0:   # docs HTML 첫 1KB <meta charset> 필수(하드 게이트 — 폰 로컬 열람 한글 깨짐 · [7] 260720)
+            rc = 1
+    except Exception as e:
+        print('⚠️ HTML charset 게이트 스킵:', e)
     try:
         check_candidates_size()   # candidates.json 크기 WARN(1MB↑ = api/candidates 빈[] 서빙실패로 수집함 텅빔 위험·260714)
     except Exception as e:
