@@ -3,7 +3,7 @@
 # AI 경중 게이트 — viewer/candidates.json 의 '노출 후보'(cross≥GATE_MIN or 속보후보 or [단독])를
 # Claude(claude -p) 1콜 배치로 0~3 경중 채점 → grade 확정 + 카테고리(6버킷) 동시 산출.
 # + cross-2 cat 구제(운영자 260628 근본레버): AI가 안 닿던 cross<GATE_MIN 영역에서 키워드가 모호(빈칸·문화)한
-#   후보는 같은 콜로 'cat만' 교정(grade 미기록 = 연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지).
+#   후보는 같은 콜로 'cat만' 교정(grade 미기록 = 연예·스포츠 가십이 grade 0/1 기록 시 랭킹·접힘서 침몰 방지(구 scFast 차단 — 260720 게이트 개정 후 진입은 grade 무관)).
 #   → 키워드 다단계 DB 확장 대신 AI가 분류를 맡는 길(키워드는 'AI 호출 트리거'로 격하). 구조 신호(cross/burst/연속보도)가
 # 사건 vs 보도자료를 못 가르는 한계(AUC 0.5~0.59 실측)를 AI 내용판정으로 보완(정본 docs §2.5).
 # breaking_judge 와 한 쌍(속보=긴급여부 / gate=경중) · 같은 워크플로·구독 OAuth 로 돈다.
@@ -41,7 +41,7 @@ MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
 EFFORT = os.environ.get("GATE_EFFORT", "").strip()   # 기계적 룰북 분류엔 추론 불필요 = effort 미사용 기본(불필요 thinking 토큰·쿼터 차단 + sonnet effort 비호환 원천차단). 필요시 env로 부여(하위호환). 260630 평의회 — gate는 sonnet-5 운영.
 SAFE = os.environ.get("GATE_SAFE", "0").strip().lower() not in ("0", "false", "no", "")   # --safe-mode: CLAUDE.md·skills·plugins·hooks·MCP 등 커스터마이징 비활성 = 분류에 안 쓰이는 라우터 99KB(~40k토큰) 컨텍스트 제거 → cache_w ~95%↓. ⚠️ --bare 아님(bare는 OAuth 안 읽어[strictly ANTHROPIC_API_KEY] 이 파이프라인선 인증 즉사 + built-in 도구 축소로 --disallowedTools 충돌 = 260701 사고). safe-mode는 Auth·built-in 도구·permissions 정상 유지. RUBRIC은 stdin이라 판정 무영향. 기본 OFF·카나리아 후 승격(§📰). 롤백=env GATE_SAFE=0.
 GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대상: cross 이 값 이상(노출권)
-CAT_MIN_CROSS = int(os.environ.get("GATE_CAT_MIN_CROSS", "2"))   # 카테고리 구제: cross 이 값 이상이고 키워드가 모호(빈칸·문화)한 cross-2 후보는 AI 'cat만' 채점(grade 미기록=연예·스포츠 가십이 grade 0/1로 scFast서 침몰하는 것 방지) — AI가 안 닿던 cross-2 분류를 교정(운영자 260628 근본레버 · 키워드 DB 확장 대체)
+CAT_MIN_CROSS = int(os.environ.get("GATE_CAT_MIN_CROSS", "2"))   # 카테고리 구제: cross 이 값 이상이고 키워드가 모호(빈칸·문화)한 cross-2 후보는 AI 'cat만' 채점(grade 미기록=연예·스포츠 가십이 grade 0/1 기록 시 랭킹·접힘서 침몰 방지(구 scFast 차단 — 260720 게이트 개정 후 진입은 grade 무관)) — AI가 안 닿던 cross-2 분류를 교정(운영자 260628 근본레버 · 키워드 DB 확장 대체)
 CHUNK = int(os.environ.get("GATE_CHUNK", "40"))               # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — 120은 ~31에서 잘림 실측)
 MAX_PER_RUN = int(os.environ.get("GATE_MAX_PER_RUN", "80"))   # 한 런당 채점 상한(타임아웃 전 완료·커밋 보장 — 나머지는 self-gate 재디스패치가 점진 처리)
 GATE_CAT_QUOTA = int(os.environ.get("GATE_CAT_QUOTA", "40"))   # 한 런당 cat구제(비노출 cross-2) 최소 보장 슬롯 — 노출권 백로그가 MAX 초과여도 cat 기아 방지(감사5 실측: 노출권 1109>80이 cat 651을 0처리 → 347건 사회 오표시·운영자 260628). 260629 20→40 상향(분신술10 검증5·10: 오분류 71%가 AI 미채점 백로그 → cat 소화 가속·노출권 grade와 80캡 내 균형[surf 40+cat 40]·운영자 "AI 전수 재분류")
@@ -327,7 +327,7 @@ def main():
                 c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선 · 이차검증)
             elif ct:
                 c["cat"] = ct             # AI 카테고리 — 제목 맥락 이해(미술관 흉기난동=사회) → 키워드 cat_of 결과를 덮음(더 정확·뷰어 articleCat이 c.cat 우선)
-        else:                             # cross-2 cat 구제 = cat만 반영, grade 미기록(grade 0/1이 소프트뉴스를 scFast서 침몰시키는 것 방지 · 운영자 260628)
+        else:                             # cross-2 cat 구제 = cat만 반영, grade 미기록(grade 0/1 기록 시 소프트뉴스 랭킹·접힘 침몰 방지(구 scFast 차단 — 260720 개정 후 진입 무관) · 운영자 260628)
             if fc:
                 c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선)
             elif ct:

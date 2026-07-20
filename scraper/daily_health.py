@@ -16,7 +16,7 @@ CAND = ROOT / "viewer" / "candidates.json"
 SUBS = ROOT / "push" / "subscriptions.json"
 SCRIPTS = ROOT / ".github" / "scripts"
 KST = timezone(timedelta(hours=9))
-CHECKPOINT = "checkpoint/algo-260619-grade3-promote"   # 최신 알고리즘 분기 라벨(롤백 기준)
+CHECKPOINT = "checkpoint/algo-260720-gate-grade-open"   # 최신 알고리즘 분기 라벨(롤백 기준 — 게이트 grade 거부권 폐지 · 원복 = git revert 31544487[+stamp 충돌 대비])
 
 
 def age_h(s, now):
@@ -90,7 +90,7 @@ def _dominance(cands, now):
             continue
         g = c.get("grade")
         brk = bool(c.get("breaking")) and (g is None or (g or 0) >= 2)
-        fol = (c.get("cross") or 0) >= 4 and (c.get("report_count") or 0) >= 6 and g != 0
+        fol = (c.get("cross") or 0) >= 4 and (c.get("report_count") or 0) >= 6
         if (c.get("cross") or 0) >= 8 or brk or fol:
             pool.append((c, a))
     if len(pool) < 15:
@@ -321,7 +321,7 @@ def main():
             am = 0.12 + 0.88 / (1 + math.exp((rk - 13) / 3.8))
             return cr ** 1.3 * ta * fol * gw * bb * am
         cum = [x for x in c if (_ba(x) or 0) >= 4 and ((x.get("cross") or 0) >= 8 or _brk_ok(x)
-               or ((x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6 and x.get("grade") != 0))]
+               or ((x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6))]
         brks = [x for x in cum if _brk_ok(x)]
         fresh = [x for x in brks if (_iss_age(x) or 99) < 6]
         top5 = sorted(cum, key=_scr, reverse=True)[:5]
@@ -355,7 +355,7 @@ def main():
         def _cum_ok(x):
             g = x.get("grade")
             brk = bool(x.get("breaking")) and (g is None or (g or 0) >= 2)
-            fol = (x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6 and g != 0
+            fol = (x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6
             return (x.get("cross") or 0) >= 8 or brk or fol
         buried, b2 = [], 0
         for x in c:
