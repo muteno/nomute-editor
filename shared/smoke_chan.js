@@ -6,15 +6,15 @@
 //
 // 담당 표면: viewer/index.html 단위 헤더 세그(.chu > details > .chseg-row) — 메뉴4 채널요약
 //   brief(AI 요약)·prof(프로필)·daily(일일 추이)·tpost(TOP 게시물) 기간 세그 + 메뉴3 트렌드 top(플랫폼 칩).
-//   계약(CSS #876~885 · Q337): 모바일 4유닛+PC 전 유닛 = 헤더 우측 abspos(우측 앵커 48px · 세로중앙 ΔCy≤0.5
-//   · 타이틀 침범 0 · 접힘에도 노출) / 메뉴3 다칩(top 플랫폼)은 모바일 = 타이틀 아래 행이 정본(양방향 가드).
+//   계약(CSS #876~886 · Q337·Q339): 모바일 채널요약 4유닛+메뉴3 top·x+PC 전 유닛 = 헤더 우측 abspos(우측 앵커
+//   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
 // 무엇을 검증하나 — 코어 6시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
-//   → C3 접힘 노출 계약(daily 접어도 세그 가시·위치 불변 = summary 밖 형제 설계)
+//   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
-//   → C5 모바일 412 메뉴3 top 플랫폼 칩 = 타이틀 아래 행 유지(광폭 다칩 월경 가드 · 올라가면 FAIL)
+//   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
 //   → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C1 페이지 에러 0
 //   어서션 = 기하(getBoundingClientRect)·computedStyle·동일 런 측정만(스크린샷 diff 금지 · [15]).
 //
@@ -146,8 +146,8 @@ const SEL = {
     await pg.setViewportSize({ width: 412, height: 915 }); await pg.waitForTimeout(400);
     await pg.click('.bnav-i[data-tab="trend"]'); await pg.waitForSelector('#tg-top', { timeout: 15000 }).catch(() => {});
     await pg.waitForTimeout(600);
-    const c5 = await measure([{ pre: SEL.trendId, id: 'top' }]);
-    ok('C5 모바일 412 메뉴3 TOP 플랫폼 칩 = 타이틀 아래 행 유지(다칩 월경 가드)', c5[0].skip ? true : (c5[0].pos !== 'absolute' && c5[0].below), brief(c5));
+    const c5 = await measure([{ pre: SEL.trendId, id: 'top' }, { pre: SEL.trendId, id: 'x' }]);
+    ok('C5 모바일 412 메뉴3 TOP·X 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 스크롤)', c5.some(x => !x.skip) && judgeRight(c5), brief(c5));
 
     await pg.setViewportSize({ width: 1280, height: 900 }); await pg.waitForTimeout(600);
     const c6 = await measure([{ pre: SEL.trendId, id: 'top' }]);
