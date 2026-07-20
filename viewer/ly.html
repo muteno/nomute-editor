@@ -1342,7 +1342,7 @@ function lyPickSegs() { if (!LY_SEGS) return []; const alive = LY_SEGS.filter(sg
   dl.onclick = () => {   // SRT = 타이밍 보유 조각만(편집 반영) — CapCut·프리미어 임포트 규격(UTF-8 무BOM·CRLF·쉼표 ms — 프리미어는 LF 단독 SRT를 거부한 전례 · 평의회9)
     const list = lyPickSegs().filter(sg => sg.s != null && sg.e != null).sort((a, b) => a.s - b.s);   // 시간순 보증(SRT 큐 = 단조 요구 규격 — 조절 미정산 역전까지 방어 · filter 사본이라 원본 무접촉)
     if (!list.length) { const st = $('#status'); st.classList.remove('err'); st.innerHTML = WARN_SVG + ' 내보낼 자막이 없어'; return; }
-    const srt = list.map((sg, k) => (k + 1) + '\r\n' + srtTime(sg.s) + ' --> ' + srtTime(sg.e) + '\r\n' + lySegText(sg) + '\r\n').join('\r\n');
+    const srt = list.map((sg, k) => { const nx = list[k + 1]; const e = (nx && nx.s != null && nx.s > sg.s && nx.s < sg.e) ? nx.s : sg.e; return (k + 1) + '\r\n' + srtTime(sg.s) + ' --> ' + srtTime(e) + '\r\n' + lySegText(sg) + '\r\n'; }).join('\r\n');   // 큐 종료 = 다음 큐 시작으로 클램프(시작 조절로 포개진 겹침 정산 — 시작만 정렬론 START 단조만 보증·끝 겹침 잔존해 CapCut/프리미어 자막 2줄 동시 · sg 원본 무접촉[클램프값 지역변수] · 실측 260720)
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([srt], { type: 'text/plain' }));
     a.download = '자막_' + (LY_ID || 'srt') + '.srt'; document.body.appendChild(a); a.click();
     setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch (e) {} a.remove(); }, 1500);
@@ -1621,8 +1621,10 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
 }
 (function () {   // 다시 입히기 = 번인만 재실행(LLM 0콜·1분급) — 편집분 번인(운영자 260710): 편집이 있으면 *상세 자막 전체*({s,e,ko})를 실어 subs.json 대체(부분 병합 없음 = 의역과 조각화가 달라 원리상 불가 · 기능평의회2 — 미편집 조각도 상세 탭에 보이는 그대로 구워짐), 무편집 = 현행 subs.json 재사용(편집 반영 뒤엔 편집본 = 원본 복원은 초기화→다시 입히기 경로 · 기능평의회10 정직화)
   const rb = $('#lyReburn'); if (!rb) return;
-  const lyEffSegs = ss => (ss || []).filter(sg => !sg.del && sg.s != null && sg.e != null && lySegText(sg))
+  const lyEffSegs = ss => { const a = (ss || []).filter(sg => !sg.del && sg.s != null && sg.e != null && lySegText(sg))
     .map(sg => ({ s: sg.s, e: sg.e, ko: lySegText(sg) })).sort((a, b) => a.s - b.s);   // 번인 계약 = subs.json 조각 스키마(원본 시간축 — 컷 리맵은 번인 내부) · 사본 정렬 = 조절 미정산 역전 정산을 payload에서 해결(LY_SEGS·DOM 무접촉 — lyResort 단독 호출의 재렌더 누락 창 원천 소거 · 재검2가 재검7 안보다 우월 판정 · 양변 동일 정렬이라 dirty 판정 불변)
+    for (let k = 0; k < a.length - 1; k++) if (a[k + 1].s > a[k].s && a[k + 1].s < a[k].e) a[k].e = a[k + 1].s;   // 겹침 클램프 = 시작 조절로 앞 조각이 다음 시작을 넘어 포개진 큐 정산(번인 자막 2줄 동시 표시 차단 · 새 사본이라 mutate 안전 · 양변 동일 적용이라 dirty 판정 불변 · 실측 260720)
+    return a; };
   rb.addEventListener('click', async () => {
     if (!LY_ID) return;
     const prevUrl = ($('#lyBurnDl').dataset.url || '');   // 옛 결과 url — 폴이 이걸 완료로 오인 안 하게(평의회 불가 수정)
