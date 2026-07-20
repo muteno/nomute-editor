@@ -10,12 +10,12 @@
 //   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 코어 6시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화):
+// 무엇을 검증하나 — 코어 7시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
-//   → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C1 페이지 에러 0
+//   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C1 페이지 에러 0
 //   어서션 = 기하(getBoundingClientRect)·computedStyle·동일 런 측정만(스크린샷 diff 금지 · [15]).
 //
 // 동작: 자체적으로 ① playwright-core 없으면 OS 임시 캐시에 1회 자동 설치(레포 무접촉·package.json 안 만듦)
@@ -148,6 +148,26 @@ const SEL = {
     await pg.waitForTimeout(600);
     const c5 = await measure([{ pre: SEL.trendId, id: 'top' }, { pre: SEL.trendId, id: 'x' }]);
     ok('C5 모바일 412 메뉴3 TOP·X 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 스크롤)', c5.some(x => !x.skip) && judgeRight(c5), brief(c5));
+
+    // C7 우변 가드(운영자 260721 "우변 가드도 박아줘" · Q340~Q342 계약) — 행 문법 소분류·TOP 10의 마지막 데이터 열 우변 ≤ 접기 토글선(우변-12 · #653 정본 — 헤더 칩 예약 패딩과 무관한 고정선)
+    const c7 = await pg.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('.trend-sec').forEach(s2 => {
+        const summ = s2.querySelector(':scope > summary'); if (!summ) return;
+        const L = summ.getBoundingClientRect().right - 12;
+        let ink = 0;
+        s2.querySelectorAll('a.trend-row > :last-child, .fin-row > :last-child').forEach(c => { const r = c.getBoundingClientRect(); if (r.width) ink = Math.max(ink, r.right); });
+        if (ink) out.push({ sec: s2.dataset.sec, d: +(ink - L).toFixed(2) });
+      });
+      const hd2 = document.querySelector('#tg-top .tgroup-h');
+      if (hd2) {
+        let mi = 0;
+        document.querySelectorAll('#tg-top .tlr').forEach(r2 => { const vis = [...r2.children].filter(c => c.offsetParent && getComputedStyle(c).display !== 'none'); const c = vis[vis.length - 1]; if (c) mi = Math.max(mi, c.getBoundingClientRect().right); });
+        if (mi) out.push({ sec: 'top.tlist', d: +(mi - (hd2.getBoundingClientRect().right - 12)).toFixed(2) });
+      }
+      return out;
+    });
+    ok('C7 우변 가드 412(행 마지막 열 우변 ≤ 토글선 · 초과 0)', c7.length > 0 && c7.every(x => x.d <= 0.5), c7.map(x => `${x.sec}:${x.d}`).join(' ') || '측정 대상 0');
 
     await pg.setViewportSize({ width: 1280, height: 900 }); await pg.waitForTimeout(600);
     const c6 = await measure([{ pre: SEL.trendId, id: 'top' }]);
