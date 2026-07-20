@@ -824,7 +824,9 @@
   .ch-fmt.reels { color:var(--accent-2); }   /* 릴스 = 레몬(thumb .ovfmt.reels 계승) */
   .ch-fmt.post { color:var(--bias-l1); }     /* 포스트 = 시안(thumb .ovfmt.post 계승) */
   .ch-vw { flex:none; width:78px; text-align:right; font-size:var(--fs-sm); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 조회수 만회 = 고정폭 우측정렬(자릿수 컬럼 정합) */
-  .ch-dev { flex:none; width:58px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 평균 대비 편차 = 고정폭 우측정렬 */
+  .ch-dev { flex:none; width:58px; text-align:right; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 포맷별 편차 = 고정폭 우측정렬 · 기본 --mut(×1.0 외) */
+  .ch-dev.reels { color:var(--accent-2); }   /* ×1.0(릴스 기준선) = 레몬 — .ch-fmt.reels 색 계승(운영자 260720 "x1.0에 릴스 주제색") */
+  .ch-dev.post { color:var(--bias-l1); }     /* ×1.0(포스트 기준선) = 시안 — .ch-fmt.post 색 계승(운영자 260720 "x1.0에 포스트 주제색") */
   /* 순위 좌변 = 헤더 그룹번호 배지(.tgroup-h i 24px 중앙) 형상·좌변 계승(운영자 260719 "7이랑 같은 좌변" · 픽셀 실측 정렬) — 릴스는 자동 우측 이동·gap 균일 유지 */
   .ch-post .trend-rank { width:24px; text-align:center; }
   .ch-post { padding-left:13px; }   /* raw-ok: 13 = 순위 박스 좌변 ↔ 헤더 배지 좌변 픽셀 정렬 실측값(헤더 padding12 + 컨테이너 1px 상쇄 · 운영자 260719 "7이랑 같은 좌변") */
@@ -10819,20 +10821,26 @@ function renderChan() {
   const sg = chLiftChart(axes.hour_band, 'hour_band', { peaks: sigPk, now: nowK3.getHours() + nowK3.getMinutes() / 60 }) +
     chLiftChart(axes.dow, 'dow', { today: ['일', '월', '화', '수', '목', '금', '토'][nowK3.getDay()] });
   if (sg) h += gsec('sig', '시간대별 반응', sg + '<div class="sig-note">×배율 = 채널 중앙 대비 관찰 신호(인과 아님) · 회색 바 = 표본량 n(게시 몰림 편향 주의) · 주황 밴드 = 팔로워 접속 피크</div>');
-  // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·평균 대비 편차. 정렬 = 순수 조회수순 · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 편차 기준 = posts_view_avg(부재 시 표시분 평균 폴백) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
+  // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·포맷별 편차. 정렬 = 순수 조회수순 · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
+  // 편차 기준 = 포맷별 중앙값(운영자 260720 "포스트는 포스트 기준 · 릴스는 릴스끼리") — 고조회 릴스·저조회 포스트를 한 평균(posts_view_avg)에 섞으면 포스트가 늘 ×0.x로 눌려 왜곡 → 릴스는 릴스끼리·포스트는 포스트끼리 그 포맷 중앙값 대비 ×배수(같은 종류끼리 성과 비교). 중앙값 = 앱 공통 "×1.0 = 채널 중앙값 기준선"(sig ×배율·차트 bY·모달 views_med) 관례 계승 + 릴스 mega-hit 꼬리에 강건(평균은 꼬리 오염 · 강건성 철학 §OUT) · 표본 = 표시 창(_pf 아래) · 포맷 표본 0 = 혼합평균(_avgV) 폴백
   const _pAll = (d.posts || []).filter(x => !q || String(x.name || '').toLowerCase().includes(q));
-  const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (x.views || 0), 0) / _pAll.length : 0);
+  const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (x.views || 0), 0) / _pAll.length : 0);   // 혼합평균 = 포맷 표본 0일 때만 쓰는 폴백
   // 기간 필터(운영자 260719 "일일 추이처럼 일자별 · 기본 7일") — 최신 게시일 앵커 기준 직전 N일 창(일일추이 종료앵커 관례 계승 · 앵커 게시물은 어느 창에도 포함이라 공란 없음) · 전체 = 무필터
   const _tpAnc = _pAll.reduce((m, x) => { const i = String(x.iso || ''); return i > m ? i : m; }, '');
   const _tpCut = (() => { if (CHAN_TPR === 'all' || !_tpAnc) return ''; const dt = new Date(_tpAnc + 'T00:00:00Z'); dt.setUTCDate(dt.getUTCDate() - (parseInt(CHAN_TPR, 10) - 1)); return dt.toISOString().slice(0, 10); })();
   const _pf = CHAN_TPR === 'all' ? _pAll : _pAll.filter(x => String(x.iso || '') >= _tpCut);
   const posts = _pf.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
+  const _fmtMed = f => { const v = _pf.filter(x => (x.format === '릴스') === f).map(x => x.views || 0).sort((m, n) => m - n); if (!v.length) return 0; const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };   // 포맷별 중앙값(표시 창 _pf 안 · 릴스끼리·포스트끼리)
+  const _medReels = _fmtMed(true), _medPost = _fmtMed(false);   // ×1.0 = 그 포맷 중앙값(전형) 기준선
   const chVwR = n => n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(Math.round(n || 0));   // 조회수 = 반올림 정수 만(운영자 260719 "소수 빼고 6만회 식")
   const tpSeg = `<span class="ch-rangeseg ch-hdrseg tp-seg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-tpr="${r[0]}"${CHAN_TPR === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span>';   // TOP 게시물 기간 세그 = 헤더 우측(운영자 260719 "토글 항목 옆에·90일 포함") · data-tpr = CHAN_TPR 축(daily data-r과 분리) · 켜진 것 강조색
   if (posts.length) h += gsec('tpost', 'TOP 게시물', posts.map((x, i) => {
     const rl = x.format === '릴스';
-    const dev = _avgV > 0 && x.views ? '×' + (x.views / _avgV).toFixed(1) : '—';   // 편차 = ×배수만(운영자 260719 "평균 빼고")
-    return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-vw">${chVwR(x.views)}</span><span class="ch-dev">${dev}</span></a>`;
+    const _base = (rl ? _medReels : _medPost) || _avgV;   // 포맷별 중앙값 기준(릴스↔릴스 · 포스트↔포스트 · 표본 0 = 혼합평균 폴백)
+    const _r = _base > 0 && x.views ? x.views / _base : null;
+    const dev = _r != null ? '×' + _r.toFixed(1) : '—';   // 편차 = ×배수만(운영자 260719 "평균 빼고") · 기준 = 같은 포맷끼리(운영자 260720)
+    const atBase = _r != null && _r.toFixed(1) === '1.0';   // ×1.0(포맷 기준선) = 릴스/포스트 주제색(운영자 260720 "x1.0에 각각 주제색") · 그 외 = --mut 유지
+    return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-vw">${chVwR(x.views)}</span><span class="ch-dev${atBase ? (rl ? ' reels' : ' post') : ''}">${dev}</span></a>`;
   }).join('') + '<button class="ch-morelink" type="button" id="chPostMore" aria-label="게시물 탐색">내역 확인 ›</button>',
     tpSeg);
   const th = (d.thumbs || []).slice(0, 12);   // 커버 없는 릴스도 보존(th='' → 캡션 텍스트 타일 · 운영자 260718)
