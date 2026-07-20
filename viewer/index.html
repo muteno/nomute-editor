@@ -9708,7 +9708,7 @@ let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 
 // 🔥 SNS burst 색 티어 임계 — 7일치(14d 5스냅샷·고유 22사건) 분포: p90≈23.9(보라)·p70≈11.8(강조). 표시 전용(랭킹·정렬·진입 무관). 정본 = docs/social-burst.md.
 const SOC_HOT10 = 24, SOC_HOT30 = 12;
 // ── 트렌드 레인(메뉴2 상단) — sns_trends.json 렌더(수집 = sns-trends.yml 30분 주기 · 운영자 260710 "ㄱㄱ" 배치 승인). 있는 소스만 그림·전무 = 조용한 공백(§디자인 e-가). ──
-let TRENDS = null, BRIEF = null, TBSD = null, _trFetched = 0;
+let TRENDS = null, BRIEF = null, _trFetched = 0;
 async function loadTrends() {
   if (Date.now() - _trFetched < 5 * 60e3) return;   // 5분 TTL(수집 30분 주기 = 충분·탭 재진입 남발 방지)
   try {
@@ -9724,10 +9724,6 @@ async function loadTrends() {
     const rb = await fetch('sns_brief.json?t=' + Date.now());
     if (rb.ok) { const tb = await rb.text(); if (!/^\s*</.test(tb)) BRIEF = JSON.parse(tb); }
   } catch (e2) {}
-  try {   // 오늘의베스트(국내 커뮤니티 베스트 · 운영자 260720 "일베 말고 반영 ㄱㄱ" Q310 A안) — 수집 = scraper/tbs_scraper.py → tbs_data.json · 없거나 실패 = 섹션 미표시(조용한 공백 · BRIEF 폴백 문법 계승)
-    const rt = await fetch('tbs_data.json?t=' + Date.now());
-    if (rt.ok) { const tt = await rt.text(); if (!/^\s*</.test(tt)) TBSD = JSON.parse(tt); }
-  } catch (e4) {}
   try { renderSnsTrends(); } catch (e3) {}   // 렌더 예외 격리 — loadTrends 프로미스 reject로 형제 배선까지 전파 차단(평의회 260713 ②)
 }
 // SNS 트렌드 = 완전 독립체(운영자 260711 "SNS는 뉴스 레거시에 영향 0 · 별개로 간다") — sns_trends.json만 읽어 표시.
@@ -9775,7 +9771,7 @@ function renderSnsTrends() {
   const TRREG = localStorage.getItem('nm_trend_region') === 'gl' ? 'gl' : 'kr';   // 지역 모드 = 국내 기본(운영자 260712) · 월드 = 국내 포함 병합(gtrends_gl·youtube_gl = 주요국 KR 제외분)
   const d = TRENDS || {};
   { const vt = document.getElementById('vhTime'); if (vt) vt.textContent = d.updated ? (fmtK12(d.updated) || '') : ''; }   // 수집 시각 = 좌상단 #vhTime 1회(운영자 260720 — 채널요약 탭 Q290 패턴 계승 · 구 대분류별 반복[AI요약·TOP10·실검] tdash-time 폐지 대체) · 시그니처 가드 위 = 탭 전환 조기 return에도 갱신 · vh-acts(우) 대칭 좌측 · 색 = --mut(.vh-time)
-  const _trSig = [d.updated, (typeof BRIEF !== 'undefined' && BRIEF && BRIEF.updated) || '', (typeof TBSD !== 'undefined' && TBSD && TBSD.updated) || '', TRREG, TR_TOPF, localStorage.getItem('nm_trend_sort') || '', localStorage.getItem('nm_trend_gfold') || '', localStorage.getItem('nm_trend_fold') || ''].join('|');   // 시그니처 가드(평의회⑧ — 무가드 통재구축이 폴링마다 재부양·토글 랙 유발) = 수집함 _scSig 문법 계승 · 데이터·지역·정렬·접힘 동일 = 무접촉 · TBSD.updated 동승(Q311)
+  const _trSig = [d.updated, (typeof BRIEF !== 'undefined' && BRIEF && BRIEF.updated) || '', TRREG, TR_TOPF, localStorage.getItem('nm_trend_sort') || '', localStorage.getItem('nm_trend_gfold') || '', localStorage.getItem('nm_trend_fold') || ''].join('|');   // 시그니처 가드(평의회⑧ — 무가드 통재구축이 폴링마다 재부양·토글 랙 유발) = 수집함 _scSig 문법 계승 · 데이터·지역·정렬·접힘 동일 = 무접촉
   if (_trSig === box._trSig && box.childElementCount) return;
   const mrg = (a3, b3, key) => { const s3 = new Set(a3.map(key)), o3 = a3.slice(); (b3 || []).forEach(x3 => { const k3 = key(x3); if (k3 && !s3.has(k3)) { s3.add(k3); o3.push(x3); } }); return o3; };
   // 외국어 제목·본문 한글 번역 노출(운영자 260719 "미리 다 달아놔") — 서버 sns_tr.py(무키 gtx)가 부착한 ko를 표시 필드(title/text)에 반영 = 전 소비처 자동 한글화(원어는 데이터 보존·미표기) · bsk=자체 LLM ko 경로라 제외 · gt/sig/xtr=검색어라 제외 · 틱톡 매퍼의 ko|| 폴백은 이 패스가 상위 대체(무해 중복) · idempotent(ko 불변 = 재렌더 안전)
@@ -9944,10 +9940,8 @@ function renderSnsTrends() {
   let gMV = '';   // ⑮ 문화 그룹(박스오피스 = 카드뉴스·릴스 소재 · 키 게이트)
   if (kob.length) gMV += sec('kob', '박스오피스', '· 어제', Math.min(kob.length, 10), kob.slice(0, 10).map((p2, i) => brow(i, p2.url || '#', p2.audi ? vfmt(p2.audi) + '명' : '')).join(''));   // 순위+제목+관람객수만(운영자 260720 — 시간열 제거 · 해커뉴스와 반반 rt2col 계승)
   const gKC = (SOCIAL_LOADED && !(typeof SOCIAL !== 'undefined' && SOCIAL.length)) ? '' : '<div id="snsHost" class="kcomm-host"></div>';   // 국내 커뮤니티(운영자 260713 극좌 = ① 편성) — 소셜 전무 확정 시만 미등장(조용한 공백) · 소분류 '커뮤니티 공론'(sec kcomm-l) 헤더 폐지 = 대분류 직속 장착·삭제분만큼 위로 당김(운영자 260720 — 대분류=소분류 동의어 이중 라벨 해소 · 직속 본체 = brief .tbrief 선례)
-  const tbsL = (() => { const A = []; ((TBSD && TBSD.communities) || []).forEach(c2 => (c2.posts || []).forEach(p2 => A.push({ ...p2, com: c2.name }))); return A.sort((a2, b2) => (b2.score || 0) - (a2.score || 0)).slice(0, 10); })();   // 오늘의베스트 통합 top10 = popularityScore 내림차순(21개 커뮤니티 플래튼) · 원값(up·comment·read) 동봉 = 점수 비종속(Q310)
-  const gTB = tbsL.length ? sec('tbs', '베스트 게시물', '· 오늘의베스트', tbsL.length, tbsL.map((p2, i) => row(i, p2.url || '#', p2.up ? vfmt(p2.up) : '', p2, '')).join('')) : '';   // 레딧(rdd) 행 문법 100% 계승 — 우측 = 추천수 만단위 · [커뮤명] 접두 = fillT · 클릭 = 원글 새 탭 · 데이터 전무 = 조용한 공백(Q311)
   const gETC = (gHN && gMV) ? '<div class="rt2col">' + gHN + gMV + '</div>' : (gHN + gMV);   // ⑫⑮ 기타 = 해커뉴스|문화 좌우 2열(운영자 Q240 "동일 가로선·첨부2처럼" — 구 독립 대분류 2개 → '기타' 대분류 1개 · rt2col = 구글|시그널 실검 문법 계승 · 한쪽 결측 = 단독 스택 · 모바일 1열 = rt2col 미디어)
-  const GRPS = [['kcomm', '국내 커뮤니티', gKC + gTB], ['gg', '실시간 검색어', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['sth', '스레드', gTH], ['fin', '금융', gFI], ['etc', '기타', gETC], ['sf', '안전', gSF], ['comm', '해외 커뮤니티', gCM]].filter(g => g[2]);   // 블루스카이 = X 대분류 우측 열 합류(260720)로 독립 행 폐지 · kcomm = 공론 직속 + 오늘의베스트 sec(Q311)   // 신규 5종(운영자 260713 "ㄱ") = X·SNS 뒤 · 데이터 구동 = 빈 그룹 자동 제외 · 레일 = 첫 글자 폴백 · 해커뉴스+문화 = '기타' 대분류로 통합(운영자 Q240)
+  const GRPS = [['kcomm', '국내 커뮤니티', gKC], ['gg', '실시간 검색어', gGG], ['yt', '유튜브', gYT], ['tk', '틱톡', gTK], ['ig', '인스타그램', gIG], ['x', 'X', gX], ['sth', '스레드', gTH], ['fin', '금융', gFI], ['etc', '기타', gETC], ['sf', '안전', gSF], ['comm', '해외 커뮤니티', gCM]].filter(g => g[2]);   // 블루스카이 = X 대분류 우측 열 합류(260720)로 독립 행 폐지 · kcomm = 공론 직속 + 오늘의베스트 sec(Q311)   // 신규 5종(운영자 260713 "ㄱ") = X·SNS 뒤 · 데이터 구동 = 빈 그룹 자동 제외 · 레일 = 첫 글자 폴백 · 해커뉴스+문화 = '기타' 대분류로 통합(운영자 Q240)
   // ── 조립: 좌측 책갈피 레일(soc-item 밖 = backdrop-filter 조상 회피 → fixed가 뷰포트 기준 · §디자인 h) + 카드(헤드 → TOP 10 → 순번 플랫폼 그룹) ──
   let h = '';
   h += '<div class="trailwrap" id="trendRailWrap">' +
@@ -10064,9 +10058,7 @@ function renderSnsTrends() {
     fillT('sth-' + r, '.xcard-h b', sthR[r].map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
     fillH('sth-' + r, '.xcard-tx', sthR[r].map(t => xlink(t.text || '')));   // 스레드도 동일(xcard 공유 · 링크 mut 래핑)
   });
-  fillT('rdd', '.trend-q', rdd.slice(0, 10).map(p2 => (p2.sub ? '[r/' + p2.sub + '] ' : '') + (p2.title || '')));   // ⑥ 레딧 — 서브레딧 접두(textContent 주입 = XSS 안전)
-  fillT('tbs', '.trend-q', tbsL.map(p2 => (p2.com ? '[' + p2.com + '] ' : '') + (p2.title || '')));   // 오늘의베스트 — 커뮤니티명 접두(레딧 [r/서브] 문법 계승 · textContent = XSS 안전)
-  fillT('bsk', '.xcard-h b', bskL.map(t => '@' + (t.account || '')));   // ⑦ 블루스카이 = @계정 헤더(X 구독 xcard 문법 계승 · 운영자 260718 "첨부2처럼" — 구 주제 부제·영문 원문 병기 폐지)
+  fillT('rdd', '.trend-q', rdd.slice(0, 10).map(p2 => (p2.sub ? '[r/' + p2.sub + '] ' : '') + (p2.title || '')));   // ⑥ 레딧 — 서브레딧 접두(textContent 주입 = XSS 안전)  fillT('bsk', '.xcard-h b', bskL.map(t => '@' + (t.account || '')));   // ⑦ 블루스카이 = @계정 헤더(X 구독 xcard 문법 계승 · 운영자 260718 "첨부2처럼" — 구 주제 부제·영문 원문 병기 폐지)
   fillH('bsk', '.xcard-tx', bskL.map(t => mdb(xlink(t.ko || ''))));   // 번역 본문만(영문 0 · bskL이 ko 보유분만) — xlink(전 조각 esc)→mdb(**→<b>) = 신뢰 HTML b·span뿐 · XSS 안전
   fillT('hn', '.trend-q', hnL.map(t => t.title || ''));   // ⑫ 해커뉴스(textContent 주입 = XSS 안전)
   fillT('dis', '.trend-q', dsl.slice(0, 10).map(t => t.title || ''));   // ⑭ 재난문자
