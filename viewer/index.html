@@ -853,6 +853,13 @@
   .chseg-row .tb-seg { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; touch-action:pan-x; }   /* 다칩(플랫폼 필터 등) = 가로 스크롤(전광판 문법) */
   .chseg-row .tb-seg::-webkit-scrollbar { display:none; }
   .chseg-row .tb-seg button { flex:none; }   /* 스크롤 존 칩 압착 방지(라벨 온전) */
+  /* AI 요약(brief) 기간 탭 = 대분류 헤더 편입·전폭(운영자 260720 "대분류 제목에 넣어 · 위 도형(헤더 박스) 좌우 너비 따라 · 일시 삭제 · 좌우 상하 맞춰") — 모바일서 타이틀 아래 detached 들여쓰기 행 → 헤더 직속 전폭 균등 세그(위 .tgroup-h 박스 좌우선 계승)로 승격 · brief 한정(daily .ch-hdrseg·PC abspos 무접촉 = max-width 스코프) */
+  @media (max-width:640px) {
+    .chu > details[data-g="brief"] > .tgroup-h { margin-bottom:var(--sp-1); }   /* 타이틀↔세그 밀착(대분류 제목 편입 · 14→6 sp-1 계승) */
+    .chu > details[data-g="brief"] > .chseg-row { padding-left:0; }   /* 들여쓰기 해제 = 위 헤더 박스 좌우선 정렬(좌우 너비 따라) · 하단 여백 = base 12(sp-2) 유지 */
+    .chu > details[data-g="brief"] > .chseg-row .tb-seg { width:100%; }   /* 세그 전폭 = 카드 좌우 꽉(위 도형 너비 계승) */
+    .chu > details[data-g="brief"] > .chseg-row .tb-seg button { flex:1 1 0; text-align:center; }   /* 5탭 균등 분할 */
+  }
   @media (min-width:641px) {
     .chu > details > .chseg-row { position:absolute; right:48px; top:35px; transform:translateY(-50%); margin:0; padding:0; z-index:1; max-width:calc(100% - 265px); min-width:64px; }   /* raw-ok: right48·top35 = 헤더 우측 앵커 원문 계승(체브론 회피·헤더 중심) · 265 = 좌측 픽토+타이틀+시각 클러스터 예약 · 64 = 최소 칩 창 */
     .chu > details > .tgroup-h { padding-right:var(--chu-r, 12px); }   /* raw-ok: 12 = .tgroup-h 원문 우측 패딩 폴백 · 칩 실폭 예약(--chu-r = 렌더 후 chuFit 실측)으로 abspos 칩이 좌측 시각 텍스트를 덮는 겹침 차단(운영자 260717 폰 실측) — 모바일 = 타이틀 아래 행이라 예약 불요(폴백 12) */
@@ -10741,13 +10748,12 @@ function renderChan() {
   const bsegs = bsecs ? bsecs.filter(s => s.k !== 'overview') : null;   // 세그 = 기간 5창(3일~전체 · overview 제외)
   if (bsegs && !bsegs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsegs[0].k;   // 결측·overview 방어(생성분 일부만 와도 첫 탭으로 · CHAN_BSEC이 세그 밖 값 차단)
   const bhasAll = bsegs && bsegs.some(s => s.k === 'all');   // (3) 폴백(overview 부재 시 all) 노출 근거
-  const _b12 = CHANB ? fmtK12(CHANB.updated) : '';   // 표기 = fmtK12 공통("7월 16일 2:18PM" · 운영자 260716 "이런식으로만 · 시간표시 동일하게")
-  const btm = _b12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_b12)}</span>` : '';   // 분석 시각 = 단위 헤더 합류(운영자 260716 "표기한대로 가장 위로") — prof 단위 .tdash-time 정본 계승 · stale = 수집 26h+ 죽음 warn(:has 빛멎음(#779)과 동축 = hdr-stale 이중 안전)
+  // (분석시각 btm 폐지 260720 — 운영자 "일시 삭제" · 대분류 헤더 자리를 기간 탭에 양보 · 수집 죽음 신호는 픽토 빛멎음 hdr-stale로 유지)
   const _g12 = fmtK12(d.generated_kst);
   const _ctm = _g12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_g12)}</span>` : '';   // 수집 시각 필 = 데이터 단위 헤더 우측 공통(운영자 260720 "받아온 시간 대분류 우측에 · sns 메뉴 표기 계승") — btm(AI 요약)·prof·메뉴3 top .tdash-time 정본 그대로 · 소스 = d.generated_kst(insta 산출 · prof와 동일) · stale = 26h+ 밀림 warn · 무효 = '' fail-soft
   const BSEG_LAB = { d28: '30일', m3: '90일' };   // 기간 탭 용어 통일(운영자 260720 "맨 위 AI만 다른 곳에 맞춰") — AI 요약 탭을 나머지 IG 지표 세그(7일/30일/90일/전체) 어휘와 일치 · 표시 라벨만 우회([15] 뷰어 코드), data-bs 키(d28/m3)·분석 창·본문 프로즈는 불변 · 3일·7일·전체는 원본 유지
   const bseg = bsegs ? `<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(BSEG_LAB[s.k] || (s.label === '전체 총론' ? '전체' : s.label))}</button>`).join('')}</span>` : null;   // 기간 책갈피(3일~전체) = 헤더 우측 extra(운영자 260716 "옵션 선택지를 세부 NAV(우측 상단)에") — .chu 심층 필 앵커 계승(summary 밖 = 접기 오클릭 0 · 접힘에도 노출) · 세그 = .ch-rangeseg 정본
-  if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약${btm}`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q155)
+  if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q155)
     // 구 ① 분석시각+세그 행(.tb-segrow) 폐지(운영자 260716 "가장 위로 + 옵션 선택지는 세부 NAV로") — 시각 = 헤더 좌(타이틀 옆) · 기간 세그 = 헤더 우측 칩(extra) · 본문 = 분석 텍스트부터 즉시 시작(상단 구분선도 동반 제거)
     `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
