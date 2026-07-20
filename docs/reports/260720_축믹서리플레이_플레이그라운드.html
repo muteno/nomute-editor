@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>축 믹서 · 시간 리플레이 — 곡선 4요소 조종 × 변수 연동 × 메인기사 순위 추적 (2026-07-20 17:51 KST 동결)</title>
+<title>축 믹서 v2 · 시간 리플레이 — 차트 직접 드래그 × 변수 연동 × 순위 추적 (2026-07-20 18:03 KST 동결)</title>
 <style>
 :root{--bg:#121212;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.08);--acc:#00EED2;--amb:#ffc31f;--dgr:#ff5b5b;--g3:#c9a7ff}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -10,9 +10,9 @@ h1{font-size:15px;margin-bottom:2px} .sub{color:var(--mut);font-size:11px;margin
 .console{flex:0 1 360px;min-width:300px}
 @media(max-width:900px){.stagewrap{position:static}}
 .panel{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
-canvas{width:100%;height:auto;display:block}
-.seg{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;width:max-content}
-.seg button{background:transparent;border:0;color:var(--mut);padding:5px 12px;font-size:12px;cursor:pointer}
+canvas{width:100%;height:auto;display:block;touch-action:none;cursor:crosshair}
+.seg{display:flex;gap:0;border:1px solid var(--line);border-radius:999px;overflow:hidden;width:max-content;max-width:100%}
+.seg button{background:transparent;border:0;color:var(--mut);padding:5px 11px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .seg button.on{background:rgba(255,255,255,.09);color:var(--fg)}
 .trow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 select{background:#1b1f1e;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:12px;max-width:100%;flex:1 1 260px}
@@ -21,18 +21,19 @@ select{background:#1b1f1e;color:var(--fg);border:1px solid var(--line);border-ra
 .tchip.on{border-color:var(--acc);color:var(--acc)}
 .tsl{display:flex;align-items:center;gap:8px}
 .tsl input{flex:1;accent-color:var(--acc)} .tsl .val{width:64px;text-align:right;font-size:12px;color:var(--acc);font-variant-numeric:tabular-nums}
-.anchor{font-size:11.5px;color:var(--amb);margin-top:4px}
-.cols{display:flex;gap:10px} .col{flex:1;min-width:0}
-.colh{font-size:12px;color:var(--mut);margin:2px 0 6px;font-weight:700} .colh b{color:var(--fg)}
-.row{display:flex;gap:6px;align-items:baseline;padding:3px 6px;border-radius:7px;border:1px solid transparent;font-size:11.5px}
-.row .rk{width:18px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
+.anchor{font-size:11px;color:var(--amb);margin-top:4px}
+.cols{display:flex;gap:8px} .col{flex:1;min-width:0}
+.colh{font-size:11.5px;color:var(--mut);margin:2px 0 5px;font-weight:700} .colh b{color:var(--fg)}
+.row{display:flex;gap:5px;align-items:baseline;padding:2.5px 5px;border-radius:6px;border:1px solid transparent;font-size:10.5px}
+.row .rk{width:16px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums;flex:none}
 .row .tt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .mt{color:var(--mut);font-size:10px;flex:none;font-variant-numeric:tabular-nums}
-.row .dl{width:30px;text-align:right;font-size:10px;flex:none;font-variant-numeric:tabular-nums}
+.row .mt{color:var(--mut);font-size:9px;flex:none;font-variant-numeric:tabular-nums}
+.row .dl{width:26px;text-align:right;font-size:9.5px;flex:none;font-variant-numeric:tabular-nums}
 .row.brk{border-color:rgba(255,195,31,.35);background:rgba(255,195,31,.06)}
 .row.main{border-color:rgba(0,238,210,.6);background:rgba(0,238,210,.07)}
 .up{color:var(--acc)}.dn{color:var(--dgr)}.eq{color:var(--mut)}
-.mainpos{font-size:11.5px;margin-top:6px;color:var(--acc)}
+.mainpos{font-size:11px;margin-top:5px;color:var(--acc)}
+.stagecap{font-size:10.5px;color:var(--mut);margin-top:5px;line-height:1.5}
 .csec{background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
 .csec h3{font-size:12px;color:var(--mut);margin-bottom:6px;font-weight:700}
 .pill{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);font-size:11.5px;margin:0 5px 5px 0;cursor:pointer}
@@ -51,20 +52,17 @@ pre{font:10.5px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap;background
 #copy{margin-top:7px;padding:7px 15px;border-radius:999px;border:1px solid var(--acc);background:transparent;color:var(--acc);font-size:12.5px;cursor:pointer}
 #copy:active{transform:scale(.96)}
 .note{font-size:10.5px;color:var(--mut)} .note li{margin:2px 0 2px 13px}
-.legend{display:flex;gap:12px;font-size:10.5px;color:var(--mut);margin-top:4px;flex-wrap:wrap}
+.legend{display:flex;gap:10px;font-size:10.5px;color:var(--mut);margin-top:4px;flex-wrap:wrap}
 .legend i{display:inline-block;width:13px;border-top:2px solid var(--acc);vertical-align:middle;margin-right:3px}
 .legend i.cur{border-top-style:dashed;border-color:#888}
+.chartwrap{position:relative}
+.hud{position:absolute;top:8px;right:8px;width:min(62%,560px);background:rgba(16,18,17,.94);border:1px solid var(--line);border-radius:10px;padding:6px 8px;backdrop-filter:blur(4px)}
+@media(max-width:760px){.hud{position:static;width:100%;margin-top:6px;background:rgba(255,255,255,.03);backdrop-filter:none}}
 </style></head><body>
-<h1>축 믹서 · 시간 리플레이 — 변수를 밀면 곡선·순위표가 같이 움직인다</h1>
-<div class="sub">실데이터 3일(18·19·20) × 관측원장 궤적 리플레이 · 곡선 변수 = {크기·시작·끝·기울기} 4요소 · ⛓ = 연동(하나 밀면 짝이 따라옴) · 범례(비법표)는 우측 하단 펼침 · 값 정본 = docs/변수사전_수집함.html</div>
+<h1>축 믹서 v2 — 차트를 직접 잡고 휘어라</h1>
+<div class="sub">칼럼 = 웹앱 동일(누적 좌 · 신규 우) · 곡선 = 대상 골라서 ⬤핸들 좌우(시작·끝 시점)·상하(크기), 몸통 상하 드래그 = 기울기(이징) · ⛓ = 연동 · 값 정본 = docs/변수사전_수집함.html</div>
 <div class="wrap">
   <div class="stagewrap">
-    <div class="panel">
-      <canvas id="cvB" width="1100" height="190"></canvas>
-      <div class="legend"><span><i class="cur"></i>현행</span><span><i></i>조정</span><span>← 긴급부스트 곡선(0~12h)</span></div>
-      <canvas id="cvT" width="1100" height="190" style="margin-top:6px"></canvas>
-      <div class="legend"><span><i></i>시간감점 timeAcc</span><span><i style="border-top-color:var(--g3)"></i>나이감쇠 ageMul</span><span style="color:#888">점선 = 현행</span><span>← 시간축 곡선(0~36h)</span></div>
-    </div>
     <div class="panel">
       <div class="trow"><div class="seg" id="daySeg"><button data-d="07-18">7/18</button><button data-d="07-19">7/19</button><button data-d="07-20" class="on">오늘 7/20</button></div>
       <select id="anchorSel"></select></div>
@@ -73,28 +71,37 @@ pre{font:10.5px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap;background
       <div class="anchor" id="anchorInfo"></div>
     </div>
     <div class="panel">
-      <div class="cols">
-        <div class="col"><div class="colh">🕐 신규(&lt;4h) — <b id="cA"></b></div><div id="lsA"></div></div>
-        <div class="col"><div class="colh">🗄 누적(4h+) — <b id="cB"></b></div><div id="lsB"></div></div>
+      <div class="seg" id="curveSeg" style="margin-bottom:6px">
+        <button data-c="boost" class="on">🌊 긴급부스트</button><button data-c="tacc">⏳ 시간감점</button><button data-c="agem">🌙 나이감쇠</button><button data-c="fresh">🕐 신규반감</button>
       </div>
-      <div class="mainpos" id="mainPos"></div>
+      <div class="chartwrap">
+        <canvas id="cv" width="1100" height="430"></canvas>
+        <div class="hud">
+          <div class="cols">
+            <div class="col"><div class="colh">🗄 누적 — <b id="cB"></b></div><div id="lsB"></div></div>
+            <div class="col"><div class="colh">🕐 신규 — <b id="cA"></b></div><div id="lsA"></div></div>
+          </div>
+          <div class="mainpos" id="mainPos"></div>
+        </div>
+      </div>
+      <div class="legend"><span><i class="cur"></i>현행</span><span><i></i>조정</span><span id="cvHint"></span></div>
     </div>
   </div>
   <aside class="console">
     <div class="csec"><h3>프리셋</h3><div id="presets"></div></div>
-    <div class="csec"><h3>🌊 긴급부스트 곡선 — 크기·시작·끝·기울기</h3><div id="slB"></div></div>
-    <div class="csec"><h3>⏳ 시간축 곡선 — 감점·감쇠</h3><div id="slT"></div>
-      <div class="lnk">⛓ 반값나이 ↔ 감쇠변곡 연동(설계 동상 13h=13h) <button id="lk1" class="on">ON</button></div></div>
+    <div class="csec"><h3>🌊 긴급부스트 — 크기·시작·끝·기울기</h3><div id="slB"></div></div>
+    <div class="csec"><h3>⏳ 시간축 — 감점·감쇠</h3><div id="slT"></div>
+      <div class="lnk">⛓ 반값나이 ↔ 감쇠변곡 연동(설계 동상 13h) <button id="lk1" class="on">ON</button></div></div>
     <div class="csec"><h3>⚖ 가중 노브</h3><div id="slW"></div></div>
     <div class="csec"><h3>🚪 문(게이트)</h3><div id="slG"></div></div>
     <div class="csec"><h3>선택값</h3><pre id="out"></pre><button id="copy">선택값 복사</button></div>
     <div class="csec"><h3>📖 범례 — 비법표(탭하면 설명)</h3><div id="legendBox"></div></div>
     <div class="csec note"><h3>재현 한계 각주</h3><ul>
-      <li>궤적 = 관측원장(obs) 실측 [cross·burst] 시계열 · <b>rc(후속보도)는 근사</b>: 그 시점까지의 관측 증가 횟수(≈'또 보도됨' 사이클)로 재현, 실측 rc와 소차 가능.</li>
-      <li>grade는 최종값 고정(과거 시점의 미채점 상태 미재현) · OUT 보호하한·검증대기 접기·병합 댐핑·fbJunk 미반영 — 순위 골격 비교용.</li>
-      <li>7/18·7/19는 수집함에 잔존한 기사만(프루닝 생존 = 대형 위주 30·39건) · 오늘 7/20 = 260건 전량급.</li>
-      <li>시간축 = 메인 기사 진입 순간부터의 경과(칩 +4h/+8h…) · 순위 Δ = 같은 시점의 현행 설정 대비.</li>
-      <li>게이트·상수 정본 = viewer/index.html · 회신 시 [9] 평의회 검증 후 배선.</li>
+      <li>궤적 = 관측원장(obs) 실측 [cross·burst] 시계열 · <b>rc(후속보도)는 근사</b>(그 시점까지 관측 증가 횟수) · grade는 최종값 고정.</li>
+      <li>OUT 보호하한·검증대기 접기·병합 댐핑·fbJunk 미반영 — 순위 골격 비교용.</li>
+      <li>7/18·7/19 = 수집함 잔존분(대형 위주 30·39건) · 오늘 7/20 = 260건.</li>
+      <li>드래그 문법 = 260717 부스트 튜너 계승(⬤ 꼭짓점 좌우/상하 · 몸통 상하 = 이징 강도) · 슬라이더 = 수치 미세조정용.</li>
+      <li>게이트·상수 정본 = viewer/index.html — [선택값 복사] 회신 시 [9] 평의회 검증 후 배선.</li>
     </ul></div>
   </aside>
 </div>
@@ -115,19 +122,19 @@ const SL={
 };
 const LEGEND=[
  ['cross','매체수','몇 개 매체가 썼나 — 누적 순위의 왕(^1.3 볼록). 신규 순위엔 기본 미반영(wNC 노브로 실험).'],
- ['rc 후속보도','또 보도됨','수집 돌 때마다 기사가 늘면 +1. 가점 = 1+W·log₂(1+rc). 보조문 임계(≥6)로도 씀 — PR 살포는 여기서 떨어짐.'],
+ ['rc 후속보도','또 보도됨','수집 돌 때마다 기사가 늘면 +1. 가점 = 1+W·log₂(1+rc). 보조문 임계(≥6) — PR 살포는 여기서 떨어짐.'],
  ['burst 분출','동시 폭발','15분 안에 동시에 몇 건 터졌나 — 신규 순위의 기본항.'],
- ['grade 도장','긴급용 등급','0비뉴스·1경미·2주목·3대형. 입장(문)엔 무관(260720). 일자리 = 긴급사다리(2=배지·부스트, 3=푸시)·가중(×0.5~1.8)·접힘·잡음면제.'],
- ['긴급부스트','확정 긴급 부양','breaking AND g≥2만 ×피크. 시작~끝 구간을 이징으로 착지 — 4요소(크기·시작·끝·기울기)가 이 곡선.'],
+ ['grade 도장','긴급용 등급','0비뉴스·1경미·2주목·3대형. 입장(문)엔 무관(260720). 일자리 = 긴급사다리(2=배지·부스트, 3=푸시)·가중·접힘·잡음면제.'],
+ ['긴급부스트','확정 긴급 부양','breaking AND g≥2만 ×피크. 시작~끝 구간 이징 착지 — 4요소(크기·시작·끝·기울기)가 이 곡선.'],
  ['timeAcc 감점','시간 가속감점','반값나이에서 절반, 이후 가속 추락(지수). 발행 기준.'],
- ['ageMul 감쇠','나이 S곡선','변곡 나이 중심의 부드러운 침몰. 바닥값만큼은 남음(소멸 안 함). 반값나이와 ⛓연동(설계 동상).'],
+ ['ageMul 감쇠','나이 S곡선','변곡 나이 중심의 부드러운 침몰. 바닥값만큼은 잔존. 반값나이와 ⛓연동(설계 동상).'],
  ['문(게이트)','입장 조건','신규 = cross≥2(+잡음마커 컷) · 누적 = cross≥8 OR 긴급이력 OR (cross≥4 AND rc≥6). grade 무관.'],
  ['접힘·정리','저신호 수납','0점·미채점 & cross≤3은 하단 접힘(리플레이 미반영). 12h 동일제목 접기·병합 댐핑 별도.'],
 ];
-let st={...DEF}, day='07-20', anchorI=0, T=0, lk1=true;
+let st={...DEF}, day='07-20', anchorI=0, T=0, lk1=true, curve='boost';
 const $=s=>document.querySelector(s);
 const items=()=>DATA[day]||[];
-function stateAt(it,M){ // M = 일 기준 분
+function stateAt(it,M){
   if(it.fs>M) return null;
   let cr=0,bu=0,rc=0;
   for(const p of it.tr){ if(p[0]<=M){cr=p[1];bu=p[2];rc++;} else break; }
@@ -140,6 +147,7 @@ function brkB(it,age){ if(!eb(it))return 1; const P=st.bP; if(age<=st.bS)return 
   const x=(age-st.bS)/(st.bE-st.bS), s=v=>1/(1+Math.exp(-st.bG*(v-.5))), n=(s(x)-s(0))/(s(1)-s(0)); return P-(P-1)*n; }
 const tAcc=a=>1/(1+Math.pow(a/st.tHalf,st.tPow));
 const aMul=a=>st.aF+(1-st.aF)/(1+Math.exp((a-st.aM)/st.aS));
+const frsh=a=>Math.pow(.5,a/st.fh);
 const fol=rc=>1+st.fw*Math.log2(1+rc);
 const gw=g=>g==null?1:(g===0?st.w0:g===1?st.w1:g===2?1:st.w3);
 function lanes(M,S){const keep=st; if(S)st=S;
@@ -148,7 +156,7 @@ function lanes(M,S){const keep=st; if(S)st=S;
   const s0=stateAt(it,M); if(!s0)continue;
   const inNew=s0.age<4, pass=eb(it)||s0.cr>=st.nMin,
    passAcc=s0.cr>=st.aSolo||eb(it)||(s0.cr>=st.aFC&&s0.rc>=st.aRC);
-  if(inNew&&pass){const sc=(s0.bu+(eb(it)?5:0)+st.wNC*s0.cr)*Math.pow(.5,s0.age/st.fh)*fol(s0.rc)*gw(it.g);
+  if(inNew&&pass){const sc=(s0.bu+(eb(it)?5:0)+st.wNC*s0.cr)*frsh(s0.age)*fol(s0.rc)*gw(it.g);
    A.push({it,s:sc,pin:eb(it)?1:0,st:s0});}
   else if(!inNew&&passAcc){const sc=Math.pow(s0.cr,st.pow)*tAcc(s0.age)*fol(s0.rc)*gw(it.g)*brkB(it,s0.age)*aMul(s0.age);
    B.push({it,s:sc,st:s0});}
@@ -160,16 +168,15 @@ function absM(){const a=items()[anchorI]; return a?a.fs+T:T;}
 function render(){
  const M=absM(), L=lanes(M), Base=lanes(M,{...DEF});
  const a=items()[anchorI];
- for(const [id,arr,base] of [['lsA',L.A,Base.A],['lsB',L.B,Base.B]]){
+ for(const [id,arr,base] of [['lsB',L.B,Base.B],['lsA',L.A,Base.A]]){
   const bIdx=new Map(base.map((x,i)=>[x.it.t,i]));
-  $('#'+id).innerHTML=arr.slice(0,12).map((x,i)=>{
+  $('#'+id).innerHTML=arr.slice(0,9).map((x,i)=>{
    const bi=bIdx.has(x.it.t)?bIdx.get(x.it.t):null;
    const d=bi==null?'NEW':bi-i; const dtx=d==='NEW'?'<span class="up">NEW</span>':d>0?`<span class="up">▲${d}</span>`:d<0?`<span class="dn">▼${-d}</span>`:'<span class="eq">·</span>';
    return `<div class="row${eb(x.it)?' brk':''}${a&&x.it.t===a.t?' main':''}"><span class="rk">${i+1}</span><span class="tt">${a&&x.it.t===a.t?'🎯 ':''}${x.it.t}</span><span class="mt">cr${x.st.cr}·rc${x.st.rc}·g${x.it.g==null?'–':x.it.g}</span><span class="dl">${dtx}</span></div>`;
   }).join('')||'<div class="row"><span class="tt" style="color:var(--mut)">이 시점 해당 없음</span></div>';
  }
  $('#cA').textContent=L.A.length+'건'; $('#cB').textContent=L.B.length+'건';
- // 메인 기사 위치
  let pos='진입 전';
  if(a){const s0=stateAt(a,M);
   if(s0){const iA=L.A.findIndex(x=>x.it.t===a.t), iB=L.B.findIndex(x=>x.it.t===a.t);
@@ -178,38 +185,79 @@ function render(){
  $('#mainPos').textContent=a?`🎯 ${a.t.slice(0,30)} → ${pos}`:'';
  $('#tVal').textContent='+'+(T/60).toFixed(1)+'h';
  $('#anchorInfo').textContent=a?`앵커 진입 ${String(Math.floor(a.fs/60)).padStart(2,'0')}:${String(a.fs%60).padStart(2,'0')} KST · 현재 시뮬 시각 ${String(Math.floor(M/60)%24).padStart(2,'0')}:${String(M%60).padStart(2,'0')}${M>=1440?' (+1일)':''}`:'';
- drawCurves(); syncUI(); buildOut();
+ drawCurve(); syncUI(); buildOut();
 }
-function drawCurves(){
- const B=$('#cvB').getContext('2d'),Tc=$('#cvT').getContext('2d');
- function grid(c,W,H){c.clearRect(0,0,W,H);c.strokeStyle='rgba(255,255,255,.07)';c.lineWidth=1;for(let i=1;i<6;i++){c.beginPath();c.moveTo(W/6*i,0);c.lineTo(W/6*i,H);c.stroke();}}
- // 부스트 0~12h
- const W=1100,H=190;grid(B,W,H);
- function plotB(S,style,dash){B.strokeStyle=style;B.setLineDash(dash?[5,4]:[]);B.lineWidth=2;B.beginPath();
-  const keep=st;st=S;for(let x=0;x<=W;x+=4){const age=x/W*12,v=brkB({b:true,g:2},age),y=H-8-(v-1)/(5-1)*(H-20);x?B.lineTo(x,y):B.moveTo(x,y);}st=keep;B.stroke();B.setLineDash([]);}
- plotB({...DEF},'#888',true);plotB({...st},'#00EED2',false);
- grid(Tc,W,H);
- function plotT(fn,S,style,dash){Tc.strokeStyle=style;Tc.setLineDash(dash?[5,4]:[]);Tc.lineWidth=2;Tc.beginPath();
-  const keep=st;st=S;for(let x=0;x<=W;x+=4){const age=x/W*36,v=fn(age),y=H-8-v*(H-20);x?Tc.lineTo(x,y):Tc.moveTo(x,y);}st=keep;Tc.stroke();Tc.setLineDash([]);}
- plotT(tAcc,{...DEF},'#888',true);plotT(aMul,{...DEF},'#666',true);
- plotT(tAcc,{...st},'#00EED2',false);plotT(aMul,{...st},'#c9a7ff',false);
+// ── 인터랙티브 곡선: 대상별 {범위·평가함수·핸들} ──
+const CURVES={
+ boost:{xMax:12,yMin:1,yMax:5,hint:'⬤시작(좌우=시작점·상하=피크) · ⬤끝(좌우) · 몸통 상하 = 기울기',
+  fn:a=>brkB({b:true,g:2},a),
+  handles:()=>[{x:st.bS,y:st.bP,drag:(x,y)=>{st.bS=cl(x,0,st.bE-.5);st.bP=cl(y,1,5);}},
+               {x:st.bE,y:1,drag:(x,y)=>{st.bE=cl(x,st.bS+.5,12);}}],
+  body:dy=>{st.bG=cl(st.bG-dy*.08,0,20);}},
+ tacc:{xMax:36,yMin:0,yMax:1,hint:'⬤반값점(좌우=반값나이) · 몸통 상하 = 가속(기울기)',
+  fn:a=>tAcc(a),
+  handles:()=>[{x:st.tHalf,y:.5,drag:(x,y)=>{st.tHalf=cl(x,6,30);if(lk1)st.aM=st.tHalf;}}],
+  body:dy=>{st.tPow=cl(st.tPow-dy*.02,1,6);}},
+ agem:{xMax:36,yMin:0,yMax:1,hint:'⬤변곡점(좌우) · ⬤바닥(우측 끝·상하=잔존) · 몸통 상하 = 완만도(기울기)',
+  fn:a=>aMul(a),
+  handles:()=>[{x:st.aM,y:aMul(st.aM),drag:(x,y)=>{st.aM=cl(x,6,30);if(lk1)st.tHalf=st.aM;}},
+               {x:34,y:st.aF+(1-st.aF)/(1+Math.exp((34-st.aM)/st.aS)),drag:(x,y)=>{st.aF=cl(y,0,.5);}}],
+  body:dy=>{st.aS=cl(st.aS-dy*.03,1,8);}},
+ fresh:{xMax:8,yMin:0,yMax:1,hint:'⬤반감점(좌우=반감기) — 신규 점수의 시간 감쇠',
+  fn:a=>frsh(a),
+  handles:()=>[{x:st.fh,y:.5,drag:(x,y)=>{st.fh=cl(x,.5,6);}}],
+  body:dy=>{}},
+};
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const CW=1100,CH=430;
+function xy2px(cv,x,y){return [x/cv.xMax*CW, CH-10-(y-cv.yMin)/(cv.yMax-cv.yMin)*(CH-24)];}
+function px2xy(cv,px,py){return [px/CW*cv.xMax, cv.yMin+(CH-10-py)/(CH-24)*(cv.yMax-cv.yMin)];}
+function drawCurve(){
+ const cv=CURVES[curve], c=$('#cv').getContext('2d');
+ c.clearRect(0,0,CW,CH);
+ c.strokeStyle='rgba(255,255,255,.07)';c.lineWidth=1;
+ for(let i=1;i<8;i++){c.beginPath();c.moveTo(CW/8*i,0);c.lineTo(CW/8*i,CH);c.stroke();}
+ c.fillStyle='rgba(255,255,255,.35)';c.font='12px sans-serif';
+ for(let i=0;i<=8;i+=2)c.fillText((cv.xMax/8*i).toFixed(0)+'h',CW/8*i+3,CH-2);
+ function plot(S,style,dash){const keep=st;st=S;c.strokeStyle=style;c.setLineDash(dash?[5,4]:[]);c.lineWidth=2.2;c.beginPath();
+  for(let px=0;px<=CW;px+=4){const v=cv.fn(px/CW*cv.xMax),[,py]=xy2px(cv,0,v);px?c.lineTo(px,py):c.moveTo(px,py);}c.stroke();c.setLineDash([]);st=keep;}
+ plot({...DEF},'#888',true); plot({...st},'#00EED2',false);
+ for(const h of cv.handles()){const [px,py]=xy2px(cv,h.x,h.y);
+  c.beginPath();c.arc(px,py,9,0,7);c.fillStyle='rgba(0,238,210,.25)';c.fill();
+  c.beginPath();c.arc(px,py,5.5,0,7);c.fillStyle='#00EED2';c.fill();}
+ $('#cvHint').textContent='← '+cv.hint;
 }
+// 드래그 배선(포인터 통합)
+(()=>{const el=$('#cv');let mode=null,hI=-1,lastY=0;
+ function pos(e){const r=el.getBoundingClientRect();return [(e.clientX-r.left)/r.width*CW,(e.clientY-r.top)/r.height*CH];}
+ el.addEventListener('pointerdown',e=>{el.setPointerCapture(e.pointerId);
+  const [px,py]=pos(e),cv=CURVES[curve];mode='body';hI=-1;lastY=py;
+  cv.handles().forEach((h,i)=>{const [hx,hy]=xy2px(cv,h.x,h.y);if(Math.hypot(px-hx,py-hy)<26){mode='handle';hI=i;}});
+ });
+ el.addEventListener('pointermove',e=>{if(!mode)return;
+  const [px,py]=pos(e),cv=CURVES[curve];
+  if(mode==='handle'){const [x,y]=px2xy(cv,px,py);cv.handles()[hI].drag(x,y);}
+  else cv.body(py-lastY);
+  lastY=py;render();
+ });
+ el.addEventListener('pointerup',()=>{mode=null;hI=-1;});
+})();
 function syncUI(){
- document.querySelectorAll('input[type=range][data-k]').forEach(inp=>{const k=inp.dataset.k;if(inp.value!=st[k])inp.value=st[k];inp.closest('.sl').querySelector('.val').textContent=st[k];});
+ document.querySelectorAll('input[type=range][data-k]').forEach(inp=>{const k=inp.dataset.k;const v=Math.round(st[k]*100)/100;if(inp.value!=v)inp.value=v;inp.closest('.sl').querySelector('.val').textContent=v;});
  const cur=JSON.stringify(st);
  document.querySelectorAll('#presets .pill').forEach((p,i)=>p.classList.toggle('on',JSON.stringify({...DEF,...PRESETS[i].v})===cur));
  $('#lk1').classList.toggle('on',lk1);
 }
 function buildOut(){
- const ch=(k,c)=>st[k]===c?`${st[k]} (계승)`:`${c}→${st[k]} (갱신)`;
- $('#out').textContent=`[축 믹서 — 선택값 · 2026-07-20 17:51 KST]
+ const r=v=>Math.round(v*100)/100;
+ const ch=(k,c)=>r(st[k])===c?`${r(st[k])} (계승)`:`${c}→${r(st[k])} (갱신)`;
+ $('#out').textContent=`[축 믹서 v2 — 선택값 · 2026-07-20 18:03 KST]
 부스트: 피크 ${ch('bP',3)} · 시작 ${ch('bS',1)}h · 끝 ${ch('bE',6)}h · 기울기 ${ch('bG',12)}
 시간축: 감점반값 ${ch('tHalf',13)}h·가속 ${ch('tPow',3)} · 감쇠변곡 ${ch('aM',13)}h·완만 ${ch('aS',3.8)}·바닥 ${ch('aF',.12)} · 신규반감 ${ch('fh',2)}h ${lk1?'· ⛓연동 ON':'· ⛓해제'}
 가중: cross^${ch('pow',1.3)} · 후속 ${ch('fw',.5)} · g0 ${ch('w0',.5)} · g1 ${ch('w1',.7)} · g3 ${ch('w3',1.8)} · 신규cross ${ch('wNC',0)}
 문: 신규≥${ch('nMin',2)} · 단독 ${ch('aSolo',8)} · 보조 ${ch('aFC',4)}/${ch('aRC',6)}
 ※ 정본 = viewer/index.html 상수 — 회신 시 [9] 평의회 후 배선`;
 }
-// build UI
 for(const [box,defs] of Object.entries(SL)) $('#'+box).innerHTML=defs.map(d=>`<div class="sl"><span class="nm">${d.nm}</span><input type="range" data-k="${d.k}" min="${d.min}" max="${d.max}" step="${d.step}" value="${st[d.k]}"><span class="val">${st[d.k]}</span><span class="cur">현행 ${d.cur}</span></div>`).join('');
 $('#presets').innerHTML=PRESETS.map((p,i)=>`<button class="pill" data-i="${i}">${p.nm}</button>`).join('');
 $('#legendBox').innerHTML=LEGEND.map(l=>`<details><summary><b>${l[0]}</b> · ${l[1]}</summary><p>${l[2]}</p></details>`).join('');
@@ -232,6 +280,8 @@ document.body.addEventListener('change',e=>{if(e.target.id==='anchorSel'){anchor
 document.body.addEventListener('click',e=>{
  const dseg=e.target.closest('#daySeg button');
  if(dseg){day=dseg.dataset.d;document.querySelectorAll('#daySeg button').forEach(b=>b.classList.toggle('on',b===dseg));fillAnchor();T=0;$('#tSlide').value=0;render();return;}
+ const cseg=e.target.closest('#curveSeg button');
+ if(cseg){curve=cseg.dataset.c;document.querySelectorAll('#curveSeg button').forEach(b=>b.classList.toggle('on',b===cseg));render();return;}
  const tc=e.target.closest('.tchip');
  if(tc){T=+tc.dataset.t;$('#tSlide').value=T;document.querySelectorAll('.tchip').forEach(c=>c.classList.toggle('on',c===tc));render();return;}
  const pl=e.target.closest('#presets .pill');
