@@ -11,8 +11,8 @@
 //
 // 원커맨드:  node shared/smoke_parity.js        (종료코드 0 = 코어 전부 PASS)
 //
-// 담당 표면(이 파일 헤더 선언 = 변경 시 커밋 전 실행 rc=0): viewer/index.html #geniPrev/#geniPrevBox/#geniSum/#geniStyleEx/#geniRefGhost·#geniWishRow(텍스트칸 숨김) ↔ viewer/thumb.html #cpPrev .cpprev-box/#optStrip(정본)
-// 어서션 축: 기하(박스 높이 Δ) + computedStyle 문자열 동일(bg·border·radius·padding·활자) — 환경 간 스크린샷 diff 금지(smoke_preview 규율 계승)
+// 담당 표면(이 파일 헤더 선언 = 변경 시 커밋 전 실행 rc=0): viewer/index.html #geniPrev/#geniPrevBox/#geniSum/#geniStyleEx/#geniRefGhost·#geniWishRow(텍스트칸 숨김)·.genihost .geni-lead(도크 mat·스커트) ↔ viewer/thumb.html #cpPrev .cpprev-box/#optStrip/#topDock(정본)
+// 어서션 축: 기하(박스 높이·폭 Δ) + computedStyle 문자열 동일(bg·border·radius·padding·활자·스커트 그라데) + 스트립 상태 점등 문법(라벨+값 쌍·기본 소등·상태 추종 C10~C13 · 운영자 260720) — 환경 간 스크린샷 diff 금지(smoke_preview 규율 계승)
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 = openTool·geniApply·geniRefPick) · 픽스처 = 페이지 내 canvas(외부 바이너리 0) · 서버 자체 종료 · 결정론 2런.
 // ═══════════════════════════════════════════════════════════════════════════════
 'use strict';
@@ -73,10 +73,13 @@ async function runOnce(pg) {
     const d = fr.contentDocument, w = fr.contentWindow;
     const box = d.querySelector('#cpPrev .cpprev-box');
     const strip = d.querySelector('#optStrip'), spec = strip ? strip.querySelector('.gospec:not(.none)') : null;
+    const dock = d.querySelector('#topDock'), dcs = w.getComputedStyle(dock), dca = w.getComputedStyle(dock, '::after');   // 도크 mat·페이드 스커트 = 리드 파리티 정본(운영자 260720 "그라데이션 닫힘 이식")
     const cs = el => { const c = w.getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
-    return { boxH: box.getBoundingClientRect().height, boxCS: cs(box),
+    return { boxH: box.getBoundingClientRect().height, boxW: box.getBoundingClientRect().width, boxCS: cs(box),
       stripVis: !!(strip && !strip.classList.contains('none') && strip.getBoundingClientRect().height),
-      stripCS: strip ? cs(strip) : null, specFs: spec ? w.getComputedStyle(spec).fontSize : '', specLh: spec ? w.getComputedStyle(spec).lineHeight : '' };
+      stripCS: strip ? cs(strip) : null, specFs: spec ? w.getComputedStyle(spec).fontSize : '', specLh: spec ? w.getComputedStyle(spec).lineHeight : '',
+      dockBg: dcs.backgroundColor, dockBb: dcs.borderBottomWidth, skirtH: dca.height, skirtBg: dca.backgroundImage,
+      specGram: spec ? { lbl: spec.querySelectorAll('.gs-lbl').length, v: spec.querySelectorAll('.gs-v').length } : null };
   });
   core('E0 편집 탭 미리보기·스트립 실측 성립', !!(ed && ed.boxH > 0 && ed.stripVis), ed ? JSON.stringify({ boxH: Math.round(ed.boxH), stripVis: ed.stripVis }) : '편집 프레임 미탐');
   if (!ed) return out;
@@ -86,9 +89,12 @@ async function runOnce(pg) {
   await pg.waitForTimeout(1300);
   const ai = await pg.evaluate(() => {
     const host = document.querySelector('#geniHost'), box = document.querySelector('#geniPrevBox'), sum = document.querySelector('#geniSum');
+    const lead = document.querySelector('#geniHost .geni-lead'), lcs = lead ? getComputedStyle(lead) : null, lca = lead ? getComputedStyle(lead, '::after') : null;   // 리드 = thumb 도크 파리티(mat·스커트 · 운영자 260720)
     const cs = el => { const c = getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
-    return { hostVis: !!(host && !host.hidden), boxH: box ? box.getBoundingClientRect().height : 0, boxCS: box ? cs(box) : null,
+    return { hostVis: !!(host && !host.hidden), boxH: box ? box.getBoundingClientRect().height : 0, boxW: box ? box.getBoundingClientRect().width : 0, boxCS: box ? cs(box) : null,
       sumCS: sum ? cs(sum) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
+      leadBg: lcs ? lcs.backgroundColor : '', leadBb: lcs ? lcs.borderBottomWidth : '', skirtH: lca ? lca.height : '', skirtBg: lca ? lca.backgroundImage : '',
+      sumGram: sum ? { lbl: sum.querySelectorAll('.gs-lbl').length, v: sum.querySelectorAll('.gs-v').length, on: sum.querySelectorAll('.gs-v.on').length } : null,
       wishHidden: (() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return !!(r && r.hidden && h && h.hidden); })(),
       wishAlive: !!document.querySelector('#geniWish') };
   });
@@ -121,6 +127,17 @@ async function runOnce(pg) {
   core('C6 고스트 = cover·opacity .22·원본 contain·동일 src', gh.gVis && gh.gFit === 'cover' && gh.gOp === '0.22' && gh.tFit === 'contain' && gh.same, JSON.stringify({ fit: gh.gFit, op: gh.gOp, t: gh.tFit, same: gh.same }));
   core('C7 첨부 툴 좌표 = thumb 편집 동값(6/6/42 패딩박스)', gh.xbR === 6 && gh.xbT === 6 && gh.swR === 42, JSON.stringify({ xbR: gh.xbR, xbT: gh.xbT, swR: gh.swR }));
   await pg.evaluate(() => { geniRefClear(); geniApply(); });
+
+  // ── C10~C13 리드 도크·폭·스트립 점등 파리티(운영자 260720 "겉 도형 너비·다 점등·그라데이션 닫힘이 다르다 — 다른쪽 이식") ──
+  core('C10 미리보기 박스 폭 = 편집 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'edit=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
+  core('C11 리드 = thumb 도크 파리티(mat 배경·경계선 0·페이드 스커트 h/그라데 동일)', ai.leadBg === ed.dockBg && ai.leadBb === ed.dockBb && ai.skirtH === ed.skirtH && ai.skirtBg === ed.skirtBg,
+    JSON.stringify({ edit: { bg: ed.dockBg, bb: ed.dockBb, sh: ed.skirtH }, ai: { bg: ai.leadBg, bb: ai.leadBb, sh: ai.skirtH, sameGrad: ai.skirtBg === ed.skirtBg } }));
+  core('C12 스트립 문법 = 라벨+값 쌍 · 전 옵션 상시 나열(10쌍) · 기본 상태 = 한국웹툰화 ON만 점등', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 10 && ai.sumGram.v === 10 && ai.sumGram.on === 1,
+    JSON.stringify({ edit: ed.specGram, ai: ai.sumGram }));
+  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="size"] .geni-opt[data-v="2K"]'); if (b) b.click(); });   // 상태 추종 실측 = 해상도 2K 선택
+  const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has2K: on.includes('2K') }; });
+  core('C13 점등 = 상태 추종(2K 선택 → 해상도만 추가 점등 = 2쌍)', lit.n === 2 && lit.has2K, JSON.stringify(lit));
+  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="size"] .geni-opt[data-v="FHD"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
 
   return out;
 }
