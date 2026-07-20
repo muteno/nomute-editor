@@ -24,6 +24,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 API = 'https://www.googleapis.com/drive/v3'
+# 세이프존 — 이 폴더(하위 포함)의 파일은 절대 이송하지 않음: nomute_imagen/Prompt(수동 gen_images 작업물 · drive_cards.py 정본 상수)
+SAFE_ROOT_IDS = {'1jQBoDqnDk5-fw51tCdDLD_cuDBAJp3kf'}
 LOOKBACK_H = 6
 KST = timezone(timedelta(hours=9))
 
@@ -63,12 +65,12 @@ def shared_id(tok):
     return fs[0]['id']
 
 
-def under_shared(tok, fid, sid, cache):
-    """fid(부모 폴더 id)의 조상 체인에 Shared가 있는가 — 폴더 메타 캐시로 왕복 최소화."""
+def in_safe_zone(tok, fid, safe, cache):
+    """fid(부모 폴더 id)의 조상 체인이 세이프존(Shared·작업폴더)에 닿는가 — 폴더 메타 캐시로 왕복 최소화."""
     seen = set()
     cur = fid
     for _ in range(12):
-        if cur == sid:
+        if cur in safe:
             return True
         if cur in seen:
             return False
@@ -104,11 +106,12 @@ def main():
         if not page:
             break
 
+    safe = SAFE_ROOT_IDS | {sid}
     cache, moved, fails = {}, [], []
     for f in files:
         parents = f.get('parents') or []
-        if parents and any(under_shared(tok, p, sid, cache) for p in parents):
-            continue  # 이미 Shared 안(하위 포함)
+        if parents and any(in_safe_zone(tok, p, safe, cache) for p in parents):
+            continue  # 이미 Shared 안이거나 세이프존(작업폴더)
         try:
             call(tok, 'PATCH', f"/files/{f['id']}",
                  {'addParents': sid, 'removeParents': ','.join(parents),
