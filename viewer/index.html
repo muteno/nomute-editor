@@ -2531,6 +2531,13 @@
   .cref-loading .cref-ld-sp { width:22px; height:22px; border:2.5px solid rgba(var(--accent-rgb),.25); border-top-color:var(--accent); border-radius:50%; animation:crefspin .9s linear infinite; }
   @keyframes crefspin { to { transform:rotate(360deg); } }
   @media (prefers-reduced-motion:reduce){ .cref-loading .cref-ld-sp, .thumbsec .cref-slot.cref-loading { animation:none; } }
+  /* 로딩 도트(불러오는 중… 문구 대체) — beui dots 계승(yeulmaru-promo docs/reports/260707_로더픽토그램_플레이그라운드.html · mkLoader dots) · 강조색만 노뮤트 var(--accent)로 · 인라인 로딩 플레이스홀더(.empty/.qempty/.lp-empty) 공용 */
+  .nmld { display:inline-flex; align-items:center; justify-content:center; gap:5px; line-height:0; color:var(--accent); }
+  .nmld i { width:7px; height:7px; border-radius:50%; background:currentColor; animation:nmldBounce .9s var(--ease,cubic-bezier(.2,.7,.3,1)) infinite; }
+  .nmld i:nth-child(2) { animation-delay:.15s; }
+  .nmld i:nth-child(3) { animation-delay:.3s; }
+  @keyframes nmldBounce { 0%,100% { transform:translateY(0); opacity:.5; } 50% { transform:translateY(-6px); opacity:1; } }
+  @media (prefers-reduced-motion:reduce){ .nmld i { animation:none; opacity:.6; } }
   /* 키워드 분절 박스 = [ K 돋보기(검색) | 한/영(토글) ] 한 덩어리 · 박스 색이 한(초록)/영(파랑) 따라 즉시 전환(운영자 260622) */
   .cref-kwbox { display:inline-flex; align-items:center; height:var(--btn-sm); border-radius:var(--r-s); border:1px solid; overflow:hidden;
     background:transparent; }   /* 박스(테두리·구분선)는 유지 · 뒤 반투명 채움(.04)+blur만 제거(운영자 260622) */
@@ -3660,6 +3667,7 @@ try {
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1·운영자 260628) — CHECK/COPY/PASTE/ERASE/UNDO/WAIT/ERR/OK/DOWNLOAD/WARN 단일정본 -->
+<script src="nm-loader.js"></script><!-- 로더 팩토리 SSOT(yeulmaru-promo mkLoader 이식·17종) — 로딩 표시 = .nmld 도트(강조색 --accent 계승) · window.mkLoader/nmLoaderHTML -->
 <script defer src="marquee_pet.js"></script><!-- LOVE 마퀴펫 정사각 씬 스프라이트 아틀라스(window.PETSPRITES · 9프레임 · standalone2 원본 이식·260704) -->
 <script defer src="marquee.js"></script><!-- LOVE 마퀴펫 정사각 씬(1080²) 렌더러 — 풀세트(간판+사다리+펫)·window.renderFrame(i)·뉴스요약 탭 전용·NOW SHOWING=페이지 강조색(window.LOVE_ACCENT) -->
 <script>
@@ -4492,7 +4500,7 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
   const before = ((a0 && a0.cards && a0.cards[field]) || []).length;   // 기준 = 현재 해당 카러셀(검색/생성) 이미지 수
   // 로딩 슬라이드를 await 전에 먼저(동기) 꽂는다 = .cref-loading 가드 즉시 작동 → 연타 레이스 차단(평의회 검증·260622)
   const ph = document.createElement('div'); ph.className = 'cref-slot cref-loading';   // 맨 좌측 반투명 로딩(N장 추가 예정 의미)
-  ph.innerHTML = '<div class="cref-ld"><span class="cref-ld-sp"></span><span class="cref-ld-tx">' + esc(o.ld) + '</span></div>';
+  ph.innerHTML = '<div class="cref-ld"><span class="nmld"><i></i><i></i><i></i></span><span class="cref-ld-tx">' + esc(o.ld) + '</span></div>';   // 로딩 스피너 → 도트 픽토그램(nm-loader.js · 강조색 --accent)
   track.insertBefore(ph, track.firstChild);
   track.scrollTo({ left: 0, behavior: 'smooth' });
   if (btn) { btn.classList.add('busy'); btn.disabled = true; }
@@ -8078,7 +8086,7 @@ let qGen = 0;
 async function loadQueue() {
   const g = ++qGen;   // 세대 토큰 — 재오픈/폴 경합 시 늦게 온 stale 응답 폐기(페이지 튕김 방지)
   const box = $('#qpopList'); if (!box) return;
-  box.innerHTML = '<div class="qempty">불러오는 중…</div>'; const pg = $('#qpopPage'); if (pg) pg.innerHTML = '';
+  box.innerHTML = '<div class="qempty"><span class="nmld" role="status" aria-label="불러오는 중"><i></i><i></i><i></i></span></div>'; const pg = $('#qpopPage'); if (pg) pg.innerHTML = '';
   let items;
   try {
     const r = await fetch('api/pending?_=' + Date.now());
@@ -9732,7 +9740,7 @@ window.addEventListener('resize', () => { clearTimeout(_chuRz); _chuRz = setTime
 function renderSnsTrends() {
   const box = $('#snsTrends'); if (!box) return;
   // 첫 방문(TRENDS 미로드) = 빈 화면 대신 로딩 표시 — showTab('trend')의 캐시 즉시 렌더는 첫 방문엔 캐시가 없어 트렌드·AI 요약 영역이 통째 빈칸 → loadTrends 완료(~수초·폰 느린망) 후 갑툭 팝인 = "다른 화면 떴다가 AI 요약으로" 증상(운영자 260715). 로딩 표기 = 아래 renderSns "불러오는 중…"(.empty) 패턴 계승. TRENDS 도착 시 실렌더가 교체(_trSig 미설정 = 무조건 재구축).
-  if (!TRENDS) { if (!box.querySelector('.trend-loading')) box.innerHTML = '<div class="empty trend-loading">불러오는 중…</div>'; return; }
+  if (!TRENDS) { if (!box.querySelector('.trend-loading')) box.innerHTML = '<div class="empty trend-loading"><span class="nmld" role="status" aria-label="불러오는 중"><i></i><i></i><i></i></span></div>'; return; }
   const TRREG = localStorage.getItem('nm_trend_region') === 'gl' ? 'gl' : 'kr';   // 지역 모드 = 국내 기본(운영자 260712) · 월드 = 국내 포함 병합(gtrends_gl·youtube_gl = 주요국 KR 제외분)
   const d = TRENDS || {};
   const _trSig = [d.updated, (typeof BRIEF !== 'undefined' && BRIEF && BRIEF.updated) || '', TRREG, TR_TOPF, localStorage.getItem('nm_trend_sort') || '', localStorage.getItem('nm_trend_gfold') || '', localStorage.getItem('nm_trend_fold') || ''].join('|');   // 시그니처 가드(평의회⑧ — 무가드 통재구축이 폴링마다 재부양·토글 랙 유발) = 수집함 _scSig 문법 계승 · 데이터·지역·정렬·접힘 동일 = 무접촉
@@ -10405,7 +10413,7 @@ $('#accSave').addEventListener('click', async () => {
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
   let _ss = '';   // 이번 렌더 구성 시그니처(행 ID·순서+검색어 · 아래서 선계산 = 커밋 스킵 판정용)
-  if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">불러오는 중…</div>`; _snsSig = ''; return; }
+  if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty"><span class="nmld" role="status" aria-label="불러오는 중"><i></i><i></i><i></i></span></div>`; _snsSig = ''; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const rows = q ? SOCIAL.filter(r => ((r.title || '') + ' ' + (r.sources || []).join(' ')).toLowerCase().includes(q)) : SOCIAL;
   const merged = rows.slice().sort((a2, b2) => (+b2.burst || 0) - (+a2.burst || 0));   // 버스트 내림차순(기존 정렬축 유지)
@@ -12518,7 +12526,7 @@ async function _pubRemoveLocked(it, btn) {
 let _pubGen = 0;
 async function loadPub() {   // loadQueue 미러(api/published)
   const g = ++_pubGen, box = $('#pubpopList'); if (!box) return;
-  box.innerHTML = '<div class="qempty">불러오는 중…</div>'; const pg = $('#pubpopPage'); if (pg) pg.innerHTML = '';
+  box.innerHTML = '<div class="qempty"><span class="nmld" role="status" aria-label="불러오는 중"><i></i><i></i><i></i></span></div>'; const pg = $('#pubpopPage'); if (pg) pg.innerHTML = '';
   try {
     const r = await fetch('api/published?_=' + Date.now());
     if (g !== _pubGen) return;
