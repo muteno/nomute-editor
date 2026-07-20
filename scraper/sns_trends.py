@@ -504,7 +504,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
             break
         time.sleep(2)
         try:
-            j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=10" % urllib.parse.quote(acc)))
+            j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))   # count 10→30(운영자 260720 "국내 큐레이션 10위까지" — KR 구독 2계정 반환분이 2·1개뿐이라 계정당 조회 여지 확대 · 동일 엔드포인트 1콜 = 예산 불변)
             if j.get("code") != 0:
                 print(f"::warning::tiktok @{acc} 응답 코드 {j.get('code')}(스킵)", file=sys.stderr)
                 continue
