@@ -69,6 +69,7 @@
     --dur-acc:.26s;
     /* 게이지 채움 곡선 = 센 ease-out(초반 빠르게·끝 완만 = 응답 점프 최소)이되 *눈에 보이는* 감속 = 하우스 곡선(cardIn·bnav 계승). 옛 (.12,.9,.22,1)은 시간 10%에 55% 도달 = 0.72s 게이지서 첫 몇 프레임에 화면 중반 텔레포트 → '중간에서 시작·이징 안 먹힘' 착시 → 폐기. 처음부터 쓸려오르며 감속(가시성)+응답시점 71% 프론트로드(점프 완화) 양립. 전 게이지바(glive·pickGauge·goFill) 공통 SSOT — 새 게이지도 이거 계승(제각각 금지). 260704 */
     --gauge-ease:cubic-bezier(.22,.61,.36,1);
+    --gauge-pop:1.15;   /* 완료체크 ✓ 팝 피크 = 게이지 발사 후 ✓ 스프링 최대 배율(운영자 260720 "이미지 전송 완료 튀는 체크 모션 = 영상도 통일") — asksend `ackPop`(이미지 생성·전송·수정·발행·기록) + edit `gckPop`(영상 생성) 공유 SSOT = 한 곳만 바꾸면 이미지·영상 완료체크 팝 동시 갱신 · dlAckPop(다운로드) 형제값(1.15)과 정렬 · `--gauge` 접두 = build_design_mirror가 tokens.css로 전파(edit 등 도구뷰어 참조 가능) */
     /* 상태 타이포 = Pretendard로 통일(Orbitron 폐지·운영자 260621). var(--font-status)는 호환 위해 유지. */
     --font-status:'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;
     /* ── z-index 레이어 스케일 (운영자 260628 · 「최소화 > 리모컨 > 내용」 단일정본=여기) ──
@@ -1189,7 +1190,7 @@
   .vh-fbtn::after { content:''; position:absolute; inset:-7px; }
   .vh-fbtn svg { width:21px; height:21px; stroke:var(--mut); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:stroke var(--dur), filter var(--dur), transform var(--dur-fast) var(--ease); }
   .vh-fbtn:active svg { transform:scale(var(--press-m,.9)); }   /* 픽토온리(background:none) = SVG만 축소(배경 plate 안 따라움직임·.bnav-i 정본 패턴·분신술10·운영자 260628) */
-  #queueBtn svg { width:24.44px; height:24.44px; position:relative; top:-0.4px; }   /* 운영자 260720 잉크크기 통일(raw-ok · Q267 눈튜닝 23.5=잉크 17.63의 정밀화): 24.44 = 기어 잉크 18.33 등치(대기열 getBBox 18vb → 18.333×24/18 · 메트릭 = 헤더픽토 플그라 inkOf 정본) + 위로 0.4 광학보정(Q267 운영자 선택 보존 · bbox 세로중심 = vb중앙이라 크기 변경에 불변) · #queueBtn 스코프 = 필터(.vh-fbtn) 무영향 · position:relative = :active scale 무충돌 */
+  #queueBtn svg { width:24.44px; height:24.44px; position:relative; top:0.6px; }   /* 운영자 260720 잉크크기 통일(raw-ok · Q267 눈튜닝 23.5=잉크 17.63의 정밀화): 24.44 = 기어 잉크 18.33 등치(대기열 getBBox 18vb → 18.333×24/18 · 메트릭 = 헤더픽토 플그라 inkOf 정본) · top 0.6 = 운영자 Q297 "햄버거 아래로 조금"(구 -0.4에서 아래로 1px · bbox 세로중심 = vb중앙이라 크기 변경에 불변) · #queueBtn 스코프 = 필터(.vh-fbtn) 무영향 · position:relative = :active scale 무충돌 */
   @media (hover:hover){ .vh-fbtn:hover svg { stroke:var(--fg); } }
   .vh-fbtn.on svg { stroke:var(--accent); filter:drop-shadow(0 0 5px rgba(var(--accent-rgb),.45)); }   /* 활성(필터 적용/열림 · 카드만 on) = 네온그린 강조(평소 off=무채색 무테 · 운영자 260627 점9) */
   /* 모피즘 필터 오버레이 = msgpop 글래스 계승(반투명 결·blur) · 필터 버튼 바로 아래 · 콘텐츠 위 오버랩 · popIn 등장 (260706 3차 8: 필터 우측 이주 → 우측 한도 슬롯 기준 펼침) */
@@ -2764,7 +2765,7 @@
   .asksend .ack svg { width:19px; height:19px; }
   .asksend .ack path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:ackTick .26s .12s ease forwards; }
   .asksend.checked > span:not(.ack) { opacity:0; }   /* 글자만 숨김(체크 .ack 스팬은 제외) */
-  @keyframes ackPop { 0%{transform:scale(0)} 60%{transform:scale(1.15)} 100%{transform:scale(1)} }   /* 피크 1.28→1.15(운영자 260720 "게이지 버튼 생성 후 중간에 사이즈 확 커짐") = 스프링 이징(.18,1.5,.4,1)이 키프레임 오버슛에 이중으로 겹쳐 실측 1.38배 풍선 → 레포 정본 완료체크 팝 dlAckPop(1.15) 형제값에 정렬(실측 1.24배 수렴 · 아웃라이어 통일) · 곡선·시간·구조 불변 = asksend 전 게이지(전송·수정·발행·생성·기록) 균일 */
+  @keyframes ackPop { 0%{transform:scale(0)} 60%{transform:scale(var(--gauge-pop,1.15))} 100%{transform:scale(1)} }   /* 피크 = --gauge-pop 토큰(1.15 · 운영자 260720 "게이지 버튼 생성 후 중간에 사이즈 확 커짐" 1차 1.28→1.15 후 2차 토큰화 "영상도 통일·하나만 바꾸면 되게") = 스프링 이징(.18,1.5,.4,1)+키프레임 오버슛 이중겹침 1.38배 풍선을 dlAckPop(1.15) 형제값에 정렬(실측 1.24배) → 토큰 SSOT로 승격 = edit gckPop과 공유(한 곳만 바꾸면 이미지·영상 동시) · asksend 전 게이지(전송·수정·발행·생성·기록) 균일 */
   @keyframes ackTick { to { stroke-dashoffset:0; } }
   @media (prefers-reduced-motion:reduce) { .asksend .ack { animation:none; transform:scale(1); } .asksend .ack path { animation:none; stroke-dashoffset:0; } }
   /* 붙여넣기/복사(askClip) = 텍스트박스 우상단서 하단 버튼줄로 이동(운영자 260620 — 우측 첨부·붙여넣기·전송 3연·오른손). .sbtn 글래스·컨텍스트 토글 UX 계승, absolute만 해제 */
@@ -7014,7 +7015,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '706cee7 · 260720_2031';  /*BUILDSTAMP*/
+const BUILD_STAMP = '03e676a · 260720_2043';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
