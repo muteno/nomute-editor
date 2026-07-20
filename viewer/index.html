@@ -10766,6 +10766,8 @@ function renderChan() {
   const bhasAll = bsegs && bsegs.some(s => s.k === 'all');   // (3) 폴백(overview 부재 시 all) 노출 근거
   const _b12 = CHANB ? fmtK12(CHANB.updated) : '';   // 표기 = fmtK12 공통("7월 16일 2:18PM" · 운영자 260716 "이런식으로만 · 시간표시 동일하게")
   const btm = _b12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_b12)}</span>` : '';   // 분석 시각 = 단위 헤더 합류(운영자 260716 "표기한대로 가장 위로") — prof 단위 .tdash-time 정본 계승 · stale = 수집 26h+ 죽음 warn(:has 빛멎음(#779)과 동축 = hdr-stale 이중 안전)
+  const _g12 = fmtK12(d.generated_kst);
+  const _ctm = _g12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_g12)}</span>` : '';   // 수집 시각 필 = 데이터 단위 헤더 우측 공통(운영자 260720 "받아온 시간 대분류 우측에 · sns 메뉴 표기 계승") — btm(AI 요약)·prof·메뉴3 top .tdash-time 정본 그대로 · 소스 = d.generated_kst(insta 산출 · prof와 동일) · stale = 26h+ 밀림 warn · 무효 = '' fail-soft
   const bseg = bsegs ? `<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(s.label === '전체 총론' ? '전체' : s.label)}</button>`).join('')}</span>` : null;   // 기간 책갈피(3일~전체) = 헤더 우측 extra(운영자 260716 "옵션 선택지를 세부 NAV(우측 상단)에") — .chu 심층 필 앵커 계승(summary 밖 = 접기 오클릭 0 · 접힘에도 노출) · 세그 = .ch-rangeseg 정본
   if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약${btm}`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q155)
     // 구 ① 분석시각+세그 행(.tb-segrow) 폐지(운영자 260716 "가장 위로 + 옵션 선택지는 세부 NAV로") — 시각 = 헤더 좌(타이틀 옆) · 기간 세그 = 헤더 우측 칩(extra) · 본문 = 분석 텍스트부터 즉시 시작(상단 구분선도 동반 제거)
@@ -10792,7 +10794,7 @@ function renderChan() {
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
     const lastV = (() => { for (let i = series.length - 1; i >= 0; i--) if (series[i][CHAN_MET] != null) return series[i][CHAN_MET]; return null; })();
-    h += gsec('daily', '일일 추이', '<div class="ch-seg">' +
+    h += gsec('daily', `일일 추이${_ctm}`, '<div class="ch-seg">' +
       '<div class="geni-railwrap"><span class="geni-opts geni-rail" id="chMetRail">' +   // 지표 선택 = 화풍 레일 계승(운영자 260715 "동그란 칩 → +동영상 화풍처럼") · | 구분·활성 강조색·‹›/드래그·끝선 페이드
       Object.keys(CH_MET).map((k, i) => `<span class="geni-subit">${i ? '<span class="geni-sep" aria-hidden="true">|</span>' : ''}<button class="geni-opt${k === CHAN_MET ? ' on' : ''}" type="button" data-m="${k}">${CH_MET[k][0]}</button></span>`).join('') +
       '</span><div class="geni-navs"><button type="button" class="geni-nav" data-dir="-1" aria-label="이전"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><button type="button" class="geni-nav" data-dir="1" aria-label="다음"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></div></div>' +
@@ -10807,7 +10809,7 @@ function renderChan() {
   const tkeys = Object.keys(topics).filter(k => topics[k].n >= 5).sort((x, y) => topics[y].views_med - topics[x].views_med);
   if (tkeys.length) {
     const tmax = topics[tkeys[0]].views_med || 1;
-    h += gsec('topic', '주제별 반응', tkeys.map(k => {
+    h += gsec('topic', `주제별 반응${_ctm}`, tkeys.map(k => {
       const v = topics[k];
       return `<div class="ch-trow"><span class="tl">${esc(k)}</span><span class="ch-bar"><i style="width:${Math.max(4, Math.round(v.views_med / tmax * 100))}%"></i></span><span class="tv">${vf(v.views_med)} · n=${v.n}</span></div>`;
     }).join(''));
@@ -10818,7 +10820,7 @@ function renderChan() {
   const sigPk = (d.online_peak_kst || []).map(p => parseInt(p, 10)).filter(n2 => Number.isInteger(n2) && n2 >= 0 && n2 <= 23);   // "21시(KST)" → 21 · 결측 = 밴드 자동 생략(창작 0)
   const sg = chLiftChart(axes.hour_band, 'hour_band', { peaks: sigPk, now: nowK3.getHours() + nowK3.getMinutes() / 60 }) +
     chLiftChart(axes.dow, 'dow', { today: ['일', '월', '화', '수', '목', '금', '토'][nowK3.getDay()] });
-  if (sg) h += gsec('sig', '시간대별 반응', sg + '<div class="sig-note">×배율 = 채널 중앙 대비 관찰 신호(인과 아님) · 회색 바 = 표본량 n(게시 몰림 편향 주의) · 주황 밴드 = 팔로워 접속 피크</div>');
+  if (sg) h += gsec('sig', `시간대별 반응${_ctm}`, sg + '<div class="sig-note">×배율 = 채널 중앙 대비 관찰 신호(인과 아님) · 회색 바 = 표본량 n(게시 몰림 편향 주의) · 주황 밴드 = 팔로워 접속 피크</div>');
   // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·평균 대비 편차. 정렬 = 순수 조회수순 · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 편차 기준 = posts_view_avg(부재 시 표시분 평균 폴백) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
   const _pAll = (d.posts || []).filter(x => !q || String(x.name || '').toLowerCase().includes(q));
   const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (x.views || 0), 0) / _pAll.length : 0);
@@ -10829,7 +10831,7 @@ function renderChan() {
   const posts = _pf.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);
   const chVwR = n => n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(Math.round(n || 0));   // 조회수 = 반올림 정수 만(운영자 260719 "소수 빼고 6만회 식")
   const tpSeg = `<span class="ch-rangeseg ch-hdrseg tp-seg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-tpr="${r[0]}"${CHAN_TPR === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span>';   // TOP 게시물 기간 세그 = 헤더 우측(운영자 260719 "토글 항목 옆에·90일 포함") · data-tpr = CHAN_TPR 축(daily data-r과 분리) · 켜진 것 강조색
-  if (posts.length) h += gsec('tpost', 'TOP 게시물', posts.map((x, i) => {
+  if (posts.length) h += gsec('tpost', `TOP 게시물${_ctm}`, posts.map((x, i) => {
     const rl = x.format === '릴스';
     const dev = _avgV > 0 && x.views ? '×' + (x.views / _avgV).toFixed(1) : '—';   // 편차 = ×배수만(운영자 260719 "평균 빼고")
     return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-vw">${chVwR(x.views)}</span><span class="ch-dev">${dev}</span></a>`;
@@ -10837,7 +10839,7 @@ function renderChan() {
     tpSeg);
   const th = (d.thumbs || []).slice(0, 12);   // 커버 없는 릴스도 보존(th='' → 캡션 텍스트 타일 · 운영자 260718)
   const REELGLYPH = '<svg class="rl" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.42)"/><path d="M10 8.5v7l6-3.5z" fill="rgba(255,255,255,.96)"/></svg>';   // 릴스 표식 ▶ — 커버 릴스·텍스트 타일 공용(운영자 260718 통일 · 피드 무표식 = 포맷 판별)
-  if (th.length) h += gsec('recent', '최근 게시물', '<div class="ch-grid">' + th.map(x => x.th
+  if (th.length) h += gsec('recent', `최근 게시물${_ctm}`, '<div class="ch-grid">' + th.map(x => x.th
     ? `<a class="ch-th" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${x.r ? REELGLYPH : ''}<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(x.th)}" onerror="this.parentNode.style.display='none'" alt=""></a>`
     : `<a class="ch-th txt" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener">${REELGLYPH}<span class="cap">${esc(x.t || '')}</span></a>`).join('') + '</div>');
   // 좌측 책갈피 레일 = 메뉴3 .trailwrap/.trail 원문 계승(운영자 260713 "일치할수록 좋아" — CSS 클래스 공유 = 신규 스타일 0 · fixed는 chanview[hidden] 조상 연동 자동 소거 = trendview 동일 메커니즘) · 버튼 = TOP 위화살(정본 SVG path 동일) + 단위 순번 숫자(헤더 배지 정체성 · 숫자 = 문자 렌더 허용 축)
