@@ -811,6 +811,9 @@
   .demo-lgd { flex-direction:column; gap:1px; min-width:0; }   /* raw-ok: gap1 = 범례 행 미세 광학(도트 6px 행높이 리듬 · .ch-lgd 도트·색·크기 정본 계승 위 세로 스택 전환만) */
   .demo-lgd i { white-space:nowrap; }
   .demo-lgd i::before { background:var(--dc,var(--mut)); }   /* 도트색 = 세그먼트 주입(--dc) · 도트 크기·간격 = .ch-lgd 정본 */
+  .ch-demo-b [data-ax] { transition:opacity .22s ease, transform .22s ease; }   /* raw-ok: .22s ease 쌍 = 금융 종목 회전 전환(.fin-row 689) 정본 그대로 */
+  .ch-demo-b .demo-swap { opacity:0; transform:translateY(-5px); }   /* 회전 전환 프레임 = .fin-swap(690) 값 그대로 계승 */
+  @media (max-width:640px) { .ch-demo-b { grid-template-columns:1fr; } .ch-demo-b [data-ax]:not(.on) { display:none; } .ch-demo-b .demo-viz { flex-direction:column; } }   /* 폰 = 성별↔연령 1축씩 교대(운영자 260720 "모바일 도넛 하나씩 돌아가면서" — 협폭 2도넛 압착 해소) + 도넛 위·범례 아래 세로 스택(협폭 범례 우변 클립 해소 · 좌변 정렬 유지) · PC = 2열 동시 유지 · 640 경계 = .rt2col·fin-split 폰 관례 계승 */
   .ch-st .fd-paren { font-size:var(--fs-sm); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; color:var(--mut); }   /* 팔로워 증감 = 카운트 옆 괄호(운영자 260720 Q290 "64,079 (+N) · 명 빼고") — 값 b 안이라 굵기 계승 · 양수만 강조 */
   .ch-st .fd-paren.fd-up { color:var(--accent); }
   .ch-st .fd-paren.fd-dn { color:var(--danger); }
@@ -10839,8 +10842,8 @@ function renderChan() {
     if (rest) { gseg.push({ lb: '그 외', pct: rest, col: 'rgba(255,255,255,.13)' }); aseg.push({ lb: '그 외', pct: rest, col: 'rgba(255,255,255,.13)' }); }
     const donut = segs => { let off = 25; return `<svg class="demo-donut" viewBox="0 0 36 36" aria-hidden="true">` + segs.map(s2 => { const c = `<circle cx="18" cy="18" r="15.9" fill="none" stroke="${s2.col}" stroke-width="4.6" pathLength="100" stroke-dasharray="${s2.pct} ${100 - s2.pct}" stroke-dashoffset="${off}"/>`; off -= s2.pct; return c; }).join('') + '</svg>'; };   // pathLength=100 정규화 · offset 25 = 12시 시작·시계방향 누적(100% 누적 도넛)
     const lgd = segs => `<span class="ch-lgd demo-lgd">` + segs.map(s2 => `<i style="--dc:${s2.col}">${esc(s2.lb)} ${Math.round(s2.pct)}%</i>`).join('') + '</span>';   // 범례 = .ch-lgd 도트 문법 계승(--dc = 도트색 주입)
-    const viz = segs => `<div class="demo-viz">${donut(segs)}${lgd(segs)}</div>`;
-    return `<div class="ch-st ch-demo"><div class="ch-demo-b">${viz(gseg)}${viz(aseg)}<span class="ch-k">성별</span><span class="ch-k">연령</span></div></div>`;   // 2×2 그리드(도넛행|키워드행) = 범례 줄수가 달라도 두 키워드가 같은 행 정렬(형제 정렬 균일 · 값 위·라벨 아래 문법 유지)
+    const viz = (segs, ax, on) => `<div class="demo-viz${on ? ' on' : ''}" data-ax="${ax}">${donut(segs)}${lgd(segs)}</div>`;
+    return `<div class="ch-st ch-demo"><div class="ch-demo-b">${viz(gseg, 'g', 1)}${viz(aseg, 'a', 0)}<span class="ch-k on" data-ax="g">성별</span><span class="ch-k" data-ax="a">연령</span></div></div>`;   // 2×2 그리드(도넛행|키워드행) = 범례 줄수가 달라도 두 키워드가 같은 행 정렬(형제 정렬 균일 · 값 위·라벨 아래 문법 유지) · data-ax/.on = 폰 축 교대 회전(운영자 260720 "모바일 하나씩 돌아가면서" — PC는 미디어 밖이라 2열 동시 불변)
   };
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
@@ -11010,6 +11013,25 @@ function renderChan() {
   wireSigCharts(box);   // 시간대별 반응 차트 툴팁·호버점 배선(최근접 포인트 = 일일 추이 크로스헤어 문법 대칭)
   // 추이 차트 배선(지표 칩·기간 세그·crosshair 툴팁 — 재렌더 = 스크롤 보존)
   box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
+  // 폰 도넛 축 회전(운영자 260720 "모바일 하나씩 돌아가면서") — 금융 종목 회전(메뉴3 _finRot) 문법 그대로: 5s·전환 프레임 210ms·재렌더 정리·DOM 이탈 자가해제·fail-soft · 폰 미디어일 때만 틱 실행(PC = 2열 동시 표시라 무동작 = 헛페이드 0)
+  try {
+    (window._chDemoRot || (window._chDemoRot = [])).forEach(clearInterval); window._chDemoRot = [];
+    const _dm = box.querySelectorAll('.ch-demo-b [data-ax]');
+    if (_dm.length) {
+      let _ax = 'g';
+      const _t = setInterval(() => {
+        try {
+          if (!document.body.contains(_dm[0])) { clearInterval(_t); return; }   // box 이탈(재렌더 교체·타 메뉴) = 자가 해제
+          if (!matchMedia('(max-width:640px)').matches) return;   // PC = 교대 불필요(양축 상시) — 리사이즈 대응 = 틱마다 재평가
+          const _nx = _ax === 'g' ? 'a' : 'g';
+          _dm.forEach(el2 => { if (el2.classList.contains('on')) el2.classList.add('demo-swap'); });
+          setTimeout(() => { _dm.forEach(el2 => { el2.classList.toggle('on', el2.dataset.ax === _nx); el2.classList.remove('demo-swap'); }); }, 210);
+          _ax = _nx;
+        } catch (e) { clearInterval(_t); }
+      }, 5000);
+      window._chDemoRot.push(_t);
+    }
+  } catch (e) {}
   geniRailSetup('#chMetRail'); geniRailUpd($('#chMetRail'));   // 지표 레일 = 화풍 레일 배선 계승(드래그·‹›·끝선 페이드 · geniRailSetup 범용 재사용 · 재렌더마다 새 노드라 _railSet 가드 자동 통과)
   box.querySelectorAll('[data-bs]').forEach(b => b.addEventListener('click', () => { CHAN_BSEC = b.dataset.bs; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 브리프 기간 책갈피(3일~전체) — [data-bs] 통합 셀렉터(우상단 세그→세로 내비 미니바 이관(260716)에도 불변) · 재렌더·스크롤 보존
   box.querySelectorAll('.ch-rangeseg:not(.tb-seg):not(.cs-seg):not(.tp-seg):not(.pf-seg) button').forEach(b => b.addEventListener('click', () => { CHAN_RANGE = b.dataset.r; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // :not(.tb-seg) = 브리프 기간 세그 · :not(.cs-seg) = 채널 소스 세그(Q155) · :not(.tp-seg) = TOP 게시물 세그 · :not(.pf-seg) = 프로필 공통 세그(CHAN_PROF_R 별축 Q290) — data-r 없는 세그가 CHAN_RANGE 오염 차단(일일추이 기간 세그만)
