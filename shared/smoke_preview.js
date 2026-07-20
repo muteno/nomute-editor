@@ -150,11 +150,12 @@ async function runOnce(pg, reqLog) {
   const c8 = await pg.evaluate(S => {
     const draw = (img, w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(img, 0, 0, w, h); return cx.getImageData(0, 0, w, h).data; };
     const probe = {};
-    const chips = [...document.querySelectorAll('#cpPrevOpts .ropt')];
-    const card = chips.find(b => b.textContent === '카드뉴스'); if (card) card.click();   // P1 = 첨부가 보이는 카드 변형에서 실측
+    // 변형 전환 = 선택칩(#cpPrevOpts) 제거(Q293) 후 = 내부 상태(cpPrevSel) 직접 세팅 · 라벨→인덱스는 cpPrevVariants().v로 조회(로직이 정본)
+    const setVar = lbl => { try { const vv = cpPrevVariants().v; const i = vv.findIndex(x => x.lbl === lbl); if (i >= 0) { cpPrevSel = i; renderCpPrev(); return true; } } catch (_) {} return false; };
+    setVar('카드뉴스');   // P1 = 첨부가 보이는 카드 변형에서 실측
     const bg = document.querySelector(S.stage + ' img.cpv-bg:not([data-logo])');
     if (bg && bg.complete) { const d = draw(bg, 54, 67); let mn = 255, mx = 0; for (let i = 0; i < d.length; i += 4) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l < mn) mn = l; if (l > mx) mx = l; } probe.p1 = Math.round(mx - mn); }
-    const back = chips.find(b => b.textContent === '흰칸'); if (back) back.click();       // 원복 = 후속 어서션 결정론 유지
+    setVar('흰칸');       // 원복 = 후속 어서션 결정론 유지
     const lg = document.querySelector(S.logo);
     if (lg && lg.complete) { const W = 90, H = 160, d = draw(lg, W, H); let rows = 0; for (let y = 0; y < H; y += 2) { let rmn = 255, rmx = 0; for (let x = 0; x < W; x++) { const i = (y * W + x) * 4, l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l < rmn) rmn = l; if (l > rmx) rmx = l; } if (rmx - rmn > 40) rows++; } probe.p2 = rows; }
     const cv = document.createElement('canvas'); cv.width = 240; cv.height = 48; const cx = cv.getContext('2d', { willReadFrequently: true });
