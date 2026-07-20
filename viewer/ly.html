@@ -342,6 +342,13 @@
   .lypop .lprow .lp-ts { flex:none; color:var(--mut); font-variant-numeric:tabular-nums; font-size:var(--fs-xs); }
   .lypop .lprow .lp-t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lypop .lp-empty { min-height:44px; display:flex; align-items:center; color:var(--mut); font-size:var(--fs-sm); }
+  /* 로딩 도트(불러오는 중… 대체) — beui dots 계승(yeulmaru-promo 260707 로더 플레이그라운드) · 강조색만 var(--accent) */
+  .nmld { display:inline-flex; align-items:center; justify-content:center; gap:5px; line-height:0; color:var(--accent); }
+  .nmld i { width:7px; height:7px; border-radius:50%; background:currentColor; animation:nmldBounce .9s var(--ease,cubic-bezier(.2,.7,.3,1)) infinite; }
+  .nmld i:nth-child(2) { animation-delay:.15s; }
+  .nmld i:nth-child(3) { animation-delay:.3s; }
+  @keyframes nmldBounce { 0%,100% { transform:translateY(0); opacity:.5; } 50% { transform:translateY(-6px); opacity:1; } }
+  @media (prefers-reduced-motion:reduce){ .nmld i { animation:none; opacity:.6; } }
   /* 미리보기 쉘 = CII 「합성 미리보기 쉘」 행 통째 계승(thumb .cpprev 정본 — 스테이지 내용물만 앱별 · 사잇값 재창작 금지) */
   .lysh { position:sticky; top:0; z-index:7; margin:-18px -16px var(--sp-1); padding:16px 16px var(--sp-2); background:#121212; }   /* raw-ok: mat 16/-16 = 쉘 정본(.wrap padding-x 상쇄 브레이크아웃) · #121212 = 쉘 필러 동일값 계승 · 상단 -18 = .wrap padding-top(18) 상쇄 = 스크롤 0에서도 뷰포트 밀착(thumb .cpprev -18 동형 · 운영자 260717 "어떤 결의 결과물을 만들든 위에는 고정") · z 7 = 픽토 존(.src-pict z6 — 걸침 클립 교정층)보다 한 층 위(스크롤 시 소스 행이 액자 밑으로 잠김 · 제작본 팝업 z12는 그대로 위) */
   .lysh::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 페이드 스커트 14/.7 = 쉘 정본 원문 */
@@ -1784,7 +1791,7 @@ async function lyRestoreLast() {
   const msg=t=>{ list.innerHTML='<div class="lp-empty">'+esc(t)+'</div>'; };
   pb.addEventListener('click', async()=>{
     if(!pop.hidden){ close(); return; }
-    pop.hidden=false; pb.setAttribute('aria-expanded','true'); msg('불러오는 중…');
+    pop.hidden=false; pb.setAttribute('aria-expanded','true'); list.innerHTML='<div class="lp-empty"><span class="nmld" role="status" aria-label="불러오는 중"><i></i><i></i><i></i></span></div>';   // 로딩 = 도트 픽토그램(msg()는 에러 텍스트 전용 유지)
     try{
       const r=await fetch('ly_out/index.json?t='+Date.now());
       const raw=r.ok? await r.text():'[]';
