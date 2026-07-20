@@ -390,7 +390,7 @@
   #opaRow .rsz-opts.atEnd { -webkit-mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black 100%); mask-image:linear-gradient(90deg,transparent 0,black var(--rail-fade),black 100%); }
   #opaRow .rsz-opts.atStart.atEnd { -webkit-mask-image:none; mask-image:none; }
   #opaRow .opa-navs { display:none; flex:0 0 auto; align-items:center; margin-left:2px /* raw-ok: 레일↔화살표 광학 간격 = index .geni-navs 정본 */; }
-  #opaRow.rail-ovf .opa-navs { display:flex; }   /* 넘칠 때만 ‹› 표시(운영자 260718 "모바일에서 opa가 길면 이렇게 넘어가야" — 구 @media hover PC 한정 폐지 = 폰 터치도 화살표 어포던스 · JS railUpd가 overflow 판정 토글) */
+  @media (hover:hover) and (pointer:fine) { #opaRow .opa-navs { display:flex; } }   /* ‹› = PC(hover)에서 항상 표시 = 화풍 레일(index .geni-navs) 정본 exact 계승(운영자 260720 "opa 선택부 = 첨부2[화풍] 기준 통일") — 구 rail-ovf 오버플로 한정은 #chMetRail(지표 레일) 적응형 문법 오적용이라 8칸 숫자가 안 넘쳐 PC서 화살표 미표시 → 화풍(#geniStyle) 문법으로 교정 · 모바일 = 스와이프(화풍 동일 · 화살표 없음) */
   #opaRow .opa-nav { width:17px; height:22px /* raw-ok: 화살표 히트 = index .geni-nav 정본 exact */; display:grid; place-items:center; background:none; border:none; color:var(--mut); cursor:pointer; padding:0; border-radius:var(--r-s); transition:color .15s, background .15s; -webkit-tap-highlight-color:transparent; }
   #opaRow .opa-nav:hover { color:var(--accent); background:rgba(var(--accent-rgb),.08); }
   #opaRow .opa-nav:active { transform:scale(var(--press-m)); }
@@ -1776,12 +1776,11 @@ function opaSet(vals) { cOpaSel = [...new Set((vals || []).map(v => parseInt(v, 
   (function railSetup() {
     const rail = wrap; if (!rail || rail._railSet) return; rail._railSet = true;
     const navs = $('#opaRow .opa-navs');
-    const upd = () => {   // 끝선 페이드 + 화살표 표시(넘칠 때만·모바일 포함)·disabled
+    const upd = () => {   // 끝선 페이드(atStart/atEnd) + 화살표 끝단 disabled — ‹› 표시는 CSS @media hover(화풍 #geniStyle 정본 · geniRailUpd 동일 축)
       const max = rail.scrollWidth - rail.clientWidth;
       rail.classList.toggle('atStart', rail.scrollLeft <= 1);
       rail.classList.toggle('atEnd', max <= 1 || rail.scrollLeft >= max - 1);
-      const row = $('#opaRow'); if (row) row.classList.toggle('rail-ovf', max > 1);   // 넘침 = ‹› 노출(운영자 260718 "길면 이렇게" · 안 넘치면 화살표 숨김 = 공백 낭비 0)
-      if (navs) { const nv = navs.querySelectorAll('.opa-nav'); if (nv[0]) nv[0].disabled = rail.scrollLeft <= 1; if (nv[1]) nv[1].disabled = max <= 1 || rail.scrollLeft >= max - 1; }
+      if (navs) { const nv = navs.querySelectorAll('.opa-nav'); if (nv[0]) nv[0].disabled = rail.scrollLeft <= 1; if (nv[1]) nv[1].disabled = max <= 1 || rail.scrollLeft >= max - 1; }   // 화풍 정본과 동일 = 안 넘치면 양끝 disabled(회색) · ‹› 자체는 상시 노출
     };
     let down = false, moved = false, sx = 0, sl = 0;
     rail.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; down = true; moved = false; sx = e.clientX; sl = rail.scrollLeft; rail.classList.add('grabbing'); });
