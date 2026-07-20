@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# OCR 라인(env LINES = [{i,t}] JSON) → claude -p(강조 선정+한글 번역) → viewer/tr_out/<id>/plan.json.
+# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료). 골격 = kmake.sh 그대로(폴오버 SSOT·계측·인라인 재시도 — 운영자 260720 Q274).
+set -uo pipefail
+ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
+PROMPT_FILE="prompts/tr-auto.md"
+source "$ROOT/shared/model_env.sh"          # 모델 단일 원천(PIPE_MODEL · SYS-08)
+source "$ROOT/shared/claude_transient.sh"   # is_quota()/claude_failover()/is_transient() SSOT — 4계정 자동 로테이션(§📰)
+source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 계측(metrics shard)
+MODEL="$PIPE_MODEL"
+INLINE_TRIES="${INLINE_TRIES:-4}"
+ID="${1:?usage: trauto.sh <id> (LINES=env)}"
+OUTDIR="viewer/tr_out/${ID}"; mkdir -p "$OUTDIR"
+
+[ -n "${LINES:-}" ] || { echo "::error::LINES(OCR 라인) 비어있음"; echo "exit: 빈 입력" > "$OUTDIR/error.log"; exit 1; }
+
+# 입력을 번호 라인 텍스트로 정개(모델 친화 · JSON 원문도 뒤에 동봉)
+NUM_LINES="$(python3 - <<'PY'
+import json, os
+try:
+    ls = json.loads(os.environ['LINES'])
+    print('\n'.join(f"[{l['i']}] {l['t']}" for l in ls if str(l.get('t','')).strip()))
+except Exception as e:
+    print(f"(파싱 실패: {e})")
+PY
+)"
+
+prompt="$(cat "$PROMPT_FILE")
+${NUM_LINES}"
+
+# 순수 텍스트 작업 = 도구 전부 불허(헤드리스 무중단 · kmake와 동일 축, 지침 Read조차 불요)
+inline_delay=15
+_to_tried=0
+for attempt in $(seq 1 "$INLINE_TRIES"); do
+  out="$(printf '%s' "$prompt" | METER_SRC=tr METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
+        --model "$MODEL" \
+        --effort max \
+        --disallowedTools "Read,Glob,Grep,WebFetch,WebSearch,Write,Edit,NotebookEdit,Bash,Task" \
+        --max-turns 8 \
+        2> "${OUTDIR}/stderr.log")"
+  rc=$?
+  if { [ $rc -eq 0 ] && grep -qm1 '"chips"' <<<"$out"; } || grep -qm1 '^TRAUTO_FAILED' <<<"$out"; then
+    break
+  fi
+  if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; continue; fi
+  if claude_failover "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then continue; fi
+  if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
+    echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
+    sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  break
+done
+
+if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^TRAUTO_FAILED' <<<"$out"; then
+  { echo "exit_code: $rc"; echo "---- stderr ----"; cat "${OUTDIR}/stderr.log" 2>/dev/null
+    echo "---- stdout(head) ----"; printf '%s\n' "$out" | head -n 20; } > "${OUTDIR}/error.log"
+  echo "::error::tr 플랜 생성 실패 (rc=$rc)"; exit 1
+fi
+
+# JSON 추출({ 첫 등장부터) + 스키마 검증 후에만 저장(깨진 plan 커밋 = 폴링 폼 오동작 차단)
+printf '%s\n' "$out" | sed -n '/^{/,$p' > "${OUTDIR}/plan.raw"
+python3 - "$OUTDIR" <<'PY' || { echo "::error::plan JSON 검증 실패"; cp "${OUTDIR}/plan.raw" "${OUTDIR}/error.log"; exit 1; }
+import json, sys, os
+d = sys.argv[1]
+plan = json.load(open(os.path.join(d, 'plan.raw'), encoding='utf-8'))
+assert isinstance(plan.get('hl'), list) and plan['hl'] and all(isinstance(i, int) for i in plan['hl']), 'hl 불량'
+assert isinstance(plan.get('chips'), list) and plan['chips'], 'chips 불량'
+for c in plan['chips']:
+    assert isinstance(c.get('a'), int) and str(c.get('t', '')).strip(), 'chip 불량'
+plan['v'] = 1
+json.dump(plan, open(os.path.join(d, 'plan.json'), 'w', encoding='utf-8'), ensure_ascii=False)
+PY
+rm -f "${OUTDIR}/plan.raw" "${OUTDIR}/stderr.log"
+echo "성공 → ${OUTDIR}/plan.json ($(wc -c < "${OUTDIR}/plan.json") bytes)"
