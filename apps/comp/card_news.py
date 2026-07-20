@@ -168,13 +168,32 @@ def _strip_emphasis(line):
 
 
 def parse_segments(line):
-    """*강조* 마킹 파싱 → [(type, text), ...]"""
+    """*강조* 마킹 파싱 → [(type, text), ...]
+    운영자 260720: 별표 run 1~2개 = 강조 델리미터(토글) · 3개 이상 연속 = 리터럴(글자 = 마스킹 보존).
+    프론트 normEmph2 + 미리보기 renderEmph2 + nomute_overlay.parse와 로직 동일(정본 4면 일치)."""
     segments = []
-    for part in re.split(r'(\*[^*]+\*)', line):
-        if part.startswith('*') and part.endswith('*'):
-            segments.append(('h', part[1:-1]))
-        elif part:
-            segments.append(('n', part))
+    on = False
+    buf = ''
+    i = 0
+    n = len(line)
+    while i < n:
+        if line[i] == '*':
+            j = i
+            while j < n and line[j] == '*':
+                j += 1
+            if j - i >= 3:                                    # 3+ = 리터럴
+                buf += line[i:j]
+            else:                                            # 1~2 = 델리미터 토글
+                if buf:
+                    segments.append(('h' if on else 'n', buf))
+                    buf = ''
+                on = not on
+            i = j
+        else:
+            buf += line[i]
+            i += 1
+    if buf:
+        segments.append(('h' if on else 'n', buf))
     return segments
 
 

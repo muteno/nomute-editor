@@ -106,10 +106,22 @@ def draw_t(d,x,y,t,f,c,tp,us):
 
 
 def parse(t):
-    sg=[]
-    for p in re.split(r'(\*[^*]+\*)',t):
-        if p.startswith('*') and p.endswith('*'): sg.append(('h',p[1:-1]))
-        elif p: sg.append(('n',p))
+    # 강조 파서(운영자 260720): 별표 run 1~2개 = 강조 델리미터(토글) · 3개 이상 연속 = 리터럴(글자 그대로 = 마스킹 010-****·@id*** 보존).
+    # "강조는 안에 글자가 들어가는 것" — 3+ 반복은 마커가 아니라 콘텐츠. 프론트 normEmph2 + 미리보기 renderEmph2와 로직 동일(정본 3면 일치). 'h'=강조(초록)·'n'=일반(흰).
+    sg=[]; on=False; buf=''
+    i=0; n=len(t)
+    while i<n:
+        if t[i]=='*':
+            j=i
+            while j<n and t[j]=='*': j+=1
+            if j-i>=3: buf+=t[i:j]                                  # 3+ = 리터럴
+            else:
+                if buf: sg.append(('h' if on else 'n', buf)); buf=''  # 1~2 = 델리미터 토글
+                on=not on
+            i=j
+        else:
+            buf+=t[i]; i+=1
+    if buf: sg.append(('h' if on else 'n', buf))
     return sg
 
 

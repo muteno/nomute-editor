@@ -15,6 +15,7 @@
           --amber:#FFE13D; --amber-rgb:255,225,61;
           --warn:#FFE13D; --warn-rgb:255,225,61; --arm:#FFE13D; --arm-rgb:255,225,61; --on-arm:#241C02;
           --accent-4:#FFE13D; --accent-4-rgb:255,225,61;   /* index --accent-4 값 미러(전체 다운로드 버튼 통이식 사본이 참조 · amber/warn/arm과 동일값 = 신규색 0 · 없으면 var() 무효→fg 상속 폴백 실측 260706) */
+          --accent-2:#d8ff3d; --accent-6:#FF5EC8;   /* index :root 값 미러(--accent-4 미러 선례) — 입력칸 별표쌍 색순환용(1=라임 --accent-2 · 3=핑크 --accent-6 · 2=터콰 --accent · 4=레몬 --accent-4) · 운영자 260720 · 신규색 아님(index SSOT 계승) */
           }   /* --press-* 사다리 = tokens.css 상속(인라인 이중정의 제거·감사 260704 · comp 기준 통일 · 값 동일 회귀0) */
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 전역 무효화(index 통일·분신술10) */
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* 모바일 기본 하늘색 탭 하이라이트 블록 제거 = 뉴스요약(index) 전역 계승 · 운영자 260626 */
@@ -147,7 +148,11 @@
   .covrow textarea { min-height:104px; }                   /* 자막 텍스트칸 = 3줄(콘텐츠 96px) 스크롤 없이 들어가게 +헤드룸(전역 96 → 104·운영자 260625). 슬롯도 ResizeObserver로 동기 */
   /* 입력칸 별표(*) 강조색 하이라이트(운영자 260720) — textarea는 글자별 색이 불가 → 동일 타이포 오버레이를 위에 겹쳐 * 글리프만 accent. 정상 글자는 textarea 본체(항상 crisp)·오버레이의 정상 글자는 transparent(자리만 차지해 * x위치 정합) · 굵기=본체와 동일(폭 정합 = 다중 *** 안 밀림) · pointer-events 없음 = 편집/캐럿/선택 무간섭. 강조(*) 쓰는 칸(#cLines·#lines)만 attachStarHL로 부착. 폰트·패딩(클립 우측 여백 포함)·자간·행높이 = attachStarHL이 textarea computedStyle을 그대로 복사(정합 보장·raw 창작 0). */
   .ta-star { position:absolute; top:0; left:0; width:100%; height:100%; margin:0; border:1px solid transparent; box-sizing:border-box; white-space:pre-wrap; overflow-wrap:break-word; word-break:break-word; overflow:hidden; pointer-events:none; color:transparent; background:transparent; z-index:1; -webkit-user-select:none; user-select:none; }   /* 구조만 — 타이포·패딩은 JS computed 복사 */
-  .ta-star .hs { color:var(--accent); }   /* 별표 글리프 = 강조색(굵기 미변경 = 본체 *와 폭 동일 → 정합 유지) */
+  /* 입력칸 별표쌍 색순환(운영자 260720) — 강조쌍(1~2별표·사이 글자)마다 색 순환(1라임·2터콰·3핑크·4레몬), 3+연속·빈열림 = 제외(mut). 굵기 미변경 = 본체 *와 폭 동일(정합 유지). */
+  .ta-star .hs { color:var(--mut); }   /* 폴백(미분류 안전망) */
+  .ta-star .hs-p0 { color:var(--accent-2); } .ta-star .hs-p1 { color:var(--accent); } .ta-star .hs-p2 { color:var(--accent-6); } .ta-star .hs-p3 { color:var(--accent-4); }
+  .ta-star .hs-x { color:var(--mut); }   /* 3+연속 = 강조 아님(마스킹) 제외 */
+  .ta-star .hs-d { color:var(--mut); opacity:.5; }   /* 빈 열림(짝 없음) = 흐리게 */
   /* 이미지 슬롯 = 전경(플레이트) 완전 제거 → 픽토그램만(강조색) · 배경·테두리·blur 없음 · '이미지' 라벨 제거(운영자 260626) */
   .covimg { flex:1 1 0; min-width:0; position:relative; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-start; gap:3px;
     min-height:104px; border:none; border-radius:var(--r-s); color:var(--accent); cursor:pointer; overflow:hidden;
@@ -1377,7 +1382,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   const px = n => (n / 1080 * W).toFixed(1) + 'px';                 // 가로축(폰트·마진)
   const py = n => (n / bh * 100).toFixed(2) + '%';                  // 세로축(위치)
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const emph = s => esc(s).replace(/\*([^*]+)\*/g, `<b style="color:${CPV_GREEN};font-weight:inherit">$1</b>`);   // *별표* = 강조(산출 미러)
+  const emph = s => renderEmph2(s).map(([k, v]) => k === 'h' ? `<b style="color:${CPV_GREEN};font-weight:inherit">${esc(v)}</b>` : esc(v)).join('');   // 1~2별표=강조(산출색 CPV_GREEN 유지)·3+=리터럴(마스킹) — 백엔드 parse2 미러(운영자 260720)
   let h = '';
   if (cur.k === 'hdr' || cur.k === 'nobg') {                        // 헤더 = reels2 좌표 미러(부제 y270·제목 y385·흰밴드 590~1431) · 자간 = _fit_tr 쌍둥이(estHeaderTr) 줄별 미러 + 무줄바꿈(합성기 = 절대 안 접힘 · 운영자 260716 "자간의 영역도 미리보기에")
     h += `<img class="cpv-bg" data-logo src="assets/brand/reels2_base_preview.webp" alt="">`;   // 릴스2 빈배경(그라데+로고 소성) 실자산 축소판 = 로고 상시 미러(운영자 260714 Q03④ — 정본 apps/thumbnail/assets/reels2_base.png · build-viewer가 assets/brand → viewer 복사 서빙)
@@ -2296,7 +2301,15 @@ function attachStarHL(ta) {
   const sync = () => { const cs = getComputedStyle(ta); ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'textIndent', 'textAlign'].forEach(k => { hl.style[k] = cs[k]; }); };   // 타이포·패딩(클립 우측 42 포함) 실측 복사 = 정합 · 폭/좌상은 CSS(100%·0,0)이 textarea와 이미 일치
   const syncBox = () => { if (ta.offsetHeight) hl.style.height = ta.offsetHeight + 'px'; };   // 높이만 textarea 실높이로(래퍼가 클립여유 7px 더 큼 배제) · 숨김(offsetHeight 0)일 땐 스킵 → 표시 시 ResizeObserver가 정합
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const paint = () => { hl.innerHTML = esc(ta.value).replace(/\*/g, '<span class="hs">*</span>'); hl.scrollTop = ta.scrollTop; };
+  const paint = () => {   // 별표쌍 색순환 색칠(classifyStars) — 정상 글자는 transparent(본체 crisp), * 글리프만 쌍색/제외
+    const s = ta.value, cls = classifyStars(s); let h = '';
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (ch === '*') { const c = cls[i]; const mod = (c === 'x' || c === 'd') ? (' hs-' + c) : (typeof c === 'number' ? (' hs-p' + c) : ''); h += '<span class="hs' + mod + '">*</span>'; }
+      else h += esc(ch);
+    }
+    hl.innerHTML = h; hl.scrollTop = ta.scrollTop;
+  };
   ta.addEventListener('input', paint);
   ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop; });
   window.addEventListener('resize', () => { sync(); syncBox(); });
@@ -2317,24 +2330,57 @@ function attachStarHL(ta) {
 let cardIo = null;   // 카드 에디터 copy/paste 아이콘 갱신자 — 정의는 칩 에디터(edLines/buildEmphText) 뒤에서(TDZ 회피)
 
 // ---- 입력 → params ----
-// 강조(*) 정규화 — 별표 run(`*`·`**`…)을 단일 강조 토글로 보고, 줄바꿈을 넘는 강조는 줄 끝에서 닫고 다음 줄에서 다시 연다.
-// 왜: 렌더러(nomute_overlay.parse)가 *줄 단위*로 `*…*`를 파싱 → 한 줄 안에서 닫히지 않으면 별표가 리터럴로 그려짐(깨짐). 그래서 `**볼드**`나 줄 걸친 강조가
-// "강조를 넣어주세요"로 막히던 것을 프론트 변환만으로 해소(백엔드 흰=고정·nomute_*.py 불변 = 렌더 회귀 0). 운영자 260625.
+// 강조(*) 정규화 — 별표 run 규칙(운영자 260720): 1~2개 = 강조 델리미터(토글) · 3개 이상 연속 = 리터럴(글자 그대로 = 마스킹 010-****·@id*** 등).
+//   "강조는 안에 글자가 들어가는 것" — 3개+ 반복은 강조 마커가 아니라 콘텐츠라, 강조 안에 그대로 남긴다(전체 강조 유지 + 마스킹 보존).
+//   줄 넘는 강조는 줄 끝서 닫고 다음 줄서 재개 · 빈 강조 구간은 버려 고아 별표 원천 차단 → 출력 델리미터는 항상 단일 `*` 균형(파서 parse2 = 미리보기·백엔드 공통)이라 미리보기=산출물 일치.
+//   ⚠ 파서 3곳 동반 변경 필수: 미리보기 renderEmph2 + 백엔드 nomute_overlay.parse + card_news.parse_segments(모두 1~2=델리미터·3+=리터럴). 하나라도 구 `\*[^*]+\*`면 산출물 깨짐.
 function normEmph(text) {
-  // 별표 run(개수 무관) = 강조 토글 · 줄 넘는 강조는 줄 끝서 닫고 다음 줄서 재개.
-  // 빈 강조 구간은 버려 고아 별표(**·홀수 run 잔재)를 원천 차단 → 출력은 항상 균형 `*…*`(파서 \*[^*]+\* = 미리보기 emph·백엔드 parse 공통)라 미리보기=산출물 일치.
-  // 운영자 260720: 구현이 안 닫힌 강조를 `out+'*'`로 마감 → 이미 `*`로 끝난 입력(예 `*A***B*`)에 `*`를 덧대 끝에 `**` 리터럴 누출(미리보기·산출물에 `**` 표시) 봉합. 정상 케이스 출력은 구본과 동일(회귀 0 · Node 실증).
   const src = String(text == null ? '' : text);
-  let out = '', on = false, open = false;                 // on=논리 강조상태(토글 누적) · open=현재 줄에 실제로 연 '*'(닫아야 함)
+  let out = '', on = false, open = false;                 // on=논리 강조상태(토글 누적) · open=실제로 연 '*'(닫아야 함)
   const flushClose = () => { if (open) { out += '*'; open = false; } };
   for (const p of src.split(/(\*+|\n)/)) {
     if (p === '') continue;
-    if (/^\*+$/.test(p)) { on = !on; }                     // 토글만 — 실제 출력은 텍스트 만날 때 지연(빈 구간 = 별표 미출력)
+    if (/^\*+$/.test(p)) {
+      if (p.length >= 3) { if (on && !open) { out += '*'; open = true; } out += p; }   // 3개+ = 리터럴(강조 중이면 그 안에 그대로 · 마스킹 보존)
+      else { on = !on; }                                   // 1~2개 = 델리미터 토글(실텍스트 만날 때 지연 출력 = 빈 구간 제거)
+    }
     else if (p === '\n') { flushClose(); out += '\n'; }    // 줄 끝 = 열린 강조 닫고 개행(on 유지 시 다음 줄 첫 텍스트서 재개)
-    else { if (on && !open) { out += '*'; open = true; } if (!on) flushClose(); out += p; }   // 실텍스트 앞에서만 열고/닫음 = `*`는 항상 텍스트에 인접(고아 없음)
+    else { if (on && !open) { out += '*'; open = true; } if (!on) flushClose(); out += p; }   // 실텍스트 앞에서만 열고/닫음 = 델리미터 `*`는 항상 텍스트/리터럴에 인접(고아 없음)
   }
   flushClose();                                            // 텍스트 끝 = 열린 강조 닫기(빈 열림은 open=false라 무시)
   return out;
+}
+// 강조 파서(1~2 별표 = 델리미터 토글 · 3+ = 리터럴) — 미리보기·강조검사 공용. 백엔드 nomute_overlay.parse / card_news.parse_segments와 로직 동일(정본 3면 일치).
+function renderEmph2(line) {
+  const segs = []; let on = false, buf = '';
+  const push = () => { if (buf) { segs.push([on ? 'h' : 'n', buf]); buf = ''; } };   // 'h'=강조(초록) · 'n'=일반(흰)
+  for (let c = 0; c < line.length;) {
+    if (line[c] === '*') { let j = c; while (j < line.length && line[j] === '*') j++;
+      if (j - c >= 3) { buf += line.slice(c, j); }         // 3+ = 리터럴
+      else { push(); on = !on; }                            // 1~2 = 델리미터
+      c = j;
+    } else { buf += line[c]; c++; }
+  }
+  push(); return segs;
+}
+const hasEmph2 = line => renderEmph2(line).some(s => s[0] === 'h');   // 강조(초록) 세그먼트 존재 여부(구 `/\*[^*]+\*/` 대체)
+// 입력칸 별표 색칠 판정(운영자 260720) — 1~2별표 마커를 순차 페어링(사이 글자 있으면 강조쌍) → 쌍마다 색 순환(STAR_CYC=4) · 3+연속 = 제외('x') · 뒤에 글자 있는 안 닫힌 열림 = 줄끝 자동닫힘 = 쌍 취급(렌더 normEmph2와 일치) · 빈 열림 = 드롭('d'). function 선언(호이스팅) = attachStarHL 초기 paint에서 사용.
+const STAR_CYC = 4;   // 색 순환 길이(--accent-2·--accent·--accent-6·--accent-4 = 라임·터콰·핑크·레몬)
+function classifyStars(text) {
+  const cls = new Array(text.length).fill(null);   // '*' 위치 → 'x'(제외) | 'd'(드롭) | 0..STAR_CYC-1(쌍 색인덱스)
+  const rs = []; for (let i = 0; i < text.length;) { if (text[i] === '*') { let j = i; while (j < text.length && text[j] === '*') j++; rs.push({ i, end: j, len: j - i }); i = j; } else i++; }
+  const markers = [];
+  for (const r of rs) { if (r.len >= 3) { for (let k = r.i; k < r.end; k++) cls[k] = 'x'; } else markers.push(r); }   // 3+연속 = 제외
+  const mark = (r, v) => { for (let k = r.i; k < r.end; k++) cls[k] = v; };
+  const hasText = (a, b) => text.slice(a, b).replace(/\s/g, '').length > 0;   // 공백 제외 내용(리터럴 3+도 내용으로 간주)
+  let open = null, ci = 0;
+  for (const r of markers) {
+    if (!open) open = r;
+    else if (hasText(open.end, r.i)) { mark(open, ci % STAR_CYC); mark(r, ci % STAR_CYC); ci++; open = null; }   // 강조쌍(사이 글자) → 색 순환
+    else { mark(open, 'd'); open = r; }   // 빈 사이 = 이전 열림 드롭, 새 열림
+  }
+  if (open) { if (hasText(open.end, text.length)) { mark(open, ci % STAR_CYC); ci++; } else mark(open, 'd'); }   // 뒤 글자 = 자동닫힘 쌍 / 없으면 드롭
+  return cls;
 }
 function buildParams() {
   const linesArr = ($('#lines').value || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -3789,7 +3835,7 @@ $('#go').onclick = async () => {
     if (!hasHeader && !hasOverlay && !hasCard && cpThumb === 'off' && !guideMode) return errStatus(A2M === 'c' ? '헤더·카드 텍스트 또는 저작권·안내문을 넣어주세요' : '헤더·자막 또는 저작권·안내문을 넣어주세요');   // 저작권·안내문만 켜도 발사 허용(운영자 260711 통합·260712 안내문 독립)
     if (hasCard && !CIMG.b64) return errStatus('이미지를 선택해주세요');   // 카드뉴스 = 배경 필수(우측 슬롯 · 운영자 7 "카드뉴스는 필수")
     if (hasCard && edAnyOver()) return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄');   // app5 발사 가드 동형
-    if (hasOverlay && !clines.some(l => /\*[^*]+\*/.test(l))) return errStatus('강조를 넣어주세요', 'warn');   // 자막 강조(*별표*) 필수 — 정규화 후 줄별 검사(**·줄걸침 인식·260625)
+    if (hasOverlay && !clines.some(hasEmph2)) return errStatus('강조를 넣어주세요', 'warn');   // 자막 강조(*별표*) 필수 — parse2 기준(1~2델리미터·3+리터럴)·정규화 후 줄별 검사(260720)
     if ($('#abbr').checked) { csub = abbr(csub); ctitle = abbr(ctitle); clines = clines.map(abbr); }   // 축약 = 포스트·릴스 공통
     // 자간 하한(헤더 -45 / 자막 포스트 -45·릴스 -30) 초과 게이트(운영자 260720) — 백엔드가 한도까지 압축해도 넘치면 글자가 마진 밖으로 잘림. 맞춤법 교정·축약이 끝난 '실제 발사 텍스트'로 estHeaderTr/estTracking(라이브 힌트 updateComboTrk와 동일 계산기) 재판정 → 초과면 발사 차단. 구: 경고(빨강 축약필요)만 뜨고 그대로 발사(불가한데 실행) · 특히 맞춤법 교정본은 교정 후 재검증이 없어 초과여도 통과했다. 인터페이스 불변 = 기존 추정기 재사용, 발사 앞을 감싸는 게이트만 신설.
     const _trkOver = [];
@@ -3841,7 +3887,7 @@ $('#go').onclick = async () => {
   if (APP === '1' && Array.isArray(params.lines)) params.lines = normEmph($('#lines').value).split('\n').map(s => s.trim()).filter(Boolean);   // 강조 정규화(**·줄걸침 → 줄별 *…*)·백엔드 불변·260625
   if (APP === '1' && !(Array.isArray(params.lines) && params.lines.length)) return errStatus('텍스트를 넣어주세요');   // 포스트 = 텍스트 필수 — 빈 채 발사 차단 + 제작 버튼 흔들림(운영자 260622)
   if (APP === '1' && $('#abbr').checked && Array.isArray(params.lines)) params.lines = params.lines.map(abbr);   // 축약 = 포스트(정본 화이트리스트)
-  if (APP === '1' && !params.lines.some(l => /\*[^*]+\*/.test(l))) return errStatus('강조를 넣어주세요', 'warn');   // 강조(*별표*) 필수 — 정규화 후 줄별 검사·앰버 버튼 흔들림(운영자 260622·260625)
+  if (APP === '1' && !params.lines.some(hasEmph2)) return errStatus('강조를 넣어주세요', 'warn');   // 강조(*별표*) 필수 — parse2 기준(1~2델리미터·3+리터럴)·앰버 버튼 흔들림(운영자 260622·260720)
   if (APP === '1' && estTracking(params.lines, 'post').over) return errStatus('자간 초과 — 글자 줄여줘', 'warn');   // 자간 하한(-45) 초과 = 압축해도 넘침(글자 잘림) → 발사 차단(축약·맞춤법 반영된 최종 텍스트 기준 · 라이브 힌트와 동일 estTracking · 운영자 260720)
   const payload = { app: APP, params };
   if (APP === '1' && PIMG.b64) { payload.imageB64 = PIMG.b64; payload.name = PIMG.name; }       // 포스트 배경 = 옵션(슬롯·PIMG)
