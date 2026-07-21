@@ -1,0 +1,88 @@
+name: 다운로드 영상 저장 (yt-dlp · repository_dispatch)
+
+# 설정 ▸ 다운로드(링크 자료수집)가 repository_dispatch[ytdl]로 {d:{id,url,title}}를 던지면
+# 러너가 yt-dlp로 영상을 받아 릴리스 ytdl-drops 자산(<id>.mp4)으로 올린다. (이식 원본 = muteno/yeulmaru-promo ytdl.yml · 운영자 260721)
+# 앱은 /api/linkgrab/ytstat 폴링 → /api/linkgrab/ytfile(서명 URL 발급)로 브라우저가 직접 내려받는다.
+# 실패 시 <id>.err.txt 자산을 올려 앱이 실패를 표시. 매 실행 끝에 7일 지난 자산은 자동 정리.
+# ⚠ 운영 원칙(운영자 260721): 권리 보유·이용 허가 콘텐츠 전용 — 앱에서 동의 체크 후에만 요청 가능(체크 제거 금지).
+
+on:
+  repository_dispatch:
+    types: [ytdl]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ytdl-${{ github.event.client_payload.d.id }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VID_ID: ${{ github.event.client_payload.d.id }}
+      VID_URL: ${{ github.event.client_payload.d.url }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: yt-dlp 설치
+        run: python3 -m pip install --quiet --upgrade yt-dlp
+
+      - name: 릴리스 보관함 준비 (ytdl-drops)
+        run: |
+          gh release view ytdl-drops -R "$REPO" >/dev/null 2>&1 || \
+            gh release create ytdl-drops -R "$REPO" --prerelease \
+              --title "다운로드 영상 보관함" \
+              --notes "설정 ▸ 다운로드가 요청한 영상 파일 임시 보관함 — 7일 지난 파일은 자동 정리됩니다."
+
+      - name: 영상 다운로드 → 자산 업로드 (1.9GB 초과 = 재생 가능한 편으로 자동 분할)
+        run: |
+          set +e
+          mkdir -p out
+          # 주입 방지: URL·ID는 env 경유로만 인용. 1080p 이하 mp4 우선, 재생목록 통짜 금지.
+          # 상한 6GB = 러너 디스크 보호용 — 릴리스 자산 한계(2GB/파일)는 아래 자동 분할이 해결.
+          yt-dlp -f "bv*[ext=mp4][height<=1080]+ba[ext=m4a]/b[ext=mp4]/b" \
+            --merge-output-format mp4 --max-filesize 6000m --no-playlist \
+            -o "out/${VID_ID}.%(ext)s" "$VID_URL" 2> out/err.log
+          rc=$?
+          set -e
+          f=$(ls out/"${VID_ID}".* 2>/dev/null | grep -Ev "err|\.p[0-9]" | head -1)
+          if [ $rc -ne 0 ] || [ -z "$f" ]; then
+            tail -c 800 out/err.log > "out/${VID_ID}.err.txt" 2>/dev/null || echo "다운로드 실패" > "out/${VID_ID}.err.txt"
+            gh release upload ytdl-drops "out/${VID_ID}.err.txt" -R "$REPO" --clobber
+            echo "::warning::yt-dlp 실패 — err 자산 업로드"
+            exit 0
+          fi
+          if [ "$f" != "out/${VID_ID}.mp4" ]; then mv "$f" "out/${VID_ID}.mp4"; fi
+          gh release delete-asset ytdl-drops "${VID_ID}.err.txt" -R "$REPO" -y 2>/dev/null || true
+          LIMIT=$((1900*1024*1024))   # 릴리스 파일당 2GB 하드 리밋 대비 여유 상한
+          sz=$(stat -c%s "out/${VID_ID}.mp4")
+          if [ "$sz" -le "$LIMIT" ]; then
+            gh release upload ytdl-drops "out/${VID_ID}.mp4" -R "$REPO" --clobber
+          else
+            # 자동 분할 — 재인코딩 없는 스트림 복사(빠름·무손실), 각 편이 독립 재생되는 mp4
+            dur=$(ffprobe -v error -show_entries format=duration -of default=nk=1:nw=1 "out/${VID_ID}.mp4" | cut -d. -f1)
+            [ -z "$dur" ] && dur=3600
+            segs=$(( sz / LIMIT + 2 ))   # 여유 1편 추가 = 키프레임 편차 흡수
+            st=$(( dur / segs )); [ "$st" -lt 300 ] && st=300
+            ffmpeg -v error -i "out/${VID_ID}.mp4" -c copy -map 0 -f segment -segment_time "$st" -reset_timestamps 1 "out/${VID_ID}.p%02d.mp4"
+            rm "out/${VID_ID}.mp4"
+            n=0
+            for p in out/"${VID_ID}".p*.mp4; do gh release upload ytdl-drops "$p" -R "$REPO" --clobber; n=$((n+1)); done
+            echo "{\"parts\":${n}}" > "out/${VID_ID}.done.json"
+            gh release upload ytdl-drops "out/${VID_ID}.done.json" -R "$REPO" --clobber
+            echo "분할 업로드 완료: ${n}편"
+          fi
+
+      - name: 7일 지난 자산 정리
+        if: always()
+        run: |
+          rid=$(gh api "repos/$REPO/releases/tags/ytdl-drops" --jq .id 2>/dev/null) || exit 0
+          cutoff=$(date -u -d '7 days ago' +%s)
+          gh api "repos/$REPO/releases/$rid/assets" --paginate --jq '.[] | "\(.id) \(.created_at)"' | \
+          while read -r aid ts; do
+            t=$(date -u -d "$ts" +%s 2>/dev/null) || continue
+            if [ "$t" -lt "$cutoff" ]; then gh api -X DELETE "repos/$REPO/releases/assets/$aid" >/dev/null || true; fi
+          done
