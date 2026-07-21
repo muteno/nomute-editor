@@ -486,7 +486,7 @@ go.addEventListener('click', async () => {
     const r = await fetch('/api/tr', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lines: ocrLines.map(l => ({ i: l.i, t: l.t })), ctx: ctxPay }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
-    const plan = await pollPlan(j.id);
+    const plan = j.plan ? j.plan : await pollPlan(j.id);   // 즉답 경로(유료 API 직결 · 운영자 260721 승인 — 수신 즉시 합성) · 없으면 워크플로 폴링 폴백(구독 무료)
     RESULT = { cut: composeOverlay(plan), band: String(plan.band || '').trim() };
     fired = true; $('redoBox').hidden = false;
     gaugeDone(go);
