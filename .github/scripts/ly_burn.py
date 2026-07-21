@@ -597,6 +597,11 @@ def build_ass(segs, w, h, opts):
             border_style, outline, shadow, oc = 1, max(1, int(fs * 0.032 * omul)), 0, "&H00" + ocb
         else:                # bold(기본) = 흰 글자+외곽선+그림자(쇼츠 정석) — 외곽선 색 = 음영 색(기본 검정)
             border_style, outline, shadow, oc = 1, max(1, int(fs * 0.064 * omul)), 1, "&H00" + ocb
+    try:   # 글로우(운영자 260721 "글로우 정도도 편집" — 네온 번짐) = ASS \blur 라인 선두 오버라이드(0~100% → 블러 0~0.25fs px · 0/결측 = 태그 자체 미부착 = 종전 렌더 바이트 동일)
+        glow = max(0.0, min(100.0, float(opts.get("glow") or 0)))
+    except (TypeError, ValueError):
+        glow = 0.0
+    glow_tag = ("{\\blur%.1f}" % (fs * 0.0025 * glow)) if glow > 0 else ""   # ScaledBorderAndShadow yes 전제(헤더 상수) — 외곽선(bg=0)·줄박스(bg>0) 가장자리를 가우시안 번짐
     karaoke = opts.get("karaoke", True)
     pop = bool(opts.get("pop", False))   # 팝 = 발화 중 어절만 그린 점등(운영자 260707) — 카라오케와 상호배타(UI 동시 불가 · 동시 수신 시 팝 우선)
     if pop:
@@ -669,9 +674,9 @@ def build_ass(segs, w, h, opts):
                 if fst >= e - 0.004:
                     break   # 초단컷(0.05s대) 보호 — cs 하한 분배가 실구간을 넘치면 잔여 창 스킵
                 fe = e if fi == len(frames) - 1 else min(e, s + (off + dur) / 100.0)
-                lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(fst), ass_time(fe), mv_e, src_pre + ftxt))
+                lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(fst), ass_time(fe), mv_e, glow_tag + src_pre + ftxt))
         else:
-            lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, src_pre + main))
+            lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, glow_tag + src_pre + main))
     return head + "\n" + "\n".join(lines) + "\n"
 
 
