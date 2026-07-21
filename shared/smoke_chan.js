@@ -14,7 +14,7 @@
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
-//   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 좌변선 · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
+//   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 4분할 중앙 세로선[운영자 260721 요청] · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
 //   → C9 협폭 수치 열 사폭 412(tpost .ch-vw/.ch-dev 박스폭−잉크폭 ≤1.5px — 고정 사폭이 제목을 압착하던 것의 재발 방지 · 운영자 260721 "간격 쓸데없이 길다" 기틀)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
 //   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C10 트위터 좌X↔우블스 순위 행 y 패리티(본문 5줄 예약·헤더 상수 = 카드 높이 단일값 · Q354 — ⚠260721 운영자 "블루스카이는 실검만" = bsk 게시물 섹션 소멸 → 상시 skip[한쪽 결측 정직 표기 경로] · 유닛 재도입 시 자동 부활) → C1 페이지 에러 0
@@ -147,7 +147,7 @@ const SEL = {
 
     await pg.setViewportSize({ width: 412, height: 915 }); await pg.waitForTimeout(400);
 
-    // C8 채널요약 유닛 잉크선(운영자 260721 Q345~350 · 평의회 경화 = 기준 인셋을 --trend-indent 토큰 파생[매직넘버 desync 봉쇄] + daily 편입 + sig-note ≤가드) — 우변선 = 헤더 우변−인셋(체브론 잉크 = 패딩12+보더1) / 좌변선 = 헤더 좌변+인셋(배지 좌변 · .ch-post 관용구) · --chu-r 칩 예약 패딩과 무관
+    // C8 채널요약 유닛 잉크선(운영자 260721 Q345~350 · 평의회 경화 = 기준 인셋을 --trend-indent 토큰 파생[매직넘버 desync 봉쇄] + daily 편입 + sig-note ≤가드) — 우변선 = 헤더 우변−인셋(체브론 잉크 = 패딩12+보더1) / topic 좌변선 = 배지 4분할 중앙 세로선(Lc = 배지 실측 중앙 · 운영자 260721 요청) · --chu-r 칩 예약 패딩과 무관
     await pg.evaluate(() => { for (const id of ['topic', 'sig', 'tpost', 'daily']) { const d = document.getElementById('cg-' + id); if (d) d.open = true; } });
     await pg.waitForTimeout(500);   // ::details-content 촤르륵(0.32s) 정착
     const c8 = await pg.evaluate(() => {
@@ -160,9 +160,10 @@ const SEL = {
       const out = [];
       for (const id of ['topic', 'sig', 'tpost', 'daily']) {
         const d = document.getElementById('cg-' + id); if (!d) { out.push({ id, skip: true }); continue; }
-        const hb = d.querySelector(':scope > .tgroup-h').getBoundingClientRect();
-        const Lr = hb.right - TI, Ll = hb.left + TI, ds = [], ov = [];   // ds = 정렬 정합(|Δ|) · ov = 초과 금지(랩 프로즈 = 래기드 우변이라 ≤만 계약)
-        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Lr).toFixed(2), +(ink(r2.querySelector('.tl')).left - Ll).toFixed(2)); });
+        const hbEl = d.querySelector(':scope > .tgroup-h'), hb = hbEl.getBoundingClientRect();
+        const _bi = hbEl.querySelector('i'), _br = _bi && _bi.getBoundingClientRect();   // 순번 배지(.tgroup-h i · 24px)
+        const Lr = hb.right - TI, Ll = hb.left + TI, Lc = _br ? (_br.left + _br.right) / 2 : Ll + 12, ds = [], ov = [];   // ds = 정렬 정합(|Δ|) · ov = 초과 금지(랩 프로즈 = 래기드 우변이라 ≤만 계약) · Lc = 배지 4분할 중앙 세로선(운영자 260721 요청 = topic 라벨 좌변 정본 · 배지 실측 중앙 = 토큰/매직넘버 드리프트 면역)
+        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Lr).toFixed(2), +(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });
         if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
         if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Lr).toFixed(2)));
         d.querySelectorAll('.ch-morelink').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));
