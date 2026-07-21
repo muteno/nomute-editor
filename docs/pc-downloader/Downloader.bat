@@ -12,11 +12,12 @@ REM === v5.8: 끝 화면에 GDRIVE 전송 결과 상시 표시(도착 개수 실측 / 미전송 사유)
 REM === v5.9: 클라우드 경로 고정 - 유저프로필\Google Drive 스트리밍\내 드라이브\Shared (자동탐지 폐기 · Q226) ===
 REM === v5.9.1: 스트리밍 폴더 실존 게이트(유령 로컬 폴더 차단) + 끝화면 robocopy 실패 오보 봉합 - 오퍼스 3인 검증 반영 ===
 REM === v5.9.2: 낙오자 재송 스위프 - 시작 시 지난 7일 미전송분 자동 재송(날짜 = 파일명 앞 8자리 · 아이데이션 Q229 반영) ===
+REM === v5.9.3: 클라우드 = G:\내 드라이브\Shared 문자 마운트 고정(스트리밍 폴더 경로 폐기 · 운영자 260721) ===
 REM === 주의: 이 파일은 CP949/ANSI로만 저장할 것 - UTF-8 재저장 시 한글 고정경로가 깨져 유령 폴더 생성 ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.9.2
+echo   만능 다운로더 v5.9.3
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
@@ -34,13 +35,13 @@ REM === 경로 설정 ===
 set "YTDLP=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\yt-dlp"
 set "GDL=%YTDLP%\gallery-dl.exe"
 set "COOKIES=%YTDLP%\cookies.txt"
-REM === 클라우드 저장 = 고정 경로 (v5.9 · 운영자 260719 Q226) - 유저명만 %USERPROFILE%로 범용 ===
-REM     자동 탐지 폐기 → 항상 %USERPROFILE%\Google Drive 스트리밍\내 드라이브\Shared 로 복사
-REM     GDFS_ON(앱 실행 체크)은 유지: 앱 꺼짐 시 로컬만(죽은 잔재 폴더 생성 방지) · 다른 PC = 한글 UI·같은 스트리밍 마운트 가정
+REM === 클라우드 저장 = 고정 경로 (v5.9.3 · 운영자 260721) - G:\내 드라이브\Shared ===
+REM     자동 탐지 폐기 → 항상 G:\내 드라이브\Shared 로 복사 (문자 G: 마운트 기준)
+REM     GDFS_ON(앱 실행 체크)은 유지: 앱 꺼짐 시 로컬만(죽은 잔재 폴더 생성 방지) · 다른 PC = 같은 G: 문자 마운트 가정
 set "GDFS_ON=0"
 tasklist /fi "imagename eq GoogleDriveFS.exe" 2>nul | find /i "GoogleDriveFS.exe" >nul && set "GDFS_ON=1"
-REM 클라우드 = 고정 경로(유저명만 %USERPROFILE%로 범용 · 운영자 260719 Q226)
-set "CLOUD=%USERPROFILE%\Google Drive 스트리밍\내 드라이브\Shared"
+REM 클라우드 = 고정 경로 G:\내 드라이브\Shared (운영자 260721)
+set "CLOUD=G:\내 드라이브\Shared"
 set "LOCAL=%USERPROFILE%\Downloads\yt-dlp"
 set "GTEMP=%LOCAL%\_gallery_temp"
 
@@ -99,10 +100,10 @@ if "%GDFS_ON%"=="0" (
     set "GD_WHY=드라이브 앱 꺼짐/미로그인 - 시작메뉴에서 Google Drive 실행"
     goto cloud_done
 )
-REM v5.9.1: 스트리밍 마운트 실존 게이트 - '내 드라이브' 폴더가 실제로 있을 때만 Shared 생성(유령 로컬 폴더 차단)
-if not exist "%USERPROFILE%\Google Drive 스트리밍\내 드라이브\" (
-    echo [알림] 스트리밍 폴더 없음 - 드라이브가 문자 G: 등 다른 방식으로 마운트된 듯. 이번엔 로컬에만 저장
-    set "GD_WHY=스트리밍 폴더 없음 - 문자 G: 마운트 등. 드라이브 설정에서 스트리밍+폴더 마운트 확인"
+REM v5.9.3: G: 마운트 실존 게이트 - 'G:\내 드라이브'가 실제로 있을 때만 Shared 생성(유령 로컬 폴더 차단)
+if not exist "G:\내 드라이브\" (
+    echo [알림] G:\내 드라이브 없음 - 드라이브 문자 마운트가 안 보임. 이번엔 로컬에만 저장
+    set "GD_WHY=G:\내 드라이브 없음 - 드라이브 설정에서 문자 G: 마운트 확인"
     goto cloud_done
 )
 echo [확인] 클라우드(고정): %CLOUD%
