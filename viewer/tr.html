@@ -386,8 +386,9 @@ function compose(){
   const dw = Math.round(cut.width * sf), dh = Math.round(cut.height * sf);
   const ox = Math.round((RATIO_W - dw) / 2), oy = Math.round((regionH - dh) / 2);
   ctx.drawImage(cut, ox, oy, dw, dh);
+  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(ox, oy, dw, dh);   /* 본문 딤 = 발췌 리프트 대비(운영자 260721 "발췌해 볼록 튀어나온 느낌") */
   const g = (TR_W / img.naturalWidth) * sf;   /* natural→final 스케일(cut=naturalWidth→TR_W 후 sf) */
-  if (RESULT.plan) drawChips(ctx, RESULT.plan, ox, oy, g, regionH);
+  if (RESULT.plan) { const exData = drawExcerpts(ctx, RESULT.plan, ox, oy, g, regionH); drawChips(ctx, RESULT.plan, regionH, exData); }   /* 형광펜 런 = 확대 발췌 리프트 → 칩은 그 아래 */
   if (bandIt) drawBand(ctx, bandIt, regionH);
 }
 
@@ -440,40 +441,59 @@ function hlRuns(hl){   /* hl → 연속 라인 런([{s,e}]) : 형광펜 해석 s
   arr.forEach(i => { if (cur && i === cur.e + 1) cur.e = i; else { cur = { s: i, e: i }; runs.push(cur); } });
   return runs;
 }
-function composeOverlay(plan){   /* 원문 + 형광펜(해석 라인 전역)만 — 칩은 compose에서 4:5 스케일 상단 합성(칩 확대 유지) */
+function composeOverlay(plan){   /* 원문 문서만 — 형광펜·칩은 compose에서 발췌 리프트(팝아웃)로 합성(운영자 260721 "130% 확대·볼록 발췌") */
   const s = TR_W / img.naturalWidth;
   const H = Math.round(img.naturalHeight * s);
   const cv = document.createElement('canvas'); cv.width = TR_W; cv.height = H;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0, TR_W, H);
-  const bmap = new Map(ocrLines.map(l => [l.i, l.b]));
-  ctx.globalCompositeOperation = 'multiply';   /* 형광펜 = 글자 박스에 딱(줄간격 제외 — 승인 시안 260720) · hl 전 라인 = 해석 문장 전역(운영자 260721 "한 줄씩 말고 전역") */
-  ctx.fillStyle = OV_MARK;
-  (plan.hl || []).forEach(i => { const b = bmap.get(i); if (!b) return;
-    ctx.fillRect(Math.round(b.x * s) - 3, Math.round(b.y * s) - 2, Math.round(b.w * s) + 6, Math.round(b.h * s) + 4); });
-  ctx.globalCompositeOperation = 'source-over';
-  return cv;   /* 칩 = drawChips(compose) — 4:5 축소와 무관하게 큰 고정 크기 */
+  cv.getContext('2d').drawImage(img, 0, 0, TR_W, H);
+  return cv;
 }
-function drawChips(ctx, plan, ox, oy, g, regionH){   /* 칩 = 4:5 최종 스케일 상단 합성 : .85 검정 · 자간 · 4분할 중앙정렬 · x=칠한 런 좌단 추종(운영자 260721) */
+function popScale(run){ const n = run.e - run.s + 1; return Math.max(1.16, Math.min(1.36, 1.40 - (n - 1) * 0.05)); }   /* 팝아웃 배율 = 상황(문장 길이) 가변 — 짧을수록 크게(운영자 260721 "꼭 같은 크기일 필요 없음·임의") */
+function runNatRect(run, bmap){   /* 런의 자연좌표 bbox */
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (let i = run.s; i <= run.e; i++) { const b = bmap.get(i); if (!b) continue; x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); }
+  return x0 > x1 ? null : { x0, y0, x1, y1 };
+}
+function drawExcerpts(ctx, plan, ox, oy, g, regionH){   /* 형광펜 런 = 확대 발췌 리프트(흰 받침+그림자+형광펜) = 문서서 오려낸 볼록 느낌(뉴스 기법 · 운영자 260721) */
   const bmap = new Map(ocrLines.map(l => [l.i, l.b]));
   const runs = hlRuns(plan.hl);
+  const ex = new Map();
+  runs.forEach((run, ri) => {
+    const R = runNatRect(run, bmap); if (!R) return;
+    const pad = 8 / g;
+    const sx = R.x0 - pad, sy = R.y0 - pad, sw = (R.x1 - R.x0) + pad * 2, sh = (R.y1 - R.y0) + pad * 2;
+    const fw = sw * g, fh = sh * g;
+    const cx = ox + (R.x0 + R.x1) / 2 * g, cy = oy + (R.y0 + R.y1) / 2 * g;
+    const P = popScale(run), dwp = fw * P, dhp = fh * P;
+    let dx = cx - dwp / 2; const dy = cy - dhp / 2;
+    dx = Math.max(10, Math.min(dx, TR_W - dwp - 10));   /* 카드 밖 이탈 방지 */
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 22; ctx.shadowOffsetY = 7;   /* 볼록 튀어나온 그림자 */
+    ctx.fillStyle = TR_WHITE; ctx.fillRect(dx - 6, dy - 4, dwp + 12, dhp + 8); ctx.restore();   /* 흰 받침(발췌 카드) */
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dwp, dhp);   /* 확대 슬라이스(원본 크롭) */
+    ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = OV_MARK;   /* 형광펜 = 확대 슬라이스 안 각 라인 */
+    for (let i = run.s; i <= run.e; i++) { const b = bmap.get(i); if (!b) continue;
+      const lx = dx + (b.x - sx) * g * P, ly = dy + (b.y - sy) * g * P;
+      ctx.fillRect(lx - 3, ly - 2, b.w * g * P + 6, b.h * g * P + 4); }
+    ctx.restore();
+    ex.set(ri, { left: dx, right: dx + dwp, top: dy, bottom: dy + dhp });
+  });
+  return { runs, ex };
+}
+function drawChips(ctx, plan, regionH, exData){   /* 칩 = 발췌 리프트 아래 앵커 : .85 검정 · 자간 · 4분할 중앙정렬 · x=발췌 좌단 추종(운영자 260721) */
+  const runs = exData.runs, ex = exData.ex;
   const CHIP_FS = 30, padX = 12, padY = 9, maxW = 900;
   ctx.font = `700 ${CHIP_FS}px ${FONT_KO}`; ctx.letterSpacing = TRACK; ctx.textBaseline = 'middle';   /* 700 = 노토 Bold 번들 정합 */
   const placed = [];
   (plan.chips || []).forEach(c => {
-    let run = runs.find(r => c.a >= r.s && c.a <= r.e);
-    if (!run && runs.length) run = runs.reduce((best, r) => Math.abs((r.s + r.e) / 2 - c.a) < Math.abs((best.s + best.e) / 2 - c.a) ? r : best, runs[0]);
-    const anchorEnd = run ? run.e : c.a;
-    const be = bmap.get(anchorEnd);
-    let runLeft = null;
-    if (run) for (let i = run.s; i <= run.e; i++) { const b = bmap.get(i); if (b) runLeft = runLeft == null ? b.x : Math.min(runLeft, b.x); }
-    if (runLeft == null && be) runLeft = be.x;
+    let ri = runs.findIndex(r => c.a >= r.s && c.a <= r.e);
+    if (ri < 0 && runs.length) ri = runs.reduce((bi, r, i) => Math.abs((r.s + r.e) / 2 - c.a) < Math.abs((runs[bi].s + runs[bi].e) / 2 - c.a) ? i : bi, 0);
+    const e = ex.get(ri);
     const L = chipLayout(ctx, String(c.t || ''), CHIP_FS, maxW);
     const bw = Math.min(L.w, maxW) + padX * 2, bh = L.lines.length * L.lh + padY * 2;
-    let x = runLeft != null ? Math.max(16, Math.min(Math.round(ox + runLeft * g), TR_W - bw - 16)) : 20;   /* 칠한 데 따라 x(좌측 강제 해제) */
-    let y = be ? Math.round(oy + (be.y + be.h) * g) + 8 : 24;
+    let x = e ? Math.max(16, Math.min(Math.round(e.left), TR_W - bw - 16)) : 20;   /* 발췌 좌단 추종 */
+    let y = e ? Math.round(e.bottom) + 10 : 24;   /* 발췌 리프트 바로 아래 */
     placed.forEach(r => { if (x < r.x + r.w && x + bw > r.x && y < r.y + r.h && y + bh > r.y) y = r.y + r.h + 7; });   /* 겹침 = 아래로 */
-    if (y + bh > regionH - 6) y = Math.max(6, (be ? Math.round(oy + be.y * g) : regionH) - bh - 8);   /* 바닥 넘침 = 앵커 위로 */
+    if (y + bh > regionH - 6) y = Math.max(6, (e ? Math.round(e.top) : regionH) - bh - 10);   /* 바닥 넘침 = 발췌 위로 */
     placed.push({ x, y, w: bw, h: bh });
     ctx.fillStyle = OV_CHIP; ctx.fillRect(x, y, bw, bh);
     ctx.strokeStyle = OV_LINE; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, bw - 1, bh - 1);
