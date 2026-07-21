@@ -502,8 +502,9 @@ autoGo.addEventListener('click', async () => {
     const r = await fetch('/api/tr', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lines: ocrLines.map(l => ({ i: l.i, t: l.t })) }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
-    aStat('③ AI 번역 중… (약 2~4분 — 끝나면 자동 합성)');
-    const plan = await pollPlan(j.id);
+    let plan;
+    if (j.plan) { plan = j.plan; }   // 즉답 경로(유료 API 직결 · 운영자 260721 승인) — 수신 즉시 합성
+    else { aStat('③ AI 번역 중… (약 2~4분 — 끝나면 자동 합성)'); plan = await pollPlan(j.id); }   // 폴백 = 워크플로 폴링(구독 무료)
     stack.push({ t: 'cut', cv: composeOverlay(plan) });
     aStat('✓ 완성 — 아래 미리보기 확인 후 PNG 저장');
     upd();
