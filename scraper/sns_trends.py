@@ -440,6 +440,17 @@ def _load_accounts():
     return out, reg
 
 
+def _region_split(plat, acc, accreg):
+    """구독 계정을 지역(kr/gl) 2군으로 분리 — 각 지역 top-N 독립 수집용(운영자 260719 "구독 한국 3개만 나옴"
+    봉인: 전 계정 1콜 후 글로벌 조회수 캡이면 해외 메가계정[mrbeast·zachking 수억뷰]이 한국을 상위 밖으로 밀어냄).
+    러너(main._rsubs)·폰(scripts/phone_subs.py) 공용 = 지역분리 단일 정본(분기 = 한쪽만 굶는 회귀 방지).
+    반환 = (kr 핸들[], gl 핸들[] · 지역 미도장 = gl 흡수)."""
+    reg = accreg.get(plat, {})
+    kr = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) == "kr"]
+    gl = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) != "kr"]
+    return kr, gl
+
+
 def _i(v):
     """수치 강제(int) — 상류 API가 문자열·콤마 수치를 실어도 항목/계정 단위로 안전(평의회1·6).
     ⚠ float·소수문자열 = 소수부 절단(운영자 260719 봉인): 업비트 trade_price 등 `95318000.0` .0 float를
@@ -1223,9 +1234,7 @@ def main():
         # 해외 메가계정(mrbeast·zachking 수억 뷰)이 한국(newjeans 1877만 등)을 상위 20 밖으로 밀어내 KR 3건만 잔존.
         # 근본교정 = 계정을 지역으로 갈라 각 지역 top-N 독립 수집(KR 먼저 = 예산 소진 시에도 한국 보장) → 뷰어 지역 슬라이스가 굶지 않음.
         def _rsubs(fn, plat, per=12):
-            reg = accreg.get(plat, {})
-            kr = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) == "kr"]
-            gl = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) != "kr"]
+            kr, gl = _region_split(plat, acc, accreg)   # 지역분리 = 모듈 공용 헬퍼(폰 phone_subs.py와 단일 정본)
             return fn(kr, limit=per, deadline=dl) + fn(gl, limit=per, deadline=dl)
         subs_new = {"x": _rsubs(x_subs, "x"), "tiktok": _rsubs(tiktok_subs, "tiktok"),
                     "insta": _rsubs(insta_subs, "insta"), "youtube": _rsubs(yt_subs, "youtube"),
@@ -1239,7 +1248,7 @@ def main():
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
             if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
-                for k2 in ("x", "insta", "threads"):   # 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
+                for k2 in ("x", "insta", "threads", "tiktok"):   # 틱톡 = 러너 데센 IP가 tikwm /user/posts에 통째 HTTP 403(WAF IP블록 · run 29800229859 실측 260721: KR13+GL17 30콜 전멸 → 구독 tiktok = 스테일 carry) → 폰 가정 IP 채택(insta/threads 동류 편입) · 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
                         subs_new[k2] = _pl
