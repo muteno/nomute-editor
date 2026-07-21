@@ -106,6 +106,9 @@ GATED = re.compile(r'(?P<prop>font-size|border-radius|(?:row-|column-)?gap|paddi
 PX = re.compile(r'(?<![\w.-])(\d+(?:\.\d+)?)px')
 BLUR = re.compile(r'(?<!-)blur\(\s*(\d+(?:\.\d+)?)px')
 LS = re.compile(r'letter-spacing\s*:\s*(?P<val>[^;{}]*)')
+DUR = re.compile(r'transition(?:-duration)?\s*:\s*(?P<val>[^;{}]*)')   # 260721 평의회 Q329 ② — 모션 raw 차단(감사 R4 채택 · animation/keyframes = 1회성 등장이라 비대상)
+SV = re.compile(r'(?<![\w.-])(\d*\.\d+|\d+)s(?![\w-])')
+DUR_LAD = [('--dur-fast', .12), ('--dur', .18), ('--dur-acc', .26)]
 
 diff_hits, ls_warn = [], []
 for ln in _added_lines():
@@ -127,6 +130,13 @@ for ln in _added_lines():
             diff_hits.append('%s: 신규 raw `%s:%gpx` → %s' % (rel, axis, v, _snap(axis, v)))
     for bm in BLUR.finditer(l):
         diff_hits.append('%s: 신규 raw `blur(%spx)` → %s' % (rel, bm.group(1), _snap('blur', float(bm.group(1)))))
+    for dm in DUR.finditer(l):
+        for sm in SV.finditer(dm.group('val')):
+            v = float(sm.group(1))
+            k, tv = min(DUR_LAD, key=lambda t: abs(t[1] - v))
+            sug = ('동값 토큰 있음 — var(%s)=%gs로 참조(복붙 금지)' % (k, tv)) if abs(tv - v) < 1e-9 else (
+                '근접 토큰 var(%s)=%gs(Δ%.2g) 자동 계승 권장 · 지연(delay)·의도 변주 = `/* raw-ok: 사유 */`' % (k, tv, abs(tv - v)))
+            diff_hits.append('%s: 신규 raw `transition %ss` → %s' % (rel, sm.group(1), sug))
     for lm in LS.finditer(l):
         if 'var(' not in lm.group('val') and PX.search(lm.group('val')):
             ls_warn.append('%s: letter-spacing raw px 신규 — 토큰 사다리 없는 축(WARN·비차단), 형제 값 계승 확인: %s' % (rel, l[:80]))
