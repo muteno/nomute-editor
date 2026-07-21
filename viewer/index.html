@@ -826,8 +826,12 @@
   .ch-sub .ch-sep { width:1px; height:1em; background:var(--line2); }   /* 증감 | 일평균 구분 세로선(운영자 260721 예시 '|') — 잉크 = 레일 edge(var(--line2)) 계승 */
   /* 성별 = 세로 100% 누적 막대 + 우측정렬 리스트(운영자 260722 "원차트 대신 세로 누적 · 남/여/미 우측정렬") — 구 도넛(.demo-donut)·범례(.demo-lgd) 폐지 */
   .demo-gwrap { flex:1; display:flex; align-items:center; justify-content:flex-end; gap:var(--sp-2); min-width:0; }   /* 막대(좌)+리스트(우) 세로 중앙 · 우측정렬(운영자 260722 "우측정렬") */
-  .demo-vbar { flex:none; width:11px; height:64px; border-radius:var(--r-pill); overflow:hidden; display:flex; flex-direction:column; background:rgba(255,255,255,.06); }   /* raw-ok: 세로 100% 누적 막대 폭11·높이64 = 구 도넛46 자리 대체 광학(운영자 260722) · 세그 = 남(위)·여·미(아래) 순 */
+  .demo-vbar { position:relative; flex:none; width:11px; height:64px; border-radius:var(--r-pill); overflow:hidden; display:flex; flex-direction:column; background:rgba(255,255,255,.06); }   /* raw-ok: 세로 100% 누적 막대 폭11·높이64 = 구 도넛46 자리 대체 광학(운영자 260722) · 세그 = 남(위)·여(아래) · relative = 목표·마지노선 틱 앵커 */
   .demo-vbar i { display:block; width:100%; }   /* 세그 높이 = pct% 인라인 · 색 = 세그 정본 var 주입(신규 색 0) */
+  .demo-vbar .gv-mk { position:absolute; left:0; right:0; height:0; }   /* 목표(남60%)·마지노선(남65%) 수평 기준 틱(운영자 260722 · top = 위[남]에서 % · 신규 색 0) */
+  .demo-vbar .gv-tgt { border-top:1px dashed rgba(255,255,255,.85); }   /* 목표 60% = 흰 점선 */
+  .demo-vbar .gv-red { border-top:1px solid var(--amber); }   /* 마지노선 65% = 앰버 실선(경고 의미색 정본) */
+  .demo-glist .gv-note { color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); white-space:nowrap; margin-top:1px; }   /* raw-ok: mt1 미세 리듬 · 목표·마지노선 각주(운영자 260722) */
   .demo-glist { display:flex; flex-direction:column; align-items:flex-end; gap:calc(var(--sp-1)/2); min-width:0; }   /* raw-ok 대체: 우측정렬 · 줄간격 = sp-1 절반(운영자 260722 좁게) */
   .demo-glist b { font-weight:var(--fw-b); font-size:calc(var(--fs-sm)*1.3); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 남/여/미 = 세그색 텍스트 130% 계승(신규 색 0) */
   /* 연령 = 가로 막대 top4(운영자 260722 · 막대 좌·글자 우·높이 중앙정렬·줄간격 좁게·블릿X) — .ch-bar 부품 계승 */
@@ -11255,15 +11259,18 @@ function renderChan() {
     if (!G) { const gm = {}; ((AUD.age_gender_top) || []).forEach(x => { const m = /·([MFU])$/.exec(String(x.k || '')); if (m) gm[m[1]] = (gm[m[1]] || 0) + (+x.pct || 0); }); const t = (gm.M || 0) + (gm.F || 0) + (gm.U || 0); if (t) G = { M: gm.M / t * 100, F: gm.F / t * 100, U: gm.U / t * 100 }; }
     const GCOL = { M: 'var(--bias-l2)', F: 'var(--danger)', U: 'rgba(255,255,255,.28)' };   // 남=파랑·여=빨강(bias 다이버징 정본)·미지정=무채(운영자 260721 계승)
     const GLAB = { M: '남', F: '여', U: '미' };   // 미 = 미지정 축약(운영자 260722)
-    const gseg = G ? ['M', 'F', 'U'].filter(k => G[k] > 0).map(k => ({ k, lb: GLAB[k], pct: +G[k], col: GCOL[k] })) : [];
+    // 성별 = 남:여 정규화(미지정 제외 = IG 앱 표기 정합 · 운영자 260722 IG 스샷 참고 "남 64.3 / 여 35.7" 모든 기간 동일) — 구 3분할(미 포함) 폐지 · M_norm 우선, 폴백 = M/F 정규화
+    const gN = G ? { M: G.M_norm != null ? +G.M_norm : ((G.M + G.F) ? G.M / (G.M + G.F) * 100 : 0), F: G.F_norm != null ? +G.F_norm : ((G.M + G.F) ? G.F / (G.M + G.F) * 100 : 0) } : null;
+    const gseg = gN ? ['M', 'F'].filter(k => gN[k] > 0).map(k => ({ k, lb: GLAB[k], pct: +gN[k], col: GCOL[k] })) : [];
     // 연령 = 전 버킷 상위 4(운영자 260722 가로 막대 · 블릿X) — age_full 우선, 폴백 = age_gender_top 연령 합산
     let aseg = [];
     if (Array.isArray(AUD.age_full) && AUD.age_full.length) aseg = AUD.age_full.slice(0, 4).map(x => ({ lb: x.k, pct: +x.pct }));
     else { const am = {}; ((AUD.age_gender_top) || []).forEach(x => { const m = /^(.+?)·[MFU]$/.exec(String(x.k || '')); if (m) am[m[1]] = (am[m[1]] || 0) + (+x.pct || 0); }); aseg = Object.keys(am).sort((a, b) => am[b] - am[a]).slice(0, 4).map(k => ({ lb: k, pct: am[k] })); }
     if (!gseg.length && !aseg.length) return '';
     // 성별 세로 100% 누적 막대 + 우측정렬 리스트(운영자 260722 "원차트 대신 세로 누적 · 남/여/미 우측정렬")
-    const gbar = segs => `<span class="demo-vbar" aria-hidden="true">` + segs.map(s2 => `<i style="height:${s2.pct}%;background:${s2.col}"></i>`).join('') + '</span>';
-    const glist = segs => `<span class="demo-glist">` + segs.map(s2 => `<b style="color:${s2.k === 'U' ? 'var(--mut)' : s2.col}">${esc(s2.lb)} ${Math.round(s2.pct * 10) / 10}%</b>`).join('') + '</span>';
+    // 세로 100% 누적 막대 + 목표(남60%)·마지노선(남65%) 기준 틱(운영자 260722 "목표 60:40 · 마지노선 65:35") — 남(위)이 목표선 넘어 마지노선 근접 = 경고대 시각화
+    const gbar = segs => `<span class="demo-vbar" aria-hidden="true">` + segs.map(s2 => `<i style="height:${s2.pct}%;background:${s2.col}"></i>`).join('') + `<u class="gv-mk gv-tgt" style="top:60%"></u><u class="gv-mk gv-red" style="top:65%"></u>` + '</span>';
+    const glist = segs => `<span class="demo-glist">` + segs.map(s2 => `<b style="color:${s2.col}">${esc(s2.lb)} ${Math.round(s2.pct * 10) / 10}%</b>`).join('') + `<span class="gv-note">목표 60 · 마지 65</span>` + '</span>';   // 목표·마지노선 텍스트 각주(운영자 260722)
     // 연령 가로 막대(.ch-bar 부품 계승 · 막대 좌·글자 우 · 높이 중앙정렬 · 운영자 260722) — 막대 길이 = 최댓값 대비 스케일(주제 막대 문법)
     const amx = Math.max(1, ...aseg.map(s => s.pct));
     const abars = segs => `<span class="demo-bars">` + segs.map((s2, i) => `<span class="demo-brow"><span class="ch-bar demo-bar"><i style="width:${Math.max(6, Math.round(s2.pct / amx * 100))}%${i < 2 ? ';background:var(--fg)' : ''}"></i></span><span class="demo-blab${i < 2 ? ' hi' : ''}">${esc(s2.lb)} ${Math.round(s2.pct)}%</span></span>`).join('') + '</span>';   // top2 = 흰색(운영자 260722 "멋컬러 말고 흰색 · 도달 35만/일처럼") · 3·4위 = 민트(accent) 유지 · 라벨도 top2 흰색
