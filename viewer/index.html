@@ -10192,11 +10192,11 @@ function renderSnsTrends() {
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
-    `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)
+    `<span class="xcard-tx"></span><span class="tcard-m">${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)
   const bcard = (t, i) =>   // ⑦ 블루스카이 카드 = X 구독(xcard) 문법 완전 계승(운영자 260718 "첨부2처럼" — 구 주제 부제·번역 제목·영문 원문 3단 폐지) · 본문 = 번역(ko)만 + **키워드** 볼드(fillH·mdb) · .bcard = 볼드 스코프 마커
     `<a class="xcard bcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
-    `<span class="xcard-tx"></span><span class="tcard-m">${met([[HEART_SVG, t.likes], [RT_SVG, t.rts], [CMT_SVG, t.cmts]])}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;
+    `<span class="xcard-tx"></span><span class="tcard-m">${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지
   // (구 V3 조회수/좋아요/댓글 정렬바 옵션 = 260720 평의회 — 카드 그리드 전 섹션 정렬바 제거로 소멸 · xgrid 게시물 정렬바는 각자 리터럴 배열)
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkv.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백
@@ -10242,13 +10242,13 @@ function renderSnsTrends() {
   if (ytn.length) gYT += sec('ytn', '뉴스', rtBase, Math.min(ytn.length, 10), '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gYT += sec('ai', 'AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
-  REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '큐레이션', '· ' + REGN[r], L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 카드(운영자 260719 "구독도 AI 영상처럼 표현 구성 동일" — 구 row 리스트 → 틱톡·인스타 구독과 동일 그리드 계승) · 빈 군 = 미표기(조용한 공백)
+  REGS.forEach(r => { const L = sytR[r]; if (L.length) gYT += sec('syt-' + r, '큐레이션', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 카드(운영자 260719 "구독도 AI 영상처럼 표현 구성 동일" — 구 row 리스트 → 틱톡·인스타 구독과 동일 그리드 계승) · 빈 군 = 미표기(조용한 공백)
   if (tkv.length && tkCov) gTK += sec('tk', '인기', rtBase, tkL.length, '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 16:9 wd 그리드(AI영상 계승) · 정렬바 제거(260720 평의회 — 유튜브 인기(무 정렬바)와 "같은 기능=같은 모양" 통일 · 카드 그리드 문법 = 정렬바 0 · 게시물 xgrid(X·블스·스레드)만 정렬바 유지)
   else if (tkv.length) gTK += sec('tk', '인기', rtBase, Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
-  REGS.forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '큐레이션', '· ' + REGN[r], L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일 · 정렬바 제거(운영자 260720 "틱톡 구독도 바껴야댐" — AI영상·유튜브 구독처럼 정렬바 없는 카드 그리드로 통일 · 데이터 정렬은 stkS 기본값 유지)
-  REGS.forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '큐레이션', '· ' + REGN[r], L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일 · 정렬바 제거(운영자 260720 구독 정렬바 통일 · 데이터 정렬은 sreS 기본값 유지)
+  REGS.forEach(r => { const L = stkR[r]; if (L.length) gTK += sec('stk-' + r, '큐레이션', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일 · 정렬바 제거(운영자 260720 "틱톡 구독도 바껴야댐" — AI영상·유튜브 구독처럼 정렬바 없는 카드 그리드로 통일 · 데이터 정렬은 stkS 기본값 유지)
+  REGS.forEach(r => { const L = sreR[r]; if (L.length) gIG += sec('sre-' + r, '큐레이션', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 한국/세계 2군 · 16:9 wd 통일 · 정렬바 제거(운영자 260720 구독 정렬바 통일 · 데이터 정렬은 sreS 기본값 유지)
   // X 큐레이션 = 소분류 라벨('큐레이션 게시물 · 한국') 폐지·대분류 직속(운영자 260720 — kcomm 이중 라벨 해소 선례 계승) · 정렬 칩 = 대분류 헤더 xSeg 이관 · div.trend-sec = 형제 리듬(rt2col 리셋·모바일 구분선)만 계승(details 아님 = 접기 비대상) · data-sec 유지 = fill 계약 불변
   const sxKr = sxR.kr.length ? sec('sx-kr', 'X', '', sxR.kr.length, '<div class="xgrid">' + sxR.kr.map(xcard).join('') + '</div>') : '';   // 좌열 소분류 헤더 신설(운영자 260721 "좌측에는 블릿(소분류)로 X" — sec 골격 = 우측 블루스카이와 동일 블릿 도형·나란히)
   // ⑦ 블루스카이 = X 우측 열 합류(운영자 260720 "엑스랑 좌우로 배치 · 첨부1 참고" = rt2col 구글|시그널 문법 계승 · 기타(Q240) 대분류 통합 선례) — 한쪽 결측 = 단독 폭(조용한 공백 동축) · 번역본만 노출(운영자 260718) 유지
@@ -10272,7 +10272,7 @@ function renderSnsTrends() {
   // (구 gBS 독립 대분류 = 260720 X 우측 열 합류로 폐지 — bskS/bskL/bskSec 정의는 위 X 조립부 · 재분리 = git 이력)
   let gTH = '';   // ⑧ 스레드 그룹(운영자 260713 "추천대로" = 새 그룹 · 구독 게시물 = X 구독 문법 · 공급 = 폰/맥 phone_subs 전용)
   const sthS = sortOf('sth', ['likes', 'cmts'], 'likes'), sthR = { kr: bySort(byReg(sth, 'kr'), sthS).slice(0, 10), gl: bySort(byReg(sth, 'gl'), sthS).slice(0, 10) };
-  REGS.forEach(r => { const L = sthR[r]; if (L.length) gTH += sec('sth-' + r, '큐레이션 게시물', '· ' + REGN[r], L.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });
+  REGS.forEach(r => { const L = sthR[r]; if (L.length) gTH += sec('sth-' + r, '큐레이션 게시물', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });
   let gHN = '';   // ⑫ 해커뉴스 그룹(운영자 260713 · 260720 brow = 순위+제목만[스코어·삼각형·시간열 제거] · 클릭 = 원문/HN)
   const hnL = hnl.slice(0, 12);
   if (hnL.length) gHN += sec('hn', '해커뉴스', '', hnL.length, hnL.map((p2, i) => brow(i, p2.url || p2.hn || '#')).join(''));   // 순위+제목만(운영자 260720 — 톱 스토리→해커뉴스 개명 · 구 삼각형▲·스코어·시간열 제거 · 반폭 rt2col서 제목 .trend-q 말줄임[…] 자동)
