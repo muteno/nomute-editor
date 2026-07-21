@@ -533,6 +533,35 @@ def _audience_sample(aud):
         v = top(axis, n)
         if v:
             out[key] = v
+    # 성별·연령 전체 분포(운영자 260722 — TOP5 age_gender 셀 합은 남/여를 과소집계[남29·여8] · IG 네이티브는 전 셀 정규화라 남64·여36) —
+    # age,gender 전 셀을 성별축·연령축으로 각각 합산. 성별 = 남·여만 100% 정규화(미지정 U 제외 = IG 앱 '남/여' 표기 정합) · 연령 = 전 버킷(U 없음 = 자연 100%).
+    ag = fd.get('age,gender') or []
+    res_all = (ag[0].get('results') or []) if ag else []
+    if res_all:
+        gsum, asum = {}, {}
+        for r in res_all:
+            val = r.get('value') or 0
+            age = gender = None
+            for x in (r.get('dimension_values') or []):
+                xs = str(x)
+                if xs in ('M', 'F', 'U'):
+                    gender = xs
+                else:
+                    age = xs
+            if gender:
+                gsum[gender] = gsum.get(gender, 0) + val
+            if age:
+                asum[age] = asum.get(age, 0) + val
+        gall = sum(gsum.values())
+        if gall:
+            mf = gsum.get('M', 0) + gsum.get('F', 0) or 1
+            out['gender'] = {'M': round(gsum.get('M', 0) / gall * 100, 1), 'F': round(gsum.get('F', 0) / gall * 100, 1),
+                             'U': round(gsum.get('U', 0) / gall * 100, 1),   # 3분할 100% 누적(운영자 260722 세로 막대 남/여/미)
+                             'M_norm': round(gsum.get('M', 0) / mf * 100, 1), 'F_norm': round(gsum.get('F', 0) / mf * 100, 1)}   # 남:여만 정규화(미지정 제외 · 참고·IG 앱 표기값)
+        atot = sum(asum.values())
+        if atot:
+            out['age_full'] = [{'k': k, 'pct': round(v / atot * 100, 1)}
+                               for k, v in sorted(asum.items(), key=lambda kv: -kv[1])]   # 전 연령 버킷 내림차순(뷰어 top-N 절취)
     note = ((aud or {}).get('manual') or {}).get('operator_audience_note')
     if note:
         out['operator_note'] = note
@@ -615,8 +644,28 @@ def main():
                 **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용
         # 일일 추이 배선(운영자 260713) — 과거 CSV 시드 ∪ 봇 수집 일별값을 뷰어까지 전달(차트는 후속·플레이그라운드)
         series_daily, daily_meta = _daily_timeseries(daily)
+        # 팔로워 순증감(총수 차이 · 운영자 260722) — IG가 언팔 수를 미제공(follows_and_unfollows 빈 반환)이라 'follows'(신규 유입)는 항상 ≥0 = 감소 불가시.
+        # 봇이 매 실행 찍은 profile.followers_count(총수)를 일별 최종값으로 잡아 전일 차분 = 진짜 순증감(감소일 음수). 총수 기록일부터라 이력은 짧게 시작해 매일 채워짐.
+        tot_by_day = {}
+        for r in daily:
+            fc = (r.get('profile') or {}).get('followers_count')
+            dd = (r.get('fetched_kst') or '')[:10]
+            if isinstance(fc, (int, float)) and dd:
+                tot_by_day[dd] = fc   # 그날 최신(뒤 레코드가 덮음)
+        tdays = sorted(tot_by_day)
+        net_by_day = {tdays[i]: tot_by_day[tdays[i]] - tot_by_day[tdays[i - 1]] for i in range(1, len(tdays))}
+        row_by_date = {row['date']: row for row in series_daily}
+        for dd, nv in net_by_day.items():
+            if dd in row_by_date:
+                row_by_date[dd]['follower_net'] = nv
+            else:   # series에 없는 날짜(follows 결측일 등) = 새 행 생성 편입
+                new_row = {'date': dd, 'follower_net': nv}
+                series_daily.append(new_row)
+                row_by_date[dd] = new_row
+        series_daily.sort(key=lambda row: row.get('date') or '')
         vdoc['daily_series'] = series_daily
         vdoc['daily_meta'] = daily_meta
+        daily_meta['follower_net_from'] = tdays[1] if len(tdays) > 1 else None   # 순증감 시작일(뷰어 안내·이력 짧음 고지용)
         vdoc['avg'] = _avg_signals(series_daily)   # 평균 게시량·평균 대비 현재(운영자 실사용 핵심)
         vdoc['posts_view_avg'] = sig.get('posts_view_avg')   # TOP 게시물 '평균 대비 편차' 기준값(뷰어 = 부재 시 표시분 평균 폴백)
         vdoc['fmt'] = sig.get('format_summary')    # 릴스·피드 절대 요약
