@@ -858,6 +858,11 @@ def _kr_mkt_open(now):
 _FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"), ("034020", "두산에너빌리티"), ("012450", "한화에어로스페이스"))
 _FIN_STOCKS_US = (("TSLA.O", "테슬라"), ("NVDA.O", "엔비디아"), ("PLTR.O", "팔란티어"), ("SPCX.O", "스페이스X"))   # 스페이스x = 2026-06-12 나스닥 상장(SPCX.O · 실측)
 _FIN_INDICES = (("KOSPI", "코스피", "KRW"), ("KOSDAQ", "코스닥", "KRW"), (".IXIC", "나스닥", "USD"), (".INX", "S&P500", "USD"))
+# ⑬ 환율 = 8대 기축통화(운영자 260721 "영국돈이랑 몇개 더 넣어서 8개") — (코드, 네이버 마켓인덱스 코드, 표시명, 고시단위) · div=100 = JPY만(네이버 100엔 고시 → 1엔당 원화 저장 · 뷰어가 100엔 기준 ×100 복원 = 한국 관례) · 그 외 = 1(1통화당 원화)
+_FIN_FX = (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
+           ("JPY", "FX_JPYKRW", "일본 엔", 100), ("GBP", "FX_GBPKRW", "영국 파운드", 1),
+           ("CNY", "FX_CNYKRW", "중국 위안", 1), ("AUD", "FX_AUDKRW", "호주 달러", 1),
+           ("CAD", "FX_CADKRW", "캐나다 달러", 1), ("CHF", "FX_CHFKRW", "스위스 프랑", 1))
 
 
 def _fin_stock_kr(code, name):
@@ -931,10 +936,9 @@ def finance(prev_fin=None):
 
     # ── 환율(네이버 하나은행 고시 · 값+등락률 장중 갱신 · 전일 종가 대비) — 3h throttle(운영자 260717 "환율 3시간") ──
     rates = list(prev_fin.get("rates") or [])
-    if not rates or _stale("rates", 3):
+    if len(rates) < len(_FIN_FX) or _stale("rates", 3):   # 통화 수 증가(4→8 확장) = 3h 스로틀 무시하고 즉시 재수집 = 신규 기축통화 다음 run 발효 · 완비 후엔 len 동수 → 스로틀 복귀
         got = []
-        for code, rc, name, div in (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
-                                     ("JPY", "FX_JPYKRW", "일본 엔", 100), ("CNY", "FX_CNYKRW", "중국 위안", 1)):
+        for code, rc, name, div in _FIN_FX:
             try:
                 info = _naver_json(f"https://api.stock.naver.com/marketindex/exchange/{rc}").get("exchangeInfo") or {}
                 v, chg = _fnum(info.get("closePrice")), _fnum(info.get("fluctuationsRatio"))
