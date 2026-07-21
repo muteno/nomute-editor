@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>환율 등락 표시 플레이그라운드 · 260721</title>
+<style>
+  /* ── viewer/index.html :root 실측 사본(임의 창작 0 · CLAUDE.md [0]) ── */
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#00EED2; --accent-2:#d8ff3d; --accent-3:#e23b2a; --bias-l2:#3a6ddb;
+    --r-pill:999px; --sp-1:6px; --trend-indent:13px;
+    --fs-label:13px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:#0b0b0c;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5;}
+  a{color:var(--accent);}
+  .wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;padding:18px;max-width:1120px;margin:0 auto;}
+  /* 좌: 미리보기(스티키) */
+  .stagewrap{position:sticky;top:14px;flex:0 0 auto;}
+  @media(max-width:760px){ .stagewrap{position:static;flex:1 1 100%;} .console{flex:1 1 100%;} }
+  .frame{width:392px;max-width:100%;height:660px;overflow-y:auto;background:var(--bg);border:1px solid var(--line);border-radius:18px;padding:16px 12px 24px;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+  .frame::-webkit-scrollbar{width:7px;} .frame::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:9px;}
+  .stagecap{margin-top:8px;font-size:12px;color:var(--mut);text-align:center;max-width:392px;}
+  /* 현행 고정 기준선 */
+  .baseline{border:1px dashed rgba(255,255,255,.14);border-radius:12px;padding:9px 11px;margin-bottom:14px;}
+  .baseline .bl-tag{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--mut);text-transform:uppercase;margin-bottom:5px;}
+  /* 금융 섹션 재현(fin-* 실측 계승) */
+  .fin-grp{margin-top:0;}
+  .fin-grp + .fin-grp{margin-top:18px;padding-top:15px;border-top:1px solid var(--line2);}
+  .fin-lbl{display:flex;align-items:center;gap:8px;font-size:var(--fs-label);font-weight:var(--fw-x);color:var(--fg);margin:2px 0 9px;padding-left:var(--trend-indent);}
+  .fin-lbl::before{content:'•';color:var(--accent);font-weight:var(--fw-b);width:24px;text-align:center;margin-left:calc(var(--trend-indent) * -1);}
+  .fin-rows{display:flex;flex-direction:column;gap:2px;padding-left:var(--trend-indent);padding-right:12px;}
+  .fin-row{display:grid;grid-template-columns:18px 1fr auto var(--t-cwidth,56px);align-items:center;column-gap:var(--sp-1);padding:3px 0;font-size:var(--fs-sm);color:var(--fg);}
+  .fin-ico{flex:none;align-self:center;margin-block:-3px;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:var(--r-pill);background:var(--line2);color:var(--fg);font-size:var(--fs-xs);font-weight:var(--fw-x);line-height:1;}
+  .fin-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fin-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--fw-b);}
+  .fin-v i{color:var(--mut);font-style:normal;font-size:var(--fs-xs);margin-left:4px;}
+  .fin-chg{min-width:0;justify-self:end;display:inline-flex;align-items:center;justify-content:flex-end;gap:var(--t-gap,3px);font-size:var(--t-cfs,11px);font-variant-numeric:tabular-nums;color:var(--mut);opacity:var(--t-calpha,1);}
+  .fin-chg .ar{display:inline-flex;align-items:center;justify-content:center;}
+  .fin-chg .ar svg{width:var(--t-asize,9px);height:var(--t-asize,9px);display:block;}
+  /* ── 콘솔 ── */
+  .console{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:14px;}
+  h1{font-size:17px;margin:2px 0 0;}
+  .sub{font-size:12.5px;color:var(--mut);margin:0;}
+  .csec{background:rgba(255,255,255,.028);border:1px solid var(--line);border-radius:13px;padding:13px 14px;}
+  .csec > .ct{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;margin-bottom:10px;}
+  /* 프리셋 */
+  .pchips{display:flex;flex-wrap:wrap;gap:7px;}
+  .pchip{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);border-radius:var(--r-pill);padding:7px 13px;font-size:12.5px;cursor:pointer;transition:.15s;}
+  .pchip:hover{border-color:rgba(255,255,255,.28);}
+  .pchip.on{background:var(--accent);color:#003c35;border-color:var(--accent);font-weight:700;}
+  .pchip .st{color:var(--accent-2);}
+  .pchip.on .st{color:#003c35;}
+  .pchip .wn{color:var(--accent-3);font-weight:800;}
+  .pchip.on .wn{color:#5a0f08;}
+  /* 세그먼트 */
+  .seg-grp{margin-bottom:13px;} .seg-grp:last-child{margin-bottom:0;}
+  .seg-grp > label{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--fg);margin-bottom:6px;}
+  .seg-grp .warn{color:var(--accent-3);font-size:11px;font-weight:800;}
+  .seg{display:flex;gap:5px;flex-wrap:wrap;}
+  .seg button{flex:1 1 auto;min-width:64px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);border-radius:9px;padding:8px 6px;font-size:12px;cursor:pointer;transition:.15s;}
+  .seg button:hover{border-color:rgba(255,255,255,.24);}
+  .seg button.on{background:rgba(0,238,210,.14);border-color:var(--accent);color:var(--fg);font-weight:700;}
+  .seg button.on.wn{background:rgba(226,59,42,.14);border-color:var(--accent-3);}
+  /* 슬라이더 */
+  .sld{display:flex;align-items:center;gap:10px;margin-bottom:11px;} .sld:last-child{margin-bottom:0;}
+  .sld > .sl-nm{flex:0 0 96px;font-size:12px;color:var(--fg);}
+  .sld > .sl-nm small{display:block;color:var(--mut);font-size:10px;}
+  .sld input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:9px;background:linear-gradient(90deg,var(--accent) var(--p,50%),rgba(255,255,255,.12) var(--p,50%));outline:none;}
+  .sld input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--fg);cursor:pointer;border:2px solid #0b0b0c;}
+  .sld > .sl-v{flex:0 0 78px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;color:var(--fg);}
+  .sld > .sl-v small{color:var(--mut);}
+  .sld > .sl-v .keep{color:var(--accent);} .sld > .sl-v .upd{color:var(--accent-2);}
+  /* 출력 */
+  pre#out{background:#0b0b0c;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:11.5px;line-height:1.65;color:var(--fg);white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;margin:0 0 10px;max-height:280px;overflow:auto;}
+  .cbtn{width:100%;border:0;border-radius:10px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--accent);color:#003c35;}
+  .cbtn:active{transform:scale(.985);}
+  .note{font-size:11.5px;color:var(--mut);line-height:1.7;}
+  .note b{color:var(--fg);}
+  .devi{color:var(--accent-3);font-weight:800;}
+  /* 모달 */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:50;}
+  .mask.on{display:flex;}
+  .modal{background:#16171a;border:1px solid var(--line);border-radius:15px;padding:18px;max-width:440px;width:100%;}
+  .modal h3{margin:0 0 8px;font-size:15px;color:var(--accent-3);}
+  .modal p{font-size:12.5px;color:var(--mut);margin:0 0 12px;}
+  .modal pre{background:#0b0b0c;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:11px;color:var(--fg);white-space:pre-wrap;margin:0 0 12px;font-family:ui-monospace,monospace;}
+  .mbtns{display:flex;gap:8px;flex-wrap:wrap;}
+  .mbtns button{flex:1 1 auto;border-radius:9px;padding:10px;font-size:12.5px;font-weight:700;cursor:pointer;border:1px solid var(--line);}
+  .mb-prime{background:var(--accent-3);color:#fff;border-color:var(--accent-3);}
+  .mb-keep{background:rgba(255,255,255,.06);color:var(--fg);}
+  .mb-cancel{background:transparent;color:var(--mut);}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--accent);color:#003c35;padding:10px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:60;}
+  .toast.on{opacity:1;}
+</style>
+</head>
+<body data-pg-template="rate-indicator-v1">
+<div class="wrap">
+  <!-- ① 실물 재현 미리보기(스티키) -->
+  <div class="stagewrap">
+    <div class="frame" id="frame">
+      <div class="baseline" id="baseline" data-pg-baseline><!-- 현행 고정 기준 --></div>
+      <div class="app" id="app" data-pg-preview><!-- 튜닝 대상(금융 섹션) --></div>
+    </div>
+    <div class="stagecap">↑ 위 점선칸 = <b style="color:#8fa697">현행</b> 고정 기준(항상 비교) · 아래 = 조작 중인 시안 · 콘솔 만지면 실시간 반영</div>
+  </div>
+
+  <!-- 콘솔 -->
+  <aside class="console">
+    <div>
+      <h1>환율 등락 표시 — 만지는 시안</h1>
+      <p class="sub">"오른다/내린다" 방향만 명확히 · 좋고 나쁨 해석은 네 몫(달러 수입 = 원화 강세가 마냥 좋지도 않음). 색으로 좋다/나쁘다 못 박지 않는 게 목표.</p>
+    </div>
+
+    <!-- ② 프리셋 -->
+    <div class="csec">
+      <div class="ct">프리셋 (현행 포함 · ★ 추천)</div>
+      <div class="pchips" id="presets" data-pg-presets></div>
+    </div>
+
+    <!-- ③ 미세조정: 세그먼트 -->
+    <div class="csec">
+      <div class="ct">방식 (N안 · 범주 선택)</div>
+      <div id="segs"></div>
+    </div>
+
+    <!-- ③ 미세조정: 슬라이더 -->
+    <div class="csec">
+      <div class="ct">미세조정 (수치)</div>
+      <div id="sliders"></div>
+    </div>
+
+    <!-- ④ 선택값 출력 + 복사 -->
+    <div class="csec">
+      <div class="ct">선택값 (현행 병기 · 계승/갱신 자동 표기)</div>
+      <pre id="out"></pre>
+      <button class="cbtn" id="copy" data-pg-copy>선택값 복사</button>
+    </div>
+
+    <!-- ⑤ 재현 한계 각주 -->
+    <div class="csec note" data-pg-note>
+      <b>재현 한계(정직)</b><br>
+      · 미리보기 = viewer/index.html의 <b>fin-* 실측 CSS·:root 토큰 사본</b>으로 재현(임의 창작 0). 실물 미세차(칩 광학정렬 margin-block 등)는 근사.<br>
+      · 등락 색은 <b>금융 4개 그룹(증시·암호화폐·환율·종목) .fin-chg 전부 공통</b> — 색 스킴을 바꾸면 환율만이 아니라 <b>금융 전체</b>가 같이 바뀐다.<br>
+      · <span class="devi">⚠ 색 스킴 변경 = 역할색 재지정(기틀 축)</span> — 상승 <b>--accent-3</b>·하락 <b>--bias-l2</b>는 등재 토큰. 무채/서구/라임 선택 = 복사 시 「🔁 기틀 갱신 역제안」으로 승격(몰래 안 바꿈).<br>
+      · GBP·AUD·CAD·CHF 원화값은 <b>표본 근사치</b>(실값 = 다음 스크래핑). 화살표 = SVG 픽토(문자 ▲▼ 금지·[3-1]).<br>
+      · 반영 경로 = 회신의 [선택값 복사] → viewer/index.html 배선 + check_refs·smoke_all 게이트.
+    </div>
+  </aside>
+</div>
+
+<!-- ⚠ 복사 알림창(기틀 이탈 시) -->
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3>⚠ 기틀 축 변경 포함</h3>
+    <p id="mtxt"></p>
+    <pre id="mprop"></pre>
+    <div class="mbtns">
+      <button class="mb-prime" id="mProp">역제안 포함 복사</button>
+      <button class="mb-keep" id="mKeep">계승분만 복사</button>
+      <button class="mb-cancel" id="mCancel">취소</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast">복사됨</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const near = (a, b, eps = 0.001) => Math.abs(a - b) < eps;   // 기존 토큰 동값 판정(포터블 §3-4)
+
+// ── 금융 표본 데이터(현행 병합 상태 = 엔화 907·8통화 반영 · 등락 혼합) ──
+const FIN = {
+  idx: { nm: '증시', rows: [['코','코스피','6,809.35','pt',4.5],['닥','코스닥','756.90','pt',0.97],['나','나스닥','25,508.07','pt',-0.05],['S','S&P500','7,443.28','pt',-0.19]] },
+  cc:  { nm: '암호화폐', rows: [['B','BTC','95,728,000','원',0.5],['E','ETH','2,814,000','원',1.15],['X','XRP','1,645','원',1.36],['S','SOL','114,200','원',0.44]] },
+  fx:  { nm: '환율', rows: [['$','미국 달러','1,474','원',-0.31],['€','유로','1,682','원',-0.34],['¥','일본 엔(100)','907','원',-0.3],['£','영국 파운드','1,978','원',-0.12],['元','중국 위안','218','원',-0.29],['A$','호주 달러','966','원',0.08],['C$','캐나다 달러','1,074','원',-0.15],['Fr','스위스 프랑','1,842','원',0.05]] },
+  stk: { nm: '종목', rows: [['삼','삼성전자','261,500','원',7.17],['SK','SK하이닉스','1,875,000','원',6.29],['두','두산에너빌리티','67,050','원',3.47],['한','한화에어로','898,000','원',2.63],['T','테슬라','369.57','$',-2.96],['N','엔비디아','203.28','$',0.23],['P','팔란티어','134.85','$',1.87],['X','스페이스X','119.85','$',-3.34]] }
+};
+const ORDER = ['idx','cc','fx','stk'];
+
+// ── 현행 실측 기본값 ──
+const DEFAULTS = { mode:'pct', scheme:'kr', shape:'tri', asize:9, gap:3, cfs:11, calpha:1, cwidth:56 };
+
+const PRESETS = [
+  { id:'p0', nm:'현행', st:{ ...DEFAULTS } },
+  { id:'p1', nm:'화살표+%', star:true, st:{ ...DEFAULTS, mode:'arrowpct', shape:'chev' } },
+  { id:'p2', nm:'화살표만', st:{ ...DEFAULTS, mode:'arrow', shape:'tri' } },
+  { id:'p3', nm:'무채(방향=화살표)', warn:true, st:{ ...DEFAULTS, mode:'arrowpct', scheme:'mono', shape:'chev' } },
+  { id:'p4', nm:'서구색', warn:true, st:{ ...DEFAULTS, mode:'arrowpct', scheme:'west', shape:'tri' } },
+  { id:'p5', nm:'라임 단색', warn:true, st:{ ...DEFAULTS, mode:'arrowpct', scheme:'lime', shape:'chev' } }
+];
+
+const SEGS = [
+  { k:'mode', nm:'방향 표시', opts:[['pct','숫자%만'],['arrowpct','화살표+%'],['arrow','화살표만']] },
+  { k:'scheme', nm:'색 스킴', opts:[['kr','한국 빨↑파↓'],['west','서구 초↑빨↓'],['mono','무채'],['lime','라임 단색']], warnIf:v => v !== 'kr' },
+  { k:'shape', nm:'화살표 모양', opts:[['tri','삼각'],['chev','갈매기'],['line','선화살']] }
+];
+
+const SLIDERS = [
+  { k:'asize', nm:'화살표 크기', d:'.fin-chg svg', min:6, max:14, step:1, unit:'px', grp:'geo' },
+  { k:'gap', nm:'화살표·숫자 간격', d:'gap', min:0, max:10, step:1, unit:'px', grp:'geo' },
+  { k:'cfs', nm:'% 폰트 크기', d:'--fs-xs 11', min:10, max:14, step:1, unit:'px', grp:'font', ladder:[11,12,13] },
+  { k:'calpha', nm:'색 진하기', d:'알파', min:0.4, max:1, step:0.05, unit:'', grp:'alpha' },
+  { k:'cwidth', nm:'등락 열폭', d:'grid col', min:44, max:68, step:1, unit:'px', grp:'geo' }
+];
+
+let state = { ...DEFAULTS };
+
+// ── 색·화살표 ──
+function chgColor(pct, scheme){
+  const up = pct > 0, dn = pct < 0;
+  if(!up && !dn) return 'var(--mut)';
+  if(scheme === 'kr')   return up ? 'var(--accent-3)' : 'var(--bias-l2)';
+  if(scheme === 'west') return up ? 'var(--accent)'   : 'var(--accent-3)';
+  if(scheme === 'mono') return up ? 'var(--fg)'       : 'var(--mut)';
+  return up ? 'var(--accent-2)' : 'var(--mut)';   // lime
+}
+function arrowSVG(up, shape){
+  if(shape === 'tri')  return up
+    ? '<svg viewBox="0 0 24 24"><path d="M12 7l7 11H5z" fill="currentColor"/></svg>'
+    : '<svg viewBox="0 0 24 24"><path d="M12 17 5 6h14z" fill="currentColor"/></svg>';
+  if(shape === 'chev') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="'
+    + (up ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6') + '"/></svg>';
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="'
+    + (up ? 'M12 19V6M6 12l6-6 6 6' : 'M12 5v13M6 12l6 6 6-6') + '"/></svg>';
+}
+function chgHTML(pct, st){
+  const up = pct > 0, dn = pct < 0;
+  const col = chgColor(pct, st.scheme);
+  const txt = (pct > 0 ? '+' : '') + pct.toFixed(2) + '%';
+  let inner = '';
+  if((st.mode === 'arrowpct' || st.mode === 'arrow') && (up || dn)) inner += '<span class="ar">' + arrowSVG(up, st.shape) + '</span>';
+  if(st.mode !== 'arrow') inner += '<span class="pt">' + txt + '</span>';
+  else if(!up && !dn) inner += '<span class="pt">—</span>';
+  return '<span class="fin-chg" style="color:' + col + '">' + inner + '</span>';
+}
+function rowHTML(r, st){
+  return '<div class="fin-row"><span class="fin-ico">' + r[0] + '</span><span class="fin-nm">' + r[1]
+    + '</span><span class="fin-v">' + r[2] + '<i>' + r[3] + '</i></span>' + chgHTML(r[4], st) + '</div>';
+}
+function grpHTML(key, st){
+  const g = FIN[key];
+  return '<div class="fin-grp"><div class="fin-lbl">' + g.nm + '</div><div class="fin-rows">'
+    + g.rows.map(r => rowHTML(r, st)).join('') + '</div></div>';
+}
+
+// ── 렌더(스크롤 보존 · 포터블 §7-1-6) ──
+function renderApp(){
+  const bd = $('#frame'); const y = bd.scrollTop;
+  $('#app').innerHTML = ORDER.map(k => grpHTML(k, state)).join('');
+  bd.scrollTop = y;
+}
+function renderBaseline(){
+  // 현행 고정 기준(비교) — 대표 3행
+  const sample = [FIN.fx.rows[0], FIN.stk.rows[0], FIN.idx.rows[2]];
+  $('#baseline').innerHTML = '<div class="bl-tag">현행 기준(고정)</div><div class="fin-rows" style="padding-left:0">'
+    + sample.map(r => rowHTML(r, DEFAULTS)).join('') + '</div>';
+}
+
+// ── 콘솔 빌드 ──
+function buildPresets(){
+  $('#presets').innerHTML = PRESETS.map(p =>
+    '<button class="pchip" data-p="' + p.id + '">' + p.nm
+    + (p.star ? ' <span class="st">★</span>' : '') + (p.warn ? ' <span class="wn">⚠</span>' : '') + '</button>'
+  ).join('');
+  $('#presets').querySelectorAll('.pchip').forEach(b => b.onclick = () => {
+    const p = PRESETS.find(x => x.id === b.dataset.p);
+    state = { ...p.st }; apply();
+  });
+}
+function buildSegs(){
+  $('#segs').innerHTML = SEGS.map(s =>
+    '<div class="seg-grp" data-k="' + s.k + '"><label><span>' + s.nm + '</span><span class="warn" data-warn="' + s.k + '"></span></label><div class="seg">'
+    + s.opts.map(o => '<button data-k="' + s.k + '" data-v="' + o[0] + '">' + o[1] + '</button>').join('') + '</div></div>'
+  ).join('');
+  $('#segs').querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+    state[b.dataset.k] = b.dataset.v; apply();
+  });
+}
+function buildSliders(){
+  $('#sliders').innerHTML = SLIDERS.map(s => {
+    const list = s.ladder ? ' list="dl-' + s.k + '"' : '';
+    const dl = s.ladder ? '<datalist id="dl-' + s.k + '">' + s.ladder.map(v => '<option value="' + v + '">').join('') + '</datalist>' : '';
+    return '<div class="sld"><span class="sl-nm">' + s.nm + '<small>' + s.d + '</small></span>'
+      + '<input type="range" data-k="' + s.k + '" min="' + s.min + '" max="' + s.max + '" step="' + s.step + '"' + list + '>'
+      + dl + '<span class="sl-v" data-v="' + s.k + '"></span></div>';
+  }).join('');
+  $('#sliders').querySelectorAll('input[type=range]').forEach(inp => inp.oninput = () => {
+    state[inp.dataset.k] = parseFloat(inp.value); apply();
+  });
+}
+
+// ── 판정 헬퍼 ──
+function schemeName(v){ return { kr:'한국 빨↑/파↓', west:'서구 초↑/빨↓', mono:'무채(방향=화살표)', lime:'라임 단색' }[v]; }
+function modeName(v){ return { pct:'숫자%만', arrowpct:'화살표+%', arrow:'화살표만' }[v]; }
+function shapeName(v){ return { tri:'삼각', chev:'갈매기', line:'선화살' }[v]; }
+function deviations(){
+  const d = [];
+  if(state.scheme !== 'kr') d.push('scheme');
+  return d;
+}
+
+// ── 단일 반영점 ──
+function apply(){
+  // CSS 변수
+  const a = $('#app');
+  a.style.setProperty('--t-asize', state.asize + 'px');
+  a.style.setProperty('--t-gap', state.gap + 'px');
+  a.style.setProperty('--t-cfs', state.cfs + 'px');
+  a.style.setProperty('--t-calpha', state.calpha);
+  a.style.setProperty('--t-cwidth', state.cwidth + 'px');
+  renderApp();
+  // 세그 on + ⚠
+  $('#segs').querySelectorAll('.seg button').forEach(b => {
+    const on = state[b.dataset.k] === b.dataset.v;
+    b.classList.toggle('on', on);
+    const seg = SEGS.find(s => s.k === b.dataset.k);
+    b.classList.toggle('wn', on && seg.warnIf ? seg.warnIf(b.dataset.v) : false);
+  });
+  SEGS.forEach(s => { const w = $('[data-warn="' + s.k + '"]'); if(w) w.textContent = (s.warnIf && s.warnIf(state[s.k])) ? '⚠ 기틀 이탈' : ''; });
+  // 슬라이더 value·트랙·라벨
+  SLIDERS.forEach(s => {
+    const inp = $('input[data-k="' + s.k + '"]'); inp.value = state[s.k];
+    inp.style.setProperty('--p', ((state[s.k] - s.min) / (s.max - s.min) * 100) + '%');
+    const vl = $('.sl-v[data-v="' + s.k + '"]');
+    let tag = '';
+    if(s.k === 'cfs') tag = near(state.cfs, 11) ? ' <span class="keep">계승</span>' : ' <span class="upd">갱신</span>';
+    if(s.k === 'cwidth') tag = near(state.cwidth, 56) ? ' <span class="keep">계승</span>' : ' <span class="upd">갱신</span>';
+    vl.innerHTML = state[s.k] + (s.unit ? '<small>' + s.unit + '</small>' : '') + tag;
+  });
+  // 프리셋 역동기(현 state와 정확히 일치하는 프리셋 점등)
+  const cur = JSON.stringify(state);
+  $('#presets').querySelectorAll('.pchip').forEach(b => {
+    const p = PRESETS.find(x => x.id === b.dataset.p);
+    b.classList.toggle('on', JSON.stringify({ ...DEFAULTS, ...p.st }) === cur);
+  });
+  buildOut();
+}
+
+// ── ④ 선택값 출력 ──
+function pad(label, w){ // 한글 2칸 폭 계산(포터블 §7-1-5)
+  let width = 0; for(const ch of label) width += ch.charCodeAt(0) > 127 ? 2 : 1;
+  return label + ' '.repeat(Math.max(0, w - width));
+}
+function propBlock(){
+  const upC = { kr:'--accent-3 #e23b2a(빨강)', west:'--accent #00EED2(청록)', mono:'--fg #eef7f0(무채)', lime:'--accent-2 #d8ff3d(라임)' }[state.scheme];
+  const dnC = { kr:'--bias-l2 #3a6ddb(파랑)', west:'--accent-3 #e23b2a(빨강)', mono:'--mut #8fa697(무채)', lime:'--mut #8fa697(무채)' }[state.scheme];
+  return '🔁 기틀 갱신 역제안 (적용 범위 = 전 앱 금융 등락색 .fin-chg.up/.dn · 증시·암호화폐·환율·종목 전체)\n'
+    + '  · 상승색: --accent-3 #e23b2a(빨강) → ' + upC + '\n'
+    + '  · 하락색: --bias-l2 #3a6ddb(파랑) → ' + dnC + '\n'
+    + '  회신 시 = viewer/index.html .fin-chg.up/.dn 규칙을 이 역할로 재배선(check_refs 게이트)';
+}
+function buildOut(keepOnly){
+  const dev = deviations();
+  const cfsNote = near(state.cfs, 11) ? ' = --fs-xs 동값(계승)' : ' → 갱신 후보';
+  const cwNote = near(state.cwidth, 56) ? ' = 현행 동값(계승)' : ' → 갱신 후보';
+  let t = '[환율 등락 표시 — 선택값]\n'
+    + pad('방향 표시', 12) + ': ' + modeName(state.mode) + '   [현행 숫자%만]\n'
+    + pad('색 스킴', 12) + ': ' + schemeName(state.scheme) + (state.scheme !== 'kr' ? '  ⚠ 기틀 역할색 재지정' : '   [현행]') + '\n'
+    + pad('화살표 모양', 12) + ': ' + shapeName(state.shape) + (state.mode === 'pct' ? ' (숫자%만이라 미표시)' : '') + '\n'
+    + pad('화살표 크기', 12) + ': ' + state.asize + 'px\n'
+    + pad('화살표 간격', 12) + ': ' + state.gap + 'px\n'
+    + pad('% 폰트', 12) + ': ' + state.cfs + 'px' + cfsNote + '\n'
+    + pad('색 진하기', 12) + ': ' + state.calpha.toFixed(2) + ' (알파 변주 = 계승)\n'
+    + pad('등락 열폭', 12) + ': ' + state.cwidth + 'px' + cwNote + '\n';
+  if(dev.length && !keepOnly) t += '\n' + propBlock() + '\n';
+  else if(dev.length && keepOnly) t += '\n(⚠ 색 스킴 역제안 제외 = 계승분만 · 색은 현행 한국 빨↑/파↓ 유지)\n';
+  $('#out').textContent = t;
+  return t;
+}
+
+// ── 복사(⚠ 있으면 모달) ──
+function toast(){ const t = $('#toast'); t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 1400); }
+function doCopy(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(toast, () => legacyCopy(text)); }
+  else legacyCopy(text);
+}
+function legacyCopy(text){
+  const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast(); } catch(e){} document.body.removeChild(ta);
+}
+$('#copy').onclick = () => {
+  const dev = deviations();
+  if(!dev.length){ doCopy(buildOut()); return; }
+  $('#mtxt').textContent = '색 스킴을 ' + schemeName(state.scheme) + '(으)로 바꾸면 상승/하락 역할색(기틀 토큰)이 재지정되고, 금융 4개 그룹 전부에 적용됩니다. 그냥 복사하지 않고 역제안으로 승격합니다.';
+  $('#mprop').textContent = propBlock();
+  $('#mask').classList.add('on');
+};
+$('#mProp').onclick = () => { doCopy(buildOut(false)); $('#mask').classList.remove('on'); };
+$('#mKeep').onclick = () => { doCopy(buildOut(true)); $('#mask').classList.remove('on'); };
+$('#mCancel').onclick = () => $('#mask').classList.remove('on');
+$('#mask').onclick = e => { if(e.target === $('#mask')) $('#mask').classList.remove('on'); };
+
+// ── 부트: 결정 대상 상태로 오픈(★ 화살표+% 현행색 · 포터블 §7-1-3) ──
+buildPresets(); buildSegs(); buildSliders(); renderBaseline();
+state = { ...PRESETS[1].st };   // p1 ★
+apply();
+</script>
+</body>
+</html>
