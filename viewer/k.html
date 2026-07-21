@@ -807,6 +807,15 @@ $('#go').onclick = async () => {
     const res = await fetch('/api/k', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ scene, refimage, refmulti, reroll }, kPayload())) });   // 모델·설정·대사·분막(개편 P1) — 서버가 화이트리스트 재검증 후 마커 부착
     const j = await res.json();
     if (!res.ok || j.error) { status.innerHTML = WARN_SVG + ' ' + esc(String(j.error || res.status)); status.classList.add('err'); return; }
+    if (j.md) {   // 즉답(직결 · 운영자 260721 Q358 확산) — 결과가 응답에 실려 옴 = 폴링·배포 대기 생략
+      const ref = isReroll ? _lastRef : null;   // 즉답 = 레퍼런스 미포함 경로(서버 게이트) · 리롤은 직전 참조 이월 표시
+      status.innerHTML = OK_SVG + ' 완료 (즉답)';
+      try { localStorage.removeItem(CKEY); } catch (e) {}   // 새 생성 = 복사 표식 리셋(poll 성공과 동일)
+      await renderOut(j.md, ref, $('#out'));
+      try { localStorage.setItem(LKEY, JSON.stringify({ md: j.md, ref: ref || null, ts: Date.now() })); } catch (e) {}   // 재열람 = md 인라인 저장(파일 경로 없음)
+      try { $('#out').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+      return;
+    }
     poll(j.out, isReroll ? _lastRef : (j.refimage ? j.ref : null));   // 리롤 결과엔 직전 참조를 이월 표시(첫 생성분 재사용 — R2 URL 안정 · 검증5 F1 스펙A)
   } catch (e) {
     status.innerHTML = WARN_SVG + ' 요청 실패: ' + esc(e.message); status.classList.add('err');
@@ -816,11 +825,15 @@ $('#go').onclick = async () => {
 (async function restoreLast() {
   try {
     const s = JSON.parse(localStorage.getItem(LKEY) || 'null');
-    if (!s || !s.out || Date.now() - (s.ts || 0) > 86400e3) return;
-    const r = await fetch(s.out + '?t=' + Date.now()); if (!r.ok) return;
-    const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
-    const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));   // SPA 폴백(index.html) 오인 차단 = poll과 동일 가드
-    if (!md || !md.trim() || isHtml) return;
+    if (!s || (!s.out && !s.md) || Date.now() - (s.ts || 0) > 86400e3) return;
+    let md = typeof s.md === 'string' ? s.md : '';   // 즉답 결과 = md 인라인(파일 경로 없음 · Q358 확산)
+    if (!md) {
+      const r = await fetch(s.out + '?t=' + Date.now()); if (!r.ok) return;
+      const ct = (r.headers.get('content-type') || '').toLowerCase(); md = await r.text();
+      const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));   // SPA 폴백(index.html) 오인 차단 = poll과 동일 가드
+      if (isHtml) return;
+    }
+    if (!md || !md.trim()) return;
     if (_fired || _curStop || $('#out').innerHTML) return;   // 새 생성이 이미 시작·표시됐으면 양보(레이스 가드 — _fired = 발사 await 창 커버·최종감사2 #2)
     const d = new Date(s.ts), p2 = n => String(n).padStart(2, '0');
     $('#status').innerHTML = OK_SVG + ' 지난 결과 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' (새로 생성하면 대체)';
