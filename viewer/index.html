@@ -11016,27 +11016,32 @@ function chTileChart(series, key, mode, unit) {   // 타일 미니 차트(운영
   if (vals.length < 2) return '';   // 실측 2점 미만 = 조용한 공백(§디자인 e-가)
   const W = 200, H = 96, mL = 6, mR = 8, mT = 16, mB = 6, pw = W - mL - mR, ph = H - mT - mB;
   const mean = vals.reduce((p, v) => p + v, 0) / vals.length;
-  let mn = mode === 'zero' ? 0 : Math.min(...vals), mx = Math.max(...vals);
+  let mn = mode === 'zero' ? Math.min(0, ...vals) : Math.min(...vals), mx = Math.max(...vals);   // zero 하한 = min(0, 실측) — 순감소 음수 방출 시 하단 클립 방어(평의회2)
   if (mx === mn) mx = mn + 1;   // 평평 시리즈(신규 0 연속 등) 스케일 가드
   const pad = (mx - mn) * .12; if (mode !== 'zero') mn -= pad; mx += pad;
   const X = i => mL + pw * (n === 1 ? 0 : i / (n - 1)), Y = v => mT + ph * (1 - (v - mn) / (mx - mn));
-  const pts = []; rows.forEach((r, i) => { if (r[key] != null) pts.push([X(i), Y(r[key]), r[key]]); });
+  const pts = [], segs = []; let _cur = [];   // 결측 = 선 끊김(chChart segs 문법 정합 · 평의회2 — 구 단일 path = 공백을 직선 보간하던 것 교정)
+  rows.forEach((r, i) => { if (r[key] == null) { if (_cur.length) segs.push(_cur); _cur = []; return; } const pt = [X(i), Y(r[key]), r[key]]; _cur.push(pt); pts.push(pt); });
+  if (_cur.length) segs.push(_cur);
   let s = `<svg class="ch-tc" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
   const baseV = mode === 'zero' ? 0 : mean, bY = Y(baseV);   // 기준선: 팔로워 = 0(X축) · 조회수 = 창 평균(운영자 260721 — 평균선 점선 4 3 = chChart 정본 계승)
   s += `<line x1="${mL}" y1="${bY.toFixed(1)}" x2="${W - mR}" y2="${bY.toFixed(1)}" stroke="var(--mut)" stroke-width="1"${mode === 'zero' ? '' : ' stroke-dasharray="4 3"'} opacity=".55" vector-effect="non-scaling-stroke"/>`;
-  if (mode !== 'zero') s += `<text x="${mL + 2}" y="${(bY - 3.5).toFixed(1)}" font-size="8" fill="var(--mut)">평균 ${chFmtK(mean)}</text>`;
-  const line = chPath(pts.map(p => [p[0], p[1]]), 1);
-  s += `<path d="${line} L${pts[pts.length - 1][0].toFixed(1)} ${(H - mB).toFixed(1)} L${pts[0][0].toFixed(1)} ${(H - mB).toFixed(1)} Z" fill="rgba(var(--accent-rgb),.10)" stroke="none"/>`;   // area 글래스 필 = chChart 정본
-  s += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  if (mode !== 'zero') s += `<text x="${mL + 2}" y="${(bY - 3.5).toFixed(1)}" font-size="8" fill="var(--mut)">평균 ${chVf(Math.round(mean))}</text>`;
+  segs.forEach(seg => {   // 세그별 라인+area(결측 경계 = 끊김)
+    if (seg.length === 1) { s += `<circle cx="${seg[0][0].toFixed(1)}" cy="${seg[0][1].toFixed(1)}" r="2" fill="var(--accent)"/>`; return; }
+    const line = chPath(seg.map(p => [p[0], p[1]]), 1);
+    s += `<path d="${line} L${seg[seg.length - 1][0].toFixed(1)} ${(H - mB).toFixed(1)} L${seg[0][0].toFixed(1)} ${(H - mB).toFixed(1)} Z" fill="rgba(var(--accent-rgb),.10)" stroke="none"/>`;   // area 글래스 필 = chChart 정본
+    s += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  });
   // Y 최소·최대 = 무채움 원(전경색 테두리) + 꺾임 점선 리더 '---' 값 표기(운영자 260721 12 · 리더 = chChart 변곡 마커 정본 계승)
   let iMx = 0, iMn = 0; pts.forEach((p, i) => { if (p[2] > pts[iMx][2]) iMx = i; if (p[2] < pts[iMn][2]) iMn = i; });
   (iMx === iMn ? [[iMx, 1]] : [[iMx, 1], [iMn, 0]]).forEach(([mi, isMax]) => {
     const x = pts[mi][0], y = pts[mi][1], v = pts[mi][2];
-    s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="none" stroke="var(--fg)" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
+    s += `<circle data-mk="1" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="none" stroke="var(--fg)" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
     const rt = x > W - mR - 46, dir = rt ? -1 : 1;   // 우측단 = 좌향 꺾임(차트 밖 삐침 방지 · chChart 계승)
     const shelfY = isMax ? Math.max(9, y - 10) : Math.min(H - 2.5, y + 13), hEnd = x + dir * 13;
     s += `<path d="M${x.toFixed(1)} ${(isMax ? y - 4 : y + 4).toFixed(1)}L${x.toFixed(1)} ${shelfY.toFixed(1)}L${hEnd.toFixed(1)} ${shelfY.toFixed(1)}" fill="none" stroke="var(--mut)" stroke-width="1" stroke-dasharray="3 3" opacity=".7" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-    s += `<text x="${(hEnd + dir * 2).toFixed(1)}" y="${(shelfY + 2.5).toFixed(1)}" font-size="8" fill="var(--mut)" text-anchor="${rt ? 'end' : 'start'}">${chFmtK(v)}</text>`;
+    s += `<text x="${(hEnd + dir * 2).toFixed(1)}" y="${(shelfY + 2.5).toFixed(1)}" font-size="8" fill="var(--mut)" text-anchor="${rt ? 'end' : 'start'}">${chVf(v)}</text>`;
   });
   s += `<text x="${W - mR}" y="8.5" text-anchor="end" font-size="7.5" fill="var(--mut)" opacity=".85">(단위: ${esc(unit)})</text>`;   // 우상단 아주 작게(운영자 260721 "(단위: 0)")
   return `<div class="ch-tchart">${s}</svg></div>`;
@@ -11185,7 +11190,10 @@ function renderChan() {
   if (!d || !d.profile) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(§디자인 e-가 · 전환 복귀 경로 = 헤더 세그 상시)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const vf = chVf;
-  const p = d.profile, a = d.account_day || {}, series = d.daily_series || [], avg = d.avg || {};
+  const p = d.profile, a = d.account_day || {}, avg = d.avg || {};
+  // follows 말미 0-fill 방어(평의회4 P1 · 260721) — 수집기가 follows 미수집일을 0으로 메움(views = 키 생략과 비대칭): 수집 종료일(daily_meta.history.follows.to) 이후의 0 = 결측으로 간주(null) · 진짜 실측(>0) 보존 · 메타 부재 = 무변화 fail-soft · 🔒[15] 원천 json 무접촉(뷰어 사본 우회) · 근본 수정 = 스크래퍼 gap화(후속 축)
+  const _fTo = ((((d.daily_meta || {}).history || {}).follows || {}).to) || null;
+  const series = _fTo ? (d.daily_series || []).map(r => (r.date > _fTo && r.follows === 0) ? Object.assign({}, r, { follows: null }) : r) : (d.daily_series || []);
   const stUnit = k => (CH_MET[k] ? CH_MET[k][1] : '회');   // 지표 단위 = 일일추이 차트(CH_MET)와 동일 어휘 계승(조회=회·도달=계정)
   const vu = (n, u) => n == null ? '—' : vf(n) + ' ' + u;   // 값 없으면 단위도 생략('— 회' 방지 · fb 결측 지표 대비 Q155)
   // 델타(▲▼N%) 폐지(운영자 260718 "팔로워 옆 88% 하락 = 팔로워가 88% 빠진 걸로 오해") — '평소 대비 %'는 하락처럼 읽혀 → 전기간 평균값 병기로 대체(수치 = avg.avg_all 실측 · 창작 0)
@@ -11274,10 +11282,12 @@ function renderChan() {
         st('공유 (최근 10게시물)', (d.fb_totals && d.fb_totals.shares != null) ? vf(d.fb_totals.shares) + ' 회' : '—') +
         sumTile('게시', 'posts', '개', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—') +
         sumTile('상호작용', 'interactions', '회', vu(a.interactions, '회')) + demoTile()
-      : stTall('팔로워', flwVal(), flwSub(), chTileChart(series, 'follows', 'zero', '명')) +   // 팔로워 차트 = 일일 증감(신규 수 · 0 기준선 = X축 · 운영자 260721 10)
-        (() => { const w = winSum('views'); return w && w.cur != null ? stTall('조회수', vf(w.cur), sub(dl(w.prev != null ? w.cur - w.prev : null), rt('views')), chTileChart(series, 'views', 'avg', '회')) : stTall('조회수', vu(a.views, '회'), sub('', rt('views')), chTileChart(series, 'views', 'avg', '회')); })() +   // 조회수 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11 · 본값/하단행 = sumTile 로직 그대로)
-        sumTile('도달', 'reach', '계정', vu(a.reach, '계정')) + demoTile('g') +
-        sumTile('게시', 'posts', '개', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—') + demoTile('a')) + '</div>', pfSeg);   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
+      : (() => { const _dg = demoTile('g'), _da = demoTile('a'), _tall = !!(_dg || _da);   // 인구통계 결측 = 6타일→4타일 · tall 해제(2행 우측 구멍 방어 · 평의회2/5 — 라이브 = 데이터 상존이라 통상 미발동 fail-soft)
+        const _fT = _tall ? stTall : st, _fC = k2 => _tall ? chTileChart(series, k2 === 'f' ? 'follows' : 'views', k2 === 'f' ? 'zero' : 'avg', k2 === 'f' ? '명' : '회') : '';
+        return _fT('팔로워', flwVal(), flwSub(), _fC('f')) +   // 팔로워 차트 = 일일 증감(신규 수 · 0 기준선 = X축 · 운영자 260721 10)
+        (w2 => w2 && w2.cur != null ? _fT('조회수', vf(w2.cur), sub(dl(w2.prev != null ? w2.cur - w2.prev : null), rt('views')), _fC('v')) : _fT('조회수', vu(a.views, '회'), sub('', rt('views')), _fC('v')))(winSum('views')) +   // 조회수 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11 · 본값/하단행 = sumTile 로직 그대로)
+        sumTile('도달', 'reach', '계정', vu(a.reach, '계정')) + _dg +
+        sumTile('게시', 'posts', '개', avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + ' 개' : '—') + _da; })()) + '</div>', pfSeg);   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];
@@ -11400,6 +11410,14 @@ function renderChan() {
   }
   const pts = box.querySelectorAll('.ch-pt'); posts.forEach((x, i) => { if (pts[i]) { const nm = String(x.name || '').replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '').trim(); pts[i].textContent = nm || x.name || '(무캡션)'; } });   // 제목 이모지 앞자름 = 소머리 관용구 계승(운영자 260719 "이모지 빼")
   wireSigCharts(box);   // 시간대별 반응 차트 툴팁·호버점 배선(최근접 포인트 = 일일 추이 크로스헤어 문법 대칭)
+  // 타일 미니차트 왜곡 보정(평의회2 P1 · 260721) — preserveAspectRatio none 채움(운영자 '도형 안에' 유지)에서 원·글자만 실측비 역보정 = 화면 정비율 복원(선·리더 = ㄱ자 직교+non-scaling-stroke라 무왜곡 · 리사이즈 미추적 = 재렌더 시 재보정 한계 명기)
+  box.querySelectorAll('.ch-tchart .ch-tc').forEach(sv => { try {
+    const r = sv.getBoundingClientRect(), vb = sv.viewBox.baseVal;
+    if (!(r.width > 10 && r.height > 10)) return;
+    const sx = vb.width / r.width, sy = vb.height / r.height;   // svg단위/화면px
+    sv.querySelectorAll('circle[data-mk]').forEach(c => { c.setAttribute('transform', `translate(${c.getAttribute('cx')} ${c.getAttribute('cy')}) scale(${sx.toFixed(4)} ${sy.toFixed(4)})`); c.setAttribute('cx', 0); c.setAttribute('cy', 0); });
+    sv.querySelectorAll('text').forEach(t => { const x = t.getAttribute('x'), y = t.getAttribute('y'); t.setAttribute('transform', `translate(${x} ${y}) scale(${sx.toFixed(4)} ${sy.toFixed(4)})`); t.setAttribute('x', 0); t.setAttribute('y', 0); });
+  } catch (e) {} });
   // 추이 차트 배선(지표 칩·기간 세그·crosshair 툴팁 — 재렌더 = 스크롤 보존)
   box.querySelectorAll('#chMetRail [data-m]').forEach(b => b.addEventListener('click', () => { CHAN_MET = b.dataset.m; const y = window.scrollY; renderChan(); window.scrollTo(0, y); }));   // 지표 레일(#chMetRail) 옵션 = 화풍 .geni-opt 계승 · [data-m] 한정(브리프 data-bs 오염 방지 260714)
   try { (window._chDemoRot || []).forEach(clearInterval); window._chDemoRot = []; } catch (e) {}   // (구) 도넛 축 교대 회전 잔여 타이머 정리 — 성별·연령 = 독립 타일 분리로 회전 폐지(운영자 260721 4×2 · 캡처마다 다른 축 혼선 해소) · 기동 세션 잔존 인터벌 청소만 유지
