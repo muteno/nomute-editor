@@ -521,32 +521,77 @@ def x_subs(accounts, limit=10, deadline=None):
 
 
 def tiktok_subs(accounts, limit=10, deadline=None):
-    """틱톡 구독 계정 최신 영상 — tikwm /api/user/posts(인기 피드와 동일 창구·무키).
-    직전 tiktok() 콜 연장선이라 매 콜 앞 2s(free tier 레이트리밋 실측 계승). 정렬 = 조회수."""
+    """틱톡 구독 계정 최신 영상 — 1차 = 틱톡 공식 임베드 위젯 /embed/@handle(무서명 서버렌더 ·
+    __FRONTITY_CONNECT_STATE__.source.data[*].videoList 10건 · playCount·coverUrl 동봉). 260721 실측:
+    구 1차 tikwm /api/user/posts가 260714경부터 전 계정 403 게이팅(run 29797500144 · feed/list 인기 창구는
+    정상) → 큐레이션 레인 7일 carry 동결 + 서명 커버 만료 = 검은 썸네일의 근원이라 창구 교체. 2차 폴백 =
+    구 tikwm(복구 감시 겸용 · 계정당 임베드 실패 시에만 1콜). 임베드에 likes/cmts/createTime 부재 →
+    시각 = 영상 id 상위 32비트(unix epoch · 최근작 오차 수초 실측) 복원 · likes/cmts 0 = 카드 미표시
+    필드(met() 0 필터·stk 카드 = 조회수+시각만)라 무영향. 매 콜 앞 2s(레이트 보수) · 정렬 = 조회수."""
     out = []
+
+    def _push(vid, handle, title, views, likes, cmts, cover, ctime):
+        out.append({"account": handle, "title": (title or "").strip()[:120],
+                    "views": _i(views), "likes": _i(likes), "cmts": _i(cmts), "cover": cover or "",
+                    "time": _i(ctime) or (int(vid) >> 32 if str(vid).isdigit() else 0),   # 임베드 = id 상위 32비트가 생성 epoch
+                    "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)})
     for acc in accounts:
         if _over(deadline):
             print("::warning::tiktok 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
             break
         time.sleep(2)
-        try:
-            j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))   # count 10→30(운영자 260720 "국내 큐레이션 10위까지" — KR 구독 2계정 반환분이 2·1개뿐이라 계정당 조회 여지 확대 · 동일 엔드포인트 1콜 = 예산 불변)
+        got = 0
+        try:   # ① 임베드 위젯(서드파티 사이트용이라 봇월 밖 — 프로필 본페이지 itemList는 빈 배열 실측 = 부적격)
+            m = re.search(r'<script id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>',
+                          _get("https://www.tiktok.com/embed/@" + urllib.parse.quote(acc), timeout=20), re.S)
+            for pg in ((((json.loads(m.group(1)) if m else {}).get("source") or {}).get("data") or {}).values()):
+                if not (isinstance(pg, dict) and isinstance(pg.get("videoList"), list)):
+                    continue
+                for v in pg["videoList"]:
+                    if v.get("id") and str(v.get("privateItem")).lower() != "true":
+                        _push(v["id"], v.get("authorUniqueId") or acc, v.get("desc"), v.get("playCount"),
+                              0, 0, v.get("coverUrl"), 0)
+                        got += 1
+                if got:
+                    break
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::tiktok @{acc} 임베드 실패: {e}", file=sys.stderr)
+        if got:
+            continue
+        try:   # ② tikwm 구 창구 폴백(260714~ 403 — 복구 시 자동 재사용) · count 10→30(운영자 260720 "국내 큐레이션 10위까지")
+            j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))
             if j.get("code") != 0:
                 print(f"::warning::tiktok @{acc} 응답 코드 {j.get('code')}(스킵)", file=sys.stderr)
                 continue
             for v in ((j.get("data") or {}).get("videos") or []):
-                vid = v.get("video_id")
-                if not vid:
-                    continue
-                handle = (v.get("author") or {}).get("unique_id") or acc
-                out.append({"account": handle, "title": (v.get("title") or "").strip()[:120],
-                            "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
-                            "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
-                            "time": v.get("create_time") or 0,
-                            "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)})
+                if v.get("video_id"):
+                    _push(v["video_id"], (v.get("author") or {}).get("unique_id") or acc, v.get("title"),
+                          v.get("play_count"), v.get("digg_count"), v.get("comment_count"),
+                          v.get("cover"), v.get("create_time"))
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 실패(스킵): {e}", file=sys.stderr)
     return sorted(out, key=lambda t: t["views"], reverse=True)[:limit]
+
+
+def _tk_cover_fresh(items, budget=45):
+    """carry(직전분 유지) 틱톡 커버 연명 — 서명 커버(x-expires)가 만료·임박(2h 내)이면 공식 oEmbed
+    thumbnail_url(콜마다 재서명·무키)로 교체. 수집 창구 전멸 주간에 커버만 먼저 죽어 검은 썸네일이 되던
+    구멍 봉합(260721 실측: 구독 커버 x-expires=07-15 전멸 → 뷰어 onerror 숨김 = 검은 박스). 유효·무서명
+    커버 = 무접촉(신선 수집 런 = 콜 0) · 항목·전체 fail-soft(실패 = 기존 유지)."""
+    dl, now_e = time.monotonic() + budget, int(time.time())
+    for it in items:
+        m = re.search(r"[?&]x-expires=(\d+)", it.get("cover") or "")
+        if not (m and int(m.group(1)) <= now_e + 7200 and it.get("url")):
+            continue
+        if _over(dl):
+            print("::warning::tiktok 커버 연명 예산 소진 — 잔여 스킵", file=sys.stderr)
+            break
+        try:
+            tu = (json.loads(_get("https://www.tiktok.com/oembed?url=" + urllib.parse.quote(it["url"], safe=""))) or {}).get("thumbnail_url")
+            if tu:
+                it["cover"] = tu
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def insta_subs(accounts, limit=10, deadline=None):
@@ -1329,6 +1374,8 @@ def main():
         # (or 폴백이 '수집 실패 보존'과 '구독 전체 해제'를 구분 못해 옛 데이터가 영영 잔존하던 구멍 — 평의회8 F1)
         subs = {"updated": now if subs_any else (psubs.get("updated") or now),   # 전멸 런 = 직전 수집 시각 유지(신선 오표기 방지)
                 **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube", "threads")}}
+        if not subs_new["tiktok"] and subs["tiktok"]:
+            _tk_cover_fresh(subs["tiktok"])   # carry 폴백 런 한정 — 만료 서명 커버 oEmbed 재서명(260721 검은 썸네일 판례 · 신선 수집 런 = 콜 0)
     # 소스별 헬스 원장(260713 평의회5 P1 — 전역 updated 하나가 죽은 소스를 가리던 은폐 봉합) — ok = "이번 런
     # 신선 수집 성공"(아래 data의 prev 폴백 사용과 구분 = raw 수집값 기준) · last_ok = 마지막 성공 시각(실패 런
     # = 직전 값 승계) · 게이트 OFF 소스 = off 도장(실패와 구분). 데이터 필드 전용 — 뷰어 표시는 §디자인 j 배치
@@ -1349,6 +1396,8 @@ def main():
               "disaster": _hh("disaster", dis, bool(SAFETY_KEY)), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
               "expressway": _hh("expressway", exw, bool(EX_KEY)),
               "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
+    if subs_new is not None and acc:
+        health["subs"]["stale"] = [k for k in ("x", "tiktok", "insta", "youtube", "threads") if acc[k] and not subs_new[k]]   # 이번 런 carry 폴백 축 — 집계 ok=True가 개별 플랫폼 7일 부패를 가리던 은폐 보강(260721 틱톡 판례 · 표시 전용)
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
