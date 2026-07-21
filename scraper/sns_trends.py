@@ -745,6 +745,26 @@ def signal_kw(limit=10):
         return []
 
 
+def bsky_trends(limit=10):
+    """⑦-b 블루스카이 실시간 트렌드(운영자 260721 "1~10위 반갈") — bsky_hot과 동일 공개 AppView(무키 ·
+    app.bsky.unspecced.getTrends · AT프로토콜 공개 설계 · 컨테이너 실측 260721 응답 확인). displayName 우선
+    (topic 폴백) · started = startedAt(뷰어 relT 'started' 문법 = 구글 트렌드 started와 동축 = "N시간 전")
+    · link = 앱 트렌드 피드 절대 URL(결측 = 뷰어 검색 폴백). 실패 = [] (fail-soft)."""
+    try:
+        j = json.loads(_get("https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrends?limit=%d" % limit))
+        out = []
+        for t in (j.get("trends") or [])[:limit]:
+            q = re.sub(r"\s+", " ", (t.get("displayName") or t.get("topic") or "")).strip()
+            if not q:
+                continue
+            out.append({"query": q, "link": ("https://bsky.app" + t["link"]) if t.get("link") else "",
+                        "started": t.get("startedAt") or "", "posts": t.get("postCount") or 0})
+        return out
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::bsky_trends 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
 def x_trends(limit=15):
     """⑩ X(트위터) 한국 실시간 트렌드(운영자 260712 버튼 승인) — trends24.in 주 · getdaytrends.com 폴백
     (X 공식 트렌드 API = 유료 → 서드파티 집계 HTML 파싱 · 컨테이너 실측 260712 두 곳 교차 일치 =
@@ -1171,6 +1191,7 @@ def main():
     # ⑥⑦ 레딧·블루스카이(운영자 260712 "레딧은 좋음"·"다른거 ㄱㄱ") — 게이트 OFF = 완전 무접촉(§📰-e 카나리아)
     rd = reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]) if REDDIT_ON else []
     bs = bsky_hot() if BSKY_ON else []
+    btr = bsky_trends() if BSKY_ON else []   # ⑦-b 블스 실시간 트렌드(운영자 260721 반갈 — 동일 플랫폼 게이트 BSKY_ON 편승 · 무키 공개 AppView)
     sig = signal_kw() if SIG_ON else []      # ⑨ 시그널 실검(카나리아 게이트 · 운영자 260712)
     xtr = x_trends() if XTR_ON else []       # ⑩ X 실시간 트렌드(동일)
     hn = hackernews() if HN_ON else []       # ⑫ 해커뉴스(무키 · 운영자 260713)
@@ -1255,6 +1276,7 @@ def main():
                     _t[_k] = _p[_k]
     _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
+    _annotate_rank(btr, prev.get("bsky_trends"), lambda t: t.get("query"))   # ⑦-b 블스 트렌드 = xtrends 동일 규격(변동 배지·first_seen)
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
     _annotate_rank(kob, prev.get("kobis"), lambda t: t.get("title"))
@@ -1288,7 +1310,7 @@ def main():
         return h
     health = {"youtube": _hh("youtube", yt_all), "gtrends": _hh("gtrends", gt), "gtrends_api": _hh("gtrends_api", gt_pool), "tiktok": _hh("tiktok", tk),
               "shorts": _hh("shorts", sh), "aivid": _hh("aivid", ai),
-              "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON),
+              "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON), "bsky_trends": _hh("bsky_trends", btr, BSKY_ON),
               "signal": _hh("signal", sig, SIG_ON), "xtrends": _hh("xtrends", xtr, XTR_ON),
               "hackernews": _hh("hackernews", hn, HN_ON), "finance": _hh("finance", (fin.get("rates") or []) + (fin.get("coins") or []) if fin else [], FIN_ON),
               "disaster": _hh("disaster", dis, bool(SAFETY_KEY)), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
@@ -1313,6 +1335,7 @@ def main():
         "bsky": bs or prev.get("bsky") or [],       # ⑦ 블루스카이(게이트 OFF/실패 = 직전분)
         "signal": sig or prev.get("signal") or [],  # ⑨ 시그널 실검(게이트 OFF/실패 = 직전분 · 운영자 260712)
         "xtrends": xtr or prev.get("xtrends") or [],   # ⑩ X 실시간 트렌드(동일)
+        "bsky_trends": btr or prev.get("bsky_trends") or [],   # ⑦-b 블스 실시간 트렌드(운영자 260721 반갈 · 게이트 OFF/실패 = 직전분)
         "hackernews": hn or prev.get("hackernews") or [],   # ⑫ 해커뉴스(게이트 OFF/실패 = 직전분 · 운영자 260713)
         "finance": (fin if fin_any else (prev.get("finance") or {})),   # ⑬ 금융 {rates,coins}(실시간 시세 = 직전분 폴백)
         "disaster": dis or prev.get("disaster") or [],   # ⑭ 재난문자(키 없으면 [] · 있으면 최신)
@@ -1326,7 +1349,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 블스트렌드 {len(data['bsky_trends'])}{'' if BSKY_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
 
 
 if __name__ == "__main__":
