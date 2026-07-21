@@ -202,11 +202,14 @@ def cluster_and_score(posts, now, src_total=None):
 
 
 def _parse_reltime(s, now):
-    """'2 시간, 48 분전' / '37 분전' / '1 일전' → 대략 ts(now - age). 못 읽으면 now."""
+    """'2 시간, 48 분전' / '37 분전' / '1 일전' → 대략 ts(now - age). 못 읽으면 None(운영자 260721 승인 · Q359 ㉡
+    — 구 now 반환 = 수집시각을 게시시각으로 간주해 "방금 게시"로 둔갑하던 것 폐지 · 카페 ts=None 관례와 정합)."""
     import re
     d = re.search(r"(\d+)\s*일", s)
     h = re.search(r"(\d+)\s*시간", s)
     m = re.search(r"(\d+)\s*분", s)
+    if not (d or h or m):
+        return None
     age = (int(d.group(1)) * 24 if d else 0) + (int(h.group(1)) if h else 0) + (int(m.group(1)) / 60 if m else 0)
     return now - timedelta(hours=age)
 
@@ -283,7 +286,7 @@ def fetch_issuelink(now):
             if len(title) < 4:
                 continue
             tm = re.search(r"\(([^)]*?(?:시간|분|일)[^)]*?)\)", row)
-            ts = _parse_reltime(tm.group(1), now) if tm else now
+            ts = _parse_reltime(tm.group(1), now) if tm else None   # 시각 표기 없음 = None(recency 0 정직 · Q359 ㉡ — 구 now = 수집시각을 게시시각으로 간주)
             if not url.startswith("http"):
                 url = "https://www.issuelink.co.kr" + url
             posts.append({"title": title, "source": COMMUNITY_NAMES.get(src, src), "url": url, "ts": ts})
@@ -387,6 +390,9 @@ def fetch_naver(now):
 # 표시명 = 이슈링크 COMMUNITY_NAMES 표시명에 정합(같은 커뮤 = 같은 칩·같은 src_total 병합·(source,제목) dedup 성립).
 TBS_ON = os.environ.get("SOCIAL_TBS", "1") == "1"   # 무키·무료 = 기본 ON(네이버와 달리 시크릿 불요) · 끄기 = SOCIAL_TBS=0
 TBS_N = int(os.environ.get("SOCIAL_TBS_N", "10"))
+# 추천순 인테이크(운영자 260721 "그러면 더 좋지") — 최신 TBS_POOL건 창에서 추천(up) 상위 TBS_N건만 채택
+# = 커뮤 안에서 이미 검증된 글 우선. API sort=upvotes/popular는 전기간 기준(2022년 글)이라 부적합 → 최신창+클라이언트 랭크.
+TBS_POOL = int(os.environ.get("SOCIAL_TBS_POOL", "30"))
 TBS_NAME_ALIGN = {"엠엘비파크": "엠팍", "웃긴대학": "웃대", "오늘의유머": "오유", "에스엘알클럽": "SLR", "디시인사이드": "디시"}
 TBS_EXCLUDE = {"네이트판"}   # 네이트판 = 전면 배제(운영자 260716 "다 없애" — 이슈링크 natepann 컷과 동일 판례)
 
@@ -409,7 +415,7 @@ def fetch_tbs(now):
         coms = [c for c in T.get_json(sess, f"{T.BASE}/communities")
                 if c.get("useYn") == "Y" and c.get("communityId") not in T.SKIP_COMMUNITIES]
         with ThreadPoolExecutor(max_workers=4) as ex:
-            futs = {ex.submit(T.fetch_community_posts, sess, c, TBS_N): c for c in coms}
+            futs = {ex.submit(T.fetch_community_posts, sess, c, TBS_POOL): c for c in coms}
             for fut in as_completed(futs, timeout=240):   # 전체 예산 4분 — 저쪽 콜드쿼리 20s+ 대비 상한(초과 = 모은 것만)
                 try:
                     r = fut.result()
@@ -419,7 +425,8 @@ def fetch_tbs(now):
                 src = TBS_NAME_ALIGN.get(r["name"], r["name"])
                 if src in TBS_EXCLUDE:
                     continue
-                for p in r["posts"]:
+                top = sorted(r["posts"], key=lambda p: p.get("up") or 0, reverse=True)[:TBS_N]   # 최신창 내 추천 상위만
+                for p in top:
                     ts = None
                     if p.get("time"):
                         try:

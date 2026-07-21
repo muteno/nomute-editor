@@ -84,9 +84,50 @@ export async function onRequestPost({ request, env }) {
   }
   if (reroll) scene += '\n\n[리롤: ' + reroll + ' — 이 축은 이전과 다른 안으로, 나머지는 같은 입력에서 재설계]';   // 무상태 헤드리스에 정직한 표현(직전 산출 못 봄 — "나머지 유지" 과약속 금지 · 검증5 F2)
 
+  // ① 즉답 경로(운영자 260721 Q358 유료 직결 승인 축 확산 — k 대표 이식 · [E4] 대표 실측 후 sb 확산):
+  //    키 있고 레퍼런스 이미지 미포함(Gemini·R2 = 러너 전용 스텝)이면 Anthropic 직결 → {md} 즉시 반환.
+  //    지침 3파일 + k-make.md는 GitHub raw로 동봉(러너의 런타임 Read 등가) · 실패 = 조용히 ② 폴백(fail-soft).
+  if (env.ANTHROPIC_API_KEY && refimage !== 'true') {
+    try { const md = await directK(env, scene); if (md) return json({ ok: true, md }); } catch (_) { /* 폴백 계속 */ }
+  }
+
+  // ② 워크플로 폴백(구독 OAuth 무료 · 1~3분) — 종전 그대로
   const r = await GH(env.GH_TOKEN, 'actions/workflows/k-make.yml/dispatches', 'POST', {
     ref: REF, inputs: { id, scene, refimage },
   });
   if (r.status === 204) return json({ ok: true, id, refimage: refimage === 'true', out: `k_out/${id}/prompt.md`, ref: `k_out/${id}/ref.jpg` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
+}
+
+// ── 즉답(직결) 경로 — api/tr.js directPlan 골격 계승(Opus 4.8 · 샘플링 파라미터 미전송 · refusal 처리) ──
+const K_GUIDES = ['prompts/k-make.md', 'apps/k/00_지침_에디터_클링.md', 'apps/k/01_모델프로필_영상엔진.md', 'apps/k/MEMORY.md'];   // kmake.sh 프리플라이트와 동일 참조 축(리네임 시 동조)
+
+async function ghRaw(env, path) {   // 레포 파일 원문(러너 Read의 서버리스 등가)
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${encodeURI(path)}?ref=${REF}`, {
+    headers: { authorization: `Bearer ${env.GH_TOKEN}`, accept: 'application/vnd.github.raw+json', 'user-agent': 'nomute-viewer', 'x-github-api-version': '2022-11-28' },
+  });
+  if (!r.ok) throw new Error(`guide ${path} ${r.status}`);
+  return r.text();
+}
+
+async function directK(env, scene) {
+  const [pk, g0, g1, mem] = await Promise.all(K_GUIDES.map(p => ghRaw(env, p)));
+  const system = pk
+    + '\n\n---\n[동봉 지침 — 위 프롬프트가 Read시키는 파일 전문. 파일 읽기 도구 없이 아래 내용을 그 파일로 간주하라]\n'
+    + '\n## apps/k/00_지침_에디터_클링.md\n' + g0
+    + '\n\n## apps/k/01_모델프로필_영상엔진.md\n' + g1
+    + '\n\n## apps/k/MEMORY.md\n' + mem;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8192, system, messages: [{ role: 'user', content: scene }] }),
+  });
+  if (!r.ok) throw new Error(`anthropic ${r.status}`);
+  const m = await r.json();
+  if (m.stop_reason === 'refusal') throw new Error('refusal');
+  const txt = ((m.content || []).filter(b => b.type === 'text').map(b => b.text).join('')) || '';
+  if (/^KMAKE_FAILED/m.test(txt)) throw new Error('kmake-failed');   // 막다른길 신호 = kmake.sh와 동일 판정
+  const lines = txt.split('\n'); const ix = lines.findIndex(l => l.startsWith('#'));   // 모델 사족 방어 — 첫 '#'(제목)부터(kmake.sh sed 동일)
+  if (ix < 0) throw new Error('no-md');
+  return lines.slice(ix).join('\n');
 }

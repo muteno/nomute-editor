@@ -150,6 +150,19 @@ AI_QUERIES = ["AI 영상 제작", "AI 영상 생성", "sora ai video", "runway k
 IT_EXCLUDE = ("주 전", "개월 전", "년 전")   # 주간 필터 우회 추천 섹션 영상 걸러냄(게시일 텍스트 기준)
 
 
+def _rel2iso(s):
+    """InnerTube 상대시각("5일 전"·"스트리밍 시간: 8시간 전"·"Streamed 8 hours ago") → 수집 시점 절대 ISO(KST) 환산
+    (운영자 260721 승인 · Q359 진단 ㉢) — 상대 문자열을 동결 저장하면 이월(carry) 중 실나이와 벌어짐(실측 최대
+    4일 드리프트) → 절대화로 뷰어 relP가 항상 실시간 나이 산출. 실패 = 원문 유지(fail-soft — 뷰어 relP는
+    한국어 상대문자열도 파싱하므로 회귀 0). IT_EXCLUDE 필터는 원문(pub) 기준 그대로(호출 전 적용)."""
+    m = re.search(r"(\d+)\s*(분|시간|일|주|개월|년|minute|hour|day|week|month|year)", str(s or ""))
+    if not m:
+        return s or ""
+    h = {"분": 1 / 60, "minute": 1 / 60, "시간": 1, "hour": 1, "일": 24, "day": 24, "주": 168, "week": 168,
+         "개월": 720, "month": 720, "년": 8760, "year": 8760}[m.group(2)]
+    return (datetime.now(KST) - timedelta(hours=int(m.group(1)) * h)).isoformat()
+
+
 def _it_params(period=3, shorts=False):
     """InnerTube 검색 protobuf: 정렬=조회수(3) + 업로드 날짜(3=이번 주) + 동영상 타입(+쇼츠 = 4분 미만 길이 필터
     0x18,0x01 — 원본 도구 build_search_params 이식)."""
@@ -189,7 +202,7 @@ def youtube_innertube(limit=15, queries=None, shorts=False):
                         views = int(re.sub(r"[^\d]", "", (v.get("viewCountText") or {}).get("simpleText", "")) or 0)
                         th = ((v.get("thumbnail") or {}).get("thumbnails") or [{}])[-1].get("url") or ""
                         out.append({"id": vid, "title": title, "channel": ch, "views": views,
-                                    "published": pub, "thumb": th,
+                                    "published": _rel2iso(pub), "thumb": th,   # 절대 ISO 환산(Q359 ㉢ — 동결 드리프트 봉합 · 실패 = 원문)
                                     "url": "https://www.youtube.com/watch?v=" + vid})
                 for x in n.values():
                     walk(x)
