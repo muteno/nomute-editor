@@ -10076,8 +10076,18 @@ function renderSnsTrends() {
     const _stkRows = box.querySelectorAll('[data-sec=fin-stk] .fin-row'), _rotSt = box.querySelector('[data-sec=fin-stk] .fin-rot-st');
     if (_stkRows.length && finS.length > 1) {
       const _fxUsd = (finR.find(x => x.code === 'USD') || {}).krw || 1490, _stName = ['가격', '시가총액', '달러 환산'];
+      const _capKrw = x => {   // 시총 = 원화 일괄(운영자 260721 "원화로 일괄 · 오늘 환율 적용" — 환율 = 이 유닛 finR USD 시세) · "N조 M억( USD)?" 파싱 → 억 단위 수치 → USD면 ×환율 → 십억 미만 절삭(운영자 "십억단위 아래 절삭" = 억 1의 자리 버림) · 파싱 실패 = null(원문 폴백 fail-soft) · 뷰어 환산 = 스크래퍼 무접촉([15] 우회 · 기존 수집분 즉시 발효)
+        const s = String(x.cap || ''), usd = /USD\s*$/.test(s) || x.cur === 'USD';
+        const jo = +(((s.match(/([\d,.]+)\s*조/) || [])[1] || '0').replace(/,/g, '')), eok = +(((s.match(/([\d,.]+)\s*억/) || [])[1] || '0').replace(/,/g, ''));
+        if (!jo && !eok) return null;
+        let e = jo * 10000 + eok;
+        if (usd) e *= _fxUsd;
+        e = Math.floor(e / 10) * 10;   // 십억 미만 절삭
+        const j = Math.floor(e / 10000), r = Math.round(e % 10000);
+        return (j ? j.toLocaleString() + '조' : '') + (r ? (j ? ' ' : '') + r.toLocaleString() + '억' : '');
+      };
       const _stCell = (x, st) => {
-        if (st === 1) return x.cap ? (x.cur === 'USD' ? esc(String(x.cap).replace(/\s*USD$/, '')) + '<i>$</i>' : esc(x.cap) + '<i>원</i>') : finStkVal(x);   // 시총 결측 = 가격 폴백
+        if (st === 1) { const k = x.cap ? _capKrw(x) : null; return k ? esc(k) + '<i>원</i>' : (x.cap ? (x.cur === 'USD' ? esc(String(x.cap).replace(/\s*USD$/, '')) + '<i>$</i>' : esc(x.cap) + '<i>원</i>') : finStkVal(x)); }   // 시총 = 원화 일괄(파싱 실패 = 구 표기 · 결측 = 가격 폴백)
         if (st === 2) { const u = x.cur === 'USD' ? x.val : (x.val || 0) / _fxUsd; return esc(x.cur === 'USD' ? u.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(u).toLocaleString()) + '<i>$</i>'; }
         return finStkVal(x);
       };
