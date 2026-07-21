@@ -9,11 +9,13 @@
 //
 // 담당 표면(이 표면 변경 시 커밋 전 실행 rc=0 필수):
 //   viewer/index.html {#totop(픽토 4분할) · .qpop/.qh-xcell/.qrow/.qact(대기열·발행본·메시지함 R-라인)}
-//   viewer/thumb.html {.csec 소머리 좌변(같은 컨텍스트 그룹 내 균일)}
+//   viewer/thumb.html {.csec 소머리 좌변(같은 컨텍스트 그룹 내 균일) · .sbtn(R8 결합 문법 S8)}
 // 코어 7종: S1 index 부팅 에러 0 · S2 #totop 픽토 4분할 |dx|,|dy|≤0.5(계약 3-4) · S3 대기열 X셀↔행
 //   qact 우변·중심 R-라인 Δ≤0.5(운영자 260712 정본) · S4 발행본·메시지함 동일 프로브 Δ≤0.5 ·
 //   S5 thumb 부팅 에러 0 · S6 .csec 좌변 그룹 내 균일 Δ≤0.5(페이지군·카드(.scard)군 각각 — 두 군 '간'
 //   16↔17 통일은 Q256 운영자 문답 대기라 그룹 간은 비판정) · S7 2런 결정론(기하값 동일).
+//   S8 .sbtn R8 결합 문법(합성 프로브 · 운영자 260721 Q345 · 평의회 Q329 채택 ⑤): 아이콘 버튼 베이스 =
+//   grid 중앙(place-items center) + svg display:block + 픽토 4분할 Δ≤0.5 — CII 「버튼행 결합 문법(R8)」 행이 정본 계약.
 // 원커맨드:  node shared/smoke_sweep.js            (종료코드 0 = 코어 전부 PASS)
 //
 // 측정 방식(정직 명시): 실렌더 getBoundingClientRect — S3/S4 = 합성 .qrow 프로브(팝업 hidden 해제 →
@@ -136,6 +138,18 @@ const MEASURE_THUMB = () => {
     const c2 = await page.evaluate(MEASURE_THUMB);
     put(c1.length > 0 && c1.every(g => g.spread <= TOL), 'S6 .csec 소머리 좌변 그룹 내 균일 Δ≤0.5', c1.map(g => `${g.g}(n${g.n}) spread ${g.spread} [${g.lefts.join(',')}]`).join(' · ') || '.csec 0개');
     put(JSON.stringify(c1) === JSON.stringify(c2), 'S7b thumb 결정론(재측정 동일)', JSON.stringify(c1) === JSON.stringify(c2) ? '동일' : 'c1≠c2');
+    const sb = await page.evaluate(() => {   // S8 합성 프로브(S3/S4 문법 계승 — 라이브 데이터 무의존·측정 후 즉시 제거)
+      const b = document.createElement('a'); b.className = 'sbtn';
+      b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+      document.body.appendChild(b);
+      const cs = getComputedStyle(b); const svg = b.querySelector('svg');
+      const br = b.getBoundingClientRect(), sr = svg.getBoundingClientRect();
+      const out = { display: cs.display, place: (cs.placeItems || (cs.alignItems + ' ' + cs.justifyItems)), svgDisp: getComputedStyle(svg).display,
+        dx: +(((sr.left + sr.right) / 2) - ((br.left + br.right) / 2)).toFixed(2), dy: +(((sr.top + sr.bottom) / 2) - ((br.top + br.bottom) / 2)).toFixed(2) };
+      b.remove(); return out;
+    });
+    put(sb.display === 'grid' && /center/.test(sb.place) && sb.svgDisp === 'block' && Math.abs(sb.dx) <= TOL && Math.abs(sb.dy) <= TOL,
+      'S8 .sbtn R8 결합 문법(grid 중앙·svg block·픽토 4분할 Δ≤0.5)', `disp ${sb.display} place ${sb.place} svg ${sb.svgDisp} dx ${sb.dx} dy ${sb.dy}`);
   } finally {
     await browser.close().catch(() => {});
     srv.kill();
