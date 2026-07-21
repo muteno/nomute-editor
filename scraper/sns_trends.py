@@ -515,7 +515,9 @@ def x_subs(accounts, limit=10, deadline=None):
             return parsedate_to_datetime(s).timestamp()
         except Exception:  # noqa: BLE001
             return 0.0
-    return sorted(out, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순(260720 평의회 F2 실측 — 구 좋아요순은 신디케이션 타임라인의 핀·역대 바이럴 구작(1~10년 전)이 항상 상위 독식 = '구독 최신 피드' 취지 위반 · 핀 구작은 시간순에서 자연 침몰 · 표시 정렬은 뷰어 정렬바 그대로)
+    _now = datetime.now(KST).timestamp()
+    fresh = [t for t in out if _tts(t["time"]) >= _now - 86400]   # ⏱ 24h 이내만(운영자 260721 "근 1일 이내 가장 핫한거만 · 24시간 넘으면 의미없음") — 신디케이션 timeline-profile이 핀·역대 바이럴 구작(1~10년 전)을 섞어 반환해 최신순 정렬만으론 top-N에 구작이 잔존(파싱 실패 time=0도 자연 배제) → 시간 필터로 완전 배제 · 빈 결과 = 조용한 공백(24h 내 트윗 없음 = 표시 안 함이 취지)
+    return sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순 정렬(260720 평의회 F2 · 표시 정렬은 뷰어 정렬바 그대로 = 24h 내에서 좋아요순 = '근 1일 가장 핫')
 
 
 def tiktok_subs(accounts, limit=10, deadline=None):
