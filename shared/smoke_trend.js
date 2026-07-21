@@ -13,7 +13,7 @@
 //   → T3 순위만(변동배지·검색량·시각 열 0 · 행 자식 = rank+q 뿐)
 //   → T4 회귀 가드(타 섹션 xtr 시각 열 잔존 = 메타 제거의 월경 없음)
 //   → T5 소분류 기준 캡션 제거(gt·sig 무캡션 = 수집시각 좌상단 #vhTime 1회 집약 · 운영자 260720)
-//   → T6 PC 2열 기하(1280 — 좌우 나란·열폭 동일·gap 22 · 한쪽 결측 = 그리드 없이 단독 폴백)
+//   → T6 PC 2열 기하(1280 — 좌우 나란·열폭 동일·gap --sp-3=18[fin-split 동값 · Q388 분할선 단일선] · 한쪽 결측 = 그리드 없이 단독 폴백)
 //   → T7 모바일 스택(390 — 1열·가로 오버플로 0·구분선 671 정본값 원복)
 //   → T8 접힘 토글(nm_trend_fold 기록·복원) → T1 페이지 에러 0
 //   어서션 = DOM 카운트·기하(getBoundingClientRect)·computedStyle·라이브 데이터 동치만(스크린샷 diff 금지 · [15]).
@@ -138,8 +138,8 @@ const SEL = {
       return { fallback: false, wrap: !!w, cols: w ? getComputedStyle(w).gridTemplateColumns.split(' ').length : 0,
         side: gr.right <= sr.left, yD: Math.abs(gr.top - sr.top), wD: Math.abs(gr.width - sr.width), gap: Math.round(sr.left - gr.right) };
     }, SEL);
-    ok('T6 PC 2열 기하(1280 — 나란·열폭 동일·gap 22 · 결측=단독 폴백)',
-      t6.fallback ? !t6.wrap : (t6.wrap && t6.cols === 2 && t6.side && t6.yD <= 2 && t6.wD <= 2 && Math.abs(t6.gap - 22) <= 1), JSON.stringify(t6));
+    ok('T6 PC 2열 기하(1280 — 나란·열폭 동일·gap --sp-3=18[fin-split 동값 = 반갈 분할선 단일선 · Q388] · 결측=단독 폴백)',
+      t6.fallback ? !t6.wrap : (t6.wrap && t6.cols === 2 && t6.side && t6.yD <= 2 && t6.wD <= 2 && Math.abs(t6.gap - 18) <= 1), JSON.stringify(t6));
 
     // ── 중첩 리스트 세로정렬(CII 🪆 위계 규칙 기계 락 · 운영자 260719 "세로정렬 규칙 승격 + 모바일 확인") ──
     //   좌: 중분류 배지숫자 = 소주제 블릿 = 내용 순위 중심(동일 세로선) · 글자: 소주제 제목시작 = 내용 쿼리시작 · 우: 중분류 체브론 = 소주제 체브론.
