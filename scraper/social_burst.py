@@ -202,11 +202,14 @@ def cluster_and_score(posts, now, src_total=None):
 
 
 def _parse_reltime(s, now):
-    """'2 시간, 48 분전' / '37 분전' / '1 일전' → 대략 ts(now - age). 못 읽으면 now."""
+    """'2 시간, 48 분전' / '37 분전' / '1 일전' → 대략 ts(now - age). 못 읽으면 None(운영자 260721 승인 · Q359 ㉡
+    — 구 now 반환 = 수집시각을 게시시각으로 간주해 "방금 게시"로 둔갑하던 것 폐지 · 카페 ts=None 관례와 정합)."""
     import re
     d = re.search(r"(\d+)\s*일", s)
     h = re.search(r"(\d+)\s*시간", s)
     m = re.search(r"(\d+)\s*분", s)
+    if not (d or h or m):
+        return None
     age = (int(d.group(1)) * 24 if d else 0) + (int(h.group(1)) if h else 0) + (int(m.group(1)) / 60 if m else 0)
     return now - timedelta(hours=age)
 
@@ -283,7 +286,7 @@ def fetch_issuelink(now):
             if len(title) < 4:
                 continue
             tm = re.search(r"\(([^)]*?(?:시간|분|일)[^)]*?)\)", row)
-            ts = _parse_reltime(tm.group(1), now) if tm else now
+            ts = _parse_reltime(tm.group(1), now) if tm else None   # 시각 표기 없음 = None(recency 0 정직 · Q359 ㉡ — 구 now = 수집시각을 게시시각으로 간주)
             if not url.startswith("http"):
                 url = "https://www.issuelink.co.kr" + url
             posts.append({"title": title, "source": COMMUNITY_NAMES.get(src, src), "url": url, "ts": ts})
