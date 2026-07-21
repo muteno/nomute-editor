@@ -1,6 +1,7 @@
 # 틱톡 구독 브라우저 카나리아 — workflow_dispatch 전용(§📰-e 카나리아 룰: 실측 성공 전 cron 금지)
-# 목적(운영자 260721 "무조건 최신"): tikwm /api/user/posts 러너 데센 IP 403(WAF)을 실브라우저(JS 챌린지
-# 해소)로 우회해 구독 큐레이션의 폰 의존 0 러너 자립 최신 수집을 실측. 전면 fail-soft(실패 = 산출 무변·warning).
+# 목적(운영자 260721 "무조건 최신"): 구독 큐레이션의 폰 의존 0 러너 자립 최신 수집 실측.
+# v2 = tikwm 제거·tiktok.com 프로필 직수집(브라우저 XHR 가로채기 — v1 tikwm user/posts는 러너 stdlib·
+# 실브라우저·폰 3면 전멸 실측 260721 = 창구 폐쇄). 전면 fail-soft(실패 = 산출 무변·warning).
 # 성공 실측되면 승격 검토(sns-trends 주기 편입 — 운영자 확인 후 · tiktok-canary 관용구 동일).
 # 브랜치에서 dispatch = 측정 전용(Commit 스텝 main 한정 게이트 — 브랜치 체크아웃을 main에 푸시하는 사고 차단).
 name: tiktok-subs-canary
@@ -17,7 +18,7 @@ concurrency:
 jobs:
   canary:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12   # v2 = 프로필 30페이지 렌더(계정당 goto+4s) ≈ 4~6분 + 설치 여유
     steps:
       - uses: actions/checkout@v4   # ref 미지정 = dispatch한 ref 그대로(브랜치 실측 가능)
 
@@ -25,7 +26,7 @@ jobs:
         run: timeout 300 pip install -q playwright || (sleep 5 && timeout 300 pip install -q playwright)
 
       - name: Collect
-        run: timeout 420 python3 scraper/tiktok_subs_browser.py
+        run: timeout 600 python3 scraper/tiktok_subs_browser.py
 
       - name: Commit
         if: github.ref == 'refs/heads/main'   # 브랜치 dispatch = 측정 전용(데이터 착지는 main 실행만)
