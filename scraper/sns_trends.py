@@ -1304,6 +1304,12 @@ def main():
     _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
     _annotate_rank(btr, prev.get("bsky_trends"), lambda t: t.get("query"))   # ⑦-b 블스 트렌드 = xtrends 동일 규격(변동 배지·first_seen)
+    # ⑦-b 블스 트렌드 ko 승계(운영자 260721 "한글로만" 후속 · 평의회 22fff3c B석 P2-1) — 위 ⑦ 게시물 승계(1297) 패턴 미러:
+    #   수집(1차 커밋)→번역(sns_tr) 사이 창의 영문 회귀 차단 + sns_tr carry 히트화(재번역·gtx 콜 절감 · 번역 정본 = sns_tr.py gtx).
+    _pkt = {p.get("query"): p.get("ko") for p in (prev.get("bsky_trends") or []) if p.get("query") and p.get("ko")}
+    for _t in btr:
+        if not _t.get("ko") and _pkt.get(_t.get("query")):
+            _t["ko"] = _pkt[_t.get("query")]
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
     _annotate_rank(kob, prev.get("kobis"), lambda t: t.get("title"))
