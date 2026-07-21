@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """뷰어 '이미지 생성'(검색 카러셀 + 버튼 팝업) — 버튼으로 고른 옵션(화풍·비율·해상도·장수·문구·주문)과
-기사 요약·시사점을 Claude(Opus 4.8·effort max·구독 OAuth)가 읽고 Gemini 이미지 프롬프트 *영문 1개*를 작성
+기사 요약·시사점을 Claude(Fable 5·구독 OAuth · 운영자 260721 "FABLE 5 쓰게 해줘")가 읽고 Gemini 이미지 프롬프트 *영문 1개*를 작성
 → Gemini(thumb_gen.gemini_image·종량제 GEMINI_API_KEY)가 렌더 → R2 업로드 →
 cards/<stem>/thumbs/search.json **앞쪽** prepend(label '생성') → 뷰어 카러셀 자동 반영(articles.json 폴링).
 
-운영 원칙(운영자 260707): 구독+종량제 병행 활용 — 프롬프트 지능=구독 Opus·렌더=종량제 Gemini.
+운영 원칙(운영자 260707): 구독+종량제 병행 활용 — 프롬프트 지능=구독 Claude·렌더=종량제 Gemini.
 - Claude 호출 = 폴오버 SSOT(shared/claude_py.run_claude · 쿼터 시 4계정 체인 자동 전환 · §📰).
+- 연료 방어(운영자 260721 "낭비되는 연료 새는 구간 없게"): Fable 실패(거절·오류·형식이탈) = Opus 4.8 **1회 한정** 재시도 →
+  그래도 실패면 결정형 폴백(Claude 0콜) — 모델당 1콜 상한·재시도 루프 없음(쿼터 폴오버는 run_claude SSOT 그대로).
 - Claude가 완전 실패해도 결정형 폴백 프롬프트로 렌더 강행(fail-soft — '생성' 버튼은 항상 결과를 내려 노력).
 - 카드 제미나이 0 불변과 무관: 이 경로는 뷰어 수동 발사(슛과 동일 정책·자동 파이프라인 아님).
 입력: env GENIMG_STEM(기사 file 베이스) · GENIMG_OPTS(JSON: style/sub/aspect[N:N 자유]/size[720p·FHD·2K·4K]/count/fmt[png·jpg90]/
       mood[auto·axes+moodAx 게이지]/kweb/textOn[문구 살리기 토글]/wish · 레거시 text·font·1K도 수용 — 260710 개요 개편).
-자유 생성(GENIMG_FREE=1 · 운영자 260707 "이미지 제작 세부메뉴 4번"): 기사 없음 — 운영자 주문(wish)/문구(text)가 장면의 전부.
+자유 생성(GENIMG_FREE=1 · 운영자 260707 "이미지 제작 세부메뉴 4번"): 기사 없음 — 운영자 주문(wish)/문구(text)/참고 이미지(refB64 ·
+  운영자 260721 미리보기 반갈 "사진 픽토그램 누르면 사진을 가져와서 재생성")가 장면의 전부.
   산출 = viewer/gen_out/free.json prepend(캡 24) · R2 키 genfree/ · 뷰어 이미지 제작 도구 /6 생성 탭 그리드가 폴링.
 """
 import base64   # 참고 이미지 dispatch base64 디코드(운영자 260713) — 평의회2·5 실측: 이 임포트 없이 base64.b64decode 호출 = NameError를 광폭 except가 삼켜 참고 이미지가 항상 무음 드롭됐음(블로커 수정)
@@ -29,7 +32,9 @@ sys.path.insert(0, str(ROOT / "shared"))
 import thumb_gen as tg   # __main__ 가드 있음 = import 안전. gemini_image·r2_upload·parse_md·R2_ON 재사용.  # noqa: E402
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 
-MODEL = os.environ.get("PIPE_MODEL", "claude-opus-4-8")   # 프롬프트 작성 = Opus 4.8(운영자 "프롬프트 뽑는거는 opus 4.8 --effort max")
+MODEL = os.environ.get("PIPE_MODEL", "claude-fable-5")    # 프롬프트 작성 = Fable 5(운영자 260721 "AI 이미지 생성은 품질이 많이 차이나니까 FABLE 5" — 구 Opus 4.8) · env 오버라이드 유지
+MODEL_FB = os.environ.get("PIPE_MODEL_FB", "claude-opus-4-8")   # Fable 실패(안전거절·오류·형식이탈) 시 1회 한정 폴백 = 구 정본 모델(연료 방어: 결정형 폴백行 전에 지능 1단 방파제 · 루프 없음)
+EFFORT = os.environ.get("PIPE_EFFORT", "high")            # 연료 방어(운영자 260721 "낭비 새는 구간 없게"): Fable 5 max = 과사고·장시간 낭비 위험 — high도 구 Opus max 이상 품질(모델 카드 정본) · 구 "opus 4.8 --effort max"의 Fable 등가
 KST = datetime.timezone(datetime.timedelta(hours=9))      # §📐 시각 = KST
 
 
@@ -349,8 +354,11 @@ def build_fallback(head, lead, scene, o):
 
 
 def ask_opus(head, lead, insight, scene, o, free=False):
-    """Opus 4.8(effort max)에게 옵션 반영 Gemini 프롬프트 작성 요청 — 실패·빈출력이면 None(→ 폴백).
-    free = 자유 생성(기사 없음): [기사] 블록 대신 운영자 주문이 장면의 전부(260707)."""
+    """Fable 5(effort high)에게 옵션 반영 Gemini 프롬프트 작성 요청 — 실패·빈출력이면 None(→ 폴백).
+    연료 방어(운영자 260721): Fable 실패 시 Opus 4.8 1회 한정 재시도(모델당 1콜 · 루프 없음) →
+    둘 다 실패 = None(결정형 폴백 = Claude 0콜). 거절문이 프롬프트로 새어 종량제 렌더를 태우지 않게
+    라벨 블록(STYLE·SCENE) 형식 검문까지 통과해야 채택.
+    free = 자유 생성(기사 없음): [기사] 블록 대신 운영자 주문(주문 없으면 문구/참고 이미지)이 장면의 전부(260707·260721)."""
     likeness = o["style"] in LIKENESS_STYLES or o.get("kweb")   # 웹툰화 토글 = 닮음 정책 승계
     person = ("일러스트 계열이므로 공인(정치인·유명인)은 실제 인상(이목구비·헤어·안경)을 닮게 지시하되, "
               "사인·피해자·미성년은 익명 일반 인물로." if likeness
@@ -385,7 +393,9 @@ def ask_opus(head, lead, insight, scene, o, free=False):
     lib_rule = "\n".join(lib_lines)
     wish_rule = ("- 운영자 추가 주문(최우선 반영): " + o["wish"]) if o["wish"] else ""
     ctx = ("[주제 — 운영자 자유 주문(기사 없음 · 이 주문이 장면의 전부다 · 소재를 스스로 결정적 장면으로 구성)]\n"
-           + (o["wish"] or "(주문 없음 — 아래 문구를 장면 소재로 삼아라)")
+           + (o["wish"] or ("(주문 없음 — 첨부된 참고 이미지가 장면의 전부다: 렌더 모델에 그 이미지가 함께 전달되니 "
+                            "피사체·구도는 레퍼런스에 맡기고 화풍·프레임·품질 지시에 집중하라)"
+                            if (o.get("ref_b64") and not o["text"]) else "(주문 없음 — 아래 문구를 장면 소재로 삼아라)"))
            + (('\n(이미지 속 렌더할 문구: "' + o["text"] + '")') if o["text"] else "")) if free else """[기사]
 제목: {head}
 한줄 요약: {lead}
@@ -419,28 +429,36 @@ def ask_opus(head, lead, insight, scene, o, free=False):
         aspect=o["aspect"], aspect_en=aspect_en(o["aspect"]),
         mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
 
-    args = ["claude", "-p", "--model", MODEL, "--effort", "max",
-            "--disallowedTools", "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task",
-            "--max-turns", "3"]
-    # 렌더 키는 Claude 서브프로세스에 노출할 이유 0 — 호출 동안만 env서 제거(moreimg unset과 동일 정신·복원)
-    saved = {k: os.environ.pop(k, None) for k in ("GEMINI_API_KEY", "GDRIVE_SA_JSON")}
-    try:
-        p, rc, err = run_claude(args, prompt, timeout=600, source="genimg")
-    finally:
-        for k, v in saved.items():
-            if v is not None:
-                os.environ[k] = v
-    if not p or rc != 0 or not (p.stdout or "").strip():
-        print("::warning::Opus 프롬프트 작성 실패(rc={}) — 결정형 폴백 프롬프트로 진행: {}".format(
-            rc, (err or "")[:200]), flush=True)
-        return None
-    out = p.stdout.strip()
-    out = re.sub(r"^```[a-z]*\s*|\s*```$", "", out).strip()          # 코드펜스 방어
-    out = re.sub(r"[ \t]+", " ", out.replace("\r", "")).strip().strip('"').strip()   # 라벨 블록 개행 보존(레포 검증 골격) · 공백만 정규화
-    if len(out) < 60:   # 사실상 빈 응답/거절문 방어
-        print("::warning::Opus 출력이 너무 짧음({}자) — 폴백 프롬프트로 진행".format(len(out)), flush=True)
-        return None
-    return out[:2400]
+    # 연료 방어 체인(운영자 260721) = 모델당 정확히 1콜: Fable 5 → (실패 시) Opus 4.8 → (그래도 실패) None(결정형 폴백 = 0콜).
+    # 재시도 루프 없음 — 쿼터 폴오버(4계정)는 run_claude SSOT 내부 그대로(쿼터일 때만 발동 · 거절·오류는 즉시 다음 단계).
+    for mdl in dict.fromkeys([MODEL, MODEL_FB]):   # 동일 모델 지정 시 중복 제거 = 1콜
+        args = ["claude", "-p", "--model", mdl, "--effort", EFFORT,
+                "--disallowedTools", "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task",
+                "--max-turns", "3"]
+        # 렌더 키는 Claude 서브프로세스에 노출할 이유 0 — 호출 동안만 env서 제거(moreimg unset과 동일 정신·복원)
+        saved = {k: os.environ.pop(k, None) for k in ("GEMINI_API_KEY", "GDRIVE_SA_JSON")}
+        try:
+            p, rc, err = run_claude(args, prompt, timeout=600, source="genimg")
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
+        if not p or rc != 0 or not (p.stdout or "").strip():
+            print("::warning::{} 프롬프트 작성 실패(rc={}) — 다음 단계로: {}".format(mdl, rc, (err or "")[:200]), flush=True)
+            continue
+        out = p.stdout.strip()
+        out = re.sub(r"^```[a-z]*\s*|\s*```$", "", out).strip()          # 코드펜스 방어
+        out = re.sub(r"[ \t]+", " ", out.replace("\r", "")).strip().strip('"').strip()   # 라벨 블록 개행 보존(레포 검증 골격) · 공백만 정규화
+        if len(out) < 60:   # 사실상 빈 응답 방어
+            print("::warning::{} 출력이 너무 짧음({}자) — 다음 단계로".format(mdl, len(out)), flush=True)
+            continue
+        if not ("STYLE" in out and "SCENE" in out):   # 라벨 블록 형식 검문(작성 규칙 필수 라벨) — 안전거절문·잡담이 프롬프트로 새어 종량제 Gemini 렌더를 태우는 연료 누수 차단(운영자 260721)
+            print("::warning::{} 출력이 라벨 블록 형식 아님(거절/이탈 의심 · {}자) — 다음 단계로".format(mdl, len(out)), flush=True)
+            continue
+        if mdl != MODEL:
+            print("::notice::프롬프트 작성 = 폴백 모델 {} 채택(1차 {} 실패)".format(mdl, MODEL), flush=True)
+        return out[:2400]
+    return None
 
 
 def main():
@@ -449,8 +467,8 @@ def main():
     o = load_opts()
     if free:
         stem = "free"
-        if not (o["wish"] or o["text"]):
-            die("자유 생성 = 주문(wish) 또는 문구(text) 필수 — 장면 소재 0")
+        if not (o["wish"] or o["text"] or o.get("ref_b64")):
+            die("자유 생성 = 주문(wish)·문구(text)·참고 이미지(refB64) 중 하나 필수 — 장면 소재 0")   # 사진 단독 발사 허용(운영자 260721 미리보기 반갈 — 뷰어·genimg.js와 3층 동일 계약)
         head = lead = iq = scene = insight = ""
     else:
         if not stem or not re.match(r"^[A-Za-z0-9._-]+$", stem) or ".." in stem:
@@ -476,9 +494,10 @@ def main():
     except Exception as e:  # noqa: BLE001 — Opus 경로의 *코드 예외*까지 폴백이 받는다(카나리아1 KeyError 실측 = 기능 무중단 보증)
         print("::warning::ask_opus 예외 — 결정형 폴백으로 진행: {}: {}".format(type(e).__name__, e), flush=True)
         prompt = None
-    fb_scene = (o["wish"] or o["text"]) if free else (scene or iq)   # 자유 모드 폴백 SCENE = 주문/문구(기사 없음 = head 폴백 불가)
+    fb_scene = (o["wish"] or o["text"] or ("the subject and composition of the attached reference image"
+                if o.get("ref_b64") else "")) if free else (scene or iq)   # 자유 모드 폴백 SCENE = 주문/문구/참고 이미지(운영자 260721 사진 단독 — 기사 없음 = head 폴백 불가)
     if not prompt and o["texton"] and not o["text"]:
-        print("::warning::문구 살리기 ON이었으나 Opus 실패 → 결정형 폴백은 문구를 못 정해 무문구 렌더(재시도 시 문구 복원 · 평의회3)", flush=True)
+        print("::warning::문구 살리기 ON이었으나 Claude 실패 → 결정형 폴백은 문구를 못 정해 무문구 렌더(재시도 시 문구 복원 · 평의회3)", flush=True)
     prompt = prompt or build_fallback(head, lead, fb_scene, o)
     print("── 최종 프롬프트({}자) ──\n{}\n──".format(len(prompt), prompt), flush=True)
 
