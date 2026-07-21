@@ -292,8 +292,48 @@ jobs:
           done
           echo "조기 푸시 실패(push 경쟁) — 최종 Commit output에 포함 예정(무해)"; exit 0
 
+      # 원문 패스트패스(운영자 260721 "수정을 안 하면 그렇게 진행" · Q392) — 언어 칩 '원문만(src)' = AI 다듬기 자체를 생략(무LLM·0콜):
+      #   STT 결과(segments.json)로 표시용 subs.md만 기계 생성 → claude 스텝 스킵 → 번인은 ly_burn segments.json 폴백(STT word 1:1 = 최상 싱크).
+      #   subs.json은 일부러 안 만든다 — 기존 폴백 경로(전투 검증분) 재사용 + 번인 note '받아쓴 자막(원문)으로 합성' 정직 표면화.
+      #   segments.json 없음(STT 실패·SRT 텍스트 입력) 또는 생성 실패 = 미발동 → 종전 claude 경로 그대로(회귀 0 · fail-soft).
+      - name: 원문 패스트패스 (무LLM · lang=src)
+        if: ${{ inputs.reburn != '1' && contains(inputs.opts, '"lang":"src"') && (inputs.url != '' || inputs.file != '') }}
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          SEG="viewer/ly_out/${IN_ID}/segments.json"
+          [ -s "$SEG" ] || { echo "segments.json 없음 — 패스트패스 미발동(claude 경로)"; exit 0; }
+          if python3 - "$IN_ID" <<'PY'
+          import json, sys
+          vid = sys.argv[1]
+          d = "viewer/ly_out/" + vid
+          j = json.load(open(d + "/segments.json", encoding="utf-8"))
+          segs = [s for s in (j.get("segs") or [])
+                  if isinstance(s.get("s"), (int, float)) and isinstance(s.get("e"), (int, float)) and (s.get("t") or "").strip()]
+          assert segs, "유효 조각 0"
+          def mmss(x):
+              x = int(round(float(x)))
+              return "{}:{:02d}".format(x // 60, x % 60)
+          dur = j.get("dur") or segs[-1]["e"]
+          L = ["# 받아쓴 원문 자막 (무편집 · 빠른 처리)", "",
+               "## ⓪ 개요",
+               "- **모드**: 원문만 — AI 다듬기·교정 생략(패스트패스 · 받아쓴 문장 그대로 입힘).",
+               "- **메타**: {} · 조각 {}개 · 언어 {}".format(mmss(dur), len(segs), j.get("lang") or "?"), "",
+               "## ① 전체 표", "", "| # | 시간 | 자막 |", "|---|---|---|"]
+          for i, s in enumerate(segs, 1):
+              L.append("| {} | {}~{} | {} |".format(i, mmss(s["s"]), mmss(s["e"]), (s.get("t") or "").strip().replace("|", "·")))
+          L += ["", "---", "", "## ② 조각별 복사 블록", ""]
+          for i, s in enumerate(segs, 1):
+              L += ["{}. {}~{}".format(i, mmss(s["s"]), mmss(s["e"])), "```text", (s.get("t") or "").strip(), "```", ""]
+          open(d + "/subs.md", "w", encoding="utf-8").write("\n".join(L) + "\n")
+          print("패스트패스 subs.md: {}조각".format(len(segs)))
+          PY
+          then echo "LY_FASTPATH=1" >> "$GITHUB_ENV"
+          else echo "::warning::패스트패스 생성 실패 — claude 경로로 진행"; fi
+
       - name: Make ly subtitles
-        if: ${{ inputs.reburn != '1' }}
+        if: ${{ inputs.reburn != '1' && env.LY_FASTPATH != '1' }}
         timeout-minutes: 35   # claude 백스톱(평의회9 260709) — 폴오버 4계정 × 콜당 timeout 900s 최악 스택(60분)이 잡을 다 먹기 전 차단(실측 정상 1~5분 · 킬 시 failure() 실패 기록이 표면화)
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
