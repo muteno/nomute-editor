@@ -17,7 +17,7 @@
 //   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 좌변선 · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
 //   → C9 협폭 수치 열 사폭 412(tpost .ch-vw/.ch-dev 박스폭−잉크폭 ≤1.5px — 고정 사폭이 제목을 압착하던 것의 재발 방지 · 운영자 260721 "간격 쓸데없이 길다" 기틀)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
-//   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C10 트위터 좌X↔우블스 순위 행 y 패리티(본문 5줄 예약·헤더 상수 = 카드 높이 단일값 · Q354) → C1 페이지 에러 0
+//   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C10 트위터 좌X↔우블스 순위 행 y 패리티(본문 5줄 예약·헤더 상수 = 카드 높이 단일값 · Q354 — ⚠260721 운영자 "블루스카이는 실검만" = bsk 게시물 섹션 소멸 → 상시 skip[한쪽 결측 정직 표기 경로] · 유닛 재도입 시 자동 부활) → C1 페이지 에러 0
 //   어서션 = 기하(getBoundingClientRect)·computedStyle·동일 런 측정만(스크린샷 diff 금지 · [15]).
 //
 // 동작: 자체적으로 ① playwright-core 없으면 OS 임시 캐시에 1회 자동 설치(레포 무접촉·package.json 안 만듦)
@@ -239,10 +239,13 @@ const SEL = {
       const xs = document.querySelector('[data-sec="xtr"]'), bs = document.querySelector('[data-sec="btr"]');
       if (!xs || !bs) return { skip: true };
       const wrap = xs.parentElement, isRt = wrap.classList.contains('rt2col');
+      let _ps = wrap.previousElementSibling;   // 앞 '콘텐츠 블록' 탐색 — summary(그룹 헤더)·chseg-row(헤더 우측 칩 행 = .chu absolute로 시각상 헤더 안)는 블록 아님 = 구분선 면제 축
+      while (_ps && (_ps.tagName === 'SUMMARY' || _ps.classList.contains('chseg-row'))) _ps = _ps.previousElementSibling;
+      const hasPrev = !!_ps;
       const t = el => el.querySelector(':scope > summary').getBoundingClientRect().top;
-      return { skip: false, isRt, d: +(t(bs) - t(xs)).toFixed(2), div: isRt ? parseFloat(getComputedStyle(wrap).borderTopWidth) : 0, nX: xs.querySelectorAll('.trend-row').length, nB: bs.querySelectorAll('.trend-row').length };
+      return { skip: false, isRt, hasPrev, d: +(t(bs) - t(xs)).toFixed(2), div: isRt ? parseFloat(getComputedStyle(wrap).borderTopWidth) : 0, nX: xs.querySelectorAll('.trend-row').length, nB: bs.querySelectorAll('.trend-row').length };
     });
-    ok('C12 PC 1280 실시간 트렌드 반갈(X|블스 소머리 y 패리티·상단 구분선·행 ≤10)', c12.skip ? true : (c12.isRt && Math.abs(c12.d) <= 0.5 && c12.div >= 0.5 && c12.nX <= 10 && c12.nB <= 10), c12.skip ? 'skip(블스 트렌드 결측 — 크론 수집 후 활성)' : `Δ${c12.d} · 구분선 ${c12.div}px · ${c12.nX}|${c12.nB}행`);
+    ok('C12 PC 1280 실시간 트렌드 반갈(X|블스 소머리 y 패리티·상단 구분선·행 ≤10)', c12.skip ? true : (c12.isRt && Math.abs(c12.d) <= 0.5 && (!c12.hasPrev || c12.div >= 0.5) && c12.nX <= 10 && c12.nB <= 10), c12.skip ? 'skip(블스 트렌드 결측 — 크론 수집 후 활성)' : `Δ${c12.d} · 구분선 ${c12.div}px(앞형제 ${c12.hasPrev ? '有' : '無=면제'}) · ${c12.nX}|${c12.nB}행`);   // 구분선 = 앞 형제 있을 때만 요구(260721 운영자 "블스는 실검만" — 블스 게시물 열 소멸로 반갈이 X그룹 첫 요소가 되는 상태 합법화 · #667 CSS = 형제 사슬 구분선 설계라 첫 요소 무선 = 정상[그룹 헤더 밑 이중선 방지] · X 큐레이션 신선분 도착 = 앞 형제 생김 → 구분선 요구 자동 복귀)
 
     ok('C1 페이지 에러 0', errs.length === 0, errs.length ? errs.slice(0, 3).join(' · ') : '콘솔 pageerror 0건');
   } catch (e) {
