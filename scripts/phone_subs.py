@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""폰(termux)/맥 구독 수집 — X·인스타·스레드 전용(가정 IP = 러너 429 로터리·Meta 데센 차단 우회 · 운영자 260712 "ㄱ"·"맥에서 크롬 통해 접근 가능").
+"""폰(termux)/맥 구독 수집 — X·인스타·스레드·틱톡(가정 IP = 러너 429 로터리·Meta 데센 차단·tikwm WAF 403 우회 · 운영자 260712 "ㄱ"·"맥에서 크롬 통해 접근 가능").
 - 기존 기사 공유 경로(termux-share·queue-handler·pending/)와 완전 분리: 이 스크립트는
   viewer/sns_subs_phone.json 한 파일만 산출(기존 파이프 파일 무접촉 = 충돌 0).
 - 수집 로직 = scraper/sns_trends.py의 x_subs/insta_subs/threads_subs/_load_accounts 재사용(stdlib만 · 추가 패키지 0).
@@ -15,14 +15,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import sns_trends as st  # noqa: E402
 
 acc, reg = st._load_accounts()
+_tk_kr, _tk_gl = st._region_split("tiktok", acc, reg)   # 틱톡 지역분리(러너 _rsubs 동일 정본) — KR 독립 top-N = 큐레이션 한국 굶김 방지(운영자 260719 봉인)
 out = {"x": st.x_subs(acc["x"], limit=20), "insta": st.insta_subs(acc["insta"], limit=20),
        "threads": st.threads_subs(acc["threads"], limit=20),   # ⑧ 스레드(운영자 260712) — 계정 미등록 = [] no-op
+       "tiktok": st.tiktok_subs(_tk_kr, limit=12) + st.tiktok_subs(_tk_gl, limit=12),   # 틱톡 구독(운영자 260721) — 러너 데센 IP가 tikwm /user/posts에 HTTP 403(WAF IP블록 실측 run 29800229859) → 가정 IP가 주 공급 · 지역별 독립 top-12(KR 먼저 = 큐레이션 한국 채움)
        "reddit": st.reddit_hot([s.strip() for s in (os.environ.get("REDDIT_SUBS") or "popular,korea,worldnews").split(",") if s.strip()]),   # ⑥ 레딧(운영자 260713) — 러너 403 Blocked 실측 → 가정 IP가 주 공급(소비 = sns_trends main 폰 채택)
        "disaster": st.disaster(limit=10)}   # ⑭ 재난문자(운영자 260713) — safetydata.go.kr이 러너 IP 차단·타임아웃 실측 → 가정 IP가 유일 공급원. 키 = 폰 env SAFETY_KEY(phone_subs.sh가 ~/.nomute_phone_env source · 미설정 = st.disaster 자체 [] no-op)
-for k in ("x", "insta", "threads"):   # 지역 도장 = 러너 수집과 동일 규격(뷰어 한국/세계 접이 축 · 레딧 = 계정축 아님 = 무도장)
+for k in ("x", "insta", "threads", "tiktok"):   # 지역 도장 = 러너 수집과 동일 규격(뷰어 한국/세계 접이 축 · 레딧 = 계정축 아님 = 무도장)
     for it in out[k]:
         it["region"] = reg.get(k, {}).get((it.get("account") or "").lower(), "gl")
 out["updated"] = st.datetime.now(st.KST).isoformat()   # KST(§📐 — 소비측 신선도 판정 기준)
 p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer", "sns_subs_phone.json")
 json.dump(out, open(p, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
-print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · reddit {len(out['reddit'])}건 · 재난 {len(out['disaster'])}건")
+print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · tiktok {len(out['tiktok'])}건 · reddit {len(out['reddit'])}건 · 재난 {len(out['disaster'])}건")
