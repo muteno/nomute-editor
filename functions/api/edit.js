@@ -51,6 +51,8 @@ export async function onRequestPost({ request, env }) {
   for (const k of ['outline', 'pad']) { const v = o[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) opts[k] = Math.round(v * 1000) / 1000; }   // 음영 크기(외곽선 배율·박스 패딩 계수 — ly.js 미러 · 의미 재클램프 = ly_burn coef · 260711)
   if (typeof o.oc === 'string' && ['black', 'white', 'green', 'pink', 'blue', 'yellow', 'red'].includes(o.oc)) opts.oc = o.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711)
   if (typeof o.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(o.font)) opts.font = o.font;                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 — 러너 설치 폰트만 · 260711)
+  if (typeof o.fg === 'string' && ['white', 'green', 'pink', 'blue', 'yellow', 'black'].includes(o.fg)) opts.fg = o.fg;                   // 자막 글자색(ly.js 미러 · 기본 white = 종전 · 260721 자막 카드 복원)
+  const glow = num(o.glow, 0, 100); if (glow !== null && glow > 0) opts.glow = Math.round(glow);                                          // 글로우 %(ly.js 미러 — ASS \blur · 0/결측 = 미송신 = 종전 렌더 바이트 동일 · 260721)
   const vpos = num(o.vid_pos, 0, 1); if (vpos !== null) opts.vid_pos = Math.round(vpos * 1000) / 1000;  // 크롭 팬
   const t0 = num(o.vid_t0, 0, 3600), t1 = num(o.vid_t1, 0, 3600);
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;
