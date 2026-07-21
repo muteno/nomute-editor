@@ -14,7 +14,7 @@
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
-//   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 좌변선 · topic n=/sig 범례/tpost ×편차·내역확인 우변 = 체브론 잉크선[헤더 우변-13 = 패딩12+보더1 · --chu-r 예약 무관 상수] · |Δ|≤0.5 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선")
+//   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 좌변선 · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
 //   → C9 협폭 수치 열 사폭 412(tpost .ch-vw/.ch-dev 박스폭−잉크폭 ≤1.5px — 고정 사폭이 제목을 압착하던 것의 재발 방지 · 운영자 260721 "간격 쓸데없이 길다" 기틀)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
 //   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C1 페이지 에러 0
@@ -147,8 +147,8 @@ const SEL = {
 
     await pg.setViewportSize({ width: 412, height: 915 }); await pg.waitForTimeout(400);
 
-    // C8 채널요약 유닛 잉크선(운영자 260721 Q345~350) — 기준선 = 헤더 우변-13(체브론 잉크 = 패딩12+보더1 · #744/#749 · --chu-r 칩 예약 패딩과 무관한 상수) / 좌 = 헤더 좌변+13(배지 좌변 · .ch-post 관용구)
-    await pg.evaluate(() => { for (const id of ['topic', 'sig', 'tpost']) { const d = document.getElementById('cg-' + id); if (d) d.open = true; } });
+    // C8 채널요약 유닛 잉크선(운영자 260721 Q345~350 · 평의회 경화 = 기준 인셋을 --trend-indent 토큰 파생[매직넘버 desync 봉쇄] + daily 편입 + sig-note ≤가드) — 우변선 = 헤더 우변−인셋(체브론 잉크 = 패딩12+보더1) / 좌변선 = 헤더 좌변+인셋(배지 좌변 · .ch-post 관용구) · --chu-r 칩 예약 패딩과 무관
+    await pg.evaluate(() => { for (const id of ['topic', 'sig', 'tpost', 'daily']) { const d = document.getElementById('cg-' + id); if (d) d.open = true; } });
     await pg.waitForTimeout(500);   // ::details-content 촤르륵(0.32s) 정착
     const c8 = await pg.evaluate(() => {
       const ink = el => {   // 텍스트 잉크 사각(Range · 텍스트노드) — 없으면 박스 폴백
@@ -156,20 +156,21 @@ const SEL = {
         el.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(n); const b = rg.getBoundingClientRect(); if (b.width) r = r ? { left: Math.min(r.left, b.left), right: Math.max(r.right, b.right) } : { left: b.left, right: b.right }; } });
         return r || el.getBoundingClientRect();
       };
+      const TI = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--trend-indent')) || 13;   // 기준 인셋 = 토큰 파생(CSS와 단일 소스 — 평의회③ desync 봉쇄)
       const out = [];
-      for (const id of ['topic', 'sig', 'tpost']) {
+      for (const id of ['topic', 'sig', 'tpost', 'daily']) {
         const d = document.getElementById('cg-' + id); if (!d) { out.push({ id, skip: true }); continue; }
         const hb = d.querySelector(':scope > .tgroup-h').getBoundingClientRect();
-        const Lr = hb.right - 13, Ll = hb.left + 13, ds = [];
+        const Lr = hb.right - TI, Ll = hb.left + TI, ds = [], ov = [];   // ds = 정렬 정합(|Δ|) · ov = 초과 금지(랩 프로즈 = 래기드 우변이라 ≤만 계약)
         if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Lr).toFixed(2), +(ink(r2.querySelector('.tl')).left - Ll).toFixed(2)); });
-        if (id === 'sig') d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2)));
+        if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
         if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Lr).toFixed(2)));
         d.querySelectorAll('.ch-morelink').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));
-        out.push({ id, skip: !ds.length, max: ds.length ? Math.max(...ds.map(Math.abs)) : null, n: ds.length });
+        out.push({ id, skip: !ds.length && !ov.length, max: ds.length ? Math.max(...ds.map(Math.abs)) : 0, over: ov.length ? Math.max(...ov) : null, n: ds.length + ov.length });
       }
       return out;
     });
-    ok('C8 채널요약 잉크선 412(topic 좌·우 / sig 범례 / tpost ×열·내역확인 = 배지·체브론선 |Δ|≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}(n${x.n})`).join(' '));
+    ok('C8 채널요약 잉크선 412(topic 좌·우 / sig 범례·각주 / tpost ×열 / 내역확인×2 = 배지·체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
 
     // C9 협폭 수치 열 사폭 가드(운영자 260721 "간격 쓸데없이 길다" — 고정폭 죽은 여백이 제목 압착 · 열 박스 ≈ 잉크 실폭 계약)
     const c9 = await pg.evaluate(() => {
