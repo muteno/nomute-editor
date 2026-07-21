@@ -92,6 +92,13 @@
   .pc.dim { opacity:.32; }   /* 비활성 흐림(운영자 260711 dimOff) */
   .scard.dim { opacity:.32; }   /* 클리퍼 배타 스캔 중 = 꺼진 축 카드 흐림(운영자 260712 6차 승인 — .pc.dim 값 계승 · 탭은 살아있음 = setAxis가 배타 해제하며 그 축 점등이라 pointer-events 유지·aria-disabled 미부여) */
   .pc .swd { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; background:var(--sw,rgba(0,0,0,1)); border:1px solid rgba(255,255,255,.25); }   /* 자막 음영 색 칩 견본 점(.pc 소확장 · 색 = 콘텐츠 var 참조만 · 260711) */
+  /* ── 자막 카드 행 = AI 생성 개요(.geni-row/.pub-l/.geni-opts/.geni-opt/.geni-sep) 정본 픽셀 이식(운영자 260721 "이런 케이스로 통일 — 이미지 스튜디오 전체" · thumb 260718 5차 이식 선례 문법 그대로: 라벨 700 자연폭·값 우측정렬 워드칩·파이프 .35) — 스코프 = .srow 한정(.prow/.pc 전역 무접촉 = 기타 옵션·시트 종전) ── */
+  .srow { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); padding:8px 0 /* raw-ok: 세로 8 = index .geni-row 정본 exact(바이트 이식 — 근사 토큰 대체 = 정본과 등고 이탈) */; }   /* index .geni-row exact(무줄·baseline = 값 2줄 wrap 시 라벨이 첫 줄에 붙음) */
+  .srow .plbl { flex:0 0 auto; margin:0; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }   /* 라벨 = index .pub-l exact(흰·700·13·자연폭) — 전역 .plbl(mut·xs·전폭) 스코프 오버라이드 */
+  .sopts { display:flex; flex-wrap:wrap; gap:3px 4px /* raw-ok: 랩 밀집 3/4 = index .geni-opts 정본 exact(평의회 조정값 그대로) */; justify-content:flex-end; min-width:0; align-items:baseline; }   /* index .geni-opts exact(우측 끝 정렬) */
+  .sopts .pc { height:auto; background:none; border:none; border-radius:0; padding:6px 7px /* raw-ok: 칩 6/7 = index .geni-opt 정본 exact(탭 타깃 평의회 상향값 그대로 · thumb 이식도 동값) */; font-weight:var(--fw-b); font-size:var(--fs-label); color:var(--mut); }   /* 값 = index .geni-opt exact(워드칩 — 박스 칩 소등·밝기/색으로 on/off) */
+  .sopts .pc.on { color:var(--accent); font-weight:var(--fw-x); background:none; border:none; }   /* 선택 = 상태색(geni-opt.on exact) */
+  .ssep { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); opacity:.35; pointer-events:none; }   /* 파이프 구분자 = index .geni-sep exact(장식 텍스트 · aria-hidden) */
   /* ── 순환값 문법(운영자 260712 5문법 — 도형/필 폐지 · 한 카테고리 = 값 하나·탭=한 바퀴 순환 · ovfmt 정본 결) ── */
   .scard.cyc .hd { gap:6px; flex-wrap:wrap; cursor:default; align-items:baseline; }   /* baseline = 라벨·구분자(|)·순환값 글리프 완전 정렬(thumb .csec 인라인 흐름과 동일 · flex 박스중앙은 파이프 글리프 +0.4px 편심 노출 = 실측 260712) */
   .cyv { color:var(--accent); font-weight:var(--fw-x); font-size:var(--fs-sm); letter-spacing:.03em; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur-fast), transform var(--dur-fast); }   /* 상태/값 글자 = 이미지 모달 .onoff 정본 정렬(운영자 260712 6차 — fs 12(--fs-sm)·자간 .03em·라벨(13)과 위계) */
@@ -636,20 +643,20 @@ function sum(k){
 }
 const pc=(k,v,on,dim,txt)=>'<button class="pc'+(on?' on':'')+(dim?' dim':'')+'" type="button" data-p="'+k+':'+v+'" aria-pressed="'+(on?'true':'false')+'"'+(dim?' disabled':'')+'>'+txt+'</button>';   // aria-pressed = 토글 상태 SR 공지(P2평의회5 a11y)
 function segs(k, arr, cur, dim){ return '<div class="prow">'+arr.map(a=>pc(k,a[0],String(cur)===a[0],dim,a[1])).join('')+'</div>'; }
+const srow=(lbl,chips)=>'<div class="srow"><span class="plbl">'+lbl+'</span><span class="sopts">'+chips.join('<span class="ssep" aria-hidden="true">|</span>')+'</span></div>';   // 자막 카드 행 = geni-row 정본 문법(운영자 260721 통일 — 라벨 pub-l·값 우측 워드칩·파이프 geni-sep)
 const gvTxt=(k,v,u)=>(k==='sh'&&+v===100)?'기본':(v+u);   // 음영 100% = '기본'(불변 상태 명시 — 트랙 27% 지점이라 숫자만으론 기준선 인지 불가 · v2평의회9)
 function gauge(k, lbl, min, max, val, unit){ return '<div class="grow"><span class="k">'+lbl+'</span><input type="range" min="'+min+'" max="'+max+'" step="1" value="'+val+'" data-g="'+k+'" aria-label="'+lbl+'"><span class="v">'+gvTxt(k,val,unit)+'</span></div>'; }
 function prm(k){
   if(k==='sub') return '<div class="pvslot" id="pvSlotSub"></div>'   // 도먼트(자막 탭 이관 260711) — 복원 시 비율 카드 pvSlot과 id 충돌 방지(배선평의회1 F5)   // 라이브 미리보기 자리(영속 #pv 노드를 render()가 이주 — innerHTML 재생성이 video를 파괴·리로드하지 않게 · 운영자 260711 3차)
-    +'<div class="plbl">프리셋</div><div class="prow">'+Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm)).join('')+'</div>'
-    +'<div class="plbl">언어</div>'+segs('lang',[['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']],P.lang)
-    +'<div class="plbl">톤</div><div class="prow">'+[['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).join('')+pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')+'</div>'
-    +'<div class="plbl">모양·강조</div><div class="prow">'+[['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).join('')
-    +pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케')+pc('pop',P.pop?'0':'1',P.pop,false,'팝')+pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')+'</div>'
+    +srow('프리셋', Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm)))   // 행 문법 = geni-row 정본 이식(운영자 260721 "이런 케이스로 통일" — 라벨 좌·값 우측정렬 워드칩·파이프)
+    +srow('언어', [['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1])))
+    +srow('톤', [['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).concat([pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')]))
+    +srow('모양·강조', [['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).concat([pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케'),pc('pop',P.pop?'0':'1',P.pop,false,'팝'),pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')]))
     +gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰')
-    +gauge('sh','음영',25,300,P.sh,'%')   // 주변부 음영 크기(운영자 260711) — bg=0 외곽선 두께·bg>0 줄박스 패딩 한 손잡이(100% = 종전 그대로 · 라이브 미리보기 실시간 미러)
+    +gauge('sh','음영',25,300,P.sh,'%')   // 주변부 음영 크기(운영자 260711) — bg=0 외곽선 두께·bg>0 줄박스 패딩 한 손잡이(100% = 종전 그대로 · 라이브 미리보기 실시간 미러) · 게이지 = 연속값이라 슬라이더 유지([4-1] 종류가 다르면 생김새가 다른 게 정답)
     +gauge('glow','글로우',0,100,P.glow,'%')   // 네온 번짐(운영자 260721 — ASS \blur · 0 = 없음 = 종전 · ly 글로우 게이지 파리티)
-    +'<div class="plbl">음영 색</div><div class="prow">'+Object.keys(OC_DEF).map(c=>pc('shc',c,P.shc===c,false,'<span class="swd" style="--sw:'+OC_DEF[c]+'"></span>'+OC_LBL[c])).join('')+'</div>'
-    +'<div class="plbl">폰트</div><div class="prow">'+Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl)).join('')+'</div>';
+    +srow('음영 색', Object.keys(OC_DEF).map(c=>pc('shc',c,P.shc===c,false,'<span class="swd" style="--sw:'+OC_DEF[c]+'"></span>'+OC_LBL[c])))
+    +srow('폰트', Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl)));
   if(k==='cut') return segs('cutlv',[['off','OFF'],['soft','살짝'],['std','기본'],['hard','많이']],ON.cut?P.cutlv:'off')
     +(ON.cut?'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
