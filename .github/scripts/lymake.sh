@@ -55,6 +55,11 @@ prompt="${prompt/__LY_GUIDE__/$GUIDE}"
 prompt="$prompt
 ${SUBS}"
 
+# 장문 출력 상한 증액(260722) — 170조각급 영상은 산출(①표+②복사블록+타이밍JSON = 조각당 3중 표기)이 기본 출력 상한(32K)을
+#   넘어 이어쓰기 분절이 생기고, -p는 마지막 메시지만 내보내 최종 out이 중간부터 시작('#' 헤더 소실 = rc0인데 실패 · 260722 01:41 실증).
+#   opus 4.8 출력캡 128K 내 64K로 증액 = 20분(원본 캡) 밀도 발화도 단일 메시지 수용.
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-64000}"
+
 # 인라인 재시도 — 쿼터 한도면 대체 계정 전환(claude_failover·서브1→서브2→서브3), 일시 과부하(5xx/Overloaded)면 백오프 재시도. 성공·LYMAKE_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0).
 inline_delay=15
 for attempt in $(seq 1 "$INLINE_TRIES"); do
@@ -79,6 +84,10 @@ done
 
 if [ $rc -ne 0 ] || [ -z "${out// }" ] || grep -qm1 '^LYMAKE_FAILED' <<<"$out" || ! grep -qm1 '^#' <<<"$out"; then
   {
+    # 형식 이탈(rc0·내용 있음·헤더 없음) = 장문 잘림 계열 — 뷰어에 사람 말 진단 1줄 선행(진단 원문은 그대로 보존 · 260722)
+    if [ $rc -eq 0 ] && [ -n "${out// }" ] && ! grep -qm1 '^LYMAKE_FAILED' <<<"$out"; then
+      echo "자막 산출이 형식을 벗어났어(장문 출력 잘림 추정) — 한 번 더 시도해줘. 아래는 기계 진단 원문."
+    fi
     echo "exit_code: $rc"
     echo "---- stderr ----"; cat "${OUTDIR}/stderr.log" 2>/dev/null
     echo "---- stdout(head) ----"; printf '%s\n' "$out" | head -n 20

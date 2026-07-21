@@ -26,6 +26,29 @@ _meter_shard() {
   printf 'metrics/usage/%s-%s-%s.jsonl' "$run" "$job" "$att"
 }
 
+# 러너 워크스페이스 선신뢰(260722) — GH Actions에서 claude -p가 「.claude/settings.json permissions.allow … has not been
+#   trusted」 경고를 stderr에 찍고, 그 경고가 실패 error.log 머리에 실려 진짜 원인을 가린다(260722 01:41 edit 실증).
+#   ~/.claude.json에 hasTrustDialogAccepted를 병합 기록(러너 한정 · 로컬 무접촉 · 실패 무해 = || true) — 이 파일을 소싱하는
+#   전 파이프라인(analyze·ask·card·k·ly·clip·sb·nb·song·trauto 등)이 한 지점에서 커버되는 초크포인트.
+if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+  python3 - <<'PY' 2>/dev/null || true
+import json, os
+p = os.path.expanduser("~/.claude.json")
+try:
+    d = json.load(open(p))
+except Exception:
+    d = {}
+if not isinstance(d, dict):
+    d = {}
+e = d.setdefault("projects", {}).setdefault(os.environ.get("GITHUB_WORKSPACE") or os.getcwd(), {})
+if not e.get("hasTrustDialogAccepted"):
+    e["hasTrustDialogAccepted"] = True
+    tmp = p + ".tmp"
+    json.dump(d, open(tmp, "w"))
+    os.replace(tmp, p)
+PY
+fi
+
 # _meter_record <json> <rc> — JSON result 객체에서 토큰·비용을 뽑아 shard 에 1줄 append(jq).
 _meter_record() {
   local raw="$1" rc="$2" shard ts
