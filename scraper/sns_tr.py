@@ -6,8 +6,10 @@
 그리드·썸네일 캡션이 미얀마어·태국어·영어로 노출 = 안 읽힘. 각 항목의 표시 필드(title 또는 text)를
 한국어로 번역해 `ko` 부착 → 뷰어는 ko 있으면 그걸 노출(원어는 데이터 보존·화면 미표기 = "원어 표기 안해도됨").
 
-대상(_TARGETS) = title/text/query 보유 외국어-가능 소스 전체(검색어 포함 = 운영자 260719 "검색어도 번역"). 제외:
-  · bsky = 자체 LLM 번역(bsky_brief.sh ko·**키워드** 마커) 별도 경로 → 중복 방지 위해 미포함.
+대상(_TARGETS) = title/text/query 보유 외국어-가능 소스 전체(검색어 포함 = 운영자 260719 "검색어도 번역" ·
+  bsky_trends 실검 편입 = 운영자 260721 "한영 변환 무조건 — 한글로만"). 제외:
+  · bsky(게시물) = 자체 LLM 번역(bsky_brief.sh ko·**키워드** 마커) 별도 경로 → 중복 방지 위해 미포함
+    (260721 게시물 표면 소멸로 BSKY_TR 기본 OFF — 데이터 스키마는 보존).
   · 검색어(gtrends·signal·xtrends의 query) = 표시만 ko 번역 · 클릭 검색 URL은 원문 query 유지(뷰어 ggMap/fillT · 번역어로 검색 깨짐 방지).
 불변(틱톡 스크래퍼 "LLM 0콜·과금 0·무키" 정신 계승):
   · 무키 gtx(translate.googleapis.com/translate_a/single?client=gtx) = LLM 0·과금 0.
@@ -62,6 +64,7 @@ def _targets(data):
         # 실시간 검색어(query) — 운영자 260719 "검색어 상위에 있는것도 번역"(구글=TOP 10 상위 · 시그널·X트렌드) · 표시만 ko, 클릭 검색링크는 원문 query 유지(뷰어 ggMap/fillT) · 한글 검색어=자동 스킵
         (data.get("gtrends") or [], "query"), (data.get("gtrends_gl") or [], "query"),
         (data.get("signal") or [], "query"), (data.get("xtrends") or [], "query"),
+        (data.get("bsky_trends") or [], "query"),   # ⑦-b 블스 실시간 트렌드(운영자 260721 "한영 변환 무조건 — 한글로만") · 영문 글로벌 키워드 → ko(뷰어 fillT btr가 ko 우선 기대기) · 클릭 링크 = 원문 query 유지 관용구 동일 · carry 키 = query
     ]
 
 

@@ -440,6 +440,17 @@ def _load_accounts():
     return out, reg
 
 
+def _region_split(plat, acc, accreg):
+    """구독 계정을 지역(kr/gl) 2군으로 분리 — 각 지역 top-N 독립 수집용(운영자 260719 "구독 한국 3개만 나옴"
+    봉인: 전 계정 1콜 후 글로벌 조회수 캡이면 해외 메가계정[mrbeast·zachking 수억뷰]이 한국을 상위 밖으로 밀어냄).
+    러너(main._rsubs)·폰(scripts/phone_subs.py) 공용 = 지역분리 단일 정본(분기 = 한쪽만 굶는 회귀 방지).
+    반환 = (kr 핸들[], gl 핸들[] · 지역 미도장 = gl 흡수)."""
+    reg = accreg.get(plat, {})
+    kr = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) == "kr"]
+    gl = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) != "kr"]
+    return kr, gl
+
+
 def _i(v):
     """수치 강제(int) — 상류 API가 문자열·콤마 수치를 실어도 항목/계정 단위로 안전(평의회1·6).
     ⚠ float·소수문자열 = 소수부 절단(운영자 260719 봉인): 업비트 trade_price 등 `95318000.0` .0 float를
@@ -504,7 +515,9 @@ def x_subs(accounts, limit=10, deadline=None):
             return parsedate_to_datetime(s).timestamp()
         except Exception:  # noqa: BLE001
             return 0.0
-    return sorted(out, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순(260720 평의회 F2 실측 — 구 좋아요순은 신디케이션 타임라인의 핀·역대 바이럴 구작(1~10년 전)이 항상 상위 독식 = '구독 최신 피드' 취지 위반 · 핀 구작은 시간순에서 자연 침몰 · 표시 정렬은 뷰어 정렬바 그대로)
+    _now = datetime.now(KST).timestamp()
+    fresh = [t for t in out if _tts(t["time"]) >= _now - 86400]   # ⏱ 24h 이내만(운영자 260721 "근 1일 이내 가장 핫한거만 · 24시간 넘으면 의미없음") — 신디케이션 timeline-profile이 핀·역대 바이럴 구작(1~10년 전)을 섞어 반환해 최신순 정렬만으론 top-N에 구작이 잔존(파싱 실패 time=0도 자연 배제) → 시간 필터로 완전 배제 · 빈 결과 = 조용한 공백(24h 내 트윗 없음 = 표시 안 함이 취지)
+    return sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순 정렬(260720 평의회 F2 · 표시 정렬은 뷰어 정렬바 그대로 = 24h 내에서 좋아요순 = '근 1일 가장 핫')
 
 
 def tiktok_subs(accounts, limit=10, deadline=None):
@@ -899,10 +912,14 @@ def _kr_mkt_open(now):
     return 540 <= hm <= 930   # 09:00(540) ~ 15:30(930)
 
 
-# ⑬ 금융 종목·지수 정본(운영자 260719 "종목 6개·지수 2개 추가") — 국내 원/해외 달러 2축 · 시총·통화 도장
-_FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"), ("034020", "두산에너빌리티"), ("012450", "한화에어로스페이스"))
+# ⑬ 금융 종목·지수 정본(운영자 260719 종목 추가 · 260721 두산·한화 제낌 = 국내2+해외4=6, 좌편 환율 6과 대칭) — 국내 원/해외 달러 2축 · 시총·통화 도장
+_FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"))
 _FIN_STOCKS_US = (("TSLA.O", "테슬라"), ("NVDA.O", "엔비디아"), ("PLTR.O", "팔란티어"), ("SPCX.O", "스페이스X"))   # 스페이스x = 2026-06-12 나스닥 상장(SPCX.O · 실측)
 _FIN_INDICES = (("KOSPI", "코스피", "KRW"), ("KOSDAQ", "코스닥", "KRW"), (".IXIC", "나스닥", "USD"), (".INX", "S&P500", "USD"))
+# ⑬ 환율 = 6대 기축통화(운영자 260721 "좌편에 유로화나 파운드 더 넣어서 6개 맞춰줘" = 종목 6개와 대칭 · 구 8개서 CAD·CHF 제외) — (코드, 네이버 마켓인덱스 코드, 표시명, 고시단위) · div=100 = JPY만(네이버 100엔 고시 → 1엔당 원화 저장 · 뷰어가 100엔 기준 ×100 복원 = 한국 관례) · 그 외 = 1(1통화당 원화)
+_FIN_FX = (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
+           ("JPY", "FX_JPYKRW", "일본 엔", 100), ("GBP", "FX_GBPKRW", "영국 파운드", 1),
+           ("CNY", "FX_CNYKRW", "중국 위안", 1), ("AUD", "FX_AUDKRW", "호주 달러", 1))
 
 
 def _fin_stock_kr(code, name):
@@ -976,10 +993,9 @@ def finance(prev_fin=None):
 
     # ── 환율(네이버 하나은행 고시 · 값+등락률 장중 갱신 · 전일 종가 대비) — 3h throttle(운영자 260717 "환율 3시간") ──
     rates = list(prev_fin.get("rates") or [])
-    if not rates or _stale("rates", 3):
+    if [r.get("code") for r in rates] != [f[0] for f in _FIN_FX] or _stale("rates", 3):   # 통화 집합 변경(추가·삭제·순서) = 3h 스로틀 무시하고 즉시 재수집 = 다음 run 발효(구 4→8, 현 8→6 축소 모두 커버) · 집합 일치 후엔 스로틀 복귀
         got = []
-        for code, rc, name, div in (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
-                                     ("JPY", "FX_JPYKRW", "일본 엔", 100), ("CNY", "FX_CNYKRW", "중국 위안", 1)):
+        for code, rc, name, div in _FIN_FX:
             try:
                 info = _naver_json(f"https://api.stock.naver.com/marketindex/exchange/{rc}").get("exchangeInfo") or {}
                 v, chg = _fnum(info.get("closePrice")), _fnum(info.get("fluctuationsRatio"))
@@ -1013,7 +1029,7 @@ def finance(prev_fin=None):
 
     # ── 주요종목(삼성·SK·두산·한화 원 + 테슬라·엔비디아·팔란티어·스페이스x 달러 · 운영자 260719) — 시총·통화 도장 · 지수와 동일 주기 ──
     stocks = list(prev_fin.get("stocks") or [])
-    if not stocks or (_fin_open and _stale("stocks", 1)):
+    if [s.get("code") for s in stocks] != [c for c, _ in _FIN_STOCKS_KR] + [c for c, _ in _FIN_STOCKS_US] or (_fin_open and _stale("stocks", 1)):   # 종목 집합 변경(두산·한화 제낌 등) = 장중·스로틀 무관 즉시 재수집 = 다음 run 발효 · 일치 후엔 장중 1h 스로틀 복귀
         got = []
         for code, name in _FIN_STOCKS_KR:
             try:
@@ -1268,9 +1284,7 @@ def main():
         # 해외 메가계정(mrbeast·zachking 수억 뷰)이 한국(newjeans 1877만 등)을 상위 20 밖으로 밀어내 KR 3건만 잔존.
         # 근본교정 = 계정을 지역으로 갈라 각 지역 top-N 독립 수집(KR 먼저 = 예산 소진 시에도 한국 보장) → 뷰어 지역 슬라이스가 굶지 않음.
         def _rsubs(fn, plat, per=12):
-            reg = accreg.get(plat, {})
-            kr = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) == "kr"]
-            gl = [a for a in (acc.get(plat) or []) if reg.get((a or "").lower()) != "kr"]
+            kr, gl = _region_split(plat, acc, accreg)   # 지역분리 = 모듈 공용 헬퍼(폰 phone_subs.py와 단일 정본)
             return fn(kr, limit=per, deadline=dl) + fn(gl, limit=per, deadline=dl)
         subs_new = {"x": _rsubs(x_subs, "x"), "tiktok": _rsubs(tiktok_subs, "tiktok"),
                     "insta": _rsubs(insta_subs, "insta"), "youtube": _rsubs(yt_subs, "youtube"),
@@ -1284,7 +1298,7 @@ def main():
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
             if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
-                for k2 in ("x", "insta", "threads"):   # 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
+                for k2 in ("x", "insta", "threads", "tiktok"):   # 틱톡 = 러너 데센 IP가 tikwm /user/posts에 통째 HTTP 403(WAF IP블록 · run 29800229859 실측 260721: KR13+GL17 30콜 전멸 → 구독 tiktok = 스테일 carry) → 폰 가정 IP 채택(insta/threads 동류 편입) · 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
                         subs_new[k2] = _pl
@@ -1335,6 +1349,12 @@ def main():
     _annotate_rank(sig, prev.get("signal"), lambda t: t.get("kid") or t.get("query"))   # ⑨ 실검 first_seen = signal.bz 안정 토픽ID 추적(운영자 260717 — AI 재작성 헤드라인 = query 매 런 churn → 전항목 가짜 first_seen 리셋="방금" 봉합 · kid 폴백=query) · NEW/상승/하락 배지 자체는 뷰어가 source state 정본 사용(파생 isNew 미사용)
     _annotate_rank(xtr, prev.get("xtrends"), lambda t: t.get("query"))
     _annotate_rank(btr, prev.get("bsky_trends"), lambda t: t.get("query"))   # ⑦-b 블스 트렌드 = xtrends 동일 규격(변동 배지·first_seen)
+    # ⑦-b 블스 트렌드 ko 승계(운영자 260721 "한글로만" 후속 · 평의회 22fff3c B석 P2-1) — 위 ⑦ 게시물 승계(1297) 패턴 미러:
+    #   수집(1차 커밋)→번역(sns_tr) 사이 창의 영문 회귀 차단 + sns_tr carry 히트화(재번역·gtx 콜 절감 · 번역 정본 = sns_tr.py gtx).
+    _pkt = {p.get("query"): p.get("ko") for p in (prev.get("bsky_trends") or []) if p.get("query") and p.get("ko")}
+    for _t in btr:
+        if not _t.get("ko") and _pkt.get(_t.get("query")):
+            _t["ko"] = _pkt[_t.get("query")]
     _annotate_rank(hn, prev.get("hackernews"), lambda t: t.get("url"))   # ⑫⑭⑮ 동일 규격(운영자 260713 · 금융은 스냅샷 비교 무의미 = 제외)
     _annotate_rank(dis, prev.get("disaster"), lambda t: t.get("title"))
     _annotate_rank(kob, prev.get("kobis"), lambda t: t.get("title"))
