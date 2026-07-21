@@ -10148,13 +10148,14 @@ function renderSnsTrends() {
     return NaN;
   };
   const ageVerH = x => { for (const p of [x.published, x.time, x.started, x.create_time]) { const h = _ageOf(p); if (isFinite(h)) return h; } return NaN; };   // 실발행 나이 = "벌어진 일" 기준 · first_seen 제외(수집관측 도장 ≠ 사건시각 · 운영자 260718 검증 취지) · 전부 미상 = NaN
-  const cut3d = arr => (arr || []).filter(t3 => { const h3 = ageVerH(t3); return !(isFinite(h3) && h3 >= AGE_CUT_H); });   // 3일 컷 필터(위 하드컷 주석 = 정본 사유)
+  const cutH = (arr, mx) => (arr || []).filter(t3 => { const h3 = ageVerH(t3); return !(isFinite(h3) && h3 >= mx); });   // 나이 컷 공통(경계 mx 시간 · 미상 NaN = fail-soft 통과)
+  const cut3d = arr => cutH(arr, AGE_CUT_H);   // 3일 컷 필터(위 하드컷 주석 = 정본 사유)
   const gt = TRREG === 'kr' ? (d.gtrends || []) : mrg(d.gtrends || [], d.gtrends_gl, g3 => (g3.query || '').toLowerCase());
   const yt = cut3d(TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15));   // 3일 컷(운영자 260721)
   const ytn = cut3d(d.youtube_news || []);   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시) · 3일 컷
   const tkvA = ((d.tiktok || {}).videos) || [], tkv = cut3d(TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · 3일 컷(260721 — 스샷 "4주 전" 바이럴 잔존 봉인) · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
   const sb = d.subs || {}, sx = cut3d(sb.x || []), stk = cut3d(sb.tiktok || []), sre = cut3d(sb.insta || []), syt = cut3d(sb.youtube || []);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
-  const shv = cut3d(d.shorts || []), aiv = cut3d(d.aivid || []);   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") · 3일 컷
+  const shv = cut3d(d.shorts || []), aiv = cutH(d.aivid || [], 168);   // 쇼츠 = 3일 컷 · AI 영상 = 7일 컷(운영자 260721 "10개까지 안나오고 짤림" — 검색 파생 니치 = 일 1~3건 수집이라 3일 창 = 2건 고사 실측 · TOP 풀 제외 소스라 완화 무부작용)
   const sig = d.signal || [], xtr = d.xtrends || [];   // ⑨⑩ 시그널 실검·X 실시간 트렌드(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시) — 검색어류 = 컷 비대상
   const rdd = cut3d(d.reddit || []), bsk = cut3d(d.bsky || []), sth = cut3d(sb.threads || []);   // ⑥⑦⑧ 레딧·블루스카이·스레드 구독(운영자 260713 "추천대로" 배치 승인 — 레딧 = 커뮤니티 그룹 · 블스·스레드 = 새 그룹) · 게시물 = 3일 컷
   const hnl = cut3d(d.hackernews || []), finc = d.finance || {}, finR = finc.rates || [], finC = finc.coins || [], finI = finc.indices || [], finS = finc.stocks || [], dsl = d.disaster || [], kob = d.kobis || [], exw = d.expressway || [];   // ⑫⑬⑭⑮⑯ 해커뉴스(3일 컷)·금융(환율/코인/증시/종목 · 운영자 260717 2x2)·재난문자·박스오피스·고속도로 돌발(운영자 260713 "ㄱ" · 데이터 있을 때만 그룹 등장 = 조용한 공백 · 대시보드류 = 컷 비대상)
@@ -10177,6 +10178,7 @@ function renderSnsTrends() {
   };
   const relT = x => relP(x.published) || relP(x.time) || relP(x.started) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ started(구글 트렌드 시작시각 = 급상승 실제 나이 · 운영자 260717 "n시간 전 맞나" 직답 — 수집기 gt만 보유·first_seen보다 우선) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행·무started 소스 폴백)
   const FRESH_MAX_H = 12;   // 실시간 TOP 신선 상한(운영자 260718 "12시간 내 벌어진 일인지 검증") — 뉴스 보도색 12h 경계(3792)·시간가속 반값 12h(9031)와 동축 · env 아닌 상수(뷰어 즉시 반영) · _ageOf/ageVerH 정의 = 3일 하드컷 블록으로 상향 이동(260721 — 소스 선언 앞 필요 · 정의 1곳 불변)
+  const TOP_MAX_H = 24;   // 실시간 TOP 입장 하드컷(운영자 260721 "top10에는 항상 24시간 이내 정보만") — 24h+ = 풀 자체 미입장(리스트·플랫폼 탭·스택 전 뷰 공통) · 미상(NaN) = fail-soft 통과(isFreshItem 동축) · 전멸 = 조용한 공백(kobL "10개 안 나와도 괜찮아" 선례 — 구 "빈칸 0 채움"은 이 컷 안에서만)
   const isFreshItem = t => { const h = ageVerH(t); return !(isFinite(h) && h >= FRESH_MAX_H); };   // 신선 = 12h 미만 · 미상(NaN)=신선 취급(fail-soft — 타임스탬프 없다고 후순위로 침몰 금지)
   const freshFirst = arr => arr.filter(isFreshItem).concat(arr.filter(t => !isFreshItem(t)));   // 안정 분할 = 신선분 위로(내부 순서 보존) → 오래된 것 아래로 차순위 채움(운영자 260718 "신선 없으면 차순위 top 위로 · 빈칸 없이") · 옆 relT 나이표기(N시간 전)는 불변 = 오래된 건 정직하게 표기
   // (구 zig 인터리브·tpc TOP 카드 렌더 = tpg 1:1 레일 폐지(260717 그리드 통일)로 호출 0 고아 → 260720 평의회 삭제 · .tpc* CSS는 스택(tsk) 오버레이가 공유라 존치 · 재도입 = git 이력)
@@ -10221,19 +10223,22 @@ function renderSnsTrends() {
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
   // 랭킹 = 소스 자체 순위 정규화(1 - r/len) 주정렬 + 조회수 log 타이브레이크(플랫폼 간 절대수치 비교는 스케일 격차로 무의미 · 분신6) · url dedup · 플랫폼 캡 4(유튜브 3레인 독식 방지) · 구독 레인 = 개인 팔로우 피드(인기 아님)·AI 영상 = 검색 파생 니치 → 풀 제외
   const pool = [], seenU = new Set();
-  const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.ko || g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g) });   // 표시=ko(번역) 우선(운영자 260719 "검색어도 번역") · 클릭 URL은 원문 query 유지   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
+  const ggMap = g => ({ url: (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || '')), t: g.ko || g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g), tn: parseInt(String(g.traffic || '').replace(/[^0-9]/g, ''), 10) || 0 });   // 표시=ko(번역) 우선(운영자 260719 "검색어도 번역") · 클릭 URL은 원문 query 유지   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
   const tkMap = v => ({ url: v.url || '', t: v.ko || v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백 · ko = 외국어 제목 한글 자동번역(tiktok_tr.py · 운영자 260719 "원어 표기 안해도됨") 우선, 없으면 원어 title
-  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
+  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const ah = ageVerH(x); if (isFinite(ah) && ah >= TOP_MAX_H) return; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
   lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
   lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
   lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
   lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relT(v) }));
   lane('틱톡', 'tk', tkv, 10, tkMap, 10);   // 틱톡 코어 1~10(국내 데이터 9 = 자연 한도)
-  // 확장 레인(플랫폼 필터·스택 심화 전용 · 코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 구글 11~25·틱톡 11~15, sc≤0(정렬 최하위 침강 = pcap4가 통합 진입 차단 · 필터/스택만 소비)
-  lane('구글', 'gg', gt, 25, ggMap, 10, 10);   // 구글 11~25위(급상승 그룹 gt.slice(0,25) 동일 소스 · 운영자 260717 "구글 10개밖에 · 11,12 쭉 · 처음으로↻ 15·20·25")
+  // 확장 레인(코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 260721 재정의: 표시 심화(11위+ 스택·필터)는 폐지(_tsSeqX 10 봉인), 잔존 목적 = TOP 입장 후보 심화(구글 11~25 속 5천+ 진짜 이슈[실측 압록강 5만·11위]가 저검색 상위를 제치고 입장 + 강등·24h컷 결원 채움) · sc≤0 = 자연 침강이라 정상분 위협 없음
+  lane('구글', 'gg', gt, 25, ggMap, 10, 10);   // 구글 11~25위(급상승 그룹 gt.slice(0,25) 동일 소스)
   lane('틱톡', 'tk', tkv, 15, tkMap, 10, 10);   // 틱톡 11~15위(월드 모드 최대 15 · 국내 9 = off 10 초과분 없어 무변)
-  pool.sort((a, b2) => ((b2._fresh ? 1 : 0) - (a._fresh ? 1 : 0)) || (b2.sc - a.sc) || (b2.ht - a.ht));   // 신선분 우선(운영자 260718 "신선 없으면 차순위 top 위로") → 소스순위(sc) → 조회수(ht) · 스테일 = 침몰하되 하드컷 안 함 = 빈칸 0(TOP 10 항상 채움)
+  const GG_MIN_T = 5000;   // 구글 이슈 최소 검색량(운영자 260721 "5천 검색량 아니면 이슈 아니야 · 가점 내리셈") — 미만 = 신선 우대 회수(_pen) + sc −1(전 플랫폼 정상분 아래 침강) · 항목 제거는 안 함(하위 채움용 잔존 = 빈칸 회피)
+  pool.forEach(p2 => { if (p2.mono === 'gg' && (p2.tn || 0) < GG_MIN_T) { p2._pen = 1; p2.sc -= 1; } });
+  const effF = z => (z._fresh && !z._pen) ? 1 : 0;   // 정렬용 유효 신선 — _pen = 가점만 회수(표시 나이 흐림 .old는 실나이 _fresh 그대로 = 1시간 전이 흐려지는 왜곡 차단)
+  pool.sort((a, b2) => (effF(b2) - effF(a)) || (b2.sc - a.sc) || (b2.ht - a.ht));   // 신선분 우선(운영자 260718 "신선 없으면 차순위 top 위로") → 소스순위(sc) → 조회수(ht) · 24h+ = 입장 컷(TOP_MAX_H) · 24h 내 스테일 = 침몰만(컷 안에서 빈칸 채움 유지)
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
@@ -10538,9 +10543,8 @@ function renderSnsTrends() {
     box.querySelectorAll('.tgroup').forEach(g => box._trIO.observe(g));
   }
   // ── 앨범 스택(운영자 260712 "TOP1 크게+2·3만 · 위로 촤르륵 · 앨범 중첩 느낌") — TOP1 = 좌측 대형(세로 2행 스팬) · 2·3 = 우측 미니 · 순환 = mod(TOP10 끝 = 처음 랩) · 더보기 = 11위+(풀 확장·안 누르면 1위 랩) · 복귀 = 넘김 화살표 순환·꼬리 끝 ↻·11위+ ↻ 미니(구 '처음' pill·'처음|중간' 세그 폐지 260716·260717) · 입력 = main 스와이프/호버 휠 + 6s 자동(인터랙션 12s 홀드·화면 밖/탭 숨김 정지·reduced-motion 무효) ──
-  const _tsF = TR_TOPF === 'all' ? pool : pool.filter(x2 => x2.mono === TR_TOPF);   // 스택 소스 = 필터별(전체=종합 pool · 플랫폼=해당 mono만 · 운영자 260717 "플랫폼별 순위도 쭉")
-  box._tsSeq = topShow;   // 상위 10 = TOP 리스트와 동일 축(전체=플랫폼캡 top · 플랫폼=pool.filter 상위10)
-  box._tsSeqX = TR_TOPF === 'all' ? top.concat(pool.filter(x2 => top.indexOf(x2) < 0).slice(0, 20)) : _tsF.slice(0, 30);   // 확장 = 전체는 종전(top+잔여20=최대30) · 플랫폼은 그 플랫폼 순위 최대 30
+  box._tsSeq = topShow;   // 상위 10 = TOP 리스트와 동일 축(전체=플랫폼캡 top · 플랫폼=pool.filter 상위10) · (구 _tsF 필터별 심화 소스 = _tsSeqX 10 봉인으로 소멸 260721)
+  box._tsSeqX = topShow;   // 확장 시퀀스 = 상위 10 동일 축(운영자 260721 "TOP 10인데 벗어남" — 구 top+잔여20=최대30 심화 폐지 · 스택 = 10 안에서 랩 순환 · 11위+ 카운터·확장 모드 = hasX false로 자연 휴면)
   if (box._tsO === undefined || box._tsTopf !== TR_TOPF) { box._tsO = 0; box._tsMore = false; box._tsLast = 0; box._tsTopf = TR_TOPF; }   // 첫 진입·필터 전환 = 스택 1위로 리셋(다른 시퀀스라 오프셋 이월 금지)
   const stkEl = box.querySelector('#tstk');
   if (stkEl) {
