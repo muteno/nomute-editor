@@ -10128,15 +10128,35 @@ function renderSnsTrends() {
   const mrg = (a3, b3, key) => { const s3 = new Set(a3.map(key)), o3 = a3.slice(); (b3 || []).forEach(x3 => { const k3 = key(x3); if (k3 && !s3.has(k3)) { s3.add(k3); o3.push(x3); } }); return o3; };
   // 외국어 제목·본문 한글 번역 노출(운영자 260719 "미리 다 달아놔") — 서버 sns_tr.py(무키 gtx)가 부착한 ko를 표시 필드(title/text)에 반영 = 전 소비처 자동 한글화(원어는 데이터 보존·미표기) · bsk=자체 LLM ko 경로라 제외 · gt/sig/xtr=검색어라 제외 · 틱톡 매퍼의 ko|| 폴백은 이 패스가 상위 대체(무해 중복) · idempotent(ko 불변 = 재렌더 안전)
   { const _sb = d.subs || {}; [[d.youtube, 'title'], [d.youtube_gl, 'title'], [(d.tiktok || {}).videos, 'title'], [d.shorts, 'title'], [d.aivid, 'title'], [d.reddit, 'title'], [d.hackernews, 'title'], [_sb.x, 'text'], [_sb.tiktok, 'title'], [_sb.youtube, 'title'], [_sb.insta, 'title'], [_sb.threads, 'text']].forEach(p3 => { if (Array.isArray(p3[0])) p3[0].forEach(it3 => { if (it3 && it3.ko) it3[p3[1]] = it3.ko; }); }); }
+  // ── 3일 하드컷(운영자 260721 "3일 넘기면 안나오게 — 그거를 제끼고 순위화"): 콘텐츠 아이템(영상·게시물·글)은 실발행 72h 초과 = 표시·랭킹 제외(조회수 무관 = 이슈성 소멸 · 통합 TOP·필터·스택도 소스 공유라 자동 상속). 검색어류(gt·sig·xtr·btr = '지금 순위'가 본질·first_seen은 관측 도장)와 운영 대시보드(금융·재난·박스·도로) = 비대상. 나이 미상(NaN) = 통과(fail-soft — isFreshItem 관용 계승) · freshFirst(12h 신선 부양)는 컷 통과분 안에서 종전대로 · _ageOf/ageVerH = 소스 선언보다 앞이 필요해 freshFirst 블록서 이리 상향 이동(정의 1곳 불변) ──
+  const AGE_CUT_H = 72;
+  const _ageOf = p => {   // 발행값 → 경과 h(숫자) = relP 문자열 파서의 수치판(신선검증 원료) · 무효/미상 = NaN(파싱 실패 ≠ 오래됨 = fail-soft 유지)
+    if (p == null || p === '') return NaN;
+    const s = String(p).trim();
+    if (typeof p === 'number' || /^\d{9,13}$/.test(s)) { const n = +p; return (Date.now() - (n < 1e12 ? n * 1000 : n)) / 3600e3; }   // epoch 초/밀리초(틱톡 create_time 등)
+    const h2 = (Date.now() - new Date(s).getTime()) / 3600e3;   // ISO/RFC(yt published·gt started)
+    if (isFinite(h2)) return h2;
+    let m;   // 기성 상대문자열(쇼츠·AI영상 수집원문 "N시간 전 / N일 전 …") 근사 파싱 — new Date 미파싱분
+    if (/^방금/.test(s)) return 0;
+    if ((m = s.match(/(\d+)\s*분/))) return +m[1] / 60;
+    if ((m = s.match(/(\d+)\s*시간/))) return +m[1];
+    if ((m = s.match(/(\d+)\s*일/))) return +m[1] * 24;
+    if ((m = s.match(/(\d+)\s*주/))) return +m[1] * 168;
+    if ((m = s.match(/(\d+)\s*개월/))) return +m[1] * 720;
+    if ((m = s.match(/(\d+)\s*년/))) return +m[1] * 8760;
+    return NaN;
+  };
+  const ageVerH = x => { for (const p of [x.published, x.time, x.started, x.create_time]) { const h = _ageOf(p); if (isFinite(h)) return h; } return NaN; };   // 실발행 나이 = "벌어진 일" 기준 · first_seen 제외(수집관측 도장 ≠ 사건시각 · 운영자 260718 검증 취지) · 전부 미상 = NaN
+  const cut3d = arr => (arr || []).filter(t3 => { const h3 = ageVerH(t3); return !(isFinite(h3) && h3 >= AGE_CUT_H); });   // 3일 컷 필터(위 하드컷 주석 = 정본 사유)
   const gt = TRREG === 'kr' ? (d.gtrends || []) : mrg(d.gtrends || [], d.gtrends_gl, g3 => (g3.query || '').toLowerCase());
-  const yt = TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15);
-  const ytn = d.youtube_news || [];   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시)
-  const tkvA = ((d.tiktok || {}).videos) || [], tkv = TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA, tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · hashtags = 구 카나리아 폴백
-  const sb = d.subs || {}, sx = sb.x || [], stk = sb.tiktok || [], sre = sb.insta || [], syt = sb.youtube || [];   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트)
-  const shv = d.shorts || [], aiv = d.aivid || [];   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되")
-  const sig = d.signal || [], xtr = d.xtrends || [];   // ⑨⑩ 시그널 실검·X 실시간 트렌드(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시)
-  const rdd = d.reddit || [], bsk = d.bsky || [], sth = sb.threads || [];   // ⑥⑦⑧ 레딧·블루스카이·스레드 구독(운영자 260713 "추천대로" 배치 승인 — 레딧 = 커뮤니티 그룹 · 블스·스레드 = 새 그룹)
-  const hnl = d.hackernews || [], finc = d.finance || {}, finR = finc.rates || [], finC = finc.coins || [], finI = finc.indices || [], finS = finc.stocks || [], dsl = d.disaster || [], kob = d.kobis || [], exw = d.expressway || [];   // ⑫⑬⑭⑮⑯ 해커뉴스·금융(환율/코인/증시/종목 · 운영자 260717 2x2)·재난문자·박스오피스·고속도로 돌발(운영자 260713 "ㄱ" · 데이터 있을 때만 그룹 등장 = 조용한 공백)
+  const yt = cut3d(TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15));   // 3일 컷(운영자 260721)
+  const ytn = cut3d(d.youtube_news || []);   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시) · 3일 컷
+  const tkvA = ((d.tiktok || {}).videos) || [], tkv = cut3d(TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · 3일 컷(260721 — 스샷 "4주 전" 바이럴 잔존 봉인) · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
+  const sb = d.subs || {}, sx = cut3d(sb.x || []), stk = cut3d(sb.tiktok || []), sre = cut3d(sb.insta || []), syt = cut3d(sb.youtube || []);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
+  const shv = cut3d(d.shorts || []), aiv = cut3d(d.aivid || []);   // 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") · 3일 컷
+  const sig = d.signal || [], xtr = d.xtrends || [];   // ⑨⑩ 시그널 실검·X 실시간 트렌드(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시) — 검색어류 = 컷 비대상
+  const rdd = cut3d(d.reddit || []), bsk = cut3d(d.bsky || []), sth = cut3d(sb.threads || []);   // ⑥⑦⑧ 레딧·블루스카이·스레드 구독(운영자 260713 "추천대로" 배치 승인 — 레딧 = 커뮤니티 그룹 · 블스·스레드 = 새 그룹) · 게시물 = 3일 컷
+  const hnl = cut3d(d.hackernews || []), finc = d.finance || {}, finR = finc.rates || [], finC = finc.coins || [], finI = finc.indices || [], finS = finc.stocks || [], dsl = d.disaster || [], kob = d.kobis || [], exw = d.expressway || [];   // ⑫⑬⑭⑮⑯ 해커뉴스(3일 컷)·금융(환율/코인/증시/종목 · 운영자 260717 2x2)·재난문자·박스오피스·고속도로 돌발(운영자 260713 "ㄱ" · 데이터 있을 때만 그룹 등장 = 조용한 공백 · 대시보드류 = 컷 비대상)
   if (!gt.length && !yt.length && !ytn.length && !tkv.length && !tk.length && !sx.length && !stk.length && !sre.length && !syt.length && !shv.length && !aiv.length && !sig.length && !xtr.length && !rdd.length && !bsk.length && !sth.length && !hnl.length && !finR.length && !finC.length && !dsl.length && !kob.length && !exw.length) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(필러 문구 금지 · §디자인 e-가) — sns_trends.json 레포 상존+실패 시 직전분 보존이라 실무 도달 불가(평의회3 · 의도적 유지) · HN·금융·재난·박스오피스·고속도로 5키 누락 봉합(260720 평의회 F1 — 이 그룹들만 데이터일 때 통삭제 잠복)
   // vfmt = 전역 승격(260720 평의회 후속 — 임베드 모달 인기 댓글도 사용 · 정의 = renderSnsTrends 위 전역 1곳)
   const tfmt = s => { const n2 = parseInt(String(s || '').replace(/[^0-9]/g, ''), 10); return n2 > 0 ? vfmt(n2) + '+' : ''; };   // 구글 검색량 문자열 "20,000+"→"2만+" 만단위 통일 — 천단위 원값은 RSS approx_traffic 저단위 버킷(수집기 교체 검토 = 운영자 결정 대기)
@@ -10155,24 +10175,7 @@ function renderSnsTrends() {
     return /전$|^방금$/.test(String(p).trim()) ? String(p).trim() : '';
   };
   const relT = x => relP(x.published) || relP(x.time) || relP(x.started) || relP(x.first_seen);   // 시간 표기 공통(운영자 260712 "모든 것에 시간 기록") = published(영상 발행) ∥ time(구독 X·틱톡) ∥ started(구글 트렌드 시작시각 = 급상승 실제 나이 · 운영자 260717 "n시간 전 맞나" 직답 — 수집기 gt만 보유·first_seen보다 우선) ∥ first_seen(수집기 최초관측 도장 — 실검 등 무발행·무started 소스 폴백)
-  const FRESH_MAX_H = 12;   // 실시간 TOP 신선 상한(운영자 260718 "12시간 내 벌어진 일인지 검증") — 뉴스 보도색 12h 경계(3792)·시간가속 반값 12h(9031)와 동축 · env 아닌 상수(뷰어 즉시 반영)
-  const _ageOf = p => {   // 발행값 → 경과 h(숫자) = relP 문자열 파서의 수치판(신선검증 원료) · 무효/미상 = NaN(파싱 실패 ≠ 오래됨 = fail-soft 유지)
-    if (p == null || p === '') return NaN;
-    const s = String(p).trim();
-    if (typeof p === 'number' || /^\d{9,13}$/.test(s)) { const n = +p; return (Date.now() - (n < 1e12 ? n * 1000 : n)) / 3600e3; }   // epoch 초/밀리초(틱톡 create_time 등)
-    const h2 = (Date.now() - new Date(s).getTime()) / 3600e3;   // ISO/RFC(yt published·gt started)
-    if (isFinite(h2)) return h2;
-    let m;   // 기성 상대문자열(쇼츠·AI영상 수집원문 "N시간 전 / N일 전 …") 근사 파싱 — new Date 미파싱분
-    if (/^방금/.test(s)) return 0;
-    if ((m = s.match(/(\d+)\s*분/))) return +m[1] / 60;
-    if ((m = s.match(/(\d+)\s*시간/))) return +m[1];
-    if ((m = s.match(/(\d+)\s*일/))) return +m[1] * 24;
-    if ((m = s.match(/(\d+)\s*주/))) return +m[1] * 168;
-    if ((m = s.match(/(\d+)\s*개월/))) return +m[1] * 720;
-    if ((m = s.match(/(\d+)\s*년/))) return +m[1] * 8760;
-    return NaN;
-  };
-  const ageVerH = x => { for (const p of [x.published, x.time, x.started, x.create_time]) { const h = _ageOf(p); if (isFinite(h)) return h; } return NaN; };   // 실발행 나이 = "벌어진 일" 기준 · first_seen 제외(수집관측 도장 ≠ 사건시각 · 운영자 260718 검증 취지) · 전부 미상 = NaN
+  const FRESH_MAX_H = 12;   // 실시간 TOP 신선 상한(운영자 260718 "12시간 내 벌어진 일인지 검증") — 뉴스 보도색 12h 경계(3792)·시간가속 반값 12h(9031)와 동축 · env 아닌 상수(뷰어 즉시 반영) · _ageOf/ageVerH 정의 = 3일 하드컷 블록으로 상향 이동(260721 — 소스 선언 앞 필요 · 정의 1곳 불변)
   const isFreshItem = t => { const h = ageVerH(t); return !(isFinite(h) && h >= FRESH_MAX_H); };   // 신선 = 12h 미만 · 미상(NaN)=신선 취급(fail-soft — 타임스탬프 없다고 후순위로 침몰 금지)
   const freshFirst = arr => arr.filter(isFreshItem).concat(arr.filter(t => !isFreshItem(t)));   // 안정 분할 = 신선분 위로(내부 순서 보존) → 오래된 것 아래로 차순위 채움(운영자 260718 "신선 없으면 차순위 top 위로 · 빈칸 없이") · 옆 relT 나이표기(N시간 전)는 불변 = 오래된 건 정직하게 표기
   // (구 zig 인터리브·tpc TOP 카드 렌더 = tpg 1:1 레일 폐지(260717 그리드 통일)로 호출 0 고아 → 260720 평의회 삭제 · .tpc* CSS는 스택(tsk) 오버레이가 공유라 존치 · 재도입 = git 이력)
