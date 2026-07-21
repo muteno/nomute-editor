@@ -1129,6 +1129,7 @@ def check_fp_parity():
 _LAUNCH_SPEC = ('border-radius:var(--r-m)', 'padding:var(--sp-1)', 'font-size:var(--fs-label)')   # 생성 규격 3속성(사다리 정본 값)
 _LAUNCH_BTNS = {   # 스튜디오 발사 버튼 레지스트리(selector → 규격 강제 대상) · 신규 발사 버튼 = 여기 1줄 추가로 편입
     'viewer/thumb.html': ['#go'],
+    'viewer/nb.html':    ['#go'],
     'viewer/tr.html':    ['#go'],
     'viewer/k.html':     ['#go'],
     'viewer/ly.html':    ['#go'],
