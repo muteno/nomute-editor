@@ -38,8 +38,9 @@
   .fin-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .fin-v{text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--fw-b);}
   .fin-v i{color:var(--mut);font-style:normal;font-size:var(--fs-xs);margin-left:4px;}
-  .fin-chg{min-width:0;justify-self:end;display:inline-flex;align-items:center;justify-content:flex-end;gap:var(--t-gap,3px);font-size:var(--t-cfs,11px);font-variant-numeric:tabular-nums;color:var(--mut);opacity:var(--t-calpha,1);}
-  .fin-chg .ar{display:inline-flex;align-items:center;justify-content:center;}
+  .fin-chg{min-width:0;justify-self:end;width:var(--t-cwidth,56px);display:grid;grid-template-columns:15px 1fr;align-items:center;column-gap:var(--t-gap,3px);font-size:var(--t-cfs,11px);font-variant-numeric:tabular-nums;color:var(--mut);opacity:var(--t-calpha,1);}   /* 삼각 = 고정 15px 슬롯(좌) → 전 행 같은 세로선 · % = 1fr 우정렬(운영자 260721) */
+  .fin-chg .ar{grid-column:1;display:inline-flex;align-items:center;justify-content:center;}
+  .fin-chg .pt{grid-column:2;text-align:right;}
   .fin-chg .ar svg{width:var(--t-asize,9px);height:var(--t-asize,9px);display:block;}
   /* ── 콘솔 ── */
   .console{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:14px;}
@@ -231,11 +232,9 @@ function chgHTML(pct, st){
   const up = pct > 0, dn = pct < 0;
   const col = chgColor(pct, st.scheme);
   const txt = (pct > 0 ? '+' : '') + pct.toFixed(2) + '%';
-  let inner = '';
-  if((st.mode === 'arrowpct' || st.mode === 'arrow') && (up || dn)) inner += '<span class="ar">' + arrowSVG(up, st.shape) + '</span>';
-  if(st.mode !== 'arrow') inner += '<span class="pt">' + txt + '</span>';
-  else if(!up && !dn) inner += '<span class="pt">—</span>';
-  return '<span class="fin-chg" style="color:' + col + '">' + inner + '</span>';
+  const showAr = (st.mode === 'arrowpct' || st.mode === 'arrow') && (up || dn);
+  const ptTxt = st.mode !== 'arrow' ? txt : ((!up && !dn) ? '—' : '');
+  return '<span class="fin-chg" style="color:' + col + '"><span class="ar">' + (showAr ? arrowSVG(up, st.shape) : '') + '</span><span class="pt">' + ptTxt + '</span></span>';
 }
 function rowHTML(r, st){
   return '<div class="fin-row"><span class="fin-ico">' + r[0] + '</span><span class="fin-nm">' + r[1]
