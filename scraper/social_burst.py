@@ -48,6 +48,7 @@ def same_topic(ta, tb):   # 소셜 전용(느슨) — overlap≥SOCIAL_OVERLAP O
     return inter >= SOCIAL_OVERLAP or (inter > 0 and _jac(ta, tb) >= SOCIAL_JACCARD)
 
 KST = timezone(timedelta(hours=9))
+_TS_FLOOR = datetime(1970, 1, 1, tzinfo=KST)   # ts 결측 글 = 최고령 취급 — 대표(max) 경쟁서 배제(구 min의 `or now` 가드와 대칭)
 OUT = Path(__file__).resolve().parents[1] / "scraper" / "out" / "social_candidates.json"
 MIN_SOURCES = int(os.environ.get("SOCIAL_MIN_SOURCES", "2"))   # 교차소스 ≥N = 공론화 신호(1개=단발)
 FRESH_HOURS = float(os.environ.get("SOCIAL_FRESH_HOURS", "24"))
@@ -184,7 +185,7 @@ def cluster_and_score(posts, now, src_total=None):
             wposts = float(len(members))
         posts_score = min(POSTS_CAP, POSTS_W * math.log2(1.0 + wposts))   # 로그 상한(정규화 후에도 대량 완충)
         burst = len(plats) * 2 + posts_score + recency * 3         # 플랫폼폭(가중2) + 수집량정규화 게시물수 + 최신성(가중3)
-        rep = min(members, key=lambda m: posts[m].get("ts") or now)   # 최초 보도 = 대표
+        rep = max(members, key=lambda m: posts[m].get("ts") or _TS_FLOOR)   # 최신 글 = 대표(운영자 260722 Q427 ㉠) — 카드 시간·제목·링크가 전부 '가장 새 글' 한 글로 정합(age_h=newest와 동일 축 · 구 min=최초 보도는 시간 칩과 다른 글을 가리켜 어긋나 보임 = Q417 진단)
         src_posts = dict(Counter(posts[m]["source"] for m in members))   # 소스별 글수 — 뷰어 출처성향 게이지 수집량 가중용(어느 성향 커뮤에 몇 글 = 무게중심)
         rows.append({
             "title": posts[rep]["title"],

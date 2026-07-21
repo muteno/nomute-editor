@@ -163,15 +163,17 @@ const SEL = {
         const hbEl = d.querySelector(':scope > .tgroup-h'), hb = hbEl.getBoundingClientRect();
         const _bi = hbEl.querySelector('i'), _br = _bi && _bi.getBoundingClientRect();   // 순번 배지(.tgroup-h i · 24px)
         const Lr = hb.right - TI, Ll = hb.left + TI, Lc = _br ? (_br.left + _br.right) / 2 : Ll + 12, ds = [], ov = [];   // ds = 정렬 정합(|Δ|) · ov = 초과 금지(랩 프로즈 = 래기드 우변이라 ≤만 계약) · Lc = 배지 4분할 중앙 세로선(운영자 260721 요청 = topic 라벨 좌변 정본 · 배지 실측 중앙 = 토큰/매직넘버 드리프트 면역)
-        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Lr).toFixed(2), +(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });
+        const _sg = document.querySelector('.chseg-row .pf-seg') || document.querySelector('.chseg-row .ch-rangeseg');   // 기간 세그(토글) 우변 = 260722 신 우변 기준선(운영자 "토글에 맞춰 우측 정렬" — topic 수치·tpost ×열이 체브론선에서 이관) · 실측 앵커 = CSS 34 인셋과 단일 소스 무관 드리프트 면역
+        const Ls = _sg ? _sg.getBoundingClientRect().right : Lr;
+        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Ls).toFixed(2), +(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });
         if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
-        if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Lr).toFixed(2)));
+        if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Ls).toFixed(2)));
         d.querySelectorAll('.ch-morelink').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));
         out.push({ id, skip: !ds.length && !ov.length, max: ds.length ? Math.max(...ds.map(Math.abs)) : 0, over: ov.length ? Math.max(...ov) : null, n: ds.length + ov.length });
       }
       return out;
     });
-    ok('C8 채널요약 잉크선 412(topic 좌·우 / sig 범례·각주 / tpost ×열 / 내역확인×2 = 배지·체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
+    ok('C8 채널요약 잉크선 412(topic 좌=배지선·topic 수치/tpost ×열=세그(토글) 우변선[260722 이관] / sig 범례·내역확인×2=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
 
     // C9 협폭 수치 열 사폭 가드(운영자 260721 "간격 쓸데없이 길다" — 고정폭 죽은 여백이 제목 압착 · 열 박스 ≈ 잉크 실폭 계약)
     const c9 = await pg.evaluate(() => {
