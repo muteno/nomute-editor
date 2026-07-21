@@ -63,7 +63,7 @@ async function startServer() {
 const SURF = [
   { page: 'ly.html', name: 'V1 자막(ly) 첨부 → 미리보기 불변식', pvSel: '#lyPv', vidSel: '#lyVid' },
   { page: 'track.html', name: 'V2 트래킹(track) 첨부 → 미리보기 불변식', pvSel: '#trkPv', vidSel: '#trkPvVid' },
-  { page: 'conv.html', name: 'V3 변환(conv) 첨부 무회귀(미리보기 부재 = 통일 대상)', pvSel: null, vidSel: null, goSel: '#convGo' },
+  { page: 'conv.html', name: 'V3 변환(conv) 첨부 → 미리보기 불변식', pvSel: '#pv', vidSel: '#pvVid' },   // 260722 정형화 이식 완료 → 부재 무회귀에서 미리보기 불변식으로 승격
 ];
 
 const R = [];
