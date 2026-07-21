@@ -10,14 +10,14 @@
 //   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 코어 9시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약):
+// 무엇을 검증하나 — 코어 11시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
 //   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 좌변선 · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
 //   → C9 협폭 수치 열 사폭 412(tpost .ch-vw/.ch-dev 박스폭−잉크폭 ≤1.5px — 고정 사폭이 제목을 압착하던 것의 재발 방지 · 운영자 260721 "간격 쓸데없이 길다" 기틀)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
-//   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C1 페이지 에러 0
+//   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C10 트위터 좌X↔우블스 순위 행 y 패리티(본문 5줄 예약·헤더 상수 = 카드 높이 단일값 · Q354) → C1 페이지 에러 0
 //   어서션 = 기하(getBoundingClientRect)·computedStyle·동일 런 측정만(스크린샷 diff 금지 · [15]).
 //
 // 동작: 자체적으로 ① playwright-core 없으면 OS 임시 캐시에 1회 자동 설치(레포 무접촉·package.json 안 만듦)
@@ -212,6 +212,27 @@ const SEL = {
     await pg.setViewportSize({ width: 1280, height: 900 }); await pg.waitForTimeout(600);
     const c6 = await measure([{ pre: SEL.trendId, id: 'top' }]);
     ok('C6 PC 1280 메뉴3 TOP 플랫폼 칩 = 헤더 우측(abspos·갭48·ΔCy≤0.5·침범0)', c6[0].skip ? true : judgeRight(c6), brief(c6));
+
+    // C10 트위터 유닛 좌X↔우블스 순위 행 y 패리티(운영자 260721 "X 정사각 도형에 블스 맞춰 → 양옆 동일 순위 나란히") — 본문 5줄 예약+헤더 상수(min-height)로 양측 카드 높이 동일 = i번째 카드 top 동기 · 한쪽 결측 = skip 정직 표기
+    const c10 = await pg.evaluate(() => {
+      const g = sec => [...document.querySelectorAll(`[data-sec="${sec}"] .xcard`)];
+      const X = g('sx-kr'), B = g('bsk');
+      if (!X.length || !B.length) return { skip: true };
+      const top = c => c.getBoundingClientRect().top, h = c => c.getBoundingClientRect().height;
+      const ds = [];
+      for (let i = 0; i < Math.min(X.length, B.length); i++) ds.push(+(top(B[i]) - top(X[i])).toFixed(2));
+      const hset = [...new Set([...X, ...B].map(c => Math.round(h(c) * 2) / 2))];
+      return { skip: false, dmax: Math.max(...ds.map(Math.abs)), n: ds.length, hs: hset };
+    });
+    ok('C10 PC 1280 트위터 좌X↔우블스 순위 행 y 패리티(|Δ|≤0.5 · 카드 높이 단일값)', c10.skip ? true : (c10.dmax <= 0.5 && c10.hs.length === 1), c10.skip ? 'skip(한쪽 결측)' : `|Δ|max ${c10.dmax}(쌍${c10.n}) · 높이 ${c10.hs.join('/')}`);
+
+    // C11 금융 2x2 좌우 소머리(블릿) y 패리티(운영자 260721 "좌우가 블릿끼리 안 맞거든") — 1행 환율↔암호화폐 · 2행 증시↔종목 · 형제 구분선의 1행 우측 오적용(#655) 해제 회귀 가드 · 결측 그룹 = 그 쌍만 skip
+    const c11 = await pg.evaluate(() => {
+      const top = s => { const el = document.querySelector(`[data-sec="${s}"] > summary`); return el ? el.getBoundingClientRect().top : null; };
+      const pairs = [['fin-fx', 'fin-cc'], ['fin-idx', 'fin-stk']].map(([a, b]) => { const ta = top(a), tb = top(b); return (ta == null || tb == null) ? null : +(tb - ta).toFixed(2); }).filter(v => v != null);
+      return { n: pairs.length, dmax: pairs.length ? Math.max(...pairs.map(Math.abs)) : null };
+    });
+    ok('C11 PC 1280 금융 2x2 좌우 소머리 y 패리티(|Δ|≤0.5)', c11.n === 0 ? true : c11.dmax <= 0.5, c11.n === 0 ? 'skip(금융 결측)' : `|Δ|max ${c11.dmax}(쌍${c11.n})`);
 
     ok('C1 페이지 에러 0', errs.length === 0, errs.length ? errs.slice(0, 3).join(' · ') : '콘솔 pageerror 0건');
   } catch (e) {
