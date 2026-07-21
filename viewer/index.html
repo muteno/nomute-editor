@@ -11027,6 +11027,9 @@ function chTileChart(series, key, mode, unit) {   // 타일 미니 차트(운영
   rows.forEach((r, i) => { if (r[key] == null) { if (_cur.length) segs.push(_cur); _cur = []; return; } const pt = [X(i), Y(r[key]), r[key]]; _cur.push(pt); pts.push(pt); });
   if (_cur.length) segs.push(_cur);
   let s = `<svg class="ch-tc" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+  // xy축 배경 격자(운영자 260722 D "정형화 · 아래 큰 차트처럼") — 옅은 수평 hairline 4선 + 좌 Y축 세로 스파인(Y라벨 없이 = 미니 공간 보존) · 데이터 뒤 배경(draw order 최하단 = 겹침 참사 방지)
+  for (let g = 0; g <= 3; g++) { const gy = mT + ph * g / 3; s += `<line x1="${mL}" y1="${gy.toFixed(1)}" x2="${(W - mR).toFixed(1)}" y2="${gy.toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity="${g === 3 ? '.75' : '.4'}" vector-effect="non-scaling-stroke"/>`; }
+  s += `<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${(H - mB).toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity=".55" vector-effect="non-scaling-stroke"/>`;   // Y축 세로 스파인(chChart 계승)
   const baseV = mode === 'zero' ? 0 : mean, bY = Y(baseV);   // 기준선: 팔로워 = 0(X축) · 조회수 = 창 평균(운영자 260721 — 평균선 점선 4 3 = chChart 정본 계승)
   s += `<line x1="${mL}" y1="${bY.toFixed(1)}" x2="${W - mR}" y2="${bY.toFixed(1)}" stroke="var(--mut)" stroke-width="1"${mode === 'zero' ? '' : ' stroke-dasharray="4 3"'} opacity=".55" vector-effect="non-scaling-stroke"/>`;
   if (mode !== 'zero') s += `<text x="${mL + 2}" y="${(bY - 3.5).toFixed(1)}" font-size="8" fill="var(--mut)">평균 ${chVf(Math.round(mean))}</text>`;
@@ -11041,24 +11044,24 @@ function chTileChart(series, key, mode, unit) {   // 타일 미니 차트(운영
     s += `<path d="${area}" fill="rgba(var(--accent-rgb),.10)" stroke="none" clip-path="url(#${_uid}U)"/><path d="${area}" fill="rgba(var(--danger-rgb),.13)" stroke="none" clip-path="url(#${_uid}D)"/>`;   // 기준선 위 = 민트 유지 · 아래 = danger 저알파(운영자 260722 — 조회수 음영 정본 축을 팔로워 0선에도 동일 적용 · fd-dn 하락 의미색 · 신규 색 0)
     s += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" clip-path="url(#${_uid}U)"/><path d="${line}" fill="none" stroke="var(--danger)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" clip-path="url(#${_uid}D)"/>`;   // 선 자체도 기준선 아래 구간 = danger로 절환(운영자 260722 1·2 "아래로 갈때/아래 구간 = 선도 빨간색" — 동일 path 2회 + U/D 클립 = 교차점 정밀 절단)
   });
-  // Y 최소·최대 = 무채움 원(전경색 테두리) + 꺾임 점선 리더 '---' 값 표기(운영자 260721 12 · 리더 = chChart 변곡 마커 정본 계승)
+  // Y 최소·최대 마커 = 무채움 원 + 직선(꺾임 없음) 수직 점선 리더 + 흰색 값(운영자 260722 C "일자로·차트 비겹침·박스 내·흰색글씨") — 마지막 점(Today) 동일 인덱스 = 생략(Today가 대표)
   let iMx = 0, iMn = 0; pts.forEach((p, i) => { if (p[2] > pts[iMx][2]) iMx = i; if (p[2] < pts[iMn][2]) iMn = i; });
-  (iMx === iMn ? [[iMx, 1]] : [[iMx, 1], [iMn, 0]]).filter(([mi]) => mi !== pts.length - 1).forEach(([mi, isMax]) => {   // 마지막 점(=Today) 동일 인덱스 = 생략(운영자 260722 겹침 실측 — Today 수치가 그 극값을 대표 · 이중 라벨·링/점 겹침 제거)
-    const x = pts[mi][0], y = pts[mi][1], v = pts[mi][2];
+  const _anch = x => x > W - mR - 22 ? ['end', x - 1] : x < mL + 22 ? ['start', x + 1] : ['middle', x];   // 박스 밖 삐침 방지 = 텍스트 앵커로(ㄱ자 꺾임 대신 · 점 x에 부착 유지 = 직선 리더)
+  (iMx === iMn ? [[iMx, 1]] : [[iMx, 1], [iMn, 0]]).filter(([mi]) => mi !== pts.length - 1).forEach(([mi, isMax]) => {
+    const x = pts[mi][0], y = pts[mi][1], v = pts[mi][2], a = _anch(x);
     s += `<circle data-mk="1" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="none" stroke="var(--fg)" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
-    const rt = x > W - mR - 46, dir = rt ? -1 : 1;   // 우측단 = 좌향 꺾임(차트 밖 삐침 방지 · chChart 계승)
-    const shelfY = isMax ? Math.max(9, y - 10) : Math.min(H - 2.5, y + 13), hEnd = x + dir * 13;
-    s += `<path d="M${x.toFixed(1)} ${(isMax ? y - 4 : y + 4).toFixed(1)}L${x.toFixed(1)} ${shelfY.toFixed(1)}L${hEnd.toFixed(1)} ${shelfY.toFixed(1)}" fill="none" stroke="var(--mut)" stroke-width="1" stroke-dasharray="3 3" opacity=".7" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-    s += `<text x="${(hEnd + dir * 2).toFixed(1)}" y="${(shelfY + 2.5).toFixed(1)}" font-size="8" fill="var(--mut)" text-anchor="${rt ? 'end' : 'start'}">${chVf(v)}</text>`;
+    const ey = isMax ? Math.max(10, y - 12) : Math.min(H - 4, y + 13);   // max=위·min=아래 (직선 수직 · 박스 내 클램프 = 상하변 잘림 방지)
+    s += `<path d="M${x.toFixed(1)} ${(isMax ? y - 4 : y + 4).toFixed(1)}L${x.toFixed(1)} ${(isMax ? ey + 2 : ey - 7).toFixed(1)}" fill="none" stroke="var(--mut)" stroke-width="1" stroke-dasharray="3 3" opacity=".65" vector-effect="non-scaling-stroke"/>`;
+    s += `<text x="${a[1].toFixed(1)}" y="${ey.toFixed(1)}" font-size="8" fill="var(--fg)" text-anchor="${a[0]}">${chVf(v)}</text>`;   // 값 = 흰색(운영자 260722)
   });
-  { const lp = pts[pts.length - 1], tx = lp[0], ty = lp[1];   // Today = 마지막 실측점(우측 끝 = 오늘 · 운영자 260722) — 리더 = min/max와 동일 ㄱ자 점선 문법 · 색 = --accent-2(vhTime 네온라임 정본)
-    const _dn = ty <= 68;   // 아래 선반 공간 판정(바닥 근접 = 위 폴백) — 위층은 단위·max 라벨 전용이라 Today = 기본 아래층(운영자 260722 겹침 실측 재설계)
-    const shT = _dn ? Math.min(H - 13, ty + 12) : Math.max(13, ty - 24), hE = tx - 13;
+  { const lp = pts[pts.length - 1], tx = lp[0], ty = lp[1];   // Today = 마지막 점(우측 끝 = 오늘) — 직선 수직 리더(꺾임 없음 · 운영자 260722 C "일자로 한 다음 Today") · 위쪽 점=아래 라벨 / 아래쪽 점=위 라벨(팔로워 하단 = 위로) · 값 흰색·Today 라임(--accent-2)
+    const _hi = ty <= H / 2;   // 점이 상단 절반 = 라벨 아래 직선 / 하단 절반 = 라벨 위 직선(둘 다 꺾임 0 · 우측 끝이라 text-anchor end로 박스 내 유지)
+    const ey = _hi ? Math.min(H - 10, ty + 14) : Math.max(15, ty - 16);
     s += `<circle data-mk="1" cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="2" fill="var(--accent-2)" stroke="none"/>`;
-    s += `<path d="M${tx.toFixed(1)} ${(_dn ? ty + 4 : ty - 4).toFixed(1)}L${tx.toFixed(1)} ${shT.toFixed(1)}L${hE.toFixed(1)} ${shT.toFixed(1)}" fill="none" stroke="var(--accent-2)" stroke-width="1" stroke-dasharray="3 3" opacity=".75" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-    s += `<text x="${(hE - 2).toFixed(1)}" y="${(shT + 2.5).toFixed(1)}" font-size="8" font-weight="700" fill="var(--accent-2)" text-anchor="end">Today</text>`;
-    s += `<text x="${(hE - 2).toFixed(1)}" y="${(shT + (_dn ? 11.5 : -6.5)).toFixed(1)}" font-size="8" fill="var(--mut)" text-anchor="end">${chVf(lp[2])}</text>`; }   // 수치 = Today 아래줄(아래 선반) / 위 폴백 시 위줄(운영자 "수치는 그 아래 나와도됨" — 아래 선반이 기본이라 통상 아래)
-  s += `<text x="${W - mR}" y="7" text-anchor="end" font-size="7.5" fill="var(--mut)" opacity=".85">(단위: ${esc(unit)})</text>`;   /* y 8.5→7(운영자 260722 "아주 조금 더 위로") */   // 우상단 아주 작게(운영자 260721 "(단위: 0)")
+    s += `<path d="M${tx.toFixed(1)} ${(_hi ? ty + 3 : ty - 3).toFixed(1)}L${tx.toFixed(1)} ${(_hi ? ey - 8 : ey + 3).toFixed(1)}" fill="none" stroke="var(--accent-2)" stroke-width="1" stroke-dasharray="3 3" opacity=".75" vector-effect="non-scaling-stroke"/>`;   // 직선 수직(꺾임 0)
+    s += `<text x="${(tx - 1).toFixed(1)}" y="${ey.toFixed(1)}" font-size="8" font-weight="700" fill="var(--accent-2)" text-anchor="end">Today</text>`;
+    s += `<text x="${(tx - 1).toFixed(1)}" y="${(_hi ? ey + 8 : ey - 8).toFixed(1)}" font-size="8" fill="var(--fg)" text-anchor="end">${chVf(lp[2])}</text>`; }   // 값 = 흰색(운영자 260722 "흰색글씨") · Today와 붙여 표기 · 박스 내
+  s += `<text x="${(mL + 1).toFixed(1)}" y="7.5" text-anchor="start" font-size="7.5" fill="var(--mut)" opacity=".8">단위 ${esc(unit)}</text>`;   // 좌상단으로 이동(운영자 260722 — 우상단은 최댓값 라벨[563·295만]과 겹쳐 뭉개짐 · 좌상단은 라인 시점보다 위 = 빈 공간) · 괄호 제거 축약
   return `<div class="ch-tchart">${s}</svg></div>`;
 }
 // ── 시간대별 반응 차트(구 호응 신호 · 운영자 260719 "각 시간대별·요일별 호응정도 = 적당한 차트로 최대한 일일추이처럼 고도화") ──
