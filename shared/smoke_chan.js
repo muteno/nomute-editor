@@ -10,7 +10,7 @@
 //   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 코어 11시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티):
+// 무엇을 검증하나 — 코어 12시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티 · C12 = Q355 실시간 트렌드 반갈):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
@@ -233,6 +233,16 @@ const SEL = {
       return { n: pairs.length, dmax: pairs.length ? Math.max(...pairs.map(Math.abs)) : null };
     });
     ok('C11 PC 1280 금융 2x2 좌우 소머리 y 패리티(|Δ|≤0.5)', c11.n === 0 ? true : c11.dmax <= 0.5, c11.n === 0 ? 'skip(금융 결측)' : `|Δ|max ${c11.dmax}(쌍${c11.n})`);
+
+    // C12 실시간 트렌드 반갈(운영자 260721 "1~10위 엑스 | 1~10위 블루스카이 · 실검 반갈 모양 그대로 + 구분선") — X|블스 소머리 y 패리티 + rt2col 래퍼 상단 헤어라인(#655 정본값) · 블스 트렌드 결측(크론 미수집) = skip 정직 표기
+    const c12 = await pg.evaluate(() => {
+      const xs = document.querySelector('[data-sec="xtr"]'), bs = document.querySelector('[data-sec="btr"]');
+      if (!xs || !bs) return { skip: true };
+      const wrap = xs.parentElement, isRt = wrap.classList.contains('rt2col');
+      const t = el => el.querySelector(':scope > summary').getBoundingClientRect().top;
+      return { skip: false, isRt, d: +(t(bs) - t(xs)).toFixed(2), div: isRt ? parseFloat(getComputedStyle(wrap).borderTopWidth) : 0, nX: xs.querySelectorAll('.trend-row').length, nB: bs.querySelectorAll('.trend-row').length };
+    });
+    ok('C12 PC 1280 실시간 트렌드 반갈(X|블스 소머리 y 패리티·상단 구분선·행 ≤10)', c12.skip ? true : (c12.isRt && Math.abs(c12.d) <= 0.5 && c12.div >= 0.5 && c12.nX <= 10 && c12.nB <= 10), c12.skip ? 'skip(블스 트렌드 결측 — 크론 수집 후 활성)' : `Δ${c12.d} · 구분선 ${c12.div}px · ${c12.nX}|${c12.nB}행`);
 
     ok('C1 페이지 에러 0', errs.length === 0, errs.length ? errs.slice(0, 3).join(' · ') : '콘솔 pageerror 0건');
   } catch (e) {
