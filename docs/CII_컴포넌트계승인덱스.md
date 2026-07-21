@@ -107,6 +107,8 @@
 | 연속값(크기·위치·%) | `<input type=range>` 슬라이더(edit `.grow` 결) | **칩으로 억지 통일 금지** — 상호작용 종류가 다르면 생김새가 다른 게 정답 |
 | 2-소스 순환 토글(브랜드 아이콘·항상 점등) | index `.ch-srcsw` = `.cs-rail`(2아이콘 가로 레일 `translateX(-50%)`) + `.cs-ic`(브랜드 픽토·accent stroke 2px) | **정본 = 채널 소스 IG⇄FB 토글**(운영자 260720 Q289~Q297). ① 활성 소스 하나만 표시·**항상 점등**(강조색 단색 — 브랜드 원색[인스타 그라데이션·페북 파랑]은 [14] 팔레트 밖이라 **미채택**) ② 아이콘 = Lucide **stroke 아웃라인 2px**(형제 헤더 픽토 문법 — 대기열 2·기어 2.2 계승 · 인라인 SVG 단일사용) ③ 전환 = `data-cs` 속성이 `.cs-rail` **가로 슬라이드(촤르륵)** 구동(`--dur-acc`·`--ease` = 콘텐츠 cardIn 결 재사용 · JS는 `data-cs`만 갱신·아이콘 고정) ④ **헤더 픽토 정렬 계약**: 잉크높이 = 기어 잉크 **18.33 등치**(박스는 viewBox 비례 역산 · 통일 정본) · 세로 = `top` 광학보정(형제 잉크선) · 가로 = `.vh-acts` box-gap 4px 계승(+운영자 `left` 미세조정 허용) |
 
+| 버튼행 결합 문법(R8 · 아이콘 버튼 베이스) | index/thumb `.sbtn`(34px · `display:grid; place-items:center` + `.sbtn svg{display:block}`) · index `#totop`(픽토 4분할 계약 3-4) | **신규 버튼·버튼행의 결합 규칙(운영자 260721 Q345 · 평의회 Q329 채택 ⑤ = 클로드디자인 감사 R8 — "이미 맞는 것의 고정"·소급 명령 아님)**: ① 콘텐츠 중앙 = grid/flex center(4분할 중앙 · 계약 3-4) ② 아이콘 svg = `display:block`(인라인 베이스라인 편심 차단) ③ 행 간격 = 부모 gap-only(개별 margin 금지 — 신규 raw margin은 design_gate diff가 차단) ④ 작은 버튼 히트 = 시각 크기 유지 + `::after` 확장(정본 = `.dlg-x` 44px 결). 기계 게이트 = `smoke_sweep S8`(합성 프로브 · grid 중앙·svg block·픽토 Δ≤0.5) |
+
 - 파일 간 문법 차이(edit 카드 vs ly 칩 vs sb 글자토글 vs k 박스) = **결함 아님·동결 정본**(각 탭 = 그날 운영자 승인 스펙 · 260717 평의회 7:1). 파일을 넘는 부품 통일·공용 부품 CSS 신설·문법 자동게이트 = 비채택.
 - **헤더 우상단 픽토 클러스터(`.vh-acts`) 정렬 정본(운영자 260720 Q267~Q297)**: 모든 헤더 픽토(검색 `#searchToggle`·채널소스 `.ch-srcsw`·대기열 `#queueBtn`·기어 `.profile`) = **잉크높이 기어 18.33 등치**(각 SVG viewBox 비례로 px 역산 · 눈대중 금지 = Playwright inkOf 실측) · 세로중앙 = 형제 잉크선에 `top` 광학보정 Δ≤0.5(운영자 개별 미세조정값 = 동결) · box-gap 4px 균일. **신규 헤더 픽토 = 이 계약 즉시 계승**(크기 창작 금지 · 값 SSOT = viewer `:root`·실측).
 

@@ -1162,6 +1162,32 @@ def check_launch_spec():
         print('✅ 발사버튼 규격 게이트 — 스튜디오 발사 버튼 %d개 전부 생성 규격(r-m·sp-1·fs-label) 계승(모조품 0 · 신규 편입 = _LAUNCH_BTNS).' % n)
     return rc
 
+def check_label_fill():
+    """콘텐츠 라벨색(cat-*·bias-*) 솔리드 배경 필 금지 게이트(운영자 260721 Q345 · 평의회 Q329 채택 ④ = 감사 R5 절제축).
+    취지 = 카테고리/편향색은 '라벨'(텍스트·도트·저알파 워시·게이지)이지 '기능 신호'(칩·버튼 솔리드 필)가 아니다 —
+    한 hex의 다축 겸직(#FFE13D = warn·arm·cat-eco 등)은 운영자 의도적 값공유(무접촉)이므로, 오독은 '불투명 필 승격' 순간에만 생긴다.
+    허용 = rgba(var(--cat-X-rgb), a) 저알파 워시 · gradient( 전계열(게이지 = 색이 곧 데이터) · color/border/text = 자유. 차단 = background(-color)에 비-rgb 토큰 직참조.
+    현행 위반 0 실측(260721) = 렌더 무변 순수 규칙 게이트. fail-closed 아님(뷰어 못 읽으면 스킵 보고)."""
+    import glob as _g
+    rx = re.compile(r'background(?:-color)?\s*:[^;{}]*var\(--(?:cat|bias)-(?!\w+-rgb)[\w-]+\)')
+    grad = re.compile(r'gradient\(')   # 게이지·워시 그라데 = 색이 곧 데이터(정당) — 솔리드 필 선언만 겨냥(260721 자가검증: index 2834 편향 게이지 바 오탐 적출)
+    bad = []
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        try:
+            for i, ln in enumerate(open(fp, encoding='utf-8'), 1):
+                if rx.search(ln) and not grad.search(ln):
+                    bad.append('%s:%d %s' % (os.path.basename(fp), i, ln.strip()[:80]))
+        except Exception as e:
+            print('⚠️ check_label_fill 스킵(%s): %s' % (os.path.basename(fp), e)); return 0
+    if bad:
+        print('❌ 라벨색 솔리드 필 %d건 — cat-*/bias-*는 텍스트·도트·저알파 워시만(불투명 배경 필 = 기능색 오독 · rgba(var(--X-rgb),a)로 강등하라):' % len(bad))
+        for b in bad[:6]:
+            print('   ·', b)
+        return 1
+    print('✅ 라벨색 필 게이트 — cat-*/bias-* 솔리드 배경 필 0(라벨 지위 유지 · 저알파 워시·게이지 허용).')
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1207,6 +1233,11 @@ def main():
         print('⚠️ check_design 스킵:', e)
     try:
         if check_launch_spec() != 0:   # 발사(생성) 버튼 규격 통일 하드게이트(운영자 260720 "생성 버튼 통일·모조품 차단" 한 수 — 신규 발사 버튼 규격 이탈 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_launch_spec 스킵:', e)
+    try:
+        if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
     except Exception as e:
         print('⚠️ 발사버튼 규격 게이트 스킵:', e)
