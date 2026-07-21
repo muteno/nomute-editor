@@ -8,7 +8,7 @@
 // 담당 표면(불변식):
 //   · viewer/ly.html    — 영상 첨부 → #lyPv 노출 + #lyVid src 장착 · pageerror 0
 //   · viewer/track.html — 영상 첨부 → #trkPv 노출 + #trkPvVid src 장착 · pageerror 0
-//   · viewer/conv.html  — 영상 첨부 → 에러 0 + 발사버튼 생존(⚠ 첨부 미리보기 자체가 부재 = 통일 캠페인 대상 — 이식 후 어서션 승격 예정)
+//   · viewer/conv.html  — 영상 첨부 → #pv 노출 + #pvVid src 장착 · pageerror 0 (260722 정형화 이식 완료 = 부재→불변식 승격)
 //
 // 원커맨드:  node shared/smoke_vidattach.js          (종료코드 0 = 코어 전부 PASS)
 // 티어: 코어 3종 단일(표면당 1) — conv는 현황 정직 어서션(미리보기 부재 상태의 무회귀만)
