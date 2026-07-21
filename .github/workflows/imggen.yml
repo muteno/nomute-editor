@@ -1,10 +1,10 @@
 name: imggen
 
 # 뷰어 '이미지 생성'(검색 카러셀 + 버튼 팝업 · functions/api/genimg.js 디스패치) —
-# Claude(Opus 4.8·effort max·구독 OAuth·폴오버 SSOT)가 기사 요약·시사점+운영자 버튼 옵션(화풍·비율·해상도·문구·주문)으로
+# Claude(Fable 5·effort high·구독 OAuth·폴오버 SSOT · 운영자 260721 — 실패 시 Opus 4.8 1회 폴백)가 기사 요약·시사점+운영자 버튼 옵션(화풍·비율·해상도·문구·주문)으로
 # Gemini 이미지 프롬프트를 작성 → Gemini(종량제 GEMINI_API_KEY)가 렌더 → R2 → cards/<stem>/thumbs/search.json 앞쪽
 # prepend(label '생성') → push마다 build-viewer 재실행 → 뷰어 카러셀 반영.
-# 운영 원칙(운영자 260707) = 구독+종량제 병행 활용: 프롬프트 지능=구독 Opus · 렌더=종량제 Gemini.
+# 운영 원칙(운영자 260707) = 구독+종량제 병행 활용: 프롬프트 지능=구독 Claude · 렌더=종량제 Gemini.
 # 카드 제미나이 0 불변과 무관 — 이 경로는 뷰어 수동 발사(슛과 동일 정책·자동 파이프라인 아님).
 on:
   workflow_dispatch:
@@ -103,7 +103,7 @@ jobs:
               python3 -c 'import json,os;p="viewer/gen_out/free.json";new=json.load(open("/tmp/genimg_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
               git add viewer/gen_out/ 2>/dev/null || true
             fi
-            git commit -m "genimg: 제미나이 생성이미지 추가(버튼 프롬프트·Opus 작성)" 2>/dev/null || true
+            git commit -m "genimg: 제미나이 생성이미지 추가(버튼 프롬프트·Fable 작성)" 2>/dev/null || true
             git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
           echo "::warning::push 실패(재시도 소진)"
