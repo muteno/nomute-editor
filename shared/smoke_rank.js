@@ -18,8 +18,9 @@
 //   잉크 2모드: bright = 어두운 필 위 밝은 잉크(랭크·NEW·▲▼ · lum>110) / dark = 밝은 필(accent) 위
 //   어두운 잉크(qbadge 계열 · lum<70 — 래퍼 흰 배경 = 라운드 코너 뒤 어두운 무대의 잉크 오검출 차단).
 //
-// [코어] 부팅 에러 0 · 폰트 정본(Pretendard) 로드 확인(260721 — woff2가 gitignore에 삼켜져 전 환경 폴백
-//        렌더 = 전 타깃 허위 드리프트 사고 · 폰트 편입+fonts.ready 대기로 봉합) · 필·배지 11종 잉크 중심 |Δ| ≤ 0.67px
+// [코어] 부팅 에러 0 · 폰트 정본(Pretendard) 로드 확인(260721 — 프레시 클론 = 빌드 미러(build-viewer.mjs 26
+//        assets/fonts→viewer) 미실행이라 폴백 렌더 = 보정값이 폴백 기준으로 박히는 허위 드리프트 · 부트스트랩
+//        cpSync(smoke_preview 186 문법 계승)+fonts.ready 대기로 봉합 · 라이브는 빌드 복사라 원래 정상) · 필·배지 11종 잉크 중심 |Δ| ≤ 0.67px
 //        (= 기틀 3-4 기준 0.5 + DPR3 양자화 반스텝 0.17 — 초과 = 폰트/렌더러 드리프트 경보 = 재보정 신호) ·
 //        외형 계약: .tcard-rank 18 · .tpc-rank 15 · .qbadge 16(보정 패딩이 외형 불침범) ·
 //        동일 런 2회 판정 동일(결정론)
@@ -151,6 +152,7 @@ async function measureOnce(pg) {
   let srv = null, browser = null;
   try {
     const { chromium } = loadPlaywright();
+    try { fs.cpSync(path.join(ROOT, 'assets/fonts'), path.join(VIEWER, 'assets/fonts'), { recursive: true }); } catch (_) {}   // 빌드 미러(build-viewer.mjs 26행 동일 복사 · smoke_preview 186 문법) — viewer/assets = .gitignore 빌드 산출 경로라 레포 무접촉 · 프로드와 동일 폰트로 측정(부재 시 폴백 측정 = 260721 허위 드리프트 사고)
     const st = await startServer(); srv = st.srv;
     browser = await chromium.launch({ executablePath: chromiumPath() });
     const pg = await browser.newPage({ viewport: { width: 900, height: 1500 }, deviceScaleFactor: 3 });
@@ -161,7 +163,7 @@ async function measureOnce(pg) {
     await pg.waitForFunction(() => [...document.querySelectorAll('.tcard-rank, .tpc-rank')].some(el => el.getBoundingClientRect().width > 0), { timeout: 15000 });   // '첫 매치 가시화' 대기는 접힌 섹션이 첫 매치면 영구 대기(실측 260717) — 아무 필이나 렌더되면 정본 CSS 로드 완료로 충분(측정은 격리 스테이지)
     await pg.evaluate(() => document.fonts.ready.then(() => {}));   // 폰트 스왑 완료 대기(260721 — swap 레이스로 폴백 측정 시 전 타깃 허위 드리프트)
     const fontOK = await pg.evaluate(() => document.fonts.check('800 10.5px "Pretendard Variable"'));
-    ok('폰트 정본 로드 = Pretendard Variable', fontOK, fontOK ? 'loaded' : '폴백 렌더 중(woff2 404/미배포 = 260721 사고 재발 — viewer/assets/fonts/pretendard.woff2 확인)');
+    ok('폰트 정본 로드 = Pretendard Variable', fontOK, fontOK ? 'loaded' : '폴백 렌더 중(부트스트랩 미러 실패 — 정본 assets/fonts/pretendard.woff2 확인 · 260721 사고 재발)');
     const m1 = await measureOnce(pg), m2 = await measureOnce(pg);
     for (let k = 0; k < m1.length; k++) {
       const a = m1[k];
