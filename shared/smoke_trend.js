@@ -91,7 +91,7 @@ const SEL = {
     // 기대값 = 라이브 데이터 동치(수집 변동 플레이크 차단 — 빈 리스트면 폴백 경로를 검증)
     const DATA = JSON.parse(fs.readFileSync(path.join(VIEWER, 'sns_trends.json'), 'utf8'));
     const gtN = Math.min((DATA.gtrends || []).length, 10), sigN = Math.min((DATA.signal || []).length, 10);
-    const xtrN = Math.min((DATA.xtrends || []).length, 15);
+    const xtrN = Math.min((DATA.xtrends || []).length, 10);   // 상한 15→10(운영자 260721 Q355 반갈 "1위~10위" — 뷰어 xtr slice 동조)
 
     const { chromium } = loadPlaywright();
     const st = await startServer(); srv = st.srv;
