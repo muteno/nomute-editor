@@ -27,10 +27,17 @@ export async function onRequestPost({ request, env }) {
   const lines = raw.slice(0, 300).map((l, i) => ({ i: Number.isInteger(l.i) ? l.i : i, t: String(l.t || '').slice(0, 300) })).filter(l => l.t.trim());
   if (lines.length < 3) return json({ error: 'OCR 라인이 너무 적어 — 글자가 보이는 문서 이미지인지 확인' }, 400);
 
+  // 참고 기사(번역 스탠스)·재생성 지시 컨텍스트(운영자 260721 v2 — 텍스트만 수신·상한 = dispatch inputs 64KB 여유)
+  const c = (body.ctx && typeof body.ctx === 'object') ? body.ctx : {};
+  const ctx = {};
+  if (c.art && (c.art.t || c.art.b)) ctx.art = { t: String(c.art.t || '').slice(0, 200), m: String(c.art.m || '').slice(0, 40), b: String(c.art.b || '').slice(0, 900) };
+  if (c.note) ctx.note = String(c.note).slice(0, 500);
+  if (c.redo) ctx.redo = 1;
+
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · api/k.js 규칙)
   const r = await GH(env.GH_TOKEN, 'actions/workflows/tr-auto.yml/dispatches', 'POST', {
     ref: REF,
-    inputs: { id, lines: JSON.stringify(lines) },
+    inputs: { id, lines: JSON.stringify(lines), ctx: Object.keys(ctx).length ? JSON.stringify(ctx) : '' },
   });
   if (r.status !== 204) {
     const t = await r.text().catch(() => '');
