@@ -164,8 +164,10 @@ const TR_BLACK = '#000';            /* 순수 흑(§🎨 순수 흑/백 정당 r
 const TR_WHITE = '#fff';
 const TR_GREEN = '#2ee65c';         /* 디스패치풍 형광 초록(발행 콘텐츠 색 — UI 재유입 금지) */
 const TR_W = 1080;                  /* 발행 기준 폭 */
+const CARD_RATIO = 5 / 4;           /* 발행 카드 = 4:5 세로(1080×1350) 기본 — 운영자 260721 확정("특별한 말 없으면 항상 4:5") */
 const PADX = 64;                    /* 밴드 좌우 여백(1080 기준) */
-const FONT_KO = "'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif";   /* 한글 = 기존 밴드 서체 그대로 */
+const TRACK = '-0.01em';            /* 카드 자간 = -10‰(운영자 260721 "노토산스 -10 자간 기본" · thumb 카드 트래킹 모델 계승) */
+const FONT_KO = "'Noto Sans KR', 'Noto Sans', -apple-system, sans-serif";   /* 카드 본문 = 노토산스(운영자 260721 확정 · 발행 콘텐츠 서체축 raw · 자간 -10) */
 const FONT_EN = "'Helvetica Neue', Helvetica, Arial, sans-serif";   /* 영문 서체(운영자 260721 폰트 옵션 — 콘텐츠 축 raw · FONT_KO 선례) */
 
 const $ = id => document.getElementById(id);
@@ -313,7 +315,7 @@ function bandFont(fs){ return `800 ${fs}px ${fontV === 'en' ? FONT_EN : FONT_KO}
 function layoutBand(b){
   const mx = TR_W - PADX * 2, lh = Math.round(b.fs * 1.55);
   const mc = document.createElement('canvas').getContext('2d');
-  mc.font = bandFont(b.fs);
+  mc.font = bandFont(b.fs); mc.letterSpacing = TRACK;   /* 자간 -10 = 측정·그림 동일(운영자 260721) */
   const lines = [];
   b.tx.split('\n').forEach(raw => {
     let line = [], w = 0;
@@ -337,7 +339,7 @@ function drawBand(ctx, b, y){
   const dark = b.style === 'dark';
   ctx.fillStyle = dark ? TR_BLACK : TR_WHITE;
   ctx.fillRect(0, y, TR_W, L.h);
-  ctx.font = bandFont(b.fs); ctx.textBaseline = 'alphabetic';
+  ctx.font = bandFont(b.fs); ctx.letterSpacing = TRACK; ctx.textBaseline = 'alphabetic';   /* 자간 -10 = 측정폭(mc)과 동일 */
   let ly = y + L.padY + Math.round(b.fs * 0.92);
   L.lines.forEach(line => {
     let x = PADX;
@@ -369,21 +371,30 @@ function compose(){
     pv.getContext('2d').drawImage(img, 0, 0, TR_W, h);
     return;
   }
+  /* 4:5 기본(운영자 260721 "특별한 말 없으면 항상 4:5") — 문서 전체 보이게 contain, 칩은 상단에 확대 합성 */
   const bandIt = RESULT.band ? { tx: RESULT.band, style: styleV, fs: fsV } : null;
-  const cutH = Math.round(TR_W * RESULT.cut.height / RESULT.cut.width);
+  const cut = RESULT.cut;
   const bH = bandIt ? layoutBand(bandIt).h : 0;
-  pv.width = TR_W; pv.height = cutH + bH;
+  const RATIO_W = TR_W, RATIO_H = Math.round(TR_W * CARD_RATIO);   /* 1080×1350 */
+  const regionH = RATIO_H - bH;
+  pv.width = RATIO_W; pv.height = RATIO_H;
   const ctx = pv.getContext('2d');
-  ctx.drawImage(RESULT.cut, 0, 0, TR_W, cutH);
-  if (bandIt) drawBand(ctx, bandIt, cutH);
+  ctx.fillStyle = TR_WHITE; ctx.fillRect(0, 0, RATIO_W, RATIO_H);
+  const sf = Math.min(RATIO_W / cut.width, regionH / cut.height);   /* 문서 contain(다 보이게) */
+  const dw = Math.round(cut.width * sf), dh = Math.round(cut.height * sf);
+  const ox = Math.round((RATIO_W - dw) / 2), oy = Math.round((regionH - dh) / 2);
+  ctx.drawImage(cut, ox, oy, dw, dh);
+  const g = (TR_W / img.naturalWidth) * sf;   /* natural→final 스케일(cut=naturalWidth→TR_W 후 sf) */
+  if (RESULT.plan) drawChips(ctx, RESULT.plan, ox, oy, g, regionH);
+  if (bandIt) drawBand(ctx, bandIt, regionH);
 }
 
 /* ── 자동 마커 번역 엔진(운영자 260720 Q274 → 260721 v2: 참고 기사 스탠스 + 재생성 메시지 + AI 밴드) ──
    브라우저 OCR(tesseract.js 지연 로드 · 이미지·좌표는 서버로 안 감) → /api/tr(러너 claude = 강조 선정+한글 번역+밴드 문구)
    → tr_out/<id>/plan.json 폴링 → 형광펜(multiply 50%)+검정 각칩 오버레이 합성(운영자 승인 시안 dsp_ov3 '그대로') + 밴드.
    콘텐츠 산출물 색 상수(캔버스 전용 raw — TR_GREEN 선례·발행 콘텐츠 색 축): */
-const OV_MARK = 'rgba(120,240,90,.5)';   /* 형광펜 = 50% 반투명(multiply = 진짜 형광펜 질감) */
-const OV_CHIP = 'rgba(18,18,18,.9)';     /* 칩 = 스포티파이 블랙 90%(반전) */
+const OV_MARK = 'rgba(120,240,90,.5)';   /* 형광펜 = 50% 반투명(multiply = 진짜 형광펜 질감) · 해석 라인 전역 칠(운영자 260721) */
+const OV_CHIP = 'rgba(18,18,18,.85)';    /* 칩 = 스포티파이 블랙 85%(운영자 260721 확정 · 반전) */
 const OV_LINE = 'rgba(255,255,255,.13)';
 const OV_TEXT = '#f4f7f4';
 const OV_EMPH = '#8dff6a';               /* 칩 안 강조(형광펜 동계열 초록) */
@@ -421,39 +432,53 @@ function chipLayout(ctx, t, fs, maxW){   /* 칩 줄배치 — *별표* 강조 = 
   const lw = Math.max(...lines.map(l => l.reduce((a, x) => a + x.w, 0)), 1);
   return { lines, w: lw, lh: Math.round(fs * 1.38) };
 }
-function composeOverlay(plan){
+function hlRuns(hl){   /* hl → 연속 라인 런([{s,e}]) : 형광펜 해석 span = 칩 앵커(단일 라인도 런 1개 · 하위호환) */
+  const arr = [...new Set((hl || []).filter(i => Number.isInteger(i)))].sort((a, b) => a - b);
+  const runs = []; let cur = null;
+  arr.forEach(i => { if (cur && i === cur.e + 1) cur.e = i; else { cur = { s: i, e: i }; runs.push(cur); } });
+  return runs;
+}
+function composeOverlay(plan){   /* 원문 + 형광펜(해석 라인 전역)만 — 칩은 compose에서 4:5 스케일 상단 합성(칩 확대 유지) */
   const s = TR_W / img.naturalWidth;
   const H = Math.round(img.naturalHeight * s);
   const cv = document.createElement('canvas'); cv.width = TR_W; cv.height = H;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0, TR_W, H);
   const bmap = new Map(ocrLines.map(l => [l.i, l.b]));
-  ctx.globalCompositeOperation = 'multiply';   /* 형광펜 = 글자 박스에 딱(줄간격 제외 — 승인 시안 260720) */
+  ctx.globalCompositeOperation = 'multiply';   /* 형광펜 = 글자 박스에 딱(줄간격 제외 — 승인 시안 260720) · hl 전 라인 = 해석 문장 전역(운영자 260721 "한 줄씩 말고 전역") */
   ctx.fillStyle = OV_MARK;
   (plan.hl || []).forEach(i => { const b = bmap.get(i); if (!b) return;
     ctx.fillRect(Math.round(b.x * s) - 3, Math.round(b.y * s) - 2, Math.round(b.w * s) + 6, Math.round(b.h * s) + 4); });
   ctx.globalCompositeOperation = 'source-over';
-  const fs = 28, padX = 11, padY = 6, maxW = 880;   /* 칩 = 각지게·내용폭·마진 절반(형사사건 조사 뉴스 결 — 승인 시안 값) */
-  ctx.font = `800 ${fs}px 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif`;
-  ctx.textBaseline = 'alphabetic';
+  return cv;   /* 칩 = drawChips(compose) — 4:5 축소와 무관하게 큰 고정 크기 */
+}
+function drawChips(ctx, plan, ox, oy, g, regionH){   /* 칩 = 4:5 최종 스케일 상단 합성 : .85 검정 · 자간 · 4분할 중앙정렬 · x=칠한 런 좌단 추종(운영자 260721) */
+  const bmap = new Map(ocrLines.map(l => [l.i, l.b]));
+  const runs = hlRuns(plan.hl);
+  const CHIP_FS = 30, padX = 12, padY = 9, maxW = 900;
+  ctx.font = `800 ${CHIP_FS}px ${FONT_KO}`; ctx.letterSpacing = TRACK; ctx.textBaseline = 'middle';
   const placed = [];
   (plan.chips || []).forEach(c => {
-    const b = bmap.get(c.a);
-    const L = chipLayout(ctx, String(c.t || ''), fs, maxW);
+    let run = runs.find(r => c.a >= r.s && c.a <= r.e);
+    if (!run && runs.length) run = runs.reduce((best, r) => Math.abs((r.s + r.e) / 2 - c.a) < Math.abs((best.s + best.e) / 2 - c.a) ? r : best, runs[0]);
+    const anchorEnd = run ? run.e : c.a;
+    const be = bmap.get(anchorEnd);
+    let runLeft = null;
+    if (run) for (let i = run.s; i <= run.e; i++) { const b = bmap.get(i); if (b) runLeft = runLeft == null ? b.x : Math.min(runLeft, b.x); }
+    if (runLeft == null && be) runLeft = be.x;
+    const L = chipLayout(ctx, String(c.t || ''), CHIP_FS, maxW);
     const bw = Math.min(L.w, maxW) + padX * 2, bh = L.lines.length * L.lh + padY * 2;
-    let x = b ? Math.max(24, Math.min(Math.round(b.x * s), TR_W - bw - 24)) : 30;
-    let y = b ? Math.round((b.y + b.h) * s) + 10 : 30;
-    placed.forEach(r => { if (x < r.x + r.w && x + bw > r.x && y < r.y + r.h && y + bh > r.y) y = r.y + r.h + 8; });   /* 겹침 = 아래로 밀기(중요 내용 가림 회피 v1) */
-    if (y + bh > H - 8) y = Math.max(8, (b ? Math.round(b.y * s) : H) - bh - 10);   /* 바닥 넘침 = 앵커 위로 */
+    let x = runLeft != null ? Math.max(16, Math.min(Math.round(ox + runLeft * g), TR_W - bw - 16)) : 20;   /* 칠한 데 따라 x(좌측 강제 해제) */
+    let y = be ? Math.round(oy + (be.y + be.h) * g) + 8 : 24;
+    placed.forEach(r => { if (x < r.x + r.w && x + bw > r.x && y < r.y + r.h && y + bh > r.y) y = r.y + r.h + 7; });   /* 겹침 = 아래로 */
+    if (y + bh > regionH - 6) y = Math.max(6, (be ? Math.round(oy + be.y * g) : regionH) - bh - 8);   /* 바닥 넘침 = 앵커 위로 */
     placed.push({ x, y, w: bw, h: bh });
     ctx.fillStyle = OV_CHIP; ctx.fillRect(x, y, bw, bh);
     ctx.strokeStyle = OV_LINE; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, bw - 1, bh - 1);
-    let ty = y + padY + Math.round(fs * .82);
-    L.lines.forEach(ln => { let tx2 = x + padX;
-      ln.forEach(tk => { ctx.fillStyle = tk.m === 'g' ? OV_EMPH : OV_TEXT; ctx.fillText(tk.tx, tx2, ty); tx2 += tk.w; });
-      ty += L.lh; });
+    L.lines.forEach((ln, k) => { let tx2 = x + padX; const cy = y + padY + L.lh * (k + 0.5);   /* 4분할 중앙(높이) = middle 베이스라인 · lh 밴드 정중앙 */
+      ln.forEach(tk => { ctx.fillStyle = tk.m === 'g' ? OV_EMPH : OV_TEXT; ctx.fillText(tk.tx, tx2, cy); tx2 += ctx.measureText(tk.tx).width; }); });
   });
-  return cv;
+  ctx.letterSpacing = '0px';
 }
 async function pollPlan(id){   /* k_out 폴링 문법 계승 — 커밋→Pages 배포 지연 포함 6분 캡 */
   for (let k = 0; k < 60; k++) {
@@ -504,7 +529,7 @@ go.addEventListener('click', async () => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
     const plan = j.plan ? j.plan : await pollPlan(j.id);   // 즉답 경로(유료 API 직결 · 운영자 260721 승인 — 수신 즉시 합성) · 없으면 워크플로 폴링 폴백(구독 무료)
-    RESULT = { cut: composeOverlay(plan), band: String(plan.band || '').trim() };
+    RESULT = { cut: composeOverlay(plan), band: String(plan.band || '').trim(), plan };   /* plan 보관 = compose에서 4:5 스케일로 칩 재합성 */
     fired = true; $('redoBox').hidden = false;
     gaugeDone(go);
     (document.fonts?.ready || Promise.resolve()).then(compose);
