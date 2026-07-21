@@ -1,0 +1,358 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프로필 카드 · 목업 재현 플레이그라운드 (260721)</title>
+<style>
+  :root{
+    /* 참조 토큰(값 SSOT 사본 — viewer/index.html :root) */
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6;
+    --danger:#e23b2a; --bias-l2:#3a6ddb; --mut:#8fa697; --fg:#eef7f0; --on-accent:#032322;
+    /* 튜닝 축(--t-*) — 기본값 = 목업 재현 프리셋 */
+    --t-cardw:1360px; --t-scale:1;
+    --t-vfs:50px; --t-lfs:23px; --t-sfs:23px; --t-nfs:40px; --t-rfs:30px; --t-tfs:22px;
+    --t-pad:26px; --t-gap:22px; --t-rad:18px; --t-crad:26px; --t-hrad:18px;
+    --t-donut:86px; --t-tileh:220px; --t-bgA:.045;
+    --t-acc:#00EED2; --t-male:#3a6ddb; --t-female:#e23b2a; --t-mut:#8fa697;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0e16;color:#dfe7f0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;line-height:1.5;padding-bottom:60px}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  h1{font-size:19px;font-weight:800;margin:6px 0 2px}
+  .lede{font-size:13px;color:#9fb0bf;margin-bottom:14px}
+  .lede b{color:var(--accent-bright)}
+
+  /* ── 미리보기(sticky) ── */
+  .stage{position:sticky;top:0;z-index:5;background:#0a0e16;padding:10px 0 12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:12px}
+  .stage-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#9fb0bf;margin-bottom:8px}
+  .stage-h .zt{display:flex;align-items:center;gap:6px}
+  .frame{overflow:auto;border-radius:12px;background:#0d1320;padding:20px;border:1px solid rgba(255,255,255,.06)}
+  .frame-in{transform:scale(var(--t-scale));transform-origin:top left;width:calc(var(--t-cardw) + 0px)}
+
+  /* ── 프로필 카드 재현(목업 바탕) ── */
+  .pcard{width:var(--t-cardw);background:#0d1421;border:1px solid rgba(255,255,255,.07);border-radius:var(--t-crad);padding:calc(var(--t-gap)*.9);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .phead{display:flex;align-items:center;justify-content:space-between;gap:16px;background:linear-gradient(120deg,rgba(0,238,210,.05),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.06);border-radius:var(--t-hrad);padding:calc(var(--t-pad)*.7) var(--t-pad);margin-bottom:var(--t-gap)}
+  .phead-l{display:flex;align-items:center;gap:14px;min-width:0}
+  .prank{color:var(--t-acc);font-size:var(--t-rfs);font-weight:800;font-variant-numeric:tabular-nums}
+  .pname{color:#fff;font-size:var(--t-nfs);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pseg{display:flex;align-items:center;gap:calc(var(--t-gap)*.5);flex:none}
+  .pseg span{color:var(--t-mut);font-size:var(--t-tfs);font-weight:700;padding:.35em .7em;border-radius:999px}
+  .pseg span.on{color:var(--on-accent);background:var(--t-acc);font-weight:800}
+
+  .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--t-gap)}
+  .ptile{display:flex;flex-direction:column;min-height:var(--t-tileh);padding:var(--t-pad);background:rgba(255,255,255,var(--t-bgA));border:1px solid rgba(255,255,255,.05);border-radius:var(--t-rad)}
+  .pk{align-self:flex-end;color:var(--t-acc);font-size:var(--t-lfs);font-weight:700}
+  .pvrow{flex:1;display:flex;align-items:center}
+  .pv{color:#fff;font-size:var(--t-vfs);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;white-space:nowrap}
+  .psub{display:flex;align-items:baseline;gap:.5em;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .pdl{font-size:var(--t-sfs);font-weight:700}
+  .pdl.up{color:var(--t-acc)} .pdl.dn{color:var(--t-female)}
+  .prt{font-size:var(--t-sfs);color:var(--t-mut)}
+  /* 값 정렬 토글 */
+  .pcard.al-c .pvrow{justify-content:center} .pcard.al-c .psub{align-self:center}
+  .pcard.al-l .pvrow{justify-content:flex-start} .pcard.al-l .psub{align-self:flex-start}
+
+  /* 성별 타일 */
+  .ptile-demo .pdemo{flex:1;display:flex;align-items:center;gap:calc(var(--t-gap)*.8);min-width:0}
+  .pdonut{width:var(--t-donut);height:var(--t-donut);flex:none}
+  .plgd{display:flex;flex-direction:column;gap:.25em;text-align:right;margin-left:auto;font-size:calc(var(--t-lfs)*.92);line-height:1.35}
+  .plgd i,.plgd b{font-style:normal}
+  .plgd .l-co b{font-weight:700}
+  .plgd .l-co b.m{color:var(--t-male)} .plgd .l-co b.f{color:var(--t-female)}
+  .plgd .l-co{color:#c7d2dd;font-weight:400}
+  .plgd .l-un{color:var(--t-mut)} .plgd .l-un.dim{color:rgba(143,166,151,.6)}
+
+  /* ── 컨트롤 ── */
+  .csec{background:#0f1622;border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+  .csec h2{font-size:12px;letter-spacing:.02em;color:var(--accent);font-weight:800;margin-bottom:10px;text-transform:uppercase}
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  .preset{cursor:pointer;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.03);color:#dfe7f0;font-size:13px;font-weight:700;padding:7px 12px;border-radius:999px}
+  .preset.on{background:rgba(0,238,210,.14);border-color:rgba(0,238,210,.5);color:#eafffb}
+  .grp{margin-bottom:6px}
+  .grp-l{font-size:11px;color:#8fa0af;font-weight:700;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.04em}
+  .row{display:grid;grid-template-columns:120px 1fr 88px;align-items:center;gap:10px;padding:4px 0}
+  .row label{font-size:12px;color:#c2ccd6}
+  .row .val{font-size:12px;color:#dfe7f0;text-align:right;font-variant-numeric:tabular-nums}
+  .row .val .tk{display:block;font-size:10px;color:#7f8f9d}
+  .row .val .tk.up{color:#e6b800}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  select{background:#0d1622;color:#dfe7f0;border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:5px 8px;font-size:12px}
+  .segbtn{display:inline-flex;border:1px solid rgba(255,255,255,.16);border-radius:8px;overflow:hidden}
+  .segbtn button{background:transparent;color:#c2ccd6;border:0;padding:5px 12px;font-size:12px;cursor:pointer}
+  .segbtn button.on{background:rgba(0,238,210,.16);color:#eafffb}
+  pre#out{background:#0a0f18;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:#cfe;overflow:auto;white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .copyrow{display:flex;gap:8px;margin-top:8px;align-items:center}
+  button.copy{cursor:pointer;background:var(--accent);color:#032322;border:0;font-weight:800;font-size:13px;padding:9px 16px;border-radius:10px}
+  .copied{font-size:12px;color:var(--accent-bright);opacity:0;transition:opacity .2s}
+  .copied.on{opacity:1}
+  .note{font-size:12px;color:#93a3b1;line-height:1.7}
+  .note b{color:#c8d3dd}
+  .warn{color:#e6b800}
+</style>
+
+<div class="wrap">
+  <h1>프로필 카드 · 목업 재현 플레이그라운드</h1>
+  <p class="lede">첨부 목업(첨부1)을 <b>그대로 재현</b>한 카드다. <b>지금 라이브 CSS와 무관</b>하게, 목업 폭(기본 1360px)에 맞춰 놓았어 — 슬라이더로 글자·마진·도넛·색을 만져서 목업과 겹쳐보고, <b>[선택값 복사]</b>로 원하는 값을 그대로 줘. 그게 곧 반영 스펙이 돼.</p>
+
+  <!-- ① 실물 재현(sticky) -->
+  <div class="stage">
+    <div class="stage-h">
+      <span>미리보기</span>
+      <span class="zt">화면 배율 <input type="range" id="zoom" min="0.3" max="1" step="0.02" style="width:120px"> <b id="zoomv" style="font-variant-numeric:tabular-nums">100%</b></span>
+      <span style="color:#7f8f9d">· 카드 논리 폭 = <b id="cwlab" style="color:#cfe">1360px</b> (목업 기준)</span>
+    </div>
+    <div class="frame">
+      <div class="frame-in">
+        <div class="pcard al-c" id="pcard">
+          <div class="phead">
+            <div class="phead-l"><span class="prank">1</span><span class="pname">@no_mute</span></div>
+            <div class="pseg"><span>7일</span><span class="on">30일</span><span>90일</span><span>전체</span></div>
+          </div>
+          <div class="pgrid">
+            <div class="ptile"><span class="pk">팔로워</span><div class="pvrow"><b class="pv">64,108</b></div><span class="psub"><span class="pdl up">+1,158</span><span class="prt">38.6/일</span></span></div>
+            <div class="ptile"><span class="pk">조회수</span><div class="pvrow"><b class="pv">2162만</b></div><span class="psub"><span class="pdl dn">−1509.7만</span><span class="prt">72.1만/일</span></span></div>
+            <div class="ptile"><span class="pk">도달</span><div class="pvrow"><b class="pv">1042.6만</b></div><span class="psub"><span class="pdl up">+77.5만</span><span class="prt">34.8만/일</span></span></div>
+            <div class="ptile"><span class="pk">게시</span><div class="pvrow"><b class="pv">53개</b></div><span class="psub"><span class="pdl dn">−60</span><span class="prt">1.8/일</span></span></div>
+            <div class="ptile"><span class="pk">프로필 방문</span><div class="pvrow"><b class="pv">3.7만</b></div><span class="psub"><span class="pdl dn">−1.7만</span><span class="prt">1238/일</span></span></div>
+            <div class="ptile ptile-demo"><span class="pk">성별</span><div class="pdemo">
+              <svg class="pdonut" viewBox="0 0 36 36" id="donut" aria-hidden="true"></svg>
+              <span class="plgd"><i class="l-co"><b class="m">남 29%</b> · <b class="f">여 8%</b></i><i class="l-un">미지정 22%</i><i class="l-un dim">그 외 41%</i></span>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 프리셋 -->
+  <div class="csec">
+    <h2>프리셋</h2>
+    <div class="presets" id="presets">
+      <div class="preset on" data-p="mock">목업 재현 ★</div>
+      <div class="preset" data-p="live">현행 라이브 (860px)</div>
+      <div class="preset" data-p="ship">라이브폭 적용안 (860px·확대)</div>
+    </div>
+  </div>
+
+  <!-- ③ 슬라이더 -->
+  <div class="csec">
+    <h2>미세조정</h2>
+    <div class="grp-l">폭 / 스케일</div>
+    <div id="grpW"></div>
+    <div class="grp-l">글자 크기 <span style="color:#7f8f9d;font-weight:400;text-transform:none">— 눈금 = 실존 토큰 사다리(계승) · 밖 = <span class="warn">⚠ 갱신</span></span></div>
+    <div id="grpF"></div>
+    <div class="grp-l">기하 (마진·라운드·도넛)</div>
+    <div id="grpG"></div>
+    <div class="grp-l">색 (폐쇄 팔레트)</div>
+    <div id="grpC"></div>
+    <div class="grp-l">레이아웃</div>
+    <div class="row"><label>값 정렬</label><div class="segbtn" id="alignSeg"><button data-al="c" class="on">중앙</button><button data-al="l">좌측</button></div><span></span></div>
+  </div>
+
+  <!-- ④ 선택값 복사 -->
+  <div class="csec">
+    <h2>선택값 (현행 병기 · 계승/갱신 자동표기)</h2>
+    <pre id="out"></pre>
+    <div class="copyrow"><button class="copy" id="copy">선택값 복사</button><span class="copied" id="copied">복사됨 ✓</span></div>
+  </div>
+
+  <!-- ⑤ 한계 각주 -->
+  <div class="csec note">
+    <b>재현 한계(정직)</b><br>
+    · 목업 원본이 파일로 안 와서 <b>이미지를 눈으로 떠서 재현</b>했다 — 픽셀 1:1 아님(폰트 글리프·안티에일리어싱·미세 마진 근사). 정확 대조는 이 카드를 목업과 같은 폭에 두고 눈으로 겹쳐 판정.<br>
+    · <b>라이브 카드 실폭 = 860px</b>(뷰어 max). 목업(≈1360px)에서 정한 px를 그대로 쓰면 라이브에선 커 보인다 → "라이브폭 적용안" 프리셋 = 목업 비율을 860px로 환산한 출발값(실배포 후보).<br>
+    · 글자값이 <span class="warn">⚠ 갱신</span>이면 = `:root` 신규/변경 토큰 = 기틀 축 → 복사본을 회신하면 그 값으로 배선(+게이트) 진행.<br>
+    · 색은 팔레트 폐쇄(자유 hex 없음) — 남=`--bias-l2`, 여=`--danger`, 강조=`--accent`, 보조=`--mut`. 알파 변주만 자유.
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement, card=document.getElementById('pcard');
+  // 토큰 사다리
+  var FS={11:'--fs-xs',12:'--fs-sm',13:'--fs-label',14:'--fs-h3',15:'--fs-body',19:'--fs-h1',22:'--fs-display'};
+  var SP={6:'--sp-1',12:'--sp-2',18:'--sp-3',24:'--sp-4'};
+  var RR={9:'--r-s',11:'--r-m',16:'--r-l',22:'--r-modal'};
+  var COL={'#00EED2':'--accent','#3a6ddb':'--bias-l2','#e23b2a':'--danger','#8fa697':'--mut'};
+  var fsScale=Object.keys(FS).map(Number).sort(function(a,b){return a-b});
+
+  // 슬라이더 정의: key, css var, label, min, max, step, unit, ladder(map|null)
+  var W=[
+    ['cardw','--t-cardw','카드 폭',320,1440,10,'px',null],
+  ];
+  var F=[
+    ['vfs','--t-vfs','값(64,108)',14,72,1,'px',FS],
+    ['lfs','--t-lfs','라벨(팔로워)',10,32,1,'px',FS],
+    ['sfs','--t-sfs','증감·일평균',10,32,1,'px',FS],
+    ['nfs','--t-nfs','@no_mute',16,56,1,'px',FS],
+    ['rfs','--t-rfs','순번 1',12,44,1,'px',FS],
+    ['tfs','--t-tfs','기간탭',11,30,1,'px',FS],
+  ];
+  var G=[
+    ['pad','--t-pad','타일 안쪽여백',6,40,1,'px',SP],
+    ['gap','--t-gap','타일 간격',4,36,1,'px',SP],
+    ['rad','--t-rad','타일 라운드',6,32,1,'px',RR],
+    ['crad','--t-crad','카드 라운드',8,40,1,'px',RR],
+    ['hrad','--t-hrad','헤더 라운드',6,32,1,'px',RR],
+    ['tileh','--t-tileh','타일 최소높이',80,300,2,'px',null],
+    ['donut','--t-donut','성별 도넛',36,140,2,'px',null],
+    ['bgA','--t-bgA','타일 배경 진하기',0,0.14,0.005,'',null],
+  ];
+  var C=[
+    ['acc','--t-acc','강조(라벨·+·탭)',['#00EED2','#5AFFE6','#d8ff3d']],
+    ['male','--t-male','남',['#3a6ddb','#4a7bd6']],
+    ['female','--t-female','여·하락(−)',['#e23b2a','#ff5a6e']],
+    ['mut','--t-mut','보조(일평균·회색)',['#8fa697','#93a3b1']],
+  ];
+
+  // 프리셋
+  var PRE={
+    mock:{cardw:1360,vfs:50,lfs:23,sfs:23,nfs:40,rfs:30,tfs:22,pad:26,gap:22,rad:18,crad:26,hrad:18,tileh:220,donut:86,bgA:.045,acc:'#00EED2',male:'#3a6ddb',female:'#e23b2a',mut:'#8fa697',align:'c'},
+    live:{cardw:860,vfs:22,lfs:12,sfs:12,nfs:19,rfs:15,tfs:13,pad:12,gap:12,rad:16,crad:22,hrad:16,tileh:110,donut:46,bgA:.04,acc:'#00EED2',male:'#3a6ddb',female:'#e23b2a',mut:'#8fa697',align:'c'},
+    ship:{cardw:860,vfs:32,lfs:15,sfs:15,nfs:25,rfs:19,tfs:14,pad:18,gap:12,rad:16,crad:22,hrad:16,tileh:140,donut:58,bgA:.05,acc:'#00EED2',male:'#3a6ddb',female:'#e23b2a',mut:'#8fa697',align:'c'}
+  };
+  var state=Object.assign({},PRE.mock);
+
+  // 도넛 그리기
+  function drawDonut(){
+    var segs=[['#3a6ddb',29,'male'],['#e23b2a',8,'female'],['rgba(255,255,255,.32)',22,null],['rgba(255,255,255,.12)',41,null]];
+    var off=25,s='';
+    segs.forEach(function(sg){
+      var col=sg[2]?state[sg[2]]:sg[0];
+      s+='<circle cx="18" cy="18" r="15.9" fill="none" stroke="'+col+'" stroke-width="4.6" pathLength="100" stroke-dasharray="'+sg[1]+' '+(100-sg[1])+'" stroke-dashoffset="'+off+'"/>';
+      off-=sg[1];
+    });
+    document.getElementById('donut').innerHTML=s;
+  }
+
+  var ALL=W.concat(F).concat(G);
+  function build(arr,host){
+    arr.forEach(function(d){
+      var row=document.createElement('div'); row.className='row';
+      var lad=d[7], listId=lad?('dl-'+d[0]):'';
+      var opts=lad?Object.keys(lad).map(function(k){return '<option value="'+k+'">';}).join(''):'';
+      row.innerHTML='<label>'+d[2]+'</label>'+
+        '<input type="range" id="s-'+d[0]+'" min="'+d[3]+'" max="'+d[4]+'" step="'+d[5]+'"'+(lad?' list="'+listId+'"':'')+'>'+
+        (lad?'<datalist id="'+listId+'">'+opts+'</datalist>':'')+
+        '<span class="val" id="v-'+d[0]+'"></span>';
+      host.appendChild(row);
+      document.getElementById('s-'+d[0]).addEventListener('input',function(e){
+        var v=parseFloat(e.target.value); state[d[0]]=v; markCustom(); apply();
+      });
+    });
+  }
+  build(W,document.getElementById('grpW'));
+  build(F,document.getElementById('grpF'));
+  build(G,document.getElementById('grpG'));
+  // 색 셀렉트
+  C.forEach(function(d){
+    var row=document.createElement('div'); row.className='row';
+    var opts=d[3].map(function(hex){return '<option value="'+hex+'">'+hex+(COL[hex]?' ('+COL[hex]+')':'')+'</option>';}).join('');
+    row.innerHTML='<label>'+d[2]+'</label><select id="c-'+d[0]+'">'+opts+'</select><span class="val" id="v-'+d[0]+'"></span>';
+    document.getElementById('grpC').appendChild(row);
+    row.querySelector('select').addEventListener('change',function(e){ state[d[0]]=e.target.value; markCustom(); apply(); });
+  });
+
+  function tagFS(v){ return FS[v]?('= '+FS[v]+' 계승'):'⚠ 갱신'; }
+  function tagMap(v,m){ return m[v]?('= '+m[v]+' 계승'):'⚠ 갱신'; }
+
+  function apply(){
+    // CSS 변수 반영
+    ALL.forEach(function(d){
+      var v=state[d[0]]; var css=(d[6]==='px')?(v+'px'):(''+v);
+      root.style.setProperty(d[1],css);
+    });
+    root.style.setProperty('--t-acc',state.acc);
+    root.style.setProperty('--t-male',state.male);
+    root.style.setProperty('--t-female',state.female);
+    root.style.setProperty('--t-mut',state.mut);
+    card.className='pcard al-'+state.align;
+    drawDonut();
+    // 슬라이더 UI + 값 라벨
+    W.concat(F).concat(G).forEach(function(d){
+      var s=document.getElementById('s-'+d[0]); if(s) s.value=state[d[0]];
+      var vl=document.getElementById('v-'+d[0]); if(!vl) return;
+      var lad=d[7], v=state[d[0]];
+      var tk='';
+      if(lad){ tk='<span class="tk'+(lad[v]?'':' up')+'">'+tagMap(v,lad)+'</span>'; }
+      vl.innerHTML=(d[6]==='px'?v+'px':v)+tk;
+    });
+    C.forEach(function(d){
+      var sel=document.getElementById('c-'+d[0]); if(sel) sel.value=state[d[0]];
+      var vl=document.getElementById('v-'+d[0]); if(vl) vl.innerHTML='<span class="tk'+(COL[state[d[0]]]?'':' up')+'">'+(COL[state[d[0]]]?'= '+COL[state[d[0]]]:'⚠ 팔레트밖')+'</span>';
+    });
+    document.getElementById('cwlab').textContent=state.cardw+'px';
+    // 정렬 세그
+    document.querySelectorAll('#alignSeg button').forEach(function(b){ b.classList.toggle('on',b.dataset.al===state.align); });
+    buildOut();
+  }
+
+  function buildOut(){
+    var L=PRE.live;
+    function line(name,key,map){
+      var v=state[key], cur=L[key];
+      var t=map?tagMap(v,map):('');
+      var d=(v!==cur)?('  (현행 '+cur+(map?'px':'')+')'):'  (현행과 동일)';
+      return name+': '+v+(map?'px':(key==='bgA'?'':'px'))+(map?'  '+t:'')+d;
+    }
+    var o=[];
+    o.push('■ 프로필 카드 튜닝값 (목업 재현 → 라이브 반영 스펙)');
+    o.push('폭: '+state.cardw+'px  (라이브 실폭 860 · 목업 기준 '+state.cardw+')');
+    o.push('');
+    o.push('[글자]');
+    o.push(line('값(.ch-st b)','vfs',FS));
+    o.push(line('라벨(.ch-k)','lfs',FS));
+    o.push(line('증감·일평균(.ch-dl/.ch-rt)','sfs',FS));
+    o.push(line('@no_mute(.ch-nm)','nfs',FS));
+    o.push(line('순번 1','rfs',FS));
+    o.push(line('기간탭','tfs',FS));
+    o.push('');
+    o.push('[기하]');
+    o.push(line('타일 padding(.ch-st)','pad',SP));
+    o.push(line('타일 gap(.ch-stats)','gap',SP));
+    o.push(line('타일 radius','rad',RR));
+    o.push(line('카드 radius','crad',RR));
+    o.push('타일 최소높이: '+state.tileh+'px  (현행 '+L.tileh+')');
+    o.push('성별 도넛: '+state.donut+'px  (현행 '+L.donut+')');
+    o.push('타일 배경 알파: '+state.bgA+'  (현행 '+L.bgA+')');
+    o.push('값 정렬: '+(state.align==='c'?'중앙':'좌측'));
+    o.push('');
+    o.push('[색] 강조 '+state.acc+(COL[state.acc]?' ('+COL[state.acc]+')':' ⚠팔레트밖')+' · 남 '+state.male+(COL[state.male]?' ('+COL[state.male]+')':'')+' · 여 '+state.female+(COL[state.female]?' ('+COL[state.female]+')':'')+' · 보조 '+state.mut+(COL[state.mut]?' ('+COL[state.mut]+')':''));
+    var warns=[];
+    [['vfs',FS],['lfs',FS],['sfs',FS],['nfs',FS],['rfs',FS],['tfs',FS],['pad',SP],['gap',SP],['rad',RR],['crad',RR]].forEach(function(p){ if(!p[1][state[p[0]]]) warns.push(p[0]); });
+    if(warns.length){ o.push(''); o.push('⚠ 갱신(토큰 사다리 밖) = '+warns.join(', ')+' → 회신 시 :root 신규/변경 토큰으로 배선(기틀 축).'); }
+    document.getElementById('out').textContent=o.join('\n');
+  }
+
+  function markCustom(){ document.querySelectorAll('.preset').forEach(function(p){p.classList.remove('on');}); }
+
+  document.getElementById('presets').addEventListener('click',function(e){
+    var p=e.target.closest('.preset'); if(!p) return;
+    state=Object.assign({},PRE[p.dataset.p]);
+    document.querySelectorAll('.preset').forEach(function(x){x.classList.remove('on');});
+    p.classList.add('on');
+    fitZoom(); apply();
+  });
+  document.getElementById('alignSeg').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return; state.align=b.dataset.al; markCustom(); apply();
+  });
+
+  // 화면 배율(미리보기 fit)
+  var zoom=document.getElementById('zoom');
+  function setZoom(z){ root.style.setProperty('--t-scale',z); document.getElementById('zoomv').textContent=Math.round(z*100)+'%'; zoom.value=z; }
+  function fitZoom(){
+    var avail=Math.min(1120, window.innerWidth-52);
+    var z=Math.max(0.3,Math.min(1, avail/(state.cardw+40)));
+    setZoom(Math.round(z*50)/50);
+  }
+  zoom.addEventListener('input',function(e){ setZoom(parseFloat(e.target.value)); });
+  window.addEventListener('resize',function(){ /* 유지 */ });
+
+  document.getElementById('copy').addEventListener('click',function(){
+    var t=document.getElementById('out').textContent;
+    function done(){ var c=document.getElementById('copied'); c.classList.add('on'); setTimeout(function(){c.classList.remove('on');},1400); }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done,done); }
+    else { var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); done(); }
+  });
+
+  fitZoom(); apply();
+})();
+</script>
