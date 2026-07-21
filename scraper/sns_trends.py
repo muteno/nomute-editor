@@ -867,15 +867,14 @@ def _kr_mkt_open(now):
     return 540 <= hm <= 930   # 09:00(540) ~ 15:30(930)
 
 
-# ⑬ 금융 종목·지수 정본(운영자 260719 "종목 6개·지수 2개 추가") — 국내 원/해외 달러 2축 · 시총·통화 도장
-_FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"), ("034020", "두산에너빌리티"), ("012450", "한화에어로스페이스"))
+# ⑬ 금융 종목·지수 정본(운영자 260719 종목 추가 · 260721 두산·한화 제낌 = 국내2+해외4=6, 좌편 환율 6과 대칭) — 국내 원/해외 달러 2축 · 시총·통화 도장
+_FIN_STOCKS_KR = (("005930", "삼성전자"), ("000660", "SK하이닉스"))
 _FIN_STOCKS_US = (("TSLA.O", "테슬라"), ("NVDA.O", "엔비디아"), ("PLTR.O", "팔란티어"), ("SPCX.O", "스페이스X"))   # 스페이스x = 2026-06-12 나스닥 상장(SPCX.O · 실측)
 _FIN_INDICES = (("KOSPI", "코스피", "KRW"), ("KOSDAQ", "코스닥", "KRW"), (".IXIC", "나스닥", "USD"), (".INX", "S&P500", "USD"))
-# ⑬ 환율 = 8대 기축통화(운영자 260721 "영국돈이랑 몇개 더 넣어서 8개") — (코드, 네이버 마켓인덱스 코드, 표시명, 고시단위) · div=100 = JPY만(네이버 100엔 고시 → 1엔당 원화 저장 · 뷰어가 100엔 기준 ×100 복원 = 한국 관례) · 그 외 = 1(1통화당 원화)
+# ⑬ 환율 = 6대 기축통화(운영자 260721 "좌편에 유로화나 파운드 더 넣어서 6개 맞춰줘" = 종목 6개와 대칭 · 구 8개서 CAD·CHF 제외) — (코드, 네이버 마켓인덱스 코드, 표시명, 고시단위) · div=100 = JPY만(네이버 100엔 고시 → 1엔당 원화 저장 · 뷰어가 100엔 기준 ×100 복원 = 한국 관례) · 그 외 = 1(1통화당 원화)
 _FIN_FX = (("USD", "FX_USDKRW", "미국 달러", 1), ("EUR", "FX_EURKRW", "유로", 1),
            ("JPY", "FX_JPYKRW", "일본 엔", 100), ("GBP", "FX_GBPKRW", "영국 파운드", 1),
-           ("CNY", "FX_CNYKRW", "중국 위안", 1), ("AUD", "FX_AUDKRW", "호주 달러", 1),
-           ("CAD", "FX_CADKRW", "캐나다 달러", 1), ("CHF", "FX_CHFKRW", "스위스 프랑", 1))
+           ("CNY", "FX_CNYKRW", "중국 위안", 1), ("AUD", "FX_AUDKRW", "호주 달러", 1))
 
 
 def _fin_stock_kr(code, name):
@@ -949,7 +948,7 @@ def finance(prev_fin=None):
 
     # ── 환율(네이버 하나은행 고시 · 값+등락률 장중 갱신 · 전일 종가 대비) — 3h throttle(운영자 260717 "환율 3시간") ──
     rates = list(prev_fin.get("rates") or [])
-    if len(rates) < len(_FIN_FX) or _stale("rates", 3):   # 통화 수 증가(4→8 확장) = 3h 스로틀 무시하고 즉시 재수집 = 신규 기축통화 다음 run 발효 · 완비 후엔 len 동수 → 스로틀 복귀
+    if [r.get("code") for r in rates] != [f[0] for f in _FIN_FX] or _stale("rates", 3):   # 통화 집합 변경(추가·삭제·순서) = 3h 스로틀 무시하고 즉시 재수집 = 다음 run 발효(구 4→8, 현 8→6 축소 모두 커버) · 집합 일치 후엔 스로틀 복귀
         got = []
         for code, rc, name, div in _FIN_FX:
             try:
@@ -985,7 +984,7 @@ def finance(prev_fin=None):
 
     # ── 주요종목(삼성·SK·두산·한화 원 + 테슬라·엔비디아·팔란티어·스페이스x 달러 · 운영자 260719) — 시총·통화 도장 · 지수와 동일 주기 ──
     stocks = list(prev_fin.get("stocks") or [])
-    if not stocks or (_fin_open and _stale("stocks", 1)):
+    if [s.get("code") for s in stocks] != [c for c, _ in _FIN_STOCKS_KR] + [c for c, _ in _FIN_STOCKS_US] or (_fin_open and _stale("stocks", 1)):   # 종목 집합 변경(두산·한화 제낌 등) = 장중·스로틀 무관 즉시 재수집 = 다음 run 발효 · 일치 후엔 장중 1h 스로틀 복귀
         got = []
         for code, name in _FIN_STOCKS_KR:
             try:
