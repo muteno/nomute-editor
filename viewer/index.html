@@ -817,6 +817,9 @@
   .ch-sub .ch-dl.fd-up { color:var(--accent); }
   .ch-sub .ch-dl.fd-dn { color:var(--danger); }
   .ch-sub .ch-rt { font-size:calc(var(--fs-sm)*1.3); font-variant-numeric:tabular-nums; }   /* 'N/일' = 증감(ch-dl)과 동급 크기 · ×1.3(운영자 260721 130%) · 색 = span 상속(mut) */
+  .ch-sub .ch-vs { font-size:calc(var(--fs-sm)*1.3); white-space:nowrap; }   /* 'N일 대비' 접두 = 프로필 세그 연동(운영자 260721 예시) — 색 = span 상속(mut) · 크기 = 하단 행 동급 */
+  .ch-sub .ch-rte { display:inline-flex; align-items:center; gap:var(--sp-1); white-space:nowrap; }   /* 구분선+일평균 묶음 — 협폭 개행 시 한 덩어리로 다음 줄(선 홀로 잔류 방지) */
+  .ch-sub .ch-sep { width:1px; height:1em; background:var(--line2); }   /* 증감 | 일평균 구분 세로선(운영자 260721 예시 '|') — 잉크 = 레일 edge(var(--line2)) 계승 */
   .ch-demo [data-ax]:not(.on) { display:none; }   /* 안전망 — viz는 항상 on(성별·연령 = 독립 타일 분리 · 운영자 260721 4×2 · 구 .ch-demo-b 교대 셸·회전 폐지) */
   .demo-viz { display:flex; align-items:center; gap:8px; min-width:0; }   /* raw-ok: gap8 = .ch-stats gap 동값 계승 · center = 도넛|범례 세로 중앙 나란히(운영자 260721 목업) */
   .demo-donut { width:46px; height:46px; flex:none; }   /* raw-ok: 46 = 타일 내 도넛 광학 크기(종전 실측 계승) · 세그 기하는 pathLength 정규화라 크기 무관 */
@@ -11163,13 +11166,13 @@ function renderChan() {
     const sumIn = (hi, n2) => { let t = 0, has = false; for (let i = hi; i > hi - n2 && i >= 0; i--) { const v = series[i][key]; if (v != null) { t += v; has = true; } } return has ? t : null; };
     return { cur: sumIn(end, cnt), prev: CHAN_PROF_R === 'all' ? null : sumIn(end - cnt, cnt) };   // 전체 창 = 직전 창 부재(괄호 자동 생략)
   };
-  const dl = df => df == null ? '' : `<span class="ch-dl ${df > 0 ? 'fd-up' : df < 0 ? 'fd-dn' : 'fd-zero'}">${df > 0 ? '+' + (df >= 1e4 ? vf(df) : df.toLocaleString()) : df < 0 ? '−' + (Math.abs(df) >= 1e4 ? vf(Math.abs(df)) : Math.abs(df).toLocaleString()) : '±0'}</span>`;   // 증감 = 하단 행 볼드(운영자 260721 목업 "+1,158" — 구 괄호 dparen 대체 · fd-* 의미색·만 축약 계승 · 1만 미만 = 콤마)
+  const dl = (df, unit) => df == null ? '' : `<span class="ch-dl ${df > 0 ? 'fd-up' : df < 0 ? 'fd-dn' : 'fd-zero'}">${df > 0 ? '+' + (df >= 1e4 ? vf(df) : df.toLocaleString()) : df < 0 ? '−' + (Math.abs(df) >= 1e4 ? vf(Math.abs(df)) : Math.abs(df).toLocaleString()) : '±0'}${unit || ''}</span>`;   // 증감 = 하단 행 볼드(운영자 260721 목업 — fd-* 의미색·만 축약 계승 · 1만 미만 = 콤마) · unit = 팔로워 '명'(운영자 260721 "7일 대비 +1,100명" 예시 그대로)
   const rt = key => { const w = winAvg(key); return w ? `<span class="ch-rt">${vf(rnd(w.a))}/일</span>` : ''; };   // 일평균 = 'N/일' 축약(목업 "38.6/일" — 구 우상단 'X / 일 평균' 배지 대체 · 값 = winAvg 그대로)
-  const sub = (dh, rh) => (dh || rh) ? `<div class="ch-sub">${dh}${rh}</div>` : '';
+  const sub = (dh, rh) => { const vs = dh && CHAN_PROF_R !== 'all' ? `<span class="ch-vs">${CHAN_PROF_R}일 대비</span>` : ''; const rte = rh ? `<span class="ch-rte">${dh ? '<i class="ch-sep" aria-hidden="true"></i>' : ''}${rh}</span>` : ''; return (dh || rh) ? `<div class="ch-sub">${vs}${dh}${rte}</div>` : ''; };   // 'N일 대비' 접두 = 프로필 세그(CHAN_PROF_R) 연동(운영자 260721 "7일 대비 +1,100명 | 37.3/일" — 전체 = 접두 생략 "전체는 어쩔수없는거고") · 구분 세로선+일평균 = 한 덩어리(.ch-rte — 협폭 개행 시 선이 줄 끝에 홀로 안 남게 동반 이동)
   const sumTile = (lb, key, unit, fbv) => { const w = winSum(key); if (!(w && w.cur != null)) return st(lb, fbv, sub('', rt(key))); return st(lb, vf(w.cur) + (unit === '개' ? '개' : ''), sub(dl(w.prev != null ? w.cur - w.prev : null), rt(key))); };   // 본값 = 창 합계 · 단위 = 게시 '개'만(목업 — 조회·도달·방문은 라벨이 의미 담당) · 하단 행 = 직전 동창 대비 증감 + 일평균 · 결측 = 당일값 폴백(fail-soft)
   // 팔로워 = 카운트 본값 + 하단 행 '+신규합 N/일'(운영자 260721 목업 · CHAN_PROF_R 창 연동 · 신규 팔로워 합 = winSum('follows') — 언팔 미수집이라 순증감 아님 · 🔒[15]) — 구 flwSt 증감 카드(chSpark2)·괄호 병기(Q290) 폐지 대체
   const flwVal = () => p.followers_count == null ? '—' : p.followers_count.toLocaleString();
-  const flwSub = () => { const w = winSum('follows'); return sub(w && w.cur != null ? dl(w.cur) : '', rt('follows')); };
+  const flwSub = () => { const w = winSum('follows'); return sub(w && w.cur != null ? dl(w.cur, '명') : '', rt('follows')); };   // 팔로워 = '명' 접미(운영자 260721 "7일 대비 +1,100명" 예시 그대로 · 타 지표 = 만 축약이 단위 담당이라 무접미)
   // 팔로워 구성 도넛 2종(성별|연령 100% 누적 · 운영자 260720 "요약 빈칸에") — 원천 = audience_sample.age_gender_top(수집기 TOP5 · lifetime 표본)이라 축별 합산 후 잔여 = '그 외'로 100% 마감(수기 창작 0 · 정직) · lifetime 지표라 기간 토글 비연동 · 데이터 부재(fb 등) = 빈 칸 유지(조용한 공백)
   const demoTile = () => {
     const ag = ((d.audience_sample || {}).age_gender_top || []);
