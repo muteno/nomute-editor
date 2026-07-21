@@ -132,12 +132,12 @@ async function runOnce(pg) {
   core('C10 미리보기 박스 폭 = 편집 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'edit=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
   core('C11 리드 = thumb 도크 파리티(mat 배경·경계선 0·페이드 스커트 h/그라데 동일)', ai.leadBg === ed.dockBg && ai.leadBb === ed.dockBb && ai.skirtH === ed.skirtH && ai.skirtBg === ed.skirtBg,
     JSON.stringify({ edit: { bg: ed.dockBg, bb: ed.dockBb, sh: ed.skirtH }, ai: { bg: ai.leadBg, bb: ai.leadBb, sh: ai.skirtH, sameGrad: ai.skirtBg === ed.skirtBg } }));
-  core('C12 스트립 문법 = 라벨+값 쌍 · 전 옵션 상시 나열(10쌍) · 기본 상태 = 한국웹툰화 ON만 점등', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 10 && ai.sumGram.v === 10 && ai.sumGram.on === 1,
+  core('C12 스트립 문법 = 라벨+값 쌍 · 5항 한정 나열(비율·화풍·세부·한국웹툰화·문구 = 운영자 260721 축소 · 구 10쌍 전량 = 2줄 랩 폐지) · 기본 상태 = 한국웹툰화 ON만 점등', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 5 && ai.sumGram.v === 5 && ai.sumGram.on === 1,
     JSON.stringify({ edit: ed.specGram, ai: ai.sumGram }));
-  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="size"] .geni-opt[data-v="2K"]'); if (b) b.click(); });   // 상태 추종 실측 = 해상도 2K 선택
-  const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has2K: on.includes('2K') }; });
-  core('C13 점등 = 상태 추종(2K 선택 → 해상도만 추가 점등 = 2쌍)', lit.n === 2 && lit.has2K, JSON.stringify(lit));
-  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="size"] .geni-opt[data-v="FHD"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
+  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="9:16"]'); if (b) b.click(); });   // 상태 추종 실측 = 비율 9:16 선택(구 해상도 2K = 5항 축소로 요약 밖 → 잔존 5항 안 옵션으로 교체)
+  const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has916: on.includes('9:16') }; });
+  core('C13 점등 = 상태 추종(비율 9:16 선택 → 비율만 추가 점등 = 2쌍)', lit.n === 2 && lit.has916, JSON.stringify(lit));
+  await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="4:5"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
 
   return out;
 }

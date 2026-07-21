@@ -25,8 +25,29 @@ except Exception as e:
 PY
 )"
 
+# 컨텍스트(참고 기사 스탠스·재생성 지시 · 운영자 260721 v2 — env CTX = {art:{t,m,b},note,redo} JSON · 없으면 빈 블록)
+CTX_TXT="$(python3 - <<'PY'
+import json, os
+try:
+    c = json.loads(os.environ.get('CTX') or '{}')
+except Exception:
+    c = {}
+seg = []
+a = c.get('art') or {}
+if a.get('t') or a.get('b'):
+    seg.append('## 참고 기사(번역 스탠스 근거)\n아래 기사의 관점·용어·톤에 맞춰 강조 선정과 번역 문구의 스탠스를 잡아라.\n제목: %s\n매체: %s\n요약: %s' % (a.get('t',''), a.get('m',''), a.get('b','')))
+if c.get('redo'):
+    seg.append('## 재생성 요청\n이전 결과가 반려됐다. 선별·번역을 새로 하되 아래 운영자 지시가 있으면 그걸 최우선으로 반영해라.')
+if c.get('note'):
+    seg.append('## 운영자 지시(최우선 반영)\n%s' % c['note'])
+print('\n\n'.join(seg))
+PY
+)"
+
 prompt="$(cat "$PROMPT_FILE")
-${NUM_LINES}"
+${NUM_LINES}
+
+${CTX_TXT}"
 
 # 순수 텍스트 작업 = 도구 전부 불허(헤드리스 무중단 · kmake와 동일 축, 지침 Read조차 불요)
 inline_delay=15
@@ -67,6 +88,9 @@ assert isinstance(plan.get('hl'), list) and plan['hl'] and all(isinstance(i, int
 assert isinstance(plan.get('chips'), list) and plan['chips'], 'chips 불량'
 for c in plan['chips']:
     assert isinstance(c.get('a'), int) and str(c.get('t', '')).strip(), 'chip 불량'
+b = plan.get('band')   # 밴드 문구(운영자 260721 v2 · 옵션 — 구 plan 하위호환)
+if b is not None:
+    assert isinstance(b, str) and len(b) <= 400, 'band 불량'
 plan['v'] = 1
 json.dump(plan, open(os.path.join(d, 'plan.json'), 'w', encoding='utf-8'), ensure_ascii=False)
 PY
