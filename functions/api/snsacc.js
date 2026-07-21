@@ -67,7 +67,18 @@ export async function onRequestPost({ request, env }) {
       method: 'PUT', headers: H,
       body: JSON.stringify({ message: 'sns: 구독 계정 갱신', content: b64utf8(JSON.stringify(next, null, 1) + '\n'), branch: 'main', ...(sha ? { sha } : {}) }),
     });
-    if (put.ok) return json({ ok: true, accounts: next });
+    if (put.ok) {
+      // 저장 즉발 수집(운영자 260721 "저장하면 바로 돌게") — sns-trends workflow_dispatch 1발.
+      // fail-soft: 디스패치 실패(토큰 actions 권한 없음 등)여도 저장은 이미 성공 = 종전 30분 크론 경로로 반영.
+      // 과금·중복 안전 = 워크플로 Collect 선두 신선도 게이트(최근 28분 내 갱신 = 수집 스킵 캐스케이드)가 그대로 흡수.
+      let dispatched = false;
+      try {
+        const d = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/sns-trends.yml/dispatches`,
+          { method: 'POST', headers: H, body: JSON.stringify({ ref: 'main' }) });
+        dispatched = d.status === 204;
+      } catch { /* fail-soft */ }
+      return json({ ok: true, accounts: next, dispatched });
+    }
     if (put.status === 409 || put.status === 422) continue;   // sha 경합·최초 동시생성 → 최신 sha 재취득 재시도(settings.js 계승)
     return json({ error: `GitHub write ${put.status}: ${(await put.text()).slice(0, 200)}` }, 502);
   }
