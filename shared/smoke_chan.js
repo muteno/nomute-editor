@@ -226,10 +226,10 @@ const SEL = {
     });
     ok('C10 PC 1280 트위터 좌X↔우블스 순위 행 y 패리티(|Δ|≤0.5 · 카드 높이 단일값)', c10.skip ? true : (c10.dmax <= 0.5 && c10.hs.length === 1), c10.skip ? 'skip(한쪽 결측)' : `|Δ|max ${c10.dmax}(쌍${c10.n}) · 높이 ${c10.hs.join('/')}`);
 
-    // C11 금융 2x2 좌우 소머리(블릿) y 패리티(운영자 260721 "좌우가 블릿끼리 안 맞거든") — 1행 환율↔암호화폐 · 2행 증시↔종목 · 형제 구분선의 1행 우측 오적용(#655) 해제 회귀 가드 · 결측 그룹 = 그 쌍만 skip
+    // C11 금융 2x2 좌우 소머리(블릿) y 패리티(운영자 260721 "좌우가 블릿끼리 안 맞거든") — 1행 증시↔암호화폐 · 2행 환율↔종목(260721 순서 재편) · 형제 구분선의 1행 우측 오적용(#655) 해제 회귀 가드 · 결측 그룹 = 그 쌍만 skip
     const c11 = await pg.evaluate(() => {
       const top = s => { const el = document.querySelector(`[data-sec="${s}"] > summary`); return el ? el.getBoundingClientRect().top : null; };
-      const pairs = [['fin-fx', 'fin-cc'], ['fin-idx', 'fin-stk']].map(([a, b]) => { const ta = top(a), tb = top(b); return (ta == null || tb == null) ? null : +(tb - ta).toFixed(2); }).filter(v => v != null);
+      const pairs = [['fin-idx', 'fin-cc'], ['fin-fx', 'fin-stk']].map(([a, b]) => { const ta = top(a), tb = top(b); return (ta == null || tb == null) ? null : +(tb - ta).toFixed(2); }).filter(v => v != null);
       return { n: pairs.length, dmax: pairs.length ? Math.max(...pairs.map(Math.abs)) : null };
     });
     ok('C11 PC 1280 금융 2x2 좌우 소머리 y 패리티(|Δ|≤0.5)', c11.n === 0 ? true : c11.dmax <= 0.5, c11.n === 0 ? 'skip(금융 결측)' : `|Δ|max ${c11.dmax}(쌍${c11.n})`);
