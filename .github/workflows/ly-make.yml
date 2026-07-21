@@ -1,6 +1,6 @@
 name: ly-make
 
-# 뷰어 ly 폼(Pages Function /api/ly)이 발사 → SRT/STT 텍스트로 claude -p(/ly 지침 런타임 Read)
+# 뷰어 ly 폼(Pages Function /api/ly)이 발사 → SRT/STT 텍스트로 claude -p(지침 전문 프롬프트 인라인 · 260721 — 구 런타임 Read 왕복 폐지)
 #   → 릴스 자막 md → viewer/ly_out/<id>/subs.md 커밋(폼이 폴링).
 # 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료). 입력 = SRT/STT 텍스트 또는 영상 URL/업로드 파일(yt-dlp/ffmpeg → Whisper large-v3-turbo STT).
 on:
@@ -59,6 +59,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          filter: blob:none   # 부분 클론(260721 속도) — 커밋 그래프는 전부(rebase·push 종전 그대로)·역사 블롭만 지연 회수 = 무거운 레포(이미지·zip 히스토리) 체크아웃 65s→수십초. 미회수 블롭은 필요 시 자동 fetch(promisor)
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -246,7 +247,7 @@ jobs:
           [ -f "$FILE" ] || { echo "::error::업로드 파일 없음: $FILE"; exit 1; }
           VID=""
           case "$FILE" in
-            *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi) VID="$FILE";;
+            *.mp4|*.mov|*.m4v|*.webm|*.mkv|*.avi|*.3gp) VID="$FILE";;   # +3gp(260721) — 뷰어 첨부 허용 목록(ly.html isVideo)과 정합: 빠지면 원본 업로드해도 '영상 확보 실패 → 자막만'
           esac
           if [ -n "$VID" ]; then
             # 길이 선게이트(평의회9 260709) — URL 경로와 동일: 10분 초과는 번인만 스킵(자막 텍스트 계속·사유 선기록)
@@ -341,7 +342,7 @@ jobs:
       # 배경음 제거(opts.bgm) 요청 런에서만 — Demucs(보컬 분리·로컬·키 불필요) 설치 + 모델·휠 7일 캐시(§9 캐시·타임아웃 원칙).
       #   실패 = 경고 후 계속(fail-soft — ly_burn.strip_bgm이 미설치를 감지해 원본 소리로 합성·잡 안 죽임). torch = CPU 휠(CUDA 대형휠 회피).
       - name: Demucs 캐시 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # bgm은 번인 하위 축 — burn OFF·길이 선-스킵(LY_NOBURN)이면 어차피 안 쓰므로 설치도 스킵(3~7분 헛설치 차단 · 평의회9·재평의회1) · contains = 뷰어 JSON.stringify 고정 직렬화 전제(기존 bgm 게이트 동일) · env 참조 = 조기 subs 커밋 스텝의 LY_VIDEO 선례
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' && env.LY_VIDEO != '' }}   # bgm은 번인 하위 축 — burn OFF·길이 선-스킵(LY_NOBURN)·영상 미확보(LY_VIDEO 빈값 = 번인이 어차피 skip 기록만 · 260721)면 설치도 스킵(3~7분 헛설치 차단 · 평의회9·재평의회1) · contains = 뷰어 JSON.stringify 고정 직렬화 전제(기존 bgm 게이트 동일) · env 참조 = 조기 subs 커밋 스텝의 LY_VIDEO 선례
         uses: actions/cache@v4
         with:
           path: |
@@ -349,7 +350,7 @@ jobs:
             ~/.cache/pip
           key: nomute-ly-demucs-${{ runner.os }}-htdemucs-torch2121-demucs401-v1   # 핀 버전을 키에 반영(핀 갱신 = 키 동행 갱신 · 평의회2)
       - name: Demucs 설치 (배경음 제거)
-        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' }}   # 캐시 스텝과 동일 게이트(평의회9·재평의회1)
+        if: ${{ contains(inputs.opts, '"bgm":true') && contains(inputs.opts, '"burn":true') && env.LY_NOBURN != '1' && env.LY_VIDEO != '' }}   # 캐시 스텝과 동일 게이트(평의회9·재평의회1 · +영상 미확보 스킵 260721)
         timeout-minutes: 12   # 설치 폭주 백스톱(재시도 포함 최악 20분 → 12분 컷 · 실측 콜드 3~7분)
         run: |
           ok=0

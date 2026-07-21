@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 입력(env SUBS = SRT/STT 텍스트) → claude -p(헤드리스, /ly 지침 런타임 Read) → 릴스 자막 md
+# 입력(env SUBS = SRT/STT 텍스트) → claude -p(헤드리스 · 지침 전문 프롬프트 인라인 260721 — 구 런타임 Read 왕복 폐지) → 릴스 자막 md
 #   → viewer/ly_out/<id>/subs.md. 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료).
 # 워크플로가 커밋·push(thumb-make 가드 패턴). 실패 = error.log + exit 1.
 # 이 스크립트는 SUBS(텍스트/SRT 또는 Whisper STT 결과)만 처리. 영상 URL/파일→Whisper STT는 워크플로(ly-make.yml) 상위 스텝에서.
@@ -46,6 +46,12 @@ PY
 )"
 prompt="$(cat "$PROMPT_FILE")"
 prompt="${prompt/__LY_OPTS__/$OPTS_LINES}"
+# 지침 인라인(260721 속도): 구 방식 = 모델이 41KB 지침을 런타임 Read(에이전트 왕복 추가 = effort max 사고 재실행 · 실측 의역 스텝 350~555s의 주범 축).
+#   프롬프트에 전문을 선삽입해 단발 산출로 전환 — SSOT 불변(cat 시점 그 파일 최신 · 내용·모델·effort 동일 = 품질 동일 축).
+#   파일 미발견 = 구 방식 문구로 폴백(fail-soft — 마커 잔존이 모델을 헷갈리게 두지 않는다).
+GUIDE="$(cat "$ROOT/apps/ly/00_지침_자막기_v2.8.md" 2>/dev/null || true)"
+[ -n "$GUIDE" ] || GUIDE="(지침 파일이 삽입되지 않았다 — apps/ly/00_지침_자막기_v2.8.md를 Read로 읽고 그 지침을 정본으로 따르라)"
+prompt="${prompt/__LY_GUIDE__/$GUIDE}"
 prompt="$prompt
 ${SUBS}"
 
