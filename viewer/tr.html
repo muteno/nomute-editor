@@ -259,7 +259,7 @@ artBtn.addEventListener('click', async () => {
     const c = await (await fetch('candidates.json?_=' + Date.now())).json();   // 최신 수집 기사(수집함)
     (Array.isArray(c) ? c : []).filter(x => x && x.title)
       .sort((a, b) => String(b.published || '').localeCompare(String(a.published || ''))).slice(0, 6)
-      .forEach(x => rows.push({ k: '수집', t: String(x.title), m: String(x.media || '') }));
+      .forEach(x => rows.push({ k: '수집', t: String(x.title), m: String(x.media || ''), u: /^https?:\/\//.test(String(x.url || '')) ? String(x.url) : '' }));   // 원문 URL 동봉 = 서버가 직접 읽어 본문 확보(운영자 260721 "서드파티 직접 읽기" · fetch_article 정본 축)
   } catch (_) {}
   artList.innerHTML = rows.length
     ? rows.map((r, i) => '<div class="job" role="button" tabindex="0" data-ref="' + i + '"><span class="jtxt"><span class="jt-tag">' + r.k + '</span>' + esc((r.m ? r.m + ' · ' : '') + r.t.slice(0, 52)) + '</span></div>').join('')
@@ -271,7 +271,7 @@ async function pickRef(el){
   const r = (artList._rows || [])[+el.dataset.ref]; if (!r) return;
   let body = '';
   if (r.file) { try { const d = await (await fetch('detail/' + encodeURIComponent(r.file) + '.json?_=' + Date.now())).json(); body = plain(d.body).slice(0, 900); } catch (_) {} }
-  ART = { t: r.t.slice(0, 200), m: r.m.slice(0, 40), b: body };
+  ART = { t: r.t.slice(0, 200), m: r.m.slice(0, 40), b: body, u: r.u || '' };   // u = 수집 기사 원문(서버측 직접 읽기 축 — 요약은 body 동봉이라 u 불요)
   artT.textContent = '참고 — ' + ART.t; artT.hidden = false;
   artBtn.classList.add('on');   // 선택 존재 = 세그 점등(.seg button.on 문법)
   artList.hidden = true;

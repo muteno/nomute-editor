@@ -51,6 +51,19 @@ const TR_RULES = `너는 뉴스 이미지 번역 에디터다. 아래에 외국 
 6. OCR 라인 뒤에 참고 기사가 오면 그 관점·용어로 스탠스를 잡고, 운영자 지시가 오면 그걸 최우선으로 반영해라(재생성 = 이전과 같은 선별 반복 금지).
 7. v는 항상 1.`;
 
+async function fetchArtBody(u) {   // 수집 기사 원문 직접 읽기(운영자 260721 "서드파티 직접 읽기" — .github/scripts/fetch_article.sh 정본의 경량 JS 미러 · CF 서버측 = CORS 무관 · fail-soft = 실패 시 제목만)
+  try {
+    const r = await fetch(u, { headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Mobile Safari/537.36' }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return '';
+    let t = await r.text();
+    t = t.replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, ' ')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+    const lines = t.split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(l => (l.match(/[가-힣]/g) || []).length >= 20);   // 한글 빈약 줄(네비·잔재) 버림 = 정본 필터 미러
+    const out = [...new Set(lines)].slice(0, 30).join('\n');
+    return (out.match(/[가-힣]/g) || []).length >= 200 ? out.slice(0, 900) : '';   // 빈약 = 빈 출력(정본 200자 게이트 미러)
+  } catch (_) { return ''; }
+}
+
 function ctxBlocks(ctx) {   // 컨텍스트 → 프롬프트 블록(trauto.sh CTX_TXT와 동일 계약 · 없으면 빈 배열)
   const seg = [];
   const a = (ctx && ctx.art) || null;
@@ -103,8 +116,10 @@ export async function onRequestPost({ request, env }) {
   const c = (body.ctx && typeof body.ctx === 'object') ? body.ctx : {};
   const ctx = {};
   if (c.art && (c.art.t || c.art.b)) ctx.art = { t: String(c.art.t || '').slice(0, 200), m: String(c.art.m || '').slice(0, 40), b: String(c.art.b || '').slice(0, 900) };
+  if (ctx.art && c.art.u && /^https?:\/\//.test(String(c.art.u))) ctx.art.u = String(c.art.u).slice(0, 500);   // 수집 기사 원문 URL(서드파티 직접 읽기 축)
   if (c.note) ctx.note = String(c.note).slice(0, 500);
   if (c.redo) ctx.redo = 1;
+  if (ctx.art && !ctx.art.b && ctx.art.u) ctx.art.b = await fetchArtBody(ctx.art.u);   // 본문 없는 수집 기사 = 서버가 원문 직접 읽어 동봉(즉답·폴백 두 경로 공통 수혜 · 실패 = 제목만 fail-soft)
 
   // ① 즉답 경로(키 있을 때만 · 실패 = 조용히 폴백 — fail-soft)
   if (env.ANTHROPIC_API_KEY) {

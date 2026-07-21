@@ -25,7 +25,24 @@ except Exception as e:
 PY
 )"
 
-# 컨텍스트(참고 기사 스탠스·재생성 지시 · 운영자 260721 v2 — env CTX = {art:{t,m,b},note,redo} JSON · 없으면 빈 블록)
+# 참고 기사 원문 직접 읽기(운영자 260721 "서드파티 직접 읽기") — 수집 기사(u만 있고 본문 빈약)면 fetch_article.sh 정본 재사용(ask 파이프 동일 축 · 실패 = 제목만 fail-soft)
+ART_BODY="$(python3 - <<'PY'
+import json, os
+try:
+    c = json.loads(os.environ.get('CTX') or '{}')
+except Exception:
+    c = {}
+a = c.get('art') or {}
+u = str(a.get('u') or '')
+print(u if (u.startswith('http') and len(str(a.get('b') or '')) < 80) else '')
+PY
+)"
+if [ -n "$ART_BODY" ]; then
+  ART_BODY="$(bash .github/scripts/fetch_article.sh "$ART_BODY" 2>/dev/null | head -c 2500)"
+fi
+export ART_BODY
+
+# 컨텍스트(참고 기사 스탠스·재생성 지시 · 운영자 260721 v2 — env CTX = {art:{t,m,b,u},note,redo} JSON · 없으면 빈 블록)
 CTX_TXT="$(python3 - <<'PY'
 import json, os
 try:
@@ -34,8 +51,9 @@ except Exception:
     c = {}
 seg = []
 a = c.get('art') or {}
-if a.get('t') or a.get('b'):
-    seg.append('## 참고 기사(번역 스탠스 근거)\n아래 기사의 관점·용어·톤에 맞춰 강조 선정과 번역 문구의 스탠스를 잡아라.\n제목: %s\n매체: %s\n요약: %s' % (a.get('t',''), a.get('m',''), a.get('b','')))
+body = str(a.get('b') or '') or os.environ.get('ART_BODY', '')   # 빈약 본문 = fetch_article.sh 직접 읽기 결과로 대체(수집 기사 축)
+if a.get('t') or body:
+    seg.append('## 참고 기사(번역 스탠스 근거)\n아래 기사의 관점·용어·톤에 맞춰 강조 선정과 번역 문구의 스탠스를 잡아라.\n제목: %s\n매체: %s\n요약: %s' % (a.get('t',''), a.get('m',''), body))
 if c.get('redo'):
     seg.append('## 재생성 요청\n이전 결과가 반려됐다. 선별·번역을 새로 하되 아래 운영자 지시가 있으면 그걸 최우선으로 반영해라.')
 if c.get('note'):
