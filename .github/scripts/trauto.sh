@@ -7,7 +7,8 @@ PROMPT_FILE="prompts/tr-auto.md"
 source "$ROOT/shared/model_env.sh"          # 모델 단일 원천(PIPE_MODEL · SYS-08)
 source "$ROOT/shared/claude_transient.sh"   # is_quota()/claude_failover()/is_transient() SSOT — 4계정 자동 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 계측(metrics shard)
-MODEL="$PIPE_MODEL"
+MODEL="${TR_MODEL:-$PIPE_MODEL}"     # 모델 토글(운영자 260722 · 소넷5 등 · 기본 PIPE_MODEL=opus) — 워크플로 env TR_MODEL로 카나리
+TR_EFFORT="${TR_EFFORT:-high}"       # OCR 강조선정+한글번역 = 정해진 변환 → high(운영자 260722 · max 헛사고 회피·정확도 우선) · 토글 high/medium/low
 INLINE_TRIES="${INLINE_TRIES:-4}"
 ID="${1:?usage: trauto.sh <id> (LINES=env)}"
 OUTDIR="viewer/tr_out/${ID}"; mkdir -p "$OUTDIR"
@@ -71,9 +72,9 @@ ${CTX_TXT}"
 inline_delay=15
 _to_tried=0
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=tr METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
+  out="$(printf '%s' "$prompt" | METER_SRC=tr METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$TR_EFFORT" claude_meter 600 \
         --model "$MODEL" \
-        --effort max \
+        --effort "$TR_EFFORT" \
         --disallowedTools "Read,Glob,Grep,WebFetch,WebSearch,Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 8 \
         2> "${OUTDIR}/stderr.log")"

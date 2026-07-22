@@ -7,7 +7,8 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/ly-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="${LY_MODEL:-$PIPE_MODEL}"     # 모델 토글(운영자 260722 · 소넷5 등 · 기본 PIPE_MODEL=opus) — 워크플로 env LY_MODEL로 카나리
+LY_EFFORT="${LY_EFFORT:-high}"       # 자막(SRT/STT) 정형 = 정해진 변환 → high(운영자 260722 · max 헛사고 회피) · 토글 high/medium/low
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 쿼터 한도 시 4계정 자동 로테이션·일시 과부하 재시도(analyze·ask·card와 통일·§📰)
 source "$ROOT/shared/claude_meter.sh"   # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버(서브1→서브2→서브3 = 4계정 체인 깊이·서브3 실호출)·일시 과부하(5xx/Overloaded) 인라인 재시도(15s·30s 백오프) — analyze·ask·card와 동일
@@ -63,9 +64,9 @@ export CLAUDE_CODE_MAX_OUTPUT_TOKENS="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-64000}"
 # 인라인 재시도 — 쿼터 한도면 대체 계정 전환(claude_failover·서브1→서브2→서브3), 일시 과부하(5xx/Overloaded)면 백오프 재시도. 성공·LYMAKE_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0).
 inline_delay=15
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=ly METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=ly METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$LY_EFFORT" claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort "$LY_EFFORT" \
         --allowedTools "Read,Glob,Grep" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 40 \
