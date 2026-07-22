@@ -166,7 +166,7 @@ const SEL = {
         const Lr = hb.right - TI, Ll = hb.left + TI, Lc = _br ? (_br.left + _br.right) / 2 : Ll + 12, ds = [], ov = [];   // ds = 정렬 정합(|Δ|) · ov = 초과 금지(랩 프로즈 = 래기드 우변이라 ≤만 계약) · Lc = 배지 4분할 중앙 세로선(운영자 260721 요청 = topic 라벨 좌변 정본 · 배지 실측 중앙 = 토큰/매직넘버 드리프트 면역)
         const _sg = document.querySelector('.chseg-row .pf-seg') || document.querySelector('.chseg-row .ch-rangeseg');   // 기간 세그(토글) 우변 = 260722 신 우변 기준선(운영자 "토글에 맞춰 우측 정렬" — topic 수치·tpost ×열이 체브론선에서 이관) · 실측 앵커 = CSS 34 인셋과 단일 소스 무관 드리프트 면역
         const Ls = _sg ? _sg.getBoundingClientRect().right : Lr;
-        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Ls).toFixed(2), +(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });
+        if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });   // topic 수치(.tv) 우변=토글선 계약 해제(운영자 260722 "막대 4/5·줄인만큼 수치 좌측 이동" — 값이 토글선 이탈·좌측 부동) → 라벨 좌변(배지선)만 유지 · tpost ×열은 토글선 계약 유지(별도 행 문법)
         if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
         if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Ls).toFixed(2)));
         d.querySelectorAll('.ch-morelink:not(.ch-hdrmore)').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));   // 하단 내역확인 = daily 단독(tpost '내역 ▶' = 260722 헤더 이관 → C14 별도 계약)
@@ -174,7 +174,7 @@ const SEL = {
       }
       return out;
     });
-    ok('C8 채널요약 잉크선 412(topic 좌=배지선·topic 수치/tpost ×열=세그(토글) 우변선[260722 이관] / sig 범례·daily 내역확인=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
+    ok('C8 채널요약 잉크선 412(topic 좌=배지선[수치=막대우 좌측 부동 260722]·tpost ×열=세그(토글) 우변선 / sig 범례·daily 내역확인=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
 
     // C14 tpost '내역 ▶' 헤더 동행 계약(운영자 260722 — 구 본문 하단 '내역 확인 ›' → 헤더 타이틀 옆 이관 · .ch-hdrmore) — 펼침 상태 계약: abspos·타이틀 잉크 우변+갭7(헤더 형제 갭 균일)·헤더 세로중앙 ΔCy≤0.5·기간 세그와 광학 갭≥8(예약 237 짝 = 협폭 침범 0)·▶ = SVG 픽토([3-1]). 접힘 = 칩과 동일 거동(내려앉음 · C3 기승인 각주)이라 접힘 위치는 계약 아님
     const c14 = await pg.evaluate(() => {
