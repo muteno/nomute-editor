@@ -28,6 +28,10 @@ on:
         description: '일회용 업로드 브랜치(up-<id>) — train 전용'
         type: string
         default: ''
+      r2_src:
+        description: 'R2 직업로드 키(up_src/<id>.<ext> · 20MB 초과 오디오 ≤2GB — api/upload 발급 · 빈값=미사용 · 잡 끝 삭제 · edit-make 동문 · 260722) — train 전용'
+        type: string
+        default: ''
       name:
         description: '보이스 이름(≤24자) — train 전용'
         type: string
@@ -70,6 +74,11 @@ jobs:
           FILE: ${{ inputs.file }}
           UP_BRANCH: ${{ inputs.up_branch }}
           CONSENT: ${{ inputs.consent }}
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
@@ -77,6 +86,18 @@ jobs:
           mkdir -p "viewer/voice_out/${IN_ID}"
           # 동의 게이트(운영자 제약: 실존 타인 음성 금지 · 본인/권리 보유만) — api가 강제하지만 이중 방어
           [ "$CONSENT" = "1" ] || { echo "동의 없이 학습 불가 — 본인·권리 보유 음성만 학습할 수 있어." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::consent 없음"; exit 1; }
+          # R2 직업로드 경로(20MB 초과 · edit-make 동문 · 260722) — 키 자체 재검증 후 aws s3 cp로 회수(up-브랜치 경로 건너뜀)
+          if [ -n "$R2_SRC" ]; then
+            printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp3|m4a|wav|ogg|aac|flac|webm)' \
+              || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }   # api 정규식과 동형 자체 재검증(상류 신뢰 대신 최후 방어선 · edit-make 평의회1 계승)
+            [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::R2 시크릿 미설정"; exit 1; }
+            EXT="${R2_SRC##*.}"
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/vsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+              || { echo "업로드 파일 회수 실패 — 다시 올려줘." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
+            echo "VSRC=/tmp/vsrc.$EXT" >> "$GITHUB_ENV"
+            exit 0
+          fi
           # 일회용 업로드 브랜치(up-<id>) = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 삭제) — track-make 동일
           [ -n "$UP_BRANCH" ] || { echo "업로드 파일이 없어 — 보이스 소스를 다시 올려줘." > "viewer/voice_out/${IN_ID}/error.log"; echo "::error::up_branch 없음"; exit 1; }
           case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
@@ -230,3 +251,20 @@ jobs:
         run: |
           case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
           git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
+
+      # R2 업로드 원본 정리(edit-make 동문 · 260722) — up_src/* = 일회용(up-브랜치와 동일 수명 · 성공·실패 무관 삭제)
+      - name: 업로드 원본 정리 (R2 up_src)
+        if: ${{ always() && inputs.r2_src != '' }}
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          case "$R2_SRC" in up_src/*) ;; *) echo "up_src/* 아님 — 스킵"; exit 0;; esac
+          case "$R2_SRC" in *..*|*' '*) exit 0;; esac
+          [ -n "$R2_BUCKET" ] || exit 0
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 rm "s3://$R2_BUCKET/$R2_SRC" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || echo "원본 정리 실패(무해 — 수동 정리 대상): $R2_SRC"
