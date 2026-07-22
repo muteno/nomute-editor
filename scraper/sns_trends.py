@@ -703,11 +703,13 @@ def threads_subs(accounts, limit=10, deadline=None):
         if i:
             time.sleep(4)
         try:
+            _hdr = {**UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none",
+                    "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1"}   # 실브라우저 헤더 근접(운영자 260723 · 봇 챌린지 완화 시도 · 게스트·쿠키 공통 경로)
             if ck:
-                _rq = urllib.request.Request("https://www.threads.com/@" + urllib.parse.quote(acc), headers={**UA, "Cookie": ck})
-                h = urllib.request.urlopen(_rq, timeout=15, context=CTX).read().decode("utf-8", "ignore")
-            else:
-                h = _get("https://www.threads.com/@" + urllib.parse.quote(acc))
+                _hdr["Cookie"] = ck
+            _rq = urllib.request.Request("https://www.threads.com/@" + urllib.parse.quote(acc), headers=_hdr)
+            h = urllib.request.urlopen(_rq, timeout=15, context=CTX).read().decode("utf-8", "ignore")
             posts = []
 
             def walk(n):
@@ -725,7 +727,9 @@ def threads_subs(accounts, limit=10, deadline=None):
                 except Exception:  # noqa: BLE001
                     continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
             if not posts:
-                print(f"::warning::threads @{acc} 포스트 노드 0(레이아웃 변경·로그인월·차단 가능 — 스킵)", file=sys.stderr)
+                _sjs = len(re.findall(r'data-sjs', h))   # 임베드 JSON 블록 수(0 = 챌린지·스켈레톤 = 실브라우저 필요 신호 · N개인데 포스트 0 = 파서 갱신 필요)
+                _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
+                print(f"::warning::threads @{acc} 포스트 노드 0(HTML {len(h)//1000}KB·data-sjs {_sjs}개·{'로그인월' if _wall else '레이아웃?'}·쿠키{'유' if ck else '무'} — 스킵)", file=sys.stderr)
             for p in posts:
                 code = p.get("code") or ""
                 txt = ((p.get("caption") or {}).get("text") or "").strip()
