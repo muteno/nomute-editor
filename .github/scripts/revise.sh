@@ -97,9 +97,9 @@ ${TH_OLD}
 # 헤드리스 — 읽기 도구만 허용(파일 저장은 스크립트). 무중단(권한대기 차단).
 # 단발 호출이라 쿼터 한도면 대체 계정으로 1단계씩 전환 후 재시도(서브1→서브2→서브3 · 4계정 체인 · SSOT claude_transient.sh). 루프 상한 4 = 체인 깊이(서브3 실호출).
 for _try in 1 2 3 4; do
-  out="$(printf '%s' "$prompt" | METER_SRC=revise METER_REF="$FILE" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=revise METER_REF="$FILE" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort high \
         --allowedTools "Read,Glob,Grep" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 12 \

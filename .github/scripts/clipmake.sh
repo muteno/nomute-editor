@@ -26,9 +26,9 @@ ${SUBS}"
 inline_delay=15
 rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단 · 검증⑥ L1)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=clip METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
+  out="$(printf '%s' "$prompt" | METER_SRC=clip METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 600 \
         --model "$MODEL" \
-        --effort max \
+        --effort high \
         --disallowedTools "Read,Glob,Grep,Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 1 \
         2> "${OUTDIR}/stderr.log")"
