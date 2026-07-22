@@ -182,6 +182,7 @@ if [ "$TARGET" = "all" ]; then
     # 지침 게이트 — 카드의 지침 버전이 현재와 다르면(갱신됨) 재생성 대상에 포함.
     cv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ "$cv" = "$GVER" ] && continue   # 지침 동일 = 최신, 스킵
+    [ "$_fst" = "failed" ] && continue   # 실패 카드 = 지침 게이트 재생성 제외(평의회 260722 P1 · Door2 봉인) — 재시도는 :173(CARD_FAIL_RETRY_MAX>0) 또는 수동만. '실패로 멈춰있게' 의도가 지침 1자 변경으로 우회되던 것 차단.
     # 재생성 지평선 — 이미 카드가 있는(cards.md 존재) 옛 기사는 지침이 stale이어도 자동 재생성 제외.
     sd="${stem%%-*}"
     if [ "$CARD_REGEN_SINCE" != "0" ] && [[ "$sd" =~ ^[0-9]{6}$ ]] && [ "$sd" -lt "$CARD_REGEN_SINCE" ] && [ -s "cards/$stem/cards.md" ]; then
@@ -295,17 +296,19 @@ $(cat "$q")${disp_note}"
     #   25분(=CARD_TIMEOUT) 1회면 정상 카드 100% 성공 여지 + 초과분(무거운/폭주)은 즉시 실패 정지(수동 재시도만).
     #   attempt≥2에서만 검사(첫 발은 항상 25분 보장) · 초과 시 rc=124·무출력으로 낙하 → 아래 실패 분류기가 '생성
     #   타임아웃'으로 표면화하고 failed 도장 → 런간 자동 재시도 = CARD_FAIL_RETRY_MAX(기본 0=끔)라 '실패로 멈춰있음'.
-    CARD_BUDGET_SEC="${CARD_BUDGET_SEC:-1500}"   # 기본 25분 = CARD_TIMEOUT 1회분(2차 풀시도 봉인). 0 = 끔(구 동작·무제한).
+    CARD_BUDGET_SEC="${CARD_BUDGET_SEC:-1500}"   # 기본 25분 = CARD_TIMEOUT 1회분. 재시도는 '잔여 예산'만큼만 발사 = 총 벽시계 하드캡. 0 = 끔(구 동작·무제한).
     card_t0=$(date +%s)
     for attempt in $(seq 1 "$INLINE_TRIES"); do
-      if [ "$attempt" -gt 1 ] && [ "$CARD_BUDGET_SEC" != "0" ]; then
-        _el=$(( $(date +%s) - card_t0 ))
-        if [ "$_el" -ge "$CARD_BUDGET_SEC" ]; then
-          echo "  ⛔ 카드 예산 초과(${_el}s ≥ ${CARD_BUDGET_SEC}s · attempt ${attempt}/${INLINE_TRIES}) — 재시도 누적 폭주 차단, 실패 처리: $stem"
+      _cto="$CARD_TIMEOUT"   # 이 시도 타임아웃 — 예산 있으면 '잔여 예산'으로 클램프(평의회 260722 P1: '시작 게이트'만으론 1차 24분+2차 25분=~50분 새던 것 봉인 = 진짜 '25분 1회')
+      if [ "$CARD_BUDGET_SEC" != "0" ]; then
+        _el=$(( $(date +%s) - card_t0 )); _rem=$(( CARD_BUDGET_SEC - _el ))
+        if [ "$attempt" -gt 1 ] && [ "$_rem" -le 60 ]; then   # 재시도인데 남은 예산 없음 = '25분 1회' 소진 → 실패 정지(수동 재시도만)
+          echo "  ⛔ 카드 예산 소진(${_el}s/${CARD_BUDGET_SEC}s · attempt ${attempt}/${INLINE_TRIES}) — 재시도 누적 폭주 차단, 실패 처리: $stem"
           rc=124; out=""; break
         fi
+        [ "$_rem" -lt "$_cto" ] && _cto="$_rem"   # 남은 예산 < timeout → 그만큼만 발사(총합이 CARD_BUDGET_SEC 넘지 않게 · CARD_BUDGET_SEC<CARD_TIMEOUT로 더 짧은 캡도 자동 지원)
       fi
-      out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$CARD_TIMEOUT" \
+      out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$_cto" \
             --model "$MODEL" \
             --effort max \
             --allowedTools "WebFetch,WebSearch" \
