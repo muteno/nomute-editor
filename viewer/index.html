@@ -1452,8 +1452,7 @@
   .sc-tg.ack .sc-chk { stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24; }
   .sc-tg.ack.on .sc-dash { opacity:0; }
   .sc-tg.ack.on .sc-chk { opacity:1; stroke-dashoffset:0; }
-  .sc-tg.ack.sc-failgo { color:var(--accent); flex:0 0 32px; }   /* 실패 재시도 체크 = 강조색(운영자 260711 스왑 — 구 sc-failhide 숨김 자리를 재시도로 · 게이지→✓ = .sc-got firing/okdone 병기 계승) */
-  .sc-tg.ack.sc-failgo.firing, .sc-tg.ack.sc-failgo.okdone { color:var(--on-accent); }   /* base(0,3,0)가 .sc-failgo.firing(0,2,0)을 이겨 게이지 중 ✓가 청록으로 파묻히던 특이도 역전 봉합(평의회④) */
+  .sc-tg.ack.sc-failgo { color:var(--accent); flex:0 0 32px; }   /* 실패 카드 ✓ = 픽 취소(픽 전으로 · 운영자 260722 재배선) — 강조색 · 폭 32 · 구 재시도 게이지(.sc-failgo firing/okdone/gck)는 미사용화로 정리 */
   /* PICK 누르는 순간 = 초록 점등 플로리시(운영자 260622) */
   .sc-tg.pick:active { transform:scale(var(--press-m,.9)); background:rgba(var(--accent-rgb),.22); border-color:rgba(var(--accent-rgb),.6); box-shadow:inset 0 0 10px rgba(var(--accent-rgb),.4); }   /* 눌림 scale 동반 + 글로우는 inset(밖 번짐=투박 제거·형제 .sc-tg와 모션 통일·분신술10·운영자 260628) */
   .sc-item.acked { opacity:.58; }   /* 확인함 = 흐릿(신규=선명과 구분) */
@@ -1464,13 +1463,13 @@
   .sc-got.picking { position:relative; overflow:hidden; background:rgba(var(--accent-rgb),.10); }   /* 분석 진행(피드 진입 전) = 움직이는 shine */
   .sc-got:not(.picking) { pointer-events:auto; cursor:pointer; }   /* PICKED = 탭하면 피드로 이동+팝업(Picking…은 비활성 유지) */
   /* 픽 발사(사유 선택 후) = 초록 게이지 풀필→✓ 체크(unmerge-go/mkbtn 상태머신 계승·운영자 260702) → 그다음 Picking… */
-  .sc-got.firing, .sc-failgo.firing { color:var(--on-accent); border-color:var(--accent); overflow:hidden; pointer-events:none;
+  .sc-got.firing { color:var(--on-accent); border-color:var(--accent); overflow:hidden; pointer-events:none;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(rgba(var(--accent-rgb),.12),rgba(var(--accent-rgb),.12));
-    animation:goFill .72s var(--gauge-ease) forwards; }
-  .sc-got.okdone, .sc-failgo.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); pointer-events:none; }
-  .sc-got .gck, .sc-failgo .gck { width:16px; height:16px; }
-  .sc-got .gck path, .sc-failgo .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
-  @media (prefers-reduced-motion:reduce) { .sc-got.firing, .sc-failgo.firing { animation-duration:.2s; } .sc-got .gck path, .sc-failgo .gck path { animation:none; stroke-dashoffset:0; } }
+    animation:goFill .72s var(--gauge-ease) forwards; }   /* .sc-failgo 병기 제거(260722 ✓=픽취소 재배선 — 게이지 미사용) · PICK 발사(.sc-got)만 잔존 */
+  .sc-got.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); pointer-events:none; }
+  .sc-got .gck { width:16px; height:16px; }
+  .sc-got .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
+  @media (prefers-reduced-motion:reduce) { .sc-got.firing { animation-duration:.2s; } .sc-got .gck path { animation:none; stroke-dashoffset:0; } }
   .sc-got.picking > span { position:relative; z-index:1; }
   .sc-got.picking::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%;
     background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.5),transparent); transform:translateX(-120%);
@@ -8855,24 +8854,25 @@ const failRetriesGet = () => { try { return JSON.parse(localStorage.getItem(FAIL
 function bumpFailRetry(c) { const m = failRetriesGet(), id = candId(c); m[id] = (m[id] || 0) + 1; try { localStorage.setItem(FAILRETRY_KEY, JSON.stringify(m)); } catch {} }
 const failCount = c => 1 + (failRetriesGet()[candId(c)] || 0);   // 최초 실패 1 + 재시도 횟수
 const failLabel = c => 'Failed' + (failCount(c) >= 2 ? '(' + failCount(c) + ')' : '');   // N≥2만 괄호(첫 실패=Failed) · '회' 없이 숫자만
-// Failed 칩 = 탭→끄기(requeueFail·무시) · 재시도는 옆 ✓ 체크(fireFailRetry) · 원문은 제목 탭 — 운영자 260711 스왑(구 2탭 arm 재시도 폐지).
-const failChipHtml = c => `<button class="sc-fail" type="button" title="탭 = 끄기(트레이서 빼고 수집함 제자리로 · Failed 딱지 유지) · 제목 = 원문">${failLabel(c)}</button>`;
-// '끄기(무시)' = 제자리 복귀(구 260701 체크 기능 → 260711부터 Failed 칩이 담당): 그 실패 후보를 상단 실패 트레이서 빼고
-// 수집함 칼럼 *원래 자리*로 되돌린다(Failed 딱지 유지 = 재시도·원문 그대로 · 강제 상단 노출 X). 순위·자격은 일반 규칙 그대로라
-// 주변부가 그대로면 제자리(예: 위에서 3번째 픽→실패→끄기→3번째 복귀). 일방향(add) — 재실패해도 재발 안 함. 되돌리려면 localStorage nm_fail_requeue 삭제.
+// Failed 칩 = 탭→재시도(failRetry·다시 분석) · 픽 취소(픽 전으로)는 옆 ✓ 체크(cancelPickPrepick) · 원문은 제목 탭 — 운영자 260722 재배선(260711 스왑 되돌림: Failed 탭=재시도가 직관).
+const failChipHtml = c => `<button class="sc-fail" type="button" title="탭 = 재시도(다시 분석) · 길게 = 실패 사유·내용 입력 · 제목 = 원문">${failLabel(c)}</button>`;
+// '픽 취소(픽 전으로)' = ✓ 체크(구 260701 체크=제자리복귀 → 260711 끄기 → 260722 픽취소): 로컬 픽 해제 + 취소셋(nm_fail_requeue) 등재로
+// pickState 가드가 트리아지(null=[PASS][PICK])로 확정한다(picks-failed·pending 'fail' 잔존도 무시). 순위·자격은 일반 규칙 그대로라
+// 픽 하기 전 그 후보 자리서 다시 PASS/PICK 판단 가능. 일방향(add) — 재픽 시 r.picked=true라 가드 자동 우회. 되돌리려면 localStorage nm_fail_requeue 삭제.
 const FAILREQUEUE_KEY = 'nm_fail_requeue';
 const failRequeuedSet = () => { try { return new Set(JSON.parse(localStorage.getItem(FAILREQUEUE_KEY) || '[]')); } catch { return new Set(); } };
 const failRequeued = c => failRequeuedSet().has(candId(c));
-function requeueFail(c) {
-  const s = failRequeuedSet(); s.add(candId(c));
-  try { localStorage.setItem(FAILREQUEUE_KEY, JSON.stringify([...s])); } catch {}
-  markPickFailSeen();   // 빨강 링/토스트도 '봤음' 처리(트레이 정리와 함께 알림 해제)
-  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = 트레이서 빠지고 칼럼 제자리 등장
+function cancelPickPrepick(c) {   // ✓ 체크 = 픽 취소(픽 하기 전으로): 로컬 픽 해제 → 취소셋 등재 → renderScrap이 [PASS][PICK] 정상카드로 복귀
+  const id = candId(c);
+  saveRating(id, { picked: false });   // 로컬 픽 해제 = pickState 트리아지(null) 경로 진입 · pickTimedOut(picked 의존)도 해제
+  const s = failRequeuedSet(); s.add(id);
+  try { localStorage.setItem(FAILREQUEUE_KEY, JSON.stringify([...s])); } catch {}   // 취소셋 등재 → pickState 가드가 ps='fail' 잔존도 무시하고 null 확정
+  markPickFailSeenOne(c);   // 이 건 실패 링/토스트 '봤음'(개별) = 재알림 차단
+  if (CURTAB === 'scrap') renderScrap();   // 즉시 반영 = [PASS][PICK]로 morph
 }
-const failGoChk = () => `<button class="sc-tg ack sc-failgo" type="button" aria-label="재시도 — 다시 대기열로 재분석" title="체크 = 재시도(다시 대기열로 재분석) — 게이지가 차고 ✓ 뜨면 발사됨">${CHECK_SVG}</button>`;   // 운영자 260711 스왑: 체크 = 진행(재시도) — 구 '트레이서 빼기'는 Failed 칩(끄기)으로 이동
-const failBotHtml = c => failChipHtml(c) + failGoChk();   // 실패 카드 하단 = [Failed(끄기)][✓(재시도)] 한 쌍 — 트레이·칼럼 공통(칼럼에도 재시도 수단 확보)
-const FIRE_INFLIGHT = new Set();   // candId 단위 발사 중 가드 — 발사창(~1.2s)에 무관 재렌더가 firing 노드를 갈아치우면 노드-로컬 가드가 무력화돼 재클릭 이중발사(평의회⑤ P1) · 형제 '끄기'와의 레이스(P2)도 함께 차단
-function wireFailBot(root, c) { wireFailChip(root.querySelector('.sc-fail'), c); const g = root.querySelector('.sc-failgo'); if (g) g.onclick = e => { e.stopPropagation(); fireFailRetry(g, c); }; }
+const failGoChk = () => `<button class="sc-tg ack sc-failgo" type="button" aria-label="픽 취소 — 픽 하기 전으로" title="체크 = 픽 취소(픽 하기 전으로 되돌림 · PASS/PICK 다시 선택)">${CHECK_SVG}</button>`;   // 운영자 260722 재배선: 체크 = 픽 취소(픽 전으로) — 재시도는 Failed 칩(탭)으로 이동
+const failBotHtml = c => failChipHtml(c) + failGoChk();   // 실패 카드 하단 = [Failed(탭=재시도)][✓(픽 취소=픽 전으로)] 한 쌍 — 트레이·칼럼 공통(운영자 260722 재배선)
+function wireFailBot(root, c) { wireFailChip(root.querySelector('.sc-fail'), c); const g = root.querySelector('.sc-failgo'); if (g) g.onclick = e => { e.stopPropagation(); cancelPickPrepick(c); }; }   // Failed 칩=재시도(wireFailChip) · ✓=픽 취소(cancelPickPrepick)
 // ── 픽 상태 cross-device 동기화 (B안 · 운영자 260620): 픽 표시는 로컬 nm_ratings(기기락)이라 폰↔PC 미동기였다.
 //    이미 전역인 pending/(픽하면 생김)·queue(피드 DATA)·picks-failed 를 진실원본으로 *유도* → 어느 기기서 픽해도 같은 상태.
 //    localStorage(r.picked)는 발사 직후 깜빡임 가리는 낙관적 오버레이로 유지. (정본 설계 = docs/_세션_작업큐_260620.md §D)
@@ -8903,6 +8903,7 @@ function pickState(c) {   // 픽 상태 통합 = 로컬(r.picked) + 전역(api/p
   const r = ratingsAll()[candId(c)] || {};
   const ps = pendStatus(c);
   if (!r.picked && !ps && !pickInFeed(c)) return null;        // 픽·파이프라인·피드 전부 무관 → 트리아지 버튼
+  if (!r.picked && failRequeued(c) && !pickInFeed(c)) return null;   // ✓ 픽 취소 = 픽 하기 전으로 되돌림 — 서버 실패기록(picks-failed)·pending 'fail' 잔존도 무시하고 트리아지([PASS][PICK])로 복귀(운영자 260722). 재픽 시 r.picked=true라 이 가드 자동 우회.
   if (pfResubActive(candId(c)) && !pickInFeed(c)) return 'picking';   // 재시도 발사(대기열 재투입) = 재분석 중 → 서버 fail 잔존(ps='fail')·무응답 타임아웃 무시하고 Picking 유지. pfailHas/pickTimedOut의 pfResubActive 억제를 ps='fail' 경로에도 확장(재탭이 Picking 못 들고 Failed로 덮이던 버그·운영자 260701). 성공=피드 등장은 아래 settled 우선.
   if (ps === 'retry') return 'picking';                        // 일시 과부하 자동 재시도 중 = 분석 진행(클라 10분 타임아웃의 거짓 FAIL 차단 · 서버 진실원본 우선 · 운영자 260622)
   if (pickFailedShow(c) || ps === 'fail') return 'failed';     // 서버 분석실패(picks-failed/pending failed) OR 무응답 타임아웃
@@ -9033,11 +9034,10 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
   }
   if (CURTAB === 'scrap') renderScrap();
 }
-// 실패 카드 두 버튼 배선(운영자 260711 스왑 — 체크가 '진행'처럼 읽혀 애매하던 것 교정: ✓ = 재시도(진행) · Failed 칩 = 끄기(무시)).
-function wireFailChip(fb, c) {   // Failed 칩 = 끄기(무시): 탭 = 트레이서 빼고 수집함 칼럼 제자리 복귀(requeueFail · Failed 딱지·원문 링크 유지). 구 2탭 재시도 상태머신은 ✓ 체크(fireFailRetry)로 이동.
+// 실패 카드 두 버튼 배선(운영자 260722 재배선 — 260711 스왑 되돌림: Failed 탭=재시도가 직관 · 체크는 '픽 취소'로 명확. ✓ = 픽 취소(픽 전으로) · Failed 칩 = 탭 재시도·길게 메뉴).
+function wireFailChip(fb, c) {   // Failed 칩 = 재시도: 탭 = 다시 대기열 재분석(failRetry→Picking…) · 길게(480ms)/우클릭 = 메뉴(실패 사유·내용 입력) · 제목 <a> = 원문.
   if (!fb) return;
-  // 컨텍스트 메뉴 진입점 복원(전수감사 260713) — #failmenu 마크업 주석 스펙 = "길게 누르거나(480ms) 우클릭"인데
-  //   260711 칩 스왑 리워크 때 호출부만 증발 → 실패 사유(진단 MD)·내용 입력(403 매체 전문 붙여넣기 재분석)이 도달 불가였음.
+  // 컨텍스트 메뉴 진입점(전수감사 260713) — #failmenu = "길게 누르거나(480ms) 우클릭". 실패 사유(진단 MD)·내용 입력(403 매체 전문 붙여넣기 재분석).
   //   패턴 = qFeedBtn 롱프레스 계승(pointerdown 타이머·이동 8px 취소·contextmenu = PC 우클릭).
   let _lpT = null, _lpFired = false;
   fb.addEventListener('pointerdown', () => { _lpFired = false; clearTimeout(_lpT); _lpT = setTimeout(() => { _lpFired = true; openFailMenu(c, fb); }, 480); });
@@ -9046,28 +9046,10 @@ function wireFailChip(fb, c) {   // Failed 칩 = 끄기(무시): 탭 = 트레이
   fb.addEventListener('contextmenu', e => { e.preventDefault(); openFailMenu(c, fb); });
   fb.onclick = e => {
     e.stopPropagation();
-    if (_lpFired || Date.now() - _failMenuAt < 350) { _lpFired = false; return; }   // 롱프레스 직후 합성 click = 끄기 오발 차단(_failMenuAt 타임스탬프 가드 소비 복원)
-    if (fb.classList.contains('picking') || FIRE_INFLIGHT.has(candId(c))) return;   // 재분석 중·옆 ✓ 발사 중 = 무시(발사-끄기 레이스 차단 · 평의회⑤ P2)
-    requeueFail(c);
+    if (_lpFired || Date.now() - _failMenuAt < 350) { _lpFired = false; return; }   // 롱프레스 직후 합성 click = 재시도 오발 차단(_failMenuAt 타임스탬프 가드)
+    if (fb.classList.contains('picking') || pfResubActive(candId(c))) return;   // 이미 재분석 중 = 무시(이중발사 차단 — failRetry가 pfResubActive 세팅·렌더가 비활성 Picking… 칩으로 교체)
+    bumpFailRetry(c); failRetry(c, { noOpen: true });   // 탭 = 재시도(대기열 재투입) → pfResubActive → renderScrap이 Picking… 칩으로 교체(원문은 제목 탭)
   };
-}
-function fireFailRetry(btn, c) {   // ✓ 체크 = 재시도 발사(1탭): 초록 게이지(goFill) 채움 → 초록 ✓(okdone·강조색 = .sc-got 상태머신 계승) → 대기열 재투입(renderScrap이 Picking으로 교체).
-  // 발사는 모션 끝에(즉시 renderScrap 재렌더가 게이지를 죽이지 않게 · 재투입 ~1.2s 지연 무해 · 구 Failed칩 발사 피드백 260702 계승). 발사 타이머는 노드 교체와 무관하게 완주(액션 유실 0).
-  const id = candId(c);
-  if (!btn || btn.classList.contains('firing') || btn.classList.contains('okdone')) return;
-  if (FIRE_INFLIGHT.has(id) || pfResubActive(id)) return;   // candId 가드 — 발사창 중 재렌더로 새 idle 버튼이 생겨도 이중발사 차단(노드-로컬 가드의 사각 · 평의회⑤ P1)
-  FIRE_INFLIGHT.add(id);
-  const _red = matchMedia('(prefers-reduced-motion:reduce)').matches;
-  btn.disabled = true; btn.classList.add('firing');
-  setTimeout(() => {
-    if (btn.isConnected) {   // 재렌더로 교체됐으면 시각만 생략(발사는 아래서 계속)
-      btn.classList.remove('firing'); btn.classList.add('okdone');
-      btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7"/></svg>';   // ✓ 체크(goTick 스트로크·초록 배경 위 흰 획)
-    }
-    setTimeout(() => {
-      try { bumpFailRetry(c); failRetry(c, { noOpen: true }); } finally { FIRE_INFLIGHT.delete(id); }   // 실패 카운트 +1 + 재분석 재발사(대기열) → pfResubActive → renderScrap이 Picking 칩으로 교체 · 가드는 발사 후 해제(이후 재무장은 pfResubActive가 차단)
-    }, _red ? 60 : 440);   // ✓ 잠깐 보인 뒤 발사
-  }, _red ? 90 : 740);   // goFill .72s 채움 후
 }
 let _failMenuC = null, _failMenuAt = 0;   // _failMenuAt = 메뉴 오픈 시각 — 직후 합성 click 억제(아래 onclick)
 function openFailMenu(c, anchor) {
@@ -9732,7 +9714,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
       el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
       el.querySelector('.sc-tg.pick').onclick = () => askReason('pick', c, el);
       el.querySelector('.sc-tg.ack').onclick = () => toggleAck(c, el);
-    } else if (pstate === 'failed') {   // 픽했는데 분석 실패/무응답 = [Failed 칩(끄기)][✓ 체크(재시도 게이지→초록✓)] 배선(운영자 260711 스왑)
+    } else if (pstate === 'failed') {   // 픽했는데 분석 실패/무응답 = [Failed 칩(탭=재시도)][✓ 체크(픽 취소=픽 전으로)] 배선(운영자 260722 재배선)
       wireFailBot(el, c);
     } else {   // PICKED(완료) = 탭하면 피드(메뉴3)로 이동 + 해당 기사 팝업
       const g = el.querySelector('.sc-got:not(.picking)'); if (g) g.onclick = () => pickedOpen(c);
