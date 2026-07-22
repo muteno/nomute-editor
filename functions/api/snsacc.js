@@ -6,7 +6,7 @@
 // 지역(한국/세계)별 상한 CAP = 러너 소요 보호(scraper/sns_trends._REG_CAP와 동일 규격 · 운영자 260712 한국/세계 분리).
 const REPO = 'muteno/nomute-editor', FILE = 'viewer/sns_accounts.json';
 const KEYS = ['x', 'tiktok', 'insta', 'youtube', 'threads'];   // threads = 폰/맥 수집 전용 축(운영자 260712 — 모달 탭 UI는 배치 승인 후 후속·백엔드 선대칭)
-const CAP = { x: 20, tiktok: 15, insta: 10, youtube: 15, threads: 10 };   // 지역별 상한(인스타 = 6s/콜 최중이라 최소 · 스레드 = 동일 Meta 벽 보수 10 — sns_trends._REG_CAP 대칭)
+const CAP = { x: 30, tiktok: 30, insta: 30, youtube: 30, threads: 30 };   // 지역별 상한(운영자 260723 "10개 이상으로" 10/15/20→30 일괄 상향 · 3면 대칭 = ACC_CAP·_REG_CAP · 인스타 6s/콜이라 다수 등재 시 폰 크론 한 바퀴↑ 유의)
 const RX = /^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$/;   // 핸들 관용 규격(X 15자·인스타 30자·틱톡 24자 합집합 — 형식만 거르는 느슨 상한 · 실존 여부는 수집기가 fail-soft 스킵)
 
 function cleanList(xs, cap, seen) {
