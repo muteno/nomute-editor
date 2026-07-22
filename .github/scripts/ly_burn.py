@@ -970,7 +970,7 @@ def run(vid_id, video, outdir):
                     "[bgb][fg0]overlay={px}:{py},setsar=1").format(pw=pw, ph=ph, rad=rad, px=px_, py=py_)
         else:
             padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
-    scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
+    scalef = "scale={}:{}:flags=lanczos".format(tw, th) if (tw, th) != (cw, ch) else ""   # lanczos = 다운스케일 표준(기본 bicubic 대비 선명 · 이 파이프는 업스케일 없음=링잉 저위험) · 비용 실측 ≈0(260722 4K→1080 2s: 1.3s 동일) · 블러 여백 bg 가지는 블러가 덮어 비대상(비용 절약)
     sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
     mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
     ass = build_ass(segs, canvas_w, canvas_h, opts) if (segs and not no_burn) else ""   # no_burn = 컷 계산용 전사만 · 번인 0

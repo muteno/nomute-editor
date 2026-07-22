@@ -196,7 +196,7 @@ def main():
     if ar and not pad_t:
         vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
     if (sw, sh) != (cw, ch):
-        vf.append(f"scale={sw}:{sh}")
+        vf.append(f"scale={sw}:{sh}:flags=lanczos")   # lanczos = 다운스케일 표준(선명 · 이 경로 업스케일 없음) · 비용 실측 ≈0(260722) · 편집 ly_burn 동문 · sar_fix(동치수 정규화)는 리샘플 무의미라 비대상
     out_fps = fps
     if mode == "60i":
         if eff > INTERP_MAX_SEC + 1:
