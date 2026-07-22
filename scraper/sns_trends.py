@@ -400,7 +400,7 @@ def tiktok(limit=15, calls=10):
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
 
 
-_REG_CAP = {"x": 20, "tiktok": 15, "insta": 10, "youtube": 15, "threads": 10}   # 지역(한국/세계)별 상한 — snsacc.js CAP와 대칭(인스타 = 6s/콜 최중이라 최소 · 운영자 260712 "계정 최대한" · 스레드 = 인스타와 동일 Meta 벽이라 보수 10)
+_REG_CAP = {"x": 30, "tiktok": 30, "insta": 30, "youtube": 30, "threads": 30}   # 지역(한국/세계)별 상한 — snsacc.js CAP·ACC_CAP와 3면 대칭(운영자 260723 "10개 이상으로" 10/15/20→30 일괄 상향 · 인스타 6s/콜이라 다수 등재 시 수집 한 바퀴↑ 유의)
 
 
 def _load_accounts():
