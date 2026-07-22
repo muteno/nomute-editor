@@ -16,7 +16,7 @@ SENT = ROOT / "push" / "sent.json"
 CAND = ROOT / "viewer" / "candidates.json"
 FAST_MAX_H = 4   # 최신 긴급만 푸시(뷰어 토스트와 동일 단일상수 정신)
 PUSH_MIN_CROSS = int(os.environ.get("PUSH_MIN_CROSS", "2"))   # 푸시 최소 교차매체(다매체 검증 = 오발송 가드 · MIN_CROSS 바뀌어도 푸시 하한 고정)
-PUSH_PUB_MAX_H = float(os.environ.get("PUSH_PUB_MAX_H", "24"))   # 발행 나이 상한(배지 소멸선과 동일 24h · env로 8~12h 조임 가능) — first_seen 전환의 뒷북 완충. ⚠️ 입력 = 현재 rep 기사 발행 나이(사건 나이 아님 · 검4-3)
+PUSH_PUB_MAX_H = float(os.environ.get("PUSH_PUB_MAX_H", "8"))   # 발행 나이 상한 — 24→8h 조임(운영자 260722 · 실측: 재수집 뒷북 3발[발행 19.5~24h·first_seen 방금]이 24h 캡을 통과해 오발송 — 8h = 구주석 '8~12h 조임' 하단 = 관측 오발 전부 차단 + syndication 지연(4h+) 2배 완충). first_seen 전환의 뒷북 완충. ⚠️ 입력 = 현재 rep 기사 발행 나이(사건 나이 아님 · 검4-3)
 SENT_TTL_H = float(os.environ.get("PUSH_SENT_TTL_H", "48"))   # 발송 원장 TTL — 무기한이면 '北 미사일 발사'류 템플릿 반복 헤드라인의 *별개 새 사건*이 제목해시 충돌로 영구 오억제(분신술 260710 검증6 · autopick.json 48h 정리와 대칭)
 KST = dt.timezone(dt.timedelta(hours=9))
 

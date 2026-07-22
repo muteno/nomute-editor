@@ -67,6 +67,12 @@ RUBRIC = """너는 한국 뉴스 데스크의 속보 판정자다. 아래 사건
 사고·화재가 **방금 발생**해 당국이 즉시 대응·조사하는 위 예시들만 O다.
   예) "신안산선 추락사 포스코이앤씨 압수수색"(사고는 이미 지남·압수수색이 핵심) → X
   예) "방금 공장 폭발…경찰 수사 착수"(폭발이 방금 발생) → O
+⏱ **발행 경과시간 게이트 (운영자 260722 — 재수집 뒷북 오발 차단):**
+각 제목 끝의 〔발행 N시간전〕은 그 기사가 발행된 지 얼마나 지났는지다(수집 지연으로 옛 기사가 방금 들어오기도 한다).
+'긴급'은 방금 터진 사건이므로 **발행 12시간 이상**이면 — 제목이 '추적 중'·'진화 중' 같은 현재진행형이어도 —
+이미 지난 사건의 재수집·후속·재탕이라 **X**. (발행 12시간 미만·〔발행시각 미상〕은 이 게이트 미적용 — 아래 다른 규칙으로 판정.)
+  예) "○○ 차량 습격… 용의자 추적 중"〔발행 23시간전〕 → X · "○○ 공장 폭발… 3명 매몰"〔발행 1시간전〕 → 다른 규칙으로 판정
+
 ⚠️ 단, '긴급'은 **방금 터진 사건 + (대형·다수 피해·전국적 주목)**이다. 개별·단일 피의자의 일상
 형사사건(살인·살인미수·폭행·사기 등)은 사안이 중대해도 **규모·대중 주목이 없으면 긴급이 아니다(X)**.
 특히 **압수수색·수사 착수·송치·선고·판결·구형·항소심·기소·구속영장 등 '수사·사법 절차'**는 이미 지난 개별 사건의 후속(급발 아님)
@@ -171,8 +177,27 @@ def needs_judging(c):
     return bool(c.get("breaking_candidate")) and c.get("breaking_rubric") != RUBRIC_VER and _fresh_for_rejudge(c)
 
 
+def _pub_age_label(c):
+    """〔발행 N시간전〕 라벨 — published 기준(없으면 미상). ⏱ 게이트 입력(운영자 260722): 판정기가 제목만 봐서
+    '방금 터진'을 집행할 수 없던 사각 봉합(실측: 발행 19.5~24h 재수집 기사가 first_seen 방금이라 breaking YES → 오발송 3발).
+    first_seen 폴백은 안 함 — first_seen은 '우리가 본 시각'이라 뒷북일수록 오히려 신선해 보임(라벨 의미 파괴)."""
+    s = c.get("published") or ""
+    for f in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"):
+        try:
+            t = datetime.strptime(s.replace("Z", "+0000")[:25 if "+" in s else 19], f)
+            if t.tzinfo is None:
+                t = t.replace(tzinfo=timezone.utc)
+            h = (time.time() - t.timestamp()) / 3600
+            if h < 0:
+                return "〔발행시각 미상〕"   # 미래 스탬프(소스 TZ 오기록) = 신뢰 불가 → 게이트 미적용(보수 = 오컷 방지)
+            return f"〔발행 {h:.0f}시간전〕" if h >= 1 else "〔발행 1시간내〕"
+        except Exception:
+            pass
+    return "〔발행시각 미상〕"
+
+
 def judge(items):
-    """items=[(idx_str, title)] → ({idx_str: bool}, rc, stderr)."""
+    """items=[(idx_str, title)] → ({idx_str: bool}, rc, stderr). title엔 ⏱ 게이트용 〔발행 …〕 라벨 포함."""
     listing = "\n".join(f"{i}\t{(t or '').replace(chr(9), ' ').replace(chr(10), ' ').replace(chr(13), ' ')}" for i, t in items)   # 탭/개행 제거(idx 매핑 보호)
     prompt = f"{RUBRIC}\n[사건 목록]\n{listing}\n\n[판정 출력]"
     cmd = ["claude", "-p"]
@@ -250,7 +275,7 @@ def main():
     verdicts = {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
         chunk = pending[start:start + CHUNK]
-        items = [(str(start + j), c.get("title", "")) for j, c in enumerate(chunk)]
+        items = [(str(start + j), f"{c.get('title', '')} {_pub_age_label(c)}") for j, c in enumerate(chunk)]   # 발행나이 라벨 = ⏱ 게이트 입력(제목 자체는 무변형 — 라벨은 판정 프롬프트 전용·candidates 미기록)
         v, rc, err = judge(items)
         if rc != 0 or not v:
             print(f"::warning::청크 {start}~ 속보 판정 실패(rc={rc}) — 미도장 유지(다음 런 재시도). err={(err or '')[:200]}")
