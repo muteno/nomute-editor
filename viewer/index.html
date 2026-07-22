@@ -920,7 +920,7 @@
   .ch-charttop .ct-u { font-size:var(--fs-xs); color:var(--mut); }
   .ch-chartwrap { position:relative; }
   .ch-chartwrap svg { display:block; width:100%; height:auto; }
-  @media (max-width:640px) { .ch-chartwrap:not(.sig-chartwrap) svg text { font-size:15px; } }   /* raw-ok: 15 = SVG 좌표계(600 고정) 값 — 폰 실폭 ~330 스케일 0.55× 후 유효 ≈8.3px(구 8~9 → 유효 4.4~4.9px 판독불가 · 260720 평의회 F5 P1 · 라인차트 겹침 0 실측) · 시그널 버킷 차트 제외 = 2줄 라벨(버킷명+n=) y간격이 8px 기준 설계라 12px도 겹침 14쌍 실측 — 확대는 y 재배치(후속) 없인 불가라 원 크기 유지 */
+  @media (max-width:640px) { .ch-chartwrap:not(.sig-chartwrap) svg text { font-size:15px; } }   /* raw-ok: 15 = SVG 좌표계(600 고정) 값 — 폰 실폭 ~330 스케일 0.55× 후 유효 ≈8.3px(구 8~9 → 유효 4.4~4.9px 판독불가 · 260720 평의회 F5 P1 · 라인차트 겹침 0 실측) · 시그널 버킷 차트 제외 = 콜아웃·상단 선반 라벨(피크·최저·접속 피크) y간격이 8px 기준 설계라 확대 시 겹침 — 편입은 y 재배치(후속) 없인 불가라 원 크기 유지(n= 병기 줄은 260722 제거됨 — 구 "2줄 라벨" 사유 소멸) */
   .ch-tip { position:absolute; pointer-events:none; background:var(--glass2); backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); border:1px solid var(--line); border-radius:var(--r-s); padding:6px 8px; font-size:var(--fs-xs); color:var(--fg); white-space:nowrap; opacity:0; transition:opacity var(--dur-fast); z-index:5; transform:translate(-50%,-118%); }   /* raw-ok: 툴팁 광학 패딩(시안 실측 계승) */
   .ch-tip.ev { white-space:normal; max-width:210px; line-height:1.45; }   /* raw-ok: 변곡 주석 호버 툴팁 = 요약(note) 줄바꿈 허용(운영자 260715) */
   .ch-dot { position:absolute; width:9px; height:9px; border-radius:50%; background:var(--fg); border:1.5px solid var(--accent); transform:translate(-50%,-50%); opacity:0; pointer-events:none; transition:opacity var(--dur-fast); z-index:4; }   /* raw-ok: 크로스헤어 호버점 = 흰 필(--fg)·강조색 얇은 테두리(운영자 260715 "지점 작은 흰색·강조색 얇은 테두리") */
@@ -11078,7 +11078,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   const vals = [];
   bs.forEach(b => { const s2 = val(b, 'share_pm'), v2 = val(b, 'save_pm'); if (s2 != null) vals.push(s2); if (v2 != null) vals.push(v2); });
   if (vals.length < 2) return '';
-  const W = 600, H = 170, mL = 46, mR = 16, mT = 16, mB = 42, pw = W - mL - mR, ph = H - mT - mB;
+  const W = 600, H = 154, mL = 46, mR = 16, mT = 16, mB = 26, pw = W - mL - mR, ph = H - mT - mB;   // mB·H = 일일 추이(chChart) 단일줄 라벨 규격 계승 — n= 병기 줄 제거(운영자 260722)로 2줄 예약 해제 · 플롯 높이 ph=112 불변
   const lo = Math.max(0, Math.min(...vals, 1) - .1), hi = Math.max(...vals, 1) + .1;
   const X = i => mL + pw * i / (bs.length - 1), Y = v => mT + ph * (1 - (v - lo) / (hi - lo));
   SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, save: val(b, 'save_pm'), n: b.n, low: !!b.low_sample }; });
@@ -11151,10 +11151,9 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   };
   bandLabs.forEach(l => putTop(l.x, esc(l.txt), 'var(--amber)'));
   if (mkX != null) putTop(mkX, mkTxt, 'var(--mut)');
-  bs.forEach((b, i) => {   // X축 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지) + n 표본 병기(아랫줄 은은 — 표본 몰림 편향 정직 표기)
+  bs.forEach((b, i) => {   // X축 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지) — n 표본 병기 줄 = 운영자 260722 제거(표본값은 호버 툴팁 n= 유지 = 정보 손실 0) · y = 일일 추이 라벨 베이스라인(H-7) 계승
     const anc = i === 0 ? 'start' : i === bs.length - 1 ? 'end' : 'middle', xa = i === 0 ? mL : i === bs.length - 1 ? W - mR : X(i);
-    s += `<text x="${xa.toFixed(1)}" y="${H - 18}" text-anchor="${anc}" font-size="9" fill="var(--mut)" font-weight="700">${esc(b.bucket)}</text>`;
-    s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="8" fill="var(--mut)" opacity=".65">n=${b.n}</text>`;
+    s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="9" fill="var(--mut)" font-weight="700">${esc(b.bucket)}</text>`;
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
