@@ -207,7 +207,7 @@ def main():
         if est > INTERP_BUDGET:
             max_s = int(INTERP_BUDGET / (60 * INTERP_S_PF * (sw * sh / 2_073_600.0)))
             die(f"이 해상도({sw}×{sh})로 60fps 보간은 약 {max_s}초까지야 — 해상도를 720p로 낮추거나 구간을 잘라줘.")
-        vf.append("minterpolate=fps=60")   # 기본 프리셋(mci·obmc) — 실측 270ms/f@1080×1920 · 상위 프리셋(bidir 등)은 2배 비용이라 예산 밖
+        vf.append("minterpolate=fps=60:mc_mode=aobmc:vsbmc=1")   # aobmc+vsbmc = 보간 아티팩트↓·비용 ≈0(실측 260722 @720×1280·4vCPU: 12.3s→12.6s) — 구 기본(mci·obmc)에서 품질 무료 상향 · 편집 ly_burn과 동일 · 2배 비용의 me_mode=bidir만 제외해 INTERP_S_PF 0.30 예산 불변
         out_fps = 60.0
     elif mode in ("30", "24"):
         tgt = float(mode)
