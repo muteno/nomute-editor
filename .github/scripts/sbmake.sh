@@ -68,9 +68,9 @@ else
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(kmake 패턴 계승)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=sb METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=sb METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort high \
         --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 40 \

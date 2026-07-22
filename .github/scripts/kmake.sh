@@ -6,7 +6,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/k-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="${K_MODEL:-claude-fable-5}"   # Kling 영상 프롬프트 = Fable 5 기본(운영자 260722 · 역동·서사·재생성 절약 · sbmake 감독·gen_image와 동일 티어) — 토글 K_MODEL=claude-opus-4-8
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 쿼터 한도 시 4계정 자동 로테이션·일시 과부하 재시도(analyze·ask·card와 통일·§📰)
 source "$ROOT/shared/claude_meter.sh"   # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버(서브1→서브2→서브3 = 4계정 체인 깊이·서브3 실호출)·일시 과부하(5xx/Overloaded) 인라인 재시도(15s·30s 백오프) — analyze·ask·card와 동일
@@ -38,9 +38,9 @@ ${SCENE}"
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(ask/analyze 패턴 이식 · 260707 2차 — 타임아웃은 대개 입력바운드라 무한 전환 금지)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort high \
         --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 40 \

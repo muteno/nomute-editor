@@ -7,7 +7,7 @@ PROMPT_FILE="prompts/tr-auto.md"
 source "$ROOT/shared/model_env.sh"          # 모델 단일 원천(PIPE_MODEL · SYS-08)
 source "$ROOT/shared/claude_transient.sh"   # is_quota()/claude_failover()/is_transient() SSOT — 4계정 자동 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 계측(metrics shard)
-MODEL="${TR_MODEL:-$PIPE_MODEL}"     # 모델 토글(운영자 260722 · 소넷5 등 · 기본 PIPE_MODEL=opus) — 워크플로 env TR_MODEL로 카나리
+MODEL="${TR_MODEL:-claude-fable-5}"  # 이미지 번역(번역카드) = Fable 5 기본(운영자 260722 · 손 많이 가는 이미지 번역 품질 · gen_image와 동일 티어) — 토글 TR_MODEL=claude-opus-4-8
 TR_EFFORT="${TR_EFFORT:-high}"       # OCR 강조선정+한글번역 = 정해진 변환 → high(운영자 260722 · max 헛사고 회피·정확도 우선) · 토글 high/medium/low
 INLINE_TRIES="${INLINE_TRIES:-4}"
 ID="${1:?usage: trauto.sh <id> (LINES=env)}"
