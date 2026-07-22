@@ -196,7 +196,7 @@ def main():
     if ar and not pad_t:
         vf.append(f"crop={cw}:{ch}:{cx}:{cy}")
     if (sw, sh) != (cw, ch):
-        vf.append(f"scale={sw}:{sh}")
+        vf.append(f"scale={sw}:{sh}:flags=lanczos")   # lanczos = 다운스케일 표준(선명 · 이 경로 업스케일 없음) · 비용 실측 ≈0(260722) · 편집 ly_burn 동문 · sar_fix(동치수 정규화)는 리샘플 무의미라 비대상
     out_fps = fps
     if mode == "60i":
         if eff > INTERP_MAX_SEC + 1:
@@ -225,8 +225,8 @@ def main():
     out = "/tmp/conv_out.mp4"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{eff:.3f}", "-i", src,
            "-map", "0:v:0", "-map", "0:a?", "-vf", ",".join(vf),
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
-           "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out]
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]   # crf 18·aac 192k = 편집 탭(ly_burn) 동값 통일(운영자 260722 — 같은 원본이 탭 따라 품질 다르던 편차 해소 · preset 유지 = 속도 불변)
     print("ffmpeg:", " ".join(cmd), flush=True)
     t_run = time.time()
     try:

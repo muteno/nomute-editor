@@ -330,7 +330,7 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
     sel_e, off_e = "+".join(sel), "+".join(off)
     parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
-        loud = ",loudnorm=I=-16:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정(SNS 표준 -16 LUFS · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
+        loud = ",loudnorm=I=-14:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정 — 목표 = 앱 표준 −14LUFS(audio_norm TARGET_I 동조 · 운영자 260722 통일: 구 −16은 배경음 제거만 켠 산출이 타 잡보다 2dB 조용하던 편차 · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
         parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}[ac];".format(asrc, sel_e, off_e, loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
     tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
     parts.append("[vs]" + (tail.rstrip(",") or "null") + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용
@@ -970,7 +970,7 @@ def run(vid_id, video, outdir):
                     "[bgb][fg0]overlay={px}:{py},setsar=1").format(pw=pw, ph=ph, rad=rad, px=px_, py=py_)
         else:
             padf = "pad={}:{}:{}:{}:black,setsar=1".format(pw, ph, px_, py_)   # setsar=1 = contain 짝수화 미세 SAR 제거(conv 동형)
-    scalef = "scale={}:{}".format(tw, th) if (tw, th) != (cw, ch) else ""
+    scalef = "scale={}:{}:flags=lanczos".format(tw, th) if (tw, th) != (cw, ch) else ""   # lanczos = 다운스케일 표준(기본 bicubic 대비 선명 · 이 파이프는 업스케일 없음=링잉 저위험) · 비용 실측 ≈0(260722 4K→1080 2s: 1.3s 동일) · 블러 여백 bg 가지는 블러가 덮어 비대상(비용 절약)
     sarf = "setsar=1" if (has_vid and scalef and not padf) else ""   # 스케일 짝수화 잔여 SAR 제거 — 패드 경로(padf 내장)와 대칭(P2평의회9 실측)
     mid = ",".join(x for x in [cropf, scalef, fpsf, padf, sarf] if x)
     ass = build_ass(segs, canvas_w, canvas_h, opts) if (segs and not no_burn) else ""   # no_burn = 컷 계산용 전사만 · 번인 0
@@ -987,7 +987,7 @@ def run(vid_id, video, outdir):
         vf = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass else "")
         vf = vf.rstrip(",") or "null"   # 자막 없는 편집 경로에서 mid도 비면 무변환 통과(null) — 오디오만 손대는 조합
         return ["ffmpeg", "-y"] + ins + ["-vf", vf] \
-            + (["-map", "0:v:0", "-map", "1:a:0", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] if vocals else []) \
+            + (["-map", "0:v:0", "-map", "1:a:0", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11"] if vocals else []) \
             + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",   # crf 20→18 = 재인코딩 열화 체감 개선(운영자 260722 "자르기+60프레임 하면 원본 좋아도 화질 많이 저하" · 18 = 시각적 무손실 근접 · 파일 ~1.5× · preset veryfast 유지 = 잡 시간 예산 불변 = 속도는 preset이 지배·crf는 무영향)
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
