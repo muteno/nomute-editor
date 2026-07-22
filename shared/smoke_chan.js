@@ -189,15 +189,18 @@ const SEL = {
 
     // C9 협폭 수치 열 사폭 가드(운영자 260721 "간격 쓸데없이 길다" — 고정폭 죽은 여백이 제목 압착 · 열 박스 ≈ 잉크 실폭 계약)
     const c9 = await pg.evaluate(() => {
-      const out = [];
-      document.querySelectorAll('#cg-tpost .ch-post').forEach(r2 => ['ch-vw', 'ch-dev'].forEach(cl => {
-        const el = r2.querySelector('.' + cl); if (!el || !el.textContent.trim()) return;
-        const rg = document.createRange(); rg.selectNodeContents(el);
-        out.push({ cl, dead: +(el.getBoundingClientRect().width - rg.getBoundingClientRect().width).toFixed(2) });
-      }));
-      return out;
+      const vw = [], devW = [];
+      document.querySelectorAll('#cg-tpost .ch-post').forEach(r2 => {
+        const v = r2.querySelector('.ch-vw'), d2 = r2.querySelector('.ch-dev');
+        if (v && v.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(v); vw.push(+(v.getBoundingClientRect().width - rg.getBoundingClientRect().width).toFixed(2)); }
+        if (d2 && d2.textContent.trim()) devW.push(+d2.getBoundingClientRect().width.toFixed(2));
+      });
+      return { vw, devW };
     });
-    ok('C9 모바일 412 TOP 게시물 수치 열 = 잉크 실폭(박스−잉크 사폭 ≤1.5px)', c9.length > 0 && c9.every(x => x.dead <= 1.5), c9.length ? '사폭max ' + Math.max(...c9.map(x => x.dead)) + '(n' + c9.length + ')' : '측정 대상 0');
+    // vw = 잉크 실폭(≤1.5 · 구 고정폭 죽은여백 제목압착 재발 가드) · dev = 전 행 박스폭 동일(min-width 정렬 열 · 운영자 260722 "같은 라벨끼리 정렬" — 배율 열 폭 일정 → 값[만] 우변도 전 행 정렬)
+    const c9vwOk = c9.vw.length > 0 && c9.vw.every(x => x <= 1.5);
+    const c9devAligned = c9.devW.length > 0 && (Math.max(...c9.devW) - Math.min(...c9.devW)) <= 0.5;
+    ok('C9 모바일 412 TOP 게시물 열 = vw 잉크실폭(≤1.5) + dev 정렬폭 동일(≤0.5)', c9vwOk && c9devAligned, `vw사폭max ${c9.vw.length ? Math.max(...c9.vw) : '-'} · dev폭 ${c9.devW.length ? Math.min(...c9.devW).toFixed(1) + '~' + Math.max(...c9.devW).toFixed(1) : '-'}`);
 
     await pg.click('.bnav-i[data-tab="trend"]'); await pg.waitForSelector('#tg-top', { timeout: 15000 }).catch(() => {});
     await pg.waitForTimeout(600);
