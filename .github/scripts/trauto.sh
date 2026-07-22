@@ -90,7 +90,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
   fi
   if [ "$_mfb_tried" = 0 ] && [ "$MODEL" != "$TR_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절 추정) → Opus 1회 폴백(평의회 260722 P1)
-    _mfb_tried=1; MODEL="$TR_MODEL_FB"; echo "  ⏳ 모델 폴백 → ${MODEL} (Fable 형식이탈/거절 추정 · 1회 한정)"; continue
+    _mfb_tried=1; MODEL="$TR_MODEL_FB"; TR_EFFORT=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done

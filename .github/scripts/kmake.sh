@@ -37,10 +37,11 @@ ${SCENE}"
 # 인라인 재시도 — 쿼터 한도면 대체 계정 전환(claude_failover·서브1→서브2→서브3), 일시 과부하(5xx/Overloaded)면 백오프 재시도. 성공·KMAKE_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0).
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(ask/analyze 패턴 이식 · 260707 2차 — 타임아웃은 대개 입력바운드라 무한 전환 금지)
+K_MODEL_FB="${K_MODEL_FB:-claude-opus-4-8}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · 계정폴오버는 모델 불변이라 별도 필요)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 900 \
         --model "$MODEL" \
-        --effort high \
+        --effort "$_eff" \
         --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 40 \
@@ -54,6 +55,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
     echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  if [ "$_mfb" = 0 ] && [ "$MODEL" != "$K_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절/전용토큰 소진) → Opus max 1회 폴백(운영자 260722)
+    _mfb=1; MODEL="$K_MODEL_FB"; _eff=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done
