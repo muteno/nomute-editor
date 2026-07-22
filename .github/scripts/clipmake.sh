@@ -7,7 +7,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/clip-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 생성/판단 = opus 유지 · §모델)
-MODEL="$PIPE_MODEL"
+MODEL="${CLIP_MODEL:-claude-fable-5}"   # 컷편집(쇼츠 구간선정) = Fable 5 기본(운영자 260722 · 고도 판단 · 창작 티어) — 선택 토글 CLIP_MODEL(opus|fable · sb.html 감독 dgrid 미러 예정)
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 4계정 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — 토큰 계측
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버 체인 깊이(4계정)와 동수 — lymake 동일
