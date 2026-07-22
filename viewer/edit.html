@@ -271,8 +271,8 @@
   @media (prefers-reduced-motion:reduce){ .scanline { animation:none; top:50%; } }
   .vstage .wmsg { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:2; font-size:var(--fs-body); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 정중앙·15px = --fs-body(운영자 260712 선택값 waitPos=cc·waitFs 15 — 구 좌하 13px) · -50% = 기하값(§핵심명령 3-a) */
   .vstage .wmsg .wsec { color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }   /* 경과 = 무트·탭귤러(시안 승인 렌더와 동일) */
-  /* 경과 시간 = 스캔라인 위 레이어 우상단 코너 · 네온레몬(운영자 260723 Q454 선택 = elapsed:corner · efs 15=--fs-body 계승) — 색 = --accent-2 토큰 계승(네온레몬) · 창작 0 */
-  .vstage .wcorner { position:absolute; top:8px; right:10px; z-index:2; font-size:var(--fs-body); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; color:var(--accent-2); text-shadow:0 0 12px rgba(var(--accent-2-rgb),.45),0 1px 10px rgba(0,0,0,.5); }
+  /* 경과 시간 = 스캔라인 위 레이어 좌상단 코너 · 네온레몬(운영자 260723 Q456 = 우상단→좌상단 이동 · efs 15=--fs-body 계승) — 색 = --accent-2 토큰 계승(네온레몬) · 창작 0 */
+  .vstage .wcorner { position:absolute; top:8px; left:10px; z-index:2; font-size:var(--fs-body); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; color:var(--accent-2); text-shadow:0 0 12px rgba(var(--accent-2-rgb),.45),0 1px 10px rgba(0,0,0,.5); }
   .status { margin-top:var(--sp-2); font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
   /* 클리퍼 후보 목록(운영자 260711 배치 승인 — 편집기 탭 안 카드 플로우) · 톤 = .scard 계승(신규 색 0) */
@@ -1915,13 +1915,28 @@ async function editSubsInit(id){   // 완료 후 자막 편집기 활성(pollEdi
   }catch(e){}
 }
 
+/* 토큰 예상 소요비(운영자 260723 Q456 — 완료 시 '누적 시간·예상 토큰비' 병기) · client 추정(파이프라인 수집 아님)
+   claude 사용 = 자막 의역(d.sub)·클리퍼만 = 토큰 있음 · 순수 ffmpeg(음량·비율·해상도·프레임·컷·트림) = 토큰 0.
+   계수 = 실계측 앵커(metrics/usage src=ly · opus · n=38 · 콜당 중앙 $1.12·평균 $0.87 · 영상 길수록↑) → 영상 분당 ~$0.4 · 1USD≈1380KRW.
+   ⚠ 총 소요시간이 아니라 *영상 길이(d.dur)*에 비례(토큰 = 전사·의역 분량 종속 · ffmpeg 시간은 토큰 무관). */
+const TOK_USD_PER_VMIN=0.4, USD_KRW=1380;
+function estTokenKRW(d){
+  if(!(d && d.sub)) return 0;   // 자막 번인 없는 잡 = claude 0(정직)
+  const vmin=Math.max(.2,(d.dur||0)/60);
+  const usd=Math.min(4, Math.max(.15, vmin*TOK_USD_PER_VMIN));
+  return Math.round(usd*USD_KRW/50)*50;   // ₩50 단위 반올림
+}
+function estTokenNote(d){   // 완료 메시지 꼬리 = ' · 예상 토큰비 ~₩N'(자막) 또는 ' · 토큰 0'(ffmpeg)
+  const k=estTokenKRW(d);
+  return (d&&d.sub)? ' · 예상 토큰비 ~₩'+k.toLocaleString('ko-KR') : ' · 토큰 0';
+}
 function showResult(d, sec){
   RESULT_URL=d.url||'';
   // 표시 초 = 실소요(잡 id의 착수 KST → d.ts 완성) 우선 — 재개 폴의 t0 클램프(2044행 BUDGET 상한)가 45분+ 뒤 재진입에 '2700s' 허수를 찍던 것 교정(운영자 260722) · id/ts 미해석 엣지만 종전 sec 폴백
   const m=String(EDIT_ID||'').match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})-/);
   if(m){ const s=Math.round((Date.parse(d.ts||'')-Date.parse('20'+m[1]+'-'+m[2]+'-'+m[3]+'T'+m[4]+':'+m[5]+':'+m[6]+'+09:00'))/1000); if(isFinite(s)&&s>0&&s<86400) sec=s; }
   $('#cstatus').classList.remove('err');
-  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.note?(' · '+esc(d.note)):'');
+  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.note?(' · '+esc(d.note)):'')+estTokenNote(d);
   const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; const _ps=$('#pvsec'); if(_ps) _ps.hidden=true;   // 결과 = 라이브 미리보기+PREVIEW 숨김(중복 방지 · 260711/260712)
   vw.innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
   $('#dlVid').hidden=false;
