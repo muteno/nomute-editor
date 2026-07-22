@@ -611,7 +611,7 @@ let ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:fals
 let CLIP_SAVE=null;   // 클리퍼 진입 직전 ON 스냅샷(운영자 260722 "도중에 누르면 다른 옵션값이 날아가 — 방지") — P값은 원래 보존이라 ON 플래그만 저장·복원
 function clipSnap(){ if(!ON.clip) CLIP_SAVE={...ON}; for(const kk in ON) ON[kk]=false; ON.clip=true; }   // 배타 진입 = 스냅샷 후 전축 off(발사 계약 불변 — buildOpts는 여전히 {clip:true} 단독)
 function clipRelease(){ if(!ON.clip) return; ON.clip=false; if(CLIP_SAVE){ for(const kk in CLIP_SAVE){ if(kk!=='clip') ON[kk]=CLIP_SAVE[kk]; } CLIP_SAVE=null; } }   // 배타 해제 = 스냅샷 복원(직후 탭한 축이 이겨야 하므로 호출측은 복원 뒤 자기 축 세팅)   // 음량 통일 = 기본 ON(운영자 260712 "음향 기본값 = 보정") — 나머지 축은 '원본/그대로/끔' 기본 유지 · 발사 게이트도 이 기본으로 통과(맨 발사 = 보정만 적용)
-let P={lang:'auto',tone:'sns',filler:true,style:'clean',karaoke:false,pop:false,keyword:true,pos:57,size:35,bg:100,
+let P={lang:'auto',tone:'sns',filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
   sh:100,shc:'black',font:'gothic',fg:'white',glow:0,   // 음영 크기 %(100 = 종전 편집기 렌더 그대로 = 기존 기능 불변 · 50 = ly 캡션 기본 파리티)·음영 색·폰트 — 운영자 260711 3축 · fg 글자색(프리셋 전용 · 기본 흰 = 종전)·glow 네온 번짐 %(운영자 260721 · 기본 0 = 종전)
   cutlv:'std',t0:'',t1:'',ar:'9:16',fit:'blur',vpos:50,res:'1080',fps:'60i'};   // fit 기본 = 여백(블러)(운영자 260711 fitDef)   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
 let OPEN='';
@@ -685,7 +685,8 @@ function prm(k){
     +(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'')):'');   // 크롭 위치 = 게이지만(운영자 260711 scrubBtn=off — 드래그 스크럽 코드는 보존·버튼만 미노출)
   if(k==='res') return segs('res',[['off','원본'],['src','4K'],['1080','1080p'],['720','720p']],ON.res?P.res:'off');   // src = 원본 유지(긴 변 3840 캡 · 4K는 180초 게이트 — 운영자 260711) · 라벨 = CYL과 동일 통일(260712 5차)
   if(k==='fps') return segs('fps',[['off','원본'],['60i','60fps 보간'],['30','30']],ON.fps?P.fps:'off');   // 24fps 삭제(운영자 260712 통일 5문법)
-  if(k==='clip') return segs('clip',[['off','OFF'],['on','후보 스캔 3~5개 (단독 실행)']],ON.clip?'on':'off');
+  if(k==='clip') return segs('clip',[['off','OFF'],['on','후보 스캔 3~5개 (단독 실행)']],ON.clip?'on':'off')
+    +(ON.clip?('<div class="plbl plbl-nm">감독</div><div class="prow">'+[['fable','Fable 5'],['opus','Opus 4.8']].map(a=>pc('clipmdl',a[0],P.clipmdl===a[0],false,a[1])).join('')+'</div>'):'');   // 클리퍼 감독 모델(운영자 260722 · sb 감독 선택기 개념 미러 · edit .plbl/.prow/.pc 네이티브 계승) → 발사 opts.clip_model
   if(k==='bgm') return segs('bgm',[['off','OFF'],['on','목소리만 남김']],ON.bgm?'on':'off');
   if(k==='anorm') return segs('anorm',[['off','OFF'],['on','음량 강도 · 좌우 밸런스 보정']],ON.anorm?'on':'off');
   return '';
@@ -1127,7 +1128,7 @@ function goFireFail(g){
 
 function buildOpts(){
   const o={};
-  if(ON.clip) return {clip:true};   // 클리퍼 = 배타 스캔(후보만 — 렌더 옵션은 후보 확정 뒤 일반 발사)
+  if(ON.clip) return {clip:true, clip_model:P.clipmdl};   // 클리퍼 = 배타 스캔(후보만 · clip_model = 감독 모델 fable/opus · 운영자 260722)
   if(ON.sub){ o.burn=true; o.lang=P.lang; o.tone=P.tone; o.filler=P.filler; o.style=P.style;
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000;
     o.outline=Math.round(P.sh*10)/1000;   // 음영 게이지 % → 외곽선 배율(100% = ×1.0 = 종전 편집기 렌더 바이트 그대로 · 260711)

@@ -222,12 +222,16 @@ jobs:
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           IN_ID: ${{ inputs.id }}
           SRC_URL: ${{ inputs.url }}
+          OPTS: ${{ inputs.opts }}
         run: |
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
           case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝(컴포즈·커밋) 동형(검증⑧ 심층방어 대칭)
           [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
           SUBS="$(cat /tmp/transcript.txt)"; export SUBS
           EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
+          # 클리퍼 감독 모델(운영자 260722 · 뷰어 clip_model fable/opus → 모델 ID) · 미지정 = clipmake.sh 기본(Fable 5)
+          _cm="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');m=o.get('clip_model');print(m if m in ('fable','opus') else '')" 2>/dev/null || true)"
+          case "$_cm" in fable) export CLIP_MODEL=claude-fable-5;; opus) export CLIP_MODEL=claude-opus-4-8;; esac
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/clipmake.sh "$IN_ID"
 
