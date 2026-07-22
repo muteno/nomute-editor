@@ -325,6 +325,7 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — CHECK/OK/ERR/WAIT/WARN/DOWNLOAD_SVG -->
+<script src="upload.js"></script><!-- R2 직업로드 공용(nmUpArm/nmUpload · edit·conv·ly·song과 공유 — 미가용 = 종전 30MB base64 폴백 · 260722) -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -337,6 +338,7 @@ const RENDER_BUDGET=900;   // 렌더 폴 소프트 예산 — 300s 모자이크(
 const MO_DFLT={shape:'ellipse',pxw:9,pxh:9,size:115,feather:5};   // 기본 = 타원·크기 115%·페더 5(운영자 260711 3분류 선택값 — 구 rect·100·0)   // 모자이크 조절 기본값 — 커버 영역은 종전과 동일·타일 분할만 종횡 독립(세로 = 높이 기준 · 평의회F 정직 정정)
 let TK={ id:'', meta:null, people:[], subjects:[], mode:'mosaic', sel:new Set(), keep:new Set(), keepP:new Set(), extra:[], kfe:0, invert:false, names:{}, scope:{}, resultUrl:'', lastGot:'', opts:{...MO_DFLT}, fill:'mosaic', preset:'smile', sfe:8, ck:{color:'green', similarity:18, choke:0, feather:1} };   // fill/preset/sfe = 실루엣(M4) · ck = 크로마키 노브(색 = 키워드 — hex 해석은 api · 260712 배선)   // keep/keepP/extra/kfe = 키잉(keepP = 얼굴 단위 · 260710) · scope = 가림 범위(pid→'body'만 기록 · 기본 face) · lastGot = 낡은 결과 배제 기준선(resultUrl은 다운로드 전용 — master-lost로 ''가 돼도 기준선 유지 · 평의회6·8)
 let FILE_B64='', FILE_NAME='';
+let FILE_R2='', _lastFile=null;   // R2 직업로드 키(일회용 — 발사 소진 · _lastFile로 재업로드 — edit 동문 · 260722)
 let USER_ACT=false;   // 사용자 발사 개시 = 늦게 도착한 pend 복원이 새 작업을 격침 못 하게(평의회5 · ly LY_GEN 등가)
 const unlocked=[true,false,false];
 let step=0, _curStop=null;
@@ -369,16 +371,36 @@ const FILE_ICON=$('#fileTxt').innerHTML;   // 빈 슬롯 픽토그램 원본(초
 let TRK_PVURL='';
 function trkPvHide(){ const pv=$('#trkPv'),vv=$('#trkPvVid'),lb=$('#pvLbl'); if(vv){ try{vv.pause();}catch(e){} vv.removeAttribute('src'); try{vv.load();}catch(e){} } if(TRK_PVURL){ try{URL.revokeObjectURL(TRK_PVURL);}catch(e){} TRK_PVURL=''; } if(pv)pv.hidden=true; if(lb)lb.hidden=true; }
 function trkPvShow(f){ const pv=$('#trkPv'),vv=$('#trkPvVid'),lb=$('#pvLbl'); if(!pv||!vv)return; try{ if(TRK_PVURL)URL.revokeObjectURL(TRK_PVURL); TRK_PVURL=URL.createObjectURL(f); vv.src=TRK_PVURL; if(vv.play)vv.play().catch(()=>{}); pv.hidden=false; if(lb)lb.hidden=false; }catch(e){} }
-$('#file').addEventListener('change',()=>{
-  const f=$('#file').files[0]; if(!f) return;
-  FILE_B64=''; FILE_NAME='';   // 새 선택 즉시 이전 파일 무효화 — 읽는 중 발사 = 옛 파일 전송 레이스 차단(평의회5)
-  if(f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; trkPvHide(); return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
-  FILE_NAME=f.name; trkPvShow(f);   // 영상 미리보기 즉시 표시(base64 읽기와 독립)
-  const btn=$('#analyze'); btn.disabled=true;   // 읽는 동안 발사 잠금(불완전 B64 전송 차단)
+const trkSlotName=f=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
+const trkSlotPct=(f,p)=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+p+'%</span><span class="fname">'+esc(f.name)+'</span>'; };   // 업로드 % = edit fileSlotPct 동문(260722)
+function legacyRead(f,btn){   // R2 미가용·실패 폴백 = 종전 base64 경로 그대로(≤30MB · 회귀 0) — _lastFile 신선도 가드(edit 평의회7 F3 계승)
   const rd=new FileReader();
-  rd.onload=()=>{ FILE_B64=String(rd.result||''); btn.disabled=false; $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; };
-  rd.onerror=()=>{ btn.disabled=false; FILE_NAME=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; errStatus('파일을 못 읽었어 — 다시'); };
+  rd.onload=()=>{ if(_lastFile!==f) return; FILE_B64=String(rd.result||''); btn.disabled=false; trkSlotName(f); };
+  rd.onerror=()=>{ if(_lastFile!==f) return; btn.disabled=false; FILE_NAME=''; _lastFile=null; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; errStatus('파일을 못 읽었어 — 다시'); };
   rd.readAsDataURL(f);
+}
+$('#file').addEventListener('change',async()=>{
+  const f=$('#file').files[0]; if(!f) return;
+  if(FILE_R2&&window.nmUpDrop) nmUpDrop(FILE_R2);   // 이전 R2 키 고아 정리(대체 선택 · edit 평의회7 F2 계승)
+  FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null;   // 새 선택 즉시 이전 파일 무효화 — 읽는 중 발사 = 옛 파일 전송 레이스 차단(평의회5)
+  if(f.size>2*1024*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; trkPvHide(); return errStatus('파일은 2GB까지 — 큰 영상은 URL로'); }
+  const r2on=window.nmUpArm&&await nmUpArm();   // R2 직업로드 가용(문서당 1회 핑 · 4s 타임아웃) — 미가용 = 종전 30MB 경로 폴백(edit 동문 · 260722)
+  if(!r2on&&f.size>30*1024*1024){ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; trkPvHide(); return errStatus('파일은 ≤30MB — 큰 영상은 URL로'); }
+  FILE_NAME=f.name; trkPvShow(f);   // 영상 미리보기 즉시 표시(업로드와 독립)
+  const btn=$('#analyze'); btn.disabled=true;   // 전송 준비 동안 발사 잠금(불완전 전송 차단)
+  _lastFile=f;
+  if(!r2on){ legacyRead(f,btn); return; }
+  trkSlotPct(f,0);
+  try{
+    const up=await nmUpload(f,p=>{ if(_lastFile===f) trkSlotPct(f,p); });
+    if(_lastFile!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 즉시 정리(edit 평의회7 F2 계승)
+    FILE_R2=up.key; btn.disabled=false; trkSlotName(f);
+  }catch(e){
+    if(_lastFile!==f) return;
+    if(f.size<=30*1024*1024){ legacyRead(f,btn); return; }   // 작은 파일 = 종전 경로 폴백(가용성 우선 · edit 동문)
+    btn.disabled=false; FILE_NAME=''; _lastFile=null; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; trkPvHide();
+    errStatus('업로드 실패 — 다시 ('+String(e&&e.message||'').slice(0,60)+')');
+  }
 });
 $('#urlClip').addEventListener('click',async()=>{ try{ const t=await navigator.clipboard.readText(); if(t)$('#url').value=t.trim(); }catch(e){} });
 
@@ -418,8 +440,14 @@ function gaugeClear(btn){ if(btn) btn.classList.remove('glive','firing','grun','
 
 $('#analyze').addEventListener('click',async()=>{
   const url=$('#url').value.trim();
-  if(!url && !FILE_B64) return errStatus('영상 URL이나 파일을 넣어줘');
+  if(!url && !FILE_B64 && !FILE_R2 && !_lastFile) return errStatus('영상 URL이나 파일을 넣어줘');
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
+  if(url && FILE_R2){ nmUpDrop(FILE_R2); FILE_R2=''; }   // URL 발사 = 첨부 R2 키 미소비 → 고아 정리(edit 발사 관례 계승 · 260722)
+  if(!url && !FILE_B64 && !FILE_R2 && _lastFile){   // 소진된 R2 키 재업로드(edit 관례 — 러너가 잡 끝 원본 삭제 = 일회용 · 파일은 브라우저에 남아 재선택 불필요)
+    const f=_lastFile;
+    try{ trkSlotPct(f,0); const up=await nmUpload(f,p=>{ if(_lastFile===f) trkSlotPct(f,p); }); if(_lastFile!==f){ nmUpDrop(up.key); return; } FILE_R2=up.key; trkSlotName(f); }
+    catch(e){ return errStatus('업로드 실패 — 파일 다시 선택'); }
+  }
   USER_ACT=true;
   const status=$('#astatus'); status.classList.remove('err'); status.textContent='';
   const gb=$('#analyze'); gb.disabled=true;
@@ -428,10 +456,11 @@ $('#analyze').addEventListener('click',async()=>{
   goLbl(CHECK_SVG); gb._flash=true; setTimeout(()=>{ gb._flash=false; },600);   // 누른 즉시 ✓ 접수(운영자 260710 "일단 체크되고") — 0.6s 뒤 타이머 라벨로 전환
   goWait(true,t0);   // '분석 중 · N:NN' 즉시 점등(업로드 내내 초 진행 = 멈춤 아님 어포던스) — 응답 후 pollAnalyze가 같은 t0로 이어받음
   try{
-    const payload = url? {url} : {fileB64:FILE_B64, name:FILE_NAME};
+    const payload = url? {url} : FILE_R2? {r2key:FILE_R2, name:FILE_NAME} : {fileB64:FILE_B64, name:FILE_NAME};   // R2 직업로드 키 우선(대용량 · 260722)
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
-    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    if(!res.ok||j.error){ gaugeClear(gb); goWait(false); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); if(!url) FILE_R2=''; return; }   // 실패 = 죽은 키 폐기(재사용 루프 차단 — 다음 발사 _lastFile 재업로드 · edit 평의회7 계승)
+    if(!url) FILE_R2='';   // R2 키 소진(러너가 잡 끝 원본 삭제 = 일회용) — 재분석은 _lastFile 재업로드 경로(260722)
     TK.id=j.id; TK.sel=new Set(); TK.names={}; TK.invert=false; TK.scope={}; TK.resultUrl=''; TK.lastGot='';
     TK.keep=new Set(); TK.keepP=new Set(); TK.extra=[];   // 키잉·범위 선택도 영상 단위 — 미리셋 = 이전 영상 sid·pid·좌표 누출(평의회6 적발)
     pendSet({id:j.id, st:'analyze', t0});   // t0 = 클릭 기점 그대로 — 재개 복원 시에도 경과 연속(클램프는 재개부가 처리)

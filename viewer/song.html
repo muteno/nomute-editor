@@ -654,16 +654,20 @@ $('#vFile').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
   if(VR2&&window.nmUpDrop) nmUpDrop(VR2);   // 이전 R2 키 고아 정리(대체 선택 · edit 평의회7 F2 계승)
   VR2=''; VRAW=null;
-  if(f.size>20*1024*1024){   // 20MB 초과 = R2 직업로드(edit·conv·ly 공용 upload.js — 구 하드 거절 해제 · 260722) · 미가용 = 종전 캡 폴백
-    if(f.size>2*1024*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 2GB까지'); }   // api/upload 계약 절대캡
-    if(!(window.nmUpArm&&await nmUpArm())){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+  if(f.size>2*1024*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 2GB까지'); }   // api/upload 계약 절대캡
+  const r2on=window.nmUpArm&&await nmUpArm();   // R2 직업로드 1순위(전 크기 · edit 동문 "작은 파일도 R2, b64 = 예비역" · 운영자 260722 단일화) — 미가용 = 종전 20MB 캡 폴백
+  if(!r2on&&f.size>20*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+  if(r2on){
     VRAW=f;
     try{
       const up=await nmUpload(f,p=>{ if(VRAW===f) $('#vfName').textContent=f.name+' · '+p+'%'; });
       if(VRAW!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 정리(edit 평의회7 F2 계승)
       VR2=up.key; VFILE=null; VFNAME=f.name; $('#vfName').textContent=f.name; $('#vfLab').classList.add('has');
-    }catch(err){ VRAW=null; VR2=''; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); e.target.value=''; btnErr($('#trainGo'),'업로드 실패 — 다시'); }
-    return;
+      return;
+    }catch(err){
+      if(f.size>20*1024*1024){ VRAW=null; VR2=''; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); e.target.value=''; return btnErr($('#trainGo'),'업로드 실패 — 다시'); }
+      VRAW=null;   // 20MB 이하 = 아래 종전 b64 폴백으로 계속(가용성 우선 · edit 동문)
+    }
   }
   try{
     await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ VFILE=r.result; res(); }; r.onerror=()=>rej(r.error||new Error('읽기 실패')); r.readAsDataURL(f); });
