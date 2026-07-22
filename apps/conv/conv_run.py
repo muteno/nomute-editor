@@ -225,8 +225,8 @@ def main():
     out = "/tmp/conv_out.mp4"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{eff:.3f}", "-i", src,
            "-map", "0:v:0", "-map", "0:a?", "-vf", ",".join(vf),
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
-           "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out]
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]   # crf 18·aac 192k = 편집 탭(ly_burn) 동값 통일(운영자 260722 — 같은 원본이 탭 따라 품질 다르던 편차 해소 · preset 유지 = 속도 불변)
     print("ffmpeg:", " ".join(cmd), flush=True)
     t_run = time.time()
     try:
