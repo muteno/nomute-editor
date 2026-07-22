@@ -10,11 +10,12 @@
 //   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 코어 13시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티 · C12 = Q360(구 Q355 표기) 실시간 트렌드 반갈 · C13 = Q399 프로필 타일 재편[tall 미니차트]):
+// 무엇을 검증하나 — 코어 14시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티 · C12 = Q360(구 Q355 표기) 실시간 트렌드 반갈 · C13 = Q399 프로필 타일 재편[tall 미니차트] · C14 = 260722 tpost '내역 ▶' 헤더 이관):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
 //   → C8 채널요약 잉크선 412(topic 라벨 좌변 = 배지 4분할 중앙 세로선[운영자 260721 요청] · topic n=/sig 범례/tpost ×편차/daily·tpost 내역확인 우변 = 체브론 잉크선[헤더 우변−인셋 = 패딩12+보더1 · 인셋 = --trend-indent 토큰 파생 · --chu-r 예약 무관] · sig-note 랩 프로즈 = 초과≤0.5 가드 · 운영자 260721 "n= 우변 = 토글 우측끝 세로선" + 평의회 경화)
+//   → C14 tpost '내역 ▶' 헤더 동행 412(운영자 260722 하단→타이틀 옆 이관 — abspos·타이틀갭7·ΔCy≤0.5·기간 세그 광학갭≥8[예약 237 짝]·▶=SVG 삼각 · C8 하단 내역확인은 daily 단독으로 축소)
 //   → C9 협폭 수치 열 사폭 412(tpost .ch-vw/.ch-dev 박스폭−잉크폭 ≤1.5px — 고정 사폭이 제목을 압착하던 것의 재발 방지 · 운영자 260721 "간격 쓸데없이 길다" 기틀)
 //   → C5 모바일 412 메뉴3 top·x 칩 = 헤더 우측(운영자 260721 "SNS에 들어가야" 편입 · top 예약 208 = 침범 0·잔여 tb-seg 스크롤)
 //   → C7 우변 가드 412(행 문법 소분류·TOP 10 마지막 열 우변 ≤ 접기 토글선[우변-12]) → C6 PC 1280 메뉴3 top 칩 = 헤더 우측 abspos → C10 트위터 좌X↔우블스 순위 행 y 패리티(본문 5줄 예약·헤더 상수 = 카드 높이 단일값 · Q354 — ⚠260721 운영자 "블루스카이는 실검만" = bsk 게시물 섹션 소멸 → 상시 skip[한쪽 결측 정직 표기 경로] · 유닛 재도입 시 자동 부활) → C1 페이지 에러 0
@@ -168,12 +169,23 @@ const SEL = {
         if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tv')).right - Ls).toFixed(2), +(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });
         if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
         if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Ls).toFixed(2)));
-        d.querySelectorAll('.ch-morelink').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));
+        d.querySelectorAll('.ch-morelink:not(.ch-hdrmore)').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));   // 하단 내역확인 = daily 단독(tpost '내역 ▶' = 260722 헤더 이관 → C14 별도 계약)
         out.push({ id, skip: !ds.length && !ov.length, max: ds.length ? Math.max(...ds.map(Math.abs)) : 0, over: ov.length ? Math.max(...ov) : null, n: ds.length + ov.length });
       }
       return out;
     });
-    ok('C8 채널요약 잉크선 412(topic 좌=배지선·topic 수치/tpost ×열=세그(토글) 우변선[260722 이관] / sig 범례·내역확인×2=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
+    ok('C8 채널요약 잉크선 412(topic 좌=배지선·topic 수치/tpost ×열=세그(토글) 우변선[260722 이관] / sig 범례·daily 내역확인=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
+
+    // C14 tpost '내역 ▶' 헤더 동행 계약(운영자 260722 — 구 본문 하단 '내역 확인 ›' → 헤더 타이틀 옆 이관 · .ch-hdrmore) — 펼침 상태 계약: abspos·타이틀 잉크 우변+갭7(헤더 형제 갭 균일)·헤더 세로중앙 ΔCy≤0.5·기간 세그와 광학 갭≥8(예약 237 짝 = 협폭 침범 0)·▶ = SVG 픽토([3-1]). 접힘 = 칩과 동일 거동(내려앉음 · C3 기승인 각주)이라 접힘 위치는 계약 아님
+    const c14 = await pg.evaluate(() => {
+      const d = document.getElementById('cg-tpost'); if (!d) return { skip: true };
+      const b = document.getElementById('chPostMore'); if (!b) return { skip: true };
+      const hd = d.querySelector(':scope > .tgroup-h'), seg = d.querySelector(':scope > .chseg-row');
+      const hb = hd.getBoundingClientRect(), br = b.getBoundingClientRect(), sb = seg ? seg.getBoundingClientRect() : null;
+      let tR = 0; hd.childNodes.forEach(n => { if (n.nodeType === 3 && n.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(n); const r = rg.getBoundingClientRect(); if (r.width) tR = Math.max(tR, r.right); } });   // 타이틀 텍스트노드 잉크 우변(C8 ink 문법 미러)
+      return { skip: false, pos: getComputedStyle(b).position, svg: !!b.querySelector('svg'), dCy: +(((br.top + br.bottom) / 2) - ((hb.top + hb.bottom) / 2)).toFixed(2), tgap: +(br.left - tR).toFixed(2), sgap: sb ? +(sb.left - br.right).toFixed(2) : null };
+    });
+    ok('C14 tpost 내역 ▶ = 헤더 타이틀 옆 412(abspos·ΔCy≤0.5·타이틀갭 7±1.5·세그갭≥8·SVG 픽토)', c14.skip ? true : (c14.pos === 'absolute' && c14.svg && Math.abs(c14.dCy) <= 0.5 && Math.abs(c14.tgap - 7) <= 1.5 && (c14.sgap == null || c14.sgap >= 8)), JSON.stringify(c14));
 
     // C9 협폭 수치 열 사폭 가드(운영자 260721 "간격 쓸데없이 길다" — 고정폭 죽은 여백이 제목 압착 · 열 박스 ≈ 잉크 실폭 계약)
     const c9 = await pg.evaluate(() => {
