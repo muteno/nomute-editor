@@ -7,7 +7,8 @@
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 생성/창작 = opus 유지 · §모델 d)
-MODEL="$PIPE_MODEL"
+MODEL="${NB_MODEL:-$PIPE_MODEL}"     # 모델 토글(운영자 260722 · 소넷5 등 · 기본 PIPE_MODEL=opus) — 워크플로 env NB_MODEL로 카나리
+NB_EFFORT="${NB_EFFORT:-high}"       # 전사→분석 노트 = 전사는 GPU(STT)·분석은 정해진 변환 → high(운영자 260722 · max 불필요) · 토글 high/medium/low
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 4계정 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — 토큰 계측
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버 체인 깊이(4계정)와 동수 — songmake 동일
@@ -66,9 +67,9 @@ MARK='"summary"'
 inline_delay=15
 rc=1
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC="nb-make" METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC="nb-make" METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$NB_EFFORT" claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort "$NB_EFFORT" \
         --disallowedTools "Read,Glob,Grep,Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 1 \
         2> "${OUTDIR}/stderr.log")"

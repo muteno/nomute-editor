@@ -6,7 +6,7 @@ set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/k-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
-MODEL="$PIPE_MODEL"
+MODEL="${K_MODEL:-claude-fable-5}"   # Kling 영상 프롬프트 = Fable 5 기본(운영자 260722 · 역동·서사·재생성 절약 · sbmake 감독·gen_image와 동일 티어) — 토글 K_MODEL=claude-opus-4-8
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 쿼터 한도 시 4계정 자동 로테이션·일시 과부하 재시도(analyze·ask·card와 통일·§📰)
 source "$ROOT/shared/claude_meter.sh"   # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버(서브1→서브2→서브3 = 4계정 체인 깊이·서브3 실호출)·일시 과부하(5xx/Overloaded) 인라인 재시도(15s·30s 백오프) — analyze·ask·card와 동일
@@ -37,10 +37,11 @@ ${SCENE}"
 # 인라인 재시도 — 쿼터 한도면 대체 계정 전환(claude_failover·서브1→서브2→서브3), 일시 과부하(5xx/Overloaded)면 백오프 재시도. 성공·KMAKE_FAILED(막다른길)는 즉시 탈출(쿼터 낭비 0).
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(ask/analyze 패턴 이식 · 260707 2차 — 타임아웃은 대개 입력바운드라 무한 전환 금지)
+K_MODEL_FB="${K_MODEL_FB:-claude-opus-4-8}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · 계정폴오버는 모델 불변이라 별도 필요)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
+  out="$(printf '%s' "$prompt" | METER_SRC=k METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 900 \
         --model "$MODEL" \
-        --effort max \
+        --effort "$_eff" \
         --allowedTools "Read,Glob,Grep,WebFetch,WebSearch" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task" \
         --max-turns 40 \
@@ -54,6 +55,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
     echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  if [ "$_mfb" = 0 ] && [ "$MODEL" != "$K_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절/전용토큰 소진) → Opus max 1회 폴백(운영자 260722)
+    _mfb=1; MODEL="$K_MODEL_FB"; _eff=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done

@@ -60,9 +60,9 @@ MAXTURNS=$((2 * NCARD + 10))   # 카드 수 비례(이미지 Read 왕복 여유 
 
 inline_delay=15; rc=1; out=""
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC=track-cap METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
+  out="$(printf '%s' "$prompt" | METER_SRC=track-cap METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 600 \
         --model "$MODEL" \
-        --effort max \
+        --effort high \
         --safe-mode \
         --allowedTools "Read" \
         --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Glob,Grep" \

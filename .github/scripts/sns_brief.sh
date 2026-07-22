@@ -172,7 +172,7 @@ $BODY"
 claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 실측: 침묵 행은 본선 600s를 통째로 태움 · 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
-  out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort max --safe-mode --max-turns 8 \
+  out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 8 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/brief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then

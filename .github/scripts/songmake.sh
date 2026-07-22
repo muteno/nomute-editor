@@ -7,7 +7,7 @@
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 생성/창작 = opus 유지 · §모델 d)
-MODEL="$PIPE_MODEL"
+MODEL="${SONG_MODEL:-claude-fable-5}"   # 음원 프롬프트 = Fable 5 기본(운영자 260722 · 생각 많이·품질 차이 · 창작 티어) — 토글 SONG_MODEL=claude-opus-4-8
 source "$ROOT/shared/claude_transient.sh"  # is_quota()/claude_failover()/is_transient() SSOT — 4계정 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — 토큰 계측
 INLINE_TRIES="${INLINE_TRIES:-4}"   # 쿼터 폴오버 체인 깊이(4계정)와 동수 — clipmake 동일
@@ -41,10 +41,11 @@ ${STORY}"
 # 인라인 재시도 — 쿼터 한도 = 대체 계정 전환 · 일시 과부하 = 백오프(clipmake 문법 그대로)
 inline_delay=15
 rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단)
+SONG_MODEL_FB="${SONG_MODEL_FB:-claude-opus-4-8}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · 계정폴오버는 모델 불변)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
-  out="$(printf '%s' "$prompt" | METER_SRC="song-${MODE}" METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 600 \
+  out="$(printf '%s' "$prompt" | METER_SRC="song-${MODE}" METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 600 \
         --model "$MODEL" \
-        --effort max \
+        --effort "$_eff" \
         --disallowedTools "Read,Glob,Grep,Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch" \
         --max-turns 1 \
         2> "${OUTDIR}/stderr.log")"
@@ -56,6 +57,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
     echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  if [ "$_mfb" = 0 ] && [ "$MODEL" != "$SONG_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절/전용토큰 소진) → Opus max 1회 폴백(운영자 260722)
+    _mfb=1; MODEL="$SONG_MODEL_FB"; _eff=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done
