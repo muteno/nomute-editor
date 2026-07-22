@@ -50,9 +50,14 @@
   @keyframes shake { 20%{ transform:translateX(-5px);} 45%{ transform:translateX(4px);} 70%{ transform:translateX(-3px);} 90%{ transform:translateX(2px);} }
   .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
     background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
-    animation:goFill .72s var(--gauge-ease) forwards; }   /* 누르면 초록이 좌→우 풀필(구성도 .send.is-fire 정본 · song .go.firing verbatim) */
+    animation:goFill .72s var(--gauge-ease) forwards; }   /* 초록 좌→우 채움(구성도 .send.is-fire 정본 · 솔리드 스택 = thumb/song verbatim) — ⚠ 문구 유지: 발사 JS는 라벨을 안 바꾼다(상태텍스트 폐지 = 운영자 260622·260702 · index askSend/geniGo 동문 · Q429) */
   @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
   @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  /* 응답대기 glive 점근 = index .mkbtn.glive verbatim(CII 게이지 행 — POST 대기 = glive가 정본 · goFill 고정 .72s는 즉시형 전용 "fetch 길면 꽉 찬 채 멈춤" 운영자 260702) — 위 .go.firing 솔리드 스택 위에서 size만 전이 */
+  .go.glive.firing { animation:none; background-size:0% 100%, 100% 100%; transition:background-size 3.6s var(--gauge-ease) /* raw-ok: 3.6s = index .mkbtn.glive 점근 정본 동값(응답 대기 커버) */; }   /* ⚠️ 2번 레이어 크기 명시(100% 100%) — 생략 = 보간 불가 90% 스냅(index 실측 함정) */
+  .go.glive.firing.grun { background-size:90% 100%, 100% 100%; }
+  .go.glive.firing.gdone { background-size:100% 100%, 100% 100%; transition:background-size .3s linear /* raw-ok: .3s linear = index glive gdone 마무리 정본 동값 */; }
+  @media (prefers-reduced-motion:reduce) { .go.glive.firing, .go.glive.firing.gdone { transition-duration:var(--dur-fast); } }
   .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .go.checking { display:grid; place-items:center; }   /* 체크 그리는 동안 SVG 중앙정렬 */
   .go .gck { width:26px; height:26px; margin:-6px 0; }   /* raw-ok: margin -6 = (26−14)/2 상쇄 — ✓ 26px가 레이아웃 높이를 글줄(14)로 유지 = 게이지→✓ 전환 시 버튼 40→52px '살짝 튐' 소멸(edit #editGo 260722 수리 계승 · 시각 26px 불변) */
@@ -235,26 +240,28 @@ function btnErr(g,m){
   g._errT=setTimeout(()=>{ g.classList.remove('err','shake'); g.textContent=g.dataset.label; },1700);
 }
 const NB_SPIN='<span class="nmld" style="--sz:6px;--gap:4px;--bnc:-5px"><i></i><i></i><i></i></span>';   /* raw-ok: 컴팩트 6px 도트 스펙 = thumb SPIN_SVG verbatim(sb JOB_SPIN 동문) */   // 진행 픽토그램 = 로딩 도트(nm-loader.js)
-function goFire(gb){   // song goFire verbatim — 종단만 훅(goEnd): 자료화 = 폴 인계 · 피드 = 접수됨 · 기본 = '전송됨'→원복
+function goFire(gb){   // 발사 = glive 점근 게이지(응답대기형 = index gaugeStart 정본 · CII 게이지 행) — ⚠ 문구 유지: 라벨 스왑 없음(상태텍스트 폐지 = 운영자 260622·260702 · askSend/geniGo 동문 · 구 '전송 중…' = thumb 1·2번 레거시 오이식 회수 Q429)
   if(!gb.dataset.label) gb.dataset.label=gb.textContent;
   clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); clearTimeout(gb._errT);
-  gb.classList.remove('firing','okdone','checking','err','shake'); void gb.offsetWidth;   // 리플로우 = 게이지 재시작
-  gb.classList.add('firing'); gb.textContent='전송 중…'; gb.setAttribute('aria-busy','true');
+  gb.classList.remove('glive','firing','grun','gdone','okdone','checking','err','shake'); void gb.offsetWidth;   // 리플로우 = 게이지 재시작
+  gb.classList.add('glive','firing'); gb.setAttribute('aria-busy','true');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>gb.classList.add('grun')));   // 2중 rAF = 0% 한 프레임 페인트 후 90% 트리거(index gaugeStart verbatim)
   gb._ck=0; gb._end=null;
+}
+function goAccept(gb){   // 접수 응답 = 현위치→100% 마무리(gdone .3s) → ✓ 스트로크 드로우 → 종단(goEnd 훅: 자료화 = 폴 인계 · 피드 = 접수됨 · 기본 = 원복 — 상태텍스트 없음)
+  gb.classList.add('gdone');
   gb._fT1=setTimeout(()=>{
-    gb.classList.remove('firing'); gb.classList.add('okdone','checking');
-    gb.innerHTML='<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
+    gb.classList.remove('glive','firing','grun','gdone'); gb.classList.add('okdone','checking');
+    gb.innerHTML='<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="접수됨"><path d="M5 13l4 4L19 7"/></svg>';
     gb.removeAttribute('aria-busy');
     gb._fT2=setTimeout(()=>{
-      gb.classList.remove('checking'); gb._ck=1;
-      const end=gb._end; gb._end=null;
-      if(end) return end();
-      gb.textContent='전송됨';
-      gb._fT3=setTimeout(()=>{ gb.classList.remove('okdone'); gb.textContent=gb.dataset.label||''; },850);
+      gb._ck=1; const end=gb._end; gb._end=null;
+      if(end) return end();   // 종단 인계(checking 해제 = 인계처가)
+      gb._fT3=setTimeout(()=>{ gb.classList.remove('okdone','checking'); gb.textContent=gb.dataset.label||''; },850);
     },560);
-  },900);
+  },340);   // gdone(.3s) 물림 뒤 ✓
 }
-function goIdle(gb){ if(!gb) return; clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); gb._end=null; gb._ck=1; gb.classList.remove('firing','okdone','checking'); gb.removeAttribute('aria-busy'); if(gb.dataset.label) gb.textContent=gb.dataset.label; }   // 접수 실패 = 게이지 회수·라벨 원복(에러는 상태줄이 표시 · song verbatim)
+function goIdle(gb){ if(!gb) return; clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3); gb._end=null; gb._ck=1; gb.classList.remove('glive','firing','grun','gdone','okdone','checking'); gb.removeAttribute('aria-busy'); if(gb.dataset.label) gb.textContent=gb.dataset.label; }   // 접수 실패 = 게이지 회수·라벨 원복(에러는 상태줄이 표시)
 function goEnd(gb,fn){ if(gb._ck===0){ gb._end=fn; } else fn(); }   // 종단 예약 — 발사 시퀀스 중이면 ✓ 홀드(560ms) 뒤 실행 · 시퀀스 밖(재개 등) = 즉시
 let _busyTick=null;
 function busyStart(gb,t0){   // '자료화 중' = 버튼 안(구 상태줄 statusWait 대체) — 진행 픽토(nmld)+라벨+경과 시계(초마다 시계만 갱신 = 도트 모션 무중단)
@@ -266,18 +273,15 @@ function busyStart(gb,t0){   // '자료화 중' = 버튼 안(구 상태줄 statu
   const tm=gb.querySelector('.gtime');
   _busyTick=setInterval(()=>{ tm.textContent=fmtT((Date.now()-t0)/1000); },1000);
 }
-function busyEnd(gb,done){   // 종료 — done=완료 ✓ 드로우 → '완료' → 라벨 원복(song ✓→'전송됨'→원복 리듬 verbatim) · 실패·중단 = 즉시 원복(사유 = 상태줄)
+function busyEnd(gb,done){   // 종료 — done=완료 ✓ 스트로크 드로우 → 라벨 원복(상태텍스트 없음 — '완료' 문구도 폐지 축 = 운영자 260622·260702 · 사유·요약은 상태줄/노트가 표시) · 실패·중단 = 즉시 원복
   clearInterval(_busyTick); _busyTick=null;
   clearTimeout(gb._fT1); clearTimeout(gb._fT2); clearTimeout(gb._fT3);
   gb._end=null; gb._ck=1;
-  gb.classList.remove('jobrun','firing'); gb.removeAttribute('aria-busy');
+  gb.classList.remove('jobrun','glive','firing','grun','gdone'); gb.removeAttribute('aria-busy');
   if(done){
     gb.classList.add('okdone','checking');
     gb.innerHTML='<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="완료"><path d="M5 13l4 4L19 7"/></svg>';
-    gb._fT2=setTimeout(()=>{
-      gb.classList.remove('checking'); gb.textContent='완료';
-      gb._fT3=setTimeout(()=>{ gb.classList.remove('okdone'); gb.textContent=gb.dataset.label||'자료화'; },850);
-    },560);
+    gb._fT3=setTimeout(()=>{ gb.classList.remove('okdone','checking'); gb.textContent=gb.dataset.label||'자료화'; },1410);   // ✓ 홀드 = 560+850 합(발사 종단 리듬 합성 · 새 수치 아님)
   } else { gb.classList.remove('okdone','checking'); gb.textContent=gb.dataset.label||'자료화'; }
 }
 
@@ -295,6 +299,7 @@ async function fire(){
     const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url, ask:$('#ask').value.trim().slice(0,500)})});
     const j=await res.json();
     if(!res.ok||j.error){ goIdle(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
+    goAccept(gb);   // 접수 = 게이지 100% 마무리 → ✓ 드로우(문구 무변)
     pendSet({id:j.id, t0, url});
     pollNote(j.id, t0, t0-90000);   // 표시는 goEnd가 ✓ 홀드 뒤 버튼 인계(jobrun)
   }catch(e){ goIdle(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
@@ -483,8 +488,9 @@ async function nbFeedFire(btn){
     const r=await fetch('/api/submit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:buildNewsText(NOTE)})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||j.error){ goIdle(btn); st.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+r.status+' — 잠시 후 다시'))); st.classList.add('err'); return; }
+    goAccept(btn);   // 접수 = 게이지 100% 마무리 → ✓ 드로우(문구 무변)
     nbFedMark(NOTE.id);
-    goEnd(btn, ()=>{ btn.classList.remove('okdone'); btn.classList.add('fed'); btn.textContent='뉴스 요약 접수됨'; btn.disabled=true; });   // ✓ 홀드 뒤 접수 영속(fed · song '전송됨' 자리)
+    goEnd(btn, ()=>{ btn.classList.remove('okdone','checking'); btn.classList.add('fed'); btn.textContent='뉴스 요약 접수됨'; btn.disabled=true; });   // ✓ 홀드 뒤 접수 영속(fed — 종단 라벨은 상태 명사라 유지)
     st.innerHTML=OK_SVG+' 대기열 접수 — 분석되면 피드에 기사 카드로 떠';
   }catch(e){ goIdle(btn); st.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; st.classList.add('err'); }
 }
