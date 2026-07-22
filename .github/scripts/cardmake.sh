@@ -137,8 +137,8 @@ if [ "$MODE" = edit ]; then
 $(cat "queue/$stem.md" 2>/dev/null)
 
 [출력] 이미지 프롬프트 한 단락만(머리말·설명·따옴표·코드블록 없이). 장면 묘사 텍스트만."
-    EDIT_PROMPT="$(printf '%s' "$ap" | METER_SRC=card-edit METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
-          --model "$MODEL" --effort max \
+    EDIT_PROMPT="$(printf '%s' "$ap" | METER_SRC=card-edit METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter 900 \
+          --model "$MODEL" --effort "$CARD_EFFORT" \
           --allowedTools "WebFetch,WebSearch" \
           --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
           --max-turns 20 2>"/tmp/editprompt_${stem}.err")"
@@ -400,8 +400,8 @@ $(cat "$q")${disp_note}"
 ${lint_out}
 
 "
-      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$CARD_TIMEOUT" \
-            --model "$MODEL" --effort max \
+      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter "$CARD_TIMEOUT" \
+            --model "$MODEL" --effort "$CARD_EFFORT" \
             --allowedTools "WebFetch,WebSearch" \
             --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
             --max-turns 40 2>/dev/null)"
@@ -447,8 +447,8 @@ ${lint_out}
 [누락 수치 목록]
 ${cov_out}
 "
-        out3="$(printf '%s' "${fp_base}${COV_SUFFIX}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter 900 \
-              --model "$MODEL" --effort max \
+        out3="$(printf '%s' "${fp_base}${COV_SUFFIX}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter 900 \
+              --model "$MODEL" --effort "$CARD_EFFORT" \
               --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep,WebFetch,WebSearch" \
               --max-turns 40 2>/dev/null)" || true
         if [ -n "${out3//[[:space:]]/}" ] && grep -qm1 '^### \[카드 1\]' <<<"$out3"; then
