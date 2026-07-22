@@ -25,6 +25,7 @@ ${SUBS}"
 # 인라인 재시도 — 쿼터 한도 = 대체 계정 전환 · 일시 과부하 = 백오프(lymake 문법 그대로)
 inline_delay=15
 rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단 · 검증⑥ L1)
+CLIP_MODEL_FB="${CLIP_MODEL_FB:-claude-opus-4-8}"; _mfb_tried=0   # Fable 형식이탈/거절 시 Opus 1회 폴백(gen_image MODEL_FB 패턴 이식 · 평의회 260722 P1 — 계정 폴오버는 모델 불변이라 별도 필요)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=clip METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 600 \
         --model "$MODEL" \
@@ -40,6 +41,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
     echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  if [ "$_mfb_tried" = 0 ] && [ "$MODEL" != "$CLIP_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절 추정) → Opus 1회 폴백(평의회 260722 P1 · 계정 폴오버는 모델 불변)
+    _mfb_tried=1; MODEL="$CLIP_MODEL_FB"; echo "  ⏳ 모델 폴백 → ${MODEL} (Fable 형식이탈/거절 추정 · 1회 한정)"; continue
   fi
   break
 done

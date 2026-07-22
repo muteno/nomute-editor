@@ -71,6 +71,7 @@ ${CTX_TXT}"
 # 순수 텍스트 작업 = 도구 전부 불허(헤드리스 무중단 · kmake와 동일 축, 지침 Read조차 불요)
 inline_delay=15
 _to_tried=0
+TR_MODEL_FB="${TR_MODEL_FB:-claude-opus-4-8}"; _mfb_tried=0   # Fable 형식이탈/거절 시 Opus 1회 폴백(gen_image MODEL_FB 패턴 · 평의회 260722 P1 — 계정 폴오버는 모델 불변)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=tr METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$TR_EFFORT" claude_meter 600 \
         --model "$MODEL" \
@@ -87,6 +88,9 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
   if [ "$attempt" -lt "$INLINE_TRIES" ] && is_transient "$out$(cat "${OUTDIR}/stderr.log" 2>/dev/null)"; then
     echo "  ⏳ API 일시 과부하 추정(인라인 ${attempt}/${INLINE_TRIES}, rc=$rc) — ${inline_delay}s 후 재시도"
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
+  fi
+  if [ "$_mfb_tried" = 0 ] && [ "$MODEL" != "$TR_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절 추정) → Opus 1회 폴백(평의회 260722 P1)
+    _mfb_tried=1; MODEL="$TR_MODEL_FB"; echo "  ⏳ 모델 폴백 → ${MODEL} (Fable 형식이탈/거절 추정 · 1회 한정)"; continue
   fi
   break
 done

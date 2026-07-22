@@ -60,7 +60,7 @@ export async function onRequestPost({ request, env }) {
   if (t1 !== null && t1 > 0) opts.vid_t1 = Math.round(t1 * 100) / 100;
   if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   if (opts.clip === true) { for (const k of Object.keys(opts)) { if (k !== 'clip' && k !== 'clip_model') delete opts[k]; } }   // 클리퍼 = 배타 스캔 모드(후보만 뽑음 · 렌더 옵션 무시 = 서버 정규화 — 러너 스텝 게이트와 계약 일치) · clip_model은 감독 선택이라 보존
-  else delete opts.clip;   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단
+  else { delete opts.clip; delete opts.clip_model; }   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단 · clip_model도 동반 삭제(clip 없이 잔존 방지·평의회 260722 P2 청결성)
   if (!opts.clip && !opts.burn && !opts.cut && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
     && opts.vid_t0 === undefined && opts.vid_t1 === undefined) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // cut 단독 = 유효(STT-only 컷 260711)
 
