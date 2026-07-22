@@ -343,6 +343,7 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — COPY/CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
+<script src="upload.js"></script><!-- R2 직업로드 공용(nmUpArm/nmUpload · edit·conv·ly와 공유 — 보이스 소스 20MB 초과 경로 · 미가용 = 종전 20MB 캡 · 260722) -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -628,6 +629,7 @@ $('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playI
 //    train: 소스(1~5분)+동의 → /api/voice → voice_out/<vid>/voice.json 폴 · apply: 완성곡+보이스 → 커버 = pollSong 'voice'
 //    동의 게이트 = 본인·권리 보유 음성만(실존 타인 금지 · 운영자 제약) — 없인 발사 불가(api·워크플로 이중 거절).
 let VOICES=[], VSEL=null, VFILE=null, VFNAME='';
+let VRAW=null, VR2='';   // VRAW = 첨부 원본 File(20MB 초과 · R2 경로) · VR2 = R2 직업로드 키(일회용 — 발사 소진 · VRAW로 재업로드 — edit FILE_R2 동문 · 260722)
 function vcRender(){
   const cur=VOICES.find(x=>x.id===VSEL)||null;
   if(!cur) VSEL=null;
@@ -650,18 +652,38 @@ $('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if
 $('#consBtn').addEventListener('click',e=>{ const b=e.currentTarget; const on=!b.classList.contains('on'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
 $('#vFile').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
-  if(f.size>20*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+  if(VR2&&window.nmUpDrop) nmUpDrop(VR2);   // 이전 R2 키 고아 정리(대체 선택 · edit 평의회7 F2 계승)
+  VR2=''; VRAW=null;
+  if(f.size>20*1024*1024){   // 20MB 초과 = R2 직업로드(edit·conv·ly 공용 upload.js — 구 하드 거절 해제 · 260722) · 미가용 = 종전 캡 폴백
+    if(f.size>2*1024*1024*1024){ e.target.value=''; return btnErr($('#trainGo'),'파일은 2GB까지'); }   // api/upload 계약 절대캡
+    if(!(window.nmUpArm&&await nmUpArm())){ e.target.value=''; return btnErr($('#trainGo'),'파일은 ≤20MB — 1~5분 mp3/m4a'); }
+    VRAW=f;
+    try{
+      const up=await nmUpload(f,p=>{ if(VRAW===f) $('#vfName').textContent=f.name+' · '+p+'%'; });
+      if(VRAW!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 정리(edit 평의회7 F2 계승)
+      VR2=up.key; VFILE=null; VFNAME=f.name; $('#vfName').textContent=f.name; $('#vfLab').classList.add('has');
+    }catch(err){ VRAW=null; VR2=''; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); e.target.value=''; btnErr($('#trainGo'),'업로드 실패 — 다시'); }
+    return;
+  }
   try{
     await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ VFILE=r.result; res(); }; r.onerror=()=>rej(r.error||new Error('읽기 실패')); r.readAsDataURL(f); });
     VFNAME=f.name; $('#vfName').textContent=f.name; $('#vfLab').classList.add('has');
   }catch(err){ VFILE=null; VFNAME=''; $('#vfName').textContent=''; $('#vfLab').classList.remove('has'); btnErr($('#trainGo'),'파일 읽기 실패 — 다시'); }
 });
-$('#trainGo').addEventListener('click',()=>{
+$('#trainGo').addEventListener('click',async ()=>{
   const gb=$('#trainGo');
-  if(!VFILE) return btnErr(gb,'보이스 소스(1~5분)를 올려줘');
+  if(!VFILE&&!VR2&&!VRAW) return btnErr(gb,'보이스 소스(1~5분)를 올려줘');
   if(!$('#consBtn').classList.contains('on')) return btnErr(gb,'동의 먼저 — 본인·권리 보유 음성만');
-  fireApi(gb, API_VOICE, {mode:'train', name:$('#vName').value.trim().slice(0,24), consent:true, fileB64:VFILE, fname:VFNAME},
+  if(!VFILE&&!VR2&&VRAW){   // 소진된 R2 키 재업로드(러너가 잡 끝 원본 삭제 = 일회용 · 파일은 브라우저에 남아 재선택 불필요 — edit 관례 · 260722)
+    const f=VRAW;
+    try{ const up=await nmUpload(f,p=>{ if(VRAW===f) $('#vfName').textContent=f.name+' · '+p+'%'; }); if(VRAW!==f){ nmUpDrop(up.key); return; } VR2=up.key; $('#vfName').textContent=f.name; }
+    catch(err){ return btnErr(gb,'업로드 실패 — 파일 다시 선택'); }
+  }
+  const pay={mode:'train', name:$('#vName').value.trim().slice(0,24), consent:true, fname:VFNAME};
+  if(VR2) pay.r2key=VR2; else pay.fileB64=VFILE;   // 20MB 초과 = R2 키(b64 미탑재 · 260722)
+  await fireApi(gb, API_VOICE, pay,
     (j,t0)=>{ pendSet({id:j.id, mode:'voice-train', t0}); pollVoice(j.id, t0, t0-90000); });
+  if(pay.r2key) VR2='';   // 발사 시도 = 키 수명 종료(성공 = 러너 소진 · 실패 = 죽은 키 재사용 루프 차단 — 다음 발사는 VRAW 재업로드 · edit 평의회7 계승)
 });
 $('#vApply').addEventListener('click',()=>{
   const gb=$('#vApply');

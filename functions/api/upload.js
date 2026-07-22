@@ -7,7 +7,7 @@
 //   총량 2GB 캡(기틀 캡 — 완화 = 운영자 확인 · 실질 제한은 각 도구의 길이 캡). 조각 32MB = 워커 메모리(128MB) 안전권.
 // 잔재 수명: 미완결 멀티파트 = R2 기본 수명규칙이 7일에 자동 중단(공식 문서 확인 · 평의회9) · 완결됐지만 미소비된 고아 객체 =
 //   뷰어가 delete 액션으로 즉시 정리(대체·URL 발사 시) + 백스톱으로 up_src/ prefix 1일 수명규칙 권장(대시보드 · 선택).
-const KEY_RE = /^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/;
+const KEY_RE = /^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|ogg|aac|flac)$/;   // +오디오 6종(260722 song 보이스 학습 R2 편입) — 각 API(edit·conv·framethumb=영상만 · voice=오디오)가 자기 확장자 셋을 재검증 = 교차 오용 차단
 const CHUNK = 32 * 1024 * 1024;             // 조각 크기 — R2 멀티파트는 마지막 외 균일 크기 요구(≥5MB)
 const MAX_TOTAL = 2 * 1024 * 1024 * 1024;   // 2GB(= 64조각) — 4K 10분(길이 캡)도 여유
 
@@ -26,7 +26,7 @@ export async function onRequestPost({ request, env }) {
   if (act === 'create') {
     const size = Number(b.size) || 0;
     if (size < 1 || size > MAX_TOTAL) return json({ error: '파일은 2GB까지 — 더 크면 구간을 잘라서 올려줘' }, 400);
-    const ext = (String(b.name || '').match(/\.(mp4|mov|m4v|webm|mkv|avi)$/i) || ['.mp4'])[0].toLowerCase();
+    const ext = (String(b.name || '').match(/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|ogg|aac|flac)$/i) || ['.mp4'])[0].toLowerCase();   // +오디오 6종(260722 · KEY_RE 짝)
     const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
     const key = `up_src/${id}${ext}`;
     try {
