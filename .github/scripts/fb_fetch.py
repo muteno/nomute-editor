@@ -119,15 +119,17 @@ def main():
             print('fb-fetch: 게시물 스킵:', e2)
     for x in rows:
         nm = (x.get('message') or '(무캡션)').split('\n')[0][:60]
-        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None})
+        eng = None   # 게시물별 참여합(반응+댓글+공유) — 리치 필드 성립 시에만(권한 폴백 = None → 뷰어 결측 처리)
+        if ('reactions' in x) or ('comments' in x) or ('shares' in x):
+            eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
+                + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
+                + ((x.get('shares') or {}).get('count') or 0)
+        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None, 'eng': eng})   # eng = views 부재 fb의 게시물별 대체 지표(운영자 260723 "다른 값이 있으면 대체" — 뷰어 게시물 탐색 '반응' 정렬·표기 원천)
         thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
         dt = str(x.get('created_time', ''))[:10]
         if dt:
             series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
-            if ('reactions' in x) or ('comments' in x) or ('shares' in x):
-                eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
-                    + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
-                    + ((x.get('shares') or {}).get('count') or 0)
+            if eng is not None:
                 series[dt]['interactions'] = (series[dt].get('interactions') or 0) + eng
     d['posts'], d['thumbs'] = posts, thumbs
     # fb 전용 집계(운영자 260719 "죽은 지표만 유의미 대체" — 뷰어 1-2 6칸 중 반응·댓글·공유 카드 원천) = 최근 10게시물 합.
