@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>실패 카드 버튼 동작 미리보기 (260722)</title>
+<style>
+  /* ── 앱 실제 토큰(viewer/index.html :root 실측 복사 · 260722) ── */
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-bright:#5AFFE6; --on-accent:#032322;
+    --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+    --accent-3:#e23b2a; --accent-3-rgb:226,59,42; --danger:#e23b2a; --danger-rgb:226,59,42;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --press-l:.95; --press-m:.9; --gauge-ease:cubic-bezier(.22,.61,.36,1);
+    --cat-pol:#38C6FF; --thumb:#FFE13D;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased; padding:20px 14px 40px;}
+  .wrap{max-width:440px; margin:0 auto;}
+  h1{font-size:17px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px;}
+  .sub{font-size:12.5px; color:var(--mut); margin:0 0 18px; line-height:1.5;}
+  .demo{margin:0 0 20px;}
+  .cap{font-size:12px; color:var(--mut); margin:9px 2px 0; line-height:1.55; min-height:34px;}
+  .cap b{color:var(--accent);}
+  .cap .lemon{color:var(--accent-4);}
+  .cap .red{color:var(--danger);}
+  .ctl{display:flex; gap:8px; margin-top:12px;}
+  .ctl button{flex:1; height:34px; border-radius:9px; border:1px solid var(--line);
+    background:rgba(255,255,255,.05); color:var(--fg); font-size:12.5px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:background .14s, transform .1s;}
+  .ctl button:hover{background:rgba(255,255,255,.1);}
+  .ctl button:active{transform:scale(var(--press-l,.95));}
+  .note{font-size:11.5px; color:var(--mut); line-height:1.6; margin-top:22px; padding-top:14px; border-top:1px solid var(--line);}
+  .note b{color:var(--fg);}
+  .k{display:inline-block; padding:1px 6px; border-radius:6px; background:rgba(255,255,255,.07); font-size:11px;}
+
+  /* ── 카드 CSS(viewer/index.html 실측 복사 · 필요분만) ── */
+  .sc-item{background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20)); border:1px solid var(--line); border-radius:14px; padding:11px 13px; position:relative;}
+  .sc-item.pickfail{border-color:rgba(var(--accent-4-rgb),.5);}
+  .sc-top{display:flex; align-items:center; gap:5px; font-size:11px; color:var(--mut); justify-content:space-between;}
+  .sc-metal{display:flex; align-items:center; gap:5px; min-width:0; flex-wrap:wrap;}
+  .sc-top .cat{font-weight:600;}
+  .sc-sep{color:var(--mut);}
+  .sc-cross{display:inline-flex; align-items:center; gap:4px; font-weight:600;}
+  .sc-cross .cn{color:var(--accent); font-weight:800;}
+  .sc-media{flex:none; white-space:nowrap; color:var(--fg); font-weight:800;}
+  .sc-title{font-size:14.5px; font-weight:700; line-height:1.4; color:var(--fg); letter-spacing:-.2px; margin:6px 0 8px;}
+  .sc-title a{color:inherit; text-decoration:none;}
+  .sc-bot{display:flex; align-items:center; gap:10px; margin-top:1px;}
+  .sc-bot.triage{gap:6px;}
+
+  /* Failed 칩 = 탭 재시도(운영자 260722) */
+  .sc-fail{flex:1; display:grid; place-items:center; height:24px; border-radius:9px; font-size:12px; font-weight:800; letter-spacing:.06em;
+    color:rgba(var(--danger-rgb),.95); background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.26) 0 4px,rgba(var(--accent-4-rgb),.09) 4px 8px); border:1px solid rgba(var(--accent-4-rgb),.55); cursor:pointer;
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation;}
+  .sc-fail.picking{background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.078) 0 4px,rgba(var(--accent-4-rgb),.027) 4px 8px); color:var(--fg); letter-spacing:0; cursor:default; position:relative; overflow:hidden;}
+  .sc-fail.picking > span{position:relative; z-index:1;}
+  .sc-fail.picking::after{content:''; position:absolute; top:0; bottom:0; left:0; width:45%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent); animation:scFailShine 1.3s linear infinite;}
+  @keyframes scFailShine{0%{transform:translateX(-120%);} 100%{transform:translateX(320%);}}
+  .sc-fail:hover{background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.40) 0 4px,rgba(var(--accent-4-rgb),.16) 4px 8px);}
+  .sc-fail:active{transform:scale(var(--press-l,.97));}
+
+  .sc-tg{flex:1; min-width:0; display:grid; place-items:center; height:24px; padding:0 8px; font-size:12px; font-weight:600; cursor:pointer;
+    border-radius:9px; border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34); color:rgba(255,255,255,.78);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .14s, transform .1s, color .14s, border-color .14s;}
+  .sc-tg svg{display:block;}
+  .sc-tg:active{transform:scale(var(--press-m,.9));}
+  .sc-tg.pass:hover{color:var(--thumb); border-color:rgba(255,200,60,.55);}
+  .sc-tg.pick{flex:1.5; color:var(--accent);}
+  .sc-tg.pick:hover{border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08);}
+  .sc-tg.pick:active{transform:scale(var(--press-m,.9)); background:rgba(var(--accent-rgb),.22); border-color:rgba(var(--accent-rgb),.6); box-shadow:inset 0 0 10px rgba(var(--accent-rgb),.4);}
+  .sc-tg.ack{flex:0 0 38px; color:rgba(255,255,255,.5);}
+  .sc-tg.ack:hover{color:var(--accent); border-color:rgba(var(--accent-rgb),.45);}
+  .sc-tg.ack .ackm{width:14px; height:14px;}
+  .sc-tg.ack .ackm path{transition:opacity .16s ease, stroke-dashoffset .42s .08s cubic-bezier(.6,0,.2,1);}
+  .sc-tg.ack .sc-dash{stroke:var(--mut); opacity:1;}
+  .sc-tg.ack .sc-chk{stroke:var(--accent); opacity:0; stroke-dasharray:24; stroke-dashoffset:24;}
+  .sc-tg.ack.sc-failgo{color:var(--accent); flex:0 0 32px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>실패 카드 버튼 동작 <span style="color:var(--accent)">미리보기</span></h1>
+  <p class="sub">앱 실제 토큰·CSS를 그대로 복사한 재현이야. 카드의 <b style="color:var(--danger)">Failed</b>·<b style="color:var(--accent)">✓</b>를 직접 눌러봐 (260722 재배선).</p>
+
+  <div class="demo">
+    <div id="card" class="sc-item pickfail">
+      <div class="sc-top">
+        <span class="sc-metal"><span class="cat" style="color:var(--cat-pol)">정치</span><span class="sc-sep">·</span><span class="sc-cross"><span class="cn">20</span></span></span>
+        <span class="sc-media">17시간 전</span>
+      </div>
+      <div class="sc-title"><a href="#" onclick="return false">12·12·5·18 진압·간첩 조작 연루자 정부포상 취소 브리핑</a></div>
+      <div class="sc-bot triage" id="bot"></div>
+    </div>
+    <div class="cap" id="cap"></div>
+  </div>
+
+  <div class="ctl">
+    <button onclick="setFailed()">↺ 처음(Failed)으로</button>
+  </div>
+
+  <div class="note">
+    <b>동작 요약 (운영자 260722 재배선)</b><br>
+    · <span class="red">Failed</span> 탭 = <b>재시도</b> → 다시 대기열로 보내 분석(칩이 <span class="lemon">Picking…</span> 빗금으로 바뀜)<br>
+    · <span class="red">Failed</span> 길게/우클릭 = 메뉴(실패 사유·내용 입력) <span style="color:var(--mut)">— 이 미리보기엔 생략</span><br>
+    · <b style="color:var(--accent)">✓</b> 탭 = <b>픽 취소</b> → 픽 하기 전 <span class="k">PASS</span> <span class="k">PICK</span> 정상카드로 복귀<br>
+    · 제목 탭 = 원문
+  </div>
+</div>
+
+<script>
+  var CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
+  var ACK_MORPH = '<svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg>';
+  var bot = document.getElementById('bot'), card = document.getElementById('card'), cap = document.getElementById('cap');
+
+  function setFailed(){   // 실패 상태 = [Failed(탭=재시도)][✓(픽 취소)]
+    card.classList.add('pickfail');
+    bot.className = 'sc-bot triage';
+    bot.innerHTML = '<button class="sc-fail" type="button" title="탭 = 재시도">Failed</button>'
+                  + '<button class="sc-tg ack sc-failgo" type="button" aria-label="픽 취소">' + CHECK_SVG + '</button>';
+    bot.querySelector('.sc-fail').onclick = goPicking;      // ← Failed 탭 = 재시도
+    bot.querySelector('.sc-failgo').onclick = goTriage;     // ← ✓ 탭 = 픽 취소
+    cap.innerHTML = '지금 상태 = <span class="red">분석 실패</span>. <b>Failed</b>를 누르면 재시도, <b>✓</b>를 누르면 픽 취소.';
+  }
+
+  function goPicking(){   // Failed 탭 → 재시도(재분석 중) = 빗금 + 진행 shine
+    bot.className = 'sc-bot';
+    bot.innerHTML = '<button class="sc-fail picking" type="button" aria-label="재분석 중" tabindex="-1"><span>Picking…</span></button>';
+    cap.innerHTML = '<span class="lemon">↻ 재시도</span> — 다시 대기열로 보내 <b>재분석 중</b>. 완료되면 <b>PICKED</b>, 또 실패하면 다시 Failed. <span style="color:var(--mut)">(“↺ 처음으로”로 리셋)</span>';
+  }
+
+  function goTriage(){    // ✓ 탭 → 픽 취소 = 픽 하기 전 [PASS][PICK][−]
+    card.classList.remove('pickfail');
+    bot.className = 'sc-bot triage';
+    bot.innerHTML = '<button class="sc-tg pass" type="button">PASS</button>'
+                  + '<button class="sc-tg pick" type="button">PICK</button>'
+                  + '<button class="sc-tg ack" type="button" aria-label="확인">' + ACK_MORPH + '</button>';
+    cap.innerHTML = '<b style="color:var(--accent)">픽 취소됨</b> — 픽 하기 전 <b>PASS / PICK</b> 정상카드로 돌아왔어. 여기서 다시 판단하면 돼.';
+  }
+
+  setFailed();
+</script>
+</body>
+</html>
