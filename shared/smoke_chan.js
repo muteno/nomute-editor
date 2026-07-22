@@ -168,13 +168,13 @@ const SEL = {
         const Ls = _sg ? _sg.getBoundingClientRect().right : Lr;
         if (id === 'topic') d.querySelectorAll('.ch-trow').forEach(r2 => { ds.push(+(ink(r2.querySelector('.tl')).left - Lc).toFixed(2)); });   // topic = 라벨 좌변(배지선)만 가드 · 수치+배지 우변=토글선 복귀(운영자 260722 재편2 "차트 늘려 우측 기준선에 닿게" · 프로브 tvRight=togR 348 확인)나 ink()=직속 텍스트노드 전용이라 자식 배지 ')' 우측 베어링>0.5로 취약 → 박스 정렬은 확인·ink 우변 가드만 생략 · tpost ×열=토글선(별도)
         if (id === 'sig') { d.querySelectorAll('.sig-lgd').forEach(l => ds.push(+(l.getBoundingClientRect().right - Lr).toFixed(2))); d.querySelectorAll('.sig-note').forEach(n2 => ov.push(+(ink(n2).right - Lr).toFixed(2))); }
-        if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(ink(v).right - Ls).toFixed(2)));
+        if (id === 'tpost') d.querySelectorAll('.ch-post .ch-dev').forEach(v => ds.push(+(v.getBoundingClientRect().right - Ls).toFixed(2)));   // dev 박스 우변=토글선(운영자 260722 "x 한줄로" = 텍스트 좌측정렬 → ink 우변 가변 → 박스 우변으로 열 위치 가드 · × 잉크 좌변 한줄 정렬은 C9)
         d.querySelectorAll('.ch-morelink:not(.ch-hdrmore)').forEach(m2 => ds.push(+(ink(m2).right - Lr).toFixed(2)));   // 하단 내역확인 = daily 단독(tpost '내역 ▶' = 260722 헤더 이관 → C14 별도 계약)
         out.push({ id, skip: !ds.length && !ov.length, max: ds.length ? Math.max(...ds.map(Math.abs)) : 0, over: ov.length ? Math.max(...ov) : null, n: ds.length + ov.length });
       }
       return out;
     });
-    ok('C8 채널요약 잉크선 412(topic 좌=배지선(수치+배지 우변=토글선 복귀·박스정렬)·tpost ×열=세그(토글) 우변선 / sig 범례·daily 내역확인=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
+    ok('C8 채널요약 잉크선 412(topic 좌=배지선(수치+배지 우변=토글선 복귀·박스정렬)·tpost dev박스 우변=토글선 / sig 범례·daily 내역확인=체브론선 |Δ|≤0.5·초과≤0.5)', c8.some(x => !x.skip) && c8.filter(x => !x.skip).every(x => x.max <= 0.5 && (x.over == null || x.over <= 0.5)), c8.map(x => x.skip ? x.id + ':skip' : `${x.id}:|Δ|max ${x.max}${x.over != null ? '·초과 ' + x.over : ''}(n${x.n})`).join(' '));
 
     // C14 tpost '내역 ▶' 헤더 동행 계약(운영자 260722 — 구 본문 하단 '내역 확인 ›' → 헤더 타이틀 옆 이관 · .ch-hdrmore) — 펼침 상태 계약: abspos·타이틀 잉크 우변+갭7(헤더 형제 갭 균일)·헤더 세로중앙 ΔCy≤0.5·기간 세그와 광학 갭≥8(예약 237 짝 = 협폭 침범 0)·▶ = SVG 픽토([3-1]). 접힘 = 칩과 동일 거동(내려앉음 · C3 기승인 각주)이라 접힘 위치는 계약 아님
     const c14 = await pg.evaluate(() => {
@@ -189,18 +189,19 @@ const SEL = {
 
     // C9 협폭 수치 열 사폭 가드(운영자 260721 "간격 쓸데없이 길다" — 고정폭 죽은 여백이 제목 압착 · 열 박스 ≈ 잉크 실폭 계약)
     const c9 = await pg.evaluate(() => {
-      const vw = [], devW = [];
+      const vw = [], devW = [], devL = [];
       document.querySelectorAll('#cg-tpost .ch-post').forEach(r2 => {
         const v = r2.querySelector('.ch-vw'), d2 = r2.querySelector('.ch-dev');
         if (v && v.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(v); vw.push(+(v.getBoundingClientRect().width - rg.getBoundingClientRect().width).toFixed(2)); }
-        if (d2 && d2.textContent.trim()) devW.push(+d2.getBoundingClientRect().width.toFixed(2));
+        if (d2 && d2.textContent.trim()) { devW.push(+d2.getBoundingClientRect().width.toFixed(2)); const rg2 = document.createRange(); rg2.selectNodeContents(d2); devL.push(+rg2.getBoundingClientRect().left.toFixed(2)); }
       });
-      return { vw, devW };
+      return { vw, devW, devL };
     });
-    // vw = 잉크 실폭(≤1.5 · 구 고정폭 죽은여백 제목압착 재발 가드) · dev = 전 행 박스폭 동일(min-width 정렬 열 · 운영자 260722 "같은 라벨끼리 정렬" — 배율 열 폭 일정 → 값[만] 우변도 전 행 정렬)
+    // vw = 잉크 실폭(≤1.5 · 구 고정폭 죽은여백 제목압착 재발 가드) · dev = 전 행 박스폭 동일(min-width 정렬 열) · dev 잉크 좌변 동일(× 기호 한 줄 정렬 · 운영자 260722 "x를 한줄로 세우겠음" = 좌측정렬)
     const c9vwOk = c9.vw.length > 0 && c9.vw.every(x => x <= 1.5);
     const c9devAligned = c9.devW.length > 0 && (Math.max(...c9.devW) - Math.min(...c9.devW)) <= 0.5;
-    ok('C9 모바일 412 TOP 게시물 열 = vw 잉크실폭(≤1.5) + dev 정렬폭 동일(≤0.5)', c9vwOk && c9devAligned, `vw사폭max ${c9.vw.length ? Math.max(...c9.vw) : '-'} · dev폭 ${c9.devW.length ? Math.min(...c9.devW).toFixed(1) + '~' + Math.max(...c9.devW).toFixed(1) : '-'}`);
+    const c9xCol = c9.devL.length > 0 && (Math.max(...c9.devL) - Math.min(...c9.devL)) <= 0.5;
+    ok('C9 모바일 412 TOP 게시물 = vw 잉크실폭(≤1.5) + dev 폭동일 + × 잉크 좌변 한줄(≤0.5)', c9vwOk && c9devAligned && c9xCol, `vw사폭max ${c9.vw.length ? Math.max(...c9.vw) : '-'} · dev폭 ${c9.devW.length ? Math.min(...c9.devW).toFixed(1) + '~' + Math.max(...c9.devW).toFixed(1) : '-'} · ×좌변Δ ${c9.devL.length ? (Math.max(...c9.devL) - Math.min(...c9.devL)).toFixed(2) : '-'}`);
 
     await pg.click('.bnav-i[data-tab="trend"]'); await pg.waitForSelector('#tg-top', { timeout: 15000 }).catch(() => {});
     await pg.waitForTimeout(600);
