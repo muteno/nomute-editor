@@ -160,7 +160,7 @@ def main():
             if a is None or a < 0 or a >= FAST_MAX_H:   # a<0 = 미래스탬프(소스 TZ 오기록) → 음수나이가 4h창 통과해 비가역 오발송하던 구멍 차단(뷰어 scTs 미래가드와 짝)
                 continue
             pa = pub_age_h(c)
-            if pa is None or pa >= PUSH_PUB_MAX_H:   # 발행 24h+ = 뒷북 차단 · published 없음/파싱실패 = 보류(grade None 보류와 동일 보수 철학 — None 관대면 캡이 통째 꺼짐 · 검4-3 260710). ⚠️ 한계 정직: 이 캡의 입력 = *현재 rep 기사* 발행 나이(rep 점프 시 최신 후속 기사 기준)지 사건 최초 발행 나이가 아님 — 사건나이 프록시·승계 실패 first_seen 리셋 보완은 §7 후속 큐.
+            if pa is None or pa < 0 or pa >= PUSH_PUB_MAX_H:   # 발행 8h+ = 뒷북 차단 · pa<0 = 미래 published(소스 TZ 오기록) = 신뢰 불가 → 보류(평의회1 260722 — age_h 음수가드와 대칭·비가역 오발 차단) · published 없음/파싱실패 = 보류(grade None 보류와 동일 보수 철학 — None 관대면 캡이 통째 꺼짐 · 검4-3 260710). ⚠️ 한계 정직: 이 캡의 입력 = *현재 rep 기사* 발행 나이(rep 점프 시 최신 후속 기사 기준)지 사건 최초 발행 나이가 아님 — 사건나이 프록시·승계 실패 first_seen 리셋 보완은 §7 후속 큐.
                 continue
             ks = dedup_keys(c)
             if not ks or any(k in sent for k in ks):     # event_key·제목해시 중 하나라도 보냄 = 스킵(중복 차단)
