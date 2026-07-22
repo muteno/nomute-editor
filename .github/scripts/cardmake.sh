@@ -289,7 +289,22 @@ $(cat "$q")${disp_note}"
 
 "
     inline_delay=15
+    # ── 카드 1장 총 예산 회로차단기(운영자 260722 토큰 출혈 차단) ──
+    #   재시도 경로(계정 폴오버·일시 과부하·생성 타임아웃)가 각기 CARD_TIMEOUT(25분)씩 누적돼, 한 카드가
+    #   INLINE_TRIES(4)×25 = 최대 100분 Opus를 태우던 폭주를 벽시계로 봉함(예: 무거운/폭주 기사가 매 시도 타임아웃).
+    #   정상 카드(1~15분 1발 성공)엔 절대 미발동 — 설계 의도(타임아웃25 + 자동 재시도25)를 보존하는 여유값이 기본.
+    #   attempt≥2에서만 검사(첫 발은 항상 보장) · 초과 시 rc=124·무출력으로 낙하 → 아래 실패 분류기가 '생성 타임아웃'
+    #   으로 표면화하고 failed(fails+1) 도장 → 런간 자동 재시도는 CARD_FAIL_RETRY_MAX(3)가 그대로 상한.
+    CARD_BUDGET_SEC="${CARD_BUDGET_SEC:-3300}"   # 기본 55분 ≈ CARD_TIMEOUT×2 + 여유(폴오버 fast-fail 흡수). 0 = 끔(구 동작).
+    card_t0=$(date +%s)
     for attempt in $(seq 1 "$INLINE_TRIES"); do
+      if [ "$attempt" -gt 1 ] && [ "$CARD_BUDGET_SEC" != "0" ]; then
+        _el=$(( $(date +%s) - card_t0 ))
+        if [ "$_el" -ge "$CARD_BUDGET_SEC" ]; then
+          echo "  ⛔ 카드 예산 초과(${_el}s ≥ ${CARD_BUDGET_SEC}s · attempt ${attempt}/${INLINE_TRIES}) — 재시도 누적 폭주 차단, 실패 처리: $stem"
+          rc=124; out=""; break
+        fi
+      fi
       out="$(printf '%s' "$fp" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT=max claude_meter "$CARD_TIMEOUT" \
             --model "$MODEL" \
             --effort max \
