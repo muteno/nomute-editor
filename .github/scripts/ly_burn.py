@@ -988,7 +988,7 @@ def run(vid_id, video, outdir):
         vf = vf.rstrip(",") or "null"   # 자막 없는 편집 경로에서 mid도 비면 무변환 통과(null) — 오디오만 손대는 조합
         return ["ffmpeg", "-y"] + ins + ["-vf", vf] \
             + (["-map", "0:v:0", "-map", "1:a:0", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11"] if vocals else []) \
-            + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+            + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",   # crf 20→18 = 재인코딩 열화 체감 개선(운영자 260722 "자르기+60프레임 하면 원본 좋아도 화질 많이 저하" · 18 = 시각적 무손실 근접 · 파일 ~1.5× · preset veryfast 유지 = 잡 시간 예산 불변 = 속도는 preset이 지배·crf는 무영향)
                "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
 
     enc_base = min(2400, int(900 * max(1.0, canvas_px / 2073600.0)))   # 백스톱 = 캔버스 픽셀 비례(x264 실단가 비례 · FHD 900 → 4K 2400 캡 · 세로 2340 = ~1015 — 이진 오분류 없음 · 평의회4)
@@ -1006,7 +1006,7 @@ def run(vid_id, video, outdir):
                     f.write(cut_filter(keeps, aud, mid, ass_path, "[1:a]" if vocals else "[0:a]", bool(ass)))
                 cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
                     + (["-map", "[ac]"] if aud else []) \
-                    + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+                    + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",   # crf 18 = 컷(자르기)+60fps 단일패스 경로 동일 상향(운영자 260722 · plain_cmd와 동값 = 이 경로가 '자르기 후 60프레임'의 실제 인코더)
                        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out_mp4]
                 ok, err = encode(cmd)
             else:
