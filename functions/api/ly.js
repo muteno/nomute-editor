@@ -26,6 +26,7 @@ export async function onRequestPost({ request, env }) {
   const subs = String(body.subs || '').slice(0, 20000);
   const url = String(body.url || '').trim().slice(0, 500);
   let fileB64 = String(body.fileB64 || '');
+  const r2key = String(body.r2key || '');   // R2 직업로드 키(20MB 초과 영상 · api/upload 발급 — edit.js 동문 · 260722)
   const name = String(body.name || '');
   const reburn = String(body.reburn || '').trim();   // 재합성 = 기존 작업 ID(의역·원본 재사용 → 번인만 재실행 · LLM 0)
   // 뷰어 버튼 설정(자막 옵션+번인) — 화이트리스트 키만 통과(임의 페이로드 차단) · 빈 객체 = 빈 문자열(종전 동작)
@@ -45,7 +46,7 @@ export async function onRequestPost({ request, env }) {
   }
   // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
   if (reburn && !/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
-  if (!reburn && !subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
+  if (!reburn && !subs.trim() && !url && !fileB64 && !r2key) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
   const rl = await rateGate(GH, env.GH_TOKEN, 'ly-make.yml');   // 발사 레이트리밋(reburn·신규 공통 초입 = 업로드 전 · fail-open · 260711)
   if (rl) return json({ error: rl.error }, 429);
   if (reburn) {   // 재합성 경로 — 신규 입력 불요·id 형식 검증(서버 생성 규격) 후 번인만 재디스패치
@@ -82,7 +83,7 @@ export async function onRequestPost({ request, env }) {
     if (rr.status === 204) return json({ ok: true, id: reburn, reburn: true, out: `ly_out/${reburn}/subs.md` });
     return json({ error: `재합성 발사 실패 GitHub ${rr.status}: ${(await rr.text()).slice(0, 200)}` }, 502);
   }
-  if (!subs.trim() && !url && !fileB64) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
+  if (!subs.trim() && !url && !fileB64 && !r2key) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
   if (url) {
     // 러너發 SSRF 가드(pick.js altOk 관례 이식 · 평의회7 260709) — 이 url은 러너의 yt-dlp가 그대로 fetch하므로
     //   IP리터럴·localhost·IPv6·클라우드 메타데이터 호스트 거부(정상 영상 URL은 항상 도메인형). http(s) 스킴 검사 승계.
@@ -96,12 +97,23 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
 
+  // R2 직업로드 키(20MB 초과 영상 ≤2GB · api/upload 발급 — edit.js 동문 · 260722) — 존재·크기 검증 후 러너에 r2_src로 전달(base64/up-브랜치 경로 건너뜀)
+  let r2src = '';
+  if (!url && r2key) {
+    if (!/^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/.test(r2key) || /\s/.test(r2key)) return json({ error: '잘못된 업로드 키 — 파일을 다시 선택해줘' }, 400);   // \s = $ 후행 개행 봉합(conv 평의회1 계승)
+    if (!env.R2) return json({ error: '대용량 업로드 미설정 — 파일을 다시 선택해줘' }, 501);
+    const h = await env.R2.head(r2key);
+    if (!h) return json({ error: '업로드 파일이 없어(만료·정리됨) — 다시 올려줘' }, 400);
+    if (h.size > 2 * 1024 * 1024 * 1024) return json({ error: '파일은 2GB까지' }, 400);
+    r2src = r2key;
+  }
+
   // 파일 업로드(uploads/<id>/src.*) — url 우선(있으면 파일 무시). 러너가 ffmpeg로 오디오 추출+STT 후 정리.
   // 260707: main 커밋 대신 일회용 브랜치 up-<id>에 커밋(워크플로가 fetch 후 처리·끝에 브랜치 삭제) → 업로드 블롭이 main 히스토리에 영구 잔존하던 비대 차단.
   //   브랜치 생성 실패 = 종전 main 경로 폴백(fail-soft·회귀 0). unreachable 블롭은 클론에 안 딸려옴.
   let filePath = '';
   let upBranch = '';
-  if (!url && fileB64) {
+  if (!url && !r2src && fileB64) {
     const dm = fileB64.match(/^data:[^;]+;base64,(.+)$/);
     if (dm) fileB64 = dm[1];
     if (!fileB64 || fileB64.length > 30_000_000) return json({ error: '파일은 ≤20MB — 큰 영상은 URL로(드라이브 등 직링크 / 너 저장소에 올리고 링크)' }, 400);
@@ -123,9 +135,9 @@ export async function onRequestPost({ request, env }) {
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/ly-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, subs, url, file: filePath, early_segs: '1', opts, up_branch: upBranch },   // 조기 전사 푸시 ON(LY-EARLY · 반드시 문자열 '1' — 숫자/불리언은 GH 강제변환으로 조용히 OFF) · 워크플로 default '0' = fail-closed(수동 dispatch 실수 방지) · 롤백 = 이 필드 제거 한 줄(평의회9) · opts = 버튼 설정 JSON 문자열(빈값 = 종전) · up_branch = 업로드 일회용 브랜치(빈값 = 종전 main 경로)
+    ref: REF, inputs: { id, subs, url, file: filePath, early_segs: '1', opts, up_branch: upBranch, r2_src: r2src },   // 조기 전사 푸시 ON(LY-EARLY · 반드시 문자열 '1' — 숫자/불리언은 GH 강제변환으로 조용히 OFF) · 워크플로 default '0' = fail-closed(수동 dispatch 실수 방지) · 롤백 = 이 필드 제거 한 줄(평의회9) · opts = 버튼 설정 JSON 문자열(빈값 = 종전) · up_branch = 업로드 일회용 브랜치(빈값 = 종전 main 경로) · r2_src = R2 직업로드 키(20MB 초과 영상 · 빈값 = 종전 · 260722)
   });   // ← LY-EARLY 편입(#1725) 때 이 닫는 괄호 유실 → wrangler 번들 SyntaxError → Pages 배포 전멸(260706 11:31~ 라이브 동결 사고 · 복구)
-  if (r.status === 204) return json({ ok: true, id, url: !!url, file: !!filePath, out: `ly_out/${id}/subs.md` });
+  if (r.status === 204) return json({ ok: true, id, url: !!url, file: !!(filePath || r2src), out: `ly_out/${id}/subs.md` });   // file 플래그 = r2 직업로드도 STT 파일 경로(뷰어 폴링 타이밍 축 동일)
   if (upBranch) { try { await GH(env.GH_TOKEN, `git/refs/heads/${upBranch}`, 'DELETE'); } catch { /* 고아 잔존 무해 — 수동 정리 대상 */ } }   // 발사 실패 = 업로드 브랜치 정리(워크플로가 안 도니 스스로)
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
