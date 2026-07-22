@@ -807,6 +807,7 @@
   @media (max-width:640px) { .ch-stats { grid-template-columns:repeat(2,1fr); } }   /* 폰 = 2열(4열 협폭 압착 방지 — 구 3열이 '1042.6만' 두 줄 절단 실측 · 타일 비율 보존) */
   .ch-st { display:flex; flex-direction:column; align-items:flex-end; gap:var(--sp-1); padding:var(--sp-2); padding-right:33px; min-width:0; min-height:134px; background:rgba(255,255,255,.04); border-radius:var(--r-l); }   /* raw-ok: min-height 134 = 목업 타일 비율 실측(280/415 × 4열 타일폭 198 · 운영자 260721 오버랩 정합 — 값 세로 중앙 flex:1이 잔여 흡수) · 여백 = --sp 토큰 · radius = --r-l · 필 = .ch-th .04 형제값 · align-items:flex-end = 전 행 우측정렬(운영자 260721 "다 우측정렬") · 우 33 = 타일 내용 우변을 기간 세그(토글) 우변에 실측 정렬(운영자 260722 "토글에 맞춰 우측 정렬 기준선" · Δ21+12 = PC/630/412 공통 실측 · 게이트 = smoke_chan C13a) */
   .ch-st b { font-size:calc(var(--fs-display)*1.3); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }   /* 값 = 타일 지배 위계 · ×1.3 = 운영자 260721 "변경 이후 기준 130%"(토큰 파생 calc — raw 신설 0 · 이하 타일 내 전 글자 동일 배율) */
+  .ch-st b .ch-per { font-size:70%; }   /* '/일' 일평균 단위 접미 = 주값의 70% 축소(운영자 260722 "/일은 강조될만한 내용이 아니라서") · 게시 '1.8개 /일'에서 앞 띄어쓰기 1로 주값과 분리 · 색·굵기는 주값 상속(크기만 톤다운) */
   .ch-st-tall { grid-row:span 2; }   /* 팔로워·조회수 = 아래 빈 칸 합친 세로 2칸(운영자 260721 재편 — 삭제된 게시·프로필 방문 자리 흡수) */
   .ch-st.ch-st-tall .ch-strow { flex:none; }   /* 값 = 상단 고정 · 특이도 승격(운영자 260722 "도달 박스 줄간격 표준 매치" — 뒤 선언 .ch-st .ch-strow flex:1에 밀려 값·대비행이 아래로 처지던 것 교정 · 잔여 세로 = 차트 단독 흡수) */
   .ch-tchart { flex:1; width:100%; min-height:0; margin-top:2px; }   /* raw-ok: margin 2 = 하단행-차트 미세 리듬 · 차트 = 타일 잔여 전부 */
@@ -837,6 +838,7 @@
   .demo-brow .demo-blab { text-align:right; white-space:nowrap; color:var(--mut); font-size:calc(var(--fs-xs)*1.3); font-variant-numeric:tabular-nums; }   /* 글자 우측정렬 130% 계승 */
   .demo-brow .demo-bpct { padding-left:7px; }   /* raw-ok: 7 = 구 단일 문자열 공백 실측 3.56px ×2(운영자 260722 "25-34랑 35%랑 간격 지금의 2배") */
   .demo-brow .demo-blab.hi { color:var(--fg); }   /* top2 연령 = 흰색 강조(운영자 260722 · 도달 35만/일 흰색 계승) */
+  .demo-glist, .demo-bars { transform:translateX(var(--sp-2)); }   /* 성별 남/여%·연령 막대+나이% = 우측 소폭 이동(운영자 260722 "조금만 더 우측" — 터콰이즈 키워드(.ch-k)·원형 도넛(.demo-donut)은 제외) · sp-2(12) 만큼 우측 여백(padding-right 33) 안으로 밀어넣음 = 도넛·키워드 무접촉 · 33>12라 협폭에도 오버플로 0 */
   @media (max-width:640px) { .demo-gwrap { gap:var(--sp-1); } }   /* 폰 협폭 = 막대↔리스트 간격만 축소(세로 스택 아님 = 세로 막대라 협폭도 가로 유지) */
   .ch-sig, .ch-post { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--r-m); background:rgba(255,255,255,.03); margin-bottom:6px; font-size:var(--fs-sm); }
   .ch-sig.low { opacity:.5; }
@@ -11238,7 +11240,8 @@ function renderChan() {
   const sumTile = (lb, key, unit, fbv) => { const w = winSum(key); if (!(w && w.cur != null)) return st(lb, fbv, rateSub(key, '/일')); return st(lb, vf(w.cur) + (unit === '개' ? '개' : ''), rateSub(key, '/일')); };   // 본값 = 창 합계 · 단위 = 게시 '개'만(목업 — 조회·도달·방문은 라벨이 의미 담당) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 — 구 창 합계 증감+일평균 병기 대체) · 결측 = 당일값 폴백(fail-soft)
   const postsTile = () => {   // 게시(운영자 260722 자리·폰트 스왑) — 주값 = 일평균 '개/일'(토글 연동 · 그 기간 꾸준함이 핵심) · 하단 보조 = 누적량 'N개'(구 주값 51개 강등 = 그냥 누적) + 직전창 대비 증감 · 구 sumTile(누적 주값) 대체
     const w = winSum('posts'), a = winAvg('posts');
-    const big = a ? vf(rnd(a.a)) + '개/일' : (avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + '개/일' : '—');   // 주값 = 창 일평균(토글별) · 폴백 = avg_7d
+    const PER = '개 <span class="ch-per">/일</span>';   // '/일' = 70% 축소 + 앞 띄어쓰기(운영자 260722 "강조될만한 내용 아님") · '개'는 주값 크기 유지
+    const big = a ? vf(rnd(a.a)) + PER : (avg.posts && avg.posts.avg_7d != null ? vf(rnd(avg.posts.avg_7d)) + PER : '—');   // 주값 = 창 일평균(토글별) · 폴백 = avg_7d
     const cumul = (w && w.cur != null) ? `<span class="ch-rt">${vf(w.cur)}개</span>` : '';   // 누적량 = 증감 불가(전체) 시에만 폴백 노출(운영자 260722 하단 행 단일화)
     return st('게시', big, rateSub('posts', '개/일', cumul));   // 하단 행 = 'N일 대비 ±X.X개/일' 일평균 증감(운영자 260722 "게시 도 7일 대비 +-0.0개/일" — 구 누적 증감+누적량 병기 대체)
   };
