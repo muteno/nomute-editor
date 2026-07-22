@@ -1901,6 +1901,9 @@ async function editSubsInit(id){   // 완료 후 자막 편집기 활성(pollEdi
 
 function showResult(d, sec){
   RESULT_URL=d.url||'';
+  // 표시 초 = 실소요(잡 id의 착수 KST → d.ts 완성) 우선 — 재개 폴의 t0 클램프(2044행 BUDGET 상한)가 45분+ 뒤 재진입에 '2700s' 허수를 찍던 것 교정(운영자 260722) · id/ts 미해석 엣지만 종전 sec 폴백
+  const m=String(EDIT_ID||'').match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})-/);
+  if(m){ const s=Math.round((Date.parse(d.ts||'')-Date.parse('20'+m[1]+'-'+m[2]+'-'+m[3]+'T'+m[4]+':'+m[5]+':'+m[6]+'+09:00'))/1000); if(isFinite(s)&&s>0&&s<86400) sec=s; }
   $('#cstatus').classList.remove('err');
   $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.note?(' · '+esc(d.note)):'');
   const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; const _ps=$('#pvsec'); if(_ps) _ps.hidden=true;   // 결과 = 라이브 미리보기+PREVIEW 숨김(중복 방지 · 260711/260712)
