@@ -215,7 +215,14 @@ jobs:
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          # AI 사건중복 심판(_ai_same_event · Q437)용 구독 OAuth 4계정 체인 — 자동픽 스텝과 동일 배선(평의회2 260722:
+          # 이 env 없으면 run_claude 인증 실패 = fail-open 상시 = 사건 dedup 유령화). 토큰 없어도 발송 자체는 정상(비치명).
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
         run: |
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN   # 구독 OAuth만 사용(api-key 충돌 차단 · 판정·자동픽 스텝과 동일)
           python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 설치 실패 — 발송 생략"; exit 0; }
           if [ "${{ github.event.inputs.test_push }}" = "true" ]; then
             python3 .github/scripts/push_send.py --test
