@@ -954,7 +954,7 @@ def run(vid_id, video, outdir):
             elif est > 900:   # 잡 캡 보호(자막·배경음과 동일 잡 공존 예산 · 평의회2 260710)
                 edit_notes.append("60fps 보간 건너뜀 — 이 해상도로 {}초까지(변환 탭 720p = 120초)".format(int(900 / unit) if unit else 0))
             else:
-                fpsf, interp_est = "minterpolate=fps=60", int(est)
+                fpsf, interp_est = "minterpolate=fps=60:mc_mode=aobmc:vsbmc=1", int(est)   # aobmc(적응형 OBMC)+vsbmc(가변블록) = 보간 합성프레임 아티팩트(오버스무딩·블록·헤일로)↓ · 비용 ≈0(실측 260722 @720×1280·4vCPU: default 12.3s→12.6s · 느린 주범 me_mode=bidir는 제외해 예산·INTERP_S_PF 불변) · mci·bilat·epzs 기본 유지
         elif src_fps > float(vid_fps) + 0.5:
             fpsf = "fps=" + vid_fps
     padf = ""
