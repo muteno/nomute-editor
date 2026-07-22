@@ -733,15 +733,9 @@ async function ffExtractAudio(file, onMsg) {
 
 async function lyVideoUpload(f) {   // 영상 첨부 → 업로드 형태 결정(원본 그대로 vs 음성 추출) — 첨부 시점(onchange)과 burn 토글 변화(lyFileSync)가 공용(결정을 첨부 시점에 고정하지 않고 상태에 동기 · 260721)
   const st = $('#status');
-  // 자막 붙이기 ON + 20MB 이하 = 영상 원본 그대로 업로드(러너가 추출+합성 — 러너에 영상이 있어야 자막을 입힘 · 260707)
-  if (LY_OPTS.burn && f.size <= FILE_MAX) {
-    await readB64(f, f.name); setBadge('영상', f.name);
-    st.innerHTML = OK_SVG + ' 영상 준비 완료 — 생성하면 자막까지 입혀 나와';
-    return;
-  }
-  // 자막 붙이기 ON + 20MB 초과 = R2 직업로드(edit·conv 공용 upload.js — 원본 영상 그대로 러너 전달 = 구 '합성은 URL만' 제한 해제 · 260722) · 미가용 = 종전 음성 추출 폴백
-  if (LY_OPTS.burn && f.size > FILE_MAX && window.nmUpArm && await nmUpArm()) {
-    setUploading('업로드 중입니다… (대용량)');
+  // 자막 붙이기 ON = R2 직업로드 1순위(전 크기 · edit·conv 동문 "작은 파일도 R2, b64 = 예비역" · 운영자 260722 단일화) — 원본 영상 그대로 러너 전달 · 미가용/실패 = 아래 종전 폴백(≤20MB b64 원본 · 초과 음성 추출)
+  if (LY_OPTS.burn && window.nmUpArm && await nmUpArm()) {
+    setUploading('업로드 중입니다…');
     try {
       const up = await nmUpload(f, p => { if (FILE_RAW === f) st.textContent = '업로드 중입니다… ' + p + '%'; });
       if (FILE_RAW !== f) { nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 즉시 정리(edit 평의회7 F2 계승)
@@ -751,8 +745,14 @@ async function lyVideoUpload(f) {   // 영상 첨부 → 업로드 형태 결정
       return;
     } catch (err) {
       if (f.size > FILE_HARD) throw new Error('대용량 업로드 실패 — ' + ((err && err.message) ? err.message.slice(0, 100) : 'error') + ' · 영상 URL로 시도해줘');   // 250MB 초과 = 추출 폴백도 불가(wasm OOM 위험) — 호출부 catch가 정리·고지
-      // 250MB 이하 = 아래 종전 음성 추출 폴백으로 계속(합성은 URL만 고지)
+      // 250MB 이하 = 아래 종전 폴백으로 계속(≤20MB = b64 원본 · 초과 = 음성 추출 + '합성은 URL만' 고지)
     }
+  }
+  // 자막 붙이기 ON + 20MB 이하 = 영상 원본 b64 업로드(R2 미가용·실패 폴백 — 러너에 영상이 있어야 자막을 입힘 · 260707 원경로)
+  if (LY_OPTS.burn && f.size <= FILE_MAX) {
+    await readB64(f, f.name); setBadge('영상', f.name);
+    st.innerHTML = OK_SVG + ' 영상 준비 완료 — 생성하면 자막까지 입혀 나와';
+    return;
   }
   // 영상 = 음성만 추출(붙이기 OFF 또는 20MB 초과·R2 미가용 — 초과분 합성은 URL 입력만 가능)
   setUploading(f.size > 150 * 1048576 ? '업로드 중입니다… (큰 영상 — 폰서 실패 시 URL 권장)' : '업로드 중입니다… (음성 추출)');

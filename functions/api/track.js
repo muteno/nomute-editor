@@ -133,8 +133,9 @@ export async function onRequestPost({ request, env }) {
   // ── 분석 경로 — 영상 URL 또는 업로드 파일
   const url = String(body.url || '').trim().slice(0, 500);
   let fileB64 = String(body.fileB64 || '');
+  const r2key = String(body.r2key || '');   // R2 직업로드 키(대용량 ≤2GB · api/upload 발급 — edit.js 동문 · 260722)
   const name = String(body.name || '');
-  if (!url && !fileB64) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
+  if (!url && !fileB64 && !r2key) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
   if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
   if (url) {
     // 러너發 SSRF 가드(edit.js 원본 동형) — 이 분석 url은 러너가 그대로 fetch하므로 IP리터럴·내부·메타데이터 호스트 거부.
@@ -148,10 +149,21 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙)
 
+  // R2 직업로드 키(대용량 ≤2GB · api/upload 발급 — edit.js 동문 · 260722) — 존재·크기 검증 후 러너에 r2_src로 전달(base64/up-브랜치 경로 건너뜀)
+  let r2src = '';
+  if (!url && r2key) {
+    if (!/^up_src\/\d{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)$/.test(r2key) || /\s/.test(r2key)) return json({ error: '잘못된 업로드 키 — 파일을 다시 선택해줘' }, 400);   // \s = $ 후행 개행 봉합(conv 평의회1 계승)
+    if (!env.R2) return json({ error: '대용량 업로드 미설정 — 파일을 다시 선택해줘' }, 501);
+    const h = await env.R2.head(r2key);
+    if (!h) return json({ error: '업로드 파일이 없어(만료·정리됨) — 다시 올려줘' }, 400);
+    if (h.size > 2 * 1024 * 1024 * 1024) return json({ error: '파일은 2GB까지' }, 400);
+    r2src = r2key;
+  }
+
   // 파일 업로드(uploads/<id>/src.*) — url 우선. 일회용 브랜치 up-<id> 커밋(main 히스토리 비대 0 · ly.js 동일)
   let filePath = '';
   let upBranch = '';
-  if (!url && fileB64) {
+  if (!url && !r2src && fileB64) {
     const dm = fileB64.match(/^data:[^;,]*;base64,(.+)$/);   // mediatype 빈값(data:;base64,) 허용 — 미매치 시 프리픽스 잔존 → GH PUT 422(평의회2)
     if (dm) fileB64 = dm[1];
     if (!fileB64 || fileB64.length > 40_000_000) return json({ error: '파일은 ≤30MB — 큰 영상은 URL로(드라이브 등 직링크)' }, 400);
@@ -173,7 +185,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/track-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, mode: 'analyze', url, file: filePath, up_branch: upBranch },
+    ref: REF, inputs: { id, mode: 'analyze', url, file: filePath, up_branch: upBranch, r2_src: r2src },   // r2_src = R2 직업로드 키(빈값 = 종전 · 260722)
   });
   if (r.status === 204) return json({ ok: true, id, out: `track_out/${id}/tracks.json` });
   if (upBranch) { try { await GH(env.GH_TOKEN, `git/refs/heads/${upBranch}`, 'DELETE'); } catch { /* 고아 잔존 무해 — 수동 정리 대상 */ } }

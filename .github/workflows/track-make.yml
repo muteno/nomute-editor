@@ -27,6 +27,10 @@ on:
         description: '업로드 일회용 브랜치(up-<id> · 빈값=main 커밋 경로) — ly-make 동일(히스토리 비대 0)'
         type: string
         default: ''
+      r2_src:
+        description: 'R2 직업로드 키(up_src/<id>.<ext> · 대용량 ≤2GB — api/upload 발급 · 빈값=미사용 · 잡 끝 삭제 · edit-make 동문 · 260722) — analyze 전용'
+        type: string
+        default: ''
       render:
         description: '렌더 페이로드 JSON {"mode":"mosaic|pinset|keying|maskfx|chroma",…} — mosaic/pinset={targets,invert,names,colors,opts{pxw,pxh,size,feather,shape},scopes{pid:"body"}} · keying/maskfx={keep:[sid],keepP:[pid],extra:[{t,x,y}],opts:{feather}} + maskfx 추가={fill:"mosaic|image",preset:"smile|black|heart"} · chroma={opts:{color,similarity,choke,feather,despill,blend,edge}} — render 전용(scopes/keepP = 260710 전신 폴백·얼굴 단위 · maskfx/chroma = 260712 배선)'
         type: string
@@ -108,12 +112,29 @@ jobs:
           echo "TRACK_SRC=$SRC" >> "$GITHUB_ENV"
 
       - name: 소스 확보 (analyze · 업로드 파일)
-        if: ${{ inputs.mode == 'analyze' && inputs.file != '' }}
+        if: ${{ inputs.mode == 'analyze' && (inputs.file != '' || inputs.r2_src != '') }}
         env:
           FILE: ${{ inputs.file }}
           UP_BRANCH: ${{ inputs.up_branch }}
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
+          # R2 직업로드 경로(대용량 · edit-make 동문 · 260722) — 키 자체 재검증 후 aws s3 cp로 회수(up-브랜치 경로 건너뜀)
+          if [ -n "$R2_SRC" ]; then
+            printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi)' \
+              || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }
+            [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/track_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
+            EXT="${R2_SRC##*.}"
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/upsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+              || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/track_err.txt; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
+            echo "TRACK_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
+            exit 0
+          fi
           # 일회용 업로드 브랜치(up-<id>) = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 삭제) — ly-make 동일
           if [ -n "$UP_BRANCH" ]; then
             case "$UP_BRANCH" in up-*) ;; *) echo "::error::up_branch는 up-* 만 허용: $UP_BRANCH"; exit 1;; esac
@@ -320,3 +341,20 @@ jobs:
         run: |
           case "$UP_BRANCH" in up-*) ;; *) echo "up-* 아님 — 스킵"; exit 0;; esac
           git push origin --delete "$UP_BRANCH" || echo "브랜치 정리 실패(무해 — 수동 정리 대상): $UP_BRANCH"
+
+      # R2 업로드 원본 정리(edit-make 동문 · 260722) — up_src/* = 일회용(up-브랜치와 동일 수명 · 성공·실패 무관 삭제)
+      - name: 업로드 원본 정리 (R2 up_src)
+        if: ${{ always() && inputs.r2_src != '' }}
+        env:
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          case "$R2_SRC" in up_src/*) ;; *) echo "up_src/* 아님 — 스킵"; exit 0;; esac
+          case "$R2_SRC" in *..*|*' '*) exit 0;; esac
+          [ -n "$R2_BUCKET" ] || exit 0
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          aws s3 rm "s3://$R2_BUCKET/$R2_SRC" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+            || echo "원본 정리 실패(무해 — 수동 정리 대상): $R2_SRC"
