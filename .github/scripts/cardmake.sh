@@ -33,7 +33,7 @@ CARD_TIMEOUT="${CARD_TIMEOUT:-1500}"
 # fails 필드가 아예 없는 구 failed(신정책 이전 적체)는 *이 특례*로는 스킵 = 소급 없음(과금 서프라이즈 차단) —
 # 단 GVER 부재·stale인 구 failed는 종전 지침 게이트가 재편입하며(의도된 수동복구 경로 포함) 재실패부터 fails가 붙어 신정책 캡에 합류.
 # 수동 실패(단일 지정·뷰어 버튼)도 fails에 카운트됨(축 단일화 — 수동 3회 실패 = 자동 예산 소진). 0 = 자동 재시도 끔(종전 동작 롤백).
-CARD_FAIL_RETRY_MAX="${CARD_FAIL_RETRY_MAX:-3}"
+CARD_FAIL_RETRY_MAX="${CARD_FAIL_RETRY_MAX:-0}"   # 운영자 260722: 3→0 = 자동 재시도 끔(25분 1회 실패 시 '실패로 멈춰있게' — 수동 재시도만). 위 '3회' 정책은 CARD_FAIL_RETRY_MAX=1~3 명시 오버라이드 시에만 부활.
 cur_fails() { grep -o '"fails":[[:space:]]*[0-9]\+' "cards/$1/status.json" 2>/dev/null | grep -o '[0-9]\+$' | head -1; }   # 현재 실패 누적(없으면 빈 문자열 · \+ = 같은 파일 grep 관례 통일)
 GVER="$(guidelines_version card)"
 GBLOCK="$(guidelines_block card)"
@@ -289,13 +289,13 @@ $(cat "$q")${disp_note}"
 
 "
     inline_delay=15
-    # ── 카드 1장 총 예산 회로차단기(운영자 260722 토큰 출혈 차단) ──
+    # ── 카드 1장 총 예산 회로차단기(운영자 260722 · '25분 1회, 안되면 실패 정지' 방침) ──
     #   재시도 경로(계정 폴오버·일시 과부하·생성 타임아웃)가 각기 CARD_TIMEOUT(25분)씩 누적돼, 한 카드가
-    #   INLINE_TRIES(4)×25 = 최대 100분 Opus를 태우던 폭주를 벽시계로 봉함(예: 무거운/폭주 기사가 매 시도 타임아웃).
-    #   정상 카드(1~15분 1발 성공)엔 절대 미발동 — 설계 의도(타임아웃25 + 자동 재시도25)를 보존하는 여유값이 기본.
-    #   attempt≥2에서만 검사(첫 발은 항상 보장) · 초과 시 rc=124·무출력으로 낙하 → 아래 실패 분류기가 '생성 타임아웃'
-    #   으로 표면화하고 failed(fails+1) 도장 → 런간 자동 재시도는 CARD_FAIL_RETRY_MAX(3)가 그대로 상한.
-    CARD_BUDGET_SEC="${CARD_BUDGET_SEC:-3300}"   # 기본 55분 ≈ CARD_TIMEOUT×2 + 여유(폴오버 fast-fail 흡수). 0 = 끔(구 동작).
+    #   INLINE_TRIES(4)×25 = 최대 100분 Opus를 태우던 폭주를 벽시계로 봉함. 실측: 성공 카드 평균 12분·p90 23분이라
+    #   25분(=CARD_TIMEOUT) 1회면 정상 카드 100% 성공 여지 + 초과분(무거운/폭주)은 즉시 실패 정지(수동 재시도만).
+    #   attempt≥2에서만 검사(첫 발은 항상 25분 보장) · 초과 시 rc=124·무출력으로 낙하 → 아래 실패 분류기가 '생성
+    #   타임아웃'으로 표면화하고 failed 도장 → 런간 자동 재시도 = CARD_FAIL_RETRY_MAX(기본 0=끔)라 '실패로 멈춰있음'.
+    CARD_BUDGET_SEC="${CARD_BUDGET_SEC:-1500}"   # 기본 25분 = CARD_TIMEOUT 1회분(2차 풀시도 봉인). 0 = 끔(구 동작·무제한).
     card_t0=$(date +%s)
     for attempt in $(seq 1 "$INLINE_TRIES"); do
       if [ "$attempt" -gt 1 ] && [ "$CARD_BUDGET_SEC" != "0" ]; then
@@ -327,10 +327,10 @@ $(cat "$q")${disp_note}"
         echo "  ⚠️ 양식 위반/폭주 추정($(printf '%s' "$out" | wc -l | tr -d ' ')줄·카드헤더 없음) — 출력규율 강제 프리픽스로 교정 재시도(${attempt}/${INLINE_TRIES})"
         fp="${STRICT_PREFIX}${fp_base}"; continue
       fi
-      # 생성 타임아웃(rc=124 = claude_meter CARD_TIMEOUT 상한 초과·무출력) 자동 재시도 1회 (운영자 260701).
-      #   무거운 입력(전문 paste·재작성 + effort max·max-turns 40)이 15분을 넘겨 SIGTERM 종료되던 것 구제.
-      #   is_transient(5xx/과부하 텍스트)엔 안 걸리는 순수 타임아웃/행이라 별도 처리 — 같은 입력이라도 API 상태·경로 편차로 2차 시도 성공 가능. 1회만(비용 바운드·잡 timeout 120분 내).
-      if [ "$timeout_retried" -eq 0 ] && [ "$attempt" -lt "$INLINE_TRIES" ] && [ "$rc" -eq 124 ]; then
+      # 생성 타임아웃(rc=124 = claude_meter CARD_TIMEOUT 상한 초과·무출력) 자동 재시도 — 운영자 260722: 기본 OFF.
+      #   (260701 도입: 무거운 입력이 상한 넘겨 SIGTERM되던 것 1회 구제. 그러나 같은 무거운 입력 = 2차도 또 타임아웃 =
+      #    25분 순수 낭비가 잦아, 260722 "25분 1회, 안되면 실패 정지(수동 재시도)" 방침으로 기본 봉인. CARD_TIMEOUT_RETRY=1로 부활.)
+      if [ "${CARD_TIMEOUT_RETRY:-0}" = "1" ] && [ "$timeout_retried" -eq 0 ] && [ "$attempt" -lt "$INLINE_TRIES" ] && [ "$rc" -eq 124 ]; then
         timeout_retried=1
         echo "  ⏳ 생성 타임아웃(rc=124 · ${CARD_TIMEOUT}s 초과·무출력) — ${inline_delay}s 후 1회 재시도(${attempt}/${INLINE_TRIES})"
         _pf="$(cur_fails "$stem")"
