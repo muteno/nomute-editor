@@ -10,8 +10,8 @@
 //
 // 무엇을 검증하나 — 8시나리오(유래 = 260718 Q162 페이블 병렬 7호 하네스 승격):
 //   T2 진입(trend 탭 주입·gt/sig 렌더·행수=데이터 동치·검색어 전행 채움[fillT])
-//   → T3 순위만(변동배지·검색량·시각 열 0 · 행 자식 = rank+q · 교차합의 🔥[.trhot] = 유일 허용 3번째)
-//   → T10 교차합의 🔥 배지(평의회 260723 #9 = signal∩gtrends 2소스 동시 = 핫 · 실검 gt/sig 전용·타 섹션 유출 0)
+//   → T3 순위만(변동배지·검색량·시각 열 0 · 행 자식 = rank+q 뿐)
+//   → T10 교차합의 골드레몬 표기(평의회 260723 #9 = signal∩gtrends 2소스 동시 = 핫 · .trend-q.cnhot 색 · 실검 gt/sig 전용·타 섹션 유출 0)
 //   → T4 회귀 가드(타 섹션 xtr 시각 열 잔존 = 메타 제거의 월경 없음)
 //   → T5 소분류 기준 캡션 제거(gt·sig 무캡션 = 수집시각 좌상단 #vhTime 1회 집약 · 운영자 260720)
 //   → T6 PC 2열 기하(1280 — 좌우 나란·열폭 동일·gap --sp-3=18[fin-split 동값 · Q388 분할선 단일선] · 한쪽 결측 = 그리드 없이 단독 폴백)
@@ -80,7 +80,7 @@ async function startServer() {
 const SEL = {
   gt: 'details[data-sec="gt"]', sig: 'details[data-sec="sig"]', xtr: 'details[data-sec="xtr"]',
   wrap: '.rt2col', row: 'a.trend-row', rank: '.trend-rank', q: '.trend-q',
-  chg: '.trend-chg', traffic: '.trend-traffic', tm: '.trend-tm', hot: '.trhot',
+  chg: '.trend-chg', traffic: '.trend-traffic', tm: '.trend-tm', cnhot: '.trend-q.cnhot',
   base: 'summary .trend-unit .fin-base', foldKey: 'nm_trend_fold',
 };
 
@@ -117,18 +117,18 @@ const SEL = {
 
     const t3 = await pg.evaluate(S => {
       const meta = sec => { const el = document.querySelector(sec); return el ? el.querySelectorAll(`${S.chg}, ${S.traffic}, ${S.tm}`).length : 0; };
-      const pure = sec => { const el = document.querySelector(sec); return el ? [...el.querySelectorAll(S.row)].every(r => (r.children.length === 2 || (r.children.length === 3 && r.querySelector(S.hot))) && r.querySelector(S.rank) && r.querySelector(S.q)) : true; };   // rank+q 뿐 · 교차합의 🔥(.trhot) = 유일 허용 3번째 자식(평의회 260723 #9 · 변동배지/검색량/시각은 meta로 별도 금지)
+      const pure = sec => { const el = document.querySelector(sec); return el ? [...el.querySelectorAll(S.row)].every(r => r.children.length === 2 && r.querySelector(S.rank) && r.querySelector(S.q)) : true; };   // rank+q 뿐(교차합의 = .trend-q.cnhot 색만 = 자식 무증 · 변동배지/검색량/시각은 meta로 별도 금지)
       return { gtMeta: meta(S.gt), sigMeta: meta(S.sig), gtPure: pure(S.gt), sigPure: pure(S.sig) };
     }, SEL);
-    ok('T3 순위만(배지·검색량·시각 0 · 행=rank+q[+🔥 선택])', t3.gtMeta === 0 && t3.sigMeta === 0 && t3.gtPure && t3.sigPure, JSON.stringify(t3));
+    ok('T3 순위만(배지·검색량·시각 0 · 행=rank+q 뿐)', t3.gtMeta === 0 && t3.sigMeta === 0 && t3.gtPure && t3.sigPure, JSON.stringify(t3));
 
     const t10 = await pg.evaluate(S => {
-      const all = [...document.querySelectorAll(S.hot)];
-      const outside = all.filter(f => !f.closest(S.gt) && !f.closest(S.sig)).length;   // 🔥 = 실검 gt/sig 전용(해커뉴스·박스오피스 등 타 brow 섹션 유출 0)
-      const okRow = all.every(f => { const r = f.closest(S.row); return !!r && !!r.querySelector(S.q); });   // 각 🔥 = 실검 행 내부(rank+q 동반)
+      const all = [...document.querySelectorAll(S.cnhot)];
+      const outside = all.filter(f => !f.closest(S.gt) && !f.closest(S.sig)).length;   // 골드레몬 교차합의 = 실검 gt/sig 전용(해커뉴스·박스오피스 등 타 brow 섹션 유출 0)
+      const okRow = all.every(f => !!f.closest(S.row));   // 각 = 실검 행 내부(.trend-q 자체가 cnhot 색)
       return { total: all.length, outside, okRow };
     }, SEL);
-    ok('T10 교차합의 🔥 배지 = 실검 전용(타 섹션 유출 0 · 행 동반)', t10.outside === 0 && t10.okRow, JSON.stringify(t10));
+    ok('T10 교차합의 골드레몬 = 실검 전용(타 섹션 유출 0 · 행 내부)', t10.outside === 0 && t10.okRow, JSON.stringify(t10));
 
     const t4 = await pg.evaluate(S => { const el = document.querySelector(S.xtr); return { has: !!el, tm: el ? el.querySelectorAll(S.tm).length : 0 }; }, SEL);
     ok('T4 회귀 가드(xtr 시각 열 잔존 = 월경 없음)', xtrN === 0 ? !t4.has : (t4.has && t4.tm === xtrN), JSON.stringify(t4) + ` 기대 ${xtrN}`);
