@@ -1,7 +1,7 @@
 // Cloudflare Pages Function — 트렌드(메뉴4) 구독 계정 목록 저장/조회 → viewer/sns_accounts.json 커밋(GitHub Contents API).
 // settings.js 패턴 계승(GH_TOKEN·originOk·sha 경합 재시도). 운영자 260711 승인(구독 축 = 기존 레인 아래 · '계정' 버튼 → 관리 모달).
-//   GET  → { x:{kr[],gl[]}, tiktok:{…}, insta:{…}, youtube:{…} }   (main 즉시 정합 — 정적 파일은 Pages 배포 지연이라 API 경유)
-//   POST → { patch:{ x?:{kr[],gl[]}, … } } 온 키만 통째 교체(모달 = 스테이징 편집 후 저장 1커밋 · 구 평면 배열 = 세계(gl) 흡수).
+//   GET  → { x:{kr[],gl[]}, …, youtube:{kr[],gl[],shorts?[],aivid?[],news_cat?} }  (youtube = 큐레이션 계정 + 쇼츠·AI영상 키워드·뉴스 카테고리 config · 운영자 260723 범용 설정 · main 즉시 정합)
+//   POST → { patch:{ x?:{kr[],gl[]}, youtube?:{kr[],gl[],shorts[],aivid[],news_cat} } } 온 키만 통째 교체(모달 = 스테이징 편집 후 저장 1커밋 · youtube patch = 계정+토픽 전체 동봉 필수[부분 = 미동봉 토픽 유실]).
 // 수집 반영 = sns-trends 런(30분 주기 · SNS_SUBS 게이트 ON 전제 = 카나리아 승격 후 §📰-e — 승격 전엔 저장만 되고 수집 무발동).
 // 지역(한국/세계)별 상한 CAP = 러너 소요 보호(scraper/sns_trends._REG_CAP와 동일 규격 · 운영자 260712 한국/세계 분리).
 const REPO = 'muteno/nomute-editor', FILE = 'viewer/sns_accounts.json';
@@ -21,11 +21,30 @@ function cleanList(xs, cap, seen) {
   }
   return out;
 }
-function cleanPlat(v, k) {   // 한국/세계 2군(운영자 260712) — 구 평면 배열 = 세계(gl) 흡수(하위호환) · 지역 교차 dedup(kr 우선)
+const CAP_KW = 20;   // 키워드 토픽 상한(쇼츠·AI영상 검색어 · 러너 소요 보호 · scraper 소비)
+function cleanKw(xs) {   // 키워드 토픽 정리(운영자 260723 범용 설정) — 핸들과 달리 공백·한글 허용(검색어) · 트림·공백붕괴·대소문자 dedup·40자컷·상한
+  const out = [], seen = new Set();
+  for (let v of Array.isArray(xs) ? xs : []) {
+    v = String(v || '').trim().replace(/\s+/g, ' ');
+    if (!v || v.length > 40) continue;
+    const k = v.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(v);
+    if (out.length >= CAP_KW) break;
+  }
+  return out;
+}
+function cleanPlat(v, k) {   // 한국/세계 2군(운영자 260712) — 구 평면 배열 = 세계(gl) 흡수(하위호환) · 지역 교차 dedup(kr 우선) · 유튜브 = 키워드 토픽·뉴스 카테고리 config 동거(운영자 260723 범용 설정)
   if (Array.isArray(v)) v = { gl: v };
   if (!v || typeof v !== 'object') v = {};
   const seen = new Set();
-  return { kr: cleanList(v.kr, CAP[k], seen), gl: cleanList(v.gl, CAP[k], seen) };
+  const o = { kr: cleanList(v.kr, CAP[k], seen), gl: cleanList(v.gl, CAP[k], seen) };
+  if (k === 'youtube') {   // 큐레이션 계정 + 쇼츠·AI영상 키워드·뉴스 카테고리(스크래퍼 sns_trends.py _ytc가 소비 · 없으면 하드코딩 폴백 = 하위호환) · 미설정 키는 미보존(폴백 유지)
+    if (Array.isArray(v.shorts)) o.shorts = cleanKw(v.shorts);
+    if (Array.isArray(v.aivid)) o.aivid = cleanKw(v.aivid);
+    if (Number.isInteger(v.news_cat) && v.news_cat > 0 && v.news_cat < 100) o.news_cat = v.news_cat;
+  }
+  return o;
 }
 function clean(raw) { const o = {}; for (const k of KEYS) o[k] = cleanPlat(raw && raw[k], k); return o; }
 function pickPatch(patch) {   // 온 키만(부분 갱신) — 무효 항목은 조용히 걸러 기존 규격 보존

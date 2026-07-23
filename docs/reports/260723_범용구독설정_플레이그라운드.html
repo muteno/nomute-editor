@@ -1,0 +1,198 @@
+<meta charset="utf-8">
+<title>범용 구독·큐레이션 설정 — 게시판형·순번·세부분류 시안 v3</title>
+<style>
+  /* ── 실토큰 계승(viewer/index.html :root 실측) ── */
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#00EED2; --accent-rgb:0,238,210;
+    --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+    --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+    --fs-h2:15px; --fs-sm:13px; --fw-x:800; --fw-b:700; --fs-label:13px; --fs-xs:11px;
+    --press-m:.9; --ease:cubic-bezier(.2,.7,.3,1); --dur-acc:.26s;
+    --modal-glass:#1a1c1b; --modal-head-bg:rgba(20,22,21,.55);
+    --t-cardgap:12; --t-cardpad:12;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0c0c0c;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",sans-serif;font-size:14px;line-height:1.5;padding:16px}
+  .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;max-width:1100px;margin:0 auto}
+  .stagewrap{flex:1 1 400px;position:sticky;top:16px}
+  .stagecap{color:var(--mut);font-size:12px;margin-top:10px;text-align:center}
+  aside.console{flex:1 1 300px;min-width:280px}
+  h1{font-size:16px;margin:0 0 4px}
+  .subt{color:var(--mut);font-size:12px;margin:0 0 16px}
+
+  .frame{background:#000;border-radius:20px;padding:20px 12px;display:flex;justify-content:center}
+  .dlg{width:min(430px,100%);background:var(--modal-glass);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal-head{display:flex;align-items:center;gap:8px;padding:11px 16px;min-height:53px;border-bottom:1px solid var(--line2);background:var(--modal-head-bg)}
+  .modal-head b{font-size:var(--fs-h2);font-weight:var(--fw-x);letter-spacing:-.2px}
+  .modal-head .x{margin-left:auto;width:30px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--mut);border:1px solid var(--line)}
+  .dlg-body{padding:14px;max-height:64vh;overflow-y:auto;scrollbar-gutter:stable both-edges}
+
+  /* ── 게시판 카드 = .tgroup 정본 ── */
+  .tgroup{margin:0 0 calc(var(--t-cardgap)*1px);padding:calc(var(--t-cardpad)*1px) 14px;border:1px solid var(--line);border-radius:var(--r-l);background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20))}
+  .tgroup:last-child{margin-bottom:0}
+  .tgroup-h{display:flex;align-items:center;gap:7px;margin:0;font-size:var(--fs-h2);font-weight:var(--fw-x);letter-spacing:-.2px;color:var(--fg);cursor:pointer;transition:margin-bottom var(--dur-acc) var(--ease)}
+  .tgroup.open>.tgroup-h{margin-bottom:14px}
+  /* 순번 배지 = .tgroup-h i 정본(24px·--fs-sm·--fw-b·accent·tabular·광학보정 translateY.8) */
+  .tgroup-h i{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;font-style:normal;font-size:var(--fs-sm);font-weight:var(--fw-b);color:var(--accent);font-variant-numeric:tabular-nums;transform:translateY(.8px)}
+  .tgroup-h .cnt{color:var(--mut);font-size:var(--fs-xs);font-weight:600}
+  .tgroup-h .chev{margin-left:auto;color:var(--mut);transition:transform var(--dur-acc) var(--ease);flex:none}
+  .tgroup.open>.tgroup-h .chev{transform:rotate(180deg)}
+  .sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-acc) var(--ease)}
+  .tgroup.open>.sub{grid-template-rows:1fr}
+  .sub>.subin{overflow:hidden;min-height:0}
+
+  /* ── 세부 분류(채널 내부) = 소머리 .cref-lbl 문법 계승 ── */
+  .subcat{padding:12px 0;border-top:1px solid var(--line2)}
+  .subcat:first-child{border-top:none;padding-top:2px}
+  .subcat-h{display:flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:700;color:var(--fg);margin-bottom:9px}
+  .subcat-h::before{content:'•';color:var(--accent);font-weight:700}
+  .badge{font-size:10px;font-weight:600;border-radius:var(--r-pill);padding:1px 7px;border:1px solid var(--line);color:var(--mut)}
+  .badge.acct{color:var(--accent);border-color:rgba(var(--accent-rgb),.4)}
+  .badge.kw{color:var(--accent-4);border-color:rgba(var(--accent-4-rgb),.4)}
+  .subcat.auto{opacity:.66}
+  .autonote{font-size:11px;color:var(--mut);margin:0}
+
+  .reg{display:flex;gap:3px;margin-bottom:9px}
+  .reg b{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-s);padding:2px 9px;cursor:pointer}
+  .reg b.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5)}
+
+  /* 칩 = .acc-chip 정본 ── */
+  .acc-grow{display:flex;flex-wrap:wrap;gap:6px}
+  .acc-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;font-size:12px;font-weight:600;color:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.14);border-radius:var(--r-pill);background:rgba(8,15,11,.34);cursor:pointer}
+  .acc-chip.kw{border-color:rgba(var(--accent-4-rgb),.42)}
+  .acc-chip .x{width:10px;height:10px;color:var(--mut);font-size:12px;line-height:1}
+  .acc-addrow{display:flex;gap:8px;margin-top:9px}
+  .acc-addrow input{flex:1 1 auto;min-width:0;background:rgba(0,0,0,.32);border:1px solid var(--line2);border-radius:8px;padding:7px 10px;color:var(--fg);font-size:12px}
+  .acc-addrow input::placeholder{color:var(--mut)}
+  .acc-add{min-width:64px;padding:7px 14px;border-radius:var(--r-s);background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.5);color:var(--accent);font-weight:700;font-size:12px;cursor:pointer}
+  .selbox{font-size:12px;background:rgba(0,0,0,.32);border:1px solid var(--line2);border-radius:8px;padding:6px 10px;color:var(--fg)}
+  .catadd{width:100%;padding:12px;border:1px dashed rgba(var(--accent-rgb),.42);border-radius:var(--r-l);color:var(--accent);font-size:13px;font-weight:700;background:none;cursor:pointer;text-align:center}
+  .catadd .hint{color:var(--mut);font-weight:400;font-size:11px}
+
+  .csec{border:1px solid var(--line);border-radius:var(--r-m);padding:12px;margin-bottom:12px}
+  .csec h3{margin:0 0 8px;font-size:12px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .pill{display:inline-block;font-size:12px;padding:6px 11px;margin:0 6px 6px 0;border:1px solid var(--line);border-radius:var(--r-pill);cursor:pointer;color:var(--fg)}
+  .pill.on{background:rgba(var(--accent-rgb),.14);border-color:rgba(var(--accent-rgb),.5);color:var(--accent)}
+  .pill .star{color:var(--accent-4)}
+  .sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+  .sl label{flex:0 0 84px;color:var(--mut)}
+  .sl input{flex:1}
+  .sl b{flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums}
+  pre#out{white-space:pre-wrap;font-size:11px;background:#0a0a0a;border-radius:var(--r-s);padding:10px;margin:0 0 8px;color:var(--mut);max-height:200px;overflow:auto}
+  #copy{width:100%;padding:9px;border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12);color:var(--accent);border-radius:var(--r-s);font-weight:700;cursor:pointer}
+  .note{color:var(--mut);font-size:11px;line-height:1.6}
+  .note b{color:var(--fg)}
+</style>
+
+<div data-pg-template="sub-settings-board" class="wrap">
+  <div class="stagewrap">
+    <h1>범용 구독·큐레이션 설정 <span style="color:var(--mut);font-size:12px">게시판형 v3 · 순번+세부분류</span></h1>
+    <p class="subt">운영자 260723 "채널 아이콘=순번(SNS요약 순번제) · 채널 안 세부분류 여러개" — 채널(1·2·3…) 펼치면 그 채널 세부분류가 중첩</p>
+    <div class="frame" data-pg-preview>
+      <div class="baseline" data-pg-baseline hidden>현행 = #snsaccdlg 플랫폼 탭 5개 · 계정 핸들만 · 키워드 하드코딩(비노출)</div>
+      <div class="dlg" id="dlg">
+        <div class="modal-head"><b>구독·큐레이션 설정</b><span class="x">✕</span></div>
+        <div class="dlg-body" id="body">
+
+          <!-- 1. 유튜브 = 세부분류 최다(큐레이션·뉴스·쇼츠·AI영상·인기) -->
+          <div class="tgroup open"><div class="tgroup-h"><i>1</i>유튜브<span class="cnt">4 분류 + 인기</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
+            <div class="sub"><div class="subin">
+              <div class="subcat"><div class="subcat-h">큐레이션 <span class="badge acct">계정</span></div><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@채널1<span class="x">×</span></span><span class="acc-chip">@채널2<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@채널 추가"><button class="acc-add">추가</button></div></div>
+              <div class="subcat"><div class="subcat-h">뉴스 <span class="badge">카테고리</span></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--mut)">분류</span><select class="selbox"><option>뉴스·정치(기본)</option><option>엔터테인먼트</option><option>스포츠</option></select></div></div>
+              <div class="subcat"><div class="subcat-h">쇼츠 <span class="badge kw">키워드</span></div><div class="acc-grow"><span class="acc-chip kw">먹방<span class="x">×</span></span><span class="acc-chip kw">브이로그<span class="x">×</span></span><span class="acc-chip kw">예능 웃긴 영상<span class="x">×</span></span><span class="acc-chip kw">여행<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="검색 키워드 추가"><button class="acc-add">추가</button></div></div>
+              <div class="subcat"><div class="subcat-h">AI 영상 <span class="badge kw">키워드</span></div><div class="acc-grow"><span class="acc-chip kw">sora ai video<span class="x">×</span></span><span class="acc-chip kw">runway kling veo<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="검색 키워드 추가"><button class="acc-add">추가</button></div></div>
+              <div class="subcat auto"><div class="subcat-h">인기 <span class="badge">자동</span></div><p class="autonote">유튜브 인기 급상승 API — 계정 무관·설정 불필요</p></div>
+            </div></div>
+          </div>
+
+          <!-- 2. 틱톡 -->
+          <div class="tgroup"><div class="tgroup-h"><i>2</i>틱톡<span class="cnt">1 분류 + 인기·해시태그</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin">
+            <div class="subcat"><div class="subcat-h">큐레이션 <span class="badge acct">계정</span></div><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@틱톡1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div>
+            <div class="subcat auto"><div class="subcat-h">인기·해시태그 <span class="badge">자동</span></div><p class="autonote">틱톡 트렌딩 — 설정 불필요</p></div>
+          </div></div></div>
+
+          <!-- 3. 인스타그램 -->
+          <div class="tgroup"><div class="tgroup-h"><i>3</i>인스타그램<span class="cnt">1 분류</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin">
+            <div class="subcat"><div class="subcat-h">큐레이션 <span class="badge acct">계정</span></div><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@계정1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div>
+          </div></div></div>
+
+          <!-- 4. X -->
+          <div class="tgroup"><div class="tgroup-h"><i>4</i>X<span class="cnt">1 분류 + 실검</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin">
+            <div class="subcat"><div class="subcat-h">큐레이션 게시물 <span class="badge acct">계정</span></div><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@yonhaptweet<span class="x">×</span></span><span class="acc-chip">@YTN24<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div>
+            <div class="subcat auto"><div class="subcat-h">실검 <span class="badge">자동</span></div><p class="autonote">X 실시간 트렌드(trends24) — 설정 불필요</p></div>
+          </div></div></div>
+
+          <!-- 5. 스레드 -->
+          <div class="tgroup"><div class="tgroup-h"><i>5</i>스레드<span class="cnt">1 분류</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin">
+            <div class="subcat"><div class="subcat-h">큐레이션 게시물 <span class="badge acct">계정</span></div><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@이슈러1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div>
+          </div></div></div>
+
+          <button class="catadd">＋ 카테고리 추가 <span class="hint">(이름 → 계정형/키워드형 선택 → 항목)</span></button>
+
+        </div>
+      </div>
+    </div>
+    <div class="stagecap">← 채널(순번) 헤더 탭 = 펼침/접힘 · 안에 세부분류 중첩(실동작) · 오른쪽 밀도 조절 →</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec" data-pg-presets><h3>밀도 프리셋</h3>
+      <span class="pill on" data-pre="std">기본 <span class="star">★</span></span>
+      <span class="pill" data-pre="compact">조밀</span>
+      <span class="pill" data-pre="roomy">여유</span>
+      <p class="note" style="margin:6px 0 0">채널 = <b>순번(1·2·3…) 배지</b>(SNS요약 순번제 <code>.tgroup-h i</code> 계승). 채널 펼치면 <b>세부분류</b>(큐레이션·뉴스·쇼츠·AI영상·인기 등)가 소머리(•)로 나옴. 계정=<code>계정</code>·키워드=<code>키워드</code>(골드레몬)·자동=회색 읽기전용.</p>
+    </div>
+    <div class="csec"><h3>보기</h3><span class="pill" id="toggleAll">전체 펼치기 / 접기</span></div>
+    <div class="csec"><h3>미세 조정</h3>
+      <div class="sl"><label>카드 간격</label><input type="range" id="s_gap" min="6" max="20" step="1" value="12"><b id="v_gap">12</b></div>
+      <div class="sl"><label>카드 패딩</label><input type="range" id="s_pad" min="8" max="18" step="1" value="12"><b id="v_pad">12</b></div>
+    </div>
+    <div class="csec"><pre id="out"></pre><button id="copy" data-pg-copy>선택값 복사</button></div>
+    <div class="csec note" data-pg-note>⑤ <b>재현 한계</b>: 실제 구현 = <code>#snsaccdlg</code> + <code>.tgroup</code>/<code>.tgroup-h i</code>(순번 정본) 게시판 카드 + 세부분류 소머리(<code>.cref-lbl</code>) + <code>.acc-chip</code> 칩 + <code>.geni-camsub</code> 접이. <b>세부분류 목록은 실제 앱 구조 기반 추정</b>(운영자 메시지 중간 잘림 — 채널별 분류 확정은 확인 필요). <b>자동</b> 분류(인기·실검·해시태그)는 읽기전용 표기(설정 불필요).</div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var body=document.getElementById('body');
+  var near=function(a,b,eps){return Math.abs(a-b)<(eps||0.5);};
+  var PRE={std:{gap:12,pad:12}, compact:{gap:6,pad:8}, roomy:{gap:20,pad:18}};
+  var state={pre:'std', gap:12, pad:12};
+  function apply(){
+    document.documentElement.style.setProperty('--t-cardgap', state.gap);
+    document.documentElement.style.setProperty('--t-cardpad', state.pad);
+    document.getElementById('v_gap').textContent=state.gap;
+    document.getElementById('v_pad').textContent=state.pad;
+    document.getElementById('s_gap').value=state.gap;
+    document.getElementById('s_pad').value=state.pad;
+    out();
+  }
+  function out(){
+    document.getElementById('out').textContent=
+'[범용 구독 설정 — 게시판형 v3 선택값]\n'+
+'레이아웃 : 게시판형 · 채널=순번배지(1·2·3…) · 세부분류 중첩 ★확정\n'+
+'밀도     : '+state.pre+'  (간격 '+state.gap+'px'+(near(state.gap,12)?' 정본':'')+' · 패딩 '+state.pad+'px'+(near(state.pad,12)?' 정본':'')+')\n\n'+
+'[계승 컴포넌트 — 전부 앱 정본]\n'+
+'채널 카드 : .tgroup · 순번배지 .tgroup-h i(24px·accent·tabular·translateY.8)\n'+
+'세부분류  : 소머리 .cref-lbl(• 블릿) + 타입배지\n'+
+'접이      : .geni-camsub(0fr↔1fr·--dur-acc)\n'+
+'칩        : .acc-chip(h24·--r-pill) + .acc-addrow\n\n'+
+'[구조] 채널(순번) → 세부분류:\n'+
+'1 유튜브 : 큐레이션(계정)·뉴스(카테고리)·쇼츠(키워드)·AI영상(키워드)·인기(자동)\n'+
+'2 틱톡   : 큐레이션(계정)·인기/해시태그(자동)\n'+
+'3 인스타 : 큐레이션(계정)\n'+
+'4 X      : 큐레이션(계정)·실검(자동)\n'+
+'5 스레드 : 큐레이션(계정)\n'+
+'＋ 카테고리 추가(커스텀)';
+  }
+  document.querySelectorAll('.pill[data-pre]').forEach(function(p){p.onclick=function(){document.querySelectorAll('.pill[data-pre]').forEach(function(q){q.classList.remove('on')});p.classList.add('on');state.pre=p.dataset.pre;state.gap=PRE[p.dataset.pre].gap;state.pad=PRE[p.dataset.pre].pad;apply();};});
+  document.getElementById('s_gap').oninput=function(){state.gap=+this.value;state.pre='custom';apply();};
+  document.getElementById('s_pad').oninput=function(){state.pad=+this.value;state.pre='custom';apply();};
+  body.addEventListener('click',function(e){var h=e.target.closest('.tgroup-h');if(h){h.parentNode.classList.toggle('open');}});
+  document.getElementById('toggleAll').onclick=function(){var cards=body.querySelectorAll('.tgroup');var anyClosed=[].some.call(cards,function(c){return !c.classList.contains('open');});[].forEach.call(cards,function(c){c.classList.toggle('open',anyClosed);});};
+  document.getElementById('copy').onclick=function(){var t=document.getElementById('out').textContent;navigator.clipboard&&navigator.clipboard.writeText(t).then(function(){var b=document.getElementById('copy');b.textContent='복사됨 ✓';setTimeout(function(){b.textContent='선택값 복사';},1200);});};
+  apply();
+})();
+</script>
