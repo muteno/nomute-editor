@@ -5,7 +5,22 @@
 // ⚠️ 성격 = 클라 검증 사생활 가림막(발행본 pinHash와 동일 등급 · DevTools 우회 가능) — 접근 보안 자체는 CF Access. lockPinHash = sha256(pin+':nmlock') 클라 계산분(평문 미저장).
 // env: GH_TOKEN = fine-grained PAT(Contents:read+write · publish/push/published 동일 토큰).
 const REPO = 'muteno/nomute-editor', FILE = 'settings/app.json';
-const DEFAULTS = { lockOn: true, lockPinHash: '', lockLen: 4, lockMin: 2, genImgOn: true };
+const DEFAULTS = { lockOn: true, lockPinHash: '', lockLen: 4, lockMin: 2, genImgOn: true, kwAlertOn: false, kwItems: [] };
+const KW_CAP = 40;   // 등록 키워드 상한(계정 1인 · 오염·비대 차단)
+
+// 키워드 알림 항목 정규화(index.html _setNorm 미러) — 각 항목 { kw, ts(등록 epoch), hit(첫 매칭 epoch·0=미매칭), done(체크=알림 중단) }
+function cleanKwItems(a) {
+  if (!Array.isArray(a)) return [];
+  const out = [];
+  for (const it of a) {
+    if (!it || typeof it !== 'object') continue;
+    const kw = typeof it.kw === 'string' ? it.kw.slice(0, 120).trim() : '';
+    if (!kw) continue;
+    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true });
+    if (out.length >= KW_CAP) break;
+  }
+  return out;
+}
 
 // 응답/저장 정규화 — 알 수 없는 키 제거·타입 강제(오염 차단). 무효값은 기본값으로 폴백.
 function clean(raw) {
@@ -16,6 +31,8 @@ function clean(raw) {
     if (raw.lockLen === 4 || raw.lockLen === 6) o.lockLen = raw.lockLen;
     if (Number.isInteger(raw.lockMin) && raw.lockMin >= 1 && raw.lockMin <= 60) o.lockMin = raw.lockMin;
     if (typeof raw.genImgOn === 'boolean') o.genImgOn = raw.genImgOn;
+    if (typeof raw.kwAlertOn === 'boolean') o.kwAlertOn = raw.kwAlertOn;
+    if (Array.isArray(raw.kwItems)) o.kwItems = cleanKwItems(raw.kwItems);
   }
   return o;
 }
@@ -27,6 +44,8 @@ function pickPatch(patch) {
   if (patch.lockLen === 4 || patch.lockLen === 6) o.lockLen = patch.lockLen;
   if (Number.isInteger(patch.lockMin) && patch.lockMin >= 1 && patch.lockMin <= 60) o.lockMin = patch.lockMin;
   if (typeof patch.genImgOn === 'boolean') o.genImgOn = patch.genImgOn;
+  if (typeof patch.kwAlertOn === 'boolean') o.kwAlertOn = patch.kwAlertOn;
+  if (Array.isArray(patch.kwItems)) o.kwItems = cleanKwItems(patch.kwItems);   // 목록 = 통째 교체(부분병합 아님 · 등록/삭제/체크가 전체 배열 커밋)
   return o;
 }
 
