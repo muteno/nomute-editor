@@ -12,7 +12,8 @@
 #      → 입력 디렉터리(messages/)에 파일로 써서 워크플로 `git add -A messages` 로 커밋 → 배포 빌드가
 #        viewer/messages.json 으로 합성 → 반영. (수동 messages/*.md 와 같은 정식 경로로 통일.)
 #
-# 사용: python3 shared/msg.py set <id> "<text>" [level]   /   python3 shared/msg.py clear <id>
+# 사용: python3 shared/msg.py set <id> "<text>" [level] [action]   /   python3 shared/msg.py clear <id>
+#   [action] = 액션형 알림 태그(예: "sns-recollect") → 뷰어가 메시지 상세에 '조치' 버튼을 렌더.
 #   같은 id = 파일 1개(messages/<id>.json) = 자연 dedupe — set=파일 덮어쓰기, clear=파일 삭제.
 import json
 import os
@@ -72,9 +73,12 @@ def main():
     if cmd == "set":
         text = sys.argv[3] if len(sys.argv) > 3 else ""
         level = sys.argv[4] if len(sys.argv) > 4 else ""   # 선택: "warn"=노란 점등·노란 제목(수집 실패 등) / 빈값=기본
+        action = sys.argv[5] if len(sys.argv) > 5 else ""  # 선택: 액션형 알림(예: "sns-recollect") = 뷰어 메시지 상세에 '조치' 버튼 노출 · 빈값=조치 없는 단순 알림(기존 동작 불변)
         m = {"id": mid, "text": text, "ts": datetime.now(KST).strftime("%m/%d %H:%M"), "t": now_ms()}
         if level:
             m["level"] = level
+        if action:
+            m["action"] = action
         with open(p, "w", encoding="utf-8") as f:
             json.dump(m, f, ensure_ascii=False)
         prune()   # 24h 만료 자동 삭제(쓸 때마다 정리)
