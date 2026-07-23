@@ -11243,17 +11243,21 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   bandLabs.forEach(l => putTop(l.x, esc(l.txt), 'var(--mut)'));   // 접속 피크 라벨 = 무채(운영자 260723 한 수 · 밴드 무채 워시와 동색 · 일반 평균 노랑과 분리)
   if (mkX != null) putTop(mkX, mkTxt, 'var(--mut)');
   const inCore = x => coreXR && x >= coreXR[0] - 1 && x <= coreXR[1] + 1;   // 핵심 구간에 드는 눈금/라벨 = 음영 동색 보라 틴트(운영자 260723 "해당하는 숫자를 보라색 음영" · ±1px = 경계 부동소수 여유) — 구 경계시각 별도 라벨("9시/18시" 행) 대체
+  const tick = x => { s += `<line x1="${x.toFixed(1)}" y1="${H - mB}" x2="${x.toFixed(1)}" y2="${(H - mB + 3).toFixed(1)}" stroke="var(--mut)" stroke-width="1" opacity=".55" vector-effect="non-scaling-stroke"/>`; };   // X축 미니 눈금선(운영자 260724 "보라 튀어나온 것처럼 각각 다 mut으로") — 문법 = 핵심 구간 세로변 축 관통 미러(관통 3 = 보라 4보다 반 계단 아래 위계) · 톤 = 지금/오늘 무채 마커(--mut·1px·op .55) 계승 · 전 인덱싱 위치(숫자 눈금 + 요일명 중심선)
   if (hlin && ax === 'hour_band') for (let hh = 0; hh <= 24; hh++) {   // X축 = 24분할 시각 눈금(운영자 260723 "밴드명('오전6-11') 말고 그냥 24분할 해서 숫자만") — 위치 = 선형 시간축 실시각 · 크기·굵기·베이스라인(9·700·H-7) = 구 버킷 라벨 규격 계승 · 밴드명은 호버 툴팁에 유지 = 정보 손실 0
     const xh = mL + pw * hh / 24;
+    tick(xh);
     s += `<text x="${xh.toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="${inCore(xh) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${hh}</text>`;
-  } else if (hlin) {   // 요일 = 주간 선형축 2단 눈금(운영자 260724 "요일별로 0-8/8-16/16-24 이렇게 3개씩 — 지금 너무 모호") — 서브행 = 요일당 0·8·16 + 종단 24(y = 구 경계시각 행 H-mB+9 계승 · font 8 = putTop 선반 티어 = 요일명 아래 위계) · 요일명 행 = H-7·9·700 계승(중심 앵커 = 선형축 요일 중심이 내부라 엣지 앵커 불요) · 핵심 구간 = 두 행 다 보라 틴트
+  } else if (hlin) {   // 요일 = 주간 선형축 2단 눈금(운영자 260724 "요일별로 0-8/8-16/16-24 이렇게 3개씩 — 지금 너무 모호") — 서브행 = 요일당 0·8·16 + 종단 24(y = 구 경계시각 행 +1 = 눈금선 3px과 글리프 캡 간섭 회피 · font 8 = putTop 선반 티어 = 요일명 아래 위계) · 요일명 행 = H-7·9·700 계승(중심 앵커 = 선형축 요일 중심이 내부라 엣지 앵커 불요) · 핵심 구간 = 두 행 다 보라 틴트 · 눈금선 = 서브 경계 + 요일 중심선(운영자 260724 "목 금 있는 부분 = 중심선 · 좌우로 1분할씩")
     for (let d = 0; d <= ord.length * 3; d++) {
       const xt = mL + pw * (Math.floor(d / 3) * 24 + (d % 3) * 8) / SPAN, lab = d === ord.length * 3 ? 24 : (d % 3) * 8;
-      s += `<text x="${xt.toFixed(1)}" y="${(H - mB + 9).toFixed(1)}" text-anchor="middle" font-size="8" fill="${inCore(xt) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${lab}</text>`;
+      tick(xt);
+      s += `<text x="${xt.toFixed(1)}" y="${(H - mB + 10).toFixed(1)}" text-anchor="middle" font-size="8" fill="${inCore(xt) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${lab}</text>`;
     }
-    bs.forEach((b, i) => { s += `<text x="${X(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="${inCore(X(i)) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${esc(b.bucket)}</text>`; });
+    bs.forEach((b, i) => { tick(X(i)); s += `<text x="${X(i).toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="${inCore(X(i)) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${esc(b.bucket)}</text>`; });
   } else bs.forEach((b, i) => {   // 축 파싱 실패 폴백 = 구 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지 · y = 일일 추이 베이스라인 H-7 계승) · 핵심 구간 안 라벨 = 동일 보라 틴트(형제 동조[4]) · n 병기 줄 = 운영자 260722 제거(툴팁 n= 유지)
     const anc = i === 0 ? 'start' : i === bs.length - 1 ? 'end' : 'middle', xa = i === 0 ? mL : i === bs.length - 1 ? W - mR : X(i);
+    tick(xa);
     s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="9" fill="${inCore(xa) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${esc(b.bucket)}</text>`;
   });
   s += '</svg>';
