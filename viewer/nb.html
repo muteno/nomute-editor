@@ -601,17 +601,21 @@ function renderRecent(){
   el.hidden=false;
 }
 async function loadRecent(){
+  let ok=false;
   try{
     const r=await fetch('nb_out/index.json?t='+Date.now());
     if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
-      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ RECENT=j; } } }
-  }catch(e){ /* 미배포·오프라인 = 조용한 공백 */ }
-  if($('#note').hidden) renderRecent();   // 노트/목록 먼저 떠 있으면(재개 등) 안 덮음
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ RECENT=j; ok=true; } } }
+  }catch(e){ /* 미배포·오프라인·빌드실패 = 아래 실패 신호 */ }
+  if($('#note').hidden){   // 노트/목록 먼저 떠 있으면(재개 등) 안 덮음
+    if(!ok && !RECENT.length){ const el=$('#recent'); el.innerHTML='<div class="vrow" data-retry="1"><div class="vt"><b>목록을 못 불러왔어</b><span class="m">탭해서 다시 시도</span></div></div>'; el.hidden=false; }   // 로드 실패만 구분(빈 목록 = 침묵 · §디자인 e-가) · 운영자 260723 한수
+    else renderRecent();
+  }
 }
 $('#recent').addEventListener('click',async e=>{
   const dl=e.target.closest('.cpy.dlbtn');
   if(dl){ const d=await fetchNote(dl.dataset.dl); if(d){ saveBlob(buildNoteMd(d),'note_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.md','text/markdown'); dl.classList.add('dl-done'); } return; }
-  const row=e.target.closest('.vrow'); if(row) openNoteId(row.dataset.id);
+  const row=e.target.closest('.vrow'); if(row){ if(row.dataset.retry){ loadRecent(); return; } openNoteId(row.dataset.id); }
 });
 loadRecent();
 
