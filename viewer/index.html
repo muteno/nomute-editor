@@ -5367,7 +5367,7 @@ function cardSec(a) {
       // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
       const phase = c.has_md ? '카드 이미지 생성 중' : '카드뉴스 프롬프팅 중';
       const rtag = (Number(c.retry) || 0) > 0 ? ` <span class="gen-rn">(${Number(c.retry)}회)</span>` : '';   // 자동 재시도 회차 = 기존 배너 '중' 뒤 띄어쓰기 하나 + '(N회)'(MUT·크기 동일) · 운영자 260701
-      sec.innerHTML = `<div class="genstat live">${phase}${rtag}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후(4375)와 동일 문구로 통일·꼬리말 제거(운영자 260701)
+      sec.innerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(c.has_md ? 'solving' : 'prompting', c.has_md ? 'Solving…' : 'Prompting…') + rtag : phase + rtag + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(이미지=Solving·프롬프팅=Prompting · 운영자 260723 Q461) · 재시도 회차 rtag 유지 · 폴백 = 구 점3
     }
     return;
   }
@@ -6542,7 +6542,7 @@ async function makeCards(target, btn, mode) {
         btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
         await new Promise(res => setTimeout(res, 520));
       }
-      if (btn) btn.outerHTML = `<div class="genstat live">${isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중'}<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>`;   // 누른 직후=진행중 한 문구 통일(생성중 박스 3212와 동일·중간 안 바뀜·운영자 260701)
+      if (btn) btn.outerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(isText ? 'prompting' : 'solving', isText ? 'Prompting…' : 'Solving…') : (isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(카드뉴스=Prompting·이미지=Solving · 운영자 260723 Q461) · 폴백 = 구 점3
       return;
     }
     if (btn) { gaugeClear(btn); btn.classList.remove('okdone', 'checking'); btn.style.pointerEvents = ''; }
