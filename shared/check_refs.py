@@ -297,6 +297,7 @@ def check_design():
 # 하는데 복사라 드리프트 가능 — 260723 실사고: index만 --accent-2 라임→골드 바꿔 도구 뷰어 3곳(썸네일·
 # 편집·가사) 접기 삼각형이 라임 잔존. 이 게이트 = 각 뷰어 공유 팔레트를 index 해결값과 대조 → 하드 차단.
 # 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은 의도적 뷰어별([16] 차분한 툴톤 재색칠 금지)이라 제외.
+# 규칙 정본(단일 진입점) = docs/디자인기틀_SSOT.md §0-2·§5 · CLAUDE.md [15]·[16][4] · 전파 짝 = build_design_mirror.py STAGE4(sync_viewer_palette).
 _PALETTE_TONE = {'--bg', '--pan', '--line', '--line2', '--fg', '--mut', '--glass2', '--thumb',
                  '--modal-glass', '--modal-glass-anchor', '--modal-head-bg', '--modal-tabs-bg'}
 _COLOR_VAL = re.compile(r'^(#[0-9A-Fa-f]{3,8}|rgba?\([^)]*\)|\d[\d,\s.]*)$')

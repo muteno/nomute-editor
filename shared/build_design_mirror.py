@@ -128,6 +128,7 @@ def check_tokens():
 # 해결값으로 덮어씀 = 손 베끼기 폐지. 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은
 # 의도적 뷰어별([16] 차분한 툴톤 재색칠 금지)이라 제외 · 뷰어가 이미 정의한 토큰만 값 교체(신규 추가 0).
 # 검증(드리프트 게이트) = shared/check_refs.py check_palette_sync()(커밋 하드 게이트).
+# 규칙 정본(단일 진입점) = docs/디자인기틀_SSOT.md §0-2(색 값 SSOT·전파 워크플로)·§5(빌더·게이트 항) · CLAUDE.md [15]·[16][4].
 _VIEWERS_TOOLS = ('viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html',
                   'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html')
 _PALETTE_TONE = {'--bg', '--pan', '--line', '--line2', '--fg', '--mut', '--glass2', '--thumb',

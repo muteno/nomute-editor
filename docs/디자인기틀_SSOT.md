@@ -14,7 +14,7 @@
 
 **A. 값·계승**
 1. **계승이 디폴트** — 값·색 창작 금지 → `:root` `var()` 토큰 계승(정확 토큰 없어도 **근접 자동 계승**·안 물음). 근접조차 없을 때만 물어 운영자 승인 후 `:root` 갱신(신설). 값을 문서·스킬에 복붙 금지(드리프트원).
-2. **팔레트 = 폐쇄형** — 참조 팔레트 색만(자유 hex 금지). 팔레트 예외(도구 툴톤·발행 콘텐츠색)는 재색칠·동행변경 **영구 금지**.
+2. **팔레트 = 폐쇄형** — 참조 팔레트 색만(자유 hex 금지). 팔레트 예외(도구 툴톤·발행 콘텐츠색)는 재색칠·동행변경 **영구 금지**. **색 값 SSOT = `viewer/index.html :root` 단 하나** — 도구 뷰어(thumb·edit 등)는 색을 inline 복사하지만 공유 팔레트(accent/의미색)는 **`build`가 index에서 자동 전파(STAGE4 · §5 빌더)** = 손으로 베끼지 마라. 색 바꾸는 법 = 「`:root` 1곳 수정 → `python3 shared/build_design_mirror.py build` → 커밋」(build 빠뜨리면 `check_palette_sync` 게이트가 차단). 툴톤(`--bg`/`--line*` 등)은 전파 제외 = 위 팔레트 예외(뷰어별 정체성).
 
 **B. 일관성**
 3. **같은 기능 = 같은 모양** — 같은 기능·메뉴·레이어 = 픽토 크기·액티브·마진·중앙정렬(높이)·좌우정렬(좌측 기준)·팔레트 통일. 강제 대상 = 기계 게이트 등재 축(CLAUDE.md `[4-1]` · 게이트 통과 = 완료).
@@ -92,12 +92,12 @@
 |---|---|
 | **`viewer/tokens.css`** | `:root` 구조토큰(색 제외) 거울 — 도구 뷰어들 `<link>` 계승용(로더 전수 = grep 실측이 정본 · 구 '4뷰어' 표기 = comp 폐지로 스테일 — 평의회 Q165 정정). **build 산출 = 직접수정 금지**(다음 build에 덮어씀). |
 | **`구성도/base.css`** (`AUTO-MIRROR` 블록) | `:root` 전체 거울 — 구성도 HTML 상속. **build 산출 = 직접수정 금지.** |
-| **`shared/build_design_mirror.py`** | 거울 빌더 — `build`(SSOT→거울 투영) · `lock`(토큰 락 갱신) · `check`(거울 정합 검사 = 거울 부정합 하드차단). |
+| **`shared/build_design_mirror.py`** | 거울 빌더 — `build`(SSOT→거울 투영: base.css STAGE1-2 + tokens.css 구조토큰 STAGE3 + **도구 뷰어 공유 팔레트 STAGE4**) · `lock`(토큰 락 갱신) · `check`(거울 정합 검사 = 부정합 하드차단). **STAGE4 = 색 전파(운영자 260723 Q466)**: index `:root` 공유 팔레트(accent/의미색 62색·`var()` 체인 해결)를 도구 뷰어 9개 inline `:root`의 동명 토큰 값에 자동 복사(뷰어 기정의 토큰만 값 교체) · 툴톤(`--bg`/`--pan`/`--line*`/`--fg`/`--mut`/`--glass*`/`--modal*`/`--thumb`)은 §0-2 팔레트 예외(뷰어별 정체성)라 제외 → **"index 색 1곳 수정 → `build` → 전 화면 자동 반영"**. 검증(드리프트 차단) = `check_refs` **`check_palette_sync()`**(build=전파 / check=차단 2중). |
 
 ## 6. 게이트 (강제 — 기계 차단)
 | 파일 | 역할 |
 |---|---|
-| **`shared/check_refs.py`** | 디자인 게이트 묶음. **`check_design()`** = raw 강조색(accent 코어색을 var() 없이 raw로)·초록 시그니처 워시(green_wash) 하드차단 rc=1 / hex·blur·죽은토큰 WARN(baseline ratchet). **`check_icon_ssot()`**(아이콘 SSOT)·토큰 락 정합(락 함수 실체 = `build_design_mirror.py check_lock()`)·`build_design_mirror.check()`(거울) = 하드차단 / `check_x_char`(문자 도형)·`check_soremeori`(소머리)·`check_autocomplete` = 서브체크. ⚠️ raw 값·패턴의 정본은 코드 그 자체(여기 hex 복붙 안 함). |
+| **`shared/check_refs.py`** | 디자인 게이트 묶음. **`check_design()`** = raw 강조색(accent 코어색을 var() 없이 raw로)·초록 시그니처 워시(green_wash) 하드차단 rc=1 / hex·blur·죽은토큰 WARN(baseline ratchet). **`check_icon_ssot()`**(아이콘 SSOT)·토큰 락 정합(락 함수 실체 = `build_design_mirror.py check_lock()`)·`build_design_mirror.check()`(거울)·**`check_palette_sync()`**(팔레트 핀 = 도구 뷰어 inline 공유 팔레트 accent/의미색이 index 해결값과 동값인지 대조 · 인라인 색 복사 드리프트 하드차단 · `build_design_mirror.py` STAGE4 전파의 게이트 짝 · 툴톤 제외 · 운영자 260723 Q464) = 하드차단 / `check_x_char`(문자 도형)·`check_soremeori`(소머리)·`check_autocomplete` = 서브체크. ⚠️ raw 값·패턴의 정본은 코드 그 자체(여기 hex 복붙 안 함). |
 | **`.githooks/pre-commit`** | **커밋 시점 강제** — `check_refs.py` 실행(어느 모델·도구가 커밋해도 게이트 통과 강제). `design_digest.py`가 `core.hooksPath` 자동 배선. |
 | **`.claude/hooks/design_gate.py`** | **PostToolUse 훅** — UI 파일(`viewer/*`·`구성도/*`) 저장 시 디자인 게이트 자동 실행(위반 즉시 표면화) + **diff 게이트(260713)**: 이 편집이 *추가한 줄*의 신규 raw px(font-size·radius·gap·padding·margin·blur 인자)를 즉시 차단(exit 2)하고 근접 토큰을 자동 제안 — 기존분 관용(diff 기반 = 상쇄 위장 면역) · `/* raw-ok: 사유 */` 같은 줄 주석 = 광학 보정 유일 통로 · letter-spacing = WARN(토큰 사다리 부재). 9.5px류 임의 창작 종전 축. |
 | **`shared/smoke_rank.js`** | **랭크 필 광학 정렬 상비 실측(260717 Q05)** — 디자인 계약 3-4(필 4분할 중심 = 문자열 잉크 중심 Δ≤0.5)의 기계화: 정수 좌표 격리 스테이지 + DPR3 잉크 프로브(라이브 배치 캡처 = 위상 노이즈 부적격). 대상 = `.tcard-rank`·`.tpc-rank`·`.tcard-cov .trend-chg`(NEW·▲▼)·`.tpc-new`·`.qbadge`(+head) · 코어 14종(11타깃 · Q06 배지전수) · ⚠ 세로 잉크 = 베이스라인 1px 스냅이라 패딩 무력 → 이너 `<i>` transform이 정본 보정(260717 실측) · `smoke_all.sh` 5호기 · 포트 8811~(수동 실행 전용 · 훅 편입 금지 [15]) · 보정값 재튜닝 = 이 스모크가 수치 판정. |
