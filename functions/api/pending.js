@@ -128,12 +128,13 @@ export async function onRequestGet({ env }) {
     .sort((a, b) => b.t - a.t).slice(0, CAP_FAIL);
   await Promise.all(askFailed.map(async ({ f, t }) => {
     const base = f.name.replace(/\.json$/i, '');
-    let reqText = '';
-    try { const j = JSON.parse(await raw('asks/failed/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); } catch {}
+    let reqText = '', preset = null;
+    try { const j = JSON.parse(await raw('asks/failed/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); preset = askPreset(j); } catch {}
     const log = await raw('asks/failed/' + encodeURIComponent(base) + '.log');
     items.push({
       id: base, t, status: 'fail', via: '요약요청', src: '',
       title: (reqText || '✨ 요약 요청').slice(0, 90),
+      ...(preset ? { preset } : {}),   // 수집 프리셋(h24·fp·mj 켜진 것 있을 때만) — 뷰어 행 표기(Q495 · 구 asks 무필드 = 미표기)
       diag: { kind: 'ask-failed', reqText: reqText.slice(0, 400), log: (log || '').slice(0, 2500) },
     });
   }));
@@ -150,8 +151,8 @@ export async function onRequestGet({ env }) {
   const oldAsk = askPend.some(x => !!x.t && (now - x.t) / 60000 >= STUCK_MIN);
   const askActiveP = oldAsk ? wfActive('news-ask.yml') : Promise.resolve(null);
   await Promise.all(askPend.map(async ({ f, t }) => {
-    let reqText = '';
-    try { const j = JSON.parse(await raw('asks/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); } catch {}
+    let reqText = '', preset = null;
+    try { const j = JSON.parse(await raw('asks/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); preset = askPreset(j); } catch {}
     const ageMin = t ? (now - t) / 60000 : 0;
     const askActive = await askActiveP;
     const stuck = !!t && ageMin >= (askActive === true ? ASK_ACTIVE_STUCK_MIN : STUCK_MIN);   // 런 활성 = 처리중 유예(ask 전용 75분 — 병렬 스코프 체제 과대유예 축소) · 비활성 20분+ = 미처리(stuck) FAIL
@@ -159,6 +160,7 @@ export async function onRequestGet({ env }) {
       id: f.name.replace(/\.json$/i, ''), t, status: stuck ? 'fail' : 'processing',
       via: '요약요청', src: '',
       title: (reqText || '✨ 요약 요청').slice(0, 90),
+      ...(preset ? { preset } : {}),   // 수집 프리셋(켜진 것 있을 때만) — 뷰어 행 표기(Q495)
       diag: stuck ? { kind: 'ask-stuck', mins: Math.round(ageMin), reqText: reqText.slice(0, 400) } : null,
     });
   }));
@@ -176,6 +178,14 @@ export async function onRequestGet({ env }) {
   return json({ items, now });
 }
 
+// 수집 프리셋(Q491 스트립 · h24=24시간 이내/fp=외신 우선/mj=주요 언론 기반) — 켜진 키만 1로 정규화 · 전부 꺼짐/무필드(구 asks) = null(뷰어 미표기 · Q495 "프리셋 적용된 것에만 표기").
+function askPreset(j) {
+  const p = (j && typeof j.preset === 'object' && j.preset) || null;
+  if (!p) return null;
+  const o = {};
+  for (const k of ['h24', 'fp', 'mj']) if (p[k] === 1 || p[k] === '1' || p[k] === true) o[k] = 1;
+  return Object.keys(o).length ? o : null;
+}
 // ask 파일명 = submit.js `toISOString().replace(/[:.]/g,'').replace('T','-').slice(0,15)` = YYYY-MM-DD-HHMM
 //   (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) → epoch ms. ⚠️ UTC 파싱(폰 KST의 fnameTime과 다름).
 //   ⚠️ 이전 정규식(YYYYMMDD-HHMMSS)은 실제 파일명과 안 맞아 항상 null → ask가 배지엔 세지만(processing)

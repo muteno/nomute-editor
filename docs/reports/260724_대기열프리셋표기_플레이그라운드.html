@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>대기열 프리셋 표기 — 플레이그라운드 (260724)</title>
+<style>
+/* ── 정본 토큰 사본(viewer/index.html :root 실측 발췌 260724 — 값 SSOT는 원본) ── */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+  --amber:#FFE13D; --amber-rgb:255,225,61; --danger:#e23b2a;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --modal-glass-anchor:rgba(17,18,20,.42); --modal-head-bg:rgba(24,25,28,.85);
+  --btn-sm:30px; --fs-h2:15px; --fs-label:13px; --fs-xs:11px; --fw-b:700; --fw-x:800;
+  --r-m:11px; --r-s:9px; --r-pill:999px; --dur:.18s;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 'Pretendard Variable',-apple-system,BlinkMacSystemFont,sans-serif;}
+.wrap{display:flex; flex-wrap:wrap; gap:18px; max-width:1080px; margin:0 auto; padding:14px;}
+.stagewrap{flex:1 1 360px; min-width:320px; position:sticky; top:0; z-index:5; background:var(--bg); padding-top:4px; align-self:flex-start;}
+.console{flex:1 1 380px; min-width:300px;}
+h1{font-size:16px; font-weight:800; margin:6px 2px 10px;}
+h1 small{color:var(--mut); font-weight:400; font-size:12px;}
+.stagecap{color:var(--mut); font-size:11.5px; margin:8px 2px;}
+/* ── 미리보기 프레임: 어두운 피드 위 대기열 팝업(qpop) 실물 재현 ── */
+.frame{position:relative; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#0d0f0e; min-height:430px; padding:26px 10px;}
+.feedghost{position:absolute; inset:0; opacity:.5; pointer-events:none;}
+.feedghost i{display:block; height:64px; margin:12px 14px; border-radius:12px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.05);}
+/* qpop 재현 — index .qpop 정본값 사본 */
+.qpop{position:relative; margin:0 auto; width:min(94%,440px); overflow:hidden; padding:11px 11px 11px 16px; border-radius:var(--r-m);
+  background:var(--modal-glass-anchor); backdrop-filter:blur(24px) saturate(1.05); -webkit-backdrop-filter:blur(24px) saturate(1.05); border:1px solid var(--line);}
+.qh{display:flex; align-items:center; gap:6px; margin:-11px -11px 0 -16px; padding:12px 14px 12px 18px; background:var(--modal-head-bg); border-bottom:1px solid var(--line2);}
+.qh b{font-size:var(--fs-h2); font-weight:var(--fw-x);}
+.qh-xcell{margin-left:auto; width:var(--btn-sm); display:flex; align-items:center; justify-content:center;}
+.tool-x{width:30px; height:30px; display:grid; place-items:center; border-radius:9px; color:var(--fg); background:rgba(255,255,255,.06); border:1px solid var(--line); cursor:pointer;}
+.tool-x svg{width:15px; height:15px;}
+.qlist{margin-top:8px; display:flex; flex-direction:column;}
+.qrow{display:flex; align-items:center; gap:10px; padding:8px 3px; border-top:1px solid var(--line2);}
+.qrow:first-child{border-top:none;}
+.qt{flex:none; width:64px; font-size:11px; font-weight:800; color:var(--mut); white-space:nowrap;}
+.qt.qt-new{color:var(--accent);} .qt.qt-mid{color:var(--amber);}
+.qmain{flex:1; min-width:0; font-size:12.5px; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.qst{flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start;}
+.qact{flex:none; width:var(--btn-sm); display:flex; align-items:center; justify-content:center;}
+.qico{display:grid; place-items:center; color:var(--amber);}
+.qico svg{width:16px; height:16px; animation:qspin 1.05s linear infinite; transform-origin:50% 50%;}
+@keyframes qspin{to{transform:rotate(360deg)}}
+.qb-done{color:var(--accent); font-size:12.5px; font-weight:800;}
+.qb-failt{color:var(--danger); font-size:12.5px; font-weight:800;}
+.qgo{flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:8px; border:1px solid var(--line); background:none; color:var(--mut); cursor:pointer;}
+.qgo svg{width:17px; height:17px;}
+.qgo.go-amber{color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10);}
+.qgo.go-green{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10);}
+.qgo.go-arm{color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10);}
+@media (prefers-reduced-motion:reduce){ .qico svg{animation:none} }
+/* ── 프리셋 표기(튜닝 대상) — --t-* 변수 스코프 ── */
+.qlist{ --t-alpha:.75; --t-size:10px; --t-weight:400; --t-gapx:5px; --t-dot:3.5px; }
+.pp{display:inline-flex; align-items:center; gap:var(--t-gapx); font-size:var(--t-size); font-weight:var(--t-weight); white-space:nowrap; flex:none;}
+.pp .d{width:var(--t-dot); height:var(--t-dot); border-radius:999px; background:currentColor; display:inline-block;}
+.pp-under{display:block; margin-top:1px; line-height:1.2;}
+.qt2{line-height:1.25; align-self:center;}
+.qm-flex{display:flex; align-items:center; gap:6px;}
+.qm-t{flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:normal;}
+.qm-flex .pp{flex:none;}   /* 표기 = 말줄임에 안 먹힘(제목만 …) — 실물 배선 시 동일 구조 필요(검증 실측서 발견한 함정) */
+/* 콘솔 */
+.csec{border:1px solid var(--line); border-radius:var(--r-m); padding:12px 14px; margin-bottom:12px; background:rgba(255,255,255,.02);}
+.csec h3{margin:0 0 8px; font-size:12.5px; color:var(--fg); font-weight:800;}
+.csec h3 .n{color:var(--mut); font-weight:400;}
+.grp{margin:10px 0 4px; font-size:11px; color:var(--mut); font-weight:700;}
+.segs{display:flex; flex-wrap:wrap; gap:6px;}
+.seg{padding:6px 10px; border-radius:var(--r-pill); border:1px solid var(--line); background:none; color:var(--mut); font-size:12px; font-weight:700; cursor:pointer;}
+.seg.on{color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08);}
+.seg:active{transform:scale(.94);}
+.preset{padding:7px 12px;}
+.preset .st{margin-left:4px; color:var(--amber);}
+.srow{display:flex; align-items:center; gap:10px; margin:7px 0;}
+.srow label{flex:none; width:118px; font-size:12px; color:var(--mut);}
+.srow input[type=range]{flex:1; accent-color:var(--accent);}
+.srow .v{flex:none; width:58px; text-align:right; font-variant-numeric:tabular-nums; font-size:12px;}
+.srow .warn{color:var(--amber); font-weight:800; display:none;}
+.srow.off .warn{display:inline;}
+pre{background:#0b0d0c; border:1px solid var(--line); border-radius:var(--r-s); padding:10px; font-size:11px; line-height:1.6; white-space:pre-wrap; word-break:break-all; color:var(--fg);}
+#copy{width:100%; padding:10px; border-radius:var(--r-s); border:1px solid rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.1); color:var(--accent); font-weight:800; font-size:13px; cursor:pointer;}
+#copy:active{transform:scale(.97);}
+.note{color:var(--mut); font-size:11px; line-height:1.7;}
+.refbox{font-size:11px; color:var(--mut); line-height:1.7;}
+.refbox b{color:var(--fg);}
+#warnbar{display:none; margin:6px 0 0; font-size:11px; color:var(--amber); font-weight:700;}
+#warnbar.on{display:block;}
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:50;}
+.modal.on{display:flex;}
+.modal .box{width:min(92vw,360px); background:#16181a; border:1px solid var(--line); border-radius:var(--r-m); padding:16px;}
+.modal .box h4{margin:0 0 8px; font-size:13.5px;}
+.modal .box p{font-size:12px; color:var(--mut); margin:0 0 12px; line-height:1.6;}
+.modal .box .btns{display:flex; flex-direction:column; gap:7px;}
+.modal .box button{padding:9px; border-radius:var(--r-s); border:1px solid var(--line); background:none; color:var(--fg); font-size:12.5px; font-weight:700; cursor:pointer;}
+@media (max-width:760px){ .stagewrap{flex-basis:100%;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stagewrap">
+    <h1>대기열 프리셋 표기 <small>— 티 안 나게 · 5대분류 · 정본 재현</small></h1>
+    <div class="frame">
+      <div class="feedghost"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="qpop" id="qpop">
+        <div class="qh"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg><b>대기열</b>
+          <div class="qh-xcell"><button class="tool-x" type="button" aria-label="닫기(시연)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+        </div>
+        <div class="qlist" id="qlist"></div>
+      </div>
+    </div>
+    <div class="stagecap" id="cap">미리보기 = 실물 대기열(qpop) 정본 재현 · 행 2·4 = 프리셋을 <b>바꾼</b> 요청(기본 ON-ON-ON에서 벗어남) · 행 5 = URL 픽(프리셋 무관)</div>
+  </div>
+  <aside class="console">
+    <div class="csec refbox">
+      <h3>📐 정본(현행) 참조값 — 이탈 시 아래 축에 ⚠</h3>
+      시간셀 <b>11px/800/--mut</b> · 제목 <b>12.5px/--fg</b> · 행 gap <b>10px</b> · 상태셀 <b>58px</b> · 액션셀 <b>30px(--btn-sm)</b> · 구분선 <b>--line2</b> · 실존 활자 사다리 <b>10 / 11 / 12.5</b> · 굵기 사다리 <b>400 / 700(--fw-b) / 800(--fw-x)</b> · 색 = 팔레트 폐쇄(--mut 권장 · 의미색 재지정 = ⚠)
+      <div id="warnbar">⚠ 기틀 이탈 <span id="warnN">0</span>축 — 복사 시 「기틀 갱신 역제안」으로 정문 처리</div>
+    </div>
+    <div class="csec" id="presets">
+      <h3>② 프리셋 <span class="n">(★ 추천)</span></h3>
+      <div class="segs" id="presetRow"></div>
+    </div>
+    <div class="csec">
+      <h3>①③ 대분류 — 방식 · 표시 조건 · 위치</h3>
+      <div class="grp">1) 표기 방식</div>
+      <div class="segs" data-seg="method">
+        <button class="seg" data-v="none">없음(현행)</button><button class="seg" data-v="dot">도트 ●●●</button><button class="seg" data-v="text">미니 텍스트</button><button class="seg" data-v="count">카운트</button>
+      </div>
+      <div class="grp">2) 표시 조건 — “티 안 나게”의 핵심</div>
+      <div class="segs" data-seg="cond">
+        <button class="seg" data-v="always">항상</button><button class="seg" data-v="changed">기본값과 다를 때만</button><button class="seg" data-v="proc">처리중에만</button>
+      </div>
+      <div class="grp">3) 위치</div>
+      <div class="segs" data-seg="pos">
+        <button class="seg" data-v="after">제목 뒤</button><button class="seg" data-v="before">제목 앞</button><button class="seg" data-v="under">시간셀 아래 2단</button>
+      </div>
+      <div class="grp">4) 색(팔레트 폐쇄 — 의미색 = ⚠ 역할 재지정)</div>
+      <div class="segs" data-seg="color">
+        <button class="seg" data-v="mut">--mut</button><button class="seg" data-v="fg">--fg</button><button class="seg" data-v="accent">--accent ⚠</button><button class="seg" data-v="amber">--amber ⚠</button>
+      </div>
+      <div class="grp">5) 내용(텍스트 방식일 때)</div>
+      <div class="segs" data-seg="content">
+        <button class="seg" data-v="on">켠 조건 나열(24h·외신·주요)</button><button class="seg" data-v="diff">기본에서 바뀐 것만</button>
+      </div>
+    </div>
+    <div class="csec" id="sliders">
+      <h3>미세조정 <span class="n">(소분류 — 사다리 밖 = ⚠ 실시간)</span></h3>
+      <div class="srow" data-k="alpha"><label>불투명도(알파 변주)</label><input type="range" min="0.3" max="1" step="0.05"><span class="v"></span></div>
+      <div class="srow" data-k="size"><label>활자 크기 <span class="warn">⚠</span></label><input type="range" min="8" max="12.5" step="0.5" list="ladder-size"><span class="v"></span><datalist id="ladder-size"><option value="10"></option><option value="11"></option><option value="12.5"></option></datalist></div>
+      <div class="srow" data-k="weight"><label>굵기 <span class="warn">⚠</span></label><input type="range" min="400" max="800" step="100" list="ladder-w"><span class="v"></span><datalist id="ladder-w"><option value="400"></option><option value="700"></option><option value="800"></option></datalist></div>
+      <div class="srow" data-k="gapx"><label>항목 간격</label><input type="range" min="2" max="10" step="1"><span class="v"></span></div>
+      <div class="srow" data-k="dot"><label>도트 지름(도트 방식)</label><input type="range" min="2" max="6" step="0.5"><span class="v"></span></div>
+      <div class="grp">구분자(텍스트 방식)</div>
+      <div class="segs" data-seg="sep">
+        <button class="seg" data-v="dotc">가운뎃점 ·</button><button class="seg" data-v="space">공백</button><button class="seg" data-v="pipe">파이프 |</button>
+      </div>
+    </div>
+    <div class="csec">
+      <h3>④ 선택값 <span class="n">— 이 블록을 답장에 붙이면 그대로 배선</span></h3>
+      <pre id="out"></pre>
+      <button id="copy" type="button">선택값 복사</button>
+    </div>
+    <div class="csec note">
+      <h3>⑤ 재현 한계 각주</h3>
+      · 실물 qpop의 blur 글래스는 뒤 피드가 흐릿하게 비침 — 여기선 고스트 블록으로 근사.<br>
+      · 행 등장 스태거(cardIn)·페이지네이션·삭제 접힘은 생략(표기 결정과 무관).<br>
+      · 제목이 길면 제목만 말줄임(…)되고 표기는 살아남는 구조(qm-flex) — 실물 배선 시 동일 구조 필수(ellipsis가 표기를 삼키는 함정 실측).<br>
+      · <b>배선 메모</b>: preset 값은 이미 asks/*.json에 저장됨(Q491) — 대기열 표기는 functions/api/pending.js가 preset을 응답에 노출 + index qRowHtml에 표기 1줄 추가로 배선(뷰어 무리로딩 0).<br>
+      · 표기 색·값은 전부 토큰 사본 — 값 SSOT = viewer/index.html :root.
+    </div>
+  </aside>
+</div>
+<div class="modal" id="warnModal"><div class="box">
+  <h4>⚠ 기틀 이탈 축 포함</h4>
+  <p id="warnList"></p>
+  <div class="btns">
+    <button id="cpWith" type="button">역제안 포함 복사(기틀 갱신 정문)</button>
+    <button id="cpOnly" type="button">계승분만 복사</button>
+    <button id="cpCancel" type="button">취소</button>
+  </div>
+</div></div>
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+/* 실물 표본 행 — preset: 요약요청 스트립 값(Q491 payload) · null = URL 픽(표기 대상 아님) */
+const ROWS = [
+  { t:'8분 전', tc:'qt-new', ttl:'관세 협상 2라운드 개시', st:'proc', act:'amber', preset:{h24:1,fp:1,mj:1} },
+  { t:'12분 전', tc:'qt-new', ttl:'반도체 수출 통제 확대', st:'proc', act:'amber', preset:{h24:1,fp:0,mj:1} },
+  { t:'1시간 전', tc:'qt-mid', ttl:'유엔 안보리 긴급 소집', st:'done', act:'green', preset:{h24:1,fp:1,mj:1} },
+  { t:'2시간 전', tc:'qt-mid', ttl:'국채 금리 급등 여파', st:'fail', act:'arm', preset:{h24:0,fp:1,mj:0} },
+  { t:'3분 전', tc:'qt-new', ttl:'태풍 12호 북상 경로', st:'proc', act:'amber', preset:null },
+];
+const SPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';
+const ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8.5 7H17v8.5"/></svg>';
+const REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>';
+const LBL = { h24:'24h', fp:'외신', mj:'주요' };
+const DEF = { h24:1, fp:1, mj:1 };
+const COLORS = { mut:'#8fa697', fg:'#eef7f0', accent:'#00EED2', amber:'#FFE13D' };
+/* 현행 실측 = 표기 없음(none) — 기본값은 반드시 현행 */
+const DEFAULTS = { method:'none', cond:'changed', pos:'after', color:'mut', content:'on', sep:'dotc', alpha:.75, size:10, weight:400, gapx:5, dot:3.5 };
+const PRESETS = [
+  { id:'p0', nm:'현행(무표시)', st:{...DEFAULTS, method:'none'} },
+  { id:'p1', nm:'A 도트·항상', st:{...DEFAULTS, method:'dot', cond:'always'} },
+  { id:'p2', nm:'B 텍스트·항상', st:{...DEFAULTS, method:'text', cond:'always'} },
+  { id:'p3', nm:'C 텍스트·다를 때만', star:'★', st:{...DEFAULTS, method:'text', cond:'changed', content:'diff'} },
+  { id:'p4', nm:'D 카운트·처리중만', st:{...DEFAULTS, method:'count', cond:'proc'} },
+];
+let state = {...DEFAULTS};
+const LADDER = { size:[10,11,12.5], weight:[400,700,800] };
+function sepChar(){ return state.sep === 'dotc' ? '·' : state.sep === 'pipe' ? '|' : ' '; }
+function ppHtml(it){
+  if (!it.preset || state.method === 'none') return '';
+  if (state.cond === 'changed' && ['h24','fp','mj'].every(k => it.preset[k] === DEF[k])) return '';
+  if (state.cond === 'proc' && it.st !== 'proc') return '';
+  const col = COLORS[state.color], style = 'color:' + col + '; opacity:' + state.alpha;
+  const on = ['h24','fp','mj'].filter(k => it.preset[k]);
+  let inner = '';
+  if (state.method === 'dot') inner = on.map(() => '<span class="d"></span>').join('');
+  else if (state.method === 'count') inner = on.length + '조건';
+  else { /* text */
+    const items = state.content === 'diff'
+      ? ['h24','fp','mj'].filter(k => it.preset[k] !== DEF[k]).map(k => LBL[k] + (it.preset[k] ? '' : '✕'))
+      : on.map(k => LBL[k]);
+    if (!items.length) return '';
+    inner = items.join(sepChar() === ' ' ? ' ' : ' ' + sepChar() + ' ');
+  }
+  if (!inner) return '';
+  return '<span class="pp' + (state.pos === 'under' ? ' pp-under' : '') + '" style="' + style + '">' + inner + '</span>';
+}
+function rowHtml(it){
+  const pp = ppHtml(it);
+  const stat = it.st === 'done' ? '<span class="qb-done">완료</span>' : it.st === 'fail' ? '<span class="qb-failt">실패</span>' : '<span class="qico">' + SPIN + '</span>';
+  const act = it.st === 'fail' ? '<button class="qgo go-arm" title="재시도">' + REFR + '</button>' : '<button class="qgo go-' + it.act + '" title="이동">' + ARR + '</button>';
+  const tCell = state.pos === 'under' && pp
+    ? '<span class="qt qt2 ' + it.tc + '">' + it.t + pp + '</span>'
+    : '<span class="qt ' + it.tc + '">' + it.t + '</span>';
+  const mainCell = state.pos === 'before' && pp
+    ? '<span class="qmain qm-flex">' + pp + '<i class="qm-t">' + it.ttl + '</i></span>'
+    : state.pos === 'after' && pp
+      ? '<span class="qmain qm-flex"><i class="qm-t">' + it.ttl + '</i>' + pp + '</span>'
+      : '<span class="qmain">' + it.ttl + '</span>';
+  return '<div class="qrow">' + tCell + mainCell + '<span class="qst">' + stat + '</span><span class="qact">' + act + '</span></div>';
+}
+function warnAxes(){
+  const w = [];
+  if (!LADDER.size.includes(state.size)) w.push('활자 크기 ' + state.size + 'px (사다리 10/11/12.5 밖)');
+  if (!LADDER.weight.includes(state.weight)) w.push('굵기 ' + state.weight + ' (사다리 400/700/800 밖)');
+  if (state.color === 'accent' || state.color === 'amber') w.push('색 --' + state.color + ' (의미색 역할 재지정)');
+  return w;
+}
+function apply(){
+  const list = $('#qlist'), y = list.scrollTop;               // 재렌더 스크롤 보존
+  list.style.setProperty('--t-alpha', state.alpha);
+  list.style.setProperty('--t-size', state.size + 'px');
+  list.style.setProperty('--t-weight', state.weight);
+  list.style.setProperty('--t-gapx', state.gapx + 'px');
+  list.style.setProperty('--t-dot', state.dot + 'px');
+  list.innerHTML = ROWS.map(rowHtml).join('');
+  list.scrollTop = y;
+  $$('.segs[data-seg]').forEach(g => { const k = g.dataset.seg; g.querySelectorAll('.seg').forEach(b => b.classList.toggle('on', b.dataset.v === String(state[k]))); });
+  $$('#sliders .srow[data-k]').forEach(r => { const k = r.dataset.k, inp = r.querySelector('input'), v = r.querySelector('.v');
+    inp.value = state[k]; const unit = k === 'weight' ? '' : k === 'alpha' ? '' : 'px';
+    v.textContent = state[k] + unit;
+    const bad = (k === 'size' && !LADDER.size.includes(state.size)) || (k === 'weight' && !LADDER.weight.includes(state.weight));
+    r.classList.toggle('off', bad);
+  });
+  const pm = PRESETS.find(p => Object.keys(p.st).every(k => p.st[k] === state[k]) && Object.keys(state).every(k => p.st[k] === state[k]));
+  $$('#presetRow .seg').forEach(b => b.classList.toggle('on', !!pm && b.dataset.id === pm.id));
+  const w = warnAxes(); $('#warnbar').classList.toggle('on', w.length > 0); $('#warnN').textContent = w.length;
+  buildOut(w);
+}
+function buildOut(w){
+  const tokNote = state.color === 'mut' ? ' = --mut(계승)' : ' ⚠ 역할 재지정';
+  const sizeNote = LADDER.size.includes(state.size) ? '(사다리 내 = 계승)' : ' ⚠ 갱신 후보';
+  const wNote = LADDER.weight.includes(state.weight) ? '(사다리 내 = 계승)' : ' ⚠ 갱신 후보';
+  $('#out').textContent =
+`[대기열 프리셋 표기 — 선택값]
+방식      : ${state.method}  (none=현행 무표시 / dot / text / count)
+표시 조건 : ${state.cond}  (always / changed=기본값과 다를 때만 / proc=처리중만)
+위치      : ${state.pos}  (after=제목 뒤 / before=제목 앞 / under=시간셀 아래)
+내용      : ${state.content}  (on=켠 조건 나열 / diff=바뀐 것만·꺼짐=✕)
+색        : ${COLORS[state.color]}${tokNote}   [현행 무표시]
+알파      : ${state.alpha}  (같은 토큰 알파 변주 = 자유)
+크기      : ${state.size}px ${sizeNote}   [행 정본 10/11/12.5]
+굵기      : ${state.weight} ${wNote}
+간격      : ${state.gapx}px · 도트 ${state.dot}px · 구분자 ${sepChar()}
+${w && w.length ? '⚠ 기틀 이탈 ' + w.length + '축 — 복사 시 역제안 포함' : '기틀 이탈 없음(전량 계승)'}
+배선: pending.js preset 노출 + index qRowHtml 표기 1줄`;
+}
+$$('.segs[data-seg]').forEach(g => g.addEventListener('click', e => { const b = e.target.closest('.seg'); if (!b) return; state[g.dataset.seg] = b.dataset.v; apply(); }));
+$$('#sliders .srow[data-k]').forEach(r => r.querySelector('input').addEventListener('input', e => { state[r.dataset.k] = +e.target.value; apply(); }));
+$('#presetRow').innerHTML = PRESETS.map(p => '<button class="seg preset" data-id="' + p.id + '">' + p.nm + (p.star ? '<span class="st">★</span>' : '') + '</button>').join('');
+$('#presetRow').addEventListener('click', e => { const b = e.target.closest('.seg'); if (!b) return; const p = PRESETS.find(x => x.id === b.dataset.id); state = {...p.st}; apply(); });
+function doCopy(txt){ (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }catch(_){} ta.remove(); }); $('#copy').textContent = '복사됨 ✓'; setTimeout(() => $('#copy').textContent = '선택값 복사', 1200); }
+$('#copy').addEventListener('click', () => {
+  const w = warnAxes();
+  if (!w.length) return doCopy($('#out').textContent);
+  $('#warnList').textContent = w.join(' · ');
+  $('#warnModal').classList.add('on');
+});
+$('#cpWith').addEventListener('click', () => { $('#warnModal').classList.remove('on');
+  doCopy($('#out').textContent + '\n\n[🔁 기틀 갱신 역제안]\n' + warnAxes().map(x => '- ' + x + ' → 전 앱 동축 일괄 갱신 승인 필요').join('\n')); });
+$('#cpOnly').addEventListener('click', () => { $('#warnModal').classList.remove('on'); doCopy($('#out').textContent.split('\n').filter(l => !l.includes('⚠')).join('\n')); });
+$('#cpCancel').addEventListener('click', () => $('#warnModal').classList.remove('on'));
+state = {...PRESETS[3].st};   // 첫 화면 = 결정 대상 상태(★C)로 오픈 — 현행 비교는 '현행' 칩 한 번(포터블 §7-1-3)
+apply();
+</script>
+</body>
+</html>
