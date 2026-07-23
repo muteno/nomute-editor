@@ -39,6 +39,7 @@ KST = timezone(timedelta(hours=9))
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 CAND = os.path.join(ROOT, "viewer", "candidates.json")
 SNS = os.path.join(ROOT, "viewer", "sns_trends.json")
+PHONE = os.path.join(ROOT, "viewer", "sns_subs_phone.json")   # ④-b 폰 하트비트(평의회 260723 #5c) — threads/insta/reddit/재난 유일 공급원(termux/맥 홈IP 크론)
 BRIEF = os.path.join(ROOT, "viewer", "chan_brief.json")
 STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
 SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
@@ -47,6 +48,7 @@ LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json",
 FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시 상향 · 실측 260713: 최근 7일 최대 무신규 갭 75분[심야]·90분 초과 0회 — 심야 소강 오탐 마진 확보 = 경고 신뢰 우선·감지 지연 +30분 수용)
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
+PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "180"))   # 3h = 폰 크론 30분 주기 6연속 실패(야간 소강·전송 지연 오탐 마진) — B1 2일 무경보 공백 근절(평의회 260723 #5c)
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
 SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
@@ -119,6 +121,23 @@ def check_sns():
     return None
 
 
+def check_phone():
+    """④-b 폰 하트비트 정체 — sns_subs_phone.json(threads/insta/reddit/재난 = termux/맥 홈IP 크론 유일 공급원)
+    나이로 폰 죽음 감지(평의회 260723 #5c). B1 판례: 폰 크론 2일 정지 시 러너 sns_trends.updated는 신선 유지라
+    check_sns가 절대 안 뜨던 무경보 공백 — 폰 파일 나이 직접 감지가 유일 표면화 경로(check_brief 관용구 미러)."""
+    try:
+        d = json.load(open(PHONE, encoding="utf-8"))
+        age = _age_min(d.get("updated"))
+        if age is None or age > PHONE_MIN:
+            return (f"폰 수집 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}"
+                    f"(임계 {PHONE_MIN / 60:.0f}h) — termux/맥 phone_subs 크론 확인(스레드·인스타·레딧·재난 = 폰 전용 공급원)")
+    except FileNotFoundError:
+        return None   # 파일 없음 = 폰 미도입 초기(경보 아님 · check_sns 관용구)
+    except Exception as e:  # noqa: BLE001
+        return f"sns_subs_phone.json 파싱 실패({type(e).__name__})"
+    return None
+
+
 def check_brief():
     """⑤ 채널 브리프 정체 — 산출물(chan_brief.json) 나이로 감지(260717 사고: 브리프 스텝이 잡 timeout
     하드킬(cancelled)로 3연속 죽으면 실패 알림도 fail-soft 로그도 안 남아 이틀 정지를 운영자 눈이 발견).
@@ -185,7 +204,7 @@ def _save_state(st):
 
 
 def main():
-    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "ledger": check_ledgers,
+    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "ledger": check_ledgers,
               "brief": check_brief, "smoke": check_smoke}
     alerts = {}
     for key, fn in checks.items():
