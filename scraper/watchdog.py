@@ -228,6 +228,13 @@ def main():
                 subprocess.run([sys.executable, mp, "set", "wd-sns", alerts["sns"], "warn", "sns-recollect"], timeout=30)   # action=sns-recollect → 뷰어 메시지 상세에 '다시 받아오기' 버튼(sns-trends 재발사) 노출(운영자 260723 "눌러도 할 게 없다" 봉합)
             else:
                 subprocess.run([sys.executable, mp, "clear", "wd-sns"], timeout=30)
+            # 폰 수집 정체(운영자 260724 "폰 수집 정체도 ㄱㄱ") — 스레드·인스타·레딧·재난 = 폰(termux/맥) 전용 공급원이라
+            #   폰 크론이 죽으면 뷰어·러너가 못 살린다 → 재발사 액션은 오도(무효). '가시화'가 조치 = 메시지함 점등 +
+            #   텍스트 자체가 안내("termux/맥 phone_subs 크론 확인"). sns와 별 슬롯(wd-phone · 단일슬롯 덮어쓰기=스팸0).
+            if alerts.get("phone"):
+                subprocess.run([sys.executable, mp, "set", "wd-phone", alerts["phone"], "warn"], timeout=30)
+            else:
+                subprocess.run([sys.executable, mp, "clear", "wd-phone"], timeout=30)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::watchdog 메시지함 점등 실패(무시): {e}")
     if not alerts:
@@ -257,9 +264,9 @@ def main():
         print(f"워치독: 이상 {len(due)}건 — 구독자/VAPID 부재로 발송 불가(도장 미기록·다음 런 재시도)")
         return
     body = " / ".join(due.values())[:110]
-    # 딥링크(운영자 260723 "눌러서 이동할 데가 없다" 봉합) — SNS stale 이 걸린 알림은 메시지함 wd-sns 항목으로
-    #   직행(?msg=wd-sns · 기존 fail- 푸시 패턴 계승) → 그 항목의 '다시 받아오기' 버튼으로 즉시 조치. 아니면 루트.
-    url = "/?msg=wd-sns" if alerts.get("sns") else "/"
+    # 딥링크(운영자 260723 "눌러서 이동할 데가 없다" 봉합) — 경보가 걸린 메시지함 항목으로 직행(?msg=<슬롯> ·
+    #   기존 fail- 푸시 패턴 계승) → 그 항목에서 즉시 조치/안내. sns 우선(재발사 버튼) → phone(안내) → 아니면 루트.
+    url = "/?msg=wd-sns" if alerts.get("sns") else ("/?msg=wd-phone" if alerts.get("phone") else "/")
     try:
         out = subprocess.run([sys.executable, os.path.join(ROOT, ".github", "scripts", "push_send.py"),
                               "--notify", "🩺 파이프라인 이상", body, "--tag", "nomute-watchdog", "--url", url],
