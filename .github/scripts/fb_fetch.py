@@ -73,6 +73,12 @@ def main():
         print('fb-fetch: 시크릿 미등록(FB_PAGE_TOKEN 필수 · FB_PAGE_ID = 자동/선택) — no-op 스캐폴드 스킵'); return 0
     now = datetime.datetime.now(KST)
     d = {'generated_kst': now.isoformat(timespec='seconds'), 'src': 'facebook'}
+    try:   # 토큰 수명 진단(운영자 260723 "장기토큰 아니지?" — 만료 시각·보유 scope 로그 · 자기 디버그 · 실패 무해). expires_at 0 = 무기한(장기 유저토큰 파생 페이지토큰) · 근미래 = 단기(전환 필요)
+        _dt = api('debug_token', input_token=TOK).get('data', {})
+        _fmt = lambda ts: (datetime.datetime.fromtimestamp(ts, KST).isoformat(timespec='minutes') if ts else '무기한(0)')
+        print(f"fb-fetch: 토큰 수명 — 만료={_fmt(_dt.get('expires_at'))} · 데이터접근만료={_fmt(_dt.get('data_access_expires_at'))} · type={_dt.get('type')} · scopes={','.join(_dt.get('scopes') or [])}")
+    except Exception as e:
+        print(f'fb-fetch: 토큰 수명 진단 스킵 — {e}')
     try:
         p = api(PID, fields='name,username,fan_count,followers_count,link')
         d['profile'] = {'id': p.get('id'), 'username': p.get('username'), 'name': p.get('name'),
@@ -84,9 +90,10 @@ def main():
     # 생존 지표 자동 탐침(260719 — 메타 2025-11 페이지 인사이트 대정리로 구 3종 전멸 실측 "(#100) valid insights metric"
     # · 후보를 넓게 쏘고 살아있는 것만 자동 채택[낱개 fail-soft = 자가 적응] · 같은 키 복수 후보 = 먼저 생존한 것 채택 · 죽은 후보 = 로그만)
     MET = {'page_impressions': 'views', 'page_views_total': 'views',
-           'page_impressions_unique': 'reach',
+           'page_impressions_unique': 'reach', 'page_impressions_organic_unique': 'reach', 'page_impressions_organic_unique_v2': 'reach', 'page_impressions_organic': 'reach',   # 도달 후보 확장(운영자 260723 "공짜로 더 가져올 영역" — 2025 폐지 후 생존 변형 자동 탐침 · fail-soft)
            'page_fan_adds': 'follows', 'page_daily_follows_unique': 'follows', 'page_follows': 'follows',
-           'page_post_engagements': 'interactions', 'page_total_actions': 'interactions'}
+           'page_post_engagements': 'interactions', 'page_total_actions': 'interactions',
+           'page_video_views': 'video_views'}   # 영상(릴스 포함) 집계 조회 후보 — 페이지급이라 pages_read_engagement만으로 시도(생존 시 뷰어 후속 배선 · 현재는 로그·account_day만)
     got = set()
     for m, k in MET.items():
         if k in got:
