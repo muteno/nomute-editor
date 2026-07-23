@@ -1265,8 +1265,16 @@ def main():
             prev = json.load(open(OUT, encoding="utf-8")) or {}
         except Exception:
             prev = {}
+    # 유튜브 큐레이션 config(운영자 260723 하드코딩 해체) — sns_accounts.json "youtube" 키에서 쇼츠·AI영상 키워드·뉴스 카테고리를 읽되 현재 하드코딩값 = 기본 폴백(설정 미도입/파손 = 종전 동작 · 채널 스코프 = kr/gl 계정과 동거 · _load_accounts는 kr/gl만 읽어 무충돌)
+    try:
+        _ytc = (json.load(open(ACC, encoding="utf-8")) or {}).get("youtube") or {} if os.path.exists(ACC) else {}
+    except Exception:  # noqa: BLE001
+        _ytc = {}
+    _sh_q = _ytc.get("shorts") if (isinstance(_ytc.get("shorts"), list) and _ytc.get("shorts")) else IT_QUERIES
+    _ai_q = _ytc.get("aivid") if (isinstance(_ytc.get("aivid"), list) and _ytc.get("aivid")) else AI_QUERIES
+    _news_cat = _ytc.get("news_cat") if isinstance(_ytc.get("news_cat"), int) else 25
     yt_all = youtube(limit=15)
-    yt_news = youtube(category_id=25, limit=10) if (YT_KEY and yt_all) else []   # 뉴스 카테고리 = 공식 API 전용
+    yt_news = youtube(category_id=_news_cat, limit=10) if (YT_KEY and yt_all) else []   # 뉴스 카테고리(config news_cat · 기본 25 뉴스·정치)
     yt_src = "api" if yt_all else ""
     if not yt_all:
         yt_all = youtube_innertube()   # 무키 폴백(검색 파생 근사) — 키 등록 시 이 줄 미도달 = 공식 자동 승격
@@ -1312,8 +1320,8 @@ def main():
                 yt_gl.append(v)
         yt_gl = sorted(yt_gl, key=lambda v: v["views"], reverse=True)[:20]
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
-    sh = youtube_innertube(limit=12, shorts=True)          # 쇼츠 = 인기 쿼리 + <4분 필터(원본 protobuf 이식)
-    ai = youtube_innertube(limit=12, queries=AI_QUERIES)   # AI 영상 = 원본 AI_YT_QUERIES 4종
+    sh = youtube_innertube(limit=12, shorts=True, queries=_sh_q)          # 쇼츠 = config 키워드(기본 IT_QUERIES) + <4분 필터
+    ai = youtube_innertube(limit=12, queries=_ai_q)   # AI 영상 = config 키워드(기본 AI_QUERIES)
     # 인기 댓글 주입(운영자 260714 — 브리프 이상치 딥다이브 재료 "누가 올렸나·댓글 반응") — 쇼츠·인기·뉴스 상위 3건씩 · 키 게이트 no-op
     for _lane in (sh, yt_all, yt_news):
         yt_comments(_lane)
