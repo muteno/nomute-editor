@@ -792,7 +792,9 @@ def threads_subs(accounts, limit=10, deadline=None):
                             "url": "https://www.threads.com/@%s/post/%s" % (user, code)})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
-    return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
+    _now = datetime.now(KST).timestamp()
+    fresh = [t for t in out if t["time"] and t["time"] >= _now - 86400]   # ⏱ 24h 이내만(x_subs L519 계승 · 속보 시사채널 = 신선도 핵심 · time=taken_at epoch · 0/결측 배제 · 평의회 260723 #4)
+    return sorted(fresh, key=lambda t: t["time"], reverse=True)[:limit]   # 최신순(x_subs 최신순 정렬 계승 · 표시 정렬 = 뷰어 정렬바 = 24h 내 좋아요순 '근 1일 가장 핫' · 빈 결과 = 조용한 공백)
 
 
 def reddit_hot(subreddits, limit=12, per=8):
