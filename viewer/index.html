@@ -10244,14 +10244,13 @@ function renderSnsTrends() {
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkvA.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백 · 판정 = 원본(tkvA) 기준(컷 전멸 런에도 채움 경로 유지)
   const tkL = tkCov ? fill10(freshFirst(bySort(tkv, 'views')), bySort(tkvA.filter(t => t.region === 'KR'), 'views'), bySort(cut3d(tkvA), 'views'), bySort(tkvA, 'views')) : [];   // 조회수 고정 + freshFirst 신선 먼저(운영자 260718) · 10개 보장 채움 사다리(운영자 260721) = KR 스테일 → 글로벌 신선 → 글로벌 스테일(KR 우선 = 260720 KR 강화 계승) · 정렬바 제거 = 'views' 리터럴(260720 평의회 — sortOf 잔존 시 과거 localStorage 픽이 UI 없이 적용되는 유령 정렬 차단)
-  const REGN = { kr: '한국', gl: '세계' }, byReg = (arr, r) => (arr || []).filter(t => (t.region === 'kr') === (r === 'kr'));   // 구독 한국/세계 접이 분리(운영자 260712 "한국 전용·세계 전용") — region 미도장(구 데이터) = 세계
-  const REGS = TRREG === 'kr' ? ['kr'] : ['kr', 'gl'];   // 국내 모드 = 구독 한국군만 표시 · 월드 = 양군(운영자 260712 2모드)
-  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxR = { kr: bySort(byReg(sx, 'kr'), sxS).slice(0, 10), gl: bySort(byReg(sx, 'gl'), sxS).slice(0, 10) };
-  const reg10 = (cutA, rawA, sf) => { const kF = bySort(byReg(cutA, 'kr'), sf), gF = bySort(byReg(cutA, 'gl'), sf), kS = bySort(byReg(rawA, 'kr'), sf), gS = bySort(byReg(rawA, 'gl'), sf); return { kr: TRREG === 'kr' ? fill10(kF, kS, gF, gS) : fill10(kF, kS), gl: fill10(gF, gS) }; };   // 큐레이션(영상 카드) 10개 보장(운영자 260721) — 국내 모드 한국군 사다리 = 한국 스테일 → 세계 신선 → 세계 스테일(국내 모드 = 지역 라벨 미표기라 혼입 무라벨 안전) · 월드 모드 = 군 분리 표시라 교차 채움 없음(중복 차단)
-  const stkR = reg10(stk, stkRaw, 'views');   // 조회수 고정(260720 평의회 — 정렬바 없는데 sortOf가 과거 저장 픽을 계속 존중하던 유령 정렬 제거) · 10개 보장(260721 reg10)
-  const sreR = reg10(sre, sreRaw, 'views');   // 조회수 고정(260720 평의회 · stkR 동일 — 유령 정렬 제거) · 10개 보장(260721 reg10)
+  // (구 REGN·byReg·REGS = 큐레이션 한국/세계 2군 분리 헬퍼 → 운영자 260724 "큐레이션 지역 구분 없이 다"로 전부 무용화·제거 · 알고리즘 콘텐츠 지역 필터는 TRREG 직접 사용)
+  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxAll = bySort(sx, sxS).slice(0, 10);   // 큐레이션 = 지역 무관 통합(운영자 260724 "큐레이션 지역 구분 없이 다") — 구독은 내가 고른 계정이라 국내/세계 토글과 무관
+  const all10 = (cutA, rawA, sf) => fill10(bySort(cutA, sf), bySort(rawA, sf));   // 큐레이션(영상 카드) 지역 무관 통합 top10(운영자 260724 — 국내/세계 구분 폐지 · 구 reg10 군분리 = 구독엔 부적절[내가 고른 계정 = 지역 무관 다 보기] · 컷분 우선 → raw 채움 = 10개 보장 계승)
+  const stkAll = all10(stk, stkRaw, 'views');   // 틱톡 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
+  const sreAll = all10(sre, sreRaw, 'views');   // 인스타 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
   const _sytCov = v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault') });   // 구독 커버 = 세로원본(oar) 선요청(운영자 260720 "썸네일 다 16:9로" — 구 mqdefault는 쇼츠 세로 썸네일 양옆에 유튜브가 잡음 패딩 박은 320px라 16:9 프레임이 지저분 · ytn 승급 사다리(운영자 260717 Q03) 미러 · 가로 영상 = 폴백 hq720 = 16:9 원본)
-  const _sytR0 = reg10(syt, sytRaw, 'views'), sytR = { kr: _sytR0.kr.map(_sytCov), gl: _sytR0.gl.map(_sytCov) };   // 카드 그리드용 cover=thumb 매핑(AI영상 aiL 미러 · 운영자 260719 "AI 영상처럼") · 상한 10 + 조회수 정렬 = 구독 3종(syt·stk·sre) 파이프 완전 통일(260720 평의회) · 10개 보장(260721 reg10 — 매핑은 채움 뒤 = fill10 동일참조 dedup 보존)
+  const sytAll = all10(syt, sytRaw, 'views').map(_sytCov);   // 유튜브 구독 = 지역 무관 통합 top10(운영자 260724) · cover=oar 세로원본 매핑 계승 · 조회수 정렬 · 10개 보장(매핑은 채움 뒤 = fill10 dedup 보존)
   const shL = fill10(freshFirst(shv), shvRaw).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만") · freshFirst = 신선 먼저(운영자 260718) · 부족분 = 3일 컷 밖 후순위 채움(운영자 260721 "무조건 10개" — 컷이 12건 중 2건만 남기던 굶김 봉합)
   const aiL = fill10(freshFirst(aiv), aivRaw).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만") · freshFirst + 후순위 채움(260721)
   // ── 실시간 통합 TOP 10(운영자 260712 IA 재편 — "플랫폼 무관 최고 인기 + 실검식 변동") : 구글 Trending Now 행 문법(순위·지표·변동) × 썸네일 ──
@@ -10296,18 +10295,18 @@ function renderSnsTrends() {
   if (ytnL.length) gYT += sec('ytn', '뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gYT += sec('sh', '쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gYT += sec('ai', 'AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
-  REGS.forEach(r => { const L = sytR[r]; if (L.length) gCUR += sec('syt-' + r, '유튜브', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 유튜브 구독 = 큐레이션 게시물 대분류로 이관·소분류 라벨 = 플랫폼명(운영자 260723) · 16:9 wd 카드 계승 · 빈 군 = 미표기(조용한 공백)
+  if (sytAll.length) gCUR += sec('syt', '유튜브', '', sytAll.length, '<div class="trend-grid wd">' + sytAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 유튜브 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 카드 계승 · 빈 = 미표기(조용한 공백)
   if (tkL.length) gTK += sec('tk', '인기', rtBase, tkL.length, '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 16:9 wd 그리드(AI영상 계승) · 정렬바 제거(260720 평의회 — 유튜브 인기(무 정렬바)와 "같은 기능=같은 모양" 통일 · 카드 그리드 문법 = 정렬바 0 · 게시물 xgrid(X·블스·스레드)만 정렬바 유지)
   else if (tkv.length) gTK += sec('tk', '인기', rtBase, Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
-  REGS.forEach(r => { const L = stkR[r]; if (L.length) gCUR += sec('stk-' + r, '틱톡', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 틱톡 구독 = 큐레이션 게시물 이관·소분류 = 플랫폼명(운영자 260723) · 16:9 wd 통일 · 정렬바 없음(데이터 정렬 stkS 기본값 유지)
-  REGS.forEach(r => { const L = sreR[r]; if (L.length) gCUR += sec('sre-' + r, '인스타그램', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, '<div class="trend-grid wd">' + L.map((t, i) => card(t, i, 1)).join('') + '</div>'); });   // 인스타 구독 = 큐레이션 게시물 이관·소분류 = 플랫폼명(운영자 260723) · 구 인스타그램 대분류 소멸(전량 큐레이션) · 16:9 wd 통일
+  if (stkAll.length) gCUR += sec('stk', '틱톡', '', stkAll.length, '<div class="trend-grid wd">' + stkAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 틱톡 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일 · 정렬바 없음(stk 기본 조회수순)
+  if (sreAll.length) gCUR += sec('sre', '인스타그램', '', sreAll.length, '<div class="trend-grid wd">' + sreAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 인스타 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일
   // X 큐레이션 = 소분류 라벨('큐레이션 게시물 · 한국') 폐지·대분류 직속(운영자 260720 — kcomm 이중 라벨 해소 선례 계승) · 정렬 칩 = 대분류 헤더 xSeg 이관 · div.trend-sec = 형제 리듬(rt2col 리셋·모바일 구분선)만 계승(details 아님 = 접기 비대상) · data-sec 유지 = fill 계약 불변
-  const sxKr = sxR.kr.length ? sec('sx-kr', 'X', '', sxR.kr.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + sxR.kr.map(xcard).join('') + '</div>') : '';   // X 구독 = 큐레이션 게시물 소분류(운영자 260723) · 정렬칩 = 대분류 헤더(xSeg) → 소분류 인라인 sortbar 복귀(스레드 sth 문법 계승 = 카드당 자기 정렬)
+  const sxSec = sxAll.length ? sec('sx', 'X', '', sxAll.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + sxAll.map(xcard).join('') + '</div>') : '';   // X 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 인라인 sortbar(스레드 sth 문법 계승 = 카드당 자기 정렬)
   // ⑦ 블루스카이 = X 우측 열 합류(운영자 260720 "엑스랑 좌우로 배치 · 첨부1 참고" = rt2col 구글|시그널 문법 계승 · 기타(Q240) 대분류 통합 선례) — 한쪽 결측 = 단독 폭(조용한 공백 동축) · 번역본만 노출(운영자 260718) 유지
-  gCUR += sxKr;   // X 구독 = 큐레이션 게시물 대분류 합류(운영자 260723 "큐레이션 = 다 저기로") · 구 gX(X 대분류) 소멸(트렌드는 gGG·구독은 gCUR)
-  if (REGS.indexOf('gl') >= 0 && sxR.gl.length) gCUR += sec('sx-gl', 'X', '· 세계', sxR.gl.length, sortbar('sx', [['likes', '좋아요'], ['rts', '리트윗'], ['cmts', '댓글']], sxS) + '<div class="xgrid">' + sxR.gl.map(xcard).join('') + '</div>');   // 월드 모드 X 세계군 = 큐레이션 게시물 소분류(플랫폼명 라벨 · 인라인 sortbar = 스레드 REGS별 칩 문법 계승 · sxS 동축 재렌더 · X 구독 전량 gl일 때 = 이쪽에만 칩 노출)
+  gCUR += sxSec;   // X 구독 = 큐레이션 게시물 합류(운영자 260723 · 260724 지역 무관 단일 블록) · 구 gX(X 대분류) 소멸(트렌드는 gGG·구독은 gCUR)
+  // (구 X 세계군 별도 sec[sx-gl] = 260724 지역 무관 통합으로 sx 단일 블록에 병합 · 국내/세계 구분 폐지)
   const sigSec = sig.length ? sec('sig', '시그널 실시간 검색어', rtBase, Math.min(sig.length, 10), sig.slice(0, 10).map((g, i) =>
     brow(i, 'https://news.google.com/search?q=' + encodeURIComponent(g.query || '') + '&hl=ko&gl=KR&ceid=KR:ko', undefined, _cnHotSig(g.query) ? 'cnhot' : undefined)).join('')) : '';   // ⑨ 시그널 실검(운영자 260718) — 클릭 = Google News 한국(평의회 260723 #2 · 실검 키워드→한국 뉴스 리버스크론 · L9033 패턴 계승 · 구 제네릭 구글 웹검색은 쇼핑·위키 혼입) · 순위+검색어만(brow)
   gGG += (gtSec && sigSec) ? '<div class="rt2col">' + gtSec + sigSec + '</div>' : gtSec + sigSec;   // 구글|시그널 좌우 2열 매칭(운영자 260718 · 모바일 1열 스택 = .rt2col 미디어) — 한쪽 결측 = 그리드 없이 단독(조용한 공백 동축)
@@ -10323,8 +10322,8 @@ function renderSnsTrends() {
     row(i, p2.url || '#', p2.score ? vfmt(p2.score) : '', p2, p2.thumb || '')).join(''));   // ⑥ 레딧(운영자 260713 "추천대로" = 커뮤니티 그룹 슬롯) — 우측 수치 = 스코어 만단위 · 제목 = [r/서브] 접두 주입
   // (구 gBS 독립 대분류 = 260720 X 우측 열 합류 → 260721 게시물 표면 소멸 "블루스카이는 실검만" — bskS/bskL/bskSec/bcard 정의 = git 이력 · 잔존 블스 표면 = 실시간 트렌드 반갈 btrSec뿐)
   // ⑧ 스레드 구독 = 큐레이션 게시물(gCUR) 합류(운영자 260723) · 공급 = 폰/맥 phone_subs 전용 · 구 gTH(스레드 대분류) 소멸
-  const sthS = sortOf('sth', ['likes', 'cmts'], 'likes'), sthR = { kr: bySort(byReg(sth, 'kr'), sthS).slice(0, 10), gl: bySort(byReg(sth, 'gl'), sthS).slice(0, 10) };
-  REGS.forEach(r => { const L = sthR[r]; if (L.length) gCUR += sec('sth-' + r, '스레드', (REGS.length > 1 ? '· ' + REGN[r] : ''), L.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + L.map(xcard).join('') + '</div>'); });   // 스레드 구독 = 큐레이션 게시물 소분류 = 플랫폼명(운영자 260723) · 인라인 sortbar 유지
+  const sthS = sortOf('sth', ['likes', 'cmts'], 'likes'), sthAll = bySort(sth, sthS).slice(0, 10);   // 스레드 구독 = 지역 무관 통합(운영자 260724)
+  if (sthAll.length) gCUR += sec('sth', '스레드', '', sthAll.length, sortbar('sth', [['likes', '좋아요'], ['cmts', '댓글']], sthS) + '<div class="xgrid">' + sthAll.map(xcard).join('') + '</div>');   // 스레드 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 인라인 sortbar 유지
   let gHN = '';   // ⑫ 해커뉴스 그룹(운영자 260713 · 260720 brow = 순위+제목만[스코어·삼각형·시간열 제거] · 클릭 = 원문/HN)
   const hnL = hnl.slice(0, 8);   // 상한 12→8(운영자 260721 Q383 "해커도 8위까지만" — 박스오피스와 좌우 균형)
   if (hnL.length) gHN += sec('hn', '해커뉴스', '', hnL.length, hnL.map((p2, i) => brow(i, p2.url || p2.hn || '#')).join(''));   // 순위+제목만(운영자 260720 — 톱 스토리→해커뉴스 개명 · 구 삼각형▲·스코어·시간열 제거 · 반폭 rt2col서 제목 .trend-q 말줄임[…] 자동)
@@ -10465,16 +10464,15 @@ function renderSnsTrends() {
     };
   });
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT) · ko = 한글 번역 우선
-  ['kr', 'gl'].forEach(r => fillT('syt-' + r, '.tcard-t', sytR[r].map(v => v.title || '')));   // 구독 유튜브 그리드 제목(운영자 260719 카드화 · 틱톡 구독 stk '.tcard-t' 미러)
+  fillT('syt', '.tcard-t', sytAll.map(v => v.title || ''));   // 구독 유튜브 그리드 제목(운영자 260719 카드화 · 260724 지역 무관 단일 리스트)
   if (tkL.length) { fillH('tk', '.tcard-t', tkL.map(t => dimTags(t.ko || t.title || ('@' + (t.account || ''))))); }   // 틱톡 인기 그리드 제목 = ko 한글 우선 + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전 · 운영자 260719)
-  ['kr', 'gl'].forEach(r => {   // 구독 한국/세계 2군 주입(운영자 260712)
-    fillT('sx-' + r, '.xcard-h b', sxR[r].map(t => '@' + (t.account || '')));
-    fillH('sx-' + r, '.xcard-tx', sxR[r].map(t => xlink(t.text || '')));   // 링크 mut 래핑(블스 표현법 · 운영자 260717)
-    fillT('stk-' + r, '.tcard-t', stkR[r].map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 틱톡 구독 그리드 = ko 한글 번역 우선
-    fillT('sre-' + r, '.tcard-t', sreR[r].map(t => t.title || ('@' + (t.account || ''))));
-    fillT('sth-' + r, '.xcard-h b', sthR[r].map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
-    fillH('sth-' + r, '.xcard-tx', sthR[r].map(t => xlink(t.text || '')));   // 스레드도 동일(xcard 공유 · 링크 mut 래핑)
-  });
+  // 구독 큐레이션 주입 = 지역 무관 단일 리스트(운영자 260724 — 구 한국/세계 2군 ['kr','gl'].forEach 폐지)
+  fillT('sx', '.xcard-h b', sxAll.map(t => '@' + (t.account || '')));
+  fillH('sx', '.xcard-tx', sxAll.map(t => xlink(t.text || '')));   // 링크 mut 래핑(블스 표현법 · 운영자 260717)
+  fillT('stk', '.tcard-t', stkAll.map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 틱톡 구독 그리드 = ko 한글 번역 우선
+  fillT('sre', '.tcard-t', sreAll.map(t => t.title || ('@' + (t.account || ''))));
+  fillT('sth', '.xcard-h b', sthAll.map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
+  fillH('sth', '.xcard-tx', sthAll.map(t => xlink(t.text || '')));   // 스레드도 동일(xcard 공유 · 링크 mut 래핑)
   fillT('rdd', '.trend-q', rdd.slice(0, 10).map(p2 => (p2.sub ? '[r/' + p2.sub + '] ' : '') + (p2.title || '')));   // ⑥ 레딧 — 서브레딧 접두(textContent 주입 = XSS 안전)
   // (구 fillT/fillH 'bsk' 게시물 주입 = 운영자 260721 "블루스카이는 실검만 사용" 섹션 소멸로 동반 제거 — 재도입 = git 이력)
   fillT('hn', '.trend-q', hnL.map(t => t.title || ''));   // ⑫ 해커뉴스(textContent 주입 = XSS 안전)
