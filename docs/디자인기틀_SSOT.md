@@ -25,7 +25,6 @@
 6. **컴포넌트 계승 = 100% 모방** — 새 버튼·모달·입력칸·아이콘 = CII 정본 셀렉터 복사·계승(재설계 금지 · 표에 없으면 운영자 질문 후 등재). 모방 = 부품·값만 아니라 구성·배치·문법까지 '그대로'가 1순위 · 판정 이원 = 99% = 0%(새 모양 = fail · CLAUDE.md 최우선 4 · 운영자 260720).
 7. **누름 scale = press 토큰 티어** — `--press-pico/xs/s/m/l` 사다리에서 가장 가까운 형제 티어 계승(raw scale·임의 0.96 금지). 버튼·모션 = 가이드북(`구성도/00_가이드북_버튼인터랙션.html`).
 8. **표지판 도형 = SVG only** — 화살표·삼각형·×·✓ = 유니코드 문자 렌더 금지 → SVG 픽토(`nm-svg.js`). 문자 렌더 = 순수 텍스트·숫자만.
-9. **로딩·진행 표기 = orb 로더 단일 정본**(생성중·요약중·작업중·재수정중 등 · 버튼 안팎 공통) — `viewer/nm-loader.js → window.nmLoader(type,label[,opts])`(orb 2종·shimmer · type = thinking 판단 / solving 산출·재수정 / prompting 설계). raw 점 로더(`gdots`·구 `nmld`) 신설 금지 = `check_loader_ssot()` **하드락(baseline 0)**. 컴포넌트 정본 = CII 「로딩·진행」 행 · 강제 = §6 게이트(운영자 260723 Q459~Q463).
 
 **D. 모션·폴리시**(정본 = `nomute-design` 스킬)
 9. **깊이 = 글래스/그림자** — 딱딱한 1px 테두리 대신 글래스(`backdrop-filter: blur(var(--blur-*))`) 계승.
@@ -37,6 +36,8 @@
 13. **새 요소 등장 = 3중 안전장치** — 단일 커밋 분리(revert 1줄) + 보고 ⚠배치 딱지 + "이 위치·모양 맞나?" 선제(CLAUDE.md `[4]`). **정본 레퍼런스가 정 없으면 = 진행 말고 시안(플레이그라운드) 선행**(운영자 260720 · 최우선 4).
 14. **제안·시안 = 플레이그라운드 HTML** — 정적 이미지·텍스트 나열 금지 → 만지는 5요소 HTML(§2 플레이그라운드 행).
 15. **게이트** — 커밋 전 `check_refs` rc=0 + UI 표면 `smoke_all` rc=0(§6). 값 충돌 = `:root`가 최종 정본.
+16. **로딩·진행 표기 = orb 로더 단일 정본**(생성중·요약중·작업중·재수정중 등 · 버튼 안팎 공통) — `viewer/nm-loader.js → window.nmLoader(type,label[,opts])`(orb 2종·shimmer · type = thinking 판단 / solving 산출·재수정 / prompting 설계). raw 점 로더(`gdots`·구 `nmld`) 신설 금지 = `check_loader_ssot()` **하드락(baseline 0)** · 컴포넌트 정본 = CII 「로딩·진행」 행 · 강제 = §6 게이트(운영자 260723 Q459~Q463).
+17. **신설 공용 부품·SSOT = 5축 동시 등재**(고아 SSOT 재발 방지 · 운영자 260723 Q465) — 새 공용 부품/정본을 만들면 **① 값·부품**(코드 · 예: `viewer/nm-loader.js`) **② 규칙**(§0 조항) **③ 컴포넌트 인덱스**(CII 행) **④ 기계 게이트**(`check_refs.py` 함수 + §6 행) **⑤ CLAUDE.md 구조**([15]) + 이 인덱스 각 정본 절에 행 추가 — 다섯 축에 **같은 커밋 계열로 등재**. 누락 = 발견 불가 고아(§0만 읽는 세션이 못 봄) = 규칙2 위반. (nm-loader 로딩 SSOT = 이 절차의 실증 선례 · Q459~464) · **얕은 기계 보조(WARN·비차단) = `check_ssot_linkage()`**(`viewer/nm-*.js`가 3축 미링크면 경보 · 코드에만 = 문서 비대 0 · Q466).
 
 *→ 각 규칙의 값·셀렉터·라인·상세 = 아래 §1~6 정본 포인터를 따라간다(여기 복붙 금지 = 드리프트 차단).*
 
@@ -98,8 +99,9 @@
 ## 6. 게이트 (강제 — 기계 차단)
 | 파일 | 역할 |
 |---|---|
-| **`shared/check_refs.py`** | 디자인 게이트 묶음. **`check_design()`** = raw 강조색(accent 코어색을 var() 없이 raw로)·초록 시그니처 워시(green_wash) 하드차단 rc=1 / hex·blur·죽은토큰 WARN(baseline ratchet). **`check_icon_ssot()`**(아이콘 SSOT)·토큰 락 정합(락 함수 실체 = `build_design_mirror.py check_lock()`)·`build_design_mirror.check()`(거울)·**`check_palette_sync()`**(팔레트 핀 = 도구 뷰어 inline 공유 팔레트 accent/의미색이 index 해결값과 동값인지 대조 · 인라인 색 복사 드리프트 하드차단 · `build_design_mirror.py` STAGE4 전파의 게이트 짝 · 툴톤 제외 · 운영자 260723 Q464) = 하드차단 / `check_x_char`(문자 도형)·`check_soremeori`(소머리)·`check_autocomplete` = 서브체크. ⚠️ raw 값·패턴의 정본은 코드 그 자체(여기 hex 복붙 안 함). |
-| **`shared/check_refs.py check_loader_ssot()`** | **로딩 표기 SSOT 하드락(운영자 260723 Q463)** — 전 뷰어 로딩·진행 표기 = `viewer/nm-loader.js window.nmLoader` orb 단일. raw 점 로더(`gdots`·구 팩토리 `nmld`) 신설 = rc=1 차단(**baseline 0** · tokens.html 데모 제외). 컴포넌트 정본 = CII 「로딩·진행」 행 · 규칙 = §0-9. |
+| **`shared/check_refs.py`** | 디자인 게이트 묶음. **`check_design()`** = raw 강조색(accent 코어색을 var() 없이 raw로)·초록 시그니처 워시(green_wash) 하드차단 rc=1 / hex·blur·죽은토큰 WARN(baseline ratchet). **`check_icon_ssot()`**(아이콘 SSOT)·토큰 락 정합(락 함수 실체 = `build_design_mirror.py check_lock()`)·`build_design_mirror.check()`(거울)·**`check_palette_sync()`**(팔레트 핀 = 도구 뷰어 inline 공유 팔레트 accent/의미색이 index 해결값과 동값인지 대조 · 인라인 색 복사 드리프트 하드차단 · `build_design_mirror.py` STAGE4 전파의 게이트 짝 · 툴톤 제외 · 운영자 260723 Q464) = 하드차단 / `check_x_char`(문자 도형)·`check_soremeori`(소머리)·`check_autocomplete`·**`check_ssot_linkage`**(공유 부품 nm-*.js 3축 링크 WARN·비차단 · §0-17 5축 보조) = 서브체크. ⚠️ raw 값·패턴의 정본은 코드 그 자체(여기 hex 복붙 안 함). |
+| **`shared/check_refs.py check_loader_ssot()`** | **로딩 표기 SSOT 하드락(운영자 260723 Q463)** — 전 뷰어 로딩·진행 표기 = `viewer/nm-loader.js window.nmLoader` orb 단일. raw 점 로더(`gdots`·구 팩토리 `nmld`) 신설 = rc=1 차단(**baseline 0** · tokens.html 데모 제외). 컴포넌트 정본 = CII 「로딩·진행」 행 · 규칙 = §0-16. |
+| **`shared/check_refs.py check_gate_docs()`** | **게이트 문서화 메타 게이트(운영자 260723 Q468 "만들어놓고 안 봄 구조 차단")** — 모든 게이트(`def check_*`)가 정본 문서(CLAUDE.md·이 SSOT·규칙/큐레이션 문서)에 *이름으로* 등재됐는지 대조 → **미등재 신규 게이트 = rc=1 차단**. 이 인덱스 완전성 소프트룰(서문 "새 기틀 = 인덱스 행 추가·누락 = 규칙2 위반")의 **기계화**. 기존 미등재 = `_GATE_DOC_BASELINE` 면책(소급 문서화 TODO·축소 지향 · 대량 소급 강제 안 함 = 품질 유지). 신규 게이트 추가 시 = 이 §6(디자인 게이트 표)/`docs` 큐레이션/CLAUDE.md에 이름 등재 필수. |
 | **`.githooks/pre-commit`** | **커밋 시점 강제** — `check_refs.py` 실행(어느 모델·도구가 커밋해도 게이트 통과 강제). `design_digest.py`가 `core.hooksPath` 자동 배선. |
 | **`.claude/hooks/design_gate.py`** | **PostToolUse 훅** — UI 파일(`viewer/*`·`구성도/*`) 저장 시 디자인 게이트 자동 실행(위반 즉시 표면화) + **diff 게이트(260713)**: 이 편집이 *추가한 줄*의 신규 raw px(font-size·radius·gap·padding·margin·blur 인자)를 즉시 차단(exit 2)하고 근접 토큰을 자동 제안 — 기존분 관용(diff 기반 = 상쇄 위장 면역) · `/* raw-ok: 사유 */` 같은 줄 주석 = 광학 보정 유일 통로 · letter-spacing = WARN(토큰 사다리 부재). 9.5px류 임의 창작 종전 축. |
 | **`shared/smoke_rank.js`** | **랭크 필 광학 정렬 상비 실측(260717 Q05)** — 디자인 계약 3-4(필 4분할 중심 = 문자열 잉크 중심 Δ≤0.5)의 기계화: 정수 좌표 격리 스테이지 + DPR3 잉크 프로브(라이브 배치 캡처 = 위상 노이즈 부적격). 대상 = `.tcard-rank`·`.tpc-rank`·`.tcard-cov .trend-chg`(NEW·▲▼)·`.tpc-new`·`.qbadge`(+head) · 코어 14종(11타깃 · Q06 배지전수) · ⚠ 세로 잉크 = 베이스라인 1px 스냅이라 패딩 무력 → 이너 `<i>` transform이 정본 보정(260717 실측) · `smoke_all.sh` 5호기 · 포트 8811~(수동 실행 전용 · 훅 편입 금지 [15]) · 보정값 재튜닝 = 이 스모크가 수치 판정. |
