@@ -98,9 +98,9 @@ def main():
     except Exception as e:
         print(f'fb-fetch: 토큰 수명 진단 스킵 — {e}')
     try:
-        p = api(PID, fields='name,username,fan_count,followers_count,link')
+        p = api(PID, fields='name,username,followers_count,link')   # fan_count 제거(운영자 260724 — 시스템유저 토큰서 "(#100) nonexisting field fan_count" = Graph가 유효필드 하나라도 없으면 요청 통째 거부 → 프로필 실패 = 전 수집 중단이던 뿌리 · followers_count가 현대 정본 · 구 fan_count 폴백은 이미 폐지 필드라 무의미)
         d['profile'] = {'id': p.get('id'), 'username': p.get('username'), 'name': p.get('name'),
-                        'followers_count': p.get('followers_count') or p.get('fan_count'), 'media_count': None}
+                        'followers_count': p.get('followers_count'), 'media_count': None}
     except Exception as e:
         print('::warning::fb-fetch 프로필 실패 — 직전 유지:', e); return 0
     series, a = {}, {}
