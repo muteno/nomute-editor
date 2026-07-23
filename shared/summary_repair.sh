@@ -36,6 +36,7 @@ summary_repair() {
 - ⛔ 날조 절대 금지: 자유요약에 없는 **새 숫자·고유명사·날짜·인용·인과 주장**을 도입하지 마라 — 네가 추가하는 모든 문장은 자유요약의 특정 문장으로 소급 가능해야 한다.
 - 제목 줄(각 블록 첫 줄)·⚡ 출처 줄·면책 줄(있으면)은 글자 그대로 보존. 면책 줄이 없던 블록에 새로 넣지 마라.
 - 문체 = 산문 흐름: 앞 문장을 받아 뒷 문장이 이어지는 완결 종결('~다') 연결형 산문. 두세 어절 선언문 남발 금지. 📍는 앞 칸을 이어받는 서사 비트(고립 나열 금지). 체언·명사형 종결('~중'·'~함') 금지.
+- 본문에 '(SBS)'식 괄호 매체표기 금지 — 매체 귀속이 필요하면 '~에 따르면' 산문 귀속, 출처 총괄은 ⚡ 줄만(01_지침 [⚡ 출처 분기] 260723).
 - 출력 = 아래 두 섹션만, 이 골격 그대로(코드펜스는 \`\`\`text 그대로 · 설명·인사·다른 텍스트 일절 금지):
 ### [IG — N/800자]
 \`\`\`text
@@ -62,6 +63,11 @@ $(cat "$file")"
   tmp="$(mktemp)"; printf '%s\n' "$cand" > "$tmp"
   python3 shared/digest_guard.py --splice "$file" "$tmp" 2>/dev/null | sed 's/^/  /' || true
   rm -f "$tmp"
+  # 보강분 출처괄호 백스톱(평의회 260723 2·5번) — repair가 strip 뒤에 돌므로 여기서 재정화(파일 in-place · fail-soft)
+  _rs="$(python3 .github/scripts/strip_cites.py < "$file" 2>/dev/null || true)"
+  if [ -n "${_rs// }" ] && [ "$_rs" != "$(cat "$file")" ]; then
+    printf '%s\n' "$_rs" > "$file"; echo "  🩹 보강분 출처괄호 백스톱 — 괄호 매체표기 재정화"
+  fi
   chk2="$(python3 shared/digest_guard.py --repair-check "$file" 2>/dev/null || true)"
   case "$chk2" in REPAIR\ *) echo "  🩹 보강 후에도 목표 미달(정보성·1콜 상한): ${chk2}";; esac
   return 0

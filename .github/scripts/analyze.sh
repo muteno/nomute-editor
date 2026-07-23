@@ -432,10 +432,12 @@ else:
   #   모델이 초안(```text) 본문에 '(SBS)'식 괄호 매체표기를 다는 취합문체 드리프트를 기계 제거.
   #   정본 표기 = 01_지침 [⚡ 출처 분기] B/B-간소(⚡ 줄) · 펜스 밖(Fact '- 출처:' 줄)·⚡/ⓔ 줄 무접촉 ·
   #   fail-soft(스크립트 오류·빈 출력 = 원문 유지) · ask.sh 동일 백스톱과 한 쌍(#마약 백스톱과 같은 문법).
-  _nc="$(printf '%s\n' "$out" | python3 .github/scripts/strip_cites.py 2>/dev/null || true)"
+  _nc="$(printf '%s\n' "$out" | python3 .github/scripts/strip_cites.py 2>/tmp/_sc_note || true)"
   if [ -n "${_nc// }" ] && [ "$_nc" != "$out" ]; then
-    echo "  출처괄호 백스톱 — 초안 본문 괄호 매체표기 제거(⚡ 줄 일원화)"
+    echo "  출처괄호 백스톱 — 초안 본문 괄호 매체표기 제거(⚡ 줄 일원화): $(tr '\n' '·' < /tmp/_sc_note 2>/dev/null)"
     out="$_nc"
+  elif [ -s /tmp/_sc_note ]; then
+    echo "  출처괄호 백스톱 — $(tr '\n' '·' < /tmp/_sc_note)"   # 계측(평의회1 한 수): 전무 가드 발동 등 무변경 사유도 로그
   fi
 
   # 성공: 재생성이면 기존 파일 덮어쓰기(스템·카드 연결 유지), 아니면 새 ASCII 파일명.

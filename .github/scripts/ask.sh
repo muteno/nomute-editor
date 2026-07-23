@@ -213,10 +213,12 @@ else:
 
   # 출처괄호 백스톱(운영자 260723) — 초안(```text) 본문 괄호 매체표기 기계 제거(analyze.sh 동일 백스톱과 한 쌍 ·
   #   정본 표기 = 01_지침 [⚡ 출처 분기] B/B-간소 · fail-soft = 오류·빈 출력 시 원문 유지).
-  _nc="$(printf '%s\n' "$out" | python3 .github/scripts/strip_cites.py 2>/dev/null || true)"
+  _nc="$(printf '%s\n' "$out" | python3 .github/scripts/strip_cites.py 2>/tmp/_sc_note || true)"
   if [ -n "${_nc// }" ] && [ "$_nc" != "$out" ]; then
-    echo "  출처괄호 백스톱 — 초안 본문 괄호 매체표기 제거(⚡ 줄 일원화)"
+    echo "  출처괄호 백스톱 — 초안 본문 괄호 매체표기 제거(⚡ 줄 일원화): $(tr '\n' '·' < /tmp/_sc_note 2>/dev/null)"
     out="$_nc"
+  elif [ -s /tmp/_sc_note ]; then
+    echo "  출처괄호 백스톱 — $(tr '\n' '·' < /tmp/_sc_note)"   # 계측(평의회1 한 수): 전무 가드 발동 등 무변경 사유도 로그
   fi
 
   id="ask-$(printf '%s' "$base" | tr -cd 'A-Za-z0-9' | cut -c1-18)"

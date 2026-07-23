@@ -183,4 +183,11 @@ PY
 prc=$?
 if [ $prc -ne 0 ]; then echo "::error::치환/rev 실패(원본 미변경)"; exit 1; fi
 
+# 출처괄호 백스톱(평의회 260723 2번) — 재작성 경로도 analyze/ask 와 동일 정화(파일 in-place · fail-soft ·
+#   정본 표기 = 01_지침 [⚡ 출처 분기] B/B-간소 · 오류·빈 출력 = 원문 유지)
+_rs="$(python3 .github/scripts/strip_cites.py < "$TARGET" 2>/dev/null || true)"
+if [ -n "${_rs// }" ] && [ "$_rs" != "$(cat "$TARGET")" ]; then
+  printf '%s\n' "$_rs" > "$TARGET"; echo "출처괄호 백스톱 — 재작성분 괄호 매체표기 정화"
+fi
+
 echo "수정 반영 → $TARGET"
