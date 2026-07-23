@@ -1273,6 +1273,34 @@ def check_loader_ssot():
     return 0
 
 
+def check_ssot_linkage():
+    """공유 부품 SSOT 링크 연결성 게이트(WARN·비차단 · 운영자 260723 Q466 · 디자인기틀 §0-17 5축 등재의 얕은 기계 보조).
+    `viewer/nm-*.js`(공유 부품 관례) 각 파일이 발견 체인 3축(디자인기틀_SSOT.md · CII · CLAUDE.md)에 모두 언급되나 얕게 대조.
+    미링크 = 고아 SSOT 후보 WARN(하드차단 아님 = 오탐 관용·연결성 강화 전용 · 기틀 문서 무증축 = 게이트는 코드에만)."""
+    import glob as _g
+    idx = ['docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md', 'CLAUDE.md']
+    txt = {}
+    for d in idx:
+        try:
+            txt[d] = open(os.path.join(ROOT, d), encoding='utf-8').read()
+        except Exception:
+            txt[d] = ''
+    parts = sorted(_g.glob(os.path.join(ROOT, 'viewer', 'nm-*.js')))
+    orphans = []
+    for fp in parts:
+        name = os.path.basename(fp)
+        miss = [os.path.basename(d) for d in idx if name not in txt[d]]
+        if miss:
+            orphans.append('%s → 미링크: %s' % (name, ', '.join(miss)))
+    if orphans:
+        print('⚠️ SSOT 링크 게이트(WARN·비차단) — 공유 부품이 발견 체인 미등재(§0-17 5축·고아 후보 · 등재 = 디자인기틀 §0/§1·CII·CLAUDE [15]):')
+        for o in orphans:
+            print('   ·', o)
+        return 0
+    print('✅ SSOT 링크 게이트 — 공유 부품(nm-*.js %d) 전건 발견 체인(디자인기틀·CII·CLAUDE) 링크됨.' % len(parts))
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1436,6 +1464,10 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_loader_ssot 스킵:', e)
+    try:
+        check_ssot_linkage()   # 공유 부품 SSOT 링크 연결성(WARN·비차단 — nm-*.js가 발견 체인 3축 미등재 = 고아 후보 경보 · §0-17 5축의 얕은 기계 보조 · 운영자 260723 Q466)
+    except Exception as e:
+        print('⚠️ check_ssot_linkage 스킵:', e)
     return rc
 
 
