@@ -167,9 +167,7 @@
   .go.okdone { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   .go.checking { display:grid; place-items:center; }
   /* 생성중 상주(운영자 260723 Q454 — ✓ 뒤 라벨 복귀 대신 '생성 중···'(gdots 점3 정본) 점등 상주 · 잡 완료/실패에 goFireDone 원복) · 점등 = 보더 펄스 변형(스캔·gdots 리듬 1.4s 계승) · #editGo 스코프(공유 .go 무접촉) · 비활성 = pointer-events:none */
-  #editGo.busy { pointer-events:none; color:var(--accent); animation:goBusyPulse 1.4s ease-in-out infinite; }
-  @keyframes goBusyPulse { 0%,100% { border-color:rgba(var(--accent-rgb),.6); box-shadow:0 0 10px rgba(var(--accent-rgb),.22); } 50% { border-color:var(--line); box-shadow:0 0 0 rgba(0,0,0,0); } }
-  @media (prefers-reduced-motion:reduce) { #editGo.busy { animation:none; border-color:rgba(var(--accent-rgb),.4); } }
+  #editGo.busy { pointer-events:none; }   /* 생성중 = orb 로더(Solving)가 진행 신호 전담 · 구 보더 펄스 폐지(운영자 260723 Q460 orb 통일) */
   .go .gck { width:26px; height:26px; margin:-6px 0; animation:gckPop .44s cubic-bezier(.18,1.5,.4,1) forwards; }   /* raw-ok: margin -6 = (26−14)/2 상쇄 — ✓ 26px가 레이아웃 높이를 글줄(14)로 유지 = 게이지→✓ 전환 시 버튼 40→52px '살짝 튐' 소멸(운영자 260722 · 시각 26px 불변 — 버튼 40px 안 오버플로 없음) */   /* = thumb #go 정본 26px 동값 · +완료 ✓ 팝(운영자 260720 "이미지 전송 완료 튀는 체크 모션 = 영상도 통일") = index `ackPop` 미러(.44s·스프링 이징 .18,1.5,.4,1·피크 --gauge-pop 공유 SSOT) → 팝 스케일 + 아래 goTick 선 그리기 = ack 이중모션 계승 · 기존 26px 지오메트리 불변 */
   .go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
   @keyframes goTick { to { stroke-dashoffset:0; } }
@@ -587,6 +585,8 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
+<script src="nm-loader.js"></script><!-- 로딩 표기 SSOT(orb Thinking/Solving/Prompting + shimmer · 운영자 260723 Q460) — window.nmLoader(type,label,opts) -->
+
 <script src="upload.js"></script><!-- R2 직업로드 공용(nmUpArm/nmUpload · conv와 공유 — 미가용 = 30MB base64 폴백) -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -1154,10 +1154,11 @@ function goFireOk(g){
     _goFT3=setTimeout(()=>{ g.classList.remove('checking','okdone'); goBusy(g); },560);   // ✓ 여운 후 '생성 중···' 상주(운영자 260723 Q454 — 구 '전송됨'→850ms 라벨 원복 폐지 · 원복 = 잡 완료/실패 goFireDone)
   },hold);
 }
-function goBusy(g){   // 생성중 상주 = 점3(gdots 정본) + 보더 점등 + 비활성 — pollEdit 대기 동안 유지(thumb엔 없는 edit 전용 · 잡 카드 부재 = 버튼이 유일 진행 신호)
+function goBusy(g){   // 생성중 상주 = orb 로더(Solving) 상주 + 비활성 — pollEdit 대기 동안 유지(thumb엔 없는 edit 전용 · 잡 카드 부재 = 버튼이 유일 진행 신호 · 운영자 260723 Q460 orb 통일)
   clearTimeout(_goFT2); clearTimeout(_goFT3);
   g.classList.remove('firing','okdone','checking','err','shake'); g.classList.add('busy');
-  g.innerHTML='생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'; g.setAttribute('aria-busy','true');
+  g.innerHTML = window.nmLoader ? nmLoader('solving','Solving…',{size:15,gap:7,fs:12.5}) : '생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   // orb 15px = 버튼 높이 동결(27 유지 · 실측) · 미로드 = 구 점3 폴백
+  g.setAttribute('aria-busy','true');
 }
 function goFireDone(g){   // 잡 완료·실패·타임아웃 = 버튼 원복(생성중 상주 해제)
   clearTimeout(_goFT2); clearTimeout(_goFT3);
@@ -1243,8 +1244,8 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   const wsrc=FILE_URL||'';
   vw.innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
     +'<div class="wscrim"></div><div class="scanline"></div>'
-    +'<div class="wcorner" aria-hidden="true"></div>'   // 경과 = 우상단 코너 네온레몬(운영자 260723 Q454 — 구 wmsg 인라인 wsec에서 이주)
-    +'<div class="wmsg">'+esc(wlbl||'편집 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>';
+    +'<div class="wcorner" aria-hidden="true"></div>'   // 경과 = 좌상단 코너 네온레몬(운영자 260723 Q454/Q456)
+    +'<div class="wmsg">'+ (window.nmLoader? nmLoader('solving','Solving…') : esc(wlbl||'편집 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>') +'</div>';   // 중앙 = orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3
   const wv=vw.querySelector('.wv');
   if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }
   status.innerHTML='<span class="sronly">'+esc(wlbl||'편집 중')+'</span>';

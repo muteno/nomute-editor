@@ -87,7 +87,7 @@ async function runOnce(browser, port) {
   await pg.waitForTimeout(300);
   m.gck = await pg.evaluate(() => !!document.querySelector('#editGo .gck'));
   await pg.waitForTimeout(500);   // ✓ 여운(560ms) 경과 → 생성중 상주(운영자 260723 Q454)
-  m.busy = await pg.evaluate(() => { const g = document.querySelector('#editGo'); return g.classList.contains('busy') && g.textContent.trim().startsWith('생성 중'); });
+  m.busy = await pg.evaluate(() => { const g = document.querySelector('#editGo'); return g.classList.contains('busy') && !!g.querySelector('.nm-orb[data-orb="solving"]'); });   // 생성중 = orb 로더(Solving) 상주(운영자 260723 Q460 · 구 점3 텍스트 폐지)
   await pg.evaluate(() => goFireDone(document.querySelector('#editGo')));   // 잡 완료 원복
   await pg.waitForTimeout(60);
   m.back = await pg.evaluate(() => document.querySelector('#editGo').textContent.trim());

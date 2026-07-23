@@ -116,3 +116,70 @@
     return h;
   };
 })();
+
+/* ══ orb 로더(운영자 260723 승인 시안 v3 · Q459/Q460) — 앱 전반 로딩 표기 SSOT ══
+   · 매핑 = Thinking(요약·분석·큐레이션·2차수정 판단) · Solving(영상 편집·변환·렌더·이미지·음원 산출·재수정) · Prompting(프롬프팅·콘티 설계)
+   · orb = CSS/SVG 근사(WebGL 원본 orbs.jakubantalik.com 스크랩 불가) · Thinking/Prompting = 소용돌이 링 · Solving = 흩뿌린 입자
+   · shimmer = 글자 위 빛 스윕(background-clip:text) · 4분할 중앙선 정렬 = align-items:center + line-height:1(Δ0 실측)
+   · API:  el.innerHTML = nmLoader('solving','Solving…')  ·  <span class="nm-load" data-orb="thinking" data-label="Thinking…"></span> 자동 수화
+   · 색 = 레퍼런스대로 흰/은빛 입자 + 흰빛 스윕(콘텐츠 축 · UI 팔레트 무관) · 기존 mkLoader/nmLoaderHTML(도트 팩토리) 무접촉 병존 */
+(function () {
+  if (window.nmLoader) return;
+  if (!document.getElementById('nm-orb-css')) {
+    var css =
+      '.nm-orb{display:inline-block;position:relative;vertical-align:middle;flex:0 0 auto}' +
+      '.nm-orb svg{display:block;width:100%;height:100%;overflow:visible}' +
+      '.nm-orb .nm-dot{fill:#e9eef0}' +
+      '.nm-orb[data-orb="thinking"] .nm-r,.nm-orb[data-orb="prompting"] .nm-r{transform-origin:50% 50%;animation:nmspin 3.2s linear infinite}' +
+      '.nm-orb[data-orb="thinking"] .nm-r2,.nm-orb[data-orb="prompting"] .nm-r2{animation-duration:4.6s;animation-direction:reverse;opacity:.72}' +
+      '.nm-orb[data-orb="thinking"] .nm-r3,.nm-orb[data-orb="prompting"] .nm-r3{animation-duration:6s;opacity:.5}' +
+      '.nm-orb[data-orb="solving"] .nm-cloud{transform-origin:50% 50%;animation:nmspin 9s linear infinite}' +
+      '.nm-orb[data-orb="solving"] .nm-dot{animation:nmtwk 1.8s ease-in-out infinite}' +
+      '@keyframes nmspin{to{transform:rotate(360deg)}}' +
+      '@keyframes nmtwk{0%,100%{opacity:.26}50%{opacity:1}}' +
+      '.nm-load{display:inline-flex;align-items:center;gap:9px}' +
+      '.nm-load .nm-orb{width:22px;height:22px}' +
+      '.nm-shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center;' +
+        'background:linear-gradient(100deg,var(--mut,#8fa697) 0%,var(--mut,#8fa697) 38%,#ffffff 50%,var(--mut,#8fa697) 62%,var(--mut,#8fa697) 100%);' +
+        'background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:nmshim 1.9s linear infinite}' +
+      '@keyframes nmshim{from{background-position:120% 0}to{background-position:-120% 0}}' +
+      '@media(prefers-reduced-motion:reduce){.nm-shim{animation:none;color:var(--mut,#8fa697);-webkit-text-fill-color:var(--mut,#8fa697)}.nm-orb *{animation:none!important}}';
+    var st = document.createElement('style'); st.id = 'nm-orb-css'; st.textContent = css;
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function solvingSVG() {   // 흩뿌린 입자(결정적 시드 — Math.random 미사용 = 렌더 결정론)
+    var s = 9301, rnd = function () { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    var d = '', N = 44, i, a, r;
+    for (i = 0; i < N; i++) {
+      a = rnd() * 6.2832; r = Math.sqrt(rnd()) * 45 + 3;
+      d += '<circle class="nm-dot" cx="' + (50 + Math.cos(a) * r * 0.9).toFixed(1) + '" cy="' + (50 + Math.sin(a) * r * 0.9).toFixed(1) +
+           '" r="' + (0.85 + rnd() * 1.7).toFixed(2) + '" style="animation-delay:' + ((i % 7) * 0.26).toFixed(2) + 's"/>';
+    }
+    return '<svg viewBox="0 0 100 100"><g class="nm-cloud">' + d + '</g></svg>';
+  }
+  function ringSVG() {   // 소용돌이 3링(원근 fake)
+    function ring(cls, ry, n, rd, rot) {
+      var d = '', i, a;
+      for (i = 0; i < n; i++) { a = i / n * 6.2832; d += '<circle class="nm-dot" cx="' + (50 + Math.cos(a) * 40).toFixed(1) + '" cy="' + (50 + Math.sin(a) * ry).toFixed(1) + '" r="' + rd + '"/>'; }
+      return '<g class="nm-r ' + cls + '" style="transform:rotate(' + rot + 'deg)">' + d + '</g>';
+    }
+    return '<svg viewBox="0 0 100 100">' + ring('', 40, 20, 2, 0) + ring('nm-r2', 15, 16, 1.7, 30) + ring('nm-r3', 26, 13, 1.4, 60) + '</svg>';
+  }
+  function orbType(t) { return t === 'solving' ? 'solving' : (t === 'prompting' ? 'prompting' : 'thinking'); }
+  function orbHTML(type, size) { var t = orbType(type), sz = size ? ' style="width:' + size + 'px;height:' + size + 'px"' : ''; return '<span class="nm-orb" data-orb="' + t + '"' + sz + '>' + (t === 'solving' ? solvingSVG() : ringSVG()) + '</span>'; }
+  function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // nmLoader(type,label[,opts]) — opts={size:orb px, gap, fs:글자 px}. 좁은 버튼 = size 18·fs 12.5, 기본 pill = 22·13.5
+  window.nmLoader = function (type, label, opts) {
+    opts = opts || {}; var g = opts.gap != null ? opts.gap : 9;
+    var fs = opts.fs ? ' style="font-size:' + opts.fs + 'px"' : '';
+    return '<span class="nm-load" style="gap:' + g + 'px">' + orbHTML(type, opts.size) + '<span class="nm-shim"' + fs + '>' + esc(label) + '</span></span>';
+  };
+  window.nmOrbHTML = orbHTML;   // orb만(버튼 좁은 폭 등)
+  function hydrate(root) {   // 선언형: <span class="nm-load" data-orb="thinking" data-label="Thinking…"></span>
+    var els = (root || document).querySelectorAll('.nm-load[data-orb]:not([data-nm-done])'), i, e;
+    for (i = 0; i < els.length; i++) { e = els[i]; e.setAttribute('data-nm-done', '1'); e.innerHTML = orbHTML(e.getAttribute('data-orb')) + '<span class="nm-shim">' + esc(e.getAttribute('data-label')) + '</span>'; }
+  }
+  window.nmLoaderHydrate = hydrate;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { hydrate(); }); else hydrate();
+})();
