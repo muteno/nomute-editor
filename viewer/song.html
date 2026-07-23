@@ -611,11 +611,13 @@ function hRow(s,i){
 function renderList(){ $('#hlist').innerHTML=PLIST.map((s,i)=>hRow(s,i)).join(''); }
 async function openHist(){
   hpop.hidden=false; renderList();
+  let ok=false;
   try{
     const r=await fetch('song_out/index.json?t='+Date.now());
     if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
-      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ PLIST=j; renderList(); } } }
-  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ PLIST=j; renderList(); ok=true; } } }
+  }catch(e){ /* 미배포·오프라인·빌드실패 = 아래 실패 신호 */ }
+  if(!ok && !PLIST.length) $('#hlist').innerHTML='<button class="hrow" type="button" data-retry="1"><span class="t">목록을 못 불러왔어</span><span></span><span class="m">다시 시도</span></button>';   // 로드 실패만 구분 신호(빈 목록 성공 = 침묵 유지 · §디자인 e-가 존중 · 운영자 260723 한수)
 }
 $('#histBtn').addEventListener('click',()=>{ if(hpop.hidden) openHist(); else hpop.hidden=true; });
 $('#hpopX').addEventListener('click',()=>{ hpop.hidden=true; });
@@ -630,7 +632,7 @@ async function playIdx(i,autoplay){
   SONG_ID=s.id; showLyria(d,0);
   if(autoplay){ try{ await $('#lAud').play(); }catch(e){ /* 자동재생 차단 = 플레이어 노출로 갈음 */ } }
 }
-$('#hlist').addEventListener('click',e=>{ const b=e.target.closest('.hrow'); if(!b) return; playIdx(+b.dataset.i,true); });
+$('#hlist').addEventListener('click',e=>{ const b=e.target.closest('.hrow'); if(!b) return; if(b.dataset.retry){ openHist(); return; } playIdx(+b.dataset.i,true); });
 $('#lAud').addEventListener('ended',()=>{ if(PIDX>=0&&PIDX+1<PLIST.length) playIdx(PIDX+1,true); });
 
 // ── 음성 클로닝(운영자 260712 · Replicate RVC — svc-bench 판정: Seed-VC CPU 탈락 → 전환 승인) ──
@@ -649,14 +651,16 @@ function vcRender(){
   $('#vApply').hidden=!(VSEL&&RES&&RES.url);   // 보이스 선택 + 오디오 있는 결과에서만
 }
 async function vcLoad(){
+  let ok=false;
   try{
     const r=await fetch('voice_out/index.json?t='+Date.now());
     if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
-      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ VOICES=j; vcRender(); } } }
-  }catch(e){ /* 미배포·오프라인 = 조용한 공백 유지 */ }
+      if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ VOICES=j; vcRender(); ok=true; } } }
+  }catch(e){ /* 미배포·오프라인·빌드실패 = 아래 실패 신호 */ }
+  if(!ok && !VOICES.length) $('#vcPop').innerHTML='<button type="button" class="spbtn" data-retry="1">목록을 못 불러왔어 · 다시 시도</button>';   // 로드 실패만 구분(빈 목록 = 침묵) · 운영자 260723 한수
 }
 $('#vcV').addEventListener('click',()=>{ const pop=$('#vcPop'); const opening=pop.classList.contains('none'); closeSelPops(pop); pop.classList.toggle('none',!opening); if(opening) vcLoad(); });
-$('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; VSEL=b.dataset.v||null; vcRender(); $('#vcPop').classList.add('none'); });
+$('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; if(b.dataset.retry){ vcLoad(); return; } VSEL=b.dataset.v||null; vcRender(); $('#vcPop').classList.add('none'); });
 $('#consBtn').addEventListener('click',e=>{ const b=e.currentTarget; const on=!b.classList.contains('on'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
 $('#vFile').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
