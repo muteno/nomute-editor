@@ -394,6 +394,12 @@ function drawBand(ctx, b, y){
   });
   return L.h;
 }
+let cardFontsReady = false;
+async function ensureCardFonts(){   /* 카드 콘텐츠 폰트(Noto Sans KR 400·700) = 생성(캔버스 렌더) 시에만 지연 로드(운영자 260723 · tesseract 지연 로드 선례 = 평시 페이지 무게 0). @font-face 정본 그대로 온디맨드 발화 — document.fonts.ready만으론 미요청 폰트가 로드 안 돼 캔버스가 폴백 서체로 그려지던 잠재결함도 봉합. 밴드/칩 텍스트는 700, 안전상 400도 함께. */
+  if (cardFontsReady) return;
+  try { await Promise.all([document.fonts.load("400 40px 'Noto Sans KR'"), document.fonts.load("700 40px 'Noto Sans KR'")]); } catch (_) {}
+  cardFontsReady = true;   /* 실패해도 재시도 폭주 방지 = 1회로 확정(폴백 서체로 렌더 · fail-soft) */
+}
 function compose(){
   const show = !!(RESULT || img);
   pv.hidden = !show; $('pvEmpty').hidden = show;
@@ -589,7 +595,7 @@ go.addEventListener('click', async () => {
     RESULT = { cut: composeOverlay(plan), band: String(plan.band || '').trim(), plan };   /* plan 보관 = compose에서 4:5 스케일로 칩 재합성 */
     fired = true; $('redoBox').hidden = false;
     gaugeDone(go);
-    (document.fonts?.ready || Promise.resolve()).then(compose);
+    await ensureCardFonts(); compose();   // 카드 폰트 지연 로드 완료 후 합성(캔버스 정본 서체 보장 · 구 document.fonts.ready = 미요청 폰트 누락으로 폴백 렌더되던 것 교정)
     aStat('✓ 완성 — 미리보기 확인 · 우상단 버튼 = PNG 저장');
   } catch (e) { aStat('✗ ' + e.message); }
   goBusy(false);
