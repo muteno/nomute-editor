@@ -16,6 +16,29 @@
 //             = Access 세션 만료 시 '깨진 앱'에 안 갇히고 로그인 화면으로 자가치유(index 리스너와 한 쌍).
 // 롤백 런북(평의회 4): sw.js *삭제(404) 금지* — 삭제해도 브라우저는 기존 SW를 언레지스터하지 않고 캐시 서빙
 //    계속함. 반드시 '무해화 sw.js 배포'(fetch 핸들러 제거 + activate에서 nm-shell-* *전량* delete)로 되돌릴 것.
+// ── 좀비 SW 자기소멸(운영자 260723 · 중복 알림·회색아이콘 근본픽스 · 8인 평의회 하드닝) ──
+// 정본 호스트 = apps.nomute.kr. 구 nomute-editor.pages.dev 등 비정본 origin에 남아 도는 서비스워커는
+// 같은 속보를 한 번 더 띄우는 '중복 알림'의 원인 — _middleware.js 의 301 리다이렉트는 페이지 이동만 막고,
+// 푸시 수신(FCM→SW 직배달)은 내비게이션을 안 거쳐 못 막기 때문(아이콘도 pages.dev→301→Access벽에 막혀 회색 N).
+// 그런 SW는 알림을 띄우지 말고 자기 구독을 해제·언레지스터해 스스로 소멸한다.
+// 실효 킬 레버 = pushManager.unsubscribe()(로컬↔FCM 연산이라 Access 무관 즉시 성공) → 다음 발송이 410 Gone
+//   → push_send.py 가 subscriptions.json 에서 자동 정리. unregister()는 컨트롤 클라이언트가 없어질 때 정리(지연 가능)
+//   지만, 잔존해도 push 핸들러 가드가 매번 알림을 억제하므로 중복은 안 뜬다(2중 방어). 서버 통지 fetch는 제거함
+//   — cross-origin + Access + CORS 프리플라이트로 사실상 항상 실패하는 죽은 코드였다(평의회 2·3, 260723).
+// ⚠️ CANON_HOSTS 화이트리스트(평의회 1·4) — 단일 문자열이면 향후 정본 도메인 교체·추가 시 정상 SW가 오판
+//    자기소멸(전 구독 말소) 파국. localhost = 로컬 푸시 테스트 보존. _middleware.js 목적지와 한 쌍(동시 갱신).
+const CANON_HOSTS = ['apps.nomute.kr', 'localhost', '127.0.0.1'];
+function isCanonHost() { return CANON_HOSTS.includes(self.location.hostname); }
+async function selfDestructIfStale() {
+  if (isCanonHost()) return false;   // 정본 origin = 정상 동작(자기소멸 안 함)
+  try {
+    const s = await self.registration.pushManager.getSubscription();
+    if (s) await s.unsubscribe().catch(() => {});   // 즉시 구독 파기 = 실효 킬(다음 발송 410 → 서버 자동 정리)
+  } catch (_) {}
+  await self.registration.unregister().catch(() => {});
+  return true;
+}
+
 const SHELL_CACHE = 'nm-shell-v1';
 const SHELL_PATHS = ['/', '/index.html'];   // 캐시 화이트리스트 — 여기 없는 HTML은 SW가 손 안 댐
 
@@ -59,6 +82,7 @@ self.addEventListener('fetch', event => {
   })());
 });
 self.addEventListener('push', event => {
+  if (!isCanonHost()) { event.waitUntil(selfDestructIfStale()); return; }   // 좀비 SW = 알림 억제 + 자기소멸(중복 차단)
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { body: event.data && event.data.text() }; }
   const title = d.title || '🚨 긴급 속보';
@@ -108,6 +132,7 @@ function b64ToU8(s) {
   return u8;
 }
 self.addEventListener('pushsubscriptionchange', event => {
+  if (!isCanonHost()) { event.waitUntil(selfDestructIfStale()); return; }   // 비정본 = 재구독 금지(좀비 부활 봉합 · push 가드와 대칭 · 평의회 3·4)
   event.waitUntil((async () => {
     try {
       const sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUB) });
@@ -120,6 +145,7 @@ self.addEventListener('pushsubscriptionchange', event => {
 
 self.addEventListener('install', () => self.skipWaiting());           // 새 sw 즉시 활성
 self.addEventListener('activate', event => event.waitUntil((async () => {
+  if (await selfDestructIfStale()) return;                             // 비정본 origin이면 캐시 정리 대신 즉시 자기소멸
   const keys = await caches.keys();                                    // 구버전 셸 캐시 청소(SHELL_CACHE 버전업 대비)
   await Promise.all(keys.filter(k => k.startsWith('nm-shell-') && k !== SHELL_CACHE).map(k => caches.delete(k)));
   await self.clients.claim();

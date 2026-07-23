@@ -108,26 +108,36 @@ def main():
     # ⚠ 리치 필드(반응·댓글 요약)는 pages_read_user_content 권한 필요(실측 260719 런15 "(#10)") → 2단 폴백:
     #   권한 없으면 기본 필드로 재시도 = 게시물 목록·썸네일은 무슨 일이 있어도 보존(빈 덮어쓰기 재발 방지).
     _BASE_F = 'message,permalink_url,created_time,full_picture'
+    # 참여 필드 = 권한 계단 폴백(운영자 260723 — 구 all-or-nothing = 댓글 권한 하나 없으면 반응·공유까지 통째 증발이 fb 공백의 뿌리):
+    #   T0 반응+댓글+공유 → T1 반응+공유(댓글만 탈락) → T2 기본(참여 전무). 첫 성립 티어에서 멈춤.
+    #   ⚠ 권한 진실(운영자 260723 실측 대조): 반응·공유 = 페이지 자기 게시물 지표라 pages_read_engagement로 충분(현 토큰 보유분) ·
+    #   댓글만 = 유저 생성물이라 pages_read_user_content 필요(= Advanced Access·App Review 대상이라 미승인 앱엔 미노출). 구 주석의 "반응·댓글·공유 전부 pages_read_user_content" = 오진단 정정.
+    _ENG_TIERS = [
+        ('반응+댓글+공유', ',reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares'),
+        ('반응+공유(댓글 권한 없음)', ',reactions.summary(total_count).limit(0),shares'),
+        ('기본(참여 전무)', ''),
+    ]
     rows = []
-    try:
-        rows = api(f'{PID}/posts', fields=_BASE_F + ',reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=10).get('data', [])
-    except Exception as e:
-        print(f'fb-fetch: 게시물 리치 필드 불가(pages_read_user_content 권한 추가 시 상호작용 점등 — 세팅 문서 §2) → 기본 필드 폴백: {e}')
+    for _lbl, _suf in _ENG_TIERS:
         try:
-            rows = api(f'{PID}/posts', fields=_BASE_F, limit=10).get('data', [])
-        except Exception as e2:
-            print('fb-fetch: 게시물 스킵:', e2)
+            rows = api(f'{PID}/posts', fields=_BASE_F + _suf, limit=10).get('data', [])
+            print(f'fb-fetch: 게시물 참여 필드 = {_lbl} 성립({len(rows)}건)')
+            break
+        except Exception as e:
+            print(f'fb-fetch: 참여 필드 [{_lbl}] 불가 → 다음 폴백: {e}')
     for x in rows:
         nm = (x.get('message') or '(무캡션)').split('\n')[0][:60]
-        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None})
+        eng = None   # 게시물별 참여합(반응+댓글+공유) — 리치 필드 성립 시에만(권한 폴백 = None → 뷰어 결측 처리)
+        if ('reactions' in x) or ('comments' in x) or ('shares' in x):
+            eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
+                + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
+                + ((x.get('shares') or {}).get('count') or 0)
+        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None, 'eng': eng})   # eng = views 부재 fb의 게시물별 대체 지표(운영자 260723 "다른 값이 있으면 대체" — 뷰어 게시물 탐색 '반응' 정렬·표기 원천)
         thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
         dt = str(x.get('created_time', ''))[:10]
         if dt:
             series.setdefault(dt, {})['posts'] = (series.get(dt, {}).get('posts') or 0) + 1
-            if ('reactions' in x) or ('comments' in x) or ('shares' in x):
-                eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
-                    + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
-                    + ((x.get('shares') or {}).get('count') or 0)
+            if eng is not None:
                 series[dt]['interactions'] = (series[dt].get('interactions') or 0) + eng
     d['posts'], d['thumbs'] = posts, thumbs
     # fb 전용 집계(운영자 260719 "죽은 지표만 유의미 대체" — 뷰어 1-2 6칸 중 반응·댓글·공유 카드 원천) = 최근 10게시물 합.
