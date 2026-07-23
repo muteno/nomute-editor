@@ -421,6 +421,7 @@ for (const f of msgFiles) {
         const o = { id: m.id != null ? String(m.id) : f, ts: m.ts != null ? String(m.ts) : '', text };
         if (m.t != null && !isNaN(Number(m.t))) o.t = Number(m.t);   // 만료 타임스탬프(ms) 보존 → 뷰어 24h 필터·상대시간(msg.py 알림). 없으면 영구(수동 md 계열).
         if (m.level) o.level = String(m.level);                       // 'warn' = 프로필 노란 점등·경고 구분 보존
+        if (m.action) o.action = String(m.action);                   // 액션형 알림(예: 'sns-recollect') = 뷰어 메시지 상세 '조치' 버튼 노출(watchdog wd-sns 재수집 · 260723)
         messages.push(o);
       }
     } else {
@@ -430,6 +431,7 @@ for (const f of msgFiles) {
       const o = { id: meta.id || f.replace(/\.md$/i, ''), ts: meta.ts || meta.date || '', text };
       if (meta.t != null && !isNaN(Number(meta.t))) o.t = Number(meta.t);   // 만료 타임스탬프(ms) 보존(있을 때만)
       if (meta.level) o.level = String(meta.level);                          // 'warn' 점등 보존
+      if (meta.action) o.action = String(meta.action);                      // 액션형 알림 태그 보존(json 분기 미러)
       messages.push(o);
     }
   } catch (e) {
