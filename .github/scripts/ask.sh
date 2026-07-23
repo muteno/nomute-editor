@@ -211,6 +211,14 @@ else:
     }
     {print}')"
 
+  # 출처괄호 백스톱(운영자 260723) — 초안(```text) 본문 괄호 매체표기 기계 제거(analyze.sh 동일 백스톱과 한 쌍 ·
+  #   정본 표기 = 01_지침 [⚡ 출처 분기] B/B-간소 · fail-soft = 오류·빈 출력 시 원문 유지).
+  _nc="$(printf '%s\n' "$out" | python3 .github/scripts/strip_cites.py 2>/dev/null || true)"
+  if [ -n "${_nc// }" ] && [ "$_nc" != "$out" ]; then
+    echo "  출처괄호 백스톱 — 초안 본문 괄호 매체표기 제거(⚡ 줄 일원화)"
+    out="$_nc"
+  fi
+
   id="ask-$(printf '%s' "$base" | tr -cd 'A-Za-z0-9' | cut -c1-18)"
   outfile="queue/${stamp}-${id}.md"
   n=2; while [ -e "$outfile" ]; do outfile="queue/${stamp}-${id}-${n}.md"; n=$((n+1)); done
