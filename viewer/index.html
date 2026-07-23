@@ -947,7 +947,7 @@
   .sig-lgd .lg-sh::before { background:var(--accent); }
   .sig-lgd .lg-gen::before { width:11px; height:0; border-radius:0; background:none; border-top:2px solid var(--accent-4); }   /* raw-ok: 일반 평균 = 노랑 실선 스와치(운영자 260723 "노란색·실선" · 차트 실선 미러 · 공유 도트[터콰이즈]와 형태 분리) · 색 = --accent-4 노랑 팔레트 정본 · 11px/2px = 도트 6px 대비 선 시인 광학(.lg-pk 2px 동축) */
   .sig-lgd .lg-pk::before { background:var(--mut); border-radius:2px; }   /* raw-ok: 6px 스와치의 밴드(둥근 사각) 표기 광학 보정 — 시리즈 도트(원)와 형태 구분 · 근접 토큰 r-s 9px = 박스(6px)보다 커 부적합 · 무채(운영자 260723 한 수) = 차트 밴드 무채 워시 동일 톤(일반 평균 노랑과 분리) */
-  .sig-lgd .lg-core::before { width:11px; background:linear-gradient(90deg, transparent, var(--cat-tech) 50%, transparent); border-radius:2px; }   /* raw-ok: 핵심 구간 스와치 = 차트 코어존 음영 미러(네온바이올렛 --cat-tech · 팔레트 유일 형광 보라) · 좌우 투명 그라데이션 = 페이드 문법 축약 · 폭 11 = lg-gen 선 스와치 동축(도트 6px 원과 형태 분리) · radius 2 = lg-pk 밴드 박스 동축 */
+  .sig-lgd .lg-core::before { background:linear-gradient(var(--cat-tech), var(--cat-tech)); }   /* 핵심 구간 스와치 = 팔로워(.lg-sh) 도트와 동형 6px 원(운영자 260723 "터콰이즈 범례처럼 동그라미로" — 구 그라데이션 바 폐지) · 색 = 코어존 음영 동색 네온바이올렛 --cat-tech(팔레트 정본) · 동색 2-stop 그라데 표기 = check_label_fill 도트 허용 취지와 cat-* 필 직참조 차단 규칙의 합치 문법(구 스와치 그라데 문법 계승 · 렌더 = 솔리드 원 동일) */
   .sig-chartwrap { margin-bottom:var(--sp-2); }
   .sig-chartwrap:last-child { margin-bottom:0; }
   /* 게시일 탭 팝오버(운영자 260718 "각 부분에 어떤 게시물 올렸는지 링킹") — 셸 = 모달 글래스 계승(--modal-glass·blur)·z-float(차트 위·페이지 나비 아래)·촤르륵 등장(cardIn 결) · 행 = .chp-row 문법 계승 · draw order 안전(글래스라 뒤 데이터 가림 최소·탭 밖 클릭 = 닫힘) */
@@ -7156,7 +7156,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'cf3e2dd · 260723_2217';  /*BUILDSTAMP*/
+const BUILD_STAMP = '1ec8767 · 260723_2232';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -11127,7 +11127,10 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   if (vals.length < 2) return '';
   const W = 600, H = 154, mL = 46, mR = 16, mT = 16, mB = 26, pw = W - mL - mR, ph = H - mT - mB;   // mB·H = 일일 추이(chChart) 단일줄 라벨 규격 계승 — n= 병기 줄 제거(운영자 260722)로 2줄 예약 해제 · 플롯 높이 ph=112 불변
   const lo = Math.max(0, Math.min(...vals, 1) - .1), hi = Math.max(...vals, 1) + .1;
-  const X = i => mL + pw * i / (bs.length - 1), Y = v => mT + ph * (1 - (v - lo) / (hi - lo));
+  const cH = [];   // 버킷 중심 시각("새벽0-6" 범위 파싱 · 실패 밴드 있으면 선형 시간축·시각 오버레이 전체 스킵 = fail-soft·창작 0)
+  if (ax === 'hour_band') bs.forEach(b => { const m = /(\d+)\s*-\s*(\d+)/.exec(b.bucket); cH.push(m ? (+m[1] + +m[2]) / 2 : null); });
+  const hlin = ax === 'hour_band' && cH.length === bs.length && !cH.some(c => c == null);   // 선형 시간축(운영자 260723 "24분할 해서 숫자만") — X = 실제 시각 비례 배치 = 24분할 눈금·핵심 구간 경계 세로변·지금 마커가 같은 자 위에 정렬
+  const X = i => hlin ? mL + pw * cH[i] / 24 : mL + pw * i / (bs.length - 1), Y = v => mT + ph * (1 - (v - lo) / (hi - lo));
   SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, n: b.n, low: !!b.low_sample, gen: (SIG_GEN[ax] || {})[b.bucket] ?? null }; });
   let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
   for (let g = 0; g <= 3; g++) {   // hairline 격자 + ×배율 Y라벨(chChart 문법)
@@ -11136,28 +11139,23 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
     s += `<text x="${mL - 6}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--mut)">×${v.toFixed(2)}</text>`;
   }
   s += `<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${(H - mB).toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   // Y축 스파인(일일 추이 세로줄 계승)
-  const cH = [];   // 버킷 중심 시각("새벽0-6" 범위 파싱 · 실패 밴드 있으면 시각 오버레이 전체 스킵 = fail-soft·창작 0)
-  if (ax === 'hour_band') bs.forEach(b => { const m = /(\d+)\s*-\s*(\d+)/.exec(b.bucket); cH.push(m ? (+m[1] + +m[2]) / 2 : null); });
-  const hourX = hh => {   // 시각(0~24h) → 밴드축 x(밴드 중심 시각 피스와이즈 보간 · 양끝 클램프)
-    if (!cH.length || cH.some(c => c == null)) return null;
-    if (hh <= cH[0]) return X(0);
-    for (let i = 0; i < cH.length - 1; i++) if (hh <= cH[i + 1]) return X(i) + (X(i + 1) - X(i)) * (hh - cH[i]) / (cH[i + 1] - cH[i]);
-    return X(bs.length - 1);
-  };
+  const hourX = hh => hlin ? mL + pw * Math.max(0, Math.min(24, hh)) / 24 : null;   // 시각(0~24h) → x = 선형 시간축 그대로(구 밴드 중심 피스와이즈 보간 = 선형축 도입으로 대체 · 파싱 실패 = null = 시각 오버레이 생략 fail-soft)
   // 표본 볼륨 언더레이(무채 저알파 바) — 게시 몰림 편향(스크래퍼 flags)을 숨기지 않고 시각화 · n 라벨과 동축(운영자 260719 고도화)
   const maxN = Math.max(...bs.map(b => b.n || 0), 1), bw = Math.min(26, pw / bs.length * .42);
   bs.forEach((b, i) => { const bh = (b.n || 0) / maxN * ph * .26; if (bh > 0) s += `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${(H - mB - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="var(--mut)" opacity=".13"/>`; });
   // 일반 인스타 이용자 평균선(운영자 260723 요청 → 260723 교정: 노랑 실선·저장 삭제 후 공유와 2선 비교) — 전체 IG 이용자 평균 이용 강도(SIG_GEN · 자체 정규화 피크=100 → 플롯 .82 높이 · 상단 콜아웃 선반 여유) · 볼륨 뒤 배경층(공유 곡선은 위 = 채널 실데이터 우선) · 실선 노랑(--accent-4 · 팔레트 정본 · 운영자 "노란색·실선") · 점·area 없음 = 공유(터콰이즈 선+점+area)와 형태 분리 · 결측 버킷 = 조용히 생략(fail-soft·창작 0)
+  const shoulder = pts => hlin ? [[mL, pts[0][1]], ...pts, [W - mR, pts[pts.length - 1][1]]] : pts;   // 선형 시간축 = 첫/끝 밴드 값을 플롯 양끝까지 수평 연장(밴드 대표값은 그 밴드 전 구간 유효 = 창작 아님) — 곡선·area가 스파인·우변에 붙는 기존 실루엣 유지 · 교차 산출은 원본 좌표만 사용
   const gen = SIG_GEN[ax];
   let gpts = null, gl = '';
   if (gen) {
     const _g = bs.map((b, i) => { const gv = gen[b.bucket]; return gv == null ? null : [X(i), (H - mB) - (gv / 100) * ph * .82, gv]; });
-    if (_g.length >= 2 && _g.every(Boolean)) { gpts = _g; gl = chPath(_g.map(p => [p[0], p[1]]), 1); }
+    if (_g.length >= 2 && _g.every(Boolean)) { gpts = _g; gl = chPath(shoulder(_g).map(p => [p[0], p[1]]), 1); }
   }
   const spts = []; bs.forEach((b, i) => { const v = val(b, 'share_pm'); if (v != null) spts.push([X(i), Y(v), !!b.low_sample]); });   // 팔로워(공유) 곡선 좌표 = 핵심 구간 산출·시리즈 렌더 공용(단일 산출)
-  const sline = spts.length >= 2 ? chPath(spts.map(p => [p[0], p[1]]), 1) : '';
-  // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 개정: 두 곡선 '사이' 면 → 양옆 세로변 + 파도 높이 보라 음영 · 바닥 = X축 · 인덱싱 행 침범 금지) — 코어 = 팔로워가 앱 사용자 위인 연속 우위 런(경계 = 선형 보간 교차점 · 버킷 스냅 금지) · 팔로워 area(파도→바닥)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .08 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침)
-  let coreX = null, coreHrs = null;
+  const sx0 = spts.length && !hlin ? spts[0][0] : mL, sx1 = spts.length && !hlin ? spts[spts.length - 1][0] : W - mR;   // area 폐합 x = 숄더 반영 양끝(비선형축 = 기존 첫/끝 점 그대로)
+  const sline = spts.length >= 2 ? chPath(shoulder(spts).map(p => [p[0], p[1]]), 1) : '';
+  // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 재개정: 음영 바닥 = X축 정지 — 눈금·요일 라벨 행 침범 금지 · 축 살짝 관통 = 양옆 세로변 선분만 · "인덱싱까지 이어짐"은 선분 +4 관통 + 해당 눈금 보라 틴트가 대체) — 코어 = 팔로워가 앱 사용자 위인 연속 우위 런(경계 = 선형 보간 교차점 · 버킷 스냅 금지) · 팔로워 area(파도→X축)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .06 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침)
+  let coreX = null, coreXR = null;
   if (gpts && gpts.length === bs.length && spts.length === bs.length && sline) {
     const dfs = spts.map((p, i) => gpts[i][1] - p[1]);   // >0 = 팔로워 곡선이 위(픽셀 y 반전축)
     let pk = 0; spts.forEach((p, i) => { if (p[1] < spts[pk][1]) pk = i; });   // 팔로워 피크 = y 최소
@@ -11166,19 +11164,15 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       while (i0 > 0 && dfs[i0 - 1] > 0 && spts[i0 - 1][1] > spts[i0][1]) i0--;   // 좌: 골짜기(이웃이 더 높음) or 교차(dfs≤0)면 정지
       while (i1 < dfs.length - 1 && dfs[i1 + 1] > 0 && spts[i1 + 1][1] > spts[i1][1]) i1++;   // 우: 대칭
       // (운영자 260723 한 수 "최소 폭 보장" 실측 결론 = 불요·유해) — 골짜기 컷이 이미 피크±1을 자연 보장(피크 이웃은 항상 피크보다 낮아 첫 스텝 확장 · 양옆 즉시 교차 시엔 e0/e1 edge()가 교차점 밴드로 처리 = 0폭 없음). 억지 Math.max(i1,pk+1)로 교차 너머 확장 시 edge()가 "두 점 다 dfs≤0"서 음수 t → 경계 오이동(18→17시 실측). ∴ 가드 미도입이 정답.
-      const edge = (a, b) => { const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t, fi: a + t }; };   // 곡선 교차점 = 선형 보간(x·팔로워 파도 y·버킷 프랙셔널 인덱스)
-      const at = i => ({ x: X(i), y: spts[i][1], fi: i });   // 골짜기·엣지 정지 = 그 버킷 중심(교차 아님 = 보간 불요)
+      const edge = (a, b) => { const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; };   // 곡선 교차점 = 선형 보간(x·팔로워 파도 y) — 구 프랙셔널 인덱스(fi) = 경계시각 별도 라벨("9시/18시") 폐지(260723 눈금 보라 틴트로 대체)로 제거
+      const at = i => ({ x: X(i), y: spts[i][1] });   // 골짜기·엣지 정지 = 그 버킷 중심(교차 아님 = 보간 불요)
       const e0 = (i0 > 0 && dfs[i0 - 1] <= 0) ? edge(i0 - 1, i0) : at(i0);   // 교차로 멈춤 = 보간점 · 골짜기/엣지로 멈춤 = 버킷 중심
       const e1 = (i1 < dfs.length - 1 && dfs[i1 + 1] <= 0) ? edge(i1, i1 + 1) : at(i1);
-      const x0 = e0.x, x1 = e1.x, fB = H - mB + 11;   // fB = 커튼 발 = X축 아래 인덱싱 시각 라벨 행까지 연장(운영자 260723 "집중해야 될 시간대가 인덱싱까지 이어져야") — 파도→바닥에서 멈추지 않고 시각 라벨과 한 몸으로 연결
-      s += `<defs><clipPath id="sigCoreClip-${ax}"><rect x="${x0.toFixed(1)}" y="${mT}" width="${(x1 - x0).toFixed(1)}" height="${(fB - mT).toFixed(1)}"/></clipPath><linearGradient id="sigCore-${ax}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${fB.toFixed(1)}"><stop offset="0" stop-color="var(--cat-tech)" stop-opacity=".34"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity=".06"/></linearGradient></defs>`;
-      s += `<path d="${sline} L${spts[spts.length - 1][0].toFixed(1)} ${fB.toFixed(1)} L${spts[0][0].toFixed(1)} ${fB.toFixed(1)} Z" fill="url(#sigCore-${ax})" stroke="none" clip-path="url(#sigCoreClip-${ax})"/>`;   // 팔로워 area(파도→커튼 발)를 코어 컬럼으로 하드 클립 = 인덱싱까지 이어지는 세로 커튼
-      [[x0, e0.y], [x1, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${fB.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--cat-tech)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 양 옆 세로변(파도 곡선 y → 커튼 발·인덱싱)
-      coreX = (x0 + x1) / 2;
-      if (ax === 'hour_band' && cH.length && !cH.some(c => c == null)) {   // 경계 시각(프랙셔널 인덱스 → 버킷 중심시각 보간) = 하단 인덱싱 행 라벨용
-        const hAt = fi => { const a = Math.max(0, Math.min(cH.length - 2, Math.floor(fi))), t = fi - a; return cH[a] + (cH[a + 1] - cH[a]) * t; };
-        coreHrs = [{ x: x0, h: hAt(e0.fi) }, { x: x1, h: hAt(e1.fi) }];
-      }
+      const x0 = e0.x, x1 = e1.x, aB = H - mB;   // aB = X축(하단 눈금선) = 음영 바닥(운영자 260723 "음영이 눈금/요일 라벨 영역 넘지 않게" — 구 +11 라벨행 연장 폐지 · 축 관통은 아래 세로변 선분만)
+      s += `<defs><clipPath id="sigCoreClip-${ax}"><rect x="${x0.toFixed(1)}" y="${mT}" width="${(x1 - x0).toFixed(1)}" height="${ph}"/></clipPath><linearGradient id="sigCore-${ax}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${aB.toFixed(1)}"><stop offset="0" stop-color="var(--cat-tech)" stop-opacity=".34"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity=".06"/></linearGradient></defs>`;
+      s += `<path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigCore-${ax})" stroke="none" clip-path="url(#sigCoreClip-${ax})"/>`;   // 팔로워 area(파도→X축)를 코어 컬럼으로 하드 클립 = 세로 커튼(라벨 행 무접촉)
+      [[x0, e0.y], [x1, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--cat-tech)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 양 옆 세로변(파도 곡선 y → X축 +4) = 선분만 아주 살짝 축 관통(운영자 260723 "선분 쫙 이어서 · 음영을 넘기란 게 아니야") — 아래 해당 눈금 숫자와 연결감
+      coreX = (x0 + x1) / 2; coreXR = [x0, x1];
     }
   }
   if (gl) s += `<path d="${gl}" fill="none" stroke="var(--accent-4)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
@@ -11203,7 +11197,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   s += `<line x1="${mL}" y1="${bY.toFixed(1)}" x2="${W - mR}" y2="${bY.toFixed(1)}" stroke="var(--mut)" stroke-width="1" stroke-dasharray="4 3" opacity=".6" vector-effect="non-scaling-stroke"/>`;
   s += `<text x="${mL + 4}" y="${(bY - 4).toFixed(1)}" text-anchor="start" font-size="9" fill="var(--mut)">채널 중앙 ×1.0</text>`;
   if (sline) {   // 팔로워(구 라벨 '공유' · 운영자 260723 리네임) 단독(운영자 260723 "저장 삭제·공유로 통일") — area 글래스+선+점 · 저장(구 --accent-2 시리즈) 폐지 · 좌표 = 위 spts 단일 산출 재사용
-    s += `<path d="${sline} L${spts[spts.length - 1][0].toFixed(1)} ${H - mB} L${spts[0][0].toFixed(1)} ${H - mB} Z" fill="rgba(var(--accent-rgb),.10)" stroke="none"/>`;
+    s += `<path d="${sline} L${sx1.toFixed(1)} ${H - mB} L${sx0.toFixed(1)} ${H - mB} Z" fill="rgba(var(--accent-rgb),.10)" stroke="none"/>`;
     s += `<path d="${sline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
     spts.forEach(p => { s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${p[2] ? 'var(--bg)' : 'var(--accent)'}" stroke="${p[2] ? 'var(--accent)' : 'var(--bg)'}" stroke-width="1.6"/>`; });   // low_sample = 속빈 점
   }
@@ -11231,13 +11225,13 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   if (coreX != null) putTop(coreX, ax === 'hour_band' ? '핵심 시간대' : '핵심 요일', 'var(--cat-tech)');   // 핵심 구간 라벨 = 상단 선반 공용 문법(putTop 충돌 회피 그대로) · 색 = 음영 동색 네온바이올렛(운영자 260723 "핵심인 시간대다 차트 안에서 표시")
   bandLabs.forEach(l => putTop(l.x, esc(l.txt), 'var(--mut)'));   // 접속 피크 라벨 = 무채(운영자 260723 한 수 · 밴드 무채 워시와 동색 · 일반 평균 노랑과 분리)
   if (mkX != null) putTop(mkX, mkTxt, 'var(--mut)');
-  bs.forEach((b, i) => {   // X축 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지) — n 표본 병기 줄 = 운영자 260722 제거(표본값은 호버 툴팁 n= 유지 = 정보 손실 0) · y = 일일 추이 라벨 베이스라인(H-7) 계승
+  const inCore = x => coreXR && x >= coreXR[0] - 1 && x <= coreXR[1] + 1;   // 핵심 구간에 드는 눈금/라벨 = 음영 동색 보라 틴트(운영자 260723 "해당하는 숫자를 보라색 음영" · ±1px = 경계 부동소수 여유) — 구 경계시각 별도 라벨("9시/18시" 행) 대체
+  if (hlin) for (let hh = 0; hh <= 24; hh++) {   // X축 = 24분할 시각 눈금(운영자 260723 "밴드명('오전6-11') 말고 그냥 24분할 해서 숫자만") — 위치 = 선형 시간축 실시각 · 크기·굵기·베이스라인(9·700·H-7) = 구 버킷 라벨 규격 계승 · 밴드명은 호버 툴팁에 유지 = 정보 손실 0
+    const xh = mL + pw * hh / 24;
+    s += `<text x="${xh.toFixed(1)}" y="${H - 7}" text-anchor="middle" font-size="9" fill="${inCore(xh) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${hh}</text>`;
+  } else bs.forEach((b, i) => {   // 요일(+시각 파싱 실패 폴백) = X축 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지 · y = 일일 추이 베이스라인 H-7 계승) · 핵심 구간 안 라벨(핵심 요일) = 동일 보라 틴트(형제 동조[4]) · n 병기 줄 = 운영자 260722 제거(툴팁 n= 유지)
     const anc = i === 0 ? 'start' : i === bs.length - 1 ? 'end' : 'middle', xa = i === 0 ? mL : i === bs.length - 1 ? W - mR : X(i);
-    s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="9" fill="var(--mut)" font-weight="700">${esc(b.bucket)}</text>`;
-  });
-  if (coreHrs) coreHrs.forEach(c => {   // 핵심 구간 경계 시각(운영자 260723 요청) — 세로변 아래 인덱싱 행(버킷 라벨 위 한 줄) · 크기·굵기 = 버킷 라벨 동일(9·700) · 색 = 음영 동색 --cat-tech · 엣지 클램프
-    const cx = Math.max(mL + 10, Math.min(W - mR - 10, c.x));
-    s += `<text x="${cx.toFixed(1)}" y="${(H - mB + 9).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--cat-tech)" font-weight="700">${Math.round(c.h)}시</text>`;
+    s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="9" fill="${inCore(xa) ? 'var(--cat-tech)' : 'var(--mut)'}" font-weight="700">${esc(b.bucket)}</text>`;
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
@@ -11248,7 +11242,7 @@ function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일
   box.querySelectorAll('.sig-chartwrap').forEach(wrap => {
     const hits = SIG_HIT[wrap.dataset.ax] || [], tip = wrap.querySelector('.ch-tip'), dot = wrap.querySelector('.ch-dot');
     if (!hits.length || !tip) return;
-    const place = (x, y) => { const r = wrap.getBoundingClientRect(); return [x / 600 * r.width, y / 170 * r.height]; };
+    const place = (x, y) => { const r = wrap.getBoundingClientRect(); return [x / 600 * r.width, y / 154 * r.height]; };   // 154 = chLiftChart viewBox H(260722 170→154 축소 동조 누락 정정 — 구 170 잔존 = 호버점·툴팁 ~9% 상방 이탈)
     const hide = () => { tip.style.opacity = '0'; if (dot) dot.style.opacity = '0'; };
     const move = ev => {
       const r = wrap.getBoundingClientRect();
