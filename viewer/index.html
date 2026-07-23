@@ -682,6 +682,7 @@
   .trend-chg.up { color:var(--accent); }   /* 상승 = 강조색(뜨는 중) */
   .trend-chg.dn { color:var(--mut); }   /* 하락 = 회색(식는 중) */
   .trend-q { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .trhot { flex:0 0 auto; align-self:center; display:inline-flex; color:var(--accent); }   /* 🔥 교차합의 배지(평의회 260723 #9) — signal∩gtrends 2소스 동시 등장 = 교차검증 핫 · FIRE_SVG(soc-burst 🔥 정본) 계승 · 색 --accent(soc-burst hot30 풀강조 동색) · align-self:center = baseline 행(#672)서 13px 플레임 세로중앙(순위 숫자 대비 광학중앙) */
   .trend-q.top3 { color:var(--accent-4); }   /* 박스오피스 상위 3 영화명 강조(운영자 260721 Q382 터콰이즈 → Q383 레몬라임 → 260723 "네온레몬·라임레몬 모두 골드레몬으로 통일" 교정) — 색 = --accent-4 네온 골드레몬(관객수 히트색 bo-y와 동색 = 박스오피스 레몬 단일화 · 라임 --accent-2 사용처는 이 행뿐 = .top3는 박스오피스 전용) · 순위 숫자 .trend-rank = --accent 유지 "순위는 그대로" · 접기 삼각형 --hist-accent(구조색·앱 공통)은 무접촉 · 색만, 서체 무접촉 */
   .trend-traffic { display:inline-flex; align-items:center; gap:1px; color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; flex:none; }
   .trend-traffic svg { width:8px; height:8px; display:block; }   /* 부가 수치 셀 내 아이콘 규격 폴백(현재 무사용 — 구 HN 스코어 ▲ 계승 · .trend-chg svg 규격) */
@@ -10264,9 +10265,14 @@ function renderSnsTrends() {
   let gGG = '', gYT = '', gTK = '', gIG = '', gX = '';
   const ggUrl = g => (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));   // 구글 클릭 = 대표 뉴스 ∥ 구글 검색 폴백(관용구)
   const gtR = freshFirst(gt).slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 텍스트 행) · freshFirst = 신선 먼저(운영자 260718 "다른 화면에도")
+  const _cnNorm = s => String(s || '').toLowerCase().replace(/\s+/g, '');   // 실검 키워드 정규화(공백붕괴·소문자) — "제이슨 데이"↔"제이슨데이"·라틴 대소문자 일치
+  const _cnSig = new Set(sig.map(s => _cnNorm(s.query)).filter(Boolean));   // 시그널 실검 키워드 집합
+  const _cnGt = new Set(gt.map(g => _cnNorm(g.query)).filter(Boolean));     // 구글 실검 키워드 집합
+  const _cnHotGt = t => { const n = _cnNorm(t); return !!n && _cnSig.has(n); };   // 🔥 구글 행: 시그널에도 있나 = 교차합의
+  const _cnHotSig = t => { const n = _cnNorm(t); return !!n && _cnGt.has(n); };   // 🔥 시그널 행: 구글에도 있나 = 교차합의(평의회 260723 #9 · 한 수) = signal∩gtrends 2소스 동시 = 계정무관 교차검증 핫 · **반드시 상대 열 집합과 대조**(자기 집합 대조 = 전 행 오점화 · T10 실측 봉합) · xtrends는 팬덤이라 합의 제외(별도 X 실검 유지)
   const rtBase = '';   // 소분류 "· HH:MM 기준" 캡션 폐지(운영자 260720 — 수집 시각 = 좌상단 #vhTime 1회로 집약 · 유튜브·틱톡·구글 실검 소분류 반복 시각 제거) · 금융 소분류 시각도 동일 폐지(운영자 260721 "금융 소분류 옆에 시간 다 빼주고" — 구 finBaseTxt 캡션 제거 · 등락 의미 = 전일 종가 대비 그대로·% 색이 전달) · tm은 #vhTime 전용 잔존
-  const brow = (i, url, right, cls, rcls) => `<a class="trend-row" href="${escUrl(url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q${cls ? ' ' + cls : ''}"></span>${right ? `<span class="trend-traffic${rcls ? ' ' + rcls : ''}">${right}</span>` : ''}</a>`;   // 순위+검색어만(운영자 260718 "순위 빼고 다 없애자") · right = 부가 수치 옵션(박스오피스 관람객수 — 운영자 260720 · 미지정 = 구글·시그널 실검처럼 순위+제목만) · rcls = 우측 수치 셀 색 클래스(박스오피스 top3 관객수 히트 = bo-w/y/t · 운영자 260723 · 미지정 = 종전 --mut) — 변동배지·시각 열 제거 · .trend-row/-rank/-q/-traffic 계승 = 임베드 시퀀스·fillT 무영향 · 신규 컴포넌트 0
-  const gtSec = gt.length ? sec('gt', '구글 실시간 검색어', rtBase, Math.min(gt.length, 10), gtR.map(z => brow(z[1], ggUrl(z[0]))).join('')) : '';   // 부제 개명(운영자 260718 "급상승 → 구글 실시간 검색어") · 검색량 tfmt = 미표기 전환(정의는 폴백 보존 = cma 관용구) · 좌열(2열 매칭은 sig 합류부)
+  const brow = (i, url, right, cls, rcls, hot) => `<a class="trend-row" href="${escUrl(url)}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="trend-q${cls ? ' ' + cls : ''}"></span>${hot ? `<span class="trhot" title="시그널·구글 실검 동시 등장 = 교차검증 핫">${FIRE_SVG}</span>` : ''}${right ? `<span class="trend-traffic${rcls ? ' ' + rcls : ''}">${right}</span>` : ''}</a>`;   // 순위+검색어만(운영자 260718 "순위 빼고 다 없애자") · right = 부가 수치 옵션(박스오피스 관람객수 — 운영자 260720 · 미지정 = 구글·시그널 실검처럼 순위+제목만) · rcls = 우측 수치 셀 색 클래스(박스오피스 top3 관객수 히트 = bo-w/y/t · 운영자 260723 · 미지정 = 종전 --mut) — 변동배지·시각 열 제거 · .trend-row/-rank/-q/-traffic 계승 = 임베드 시퀀스·fillT 무영향 · 신규 컴포넌트 0
+  const gtSec = gt.length ? sec('gt', '구글 실시간 검색어', rtBase, Math.min(gt.length, 10), gtR.map(z => brow(z[1], ggUrl(z[0]), undefined, undefined, undefined, _cnHotGt(z[0].query))).join('')) : '';   // 부제 개명(운영자 260718 "급상승 → 구글 실시간 검색어") · 검색량 tfmt = 미표기 전환(정의는 폴백 보존 = cma 관용구) · 좌열(2열 매칭은 sig 합류부)
   // (구 mkyt·ytZ·mktk·tkZ = tpg 레일 매핑/인터리브 잔재(호출 0) → 260720 평의회 zig·tpc와 동반 삭제 · ytnL만 생존)
   const ytnL = fill10(freshFirst(ytn), ytnRaw).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = fill10(freshFirst(yt), ytRaw).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = freshFirst 신선 먼저(운영자 260718 "다른 화면에도") + 후순위 채움 10개 보장(260721)
@@ -10287,7 +10293,7 @@ function renderSnsTrends() {
   gX += sxKr;   // 블스 게시물 열(bskL·bskSec) 소멸(운영자 260721 "이 부분 다 X로 대체 · 블루스카이는 실검만 사용") — X 큐레이션 단독 폭 복귀 · 블스 잔존 표면 = 아래 실시간 트렌드 반갈뿐(수집·번역 데이터 축은 보존 · 재도입 = git 이력)
   if (REGS.indexOf('gl') >= 0 && sxR.gl.length) gX += sec('sx-gl', '큐레이션 게시물', '· 세계', sxR.gl.length, '<div class="xgrid">' + sxR.gl.map(xcard).join('') + '</div>');   // 월드 모드 세계군 = 종전 소분류 유지(정렬바만 대분류 헤더로 단일화)
   const sigSec = sig.length ? sec('sig', '시그널 실시간 검색어', rtBase, Math.min(sig.length, 10), sig.slice(0, 10).map((g, i) =>
-    brow(i, 'https://news.google.com/search?q=' + encodeURIComponent(g.query || '') + '&hl=ko&gl=KR&ceid=KR:ko')).join('')) : '';   // ⑨ 시그널 실검(운영자 260718) — 클릭 = Google News 한국(평의회 260723 #2 · 실검 키워드→한국 뉴스 리버스크론 · L9033 패턴 계승 · 구 제네릭 구글 웹검색은 쇼핑·위키 혼입) · 순위+검색어만(brow)
+    brow(i, 'https://news.google.com/search?q=' + encodeURIComponent(g.query || '') + '&hl=ko&gl=KR&ceid=KR:ko', undefined, undefined, undefined, _cnHotSig(g.query))).join('')) : '';   // ⑨ 시그널 실검(운영자 260718) — 클릭 = Google News 한국(평의회 260723 #2 · 실검 키워드→한국 뉴스 리버스크론 · L9033 패턴 계승 · 구 제네릭 구글 웹검색은 쇼핑·위키 혼입) · 순위+검색어만(brow)
   gGG += (gtSec && sigSec) ? '<div class="rt2col">' + gtSec + sigSec + '</div>' : gtSec + sigSec;   // 구글|시그널 좌우 2열 매칭(운영자 260718 · 모바일 1열 스택 = .rt2col 미디어) — 한쪽 결측 = 그리드 없이 단독(조용한 공백 동축)
   // ⑩+⑦-b 실시간 트렌드 반갈(운영자 260721 "1~10위 엑스 | 1~10위 블루스카이 · 모양 = 실검 반갈[구글|시그널] 그대로") — rt2col+sec 블릿·마진 = 9915 관용구 100% 계승 · 행 = row(순위·키워드·시간 = 기존 xtr 그대로 · 블스 시간 = started[relT 문법]) · 좌 상한 15→10(운영자 "1위~10위") · 블스 결측 = X 단독 폭(조용한 공백 동축) · 클릭 = X 검색 / 블스 트렌드 피드(link 결측 = 검색 폴백)
   const xtrSec = xtr.length ? sec('xtr', 'X 실시간 트렌드', '', Math.min(xtr.length, 10), xtr.slice(0, 10).map((g, i) =>
