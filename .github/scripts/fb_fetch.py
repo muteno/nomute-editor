@@ -85,13 +85,30 @@ def main():
         if not PID:
             try:
                 me = api('me', fields='id,name')
-                PID = me.get('id') or ''
-                if PID:
+                _mid = me.get('id') or ''
+                # 시스템유저 토큰(운영자 260724) = me = 봇 자신 · /me/accounts 빈 반환 → 할당 페이지(assigned_pages) 엣지로 실페이지 조회(business_management scope). 페이지 토큰이면 이 엣지 빈/에러 → 아래 me 직독 폴백(구 동작 보존).
+                try:
+                    ap = api(f'{_mid}/assigned_pages', fields='id,name').get('data') or []
+                    if ap and ap[0].get('id'):
+                        PID = ap[0]['id']
+                        print(f"fb-fetch: 시스템유저 토큰 판정 — 할당 페이지 '{ap[0].get('name')}'({PID}) 인식(토큰 유지)")
+                except Exception:
+                    pass
+                if not PID and _mid:
+                    PID = _mid
                     print(f"fb-fetch: 페이지 토큰 판정 — 페이지 '{me.get('name')}'({PID}) 자동 인식")
             except Exception as e:
                 print(f'fb-fetch: 토큰 유효성 실패(만료·권한 확인 필요) — {e}')
     if not TOK or not PID:
         print('fb-fetch: 시크릿 미등록(FB_PAGE_TOKEN 필수 · FB_PAGE_ID = 자동/선택) — no-op 스캐폴드 스킵'); return 0
+    # 시스템유저 토큰 → 페이지 액세스 토큰 전환(운영자 260724) — 시스템유저 토큰으로 페이지 노드 직독 = #10(pages_read_engagement 보유해도 페이지 컨텍스트 부재) → GET /{page}?fields=access_token로 그 페이지의 토큰을 받아 이후 전 읽기를 페이지 토큰으로. 실패(관리권 없음 등) = 기존 TOK 유지 폴백.
+    try:
+        _pt = api(PID, fields='access_token').get('access_token')
+        if _pt and _pt != TOK:
+            TOK = _pt
+            print('fb-fetch: 페이지 액세스 토큰 획득 — 시스템유저→페이지 토큰 전환(이후 읽기 = 페이지 토큰)')
+    except Exception as e:
+        print(f'fb-fetch: 페이지 토큰 전환 스킵(기존 토큰 유지) — {e}')
     now = datetime.datetime.now(KST)
     d = {'generated_kst': now.isoformat(timespec='seconds'), 'src': 'facebook'}
     try:   # 토큰 수명 진단(운영자 260723 "장기토큰 아니지?" — 만료 시각·보유 scope 로그 · 자기 디버그 · 실패 무해). expires_at 0 = 무기한(장기 유저토큰 파생 페이지토큰) · 근미래 = 단기(전환 필요)

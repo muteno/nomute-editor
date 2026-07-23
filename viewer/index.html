@@ -1725,6 +1725,10 @@
   .qrow .qst { flex:none; width:58px; display:flex; align-items:center; justify-content:flex-start; }   /* 상태 = 고정폭 셀 좌측정렬 → 행마다 상태/링크 시작 x 일정·상태 라벨 좌변 일치(운영자 260622) */
   .qrow .qact { flex:none; width:var(--btn-sm); display:flex; align-items:center; justify-content:center; }   /* 행 최우측 액션셀 = X셀과 동일 폭(--btn-sm 30)·정렬 → 끝버튼(이동↗/삭제) 중심이 헤더 X 중심과 세로 일직선(운영자 260704 통일 · §🎨 팝업 행-액션 정렬 표준) */
   /* 상태 = 모두 도형없이 좌측정렬: 재시도 ↻·처리중 스피너 = 앰버 아이콘만(도형 제거) · 완료(초록)·실패(빨강) 한글 (운영자 260622) */
+  /* 대기열 프리셋 표기(운영자 260724 Q495 시안 [선택값 복사] 확정 · Q491 스트립 짝) — 프리셋 적용(켜짐) 요약요청 행만 · 켜진 조건 나열(24h·외신·주요) · 스크랩/픽·구 asks = 무표기("역방향 아님"). 구조 = 제목만 말줄임·표기 생존(qm-flex — 시안 검증 실측 함정 봉합) */
+  .qrow .qmain.qm-flex { display:flex; align-items:center; gap:6px; }   /* raw-ok: 제목↔표기 간격 6 = 시안(260724 플레이그라운드) 확정값 */
+  .qrow .qm-t { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:normal; }
+  .qrow .pp { flex:none; font-size:10px /* raw-ok: 실존 활자 사다리(10/11/12.5) 내 시안 확정값 */; font-weight:400; color:var(--mut); opacity:.75; white-space:nowrap; }
   .qrow .qt.qt-new { color:var(--accent); }   /* 1시간 이내 = 메인 강조색(운영자 260622) */
   .qrow .qt.qt-mid { color:var(--warn); }      /* 1~4시간 = 노란 강조색(운영자 260622) */
   /* 대기열 행 등장 = 촤르르 스태거(열림·페이지전환 공용 · cardIn 키프레임 + msglist 지연 패턴 계승) */
@@ -3255,6 +3259,18 @@
   .md-kind { font-size:11px; font-weight:800; } .md-kind.mk-info { color:var(--mut); } .md-kind.mk-warn { color:var(--warn); } .md-kind.mk-sys { color:var(--info); }
   .md-time { font-size:11px; font-weight:800; color:var(--mut); }
   .md-body { font-size:13px; line-height:1.65; color:var(--fg); white-space:pre-wrap; word-break:break-word; }
+  /* 조치형 알림(m.action)의 '다시 받아오기' 버튼 — 재시도=arm(레몬) 색 정본 계승(.qgo.go-arm 미러) · 정렬 idiom = .msgback(inline-flex·align center·gap·svg 고정) 계승(운영자 260723 "눌러도 할 게 없다" 봉합) */
+  .md-act { align-self:flex-start; }
+  .md-act[hidden] { display:none; }
+  .md-actbtn { display:inline-flex; align-items:center; gap:var(--sp-1); padding:var(--sp-1) var(--sp-2); border-radius:var(--r-pill);
+    border:1px solid rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); color:var(--arm);
+    font:800 12px inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition:background var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) ease, color var(--dur-fast) ease; }   /* reuse-ok: 재시도=arm 색 정본(.qgo.go-arm) + .msgback 정렬 idiom 계승 · 단일 조치 버튼(칩/토글/슬라이더 아님 = 상호작용표 미해당) */
+  .md-actbtn svg { width:14px; height:14px; flex:none; }
+  .md-actbtn:hover { background:rgba(var(--arm-rgb),.16); }
+  .md-actbtn:active { transform:scale(var(--press-s,.85)); }
+  .md-actbtn.ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
+  .md-actbtn[disabled] { opacity:.6; cursor:default; }
   .pubpop .pinmark::before { content:''; position:absolute; inset:-8px; }   /* 롱프레스 히트영역 확장(14→30px)·레이아웃 무영향(absolute) — 이벤트는 부모(.pinmark)로 귀속(평의회 260702) */
   .pubpop .pinmark svg { width:14px; height:14px; }
   .pubpop .pinmark.locked { color:var(--arm); }   /* 잠금 = 레몬(강조·운영자) */
@@ -3391,6 +3407,7 @@ try {
       <button class="msgback" id="msgback" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>목록</button>
       <div class="md-meta"><span class="md-kind" id="mdKind"></span><span class="md-time" id="mdTime"></span></div>
       <div class="md-body" id="mdBody"></div>
+      <div class="md-act" id="mdAct" hidden></div><!-- 조치형 알림(m.action) '다시 받아오기' 등 버튼 자리 · openMsgDetail이 렌더(260723) -->
     </div>
   </div>
   <!-- 잠금 설정 팝업 = 메시지함(msgpop) 계승 · 행 = pushrow/pushbtn 계승(운영자 260703) · PIN 변경(구 lkRowPin)은 설정 직하위 독립 항목으로 이관(요구6·7 · 260710) → 자동잠금 시간만 -->
@@ -7162,6 +7179,21 @@ function renderMsgList() {
 }
 // 메시지 상세(전문) 화면 — 목록 대신 표시. 구분·시간·전문(잘림 없음) + 뒤로(목록).
 function msgShowList() { const d = $('#msgdetail'), l = $('#msglist'); if (d) d.hidden = true; if (l) l.hidden = false; }
+// 조치형 알림 = 메시지 상세에서 '무엇을 할 수 있나'를 버튼으로 노출(운영자 260723 "눌러도 할 게 없다" 봉합).
+//   msg.py action 태그 → build 보존 → 여기서 라벨·핸들러 매핑. 알 수 없는 action = 버튼 없음(구 동작 불변).
+const _RECOLLECT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>';
+async function snsRecollect(btn) {   // SNS 트렌드 정체(wd-sns) → sns-trends 워크플로 재발사(수동 하트비트 · /api/snsretry)
+  if (!btn || btn.disabled) return;
+  const span = btn.querySelector('span');
+  btn.disabled = true; if (span) span.textContent = '요청 중…';
+  try {
+    const r = await fetch('/api/snsretry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { btn.classList.add('ok'); if (span) span.textContent = '요청됨 · 1~2분 뒤 갱신돼'; }   // 재수집은 러너 스핀업+수집+커밋 = ~1~2분(즉시 갱신 아님 = 정직 고지)
+    else { if (span) span.textContent = (d.error || '요청 실패 — 잠시 뒤 다시'); btn.disabled = false; }
+  } catch { if (span) span.textContent = '네트워크 오류 — 다시'; btn.disabled = false; }
+}
+const MSG_ACTIONS = { 'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect } };
 function openMsgDetail(m) {
   if (!m) return;
   const d = $('#msgdetail'), l = $('#msglist'); if (!d || !l) return;
@@ -7169,6 +7201,11 @@ function openMsgDetail(m) {
   if (kn) { kn.className = 'md-kind ' + k.c; kn.textContent = k.t; }   // 무슨 알림인지(구분) 상단 표시(운영자 260704 '무슨 표시인지 떠야')
   const tt = $('#mdTime'); if (tt) tt.textContent = msgAgo(m);
   const bd = $('#mdBody'); if (bd) bd.textContent = m.text || '(내용 없음)';
+  const act = $('#mdAct'), cfg = m.action && MSG_ACTIONS[m.action];   // 조치형이면 버튼 렌더(어포던스: 이 알림에 대해 지금 할 수 있는 것)
+  if (act) {
+    if (cfg) { act.hidden = false; act.innerHTML = '<button class="md-actbtn" type="button">' + cfg.svg + '<span>' + qEsc(cfg.label) + '</span></button>'; const b = act.querySelector('.md-actbtn'); if (b) b.onclick = () => cfg.fn(b); }
+    else { act.hidden = true; act.innerHTML = ''; }
+  }
   l.hidden = true; d.hidden = false; d.scrollTop = 0;
 }
 // 메시지함 열고(필요시) 특정 메시지로 스크롤·강조 — 푸시 알림 탭(/?msg=<id>) 진입점.
@@ -7185,7 +7222,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'f3184e8 · 260724_0738';  /*BUILDSTAMP*/
+const BUILD_STAMP = '4cbaf8b · 260724_0805';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -8500,7 +8537,16 @@ function qRowHtml(it) {
   const ttl = qTitle(it), cp = [...ttl], ttlS = cp.length > 40 ? cp.slice(0, 40).join('') + '…' : ttl;   // 40자 하드캡 + … (코드포인트 단위)
   const _am = it.t ? (Date.now() - it.t) / 60000 : 1e9;   // 경과(분)
   const tnew = _am <= 60 ? ' qt-new' : _am <= 240 ? ' qt-mid' : '';   // ≤1h 메인 강조 / 1~4h 노랑 / 그외 기본(운영자 260622)
-  return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span><span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span><span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
+  const pp = qPresetPP(it);   // 수집 프리셋 표기(Q495 시안 확정) — 있으면 제목만 말줄임(qm-flex)·표기 생존
+  const mainCell = pp ? '<span class="qmain qm-flex" title="' + qEsc(ttl) + '"><i class="qm-t">' + qEsc(ttlS) + '</i>' + pp + '</span>'
+                      : '<span class="qmain" title="' + qEsc(ttl) + '">' + qEsc(ttlS) + '</span>';
+  return '<div class="qrow q-' + eff + '"><span class="qt' + tnew + '">' + qEsc(qAgo(it.t)) + '</span>' + mainCell + '<span class="qst">' + status + '</span><span class="qact">' + action + '</span></div>';
+}
+const PP_LBL = { h24: '24h', fp: '외신', mj: '주요' };   // 수집 프리셋 축약 라벨(Q495 시안 확정 · Q491 스트립 짝)
+function qPresetPP(it) {   // 프리셋 적용된(켜진) 요약요청만 표기 — 켜진 조건 나열 · 스크랩/픽·구 asks(무필드)·전부 꺼짐 = ''(운영자 260724 "역방향 아님 · 보통은 무표기")
+  const p = it && it.preset; if (!p) return '';
+  const on = ['h24', 'fp', 'mj'].filter(k => p[k]);
+  return on.length ? '<span class="pp">' + on.map(k => PP_LBL[k]).join(' · ') + '</span>' : '';
 }
 function pagerHtml(pages, cur) {   // 5개/페이지 · 페이지번호 슬라이딩 윈도우(최대 5개)
   if (pages <= 1) return '';
