@@ -53,6 +53,11 @@ jobs:
       - name: Install claude-code
         run: npm install -g @anthropic-ai/claude-code
 
+      - name: Setup Deno (yt-dlp JS 챌린지 솔버)   # 운영자 260723: YouTube 서명/nsig 챌린지 = yt-dlp 순수파이썬 solver 실패("supported JavaScript runtime" 요구) → Deno JS 런타임 제공(EJS)으로 포맷 추출 복구 · 설치 실패해도 비치명(순수 파이썬 폴백)
+        run: |
+          curl -fsSL https://deno.land/install.sh | timeout 120 sh 2>/dev/null || echo "::warning::Deno 설치 실패 — 순수 파이썬 solver 폴백"
+          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
+
       - name: 메타·자막 추출 (yt-dlp — 영상 다운로드 없음)
         timeout-minutes: 12
         env:
@@ -68,7 +73,7 @@ jobs:
           case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
           [ -n "$URL" ] || { echo "::error::url 없음"; exit 1; }
           mkdir -p "viewer/nb_out/${IN_ID}"
-          timeout 180 pip3 install -q yt-dlp || { sleep 3; timeout 180 pip3 install -q yt-dlp; }   # 네트워크 op 타임아웃(§인프라 b)
+          timeout 240 pip3 install -q -U --pre "yt-dlp[default]" || { sleep 3; timeout 240 pip3 install -q -U --pre "yt-dlp[default]"; }   # 나이틀리+default extras = YouTube nsig/서명 챌린지 대응 최신(Deno와 함께 서명 해결 · 운영자 260723) · 네트워크 타임아웃(§인프라 b)
           COOKIES=""
           if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
           # ── 1차 flat 판정(운영자 260712 3차 "채널 넣으면 유튜브 다 긁어지게") — 채널/재생목록 = entries만 초고속 추출(영상 메타 전수 긁기·스크롤링 0)
