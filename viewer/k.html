@@ -726,11 +726,14 @@ function poll(outPath, refPath) {
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = kmake 실패 메시지(있으면 즉시 표시 — budget 다 안 기다림·260619)
   let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); if (_curStop === stop) _curStop = null; }; _curStop = stop;   // 종료 시 잔존 핸들 해제 — 완료 후 재클릭·리롤이 '생성 중' 재확인 암으로 오인되는 것 차단(암은 진행 중에만 · 260708)
   status.setAttribute('aria-busy', 'true');   // 생성 폴 진행 표식(ly goWait 짝) — 부모 뷰어 자동잠금이 '제작중'으로 읽어 보류(운영자 260707) · 해제 = stop(완료·실패·초과·재시도 전 경로)
+  const kNote = refPath ? ' (레퍼런스 이미지 포함 — 최대 ~15분)' : ' (보통 1–3분)';
+  if (window.nmLoader) status.innerHTML = nmLoader('prompting','Prompting…') + '<span class="ktime" style="color:var(--mut);margin-left:var(--sp-1);font-variant-numeric:tabular-nums"></span>';   // orb(Prompting) 1회 생성 · 시간만 갱신(매초 재그리기 = 애니 리셋 방지 · 운영자 260723 Q460)
   const draw = () => {   // 1초 벽시계 티커 — 표시 초가 실제 시간과 일치(네트워크 폴 5s와 분리·260619)
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
     if (sec > budget) { stop(); status.textContent = '표시 시간 초과 — 생성은 계속 돌고 있을 수 있어. 잠시 뒤 다시 열어봐(바로 재클릭 = 이중 발사 · Actions 로그로 확인 가능)'; status.classList.add('err'); return; }
-    status.innerHTML = WAIT_SVG + ' /k 생성 중… ' + sec + 's' + (refPath ? ' (레퍼런스 이미지 포함 — 최대 ~15분)' : ' (보통 1–3분)');
+    if (window.nmLoader) { const kt = status.querySelector('.ktime'); if (kt) kt.textContent = sec + 's' + kNote; }   // orb 유지·시간만 교체
+    else status.innerHTML = WAIT_SVG + ' /k 생성 중… ' + sec + 's' + kNote;   // 폴백 = 구 스피너
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {

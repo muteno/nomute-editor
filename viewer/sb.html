@@ -416,11 +416,13 @@ function poll(outPath, jid) {
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = sbmake 실패 메시지(k 계승)
   let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); if (_curStop === stop) _curStop = null; }; _curStop = stop;
   status.setAttribute('aria-busy', 'true');   // 진행 표식 — 부모 뷰어 자동잠금 보류 신호(k 계승)
+  if (window.nmLoader) status.innerHTML = nmLoader('prompting','Prompting…') + '<span class="sbtime" style="color:var(--mut);margin-left:var(--sp-1);font-variant-numeric:tabular-nums"></span>';   // orb(Prompting · 콘티 설계) 1회 생성 · 시간만 갱신(운영자 260723 Q460)
   const draw = () => {
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
     if (sec > budget) { stop(); status.textContent = '표시 시간 초과 — 생성은 계속 돌고 있을 수 있어. 잠시 뒤 다시 열어봐(바로 재클릭 = 이중 발사)'; status.classList.add('err'); return; }
-    status.innerHTML = WAIT_SVG + ' 콘티 설계 중… ' + sec + 's (보통 1–3분)';
+    if (window.nmLoader) { const bt = status.querySelector('.sbtime'); if (bt) bt.textContent = sec + 's (보통 1–3분)'; }
+    else status.innerHTML = WAIT_SVG + ' 콘티 설계 중… ' + sec + 's (보통 1–3분)';
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {

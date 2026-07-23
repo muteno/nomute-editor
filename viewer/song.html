@@ -399,8 +399,15 @@ function statusWait(on,t0,label){
   clearInterval(_stTick); _stTick=null;
   if(on){
     st.classList.remove('err'); st.classList.add('wait');
-    const paint=()=>{ st.innerHTML=esc(label||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-t0)/1000)+'</span>'; };
-    paint(); _stTick=setInterval(paint,1000);
+    if(window.nmLoader){   // orb 로더(Solving · 운영자 260723 Q460) — orb는 1회만 생성(매초 재그리기 = 애니 리셋 방지) · 시간만 갱신
+      st.innerHTML=nmLoader('solving','Solving…')+'<span class="gtime"></span>';
+      const gt=st.querySelector('.gtime');
+      const paint=()=>{ if(gt) gt.textContent=fmtT((Date.now()-t0)/1000); };
+      paint(); _stTick=setInterval(paint,1000);
+    } else {   // 폴백 = 구 점3
+      const paint=()=>{ st.innerHTML=esc(label||'생성 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="gtime">'+fmtT((Date.now()-t0)/1000)+'</span>'; };
+      paint(); _stTick=setInterval(paint,1000);
+    }
   } else { st.classList.remove('wait'); }
 }
 const WL={options:'옵션 생성 중',suno:'프롬프트 생성 중',lyria:'곡 만드는 중',voice:'보이스 입히는 중'};
