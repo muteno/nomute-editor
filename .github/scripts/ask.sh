@@ -89,6 +89,26 @@ for f in "${files[@]}"; do
   workdir="$(mktemp -d)"
   text="$(python3 -c "import json; print(json.load(open('$f')).get('text',''))" 2>/dev/null || true)"
   nothumb="$(python3 -c "import json; print('1' if json.load(open('$f')).get('nothumb') in (1,'1',True) else '')" 2>/dev/null || true)"   # 뷰어 '이미지' 토글 OFF → 제미나이 썸네일 생성 skip(검색 og:image는 항상·운영자 260702)
+  # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 우선 · mj=주요 언론 기반) → 프롬프트 조건 블록.
+  #   미지정·전OFF(구 asks 포함) = 빈 블록 = 종전 동작 그대로. 블록 위치 = 고정부([★] 모드) 뒤·가변부(요청) 앞 = 캐시 prefix 불변.
+  pres="$(python3 -c "
+import json
+p = (json.load(open('$f')).get('preset') or {})
+print(''.join(k for k in ('h24','fp','mj') if p.get(k) in (1,'1',True)))
+" 2>/dev/null || true)"
+  PRESET_BLOCK=""
+  if [ -n "$pres" ]; then
+    PRESET_BLOCK="[⚙ 수집 프리셋 — 운영자가 요청 창에서 켠 수집 조건(ON만 나열). ⚠️ 위 1)의 전문 규칙이 항상 우선 — 요청문에 기사 본문급 전문이 있으면 추가 검색 없이 그 전문으로 큐레이션하고 이 프리셋 검색 조건은 무시한다(image_sources 예외만 유지). 검색이 필요한 요청(토픽·캡처·URL)에 적용:
+"
+    case "$pres" in *h24*) PRESET_BLOCK="${PRESET_BLOCK} - ⏱ 24시간 이내: 검색 수집·인용 후보 = 게시 24시간 이내 기사만(위 '18시간 우선' 규칙을 이 24시간 하드 창으로 대체 — 24시간 밖 기사는 소스로 쓰지 마라). 24시간 내 보도가 전무할 때만 가장 최근 보도로 best-effort(억지 최신화·날짜 조작 금지 · 실패 금지 원칙 유지). 운영자가 직접 준 URL은 오래됐어도 존중(종전 규칙).
+";; esac
+    case "$pres" in *fp*) PRESET_BLOCK="${PRESET_BLOCK} - 🌐 외신 기사: '외신만'이 아니라 **외신을 먼저·주로 탐색하라** — 주제 핵심을 영문 키워드로 옮겨 영어 WebSearch부터 시작한다(Reuters·AP·AFP·BBC·CNN·NYT·Bloomberg·Guardian 등 국제 통신사·주요 외신 우선). 외신에서 사실이 충분히 확보되면 그걸 축으로 삼고, 국내 보도는 교차확인·국내 맥락 보조로만 쓴다.
+";; esac
+    case "$pres" in *mj*) PRESET_BLOCK="${PRESET_BLOCK} - 📰 주요 언론 기반: 단일 기사 요약이 아니라 **주요 언론 2~4곳의 보도를 수집·교차 검증해**, 먼저 2,000자 가까운 보도형 종합 자료를 내부적으로 구성하라 — 기·승 = 사실을 기반으로 한 사건의 발단·전개 / 전 = 사건의 결말(현재 상태) / 결 = 시사점이 확실한 구조. 그 종합 자료를 이 요약의 원문 소스로 삼아 위 출력 포맷 그대로 큐레이션한다(출력 포맷·분량 규칙 불변 — 종합 자료 자체를 그대로 출력하지 마라 · frontmatter url = 수집 매체 중 실제 확인한 가장 메이저한 기사 URL). 운영자가 URL을 준 요청이면 그 기사가 축(url 그대로)이고 타 매체는 교차확인용.
+";; esac
+    PRESET_BLOCK="${PRESET_BLOCK} - 검색 상한 완화: 이 프리셋 이행에 한해 WebSearch 총 6회까지 허용(외신 영문 검색 + 국내 교차 포함 — 위 '최대 2~3회' 제한의 프리셋 예외). 그래도 타임아웃 방지가 항상 우선 — 상한 내 확보된 것만으로 best-effort 완성하라(무한 검색 금지 불변).]
+"
+  fi
   python3 - "$f" "$workdir" <<'PY' 2>/dev/null || true
 import json, sys, base64, re
 d = json.load(open(sys.argv[1])); wd = sys.argv[2]
@@ -121,6 +141,7 @@ ${GBLOCK}
  5) 내용이 모호해도 절대 실패(ANALYSIS_FAILED)하지 말고 best-effort 로 큐레이션한다 — 이 건은 운영자가 직접 고른 것이다.
  ⛔ Write/Edit/Bash 금지(스크립트가 저장한다). frontmatter '---' 로 시작하는 다이제스트만 출력.]
 
+${PRESET_BLOCK}
 사용자 요청(자연어):
 ${text:-(없음 — 캡처만)}
 
