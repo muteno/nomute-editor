@@ -77,6 +77,9 @@ def main():
             if hit:
                 TOK, PID = hit['access_token'], hit['id']
                 print(f"fb-fetch: 유저 토큰 판정 — 페이지 '{hit.get('name')}'({PID}) 토큰 자동 교체")
+            elif pages and pages[0].get('id'):
+                PID = pages[0]['id']   # 시스템유저 토큰(운영자 260724) = me/accounts가 페이지별 access_token 미반환(자기 토큰이 곧 접근권) → 페이지 id만 채택·TOK(시스템유저 토큰) 유지. me 폴백이 봇 자신(nomute-bot)을 페이지로 오인해 프로필 #100 나던 뿌리 봉합.
+                print(f"fb-fetch: 시스템유저 토큰 판정 — 관리 페이지 '{pages[0].get('name')}'({PID}) 자산 인식(토큰 유지)")
         except Exception:
             pass
         if not PID:
