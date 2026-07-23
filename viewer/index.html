@@ -7097,7 +7097,15 @@ function healthMsg() {
   let when = ''; try { when = SHC.ts ? new Date(SHC.ts).toLocaleString('ko-KR', { hour12: false }) : ''; } catch {}
   return { _health: true, text: '맞춤법 검사기 점검 필요 — 자동 교정이 멈췄어. 고치면 사라져.', ts: when };
 }
-const allMsgs = () => { const h = healthMsg(); return h ? [h, ...MSGS] : MSGS.slice(); };
+// 새 버전(새 index 셸 배포 감지) = 클라이언트 알림을 메시지함 항목으로(운영자 260724 "UI 바뀔 때마다 알림도 메시지함으로") —
+//   튀는 토스트 팝 대신 조용한 채널. _health 계열(클라 전용·id 없음·삭제불가·시스템 구분) + action='shell-apply'(→ '반영하기').
+let _shellUpdPending = false, _shellUpdWhen = 0;
+function shellUpdMsg() {
+  if (!_shellUpdPending) return null;
+  return { _health: true, _shellupd: true, action: 'shell-apply', t: _shellUpdWhen || undefined,
+           text: '새 버전이 나왔어요 — 반영하면 최신 화면으로 새로고침돼요. (안 눌러도 다음 진입 때 자동 반영)' };
+}
+const allMsgs = () => { const out = MSGS.slice(); const h = healthMsg(); if (h) out.unshift(h); const s = shellUpdMsg(); if (s) out.unshift(s); return out; };   // 클라 알림(맞춤법·새버전)을 서버 메시지 앞에 병합(새버전이 최상단)
 async function loadHealth(force) {
   try { SHC = JSON.parse(localStorage.getItem('nomute_shc') || 'null'); } catch { SHC = null; }
   if (force || !SHC || (Date.now() - (SHC.ts || 0)) > SHC_PROBE_TTL) {   // 능동 백스톱(force=수동 새로고침=즉시 재확인) — 검사기 명시 healthy:false일 때만 불건강(거짓경보 방지)
@@ -7193,7 +7201,14 @@ async function snsRecollect(btn) {   // SNS 트렌드 정체(wd-sns) → sns-tre
     else { if (span) span.textContent = (d.error || '요청 실패 — 잠시 뒤 다시'); btn.disabled = false; }
   } catch { if (span) span.textContent = '네트워크 오류 — 다시'; btn.disabled = false; }
 }
-const MSG_ACTIONS = { 'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect } };
+async function shellApply(btn) {   // 새 버전 반영 = 최신 셸 재확보 후 새로고침(applyShellUpdate 재사용 · 토스트 버전과 동일 경로)
+  if (btn) { btn.disabled = true; const s = btn.querySelector('span'); if (s) s.textContent = '반영중…'; }
+  return applyShellUpdate(null);   // t=null = 토스트 텍스트 갱신 스킵 · fetch→SW 캐시 갱신→reload 는 동일
+}
+const MSG_ACTIONS = {
+  'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect },
+  'shell-apply': { label: '반영하기', svg: _RECOLLECT_SVG, fn: shellApply },
+};
 function openMsgDetail(m) {
   if (!m) return;
   const d = $('#msgdetail'), l = $('#msglist'); if (!d || !l) return;
@@ -7222,7 +7237,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '4cbaf8b · 260724_0805';  /*BUILDSTAMP*/
+const BUILD_STAMP = '9da181e · 260724_0813';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -7247,7 +7262,7 @@ if ('serviceWorker' in navigator) {
         sessionStorage.setItem('nmAuthKick', '1');   // 세션 1회 가드 = 리로드 루프 차단(SW의 nosw 조기 return이 1차 방어)
         const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href);
       }
-      if (e.data && e.data.type === 'nm-shell-updated') showUpdateToast();   // 새 index 셸 배포 감지(SW SWR 백그라운드 재검증이 옛≠새 감지) → "새 버전 · 탭하면 반영" 안내(운영자 260717)
+      if (e.data && e.data.type === 'nm-shell-updated') flagShellUpdate();   // 새 index 셸 배포 감지(SW SWR 백그라운드 재검증이 옛≠새 감지) → 메시지함 '새 버전' 항목 점등(운영자 260724 — 구 토스트 팝 showUpdateToast 대신 조용한 채널)
     } catch {}
   });
 }
@@ -7279,6 +7294,16 @@ async function applyShellUpdate(t) {
   try { sessionStorage.setItem('nmUpdCoolT', String(Date.now())); } catch {}   // 반영 직후 90s 재알림 억제 도장(무한루프 회로차단기 · 운영자 260717) — 그 사이 실배포가 와도 SWR 재검증 put이 캐시를 조용히 갱신 = 다음 진입 반영(수렴 보장 · 억제 = 표시만)
   location.reload();   // 성공 = 방금 꽂은 '현재 최신' 셸 즉시 서빙 + SWR 재검증도 동일 바이트 = 재알림 없음
 }
+// 새 버전 감지 → 메시지함 항목 점등(운영자 260724 "UI 바뀔 때마다 알림도 메시지함으로"). 구 showUpdateToast(튀는 토스트 팝)
+//   대신 조용한 채널 = 화면 안 가리고, 메시지함에서 '반영하기'로 조치. 억제·중복 흡수 로직은 토스트 버전 계승.
+function flagShellUpdate() {
+  try { if (Date.now() - (+sessionStorage.getItem('nmUpdCoolT') || 0) < 90000) return; } catch {}   // 반영 직후 90s 억제(회로차단기 계승 · toast 버전과 동일)
+  if (_shellUpdPending) return;   // 이미 대기 = 중복 무해(SWR 재검증 반복 흡수)
+  _shellUpdPending = true; _shellUpdWhen = Date.now();
+  try { renderMsgBadge(); } catch {}   // 프로필 상태·카운트 갱신
+  try { const mp = $('#msgpop'); if (mp && !mp.hidden) renderMsgList(); } catch {}   // 메시지함 열려있으면 즉시 목록 반영
+}
+// (도먼트 260724 — 새 버전 알림을 메시지함으로 이관 · 위 flagShellUpdate가 대체) 구 토스트 팝 렌더러. 재점등 = 7246 핸들러를 showUpdateToast로 되돌리면 부활(applyShellUpdate·CSS .nm-toast.upd 보존).
 function showUpdateToast() {
   if (_shellUpdShown || _shellUpdApplying) return;   // 표시 중 1회 = 중복 postMessage·재검증 반복 무해화(✗ 누르면 해제 = 다음 배포 재알림) · 적용 중 재알림 = 무시('반영중' 문구를 '탭하면 반영'으로 되감아 죽은 탭처럼 오도하는 창 봉쇄 · 평의회 260717-2)
   try { if (Date.now() - (+sessionStorage.getItem('nmUpdCoolT') || 0) < 90000) return; } catch {}   // 반영 탭 후 90s = 재알림 억제(회로차단기 · 운영자 260717 "탭하면 반영 무한루프") — 잔여 미지 변이가 있어도 루프 절단 · 캐시는 SW put이 계속 수렴
@@ -8565,6 +8590,15 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
+    // 프리셋 표기가 제목을 줄이면(말줄임 발동) 표기 제거·제목 전폭 복원(운영자 260724 "제목 줄어들 여지 높으면 그냥 안 표기") —
+    //   .pp는 .qmain(flex:1·min-width:0) 안에 갇혀 우측 픽토그램(.qst/.qact flex:none)은 구조상 무침범 · 제목 잠식만 이 가드로 차단.
+    const pp = row.querySelector('.pp');
+    if (pp) { const qt = row.querySelector('.qm-t');
+      if (qt && qt.scrollWidth > qt.clientWidth + 0.5) {   // 표기 있는 채로 제목이 잘림 = 표기가 폭 잠식 → 제거하고 제목 전폭 환원(무표기 행과 동일 구조)
+        const main = row.querySelector('.qmain'); pp.remove();
+        if (main) { main.classList.remove('qm-flex'); main.textContent = qt.textContent; }
+      }
+    }
     const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = (go.classList.contains('qretry') || go.classList.contains('qpretry')) ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('qpretry')) qPickRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
   });
   if (pg) {
