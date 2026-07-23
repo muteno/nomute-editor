@@ -7,9 +7,27 @@
 #        페이지 토큰 자동 교체 · 페이지 토큰 = me 직독 · 변수 등록 시 그 값 고정) — FB_PAGE_TOKEN 부재 + IG_ACCESS_TOKEN 존재 시
 #        겸용 프로브(me/accounts 페이지 토큰 자동 수급 · 페북 로그인 경로 토큰만 성립 · 실패 = 종전 no-op) · 프로필 실패 = 직전 파일 유지(fail-soft) ·
 # 인사이트 메트릭별 독립 fail-soft(Graph 메트릭 개폐가 잦아 하나 죽어도 나머지 수집).
-import json, os, sys, urllib.request, urllib.error, urllib.parse, datetime, statistics
+import json, os, sys, urllib.request, urllib.error, urllib.parse, datetime, statistics, re, ast
 
 TOK = os.environ.get('FB_ACCESS_TOKEN', '').strip() or os.environ.get('FB_PAGE_TOKEN', '').strip()   # 토큰 시크릿 = FB_ACCESS_TOKEN 우선 · FB_PAGE_TOKEN 폴백(운영자 260723 — 운영자가 새 토큰을 FB_ACCESS_TOKEN 이름으로 등록해 별칭 수용 · 신선분 우선이라 구 죽은 FB_PAGE_TOKEN 잔존해도 새 것 채택)
+
+_CAT_KW = None
+def _cat_of(name):
+    """뉴스 6버킷 주제 분류(scraper/to_candidates.py CAT_KW 재사용 = insta_signals.category() 미러 · 라벨 = 인스타 topics 동일: 국제·경제·문화·테크·정치·사회 + 미스=기타). 로드 실패 = 전부 기타(fail-soft)."""
+    global _CAT_KW
+    if _CAT_KW is None:
+        try:
+            src = open('scraper/to_candidates.py', encoding='utf-8').read()
+            m = re.search(r'CAT_KW\s*=\s*(\{.*?\n\})', src, re.S)
+            _CAT_KW = ast.literal_eval(m.group(1)) if m else {}
+        except Exception:
+            _CAT_KW = {}
+    best, hits = '기타', 0
+    for c, kws in (_CAT_KW or {}).items():
+        h = sum(1 for k in kws if k in (name or ''))
+        if h > hits:
+            best, hits = c, h
+    return best
 PID = os.environ.get('FB_PAGE_ID', '').strip()
 IGTOK = os.environ.get('IG_ACCESS_TOKEN', '').strip()   # 겸용 프로브 폴백(운영자 260718 "인스타 API가 메타였는데 못 끌어와?" — 세팅 문서 §0)
 OUT = 'viewer/fb_data.json'
@@ -156,6 +174,24 @@ def main():
             'comments': sum((((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) for x in _tr),
             'shares': sum(((x.get('shares') or {}).get('count') or 0) for x in _tr),
             'n_posts': len(_tr)}
+    # ── 주제별 반응(운영자 260723 "인스타처럼 녹여") — 인스타는 조회수 중앙값 기준이나 FB는 게시물별 반응(eng)뿐 → '반응 중앙값' 기준 주제 집계.
+    #    분류기 = 뉴스 CAT_KW 재사용(라벨 = 인스타 topics 6버킷 동일) · views_med 필드에 eng 중앙값 적재 = 뷰어 topic 렌더 100% 계승(무변경, 값 의미만 반응).
+    #    표본 = 본 posts(10·썸네일/시리즈용)와 분리한 별도 넓은 fetch(반응만·60개) = 기존 흐름 무영향 · 리치필드 권한 없으면 통째 스킵(fail-soft).
+    try:
+        _wide = api(f'{PID}/posts', fields='message,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=60).get('data', [])
+        _tp = {}
+        for x in _wide:
+            if not (('reactions' in x) or ('comments' in x) or ('shares' in x)):
+                continue
+            e = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
+                + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
+                + ((x.get('shares') or {}).get('count') or 0)
+            _tp.setdefault(_cat_of((x.get('message') or '').split('\n')[0]), []).append(e)
+        if _tp:
+            d['topics'] = {c: {'n': len(v), 'views_med': round(statistics.median(v))} for c, v in _tp.items()}
+            print(f"fb-fetch: 주제별 반응 — {len(d['topics'])}주제(표본 {sum(len(v) for v in _tp.values())}) = {', '.join(f'{c}:{len(v)}' for c, v in _tp.items())}")
+    except Exception as e:
+        print(f'fb-fetch: 주제별 반응 스킵(비치명) — {e}')
     if a.get('interactions') is None:
         idays = sorted(dt for dt in series if 'interactions' in series[dt])
         if idays: a['interactions'] = series[idays[-1]]['interactions']
