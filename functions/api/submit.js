@@ -17,11 +17,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
     : [];
   if (!text && !images.length) return json({ error: '빈 요청 — 내용이나 캡처를 넣어줘' }, 400);
   const nothumb = (body.nothumb === 1 || body.nothumb === '1' || body.nothumb === true) ? 1 : 0;   // 1=제미나이 썸네일 생성 skip(검색 og:image는 항상)·뷰어 '이미지' 토글 OFF·운영자 260702
+  const _p = (body.preset && typeof body.preset === 'object') ? body.preset : {};
+  const preset = { h24: _p.h24 ? 1 : 0, fp: _p.fp ? 1 : 0, mj: _p.mj ? 1 : 0 };   // 수집 프리셋(24시간 이내·외신 우선·주요 언론 기반) = 뷰어 스트립 토글 → ask.sh 프롬프트 배선(운영자 260723 · 미전송 구클라 = 전부 0 = 종전 동작)
 
   const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYY-MM-DD-HHMM (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) — pending.js askTime·ask.sh 파서가 이 형식 기대
   const rnd = Math.random().toString(36).slice(2, 7);
   const path = `asks/${ts}-${rnd}.json`;
-  const payload = JSON.stringify({ ts, text, images, nothumb });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그
+  const payload = JSON.stringify({ ts, text, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 수집 프리셋(h24·fp·mj)
 
   // UTF-8 안전 base64(Workers에 unescape 없음 → TextEncoder)
   const bytes = new TextEncoder().encode(payload);
