@@ -1190,6 +1190,28 @@ def check_label_fill():
     return 0
 
 
+def check_loader_ssot():
+    """로딩 표기 SSOT 게이트(운영자 260723 Q461 — "전역 앱 세션에서 정해진 로딩만 쓰도록").
+    정본 = viewer/nm-loader.js window.nmLoader(type,label[,opts]) · orb 2종·라벨 3개(Thinking/Solving/Prompting).
+    규칙 = 새 로더는 nmLoader만. raw 3점 로더(`gdots"><i>` 마크업)가 nmLoader 폴백이 아닌 채로 baseline 초과 = 차단(신규 raw 재발 방지·기존 잔량은 점진 감축 래칫).
+    baseline = 260723 실측 raw 잔량(인터벌 버튼 페인트·설정 토글 등 — 미전환분 · 신규 = 0 강제). fail-closed 아님(뷰어 못 읽으면 스킵)."""
+    import glob as _g
+    BASELINE = 14   # 260723 Q461 실측(conv2·index5·ly2·song1·tr2·track2) — 낮추기만(신규 raw = 초과 차단) · 0 도달 시 하드락 승격
+    raw = 0
+    try:
+        for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+            for ln in open(fp, encoding='utf-8'):
+                if 'gdots"><i>' in ln and 'nmLoader' not in ln and '@keyframes' not in ln and '.gdots' not in ln:
+                    raw += 1
+    except Exception as e:
+        print('⚠️ check_loader_ssot 스킵:', e); return 0
+    if raw > BASELINE:
+        print('❌ 로딩 SSOT 게이트 — raw 3점 로더 %d > baseline %d · 새 로딩 표기 = window.nmLoader(type,label)만(nm-loader.js · type=thinking|solving|prompting) · raw gdots 신설 금지' % (raw, BASELINE))
+        return 1
+    print('✅ 로딩 SSOT 게이트 — raw 로더 %d ≤ baseline %d(신규 로딩 = nmLoader 강제 · 잔량 감축 래칫).' % (raw, BASELINE))
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1343,6 +1365,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_qledger_unique 예외(fail-closed — 게이트 무력화 방지):', e); rc = 1
+    try:
+        if check_loader_ssot() != 0:   # 로딩 표기 SSOT(하드 게이트 — 새 로더 = window.nmLoader만·raw gdots 신설 차단 · 운영자 260723 Q461 "정해진 로딩만")
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_loader_ssot 스킵:', e)
     return rc
 
 
