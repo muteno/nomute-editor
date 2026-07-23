@@ -8590,6 +8590,15 @@ function renderQueuePage() {
   box.innerHTML = slice.map(qRowHtml).join('');
   slice.forEach((it, i) => {
     const row = box.children[i]; if (!row) return;
+    // 프리셋 표기가 제목을 줄이면(말줄임 발동) 표기 제거·제목 전폭 복원(운영자 260724 "제목 줄어들 여지 높으면 그냥 안 표기") —
+    //   .pp는 .qmain(flex:1·min-width:0) 안에 갇혀 우측 픽토그램(.qst/.qact flex:none)은 구조상 무침범 · 제목 잠식만 이 가드로 차단.
+    const pp = row.querySelector('.pp');
+    if (pp) { const qt = row.querySelector('.qm-t');
+      if (qt && qt.scrollWidth > qt.clientWidth + 0.5) {   // 표기 있는 채로 제목이 잘림 = 표기가 폭 잠식 → 제거하고 제목 전폭 환원(무표기 행과 동일 구조)
+        const main = row.querySelector('.qmain'); pp.remove();
+        if (main) { main.classList.remove('qm-flex'); main.textContent = qt.textContent; }
+      }
+    }
     const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = (go.classList.contains('qretry') || go.classList.contains('qpretry')) ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('qpretry')) qPickRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
   });
   if (pg) {
