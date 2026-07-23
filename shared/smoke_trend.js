@@ -154,8 +154,9 @@ const SEL = {
           const rank = row.querySelector(S.rank), q = row.querySelector(S.q);
           const lr = lbl.getBoundingClientRect(), cs = getComputedStyle(lbl);
           const bw = parseFloat(getComputedStyle(lbl, '::before').width) || 0;
-          let titleL = null; const tn = [...lbl.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
-          if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); titleL = +rg.getBoundingClientRect().left.toFixed(2); }
+          let titleL = null; const tw = lbl.querySelector(':scope > .trend-lbltx');   // 라벨 = .trend-lbltx 래핑(Q472 광학 보정) 우선 · 폴백 = 맨 텍스트 노드(구조 무변 시)
+          if (tw) { titleL = +tw.getBoundingClientRect().left.toFixed(2); }
+          else { const tn = [...lbl.childNodes].find(n => n.nodeType === 3 && n.textContent.trim()); if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); titleL = +rg.getBoundingClientRect().left.toFixed(2); } }
           return { badgeCx: cxOf(grp && grp.querySelector(':scope > summary > i')), bulletCx: +(lr.left + parseFloat(cs.paddingLeft) + bw / 2).toFixed(2), rankCx: cxOf(rank),
             titleL, queryL: q ? +q.getBoundingClientRect().left.toFixed(2) : null, grpChev: chevR(grp && grp.querySelector(':scope > summary')), subChev: chevR(g.querySelector(':scope > summary')) };
         };
