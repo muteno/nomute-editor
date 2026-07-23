@@ -10,7 +10,7 @@
 //
 // 무엇을 검증하나 — 8시나리오(유래 = 260718 Q162 페이블 병렬 7호 하네스 승격):
 //   T2 진입(trend 탭 주입·gt/sig 렌더·행수=데이터 동치·검색어 전행 채움[fillT])
-//   → T3 순위만(변동배지·검색량·시각 열 0 · 행 자식 = rank+q 뿐)
+//   → T3 실검 문법(변동배지·시각 0 · 시그널=순위만 rank+q · 구글=검색량 크기숫자 · 운영자 260723 Q483)
 //   → T10 교차합의 골드레몬 표기(평의회 260723 #9 = signal∩gtrends 2소스 동시 = 핫 · .trend-q.cnhot 색 · 실검 gt/sig 전용·타 섹션 유출 0)
 //   → T4 회귀 가드(타 섹션 xtr 시각 열 잔존 = 메타 제거의 월경 없음)
 //   → T5 소분류 기준 캡션 제거(gt·sig 무캡션 = 수집시각 좌상단 #vhTime 1회 집약 · 운영자 260720)
@@ -116,11 +116,12 @@ const SEL = {
     ok('T2 진입·렌더(행수=데이터 동치·검색어 전행 채움)', t2.gtRows === gtN && t2.sigRows === sigN && t2.gtFill && t2.sigFill, JSON.stringify(t2) + ` 기대 ${gtN}/${sigN}`);
 
     const t3 = await pg.evaluate(S => {
-      const meta = sec => { const el = document.querySelector(sec); return el ? el.querySelectorAll(`${S.chg}, ${S.traffic}, ${S.tm}`).length : 0; };
-      const pure = sec => { const el = document.querySelector(sec); return el ? [...el.querySelectorAll(S.row)].every(r => r.children.length === 2 && r.querySelector(S.rank) && r.querySelector(S.q)) : true; };   // rank+q 뿐(교차합의 = .trend-q.cnhot 색만 = 자식 무증 · 변동배지/검색량/시각은 meta로 별도 금지)
-      return { gtMeta: meta(S.gt), sigMeta: meta(S.sig), gtPure: pure(S.gt), sigPure: pure(S.sig) };
+      const chgTm = sec => { const el = document.querySelector(sec); return el ? el.querySelectorAll(`${S.chg}, ${S.tm}`).length : 0; };   // 변동배지·시각 = 실검 공통 금지(검색량 traffic만 구글 크기숫자로 허용 · 운영자 260723 Q483)
+      const sigMeta = sec => { const el = document.querySelector(sec); return el ? el.querySelectorAll(`${S.chg}, ${S.traffic}, ${S.tm}`).length : 0; };   // 시그널 = 배지·검색량·시각 전무(원천 볼륨 0 = 순위만)
+      const pure = sec => { const el = document.querySelector(sec); return el ? [...el.querySelectorAll(S.row)].every(r => r.children.length === 2 && r.querySelector(S.rank) && r.querySelector(S.q)) : true; };   // rank+q 뿐(.trend-q.cnhot = 색만 = 자식 무증)
+      return { gtChgTm: chgTm(S.gt), sigMeta: sigMeta(S.sig), sigPure: pure(S.sig), gtTraf: (document.querySelector(S.gt) ? document.querySelector(S.gt).querySelectorAll(S.traffic).length : 0) };
     }, SEL);
-    ok('T3 순위만(배지·검색량·시각 0 · 행=rank+q 뿐)', t3.gtMeta === 0 && t3.sigMeta === 0 && t3.gtPure && t3.sigPure, JSON.stringify(t3));
+    ok('T3 실검 문법(변동배지·시각 0 · 시그널=순위만 · 구글=검색량 크기숫자 · 운영자 260723 Q483)', t3.gtChgTm === 0 && t3.sigMeta === 0 && t3.sigPure && t3.gtTraf > 0, JSON.stringify(t3));
 
     const t10 = await pg.evaluate(S => {
       const all = [...document.querySelectorAll(S.cnhot)];
