@@ -12,7 +12,8 @@ set -e
 cd "$(dirname "$0")/.."
 # 폰 로컬 시크릿(git 밖 · cron은 .bashrc 미로드라 여기서 source) — 재난문자 등 키 필요 소스용.
 # 1회 설정(폰):  echo "export SAFETY_KEY='발급받은_재난문자_서비스키'" > ~/.nomute_phone_env
-[ -f "$HOME/.nomute_phone_env" ] && . "$HOME/.nomute_phone_env"
+# 보안 가드(평의회 260723 #6) — env(쿠키·키 평문 집결)가 600 아니면 강제(termux -c / Mac -f 분기) · 전체 쿠키jar 유출 사고 재발 봉인
+[ -f "$HOME/.nomute_phone_env" ] && { [ "$(stat -c %a "$HOME/.nomute_phone_env" 2>/dev/null || stat -f %A "$HOME/.nomute_phone_env" 2>/dev/null)" = 600 ] || chmod 600 "$HOME/.nomute_phone_env"; . "$HOME/.nomute_phone_env"; }
 git fetch origin main -q 2>/dev/null || true
 git pull -q --rebase origin main 2>/dev/null || true   # 최신 계정 목록(sns_accounts.json) 동기
 python3 scripts/phone_subs.py || exit 0                # 수집 실패 = 조용히 종료(다음 주기 · fail-soft)
