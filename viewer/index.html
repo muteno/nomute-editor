@@ -934,6 +934,7 @@
   .sig-lgd i::before { content:''; width:6px; height:6px; border-radius:50%; }   /* raw-ok: 6px 범례 도트 = .ch-lgd 정본 계승(CSS 박스 = §0-8 무저촉) */
   .sig-lgd .lg-sh::before { background:var(--accent); }
   .sig-lgd .lg-sv::before { background:var(--accent-2); }
+  .sig-lgd .lg-gen::before { width:11px; height:0; border-radius:0; background:none; border-top:1.5px dashed var(--info); }   /* raw-ok: 일반 평균 = 점선 레퍼런스 선 스와치(차트 점선 실루엣 미러 · 저장 도트[라임]와 형태 분리 = 인접 황록 혼동 차단) · 색 = --info 정보색 정본 · 11px/1.5px = 도트 6px 대비 선 시인 광학(.lg-pk 2px 선례 동축) */
   .sig-lgd .lg-pk::before { background:rgba(var(--amber-rgb),.55); border-radius:2px; }   /* raw-ok: 6px 스와치의 밴드(둥근 사각) 표기 광학 보정 — 시리즈 도트(원)와 형태 구분 · 근접 토큰 r-s 9px = 박스(6px)보다 커 부적합 · 앰버 저알파 = 차트 밴드 동일 톤 */
   .sig-chartwrap { margin-bottom:var(--sp-2); }
   .sig-chartwrap:last-child { margin-bottom:0; }
@@ -11069,6 +11070,14 @@ function chTileChart(series, key, mode, unit) {   // 타일 미니 차트(운영
 // low_sample 버킷 = 속빈 점 + 툴팁 '표본부족' 딱지(결론 금지 플래그 유지) · 전 점 숫자 도배 금지 = 피크/최저만 직접 라벨(나머지 = 툴팁)
 const SIG_ORD = { hour_band: ['새벽0-6', '오전6-11', '점심11-14', '오후14-18', '저녁18-22', '밤22-24'], dow: ['월', '화', '수', '목', '금', '토', '일'] };   // 자연순 정본 = insta_signals.py HOUR_BANDS·DOW 미러(그쪽 라벨 개편 시 동조)
 const SIG_CAP = { hour_band: '시간대별 호응', dow: '요일별 호응' };
+// 일반 인스타 이용자 평균 이용 강도(운영자 260723 요청 오버레이 "일반적인 사용자들 기준으로 그 차트 위에 오버레이 · 어찌보면 이 평균이 더 중요") —
+// 구독자 축(공유·저장 lift·접속 피크 = 내 팔로워 접속) 위에 '전체 IG 이용자' 평균 이용 시간대·요일을 레퍼런스 실루엣으로 병치 ·
+// 상대 강도(피크=100 · online_hours_kst 저장문법 계승) · 자체 정규화 축(lift Y와 별개 = 볼륨 언더레이 문법 계승 · 창작 0 = 공개 벤치마크 상대형상, 측정치 아님 = 라벨 '일반 평균'으로 명시) ·
+// 출처 = 시간대: 국내 이용시간(오픈애즈/소셜비즈 2025 3Q — 6~10시 상승·저녁 20~22시 큰 폭 피크·22~24시 여가·새벽 최저) · 요일: 업계종합(Buffer 9.6M·Sprout·Hootsuite·Later 2025~26 — 수·목 최고·주중>주말·일 최저)
+const SIG_GEN = {
+  hour_band: { '새벽0-6': 22, '오전6-11': 60, '점심11-14': 74, '오후14-18': 82, '저녁18-22': 100, '밤22-24': 78 },
+  dow: { '월': 78, '화': 90, '수': 100, '목': 97, '금': 74, '토': 64, '일': 60 }
+};
 let SIG_HIT = {};   // 축별 툴팁 히트 포인트(chChart CH_HIT 대칭 · 렌더마다 재산출)
 function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 260719 "ㄱ 고도화 뭐든") — {peaks: 접속 피크 시각[], now: KST 시각, today: KST 요일} · 전부 선택(없으면 조용히 생략 = fail-soft)
   x2 = x2 || {};
@@ -11082,7 +11091,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   const W = 600, H = 154, mL = 46, mR = 16, mT = 16, mB = 26, pw = W - mL - mR, ph = H - mT - mB;   // mB·H = 일일 추이(chChart) 단일줄 라벨 규격 계승 — n= 병기 줄 제거(운영자 260722)로 2줄 예약 해제 · 플롯 높이 ph=112 불변
   const lo = Math.max(0, Math.min(...vals, 1) - .1), hi = Math.max(...vals, 1) + .1;
   const X = i => mL + pw * i / (bs.length - 1), Y = v => mT + ph * (1 - (v - lo) / (hi - lo));
-  SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, save: val(b, 'save_pm'), n: b.n, low: !!b.low_sample }; });
+  SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, save: val(b, 'save_pm'), n: b.n, low: !!b.low_sample, gen: (SIG_GEN[ax] || {})[b.bucket] ?? null }; });
   let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
   for (let g = 0; g <= 3; g++) {   // hairline 격자 + ×배율 Y라벨(chChart 문법)
     const v = lo + (hi - lo) * g / 3, y = Y(v);
@@ -11101,6 +11110,16 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   // 표본 볼륨 언더레이(무채 저알파 바) — 게시 몰림 편향(스크래퍼 flags)을 숨기지 않고 시각화 · n 라벨과 동축(운영자 260719 고도화)
   const maxN = Math.max(...bs.map(b => b.n || 0), 1), bw = Math.min(26, pw / bs.length * .42);
   bs.forEach((b, i) => { const bh = (b.n || 0) / maxN * ph * .26; if (bh > 0) s += `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${(H - mB - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="var(--mut)" opacity=".13"/>`; });
+  // 일반 인스타 이용자 평균 실루엣(운영자 260723 요청) — 전체 IG 이용자 평균 이용 강도(SIG_GEN · 자체 정규화 피크=100 → 플롯 .82 높이 · 상단 콜아웃 선반 여유) · 볼륨 언더레이와 동축 배경 레퍼런스(가장 깊은 층 = 접속 피크·마커·lift 곡선 뒤) · 형태 구분 = 옅은 채움 area + 점선 상단(공유·저장 실선+점 / 접속 피크 밴드와 시각 분리) · 색 = --info(정보·레퍼런스색 · 팔레트 정본 · 황록 클러스터와 형태로 분리) · 결측 버킷 = 조용히 생략(fail-soft·창작 0)
+  const gen = SIG_GEN[ax];
+  if (gen) {
+    const gpts = bs.map((b, i) => { const gv = gen[b.bucket]; return gv == null ? null : [X(i), (H - mB) - (gv / 100) * ph * .82, gv]; });
+    if (gpts.length >= 2 && gpts.every(Boolean)) {
+      const gl = chPath(gpts.map(p => [p[0], p[1]]), 1);
+      s += `<path d="${gl} L${gpts[gpts.length - 1][0].toFixed(1)} ${(H - mB).toFixed(1)} L${gpts[0][0].toFixed(1)} ${(H - mB).toFixed(1)} Z" fill="rgba(var(--info-rgb),.05)" stroke="none"/>`;
+      s += `<path d="${gl}" fill="none" stroke="var(--info)" stroke-width="1.6" stroke-dasharray="3 2.5" stroke-opacity=".62" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    }
+  }
   // 팔로워 접속 피크 밴드(운영자 260719 승인 한 수) — online_peak_kst 상위 3시각 · 연속 시각 = 한 밴드 병합 · 앰버 저알파 = 게시 예약 필과 동일 데이터 축
   const bandLabs = [];
   if (ax === 'hour_band' && Array.isArray(x2.peaks) && x2.peaks.length) {
@@ -11158,7 +11177,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${SIG_CAP[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · 공유 ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">공유</i><i class="lg-sv">저장</i>${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
+  return `<div class="sig-cap"><span class="sig-t">${SIG_CAP[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · 공유 ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">공유</i><i class="lg-sv">저장</i>${SIG_GEN[ax] ? '<i class="lg-gen" title="일반 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 업계종합(Buffer 9.6M·Sprout·Hootsuite·Later 2025~26)">일반 평균</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
@@ -11174,7 +11193,7 @@ function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일
       let best = hits[0], bd = 1e9;
       hits.forEach(pt => { const dd = Math.abs(pt.x - px); if (dd < bd) { bd = dd; best = pt; } });
       const [tx, ty] = place(best.x, best.y);
-      tip.innerHTML = `<b>${esc(best.bucket)}</b><br><span style="color:var(--mut);font-size:10px">공유 ×${best.share ?? '—'} · 저장 ×${best.save ?? '—'} · n=${best.n}${best.low ? ' · 표본부족' : ''}</span>`;
+      tip.innerHTML = `<b>${esc(best.bucket)}</b><br><span style="color:var(--mut);font-size:10px">공유 ×${best.share ?? '—'} · 저장 ×${best.save ?? '—'}${best.gen != null ? ' · 일반 ' + best.gen + '%' : ''} · n=${best.n}${best.low ? ' · 표본부족' : ''}</span>`;
       const _hw = (tip.offsetWidth || 110) / 2; tip.style.left = Math.max(_hw + 2, Math.min(r.width - _hw - 2, tx)) + 'px'; tip.style.top = ty + 'px';   // 좌우 클램프(260720 평의회 F5 — translate(-50%)라 엣지 포인트서 화면 밖 잘림 실측 · innerHTML 후 실폭 측정)
       tip.style.opacity = '1';
       if (dot) { dot.style.left = tx + 'px'; dot.style.top = ty + 'px'; dot.style.opacity = '1'; }
