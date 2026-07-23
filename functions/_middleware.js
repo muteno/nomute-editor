@@ -6,6 +6,10 @@
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   if (url.hostname.endsWith('.pages.dev')) {
+    // sw.js 는 리다이렉트 제외 — 비정본 origin(pages.dev)에 남은 구 서비스워커가 '자기소멸' 업데이트를
+    // 받으려면 스크립트 요청이 200이어야 한다(3xx면 브라우저가 SW 업데이트를 실패 처리 → 좀비 SW가 영영
+    // 안 죽어 중복 알림 지속). sw.js 는 공개 클라이언트 코드(민감정보 없음)라 Access 우회 노출 위험 없음.
+    if (url.pathname === '/sw.js') return context.next();
     url.hostname = 'apps.nomute.kr';
     return Response.redirect(url.toString(), 301);
   }
