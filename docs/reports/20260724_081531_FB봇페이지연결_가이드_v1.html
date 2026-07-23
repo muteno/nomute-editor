@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FB 봇↔페이지 연결 — 3분 원탭 가이드</title>
+<style>
+  :root{
+    --bg:#121212; --pan:rgba(255,255,255,.035); --pan2:rgba(255,255,255,.055);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --lemon:#FFE13D; --red:#e23b2a;
+    --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
+  }
+  *{box-sizing:border-box;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6;font-size:15px;letter-spacing:-.01em;padding:0 0 64px}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px}
+  header{padding:26px 16px 18px;border-bottom:1px solid var(--line);text-align:center}
+  h1{margin:0 0 6px;font-size:21px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin:0}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill);
+    background:rgba(0,238,210,.12);color:var(--accent);border:1px solid rgba(0,238,210,.3);margin-bottom:12px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 12px;display:flex;align-items:center;gap:8px}
+  .status{display:grid;gap:8px;margin:16px 0}
+  .srow{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--line);
+    border-radius:var(--r-m);background:var(--pan);font-size:14px}
+  .srow .ic{flex:0 0 auto;font-size:15px}
+  .srow.ok{color:var(--fg)} .srow.ok .ic{color:var(--accent)}
+  .srow.block{border-color:rgba(226,59,42,.4);background:rgba(226,59,42,.07)}
+  .srow.block .ic{color:var(--red)}
+  .steps{counter-reset:st;display:grid;gap:14px;margin:14px 0}
+  .step{position:relative;border:1px solid var(--line);border-radius:var(--r-l);background:var(--pan);
+    padding:16px 16px 16px 52px;overflow:hidden}
+  .step::before{counter-increment:st;content:counter(st);position:absolute;left:14px;top:15px;
+    width:26px;height:26px;border-radius:var(--r-pill);background:var(--accent);color:#08110f;
+    font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .step h3{margin:0 0 6px;font-size:15px;font-weight:800}
+  .step p{margin:6px 0;font-size:13.5px;color:#d7e4da}
+  .step .mut{color:var(--mut);font-size:12.5px}
+  .btnlink{display:inline-flex;align-items:center;gap:7px;margin:9px 0 2px;padding:10px 14px;
+    background:var(--pan2);border:1px solid var(--line);border-radius:var(--r-m);color:var(--accent);
+    font-weight:700;font-size:13.5px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  .btnlink:active{transform:scale(.97)}
+  .btnlink svg{width:14px;height:14px;flex:0 0 auto}
+  .copy{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;
+    padding:10px 12px;background:#0c0c0c;border:1px solid var(--line);border-radius:var(--r-s);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
+  .copy:active{transform:scale(.99)} .copy.done{border-color:var(--accent)}
+  .copy code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--lemon);
+    word-break:break-all;line-height:1.4}
+  .copy .lbl{font-size:11px;color:var(--mut);font-weight:700;flex:0 0 auto;display:flex;align-items:center;gap:6px}
+  .copy .lbl b{color:var(--accent);font-size:10px;letter-spacing:.02em}
+  .warn{border:1px solid rgba(255,225,61,.4);background:rgba(255,225,61,.06);border-radius:var(--r-m);
+    padding:13px 15px;margin:16px 0;font-size:13.5px}
+  .warn b{color:var(--lemon)}
+  .toggle{display:flex;gap:8px;align-items:center;padding:9px 12px;border:1px solid var(--line);
+    border-radius:var(--r-s);background:var(--pan);font-size:13px;color:#d7e4da;margin:6px 0}
+  .toggle .sw{flex:0 0 auto;width:34px;height:20px;border-radius:var(--r-pill);background:var(--accent);
+    position:relative} .toggle .sw::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;
+    border-radius:50%;background:#08110f}
+  .verify{border:1px solid rgba(0,238,210,.28);background:rgba(0,238,210,.05);border-radius:var(--r-l);
+    padding:16px;margin:18px 0}
+  .verify .ok{color:var(--accent);font-weight:700}
+  .foot{color:var(--mut);font-size:12px;text-align:center;margin-top:28px;padding-top:16px;border-top:1px solid var(--line2)}
+  .ref{font-size:12px;color:var(--mut);margin-top:4px}
+  .ref code{color:var(--lemon);font-family:ui-monospace,monospace;font-size:11.5px}
+</style>
+
+<header>
+  <div class="tag">남은 건 이거 하나 · 약 3분</div>
+  <h1>페이스북 봇 ↔ 페이지 연결</h1>
+  <p class="sub">코드·토큰은 다 됐어. <b style="color:var(--fg)">nomute-bot을 Nomute 페이지에 붙이기만</b> 하면 FB가 인스타처럼 꽉 차.</p>
+</header>
+
+<div class="wrap">
+
+  <h2>지금 상태</h2>
+  <div class="status">
+    <div class="srow ok"><span class="ic">✓</span><div>비만료 시스템유저 토큰 · 수집 코드 · 주제 LLM 분류 — <b>전부 완료·머지됨</b></div></div>
+    <div class="srow ok"><span class="ic">✓</span><div>뷰어 타일(반응·댓글·공유·주제) — <b>데이터만 들어오면 자동 점등</b></div></div>
+    <div class="srow block"><span class="ic">✕</span><div><b>봇이 페이지에 안 붙어 있음</b> → 그래프 API가 <code style="color:var(--lemon)">#10 권한없음</code>으로 막음. 토큰엔 권한이 다 있는데 <b>페이지가 봇을 모름.</b></div></div>
+  </div>
+  <p class="ref">왜 코드로 못 푸나 = 시스템유저가 페이지 데이터를 읽으려면 <b style="color:#d7e4da">메타가 "자산 할당"을 요구</b>(인증 규칙). 버튼 클릭은 사람만 가능 — 그래서 이 3스텝이 필요해.</p>
+
+  <h2>고치는 법 — 순서대로 3스텝</h2>
+  <div class="steps">
+
+    <div class="step">
+      <h3>페이지가 비즈니스에 있나 확인</h3>
+      <p>비즈니스 설정 → <b>계정 → 페이지</b> 목록에 <b>Nomute</b>가 있는지 봐. 없으면 <b>[추가 → 페이지 추가]</b>로 편입.</p>
+      <a class="btnlink" href="https://business.facebook.com/settings/pages" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>
+        비즈니스 설정 · 페이지 열기</a>
+      <p class="mut">이미 있으면 이 스텝은 건너뛰어도 돼.</p>
+    </div>
+
+    <div class="step">
+      <h3>봇한테 페이지 권한 주기 <span style="color:var(--lemon)">(핵심)</span></h3>
+      <p>비즈니스 설정 → <b>사용자 → 시스템 사용자 → nomute-bot</b> 선택 → <b>[자산 추가]</b> → <b>페이지 → Nomute</b> 체크.</p>
+      <a class="btnlink" href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>
+        시스템 사용자 열기</a>
+      <p>권한 토글에서 <b>"콘텐츠 관리(Manage Page)" 전체 ON</b> — 분석만 켜면 부족해.</p>
+      <div class="toggle"><span class="sw"></span><span>콘텐츠 관리 (Manage Page) — <b style="color:var(--accent)">이걸 켜라</b></span></div>
+    </div>
+
+    <div class="step">
+      <h3><span style="color:var(--red)">⚠️ 순서 주의</span> — 그 다음 토큰 재생성</h3>
+      <p>2번을 <b>먼저</b> 끝내고 → <b>같은 nomute-bot 화면에서 [새 토큰 생성]</b>. 앱 = <b>nomute-insights</b>, 권한 4개 체크(아래 복사) → 생성.</p>
+      <p class="mut">할당 전에 만든 토큰은 옛 권한이라 안 붙어. 반드시 할당 → 그 다음 생성.</p>
+      <div class="copy" data-c="pages_read_engagement,pages_read_user_content,read_insights,pages_show_list"><span class="lbl">체크할 권한 4개 <b>탭복사</b></span><code>pages_read_engagement · pages_read_user_content · read_insights · pages_show_list</code></div>
+      <p>새 토큰 → GitHub 시크릿 <b>FB_ACCESS_TOKEN</b> 값 교체(덮어쓰기).</p>
+      <a class="btnlink" href="https://github.com/muteno/nomute-editor/settings/secrets/actions" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>
+        GitHub 시크릿 열기</a>
+      <div class="copy" data-c="FB_ACCESS_TOKEN"><span class="lbl">시크릿 이름 <b>탭복사</b></span><code>FB_ACCESS_TOKEN</code></div>
+      <p class="mut">⚠ 토큰 값은 이 시크릿 칸에만 — 채팅·파일·커밋에 절대 붙이지 마.</p>
+    </div>
+
+  </div>
+
+  <h2>복사용 핵심 값</h2>
+  <div class="copy" data-c="809122025627220"><span class="lbl">Nomute 페이지 ID <b>탭복사</b></span><code>809122025627220</code></div>
+  <div class="copy" data-c="122102514387401979"><span class="lbl">nomute-bot ID <b>탭복사</b></span><code>122102514387401979</code></div>
+  <div class="copy" data-c="1522670392977528"><span class="lbl">앱 ID(nomute-insights) <b>탭복사</b></span><code>1522670392977528</code></div>
+
+  <div class="warn">
+    <b>⚠ 페이지 ID 함정</b> — permalink에 보이는 <code style="color:var(--lemon)">122142062661134727</code>은 진짜 페이지 객체가 아님(#100 "존재하지 않음"). 자산 할당·확인은 <b>반드시 809122025627220</b> 쪽 Nomute 페이지로.
+  </div>
+
+  <h2>확인 — 됐는지 보는 법</h2>
+  <div class="verify">
+    <p style="margin:0 0 10px">두 방법 중 아무거나:</p>
+    <p style="margin:6px 0"><b>①</b> 나(클로드)한테 채팅으로 <b style="color:var(--accent)">"됐어"</b> 한마디 → fb-fetch 발사·로그 판독·점등을 대신 실측해줄게.</p>
+    <p style="margin:6px 0"><b>②</b> 직접: 아래 링크 → <b>Run workflow</b> → 로그 확인.</p>
+    <a class="btnlink" href="https://github.com/muteno/nomute-editor/actions/workflows/fb-fetch.yml" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H9M17 7v8"/></svg>
+      fb-fetch 워크플로 열기</a>
+    <p style="margin:12px 0 4px"><span class="ok">✓ 성공 신호</span> — 로그에 <code style="color:var(--lemon);font-size:12px">팔로워 4952 · 시리즈 30일 · 게시물 10</code> 뜨고 <b>#10이 사라짐</b>.</p>
+    <p style="margin:4px 0" class="mut">🔴 아직이면 — 로그에 <code style="font-size:12px">프로필 실패 #10 requires pages_read_engagement</code>가 그대로. → 2번 자산할당 다시 확인.</p>
+  </div>
+
+  <div class="foot">
+    노뮤트 · FB 채널요약 연동 마지막 스텝 · 260724 08:15 KST<br>
+    상세 정본 = <code style="color:var(--mut)">docs/페이스북_직결_세팅.md §6</code>
+  </div>
+</div>
+
+<script>
+(function(){
+  function flash(el){el.classList.add('done');var l=el.querySelector('.lbl b');var o=l?l.textContent:'';if(l)l.textContent='복사됨 ✓';setTimeout(function(){el.classList.remove('done');if(l)l.textContent=o;},1200);}
+  document.querySelectorAll('.copy').forEach(function(el){
+    el.addEventListener('click',function(){
+      var t=el.getAttribute('data-c')||'';
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t).then(function(){flash(el);}).catch(function(){fallback(t,el);});
+      }else{fallback(t,el);}
+    });
+  });
+  function fallback(t,el){try{var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);flash(el);}catch(e){}}
+})();
+</script>
