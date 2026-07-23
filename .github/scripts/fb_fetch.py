@@ -188,8 +188,13 @@ def main():
                 + ((x.get('shares') or {}).get('count') or 0)
             _tp.setdefault(_cat_of((x.get('message') or '').split('\n')[0]), []).append(e)
         if _tp:
-            d['topics'] = {c: {'n': len(v), 'views_med': round(statistics.median(v))} for c, v in _tp.items()}
-            print(f"fb-fetch: 주제별 반응 — {len(d['topics'])}주제(표본 {sum(len(v) for v in _tp.values())}) = {', '.join(f'{c}:{len(v)}' for c, v in _tp.items())}")
+            # 기타(캐치올)는 주제 아님 = 제외 · 유의미 주제(n≥5 = 뷰어 표시 임계) 2개↑일 때만 방출 = raw 분류 빈약(전량 기타)이면 단일 기타바 대신 유닛 조용히 숨김(운영자 260723 · "인스타처럼"의 최소 조건 · FB엔 인스타 cat_overrides 보정 부재라 분류 개선이 IG패리티 선결). 방출 시에도 기타 제외.
+            _real = {c: v for c, v in _tp.items() if c != '기타'}
+            _strong = [c for c, v in _real.items() if len(v) >= 5]
+            if len(_strong) >= 2:
+                d['topics'] = {c: {'n': len(v), 'views_med': round(statistics.median(v))} for c, v in _real.items()}
+            _dist = ', '.join(f'{c}:{len(v)}' for c, v in _tp.items())
+            print(f"fb-fetch: 주제별 반응 표본 {sum(len(v) for v in _tp.values())} = {_dist} · 유의미주제 {len(_strong)}개 → {'방출(기타 제외)' if len(_strong) >= 2 else '보류(분류 빈약 = 단일기타바 방지 · 유닛 숨김)'}")
     except Exception as e:
         print(f'fb-fetch: 주제별 반응 스킵(비치명) — {e}')
     if a.get('interactions') is None:
