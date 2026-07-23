@@ -1453,6 +1453,15 @@ def main():
               "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     if subs_new is not None and acc:
         health["subs"]["stale"] = [k for k in ("x", "tiktok", "insta", "youtube", "threads") if acc[k] and not subs_new[k]]   # 이번 런 carry 폴백 축 — 집계 ok=True가 개별 플랫폼 7일 부패를 가리던 은폐 보강(260721 틱톡 판례 · 표시 전용)
+    # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
+    _phh = {"ok": False, "age_min": None, "updated": ""}
+    try:
+        _phj = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
+        _pha = (datetime.now(KST) - datetime.fromisoformat(str(_phj.get("updated")))).total_seconds() / 60
+        _phh = {"ok": bool(0 <= _pha <= 90), "age_min": round(_pha), "updated": str(_phj.get("updated") or "")}
+    except Exception:  # noqa: BLE001
+        pass
+    health["phone"] = _phh
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
