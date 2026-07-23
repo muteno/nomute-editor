@@ -85,8 +85,17 @@ def main():
         if not PID:
             try:
                 me = api('me', fields='id,name')
-                PID = me.get('id') or ''
-                if PID:
+                _mid = me.get('id') or ''
+                # 시스템유저 토큰(운영자 260724) = me = 봇 자신 · /me/accounts 빈 반환 → 할당 페이지(assigned_pages) 엣지로 실페이지 조회(business_management scope). 페이지 토큰이면 이 엣지 빈/에러 → 아래 me 직독 폴백(구 동작 보존).
+                try:
+                    ap = api(f'{_mid}/assigned_pages', fields='id,name').get('data') or []
+                    if ap and ap[0].get('id'):
+                        PID = ap[0]['id']
+                        print(f"fb-fetch: 시스템유저 토큰 판정 — 할당 페이지 '{ap[0].get('name')}'({PID}) 인식(토큰 유지)")
+                except Exception:
+                    pass
+                if not PID and _mid:
+                    PID = _mid
                     print(f"fb-fetch: 페이지 토큰 판정 — 페이지 '{me.get('name')}'({PID}) 자동 인식")
             except Exception as e:
                 print(f'fb-fetch: 토큰 유효성 실패(만료·권한 확인 필요) — {e}')
