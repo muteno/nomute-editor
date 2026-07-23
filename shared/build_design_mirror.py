@@ -11,8 +11,9 @@
 이제 build가 viewer :root를 통째 복사 = 거울이 항상 정본을 따름(드리프트 0).
 
 서브커맨드:
-  build : viewer :root → base.css AUTO-MIRROR 블록 갱신(기본 동작).
+  build : viewer :root → base.css 거울(STAGE1-2) + tokens.css 구조토큰(STAGE3) + 도구 뷰어 공유 팔레트(STAGE4) 동기화(기본 동작).
   check : 거울이 현재 viewer :root와 일치하는지 대조. 불일치 = exit 1(드리프트 게이트).
+          (STAGE4 팔레트 드리프트 검증 = shared/check_refs.py check_palette_sync() 커밋 게이트)
 
 안전: AUTO-MIRROR 블록은 build가 덮어쓴다(직접수정 금지·다음 build에 날아감).
       블록 밖 손글씨 룰(body 폰트·중앙정렬·버튼 볼드·상태 타이포)은 보존.
@@ -120,6 +121,77 @@ def check_tokens():
     return 0
 
 
+# ── STAGE4: 공유 팔레트 동기화 (색은 뷰어별 inline이되 *공유 팔레트*는 index → 도구 뷰어 자동 전파) ──
+# 운영자 260723 Q465 "하나 바꾸면 전역 따라오게". 색은 §🎨 STAGE3상 tokens.css 제외(뷰어별 정체성)라
+# 도구 뷰어가 각자 inline 복사 → 공유 팔레트(accent/의미색)가 index와 조용히 드리프트(260723 --accent-2
+# 라임↔골드 실사고). base.css처럼 *값 SSOT=index*에서 build가 각 뷰어 :root의 공유 팔레트 값만 index
+# 해결값으로 덮어씀 = 손 베끼기 폐지. 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은
+# 의도적 뷰어별([16] 차분한 툴톤 재색칠 금지)이라 제외 · 뷰어가 이미 정의한 토큰만 값 교체(신규 추가 0).
+# 검증(드리프트 게이트) = shared/check_refs.py check_palette_sync()(커밋 하드 게이트).
+_VIEWERS_TOOLS = ('viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html',
+                  'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html')
+_PALETTE_TONE = {'--bg', '--pan', '--line', '--line2', '--fg', '--mut', '--glass2', '--thumb',
+                 '--modal-glass', '--modal-glass-anchor', '--modal-head-bg', '--modal-tabs-bg'}
+_COLORV = re.compile(r'^(#[0-9A-Fa-f]{3,8}|rgba?\([^)]*\)|\d[\d,.\s]*)$')
+_ROOTBLK = re.compile(r':root\s*\{[^{}]*\}', re.S)   # :root 안 중첩 중괄호 없음 → [^{}]*로 안전 캡처(@media 안 :root 포함)
+
+
+def _idx_tokens():
+    d = {}
+    for m in re.finditer(r'(--[a-z0-9-]+)\s*:\s*([^;]+);', extract_root()):
+        n, v = m.group(1), m.group(2).strip()
+        if n not in d:
+            d[n] = v
+    return d
+
+
+def _resolve_raw(val, tbl, depth=0):
+    m = re.fullmatch(r'var\((--[a-z0-9-]+)\)', val.strip())
+    if m and depth < 6 and m.group(1) in tbl:
+        return _resolve_raw(tbl[m.group(1)], tbl, depth + 1)
+    return val.strip()
+
+
+def _shared_palette(idx):
+    """index :root에서 도구 뷰어가 공유할 팔레트 {name: 해결된 raw 색값}(툴톤·중첩var·비색 제외)."""
+    out = {}
+    for n, v in idx.items():
+        if n in _PALETTE_TONE:
+            continue
+        rv = _resolve_raw(v, idx)
+        if _COLORV.match(rv.replace(' ', '')):
+            out[n] = rv
+    return out
+
+
+def sync_viewer_palette():
+    idx = _idx_tokens()
+    pal = _shared_palette(idx)
+    changed = []
+    for rel in _VIEWERS_TOOLS:
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding='utf-8').read()
+
+        def repl_block(mo):
+            blk = mo.group(0)
+            for n, rv in pal.items():
+                def one(m):
+                    if m.group(2).strip().replace(' ', '').lower() == rv.replace(' ', '').lower():
+                        return m.group(0)   # 이미 동값 = 무변경(멱등)
+                    return m.group(1) + rv + m.group(3)
+                blk = re.compile(r'(' + re.escape(n) + r'\s*:\s*)([^;]+)(;)').sub(one, blk)
+            return blk
+        new = _ROOTBLK.sub(repl_block, text)
+        if new != text:
+            open(path, 'w', encoding='utf-8').write(new)
+            changed.append(os.path.basename(rel))
+    print("✅ 팔레트 동기화 — 공유 팔레트 %d색을 도구 뷰어 %d개에 index로 전파(%s)."
+          % (len(pal), len(_VIEWERS_TOOLS), ('갱신: ' + ', '.join(changed)) if changed else '전부 동값·무변경'))
+    return 0
+
+
 def render():
     """현재 viewer :root를 박은 base.css 전체 텍스트를 반환(파일 안 씀)."""
     root = extract_root()
@@ -140,6 +212,7 @@ def build():
     open(BASECSS, "w", encoding="utf-8").write(out)
     print("✅ 디자인 거울 build — 구성도/base.css 의 AUTO-MIRROR 블록을 viewer :root로 동기화.")
     build_tokens()   # STAGE3: viewer/tokens.css 공유 구조토큰도 동시 갱신(거울 2호)
+    sync_viewer_palette()   # STAGE4: 도구 뷰어 공유 팔레트를 index로 전파(운영자 260723 "하나 바꾸면 전역 따라오게")
     return 0
 
 
