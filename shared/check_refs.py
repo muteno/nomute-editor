@@ -1248,23 +1248,27 @@ def check_loader_ssot():
     """로딩 표기 SSOT 게이트(운영자 260723 Q461 — "전역 앱 세션에서 정해진 로딩만 쓰도록").
     정본 = viewer/nm-loader.js window.nmLoader(type,label[,opts]) · orb 2종·라벨 3개(Thinking/Solving/Prompting).
     규칙 = 새 로더는 nmLoader만. raw 3점 로더(`gdots"><i>` 마크업)가 nmLoader 폴백이 아닌 채로 baseline 초과 = 차단(신규 raw 재발 방지·기존 잔량은 점진 감축 래칫).
-    raw 로더 = ① gdots 3점(`gdots"><i>`) ② 구 팩토리 도트(`class="nmld"` · SPIN_SVG 포함) — 둘 다 baseline 프리즈(신규 = 0 강제). fail-closed 아님(뷰어 못 읽으면 스킵)."""
+    raw 로더 = ① gdots 3점(`gdots"><i>`) ② 구 팩토리 도트(`class="nmld"` · SPIN_SVG 포함) — **하드락 baseline 0(운영자 260723 Q463 "한 수" = 전 뷰어 orb 통일 완료 · 신규 raw = 전면 금지)**. tokens.html = 토큰 레퍼런스 페이지(nm-loader 미로드·데모)라 스코프 제외. fail-closed 아님(뷰어 못 읽으면 스킵)."""
     import glob as _g
-    BASELINE = 24   # 260723 Q462 실측 = gdots raw 14 + nmld 10 — 낮추기만(신규 raw = 초과 차단) · 0 도달 시 하드락 승격 · 스샷 잡행 '제작 중' ●●●(=SPIN_SVG=nmld)이 게이트 사각이던 것 편입
-    raw = 0
+    BASELINE = 0   # 260723 Q463 하드락 — 전 뷰어 로더 orb 배선 완료(gdots·nmld 0) · nmLoader 폴백은 같은 줄이라 미계수 · 신규 raw = 즉시 차단
+    raw = []
     try:
         for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
-            for ln in open(fp, encoding='utf-8'):
+            if os.path.basename(fp) == 'tokens.html':   # 토큰 레퍼런스 데모(nm-loader 미로드) = 라이브 로더 아님 · 스코프 밖
+                continue
+            for i, ln in enumerate(open(fp, encoding='utf-8'), 1):
                 if 'gdots"><i>' in ln and 'nmLoader' not in ln and '@keyframes' not in ln and '.gdots' not in ln:
-                    raw += 1
-                if 'class="nmld"' in ln and '.nmld' not in ln.split('class="nmld"')[0][-3:]:   # 구 팩토리 도트(리스트 로드 placeholder·SPIN_SVG) — CSS 정의(.nmld{) 제외
-                    raw += 1
+                    raw.append('%s:%d gdots' % (os.path.basename(fp), i))
+                if 'class="nmld"' in ln and '.nmld' not in ln.split('class="nmld"')[0][-3:]:
+                    raw.append('%s:%d nmld' % (os.path.basename(fp), i))
     except Exception as e:
         print('⚠️ check_loader_ssot 스킵:', e); return 0
-    if raw > BASELINE:
-        print('❌ 로딩 SSOT 게이트 — raw 로더(gdots+nmld) %d > baseline %d · 새 로딩 표기 = window.nmLoader(type,label)만(nm-loader.js · type=thinking|solving|prompting) · raw gdots·nmld 신설 금지' % (raw, BASELINE))
+    if len(raw) > BASELINE:
+        print('❌ 로딩 SSOT 하드락 — raw 로더(gdots·nmld) %d > 0 · 새 로딩 표기 = window.nmLoader(type,label)만(nm-loader.js · type=thinking|solving|prompting):' % len(raw))
+        for r in raw[:8]:
+            print('   ·', r)
         return 1
-    print('✅ 로딩 SSOT 게이트 — raw 로더(gdots+nmld) %d ≤ baseline %d(신규 로딩 = nmLoader 강제 · 잔량 감축 래칫).' % (raw, BASELINE))
+    print('✅ 로딩 SSOT 하드락 — raw 로더(gdots·nmld) 0(전 뷰어 orb 단일 · 신규 = window.nmLoader 강제).')
     return 0
 
 
