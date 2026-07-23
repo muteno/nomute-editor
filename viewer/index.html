@@ -7097,7 +7097,15 @@ function healthMsg() {
   let when = ''; try { when = SHC.ts ? new Date(SHC.ts).toLocaleString('ko-KR', { hour12: false }) : ''; } catch {}
   return { _health: true, text: '맞춤법 검사기 점검 필요 — 자동 교정이 멈췄어. 고치면 사라져.', ts: when };
 }
-const allMsgs = () => { const h = healthMsg(); return h ? [h, ...MSGS] : MSGS.slice(); };
+// 새 버전(새 index 셸 배포 감지) = 클라이언트 알림을 메시지함 항목으로(운영자 260724 "UI 바뀔 때마다 알림도 메시지함으로") —
+//   튀는 토스트 팝 대신 조용한 채널. _health 계열(클라 전용·id 없음·삭제불가·시스템 구분) + action='shell-apply'(→ '반영하기').
+let _shellUpdPending = false, _shellUpdWhen = 0;
+function shellUpdMsg() {
+  if (!_shellUpdPending) return null;
+  return { _health: true, _shellupd: true, action: 'shell-apply', t: _shellUpdWhen || undefined,
+           text: '새 버전이 나왔어요 — 반영하면 최신 화면으로 새로고침돼요. (안 눌러도 다음 진입 때 자동 반영)' };
+}
+const allMsgs = () => { const out = MSGS.slice(); const h = healthMsg(); if (h) out.unshift(h); const s = shellUpdMsg(); if (s) out.unshift(s); return out; };   // 클라 알림(맞춤법·새버전)을 서버 메시지 앞에 병합(새버전이 최상단)
 async function loadHealth(force) {
   try { SHC = JSON.parse(localStorage.getItem('nomute_shc') || 'null'); } catch { SHC = null; }
   if (force || !SHC || (Date.now() - (SHC.ts || 0)) > SHC_PROBE_TTL) {   // 능동 백스톱(force=수동 새로고침=즉시 재확인) — 검사기 명시 healthy:false일 때만 불건강(거짓경보 방지)
@@ -7193,7 +7201,14 @@ async function snsRecollect(btn) {   // SNS 트렌드 정체(wd-sns) → sns-tre
     else { if (span) span.textContent = (d.error || '요청 실패 — 잠시 뒤 다시'); btn.disabled = false; }
   } catch { if (span) span.textContent = '네트워크 오류 — 다시'; btn.disabled = false; }
 }
-const MSG_ACTIONS = { 'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect } };
+async function shellApply(btn) {   // 새 버전 반영 = 최신 셸 재확보 후 새로고침(applyShellUpdate 재사용 · 토스트 버전과 동일 경로)
+  if (btn) { btn.disabled = true; const s = btn.querySelector('span'); if (s) s.textContent = '반영중…'; }
+  return applyShellUpdate(null);   // t=null = 토스트 텍스트 갱신 스킵 · fetch→SW 캐시 갱신→reload 는 동일
+}
+const MSG_ACTIONS = {
+  'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect },
+  'shell-apply': { label: '반영하기', svg: _RECOLLECT_SVG, fn: shellApply },
+};
 function openMsgDetail(m) {
   if (!m) return;
   const d = $('#msgdetail'), l = $('#msglist'); if (!d || !l) return;
@@ -7247,7 +7262,7 @@ if ('serviceWorker' in navigator) {
         sessionStorage.setItem('nmAuthKick', '1');   // 세션 1회 가드 = 리로드 루프 차단(SW의 nosw 조기 return이 1차 방어)
         const u = new URL(location.href); u.searchParams.set('nosw', '1'); location.replace(u.href);
       }
-      if (e.data && e.data.type === 'nm-shell-updated') showUpdateToast();   // 새 index 셸 배포 감지(SW SWR 백그라운드 재검증이 옛≠새 감지) → "새 버전 · 탭하면 반영" 안내(운영자 260717)
+      if (e.data && e.data.type === 'nm-shell-updated') flagShellUpdate();   // 새 index 셸 배포 감지(SW SWR 백그라운드 재검증이 옛≠새 감지) → 메시지함 '새 버전' 항목 점등(운영자 260724 — 구 토스트 팝 showUpdateToast 대신 조용한 채널)
     } catch {}
   });
 }
@@ -7279,6 +7294,16 @@ async function applyShellUpdate(t) {
   try { sessionStorage.setItem('nmUpdCoolT', String(Date.now())); } catch {}   // 반영 직후 90s 재알림 억제 도장(무한루프 회로차단기 · 운영자 260717) — 그 사이 실배포가 와도 SWR 재검증 put이 캐시를 조용히 갱신 = 다음 진입 반영(수렴 보장 · 억제 = 표시만)
   location.reload();   // 성공 = 방금 꽂은 '현재 최신' 셸 즉시 서빙 + SWR 재검증도 동일 바이트 = 재알림 없음
 }
+// 새 버전 감지 → 메시지함 항목 점등(운영자 260724 "UI 바뀔 때마다 알림도 메시지함으로"). 구 showUpdateToast(튀는 토스트 팝)
+//   대신 조용한 채널 = 화면 안 가리고, 메시지함에서 '반영하기'로 조치. 억제·중복 흡수 로직은 토스트 버전 계승.
+function flagShellUpdate() {
+  try { if (Date.now() - (+sessionStorage.getItem('nmUpdCoolT') || 0) < 90000) return; } catch {}   // 반영 직후 90s 억제(회로차단기 계승 · toast 버전과 동일)
+  if (_shellUpdPending) return;   // 이미 대기 = 중복 무해(SWR 재검증 반복 흡수)
+  _shellUpdPending = true; _shellUpdWhen = Date.now();
+  try { renderMsgBadge(); } catch {}   // 프로필 상태·카운트 갱신
+  try { const mp = $('#msgpop'); if (mp && !mp.hidden) renderMsgList(); } catch {}   // 메시지함 열려있으면 즉시 목록 반영
+}
+// (도먼트 260724 — 새 버전 알림을 메시지함으로 이관 · 위 flagShellUpdate가 대체) 구 토스트 팝 렌더러. 재점등 = 7246 핸들러를 showUpdateToast로 되돌리면 부활(applyShellUpdate·CSS .nm-toast.upd 보존).
 function showUpdateToast() {
   if (_shellUpdShown || _shellUpdApplying) return;   // 표시 중 1회 = 중복 postMessage·재검증 반복 무해화(✗ 누르면 해제 = 다음 배포 재알림) · 적용 중 재알림 = 무시('반영중' 문구를 '탭하면 반영'으로 되감아 죽은 탭처럼 오도하는 창 봉쇄 · 평의회 260717-2)
   try { if (Date.now() - (+sessionStorage.getItem('nmUpdCoolT') || 0) < 90000) return; } catch {}   // 반영 탭 후 90s = 재알림 억제(회로차단기 · 운영자 260717 "탭하면 반영 무한루프") — 잔여 미지 변이가 있어도 루프 절단 · 캐시는 SW put이 계속 수렴
