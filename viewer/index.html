@@ -11146,8 +11146,8 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   }
   const spts = []; bs.forEach((b, i) => { const v = val(b, 'share_pm'); if (v != null) spts.push([X(i), Y(v), !!b.low_sample]); });   // 팔로워(공유) 곡선 좌표 = 핵심 구간 산출·시리즈 렌더 공용(단일 산출)
   const sline = spts.length >= 2 ? chPath(spts.map(p => [p[0], p[1]]), 1) : '';
-  // 핵심 구간 음영(운영자 260723 "팔로워·앱 사용자 겹치는 사이 = 네온보라로 · 핵심인 시간대 표시 · 이분법 컷 금지 = 좌우 시간대로 그라데이션") — 두 곡선 다 자체 정규화 축이라 픽셀 시각 우위 = 의미 우위 · 코어 = 팔로워 피크를 품은 연속 우위 런(경계 교차점 = 선형 보간 · 버킷 스냅 금지) · 색 = --cat-tech(팔레트 유일 형광 보라 · linkpop '기본값' 선례) · 알파 = stop-opacity .36(-rgb 토큰 무신설 · 불투명 100% 금지 = 아래 무채 음영·볼륨 바가 비쳐 섞임) · 페이드 = 반 버킷(.55) userSpace 그라데이션(코어 밖 이웃 렌즈로 잔광) · 두 선·점 아래 배경층(라인 판독 우선)
-  let coreX = null;
+  // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 개정: 두 곡선 '사이' 면 → 양옆 세로변 + 파도 높이 보라 음영 · 바닥 = X축 · 인덱싱 행 침범 금지) — 코어 = 팔로워가 앱 사용자 위인 연속 우위 런(경계 = 선형 보간 교차점 · 버킷 스냅 금지) · 팔로워 area(파도→바닥)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .08 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침)
+  let coreX = null, coreHrs = null;
   if (gpts && gpts.length === bs.length && spts.length === bs.length && sline) {
     const dfs = spts.map((p, i) => gpts[i][1] - p[1]);   // >0 = 팔로워 곡선이 위(픽셀 y 반전축)
     let pk = 0; spts.forEach((p, i) => { if (p[1] < spts[pk][1]) pk = i; });   // 팔로워 피크 = y 최소
@@ -11155,14 +11155,18 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       let i0 = pk, i1 = pk;
       while (i0 > 0 && dfs[i0 - 1] > 0) i0--;
       while (i1 < dfs.length - 1 && dfs[i1 + 1] > 0) i1++;
-      const x0 = i0 > 0 ? X(i0 - 1) + (X(i0) - X(i0 - 1)) * dfs[i0 - 1] / (dfs[i0 - 1] - dfs[i0]) : X(0);
-      const x1 = i1 < dfs.length - 1 ? X(i1) + (X(i1 + 1) - X(i1)) * dfs[i1] / (dfs[i1] - dfs[i1 + 1]) : X(bs.length - 1);
-      const F = pw / (bs.length - 1) * .55, gxa = Math.max(mL, x0 - F), gxb = Math.min(W - mR, x1 + F);
-      const off = x => ((x - gxa) / (gxb - gxa)).toFixed(3);
-      s += `<defs><linearGradient id="sigCore-${ax}" gradientUnits="userSpaceOnUse" x1="${gxa.toFixed(1)}" y1="0" x2="${gxb.toFixed(1)}" y2="0"><stop offset="0" stop-color="var(--cat-tech)" stop-opacity="0"/><stop offset="${off(x0)}" stop-color="var(--cat-tech)" stop-opacity=".36"/><stop offset="${off(x1)}" stop-color="var(--cat-tech)" stop-opacity=".36"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity="0"/></linearGradient></defs>`;
-      const glr = chPath(gpts.slice().reverse().map(p => [p[0], p[1]]), 1);   // 앱 사용자 곡선 역방향(Catmull-Rom = 가역 = 동일 곡선) → 팔로워 정방향과 닫아 두 곡선 '사이' 면
-      s += `<path d="${sline} ${glr.replace(/^M/, 'L')} Z" fill="url(#sigCore-${ax})" stroke="none"/>`;
+      const edge = (a, b) => { const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t, fi: a + t }; };   // 곡선 교차점 = 선형 보간(x·팔로워 파도 y·버킷 프랙셔널 인덱스)
+      const e0 = i0 > 0 ? edge(i0 - 1, i0) : { x: X(0), y: spts[0][1], fi: 0 };
+      const e1 = i1 < dfs.length - 1 ? edge(i1, i1 + 1) : { x: X(bs.length - 1), y: spts[bs.length - 1][1], fi: bs.length - 1 };
+      const x0 = e0.x, x1 = e1.x, fB = H - mB + 11;   // fB = 커튼 발 = X축 아래 인덱싱 시각 라벨 행까지 연장(운영자 260723 "집중해야 될 시간대가 인덱싱까지 이어져야") — 파도→바닥에서 멈추지 않고 시각 라벨과 한 몸으로 연결
+      s += `<defs><clipPath id="sigCoreClip-${ax}"><rect x="${x0.toFixed(1)}" y="${mT}" width="${(x1 - x0).toFixed(1)}" height="${(fB - mT).toFixed(1)}"/></clipPath><linearGradient id="sigCore-${ax}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${fB.toFixed(1)}"><stop offset="0" stop-color="var(--cat-tech)" stop-opacity=".34"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity=".06"/></linearGradient></defs>`;
+      s += `<path d="${sline} L${spts[spts.length - 1][0].toFixed(1)} ${fB.toFixed(1)} L${spts[0][0].toFixed(1)} ${fB.toFixed(1)} Z" fill="url(#sigCore-${ax})" stroke="none" clip-path="url(#sigCoreClip-${ax})"/>`;   // 팔로워 area(파도→커튼 발)를 코어 컬럼으로 하드 클립 = 인덱싱까지 이어지는 세로 커튼
+      [[x0, e0.y], [x1, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${fB.toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--cat-tech)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 양 옆 세로변(파도 곡선 y → 커튼 발·인덱싱)
       coreX = (x0 + x1) / 2;
+      if (ax === 'hour_band' && cH.length && !cH.some(c => c == null)) {   // 경계 시각(프랙셔널 인덱스 → 버킷 중심시각 보간) = 하단 인덱싱 행 라벨용
+        const hAt = fi => { const a = Math.max(0, Math.min(cH.length - 2, Math.floor(fi))), t = fi - a; return cH[a] + (cH[a + 1] - cH[a]) * t; };
+        coreHrs = [{ x: x0, h: hAt(e0.fi) }, { x: x1, h: hAt(e1.fi) }];
+      }
     }
   }
   if (gl) s += `<path d="${gl}" fill="none" stroke="var(--accent-4)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
@@ -11218,6 +11222,10 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   bs.forEach((b, i) => {   // X축 버킷 라벨(첫/끝 = 엣지 앵커 = 삐침 방지) — n 표본 병기 줄 = 운영자 260722 제거(표본값은 호버 툴팁 n= 유지 = 정보 손실 0) · y = 일일 추이 라벨 베이스라인(H-7) 계승
     const anc = i === 0 ? 'start' : i === bs.length - 1 ? 'end' : 'middle', xa = i === 0 ? mL : i === bs.length - 1 ? W - mR : X(i);
     s += `<text x="${xa.toFixed(1)}" y="${H - 7}" text-anchor="${anc}" font-size="9" fill="var(--mut)" font-weight="700">${esc(b.bucket)}</text>`;
+  });
+  if (coreHrs) coreHrs.forEach(c => {   // 핵심 구간 경계 시각(운영자 260723 요청) — 세로변 아래 인덱싱 행(버킷 라벨 위 한 줄) · 크기·굵기 = 버킷 라벨 동일(9·700) · 색 = 음영 동색 --cat-tech · 엣지 클램프
+    const cx = Math.max(mL + 10, Math.min(W - mR - 10, c.x));
+    s += `<text x="${cx.toFixed(1)}" y="${(H - mB + 9).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--cat-tech)" font-weight="700">${Math.round(c.h)}시</text>`;
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
