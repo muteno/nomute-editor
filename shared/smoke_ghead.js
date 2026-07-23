@@ -13,12 +13,12 @@
 //   → translateY 광학 보정(Q470·Q471). 이 스모크 = 그 계약(디자인 계약 3-4 · 도형 4분할 수평선 잉크 스냅)의
 //   회귀 가드 — 폰트·패딩·line-height 변경이 편심을 되살리면 커밋 전 기계 검출.
 //
-// 무엇을 검증하나 — 5시나리오:
+// 무엇을 검증하나 — 6시나리오(H6 = 채널 요약 탭 헤더 · 운영자 260723 Q475 "메뉴만 다른 부분 검증"):
 //   H1 fin 대분류 헤더 구조물(순번 배지·체브론) 잉크 중심 = 헤더 박스 4분할 수평선 |Δ|≤TOL (텍스트=시각·점검·타이틀 = 참고 로그)
 //      + 합성 스테일(route로 updated=now−2h 주입 = 라이브 데이터 무접촉·결정론) + 칩 잘림 0(scrollW≤clientW)
 //   H2 전 대분류 헤더 전수 루프(운영자 260723 "12345678 다 겉 네모 4분할") — 렌더된 모든 .tgroup 헤더의
 //      구조물 순번(숫자)/픽토(.gpic — 배지 보정 월경 가드)·체브론 |Δ|≤TOL(각자 자기 박스 수평선 기준 · 시각 텍스트=제외)
-//   H3 fin 시세 행 삼각(svg 픽토) |Δ|≤TOL — 모노그램·이름·값·%(텍스트) = 참고 로그(Q471 보정값 관찰용 · Y위상 ±1px 진동으로 하드게이트 제외 · Q472)
+//   H3 fin 시세 행 = 요소 존재(잉크 검출)만 어서션 · 정렬값(삼각·모노그램·이름·값·%) = 참고 로그(fin-row 절대y가 위쪽 데이터로 밀려 svg조차 ±1px 진동 · Q475 실증)
 //   H4 소분류 소머리 블릿·체브론 |Δ|≤TOL (라벨 텍스트 = 로그만 — 아래 한계)
 //   H1~H4 공통 어서션 = 동일 런 픽셀 잉크 프로브(요소별 computedStyle 색 창 스캔) · H5 페이지 에러 0
 //
@@ -111,10 +111,9 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
       const row = document.querySelector('[data-sec=fin-idx] .fin-row'); const rr = row.getBoundingClientRect();
       const ico = row.querySelector('.fin-ico').getBoundingClientRect(), nm = row.querySelector('.fin-nm').getBoundingClientRect(), fv = row.querySelector('.fin-v').getBoundingClientRect();
       const pc = row.querySelector('.fin-pct'), pcr = pc && pc.getBoundingClientRect(), ar = row.querySelector('.fin-ar'), arr = ar && ar.getBoundingClientRect();
-      // 게이트 = 삼각(svg 픽토 · 위상 안정)만 — 모노그램·이름·값·% = 텍스트 잉크중심(±1px 흔들림) 참고 강등(H1 동축)
-      targets.push({ label: 'H3', sel: '[data-sec=fin-idx] .fin-row', items: [
-        ar ? { n: '삼각', x0: arr.x - rr.x, x1: arr.x - rr.x + arr.width, rgb: rgbOf(getComputedStyle(ar.parentElement).color) } : null
-      ].filter(Boolean), info: [
+      // fin-row = 페이지 깊숙이(트렌드 전 그룹 아래) 위치라 절대 y가 위쪽 라이브 데이터에 따라 밀림 → 삼각(svg)조차 위상 ±1px 진동(Q475 실증: 삼각 −0.26↔+0.74) = 게이트 부적격 → 요소 존재(잉크 검출)만 어서션, 정렬값 전부 참고(rule 4-1)
+      targets.push({ label: 'H3', sel: '[data-sec=fin-idx] .fin-row', items: [], info: [
+        ar ? { n: '삼각', x0: arr.x - rr.x, x1: arr.x - rr.x + arr.width, rgb: rgbOf(getComputedStyle(ar.parentElement).color) } : null,
         { n: '모노그램', x0: ico.x - rr.x, x1: ico.x - rr.x + ico.width, rgb: rgbOf(getComputedStyle(row.querySelector('.fin-ico')).color) },
         { n: '이름', x0: nm.x - rr.x, x1: nm.x - rr.x + nm.width, rgb: rgbOf(getComputedStyle(row.querySelector('.fin-nm')).color) },
         { n: '값', x0: fv.x - rr.x, x1: fv.x - rr.x + fv.width - 18, rgb: rgbOf(getComputedStyle(row.querySelector('.fin-v')).color) },
@@ -156,7 +155,7 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
       const info = t.info.length ? await scanOne(t.info) : [];
       const extra = info.length ? ` · [참고] ${fmt(info)}` : '';
       if (t.label === 'H1') ok('H1 fin 대분류 구조물(순번·체브론) |Δ|≤' + TOL + ' + 칩 잘림 0(텍스트=참고)', within(ds) && clip && /\(점검 필요\)$/.test(clip.t) && clip.sw <= clip.cw + 0.5, `${fmt(ds)}${extra} · 칩 "${clip && clip.t}" sw${clip && clip.sw}≤cw${clip && clip.cw}`);
-      else if (t.label === 'H3') ok('H3 fin 시세 행 삼각(svg) |Δ|≤' + TOL + '(모노그램·이름·값·% 텍스트=참고)', within(ds), fmt(ds) + extra);
+      else if (t.label === 'H3') ok('H3 fin 시세 행 요소 존재(잉크 검출) — 정렬값 참고(fin-row 절대y 위상 ±1px 진동 = 게이트 부적격)', info.every(d => d.d != null), (info.length ? fmt(info) : '없음'));
       else ok('H4 소분류 소머리 블릿·체브론 |Δ|≤' + TOL + ' (라벨 = 참고 로그 · Q472 .trend-lbltx 보정 후 ~0 · 글자별 잉크 산포 ±0.5는 서체 본질이라 하드게이트 제외)', within(ds), fmt(ds) + extra);
     }
     // ── H2 전 대분류 헤더 전수 루프(운영자 260723 "12345678 다 겉 네모 4분할") — 각 헤더 = 자기 박스 수평선 기준 순번/픽토·시각·체브론 ──
@@ -197,10 +196,51 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
     }
     ok('H2 전 대분류 헤더(' + ids.length + '개) 구조물 순번/픽토·체브론 |Δ|≤' + TOL + '(시각 텍스트=제외)', bad.length === 0, bad.length ? '위반 ' + bad.join(', ') : lines.join(' / '));
     await ctx.close();
+    // ── H6 채널 요약(chan) 탭 대분류 헤더 구조물 4분할(운영자 260723 Q475 "같은 작업인데 메뉴만 다른 부분 검증") — 채널도 동일 .tgroup-h CSS 계승 · cg-brief ✨픽토 = [id$=-brief] 통합 보정(구 #tg-brief 전용 = 채널 −1.0 미보정 사각 봉합) 회귀 가드 · 구조물(순번/픽토·체브론)만 게이트(텍스트=rule 4-1 제외) ──
+    const cctx = await br.newContext({ viewport: { width: 390, height: 900 }, deviceScaleFactor: DPR });
+    await cctx.addInitScript(() => { try { localStorage.setItem('nomute_tab', 'chan'); localStorage.setItem('nm_lock_on', '0'); localStorage.setItem('nm_locked', '0'); localStorage.setItem('nm_chan_gfold', '{}'); localStorage.setItem('nm_chan_fold', '{}'); } catch (e) {} });
+    const cpg = await cctx.newPage(); cpg.on('pageerror', e => errs.push('chan:' + String(e.message).slice(0, 120)));
+    await cpg.goto('http://127.0.0.1:' + st.port + '/', { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await cpg.waitForSelector('#chanview [id^="cg-"] > .tgroup-h', { timeout: 15000 }).catch(() => {});
+    await cpg.waitForTimeout(700);
+    const cids = await cpg.evaluate(() => [...document.querySelectorAll('#chanview [id^="cg-"]')].map(d => d.id));
+    const cbad = [], clines = [];
+    for (const id of cids) {
+      const el3 = await cpg.evaluateHandle(gid => { const e = document.getElementById(gid).querySelector(':scope > .tgroup-h'); e.scrollIntoView({ block: 'center' }); return e; }, id);
+      await cpg.waitForTimeout(90);
+      await el3.evaluate(e => { const r = e.getBoundingClientRect(); window.scrollBy(0, r.y - Math.round(r.y)); });
+      await cpg.waitForTimeout(50);
+      const meta = await el3.evaluate(h => {
+        const rgbOf = c => (c.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+        const r = h.getBoundingClientRect(); const items = [];
+        const gp = h.querySelector('.gpic svg');
+        if (gp) { const b = gp.getBoundingClientRect(); items.push({ n: '픽토', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(gp.closest('.gpic')).color) }); }
+        else { const bi = h.querySelector('i'); if (bi) { const b = bi.getBoundingClientRect(); items.push({ n: '순번', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(bi).color) }); } }
+        items.push({ n: '체브론', x0: r.width - 30, x1: r.width, rgb: rgbOf(getComputedStyle(h, '::after').backgroundColor) });
+        return { x: r.x, y: Math.round(r.y), w: r.width, h: r.height, items };
+      });
+      const shot3 = await cpg.screenshot({ clip: { x: meta.x, y: meta.y, width: meta.w, height: meta.h } });
+      const ds3 = await cpg.evaluate(async ([b64, its, dpr, bH]) => {
+        const img = new Image(); img.src = 'data:image/png;base64,' + b64; await new Promise(r => { img.onload = r; });
+        const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+        const c2 = cv.getContext('2d', { willReadFrequently: true }); c2.drawImage(img, 0, 0);
+        const D = c2.getImageData(0, 0, cv.width, cv.height).data, W = cv.width, H = cv.height;
+        return its.map(it => { let mn = 1e9, mx = -1;
+          for (let y = 0; y < H; y++) for (let x = Math.max(0, Math.round(it.x0 * dpr)); x < Math.min(W, Math.round(it.x1 * dpr)); x++) {
+            const i = (y * W + x) * 4;
+            if (Math.abs(D[i] - it.rgb[0]) <= 60 && Math.abs(D[i + 1] - it.rgb[1]) <= 60 && Math.abs(D[i + 2] - it.rgb[2]) <= 60) { if (y < mn) mn = y; if (y > mx) mx = y; }
+          }
+          return { n: it.n, d: mx < 0 ? null : +(((mn + mx + 1) / 2 / dpr) - bH / 2).toFixed(2) }; });
+      }, [shot3.toString('base64'), meta.items, DPR, meta.h]);
+      clines.push(id + ' ' + fmt(ds3));
+      ds3.forEach(d => { if (d.d == null || Math.abs(d.d) > TOL) cbad.push(id + ':' + d.n + '=' + d.d); });
+    }
+    ok('H6 채널(chan) 대분류 헤더(' + cids.length + '개) 구조물 순번/픽토·체브론 |Δ|≤' + TOL, cids.length > 0 && cbad.length === 0, cids.length === 0 ? '채널 헤더 0(렌더 실패)' : (cbad.length ? '위반 ' + cbad.join(', ') : clines.join(' / ')));
+    await cctx.close();
   } finally { await br.close().catch(() => {}); st.sv.kill(); }
   ok('H5 페이지 에러 0', errs.length === 0, errs.join(' / ') || '0건');
   console.log(res.join('\n'));
   const fail = res.filter(r => r.startsWith('FAIL')).length;
-  console.log(fail ? `── ghead 스모크 FAIL ${fail}건` : '── ghead 스모크 5/5 전부 PASS (서버 종료됨)');
+  console.log(fail ? `── ghead 스모크 FAIL ${fail}건` : `── ghead 스모크 ${res.length}/${res.length} 전부 PASS (서버 종료됨)`);
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('ABORT', e && (e.stack || e.message)); process.exit(1); });
