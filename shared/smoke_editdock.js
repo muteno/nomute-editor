@@ -86,7 +86,10 @@ async function runOnce(browser, port) {
   await pg.evaluate(() => { const g = document.querySelector('#editGo'); g._fireT0 = Date.now() - 2000; goFireOk(g); });
   await pg.waitForTimeout(300);
   m.gck = await pg.evaluate(() => !!document.querySelector('#editGo .gck'));
-  await pg.waitForTimeout(1600);
+  await pg.waitForTimeout(500);   // ✓ 여운(560ms) 경과 → 생성중 상주(운영자 260723 Q454)
+  m.busy = await pg.evaluate(() => { const g = document.querySelector('#editGo'); return g.classList.contains('busy') && !!g.querySelector('.nm-orb[data-orb="solving"]'); });   // 생성중 = orb 로더(Solving) 상주(운영자 260723 Q460 · 구 점3 텍스트 폐지)
+  await pg.evaluate(() => goFireDone(document.querySelector('#editGo')));   // 잡 완료 원복
+  await pg.waitForTimeout(60);
   m.back = await pg.evaluate(() => document.querySelector('#editGo').textContent.trim());
   m.errs = errs.length;
   await pg.close();
@@ -109,7 +112,7 @@ async function runOnce(browser, port) {
     ck('C4 초기 리드백 = 8축 OFF 표기 + 음량 1점등(accent)', /비율 원본 \/ 해상도 원본 \/ 프레임 원본 \/ 컷 세기 OFF \/ 구간 OFF \/ 클리퍼 OFF \/ 배경음 OFF \/ 음량 ON/.test(r1.readback) && r1.onN === 1 && r1.onColor === 'rgb(0, 238, 210)', 'on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
-    ck('C7 게이지 firing→✓(gck)→라벨 원복', r1.fire && r1.gck && r1.back.startsWith('생성'), r1.fire + '/' + r1.gck + '/' + r1.back);
+    ck('C7 게이지 firing→✓(gck)→생성중 상주(busy)→goFireDone 원복', r1.fire && r1.gck && r1.busy && r1.back === '생성', r1.fire + '/' + r1.gck + '/busy' + r1.busy + '/' + r1.back);
     ck('C8 라벨 잉크 중심 = 4분할 중심 Δ≤0.5', r1.inkD[0] <= 0.5 && r1.inkD[1] <= 0.5, JSON.stringify(r1.inkD));
     ck('C9 sticky 도크 = 스크롤 후 top 0 + 스트립 가시(따라다님)', r1.stick && r2.stick, String(r1.stick));
     ck('C10 폰트 = Pretendard 로드+자간 정본', r1.font && r2.font, String(r1.font));

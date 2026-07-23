@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>생성 버튼 상태머신·대기 경과 표기 플레이그라운드 · 260723</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 템플릿 v1 (운영자 260713 정본 · §플레이그라운드 0-1)
+  ─ 사용법: 이 파일을 docs/reports/{yymmdd}_{라벨}_플레이그라운드.html로 복사한 뒤
+    맨 아래 "CONFIG(세션이 채우는 전부)" 블록만 교체한다.
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 양방향 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 스크롤 보존 · 한글 열맞춤.
+    골격을 손으로 다시 쓰면 위반 = check_refs.check_playground() 게이트(rc=1).
+  ─ 철학(운영자): 완제품을 부품으로 쪼개 미세조정 = 무의미.
+    부품 1개당 "방식 N가지"를 실물로 나란히(변형 갤러리 = 발산) → 선택 → 7축 미세조정(수렴).
+    핵심 7축 = 자간 · 폰트 크기 · 위치 · 불투명도 · 블러 · 라인 · 액티브 효과.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측값의 복사(자기완결 스냅샷 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer :root 실측 사본(값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-modal:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 편집 스튜디오 재현 전용(세션 교체 영역) — 값 = viewer/edit.html·index :root 실측 사본 ── */
+.mock{--pg-lemon:#d8ff3d;padding:12px;font-size:13px}  /* 네온 레몬 = --accent-2 실측 사본 */
+.mock .mh{display:flex;justify-content:space-between;color:var(--pg-mut);font-size:11px;margin-bottom:10px}
+/* vstage 근사(edit.html 263~268 사본): 스크림 rgba(8,15,11,.26)+blur5 · 스캔 2px accent 1.4s · wmsg 중앙 15/800 */
+.vst{position:relative;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#26313a,#151b20 55%,#0d1114);height:170px;margin-bottom:10px}
+.vst .scrim{position:absolute;inset:0;background:rgba(8,15,11,.26);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.vst .scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--pg-accent),transparent);box-shadow:0 0 14px var(--pg-accent);animation:pgScan var(--t-scan,1.4s) cubic-bezier(.22,.61,.36,1) infinite}
+@keyframes pgScan{0%{top:6%}50%{top:94%}100%{top:6%}}
+.vst .wmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:15px;font-weight:800;color:var(--pg-accent);white-space:nowrap;text-shadow:0 1px 10px rgba(0,0,0,.5);text-align:center;z-index:2}
+.vst .wsec{font-weight:700;font-variant-numeric:tabular-nums}
+.vst .wsec.cur{color:var(--pg-mut)}
+.vst .wsec.lemon{color:var(--pg-lemon);text-shadow:0 0 12px rgba(216,255,61,.45),0 1px 10px rgba(0,0,0,.5)}
+.vst .wsec.big{display:block;font-size:var(--t-efs,15px);margin-top:var(--t-eoff,6px)}
+.vst .crn{position:absolute;top:8px;right:10px;z-index:2;font-weight:700;font-variant-numeric:tabular-nums}
+/* 생성 버튼 = #editGo 실측 사본(padding 6 sp-1 · r-m 11 · fs-label 13 · line 보더 · 눌림 .955) */
+.gobtn{width:100%;padding:6px;border-radius:11px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.08);color:var(--pg-accent);font-weight:800;font-size:13px;line-height:1;cursor:pointer;position:relative;transition:transform .12s}
+.gobtn:active{transform:scale(.955);background:rgba(var(--pg-accent-rgb),.08)}
+/* 게이지 = goFill 정본(.72s cubic-bezier(.22,.61,.36,1) accent 풀필) */
+.gobtn.firing{color:#032322;pointer-events:none;background:linear-gradient(var(--pg-accent),var(--pg-accent)) left/0% 100% no-repeat,linear-gradient(rgba(var(--pg-accent-rgb),.22),rgba(var(--pg-accent-rgb),.22));animation:pgFill var(--t-gdur,.72s) cubic-bezier(.22,.61,.36,1) forwards}
+@keyframes pgFill{from{background-size:0% 100%,100% 100%}to{background-size:100% 100%,100% 100%}}
+/* ✓ = gck 정본(26px·margin -6.5·팝 .44 스프링·선긋기 .38 dasharray24) */
+.gobtn.okdone{background:var(--pg-accent);color:#032322;border-color:var(--pg-accent);display:grid;place-items:center}
+.gobtn .gck{width:26px;height:26px;margin:-6.5px 0;animation:pgPop2 .44s cubic-bezier(.18,1.5,.4,1) forwards}
+.gobtn .gck path{fill:none;stroke:#032322;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:pgTick .38s .04s ease forwards}
+@keyframes pgTick{to{stroke-dashoffset:0}}
+@keyframes pgPop2{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+/* 생성중 = 비활성 + 변형별 점등 — 점3 = gdots 정본 리듬(1.4s·딜레이 .22/.44) */
+.gobtn.busy{pointer-events:none;cursor:default}
+.gobtn.busy.v-blink{animation:pgBlink var(--t-pulse,1.4s) ease-in-out infinite}
+@keyframes pgBlink{0%,100%{opacity:1}50%{opacity:var(--t-pmin,.47)}}
+.gobtn.busy.v-border{animation:pgBorder var(--t-pulse,1.4s) ease-in-out infinite}
+@keyframes pgBorder{0%,100%{border-color:rgba(var(--pg-accent-rgb),.6);box-shadow:0 0 10px rgba(var(--pg-accent-rgb),.25)}50%{border-color:rgba(255,255,255,.08);box-shadow:0 0 0 rgba(0,0,0,0)}}
+.gobtn.busy.v-dim{opacity:.47}
+.gdots{display:inline-block;width:1.1em;text-align:left}
+.gdots i{font-style:normal;opacity:0;animation:pgDots 1.4s infinite}
+.gdots i:nth-child(2){animation-delay:.22s}.gdots i:nth-child(3){animation-delay:.44s}
+@keyframes pgDots{0%{opacity:0}25%,70%{opacity:1}95%,100%{opacity:0}}
+.mock .strip{background:#0a0d0b;border-radius:11px;padding:8px 10px;font-size:10.5px;color:var(--pg-mut);margin-bottom:10px}
+.mock .strip b{color:var(--pg-fg)}
+.mock .cap{font-size:10px;color:var(--pg-mut);margin-top:8px;line-height:1.5}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>생성 버튼 상태머신 <span style="color:var(--pg-accent)">게이지→✓→생성중 점등</span> · 대기 경과(네온 레몬)</h1>
+<p class="sub">부품 1개 = 방식 N가지(갤러리 선택) → 7축 미세조정 → 선택값 복사. 기본값 = 현행 실측 · 골격 = 동결(config만 교체).</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 부품별 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (7축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 세션이 채우는 전부 ═══════════ */
+const CONFIG={
+  META:{label:'생성 버튼 상태머신·대기 경과', frame:{w:300,h:560}, ssot:'viewer/index.html :root',
+    notes:['⑤ 한계: 경과 "1:07" = 고정 목업 숫자 — 실구현 = fmtT(실시간 초) · 실소요 교정(Q453)과 동일 축.',
+           '영상 = 그라데이션 목업(실물 = 업로드 영상 프레임) · 스캔라인·스크림·wmsg = edit.html 실측 사본.',
+           '게이지→✓ = 현행 정본 그대로(변경 0) — 신설분 = ✓ 뒤 "생성중" 유지 상태와 점등 모션뿐.',
+           '점등 온오프 = 신설 모션(정본 리듬 1.4s = gdots·스캔 계승 제안) · reduced-motion 실구현 시 animation:none 동결.',
+           '네온 레몬 = --accent-2(#d8ff3d) 토큰 계승 — 색 창작 0.'],},
+  GALLERY:[
+    {comp:'busy', nm:'생성 버튼 — 생성중 상태(게이지→✓ 뒤)', desc:'카드 탭 = 점등 체감', variants:[
+      {id:'cur',   nm:'라벨 복귀', tag:'생성중 표기 없음(대기 스테이지 전담)', r:()=>'<button class="gobtn" style="width:130px">생성</button>'},
+      {id:'blink', nm:'점3 + 점등 온오프', tag:'요청안 · 버튼 전체 펄스·비활성', r:()=>'<button class="gobtn busy v-blink" style="width:130px">생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></button>'},
+      {id:'border',nm:'점3 + 보더 점등', tag:'테두리만 펄스·글자 고정', r:()=>'<button class="gobtn busy v-border" style="width:130px">생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></button>'},
+      {id:'dim',   nm:'점3 + 고정 딤', tag:'펄스 없음(.47 정지)', r:()=>'<button class="gobtn busy v-dim" style="width:130px">생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></button>'},
+    ]},
+    {comp:'elapsed', nm:'대기 스테이지 — 경과 시간 표기(스캔라인 위 레이어)', desc:'네온 레몬 = --accent-2', variants:[
+      {id:'cur',   nm:'무트 회색(라벨 옆)', tag:'현행', r:()=>'<span style="font-weight:800;color:var(--pg-accent);font-size:12px">편집 중<span class="wsec cur" style="color:var(--pg-mut)"> 1:07</span></span>'},
+      {id:'lemon', nm:'네온 레몬(라벨 옆)', tag:'요청안', r:()=>'<span style="font-weight:800;color:var(--pg-accent);font-size:12px">편집 중<span class="wsec" style="color:#d8ff3d"> 1:07</span></span>'},
+      {id:'below', nm:'네온 레몬 별도 줄', tag:'라벨 아래 크게(efs·간격 축)', r:()=>'<span style="font-weight:800;color:var(--pg-accent);font-size:12px;text-align:center;display:block">편집 중<span style="display:block;color:#d8ff3d;font-weight:700">1:07</span></span>'},
+      {id:'corner',nm:'네온 레몬 우상단', tag:'스테이지 코너 상주', r:()=>'<span style="color:#d8ff3d;font-weight:700;font-size:12px">1:07 ↗</span>'},
+    ]},
+  ],
+  AXES:[
+    {k:'pulse',nm:'점등 주기',      grp:'생성중 점등', type:'range', min:0.6, max:3, step:0.1, u:'s', lad:[1.4], tok:'정본 리듬 1.4s(gdots·스캔) 계승', eps:0.05},
+    {k:'pmin', nm:'점등 최저 밝기', grp:'생성중 점등', type:'range', min:0.2, max:0.9, step:0.01, u:'', free:true, tok:'disabled 딤 .47 계승 — 알파 변주 = 자유', eps:0.005},
+    {k:'gdur', nm:'게이지 시간',    grp:'발사 시퀀스', type:'range', min:0.3, max:1.5, step:0.02, u:'s', lad:[0.72], tok:'goFill .72s 정본', eps:0.011},
+    {k:'hold', nm:'✓ 유지 시간',   grp:'발사 시퀀스', type:'range', min:0.3, max:1.6, step:0.05, u:'s', lad:[0.85], tok:'라벨 복귀 850ms 정본', eps:0.026},
+    {k:'scan', nm:'스캔 주기',      grp:'대기 스테이지', type:'range', min:0.8, max:3, step:0.1, u:'s', lad:[1.4], tok:'scan 1.4s 정본', eps:0.05},
+    {k:'efs',  nm:'경과 폰트',      grp:'대기 스테이지', type:'range', min:10, max:22, step:0.5, u:'px', lad:[11,12,13,14,15,19,22], tokn:'--fs-body', tokv:15, tok:'--fs-* 사다리 · 현행 wmsg 15', eps:0.26},
+    {k:'eoff', nm:'경과 세로 간격', grp:'대기 스테이지', type:'range', min:0, max:24, step:1, u:'px', free:true, tok:'별도 줄 변형 전용 — 신설 축', eps:0.6},
+  ],
+  DEFAULTS:{pulse:1.4, pmin:0.47, gdur:0.72, hold:0.85, scan:1.4, efs:15, eoff:6, v_busy:'cur', v_elapsed:'cur'},
+  PRESETS:[
+    {nm:'현행(비교 기준)', st:{}},
+    {nm:'요청안 — 점등+네온 레몬', star:1, st:{v_busy:'blink', v_elapsed:'lemon'}},
+    {nm:'별도 줄 크게', st:{v_busy:'blink', v_elapsed:'below', efs:19}},
+    {nm:'차분 — 보더 점등·느림', st:{v_busy:'border', v_elapsed:'lemon', pulse:2}},
+  ],
+  seq(btn){   // 발사 시퀀스 실재생: 게이지(firing) → ✓(okdone) → 생성중(busy 변형) → 5s 뒤 원복(재생용)
+    clearTimeout(btn._t1);clearTimeout(btn._t2);clearTimeout(btn._t3);
+    btn.className='gobtn';btn.textContent='생성';void btn.offsetWidth;
+    btn.classList.add('firing');btn.textContent='요청 전송';
+    btn._t1=setTimeout(()=>{
+      btn.classList.remove('firing');btn.classList.add('okdone');
+      btn.innerHTML='<svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+      btn._t2=setTimeout(()=>{
+        const vb=state.v.busy;
+        btn.className='gobtn';
+        if(vb==='cur'){btn.textContent='생성';return;}
+        btn.classList.add('busy', vb==='blink'?'v-blink':vb==='border'?'v-border':'v-dim');
+        btn.innerHTML='생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';
+        btn._t3=setTimeout(()=>{btn.className='gobtn';btn.textContent='생성';},5000);
+      }, +state.a.hold*1000);
+    }, +state.a.gdur*1000);
+  },
+  renderPreview(s){
+    const ve=s.v?s.v.elapsed:state.v.elapsed;
+    const wsec = ve==='cur' ? '<span class="wsec cur"> 1:07</span>'
+      : ve==='lemon' ? '<span class="wsec lemon"> 1:07</span>'
+      : ve==='below' ? '<span class="wsec lemon big">1:07</span>' : '';
+    const corner = ve==='corner' ? '<div class="wsec lemon crn">1:07</div>' : '';
+    return '<div class="mock"><div class="mh"><span>VIDEO STUDIO</span><span>편집 탭 목업</span></div>'
+      +'<div class="vst"><div class="scrim"></div><div class="scan"></div>'+corner
+      +'<div class="wmsg">편집 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'+wsec+'</div></div>'
+      +'<div class="strip"><b>자막</b> OFF / <b>비율</b> 원본 / <b>음량</b> ON</div>'
+      +'<button class="gobtn" id="pgGo" onclick="CONFIG.seq(this)">생성</button>'
+      +'<div class="cap">▲ 생성 버튼 탭 = 게이지→✓→생성중 시퀀스 실재생 · 동그라미 3개 = gdots 정본 · 위 스테이지 = 대기(스캔라인+경과)</div></div>';
+  },
+  renderBaseline(){
+    return '<div class="mock"><div class="mh"><span>VIDEO STUDIO</span><span>현행(비교)</span></div>'
+      +'<div class="vst"><div class="scrim"></div><div class="scan"></div>'
+      +'<div class="wmsg">편집 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span><span class="wsec cur"> 1:07</span></div></div>'
+      +'<div class="strip"><b>자막</b> OFF / <b>비율</b> 원본 / <b>음량</b> ON</div>'
+      +'<button class="gobtn">생성</button>'
+      +'<div class="cap">현행 = 게이지→✓→라벨 복귀(생성중 상주 없음) · 경과 = 무트 회색(라벨 옆)</div></div>';
+  },
+};
+boot();
+</script>
+</body>
+</html>

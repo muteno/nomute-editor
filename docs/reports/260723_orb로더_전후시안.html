@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>orb 로더 전후 시안 · 260723 — 생성(Solving)·뉴스요약(Thinking)·영상 작업중</title>
+<!--
+  orb 로더 통일 시안 — 앱 전반 제각각 로딩(생성 중···/분석 중/처리중/편집 중…)을
+  orb 2종 pill(첨부2 크기)+글자 빛 스윕(shimmer)으로 통일 제안.
+  · Solving(흩뿌린 입자) = 생성류 · Thinking(소용돌이 링) = 뉴스요약·분석류.
+  · WebGL 원본(orbs.jakubantalik.com) = 스크랩 불가 → CSS/SVG 똑닮은 재현(근사).
+  · 색 = viewer/index.html :root 실측 사본(--accent #00EED2·--accent-2 #d8ff3d·--mut·--bg).
+-->
+<style>
+:root{color-scheme:dark;
+  --bg:#121212; --pan:#16171a; --fg:#eef7f0; --mut:#8fa697; --line:#2a2c31;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-2:#d8ff3d; --accent-2-rgb:216,255,61;
+  --r-pill:999px; --r-l:16px; --r-m:11px;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.55 "Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;padding:18px 16px 60px;-webkit-font-smoothing:antialiased}
+h1{font-size:18px;letter-spacing:-.01em}
+.sub{color:var(--mut);font-size:12px;margin:4px 0 18px}
+.card{background:var(--pan);border:1px solid var(--line);border-radius:var(--r-l);padding:16px;margin-bottom:16px}
+.card h2{font-size:13px;font-weight:800;margin-bottom:3px}
+.card h2 .b{color:var(--accent)}
+.card .desc{color:var(--mut);font-size:11.5px;margin-bottom:14px}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.ba{grid-template-columns:1fr}}
+.cell{border:1px solid var(--line);border-radius:var(--r-m);padding:14px;background:#0d0f10;min-height:96px;display:flex;flex-direction:column;gap:10px;justify-content:center;align-items:center}
+.tag{position:absolute;top:8px;left:10px;font-size:10px;font-weight:800;letter-spacing:.04em}
+.cellwrap{position:relative}
+.tag.before{color:var(--mut)} .tag.after{color:var(--accent-2)}
+.btn{border:1px solid rgba(var(--accent-rgb),.4);color:var(--accent);background:rgba(var(--accent-rgb),.06);border-radius:var(--r-pill);padding:7px 16px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.btn:active{transform:scale(.96)}
+.play{border:1px solid var(--line);color:var(--mut);background:none;border-radius:var(--r-pill);padding:5px 13px;font:inherit;font-size:11.5px;cursor:pointer;margin-bottom:12px}
+.play:active{transform:scale(.96)}
+
+/* ═══ orb 2종 (CSS/SVG 재현) ═══ */
+.orb{display:inline-block;position:relative;vertical-align:middle}
+.orb svg{display:block;width:100%;height:100%;overflow:visible}
+.orb .dot{fill:#e9eef0}
+/* Thinking = 소용돌이 링(3링 회전 · 원근 fake) */
+.orb-thinking .r{transform-origin:50% 50%;animation:spin 3.2s linear infinite}
+.orb-thinking .r2{animation-duration:4.6s;animation-direction:reverse;opacity:.72}
+.orb-thinking .r3{animation-duration:6s;opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Solving = 흩뿌린 입자(느린 회전 + 스태거 트윙클) */
+.orb-solving .cloud{transform-origin:50% 50%;animation:spin 9s linear infinite}
+.orb-solving .dot{animation:twk 1.8s ease-in-out infinite}
+@keyframes twk{0%,100%{opacity:.28}50%{opacity:1}}
+
+/* ═══ 로더 pill (첨부2 "Agent listening…" 규격) ═══ */
+.nmload{display:inline-flex;align-items:center;gap:9px;height:38px;padding:0 16px 0 12px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);backdrop-filter:blur(6px)}
+.nmload .orb{width:22px;height:22px;flex:0 0 auto}
+/* 빛 스윕(shimmer) 글자 — 빛이 글자 위를 지나감 · line-height:1 = 글자 박스 중심 = orb 중심(4분할 가로선 정렬) */
+.shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center;
+  background:linear-gradient(100deg,var(--mut) 0%,var(--mut) 38%,#ffffff 50%,var(--mut) 62%,var(--mut) 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shim 1.9s linear infinite}
+@keyframes shim{from{background-position:120% 0}to{background-position:-120% 0}}
+.shim.acc{background:linear-gradient(100deg,rgba(var(--accent-rgb),.55) 0%,rgba(var(--accent-rgb),.55) 38%,var(--accent) 50%,rgba(var(--accent-rgb),.55) 62%,rgba(var(--accent-rgb),.55) 100%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text}
+@media(prefers-reduced-motion:reduce){.shim{animation:none;color:var(--mut);-webkit-text-fill-color:var(--mut)}.orb *{animation:none!important}}
+
+/* ═══ 사례별 재현 목업 ═══ */
+/* 생성 버튼(현행 상태머신) */
+.go{width:180px;padding:7px;border-radius:var(--r-m);background:rgba(255,255,255,.02);border:1px solid var(--line);color:var(--accent);font:inherit;font-weight:800;font-size:13px;line-height:1;cursor:pointer;position:relative;overflow:hidden;text-align:center}
+.go.firing{color:#032322;pointer-events:none;background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat,linear-gradient(rgba(var(--accent-rgb),.22),rgba(var(--accent-rgb),.22));animation:gf .72s cubic-bezier(.22,.61,.36,1) forwards}
+@keyframes gf{from{background-size:0% 100%,100% 100%}to{background-size:100% 100%,100% 100%}}
+.go.okdone{background:var(--accent);color:#032322;border-color:var(--accent);display:grid;place-items:center}
+.go .gck{width:24px;height:24px;margin:-6px 0}.go .gck path{fill:none;stroke:#032322;stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;animation:tick .38s .04s ease forwards}
+@keyframes tick{to{stroke-dashoffset:0}}
+.gdots i{font-style:normal;opacity:0;animation:gd 1.4s infinite}.gdots i:nth-child(2){animation-delay:.22s}.gdots i:nth-child(3){animation-delay:.44s}
+@keyframes gd{0%{opacity:0}25%,70%{opacity:1}95%,100%{opacity:0}}
+.go.busyold{pointer-events:none;animation:bp 1.4s ease-in-out infinite}
+@keyframes bp{0%,100%{border-color:rgba(var(--accent-rgb),.6)}50%{border-color:var(--line)}}
+/* 영상 스테이지(작업중 오버레이) */
+.vst{position:relative;width:100%;max-width:230px;height:150px;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#26313a,#151b20 55%,#0d1114)}
+.vst .scrim{position:absolute;inset:0;background:rgba(8,15,11,.26);backdrop-filter:blur(4px)}
+.vst .scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 14px var(--accent);animation:scan 1.4s cubic-bezier(.22,.61,.36,1) infinite}
+@keyframes scan{0%{top:6%}50%{top:94%}100%{top:6%}}
+.vst .wmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;font-size:15px;font-weight:800;color:var(--accent);white-space:nowrap}
+.vst .crn{position:absolute;top:8px;left:10px;z-index:2;color:var(--accent-2);font-weight:700;font-variant-numeric:tabular-nums;font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.mini{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut)}
+.note{font-size:11px;color:var(--mut);line-height:1.6;margin-top:6px}
+.leg{font-size:11px;color:var(--mut)}
+.leg b{color:var(--fg)}
+/* 4분할 중앙 가로선(정렬 확인용 · 시안 전용) — pill 세로 중앙에 빨간 선 */
+.nmload.guide{position:relative}
+.nmload.guide::after{content:"";position:absolute;left:6px;right:6px;top:50%;height:1px;background:rgba(255,80,80,.6);pointer-events:none}
+</style>
+</head>
+<body>
+<h1>orb 로더 <span style="color:var(--accent)">전 · 후</span> 시안</h1>
+<p class="sub">생성=<b style="color:#e9eef0">Solving</b> · 뉴스요약/분석=<b style="color:#e9eef0">Thinking</b> · 첨부2 pill 크기 + 글자 빛 스윕(shimmer). WebGL 원본 스크랩 불가 → CSS/SVG 근사 재현.</p>
+
+<!-- 0. orb 2종 단독 -->
+<div class="card">
+  <h2><span class="b">•</span> orb 2종 (크게 보기)</h2>
+  <div class="desc">Solving(생성·처리 · 흩뿌린 입자) / Thinking(요약·분석 · 소용돌이 링). pill 안에선 22px. 아래 pill = orb↔글자 4분할 중앙 가로선 정렬(빨간 선 = 중심).</div>
+  <div class="row" style="gap:30px;justify-content:center">
+    <div style="text-align:center"><span class="orb orb-solving" style="width:80px;height:80px"></span><div class="leg" style="margin-top:8px"><b>Solving</b> · 생성·처리</div></div>
+    <div style="text-align:center"><span class="orb orb-thinking" style="width:80px;height:80px"></span><div class="leg" style="margin-top:8px"><b>Thinking</b> · 요약·분석</div></div>
+  </div>
+  <div class="row" style="justify-content:center;gap:18px;margin-top:18px">
+    <span class="nmload guide"><span class="orb orb-thinking"></span><span class="shim">Thinking…</span></span>
+    <span class="nmload guide"><span class="orb orb-solving"></span><span class="shim">Solving…</span></span>
+    <span class="nmload guide"><span class="orb orb-thinking"></span><span class="shim">Prompting…</span></span>
+  </div>
+  <div class="note">※ <b style="color:var(--fg)">3종 통일</b> = <b style="color:var(--fg)">Thinking</b>(링 · 요약·분석·큐레이션·2차 수정 판단) · <b style="color:var(--fg)">Solving</b>(입자 · 영상 편집·변환·렌더·이미지·음원 산출·재수정) · <b style="color:var(--fg)">Prompting</b>(링 · 프롬프팅·콘티 설계) — orb 2종(링/입자)·라벨 3개.</div>
+</div>
+
+<!-- 1. 생성 버튼 흐름 -->
+<div class="card">
+  <h2><span class="b">•</span> ① 생성 버튼 흐름 (누른 시점부터)</h2>
+  <div class="desc">게이지 차오름 → ✓ → 생성중. 생성중 표기만 교체: 점3(gdots) → Solving orb pill.</div>
+  <button class="play" onclick="fireGo()">▶ 생성 버튼 눌러보기</button>
+  <div class="ba">
+    <div class="cellwrap"><span class="tag before">전 — 점3</span><div class="cell">
+      <button class="go" id="goBefore">생성</button>
+    </div></div>
+    <div class="cellwrap"><span class="tag after">후 — Solving orb</span><div class="cell">
+      <button class="go" id="goAfter">생성</button>
+    </div></div>
+  </div>
+  <div class="note">※ 게이지·✓는 정본 유지 · '생성중' 상주만 orb pill로. 버튼 폭 안에서 orb(18px)+shimmer.</div>
+</div>
+
+<!-- 2. 영상 작업중 오버레이 -->
+<div class="card">
+  <h2><span class="b">•</span> ② 영상 위 작업중 오버레이 (편집·자막)</h2>
+  <div class="desc">스캔라인·좌상단 경과(네온레몬)는 유지 · 중앙 '편집 중···'(점3)을 Solving orb pill로.</div>
+  <div class="ba">
+    <div class="cellwrap"><span class="tag before">전</span><div class="cell">
+      <div class="vst"><div class="scrim"></div><div class="scan"></div><div class="crn">1:07</div>
+        <div class="wmsg">편집 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div></div>
+    </div></div>
+    <div class="cellwrap"><span class="tag after">후</span><div class="cell">
+      <div class="vst"><div class="scrim"></div><div class="scan"></div><div class="crn">1:07</div>
+        <div class="wmsg" style="left:50%;top:50%"><span class="nmload" style="background:rgba(0,0,0,.35)"><span class="orb orb-solving" style="width:20px;height:20px"></span><span class="shim">Solving…</span></span></div></div>
+    </div></div>
+  </div>
+</div>
+
+<!-- 3. 뉴스 요약/분석 -->
+<div class="card">
+  <h2><span class="b">•</span> ③ 뉴스 요약 · 분석 (큐레이션)</h2>
+  <div class="desc">index의 '분석 중/요약 중/불러오는 중…' 계열 → Thinking orb pill.</div>
+  <div class="ba">
+    <div class="cellwrap"><span class="tag before">전</span><div class="cell">
+      <div class="mini">분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div>
+    </div></div>
+    <div class="cellwrap"><span class="tag after">후 — Thinking orb</span><div class="cell">
+      <span class="nmload"><span class="orb orb-thinking"></span><span class="shim">Thinking…</span></span>
+    </div></div>
+  </div>
+</div>
+
+<!-- 4. 생성·설계 사례(3종) -->
+<div class="card">
+  <h2><span class="b">•</span> ④ 생성·설계 사례 (콘티·프롬프팅·음원·이미지)</h2>
+  <div class="desc">콘티·프롬프팅 = 설계 <b style="color:var(--fg)">Prompting</b> · 음원·이미지 = 미디어 산출 <b style="color:var(--fg)">Solving</b>.</div>
+  <div class="row" style="flex-direction:column;align-items:stretch;gap:12px">
+    <div class="ba">
+      <div class="cellwrap"><span class="tag before">전</span><div class="cell" style="min-height:60px"><div class="mini">콘티 생성중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div></div></div>
+      <div class="cellwrap"><span class="tag after">후 — 설계</span><div class="cell" style="min-height:60px"><span class="nmload"><span class="orb orb-thinking"></span><span class="shim">Prompting…</span></span></div></div>
+    </div>
+    <div class="row" style="justify-content:center;gap:12px">
+      <span class="nmload"><span class="orb orb-thinking"></span><span class="shim">Prompting…</span></span>
+      <span class="nmload"><span class="orb orb-solving"></span><span class="shim">Solving…</span></span>
+      <span class="nmload"><span class="orb orb-solving"></span><span class="shim">Solving…</span></span>
+    </div>
+    <div class="leg" style="text-align:center">← 콘티·프롬프팅 = Prompting(링) · 음원·이미지 = Solving(입자) →</div>
+  </div>
+  <div class="note">※ pill·orb·shimmer = 공용 부품 1벌(<b>data-orb=thinking|solving</b> · 라벨 = Thinking/Solving/Prompting) · 문구만 주입 = 앱 전반 통일 SSOT.</div>
+</div>
+
+<!-- 5. 이미지 수정·뉴스 2차 수정 등 재수정 계열 -->
+<div class="card">
+  <h2><span class="b">•</span> ⑤ 재수정·2차 수정 계열 (운영자 지목)</h2>
+  <div class="desc">이미지 수정→입력→재수정 = <b style="color:var(--fg)">Solving</b>(미디어 재산출) · 뉴스 요약 2차 수정 = <b style="color:var(--fg)">Thinking</b>(재판단) · 카드 재생성(revise) = Solving.</div>
+  <div class="row" style="flex-direction:column;align-items:stretch;gap:12px">
+    <div class="ba">
+      <div class="cellwrap"><span class="tag before">전 — 이미지 재수정</span><div class="cell" style="min-height:60px"><div class="mini">수정 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div></div></div>
+      <div class="cellwrap"><span class="tag after">후</span><div class="cell" style="min-height:60px"><span class="nmload"><span class="orb orb-solving"></span><span class="shim">Solving…</span></span></div></div>
+    </div>
+    <div class="ba">
+      <div class="cellwrap"><span class="tag before">전 — 뉴스 2차 수정</span><div class="cell" style="min-height:60px"><div class="mini">재생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span></div></div></div>
+      <div class="cellwrap"><span class="tag after">후</span><div class="cell" style="min-height:60px"><span class="nmload"><span class="orb orb-thinking"></span><span class="shim">Thinking…</span></span></div></div>
+    </div>
+  </div>
+  <div class="note">※ 앱 인벤토리(실측 grep) — index '수정 중/재생성 중/보정'(뉴스·카드) · thumb '처리중/만드는 중'(이미지) · tr '처리중'(번역) · 파이프라인 <b>METER_SRC=revise</b>(뉴스·카드 2차) → 전부 3종 중 하나로 흡수(판단=Thinking · 산출·재수정=Solving · 설계=Prompting).</div>
+</div>
+
+<div class="card">
+  <h2><span class="b">•</span> 각주 (재현 한계)</h2>
+  <div class="note">
+    · orb = WebGL 원본(orbs.jakubantalik.com) 스크랩 불가 → CSS/SVG <b>근사</b> 재현(입자 수·명암은 실배선 때 미세조정).<br>
+    · 색 = 레퍼런스대로 흰/은빛 입자(콘텐츠 축) · shimmer 흰빛 스윕 · 마지막 '이미지 생성 중'만 accent 스윕 예시(택1 가능).<br>
+    · 크기·pill = 첨부2 규격(높이 38px·orb 22px) · 영상 오버레이는 pill 배경만 더 진하게(가독).<br>
+    · 실배선 = 공용 부품 <b>nm-loader</b> 1벌 → 앱 전반 로더를 이 태그로 치환(전/후 이 시안대로).
+  </div>
+</div>
+
+<script>
+// orb 점 생성 — Solving(흩뿌린 입자) / Thinking(소용돌이 3링)
+function build(){
+  document.querySelectorAll('.orb-solving').forEach(o=>{
+    if(o.dataset.done)return;o.dataset.done=1;
+    const N=34, pts=[];
+    // 결정적 의사난수(시드) — Math.random 미사용
+    let s=9301; const rnd=()=>{s=(s*9301+49297)%233280;return s/233280;};
+    for(let i=0;i<N;i++){const a=rnd()*6.2832,r=Math.sqrt(rnd())*44+3;pts.push([50+Math.cos(a)*r*0.9,50+Math.sin(a)*r*0.9,0.9+rnd()*1.6,(i%6)*0.3]);}
+    o.innerHTML='<svg viewBox="0 0 100 100"><g class="cloud">'+pts.map(p=>`<circle class="dot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${p[2].toFixed(2)}" style="animation-delay:${p[3]}s"/>`).join('')+'</g></svg>';
+  });
+  document.querySelectorAll('.orb-thinking').forEach(o=>{
+    if(o.dataset.done)return;o.dataset.done=1;
+    const ring=(cls,ry,n,rd)=>{let d='';for(let i=0;i<n;i++){const a=i/n*6.2832;d+=`<circle class="dot" cx="${(50+Math.cos(a)*40).toFixed(1)}" cy="${(50+Math.sin(a)*ry).toFixed(1)}" r="${rd}"/>`;}return `<g class="r ${cls}" style="transform:rotate(${cls==='r2'?30:cls==='r3'?60:0}deg)">${d}</g>`;};
+    o.innerHTML='<svg viewBox="0 0 100 100">'+ring('r1',40,18,2)+ring('r2',15,14,1.7)+ring('r3',26,12,1.4)+'</svg>';
+  });
+}
+build();
+
+// 생성 버튼 흐름 재생(전=점3 / 후=orb)
+function fireGo(){
+  seq(document.getElementById('goBefore'),false);
+  seq(document.getElementById('goAfter'),true);
+}
+function seq(g,useOrb){
+  clearTimeout(g._a);clearTimeout(g._b);
+  g.className='go';g.textContent='생성';void g.offsetWidth;
+  g.classList.add('firing');g.textContent='요청 전송';
+  g._a=setTimeout(()=>{
+    g.classList.remove('firing');g.classList.add('okdone');
+    g.innerHTML='<svg class="gck" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+    g._b=setTimeout(()=>{
+      g.className='go';
+      if(useOrb){g.innerHTML='<span class="nmload" style="height:auto;padding:0;border:0;background:none;gap:7px"><span class="orb orb-solving" style="width:18px;height:18px"></span><span class="shim" style="font-size:12.5px">Solving…</span></span>';g.dataset.done='';build();}
+      else{g.classList.add('busyold');g.innerHTML='생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';}
+      g._c=setTimeout(()=>{g.className='go';g.textContent='생성';},4200);
+    },560);
+  },760);
+}
+</script>
+</body>
+</html>

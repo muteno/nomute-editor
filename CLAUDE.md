@@ -111,6 +111,7 @@
 - [4] 팔레트 예외 = 도구 스튜디오들(index 외 뷰어)의 차분한 툴톤은 의도라 index 색으로 재색칠 = 영구 금지 · 발행 콘텐츠 색(카드뉴스·릴스 브랜드색) = UI 팔레트와 별개 축(UI 색 개편에 동행 변경 절대 금지).
 - [4] 계정 축 정본 = `functions/api/seen.js` → `viewer/toast-seen.json` · 상태형 정본 구현 = index `srvFreshAckTs` · 세션 한정 의미 정본 = CII 토스트 행.
 - [4-1] 상호작용→정본 부품 표 = docs/CII_컴포넌트계승인덱스.md §상호작용→정본 부품(3단: 새 화면 신설 = index `#genidlg` `.geni-row`/`.geni-opt` 계승[운영자 260714 확립·sb 실증] · 기존 화면 안 신설 = 그 화면 확립 문법[k `.axchip`·edit `.prow .pc` 등] · 무형제 폴백 = k `.axchip`) · 기존 5탭(edit·ly·sb·k·song) = 레거시 동결(소급 재작업 금지) · 게이트 등재 현황 = shared/check_refs.py `_DESIGN_BASELINE`.
+- [4-2] 영상 스튜디오 5탭(CAP_TABS = 편집 edit·자막 ly·콘티 sb·프롬프팅 k·음원 song) 공통 강제 기틀(운영자 260723 · [4-1] '레거시 동결'의 기틀 골격 한정 예외) = **① sticky 도크 골격**(미리보기 + 선택 요약 스트립 + 생성 발사바 = edit `#topDock` 정본 계승) **② 생성버튼 상태머신**(게이지 goFill→✓ gck→생성중 busy 상주→goFireDone 원복 = edit `goFireStart/goFireOk/goBusy/goFireDone` 정본). **변형 허용(탭별 성격)** = 미리보기·대기 화면 '내용물'(영상 폴링형[edit·ly] = 영상 프레임+스캔라인+경과[좌상단 네온레몬 --accent-2]+예상 토큰비 · 텍스트 산출형[sb·k·song] = Contents 입력·각색 대기 표기) · 확산 방식 = 대표 1개(ly) 먼저 실측·갭만([E4]) · 강제 골격 신설 화면 = 이 기틀 계승 baseline 등재.
 - [5] 플레이그라운드 산출 = docs/reports/{yymmdd}_{라벨}_플레이그라운드.html(커밋 + 채팅 첨부 · 라이브 서빙 경로 없음 = 파일 폴백) · 골격 = docs/플레이그라운드_포터블.md §3.
 - [6] 지시 원장 = docs/요구사항_큐.md(보고 골격 = 최우선 2의 6단 · 예시 블록 폐지 · **번호 = 커밋 직전 파일 최대+1 확정, 착수 중 `Q??` 스텁**{260718 경합 소멸 · 세칙 = 큐 헤더 규칙 6 · 스텁 잔존 = check_refs 차단}).
 - [9] 평의회 대상 예 = docs/디자인기틀_SSOT.md · viewer/index.html의 :root 토큰·구조·동작 로직 · 상비 게이트 = shared/check_refs.py + bash shared/smoke_all.sh(UI 표면).
