@@ -1219,6 +1219,56 @@ def check_launch_spec():
         print('✅ 발사버튼 규격 게이트 — 스튜디오 발사 버튼 %d개 전부 생성 규격(r-m·sp-1·fs-label) 계승(모조품 0 · 신규 편입 = _LAUNCH_BTNS).' % n)
     return rc
 
+
+# ── 이미지 스튜디오 도크 규격 게이트(운영자 260723 "AFTER로 일괄 통일 · 저 규격 벗어나면 안됨") ──
+#   AFTER 규격(정본 = thumb 편집 탭 도크) 2속성 동결:
+#   ① 리드백 요약 스트립(#editSpec·#trSpec) 값 = 기본값 mut·변경값만 accent → 정적 HTML에 `gs-v.on` 하드코딩 금지
+#      (기본값 강조 = tr 260721 이탈 선례: 부팅 시 전 값 청록 = 편집 탭과 색 불일치 · 정본 문법 = updateGoSpec가 비기본값만 .on 토글).
+#   ② 생성 버튼(#go) = 입력(사진) 없다고 disabled 금지 → 정적 `disabled` 속성 금지(상시 활성 full opacity·빈 클릭=사진 첨부 = thumb !CIMG.b64→cFile.click).
+#   범위 = 이미지 스튜디오(thumb·tr)만 · 토글형(#goSpec `gs-tog` ON)은 상태반영이라 대상 아님(리드백 N택1만) ·
+#   AI 생성(index #geniGo)은 텍스트 프롬프트 사전-disabled 어포던스(운영자 260721)라 별개 축 = 비대상.
+#   신규 편입 = 아래 _DOCK_* 레지스트리에 1줄 추가. 등재 = CII §도크(발사 버튼 행 인접).
+_DOCK_READBACK_STRIPS = {   # file → [리드백 스트립 div id](정적 콘텐츠·값=기본 mut)
+    'viewer/thumb.html': ['editSpec'],
+    'viewer/tr.html':    ['trSpec'],
+}
+_DOCK_ACTIVE_BTNS = {   # file → [상시 활성 발사 버튼 id](입력-disabled 금지)
+    'viewer/thumb.html': ['go'],
+    'viewer/tr.html':    ['go'],
+}
+
+def check_imgstudio_dock_spec():
+    rc = 0; ns = 0; nb = 0
+    for rel, ids in _DOCK_READBACK_STRIPS.items():
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        for sid in ids:
+            ns += 1
+            m = re.search(r'id="%s"[^>]*>(.*?)</div>' % re.escape(sid), html, re.S)
+            if not m:
+                print('❌ 이미지 스튜디오 도크 규격 — %s #%s 리드백 스트립 미발견(레지스트리 확인)' % (rel, sid)); rc = 1; continue
+            bad = [c for c in re.findall(r'class="([^"]*)"', m.group(1)) if re.search(r'\bgs-v\b', c) and re.search(r'\bon\b', c)]
+            if bad:
+                print('❌ 이미지 스튜디오 도크 규격 이탈 — %s #%s 값에 정적 .on %d개 = 기본값 강조 금지(기본 mut·변경만 accent = updateGoSpec 정본 문법 · 부팅 색이 편집 탭과 불일치)' % (rel, sid, len(bad))); rc = 1
+    for rel, ids in _DOCK_ACTIVE_BTNS.items():
+        try:
+            html = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        for bid in ids:
+            nb += 1
+            m = re.search(r'<button[^>]*\bid="%s"[^>]*>' % re.escape(bid), html)
+            if not m:
+                print('❌ 이미지 스튜디오 도크 규격 — %s #%s 생성 버튼 미발견' % (rel, bid)); rc = 1; continue
+            if re.search(r'\bdisabled\b', m.group(0)):
+                print('❌ 이미지 스튜디오 도크 규격 이탈 — %s #%s 생성 버튼 정적 disabled = 입력 없다고 비활성 금지(상시 활성·빈 클릭=첨부 = thumb #go 정본)' % (rel, bid)); rc = 1
+    if rc == 0:
+        print('✅ 이미지 스튜디오 도크 규격 게이트 — 리드백 스트립 %d개 값 기본 mut(정적 .on 0)·생성 버튼 %d개 상시 활성(정적 disabled 0) = AFTER 규격 동결(정본 = thumb #editSpec·#go · 신규 편입 = _DOCK_*).' % (ns, nb))
+    return rc
+
+
 def check_label_fill():
     """콘텐츠 라벨색(cat-*·bias-*) 솔리드 배경 필 금지 게이트(운영자 260721 Q345 · 평의회 Q329 채택 ④ = 감사 R5 절제축).
     취지 = 카테고리/편향색은 '라벨'(텍스트·도트·저알파 워시·게이지)이지 '기능 신호'(칩·버튼 솔리드 필)가 아니다 —
@@ -1386,6 +1436,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_launch_spec 스킵:', e)
+    try:
+        if check_imgstudio_dock_spec() != 0:   # 이미지 스튜디오 도크 규격 동결(운영자 260723 "AFTER로 일괄 통일·저 규격 벗어나면 안됨" — 리드백 스트립 기본 mut·생성 버튼 상시 활성)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 이미지 스튜디오 도크 규격 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
