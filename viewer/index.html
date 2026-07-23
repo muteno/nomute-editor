@@ -10486,6 +10486,17 @@ function renderSnsTrends() {
       }, 5000);
       window._finRot.push(_t);
     }
+    const _finUpdEl = box.querySelector('.tgroup-h .fin-upd');   // ⑬ 갱신시각 "nn분 전" 라이브(운영자 260723-3 "금융 시간 라이브로") — 1분마다 qAgo 재계산(재렌더 0 · textContent만) · 게이트 = 가시성(livePoll 문법) + 작성 모달(깜빡임 게이트 #13447 유지보수 규칙 — 모달 뒤 DOM 접촉 타이머 필수 가드 · 스킵분은 다음 틱 따라잡음) · 소멸 = _finRot 일괄 해제(재렌더) + box 이탈 자가 해제(회전 타이머 동일 문법)
+    if (_finUpdEl && _finUt) {
+      const _tu = setInterval(() => {
+        try {
+          if (!document.body.contains(_finUpdEl)) { clearInterval(_tu); return; }
+          if (document.visibilityState !== 'visible' || isComposingModalOpen()) return;
+          _finUpdEl.textContent = qAgo(_finUt);
+        } catch (e) { clearInterval(_tu); }
+      }, 60000);
+      window._finRot.push(_tu);
+    }
   } catch (e) {}
   fillH('sh', '.tcard-t', shL.map(t => dimTags(t.title || '')));   // 쇼츠 제목 = ko(정규화 패스) + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전)
   fillT('ai', '.tcard-t', aiL.map(t => t.title || ''));   // 업로더(.tcard-acc) 전 섹션 제거(운영자 260712 #6) — 제목만
