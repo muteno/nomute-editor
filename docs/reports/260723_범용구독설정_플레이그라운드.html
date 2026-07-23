@@ -1,0 +1,174 @@
+<meta charset="utf-8">
+<title>범용 구독·큐레이션 설정 메뉴 시안 — 260723</title>
+<style>
+  /* ── 실토큰 계승(viewer/index.html :root 실측값) ── */
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --accent:#00EED2; --accent-rgb:0,238,210;
+    --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
+    --r-s:8px; --r-m:12px; --r-pill:999px; --r-modal:16px;
+    --sp-1:6px; --sp-2:12px; --sp-3:18px;
+    --modal-glass:#1a1c1b;
+    /* 튜닝 축(현행 실측 기본값) */
+    --t-secgap:18;      /* 섹션 간 간격 */
+    --t-divop:.08;      /* 구분선 진하기(=--line .08) */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0c0c0c;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",sans-serif;font-size:14px;line-height:1.5;padding:16px}
+  .wrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;max-width:1100px;margin:0 auto}
+  .stagewrap{flex:1 1 400px;position:sticky;top:16px}
+  .stagecap{color:var(--mut);font-size:12px;margin-top:10px;text-align:center}
+  aside.console{flex:1 1 300px;min-width:280px}
+  h1{font-size:16px;margin:0 0 4px}
+  .sub{color:var(--mut);font-size:12px;margin:0 0 16px}
+
+  /* ── 미리보기 = 모달 실물 재현(#snsaccdlg 계승) ── */
+  .frame{background:#000;border-radius:20px;padding:22px 14px;display:flex;justify-content:center}
+  .dlg{width:min(430px,100%);background:var(--modal-glass);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .dlg-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+  .dlg-head .x{margin-left:auto;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--mut);border:1px solid var(--line)}
+  .dlg-body{max-height:62vh;overflow-y:auto;padding:calc(var(--t-secgap)*1px) 16px}
+
+  /* 섹션(구분선 분할) */
+  .sec{padding-bottom:calc(var(--t-secgap)*1px);margin-bottom:calc(var(--t-secgap)*1px);border-bottom:1px solid rgba(255,255,255,var(--t-divop))}
+  .sec:last-child{border-bottom:none;margin-bottom:0}
+  .sec-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.3px;margin-bottom:10px;text-transform:none}
+  .sec-h .tag{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-pill);padding:1px 7px;text-transform:uppercase}
+  .row{margin-bottom:12px}
+  .row:last-child{margin-bottom:0}
+  .row-t{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:6px}
+  .reg{margin-left:auto;display:flex;gap:2px}
+  .reg b{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-s);padding:2px 7px;cursor:pointer}
+  .reg b.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 8px 4px 10px;color:var(--fg)}
+  .chip.kw{border-color:rgba(var(--accent-4-rgb),.35)}   /* 키워드형 = 골드레몬 테두리(계정형과 구분) */
+  .chip .rm{color:var(--mut);cursor:pointer;font-size:14px;line-height:1}
+  .chip.add{color:var(--accent);border-style:dashed;border-color:rgba(var(--accent-rgb),.4);cursor:text}
+  .catadd{width:100%;margin-top:4px;text-align:center;padding:10px;border:1px dashed rgba(var(--accent-rgb),.4);border-radius:var(--r-m);color:var(--accent);font-size:13px;font-weight:600;background:none;cursor:pointer}
+  .selbox{font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-s);padding:5px 10px;color:var(--fg)}
+
+  /* 아코디언 프리셋 변형 */
+  .dlg.acc .sec-h{cursor:pointer}
+  .dlg.acc .sec-h::after{content:'▾';margin-left:auto;color:var(--mut)}
+  .dlg.acc .sec.collapsed .row,.dlg.acc .sec.collapsed .catadd{display:none}
+
+  /* 콘솔 */
+  .csec{border:1px solid var(--line);border-radius:var(--r-m);padding:12px;margin-bottom:12px}
+  .csec h3{margin:0 0 8px;font-size:12px;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .pill{display:inline-block;font-size:12px;padding:6px 11px;margin:0 6px 6px 0;border:1px solid var(--line);border-radius:var(--r-pill);cursor:pointer;color:var(--fg)}
+  .pill.on{background:rgba(var(--accent-rgb),.14);border-color:rgba(var(--accent-rgb),.5);color:var(--accent)}
+  .pill .star{color:var(--accent-4)}
+  .sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+  .sl label{flex:0 0 92px;color:var(--mut)}
+  .sl input{flex:1}
+  .sl b{flex:0 0 40px;text-align:right;font-variant-numeric:tabular-nums}
+  pre#out{white-space:pre-wrap;font-size:11px;background:#0a0a0a;border-radius:var(--r-s);padding:10px;margin:0 0 8px;color:var(--mut);max-height:180px;overflow:auto}
+  #copy{width:100%;padding:9px;border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12);color:var(--accent);border-radius:var(--r-s);font-weight:700;cursor:pointer}
+  .note{color:var(--mut);font-size:11px;line-height:1.6}
+  .note b{color:var(--fg)}
+</style>
+
+<div data-pg-template="sub-settings-menu" class="wrap">
+  <div class="stagewrap">
+    <h1>범용 구독·큐레이션 설정 메뉴 <span style="color:var(--mut);font-size:12px">시안 v1</span></h1>
+    <p class="sub">평의회 260723 #9 후속 · 계정형+키워드형+카테고리를 한 메뉴에 · 구분선 분할 · 확장(카테고리 추가) 가능</p>
+    <div class="frame" data-pg-preview>
+      <div class="baseline" data-pg-baseline hidden>현행 기준 = 플랫폼 탭 5개(X·틱톡·릴스·유튜브·스레드) · 계정 핸들만 · 키워드 하드코딩</div>
+      <div class="dlg" id="dlg">
+        <div class="dlg-head">구독·큐레이션 설정 <span class="x">✕</span></div>
+        <div class="dlg-body" id="body">
+
+          <!-- ① 계정 구독(핸들형) -->
+          <div class="sec">
+            <div class="sec-h">📁 계정 구독 <span class="tag">핸들</span></div>
+            <div class="row"><div class="row-t">X <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
+              <div class="chips"><span class="chip">@yonhaptweet<span class="rm">×</span></span><span class="chip">@YTN24<span class="rm">×</span></span><span class="chip">@SBS8news<span class="rm">×</span></span><span class="chip">@wikitree<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+            <div class="row"><div class="row-t">인스타그램 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
+              <div class="chips"><span class="chip">@계정1<span class="rm">×</span></span><span class="chip">@계정2<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+            <div class="row"><div class="row-t">스레드 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
+              <div class="chips"><span class="chip">@이슈러1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+            <div class="row"><div class="row-t">유튜브 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
+              <div class="chips"><span class="chip">@채널1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+            <div class="row"><div class="row-t">틱톡 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
+              <div class="chips"><span class="chip">@틱톡1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+          </div>
+
+          <!-- ② 키워드 토픽(검색형) -->
+          <div class="sec">
+            <div class="sec-h">🔍 키워드 토픽 <span class="tag">검색어</span></div>
+            <div class="row"><div class="row-t">유튜브 쇼츠</div>
+              <div class="chips"><span class="chip kw">먹방<span class="rm">×</span></span><span class="chip kw">브이로그<span class="rm">×</span></span><span class="chip kw">예능 웃긴 영상<span class="rm">×</span></span><span class="chip kw">뷰티 메이크업 패션<span class="rm">×</span></span><span class="chip kw">영화 드라마 리뷰<span class="rm">×</span></span><span class="chip kw">여행<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+            <div class="row"><div class="row-t">AI 영상</div>
+              <div class="chips"><span class="chip kw">AI 영상 제작<span class="rm">×</span></span><span class="chip kw">AI 영상 생성<span class="rm">×</span></span><span class="chip kw">sora ai video<span class="rm">×</span></span><span class="chip kw">runway kling veo<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+          </div>
+
+          <!-- ③ 카테고리(뉴스 등) -->
+          <div class="sec">
+            <div class="sec-h">🗂 카테고리 <span class="tag">분류</span></div>
+            <div class="row"><div class="row-t">유튜브 뉴스 <select class="selbox" style="margin-left:auto"><option>뉴스·정치(기본)</option><option>엔터테인먼트</option><option>스포츠</option><option>과학·기술</option></select></div></div>
+          </div>
+
+          <!-- ④ 확장 -->
+          <div class="sec">
+            <button class="catadd">＋ 카테고리 추가 <span style="color:var(--mut);font-weight:400;font-size:11px">(이름 + 계정 또는 키워드)</span></button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="stagecap">← 미리보기(고정) · 오른쪽에서 레이아웃·간격 조절 →</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec" data-pg-presets><h3>레이아웃 프리셋</h3>
+      <span class="pill on" data-lay="flat">구분선 플랫 <span class="star">★</span></span>
+      <span class="pill" data-lay="acc">아코디언(접이)</span>
+      <span class="pill" data-lay="tab">현행 탭</span>
+      <p class="note" style="margin:6px 0 0">현행 = 플랫폼별 탭 5개. <b>구분선 플랫</b> = 한 화면에 다 펼치고 구분선으로 나눔(운영자 260723 지시). 아코디언 = 섹션 접기.</p>
+    </div>
+    <div class="csec"><h3>미세 조정</h3>
+      <div class="sl"><label>섹션 간격</label><input type="range" id="s_gap" min="8" max="32" step="1" value="18"><b id="v_gap">18</b></div>
+      <div class="sl"><label>구분선 진하기</label><input type="range" id="s_div" min="0.03" max="0.2" step="0.01" value="0.08"><b id="v_div">.08</b></div>
+    </div>
+    <div class="csec"><pre id="out"></pre><button id="copy" data-pg-copy>선택값 복사</button></div>
+    <div class="csec note" data-pg-note>⑤ <b>재현 한계</b>: 이 시안은 <b>구조/레이아웃 결정용</b>이야. 칩·모달 셸·모션은 구현 시 실제 <code>#snsaccdlg</code> 정본 컴포넌트를 100% 계승(여기선 근사). 실제 계정/키워드는 현재값 반영(계정은 예시 축약). <b>핸들형</b>(계정)과 <b>키워드형</b>(검색어=골드레몬 테두리) 시각 구분은 제안 — 원하면 통일 가능. "카테고리 추가"의 세부 UX(이름·타입 선택 플로우)는 승인 후 상세.</div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var dlg=document.getElementById('dlg'), body=document.getElementById('body');
+  var near=function(a,b,eps){return Math.abs(a-b)<(eps||0.005);};   // 기존 토큰 동값 판정(계승/갱신)
+  var state={lay:'flat', gap:18, div:0.08};
+  function apply(){
+    dlg.className='dlg'+(state.lay==='acc'?' acc':'')+(state.lay==='tab'?' tab':'');
+    document.documentElement.style.setProperty('--t-secgap', state.gap);
+    document.documentElement.style.setProperty('--t-divop', state.div);
+    document.getElementById('v_gap').textContent=state.gap;
+    document.getElementById('v_div').textContent=(''+state.div).replace('0.','.');
+    out();
+  }
+  function out(){
+    var LAY={flat:'구분선 플랫(한 화면·섹션별 구분선)', acc:'아코디언(섹션 접이)', tab:'현행 탭(플랫폼 5탭)'};
+    document.getElementById('out').textContent=
+'[범용 구독 설정 메뉴 — 선택값]\n'+
+'레이아웃 : '+LAY[state.lay]+(state.lay==='flat'?'  ★추천(운영자 구분선 지시 부합)':'')+'\n'+
+'섹션간격 : '+state.gap+'px'+(near(state.gap,18)?'  = --sp-3 동값(계승)':' → 갱신 후보')+'\n'+
+'구분선   : rgba(255,255,255,'+(''+state.div).replace('0.','.')+')'+(near(state.div,0.08)?'  = --line 동값(계승)':' → 갱신 후보')+'\n\n'+
+'[구조 확정안]\n'+
+'① 계정 구독(핸들) : X·인스타·스레드·유튜브·틱톡 (지역 KR/GL)\n'+
+'② 키워드 토픽(검색): 쇼츠·AI영상 (하드코딩 해체 → 편집 가능·현재값=기본)\n'+
+'③ 카테고리         : 유튜브 뉴스(YT 카테고리 선택)\n'+
+'④ ＋ 카테고리 추가 : 커스텀(이름 + 계정 또는 키워드)';
+  }
+  document.querySelectorAll('.pill[data-lay]').forEach(function(p){p.onclick=function(){document.querySelectorAll('.pill[data-lay]').forEach(function(q){q.classList.remove('on')});p.classList.add('on');state.lay=p.dataset.lay;apply();};});
+  document.getElementById('s_gap').oninput=function(){state.gap=+this.value;apply();};
+  document.getElementById('s_div').oninput=function(){state.div=+this.value;apply();};
+  document.querySelectorAll('.dlg.acc .sec-h').forEach; // acc 토글은 위임
+  body.addEventListener('click',function(e){var h=e.target.closest('.sec-h');if(h&&dlg.classList.contains('acc')){h.parentNode.classList.toggle('collapsed');}});
+  document.getElementById('copy').onclick=function(){var t=document.getElementById('out').textContent;navigator.clipboard&&navigator.clipboard.writeText(t).then(function(){var b=document.getElementById('copy');b.textContent='복사됨 ✓';setTimeout(function(){b.textContent='선택값 복사';},1200);});};
+  apply();
+})();
+</script>
