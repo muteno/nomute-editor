@@ -1,0 +1,341 @@
+<!-- @dsCard group="구성도" viewport="900x1500" name="타이머 모프" subtitle="필→분 휠→카운트다운 링→원복 단일 컨테이너 모프" -->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>구성도 · 타이머 모프</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  /* ── SSOT 토큰 (viewer/index.html :root 정본 계승) ── */
+  /* 토큰 = base.css(AUTO-MIRROR = viewer :root 정본). 인라인 :root 제거 = 단일 거울만 봄(§🎨 ⓒ·260621). */
+  /* 레퍼런스 = 운영자 첨부 영상(260723 · 모프 타이머 컨셉) 100% 모방 — 원문 값·관찰 기록 = docs/디자인레퍼런스_수집함.md 「모프 타이머 필」 절. 색·radius·모션은 전부 근접 토큰 치환 계승(원색 이식 금지). */
+  * { box-sizing:border-box; }
+  html { scrollbar-width:thin; scrollbar-color:rgba(var(--accent-rgb),.3) transparent; }
+  ::-webkit-scrollbar { width:10px; }
+  ::-webkit-scrollbar-thumb { background:rgba(var(--accent-rgb),.26); border-radius:var(--r-pill); border:2px solid var(--bg); background-clip:padding-box; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg);
+    color:var(--fg); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:42px 22px 110px; }   /* raw-ok: 전송 버튼 상태머신 골격 동값 계승(구성도 표준 프레임) */
+
+  .crumb { font-size:var(--fs-sm); color:var(--mut); letter-spacing:.4px; margin:0 0 10px; }   /* raw-ok: 골격 동값 계승 */
+  .crumb b { color:var(--accent); }
+  h1 { font-size:27px; letter-spacing:-.5px; margin:0 0 10px; }   /* raw-ok: 골격 동값 계승 */
+  .intro { color:var(--mut); font-size:14.5px; max-width:66ch; margin:0; }   /* raw-ok: 골격 동값 계승 */
+  .intro b { color:var(--fg); }
+
+  .sec { margin:46px 0 0; }   /* raw-ok: 골격 동값 계승 */
+  .sec > h2 { font-size:var(--fs-sm); letter-spacing:1.6px; text-transform:uppercase; color:var(--accent); font-weight:800; margin:0 0 4px; display:flex; align-items:center; gap:10px; }   /* raw-ok: 골격 동값 계승 */
+  .sec > h2 .n { width:22px; height:22px; border-radius:7px; display:grid; place-items:center; font-size:12px;
+    background:rgba(var(--accent-rgb),.12); border:1px solid rgba(var(--accent-rgb),.26); }
+  .sec > p.lead { color:var(--mut); font-size:13.5px; margin:8px 0 18px; max-width:64ch; }
+  .card { background:var(--glass2); border:1px solid var(--line); border-radius:var(--r-l); padding:26px; }
+
+  /* ── 상태 흐름 칩 (전송 버튼 상태머신 골격 계승) ── */
+  .flow { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin:0 0 26px; }
+  .fchip { display:inline-flex; align-items:center; gap:7px; padding:7px 13px; border-radius:var(--r-pill); font-size:12.5px; font-weight:700; white-space:nowrap;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--mut); transition:all var(--ease) .2s; }
+  .fchip .d { width:8px; height:8px; border-radius:999px; background:currentColor; }
+  .fchip.on { color:var(--fg); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.08); }
+  .fchip.idle.on{color:var(--accent)}
+  .fchip.pick.on{color:var(--info);border-color:rgba(var(--info-rgb),.5);background:rgba(var(--info-rgb),.08)}
+  .fchip.run.on{color:var(--danger);border-color:rgba(var(--danger-rgb),.5);background:rgba(var(--danger-rgb),.1)}
+  .farrow { color:var(--mut); opacity:.5; font-size:13px; }
+
+  /* ══ 타이머 모프 정본 컴포넌트 (.tm) ══
+     단일 컨테이너 하나가 width/height/radius를 모프하고(레퍼런스 ① · vault navigation-01 배경판 모프 동축),
+     내용 3겹(.tm-idle/.tm-pick/.tm-run)은 opacity+scale+blur 크로스페이드(§0-10 .askclip 커브 계승). */
+  .tm { position:relative; background:var(--glass2); backdrop-filter:blur(var(--blur-m)); -webkit-backdrop-filter:blur(var(--blur-m));
+    border:1px solid var(--line); overflow:hidden; flex:none;
+    transition:width var(--dur-acc) var(--ease), height var(--dur-acc) var(--ease), border-radius var(--dur-acc) var(--ease), transform var(--dur-fast) var(--ease); }
+  .tm.is-idle { width:190px; height:56px; border-radius:var(--r-pill); cursor:pointer; }   /* reuse-ok: 신설 정본(타이머 모프) — 레퍼런스 = 운영자 첨부 영상 260723 · CII 상호작용 표 「시간 설정→카운트다운」 행 동커밋 등재 */
+  .tm.is-idle:active { transform:scale(var(--press-l)); }
+  .tm.is-pick { width:280px; height:240px; border-radius:var(--r-modal); }
+  .tm.is-run  { width:320px; height:150px; border-radius:var(--r-modal); }
+
+  /* 내용 3겹 크로스페이드 — 꺼진 겹 = 투명+수축+블러(등장·퇴장 동일 커브) */
+  .tm-layer { position:absolute; inset:0; opacity:0; pointer-events:none; transform:scale(.92);
+    filter:blur(var(--blur-s)); transition:opacity var(--dur-acc) var(--ease), transform var(--dur-acc) var(--ease), filter var(--dur-acc) var(--ease); }
+  .tm-layer.on { opacity:1; pointer-events:auto; transform:scale(1); filter:none; }
+
+  /* ① 대기 = 필 (스톱워치 픽토 + 라벨) */
+  .tm-idle { display:flex; align-items:center; justify-content:center; gap:var(--sp-2); font-weight:800; font-size:var(--fs-h1); color:var(--fg); }
+  .tm-idle .pic { width:26px; height:26px; border-radius:999px; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; }
+  .tm-idle .pic svg { display:block; }
+
+  /* ② 설정 = 분 휠 피커 (레퍼런스 ②③ · 중앙 선명·대형, 이웃 blur 사다리 · 순환) */
+  .tm-wheel { position:absolute; left:34px; top:0; bottom:0; width:76px; overflow-y:auto; scroll-snap-type:y mandatory;
+    scrollbar-width:none; -ms-overflow-style:none;
+    -webkit-mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent); }
+  .tm-wheel::-webkit-scrollbar { display:none; }
+  .tm-wheel ol { list-style:none; margin:0; padding:98px 0; }   /* (240 − 행 44)/2 = 첫·끝 값도 중앙 정지 */
+  .tm-wheel li { height:44px; display:flex; align-items:center; justify-content:flex-end; scroll-snap-align:center;
+    font-weight:800; font-size:var(--fs-display); color:var(--fg); font-variant-numeric:tabular-nums;
+    transform-origin:right center;   /* 확대가 좌측으로 자라게(우측 정렬 유지) — 중앙 스케일이면 우측 오버플로 잘림(실측 260723) */
+    transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease), filter var(--dur) var(--ease); }
+  .tm-wheel li.d0 { opacity:1; transform:scale(1.45); }   /* 중앙 = 선명·대형(레퍼런스 광학 스케일 = transform — raw font-size 창작 회피) */
+  .tm-wheel li.d1 { opacity:.4;  filter:blur(1.2px); }   /* raw-ok: 휠 원근 블러 사다리 = 레퍼런스 광학 재현(토큰 최소 8px = 과함 · 수집함 값 표) */
+  .tm-wheel li.d2 { opacity:.22; filter:blur(2.2px); }   /* raw-ok: 상동 */
+  .tm-wheel li.d3 { opacity:.1;  filter:blur(3px); }     /* raw-ok: 상동 */
+  .tm-unit { position:absolute; left:128px; top:50%; transform:translateY(-50%); font-weight:700; font-size:var(--fs-display); color:var(--fg); }
+  .tm-start { position:absolute; right:var(--sp-3); bottom:var(--sp-3); border:0; cursor:pointer; font:800 var(--fs-h2)/1 inherit;
+    padding:11px 22px; border-radius:var(--r-pill); color:var(--info); background:rgba(var(--info-rgb),.14);
+    transition:transform var(--dur-fast) var(--ease), background var(--ease) .18s; }
+  .tm-start:hover { background:rgba(var(--info-rgb),.22); }
+  .tm-start:active { transform:scale(var(--press-m)); }
+
+  /* ③ 카운트다운 = 테두리 자체가 진행 링 (레퍼런스 ④ · 갭 = 상단 중앙에서 대칭으로 벌어짐) */
+  .tm-ring { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .tm-ring rect { fill:none; stroke:var(--danger); stroke-width:5; stroke-linecap:round; }
+  .tm-run { display:flex; align-items:center; justify-content:center; gap:var(--sp-3); }
+  .tm-time { font-weight:800; font-size:44px; letter-spacing:-.5px; color:var(--fg); font-variant-numeric:tabular-nums; }   /* raw-ok: 카운트다운 디스플레이 광학 스케일(레퍼런스 296h 비례 · fs 토큰 상한 22 부재) */
+  .tm-pause, .tm-cancel { border:0; cursor:pointer; font:700 var(--fs-h3)/1 inherit; padding:11px 16px; border-radius:var(--r-pill);
+    transition:transform var(--dur-fast) var(--ease), background var(--ease) .18s; }
+  .tm-pause { color:var(--warn); background:rgba(var(--warn-rgb),.12); }
+  .tm-pause:hover { background:rgba(var(--warn-rgb),.2); }
+  .tm-cancel { color:var(--fg); background:rgba(255,255,255,.08); }
+  .tm-cancel:hover { background:rgba(255,255,255,.14); }
+  .tm-pause:active, .tm-cancel:active { transform:scale(var(--press-m)); }
+  /* 종료 = 숫자 1회 펄스 후 원복(1회 등장 연출 = @keyframes 허용 축 §0-10) */
+  .tm.is-done .tm-time { animation:tmpulse .5s var(--ease); }
+  @keyframes tmpulse { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
+
+  @media (prefers-reduced-motion:reduce){
+    .tm, .tm-layer, .tm-wheel li { transition:none; }
+    .tm-layer { filter:none; }
+    .tm.is-done .tm-time { animation:none; }
+  }
+
+  /* 라이브 데모 영역 (전송 버튼 상태머신 골격 계승) */
+  .live { display:flex; flex-direction:column; align-items:center; gap:20px; padding:14px 0 4px; }
+  .live .stage { min-height:260px; display:grid; place-items:center; }
+  .live .hint { font-size:12.5px; color:var(--mut); }
+  .live .hint b { color:var(--info); }
+  .reset { font-size:12px; color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-s); white-space:nowrap;
+    padding:6px 14px; cursor:pointer; transition:border-color var(--ease) .2s, color var(--ease) .2s; }
+  .reset:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); }
+
+  /* 필름스트립 */
+  .strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  @media (max-width:680px){ .strip { grid-template-columns:repeat(2,1fr); } }
+  .frame { border:1px solid var(--line); border-radius:var(--r-m); background:rgba(255,255,255,.02); padding:16px 12px 14px; text-align:center; }
+  .frame .stg { min-height:150px; display:grid; place-items:center; }
+  .frame .stg > .tm { transform:scale(.56); transform-origin:center; }
+  .frame h4 { font-size:12px; margin:12px 0 5px; color:var(--fg); }
+  .frame .step { font:800 10px/1 ui-monospace,Menlo,monospace; color:var(--mut); letter-spacing:.5px; }
+  .frame .spec { font-size:11px; color:var(--mut); line-height:1.5; margin:7px 0 0; }
+  .frame.acc { border-color:rgba(var(--accent-rgb),.3); }
+  .frame.red { border-color:rgba(var(--danger-rgb),.35); }
+  .tm.frozen, .tm.frozen * { pointer-events:none; transition:none; }
+
+  /* 규약 표 */
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:4px; }
+  th, td { text-align:left; padding:11px 12px; border-bottom:1px solid var(--line2); vertical-align:middle; }
+  th { font-size:11px; letter-spacing:.5px; text-transform:uppercase; color:var(--mut); font-weight:700; }
+  td .swatch { display:inline-block; width:13px; height:13px; border-radius:4px; vertical-align:-2px; margin-right:7px; border:1px solid rgba(255,255,255,.15); }
+  td code { font:600 12px ui-monospace,Menlo,monospace; color:var(--mut); }
+  td b { color:var(--fg); }
+  .foot { margin-top:14px; font-size:12px; color:var(--mut); line-height:1.7; }
+  .foot b { color:var(--fg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="crumb"><b>노뮤트</b> 디자인 시스템</p>
+  <h1>타이머 <b>모프</b></h1>
+  <p class="intro">설정 필 → 분 휠 피커 → 카운트다운을 <b>컨테이너 하나가 크기·radius 모프</b>로 오간다. 잔여 시간 = <b>테두리 자체가 진행 링</b>(상단 중앙에서 갭이 대칭으로 벌어짐). 운영자 지목 레퍼런스 영상(260723)의 관찰 재구성 — 원문 값·해부 = <code>docs/디자인레퍼런스_수집함.md 「모프 타이머 필」</code>, 색·radius·모션은 전부 정본 토큰 치환.</p>
+
+  <div class="sec">
+    <h2><span class="n">1</span>상태 흐름</h2>
+    <p class="lead">단방향 순환 상태머신. 어느 상태에서든 취소·종료는 대기 필로 역모프한다.</p>
+    <div class="flow" id="flow">
+      <span class="fchip idle on" data-st="idle"><span class="d"></span>대기 필</span>
+      <span class="farrow">›</span>
+      <span class="fchip pick" data-st="pick"><span class="d"></span>분 휠 피커</span>
+      <span class="farrow">›</span>
+      <span class="fchip run" data-st="run"><span class="d"></span>카운트다운 링</span>
+      <span class="farrow">›</span>
+      <span class="fchip idle" data-st="done"><span class="d"></span>원복</span>
+    </div>
+
+    <div class="card">
+      <div class="live">
+        <div class="stage">
+          <div class="tm is-idle" id="tm">
+            <button class="tm-layer tm-idle on" id="tmIdle" aria-label="타이머 설정 열기" style="background:none;border:0;color:inherit;cursor:pointer">
+              <span class="pic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6"/><path d="M12 2v3"/><circle cx="12" cy="14" r="8"/><path d="M12 14l3.5-3.5"/><path d="M19.5 5.5 21 7"/></svg></span>
+              타이머 설정
+            </button>
+            <div class="tm-layer tm-pick-layer">
+              <div class="tm-wheel" id="tmWheel" aria-label="분 선택 휠"><ol id="tmList"></ol></div>
+              <span class="tm-unit">분</span>
+              <button class="tm-start" id="tmStart">시작</button>
+            </div>
+            <div class="tm-layer tm-run">
+              <svg class="tm-ring" id="tmRingSvg" aria-hidden="true"><rect id="tmRing" pathLength="100"/></svg>
+              <button class="tm-pause" id="tmPause">일시정지</button>
+              <span class="tm-time" id="tmTime">0:00</span>
+              <button class="tm-cancel" id="tmCancel">취소</button>
+            </div>
+          </div>
+        </div>
+        <div class="hint">필을 누르면 휠이 열린다 · 휠 스크롤로 분 선택 → <b>시작</b> · 데모는 실시간(1분 선택 권장)</div>
+        <button class="reset" id="tmReset">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="n">2</span>정지 프레임</h2>
+    <p class="lead">각 상태의 정본 배치. 진행 링의 갭은 항상 상단 중앙 기준 대칭 — 잔여 시간 = 잔여 스트로크.</p>
+    <div class="strip">
+      <div class="frame">
+        <div class="stg"><div class="tm is-idle frozen"><div class="tm-layer tm-idle on"><span class="pic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6"/><path d="M12 2v3"/><circle cx="12" cy="14" r="8"/><path d="M12 14l3.5-3.5"/><path d="M19.5 5.5 21 7"/></svg></span>타이머 설정</div></div></div>
+        <div class="step">STEP 1 · IDLE</div><h4>대기 필</h4>
+        <p class="spec">190×56 · <b>--r-pill</b> · 픽토 26 원판 · :active <b>--press-l</b></p>
+      </div>
+      <div class="frame acc">
+        <div class="stg"><div class="tm is-pick frozen"><div class="tm-layer on">
+          <div class="tm-wheel"><ol style="padding:0;margin:0;list-style:none">
+            <li class="d3">52</li><li class="d2">53</li><li class="d1">54</li><li class="d0">55</li><li class="d1">56</li><li class="d2">57</li></ol></div>
+          <span class="tm-unit">분</span><span class="tm-start" style="pointer-events:none">시작</span>
+        </div></div></div>
+        <div class="step">STEP 2 · PICK</div><h4>분 휠 피커</h4>
+        <p class="spec">280×240 · <b>--r-modal</b> · 중앙 1.45배 선명 · 이웃 blur 사다리 · 시작=<b>--info</b></p>
+      </div>
+      <div class="frame red">
+        <div class="stg"><div class="tm is-run frozen"><div class="tm-layer tm-run on">
+          <svg class="tm-ring" data-frozen="100" aria-hidden="true"><rect pathLength="100"/></svg>
+          <span class="tm-pause">일시정지</span><span class="tm-time">1:00</span><span class="tm-cancel">취소</span>
+        </div></div></div>
+        <div class="step">STEP 3 · RUN 100%</div><h4>카운트다운 시작</h4>
+        <p class="spec">320×150 · 링=<b>--danger</b> sw5 · 일시정지=<b>--warn</b> · 취소=glass</p>
+      </div>
+      <div class="frame red">
+        <div class="stg"><div class="tm is-run frozen"><div class="tm-layer tm-run on">
+          <svg class="tm-ring" data-frozen="58" aria-hidden="true"><rect pathLength="100"/></svg>
+          <span class="tm-pause">일시정지</span><span class="tm-time">0:35</span><span class="tm-cancel">취소</span>
+        </div></div></div>
+        <div class="step">STEP 4 · RUN 58%</div><h4>진행 — 갭 대칭 소모</h4>
+        <p class="spec">갭 중심 = 상단 중앙 고정 · 취소/0:00 → 대기 필 역모프</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2><span class="n">3</span>토큰 규약</h2>
+    <p class="lead">레퍼런스 원문 값(수집함 값 표)을 정본 토큰으로 치환한 계승 규약 — raw 창작 0.</p>
+    <table>
+      <thead><tr><th>축</th><th>레퍼런스 원문</th><th>정본 치환</th></tr></thead>
+      <tbody>
+        <tr><td><b>표면</b></td><td><code>#272727</code> 솔리드</td><td><span class="swatch" style="background:var(--glass2)"></span><code>--glass2</code> + blur <code>--blur-m</code> + <code>--line</code> (다크 테마 = 글래스 격상 §0-9)</td></tr>
+        <tr><td><b>시작</b></td><td><code>#35ff3c</code> / <code>#044b0d</code></td><td><span class="swatch" style="background:var(--info)"></span><code>--info</code> 글자 / <code>rgba(--info-rgb,.14)</code> 플레이트</td></tr>
+        <tr><td><b>진행 링</b></td><td><code>#cb4734</code> sw≈5</td><td><span class="swatch" style="background:var(--danger)"></span><code>--danger</code> · <code>pathLength=100</code> 대시 소모</td></tr>
+        <tr><td><b>일시정지</b></td><td><code>#e46f1f</code> / <code>#2e1917</code></td><td><span class="swatch" style="background:var(--warn)"></span><code>--warn</code> 글자 / <code>rgba(--warn-rgb,.12)</code> 플레이트</td></tr>
+        <tr><td><b>radius</b></td><td>70 → 44 → 64</td><td><code>--r-pill</code>(대기) → <code>--r-modal</code>(피커·카운트다운) — 모프 전환도 이 두 값 사이</td></tr>
+        <tr><td><b>모션</b></td><td>모프 ≈.3s spring</td><td><code>--dur-acc --ease</code> 모프 · 내용 겹 = opacity+scale+blur 크로스페이드(§0-10 <code>.askclip</code> 계승)</td></tr>
+        <tr><td><b>누름</b></td><td>딤 액티브</td><td><code>--press-l</code>(대기 필) · <code>--press-m</code>(내부 필 버튼)</td></tr>
+      </tbody>
+    </table>
+    <p class="foot"><b>라이브 채택 시</b>: 이 페이지가 정본 — <code>.tm</code> 골격 복사·계승(CII 상호작용 표 「시간 설정→카운트다운」 행). 새 화면 등장 = [4] 3중 안전장치 + 게이트 baseline 등재 절차 그대로. 표지판 도형 = SVG only(스톱워치 픽토 포함) · 숫자 = <code>tabular-nums</code>.</p>
+  </div>
+</div>
+
+<script>
+/* ── 타이머 모프 데모 — 관찰 재구성(레퍼런스 영상 동작 기술 = 수집함 절) ── */
+(() => {
+  const $ = id => document.getElementById(id);
+  const tm = $('tm'), layers = { idle: $('tmIdle'), pick: tm.querySelector('.tm-pick-layer'), run: tm.querySelector('.tm-run') };
+  const list = $('tmList'), wheel = $('tmWheel'), timeEl = $('tmTime'), ring = $('tmRing'), ringSvg = $('tmRingSvg');
+  let state = 'idle', minutes = 55, remainMs = 0, totalMs = 0, lastT = 0, raf = 0, paused = false;
+
+  /* 휠 = 1~60 · 중앙 선명(d0)·이웃 blur 사다리(d1~d3) — 스크롤마다 거리 재계산 */
+  for (let i = 1; i <= 60; i++) { const li = document.createElement('li'); li.textContent = i; list.appendChild(li); }
+  const ROW = 44;
+  function paintWheel() {
+    const c = wheel.scrollTop + wheel.clientHeight / 2;
+    [...list.children].forEach((li, i) => {
+      const d = Math.min(3, Math.round(Math.abs((li.offsetTop + ROW / 2) - c) / ROW));
+      li.className = 'd' + d;
+      if (d === 0 && state === 'pick') minutes = i + 1;   /* 숨김 상태 UA 스냅 스크롤(로드 직후)이 선택값을 덮는 것 차단 */
+    });
+  }
+  wheel.addEventListener('scroll', () => requestAnimationFrame(paintWheel), { passive: true });
+
+  /* 진행 링 — rect를 컨테이너에 맞춰 배치(동심원: rx = 바깥 radius − inset §0-5) · 갭 중심 = 상단 중앙 고정 */
+  function ringFit(svg, host) {
+    const r = svg.querySelector('rect'), w = host.clientWidth, h = host.clientHeight, inset = 7;
+    const rx = Math.max(0, parseFloat(getComputedStyle(host).borderRadius) - inset);
+    r.setAttribute('x', inset); r.setAttribute('y', inset);
+    r.setAttribute('width', w - inset * 2); r.setAttribute('height', h - inset * 2); r.setAttribute('rx', rx);
+    /* 상단 중앙까지의 경로 분율(rect 경로 시작점 = 좌상단 모서리 뒤) — 실길이 기준으로 정규화 */
+    const L = r.getTotalLength(), c = ((w - inset * 2) / 2 - Math.min(rx, (w - inset * 2) / 2)) / L * 100;
+    r._c = c; return r;
+  }
+  function ringSet(r, pct) {
+    const g = 100 - pct;
+    r.setAttribute('stroke-dasharray', pct + ' ' + g);
+    r.setAttribute('stroke-dashoffset', -(r._c + g / 2));   /* 대시를 갭이 상단 중앙에 오게 회전 */
+  }
+
+  function setState(next) {
+    state = next;
+    tm.className = 'tm is-' + (next === 'done' ? 'idle' : next) + (next === 'done' ? ' is-done' : '');
+    Object.entries(layers).forEach(([k, el]) => el.classList.toggle('on', k === (next === 'done' ? 'idle' : next)));
+    document.querySelectorAll('#flow .fchip').forEach(ch => ch.classList.toggle('on', ch.dataset.st === next));
+  }
+
+  $('tmIdle').onclick = () => {
+    if (state !== 'idle') return;
+    setState('pick');
+    [...list.children].forEach((li, i) => li.className = 'd' + Math.min(3, Math.abs(i - (minutes - 1))));   /* 모프 중 선페인트(인덱스 거리) */
+    /* 직전 선택값 중앙 정지 — 모프 동안 snap OFF 필수: 켜둔 채면 오픈 즉시 UA가 item1로 스무스 스냅 애니를 걸어
+       (실측 260723 · 93→1 ~320ms) 그 동안의 프로그램 scrollTop set을 전부 덮는다. 배치 후 재활성 = 동값 스냅이라 무이동. */
+    wheel.style.scrollSnapType = 'none';
+    const settle = () => { if (state !== 'pick') return;
+      wheel.scrollTop = list.children[minutes - 1].offsetTop - (wheel.clientHeight - ROW) / 2; paintWheel();
+      requestAnimationFrame(() => { wheel.style.scrollSnapType = ''; }); };
+    tm.addEventListener('transitionend', function onEnd(e) {
+      if (e.target !== tm || e.propertyName !== 'width') return;
+      tm.removeEventListener('transitionend', onEnd); requestAnimationFrame(settle);
+    }, { once: false });
+    setTimeout(() => { if (getComputedStyle(wheel).scrollSnapType === 'none') settle(); }, 400);   /* reduced-motion(transition 없음) 폴백 */
+  };
+  $('tmStart').onclick = () => {
+    totalMs = remainMs = minutes * 60000; paused = false;
+    $('tmPause').textContent = '일시정지';
+    setState('run');
+    setTimeout(() => {   /* 모프가 끝난 크기에서 링 실측(전환 중 측정 = 어긋남) */
+      const r = ringFit(ringSvg, tm); ringSet(r, 100); lastT = performance.now();
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+    }, 280);
+  };
+  function tick(t) {
+    if (state !== 'run') return;
+    if (!paused) {
+      remainMs -= t - lastT;
+      if (remainMs <= 0) { remainMs = 0; finish(); return; }
+      const s = Math.ceil(remainMs / 1000);
+      timeEl.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      ringSet(ring, remainMs / totalMs * 100);
+    }
+    lastT = t; raf = requestAnimationFrame(tick);
+  }
+  $('tmPause').onclick = () => { paused = !paused; $('tmPause').textContent = paused ? '재개' : '일시정지'; };
+  $('tmCancel').onclick = () => { cancelAnimationFrame(raf); setState('idle'); };
+  function finish() {
+    timeEl.textContent = '0:00'; ringSet(ring, 0);
+    setState('done');   /* 숫자 펄스 1회 후 원복 — is-done = idle 크기로 역모프하며 연출 */
+    setTimeout(() => { if (state === 'done') setState('idle'); }, 700);
+  }
+  $('tmReset').onclick = () => { cancelAnimationFrame(raf); minutes = 55; setState('idle'); };
+
+  /* 정지 프레임 링(§2) — data-frozen=pct 초기화 */
+  document.querySelectorAll('.tm-ring[data-frozen]').forEach(svg => {
+    const host = svg.closest('.tm');
+    requestAnimationFrame(() => ringSet(ringFit(svg, host), parseFloat(svg.dataset.frozen)));
+  });
+})();
+</script>
+</body>
+</html>
