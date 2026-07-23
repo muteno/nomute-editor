@@ -89,7 +89,8 @@ self.addEventListener('push', event => {
   const opts = {
     body: d.body || '',
     icon: d.icon || '/assets/brand/icon-192-260706c.png',   // c판 = 웨이브 질감+워드마크(스플래시 연속 설계 · 260706 5차)
-    badge: d.badge || '/assets/brand/badge.png',   // 상태바 배지 = 흑백+투명 실루엣(N) — 불투명 컬러는 안드로이드가 흰 네모로 칠함
+    badge: d.badge || '/assets/brand/badge-260723.png',   // 상태바 배지 = 흑백+투명 실루엣(N) — 불투명 컬러는 안드로이드가 흰 네모로 칠함 · 버전도장(260723) = immutable 캐시 편입
+
     tag: d.tag || 'nomute-breaking',          // 같은 tag = 교체(중복 알림 안 쌓임)
     data: { url: d.url || '/' },
     lang: 'ko',
