@@ -1,0 +1,230 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>카드뉴스 프롬프트 버튼 높이 — 4/5 축소 + 정중앙 정렬 플레이그라운드</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --line:rgba(255,255,255,.08);
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+    --arm:#FFE13D; --arm-rgb:255,225,61; --on-arm:#241C02;
+    --r-pill:999px; --ease:cubic-bezier(.2,.7,.3,1); --gauge-ease:cubic-bezier(.22,.61,.36,1);
+    /* ▼ 이 플레이그라운드가 조작하는 변수(제안 토큰) */
+    --btn-lg:46px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:'Pretendard Variable',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 80px}
+  h1{font-size:19px;margin:6px 0 4px}
+  h2{font-size:15px;margin:26px 0 8px;color:var(--accent)}
+  p.lead{color:var(--mut);font-size:13px;margin:0 0 10px}
+  .card{border:1px solid var(--line);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin:12px 0}
+
+  /* ── sticky 미리보기 ── */
+  .stick{position:sticky;top:0;z-index:5;background:linear-gradient(#121212,#121212f2);padding:12px 0 8px;border-bottom:1px solid var(--line);margin-bottom:8px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .col h3{font-size:12px;color:var(--mut);margin:0 0 8px;text-align:center;font-weight:700}
+  .col.now h3 b{color:#ff9b8a}.col.next h3 b{color:var(--accent)}
+  .stage{position:relative}
+
+  /* ── 실물 재현: 현행 .mkbtn / .genstat (viewer/index.html 실측 사본 · 형식 전용) ── */
+  .mkbtn{display:block;width:100%;margin:0;padding:14px;font-size:14px;font-weight:800;font-family:inherit;
+    background:rgba(0,0,0,.34);color:var(--accent);border:1px solid rgba(var(--accent-rgb),.36);border-radius:999px;cursor:pointer;position:relative;overflow:hidden;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);text-align:center}
+  .mkbtn.retry{background:rgba(var(--arm-rgb),.16);color:var(--arm);border-color:rgba(var(--arm-rgb),.55)}
+  .genstat{margin:0;padding:13px 15px;border:1px solid var(--line);border-radius:16px;color:var(--accent);font-size:13px;background:rgba(255,255,255,.04);text-align:center}
+  .genstat.live{color:var(--accent);border-color:rgba(var(--accent-rgb),.3)}
+
+  /* ── 현행: 실앱 실측 기하 고정 재현(버튼 48 / 로딩 56.8 · orb·글자 −3.4 편심) ──
+     실앱은 line-height:1.6 + inline-flex baseline로 편심이 나지만, 폰(Pretendard 미로드)에선 재현 안 됨 →
+     실측한 결과 기하를 직접 고정해 어느 기기서든 동일 대비(-3.4는 nm-load translateY로 재현) */
+  .now .mkbtn{display:flex;align-items:center;justify-content:center;height:48px;padding:0 14px}
+  .now .genstat{display:flex;align-items:center;justify-content:center;gap:9px;height:56.8px;padding:0 15px}
+  .now .genstat .nm-load{transform:translateY(-3.4px)}
+
+  /* ── 제안: --btn-lg 고정높이 + flex 정중앙(패딩 세로 제거 → 글자·orb dy0) ── */
+  .next .mkbtn{display:flex;align-items:center;justify-content:center;height:var(--btn-lg);padding:0 14px}
+  .next .genstat{display:flex;align-items:center;justify-content:center;gap:9px;min-height:var(--btn-lg);padding:0 15px}
+
+  .gap{height:12px}
+
+  /* ── 4분할 중심선 오버레이 ── */
+  .ov{position:absolute;inset:0;pointer-events:none}
+  .ov .hmid{position:absolute;left:0;right:0;height:0;border-top:1px dashed rgba(90,255,230,.9)}      /* 박스 세로중심(4분할 수평선) */
+  .ov .vmid{position:absolute;top:0;bottom:0;width:0;left:50%;border-left:1px dashed rgba(90,255,230,.35)}
+  .ov .orbc{position:absolute;left:0;right:0;height:0;border-top:1px solid rgba(255,155,138,.95)}     /* orb 중심 */
+  .ov .txtc{position:absolute;left:0;right:0;height:0;border-top:1px dotted rgba(255,225,61,.95)}     /* 글자 중심 */
+  .lgnd{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--mut);margin-top:8px;justify-content:center}
+  .lgnd span{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:16px;height:0;border-top-width:2px;border-top-style:solid;display:inline-block}
+  .sw.box{border-color:#5affe6}.sw.orb{border-color:#ff9b8a}.sw.txt{border-color:#FFE13D;border-top-style:dotted}
+
+  .meas{font-size:12px;color:var(--fg);margin-top:8px;font-variant-numeric:tabular-nums;text-align:center}
+  .meas b{color:var(--accent)} .meas .bad{color:#ff9b8a} .meas .ok{color:#5affe6}
+
+  /* ── 컨트롤 ── */
+  .ctl{display:flex;align-items:center;gap:10px;margin:10px 0}
+  .ctl label{font-size:12px;color:var(--mut);min-width:96px}
+  input[type=range]{flex:1;accent-color:var(--accent)}
+  .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;min-width:52px;text-align:right}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .presets button{font:inherit;font-size:12px;padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--fg);cursor:pointer}
+  .presets button.on{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.1)}
+  .copy{width:100%;font:inherit;font-size:13px;padding:12px;border-radius:12px;border:1px solid rgba(var(--accent-rgb),.4);background:rgba(var(--accent-rgb),.08);color:var(--accent);font-weight:800;cursor:pointer;margin-top:10px}
+  pre{white-space:pre-wrap;word-break:break-word;background:#0c1310;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:11.5px;color:#cfe;overflow:auto}
+  .note{font-size:11px;color:var(--mut);border-top:1px solid var(--line);margin-top:22px;padding-top:12px}
+  .note b{color:var(--fg)}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:center}th{color:var(--mut);font-weight:700}
+
+  /* orb 로더(viewer/nm-loader.js 이식 · 형식 전용) */
+  .nm-orb{display:inline-block;position:relative;vertical-align:middle;flex:0 0 auto}
+  .nm-orb svg{display:block;width:100%;height:100%;overflow:visible}
+  .nm-orb .nm-dot{fill:#e9eef0}
+  .nm-orb[data-orb="prompting"] .nm-r{transform-origin:50% 50%;animation:nmspin 3.2s linear infinite}
+  .nm-orb[data-orb="prompting"] .nm-r2{animation-duration:4.6s;animation-direction:reverse;opacity:.72}
+  .nm-orb[data-orb="prompting"] .nm-r3{animation-duration:6s;opacity:.5}
+  @keyframes nmspin{to{transform:rotate(360deg)}}
+  .nm-load{display:inline-flex;align-items:center;gap:9px}
+  .nm-load .nm-orb{width:22px;height:22px}
+  .nm-shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center;
+    background:linear-gradient(100deg,var(--mut) 0%,var(--mut) 38%,#fff 50%,var(--mut) 62%,var(--mut) 100%);
+    background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:nmshim 1.9s linear infinite}
+  @keyframes nmshim{from{background-position:120% 0}to{background-position:-120% 0}}
+</style>
+
+<div class="wrap">
+  <h1>카드뉴스 프롬프트 버튼 — 4/5 축소 + 정중앙 정렬</h1>
+  <p class="lead">뉴스요약 · 카드뉴스 프롬프트 버튼(<code>.mkbtn</code>)과 그 로딩 표기(<code>.genstat</code> = "Prompting…")를 하나의 높이 토큰 <b>--btn-lg</b>로 묶어 현재의 <b>4/5</b>로 줄이고, orb·글자를 박스 4분할 중심선에 정확히 얹는 시안. 이미지 스튜디오 발사버튼(<code>.go</code> 40px)과는 별개 티어(더 큼)를 유지.</p>
+
+  <!-- ── STICKY 미리보기 ── -->
+  <div class="stick">
+    <div class="cols">
+      <div class="col now">
+        <h3>현행 (<b>버튼 48 · 로딩 56.8</b>)</h3>
+        <div class="stage"><button class="mkbtn retry">프롬프트 다시 생성</button><div class="ov" data-ov="now-btn"></div></div>
+        <div class="gap"></div>
+        <div class="stage"><div class="genstat live" id="nowLoad"></div><div class="ov" data-ov="now-load"></div></div>
+      </div>
+      <div class="col next">
+        <h3>제안 (<b>--btn-lg = <span id="hLbl">46</span>px</b>)</h3>
+        <div class="stage"><button class="mkbtn retry">프롬프트 다시 생성</button><div class="ov" data-ov="next-btn"></div></div>
+        <div class="gap"></div>
+        <div class="stage"><div class="genstat live" id="nextLoad"></div><div class="ov" data-ov="next-load"></div></div>
+      </div>
+    </div>
+    <div class="lgnd">
+      <span><i class="sw box"></i>박스 4분할 중심선</span>
+      <span><i class="sw orb"></i>orb 중심</span>
+      <span><i class="sw txt"></i>글자 중심</span>
+    </div>
+    <div class="meas" id="meas">측정 중…</div>
+  </div>
+
+  <h2>1. 높이 조절 (--btn-lg)</h2>
+  <div class="card">
+    <div class="ctl"><label>--btn-lg 높이</label><input type="range" id="h" min="36" max="52" step="1" value="46"><span class="val" id="hVal">46px</span></div>
+    <div class="presets" id="presets">
+      <button data-h="45">4/5 정확 (45)</button>
+      <button data-h="46" class="on">권장·짝수 (46)</button>
+      <button data-h="48">현행 버튼 (48)</button>
+      <button data-h="40">.go 급 (40)</button>
+      <button data-h="38">버튼기준 4/5 (38)</button>
+    </div>
+    <p class="lead" style="margin:6px 0 0">현행 로딩 박스 56.8px × 4/5 = <b>45.4px</b> → 짝수 <b>46</b> 채택(22px orb를 (46−22)/2=12px 씩 정수로 나눠 중심 스냅). 38 = 버튼 48 기준 4/5(단 .go 40보다 작아짐 → 별개·큰 티어 취지엔 45~46 권장).</p>
+  </div>
+
+  <h2>2. 적용할 토큰 · CSS</h2>
+  <div class="card">
+    <button class="copy" id="copyBtn">📋 토큰 + CSS diff 복사</button>
+    <pre id="out"></pre>
+  </div>
+
+  <h2>3. 정렬 판정(4분할 중심 수평)</h2>
+  <div class="card">
+    <table>
+      <tr><th>상태</th><th>박스 높이</th><th>orb 중심 Δ</th><th>글자 중심 Δ</th><th>판정</th></tr>
+      <tr><td>현행 로딩</td><td>56.8px</td><td class="bad">−3.4px</td><td class="bad">−3.4px</td><td class="bad">편심(위로 치우침)</td></tr>
+      <tr><td>제안 로딩</td><td id="tH">46px</td><td class="ok" id="tOrb">≈0</td><td class="ok" id="tTxt">≈0</td><td class="ok">정중앙</td></tr>
+    </table>
+    <p class="lead" style="margin:6px 0 0">Δ = (요소 중심 y) − (박스 세로중심 y). 0에 가까울수록 박스 4분할 중심선에 정확히 얹힘. 현행은 패딩+라인박스 잔여로 orb·글자가 3.4px 위로 뜸 → 제안은 <code>height + flex 정중앙</code>으로 Δ0.</p>
+  </div>
+
+  <div class="note">
+    <p><b>무엇을·왜</b> — 현행은 버튼(48)과 로딩(56.8)이 높이가 달라 누르는 순간 9px 커지는 튐이 있고, 로딩 안 orb·글자가 중앙에서 3.4px 위로 치우쳐 있었음. 하나의 <b>--btn-lg</b> 토큰으로 묶고 <b>flex 정중앙</b>을 쓰면 둘 다 해소되며, 여기서 값 하나만 바꾸면 이 크기를 쓰는 모든 버튼에 일괄 반영됨.</p>
+    <p><b>한계(정직)</b> — ① 이 미리보기는 데스크톱 헤드리스 렌더 근사. 폰 실기기의 font-smoothing·서브픽셀은 육안 몫. ② '글자 중심'은 글리프 잉크가 아닌 <code>.nm-shim</code> 박스 기준(잉크중심은 폰트·베이스라인 스냅으로 ±1px 진동 = 노뮤트 계약 §0-4-1 → 하드게이트 대상 아님, 구조물 기하만 판정). ③ 색·orb·토큰은 viewer 실측 사본(형식 전용) — 값 정본은 <code>viewer/index.html :root</code>. ④ <b>적용 완료(46px · 운영자 260723 확정)</b> — <code>--btn-lg:46px</code> 신설(구조토큰=tokens.css 거울) + index <code>.mkbtn</code>/<code>.genstat</code> + thumb <code>.genstat</code>에 <code>고정높이+flex 정중앙</code> 반영. <code>.go</code>(40px)는 무접촉·별개 유지.</p>
+  </div>
+</div>
+
+<script>
+/* ═══ orb 로더(viewer/nm-loader.js orb IIFE 이식 · prompting 링 · 형식 전용) ═══ */
+(function(){
+  function ringSVG(){
+    function ring(cls,ry,n,rd,rot){var d='',i,a;for(i=0;i<n;i++){a=i/n*6.2832;d+='<circle class="nm-dot" cx="'+(50+Math.cos(a)*40).toFixed(1)+'" cy="'+(50+Math.sin(a)*ry).toFixed(1)+'" r="'+rd+'"/>';}return '<g class="nm-r '+cls+'" style="transform:rotate('+rot+'deg)">'+d+'</g>';}
+    return '<svg viewBox="0 0 100 100">'+ring('',40,20,2,0)+ring('nm-r2',15,16,1.7,30)+ring('nm-r3',26,13,1.4,60)+'</svg>';
+  }
+  function orbHTML(size){var sz=size?' style="width:'+size+'px;height:'+size+'px"':'';return '<span class="nm-orb" data-orb="prompting"'+sz+'>'+ringSVG()+'</span>';}
+  window.nmLoad=function(label){return '<span class="nm-load">'+orbHTML()+'<span class="nm-shim">'+label+'</span></span>';};
+})();
+
+var LOAD_HTML=window.nmLoad('Prompting…');
+document.getElementById('nowLoad').innerHTML=LOAD_HTML;
+document.getElementById('nextLoad').innerHTML=LOAD_HTML;
+
+var root=document.documentElement;
+var hIn=document.getElementById('h'), hVal=document.getElementById('hVal'), hLbl=document.getElementById('hLbl');
+
+function drawOv(sel, box){
+  var ov=document.querySelector('[data-ov="'+sel+'"]');
+  if(!ov||!box) return;
+  var bR=box.getBoundingClientRect(), pR=ov.getBoundingClientRect();
+  // ov는 stage(=box 부모) inset:0 이므로 box와 좌표계 동일; 오프셋 = box.top - ov.top
+  var off=bR.top-pR.top;
+  ov.innerHTML='<div class="vmid"></div><div class="hmid" style="top:'+(off+bR.height/2)+'px"></div>';
+  var orb=box.querySelector('.nm-orb'), shim=box.querySelector('.nm-shim');
+  var res={h:bR.height};
+  if(orb){var oR=orb.getBoundingClientRect();var oc=off+(oR.top-bR.top)+oR.height/2;ov.innerHTML+='<div class="orbc" style="top:'+oc+'px"></div>';res.orb=(oR.top+oR.height/2)-(bR.top+bR.height/2);}
+  if(shim){var sR=shim.getBoundingClientRect();var sc=off+(sR.top-bR.top)+sR.height/2;ov.innerHTML+='<div class="txtc" style="top:'+sc+'px"></div>';res.txt=(sR.top+sR.height/2)-(bR.top+bR.height/2);}
+  return res;
+}
+function r2(n){return Math.round(n*100)/100;}
+function refresh(){
+  var h=+hIn.value;
+  root.style.setProperty('--btn-lg',h+'px');
+  hVal.textContent=h+'px'; hLbl.textContent=h;
+  // 오버레이 + 측정
+  drawOv('now-btn',document.querySelector('.now .mkbtn'));
+  var nowL=drawOv('now-load',document.getElementById('nowLoad'));
+  drawOv('next-btn',document.querySelector('.next .mkbtn'));
+  var nextL=drawOv('next-load',document.getElementById('nextLoad'));
+  var m='제안 로딩 높이 <b>'+r2(nextL.h)+'px</b> · orb 중심 Δ <span class="'+(Math.abs(nextL.orb)<.6?'ok':'bad')+'">'+r2(nextL.orb)+'px</span> · 글자 중심 Δ <span class="'+(Math.abs(nextL.txt)<.6?'ok':'bad')+'">'+r2(nextL.txt)+'px</span>　｜　현행 로딩 orb Δ <span class="bad">'+r2(nowL.orb)+'</span>·글자 Δ <span class="bad">'+r2(nowL.txt)+'</span>';
+  document.getElementById('meas').innerHTML=m;
+  document.getElementById('tH').textContent=r2(nextL.h)+'px';
+  document.getElementById('tOrb').textContent=r2(nextL.orb);
+  document.getElementById('tTxt').textContent=r2(nextL.txt);
+  // presets on-state
+  [].forEach.call(document.querySelectorAll('#presets button'),function(b){b.classList.toggle('on',+b.dataset.h===h);});
+  // 출력
+  document.getElementById('out').textContent=buildOut(h);
+}
+function buildOut(h){
+  return ''+
+'/* viewer/index.html :root — 신설 토큰(운영자 승인 = "기틀에 박고") */\n'+
+'--btn-lg:'+h+'px;   /* 큰 발사·프롬프트 버튼 높이(.go 40 별개·상위 티어 · 현행 56.8 로딩의 4/5) */\n'+
+'\n'+
+'/* .mkbtn — 고정높이 + flex 정중앙(패딩 세로 제거 → 글자 dy0 · 버튼↔로딩 높이 일치) */\n'+
+'.mkbtn{ display:flex; align-items:center; justify-content:center;\n'+
+'  height:var(--btn-lg); padding:0 14px;  /* was: padding:14px */\n'+
+'  /* 이하 불변: width:100% font-size:14px font-weight:800 border-radius:999px 글래스 */ }\n'+
+'\n'+
+'/* .genstat — 동일 토큰 + flex 정중앙(orb·글자 4분할 중심 Δ0) */\n'+
+'.genstat{ display:flex; align-items:center; justify-content:center; gap:9px;\n'+
+'  min-height:var(--btn-lg); padding:0 15px;  /* was: padding:13px 15px */\n'+
+'  /* 이하 불변: border radius:16px font-size:13px */ }\n';
+}
+hIn.addEventListener('input',refresh);
+document.querySelectorAll('#presets button').forEach(function(b){b.addEventListener('click',function(){hIn.value=b.dataset.h;refresh();});});
+document.getElementById('copyBtn').addEventListener('click',function(){
+  navigator.clipboard.writeText(buildOut(+hIn.value)).then(function(){var b=document.getElementById('copyBtn');var t=b.textContent;b.textContent='✓ 복사됨';setTimeout(function(){b.textContent=t;},1200);});
+});
+window.addEventListener('resize',refresh);
+setTimeout(refresh,60); // 폰트·orb 레이아웃 안정 후
+refresh();
+</script>
