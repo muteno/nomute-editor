@@ -44,7 +44,12 @@ MIN_ATTACH = int(os.environ.get("GROUP_MIN_ATTACH", "2"))
 #   정확일치 교집합을 0으로 만들어 같은 사건이 안 이어지던 갭 — 한글 토큰 한정 일대일 탐욕 포함 매칭으로 보강(숫자·영문 제외 =
 #   '20'⊂'2026' 류 오폭 차단). 임계는 same_topic과 동일(3개 또는 자카드 0.5) · 최종 확정은 종전대로 AI(오병합 백스톱 불변).
 #   knews tokenize/same_topic 미접촉 = cross/클러스터/랭킹 무영향(260713 EXTRA_STOP과 동일 블라스트 반경). 롤백 = env GROUP_SUBTOK=0.
-SUBTOK = os.environ.get("GROUP_SUBTOK", "1").strip().lower() not in ("0", "false", "no")
+#   ⚠️ 부분어는 '저cross 부착 단계'에만 쓴다(평의회2 260723): 앵커끼리 부분어로 이어붙이면 클린 그룹이 >MAX_SIZE 블롭에
+#   삼켜져 판정권을 잃는 순손실(실측 13그룹) — 앵커 1패스는 종전 same_topic(정확일치) 그대로.
+SUBTOK = os.environ.get("GROUP_SUBTOK", "1").strip().lower() not in ("0", "false", "no", "")   # 빈값 = OFF(SAFE 파싱과 정합 — 평의회4)
+# NO 판정 시 기존 YES 코어 group_id 보존(연좌 해제 방지 · 자기 앵커가 현 그룹에 실존할 때만 = 확장→축소 sticky 차단 — 평의회1).
+#   롤백 = env GROUP_KEEP_YES=0(종전 'NO=전원 group_id 해제' 복원).
+KEEP_YES = os.environ.get("GROUP_KEEP_YES", "1").strip().lower() not in ("0", "false", "no", "")
 
 RUBRIC = """너는 한국 뉴스 데스크의 사건 동일성 판정자다. 아래 각 그룹의 기사 제목들이 전부 '같은 실제 사건'(같은 시간·장소·주체의 단일 사건 또는 그 직접 후속보도)을 다루면 YES, 하나라도 다른 사건이면 NO로 판정하라.
 - 주의: 템플릿이 같아도 장소·주체가 다르면 다른 사건이다(예: "안산 공장 폭발" vs "청주 공장 폭발" = NO).
@@ -84,19 +89,28 @@ def _get_matcher():
 _HAN = re.compile(r"^[가-힣]+$")
 
 
-def _sub_match(ta, tb):
-    """정확 교집합 + 한글 부분어 일대일 탐욕 매칭 수(결정론 = 정렬 순회 · 한쪽 토큰당 1회만 소비 = 긴 복합어 1개가 여러 매치로 뻥튀기 금지)."""
+def _han_sorted(tk):
+    """토큰셋 → 정렬 한글 토큰 리스트(핫루프 밖 1회 사전계산용 — 평의회3: 쌍마다 재계산이 비용의 전부[27배]였음)."""
+    return [t for t in sorted(tk) if _HAN.match(t)]
+
+
+def _sub_match(ta, tb, ha=None, hb=None):
+    """정확 교집합 + 한글 부분어 일대일 탐욕 매칭 수(결정론 = 정렬 순회 · 한쪽 토큰당 1회만 소비 = 긴 복합어 1개가 여러 매치로 뻥튀기 금지).
+    ha/hb = 사전계산 _han_sorted(미제공 시 자체 계산 — 시뮬·재클러스터 폴백)."""
     inter = ta & tb
     n = len(inter)
     if n >= 3:
         return n
-    rb = [b for b in sorted(tb - inter) if _HAN.match(b)]
+    if ha is None:
+        ha = _han_sorted(ta)
+    if hb is None:
+        hb = _han_sorted(tb)
     used = set()
-    for a in sorted(ta - inter):
-        if not _HAN.match(a):
+    for a in ha:
+        if a in inter:
             continue
-        for b in rb:
-            if b not in used and (a in b or b in a):
+        for b in hb:
+            if b not in used and b not in inter and (a in b or b in a):
                 used.add(b)
                 n += 1
                 break
@@ -105,18 +119,22 @@ def _sub_match(ta, tb):
     return n
 
 
-def _same_event(ta, tb, same_topic):
-    """same_topic(정본 유지) 실패 시에만 부분어 보강 판정 — 임계 동일(3개 또는 자카드 0.5)."""
+def _event_score(ta, tb, same_topic, ha=None, hb=None):
+    """부착 랭킹용 매칭 강도(0 = 다른 사건 · 1~3 캡): same_topic(정본 유지) 통과 = 3 · 실패 시에만 부분어 보강 — 임계 동일(3개 또는 자카드 0.5)."""
     if same_topic(ta, tb):
-        return True
+        return 3
     if not SUBTOK:
-        return False
-    n = _sub_match(ta, tb)
-    if n == 0:
-        return False
+        return 0
+    n = _sub_match(ta, tb, ha, hb)
     if n >= 3:
-        return True
-    return n / len(ta | tb) >= 0.5
+        return 3
+    if n and n / len(ta | tb) >= 0.5:
+        return n
+    return 0
+
+
+def _same_event(ta, tb, same_topic, ha=None, hb=None):
+    return _event_score(ta, tb, same_topic, ha, hb) > 0
 
 
 def _components(pool, toks, same_topic):
@@ -142,8 +160,8 @@ def _components(pool, toks, same_topic):
 
 
 def build_groups(cands):
-    """cross≥MIN_ATTACH 후보를 same_topic+부분어(_same_event) union-find로 그룹핑 → 앵커(cross≥MIN_CROSS) 있는
-    컴포넌트만 크기 2~MAX_SIZE 그룹 리스트로(cross 내림 정렬 · 260723 후속 속보 부착 — 상수 주석 참조).
+    """2단 그룹핑(260723 평의회 하드닝): ①앵커끼리 종전 정확일치 union-find 그대로(기존 그룹 구조 불변) ②저cross
+    후속 속보는 최강 매칭 '단일' 컴포넌트 부착만(부분어는 이 단계 한정) → 크기 2~MAX_SIZE 그룹 리스트(cross 내림 정렬).
     NO-only 재클러스터(EXTRA_STOP): 전원 group_no==그 그룹키(=이 구성 그대로 AI-NO 판정된 이질 그룹)인 컴포넌트만
     EXTRA_STOP(역대·최대) 제거 토큰으로 내부 재클러스터해 동질 코어 리프를 방출. group_no 없는(=현 YES 병합/미판정)
     컴포넌트는 절대 미접촉 → 현 YES 병합 손실 0(구조적 보장). EXTRA_STOP 빈값이면 종전 1패스 동작."""
@@ -152,17 +170,48 @@ def build_groups(cands):
     def match(ta, tb):
         return _same_event(ta, tb, same_topic)
 
-    floor = min(MIN_CROSS, MIN_ATTACH)
-    pool = [c for c in cands if (c.get("cross") or 0) >= floor and c.get("url") and (c.get("title") or "").strip()]
-    toks = [tokenize(c.get("title") or "") for c in pool]
+    def ok(c):
+        return c.get("url") and (c.get("title") or "").strip()
+
+    # ── 1패스: 앵커(cross≥MIN_CROSS)끼리 = 종전 same_topic(정확일치) union-find '그대로' — 기존 판정 그룹 구조 불변 보장
+    #   (부분어를 앵커 간에도 쓰면 클린 그룹이 >MAX_SIZE 블롭에 삼켜져 판정권 상실 = 순손실 실측 13그룹 — 평의회2 260723) ──
+    anchors = [c for c in cands if (c.get("cross") or 0) >= MIN_CROSS and ok(c)]
+    atoks = [tokenize(c.get("title") or "") for c in anchors]
+    comps = [[(anchors[i], atoks[i], _han_sorted(atoks[i])) for i in cc]
+             for cc in _components(anchors, atoks, same_topic)]
+    # ── 2패스: 저cross 후속 속보 부착 — 각 아이템은 '최강 매칭 단일' 컴포넌트에만 편입(컴포넌트 간 union 구조적 불가 =
+    #   브리지·블롭 차단 · MAX_SIZE 좌석 내 선착 = 앵커 코어 판정권 보존 · 저cross 체인[속보A→속보B→앵커]은 반복 부착 수렴) ──
+    if MIN_ATTACH < MIN_CROSS:
+        low = sorted((c for c in cands if MIN_ATTACH <= (c.get("cross") or 0) < MIN_CROSS and ok(c)),
+                     key=lambda c: (-(c.get("cross") or 0), c.get("url") or ""))
+        ltoks = [tokenize(c.get("title") or "") for c in low]
+        lhan = [_han_sorted(tk) for tk in ltoks]
+        left = [i for i in range(len(low)) if ltoks[i]]
+        for _ in range(3):
+            still = []
+            for li in left:
+                best = None   # (매칭강도, 대상 cross) 최대 — 동률 = 먼저 만난 컴포넌트(순회 결정론)
+                for mem in comps:
+                    if len(mem) >= MAX_SIZE:
+                        continue
+                    for m, tk, hk in mem:
+                        s = _event_score(ltoks[li], tk, same_topic, lhan[li], hk)
+                        if s and (best is None or (s, m.get("cross") or 0) > best[0]):
+                            best = ((s, m.get("cross") or 0), mem)
+                if best is None:
+                    still.append(li)
+                else:
+                    best[1].append((low[li], ltoks[li], lhan[li]))
+            if len(still) == len(left):
+                break
+            left = still
+    # ── 리프 방출(컴포넌트 전원 앵커 1패스 발원 = 저cross끼리 잡음 그룹 원천 불가) ──
     leaves = []
-    for comp in _components(pool, toks, match):
-        members = [pool[i] for i in comp]
-        if not any((m.get("cross") or 0) >= MIN_CROSS for m in members):
-            continue   # 앵커(cross≥MIN_CROSS) 없는 저cross 잡음 컴포넌트 = 판정 비대상(종전 취지 보존)
+    for mem in comps:
+        members = [m for m, _, _ in mem]
         kG = group_key(members) if (EXTRA_STOP and len(members) >= 2) else None
         if kG is not None and all(m.get("group_no") == kG for m in members):
-            sub_toks = [toks[i] - EXTRA_STOP for i in comp]   # 이 그룹 내부만 최상급어 제거 재클러스터(멱등·엣지 단조감소)
+            sub_toks = [tk - EXTRA_STOP for _, tk, _ in mem]   # 이 그룹 내부만 최상급어 제거 재클러스터(멱등·엣지 단조감소)
             for sub in _components(members, sub_toks, match):
                 if 2 <= len(sub) <= MAX_SIZE:
                     leaves.append([members[s] for s in sub])
@@ -251,9 +300,11 @@ def main():
             e["group_rubric"] = k
             if verdicts[i]:
                 e["group_id"] = rep
-            elif not e.get("group_id"):
-                # NO: 기존 YES 코어의 group_id는 보존(260723) — 저cross 부착으로 확장된 구성의 NO는 '신규 부착 거부'일 뿐,
-                #   현행 병합의 연좌 해제 금지(구성 동일 재판정은 해시상 불가 = 이 경로로 기존 오병합 정정이 막히는 손실 0).
+            elif KEEP_YES and e.get("group_id") and any((x.get("url") or "") == e.get("group_id") for x in g):
+                pass   # NO여도 기존 YES 코어 보존(260723) — 확장 구성 NO = 신규 부착 거부일 뿐 연좌 해제 금지.
+                #   협소화(평의회1): 자기 앵커 url이 '현 그룹 안에 실존'할 때만(확장→축소 사이클의 sticky-NO 엣지 차단).
+            else:
+                e.pop("group_id", None)
                 if EXTRA_STOP and not e.get("group_no"):   # write-once = 재클러스터 트리거(서브코어 YES로 바뀌어도 유지 = churn 방지)
                     e["group_no"] = k
         yes += 1 if verdicts[i] else 0
