@@ -168,13 +168,15 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
       await pg.waitForTimeout(60);
       const meta = await el2.evaluate(h => {
         const rgbOf = c => (c.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
-        const r = h.getBoundingClientRect(); const items = [];
-        const gp = h.querySelector('.gpic svg');
-        if (gp) { const b = gp.getBoundingClientRect(); items.push({ n: '픽토', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(gp.closest('.gpic')).color) }); }
+        const r = h.getBoundingClientRect(); const items = [], geo = [];
+        const orb = h.querySelector('.gpic .nm-orb');   // AI요약 orb(애니 = 프레임마다 잉크 이동) = 잉크 금지(rule 4-1) → gpic 박스 기하 중심
+        const gp = !orb && h.querySelector('.gpic svg');
+        if (orb) { const gb = h.querySelector('.gpic').getBoundingClientRect(); geo.push({ n: 'orb(기하)', d: +((gb.top + gb.bottom) / 2 - (r.top + r.bottom) / 2).toFixed(2) }); }
+        else if (gp) { const b = gp.getBoundingClientRect(); items.push({ n: '픽토', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(gp.closest('.gpic')).color) }); }
         else { const bi = h.querySelector('i'); if (bi) { const b = bi.getBoundingClientRect(); items.push({ n: '순번', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(bi).color) }); } }
         items.push({ n: '체브론', x0: r.width - 30, x1: r.width, rgb: rgbOf(getComputedStyle(h, '::after').backgroundColor) });
         // 시각(.tdash-time) = 텍스트 잉크중심 = 게이트 제외(H1 동축 · Y위상 ±1px 진동) — 구조물 순번/픽토·체브론만 게이트
-        return { x: r.x, y: Math.round(r.y), w: r.width, h: r.height, items };
+        return { x: r.x, y: Math.round(r.y), w: r.width, h: r.height, items, geo };
       });
       const shot2 = await pg.screenshot({ clip: { x: meta.x, y: meta.y, width: meta.w, height: meta.h } });
       const ds2 = await pg.evaluate(async ([b64, its, dpr, boxH]) => {
@@ -191,10 +193,11 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
           return { n: it.n, d: mx < 0 ? null : +(((mn + mx + 1) / 2 / dpr) - boxH / 2).toFixed(2) };
         });
       }, [shot2.toString('base64'), meta.items, DPR, meta.h]);
-      lines.push(id + ' ' + fmt(ds2));
-      ds2.forEach(d => { if (d.d == null || Math.abs(d.d) > TOL) bad.push(id + ':' + d.n + '=' + d.d); });
+      const all2 = [...ds2, ...meta.geo];   // 잉크 항목 + orb 기하 항목 병합
+      lines.push(id + ' ' + fmt(all2));
+      all2.forEach(d => { if (d.d == null || Math.abs(d.d) > TOL) bad.push(id + ':' + d.n + '=' + d.d); });
     }
-    ok('H2 전 대분류 헤더(' + ids.length + '개) 구조물 순번/픽토·체브론 |Δ|≤' + TOL + '(시각 텍스트=제외)', bad.length === 0, bad.length ? '위반 ' + bad.join(', ') : lines.join(' / '));
+    ok('H2 전 대분류 헤더(' + ids.length + '개) 구조물 순번/픽토·체브론(orb=기하) |Δ|≤' + TOL + '(시각 텍스트=제외)', bad.length === 0, bad.length ? '위반 ' + bad.join(', ') : lines.join(' / '));
     await ctx.close();
     // ── H6 채널 요약(chan) 탭 대분류 헤더 구조물 4분할(운영자 260723 Q475 "같은 작업인데 메뉴만 다른 부분 검증") — 채널도 동일 .tgroup-h CSS 계승 · cg-brief ✨픽토 = [id$=-brief] 통합 보정(구 #tg-brief 전용 = 채널 −1.0 미보정 사각 봉합) 회귀 가드 · 구조물(순번/픽토·체브론)만 게이트(텍스트=rule 4-1 제외) ──
     const cctx = await br.newContext({ viewport: { width: 390, height: 900 }, deviceScaleFactor: DPR });
@@ -212,12 +215,14 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
       await cpg.waitForTimeout(50);
       const meta = await el3.evaluate(h => {
         const rgbOf = c => (c.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
-        const r = h.getBoundingClientRect(); const items = [];
-        const gp = h.querySelector('.gpic svg');
-        if (gp) { const b = gp.getBoundingClientRect(); items.push({ n: '픽토', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(gp.closest('.gpic')).color) }); }
+        const r = h.getBoundingClientRect(); const items = [], geo = [];
+        const orb = h.querySelector('.gpic .nm-orb');   // AI요약 orb(애니) = 기하 중심(H2 동축 · rule 4-1)
+        const gp = !orb && h.querySelector('.gpic svg');
+        if (orb) { const gb = h.querySelector('.gpic').getBoundingClientRect(); geo.push({ n: 'orb(기하)', d: +((gb.top + gb.bottom) / 2 - (r.top + r.bottom) / 2).toFixed(2) }); }
+        else if (gp) { const b = gp.getBoundingClientRect(); items.push({ n: '픽토', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(gp.closest('.gpic')).color) }); }
         else { const bi = h.querySelector('i'); if (bi) { const b = bi.getBoundingClientRect(); items.push({ n: '순번', x0: b.x - r.x, x1: b.x - r.x + b.width, rgb: rgbOf(getComputedStyle(bi).color) }); } }
         items.push({ n: '체브론', x0: r.width - 30, x1: r.width, rgb: rgbOf(getComputedStyle(h, '::after').backgroundColor) });
-        return { x: r.x, y: Math.round(r.y), w: r.width, h: r.height, items };
+        return { x: r.x, y: Math.round(r.y), w: r.width, h: r.height, items, geo };
       });
       const shot3 = await cpg.screenshot({ clip: { x: meta.x, y: meta.y, width: meta.w, height: meta.h } });
       const ds3 = await cpg.evaluate(async ([b64, its, dpr, bH]) => {
@@ -232,8 +237,9 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
           }
           return { n: it.n, d: mx < 0 ? null : +(((mn + mx + 1) / 2 / dpr) - bH / 2).toFixed(2) }; });
       }, [shot3.toString('base64'), meta.items, DPR, meta.h]);
-      clines.push(id + ' ' + fmt(ds3));
-      ds3.forEach(d => { if (d.d == null || Math.abs(d.d) > TOL) cbad.push(id + ':' + d.n + '=' + d.d); });
+      const all3 = [...ds3, ...meta.geo];
+      clines.push(id + ' ' + fmt(all3));
+      all3.forEach(d => { if (d.d == null || Math.abs(d.d) > TOL) cbad.push(id + ':' + d.n + '=' + d.d); });
     }
     ok('H6 채널(chan) 대분류 헤더(' + cids.length + '개) 구조물 순번/픽토·체브론 |Δ|≤' + TOL, cids.length > 0 && cbad.length === 0, cids.length === 0 ? '채널 헤더 0(렌더 실패)' : (cbad.length ? '위반 ' + cbad.join(', ') : clines.join(' / ')));
     await cctx.close();
