@@ -179,14 +179,18 @@ def main():
     #    표본 = 본 posts(10·썸네일/시리즈용)와 분리한 별도 넓은 fetch(반응만·60개) = 기존 흐름 무영향 · 리치필드 권한 없으면 통째 스킵(fail-soft).
     try:
         _wide = api(f'{PID}/posts', fields='message,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=60).get('data', [])
-        _tp = {}
+        _tp, _sample = {}, []
         for x in _wide:
             if not (('reactions' in x) or ('comments' in x) or ('shares' in x)):
                 continue
             e = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
                 + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
                 + ((x.get('shares') or {}).get('count') or 0)
-            _tp.setdefault(_cat_of((x.get('message') or '').split('\n')[0]), []).append(e)
+            nm = (x.get('message') or '').split('\n')[0][:80]
+            _sample.append({'nm': nm, 'e': e})
+            _tp.setdefault(_cat_of(nm), []).append(e)
+        if _sample:
+            d['topic_sample'] = _sample   # LLM 분류기(fb_classify.py) 입력 = 제목+반응(뷰어 미소비 · 분류 스텝이 정확 topics로 승격 · 스텝 미실행/실패 = 아래 키워드 폴백 유지 · 운영자 260724 LLM 분류 채택)
         if _tp:
             # 기타(캐치올)는 주제 아님 = 제외 · 유의미 주제(n≥5 = 뷰어 표시 임계) 2개↑일 때만 방출 = raw 분류 빈약(전량 기타)이면 단일 기타바 대신 유닛 조용히 숨김(운영자 260723 · "인스타처럼"의 최소 조건 · FB엔 인스타 cat_overrides 보정 부재라 분류 개선이 IG패리티 선결). 방출 시에도 기타 제외.
             _real = {c: v for c, v in _tp.items() if c != '기타'}
