@@ -9,7 +9,7 @@
 # 인사이트 메트릭별 독립 fail-soft(Graph 메트릭 개폐가 잦아 하나 죽어도 나머지 수집).
 import json, os, sys, urllib.request, urllib.error, urllib.parse, datetime, statistics
 
-TOK = os.environ.get('FB_PAGE_TOKEN', '').strip()
+TOK = os.environ.get('FB_ACCESS_TOKEN', '').strip() or os.environ.get('FB_PAGE_TOKEN', '').strip()   # 토큰 시크릿 = FB_ACCESS_TOKEN 우선 · FB_PAGE_TOKEN 폴백(운영자 260723 — 운영자가 새 토큰을 FB_ACCESS_TOKEN 이름으로 등록해 별칭 수용 · 신선분 우선이라 구 죽은 FB_PAGE_TOKEN 잔존해도 새 것 채택)
 PID = os.environ.get('FB_PAGE_ID', '').strip()
 IGTOK = os.environ.get('IG_ACCESS_TOKEN', '').strip()   # 겸용 프로브 폴백(운영자 260718 "인스타 API가 메타였는데 못 끌어와?" — 세팅 문서 §0)
 OUT = 'viewer/fb_data.json'
