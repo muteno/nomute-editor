@@ -11831,7 +11831,7 @@ function trEnsureFrame() {   // tr 전용 프레임 생성+로드(예열·활성
   if (f) return f;
   const orig = document.getElementById('toolframe');
   f = orig.cloneNode(false); f.removeAttribute('id'); f.classList.add('toolfr'); f.classList.remove('active'); f.src = 'about:blank'; orig.parentNode.appendChild(f); bindToolFrameLoad(f);   // activateToolFrame 복제 문법 계승(ESC 브릿지·frame-ready 재부여 포함) · ⚠ active 명시 제거 = cloneNode가 활성 원본 #toolframe의 'active'를 복사 → 예열 경로는 trMount 토글 루프를 안 거쳐 그대로 노출되던 것 봉합(trMount 활성 경로는 하단 토글 루프가 재설정 = 무해)
-  f.addEventListener('load', () => { f._trLoaded = true; });   // 로드 완료 플래그 = 예열 프레임 클릭 시 즉시 표시(frame-ready) vs 페이드인 대기 판정(trMount)
+  f.addEventListener('load', () => { try { if ((f.contentWindow.location.href || '').indexOf('/tr.html') >= 0) f._trLoaded = true; } catch (_) { f._trLoaded = true; } });   // 로드 완료 플래그(즉시표시 판정 trMount) — tr.html 로드만 인정(구 about:blank 예비 load가 _trLoaded 조기 true로 굳혀 빈 tr 조기표시하던 프래질리티 봉합 · 평의회2 260724 · 접근불가 예외 = fail-safe true)
   toolFrames.thumbtr = f;   // 레지스트리 등재 = 타 도구 전환(activateToolFrame 토글 루프)이 자동 숨김 — 고아 .active 이중 표시 차단
   const _bust = '/tr.html?v=' + Date.now();   // 캐시버스트 = loadToolFrame 계승(_headers no-cache 한 쌍 · 260723 tr.html _headers 등재 소급)
   try { f.contentWindow.location.replace(_bust); } catch (_) { f.src = _bust; }
@@ -11998,8 +11998,9 @@ function restoreTool(key) {
     const _g = $('#genidlg'); if (_g && _g.open) _g.close();                    // 팝업 열림 중 복원 = 팝업 닫고 이식(폼 단일 거처 — close 핸들러가 장면 스냅샷 저장 · 구 gdlg.open 조기 return이 하이라이트·내용 불일치 만들던 것 봉합 · 평의회 1번)
     geniMount();                                                                // 프롬프팅 이식 탭이었으면 재이식(askMount 미러 · 260713 B — 장면은 GENI_FREE_TXT 스냅샷 복원)
   }
-  if (key === 'thumb' && ((toolMeta.thumb || {}).app) === 'tr') trMount();      // 번역 탭이었으면 전용 보존 프레임 재표시(위 geni 복원 미러 · 폼 그대로 · 260721)
-  tooldlg.classList.add('frame-ready');                                         // 보존 프레임 = load 이벤트 없음 → 즉시 보이게(opacity 1)
+  if (key === 'thumb' && ((toolMeta.thumb || {}).app) === 'tr') trMount();      // 번역 탭이었으면 전용 보존 프레임 재표시(위 geni 복원 미러 · 폼 그대로 · 260721) — trMount이 _trLoaded 기준 frame-ready 자체 관리
+  else tooldlg.classList.add('frame-ready');                                    // 그 외 보존 프레임 = load 이벤트 없음 → 즉시 보이게(opacity 1) · 번역 탭은 trMount 전담(예열 미완 프레임 조기 부분노출 방지 · 평의회1 260724 · 구 무조건 add가 trMount 판정 덮던 것 봉합)
+  trWarm();                                                                     // 복원 경로도 번역 탭 예열(운영자 260724 한 수 — 최소화 전 번역 미방문이라 thumbtr 미존재 시 지금 선로드 → 복원 후 번역 클릭도 즉시 · self-guard: thumb 셸·thumbtr 미존재일 때만)
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   flyGhost('out', () => {                                                       // 고스트가 이미 모달 크기로 펼침 → 모달은 그 자리에 즉시 등장(toolIn 재페이드 생략 · 운영자 260627)
     if (!(history.state && history.state.tool)) history.pushState({ tool: true }, '');   // 최소화 중 백버튼이 {tool}칸 소비했으면 복원, 보존됐으면 재사용
