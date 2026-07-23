@@ -148,9 +148,9 @@
         <div class="cpprev-wait" id="pvWait" hidden><span class="nm-load" data-orb="solving" data-label="Solving…"></span><span class="cpw-sec" id="pvSec"></span></div><!-- orb 로더(Solving · 운영자 260723 Q463) 자동수화 · 경과 pvSec 유지 -->
       </div>
     </div>
-    <!-- 선택 요약 스트립 = thumb 도크 #editSpec 라인 정본 이식(운영자 260721 "번역부 = 편집 탭 디자인" — 미리보기↔발사행 사이 고정 · 라벨 = 옵션 행 라벨 동일 · 값 = 활성 accent) -->
-    <div class="optstrip" id="optStrip"><div class="gospec" id="trSpec"><span class="gs-lbl">밴드 스타일</span> <span class="gs-v on" id="tsStyle">검정 밴드</span> <span class="gs-sep">/</span> <span class="gs-lbl">글자 크기</span> <span class="gs-v on" id="tsFs">40</span> <span class="gs-sep">/</span> <span class="gs-lbl">폰트</span> <span class="gs-v on" id="tsFont">한글</span></div></div>
-    <div class="makerow" id="makeRow"><div class="gowrap"><button type="button" class="go" id="go" disabled>생성</button></div></div>
+    <!-- 선택 요약 스트립 = thumb 도크 #editSpec 라인 정본 이식(운영자 260721 "번역부 = 편집 탭 디자인" · 260723 정합 — 미리보기↔발사행 사이 고정 · 라벨 = 옵션 행 라벨 동일 · 값 = 기본값 mut·변경값만 accent 강조 = thumb #editSpec updateGoSpec 정본 문법 그대로 · 부팅 시 전부 기본값이라 첨부1 편집 탭과 동일 무강조) -->
+    <div class="optstrip" id="optStrip"><div class="gospec" id="trSpec"><span class="gs-lbl">밴드 스타일</span> <span class="gs-v" id="tsStyle">검정 밴드</span> <span class="gs-sep">/</span> <span class="gs-lbl">글자 크기</span> <span class="gs-v" id="tsFs">40</span> <span class="gs-sep">/</span> <span class="gs-lbl">폰트</span> <span class="gs-v" id="tsFont">한글</span></div></div>
+    <div class="makerow" id="makeRow"><div class="gowrap"><button type="button" class="go" id="go">생성</button></div></div><!-- 사진 없어도 상시 활성(full opacity) · 빈 상태 클릭 = 사진 첨부 진입 = thumb 편집 탭 #go 정본 문법 계승(운영자 260723 · 구 disabled dim = 첨부1과 불일치 교정) -->
   </div>
   <div class="geni-sum" id="autoSum" hidden></div>
 
@@ -231,10 +231,10 @@ prevBox.addEventListener('dragleave', () => prevBox.classList.remove('dropping')
 prevBox.addEventListener('drop', e => { e.preventDefault(); prevBox.classList.remove('dropping'); setImage(e.dataTransfer.files[0]); });
 
 /* ── 옵션(밴드 스타일·글자 크기·폰트) — 편집 탭 .scard 워드칩 문법(운영자 260721) · 위임 핸들러 유지 · 변경 = 즉시 재합성 + 도크 요약 스트립 동기(thumb #editSpec 미러 문법) ── */
-function updSpec(){
-  $('tsStyle').textContent = $('styleSeg').querySelector('.on')?.textContent || '';
-  $('tsFs').textContent = String(fsV);
-  $('tsFont').textContent = $('fontSeg').querySelector('.on')?.textContent || '';
+function updSpec(){   // 스트립 값 = 기본값이면 mut·비기본값(변경)이면 accent 강조(thumb #editSpec updateGoSpec 정본 문법 계승 · 기본 = dark·40·ko) — 부팅 무강조 = 첨부1 편집 탭 정합
+  const st = $('tsStyle'); st.textContent = $('styleSeg').querySelector('.on')?.textContent || ''; st.classList.toggle('on', styleV !== 'dark');
+  const fs = $('tsFs'); fs.textContent = String(fsV); fs.classList.toggle('on', fsV !== 40);
+  const ft = $('tsFont'); ft.textContent = $('fontSeg').querySelector('.on')?.textContent || ''; ft.classList.toggle('on', fontV !== 'ko');
 }
 function seg(host, fn){
   host.addEventListener('click', e => {
@@ -572,7 +572,8 @@ function goBusy(on){
   upd();
 }
 go.addEventListener('click', async () => {
-  if (!img || busy) return;
+  if (busy) return;
+  if (!img) { $('srcFile').click(); return; }   // 사진 없음 = 첨부 진입(thumb 편집 탭 #go !CIMG.b64→cFile.click 정본 문법 계승 · 버튼 상시 활성)
   goBusy(true); aStat('');
   try {
     if (ocrFor !== img) { ocrLines = await runOcr(); ocrFor = img; }   /* 같은 이미지 재생성 = OCR 재판독 생략 */
@@ -609,7 +610,7 @@ dlBtn.addEventListener('click', () => {
 
 /* ── 갱신 ── */
 function upd(){
-  go.disabled = !img || busy;
+  go.disabled = busy;   // 사진 유무로 비활성화 안 함 = thumb 편집 탭 정본(버튼 상시 활성·빈 상태 클릭=첨부) · busy(발사 중)만 잠금
   compose();
 }
 upd();
