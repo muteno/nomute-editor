@@ -1,18 +1,18 @@
 <meta charset="utf-8">
-<title>범용 구독·큐레이션 설정 메뉴 시안 — 260723</title>
+<title>범용 구독·큐레이션 설정 — 게시판형 시안 v2</title>
 <style>
-  /* ── 실토큰 계승(viewer/index.html :root 실측값) ── */
+  /* ── 실토큰 계승(viewer/index.html :root 실측) ── */
   :root{
     --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
     --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
     --accent:#00EED2; --accent-rgb:0,238,210;
     --accent-4:#FFE13D; --accent-4-rgb:255,225,61;
-    --r-s:8px; --r-m:12px; --r-pill:999px; --r-modal:16px;
-    --sp-1:6px; --sp-2:12px; --sp-3:18px;
-    --modal-glass:#1a1c1b;
+    --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+    --fs-h2:15px; --fw-x:800; --fs-label:13px; --fs-xs:11px;
+    --press-m:.9; --ease:cubic-bezier(.2,.7,.3,1); --dur-acc:.26s;
+    --modal-glass:#1a1c1b; --modal-head-bg:rgba(20,22,21,.55);
     /* 튜닝 축(현행 실측 기본값) */
-    --t-secgap:18;      /* 섹션 간 간격 */
-    --t-divop:.08;      /* 구분선 진하기(=--line .08) */
+    --t-cardgap:12; --t-cardpad:12;
   }
   *{box-sizing:border-box}
   body{margin:0;background:#0c0c0c;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Segoe UI",sans-serif;font-size:14px;line-height:1.5;padding:16px}
@@ -21,38 +21,52 @@
   .stagecap{color:var(--mut);font-size:12px;margin-top:10px;text-align:center}
   aside.console{flex:1 1 300px;min-width:280px}
   h1{font-size:16px;margin:0 0 4px}
-  .sub{color:var(--mut);font-size:12px;margin:0 0 16px}
+  .subt{color:var(--mut);font-size:12px;margin:0 0 16px}
 
-  /* ── 미리보기 = 모달 실물 재현(#snsaccdlg 계승) ── */
-  .frame{background:#000;border-radius:20px;padding:22px 14px;display:flex;justify-content:center}
+  /* ── 미리보기 = 모달 실물 재현 ── */
+  .frame{background:#000;border-radius:20px;padding:20px 12px;display:flex;justify-content:center}
   .dlg{width:min(430px,100%);background:var(--modal-glass);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-modal);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-  .dlg-head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
-  .dlg-head .x{margin-left:auto;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;color:var(--mut);border:1px solid var(--line)}
-  .dlg-body{max-height:62vh;overflow-y:auto;padding:calc(var(--t-secgap)*1px) 16px}
+  /* .modal-head 정본 계승 */
+  .modal-head{display:flex;align-items:center;gap:8px;padding:11px 16px;min-height:53px;border-bottom:1px solid var(--line2);background:var(--modal-head-bg)}
+  .modal-head b{font-size:var(--fs-h2);font-weight:var(--fw-x);letter-spacing:-.2px}
+  .modal-head .x{margin-left:auto;width:30px;height:30px;border-radius:var(--r-s);display:grid;place-items:center;color:var(--mut);border:1px solid var(--line)}
+  .dlg-body{padding:14px;max-height:64vh;overflow-y:auto;scrollbar-gutter:stable both-edges}
 
-  /* 섹션(구분선 분할) */
-  .sec{padding-bottom:calc(var(--t-secgap)*1px);margin-bottom:calc(var(--t-secgap)*1px);border-bottom:1px solid rgba(255,255,255,var(--t-divop))}
-  .sec:last-child{border-bottom:none;margin-bottom:0}
-  .sec-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.3px;margin-bottom:10px;text-transform:none}
-  .sec-h .tag{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-pill);padding:1px 7px;text-transform:uppercase}
-  .row{margin-bottom:12px}
-  .row:last-child{margin-bottom:0}
-  .row-t{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin-bottom:6px}
-  .reg{margin-left:auto;display:flex;gap:2px}
-  .reg b{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-s);padding:2px 7px;cursor:pointer}
+  /* ── 게시판 카드 = .tgroup 정본 계승 ── */
+  .tgroup{margin:0 0 calc(var(--t-cardgap)*1px);padding:calc(var(--t-cardpad)*1px) 14px;border:1px solid var(--line);border-radius:var(--r-l);background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));scroll-margin-top:12px}
+  .tgroup:last-child{margin-bottom:0}
+  /* .tgroup-h 정본 계승(flex·gap7·fs-h2·fw-x·-.2) */
+  .tgroup-h{display:flex;align-items:center;gap:7px;margin:0;font-size:var(--fs-h2);font-weight:var(--fw-x);letter-spacing:-.2px;color:var(--fg);cursor:pointer;transition:margin-bottom var(--dur-acc) var(--ease)}
+  .tgroup.open>.tgroup-h{margin-bottom:14px}
+  .tgroup-h .gpic{color:var(--accent);font-size:14px;width:20px;text-align:center;flex:none}
+  .tgroup-h .kwmark{color:var(--accent-4)}
+  .tgroup-h .cnt{color:var(--mut);font-size:var(--fs-xs);font-weight:600}
+  .tgroup-h .chev{margin-left:auto;color:var(--mut);transition:transform var(--dur-acc) var(--ease);flex:none}
+  .tgroup.open>.tgroup-h .chev{transform:rotate(180deg)}
+  /* 접이 = .geni-camsub 정본 계승(grid-rows 0fr↔1fr) */
+  .sub{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-acc) var(--ease)}
+  .tgroup.open>.sub{grid-template-rows:1fr}
+  .sub>.subin{overflow:hidden;min-height:0}
+
+  /* 지역 토글(KR/GL) */
+  .reg{display:flex;gap:3px;margin-bottom:10px}
+  .reg b{font-size:10px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:var(--r-s);padding:2px 9px;cursor:pointer}
   .reg b.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.5)}
-  .chips{display:flex;flex-wrap:wrap;gap:6px}
-  .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 8px 4px 10px;color:var(--fg)}
-  .chip.kw{border-color:rgba(var(--accent-4-rgb),.35)}   /* 키워드형 = 골드레몬 테두리(계정형과 구분) */
-  .chip .rm{color:var(--mut);cursor:pointer;font-size:14px;line-height:1}
-  .chip.add{color:var(--accent);border-style:dashed;border-color:rgba(var(--accent-rgb),.4);cursor:text}
-  .catadd{width:100%;margin-top:4px;text-align:center;padding:10px;border:1px dashed rgba(var(--accent-rgb),.4);border-radius:var(--r-m);color:var(--accent);font-size:13px;font-weight:600;background:none;cursor:pointer}
-  .selbox{font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:var(--r-s);padding:5px 10px;color:var(--fg)}
 
-  /* 아코디언 프리셋 변형 */
-  .dlg.acc .sec-h{cursor:pointer}
-  .dlg.acc .sec-h::after{content:'▾';margin-left:auto;color:var(--mut)}
-  .dlg.acc .sec.collapsed .row,.dlg.acc .sec.collapsed .catadd{display:none}
+  /* ── 칩 = .acc-chip 정본 계승(실측값 그대로) ── */
+  .acc-grow{display:flex;flex-wrap:wrap;gap:6px}
+  .acc-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;font-size:12px;font-weight:600;color:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.14);border-radius:var(--r-pill);background:rgba(8,15,11,.34);cursor:pointer}
+  .acc-chip.kw{border-color:rgba(var(--accent-4-rgb),.42)}   /* 키워드형 = 골드레몬 테두리(계정형과 구분) */
+  .acc-chip .x{width:10px;height:10px;color:var(--mut);font-size:12px;line-height:1}
+  .acc-chip.add{border-style:dashed;border-color:rgba(var(--accent-rgb),.42);background:none;color:var(--accent)}
+  /* 추가 입력행 = .acc-addrow 정본 계승 */
+  .acc-addrow{display:flex;gap:8px;margin-top:10px}
+  .acc-addrow input{flex:1 1 auto;min-width:0;background:rgba(0,0,0,.32);border:1px solid var(--line2);border-radius:8px;padding:7px 10px;color:var(--fg);font-size:12px}
+  .acc-addrow input::placeholder{color:var(--mut)}
+  .acc-add{min-width:64px;padding:7px 14px;border-radius:var(--r-s);background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.5);color:var(--accent);font-weight:700;font-size:12px;cursor:pointer}
+  .selbox{font-size:12px;background:rgba(0,0,0,.32);border:1px solid var(--line2);border-radius:8px;padding:6px 10px;color:var(--fg)}
+  .catadd{width:100%;padding:12px;border:1px dashed rgba(var(--accent-rgb),.42);border-radius:var(--r-l);color:var(--accent);font-size:13px;font-weight:700;background:none;cursor:pointer;text-align:center}
+  .catadd .hint{color:var(--mut);font-weight:400;font-size:11px}
 
   /* 콘솔 */
   .csec{border:1px solid var(--line);border-radius:var(--r-m);padding:12px;margin-bottom:12px}
@@ -61,113 +75,108 @@
   .pill.on{background:rgba(var(--accent-rgb),.14);border-color:rgba(var(--accent-rgb),.5);color:var(--accent)}
   .pill .star{color:var(--accent-4)}
   .sl{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
-  .sl label{flex:0 0 92px;color:var(--mut)}
+  .sl label{flex:0 0 84px;color:var(--mut)}
   .sl input{flex:1}
-  .sl b{flex:0 0 40px;text-align:right;font-variant-numeric:tabular-nums}
-  pre#out{white-space:pre-wrap;font-size:11px;background:#0a0a0a;border-radius:var(--r-s);padding:10px;margin:0 0 8px;color:var(--mut);max-height:180px;overflow:auto}
+  .sl b{flex:0 0 34px;text-align:right;font-variant-numeric:tabular-nums}
+  pre#out{white-space:pre-wrap;font-size:11px;background:#0a0a0a;border-radius:var(--r-s);padding:10px;margin:0 0 8px;color:var(--mut);max-height:190px;overflow:auto}
   #copy{width:100%;padding:9px;border:1px solid rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.12);color:var(--accent);border-radius:var(--r-s);font-weight:700;cursor:pointer}
   .note{color:var(--mut);font-size:11px;line-height:1.6}
   .note b{color:var(--fg)}
 </style>
 
-<div data-pg-template="sub-settings-menu" class="wrap">
+<div data-pg-template="sub-settings-board" class="wrap">
   <div class="stagewrap">
-    <h1>범용 구독·큐레이션 설정 메뉴 <span style="color:var(--mut);font-size:12px">시안 v1</span></h1>
-    <p class="sub">평의회 260723 #9 후속 · 계정형+키워드형+카테고리를 한 메뉴에 · 구분선 분할 · 확장(카테고리 추가) 가능</p>
+    <h1>범용 구독·큐레이션 설정 <span style="color:var(--mut);font-size:12px">게시판형 시안 v2</span></h1>
+    <p class="subt">운영자 260723 "게시판형·기존 UI 참고" — 각 소스 = 앱 <code>.tgroup</code> 접이식 카드(트렌드 뷰 동일 문법) · 칩 = 기존 <code>.acc-chip</code> 정본</p>
     <div class="frame" data-pg-preview>
-      <div class="baseline" data-pg-baseline hidden>현행 기준 = 플랫폼 탭 5개(X·틱톡·릴스·유튜브·스레드) · 계정 핸들만 · 키워드 하드코딩</div>
+      <div class="baseline" data-pg-baseline hidden>현행 = #snsaccdlg 플랫폼 탭 5개 · 계정 핸들만 · 키워드 하드코딩</div>
       <div class="dlg" id="dlg">
-        <div class="dlg-head">구독·큐레이션 설정 <span class="x">✕</span></div>
+        <div class="modal-head"><b>구독·큐레이션 설정</b><span class="x">✕</span></div>
         <div class="dlg-body" id="body">
 
-          <!-- ① 계정 구독(핸들형) -->
-          <div class="sec">
-            <div class="sec-h">📁 계정 구독 <span class="tag">핸들</span></div>
-            <div class="row"><div class="row-t">X <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
-              <div class="chips"><span class="chip">@yonhaptweet<span class="rm">×</span></span><span class="chip">@YTN24<span class="rm">×</span></span><span class="chip">@SBS8news<span class="rm">×</span></span><span class="chip">@wikitree<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
-            <div class="row"><div class="row-t">인스타그램 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
-              <div class="chips"><span class="chip">@계정1<span class="rm">×</span></span><span class="chip">@계정2<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
-            <div class="row"><div class="row-t">스레드 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
-              <div class="chips"><span class="chip">@이슈러1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
-            <div class="row"><div class="row-t">유튜브 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
-              <div class="chips"><span class="chip">@채널1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
-            <div class="row"><div class="row-t">틱톡 <span class="reg"><b class="on">한국</b><b>세계</b></span></div>
-              <div class="chips"><span class="chip">@틱톡1<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+          <!-- 계정형 카드들(.tgroup 계승) -->
+          <div class="tgroup open" data-k="acc"><div class="tgroup-h"><span class="gpic">𝕏</span>X<span class="cnt">18</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
+            <div class="sub"><div class="subin"><div class="reg"><b class="on">한국</b><b>세계</b></div>
+              <div class="acc-grow"><span class="acc-chip">@yonhaptweet<span class="x">×</span></span><span class="acc-chip">@YTN24<span class="x">×</span></span><span class="acc-chip">@SBS8news<span class="x">×</span></span><span class="acc-chip">@wikitree<span class="x">×</span></span></div>
+              <div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div>
+            </div></div>
           </div>
+          <div class="tgroup" data-k="acc"><div class="tgroup-h"><span class="gpic">📷</span>인스타그램<span class="cnt">10</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@계정1<span class="x">×</span></span><span class="acc-chip">@계정2<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div></div></div>
+          <div class="tgroup" data-k="acc"><div class="tgroup-h"><span class="gpic">@</span>스레드<span class="cnt">7</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@이슈러1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div></div></div>
+          <div class="tgroup" data-k="acc"><div class="tgroup-h"><span class="gpic">▶</span>유튜브<span class="cnt">15</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@채널1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@채널 추가"><button class="acc-add">추가</button></div></div></div></div>
+          <div class="tgroup" data-k="acc"><div class="tgroup-h"><span class="gpic">♪</span>틱톡<span class="cnt">15</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div class="reg"><b class="on">한국</b><b>세계</b></div><div class="acc-grow"><span class="acc-chip">@틱톡1<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="@계정 추가"><button class="acc-add">추가</button></div></div></div></div>
 
-          <!-- ② 키워드 토픽(검색형) -->
-          <div class="sec">
-            <div class="sec-h">🔍 키워드 토픽 <span class="tag">검색어</span></div>
-            <div class="row"><div class="row-t">유튜브 쇼츠</div>
-              <div class="chips"><span class="chip kw">먹방<span class="rm">×</span></span><span class="chip kw">브이로그<span class="rm">×</span></span><span class="chip kw">예능 웃긴 영상<span class="rm">×</span></span><span class="chip kw">뷰티 메이크업 패션<span class="rm">×</span></span><span class="chip kw">영화 드라마 리뷰<span class="rm">×</span></span><span class="chip kw">여행<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
-            <div class="row"><div class="row-t">AI 영상</div>
-              <div class="chips"><span class="chip kw">AI 영상 제작<span class="rm">×</span></span><span class="chip kw">AI 영상 생성<span class="rm">×</span></span><span class="chip kw">sora ai video<span class="rm">×</span></span><span class="chip kw">runway kling veo<span class="rm">×</span></span><span class="chip add">+ 추가</span></div></div>
+          <!-- 키워드형 카드들(골드레몬 마크 + kw 칩) -->
+          <div class="tgroup open" data-k="kw"><div class="tgroup-h"><span class="gpic kwmark">🔍</span>유튜브 쇼츠<span class="cnt">6</span><span style="font-size:10px;color:var(--accent-4);font-weight:600;border:1px solid rgba(var(--accent-4-rgb),.35);border-radius:999px;padding:1px 7px">검색어</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div>
+            <div class="sub"><div class="subin"><div class="acc-grow"><span class="acc-chip kw">먹방<span class="x">×</span></span><span class="acc-chip kw">브이로그<span class="x">×</span></span><span class="acc-chip kw">예능 웃긴 영상<span class="x">×</span></span><span class="acc-chip kw">뷰티 메이크업 패션<span class="x">×</span></span><span class="acc-chip kw">영화 드라마 리뷰<span class="x">×</span></span><span class="acc-chip kw">여행<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="검색 키워드 추가"><button class="acc-add">추가</button></div></div></div>
           </div>
+          <div class="tgroup" data-k="kw"><div class="tgroup-h"><span class="gpic kwmark">🔍</span>AI 영상<span class="cnt">4</span><span style="font-size:10px;color:var(--accent-4);font-weight:600;border:1px solid rgba(var(--accent-4-rgb),.35);border-radius:999px;padding:1px 7px">검색어</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div class="acc-grow"><span class="acc-chip kw">AI 영상 제작<span class="x">×</span></span><span class="acc-chip kw">AI 영상 생성<span class="x">×</span></span><span class="acc-chip kw">sora ai video<span class="x">×</span></span><span class="acc-chip kw">runway kling veo<span class="x">×</span></span></div><div class="acc-addrow"><input placeholder="검색 키워드 추가"><button class="acc-add">추가</button></div></div></div></div>
 
-          <!-- ③ 카테고리(뉴스 등) -->
-          <div class="sec">
-            <div class="sec-h">🗂 카테고리 <span class="tag">분류</span></div>
-            <div class="row"><div class="row-t">유튜브 뉴스 <select class="selbox" style="margin-left:auto"><option>뉴스·정치(기본)</option><option>엔터테인먼트</option><option>스포츠</option><option>과학·기술</option></select></div></div>
-          </div>
+          <!-- 카테고리형 -->
+          <div class="tgroup" data-k="cat"><div class="tgroup-h"><span class="gpic">🗂</span>유튜브 뉴스<span class="cnt">카테고리</span><svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="sub"><div class="subin"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--mut)">분류</span><select class="selbox"><option>뉴스·정치(기본)</option><option>엔터테인먼트</option><option>스포츠</option><option>과학·기술</option></select></div></div></div></div>
 
-          <!-- ④ 확장 -->
-          <div class="sec">
-            <button class="catadd">＋ 카테고리 추가 <span style="color:var(--mut);font-weight:400;font-size:11px">(이름 + 계정 또는 키워드)</span></button>
-          </div>
+          <!-- 확장 -->
+          <button class="catadd">＋ 카테고리 추가 <span class="hint">(이름 → 계정형/키워드형 선택 → 항목)</span></button>
 
         </div>
       </div>
     </div>
-    <div class="stagecap">← 미리보기(고정) · 오른쪽에서 레이아웃·간격 조절 →</div>
+    <div class="stagecap">← 카드 헤더 탭 = 접기/펼치기(실동작) · 오른쪽에서 밀도 조절 →</div>
   </div>
 
   <aside class="console">
-    <div class="csec" data-pg-presets><h3>레이아웃 프리셋</h3>
-      <span class="pill on" data-lay="flat">구분선 플랫 <span class="star">★</span></span>
-      <span class="pill" data-lay="acc">아코디언(접이)</span>
-      <span class="pill" data-lay="tab">현행 탭</span>
-      <p class="note" style="margin:6px 0 0">현행 = 플랫폼별 탭 5개. <b>구분선 플랫</b> = 한 화면에 다 펼치고 구분선으로 나눔(운영자 260723 지시). 아코디언 = 섹션 접기.</p>
+    <div class="csec" data-pg-presets><h3>밀도 프리셋</h3>
+      <span class="pill on" data-pre="std">기본 <span class="star">★</span></span>
+      <span class="pill" data-pre="compact">조밀</span>
+      <span class="pill" data-pre="roomy">여유</span>
+      <p class="note" style="margin:6px 0 0">게시판형 = <b>각 소스가 접이식 카드</b>(앱 <code>.tgroup</code> 그대로). 카드 헤더 누르면 펼침/접힘. 항목 많아도 접어두면 깔끔.</p>
+    </div>
+    <div class="csec"><h3>보기</h3>
+      <span class="pill" id="toggleAll">전체 펼치기 / 접기</span>
     </div>
     <div class="csec"><h3>미세 조정</h3>
-      <div class="sl"><label>섹션 간격</label><input type="range" id="s_gap" min="8" max="32" step="1" value="18"><b id="v_gap">18</b></div>
-      <div class="sl"><label>구분선 진하기</label><input type="range" id="s_div" min="0.03" max="0.2" step="0.01" value="0.08"><b id="v_div">.08</b></div>
+      <div class="sl"><label>카드 간격</label><input type="range" id="s_gap" min="6" max="20" step="1" value="12"><b id="v_gap">12</b></div>
+      <div class="sl"><label>카드 패딩</label><input type="range" id="s_pad" min="8" max="18" step="1" value="12"><b id="v_pad">12</b></div>
     </div>
     <div class="csec"><pre id="out"></pre><button id="copy" data-pg-copy>선택값 복사</button></div>
-    <div class="csec note" data-pg-note>⑤ <b>재현 한계</b>: 이 시안은 <b>구조/레이아웃 결정용</b>이야. 칩·모달 셸·모션은 구현 시 실제 <code>#snsaccdlg</code> 정본 컴포넌트를 100% 계승(여기선 근사). 실제 계정/키워드는 현재값 반영(계정은 예시 축약). <b>핸들형</b>(계정)과 <b>키워드형</b>(검색어=골드레몬 테두리) 시각 구분은 제안 — 원하면 통일 가능. "카테고리 추가"의 세부 UX(이름·타입 선택 플로우)는 승인 후 상세.</div>
+    <div class="csec note" data-pg-note>⑤ <b>재현 한계</b>: 실제 구현 = <code>#snsaccdlg</code> 모달 셸 + <code>.tgroup</code>/<code>.tgroup-h</code> 게시판 카드 + <code>.acc-chip</code> 칩 + <code>.geni-camsub</code> 접이(전부 앱 정본 계승 · 여기 값은 실측 이식이라 근사 아님). <b>계정형</b>(기본 칩)과 <b>키워드형</b>(골드레몬 테두리·검색어 배지)은 시각 구분 제안. "카테고리 추가"의 상세 플로우(이름→타입→항목)는 승인 후 배선.</div>
   </aside>
 </div>
 
 <script>
 (function(){
-  var dlg=document.getElementById('dlg'), body=document.getElementById('body');
-  var near=function(a,b,eps){return Math.abs(a-b)<(eps||0.005);};   // 기존 토큰 동값 판정(계승/갱신)
-  var state={lay:'flat', gap:18, div:0.08};
+  var body=document.getElementById('body');
+  var near=function(a,b,eps){return Math.abs(a-b)<(eps||0.5);};   // 기존 토큰 동값 판정(계승/갱신)
+  var PRE={std:{gap:12,pad:12}, compact:{gap:6,pad:8}, roomy:{gap:20,pad:18}};
+  var state={pre:'std', gap:12, pad:12};
   function apply(){
-    dlg.className='dlg'+(state.lay==='acc'?' acc':'')+(state.lay==='tab'?' tab':'');
-    document.documentElement.style.setProperty('--t-secgap', state.gap);
-    document.documentElement.style.setProperty('--t-divop', state.div);
+    document.documentElement.style.setProperty('--t-cardgap', state.gap);
+    document.documentElement.style.setProperty('--t-cardpad', state.pad);
     document.getElementById('v_gap').textContent=state.gap;
-    document.getElementById('v_div').textContent=(''+state.div).replace('0.','.');
+    document.getElementById('v_pad').textContent=state.pad;
+    document.getElementById('s_gap').value=state.gap;
+    document.getElementById('s_pad').value=state.pad;
     out();
   }
   function out(){
-    var LAY={flat:'구분선 플랫(한 화면·섹션별 구분선)', acc:'아코디언(섹션 접이)', tab:'현행 탭(플랫폼 5탭)'};
     document.getElementById('out').textContent=
-'[범용 구독 설정 메뉴 — 선택값]\n'+
-'레이아웃 : '+LAY[state.lay]+(state.lay==='flat'?'  ★추천(운영자 구분선 지시 부합)':'')+'\n'+
-'섹션간격 : '+state.gap+'px'+(near(state.gap,18)?'  = --sp-3 동값(계승)':' → 갱신 후보')+'\n'+
-'구분선   : rgba(255,255,255,'+(''+state.div).replace('0.','.')+')'+(near(state.div,0.08)?'  = --line 동값(계승)':' → 갱신 후보')+'\n\n'+
-'[구조 확정안]\n'+
-'① 계정 구독(핸들) : X·인스타·스레드·유튜브·틱톡 (지역 KR/GL)\n'+
-'② 키워드 토픽(검색): 쇼츠·AI영상 (하드코딩 해체 → 편집 가능·현재값=기본)\n'+
-'③ 카테고리         : 유튜브 뉴스(YT 카테고리 선택)\n'+
-'④ ＋ 카테고리 추가 : 커스텀(이름 + 계정 또는 키워드)';
+'[범용 구독 설정 — 게시판형 선택값]\n'+
+'레이아웃 : 게시판형(소스별 .tgroup 접이 카드) ★확정\n'+
+'밀도     : '+state.pre+'  (간격 '+state.gap+'px'+(near(state.gap,12)?' = 카드 gap 정본':'')+' · 패딩 '+state.pad+'px'+(near(state.pad,12)?' = .tgroup 정본':'')+')\n\n'+
+'[계승 컴포넌트 — 전부 앱 정본]\n'+
+'게시판 카드 : .tgroup (--r-l 16 · linear-gradient · border --line)\n'+
+'카드 헤더   : .tgroup-h (flex gap7 · --fs-h2/--fw-x · 체브론)\n'+
+'접이        : .geni-camsub (grid-rows 0fr↔1fr · --dur-acc .26 --ease)\n'+
+'칩          : .acc-chip (h24 · --r-pill · rgba(8,15,11,.34) · × SVG)\n'+
+'추가행      : .acc-addrow (input + .acc-add)\n\n'+
+'[구조] 계정형(X·인스타·스레드·유튜브·틱톡) + 키워드형(쇼츠·AI영상·골드레몬) + 카테고리(뉴스) + ＋추가';
   }
-  document.querySelectorAll('.pill[data-lay]').forEach(function(p){p.onclick=function(){document.querySelectorAll('.pill[data-lay]').forEach(function(q){q.classList.remove('on')});p.classList.add('on');state.lay=p.dataset.lay;apply();};});
-  document.getElementById('s_gap').oninput=function(){state.gap=+this.value;apply();};
-  document.getElementById('s_div').oninput=function(){state.div=+this.value;apply();};
-  document.querySelectorAll('.dlg.acc .sec-h').forEach; // acc 토글은 위임
-  body.addEventListener('click',function(e){var h=e.target.closest('.sec-h');if(h&&dlg.classList.contains('acc')){h.parentNode.classList.toggle('collapsed');}});
+  document.querySelectorAll('.pill[data-pre]').forEach(function(p){p.onclick=function(){document.querySelectorAll('.pill[data-pre]').forEach(function(q){q.classList.remove('on')});p.classList.add('on');state.pre=p.dataset.pre;state.gap=PRE[p.dataset.pre].gap;state.pad=PRE[p.dataset.pre].pad;apply();};});
+  document.getElementById('s_gap').oninput=function(){state.gap=+this.value;state.pre='custom';apply();};
+  document.getElementById('s_pad').oninput=function(){state.pad=+this.value;state.pre='custom';apply();};
+  // 카드 접이(실동작 · .tgroup.open 토글)
+  body.addEventListener('click',function(e){var h=e.target.closest('.tgroup-h');if(h){h.parentNode.classList.toggle('open');}});
+  document.getElementById('toggleAll').onclick=function(){var cards=body.querySelectorAll('.tgroup');var anyClosed=[].some.call(cards,function(c){return !c.classList.contains('open');});[].forEach.call(cards,function(c){c.classList.toggle('open',anyClosed);});};
   document.getElementById('copy').onclick=function(){var t=document.getElementById('out').textContent;navigator.clipboard&&navigator.clipboard.writeText(t).then(function(){var b=document.getElementById('copy');b.textContent='복사됨 ✓';setTimeout(function(){b.textContent='선택값 복사';},1200);});};
   apply();
 })();
