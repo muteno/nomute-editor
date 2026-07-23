@@ -520,6 +520,55 @@ def x_subs(accounts, limit=10, deadline=None):
     return sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순 정렬(260720 평의회 F2 · 표시 정렬은 뷰어 정렬바 그대로 = 24h 내에서 좋아요순 = '근 1일 가장 핫')
 
 
+def x_search(queries, per=8, limit=15, deadline=None):
+    """⑯ X 검색 인기글 — 트렌드 키워드로 X 내부 검색 → 인기 트윗(운영자 260723 · 가계정 검색축).
+    구독축(x_subs 프로필 방문)과 별개 = '이 키워드로 지금 X에서 뜨는 글'. ⚠️ 가계정 인증 전용
+    (env X_AUTH_TOKEN+X_CT0 · 폰/맥 홈IP = X 데센 IP 차단 동류 · 미설정 = [] no-op). 엔드포인트 =
+    레거시 adaptive.json(무 queryId · Bearer 공개 웹토큰 · x-csrf=ct0). 15분당 ~50콜 제한이라 상위
+    키워드 소수만·콜 간 3s. fail-soft·진단 로그(HTTP 401/403=쿠키·404=엔드포인트폐지·429=레이트). 정렬 = 좋아요."""
+    tok = (os.environ.get("X_AUTH_TOKEN") or "").strip()
+    ct0 = (os.environ.get("X_CT0") or "").strip()
+    if not (tok and ct0):
+        return []
+    BEARER = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs=1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA"   # X 웹 공개 Bearer(관용 상수 · 무인증 게스트 토큰 아님 = 쿠키가 인증 담당)
+    hdr = {**UA, "authorization": "Bearer " + BEARER, "x-csrf-token": ct0, "x-twitter-active-user": "yes",
+           "x-twitter-auth-type": "OAuth2Session", "x-twitter-client-language": "ko",
+           "Cookie": "auth_token=%s; ct0=%s" % (tok, ct0)}
+    out, seen = [], set()
+    for i, q in enumerate(queries):
+        if _over(deadline):
+            print("::warning::xsearch 예산 소진 — 잔여 키워드 스킵", file=sys.stderr)
+            break
+        if i:
+            time.sleep(3)   # 15분당 ~50콜 = 저volume 보수(연타 = 밴·429 유발 · 가계정 격리라도 IP 공유)
+        try:
+            params = urllib.parse.urlencode({"q": q, "count": per, "query_source": "typed_query",
+                                             "tweet_search_mode": "top", "tweet_mode": "extended"})
+            go = json.loads(urllib.request.urlopen(
+                urllib.request.Request("https://x.com/i/api/2/search/adaptive.json?" + params, headers=hdr),
+                timeout=15, context=CTX).read().decode("utf-8", "ignore")).get("globalObjects") or {}
+            tweets, users = go.get("tweets") or {}, go.get("users") or {}
+            if not tweets:
+                print(f"::warning::xsearch '{q[:20]}' 0건(응답 tweets 0 — 쿠키·엔드포인트·차단 판별 요)", file=sys.stderr)
+            for tid, t in tweets.items():
+                if tid in seen or not isinstance(t, dict) or t.get("favorite_count") is None:   # 광고·비트윗 컷(x_subs 계승)
+                    continue
+                txt = (t.get("full_text") or t.get("text") or "").strip()
+                if not txt:
+                    continue
+                seen.add(tid)
+                handle = (users.get(str(t.get("user_id_str") or "")) or {}).get("screen_name") or ""
+                out.append({"query": q, "account": handle, "text": txt[:280], "likes": _i(t.get("favorite_count")),
+                            "rts": _i(t.get("retweet_count")), "cmts": _i(t.get("reply_count")),
+                            "time": t.get("created_at") or "",
+                            "url": "https://x.com/%s/status/%s" % (handle or "i", tid)})
+        except urllib.error.HTTPError as e:
+            print(f"::warning::xsearch '{q[:20]}' HTTP {e.code}(스킵 · 401/403=쿠키·404=엔드포인트폐지·429=레이트)", file=sys.stderr)
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::xsearch '{q[:20]}' 실패(스킵): {type(e).__name__} {str(e)[:60]}", file=sys.stderr)
+    return sorted(out, key=lambda t: t["likes"], reverse=True)[:limit]
+
+
 def tiktok_subs(accounts, limit=10, deadline=None):
     """틱톡 구독 계정 최신 영상 — 1차 = 틱톡 공식 임베드 위젯 /embed/@handle(무서명 서버렌더 ·
     __FRONTITY_CONNECT_STATE__.source.data[*].videoList 10건 · playCount·coverUrl 동봉). 260721 실측:

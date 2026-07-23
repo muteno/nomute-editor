@@ -1279,7 +1279,7 @@ def check_loader_ssot():
 # = 규칙2 위반" = 디자인기틀_SSOT.md 서문 · 기계 강제 아님이라던 그것)의 기계화. 정본 = CLAUDE.md + 디자인
 # SSOT + 규칙·큐레이션 정본 문서(로그류 큐/이력 제외). 기존 미등재 = _GATE_DOC_BASELINE 면책(품질 유지 =
 # 대량 소급 문서화 강제 안 함 · 신규만 래칫 · 베이스라인 = 소급 문서화 TODO·축소 지향). 자기 자신
-# (check_gate_docs)도 대상 = SSOT §5·CLAUDE.md [15] 등재(자기참조 정합).
+# (check_gate_docs)도 대상 = SSOT §6·CLAUDE.md [15] 등재(자기참조 정합).
 _GATE_DOC_CANON = ('CLAUDE.md', 'docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md',
                    'docs/라우터_법령전문.md', 'docs/실행계약_전문.md', 'docs/플레이그라운드_포터블.md',
                    'docs/curation-algorithm.md', 'docs/curation-rubric.md')
@@ -1302,11 +1302,39 @@ def check_gate_docs():
     if missing:
         print('❌ 게이트 문서화 메타 게이트 — 신규 게이트가 정본 문서 미등재("만들어놓고 안 봄" 차단 · 260723 Q468):')
         for g in missing:
-            print('   -', g, '→ 정본 문서(SSOT §5 디자인 / docs curation / CLAUDE.md)에 이름 등재하라(순수 인프라면 _GATE_DOC_BASELINE 추가 + 사유 = diff로 가시화).')
+            print('   -', g, '→ 정본 문서(SSOT §6 디자인 / docs curation / CLAUDE.md)에 이름 등재하라(순수 인프라면 _GATE_DOC_BASELINE 추가 + 사유 = diff로 가시화).')
         return 1
     undoc = sum(1 for g in gates if g not in canon)
     print('✅ 게이트 문서화 메타 게이트 — %d게이트 = 정본 등재 %d · 베이스라인 면책 %d(신규 미등재 0 · 소급 TODO = 베이스라인 축소).'
           % (len(gates), len(gates) - undoc, undoc))
+    return 0
+
+
+def check_ssot_linkage():
+    """공유 부품 SSOT 링크 연결성 게이트(WARN·비차단 · 운영자 260723 Q466 · 디자인기틀 §0-17 5축 등재의 얕은 기계 보조).
+    `viewer/nm-*.js`(공유 부품 관례) 각 파일이 발견 체인 3축(디자인기틀_SSOT.md · CII · CLAUDE.md)에 모두 언급되나 얕게 대조.
+    미링크 = 고아 SSOT 후보 WARN(하드차단 아님 = 오탐 관용·연결성 강화 전용 · 기틀 문서 무증축 = 게이트는 코드에만)."""
+    import glob as _g
+    idx = ['docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md', 'CLAUDE.md']
+    txt = {}
+    for d in idx:
+        try:
+            txt[d] = open(os.path.join(ROOT, d), encoding='utf-8').read()
+        except Exception:
+            txt[d] = ''
+    parts = sorted(_g.glob(os.path.join(ROOT, 'viewer', 'nm-*.js')))
+    orphans = []
+    for fp in parts:
+        name = os.path.basename(fp)
+        miss = [os.path.basename(d) for d in idx if name not in txt[d]]
+        if miss:
+            orphans.append('%s → 미링크: %s' % (name, ', '.join(miss)))
+    if orphans:
+        print('⚠️ SSOT 링크 게이트(WARN·비차단) — 공유 부품이 발견 체인 미등재(§0-17 5축·고아 후보 · 등재 = 디자인기틀 §0/§1·CII·CLAUDE [15]):')
+        for o in orphans:
+            print('   ·', o)
+        return 0
+    print('✅ SSOT 링크 게이트 — 공유 부품(nm-*.js %d) 전건 발견 체인(디자인기틀·CII·CLAUDE) 링크됨.' % len(parts))
     return 0
 
 
@@ -1478,6 +1506,10 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_gate_docs 예외(fail-closed):', e); rc = 1
+    try:
+        check_ssot_linkage()   # 공유 부품 SSOT 링크 연결성(WARN·비차단 — nm-*.js가 발견 체인 3축 미등재 = 고아 후보 경보 · §0-17 5축의 얕은 기계 보조 · 운영자 260723 Q466)
+    except Exception as e:
+        print('⚠️ check_ssot_linkage 스킵:', e)
     return rc
 
 
