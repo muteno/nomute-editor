@@ -271,14 +271,14 @@ def main():
     if a.get('interactions') is None:
         idays = sorted(dt for dt in series if 'interactions' in series[dt])
         if idays: a['interactions'] = series[idays[-1]]['interactions']
-    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach'), 'interactions': a.get('interactions')}
+    d['account_day'] = {'views': a.get('views'), 'reach': a.get('reach'), 'interactions': a.get('interactions'), 'video_views': a.get('video_views')}   # video_views 추가(운영자 260724 "IG처럼") = 영상조회 타일·스파크 원천(생존 지표 · 결측 = 뷰어 자동 미표시)
     d['daily_series'] = [{'date': k, **v} for k, v in sorted(series.items())]
     # 집계 이식(운영자 260718 "집계 이식 ㄱ") — insta_signals.py avg 산식 미러(L410-413: mean 전체·최근7·ratio) ·
     # daily_series 실측 축(views/reach/follows/posts)만 = 확실한 데이터. per-post 지표가 필요한 topics/signals/eras/fmt는
     # Graph 미수집이라 이식 ㄴ(운영자 원칙 "데이터 일치하면 해주고 애매하면 시도 ㄴ") → 뷰어 평균 병기·결측 유닛 자동 미표시와 정합.
     srows = d['daily_series']
     avg = {}
-    for k in ('views', 'reach', 'follows', 'interactions', 'posts'):
+    for k in ('views', 'reach', 'follows', 'interactions', 'posts', 'video_views'):
         vals = [(r.get(k) or 0) for r in srows] if k == 'posts' else [r[k] for r in srows if r.get(k) is not None]
         if len(vals) >= 2:
             a_all = statistics.mean(vals)
@@ -287,6 +287,14 @@ def main():
                       'ratio_7d': round(a7 / a_all, 2) if a_all else None, 'n_days': len(vals)}
     if avg:
         d['avg'] = avg
+    # 팔로워 인구통계(성별·연령) = 운영자 수기 config(운영자 260724 "IG처럼 개선") — FB 인구통계 API는 2025 폐지라 자동수집 불가 → viewer/fb_audience.json(soc_lean 식 손편집 config)을 audience_sample로 병합(뷰어 demoTile 자동 렌더 · 빈/부재 = 조용한 공백 · 지어내기 0).
+    try:
+        _aud = json.load(open('viewer/fb_audience.json', encoding='utf-8'))
+        if isinstance(_aud, dict) and (_aud.get('gender') or _aud.get('age_full')):
+            d['audience_sample'] = _aud
+            print('fb-fetch: 팔로워 인구통계 = 수기 config(fb_audience.json) 병합')
+    except Exception:
+        pass   # 파일 없음/빈값 = 인구통계 미표시(조용한 공백)
     json.dump(d, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False)
     print(f"fb-fetch: OK — 팔로워 {d['profile'].get('followers_count')} · 시리즈 {len(series)}일 · 게시물 {len(posts)}")
     return 0
