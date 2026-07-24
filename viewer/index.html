@@ -11242,7 +11242,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   const SPAN = ax === 'dow' ? 168 : 24;   // 선형축 전장 = 하루 24h / 한 주 168h
   const hlin = cH.length === bs.length && cH.length > 1 && !cH.some(c => c == null);   // 선형 시간축(운영자 260723 "24분할 해서 숫자만" · 260724 요일 3분할 동조) — X = 실제 시각 비례 배치 = 눈금·핵심 구간 경계 세로변·지금/오늘 마커가 같은 자 위에 정렬
   const X = i => hlin ? mL + pw * cH[i] / SPAN : mL + pw * i / (bs.length - 1), Y = v => mT + ph * (1 - (v - lo) / (hi - lo));
-  SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, n: b.n, low: !!b.low_sample, gen: (SIG_GEN[ax] || {})[b.bucket] ?? null }; });
+  SIG_HIT[ax] = bs.map((b, i) => { const sv = val(b, 'share_pm'); return { x: X(i), y: sv != null ? Y(sv) : Y(1), bucket: b.bucket, share: sv, n: b.n, low: !!b.low_sample, gen: CHAN_SRC === 'fb' ? null : ((SIG_GEN[ax] || {})[b.bucket] ?? null) }; });   // FB 소스분기(평의회 260724 must-fix) — SIG_GEN(전체 인스타 평균)은 FB 부적합이라 툴팁 gen=null → '앱 사용자%' 자동 생략(곡선 11259·범례 11359 제거와 단일 정합)
   let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
   for (let g = 0; g <= 3; g++) {   // hairline 격자 + ×배율 Y라벨(chChart 문법)
     const v = lo + (hi - lo) * g / 3, y = Y(v);
@@ -11372,7 +11372,7 @@ function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일
       let best = hits[0], bd = 1e9;
       hits.forEach(pt => { const dd = Math.abs(pt.x - px); if (dd < bd) { bd = dd; best = pt; } });
       const [tx, ty] = place(best.x, best.y);
-      tip.innerHTML = `<b>${esc(best.bucket)}</b><br><span style="color:var(--mut);font-size:10px">공유 ×${best.share ?? '—'}${best.gen != null ? ' · 앱 사용자 ' + best.gen + '%' : ''} · n=${best.n}${best.low ? ' · 표본부족' : ''}</span>`;
+      tip.innerHTML = `<b>${esc(best.bucket)}</b><br><span style="color:var(--mut);font-size:10px">${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${best.share ?? '—'}${best.gen != null ? ' · 앱 사용자 ' + best.gen + '%' : ''} · n=${best.n}${best.low ? ' · 표본부족' : ''}</span>`;   // FB 소스분기(평의회 260724 must-fix) — eng lift를 '공유'로 오표기 방지 · gen(앱사용자%)은 11245 gen 게이트가 FB=null이라 자동 생략(곡선·범례 제거와 정합)
       const _hw = (tip.offsetWidth || 110) / 2; tip.style.left = Math.max(_hw + 2, Math.min(r.width - _hw - 2, tx)) + 'px'; tip.style.top = ty + 'px';   // 좌우 클램프(260720 평의회 F5 — translate(-50%)라 엣지 포인트서 화면 밖 잘림 실측 · innerHTML 후 실폭 측정)
       tip.style.opacity = '1';
       if (dot) { dot.style.left = tx + 'px'; dot.style.top = ty + 'px'; dot.style.opacity = '1'; }
@@ -11562,22 +11562,23 @@ function renderChan() {
   // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·포맷별 편차. 정렬 = ×배수 내림차순(운영자 260723 "xn.m 순서로 배치 — 기준선이 릴스냐 포스터냐, 공평하게 x로 순위" · 구 순수 조회수순 대체 · 동률 = 조회수) · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
   // 편차 기준 = 포맷별 중앙값(운영자 260720 "포스트는 포스트 기준 · 릴스는 릴스끼리") — 고조회 릴스·저조회 포스트를 한 평균(posts_view_avg)에 섞으면 포스트가 늘 ×0.x로 눌려 왜곡 → 릴스는 릴스끼리·포스트는 포스트끼리 그 포맷 중앙값 대비 ×배수(같은 종류끼리 성과 비교). 중앙값 = 앱 공통 "×1.0 = 채널 중앙값 기준선"(sig ×배율·차트 bY·모달 views_med) 관례 계승 + 릴스 mega-hit 꼬리에 강건(평균은 꼬리 오염 · 강건성 철학 §OUT) · 표본 = 표시 창(_pf 아래) · 포맷 표본 0 = 혼합평균(_avgV) 폴백
   const _pAll = (d.posts || []).filter(x => !q || String(x.name || '').toLowerCase().includes(q));
-  const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (x.views || 0), 0) / _pAll.length : 0);   // 혼합평균 = 포맷 표본 0일 때만 쓰는 폴백
+  const _mv = x => x.views != null ? x.views : (x.eng != null ? x.eng : null);   // TOP게시물 표시 지표 = views(IG) 우선·부재 시 eng(FB 반응 = 게시물별 조회 대체 · 평의회 260724 승인 — 구 x.views 하드코딩이 FB 전 행 '—'이던 것 점등 · IG는 views 그대로 = 무회귀)
+  const _avgV = d.posts_view_avg || (_pAll.length ? _pAll.reduce((s, x) => s + (_mv(x) || 0), 0) / _pAll.length : 0);   // 혼합평균 = 포맷 표본 0일 때만 쓰는 폴백
   // 기간 필터(운영자 260719 "일일 추이처럼 일자별 · 기본 7일") — 최신 게시일 앵커 기준 직전 N일 창(일일추이 종료앵커 관례 계승 · 앵커 게시물은 어느 창에도 포함이라 공란 없음) · 전체 = 무필터
   const _tpAnc = _pAll.reduce((m, x) => { const i = String(x.iso || '').slice(0, 10); return i > m ? i : m; }, '');   // 앵커 = 날짜부 10자리만(운영자 260722 fb 공백 교정 — fb iso = 풀 타임스탬프 "…T02:07:49+0000"이라 구현부 `new Date(anc+'T00:00:00Z')` = Invalid Date → toISOString 예외로 renderChan 전체 사망 = fb 전환 공백의 원인 · IG 날짜만 iso = slice 무해)
   const _tpCut = (() => { if (CHAN_TPR === 'all' || !_tpAnc) return ''; const dt = new Date(_tpAnc + 'T00:00:00Z'); dt.setUTCDate(dt.getUTCDate() - (parseInt(CHAN_TPR, 10) - 1)); return dt.toISOString().slice(0, 10); })();
   const _pf = CHAN_TPR === 'all' ? _pAll : _pAll.filter(x => String(x.iso || '') >= _tpCut);
-  const _fmtMed = f => { const v = _pf.filter(x => (x.format === '릴스') === f).map(x => x.views || 0).sort((m, n) => m - n); if (!v.length) return 0; const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };   // 포맷별 중앙값(표시 창 _pf 안 · 릴스끼리·포스트끼리) — 정렬키(×배수)보다 먼저 산출(구 조회수 정렬 뒤 → 260723 앞으로 이동)
+  const _fmtMed = f => { const v = _pf.filter(x => (x.format === '릴스') === f).map(x => _mv(x) || 0).sort((m, n) => m - n); if (!v.length) return 0; const h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };   // 포맷별 중앙값(표시 창 _pf 안 · 릴스끼리·포스트끼리) — 정렬키(×배수)보다 먼저 산출(구 조회수 정렬 뒤 → 260723 앞으로 이동) · _mv = views/eng(FB) 소스분기
   const _medReels = _fmtMed(true), _medPost = _fmtMed(false);   // ×1.0 = 그 포맷 중앙값(전형) 기준선
-  const _devR = x => { const b = ((x.format === '릴스') ? _medReels : _medPost) || _avgV; return b > 0 && x.views ? x.views / b : 0; };   // 포맷별 ×배수(릴스↔릴스·포스트↔포스트 중앙값 대비 · 표본0 = 혼합평균 _avgV 폴백 · 결측 = 0) — 정렬키 겸 편차 표시 공용(DRY)
-  const posts = _pf.slice().sort((a, b) => _devR(b) - _devR(a) || (b.views || 0) - (a.views || 0)).slice(0, 5);   // 순위 = ×배수 내림차순(운영자 260723 "x로 공평하게 순위") · 동률 = 조회수 내림차순(안정 타이브레이크) · 구 순수 조회수순 대체
+  const _devR = x => { const b = ((x.format === '릴스') ? _medReels : _medPost) || _avgV; return b > 0 && _mv(x) ? _mv(x) / b : 0; };   // 포맷별 ×배수(릴스↔릴스·포스트↔포스트 중앙값 대비 · 표본0 = 혼합평균 _avgV 폴백 · 결측 = 0) — 정렬키 겸 편차 표시 공용(DRY) · _mv = views/eng(FB) 소스분기
+  const posts = _pf.slice().sort((a, b) => _devR(b) - _devR(a) || (_mv(b) || 0) - (_mv(a) || 0)).slice(0, 5);   // 순위 = ×배수 내림차순(운영자 260723 "x로 공평하게 순위") · 동률 = 지표 내림차순(안정 타이브레이크) · 구 순수 조회수순 대체
   const chVwR = n => n == null ? '—' : n >= 1e8 ? (n / 1e8).toFixed(1).replace(/\.0$/, '') + '억' : n >= 1e4 ? Math.round(n / 1e4) + '만' : String(Math.round(n || 0));   // 조회수 = 반올림 정수 만(운영자 260719 "소수 빼고 6만회 식") · null = '—'(운영자 260722 ㄱ — fb views 미수집이 0으로 위장되던 것 결측 표기로 · chVf 정본 문법 계승)
   const tpSeg = `<span class="ch-rangeseg ch-hdrseg tp-seg tb-seg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-tpr="${r[0]}"${CHAN_TPR === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span>';   // TOP 게시물 기간 세그 = 헤더 우측(운영자 260719 "토글 항목 옆에·90일 포함") · data-tpr = CHAN_TPR 축(daily data-r과 분리) · 켜진 것 강조색 · tb-seg = 협폭 칩 창 가로 스크롤(top 플랫폼 칩 문법 계승 — 260722 내역 링크 헤더 이관분 예약 확대를 스크롤이 흡수)
   if (posts.length) h += gsec('tpost', `TOP 게시물`, posts.map((x, i) => {
     const rl = x.format === '릴스';
     const _r = _devR(x);   // ×배수 = 정렬키와 동일 함수(DRY · 0 = 결측)
     const dev = _r ? '×' + _r.toFixed(1) : '—';   // 편차 = ×배수만(운영자 260719 "평균 빼고") · 기준 = 같은 포맷끼리(운영자 260720) · 0 = '—'
-    return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-dev ${rl ? 'reels' : 'post'}">${dev}</span><span class="ch-vw">${chVwR(x.views)}</span></a>`;   // 열 순서 = ×편차 먼저·조회수 나중(운영자 260723 "x11이 먼저" — 구 vw먼저·dev나중 반전 · 각 열 정렬 기준선 유지·서로 교환: ×편차=좌측 ×열·조회수=우측 만열[토글선]) · ×편차 = 전 행 포맷색(릴스 레몬·포스트 시안 · 운영자 260722)
+    return `<a class="ch-post" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="ch-fmt ${rl ? 'reels' : 'post'}">${rl ? '릴스' : '포스트'}</span><span class="ch-pt"></span><span class="ch-dev ${rl ? 'reels' : 'post'}">${dev}</span><span class="ch-vw">${chVwR(_mv(x))}</span></a>`;   // 열 순서 = ×편차 먼저·조회수 나중(운영자 260723 "x11이 먼저" — 구 vw먼저·dev나중 반전 · 각 열 정렬 기준선 유지·서로 교환: ×편차=좌측 ×열·조회수=우측 만열[토글선]) · ×편차 = 전 행 포맷색(릴스 레몬·포스트 시안 · 운영자 260722) · chVwR(_mv) = FB는 eng(반응) 수 표시(평의회 260724 · 구 x.views '—' 대체)
   }).join('') + '<button class="ch-morelink ch-hdrmore" type="button" id="chPostMore" aria-label="게시물 탐색">내역<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 5l11 7-11 7z"/></svg></button>',
     tpSeg);   // 내역 ▶ = 헤더 타이틀 옆 이관(운영자 260722 "내역 ▶로 용어 변경해 타이틀 옆으로" — 구 '내역 확인 ›' 본문 하단 폐지) · ▶ = SVG 삼각(FIN_ARROW 문법 회전 · 문자 ▶ 금지 [3-1]) · id·핸들러·aria 불변 · 배치 = .ch-hdrmore 오버레이(daily #chDayMore 하단 잔류 = 무접촉)
   const th = (d.thumbs || []).slice(0, 12);   // 커버 없는 릴스도 보존(th='' → 캡션 텍스트 타일 · 운영자 260718)
@@ -11795,9 +11796,9 @@ function renderChPost() {
   $('#chpSort').innerHTML = [['views', '조회수'], ['eng', '반응'], ['share_pm', '공유율'], ['save_pm', '저장률'], ['new', '최신']].filter(s0 => s0[0] !== 'eng' || hasV('eng')).map(s0 => `<button type="button" data-s="${s0[0]}"${CHP.sort === s0[0] ? ' class="on"' : ''}${hasV(s0[0]) ? '' : ' disabled'}>${s0[1]}</button>`).join('');   // 값 전무 축 = disabled 흐림(운영자 260723 "ㄱ 아니면 다른 값이 있으면 대체" — fb views·share_pm 미수집 축 눌러도 무변화 혼란 차단) · '반응'(eng = 반응+댓글+공유 합 · fb_fetch 산출) = 값 있을 때만 노출되는 대체 축(disabled 버튼 = 클릭 이벤트 자체 미발화라 기존 위임 배선 무접촉)
   let list = all.filter(x => (CHP.fmt === '전체' || x.format === CHP.fmt) && (CHP.cat === '전체' || x.cat === CHP.cat));
   list = list.slice().sort((a, b) => CHP.sort === 'new' ? String(b.iso || '').localeCompare(String(a.iso || '')) : (b[CHP.sort] || 0) - (a[CHP.sort] || 0));
-  const tmed = (chActive() || {}).topics || {};   // 활성 소스 주제 중앙값(fb = 결측이라 배지 자동 미표시)
+  const tmed = (chActive() || {}).topics || {};   // 활성 소스 주제 중앙값(fb = topics 방출 시 eng 중앙값 · 미방출이면 배지 자동 미표시)
   $('#chpList').innerHTML = list.map((x, i) => {
-    const tm = tmed[x.cat], ratio = tm && tm.views_med ? x.views / tm.views_med : null;   // 주제 중앙값 대비 배율(운영자 260713 한 수 ㄱㄱ) — 같은 주제 안 특출도
+    const _mv = x.views != null ? x.views : x.eng, tm = tmed[x.cat], ratio = tm && tm.views_med && _mv != null ? _mv / tm.views_med : null;   // 주제 중앙값 대비 배율(운영자 260713 한 수 ㄱㄱ) — 같은 주제 안 특출도 · FB 소스분기(평의회 260724 must-fix): views 부재 시 eng로 비교(topics.views_med = fb는 eng 중앙값) + null 방어(구: null/med = ×0.0 유령 배지 전 행 부착 회귀 차단 · IG는 x.views 그대로 = 무회귀)
     const rt = ratio != null ? ` <i class="${ratio >= 10 ? 'hot' : ''}">×${ratio.toFixed(1)}</i>` : '';   // hot = ×10+(TOP100 분포 실측 p90 17.4·중앙 2.3 — 상위 20%만 점등)
     return `<a class="chp-row" href="${escUrl(x.permalink || '#')}" target="_blank" rel="noopener"><span class="trend-rank">${i + 1}</span><span class="chp-tt" data-nm></span><span class="chp-ct">${esc(x.cat || '—')}${rt}</span><span class="chp-mt">${x.views == null && x.eng != null ? '반응 ' + chVf(x.eng) : chVf(x.views) + ' · 공유 ' + (x.share_pm != null ? (+x.share_pm).toFixed(1) : '—')}</span></a>`;
   }).join('');
