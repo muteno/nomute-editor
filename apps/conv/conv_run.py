@@ -188,6 +188,9 @@ def main():
     if out_w * out_h > 2 * 2_073_600 and eff > MAX_4K_SEC + 1:
         die(f"고해상도({out_w}×{out_h}) 변환은 {MAX_4K_SEC}초까지야(지금 구간 {int(eff)}초) — 해상도를 1080p로 내리거나 구간을 잘라줘(60fps 보간은 더 짧아).")
 
+    # ── 화질(CRF) — 18=고화질(기본·종전값) · 21=표준(용량 ≈−25%) · 24=압축(≈−45%) — 실측 260724(실사·모션그래픽 평균 · 정적 화면 0% · 인코딩 시간 변화 −5% 안팎)
+    q = str(opts.get("q")) if str(opts.get("q")) in ("18", "21", "24") else "18"
+
     # ── fps — 60i = minterpolate 보간(캡+예산 가드) · 30/24 = 다운 · keep = 그대로
     mode = opts.get("fps") if opts.get("fps") in ("keep", "60i", "30", "24") else "keep"
     vf = []
@@ -225,8 +228,8 @@ def main():
     out = "/tmp/conv_out.mp4"
     cmd = ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t0:.3f}", "-t", f"{eff:.3f}", "-i", src,
            "-map", "0:v:0", "-map", "0:a?", "-vf", ",".join(vf),
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]   # crf 18·aac 192k = 편집 탭(ly_burn) 동값 통일(운영자 260722 — 같은 원본이 탭 따라 품질 다르던 편차 해소 · preset 유지 = 속도 불변)
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", q,
+           "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]   # crf 기본 18·aac 192k = 편집 탭(ly_burn) 동값 통일(운영자 260722) · q 세그(260724) = 18/21/24 선택 — preset 유지 = 속도 불변
     print("ffmpeg:", " ".join(cmd), flush=True)
     t_run = time.time()
     try:

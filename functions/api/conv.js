@@ -53,6 +53,7 @@ export async function onRequestPost({ request, env }) {
   if (t1 !== null && t1 > 0) opts.t1 = Math.round(t1 * 100) / 100;
   if (opts.t0 !== undefined && opts.t1 !== undefined && opts.t1 <= opts.t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   opts.res = ['orig', '1440', '1080', '720'].includes(o.res) ? o.res : 'orig';
+  opts.q = ['18', '21', '24'].includes(o.q) ? o.q : '18';   // 화질 CRF(기본 18 = 종전값 · 21≈용량−25%·24≈−45% 실측 260724)
 
   const rl = await rateGate(GH, env.GH_TOKEN, 'conv-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id> 고아 방지 · fail-open · 260711)
   if (rl) return json({ error: rl.error }, 429);
