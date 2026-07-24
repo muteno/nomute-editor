@@ -411,9 +411,9 @@ function annualChart(){
   /* 데이터값 라벨(콜아웃 중복 제외) — '잠깐 사라졌던' 꼭짓점 값 복원 */
   const vlab=(s,skip,c)=>s.forEach((v,i)=>{ if(skip.includes(i))return; g+=`<text x="${x(i).toFixed(1)}" y="${(y(v)-7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${c}">${v.toFixed(1)}</text>`; });
   vlab(S_GONG,[1,8],'var(--gong)'); vlab(S_JEON,[6,7],'var(--jeon)');
-  /* 근 4개년(2021→2025) 관람 추이(계=공연+전시+교육) 선분 = 2021·2025 꼭짓점 고정(항상 추종) */
-  const i0=10,i1=13;   /* 공연선 2022(7.4)·2025(8.3) 꼭짓점 원을 직접 연결 */
-  const x0=x(i0),y0=y(S_GONG[i0]), x1=x(i1),y1=y(S_GONG[i1]);
+  /* 근 3개년(2022→2025) 관객 추이 선분 = 공연선 2022·2025 꼭짓점 참조(하드코딩 X = 데이터 자동 추종 = 곡선과 동일 연동) · 색·대시·박스위치 = origin/main 운영자 승인 룩 계승 */
+  const i0=10,i1=13, START_V=S_GONG[i0], END_V=S_GONG[i1];   /* 7.4 · 8.3 = 데이터에서 자동 */
+  const x0=x(i0),y0=y(START_V), x1=x(i1),y1=y(END_V);
   g+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--pri)" stroke-width="2.4" stroke-dasharray="3.5 2.5" stroke-linecap="round"/>`;
   g+=`<circle cx="${x0.toFixed(1)}" cy="${y0.toFixed(1)}" r="3.8" fill="var(--pri)"/><circle cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.8" fill="var(--pri)"/>`;
   /* x 라벨 */
@@ -422,9 +422,8 @@ function annualChart(){
   NOTES.forEach(nt=>{ const px=x(nt.i), py=y(nt.s[nt.i]); const up=nt.t.includes('최고');
     const by=up?py-16:py+9; const tw=nt.t.length*6.2+10;
     g+=`<g><rect x="${(px-tw/2).toFixed(1)}" y="${(by-9).toFixed(1)}" width="${tw.toFixed(1)}" height="15" rx="4" fill="#fff" stroke="${nt.c}" stroke-opacity=".5"/><text x="${px.toFixed(1)}" y="${(by+1.5).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${nt.c}">${nt.t}</text></g>`; });
-  /* % 알약 = 선분 중점 위 간격(값 라벨 위) · 흰 배경·인디고 테두리·▲(SVG) · 데이터 추종 */
-  const c21=TOTAL.gong[1]+TOTAL.jeon[1]+TOTAL.edu[1], c25=TOTAL.gong[5]+TOTAL.jeon[5]+TOTAL.edu[5];
-  const numT='+'+((c25-c21)/c21*100).toFixed(1)+'%', label='근 4개년(2021→2025) 관람 추이';
+  /* % 알약 = 선분 두 끝점(공연 2022·2025)의 실제 상승률 = 선·숫자 항상 일치(연동) · 흰 배경·인디고 테두리·▲(SVG) */
+  const numT='+'+((END_V-START_V)/START_V*100).toFixed(1)+'%', label='근 3개년(2022→2025) 관객 추이';
   const kor=(label.match(/[가-힣]/g)||[]).length, lw=kor*9.4+(label.length-kor)*5.4;
   const pw=lw+18+numT.length*7.2+24, ph=20, mxp=(x0+x1)/2, py=y(10)-4;   /* 알약 = 상단(10 라인 위·값 라벨 위) · 운영자 "이 상태 좋아" 박스 위치 */
   const plx=Math.max(6,Math.min(mxp-pw/2,W-pw-6)), tx=plx+12, trx=tx+lw+8;
