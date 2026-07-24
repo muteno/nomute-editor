@@ -109,7 +109,7 @@ async function runOnce(browser, port) {
     ck('C1 부팅 pageerror 0', r1.errs === 0 && r2.errs === 0, r1.errs + '건');
     ck('C2 도크 순서 pvsec→optstrip→firebar', /pvsec.*optstrip.*firebar/.test(r1.dockKids), r1.dockKids);
     ck('C3 스트립 박스 = thumb 정본(#000·9px·11.25px) + 폭=발사바 Δ≤0.5', r1.stripBox === 'rgb(0, 0, 0)/9px/11.25px' && r1.widthD <= 0.5, r1.stripBox + ' · Δ=' + r1.widthD.toFixed(2));
-    ck('C4 초기 리드백 = 8축 OFF 표기 + 음량 1점등(accent)', /비율 원본 \/ 해상도 원본 \/ 프레임 원본 \/ 컷 세기 OFF \/ 구간 OFF \/ 클리퍼 OFF \/ 배경음 OFF \/ 음량 ON/.test(r1.readback) && r1.onN === 1 && r1.onColor === 'rgb(0, 238, 210)', 'on=' + r1.onN);
+    ck('C4 초기 리드백 = 5축(비율·해상도·프레임·배경음·컷편집) 전부 원본/OFF·무점등(운영자 260724 노출 항목 축소)', /^비율 원본 \/ 해상도 원본 \/ 프레임 원본 \/ 배경음 OFF \/ 컷 편집 OFF$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
     ck('C7 게이지 firing→✓(gck)→생성중 상주(busy)→goFireDone 원복', r1.fire && r1.gck && r1.busy && r1.back === '생성', r1.fire + '/' + r1.gck + '/busy' + r1.busy + '/' + r1.back);
