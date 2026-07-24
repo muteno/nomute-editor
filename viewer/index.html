@@ -11927,22 +11927,23 @@ function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = �
     sync();   // 초기 동기(thumb 로드 시 selApp('2')=썸네일 → 부모 하이라이트 정합)
   } catch (_) {}
 }
-function revealWhenShowable(fr) {   // 근본 리빌 안전망(운영자 260724 로딩 무한 봉합) — 리빌을 iframe window 'load' *단일* 신호에만 걸면, 서브리소스 하나(느린 폰트·이미지·프로덕션서 차단된 요청)가 load를 영구 지연시킬 때 폼이 다 떠 쓸 수 있는데도 '불러오는 중' orb가 영영 안 사라진다(번역 탭 실측 재현: readyState=interactive·콘텐츠 존재인데 load 미발화). → load(최속)에 더해, 문서가 DOMContentLoaded(interactive/complete)면 리빌(폼 사용가능 시점). load 리스너가 여전히 1차·이건 안 올 때의 그물.
+function revealWhenShowable(fr, expectPath) {   // 근본 리빌 안전망(운영자 260724 로딩 무한 봉합) — 리빌을 iframe window 'load' *단일* 신호에만 걸면, 서브리소스 하나(느린 폰트·이미지·프로덕션서 차단된 요청)가 load를 영구 지연시킬 때 폼이 다 떠 쓸 수 있는데도 '불러오는 중' orb가 영영 안 사라진다(번역 탭 실측 재현: readyState=interactive·콘텐츠 존재인데 load 미발화). → load(최속)에 더해, 문서가 DOMContentLoaded(interactive/complete)면 리빌(폼 사용가능 시점). load 리스너가 여전히 1차·이건 안 올 때의 그물.
   if (fr._revealPoll) { clearInterval(fr._revealPoll); fr._revealPoll = null; }
   const t0 = Date.now();
   fr._revealPoll = setInterval(() => {
     let done = false;
     try {
-      const w = fr.contentWindow, d = fr.contentDocument;
-      const blank = !w || w.location.href === 'about:blank';   // 빈 프레임 조기노출 차단(#2930 계약 유지 — 실 문서만 리빌)
+      const w = fr.contentWindow, d = fr.contentDocument, href = w && w.location.href;
+      const blank = !w || href === 'about:blank';   // 빈 프레임 조기노출 차단(#2930 계약 유지 — 실 문서만 리빌)
+      const matches = !expectPath || (href && href.indexOf(expectPath) >= 0);   // 목표 문서 도달 확인(구 _trLoaded URL 스코프 일반화 · 평의회3 CONFIRMED) — location.replace는 비동기라 커밋 전엔 '이전 탭 문서'가 아직 current(readyState complete)이다 → expectPath 미일치면 리빌 보류 = 탭전환 스테일/blank 플래시 차단
       const rs = d && d.readyState;
-      if (!blank && (rs === 'interactive' || rs === 'complete')) {   // DOMContentLoaded 도달 = HTML 파싱·구조 완료(행잉 서브리소스 무관) = 표시 가능
+      if (!blank && matches && (rs === 'interactive' || rs === 'complete')) {   // DOMContentLoaded 도달 = HTML 파싱·구조 완료(행잉 서브리소스 무관) = 표시 가능
         fr._shown = true; fr.classList.add('ready');
         if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');
         done = true;
       }
     } catch (_) { fr._shown = true; fr.classList.add('ready'); done = true; }   // 접근불가(cross-origin 등) = fail-safe 리빌(load 리스너 fail-safe와 동축)
-    if (done || Date.now() - t0 > 15000) { clearInterval(fr._revealPoll); fr._revealPoll = null; if (!done) { fr._shown = true; fr.classList.add('ready'); if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready'); } }   // 15s 하드 상한 = 최악(파싱 지연·차단 동기 스크립트)도 무한 orb 금지
+    if (done || Date.now() - t0 > 15000) { clearInterval(fr._revealPoll); fr._revealPoll = null; }   // 15s = 폴 정지 백스톱만(force-reveal 제거 = 평의회1·2·3 지적: 목표문서 미도달[blank·mismatch] 상태서 강제 리빌하면 blank 오노출 · load 리스너가 영구 리빌 경로로 존속하므로 늦게 오면 그때 페이드인 · 진짜 메인문서 15s+ 행 = 네트워크 실패라 orb 유지가 정직)
   }, 150);
 }
 function bindToolFrameLoad(fr) {   // load = 페이드인(frame-ready)+ESC 브릿지. 복제 프레임에도 필수(없으면 opacity:0로 안 보임).
@@ -11984,9 +11985,9 @@ function activateToolFrame(key) {   // 이 도구 전용 iframe을 .active로(�
 }
 function discardTool(key) {   // 도구 완전 종료 = 프레임 회수(원본은 blank해 재사용·복제는 DOM 제거)·메타/레지스트리 정리
   if (key === 'thumb' && toolFrames.thumbtr) discardTool('thumbtr');   // 번역 전용 프레임 = thumb 수명 동반(정규 닫기 = 함께 회수 · 고아 스테일 프레임 차단 · 260721)
-  if (!key) { const af = activeToolFrame(); if (af) { af.src = 'about:blank'; af.classList.remove('ready'); } return; }   // .ready 제거(한수 260724) = blank된 프레임이 스테일 리빌 게이트로 재사용 시 조기 노출되는 것 방어
+  if (!key) { const af = activeToolFrame(); if (af) { if (af._revealPoll) { clearInterval(af._revealPoll); af._revealPoll = null; } af.src = 'about:blank'; af.classList.remove('ready'); } return; }   // .ready 제거(한수 260724) = blank된 프레임이 스테일 리빌 게이트로 재사용 시 조기 노출되는 것 방어 · _revealPoll 정리(평의회 CONFIRMED = 로딩 중 닫기 시 폴 좀비 잔존 차단)
   const f = toolFrames[key], orig = document.getElementById('toolframe');
-  if (f) { if (f === orig) { f.src = 'about:blank'; f.classList.remove('active', 'ready'); } else { try { f.remove(); } catch (_) {} } }   // 원본 재사용 대비 .ready strip(한수 260724 · 재오픈 loadToolFrame도 제거하나 이중 방어)
+  if (f) { if (f._revealPoll) { clearInterval(f._revealPoll); f._revealPoll = null; } if (f === orig) { f.src = 'about:blank'; f.classList.remove('active', 'ready'); } else { try { f.remove(); } catch (_) {} } }   // 원본 재사용 대비 .ready strip(한수 260724 · 재오픈 loadToolFrame도 제거하나 이중 방어) · _revealPoll 정리 = 폴 좀비(블랭크·DOM 이탈 프레임 15s 잔존) 차단(평의회 CONFIRMED)
   delete toolFrames[key]; delete toolMeta[key]; MIN_REG.delete(key);
   if (curToolKey === key) curToolKey = null;
 }
@@ -12001,7 +12002,7 @@ function trEnsureFrame() {   // tr 전용 프레임 생성+로드(예열·활성
   toolFrames.thumbtr = f;   // 레지스트리 등재 = 타 도구 전환(activateToolFrame 토글 루프)이 자동 숨김 — 고아 .active 이중 표시 차단
   const _bust = '/tr.html?v=' + Date.now();   // 캐시버스트 = loadToolFrame 계승(_headers no-cache 한 쌍 · 260723 tr.html _headers 등재 소급)
   f._shown = false; try { f.contentWindow.location.replace(_bust); } catch (_) { f.src = _bust; }
-  revealWhenShowable(f);   // 근본 안전망 = tr.html load 안 와도(행잉 서브리소스) DOMContentLoaded면 리빌 = '불러오는 중' 무한 봉합(번역 탭 실측 재현 근본 해결)
+  revealWhenShowable(f, '/tr.html');   // 근본 안전망 = tr.html load 안 와도(행잉 서브리소스) DOMContentLoaded면 리빌 = '불러오는 중' 무한 봉합(번역 탭 실측 재현 근본 해결) · expectPath='/tr.html' = 구 _trLoaded URL 스코프 계승
   return f;
 }
 function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프레임을 백그라운드 선로드(활성화 X) → 번역 탭 클릭 시 즉시 표시 = 카드생성·편집·AI생성(selApp 리로드0)과 동일 체감. thumb 로드 완료 후 시작(tr load의 frame-ready 부수효과가 thumb 조기노출 안 하게 순서 보장)
@@ -12013,7 +12014,7 @@ function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프�
 function trMount() {   // 번역 탭 활성 = 전용 프레임 표시(예열됐으면 즉시 · 미예열이면 로드 후 페이드인)
   const f = trEnsureFrame();
   f.classList.toggle('ready', !!f._shown);   // 한수 260724 리빌 게이트 → _shown 승격(260724 근본): 표시가능(load OR DOMContentLoaded)이면 .ready(활성화 즉시 표시) · 미완이면 미준비(load/DCL 도달 시 revealWhenShowable·load 리스너가 .ready 재부여 = 페이드인) · 프레임별이라 타 프레임 load 무영향 · 구 _trLoaded(tr.html load 단일 신호) = 행잉 서브리소스서 영영 false → 무한로딩 원인이라 폐기
-  if (!f._shown) { revealWhenShowable(f); tooldlg.classList.remove('frame-ready'); }   // 아직 미표시(방금 생성/예열 미완) = 안전망 재무장 + 전역 보조 신호 내림(로딩 중)
+  if (!f._shown) { revealWhenShowable(f, '/tr.html'); tooldlg.classList.remove('frame-ready'); }   // 아직 미표시(방금 생성/예열 미완) = 안전망 재무장 + 전역 보조 신호 내림(로딩 중)
   else tooldlg.classList.add('frame-ready');   // 표시가능 = 전역 보조 신호(재클릭 가드·trWarm)만 동반 갱신 — 예열·보존 프레임 기준
   const ah = $('#askHost'); if (ah) ah.hidden = true;   // 호스트 슬롯 상호 배타(geniMount 방어 미러)
   for (const k in toolFrames) toolFrames[k].classList.toggle('active', toolFrames[k] === f);   // 활성 1개만 표시(activateToolFrame 토글 문법 · curToolKey 불변 = activeToolFrame()는 thumb 문서를 계속 가리켜 selApp 경로 무변)
@@ -12028,7 +12029,7 @@ function loadToolFrame(src) {
   const _fr = activeToolFrame(); _fr._shown = false; _fr.classList.remove('ready');   // 이 프레임 미준비 = iframe 숨김(흰 프레임 차단 · 한수 260724 리빌 게이트) → 재로드 완료 시 bindToolFrameLoad load가 .ready 재부여(페이드인)
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
-  revealWhenShowable(_fr);   // 근본 안전망 = load 안 와도 DOMContentLoaded면 리빌(행잉 서브리소스 무한로딩 봉합 · 전 도구 프레임 공통)
+  revealWhenShowable(_fr, src);   // 근본 안전망 = load 안 와도 DOMContentLoaded면 리빌(행잉 서브리소스 무한로딩 봉합 · 전 도구 프레임 공통) · expectPath=src = 탭전환 시 아직 current인 '이전 탭 문서' 오노출 차단(평의회 CONFIRMED)
 }
 function setToolTitle(t) { $('#toolTitle').innerHTML = AI_SVG + '<span>' + (t || '제작 도구') + '</span>'; }   // 스튜디오 타이틀 = AI 스파클 픽토(nm-svg SSOT · 형광) + 텍스트(운영자 260712 8차 "AI 픽토그램 + Image/Video Studio" 명시 지시 = §📐 라 타이틀 픽토+텍스트 공존 금지의 운영자 승인 예외 · t = 코드 상수만 유입)
 // 제작 도구 모달 — src 단일 또는 tabs([{src,title,label}…]) = 자막생성처럼 한 도구 안 탭 분기(thumb 탭 계승). showModal 전 로드 시작 = 깜빡임 완화.
