@@ -34,6 +34,42 @@ OUT = 'viewer/fb_data.json'
 G = 'https://graph.facebook.com/v21.0'
 KST = datetime.timezone(datetime.timedelta(hours=9))   # 시각 = KST 강제(CLAUDE.md [12] · naive now 금지)
 
+# ── 시간대별 반응(signals) + post별 필드 = insta_data 스키마 미러(운영자 260724 "인스타처럼 채워") ──
+#    insta_signals.py HOUR_BANDS·DOW·bucket_lifts 100% 미러(뷰어 SIG_ORD 동조). FB는 게시물별 조회(views) 부재 →
+#    eng(반응+댓글+공유)을 지표로 '버킷 중앙값 ÷ 전체 중앙값 = 상대 lift'(share_pm 키 = 뷰어 chLiftChart Y축 단일 소비축 ·
+#    topics의 eng-under-views_med 동일 패턴). 뷰어는 fb 소스분기로 캡션 '반응 강도'·IG평균선(SIG_GEN) 제거 동반(오표기 방지).
+HOUR_BANDS = [(0, 6, '새벽0-6'), (6, 11, '오전6-11'), (11, 14, '점심11-14'), (14, 18, '오후14-18'), (18, 22, '저녁18-22'), (22, 24, '밤22-24')]
+DOW = ['월', '화', '수', '목', '금', '토', '일']
+SIG_MIN_N = 5   # insta_signals MIN_N 미러 = low_sample 임계
+
+
+def _kst_parts(iso):
+    """FB created_time('…T02:07:49+0000') → (date_kst 'MM/DD HH시', hour_band, dow). 실패 = None(fail-soft)."""
+    try:
+        t = datetime.datetime.fromisoformat((iso or '').replace('+0000', '+00:00')).astimezone(KST)
+        band = next(b for lo, hi, b in HOUR_BANDS if lo <= t.hour < hi)
+        return t.strftime('%m/%d %H시'), band, DOW[t.weekday()]
+    except Exception:
+        return None
+
+
+def _sig_axis(items, keyf):
+    """insta_signals.bucket_lifts 미러(eng 지표) — 버킷별 eng 중앙값 ÷ 전체 중앙값 = share_pm lift(뷰어 단일 소비축) · low_sample = n<MIN_N · top = 버킷 최고 eng. items = [{'eng','name','hb','dw'}…]."""
+    g_med = statistics.median([p['eng'] for p in items]) if items else 0
+    groups = {}
+    for p in items:
+        groups.setdefault(keyf(p), []).append(p)
+    out = []
+    for k, grp in groups.items():
+        bm = statistics.median([p['eng'] for p in grp])
+        top = max(grp, key=lambda p: p['eng'])
+        out.append({'bucket': k, 'n': len(grp),
+                    'lift': {'share_pm': round(bm / g_med, 2) if g_med else None},
+                    'low_sample': len(grp) < SIG_MIN_N,
+                    'top': {'name': top['name'], 'score': round(top['eng'], 2)}})
+    out.sort(key=lambda b: -(b['lift'].get('share_pm') or 0))
+    return out
+
 
 def api(path, tok=None, **params):
     params['access_token'] = tok or TOK
@@ -177,7 +213,9 @@ def main():
             eng = (((x.get('reactions') or {}).get('summary') or {}).get('total_count') or 0) \
                 + (((x.get('comments') or {}).get('summary') or {}).get('total_count') or 0) \
                 + ((x.get('shares') or {}).get('count') or 0)
-        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None, 'eng': eng})   # eng = views 부재 fb의 게시물별 대체 지표(운영자 260723 "다른 값이 있으면 대체" — 뷰어 게시물 탐색 '반응' 정렬·표기 원천)
+        _kp = _kst_parts(x.get('created_time'))
+        posts.append({'name': nm, 'permalink': x.get('permalink_url'), 'iso': x.get('created_time'), 'views': None, 'share_pm': None, 'eng': eng,
+                      'cat': _cat_of(nm), 'date_kst': (_kp[0] if _kp else None), 'score': eng})   # eng = views 부재 fb의 게시물별 대체 지표(운영자 260723 "다른 값이 있으면 대체" — 뷰어 게시물 탐색 '반응' 정렬·표기 원천) · cat·date_kst·score = insta posts 스키마 미러(운영자 260724 "인스타처럼") = 게시물 탐색 주제필터·최신정렬 점등(반응 정렬축 기존 배선)
         thumbs.append({'th': x.get('full_picture') or '', 'u': x.get('permalink_url'), 't': nm, 'r': False})
         dt = str(x.get('created_time', ''))[:10]
         if dt:
@@ -198,8 +236,8 @@ def main():
     #    분류기 = 뉴스 CAT_KW 재사용(라벨 = 인스타 topics 6버킷 동일) · views_med 필드에 eng 중앙값 적재 = 뷰어 topic 렌더 100% 계승(무변경, 값 의미만 반응).
     #    표본 = 본 posts(10·썸네일/시리즈용)와 분리한 별도 넓은 fetch(반응만·60개) = 기존 흐름 무영향 · 리치필드 권한 없으면 통째 스킵(fail-soft).
     try:
-        _wide = api(f'{PID}/posts', fields='message,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=60).get('data', [])
-        _tp, _sample = {}, []
+        _wide = api(f'{PID}/posts', fields='message,created_time,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares', limit=60).get('data', [])   # created_time 추가(운영자 260724) = signals(시간대별 반응) 버킷팅 재료 · topics 흐름 무영향
+        _tp, _sample, _sig = {}, [], []
         for x in _wide:
             if not (('reactions' in x) or ('comments' in x) or ('shares' in x)):
                 continue
@@ -209,6 +247,9 @@ def main():
             nm = (x.get('message') or '').split('\n')[0][:80]
             _sample.append({'nm': nm, 'e': e})
             _tp.setdefault(_cat_of(nm), []).append(e)
+            _kp = _kst_parts(x.get('created_time'))
+            if _kp:
+                _sig.append({'eng': e, 'name': nm[:60], 'hb': _kp[1], 'dw': _kp[2]})   # 시간대별 반응 표본(created_time+eng) — 넓은 표본서 버킷 lift 산출
         if _sample:
             d['topic_sample'] = _sample   # LLM 분류기(fb_classify.py) 입력 = 제목+반응(뷰어 미소비 · 분류 스텝이 정확 topics로 승격 · 스텝 미실행/실패 = 아래 키워드 폴백 유지 · 운영자 260724 LLM 분류 채택)
         if _tp:
@@ -219,6 +260,12 @@ def main():
                 d['topics'] = {c: {'n': len(v), 'views_med': round(statistics.median(v))} for c, v in _real.items()}
             _dist = ', '.join(f'{c}:{len(v)}' for c, v in _tp.items())
             print(f"fb-fetch: 주제별 반응 표본 {sum(len(v) for v in _tp.values())} = {_dist} · 유의미주제 {len(_strong)}개 → {'방출(기타 제외)' if len(_strong) >= 2 else '보류(분류 빈약 = 단일기타바 방지 · 유닛 숨김)'}")
+        if len(_sig) >= SIG_MIN_N:   # 시간대별 반응(signals) 방출 — insta_signals bucket_lifts 미러(eng 지표) · 표본 부족 = 스킵(뷰어 chLiftChart도 <2버킷 자동 숨김 = 이중 fail-soft)
+            _hb = _sig_axis(_sig, lambda p: p['hb'])
+            _dw = _sig_axis(_sig, lambda p: p['dw'])
+            if _hb or _dw:
+                d['signals'] = {'n_posts': len(_sig), 'axes': {'hour_band': _hb, 'dow': _dw}}
+                print(f"fb-fetch: 시간대별 반응(signals) 표본 {len(_sig)} · hour_band {len(_hb)}밴드 · dow {len(_dw)}일")
     except Exception as e:
         print(f'fb-fetch: 주제별 반응 스킵(비치명) — {e}')
     if a.get('interactions') is None:
