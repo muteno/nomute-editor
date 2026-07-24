@@ -82,6 +82,7 @@
   .mseg { flex:1; min-width:56px; padding:11px 8px; text-align:center; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); font-family:inherit; cursor:pointer; user-select:none; transition:transform var(--dur-fast), color var(--dur), border-color var(--dur), background var(--dur); }
   .mseg:active { transform:scale(var(--press-m)); }
   .mseg.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.55); background:rgba(var(--accent-rgb),.08); }
+  .opfx { margin:0 0 var(--sp-2); font-size:var(--fs-xs); color:var(--mut); }   /* 옵션 영향 캡션(용량·시간 % · 260724 실측) — 4세그 공통 1줄·동일 마진(비기본 선택 시만 노출 · 좌변 = .fl 정렬) */
   .mo-row { display:grid; grid-template-columns:76px 1fr 44px; align-items:center; gap:10px; margin:10px 0 2px; font-size:var(--fs-label); }
   .mo-row[hidden], .poshint[hidden], #dlVid[hidden], .modeseg[hidden] { display:none; }   /* display:grid/flex가 UA [hidden]을 덮는 함정 가드(헤드리스 실측 260710 · track:120 전례) — .modeseg = 방식(segFit) 조건 표시용 */
   .mo-k { color:var(--fg); font-weight:var(--fw-b); }
@@ -185,6 +186,7 @@
     <button class="mseg" data-v="30" role="tab" aria-selected="false">30</button>
     <button class="mseg" data-v="24" role="tab" aria-selected="false">24</button>
   </div>
+  <div class="opfx" id="fxFps" hidden title="실사 영상 실측 평균(260724) — 영상따라 다름"></div>
 
   <label class="fl">비율</label>
   <div class="modeseg" id="segAr" role="tablist" aria-label="화면 비율">
@@ -216,19 +218,22 @@
     <button class="mseg" data-v="1080" role="tab" aria-selected="false">1080p</button>
     <button class="mseg" data-v="720" role="tab" aria-selected="false">720p</button>
   </div>
+  <div class="opfx" id="fxRes" hidden title="실사 영상 실측 평균(260724) — 영상따라 다름"></div>
 
   <label class="fl">화질</label><!-- CRF 3단(18/21/24 · 기본 고화질=18 종전값) — 라벨 % = 실측 평균(260724 벤치: 실사·모션그래픽 −23~25%/−43~47% · 정적 화면 0% · 시간 변화 −5% 안팎 = 영상따라 다름) · 라벨(부가) 문법 = 여백(검정) 계승 -->
   <div class="modeseg" id="segQ" role="tablist" aria-label="화질">
     <button class="mseg on" data-v="18" role="tab" aria-selected="true" title="CRF 18 — 비주얼 무손실(기본 · 편집·보관용)">고화질</button>
-    <button class="mseg" data-v="21" role="tab" aria-selected="false" title="CRF 21 — 용량 약 −25%(실측 평균 · 영상따라 다름) · 눈 차이 거의 없음 · 시간 비슷">표준(−25%)</button>
-    <button class="mseg" data-v="24" role="tab" aria-selected="false" title="CRF 24 — 용량 약 −45%(실측 평균 · 영상따라 다름) · 살짝 소프트 · 시간 비슷">압축(−45%)</button>
+    <button class="mseg" data-v="21" role="tab" aria-selected="false" title="CRF 21 — 눈 차이 거의 없음">표준</button>
+    <button class="mseg" data-v="24" role="tab" aria-selected="false" title="CRF 24 — 살짝 소프트해질 수 있음">압축</button>
   </div>
+  <div class="opfx" id="fxQ" hidden title="실사 영상 실측 평균(260724) — 영상따라 다름"></div>
 
   <label class="fl">음량</label><!-- 통일 = −14LUFS·피크 −1.5dB(0dB 절대 보장 마진)·좌우 모노합(shared/audio_norm.py) — 운영자 260710 승인 배치 -->
   <div class="modeseg" id="segAudio" role="tablist" aria-label="음량">
     <button class="mseg on" data-v="keep" role="tab" aria-selected="true">유지</button>
     <button class="mseg" data-v="norm" role="tab" aria-selected="false">통일</button>
   </div>
+  <div class="opfx" id="fxAudio" hidden title="실사 영상 실측 평균(260724) — 영상따라 다름"></div>
 
   <div class="status" id="cstatus" role="status"></div>
   <div class="vstage" id="vwrap" hidden></div>
@@ -315,12 +320,21 @@ function segBind(id, key, after){
     OPT[key]=b.dataset.v; if(after) after();
   });
 }
-segBind('#segFps','fps');
+// 옵션 영향 캡션(비기본 선택 시 세그 아래 1줄 · 값 = 260724 실사 실측 평균 — 60i는 4s 프로브 외삽 · 정적 화면 등 영상따라 다름 = title 각주)
+const FX={
+  fps:{'60i':'용량 +20% · 시간 ×10~25(매우 느림)','30':'용량 −5% · 시간 −15%','24':'용량 −5% · 시간 −15%'},
+  res:{'1440':'용량 −32% · 시간 −28%','1080':'용량 −52% · 시간 −46%','720':'용량 −72% · 시간 −55%'},
+  q:{'21':'용량 −25% · 시간 −5%','24':'용량 −45% · 시간 −5%'},
+  audio:{norm:'용량 ±0% · 시간 +20%(후처리)'}
+};
+function syncFx(){ [['fps','#fxFps'],['res','#fxRes'],['q','#fxQ'],['audio','#fxAudio']].forEach(([k,id])=>{ const el=$(id), t=(FX[k]||{})[OPT[k]]; el.hidden=!t; el.textContent=t||''; }); }
+segBind('#segFps','fps',syncFx);
 segBind('#segAr','ar',syncPos);
 segBind('#segFit','fit',syncPos);
-segBind('#segRes','res');
-segBind('#segQ','q');
-segBind('#segAudio','audio');
+segBind('#segRes','res',syncFx);
+segBind('#segQ','q',syncFx);
+segBind('#segAudio','audio',syncFx);
+syncFx();
 function syncPos(){ const on=OPT.ar!=='orig'; $('#segFit').hidden=!on; const cropOn=on&&OPT.fit!=='pad'; $('#posRow').hidden=!cropOn; syncPosPrev(); if(!cropOn&&!$('#scrub').hidden) scrubClose(); convPvSync(); }   // 여백(pad) = 항상 중앙이라 위치 슬라이더·미리보기 숨김 + 열려 있던 크롭 프리뷰도 방어 닫기(키보드 심층 경로 · 평의회3) · 비율/방식 변경 = 미리보기 실시간 반영(260722)
 function syncPosPrev(){ $('#posBtnRow').hidden=!(OPT.ar!=='orig'&&OPT.fit!=='pad'&&FILE_URL); }
 $('#pos').addEventListener('input',()=>{ OPT.pos=+$('#pos').value; $('#posV').textContent=OPT.pos===50?'중앙':(OPT.pos<50?'좌/상 ':'우/하 ')+Math.abs(OPT.pos-50)*2+'%'; convPvSync(); });   // 크롭 위치 = 미리보기 라이브 팬(260722)
