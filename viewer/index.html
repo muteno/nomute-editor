@@ -2052,6 +2052,8 @@
   .genihost .geni-lead { background:var(--bg); }   /* 상단 고정 리드 = 형제 탭 고정 도크(thumb .topdock #121212=var(--bg) 불투명) 정본 계승(운영자 260718 "고정부 레이어 어두운 단계 카드생성·편집과 맞춰") · padding-top sp-3 = 편집 탭 도크 상단 gap(탭바↔미리보기 = topdock padding-top 16+2 = 18) 정합(운영자 260720 "같은 디자인 모듈" · 실측 편차 = 편집 18 vs 구 AI 8 → 값 선언은 도크 쇼트핸드(2942행대 · 뒤 캐스케이드 승자)로 단일화 260721 — 여기 선언은 쇼트핸드보다 앞이라 사문 = 2px 편차 재발원이었음) — 이식 컨텍스트만 스코프(팝업 #genidlg 자체 헤더 밑 8 유지) — 구 투명(글래스 스택 비침 = 가변 톤·형제 도크와 다른 층) → 불투명 도크 층으로 정렬 · 본문(.geni-body)은 글래스 유지 = 인모달 thumb 본문(html.inmodal body 투명 → toolfr 글래스)과 동층이라 무접촉 · 팝업(#genidlg)은 .genihost 스코프 밖 = modal-glass 셸 그대로 */
   #tooldlg .toolfr.active { display:block; }   /* 활성 프레임만 노출 */
   #tooldlg .toolfr.active.ready { opacity:1; }   /* load 완료 = 페이드인(로드 중엔 다크 글래스만) · 리빌 게이트 = 프레임별 .ready(한수 260724: 구 전역 #tooldlg.frame-ready 승격 — 전역은 아무 프레임 load에나 붙어 로딩중 활성 프레임을 조기 노출[번역탭 "안 떠"]시켰음 → 프레임 자신이 로드돼야 .ready). frame-ready(전역)는 재클릭 가드·trWarm 보조 신호로만 존속 */
+  .tool-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity var(--dur) var(--ease); }   /* 도구 프레임 로딩 오버레이(한수 260724) — dialog(position:absolute UA기본)가 컨테이닝블록 · inset:0 중앙정렬(orb = 콘텐츠 영역 중앙) · pointer-events none = 로드된 프레임 클릭 무간섭 */
+  #tooldlg:has(.toolfr.active:not(.ready)) .tool-loading { opacity:1; transition-delay:.28s; /* raw-ok: 빠른로드 플래시 방지 의도 지연(지속시간 토큰 아님) */ }   /* 리빌 게이트(.ready) 미준비 = 로딩중 → orb 표시 · 지연 = 빠른 로드는 지연 내 완료돼 플래시 0 · 준비되면 즉시(지연 없이) 페이드아웃 · 가상탭(ask/geni)은 .toolfr.active 없어 미표시 */
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
   .modal-tabs, .tool-tabs { flex:none; display:none; gap:0; padding:9px 13px; background:var(--modal-tabs-bg); border-bottom:1px solid var(--line2); }   /* 표준 탭 띠(정본=.modal-tabs) = 영상 .tool-tabs 값 그대로 토큰화 · 값=--modal-tabs-bg(창조0) */
   #tooldlg.has-tabs .tool-tabs { display:grid; }
@@ -3779,6 +3781,7 @@ try {
   <iframe id="toolframe" class="toolfr" title="제작 도구" src="about:blank" allow="clipboard-read; clipboard-write; fullscreen"></iframe><!-- fullscreen = 자막 완성영상·프리뷰 전체화면(안드로이드 크롬 Fullscreen API · 260707) -->
   <div id="askHost" class="askhost" hidden></div><!-- 요약 요청 가상 탭 호스트(운영자 260712 — 요약도 이미지·영상과 동일 도구 셸) = #askdlg .askwrap을 통째 이식(reparent · 폼·전송·첨부 로직 무복제 = 드리프트 0) · 닫힘/최소화 시 askdlg로 원복 -->
   <div id="geniHost" class="askhost genihost" hidden></div><!-- 프롬프팅 이식 탭 호스트(운영자 260713 B "B로 간다" — askHost 선례 미러) = #genidlg 자식(헤더·바디·푸터)을 통째 이식(무복제 = 드리프트 0) · 기사 카러셀 + 경로는 팝업 유지(이중 홈 · 닫힘/최소화/발사 시 genidlg로 원복) -->
+  <div class="tool-loading" aria-hidden="true"><span class="nm-load" data-orb="loading" data-label="불러오는 중"></span></div><!-- 도구 프레임 로딩 표기(운영자 260724 한 수) = 활성 프레임 미준비(.toolfr.active:not(.ready)) 상태에 로딩 SSOT orb 오버레이(:has 게이트) — 느린 연결서 '멈춤?' 불안 제거 · 로더 = window.nmLoader 자동수화(nm-load[data-orb=loading] · raw 금지 하드락 정합) · 표시/은닉 = 프레임별 .ready 리빌 게이트가 전담(별도 JS 토글 0) -->
 </dialog>
 <!-- 제작 도구 최소화 복원 ▲ — fixed 고z 버튼(JS reparentNav가 열린 풀스크린 모달[요약리더#dlg·라이트박스] 안으로 옮겨 그 위에도 부유). 평시 탭=펼침 / 길게 눌러 "닫기" 뜨면 한 번 더 탭=완전종료. accent 그린(첨부1 우하단 특수버튼색 계승). -->
 <button id="toolRestore" class="tool-restore" type="button" aria-label="제작 도구 펼치기 (길게 누르면 닫기)" title="탭하면 펼치기 · 길게 누르면 닫기"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 8 20 18 4 18Z" fill="currentColor"/></svg></button>
