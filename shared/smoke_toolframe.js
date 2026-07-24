@@ -64,14 +64,16 @@ async function probe(browser, url) {
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1400);
+  // 결정론(병렬 CPU 경합 무관): opacity 트랜지션·표시지연 kill = 클래스 변경 즉시 목표값 → 타이밍 의존 0(스모크 규약 = 2런 동일)
+  await page.addStyleTag({ content: '#tooldlg .toolfr, #tooldlg .tool-loading { transition:none !important; transition-delay:0s !important; }' });
   await page.evaluate(() => {
     const T = [{ src: '/thumb.html', app: '2', label: '카드 생성' }, { src: '/thumb.html', app: '7', label: '편집' }, { src: '/tr.html', app: 'tr', label: '번역' }, { src: '/thumb.html', app: '6', label: 'AI 생성' }];
     openTool('/thumb.html', 'Image Studio', T, 'thumb');
   });
-  await page.waitForTimeout(1800);   // thumb 로드 완료(bindToolFrameLoad가 .ready 부여)
+  // 고정 sleep 대신 .ready 폴링(로드 완료 = bindToolFrameLoad가 .ready 부여) — 로드 속도 무관 결정론
+  let ready = false; for (let i = 0; i < 60 && !ready; i++) { ready = await page.evaluate(() => { const f = document.querySelector('#tooldlg .toolfr.active'); return !!(f && f.classList.contains('ready')); }); if (!ready) await sleep(100); }
 
-  const opRevealed = await page.evaluate(() => {   // 로드 완료 = 활성+.ready → 페이드인 opacity 1
+  const opRevealed = await page.evaluate(() => {   // 로드 완료 = 활성+.ready → 페이드인 opacity 1(트랜지션 kill = 즉시)
     const f = document.querySelector('#tooldlg .toolfr.active');
     return { has: !!f, active: f && f.classList.contains('active'), ready: f && f.classList.contains('ready'), op: f && getComputedStyle(f).opacity };
   });
@@ -83,19 +85,25 @@ async function probe(browser, url) {
     document.getElementById('tooldlg').classList.add('frame-ready');   // 전역 신호 강제 ON(타 프레임 load 재부착 재현)
     f.classList.remove('ready');                                       // 이 프레임은 아직 미준비(로딩중 상태 재현)
   });
-  await sleep(260);   // transition .2s 안착
+  await sleep(80);   // 스타일 recalc(트랜지션 kill = 즉시 목표값)
   const opGated = await page.evaluate(() => {
     const f = document.querySelector('#tooldlg .toolfr.active');
     return { frameReadyOn: document.getElementById('tooldlg').classList.contains('frame-ready'), ready: f.classList.contains('ready'), op: getComputedStyle(f).opacity };
   });
+  // ── 한수 260724: 로딩중(.ready OFF)이면 nm-loader orb 오버레이(.tool-loading) 표시(:has 게이트) — 트랜지션 kill로 즉시 ──
+  const orbLoading = await page.evaluate(() => {
+    const tl = document.querySelector('.tool-loading'); if (!tl) return { exists: false };
+    return { exists: true, op: getComputedStyle(tl).opacity, hydrated: !!tl.querySelector('.nm-orb'), label: (tl.querySelector('.nm-shim') || {}).textContent };
+  });
 
-  // ── .ready 재부여 → 페이드인 복귀(리빌은 .ready가 전담함을 확인)
+  // ── .ready 재부여 → 프레임 페이드인 복귀 + orb 오버레이 은닉(리빌은 .ready가 전담함을 확인)
   await page.evaluate(() => { document.querySelector('#tooldlg .toolfr.active').classList.add('ready'); });
-  await sleep(260);
+  await sleep(80);
   const opBack = await page.evaluate(() => getComputedStyle(document.querySelector('#tooldlg .toolfr.active')).opacity);
+  const orbHidden = await page.evaluate(() => { const tl = document.querySelector('.tool-loading'); return tl ? getComputedStyle(tl).opacity : '1'; });
 
   await ctx.close();
-  return { errs, opRevealed, opGated, opBack };
+  return { errs, opRevealed, opGated, opBack, orbLoading, orbHidden };
 }
 
 (async () => {
@@ -117,10 +125,12 @@ async function probe(browser, url) {
   A(r1.opGated.frameReadyOn && !r1.opGated.ready && hidden(r1.opGated.op),
     'C3 리빌 게이트 = 프레임별 .ready — 전역 frame-ready ON·.ready OFF면 opacity≈0(숨김 · 구 전역게이트 회귀 시 FAIL)', JSON.stringify(r1.opGated));
   A(shown(r1.opBack), 'C4 .ready 재부여 → opacity≈1(페이드인 복귀)', 'op=' + r1.opBack);
-  const det = (hidden(r1.opGated.op) === hidden(r2.opGated.op)) && (shown(r1.opRevealed.op) === shown(r2.opRevealed.op));   // 판정 불리언 동일(잔차 무관)
-  A(det, 'C5 결정론(2런 동일)', JSON.stringify([r1.opGated.op, r2.opGated.op, r1.opRevealed.op, r2.opRevealed.op]));
+  A(r1.orbLoading.exists && r1.orbLoading.hydrated && r1.orbLoading.label === '불러오는 중' && parseFloat(r1.orbLoading.op) > 0.9 && parseFloat(r1.orbHidden) < 0.1,
+    'C5 로딩중 nm-loader orb 오버레이 표시("불러오는 중") + 준비되면 은닉(한수 260724)', JSON.stringify([r1.orbLoading, r1.orbHidden]));
+  const det = (hidden(r1.opGated.op) === hidden(r2.opGated.op)) && (shown(r1.opRevealed.op) === shown(r2.opRevealed.op)) && (parseFloat(r1.orbLoading.op) > 0.9) === (parseFloat(r2.orbLoading.op) > 0.9);   // 판정 불리언 동일(잔차 무관)
+  A(det, 'C6 결정론(2런 동일)', JSON.stringify([r1.opGated.op, r2.opGated.op, r1.orbLoading.op, r2.orbLoading.op]));
 
-  console.log('\n── smoke_toolframe: ' + pass + '/5 PASS' + (fail ? ' · FAIL ' + fail : ''));
+  console.log('\n── smoke_toolframe: ' + pass + '/6 PASS' + (fail ? ' · FAIL ' + fail : ''));
   await browser.close(); try { srv.kill(); } catch (e) {}
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('smoke_toolframe ERR', e.message); process.exit(2); });
