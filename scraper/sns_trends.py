@@ -1281,7 +1281,7 @@ def main():
         yt_src = "innertube" if yt_all else ""
     gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
     gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
-    tk = tiktok()
+    tk = tiktok(limit=60)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
     W_GEOS = [g2.strip() for g2 in (os.environ.get("SNS_WORLD_GEOS") or "US,JP,GB").split(",") if g2.strip()]
