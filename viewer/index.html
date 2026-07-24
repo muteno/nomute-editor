@@ -752,6 +752,7 @@
   .tcard-m i { font-style:normal; display:inline-flex; align-items:center; gap:3px; }
   .tcard-m svg { width:11px; height:11px; display:block; opacity:.85; }
   .tcard-ago { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* N일전 = 조회수 우측(뉴스식 메타 · 운영자 260712 #6 · 구 .tcard-acc 업로더 폐지) */
+  .tcard-ago.fresh24 { color:var(--accent-4); background:rgba(var(--accent-4-rgb),.15); padding:0 var(--sp-1); border-radius:var(--r-pill); }   /* 1일(24h) 이내 신선 = 시간대 골드레몬 음영(운영자 260724 "1일 이내인 것들은 시간대를 나타내는 부분에 골드레몬색으로 음영") · 틱톡 인기 2일 top20 중 _fresh24 마커 · 색·톤 = --accent-4 계승 + .mkbtn.stale bg(.13) 미러 · pill radius · padding = sp-1(6·raw 0) */
   /* X 트윗 카드 — 전문 + 지표(원본급) · 무채 글래스 셸(soc-item 톤 축소·색 창작 0) */
   .xgrid { display:grid; grid-template-columns:1fr; gap:8px; padding-left:var(--trend-indent); padding-right:var(--trend-indent); }   /* raw-ok: gap 8(기존) · padding 좌우 = --trend-indent 토큰 대칭 = 좌변 블릿 정렬(.trend-grid 동일) + 우측 여백 = 좌측 여백(운영자 260720) */
   @media (min-width:560px) { .xgrid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
@@ -10321,7 +10322,7 @@ function renderSnsTrends() {
   const gt = TRREG === 'kr' ? (d.gtrends || []) : mrg(d.gtrends || [], d.gtrends_gl, g3 => (g3.query || '').toLowerCase());
   const ytRaw = TRREG === 'kr' ? (d.youtube || []) : mrg(d.youtube || [], d.youtube_gl, v3 => v3.id).sort((a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, 15), yt = cut3d(ytRaw);   // 3일 컷(운영자 260721) · Raw = 10개 보장 후순위 채움 풀(운영자 260721 "썸네일 영상은 무조건 10개 — 없으면 후순위에서")
   const ytnRaw = d.youtube_news || [], ytn = cut3d(ytnRaw);   // 뉴스 카테고리 = 국내 축(뉴스 소재 훑기 온-미션 · 모드 무관 표시) · 3일 컷 · Raw = 채움 풀
-  const tkvA = ((d.tiktok || {}).videos) || [], tkv = cut3d(TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · 3일 컷(260721 — 스샷 "4주 전" 바이럴 잔존 봉인) · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
+  const tkvA = ((d.tiktok || {}).videos) || [], tkv = cutH(TRREG === 'kr' ? tkvA.filter(t3 => t3.region === 'KR') : tkvA, 48), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 국내 모드 = KR만(0건 = 조용한 공백) · 3일 컷(260721 — 스샷 "4주 전" 바이럴 잔존 봉인) · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
   const sb = d.subs || {}, sxRaw = sb.x || [], stkRaw = sb.tiktok || [], sreRaw = sb.insta || [], sytRaw = sb.youtube || [], sx = cut3d(sxRaw), stk = cut3d(stkRaw), sre = cut3d(sreRaw), syt = cut3d(sytRaw);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
   const shvRaw = d.shorts || [], aivRaw = d.aivid || [], shv = cut3d(shvRaw), aiv = cutH(aivRaw, 168);   // 쇼츠 = 3일 컷 · AI 영상 = 7일 컷 · Raw = 채움 풀(운영자 260721 "10개까지 안나오고 짤림" — 검색 파생 니치 = 일 1~3건 수집이라 3일 창 = 2건 고사 실측 · TOP 풀 제외 소스라 완화 무부작용)
   const sig = d.signal || [], xtr = d.xtrends || [];   // ⑨⑩ 시그널 실검·X 실시간 트렌드(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시) — 검색어류 = 컷 비대상
@@ -10367,7 +10368,7 @@ function renderSnsTrends() {
   const card = (t, i, wd) =>   // 통일 카드(운영자 260712 #6 "쇼츠형 중구난방 해소") — 썸네일(쇼츠식 커버 크롭) + 아래에 [제목 → 조회수(vfmt 000만) · N일전] · 업로더 제거·오버레이 제목 폐지(제목/메타 항상 커버 아래 = 뉴스식 배치) · 제목 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
-    `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
+    `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago${t._fresh24 ? ' fresh24' : ''}">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
@@ -10376,7 +10377,7 @@ function renderSnsTrends() {
   // (구 V3 조회수/좋아요/댓글 정렬바 옵션 = 260720 평의회 — 카드 그리드 전 섹션 정렬바 제거로 소멸 · xgrid 게시물 정렬바는 각자 리터럴 배열)
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
   const tkCov = tkvA.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백 · 판정 = 원본(tkvA) 기준(컷 전멸 런에도 채움 경로 유지)
-  const tkL = tkCov ? fill10(freshFirst(bySort(tkv, 'views')), bySort(tkvA.filter(t => t.region === 'KR'), 'views'), bySort(cut3d(tkvA), 'views'), bySort(tkvA, 'views')) : [];   // 조회수 고정 + freshFirst 신선 먼저(운영자 260718) · 10개 보장 채움 사다리(운영자 260721) = KR 스테일 → 글로벌 신선 → 글로벌 스테일(KR 우선 = 260720 KR 강화 계승) · 정렬바 제거 = 'views' 리터럴(260720 평의회 — sortOf 잔존 시 과거 localStorage 픽이 UI 없이 적용되는 유령 정렬 차단)
+  const tkL = tkCov ? bySort(tkv, 'views').slice(0, 20).map(t => { const _h = ageVerH(t); return { ...t, _fresh24: isFinite(_h) && _h < 24 }; }) : [];   // 2일 이내(tkv=48h컷) 조회수순 top 20(운영자 260724 "틱톡 2일 이내 가장 조회수 높은 순 20개") · _fresh24 = 1일 이내 마커 → 시간대 골드레몬 음영(.tcard-ago.fresh24) · 구 fill10 스테일 채움 사다리 폐지(2일 하드컷 취지 = 창작 채움보다 조용한 공백 우선 · 저조회 신선분 보존은 스크래퍼 풀 확대[tiktok limit 60]가 담당) · 정렬바 제거 = 'views' 리터럴 계승
   // (구 REGN·byReg·REGS = 큐레이션 한국/세계 2군 분리 헬퍼 → 운영자 260724 "큐레이션 지역 구분 없이 다"로 전부 무용화·제거 · 알고리즘 콘텐츠 지역 필터는 TRREG 직접 사용)
   const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxAll = bySort(sx, sxS).slice(0, 10);   // 큐레이션 = 지역 무관 통합(운영자 260724 "큐레이션 지역 구분 없이 다") — 구독은 내가 고른 계정이라 국내/세계 토글과 무관
   const all10 = (cutA, rawA, sf) => fill10(bySort(cutA, sf), bySort(rawA, sf));   // 큐레이션(영상 카드) 지역 무관 통합 top10(운영자 260724 — 국내/세계 구분 폐지 · 구 reg10 군분리 = 구독엔 부적절[내가 고른 계정 = 지역 무관 다 보기] · 컷분 우선 → raw 채움 = 10개 보장 계승)
@@ -10425,12 +10426,13 @@ function renderSnsTrends() {
   const ytnL = fill10(freshFirst(ytn), ytnRaw).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = fill10(freshFirst(yt), ytRaw).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = freshFirst 신선 먼저(운영자 260718 "다른 화면에도") + 후순위 채움 10개 보장(260721)
   if (ytGrid.length) gYT += sec('yt', '인기', rtBase, ytGrid.length, '<div class="trend-grid wd">' + ytGrid.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
-  if (ytnL.length) gYT += sec('ytn', '뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
-  if (shL.length) gYT += sec('sh', '쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
-  if (aiL.length) gYT += sec('ai', 'AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
+  // 뉴스·쇼츠·AI 영상 = 큐레이션(검색·카테고리 파생 = 유튜브 mostPopular 전체 인기 차트 아님) → 큐레이션 게시물(gCUR)로 이관(운영자 260724 "유튜브 기본 인기 게시물 말고 큐레이션된 부분[뉴스·쇼츠·AI] 모두 큐레이션 영역으로"). 뉴스 = mostPopular category25 뉴스·정치 필터(온-미션 카테고리 선정) · 쇼츠·AI = InnerTube 키워드 검색 파생. 인기(mostPopular 전체)만 유튜브 대분류(gYT) 잔존. gCUR 순서 = 뉴스·쇼츠·AI(키워드/카테고리) → 유튜브·틱톡·인스타·X·스레드(구독)
+  if (ytnL.length) gCUR += sec('ytn', '뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
+  if (shL.length) gCUR += sec('sh', '쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
+  if (aiL.length) gCUR += sec('ai', 'AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   if (sytAll.length) gCUR += sec('syt', '유튜브', '', sytAll.length, '<div class="trend-grid wd">' + sytAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 유튜브 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 카드 계승 · 빈 = 미표기(조용한 공백)
   if (tkL.length) gTK += sec('tk', '인기', rtBase, tkL.length, '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 16:9 wd 그리드(AI영상 계승) · 정렬바 제거(260720 평의회 — 유튜브 인기(무 정렬바)와 "같은 기능=같은 모양" 통일 · 카드 그리드 문법 = 정렬바 0 · 게시물 xgrid(X·블스·스레드)만 정렬바 유지)
-  else if (tkv.length) gTK += sec('tk', '인기', rtBase, Math.min(tkv.length, 8), tkv.slice(0, 8).map((t, i) =>
+  else if (tkv.length) gTK += sec('tk', '인기', rtBase, Math.min(tkv.length, 20), tkv.slice(0, 20).map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
   if (stkAll.length) gCUR += sec('stk', '틱톡', '', stkAll.length, '<div class="trend-grid wd">' + stkAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 틱톡 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일 · 정렬바 없음(stk 기본 조회수순)
