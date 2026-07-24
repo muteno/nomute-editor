@@ -106,6 +106,37 @@ async function probe(browser, url) {
   return { errs, opRevealed, opGated, opBack, orbLoading, orbHidden };
 }
 
+// ── C7 안전망 = 리빌이 window 'load' *단일* 신호에만 걸리면 서브리소스 하나(느린 폰트·이미지·차단된 요청)가
+//    load를 영구 지연시킬 때 문서가 다 떠 있어도(readyState interactive/complete) '불러오는 중'이 영영 안 사라짐(번역 탭 실측).
+//    revealWhenShowable(프레임)이 DOMContentLoaded면 리빌함을 계약으로 못박는다(제거·회귀 시 FAIL).
+async function probeSafetyNet(browser, url) {
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 1, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.addStyleTag({ content: '#tooldlg .toolfr, #tooldlg .tool-loading { transition:none !important; transition-delay:0s !important; }' });
+  const hasFn = await page.evaluate(() => typeof revealWhenShowable === 'function');   // 안전망 함수 존재(제거 회귀 = FAIL)
+  await page.evaluate(() => {
+    const T = [{ src: '/thumb.html', app: '2', label: '카드 생성' }, { src: '/thumb.html', app: '7', label: '편집' }, { src: '/tr.html', app: 'tr', label: '번역' }, { src: '/thumb.html', app: '6', label: 'AI 생성' }];
+    openTool('/thumb.html', 'Image Studio', T, 'thumb'); trWarm();
+  });
+  // 번역 탭 활성화(전용 tr 프레임 로드·표시)
+  let tabbed = false; for (let i = 0; i < 40 && !tabbed; i++) { tabbed = await page.evaluate(() => { const b = [...document.querySelectorAll('#toolTabs .tooltab')].find(x => x.dataset.app === 'tr'); if (!b) return false; b.click(); return true; }); if (!tabbed) await sleep(100); }
+  // tr 프레임이 표시가능(.ready)까지 대기
+  let ready = false; for (let i = 0; i < 60 && !ready; i++) { ready = await page.evaluate(() => { const f = document.querySelector('#tooldlg .toolfr.active'); return !!(f && f.classList.contains('ready')); }); if (!ready) await sleep(100); }
+  // '행잉 서브리소스로 load 미발화' 재현 = .ready·_shown·frame-ready 강제 리셋(문서는 그대로 = readyState complete)
+  const stuck = await page.evaluate(() => {
+    const f = document.querySelector('#tooldlg .toolfr.active');
+    if (f._revealPoll) { clearInterval(f._revealPoll); f._revealPoll = null; }
+    f._shown = false; f.classList.remove('ready'); document.getElementById('tooldlg').classList.remove('frame-ready');
+    return { op: getComputedStyle(f).opacity, overlay: getComputedStyle(document.querySelector('.tool-loading')).opacity, rs: (() => { try { return f.contentDocument.readyState; } catch (e) { return 'X'; } })() };
+  });
+  // 안전망 발동 = revealWhenShowable 호출 → DCL(interactive/complete)이라 폴 내 리빌
+  await page.evaluate(() => { revealWhenShowable(document.querySelector('#tooldlg .toolfr.active')); });
+  let healed = { op: '0', overlay: '1', ready: false }; for (let i = 0; i < 30; i++) { await sleep(100); healed = await page.evaluate(() => { const f = document.querySelector('#tooldlg .toolfr.active'); return { op: getComputedStyle(f).opacity, overlay: getComputedStyle(document.querySelector('.tool-loading')).opacity, ready: f.classList.contains('ready') }; }); if (healed.ready) break; }
+  await ctx.close();
+  return { hasFn, stuck, healed };
+}
+
 (async () => {
   const pw = loadPlaywright();
   const { srv, port } = await startServer();
@@ -130,7 +161,11 @@ async function probe(browser, url) {
   const det = (hidden(r1.opGated.op) === hidden(r2.opGated.op)) && (shown(r1.opRevealed.op) === shown(r2.opRevealed.op)) && (parseFloat(r1.orbLoading.op) > 0.9) === (parseFloat(r2.orbLoading.op) > 0.9);   // 판정 불리언 동일(잔차 무관)
   A(det, 'C6 결정론(2런 동일)', JSON.stringify([r1.opGated.op, r2.opGated.op, r1.orbLoading.op, r2.orbLoading.op]));
 
-  console.log('\n── smoke_toolframe: ' + pass + '/6 PASS' + (fail ? ' · FAIL ' + fail : ''));
+  const sn = await probeSafetyNet(browser, url);
+  A(sn.hasFn && hidden(sn.stuck.op) && parseFloat(sn.stuck.overlay) > 0.9 && (sn.stuck.rs === 'interactive' || sn.stuck.rs === 'complete') && sn.healed.ready && shown(sn.healed.op) && hidden(sn.healed.overlay),
+    'C7 리빌 안전망 = window load 미발화(행잉 서브리소스)라도 DOMContentLoaded면 revealWhenShowable가 리빌 → 무한 "불러오는 중" 봉합(번역 탭 근본픽스)', JSON.stringify(sn));
+
+  console.log('\n── smoke_toolframe: ' + pass + '/7 PASS' + (fail ? ' · FAIL ' + fail : ''));
   await browser.close(); try { srv.kill(); } catch (e) {}
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('smoke_toolframe ERR', e.message); process.exit(2); });
