@@ -11214,6 +11214,7 @@ function chTileChart(series, key, mode, unit) {   // 타일 미니 차트(운영
 // low_sample 버킷 = 속빈 점 + 툴팁 '표본부족' 딱지(결론 금지 플래그 유지) · 전 점 숫자 도배 금지 = 피크/최저만 직접 라벨(나머지 = 툴팁)
 const SIG_ORD = { hour_band: ['새벽0-6', '오전6-11', '점심11-14', '오후14-18', '저녁18-22', '밤22-24'], dow: ['월', '화', '수', '목', '금', '토', '일'] };   // 자연순 정본 = insta_signals.py HOUR_BANDS·DOW 미러(그쪽 라벨 개편 시 동조)
 const SIG_CAP = { hour_band: '시간대별 공유 수', dow: '요일별 공유 수' };   // 구 '시간대별/요일별 호응' → 공유 수(운영자 260723 리네임 · 요일별 = 형제 동조[4] · 섹션 대제목 '시간대별 반응'은 유지 = 운영자 "타이틀은 유지")
+const SIG_CAP_FB = { hour_band: '시간대별 반응 강도', dow: '요일별 반응 강도' };   // FB 소스분기(운영자 260724 "인스타처럼 채워") — FB는 게시물별 조회(views)·공유율 per-mille 부재 → eng(반응+댓글+공유) 기반 상대 lift라 '공유 수' 오표기 방지(fb_fetch _sig_axis 산출과 짝)
 // 일반 인스타 이용자 평균 이용 강도(운영자 260723 요청 오버레이 "일반적인 사용자들 기준으로 그 차트 위에 오버레이 · 어찌보면 이 평균이 더 중요") —
 // 구독자 축(공유·저장 lift·접속 피크 = 내 팔로워 접속) 위에 '전체 IG 이용자' 평균 이용 시간대·요일을 레퍼런스 실루엣으로 병치 ·
 // 상대 강도(피크=100 · online_hours_kst 저장문법 계승) · 자체 정규화 축(lift Y와 별개 = 볼륨 언더레이 문법 계승 · 창작 0 = 공개 벤치마크 상대형상, 측정치 아님 = 라벨 '앱 사용자'[구 '일반 평균' · 운영자 260723 리네임]로 명시) ·
@@ -11255,7 +11256,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   bs.forEach((b, i) => { const bh = (b.n || 0) / maxN * ph * .26; if (bh > 0) s += `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${(H - mB - bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="var(--mut)" opacity=".13"/>`; });
   // 일반 인스타 이용자 평균선(운영자 260723 요청 → 260723 교정: 노랑 실선·저장 삭제 후 공유와 2선 비교) — 전체 IG 이용자 평균 이용 강도(SIG_GEN · 자체 정규화 피크=100 → 플롯 .82 높이 · 상단 콜아웃 선반 여유) · 볼륨 뒤 배경층(공유 곡선은 위 = 채널 실데이터 우선) · 실선 노랑(--accent-4 · 팔레트 정본 · 운영자 "노란색·실선") · 점·area 없음 = 공유(터콰이즈 선+점+area)와 형태 분리 · 결측 버킷 = 조용히 생략(fail-soft·창작 0)
   const shoulder = pts => hlin ? [[mL, pts[0][1]], ...pts, [W - mR, pts[pts.length - 1][1]]] : pts;   // 선형 시간축 = 첫/끝 밴드 값을 플롯 양끝까지 수평 연장(밴드 대표값은 그 밴드 전 구간 유효 = 창작 아님) — 곡선·area가 스파인·우변에 붙는 기존 실루엣 유지 · 교차 산출은 원본 좌표만 사용
-  const gen = SIG_GEN[ax];
+  const gen = CHAN_SRC === 'fb' ? null : SIG_GEN[ax];   // FB 소스분기(운영자 260724) — SIG_GEN = '전체 인스타 이용자 평균' 오버레이라 FB엔 부적합 → 곡선·핵심구간·범례 자동 제거(gen null = fail-soft 경로 그대로)
   let gpts = null, gl = '';
   if (gen) {
     const _g = bs.map((b, i) => { const gv = gen[b.bucket]; return gv == null ? null : [X(i), (H - mB) - (gv / 100) * ph * .82, gv]; });
@@ -11355,7 +11356,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${SIG_CAP[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · 공유 ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${SIG_GEN[ax] ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreX != null ? '<i class="lg-core">핵심 구간</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
+  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreX != null ? '<i class="lg-core">핵심 구간</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
