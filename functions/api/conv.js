@@ -52,7 +52,7 @@ export async function onRequestPost({ request, env }) {
   if (t0 !== null && t0 > 0) opts.t0 = Math.round(t0 * 100) / 100;
   if (t1 !== null && t1 > 0) opts.t1 = Math.round(t1 * 100) / 100;
   if (opts.t0 !== undefined && opts.t1 !== undefined && opts.t1 <= opts.t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
-  opts.res = ['orig', '1080', '720'].includes(o.res) ? o.res : 'orig';
+  opts.res = ['orig', '1440', '1080', '720'].includes(o.res) ? o.res : 'orig';
 
   const rl = await rateGate(GH, env.GH_TOKEN, 'conv-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id> 고아 방지 · fail-open · 260711)
   if (rl) return json({ error: rl.error }, 429);
