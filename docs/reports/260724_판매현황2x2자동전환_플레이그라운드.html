@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>판매현황 2×2 · 자동전환 상세 — 세일즈보드 시안</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   외부 앱(예울마루 세일즈보드) 스크린샷 실측 발췌 팔레트
+   = 노뮤트 :root 팔레트와 별개 축([4] 팔레트 예외 · 발행/외부앱 색)
+   화면에 안 보이는 튜닝 축만 --pad-x 등으로 노출
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#e9ecfa;                 /* 대시보드 배경(사진 배경 위 라벤더 틴트) */
+  --card:#ffffff; --card-line:#eceeffa;
+  --line:#edeef4; --line2:#f4f5f9;
+  --ink:#2a2f45; --sub:#8b90a5; --sub2:#a6abbe;
+  --pri:#6c5ce0; --pri-bg:#efedfc; --pri-soft:#f6f5fd;   /* 인디고-바이올렛(판매현황·일자·+N석) */
+  --gong:#5b6bd8;               /* 공연 = 블루-인디고 */
+  --jeon:#e08a3c;               /* 전시 = 오렌지 */
+  --edu:#2f9e6a;                /* 교육 = 그린 */
+  --good:#1f9a55;               /* 증가/누계 그린 */
+  --art-bg:#fdeee1; --art-fg:#c06a2a;   /* 예술성/기획 = 피치 */
+  --biz-bg:#eae7fb; --biz-fg:#6350c8;   /* 사업성 = 라벤더 */
+  --chip-bg:#eef0f6; --chip-fg:#5c6274; /* 장르 = 그레이 필 */
+  --r-l:18px; --r-m:12px; --r-s:9px; --r-pill:999px;
+  --pad-x:20px;                 /* ★ 리스트/상세 공통 좌우 마진(요구 6) */
+  --fw-b:700; --fw-x:800;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.2s; --dur-fast:.12s;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;color:var(--ink);
+  font:14px/1.5 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  -webkit-font-smoothing:antialiased;
+  background:
+    linear-gradient(180deg,rgba(233,236,250,.72),rgba(233,236,250,.55)),
+    linear-gradient(120deg,#dfe6f2 0%,#e7ecf6 40%,#eef0f3 100%);
+  background-attachment:fixed;
+}
+
+/* ── 커스텀 스크롤바 = 스크롤 SSOT(기존 형태 계승 · 얇은 라운드 썸) ── */
+.nscroll{scrollbar-width:thin;scrollbar-color:#c7cbe0 transparent}
+.nscroll::-webkit-scrollbar{width:8px;height:8px}
+.nscroll::-webkit-scrollbar-track{background:transparent;margin:6px 0}
+.nscroll::-webkit-scrollbar-thumb{background:#cdd1e4;border-radius:var(--r-pill);border:2px solid transparent;background-clip:padding-box}
+.nscroll::-webkit-scrollbar-thumb:hover{background:#b3b8d2;background-clip:padding-box}
+
+/* ── 대시보드 2×2 그리드 ─────────────────────────────────── */
+.dash{max-width:2000px;margin:0 auto;padding:22px;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-rows:auto auto;gap:22px;align-items:start}
+/* 우열(판매현황·상세) 높이 = 좌열(연간실적·전체실적표)에 JS로 캡 → 넘치면 내부 스크롤 */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+  box-shadow:0 12px 34px -18px rgba(42,47,69,.28);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+/* 카드 헤더(패널 공통) */
+.chead{display:flex;align-items:center;gap:10px;padding:16px var(--pad-x) 12px;flex:none}
+.chead .ttl{font-size:16px;font-weight:var(--fw-x);letter-spacing:-.01em;color:var(--pri)}
+.chead .cnt{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--r-pill);
+  background:var(--pri-bg);color:var(--pri);font-size:11.5px;font-weight:var(--fw-x)}
+.chead .sub{font-size:12px;color:var(--sub);font-weight:var(--fw-b)}
+.chead .sub .g{color:var(--good)}
+.chead .sub b{color:var(--ink)}
+.chead .rt{margin-left:auto;display:flex;align-items:center;gap:8px}
+.iconbtn{width:30px;height:30px;border-radius:var(--r-s);border:1px solid var(--line);background:#fff;color:var(--sub);
+  display:grid;place-items:center;cursor:pointer;transition:transform var(--dur-fast) var(--ease),background var(--dur-fast)}
+.iconbtn:hover{background:var(--line2);color:var(--ink)}
+.iconbtn:active{transform:scale(.9)}
+.iconbtn svg{width:16px;height:16px;display:block}
+
+/* ── 좌상단 : 연간 실적 ─────────────────────────────────── */
+#annual .cbody{padding:2px var(--pad-x) 18px;overflow:auto}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 16px}
+.kpi{background:var(--pri-soft);border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px}
+.kpi .l{font-size:11.5px;color:var(--sub);font-weight:var(--fw-b)}
+.kpi .v{margin-top:4px;font-size:23px;font-weight:var(--fw-x);color:var(--pri);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi.g .v{color:var(--good)}
+.chartcap{display:flex;align-items:center;gap:8px;margin:2px 2px 6px}
+.chartcap .cn{font-size:13px;font-weight:var(--fw-x)}
+.chartcap .cx{margin-left:auto;font-size:11px;color:var(--sub)}
+.legend{display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:12px;font-weight:var(--fw-b);color:var(--sub)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.annualsvg{width:100%;height:auto;display:block}
+
+/* ── 우상단 : 판매 현황 리스트 ──────────────────────────── */
+#sales{min-height:0}
+#sales .listwrap{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 var(--pad-x) 12px}
+.lhead{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:end;
+  padding:4px 10px 8px;position:sticky;top:0;background:linear-gradient(#fff 78%,rgba(255,255,255,0));z-index:2;
+  font-size:11px;color:var(--sub);font-weight:var(--fw-b);letter-spacing:.02em}
+.lhead .r{text-align:right}
+:root{--cols:64px minmax(0,1.7fr) 68px 96px 74px 130px}
+.grp{display:flex;align-items:center;gap:8px;padding:12px 10px 6px;font-size:12px;font-weight:var(--fw-x);color:var(--sub);letter-spacing:.04em}
+.grp .dot{width:8px;height:8px;border-radius:50%}
+.grp .n{color:var(--ink)}
+.grp.gong .dot{background:var(--gong)} .grp.jeon .dot{background:var(--jeon)}
+.grp .cc{margin-left:2px;color:var(--sub2);font-weight:var(--fw-b)}
+.grp .line{flex:1;height:1px;background:var(--line);margin-left:4px}
+.prow{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;
+  padding:11px 10px;border-radius:var(--r-m);border:1px solid transparent;cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
+.prow:hover{background:var(--pri-soft);border-color:#e6e3f7}
+.prow.on{background:var(--pri-soft);border-color:var(--pri)}
+.prow .date{font-size:13px;font-weight:var(--fw-x);color:var(--pri);white-space:nowrap;line-height:1.25}
+.prow .date small{display:block;font-size:10.5px;color:var(--sub);font-weight:var(--fw-b)}
+.prow .pt{min-width:0}
+.prow .pt .nm{font-size:13.5px;font-weight:var(--fw-b);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .pt .mt{font-size:11px;color:var(--sub);margin-top:1px}
+.prow .place{font-size:12px;color:var(--sub);white-space:nowrap}
+.chip{display:inline-block;border-radius:var(--r-pill);font-size:11.5px;font-weight:var(--fw-b);padding:4px 11px;white-space:nowrap}
+.chip.genre{background:var(--chip-bg);color:var(--chip-fg)}
+.chip.biz{background:var(--biz-bg);color:var(--biz-fg)}
+.chip.art{background:var(--art-bg);color:var(--art-fg)}
+.trend{display:flex;align-items:center;justify-content:flex-end;gap:9px;min-width:0}
+.trend .bars{display:flex;align-items:flex-end;gap:2.5px;height:34px}
+.trend .bars i{width:6px;border-radius:2px;background:#dcd8f4}
+.trend .bars i.last{background:var(--pri)}
+.trend .num{text-align:right;white-space:nowrap}
+.trend .num b{font-size:15px;font-weight:var(--fw-x);color:var(--pri);font-variant-numeric:tabular-nums}
+.trend .num small{display:block;font-size:10.5px;color:var(--sub);font-weight:var(--fw-b)}
+.trend .none{font-size:11.5px;color:var(--sub2);text-align:right;line-height:1.35;white-space:normal;max-width:130px}
+.foot{flex:none;padding:9px var(--pad-x) 14px;font-size:11px;color:var(--sub2);border-top:1px solid var(--line2)}
+
+/* ── 좌하단 : 전체 실적표 · 우하단 : 상세(사업 판매현황) ── */
+#total .cbody{padding:2px var(--pad-x) 6px;overflow:auto}
+.tt{width:100%;border-collapse:collapse;font-size:13px}
+.tt th,.tt td{padding:9px 8px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tt th{font-size:11px;color:var(--sub);font-weight:var(--fw-b);border-bottom:1px solid var(--line)}
+.tt th:first-child,.tt td:first-child{text-align:left}
+.tt td{border-bottom:1px solid var(--line2)}
+.tt tr:last-child td{border-bottom:none}
+.tt .rl{font-weight:var(--fw-x)}
+.tt .rl.gong{color:var(--gong)} .tt .rl.jeon{color:var(--jeon)} .tt .rl.edu{color:var(--edu)}
+.tt td.cum{color:var(--pri);font-weight:var(--fw-x)}
+.tt .sum td{font-weight:var(--fw-x);border-top:1.5px solid var(--line);border-bottom:none;color:var(--ink)}
+.tt .sum td.cum{color:var(--pri)}
+.tt .yr2025{color:var(--ink);font-weight:var(--fw-b)}
+
+/* 하단 대칭 토글 바(좌=연도 · 우=프로그램) */
+.slidebar{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:10px var(--pad-x);border-top:1px solid var(--line2);background:var(--pri-soft)}
+.slidebar .lbl{font-size:12px;font-weight:var(--fw-x);color:var(--ink);min-width:0;text-align:center}
+.slidebar .lbl small{color:var(--sub);font-weight:var(--fw-b);margin-left:5px}
+.tgl{width:28px;height:28px;border-radius:var(--r-s);border:1px solid var(--line);background:#fff;color:var(--pri);
+  display:grid;place-items:center;cursor:pointer;flex:none;transition:transform var(--dur-fast) var(--ease),background var(--dur-fast)}
+.tgl:hover{background:var(--pri-bg)}
+.tgl:active{transform:scale(.88)}
+.tgl svg{width:15px;height:15px;display:block}
+
+/* 우하단 상세 본문 */
+#detail .dwrap{flex:1 1 auto;min-height:0;overflow-y:auto;padding:2px var(--pad-x) 14px}
+.dslide{animation:fadein .35s var(--ease)}
+@keyframes fadein{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.dtop{display:flex;align-items:flex-start;gap:10px;margin:6px 0 12px}
+.dtop .dnm{font-size:16px;font-weight:var(--fw-x);letter-spacing:-.01em;line-height:1.3}
+.dtop .dmt{margin-top:3px;font-size:12px;color:var(--sub)}
+.dtop .dday{margin-left:auto;flex:none;background:var(--pri-bg);color:var(--pri);border-radius:var(--r-pill);
+  font-size:12px;font-weight:var(--fw-x);padding:5px 12px;white-space:nowrap}
+.dtiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.dtile{background:var(--pri-soft);border:1px solid var(--line);border-radius:var(--r-s);padding:10px 12px}
+.dtile .l{font-size:11px;color:var(--sub);font-weight:var(--fw-b)}
+.dtile .v{margin-top:3px;font-size:19px;font-weight:var(--fw-x);color:var(--pri);font-variant-numeric:tabular-nums}
+.dtile.g .v{color:var(--good)}
+.dtile .v small{font-size:12px;color:var(--sub);font-weight:var(--fw-b)}
+.dsec{font-size:12px;font-weight:var(--fw-x);color:var(--sub);letter-spacing:.03em;margin:6px 2px 6px}
+.dchart{border:1px solid var(--line2);border-radius:var(--r-m);background:#fff;padding:8px 8px 4px}
+.dchart svg{width:100%;height:auto;display:block}
+.gt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.gt th{font-size:10.5px;color:var(--sub);font-weight:var(--fw-b);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.gt th.r,.gt td.r{text-align:right;font-variant-numeric:tabular-nums}
+.gt td{padding:8px 8px;border-bottom:1px solid var(--line2)}
+.gt tr:last-child td{border-bottom:none}
+.gt td .bar{display:inline-block;height:7px;border-radius:4px;background:var(--pri);vertical-align:middle;margin-right:7px}
+.dwait{display:grid;place-items:center;min-height:180px;text-align:center;color:var(--sub);gap:6px}
+.dwait .big{font-size:14px;font-weight:var(--fw-b);color:var(--ink)}
+/* 자동전환 도트 */
+.dots{display:flex;gap:5px;align-items:center}
+.dots i{width:6px;height:6px;border-radius:50%;background:#d3d7e6;transition:all var(--dur)}
+.dots i.on{background:var(--pri);width:16px;border-radius:var(--r-pill)}
+.autolbl{font-size:11px;color:var(--sub);font-weight:var(--fw-b);display:inline-flex;align-items:center;gap:5px}
+.autolbl .pd{width:6px;height:6px;border-radius:50%;background:var(--good);animation:pulse 2s infinite}
+.autolbl.paused .pd{background:var(--sub2);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* 배너 */
+.hbanner{max-width:2000px;margin:0 auto;padding:18px 22px 0}
+.hbanner .h1{font-size:17px;font-weight:var(--fw-x);letter-spacing:-.01em}
+.hbanner .p{margin-top:5px;font-size:12.5px;color:#55607a;max-width:1000px;line-height:1.7}
+.hbanner .p b{color:var(--ink)}
+.hbanner .p .tag{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:var(--r-pill);
+  padding:2px 9px;font-size:11px;font-weight:var(--fw-b);color:var(--pri);margin:0 2px}
+
+/* ── 반응형(≤1100px = 세로 스택) ── */
+@media (max-width:1100px){
+  .dash{grid-template-columns:minmax(0,1fr);grid-template-rows:auto}
+  #sales,#detail{min-height:520px}
+}
+@media (max-width:640px){
+  :root{--cols:56px minmax(0,1fr) 96px;--pad-x:14px}
+  .dash{padding:14px;gap:14px}
+  .kpis,.dtiles{grid-template-columns:repeat(2,1fr)}
+  .lhead .h-place,.lhead .h-genre,.lhead .h-chr,.prow .place,.prow .genre,.prow .art,.prow .biz{display:none}
+  .prow{grid-template-columns:56px minmax(0,1fr) 96px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="hbanner">
+  <div class="h1">판매현황 2×2 · 자동전환 상세 <span style="color:var(--pri)">— 세일즈보드 시안</span></div>
+  <div class="p">스크린샷 실측 재현 위에 요청 8건 반영:
+    <b>①</b> 판매현황 리스트를 <b>연간실적 하단 라인까지</b> 확장 ·
+    <b>②</b> <span class="tag">공연</span><span class="tag">전시</span> 그룹 분리 ·
+    <b>③</b> 넘치면 <b>스크롤</b>(얇은 라운드 썸) ·
+    <b>④</b> <b>2×2</b> 배치(좌=연간실적/전체실적표 · 우=판매현황/상세) ·
+    <b>⑤</b> 우하단 = 클릭 상세를 <b>5초마다 자동전환</b> ·
+    <b>⑥</b> 상세 좌우마진 = 리스트와 <b>동일(--pad-x)</b> ·
+    <b>⑦</b> 상세 <b>독립 스크롤</b> ·
+    <b>⑧</b> <b>대칭 슬라이드 토글</b>(좌=연도 · 우=프로그램).
+    데이터·연도차트는 시연용 근사 시드.
+  </div>
+</div>
+
+<div class="dash">
+  <!-- ══════════ 좌상단 : 연간 실적 ══════════ -->
+  <section class="card" id="annual">
+    <div class="chead">
+      <span class="ttl">연간 실적</span>
+      <span class="sub"><b>2012~2026.1Q</b></span>
+      <span class="rt"><span class="sub">누적 <b style="color:var(--pri)">3,690,031명</b></span></span>
+    </div>
+    <div class="cbody nscroll">
+      <div class="kpis">
+        <div class="kpi"><div class="l">누계 관람·수강</div><div class="v">1,505,706</div></div>
+        <div class="kpi"><div class="l">최고 연도 (2019)</div><div class="v">158,259</div></div>
+        <div class="kpi"><div class="l">연평균</div><div class="v">107,550</div></div>
+        <div class="kpi g"><div class="l">전년 대비</div><div class="v">+2.6%</div></div>
+      </div>
+      <div class="chartcap">
+        <span class="cn">연도별 관람·수강 추이</span>
+        <span class="cx">막대=실적 · 선=추세 (단위: 만명)</span>
+      </div>
+      <div id="annualChart"></div>
+      <div class="legend">
+        <span><i style="background:var(--gong)"></i>공연</span>
+        <span><i style="background:var(--jeon)"></i>전시</span>
+        <span><i style="background:var(--edu)"></i>교육</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 우상단 : 판매 현황 ══════════ -->
+  <section class="card" id="sales">
+    <div class="chead">
+      <span class="ttl">판매 현황</span>
+      <span class="cnt" id="salesCnt">7</span>
+      <span class="sub">전일 대비 <b>공연</b> <span class="g">+196석</span></span>
+      <span class="rt">
+        <button class="iconbtn" title="필터" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+        </button>
+      </span>
+    </div>
+    <div class="listwrap nscroll" id="salesList"></div>
+    <div class="foot">막대 = 최근 7일 일별 판매석(마지막 = 어제) · 우측 = 7일 누적 · 행 클릭 → 우하단 개별 분석</div>
+  </section>
+
+  <!-- ══════════ 좌하단 : 전체 실적표 ══════════ -->
+  <section class="card" id="total">
+    <div class="chead">
+      <span class="ttl">전체 실적표</span>
+      <span class="sub" id="totalRange"><b>2020~2025</b></span>
+      <span class="sub">· 인원 기준</span>
+    </div>
+    <div class="cbody nscroll" id="totalBody"></div>
+    <div class="slidebar">
+      <button class="tgl" id="yrPrev" title="이전 구간" type="button" aria-label="이전 연도 구간">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <span class="lbl" id="yrLbl">2020~2025 <small>6개년</small></span>
+      <button class="tgl" id="yrNext" title="다음 구간" type="button" aria-label="다음 연도 구간">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══════════ 우하단 : 프로그램별 사업 판매현황(자동전환) ══════════ -->
+  <section class="card" id="detail">
+    <div class="chead">
+      <span class="ttl">사업 판매현황</span>
+      <span class="sub" id="detailPos">1 / 6</span>
+      <span class="rt">
+        <span class="autolbl" id="autoLbl"><span class="pd"></span>자동 5초</span>
+        <span class="dots" id="dots"></span>
+      </span>
+    </div>
+    <div class="dwrap nscroll" id="detailBody"></div>
+    <div class="slidebar">
+      <button class="tgl" id="pgPrev" title="이전 프로그램" type="button" aria-label="이전 프로그램">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <span class="lbl" id="pgLbl">사업 슬라이드 <small>수동/자동</small></span>
+      <button class="tgl" id="pgNext" title="다음 프로그램" type="button" aria-label="다음 프로그램">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const NUM = n => n.toLocaleString('ko-KR');
+
+/* ── 판매 현황 데이터(스크린샷 실측 + 스크롤 시연용 근사행) ── */
+/* spark = 최근 7일 일별 판매석(마지막=어제) · cum = 7일 누적 · dst 어제 증분 */
+const ROWS = [
+ {cat:'공연', date:'9.3', wd:'목', title:'브런치 콘서트 III <현 위로 흐르는 계절>', place:'대극장', genre:'클래식', axis:'사업성',
+   spark:[9,5,4,3,3,2,6], cum:41, y:2},
+ {cat:'공연', date:'9.12', wd:'토', title:'조재혁 피아노 리사이틀', place:'대극장', genre:'클래식', axis:'예술성',
+   spark:[3,1,1,1,0,0,1], cum:6, y:0},
+ {cat:'공연', date:'9.18', wd:'금', title:'뮤지컬 <그날들>', place:'대극장', genre:'기타', axis:'예술성',
+   none:'오픈 예정 · 데이터 부족'},
+ {cat:'공연', date:'10.1', wd:'목', title:'뮤지컬 <달 샤베트>', place:'대극장', genre:'뮤지컬(어린이)', axis:'예술성',
+   spark:[6,8,10,12,20,34,180], cum:214, y:180},
+ {cat:'공연', date:'10.27', wd:'화', title:'다비드 바뱅 & 아드리앙 몽도 <피아노 & 피아노>', place:'대극장', genre:'클래식', axis:'예술성',
+   none:'데이터 부족'},
+ {cat:'공연', date:'11.26', wd:'목', title:'뮤지컬 <러커스 더 스쿨>', place:'대극장', genre:'뮤지컬', axis:'사업성',
+   spark:[4,2,3,1,2,3,4], cum:13, y:4},
+ /* ── 데모용 추가 공연(스크롤 시연 — 실데이터 아님) ── */
+ {cat:'공연', date:'12.5', wd:'토', title:'국립심포니 <신년 갈라>', place:'대극장', genre:'클래식', axis:'사업성',
+   spark:[2,3,5,4,6,7,9], cum:36, demo:true, y:9},
+ {cat:'공연', date:'12.24', wd:'수', title:'가족뮤지컬 <크리스마스 캐럴>', place:'소극장', genre:'뮤지컬(어린이)', axis:'사업성',
+   spark:[5,7,6,9,11,14,17], cum:69, demo:true, y:17},
+ {cat:'공연', date:'1.9', wd:'금', title:'신년 국악관현악 <새해, 첫 소리>', place:'대극장', genre:'국악', axis:'예술성',
+   spark:[3,4,4,6,5,7,8], cum:37, demo:true, y:8},
+ {cat:'공연', date:'1.24', wd:'토', title:'첼로 앙상블 <겨울 세레나데>', place:'소극장', genre:'클래식', axis:'예술성',
+   spark:[2,2,3,4,3,5,6], cum:25, demo:true, y:6},
+ {cat:'공연', date:'2.14', wd:'토', title:'발렌타인 팝스콘서트 <러브 인 시티>', place:'대극장', genre:'뮤지컬', axis:'사업성',
+   spark:[6,8,9,12,15,19,24], cum:93, demo:true, y:24},
+ {cat:'전시', date:'~10.18', wd:'', title:'GS칼텍스 예울마루 기획전시 <숨: 쉬는 SUM>', place:'전시장', genre:'전시', axis:'기획',
+   none:'집계 전'},
+ /* ── 데모용 추가 전시(스크롤 시연 — 실데이터 아님) ── */
+ {cat:'전시', date:'~11.30', wd:'', title:'소장품 상설전 <풍경의 결>', place:'전시장', genre:'전시', axis:'기획',
+   spark:[12,10,9,11,8,10,13], cum:73, demo:true, y:13},
+];
+const CHIPCLS = a => a==='사업성' ? 'biz' : 'art';   /* 사업성=라벤더 · 예술성/기획=피치 */
+
+/* 성격 라벨 매핑(기획도 피치 톤) */
+function sparkBars(sp){
+  const mx = Math.max(1, ...sp);
+  return `<span class="bars">${sp.map((v,i)=>{
+    const h = Math.max(3, Math.round(v/mx*34));
+    return `<i class="${i===sp.length-1?'last':''}" style="height:${h}px"></i>`;
+  }).join('')}</span>`;
+}
+function rowHTML(r, idx){
+  const trend = r.none
+    ? `<div class="trend"><span class="none">${esc(r.none)}</span></div>`
+    : `<div class="trend">${sparkBars(r.spark)}<span class="num"><b>+${NUM(r.cum)}석</b><small>어제 +${NUM(r.y)}</small></span></div>`;
+  return `<div class="prow" data-i="${idx}">
+    <div class="date">${esc(r.date)}${r.wd?`<small>${esc(r.wd)}</small>`:''}</div>
+    <div class="pt"><div class="nm">${esc(r.title)}${r.demo?' <span style="color:var(--sub2);font-weight:600;font-size:10.5px">·데모</span>':''}</div></div>
+    <div class="place">${esc(r.place)}</div>
+    <div class="genre"><span class="chip genre">${esc(r.genre)}</span></div>
+    <div class="biz art"><span class="chip ${CHIPCLS(r.axis)}">${esc(r.axis)}</span></div>
+    ${trend}
+  </div>`;
+}
+function renderSales(){
+  const gong = ROWS.map((r,i)=>({r,i})).filter(x=>x.r.cat==='공연');
+  const jeon = ROWS.map((r,i)=>({r,i})).filter(x=>x.r.cat==='전시');
+  const head = `<div class="lhead">
+    <span>일자</span><span>프로그램</span><span class="h-place">장소</span>
+    <span class="h-genre">장르</span><span class="h-chr">성격</span><span class="r">최근 7일 추이</span>
+  </div>`;
+  const grp = (cls,name,arr)=>`<div class="grp ${cls}"><span class="dot"></span><span class="n">${name}</span><span class="cc">${arr.length}</span><span class="line"></span></div>`
+    + arr.map(x=>rowHTML(x.r,x.i)).join('');
+  $('#salesList').innerHTML = head + grp('gong','공연',gong) + grp('jeon','전시',jeon);
+  $('#salesCnt').textContent = ROWS.length;
+  $('#salesList').querySelectorAll('.prow').forEach(el=>{
+    el.addEventListener('click',()=>{ const i=+el.dataset.i; const di=DETAIL_IDX.indexOf(i); if(di>=0){ go(di,true); } });
+  });
+}
+
+/* ── 연간 실적 차트(막대 공연 + 3추세선 · 근사 시드) ── */
+const YEARS = ['2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025'];
+const S_GONG = [5.4,10.2,7.3,7.5,7.7,6.7,6.7,7.8,1.8,3.5,7.4,8.1,7.9,8.3];
+const S_JEON = [2.6,3.6,3.3,3.1,2.8,2.4,1.9,7.7,3.5,4.7,6.0,3.2,2.6,2.7];
+const S_EDU  = [0.0,0.1,0.0,0.0,0.1,0.1,0.2,0.3,0.2,0.5,1.1,0.7,0.4,0.1];
+const NOTES = [
+  {s:S_GONG,i:1,t:'최고 10.2',c:'var(--gong)'}, {s:S_GONG,i:8,t:'최저 1.8',c:'var(--gong)'},
+  {s:S_JEON,i:7,t:'최고 7.7',c:'var(--jeon)'}, {s:S_JEON,i:6,t:'최저 1.9',c:'var(--jeon)'},
+  {s:S_EDU,i:10,t:'최고 1.1',c:'var(--edu)'}, {s:S_EDU,i:0,t:'최저 0.0',c:'var(--edu)'},
+];
+function annualChart(){
+  const W=560,H=250,L=26,R=12,T=26,B=26, n=YEARS.length;
+  const maxY=12, plotH=H-T-B, plotW=W-L-R, slot=plotW/n;   /* 계(관람 추이) 11.1만 수용 + 상단 알약 여백 */
+  const x=i=>L+slot*i+slot/2, y=v=>T+(1-v/maxY)*plotH;
+  let g='';
+  [0,2,4,6,8,10].forEach(v=>{ g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#eef0f5"/><text x="${L-4}" y="${y(v)+3}" text-anchor="end" font-size="9" fill="#a6abbe">${v}</text>`; });
+  /* 공연 실적 막대(라벤더) */
+  const bw=Math.min(15,slot-8);
+  S_GONG.forEach((v,i)=>{ const h=v/maxY*plotH; g+=`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${(H-B-h).toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="3" fill="#d9d5f2" opacity=".7"/>`; });
+  /* 추세선 */
+  const line=(s,c)=>{ const d=s.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(''); return `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`+s.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.1" fill="${c}"/>`).join(''); };
+  g+=line(S_EDU,'var(--edu)')+line(S_JEON,'var(--jeon)')+line(S_GONG,'var(--gong)');
+  /* 데이터값 라벨(콜아웃 중복 제외) — '잠깐 사라졌던' 꼭짓점 값 복원 */
+  const vlab=(s,skip,c)=>s.forEach((v,i)=>{ if(skip.includes(i))return; g+=`<text x="${x(i).toFixed(1)}" y="${(y(v)-7).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${c}">${v.toFixed(1)}</text>`; });
+  vlab(S_GONG,[1,8],'var(--gong)'); vlab(S_JEON,[6,7],'var(--jeon)');
+  /* 근 4개년(2021→2025) 관람 추이(계=공연+전시+교육) 선분 = 2021·2025 꼭짓점 고정(항상 추종) */
+  const sum=a=>S_GONG[a]+S_JEON[a]+S_EDU[a], i0=9,i1=13;
+  const x0=x(i0),y0=y(sum(i0)), x1=x(i1),y1=y(sum(i1));
+  g+=`<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--gong)" stroke-width="2.4" stroke-dasharray="7 5" stroke-linecap="round"/>`;
+  g+=`<circle cx="${x0.toFixed(1)}" cy="${y0.toFixed(1)}" r="3.8" fill="var(--gong)"/><circle cx="${x1.toFixed(1)}" cy="${y1.toFixed(1)}" r="3.8" fill="var(--gong)"/>`;
+  /* x 라벨 */
+  YEARS.forEach((yr,i)=>{ g+=`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="8.5" fill="#a6abbe">${yr}</text>`; });
+  /* 콜아웃 배지 */
+  NOTES.forEach(nt=>{ const px=x(nt.i), py=y(nt.s[nt.i]); const up=nt.t.includes('최고');
+    const by=up?py-16:py+9; const tw=nt.t.length*6.2+10;
+    g+=`<g><rect x="${(px-tw/2).toFixed(1)}" y="${(by-9).toFixed(1)}" width="${tw.toFixed(1)}" height="15" rx="4" fill="#fff" stroke="${nt.c}" stroke-opacity=".5"/><text x="${px.toFixed(1)}" y="${(by+1.5).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${nt.c}">${nt.t}</text></g>`; });
+  /* % 알약 = 선분 중점 위 간격(값 라벨 위) · 흰 배경·인디고 테두리·▲(SVG) · 데이터 추종 */
+  const c21=TOTAL.gong[1]+TOTAL.jeon[1]+TOTAL.edu[1], c25=TOTAL.gong[5]+TOTAL.jeon[5]+TOTAL.edu[5];
+  const numT='+'+((c25-c21)/c21*100).toFixed(1)+'%', label='근 4개년(2021→2025) 관람 추이';
+  const kor=(label.match(/[가-힣]/g)||[]).length, lw=kor*9.4+(label.length-kor)*5.4;
+  const pw=lw+18+numT.length*7.2+24, ph=20, mxp=(x0+x1)/2, py=Math.min(y0,y1)-18;   /* 선분 최상단 위로 올려 겹침 제거(운영자: 박스 위로·상단 라인 정렬) */
+  const plx=Math.max(6,Math.min(mxp-pw/2,W-pw-6)), tx=plx+12, trx=tx+lw+8;
+  g+=`<g>
+    <rect x="${plx.toFixed(1)}" y="${(py-ph/2).toFixed(1)}" width="${pw.toFixed(1)}" height="${ph}" rx="10" fill="#fff" stroke="var(--gong)" stroke-width="1.3"/>
+    <text x="${tx.toFixed(1)}" y="${(py+3.4).toFixed(1)}" font-size="9.6" font-weight="700" fill="var(--ink)">${label}</text>
+    <path d="M${trx.toFixed(1)} ${(py+2.5).toFixed(1)} l4.4 -7 l4.4 7 z" fill="var(--gong)"/>
+    <text x="${(trx+12).toFixed(1)}" y="${(py+3.4).toFixed(1)}" font-size="10.5" font-weight="800" fill="var(--gong)">${numT}</text>
+  </g>`;
+  $('#annualChart').innerHTML=`<svg class="annualsvg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+}
+
+/* ── 전체 실적표(연도 슬라이드 토글) ── */
+const TOTAL = {
+  head:['2020','2021','2022','2023','2024','2025'],
+  gong:[17769,38543,74322,81048,78662,83455],
+  jeon:[35287,46679,59582,32455,25508,26785],
+  edu:[403,1811,11019,6516,4198,917],
+  cum:{gong:970091,jeon:500801,edu:34814,sum:1505706},
+};
+/* 연도 구간 = 6개년 창을 좌우로 이동(시연: 2014~2019 / 2020~2025) */
+const YR_WIN = [
+  {lb:'2014~2019', head:['2014','2015','2016','2017','2018','2019'],
+   gong:[52140,58230,61870,66540,71020,79880], jeon:[41200,38650,35110,31980,29540,68120], edu:[2100,3980,5210,6040,7130,9820]},
+  {lb:'2020~2025', head:TOTAL.head, gong:TOTAL.gong, jeon:TOTAL.jeon, edu:TOTAL.edu},
+];
+let yrIdx=1;
+function renderTotal(){
+  const w=YR_WIN[yrIdx];
+  const sum=w.head.map((_,i)=>w.gong[i]+w.jeon[i]+w.edu[i]);
+  const cell=(arr,cls)=>arr.map((v,i)=>`<td class="${i===arr.length-1?'yr2025':''}">${NUM(v)}</td>`).join('');
+  $('#totalBody').innerHTML=`<table class="tt">
+    <thead><tr><th>구분</th>${w.head.map((h,i)=>`<th class="${i===w.head.length-1?'yr2025':''}">${h}</th>`).join('')}<th>누계</th></tr></thead>
+    <tbody>
+      <tr><td class="rl gong">공연</td>${cell(w.gong)}<td class="cum">${NUM(TOTAL.cum.gong)}</td></tr>
+      <tr><td class="rl jeon">전시</td>${cell(w.jeon)}<td class="cum">${NUM(TOTAL.cum.jeon)}</td></tr>
+      <tr><td class="rl edu">교육</td>${cell(w.edu)}<td class="cum">${NUM(TOTAL.cum.edu)}</td></tr>
+      <tr class="sum"><td>계</td>${sum.map(v=>`<td>${NUM(v)}</td>`).join('')}<td class="cum">${NUM(TOTAL.cum.sum)}</td></tr>
+    </tbody></table>`;
+  $('#totalRange').innerHTML=`<b>${w.lb}</b>`;
+  $('#yrLbl').innerHTML=`${w.lb} <small>6개년</small>`;
+}
+$('#yrPrev').addEventListener('click',()=>{ yrIdx=(yrIdx+YR_WIN.length-1)%YR_WIN.length; renderTotal(); });
+$('#yrNext').addEventListener('click',()=>{ yrIdx=(yrIdx+1)%YR_WIN.length; renderTotal(); });
+
+/* ── 우하단 상세(사업 판매현황) : 자동 5초 전환 + 수동 토글 ── */
+/* 데이터 있는 프로그램만 슬라이드 대상 */
+const DETAIL_IDX = ROWS.map((r,i)=>({r,i})).filter(x=>!x.r.none).map(x=>x.i);
+function mkSeats(cum){ return Math.round(cum*7.4 + 120); }   /* 근사 누적석 */
+function detailHTML(r){
+  const seats=mkSeats(r.cum), cap = r.title.includes('달 샤베트')?1200:(r.place==='소극장'?300:926);
+  const occ = Math.min(99,(seats/cap*100)).toFixed(1);
+  const goal = 65;
+  /* 30일 근사 곡선 */
+  const pts=[]; let acc=0; for(let i=0;i<30;i++){ acc+=Math.max(0,Math.round((r.spark[i%7]||2)*(0.6+i/40))); pts.push(acc); }
+  const mx=Math.max(1,...pts), W=460,H=120,L=6,R=6,T=10,B=8, pw=W-L-R,ph=H-T-B;
+  const gx=i=>L+i/(pts.length-1)*pw, gy=v=>T+(1-v/mx)*ph;
+  const gl = T+(1-goal/100)*ph;
+  const d=pts.map((v,i)=>(i?'L':'M')+gx(i).toFixed(1)+' '+gy(v).toFixed(1)).join('');
+  const area=`M${L} ${H-B} `+pts.map((v,i)=>'L'+gx(i).toFixed(1)+' '+gy(v).toFixed(1)).join(' ')+` L${W-R} ${H-B} Z`;
+  /* 등급별 근사 분해 */
+  const grades=[['R석',0.42],['S석',0.33],['A석',0.18],['B석',0.07]];
+  const gt=grades.map(([nm,f])=>{ const s=Math.round(seats*f); const bw=Math.round(f*120)+8;
+    return `<tr><td>${nm}</td><td class="r"><span class="bar" style="width:${bw}px"></span>${NUM(s)}석</td><td class="r">${(f*100).toFixed(0)}%</td></tr>`; }).join('');
+  return `<div class="dslide">
+    <div class="dtop">
+      <div><div class="dnm">${esc(r.title)}</div>
+        <div class="dmt">${esc(r.axis)} · ${esc(r.genre)} · ${esc(r.place)} · ${esc(r.date)}${r.wd?'('+r.wd+')':''}</div></div>
+      <span class="dday">누적 판매 분석</span>
+    </div>
+    <div class="dtiles">
+      <div class="dtile"><div class="l">누적 판매</div><div class="v">${NUM(seats)}<small>석</small></div></div>
+      <div class="dtile"><div class="l">점유율</div><div class="v">${occ}<small>%</small></div></div>
+      <div class="dtile g"><div class="l">어제</div><div class="v">+${NUM(r.y)}<small>석</small></div></div>
+      <div class="dtile"><div class="l">7일 누적</div><div class="v">+${NUM(r.cum)}<small>석</small></div></div>
+    </div>
+    <div class="dsec">일자별 누적 추이 <span style="color:var(--sub2);font-weight:600">(목표 ${goal}%)</span></div>
+    <div class="dchart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--pri)" stop-opacity=".18"/><stop offset="1" stop-color="var(--pri)" stop-opacity="0"/></linearGradient></defs>
+      <line x1="${L}" x2="${W-R}" y1="${gl.toFixed(1)}" y2="${gl.toFixed(1)}" stroke="var(--pri)" stroke-width="1" stroke-dasharray="5 4" opacity=".5"/>
+      <path d="${area}" fill="url(#fill)"/>
+      <path d="${d}" fill="none" stroke="var(--pri)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg></div>
+    <div class="dsec">좌석 등급별 판매</div>
+    <table class="gt"><thead><tr><th>등급</th><th class="r">판매</th><th class="r">비중</th></tr></thead><tbody>${gt}</tbody></table>
+  </div>`;
+}
+let cur=0, timer=null, paused=false;
+function renderDots(){
+  $('#dots').innerHTML=DETAIL_IDX.map((_,i)=>`<i class="${i===cur?'on':''}"></i>`).join('');
+  $('#detailPos').textContent=`${cur+1} / ${DETAIL_IDX.length}`;
+}
+function paint(){
+  const r=ROWS[DETAIL_IDX[cur]];
+  $('#detailBody').innerHTML=detailHTML(r);
+  $('#detailBody').scrollTop=0;
+  $('#pgLbl').innerHTML=`${esc(r.title.replace(/<.*?>/g,'').trim().slice(0,10))}… <small>${cur+1}/${DETAIL_IDX.length}</small>`;
+  renderDots();
+  /* 리스트 행 하이라이트 동기 */
+  $('#salesList').querySelectorAll('.prow').forEach(el=>el.classList.toggle('on',+el.dataset.i===DETAIL_IDX[cur]));
+}
+function go(i,manual){
+  cur=(i+DETAIL_IDX.length)%DETAIL_IDX.length; paint();
+  if(manual) restart();
+}
+function restart(){ if(timer)clearInterval(timer); if(paused)return; timer=setInterval(()=>go(cur+1,false),5000); }
+$('#pgPrev').addEventListener('click',()=>go(cur-1,true));
+$('#pgNext').addEventListener('click',()=>go(cur+1,true));
+/* hover 시 자동전환 일시정지(폴리시) */
+const dcard=$('#detail');
+function autoText(t){ $('#autoLbl').childNodes[1].textContent=t; }
+dcard.addEventListener('pointerenter',()=>{ paused=true; if(timer)clearInterval(timer); $('#autoLbl').classList.add('paused'); autoText('일시정지'); });
+dcard.addEventListener('pointerleave',()=>{ paused=false; $('#autoLbl').classList.remove('paused'); autoText('자동 5초'); restart(); });
+
+/* ── 우열 높이 캡(요구 ①③④): 판매현황=연간실적 · 상세=전체실적표 높이에 맞춤 ── */
+function syncHeights(){
+  const wide = window.innerWidth > 1100;
+  $('#sales').style.height=''; $('#detail').style.height='';
+  if(!wide) return;                                   /* 세로 스택(모바일)에선 자연 높이 */
+  $('#sales').style.height  = $('#annual').offsetHeight + 'px';
+  $('#detail').style.height = $('#total').offsetHeight  + 'px';
+}
+let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(syncHeights,120); });
+
+/* ── 부팅 ── */
+renderSales(); annualChart(); renderTotal(); paint(); restart();
+syncHeights(); requestAnimationFrame(syncHeights);   /* 폰트/차트 레이아웃 안정 후 재측정 */
+</script>
+</body>
+</html>

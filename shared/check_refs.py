@@ -1388,6 +1388,33 @@ def check_ssot_linkage():
     return 0
 
 
+def check_tabs_headers():
+    """도구 스튜디오 탭 src(.html)의 _headers no-cache 등재 게이트(운영자 260724 한 수 · 순수 인프라 · SSOT §6 등재).
+    index.html THUMB_TABS·CAP_TABS·ASK_TABS의 모든 스튜디오 /x.html이 viewer/_headers에 /x·/x.html 두 경로
+    no-cache로 등재됐는지 대조 — 신설 스튜디오가 캐시 계약을 빠뜨리면(tr 260721·song/nb/sb 과거 드리프트 선례)
+    새 배포가 하드새로고침 없이 반영 안 되던 사각을 커밋 단계서 차단(게이트 문서화 메타 게이트와 동일 철학 = '만들고 등재 안 함' 봉쇄)."""
+    idx = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+    hdr = open(os.path.join(ROOT, 'viewer', '_headers'), encoding='utf-8').read()
+    srcs = set()
+    for m in re.finditer(r'const (?:THUMB_TABS|CAP_TABS|ASK_TABS)\s*=\s*(\[.*?\]);', idx, re.S):
+        srcs.update(re.findall(r"src:\s*'/([a-z0-9_-]+)\.html'", m.group(1)))
+    if not srcs:
+        print('⚠️ 탭 헤더 게이트 — 탭 배열 파싱 0(THUMB_TABS/CAP_TABS/ASK_TABS 구조 변동?) = 스킵(비차단).')
+        return 0
+    missing = []
+    for name in sorted(srcs):
+        for route in ('/%s.html' % name, '/%s' % name):
+            if not re.search(r'^%s\n[ \t]*Cache-Control:[ \t]*no-cache' % re.escape(route), hdr, re.M):
+                missing.append(route)
+    if missing:
+        print('❌ 탭 헤더 게이트 — 스튜디오 탭 src가 _headers no-cache 미등재(새 배포 미반영 위험 · tr·song/nb/sb 드리프트 선례 · 운영자 260724):')
+        for r in missing:
+            print('   -', r, '→ viewer/_headers에 "%s" + 다음 줄 "  Cache-Control: no-cache" 등재(형제 /thumb.html 계약 계승).' % r)
+        return 1
+    print('✅ 탭 헤더 게이트 — 스튜디오 탭 src %d개 전부 _headers no-cache 등재(.html+clean 두 경로 · 캐시 계약 정합).' % len(srcs))
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers()
     rc = 0
@@ -1451,6 +1478,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ HTML charset 게이트 스킵:', e)
+    try:
+        if check_tabs_headers() != 0:   # 도구 스튜디오 탭 src의 _headers no-cache 등재(하드 게이트 — 신설 스튜디오 캐시 계약 누락 차단 · tr/song/nb/sb 드리프트 선례 · 운영자 260724 한 수)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 탭 헤더 게이트 스킵:', e)
     try:
         check_candidates_size()   # candidates.json 크기 WARN(1MB↑ = api/candidates 빈[] 서빙실패로 수집함 텅빔 위험·260714)
     except Exception as e:
