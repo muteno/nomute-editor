@@ -107,6 +107,7 @@
 - _versions/ = 수정 전 백업 · 구성도/ = 가이드북·거울(build 산출 파일 직접 수정 금지)
 
 [16]【레포 바인딩】 공통 골격이 참조하는 이 레포의 정본 값 (레포 고유 · 전파 제외)
+- [E1] 서빙 엔트리(실브라우저 현물 확인) = viewer/index.html · 라이브 https://nomute-editor.pages.dev (Cloudflare Pages) · 또는 루트 로컬 서빙.
 - [4] 디자인 진입점 = docs/디자인기틀_SSOT.md(**§0 규칙 요약 = 단일 요약본 · 디자인 착수 전 정독**) → viewer/index.html :root 토큰(값) + docs/CII_컴포넌트계승인덱스.md(컴포넌트) 정본.
 - [4] 팔레트 예외 = 도구 스튜디오들(index 외 뷰어)의 차분한 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은 의도라 index 색으로 재색칠 = 영구 금지 · **단 공유 팔레트(accent/의미색)는 반대로 index 값 계승이 강제** = 도구 뷰어 inline 복사분이 build STAGE4로 index에서 자동 전파 + check_palette_sync 하드게이트(운영자 260723 Q464 게이트·Q466 전파 · 색 바꾸는 법 = index :root 1곳 수정 → build → 커밋 · 정본 = docs/디자인기틀_SSOT.md §0-2·§5) · 발행 콘텐츠 색(카드뉴스·릴스 브랜드색) = UI 팔레트와 별개 축(UI 색 개편에 동행 변경 절대 금지).
 - [4] 계정 축 정본 = `functions/api/seen.js` → `viewer/toast-seen.json` · 상태형 정본 구현 = index `srvFreshAckTs` · 세션 한정 의미 정본 = CII 토스트 행.
