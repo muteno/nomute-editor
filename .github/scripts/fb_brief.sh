@@ -25,14 +25,13 @@ def fv(v):
     if v >= 10_000:
         return "{:,}만".format(round(v / 10_000))
     return "{:,}".format(round(v))
-def pm(x):
-    return '—' if x is None else ("%.2f" % x).rstrip('0').rstrip('.')
 d = json.load(open('viewer/fb_data.json'))
 if not d.get('profile'):
     print(''); raise SystemExit
 p = d['profile']; a = d.get('account_day') or {}; avg = d.get('avg') or {}; tot = d.get('fb_totals') or {}
 L = ['[페이지 지금]']
-_acct = f"팔로워 {fv(p.get('followers_count'))} · 최근일 조회 {fv(a.get('views'))} · 상호작용 {fv(a.get('interactions'))}"
+_av = a.get('views'); _ai = a.get('interactions')   # 결측 가드(평의회 260724) — 2025 메타 인사이트 폐지로 views/interactions 사멸 시 None → fv(None)='0' 둔갑 차단(daily_series 줄과 정합 · '조회 0' 오실측 방지)
+_acct = f"팔로워 {fv(p.get('followers_count'))} · 최근일 조회 {fv(_av) if _av is not None else '—'} · 상호작용 {fv(_ai) if _ai is not None else '—'}"
 if tot:
     _acct += f" · 최근 {tot.get('n_posts','?')}게시물 반응 합 {fv(tot.get('reactions'))}(좋아요류)·댓글 {fv(tot.get('comments'))}·공유 {fv(tot.get('shares'))}"
 L.append(_acct)
