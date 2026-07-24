@@ -11064,7 +11064,7 @@ function renderSns() {
 
 // ── 채널 요약(메뉴4 · 운영자 260713) — 인스타 직결 신호 뷰: 데이터 = insta_data.json(insta-fetch 봇 일 1회) · 수치 정본 = insta_signals 모듈(지침 §4-7 분업 — 여기선 표시만·재계산 금지)
 //    대시보드 확장(운영자 260713 2차): 일일 추이 SVG 차트(예울프로모 로직 계승·시안 = docs/reports/260713_인스타일일추이_플레이그라운드) · 타일 = 평균 대비 델타+스파크 · 포맷/주제/3기 요약 · 실크 글래스 = 메뉴3 계승 ──
-let CHAN = null, CHANB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3', CHAN_TPR = '7', CHAN_PROF_R = '30';   // CHAN_TPR = TOP 게시물 기간 필터(7/30/90/all · 기본 7일 · 운영자 260719) · CHAN_PROF_R = 프로필 카드 공통 기간 세그(7/30/90/전체 · 일일추이 디자인 계승 · 팔로워 증감·조회·도달·방문 타일 평균/스파크 전부 연동 · 기본 30 = 일일추이 동일 · 운영자 260720 Q290 "날짜 우측에 다른 곳처럼 · 다 같이 움직")
+let CHAN = null, CHANB = null, CHANB_FB = null, CHAN_FB = null, CHAN_SRC = 'ig', CHAN_AT = 0, CHAN_LOADING = false, CHAN_MET = 'views', CHAN_RANGE = '30', CHAN_BSEC = 'd3', CHAN_TPR = '7', CHAN_PROF_R = '30';   // CHANB_FB = 페이스북 AI 브리프(chan_brief_fb.json · fb_brief.sh 봇 산출 · 운영자 260724 "페이스북도 요약 동일 조건" — chan_brief 자매)   // CHAN_TPR = TOP 게시물 기간 필터(7/30/90/all · 기본 7일 · 운영자 260719) · CHAN_PROF_R = 프로필 카드 공통 기간 세그(7/30/90/전체 · 일일추이 디자인 계승 · 팔로워 증감·조회·도달·방문 타일 평균/스파크 전부 연동 · 기본 30 = 일일추이 동일 · 운영자 260720 Q290 "날짜 우측에 다른 곳처럼 · 다 같이 움직")
 const chActive = () => CHAN_SRC === 'fb' ? CHAN_FB : CHAN;   // 활성 소스 데이터(인라인·심층 모달 공용 — 페이블 검증단 260718: 모달 전역 CHAN 하드코딩 = fb 뷰에서 인스타 상세 뜨는 소스 불일치 교정)
 // CHAN_FB/CHAN_SRC = 채널 소스(1-1 인스타/1-2 페이스북 · 운영자 260718 Q155 큐잉분 — fb_data.json = insta 스키마 미러라 renderChan 공용 · 결측 유닛 자동 미표시) · CHANB = 채널 AI 브리프(chan_brief.json · insta-fetch 봇 — SNS sns_brief와 별개 축) · CHAN_BSEC = 브리프 기간 탭(운영자 260714 2차 확정 = 3일/7일/28일/3개월/전체 총론 · 기본 = 3일 — 결측 시 renderChan 가드가 첫 섹션 폴백)
 const CH_MET = { views: ['조회수', '회'], reach: ['도달', '계정'], profile_views: ['방문', '회'], interactions: ['상호작용', '회'], follows: ['팔로우', '명'], posts: ['게시', '개'] };
@@ -11424,10 +11424,11 @@ async function loadChan() {
   if (CHAN && Date.now() - CHAN_AT < 300e3) { renderChan(); return; }
   CHAN_LOADING = true;
   try {
-    const [r, rb, rf] = await Promise.all([fetch('insta_data.json?ts=' + Date.now()), fetch('chan_brief.json?ts=' + Date.now()).catch(() => null), fetch('fb_data.json?ts=' + Date.now()).catch(() => null)]);   // 브리프·페이스북(1-2 · Q155) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
+    const [r, rb, rf, rbf] = await Promise.all([fetch('insta_data.json?ts=' + Date.now()), fetch('chan_brief.json?ts=' + Date.now()).catch(() => null), fetch('fb_data.json?ts=' + Date.now()).catch(() => null), fetch('chan_brief_fb.json?ts=' + Date.now()).catch(() => null)]);   // 브리프·페이스북(1-2 · Q155)·FB브리프(운영자 260724) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
     if (r.ok) { CHAN = await r.json(); CHAN_AT = Date.now(); }
     if (rb && rb.ok) CHANB = await rb.json();
     if (rf && rf.ok) { try { CHAN_FB = await rf.json(); } catch {} }
+    if (rbf && rbf.ok) { try { CHANB_FB = await rbf.json(); } catch {} }
   } catch {}
   finally { CHAN_LOADING = false; if (CURTAB === 'chan') renderChan(); }
 }
@@ -11436,6 +11437,7 @@ function renderChan() {
   // 채널 소스 세그(1-1/1-2) = 헤더 .vh-acts 정적 요소로 이주(Q157 · 운영자 260718 "우상단 픽토그램과 같은 라인") — 여기선 on 상태 동기만(콘텐츠부 인라인 주입 폐지 · 배선 = 하단 전역 1회)
   { const tgl = document.getElementById('chanSrcTgl'); if (tgl) { const isFb = CHAN_SRC === 'fb'; tgl.dataset.cs = CHAN_SRC; tgl.classList.add('on'); tgl.setAttribute('aria-label', '채널 소스: 현재 ' + (isFb ? '페이스북 — 탭하면 인스타' : '인스타 — 탭하면 페이스북')); } }   // 단일 IG⇄FB 아이콘 토글 활성 동기(운영자 260720 · data-cs = .cs-rail 촤르륵 슬라이드 구동[아이콘은 마크업 고정·JS는 상태만] · 항상 on = 활성 소스만 · 구 텍스트뮤테이션[Q273] 대체)
   const d = CHAN_SRC === 'fb' ? CHAN_FB : CHAN;
+  const CB = CHAN_SRC === 'fb' ? CHANB_FB : CHANB;   // 활성 소스 AI 브리프(운영자 260724 "페이스북도 요약 동일 조건") — IG=chan_brief.json · FB=chan_brief_fb.json · 결측 = 블록 미표시(조용한 공백)
   { const vt = document.getElementById('vhTime'); if (vt) vt.textContent = (d && d.generated_kst) ? (fmtK12(d.generated_kst) || '') : ''; }   // 수집 시각 = 최상단 채널 헤더 좌상단 1회(운영자 260720 Q290 "받아오는 시간 같으니 대칭 정반대에 1회 · 라임 강조") — 구 대분류별 반복(prof·_ctm) 폐지 대체 · vh-acts(우) 대칭 좌측 · 라임 = --accent-2
   if (!d || !d.profile) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(§디자인 e-가 · 전환 복귀 경로 = 헤더 세그 상시)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
@@ -11529,7 +11531,7 @@ function renderChan() {
   if (d.generated_kst) { const _ah = (Date.now() - new Date(d.generated_kst).getTime()) / 3600000; chanStale = _ah > 26; }
   // 채널 브리프(성장 서사+현황+전략 · 운영자 260714 "이래야겠네 전략이 뿅뿅") — 셸·라벨·항상 전문 펼침 = 메뉴3 AI 요약 원문 계승 · 접기 = tgroup 체브론
   // + 기간 구분 탭(운영자 260714 "7일·14일·28일·3개월·전체 총론 구분해서 요약") — sections 있으면 칩 세그(.ch-mchip 정본 계승·data-bs 축) · 구 단일 text JSON = 칩 없이 종전 렌더(하위호환 fail-soft)
-  const bsecs = (CHANB && Array.isArray(CHANB.sections) && CHANB.sections.length >= 2) ? CHANB.sections : null;
+  const bsecs = (CB && Array.isArray(CB.sections) && CB.sections.length >= 2) ? CB.sections : null;
   const bov = bsecs ? bsecs.find(s => s.k === 'overview') : null;   // 총론(비전·방향성·미션 큰 그림 · 운영자 260714) = (3) 고정 판 · 세그에선 제외 · 없으면(구 데이터) all 폴백
   const bsegs = bsecs ? bsecs.filter(s => s.k !== 'overview') : null;   // 세그 = 기간 5창(3일~전체 · overview 제외)
   if (bsegs && !bsegs.some(s => s.k === CHAN_BSEC)) CHAN_BSEC = bsegs[0].k;   // 결측·overview 방어(생성분 일부만 와도 첫 탭으로 · CHAN_BSEC이 세그 밖 값 차단)
@@ -11539,7 +11541,7 @@ function renderChan() {
   const _ctm = _g12 ? `<span class="tdash-time${chanStale ? ' stale' : ''}">${esc(_g12)}</span>` : '';   // 수집 시각 필 = 데이터 단위 헤더 우측 공통(운영자 260720 "받아온 시간 대분류 우측에 · sns 메뉴 표기 계승") — btm(AI 요약)·prof·메뉴3 top .tdash-time 정본 그대로 · 소스 = d.generated_kst(insta 산출 · prof와 동일) · stale = 26h+ 밀림 warn · 무효 = '' fail-soft
   const BSEG_LAB = { d28: '30일', m3: '90일' };   // 기간 탭 용어 통일(운영자 260720 "맨 위 AI만 다른 곳에 맞춰") — AI 요약 탭을 나머지 IG 지표 세그(7일/30일/90일/전체) 어휘와 일치 · 표시 라벨만 우회([15] 뷰어 코드), data-bs 키(d28/m3)·분석 창·본문 프로즈는 불변 · 3일·7일·전체는 원본 유지
   const bseg = bsegs ? `<span class="ch-rangeseg tb-seg">${bsegs.map(s => `<button type="button" data-bs="${esc(s.k)}"${s.k === CHAN_BSEC ? ' class="on"' : ''}>${esc(BSEG_LAB[s.k] || (s.label === '전체 총론' ? '전체' : s.label))}</button>`).join('')}</span>` : null;   // 기간 책갈피(3일~전체) = 헤더 우측 extra(운영자 260716 "옵션 선택지를 세부 NAV(우측 상단)에") — .chu 심층 필 앵커 계승(summary 밖 = 접기 오클릭 0 · 접힘에도 노출) · 세그 = .ch-rangeseg 정본
-  if (CHAN_SRC === 'ig' && CHANB && (CHANB.text || bsecs)) h += gsec('brief', `AI 요약`, `<div class="tbrief">` +   // AI 요약 = 인스타 소스 전용(chan_brief = insta 다이제스트 산출 · fb 브리프 = 후속 축 Q155)
+  if (CB && (CB.text || bsecs)) h += gsec('brief', `AI 요약`, `<div class="tbrief">` +   // AI 요약 = 활성 소스 브리프(운영자 260724 — IG chan_brief · FB chan_brief_fb 동일 조건 · CB 소스분기 · 결측 소스 = 미표시 조용한 공백)
     // 구 ① 분석시각+세그 행(.tb-segrow) 폐지(운영자 260716 "가장 위로 + 옵션 선택지는 세부 NAV로") — 시각 = 헤더 좌(타이틀 옆) · 기간 세그 = 헤더 우측 칩(extra) · 본문 = 분석 텍스트부터 즉시 시작(상단 구분선도 동반 제거)
     `<p class="tbrief-t"></p><div class="tbrief-prop" hidden><span class="tbrief-lbl">클로신의 제안</span><ul></ul></div>` +
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
@@ -11629,7 +11631,7 @@ function renderChan() {
     RAIL.map(r => `<button type="button" class="trail-i" data-tg="${r.id}" aria-label="${r.lab}">${r.n}</button>`).join('') + '</nav></div>' : '') + h;   // 소스 세그 = 헤더 이주(Q157)로 콘텐츠부 주입 폐지
   box.querySelector('.ch-nm').textContent = p.username ? '@' + p.username : (p.name || '');   // fb 페이지 = username 없을 수 있음 → 페이지명 폴백(Q155)
   const bt = box.querySelector('.tbrief-t');   // 브리프 본문 주입 = *별표*→<b> + [텍스트](url)·URL→<a> (텍스트노드/href 검증만 = XSS 안전 · 메뉴3 파서 미러 — 스크랩 refs 축만 제외 · 줄바꿈 = .tbrief-t pre-line)
-  if (bt && CHANB) {
+  if (bt && CB) {
     bt.textContent = '';
     const bcur = bsecs ? bsecs.find(s => s.k === CHAN_BSEC) : null;   // 기간 탭 선택분(운영자 260714) — sections 없으면 종전 전문(text)
     const parseInto = (el, s) => {   // 인라인 파서(**별표2**→볼드만 · *별표1*→강조색볼드 · [텍스트](url)·URL→<a>) — 본문·제안 블릿 공용(텍스트노드/href 검증 = XSS 안전 · 메뉴3 파서 미러) · ⚠ 더블스타를 싱글 앞에 = 같은 위치서 먼저 매칭(운영자 260714 2층 강조)
@@ -11658,7 +11660,7 @@ function renderChan() {
       addText(s.slice(last));
     };
     // 클로신의 제안(운영자 260714 "위 = 분석·브리핑 / 아래 = 왓투두 블릿") — '→ ' 전략 줄을 본문에서 떼어 분리 판으로 · 전략 줄 없는 기간 탭 = 판 hidden 유지
-    const rawTxt = (bcur ? bcur.text : CHANB.text) || '', props = [], bodyLn = [];
+    const rawTxt = (bcur ? bcur.text : CB.text) || '', props = [], bodyLn = [];
     rawTxt.split('\n').forEach(ln => { const t2 = ln.trim(); if (/^→/.test(t2)) props.push(t2.replace(/^→\s*/, '')); else bodyLn.push(ln); });
     parseInto(bt, bodyLn.join('\n').replace(/\n{3,}/g, '\n\n').trim());
     const pb = box.querySelector('.tbrief-prop'), pu = pb ? pb.querySelector('ul') : null;

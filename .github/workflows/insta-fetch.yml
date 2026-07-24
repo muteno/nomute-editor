@@ -72,7 +72,16 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}   # 브리프 동일 활성계정(분류 = Haiku 경량 · 실패 = 폴백이라 체인 생략)
         run: python3 .github/scripts/fb_classify.py || true
+      - name: FB 채널 AI 브리프(운영자 260724 "페이스북도 요약 동일 조건") — chan_brief 자매·반응 기반 · fb_classify 뒤(분류 topics 반영) · 입력 동일=스킵(토큰0) · 실패=직전 유지(fail-soft)
+        if: ${{ github.event_name != 'push' && (inputs.brief || '1') == '1' }}   # chan_brief와 동일 게이트(브리프 레인 편승) · push 하트비트 = 스킵
+        env:
+          CHAN_BRIEF: ${{ github.event_name == 'push' && '0' || (inputs.brief || '1') }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+        run: bash .github/scripts/fb_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 수집 커밋 비차단)
       - name: 커밋(브리프 포함 · 맨끝 2차)
         # 브리프분(chan_brief.json·아카이브 로그)까지 최신 main 재기점 재적층으로 착지. 종전 관용구는 같은 파일을 다른 봇이 먼저 밀면 꼬인 리베이스로 브리프가 증발(→ 화면 정지)하던 자리 = git_land가 원천 봉합. chan_brief_log.jsonl도 add 대상 편입(종전 누락).
         run: |
-          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json viewer/fb_data.json viewer/chan_brief.json viewer/chan_brief_log.jsonl viewer/fb_cat_cache.json
+          bash .github/scripts/git_land.sh "insta: 계정 인사이트 스냅샷 (bot)" apps/insta/data viewer/insta_data.json viewer/fb_data.json viewer/chan_brief.json viewer/chan_brief_log.jsonl viewer/fb_cat_cache.json viewer/chan_brief_fb.json viewer/chan_brief_fb_log.jsonl
