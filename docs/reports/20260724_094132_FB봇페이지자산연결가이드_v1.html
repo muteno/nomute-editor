@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FB 봇↔페이지 연결 가이드 · 뉴스 큐레이션</title>
+<style>
+  :root{
+    --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --card:rgba(255,255,255,.03); --card2:rgba(255,255,255,.05);
+    --accent:#00EED2; --accent-2:#FFE13D; --danger:#e23b2a;
+    --r-l:16px; --r-m:11px; --r-s:9px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+    line-height:1.62; -webkit-font-smoothing:antialiased;
+    padding:20px 16px 60px; max-width:720px; margin:0 auto;
+  }
+  h1{font-size:20px; margin:0 0 4px; letter-spacing:-.01em}
+  h2{font-size:15px; margin:26px 0 10px; color:var(--accent); letter-spacing:-.01em}
+  .sub{color:var(--mut); font-size:12.5px; margin:0 0 18px}
+  p{margin:8px 0}
+  .lead{
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:var(--r-m); padding:13px 15px; font-size:14px;
+  }
+  .lead b{color:var(--accent-2)}
+  .why{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-m);
+    padding:14px 15px; font-size:13.5px; color:var(--fg);
+  }
+  .why .em{color:var(--accent-2); font-weight:700}
+  /* 전/후 카드 */
+  .ba{display:flex; gap:10px; flex-wrap:wrap}
+  .ba .col{flex:1 1 260px; border:1px solid var(--line); border-radius:var(--r-m); padding:12px 13px; background:var(--card)}
+  .ba .col.before{border-left:3px solid var(--danger)}
+  .ba .col.after{border-left:3px solid var(--accent)}
+  .ba .tag{font-size:11px; font-weight:800; letter-spacing:.04em; text-transform:uppercase}
+  .ba .before .tag{color:var(--danger)}
+  .ba .after .tag{color:var(--accent)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px; color:var(--mut); white-space:pre-wrap; word-break:break-word; margin-top:6px}
+  .mono .bad{color:var(--danger)}
+  .mono .good{color:var(--accent)}
+  /* 복사 필드 */
+  .kv{display:flex; align-items:center; gap:8px; margin:7px 0; flex-wrap:wrap}
+  .kv .k{font-size:12px; color:var(--mut); min-width:120px}
+  .kv .v{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    background:var(--card2); border:1px solid var(--line); border-radius:var(--r-s);
+    padding:5px 9px; color:var(--fg); flex:1 1 auto; word-break:break-all;
+  }
+  .cp{
+    border:1px solid var(--line); background:transparent; color:var(--accent);
+    border-radius:var(--r-s); padding:5px 11px; font-size:12px; cursor:pointer;
+    transition:transform .08s ease, background .15s ease; white-space:nowrap; font-weight:700;
+  }
+  .cp:hover{background:rgba(0,238,210,.08)}
+  .cp:active{transform:scale(.94)}
+  .cp.done{color:var(--accent-2); border-color:var(--accent-2)}
+  /* 스텝 */
+  ol.steps{list-style:none; counter-reset:s; padding:0; margin:0}
+  ol.steps>li{
+    counter-increment:s; position:relative; padding:14px 15px 14px 52px; margin:10px 0;
+    border:1px solid var(--line); border-radius:var(--r-m); background:var(--card); font-size:13.5px;
+  }
+  ol.steps>li::before{
+    content:counter(s); position:absolute; left:14px; top:14px;
+    width:26px; height:26px; border-radius:50%; background:var(--accent); color:#00201c;
+    font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center;
+  }
+  ol.steps>li b{color:var(--fg)}
+  ol.steps>li .hint{color:var(--mut); font-size:12px; margin-top:4px}
+  a.btn{
+    display:inline-block; margin-top:8px; color:var(--accent); text-decoration:none;
+    border:1px solid var(--accent); border-radius:var(--r-s); padding:6px 12px; font-size:12.5px; font-weight:700;
+  }
+  a.btn:active{transform:scale(.96)}
+  .warn{
+    background:rgba(226,59,42,.08); border:1px solid rgba(226,59,42,.35); border-radius:var(--r-m);
+    padding:12px 14px; font-size:13px; margin:14px 0;
+  }
+  .warn b{color:var(--danger)}
+  .ok{
+    background:rgba(0,238,210,.06); border:1px solid rgba(0,238,210,.3); border-radius:var(--r-m);
+    padding:12px 14px; font-size:13px; margin:14px 0;
+  }
+  .ok b{color:var(--accent)}
+  ul.tri{padding-left:18px; margin:8px 0}
+  ul.tri li{margin:5px 0; font-size:13.5px}
+  .foot{color:var(--mut); font-size:11.5px; margin-top:34px; border-top:1px solid var(--line); padding-top:12px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; background:var(--card2); padding:1px 5px; border-radius:5px}
+</style>
+</head>
+<body>
+
+  <h1>📘 FB 봇 → 페이지 연결 가이드</h1>
+  <p class="sub">뉴스 큐레이션 · FB 채널요약 살리기 · 260724 09:41 KST · 라이브 실측 반영본</p>
+
+  <div class="ok" style="border-color:rgba(0,238,210,.5);background:rgba(0,238,210,.1)">
+    <b>✅ 해결됨 (260724 11:04 KST · fb-fetch 실측)</b><br>
+    <b>원인</b> = 페이지는 <b>"비즈니스"</b> 포트폴리오에, 봇/앱은 <b>"Nomute"</b> 포트폴리오로 갈라져 있었음(권한을 엉뚱한 비즈니스에 부여).<br>
+    <b>해결</b> = 페이지 있는 "비즈니스" 포트폴리오에 <b>전용 앱(nomutepg-insight) + 시스템유저 신설</b> → 페이지 콘텐츠관리 배정 → 시스템유저→페이지 토큰 전환 → <code>FB_ACCESS_TOKEN</code> 교체.<br>
+    <b>결과</b> = 팔로워 4957 · 게시물 10 · 반응 448/댓글 95/공유 37 · views·follows·interactions·video_views 30일 착지. <b>코드 변경 0.</b><br>
+    (아래 진단·단계는 문제 해결 과정 기록용으로 보존)
+  </div>
+
+  <p class="lead">
+    코드·토큰은 <b>100% 준비 완료</b>(방금 09:36 런에서 다시 확인함). 딱 <b>하나</b> 막혀 있어:
+    <b>nomute-bot 이 Nomute 페이지에 "연결"이 안 돼 있음.</b>
+    아래 <b>페이스북 클릭 3단계</b>만 하면 FB가 인스타처럼 전부 살아나.
+  </p>
+
+  <div class="warn" style="border-color:rgba(255,225,61,.5);background:rgba(255,225,61,.07)">
+    <b style="color:var(--accent-2)">🔎 지금 상태 진단 (운영자 스크린샷 260724 09:49):</b>
+    봇에 할당된 자산 = <b>광고 계정(no_mute) + 앱(nomute-insights)</b> 2개뿐 —
+    <b style="color:var(--danger)">페이지가 없음.</b><br><br>
+    "앱 할당" 창(앱 개발·인사이트 보기·앱 관리 토글)을 다 켜도 그건 <b>앱</b> 권한이지 <b>페이지</b> 권한이 아님.
+    비유 = 회사 출입증(앱)은 줬는데 <b>사무실(페이지) 열쇠</b>는 안 준 상태 → 그래서 #10.<br><br>
+    <b style="color:var(--danger)">🚩 더 깊은 뿌리(스크린샷 5 · 10:12):</b> "자산 추가" 창의 자산 유형에 <b>광고계정·앱만 있고 "페이지" 유형이 아예 없음</b>
+    = 이 비즈니스 포트폴리오에 <b>페이지가 0개</b>(있는 자산만 할당 가능) → <b style="color:var(--accent-2)">봇에 붙이기 전에 페이지를 비즈니스에 먼저 등록</b>해야 함.<br><br>
+    <b style="color:var(--accent)">토큰은 정상(이미 생성됨) — 재생성은 페이지 등록·할당 후에도 안 되면 그때.</b>
+  </div>
+
+  <h2>🧒 왜 막혔나 (쉬운 비유)</h2>
+  <div class="why">
+    봇은 지금 <span class="em">"페이지를 볼 수 있는 열쇠(권한)"는 다 가지고 있어.</span>
+    그런데 그 열쇠를 <span class="em">"어느 문(페이지)에 쓸지"가 정해져 있지 않아.</span><br><br>
+    → 그래서 페이스북이 <code>#10 권한 없음</code> 이라고 돌려보내. (열쇠는 진짜인데, 이 문 주인으로 등록이 안 된 상태)<br><br>
+    할 일 = <span class="em">"이 봇을 Nomute 페이지 담당자로 등록"</span> 한 번. 그게 전부야.
+  </div>
+
+  <h2>🔴→🟢 전 / 후</h2>
+  <div class="ba">
+    <div class="col before">
+      <span class="tag">지금 (막힘)</span>
+      <div class="mono">fb-fetch 프로필 실패
+<span class="bad">400/#10 requires
+'pages_read_engagement'…</span>
+git_land: 변동 없음 — 커밋 생략
+→ 채널요약 FB 탭 = 텅 빔</div>
+    </div>
+    <div class="col after">
+      <span class="tag">연결 후 (성공)</span>
+      <div class="mono"><span class="good">팔로워 4952 · 시리즈 30일
+· 게시물 10</span>
+fb: 페이지 인사이트 스냅샷
+→ 반응·댓글·공유·주제 전부 점등</div>
+    </div>
+  </div>
+
+  <h2>📋 핵심 값 (탭하면 복사)</h2>
+  <div class="kv"><span class="k">Nomute 페이지 id</span><span class="v" id="v1">809122025627220</span><button class="cp" data-c="v1">복사</button></div>
+  <div class="kv"><span class="k">시스템유저 봇 id</span><span class="v" id="v2">61592059395305</span><button class="cp" data-c="v2">복사</button></div>
+  <div class="kv"><span class="k">봇 이름</span><span class="v" id="v3">nomute-bot</span><button class="cp" data-c="v3">복사</button></div>
+  <div class="kv"><span class="k">Meta 앱</span><span class="v" id="v4">nomute-insights (1522670392977528)</span><button class="cp" data-c="v4">복사</button></div>
+  <div class="kv"><span class="k">시크릿 이름</span><span class="v" id="v5">FB_ACCESS_TOKEN</span><button class="cp" data-c="v5">복사</button></div>
+
+  <h2>✅ 3단계 (순서 중요!)</h2>
+  <ol class="steps">
+    <li>
+      <b style="color:var(--accent-2)">페이지를 비즈니스에 먼저 등록</b> <span style="color:var(--danger)">(← 확정된 뿌리 원인)</span>
+      <div class="hint">"자산 추가" 창에 <b style="color:var(--danger)">"페이지" 유형이 안 뜨면</b> = 이 비즈니스에 페이지가 0개란 신호(있는 자산만 할당 가능).<br>
+      계정 → <b>페이지</b> → <b>[추가] → 페이지 추가</b> → 개인계정이 관리하는 <b>Nomute</b> 등록.
+      (⚠ 로그인한 개인 FB가 그 페이지 관리자여야 뜸 · 다른 비즈니스에 묶였으면 "이미 다른 포트폴리오" 표시)</div>
+      <a class="btn" href="https://business.facebook.com/settings/pages" target="_blank" rel="noopener">계정 · 페이지 열기 →</a>
+    </li>
+    <li>
+      <b>봇한테 <span style="color:var(--accent-2)">페이지</span> 담당 권한 주기</b> <span style="color:var(--mut)">(← 지금 여기가 빠짐)</span>
+      <div class="hint">시스템 사용자 → nomute-bot → <b>[자산 추가]</b> → 반드시 <b style="color:var(--accent-2)">"페이지"</b> 탭(❌"앱" 아님) → <b>Nomute</b> → <b>"콘텐츠 관리(Manage Page)" 전체 ON</b> → 저장.<br>
+      또는 계정 → 페이지 → Nomute → 사용자 추가 → nomute-bot → 콘텐츠 관리. (앱 할당창의 토글은 페이지랑 무관)</div>
+      <a class="btn" href="https://business.facebook.com/settings/system-users" target="_blank" rel="noopener">시스템 사용자 열기 →</a>
+    </li>
+    <li>
+      <b>토큰 다시 만들어 시크릿 교체</b>
+      <div class="hint">위 1·2를 <b>먼저</b> 끝낸 뒤 → nomute-bot 에서 <b>새 토큰 생성</b>(권한: pages_read_engagement · pages_read_user_content · read_insights) →
+      GitHub 시크릿 <code>FB_ACCESS_TOKEN</code> 교체.</div>
+      <a class="btn" href="https://github.com/muteno/nomute-editor/settings/secrets/actions" target="_blank" rel="noopener">GitHub 시크릿 열기 →</a>
+    </li>
+  </ol>
+
+  <div class="warn">
+    <b>⚠ 순서 주의:</b> 1·2(연결)를 <b>먼저</b> 하고 → <b>그 다음</b> 토큰 재생성.
+    할당 <b>전에</b> 만든 토큰은 옛 권한이라 안 붙을 수 있어(이게 이번에 헤맨 진짜 이유).
+  </div>
+
+  <h2>🔍 다 됐는지 확인</h2>
+  <ul class="tri">
+    <li>fb-fetch 워크플로 <b>수동 실행</b>(Run workflow) → 로그 확인.</li>
+    <li><b>성공 신호:</b> <code>팔로워 4952 · 시리즈 30일 · 게시물 10</code> 뜨고 <code>#10</code> 사라짐.</li>
+    <li><b>아직 막힘:</b> <code>프로필 실패 #10</code> 그대로면 = 2단계 "콘텐츠 관리 전체 ON" 다시 확인.</li>
+    <li>또는 다음 세션에 <b>"됐어"</b> 하면 내가 대신 실측해줄게.</li>
+  </ul>
+  <a class="btn" href="https://github.com/muteno/nomute-editor/actions/workflows/fb-fetch.yml" target="_blank" rel="noopener">fb-fetch 워크플로 열기 →</a>
+
+  <div class="ok" style="margin-top:18px">
+    <b>📡 라이브 실측 (09:36 KST 런):</b> 토큰 = <code>type=SYSTEM_USER</code> · 만료 <code>무기한</code> ·
+    scope에 <code>pages_read_engagement / pages_read_user_content / read_insights</code> <b>전부 보유</b>.
+    페이지 id도 <code>809122025627220</code>(정확). <b>즉 코드·토큰은 무결 — 남은 건 위 연결 1건뿐.</b>
+  </div>
+
+  <div class="foot">
+    라이브 확인 URL: <b>https://nomute-editor.pages.dev</b> → 채널 요약 → 우상단 IG/FB 토글<br>
+    연결이 풀리면 자동으로: 반응/댓글/공유 타일 · 주제별 반응 · LLM 주제분류(7주제)가 순서대로 점등돼.
+  </div>
+
+<script>
+  document.querySelectorAll('.cp').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = document.getElementById(b.getAttribute('data-c')).textContent.trim();
+      var done = function(){ b.textContent='복사됨'; b.classList.add('done'); setTimeout(function(){ b.textContent='복사'; b.classList.remove('done'); },1400); };
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(done, done); }
+      else { var ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); done(); }
+    });
+  });
+</script>
+</body>
+</html>
