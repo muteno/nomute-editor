@@ -128,10 +128,10 @@ async function runOnce(br, port) {
   // 다운로드 패밀리 parity — .dlbtn = 크로마 데코레이터(크기 = 호스트 소관 · 260717 실측로 스코프 확정)
   const dp = parity(dls, ['color', 'bg', 'radius']);
   C('C2 .dlbtn 크로마 {글자·배경·radius} 8뷰어 동일', dp.ok, JSON.stringify(dp.det).slice(0, 300));
-  // C3 blur — index askclip 제외 = 의도 예외(2555행 명문: 입력칸 오버레이 blur = 타이핑마다 밑 텍스트 재샘플
+  // C3 blur — 전 클립 backdrop-filter:none이 현행 계약(운영자 260725 "콘텐츠 입력 누르면 번쩍거린다" → askclip 단독 예외였던 것을 패밀리 전원으로 확대). 배경 = 입력·텍스트 위 오버레이 blur = 타이핑·포커스마다 밑을 재샘플
   // 번쩍 방지 · 운영자 260701·분신술 260704 — revdlg .iobtn-edge도 동축). 260717 드리프트 오판정 교정 = 예외 각인.
   const cb2 = parity(clips.filter(([n]) => n !== 'index'), ['blur']);
-  C('C3 클립 blur13 동일(askclip = 번쩍 방지 의도 예외)', cb2.ok, JSON.stringify(cb2.det).slice(0, 200));
+  C('C3 클립 blur 동일 = 전원 none(번쩍 방지 · 구 blur13 → 260725 패밀리 합류)', cb2.ok, JSON.stringify(cb2.det).slice(0, 200));
   // C4 = 260717 "ㄱㄱ" 통일(4뷰어 .34→정본 .22) 반영과 동시 대기→코어 승격
   const db2 = parity(dls, ['bcol']);
   C('C4 .dlbtn 보더색 동일(정본 .22 = index/thumb)', db2.ok, JSON.stringify(db2.det).slice(0, 300));
