@@ -126,7 +126,7 @@
   .csec::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 인라인 '• '→::before 분리(텍스트 흰색·블릿 형광) · flex라 gap:6px가 간격(블록 .fl은 content:'• ' 공백 = 뉴스 정본) */
   .csec .ovfmt, .csec .onoff { margin-top:-3px; margin-bottom:-3px; }   /* 토글 세로패딩(3px·탭영역)의 flex 행높이 기여 상쇄 → .csec 행 = 텍스트높이 유지 = 토글 유무 무관 • 블릿 동일 높이(저작권 첫블릿 '포맷'+토글이 행을 26.8px로 키워 •가 ~3px 내려앉던 것 교정 · 탭별 첫블릿 화면선 통일 · 운영자 260629) */
   .hlock { opacity:.5; pointer-events:none; }   /* 카드뉴스 ON = 헤더 잠금(운영자 260712 6차) — dim 값 = .go:disabled 계승 · pointer-events = 탭·클립 버튼까지 차단(iowrap 단위) · readOnly 속성 병행(키보드 시맨틱) */
-  .ie-off { }   /* 사진 전 게이트 = 딤·pointer 잠금 폐지(운영자 260718 "저작권·안내문이랑 동일하면 됨") — 카드 외형 = 여타 옵션과 동일(선명·값 'OFF' mut) · 게이트 = 핸들러 !CIMG.b64(탭=사진 첨부 진입 #cFile)+ieGateSync 값 'OFF' 표시가 전담(구 dim=.hlock 계승 폐지) */
+  /* (구 .ie-off 사진 전 게이트 = 딤 폐지 260718 → 핸들러 게이트까지 폐지 260725 · 셀렉터 자체 제거 — 편집 옵션 카드는 여타 옵션과 완전 동일 외형·동작) */
   /* (구 #ieSlotHome margin 룰 = 폐지 260713 — 편집 탭 사진 홈 제거·소스 = app2 오버레이 슬롯(CIMG) 단일화) */
   #iePrev { margin-top:var(--sp-2); }   /* 하단 상설 미리보기(#rszStage·#rszMetric 이주 홈) — 빈 상태 = 조용한 공백(§디자인 e-가) */
   .csec-d { font-size:12px; font-weight:400; color:var(--mut); }
@@ -1085,7 +1085,7 @@ function upsApply(v) { upsV = UPS_ORDER.indexOf(v) >= 0 ? v : 'FHD'; document.qu
   const wrap = $('#upsOpts'); if (!wrap) return;
   const pick = v => {
     const editing = isEditApp(APP);
-    if (editing && !CIMG.b64) { const f = $('#cFile'); if (f) f.click(); return; }   // 편집 = 사진 필수(탭=첨부 진입) · 카드 생성 = 합성 크기라 사진 무관
+    // (구 사진 게이트 = 편집+사진없음 → #cFile 첨부 진입 · 폐지 260725 운영자 "사진 없는 상태에서 클릭하면 사진 첨부로 바뀌는데 그러지 않게 — 카드 생성 따라") — 옵션은 사진 전에도 그냥 골라둔다(카드 생성 문법) · 사진 필수는 발사 시점 검증(APP 9 errStatus '이미지를 선택해주세요')이 전담
     upsApply(v);
     if (editing) { rszApply('orig'); if (APP !== '9') selApp('9'); }   // 편집: 해상도 맞춤 축(app9 · 비율 원본 강제 = 발사 축 단일화 · 모자이크는 selApp이 자동 OFF) · 카드 생성: upsApply가 updateGoSpec(합성 params.size 반영)·APP 유지
   };
@@ -1157,7 +1157,7 @@ function selApp(a) {
   $('#copyBox').classList.toggle('none', a !== '3');   // 저작권+안내문 통합 = /3(도먼트)
   $('#abbrBox').classList.add('none');   // 축약 = 스트립 명세 ON 토글로 이동(버튼 안 체크박스 폐지)
   $('#opaBox').classList.toggle('none', a !== '1');   // (구 /1 포스트 OPA 세그 — app1 전용 유지)
-  $('#rszBox').classList.toggle('none', !edit);   // 비율 행 = 편집 탭(사진 게이트 = ieGateSync)
+  $('#rszBox').classList.toggle('none', !edit);   // 비율 행 = 편집 탭(사진 유무 무관 = 260725 게이트 폐지)
   $('#imgeditBox').classList.toggle('none', a !== '8');   // 모자이크 UI = 옵션 ON(app8)일 때만 펼침(운영자 260712 3차)
   $('#ieTogRow').classList.toggle('none', !edit);   // 모자이크 옵션 행 = 편집 탭
   $('#upsRow').classList.toggle('none', !(a === '2' || edit));   // 해상도(구 화질) = 카드 생성 옵션 + 편집 탭 공유(운영자 260718 양쪽 명시 · 상태 1벌)
@@ -1166,7 +1166,7 @@ function selApp(a) {
   $('#rOptHead').classList.toggle('none', !(a === '2' || edit));   // '옵션' 소머리 = 카드 생성(해상도·OPA) + 편집(모자이크·비율·해상도) 공유 — 편집 탭도 첫 소머리 블릿 노출(운영자 260718 · AI 생성/카드 생성과 첫 블릿 위치 정합 · 맨몸 카드 시작 해소)
   $('#insHead').classList.toggle('none', a !== '2');    // '삽입구' 소머리 = 카드 생성(저작권·안내문 묶음 · 운영자 260718 개명)
   const _oc = $('#optCards'); if (_oc) _oc.classList.toggle('edit', edit);   // 편집 탭 표시 순서 = 모자이크→비율→해상도(flex order · 운영자 260718 호명 순)
-  syncIeTog(); rszOrigSync(); ieGateSync(); iePrevSync();            // 토글 표시 + 보존 행 상태 + 사진 전 게이트 + 도크 미리보기 동기
+  syncIeTog(); rszOrigSync(); iePrevSync();                          // 토글 표시 + 보존 행 상태 + 도크 미리보기 동기(구 ieGateSync = 260725 폐지)
   rszWait();                                          // /7 변환 중 점등 = 탭 전환 재동기(변환 중이면 /7 복귀 시 재점등·타 탭 숨김)
   if (IMG.b64 && a === '5' && $('#fileLab')._set) $('#fileLab')._set(IMG.b64, IMG.name);   // 공유 이미지 슬롯(#fileLab) 재렌더 = /5 직탭(도먼트)만
   if (a === '8' && typeof ieRender === 'function') ieRender();   // 모자이크 = 검출 박스 오버레이·옵션·결과 재동기
@@ -1188,14 +1188,7 @@ function selApp(a) {
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => { selApp(t.dataset.app); window.scrollTo({ top: 0, behavior: 'smooth' }); });   // 탭 전환 = 맨 위로(새 탭 처음부터 · 운영자 260626)
 
-// ── 편집 탭 사진 게이트(운영자 260713 "사진 유첨 시 활성" · 260718 3탭 재편) — 기준 = 공유 첨부(CIMG) · 사진 전 = 행 유지+탭=사진 첨부 진입(#cFile) · 값 표시(칩 점등)는 upsApply/rszApply가 전담 ──
-function ieGateSync() {
-  const off = (isEditApp(APP) || APP === '2') && !CIMG.b64;
-  const r = $('#rszBox'), t = $('#ieTogRow'), u = $('#upsRow');
-  if (r) r.classList.toggle('ie-off', off);
-  if (t) t.classList.toggle('ie-off', off);
-  if (u) u.classList.toggle('ie-off', off);   // 해상도 행도 사진 전 게이트(260717 · 카드 생성 옵션 공유 260718)
-}
+// (구 편집 탭 사진 게이트 ieGateSync = 폐지 260725 — 딤(.ie-off)은 260718에 이미 무력화됐고, 남은 핸들러 게이트(탭=#cFile 첨부 진입)마저 운영자 지시로 제거 → 사진 전에도 옵션은 그냥 고른다(카드 생성 문법). 사진 필수 검증 = 발사 시점 1곳(APP 7·9 errStatus · app8 ieSyncGo/ieGo))
 function iePrevSync() {   // 도크 미리보기 스왑 동기(운영자 260718 — 구 하단 상설 박스의 도크 이주) — 편집(7·8·9)+사진 = #iePrev(rsz 스테이지) / 그 외 = #cpPrevStage · 실제 스왑은 renderCpPrev가 전담
   const p = $('#iePrev'); if (!p) return;
   p.classList.toggle('none', !(isEditApp(APP) && CIMG.b64));
@@ -1204,7 +1197,7 @@ function ieSrcSync(has) {   // 편집(비율·모자이크·해상도) 소스 = 
   if (has && CIMG.b64) rszMeasure(CIMG.b64);
   else { RSZ.w = RSZ.h = 0; rszApply('orig'); upsApply('FHD'); if (isEditApp(APP)) { selApp('7'); return; }   // 편집 탭 중 삭제 = 편집 기본 축(7) 유지·해상도 기본(FHD) 복귀·게이트 재잠금(selApp이 미리보기 재동기 전담)
   }
-  ieGateSync(); iePrevSync();
+  iePrevSync();
   if (APP === '8' && typeof ieRender === 'function') ieRender();
   if (typeof renderCpPrev === 'function') renderCpPrev();   // 도크 미리보기 즉시 스왑(편집 탭 첨부 직후 rsz 스테이지 등장)
 }
@@ -1219,7 +1212,7 @@ function rszOrigSync() {   // 원본(무변환) = 보존 토글·라벨·구분�
 (function () {
   const t = $('#ieTog'); if (!t) return;
   const flip = () => {
-    if (!CIMG.b64) { const f = $('#cFile'); if (f) f.click(); return; }   // 사진 게이트(운영자 260718 딤 폐지 → 탭=사진 첨부 진입 #cFile)
+    // (구 사진 게이트 = 탭→#cFile 첨부 진입 · 폐지 260725) — 사진 전에도 ON/OFF 선택 가능 · 사진 필수는 발사 버튼 문맥(ieSyncGo '이미지를 넣어줘')+ieGo errStatus가 전담
     if (APP === '8') { selApp('7'); return; }   // OFF = 편집 기본 축(7) 유지(3탭 재편 — 구 제작(2) 복귀 폐지)
     rszApply('orig');   // ON = 비율 원본 강제(발사 축 단일화 — 운영자 "원본 유지를 하면 기능들이 옵션")
     selApp('8');
@@ -1649,8 +1642,8 @@ function updateGoSpec() {
     esp.classList.toggle('none', !showE);
     if (showE) {   // 편집 탭 리드백(모자이크·비율·해상도 — 조작은 아래 행 칩)
       const ie = $('#esIe'); if (ie) { const on = APP === '8'; ie.textContent = on ? 'ON' : 'OFF'; ie.classList.toggle('on', on); }
-      const rz = $('#esRsz'); if (rz) { const a = rszAspect(); rz.textContent = a === 'orig' ? '원본' : a; rz.classList.toggle('on', a !== 'orig'); }
-      const up = $('#esUps'); if (up) { up.textContent = upsLabel(upsV); up.classList.toggle('on', upsV !== 'FHD'); }   // 기본 FHD = 비강조(현행 크기) · 그 외 해상도 = 강조
+      const rz = $('#esRsz'); if (rz) { const a = rszAspect(); rz.textContent = a === 'orig' ? '원본' : a; rz.classList.add('on'); }   // N택1 = 현재 선택값 상시 점등(운영자 260725 "불 들어오게") — 아래 칩 정본(#rszOpts .ropt.on = accent)과 같은 상태를 같은 색으로 · 구 '기본값(원본)만 비강조'는 스트립만 꺼져 보여 폐지
+      const up = $('#esUps'); if (up) { up.textContent = upsLabel(upsV); up.classList.add('on'); }   // 해상도도 N택1 = 선택값 상시 점등(#upsOpts .ropt.on 미러 · 구 기본 FHD 비강조 폐지)
     }
   }
   // 포스트(/1) 명세 — 축약만(OPA 세그·이미지·텍스트는 유지). postSpec은 linesBox 안이라 show는 linesBox 종속.
@@ -2129,7 +2122,7 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
     if (APP !== '7') selApp('7');
   };
   const pick = v => {
-    if (!CIMG.b64) { const f = $('#cFile'); if (f) f.click(); return; }   // 사진 게이트(운영자 260718 딤 폐지 → 탭=사진 첨부 진입 #cFile)
+    // (구 사진 게이트 = 탭→#cFile 첨부 진입 · 폐지 260725 운영자 "그러지 않게 · 카드 생성 부분 따라") — 사진 전에도 비율 선택 가능 · 사진 필수는 발사 검증(APP 7 errStatus)이 전담
     rszApply(v);
     if (v === 'custom') { const w = $('#rszArW'); if (w) w.focus(); if (rszArVal()) arm(); }   // 직접 = 입력 포커스 · 유효값 이미 있으면 즉시 무장
     else if (v !== 'orig') arm();
