@@ -75,6 +75,40 @@ def build_pairs(old, new):
     return pairs
 
 
+def _apply_vendor(reg, key, new_id, dry):
+    """벤더(비-Claude 종량제) 교체 — ID 1종만 치환. 표시명·은퇴 등재 없음(공급사 ID는 회수되면 문서 잔존도 오해를 부른다)."""
+    v = reg['vendors'][key]
+    old_id = v['id']
+    if old_id == new_id:
+        print('변경 없음 — 벤더[%s] 정본이 이미 %s' % (key, old_id))
+        return 0
+    rx = re.compile(re.escape(old_id))
+    print('벤더 교체: [%s] %s → %s%s' % (key, old_id, new_id, '  (--dry = 미리보기)' if dry else ''))
+    files = hits = 0
+    for path in scan_files(reg):
+        try:
+            src = open(path, encoding='utf-8').read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        out, n = rx.subn(new_id, src)
+        if n:
+            files += 1
+            hits += n
+            print('   %-58s %d곳' % (os.path.relpath(path, ROOT), n))
+            if not dry:
+                open(path, 'w', encoding='utf-8').write(out)
+    if dry:
+        print('— 미리보기 끝: %d파일 %d곳(파일 미변경 · 정본 미갱신).' % (files, hits))
+        return 0
+    reg['vendors'][key] = dict(v, id=new_id)
+    with open(REG, 'w', encoding='utf-8') as f:
+        json.dump(reg, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    print('✅ %d파일 %d곳 치환 + 정본 갱신. 다음: git diff → python3 shared/check_refs.py (rc=0) → 커밋' % (files, hits))
+    print('   ⚠️ 종량제 축 = 새 ID가 실제 서빙되는지 실호출 1회로 확인해라(모델 부재 = 런타임 실패).')
+    return 0
+
+
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -83,9 +117,12 @@ def main(argv):
     rest = [a for a in argv[3:] if not a.startswith('--')]
     dry = '--dry' in argv
     reg = load()
-    if tier not in reg['tiers']:
-        print('❌ 모르는 티어: %s — 등재 = %s' % (tier, ', '.join(reg['tiers'])))
+    vend = reg.get('vendors', {})
+    if tier not in reg['tiers'] and tier not in vend:
+        print('❌ 모르는 키: %s — 티어 = %s · 벤더 = %s' % (tier, ', '.join(reg['tiers']), ', '.join(vend) or '없음'))
         return 2
+    if tier in vend:   # 벤더(비-Claude 종량제) = 표시명 없이 ID만 · 은퇴 등재도 안 한다(공급사가 구 ID를 회수해 문서 잔존도 위험)
+        return _apply_vendor(reg, tier, new_id, dry)
     old = dict(reg['tiers'][tier])
     new = dict(old, id=new_id)
     if rest:
