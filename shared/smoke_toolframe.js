@@ -3,7 +3,8 @@
 // smoke_toolframe.js — 도구 모달 iframe '리빌 게이트' 계약 상비 실측 스모크
 //   (운영자 260724 한 수 = Q510 · 번역 탭 "안 떠"[#2930] 근본픽스의 회귀 방어 기계화)
 // 담당 표면: viewer/index.html 도구 프레임 리빌 = {.toolfr 페이드인 게이트 = #tooldlg .toolfr.active.ready
-//   (프레임별 .ready · 구 전역 #tooldlg.frame-ready 승격) · bindToolFrameLoad(.ready 부여) · loadToolFrame(.ready 제거)}.
+//   (프레임별 .ready · 구 전역 #tooldlg.frame-ready 승격) · bindToolFrameLoad(.ready 부여) · loadToolFrame(.ready 제거)}
+//   + 번역 탭 예열 계약 {trFontWarm(숨김 프레임 폰트 선로드) · trMount 2×rAF 리빌(재레이아웃 은폐)} = C7·C8(Q524).
 //   ⚠ 이 표면(리빌 CSS·.ready 관리) 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약 · 훅 편입 금지 = 수동 전용).
 // 왜: frame-ready(전역 클래스)를 아무 프레임 load에나 붙이던 구조 = 번역 탭을 로딩 중 클릭하면
 //   뒤늦게 도착한 타 프레임(thumb) load가 전역 frame-ready를 재부착 → 아직 로딩중인 활성 tr 프레임이
@@ -106,6 +107,56 @@ async function probe(browser, url) {
   return { errs, opRevealed, opGated, opBack, orbLoading, orbHidden };
 }
 
+// ── 번역 탭 '펑 튐' 계약(Q524 한 수) = 예열의 본뜻 검문 ──────────────────────────────────────
+// 왜: display:none iframe은 *레이아웃이 없어* 문서만 받고 레이아웃·웹폰트는 노출 순간으로 미뤄진다
+//   → 구 코드는 예열분에 .ready를 바로 붙여 opacity 1로 노출 = 0폭→실폭 재레이아웃(+83ms 뒤 폰트 스왑)이
+//   통째로 눈에 보였다(운영자 260725 "살짝 펑 튄다" · 실측 = 큐 Q524). 코드만 보면 "예열했으니 빠르겠지"로
+//   읽히는 덫이라 사람 눈이 아니라 기계가 지키게 한다.
+// 계약 2줄: ⓐ 번역 클릭 *전* tr 문서에 로드완료 FontFace ≥1(trFontWarm이 숨김 상태서 강제 페치 — fonts.status는
+//              '할 일 없음'도 loaded라 판별력이 없어 개수로 본다)
+//           ⓑ 프레임이 보이기 시작하는 첫 프레임의 #prevBox 기하 = 안착 기하(Δ≤0.5px · 재레이아웃 은폐)
+// 트랜지션 kill 상태라 .ready 부여 = opacity 즉시 1 → '보이기 시작한 순간' 판정이 결정론.
+async function probeTr(browser, url) {
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 900 }, deviceScaleFactor: 1, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.addStyleTag({ content: '#tooldlg .toolfr, #tooldlg .tool-loading { transition:none !important; transition-delay:0s !important; }' });
+  await page.evaluate(() => {
+    const T = [{ src: '/thumb.html', app: '2', label: '카드 생성' }, { src: '/thumb.html', app: '7', label: '편집' }, { src: '/tr.html', app: 'tr', label: '번역' }, { src: '/thumb.html', app: '6', label: 'AI 생성' }];
+    openTool('/thumb.html', 'Image Studio', T, 'thumb'); trWarm();   // trWarm = 라디얼 라우팅(a==='thumb')이 openTool 직후 부르는 짝 — 직접 호출 경로라 여기서 동행(예열 없으면 이 계약 자체가 성립 안 함)
+  });
+  await page.evaluate(() => { window.__trf = () => [...document.querySelectorAll('#tooldlg iframe')].find(x => { try { return (x.contentWindow.location.href || '').indexOf('/tr.html') >= 0; } catch (_) { return false; } }) || null; });
+  // 예열(trWarm) 완료 폴링 = tr 프레임 실존 + .ready(로드 확정) — 로드 속도 무관 결정론
+  let warm = false; for (let i = 0; i < 80 && !warm; i++) { warm = await page.evaluate(() => { const f = window.__trf(); return !!(f && f.classList.contains('ready')); }); if (!warm) await sleep(100); }
+  // ⚠ fonts.status는 '할 일이 없어도' loaded라 판별력이 없다(미사용 = idle도 loaded) → **실제 로드된 FontFace 개수**로 본다.
+  //   trFontWarm 없으면 숨김 프레임의 FontFace는 전부 unloaded로 남는다(브라우저가 페치 자체를 안 함) = 0건 → FAIL.
+  let preFonts = { warm: false, disp: null, loaded: 0, fams: [] };
+  for (let i = 0; i < 25; i++) {
+    preFonts = await page.evaluate(() => { const f = window.__trf();
+      try { const d = f.contentDocument; const done = [...d.fonts].filter(x => x.status === 'loaded');
+        return { warm: !!f, disp: getComputedStyle(f).display, loaded: done.length, fams: [...new Set(done.map(x => x.family))] }; }
+      catch (_) { return { warm: !!f, disp: null, loaded: 0, fams: [] }; } });
+    if (preFonts.loaded > 0) break; await sleep(100);
+  }
+  await page.evaluate(() => {   // 클릭 직후 rAF 타임라인(부모가 tr 프레임 opacity + 내부 #prevBox 기하를 함께 샘플)
+    window.__tl = []; const f = window.__trf(); const t0 = performance.now();
+    const tick = () => { let pb = null; try { const el = f.contentDocument.querySelector('#prevBox'); if (el) { const r = el.getBoundingClientRect(); pb = { w: +r.width.toFixed(1), h: +r.height.toFixed(1) }; } } catch (_) {}
+      window.__tl.push({ t: Math.round(performance.now() - t0), op: +getComputedStyle(f).opacity, pb });
+      if (performance.now() - t0 < 700) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+  await page.click('#toolTabs .tooltab[data-app="tr"]');
+  await sleep(850);
+  const tl = await page.evaluate(() => window.__tl || []);
+  await ctx.close();
+  const seen = tl.filter(x => x.op > 0.01 && x.pb);          // 눈에 보이기 시작한 이후 샘플
+  const settled = tl.filter(x => x.pb).slice(-1)[0] || null; // 안착 기하
+  const first = seen[0] || null;
+  const dW = first && settled ? Math.abs(first.pb.w - settled.pb.w) : 999;
+  const dH = first && settled ? Math.abs(first.pb.h - settled.pb.h) : 999;
+  return { preFonts, first, settled, dW, dH, revealed: !!first, n: tl.length };
+}
+
 (async () => {
   const pw = loadPlaywright();
   const { srv, port } = await startServer();
@@ -130,7 +181,13 @@ async function probe(browser, url) {
   const det = (hidden(r1.opGated.op) === hidden(r2.opGated.op)) && (shown(r1.opRevealed.op) === shown(r2.opRevealed.op)) && (parseFloat(r1.orbLoading.op) > 0.9) === (parseFloat(r2.orbLoading.op) > 0.9);   // 판정 불리언 동일(잔차 무관)
   A(det, 'C6 결정론(2런 동일)', JSON.stringify([r1.opGated.op, r2.opGated.op, r1.orbLoading.op, r2.orbLoading.op]));
 
-  console.log('\n── smoke_toolframe: ' + pass + '/6 PASS' + (fail ? ' · FAIL ' + fail : ''));
+  const t1 = await probeTr(browser, url);
+  A(t1.preFonts.warm && t1.preFonts.disp === 'none' && t1.preFonts.loaded > 0,
+    'C7 예열 = 숨김(display:none) 프레임 웹폰트 실제 선로드(클릭 전 로드완료 FontFace ≥1 · trFontWarm 제거 시 0건 FAIL)', JSON.stringify(t1.preFonts));
+  A(t1.revealed && t1.dW <= 0.5 && t1.dH <= 0.5,
+    'C8 번역 첫 노출 = 재레이아웃 은폐(보이는 첫 프레임 #prevBox 기하 = 안착 기하 Δ≤0.5px · 즉시리빌 회귀 시 0폭으로 FAIL)', JSON.stringify([t1.first, t1.settled, t1.dW, t1.dH]));
+
+  console.log('\n── smoke_toolframe: ' + pass + '/8 PASS' + (fail ? ' · FAIL ' + fail : ''));
   await browser.close(); try { srv.kill(); } catch (e) {}
   process.exit(fail ? 1 : 0);
 })().catch(e => { console.error('smoke_toolframe ERR', e.message); process.exit(2); });
