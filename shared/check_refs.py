@@ -501,6 +501,86 @@ def check_fast_max_h_parity():
     return 0
 
 
+# ── 시간축 계약 픽스처(고정·상대시각) — 케이스별 (라벨, published 오프셋h, first_seen 오프셋h, report_count, 기대 채택원) ──
+# 라이브 candidates.json 미사용 = 판정 결정성 확보(스크래퍼 자동커밋 데이터로 코드 게이트가 오발하면 안 됨).
+_SCTS_CASES = [
+    ('늦수집 옛기사(Q522 회귀축)', -27, -3, 1, 'pub'),    # 어제 기사를 오늘 처음 수집 → 발행나이 유지 = 신규칼럼 진입 금지
+    ('정상 발행→수집 지연', -2, -1.5, 1, 'pub'),
+    ('미래 오기록(260618 가드)', +2, -1, 1, 'fs'),
+    ('역전 + 연속보도(260630 예외)', -10, -12, 8, 'pub'),
+    ('역전 + rc낮음(§★ 보수성)', -10, -12, 1, 'fs'),
+]
+
+
+def check_sc_ts_contract():
+    """수집함 시간축(scTs) 계약 상비 게이트(운영자 260725 한 수 · Q522 회귀 실물발) — 나이 판정은 신규↔누적
+    칼럼 분배·랭킹 감쇠·배지 소멸선의 공통 입력이라 여기가 틀어지면 화면 전체가 조용히 뒤집힌다(실측: 과거튐
+    6h 가드가 어제 기사 439/800을 회춘 → 신규 4h칼럼 오염 40건·누적 상위 20/20 점유. 카드 표기는 published
+    원본이라 "1일 3시간 전"인데 자리는 최상단 = 코드를 열어야만 보이는 회귀였고 반나절 방치됐다).
+    검사 = viewer/index.html의 `scTs`를 **원본 그대로 추출해 node로 실행**(파이썬 재현 0 = 게이트 자신이
+    드리프트원이 되는 것 차단 · check_fast_max_h_parity의 '값만 대조'보다 한 단계 위 = 동작 대조) + 고정
+    픽스처 5조 판정(_SCTS_CASES). ①이 Q522 회귀축 = 늦수집 옛기사가 발행나이를 유지해 FAST_MAX_H 밖에
+    남는가. ②~⑤는 기존 계약(정상 지연·미래 오기록 가드·연속보도 rc 예외·보수성) 동결.
+    node 없으면 스킵(로컬·CI 환경차 흡수 · check_viewer_js 관례) · 추출 실패·파일 부재 = fail-closed."""
+    node = shutil.which('node')
+    if not node:
+        print('⚠️ scTs 계약 게이트 스킵(node 없음)'); return 0
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_sc_ts_contract 파일 읽기 실패(fail-closed):', e); return 1
+    m_fn = re.search(r'const scTs = c => \{.*?\n\};', v, re.S)
+    m_rc = re.search(r'FOLLOW_RC_MIN\s*=\s*(\d+)', v)
+    m_fh = re.search(r'const FAST_MAX_H\s*=\s*(\d+)', v)
+    if not (m_fn and m_rc and m_fh):
+        print('❌ scTs/상수 추출 실패(scTs=%s·FOLLOW_RC_MIN=%s·FAST_MAX_H=%s) — 선언 형태 변경 시 이 게이트도 갱신'
+              % (bool(m_fn), bool(m_rc), bool(m_fh))); return 1
+    js = (
+        'const FOLLOW_RC_MIN = %s, FAST_MAX_H = %s;\n' % (m_rc.group(1), m_fh.group(1))
+        + m_fn.group(0) + '\n'
+        + 'const H = 3600000, now = Date.now();\n'
+        + 'const CASES = %s;\n' % json.dumps([list(c) for c in _SCTS_CASES], ensure_ascii=False)
+        + 'const out = CASES.map(([label, ph, fh, rc, want]) => {\n'
+        + '  const pub = new Date(now + ph * H).toISOString(), fs = new Date(now + fh * H).toISOString();\n'
+        + '  const got = scTs({ published: pub, first_seen: fs, report_count: rc });\n'
+        + '  const src = got === Date.parse(pub) ? "pub" : (got === Date.parse(fs) ? "fs" : "other");\n'
+        + '  return { label, want, src, ok: src === want, ageH: (now - got) / H, fast: (now - got) < FAST_MAX_H * H };\n'
+        + '});\n'
+        + 'console.log(JSON.stringify(out));\n'
+    )
+    tmp = os.path.join(ROOT, '.sc_ts_gate.tmp.mjs')
+    try:
+        with open(tmp, 'w', encoding='utf-8') as f:
+            f.write(js)
+        r = subprocess.run([node, tmp], capture_output=True, text=True, timeout=30)
+    except Exception as e:
+        print('❌ scTs 계약 실행 실패(fail-closed):', e); return 1
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    if r.returncode != 0:
+        print('❌ scTs 계약 실행 오류(fail-closed):', (r.stderr or '').strip()[:300]); return 1
+    try:
+        res = json.loads(r.stdout)
+    except Exception as e:
+        print('❌ scTs 계약 결과 파싱 실패(fail-closed):', e); return 1
+    bad = [x for x in res if not x['ok']]
+    # Q522 회귀축 재확인 — 늦수집 옛기사(27h)가 신규 칼럼(FAST_MAX_H)에 들어가면 그 자체로 차단
+    leak = [x for x in res if x['label'].startswith('늦수집') and x['fast']]
+    if bad or leak:
+        print('❌ 수집함 시간축(scTs) 계약 위반 — 신규↔누적 분배·랭킹 감쇠가 뒤집힌다(Q522 재발):')
+        for x in bad:
+            print('   - %s: 기대 %s · 실제 %s (산정나이 %.1fh)' % (x['label'], x['want'], x['src'], x['ageH']))
+        for x in leak:
+            print('   - %s: 산정나이 %.1fh < FAST_MAX_H(%s) = 어제 기사가 신규 칼럼 점유' % (x['label'], x['ageH'], m_fh.group(1)))
+        return 1
+    print('✅ 수집함 시간축 계약 — scTs 실행 대조 %d조 전건 통과(늦수집 옛기사 %.0fh = 신규 칼럼 밖 · 미래가드·rc예외·보수성 동결).'
+          % (len(res), next(x['ageH'] for x in res if x['label'].startswith('늦수집'))))
+    return 0
+
+
 def check_shell_cache_parity():
     """SW 셸 캐시명 viewer/index.html(applyShellUpdate caches.open) ↔ viewer/sw.js(SHELL_CACHE) 패리티
     (260717 평의회 1·9 — 캐시 계약 리터럴이 두 파일에 복제된 유일 지점. sw.js만 v2로 버전업하면 페이지 put이
@@ -1571,6 +1651,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_fast_max_h_parity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_sc_ts_contract() != 0:   # scTs 시간축 계약 실행 대조(하드 게이트·fail-closed — 나이 판정 뒤집힘 = 신규↔누적 분배·랭킹 붕괴·260725 Q522 회귀발)
+            rc = 1
+    except Exception as e:
+        print('❌ check_sc_ts_contract 예외(fail-closed):', e); rc = 1
     try:
         if check_shell_cache_parity() != 0:   # SW 셸 캐시명 viewer↔sw.js 패리티(하드 게이트 — 한쪽만 버전업 = 죽은 캐시 쓰기·260717 평의회 1·9)
             rc = 1
