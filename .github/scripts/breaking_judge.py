@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]   # .github/scripts → repo root
 sys.path.insert(0, str(ROOT / "shared"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
-MODEL = os.environ.get("BREAKING_MODEL", "claude-opus-4-8")
+MODEL = os.environ.get("BREAKING_MODEL", "claude-opus-5")
 EFFORT = os.environ.get("BREAKING_EFFORT", "").strip()   # 이진 속보 판정엔 추론 불필요 = effort 미사용 기본(불필요 thinking 토큰·쿼터 차단 + sonnet effort 비호환 원천차단). 필요시 env로 부여(하위호환). 260630 평의회 — breaking은 sonnet-5 운영.
 SAFE = os.environ.get("BREAKING_SAFE", "0").strip().lower() not in ("0", "false", "no", "")   # --safe-mode: CLAUDE.md·skills·plugins·hooks·MCP 등 커스터마이징 비활성 = 분류에 안 쓰이는 라우터 99KB(~40k토큰) 컨텍스트 제거 → cache_w ~95%↓. ⚠️ --bare 아님(bare는 OAuth 안 읽어[strictly ANTHROPIC_API_KEY] 이 파이프라인선 인증 즉사 + built-in 도구 축소로 --disallowedTools 충돌 = 260701 사고). safe-mode는 Auth·built-in 도구·permissions 정상 유지. RUBRIC은 stdin이라 판정 무영향. 기본 OFF·카나리아 후 승격(§📰). 롤백=env BREAKING_SAFE=0.
 CHUNK = int(os.environ.get("BREAKING_CHUNK", "40"))             # 한 Claude 콜당 제목 수(작을수록 출력 truncation 0 — gate_judge와 동일·후보 풀 커져도 절단 0)

@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — 번역카드(tr) 자동 마커 번역 발사(브라우저 OCR 라인 → 번역 플랜).
 // 2경로(운영자 260721 "한수 진행 ㄱㄱ" — 유료 API 즉답 승인):
-//   ① 즉답: env.ANTHROPIC_API_KEY 있으면 Anthropic Messages API 직결(Opus 4.8 · structured outputs = JSON 스키마 강제)
+//   ① 즉답: env.ANTHROPIC_API_KEY 있으면 Anthropic Messages API 직결(Opus 5 · structured outputs = JSON 스키마 강제)
 //      → {plan} 바로 반환(~10초대 · 커밋/배포/폴링 0).
 //   ② 폴백: 키 없음·API 실패 시 기존 tr-auto.yml 워크플로 발사 → {id} 반환(폼이 tr_out/<id>/plan.json 폴링 · 2~4분 · 구독 OAuth 무료).
 // 프롬프트 규칙 = prompts/tr-auto.md 정본 미러(동조 수정 — 러너 폴백과 동일 계약).
@@ -75,7 +75,7 @@ function ctxBlocks(ctx) {   // 컨텍스트 → 프롬프트 블록(trauto.sh CT
 }
 
 async function directPlan(env, lines, ctx) {
-  // Anthropic Messages API 직결(Opus 4.8) — temperature 등 샘플링 파라미터 금지(400) · structured outputs로 JSON 강제
+  // Anthropic Messages API 직결(Opus 5) — temperature 등 샘플링 파라미터 금지(400) · structured outputs로 JSON 강제
   const content = [lines.map(l => `[${l.i}] ${l.t}`).join('\n')].concat(ctxBlocks(ctx)).join('\n\n');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -85,7 +85,7 @@ async function directPlan(env, lines, ctx) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-opus-4-8',
+      model: 'claude-opus-5',
       max_tokens: 2048,
       system: TR_RULES,
       messages: [{ role: 'user', content }],

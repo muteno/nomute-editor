@@ -7,7 +7,7 @@ PROMPT_FILE="prompts/tr-auto.md"
 source "$ROOT/shared/model_env.sh"          # 모델 단일 원천(PIPE_MODEL · SYS-08)
 source "$ROOT/shared/claude_transient.sh"   # is_quota()/claude_failover()/is_transient() SSOT — 4계정 자동 로테이션(§📰)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 계측(metrics shard)
-MODEL="${TR_MODEL:-claude-fable-5}"  # 이미지 번역(번역카드) = Fable 5 기본(운영자 260722 · 손 많이 가는 이미지 번역 품질 · gen_image와 동일 티어) — 토글 TR_MODEL=claude-opus-4-8
+MODEL="${TR_MODEL:-claude-fable-5}"  # 이미지 번역(번역카드) = Fable 5 기본(운영자 260722 · 손 많이 가는 이미지 번역 품질 · gen_image와 동일 티어) — 토글 TR_MODEL=claude-opus-5
 TR_EFFORT="${TR_EFFORT:-high}"       # OCR 강조선정+한글번역 = 정해진 변환 → high(운영자 260722 · max 헛사고 회피·정확도 우선) · 토글 high/medium/low
 INLINE_TRIES="${INLINE_TRIES:-4}"
 ID="${1:?usage: trauto.sh <id> (LINES=env)}"
@@ -71,7 +71,7 @@ ${CTX_TXT}"
 # 순수 텍스트 작업 = 도구 전부 불허(헤드리스 무중단 · kmake와 동일 축, 지침 Read조차 불요)
 inline_delay=15
 _to_tried=0
-TR_MODEL_FB="${TR_MODEL_FB:-claude-opus-4-8}"; _mfb_tried=0   # Fable 형식이탈/거절 시 Opus 1회 폴백(gen_image MODEL_FB 패턴 · 평의회 260722 P1 — 계정 폴오버는 모델 불변)
+TR_MODEL_FB="${TR_MODEL_FB:-claude-opus-5}"; _mfb_tried=0   # Fable 형식이탈/거절 시 Opus 1회 폴백(gen_image MODEL_FB 패턴 · 평의회 260722 P1 — 계정 폴오버는 모델 불변)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=tr METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$TR_EFFORT" claude_meter 600 \
         --model "$MODEL" \

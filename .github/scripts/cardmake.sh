@@ -28,7 +28,7 @@ INLINE_TRIES="${INLINE_TRIES:-4}"   # 카드 인라인 재시도 = 4계정 폴�
 # 1500 = 관측 최대 885s 대비 +70% 헤드룸 · 스코프 = 본 생성·린트 재생성만(부분 작업 cov 보강·edit는 900 유지) ·
 # 잡 예산 = news-analyze·news-ask card_plan timeout-minutes 165와 한 쌍 · 롤백 = env CARD_TIMEOUT=900.
 CARD_TIMEOUT="${CARD_TIMEOUT:-1500}"
-# 카드 프롬프팅 추론 강도 = max 고정(운영자 260722 정책 — 카드뉴스 요약·프롬프팅·뉴스 요약 = 콘텐츠 품질 최우선이라 Opus 4.8
+# 카드 프롬프팅 추론 강도 = max 고정(운영자 260722 정책 — 카드뉴스 요약·프롬프팅·뉴스 요약 = 콘텐츠 품질 최우선이라 Opus 5
 #   effort max 무조건, 속도 타협 없음 · 타협은 '그 외' 주변 작업에만). 260722 C안 high 카나리는 이 정책으로 폐기.
 #   노브는 4개 호출부(본생성·lint재생성·cov회수·edit) effort 단일 정본으로만 존치(흩어진 하드코딩 통합 · 기본 max).
 #   ⚠️ 토큰 안전(CARD_BUDGET_SEC 25분 하드캡·CARD_FAIL_RETRY_MAX 0·타임아웃 재시도 봉인)은 effort와 무관하게 유지 = 별개 축.

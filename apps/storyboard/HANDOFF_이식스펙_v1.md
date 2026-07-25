@@ -15,7 +15,7 @@
 |---|---|---|
 | Agent SDK가 `.claude/skills/` 스킬 로딩 | ✅ 공식 문서 확인 | code.claude.com/docs/en/agent-sdk/skills |
 | 원격 MCP(HTTP/SSE + OAuth 토큰) 연결 | ✅ 공식 문서 확인 | platform.claude.com/docs/en/agent-sdk/mcp |
-| 모델 세션별 선택 (`claude-opus-4-8` / `claude-fable-5`) | ✅ 공식 문서 확인 | platform.claude.com/docs/en/about-claude/models/overview |
+| 모델 세션별 선택 (`claude-opus-5` / `claude-fable-5`) | ✅ 공식 문서 확인 | platform.claude.com/docs/en/about-claude/models/overview |
 | **구독 OAuth를 SDK 앱에서 사용** | ❌ **금지** (2026-01 서버 차단, 2026-02 문서화) | support.claude.com 문서 + GitHub 이슈 #42106 |
 | Pro/Max 플랜의 SDK 전용 월간 크레딧 존재 | ✅ 공식 support 문서 | support.claude.com/en/articles/15036540 |
 | 힉스필드 MCP에서 Seedance 2.0 사용 가능 | ✅ 이 세션 실측 | models_explore 응답 |
@@ -32,7 +32,7 @@
       └ Claude: API 키 기반 (구독 OAuth 불가 — §3)
       └ 힉스필드: OAuth → access token 확보 (앱이 플로우 수행)
 [2] 모델 선택
-      └ claude-opus-4-8  (정석 연출, 저비용)
+      └ claude-opus-5  (정석 연출, 저비용)
       └ claude-fable-5   (연출 훅 강함, 고비용)
 [3] 만들려는 이야기 설명
       └ 자유 텍스트 + (선택) 캐릭터 레퍼런스 이미지 업로드
@@ -112,7 +112,7 @@
 
 SDK 옵션 `model`에 세션별로 지정. 두 모델 모두 현행 제공 확인.
 
-| | `claude-opus-4-8` | `claude-fable-5` |
+| | `claude-opus-5` | `claude-fable-5` |
 |---|---|---|
 | 포지션 | Opus 티어 (2025-05 출시) | Mythos급 플래그십 (2026-06 출시) |
 | API 단가 | ~$5 / $25 (입/출력 1M토큰) | ~$10 / $50 |
