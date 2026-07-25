@@ -72,6 +72,24 @@
   .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }
   .geni-opt[data-num] { font-variant-numeric:tabular-nums; }
   .geni-opt:disabled { opacity:.28; pointer-events:none; }   /* 배선 대기 칩(GPT 5.6 — OpenAI 키 미배선) = index .geni-nav[disabled] 동일값 계승 */
+  /* ══ 상단 도크 = 편집(edit) 정본 100% 계승(운영자 260725 "미리보기·아래 옵션까지 편집이랑 통일") — 미리보기+선택 요약 스트립(.optstrip)+발사바(.firebar 생성) 한 sticky 블록([4-2] 강제 골격 ①) ══ */
+  .topdock { position:sticky; top:0; z-index:6; margin:0 -16px; padding:16px 16px var(--sp-2); background:#121212; }   /* raw-ok: 전 값 = edit .topdock 정본 그대로(#121212 전폭{-16 = .wrap padding-x 상쇄}·padding 16/16/--sp-2·z6) */
+  .topdock::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 하단 페이드 스커트 = edit .topdock::after 동일 미러(h14·18,18,18) */
+  .optstrip { margin:0 0 var(--sp-2); padding:8px 13px /* raw-ok: 세로8·좌우13 = edit .optstrip 정본 동값 */; background:#000 /* raw-ok: 미리보기 스테이지 전경색 동값 */; border:1px solid var(--line); border-radius:var(--r-s); }
+  .optstrip .gospec { margin:0; padding:0; font-size:11.25px /* raw-ok: edit .optstrip .gospec 명세 활자값 동값 */; line-height:1.9; text-align:left; color:var(--mut); }
+  .gospec .gs-lbl { color:var(--mut); font-weight:var(--fw-b); }
+  .gospec .gs-v { color:var(--mut); }
+  .gospec .gs-v.on { color:var(--accent); font-weight:var(--fw-b); }   /* 활성값(적용 중) = accent 점등(edit 정본) */
+  .optstrip .gs-sep { color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = edit .gs-sep 정본 동값 */; }
+  .firebar { position:static; padding:0; background:none; }   /* 도크 안 = 미리보기 바로 아래 발사바(edit .firebar 정본) */
+  .firebar .inner { max-width:600px; margin:0 auto; }
+  /* 미리보기 액자 = edit .cpprev-box 정본 계승 · 콘티는 텍스트 산출형이라 내용물만 변형 허용([4-2] "sb·k·song = Contents 입력·각색 대기 표기") */
+  .pvsec { margin:0 0 var(--sp-2); }
+  .cpprev-box { position:relative; height:min(29vh,300px); height:min(29svh,300px); width:100%; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* raw-ok: 전 값 = edit .cpprev-box 정본 그대로(29svh/300 캡) */
+  .cpv-empty { position:absolute; inset:0; display:grid; place-items:center; }
+  .cpv-empty .cpv-stage { width:min(100%, calc(min(29svh,300px) * 16 / 9)) /* raw-ok: 300 = .cpprev-box 높이캡 파생 16:9 contain 폭 = edit 정본 동식 */; aspect-ratio:16/9; background:#000 /* raw-ok: 산출 배경 순흑 = edit .cpv-stage 동값 */; display:grid; place-items:center; }
+  .cpv-wait { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); letter-spacing:.02em; }   /* 대기 표기(텍스트 산출형) — 각색 결과가 아래 결과부로 나온다는 안내 */
+  .optstrip .geni-sum { padding:0; text-align:left; line-height:1.9; }   /* 요약 = 도크 스트립 안 = edit .gospec 좌측정렬 문법 계승(우측정렬 구 문법 대체 · JS 무접촉) */
   .geni-sum { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); line-height:1.5; padding:8px 2px; text-align:right; font-variant-numeric:tabular-nums; }   /* raw-ok: index .geni-sum 동일값 계승(padding 8·2) · fs-sm→fs-label = 폼 폰트 단일 크기 통일(운영자 260714 6차 "폰트 제각각 금지") */
   .geni-sum b { color:var(--fg); font-weight:var(--fw-b); }
   .geni-sum .gs-row { display:block; }   /* 항목별 줄바꿈(운영자 260714 6차 "감독·촬영 각각 나누자") — 우측 정렬 유지 */
@@ -153,10 +171,14 @@
 </head>
 <body>
 <div class="wrap"><!-- 폼 문법 = Image Studio(#genidlg) 이식(운영자 260714 4차) — 위 = 내용+선택요약+생성 · 아래 = 항목 행(라벨 좌·값 우 워드칩) -->
-  <label class="fl" style="margin-top:var(--sp-1)">Contents</label>
+  <!-- 상단 도크 = 편집(edit) #topDock 정본 100% 계승(운영자 260725 통일) — 미리보기 + 선택 요약 스트립 + 발사바 한 몸 sticky · Contents는 도크 아래로 이주(edit 구조 미러) -->
+  <div class="topdock" id="topDock">
+    <div class="pvsec"><div class="cpprev-box"><div class="cpv-empty"><div class="cpv-stage"><span class="cpv-wait">Contents 입력 · 각색 대기</span></div></div></div></div>
+    <div class="optstrip" id="optStrip"><div class="geni-sum gospec" id="gospec"></div></div><!-- 선택 요약 = 구 우측정렬 #gospec 이주(채움 JS 무접촉) -->
+    <div class="firebar"><div class="inner"><button class="go" id="go">생성</button></div></div><!-- 발사 = 도크 안(구 Contents 아래 인라인 폐지) · 라벨 "생성" 통일 · 발사 로직 불변 -->
+  </div><!-- /.topdock -->
+  <label class="fl">Contents</label><!-- 도크 위→아래 이주(edit .srcwrap 구조 통일) -->
   <div class="scnwrap"><textarea id="scene" maxlength="8000" aria-label="Contents" placeholder=""></textarea><!-- maxlength = api/sb.js slice(0,8000) 정합(k:255 계승) · 3버튼 = k/thumb 공통 기틀 --><button class="scnclip" id="sceneClip" type="button" aria-label="붙여넣기"></button></div>
-  <div class="geni-sum" id="gospec"></div><!-- 우측 선택요약 = index #geniSum 문법(발사 직전 선택 상태 한 줄 · 시각 리드백 전용) -->
-  <button class="go" id="go">생성</button><!-- 라벨 "생성" 통일(운영자 260717 "생성 버튼 용어 다 통일 · '생성'이라고만") · 발사 로직 불변 -->
   <div class="geni-sechead"><span class="cref-lbl">설계</span></div>
   <div class="geni-row"><span class="pub-l">감독</span><span class="geni-opts" id="dgrid" role="group" aria-label="감독 — 연출 모델"></span></div>
   <div class="geni-row"><span class="pub-l">촬영</span><span class="geni-opts" id="sgrid" role="group" aria-label="촬영 — 생성 엔진"></span></div>
