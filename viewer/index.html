@@ -9682,16 +9682,15 @@ function openUnmergePop(numEl, c) {
     exitMerge();
   });
 })();
-// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용. 대칭 가드(260725): 발행이 수집보다 STALE_PUB_H(6h)+ *과거*면(RSS pubDate 과거 튐 — 경향 '정성호 사의' 16h 실측·신선 기사가 18h 묵은 걸로 늙어 누적 48위 침몰) first_seen 사용.
+// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용.
+// ⛔ 대칭 가드(STALE_PUB_H=6h · PR #2951 260725 낮) = **당일 롤백**(운영자 260725 "일단 복구"). 사유 = 실측 지연분포와 전제 불일치: 가드가 '정상 수집 지연은 수시간'을 전제했으나 실데이터 first_seen−published 갭은 12~24h가 363/800(45%) → 6h 컷이 **439/800(55%)을 회춘**시켜 어제 기사가 신규 4h칼럼 진입(40건)·누적 근사랭킹 상위 20/20 전건 점유(화면 표기는 published라 "1일 3시간 전"인데 최상단 = 운영자 육안 발견). 원 타깃(경향)도 파이프라인 자가교정이라 가드 무접촉 = 이득 0·부작용만. **재도입 조건** = 갭 단독 판정 금지 → burst↑/last_report 신선 등 '지금 실제 보도 중' 신호 AND 결합(Q519 work-to-do 방향).
 // ⚠️ published>first_seen 역전 = '물리적 불가'로 보던 가드가 **연속보도 클러스터**에서 오발화(과감점 버그·운영자 260630·평의회10): first_seen이 *이탈한 옛 멤버*서 별칭승계돼(살아있는 멤버는 전부 신선) published>first_seen이 정상 발생 → 24h로 늙혀 9시뉴스감(rc 큰 대형) 강등(미스매치 324건/10.8%·cross≥8 34건). 교정 = `report_count≥FOLLOW_RC_MIN`(=확인된 연속보도 클러스터·기존 상수 재사용·새 임계 0)이면 역전이어도 published 채택. **future-cut(p≤now)은 불변** = KST/UTC 미래 오기록은 계속 first_seen(보호 보존·진짜 미래발행 8건·누적자격 0). rc 낮은 단발 역전(의심)은 보수적으로 first_seen 유지(§★ 보수성).
 const scTs = c => {
   const p = Date.parse(c.published || ''), f = Date.parse(c.first_seen || '');
-  if (!isNaN(p) && !isNaN(f) && f - p > STALE_PUB_H * 3600000) return f;                 // 발행이 수집보다 STALE_PUB_H(6h)+ *과거* = RSS pubDate 오기록(과거 튐 · 260725 경향 '정성호 사의' 16h 실측) → 수집시각 채택(미래 가드의 대칭). 정상 지연(발행→수집 수십분~수시간)은 무접촉.
   if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000 || (c.report_count || 0) >= FOLLOW_RC_MIN)) return p;   // 발행 정상(미래 아님) AND (수집보다 앞 OR 연속보도 클러스터[rc≥6]) → 발행 우선
   if (!isNaN(f)) return f;                                                               // 발행 미래(오기록) 또는 rc낮은 역전 → 수집시각(존재 확인된 상한)
   return isNaN(p) ? 0 : p;
 };
-const STALE_PUB_H = 6;   // 발행 과거 튐 컷(h) — first_seen보다 이만큼 이상 과거인 published = 오기록 취급·수집시각 채택. 조정 가능.
 // ── 최신 게이트(scFast): 속보 OR 다매체(cross≥2·fbJunk 제외). grade는 진입 조건 아님(운영자 260720 "표시는 전부·grade는 긴급용") — 저신호는 접힘, 랭킹에서 연속보도(scFollow)·경중(gradeW)이 정렬. ──
 const BADGE_MAX_AGE_H = 24;   // 배지(⚡이슈)·OUT 완화 공용 소멸선(1일) — brkIssueKind(피드)·scBadgeType(수집함)·OUT_MAX_AGE_H 단일출처. 맨 리터럴 24가 두 곳에 이중 존재해 OUT만 바꾸면 "배지·완화 동시 소멸" 계약이 조용히 깨지던 드리프트 지뢰 봉합(분신술 10인 감사·260710). 조정 가능.
 const CROSS_MIN = 8;   // 누적 진입선 = 8개 매체 이상(운영자 260617: 5→8 엄선 — 어중간한 건 컷·DB엔 잔존). renderScrap(진입·OUT 통계)·fbJunk veto 공용 — 함수 로컬이던 것을 top-level 승격해 fbJunk의 맨 리터럴 8 제거(의미 같은 값 이중 정의 봉합·분신술 260710). 조정 가능.
