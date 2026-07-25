@@ -3261,8 +3261,10 @@
   .msgpop .qlist { flex:0 1 auto; min-height:0; margin-top:0; max-height:calc(5 * 51px); overflow-y:auto; overflow-x:hidden; }   /* 발행본과 동일 — 항목 수만큼 높이·5행 캡+스크롤·margin-top:0 헤더간격 균등(빈공간 0·운영자 260704) · flex 수축 = 짧은 뷰포트 페이저 보존(평의회3 260707) */
   .msgpop .qh-xcell, .msgpop .qrow .qact { justify-content:center; }   /* 삭제(휴지통) = 헤더 X 바로 아래 중앙정렬(발행본 미러) */
   .msgrow .mkind { font-size:var(--fs-xs); font-weight:800; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }   /* 알림구분 라벨 = 대기열 상태셀(qst) 자리 · 종류별 색 · 넘침 = 자기 칸에서 …(운영자 260725 "각각 고유 영역") */
-  .msgrow .mkind.mk-info { color:var(--mut); } .msgrow .mkind.mk-warn { color:var(--warn); } .msgrow .mkind.mk-sys { color:var(--info); }
-  .msgrow.q-warn .qmain { color:var(--warn); font-weight:700; }
+  .msgrow .mkind.mk-info { color:var(--mut); } .msgrow .mkind.mk-warn { color:var(--warn); } .msgrow .mkind.mk-sys { color:var(--mut); }   /* 시스템 = 무채(mk-info 동값 계승) — 구 var(--info) 형광그린 소등(운영자 260725 "시스템도 저 색일 필요없는데 · 다른 대기열과 같이 평범하게") · 재점등 = --info 복원 1값 */
+  /* (도먼트 260725) 경고 행 내용 노랑+볼드 — 대기열 함 행은 제목이 평범색이고 상태만 색이라 그 문법으로 통일(운영자 "평범하게") · 등급 표시는 구분 라벨(mk-warn)이 담당 = 정보 손실 0 · 복원 = 아래 원값
+     .msgrow.q-warn .qmain { color:var(--warn); font-weight:700; } */
+  .qpop .pub-ico.msg-ok:hover, .qpop .pub-ico.msg-ok:focus-visible { color:var(--accent); }   /* 확인(✓) = rest 무채(.pub-ico 기본) · hover/focus만 의미색 = 발행본 액션 정본 문법("rest 무채색·hover/focus만 의미색") 복원 · 의미색 값 = .pub-ico.ok(accent) 계승 · 누름 = .pub-ico:active --press-xs 그대로(운영자 260725 "액티브같은거를 살려서 챙겨주고") */
   .pubpop .pinmark { position:relative; flex:none; display:grid; place-items:center; cursor:pointer; touch-action:manipulation; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; transition:color .2s ease, transform .12s ease; }   /* 잠금 토글 = 클릭(옛 롱프레스 폐지 · 운영자 260704) · 간격은 .qact 셀+행 gap이 담당(마진 폐지) */
   /* ── 메시지 상세뷰(전문 다음 화면) + 카운트 분리 — PR 1560 신기능 이식(마크업·JS는 선존·CSS만 결합 · 260706): 행 클릭 = 전문, ‹목록 뒤로 · 정렬·타이틀 표준은 현행(main) 유지 ── */
   .msgpop .qc { font-size:13px; font-weight:700; color:var(--mut); margin-left:auto; font-variant-numeric:tabular-nums; }   /* "N건" = 우변 분리(타이틀은 '메시지'로 끝 · 운영자 260704) */
@@ -3279,7 +3281,7 @@
   .msgback:hover { color:var(--fg); } .msgback:active { transform:translateX(-2px); }
   .msgback svg { width:15px; height:15px; }
   .md-meta { display:flex; align-items:center; gap:8px; }
-  .md-kind { font-size:11px; font-weight:800; } .md-kind.mk-info { color:var(--mut); } .md-kind.mk-warn { color:var(--warn); } .md-kind.mk-sys { color:var(--info); }
+  .md-kind { font-size:var(--fs-xs); font-weight:800; } .md-kind.mk-info { color:var(--mut); } .md-kind.mk-warn { color:var(--warn); } .md-kind.mk-sys { color:var(--mut); }   /* 상세뷰 구분 라벨 = 목록 .mkind 동값(시스템 무채 통일 · 폰트도 --fs-xs=11px 동값 토큰 계승 · 260725) */
   .md-time { font-size:11px; font-weight:800; color:var(--mut); }
   .md-body { font-size:13px; line-height:1.65; color:var(--fg); white-space:pre-wrap; word-break:break-word; }
   /* 조치형 알림(m.action)의 '다시 받아오기' 버튼 — 재시도=arm(레몬) 색 정본 계승(.qgo.go-arm 미러) · 정렬 idiom = .msgback(inline-flex·align center·gap·svg 고정) 계승(운영자 260723 "눌러도 할 게 없다" 봉합) */
@@ -7237,7 +7239,7 @@ function renderMsgList() {
   list.innerHTML = msgs.map(m => {
     const k = msgKind(m), body = m.text || '', cp = [...body], bodyS = cp.length > 60 ? cp.slice(0, 60).join('') + '…' : body;
     const canDel = !!m.id && !m._health;   // 시스템·id없는 알림 = 삭제 불가(빈 qact 셀 = 정렬 유지)
-    const del = canDel ? '<button class="pub-ico pub-rm msg-del" type="button" title="' + (m._sys ? '확인' : '삭제') + '" data-id="' + qEsc(String(m.id)) + '">' + (m._sys ? CHECK_SVG : _TRASHSVG) + '</button>' : '';   // 수집 고장 알림 = ✓(확인 · 운영자 260725 "체크 표시 누르면 없어지고") — 버튼 부품·자리·애니(animateRowOut)는 삭제 버튼 100% 계승, 픽토만 CHECK_SVG(nm-svg 정본)
+    const del = canDel ? '<button class="pub-ico ' + (m._sys ? 'msg-ok' : 'pub-rm') + ' msg-del" type="button" title="' + (m._sys ? '확인' : '삭제') + '" data-id="' + qEsc(String(m.id)) + '">' + (m._sys ? CHECK_SVG : _TRASHSVG) + '</button>' : '';   // 수집 고장 알림 = ✓(확인 · 운영자 260725 "체크 표시 누르면 없어지고") — 버튼 부품·자리·애니(animateRowOut)는 삭제 버튼 100% 계승, 픽토만 CHECK_SVG(nm-svg 정본) · 색축만 분기 = ✓는 msg-ok(rest 무채·hover accent·press 그대로), 휴지통은 pub-rm(상시 danger) 불변(운영자 260725 "체크 보수색일 필요 없고")
     return '<div class="qrow msgrow' + ((m._health || m.level === 'warn') ? ' q-warn' : '') + '"' + (m.id ? ' data-id="' + qEsc(String(m.id)) + '"' : '') + '>'
       + '<span class="qt">' + qEsc(msgAgo(m)) + '</span>'
       + '<span class="qst mkind ' + k.c + '">' + k.t + '</span>'
