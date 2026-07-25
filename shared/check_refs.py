@@ -298,7 +298,7 @@ def check_design():
 # 하는데 복사라 드리프트 가능 — 260723 실사고: index만 --accent-2 라임→골드 바꿔 도구 뷰어 3곳(썸네일·
 # 편집·가사) 접기 삼각형이 라임 잔존. 이 게이트 = 각 뷰어 공유 팔레트를 index 해결값과 대조 → 하드 차단.
 # 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은 의도적 뷰어별([16] 차분한 툴톤 재색칠 금지)이라 제외.
-# 규칙 정본(단일 진입점) = docs/디자인기틀_SSOT.md §0-2·§5 · CLAUDE.md [15]·[16][4] · 전파 짝 = build_design_mirror.py STAGE4(sync_viewer_palette).
+# 규칙 정본(단일 진입점) = 디자인기틀/디자인기틀_SSOT.md §0-2·§5 · CLAUDE.md [15]·[16][4] · 전파 짝 = build_design_mirror.py STAGE4(sync_viewer_palette).
 _PALETTE_TONE = {'--bg', '--pan', '--line', '--line2', '--fg', '--mut', '--glass2', '--thumb',
                  '--modal-glass', '--modal-glass-anchor', '--modal-head-bg', '--modal-tabs-bg'}
 _COLOR_VAL = re.compile(r'^(#[0-9A-Fa-f]{3,8}|rgba?\([^)]*\)|\d[\d,\s.]*)$')
@@ -1169,12 +1169,12 @@ def check_anchor_liveness():
     역사)은 비대상 = 오탐 0 설계. 역사 서술 줄(해체·폐지·(구)·구 §·구 `)은 스킵(의도된 잔존 = Q146 관례).
     생존 판정 = 대상 문서에 '§토큰' 실존 or (숫자 토큰) '## N.' 헤딩 실존 or (2자+ 비숫자 토큰) 본문 실존 ·
     자기 파일 참조 = 스킵(참조 줄 자신이 매칭되는 순환 차단). fail-closed(화이트리스트 파일 못 읽으면 차단)."""
-    FILES = ['CLAUDE.md', 'docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md',
-             'docs/플레이그라운드_포터블.md', 'docs/실행계약_전문.md',
-             '구성도/00_가이드북_버튼인터랙션.html', '구성도/00_가이드북_버튼인터랙션.md', '구성도/진행 결과 상태.html']
-    DOCMAP = {'CLAUDE.md': 'CLAUDE.md', '디자인기틀_SSOT.md': 'docs/디자인기틀_SSOT.md',
-              'CII_컴포넌트계승인덱스.md': 'docs/CII_컴포넌트계승인덱스.md',
-              '플레이그라운드_포터블.md': 'docs/플레이그라운드_포터블.md', '실행계약_전문.md': 'docs/실행계약_전문.md'}
+    FILES = ['CLAUDE.md', '디자인기틀/디자인기틀_SSOT.md', '디자인기틀/CII_컴포넌트계승인덱스.md',
+             '디자인기틀/플레이그라운드_포터블.md', 'docs/실행계약_전문.md',
+             '디자인기틀/구성도/00_가이드북_버튼인터랙션.html', '디자인기틀/구성도/00_가이드북_버튼인터랙션.md', '디자인기틀/구성도/진행 결과 상태.html']
+    DOCMAP = {'CLAUDE.md': 'CLAUDE.md', '디자인기틀_SSOT.md': '디자인기틀/디자인기틀_SSOT.md',
+              'CII_컴포넌트계승인덱스.md': '디자인기틀/CII_컴포넌트계승인덱스.md',
+              '플레이그라운드_포터블.md': '디자인기틀/플레이그라운드_포터블.md', '실행계약_전문.md': 'docs/실행계약_전문.md'}
     HIST = re.compile(r'해체|폐지|\(구\)|구 §|구 `')
     REF = re.compile(r'(CLAUDE\.md|디자인기틀_SSOT\.md|CII_컴포넌트계승인덱스\.md|플레이그라운드_포터블\.md|실행계약_전문\.md)[^§\n]{0,50}§([^\s·,)\]<>*`|]{1,20})')
     texts = {}
@@ -1483,8 +1483,8 @@ def check_model_ids():
 # SSOT + 규칙·큐레이션 정본 문서(로그류 큐/이력 제외). 기존 미등재 = _GATE_DOC_BASELINE 면책(품질 유지 =
 # 대량 소급 문서화 강제 안 함 · 신규만 래칫 · 베이스라인 = 소급 문서화 TODO·축소 지향). 자기 자신
 # (check_gate_docs)도 대상 = SSOT §6·CLAUDE.md [15] 등재(자기참조 정합).
-_GATE_DOC_CANON = ('CLAUDE.md', 'docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md',
-                   'docs/라우터_법령전문.md', 'docs/실행계약_전문.md', 'docs/플레이그라운드_포터블.md',
+_GATE_DOC_CANON = ('CLAUDE.md', '디자인기틀/디자인기틀_SSOT.md', '디자인기틀/CII_컴포넌트계승인덱스.md',
+                   'docs/라우터_법령전문.md', 'docs/실행계약_전문.md', '디자인기틀/플레이그라운드_포터블.md',
                    'docs/curation-algorithm.md', 'docs/curation-rubric.md')
 _GATE_DOC_BASELINE = frozenset({   # 260723 스냅샷 = 소급 문서화 대상(신규 추가 = 문서화 회피라 지양 · diff 가시 · 축소 지향)
     'check_paths', 'check_versions', 'check_viewer_js', 'check_functions_js', 'check_inject_dividers',
@@ -1589,7 +1589,7 @@ def check_ssot_linkage():
     `viewer/nm-*.js`(공유 부품 관례) 각 파일이 발견 체인 3축(디자인기틀_SSOT.md · CII · CLAUDE.md)에 모두 언급되나 얕게 대조.
     미링크 = 고아 SSOT 후보 WARN(하드차단 아님 = 오탐 관용·연결성 강화 전용 · 기틀 문서 무증축 = 게이트는 코드에만)."""
     import glob as _g
-    idx = ['docs/디자인기틀_SSOT.md', 'docs/CII_컴포넌트계승인덱스.md', 'CLAUDE.md']
+    idx = ['디자인기틀/디자인기틀_SSOT.md', '디자인기틀/CII_컴포넌트계승인덱스.md', 'CLAUDE.md']
     txt = {}
     for d in idx:
         try:
@@ -1672,7 +1672,7 @@ def main():
     except Exception as e:
         print('⚠️ check_icon_ssot 스킵:', e)
     try:
-        import build_design_mirror   # 디자인 거울 정합: 구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
+        import build_design_mirror   # 디자인 거울 정합: 디자인기틀/구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
         if build_design_mirror.check() != 0:
             rc = 1
     except Exception as e:

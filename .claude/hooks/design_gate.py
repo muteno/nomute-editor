@@ -23,7 +23,7 @@ try:
     rel = os.path.relpath(os.path.abspath(fp), root).replace(os.sep, '/')
 except ValueError:
     sys.exit(0)
-if not re.match(r'^(viewer/.*\.(html|css)|구성도/.*\.(html|css))$', rel):
+if not re.match(r'^(viewer/.*\.(html|css)|디자인기틀/구성도/.*\.(html|css))$', rel):
     sys.exit(0)
 
 os.chdir(root)
@@ -155,7 +155,7 @@ _ra = _added_lines()
 _reuse_ack = any('reuse-ok' in l for l in _ra)
 _ctrl_new = [l.strip()[:70] for l in _ra if re.search(r'cursor\s*:\s*pointer', l) and 'reuse-ok' not in l]
 if _ctrl_new and not _reuse_ack:
-    out += ('\n🔁 재사용 자가검증(새 클릭 컨트롤 감지 · `%s`): 만들기 전에 docs/CII_컴포넌트계승인덱스.md '
+    out += ('\n🔁 재사용 자가검증(새 클릭 컨트롤 감지 · `%s`): 만들기 전에 디자인기틀/CII_컴포넌트계승인덱스.md '
             '§상호작용→정본 부품에서 계승 가능한지 먼저 확인 —' % _ctrl_new[0]
             + '\n   N택1=그 화면 확립 칩(k .axchip·edit .prow .pc·sb .geni-opt) · ON/OFF=그 화면 토글 · '
             '연속값=<input range> 슬라이더(edit .grow) · 새 폼 골격=index #genidlg .geni-row/.geni-opt.'
@@ -166,7 +166,7 @@ if _ctrl_new and not _reuse_ack:
 if rc:
     sys.stderr.write(
         '🎨 디자인 게이트 위반 — 계승이 디폴트(디자인기틀_SSOT.md §0·실행 계약 5). raw 값 창작 금지 → viewer/index.html :root의 '
-        'var() 토큰 사용(정확 토큰이 없어도 가장 가까운 토큰 자동 계승 = 안 물음). 컴포넌트는 docs/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승. '
+        'var() 토큰 사용(정확 토큰이 없어도 가장 가까운 토큰 자동 계승 = 안 물음). 컴포넌트는 디자인기틀/CII_컴포넌트계승인덱스.md 정본 셀렉터 계승. '
         '진짜 새 단이 필요하면 (갱신) 정문 = 기틀 승인 경로, 1회성 광학 보정은 같은 줄 `/* raw-ok: 사유 */`:\n' + out)
     sys.exit(2)
 print(out.strip() or '✅ 디자인 게이트 통과')

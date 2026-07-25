@@ -4,7 +4,7 @@
 >
 > **값 SSOT** = `viewer/index.html` `:root` 토큰 블록 (규칙 정본 = `CLAUDE.md §🎨`·`§📐`). 도구 페이지(comp·ly·k)는 이 토큰을 따르는 것이 곧 "통일".
 >
-> **사람이 보는 사인오프 버전** = `구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
+> **사람이 보는 사인오프 버전** = `디자인기틀/구성도/*.html` (인터랙티브). 이 MD는 그 확정값을 코드 적용용으로 옮긴 것.
 >
 > ⚠️ **단일정본 위계 (기틀 · 260621):** ① **값 = `viewer/index.html :root`가 유일 정본** → ② **`base.css` AUTO-MIRROR 블록 = viewer :root *전체 자동거울***(`shared/build_design_mirror.py build`가 :root 통째 복사 — 손 베끼기·"부분거울" 시절 폐지, 직접수정 금지·다음 build에 덮어씀 · 정정 260702) → ③ **이 MD·구성도 HTML = 규칙·시각화**. **충돌나면 viewer가 옳다** — 이 문서를 거기 맞춘다(반대 아님). ⚠️ 이 MD의 hex/px은 대부분 *viewer 추출본(descriptive)*이나, §0 opacity 스케일·일부 §6~8은 *목표(prescriptive)*라 viewer 현 raw값과 다를 수 있음(그건 지향점). 상세 = `CLAUDE.md §🎨`.
 
@@ -12,11 +12,11 @@
 
 ## 0. 토큰 베이스라인 (viewer/index.html :root 스냅샷 · 260704 갱신)
 
-> ⚠️ **색은 뷰어별 독립** — 이 표는 `index`(뉴스) `:root` 기준이고 **값 정본 = 자동거울 `구성도/base.css`**(= viewer :root). 도구 페이지(comp·ly·k·thumb)는 **구조 토큰만 공유**(`viewer/tokens.css`)하고 색은 각자 `:root`(warm 툴톤). 아래 값이 `:root`와 어긋나면 `:root`가 옳다. 진입점 = `docs/디자인_기틀_지도.md`.
+> ⚠️ **색은 뷰어별 독립** — 이 표는 `index`(뉴스) `:root` 기준이고 **값 정본 = 자동거울 `디자인기틀/구성도/base.css`**(= viewer :root). 도구 페이지(comp·ly·k·thumb)는 **구조 토큰만 공유**(`viewer/tokens.css`)하고 색은 각자 `:root`(warm 툴톤). 아래 값이 `:root`와 어긋나면 `:root`가 옳다. 진입점 = `디자인기틀/디자인_기틀_지도.md`.
 
 도구 페이지가 중립 회색 팔레트(`#0b0b0c` 등)를 쓰고 있으면 **구조 토큰(radius·spacing·blur·모션)을 아래 정본에 맞춘다**(색은 뷰어 정체성이라 독립).
 
-> 🔒 **값 스냅샷 폐지(260721 Q345 · 평의회 Q329 채택 ③)** — 여기 있던 `:root` 사본이 정본보다 낡아 드리프트 2회 실증(`--bg` 구값 `#0a120d` ≠ 현행 스포티파이 블랙 · SNS 시안 구값). **값 실체 = `viewer/index.html :root`(유일 정본) · 자동거울 = `구성도/base.css` AUTO-MIRROR · 이 문서는 규칙·패턴만 담는다**(디자인기틀_SSOT §유지 2 「실체 복붙 금지」).
+> 🔒 **값 스냅샷 폐지(260721 Q345 · 평의회 Q329 채택 ③)** — 여기 있던 `:root` 사본이 정본보다 낡아 드리프트 2회 실증(`--bg` 구값 `#0a120d` ≠ 현행 스포티파이 블랙 · SNS 시안 구값). **값 실체 = `viewer/index.html :root`(유일 정본) · 자동거울 = `디자인기틀/구성도/base.css` AUTO-MIRROR · 이 문서는 규칙·패턴만 담는다**(디자인기틀_SSOT §유지 2 「실체 복붙 금지」).
 
 **투명도(accent alpha) 스케일** — 즉흥 10값(.06~.85) 금지. 의미별 7값만:
 `glow .06` · `soft .12` · `ring .08` · `line .26` · `focus .35` · `edge .45` · `shine .85`.
@@ -162,7 +162,7 @@ fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-lin
 - 버튼 볼드 역할 고정: 1차(`.go·.send·.pickbtn·.mkbtn`) 800 · 보조(`.ctrl·.reset·.sbtn`) 700.
 
 ### 진행 인디케이터(PICKING) 매트릭스 코드비 (선택 모티프)
-PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM 없이 `::before`(라임 유지, reduced-motion이면 정지). 구현 = `구성도/전송 버튼 상태머신.html` `.ind-bar::before` 참조.
+PICKING 미결정 바 배경에 떨어지는 세로 라임 스트림. 추가 DOM 없이 `::before`(라임 유지, reduced-motion이면 정지). 구현 = `디자인기틀/구성도/전송 버튼 상태머신.html` `.ind-bar::before` 참조.
 
 ---
 
