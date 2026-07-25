@@ -1298,6 +1298,10 @@
   @media (hover:hover){ .vh-acts .profile:hover { transform:scale(1.18); } }   /* .ts-toggle hover 계승 */
   .vh-acts .profile:active { transform:none; }   /* 눌림 회전은 기틀 ic-spin 위임(ts-rf 동일 — 축소+회전 동시 투박 방지) */
   .vh-acts .profile:active .ts-ico, .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누르면·메뉴 열림 = 강조색(운영자 "누르면 강조색" + vh-fbtn.on 패턴 계승) */
+  /* 🚨 신규 레인 고장 = 기어 픽토 빨강 상주(운영자 260725 "이렇게 중대한 알림은 설정 픽토그램이 mut컬러가 아니라 붉은색으로 해결될 때까지 출력") — 문법 = 바로 위 stroke 사다리 계승(off=mut → hover=fg → 누름·열림=accent)에 '고장=danger' 한 칸 추가 · 토스트 ✓(12h 스누즈)·✗(접속 숨김)로 닫아도 기어는 유지 = '해결될 때까지'(소등 = 신규 수집 실회복뿐) · 도형·크기·정렬 무접촉 = 색만 */
+  body.has-freshbad .vh-acts .profile .ts-ico { stroke:var(--danger); }
+  @media (hover:hover){ body.has-freshbad .vh-acts .profile:hover .ts-ico { stroke:var(--danger); } }   /* hover 흰색이 경보색을 덮지 않게(고장 표시 우선) — 특이도 동률이라 소스순 뒤 재선언 */
+  body.has-freshbad .vh-acts .profile:active .ts-ico, body.has-freshbad .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누름·메뉴 열림 = 강조색 그대로(클릭 액티브 계약 보존 · 위 accent 규칙과 동률이라 명시 재선언) */
   .vh-acts .profile.hasmsg { box-shadow:none; }   /* 도먼트(운영자 260712 "메시지 왔다고 알림 필요 없음") — 구 강조색 메시지 링(원값 = git 이력 260712 도먼트 직전) */
   .vh-acts .profile.shc-bad, .vh-acts .profile.hasmsg.haswarn { box-shadow:none !important; }   /* 도먼트(260712) — 구 맞춤법/수집실패 노란 링 · 실패 표면화는 웹푸시(notify_fail)·대기열 빨강 유지 */
   .vh-acts .ts-rf { display:none; }   /* 새로고침 픽토그램 = 도먼트(운영자 260706 3차 "우상단 검색만") · DOM·JS 보존(재점등 = 이 줄 삭제) */
@@ -8727,7 +8731,7 @@ window.addEventListener('pageshow', () => { try { if (sessionStorage.getItem('no
 
 // ── 스크랩(수집·큐레이션) 뷰 ─────────────────────────────────────
 // candidates.json = RSS 후보(제목·매체·시각·교차점수·카테고리·url). 관심도 ★ = localStorage(UI 상태) + api/rate(레포 누적=취향 데이터).
-let CANDS = [], SCRAP_LOADED = false;
+let CANDS = [], SCRAP_LOADED = false, CAND_LIVE = false;   // CAND_LIVE = 지금 든 CANDS가 *라이브*(api/candidates = GitHub main 직독)인지 · false = 정적 candidates.json 폴백 = Cloudflare Pages **빌드 시점 스냅샷**(재빌드 한도 때문에 며칠~몇 주 낡음) → 그 데이터로 '수집 고장'을 판정하면 100% 오탐(260725 채굴: 리포 실데이터는 4h내 25건 = 정상인데 경보가 뜨던 경로)
 let SOCIAL = [], SOCIAL_LOADED = false, SOCIAL_LOADING = false, SOC_LM = 0;   // 소셜 버스트(커뮤니티 공론화) 레인 = SNS 탭(메뉴2). social_candidates.json(scraper/social_burst.py 출력 · 설계 docs/social-burst.md). SOC_LM = 파일 Last-Modified(ms) — age_h 스냅샷 경과 보정 앵커(Q359 ㉠)
 const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
@@ -8753,11 +8757,11 @@ async function loadCandidates(quiet) {   // quiet=라이브 폴링: CANDS·속�
     for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
       try {
         const r = await fetch(u);
-        if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) { CANDS = d; SCRAP_LOADED = true; detectBreaking(); detectPickFail(); checkFreshLane(); if (!quiet && CURTAB === 'scrap') renderScrap(); return; } }   // &&d.length: api/candidates가 GitHub 서빙 실패 시 빈 [](HTTP 200)을 뱉으면 그걸 유효응답으로 수용해 정적 폴백을 건너뛰고 수집함이 통째로 비던 SPOF 봉합(260714) — 빈 배열이면 다음 소스(정적 candidates.json)로 폴백. 실뉴스 0건은 현실적 부재라 [] = 서빙실패 신호
+        if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) { CANDS = d; CAND_LIVE = (u === 'api/candidates'); SCRAP_LOADED = true; detectBreaking(); detectPickFail(); if (!quiet && CURTAB === 'scrap') renderScrap(); return; } }   // &&d.length: api/candidates가 GitHub 서빙 실패 시 빈 [](HTTP 200)을 뱉으면 그걸 유효응답으로 수용해 정적 폴백을 건너뛰고 수집함이 통째로 비던 SPOF 봉합(260714) — 빈 배열이면 다음 소스(정적 candidates.json)로 폴백. 실뉴스 0건은 현실적 부재라 [] = 서빙실패 신호
       } catch { /* 다음 소스 */ }
     }
     if (!SCRAP_LOADED) CANDS = []; SCRAP_LOADED = true; if (!quiet && CURTAB === 'scrap') renderScrap();   // last-good 유지(분신8 — loadSocial 실패 처리와 패턴 통일 260706)
-  } finally { SCRAP_LOADING = false; }
+  } finally { SCRAP_LOADING = false; checkFreshLane(); }   // 신선도 판정 = 성공 분기 밖(finally)에서 *매 폴 무조건* — 구 위치(api 성공 줄 안)면 fetch가 통째로 실패하는 동안 판정이 아예 안 돌아 이미 뜬 상주 토스트·빨강 기어가 회복돼도 안 꺼졌다(자가 소등 불능 · 260725 실측 봉합)
 }
 // SNS 레인 로드 — social_candidates.json(커뮤니티 공론화 후보). 없거나 비면 빈 레인(정상). 탭 진입 시 1회.
 async function loadSocial() {
@@ -8864,7 +8868,7 @@ function checkFreshLane() {
   const el = document.getElementById('sysFreshToast');
   const kstH = new Date(Date.now() + 9 * 3600000).getUTCHours();   // 브라우저 로컬 tz 무관 KST 시(naive Date 금지 축과 무관한 산술 시프트)
   const n = CANDS.filter(c => (Date.now() - scTs(c)) < FAST_MAX_H * 3600000).length;   // scTs = 발행(미래 오기록 = first_seen 폴백) — 신규 칼럼 판정과 동축
-  const laneBad = CANDS.length > 100 && n < FRESH_ALERT_MIN;   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)
+  const laneBad = CAND_LIVE && CANDS.length > 100 && n < FRESH_ALERT_MIN;   // CAND_LIVE = 정적 폴백 스냅샷(낡은 게 정상)으로 '수집 고장'을 외치던 오탐 차단 — 라이브 서빙(api) 데이터일 때만 판정(260725 · 폴백 상태는 '수집 고장'이 아니라 '서빙 실패'라 이 문구가 원인을 잘못 지목했다)   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)
   if (CANDS.length > 100 && n >= FRESH_ALERT_MIN * 2) { try { localStorage.removeItem(FRESH_ACK_KEY); } catch {} _freshMute = false; _freshAckTs = 0; if (srvFreshAckTs()) postSysSeen('rearm'); }   // 재무장 = 확실 회복(임계×2 히스테리시스)만 — 경계 진동(4↔6건 = 주간 12.9% 체류 실측)이 ✓·✗를 10~30분마다 지우던 플리커 봉합(평의회B). ✗(접속 숨김)도 확실 회복 후 재고장 = 새 사건이라 재표시(의도). 계정 ack 활성 시 rearm 이벤트 1회 동기(낙관 add로 srvFreshAckTs 즉시 0 = 매 폴 재발송 차단·운영자 260717 계정 종속 일반화).
   if (!laneBad || kstH < 8 || CURTAB === 'scrap') { if (el) el.classList.remove('show'); return; }   // 소등만(ack·mute 무접촉): 회복 완충대(5~9건)·야간(08시 전 = 새벽 발행 저조 오탐 가드)·수집함 탭(빈 신규 칼럼을 직접 보는 중 = 잔소리 0 — 긴급 토스트 CURTAB!=='scrap' 관례 계승 · 평의회B)
   let ack = 0; try { ack = +localStorage.getItem(FRESH_ACK_KEY) || 0; } catch {}
