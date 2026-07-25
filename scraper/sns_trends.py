@@ -58,6 +58,7 @@
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
+import html
 import json
 import os
 import re
@@ -471,23 +472,66 @@ def _over(deadline):
     return deadline is not None and time.monotonic() > deadline
 
 
+_X_RSS_MIRRORS = ("https://nitter.net", "https://nitter.tiekoetter.com", "https://nitter.space",
+                  "https://lightbrd.com", "https://xcancel.com")   # 신디케이션 폴백 미러 풀(260725 실측: nitter.net 정상 응답 확인 · 나머지 = 로터리 예비)
+
+
+def _x_rss(acc, dead):
+    """X 신디케이션 실패분 폴백 — Nitter 계열 RSS(무인증 · 운영자 260725 "x 고쳐줘").
+    배경(실측 260725) = syndication.twitter.com이 데센 IP에 HTTP 429 상주 + 폰(가정 IP) 수집분도
+    x 0건 = 주·부 공급 동시 고사(구독 38계정 중 해외 3계정 5건만 잔존). RSS는 좋아요·RT·댓글 수가
+    없어 0으로 채우는데, 뷰어 xcard가 이 숫자들을 이미 미표기(운영자 260721 "시간만")라 표시 손실 0
+    — 정렬바만 무력화(24h 내 최신순 유지)된다. 미러는 계정마다 앞에서부터 시도하고, 실패한 미러는
+    이 런 동안 재시도 금지(dead 집합 = 38계정 × 5미러 폭주·상호 스로틀 차단).
+    ⚠ 200이어도 <item> 0개(본문 0B) = 미러 자체 스로틀 응답이라 '실패'로 본다."""
+    def _tag(b, n):
+        m = re.search(r"<%s>(.*?)</%s>" % (n, n), b, re.S)
+        return html.unescape(re.sub(r"<!\[CDATA\[|\]\]>", "", m.group(1)).strip()) if m else ""
+    for base in _X_RSS_MIRRORS:
+        if base in dead:
+            continue
+        try:
+            x = _get(base + "/" + urllib.parse.quote(acc) + "/rss", timeout=12)
+        except Exception:  # noqa: BLE001
+            dead.add(base)   # 접속 실패(403·502·타임아웃) = 죽은 미러
+            continue
+        items = re.findall(r"<item>(.*?)</item>", x or "", re.S)
+        if not items:
+            dead.add(base)   # 빈 셸·스로틀(200/0B)
+            continue
+        got = []
+        for it in items:
+            link, txt = _tag(it, "link"), re.sub(r"<[^>]+>", "", _tag(it, "title")).strip()
+            m = re.search(r"/status/(\d+)", link)
+            if not m or not txt:
+                continue
+            got.append({"account": acc, "text": txt[:280], "likes": 0, "rts": 0, "cmts": 0, "views": 0,
+                        "time": _tag(it, "pubDate"),   # RFC822("Sat, 25 Jul 2026 00:41:19 GMT") = parsedate_to_datetime·뷰어 new Date 양쪽 파싱 OK
+                        "url": "https://x.com/%s/status/%s" % (acc, m.group(1)), "_tid": m.group(1)})
+        if got:
+            return got
+        dead.add(base)
+    return []
+
+
 def x_subs(accounts, limit=10, deadline=None):
     """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 4s
     (분신 실측 260712: 1.2s 간격 = 16연속 429 · 4s = 전원 회복 — 짧은 간격이 되레 전멸 유발).
-    크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8). 정렬 = 좋아요."""
-    out, seen_tid = [], set()
+    크로스 계정 리트윗 = 트윗 id 기준 dedup(평의회8). 정렬 = 좋아요.
+    신디케이션이 그 계정에서 0건이면 RSS 미러 폴백(_x_rss · 260725) — 429 상주 구간에서도 공급 유지."""
+    out, seen_tid, dead = [], set(), set()
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
             break
         if i:
             time.sleep(4)
+        _n0 = len(out)
         try:
             h = _get("https://syndication.twitter.com/srv/timeline-profile/screen-name/" + urllib.parse.quote(acc))
             m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', h, re.S)
             if not m:
-                print(f"::warning::x @{acc} 빈 셸(스킵)", file=sys.stderr)
-                continue
+                raise ValueError("빈 셸(429·차단 응답)")   # continue 대신 예외 = 아래 RSS 폴백까지 흘려보냄(260725)
             entries = ((json.loads(m.group(1)).get("props") or {}).get("pageProps") or {}).get("timeline") or {}
             for e in entries.get("entries") or []:
                 c = e.get("content") or {}
@@ -509,7 +553,14 @@ def x_subs(accounts, limit=10, deadline=None):
                             "time": t.get("created_at") or "",
                             "url": "https://x.com/%s/status/%s" % (acc, tid)})
         except Exception as e:  # noqa: BLE001
-            print(f"::warning::x @{acc} 실패(스킵): {e}", file=sys.stderr)
+            print(f"::warning::x @{acc} 신디케이션 실패: {e}", file=sys.stderr)
+        if len(out) == _n0:   # 그 계정 신디케이션 0건 = RSS 미러 폴백(260725 · 미러도 전멸이면 조용한 공백)
+            for t in _x_rss(acc, dead):
+                tid = t.pop("_tid")
+                if tid in seen_tid:   # tid dedup = 신디케이션분·타 계정 리트윗과 중복 노출 차단(동 정본)
+                    continue
+                seen_tid.add(tid)
+                out.append(t)
     def _tts(s):   # created_at("Wed Oct 10 20:19:24 +0000 2018") → epoch · 실패 = 0(침몰)
         try:
             return parsedate_to_datetime(s).timestamp()
