@@ -11,7 +11,7 @@
       │  Termux(queue-news) → pending/YYMMDD-HHMMSS.txt (URL 한 줄) → git push (main)
       ▼
 [GitHub Actions: news-analyze]   (트리거 = pending/** push)
-      │  1) Claude Code 헤드리스(claude -p, claude-opus-4-8)로 각 URL 분석
+      │  1) Claude Code 헤드리스(claude -p, claude-opus-5)로 각 URL 분석
       │     - 분석 기준 = prompts/news-analysis.md (→ apps/news 에디터 지침에 종속)
       │  2) 결과 md → queue/YYMMDD-HHMM-기사ID.md (파일명 ASCII 한정 — 한글 제목은 frontmatter)
       │  3) 처리한 pending 삭제 / 실패는 pending/failed/ 로 격리(+.log)
@@ -217,7 +217,7 @@ Cloudflare Pages → **Create project → Connect to Git → 이 레포** 선택
 - **동시 실행**: `concurrency: news-analyze` 로 순차 처리.
 - **실패 격리**: 한 URL이 실패해도(차단·본문 깨짐·모델 오류) 그 건만 `pending/failed/`로 옮기고 나머지는 계속. ⚠️ **단 Claude API 일시 과부하(5xx/Overloaded)는 예외(260622)**: 인라인 백오프 재시도(`INLINE_TRIES=3`) 후에도 과부하면 `failed/`로 즉시 안 묻고 **pending 잔류 + `<base>.retry` 마커** → `pending-sweep`(≤20분 cron)가 회복 시 자동 재분석. `RETRY_CAP=5`회 초과 시에만 격리. 입력 막다른길(`ANALYSIS_FAILED`)·429/인증은 기존대로 즉시 격리(재시도 무의미). ⚠️ **타임아웃(rc=124 = analyze 900s·ask 600s 초과)은 계정 1회 강제전환(`claude_failover_force`) 후 재시도, 그래도 초과면 격리**(운영자 260704 "10분 넘으면 다른 계정" · 무한 전환 금지 = 워크플로 시간·쿼터 소진 차단 · 근본 방어 = 전문이면 검색완화[`news-analysis.md §0`·image_sources]로 타임아웃 자체 감소). 정본 = `.github/scripts/analyze.sh`·`ask.sh`(`is_transient`·`ASK_TIMEOUT`) + `shared/claude_transient.sh`(`claude_failover_force`·`claude_reset_force_swap`).
 - **인증**: 구독 OAuth 토큰(API 키 미사용). 계정은 `ACTIVE_ACCOUNT` 변수(기본 NOMUTEFB)로 동적 선택, 쿼터 한도 시 서브1→서브2 2단 폴오버(sticky) — 위 [계정 전환]. **타임아웃(rc=124)도 계정 1회 강제전환**하되 그 스왑은 기사마다 `claude_reset_force_swap`이 되돌려 쿼터 체인 예산을 잠식하지 않음(260704).
-- **모델**: `claude-opus-4-8` 고정(생성/하드작업 유지). **effort = 검색경로(analyze·ask)만 high**(env `PIPE_SEARCH_EFFORT` · 검색은 도구 왕복이라 max 헛사고가 타임아웃만 유발 · 260704), 나머지 생성경로는 max. 분석 도구는 `WebFetch,WebSearch`만 허용.
+- **모델**: `claude-opus-5` 고정(생성/하드작업 유지). **effort = 검색경로(analyze·ask)만 high**(env `PIPE_SEARCH_EFFORT` · 검색은 도구 왕복이라 max 헛사고가 타임아웃만 유발 · 260704), 나머지 생성경로는 max. 분석 도구는 `WebFetch,WebSearch`만 허용.
 - **품질 추종**: 분석 프롬프트가 워크플로에 하드코딩돼 있지 않고 `apps/news/`의 최신 에디터 지침을 읽어 쓰므로, 에디터가 개선되면 큐레이션 품질도 따라간다.
 
 ## 테스트 (E2E 1회)

@@ -6,7 +6,7 @@ cards/<stem>/thumbs/search.json **앞쪽** prepend(label '생성') → 뷰어 �
 
 운영 원칙(운영자 260707): 구독+종량제 병행 활용 — 프롬프트 지능=구독 Claude·렌더=종량제 Gemini.
 - Claude 호출 = 폴오버 SSOT(shared/claude_py.run_claude · 쿼터 시 4계정 체인 자동 전환 · §📰).
-- 연료 방어(운영자 260721 "낭비되는 연료 새는 구간 없게"): Fable 실패(거절·오류·형식이탈) = Opus 4.8 **1회 한정** 재시도 →
+- 연료 방어(운영자 260721 "낭비되는 연료 새는 구간 없게"): Fable 실패(거절·오류·형식이탈) = Opus 5 **1회 한정** 재시도 →
   그래도 실패면 결정형 폴백(Claude 0콜) — 모델당 1콜 상한·재시도 루프 없음(쿼터 폴오버는 run_claude SSOT 그대로).
 - Claude가 완전 실패해도 결정형 폴백 프롬프트로 렌더 강행(fail-soft — '생성' 버튼은 항상 결과를 내려 노력).
 - 카드 제미나이 0 불변과 무관: 이 경로는 뷰어 수동 발사(슛과 동일 정책·자동 파이프라인 아님).
@@ -32,9 +32,9 @@ sys.path.insert(0, str(ROOT / "shared"))
 import thumb_gen as tg   # __main__ 가드 있음 = import 안전. gemini_image·r2_upload·parse_md·R2_ON 재사용.  # noqa: E402
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 
-MODEL = os.environ.get("PIPE_MODEL", "claude-fable-5")    # 프롬프트 작성 = Fable 5(운영자 260721 "AI 이미지 생성은 품질이 많이 차이나니까 FABLE 5" — 구 Opus 4.8) · env 오버라이드 유지
-MODEL_FB = os.environ.get("PIPE_MODEL_FB", "claude-opus-4-8")   # Fable 실패(안전거절·오류·형식이탈) 시 1회 한정 폴백 = 구 정본 모델(연료 방어: 결정형 폴백行 전에 지능 1단 방파제 · 루프 없음)
-EFFORT = os.environ.get("PIPE_EFFORT", "high")            # 연료 방어(운영자 260721 "낭비 새는 구간 없게"): Fable 5 max = 과사고·장시간 낭비 위험 — high도 구 Opus max 이상 품질(모델 카드 정본) · 구 "opus 4.8 --effort max"의 Fable 등가
+MODEL = os.environ.get("PIPE_MODEL", "claude-fable-5")    # 프롬프트 작성 = Fable 5(운영자 260721 "AI 이미지 생성은 품질이 많이 차이나니까 FABLE 5" — 구 Opus 5) · env 오버라이드 유지
+MODEL_FB = os.environ.get("PIPE_MODEL_FB", "claude-opus-5")   # Fable 실패(안전거절·오류·형식이탈) 시 1회 한정 폴백 = 구 정본 모델(연료 방어: 결정형 폴백行 전에 지능 1단 방파제 · 루프 없음)
+EFFORT = os.environ.get("PIPE_EFFORT", "high")            # 연료 방어(운영자 260721 "낭비 새는 구간 없게"): Fable 5 max = 과사고·장시간 낭비 위험 — high도 구 Opus max 이상 품질(모델 카드 정본) · 구 "opus 5 --effort max"의 Fable 등가
 KST = datetime.timezone(datetime.timedelta(hours=9))      # §📐 시각 = KST
 
 
@@ -355,7 +355,7 @@ def build_fallback(head, lead, scene, o):
 
 def ask_opus(head, lead, insight, scene, o, free=False):
     """Fable 5(effort high)에게 옵션 반영 Gemini 프롬프트 작성 요청 — 실패·빈출력이면 None(→ 폴백).
-    연료 방어(운영자 260721): Fable 실패 시 Opus 4.8 1회 한정 재시도(모델당 1콜 · 루프 없음) →
+    연료 방어(운영자 260721): Fable 실패 시 Opus 5 1회 한정 재시도(모델당 1콜 · 루프 없음) →
     둘 다 실패 = None(결정형 폴백 = Claude 0콜). 거절문이 프롬프트로 새어 종량제 렌더를 태우지 않게
     라벨 블록(STYLE·SCENE) 형식 검문까지 통과해야 채택.
     free = 자유 생성(기사 없음): [기사] 블록 대신 운영자 주문(주문 없으면 문구/참고 이미지)이 장면의 전부(260707·260721)."""
@@ -429,7 +429,7 @@ def ask_opus(head, lead, insight, scene, o, free=False):
         aspect=o["aspect"], aspect_en=aspect_en(o["aspect"]),
         mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
 
-    # 연료 방어 체인(운영자 260721) = 모델당 정확히 1콜: Fable 5 → (실패 시) Opus 4.8 → (그래도 실패) None(결정형 폴백 = 0콜).
+    # 연료 방어 체인(운영자 260721) = 모델당 정확히 1콜: Fable 5 → (실패 시) Opus 5 → (그래도 실패) None(결정형 폴백 = 0콜).
     # 재시도 루프 없음 — 쿼터 폴오버(4계정)는 run_claude SSOT 내부 그대로(쿼터일 때만 발동 · 거절·오류는 즉시 다음 단계).
     for mdl in dict.fromkeys([MODEL, MODEL_FB]):   # 동일 모델 지정 시 중복 제거 = 1콜
         args = ["claude", "-p", "--model", mdl, "--effort", EFFORT,
