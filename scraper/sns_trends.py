@@ -869,7 +869,11 @@ def threads_subs(accounts, limit=10, deadline=None):
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
     _now = datetime.now(KST).timestamp()
     fresh = [t for t in out if t["time"] and t["time"] >= _now - 86400]   # ⏱ 24h 이내만(x_subs L519 계승 · 속보 시사채널 = 신선도 핵심 · time=taken_at epoch · 0/결측 배제 · 평의회 260723 #4)
-    return sorted(fresh, key=lambda t: t["time"], reverse=True)[:limit]   # 최신순(x_subs 최신순 정렬 계승 · 표시 정렬 = 뷰어 정렬바 = 24h 내 좋아요순 '근 1일 가장 핫' · 빈 결과 = 조용한 공백)
+    # 최신순(x_subs 최신순 정렬 계승 · 표시 정렬 = 뷰어 정렬바 = 24h 내 좋아요순 '근 1일 가장 핫' · 빈 결과 = 조용한 공백)
+    # → 절단 직전 계정 다양성 재배열(_acct_spread · 260725 Q557 = x_subs Q556 처방 이식): 스레드도 최신순 단일 축
+    #   절단이라 다작 계정이 limit를 먹으면 다른 계정이 풀에서 사라진다(관측 = 19건/3계정 8·7·4 편중) · 순서 =
+    #   정렬 → spread → [:limit] 고정(spread를 앞에 두면 재정렬이 덮어 무효)
+    return _acct_spread(sorted(fresh, key=lambda t: t["time"], reverse=True))[:limit]
 
 
 def reddit_hot(subreddits, limit=12, per=8):
