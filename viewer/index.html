@@ -11933,6 +11933,29 @@ function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = �
 //   ⓑ 폰 네트워크 스톨 ⓒ 탭 백그라운드 스로틀. 어느 쪽이든 사용자에겐 '무한로딩'으로만 보인다.
 // 처방(2단): ① 1회 자동 재로드(전형적 일시 스톨은 여기서 해소) ② 그래도 무응답이면 fail-safe 리빌(.ready 부여)
 //   = 구 260724 이전 동작으로 복귀 = 빈 화면일지언정 '멈춘 로딩'에 갇히지 않음(정직 · orb는 즉시 사라짐).
+// ── 조기 리빌 = '틀 먼저'(운영자 260725 "일단 틀 띄워놓고 로딩에 제반되는 내용을 그 다음에 준비하게 하지") ──
+// 왜: iframe load는 폰트·이미지·CDN 등 *마지막 하위 리소스 1개*까지 기다린다 → 뼈대는 진작 다 그려졌는데
+//   느린 리소스 하나 때문에 프레임 전체가 opacity 0로 잠겨 "왜 이렇게 늦게 떠?"가 된다(무한로딩의 완만한 형제).
+// 처방: same-origin 문서의 readyState가 'loading'을 벗어나는 순간(=DOMContentLoaded = 인라인 스크립트까지
+//   실행 완료 = 틀 완성) 즉시 리빌. 남은 리소스는 보이는 화면 뒤에서 계속 채워진다(체감 = 즉시 표시).
+//   cross-origin(폴링 불가) = 종전대로 load/워치독에 위임.
+function frEarly(fr) {
+  if (!fr) return;
+  clearInterval(fr._er);
+  let n = 0;
+  fr._er = setInterval(() => {
+    if (fr.classList.contains('ready') || ++n > 180) { clearInterval(fr._er); return; }   // 이미 노출·상한(≈18s) = 워치독이 뒤를 받음
+    let d = null;
+    try { d = fr.contentDocument; if (!d || d.location.href === 'about:blank') return; } catch (_) { clearInterval(fr._er); return; }   // cross-origin = 위임
+    if (!d.body || !d.body.firstElementChild) return;   // 뼈대 0 = 빈/흰 프레임 노출 차단
+    if (d.readyState === 'loading' && !d.body.getBoundingClientRect().height) return;   // 파싱 중이어도 '그려진 것'이 있으면 통과 = 틀 먼저(파서를 막는 스크립트 뒤에서 기다리지 않음 · CSS는 head에서 이미 적용 = 민낯 노출 아님)
+    clearInterval(fr._er);
+    clearTimeout(fr._wd);                                                   // 틀 도착 = 워치독 해제(재로드 금지 — 화면 날림 방지)
+    if ((d.location.href || '').indexOf('/tr.html') >= 0) fr._trLoaded = true;   // 번역 프레임 판정도 조기 확정(trMount 재토글이 되벗기지 않게)
+    fr.classList.add('ready');
+    if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');
+  }, 100);   // raw-ok: 폴링 간격(ms — 지속시간 토큰 아님) · 100ms = 체감 즉시 + 부하 무시가능
+}
 const FR_WD_MS = 11000;   // raw-ok: 워치독 대기(ms 상수 — 지속시간 토큰 아님) · 폰 4G 실측 여유 + 체감 상한
 function frWatch(fr, src) {   // src 있으면 1회 재로드 대상(없으면 리빌만)
   if (!fr) return;
@@ -12008,6 +12031,7 @@ function trEnsureFrame() {   // tr 전용 프레임 생성+로드(예열·활성
   const _bust = '/tr.html?v=' + Date.now();   // 캐시버스트 = loadToolFrame 계승(_headers no-cache 한 쌍 · 260723 tr.html _headers 등재 소급)
   try { f.contentWindow.location.replace(_bust); } catch (_) { f.src = _bust; }
   frWatch(f, '/tr.html');   // 무한로딩 탈출구(운영자 260725 "번역 무한로딩") — 예열 프레임은 load 미도착이 곧 무한 orb라 워치독 필수
+  frEarly(f);               // 틀 먼저 = 번역 폼 뼈대 완성 즉시 노출(폰트·아이콘 등 잔여는 뒤에서)
   return f;
 }
 function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프레임을 백그라운드 선로드(활성화 X) → 번역 탭 클릭 시 즉시 표시 = 카드생성·편집·AI생성(selApp 리로드0)과 동일 체감. thumb 로드 완료 후 시작(tr load의 frame-ready 부수효과가 thumb 조기노출 안 하게 순서 보장)
@@ -12018,7 +12042,7 @@ function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프�
 }
 function trMount() {   // 번역 탭 활성 = 전용 프레임 표시(예열됐으면 즉시 · 미예열이면 로드 후 페이드인)
   const f = trEnsureFrame();
-  if (!f._trLoaded) frWatch(f, '/tr.html');   // 미완 프레임 = 워치독 재무장(운영자 260725) — 이 토글이 워치독 fail-safe 리빌을 다시 벗겨 무한 orb로 되돌리는 경로 봉합
+  if (!f._trLoaded) { frWatch(f, '/tr.html'); frEarly(f); }   // 미완 프레임 = 워치독+조기리빌 재무장(운영자 260725) — 이 토글이 워치독 fail-safe 리빌을 다시 벗겨 무한 orb로 되돌리는 경로 봉합
   f.classList.toggle('ready', !!f._trLoaded);   // 한수 260724 리빌 게이트: 로드 완료면 .ready(활성화 즉시 표시) · 미완이면 미준비(load 리스너가 tr.html 실 로드시 .ready 재부여 = 페이드인) · 프레임별이라 타 프레임 load 무영향
   if (f._trLoaded) tooldlg.classList.add('frame-ready');   // 전역 보조 신호(재클릭 가드·trWarm)만 동반 갱신 — 예열·보존 프레임(로드 완료) 기준
   else tooldlg.classList.remove('frame-ready');   // 로딩 중(방금 생성/예열 미완)
@@ -12036,6 +12060,7 @@ function loadToolFrame(src) {
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
   frWatch(_fr, src);   // 무한로딩 탈출구(운영자 260725) = load 미도착 시 1회 재로드 → fail-safe 리빌
+  frEarly(_fr);        // 틀 먼저(운영자 260725) = DOM 파싱 완료 즉시 리빌 · 남은 리소스는 뒤에서
 }
 function setToolTitle(t) { $('#toolTitle').innerHTML = AI_SVG + '<span>' + (t || '제작 도구') + '</span>'; }   // 스튜디오 타이틀 = AI 스파클 픽토(nm-svg SSOT · 형광) + 텍스트(운영자 260712 8차 "AI 픽토그램 + Image/Video Studio" 명시 지시 = §📐 라 타이틀 픽토+텍스트 공존 금지의 운영자 승인 예외 · t = 코드 상수만 유입)
 // 제작 도구 모달 — src 단일 또는 tabs([{src,title,label}…]) = 자막생성처럼 한 도구 안 탭 분기(thumb 탭 계승). showModal 전 로드 시작 = 깜빡임 완화.
