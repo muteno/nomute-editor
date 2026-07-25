@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""노뮤트 디자인토큰 거울 — viewer :root(값 SSOT) → 구성도/base.css 자동투영.
+"""노뮤트 디자인토큰 거울 — viewer :root(값 SSOT) → 디자인기틀/구성도/base.css 자동투영.
 
 구조(§🎨 closed-loop ⓐ · 260621):
   값 SSOT = viewer/index.html :root  ← 라이브 앱이 실제 렌더하는 값. 토큰값 수정은 여기서만.
        │  build  (:root 블록 통째로 → base.css AUTO-MIRROR 블록)
        ▼
-  거울    = 구성도/base.css AUTO-MIRROR 블록  ← 구성도 데모(사람이 보는 설계도)가 link.
+  거울    = 디자인기틀/구성도/base.css AUTO-MIRROR 블록  ← 구성도 데모(사람이 보는 설계도)가 link.
 
 손 베끼기 폐지: 예전엔 base.css에 토큰 몇 개만 손으로 베껴 → viewer 바뀌면 조용히 stale.
 이제 build가 viewer :root를 통째 복사 = 거울이 항상 정본을 따름(드리프트 0).
@@ -25,7 +25,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VIEWER = os.path.join(ROOT, "viewer", "index.html")
-BASECSS = os.path.join(ROOT, "구성도", "base.css")
+BASECSS = os.path.join(ROOT, "디자인기틀", "구성도", "base.css")
 TOKENSCSS = os.path.join(ROOT, "viewer", "tokens.css")   # STAGE3: 4뷰어 공유 구조토큰(색 제외) — index :root 파생
 LOCK = os.path.join(ROOT, "design-tokens.lock")   # §🔒 제1 핵심명령 기계게이트 — :root 토큰명 승인 스냅샷(신토큰=운영자 승인+lock 갱신 없으면 check_refs rc=1)
 
@@ -128,7 +128,7 @@ def check_tokens():
 # 해결값으로 덮어씀 = 손 베끼기 폐지. 툴톤(--bg/--pan/--line*/--fg/--mut/--glass*/--modal*/--thumb)은
 # 의도적 뷰어별([16] 차분한 툴톤 재색칠 금지)이라 제외 · 뷰어가 이미 정의한 토큰만 값 교체(신규 추가 0).
 # 검증(드리프트 게이트) = shared/check_refs.py check_palette_sync()(커밋 하드 게이트).
-# 규칙 정본(단일 진입점) = docs/디자인기틀_SSOT.md §0-2(색 값 SSOT·전파 워크플로)·§5(빌더·게이트 항) · CLAUDE.md [15]·[16][4].
+# 규칙 정본(단일 진입점) = 디자인기틀/디자인기틀_SSOT.md §0-2(색 값 SSOT·전파 워크플로)·§5(빌더·게이트 항) · CLAUDE.md [15]·[16][4].
 _VIEWERS_TOOLS = ('viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html',
                   'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html')
 _PALETTE_TONE = {'--bg', '--pan', '--line', '--line2', '--fg', '--mut', '--glass2', '--thumb',
@@ -211,7 +211,7 @@ def render():
 def build():
     out = render()
     open(BASECSS, "w", encoding="utf-8").write(out)
-    print("✅ 디자인 거울 build — 구성도/base.css 의 AUTO-MIRROR 블록을 viewer :root로 동기화.")
+    print("✅ 디자인 거울 build — 디자인기틀/구성도/base.css 의 AUTO-MIRROR 블록을 viewer :root로 동기화.")
     build_tokens()   # STAGE3: viewer/tokens.css 공유 구조토큰도 동시 갱신(거울 2호)
     sync_viewer_palette()   # STAGE4: 도구 뷰어 공유 팔레트를 index로 전파(운영자 260723 "하나 바꾸면 전역 따라오게")
     return 0
@@ -261,16 +261,16 @@ def check_lock():
 def check():
     rc = 0
     if not os.path.exists(BASECSS):
-        print("⚠️ 디자인 거울 check 스킵 — 구성도/base.css 없음")
+        print("⚠️ 디자인 거울 check 스킵 — 디자인기틀/구성도/base.css 없음")
     else:
         cur = open(BASECSS, encoding="utf-8").read()
         want = render()
         if cur != want:
-            print("❌ 디자인 거울 드리프트 — 구성도/base.css ≠ viewer :root. "
+            print("❌ 디자인 거울 드리프트 — 디자인기틀/구성도/base.css ≠ viewer :root. "
                   "`python3 shared/build_design_mirror.py build` 로 동기화하라(§🎨 ⓐ).")
             rc = 1
         else:
-            print("✅ 디자인 거울 정합 — 구성도/base.css AUTO-MIRROR = viewer :root.")
+            print("✅ 디자인 거울 정합 — 디자인기틀/구성도/base.css AUTO-MIRROR = viewer :root.")
     if check_tokens() != 0:   # STAGE3: tokens.css 정합·색오염 게이트(거울 2호)
         rc = 1
     if check_lock() != 0:   # §🔒 기계게이트: :root 토큰명 vs design-tokens.lock(신토큰 승인 강제)
