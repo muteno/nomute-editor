@@ -3,7 +3,7 @@
 # 뷰어 bcard 렌더(260718 "첨부2처럼"): [순위]@계정 → 번역 본문만(영문 원문 병기 폐지 · **마커** = <b> 볼드 · 미번역 = 비노출). 원문(text)은 데이터 보존(번역 입력·carry 키).
 # 게이트 3중(sns_brief.sh 계승): ① BSKY_TR=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 번역 대상 0 = 스킵(토큰 0) ③ 실패 = fail-soft(직전 번역 carry 유지 · rc 0 = 커밋 비차단).
 # 증분: 직전 커밋(git HEAD)의 bsky[]에서 url+text 동일 항목의 topic/ko/tv를 carry → 신규·본문변경분 + 구판(tv<2 = 키워드 마킹 이전)만 LLM(재번역 낭비 0 · 구판은 1회 업그레이드 후 수렴 · sns_brief '입력 동일 스킵' 정신).
-# 모델 = PIPE_MODEL(opus 4.8 · shared/model_env.sh — 생성/하드작업 축) · effort high(번역=판단 경량 · 리서치 아님) · turns 1 · timeout 300.
+# 모델 = PIPE_MODEL(opus 5 · shared/model_env.sh — 생성/하드작업 축) · effort high(번역=판단 경량 · 리서치 아님) · turns 1 · timeout 300.
 # --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장도구 활성 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
 set -u
 [ "${BSKY_TR:-0}" = "1" ] || { echo "bsky-tr: OFF(BSKY_TR!=1) — 스킵"; exit 0; }

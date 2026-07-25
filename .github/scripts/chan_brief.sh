@@ -4,7 +4,7 @@
 # 페르소나 = "채널을 같이 키우는 친한 그로스 애널리스트 · 호칭·이름 없이 친근 인사(KST) · 성장 서사 → 급변 원인 콕 → 데이터 근거 실행 전략 · 쉬운 말 · 수치 신뢰선 사수"(sns_brief v8 톤 계승).
 # 구성 = 기간 5부(운영자 260714 "1년 전반부 총론만 나옴 → 구분 요약" · 2차 확정 = 3일/7일/28일/3개월/전체 총론) — 출력 = sections[{k,label,text}] + text(전문 = 하위호환·마커 파싱 실패 시 유일 렌더).
 # 게이트 3중(sns_brief.sh 계승): ① CHAN_BRIEF=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 입력 다이제스트 동일 = 스킵(토큰 0 · 데이터 무변화 = 재생성 낭비 0) ③ 실패 = fail-soft(직전 brief 유지 · rc 0 — 뷰어는 파일 없으면 블록 미표시 = 조용한 공백).
-# 모델 = PIPE_MODEL(opus 4.8 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 8 · timeout 600 · 운영자 "토큰 아끼지 말고" = 다이제스트에 전 축 탑재.
+# 모델 = PIPE_MODEL(opus 5 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 8 · timeout 600 · 운영자 "토큰 아끼지 말고" = 다이제스트에 전 축 탑재.
 # --safe-mode(--bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f) · WebSearch/WebFetch = --allowedTools 명시(게시물 소재 사건 맥락 확인용 — 헤드리스는 미허용 도구 즉시 거부 · sns_brief 실측 260713 계승).
 set -u
 [ "${CHAN_BRIEF:-0}" = "1" ] || { echo "chan-brief: OFF(CHAN_BRIEF!=1) — 스킵"; exit 0; }

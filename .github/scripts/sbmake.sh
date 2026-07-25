@@ -8,7 +8,7 @@ ROOT="$(git rev-parse --show-toplevel)"; cd "$ROOT"
 PROMPT_FILE="prompts/sb-make.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL — 감독 미지정 폴백)
 case "${DIRECTOR:-}" in
-  opus) MODEL="claude-opus-4-8" ;;    # 감독 = 오퍼스 4.8(정적·감성·가성비)
+  opus) MODEL="claude-opus-5" ;;    # 감독 = 오퍼스 5(정적·감성·가성비)
   fable) MODEL="claude-fable-5" ;;    # 감독 = 페이블 5(역동·서사·재생성 절약)
   *) MODEL="$PIPE_MODEL" ;;
 esac
@@ -67,7 +67,7 @@ else
 # Write/Edit/Bash/Task 불허 = 헤드리스 무중단(kmake와 동일).
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(kmake 패턴 계승)
-SB_MODEL_FB="${SB_MODEL_FB:-claude-opus-4-8}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · DIRECTOR=opus면 미발동)
+SB_MODEL_FB="${SB_MODEL_FB:-claude-opus-5}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · DIRECTOR=opus면 미발동)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=sb METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 900 \
         --model "$MODEL" \

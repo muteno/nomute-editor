@@ -443,20 +443,27 @@ let ocrLines = null;                     // [{i,t,b:{x,y,w,h}}] natural 좌표(�
 let ocrFor = null;                       // OCR 캐시 키(같은 이미지 재생성 = 재판독 생략)
 let busy = false;
 
+/* 무한 대기 차단(운영자 260725 "무한로딩") — CDN(tesseract.js)·워커 내려받기는 실패해도 '거부'가 안 오고
+   그냥 영영 매달려서 Solving… orb가 무한 회전한다. 모든 대기에 상한을 걸어 '실패'로 떨어뜨린다. */
+const withCap = (p, ms, msg) => { let t; return Promise.race([
+  Promise.resolve(p).finally(() => clearTimeout(t)),
+  new Promise((_, rj) => { t = setTimeout(() => rj(new Error(msg)), ms); }),
+]); };
 function loadTess(){   /* OCR 라이브러리 = 누를 때만 지연 로드(평시 페이지 무게 0) */
   if (window.Tesseract) return Promise.resolve();
-  return new Promise((res, rej) => {
+  return withCap(new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
     s.onload = res; s.onerror = () => rej(new Error('OCR 라이브러리 로드 실패 — 네트워크 확인'));
     document.head.appendChild(s);
-  });
+  }), 25000, 'OCR 라이브러리 로드 지연 — 네트워크 확인 후 다시 눌러줘');   /* 스톨(onerror 안 오는 무응답) 상한 */
 }
 async function runOcr(){
   await loadTess();
-  const w = await Tesseract.createWorker('eng');
-  const { data } = await w.recognize(img);
-  await w.terminate();
+  const w = await withCap(Tesseract.createWorker('eng'), 60000, '글자 인식 준비 지연(언어 데이터 내려받기) — 잠시 후 다시 시도해줘');   /* 워커·wasm·eng 데이터 = 첫 1회 수 MB 다운로드 = 스톨 최빈 지점 */
+  let data;
+  try { ({ data } = await withCap(w.recognize(img), 120000, '글자 읽기가 너무 오래 걸려 — 더 작은/선명한 이미지로 다시')); }
+  finally { try { await w.terminate(); } catch (_) {} }   /* 타임아웃이어도 워커 회수(누수·중복 워커 차단) */
   return (data.lines || [])
     .map((l, i) => ({ i, t: (l.text || '').trim(), b: { x: l.bbox.x0, y: l.bbox.y0, w: l.bbox.x1 - l.bbox.x0, h: l.bbox.y1 - l.bbox.y0 } }))
     .filter(l => l.t.length > 1 && l.b.w > 8 && l.b.h > 6);
@@ -588,7 +595,8 @@ go.addEventListener('click', async () => {
     if (ART) ctxPay.art = ART;
     const note = noteTx.value.trim().slice(0, 500);
     if (fired) { ctxPay.redo = 1; if (note) ctxPay.note = note; }
-    const r = await fetch('/api/tr', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lines: ocrLines.map(l => ({ i: l.i, t: l.t })), ctx: ctxPay }) });
+    const r = await fetch('/api/tr', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lines: ocrLines.map(l => ({ i: l.i, t: l.t })), ctx: ctxPay }), signal: AbortSignal.timeout(150000) })   /* 무응답 상한(운영자 260725) = 즉답 경로 최장(Opus 플랜 산출) 여유 · 초과 = 무한 대기 대신 실패 표기 */
+      .catch(e => { throw new Error(e && e.name === 'TimeoutError' ? '서버 응답 지연 — 잠시 후 다시 시도해줘' : '네트워크 오류 — 연결 확인 후 다시'); });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
     const plan = j.plan ? j.plan : await pollPlan(j.id);   // 즉답 경로(유료 API 직결 · 운영자 260721 승인 — 수신 즉시 합성) · 없으면 워크플로 폴링 폴백(구독 무료)

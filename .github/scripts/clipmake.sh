@@ -25,7 +25,7 @@ ${SUBS}"
 # 인라인 재시도 — 쿼터 한도 = 대체 계정 전환 · 일시 과부하 = 백오프(lymake 문법 그대로)
 inline_delay=15
 rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단 · 검증⑥ L1)
-CLIP_MODEL_FB="${CLIP_MODEL_FB:-claude-opus-4-8}"; _mfb_tried=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(gen_image MODEL_FB 패턴 · 평의회 260722 P1 · 운영자 "Fable 부족시 Opus max")
+CLIP_MODEL_FB="${CLIP_MODEL_FB:-claude-opus-5}"; _mfb_tried=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(gen_image MODEL_FB 패턴 · 평의회 260722 P1 · 운영자 "Fable 부족시 Opus max")
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=clip METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 600 \
         --model "$MODEL" \

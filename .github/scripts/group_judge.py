@@ -4,7 +4,7 @@
 #   운영자 260702: "자동 병합 안 해도 오차 없이 묶이게" → 기계(same_topic)가 후보 그룹만 추리고,
 #   AI가 '같은 실제 사건'인지 확정해야만 뷰어가 병합 표시(mergeDecorate 파이프 재사용 = 수동 병합과 동일 대우).
 #   렉시컬 단독 병합은 금지 선례(260625 autopick: 안산↔청주 폭발 0.40 오접합) — AI 백스톱이 이 판정의 존재 이유.
-# 모델 = opus 4.8 기본(운영자 260702 "탄탄하게" — autopick _ai_same과 동일 판정유형 선례) · --safe-mode 지원 · 폴오버 SSOT(claude_py) 경유.
+# 모델 = opus 5 기본(운영자 260702 "탄탄하게" — autopick _ai_same과 동일 판정유형 선례) · --safe-mode 지원 · 폴오버 SSOT(claude_py) 경유.
 # 도장 = 각 멤버 entry에 group_rubric(그룹구성해시+룰버전) → 같은 구성 재판정 0 · 멤버 변동 시 해시 바뀌어 자동 재판정.
 #   YES → 멤버 전원에 group_id(대표 url) / NO → 도장만 = 뷰어 병합 억제(단 기존 YES 코어의 group_id는 보존 — 260723 연좌 해제 방지).
 # 사용:
@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT / "shared"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT · gate_judge와 동일 경로)  # noqa: E402
 
 CAND = ROOT / "viewer" / "candidates.json"
-MODEL = os.environ.get("GROUP_MODEL", "claude-opus-4-8")   # 사건 동일성 = 정밀 판정(장소·주체 구분) — opus 기본(운영자 260702 · sonnet 강등 스위치 = 이 env)
+MODEL = os.environ.get("GROUP_MODEL", "claude-opus-5")   # 사건 동일성 = 정밀 판정(장소·주체 구분) — opus 기본(운영자 260702 · sonnet 강등 스위치 = 이 env)
 EFFORT = os.environ.get("GROUP_EFFORT", "").strip()
 SAFE = os.environ.get("GROUP_SAFE", "0").strip().lower() not in ("0", "false", "no", "")
 MAX_PER_RUN = int(os.environ.get("GROUP_MAX_PER_RUN", "20"))   # 한 런 판정 그룹 상한(배치 1콜)

@@ -3651,7 +3651,7 @@ try {
   </div>
 </dialog>
 <!-- 이미지 생성 팝업 — 검색 카러셀 + 버튼으로 열림. 운영자가 버튼으로 옵션을 고르면 그게 곧 프롬프팅:
-     api/genimg → imggen 워크플로{Opus 4.8·effort max가 기사 요약·시사점+옵션으로 프롬프트 작성 → 제미나이(종량제) 렌더 → R2 → search.json '생성' prepend}.
+     api/genimg → imggen 워크플로{Opus 5·effort max가 기사 요약·시사점+옵션으로 프롬프트 작성 → 제미나이(종량제) 렌더 → R2 → search.json '생성' prepend}.
      칩은 JS(GENI_DICT)가 채움 · 셸=pubdlg 계승 · 운영자 260707 -->
 <dialog id="genidlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">이미지 생성</b></div><button class="tool-x dlg-x" id="geniX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
@@ -7261,7 +7261,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '951f549 · 260724_1822';  /*BUILDSTAMP*/
+const BUILD_STAMP = '0738d4d · 260725_1147';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -11927,9 +11927,55 @@ function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = �
     sync();   // 초기 동기(thumb 로드 시 selApp('2')=썸네일 → 부모 하이라이트 정합)
   } catch (_) {}
 }
+// ── 프레임 로드 워치독(운영자 260725 "번역 무한로딩") — load 이벤트가 *영영 안 오는* 경우의 탈출구 ──
+// 왜: 리빌 게이트(.ready)는 오직 iframe load에만 걸려서, load가 안 오면 .tool-loading orb가 무한 회전(멈춤 오인).
+//   load가 안 오는 실사례 = ⓐ Access 세션 만료 → 로그인 페이지가 X-Frame-Options로 프레임 차단(이벤트 자체 없음)
+//   ⓑ 폰 네트워크 스톨 ⓒ 탭 백그라운드 스로틀. 어느 쪽이든 사용자에겐 '무한로딩'으로만 보인다.
+// 처방(2단): ① 1회 자동 재로드(전형적 일시 스톨은 여기서 해소) ② 그래도 무응답이면 fail-safe 리빌(.ready 부여)
+//   = 구 260724 이전 동작으로 복귀 = 빈 화면일지언정 '멈춘 로딩'에 갇히지 않음(정직 · orb는 즉시 사라짐).
+// ── 조기 리빌 = '틀 먼저'(운영자 260725 "일단 틀 띄워놓고 로딩에 제반되는 내용을 그 다음에 준비하게 하지") ──
+// 왜: iframe load는 폰트·이미지·CDN 등 *마지막 하위 리소스 1개*까지 기다린다 → 뼈대는 진작 다 그려졌는데
+//   느린 리소스 하나 때문에 프레임 전체가 opacity 0로 잠겨 "왜 이렇게 늦게 떠?"가 된다(무한로딩의 완만한 형제).
+// 처방: same-origin 문서의 readyState가 'loading'을 벗어나는 순간(=DOMContentLoaded = 인라인 스크립트까지
+//   실행 완료 = 틀 완성) 즉시 리빌. 남은 리소스는 보이는 화면 뒤에서 계속 채워진다(체감 = 즉시 표시).
+//   cross-origin(폴링 불가) = 종전대로 load/워치독에 위임.
+function frEarly(fr) {
+  if (!fr) return;
+  clearInterval(fr._er);
+  let n = 0;
+  fr._er = setInterval(() => {
+    if (fr.classList.contains('ready') || ++n > 180) { clearInterval(fr._er); return; }   // 이미 노출·상한(≈18s) = 워치독이 뒤를 받음
+    let d = null;
+    try { d = fr.contentDocument; if (!d || d.location.href === 'about:blank') return; } catch (_) { clearInterval(fr._er); return; }   // cross-origin = 위임
+    if (!d.body || !d.body.firstElementChild) return;   // 뼈대 0 = 빈/흰 프레임 노출 차단
+    if (d.readyState === 'loading' && !d.body.getBoundingClientRect().height) return;   // 파싱 중이어도 '그려진 것'이 있으면 통과 = 틀 먼저(파서를 막는 스크립트 뒤에서 기다리지 않음 · CSS는 head에서 이미 적용 = 민낯 노출 아님)
+    clearInterval(fr._er);
+    clearTimeout(fr._wd);                                                   // 틀 도착 = 워치독 해제(재로드 금지 — 화면 날림 방지)
+    if ((d.location.href || '').indexOf('/tr.html') >= 0) fr._trLoaded = true;   // 번역 프레임 판정도 조기 확정(trMount 재토글이 되벗기지 않게)
+    fr.classList.add('ready');
+    if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');
+  }, 100);   // raw-ok: 폴링 간격(ms — 지속시간 토큰 아님) · 100ms = 체감 즉시 + 부하 무시가능
+}
+const FR_WD_MS = 11000;   // raw-ok: 워치독 대기(ms 상수 — 지속시간 토큰 아님) · 폰 4G 실측 여유 + 체감 상한
+function frWatch(fr, src) {   // src 있으면 1회 재로드 대상(없으면 리빌만)
+  if (!fr) return;
+  clearTimeout(fr._wd);
+  fr._wd = setTimeout(() => {
+    if (fr.classList.contains('ready')) return;                       // 이미 리빌 = 정상 도착
+    if (src && !fr._wdRetried) {                                      // ① 1회 자동 재로드
+      fr._wdRetried = true;
+      const _b = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
+      try { fr.contentWindow.location.replace(_b); } catch (_) { fr.src = _b; }
+      frWatch(fr, null); return;
+    }
+    fr.classList.add('ready');                                        // ② fail-safe 리빌 = 무한 orb 차단
+    if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');   // 재클릭 가드 신호도 동반 복구(탭 재클릭 = 정상 재로드 경로)
+  }, FR_WD_MS);
+}
 function bindToolFrameLoad(fr) {   // load = 페이드인(frame-ready)+ESC 브릿지. 복제 프레임에도 필수(없으면 opacity:0로 안 보임).
   fr.addEventListener('load', () => {
     let _blank = false; try { _blank = fr.contentWindow.location.href === 'about:blank'; } catch (_) {}
+    if (!_blank) { clearTimeout(fr._wd); fr._wdRetried = false; }   // 실 콘텐츠 도착 = 워치독 해제·재시도권 원복(다음 로드용)
     if (!_blank) fr.classList.add('ready');   // 한수(운영자 260724 · frame-ready 전역클래스 → 프레임별 상태 승격): 이 프레임 실 콘텐츠 로드 = 리빌 준비 완료. CSS 리빌 게이트 = .toolfr.active.ready(전역 frame-ready 의존 제거) → 타 프레임 load가 로딩중 활성 프레임을 빈 채 조기 노출하던 부류(번역 탭 "안 떠" #2930) 구조적 재발불가. 활성 무관 = 프리로드(tr 예열) 프레임도 로드시 결속(활성화 시 즉시 표시). _blank(about:blank) 가드 = 프리로드 공백 자기노출 방어. cross-origin = fail-safe 실페이지 취급(구 동작)
     if (!_blank && fr.classList.contains('active')) tooldlg.classList.add('frame-ready');   // 전역 frame-ready = 이제 리빌 아닌 보조 신호(재클릭 멱등 가드·trWarm 예열 판정) · 활성 프레임 실 load시만 = "활성 콘텐츠 표시중" 의미 유지(#2930 활성 게이트 존속)
     if (_blank) return;   // about:blank = 바인딩할 실 문서 없음
@@ -11984,6 +12030,8 @@ function trEnsureFrame() {   // tr 전용 프레임 생성+로드(예열·활성
   toolFrames.thumbtr = f;   // 레지스트리 등재 = 타 도구 전환(activateToolFrame 토글 루프)이 자동 숨김 — 고아 .active 이중 표시 차단
   const _bust = '/tr.html?v=' + Date.now();   // 캐시버스트 = loadToolFrame 계승(_headers no-cache 한 쌍 · 260723 tr.html _headers 등재 소급)
   try { f.contentWindow.location.replace(_bust); } catch (_) { f.src = _bust; }
+  frWatch(f, '/tr.html');   // 무한로딩 탈출구(운영자 260725 "번역 무한로딩") — 예열 프레임은 load 미도착이 곧 무한 orb라 워치독 필수
+  frEarly(f);               // 틀 먼저 = 번역 폼 뼈대 완성 즉시 노출(폰트·아이콘 등 잔여는 뒤에서)
   return f;
 }
 function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프레임을 백그라운드 선로드(활성화 X) → 번역 탭 클릭 시 즉시 표시 = 카드생성·편집·AI생성(selApp 리로드0)과 동일 체감. thumb 로드 완료 후 시작(tr load의 frame-ready 부수효과가 thumb 조기노출 안 하게 순서 보장)
@@ -11994,6 +12042,7 @@ function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프�
 }
 function trMount() {   // 번역 탭 활성 = 전용 프레임 표시(예열됐으면 즉시 · 미예열이면 로드 후 페이드인)
   const f = trEnsureFrame();
+  if (!f._trLoaded) { frWatch(f, '/tr.html'); frEarly(f); }   // 미완 프레임 = 워치독+조기리빌 재무장(운영자 260725) — 이 토글이 워치독 fail-safe 리빌을 다시 벗겨 무한 orb로 되돌리는 경로 봉합
   f.classList.toggle('ready', !!f._trLoaded);   // 한수 260724 리빌 게이트: 로드 완료면 .ready(활성화 즉시 표시) · 미완이면 미준비(load 리스너가 tr.html 실 로드시 .ready 재부여 = 페이드인) · 프레임별이라 타 프레임 load 무영향
   if (f._trLoaded) tooldlg.classList.add('frame-ready');   // 전역 보조 신호(재클릭 가드·trWarm)만 동반 갱신 — 예열·보존 프레임(로드 완료) 기준
   else tooldlg.classList.remove('frame-ready');   // 로딩 중(방금 생성/예열 미완)
@@ -12010,6 +12059,8 @@ function loadToolFrame(src) {
   const _fr = activeToolFrame(); _fr.classList.remove('ready');   // 이 프레임 미준비 = iframe 숨김(흰 프레임 차단 · 한수 260724 리빌 게이트) → 재로드 완료 시 bindToolFrameLoad load가 .ready 재부여(페이드인)
   const _bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
   try { _fr.contentWindow.location.replace(_bust); } catch { _fr.src = _bust; }
+  frWatch(_fr, src);   // 무한로딩 탈출구(운영자 260725) = load 미도착 시 1회 재로드 → fail-safe 리빌
+  frEarly(_fr);        // 틀 먼저(운영자 260725) = DOM 파싱 완료 즉시 리빌 · 남은 리소스는 뒤에서
 }
 function setToolTitle(t) { $('#toolTitle').innerHTML = AI_SVG + '<span>' + (t || '제작 도구') + '</span>'; }   // 스튜디오 타이틀 = AI 스파클 픽토(nm-svg SSOT · 형광) + 텍스트(운영자 260712 8차 "AI 픽토그램 + Image/Video Studio" 명시 지시 = §📐 라 타이틀 픽토+텍스트 공존 금지의 운영자 승인 예외 · t = 코드 상수만 유입)
 // 제작 도구 모달 — src 단일 또는 tabs([{src,title,label}…]) = 자막생성처럼 한 도구 안 탭 분기(thumb 탭 계승). showModal 전 로드 시작 = 깜빡임 완화.
@@ -13885,6 +13936,7 @@ document.addEventListener('visibilitychange', () => {
 });   // 탭 복귀 시 즉시 갱신
 window.addEventListener('pageshow', e => { if (e.persisted) { try { if (CURTAB === 'scrap') loadCandidates(false); else if (CURTAB === 'trend') loadSocial(); } catch {} livePoll(); } });   // bfcache 복원(뒤로가기) = visibilitychange 미발화 엣지에도 명시 재요청(분신2 A안·분신10 톱1 260706) · 재렌더 선행 = 위와 동일 사유(QA7)
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
+try { var _qs=new URLSearchParams(location.search); if(_qs.get('qa')==='1'){ try{ document.documentElement.classList.remove('boot-lock'); }catch(e){} var _applyHash=function(){ var h=(location.hash||'').replace(/^#/,'').trim().toLowerCase(); var al={feed:'feed',news:'feed','뉴스':'feed',scrap:'scrap',legacy:'scrap','레거시':'scrap',trend:'trend',sns:'trend',social:'trend','트렌드':'trend',chan:'chan',channel:'chan','채널':'chan'}; var t=al[h]; if(!t) return; var n=0; (function go(){ var b=document.querySelector('.bnav-i[data-tab="'+t+'"]'); if(b){ try{b.click();}catch(e){} return; } if(n++<40) setTimeout(go,100); })(); }; window.addEventListener('hashchange',_applyHash); setTimeout(_applyHash,500); } } catch(e){}   // [QA] ?qa=1 = 부트락 해제 + #feed|scrap|trend|chan 전 섹션 딥링크(운영자 260725 승인 · [E1] 실브라우저 현물 확인용)
 try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 'trend' : _lt0; showTab(['feed', 'scrap', 'trend', 'chan'].includes(_lt) ? _lt : 'scrap'); } catch { try { showTab('scrap'); } catch {} }   // 새로고침 = 보던 탭 그대로 복원(feed·scrap·sns·trend 전부) · 저장 없으면 기본 홈=수집함(운영자 260623)
 
 // ── 당겨서 새로고침(커스텀 링) — 네이티브 끄고 현재 탭색 링을 직접 그림. '원'만 메뉴색 = 주소창/상태바 불변(운영자 260623). 새로고침은 hardReload()(SW 셸 캐시 우회 = 최신 셸 즉시 · 운영자 260713) = 탭은 localStorage로 복원(현재 페이지 유지).

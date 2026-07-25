@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 트래킹 카드 캡션 + 동일인 병합 힌트 — opus 4.8 · effort max (운영자 260710 승인 = 트래킹 LLM 0콜 기틀 해제 · 분석 보조 1콜)
+# 트래킹 카드 캡션 + 동일인 병합 힌트 — opus 5 · effort max (운영자 260710 승인 = 트래킹 LLM 0콜 기틀 해제 · 분석 보조 1콜)
 #   tracks.json + crops/*.jpg → claude -p(--safe-mode·Read만)가 {카드별 한 줄 묘사, *확실한* 동일인 pid 쌍} JSON 출력
 #   → tracks.json에 people[].cap · subjects[].cap · meta.same_hint 병합(additive — 렌더·모자이크/핀셋/키잉 소비 계약 불변).
 # 불변(치명 주의):
@@ -19,7 +19,7 @@ case "$ID" in *[!0-9a-f-]*) echo "::warning::잘못된 id — 캡션 스킵"; ex
 OUTDIR="viewer/track_out/${ID}"
 TJ="$OUTDIR/tracks.json"
 [ -s "$TJ" ] || { echo "::warning::tracks.json 없음 — 캡션 스킵"; exit 0; }
-source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL = claude-opus-4-8 · 260702 SYS-08)
+source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL = claude-opus-5 · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
 source "$ROOT/shared/claude_transient.sh"   # is_quota()/claude_failover()/is_transient() SSOT — 4계정 로테이션(§📰 f)
 source "$ROOT/shared/claude_meter.sh"       # claude_meter() SSOT — 토큰 계측

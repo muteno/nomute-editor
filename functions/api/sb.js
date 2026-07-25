@@ -35,7 +35,7 @@ export async function onRequestPost({ request, env }) {
     '비율': ['9:16', '16:9', '1:1'],
     '길이': ['6~8s', '10~12s', '15s', '20~30s'],
   };
-  const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 4.8', gpt: 'GPT 5.6 Sol' };
+  const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 5', gpt: 'GPT 5.6 Sol' };
   const director = SB_DIRECTORS.includes(body.director) ? body.director : 'fable';
   const shoot = SB_SHOOTS.includes(body.shoot) ? body.shoot : 'kling';
   story += '\n\n[감독: ' + DIRECTOR_NM[director] + ']';   // 에코용 마커(모델 스위치는 워크플로 director 입력이 전담)
