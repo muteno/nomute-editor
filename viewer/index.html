@@ -7224,7 +7224,7 @@ function msgKind(m) {   // 알림구분 라벨(운영자 260704 '알림구분' �
 }
 function msgAgo(m) {   // 대기열·발행본과 동일 상대시간(qAgo) — t(ms) 우선, 없으면 ts 문자열 KST 파싱
   if (m.t) return qAgo(m.t);
-  if (m.ts) { const p = Date.parse(String(m.ts).replace(' ', 'T') + (/[+Z]$/.test(m.ts) ? '' : '+09:00')); return isNaN(p) ? String(m.ts) : qAgo(p); }
+  if (m.ts) { const s = String(m.ts).replace(' ', 'T'); const p = Date.parse(s + (/([+-]\d{2}:?\d{2}|Z)$/i.test(s) ? '' : '+09:00')); return isNaN(p) ? String(m.ts) : qAgo(p); }   // 오프셋 판정 = **형태 전체**([+-]HH:MM∥HHMM∥Z · 260725 봉인) — 구 `/[+Z]$/`는 끝 글자만 봐서 "…+09:00"의 마지막 '0'에 걸려 "타임존 없음"으로 오판 → +09:00을 한 번 더 붙여 NaN → 원문 ISO가 시간 칸에 그대로 노출되던 버그(Q552 실측) · 날짜만("2026-07-25")은 종전대로 미매치 = 동작 불변
   return '';
 }
 // 메시지함 = 대기열·발행본 표 미러(운영자 260704): 시간 | 구분 | 내용(…축약) | 삭제(헤더 X 아래 중앙정렬)
