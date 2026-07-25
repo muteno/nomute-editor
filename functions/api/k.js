@@ -99,7 +99,7 @@ export async function onRequestPost({ request, env }) {
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
 
-// ── 즉답(직결) 경로 — api/tr.js directPlan 골격 계승(Opus 4.8 · 샘플링 파라미터 미전송 · refusal 처리) ──
+// ── 즉답(직결) 경로 — api/tr.js directPlan 골격 계승(Opus 5 · 샘플링 파라미터 미전송 · refusal 처리) ──
 const K_GUIDES = ['prompts/k-make.md', 'apps/k/00_지침_에디터_클링.md', 'apps/k/01_모델프로필_영상엔진.md', 'apps/k/MEMORY.md'];   // kmake.sh 프리플라이트와 동일 참조 축(리네임 시 동조)
 
 async function ghRaw(env, path) {   // 레포 파일 원문(러너 Read의 서버리스 등가)
@@ -120,7 +120,7 @@ async function directK(env, scene) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-opus-4-8', max_tokens: 8192, system, messages: [{ role: 'user', content: scene }] }),
+    body: JSON.stringify({ model: 'claude-opus-5', max_tokens: 8192, system, messages: [{ role: 'user', content: scene }] }),
   });
   if (!r.ok) throw new Error(`anthropic ${r.status}`);
   const m = await r.json();

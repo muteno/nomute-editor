@@ -138,7 +138,7 @@ def _ai_same(title, recent_titles):
         "출력은 정확히 토큰 하나 — 동일하면 그 번호(예: 2), 없으면 NONE. 다른 글자·설명·기호 금지."
     )
     p, rc, err = run_claude(
-        ["claude", "-p", "--model", os.environ.get("AUTOPICK_MODEL", "claude-opus-4-8"), "--effort", "max",
+        ["claude", "-p", "--model", os.environ.get("AUTOPICK_MODEL", "claude-opus-5"), "--effort", "max",
          "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task,WebFetch,WebSearch,Read,Glob,Grep",
          "--max-turns", "1"],
         prompt, timeout=120, source="autopick")

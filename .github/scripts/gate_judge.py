@@ -37,7 +37,7 @@ sys.path.insert(0, str(ROOT / "scraper"))
 from claude_py import run_claude   # 쿼터 한도 시 대체 계정 자동 전환(account failover · SSOT)  # noqa: E402
 from to_candidates import cat_force   # AI 이후 키워드 이차검증(바이오 임상=경제·노벨 시상=국제 · 정본=to_candidates)  # noqa: E402
 CAND = ROOT / "viewer" / "candidates.json"
-MODEL = os.environ.get("GATE_MODEL", "claude-opus-4-8")
+MODEL = os.environ.get("GATE_MODEL", "claude-opus-5")
 EFFORT = os.environ.get("GATE_EFFORT", "").strip()   # 기계적 룰북 분류엔 추론 불필요 = effort 미사용 기본(불필요 thinking 토큰·쿼터 차단 + sonnet effort 비호환 원천차단). 필요시 env로 부여(하위호환). 260630 평의회 — gate는 sonnet-5 운영.
 SAFE = os.environ.get("GATE_SAFE", "0").strip().lower() not in ("0", "false", "no", "")   # --safe-mode: CLAUDE.md·skills·plugins·hooks·MCP 등 커스터마이징 비활성 = 분류에 안 쓰이는 라우터 99KB(~40k토큰) 컨텍스트 제거 → cache_w ~95%↓. ⚠️ --bare 아님(bare는 OAuth 안 읽어[strictly ANTHROPIC_API_KEY] 이 파이프라인선 인증 즉사 + built-in 도구 축소로 --disallowedTools 충돌 = 260701 사고). safe-mode는 Auth·built-in 도구·permissions 정상 유지. RUBRIC은 stdin이라 판정 무영향. 기본 OFF·카나리아 후 승격(§📰). 롤백=env GATE_SAFE=0.
 GATE_MIN_CROSS = int(os.environ.get("GATE_MIN_CROSS", "3"))   # grade 채점 대상: cross 이 값 이상(노출권)

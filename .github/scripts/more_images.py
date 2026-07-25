@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""뷰어 '+N장 더' (검색 이미지 카러셀) — 기사 요약·시사점을 읽고 Claude(Opus 4.8·effort max)가
+"""뷰어 '+N장 더' (검색 이미지 카러셀) — 기사 요약·시사점을 읽고 Claude(Opus 5·effort max)가
 **오버레이 뒤 후킹용 카드뉴스 배경**으로 가장 효과적인 관련 뉴스이미지 소스를 *기존과 중복 없이*
 더 제안 → og:image 추출(thumb_gen 재사용·R2 재호스팅) → cards/<stem>/thumbs/search.json **앞쪽**에 append.
 
@@ -14,7 +14,7 @@ from claude_py import run_claude   # 폴오버 SSOT(쿼터 한도 시 백업계�
 
 STEM = os.environ.get("MOREIMG_STEM", "").strip()
 WANT = max(1, min(10, int(os.environ.get("MOREIMG_WANT", "5") or "5")))
-MODEL = os.environ.get("PIPE_MODEL", "claude-opus-4-8")   # 모델 단일 원천 정합(shared/model_env.sh와 동일 키 · 260702 SYS-08 완결)
+MODEL = os.environ.get("PIPE_MODEL", "claude-opus-5")   # 모델 단일 원천 정합(shared/model_env.sh와 동일 키 · 260702 SYS-08 완결)
 
 
 def die(msg, code=1):

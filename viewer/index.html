@@ -3651,7 +3651,7 @@ try {
   </div>
 </dialog>
 <!-- 이미지 생성 팝업 — 검색 카러셀 + 버튼으로 열림. 운영자가 버튼으로 옵션을 고르면 그게 곧 프롬프팅:
-     api/genimg → imggen 워크플로{Opus 4.8·effort max가 기사 요약·시사점+옵션으로 프롬프트 작성 → 제미나이(종량제) 렌더 → R2 → search.json '생성' prepend}.
+     api/genimg → imggen 워크플로{Opus 5·effort max가 기사 요약·시사점+옵션으로 프롬프트 작성 → 제미나이(종량제) 렌더 → R2 → search.json '생성' prepend}.
      칩은 JS(GENI_DICT)가 채움 · 셸=pubdlg 계승 · 운영자 260707 -->
 <dialog id="genidlg">
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title">이미지 생성</b></div><button class="tool-x dlg-x" id="geniX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
@@ -7261,7 +7261,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '21fed3b · 260725_1134';  /*BUILDSTAMP*/
+const BUILD_STAMP = '88b8c7d · 260725_1200';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -9682,14 +9682,16 @@ function openUnmergePop(numEl, c) {
     exitMerge();
   });
 })();
-// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용.
+// scTs = 발행시각(정렬·최신성 판정용). ⚠️ 일부 매체가 KST(+09:00)를 +00:00로 오기록 → 발행이 미래/수집(first_seen)보다 뒤로 박혀 '미래 기사'가 신규 최상단을 부당 점유(260618 실측 0.2%). 가드: 발행이 *미래*면 first_seen 사용. 대칭 가드(260725): 발행이 수집보다 STALE_PUB_H(6h)+ *과거*면(RSS pubDate 과거 튐 — 경향 '정성호 사의' 16h 실측·신선 기사가 18h 묵은 걸로 늙어 누적 48위 침몰) first_seen 사용.
 // ⚠️ published>first_seen 역전 = '물리적 불가'로 보던 가드가 **연속보도 클러스터**에서 오발화(과감점 버그·운영자 260630·평의회10): first_seen이 *이탈한 옛 멤버*서 별칭승계돼(살아있는 멤버는 전부 신선) published>first_seen이 정상 발생 → 24h로 늙혀 9시뉴스감(rc 큰 대형) 강등(미스매치 324건/10.8%·cross≥8 34건). 교정 = `report_count≥FOLLOW_RC_MIN`(=확인된 연속보도 클러스터·기존 상수 재사용·새 임계 0)이면 역전이어도 published 채택. **future-cut(p≤now)은 불변** = KST/UTC 미래 오기록은 계속 first_seen(보호 보존·진짜 미래발행 8건·누적자격 0). rc 낮은 단발 역전(의심)은 보수적으로 first_seen 유지(§★ 보수성).
 const scTs = c => {
   const p = Date.parse(c.published || ''), f = Date.parse(c.first_seen || '');
+  if (!isNaN(p) && !isNaN(f) && f - p > STALE_PUB_H * 3600000) return f;                 // 발행이 수집보다 STALE_PUB_H(6h)+ *과거* = RSS pubDate 오기록(과거 튐 · 260725 경향 '정성호 사의' 16h 실측) → 수집시각 채택(미래 가드의 대칭). 정상 지연(발행→수집 수십분~수시간)은 무접촉.
   if (!isNaN(p) && p <= Date.now() + 60000 && (isNaN(f) || p <= f + 60000 || (c.report_count || 0) >= FOLLOW_RC_MIN)) return p;   // 발행 정상(미래 아님) AND (수집보다 앞 OR 연속보도 클러스터[rc≥6]) → 발행 우선
   if (!isNaN(f)) return f;                                                               // 발행 미래(오기록) 또는 rc낮은 역전 → 수집시각(존재 확인된 상한)
   return isNaN(p) ? 0 : p;
 };
+const STALE_PUB_H = 6;   // 발행 과거 튐 컷(h) — first_seen보다 이만큼 이상 과거인 published = 오기록 취급·수집시각 채택. 조정 가능.
 // ── 최신 게이트(scFast): 속보 OR 다매체(cross≥2·fbJunk 제외). grade는 진입 조건 아님(운영자 260720 "표시는 전부·grade는 긴급용") — 저신호는 접힘, 랭킹에서 연속보도(scFollow)·경중(gradeW)이 정렬. ──
 const BADGE_MAX_AGE_H = 24;   // 배지(⚡이슈)·OUT 완화 공용 소멸선(1일) — brkIssueKind(피드)·scBadgeType(수집함)·OUT_MAX_AGE_H 단일출처. 맨 리터럴 24가 두 곳에 이중 존재해 OUT만 바꾸면 "배지·완화 동시 소멸" 계약이 조용히 깨지던 드리프트 지뢰 봉합(분신술 10인 감사·260710). 조정 가능.
 const CROSS_MIN = 8;   // 누적 진입선 = 8개 매체 이상(운영자 260617: 5→8 엄선 — 어중간한 건 컷·DB엔 잔존). renderScrap(진입·OUT 통계)·fbJunk veto 공용 — 함수 로컬이던 것을 top-level 승격해 fbJunk의 맨 리터럴 8 제거(의미 같은 값 이중 정의 봉합·분신술 260710). 조정 가능.
@@ -10410,7 +10412,7 @@ function renderSnsTrends() {
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gCUR = '';   // gCUR = 큐레이션 게시물 대분류(운영자 260723 — 구독 전 플랫폼 집약 · 구 gIG/gX/gTH 흡수)
-  const ggUrl = g => (g.news && g.news[0] && g.news[0].url) || ('https://www.google.com/search?q=' + encodeURIComponent(g.query || ''));   // 구글 클릭 = 대표 뉴스 ∥ 구글 검색 폴백(관용구)
+  const ggUrl = g => 'https://www.google.com/search?q=' + encodeURIComponent(g.query || '');   // 구글 실검 클릭 = 항상 구글 검색창(검색어 입력된 결과) — 기사 대신 검색(운영자 260724 · 표시=ko번역이나 URL은 원문 query 유지)
   const gtR = freshFirst(gt).slice(0, 10).map((g, i) => [g, i]);   // [항목, 원순위 index] · 1~10위(운영자 260718 "이미지 그냥 빼고 1~10위만" — 텍스트 행) · freshFirst = 신선 먼저(운영자 260718 "다른 화면에도")
   const _cnNorm = s => String(s || '').toLowerCase().replace(/\s+/g, '');   // 실검 키워드 정규화(공백붕괴·소문자) — "제이슨 데이"↔"제이슨데이"·라틴 대소문자 일치
   const _cnSig = new Set(sig.map(s => _cnNorm(s.query)).filter(Boolean));   // 시그널 실검 키워드 집합

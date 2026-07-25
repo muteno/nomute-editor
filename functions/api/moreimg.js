@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — 뷰어 '검색 이미지 +N장 더' → GitHub moreimg 워크플로 발사.
 // env: GH_TOKEN = GitHub fine-grained PAT(이 레포, Actions: Read and write) — pick/make-cards/feedback/rate 공용.
-// ⚠️ 발동 비용 = Claude(Opus 4.8·effort max, 구독 토큰) WebSearch 1콜 + og:image fetch(과금0). 카드 제미나이 0 불변.
+// ⚠️ 발동 비용 = Claude(Opus 5·effort max, 구독 토큰) WebSearch 1콜 + og:image fetch(과금0). 카드 제미나이 0 불변.
 //    공개 엔드포인트라 스팸 시 구독 한도 소모 주의(pick 와 동일 정책 — 운영자가 지출 모니터링).
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) =>
