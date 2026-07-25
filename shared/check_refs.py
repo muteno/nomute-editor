@@ -1493,6 +1493,77 @@ _GATE_DOC_BASELINE = frozenset({   # 260723 스냅샷 = 소급 문서화 대상(
     'check_qledger_unique', 'check_anchor_liveness', 'check_html_charset', 'check_fp_parity', 'check_label_fill'})
 
 
+# ── 정본 커버리지 역방향 게이트 (운영자 260725 한 수 · check_gate_docs의 반대 방향) ──
+# check_gate_docs = "게이트가 문서에 등재됐나"(게이트 → 문서). 그 역방향이 비어 있었다: **문서가 "이게 정본"이라
+# 선언한 축 중 기계 게이트가 없는 것**. 이 레포는 같은 사고를 4번 겪고서야 게이트를 붙였다(색=팔레트 · 로딩=nmLoader ·
+# 탭 캐시=_headers · 모델=models.json) — 전부 "정본 선언은 있는데 기계는 없던" 구간이다. 다음 사각을 사고 전에
+# 목록으로 뽑는 게 이 게이트의 일. 산문(.md)은 기계 대조 대상이 아니라 제외(코드·데이터·워크플로만).
+_SSOT_DECL = re.compile(r'(?:정본|SSOT)\s*=\s*`([^`\n]+)`')
+_SSOT_EXT = ('.js', '.py', '.sh', '.css', '.html', '.json', '.yml', '.mjs', '.ts')
+_SSOT_BASELINE = frozenset({   # 260725 스냅샷 = 게이트 미보유 정본 축(축소 지향 · 신규 추가 = 사각 방치라 지양 · diff 가시)
+    '.github/actions/runner-setup/action.yml',   # 러너 부팅 계약(파이썬·노드·캐시 키) — 깨지면 전 파이프 실패
+    '.github/scripts/group_judge.py',            # 사건 동일성 AI 판정 · RUBRIC 해시 축
+    '.github/scripts/push_send.py',              # 푸시 발송 게이트(grade·dedup)
+    '.github/scripts/thumb_gen.py',              # 썸네일 렌더 = gemini_image 정본(모델 ID는 check_model_ids가 봄 · 계약은 미보유)
+    'functions/api/seen.js',                     # 계정 축(✓ack·seen) 정본 = CLAUDE.md [4] 등재
+    'scraper/daily_health.py',                   # 일일 건강 계기판(OUT·배지·독점)
+    'scraper/to_pending.py',                     # 후보→대기 승격 계약
+    'shared/attach.py'})                         # 첨부 파이프 정본
+
+
+_SSOT_SKIPDIR = {'.git', 'node_modules', '_versions', 'metrics', 'cards', 'dist'}
+
+
+def _ssot_resolve(p):
+    """문서 표기(`thumb-make.yml` 처럼 파일명만 쓴 것)를 레포 실경로로 해석 — 유일 해석만 채택(모호·부재 = None).
+    ⚠️ glob('**') 금지: 파이썬 글롭은 숨김 디렉터리를 안 본다 → `.github/` 아래(워크플로·스크립트 = 파이프라인 전부)가
+    통째로 안 잡히는 사각이 된다(신설 때 실측: thumb-make.yml·gate_judge.py가 조용히 누락). os.walk로 직접 훑는다."""
+    if os.path.exists(os.path.join(ROOT, p)):
+        return p
+    base, hits = os.path.basename(p), []
+    for cur, dirs, files in os.walk(ROOT):
+        dirs[:] = [d for d in dirs if d not in _SSOT_SKIPDIR]
+        if base in files:
+            hits.append(os.path.relpath(os.path.join(cur, base), ROOT))
+    return hits[0] if len(hits) == 1 else None
+
+
+def check_ssot_coverage():
+    """정본 커버리지 역방향 게이트(운영자 260725 한 수 · `check_gate_docs`의 반대 방향).
+    정본 문서가 「정본 = `<코드/데이터/워크플로 파일>`」로 **선언**한 축 중 `check_refs.py`가 손대지 않는 것 =
+    '선언만 있고 기계는 없는' 사각 → 신규는 rc=1 차단, 기존은 `_SSOT_BASELINE` 면책(축소 지향 · 대량 소급 강제 안 함).
+    왜: 이 레포의 게이트 4종(팔레트·로더·탭 캐시·모델 ID)이 전부 *사고 후에* 붙었고, 사고 전 상태는 매번 똑같이
+    「문서엔 정본 선언 있음 + 기계 없음」이었다. 그 상태를 사고 전에 목록으로 뽑는 게 이 게이트다.
+    ⚠️ 산문(.md) 정본은 기계 대조 대상이 아니라 제외 · 게이트를 새로 못 붙일 축은 베이스라인 추가(= diff로 가시화)."""
+    src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
+    # ⚠️ 베이스라인 리터럴은 대조에서 뺀다 — 안 빼면 면책 목록에 적힌 경로가 스스로 '게이트가 언급함'이 되어
+    #    영원히 초록으로 보이는 자기무력화가 된다(신설 첫 런 실측 = 미보유 9축이 0으로 둔갑).
+    src = re.sub(r'_SSOT_BASELINE = frozenset\(\{.*?\}\)', '', src, flags=re.S)
+    decl = {}
+    for d in _GATE_DOC_CANON:
+        p = os.path.join(ROOT, d)
+        if not os.path.exists(p):
+            continue
+        for m in _SSOT_DECL.finditer(open(p, encoding='utf-8').read()):
+            raw = m.group(1).strip().split()[0].rstrip('·,)')
+            if not (raw.endswith(_SSOT_EXT) or os.path.basename(raw) == '_headers'):
+                continue
+            rel = _ssot_resolve(raw)
+            if rel:
+                decl.setdefault(rel, set()).add(d)
+    # '게이트가 손댄다' = check_refs.py 본문이 그 경로나 파일명을 언급(경로 조립 관용구가 basename이라 둘 다 본다)
+    bare = [p for p in sorted(decl) if p not in src and os.path.basename(p) not in src]
+    new = [p for p in bare if p not in _SSOT_BASELINE]
+    if new:
+        print('❌ 정본 커버리지 — 새로 선언된 정본 축에 기계 게이트가 없다("선언만 있고 기계는 없음" = 사고 전 상태):')
+        for p in new:
+            print('   -', p, '← 선언:', ' '.join(sorted(decl[p])), '→ 게이트를 만들거나 _SSOT_BASELINE에 사유와 함께 추가하라')
+        return 1
+    print('✅ 정본 커버리지 — 선언된 정본 %d축 중 게이트 보유 %d · 미보유 %d(전부 260725 베이스라인 · 신규 사각 0 · 축소 지향).'
+          % (len(decl), len(decl) - len(bare), len(bare)))
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -1751,6 +1822,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_model_ids 예외(fail-closed):', e); rc = 1
+    try:
+        if check_ssot_coverage() != 0:   # 정본 커버리지 역방향(하드 — 문서가 정본이라 선언했는데 기계가 없는 사각 = 신규만 차단 · 운영자 260725 한 수)
+            rc = 1
+    except Exception as e:
+        print('❌ check_ssot_coverage 예외(fail-closed):', e); rc = 1
     try:
         if check_gate_docs() != 0:   # 게이트 문서화 메타 게이트(하드 — 모든 def check_*가 정본 문서 등재됐는지 · "만들어놓고 안 봄" 구조 차단 · 운영자 260723 Q468)
             rc = 1
