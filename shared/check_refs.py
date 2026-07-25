@@ -1444,6 +1444,9 @@ def check_model_ids():
     ids = {t['id'] for t in reg['tiers'].values()}
     retired = [(r, re.compile(re.escape(r) + (_MODEL_NAME_GUARD if not r.startswith('claude-') else '')))
                for r in reg.get('retired', [])]
+    # 벤더(비-Claude · 종량제) = 표시명 없이 ID만 · family 정규식으로 '그 계열의 다른 버전이 섞였나'를 본다
+    vendors = [(k, v['id'], re.compile(v['family']), set(v.get('allow', [])))
+               for k, v in reg.get('vendors', {}).items() if v.get('family')]
     bad = []
     for path in _model_scan_files(reg):
         try:
@@ -1454,6 +1457,11 @@ def check_model_ids():
         for lit in sorted(set(_MODEL_ID_RE.findall(src))):
             if lit not in ids:
                 bad.append('%s: 미등재 모델 ID `%s` (정본 = %s)' % (rel, lit, ' · '.join(sorted(ids))))
+        for key, vid, rx, allow in vendors:
+            for lit in sorted(set(rx.findall(src))):
+                if lit != vid and lit not in allow:
+                    bad.append('%s: 벤더[%s] 계열 드리프트 `%s` — 정본 `%s`%s (종량제 = ID 어긋나면 실패·오과금)'
+                               % (rel, key, lit, vid, (' · 허용 알리아스 %s' % ' '.join(sorted(allow))) if allow else ''))
         for raw, rx in retired:
             n = len(rx.findall(src))
             if n:
@@ -1462,8 +1470,9 @@ def check_model_ids():
         print('❌ 모델 ID 게이트 — 정본(shared/models.json) 드리프트:')
         for b in bad: print('   -', b)
         return 1
-    print('✅ 모델 ID 게이트 — %d티어(%s) 정본 일치 · 구세대 %d종 잔존 0(스캔 %d파일 · 승격 = apply_models.py).'
-          % (len(ids), ' · '.join(t['id'] for t in reg['tiers'].values()), len(retired), len(_model_scan_files(reg))))
+    print('✅ 모델 ID 게이트 — %d티어(%s) + 벤더 %d종(%s) 정본 일치 · 구세대 %d종 잔존 0(스캔 %d파일 · 승격 = apply_models.py).'
+          % (len(ids), ' · '.join(t['id'] for t in reg['tiers'].values()), len(vendors),
+             ' · '.join(k for k, *_ in vendors), len(retired), len(_model_scan_files(reg))))
     return 0
 
 

@@ -1,7 +1,7 @@
 {
   "_": "모델 ID·표시명 정본(SSOT · 운영자 260725 한 수). 승격 = `python3 shared/apply_models.py <티어> <새ID> \"<새 표시명>\" \"<새 한글명>\"` → 전 호출처 일괄 치환 + 이 파일 자동 갱신 → `python3 shared/check_refs.py`(rc=0) → 커밋. 손으로 고치지 마라(빠뜨림 = check_model_ids 차단).",
   "_런타임": "호출처는 이 파일을 읽지 않는다(리터럴 유지) — Cloudflare Functions·정적 뷰어는 런타임 파일 접근이 없고, 20+ 스크립트의 모델 해석을 바꾸는 건 고위험. 대신 '정본 1곳 + 기계 치환 + 드리프트 게이트' 3점 세트로 같은 효과를 낸다.",
-  "_비클로드": "kimi-k3·kimi-k2.5·gpt-image-2·gemini-3.1-flash-image-preview·lyria-3-pro-preview 등은 이 축 밖(공급사 다름) — 각 호출처가 정본.",
+  "_비클로드": "공급사 다른 모델은 `vendors` 절에 등재 — 종량제(과금 직결)라 ID가 어긋나면 곧장 실패·오과금이 된다. 구독 축(claude)과 달리 표시명이 없어 ID만 관리한다.",
   "tiers": {
     "opus": {
       "id": "claude-opus-5",
@@ -26,6 +26,35 @@
       "en": "Haiku 4.5",
       "ko": "하이쿠 4.5",
       "축": "최저 티어 = FB 주제 분류(fb_classify.py `FB_CLS_MODEL`) — 쿼터 최소화 · 260725 이 게이트 신설 때 채굴(구 스윕이 opus 패턴만 봐서 누락돼 있었다)"
+    }
+  },
+  "vendors": {
+    "gemini_image": {
+      "id": "gemini-3.1-flash-image-preview",
+      "family": "gemini-[0-9][0-9a-z.-]*",
+      "축": "썸네일·카드 렌더 = `thumb_gen.py` MODEL 정본(gen_cards.py는 `import thumb_gen`으로 재사용 = 호출처 1곳) · 종량제 GEMINI_API_KEY"
+    },
+    "lyria": {
+      "id": "lyria-3-pro-preview",
+      "family": "lyria-[0-9][0-9a-z.-]*",
+      "allow": ["lyria-3-clip-preview"],
+      "축": "음원 곡 생성 = `song_lyria.py` env `LYRIA_MODEL` 기본값 · 곡당 ~$0.08 · clip(30s) 변형 = allow"
+    },
+    "gpt_sb": {
+      "id": "gpt-5.6-sol",
+      "family": "gpt-[0-9][0-9a-z.-]*",
+      "allow": ["gpt-5.6"],
+      "축": "콘티 감독 3축 중 GPT = `sb_gpt.py` env `OPENAI_MODEL` 기본 + `sbmake.sh` 셸 기본 = **2곳 동기 필수**(드리프트 실위험) · allow = Sol 알리아스"
+    },
+    "rvc_train": {
+      "id": "replicate/train-rvc-model",
+      "family": "replicate/[a-z0-9-]+",
+      "축": "음성 클로닝 학습 = `voice_rvc.py` 호출 + 산출 스탬프 2곳 · ~$0.32/보이스"
+    },
+    "rvc_apply": {
+      "id": "zsxkib/realistic-voice-cloning",
+      "family": "zsxkib/[a-z0-9-]+",
+      "축": "음성 클로닝 적용 = `voice_rvc.py` 호출 + 산출 스탬프 2곳 · ~$0.04/곡"
     }
   },
   "retired": [
