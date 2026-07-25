@@ -6,7 +6,7 @@
 //   → 이 스모크가 커밋 전 자동 판정 = 스크린샷·수동 스윕 불요화. smoke_dlclip 합성 프로브 parity 문법 계승.
 //
 // 담당 표면: viewer/index.html 앵커 팝업 셸 SSOT(index.html :root 위 .pmenu 그룹 · 정본 = 그 셀렉터 규칙)
-//   = {.pmenu · .msgpop · .filterpop · .pubpop · #linkpop · .sc-rsn · .min-pick · .failmenu}
+//   = {.pmenu · .filterpop · .pubpop · #linkpop · .sc-rsn · .min-pick · .failmenu}
 //   셸 글래스 = 배경(--modal-glass-anchor) · 프로스트 blur · 테두리 · 그림자(SSOT 관장 4속성 · radius·padding·
 //   위치·애니는 각 팝업 개별이라 parity 밖). + index 전역 불투명 글래스 로그 스캔(화이트리스트 밖 = 신규 고아 경보).
 // 원커맨드:  node shared/smoke_popup.js            (종료코드 0 = 코어 전부 PASS)
@@ -67,7 +67,10 @@ async function startServer() {
 }
 
 // ── 앵커 팝업 셸 SSOT 그룹(index.html :root 위 셀렉터와 1:1 · 팝업 추가 시 함께 갱신) ──
-const GROUP = ['.pmenu', '.msgpop', '.filterpop', '.pubpop', '#linkpop', '.sc-rsn', '.min-pick', '.failmenu'];
+const GROUP = ['.pmenu', '.filterpop', '.pubpop', '#linkpop', '.sc-rsn', '.min-pick', '.failmenu'];
+// .msgpop 이탈(운영자 260725 "메세지함이 더 불투명해야 돼 · 대기열에 있는 함 그대로 가져와서 써") — 알림메세지는 앵커 메뉴가 아니라
+//   **헤더형 함(대기열·발행본) 가족**으로 재소속. 감시는 사라지지 않고 아래 SHELL(C1b)로 이관 = 계약 축만 갈아탄 것.
+const SHELL = ['.bpop.qpop', '.qpop.msgpop'];   // 대기열 함(실물 = class="bpop qpop") ↔ 알림메세지 함 셸 대조축
 // ── 의도적 불투명 글래스 화이트리스트(로그 스캔 예외 · 신설 시 사유와 함께 등재) ──
 //   .nm-toast/.qflash = 토스트(danger·status 강조 = 프로스트 메뉴 가족 아님) · .dlgtop = 스크롤 맨위 버튼(팝업 아님)
 const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop'];
@@ -78,10 +81,10 @@ async function runOnce(br, port) {
   pg.on('pageerror', e => errs.push(String(e).slice(0, 80)));
   await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded' });
   await pg.waitForTimeout(900);
-  const out = await pg.evaluate(({ GROUP, OPAQUE_WL }) => {
+  const out = await pg.evaluate(({ GROUP, OPAQUE_WL, SHELL }) => {
     const snap = sel => {
       const el = document.createElement('div');
-      if (sel[0] === '#') el.id = sel.slice(1); else el.className = sel.slice(1);
+      if (sel[0] === '#') el.id = sel.slice(1); else el.className = sel.split('.').filter(Boolean).join(' ');   // 다중 클래스(.qpop.msgpop) 지원 = 헤더형 함 셸 계약 검증용(260725)
       el.style.cssText = 'position:fixed;left:-9999px;top:0;display:block';
       document.body.appendChild(el);
       const c = getComputedStyle(el);
@@ -90,6 +93,7 @@ async function runOnce(br, port) {
       el.remove(); return s;
     };
     const members = GROUP.map(sel => [sel, snap(sel)]);
+    const shell = SHELL.map(sel => [sel, snap(sel)]);
     // 전역 불투명 글래스 로그 스캔 — 글래스 규칙(backdrop blur)인데 배경 alpha≥.85 & 화이트리스트 밖 = 신규 고아 경보
     const rogue = [];
     for (const ss of document.styleSheets) {
@@ -108,10 +112,10 @@ async function runOnce(br, port) {
         rogue.push(sel.slice(0, 44) + ' {bg:' + bg.slice(0, 34) + '}');
       }
     }
-    return { members, rogue };
-  }, { GROUP, OPAQUE_WL });
+    return { members, rogue, shell };
+  }, { GROUP, OPAQUE_WL, SHELL });
   await pg.close();
-  return { members: out.members, rogue: out.rogue, errs };
+  return { members: out.members, rogue: out.rogue, shell: out.shell, errs };
 }
 
 function parity(list, keys) {
@@ -131,6 +135,13 @@ function assess(r) {
   // C1 = 셸 글래스 4속성(SSOT 관장) 8멤버 동일 — 홀로 튄 불투명 팝업 = 여기서 FAIL
   const gp = parity(r.members, ['bg', 'bcol', 'bw', 'shadow']);
   C('C1 셸 글래스 {배경·테두리색·굵기·그림자} ' + r.members.length + '멤버 동일', gp.ok, JSON.stringify(gp.det).slice(0, 320));
+  // C1b = 알림메세지 함 셸 = 대기열 함(.qpop) {테두리색·굵기·그림자·blur} 동일 + 배경만 한 티어 진하게(--modal-glass .64)
+  //   운영자 260725 지시 = "더 불투명 · 대기열 함 그대로" · 앵커 .42는 뒤 피드 글자가 메시지 글자와 겹쳐 안 읽힘(실측 스샷)
+  const _q = (r.shell || []).find(([s2]) => s2 === '.bpop.qpop'), _m = (r.shell || []).find(([s2]) => s2 === '.qpop.msgpop');
+  const shellOk = !!_q && !!_m && ['bcol', 'bw', 'shadow', 'blur'].every(k => _q[1][k] === _m[1][k])
+    && /rgba\(17,\s*18,\s*20,\s*0?\.64\)/.test(_m[1].bg);
+  C('C1b 알림메세지 셸 = 대기열 함 {테두리·그림자·blur} 동일 + 배경 --modal-glass(.64)', shellOk,
+    _q && _m ? '대기열 ' + _q[1].bg + ' / 알림 ' + _m[1].bg + ' · 테두리 ' + _m[1].bcol + ' ' + _m[1].bw + ' · blur ' + _m[1].blur : '미수집');
   // C2 = 프로스트 blur 동일(.sc-rsn = --anchor-sat:0 무채색 글래스 기틀 의도 예외 · §🎨)
   const nonSat = r.members.filter(([s]) => s !== '.sc-rsn');
   const bp = parity(nonSat, ['blur']);

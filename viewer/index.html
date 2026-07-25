@@ -213,14 +213,16 @@
   /* ── 메시지 팝업(프로필 근처) ── */
   /* 메시지함 = 발행본(qpop) 표 계승(운영자 260704): qpop 클래스로 qh/qrow/qlist·glass 상속 + 이 규칙은 msgpop 고유(위치앵커·radius·shadow) · 폭/정렬/구분색 오버라이드는 발행본 CSS 뒤(qpop보다 뒤 선언 = 소스순 이김) · 행=renderMsgList가 .qrow 렌더 */
   /* ── 앵커 팝업 셸 글래스 = 필터 창(.filterpop) 기준 단일 SSOT (운영자 260706 "필터 창을 메인으로 · 설정·메세지함·발행본·앞으로 만들 내부 팝업 다 동일") — 배경·블러·테두리·그림자만 여기(위치·radius·padding·애니는 각 팝업 개별). 새 앵커 팝업 = 이 셀렉터에 클래스 추가하면 자동 통일. 값 바꿀 땐 여기 한 곳. · saturate = var(--anchor-sat) 기본 1.05 → 무채색 팝업(.sc-rsn 사유 메뉴)만 --anchor-sat:0 오버라이드(뒤 색 비침 차단·§🎨 무채색 글래스 기틀). .sc-rsn 편입(운영자 260708) = 옛 불투명 톤(rgba(20,20,20,.94)) 폐지·설정 팝업과 톤 통일. ── */
-  .pmenu, .msgpop, .filterpop, .pubpop, #linkpop, .sc-rsn, .min-pick, .failmenu {
+  .pmenu, .filterpop, .pubpop, #linkpop, .sc-rsn, .min-pick, .failmenu {   /* .msgpop 이탈(운영자 260725 "메세지함이 더 불투명해야 돼 · 대기열에 있는 함 그대로 가져와서 써") — 알림메세지 셸 = 대기열(.bpop.qpop) 값 계승으로 이관(아래 .msgpop 규칙) */
     background:var(--modal-glass-anchor);
     backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05)); -webkit-backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05));
     border:1px solid rgba(255,255,255,.14);
     box-shadow:0 24px 56px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); }
   .msgpop { position:fixed; z-index:21; border-radius:var(--r-l); display:flex; flex-direction:column; min-height:0;   /* padding = .qpop 통일값(11 11 11 16) 상속 = 헤더형 팝업 3종 마진 단일화(옛 6px 개별 = 발행본·대기열 15px과 어긋나던 원인 · 운영자 260712 플레이그라운드 회신) */   /* 글래스 = 앵커 팝업 셸 그룹 SSOT(위) · 여기는 위치·radius·padding·애니만(운영자 260706 필터 기준 통일) · radius 토큰화(=16·픽셀0·분신술10 260707) · flex 컬럼 = 짧은 뷰포트(가로모드)서 qlist가 maxHeight 안에서 수축·페이저 보존(pubpop=.bpop flex와 대칭 · 평의회3 260707) */
     transform-origin:top right;
+    border:1px solid var(--line); box-shadow:0 18px 46px rgba(0,0,0,.6);   /* 알림메세지 셸 = 대기열 함(.bpop.qpop) 테두리·그림자 **그대로**(배경 진하기는 아래 .qpop.msgpop — .qpop 셸 규칙이 소스순 뒤라 2클래스 특이도 필요)(--modal-glass .64 = 중앙 모달 정본 · 앵커 .42는 뒤 피드 글자가 메시지 글자와 겹쳐 안 읽힘 실측) — 운영자 260725 "더 불투명해야 돼 · 대기열에 있는 함 그대로" · 신설 값 0(전부 등재 토큰·형제 원값) */
     animation:msgUnfold .26s cubic-bezier(.22,.61,.36,1) both; }   /* 위치=JS placePopNearMenu(링크 메뉴 linkfab 위 앵커 · 운영자 260707 — .anch-b가 원점·키프레임 하단화) · glass/overflow=qpop 상속 · 폭/qlist/정렬 오버라이드는 §발행본 뒤 */
+  .qpop.msgpop { background:var(--modal-glass); }   /* 알림메세지 배경만 한 티어 진하게(--modal-glass .64 = 중앙 모달 정본 계승 · 신설 값 0) — 앵커 .42는 뒤 피드 글자가 메시지 글자와 겹쳐 안 읽힘(운영자 260725 "더 불투명해야 돼" 실측 스샷) · 블러·테두리·그림자·행 문법은 대기열 함 그대로 */
   @keyframes msgUnfold { from { opacity:0; transform:scale(.82) translateY(-8px); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce){ .msgpop { animation:none; } }   /* 메시지함 열림 애니 off · 행(qrow) 스태거는 .qpop .qlist .qrow reduced-motion이 처리(260704 표 전환으로 msgItem 애니 폐지) */
   .msgpop.anch-b, .pubpop.anch-b { transform-origin:bottom center; animation-name:msgUnfoldUp; }   /* 아래(링크 메뉴) 앵커 = 버튼서 위로 펼침(placePopNearMenu가 부여 · 운영자 260707 "열린 메뉴 가까이") — msgUnfold 미러 */
@@ -3422,7 +3424,7 @@ try {
   <img class="pet" src="pet.webp" alt="" aria-hidden="true" draggable="false" decoding="async" fetchpriority="low"><!-- 전 탭(뉴스요약·레거시·SNS) = 옛 산책 펫(공놀이) — 260704 '100% 롤백'(운영자) -->
   <!-- 검색·새로고침·설정(구 프로필) 컨트롤 = 타이틀 라인(.vh-row)으로 이동(운영자 260706) — 메시지함/잠금/전광판 팝업(fixed·JS 좌표)은 여기 잔류. ⚠️ 이들이 .topbanner 자식인 한 .topbanner엔 transform/filter/backdrop-filter/will-change 금지(생기면 fixed 컨테이닝 블록이 배너로 바뀌어 3팝업이 화면 밖으로 날아감 = §디자인 h 함정 · lockscr는 이 이유로 body 직속 · 평의회3 260707) -->
   <div class="qpop msgpop" id="msgpop" hidden>
-    <div class="qh"><b>메시지</b><span class="qc" id="msgpopcnt"></span><span class="qh-xcell"><button class="tool-x" id="msgclose" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
+    <div class="qh"><b>알림메세지</b><span class="qc" id="msgpopcnt"></span><span class="qh-xcell"><button class="tool-x" id="msgclose" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
     <div class="qlist" id="msglist"></div>
     <div class="msgdetail" id="msgdetail" hidden>
       <button class="msgback" id="msgback" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>목록</button>
