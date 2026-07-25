@@ -142,6 +142,14 @@ def sync_one(repo, block):
     if not AUTOMERGE:
         print(f"{repo}: 리뷰모드 — PR #{prnum} 열어둠(수동 머지 대기)")
         return True
+    # 대량 감량 가드(운영자 260725 Q521 · 평의회 W5/W6 + Fable F2 수렴) — 마커가 25% 이상 줄면
+    # 자동 머지를 끊고 리뷰모드로 강등한다. 무접촉 자동머지는 diff 크기 가드가 없어서
+    # "대량 삭제인데 아무도 안 본다"가 유일하게 뚫려 있던 구멍이었다(정상 증축·소폭 수정은 <10%라 무영향).
+    old_b, new_b = len(old.encode("utf-8")), len(block.encode("utf-8"))
+    if new_b < old_b * 0.75:
+        print(f"::warning::{repo}: 마커 {old_b}B→{new_b}B({new_b / old_b:.0%}) 대량 축소 — "
+              f"자동 머지 차단, PR #{prnum} 수동 리뷰 필요 {prurl}")
+        return False
     s, m = gh("PUT", f"/repos/{repo}/pulls/{prnum}/merge", {"merge_method": "squash"})
     if s == 200:
         print(f"{repo}: PR #{prnum} 자동 머지 ✅ (무접촉 반영)")
