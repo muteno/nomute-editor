@@ -472,6 +472,26 @@ def _over(deadline):
     return deadline is not None and time.monotonic() > deadline
 
 
+SUB_QUOTA = 3   # 계정당 무감산 쿼터(운영자 260725 "3개 이상 분기점 넘어갈 때는 다른사람거 나오게 조금 감산")
+
+
+def _acct_spread(items, quota=SUB_QUOTA):
+    """계정 다양성 재배열 — 정렬 끝난 리스트에서 같은 계정 앞 quota개는 제자리, 초과분만 초과회차(tier)
+    만큼 뒤 블록으로 강등한다(파이썬 sorted = 안정 → 블록 내부는 원 정렬 순서 그대로 보존).
+    배경(실측 260725) = x_subs가 '24h 필터 → 최신순 → [:limit]' 단일 축이라 다작 계정 1곳이 limit를
+    통째 먹고 다른 계정을 풀에서 지운다(그 시점 subs.x 17건 = economysniper0 단독). 뷰어 정렬은 풀에
+    없는 계정을 되살릴 수 없으니 다양성은 '절단 전'에 확보해야 한다 = 뉴스 큐레이션의 source-diversity
+    demotion(같은 출처 반복 시 강등) 계승. quota 이하 계정만 있는 런 = 무변화(순수 no-op) · 계정이
+    1곳뿐이면 강등해도 대체제가 없어 그대로 = 자연 폴백(조용한 공백 원칙 유지).
+    반환 = 재배열된 새 리스트(입력 비파괴 · 항목 dict는 공유 참조)."""
+    cnt, keyed = {}, []
+    for i, it in enumerate(items):
+        a = str(it.get("account") or "").lower()
+        n = cnt[a] = cnt.get(a, 0) + 1
+        keyed.append((max(0, n - quota), i, it))   # tier: 1~quota번째 = 0(무감산) · quota+1번째 = 1 · 이후 계단
+    return [k[2] for k in sorted(keyed, key=lambda k: (k[0], k[1]))]
+
+
 _X_RSS_MIRRORS = ("https://nitter.net", "https://nitter.tiekoetter.com", "https://nitter.space",
                   "https://lightbrd.com", "https://xcancel.com")   # 신디케이션 폴백 미러 풀(260725 실측: nitter.net 정상 응답 확인 · 나머지 = 로터리 예비)
 
@@ -568,7 +588,11 @@ def x_subs(accounts, limit=10, deadline=None):
             return 0.0
     _now = datetime.now(KST).timestamp()
     fresh = [t for t in out if _tts(t["time"]) >= _now - 86400]   # ⏱ 24h 이내만(운영자 260721 "근 1일 이내 가장 핫한거만 · 24시간 넘으면 의미없음") — 신디케이션 timeline-profile이 핀·역대 바이럴 구작(1~10년 전)을 섞어 반환해 최신순 정렬만으론 top-N에 구작이 잔존(파싱 실패 time=0도 자연 배제) → 시간 필터로 완전 배제 · 빈 결과 = 조용한 공백(24h 내 트윗 없음 = 표시 안 함이 취지)
-    return sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True)[:limit]   # 최신순 정렬(260720 평의회 F2 · 표시 정렬은 뷰어 정렬바 그대로 = 24h 내에서 좋아요순 = '근 1일 가장 핫')
+    # 최신순 정렬(260720 평의회 F2 · 표시 정렬은 뷰어 정렬바 그대로 = 24h 내에서 좋아요순 = '근 1일 가장 핫')
+    # → 절단 '직전'에 계정 다양성 재배열(_acct_spread · 260725): 최신순 단일 축 절단은 다작 계정이 limit를
+    #   통째 먹어 다른 계정을 풀에서 지운다(뷰어는 없는 걸 못 살림) · 순서 = 정렬 → spread → [:limit] 고정
+    #   (spread를 정렬 앞에 두면 재정렬이 덮어 무효 = 회귀 주의)
+    return _acct_spread(sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True))[:limit]
 
 
 def x_search(queries, per=8, limit=15, deadline=None):

@@ -10427,7 +10427,13 @@ function renderSnsTrends() {
   const tkCov = tkvA.some(t => t.cover);   // 커버 = 수집기 cover 필드(260711) — 구 데이터(커버 없음)는 다음 런까지 행 폴백 · 판정 = 원본(tkvA) 기준(컷 전멸 런에도 채움 경로 유지)
   const tkL = tkCov ? bySort(tkv, 'views').slice(0, 20).map(t => { const _h = ageVerH(t); return { ...t, _fresh24: isFinite(_h) && _h < 24 }; }) : [];   // 2일 이내(tkv=48h컷) 조회수순 top 20(운영자 260724 "틱톡 2일 이내 가장 조회수 높은 순 20개") · _fresh24 = 1일 이내 마커 → 시간대 골드레몬 음영(.tcard-ago.fresh24) · 구 fill10 스테일 채움 사다리 폐지(2일 하드컷 취지 = 창작 채움보다 조용한 공백 우선 · 저조회 신선분 보존은 스크래퍼 풀 확대[tiktok limit 60]가 담당) · 정렬바 제거 = 'views' 리터럴 계승
   // (구 REGN·byReg·REGS = 큐레이션 한국/세계 2군 분리 헬퍼 → 운영자 260724 "큐레이션 지역 구분 없이 다"로 전부 무용화·제거 · 알고리즘 콘텐츠 지역 필터는 TRREG 직접 사용)
-  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxAll = bySort(sx, sxS).slice(0, 10);   // 큐레이션 = 지역 무관 통합(운영자 260724 "큐레이션 지역 구분 없이 다") — 구독은 내가 고른 계정이라 국내/세계 토글과 무관
+  // 계정 다양성 재랭크(운영자 260725 "특정 계정들만으로 큐레이션 도배 · 3개 이상 분기점 넘어가면 다른사람거 나오게 조금 감산") — 뉴스 큐레이션의 source-diversity demotion 계승
+  // 산식 = '순위 밀기'(지표 감산 아님): 같은 계정 앞 quota개는 제자리, 초과 회차 tier마다 push칸씩 뒤로 밀어 eff(실효순위) 재정렬 → 4번째 +3칸 · 5번째 +6칸 · 6번째 +9칸(계단)
+  // ⚠ 지표 곱셈 감산(× .75^tier)을 먼저 시도했다가 폐기(260725 실측): ⓐ 값 스케일에 좌우돼 1000 vs 280(3.5배) 격차면 tier2(×.56)로도 못 뒤집혀 한 계정이 5연속 잔존 = 요청 미충족 ⓑ X가 RSS 미러 폴백을 타는 구간은 likes·rts·cmts가 전부 0이라(_x_rss) 0×w=0 = 완전 no-op(실측 260725 subs.x 17건 = economysniper0 단독). 순위 밀기는 두 함정 모두 무관 — 지표가 전멸해도, 격차가 몇 배든 동일하게 작동
+  // 밀림 = 강등이지 삭제가 아니다(4번째 트윗도 5·6위로 계속 표시) · 계정이 1곳뿐이면 밀 대상이 없어 원순서 유지 = 자연 폴백 · 전원 quota 이하 = 완전 no-op
+  // ⚠ 입력은 '정렬 끝난' 배열이어야 한다(쿼터를 지표 높은 순으로 소진 + i = 원순위 보존) · 절단(slice)은 반드시 이 뒤에서
+  const divRank = (arr, quota = 3, push = 3) => { const c = {}; return arr.map((t, i) => { const a = String(t.account || '').toLowerCase(), n = c[a] = (c[a] || 0) + 1, tier = Math.max(0, n - quota); return { t, i, tier, eff: i + tier * push }; }).sort((a, b2) => a.eff - b2.eff || a.tier - b2.tier || a.i - b2.i).map(o => o.t); };
+  const sxS = sortOf('sx', ['likes', 'rts', 'cmts'], 'likes'), sxAll = divRank(bySort(sx, sxS)).slice(0, 10);   // 큐레이션 = 지역 무관 통합(운영자 260724 "큐레이션 지역 구분 없이 다") — 구독은 내가 고른 계정이라 국내/세계 토글과 무관 · divRank = 계정 도배 감산(260725 · 정렬바 3종[좋아요·리트윗·댓글] 공통 적용 = 어느 축으로 정렬해도 도배 방지)
   const all10 = (cutA, rawA, sf) => fill10(bySort(cutA, sf), bySort(rawA, sf));   // 큐레이션(영상 카드) 지역 무관 통합 top10(운영자 260724 — 국내/세계 구분 폐지 · 구 reg10 군분리 = 구독엔 부적절[내가 고른 계정 = 지역 무관 다 보기] · 컷분 우선 → raw 채움 = 10개 보장 계승)
   const stkAll = all10(stk, stkRaw, 'views');   // 틱톡 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
   const sreAll = all10(sre, sreRaw, 'views');   // 인스타 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
