@@ -403,20 +403,24 @@ console.log(`viewer/thumb-hist.json 생성 — ${Math.min(thHist.length, THH_CAP
 
 // ── 잡 실측 통계: metrics/token-usage.jsonl → viewer/job_stats.json (wf/job별 중앙 비용·소요) ──
 //   왜: 진행 타일의 '예상 시간'·'비용'을 실측 앵커로 표기(운영자 260727 "토큰 안나오는 문제 · 예상시간까지").
-//   ⚠ 환율 상수는 이 레포에 없다 → USD 그대로 내린다(무근거 단가·환율 창작 금지 · 구 '~₩' 스텁 폐기).
+//   ⚠ 표기 단위 = 토큰(운영자 260727 "종량제인 게 아닌 거는 값이 안 뜰 테니 그냥 토큰으로만").
+//      이 원장은 구독 Claude(claude_meter) 축이라 cost는 '지불액'이 아니라 환산 추정 → 화면엔 안 쓴다(보존만).
+//      종량제(Gemini·OpenAI 렌더) 실지출은 이 원장에 없다 = 그 축이 붙는 날 별도 필드로.
 try {
   const lines = readFileSync('metrics/token-usage.jsonl', 'utf8').split('\n').filter(Boolean);
   const bucket = {};
   for (const ln of lines) {
     let j; try { j = JSON.parse(ln); } catch { continue; }
     const key = (j.wf || '?') + '/' + (j.job || '?');
-    (bucket[key] ||= { cost: [], dur: [] });
+    (bucket[key] ||= { cost: [], dur: [], tok: [] });
     if (Number.isFinite(j.cost)) bucket[key].cost.push(j.cost);
     if (Number.isFinite(j.dur_ms)) bucket[key].dur.push(j.dur_ms);
+    const tk = (j.in || 0) + (j.out || 0) + (j.cache_r || 0) + (j.cache_w || 0);   // 총 토큰(입력+출력+캐시 R/W) — 구독 축은 '돈'이 아니라 토큰이 실단위(운영자 260727)
+    if (tk > 0) bucket[key].tok.push(tk);
   }
   const med = a => { if (!a.length) return 0; const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
   const stats = {};
-  for (const [k, v] of Object.entries(bucket)) stats[k] = { n: v.cost.length || v.dur.length, cost: +med(v.cost).toFixed(4), dur: Math.round(med(v.dur) / 1000) };
+  for (const [k, v] of Object.entries(bucket)) stats[k] = { n: v.cost.length || v.dur.length, cost: +med(v.cost).toFixed(4), dur: Math.round(med(v.dur) / 1000), tok: Math.round(med(v.tok)) };   // cost = 구독 환산 추정(표기 안 함 · 보존만) · tok = 실단위
   writeFileSync('viewer/job_stats.json', JSON.stringify({ generated: new Date().toISOString(), stats }, null, 2));
   console.log(`viewer/job_stats.json 생성 — ${Object.keys(stats).length}종 (원본 ${lines.length}행)`);
 } catch { console.log('viewer/job_stats.json 건너뜀 — metrics/token-usage.jsonl 없음'); }
