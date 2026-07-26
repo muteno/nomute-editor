@@ -80,9 +80,10 @@ smp = d.get('audience_sample') or {}
 if smp:
     _pcs = []
     if smp.get('age_gender_top'): _pcs.append('성·연령 상위: ' + ' · '.join(f"{x['k']} {x['pct']}%" for x in smp['age_gender_top']) + ' (U=성별미공개)')
-    if smp.get('country_top'): _pcs.append('국가: ' + ' · '.join(f"{x['k']} {x['pct']}%" for x in smp['country_top']))
-    if smp.get('city_top'): _pcs.append('도시: ' + ' · '.join(f"{x['k'].split(',')[0]} {x['pct']}%" for x in smp['city_top']))
-    L.append('[팔로워 표본(계정 전체 · API 실측)] ' + ' / '.join(_pcs))
+    if smp.get('country_top'): _pcs.append('국가: ' + ' · '.join(f"{x['k']} {x['pct']}%" for x in smp['country_top'][:5]))
+    if smp.get('city_top'): _pcs.append('도시: ' + ' · '.join(f"{x['k'].split(',')[0]} {x['pct']}%" for x in smp['city_top'][:5]))
+    if smp.get('geo_base'): _pcs.append(f"국가·도시 퍼센트 분모 = {smp['geo_base']}(합이 100 미만 = API 상위 목록 밖 잔여)")   # 분모 명시(260726 교정 — 축 합 분모 시절 도시가 1.29배 부풀던 것)
+    L.append(f"[팔로워 표본(계정 전체 · API 실측{' · 기준 ' + smp['as_of'] if smp.get('as_of') else ''})] " + ' / '.join(_pcs))
     if smp.get('operator_note'):
         L.append('[팔로워 표본 — 운영자 자가 보고(데이터 아님 · 취급 주의)] ' + smp['operator_note'])
 # 알고리즘 협착 — 운영자 가설 + 주제 간 실측(운영자 260715 Q05)

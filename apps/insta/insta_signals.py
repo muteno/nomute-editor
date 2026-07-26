@@ -516,23 +516,38 @@ def _timing_stats(series):
     }
 
 
-def _audience_sample(aud):
+def _audience_sample(aud, followers=None):
     """팔로워 표본(계정 단위 인구통계 + 운영자 자가 보고 노트 · 운영자 260715 Q03).
-    게시물 단위 인구통계는 IG API 미제공 — 게시물 표본은 posts의 fp(반응 지문)가 대리."""
+    게시물 단위 인구통계는 IG API 미제공 — 게시물 표본은 posts의 fp(반응 지문)가 대리.
+
+    분모(운영자 260726 스샷 대조로 교정) — 축 성격이 둘로 갈린다:
+      · 전수 축(age,gender) = 전 팔로워가 어느 셀엔가 들어감(실측 커버리지 99.5%) → 축 합 = 자연 100% 분모.
+      · 부분 목록 축(country·city) = API가 상위 45행만 돌려줌(city 실측 합 = 팔로워의 77.7%뿐) →
+        축 합으로 나누면 값이 1.29배 부풀려진다(서울 25.1% ≠ Meta 화면 19.5%). Meta 비즈니스 스위트는
+        팔로워 총수로 나눈다 → followers 분모로 통일하면 국가 10개·도시 10개가 스샷과 소수점까지 일치(260726 실측).
+    """
     fd = (aud or {}).get('follower_demographics') or {}
     out = {}
-    def top(axis, n):
+    def top(axis, n, base=None):
         blk = fd.get(axis) or []
         res = (blk[0].get('results') or []) if blk else []
         tot = sum(r.get('value') or 0 for r in res)
-        if not tot:
+        den = base or tot   # base 무효(팔로워 수 결측 등) = 종전 축 합 폴백(fail-soft)
+        if not tot or not den:
             return None
-        return [{'k': '·'.join(r['dimension_values']), 'pct': round(r['value'] / tot * 100, 1)}
+        return [{'k': '·'.join(r['dimension_values']), 'pct': round(r['value'] / den * 100, 1)}
                 for r in sorted(res, key=lambda r: -(r.get('value') or 0))[:n]]
-    for axis, key, n in (('age,gender', 'age_gender_top', 5), ('country', 'country_top', 3), ('city', 'city_top', 3)):
-        v = top(axis, n)
+    _f = followers if isinstance(followers, (int, float)) and followers > 0 else None
+    for axis, key, n, base in (('age,gender', 'age_gender_top', 5, None),
+                               ('country', 'country_top', 10, _f), ('city', 'city_top', 10, _f)):   # 국가·도시 = Meta 화면과 같은 10행(구 3행 · 뷰어는 상위 4 절취)
+        v = top(axis, n, base)
         if v:
             out[key] = v
+    if out.get('country_top') or out.get('city_top'):
+        out['geo_base'] = ('팔로워 총수' if _f else '축 합(팔로워 수 결측 폴백)')   # 지역 퍼센트 분모 명시(브리프·뷰어가 근거를 밝힐 수 있게)
+    asof = (aud or {}).get('fetched_kst')
+    if asof:
+        out['as_of'] = str(asof)[:10]   # 인구통계 기준일(lifetime 스냅샷 = 수집일 · 운영자 260726 "오늘일자로")
     # 성별·연령 전체 분포(운영자 260722 — TOP5 age_gender 셀 합은 남/여를 과소집계[남29·여8] · IG 네이티브는 전 셀 정규화라 남64·여36) —
     # age,gender 전 셀을 성별축·연령축으로 각각 합산. 성별 = 남·여만 100% 정규화(미지정 U 제외 = IG 앱 '남/여' 표기 정합) · 연령 = 전 버킷(U 없음 = 자연 100%).
     ag = fd.get('age,gender') or []
@@ -672,7 +687,7 @@ def main():
         vdoc['topics'] = sig.get('topic_summary')  # 주제별 반응률(뉴스 분류기 계승)
         vdoc['eras'] = sig.get('era_summary')      # 알고리즘 3기 대비
         vdoc['timing'] = _timing_stats(series_daily)       # 게시-팔로워 인과 실측(회초리 근거 · 운영자 260715 Q02)
-        vdoc['audience_sample'] = _audience_sample(aud)    # 팔로워 표본(인구통계+운영자 노트 · 운영자 260715 Q03)
+        vdoc['audience_sample'] = _audience_sample(aud, ((vdoc.get('profile') or {}).get('followers_count')))    # 팔로워 표본(인구통계+운영자 노트 · 운영자 260715 Q03) · 팔로워 총수 = 국가·도시 퍼센트 분모(Meta 화면 정합 · 260726)
         vdoc['echo'] = _echo_block(sig.get('topic_summary'), man)   # 알고리즘 협착 가설+실측(운영자 260715 Q05)
         vp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'insta_data.json'))
         with open(vp, 'w', encoding='utf-8') as f:
