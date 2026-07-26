@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""편집 탭 — 단일 이미지 피사체 모자이크 렌더(2티어).
+"""편집 탭 — 단일 이미지 피사체 렌더(출력 2모드: 가리기 mosaic / 떼기 cutout · 운영자 260726).
 
-기본 = track_render.mosaic_region 재사용(박스/타원 픽셀레이트) · 정밀 = ultralytics SAM2 image predictor로
+mosaic(2티어) = track_render.mosaic_region 재사용(박스/타원 픽셀레이트) · 정밀 = ultralytics SAM2 image predictor로
 피사체 실루엣 마스크를 뽑아 그 윤곽에만 픽셀레이트(헤비 스택 · 실패 = 박스로 fail-soft 폴백).
+cutout(누끼) = 같은 SAM2 실루엣을 알파로 써서 선택 피사체만 남긴 투명 PNG(API가 precise 강제 · SAM2 실패 =
+박스/타원 알파 폴백 — engine 정직 표기 · 배경 교체는 뷰어 후속, v1 = 투명 산출만).
 
 입력 = viewer/imgedit_out/<id>/boxes.json + 렌더 페이로드(env RENDER JSON) · 원본 = boxes.meta.src_url(R2) 또는
-outdir/src.<ext>(git 폴백). 출력 = R2 imgedit/<id>/out.jpg → result.json{url,ts}. 실패 = result.json{error}(fail-soft).
+outdir/src.<ext>(git 폴백). 출력 = R2 imgedit/<id>/out.jpg|out.png → result.json{url,ts,precise[,op,engine]}.
+실패 = result.json{error}(fail-soft).
 
-사용: RENDER='{"targets":[1,2],"opts":{...},"precise":false}' python3 img_mosaic.py <id>
+사용: RENDER='{"targets":[1,2],"opts":{...},"precise":false,"op":"mosaic|cutout"}' python3 img_mosaic.py <id>
 """
 import json
 import os
@@ -66,6 +69,30 @@ def sam_masks(img, boxes_xyxy):
     except Exception as e:
         print(f"::warning::SAM2 실패({type(e).__name__}) — 박스/타원 폴백", flush=True)
         return None
+
+
+def cutout_alpha(img, items, targets, masks, shape, feather):
+    """떼기(누끼) — 선택 피사체 합집합 알파(0~1 HxW)와 engine 표기 반환.
+    SAM2 실루엣 우선 · 마스크 없는 타깃 = 박스/타원 채움 폴백(FX8 grabcut 폴백 정신 = 정직 표기)."""
+    H, W = img.shape[:2]
+    alpha = np.zeros((H, W), np.float32)
+    fell = 0
+    for idx, t in enumerate(targets):
+        m = masks[idx] if masks and idx < len(masks) else None
+        if m is not None:
+            np.maximum(alpha, m.astype(np.float32), out=alpha)
+            continue
+        fell += 1
+        x, y, w, h = items[t]["box"]
+        if shape == "ellipse":
+            cv2.ellipse(alpha, (x + w // 2, y + h // 2), (max(1, w // 2), max(1, h // 2)), 0, 0, 360, 1.0, -1)
+        else:
+            cv2.rectangle(alpha, (x, y), (min(W, x + w), min(H, y + h)), 1.0, -1)
+    engine = "sam2" if fell == 0 else ("box" if fell == len(targets) else "sam2+box")
+    if feather > 0:   # 경계 페더 = mosaic_by_mask 계수 동수(k=2f+1 · sigma f*0.6)
+        k = 2 * int(feather) + 1
+        alpha = cv2.GaussianBlur(alpha, (k, k), feather * 0.6)
+    return alpha, engine
 
 
 def mosaic_by_mask(img, mask, pxw, pxh, feather):
@@ -140,24 +167,35 @@ def main():
     feather = max(0, min(40, int(o.get("feather", 5))))
     shape = o.get("shape") if o.get("shape") in ("rect", "ellipse") else "ellipse"
     precise = bool(payload.get("precise"))
+    op = payload.get("op") if payload.get("op") in ("mosaic", "cutout") else "mosaic"   # 출력 모드(닫힌 집합 · 운영자 260726 누끼)
 
     masks = None
-    if precise:
+    if precise or op == "cutout":   # 떼기 = 실루엣 필수(API가 precise 강제 · 직발사 가드 겸 — 모델 없으면 sam_masks가 None = 박스 폴백)
         bxyxy = []
         for t in targets:
             x, y, w, h = items[t]["box"]
             bxyxy.append([x, y, x + w, y + h])
         masks = sam_masks(img, bxyxy)
 
-    for idx, t in enumerate(targets):
-        x, y, w, h = items[t]["box"]
-        done = False
-        if precise and masks and idx < len(masks) and masks[idx] is not None:
-            done = mosaic_by_mask(img, masks[idx], pxw, pxh, feather)
-        if not done:   # 기본 티어 또는 SAM2 폴백 — 박스/타원 픽셀레이트(코어-강제 커버)
-            tr.mosaic_region(img, x, y, w, h, W, H, pxw=pxw, pxh=pxh, size=size, feather=feather, shape=shape)
-
-    ok, buf = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+    engine = ""
+    if op == "cutout":   # 떼기(누끼) — 선택 피사체만 남긴 투명 PNG(알파 = SAM2 실루엣 합집합 · 폴백 정직 표기)
+        alpha, engine = cutout_alpha(img, items, targets, masks, shape, feather)
+        if not alpha.any():
+            fail(iid, "누끼 영역이 비었어 — 다른 피사체를 골라줘.", "empty alpha")
+        rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+        rgba[:, :, 3] = np.clip(np.rint(alpha * 255), 0, 255).astype(np.uint8)
+        ok, buf = cv2.imencode(".png", rgba)   # 투명 산출 = .png만(FX8 계약 동수)
+        ext_out, ctype = ".png", "image/png"
+    else:
+        for idx, t in enumerate(targets):
+            x, y, w, h = items[t]["box"]
+            done = False
+            if precise and masks and idx < len(masks) and masks[idx] is not None:
+                done = mosaic_by_mask(img, masks[idx], pxw, pxh, feather)
+            if not done:   # 기본 티어 또는 SAM2 폴백 — 박스/타원 픽셀레이트(코어-강제 커버)
+                tr.mosaic_region(img, x, y, w, h, W, H, pxw=pxw, pxh=pxh, size=size, feather=feather, shape=shape)
+        ok, buf = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+        ext_out, ctype = ".jpg", "image/jpeg"
     if not ok:
         fail(iid, "이미지 저장 실패 — 다시 시도해줘.", "imencode fail")
     data = buf.tobytes()
@@ -165,17 +203,20 @@ def main():
     url = ""
     if tg.R2_ON:
         try:
-            url = tg.r2_upload(data, f"imgedit/{iid}/out.jpg", "image/jpeg") or ""
+            url = tg.r2_upload(data, f"imgedit/{iid}/out{ext_out}", ctype) or ""
         except Exception as e:
             print(f"::warning::R2 업로드 실패 {type(e).__name__} — git 폴백", flush=True)
     if not url:
-        with open(os.path.join(outdir, "out.jpg"), "wb") as f:
+        with open(os.path.join(outdir, f"out{ext_out}"), "wb") as f:
             f.write(data)
-        url = f"imgedit_out/{iid}/out.jpg"
+        url = f"imgedit_out/{iid}/out{ext_out}"
 
+    res = {"url": url, "ts": tr.kst_now(), "precise": precise}
+    if op == "cutout":
+        res.update({"op": op, "engine": engine})   # engine = sam2 | box(폴백) | sam2+box — 정직 표기(mosaic result = 종전 스키마 그대로)
     with open(os.path.join(outdir, "result.json"), "w", encoding="utf-8") as f:
-        json.dump({"url": url, "ts": tr.kst_now(), "precise": precise}, f, ensure_ascii=False)
-    print(f"[imgedit] {iid} 렌더 완료 {len(targets)}개(정밀={precise}) → {url}", flush=True)
+        json.dump(res, f, ensure_ascii=False)
+    print(f"[imgedit] {iid} {op} 렌더 완료 {len(targets)}개(정밀={precise}{', engine=' + engine if engine else ''}) → {url}", flush=True)
 
 
 if __name__ == "__main__":

@@ -55,8 +55,9 @@ export async function onRequestPost({ request, env }) {
       const fe = num(r.opts.feather, 0, 40); if (fe !== null) opts.feather = Math.round(fe);
       if (r.opts.shape === 'ellipse' || r.opts.shape === 'rect') opts.shape = r.opts.shape;
     }
-    const precise = r.precise === true;
-    const payload = JSON.stringify({ targets, opts, precise });
+    const op = r.op === 'cutout' ? 'cutout' : 'mosaic';   // 출력 모드(닫힌 집합 · 운영자 260726) — cutout = 피사체만 남긴 투명 PNG(누끼)
+    const precise = op === 'cutout' ? true : r.precise === true;   // 떼기 = SAM2 실루엣 강제(워크플로 IMG_HEAVY 신호 = render 문자열 "precise":true contains)
+    const payload = JSON.stringify({ targets, opts, precise, op });
     if (payload.length > 4000) return json({ error: '선택이 너무 많아 — 줄여줘' }, 400);
     const rr = await GH(env.GH_TOKEN, 'actions/workflows/imgedit-make.yml/dispatches', 'POST', {
       ref: REF, inputs: { id, mode: 'render', render: payload },

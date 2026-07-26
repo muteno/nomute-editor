@@ -955,6 +955,7 @@
         <span class="gs-lbl">굵기</span>: <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="6">굵게</span> <span class="gs-v gs-tog on ie-px" role="button" tabindex="0" data-px="9">보통</span> <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="14">곱게</span>
         <span style="color:var(--mut)"> | </span> <span class="gs-lbl">모양</span>: <span class="gs-v gs-tog on" id="ieShape" role="button" tabindex="0" title="탭=타원↔네모">타원</span>
         <span style="color:var(--mut)"> | </span> <span class="gs-lbl">정밀</span>: <span class="gs-v gs-tog" id="iePrecise" role="button" tabindex="0" title="탭=윤곽에 딱 맞게(SAM2·느림)">OFF</span>
+        <span style="color:var(--mut)"> | </span> <span class="gs-lbl">출력</span>: <span class="gs-v gs-tog" id="ieOp" role="button" tabindex="0" title="탭=가리기(모자이크)↔떼기(누끼 · 피사체만 남긴 투명 PNG · SAM2 실루엣 자동, 실패 시 박스 폴백)">가리기</span>
       </div>
       <div class="ie-result none" id="ieResult"></div>
     </div>
@@ -3757,7 +3758,7 @@ function applySpellReview() {   // 2차 누름 = 점등된 교정만 적용. _sp
   clearSpellReview();
 }
 // ── 편집(app='8') 피사체 모자이크 — apps/imgedit 백엔드(track 미러) · 검출 → 이미지 위 박스 탭 지정 → 모자이크 2티어(운영자 260712) ──
-const IE = { id: '', items: [], sel: new Set(), meta: null, phase: 'idle', busy: false, poll: null, lastImg: '', pxw: 9, shape: 'ellipse', precise: false };
+const IE = { id: '', items: [], sel: new Set(), meta: null, phase: 'idle', busy: false, poll: null, lastImg: '', pxw: 9, shape: 'ellipse', precise: false, op: 'mosaic' };   // op = 출력 모드(가리기 mosaic/떼기 cutout · 운영자 260726 누끼)
 function ieReset() {   // 결과·검출·진행 폴링 전체 초기화(새 이미지 = ieRender 진입부가 호출 · Q176 배선 — 재렌더는 호출측 ieRender가 이어서 수행하므로 여기서 ieRender 재호출 금지 = 재귀 차단)
   IE.id = ''; IE.items = []; IE.sel.clear(); IE.meta = null; IE.phase = 'idle'; IE.busy = false;
   if (IE.poll) { clearInterval(IE.poll); IE.poll = null; }
@@ -3767,10 +3768,11 @@ function ieSyncGo() {
   if (APP !== '8') return;
   const gb = $('#go'); if (!gb) return;
   let lbl;
-  if (IE.busy) lbl = IE.phase === 'finding' ? '피사체 찾는 중…' : '모자이크 만드는 중…';
+  const opNm = IE.op === 'cutout' ? '누끼' : '모자이크', opVb = IE.op === 'cutout' ? '뗄' : '가릴';   // 출력 모드 문맥 라벨(운영자 260726)
+  if (IE.busy) lbl = IE.phase === 'finding' ? '피사체 찾는 중…' : (opNm + ' 만드는 중…');
   else if (!CIMG.b64) lbl = '이미지를 넣어줘';
   else if (!IE.items.length) lbl = '피사체 찾기';
-  else lbl = IE.sel.size ? ('모자이크 만들기 (' + IE.sel.size + ')') : '가릴 피사체를 탭해';
+  else lbl = IE.sel.size ? (opNm + ' 만들기 (' + IE.sel.size + ')') : (opVb + ' 피사체를 탭해');
   gb.dataset.label = lbl; gb.textContent = lbl;
   gb.classList.toggle('rszbusy', !!IE.busy);   // 발사 버튼 펄스(app7 리사이즈 busy 시각 계승 · rszWait은 APP==='7'만 작동 = 간섭 0)
 }
@@ -3810,7 +3812,7 @@ async function ieFind() {
   } catch { ieBusy(false, 'idle'); errStatus('네트워크 오류 — 다시 시도해줘'); }
 }
 async function ieRenderGo() {
-  if (!IE.sel.size) return errStatus('가릴 피사체를 탭해줘', 'warn');
+  if (!IE.sel.size) return errStatus((IE.op === 'cutout' ? '뗄' : '가릴') + ' 피사체를 탭해줘', 'warn');
   ieBusy(true, 'rendering');
   // 재렌더 신선도 가드(스테일 result.json/error.log 오표시 차단 · 기틀검증 C1·C2) — 발사 직전 직전본 스냅 → 폴에서 이보다 새 것만 인정(같은 id 재사용이라 필수)
   IE.preTs = ''; IE.preErr = '';
@@ -3818,8 +3820,8 @@ async function ieRenderGo() {
   try { const pe = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (pe.ok) { const t = (await pe.text()).trim(); if (t && t[0] !== '<') IE.preErr = t; } } catch { /* 없음 */ }
   const opts = { pxw: IE.pxw, pxh: IE.pxw, size: 1.15, feather: 5, shape: IE.shape };
   try {
-    const r = await fetch('/api/imgedit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ render: { id: IE.id, targets: [...IE.sel], opts, precise: IE.precise } }) }).then(x => x.json());
-    if (!r.ok) { ieBusy(false, 'found'); return errStatus(r.error || '모자이크 발사 실패'); }
+    const r = await fetch('/api/imgedit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ render: { id: IE.id, targets: [...IE.sel], opts, precise: IE.precise, op: IE.op } }) }).then(x => x.json());   // op = 출력 모드(떼기 = 서버가 SAM2 정밀 강제 · 운영자 260726)
+    if (!r.ok) { ieBusy(false, 'found'); return errStatus(r.error || ((IE.op === 'cutout' ? '누끼' : '모자이크') + ' 발사 실패')); }
     iePoll('result');
   } catch { ieBusy(false, 'found'); errStatus('네트워크 오류 — 다시 시도해줘'); }
 }
@@ -3850,8 +3852,9 @@ function iePoll(kind) {
 }
 function ieShowResult(url) {
   const u = /^https?:/.test(url) ? url : (url + '?t=' + Date.now());
-  $('#ieResult').innerHTML = '<img class="ie-res-img" src="' + u + '" alt="모자이크 결과"><button type="button" class="imgdl ie-res-use" aria-label="소스로 재첨부" title="이 결과를 소스로 재첨부">' + REUSE_SVG + '</button><a class="dlbtn imgdl ie-res-dl" href="' + u + '" download="모자이크.jpg" target="_blank" rel="noopener" aria-label="저장">' + DOWNLOAD_SVG + '</a>';
-  const ub = $('#ieResult .ie-res-use'); if (ub) ub.onclick = e => { e.preventDefault(); e.stopPropagation(); reattachSrc(u, '모자이크.jpg', ub); };   // 모자이크 결과 → 원탭 재첨부(운영자 260713 "그 한수" — 재첨부가 새 소스로 검출·패널 자연 초기화 = lastImg 비교)
+  const nm = IE.op === 'cutout' ? '누끼.png' : '모자이크.jpg', alt = IE.op === 'cutout' ? '누끼 결과' : '모자이크 결과';   // 출력 모드별 파일명·라벨(운영자 260726 — 누끼 = 투명 PNG)
+  $('#ieResult').innerHTML = '<img class="ie-res-img" src="' + u + '" alt="' + alt + '"><button type="button" class="imgdl ie-res-use" aria-label="소스로 재첨부" title="이 결과를 소스로 재첨부">' + REUSE_SVG + '</button><a class="dlbtn imgdl ie-res-dl" href="' + u + '" download="' + nm + '" target="_blank" rel="noopener" aria-label="저장">' + DOWNLOAD_SVG + '</a>';
+  const ub = $('#ieResult .ie-res-use'); if (ub) ub.onclick = e => { e.preventDefault(); e.stopPropagation(); reattachSrc(u, nm, ub); };   // 모자이크 결과 → 원탭 재첨부(운영자 260713 "그 한수" — 재첨부가 새 소스로 검출·패널 자연 초기화 = lastImg 비교)
   $('#ieResult').classList.remove('none');
   $('#ieResult').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -3859,8 +3862,9 @@ function ieShowResult(url) {
   document.querySelectorAll('.ie-px').forEach(el => el.addEventListener('click', () => { IE.pxw = +el.dataset.px; document.querySelectorAll('.ie-px').forEach(x => x.classList.toggle('on', x === el)); }));
   const sh = $('#ieShape'); if (sh) sh.addEventListener('click', () => { IE.shape = IE.shape === 'ellipse' ? 'rect' : 'ellipse'; sh.textContent = IE.shape === 'ellipse' ? '타원' : '네모'; sh.classList.toggle('on', IE.shape === 'ellipse'); });
   const pr = $('#iePrecise'); if (pr) pr.addEventListener('click', () => { IE.precise = !IE.precise; pr.textContent = IE.precise ? 'ON' : 'OFF'; pr.classList.toggle('on', IE.precise); });
+  const opb = $('#ieOp'); if (opb) opb.addEventListener('click', () => { IE.op = IE.op === 'cutout' ? 'mosaic' : 'cutout'; opb.textContent = IE.op === 'cutout' ? '떼기' : '가리기'; opb.classList.toggle('on', IE.op === 'cutout'); ieSyncGo(); });   // 출력 모드(가리기↔떼기 · 운영자 260726) — 떼기 = 누끼(발사 라벨 동기)
   // (새 이미지 재동기 = applyImg/reset 말미 app8 훅이 전담 — input 노드 교체 무관 · 기틀검증3 §6)
-  document.querySelectorAll('.ie-px, #ieShape, #iePrecise').forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }));
+  document.querySelectorAll('.ie-px, #ieShape, #iePrecise, #ieOp').forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); } }));
 })();
 
 $('#go').onclick = async () => {
