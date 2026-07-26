@@ -34,10 +34,23 @@ def transcribe(vad):
             continue
         words = []
         if seg_json:
-            words = [{"t": w.word.strip(), "s": round(w.start, 2), "e": round(w.end, 2)}
+            words = [{"t": w.word.strip(), "s": round(w.start, 2), "e": round(w.end, 2),
+                      "p": round(getattr(w, "probability", 1.0) or 1.0, 2)}   # p = 어절 확률(additive · 뭉개짐 의심 원천 — 뷰어 파서는 미지 키 무시)
                      for w in (seg.words or []) if w.word.strip()]
-        rows.append({"s": seg.start, "e": seg.end, "t": t, "w": words})   # s/e = raw 유지(stdout 구본 바이트 등가) — 라운딩은 JSON 직전에만(재평의회1·4 이중 라운드 드리프트 봉합)
+        rows.append({"s": seg.start, "e": seg.end, "t": t, "w": words,
+                     "lp": getattr(seg, "avg_logprob", None), "ns": getattr(seg, "no_speech_prob", None)})   # s/e = raw 유지(stdout 구본 바이트 등가) — 라운딩은 JSON 직전에만(재평의회1·4 이중 라운드 드리프트 봉합) · lp/ns = 조각 신뢰도(뭉개짐 의심 플래그 원천 · Q581)
     return rows, info
+
+
+def is_unc(r):
+    # 뭉개짐(오인식) 의심 휴리스틱(Q581 · 운영자 "오인 발화 부분만 재생성 알림") — 3중 신호:
+    # ① 어절 확률 < 0.70(주 신호 — 임계 실측 260726: 오인식 '신질병' 0.64 vs 정상 어절 ≥0.78·대부분 ≥0.85.
+    #    조각 평균 lp는 문장 나머지가 또렷하면 오인 어절을 가려 못 잡음을 같은 클립서 실측 = 어절 단위가 정답)
+    # ② avg_logprob < -0.8(조각 전체 뭉개짐) ③ no_speech_prob > 0.6(발화 아님 의심).
+    # 플래그 = 정보 표면화일 뿐 자막 내용 무접촉 · ①은 word_timestamps 요청(seg_json) 시에만 존재.
+    lp, ns = r.get("lp"), r.get("ns")
+    return ((lp is not None and lp < -0.8) or (ns is not None and ns > 0.6)
+            or any(w.get("p", 1.0) < 0.70 for w in (r.get("w") or [])))
 
 
 rows, info = transcribe(True)
@@ -48,12 +61,25 @@ print(f"# STT: Whisper large-v3 · lang={info.language} ({info.language_probabil
       file=sys.stderr)
 n = 0
 segs = []
+unc = []
 for r in rows:
     n += 1
-    print(f"[{r['s']:.1f}-{r['e']:.1f}] {r['t']}")
+    print(f"[{r['s']:.1f}-{r['e']:.1f}] {r['t']}")   # 본문 라인 포맷 불변(구본 바이트 등가 — 소비자 = claude 프롬프트·wc -l)
+    if is_unc(r):
+        unc.append(r)
     if seg_json:
-        segs.append({"s": round(r["s"], 2), "e": round(r["e"], 2), "t": r["t"], "w": r["w"]})
-print(f"# STT 완료: {n}개 세그먼트", file=sys.stderr)
+        d = {"s": round(r["s"], 2), "e": round(r["e"], 2), "t": r["t"], "w": r["w"]}
+        if r.get("lp") is not None:
+            d["lp"] = round(r["lp"], 2)
+        if r.get("ns") is not None:
+            d["ns"] = round(r["ns"], 2)
+        if is_unc(r):
+            d["unc"] = 1   # additive — 뷰어·번인 파서는 미지 키 무시(편집기 ⚠ 배지·fastpath subs.md 표시 원천)
+        segs.append(d)
+if unc:   # 꼬리 주석 = claude 의역 입력에 '어느 조각이 뭉개짐 의심인지' 실데이터 전달(지침 STEP 0-3 별도 보고 근거 · 본문 라인은 무접촉)
+    print("# 불명확(뭉개짐 의심) %d조각 — 오인식 가능·재생성(교정) 후보: %s"
+          % (len(unc), " · ".join(f"[{r['s']:.1f}-{r['e']:.1f}]" for r in unc)))
+print(f"# STT 완료: {n}개 세그먼트 (불명확 의심 {len(unc)}개)", file=sys.stderr)
 if seg_json and segs:
     from datetime import datetime, timedelta, timezone
     try:   # 시각 = KST 강제(§표기표준) — 표기용 필드가 tzdata 부재로 성공한 STT를 죽이면 안 됨(평의회1 F2 · 고정 오프셋 폴백)
