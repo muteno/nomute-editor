@@ -401,6 +401,26 @@ thHist.sort((a, b) => b.ts - a.ts);
 writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, THH_CAP), null, 2));
 console.log(`viewer/thumb-hist.json 생성 — ${Math.min(thHist.length, THH_CAP)}건${thHist.length > THH_CAP ? ` (전체 ${thHist.length}건 중 최신 ${THH_CAP}장만 — 오래된 ${thHist.length - THH_CAP}건 절단)` : ''}`);
 
+// ── 잡 실측 통계: metrics/token-usage.jsonl → viewer/job_stats.json (wf/job별 중앙 비용·소요) ──
+//   왜: 진행 타일의 '예상 시간'·'비용'을 실측 앵커로 표기(운영자 260727 "토큰 안나오는 문제 · 예상시간까지").
+//   ⚠ 환율 상수는 이 레포에 없다 → USD 그대로 내린다(무근거 단가·환율 창작 금지 · 구 '~₩' 스텁 폐기).
+try {
+  const lines = readFileSync('metrics/token-usage.jsonl', 'utf8').split('\n').filter(Boolean);
+  const bucket = {};
+  for (const ln of lines) {
+    let j; try { j = JSON.parse(ln); } catch { continue; }
+    const key = (j.wf || '?') + '/' + (j.job || '?');
+    (bucket[key] ||= { cost: [], dur: [] });
+    if (Number.isFinite(j.cost)) bucket[key].cost.push(j.cost);
+    if (Number.isFinite(j.dur_ms)) bucket[key].dur.push(j.dur_ms);
+  }
+  const med = a => { if (!a.length) return 0; const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
+  const stats = {};
+  for (const [k, v] of Object.entries(bucket)) stats[k] = { n: v.cost.length || v.dur.length, cost: +med(v.cost).toFixed(4), dur: Math.round(med(v.dur) / 1000) };
+  writeFileSync('viewer/job_stats.json', JSON.stringify({ generated: new Date().toISOString(), stats }, null, 2));
+  console.log(`viewer/job_stats.json 생성 — ${Object.keys(stats).length}종 (원본 ${lines.length}행)`);
+} catch { console.log('viewer/job_stats.json 건너뜀 — metrics/token-usage.jsonl 없음'); }
+
 // ── 알림·메시지: messages/*.md|json → viewer/messages.json (최신순 [{id, ts, text}]) ──
 // 저장은 git 누적(messages/ 에 파일로 쌓임). 비어 있으면 [] 로 둔다(뷰어가 조용히 배지·테두리 숨김).
 // .md = 프론트매터 text/ts/id(없으면 본문 전체가 text) · .json = {id,ts,text} 또는 그 배열.
