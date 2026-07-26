@@ -101,7 +101,10 @@ _args = ["claude", "-p", "--model", MODEL, "--effort", "high",   # --bare 제거
 res, rc, err = run_claude(_args, prompt, timeout=900, source="moreimg")
 out = (res.stdout if res else "") or ""
 if rc != 0:
-    print("::warning::claude rc={} · stderr(head): {}".format(rc, (err or "")[:300]), flush=True)
+    # stdout head 동반 출력(260726 Q581) — 실패의 진짜 원인(쿼터·API 에러)은 --output-format json의 stdout에 실리고
+    # stderr는 trust류 무관 공지 노이즈뿐이라(cardmake.sh 27행 오진 선례) stderr만 찍으면 원인이 증발한다.
+    print("::warning::claude rc={} · stdout(head): {} · stderr(head): {}".format(
+        rc, (out or "").strip()[:300], (err or "")[:300]), flush=True)
 
 urls = []
 orig_url = ""
