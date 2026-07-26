@@ -71,8 +71,19 @@ async function probe(browser, url) {
     const T = [{ src: '/thumb.html', app: '2', label: '카드 생성' }, { src: '/thumb.html', app: '7', label: '편집' }, { src: '/tr.html', app: 'tr', label: '번역' }, { src: '/thumb.html', app: '6', label: 'AI 생성' }];
     openTool('/thumb.html', 'Image Studio', T, 'thumb');
   });
-  // 고정 sleep 대신 .ready 폴링(로드 완료 = bindToolFrameLoad가 .ready 부여) — 로드 속도 무관 결정론
-  let ready = false; for (let i = 0; i < 60 && !ready; i++) { ready = await page.evaluate(() => { const f = document.querySelector('#tooldlg .toolfr.active'); return !!(f && f.classList.contains('ready')); }); if (!ready) await sleep(100); }
+  // 로드 완료 폴링 — ⚠ `.ready` 유무만 보면 안 된다(부하 재현 실측 260726 · 이 스모크가 4코어 컨테이너에서
+  //   상시 FAIL하던 정체): iframe은 생성 직후 **about:blank로 load를 한 번 먼저 발생**시켜 bindToolFrameLoad가
+  //   `.ready`를 조기 부여한다 → 구 폴링이 그걸 통과 → 아래에서 `.ready`를 벗긴 직후 '진짜' 문서 load가 도착해
+  //   `.ready`를 되돌린다 → C3가 {ready:true, op:1}로, C5는 orb op:0으로, C6는 그 파생으로 깨짐.
+  //   부하가 낮으면 진짜 load가 폴링 전에 끝나 안 터진다 = 부하 의존 위양성의 뿌리(스모크 결함 · 라이브 무관).
+  //   판정 = .ready + 문서가 about:blank 아님 + readyState complete → '늦은 load 없음'이 보장된 뒤에만 조작한다.
+  const settled = () => page.evaluate(() => {
+    const f = document.querySelector('#tooldlg .toolfr.active');
+    if (!(f && f.classList.contains('ready'))) return false;
+    try { const d = f.contentDocument, h = String(f.contentWindow.location.href || ''); return !!d && h.indexOf('about:') !== 0 && d.readyState === 'complete'; }
+    catch (_) { return false; }   // 크로스오리진 = 이 스모크 구성상 불가(동일 origin 정적 서버) · 방어만
+  });
+  let ready = false; for (let i = 0; i < 80 && !ready; i++) { ready = await settled(); if (!ready) await sleep(100); }
 
   const opRevealed = await page.evaluate(() => {   // 로드 완료 = 활성+.ready → 페이드인 opacity 1(트랜지션 kill = 즉시)
     const f = document.querySelector('#tooldlg .toolfr.active');
@@ -126,8 +137,9 @@ async function probeTr(browser, url) {
     openTool('/thumb.html', 'Image Studio', T, 'thumb'); trWarm();   // trWarm = 라디얼 라우팅(a==='thumb')이 openTool 직후 부르는 짝 — 직접 호출 경로라 여기서 동행(예열 없으면 이 계약 자체가 성립 안 함)
   });
   await page.evaluate(() => { window.__trf = () => [...document.querySelectorAll('#tooldlg iframe')].find(x => { try { return (x.contentWindow.location.href || '').indexOf('/tr.html') >= 0; } catch (_) { return false; } }) || null; });
-  // 예열(trWarm) 완료 폴링 = tr 프레임 실존 + .ready(로드 확정) — 로드 속도 무관 결정론
-  let warm = false; for (let i = 0; i < 80 && !warm; i++) { warm = await page.evaluate(() => { const f = window.__trf(); return !!(f && f.classList.contains('ready')); }); if (!warm) await sleep(100); }
+  // 예열(trWarm) 완료 폴링 = tr 프레임 실존 + .ready + **문서 readyState complete**(probe()와 동일 강화 · 260726)
+  //   — .ready만 보면 about:blank 조기 load를 통과시켜 아래 폰트 프로브가 빈 문서를 읽고 loaded 0 = C7 위양성.
+  let warm = false; for (let i = 0; i < 80 && !warm; i++) { warm = await page.evaluate(() => { const f = window.__trf(); if (!(f && f.classList.contains('ready'))) return false; try { return f.contentDocument.readyState === 'complete'; } catch (_) { return false; } }); if (!warm) await sleep(100); }
   // ⚠ fonts.status는 '할 일이 없어도' loaded라 판별력이 없다(미사용 = idle도 loaded) → **실제 로드된 FontFace 개수**로 본다.
   //   trFontWarm 없으면 숨김 프레임의 FontFace는 전부 unloaded로 남는다(브라우저가 페치 자체를 안 함) = 0건 → FAIL.
   let preFonts = { warm: false, disp: null, loaded: 0, fams: [] };
