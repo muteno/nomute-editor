@@ -641,8 +641,8 @@
   .wip .scanline { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 14px var(--accent); animation:scan 1.4s var(--gauge-ease) infinite; }   /* edit .scanline verbatim */
   @keyframes scan { 0%{ top:6%;} 50%{ top:94%;} 100%{ top:6%;} }
   @media (prefers-reduced-motion:reduce){ .wip .scanline { animation:none; top:50%; } }
-  .wip .wcorner { position:absolute; top:8px; left:10px; z-index:2; font-size:var(--fs-body); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; color:var(--accent-2); text-shadow:0 0 12px rgba(var(--accent-2-rgb),.45),0 1px 10px rgba(0,0,0,.5); }   /* 경과 = 좌상단 네온레몬(edit .wcorner verbatim · Q456) */
-  .wip .wtok { position:absolute; top:8px; right:10px; z-index:2; font-size:var(--fs-body); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; color:var(--accent-2); text-shadow:0 0 12px rgba(var(--accent-2-rgb),.45),0 1px 10px rgba(0,0,0,.5); }   /* 예상 토큰비 = 우상단(운영자 260723 "우상단에 예상 토큰 누적" · 문법 = wcorner 좌우 대칭 미러) */
+  .wip .wcorner { position:absolute; top:8px; left:10px; z-index:2; font-size:var(--fs-xs); font-weight:400; font-variant-numeric:tabular-nums; color:var(--fg); text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 경과+예상 = 좌상단 한 줄(운영자 260727 "볼드체 빼고 크기 75% · 흰색 · 전역") — fs-body(13) → fs-xs(10 = 77%) 토큰 계승 · 네온레몬 글로우 폐지(흰색은 발광 대상 아님) · 그림자는 어두운 스테이지 가독만 유지 */   /* 경과 = 좌상단 네온레몬(edit .wcorner verbatim · Q456) */
+  .wip .wtok { position:absolute; top:8px; right:10px; z-index:2; font-size:var(--fs-xs); font-weight:400; font-variant-numeric:tabular-nums; color:var(--fg); text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 실측 비용 = 우상단(운영자 260727 동일 규격) · 값 = viewer/job_stats.json 중앙 비용(USD · 환율 상수 부재로 ₩ 환산 금지) */   /* 예상 토큰비 = 우상단(운영자 260723 "우상단에 예상 토큰 누적" · 문법 = wcorner 좌우 대칭 미러) */
   .wip .wmsg { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:2; font-size:var(--fs-body); font-weight:var(--fw-x); color:var(--accent); white-space:nowrap; text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 중앙 Solving = edit .wmsg verbatim */
 
   /* 이전 제작(12h) 접힘 섹션 */
@@ -2020,7 +2020,7 @@ const GEN_CLAIMED = new Set();   // 어떤 잡이 이미 가져간 free.json url
 function genJob(count, opts) {   // 발사 1건 = 표준 잡 카드. api/genimg는 id 미반환 → 완료 매칭 = 발사 시점 스냅샷 diff + URL h8(발사 단위 해시) 그룹핑(백엔드 무접촉 · 근사 한계는 동시 다발 발사뿐).
   count = Math.max(1, Math.min(4, parseInt(count, 10) || 1));
   clearRestored();   // 새 생성 = 부팅복원 고스트 치움(dispatchJob·goFire와 동일 규약 · 버그1 유령슬라이드 봉합)
-  const job = { n: ++JOBSEQ, label: '생성', t0: Date.now(), outs: Array.from({ length: count }, () => ({ path: '', label: '' })), done: Array.from({ length: count }, () => false),
+  const job = { n: ++JOBSEQ, label: '생성', refThumb: (_pendRefThumb || ''), t0: Date.now(), outs: Array.from({ length: count }, () => ({ path: '', label: '' })), done: Array.from({ length: count }, () => false),
     status: 'run', msg: '', gfree: 1, payload: opts ? { free: true, opts } : null, endpoint: opts ? '/api/genimg' : '', _snap: null };   // payload = 재시도(같은 설정 · 축10) · 구 index 캐시(옵션 미동봉)면 재시도 버튼만 미노출
   JOBS.unshift(job); renderJob(job); jobUiPulse(job);
   const SOFT_S = 150, HARD_S = 720;   // 생성 = Opus 프롬프트+장수만큼 렌더(리사이즈보다 무거움) → pollJob 12분 유지(리사이즈 6분과 별개)
@@ -2078,6 +2078,7 @@ window.addEventListener('message', e => {   // 부모(index) genidlg 자유 생�
   if (e.source !== window.parent || e.origin !== location.origin) return;   // 출처 검증 = 부모 프레임·동일 출처만(임의 임베더/오프너의 탭전환·유령 잡 카드 주입 차단 · 실측 260720)
   if (!e.data || e.data.nm !== 'genfree-fired') return;
   selApp('6');
+  _pendRefThumb = e.data.refThumb || '';   // 부모 첨부 썸네일 = 다음 잡의 스캐닝 목업(운영자 260727)
   genJob(e.data.count, e.data.opts || null);
 });
 // ---- /7 리사이즈(비율 재구성 · 운영자 260708) — 결과 = 표준 잡 흐름 합류: 잡 카드(#jobs)+캐러셀+이전 제작(운영자 260709 "다른 메뉴들하고 동일하게 작업내역으로" = 전용 '최근 변환' 그리드 폐지) ----
@@ -2648,7 +2649,20 @@ let JOBSEQ = 0;
 const CARSLIDES = [];      // 완성 이미지(캐러셀 슬라이드)
 
 /* ══ 진행중 제작 타일(.wip · 운영자 260723 Q469) — edit 대기 스테이지(wscrim+scanline+wcorner+wmsg) 이식: 진행 표시를 상단 미리보기 딤(구 cpPrevWait 점등)에서 '결과가 나올 자리'(#wips · 최신 위)로 이주 = 다음 작업에 묻힘 방지 · 동시 잡 각자 타일 · 미리보기는 발사 후에도 평시(아무것도 없던 상태). 생성·틱·제거 = renderJob 단일 갈고리(기존 1s 틱 편승) ══ */
-function estJobTokKRW(job) { return 0; }   // 예상 토큰비(edit Q456 estTokenNote 문법 계승) — thumb 잡(헤더·자막·저작권·안내문·카드뉴스·리사이즈·AI생성) = 러너 렌더/이미지 API = claude 토큰 0 → '토큰 0' 정직 표기(edit ffmpeg 동문) · 실계측 단가 앵커(metrics/usage) 확보 시 여기서 ₩ 환산해 우상단 라이브 누적(무근거 단가 창작 금지)
+let _pendRefThumb = '';   // 부모(index) AI 생성 첨부 썸네일 — genfree-fired → 다음 genJob 1건에만 소비(운영자 260727 "이미지 원본이 있을 경우 스캐닝 하는곳 안에 들어가야함")
+let JOB_STATS = null;   // viewer/job_stats.json = {wf/job: {n, cost(USD 중앙), dur(초 중앙)}} — 빌더가 metrics/token-usage.jsonl에서 산출(운영자 260727)
+(async () => { try { const r = await fetch('job_stats.json?t=' + Date.now()); if (r.ok) JOB_STATS = (await r.json()).stats || null; } catch (e) {} })();
+function jobStatKey(job) {   // 잡 → 실측 버킷 키(엔드포인트 = 워크플로 1:1) · 미매핑 = null(표기 생략 = 무근거 추정 금지)
+  const ep = job && job.endpoint || '';
+  if (ep.indexOf('genimg') >= 0) return 'imggen/gen';
+  if (ep.indexOf('upscale') >= 0) return 'upscale/upscale';
+  if (ep.indexOf('resize') >= 0) return 'resize/resize';
+  return null;
+}
+function jobStat(job) { const k = jobStatKey(job); const v = k && JOB_STATS && JOB_STATS[k]; return (v && v.n) ? v : null; }
+function estJobCostUSD(job) { const v = jobStat(job); return v ? v.cost : 0; }   // 실측 중앙 비용(USD) — 데이터 없으면 0 = 표기 생략
+function estJobEtaSec(job) { const v = jobStat(job); return v ? v.dur : 0; }     // 실측 중앙 소요(초)
+function fmtMMSS(sec) { const s = Math.max(0, sec | 0); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }   // 00:00 고정폭(운영자 260727 표기)   // 예상 토큰비(edit Q456 estTokenNote 문법 계승) — thumb 잡(헤더·자막·저작권·안내문·카드뉴스·리사이즈·AI생성) = 러너 렌더/이미지 API = claude 토큰 0 → '토큰 0' 정직 표기(edit ffmpeg 동문) · 실계측 단가 앵커(metrics/usage) 확보 시 여기서 ₩ 환산해 우상단 라이브 누적(무근거 단가 창작 금지)
 function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+코너 갱신 / done·err = 제거(자리는 캐러셀·잡 행이 이어받음)
   const box = $('#wips'); if (!box) return;
   if (job.status === 'done' || job.status === 'err') { if (job._wip) { job._wip.remove(); job._wip = null; wipEmptySync(); } return; }
@@ -2657,7 +2671,12 @@ function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+�
     el = document.createElement('div'); el.className = 'wip'; el.dataset.jn = job.n;
     el.innerHTML = '<div class="wscrim"></div><div class="scanline"></div><div class="wcorner" aria-hidden="true"></div><div class="wtok" aria-hidden="true"></div>'
       + '<div class="wmsg">' + (window.nmLoader ? nmLoader('solving', 'Solving…') : SPIN_SVG) + '</div>';   // 중앙 = orb 로더(Solving · Q460 정본)
-    if (Date.now() - job.t0 < 3000) {   // 발사 직후 생성만 목업 스냅샷(첨부 '원본 프레임 블러' 직역) — 복원·지연 재생성은 빈 스테이지(그 시점 폼 = 남의 목업 오염 차단)
+    if (job.refThumb) {   // AI 생성 첨부 원본 = 스캐닝 안 배경(운영자 260727 · 영상 스튜디오 .wmock 등가 · 부모 미리보기를 iframe이 못 보는 구조라 dataURL을 메시지로 받아 사용)
+      const wrap = document.createElement('div'); wrap.className = 'wmock'; wrap.setAttribute('aria-hidden', 'true');
+      const im = document.createElement('img'); im.src = job.refThumb; im.alt = '';
+      im.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';   // contain = 비율 보존·확대 금지(기존 목업 스케일 규칙 동일)
+      wrap.appendChild(im); el.prepend(wrap);
+    } else if (Date.now() - job.t0 < 3000) {   // 발사 직후 생성만 목업 스냅샷(첨부 '원본 프레임 블러' 직역) — 복원·지연 재생성은 빈 스테이지(그 시점 폼 = 남의 목업 오염 차단)
       const st = $('#cpPrevStage');
       if (st && !st.classList.contains('none') && st.childElementCount && !st.querySelector('.cpv-photobtn')) {
         try {
@@ -2676,9 +2695,10 @@ function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+�
     wipEmptySync();
   }
   const s = Math.max(0, sec | 0), c = el.querySelector('.wcorner');
-  if (c) c.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');   // 경과 = 좌상단 m:ss(edit wcorner·구 cpPrevSec 동일 포맷)
-  const t = el.querySelector('.wtok'), k = estJobTokKRW(job);
-  if (t) t.textContent = k > 0 ? '~₩' + k.toLocaleString('ko-KR') : '토큰 0';   // 우상단 = 예상 토큰비(누적 표기 자리)
+  const eta = estJobEtaSec(job);
+  if (c) c.textContent = fmtMMSS(s) + ' 진행시간' + (eta ? ' (예상 ' + fmtMMSS(eta) + ')' : '');   // 좌상단 한 줄(운영자 260727 배치 확정) — 예상 = 실측 중앙 소요 · 데이터 없으면 경과만
+  const t = el.querySelector('.wtok'), usd = estJobCostUSD(job);
+  if (t) t.textContent = usd > 0 ? '$' + usd.toFixed(2) : '';   // 우상단 = 실측 중앙 비용(USD) · 앵커 없으면 빈칸(구 '토큰 0' 고정표기 폐기 = 오해 유발)
 }
 function wipEmptySync() { const em = $('#carEmpty'), box = $('#wips'); if (!em || !box) return; if (box.childElementCount) { em.hidden = true; return; } if (typeof carHSync === 'function') carHSync(); }   // 타일 있으면 '아직 제작한 게 없습니다' 숨김 · 비면 기존 판정(carHSync)에 반환
 function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이 위)
