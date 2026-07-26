@@ -114,8 +114,67 @@ async function runOnce(br, port) {
     }
     return { members, rogue, shell };
   }, { GROUP, OPAQUE_WL, SHELL });
+  const geo = await rowGeo(pg);
   await pg.close();
-  return { members: out.members, rogue: out.rogue, shell: out.shell, errs };
+  return { members: out.members, rogue: out.rogue, shell: out.shell, geo, errs };
+}
+
+// ── 행 기하 패리티(운영자 260726 "대기열 기존 제약들을 그대로 적용 · 버튼 2개까지 · 낱낱히") ─────────────
+//   함 가족(대기열·발행본·키워드·알림메세지)이 공유하는 행 계약을 기계 판정. 행은 **각 함의 실제 빌더**로
+//   생성(합성 마크업 창작 0) · 열림 애니(scale .82~) 정지 후 안착 기하만 측정.
+//   계약 = ① 최우측 액션 중심 = 헤더 X 중심(세로 일직선 · 운영자 260712 정본) ② .qact 폭 = --btn-sm(30)
+//          ③ 다중 액션 간격 = .qrow gap(10) ④ **액션 0개 행 금지**(빈 셀은 버튼 높이 34를 못 만들어 행이
+//          51→36px로 주저앉음 = 260726 실측 사고) ⑤ 액션 +1 = 제목 우변만 정확히 40(30+10) 좌측.
+async function rowGeo(pg) {
+  await pg.addStyleTag({ content: '.qpop,.bpop,.qpop .qlist .qrow,#msglist .msgrow{animation:none !important}' });
+  return pg.evaluate(() => {
+    const T0 = 1780000000000;   // 고정 스탬프 = 2런 결정론(qAgo 텍스트 흔들림 차단 · 폭은 고정셀이라 기하 무영향)
+    const R = e => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, w: r.width, h: r.height, cx: r.left + r.width / 2 }; };
+    const open = (id, listId, html) => { const p = document.getElementById(id); if (!p) return; p.hidden = false; const l = document.getElementById(listId); if (l && html != null) l.innerHTML = html; };
+    try { open('qpop', 'qpopList', qRowHtml({ id: 'sm1', t: T0, status: 'succ', title: '스모크 표본 제목', url: 'https://example.com/a' })); } catch (_) {}
+    try { open('pubpop', 'pubpopList', pubRowHtml({ slug: 'sm1', title: '스모크 표본 제목', created: T0, pinned: false, expired: false })); } catch (_) {}
+    try {   // 키워드 = 행 마크업 미러(renderKwList 본문 문법 · 원본은 localStorage 의존이라 주입 대신 동형 행)
+      open('kwpop', 'kwpopList', '<div class="qrow kwrow" data-i="0"><label class="ed-match kw-chk"><input type="checkbox"><span class="ed-cbx"></span></label>'
+        + '<span class="qmain">스모크 키워드</span><span class="qst kwst kws-wait">대기</span>'
+        + '<span class="qact"><button class="pub-ico pub-rm kw-del" type="button"></button></span></div>');
+    } catch (_) {}
+    try { MSGS = [{ id: 'smoke-msg', t: T0, text: '스모크 표본 알림' }]; renderMsgList(); open('msgpop', null, null); } catch (_) {}
+    void document.body.offsetHeight;
+
+    const pack = (popSel, listSel) => {
+      const pop = document.querySelector(popSel), rows = [...document.querySelectorAll(listSel + ' .qrow')];
+      const xb = pop && pop.querySelector('.qh-xcell button');
+      if (!pop || !xb || !rows.length) return null;
+      const X = R(xb).cx;
+      let dCenter = 0, actW = new Set(), gaps = new Set(), minActs = 99, hs = [];
+      for (const row of rows) {
+        const acts = [...row.querySelectorAll(':scope > .qact')].map(R);
+        minActs = Math.min(minActs, acts.length);
+        hs.push(row.getBoundingClientRect().height);
+        if (!acts.length) continue;
+        dCenter = Math.max(dCenter, Math.abs(acts[acts.length - 1].cx - X));
+        acts.forEach(a => actW.add(+a.w.toFixed(1)));
+        acts.slice(1).forEach((a, i) => gaps.add(+(a.l - acts[i].r).toFixed(1)));
+      }
+      // 액션 +1 = 제목 우변만 40(30+10) 좌측 · 최우측 중심 불변(정본 밀림 계약)
+      const base = rows[rows.length - 1], main0 = base.querySelector('.qmain');
+      let shift = null, dCenter2 = null;
+      if (main0) {
+        const before = R(main0).r;
+        const cell = document.createElement('span'); cell.className = 'qact';
+        cell.innerHTML = '<button class="pub-ico pub-rm" type="button"></button>';
+        base.appendChild(cell); void document.body.offsetHeight;
+        shift = +(before - R(main0).r).toFixed(1);
+        const a2 = [...base.querySelectorAll(':scope > .qact')].map(R);
+        dCenter2 = Math.abs(a2[a2.length - 1].cx - X);
+        cell.remove();
+      }
+      return { dCenter: +dCenter.toFixed(2), actW: [...actW], gaps: [...gaps], minActs,
+               rowHSpread: +(Math.max(...hs) - Math.min(...hs)).toFixed(2), shift, dCenter2: dCenter2 == null ? null : +dCenter2.toFixed(2) };
+    };
+    return { 대기열: pack('#qpop', '#qpopList'), 발행본: pack('#pubpop', '#pubpopList'),
+             키워드: pack('#kwpop', '#kwpopList'), 알림메세지: pack('#msgpop', '#msglist') };
+  });
 }
 
 function parity(list, keys) {
@@ -150,6 +209,15 @@ function assess(r) {
   C('C2b .sc-rsn = blur 공유 + saturate(0) 무채(의도 예외 확인)', !!scr && /blur\(/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur), scr ? scr[1].blur : '없음');
   // C3 = 화이트리스트 밖 불투명 글래스(신규 고아 팝업) 0
   C('C3 불투명 글래스 로그 화이트리스트 밖 0(신규 고아 없음)', r.rogue.length === 0, r.rogue.length ? r.rogue.join(' · ').slice(0, 260) : '없음(WL=' + OPAQUE_WL.join(',') + ')');
+  // ── C4~C7 = 함 가족 행 기하 계약(운영자 260726) · 수집 실패한 함은 그 함만 스킵(정직 표기) ──
+  const G = r.geo || {}, names = Object.keys(G), got = names.filter(k => G[k]);
+  const miss = names.filter(k => !G[k]);
+  const all = (f) => got.every(k => f(G[k]));
+  const det = (f) => got.map(k => k + ':' + f(G[k])).join(' · ') + (miss.length ? ' | 미수집 ' + miss.join(',') : '');
+  C('C4 최우측 액션 중심 = 헤더 X 중심(Δ≤0.5px · 함 ' + got.length + '종)', got.length >= 3 && all(g => g.dCenter <= 0.5), det(g => g.dCenter + 'px'));
+  C('C5 .qact 폭 = --btn-sm(30) · 다중 액션 간격 = qrow gap(10)', got.length >= 3 && all(g => g.actW.every(w => Math.abs(w - 30) <= 0.5) && g.gaps.every(x => Math.abs(x - 10) <= 0.5)), det(g => 'w' + g.actW.join('/') + ' gap' + (g.gaps.join('/') || '-')));
+  C('C6 액션 0개 행 0 + 함 안 행높이 균일(≤1.5px · 빈 셀 = 행 51→36 붕괴 차단)', got.length >= 3 && all(g => g.minActs >= 1 && g.rowHSpread <= 1.5), det(g => '최소액션' + g.minActs + ' 높이편차' + g.rowHSpread));
+  C('C7 액션 +1 = 제목 우변만 40px(30+10) 좌측 · 최우측 중심 불변', got.length >= 3 && all(g => Math.abs(g.shift - 40) <= 0.5 && g.dCenter2 <= 0.5), det(g => '밀림' + g.shift + ' Δ중심' + g.dCenter2));
   return core;
 }
 
