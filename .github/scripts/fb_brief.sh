@@ -102,10 +102,22 @@ if aud.get('gender') or aud.get('age_full'):
     _af = aud.get('age_full') or []
     if _af:
         _ap.append('연령대 ' + ' · '.join(f"{x.get('k')} {x.get('pct')}%" for x in _af))
+    # 기준일 밀림 딱지(운영자 260726 한 수 승인 · chan_brief 동일 문법 이식) — FB 인구통계는 메타가 2025-11-15 지표를 폐지해
+    # 자동 수집이 죽은 축이라(260726 라이브 실측: 후보 4종 전부 #100) 값이 수기 스냅샷에 굳어 있다. 모델이 이걸 '오늘의 관객'으로
+    # 읽고 최근 변화의 근거로 쓰는 걸 막는다(뷰어 demoStaleMsgs와 같은 판정식·같은 임계 2일).
+    _lag = None
+    if aud.get('as_of'):
+        try:
+            import datetime as _dt3
+            _lag = (_dt3.date.fromisoformat(str(d.get('generated_kst'))[:10]) - _dt3.date.fromisoformat(str(aud['as_of']))).days
+        except Exception:
+            _lag = None
+    _stale = (f" ⚠ 이 인구통계는 {aud['as_of']} 기준({_lag}일 전) 스냅샷이다 — 자동 수집이 막혀 값이 굳어 있으니 '최근 변화·추세'의 근거로 쓰지 말고 관객 폭의 큰 방향 참고까지만."
+              if (_lag is not None and _lag >= 2) else '')
     if _ap:
-        L.append('[팔로워 인구통계(수기 config)] ' + ' / '.join(_ap) + ' — ⚠기타(25~54 밖=청년+55세↑ 합산)가 크면 연령 폭이 넓다는 신호. IG(25-44 집중) 대비 FB 관객 폭·연령을 총론의 소재·톤 방향 근거로.')
+        L.append('[팔로워 인구통계(수기 config)] ' + ' / '.join(_ap) + ' — ⚠기타(25~54 밖=청년+55세↑ 합산)가 크면 연령 폭이 넓다는 신호. IG(25-44 집중) 대비 FB 관객 폭·연령을 총론의 소재·톤 방향 근거로.' + _stale)
 body = '\n'.join(L)
-PVER = 'fbbrief-v2-260724-audience-overview'   # v2 = 팔로워 인구통계(연령 폭·성별) 총론 반영(운영자 260724) · v1 = chan_brief v9.3 구조 미러+FB 반응 기반 · 바뀌면 해시 불일치 = 강제 재생성
+PVER = 'fbbrief-v3-260726-demo-asof'   # v3 = 인구통계 기준일 밀림 딱지(운영자 260726 — 굳은 스냅샷을 '오늘의 관객'으로 오독 방지) · v2 = 팔로워 인구통계(연령 폭·성별) 총론 반영(운영자 260724) · v1 = chan_brief v9.3 구조 미러+FB 반응 기반 · 바뀌면 해시 불일치 = 강제 재생성
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print(body)
 PY
