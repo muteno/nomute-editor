@@ -2677,7 +2677,8 @@ function jobDurMed(job) {   // 로컬 중앙값(표본 2건 이상에서만 = 1�
   return a.length >= 2 ? a[a.length >> 1] : 0;
 }
 function jobStat(job) { const k = jobStatKey(job); const v = k && JOB_STATS && JOB_STATS[k]; return (v && v.n) ? v : null; }
-function estJobCostUSD(job) { const v = jobStat(job); return v ? v.cost : 0; }   // 실측 중앙 비용(USD) — 데이터 없으면 0 = 표기 생략
+function estJobTok(job) { const v = jobStat(job); return v ? (v.tok || 0) : 0; }   // 실측 중앙 총 토큰 — 데이터 없으면 0 = 표기 생략
+function fmtTok(n) { return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K' : String(n); }   // 12345 → '12K' · 1234 → '1.2K'
 function estJobEtaSec(job) { const v = jobStat(job); return (v && v.dur) ? v.dur : jobDurMed(job); }   // 예상 = 서버 실측 앵커 우선 → 없으면 이 기기 누적 중앙값(운영자 260727 한 수 · 둘 다 없으면 0 = 표기 생략)
 function fmtMMSS(sec) { const s = Math.max(0, sec | 0); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }   // 00:00 고정폭(운영자 260727 표기)   // 예상 토큰비(edit Q456 estTokenNote 문법 계승) — thumb 잡(헤더·자막·저작권·안내문·카드뉴스·리사이즈·AI생성) = 러너 렌더/이미지 API = claude 토큰 0 → '토큰 0' 정직 표기(edit ffmpeg 동문) · 실계측 단가 앵커(metrics/usage) 확보 시 여기서 ₩ 환산해 우상단 라이브 누적(무근거 단가 창작 금지)
 function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+코너 갱신 / done·err = 제거(자리는 캐러셀·잡 행이 이어받음)
@@ -2714,8 +2715,8 @@ function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+�
   const s = Math.max(0, sec | 0), c = el.querySelector('.wcorner');
   const eta = estJobEtaSec(job);
   if (c) c.textContent = fmtMMSS(s) + ' 진행시간' + (eta ? ' (예상 ' + fmtMMSS(eta) + ')' : '');   // 좌상단 한 줄(운영자 260727 배치 확정) — 예상 = 실측 중앙 소요 · 데이터 없으면 경과만
-  const t = el.querySelector('.wtok'), usd = estJobCostUSD(job);
-  if (t) t.textContent = usd > 0 ? '$' + usd.toFixed(2) : '';   // 우상단 = 실측 중앙 비용(USD) · 앵커 없으면 빈칸(구 '토큰 0' 고정표기 폐기 = 오해 유발)
+  const t = el.querySelector('.wtok'), tk = estJobTok(job);
+  if (t) t.textContent = tk > 0 ? fmtTok(tk) + ' 토큰' : '';   // 우상단 = 실측 중앙 토큰(운영자 260727 "종량제가 아닌 건 값이 안 뜨니 토큰으로만") · 앵커 없으면 빈칸
 }
 function wipEmptySync() { const em = $('#carEmpty'), box = $('#wips'); if (!em || !box) return; if (box.childElementCount) { em.hidden = true; return; } if (typeof carHSync === 'function') carHSync(); }   // 타일 있으면 '아직 제작한 게 없습니다' 숨김 · 비면 기존 판정(carHSync)에 반환
 function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이 위)
