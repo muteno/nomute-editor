@@ -244,6 +244,7 @@ def load_opts():
     ref_b64 = str(o.get("refB64", "") or "")   # 참고 이미지 base64(운영자 260713 · 뷰어 512px 다운스케일 JPEG) — 형식·길이 게이트(genimg.js와 이중) · 미첨부/부적격 = 빈값
     if not re.fullmatch(r"[A-Za-z0-9+/=]{16,60000}", ref_b64):
         ref_b64 = ""
+    engine = o.get("engine") if o.get("engine") in ("gemini", "gpt") else "gemini"   # 렌더 엔진 토글(운영자 260727 "Gemini 3.1 Flash ↔ GPT Image 2.0")
     ref_mode = o.get("refMode") if o.get("refMode") in ("keep", "ref", "clone") else ""   # 원본 유지(keep) / 참고(ref) / 이미지와 동일하게(clone · 260726)
     if not ref_b64:
         ref_mode = ""
@@ -252,7 +253,7 @@ def load_opts():
             "texton": o.get("textOn") is True, "wish": wish,
             "sub": sub, "angle": angle, "point": point, "light": light, "place": place,
             "shot": shot, "expr": expr, "kweb": bool(o.get("kweb")),
-            "ref_b64": ref_b64, "ref_mode": ref_mode}
+            "ref_b64": ref_b64, "ref_mode": ref_mode, "engine": engine}
 
 
 
@@ -324,6 +325,64 @@ CLONE_HEAD = ("첨부한 그림을 그대로 복제해라.\n"
               "첨부 그림에 없던 표시는 넣지 않는다 — 글자, 숫자, 워터마크, 테두리, 효과선, 이모지 같은 기호를 그리지 마라.")
 CLONE_SAME = "첨부 그림에서 달라지는 것은 없다. 첨부 그림을 그대로 옮긴다."   # 주문 없음 = 완전 복제
 CLONE_ONLY = "첨부 그림에서 달라지는 것은 {}뿐이다. 나머지는 첨부 그림을 그대로 옮긴다."   # 주문 있음 = 변경 범위를 양성 목록으로 좁힘(§3 표 — 금지 목록보다 강하다)
+
+
+OPENAI_IMG_MODELS = [m for m in (os.environ.get("OPENAI_IMG_MODEL", "").strip(), "gpt-image-2", "gpt-image-1") if m]   # 후보 체인 = 앞에서부터 시도, 모델 미존재(400/404)면 다음(실재 ID를 실측으로 확정 · 정본 = shared/models.json gpt_image)
+OPENAI_SIZES = ((1024, 1024), (1536, 1024), (1024, 1536))   # gpt-image 지원 3종 — 요청비에 가장 가까운 것 선택(§L3 "요청 비율 정합" 단일이미지판)
+
+
+def openai_image(prompt, img_bytes, aspect_wh):
+    """GPT Image 렌더 — 첨부 있으면 편집(images/edits), 없으면 생성(images/generations).
+    첨부 편집엔 문서 §L2 정본 `input_fidelity:"high"`를 싣는다: 편집 API는 마스크가 없으면 사실상 전체 재생성이라
+    원본을 붙잡는 손잡이가 이 파라미터뿐이다. ⚠ 모델마다 다르다 — 미지원 모델엔 400이므로 파라미터를 빼고 1회만
+    재시도(문서 권고 그대로) · 모델 자체가 없으면 다음 후보 ID로. 전부 실패 = None → 호출부가 Gemini로 폴백."""
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key:
+        print("::warning::OPENAI_API_KEY 없음 — GPT Image 경로 생략(Gemini 폴백)", flush=True)
+        return None
+    import urllib.request
+    w, h = aspect_wh
+    r = (w / h) if h else 1.0
+    sw, sh = min(OPENAI_SIZES, key=lambda s: abs(s[0] / s[1] - r))   # 요청비 최근접(복제 = 첨부 원본비가 이미 들어옴)
+    url = "https://api.openai.com/v1/images/" + ("edits" if img_bytes else "generations")
+
+    def _post(model, with_fidelity):
+        bnd = "----nomute" + hashlib.sha1((model + prompt).encode()).hexdigest()[:12]
+        parts = [("model", model), ("prompt", prompt), ("size", "{}x{}".format(sw, sh)), ("n", "1")]
+        if with_fidelity and img_bytes:
+            parts.append(("input_fidelity", "high"))
+        body = b""
+        for k, v in parts:
+            body += ('--{}\r\nContent-Disposition: form-data; name="{}"\r\n\r\n{}\r\n'.format(bnd, k, v)).encode()
+        if img_bytes:
+            body += ('--{}\r\nContent-Disposition: form-data; name="image"; filename="ref.jpg"\r\n'
+                     'Content-Type: image/jpeg\r\n\r\n'.format(bnd)).encode() + img_bytes + b"\r\n"
+        body += ("--{}--\r\n".format(bnd)).encode()
+        req = urllib.request.Request(url, data=body, headers={
+            "Authorization": "Bearer " + key, "Content-Type": "multipart/form-data; boundary=" + bnd})
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            j = json.loads(resp.read().decode())
+        b64 = (j.get("data") or [{}])[0].get("b64_json")
+        return base64.b64decode(b64) if b64 else None
+
+    for model in OPENAI_IMG_MODELS:
+        for fid in ((True, False) if img_bytes else (False,)):
+            try:
+                png = _post(model, fid)
+                if png:
+                    print("🎯 GPT Image 렌더 = {} · {}x{} · input_fidelity={}".format(
+                        model, sw, sh, "high" if (fid and img_bytes) else "없음"), flush=True)
+                    return png
+            except Exception as e:  # noqa: BLE001
+                det = ""
+                try:
+                    det = e.read().decode("utf-8", "ignore")[:200]   # HTTPError 본문 = 원인(모델 미존재 / 파라미터 미지원)
+                except Exception:
+                    pass
+                print("::warning::GPT Image 실패(model={} fidelity={}): {} {}".format(model, fid, str(e)[:100], det), flush=True)
+                if "model" in det.lower():
+                    break   # 모델 ID 자체가 없다 = fidelity 재시도 무의미 → 다음 후보 모델
+    return None
 
 
 def build_clone(o):
@@ -503,7 +562,8 @@ def main():
             die("헤드라인 파싱 실패: " + stem)
         insight = (extras or {}).get("insight", "")
 
-    print("🎨 이미지 생성 — '{}' · 화풍={} 비율={} 해상도={} 장수={} 포맷={}{}{}".format(
+    print("🎨 이미지 생성 — 엔진={} · '{}' · 화풍={} 비율={} 해상도={} 장수={} 포맷={}{}{}".format(
+        "GPT Image" if o.get("engine") == "gpt" else "Gemini",
         ("자유: " + (o["wish"] or o["text"]))[:40] if free else head[:40], STYLE_KO[o["style"]], o["aspect"], o["size"], o["count"],
         o["fmt"].upper(), " · 문구=" + (o["text"] or ("살리기 ON" if o["texton"] else "")) if (o["text"] or o["texton"]) else "",
         " · 주문=" + o["wish"][:40] if o["wish"] else ""), flush=True)
@@ -598,8 +658,15 @@ def _render(o, prompt, free, stem):
         except Exception as _e:  # noqa: BLE001 — PIL 부재·디코드 실패 = 운영자 선택 비율 그대로(fail-soft · post_process와 동일 정책)
             print("::warning::복제 비율 동기 실패(운영자 선택 비율 유지): {}: {}".format(type(_e).__name__, _e), flush=True)
     new_items = []
+    ar_wh = _parse_aspect(o["aspect"]) or (4, 5)   # GPT Image 사이즈 선택 재료(요청비)
     for i in range(o["count"]):
-        png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)
+        png = None
+        if o.get("engine") == "gpt":   # 운영자 토글 = GPT Image(첨부 있으면 편집+input_fidelity high · 문서 §L2) · 실패 시 Gemini 폴백(기능 무중단)
+            png = openai_image(prompt, ref_png, ar_wh)
+            if not png:
+                print("::warning::GPT Image 전건 실패 — Gemini로 폴백 렌더", flush=True)
+        if not png:
+            png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)
         if not png:
             print("::warning::{}번째 렌더 실패(fail-soft — 나머지 계속)".format(i + 1), flush=True)
             continue
