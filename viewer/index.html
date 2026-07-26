@@ -7241,13 +7241,18 @@ function renderMsgList() {
   if (!msgs.length) { list.innerHTML = '<div class="qempty">새 메시지 없음</div>'; return; }
   list.innerHTML = msgs.map(m => {
     const k = msgKind(m), body = m.text || '', cp = [...body], bodyS = cp.length > 60 ? cp.slice(0, 60).join('') + '…' : body;
-    const canDel = !!m.id && !m._health;   // 시스템·id없는 알림 = 삭제 불가(빈 qact 셀 = 정렬 유지)
-    const del = canDel ? '<button class="pub-ico ' + (m._sys ? 'msg-ok' : 'pub-rm') + ' msg-del" type="button" title="' + (m._sys ? '확인' : '삭제') + '" data-id="' + qEsc(String(m.id)) + '">' + (m._sys ? CHECK_SVG : _TRASHSVG) + '</button>' : '';   // 수집 고장 알림 = ✓(확인 · 운영자 260725 "체크 표시 누르면 없어지고") — 버튼 부품·자리·애니(animateRowOut)는 삭제 버튼 100% 계승, 픽토만 CHECK_SVG(nm-svg 정본) · 색축만 분기 = ✓는 msg-ok(rest 무채·hover accent·press 그대로), 휴지통은 pub-rm(상시 danger) 불변(운영자 260725 "체크 보수색일 필요 없고")
+    const canDel = !!m.id && !m._health;   // 시스템·id없는 알림 = 삭제 불가
+    // 액션 = **버튼마다 .qact 고정폭 셀**(발행본 pubRowHtml 정본 문법 그대로 = 잠금|공유|삭제 3셀) — 배열이라 2개 이상도 무수정 정합:
+    //   실측(260725 4함 감사) = 액션 2개 합성 시 최우측 버튼 중심이 헤더 X 중심과 Δ0.00 유지 · 셀 간격 10 · 제목 우변만 정확히 40(30+10) 좌측으로 밀림.
+    //   ⚠ 삭제 불가 행도 **빈 셀 금지** = 비활성 버튼(발행본 만료 행 `pub-share disabled` 문법 계승) — 빈 셀은 버튼 높이(34)를 못 만들어 행이 51→36px로 주저앉아 표 리듬·5행 캡(max-height 5*51)이 깨진다(실측).
+    const acts = [canDel
+      ? '<button class="pub-ico ' + (m._sys ? 'msg-ok' : 'pub-rm') + ' msg-del" type="button" title="' + (m._sys ? '확인' : '삭제') + '" data-id="' + qEsc(String(m.id)) + '">' + (m._sys ? CHECK_SVG : _TRASHSVG) + '</button>'   // 수집 고장 알림 = ✓(확인 · 운영자 260725 "체크 표시 누르면 없어지고") — 버튼 부품·자리·애니(animateRowOut)는 삭제 버튼 100% 계승, 픽토만 CHECK_SVG(nm-svg 정본) · 색축만 분기 = ✓는 msg-ok(rest 무채·hover accent·press 그대로), 휴지통은 pub-rm(상시 danger) 불변(운영자 260725 "체크 보수색일 필요 없고")
+      : '<button class="pub-ico pub-rm" type="button" disabled title="상주 알림 — 해결되면 저절로 사라져요">' + _TRASHSVG + '</button>'];   // 비활성 = .qpop .pub-ico:disabled(무채·opacity .4·cursor default·누름 없음) 정본 그대로 = "왜 못 지우나"까지 어포던스로 설명
     return '<div class="qrow msgrow' + ((m._health || m.level === 'warn') ? ' q-warn' : '') + '"' + (m.id ? ' data-id="' + qEsc(String(m.id)) + '"' : '') + '>'
       + '<span class="qt">' + qEsc(msgAgo(m)) + '</span>'
       + '<span class="qst mkind ' + k.c + '">' + k.t + '</span>'
       + '<span class="qmain" title="' + qEsc(body) + '">' + qEsc(bodyS) + '</span>'
-      + '<span class="qact">' + del + '</span></div>';
+      + acts.map(a => '<span class="qact">' + a + '</span>').join('') + '</div>';
   }).join('');
   list.querySelectorAll('.msg-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); animateRowOut(b.closest('.qrow'), () => { msgDismiss(b.dataset.id); renderMsgList(); renderMsgBadge(); }); });
   [...list.querySelectorAll('.msgrow')].forEach((row, i) => { row.onclick = (e) => { if (e.target.closest('button')) return; openMsgDetail(msgs[i]); }; });   // 행 클릭(삭제버튼 제외) = 전문 상세 '다음 화면' 열기(운영자 260704 '메시지 눌렀을때 안 뜸' 버그 수정)
@@ -7311,7 +7316,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '24c393c · 260725_2325';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'd47d300 · 260726_0905';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
