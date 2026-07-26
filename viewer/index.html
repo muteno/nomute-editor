@@ -766,7 +766,10 @@
   .xcard-lk { color:var(--mut); }   /* 트윗·스레드 본문 링크(t.co 등) = 저채도 mut(운영자 260717 "블루스카이처럼 링크 mut") — 본문(fg)과 구분·링크 노이즈 톤다운 · xlink() 래핑 · esc 경유 XSS 안전 */
   .xcard-kw { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--accent); }   /* AI 요약 1줄차 "KEYWORD : a, b, c"(운영자 260726 "첫줄에 핵심 키워드") — 1줄 고정·말줄임 = .xcard-h b 문법 계승 · 강조색 = 공유 팔레트 --accent 계승 · 값 전부 토큰 */
   .xcard-kw:empty { display:none; }   /* 요약 미생성(신규 게시물·LLM 실패 fail-soft) = 라벨 비노출 — 원문 폴백 카드와 공존 */
-  .xcard-tx.s2 { -webkit-line-clamp:2; min-height:calc(2 * 1.5em); }   /* AI 요약 2줄차 = 무조건 2줄 취급(운영자 260726 "모바일에서 무조건 2줄까지") — 클램프 2 + min-height 예약 산식(.tcard-t·rt2col 1.5em 문법 계승) = 전 카드 본문 높이 상수 → 좌우 카드 높이 불일치(빈 도형 공간) 해소 */
+  .xcard-tx.s2 { -webkit-line-clamp:4; min-height:calc(4 * 1.5em); }   /* 본문 = 무조건 4줄 취급(운영자 260726 "그가 적은 정확한 글" — 원문 표시로 전환하며 2→4줄 · 요약 1줄과 달리 원문은 줄바꿈·2~3문장이 흔해 2줄컷이면 문장이 잘린다) — 클램프 + min-height 예약 산식(.tcard-t·rt2col 1.5em 문법 계승) = 전 카드 본문 높이 상수 유지(좌우 카드 높이 불일치 방지 · 평의회 260726 E석 취지 그대로) */
+  .xcard-cv { display:block; margin-top:7px; aspect-ratio:16/9; border-radius:var(--r-s); overflow:hidden; background:var(--line); }   /* raw-ok: margin-top 7 = 같은 카드 메타행 간격(.xcard .tcard-m padding-top:7px) 미러 — 위·아래 두 간격이 sp-1(6)/7로 갈리면 카드 안에서 1px 리듬이 어긋난다(토큰 신설 대신 자기 카드 정본 계승) */   /* 트윗 대표 이미지(운영자 260726 "대표 이미지 섬네일") — 문법 = .tcard-cov 계승(비율 프레임 + overflow 크롭 + line 플레이스홀더) · 비율만 16:9(wd 변형 문법) = 2열 카드에서 세로 3/4는 카드가 통째 길어짐 · 라운드 = 셸 --r-m(11) 안쪽이라 한 단 아래 --r-s(9) 동심원 · 간격 7 = .xcard .tcard-m padding-top 미러 */
+  .xcard-cv img { width:100%; height:100%; object-fit:cover; display:block; }   /* .tcard-cov img 그대로 */
+  .xcard-vw { color:var(--mut); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* 조회수(운영자 260726 "좌측하단에 조회수 · 81만 이런식으로만") — 숫자만(라벨·픽토 없음) · 표기 = vfmt 만단위 통일 · 문법·색 = .tcard-ago 계승, 단 ml:auto가 없어 메타행 좌측 = 좌하단 · 결측(RSS 폴백 미보강분) = 미출력 */
   /* (구 ⑦ 블루스카이 게시물 카드 .bcard = 운영자 260721 "블루스카이는 실검만 사용"으로 표면 소멸 — 잔존 블스 표면 = 실시간 트렌드 반갈뿐 · 재도입 = git 이력) */
   .xcard.r3 .xcard-h b { color:var(--accent); }   /* 1~3위만 강조색(운영자 260717 "1위부터 3위까지만 강조색") — X·블스·스레드 공통 · r3 = i<3 마커(랭크 필 .top과 동축) */
   .xcard .tcard-m { margin-top:auto; padding-top:7px; }   /* auto = 바닥 고정(구 7px 고정 간격은 padding으로 보존) */
@@ -10468,7 +10471,9 @@ function renderSnsTrends() {
   const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
     `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
-    `<span class="xcard-kw"></span><span class="xcard-tx s2"></span><span class="tcard-m">${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)   // kw 스팬 = 항상 출력(빈 값 = :empty 비노출 — 조건부 출력이면 fillT 인덱스 어긋남) · 본문 = 무조건 s2(2줄 상수 — 미요약 원문 폴백도 2줄 컷 · 평의회 260726 E석: 혼재 시 클램프 7/2 갈림 = 높이 불일치 부활 차단) · 요약 생성 = sns_sum.sh(소넷 5 high) · 승계 = sns_trends.py
+    `<span class="xcard-kw"></span><span class="xcard-tx s2"></span>` +
+    (t.thumb ? `<span class="xcard-cv"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.thumb)}" onerror="this.parentNode.style.display='none'" alt=""></span>` : '') +   // 대표 이미지(운영자 260726) — 수집 thumb(pbs.twimg 핫링크 · 영상 트윗 = poster 프레임) · 문법·onerror 은닉 = card() 커버 계승(깨진 링크 = 조용한 공백) · 결측 = 스팬 자체 미출력(fillT 인덱스 무관 = 후주입 대상 아님)
+    `<span class="tcard-m">${t.views > 0 ? `<span class="xcard-vw">${t.views >= 1e4 ? vfmt(t.views) : t.views.toLocaleString('ko')}</span>` : ''}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좌하단 조회수(운영자 260726 "81만 이런식으로만") = 메타행 첫 칸 · 0·결측 = 미표기(met() 0지표 규약 계승)   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)   // kw 스팬 = 항상 출력(빈 값 = :empty 비노출 — 조건부 출력이면 fillT 인덱스 어긋남) · 본문 = 무조건 s2(2줄 상수 — 미요약 원문 폴백도 2줄 컷 · 평의회 260726 E석: 혼재 시 클램프 7/2 갈림 = 높이 불일치 부활 차단) · 요약 생성 = sns_sum.sh(소넷 5 high) · 승계 = sns_trends.py
   // (구 bcard 블스 게시물 카드 = 운영자 260721 "블루스카이는 실검만 사용"으로 게시물 표면 소멸 · 데이터 축 bsky[]·번역 스키마는 보존 · 재도입 = git 이력)
   // (구 V3 조회수/좋아요/댓글 정렬바 옵션 = 260720 평의회 — 카드 그리드 전 섹션 정렬바 제거로 소멸 · xgrid 게시물 정렬바는 각자 리터럴 배열)
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
@@ -10708,9 +10713,9 @@ function renderSnsTrends() {
   fillT('syt', '.tcard-t', sytAll.map(v => v.title || ''));   // 구독 유튜브 그리드 제목(운영자 260719 카드화 · 260724 지역 무관 단일 리스트)
   if (tkL.length) { fillH('tk', '.tcard-t', tkL.map(t => dimTags(t.ko || t.title || ('@' + (t.account || ''))))); }   // 틱톡 인기 그리드 제목 = ko 한글 우선 + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전 · 운영자 260719)
   // 구독 큐레이션 주입 = 지역 무관 단일 리스트(운영자 260724 — 구 한국/세계 2군 ['kr','gl'].forEach 폐지)
-  fillT('sx', '.xcard-h b', sxAll.map(t => '@' + (t.account || '')));
+  fillT('sx', '.xcard-h b', sxAll.map(t => t.name || '@' + (t.account || '')));   // 표시 = 닉네임(운영자 260726 "@ 아이디 말고 닉네임으로" — "64비트사령부⚡️") · name = x_enrich 수집분 · 미보강·구데이터 = 종전 @핸들 폴백
   fillT('sx', '.xcard-kw', sxAll.map(t => t.sum && t.kw ? 'KEYWORD : ' + t.kw : ''));   // AI 요약 1줄차(운영자 260726 "KEYWORD : 00, 000") — sum 있는 카드만 · textContent = XSS 안전
-  fillH('sx', '.xcard-tx', sxAll.map(t => t.sum ? esc(t.sum) : xlink(t.text || '')));   // 2줄차 = 한줄요약(sum · S+V+O · sns_sum.sh 생성) · 미생성 = 원문 폴백(링크 mut 래핑 · 블스 표현법 · 운영자 260717)
+  fillH('sx', '.xcard-tx', sxAll.map(t => t.text ? xlink(t.text) : esc(t.sum || '')));   // 본문 = 원문 그대로(운영자 260726 "그가 적은 정확한 글") — 구 = AI 한줄요약 우선이라 트윗 문구가 화면에 없었다 · 원문 = x_enrich full_text(끝의 미디어 t.co는 수집이 절단 = 썸네일로 대체) · 링크 mut 래핑 유지 · 원문 결측(구데이터) = 요약 폴백   // (구 주석) 2줄차 = 한줄요약(sum · S+V+O · sns_sum.sh 생성) · 미생성 = 원문 폴백(링크 mut 래핑 · 블스 표현법 · 운영자 260717)
   fillT('stk', '.tcard-t', stkAll.map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 틱톡 구독 그리드 = ko 한글 번역 우선
   fillT('sre', '.tcard-t', sreAll.map(t => t.title || ('@' + (t.account || ''))));
   fillT('sth', '.xcard-h b', sthAll.map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
