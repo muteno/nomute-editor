@@ -244,7 +244,7 @@ def load_opts():
     ref_b64 = str(o.get("refB64", "") or "")   # 참고 이미지 base64(운영자 260713 · 뷰어 512px 다운스케일 JPEG) — 형식·길이 게이트(genimg.js와 이중) · 미첨부/부적격 = 빈값
     if not re.fullmatch(r"[A-Za-z0-9+/=]{16,60000}", ref_b64):
         ref_b64 = ""
-    ref_mode = o.get("refMode") if o.get("refMode") in ("keep", "ref") else ""   # 원본 유지(keep) / 참고(ref)
+    ref_mode = o.get("refMode") if o.get("refMode") in ("keep", "ref", "clone") else ""   # 원본 유지(keep) / 참고(ref) / 이미지와 동일하게(clone · 260726)
     if not ref_b64:
         ref_mode = ""
     return {"style": style, "aspect": aspect, "size": size, "count": count, "fmt": fmt,
@@ -309,6 +309,28 @@ def post_process(png, o):
     except Exception as e:  # noqa: BLE001
         print("::warning::후처리 실패(원본 PNG 유지): {}: {}".format(type(e).__name__, e), flush=True)
         return png, "png"
+
+
+# ── 「이미지와 동일하게」(ref_mode=clone) 프롬프트 = 260726 실측 노하우 문서 §3 성공본 그대로 이식 ──
+# 근거 = docs/이미지_원본화풍유지_포터블_v1.md(실패 28요청 → 성공 파일럿 1요청 실측 · 선 강도 +71% → −9%).
+# ⛔ 이 문자열에 아트 스타일 낱말을 한 개도 넣지 마라(§L1) — 첨부 이미지보다 글이 세다. "화풍은 원본 그대로"라고
+#    써 놓고 뒤에 스타일을 설명하면 무효고, "그림체·붓질·선 굵기를 바꾸지 마라"처럼 축을 열거하면 모델이
+#    그 축을 의식하고 손을 댄다. 그래서 열거 없이 한 줄("같은 파일에서 잘라낸 것처럼")로 묶는다.
+# ⛔ 라벨 블록(STYLE/SCENE/…) 금지 = STYLE 라벨 자체가 스타일 낱말을 부르는 덫(§L4 지시 충돌).
+# ⛔ 이 경로는 Claude 프롬프트 작성 0콜(결정형) — 지능이 끼면 스타일 문장을 되살린다.
+CLONE_HEAD = ("첨부한 그림을 그대로 복제해라.\n"
+              "결과 이미지는 첨부 그림과 같은 파일에서 잘라낸 것처럼 보여야 한다.\n"
+              "사람·얼굴·머리 모양·옷·장신구·소품·배경·조명·색이 첨부 그림과 같다.\n"
+              "첨부 그림에 없던 표시는 넣지 않는다 — 글자, 숫자, 워터마크, 테두리, 효과선, 이모지 같은 기호를 그리지 마라.")
+CLONE_SAME = "첨부 그림에서 달라지는 것은 없다. 첨부 그림을 그대로 옮긴다."   # 주문 없음 = 완전 복제
+CLONE_ONLY = "첨부 그림에서 달라지는 것은 {}뿐이다. 나머지는 첨부 그림을 그대로 옮긴다."   # 주문 있음 = 변경 범위를 양성 목록으로 좁힘(§3 표 — 금지 목록보다 강하다)
+
+
+def build_clone(o):
+    """참고 이미지 = 「이미지와 동일하게」 전용 결정형 프롬프트(스타일 낱말 0개 · Claude 0콜).
+    운영자 주문(wish)이 있으면 '달라지는 것은 그것뿐'이라는 양성 목록 한 줄로만 붙인다(§3)."""
+    wish = (o.get("wish") or "").strip()
+    return CLONE_HEAD + "\n" + (CLONE_ONLY.format(wish) if wish else CLONE_SAME)
 
 
 def build_fallback(head, lead, scene, o):
@@ -489,6 +511,14 @@ def main():
     if not tg.KEY:
         die("GEMINI_API_KEY 없음 — 렌더 불가(워크플로 시크릿 확인)")
 
+    clone = o.get("ref_mode") == "clone" and bool(o.get("ref_b64"))   # 「이미지와 동일하게」 = 첨부 복제 전용 경로(260726)
+    if clone:
+        # 스타일 낱말 0개가 이 모드의 전부다(§L1) — Claude가 프롬프트를 쓰면 STYLE 문장이 되살아나 원본 화풍이 깨진다.
+        # 따라서 지능 호출 없이 결정형 CLONE 프롬프트 직행(화풍·세부·웹툰화·무드·카메라·문구 옵션 전부 무시).
+        prompt = build_clone(o)
+        print("🧬 이미지와 동일하게 = 결정형 복제 프롬프트(Claude 0콜 · 스타일 낱말 0개 · 화풍/무드/카메라/문구 옵션 무시)", flush=True)
+        print("── 최종 프롬프트({}자) ──\n{}\n──".format(len(prompt), prompt), flush=True)
+        return _render(o, prompt, free, stem)
     try:
         prompt = ask_opus(head, lead, insight, scene or iq, o, free=free)
     except Exception as e:  # noqa: BLE001 — Opus 경로의 *코드 예외*까지 폴백이 받는다(카나리아1 KeyError 실측 = 기능 무중단 보증)
@@ -500,7 +530,12 @@ def main():
         print("::warning::문구 살리기 ON이었으나 Claude 실패 → 결정형 폴백은 문구를 못 정해 무문구 렌더(재시도 시 문구 복원 · 평의회3)", flush=True)
     prompt = prompt or build_fallback(head, lead, fb_scene, o)
     print("── 최종 프롬프트({}자) ──\n{}\n──".format(len(prompt), prompt), flush=True)
+    return _render(o, prompt, free, stem)
 
+
+def _render(o, prompt, free, stem):
+    """확정 프롬프트 → Gemini 렌더 N장 → 후처리 → R2/git → 목록 JSON 병합(구 main 후반부 그대로 · 분리만).
+    분리 이유 = 「이미지와 동일하게」(clone)가 Claude 경로를 통째로 건너뛰고 이 렌더부만 공유하기 때문(260726)."""
     tdir = os.path.join("viewer", "gen_out") if free else os.path.join("cards", stem, "thumbs")
     os.makedirs(tdir, exist_ok=True)
     sjson = os.path.join(tdir, "free.json") if free else os.path.join(tdir, "search.json")
@@ -525,14 +560,43 @@ def main():
         except Exception as _e:   # 디코드 실패 = 참고 없이 fail-soft, 단 흔적은 남긴다(평의회2·5 — 광폭 except 무기록이 base64 누락 결함을 은폐했음)
             print("::warning::참고 이미지 디코드 실패(참고 없이 렌더 진행): {}: {}".format(type(_e).__name__, _e), flush=True)
             ref_png = None
+    if o.get("ref_mode") == "clone" and not ref_png:
+        die("「이미지와 동일하게」 = 참고 이미지 필수 — 첨부 디코드 실패로 복제 대상이 없다(스타일 낱말 0개 프롬프트만 렌더하면 백지)")   # fail-soft 금지 지점(복제 모드는 첨부가 장면의 전부)
     if ref_png:
-        if o.get("ref_mode") == "keep":
+        if o.get("ref_mode") == "clone":
+            pass   # 복제 = 프롬프트 자체가 build_clone 전문(§L1 — 앞에 영문 지시를 덧대면 스타일 낱말·지시 충돌이 되살아난다)
+        elif o.get("ref_mode") == "keep":
             prompt = ("[REFERENCE IMAGE — 원본 유지] The attached image is the source. Faithfully preserve its people, faces, "
                       "composition and key elements; re-render only into the requested art style and quality. Do not swap the scene or subject.\n\n") + prompt
         else:
             prompt = ("[REFERENCE IMAGE — 참고] Use the attached image as visual reference for subject, framing and mood; "
                       "compose a fresh image guided by it.\n\n") + prompt
         print("🖼 참고 이미지 = {} · {}B".format(o.get("ref_mode") or "ref", len(ref_png)), flush=True)
+    if o.get("ref_mode") == "clone" and ref_png:
+        # §L3 이식 — 문서의 "칸을 정사각으로"는 시트(격자)판이고, 단일 이미지판 등가 = 요청 비율을 첨부 비율에 맞추는 것이다.
+        #   요청 비율이 첨부와 다르면 ⓐ모델이 재구성(=복제 실패)하고 ⓑ post_process 중앙 크롭이 피사체를 잘라낸다.
+        #   그래서 복제 모드에선 첨부 실비율이 이긴다(운영자가 고른 비율보다 우선 — 이 모드의 목적이 '같게'라서).
+        # §L2 input_fidelity: high = OpenAI 편집 API 전용 손잡이다. 현 렌더 백엔드(Gemini gemini_image)엔 그 파라미터가
+        #   없고, 문서 경고대로 "항상 고충실도인 모델에 보내면 요청이 실패"하므로 여기선 보내지 않는다(모델 교체 시 이 지점에 분기).
+        try:
+            import io
+            from fractions import Fraction
+            from PIL import Image
+            _im = Image.open(io.BytesIO(ref_png)); _im.load()
+            rw, rh = _im.size
+            if rw and rh:
+                r = min(4.0, max(0.25, rw / rh))   # genimg.js·_parse_aspect 계약(1:4~4:1) 클램프
+                fr = Fraction(r).limit_denominator(99)
+                if fr.numerator > 99 or fr.numerator < 1:
+                    fr = Fraction(r).limit_denominator(24)   # 각 항 1~99 계약 유지(비 ≤4 → 분모 24면 분자 ≤96)
+                src_ar = "{}:{}".format(max(1, fr.numerator), max(1, fr.denominator))
+                if src_ar != o["aspect"]:
+                    print("🧬 복제 비율 = 첨부 원본비 {}({}×{}) 채택 — 운영자 선택 {}는 무시(중앙 크롭이 피사체를 자름)".format(
+                        src_ar, rw, rh, o["aspect"]), flush=True)
+                o["aspect"] = src_ar
+                render_aspect = src_ar if src_ar in NATIVE_ASPECTS else nearest_native(src_ar)
+        except Exception as _e:  # noqa: BLE001 — PIL 부재·디코드 실패 = 운영자 선택 비율 그대로(fail-soft · post_process와 동일 정책)
+            print("::warning::복제 비율 동기 실패(운영자 선택 비율 유지): {}: {}".format(type(_e).__name__, _e), flush=True)
     new_items = []
     for i in range(o["count"]):
         png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)

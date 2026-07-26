@@ -3695,7 +3695,7 @@ try {
     <div class="geni-sechead" id="geniWishHead" hidden><span class="cref-lbl">내용</span></div>
     <div class="geni-row geni-wishrow" id="geniWishRow" hidden><textarea id="geniWish" class="geni-in" rows="2" maxlength="300" placeholder="선택 · 자유 요청 한 줄" aria-label="주문" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea></div><!-- 주문 텍스트칸 = 일단 숨김(운영자 260719 "프리뷰 위에 내가 텍스트를 보낼테니까 일단 텍스트 빼봐 · 편집 탭과 완전 동일") — 편집 탭 리드 = [미리보기→요약 스트립→생성]에 텍스트칸 없음 = 동일 구조 수렴 · DOM 유지(값·close 스냅샷·bindImgPaste·focus 참조 무손상 = 크래시 0)·복원 = hidden 2곳 제거 · 발사 정책 무변경(미리보기 위 새 입력 = 다음 지시 배선) -->
     <input id="geniRefFile" type="file" accept="image/*" hidden><!-- 참고 이미지 파일 input = wishrow 밖 형제로 이주(텍스트칸 숨김과 무관하게 첨부 유지 · 프로그램 click 재버블 차단) -->
-    <div class="geni-row geni-refmode" id="geniRefModeRow" hidden><span class="pub-l">참고 이미지</span><span class="geni-opts" id="geniRefMode"><button type="button" class="geni-opt" data-v="keep">원본 유지</button><button type="button" class="geni-opt" data-v="ref">참고</button></span></div><!-- 첨부 시만 표시(운영자 260713 "이 이미지를 참고할거냐 원본 그대로 유지할거냐") — 원본 유지(keep)=피사체·구도 충실 재현 / 참고(ref·기본)=시각 레퍼런스로 신규 구성 · gen_image가 ref_png 공통 전달, 프롬프트 지시만 분기 -->
+    <div class="geni-row geni-refmode" id="geniRefModeRow" hidden><span class="pub-l">참고 이미지</span><span class="geni-opts" id="geniRefMode"><button type="button" class="geni-opt" data-v="keep">원본 유지</button><button type="button" class="geni-opt" data-v="ref">참고</button><button type="button" class="geni-opt" data-v="clone">이미지와 동일하게</button></span></div><!-- 첨부 시만 표시(운영자 260713 "이 이미지를 참고할거냐 원본 그대로 유지할거냐") — 원본 유지(keep)=피사체·구도 충실 재현 / 참고(ref·기본)=시각 레퍼런스로 신규 구성 · gen_image가 ref_png 공통 전달, 프롬프트 지시만 분기 · ⚠배치 이미지와 동일하게(clone · 운영자 260726 "이미지와 동일하게 라는 옵션") = 같은 행 세 번째 워드칩(.geni-opt 문법 그대로 계승 · 신규 CSS 0) — 첨부를 AI가 그대로 재탄생: 프롬프트에서 화풍·무드·카메라·문구 지시를 전부 빼고(스타일 낱말 0개) 첨부 원본비로 렌더 -->
     <div class="geni-sum" id="geniSum"></div><!-- 우측하단 선택요약(극화·웹툰화 / 4:5·FHD·3장·PNG / 무드 자동) — aria-live 미부여 = 게이지 드래그마다 SR 재낭독 스팸 방지(6인 검증) · 시각 리드백 전용 --><button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button><button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button><!-- 생성 CTA도 리드에 상주(운영자 "생성 버튼까지 그대로 따라오기") · geniMore5 = 기사 카러셀 전용(자유 모드 hidden) -->
   </div>
   <div class="geni-body"><!-- 스크롤 영역(운영자 260713 재배치): 카메라·구도 → 개요{해상도·비율·장수·품질} → 표현{화풍·세부·웹툰화·무드} → 문구(맨 아래). 소머리 = .cref-lbl 계승 -->
@@ -4890,6 +4890,17 @@ function geniSubRender() {   // 세부 화풍 인라인 나열 단일 렌더점 
   if (cur) { sb.classList.add('out'); _geniSubT = setTimeout(swap, 300); } else swap();   // 최초(빈 목록) = 즉시 · 이후 = 페이드아웃 완주 뒤 교체
 }
 let _geniRef = null;   // 참고 이미지 { b64, url }(운영자 260713) — 세션 한정(미저장) · geniGo에 refB64/refMode 동봉 · 닫기·재선택 시 정리
+const GENI_REFMODES = ['keep', 'ref', 'clone'];   // 참고 이미지 모드 = 원본 유지 / 참고(기본) / 이미지와 동일하게(운영자 260726) — 값 집합 SSOT(genimg.js·gen_image.py 화이트리스트와 3층 동일 계약)
+let _geniRefNat = { w: 0, h: 0 };   // 첨부 원본 픽셀비(다운스케일해도 비는 보존) — 복제 모드 비율 스냅 재료
+function geniCloneAspect() {   // 「이미지와 동일하게」 = 요청 비율을 첨부 원본비로 스냅(노하우 문서 §L3 단일이미지판: 요청 비율이 첨부와 다르면 ⓐ모델이 재구성하고 ⓑ서버 중앙 크롭이 피사체를 자른다) · 서버(gen_image)도 같은 계산을 재수행 = 이중 방어
+  const n = _geniRefNat; if (!n.w || !n.h) return;
+  const r = Math.min(4, Math.max(0.25, n.w / n.h));   // 계약 = 1:4 ~ 4:1(genimg.js·_parse_aspect 동값)
+  let bw = 1, bh = 1, be = Infinity;
+  for (let h = 1; h <= 99; h++) { const w = Math.round(r * h); if (w < 1 || w > 99) continue; const e = Math.abs(w / h - r); if (e < be - 1e-9) { be = e; bw = w; bh = h; if (e < 0.002) break; } }   // 각 항 1~99 기약 근사(비율 오차 0.2% 이내면 조기 확정)
+  const preset = bw + ':' + bh;
+  if (GENI_DICT.aspect.some(([v]) => v === preset)) { _geniSel.aspect = preset; _geniSel.arW = ''; _geniSel.arH = ''; }   // 프리셋과 일치 = 프리셋 칩 점등(4:5·9:16·16:9·1:1)
+  else { _geniSel.aspect = 'custom'; _geniSel.arW = String(bw); _geniSel.arH = String(bh); }   // 그 외 = 직접 N:N 칸에 실측비 주입(환산 표시가 리드백)
+}
 function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null) — askText 선례(#askText paste) 공통화
   const items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData) || {}).items || [];
   for (const it of items) { if (it.type && it.type.indexOf('image/') === 0) { const f = it.getAsFile(); if (f) return f; } }
@@ -4915,6 +4926,7 @@ function geniWishShow(on, focus) {   // 글 프롬프팅 행 표시 단일점(�
 function geniRefClear() {   // 참고 이미지 해제 = 상태·미리보기·툴버튼·토글행·파일입력 원복(260719 미리보기 쉘 이주 — 빈 상태 = 스테이지 정중앙 픽토그램 진입점)
   if (_geniRef && _geniRef.url) { try { URL.revokeObjectURL(_geniRef.url); } catch {} }
   _geniRef = null;
+  _geniRefNat = { w: 0, h: 0 };   // 첨부 해제 = 원본비 실측값도 폐기(다음 첨부의 복제 비율 스냅이 옛 값을 쓰지 않게)
   const pv = $('#geniPrev'), th = $('#geniRefThumb'), gh = $('#geniRefGhost'), xb = $('#geniRefX'), sw = $('#geniRefSwap'), rm = $('#geniRefModeRow'), fi = $('#geniRefFile');
   if (pv) pv.classList.remove('has');
   if (th) { th.hidden = true; th.removeAttribute('src'); }
@@ -4948,7 +4960,9 @@ async function geniRefPick(file) {   // 파일 선택 → 다운스케일 → �
   if (!dataUrl) { if (typeof _flashBtn === 'function' && btn) _flashBtn(btn, 'err'); return; }   // 너무 큰/깨진 이미지 = 실패 플래시(현행 헬퍼 계승)
   geniRefClear();
   _geniRef = { b64: dataUrl.split(',')[1], url: dataUrl };
-  if (_geniSel.refMode !== 'keep' && _geniSel.refMode !== 'ref') _geniSel.refMode = 'ref';
+  if (!GENI_REFMODES.includes(_geniSel.refMode)) _geniSel.refMode = 'ref';
+  _geniRefNat = { w: 0, h: 0 };   // 첨부 원본 픽셀비 = 복제 모드 비율 스냅 재료(아래 onload에서 실측 · 실패 = 0 유지 = 스냅 없음)
+  try { const _pi = new Image(); _pi.onload = () => { _geniRefNat = { w: _pi.naturalWidth, h: _pi.naturalHeight }; if (_geniSel.refMode === 'clone') { geniCloneAspect(); geniApply(); } }; _pi.src = dataUrl; } catch {}
   const pv = $('#geniPrev'), th = $('#geniRefThumb'), gh = $('#geniRefGhost'), xb = $('#geniRefX'), sw = $('#geniRefSwap'), rm = $('#geniRefModeRow');
   if (th) { th.src = dataUrl; th.hidden = false; }
   if (gh) { gh.src = dataUrl; gh.hidden = false; }   // 고스트 = 같은 이미지 cover 반투명 언더레이(운영자 260719 승인 — 비율 프레임에 앉는 모습)
@@ -4969,7 +4983,9 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   geniSubRender();
   const kwb = $('#geniKweb'); if (kwb) { kwb.classList.toggle('on', !!_geniSel.kweb); kwb.setAttribute('aria-pressed', _geniSel.kweb ? 'true' : 'false'); kwb.textContent = _geniSel.kweb ? 'ON' : 'OFF'; }   // 한국웹툰화 = 명시 ON/OFF 토글(운영자 260713 "한국웹툰식 > ON · 점등 OFF > OFF") — 켜면 ON+강조, 끄면 OFF+중립(문구 토글과 대칭)
   const ton = $('#geniTextOn'); if (ton) { ton.classList.toggle('on', !!_geniSel.textOn); ton.setAttribute('aria-pressed', _geniSel.textOn ? 'true' : 'false'); ton.textContent = _geniSel.textOn ? 'ON' : 'OFF'; }   // 문구 = 명시 ON/OFF 토글(운영자 260713 "살리기 on > on · 살리기 off > off" 축약) — 켜면 ON+강조, 끄면 OFF+중립(양쪽 상태 명시 대칭)
-  const rmb = $('#geniRefMode'); if (rmb) rmb.querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === (_geniSel.refMode === 'keep' ? 'keep' : 'ref')));   // 참고 이미지 원본유지/참고 토글 on-state
+  const rmMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref';   // 참고 이미지 모드 = 원본 유지/참고/이미지와 동일하게(운영자 260726)
+  const rmb = $('#geniRefMode'); if (rmb) rmb.querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === rmMode));   // 참고 이미지 모드 토글 on-state
+  const cloneOn = !!(_geniRef && rmMode === 'clone');   // 복제 모드 = 화풍·세부·웹툰화·문구가 프롬프트에서 통째로 빠지는 모드(스타일 낱말 0개가 이 모드의 전부 — 서버가 무시하므로 요약도 그렇게 읽혀야 은폐가 아니다)
   const axesOn = _geniSel.mood === 'axes';   // 무드: 자동/직접 + 게이지 아코디언(촤르륵)
   const md = $('#geniMood');
   md.querySelector('[data-v="auto"]').classList.toggle('on', !axesOn);
@@ -5004,13 +5020,16 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   const sum = $('#geniSum');   // 요약 리드백 = 편집 탭 editSpec 문법 통계승(운영자 260720 "켜지든 안켜지든 다 점등 = 오류 — 다른쪽 이식"): 라벨(mut)+값 쌍 · 나열 = 5항 한정(운영자 260721 "비율·화풍·세부 화풍·한국웹툰화·문구만" — 구 10항 전량 나열이 스트립을 2줄로 랩시키던 것 축소 · OFF·기본값 표기 = thumb 스트립 260718 법 유지) · 점등 = 기본값 이탈/ON만 .gs-v.on — 구 전량 <b> 상시 점등·활성시 조건부 나열(카메라·문구) 폐지
   if (sum) {
     const gsPair = (lbl, val, on) => '<span class="gs-lbl">' + lbl + '</span> <span class="gs-v' + (on ? ' on' : '') + '">' + val + '</span>';   // 쌍 골격 = 편집 탭 editSpec 정본(콜론 없음 · 라벨 mut + 값 상태색)
-    sum.innerHTML = [   // 나열 순서 = 본문 행 상대 순서 유지(개요{비율} → 표현{화풍·세부·한국웹툰화·문구}) — 카메라·해상도·개수·품질·무드 = 요약 비표기(운영자 260721 · 본문 행·발사 파라미터·카메라 배지 #geniCamN은 불변)
+    sum.innerHTML = (cloneOn ? [   // 복제 모드 = 화풍·세부·웹툰화·문구가 서버에서 통째로 무시된다 → 요약도 2항으로(켜둔 화풍을 그대로 나열하면 '반영되는 척' = 은폐)
+      gsPair('비율', geniAspect() || 'N:N?', true),
+      gsPair('참고 이미지', '이미지와 동일하게', true)
+    ] : [   // 나열 순서 = 본문 행 상대 순서 유지(개요{비율} → 표현{화풍·세부·한국웹툰화·문구}) — 카메라·해상도·개수·품질·무드 = 요약 비표기(운영자 260721 · 본문 행·발사 파라미터·카메라 배지 #geniCamN은 불변)
       gsPair('비율', geniAspect() || 'N:N?', _geniSel.aspect !== '4:5'),
       gsPair('화풍', geniStyleKo(_geniSel.style), _geniSel.style !== 'webtoon'),
       gsPair('세부 화풍', geniSubKo(_geniSel.sub), subOn),
       gsPair('한국웹툰화', _geniSel.kweb ? 'ON' : 'OFF', !!_geniSel.kweb),
       gsPair('문구', _geniSel.textOn ? 'ON' : 'OFF', !!_geniSel.textOn)
-    ].join('<span class="gs-sep" aria-hidden="true">/</span>');   // 구분자 = 편집 스트립 .gs-sep 정본(운영자 260719 스트립 통일 — 간격은 클래스 margin이 전담)
+    ]).join('<span class="gs-sep" aria-hidden="true">/</span>');   // 구분자 = 편집 스트립 .gs-sep 정본(운영자 260719 스트립 통일 — 간격은 클래스 margin이 전담)
   }
   geniGate();
 }
@@ -5077,7 +5096,7 @@ function geniInit() {
       ['dragleave', 'drop'].forEach(t => rfBox.addEventListener(t, e => { if (t === 'drop') { e.preventDefault(); const f = [...((e.dataTransfer && e.dataTransfer.files) || [])].find(x => /^image\//.test(x.type || '')); if (f) geniRefPick(f); } rfBox.classList.remove('dropping'); }));
     }
   }
-  const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = b.dataset.v === 'keep' ? 'keep' : 'ref'; geniApply(); });
+  const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = GENI_REFMODES.includes(b.dataset.v) ? b.dataset.v : 'ref'; if (_geniSel.refMode === 'clone') geniCloneAspect(); geniApply(); });   // 복제 선택 = 비율을 첨부 원본비로 스냅(운영자 260726 · 문서 §L3) — 다른 모드로 되돌리면 비율은 그대로 남는다(운영자가 다시 고르면 그 값 승)
   const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => {
     const open = fold.getAttribute('aria-expanded') !== 'true';
     fold.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -5118,7 +5137,7 @@ function geniInit() {
       mood: (_geniSel.mood === 'axes' && anyAx) ? 'axes' : 'auto', moodAx: { ..._geniSel.moodAx },
       kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn,
       place: _geniSel.place, shot: _geniSel.shot, expr: _geniSel.expr, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, wish };
-    if (_geniRef && _geniRef.b64) { opts.refB64 = _geniRef.b64; opts.refMode = _geniSel.refMode === 'keep' ? 'keep' : 'ref'; }   // 참고 이미지 첨부 시 = base64+모드 동봉(미첨부 = 필드 없음 = 현행 발사 동일 · 운영자 260713)
+    if (_geniRef && _geniRef.b64) { opts.refB64 = _geniRef.b64; opts.refMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref'; }   // 참고 이미지 첨부 시 = base64+모드 동봉(미첨부 = 필드 없음 = 현행 발사 동일 · 운영자 260713 · clone = 260726)
     try { localStorage.setItem('GENI_OPTS2', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷 — 구 GENI_OPTS 키는 스키마 변경으로 폐기(260710)
     if (c.free) {   // 자유 생성(도구 /6 탭 · 운영자 260707): 기사 카러셀 없음 → api 직접 발사 + 도구 iframe에 통지(그쪽 그리드가 폴링)
       if (!wish && !(_geniRef && _geniRef.b64)) { geniWishShow(true, true); return; }   // 장면 소재 0 방지(서버·python 3층 동일 계약) — 글 또는 사진 하나면 발사(운영자 260721 반갈 · 구 숨은 텍스트칸 focus 무반응 결함도 노출로 봉합)
