@@ -1718,6 +1718,33 @@ def check_form_font_inherit():
     return 0
 
 
+
+def check_branch_freshness():
+    """브랜치 신선도 WARN(운영자 260727 재발방지 — 260726 평행 구현 사고: 착수 전 fetch를 안 해
+    동시 세션이 main에 이미 넣은 변경을 모르고 같은 파일을 다시 만들었다 → 충돌·중복·배포 도장 회귀).
+    내가 이 브랜치에서 건드린 파일을, merge-base 이후 main도 건드렸으면 경고한다(비차단 = 오탐 관용)."""
+    try:
+        import subprocess
+        def sh(*a):
+            return subprocess.run(a, cwd=ROOT, capture_output=True, text=True, timeout=20).stdout.strip()
+        base = sh('git', 'merge-base', 'HEAD', 'origin/main')
+        if not base:
+            print('⚠️ 브랜치 신선도(WARN) — origin/main 참조 없음(fetch 전) → `git fetch origin main` 먼저.'); return 0
+        mine = set(filter(None, sh('git', 'diff', '--name-only', base + '..HEAD').split('\n')))
+        mine |= set(filter(None, sh('git', 'diff', '--name-only').split('\n')))
+        theirs = set(filter(None, sh('git', 'diff', '--name-only', base + '..origin/main').split('\n')))
+        both = sorted(f for f in (mine & theirs) if f.endswith(('.html', '.js', '.py', '.css')))
+        if both:
+            print('⚠️ 브랜치 신선도(WARN·비차단) — 내가 만진 파일을 main도 그 사이 바꿨다(평행 구현·충돌 위험):')
+            for f in both[:8]:
+                print('   -', f, '→ 커밋 전 `git fetch origin main && git rebase origin/main`로 최신 위에서 재확인(260726 사고 재발방지)')
+        else:
+            print('✅ 브랜치 신선도 — 내가 만진 파일과 main의 신규 변경 교집합 0(평행 구현 위험 없음).')
+    except Exception as e:
+        print('⚠️ 브랜치 신선도(WARN) — 판정 생략:', e)
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -1991,6 +2018,10 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_form_font_inherit 예외(fail-closed):', e); rc = 1
+    try:
+        check_branch_freshness()   # 브랜치 신선도(WARN — 평행 구현 사고 재발방지 · 260727)
+    except Exception as e:
+        print('⚠️ check_branch_freshness 생략:', e)
     try:
         if check_gate_docs() != 0:   # 게이트 문서화 메타 게이트(하드 — 모든 def check_*가 정본 문서 등재됐는지 · "만들어놓고 안 봄" 구조 차단 · 운영자 260723 Q468)
             rc = 1
