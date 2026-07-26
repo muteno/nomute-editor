@@ -359,12 +359,15 @@ def og_image(url, timeout=6):
         return ""
 
 
-def _fresh24(t):
-    """틱톡 정렬 1순위 키 — 0 = 24h 이내 신선분(절단 면제) · 1 = 상록분 · published 결측·파손 = 1(fail-soft).
-    뷰어 tkv 24h 하드컷과 동축(운영자 260726 "24시간 넘어가면 없는거") — tiktok() 절단·main() 병합 재정렬 공용."""
+TK_CUT_H = 18   # 틱톡 신선 창(시간) — 뷰어 index.html TK_CUT_H와 동축(운영자 260726 "올린지 18시간으로 변경" · 구 24h·구구 48h)
+
+
+def _fresh_tk(t):
+    """틱톡 정렬 1순위 키 — 0 = TK_CUT_H 이내 신선분(절단 면제) · 1 = 상록분 · published 결측·파손 = 1(fail-soft).
+    뷰어 tkv 하드컷과 동축 — tiktok() 절단·main() 병합 재정렬 공용."""
     try:
         p = t.get("published")
-        return 0 if p and datetime.fromisoformat(str(p)) >= datetime.now(KST) - timedelta(hours=24) else 1
+        return 0 if p and datetime.fromisoformat(str(p)) >= datetime.now(KST) - timedelta(hours=TK_CUT_H) else 1
     except Exception:  # noqa: BLE001
         return 1
 
@@ -408,7 +411,7 @@ def tiktok(limit=15, calls=10):
     # 절단 정렬 = ①24h 신선분 전량 최우선 → ②KR 우선 → ③조회수(운영자 260712 KR우선 + 260726 "24시간 넘어가면 없는거")
     # ⚠ ①이 없으면 해외 신선분이 굶는다(실측 260726): 해외 24h분은 조회수가 낮아(하루 1~2건·9.5만·4.7천급) 해외 그룹
     #   조회수순 뒤쪽 → limit 60 절단에 탈락 → 뷰어 24h 컷이 쓸 해외 재료가 0건이 된다(저장분 실측 24h 해외 0개).
-    return sorted(seen.values(), key=lambda t: (_fresh24(t), t["region"] != "KR", -t["views"]))[:limit]   # KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
+    return sorted(seen.values(), key=lambda t: (_fresh_tk(t), t["region"] != "KR", -t["views"]))[:limit]   # KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
 
 
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
@@ -1391,15 +1394,15 @@ def main():
     tk = tiktok(limit=60)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
     # 신선분 런 간 이월(운영자 260726 "틱톡이 10개가 안맞춰지는 이유 — 해결" · 원인 실측 260726 = tikwm feed가
     # region=KR 실효 약한 글로벌 혼합이라 단발 런 KR ≈ 7개·그중 24h 내 3개 → 뷰어 국내 인기[top20]가 굶주림):
-    # 30분 크론이 런마다 줍는 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 24h 창 안만 이어받아 누적.
-    # url dedup(신런 우선 = 조회수 최신) · 경계 24h = 뷰어 tkv 컷 동축 · 창 밖 = 자연 소멸(무한성장 없음) ·
+    # 30분 크론이 런마다 줍는 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 TK_CUT_H(18h) 창 안만 이어받아 누적.
+    # url dedup(신런 우선 = 조회수 최신) · 경계 = 뷰어 tkv 컷 동축(TK_CUT_H) · 창 밖 = 자연 소멸(무한성장 없음) ·
     # tk 0건 런 = 아래 "tikwm 실패 = 기존 보존" 경로 그대로(이월 미작동 = fail-soft)
     # ⚠ 지역 조건 없음(운영자 260726 "해당하는게 없으면 해외가 치고 올라오는거다") — 구 KR-전용 이월은 해외 신선분을
     #   런마다 버려 24h 창 해외분이 상시 0건이었다(저장분 실측 260726 = 24h·48h 모두 해외 0개). 이월 대상을 전 지역으로
     #   열어야 뷰어 통합 랭킹(해외 ×0.2 감점)이 국내 빈자리를 해외로 채울 재료를 갖는다. 해외 24h = 하루 1~2건(희소 정상).
     if tk:
         _tku = {t2.get("url") for t2 in tk}
-        _t24 = datetime.now(KST) - timedelta(hours=24)
+        _t24 = datetime.now(KST) - timedelta(hours=TK_CUT_H)   # 이월 창 = 뷰어 컷 동축(18h)
         for _pv in ((prev.get("tiktok") or {}).get("videos") or []):
             try:
                 if _pv.get("url") not in _tku and datetime.fromisoformat(str(_pv.get("published"))) >= _t24:
@@ -1407,7 +1410,7 @@ def main():
                     _tku.add(_pv["url"])
             except Exception:  # noqa: BLE001 — published 결측·파손·naive = 이월 제외(fail-soft)
                 pass
-        tk.sort(key=lambda t2: (_fresh24(t2), t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(신선분→KR→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
+        tk.sort(key=lambda t2: (_fresh_tk(t2), t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(신선분→KR→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
     W_GEOS = [g2.strip() for g2 in (os.environ.get("SNS_WORLD_GEOS") or "US,JP,GB").split(",") if g2.strip()]
