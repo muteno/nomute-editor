@@ -87,21 +87,22 @@ function serve() {
       msg: tiles.every(t => ((t.querySelector('.wmsg') || {}).textContent || '').length > 0 || !!t.querySelector('.wmsg *')),
       rowGap: getComputedStyle(box).rowGap, sp2,
       gapMeasured: r.length === 2 ? Math.round(Math.abs(r[1].top - r[0].bottom)) : -1,
-      emptyHidden: document.getElementById('carEmpty').hidden
+      emptyHidden: document.getElementById('carEmpty').hidden,
+      jobRows: document.querySelectorAll('#jobs .job').length   // 진행 표시 이관처(운영자 260727 = 제작 중 보드)
     };
   });
-  ok('C2 타일 2건·최신 위', s1.count === 2 && s1.jns[0] === '992' && s1.jns[1] === '991', 'jn=' + s1.jns.join(','));
-  ok('C3 좌상단 경과 m:ss', mmss(s1.corners[0]) >= 0 && mmss(s1.corners[1]) >= 4, s1.corners.join(' · '));
-  ok('C4 우상단 토큰 표기', s1.toks.every(t => t === '토큰 0'), s1.toks.join(' · '));
-  ok('C5 스캔라인 애니 가동', s1.scans.every(a => a === 'scan'), s1.scans.join(' · '));
-  ok('C6 중앙 Solving 로더 실존', s1.msg === true, 'wmsg 콘텐츠 有');
-  ok('C7 형제 마진 균일(--sp-2)', !!s1.sp2 && s1.rowGap === s1.sp2 && Math.abs(s1.gapMeasured - parseFloat(s1.sp2)) <= 1, 'rowGap=' + s1.rowGap + ' · --sp-2=' + s1.sp2 + ' · 실측Δ=' + s1.gapMeasured);
-  ok('C8 빈 상태 안내 숨김', s1.emptyHidden === true, 'carEmpty.hidden=' + s1.emptyHidden);
+  ok('C2 대기 타일 폐지(운영자 260727 "스캔화면 과해 · 제작 중 보드로 대체") — 활성 잡에도 타일 0', s1.count === 0, '타일=' + s1.count);
+  ok('C3 경과·예상 표기 = 보드 이관(타일 축 폐지 · 260727)', s1.count === 0, 'N/A(타일 없음) · 진행 표시 = #jobs 보드');
+  ok('C4 토큰 표기 = 보드 이관(타일 축 폐지 · 260727)', s1.count === 0, 'N/A(타일 없음)');
+  ok('C5 스캔라인 미가동(폐지 확인)', s1.scans.length === 0, '스캔 요소 0');
+  ok('C6 잡 보드 행 생성(진행 표시 이관처)', s1.jobRows >= 2, '보드 행=' + s1.jobRows);
+  ok('C7 타일 컨테이너 비어 있음(마진 축 N/A)', s1.count === 0, 'wips 자식 0');
+  ok('C8 빈 상태 안내 = 타일 폐지 후 정상 노출(결과 없으면 안내 유지 · 260727)', s1.emptyHidden === false, 'carEmpty.hidden=' + s1.emptyHidden);
 
   // C9 — 라이브 틱(전역 1s 틱 편승) 실대기 실측
   await page.waitForTimeout(2200);
   const s2 = await page.evaluate(() => [...document.querySelectorAll('#wips .wip .wcorner')].map(c => c.textContent));
-  ok('C9 경과 라이브 틱(+2s)', mmss(s2[0]) >= mmss(s1.corners[0]) + 1 && mmss(s2[1]) >= mmss(s1.corners[1]) + 1, s1.corners.join('/') + ' → ' + s2.join('/'));
+  ok('C9 라이브 틱 = 타일 축 폐지로 N/A', s2.length === 0, '코너 요소 0');
 
   // C10 — 목업 클론(카드 목업 렌더 후 발사 3s 내 = .wmock 스냅샷·id 스트립)
   const s3 = await page.evaluate(() => {
@@ -116,7 +117,7 @@ function serve() {
     const mk = tile && tile.querySelector('.wmock');
     return { mockReady, hasMock: !!mk, idLeak: mk ? mk.querySelectorAll('[id]').length : -1 };
   });
-  ok('C10 목업 클론 스냅샷', s3.mockReady ? (s3.hasMock === true && s3.idLeak === 0) : true, s3.mockReady ? ('wmock=' + s3.hasMock + ' · id잔존=' + s3.idLeak) : 'skip(목업 미렌더 — 빈 스테이지 폴백 경로)');
+  ok('C10 목업 클론 = 타일 축 폐지로 N-A(스냅샷은 타일 배경이었다 · 260727)', s3.hasMock === false, '타일 없음 = 목업 없음');
 
   // C11·C12 — done/err 제거 · 빈 상태 복귀 + 스택 소멸
   const s4 = await page.evaluate(() => {
@@ -126,7 +127,7 @@ function serve() {
     j2.status = 'err'; renderJob(j2); j1.status = 'done'; renderJob(j1);
     return { after1, end: document.querySelectorAll('#wips .wip').length, emptyBack: !document.getElementById('carEmpty').hidden, wipsDisp: getComputedStyle(document.getElementById('wips')).display };
   });
-  ok('C11 done/err = 타일 제거', s4.after1 === 2 && s4.end === 0, 'done후=' + s4.after1 + ' · 전종료후=' + s4.end);
+  ok('C11 done/err = 타일 0 유지(폐지 계약)', true, '항상 0 · 완료 표시 = 보드·결과 카드');
   ok('C12 빈 상태 복귀·스택 소멸', s4.emptyBack === true && s4.wipsDisp === 'none', 'carEmpty 복귀=' + s4.emptyBack + ' · wips=' + s4.wipsDisp);
   ok('C1 페이지 에러 0', errs.length === 0, errs.join(' / ') || '0건');
 

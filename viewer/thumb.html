@@ -2681,7 +2681,9 @@ function estJobTok(job) { const v = jobStat(job); return v ? (v.tok || 0) : 0; }
 function fmtTok(n) { return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K' : String(n); }   // 12345 → '12K' · 1234 → '1.2K'
 function estJobEtaSec(job) { const v = jobStat(job); return (v && v.dur) ? v.dur : jobDurMed(job); }   // 예상 = 서버 실측 앵커 우선 → 없으면 이 기기 누적 중앙값(운영자 260727 한 수 · 둘 다 없으면 0 = 표기 생략)
 function fmtMMSS(sec) { const s = Math.max(0, sec | 0); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }   // 00:00 고정폭(운영자 260727 표기)   // 예상 토큰비(edit Q456 estTokenNote 문법 계승) — thumb 잡(헤더·자막·저작권·안내문·카드뉴스·리사이즈·AI생성) = 러너 렌더/이미지 API = claude 토큰 0 → '토큰 0' 정직 표기(edit ffmpeg 동문) · 실계측 단가 앵커(metrics/usage) 확보 시 여기서 ₩ 환산해 우상단 라이브 누적(무근거 단가 창작 금지)
+const WIP_TILE_OFF = true;   // 이미지 스튜디오 대기 타일(.wip 스캔 화면) 폐지 스위치(운영자 260727) — DOM·CSS·핸들러는 존치라 복원 = 이 줄 false 1글자
 function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+코너 갱신 / done·err = 제거(자리는 캐러셀·잡 행이 이어받음)
+  if (WIP_TILE_OFF) { if (job._wip) { job._wip.remove(); job._wip = null; wipEmptySync(); } return; }   // 이미지 제작 스캔 타일 폐지(운영자 260727 "이미지 제작하는 그 스캔화면이 너무 과한 것 같아 없애고 · 원래 처음 도입했던 제작 중(&완료 시 다운로드) 보드로 대체") — 진행·완료 표시는 잡 보드(#jobs 행)와 결과 캐러셀이 전담 · 복원 = 아래 상수 1줄 false
   const box = $('#wips'); if (!box) return;
   if (job.status === 'done' || job.status === 'err') { if (job._wip) { job._wip.remove(); job._wip = null; wipEmptySync(); } return; }
   let el = job._wip;
