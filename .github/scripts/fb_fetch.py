@@ -71,10 +71,11 @@ def _sig_axis(items, keyf):
     return out
 
 
-def api(path, tok=None, **params):
+def api(path, tok=None, ver=None, **params):
     params['access_token'] = tok or TOK
+    base = f'https://graph.facebook.com/{ver}' if ver else G   # ver = 버전 지정 호출(인구통계 탐침 전용 · 미지정 = 전 수집 공용 G 고정)
     try:
-        with urllib.request.urlopen(f"{G}/{path}?{urllib.parse.urlencode(params)}", timeout=30) as r:
+        with urllib.request.urlopen(f"{base}/{path}?{urllib.parse.urlencode(params)}", timeout=30) as r:
             return json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
         # Graph 에러 본문을 예외 메시지에 승격(260719 — "HTTP 400"만으론 권한 누락 vs 지표 폐지 진단 불가 · insta_fetch 관용구 미러)
@@ -87,6 +88,36 @@ def api(path, tok=None, **params):
             raise RuntimeError(f'{e.code}: HTTP error(본문 파싱 불가)') from None
 
 
+_DEMO_LT = ['page_fans_gender_age',            # 구 정본(2024-03-14 폐지 공지분 · 실측이 진실)
+            'page_fans_gender_age_v2',         # 폐지 후 v2 부활 전례 = page_impressions_organic_unique_v2
+            'page_follows_gender_age',         # fans→follows 리네이밍 전례 = page_fan_adds→page_follows
+            'page_followers_gender_age',
+            'page_fans_by_age_gender',         # 이하 260726 확장 = 메타 신형 `…_by_<breakdown>` 명명 관례(이름만 바뀐 부활 포착)
+            'page_follows_by_age_gender',
+            'page_followers_by_age_gender',
+            'page_audience_gender_age']
+_DEMO_DAY = ['page_impressions_by_age_gender_unique',       # 도달 인구통계 = 팔로워 구성과 다른 축 → 생존 로그만(자동 채택 금지)
+             'page_content_activity_by_age_gender_unique']
+_DEMO_VERS = ['v21.0', 'v23.0', 'v25.0']       # 전 수집 공용 G(v21) + 신버전 — 대체 지표가 신버전에서 먼저 열리는 전례 대비
+
+
+def _demo_parse(val):
+    """Graph 인구통계 셀({'F.25-34': 12, …}) → 뷰어 모양{gender{M_norm,F_norm}, age_full[{k,pct}]}. 성립 불가 = None."""
+    gs, ags = {}, {}
+    for key, cnt in val.items():   # 키 = 'F.25-34' 문법(성별.연령)
+        c = cnt or 0
+        g, _, ag = str(key).partition('.')
+        if g:
+            gs[g] = gs.get(g, 0) + c
+        if ag:
+            ags[ag] = ags.get(ag, 0) + c
+    mf, tot = gs.get('M', 0) + gs.get('F', 0), sum(ags.values())
+    if not mf or not tot:
+        return None
+    return {'gender': {'M_norm': round(gs.get('M', 0) / mf * 100, 1), 'F_norm': round(gs.get('F', 0) / mf * 100, 1)},
+            'age_full': [{'k': k, 'pct': round(v / tot * 100, 1)} for k, v in sorted(ags.items(), key=lambda kv: -kv[1])]}
+
+
 def _demo_probe(pid):
     """팔로워 인구통계 자동 탐침(운영자 260726 "내가 매번 스샷을 줘야 되는 거면 안 되고 데이터를 읽어오는 걸로").
 
@@ -95,35 +126,37 @@ def _demo_probe(pid):
     박아두면 되살아나도 영원히 못 받는다 → **매 실행 후보를 쏘고 살아있는 것만 자동 채택**(위 도달 지표
     MET 탐침 문법 그대로 · 낱개 fail-soft · 죽은 후보는 로그만). 하나라도 살아나는 순간 수기 config 없이
     화면이 자동으로 실데이터로 바뀐다(스샷 재요청 0).
+    260726 2차 확장(운영자 "재발 안 하게") — 탐침 축을 **지표명 × API버전** 2차원으로 넓혔다. 이유:
+      ① 메타 신형 명명은 `…_by_<breakdown>` 관례로 옮겨가는 중(page_impressions_by_city_unique 등) → 구 `_gender_age` 꼬리만
+         쏘면 이름만 바뀐 부활을 영구히 못 잡는다. ② 신설 대체 지표는 **신버전에서 먼저 열리는** 전례가 있어 v21 고정 =
+         부활해도 미감지. → 전 후보를 v21부터 쏘고, 전멸하면 신버전으로 한 바퀴 더(첫 생존 = 즉시 채택·잔여 스킵).
+    ⚠ 도달·활동 인구통계(_DEMO_DAY)는 **자동 채택 안 한다** — 화면 라벨이 '팔로워 구성'이라 도달 구성을 꽂으면 오표기다.
+      생존 여부만 로그로 남겨(부활 신호 포착) 운영자가 표시 축을 정할 때 근거로 쓴다.
     반환 = 뷰어 demoTile이 이미 읽는 그 모양{gender{M_norm,F_norm}, age_full[{k,pct}]} · 실패 = None."""
-    CAND = ['page_fans_gender_age',            # 구 정본(폐지 공지분 · 실측이 진실)
-            'page_fans_gender_age_v2',         # 폐지 후 v2 부활 전례 = page_impressions_organic_unique_v2
-            'page_follows_gender_age',         # fans→follows 리네이밍 전례 = page_fan_adds→page_follows
-            'page_followers_gender_age']
-    for m in CAND:
+    dead = []
+    for ver in _DEMO_VERS:
+        for m in _DEMO_LT:
+            try:
+                rows = api(f'{pid}/insights', ver=ver, metric=m, period='lifetime').get('data') or []
+                val = ((rows[0].get('values') or [{}])[-1].get('value')) if rows else None
+                if not isinstance(val, dict) or not val:
+                    dead.append(f'{m}@{ver}=빈회신'); continue
+                parsed = _demo_parse(val)
+                if not parsed:
+                    dead.append(f'{m}@{ver}=파싱0'); continue
+                print(f'fb-fetch: ✅ 인구통계 생존 — {m}@{ver}(셀 {len(val)}) = 자동 수집 채택(수기 config 불필요)')
+                parsed['src'] = f'api({m}@{ver})'
+                return parsed
+            except Exception as e:
+                dead.append(f'{m}@{ver}({str(e)[:40]})')
+    for m in _DEMO_DAY:   # 채택 축 아님 = 생존 신호만(위 ⚠) · 하나라도 살면 표시 축 확장 논의 근거
         try:
-            rows = api(f'{pid}/insights', metric=m, period='lifetime').get('data') or []
-            val = ((rows[0].get('values') or [{}])[-1].get('value')) if rows else None
-            if not isinstance(val, dict) or not val:
-                print(f'fb-fetch: 인구통계 {m} = 빈 회신(스킵)'); continue
-            gs, ags = {}, {}
-            for key, cnt in val.items():   # 키 = 'F.25-34' 문법(성별.연령)
-                c = cnt or 0
-                g, _, ag = str(key).partition('.')
-                if g:
-                    gs[g] = gs.get(g, 0) + c
-                if ag:
-                    ags[ag] = ags.get(ag, 0) + c
-            mf = (gs.get('M', 0) + gs.get('F', 0))
-            tot = sum(ags.values())
-            if not mf or not tot:
-                print(f'fb-fetch: 인구통계 {m} = 파싱 0(스킵)'); continue
-            print(f'fb-fetch: ✅ 인구통계 생존 — {m}(셀 {len(val)}) = 자동 수집 채택(수기 config 불필요)')
-            return {'gender': {'M_norm': round(gs.get('M', 0) / mf * 100, 1), 'F_norm': round(gs.get('F', 0) / mf * 100, 1)},
-                    'age_full': [{'k': k, 'pct': round(v / tot * 100, 1)} for k, v in sorted(ags.items(), key=lambda kv: -kv[1])],
-                    'src': f'api({m})'}
+            rows = api(f'{pid}/insights', metric=m, period='day').get('data') or []
+            if rows and (rows[0].get('values') or []):
+                print(f'fb-fetch: ⓘ 도달 인구통계 {m} = 생존(팔로워 구성 아님 → 자동 채택 안 함 · 표시 축 확장 후보)')
         except Exception as e:
-            print(f'fb-fetch: 인구통계 {m} 스킵({e})')
+            dead.append(f'{m}(day · {str(e)[:40]})')
+    print(f'fb-fetch: 인구통계 탐침 전멸 {len(dead)}종 — ' + ' · '.join(dead[:6]) + (' …' if len(dead) > 6 else ''))
     return None
 
 
