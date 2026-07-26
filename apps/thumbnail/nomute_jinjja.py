@@ -97,17 +97,56 @@ def render_header(line, out, base_path=None, fs=TXT_FS, ty=TXT_Y):
 #          (베이스 실측: 릴스 잉크 x362~721/y1010~1154 중앙 · 포스트 x108~500/y654~796)
 JJ_BASE = {'reels': 'assets/jinjja_reels_base.png', 'post': 'assets/jinjja_post_base.png'}
 
+# 진짜예요 오버레이 전용 축(운영자 260726 확정) — 노뮤트 자막 축(좌측정렬 lm101/85 · 폭 844/920 ·
+# 자간 하한 -30/-45 · 강조 형광그린)과 **완전 별개**. 노뮤트 값은 어느 것도 참조·변경하지 않는다.
+#   · 가운데 정렬("가운데 정렬로")  · 좌우 마진 150 → 가용폭 780("좌우 폭 150px 보존")
+#   · 자간 하한 -45("자간 최대 -45")  · 구분선 없음("저 줄은 빼도 되는거 알지?")
+#   · 강조색 = 네온 파랑("강조색 진짜예요는 … 네온 파란색으루") = index :root --bias-l1 #38C6FF 계승
+OV_MARGIN = 150
+OV_AVAIL = 1080 - OV_MARGIN * 2        # = 780 (1080 기준)
+OV_TR_MIN = -45
+OV_EMPH = (56, 198, 255)               # 네온 파랑 = --bias-l1 #38C6FF 동값(발행 콘텐츠 색 축 · UI 팔레트 재유입 아님)
+OV_PLAIN = (255, 255, 255)
+# 첫 줄 y·글자크기·줄간 = 운영자가 플레이그라운드에서 고른 선택값 그대로(260726)
+#   릴스 = {"align":"center","ty":1214,"fs":76,"lh":96,"rule":false} ← 복사본 원문
+#   포스트 = 운영자 "릴스형 오버레이도 그대로 가야돼. 얘는 오히려 쉬워 로고만 교체하면 되니까"
+#     → fs·lh는 릴스 선택값 그대로(76·96) · ty는 **워터마크 아래 여백을 릴스와 동일(60px)** 로 환산:
+#       릴스 워터마크 잉크 하단 1154 + 60 = 1214(운영자 선택값과 일치) →
+#       포스트 워터마크 잉크 하단 796 + 60 = 856
+OV_SPEC = {'reels': {'ty': 1214, 'fs': 76, 'lh': 96},
+           'post':  {'ty': 856,  'fs': 76, 'lh': 96}}
+
+
+def _ov_fit_tr(segs_lines, font, fs, start):
+    """전 줄이 OV_AVAIL 안에 드는 전역 자간(start → OV_TR_MIN). 헤더형 _fit_tr 동형 · 줄 단위 최댓값 기준."""
+    avail = OV_AVAIL * SCALE
+    def widest(tr):
+        tp = tr / 1000.0 * fs
+        w = 0
+        for segs in segs_lines:
+            txt = ''.join(t for _, t in segs)
+            if not txt:
+                continue
+            w = max(w, sum(font.getlength(ch) for ch in txt) + tp * (len(txt) - 1))
+        return w
+    for tr in range(start, OV_TR_MIN - 1, -1):
+        if widest(tr) <= avail:
+            return tr
+    return OV_TR_MIN
+
 
 def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None, base_path=None):
     """진짜예요 오버레이 1장 → 투명 RGBA PNG. nomute_overlay.generate(:138-171) 스택 축자 계승."""
     from nomute_overlay import SPECS, FONT_PATH, mk_grad, mk_shadow, draw_t, parse   # 절대규칙1 = import만
 
-    sp = SPECS[fmt]                      # 노뮤트 값 그대로(운영자 "글자 배선 그대로 적용")
+    sp = SPECS[fmt]                      # 캔버스·그라데 곡선만 노뮤트 계승(글자 축은 OV_SPEC = 진짜예요 전용)
+    ov = OV_SPEC[fmt]
     S = SCALE
     cw, chh = sp['w'] * S, sp['h'] * S
-    fs = sp['fs'] * S
+    fs = ov['fs'] * S
     fnt = ImageFont.truetype(FONT_PATH, fs, index=1)
-    tr_val = tracking if tracking is not None else sp['tr']
+    segs_lines = [parse(ln) for ln in lines]   # 강조 세그먼트(1~2별표=토글 · 3+=리터럴) — 폭 측정은 별표 제거분
+    tr_val = tracking if tracking is not None else _ov_fit_tr(segs_lines, fnt, fs, sp['tr'])
     tp = tr_val / 1000 * fs
     c = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
 
@@ -126,13 +165,19 @@ def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None
 
     tx = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
     dr = ImageDraw.Draw(tx)
-    cy = sp['ty'] * S
-    for i, ln in enumerate(lines):
-        cx = sp['lm'] * S + (lm_offsets[i] * S if lm_offsets and i < len(lm_offsets) else 0)
-        for st, stx in parse(ln):
-            co = (15, 253, 2) if st == 'h' else (255, 255, 255)   # 콘텐츠 산출물 색(generate:160 동일 축)
-            cx = draw_t(dr, cx, cy, stx, fnt, co, tp, sp['stroke'])
-        cy += sp['lh'] * S
+    cy = ov['ty'] * S
+    for segs in segs_lines:
+        # 가운데 정렬(운영자 260726) — 줄 전체 폭을 먼저 재고 시작 x 산출. 헤더형 _draw_line 문법 동형.
+        # lm_offsets(따옴표 들여쓰기)는 좌측정렬 전용 보정이라 가운데정렬에선 미적용(중앙 기준이 깨짐).
+        txt = ''.join(t for _, t in segs)
+        total = sum(fnt.getlength(ch) for ch in txt) + tp * max(len(txt) - 1, 0)
+        cx = (cw - total) / 2.0
+        for st, stx in segs:
+            co = OV_EMPH if st == 'h' else OV_PLAIN   # 강조 = 네온 파랑(운영자 260726 · 구 형광그린 폐기)
+            for ch in stx:
+                dr.text((cx, cy), ch, font=fnt, fill=co)
+                cx += fnt.getlength(ch) + tp
+        cy += ov['lh'] * S
 
     cb = Image.alpha_composite(ll, tx)
     c = Image.alpha_composite(c, mk_shadow(cb, S))
