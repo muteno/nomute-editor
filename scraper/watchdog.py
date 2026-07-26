@@ -40,6 +40,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 CAND = os.path.join(ROOT, "viewer", "candidates.json")
 SNS = os.path.join(ROOT, "viewer", "sns_trends.json")
 PHONE = os.path.join(ROOT, "viewer", "sns_subs_phone.json")   # ④-b 폰 하트비트(평의회 260723 #5c) — threads/insta/reddit/재난 유일 공급원(termux/맥 홈IP 크론)
+TBS = os.path.join(ROOT, "viewer", "tbs_data.json")   # ④-c 키워드 알림 국내축(21개 커뮤 베스트글) — 260726 러너 이관분
 BRIEF = os.path.join(ROOT, "viewer", "chan_brief.json")
 STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
 SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
@@ -49,6 +50,7 @@ FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
 PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "180"))   # 3h = 폰 크론 30분 주기 6연속 실패(야간 소강·전송 지연 오탐 마진) — B1 2일 무경보 공백 근절(평의회 260723 #5c)
+KWSRC_MIN = float(os.environ.get("WD_KWSRC_MIN", "360"))   # 6h = tbs 30분 주기(sns-trends 편승) 12연속 실패 — 커뮤 베스트글은 심야에도 갱신되나 백스톱 드롭(schedule best-effort 1~4h) 오탐 마진 확보
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
 SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
@@ -138,6 +140,31 @@ def check_phone():
     return None
 
 
+def check_kwsrc():
+    """④-c 키워드 알림 감시망 — 국내축(tbs_data 나이)·해외축(sns_trends.reddit 건수)이 죽었는지.
+    260726 사고: tbs가 6일(260720→260726) 정지하고 reddit이 0건인 채로 계속 커밋됐는데 *아무 지표도 안 떴다*
+    — check_sns는 sns_trends.updated만 보고(그건 신선), check_phone은 폰 파일만 봐서 둘 다 사각이었다.
+    키워드 알림은 이 두 축이 감시 원문의 전부라, 축이 비면 알림은 조용히 '영원히 안 뜸'이 된다(무증상 고장).
+    → 감시망 자체를 지표화. 조치는 축마다 다르다: tbs = 러너 레인(재발사 가능) · reddit = 폰 전용(가시화가 조치)."""
+    bad = []
+    try:
+        d = json.load(open(TBS, encoding="utf-8"))
+        age = _age_min(d.get("updated"))
+        if age is None or age > KWSRC_MIN:
+            bad.append(f"국내 커뮤니티(tbs) 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}(임계 {KWSRC_MIN / 60:.0f}h)")
+    except FileNotFoundError:
+        bad.append("국내 커뮤니티(tbs) 데이터 없음")
+    except Exception as e:  # noqa: BLE001
+        bad.append(f"tbs_data.json 파싱 실패({type(e).__name__})")
+    try:
+        d = json.load(open(SNS, encoding="utf-8"))
+        if not (d.get("reddit") or []):
+            bad.append("해외 레딧 0건(러너 IP 403 = 폰 공급 의존)")
+    except Exception:  # noqa: BLE001 — sns 자체 이상은 check_sns 소관(여기선 침묵)
+        pass
+    return ("키워드 알림 감시망 이상 — " + " · ".join(bad) + " → 커뮤니티에 키워드가 떠도 알림이 안 뜬다") if bad else None
+
+
 def check_brief():
     """⑤ 채널 브리프 정체 — 산출물(chan_brief.json) 나이로 감지(260717 사고: 브리프 스텝이 잡 timeout
     하드킬(cancelled)로 3연속 죽으면 실패 알림도 fail-soft 로그도 안 남아 이틀 정지를 운영자 눈이 발견).
@@ -204,8 +231,8 @@ def _save_state(st):
 
 
 def main():
-    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "ledger": check_ledgers,
-              "brief": check_brief, "smoke": check_smoke}
+    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "kwsrc": check_kwsrc,
+              "ledger": check_ledgers, "brief": check_brief, "smoke": check_smoke}
     alerts = {}
     for key, fn in checks.items():
         try:
@@ -235,6 +262,13 @@ def main():
                 subprocess.run([sys.executable, mp, "set", "wd-phone", alerts["phone"], "warn"], timeout=30)
             else:
                 subprocess.run([sys.executable, mp, "clear", "wd-phone"], timeout=30)
+            # 키워드 알림 감시망(운영자 260726) — 국내 tbs 정체·해외 reddit 0건 = 알림이 조용히 죽는 무증상 고장이라
+            #   메시지함에 상시 표시. 액션 = sns-recollect(tbs는 sns-trends 레인에 편승 = 재발사로 실제 회복 가능 · reddit만
+            #   0이면 폰 소관이지만 재발사 자체는 무해). 단일 슬롯(wd-kwsrc) 덮어쓰기 = 스팸 0(wd-sns 관용구 계승).
+            if alerts.get("kwsrc"):
+                subprocess.run([sys.executable, mp, "set", "wd-kwsrc", alerts["kwsrc"], "warn", "sns-recollect"], timeout=30)
+            else:
+                subprocess.run([sys.executable, mp, "clear", "wd-kwsrc"], timeout=30)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::watchdog 메시지함 점등 실패(무시): {e}")
     if not alerts:
