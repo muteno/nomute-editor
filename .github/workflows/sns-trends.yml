@@ -52,6 +52,10 @@ on:
         description: 'SNS 외국어 제목·본문 한글 자동번역(틱톡·유튜브·쇼츠·X/스레드 구독 등 전 소스 · 무키 gtx · LLM 0·과금 0 · 증분 carry · 실패=원문 유지 · bsky/실검 제외 · 운영자 260719 "미리 다 달아놔") — 1=ON · dispatch sns_tr=0=일시 OFF'
         default: '1'
         required: false
+      sns_sum:
+        description: 'X·스레드 구독 게시물 AI 한줄 요약(④⑧ · kw+S+V+O sum · sonnet 5 high 1콜 · 증분 carry · 대상 0=스킵 · 실패=원문 폴백 · 운영자 260726 "한줄로 뭐에 대해 말하는지") — 1=ON · dispatch sns_sum=0=일시 OFF'
+        default: '1'
+        required: false
       gt_img:
         description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 기본 ON 승격(카나리아 run 29634967139 실측: 폴오버로 백업계정 전환·R2 10개 채움 · 운영자 "30분마다 실검 반영·소넷으로") · schedule=inputs 없음→ON · dispatch gt_img=0=일시 OFF · 롤백=step || 1 제거'
         default: '0'
@@ -67,7 +71,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 36   # 33→36(260718 · 트렌드 이미지 상시 스텝 추가 수용): 종전 실산 ≈ 31.7분(수집 840s + 브리프 600s + 번역 300s + 커밋·설치) + 트렌드 이미지(Sonnet WebSearch timeout 240s) ≈ 35.7분 → 36 = 합+여유. 20→33(260717 chan_brief 이틀 정지 사고 미러). 30분 주기 초과분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한 무접촉
+    timeout-minutes: 41   # 36→41(260726 · X/스레드 요약 스텝 추가 수용): 종전 실산 ≈ 35.7분 + 요약(sonnet timeout 300s) ≈ 40.7분 → 41 = 합+여유(요약은 통상 carry 스킵 = 0s). 33→36(260718 트렌드 이미지) · 20→33(260717 chan_brief 이틀 정지 사고 미러). 30분 주기 초과분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한 무접촉
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,7 +112,7 @@ jobs:
           done
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
-        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)도 CLI 필요(운영자 260713·260718 · gt_img 상시 ON 승격 = || '1')
+        if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '1') == '1' || (inputs.sns_sum || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)·X/스레드 요약(sns_sum · 260726)도 CLI 필요(운영자 260713·260718 · gt_img 상시 ON 승격 = || '1')
         run: npm install -g @anthropic-ai/claude-code
 
       - name: AI 브리프(비서 페르소나 · 운영자 260712) — 입력 동일 = 스킵(토큰 0) · 실패 = 직전 유지(fail-soft)
@@ -133,6 +137,16 @@ jobs:
         env:
           SNS_TR: ${{ inputs.sns_tr || '1' }}   # 기본 ON(무키 gtx·LLM 0·과금 0 = bsky와 동일 fail-soft 클래스라 카나리아 단계 생략 · schedule=inputs 없음→'1') · dispatch sns_tr='0' = 일시 OFF 롤백 · carry는 git HEAD(1차 커밋분) 기준 = 재번역 0 · sns_trends.json 직접 병합(맨끝 Commit git add 커버)
         run: python3 scraper/sns_tr.py   # 게이트·스킵·carry·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단 · Claude CLI 불요 = 무키 gtx)
+
+      - name: X·스레드 AI 한줄 요약(④⑧ · kw+S+V+O · sonnet 5 high 1콜 · 증분 carry · 대상 0=스킵 · 실패=원문 폴백 · 운영자 260726)
+        env:
+          SNS_SUM: ${{ inputs.sns_sum || '1' }}   # 기본 ON(sns_tr와 동일 fail-soft 클래스 — 실패 = 뷰어 원문 폴백 렌더라 표시 공백 0 · schedule=inputs 없음→'1') · dispatch sns_sum='0' = 일시 OFF 롤백 · carry는 git HEAD(1차 커밋분)+수집기 승계 블록 2중 = 재요약 0 · sns_trends.json 직접 병합(맨끝 Commit git add 커버)
+          SNS_SUM_MODEL: claude-sonnet-5   # 운영자 260726 "sonnet 5 high 붙여가지고" — 요약 = 기계 분류 축(소넷 티어) · effort high는 스크립트 내 고정
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA · news-analyze 관용구)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}   # 서브2 폴오버(체인 3번째)
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(실꼬리 = 항상 MUTENONA)
+        run: bash .github/scripts/sns_sum.sh   # 게이트·스킵·carry·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
 
       - name: 트렌드 이미지 백필(Q126 · 구글 급상승 꼬리 카드 커버 · 운영자 260718)
         env:
