@@ -50,7 +50,7 @@ permissions:
 jobs:
   edit:
     runs-on: ubuntu-latest
-    timeout-minutes: 85   # 최악 스택{체크아웃·환경 ~15 + R2 소스 8 + 컴포즈 60(4K enc 2400s 포함)} + 우아한 실패·커밋 창 — 잡 캡 = 최후 보루(ly-make 문법 · 4K 재산정 평의회6 260711)
+    timeout-minutes: 105   # 최악 스택{체크아웃·환경 ~20 + R2 소스 8 + STT 45(large-v3 260726) + 컴포즈 60(4K enc 2400s 포함)} + 우아한 실패·커밋 창 — 잡 캡 = 최후 보루(ly-make 문법 · 4K 재산정 평의회6 260711 · large-v3 재산정 260726)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -81,7 +81,7 @@ jobs:
 
       - name: STT 환경 (자막·컷·클리퍼 = whisper+ffmpeg+한글폰트)
         if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
-        timeout-minutes: 15
+        timeout-minutes: 20   # 첫 런 Whisper large-v3 3.1GB 다운 감안(260726 승격 · 캐시히트 즉시)
         uses: ./.github/actions/runner-setup
         with:
           setup: apps/ly/setup.sh
@@ -151,7 +151,7 @@ jobs:
             || { echo "업로드 파일 회수 실패 — 다시 올려줘." > /tmp/edit_err.txt; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
           echo "EDIT_SRC=/tmp/upsrc.$EXT" >> "$GITHUB_ENV"
 
-      - name: 길이 선게이트 (차등 캡 — 운영자 260711 "잘라서 10분 이하로" 확정. 트림 구간≤10분+전사 없음 = 원본 60분 · 자막/컷/클리퍼 = 원본 20분{STT가 원본 전체 전사 = 비용 원본 비례·Whisper turbo ~0.2−0.5×RT 추정 = 스텝 25분 내·초과 = 정직 실패} · 그 외 통짜 = 종전 10분)
+      - name: 길이 선게이트 (차등 캡 — 운영자 260711 "잘라서 10분 이하로" 확정. 트림 구간≤10분+전사 없음 = 원본 60분 · 자막/컷/클리퍼 = 원본 20분{STT가 원본 전체 전사 = 비용 원본 비례·Whisper large-v3 ~0.8−2×RT 추정(260726 turbo→승격) = 스텝 45분 내·초과 = 정직 실패} · 그 외 통짜 = 종전 10분)
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
@@ -171,7 +171,7 @@ jobs:
 
       - name: STT (자막·컷·클리퍼 — 오디오 추출 → Whisper)
         if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
-        timeout-minutes: 25
+        timeout-minutes: 45   # large-v3 승격(260726) — 원본 20분 캡 × ~2×RT 최악 + 여유. 무한 행만 차단
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}

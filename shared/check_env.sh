@@ -21,7 +21,7 @@
 #     echo "== nomute setup $(date '+%y%m%d %H:%M') pwd=$(pwd) =="
 #     bash apps/comp/setup.sh      || echo "[FAIL] comp"       # /comp: 폰트·pkg·card_news.py 링크
 #     bash apps/thumbnail/setup.sh || echo "[FAIL] thumbnail"  # /th: 폰트·pkg·nomute_*.py 링크
-#     bash apps/ly/setup.sh        || echo "[FAIL] ly"         # /ly: ffmpeg·whisper·yt-dlp·turbo
+#     bash apps/ly/setup.sh        || echo "[FAIL] ly"         # /ly: ffmpeg·whisper·yt-dlp·large-v3
 #     echo "== done $(date '+%H:%M') =="
 #   } 2>&1 | tee ~/.cache/nomute_setup.log
 
@@ -58,7 +58,7 @@ echo "[/ly]"
 ck "ffmpeg" command -v ffmpeg
 ck "faster-whisper" python3 -c "import faster_whisper"
 ck "yt-dlp" command -v yt-dlp
-ck "Whisper large-v3-turbo 모델 캐시(1.6GB)" has_glob "${HF_HOME:-$HOME/.cache/huggingface}/hub/*large-v3-turbo*"
+ck "Whisper large-v3 모델 캐시(3.1GB)" has_glob "${HF_HOME:-$HOME/.cache/huggingface}/hub/*faster-whisper-large-v3"
 
 echo
 if [ "$bad" -eq 0 ]; then
