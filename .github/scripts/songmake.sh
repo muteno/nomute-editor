@@ -41,7 +41,7 @@ ${STORY}"
 # 인라인 재시도 — 쿼터 한도 = 대체 계정 전환 · 일시 과부하 = 백오프(clipmake 문법 그대로)
 inline_delay=15
 rc=1   # set -u 방어(INLINE_TRIES 이상값으로 루프 미진입 시 미정의 참조 차단)
-SONG_MODEL_FB="${SONG_MODEL_FB:-claude-opus-5}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · 계정폴오버는 모델 불변)
+SONG_MODEL_FB="${SONG_MODEL_FB:-claude-opus-5}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus high 1회 폴백(운영자 260726 전면 high · 260722 · 계정폴오버는 모델 불변)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC="song-${MODE}" METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 600 \
         --model "$MODEL" \
@@ -59,7 +59,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
   fi
   if [ "$_mfb" = 0 ] && [ "$MODEL" != "$SONG_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절/전용토큰 소진) → Opus max 1회 폴백(운영자 260722)
-    _mfb=1; MODEL="$SONG_MODEL_FB"; _eff=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
+    _mfb=1; MODEL="$SONG_MODEL_FB"; _eff=high; echo "  ⏳ 모델 폴백 → ${MODEL} high (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done
