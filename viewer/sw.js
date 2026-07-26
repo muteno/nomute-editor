@@ -88,7 +88,7 @@ self.addEventListener('push', event => {
   const title = d.title || '🚨 긴급 속보';
   const opts = {
     body: d.body || '',
-    icon: d.icon || '/assets/brand/icon-192-260706c.png',   // c판 = 웨이브 질감+워드마크(스플래시 연속 설계 · 260706 5차)
+    icon: d.icon || '/assets/brand/icon-sig-maskable-512-260724.png',   // 260724 시그니처 지구본 = manifest·apple-touch·favicon과 동일 브랜드축(구 260706c 워드마크는 리브랜딩 때 여기만 누락돼 폰 알림에 옛 로고가 남아 있었음). maskable판(78% on #000)을 쓰는 이유 = 크롬 안드로이드가 알림 아이콘을 원형 크롭 → 여백0 투명판(icon-sig-192)은 바깥 1.8%가 잘리고 어두운 알림 셰이드에 배경이 녹음. 파일명 버전도장 = _headers /assets/brand/icon-* immutable 규칙 자동 편입
     badge: d.badge || '/assets/brand/badge-260723.png',   // 상태바 배지 = 흑백+투명 실루엣(N) — 불투명 컬러는 안드로이드가 흰 네모로 칠함 · 버전도장(260723) = immutable 캐시 편입
 
     tag: d.tag || 'nomute-breaking',          // 같은 tag = 교체(중복 알림 안 쌓임)
