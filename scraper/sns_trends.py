@@ -1376,6 +1376,22 @@ def main():
     gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
     gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
     tk = tiktok(limit=60)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
+    # KR 신선분 런 간 이월(운영자 260726 "틱톡이 10개가 안맞춰지는 이유 — 해결" · 원인 실측 260726 = tikwm feed가
+    # region=KR 실효 약한 글로벌 혼합이라 단발 런 KR ≈ 7개·그중 48h 내 3개 → 뷰어 국내 인기[2일 컷 top20]가 3장 굶주림):
+    # 30분 크론이 런마다 줍는 KR 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 48h 창 안만 이어받아 누적.
+    # url dedup(신런 우선 = 조회수 최신) · 경계 48h = 뷰어 tkv 컷 동축 · 창 밖 = 자연 소멸(무한성장 없음) ·
+    # 글로벌분 = 매 런 60개 풀로 충분해 이월 비대상 · tk 0건 런 = 아래 "tikwm 실패 = 기존 보존" 경로 그대로(이월 미작동 = fail-soft)
+    if tk:
+        _tku = {t2.get("url") for t2 in tk}
+        _t48 = datetime.now(KST) - timedelta(hours=48)
+        for _pv in ((prev.get("tiktok") or {}).get("videos") or []):
+            try:
+                if _pv.get("region") == "KR" and _pv.get("url") not in _tku and datetime.fromisoformat(str(_pv.get("published"))) >= _t48:
+                    tk.append(_pv)
+                    _tku.add(_pv["url"])
+            except Exception:  # noqa: BLE001 — published 결측·파손·naive = 이월 제외(fail-soft)
+                pass
+        tk.sort(key=lambda t2: (t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(KR 우선→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
     W_GEOS = [g2.strip() for g2 in (os.environ.get("SNS_WORLD_GEOS") or "US,JP,GB").split(",") if g2.strip()]
