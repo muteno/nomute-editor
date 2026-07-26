@@ -1347,7 +1347,9 @@ function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미
   const csub = $('#cSub').value.trim(), ctitle = $('#cTitle').value.trim();
   const lines = normEmph(stripStrayStars($('#cLines').value)).split('\n').map(s => s.trim()).filter(Boolean);   // 오타 단일 *(빗금) 자동삭제 후 강조 정규화 = 미리보기 == 산출물
   const v = [];
-  if (csub && ctitle) { v.push({ k: 'hdr', lbl: '흰칸', fmt: 'reels' }); if ($('#cBg').checked) v.push({ k: 'nobg', lbl: '기본', fmt: 'reels' }); }
+  // 진짜예요 = 문구 1줄(부제 잠금)이라 제목만으로 헤더 성립 · nobg 변형 없음(하부가 이미 투명 = 배경 자리) · 노뮤트는 종전대로 부제+제목 둘 다 필요
+  if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') { if (ctitle) v.push({ k: 'hdr', lbl: '진짜예요', fmt: 'reels' }); }
+  else if (csub && ctitle) { v.push({ k: 'hdr', lbl: '흰칸', fmt: 'reels' }); if ($('#cBg').checked) v.push({ k: 'nobg', lbl: '기본', fmt: 'reels' }); }
   if (typeof A2M !== 'undefined' && A2M === 'c') { const cl = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean); if (cl.length || CIMG.b64) v.push({ k: 'card', lbl: '카드뉴스', fmt: 'post', cl }); }   // 카드뉴스 모드 = 자막 변형 대신 카드 변형(운영자 260712 2차 "썸네일 미리보기에 카드뉴스 미리보기도")
   else if (lines.length || CIMG.b64) v.push({ k: 'ov', lbl: '자막', fmt: effOvFmt() });
   const gpvOn = guideMode && ($('#warnLines').value || '').trim();   // 안내문 미리보기 대상 여부(저작권과 독립 · 260712)
@@ -1405,6 +1407,12 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   const emph = s => renderEmph2(s).map(([k, v]) => k === 'h' ? `<b style="color:${CPV_GREEN};font-weight:inherit">${esc(v)}</b>` : esc(v)).join('');   // 1~2별표=강조(산출색 CPV_GREEN 유지)·3+=리터럴(마스킹) — 백엔드 parse2 미러(운영자 260720)
   let h = '';
   if (cur.k === 'hdr' || cur.k === 'nobg') {                        // 헤더 = reels2 좌표 미러(부제 y270·제목 y385·흰밴드 590~1431) · 자간 = _fit_tr 쌍둥이(estHeaderTr) 줄별 미러 + 무줄바꿈(합성기 = 절대 안 접힘 · 운영자 260716 "자간의 영역도 미리보기에")
+    if (cTpl === 'jinjja') {   // 진짜예요 헤더 = 문구 1줄(부제 잠금) · 밴드 안 · 폭 880 · 자간 -10~-45 · nomute_jinjja.py TXT_Y(469)/TXT_FS(56) 미러. 베이스 축소판은 샘플문구 wipe 적용본(잔여 0 실측)이라 흰밴드(.cpv-band) 없음 = 하부 투명(스테이지 비침) = 산출 미러
+      h += `<img class="cpv-bg" data-logo src="assets/brand/jinjja_header_preview.webp" alt="">`;
+      const trJ = estHeaderTr(ctitle, HDR.jinjja).tr;   // 힌트·발사 게이트와 동일 계산기(단일 산식)
+      h += `<div class="cpv" style="left:0;right:0;top:${py(469)};margin-top:${px(8)};text-align:center;color:${CPV_WHITE};font-size:${px(56)};font-weight:700;line-height:1.15;white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top +8 = 세로 잉크탑 보정(부제+9/제목+15 관례와 동축) — 1080 실치수 캡처 vs 합성기 실물 대조로 확정: 미리보기 잉크 top 487.0 / 실물 486.5 = **Δ+0.5px**(≤1px). 잉크 높이 Δ-3.5px = 웹 'Noto Sans KR' ↔ NotoSansCJK-Bold.ttc 메트릭 차(노뮤트 2줄도 동일 축 한계 · 골든 픽셀 이력과 동급)
+      st.innerHTML = h; return;   // 주입 = 함수 말미 `st.innerHTML = h` 문법 그대로 계승 · 아래 노뮤트 2줄 블록 무접촉(한 줄도 안 고침)
+    }
     h += `<img class="cpv-bg" data-logo src="assets/brand/reels2_base_preview.webp" alt="">`;   // 릴스2 빈배경(그라데+로고 소성) 실자산 축소판 = 로고 상시 미러(운영자 260714 Q03④ — 정본 apps/thumbnail/assets/reels2_base.png · build-viewer가 assets/brand → viewer 복사 서빙)
     if (cur.k === 'hdr') h += `<div class="cpv-band" style="top:${py(590)};bottom:${(100 - 1431 / bh * 100).toFixed(2)}%"></div>`;
     const trS = estHeaderTr(csub, HDR.sub).tr, trT = estHeaderTr(ctitle, HDR.title).tr;   // 힌트(renderHdrTrk)와 동일 계산기 = 표시·미리보기 단일 산식
@@ -2458,6 +2466,7 @@ function snapForm(draftKey) {   // draftKey 주면 = 작성 중 드래프트 모
     s.cpThumb = cpThumb; s.cpMerge = cpMerge;   // 썸네일 저작권 3단(운영자 260711)+합성(260712)
     if (cpThumb !== 'off') { s.cyear = getYear(); s.cname = getName(); s.plat = $('#cphPlat').dataset.plat; s.cplat = $('#cplat').value; }
     s.guideMode = guideMode; s.warnLines = $('#warnLines').value;   // 안내문 = 저작권과 독립 스냅(운영자 260712 · 저작권 OFF여도 저장)
+    s.tpl = cTpl;   // 템플릿 축(운영자 260726) — 수정 복원 시 노뮤트/진짜예요 유지(미보유 옛 스냅 = restore에서 nomute 폴백)
   }
   else if (APP === '3') {
     s.cyear = getYear(); s.cname = getName();
@@ -2559,6 +2568,7 @@ function importToEditor(src, compUrl, quiet) {   // compUrl = 이 제작의 합�
     syncCpFmt(); syncCopyTog(); syncGuide();
   } else if (src.app === '5') {
     if (src.a2m) A2M = src.a2m;   // app2 카드뉴스 모드 복원(시각 적용 = selApp 래퍼가 최종 탭 확정 시)
+    cTpl = (src.tpl === 'jinjja') ? 'jinjja' : 'nomute'; syncCTpl();   // 템플릿 축 복원(운영자 260726) — 미보유 옛 스냅 = nomute 폴백 · syncCTpl이 토글 색·부제 잠금·자간 힌트 동반 재적용
     if (src.edLines) { try { edLines = JSON.parse(JSON.stringify(src.edLines)); } catch {} if (!edLines.length) edLines = [[]]; renderEditChips(); }
     if ($('#fileLab')._reset) $('#fileLab')._reset();
   }
@@ -3970,8 +3980,9 @@ $('#go').onclick = async () => {
     let csub = $('#cSub').value.trim(), ctitle = $('#cTitle').value.trim();
     let clines = A2M === 'c' ? [] : normEmph(stripStrayStars($('#cLines').value)).split('\n').map(s => s.trim()).filter(Boolean);   // 오타 단일 *(빗금) 자동삭제 후 강조 정규화(**·줄걸침 → 줄별 *…*)·260625 · 카드 모드 = 오버레이 항목 0(숨은 textarea 잔재 오발사 차단 · 칩이 compose 전담)
     const hasCard = A2M === 'c' && edLines.some(l => l.some(ch => (ch.text || '').trim()));   // 카드뉴스 칩 내용(운영자 260712 2차 — 헤더·저작권·안내문과 동시 발사 가능)
-    const hasHeader = !!(csub && ctitle), partHeader = !!(csub || ctitle), hasOverlay = clines.length > 0;
-    if (partHeader && !hasHeader) return errStatus(csub ? '제목을 넣어주세요' : '부제를 넣어주세요');   // 헤더 시작했으면 둘 다 필요(반쪽 헤더=흰칸 백엔드 불가)
+    const jj = cTpl === 'jinjja';   // 진짜예요 = 문구 1줄(제목칸) 단독 성립 · 부제는 잠겨 렌더 대상 아님(운영자 260726)
+    const hasHeader = jj ? !!ctitle : !!(csub && ctitle), partHeader = !!(csub || ctitle), hasOverlay = clines.length > 0;
+    if (!jj && partHeader && !hasHeader) return errStatus(csub ? '제목을 넣어주세요' : '부제를 넣어주세요');   // 헤더 시작했으면 둘 다 필요(반쪽 헤더=흰칸 백엔드 불가) — 진짜예요는 1줄이라 미적용
     if (!hasHeader && !hasOverlay && !hasCard && cpThumb === 'off' && !guideMode) return errStatus(A2M === 'c' ? '헤더·카드 텍스트 또는 저작권·안내문을 넣어주세요' : '헤더·자막 또는 저작권·안내문을 넣어주세요');   // 저작권·안내문만 켜도 발사 허용(운영자 260711 통합·260712 안내문 독립)
     if (hasCard && !CIMG.b64) return errStatus('이미지를 선택해주세요');   // 카드뉴스 = 배경 필수(우측 슬롯 · 운영자 7 "카드뉴스는 필수")
     if (hasCard && edAnyOver()) return errStatus('빨간 글자 = 한 줄 한도(한글 18자) 초과 — 줄이거나 + 로 새 줄');   // app5 발사 가드 동형
