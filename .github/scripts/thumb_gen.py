@@ -863,6 +863,18 @@ def process_one(md, stem):
             print("  🖼 검색이미지 {}장 (대표 1 + 유사 {})".format(len(items), len(items) - 1))
         else:
             print("  · 검색이미지 0장 기록(차단·사진無 → AI썸네일 커버·재fetch 차단)")
+        # 7장 미달(want=7 목표 대비 소스 감모) 또는 원문 url 부재(moreimg가 URL 백필 겸무) = 보충 대상 마커(운영자 260726
+        # "원래 7개" + "검색으로 원문 URL 공유에 링크"). 실제 moreimg 디스패치는 워크플로 후속 스텝이 커밋·push *뒤*에
+        # 발사 — 스크립트 내 즉발이면 moreimg 체크아웃이 이 런의 미푸시 search.json을 못 봐 add/add 경합(-X 병합 한쪽 소실).
+        if len(items) < 7 or not art_url:
+            try:
+                _tp = os.path.join(os.environ.get("RUNNER_TEMP") or "/tmp", "thumb_topup.txt")
+                with open(_tp, "a", encoding="utf-8") as f:
+                    f.write("{} {}\n".format(stem, max(1, 7 - len(items))))
+                print("  ↻ 보충 대상 등록({}장 → moreimg want={}{})".format(
+                    len(items), max(1, 7 - len(items)), "" if art_url else " · 원문URL 백필 겸"))
+            except Exception as e:
+                print("  ⚠️ 보충 마커 기록 실패(수동 '+N장 더' 폴백): {}".format(e))
     # AI 생성 4화풍(260703 재편) — THUMB_AI_OFF(전역) 또는 no_thumb(이 기사·뷰어 '이미지' 토글 OFF)면 통째 생략(검색이미지만 채움).
     # 평소엔 기존 gen.json의 완료 화풍(sid)은 보존·재호출(재과금) 안 함 = 부분성공 자동 보완(폐지된 photo_close sid는 STYLES에 없어 자동 드롭 · watercolor·cartoon은 260703 복귀).
     changed = False
