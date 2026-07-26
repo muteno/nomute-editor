@@ -58,7 +58,7 @@ export async function onRequestPost({ request, env }) {
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
     refB64: (typeof o.refB64 === 'string' && /^[A-Za-z0-9+/=]{16,60000}$/.test(o.refB64)) ? o.refB64 : '',   // 참고 이미지 base64(운영자 260713) — 뷰어 512px 다운스케일 JPEG · dispatch input 상한(65535자) 여유 안 · gen_image가 ref_png으로 사용(원본유지/참고)
-    refMode: (o.refMode === 'keep' || o.refMode === 'ref') ? o.refMode : '',   // 원본 유지(keep) / 참고(ref)
+    refMode: (o.refMode === 'keep' || o.refMode === 'ref' || o.refMode === 'clone') ? o.refMode : '',   // 원본 유지(keep) / 참고(ref) / 이미지와 동일하게(clone · 260726 — gen_image가 Claude 0콜 결정형 복제 프롬프트로 직행 = 스타일 낱말 0개)
   };
   if (!opts.refB64) opts.refMode = '';   // 미첨부 = 모드 무의미(gen_image도 이중 게이트)
 
