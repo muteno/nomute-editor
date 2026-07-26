@@ -3727,6 +3727,8 @@ try {
     <div class="geni-card"><div class="geni-row"><span class="pub-l">한국웹툰화</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniKweb">ON</button></span></div></div><!-- 전 화풍 공통 토글 · 기본 ON(운영자 260710) · 라벨 = 한국웹툰화·값 = ON 점등/OFF 중립(운영자 260713 "웹툰화 > 한국웹툰화 · 한국웹툰식 > ON, 점등 OFF > OFF") — 극화는 NST-B 전문 승격 -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">무드</span><span class="geni-opts" id="geniMood"></span></div><!-- 자동(기본) + 직접 = 아래 게이지 4축 촤르륵(camsub 아코디언·cardIn 스태거 계승) -->
     <div class="geni-moodsub" id="geniMoodSub" inert><div class="geni-moodsub-in" id="geniGauges"></div></div></div>
+    <div class="geni-card"><div class="geni-row"><span class="pub-l">색 보정</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniColorReset">기본값</button></span></div>
+    <div class="geni-moodsub open" id="geniColorSub"><div class="geni-moodsub-in" id="geniColorGauges"></div></div></div><!-- ⚠배치 색 보정(운영자 260727 "채도는 사용자가 조정하게 · 명도 채도") = 표현 섹션 문구 위 카드 · 게이지 = 무드 게이지(.geni-gg) 문법 그대로 계승(신규 CSS 0) · 상시 펼침(.open) = 값이 기본 0이 아닐 수 있어 숨기면 은폐 · [기본값] = 엔진·모드별 실측 프리셋 복귀 · 값 = 렌더 후 픽셀 교정(프롬프트 무접촉 = 노하우 문서 §L1 함정 회피) -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">문구</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniTextOn">OFF</button></span></div></div><!-- 무드 아래 맨 마지막(운영자 260713 "문구는 여기 맨 아래에 붙게") · 값 = ON/OFF 축약(운영자 260713 "살리기 on > on · 살리기 off > off") · ON = 문구 입력 없음: Opus가 주문(장면 설명)에서 문구를 정해 자연스럽게 살리고, 렌더 불안 시 정확한 한글 리터럴을 프롬프트에 명기(운영자 260710) -->
     </div>
     <!-- AI 생성 결과·이전 제작(운영자 260718 "동일한 형태로 · 0으로") = 편집 탭 형태 계승 · 정적 빈 상태(실데이터 미배선) · 접이 = 카메라 폴드(.geni-fold) 패턴 계승 -->
@@ -4790,7 +4792,7 @@ const GENI_ALL_STYLES = [...GENI_STYLE_MAIN, ...GENI_STYLE_ETC];
 const GENI_MOOD_AX = [['ct', '긴장도', '차분', '긴장'], ['sh', '정서', '침통', '희망'], ['ew', '온도', '스산', '온기'], ['rr', '격앙', '냉정', '격앙']];   // 무드 게이지 4축(각 -2..+2 · 0=중립) — 서버 gen_image MOOD_AX 동일 키 · 양끝 = 축별 기준 라벨(운영자 260710 "종류별 분리·기준 달기")
 const GENI_CAM_KEYS = ['shot', 'expr', 'angle', 'point', 'light', 'place'];   // 접힘 카메라·구도군 — 배지 = non-auto 개수(숨은 활성 은폐 방지)
 let _geniCtx = null;   // {file, wrap, btn, free}
-let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
+let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', colorAx: { sat: 0, bri: 0 }, colorTouched: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
 let _geniInited = false;
 let _geniDD = null;   // 열려 있는 선택박스(도먼트 — 260713 화풍 전량 나열로 열기 호출처 0 · 항상 null·닫기 경로만 잔존)
 function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); return hit ? hit[1] : v; }
@@ -4892,6 +4894,12 @@ function geniSubRender() {   // 세부 화풍 인라인 나열 단일 렌더점 
   if (cur) { sb.classList.add('out'); _geniSubT = setTimeout(swap, 300); } else swap();   // 최초(빈 목록) = 즉시 · 이후 = 페이드아웃 완주 뒤 교체
 }
 let _geniRef = null;   // 참고 이미지 { b64, url }(운영자 260713) — 세션 한정(미저장) · geniGo에 refB64/refMode 동봉 · 닫기·재선택 시 정리
+const GENI_COLOR_AX = [['sat', '채도', '흐리게', '진하게'], ['bri', '명도', '어둡게', '밝게']];   // 색 보정 2축(운영자 260727) — 값 = ±50% · 렌더 후 픽셀 교정
+function geniColorPreset() {   // 기본값 = 게이지 가운데(0)가 아니라 실측 되돌림 배율(운영자 260727 "몇% 부족하다했으니 기본값을 거기에")
+  // 260727 실측(같은 원본·복제 모드): GPT Image = 채도 +29% 과포화(되돌림 ×0.775 = -22%) · 명도 -3%(노이즈 수준 = 0)
+  //                                   Gemini    = 채도 -1% · 명도 +2% (둘 다 노이즈 수준 = 0)
+  return (_geniSel.engine === 'gpt' && _geniSel.refMode === 'clone') ? { sat: -20, bri: 0 } : { sat: 0, bri: 0 };
+}
 const GENI_REFMODES = ['keep', 'ref', 'clone'];   // 참고 이미지 모드 = 원본 유지 / 참고(기본) / 이미지와 동일하게(운영자 260726) — 값 집합 SSOT(genimg.js·gen_image.py 화이트리스트와 3층 동일 계약)
 let _geniRefNat = { w: 0, h: 0 };   // 첨부 원본 픽셀비(다운스케일해도 비는 보존) — 복제 모드 비율 스냅 재료
 function geniCloneAspect() {   // 「이미지와 동일하게」 = 요청 비율을 첨부 원본비로 스냅(노하우 문서 §L3 단일이미지판: 요청 비율이 첨부와 다르면 ⓐ모델이 재구성하고 ⓑ서버 중앙 크롭이 피사체를 자른다) · 서버(gen_image)도 같은 계산을 재수행 = 이중 방어
@@ -4989,6 +4997,14 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   const rmMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref';   // 참고 이미지 모드 = 원본 유지/참고/이미지와 동일하게(운영자 260726)
   const rmb = $('#geniRefMode'); if (rmb) rmb.querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === rmMode));   // 참고 이미지 모드 토글 on-state
   const cloneOn = !!(_geniRef && rmMode === 'clone');   // 복제 모드 = 화풍·세부·웹툰화·문구가 프롬프트에서 통째로 빠지는 모드(스타일 낱말 0개가 이 모드의 전부 — 서버가 무시하므로 요약도 그렇게 읽혀야 은폐가 아니다)
+  if (!_geniSel.colorTouched) _geniSel.colorAx = geniColorPreset();   // 미조정 = 엔진·모드 실측 프리셋 자동 추종(손대면 그 값 고정)
+  document.querySelectorAll('#geniColorGauges .geni-gg').forEach(gg => {
+    const k = gg.dataset.ax, v = _geniSel.colorAx[k] || 0;
+    const r = gg.querySelector('input'); if (r && +r.value !== v) r.value = v;
+    const vl = gg.querySelector('.geni-gg-val'); if (vl) { vl.textContent = (v > 0 ? '+' : '') + v + '%'; vl.classList.toggle('set', v !== 0); }
+    gg.classList.toggle('set', v !== 0);
+  });
+  const crb = $('#geniColorReset'); if (crb) { const pre = geniColorPreset(); crb.classList.toggle('on', !_geniSel.colorTouched); crb.textContent = _geniSel.colorTouched ? '기본값' : (pre.sat || pre.bri ? '실측 기본' : '보정 없음'); }
   const axesOn = _geniSel.mood === 'axes';   // 무드: 자동/직접 + 게이지 아코디언(촤르륵)
   const md = $('#geniMood');
   md.querySelector('[data-v="auto"]').classList.toggle('on', !axesOn);
@@ -5026,7 +5042,8 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
     sum.innerHTML = (cloneOn ? [   // 복제 모드 = 화풍·세부·웹툰화·문구가 서버에서 통째로 무시된다 → 요약도 2항으로(켜둔 화풍을 그대로 나열하면 '반영되는 척' = 은폐)
       gsPair('모델', _geniSel.engine === 'gpt' ? 'GPT Image 2.0' : 'Gemini 3.1 Flash', _geniSel.engine === 'gpt'),
       gsPair('비율', geniAspect() || 'N:N?', true),
-      gsPair('참고 이미지', '이미지와 동일하게', true)
+      gsPair('참고 이미지', '이미지와 동일하게', true),
+      gsPair('색 보정', (_geniSel.colorAx.sat ? '채도 ' + (_geniSel.colorAx.sat > 0 ? '+' : '') + _geniSel.colorAx.sat + '%' : '') + (_geniSel.colorAx.sat && _geniSel.colorAx.bri ? ' · ' : '') + (_geniSel.colorAx.bri ? '명도 ' + (_geniSel.colorAx.bri > 0 ? '+' : '') + _geniSel.colorAx.bri + '%' : '') || '없음', !!(_geniSel.colorAx.sat || _geniSel.colorAx.bri))
     ] : [   // 나열 순서 = 본문 행 상대 순서 유지(개요{비율} → 표현{화풍·세부·한국웹툰화·문구}) — 카메라·해상도·개수·품질·무드 = 요약 비표기(운영자 260721 · 본문 행·발사 파라미터·카메라 배지 #geniCamN은 불변)
       gsPair('모델', _geniSel.engine === 'gpt' ? 'GPT Image 2.0' : 'Gemini 3.1 Flash', _geniSel.engine === 'gpt'),
       gsPair('비율', geniAspect() || 'N:N?', _geniSel.aspect !== '4:5'),
@@ -5075,6 +5092,16 @@ function geniInit() {
   $('#geniGauges').innerHTML = GENI_MOOD_AX.map(([k, name, lo, hi]) =>
     '<div class="geni-gg" data-ax="' + k + '"><div class="geni-gg-h"><span class="geni-gg-name">' + name + '</span><span class="geni-gg-val">0</span></div>' +
     '<div class="geni-gg-bar"><span class="geni-gg-end">' + lo + '</span><input type="range" min="-2" max="2" step="1" value="0" aria-label="' + name + ' (' + lo + ' ↔ ' + hi + ')"><span class="geni-gg-end">' + hi + '</span></div></div>').join('');
+  $('#geniColorGauges').innerHTML = GENI_COLOR_AX.map(([k, name, lo, hi]) =>
+    '<div class="geni-gg" data-ax="' + k + '"><div class="geni-gg-h"><span class="geni-gg-name">' + name + '</span><span class="geni-gg-val">0</span></div>' +
+    '<div class="geni-gg-bar"><span class="geni-gg-end">' + lo + '</span><input type="range" min="-50" max="50" step="5" value="0" aria-label="' + name + ' (' + lo + ' ↔ ' + hi + ')"><span class="geni-gg-end">' + hi + '</span></div></div>').join('');   // 셸·문법 = 무드 게이지 정본 그대로(범위만 ±50% step 5)
+  $('#geniColorGauges').addEventListener('input', e => {
+    const r = e.target.closest('input[type=range]'); if (!r) return;
+    _geniSel.colorAx[r.closest('.geni-gg').dataset.ax] = Math.max(-50, Math.min(50, parseInt(r.value, 10) || 0));
+    _geniSel.colorTouched = true;   // 손댄 뒤엔 엔진·모드가 바뀌어도 운영자 값이 이긴다
+    geniApply();
+  });
+  const crst = $('#geniColorReset'); if (crst) crst.addEventListener('click', () => { _geniSel.colorTouched = false; _geniSel.colorAx = geniColorPreset(); geniApply(); });   // 실측 프리셋 복귀
   $('#geniGauges').addEventListener('input', e => {
     const r = e.target.closest('input[type=range]'); if (!r) return;
     const k = r.closest('.geni-gg').dataset.ax;
@@ -5141,7 +5168,7 @@ function geniInit() {
     const anyAx = GENI_MOOD_AX.some(([k]) => _geniSel.moodAx[k]);
     const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, fmt: _geniSel.fmt,
       mood: (_geniSel.mood === 'axes' && anyAx) ? 'axes' : 'auto', moodAx: { ..._geniSel.moodAx },
-      kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn, engine: _geniSel.engine === 'gpt' ? 'gpt' : 'gemini',
+      kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn, engine: _geniSel.engine === 'gpt' ? 'gpt' : 'gemini', satAdj: _geniSel.colorAx.sat | 0, briAdj: _geniSel.colorAx.bri | 0,
       place: _geniSel.place, shot: _geniSel.shot, expr: _geniSel.expr, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, wish };
     if (_geniRef && _geniRef.b64) { opts.refB64 = _geniRef.b64; opts.refMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref'; }   // 참고 이미지 첨부 시 = base64+모드 동봉(미첨부 = 필드 없음 = 현행 발사 동일 · 운영자 260713 · clone = 260726)
     try { localStorage.setItem('GENI_OPTS2', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷 — 구 GENI_OPTS 키는 스키마 변경으로 폐기(260710)
@@ -5226,7 +5253,8 @@ function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGen
       if (_geniSel.aspect === 'custom' && !geniArVal()) _geniSel.aspect = '4:5';   // 미완성 직접값 복원 = 안전 강하
       _geniSel.mood = s.mood === 'axes' ? 'axes' : 'auto';
       GENI_MOOD_AX.forEach(([k]) => { const v = parseInt(s.moodAx && s.moodAx[k], 10); _geniSel.moodAx[k] = Number.isFinite(v) ? Math.max(-2, Math.min(2, v)) : 0; });
-      _geniSel.engine = s.engine === 'gpt' ? 'gpt' : 'gemini';   // 렌더 엔진 복원(미지정·구 스냅샷 = Gemini 기본 강하)
+      _geniSel.engine = s.engine === 'gpt' ? 'gpt' : 'gemini';
+      if (s.colorAx && typeof s.colorAx === 'object') { GENI_COLOR_AX.forEach(([k]) => { const v = parseInt(s.colorAx[k], 10); _geniSel.colorAx[k] = Number.isFinite(v) ? Math.max(-50, Math.min(50, v)) : 0; }); _geniSel.colorTouched = !!s.colorTouched; }   // 색 보정 복원(미조정 스냅샷 = 프리셋 추종 유지)   // 렌더 엔진 복원(미지정·구 스냅샷 = Gemini 기본 강하)
       if (typeof s.kweb === 'boolean') _geniSel.kweb = s.kweb;
       if (typeof s.textOn === 'boolean') _geniSel.textOn = s.textOn;
       GENI_CAM_KEYS.forEach(k => { if (GENI_DICT[k].some(([v]) => v === s[k])) _geniSel[k] = s[k]; });

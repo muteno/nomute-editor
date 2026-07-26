@@ -244,6 +244,12 @@ def load_opts():
     ref_b64 = str(o.get("refB64", "") or "")   # 참고 이미지 base64(운영자 260713 · 뷰어 512px 다운스케일 JPEG) — 형식·길이 게이트(genimg.js와 이중) · 미첨부/부적격 = 빈값
     if not re.fullmatch(r"[A-Za-z0-9+/=]{16,60000}", ref_b64):
         ref_b64 = ""
+    def _adj(k):   # 색 보정 게이지 = -50~+50%(정수 · 뷰어·genimg.js와 동일 계약)
+        try:
+            return max(-50, min(50, int(o.get(k, 0) or 0)))
+        except Exception:
+            return 0
+    sat_adj, bri_adj = _adj("satAdj"), _adj("briAdj")
     engine = o.get("engine") if o.get("engine") in ("gemini", "gpt") else "gemini"   # 렌더 엔진 토글(운영자 260727 "Gemini 3.1 Flash ↔ GPT Image 2.0")
     ref_mode = o.get("refMode") if o.get("refMode") in ("keep", "ref", "clone") else ""   # 원본 유지(keep) / 참고(ref) / 이미지와 동일하게(clone · 260726)
     if not ref_b64:
@@ -253,7 +259,8 @@ def load_opts():
             "texton": o.get("textOn") is True, "wish": wish,
             "sub": sub, "angle": angle, "point": point, "light": light, "place": place,
             "shot": shot, "expr": expr, "kweb": bool(o.get("kweb")),
-            "ref_b64": ref_b64, "ref_mode": ref_mode, "engine": engine}
+            "ref_b64": ref_b64, "ref_mode": ref_mode, "engine": engine,
+            "sat_adj": sat_adj, "bri_adj": bri_adj}
 
 
 
@@ -280,7 +287,24 @@ def style_look(o):
 
 
 
-def post_process(png, o):
+def _color_adj(im, sat_adj, bri_adj):
+    """복제·일반 공통 = 운영자 게이지(채도·명도 %)를 렌더 결과에 적용(운영자 260727 "사용자가 조정하게").
+    ⚠ 이 교정을 프롬프트로 하면 안 된다 — "채도를 낮춰라"는 노하우 문서 §L1 '축 열거' 함정에 걸려
+      모델이 그 축을 의식하고 손댄다. 그래서 글이 아니라 픽셀에서, 렌더가 끝난 뒤에 맞춘다.
+    기본값(뷰어)은 실측 되돌림 배율에서 온다 — GPT Image 복제 = 채도 +29% 과포화 → 기본 -20%(260727 실측)."""
+    from PIL import Image
+    h, sch, v = im.convert("HSV").split()
+    if sat_adj:
+        f = 1.0 + sat_adj / 100.0
+        sch = sch.point(lambda q: min(255, max(0, int(q * f + 0.5))))
+    if bri_adj:
+        g = 1.0 + bri_adj / 100.0
+        v = v.point(lambda q: min(255, max(0, int(q * g + 0.5))))
+    print("🎨 색 보정 = 채도 {:+d}% · 명도 {:+d}%".format(sat_adj, bri_adj), flush=True)
+    return Image.merge("HSV", (h, sch, v)).convert("RGB")
+
+
+def post_process(png, o, ref_png=None):
     """렌더 후처리(운영자 260710 개요 개편) — 커스텀 비율 정확 크롭(중앙) + 목표 짧은변 스냅(SIZE_SHORT) + 포맷 인코딩(PNG/JPG q90).
     PIL 부재·오류 = 원본 PNG 그대로(fail-soft — 기능이 절대 안 죽게 · imggen.yml pillow 스텝도 continue-on-error)."""
     try:
@@ -296,6 +320,8 @@ def post_process(png, o):
                 nw = max(1, round(H * tr)); x = (W - nw) // 2; im = im.crop((x, 0, x + nw, H))
             else:
                 nh = max(1, round(W / tr)); y = (H - nh) // 2; im = im.crop((0, y, W, y + nh))
+        if o.get("sat_adj") or o.get("bri_adj"):
+            im = _color_adj(im, o.get("sat_adj", 0), o.get("bri_adj", 0))   # 운영자 색 보정 게이지(260727 · 프롬프트 무접촉 축)
         tgt = SIZE_SHORT[o["size"]]
         short = min(im.size)
         if short and short != tgt:   # FHD = 1K 렌더 → 1080 보간(≈1.2× LANCZOS · 과금 현행 동일) · 720p = 다운스케일
@@ -670,7 +696,7 @@ def _render(o, prompt, free, stem):
         if not png:
             print("::warning::{}번째 렌더 실패(fail-soft — 나머지 계속)".format(i + 1), flush=True)
             continue
-        png, ext = post_process(png, o)   # 정확 비율·목표 px·포맷(운영자 260710)
+        png, ext = post_process(png, o, ref_png)   # 정확 비율·목표 px·포맷(운영자 260710) + 복제 채도 정합(260727)
         url = None
         if tg.R2_ON:
             url = tg.r2_upload(png, ("genfree/{}-{}.{}" if free else "thumbs/" + stem + "/genimg-{}-{}.{}").format(h8, i + 1, ext),
