@@ -7204,13 +7204,18 @@ function sysErrMsgs() {
 //   왜 = FB 성별·연령은 메타가 2025-11-15 지표를 폐지해 자동 수집이 죽었다(260726 라이브 실측 = 후보 4종 전부 "(#100) valid insights metric") → 화면 값이 수기 스냅샷이라 날이 갈수록 뒤처지는데,
 //        화면만 보면 오늘 자동수집분(IG)과 같은 모양으로 나란히 떠서 둘 다 최신처럼 읽힌다. 딱지를 새로 다는 대신 이미 있는 경고 채널로 고지(운영자 지시).
 //   id에 **기준일**을 물려 = ✓ 하면 그 기준값 동안 침묵 · 값이 갱신되면(as_of 변경) 다시 밀릴 때 새 id로 재고지(영구 묵음 = 은폐라 금지 · sysErrMsgs의 '수집일자' 문법을 이 축 성격[일 단위로 안 바뀌는 lifetime 스냅샷]에 맞춘 것).
+//   ⚠ 고정 스냅샷 예외(운영자 260726 밤 개정) — "FB 연령 스샷 항상 못 줘 · 어제 준 게 처음이자 당분간 마지막 · 계속 요구하면 갱신 안 하는 거로 하고 알람도 그거 따라가라".
+//     → audience_sample.pinned(fb_audience.json에서 계승) 또는 src=manual = **수기 고정 소스**엔 경고를 안 띄운다(고정값이 뒤처지는 건 정상이지 고장이 아니라 경보 = 오탐 · 계속 재고지 = 운영자가 못 줄 스샷을 조르는 꼴).
+//     경고는 이제 '**자동** 수집이 뒤처짐'에만 발동(auto 소스 = src가 api(…) · IG가 대표) — 자동 탐침(_demo_probe)이 살아나 API값을 채택하면 src가 바뀌어 pinned 무관하게 최신화·재판정된다.
 const DEMO_SRC_KO = { ig: '인스타그램', fb: '페이스북' };
 const DEMO_STALE_D = 2;   // 기준일이 동기화 시점보다 2일 이상 뒤 = 경고(인구통계 = lifetime 축이라 하루 지연은 정상 · 자동 수집이 살아 있으면 lag 0이라 미발동)
 function demoStaleMsgs() {
   const out = [];
   for (const pair of [['ig', CHAN], ['fb', CHAN_FB]]) {
     const k = pair[0], dd = pair[1] || null;
-    const as = String(((dd || {}).audience_sample || {}).as_of || '');
+    const aud = (dd || {}).audience_sample || {};
+    if (aud.pinned || /^manual/.test(String(aud.src || ''))) continue;   // 수기 고정 소스 = 경보 억제(운영자 260726 밤 · 위 ⚠) — 갱신 안 함이 의도라 '옛 기준' 경고는 오탐
+    const as = String(aud.as_of || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(as)) continue;   // 기준일 없는 구 데이터 = 조용(판정 불가에 경보 = 오탐)
     const sync = Date.parse(dd.generated_kst || '') || Date.now();
     const lag = Math.floor((sync - Date.parse(as + 'T00:00:00+09:00')) / 86400000);
