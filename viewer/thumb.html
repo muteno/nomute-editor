@@ -281,6 +281,8 @@
   /* • 템플릿 토글 — 노뮤트=형광그린 / 진짜예요=극진보(운영자 260726). .ovfmt 문법 100% 계승(도형 없는 글자 토글 · 신설 셀렉터 0) · 색 = :root 미러 토큰 무폴백 var()(raw 재유입 0 · --accent-4 미러 선례) */
   .csec .ovfmt.tplnm { color:var(--accent-5); }   /* 노뮤트 = 형광그린(운영자 260726 "저게 형광 그린 저거임 · 라임이라고 잘못말했네") */
   .csec .ovfmt.tpljj { color:var(--bias-l2); }    /* 진짜예요 = 극진보 */
+  /* 진짜예요 = 부제칸 잠금 표시 = 45° 빗금(운영자 260726 "이거 선택하면 저 부분에 그냥 빗금 쳐지면됨") — 레퍼런스 = index `.sc-fail.picking`(:1438) 저알파 빗금 문법 그대로(스탑 0 4px/4px 8px·알파 .078/.027 동값 · 신규 값 0). 긴 placeholder 안내문 대체 = 칸 안 글자 0 */
+  #cSub.locked { background-image:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.078) 0 4px,rgba(var(--accent-4-rgb),.027) 4px 8px); cursor:not-allowed; }
   .csec .ovfmt.tpltog { margin-left:1px /* raw-ok: 광학 보정 1px — 운영자 260726 "블릿하고 헤더 사이 간격의 2배". 블릿→헤더 실측 5.8px의 2배 = 11.6px 목표 · gap 6 + .ovfmt padding-left 5(탭영역) = 11px이라 1px 더해 12px(Δ0.4px) */; }   /* 헤더 라벨 바로 오른쪽(우측정렬 폐기 — 운영자 "헤더 우측으로, 지금은 우측정렬임") */
   .csec .ovfmt:active { transform:scale(var(--press-m,.92)); }   /* 눌림 피드백(.onoff·옛 .cpfmt와 일관 · 분신술8) */
   .gospec .gs-bul { color:var(--mut); font-weight:700; margin-right:4px; }
@@ -1340,6 +1342,7 @@ function syncCpMerge() {
 })();
 // ── 합성 미리보기(운영자 260712) — 입력(첨부·헤더·자막·저작권·안내문)을 산출물 좌표비(1080 기준 SPECS 미러)로 근사 재현. 로고·그라데(260716)·자간(자동자간 = est* 쌍둥이 산식 · 260716)까지 미러 — 잔여 정밀(글리프 실폭·그림자·따옴표 들여쓰기)은 제작기 PIL이 정본. ──
 const CPV_WHITE = 'rgb(255,255,255)';   // 콘텐츠 산출물 색 미러(PIL WHITE) — UI 팔레트 아님(§핵심명령 1-3-b-1 콘텐츠 축)
+const CPV_BLUE = 'rgb(56,198,255)';     // 진짜예요 강조 = 네온 파랑(운영자 260726 "강조색 진짜예요는 … 네온 파란색으루") — nomute_jinjja.OV_EMPH(56,198,255) 미러 · 값 = index :root --bias-l1 #38C6FF 동값(발행 콘텐츠 색 축 · UI 재유입 아님)
 const CPV_GREEN = '#0FFD02';            // 콘텐츠 산출물 색 미러(PIL GREEN 15,253,2 = 제목·강조) — legacy_green baseline 사유 등재(UI 재유입 아님 · 미리보기 = 산출물 근사)
 const CP_PREV_FONT = 'Noto Sans KR';     // 미리보기 폰트 정본 선언(운영자 260714 Q03③·Q06) = PIL NotoSansCJK KR의 웹 등가 — smoke_preview R2가 실로드(fonts.check)까지 실측
 let cpPrevSel = 0;
@@ -1410,7 +1413,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     if (cTpl === 'jinjja') {   // 진짜예요 헤더 = 문구 1줄(부제 잠금) · 밴드 안 · 폭 880 · 자간 -10~-45 · nomute_jinjja.py TXT_Y(469)/TXT_FS(56) 미러. 베이스 축소판은 샘플문구 wipe 적용본(잔여 0 실측)이라 흰밴드(.cpv-band) 없음 = 하부 투명(스테이지 비침) = 산출 미러
       h += `<img class="cpv-bg" data-logo src="assets/brand/jinjja_header_preview.webp" alt="">`;
       const trJ = estHeaderTr(ctitle, HDR.jinjja).tr;   // 힌트·발사 게이트와 동일 계산기(단일 산식)
-      h += `<div class="cpv" style="left:0;right:0;top:${py(469)};margin-top:${px(8)};text-align:center;color:${CPV_WHITE};font-size:${px(56)};font-weight:700;line-height:1.15;white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top +8 = 세로 잉크탑 보정(부제+9/제목+15 관례와 동축) — 1080 실치수 캡처 vs 합성기 실물 대조로 확정: 미리보기 잉크 top 487.0 / 실물 486.5 = **Δ+0.5px**(≤1px). 잉크 높이 Δ-3.5px = 웹 'Noto Sans KR' ↔ NotoSansCJK-Bold.ttc 메트릭 차(노뮤트 2줄도 동일 축 한계 · 골든 픽셀 이력과 동급)
+      h += `<div class="cpv" style="left:0;right:0;top:${py(457)};margin-top:${px(10)};text-align:center;color:${CPV_WHITE};font-size:${px(70)};font-weight:700;line-height:1.15;white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top +8 = 세로 잉크탑 보정(부제+9/제목+15 관례와 동축) — 1080 실치수 캡처 vs 합성기 실물 대조로 확정: 미리보기 잉크 top 487.0 / 실물 486.5 = **Δ+0.5px**(≤1px). 잉크 높이 Δ-3.5px = 웹 'Noto Sans KR' ↔ NotoSansCJK-Bold.ttc 메트릭 차(노뮤트 2줄도 동일 축 한계 · 골든 픽셀 이력과 동급)
       st.innerHTML = h; return;   // 주입 = 함수 말미 `st.innerHTML = h` 문법 그대로 계승 · 아래 노뮤트 2줄 블록 무접촉(한 줄도 안 고침)
     }
     h += `<img class="cpv-bg" data-logo src="assets/brand/reels2_base_preview.webp" alt="">`;   // 릴스2 빈배경(그라데+로고 소성) 실자산 축소판 = 로고 상시 미러(운영자 260714 Q03④ — 정본 apps/thumbnail/assets/reels2_base.png · build-viewer가 assets/brand → viewer 복사 서빙)
@@ -1421,6 +1424,16 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   } else if (cur.k === 'ov') {                                      // 자막 = nomute_overlay SPECS 미러(reels ty1119/fs78 · post ty822/fs76) — 그라데·로고 = generate() 무조건 합성이라 변형 표시 = 항상 동반(운영자 260716) · 오버레이만 ON = 사진 미표시(산출 미러 · 운영자 260718)
     if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;
     h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(getComboOpas()[0])) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 첫 OPA 변형 · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)
+    // 진짜예요 = CI가 베이스에 구워져 있어 전면 레이어로 깔린다(운영자 "로고만 교체하면 되니까") · 노뮤트는 logo_rect 조각 로고 그대로
+    if (cTpl === 'jinjja') {
+      const jsp = JJ_OV[cur.fmt === 'reels' ? 'reels' : 'post'];
+      h += `<img class="cpv-bg" data-logo src="assets/brand/jinjja_${cur.fmt === 'reels' ? 'reels' : 'post'}_preview.webp" alt="">`;
+      if (lines.length) {
+        const trJ = estTracking(lines, cur.fmt === 'reels' ? 'jjreels' : 'jjpost').tr;   // 폭 780·하한 -45 축(TRK.jj*)
+        h += `<div class="cpv" style="left:0;right:0;top:${py(jsp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};text-align:center;color:${CPV_WHITE};font-size:${px(jsp.fs)};font-weight:800;line-height:${(jsp.lh / jsp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${lines.map(l => renderEmph2(l).map(([k, v]) => k === 'h' ? `<b style="color:${CPV_BLUE};font-weight:inherit">${esc(v)}</b>` : esc(v)).join('')).join('<br>')}</div>`;
+      }
+      st.innerHTML = h; return;   // 아래 노뮤트 자막 블록 무접촉
+    }
     const lg = cur.fmt === 'reels' ? { x: 104, y: 1008, w: 139, h: 102 } : { x: 98, y: 720, w: 127, h: 93 };   // SPECS.logo_rect 그대로(1080 기준)
     h += `<img class="cpv-logo" data-logo src="assets/brand/overlay_logo_preview.webp" alt="" style="left:${px(lg.x)};top:${py(lg.y)};width:${px(lg.w)};height:${py(lg.h)}">`;
     if (lines.length) {
@@ -3450,7 +3463,13 @@ function buildEmphText() {
 const TRK = {
   post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
   reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30 },
+  // 진짜예요 오버레이 전용 축(운영자 260726 "자간 최대 -45, 좌우 폭 150px 보존") — 노뮤트 limit 920/844·floor -45/-30 무접촉.
+  // limit 780 = 1080 − 150×2 · fs 76 = 플레이그라운드 선택값 · H/S/N 폴백 = post(fs76) 상수 동값(같은 fs라 재계산 불요)
+  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 780, start: -1, floor: -45 },
+  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 780, start: 0,  floor: -45 },
 };
+// 진짜예요 오버레이 좌표(운영자 플레이그라운드 선택값) — nomute_jinjja.OV_SPEC과 1:1 미러
+const JJ_OV = { reels: { ty: 1214, fs: 76, lh: 96 }, post: { ty: 856, fs: 76, lh: 96 } };
 const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlength의 글자별 진행폭 미러 · 실패 = null(상수 폴백)
   let cx = null; const cache = new Map();
   return (ch, fs) => {
@@ -3481,6 +3500,8 @@ function estTracking(lines, fmt) {   // 전 줄이 마진 안에 드는 전역 t
   for (let x = cfg.start; x >= cfg.floor; x--) if (widest(x) <= cfg.limit) return { tr: x, swept: true, over: false };
   return { tr: cfg.floor, swept: true, over: true };
 }
+// 자막 자간 축 키 — 노뮤트 = effOvFmt()(post 920/-45 · reels 844/-30) / 진짜예요 = jj*(780/-45 · 운영자 260726)
+function ovTrkKey() { const f = effOvFmt() === 'post' ? 'post' : 'reels'; return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? ('jj' + f) : f; }
 function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하면 그때부터 '자간 -N' · 한도 초과 빨강
   const el = $('#' + hintId); if (!el) return;
   const lines = ($('#' + taId).value || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -3496,7 +3517,7 @@ $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', '
 const HDR = {
   sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45 },
   title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45 },
-  jinjja: { H: 51.52, S: 12.71, N: 33.04, fs: 56, avail: 880, floor: -45, start: -10 },   // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
+  jinjja: { H: 64.40, S: 15.89, N: 41.30, fs: 70, avail: 880, floor: -45, start: -10 },   // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
 };
 function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자폭 = 캔버스 실측 1순위(getlength 미러 · 260716)·상수 폴백
   if (!text) return { tr: 0, over: false };
@@ -3542,7 +3563,7 @@ function renderOvFmt() {   // • 오버레이 포맷 토글 표시(포스트=�
 function updateComboTrk() {   // 썸네일 단일 폼 = 헤더(부제/제목) 자간 + 오버레이 자간(포맷별 한도: 포스트 −45 / 릴스 −30) (운영자 260624)
   renderHdrTrk('#cHdrTrk', '#cSub', '#cTitle');
   renderOvFmt();
-  updateTrkHint('cLines', 'cLinesTrk', effOvFmt());   // 포맷에 맞는 자간 한도 실시간 적용(전환 시 초과구간 빨강)
+  updateTrkHint('cLines', 'cLinesTrk', ovTrkKey());   // 포맷에 맞는 자간 한도 실시간 적용(전환 시 초과구간 빨강) · 진짜예요 = 폭 780·하한 -45 축
   if (typeof updateGoSpec === 'function' && APP === '2') updateGoSpec();   // 헤더 입력 = 배경(cBg) 유효성·미리보기 라이브 동기(운영자 260720 Q292 배경편 — 헤더 채우면 배경 잠금 해제·비면 재잠금) · updateGoSpec 랩이 renderCpPrev도 겸함(헤더/자막 타이핑 = 미리보기 즉시 반영)
 }
 $('#cSub').addEventListener('input', updateComboTrk);
@@ -3570,8 +3591,8 @@ function syncCTpl() {
   if (sb) {
     const lock = cTpl === 'jinjja';
     sb.readOnly = lock;
-    sb.classList.toggle('off', lock);
-    sb.placeholder = lock ? '부제 — 진짜예요 템플릿은 로고가 대신함' : '부제';
+    sb.classList.toggle('locked', lock);   // 45° 빗금(운영자 260726) — 구 `.off` dim + 긴 placeholder 안내문 폐기(칸 안 글자 0)
+    sb.placeholder = '부제';               // 잠금 여부와 무관하게 원문 유지 = 빗금이 잠금 신호를 전담
   }
   if (typeof updateComboTrk === 'function') updateComboTrk();   // 자간 힌트·미리보기 = 템플릿 전환 즉시 재계산(880/-10 ↔ 960/0)
 }
@@ -3994,7 +4015,7 @@ $('#go').onclick = async () => {
       if (cTpl === 'jinjja') { if (estHeaderTr(ctitle, HDR.jinjja).over) _trkOver.push('문구'); }   // 진짜예요 = 880 단일 게이트(부제는 잠금 = 렌더 안 됨)
       else { if (estHeaderTr(csub, HDR.sub).over) _trkOver.push('부제'); if (estHeaderTr(ctitle, HDR.title).over) _trkOver.push('제목'); }
     }
-    if (hasOverlay && estTracking(clines, effOvFmt()).over) _trkOver.push('자막');
+    if (hasOverlay && estTracking(clines, ovTrkKey()).over) _trkOver.push('자막');   // 진짜예요 = 780/-45 축(ovTrkKey)
     if (_trkOver.length) return errStatus(_trkOver.join('·') + ' 자간 초과 — 글자 줄여줘', 'warn');
     const items = [];
     if (hasHeader) items.push({ endpoint: '/api/thumb', payload: { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked, tpl: cTpl } }, label: cTpl === 'jinjja' ? '진짜예요 헤더' : '릴스 헤더', tag: '헤더' });   // 흰칸(배경 ON = +nobg) · tpl = 템플릿 축(운영자 260726 · 노뮤트 기본이라 기존 발사와 동일 payload)
