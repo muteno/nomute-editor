@@ -2652,16 +2652,33 @@ const CARSLIDES = [];      // 완성 이미지(캐러셀 슬라이드)
 let _pendRefThumb = '';   // 부모(index) AI 생성 첨부 썸네일 — genfree-fired → 다음 genJob 1건에만 소비(운영자 260727 "이미지 원본이 있을 경우 스캐닝 하는곳 안에 들어가야함")
 let JOB_STATS = null;   // viewer/job_stats.json = {wf/job: {n, cost(USD 중앙), dur(초 중앙)}} — 빌더가 metrics/token-usage.jsonl에서 산출(운영자 260727)
 (async () => { try { const r = await fetch('job_stats.json?t=' + Date.now()); if (r.ok) JOB_STATS = (await r.json()).stats || null; } catch (e) {} })();
-function jobStatKey(job) {   // 잡 → 실측 버킷 키(엔드포인트 = 워크플로 1:1) · 미매핑 = null(표기 생략 = 무근거 추정 금지)
+function jobStatKey(job) {   // 잡 → 실측 버킷 키(엔드포인트 = 워크플로 1:1) · 미매핑 = 라벨 앞머리로 로컬 버킷(운영자 260727 한 수)
   const ep = job && job.endpoint || '';
   if (ep.indexOf('genimg') >= 0) return 'imggen/gen';
   if (ep.indexOf('upscale') >= 0) return 'upscale/upscale';
   if (ep.indexOf('resize') >= 0) return 'resize/resize';
-  return null;
+  const lb = String(job && job.label || '').split(' (')[0].trim();   // '리사이즈 (4:5)' → '리사이즈'
+  return lb ? 'local/' + lb : null;
+}
+// ── 소요 이력 로컬 누적(운영자 260727 한 수) ────────────────────────────────────────────
+//   왜 서버가 아니라 여기냐: metrics/token-usage.jsonl은 *Claude 호출* 원장이라 Claude를 안 쓰는 잡
+//   (img-upscale·exp-resize = 순수 렌더)은 구조적으로 안 들어온다. 그 잡들에 필요한 건 비용이 아니라 소요다.
+//   완료 잡의 실측 소요를 기기에 쌓아 중앙값을 쓰면 전 잡이 예상시간을 갖는다(신규 파이프 0 · 그 기기의 실제 큐·회선 반영).
+const JOB_DUR_KEY = 'NM_JOB_DUR', JOB_DUR_CAP = 20;   // 종류별 최근 20건(중앙값 = 이상치 내성)
+function jobDurLoad() { try { return JSON.parse(localStorage.getItem(JOB_DUR_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function jobDurPush(job) {   // 완료 시 1회 — renderJob done 분기에서 호출
+  const k = jobStatKey(job), sec = Math.round((Date.now() - job.t0) / 1000);
+  if (!k || !(sec > 0) || sec > 3600) return;   // 비정상(0·1시간 초과) = 표본 제외
+  try { const m = jobDurLoad(); (m[k] ||= []).push(sec); m[k] = m[k].slice(-JOB_DUR_CAP); localStorage.setItem(JOB_DUR_KEY, JSON.stringify(m)); } catch (e) {}
+}
+function jobDurMed(job) {   // 로컬 중앙값(표본 2건 이상에서만 = 1건 우연 방지)
+  const k = jobStatKey(job); if (!k) return 0;
+  const a = (jobDurLoad()[k] || []).slice().sort((x, y) => x - y);
+  return a.length >= 2 ? a[a.length >> 1] : 0;
 }
 function jobStat(job) { const k = jobStatKey(job); const v = k && JOB_STATS && JOB_STATS[k]; return (v && v.n) ? v : null; }
 function estJobCostUSD(job) { const v = jobStat(job); return v ? v.cost : 0; }   // 실측 중앙 비용(USD) — 데이터 없으면 0 = 표기 생략
-function estJobEtaSec(job) { const v = jobStat(job); return v ? v.dur : 0; }     // 실측 중앙 소요(초)
+function estJobEtaSec(job) { const v = jobStat(job); return (v && v.dur) ? v.dur : jobDurMed(job); }   // 예상 = 서버 실측 앵커 우선 → 없으면 이 기기 누적 중앙값(운영자 260727 한 수 · 둘 다 없으면 0 = 표기 생략)
 function fmtMMSS(sec) { const s = Math.max(0, sec | 0); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); }   // 00:00 고정폭(운영자 260727 표기)   // 예상 토큰비(edit Q456 estTokenNote 문법 계승) — thumb 잡(헤더·자막·저작권·안내문·카드뉴스·리사이즈·AI생성) = 러너 렌더/이미지 API = claude 토큰 0 → '토큰 0' 정직 표기(edit ffmpeg 동문) · 실계측 단가 앵커(metrics/usage) 확보 시 여기서 ₩ 환산해 우상단 라이브 누적(무근거 단가 창작 금지)
 function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+코너 갱신 / done·err = 제거(자리는 캐러셀·잡 행이 이어받음)
   const box = $('#wips'); if (!box) return;
@@ -2706,6 +2723,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
   if (job.thid) row.dataset.thid = job.thid;   // 알림 #done=<id> → 이 잡 행으로 핀포인트 랜딩(세션 내 미리로드 시)
   row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
+  if (job.status === 'done' && !job._restored && !job._durSaved) { job._durSaved = true; jobDurPush(job); }   // 소요 이력 누적 1회(운영자 260727 한 수 · 복원 잡 제외 = t0가 발사 시각이 아님)
   if (job.status === 'done' && !job._restored && !job._saved && (job.saves || []).length) { job._saved = true; saveLastResult(job); }   // 완료 = 최근 제작 스냅샷 저장(다음에 열면 맨 위 복원·운영자 260622)
   const sec = Math.round((Date.now() - job.t0) / 1000);
   const tot = job.outs.length || '?';
