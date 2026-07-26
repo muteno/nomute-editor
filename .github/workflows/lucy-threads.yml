@@ -1,0 +1,54 @@
+# 루시 스레드 자동 운영 — AI 지식 후가공 발행 + 답글 자동 (운영자 260726)
+# 밤 전용 저빈도(한 수 채택 260726 "밤에만 돌려" — 종일 규칙 발화 = 봇 티·신고 유발 · 시간대 고정이 캐릭터성과 안전성을 동시에 챙기는 구간).
+# on/off = **repo Variables `LUCY_ON`**(설정에서 0/1 · 기본 0 = OFF) — 나머지 기존 러너는 무접촉·실가동 그대로.
+# 세팅 = docs/스레드_직결_세팅.md · 롤백 = LUCY_ON=0(즉시 정지) 또는 파일 삭제(lucy_threads.sh·threads_api.py 동반).
+name: lucy-threads
+on:
+  schedule:
+    - cron: '0 14 * * *'    # KST 23:00 = 발행 + 답글(both) — 루시 카드의 밤 모드 시간대
+    - cron: '30 16 * * *'   # KST 01:30 = 답글만(reply) — 밤 발행 뒤 붙은 답글 회수
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: '슬롯(post=발행만 · reply=답글만 · both=둘 다)'
+        type: choice
+        options: [both, post, reply]
+        default: both
+      dry_run:
+        description: '드라이런(실제 발행 안 하고 로그로만 — 말투 튜닝용)'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: lucy-threads
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: 루시 운영(4중 게이트 · 미충족 = claude 호출 전 exit 0 = 쿼터 0)
+        env:
+          LUCY_ON: ${{ vars.LUCY_ON || '0' }}                     # ← 설정 on/off(기본 OFF · §📰-e 카나리아 관용구 = 기본 OFF 머지 → dispatch 실측 → 승격)
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          LUCY_SLOT: ${{ inputs.slot || (github.event.schedule == '30 16 * * *' && 'reply' || 'both') }}
+          LUCY_DRY_RUN: ${{ inputs.dry_run == true && '1' || '0' }}
+          LUCY_REPLY_CAP: ${{ vars.LUCY_REPLY_CAP || '8' }}       # 1회 실행당 답글 상한(스팸 판정 방어)
+          # 모델 = shared/model_env.sh PIPE_MODEL(claude-opus-5) · effort high 고정(운영자 260726) — 여기 미지정 = SSOT 계승
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN_2: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
+          CLAUDE_CODE_OAUTH_TOKEN_3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_3 }}
+          CLAUDE_CODE_OAUTH_TOKEN_4: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_4 }}
+        run: bash .github/scripts/lucy_threads.sh
+      - name: 커밋(재답글 차단 상태 = 영속 필수 · git_land = 최신 main 재기점 재적층)
+        # threads_state.json = **스팸 방지의 핵심**. 이 커밋이 빠지면 러너가 매 실행 기억을 잃고
+        # 같은 답글을 재수집 → 같은 사람에게 반복 답글 → 스팸 판정·계정 정지.
+        if: always()
+        run: |
+          [ -f viewer/threads_state.json ] || exit 0
+          bash .github/scripts/git_land.sh "lucy: 스레드 운영 상태 (bot)" viewer/threads_state.json
