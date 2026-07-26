@@ -87,6 +87,46 @@ def api(path, tok=None, **params):
             raise RuntimeError(f'{e.code}: HTTP error(본문 파싱 불가)') from None
 
 
+def _demo_probe(pid):
+    """팔로워 인구통계 자동 탐침(운영자 260726 "내가 매번 스샷을 줘야 되는 거면 안 되고 데이터를 읽어오는 걸로").
+
+    메타는 `page_fans_gender_age`를 2025-11-15 폐지 공지했고 대체 지표는 미공개다(260726 웹 확인:
+    developers.facebook.com/blog/post/2025/08/15/page-insights-api-updates/). 그렇다고 '죽었다'로 코드에
+    박아두면 되살아나도 영원히 못 받는다 → **매 실행 후보를 쏘고 살아있는 것만 자동 채택**(위 도달 지표
+    MET 탐침 문법 그대로 · 낱개 fail-soft · 죽은 후보는 로그만). 하나라도 살아나는 순간 수기 config 없이
+    화면이 자동으로 실데이터로 바뀐다(스샷 재요청 0).
+    반환 = 뷰어 demoTile이 이미 읽는 그 모양{gender{M_norm,F_norm}, age_full[{k,pct}]} · 실패 = None."""
+    CAND = ['page_fans_gender_age',            # 구 정본(폐지 공지분 · 실측이 진실)
+            'page_fans_gender_age_v2',         # 폐지 후 v2 부활 전례 = page_impressions_organic_unique_v2
+            'page_follows_gender_age',         # fans→follows 리네이밍 전례 = page_fan_adds→page_follows
+            'page_followers_gender_age']
+    for m in CAND:
+        try:
+            rows = api(f'{pid}/insights', metric=m, period='lifetime').get('data') or []
+            val = ((rows[0].get('values') or [{}])[-1].get('value')) if rows else None
+            if not isinstance(val, dict) or not val:
+                print(f'fb-fetch: 인구통계 {m} = 빈 회신(스킵)'); continue
+            gs, ags = {}, {}
+            for key, cnt in val.items():   # 키 = 'F.25-34' 문법(성별.연령)
+                c = cnt or 0
+                g, _, ag = str(key).partition('.')
+                if g:
+                    gs[g] = gs.get(g, 0) + c
+                if ag:
+                    ags[ag] = ags.get(ag, 0) + c
+            mf = (gs.get('M', 0) + gs.get('F', 0))
+            tot = sum(ags.values())
+            if not mf or not tot:
+                print(f'fb-fetch: 인구통계 {m} = 파싱 0(스킵)'); continue
+            print(f'fb-fetch: ✅ 인구통계 생존 — {m}(셀 {len(val)}) = 자동 수집 채택(수기 config 불필요)')
+            return {'gender': {'M_norm': round(gs.get('M', 0) / mf * 100, 1), 'F_norm': round(gs.get('F', 0) / mf * 100, 1)},
+                    'age_full': [{'k': k, 'pct': round(v / tot * 100, 1)} for k, v in sorted(ags.items(), key=lambda kv: -kv[1])],
+                    'src': f'api({m})'}
+        except Exception as e:
+            print(f'fb-fetch: 인구통계 {m} 스킵({e})')
+    return None
+
+
 def main():
     global TOK, PID
     if not TOK and IGTOK:
@@ -287,14 +327,21 @@ def main():
                       'ratio_7d': round(a7 / a_all, 2) if a_all else None, 'n_days': len(vals)}
     if avg:
         d['avg'] = avg
-    # 팔로워 인구통계(성별·연령) = 운영자 수기 config(운영자 260724 "IG처럼 개선") — FB 인구통계 API는 2025 폐지라 자동수집 불가 → viewer/fb_audience.json(soc_lean 식 손편집 config)을 audience_sample로 병합(뷰어 demoTile 자동 렌더 · 빈/부재 = 조용한 공백 · 지어내기 0).
-    try:
-        _aud = json.load(open('viewer/fb_audience.json', encoding='utf-8'))
-        if isinstance(_aud, dict) and (_aud.get('gender') or _aud.get('age_full')):
-            d['audience_sample'] = _aud
-            print('fb-fetch: 팔로워 인구통계 = 수기 config(fb_audience.json) 병합')
-    except Exception:
-        pass   # 파일 없음/빈값 = 인구통계 미표시(조용한 공백)
+    # 팔로워 인구통계(성별·연령) — ① **자동 탐침 우선**(운영자 260726 "데이터를 읽어오는 걸로") ② 죽어 있으면
+    # 수기 config 폴백(운영자 260724 · 성별·연령은 운영자가 명시한 표시 예외 2축이라 화면 유지 · 그 외 축은 안 만든다).
+    # 자동이 살아나는 순간 ①이 ②를 덮어써 스샷 의존이 자동 종료된다(운영자 재입력 0).
+    _aud = _demo_probe(PID)
+    if not _aud:
+        try:
+            _man = json.load(open('viewer/fb_audience.json', encoding='utf-8'))
+            if isinstance(_man, dict) and (_man.get('gender') or _man.get('age_full')):
+                _man.setdefault('src', 'manual(fb_audience.json)')   # 출처 딱지 = 자동/수기 구분(브리프·후속 판단 근거)
+                _aud = _man
+                print('fb-fetch: 팔로워 인구통계 = 자동 전멸 → 수기 config(fb_audience.json) 폴백')
+        except Exception:
+            pass   # 파일 없음/빈값 = 인구통계 미표시(조용한 공백)
+    if _aud:
+        d['audience_sample'] = _aud
     json.dump(d, open(OUT, 'w', encoding='utf-8'), ensure_ascii=False)
     print(f"fb-fetch: OK — 팔로워 {d['profile'].get('followers_count')} · 시리즈 {len(series)}일 · 게시물 {len(posts)}")
     return 0
