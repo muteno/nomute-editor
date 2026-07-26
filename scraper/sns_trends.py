@@ -565,6 +565,125 @@ def _x_rss(acc, dead):
     return []
 
 
+_X_GUEST_BEARER = ("AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D"
+                   "1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA")   # X 웹 공개 앱 토큰(무인증 게스트 활성화용 · 공개 상수)
+_X_GQL_TWEET = "0hWvDhmW8YQ-S_ib3azIrw/TweetResultByRestId"   # GraphQL 쿼리 id(웹앱 번들 상수 · 변동 시 폴백으로 자동 강등)
+
+
+def _x_guest():
+    """게스트 토큰 1회 발급 — 실패 = None(보강 전체 스킵 = fail-soft)."""
+    try:
+        req = urllib.request.Request("https://api.twitter.com/1.1/guest/activate.json", data=b"",
+                                     headers={**UA, "authorization": "Bearer " + _X_GUEST_BEARER})
+        return json.loads(urllib.request.urlopen(req, timeout=12, context=CTX).read()).get("guest_token")
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::x 게스트 토큰 실패: {e}", file=sys.stderr)
+        return None
+
+
+def _x_syn_tok(tid):
+    """cdn.syndication tweet-result 토큰 = ((id/1e15)*π).toString(36)에서 0·. 제거(웹 임베드 규약)."""
+    v, digs, out = (int(tid) / 1e15) * 3.141592653589793, "0123456789abcdefghijklmnopqrstuvwxyz", ""
+    ip, fr = int(v), v - int(v)
+    x = ip
+    while x > 0:
+        out, x = digs[x % 36] + out, x // 36
+    fs = ""
+    for _ in range(20):
+        fr *= 36
+        fs += digs[int(fr)]
+        fr -= int(fr)
+    return ((out or "0") + "." + fs).replace("0", "").replace(".", "")
+
+
+def _x_one(tid, gt):
+    """트윗 1건 상세 — 닉네임·전문·대표이미지·조회수(운영자 260726 "닉네임·정확한 글·섬네일·조회수").
+    주 = GraphQL TweetResultByRestId(게스트 · views.count 유일 공급원 — syndication·RSS엔 조회수가 없다).
+    폴백 = cdn.syndication.twimg.com/tweet-result(429 무관 실측 260726 · 조회수만 결측).
+    실패 = {} (호출부가 기존 값 유지)."""
+    if gt:
+        try:
+            var = json.dumps({"tweetId": str(tid), "withCommunity": False, "includePromotedContent": False, "withVoice": False})
+            fea = json.dumps({"creator_subscriptions_tweet_preview_api_enabled": True, "tweetypie_unmention_optimization_enabled": True,
+                              "responsive_web_edit_tweet_api_enabled": True, "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+                              "view_counts_everywhere_api_enabled": True, "longform_notetweets_consumption_enabled": True,
+                              "responsive_web_twitter_article_tweet_consumption_enabled": False, "tweet_awards_web_tipping_enabled": False,
+                              "freedom_of_speech_not_reach_fetch_enabled": True, "standardized_nudges_misinfo": True,
+                              "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": True,
+                              "longform_notetweets_rich_text_read_enabled": True, "longform_notetweets_inline_media_enabled": True,
+                              "responsive_web_graphql_exclude_directive_enabled": True, "verified_phone_label_enabled": False,
+                              "responsive_web_media_download_video_enabled": False,
+                              "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+                              "responsive_web_graphql_timeline_navigation_enabled": True, "responsive_web_enhance_cards_enabled": False})
+            u = "https://api.twitter.com/graphql/%s?variables=%s&features=%s" % (
+                _X_GQL_TWEET, urllib.parse.quote(var), urllib.parse.quote(fea))
+            req = urllib.request.Request(u, headers={**UA, "authorization": "Bearer " + _X_GUEST_BEARER, "x-guest-token": gt})
+            r = ((json.loads(urllib.request.urlopen(req, timeout=15, context=CTX).read()).get("data") or {})
+                 .get("tweetResult") or {}).get("result") or {}
+            leg = r.get("legacy") or {}
+            if leg:
+                usr = (((r.get("core") or {}).get("user_results") or {}).get("result") or {}).get("legacy") or {}
+                med = ((leg.get("extended_entities") or leg.get("entities") or {}).get("media")) or []
+                txt = ((r.get("note_tweet") or {}).get("note_tweet_results") or {}).get("result", {}).get("text") or leg.get("full_text") or ""
+                return {"name": usr.get("name") or "", "text": _x_body(txt, leg.get("display_text_range")),
+                        "thumb": (med[0].get("media_url_https") if med else "") or "",
+                        "views": _i(((r.get("views") or {}).get("count"))),
+                        "likes": _i(leg.get("favorite_count")), "rts": _i(leg.get("retweet_count")), "cmts": _i(leg.get("reply_count"))}
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::x gql {tid}: {e}", file=sys.stderr)
+    try:   # 폴백 = 임베드 신디케이션(조회수 없음 · 나머지 3값은 동일 품질)
+        u = "https://cdn.syndication.twimg.com/tweet-result?id=%s&lang=ko&token=%s" % (tid, _x_syn_tok(tid))
+        d = json.loads(_get(u, timeout=12))
+        med = d.get("mediaDetails") or []
+        return {"name": (d.get("user") or {}).get("name") or "",
+                "text": _x_body(d.get("text") or "", d.get("display_text_range")),
+                "thumb": (med[0].get("media_url_https") if med else "") or "",
+                "views": 0, "likes": _i(d.get("favorite_count")), "rts": 0, "cmts": _i(d.get("conversation_count"))}
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::x syn {tid}: {e}", file=sys.stderr)
+    return {}
+
+
+def _x_body(txt, rng):
+    """본문 = display_text_range 안쪽만(끝의 미디어 t.co = 카드 썸네일로 대체되니 잘라낸다 · X 웹 표기와 동일).
+    range 결측·비정상 = 원문 그대로(fail-soft) · 상한 280은 호출부 규약 계승."""
+    s = str(txt or "")
+    if isinstance(rng, list) and len(rng) == 2 and all(isinstance(v, int) for v in rng):
+        cp = [c for c in s]   # 인덱스 = 코드포인트 기준(X 규약) — 파이썬 str 슬라이스와 동일 단위
+        if 0 <= rng[0] < rng[1] <= len(cp):
+            s = "".join(cp[rng[0]:rng[1]])
+    return s.strip()[:280]
+
+
+def x_enrich(items, deadline=None, gap=0.3):
+    """구독 X 목록 보강(운영자 260726) — 트윗별 상세 1콜로 닉네임·전문·대표이미지·조회수를 채운다.
+    RSS 미러 폴백분(_x_rss = 지표 전멸·본문 잘림)까지 한 경로로 복구되는 게 요점.
+    실패 건 = 기존 값 그대로(fail-soft) · 예산 초과 = 잔여 스킵(보강은 부가값이라 수집을 못 막는다)."""
+    if not items:
+        return items
+    gt, n = _x_guest(), 0
+    for it in items:
+        if _over(deadline):
+            print("::warning::x 보강 예산 소진 — 잔여 스킵", file=sys.stderr)
+            break
+        m = re.search(r"/status/(\d+)", str(it.get("url") or ""))
+        if not m:
+            continue
+        d = _x_one(m.group(1), gt)
+        if not d:
+            continue
+        n += 1
+        for k, v in d.items():
+            if k in ("likes", "rts", "cmts", "views"):
+                if _i(v) > _i(it.get(k)):   # 지표는 큰 값 승(폴백 0·부분결측이 기존 수집값을 지우지 않게)
+                    it[k] = _i(v)
+            elif v:
+                it[k] = v
+        time.sleep(gap)
+    print(f"x 보강: {n}/{len(items)}건(닉네임·전문·썸네일·조회수){'' if gt else ' · 게스트토큰 없음 = 조회수 결측'}")
+    return items
+
+
 def x_subs(accounts, limit=10, deadline=None):
     """X 구독 계정 최신 트윗 — 트위터 임베드 신디케이션(무인증). 계정별 fail-soft·콜 간 4s
     (분신 실측 260712: 1.2s 간격 = 16연속 429 · 4s = 전원 회복 — 짧은 간격이 되레 전멸 유발).
@@ -1505,6 +1624,9 @@ def main():
                     print(f"phone-subs 채택: disaster {len(_pd)}건({_pm:.0f}분 전 수집)")
         except Exception:
             pass
+        # X 상세 보강(운영자 260726 "닉네임·정확한 글·대표 이미지·조회수") — 폰 채택 '뒤'에 두는 게 요점:
+        # 채택된 폰 수집분도 같은 경로로 보강돼야 표시 4값이 공급원과 무관하게 동일(러너/폰 갈림 방지).
+        subs_new["x"] = x_enrich(subs_new.get("x") or [], deadline=time.monotonic() + (_i(os.environ.get("SNS_X_ENRICH_BUDGET")) or 90))
     fin_any = bool(fin) and (bool(fin.get("rates")) or bool(fin.get("coins")))
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob and not exw:
