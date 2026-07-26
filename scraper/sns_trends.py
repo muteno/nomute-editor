@@ -872,7 +872,14 @@ def insta_subs(accounts, limit=10, deadline=None):
     """인스타 구독 계정 최신 릴스 — 웹 내부 API web_profile_info(무인증·계정당 최근 12게시물).
     차단 리스크 최고 소스 → 콜 간 6s 보수 운용·계정별 fail-soft·429 = 잔여 중단(IP 단위 리밋이라
     연타 무의미 · 컨테이너 실측 260711 — 그때까지 수집분 사용·실패런은 main()이 직전분 보존).
-    영상만 · 정렬 = 조회수(숨김 0 = 좋아요 보조)."""
+    영상만 · 정렬 = 조회수(숨김 0 = 좋아요 보조).
+    ⚠️ env INSTA_COOKIE(운영자 260726 "붙이기 — 부계 세션쿠키") = 있으면 로그인 상태로 요청 · 없으면
+    게스트 그대로(종전 동작 불변). 문법 = threads_subs THREADS_COOKIE 그대로 계승 — 러너·폰 양쪽에서
+    무인증 429가 상주(260726 실측: Actions IP·컨테이너 IP·폰 전부 0건)라 Meta 로그인월이 유일 병목인데,
+    스레드만 쿠키를 붙여 살아났고(15건) 인스타는 안 붙인 채 남아 있던 사각. 부계 전용(자동화 감지 밴 = 본계 금지).
+    csrftoken = 쿠키에 있으면 x-csrftoken 헤더로 승격(인스타 웹앱이 항상 동반 전송하는 관례값 — 누락 시 로그인 요청이 401)."""
+    ck = (os.environ.get("INSTA_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
+    _csrf = (re.search(r"csrftoken=([^;]+)", ck) or [None, ""])[1].strip() if ck else ""
     out = []
     for i, acc in enumerate(accounts):
         if _over(deadline):
@@ -881,9 +888,14 @@ def insta_subs(accounts, limit=10, deadline=None):
         if i:
             time.sleep(6)
         try:
+            _hdr = {**UA, "x-ig-app-id": "936619743392459"}   # 인스타 웹앱 공개 앱ID(웹 내부 API 관례값)
+            if ck:                                            # 쿠키 주입 = threads_subs 문법 계승(게스트 경로 불변)
+                _hdr["Cookie"] = ck
+                if _csrf:
+                    _hdr["x-csrftoken"] = _csrf
             req = urllib.request.Request(
                 "https://i.instagram.com/api/v1/users/web_profile_info/?username=" + urllib.parse.quote(acc),
-                headers={**UA, "x-ig-app-id": "936619743392459"})   # 인스타 웹앱 공개 앱ID(웹 내부 API 관례값)
+                headers=_hdr)
             j = json.loads(urllib.request.urlopen(req, timeout=15, context=CTX).read().decode("utf-8", "ignore"))
             edges = (((j.get("data") or {}).get("user") or {}).get("edge_owner_to_timeline_media") or {}).get("edges") or []
             for e in edges:
