@@ -668,7 +668,7 @@
   /* 구 .trend-head(헤더 행) 좌우 패딩 삭제 — 헤더 행 폐지(지역세그 → .trail-rg 세로바·계정 → 설정 메뉴 이관 · 운영자 260713) */
   .trend-lbl { display:flex; align-items:center; gap:8px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 9px; padding-left:var(--trend-indent); }   /* raw-ok: gap 8·margin 2/0/9 = 소머리 광학 정본(기존값) · padding-left = --trend-indent 토큰(260720 토큰화) + gap 8 = 아래 .trend-row 박스모델 미러 → 블릿↔순위 + 제목 글자시작 ↔ 쿼리 열 동일 세로선 */
   .trend-lbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); width:24px; text-align:center; }   /* 블릿 = 순위 24px 중앙 박스 계승(제목 시작점을 쿼리 열로 밀어냄) */
-  .trend-sec[data-sec="yt"] > .trend-lbl::before, .trend-sec[data-sec="tk"] > .trend-lbl::before { content:none; }   /* 유튜브·틱톡 대분류 '인기' = 블릿 제거(운영자 260726 "유튜브, 틱톡, 여기에는 블릿빼주고" — 단일 소분류라 리스트 표지 무의미) · content:none = 24px 박스째 소거 = 라벨이 대분류 들여쓰기 선으로 복귀 · yt·tk 키는 이 두 소머리 전용(큐레이션 유튜브·틱톡 = syt·stk 별키 = 블릿 유지 · 다중 소분류 그룹도 유지) */
+  .trend-sec[data-sec="yt"] > .trend-lbl, .trend-sec[data-sec="tk"] > .trend-lbl { display:none; }   /* 유튜브·틱톡 소머리 줄 통째 소거(운영자 260726 "유튜브 틱톡 각각 아래에 인기 라고 나온부분 없애줘. 블릿만 없애버렸네" — 구 조치는 블릿[::before]→라벨텍스트만 지워 화살표뿐인 빈 줄이 남았다) · 대분류가 이미 '유튜브'·'틱톡'이고 소분류 1개라 소머리 = 동어반복 · 접기는 대분류 details가 담당 · yt·tk 전용(큐레이션 syt·stk = 다중 소분류라 소머리 유지) */
   .trend-lbltx { transform:translateY(.9px); }   /* raw-ok: translateY .9 = 소분류 소머리 라벨 광학 보정(Q472 DPR3 잉크 실측 — 전 소머리 모드 −0.9 상편심 → 소머리 박스 4분할 수평선 스냅 · 페인트 레벨 = smoke_rank 정본 · 레이아웃 불변 · 글자별 잉크중심 산포 ±0.5는 서체 본질[쇼츠 등]이라 잔존 = 스모크 참고 로그) */
   .trend-sec > summary { padding-right:12px; }   /* raw-ok: 소주제 접기 토글 → 중주제 체브론 열 세로정렬(중주제 .tgroup-h padding-right 12 인셋 미러 · 운영자 260719 "상위보다 우측 → 안쪽으로") */
   /* 섹션 접기(운영자 260711 "내용 많으면 해당 건만 접기") = 네이티브 <details> + .phase 디스클로저 정본 계승(체브론 SVG mask·회전 .2s·즉시 열닫) · 접힘 = +N 개수 배지(.sc-fold 카운트 라벨 관용구) · 기억 = localStorage nm_trend_fold JSON 단일키(평의회2) */
@@ -10455,8 +10455,9 @@ function renderSnsTrends() {
     `<span class="trend-rank">${i + 1}</span><span class="trend-q"></span>${chg(x)}<span class="trend-traffic">${right}</span><span class="trend-tm">${relT(x)}</span></a>`;   // 시간 열 = 우측 끝 고정폭(운영자 260712 "모든 것에" · 결측 = 빈 칸 유지)
   // 섹션 접기(운영자 260711) = 네이티브 <details> · 기억 = localStorage nm_trend_fold(nomute_tab 관용구 · 빌드 시점 open 복원)
   let TFOLD = {}; try { TFOLD = JSON.parse(localStorage.getItem('nm_trend_fold') || '{}') || {}; } catch { TFOLD = {}; }
+  const NOHEAD = new Set(['yt', 'tk']);   // 소머리 줄을 CSS로 소거한 키(§671) = 접기 핸들이 없으니 TFOLD 무시하고 항상 open 렌더 — 과거에 접어둔 상태에 본문이 갇히는 것 차단(구 CSS 강제표시 안은 .trend-grid의 display:grid를 block으로 덮어써 2열 그리드가 1열로 깨졌다 · 실측 260726 본문높이 482.8→1256.8)
   const sec = (key, lbl, unit, n, body) =>
-    `<details class="trend-sec" data-sec="${key}"${TFOLD[key] ? '' : ' open'}><summary class="trend-lbl"><span class="trend-lbltx">${lbl}</span> <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
+    `<details class="trend-sec" data-sec="${key}"${(TFOLD[key] && !NOHEAD.has(key)) ? '' : ' open'}><summary class="trend-lbl"><span class="trend-lbltx">${lbl}</span> <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
   // (구 TSORT/sortOf/sortbar 정렬 전환 칩 = 운영자 260726 "저 선택지 없애도 될듯 둘 다" 폐지 — X는 RSS 미러 폴백 구간 likes·rts·cmts 전멸(전부 0 · _x_rss)이라 어느 축이든 동순서 = 무기능 실측, 스레드도 좋아요 고정 통일 · nm_trend_sort 키 고아 · 재도입 = git 이력)
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
