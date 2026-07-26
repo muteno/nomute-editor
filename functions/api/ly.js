@@ -44,6 +44,39 @@ export async function onRequestPost({ request, env }) {
     if (typeof body.opts.fg === 'string' && ['white', 'green', 'pink', 'blue', 'yellow', 'black'].includes(body.opts.fg)) o.fg = body.opts.fg;   // 자막 글자색(운영자 260711 subFg=open · 기본 white = 종전 · red 제거 = 뷰어 6칩과 대칭 — 평의회 260711 3차)                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 · 러너 미설치 = 고딕 폴백+note · 260711)
     if (Object.keys(o).length) opts = JSON.stringify(o).slice(0, 400);
   }
+  // 조기 교정(합성 전 반영 · Q586) — 조기 전사(LY-EARLY) 창에서 고친 조각을 subs.early.json으로 main에 커밋 →
+  //   러너 '조기 교정본 픽업' 스텝(번인 직전)이 fetch해 subs.json 대체. 늦으면(번인 이미 지남) 파일만 남고 미반영 = 종전 '다시 입히기' 폴백(유실 0).
+  //   디스패치 0(워크플로 발사 아님 = rateGate 비대상) · 검증 = reburn segs와 동일 문법.
+  const earlyfix = String(body.earlyfix || '').trim();
+  if (earlyfix) {
+    if (!/^[0-9]{12}-[0-9a-f]{6}$/.test(earlyfix)) return json({ error: '잘못된 작업 ID' }, 400);
+    if (!Array.isArray(body.segs) || !body.segs.length) return json({ error: '교정 조각이 없어' }, 400);
+    if (body.segs.length > 700) return json({ error: '편집 조각 700개 초과 — 영상이 너무 길거나 조각이 과다해' }, 400);
+    const out = [];
+    for (const s of body.segs) {
+      const ss = Number(s && s.s), ee = Number(s && s.e);
+      const ko = String((s && s.ko) || '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 200);   // 제어문자 평탄화 = reburn 동문(실 이스케이프는 ly_burn sanitize)
+      if (!Number.isFinite(ss) || !Number.isFinite(ee) || ss < 0 || ee <= ss || !ko) continue;
+      out.push({ s: Math.round(ss * 100) / 100, e: Math.round(ee * 100) / 100, ko });
+    }
+    if (!out.length) return json({ error: '교정 자막이 전부 무효 — 타이밍·텍스트 확인해줘' }, 400);
+    const payload = JSON.stringify({ v: 1, segs: out, ts: Date.now() });
+    const bytes = new TextEncoder().encode(payload);
+    if (bytes.length > 50000) return json({ error: '교정 자막이 너무 커(50KB 초과) — 조각을 줄여줘' }, 400);
+    let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
+    const path = `contents/viewer/ly_out/${earlyfix}/subs.early.json`;
+    for (let attempt = 0; attempt < 3; attempt++) {   // sha 경합 재시도 = seen.js 관례(재저장·동시 기기)
+      let sha;
+      const g = await GH(env.GH_TOKEN, `${path}?ref=${REF}`, 'GET');
+      if (g.ok) { try { sha = (await g.json()).sha; } catch (e) { sha = undefined; } }
+      else if (g.status !== 404) return json({ error: `GitHub read ${g.status}` }, 502);
+      const put = await GH(env.GH_TOKEN, path, 'PUT', { message: `ly earlyfix ${earlyfix} (${out.length}조각)`, content: btoa(bin), branch: REF, ...(sha ? { sha } : {}) });
+      if (put.ok) return json({ ok: true, earlyfix: true, n: out.length });
+      if (put.status === 409) continue;
+      return json({ error: `GitHub write ${put.status}` }, 502);
+    }
+    return json({ error: '경합 — 재시도 실패' }, 409);
+  }
   // 싼 선검증 = 게이트 앞(무효 요청이 GH GET 2콜을 안 태우게 — edit/conv와 대칭 · 검증 A4/A5) · 본검증은 아래 각 경로에 그대로(이중 방어)
   if (reburn && !/^[0-9]{12}-[0-9a-f]{6}$/.test(reburn)) return json({ error: '잘못된 작업 ID' }, 400);
   if (!reburn && !subs.trim() && !url && !fileB64 && !r2key) return json({ error: 'SRT/자막 · 영상 URL · 영상/오디오 파일 중 하나가 필요해' }, 400);
