@@ -2,14 +2,24 @@
 # 폰(termux)/맥 구독 수집 크론 진입점(운영자 260712 "ㄱ") — X·인스타·스레드를 수집해 main에 직푸시.
 # 기존 기사 공유 경로(termux-share·queue-handler)와 완전 분리(산출 = viewer/sns_subs_phone.json 한 파일).
 # 설치(폰에서 1회):
-#   pkg install python cronie termux-services && sv-enable crond
+#   pkg install python cronie termux-services termux-api && sv-enable crond
 #   crontab -e →  */30 * * * * bash ~/nomute-editor/scripts/phone_subs.sh >> ~/phone_subs.log 2>&1
 #   (레포 클론 경로가 다르면 위 경로만 맞춰줘 · 안드로이드 설정 > 배터리 > Termux 제한 없음)
+#   ⚠ 야간 정지 방지 3층(운영자 260727) — 아래 termux-wake-lock은 ③층이고, ①②는 폰에서 1회 손으로 해야 한다:
+#     ① Termux:API 앱 설치(F-Droid · `pkg install termux-api`는 CLI만 깔린다 = 앱이 없으면 웨이크락 무동작)
+#     ② 안드 설정 > 배터리 > Termux = '제한 없음'(도즈가 앱 자체를 죽이는 축 · 웨이크락으로 못 막는다)
+#     ③ 이 스크립트의 termux-wake-lock(아래) = CPU 재우기 방지 · 셋 다 있어야 새벽에 안 끊긴다
 # 맥 설치(1회 · 운영자 260712 "맥에서 크롬 통해 접근" — 스레드는 가정 IP가 유일 공급원):
 #   레포 클론 후  crontab -e →  */30 * * * * bash ~/nomute-editor/scripts/phone_subs.sh >> ~/phone_subs.log 2>&1
 #   (macOS 기본 python3·git으로 동작 = 추가 패키지 0 · 크롬 로그인과 무관한 게스트 HTML 파싱이라 브라우저 불요)
 set -e
 cd "$(dirname "$0")/.."
+# 절전 방지(운영자 260727 "폰 안 쓰는 시간대에도 살아있게 해야되겠는데") — 안드로이드 도즈가 crond를 재우면
+# 이 스크립트는 **아예 실행되지 않는다**(260727 판례: 00:32~02:25 2시간 공백 = 스레드·인스타가 그동안 굶음).
+# termux-wake-lock = CPU 웨이크락 획득 후 **의도적으로 해제 안 함**(다음 30분 주기까지 crond 생존 = 야간 연속성).
+#   해제하면 즉시 도즈로 복귀 = 같은 공백 재발이라 trap 해제를 안 건다. 배터리 소모 증가는 감수(운영자 선택).
+#   ⚠ 요구: `pkg install termux-api` + Termux:API 앱. 미설치·맥 = 조용히 건너뜀(fail-soft = 종전 동작 불변).
+command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 || true
 # 폰 로컬 시크릿(git 밖 · cron은 .bashrc 미로드라 여기서 source) — 재난문자 등 키 필요 소스용.
 # 1회 설정(폰):  echo "export SAFETY_KEY='발급받은_재난문자_서비스키'" > ~/.nomute_phone_env
 # 부계 세션쿠키(선택 · Meta 로그인월 우회 — 무인증은 러너·컨테이너·폰 전부 429 실측 260726):
