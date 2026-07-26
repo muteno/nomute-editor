@@ -12,6 +12,10 @@ set -e
 cd "$(dirname "$0")/.."
 # 폰 로컬 시크릿(git 밖 · cron은 .bashrc 미로드라 여기서 source) — 재난문자 등 키 필요 소스용.
 # 1회 설정(폰):  echo "export SAFETY_KEY='발급받은_재난문자_서비스키'" > ~/.nomute_phone_env
+# 부계 세션쿠키(선택 · Meta 로그인월 우회 — 무인증은 러너·컨테이너·폰 전부 429 실측 260726):
+#   echo 'export THREADS_COOKIE="sessionid=…; ds_user_id=…"' >> ~/.nomute_phone_env
+#   echo 'export INSTA_COOKIE="sessionid=…; ds_user_id=…; csrftoken=…"' >> ~/.nomute_phone_env   # 운영자 260726 · 미설정 = 게스트(종전 동작)
+#   ⚠ 반드시 부계로(자동화 감지 밴 리스크 = 본계 금지) · 이 파일은 git 밖 = 레포 커밋 0
 # 보안 가드(평의회 260723 #6) — env(쿠키·키 평문 집결)가 600 아니면 강제(termux -c / Mac -f 분기) · 전체 쿠키jar 유출 사고 재발 봉인
 [ -f "$HOME/.nomute_phone_env" ] && { [ "$(stat -c %a "$HOME/.nomute_phone_env" 2>/dev/null || stat -f %A "$HOME/.nomute_phone_env" 2>/dev/null)" = 600 ] || chmod 600 "$HOME/.nomute_phone_env"; . "$HOME/.nomute_phone_env"; }
 git fetch origin main -q 2>/dev/null || true
