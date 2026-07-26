@@ -342,16 +342,19 @@ jobs:
               x = int(round(float(x)))
               return "{}:{:02d}".format(x // 60, x % 60)
           dur = j.get("dur") or segs[-1]["e"]
+          nunc = sum(1 for s in segs if s.get("unc"))   # 뭉개짐 의심(ly_stt lp/ns 휴리스틱 · Q581) — 오인식 후보 표면화
           L = ["# 받아쓴 원문 자막 (무편집 · 빠른 처리)", "",
                "## ⓪ 개요",
                "- **모드**: 원문만 — AI 다듬기·교정 생략(패스트패스 · 받아쓴 문장 그대로 입힘).",
-               "- **메타**: {} · 조각 {}개 · 언어 {}".format(mmss(dur), len(segs), j.get("lang") or "?"), "",
-               "## ① 전체 표", "", "| # | 시간 | 자막 |", "|---|---|---|"]
+               "- **메타**: {} · 조각 {}개 · 언어 {}".format(mmss(dur), len(segs), j.get("lang") or "?")]
+          if nunc:
+              L.append("- **⚠ 뭉개짐 의심 {}조각** — 발화가 뭉개져 오인식일 수 있어. 아래 ⚠ 조각만 상세 편집기에서 고치고 '다시 입히기'하면 그 부분만 다시 구워져.".format(nunc))
+          L += ["", "## ① 전체 표", "", "| # | 시간 | 자막 |", "|---|---|---|"]
           for i, s in enumerate(segs, 1):
-              L.append("| {} | {}~{} | {} |".format(i, mmss(s["s"]), mmss(s["e"]), (s.get("t") or "").strip().replace("|", "·")))
+              L.append("| {} | {}~{} | {}{} |".format(i, mmss(s["s"]), mmss(s["e"]), (s.get("t") or "").strip().replace("|", "·"), " ⚠" if s.get("unc") else ""))
           L += ["", "---", "", "## ② 조각별 복사 블록", ""]
           for i, s in enumerate(segs, 1):
-              L += ["{}. {}~{}".format(i, mmss(s["s"]), mmss(s["e"])), "```text", (s.get("t") or "").strip(), "```", ""]
+              L += ["{}. {}~{}{}".format(i, mmss(s["s"]), mmss(s["e"]), " ⚠(뭉개짐 의심 — 들리는 대로 교정 추천)" if s.get("unc") else ""), "```text", (s.get("t") or "").strip(), "```", ""]
           open(d + "/subs.md", "w", encoding="utf-8").write("\n".join(L) + "\n")
           print("패스트패스 subs.md: {}조각".format(len(segs)))
           PY
