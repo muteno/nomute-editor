@@ -1041,7 +1041,7 @@ def run(vid_id, video, outdir):
             out_mp4 = "/tmp/ly_an.mp4"
         edit_notes.append(a_note)
     data = open(out_mp4, "rb").read()
-    ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
+    ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원", "early": "합성 전 조기 교정 반영"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
     note = " · ".join(p for p in [
         ed_note,
         "받아쓴 자막(원문)으로 합성" if (src_kind == "stt" and not no_burn) else "",   # no_burn = 전사는 컷 계산용일 뿐(자막 합성 아님)

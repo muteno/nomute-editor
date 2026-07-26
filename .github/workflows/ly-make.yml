@@ -435,6 +435,53 @@ jobs:
           [ "$ok" = 1 ] && python3 -c "import demucs.separate; print('demucs OK')" \
             || echo "::warning::Demucs 설치 실패 — 배경음 제거 스킵(원본 소리로 합성)"
 
+      # 조기 교정본 픽업(합성 전 반영 · Q586 — 운영자 "두 번 굽지 말고 합성 전에 저장") — 조기 전사(LY-EARLY) 창에서
+      #   뷰어가 /api/ly earlyfix로 main에 커밋한 subs.early.json을 번인 *직전* fetch해 subs.json 대체(변환 = '편집 자막 반영' 스텝 미러).
+      #   늦은 저장(이 스텝 통과 후 커밋) = 자연 미반영 → 종전 '다시 입히기' 폴백(유실 0 · 레이스 무해). fresh 런만(reburn은 종전 스텝이 담당).
+      - name: 조기 교정본 픽업 (합성 전 반영)
+        if: ${{ inputs.reburn != '1' && (inputs.url != '' || inputs.file != '' || inputs.r2_src != '') }}
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          [[ "$IN_ID" =~ ^[0-9]{12}-[0-9a-f]{6}$ ]] || { echo "id 형식 밖 — 스킵"; exit 0; }
+          git fetch origin main -q 2>/dev/null || { echo "::warning::fetch 실패 — 조기 교정 픽업 생략(현행 자막으로 진행)"; exit 0; }
+          if ! git show "origin/main:viewer/ly_out/${IN_ID}/subs.early.json" > /tmp/early_fix.json 2>/dev/null || [ ! -s /tmp/early_fix.json ]; then
+            echo "조기 교정 없음 — 현행 자막으로 진행"; exit 0
+          fi
+          if SUBS="$(cat /tmp/early_fix.json)" python3 - "$IN_ID" <<'PY'
+          import json, os, re, shutil, sys
+          from math import isfinite
+          vid = sys.argv[1]
+          assert re.fullmatch(r"[0-9]{12}-[0-9a-f]{6}", vid), "id 형식"   # '편집 자막 반영' 스텝 미러(검증 대칭 · 원자 교체까지 동문)
+          j = json.loads(os.environ.get("SUBS") or "")
+          segs = []
+          for s in (j.get("segs") or [])[:700]:
+              try:
+                  ss, ee = float(s["s"]), float(s["e"])
+              except Exception:
+                  continue
+              ko = str(s.get("ko") or "").strip()[:200]
+              if not (isfinite(ss) and isfinite(ee)) or ss < 0 or ee <= ss or not ko:
+                  continue
+              segs.append({"s": round(ss, 2), "e": round(ee, 2), "ko": ko})
+          assert segs, "유효 조각 0"
+          d = os.path.join("viewer", "ly_out", vid)
+          os.makedirs(d, exist_ok=True)
+          p = os.path.join(d, "subs.json")
+          orig = os.path.join(d, "subs.orig.json")
+          if os.path.isfile(p) and not os.path.isfile(orig):
+              shutil.copyfile(p, orig + ".tmp")   # 첫 반영 때 원본 의역 1회 보존(reburn 복원 소스와 동일 계약)
+              os.replace(orig + ".tmp", orig)
+          tmp = p + ".tmp"
+          with open(tmp, "w", encoding="utf-8") as f:
+              json.dump({"v": 1, "segs": segs}, f, ensure_ascii=False, separators=(",", ":"))
+          os.replace(tmp, p)
+          print("조기 교정 반영: {}조각".format(len(segs)))
+          PY
+          then echo "LY_EDITED=early" >> "$GITHUB_ENV"; cp /tmp/early_fix.json "viewer/ly_out/${IN_ID}/subs.early.json"   # 워킹트리 사본 = Commit output에 기록 동봉(반영분 감사 추적)
+          else echo "::warning::조기 교정 반영 실패 — 현행 자막으로 진행"; fi
+
       # 자막 번인(영상 합성) — 자막을 영상에 입혀 R2 업로드 → video.json(뷰어 폴링). fail-soft = 실패해도 자막 텍스트 산출은 유지(rc 0).
       #   영상 확보 실패(LY_VIDEO 빈값)여도 ly_burn이 video.json에 스킵 사유 기록 → 뷰어 헛폴링 종료.
       - name: 자막 번인 (영상 합성 → R2)
