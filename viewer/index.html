@@ -112,7 +112,8 @@
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   [hidden] { display:none !important; }   /* hidden 속성 = 무조건 승(기저 가드) — 클래스 display(flex/grid/block)가 UA hidden을 이겨 유령 노출되던 계열(#carDl·#carbar·#pushrow·ly 버튼 3종 실측 260710) 원천 종식 · 퇴장 애니는 hidden을 애니 종료 후 부여라 무영향 */
   /* 스크롤바 = 반투명 검정(중립) — 페이지·다이얼로그 공통 (운영자 260626: 초록 글래스→검정) */
-  html { background:var(--bg); color-scheme:dark; scrollbar-width:thin; scrollbar-color:rgba(0,0,0,.45) transparent; scrollbar-gutter:stable; }   /* background+color-scheme = 리로드 첫 페인트 전 흰 캔버스 차단(meta color-scheme와 한 쌍 · 운영자 260705 "강제 새로고침 때 흰색 번쩍") */   /* 스크롤바 자리 상시 예약 → 모달 overflow:hidden 토글 시 뷰포트 폭 불변 = 상단 중앙정렬 요소(배너·시계) 좌우 점프 차단(5인 배너앵글 260701 · 모바일 오버레이 스크롤바는 무영향·데스크톱 겸사) */
+  html { background:var(--bg); color-scheme:dark; scrollbar-width:none; -ms-overflow-style:none; scrollbar-color:rgba(0,0,0,.45) transparent; }   /* background+color-scheme = 리로드 첫 페인트 전 흰 캔버스 차단(meta color-scheme와 한 쌍 · 운영자 260705 "강제 새로고침 때 흰색 번쩍") */   /* 스크롤바 폭 0 = cscroll.js(문서 끝 로드) 주입값과 **첫 페인트부터 동일** — 구 `scrollbar-width:thin + scrollbar-gutter:stable`은 cscroll 실행 전까지 거터 10px을 예약했다가 주입 순간 해제돼, 중앙정렬 콘텐츠(.viewhead 등)와 우상단 픽토 클러스터(.vh-acts)가 통째로 5px(좁은 창 10px) 옆으로 튀었다(운영자 260726 "픽토그램이 한번 툭 튀었다가 위치가 바뀜" · 데스크톱 전용 재현 = 폰은 오버레이 스크롤바라 무영향 · 헤드리스 실측 htmlW 1270→1280). 오버레이 바(cscroll)는 자리를 안 차지하므로 gutter 예약 자체가 불요 = 모달 overflow:hidden 토글 점프도 원천 0(구 5인 배너앵글 260701 목적 그대로 달성) · no-JS 폴백 = 아래 noscript */
+  html::-webkit-scrollbar, body::-webkit-scrollbar { width:0; height:0; display:none; }   /* 위 scrollbar-width:none의 웹킷 짝(cscroll.js 주입 규칙 계승) — 116행 공통 10px은 모달·내부 스크롤 표면 전용으로 존치 */
   ::-webkit-scrollbar { width:10px; height:10px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:999px;
@@ -667,6 +668,7 @@
   /* 구 .trend-head(헤더 행) 좌우 패딩 삭제 — 헤더 행 폐지(지역세그 → .trail-rg 세로바·계정 → 설정 메뉴 이관 · 운영자 260713) */
   .trend-lbl { display:flex; align-items:center; gap:8px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:2px 0 9px; padding-left:var(--trend-indent); }   /* raw-ok: gap 8·margin 2/0/9 = 소머리 광학 정본(기존값) · padding-left = --trend-indent 토큰(260720 토큰화) + gap 8 = 아래 .trend-row 박스모델 미러 → 블릿↔순위 + 제목 글자시작 ↔ 쿼리 열 동일 세로선 */
   .trend-lbl::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); width:24px; text-align:center; }   /* 블릿 = 순위 24px 중앙 박스 계승(제목 시작점을 쿼리 열로 밀어냄) */
+  .trend-sec[data-sec="yt"] > .trend-lbl::before, .trend-sec[data-sec="tk"] > .trend-lbl::before { content:none; }   /* 유튜브·틱톡 대분류 '인기' = 블릿 제거(운영자 260726 "유튜브, 틱톡, 여기에는 블릿빼주고" — 단일 소분류라 리스트 표지 무의미) · content:none = 24px 박스째 소거 = 라벨이 대분류 들여쓰기 선으로 복귀 · yt·tk 키는 이 두 소머리 전용(큐레이션 유튜브·틱톡 = syt·stk 별키 = 블릿 유지 · 다중 소분류 그룹도 유지) */
   .trend-lbltx { transform:translateY(.9px); }   /* raw-ok: translateY .9 = 소분류 소머리 라벨 광학 보정(Q472 DPR3 잉크 실측 — 전 소머리 모드 −0.9 상편심 → 소머리 박스 4분할 수평선 스냅 · 페인트 레벨 = smoke_rank 정본 · 레이아웃 불변 · 글자별 잉크중심 산포 ±0.5는 서체 본질[쇼츠 등]이라 잔존 = 스모크 참고 로그) */
   .trend-sec > summary { padding-right:12px; }   /* raw-ok: 소주제 접기 토글 → 중주제 체브론 열 세로정렬(중주제 .tgroup-h padding-right 12 인셋 미러 · 운영자 260719 "상위보다 우측 → 안쪽으로") */
   /* 섹션 접기(운영자 260711 "내용 많으면 해당 건만 접기") = 네이티브 <details> + .phase 디스클로저 정본 계승(체브론 SVG mask·회전 .2s·즉시 열닫) · 접힘 = +N 개수 배지(.sc-fold 카운트 라벨 관용구) · 기억 = localStorage nm_trend_fold JSON 단일키(평의회2) */
@@ -2797,8 +2799,8 @@
   .asktawrap.clip-top .askclip.ask-cphide { transform:translateY(-50%) scale(.6); }
   .ask-erase.ask-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
   /* 반갈 입력행 = 텍스트칸(넓게) | 좁은 픽토 칸 (운영자 260702·평의회5) */
-  .ask-inrow { display:flex; gap:10px; align-items:stretch; margin-bottom:16px; }   /* margin-bottom = 아래 .askclip 하단 걸침(≈13px) 클리어(평의회 미관·계승) */
-  .ask-inrow .asktawrap { flex:1 1 0; min-width:0; }   /* 🔑 입력칸이 남은 폭을 채움(첨부 아이콘 46px 제외) — flex-grow 누락 시 textarea가 내재폭(cols)만큼만 좁게 뜨고 첨부 아이콘이 중앙에 붕 뜨던 레이아웃 깨짐 픽스(운영자 260702) */
+  .ask-inrow { display:flex; gap:10px /* raw-ok: 기존값 사본(이 편집 = margin-bottom 16→0만 · 입력칸↔첨부칸 간격 불변) */; align-items:stretch; margin-bottom:0; }   /* 하단 margin 0(구 16 = .askclip 하단 걸침 클리어) = 프리셋 스트립이 이 행 안(.ask-incol)으로 들어와 걸침 클리어를 스트립 상단 --sp-3(18)이 대신 담당 → 스트립↔전송행 gap은 .askbot margin-top 8 단독(구 collapse 16 회귀 차단 · 운영자 260726) */
+  .ask-inrow .ask-incol { flex:1 1 0; min-width:0; }   /* 🔑 입력 칸(입력칸+프리셋 스트립)이 남은 폭을 채움(첨부 아이콘 46px 제외) — 구 .asktawrap 직접 지정을 상위 세로칸으로 승격(스트립 동반 = 옵션바 좌우폭 = 입력바 좌우폭 · 운영자 260726) · flex-grow 누락 시 textarea가 내재폭(cols)만큼만 좁게 뜨고 첨부 아이콘이 중앙에 붕 뜨던 레이아웃 깨짐 픽스(운영자 260702) 계승 */
   .ask-inrow .askattach { align-self:flex-start; margin-top:4px; }   /* 첨부 아이콘 = 입력칸 상단 정렬(세로로 긴 입력칸 중앙 붕뜸 방지 · 하단 걸침 복사/붙여넣기 클립과 상·하 분리) */
   /* 첨부 썸네일 = 전용 풀폭 행(첨부 시만·3장 다 보임·평의회 레이아웃 R3) */
   .askimgs { flex:1 1 auto; min-width:0; display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0; }   /* 하단행 안에서 썸네일 = 좌측 flex-grow(spacer 역할) → [이미지][전송]이 우측·썸네일 세로중앙 정렬(운영자 260702) */
@@ -2819,10 +2821,8 @@
   .gospec .gs-tog { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; padding:0 1px /* raw-ok: 좌우 1 = thumb .gs-tog 정본 exact(탭영역 미세여백) */; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }   /* reuse-ok: 계승원 = thumb.html .gospec .gs-tog 정본 exact 이식(ON/OFF 텍스트 토글 — 운영자 260723 "프리셋부분만 그대로" 지목 레퍼런스) */
   .gospec .gs-tog:active { transform:scale(var(--press-m)); }   /* 눌림 = 동종 텍스트 토글 정본(press-m · thumb .gs-tog exact) */
   .askbot { display:flex; align-items:center; gap:12px; margin-top:8px; min-height:64px; }   /* [썸네일(flex-grow)][상태][이미지][전송] 한 행·세로중앙 정렬 · min-height=썸네일(64) 예약 → 이미지 첨부 전에도 이 높이라 첨부 시 창 안 길어짐(레이아웃 점프 0·운영자 260702) */
-  /* 이미지 생성 토글 = 「이미지」 단어(볼드 없음·네온그린 켜짐/회색 꺼짐 · .onoff 결 계승 · 운영자 260702) */
-  .genimg-tg { flex:none; margin-left:auto; cursor:pointer; font-weight:500; font-size:var(--fs-label,13px); letter-spacing:.02em; color:var(--accent); -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; padding:5px 4px; transition:color .15s, transform .1s; }   /* margin-left:auto = 썸네일 없어도 [이미지][전송] 우측 고정 */
-  .genimg-tg.off { color:var(--mut); }
-  .genimg-tg:active { transform:scale(var(--press-m,.92)); }
+  /* (구 .genimg-tg 「이미지」 건별 토글 = 260726 삭제 — 운영자 "전송 옆 이미지 용어 삭제" · AI 썸네일은 설정(#genImgOnBtn) 전역 디폴트 단층으로 복귀 = genImgEff() 가 _genImgOvr null 고정으로 설정값 계승 · 구 CSS = git 이력) */
+  .askbot #askSend { margin-left:auto; }   /* 하단행 = [썸네일(flex-grow)][전송] 2요소 — 썸네일 0장(.askimgs:empty 접힘)에도 전송 우측 고정 = 구 .genimg-tg margin-left:auto 가 맡던 역할 계승(운영자 260726) · id 스코프 = 형제 #pasteSend(재분석 보내기 = 좌측 배치) 무영향 */
   /* 🖼 첨부 픽토 = 좁은 플레이트없는 칸·픽토 중앙·누름 svg만 축소·✓N 배지는 픽토 위(운영자 260702·평의회 미관·계승) */
   .askattach { position:relative; flex:0 0 46px; display:flex; align-items:center; justify-content:center; background:transparent; border-radius:var(--r-s); color:var(--accent); cursor:pointer; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:color .15s; }
   .askattach .fic { position:relative; line-height:0; }
@@ -3325,6 +3325,7 @@ try {
   }
 } catch (e) {}
 </script>
+<noscript><style>html{scrollbar-width:thin;scrollbar-gutter:stable}html::-webkit-scrollbar,body::-webkit-scrollbar{width:10px;height:10px;display:block}</style></noscript><!-- no-JS 폴백 = 네이티브 스크롤바 복귀(구 html 규칙 원값) — JS가 있으면 cscroll.js 오버레이가 담당하므로 폭 0이 정답이고, JS가 죽은 창에서만 네이티브 바+거터 예약이 되살아난다(운영자 260726 픽토 점프 수정과 짝 · 폴백 유지 계약 = 14167행 주석) -->
 </head>
 <body data-tab="feed">
 <script>setTimeout(function(){document.body.classList.add('booted');},2500);</script><!-- 최종 안전망(독립 스크립트) — 메인 앱 스크립트가 통째로 죽어도 2.5s 후 반드시 노출(영구 블랙 차단·운영자 260626). 정상 경로는 메인의 allSettled가 ~0.3s에 먼저 노출. -->
@@ -3627,22 +3628,23 @@ try {
   <div class="askwrap">
     <div class="askhead"><b>요약 요청</b><div class="askhead-act"><button class="askx askmin" id="askMin" type="button" aria-label="최소화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 12h12"/></svg></button><button class="askx" id="askX" type="button" aria-label="닫기"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div></div>
     <div class="ask-inrow">
-      <div class="asktawrap">
-        <textarea id="askText" class="askta" rows="5" placeholder="" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
-        <span class="askph" id="askPh">내용을 입력해주세요</span>
-        <button class="sbtn askclip ask-cp" id="askCopy" type="button" aria-label="복사"></button>
-        <button class="sbtn askclip ask-pp" id="askClip" type="button" aria-label="붙여넣기"></button>
-        <button class="sbtn askclip ask-erase" id="askErase" type="button" aria-label="입력 지우기"></button>
+      <div class="ask-incol"><!-- 입력칸 + 프리셋 스트립 = 한 세로 칸(첨부 픽토 46px 칸 바깥) → 스트립 좌우폭이 입력칸과 자동 동일(운영자 260726 "옵션바는 텍스트 입력바 좌우 너비까지만") -->
+        <div class="asktawrap">
+          <textarea id="askText" class="askta" rows="5" placeholder="" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+          <span class="askph" id="askPh">내용을 입력해주세요</span>
+          <button class="sbtn askclip ask-cp" id="askCopy" type="button" aria-label="복사"></button>
+          <button class="sbtn askclip ask-pp" id="askClip" type="button" aria-label="붙여넣기"></button>
+          <button class="sbtn askclip ask-erase" id="askErase" type="button" aria-label="입력 지우기"></button>
+        </div>
+        <!-- 수집 프리셋 스트립(운영자 260723 · 260726 개정) — ⚠배치: 입력칸 아래·전송행 위 = 입력칸 좌우폭까지만(첨부 픽토 칸 비침범) · 3토글 = 라벨 자체가 토글(선택 = 점등 accent / 미선택 = 소등 mut · ON/OFF 문자 표기 폐지 · 운영자 260726) · 값 = askSend preset → asks/*.json → ask.sh 프롬프트 -->
+        <div class="optstrip" id="askStrip">
+          <div class="gospec" id="askSpec"><span class="gs-v on gs-tog" id="apH24" role="button" tabindex="0" aria-pressed="true" title="탭=켜기/끄기 — 켜짐=게시 24시간 내 기사만 수집">24시간 내</span> <span class="gs-sep">|</span> <span class="gs-v on gs-tog" id="apFp" role="button" tabindex="0" aria-pressed="true" title="탭=켜기/끄기 — 켜짐=외신을 먼저·주로 탐색(영문 키워드 검색으로 시작)">외신 기사 위주</span> <span class="gs-sep">|</span> <span class="gs-v on gs-tog" id="apMj" role="button" tabindex="0" aria-pressed="true" title="탭=켜기/끄기 — 켜짐=주요 언론 다수 매체 수집 → 기승전결 보도형 종합자료(≈2천자)를 요약 소스로">주요 언론 기반</span></div>
+        </div>
       </div>
       <label class="askattach" id="askAttach" title="이미지 첨부" aria-label="이미지 첨부"><span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></span><span class="askattach-badge" id="askAttachBadge" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span id="askAttachCnt"></span></span><input id="askFile" type="file" accept="image/*" multiple hidden></label>
     </div>
-    <!-- 수집 프리셋 스트립(운영자 260723) — ⚠배치: 입력칸 아래·전송행 위 전폭(thumb 미리보기↔발사행 사이 스트립 구성 그대로) · 3토글 기본 ON·탭=OFF · 값 = askSend preset → asks/*.json → ask.sh 프롬프트 -->
-    <div class="optstrip" id="askStrip">
-      <div class="gospec" id="askSpec"><span class="gs-lbl">24시간 이내</span>: <span class="gs-v on gs-tog" id="apH24" role="button" tabindex="0" title="탭=ON/OFF — ON=게시 24시간 이내 기사만 수집">ON</span> <span class="gs-sep">|</span> <span class="gs-lbl">외신 기사</span>: <span class="gs-v on gs-tog" id="apFp" role="button" tabindex="0" title="탭=ON/OFF — ON=외신을 먼저·주로 탐색(영문 키워드 검색으로 시작)">ON</span> <span class="gs-sep">|</span> <span class="gs-lbl">주요 언론 기반</span>: <span class="gs-v on gs-tog" id="apMj" role="button" tabindex="0" title="탭=ON/OFF — ON=주요 언론 다수 매체 수집 → 기승전결 보도형 종합자료(≈2천자)를 요약 소스로">ON</span></div>
-    </div>
     <div class="askbot">
       <div class="askimgs" id="askImgs"></div>
-      <span class="genimg-tg" id="genImgTg" role="button" tabindex="0" aria-pressed="true" title="AI 썸네일 — 이번 요약만 켜기/끄기 (기본값 = 설정 · 검색 이미지는 항상 가져옴)">이미지</span>
       <button class="asksend" id="askSend" type="button"><span>전송</span></button>
     </div>
   </div>
@@ -7338,7 +7340,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '1affc08 · 260726_1711';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'e0d5f73 · 260726_1742';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -10481,7 +10483,7 @@ function renderSnsTrends() {
   const ggUrl = g => 'https://www.google.com/search?q=' + encodeURIComponent(g.query || '');   // 구글 실검 클릭 = 항상 구글 검색창(검색어 입력된 결과) — 기사 대신 검색(운영자 260724·260725 "구글에 검색어를 입력한 창으로" 재확인 · 표시=ko번역이나 URL은 원문 query 유지) · 정본 1곳 = 실시간 TOP(ggMap)·실검 섹션(gtSec) 공용
   const ggMap = g => ({ url: ggUrl(g), t: g.ko || g.query || '', rv: tfmt(g.traffic), th: g.picture || '', ago: relT(g), tn: parseInt(String(g.traffic || '').replace(/[^0-9]/g, ''), 10) || 0 });   // 표시=ko(번역) 우선(운영자 260719 "검색어도 번역") · 클릭 URL은 원문 query 유지   // 구글 = 검색어·검색량 tfmt 만단위(운영자 260712)·수집기 picture 커버(핫링크 · onerror 로고 폴백)·시간 = first_seen 도장
   const tkMap = v => ({ url: v.url || '', t: v.ko || v.title || ('@' + (v.account || '')), rv: v.views ? vfmt(v.views) : '', th: v.cover || '', v: v.views, pt: 1, ago: relT(v) });   // 틱톡 = published = 수집기 create_time(260712) · 구 데이터 = first_seen 폴백 · ko = 외국어 제목 한글 자동번역(tiktok_tr.py · 운영자 260719 "원어 표기 안해도됨") 우선, 없으면 원어 title
-  const lane = (plat, mono, arr, n, f, scN, off) => { const s = arr.slice(off || 0, n), L = Math.min(scN || n, arr.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const ah = ageVerH(x); if (isFinite(ah) && ah >= TOP_MAX_H) return; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 슬라이스 길이 = 종전) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지 → 통합 TOP 10 불변, 플랫폼 필터·스택만 더 깊이(운영자 260717 "구글 11,12 쭉")
+  const lane = (plat, mono, arr, n, f, scN, off) => { const el = arr.filter(x => { const ah = ageVerH(x); return !(isFinite(ah) && ah >= TOP_MAX_H); }), s = el.slice(off || 0, n), L = Math.min(scN || n, el.length); s.forEach((x, r0) => { const r = (off || 0) + r0; const it = f(x); if (!it.url || seenU.has(it.url)) return; seenU.add(it.url); pool.push({ plat, mono, sc: 1 - r / L, ht: Math.log10(1 + (it.v || 0)), _fresh: isFreshItem(x), x, ...it }); }); };   // scN = 혼합 TOP 점수 분모 고정(미지정 = 통과분 길이) · off = 시작 랭크(확장 레인이 코어 뒤에 이어붙되 sc는 실순위 유지) — 점수 정규화 = 기존 캡 유지(운영자 260717 "구글 11,12 쭉") · 24h 입장컷 = slice **앞** 선필터(운영자 260726 "실시간 top10 4개까지밖에 안받아와져" 해소 — 구 순서 = 소스 상위 n 절단 뒤 컷이라 상위권이 늙은 소스[유튜브 차트 top5·틱톡 KR 전원 24h+ 실측 260726]는 레인 통째 0명 입장 = TOP 굶주림 → 컷 통과분에서 상위 n 선발 = 신선 후보 항상 입장 · sc 순위 = 통과분 기준 자연 압축)
   // 코어 레인(통합 TOP 급원 = 플랫폼당 원래 캡) — 호출 순서 = URL dedup 우선순위: 경쟁 항목(sc>0)이 확장분보다 먼저 URL 선점(평의회 260717 크로스레인 dedup 반례 봉인 = 통합 TOP 구조적 불변)
   lane('구글', 'gg', gt, 10, ggMap, 10);   // 구글 코어 1~10(#2454 "10으로 맞춰줘" 캡10 계승 · scN=10 = 혼합 TOP 점수 분모 → 통합 TOP 10 현행 불변)
   lane('유튜브', 'yt', yt, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
@@ -10497,6 +10499,7 @@ function renderSnsTrends() {
   pool.sort((a, b2) => (effF(b2) - effF(a)) || ((a._pen || 0) - (b2._pen || 0)) || (b2.sc - a.sc) || (b2.ht - a.ht));   // 신선분 우선(운영자 260718 "신선 없으면 차순위 top 위로") → 강등 티어(_pen = 전 정상분 아래 · 강등끼리는 소스순위 유지) → 소스순위(sc) → 조회수(ht) · 24h+ = 입장 컷(TOP_MAX_H) · 24h 내 스테일 = 침몰만(컷 안에서 빈칸 채움 유지)
   const top = [], pcap = {};
   for (const it of pool) { if ((pcap[it.plat] || 0) >= 4) continue; pcap[it.plat] = (pcap[it.plat] || 0) + 1; top.push(it); if (top.length >= 10) break; }
+  if (top.length < 10) for (const it of pool) { if (top.length >= 10) break; if (!top.includes(it)) top.push(it); }   // 2차 채움 = 캡 해제(운영자 260726 "실시간 top10 4개" 해소 — 24h컷 생존 플랫폼이 사실상 구글뿐인 국면이면 캡4에서 TOP이 4개로 굶주림) · 1차 캡4 = 독식 방지 원취지 그대로, 부족분만 풀 정렬 순서대로 추가 · 풀<10 = 있는 만큼(종전 조용한 공백)
   // ── 플랫폼 그룹 본문(대분류 = 플랫폼 · 중분류 = 소머리 details 그대로 = 접기 키·기억 보존) — 구 소스칩(.trend-srcbar)·vis() 폐지 = 점프는 좌측 레일 이관 ──
   let gGG = '', gYT = '', gTK = '', gCUR = '';   // gCUR = 큐레이션 게시물 대분류(운영자 260723 — 구독 전 플랫폼 집약 · 구 gIG/gX/gTH 흡수)
   // (구글 실검 클릭 URL = 위 ggUrl 정본 1곳 — 실시간 TOP(ggMap)과 공용 · 재선언 금지)
@@ -10513,7 +10516,7 @@ function renderSnsTrends() {
   const gtSec = gt.length ? sec('gt', '구글 실시간 검색어', rtBase, Math.min(gt.length, 10), gtR.map(z => brow(z[1], ggUrl(z[0]), gTraf(z[0].traffic), _cnHotGt(z[0].query) ? 'cnhot' : undefined)).join('')) : '';   // 검색량 재표시(운영자 260723 — 260718 미표기 되돌림 · 우측 = gTraf 만단위∥콤마 · 시그널·X는 원천 볼륨 없어 순위만)
   // (구 mkyt·ytZ·mktk·tkZ = tpg 레일 매핑/인터리브 잔재(호출 0) → 260720 평의회 zig·tpc와 동반 삭제 · ytnL만 생존)
   const ytnL = fill10(freshFirst(ytn), ytnRaw).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
-  const ytGrid = fill10(freshFirst(yt), ytRaw).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = freshFirst 신선 먼저(운영자 260718 "다른 화면에도") + 후순위 채움 10개 보장(260721)
+  const ytGrid = bySort(cutH(ytRaw, 24), 'views').slice(0, 10).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = 24h 이내만 + 조회수 내림차순(운영자 260726 "24시간 지난 것은 안나오게 · 조회수가 기준이면 동물이 1위여야" — 구 표시순 = mostPopular 차트 순서 그대로[상승속도·최신성 가중]라 58만이 352만 위에 서던 것 교정) · 컷 경계 = TOP 입장컷 TOP_MAX_H(24h · 260721) 동축 · 미상(NaN) = fail-soft 통과(cutH 공통) · 구 freshFirst(12h 부양)·fill10(24h 밖 스테일 채움 10개 보장 260721) = 조회수 순서 왜곡·24h 컷 위반이라 이 섹션 한정 폐지 → 부족분 = 조용한 공백(kobL "10개 안 나와도 괜찮아" 선례)
   if (ytGrid.length) gYT += sec('yt', '인기', rtBase, ytGrid.length, '<div class="trend-grid wd">' + ytGrid.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
   // 뉴스·쇼츠·AI 영상 = 큐레이션(검색·카테고리 파생 = 유튜브 mostPopular 전체 인기 차트 아님) → 큐레이션 게시물(gCUR)로 이관(운영자 260724 "유튜브 기본 인기 게시물 말고 큐레이션된 부분[뉴스·쇼츠·AI] 모두 큐레이션 영역으로"). 뉴스 = mostPopular category25 뉴스·정치 필터(온-미션 카테고리 선정) · 쇼츠·AI = InnerTube 키워드 검색 파생. 인기(mostPopular 전체)만 유튜브 대분류(gYT) 잔존. gCUR 순서 = 뉴스·쇼츠·AI(키워드/카테고리) → 유튜브·틱톡·인스타·X·스레드(구독)
   if (ytnL.length) gCUR += sec('ytn', '뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
@@ -11967,10 +11970,10 @@ let askImages = [];   // 압축 이미지 {dataUrl, kb}
 const ASK_MAX = 3;   // 첨부 최대 3장(운영자 260629 · 한 줄 유지)
 let _askResolveId = null;   // 실패 픽 복구로 열렸으면 그 candId — 전송 성공 시 복구표시
 let _askRetryOf = null;     // ✨요약요청 실패 재시도로 열렸으면 옛 실패 base id — 전송 성공 시 submit 이 옛 asks/failed 삭제(중복 잔존 방지 · 평의회10 Q1·Q3)
-// ── 수집 프리셋(운영자 260723 "항상 기본 프리셋") — 24시간 이내 h24 · 외신 기사 fp · 주요 언론 기반 mj · 기본 전부 ON·탭=OFF · 창 열 때마다 기본 ON 재계승(_genImgOvr 건별 리셋 문법) · 값 = api/submit preset → asks/*.json → ask.sh 프롬프트 배선 ──
+// ── 수집 프리셋(운영자 260723 "항상 기본 프리셋") — 24시간 내 h24 · 외신 기사 위주 fp · 주요 언론 기반 mj · 기본 전부 점등·탭=소등 · 창 열 때마다 기본 점등 재계승(_genImgOvr 건별 리셋 문법) · 값 = api/submit preset → asks/*.json → ask.sh 프롬프트 배선 ──
 let askPreset = { h24: 1, fp: 1, mj: 1 };
 const ASK_PRESET_IDS = { h24: 'apH24', fp: 'apFp', mj: 'apMj' };
-function paintAskPreset() { for (const k in ASK_PRESET_IDS) { const el = $('#' + ASK_PRESET_IDS[k]); if (el) { el.classList.toggle('on', !!askPreset[k]); el.textContent = askPreset[k] ? 'ON' : 'OFF'; } } }
+function paintAskPreset() { for (const k in ASK_PRESET_IDS) { const el = $('#' + ASK_PRESET_IDS[k]); if (el) { el.classList.toggle('on', !!askPreset[k]); el.setAttribute('aria-pressed', askPreset[k] ? 'true' : 'false'); } } }   // 표기 = 라벨 상시 노출 + 점등(.on = accent)/소등(mut)만 — ON/OFF 문자 교체 폐지(운영자 260726 "on, off로 구분하지 않음") · 상태 전달은 aria-pressed 가 담당(role=button 짝)
 for (const k in ASK_PRESET_IDS) { const el = $('#' + ASK_PRESET_IDS[k]); if (el) { const tg = () => { askPreset[k] = askPreset[k] ? 0 : 1; paintAskPreset(); }; el.addEventListener('click', tg); el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tg(); } }); } }   // 토글 바인딩 = thumb 스트립 bind 정본 문법(클릭 + Enter/Space)
 function openAsk(opts) {
   opts = opts || {};
@@ -11978,7 +11981,7 @@ function openAsk(opts) {
   _askResolveId = opts.resolveId || null;
   _askRetryOf = opts.retryOf || null;   // 재시도 재제출이면 옛 실패 id(전송 성공 시 submit 이 옛 asks/failed 삭제) · 일반 열기면 null
   _genImgOvr = null; paintGenImgTg();   // AI 썸네일 = 창 열 때마다 설정 디폴트 계승(건별 오버라이드 리셋 · 운영자 260709) — 호출 시점엔 선언 완료(이벤트 경유)라 TDZ 무해
-  askPreset = { h24: 1, fp: 1, mj: 1 }; paintAskPreset();   // 수집 프리셋 = 창 열 때마다 기본 ON 재계승(건별 오버라이드 리셋 · 운영자 260723 "항상 기본 프리셋 · 불 들어와 있고 끄면 꺼지게")
+  askPreset = { h24: 1, fp: 1, mj: 1 }; paintAskPreset();   // 수집 프리셋 = 창 열 때마다 기본 점등 재계승(건별 오버라이드 리셋 · 운영자 260723 "항상 기본 프리셋 · 불 들어와 있고 끄면 꺼지게")
   if (opts.prefill != null) $('#askText').value = opts.prefill;   // 프리필 = askRetry 가 복원한 전문 전체(실패 재시도) 또는 제목·URL
   updateAskClip(); updateAskPh();
   openTool(null, '요약 요청', ASK_TABS, 'ask');   // 도구 셸(운영자 260712 — 이미지·영상과 동일 UIUX) = 탭 {요약 요청(기본)·미디어 요약} · 히스토리 칸 = 도구 모달이 관리(옛 openComposeDlg(askdlg) 대체 · 전 진입로[라디얼·실패 재시도·프리필] 공통)
@@ -12548,7 +12551,7 @@ $('#askFile').addEventListener('change', e => {
 });
 $('#askAttach').addEventListener('click', e => { if (askImages.length >= ASK_MAX) { e.preventDefault(); shakeAskAttach(); } });   // 3장인데 🖼 또 누르면 파일창 안 열고 빨강+흔들림(운영자 260702) · 교체(programmatic input.click)는 라벨 아니라 무영향
 // AI 썸네일 생성 = 2층 스위치(운영자 260709 재구성): ① 설정(프로필 메뉴 #genImgOnBtn) = 전역 디폴트·고유값(localStorage)·PIN 게이트(잠금 lkVerifyOldPin 계승 — PIN 미설정이면 통과)
-//   ② 요약창 '이미지' 토글(#genImgTg) = 그 건 한정 오버라이드(PIN 안 물음·설정값 안 건드림·창 열 때/전송 후 설정 디폴트로 리셋) · 검색 og:image는 어느 쪽이든 무관 = 항상 수집(구 260702 단층 토글 대체)
+//   ② (폐지 260726) 요약창 '이미지' 건별 토글(#genImgTg) = 운영자 "전송 옆 이미지 용어 삭제"로 UI 제거 → _genImgOvr 는 null 고정 = 설정 디폴트 단층으로 복귀. 오버라이드 배선(paintGenImgTg·flip)은 도먼트 보존(전부 `if (el)` 가드 = 무해 · 복원 = 스팬 1줄 되살리기) · 검색 og:image는 어느 쪽이든 무관 = 항상 수집
 const GENIMG_KEY = 'nomute_genimg';
 let _genImgOvr = null;   // null = 설정 디폴트 계승 · true/false = 이번 건 오버라이드(openAsk·전송 성공 시 리셋)
 function genImgOn() { return NM_SET.genImgOn !== false; }   // 설정(전역 디폴트) — 서버 SSOT(NM_SET · 요구2 · GENIMG_KEY는 레거시 마이그레이션 소스). 요약창 토글은 안 씀
@@ -14164,7 +14167,7 @@ try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 't
 })();
 </script>
 
-<script src="cscroll.js"></script><!-- 메인(트렌드 포함 전 탭) 스크롤바 = 제작·합성(thumb)·ly·k 오버레이 표준 이식(운영자 260713 "다 같게" — 위 네이티브 규칙(99~105행)은 no-JS 폴백으로 유지 · 색 변경 = viewer/cscroll.js · scrollbar-gutter는 폴백 경로 전용이 됨 = 오버레이는 자리 안 차지해 모달 토글 점프 원천 0) -->
+<script src="cscroll.js"></script><!-- 메인(트렌드 포함 전 탭) 스크롤바 = 제작·합성(thumb)·ly·k 오버레이 표준 이식(운영자 260713 "다 같게" · 색 변경 = viewer/cscroll.js) · ⚠ 이 스크립트가 주입하는 html{scrollbar-width:none}은 **인라인 CSS 115행이 이미 같은 값으로 선언**(첫 페인트 = 최종 상태 일치 = 레이아웃 점프 0 · 운영자 260726) → 여기 주입은 타 페이지 공용 모듈의 자기완결분이라 중복 무해. 구조상 이 태그는 문서 끝 로드라 실행이 늦다 = CSS를 여기에 의존하면 안 됨(그게 픽토 점프의 원인이었다) · no-JS 폴백 = head 끝 noscript -->
 <script>if (window.cscrollAttach) cscrollAttach(document.querySelector('.geni-body'));   // 프롬프팅(이미지 생성) 바디 = 요소 부착 모드 — 내부 컨테이너 스크롤이라 window 바가 못 잡음 · 팝업(#genidlg)↔이식 탭(#geniHost) DOM 이동 동행(운영자 260713)</script>
 </body>
 </html>
