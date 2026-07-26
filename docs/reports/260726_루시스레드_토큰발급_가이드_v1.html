@@ -1,0 +1,229 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>루시 스레드 토큰 발급 — 원탭 가이드</title>
+<style>
+  :root{
+    --bg:#121212; --pan:rgba(255,255,255,.035); --pan2:rgba(255,255,255,.055);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+    --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --lemon:#FFE13D; --red:#e23b2a;
+    --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
+  }
+  *{box-sizing:border-box;-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6;font-size:15px;letter-spacing:-.01em;padding:0 0 64px}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px}
+  header{padding:26px 16px 18px;border-bottom:1px solid var(--line);text-align:center}
+  h1{margin:0 0 6px;font-size:21px;font-weight:800;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13px;margin:0}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill);
+    background:rgba(0,238,210,.12);color:var(--accent);border:1px solid rgba(0,238,210,.3);margin-bottom:12px}
+  h2{font-size:16px;font-weight:800;margin:30px 0 12px;display:flex;align-items:center;gap:8px}
+  .steps{counter-reset:st;display:grid;gap:14px;margin:14px 0}
+  .step{position:relative;border:1px solid var(--line);border-radius:var(--r-l);background:var(--pan);
+    padding:16px 16px 16px 52px;overflow:hidden}
+  .step::before{counter-increment:st;content:counter(st);position:absolute;left:14px;top:15px;
+    width:26px;height:26px;border-radius:var(--r-pill);background:var(--accent);color:#08110f;
+    font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .step h3{margin:0 0 6px;font-size:15px;font-weight:800}
+  .step p{margin:6px 0;font-size:13.5px;color:#d7e4da}
+  .step .mut{color:var(--mut);font-size:12.5px}
+  .btnlink{display:inline-flex;align-items:center;gap:7px;margin:9px 0 2px;padding:10px 14px;
+    background:var(--pan2);border:1px solid var(--line);border-radius:var(--r-m);color:var(--accent);
+    font-weight:700;font-size:13.5px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+  .btnlink:active{transform:scale(.97)}
+  .btnlink svg{width:14px;height:14px;flex:0 0 auto}
+  .copy{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;
+    padding:10px 12px;background:#0c0c0c;border:1px solid var(--line);border-radius:var(--r-s);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .15s}
+  .copy:active{transform:scale(.99)} .copy.done{border-color:var(--accent)}
+  .copy code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--lemon);
+    word-break:break-all;line-height:1.4}
+  .copy .lbl{font-size:11px;color:var(--mut);font-weight:700;flex:0 0 auto;display:flex;align-items:center;gap:6px}
+  .copy .lbl b{color:var(--accent);font-size:10px;letter-spacing:.02em}
+  .warn{border:1px solid rgba(255,225,61,.4);background:rgba(255,225,61,.06);border-radius:var(--r-m);
+    padding:13px 15px;margin:16px 0;font-size:13.5px}
+  .warn b{color:var(--lemon)}
+  .danger{border:1px solid rgba(226,59,42,.45);background:rgba(226,59,42,.07);border-radius:var(--r-m);
+    padding:13px 15px;margin:16px 0;font-size:13.5px}
+  .danger b{color:var(--red)}
+  .verify{border:1px solid rgba(0,238,210,.28);background:rgba(0,238,210,.05);border-radius:var(--r-l);
+    padding:16px;margin:18px 0}
+  .verify h3{margin:0 0 8px;font-size:14.5px;font-weight:800;color:var(--accent)}
+  ul{margin:8px 0;padding-left:20px} li{margin:5px 0;font-size:13.5px;color:#d7e4da}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  th{background:var(--pan2);font-weight:800;color:var(--mut);font-size:12px}
+  code.inl{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:#0c0c0c;padding:2px 6px;border-radius:5px;color:var(--lemon)}
+  footer{text-align:center;color:var(--mut);font-size:12px;padding:24px 16px 0;border-top:1px solid var(--line);margin-top:32px}
+</style>
+
+<header>
+  <div class="tag">루시 · 스레드 자동운영</div>
+  <h1>부계 로그인 → 토큰 받기</h1>
+  <p class="sub">순서대로만 따라가면 된다 · 약 15분 · 무료 · 앱 심사 없음</p>
+</header>
+
+<div class="wrap">
+
+<div class="danger">
+  <b>⚠ 시작 전에 — 로그인 계정이 제일 헷갈리는 지점이다</b>
+  <p style="margin:8px 0 0">이 작업엔 <b>계정이 2개</b> 나온다. 섞이면 전부 실패한다.</p>
+  <table>
+    <tr><th>어디서</th><th>어느 계정으로</th></tr>
+    <tr><td>Meta 개발자 콘솔<br>(앱·권한·토큰)</td><td><b>본계</b> — 기존 <code class="inl">nomute-insights</code> 앱 주인</td></tr>
+    <tr><td>테스터 초대 <b>수락</b><br>(스레드 앱/웹)</td><td><b>부계(루시)</b></td></tr>
+  </table>
+  <p style="margin:8px 0 0" class="mut">즉 앱은 본계가 만들고, 루시 계정은 "이 앱이 내 계정 써도 돼"라고 <b>수락만</b> 한다.</p>
+</div>
+
+<h2>준비물 (먼저 끝내둘 것)</h2>
+<ul>
+  <li><b>루시 인스타 부계</b> — 프로페셔널(크리에이터 or 비즈니스) 전환 필요</li>
+  <li><b>그 계정으로 스레드 가입 완료</b> — 스레드 계정은 API로 못 만든다, 앱에서 수동 가입만</li>
+</ul>
+
+<h2>1단계 — 앱에 Threads 켜기 <span class="mut" style="font-weight:400;font-size:12px">(본계)</span></h2>
+<div class="steps">
+
+  <div class="step">
+    <h3>개발자 콘솔 열기</h3>
+    <p>브라우저에서 <b>본계로 로그인된 상태</b>인지 먼저 확인. 다른 계정이면 로그아웃하고 본계로 다시.</p>
+    <a class="btnlink" href="https://developers.facebook.com/apps" target="_blank" rel="noopener">내 앱 목록 열기 ↗</a>
+    <p class="mut">목록에 <code class="inl">nomute-insights</code>가 보여야 정상.</p>
+  </div>
+
+  <div class="step">
+    <h3>앱 선택 → 유스케이스 추가</h3>
+    <p><code class="inl">nomute-insights</code> 클릭 → 좌측 메뉴에서 <b>사용 사례(Use cases)</b> → <b>사용 사례 추가</b>.</p>
+    <div class="copy" data-c="1522670392977528">
+      <span class="lbl">앱 ID <b>복사</b></span><code>1522670392977528</code>
+    </div>
+    <p class="mut">목록에서 <b>Threads API 액세스</b>를 고른다.</p>
+    <div class="warn">
+      <b>목록에 Threads가 안 보이면?</b>
+      <p style="margin:6px 0 0">이 앱은 인스타/페북용으로 만들어져서 Threads 추가가 막혀 있을 수 있다. 그러면 <b>앱을 새로 하나 만들면 된다</b> — 아래 3단계부터 절차는 완전히 동일하다. 기존 앱은 그대로 두고 건드리지 마라(채널요약 수집이 돌고 있다).</p>
+      <a class="btnlink" href="https://developers.facebook.com/apps/create/" target="_blank" rel="noopener">새 앱 만들기 ↗</a>
+      <p class="mut" style="margin:4px 0 0">유형은 <b>비즈니스</b>, 이름은 자유(예: <code class="inl">lucy-threads</code>).</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <h3>권한 4개 체크</h3>
+    <p>Threads 설정 화면에서 아래 4개를 전부 켠다. <b>하나라도 빠지면 그 기능이 통째로 죽는다.</b></p>
+    <div class="copy" data-c="threads_basic"><span class="lbl">1 <b>복사</b></span><code>threads_basic</code></div>
+    <div class="copy" data-c="threads_content_publish"><span class="lbl">2 글쓰기 <b>복사</b></span><code>threads_content_publish</code></div>
+    <div class="copy" data-c="threads_read_replies"><span class="lbl">3 답글읽기 <b>복사</b></span><code>threads_read_replies</code></div>
+    <div class="copy" data-c="threads_manage_replies"><span class="lbl">4 답글쓰기 <b>복사</b></span><code>threads_manage_replies</code></div>
+    <p class="mut">2번이 없으면 글을 못 올리고, 3·4번이 없으면 자동 댓글이 안 된다.</p>
+  </div>
+</div>
+
+<h2>2단계 — 루시 계정을 테스터로 <span class="mut" style="font-weight:400;font-size:12px">(본계 → 부계)</span></h2>
+<div class="steps">
+
+  <div class="step">
+    <h3>초대 보내기 <span class="mut">(본계)</span></h3>
+    <p>앱 대시보드 → <b>앱 역할(App roles)</b> → <b>역할</b> → <b>사람 추가</b> → 역할 = <b>Threads 테스터</b> → 루시 계정 <b>사용자명</b> 입력.</p>
+    <a class="btnlink" href="https://developers.facebook.com/apps/1522670392977528/roles/roles/" target="_blank" rel="noopener">역할 화면 바로가기 ↗</a>
+    <p class="mut">새 앱을 만들었다면 위 링크의 숫자를 새 앱 ID로 바꿔서 들어간다.</p>
+  </div>
+
+  <div class="step">
+    <h3>수락하기 <span class="mut">(부계 — 여기서 계정 바꾼다)</span></h3>
+    <p>루시 계정으로 <b>스레드 앱</b> 로그인 → <b>설정 → 계정 → 웹사이트 권한 → 초대</b>에서 수락.</p>
+    <a class="btnlink" href="https://www.threads.com/settings/account" target="_blank" rel="noopener">스레드 계정 설정 ↗</a>
+    <p class="mut">인스타 쪽 경로로도 뜬다:</p>
+    <a class="btnlink" href="https://www.instagram.com/accounts/manage_access/" target="_blank" rel="noopener">인스타 테스터 초대함 ↗</a>
+    <div class="danger">
+      <b>여기서 제일 많이 막힌다</b>
+      <p style="margin:6px 0 0"><b>「개발자 역할 권한 부족」</b>이 뜨면 — 브라우저가 <b>본계로 로그인된 상태</b>인 거다. 스레드/인스타에서 <b>루시 계정으로 전환</b>하고 다시 시도. (실측된 함정 · 인스타 세팅 문서 §8-1)</p>
+    </div>
+  </div>
+</div>
+
+<h2>3단계 — 토큰 받기 <span class="mut" style="font-weight:400;font-size:12px">(본계)</span></h2>
+<div class="steps">
+  <div class="step">
+    <h3>토큰 생성</h3>
+    <p>개발자 콘솔로 돌아와 Threads 설정 화면 → <b>액세스 토큰 생성(Generate access token)</b> → 팝업에서 <b>루시 계정</b> 선택 → 권한 동의.</p>
+    <div class="danger">
+      <b>순서 중요 — 수락 먼저, 토큰은 그 다음</b>
+      <p style="margin:6px 0 0">2단계 수락 <b>전에</b> 만든 토큰은 옛 권한이라 안 붙는다. 이미 만들었으면 <b>버리고 다시</b> 만들어라.</p>
+    </div>
+    <p>화면에 뜨는 <b>긴 문자열</b>이 토큰이다. 이게 <b>60일짜리</b>다.</p>
+  </div>
+
+  <div class="step">
+    <h3>토큰이 맞는지 1초 검산</h3>
+    <p>이런 모양이어야 한다 — <code class="inl">TH</code>로 시작하고 아주 길다.</p>
+    <p class="mut">짧거나 <code class="inl">EAA</code>로 시작하면 그건 페이스북 토큰이지 스레드 토큰이 아니다. 다시 받아라.</p>
+  </div>
+</div>
+
+<h2>4단계 — GitHub에 넣기</h2>
+<div class="steps">
+  <div class="step">
+    <h3>토큰 등록 (Secret)</h3>
+    <a class="btnlink" href="https://github.com/muteno/nomute-editor/settings/secrets/actions" target="_blank" rel="noopener">시크릿 등록 화면 ↗</a>
+    <p><b>New repository secret</b> → 이름은 아래 그대로, 값은 3단계 토큰.</p>
+    <div class="copy" data-c="THREADS_ACCESS_TOKEN"><span class="lbl">이름 <b>복사</b></span><code>THREADS_ACCESS_TOKEN</code></div>
+    <div class="danger">
+      <b>토큰은 여기 말고 어디에도 붙이지 마라</b>
+      <p style="margin:6px 0 0">채팅·메모·커밋 전부 금지. 이 칸은 한 번 저장하면 아무도 다시 못 본다 — 그게 정상이다.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <h3>전원 켜기 (Variable)</h3>
+    <a class="btnlink" href="https://github.com/muteno/nomute-editor/settings/variables/actions" target="_blank" rel="noopener">변수 등록 화면 ↗</a>
+    <p><b>New repository variable</b> → 이름 <code class="inl">LUCY_ON</code> / 값 <code class="inl">1</code>.</p>
+    <div class="copy" data-c="LUCY_ON"><span class="lbl">이름 <b>복사</b></span><code>LUCY_ON</code></div>
+    <p class="mut">끄고 싶으면 언제든 값만 <code class="inl">0</code>으로. 그 순간부터 안 돈다.</p>
+  </div>
+
+  <div class="step">
+    <h3>루시 카드 넣기</h3>
+    <p>YETA 루시 카드 원문을 <code class="inl">persona/lucy_threads.md</code>에 통째로 붙인다. <b>이게 없으면 러너가 말을 안 한다</b>(말투를 지어내면 루시가 아니니까 일부러 막아뒀다).</p>
+  </div>
+</div>
+
+<div class="verify">
+  <h3>✅ 첫 가동 — 반드시 이 순서로</h3>
+  <ul>
+    <li><b>① 드라이런</b> — Actions → <code class="inl">lucy-threads</code> → Run workflow → <b>dry_run 체크</b> → 실행.<br>실제로 안 올리고 "이런 글이 나갔을 것"만 로그로 보여준다.</li>
+    <li><b>② 말투 확인</b> — 로그 읽어보고 어색하면 카드 고치고 ① 반복. <b>계정 위험 0.</b></li>
+    <li><b>③ 실전 1회</b> — dry_run 체크 풀고 slot = <code class="inl">post</code>로 한 번만.</li>
+    <li><b>④ 자동 전환</b> — 잘 나가면 그냥 두면 된다. 밤 23:00 / 새벽 01:30에 알아서 돈다.</li>
+  </ul>
+  <a class="btnlink" href="https://github.com/muteno/nomute-editor/actions/workflows/lucy-threads.yml" target="_blank" rel="noopener">워크플로 실행 화면 ↗</a>
+</div>
+
+<div class="warn">
+  <b>60일마다 토큰 갈아야 한다</b>
+  <p style="margin:6px 0 0">스레드 토큰은 60일짜리다. 만료되면 Actions가 빨간 실패로 <code class="inl">토큰 만료·무효(code 190)</code>를 띄운다. 그때 3단계만 다시 하고 시크릿 <b>값만 교체</b>하면 된다(2분).</p>
+</div>
+
+<footer>
+  루시 스레드 자동운영 · 260726 · 상세 = <code class="inl">docs/스레드_직결_세팅.md</code>
+</footer>
+</div>
+
+<script>
+// 복사 필드 — 탭하면 클립보드에 들어가고 테두리가 잠깐 켜진다(폰 원탭 관용구).
+document.querySelectorAll('.copy').forEach(function(el){
+  el.addEventListener('click', function(){
+    var v = el.getAttribute('data-c') || '';
+    var done = function(){ el.classList.add('done'); setTimeout(function(){ el.classList.remove('done'); }, 900); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(v).then(done, done);
+    } else {                     // 구형 웹뷰 폴백
+      var t = document.createElement('textarea');
+      t.value = v; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(t); done();
+    }
+  });
+});
+</script>

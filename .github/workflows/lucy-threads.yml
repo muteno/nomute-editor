@@ -31,6 +31,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - name: Install Claude Code CLI (LUCY_ON일 때만 — sns-trends.yml 관용구)
+        # ⚠ 이 스텝이 없으면 lucy_threads.sh의 `claude` 호출이 rc=127로 죽는다(sns-trends 1차 실측 260712 동일 함정).
+        if: ${{ (vars.LUCY_ON || '0') == '1' }}
+        run: npm install -g @anthropic-ai/claude-code
       - name: 루시 운영(4중 게이트 · 미충족 = claude 호출 전 exit 0 = 쿼터 0)
         env:
           LUCY_ON: ${{ vars.LUCY_ON || '0' }}                     # ← 설정 on/off(기본 OFF · §📰-e 카나리아 관용구 = 기본 OFF 머지 → dispatch 실측 → 승격)
@@ -39,11 +43,12 @@ jobs:
           LUCY_DRY_RUN: ${{ inputs.dry_run == true && '1' || '0' }}
           LUCY_REPLY_CAP: ${{ vars.LUCY_REPLY_CAP || '8' }}       # 1회 실행당 답글 상한(스팸 판정 방어)
           # 모델 = shared/model_env.sh PIPE_MODEL(claude-opus-5) · effort high 고정(운영자 260726) — 여기 미지정 = SSOT 계승
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CLAUDE_CODE_OAUTH_TOKEN_2: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_2 }}
-          CLAUDE_CODE_OAUTH_TOKEN_3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_3 }}
-          CLAUDE_CODE_OAUTH_TOKEN_4: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_4 }}
+          # OAuth 4계정 폴오버 체인 = sns-trends.yml 관용구 **그대로**(MUTENO→NOMUTEFB→EMS1130G→MUTENONA).
+          # ⚠ 이름을 임의로 바꾸면(_2/_3/_4 등) claude_failover가 못 찾아 쿼터 소진 시 그냥 죽는다.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
         run: bash .github/scripts/lucy_threads.sh
       - name: 커밋(재답글 차단 상태 = 영속 필수 · git_land = 최신 main 재기점 재적층)
         # threads_state.json = **스팸 방지의 핵심**. 이 커밋이 빠지면 러너가 매 실행 기억을 잃고
