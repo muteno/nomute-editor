@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 트래킹 카드 캡션 + 동일인 병합 힌트 — opus 5 · effort max (운영자 260710 승인 = 트래킹 LLM 0콜 기틀 해제 · 분석 보조 1콜)
+# 트래킹 카드 캡션 + 동일인 병합 힌트 — opus 5 · effort high (운영자 260710 승인 = 트래킹 LLM 0콜 기틀 해제 · 분석 보조 1콜)
 #   tracks.json + crops/*.jpg → claude -p(--safe-mode·Read만)가 {카드별 한 줄 묘사, *확실한* 동일인 pid 쌍} JSON 출력
 #   → tracks.json에 people[].cap · subjects[].cap · meta.same_hint 병합(additive — 렌더·모자이크/핀셋/키잉 소비 계약 불변).
 # 불변(치명 주의):

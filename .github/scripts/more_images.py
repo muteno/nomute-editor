@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""뷰어 '+N장 더' (검색 이미지 카러셀) — 기사 요약·시사점을 읽고 Claude(Opus 5·effort max)가
+"""뷰어 '+N장 더' (검색 이미지 카러셀) — 기사 요약·시사점을 읽고 Claude(Opus 5·effort high)가
 **오버레이 뒤 후킹용 카드뉴스 배경**으로 가장 효과적인 관련 뉴스이미지 소스를 *기존과 중복 없이*
 더 제안 → og:image 추출(thumb_gen 재사용·R2 재호스팅) → cards/<stem>/thumbs/search.json **앞쪽**에 append.
 
@@ -72,7 +72,7 @@ prompt = """다음은 한 뉴스기사의 큐레이션 요약·시사점이다. 
     head=head, body=body, excl=("\n".join(sorted(exclude_srcs)[:30]) or "(없음)"), want=WANT)
 
 print("Claude({}) 관련 뉴스이미지 소스 검색 — '{}'".format(MODEL, head[:40]), flush=True)
-_args = ["claude", "-p", "--model", MODEL, "--effort", "max",   # --bare 제거(OAuth 즉사 방지 · 260718) — 계정 로테이션은 폴오버 SSOT가 담당
+_args = ["claude", "-p", "--model", MODEL, "--effort", "high",   # --bare 제거(OAuth 즉사 방지 · 260718) — 계정 로테이션은 폴오버 SSOT가 담당
          "--allowedTools", "WebFetch,WebSearch",
          "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task",
          "--max-turns", "40"]
