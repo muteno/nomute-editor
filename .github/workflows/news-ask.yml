@@ -229,6 +229,7 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+      actions: write          # 검색이미지 미달 보충 = moreimg workflow_dispatch(GITHUB_TOKEN은 dispatch류만 재트리거 허용 축 · 운영자 260726)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -269,6 +270,24 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((2**i))
           done
           echo "::warning::썸네일 push 실패"
+      # 검색이미지 7장 미달·원문 url 부재 건 = moreimg 자동 보충(운영자 260726 "원래 7개" + "검색으로 원문 URL 공유에 링크").
+      # 대상 = thumb_gen.py가 RUNNER_TEMP/thumb_topup.txt 마커로 지목(이번 런 신규 기록분만). 커밋·push *뒤* 발사 =
+      # moreimg 체크아웃이 이번 search.json 포함(즉발이면 add/add 경합). 실패 = 경고만(수동 '+N장 더' 폴백 불변) · 중단 = 이 스텝 제거.
+      - name: 검색이미지 미달 자동 보충 (moreimg 디스패치)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          F="${RUNNER_TEMP:-/tmp}/thumb_topup.txt"
+          [ -s "$F" ] || { echo "보충 대상 없음"; exit 0; }
+          sort -u "$F" | while read -r stem want; do
+            [ -n "$stem" ] || continue
+            curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/moreimg.yml/dispatches" \
+              -d "{\"ref\":\"main\",\"inputs\":{\"stem\":\"${stem}\",\"want\":\"${want}\"}}" \
+              && echo "↻ ${stem} 보충 발사(want=${want})" || echo "::warning::${stem} 보충 발사 실패(수동 '+N장 더' 폴백)"
+          done
       - name: 큐레이션 즉시 전달 (Cloudflare 재빌드)
         if: always()
         env:

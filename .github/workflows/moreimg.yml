@@ -1,9 +1,12 @@
 name: moreimg
 
-# 뷰어 '검색 이미지 +N장 더'(functions/api/moreimg.js 디스패치) → Claude(Opus 5·effort max)가
+# 뷰어 '검색 이미지 +N장 더'(functions/api/moreimg.js 디스패치) + thumb_gen 7장 미달 자동 보충(ask/analyze
+# 후속 스텝 디스패치 · 운영자 260726 "원래 7개") → Claude(Opus 5·effort max)가
 # 기사 요약·시사점을 읽고 오버레이 뒤 후킹용 카드뉴스 배경에 효과적인 관련 뉴스이미지 소스를
 # *기존과 중복없이* 더 찾아(WebSearch) og:image 추출(thumb_gen 재사용·R2) →
 # cards/<stem>/thumbs/search.json 앞쪽 append. Cloudflare가 push마다 build-viewer 재실행 → 뷰어 반영.
+# + 원문 url:"" 기사면 같은 콜에 원문 URL 찾기 임무를 얹어 queue/<stem>.md url 백필(운영자 260726
+#   "봇차단 당해도 url까진 받을 수 있다 — 공유에 링크") → 뷰어 요약 헤더 원문(#src)·공유 활성.
 # 카드 제미나이 0 불변(GEMINI env 부재). CSE 死 대체 — 위키미디어보다 관련도 높은 뉴스소스 직접 검색.
 on:
   workflow_dispatch:
@@ -77,13 +80,13 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add cards/ 2>/dev/null || true
+          git add cards/ queue/ 2>/dev/null || true   # queue/ = 원문 URL 백필분(more_images.py · url:"" 기사 한정)
           if git diff --cached --quiet; then
-            echo "변경 없음(새 이미지 0)"; exit 0
+            echo "변경 없음(새 이미지 0 · URL 백필 0)"; exit 0
           fi
           for i in 1 2 3 4; do
             git pull --rebase -X ours origin main 2>/dev/null || true
-            git commit -m "moreimg: 검색이미지 추가(Claude 관련소스)" 2>/dev/null || true
+            git commit -m "moreimg: 검색이미지 추가·원문URL 백필(Claude)" 2>/dev/null || true
             git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
           echo "::warning::push 실패(재시도 소진)"
