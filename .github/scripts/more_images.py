@@ -96,7 +96,7 @@ print("Claude({}) 관련 뉴스이미지 소스 검색 — '{}'".format(MODEL, h
 _args = ["claude", "-p", "--model", MODEL, "--effort", "high",   # --bare 제거(OAuth 즉사 방지 · 260718) — 계정 로테이션은 폴오버 SSOT가 담당
          "--allowedTools", "WebFetch,WebSearch",
          "--disallowedTools", "Write,Edit,NotebookEdit,Bash,Task",
-         "--max-turns", "40"]
+         "--max-turns", "60"]   # 40→60(260726 Q583): 이미지 N개 접근검증 + 원문 URL 임무 겸무 후 40턴 소진 정황(3.5분 rc=1·부분산출 실측) — ask.sh 50턴 형제축 상회분 = 이중 임무 헤드룸
 # 폴오버 SSOT 경유 — 주계정 쿼터(주간한도) 시 백업 4계정 자동 전환(운영자 260718 "전사 적용" · 예외도 내부 처리 = fail-soft)
 res, rc, err = run_claude(_args, prompt, timeout=900, source="moreimg")
 out = (res.stdout if res else "") or ""
