@@ -839,6 +839,8 @@
   .ch-st b { font-size:calc(var(--fs-display)*1.3); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; }   /* 값 = 타일 지배 위계 · ×1.3 = 운영자 260721 "변경 이후 기준 130%"(토큰 파생 calc — raw 신설 0 · 이하 타일 내 전 글자 동일 배율) */
   .ch-st b .ch-per { font-size:70%; }   /* '/일' 일평균 단위 접미 = 주값의 70% 축소(운영자 260722 "/일은 강조될만한 내용이 아니라서") · 게시 '1.8개 /일'에서 앞 띄어쓰기 1로 주값과 분리 · 색·굵기는 주값 상속(크기만 톤다운) */
   .ch-st-tall { grid-row:span 2; }   /* 팔로워·조회수 = 아래 빈 칸 합친 세로 2칸(운영자 260721 재편 — 삭제된 게시·프로필 방문 자리 흡수) */
+  .ch-st-wide { grid-column:span 2; }   /* 도시·국가 = 가로 2칸(운영자 260726 Meta 인구통계 스샷 반영 — 4열 3행에 2타일이 행을 꽉 채워 우측 구멍 0 · 세로 2칸 .ch-st-tall 미러 문법) */
+  /* 폰(2열)에선 같은 span 2가 곧 통짜 한 행 = 규칙 하나로 PC·폰 모두 '행 꽉 참'(구멍 0). 1칸씩도 실측해 봤으나 협폭에서 1fr 트랙이 '대한민국 89.9%' 라벨에 눌려 막대가 점으로 뭉개짐(가독 열위) → 통짜 채택. */
   .ch-st.ch-st-tall .ch-strow { flex:none; }   /* 값 = 상단 고정 · 특이도 승격(운영자 260722 "도달 박스 줄간격 표준 매치" — 뒤 선언 .ch-st .ch-strow flex:1에 밀려 값·대비행이 아래로 처지던 것 교정 · 잔여 세로 = 차트 단독 흡수) */
   .ch-tchart { flex:1; width:100%; min-height:0; margin-top:2px; }   /* raw-ok: margin 2 = 하단행-차트 미세 리듬 · 차트 = 타일 잔여 전부 */
   .ch-tchart .ch-tc { width:100%; height:100%; display:block; }   /* preserveAspectRatio none = 도형 채움(chChart 문법) */
@@ -11575,16 +11577,24 @@ function renderChan() {
     let aseg = [];
     if (Array.isArray(AUD.age_full) && AUD.age_full.length) aseg = AUD.age_full.slice(0, 4).map(x => ({ lb: x.k, pct: +x.pct }));
     else { const am = {}; ((AUD.age_gender_top) || []).forEach(x => { const m = /^(.+?)·[MFU]$/.exec(String(x.k || '')); if (m) am[m[1]] = (am[m[1]] || 0) + (+x.pct || 0); }); aseg = Object.keys(am).sort((a, b) => am[b] - am[a]).slice(0, 4).map(k => ({ lb: k, pct: am[k] })); }
-    if (!gseg.length && !aseg.length) return '';
+    // 지역 = 상위 도시·국가 top4(운영자 260726 Meta 인구통계 스샷 "이거 반영" — 수집은 260713부터 살아 있었고 화면에만 없던 축) — 원천 = audience_sample.city_top/country_top(퍼센트 분모 = 팔로워 총수 = Meta 화면 정합) · 막대 문법 = 아래 연령 abars 100% 계승 · 부재(fb·구 데이터) = 빈 칸(조용한 공백)
+    const KCITY = { Seoul: '서울', Busan: '부산', Incheon: '인천', Daegu: '대구', Daejeon: '대전', Gwangju: '광주', Ulsan: '울산', Sejong: '세종', Suwon: '수원', Yongin: '용인', Hwaseong: '화성', Goyang: '고양', Changwon: '창원', Seongnam: '성남', Cheongju: '청주', Cheonan: '천안', Pyeongtaek: '평택', Namyangju: '남양주', Bucheon: '부천', Paju: '파주', Ansan: '안산', Anyang: '안양', Gimhae: '김해', Pohang: '포항', Jeonju: '전주', Jeju: '제주', Gimpo: '김포', Siheung: '시흥' };   // 도시 = IG API가 영문만 준다(Meta 화면도 화성은 영문 노출) → 한글 표기 대조표 · 미등재 도시 = 영문 원문 폴백(지어내기 0)
+    const cityLab = k => { const c = String(k || '').split(',')[0].trim(); return KCITY[c] || c; };
+    const ctryLab = k => { const c = String(k || '').trim(); try { return (new Intl.DisplayNames(['ko'], { type: 'region' })).of(c) || c; } catch { return c; } };   // 국가 = ISO 코드 → 한글(브라우저 네이티브 Intl · 대조표 창작 0) · 미지원·비정상 코드 = 코드 그대로
+    const cseg = (Array.isArray(AUD.city_top) ? AUD.city_top : []).slice(0, 4).map(x => ({ lb: cityLab(x.k), pct: +x.pct }));
+    const nseg = (Array.isArray(AUD.country_top) ? AUD.country_top : []).slice(0, 4).map(x => ({ lb: ctryLab(x.k), pct: +x.pct }));
+    if (!gseg.length && !aseg.length && !cseg.length && !nseg.length) return '';
     // 성별 = 100% 누적 원형(도넛) 복원(운영자 260722 "누적 원형 차트로 다시 · 100% 원형차트" — 세로 막대·목표/마지노선 틱·각주 폐지) · 남+여 = 정규화 100%라 링 완전 충전 · 렌더 = 앱 인라인 SVG 문법(REELGLYPH 계승) · 여(전체 링) 밑층 + 남(호) 상층 = 이음새 0
     const gdonut = segs => { const R = 15.5, C = 2 * Math.PI * R; let off = 0; const rot = segs.length === 2 ? -90 + 225 - (segs[0].pct * 3.6 + segs[1].pct * 1.8) : -90; return `<span class="demo-donut" aria-hidden="true"><svg viewBox="0 0 46 46"><g transform="rotate(${rot.toFixed(1)} 23 23)">` + (segs.length === 2 ? `<circle cx="23" cy="23" r="${R}" fill="none" stroke="${segs[1].col}" stroke-width="7"/>` : '') + segs.slice(0, segs.length === 2 ? 1 : segs.length).map(s2 => { const len = C * s2.pct / 100, o = off; off += len; return `<circle cx="23" cy="23" r="${R}" fill="none" stroke="${s2.col}" stroke-width="7" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-o).toFixed(2)}"/>`; }).join('') + `</g></svg></span>`; };   // rot = 여(레몬) 세그 중심을 좌하단 225°(시계방향 · 12시 기준)에 고정(운영자 260722 "차트 좌하단에 라임레몬") — 남 시작각 = 225 − (남×3.6 + 여×1.8) 데이터 연동이라 비율 변해도 좌하단 유지 · 2세그 외 = 종전 12시 시작
     const glist = segs => `<span class="demo-glist">` + segs.map(s2 => `<b style="color:${s2.col}">${esc(s2.lb)} ${Math.round(s2.pct * 10) / 10}%</b>`).join('') + '</span>';   // 목표·마지노선 각주 = 삭제(운영자 260722 "목표라는 말은 삭제")
     // 연령 가로 막대(.ch-bar 부품 계승 · 막대 좌·글자 우 · 높이 중앙정렬 · 운영자 260722) — 막대 길이 = 최댓값 대비 스케일(주제 막대 문법)
-    const amx = Math.max(1, ...aseg.map(s => s.pct));
-    const abars = segs => `<span class="demo-bars">` + segs.map((s2, i) => `<span class="demo-brow"><span class="ch-bar demo-bar"><i style="width:${Math.max(6, Math.round(s2.pct / amx * 100))}%${i < 2 ? '' : ';background:var(--fg)'}"></i></span><span class="demo-blab demo-bage${i < 2 ? ' hi' : ''}">${esc(s2.lb)}</span><span class="demo-blab demo-bpct${i < 2 ? ' hi' : ''}">${Math.round(s2.pct)}%</span></span>`).join('') + '</span>';   // top2 = 강조색 터쿼이즈 그라데(운영자 260722 "TOP 2 강조색") · 3·4위 = 흰색 --fg 막대+글자("아래 그냥 흰색") · 나이/% = 분리 2열 우측정렬(운영자 260722 "개별 배치 표문법" — 한자리 % 정렬 깨짐 해소 · 그리드 열 공유)
+    const abars = (segs, dec) => { const amx = Math.max(1, ...segs.map(s => s.pct)), pf = v => dec ? Math.round(v * 10) / 10 : Math.round(v); return `<span class="demo-bars">` + segs.map((s2, i) => `<span class="demo-brow"><span class="ch-bar demo-bar"><i style="width:${Math.max(6, Math.round(s2.pct / amx * 100))}%${i < 2 ? '' : ';background:var(--fg)'}"></i></span><span class="demo-blab demo-bage${i < 2 ? ' hi' : ''}">${esc(s2.lb)}</span><span class="demo-blab demo-bpct${i < 2 ? ' hi' : ''}">${pf(s2.pct)}%</span></span>`).join('') + '</span>'; };   // dec = 소수 1자리(도시·국가 = 0.8%가 정수 반올림에 뭉개짐 · Meta 화면도 19.5/5.4/5 표기 = 트레일링 0 자동 탈락) · 연령 = 종전 정수 그대로   // top2 = 강조색 터쿼이즈 그라데(운영자 260722 "TOP 2 강조색") · 3·4위 = 흰색 --fg 막대+글자("아래 그냥 흰색") · 나이/% = 분리 2열 우측정렬(운영자 260722 "개별 배치 표문법" — 한자리 % 정렬 깨짐 해소 · 그리드 열 공유)
     const gT = `<div class="ch-st ch-demo ch-demo-g"><span class="ch-k">성별</span><div class="demo-gwrap">${gdonut(gseg)}${glist(gseg)}</div></div>`;
     const aT = `<div class="ch-st ch-demo ch-demo-a"><span class="ch-k">연령</span>${abars(aseg)}</div>`;
-    return ax === 'g' ? (gseg.length ? gT : '') : ax === 'a' ? (aseg.length ? aT : '') : gT + aT;   // ax 분리 호출(운영자 260721 재배치 · 무인자 = 양쪽)
+    const cT = `<div class="ch-st ch-demo ch-demo-c ch-st-wide"><span class="ch-k">도시</span>${abars(cseg, 1)}</div>`;   // 도시·국가 = 가로 2칸 타일(3행 · 운영자 260726) · 셸·라벨·막대 = 연령 타일 그대로
+    const nT = `<div class="ch-st ch-demo ch-demo-n ch-st-wide"><span class="ch-k">국가</span>${abars(nseg, 1)}</div>`;
+    return ax === 'g' ? (gseg.length ? gT : '') : ax === 'a' ? (aseg.length ? aT : '')
+      : ax === 'c' ? (cseg.length ? cT : '') : ax === 'n' ? (nseg.length ? nT : '') : gT + aT;   // ax 분리 호출(운영자 260721 재배치 · 무인자 = 성별+연령 양쪽 = fb 분기 무접촉)
   };
   // ── 최상위 단위 = 메뉴3(SNS) tgroup 원문 계승(운영자 260713 "AI 요약 디자인 계승해 메뉴4 재구성 · 내용은 그대로") : 접이 글래스 카드 + 글래스 필 헤더(순번 원형 배지·라임 체브론 촤르륵) · 접힘 기억 = nm_chan_gfold(nm_trend_gfold 미러) · 구 ch-card 3장+맨몸 섹션 → 단위 승격(구 소머리 .ch-lbl = 단위 헤더로 · 타일·차트·행 내용 = 종전 그대로) ──
   let CGF = {}; try { CGF = JSON.parse(localStorage.getItem('nm_chan_gfold') || '{}') || {}; } catch { CGF = {}; }
@@ -11632,7 +11642,7 @@ function renderChan() {
         return _fT('팔로워', flwVal(), flwSub(), _fC('f')) +   // 팔로워 차트 = 일일 순증감(총수 차이 = 언팔 반영 · 0 기준선 아래 = 감소일 danger · 운영자 260722 · 구 follows[신규유입 항상≥0] 대체 — IG follows_and_unfollows 빈반환이라 총수 diff만이 감소원)
         (w2 => w2 && w2.cur != null ? _fT('조회수', vf(w2.cur), rateSub('views', '/일'), _fC('v')) : _fT('조회수', vu(a.views, '회'), rateSub('views', '/일'), _fC('v')))(winSum('views')) +   // 조회수 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 "조회수 7일 대비 +-00만/일")
         sumTile('도달', 'reach', '계정', vu(a.reach, '계정')) + _dg +
-        postsTile() + _da; })()) + '</div>', pfSeg);   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
+        postsTile() + _da + demoTile('c') + demoTile('n'); })()) + '</div>', pfSeg);   // 3행 = 도시·국가(가로 2칸씩 = 행 꽉 참 · 데이터 부재 = 행 자체 미생성 조용한 공백 · 운영자 260726)   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
     const events = (d.daily_meta || {}).events || [];

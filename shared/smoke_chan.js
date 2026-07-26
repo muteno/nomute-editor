@@ -10,7 +10,7 @@
 //   48px · 세로중앙 ΔCy≤0.5 · 타이틀 침범 0 · 접힘에도 노출 · top = 실측 예약 208·잔여 가로 스크롤).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 코어 14시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티 · C12 = Q360(구 Q355 표기) 실시간 트렌드 반갈 · C13 = Q399 프로필 타일 재편[tall 미니차트] · C14 = 260722 tpost '내역 ▶' 헤더 이관):
+// 무엇을 검증하나 — 코어 14시나리오(유래 = 260721 Q337 기간 토글 헤더 우측 이관의 회귀 기계화 · C7 = Q340~342 우변 계약 · C8·C9 = Q345~350 채널 유닛 잉크선·협폭 열 계약 · C10 = Q354(구 Q351 표기) 트위터 좌우 순위 행 패리티 · C11 = Q352 금융 2x2 좌우 소머리 패리티 · C12 = Q360(구 Q355 표기) 실시간 트렌드 반갈 · C13 = Q399 프로필 타일 재편[tall 미니차트] + Q559 지역 wide 2장[260726] · C14 = 260722 tpost '내역 ▶' 헤더 이관):
 //   C2 모바일 412 채널요약 4유닛 = abspos·우측갭 48·ΔCy≤0.5·타이틀 침범 0
 //   → C3 접힘 노출 계약(daily 접어도 세그 가시 · 펼치면 원위치 복원 = summary 밖 형제 설계)
 //   → C4 PC 900 채널요약 전 세그 유닛 = 동일 계약(회귀 0)
@@ -267,19 +267,27 @@ const SEL = {
     ok('C12 PC 1280 실시간 트렌드 반갈(X|블스 소머리 y 패리티·상단 구분선·행 ≤10)', c12.skip ? true : (c12.isRt && Math.abs(c12.d) <= 0.5 && (!c12.hasPrev || c12.div >= 0.5) && c12.nX <= 10 && c12.nB <= 10), c12.skip ? 'skip(블스 트렌드 결측 — 크론 수집 후 활성)' : `Δ${c12.d} · 구분선 ${c12.div}px(앞형제 ${c12.hasPrev ? '有' : '無=면제'}) · ${c12.nX}|${c12.nB}행`);   // 구분선 = 앞 형제 있을 때만 요구(260721 운영자 "블스는 실검만" — 블스 게시물 열 소멸로 반갈이 X그룹 첫 요소가 되는 상태 합법화 · #667 CSS = 형제 사슬 구분선 설계라 첫 요소 무선 = 정상[그룹 헤더 밑 이중선 방지] · X 큐레이션 신선분 도착 = 앞 형제 생김 → 구분선 요구 자동 복귀)
 
     // C13 프로필 타일 재편 정합(운영자 260721 Q399 · 평의회3 R3 게이트 공백 봉합) — 6타일(팔로워·조회수 tall+미니차트 · 도달·성별·게시·연령) · PC 4열 · tall = 단일 행높이 초과(span 2 실효) · 데이터 결측(성별·연령 등) = skip 정직 표기
+    //   + 260726 확장: 도시·국가 = 가로 2칸(.ch-st-wide) 3행 — 있으면 8타일, 지역 데이터 결측(fb·구 데이터)이면 종전 6타일(둘 다 계약 · 자동 분기).
+    //   wide 계약 = {폭 > 단칸×1.5 · 두 장 같은 행(y Δ≤0.5)·등고(Δ≤0.5) · 좌끝~우끝 = 그리드 폭(±1) = 행 꽉 참 = 우측 구멍 0}.
     await pg.evaluate(() => { try { showTab('chan'); } catch (e) {} });
     await pg.waitForTimeout(700);
     const c13 = await pg.evaluate(() => {
       const grid = document.querySelector('#cg-prof .ch-stats'); if (!grid) return { skip: true };
       const tiles = Array.from(grid.querySelectorAll('.ch-st'));
       const talls = tiles.filter(t => t.classList.contains('ch-st-tall'));
-      const singles = tiles.filter(t => !t.classList.contains('ch-st-tall'));
+      const wides = tiles.filter(t => t.classList.contains('ch-st-wide'));
+      const cells = tiles.filter(t => !t.classList.contains('ch-st-tall') && !t.classList.contains('ch-st-wide'));   // 단칸(도달·성별·게시·연령) = tall·wide 배율의 기준자
       const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
-      const maxSingleH = singles.length ? Math.max(...singles.map(t => t.getBoundingClientRect().height)) : 0;
+      const maxSingleH = cells.length ? Math.max(...cells.map(t => t.getBoundingClientRect().height)) : 0;
+      const cellW = cells.length ? Math.max(...cells.map(t => t.getBoundingClientRect().width)) : 0;
       const tallOk = talls.length === 2 && talls.every(t => t.querySelector('.ch-tc') && (!maxSingleH || t.getBoundingClientRect().height > maxSingleH * 1.5));
-      return { skip: false, n: tiles.length, talls: talls.length, cols, tallOk, labs: tiles.map(t => (t.querySelector('.ch-k') || {}).textContent || '?') };
+      const wr = wides.map(t => t.getBoundingClientRect()), gw = grid.getBoundingClientRect();
+      const wideOk = !wides.length || (wides.length === 2 && (!cellW || wr.every(r => r.width > cellW * 1.5))
+        && Math.abs(wr[0].y - wr[1].y) <= 0.5 && Math.abs(wr[0].height - wr[1].height) <= 0.5
+        && Math.abs((wr[1].right - wr[0].left) - gw.width) <= 1);   // 두 장이 그리드 폭을 꽉 채움 = 3행 우측 구멍 0
+      return { skip: false, n: tiles.length, talls: talls.length, wides: wides.length, cols, tallOk, wideOk, labs: tiles.map(t => (t.querySelector('.ch-k') || {}).textContent || '?') };
     });
-    ok('C13 PC 1280 프로필 타일 재편(6타일 · tall 2장+미니차트 · 4열 · span2 실효)', c13.skip ? true : (c13.n === 6 && c13.cols === 4 && c13.tallOk), c13.skip ? 'skip(프로필 유닛 결측)' : `${c13.n}타일·tall${c13.talls}·${c13.cols}열·[${c13.labs.join(',')}]`);
+    ok('C13 PC 1280 프로필 타일 재편(6타일+지역 2 = 8 · tall 2장+미니차트 · wide 2장 행 꽉 참 · 4열)', c13.skip ? true : (c13.n === 6 + c13.wides && c13.cols === 4 && c13.tallOk && c13.wideOk), c13.skip ? 'skip(프로필 유닛 결측)' : `${c13.n}타일·tall${c13.talls}·wide${c13.wides}·${c13.cols}열·[${c13.labs.join(',')}]`);
     ok('C1 페이지 에러 0', errs.length === 0, errs.length ? errs.slice(0, 3).join(' · ') : '콘솔 pageerror 0건');
   } catch (e) {
     R.push({ n: 'ABORT', c: false, d: String(e.message).slice(0, 200) });
