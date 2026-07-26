@@ -41,6 +41,7 @@ CAND = os.path.join(ROOT, "viewer", "candidates.json")
 SNS = os.path.join(ROOT, "viewer", "sns_trends.json")
 PHONE = os.path.join(ROOT, "viewer", "sns_subs_phone.json")   # ④-b 폰 하트비트(평의회 260723 #5c) — threads/insta/reddit/재난 유일 공급원(termux/맥 홈IP 크론)
 TBS = os.path.join(ROOT, "viewer", "tbs_data.json")   # ④-c 키워드 알림 국내축(21개 커뮤 베스트글) — 260726 러너 이관분
+KWOBS = os.path.join(ROOT, "scraper", "obs", "kw_last.json")   # ④-d 키워드 웹푸시 관측(kw_watch 산출) — 발송 성패가 러너 로그에만 남던 사각
 BRIEF = os.path.join(ROOT, "viewer", "chan_brief.json")
 STATE = os.path.join(ROOT, "scraper", "obs", "watchdog_state.json")
 SUBS_LEDGER = os.path.join(ROOT, "push", "subscriptions.json")   # 발송 사전 체크용(인덱스 의존 금지)
@@ -50,6 +51,7 @@ FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
 PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "90"))   # 90분 = **러너 채택 게이트와 동일**(sns_trends.py `PHONE_FRESH_MIN` 기본 90 · 1623행) — 이 선을 넘는 순간 러너가 폰분을 안 받아 스레드·인스타·레딧·재난이 실제로 굶는다. 구 180분은 그 사이 **90~180분을 데이터는 굶는데 경보는 침묵**하는 공백으로 남겼다(260727 실측 판례: 폰 111분 정지 → 스레드·인스타 stale만 뜨고 진범인 폰 정지는 무경보). 구 사유였던 "야간 소강 마진"은 이 지표엔 부적합 = 폰 크론은 뉴스 유입량과 무관하게 30분 고정 주기라 소강 개념이 없다(scripts/phone_subs.sh `*/30`). 전송 지연 마진은 워치독 주기(30분)가 이미 흡수. ⚠ 채택 게이트를 옮기면 이 값도 같이 옮길 것.
+KWPUSH_MIN = float(os.environ.get("WD_KWPUSH_MIN", "180"))   # 3h = kw_watch 편승 주기(sns-trends 30분) 6연속 결번 — 레인이 통째로 죽으면 알림도 같이 죽는데 아무 표시가 없다
 KWSRC_MIN = float(os.environ.get("WD_KWSRC_MIN", "360"))   # 6h = tbs 30분 주기(sns-trends 편승) 12연속 실패 — 커뮤 베스트글은 심야에도 갱신되나 백스톱 드롭(schedule best-effort 1~4h) 오탐 마진 확보
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
@@ -173,6 +175,27 @@ def check_kwsrc():
     return ("키워드 알림 감시망 이상 — " + " · ".join(bad) + " → 커뮤니티에 키워드가 떠도 알림이 안 뜬다") if bad else None
 
 
+def check_kwpush():
+    """④-d 키워드 웹푸시 — 발송 실패(fail>0)와 레인 정체(관측 나이)를 감지.
+    왜 필요한가: 발송은 push_send.py가 조용히 실패할 수 있고(VAPID 미설정·구독 만료·pywebpush 미설치),
+    그러면 '키워드가 떴는데 폰에 아무것도 안 오는' 상태가 무증상으로 이어진다 — 인앱 토스트만 남아 결국
+    앱을 켜야 아는 옛 구조로 되돌아간다. check_smoke 관용구(rc/나이 2축) 그대로 미러."""
+    try:
+        d = json.load(open(KWOBS, encoding="utf-8"))
+        if int(d.get("fail") or 0) > 0:
+            return (f"키워드 웹푸시 실패 {d.get('fail')}건 — {str(d.get('err') or '')[:120]} "
+                    f"(VAPID 시크릿·구독자·pywebpush 확인 · 인앱 토스트만 남은 상태)")
+        age = _age_min(d.get("updated"))
+        if age is None or age > KWPUSH_MIN:
+            return (f"키워드 웹푸시 레인 정체 {_dur_ko(age) if age is not None else '나이 불명'}"
+                    f"(임계 {_dur_ko(KWPUSH_MIN)}) — sns-trends 편승 스텝 확인")
+    except FileNotFoundError:
+        return None   # 첫 런 전 = 경보 아님(check_smoke·check_sns 관용구)
+    except Exception as e:  # noqa: BLE001
+        return f"kw_last.json 파싱 실패({type(e).__name__})"
+    return None
+
+
 def check_brief():
     """⑤ 채널 브리프 정체 — 산출물(chan_brief.json) 나이로 감지(260717 사고: 브리프 스텝이 잡 timeout
     하드킬(cancelled)로 3연속 죽으면 실패 알림도 fail-soft 로그도 안 남아 이틀 정지를 운영자 눈이 발견).
@@ -239,7 +262,7 @@ def _save_state(st):
 
 
 def main():
-    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "kwsrc": check_kwsrc,
+    checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "kwsrc": check_kwsrc, "kwpush": check_kwpush,
               "ledger": check_ledgers, "brief": check_brief, "smoke": check_smoke}
     alerts = {}
     for key, fn in checks.items():
@@ -277,6 +300,12 @@ def main():
                 subprocess.run([sys.executable, mp, "set", "wd-kwsrc", alerts["kwsrc"], "warn", "sns-recollect"], timeout=30)
             else:
                 subprocess.run([sys.executable, mp, "clear", "wd-kwsrc"], timeout=30)
+            # 키워드 웹푸시 실패·정체(운영자 260727 한 수 채택) — 조치 = sns-recollect(그 레인에 편승한 스텝이라 재발사로 회복 시도 가능).
+            #   단일 슬롯(wd-kwpush) 덮어쓰기 = 스팸 0(wd-sns 관용구 계승).
+            if alerts.get("kwpush"):
+                subprocess.run([sys.executable, mp, "set", "wd-kwpush", alerts["kwpush"], "warn", "sns-recollect"], timeout=30)
+            else:
+                subprocess.run([sys.executable, mp, "clear", "wd-kwpush"], timeout=30)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::watchdog 메시지함 점등 실패(무시): {e}")
     if not alerts:

@@ -28,7 +28,10 @@ import re
 import subprocess
 import sys
 import time
+import datetime as dt
 from pathlib import Path
+
+KST = dt.timezone(dt.timedelta(hours=9))   # §D4 = 전부 KST(러너 UTC · naive 금지)
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 SETTINGS = ROOT / "settings" / "app.json"
@@ -36,6 +39,7 @@ TBS = ROOT / "viewer" / "tbs_data.json"
 SNS = ROOT / "viewer" / "sns_trends.json"
 SOC = ROOT / "viewer" / "social_candidates.json"
 LEDGER = ROOT / "push" / "kw_sent.json"
+OBS = ROOT / "scraper" / "obs" / "kw_last.json"   # 관측 산출물(smoke_last.json 선례) — 발송 성패가 러너 로그에만 남아 사후 추적이 안 되던 사각 봉합
 PUSH = ROOT / ".github" / "scripts" / "push_send.py"
 
 BUCKET_S = 3 * 3600        # 3시간(뷰어 KW_BUCKET_MS 미러)
@@ -120,26 +124,40 @@ def send(kw, bucket):
         return False
 
 
+def obs_write(**kw):
+    """관측 산출물 기록(smoke_last.json 문법 계승) — 워치독이 이걸 읽어 발송 실패를 메시지함에 띄운다.
+    실패해도 파이프를 안 깬다(관측이 본작업을 죽이면 본말전도)."""
+    try:
+        OBS.parent.mkdir(parents=True, exist_ok=True)
+        OBS.write_text(json.dumps({"updated": dt.datetime.now(KST).isoformat(timespec="seconds"), **kw},
+                                  ensure_ascii=False, indent=1), encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::kw_last.json 기록 실패(무시): {e}", file=sys.stderr)
+
+
 def main():
     st = jload(SETTINGS, {}) or {}
     if st.get("kwAlertOn") is not True:
         print("키워드 알림 OFF — 감시 생략")
+        if not DRY: obs_write(watched=0, docs=0, fired=0, ok=0, fail=0, err="", off=True)
         return
     items = [i for i in (st.get("kwItems") or []) if isinstance(i, dict) and i.get("kw") and not i.get("done")]
     if not items:
         print("감시 대상 키워드 없음(전부 체크됐거나 미등록)")
+        if not DRY: obs_write(watched=0, docs=0, fired=0, ok=0, fail=0, err="")
         return
 
     ds = docs()
     if not ds:
         print("::warning::감시 원문 0건 — 수집 산출물 확인(tbs_data·sns_trends)")
+        if not DRY: obs_write(watched=len(items), docs=0, fired=0, ok=0, fail=0, err="감시 원문 0건(수집 산출물 이상)")
         return
 
     led = jload(LEDGER, {})
     if not isinstance(led, dict):
         led = {}
     now = int(time.time())
-    changed, fired = False, 0
+    changed, fired, ok_n, fail_n, last_err = False, 0, 0, 0, ""
 
     for it in items:
         kw = it["kw"]
@@ -155,7 +173,8 @@ def main():
             changed = True
             fired += 1
             print(f"  🔔 «{kw}» 첫 발견 — 푸시")
-            send(kw, 0)
+            if send(kw, 0): ok_n += 1
+            else: fail_n += 1; last_err = f"«{kw}» 첫 발견 발송 실패"
             continue
 
         el = now - int(rec.get("first") or now)
@@ -170,12 +189,15 @@ def main():
             changed = True
             fired += 1
             print(f"  🔔 «{kw}» 재알림 버킷{due}(+{due * 3}h) — 푸시")
-            send(kw, int(due))
+            if send(kw, int(due)): ok_n += 1
+            else: fail_n += 1; last_err = f"«{kw}» 버킷{due} 발송 실패"
 
     if changed and not DRY:   # ⚠ 드라이런은 원장을 남기지 않는다 — 남기면 '이미 보냈다'로 도장돼 진짜 첫 발송이 영영 스킵된다
         LEDGER.parent.mkdir(parents=True, exist_ok=True)
         LEDGER.write_text(json.dumps(led, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"✅ kw_watch: 감시 {len(items)}건 · 원문 {len(ds)}글 · 발송 {fired}건{' (드라이런)' if DRY else ''}")
+    if not DRY:
+        obs_write(watched=len(items), docs=len(ds), fired=fired, ok=ok_n, fail=fail_n, err=last_err)
+    print(f"✅ kw_watch: 감시 {len(items)}건 · 원문 {len(ds)}글 · 발송 {fired}건(성공 {ok_n} · 실패 {fail_n}){' (드라이런)' if DRY else ''}")
 
 
 if __name__ == "__main__":
