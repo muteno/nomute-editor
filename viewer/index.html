@@ -1473,7 +1473,14 @@
   /* 문구 = "키워드 ○○ 발견" — 고정어("키워드"·"발견") 흰색 + **키워드 값만** 강조색(운영자 260727 "키워드 발견 이거는 흰색, 키워드만 강조색" · «» 괄호 폐지).
      ⚠ .ft-msg에 --fg 명시가 필요하다 — 토스트 셸이 물려주는 기본색이 accent(터콰이즈)라 실측상 고정어가 청록으로 나왔다(가정 아닌 렌더 실측으로 잡음). */
   .nm-toast.kw .ft-msg { color:var(--fg); }
-  .nm-toast.kw .kw-hl { color:var(--cat-tech); font-weight:var(--fw-x); }
+  /* 키워드 = Solving 로더 텍스트처럼 빛난다(운영자 260727 "저 부분은 그 solving 이런거 처럼 빛나게") —
+     정본 = nm-loader.js `.nm-shim`(linear-gradient + background-clip:text + nmshim 1.9s linear) 문법·수치 100% 계승,
+     색만 이 축으로 교체(베이스 --mut → --cat-tech 보라 / 하이라이트 raw #fff → --fg 토큰). 키프레임 nmshim = 로더가 주입한 전역 정본 재사용(중복 선언 0). */
+  .nm-toast.kw .kw-hl { font-weight:var(--fw-x);
+    background:linear-gradient(100deg, var(--cat-tech) 0%, var(--cat-tech) 38%, var(--fg) 50%, var(--cat-tech) 62%, var(--cat-tech) 100%);
+    background-size:220% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:nmshim 1.9s linear infinite; }
+  @media (prefers-reduced-motion:reduce) { .nm-toast.kw .kw-hl { animation:none; color:var(--cat-tech); -webkit-text-fill-color:var(--cat-tech); } }   /* 정본 .nm-shim의 reduced-motion 가드 동문법 */
   .nm-toast.upd .tg svg, .nm-toast.kw .tg svg { width:14px; height:14px; }   /* width/height 미지정 SVG → 토스트 아이콘 가족(13~14) 사이징 */
   /* (도먼트 260712 — miniToast = qFlash 위임·마크업 생성처 0) 구 범용 미니 토스트 초록 변형 — 재도입 대비 보존 · 운영자 260625 */
   .nm-toast.mini { background:linear-gradient(135deg, rgba(13,40,18,.95), rgba(9,20,12,.95)); border-color:rgba(var(--accent-rgb),.45);
@@ -1813,17 +1820,25 @@
   .kwrow .qmain { font-weight:700; }   /* 키워드 = 본문 강조(qmain 계승 + 굵기) */
   .kwrow.kw-done { opacity:.5; }   /* 체크(알림 중단) = 흐리게(완료 표기 · 발행본 만료 톤) */
   .kwrow .kwst { font-size:11px; font-weight:800; white-space:nowrap; }   /* raw-ok: 상태 라벨 = qt 시간셀 크기(11/800) 계승 = qst 셀 내 동급 표기 */
-  .kwrow .kws-wait { color:var(--mut); }   /* 대기 = 무채(미매칭) */
-  .kwrow .kws-hit { color:var(--cat-tech); }   /* 발견 = 보라(매칭·알림 진행 · 260726 키워드 알림 축 색 통일) */
-  .kwrow .kws-done { color:var(--mut); }   /* 완료·종료 = 무채 */
+  .kwrow .kws-wait { color:var(--fg); }   /* 미발견 = 그냥 흰색(운영자 260727) */
+  .kwrow .kws-hit { color:var(--accent); }   /* 발견 = 1강조색(운영자 260727 "발견 이라는 키워드는 1강조색") — 보라는 알림 축 색(토스트·기어·체크)이고 이 열은 상태 텍스트라 강조색 사다리를 쓴다 */
+  .kwrow .kws-done { color:var(--mut); }   /* 확인 완료 = 무채(빗금 줄과 톤 일치) */
   .kw-chk { flex:none; }   /* 체크박스 = ed-match 계승(입력 숨김·ed-cbx 커스텀) · 260727 5열 개편으로 좌단 → .qst 셀 안으로 이동 */
   /* 5열 = no · 등록 시기 · 키워드 · 체크 · 휴지통(운영자 260727) — 신규 셀은 .qno 하나뿐, 문법은 형제 .qt(시간 고정폭 셀) 100% 미러(fs-xs·800·mut·nowrap·flex:none)에서 폭만 순번 자릿수로 좁힘 = 새 모양 0 */
   /* 헤더 + = X 왼쪽에 나란히(운영자 260727). .qh-xcell의 margin-left:auto(우측 앵커)를 +로 옮겨 [제목]—auto—[+][X] 배치 → X 우변 = 행 액션셀 우변 계약(§🎨 X정렬 정본) 그대로 유지 */
-  .kwpop .qh .kw-addopen { margin-left:auto; }
+  .kwpop .qh .kw-addopen { margin-left:auto; }   /* 헤더 gap(.qh 6) 그대로 — 세로 정렬의 기준선은 X↔행 최우측 액션(정본 계약 .qh-xcell ↔ .qact 동일 폭·중앙정렬)이고, 상태별 액션(체크/휴지통)이 그 열에 서므로 추가 보정 불요(4px 보정은 체크가 .qst에 있던 구조의 잔재라 철회) */
   .kwpop .qh .qh-xcell { margin-left:0; }
   .kwpop .kw-add[hidden] { display:none; }   /* + 로 여닫는 입력창(기본 = 목록만 · 등록할 때만 등장) */
+  /* 체크 = 항상 ✓ 모양으로(운영자 260727 "포그라운드 알림 뜨면 체크 표시 뜨잖아? 그거처럼 · 접힌 − 는 눌러야 된다는 느낌이 덜해").
+     부품(ACK_MORPH)·마크업은 그대로 두고 **kwrow 한정 상태만 뒤집는다** — 미확인 = 흐린 ✓(--mut · 드로우 완료 상태로 고정) / 확인 = 보라 ✓ + 칸 점등.
+     구 −(sc-dash)는 이 행에서만 소등(다른 화면의 −→✓ 모프 계약 무접촉). 확인 표시 = 토스트 ✓ 버튼과 같은 의미(누르면 '봤다'). */
+  .kwrow .ed-match .ed-cbx .sc-dash { opacity:0; }
+  .kwrow .ed-match .ed-cbx .sc-chk { stroke:var(--mut); opacity:1; stroke-dashoffset:0; }
+  .kwrow .ed-match:has(input:checked) .ed-cbx { border-color:rgba(var(--cat-tech-rgb),.6); background:rgba(var(--cat-tech-rgb),.14); }
+  .kwrow .ed-match:has(input:checked) .ed-cbx .sc-chk { stroke:var(--cat-tech); }
+  .kwrow.kw-done .qmain { text-decoration:line-through; text-decoration-thickness:1px; color:var(--mut); }   /* 확인 = 키워드에 빗금 + 무채(운영자 260727 "빗금 쳐지면서 mut컬러로") · 이 줄의 액션은 휴지통으로 교체됨 */
   /* 체크 = 휴지통 바로 옆(운영자 260727 "휴지통 옆에 체크가 잇어야될거같은데") — .qst 고정폭 58 좌측정렬이라 키워드와 휴지통 사이에 붕 떠 보였다 → 액션셀과 동일 폭·중앙정렬로 좁혀 두 픽토가 붙는다(형제 .qact 문법 미러) */
-  .kwrow .qst { width:var(--btn-sm); justify-content:center; }
+  .kwrow .kwst { flex:none; }   /* 상태 = 발견/미발견 텍스트 열(정본 .qst 58 고정폭·좌측정렬 그대로 = 행마다 시작 x 일정) */
   .kwrow .qno { flex:none; width:16px; font-size:var(--fs-xs); font-weight:800; color:var(--mut); white-space:nowrap; font-variant-numeric:tabular-nums; }   /* raw-ok: 16px = 2자릿수(등록 상한 KW_CAP 40) 폭 · tabular-nums = 자릿수 바뀌어도 뒤 열 시작 x 고정(§0-11) */
   .kwrow .qt { width:56px; }   /* raw-ok: 64→56 = qno 16 + gap 10 신설분 흡수(행 총폭 불변 · 사다리 최장 '11개월 전' 유지 폭) */
   #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* 더블탭 줌·300ms 클릭지연 차단 = 연달아 두번 탭(대기열 열기) 신뢰성(ed-chip 패턴 계승·260621) */
@@ -12745,12 +12760,11 @@ function kwAddBox(show) {
   if (next) { setTimeout(() => { try { inp.focus(); } catch (_) {} }, 40); }
   else if (inp) { inp.value = ''; }
 }
-function kwStatusLabel(it) {   // 상태 셀 = 대기 / 발견(진행) / 완료·종료
-  if (it.done) return { t: '완료', c: 'kws-done' };
-  if (!it.hit) return { t: '대기', c: 'kws-wait' };
-  if (Date.now() - it.hit > KW_MAX_BUCKET * KW_BUCKET_MS) return { t: '종료', c: 'kws-done' };   // 24h 경과 = 알림 종료
-  return { t: '발견', c: 'kws-hit' };
+function kwStatusLabel(it) {   // 상태 셀 = 발견 / 미발견 2분류(운영자 260727 "키워드 나오고 우측에 발견 미발견")
+  if (!it.hit) return { t: '미발견', c: 'kws-wait' };
+  return { t: '발견', c: it.done ? 'kws-done' : 'kws-hit' };   // 확인(done)해도 '발견'은 사실 = 라벨 유지·색만 무채로
 }
+function kwDate(ts) { const d = ts ? new Date(ts) : null; return d && !isNaN(d) ? (d.getMonth() + 1) + '. ' + d.getDate() + '.' : '-'; }   // 등록 시기 = "10. 28." 날짜 표기(운영자 260727 "7시간 전 > 10. 28. 이런식으로")
 function renderKwList() {
   const list = $('#kwpopList'); if (!list) return;
   const items = kwGetItems();
@@ -12759,14 +12773,20 @@ function renderKwList() {
   //   (.qt = 시간 고정폭 64 + qAgo 사다리 · .qmain = 본문 · .qst = 고정폭 상태칸[여기선 체크] · .qact = 최우측 액션).
   //   구 상태 라벨(대기/발견/완료)은 운영자 지목 5열에 없어 소등 — '발견'은 기어 보라 점등 + 토스트가 담당(kwStatusLabel = 도먼트).
   list.innerHTML = items.map((it, i) => {
+    const st = kwStatusLabel(it);
+    // 최우측 액션 = 상태가 정한다(운영자 260727) — 발견·미확인 = 체크(확인) / 미발견·확인완료 = 휴지통(삭제).
+    //   확인을 누르면 체크가 휴지통으로 바뀌고 키워드엔 빗금+무채(= 처리 끝난 줄이라는 표시).
+    const act = (it.hit && !it.done)
+      ? '<label class="ed-match kw-chk" title="확인 — 이 키워드 알림 중단"><input type="checkbox"><span class="ed-cbx">' + ACK_MORPH + '</span></label>'
+      : '<button class="pub-ico pub-rm kw-del" type="button" title="삭제" aria-label="삭제">' + _TRASHSVG + '</button>';
     return '<div class="qrow kwrow' + (it.done ? ' kw-done' : '') + '" data-i="' + i + '">'
       + '<span class="qno">' + (i + 1) + '</span>'
-      + '<span class="qt">' + qEsc(qAgo(it.ts)) + '</span>'
+      + '<span class="qt">' + qEsc(kwDate(it.ts)) + '</span>'
       + '<span class="qmain" title="' + qEsc(it.kw) + '">' + qEsc(it.kw) + '</span>'
-      + '<span class="qst kwst"><label class="ed-match kw-chk" title="' + (it.done ? '알림 재개' : '확인 — 알림 중단') + '"><input type="checkbox"' + (it.done ? ' checked' : '') + '><span class="ed-cbx">' + ACK_MORPH + '</span></label></span>'
-      + '<span class="qact"><button class="pub-ico pub-rm kw-del" type="button" title="삭제" aria-label="삭제">' + _TRASHSVG + '</button></span></div>';
+      + '<span class="qst kwst ' + st.c + '">' + st.t + '</span>'
+      + '<span class="qact">' + act + '</span></div>';
   }).join('');
-  list.querySelectorAll('.kw-chk input').forEach(cb => cb.onchange = (e) => { e.stopPropagation(); const i = +cb.closest('.kwrow').dataset.i; kwSetDone(i, cb.checked); });
+  list.querySelectorAll('.kw-chk input').forEach(cb => cb.onchange = (e) => { e.stopPropagation(); const i = +cb.closest('.kwrow').dataset.i; kwSetDone(i, true); });   /* 체크 = 확인 확정(누르면 액션이 휴지통으로 교체되므로 토글 아님 · 되돌림 = 삭제 후 재등록) */
   list.querySelectorAll('.kw-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); const row = b.closest('.qrow'), i = +row.dataset.i; animateRowOut(row, () => kwRemove(i)); });
   paintKwGear();   // 목록이 그려질 때마다 기어 점등 재평가(체크·삭제 직후 반영)
 }
@@ -12854,8 +12874,8 @@ function showKwToast(it) {
   _kwToastIt = it;
   let t = $('#nmKwToast');
   if (!t) { t = document.createElement('div'); t.id = 'nmKwToast'; t.className = 'nm-toast kw'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
-  t.title = '키워드 ' + it.kw + ' 가 커뮤니티에 떴어요 — 대기열에서 체크하면 알림 중단';   /* «» 폐지(260727) · 중단 경로 = 대기열 체크(토스트 ✓는 확인일 뿐) */
-  t.innerHTML = '<span class="tg">' + BELL_SVG + '</span><span class="ft-msg">키워드 <b class="kw-hl">' + qEsc(it.kw) + '</b> 발견</span>'   /* 260727 운영자: «» 괄호 폐지 · "키워드/발견" = 흰색(.ft-msg 기본 --fg) · 키워드 값만 강조색 = .kw-hl 보라 */
+  t.title = "키워드 '" + it.kw + "' 가 커뮤니티에 떴어요 — 대기열에서 체크하면 알림 중단";   /* «» 폐지·'' 표기(260727) · 중단 경로 = 대기열 체크(토스트 ✓는 확인일 뿐) */
+  t.innerHTML = '<span class="tg">' + BELL_SVG + '</span><span class="ft-msg">키워드 \'<b class="kw-hl">' + qEsc(it.kw) + '</b>\' 발견</span>'   /* 260727 운영자: 키워드 '000' 발견 표기 · 고정어 흰색 + 키워드만 강조(shimmer) */   /* 260727 운영자: «» 괄호 폐지 · "키워드/발견" = 흰색(.ft-msg 기본 --fg) · 키워드 값만 강조색 = .kw-hl 보라 */
     + '<button class="sbtn ft-act go-ready" type="button" data-kw="open" aria-label="대기열 열기" title="키워드 대기열 열기">' + Q_ARR + '</button>'
     + '<button class="sbtn ft-act" type="button" data-kw="ack" data-motion="check" aria-label="확인" title="확인(알림은 유지 — 중단은 대기열 체크로)">' + CHECK_SVG + '</button>';
   t.onclick = (e) => { if (e.target.closest('[data-kw]')) return; openKwpop(); hideKwToast(); };
