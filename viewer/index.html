@@ -5185,7 +5185,7 @@ function geniInit() {
     try { localStorage.setItem('GENI_OPTS2', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷 — 구 GENI_OPTS 키는 스키마 변경으로 폐기(260710)
     if (c.free) {   // 자유 생성(도구 /6 탭 · 운영자 260707): 기사 카러셀 없음 → api 직접 발사 + 도구 iframe에 통지(그쪽 그리드가 폴링)
       if (!wish && !(_geniRef && _geniRef.b64)) { geniWishShow(true, true); return; }   // 장면 소재 0 방지(서버·python 3층 동일 계약) — 글 또는 사진 하나면 발사(운영자 260721 반갈 · 구 숨은 텍스트칸 focus 무반응 결함도 노출로 봉합)
-      const gb = $('#geniGo'); if (gb.disabled) return; gb.disabled = true; askHideCheck(gb); gaugeStart(gb);   // 게이지 = 발사 즉시 채움(운영자 260718 Q134 ③ "생성 버튼 액티브 동작 = 1번[#go] 역공유") — free 모드도 게이지·✓·복귀 배선(구 무피드백 = '게이지 동작 안함' 버그축) · article 모드/thumb goFire와 동일 헬퍼
+      const gb = $('#geniGo'); if (gb.disabled || _geniFireBlocked(gb)) return; gb.disabled = true; askHideCheck(gb); gaugeStart(gb);   // 게이지 = 발사 즉시 채움(운영자 260718 Q134 ③ "생성 버튼 액티브 동작 = 1번[#go] 역공유") — free 모드도 게이지·✓·복귀 배선(구 무피드백 = '게이지 동작 안함' 버그축) · article 모드/thumb goFire와 동일 헬퍼
       try {
         geniFreqBump('style', _geniSel.style); geniFreqBump('sub', _geniSel.sub);   // 이식 모드 발사도 제작빈도 +1(genImgGo 경로와 동일 · 운영자 260713)
         const r = await fetch('api/genimg', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ free: true, opts }) });
@@ -5202,7 +5202,7 @@ function geniInit() {
       return;
     }
     // 기사 모드 발사 = 이미지 편집(thumbRedo #tredoSend) 게이지·✓·후닫기 정본 계승(운영자 260713 버그수정: 게이지 무동작 + 즉시 close 튕김 + thumb_gen 폴링 미스매치 3봉합) — #geniGo는 .asksend 보유라 게이지 CSS 계승, 그간 gaugeStart 호출만 없었음
-    const gb = $('#geniGo'); if (gb.disabled) return;
+    const gb = $('#geniGo'); if (gb.disabled || _geniFireBlocked(gb)) return;
     gb.disabled = true; askHideCheck(gb); gaugeStart(gb);   // 게이지 = 발사 즉시·응답까지 진행(thumbRedo 미러)
     let r = false;
     try { r = await genImgGo(c.file, c.wrap, c.btn, opts); } catch {}
@@ -5226,7 +5226,13 @@ function geniGate() {   // 발사 게이트 — 자유모드 = 주문 또는 참
   const go = $('#geniGo'); if (!go) return;
   const badAr = _geniSel.aspect === 'custom' && !geniArVal();
   const emptyWish = !$('#geniWish').value.trim();
-  go.disabled = !!(badAr || (_geniCtx && _geniCtx.free && emptyWish && !_geniRef));
+  go.disabled = false;   // 생성 버튼 = 소스 유무와 무관하게 상시 점등(운영자 260727 "메뉴에 아무것도 넣지 않았을 때도 생성에 동일하게 불들어오게 · 다른 메뉴들도 소스 없어도 불은 들어와있음") — 구 사전 disabled 어포던스 폐지 · 검증은 **발사 시점 1곳**으로 단일화(thumb 260725 "사진 필수는 발사 시점 검증 1곳" 선례 그대로) · 아래 _geniFireBlocked()가 그 자리
+  void badAr; void emptyWish;   // 판정값 자체는 발사 가드(_geniFireBlocked)가 재사용 = 로직 이원화 0
+}
+function _geniFireBlocked(btn) {   // 발사 시점 검증(구 사전 disabled의 대체 · 운영자 260727) — 막을 때는 '왜'를 보여준다: 직접비율 무효 = 버튼 흔들림 · 주문·참고 0 = 주문칸 열기
+  const badAr = _geniSel.aspect === 'custom' && !geniArVal();
+  if (badAr) { if (typeof _flashBtn === 'function' && btn) _flashBtn(btn, 'err'); return true; }
+  return false;
 }
 function geniVV() {   // 키보드로 축소된 visual viewport에 팝업 높이 맞춤(적대검증C: dialog top-layer는 키보드에 안 줄어듦 → 수동 클램프 → 입력이 키보드 위로) · toolVV 완성 패턴 이식(감사 260718: maxHeight만으론 마진 auto가 layout viewport 중앙 = 키보드 위 아님 — 괴리 게이트·marginTop·원복 3종 동일) + 형제 컴팩트 모달 #pubdlg 합류(pubPin = OS 숫자 키보드 실물 · VV 클램프 부재였음)
   if (!window.visualViewport) return;
