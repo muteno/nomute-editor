@@ -1470,6 +1470,10 @@
   .nm-toast.kw { background:linear-gradient(135deg, rgba(var(--cat-tech-rgb),.20), rgba(0,0,0,.80)); border-color:rgba(var(--cat-tech-rgb),.6);
     box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 16px rgba(var(--cat-tech-rgb),.22); }
   .nm-toast.kw .tg { color:var(--cat-tech); }   /* 🔔 픽토 = 보라(.upd ↻ teal과 분리) */
+  /* 문구 = "키워드 ○○ 발견" — 고정어("키워드"·"발견") 흰색 + **키워드 값만** 강조색(운영자 260727 "키워드 발견 이거는 흰색, 키워드만 강조색" · «» 괄호 폐지).
+     ⚠ .ft-msg에 --fg 명시가 필요하다 — 토스트 셸이 물려주는 기본색이 accent(터콰이즈)라 실측상 고정어가 청록으로 나왔다(가정 아닌 렌더 실측으로 잡음). */
+  .nm-toast.kw .ft-msg { color:var(--fg); }
+  .nm-toast.kw .kw-hl { color:var(--cat-tech); font-weight:var(--fw-x); }
   .nm-toast.upd .tg svg, .nm-toast.kw .tg svg { width:14px; height:14px; }   /* width/height 미지정 SVG → 토스트 아이콘 가족(13~14) 사이징 */
   /* (도먼트 260712 — miniToast = qFlash 위임·마크업 생성처 0) 구 범용 미니 토스트 초록 변형 — 재도입 대비 보존 · 운영자 260625 */
   .nm-toast.mini { background:linear-gradient(135deg, rgba(13,40,18,.95), rgba(9,20,12,.95)); border-color:rgba(var(--accent-rgb),.45);
@@ -1814,6 +1818,12 @@
   .kwrow .kws-done { color:var(--mut); }   /* 완료·종료 = 무채 */
   .kw-chk { flex:none; }   /* 체크박스 = ed-match 계승(입력 숨김·ed-cbx 커스텀) · 260727 5열 개편으로 좌단 → .qst 셀 안으로 이동 */
   /* 5열 = no · 등록 시기 · 키워드 · 체크 · 휴지통(운영자 260727) — 신규 셀은 .qno 하나뿐, 문법은 형제 .qt(시간 고정폭 셀) 100% 미러(fs-xs·800·mut·nowrap·flex:none)에서 폭만 순번 자릿수로 좁힘 = 새 모양 0 */
+  /* 헤더 + = X 왼쪽에 나란히(운영자 260727). .qh-xcell의 margin-left:auto(우측 앵커)를 +로 옮겨 [제목]—auto—[+][X] 배치 → X 우변 = 행 액션셀 우변 계약(§🎨 X정렬 정본) 그대로 유지 */
+  .kwpop .qh .kw-addopen { margin-left:auto; }
+  .kwpop .qh .qh-xcell { margin-left:0; }
+  .kwpop .kw-add[hidden] { display:none; }   /* + 로 여닫는 입력창(기본 = 목록만 · 등록할 때만 등장) */
+  /* 체크 = 휴지통 바로 옆(운영자 260727 "휴지통 옆에 체크가 잇어야될거같은데") — .qst 고정폭 58 좌측정렬이라 키워드와 휴지통 사이에 붕 떠 보였다 → 액션셀과 동일 폭·중앙정렬로 좁혀 두 픽토가 붙는다(형제 .qact 문법 미러) */
+  .kwrow .qst { width:var(--btn-sm); justify-content:center; }
   .kwrow .qno { flex:none; width:16px; font-size:var(--fs-xs); font-weight:800; color:var(--mut); white-space:nowrap; font-variant-numeric:tabular-nums; }   /* raw-ok: 16px = 2자릿수(등록 상한 KW_CAP 40) 폭 · tabular-nums = 자릿수 바뀌어도 뒤 열 시작 x 고정(§0-11) */
   .kwrow .qt { width:56px; }   /* raw-ok: 64→56 = qno 16 + gap 10 신설분 흡수(행 총폭 불변 · 사다리 최장 '11개월 전' 유지 폭) */
   #bnav .bnav-i[data-tab="feed"] { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; touch-action:manipulation; }   /* 더블탭 줌·300ms 클릭지연 차단 = 연달아 두번 탭(대기열 열기) 신뢰성(ed-chip 패턴 계승·260621) */
@@ -3897,9 +3907,9 @@ try {
 
 <!-- 키워드 알림 대기열 — 설정 ▸ 키워드 알림(kwListBtn) 또는 ON 전환 시 열림. 대기열(qpop) 껍데기·행 레이아웃 그대로 계승 + 하단 등록 입력행(marqpop lk-in 계승). 행 = [체크(중단)][키워드][상태][삭제]. -->
 <div class="bpop qpop kwpop head-pop" id="kwpop" hidden>
-  <div class="qh"><b>키워드 알림</b><span class="qh-xcell"><button class="tool-x" id="kwpopX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div>
+  <div class="qh"><b>키워드 알림</b><button class="tool-x kw-addopen" id="kwAddOpen" type="button" aria-label="키워드 추가" title="키워드 추가"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></button><span class="qh-xcell"><button class="tool-x" id="kwpopX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></span></div><!-- 헤더 [+][X] = #tooldlg .tool-h 「최소화 − + 닫기 X」 짝 100% 모방(같은 .tool-x 부품 · svg 15/stroke 2/round 동일) — path만 − `M6 12h12` → + `M12 6v12M6 12h12`(세로선 1획 추가 = 같은 글리프 가족) · 운영자 260727 "x옆에 +가 있으면 될듯 · 최소화 되는 애들 기틀 가져와서 − 대신 +" -->
   <div class="qlist" id="kwpopList"></div>
-  <div class="pushrow kw-add"><span class="lk-grp"><input class="lk-in kw-in" id="kwIn" type="text" maxlength="120" placeholder="" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></span><button class="pushbtn kw-addbtn" id="kwAddBtn" type="button" aria-label="키워드 추가">추가</button></div>
+  <div class="pushrow kw-add" hidden><span class="lk-grp"><input class="lk-in kw-in" id="kwIn" type="text" maxlength="120" placeholder="" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></span><button class="pushbtn kw-addbtn" id="kwAddBtn" type="button" aria-label="키워드 추가">추가</button></div>
 </div>
 
 <!-- 발행본 — 프로필 '발행본' 버튼으로 열림. 공개 발행한 요약 목록(만료 D-N·링크복사·삭제). 대기열(qpop) 스타일·행 레이아웃·페이저 그대로 계승. -->
@@ -12722,9 +12732,19 @@ function openKwpop() {   // 대기열 열기 = 설정 팝업(linkpop) 자리에 
   kp.hidden = false;
   if (prof) placeHeadPop(kp, prof);
   renderKwList();
-  setTimeout(() => { const inp = $('#kwIn'); if (inp && !kwGetItems().length) inp.focus(); }, 60);   // 비었으면 입력칸 포커스(첫 등록 유도)
+  kwAddBox(!kwGetItems().length);   // 비었으면 입력창까지 펼쳐 첫 등록 유도 · 이미 있으면 목록만(+ 로 열기)
 }
-function closeKwpop() { const kp = $('#kwpop'); if (kp) kp.hidden = true; }
+function closeKwpop() { const kp = $('#kwpop'); if (kp) kp.hidden = true; kwAddBox(false); }   /* 닫으면 입력창도 접어 다음 열림이 항상 '목록만'에서 시작 */
+// 키워드 입력창 = 헤더 + 로 여닫는다(운영자 260727 "x옆에 +가 있으면 될듯 — 키워드 입력창 뜨게").
+//   show 미지정 = 토글. 열 때 포커스(바로 타이핑) · 접을 때 입력값도 비움(반쯤 쓴 값이 다음에 남지 않게).
+function kwAddBox(show) {
+  const box = $('#kwpop .kw-add'), inp = $('#kwIn'); if (!box) return;
+  const next = (show === undefined) ? box.hidden : !!show;
+  box.hidden = !next;
+  const b = $('#kwAddOpen'); if (b) b.setAttribute('aria-expanded', next ? 'true' : 'false');
+  if (next) { setTimeout(() => { try { inp.focus(); } catch (_) {} }, 40); }
+  else if (inp) { inp.value = ''; }
+}
 function kwStatusLabel(it) {   // 상태 셀 = 대기 / 발견(진행) / 완료·종료
   if (it.done) return { t: '완료', c: 'kws-done' };
   if (!it.hit) return { t: '대기', c: 'kws-wait' };
@@ -12759,6 +12779,7 @@ function kwAdd(raw) {
   items.push({ kw, ts: Date.now(), hit: 0, done: false });
   kwSaveItems(items); renderKwList();
   if (inp) inp.value = '';
+  kwAddBox(false);   // 등록 완료 = 입력창 접기(목록이 바로 보이게 · 연속 등록은 + 재클릭)
   checkKwAlerts();   // 등록 즉시 1회 매칭 검사(오늘 이미 떠 있으면 바로 알림)
   return true;
 }
@@ -12833,8 +12854,8 @@ function showKwToast(it) {
   _kwToastIt = it;
   let t = $('#nmKwToast');
   if (!t) { t = document.createElement('div'); t.id = 'nmKwToast'; t.className = 'nm-toast kw'; t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); document.body.appendChild(t); }
-  t.title = '키워드 «' + it.kw + '» 가 커뮤니티에 떴어요 — 대기열에서 확인하면 알림 중단';
-  t.innerHTML = '<span class="tg">' + BELL_SVG + '</span><span class="ft-msg">키워드 «' + qEsc(it.kw) + '» 발견</span>'
+  t.title = '키워드 ' + it.kw + ' 가 커뮤니티에 떴어요 — 대기열에서 체크하면 알림 중단';   /* «» 폐지(260727) · 중단 경로 = 대기열 체크(토스트 ✓는 확인일 뿐) */
+  t.innerHTML = '<span class="tg">' + BELL_SVG + '</span><span class="ft-msg">키워드 <b class="kw-hl">' + qEsc(it.kw) + '</b> 발견</span>'   /* 260727 운영자: «» 괄호 폐지 · "키워드/발견" = 흰색(.ft-msg 기본 --fg) · 키워드 값만 강조색 = .kw-hl 보라 */
     + '<button class="sbtn ft-act go-ready" type="button" data-kw="open" aria-label="대기열 열기" title="키워드 대기열 열기">' + Q_ARR + '</button>'
     + '<button class="sbtn ft-act" type="button" data-kw="ack" data-motion="check" aria-label="확인" title="확인(알림은 유지 — 중단은 대기열 체크로)">' + CHECK_SVG + '</button>';
   t.onclick = (e) => { if (e.target.closest('[data-kw]')) return; openKwpop(); hideKwToast(); };
@@ -12854,6 +12875,7 @@ function showKwToast(it) {
     else closeKwpop();
   });
   if (_kwListBtn) _kwListBtn.addEventListener('click', (e) => { e.stopPropagation(); openKwpop(); });   // 좌측 라벨버튼 = 대기열 열기(lockBtn 패턴)
+  const _kwAddOpen = $('#kwAddOpen'); if (_kwAddOpen) _kwAddOpen.addEventListener('click', (e) => { e.stopPropagation(); kwAddBox(); });   /* 헤더 + = 입력창 토글 */
   const _kwpopX = $('#kwpopX'); if (_kwpopX) _kwpopX.addEventListener('click', (e) => { e.stopPropagation(); closeKwpop(); });
   const _kwAddBtn = $('#kwAddBtn'), _kwIn = $('#kwIn');
   if (_kwAddBtn) _kwAddBtn.addEventListener('click', (e) => { e.stopPropagation(); kwAdd(_kwIn ? _kwIn.value : ''); if (_kwIn) _kwIn.focus(); });
