@@ -67,7 +67,7 @@ else
 # Write/Edit/Bash/Task 불허 = 헤드리스 무중단(kmake와 동일).
 inline_delay=15
 _to_tried=0   # 타임아웃(rc=124) 계정 강제전환 1회 제한(kmake 패턴 계승)
-SB_MODEL_FB="${SB_MODEL_FB:-claude-opus-5}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus max 1회 폴백(운영자 260722 · DIRECTOR=opus면 미발동)
+SB_MODEL_FB="${SB_MODEL_FB:-claude-opus-5}"; _mfb=0; _eff=high   # Fable 실패/전용토큰 소진 → Opus high 1회 폴백(운영자 260726 전면 high · 260722 · DIRECTOR=opus면 미발동)
 for attempt in $(seq 1 "$INLINE_TRIES"); do
   out="$(printf '%s' "$prompt" | METER_SRC=sb METER_REF="$ID" METER_MODEL="$MODEL" METER_EFFORT="$_eff" claude_meter 900 \
         --model "$MODEL" \
@@ -87,7 +87,7 @@ for attempt in $(seq 1 "$INLINE_TRIES"); do
     sleep "$inline_delay"; inline_delay=$((inline_delay * 2)); continue
   fi
   if [ "$_mfb" = 0 ] && [ "$MODEL" != "$SB_MODEL_FB" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then   # 쿼터·5xx 아닌 실패(Fable 형식이탈/거절/전용토큰 소진) → Opus max 1회 폴백(운영자 260722 · DIRECTOR=opus면 미발동)
-    _mfb=1; MODEL="$SB_MODEL_FB"; _eff=max; echo "  ⏳ 모델 폴백 → ${MODEL} max (Fable 실패/소진 추정 · 1회 한정)"; continue
+    _mfb=1; MODEL="$SB_MODEL_FB"; _eff=high; echo "  ⏳ 모델 폴백 → ${MODEL} high (Fable 실패/소진 추정 · 1회 한정)"; continue
   fi
   break
 done

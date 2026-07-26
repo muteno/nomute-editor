@@ -1158,7 +1158,7 @@ def check_qledger_unique():
     # 스텁 잔존 커밋 = 미확정 번호가 main에 박제되는 사고라 차단(세칙 = 큐 헤더 규칙 6 · 확정 직전 fetch+재기점 규약과 짝).
     stubs = [ln[:60] for ln in lines if re.match(r'^- [^Q]{0,4}Q\?\?', ln)]
     if stubs:
-        print('❌ 원장 Q?? 스텁 미확정 %d행 — 커밋 전 파일 최대+1 실번호로 확정하라(경합 소멸 규칙 · 큐 헤더 규칙 6): %s' % (len(stubs), stubs[0]))
+        print('❌ 원장 Q?? 스텁 미확정 %d행 — 커밋 전 파일 최대+1 실번호로 확정하라(경합 소멸 규칙 · 큐 헤더 규칙 6): %s\n   자동 = python3 shared/check_refs.py --fix-qnum (스텁 확정 + 내 신규 행 재부여 · 박제 행 무접촉 · git fetch 먼저)' % (len(stubs), stubs[0]))
         return 1
     rx = re.compile(r'^- [^Q]{0,4}Q(\d+)(?:~(\d+))?(?:\([^)]*\))?·')   # (?:\(…\))? = 경합 재부여 주석형 'QNN(구 QMM …)·' 허용(260719 — 구판은 이 행을 아예 못 세서 최대·중복 계산 누락 = 재부여 번호가 무방비로 재발급될 틈 · 새 번호로 계수하고 괄호 안 구번호는 해제된 번호라 미계수가 정답)
     cnt = {}
@@ -1183,7 +1183,8 @@ def check_qledger_unique():
 
 def fix_qnum_reassign():
     """`--fix-qnum` = 원장 Q번호 경합 자동 해소(운영자 260726 승인 — 같은 날 4연속[Q556→558→560] 손 왕복이 규칙 실패 신호).
-    origin/main 대비 **이 브랜치가 새로 추가한 행만** 파일 최대+1로 순차 재부여한다. 안전축 3개:
+    ① `Q??` 스텁을 파일 최대+1로 확정(큐 헤더 규칙 6 — 확정이 공짜여야 세션이 스텁을 쓰고, 그래야 경합이 **애초에** 안 난다)
+    ② origin/main 대비 **이 브랜치가 새로 추가한 행만** 파일 최대+1로 순차 재부여한다. 안전축 3개:
       ⓐ base(origin/main 원장)를 못 읽으면 **no-op**(fetch 안 된 상태에서 남의 행을 건드리느니 아무것도 안 한다)
       ⓑ base에 이미 있는 행 = 타 세션 main 박제 = **절대 무접촉**(번호를 바꾸면 [Q.NN] 1:1 참조가 깨진다 · 58종 면책이 그 증거)
       ⓒ 양쪽 박제라 재부여 불가한 건은 고치지 않고 rc=1 + `_QDUP_BASE` 면책 승계로 안내(관례 = 사유 주석 필수)
@@ -1218,11 +1219,17 @@ def fix_qnum_reassign():
         print('❌ --fix-qnum 원장 Q행 0건 파싱 — 행 규격 확인(fail-closed)')
         return 1
     over = {n: c for n, c in cnt.items() if c > _QDUP_BASE.get(n, 1)}
-    if not over:
-        print('✅ --fix-qnum 할 일 없음 — 신규 중복 0(현재 최대 Q%d · 다음 부여 = Q%d).' % (max(cnt), max(cnt) + 1))
-        return 0
     nxt = max(cnt) + 1
-    changed, stuck = [], []
+    changed, stuck, stubbed = [], [], []
+    # ① Q?? 스텁 확정(큐 헤더 규칙 6 = 착수 중 스텁 → 커밋 직전 실번호). 이 확정이 **공짜여야** 세션이 스텁을 쓰고,
+    #    스텁을 쓰면 '착수 시점에 남과 같은 번호를 집는' 경합 자체가 안 난다 — push 트리거는 발견을 앞당길 뿐 예방은 못 한다.
+    rx_stub = re.compile(r'^- [^Q]{0,4}Q\?\?')
+    for i, ln in enumerate(lines):
+        if rx_stub.match(ln):
+            lines[i] = ln.replace('Q??', 'Q%d' % nxt, 1)
+            stubbed.append(nxt)
+            nxt += 1
+    # ② 신규 중복 재부여(이 브랜치가 새로 넣은 행만)
     for i, ln in enumerate(lines):
         m = rx.match(ln)
         if not m or m.group(2):        # 범위형 = 수동
@@ -1236,8 +1243,13 @@ def fix_qnum_reassign():
         lines[i] = ln.replace('Q%d' % n, 'Q%d' % nxt, 1)
         changed.append((n, nxt))
         nxt += 1
-    if changed:
+    if not (stubbed or changed or stuck):
+        print('✅ --fix-qnum 할 일 없음 — Q?? 스텁 0 · 신규 중복 0(현재 최대 Q%d · 다음 부여 = Q%d).' % (max(cnt), max(cnt) + 1))
+        return 0
+    if stubbed or changed:
         open(path, 'w', encoding='utf-8').write('\n'.join(lines) + ('\n' if raw.endswith('\n') else ''))
+        for n in stubbed:
+            print('🔧 --fix-qnum 스텁 확정 Q?? → Q%d (착수 중 스텁 → 커밋 직전 실번호 · 큐 헤더 규칙 6)' % n)
         for a, b in changed:
             print('🔧 --fix-qnum 재부여 Q%d → Q%d (origin/main에 없는 = 이 브랜치 신규 행만)' % (a, b))
         print('   ⚠ 그 항목 본문이 구 번호를 참조하면 손으로 맞춰라([Q.NN] 1:1 참조 보전).')
