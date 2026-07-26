@@ -58,6 +58,8 @@ export async function onRequestPost({ request, env }) {
     text: String(o.text || '').replace(/\s+/g, ' ').trim().slice(0, 60),
     wish: String(o.wish || '').replace(/\s+/g, ' ').trim().slice(0, 300),
     refB64: (typeof o.refB64 === 'string' && /^[A-Za-z0-9+/=]{16,60000}$/.test(o.refB64)) ? o.refB64 : '',   // 참고 이미지 base64(운영자 260713) — 뷰어 512px 다운스케일 JPEG · dispatch input 상한(65535자) 여유 안 · gen_image가 ref_png으로 사용(원본유지/참고)
+    satAdj: Math.max(-50, Math.min(50, parseInt(o.satAdj, 10) || 0)),   // 색 보정 게이지 = 채도 %(운영자 260727 · 렌더 후 픽셀 교정 · 프롬프트 무접촉)
+    briAdj: Math.max(-50, Math.min(50, parseInt(o.briAdj, 10) || 0)),   // 색 보정 게이지 = 명도 %
     engine: o.engine === 'gpt' ? 'gpt' : 'gemini',   // 렌더 엔진 토글(운영자 260727) — Gemini 3.1 Flash(기본) / GPT Image 2.0 · gen_image가 백엔드 분기(GPT 실패 = Gemini 폴백)
     refMode: (o.refMode === 'keep' || o.refMode === 'ref' || o.refMode === 'clone') ? o.refMode : '',   // 원본 유지(keep) / 참고(ref) / 이미지와 동일하게(clone · 260726 — gen_image가 Claude 0콜 결정형 복제 프롬프트로 직행 = 스타일 낱말 0개)
   };
