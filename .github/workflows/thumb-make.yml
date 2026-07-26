@@ -151,7 +151,24 @@ jobs:
               produced.append(out)
           elif app == '2':          # 릴스 — 헤더(흰칸+nobg 2장) | 오버레이(opa별 2~3장)
               mode = params.get('mode', 'header')
-              if mode == 'header':  # 부제+제목 → 흰칸(render·기본 1장). bothBg=True 면 nobg(흰칸 없이 텍스트만)도(2장). import 재사용(스크립트 코드 불변)
+              tpl = params.get('tpl', 'nomute')   # 템플릿 축(운영자 260726) — 미전달·구 클라 = 노뮤트 폴백(기존 경로 그대로) · API TPLS와 1:1
+              if tpl == 'jinjja':   # 「진짜예요」 = apps/thumbnail/nomute_jinjja.py(절대규칙1 4파일 무접촉·import만). 아래 노뮤트 블록은 한 줄도 안 고침(if→elif 전환만)
+                  from nomute_jinjja import render_header, render_overlay
+                  if mode == 'header':   # 헤더형 = 문구 1줄(운영자 "입력할 수 있는 글자는 무조건 1줄") · 위 줄은 로고가 대신하므로 title 우선, 없으면 sub
+                      line = (params.get('title') or params.get('sub') or '').strip()
+                      box = f'{outdir}/box.png'   # ⚠ .png = 투명 프레임(API outs box.png와 1:1 · 확장자 불일치 = 뷰어 제작중 무한)
+                      render_header(line, box)
+                      produced.append(box)
+                  else:                  # 오버레이형 = 릴스(9:16)·포스트(4:5) · OPA·자간·들여쓰기 = 노뮤트 경로 그대로 계승
+                      from quote_indent import quote_indent_offsets
+                      jfmt = params.get('fmt', 'reels')
+                      jlmoff = quote_indent_offsets(params['lines'], jfmt)
+                      jtr = fit_tracking(params['lines'], jfmt, lm_offsets=jlmoff)
+                      for o in params.get('opas', [60, 30]):
+                          jov = f'/tmp/_jov_{o}.png'
+                          render_overlay(jfmt, params['lines'], jov, opacity=int(o), tracking=jtr, lm_offsets=jlmoff)
+                          produced.append(emit(jov, image, jfmt, f'{outdir}/opa{o}'))
+              elif mode == 'header':  # 부제+제목 → 흰칸(render·기본 1장). bothBg=True 면 nobg(흰칸 없이 텍스트만)도(2장). import 재사용(스크립트 코드 불변)
                   from nomute_reels2 import render, _draw_line, FONT, WHITE, GREEN, SUB_FS, SUB_Y, TITLE_FS, TITLE_Y, W, H
                   from PIL import Image, ImageDraw, ImageFont
                   sub, title = params.get('sub', ''), params.get('title', '')

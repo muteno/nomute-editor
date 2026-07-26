@@ -6,6 +6,7 @@
 // ref = main(통합 완료 · 아래 L8). 무료 경로(유료 API 무관).
 const REPO = 'muteno/nomute-editor';
 const REF = 'main';   // 통합 완료(PR #173 머지)
+const TPLS = ['nomute', 'jinjja'];   // 템플릿 축 화이트리스트(운영자 260726) — nomute = 기본·기존 경로 / jinjja = 「진짜예요」(apps/thumbnail/nomute_jinjja.py) · 워크플로 params.get('tpl','nomute')와 1:1
 const R2_BASE = 'https://pub-83f8cf3892ae44c38bebf1805c954508.r2.dev';   // R2 공개 베이스(=R2_PUBLIC_BASE 시크릿). 썸네일 출력=R2 저장 → 즉시 서빙·git 비대 0. ⚠️ 시크릿 변경 시 이 줄도 갱신(워크플로 r2_upload와 베이스 일치 필수).
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
@@ -54,10 +55,11 @@ export async function onRequestPost({ request, env }) {
     }
   } else if (app === '2') {                   // 릴스 — 헤더(부제+제목) | 오버레이(이미지옵션+opa+lines)
     const mode = p.mode === 'overlay' ? 'overlay' : 'header';
+    const tpl = TPLS.includes(p.tpl) ? p.tpl : 'nomute';   // 템플릿 축(운영자 260726) — 미전달·불명값 = 노뮤트 폴백(구 클라 안전망 · 워크플로 params.get('tpl','nomute')와 1:1)
     if (mode === 'header') {
       const sub = clip(p.sub, 200), title = clip(p.title, 200);
       if (!sub && !title) return json({ error: '부제(sub) 또는 제목(title)이 필요해' }, 400);
-      params = { mode, sub, title, bothBg: !!p.bothBg };   // bothBg = 배경 체크 시 nobg(기본·흰칸없음)도 추가(2장) — 워크플로 params.get('bothBg')·outs unshift와 1:1(누락 시 체크 무효 버그)
+      params = { mode, sub, title, bothBg: !!p.bothBg, tpl };   // bothBg = 배경 체크 시 nobg(기본·흰칸없음)도 추가(2장) — 워크플로 params.get('bothBg')·outs unshift와 1:1(누락 시 체크 무효 버그)
     } else {                                  // 오버레이 — 항상 opa60·30, 직접입력은 추가(+1)
       const lines = cleanLines(p.lines);
       if (!lines.length) return json({ error: '텍스트 줄(lines)이 필요해' }, 400);
@@ -65,7 +67,7 @@ export async function onRequestPost({ request, env }) {
       let opas = [...new Set((Array.isArray(p.opas) ? p.opas : [])
         .map(n => Math.trunc(+n)).filter(n => Number.isFinite(n) && n >= 0 && n <= 100))];
       if (!opas.length) opas = [60, 30];   // 폴백 — 빈 입력/구 클라(extraOpa) 안전망
-      params = { mode, lines, opas };
+      params = { mode, lines, opas, fmt, tpl };   // fmt = 진짜예요 오버레이의 릴스/포스트 분기(노뮤트는 워크플로가 종전대로 reels 고정 = 무영향)
     }
   } else {                                    // 3 저작권 — raw 또는 year/name/platform
     if (p.raw) params = { fmt, raw: clip(p.raw, 200) };
@@ -128,7 +130,11 @@ export async function onRequestPost({ request, env }) {
   if (r.status === 204) {
     const dir = `${R2_BASE}/thumb_out/${id}`;   // outs path = R2 절대 URL(워크플로 r2_upload 키 `thumb_out/<id>/<file>`와 일치 → 뷰어가 R2 직접 폴링=즉시·배포지연 0)
     let outs;
-    if (app === '2' && params.mode === 'header') {
+    if (app === '2' && params.mode === 'header' && params.tpl === 'jinjja') {
+      // 진짜예요 헤더 = 2K **투명 PNG** 1장(box.png) — 하부 투명이 곧 nobg라 bothBg 변형 없음.
+      // ⚠ 확장자는 워크플로 produced와 반드시 1:1(불일치 = 뷰어 '제작중' 무한 폴링 · MEMORY.md 사고 이력)
+      outs = [{ path: `${dir}/box.png`, label: '진짜예요' }];
+    } else if (app === '2' && params.mode === 'header') {
       // 헤더 = 2K JPG q95 (워크플로 box/nobg.jpg와 확장자 일치). 기본(미체크)=흰칸 1장만 / bothBg=흰칸 없는 nobg(기본)도 추가(2장) — 워크플로 produced와 1:1(운영자 260623)
       outs = [{ path: `${dir}/box.jpg`, label: '흰칸' }];
       if (params.bothBg) outs.unshift({ path: `${dir}/nobg.jpg`, label: '기본' });
