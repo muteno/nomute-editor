@@ -8030,7 +8030,7 @@ function _kwClean(a) {   // 키워드 항목 정규화(서버 settings.js cleanK
     const kw = typeof it.kw === 'string' ? it.kw.slice(0, 120).trim() : '';
     if (!kw) continue;
     const url = (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) ? it.url.slice(0, 400) : '';   // 발견 출처(이동 버튼 목적지) · http(s)만 허용 = javascript: 등 차단
-    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, url });
+    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, doneAt: Number.isFinite(it.doneAt) ? it.doneAt : 0, url });
     if (out.length >= KW_CAP) break;
   }
   return out;
@@ -12779,6 +12779,7 @@ function kwStatusLabel(it) {   // 상태 셀 = 발견 / 미발견 2분류(운영
 function kwDate(ts) { const d = ts ? new Date(ts) : null; return d && !isNaN(d) ? (d.getMonth() + 1) + '. ' + d.getDate() + '.' : '-'; }   // 등록 시기 = "10. 28." 날짜 표기(운영자 260727 "7시간 전 > 10. 28. 이런식으로")
 function renderKwList() {
   const list = $('#kwpopList'); if (!list) return;
+  kwPurgeDone();   // 그릴 때마다 만료분 정리 → 목록이 스스로 갱신된다
   const items = kwGetItems();
   if (!items.length) { list.innerHTML = '<div class="qempty">등록된 키워드 없음</div>'; paintKwGear(); return; }   /* 안내 소문구 폐지(운영자 260727 "안내문구는 없어도되고" · 입력칸 placeholder도 동반 소등) */
   // 행 = no · 등록 시기 · 키워드 · 체크 · 휴지통(운영자 260727 지목 5열) — 셀 문법은 qRowHtml 정본 100% 미러
@@ -12792,9 +12793,10 @@ function renderKwList() {
     const left = it.hit
       ? '<button class="pub-ico kw-go" type="button" title="발견한 글로 이동" aria-label="발견한 글로 이동">' + Q_ARR + '</button>'
       : '<button class="pub-ico kw-edit" type="button" title="키워드 수정" aria-label="키워드 수정">' + EDIT_SVG + '</button>';
-    // 우 칸(헤더 X 와 같은 세로선) = 항상 휴지통 · 단 '발견·미확인'일 때만 체크로 바뀐다 → 체크하면 빗금 걸리고 다시 휴지통으로 복귀
-    const act = (it.hit && !it.done)
-      ? '<label class="ed-match kw-chk" title="확인 — 이 키워드 알림 중단"><input type="checkbox"><span class="ed-cbx">' + ACK_MORPH + '</span></label>'
+    // 우 칸(헤더 X 와 같은 세로선) = 발견이면 **체크(껐다 켰다 토글)** · 미발견이면 휴지통(운영자 260727 최종).
+    //   체크 ON = 키워드에 빗금 + 알림 중단 · 다시 누르면 빗금 풀리고 알림 재개 · 빗금인 채로 1일 넘기면 자동 삭제(kwPurgeDone).
+    const act = it.hit
+      ? '<label class="ed-match kw-chk" title="' + (it.done ? '확인 해제 — 알림 재개' : '확인 — 알림 중단(하루 뒤 자동 삭제)') + '"><input type="checkbox"' + (it.done ? ' checked' : '') + '><span class="ed-cbx">' + ACK_MORPH + '</span></label>'
       : '<button class="pub-ico pub-rm kw-del" type="button" title="삭제" aria-label="삭제">' + _TRASHSVG + '</button>';
     return '<div class="qrow kwrow' + (it.done ? ' kw-done' : '') + '" data-i="' + i + '">'
       + '<span class="qno">' + (i + 1) + '</span>'
@@ -12804,7 +12806,7 @@ function renderKwList() {
       + '<span class="qact kw-a1">' + left + '</span>'
       + '<span class="qact">' + act + '</span></div>';
   }).join('');
-  list.querySelectorAll('.kw-chk input').forEach(cb => cb.onchange = (e) => { e.stopPropagation(); const i = +cb.closest('.kwrow').dataset.i; kwSetDone(i, true); });   /* 체크 = 확인 확정(누르면 액션이 휴지통으로 교체되므로 토글 아님 · 되돌림 = 삭제 후 재등록) */
+  list.querySelectorAll('.kw-chk input').forEach(cb => cb.onchange = (e) => { e.stopPropagation(); const i = +cb.closest('.kwrow').dataset.i; kwSetDone(i, cb.checked); });   /* 체크 = 껐다 켰다 토글(운영자 260727 최종) */
   list.querySelectorAll('.kw-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); const row = b.closest('.qrow'), i = +row.dataset.i; animateRowOut(row, () => kwRemove(i)); });
   list.querySelectorAll('.kw-go').forEach(b => b.onclick = (e) => { e.stopPropagation(); kwOpenSrc(kwGetItems()[+b.closest('.kwrow').dataset.i]); });   /* 이동 = 발견한 글(대기열에서도 이동 가능 · 운영자 260727 "키워드 알림창에서 이동하는 방법이 없더라고") */
   list.querySelectorAll('.kw-edit').forEach(b => b.onclick = (e) => { e.stopPropagation(); kwEdit(+b.closest('.kwrow').dataset.i); });   /* 수정 = 미발견 항목만(발견 뒤엔 이동 버튼이 그 자리) */
@@ -12842,7 +12844,16 @@ function kwEdit(i) {
 }
 function kwEditCancel() { _kwEditIdx = -1; const b = $('#kwAddBtn'); if (b) b.textContent = '추가'; }
 function kwRemove(i) { const items = kwGetItems().slice(); if (i < 0 || i >= items.length) return; items.splice(i, 1); kwSaveItems(items); renderKwList(); paintKwGear(); }
-function kwSetDone(i, done) { const items = kwGetItems().slice(); if (!items[i]) return; items[i] = { ...items[i], done: !!done }; kwSaveItems(items); renderKwList(); paintKwGear(); }   /* 대기열 체크 = 기어 소등의 유일 경로(운영자 260727) */
+function kwSetDone(i, done) { const items = kwGetItems().slice(); if (!items[i]) return; items[i] = { ...items[i], done: !!done, doneAt: done ? Date.now() : 0 }; kwSaveItems(items); renderKwList(); paintKwGear(); }   /* 대기열 체크 = 기어 소등의 유일 경로 · doneAt = 자동 삭제 기산점(운영자 260727) */
+// 빗금(확인) 상태로 하루를 넘긴 항목은 스스로 사라진다(운영자 260727 "빗금 1일 유지된건 자동으로 삭제되고 리스트 갱신").
+//   기산 = doneAt(체크한 시각) · 구 데이터(doneAt 없음)는 hit 시각으로 폴백해 영구 잔존을 막는다. 반환 = 실제로 지웠는지(호출부 재렌더 판단).
+const KW_DONE_TTL = 24 * 3600000;
+function kwPurgeDone() {
+  const items = kwGetItems(), now = Date.now();
+  const keep = items.filter(it => !(it && it.done && (now - (it.doneAt || it.hit || 0)) > KW_DONE_TTL));
+  if (keep.length === items.length) return false;
+  kwSaveItems(keep); return true;
+}
 // 기어 점등 = '미확인 발견'(hit 있고 done 아님)이 하나라도 있으면 ON — 소등 조건 = 대기열 체크(done)뿐(운영자 260727).
 //   body 클래스 토글 = has-freshbad/has-sysbad(수집 고장) 관용구 그대로 계승 = 새 표시물 0.
 function paintKwGear() {
@@ -12878,6 +12889,7 @@ function kwDocs() {
 let _kwChecking = false;
 async function checkKwAlerts() {
   if (!kwAlertOn() || _kwChecking) return;
+  if (kwPurgeDone() && !$('#kwpop').hidden) renderKwList();   // 폴링(60s)마다 만료분 자동 삭제 — 대기열을 안 열어둬도 정리된다
   const active = kwGetItems().filter(it => it && it.kw && !it.done);
   if (!active.length) return;
   _kwChecking = true;

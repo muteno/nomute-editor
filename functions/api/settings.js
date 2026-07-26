@@ -17,7 +17,7 @@ function cleanKwItems(a) {
     const kw = typeof it.kw === 'string' ? it.kw.slice(0, 120).trim() : '';
     if (!kw) continue;
     const url = (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) ? it.url.slice(0, 400) : '';   // 발견 출처 URL(뷰어 _kwClean 미러) — http(s)만 통과
-    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, url });
+    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, doneAt: Number.isFinite(it.doneAt) ? it.doneAt : 0, url });   // doneAt = 확인 시각(빗금 1일 뒤 자동 삭제 기산점)
     if (out.length >= KW_CAP) break;
   }
   return out;
