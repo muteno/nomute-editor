@@ -83,7 +83,17 @@ if smp:
     if smp.get('country_top'): _pcs.append('국가: ' + ' · '.join(f"{x['k']} {x['pct']}%" for x in smp['country_top'][:5]))
     if smp.get('city_top'): _pcs.append('도시: ' + ' · '.join(f"{x['k'].split(',')[0]} {x['pct']}%" for x in smp['city_top'][:5]))
     if smp.get('geo_base'): _pcs.append(f"국가·도시 퍼센트 분모 = {smp['geo_base']}(합이 100 미만 = API 상위 목록 밖 잔여)")   # 분모 명시(260726 교정 — 축 합 분모 시절 도시가 1.29배 부풀던 것)
-    L.append(f"[팔로워 표본(계정 전체 · API 실측{' · 기준 ' + smp['as_of'] if smp.get('as_of') else ''})] " + ' / '.join(_pcs))
+    # 기준일 밀림 딱지(운영자 260726 한 수 승인) — 인구통계는 lifetime 스냅샷이라 자동 수집이 죽으면 값이 그대로 굳는다.
+    # 모델이 그걸 '오늘의 관객'으로 읽고 최근 변화의 근거로 쓰는 걸 막는 게 목적(뷰어 demoStaleMsgs와 같은 판정식·같은 임계 2일).
+    _lag = None
+    if smp.get('as_of'):
+        try:
+            import datetime as _dt3
+            _lag = (_dt3.date.fromisoformat(str(d.get('generated_kst'))[:10]) - _dt3.date.fromisoformat(str(smp['as_of']))).days
+        except Exception:
+            _lag = None
+    _stale = f"(⚠ {_lag}일 전 기준 = 자동 갱신이 안 따라가는 축 · 오늘 값 아님)" if (_lag is not None and _lag >= 2) else ''
+    L.append(f"[팔로워 표본(계정 전체 · API 실측{' · 기준 ' + smp['as_of'] + _stale if smp.get('as_of') else ''})] " + ' / '.join(_pcs))
     if smp.get('operator_note'):
         L.append('[팔로워 표본 — 운영자 자가 보고(데이터 아님 · 취급 주의)] ' + smp['operator_note'])
 # 알고리즘 협착 — 운영자 가설 + 주제 간 실측(운영자 260715 Q05)
@@ -162,7 +172,7 @@ if posts:
         for x in sorted(_exps, key=lambda x: str(x.get('iso') or ''), reverse=True)[:8]:
             L.append(f"[{x.get('iso','')} {x.get('cat','')}] {str(x.get('name') or '(무캡션)')[:60]} · 조회 {fv(x.get('views'))}{tag(x)}")
 body = '\n'.join(L)
-PVER = 'chanbrief-v9.3-260717-overview-sowhat-emphasis'   # v9.3 = 총론 '→ 그래서 무엇을' 결론 1줄 필수 + 강조 밀도 상향(운영자 260717 — 총론이 최장 판인데 볼드 2개·강조색 0으로 밋밋 실측 → 볼드 넉넉히·핵심어 1층)   # v9.2 = 신뢰 게이트(운영자 260715 Q06 — 거의 확실만 해석·방향)   # v9.1 = 알고리즘 협착 가설+실측(운영자 260715 Q05) · v9 = 회초리·표본(운영자 260715 Q02·Q03 — 인과 실측·팔로워 표본·반응 지문·확장문)   # 프롬프트 버전 — 바뀌면 해시 불일치 = 다음 run 강제 재생성 · v8 = 총론 분리(운영자 260714 "총론=비전·방향성·미션 큰 그림 3~12개월 / 전체=전체 기간 분석 디테일" — [전체 총론] 1부 → [전체]+[총론] 2부 = 6부) · v7 = 강조 2층 · v6 = 시간대·요일교란 · v5 = 존재이유+연재+아카이브 · v4 = 3일신설 · v3 = 5부 · v2 = 프리앰블금지
+PVER = 'chanbrief-v9.4-260726-demo-asof'   # v9.4 = 팔로워 표본 기준일 딱지(운영자 260726 · 밀리면 ⚠N일 전 병기) · v9.3 = 총론 '→ 그래서 무엇을' 결론 1줄 필수 + 강조 밀도 상향(운영자 260717 — 총론이 최장 판인데 볼드 2개·강조색 0으로 밋밋 실측 → 볼드 넉넉히·핵심어 1층)   # v9.2 = 신뢰 게이트(운영자 260715 Q06 — 거의 확실만 해석·방향)   # v9.1 = 알고리즘 협착 가설+실측(운영자 260715 Q05) · v9 = 회초리·표본(운영자 260715 Q02·Q03 — 인과 실측·팔로워 표본·반응 지문·확장문)   # 프롬프트 버전 — 바뀌면 해시 불일치 = 다음 run 강제 재생성 · v8 = 총론 분리(운영자 260714 "총론=비전·방향성·미션 큰 그림 3~12개월 / 전체=전체 기간 분석 디테일" — [전체 총론] 1부 → [전체]+[총론] 2부 = 6부) · v7 = 강조 2층 · v6 = 시간대·요일교란 · v5 = 존재이유+연재+아카이브 · v4 = 3일신설 · v3 = 5부 · v2 = 프리앰블금지
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print(body)
 PY
