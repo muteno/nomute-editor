@@ -472,10 +472,21 @@ def _over(deadline):
     return deadline is not None and time.monotonic() > deadline
 
 
-SUB_QUOTA = 3   # 계정당 무감산 쿼터(운영자 260725 "3개 이상 분기점 넘어갈 때는 다른사람거 나오게 조금 감산")
+SUB_QUOTA = 3   # 계정당 무감산 쿼터의 '상한'(운영자 260725 "3개 이상 분기점 넘어갈 때는 다른사람거 나오게 조금 감산") — 실효 쿼터는 계정 수로 자동 축소(_spread_quota)
 
 
-def _acct_spread(items, quota=SUB_QUOTA):
+def _spread_quota(uniq, slots, cap=SUB_QUOTA):
+    """실효 쿼터 자동 산출 = clamp(올림(slots ÷ 계정수), 1, cap) — 운영자 260726 "계정은 더 늘어날 예정임".
+    왜 상수 3이면 안 되나(실측 260726): 칸 수가 고정(수집 limit·뷰어 top10)이라 쿼터 3을 상수로 두면
+    '칸÷3'개 계정에서 다양성이 막힌다 — 뷰어 10칸이면 3+3+3+1 = **계정을 6개든 15개든 늘려도 화면엔 4계정**.
+    즉 계정 증가가 다양성으로 이어지지 않는다. 칸을 계정 수로 나눠 쿼터를 자동으로 좁히면 등록만 늘려도
+    자동 대응(계정 늘 때마다 상수 손보기 불필요 = 운영자 개입 0).
+    무회귀 보증 = 계정이 적으면 몫이 커져 cap(3)에 걸리므로 종전과 동일(현 스레드 3계정·limit20 → 7→3 = 무변화).
+    하한 1 = 계정 수가 칸보다 많아도 최소 1개는 보장(0 = 전멸 방지)."""
+    return max(1, min(cap, -(-int(slots) // max(1, int(uniq))))) if slots else cap
+
+
+def _acct_spread(items, slots=None, quota=None):
     """계정 다양성 재배열 — 정렬 끝난 리스트에서 같은 계정 앞 quota개는 제자리, 초과분만 초과회차(tier)
     만큼 뒤 블록으로 강등한다(파이썬 sorted = 안정 → 블록 내부는 원 정렬 순서 그대로 보존).
     배경(실측 260725) = x_subs가 '24h 필터 → 최신순 → [:limit]' 단일 축이라 다작 계정 1곳이 limit를
@@ -483,7 +494,11 @@ def _acct_spread(items, quota=SUB_QUOTA):
     없는 계정을 되살릴 수 없으니 다양성은 '절단 전'에 확보해야 한다 = 뉴스 큐레이션의 source-diversity
     demotion(같은 출처 반복 시 강등) 계승. quota 이하 계정만 있는 런 = 무변화(순수 no-op) · 계정이
     1곳뿐이면 강등해도 대체제가 없어 그대로 = 자연 폴백(조용한 공백 원칙 유지).
+    slots = 이 뒤에 적용될 절단 칸 수(호출부 limit) → 쿼터 자동 산출(_spread_quota · 260726) ·
+    quota 직접 지정 = 산출 건너뜀(테스트·특수 호출용) · 둘 다 생략 = 상한 3 고정(구 동작).
     반환 = 재배열된 새 리스트(입력 비파괴 · 항목 dict는 공유 참조)."""
+    if quota is None:
+        quota = _spread_quota(len({str(it.get("account") or "").lower() for it in items}), slots)
     cnt, keyed = {}, []
     for i, it in enumerate(items):
         a = str(it.get("account") or "").lower()
@@ -592,7 +607,7 @@ def x_subs(accounts, limit=10, deadline=None):
     # → 절단 '직전'에 계정 다양성 재배열(_acct_spread · 260725): 최신순 단일 축 절단은 다작 계정이 limit를
     #   통째 먹어 다른 계정을 풀에서 지운다(뷰어는 없는 걸 못 살림) · 순서 = 정렬 → spread → [:limit] 고정
     #   (spread를 정렬 앞에 두면 재정렬이 덮어 무효 = 회귀 주의)
-    return _acct_spread(sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True))[:limit]
+    return _acct_spread(sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True), limit)[:limit]
 
 
 def x_search(queries, per=8, limit=15, deadline=None):
@@ -873,7 +888,7 @@ def threads_subs(accounts, limit=10, deadline=None):
     # → 절단 직전 계정 다양성 재배열(_acct_spread · 260725 Q557 = x_subs Q556 처방 이식): 스레드도 최신순 단일 축
     #   절단이라 다작 계정이 limit를 먹으면 다른 계정이 풀에서 사라진다(관측 = 19건/3계정 8·7·4 편중) · 순서 =
     #   정렬 → spread → [:limit] 고정(spread를 앞에 두면 재정렬이 덮어 무효)
-    return _acct_spread(sorted(fresh, key=lambda t: t["time"], reverse=True))[:limit]
+    return _acct_spread(sorted(fresh, key=lambda t: t["time"], reverse=True), limit)[:limit]
 
 
 def reddit_hot(subreddits, limit=12, per=8):
