@@ -3486,6 +3486,7 @@ $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', '
 const HDR = {
   sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45 },
   title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45 },
+  jinjja: { H: 51.52, S: 12.71, N: 33.04, fs: 56, avail: 880, floor: -45, start: -10 },   // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
 };
 function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자폭 = 캔버스 실측 1순위(getlength 미러 · 260716)·상수 폴백
   if (!text) return { tr: 0, over: false };
@@ -3497,12 +3498,21 @@ function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자
     }
     return s + (tr / 1000 * cfg.fs) * Math.max(text.length - 1, 0);
   };
-  if (w(0) <= cfg.avail) return { tr: 0, over: false };
-  for (let x = -1; x >= cfg.floor; x--) if (w(x) <= cfg.avail) return { tr: x, over: false };
+  const st = cfg.start ?? 0;   // sweep 시작 자간 — 노뮤트 sub/title은 미지정 = 0(종전 동작 동일) / 진짜예요는 -10(운영자 260726)
+  if (w(st) <= cfg.avail) return { tr: st, over: false };
+  for (let x = st - 1; x >= cfg.floor; x--) if (w(x) <= cfg.avail) return { tr: x, over: false };
   return { tr: cfg.floor, over: true };
 }
 function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reels2 자간 추정 → elSel 표시(헤더 탭·기본 탭 공용) · classList 토글로 base 클래스(cmtrk 등) 보존
   const el = $(elSel); if (!el) return;
+  // 진짜예요 = 문구 1줄(제목칸만·부제는 로고가 대신) → HDR.jinjja(880/-10~-45) 단일 힌트. 노뮤트 = 종전 부제·제목 2줄.
+  if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') {
+    const j = estHeaderTr($(titleSel).value.trim(), HDR.jinjja);
+    el.textContent = j.over ? '· 축약필요(880 초과 — 자간 -45로도 안 들어감)' : (j.tr < -10 ? `· 자간${j.tr} 적용` : '');
+    el.classList.remove('on', 'over');
+    if (j.over) el.classList.add('over'); else if (j.tr < -10) el.classList.add('on');
+    return;
+  }
   const s = estHeaderTr($(subSel).value.trim(), HDR.sub), t = estHeaderTr($(titleSel).value.trim(), HDR.title);
   const parts = [];
   if (s.over) parts.push('부제 축약필요'); else if (s.tr < 0) parts.push(`부제 자간${s.tr} 적용`);
@@ -3544,6 +3554,16 @@ function syncCTpl() {
   t.textContent = cTpl === 'nomute' ? '노뮤트' : '진짜예요';
   t.classList.toggle('tplnm', cTpl === 'nomute'); t.classList.toggle('tpljj', cTpl === 'jinjja');
   t.setAttribute('aria-label', '템플릿 ' + t.textContent + ' (탭=전환)');   // SR이 현재값 읽게(도형 없어 경계 약해진 보완 · syncCpFmt 동문)
+  // 진짜예요 = 2줄 헤더 중 위 줄(부제) 잠금 — 로고가 그 자리를 대신하므로(운영자 260726 "진짜예요 누르면 2줄 헤더중 위에거가 reads only로 됨").
+  // 잠금은 readOnly(값·발사 payload 보존 · disabled는 값이 빠져 노뮤트 복귀 시 유실) + dim = 기존 #cphLine.off 문법 계승.
+  const sb = $('#cSub');
+  if (sb) {
+    const lock = cTpl === 'jinjja';
+    sb.readOnly = lock;
+    sb.classList.toggle('off', lock);
+    sb.placeholder = lock ? '부제 — 진짜예요 템플릿은 로고가 대신함' : '부제';
+  }
+  if (typeof updateComboTrk === 'function') updateComboTrk();   // 자간 힌트·미리보기 = 템플릿 전환 즉시 재계산(880/-10 ↔ 960/0)
 }
 (function () {
   const t = $('#cTplTog'); if (!t) return;
@@ -3959,15 +3979,22 @@ $('#go').onclick = async () => {
     if ($('#abbr').checked) { csub = abbr(csub); ctitle = abbr(ctitle); clines = clines.map(abbr); }   // 축약 = 포스트·릴스 공통
     // 자간 하한(헤더 -45 / 자막 포스트 -45·릴스 -30) 초과 게이트(운영자 260720) — 백엔드가 한도까지 압축해도 넘치면 글자가 마진 밖으로 잘림. 맞춤법 교정·축약이 끝난 '실제 발사 텍스트'로 estHeaderTr/estTracking(라이브 힌트 updateComboTrk와 동일 계산기) 재판정 → 초과면 발사 차단. 구: 경고(빨강 축약필요)만 뜨고 그대로 발사(불가한데 실행) · 특히 맞춤법 교정본은 교정 후 재검증이 없어 초과여도 통과했다. 인터페이스 불변 = 기존 추정기 재사용, 발사 앞을 감싸는 게이트만 신설.
     const _trkOver = [];
-    if (hasHeader) { if (estHeaderTr(csub, HDR.sub).over) _trkOver.push('부제'); if (estHeaderTr(ctitle, HDR.title).over) _trkOver.push('제목'); }
+    if (hasHeader) {
+      if (cTpl === 'jinjja') { if (estHeaderTr(ctitle, HDR.jinjja).over) _trkOver.push('문구'); }   // 진짜예요 = 880 단일 게이트(부제는 잠금 = 렌더 안 됨)
+      else { if (estHeaderTr(csub, HDR.sub).over) _trkOver.push('부제'); if (estHeaderTr(ctitle, HDR.title).over) _trkOver.push('제목'); }
+    }
     if (hasOverlay && estTracking(clines, effOvFmt()).over) _trkOver.push('자막');
     if (_trkOver.length) return errStatus(_trkOver.join('·') + ' 자간 초과 — 글자 줄여줘', 'warn');
     const items = [];
-    if (hasHeader) items.push({ endpoint: '/api/thumb', payload: { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked } }, label: '릴스 헤더', tag: '헤더' });   // 흰칸(배경 ON = +nobg)
+    if (hasHeader) items.push({ endpoint: '/api/thumb', payload: { app: '2', params: { mode: 'header', sub: csub, title: ctitle, bothBg: $('#cBg').checked, tpl: cTpl } }, label: cTpl === 'jinjja' ? '진짜예요 헤더' : '릴스 헤더', tag: '헤더' });   // 흰칸(배경 ON = +nobg) · tpl = 템플릿 축(운영자 260726 · 노뮤트 기본이라 기존 발사와 동일 payload)
     if (hasOverlay) {
       // 오버레이 포맷 = effOvFmt(헤더 있으면 릴스 강제 / 없으면 토글값). 포스트=4:5(app1/fmt:post) · 릴스=9:16(app2/overlay). 이미지·OPA·축약 공용.
       const f = effOvFmt();
-      const ovp = f === 'post'
+      // 진짜예요 = 포스트·릴스 둘 다 app2 overlay 한 경로(+fmt)로 통일 = nomute_jinjja.render_overlay가 fmt로 분기(운영자 260726).
+      // 노뮤트는 아래 기존 분기(포스트=app1 / 릴스=app2) 그대로 = 무접촉.
+      const ovp = cTpl === 'jinjja'
+        ? { app: '2', params: { mode: 'overlay', fmt: f, lines: clines, opas: getComboOpas(), tpl: cTpl } }
+        : f === 'post'
         ? { app: '1', params: { fmt: 'post', lines: clines, opas: getComboOpas() } }
         : { app: '2', params: { mode: 'overlay', lines: clines, opas: getComboOpas() } };
       if (CIMG.b64 && !ovOnly) { ovp.imageB64 = CIMG.b64; ovp.name = CIMG.name; }   // 오버레이만 ON = 사진 미동봉(합성 안 함 · 오버레이 단독 산출) — 운영자 260718 "오버레이만 켜져 있으면 합성 안 되게 오버레이만"
