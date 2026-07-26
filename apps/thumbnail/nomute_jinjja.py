@@ -87,9 +87,70 @@ def render_header(line, out, base_path=None, fs=TXT_FS, ty=TXT_Y):
     return {'out': out, 'tr': tr, 'tpl': 'jinjja'}
 
 
+# ── 오버레이형(릴스 9:16 · 포스트 4:5) ───────────────────────────────────────
+# 운영자 260726 "릴스랑 포스트 오버레이형은 opa가 들어가야겠지. 이미지 맨 아래 그 위에
+# opa 오버레이 그다음에 ci … 그냥 로고랑 로고 위치랑 글자 들어가는 형태, 조건만 다른거야"
+# = 노뮤트 오버레이(nomute_overlay.generate) 스택·값 100% 계승, 로고 레이어만 교체.
+#   레이어(아래→위): 투명 → OPA 스크림(mk_grad) → (CI+글자) 그림자 → CI → 글자
+#   글자 배선(fs·lh·tr·lm·ty)·그라데 곡선·OPA 스케일 = SPECS 값 그대로 계승(신규 창작 0)
+#   로고 = mk_logo(임베드 base64) 대신 워터마크가 이미 구워진 진짜예요 베이스 PNG 합성
+#          (베이스 실측: 릴스 잉크 x362~721/y1010~1154 중앙 · 포스트 x108~500/y654~796)
+JJ_BASE = {'reels': 'assets/jinjja_reels_base.png', 'post': 'assets/jinjja_post_base.png'}
+
+
+def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None, base_path=None):
+    """진짜예요 오버레이 1장 → 투명 RGBA PNG. nomute_overlay.generate(:138-171) 스택 축자 계승."""
+    from nomute_overlay import SPECS, FONT_PATH, mk_grad, mk_shadow, draw_t, parse   # 절대규칙1 = import만
+
+    sp = SPECS[fmt]                      # 노뮤트 값 그대로(운영자 "글자 배선 그대로 적용")
+    S = SCALE
+    cw, chh = sp['w'] * S, sp['h'] * S
+    fs = sp['fs'] * S
+    fnt = ImageFont.truetype(FONT_PATH, fs, index=1)
+    tr_val = tracking if tracking is not None else sp['tr']
+    tp = tr_val / 1000 * fs
+    c = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
+
+    gd = dict(sp['grad'])                # OPA 스케일 = generate:147-152 축자 계승
+    if opacity is not None:
+        op = max(0, min(100, opacity))
+        max_a = 255 - min(gd.values())
+        if max_a > 0:
+            k = (op / 100 * 255) / max_a
+            gd = {kk: max(0, min(255, 255 - int((255 - v) * k))) for kk, v in gd.items()}
+    c = Image.alpha_composite(c, mk_grad(cw, chh, gd))
+
+    ll = Image.open(base_path or os.path.join(_HERE, JJ_BASE[fmt])).convert('RGBA')   # CI 레이어 = 베이스(워터마크 구움)
+    if ll.size != (cw, chh):
+        ll = ll.resize((cw, chh), Image.LANCZOS)
+
+    tx = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(tx)
+    cy = sp['ty'] * S
+    for i, ln in enumerate(lines):
+        cx = sp['lm'] * S + (lm_offsets[i] * S if lm_offsets and i < len(lm_offsets) else 0)
+        for st, stx in parse(ln):
+            co = (15, 253, 2) if st == 'h' else (255, 255, 255)   # 콘텐츠 산출물 색(generate:160 동일 축)
+            cx = draw_t(dr, cx, cy, stx, fnt, co, tp, sp['stroke'])
+        cy += sp['lh'] * S
+
+    cb = Image.alpha_composite(ll, tx)
+    c = Image.alpha_composite(c, mk_shadow(cb, S))
+    c = Image.alpha_composite(c, ll)
+    c = Image.alpha_composite(c, tx)
+    assert c.mode == 'RGBA', f'MODE ERROR: {c.mode}'
+    c.save(out, format='PNG')
+    assert Image.open(out).mode == 'RGBA'
+    return {'out': out, 'tr': tr_val, 'tpl': 'jinjja', 'fmt': fmt}
+
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) < 3:
-        print("Usage: python3 nomute_jinjja.py output.png '문구 1줄'")
+        print("Usage: python3 nomute_jinjja.py output.png '문구 1줄'                 # 헤더형")
+        print("       python3 nomute_jinjja.py output.png --ov reels|post '줄1' ['줄2' …]  # 오버레이형")
         raise SystemExit(1)
-    print(render_header(sys.argv[2], sys.argv[1]))
+    if sys.argv[2] == '--ov':
+        print(render_overlay(sys.argv[3], sys.argv[4:], sys.argv[1]))
+    else:
+        print(render_header(sys.argv[2], sys.argv[1]))
