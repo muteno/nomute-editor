@@ -2,7 +2,7 @@ name: ly-make
 
 # 뷰어 ly 폼(Pages Function /api/ly)이 발사 → SRT/STT 텍스트로 claude -p(지침 전문 프롬프트 인라인 · 260721 — 구 런타임 Read 왕복 폐지)
 #   → 릴스 자막 md → viewer/ly_out/<id>/subs.md 커밋(폼이 폴링).
-# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료). 입력 = SRT/STT 텍스트 또는 영상 URL/업로드 파일(yt-dlp/ffmpeg → Whisper large-v3-turbo STT).
+# 인증 = CLAUDE_CODE_OAUTH_TOKEN(구독 OAuth·무료). 입력 = SRT/STT 텍스트 또는 영상 URL/업로드 파일(yt-dlp/ffmpeg → Whisper large-v3 STT).
 on:
   workflow_dispatch:
     inputs:
@@ -57,7 +57,7 @@ permissions:
 jobs:
   ly:
     runs-on: ubuntu-latest
-    timeout-minutes: 60   # 콜드캐시(STT 환경 15)+STT(25)+claude+Demucs(12)+번인(35) 최악 겹침이 45를 넘던 구멍 봉합(평의회9 260709 — 구 45는 Demucs·claude 재시도 미계상). 개별 폭주는 스텝 백스톱이 먼저 끊고 잡 캡 = 최후 보루
+    timeout-minutes: 75   # 콜드캐시(STT 환경 20)+STT(40)+claude+Demucs(12)+번인(35) 최악 겹침 재산정(260726 large-v3 승격 — turbo 대비 추론 ~4배 = MAX_DUR 10분 영상 최악 ~20분·구 60은 스택보다 짧아짐). 개별 폭주는 스텝 백스톱이 먼저 끊고 잡 캡 = 최후 보루
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -183,7 +183,7 @@ jobs:
       # 영상 URL/파일일 때만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시
       - name: STT 환경 (영상 URL/파일)
         if: ${{ inputs.url != '' || inputs.file != '' || inputs.r2_src != '' }}
-        timeout-minutes: 15   # 백스톱 — 첫 런 Whisper 1.6GB 다운 감안 여유(이후 캐시히트 즉시). 무한 행만 차단.
+        timeout-minutes: 20   # 백스톱 — 첫 런 Whisper large-v3 3.1GB 다운 감안 여유(260726 승격·이후 캐시히트 즉시). 무한 행만 차단.
         uses: ./.github/actions/runner-setup
         with:
           setup: apps/ly/setup.sh
@@ -192,7 +192,7 @@ jobs:
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
-        timeout-minutes: 25   # 다운로드+Whisper 백스톱(평의회9 260709) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단
+        timeout-minutes: 40   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 승격 = turbo 대비 ~4배 감안 25→40) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단
         env:
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
@@ -254,7 +254,7 @@ jobs:
 
       - name: STT (업로드 파일 → ffmpeg 오디오추출 → Whisper)
         if: ${{ inputs.file != '' || inputs.r2_src != '' }}
-        timeout-minutes: 25   # Whisper 백스톱(평의회9 260709) — URL 스텝과 동일 원칙
+        timeout-minutes: 40   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40) — URL 스텝과 동일 원칙
         env:
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
