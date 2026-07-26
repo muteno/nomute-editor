@@ -1549,6 +1549,17 @@ def main():
                 **{k: ((subs_new[k] or carry(k)) if acc[k] else []) for k in ("x", "tiktok", "insta", "youtube", "threads")}}
         if not subs_new["tiktok"] and subs["tiktok"]:
             _tk_cover_fresh(subs["tiktok"])   # carry 폴백 런 한정 — 만료 서명 커버 oEmbed 재서명(260721 검은 썸네일 판례 · 신선 수집 런 = 콜 0)
+        # ④⑧ X·스레드 AI 요약 승계(운영자 260726 "한줄 요약" · ⑦ 블스 번역 승계 패턴 미러) — 직전분 kw·sum·sv를
+        #   url+text 동일 항목에 이식. 근본: 수집(1차 커밋)→요약 스텝(sns_sum.sh) 사이 창에서 기요약분 증발 →
+        #   원문 회귀 플랩 + 매 런 전량 재요약(토큰 낭비) 차단(요약 생성 정본 = .github/scripts/sns_sum.sh — 여긴 승계만·LLM 0).
+        for _k2 in ("x", "threads"):
+            _psum = {p.get("url"): p for p in (psubs.get(_k2) or []) if p.get("url") and p.get("sum")}
+            for _t in subs.get(_k2) or []:
+                _p = _psum.get(_t.get("url"))
+                if _p and not _t.get("sum") and (_p.get("text") or "") == (_t.get("text") or ""):
+                    for _f in ("kw", "sum", "sv"):
+                        if _p.get(_f):
+                            _t[_f] = _p[_f]
     # 소스별 헬스 원장(260713 평의회5 P1 — 전역 updated 하나가 죽은 소스를 가리던 은폐 봉합) — ok = "이번 런
     # 신선 수집 성공"(아래 data의 prev 폴백 사용과 구분 = raw 수집값 기준) · last_ok = 마지막 성공 시각(실패 런
     # = 직전 값 승계) · 게이트 OFF 소스 = off 도장(실패와 구분). 데이터 필드 전용 — 뷰어 표시는 §디자인 j 배치
