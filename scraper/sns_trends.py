@@ -359,6 +359,19 @@ def og_image(url, timeout=6):
         return ""
 
 
+TK_CUT_H = 18   # 틱톡 신선 창(시간) — 뷰어 index.html TK_CUT_H와 동축(운영자 260726 "올린지 18시간으로 변경" · 구 24h·구구 48h)
+
+
+def _fresh_tk(t):
+    """틱톡 정렬 1순위 키 — 0 = TK_CUT_H 이내 신선분(절단 면제) · 1 = 상록분 · published 결측·파손 = 1(fail-soft).
+    뷰어 tkv 하드컷과 동축 — tiktok() 절단·main() 병합 재정렬 공용."""
+    try:
+        p = t.get("published")
+        return 0 if p and datetime.fromisoformat(str(p)) >= datetime.now(KST) - timedelta(hours=TK_CUT_H) else 1
+    except Exception:  # noqa: BLE001
+        return 1
+
+
 def tiktok(limit=15, calls=10):
     """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
     피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup 상위 limit.
@@ -395,7 +408,10 @@ def tiktok(limit=15, calls=10):
                              "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
-    return sorted(seen.values(), key=lambda t: (t["region"] != "KR", -t["views"]))[:limit]   # KR 우선 → 조회수(운영자 260712) — KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
+    # 절단 정렬 = ①24h 신선분 전량 최우선 → ②KR 우선 → ③조회수(운영자 260712 KR우선 + 260726 "24시간 넘어가면 없는거")
+    # ⚠ ①이 없으면 해외 신선분이 굶는다(실측 260726): 해외 24h분은 조회수가 낮아(하루 1~2건·9.5만·4.7천급) 해외 그룹
+    #   조회수순 뒤쪽 → limit 60 절단에 탈락 → 뷰어 24h 컷이 쓸 해외 재료가 0건이 된다(저장분 실측 24h 해외 0개).
+    return sorted(seen.values(), key=lambda t: (_fresh_tk(t), t["region"] != "KR", -t["views"]))[:limit]   # KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
 
 
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
@@ -547,6 +563,125 @@ def _x_rss(acc, dead):
             return got
         dead.add(base)
     return []
+
+
+_X_GUEST_BEARER = ("AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D"
+                   "1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA")   # X 웹 공개 앱 토큰(무인증 게스트 활성화용 · 공개 상수)
+_X_GQL_TWEET = "0hWvDhmW8YQ-S_ib3azIrw/TweetResultByRestId"   # GraphQL 쿼리 id(웹앱 번들 상수 · 변동 시 폴백으로 자동 강등)
+
+
+def _x_guest():
+    """게스트 토큰 1회 발급 — 실패 = None(보강 전체 스킵 = fail-soft)."""
+    try:
+        req = urllib.request.Request("https://api.twitter.com/1.1/guest/activate.json", data=b"",
+                                     headers={**UA, "authorization": "Bearer " + _X_GUEST_BEARER})
+        return json.loads(urllib.request.urlopen(req, timeout=12, context=CTX).read()).get("guest_token")
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::x 게스트 토큰 실패: {e}", file=sys.stderr)
+        return None
+
+
+def _x_syn_tok(tid):
+    """cdn.syndication tweet-result 토큰 = ((id/1e15)*π).toString(36)에서 0·. 제거(웹 임베드 규약)."""
+    v, digs, out = (int(tid) / 1e15) * 3.141592653589793, "0123456789abcdefghijklmnopqrstuvwxyz", ""
+    ip, fr = int(v), v - int(v)
+    x = ip
+    while x > 0:
+        out, x = digs[x % 36] + out, x // 36
+    fs = ""
+    for _ in range(20):
+        fr *= 36
+        fs += digs[int(fr)]
+        fr -= int(fr)
+    return ((out or "0") + "." + fs).replace("0", "").replace(".", "")
+
+
+def _x_one(tid, gt):
+    """트윗 1건 상세 — 닉네임·전문·대표이미지·조회수(운영자 260726 "닉네임·정확한 글·섬네일·조회수").
+    주 = GraphQL TweetResultByRestId(게스트 · views.count 유일 공급원 — syndication·RSS엔 조회수가 없다).
+    폴백 = cdn.syndication.twimg.com/tweet-result(429 무관 실측 260726 · 조회수만 결측).
+    실패 = {} (호출부가 기존 값 유지)."""
+    if gt:
+        try:
+            var = json.dumps({"tweetId": str(tid), "withCommunity": False, "includePromotedContent": False, "withVoice": False})
+            fea = json.dumps({"creator_subscriptions_tweet_preview_api_enabled": True, "tweetypie_unmention_optimization_enabled": True,
+                              "responsive_web_edit_tweet_api_enabled": True, "graphql_is_translatable_rweb_tweet_is_translatable_enabled": True,
+                              "view_counts_everywhere_api_enabled": True, "longform_notetweets_consumption_enabled": True,
+                              "responsive_web_twitter_article_tweet_consumption_enabled": False, "tweet_awards_web_tipping_enabled": False,
+                              "freedom_of_speech_not_reach_fetch_enabled": True, "standardized_nudges_misinfo": True,
+                              "tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled": True,
+                              "longform_notetweets_rich_text_read_enabled": True, "longform_notetweets_inline_media_enabled": True,
+                              "responsive_web_graphql_exclude_directive_enabled": True, "verified_phone_label_enabled": False,
+                              "responsive_web_media_download_video_enabled": False,
+                              "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+                              "responsive_web_graphql_timeline_navigation_enabled": True, "responsive_web_enhance_cards_enabled": False})
+            u = "https://api.twitter.com/graphql/%s?variables=%s&features=%s" % (
+                _X_GQL_TWEET, urllib.parse.quote(var), urllib.parse.quote(fea))
+            req = urllib.request.Request(u, headers={**UA, "authorization": "Bearer " + _X_GUEST_BEARER, "x-guest-token": gt})
+            r = ((json.loads(urllib.request.urlopen(req, timeout=15, context=CTX).read()).get("data") or {})
+                 .get("tweetResult") or {}).get("result") or {}
+            leg = r.get("legacy") or {}
+            if leg:
+                usr = (((r.get("core") or {}).get("user_results") or {}).get("result") or {}).get("legacy") or {}
+                med = ((leg.get("extended_entities") or leg.get("entities") or {}).get("media")) or []
+                txt = ((r.get("note_tweet") or {}).get("note_tweet_results") or {}).get("result", {}).get("text") or leg.get("full_text") or ""
+                return {"name": usr.get("name") or "", "text": _x_body(txt, leg.get("display_text_range")),
+                        "thumb": (med[0].get("media_url_https") if med else "") or "",
+                        "views": _i(((r.get("views") or {}).get("count"))),
+                        "likes": _i(leg.get("favorite_count")), "rts": _i(leg.get("retweet_count")), "cmts": _i(leg.get("reply_count"))}
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::x gql {tid}: {e}", file=sys.stderr)
+    try:   # 폴백 = 임베드 신디케이션(조회수 없음 · 나머지 3값은 동일 품질)
+        u = "https://cdn.syndication.twimg.com/tweet-result?id=%s&lang=ko&token=%s" % (tid, _x_syn_tok(tid))
+        d = json.loads(_get(u, timeout=12))
+        med = d.get("mediaDetails") or []
+        return {"name": (d.get("user") or {}).get("name") or "",
+                "text": _x_body(d.get("text") or "", d.get("display_text_range")),
+                "thumb": (med[0].get("media_url_https") if med else "") or "",
+                "views": 0, "likes": _i(d.get("favorite_count")), "rts": 0, "cmts": _i(d.get("conversation_count"))}
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::x syn {tid}: {e}", file=sys.stderr)
+    return {}
+
+
+def _x_body(txt, rng):
+    """본문 = display_text_range 안쪽만(끝의 미디어 t.co = 카드 썸네일로 대체되니 잘라낸다 · X 웹 표기와 동일).
+    range 결측·비정상 = 원문 그대로(fail-soft) · 상한 280은 호출부 규약 계승."""
+    s = str(txt or "")
+    if isinstance(rng, list) and len(rng) == 2 and all(isinstance(v, int) for v in rng):
+        cp = [c for c in s]   # 인덱스 = 코드포인트 기준(X 규약) — 파이썬 str 슬라이스와 동일 단위
+        if 0 <= rng[0] < rng[1] <= len(cp):
+            s = "".join(cp[rng[0]:rng[1]])
+    return s.strip()[:280]
+
+
+def x_enrich(items, deadline=None, gap=0.3):
+    """구독 X 목록 보강(운영자 260726) — 트윗별 상세 1콜로 닉네임·전문·대표이미지·조회수를 채운다.
+    RSS 미러 폴백분(_x_rss = 지표 전멸·본문 잘림)까지 한 경로로 복구되는 게 요점.
+    실패 건 = 기존 값 그대로(fail-soft) · 예산 초과 = 잔여 스킵(보강은 부가값이라 수집을 못 막는다)."""
+    if not items:
+        return items
+    gt, n = _x_guest(), 0
+    for it in items:
+        if _over(deadline):
+            print("::warning::x 보강 예산 소진 — 잔여 스킵", file=sys.stderr)
+            break
+        m = re.search(r"/status/(\d+)", str(it.get("url") or ""))
+        if not m:
+            continue
+        d = _x_one(m.group(1), gt)
+        if not d:
+            continue
+        n += 1
+        for k, v in d.items():
+            if k in ("likes", "rts", "cmts", "views"):
+                if _i(v) > _i(it.get(k)):   # 지표는 큰 값 승(폴백 0·부분결측이 기존 수집값을 지우지 않게)
+                    it[k] = _i(v)
+            elif v:
+                it[k] = v
+        time.sleep(gap)
+    print(f"x 보강: {n}/{len(items)}건(닉네임·전문·썸네일·조회수){'' if gt else ' · 게스트토큰 없음 = 조회수 결측'}")
+    return items
 
 
 def x_subs(accounts, limit=10, deadline=None):
@@ -1376,22 +1511,25 @@ def main():
     gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
     gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
     tk = tiktok(limit=60)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
-    # KR 신선분 런 간 이월(운영자 260726 "틱톡이 10개가 안맞춰지는 이유 — 해결" · 원인 실측 260726 = tikwm feed가
-    # region=KR 실효 약한 글로벌 혼합이라 단발 런 KR ≈ 7개·그중 48h 내 3개 → 뷰어 국내 인기[2일 컷 top20]가 3장 굶주림):
-    # 30분 크론이 런마다 줍는 KR 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 48h 창 안만 이어받아 누적.
-    # url dedup(신런 우선 = 조회수 최신) · 경계 48h = 뷰어 tkv 컷 동축 · 창 밖 = 자연 소멸(무한성장 없음) ·
-    # 글로벌분 = 매 런 60개 풀로 충분해 이월 비대상 · tk 0건 런 = 아래 "tikwm 실패 = 기존 보존" 경로 그대로(이월 미작동 = fail-soft)
+    # 신선분 런 간 이월(운영자 260726 "틱톡이 10개가 안맞춰지는 이유 — 해결" · 원인 실측 260726 = tikwm feed가
+    # region=KR 실효 약한 글로벌 혼합이라 단발 런 KR ≈ 7개·그중 24h 내 3개 → 뷰어 국내 인기[top20]가 굶주림):
+    # 30분 크론이 런마다 줍는 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 TK_CUT_H(18h) 창 안만 이어받아 누적.
+    # url dedup(신런 우선 = 조회수 최신) · 경계 = 뷰어 tkv 컷 동축(TK_CUT_H) · 창 밖 = 자연 소멸(무한성장 없음) ·
+    # tk 0건 런 = 아래 "tikwm 실패 = 기존 보존" 경로 그대로(이월 미작동 = fail-soft)
+    # ⚠ 지역 조건 없음(운영자 260726 "해당하는게 없으면 해외가 치고 올라오는거다") — 구 KR-전용 이월은 해외 신선분을
+    #   런마다 버려 24h 창 해외분이 상시 0건이었다(저장분 실측 260726 = 24h·48h 모두 해외 0개). 이월 대상을 전 지역으로
+    #   열어야 뷰어 통합 랭킹(해외 ×0.2 감점)이 국내 빈자리를 해외로 채울 재료를 갖는다. 해외 24h = 하루 1~2건(희소 정상).
     if tk:
         _tku = {t2.get("url") for t2 in tk}
-        _t48 = datetime.now(KST) - timedelta(hours=48)
+        _t24 = datetime.now(KST) - timedelta(hours=TK_CUT_H)   # 이월 창 = 뷰어 컷 동축(18h)
         for _pv in ((prev.get("tiktok") or {}).get("videos") or []):
             try:
-                if _pv.get("region") == "KR" and _pv.get("url") not in _tku and datetime.fromisoformat(str(_pv.get("published"))) >= _t48:
+                if _pv.get("url") not in _tku and datetime.fromisoformat(str(_pv.get("published"))) >= _t24:
                     tk.append(_pv)
                     _tku.add(_pv["url"])
             except Exception:  # noqa: BLE001 — published 결측·파손·naive = 이월 제외(fail-soft)
                 pass
-        tk.sort(key=lambda t2: (t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(KR 우선→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
+        tk.sort(key=lambda t2: (_fresh_tk(t2), t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(신선분→KR→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
     W_GEOS = [g2.strip() for g2 in (os.environ.get("SNS_WORLD_GEOS") or "US,JP,GB").split(",") if g2.strip()]
@@ -1486,6 +1624,9 @@ def main():
                     print(f"phone-subs 채택: disaster {len(_pd)}건({_pm:.0f}분 전 수집)")
         except Exception:
             pass
+        # X 상세 보강(운영자 260726 "닉네임·정확한 글·대표 이미지·조회수") — 폰 채택 '뒤'에 두는 게 요점:
+        # 채택된 폰 수집분도 같은 경로로 보강돼야 표시 4값이 공급원과 무관하게 동일(러너/폰 갈림 방지).
+        subs_new["x"] = x_enrich(subs_new.get("x") or [], deadline=time.monotonic() + (_i(os.environ.get("SNS_X_ENRICH_BUDGET")) or 90))
     fin_any = bool(fin) and (bool(fin.get("rates")) or bool(fin.get("coins")))
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob and not exw:
