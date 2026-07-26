@@ -594,6 +594,8 @@
 
 <script src="upload.js"></script><!-- R2 직업로드 공용(nmUpArm/nmUpload · conv와 공유 — 미가용 = 30MB base64 폴백) -->
 <script>
+let EDIT_STATS = null;   // viewer/job_stats.json = 빌더 산출 실측 앵커(운영자 260727) — 로드 문법 = thumb 정본 그대로
+(async () => { try { const r = await fetch('job_stats.json?t=' + Date.now()); if (r.ok) EDIT_STATS = (await r.json()).stats || null; } catch (e) {} })();
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const X_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';
@@ -1264,7 +1266,9 @@ function pollEdit(id, t0, minTs, wlbl, kind){
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
     if(sec>BUDGET*2){ stop(); wclear(); goFireDone($('#editGo')); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
-    const ws=vw.querySelector('.wcorner'); if(ws) ws.textContent=(function(x){x=Math.max(0,x|0);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');})(sec)+' 진행시간';   // 운영자 260727 전역 표기(00:00 진행시간) — 영상 잡 예상시간 앵커(edit-make/edit n=5)는 thumb 배선과 별개 축이라 이번 스코프 밖   // 경과 = 0:17 포맷 우상단 코너(운영자 260712 waitTimeFmt=mmss · 260723 Q454 코너 이주)
+    const ws=vw.querySelector('.wcorner'); if(ws){ const mm=(x)=>{x=Math.max(0,x|0);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
+      const eta=(EDIT_STATS && EDIT_STATS['edit-make/edit'] && EDIT_STATS['edit-make/edit'].dur)|0;
+      ws.textContent=mm(sec)+' 진행시간'+(eta?' (예상 '+mm(eta)+')':''); }   // 예상 배선(운영자 260727 "일부에서는 예상시간이 안 뜬다") — 표기 문법 = thumb .wip 좌상단 정본 그대로 · 앵커 = viewer/job_stats.json의 edit-make/edit(실측 중앙 소요) · 데이터 없으면 종전처럼 경과만   // 운영자 260727 전역 표기(00:00 진행시간) — 영상 잡 예상시간 앵커(edit-make/edit n=5)는 thumb 배선과 별개 축이라 이번 스코프 밖   // 경과 = 0:17 포맷 우상단 코너(운영자 260712 waitTimeFmt=mmss · 260723 Q454 코너 이주)
   };
   const disp=setInterval(draw,1000); draw();
   const tick=async()=>{
