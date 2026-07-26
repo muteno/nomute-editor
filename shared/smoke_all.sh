@@ -15,6 +15,8 @@
 #   각 스모크는 자기 포트대(8791~ 등 분리 설계)라 상한 내 무충돌 · 「비편입」 스모크(예: smoke_fresh
 #   = 대기 티어·포트 8801~ 공유)는 자동 제외라 경합 0.
 # 신뢰성: 잡별 rc를 파일로 남겨(wait -n 리핑 후에도 안전 회수) 취합 · 로그 누락 잡 = rc "?" = FAIL 취급.
+#   + 플레이키 흡수(260726) = 1차 FAIL 종목만 **단독 순차 1회 재실행**해 2연속 실패한 것만 진짜 FAIL.
+#   1차 실패 로그는 .first.log로 보존하고 보고에 실패 지점을 같이 찍는다(은폐 아님 · 재시도 통과분은 명시).
 # ═══════════════════════════════════════════════════════════════════════════════
 set -u
 cd "$(dirname "$0")/.."
@@ -54,14 +56,45 @@ for f in "${RUN[@]}"; do
 done
 wait
 
+# ── 플레이키 흡수: 1차 FAIL 종목만 단독 순차 재실행 1회(운영자 260726 승인) ─────
+#   왜 = 4코어에서 다종 병렬 = 자원 경합으로 '가짜 빨강'이 난다(260726 실측: editprev 병렬 FAIL →
+#   단독 9/9 PASS · toolframe C6 결정론은 **같은 코드로 1회 FAIL / 1회 PASS**). 가짜 빨강은 다음 세션이
+#   "앱이 깨졌나" 확인하는 데 시간을 뺏는다. 단독(동시성 1)으로 다시 돌려 경합을 배제하고
+#   **2연속 실패한 것만** 진짜 FAIL로 보고한다.
+RETRY=(); FLAKY=0
+for f in "${RUN[@]}"; do
+  b="$(basename "$f" .js)"
+  [ "$(cat "$LOGDIR/$b.rc" 2>/dev/null || echo '?')" = "0" ] || RETRY+=("$f")
+done
+if [ "${#RETRY[@]}" -gt 0 ]; then
+  echo "· 1차 FAIL ${#RETRY[@]}종 — 단독 재실행으로 플레이키 판별: $(for f in "${RETRY[@]}"; do basename "$f" .js; done | tr '\n' ' ')"
+  for f in "${RETRY[@]}"; do
+    b="$(basename "$f" .js)"
+    ( node "$f" > "$LOGDIR/$b.retry.log" 2>&1; echo $? > "$LOGDIR/$b.retry.rc" )
+    if [ "$(cat "$LOGDIR/$b.retry.rc" 2>/dev/null || echo '?')" = "0" ]; then
+      mv "$LOGDIR/$b.log" "$LOGDIR/$b.first.log" 2>/dev/null   # 1차(병렬) 실패 로그 보존 = 은폐 방지
+      mv "$LOGDIR/$b.retry.log" "$LOGDIR/$b.log"
+      echo "0" > "$LOGDIR/$b.rc"; : > "$LOGDIR/$b.flaky"
+    fi
+  done
+fi
+
 # ── 취합·보고(발견 순서) ──────────────────────────────────────────────────────
 FAIL=0; SUMMARY=""
 for f in "${RUN[@]}"; do
   b="$(basename "$f" .js)"
   rc="$(cat "$LOGDIR/$b.rc" 2>/dev/null || echo '?')"
-  echo "════ $b (rc=$rc) ════"; cat "$LOGDIR/$b.log" 2>/dev/null
-  SUMMARY="$SUMMARY $b=$rc"
+  echo "════ $b (rc=$rc$([ -f "$LOGDIR/$b.flaky" ] && echo " · 재시도 통과")) ════"; cat "$LOGDIR/$b.log" 2>/dev/null
+  if [ -f "$LOGDIR/$b.flaky" ]; then
+    FLAKY=$((FLAKY + 1)); SUMMARY="$SUMMARY $b=0*"
+    echo "   ⚠ 1차 병렬 FAIL → 단독 재시도 PASS = 플레이키(진짜 실패 아님). 1차 실패 지점:"
+    grep -E '^(❌|FAIL|✗)' "$LOGDIR/$b.first.log" 2>/dev/null | head -3 | sed 's/^/     /'
+  else
+    SUMMARY="$SUMMARY $b=$rc"
+  fi
   [ "$rc" = "0" ] || FAIL=1
 done
-if [ "$FAIL" -eq 0 ]; then echo "── smoke_all 전부 PASS (${#RUN[@]}종 자동발견$([ "${#SKIP[@]}" -gt 0 ] && echo " · 비편입 ${#SKIP[@]} 제외"))"; exit 0; fi
-echo "── smoke_all FAIL ($SUMMARY )"; exit 1
+if [ "$FAIL" -eq 0 ]; then
+  echo "── smoke_all 전부 PASS (${#RUN[@]}종 자동발견$([ "${#SKIP[@]}" -gt 0 ] && echo " · 비편입 ${#SKIP[@]} 제외")$([ "$FLAKY" -gt 0 ] && echo " · 플레이키 재시도 통과 ${FLAKY}종[*]"))"; exit 0
+fi
+echo "── smoke_all FAIL ($SUMMARY ) · [*] = 1차 병렬 FAIL·단독 재시도 PASS(플레이키)"; exit 1
