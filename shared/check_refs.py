@@ -1664,6 +1664,60 @@ def check_ssot_coverage():
     return 0
 
 
+
+# ── 활자 조용사(silent-fail) 게이트 2종 (운영자 260727 한 수 채택 — 같은 유형이 3회 머지 동안 미검출된 실사고 재발방지) ──
+# 왜 하드인가: 둘 다 "브라우저가 조용히 버리거나 안 물려줘서" 눈에는 '미묘하게 다름'으로만 보인다 → 리뷰·스샷으로 안 잡힌다.
+_FORM_FONT_SURFACES = ('viewer/index.html', 'viewer/thumb.html', 'viewer/tr.html')   # 이미지 스튜디오 3표면(신규 편입 = 이 튜플에 1줄)
+_FORM_FONT_RE = re.compile(r'button\s*,\s*input\s*,\s*textarea\s*,\s*select\s*\{[^}]*font-family\s*:\s*inherit[^}]*letter-spacing\s*:\s*inherit', re.S)
+_FONT_SHORTHAND_RE = re.compile(r'(?<![-a-zA-Z])font\s*:\s*([^;{}]*\binherit\b[^;{}]*);')   # 값 안에 inherit 등장 → 아래에서 '단독 inherit(합법)'만 통과
+
+
+def _strip_css_comments(t):
+    return re.sub(r'/\*.*?\*/', ' ', t, flags=re.S)
+
+
+def check_font_shorthand():
+    """`font:` 축약형 안 `inherit` 금지(운영자 260727 실사고 재발방지).
+    CSS 문법상 `inherit`은 `font` 축약형의 family 자리에 올 수 없다 → **선언 전체가 무효** → 그 요소가 body 활자를
+    조용히 상속한다(260727 실측: 옵션 칩이 13px/700 대신 15px/400으로 렌더 · 3회 머지 동안 미검출).
+    교정 정본 = `font-family:inherit; font-size:…; font-weight:…` 분해형(viewer/sb.html `.geni-opt`)."""
+    bad = []
+    for rel in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        txt = _strip_css_comments(open(rel, encoding='utf-8').read())
+        for m in _FONT_SHORTHAND_RE.finditer(txt):
+            val = m.group(1).strip()
+            if val == 'inherit':
+                continue   # `font:inherit` 단독 = 합법(전역 키워드가 축약 전체에 적용) · 무효는 다른 값과 섞였을 때뿐
+            bad.append((os.path.relpath(rel, ROOT), txt[:m.start()].count('\n') + 1, m.group(0)[:70]))
+    if bad:
+        print('❌ 활자 무효축약 게이트 — `font:` 축약형 안 `inherit`(=선언 전체 무효 · 조용한 body 상속):')
+        for f, ln, frag in bad:
+            print('   - %s:%d  %s → `font-family:inherit; font-size:…; font-weight:…` 분해형으로(정본 = sb.html .geni-opt)' % (f, ln, frag))
+        return 1
+    print('✅ 활자 무효축약 게이트 — `font:` 축약 안 inherit 0(무효 선언으로 인한 조용한 활자 드리프트 차단).')
+    return 0
+
+
+def check_form_font_inherit():
+    """폼 요소 활자 계승 리셋 존재(운영자 260727 "같은 형태에 있는 애들은 다 같아야함").
+    `button/input/textarea/select`는 UA 기본이 font-family·letter-spacing **상속을 끊는다** → 같은 카드에서 라벨은
+    자간 −.2px인데 칩(button)만 normal, 미스타일 input은 Arial로 렌더(260727 실측). 각 표면이 리셋 1줄을 갖는지 확인."""
+    miss = []
+    for rel in _FORM_FONT_SURFACES:
+        p = os.path.join(ROOT, rel)
+        if not os.path.exists(p):
+            miss.append((rel, '파일 없음')); continue
+        if not _FORM_FONT_RE.search(open(p, encoding='utf-8').read()):
+            miss.append((rel, '리셋 규칙 없음'))
+    if miss:
+        print('❌ 폼 활자 계승 게이트 — 상속 리셋 누락(UA 기본이 글꼴·자간 상속을 끊어 같은 부품끼리 갈린다):')
+        for rel, why in miss:
+            print('   - %s (%s) → `button, input, textarea, select { font-family:inherit; letter-spacing:inherit; }` 1줄(값 신설 0)' % (rel, why))
+        return 1
+    print('✅ 폼 활자 계승 게이트 — 이미지 스튜디오 %d표면 전부 상속 리셋 보유(칩·버튼·입력 활자 = 문서 활자 계승).' % len(_FORM_FONT_SURFACES))
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -1927,6 +1981,16 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_ssot_coverage 예외(fail-closed):', e); rc = 1
+    try:
+        if check_font_shorthand() != 0:   # 활자 무효축약(하드 — `font:` 축약 안 inherit = 선언 전체 무효 · 조용한 상속 드리프트)
+            rc = 1
+    except Exception as e:
+        print('❌ check_font_shorthand 예외(fail-closed):', e); rc = 1
+    try:
+        if check_form_font_inherit() != 0:   # 폼 활자 계승(하드 — UA 기본이 끊는 글꼴·자간 상속을 리셋으로 복구했는지)
+            rc = 1
+    except Exception as e:
+        print('❌ check_form_font_inherit 예외(fail-closed):', e); rc = 1
     try:
         if check_gate_docs() != 0:   # 게이트 문서화 메타 게이트(하드 — 모든 def check_*가 정본 문서 등재됐는지 · "만들어놓고 안 봄" 구조 차단 · 운영자 260723 Q468)
             rc = 1
