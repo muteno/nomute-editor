@@ -49,7 +49,7 @@ LEDGERS = [os.path.join(ROOT, "push", p) for p in ("sent.json", "autopick.json",
 FRESH_MIN = float(os.environ.get("WD_FRESH_MIN", "120"))   # 90→120(승격 시 상향 · 실측 260713: 최근 7일 최대 무신규 갭 75분[심야]·90분 초과 0회 — 심야 소강 오탐 마진 확보 = 경고 신뢰 우선·감지 지연 +30분 수용)
 BACKLOG = int(os.environ.get("WD_BACKLOG", "250"))
 SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
-PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "180"))   # 3h = 폰 크론 30분 주기 6연속 실패(야간 소강·전송 지연 오탐 마진) — B1 2일 무경보 공백 근절(평의회 260723 #5c)
+PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "90"))   # 90분 = **러너 채택 게이트와 동일**(sns_trends.py `PHONE_FRESH_MIN` 기본 90 · 1623행) — 이 선을 넘는 순간 러너가 폰분을 안 받아 스레드·인스타·레딧·재난이 실제로 굶는다. 구 180분은 그 사이 **90~180분을 데이터는 굶는데 경보는 침묵**하는 공백으로 남겼다(260727 실측 판례: 폰 111분 정지 → 스레드·인스타 stale만 뜨고 진범인 폰 정지는 무경보). 구 사유였던 "야간 소강 마진"은 이 지표엔 부적합 = 폰 크론은 뉴스 유입량과 무관하게 30분 고정 주기라 소강 개념이 없다(scripts/phone_subs.sh `*/30`). 전송 지연 마진은 워치독 주기(30분)가 이미 흡수. ⚠ 채택 게이트를 옮기면 이 값도 같이 옮길 것.
 KWSRC_MIN = float(os.environ.get("WD_KWSRC_MIN", "360"))   # 6h = tbs 30분 주기(sns-trends 편승) 12연속 실패 — 커뮤 베스트글은 심야에도 갱신되나 백스톱 드롭(schedule best-effort 1~4h) 오탐 마진 확보
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
@@ -67,6 +67,14 @@ def _age_min(iso):
         return (datetime.now(KST) - t).total_seconds() / 60
     except Exception:  # noqa: BLE001
         return None
+
+
+def _dur_ko(m):
+    """분 → "1시간 51분"/"45분". 구 `%.0f시간` 반올림은 임계 근처를 왜곡했다(90분·111분 둘 다 "2시간")
+    — 폰 지표는 임계가 90분이라 시간 단위론 경보와 실측이 안 맞아 보인다. 시간 주기 지표(brief·smoke)는
+    분 민감도가 불요라 종전 표기 유지(B5 = 갭 있는 데만)."""
+    m = max(0, int(round(m or 0)))
+    return f"{m // 60}시간 {m % 60}분" if m >= 60 and m % 60 else (f"{m // 60}시간" if m >= 60 else f"{m}분")
 
 
 def check_collect():
@@ -131,8 +139,8 @@ def check_phone():
         d = json.load(open(PHONE, encoding="utf-8"))
         age = _age_min(d.get("updated"))
         if age is None or age > PHONE_MIN:
-            return (f"폰 수집 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}"
-                    f"(임계 {PHONE_MIN / 60:.0f}h) — termux/맥 phone_subs 크론 확인(스레드·인스타·레딧·재난 = 폰 전용 공급원)")
+            return (f"폰 수집 정체 {_dur_ko(age) if age is not None else '나이 불명'}"
+                    f"(임계 {_dur_ko(PHONE_MIN)}) — termux/맥 phone_subs 크론 확인(스레드·인스타·레딧·재난 = 폰 전용 공급원)")
     except FileNotFoundError:
         return None   # 파일 없음 = 폰 미도입 초기(경보 아님 · check_sns 관용구)
     except Exception as e:  # noqa: BLE001

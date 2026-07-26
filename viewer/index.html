@@ -7237,13 +7237,39 @@ function syncStaleMsg() {   // 상태 변화에서만 배지·목록 갱신(매 
 //   문법 = 바로 위 staleDataMsg() **그대로**(클라 생성·구분 '시스템'). 다른 건 딱 하나 = **id 부여** → ✓(확인)로 치울 수 있고 계정 md축(msgDismiss)으로 전 기기 동기.
 //   소스 = sns_trends.json `health.subs.stale`(260713부터 이미 쌓이던 "등록 계정은 있는데 이번 런 0건" 목록 · 새 수집·새 데이터 축 0 = 있는 걸 화면에 꺼낸 것뿐).
 //   id에 수집일자를 물려 = 확인하면 그날은 침묵 · 다음 날도 여전히 고장이면 새 id로 다시 고지(영구 묵음 = 사고 은폐라 금지).
+//   원인·조치 안내(운영자 260726 "만약에 이게 내가 해야될 내용이면 그거에 대한 설명이 뜨게") — 같은 "0건"이라도 **누가 고쳐야 하는지가 갈린다**:
+//     · 폰 축(스레드·인스타) = 메타가 데이터센터 IP를 막아 러너가 못 부른다 → 폰(termux·맥) 크론이 유일 공급원(scraper/sns_trends.py insta_subs·threads_subs docstring) = **운영자 조치**.
+//         - 폰이 멈춤(health.phone.ok=false = 파일 나이 >90분) → 크론 살리기.  - 폰은 도는데 0건 → 메타 로그인월 = 부계 세션쿠키(<PLAT>_COOKIE) 주입(260726 실측: 스레드는 쿠키로 살아났고 인스타는 미주입 사각).
+//     · 러너 축(X·틱톡·유튜브) = 서버가 30분마다 자동 재시도 → 조치 없음(계속 뜨면 계정 생사만 확인).
+//   판정 소스 = 이미 화면이 읽는 TRENDS.health.phone(1738행 하트비트) — 새 데이터·새 수집·새 UI 부품 0. id·✓축·구분은 종전 그대로(문구만 갈래).
 const SYS_PLAT_KO = { x: 'X', tiktok: '틱톡', insta: '인스타그램', youtube: '유튜브', threads: '스레드' };
+const SYS_PHONE_PLAT = { insta: 'INSTA_COOKIE', threads: 'THREADS_COOKIE' };   // 폰 전용 공급원 = 값은 그 플랫폼 세션쿠키 env 이름(폰 crontab 주입 · 레포 커밋 0)
+const _sysDurKo = (m) => { m = Math.max(0, Math.round(Number(m) || 0)); const h = Math.floor(m / 60), mm = m % 60; return h ? (h + '시간' + (mm ? ' ' + mm + '분' : '')) : (mm + '분'); };
 function sysErrMsgs() {
   const up = String((TRENDS && TRENDS.updated) || ''), day = up.slice(0, 10) || '';
-  const st = (((TRENDS && TRENDS.health) || {}).subs || {}).stale || [];
-  return (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).map(k => ({
-    id: 'sys:subs:' + k + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,   // 시간 = epoch(t) 축 = shellUpdMsg 정본 계승 → qAgo 상대시간("5시간 전") · 구 ts 문자열 축은 msgAgo의 `/[+Z]$/` 판정이 "+09:00"의 끝문자 '0'에 걸려 파싱 실패 → 원문 ISO가 시간 칸을 넘쳐 옆 열을 덮던 원인(운영자 260725 스샷)
-    text: SYS_PLAT_KO[k] + ' 구독이 안 걷히고 있어요 — 등록한 계정 글이 이번 수집에서 0건이라 큐레이션이 비어요. 확인(✓)하면 오늘은 다시 안 떠요.' }));
+  const hh = (TRENDS && TRENDS.health) || {};
+  const st = (hh.subs || {}).stale || [];
+  const ph = hh.phone || null, phDead = !!(ph && ph.ok === false);   // ok=false = 폰 파일이 90분 넘게 안 갱신됨(러너가 폰분 채택을 거른 상태)
+  return (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).map(k => {
+    const head = SYS_PLAT_KO[k] + ' 구독이 안 걷히고 있어요 — ';
+    let text;
+    if (SYS_PHONE_PLAT[k] && phDead) {
+      text = head + '폰 수집기가 ' + _sysDurKo(ph.age_min) + '째 멈춰 있어서예요.\n\n'
+        + '스레드·인스타는 폰에서만 걷혀요(메타가 서버 IP를 막아서 서버가 대신 못 해요).\n\n'
+        + '👉 네가 할 일: 폰에서 phone_subs 크론이 도는지 확인해 줘 — termux(또는 맥) 앱이 꺼졌거나 절전에 잠든 게 제일 흔한 원인이야. 다시 돌기 시작하면 30분 안에 저절로 채워져.\n\n'
+        + '확인(✓)하면 오늘은 다시 안 떠요.';
+    } else if (SYS_PHONE_PLAT[k]) {
+      text = head + '폰 수집기는 도는데 메타 로그인월에 막혀 0건이에요.\n\n'
+        + '👉 네가 할 일: ' + SYS_PLAT_KO[k] + ' 부계정(본계 말고 — 자동화 감지 밴) 세션쿠키를 폰 크론 환경변수 ' + SYS_PHONE_PLAT[k] + '에 넣어 줘. '
+        + (k === 'threads' ? '전에 넣어둔 쿠키가 만료된 걸 수도 있어 — 그럼 새로 뽑아서 갈아 줘.' : '스레드가 지금 걷히는 것도 같은 방식이야.') + '\n\n'
+        + '확인(✓)하면 오늘은 다시 안 떠요.';
+    } else {
+      text = head + '등록한 계정 글이 이번 수집에서 0건이라 큐레이션이 비어요.\n\n'
+        + '이건 서버가 30분마다 알아서 다시 시도해 — 네가 할 일은 없어. 며칠째 계속 뜨면 등록한 계정이 비공개·삭제됐는지만 확인해 줘.\n\n'
+        + '확인(✓)하면 오늘은 다시 안 떠요.';
+    }
+    return { id: 'sys:subs:' + k + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined, text };   // 시간 = epoch(t) 축 = shellUpdMsg 정본 계승 → qAgo 상대시간("5시간 전") · 구 ts 문자열 축은 msgAgo의 `/[+Z]$/` 판정이 "+09:00"의 끝문자 '0'에 걸려 파싱 실패 → 원문 ISO가 시간 칸을 넘쳐 옆 열을 덮던 원인(운영자 260725 스샷)
+  });
 }
 // 인구통계 기준일 밀림(운영자 260726 "채널이나 소셜 요약 위에 항상 동기화 시점이 있고, 그 시점을 못 따라가면 설정에서 경고 하게 되어있거든? 그거에 로직을 붙이면 됨") —
 //   문법·id·✓축·구분 = 바로 위 sysErrMsgs() **그대로**(새 부품·새 데이터·새 UI 0). 다른 건 소스 하나 = 화면이 이미 읽는 audience_sample.as_of(기준일) vs 그 소스의 동기화 시점(generated_kst).
