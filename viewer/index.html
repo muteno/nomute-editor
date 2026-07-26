@@ -3711,6 +3711,7 @@ try {
     </div></div>
     <div class="geni-sechead"><span class="cref-lbl">개요</span></div>
     <div class="geni-cards"><!-- 각 옵션 = 편집 탭 .scard 블록 계승(운영자 260718) — 행/id/핸들러/아코디언 불변, 래퍼만 카드화 -->
+    <div class="geni-card"><div class="geni-row"><span class="pub-l">모델</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniEngine">Gemini 3.1 Flash</button></span></div></div><!-- ⚠배치 렌더 엔진 토글(운영자 260727 "모델 영어로 각각 쓰고 토글하면 서로 바뀌면서 그걸로 만들어지게") = 개요 섹션 첫 행(해상도 위) · 셸·문법 = 한국웹툰화(#geniKweb) 카드 그대로 계승(신규 CSS 0) · 탭 = Gemini 3.1 Flash ↔ GPT Image 2.0 교대 · 값 = genimg.js engine → gen_image 백엔드 분기(GPT 실패 시 Gemini 폴백) -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-k="size"></span></div></div>
     <div class="geni-card"><div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span></div>
     <div class="geni-arwrap" id="geniArWrap" inert><div class="geni-arin"><!-- 비율 직접 = N:N(각 1~99) + 환산 표시 · 아코디언 = camsub grid-rows 문법 계승 · 카드 안 상주 -->
@@ -4789,7 +4790,7 @@ const GENI_ALL_STYLES = [...GENI_STYLE_MAIN, ...GENI_STYLE_ETC];
 const GENI_MOOD_AX = [['ct', '긴장도', '차분', '긴장'], ['sh', '정서', '침통', '희망'], ['ew', '온도', '스산', '온기'], ['rr', '격앙', '냉정', '격앙']];   // 무드 게이지 4축(각 -2..+2 · 0=중립) — 서버 gen_image MOOD_AX 동일 키 · 양끝 = 축별 기준 라벨(운영자 260710 "종류별 분리·기준 달기")
 const GENI_CAM_KEYS = ['shot', 'expr', 'angle', 'point', 'light', 'place'];   // 접힘 카메라·구도군 — 배지 = non-auto 개수(숨은 활성 은폐 방지)
 let _geniCtx = null;   // {file, wrap, btn, free}
-let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
+let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
 let _geniInited = false;
 let _geniDD = null;   // 열려 있는 선택박스(도먼트 — 260713 화풍 전량 나열로 열기 호출처 0 · 항상 null·닫기 경로만 잔존)
 function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); return hit ? hit[1] : v; }
@@ -4983,6 +4984,7 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   const subOn = _geniSel.sub !== 'auto';   // 세부 화풍: 인라인 파이프 나열(운영자 260713 — 구 자동+직접 선택박스 폐지) · 목록 재구성·on 토글 = geniSubRender 단일점
   geniSubRender();
   const kwb = $('#geniKweb'); if (kwb) { kwb.classList.toggle('on', !!_geniSel.kweb); kwb.setAttribute('aria-pressed', _geniSel.kweb ? 'true' : 'false'); kwb.textContent = _geniSel.kweb ? 'ON' : 'OFF'; }   // 한국웹툰화 = 명시 ON/OFF 토글(운영자 260713 "한국웹툰식 > ON · 점등 OFF > OFF") — 켜면 ON+강조, 끄면 OFF+중립(문구 토글과 대칭)
+  const eng = $('#geniEngine'); if (eng) { const gpt = _geniSel.engine === 'gpt'; eng.classList.toggle('on', gpt); eng.setAttribute('aria-pressed', gpt ? 'true' : 'false'); eng.textContent = gpt ? 'GPT Image 2.0' : 'Gemini 3.1 Flash'; }   // 렌더 엔진 = 두 모델 교대 토글(기본 Gemini = 중립 · GPT = 점등 = 기본값 이탈 표기 관례 계승 · 운영자 260727)
   const ton = $('#geniTextOn'); if (ton) { ton.classList.toggle('on', !!_geniSel.textOn); ton.setAttribute('aria-pressed', _geniSel.textOn ? 'true' : 'false'); ton.textContent = _geniSel.textOn ? 'ON' : 'OFF'; }   // 문구 = 명시 ON/OFF 토글(운영자 260713 "살리기 on > on · 살리기 off > off" 축약) — 켜면 ON+강조, 끄면 OFF+중립(양쪽 상태 명시 대칭)
   const rmMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref';   // 참고 이미지 모드 = 원본 유지/참고/이미지와 동일하게(운영자 260726)
   const rmb = $('#geniRefMode'); if (rmb) rmb.querySelectorAll('.geni-opt').forEach(b => b.classList.toggle('on', b.dataset.v === rmMode));   // 참고 이미지 모드 토글 on-state
@@ -5022,9 +5024,11 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   if (sum) {
     const gsPair = (lbl, val, on) => '<span class="gs-lbl">' + lbl + '</span> <span class="gs-v' + (on ? ' on' : '') + '">' + val + '</span>';   // 쌍 골격 = 편집 탭 editSpec 정본(콜론 없음 · 라벨 mut + 값 상태색)
     sum.innerHTML = (cloneOn ? [   // 복제 모드 = 화풍·세부·웹툰화·문구가 서버에서 통째로 무시된다 → 요약도 2항으로(켜둔 화풍을 그대로 나열하면 '반영되는 척' = 은폐)
+      gsPair('모델', _geniSel.engine === 'gpt' ? 'GPT Image 2.0' : 'Gemini 3.1 Flash', _geniSel.engine === 'gpt'),
       gsPair('비율', geniAspect() || 'N:N?', true),
       gsPair('참고 이미지', '이미지와 동일하게', true)
     ] : [   // 나열 순서 = 본문 행 상대 순서 유지(개요{비율} → 표현{화풍·세부·한국웹툰화·문구}) — 카메라·해상도·개수·품질·무드 = 요약 비표기(운영자 260721 · 본문 행·발사 파라미터·카메라 배지 #geniCamN은 불변)
+      gsPair('모델', _geniSel.engine === 'gpt' ? 'GPT Image 2.0' : 'Gemini 3.1 Flash', _geniSel.engine === 'gpt'),
       gsPair('비율', geniAspect() || 'N:N?', _geniSel.aspect !== '4:5'),
       gsPair('화풍', geniStyleKo(_geniSel.style), _geniSel.style !== 'webtoon'),
       gsPair('세부 화풍', geniSubKo(_geniSel.sub), subOn),
@@ -5082,6 +5086,7 @@ function geniInit() {
     el.addEventListener('input', () => { const v = el.value.replace(/\D/g, '').slice(0, 2); if (el.value !== v) el.value = v; _geniSel[key] = v; geniApply(); });
   });
   const kwbtn = $('#geniKweb'); if (kwbtn) kwbtn.addEventListener('click', () => { _geniSel.kweb = !_geniSel.kweb; geniApply(); });   // 웹툰화 = 독립 on/off(기본 ON · 운영자 260710)
+  const engbtn = $('#geniEngine'); if (engbtn) engbtn.addEventListener('click', () => { _geniSel.engine = _geniSel.engine === 'gpt' ? 'gemini' : 'gpt'; geniApply(); });   // 탭 = 두 모델 교대(운영자 260727)
   const tonbtn = $('#geniTextOn'); if (tonbtn) tonbtn.addEventListener('click', () => { _geniSel.textOn = !_geniSel.textOn; geniApply(); });   // 문구 살리기 = on/off — 문구 자체는 Opus가 주문(장면 설명)에서 정해 자연스럽게 살림(운영자 260710)
   const rfBtn = $('#geniRefBtn'), rfFile = $('#geniRefFile'), rfBox = $('#geniPrevBox'), rfSwap = $('#geniRefSwap'), rfX = $('#geniRefX');   // 참고 이미지 첨부 = 미리보기 쉘 이주(운영자 260719 — 빈 상태 픽토그램 진입점 #geniRefBtn 승계 · 교체/삭제 = .cpv-tool · thumb 편집 미리보기 입구 문법 동일)
   const txBtn = $('#geniTxtBtn'); if (txBtn) txBtn.addEventListener('click', () => geniWishShow(true, true));   // 좌 반쪽 = 글 픽토그램(운영자 260721 반갈) — 탭 = 주문칸 노출·포커스(재탭 = 재포커스 · 발사 = 주문이 프롬프트 반영 기존 배선 그대로)
@@ -5136,7 +5141,7 @@ function geniInit() {
     const anyAx = GENI_MOOD_AX.some(([k]) => _geniSel.moodAx[k]);
     const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, fmt: _geniSel.fmt,
       mood: (_geniSel.mood === 'axes' && anyAx) ? 'axes' : 'auto', moodAx: { ..._geniSel.moodAx },
-      kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn,
+      kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn, engine: _geniSel.engine === 'gpt' ? 'gpt' : 'gemini',
       place: _geniSel.place, shot: _geniSel.shot, expr: _geniSel.expr, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, wish };
     if (_geniRef && _geniRef.b64) { opts.refB64 = _geniRef.b64; opts.refMode = GENI_REFMODES.includes(_geniSel.refMode) ? _geniSel.refMode : 'ref'; }   // 참고 이미지 첨부 시 = base64+모드 동봉(미첨부 = 필드 없음 = 현행 발사 동일 · 운영자 260713 · clone = 260726)
     try { localStorage.setItem('GENI_OPTS2', JSON.stringify(_geniSel)); } catch {}   // 전 옵션 스냅샷 — 구 GENI_OPTS 키는 스키마 변경으로 폐기(260710)
@@ -5221,6 +5226,7 @@ function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGen
       if (_geniSel.aspect === 'custom' && !geniArVal()) _geniSel.aspect = '4:5';   // 미완성 직접값 복원 = 안전 강하
       _geniSel.mood = s.mood === 'axes' ? 'axes' : 'auto';
       GENI_MOOD_AX.forEach(([k]) => { const v = parseInt(s.moodAx && s.moodAx[k], 10); _geniSel.moodAx[k] = Number.isFinite(v) ? Math.max(-2, Math.min(2, v)) : 0; });
+      _geniSel.engine = s.engine === 'gpt' ? 'gpt' : 'gemini';   // 렌더 엔진 복원(미지정·구 스냅샷 = Gemini 기본 강하)
       if (typeof s.kweb === 'boolean') _geniSel.kweb = s.kweb;
       if (typeof s.textOn === 'boolean') _geniSel.textOn = s.textOn;
       GENI_CAM_KEYS.forEach(k => { if (GENI_DICT[k].some(([v]) => v === s[k])) _geniSel[k] = s[k]; });
