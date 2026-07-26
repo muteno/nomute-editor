@@ -4794,7 +4794,7 @@ const GENI_ALL_STYLES = [...GENI_STYLE_MAIN, ...GENI_STYLE_ETC];
 const GENI_MOOD_AX = [['ct', '긴장도', '차분', '긴장'], ['sh', '정서', '침통', '희망'], ['ew', '온도', '스산', '온기'], ['rr', '격앙', '냉정', '격앙']];   // 무드 게이지 4축(각 -2..+2 · 0=중립) — 서버 gen_image MOOD_AX 동일 키 · 양끝 = 축별 기준 라벨(운영자 260710 "종류별 분리·기준 달기")
 const GENI_CAM_KEYS = ['shot', 'expr', 'angle', 'point', 'light', 'place'];   // 접힘 카메라·구도군 — 배지 = non-auto 개수(숨은 활성 은폐 방지)
 let _geniCtx = null;   // {file, wrap, btn, free}
-let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', colorAx: { sat: 0, bri: 0 }, colorTouched: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
+let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '', arH: '', count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', engineTouched: false, colorAx: { sat: 0, bri: 0 }, colorTouched: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
 let _geniInited = false;
 let _geniDD = null;   // 열려 있는 선택박스(도먼트 — 260713 화풍 전량 나열로 열기 호출처 0 · 항상 null·닫기 경로만 잔존)
 function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); return hit ? hit[1] : v; }
@@ -5116,7 +5116,7 @@ function geniInit() {
     el.addEventListener('input', () => { const v = el.value.replace(/\D/g, '').slice(0, 2); if (el.value !== v) el.value = v; _geniSel[key] = v; geniApply(); });
   });
   const kwbtn = $('#geniKweb'); if (kwbtn) kwbtn.addEventListener('click', () => { _geniSel.kweb = !_geniSel.kweb; geniApply(); });   // 웹툰화 = 독립 on/off(기본 ON · 운영자 260710)
-  const engbtn = $('#geniEngine'); if (engbtn) engbtn.addEventListener('click', () => { _geniSel.engine = _geniSel.engine === 'gpt' ? 'gemini' : 'gpt'; geniApply(); });   // 탭 = 두 모델 교대(운영자 260727)
+  const engbtn = $('#geniEngine'); if (engbtn) engbtn.addEventListener('click', () => { _geniSel.engine = _geniSel.engine === 'gpt' ? 'gemini' : 'gpt'; _geniSel.engineTouched = true; geniApply(); });   // 손댄 뒤엔 복제 자동 전환이 덮지 않는다   // 탭 = 두 모델 교대(운영자 260727)
   const tonbtn = $('#geniTextOn'); if (tonbtn) tonbtn.addEventListener('click', () => { _geniSel.textOn = !_geniSel.textOn; geniApply(); });   // 문구 살리기 = on/off — 문구 자체는 Opus가 주문(장면 설명)에서 정해 자연스럽게 살림(운영자 260710)
   const rfBtn = $('#geniRefBtn'), rfFile = $('#geniRefFile'), rfBox = $('#geniPrevBox'), rfSwap = $('#geniRefSwap'), rfX = $('#geniRefX');   // 참고 이미지 첨부 = 미리보기 쉘 이주(운영자 260719 — 빈 상태 픽토그램 진입점 #geniRefBtn 승계 · 교체/삭제 = .cpv-tool · thumb 편집 미리보기 입구 문법 동일)
   const txBtn = $('#geniTxtBtn'); if (txBtn) txBtn.addEventListener('click', () => geniWishShow(true, true));   // 좌 반쪽 = 글 픽토그램(운영자 260721 반갈) — 탭 = 주문칸 노출·포커스(재탭 = 재포커스 · 발사 = 주문이 프롬프트 반영 기존 배선 그대로)
@@ -5132,7 +5132,7 @@ function geniInit() {
       ['dragleave', 'drop'].forEach(t => rfBox.addEventListener(t, e => { if (t === 'drop') { e.preventDefault(); const f = [...((e.dataTransfer && e.dataTransfer.files) || [])].find(x => /^image\//.test(x.type || '')); if (f) geniRefPick(f); } rfBox.classList.remove('dropping'); }));
     }
   }
-  const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = GENI_REFMODES.includes(b.dataset.v) ? b.dataset.v : 'ref'; if (_geniSel.refMode === 'clone') geniCloneAspect(); geniApply(); });   // 복제 선택 = 비율을 첨부 원본비로 스냅(운영자 260726 · 문서 §L3) — 다른 모드로 되돌리면 비율은 그대로 남는다(운영자가 다시 고르면 그 값 승)
+  const rfMode = $('#geniRefMode'); if (rfMode) rfMode.addEventListener('click', e => { const b = e.target.closest('.geni-opt'); if (!b) return; _geniSel.refMode = GENI_REFMODES.includes(b.dataset.v) ? b.dataset.v : 'ref'; if (_geniSel.refMode === 'clone') { geniCloneAspect(); if (!_geniSel.engineTouched) _geniSel.engine = 'gpt'; } geniApply(); });   // 복제 = 엔진도 GPT로 자동 전환(운영자 260727 한 수 채택 · 근거 = Gemini엔 input_fidelity가 없어 선 강도 축을 구조적으로 못 잡음 · 260727 실측 GPT+fidelity+채도-20% = 문서 §4 전지표 합격) · 엔진 칩을 한 번이라도 손댔으면 그 선택이 이긴다   // 복제 선택 = 비율을 첨부 원본비로 스냅(운영자 260726 · 문서 §L3) — 다른 모드로 되돌리면 비율은 그대로 남는다(운영자가 다시 고르면 그 값 승)
   const fold = $('#geniCamHead'); if (fold) fold.addEventListener('click', () => {
     const open = fold.getAttribute('aria-expanded') !== 'true';
     fold.setAttribute('aria-expanded', open ? 'true' : 'false');
