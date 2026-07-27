@@ -340,6 +340,9 @@
      g-reels/g-post = nomute_overlay.py SPECS.grad 점을 최대α(149/164) 정규화한 스탑 — generate()의 'op% × 곡선/최대α' 스케일 수식을 {정규화 스탑 × element opacity(op/100)}로 등가 재현(CSS 스탑 사이 선형보간 = mk_grad 보간과 동일).
      g-card = card_news.py create_gradient_overlay(상단 38.6% 투명 → t^1.268/(t^1.268+(1-t)^3.217)×α236 S커브)를 t 0.05 간격 샘플 절대 스탑으로(카드는 OPA 조절 없음 = opacity 불사용). 스탑 산출 스크립트 수식 = 합성기 원본 그대로. */
   .cpprev-stage .cpv-scrim { position:absolute; inset:0; pointer-events:none; }
+  /* OPA 2장 좌/우 동시 비교(운영자 260727 "opa 60하고 opa 40을 같이 비교하게") — 스크림 2장을 clip-path로 반씩 자르고 가운데 경계선 + 값 배지. 값 배지 = .rsz-origtag 정본 계승(위치만 override) · 경계선 알파 .35 = 같은 정본의 링 알파(.cpprev-box.dropping 선례와 동축) */
+  .cpprev-stage .cpv-opasplit { position:absolute; top:0; bottom:0; left:50%; width:1px; transform:translateX(-.5px); background:rgba(var(--accent-rgb),.35); pointer-events:none; z-index:1; }
+  .cpprev-stage .cpv-opatag { left:auto; right:auto; top:auto; bottom:6px; transform:none; z-index:1; }   /* ⚠ left:auto 필수 — 정본 .rsz-origtag의 left:50%가 남으면 우측 배지가 left:50%+인라인 right로 '양쪽 고정'이 돼 플레이트가 가로로 늘어난다(실측 260727: 폭 95.9px·중심 151.5 = 대칭 붕괴) · bottom 6 = .cpv-tool top:6px 미러(스테이지 위 UI 여백 정본) · 좌/우 = 인라인 left/right(1080 기준 40 환산 = 자막 좌마진 리듬) · 하단 = 자막(ty 58%↑)·로고(52~57%)와 무충돌 */
   .cpprev-stage .cpv-scrim.g-reels { background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,.02) 30%, rgba(0,0,0,.047) 33%, rgba(0,0,0,.081) 35%, rgba(0,0,0,.141) 38%, rgba(0,0,0,.195) 40%, rgba(0,0,0,.289) 43%, rgba(0,0,0,.369) 45%, rgba(0,0,0,.497) 48%, rgba(0,0,0,.584) 50%, rgba(0,0,0,.698) 53%, rgba(0,0,0,.765) 55%, rgba(0,0,0,.839) 58%, rgba(0,0,0,.886) 60%, rgba(0,0,0,.926) 63%, rgba(0,0,0,.96) 65%, rgba(0,0,0,.98) 68%, rgba(0,0,0,.993) 70%, rgba(0,0,0,1) 75%, rgba(0,0,0,1) 100%); }
   .cpprev-stage .cpv-scrim.g-post { background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 10%, rgba(0,0,0,.018) 14%, rgba(0,0,0,.037) 19%, rgba(0,0,0,.043) 21%, rgba(0,0,0,.061) 24%, rgba(0,0,0,.079) 25%, rgba(0,0,0,.098) 27%, rgba(0,0,0,.116) 28%, rgba(0,0,0,.128) 30%, rgba(0,0,0,.159) 32%, rgba(0,0,0,.177) 33%, rgba(0,0,0,.201) 35%, rgba(0,0,0,.299) 40%, rgba(0,0,0,.421) 45%, rgba(0,0,0,.524) 50%, rgba(0,0,0,.634) 55%, rgba(0,0,0,.738) 60%, rgba(0,0,0,.817) 65%, rgba(0,0,0,.884) 70%, rgba(0,0,0,.927) 75%, rgba(0,0,0,.951) 80%, rgba(0,0,0,.976) 85%, rgba(0,0,0,.994) 90%, rgba(0,0,0,1) 95%, rgba(0,0,0,1) 100%); }
   .cpprev-stage .cpv-scrim.g-card { background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 38.6%, rgba(0,0,0,.024) 41.67%, rgba(0,0,0,.065) 44.74%, rgba(0,0,0,.122) 47.81%, rgba(0,0,0,.195) 50.88%, rgba(0,0,0,.281) 53.95%, rgba(0,0,0,.376) 57.02%, rgba(0,0,0,.475) 60.09%, rgba(0,0,0,.572) 63.16%, rgba(0,0,0,.66) 66.23%, rgba(0,0,0,.735) 69.3%, rgba(0,0,0,.795) 72.37%, rgba(0,0,0,.841) 75.44%, rgba(0,0,0,.874) 78.51%, rgba(0,0,0,.896) 81.58%, rgba(0,0,0,.91) 84.65%, rgba(0,0,0,.919) 87.72%, rgba(0,0,0,.923) 90.79%, rgba(0,0,0,.925) 93.86%, rgba(0,0,0,.925) 100%); }
@@ -1438,7 +1441,18 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     h += `<div class="cpv" style="left:0;right:0;top:${py(385)};margin-top:${px(15)};text-align:center;color:${CPV_GREEN};font-size:${px(90)};font-weight:800;line-height:1.15;white-space:pre;letter-spacing:${(trT / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top = 세로 잉크탑 보정(PIL 'la' 앵커 vs CSS 라인박스 실측 Δ 부제+9·제목+15@1080 — 골든 픽셀 대조 260716)
   } else if (cur.k === 'ov') {                                      // 자막 = nomute_overlay SPECS 미러(reels ty1119/fs78 · post ty822/fs76) — 그라데·로고 = generate() 무조건 합성이라 변형 표시 = 항상 동반(운영자 260716) · 오버레이만 ON = 사진 미표시(산출 미러 · 운영자 260718)
     if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;
-    h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(getComboOpas()[0])) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 첫 OPA 변형 · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)
+    // 스크림 = 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)
+    // OPA 2장 = 한 액자 좌/우 분할 동시 비교(운영자 260727 "opa 60하고 opa 40을 같이 비교하게" — 발사 전에 어느 쪽인지 고른다) · 상하 분할은 불가(스크림이 세로 그라데 = 위=투명·아래=진함이라 비교가 성립 안 함)
+    {
+      const _ops = getComboOpas().map(v => Number.isFinite(v) ? v : 60);
+      const _gc = cur.fmt === 'reels' ? 'g-reels' : 'g-post';
+      const _scrim = (op, clip) => `<div class="cpv-scrim ${_gc}" style="opacity:${(op / 100).toFixed(2)}${clip ? ';clip-path:inset(0 ' + clip + ')' : ''}"></div>`;
+      if (_ops.length > 1) {
+        h += _scrim(_ops[0], '50% 0 0') + _scrim(_ops[1], '0 0 50%');   // 좌 = 첫 값(스트립 왼쪽 슬롯) · 우 = 둘째 값 = 스트립 '−60+ | −40+' 좌우 순서 그대로
+        h += `<div class="cpv-opasplit"></div>`;
+        h += `<div class="rsz-origtag cpv-opatag" style="left:${px(40)}">${_ops[0]}</div><div class="rsz-origtag cpv-opatag" style="right:${px(40)}">${_ops[1]}</div>`;   // 값 배지 = .rsz-origtag 정본 100% 계승(미리보기 스테이지 위 작은 값 딱지 = 같은 성격) · 위치만 override
+      } else h += _scrim(_ops[0]);
+    }
     // 진짜예요 = CI가 베이스에 구워져 있어 전면 레이어로 깔린다(운영자 "로고만 교체하면 되니까") · 노뮤트는 logo_rect 조각 로고 그대로
     if (cTpl === 'jinjja') {
       const jsp = JJ_OV[cur.fmt === 'reels' ? 'reels' : 'post'];
