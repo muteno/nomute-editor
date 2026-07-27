@@ -16,8 +16,7 @@
   ③ 틱톡 인기 피드 = tikwm 무료 공개 API(무키 · www.tikwm.com/api/feed/list — 틱톡 자체
      API의 서명[X-Bogus·msToken] 검사를 대행 · 운영자 260711 외부 도구 이식 승인).
      실측 260711: region=KR 파라미터는 실효 약함(콜당 실 KR 2~4개 글로벌 혼합 피드) →
-     수 콜 누적·dedup·조회수 정렬로 보완 · 세계 확장(운영자 260727) = TK_REGIONS 12지역 순회
-     (지역마다 표본 풀이 달라 dedup 후 1.7배 실측 · KR만 콜 가중) · free tier 레이트리밋(4연속 콜 타임아웃 실측) →
+     수 콜 누적·dedup·조회수 정렬로 보완 · free tier 레이트리밋(4연속 콜 타임아웃 실측) →
      콜 간 2s 간격 · 개별 콜 실패 무시(그때까지 누적분 사용). 실패/0건 = 기존 값 보존.
      구 Playwright 카나리아(tiktok_trends.py·hashtags) = 도먼트(이 tikwm 경로가 주 —
      뷰어는 tiktok.videos 우선 · hashtags 폴백).
@@ -379,28 +378,6 @@ def og_image(url, timeout=6):
 
 
 TK_CUT_H = 18   # 틱톡 신선 창(시간) — 뷰어 index.html TK_CUT_H와 동축(운영자 260726 "올린지 18시간으로 변경" · 구 24h·구구 48h)
-# 틱톡 피드 지역 순회(운영자 260727 "틱톡은 세계꺼까지 확장하면 받아올 수 있는거로 아는데") — 구 단일 region=KR 1개 창구 → 다지역 창구 순회.
-# 근거 실측 260727(12지역 × 2콜 = 24콜 dedup): 지역당 신규 ~19건이 거의 중복 없이 누적 = **region 파라미터는 KR 판별엔 실효 약해도
-#   표본 풀 자체는 지역마다 다르다**(KR 22 → 12지역 230건 · 구 KR 10콜 138건 대비 1.7배). 신선분 수확도 같이 늘어(24h 이내 9건·10만뷰↑ 4건 —
-#   저장분 실측 동시각 18h·10만↑ 1건뿐이라 뷰어 tkv[18h + 10만뷰 하한 + top10]가 카드 1장으로 굶던 것의 재료 보강).
-# ⚠ 이건 완치가 아니라 표본 증량이다 — tikwm feed/list는 인기 랭킹이 아니라 무작위 For-You 표본이라 상록(오래된) 편중이 남는다.
-#   근본 해결은 여전히 창구 교체(Creative Center 인기영상 — 260727 재프로브도 code 40101 no permission = 무키 직행 불가·헤드리스 필요).
-# KR 우대 = 국내 모드 축(운영자 260712 "한국 제일 핫한") 유지 → KR만 콜 수 가중(TK_KR_CALLS).
-TK_REGIONS = [r2.strip().upper() for r2 in (os.environ.get("TIKTOK_REGIONS")
-              or "KR,US,ID,BR,MX,PH,VN,TH,JP,GB,DE,FR").split(",") if r2.strip()]   # env 오버라이드 = 지역 조정·롤백을 코드 변경 없이(빈 값·미설정 = 기본 12지역 · 틱톡 이용자 상위국) · 18지역 실측 = 216s로 예산 초과라 12로 조정
-TK_KR_CALLS = 10   # KR 콜 = 구 동작(단일 창구 10콜) 그대로 보존 — 국내 회귀 0(운영자 260727 "기존 KR 수집은 죽이지 말고 합치기").
-# ⚠ 이 값을 깎으면 국내가 손해다(실측 260727 A/B: KR 6콜 = KR 9건 vs KR 10콜 = KR 23건 · 뷰어 랭킹은 국내 ×1.0/해외 ×0.2라 KR 1건 = 해외 5건 값어치).
-# 해외 = 지역당 calls콜(기본 1) — 콜당 신규 수확이 1콜차에 가장 높다(실측: KR 6콜 76건 = 콜당 12.7 / 12지역 2콜씩 = 콜당 7.1 → 같은 예산이면 "지역 수 ↑ · 지역당 콜 ↓"가 유리).
-# 총 콜 = 10 + 1×11 = 21 · 콜간 2s 유지(free tier 레이트리밋) → 실측 ~110s(구 KR 단독 10콜 ~30s 대비 +80s · 워크플로 timeout 840s 내).
-TK_BUDGET = int(os.environ.get("TIKTOK_BUDGET") or 180)   # wall-clock 예산(초) — 초과 = 잔여 콜 스킵(누적분 사용 · 워크플로 timeout 840s 보호 · KR 선두 순회라 예산 소진해도 국내분은 구 수준 그대로 확보 = 회귀 상한 0)
-TK_TIMEOUT = 10   # 틱톡 콜 개별 타임아웃(초) — 기본 _get 15보다 짧게(실측 260727: 지역 콜 일부가 25s까지 늘어져 예산을 잡아먹었다 · 죽은 콜은 빨리 버리고 다음 지역으로)
-# 이월분 조회수 재조회(운영자 260727 "틱톡 1개밖에 안 나온다"의 **주원인** — 지역 확장보다 효과가 크다).
-# 원인: 런 간 이월(carry)은 published만 보고 실어오고 views는 **수집 시점 값 그대로**다. 틱톡 신작은 올라온 직후 조회수가 낮으니
-#   뷰어 tkv 하한(10만뷰)에 걸려 탈락 → 18h 창 안에서 실제로 10만을 훌쩍 넘겨도 저장분은 옛 숫자라 영영 입장 못 한다.
-# 실측 260727(저장분 24h 내 상위 6건을 tikwm 단건 /api/?url=로 현재값 대조): 45,910→205,948 · 18,045→132,947 · 98,904→199,421
-#   = **6건 중 3건이 이미 10만 하한을 넘겼는데 옛 값 때문에 뷰어에서 빠져 있었다**(나머지 3건도 1.1~3.0배 성장).
-TK_REFRESH_N = int(os.environ.get("TIKTOK_REFRESH_N") or 20)          # 재조회 건수 상한(콜당 2s = 예산 직결) · 0 = 기능 OFF(롤백)
-TK_REFRESH_BUDGET = int(os.environ.get("TIKTOK_REFRESH_BUDGET") or 60)   # 재조회 wall-clock 예산(초) — 수집 예산(TK_BUDGET)과 별도 회계
 
 
 def _fresh_tk(t):
@@ -413,98 +390,46 @@ def _fresh_tk(t):
         return 1
 
 
-def tiktok(limit=15, calls=1, regions=None, budget=None):
+def tiktok(limit=15, calls=10):
     """틱톡 인기 피드 — tikwm 무료 공개 API(무키·서명 대행 · 외부 도구 이식 260711).
-    피드가 콜마다 회전(3콜≈46개 실측) → 누적·video_id dedup 상위 limit.
+    피드가 콜마다 회전(3콜≈46개 실측) → calls회 누적·video_id dedup 상위 limit.
     정렬 = KR 우선(운영자 260712 "한국 제일 핫한" — region=KR 파라미터가 실효 약해 글로벌 혼합
     [상위5 = US·GB·CH·PK·US 실측 260712]인 것을 항목 region 필드로 후정렬 보완 · KR끼리/글로벌끼리 = 조회수)
-    · KR 소스 강화(운영자 260720 "틱톡만 KR소스 강화"): 한글 제목 감지 → region KR 재분류
-      (tikwm region 태그가 놓친 국내 콘텐츠를 국내 모드 인기로 회수).
-    · 세계 확장(운영자 260727 "틱톡은 세계꺼까지 확장"): 구 KR 단일 창구 10콜 → TK_REGIONS 다지역 순회
-      (KR = TK_KR_CALLS 10콜 = 구 동작 그대로 보존 · 해외 = 지역당 calls콜 추가). 지역별 표본이 달라 dedup 후 풀이 늘어난다(실측 근거 = TK_REGIONS 주석).
-      전 지역 통합 dedup(video_id) = 지역 간 중복 0 · 콜 지역은 feed_reg로 보존(항목 region[콘텐츠 지역]과 별개 축 = 뷰어 후속 구분용).
-    개별 콜 실패 = 무시(누적분 사용) · 예산(budget초) 초과 = 잔여 지역 스킵 · 전체 0건 = [] (fail-soft — main()이 기존 값 보존)."""
+    · KR 소스 강화(운영자 260720 "틱톡만 KR소스 강화"): calls 6→10 = 누적 풀 확대(콜당 실 KR 2~4개 · +8s)
+      + 한글 제목 감지 → region KR 재분류(tikwm region 태그가 놓친 국내 콘텐츠를 국내 모드 인기로 회수).
+    개별 콜 실패 = 무시(누적분 사용) · 전체 0건 = [] (fail-soft — main()이 기존 값 보존)."""
     seen = {}
     _HANGUL = re.compile(r'[가-힣]')   # 한글(음절) 감지 = 국내 콘텐츠 신호 → KR 재분류(운영자 260720 KR 소스 강화)
-    _regs = [r2 for r2 in (regions if regions is not None else TK_REGIONS) if r2] or ["KR"]   # 빈 리스트 = KR 단독 폴백(구 동작 = 안전한 최하한)
-    _plan = [(r2, TK_KR_CALLS if r2 == "KR" else calls) for r2 in _regs]   # KR 선두 = 예산 소진 시에도 국내분 확보(순회 순서 = TK_REGIONS 선언 순)
-    _t0, _bud, _n, _tot = time.time(), (budget if budget is not None else TK_BUDGET), 0, sum(c2 for _, c2 in _plan)
-    _over = False
-    for _reg_q, _c in _plan:
-        if _over:
-            break
-        for i in range(_c):
-            if time.time() - _t0 > _bud:   # 콜 단위 체크(지역 단위면 마지막 지역이 예산을 넘겨도 끝까지 간다 — 실측 260727 216s 초과)
-                print(f"::warning::tiktok 예산 {_bud}s 초과 — 잔여 콜 스킵(누적 {len(seen)}건 사용)", file=sys.stderr)
-                _over = True
-                break
-            _n += 1
-            if _n > 1:
-                time.sleep(2)   # free tier 레이트리밋(연속 콜 타임아웃 실측 260711)
-            try:
-                j = json.loads(_get("https://www.tikwm.com/api/feed/list?region=%s&count=20" % urllib.parse.quote(_reg_q), timeout=TK_TIMEOUT))
-                if j.get("code") != 0:
+    for i in range(calls):
+        if i:
+            time.sleep(2)   # free tier 레이트리밋(연속 콜 타임아웃 실측 260711)
+        try:
+            j = json.loads(_get("https://www.tikwm.com/api/feed/list?region=KR&count=20"))
+            if j.get("code") != 0:
+                continue
+            for v in (j.get("data") or []):
+                vid = v.get("video_id")
+                if not vid or vid in seen:
                     continue
-                for v in (j.get("data") or []):
-                    vid = v.get("video_id")
-                    if not vid or vid in seen:
-                        continue
-                    a = v.get("author") or {}
-                    handle = a.get("unique_id") or ""
-                    ct = _i(v.get("create_time"))   # 발행시각 → 뷰어 카드 "N시간 전"(relAge) 원료(운영자 260712 · 없으면 공란 fail-soft)
-                    _tt = (v.get("title") or "").strip()
-                    _reg = v.get("region") or ""
-                    if _reg != "KR" and _HANGUL.search(_tt):
-                        _reg = "KR"   # 한글 제목 = 국내 콘텐츠 → KR 재분류(tikwm region 태그 실효 약함 보완 · 운영자 260720) — 국내 모드 인기·통합 TOP 채움
-                    seen[vid] = {"title": _tt, "account": handle,
-                                 "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
-                                 "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
-                                 "published": (datetime.fromtimestamp(ct, KST).isoformat() if ct else ""),
-                                 "region": _reg, "feed_reg": _reg_q,
-                                 "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백) · feed_reg = 걸린 창구 지역(운영자 260727 세계 확장 · region[콘텐츠 지역]과 별개 = 지역 커버리지 관측·뷰어 후속 구분용)
-            except Exception as e:  # noqa: BLE001
-                print(f"::warning::tiktok {_reg_q} 콜{i + 1}/{_c}(전체 {_n}/{_tot}) 실패(누적분 유지): {e}", file=sys.stderr)
+                a = v.get("author") or {}
+                handle = a.get("unique_id") or ""
+                ct = _i(v.get("create_time"))   # 발행시각 → 뷰어 카드 "N시간 전"(relAge) 원료(운영자 260712 · 없으면 공란 fail-soft)
+                _tt = (v.get("title") or "").strip()
+                _reg = v.get("region") or ""
+                if _reg != "KR" and _HANGUL.search(_tt):
+                    _reg = "KR"   # 한글 제목 = 국내 콘텐츠 → KR 재분류(tikwm region 태그 실효 약함 보완 · 운영자 260720) — 국내 모드 인기·통합 TOP 채움
+                seen[vid] = {"title": _tt, "account": handle,
+                             "views": _i(v.get("play_count")), "likes": _i(v.get("digg_count")),
+                             "cmts": _i(v.get("comment_count")), "cover": v.get("cover") or "",
+                             "published": (datetime.fromtimestamp(ct, KST).isoformat() if ct else ""),
+                             "region": _reg,
+                             "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)}   # cover·cmts = 원본급 카드 그리드용(운영자 260711 시각 지시 · 스키마 추가 = 비파괴·뷰어는 cover 없으면 행 폴백)
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::tiktok 콜{i + 1}/{calls} 실패(누적분 유지): {e}", file=sys.stderr)
     # 절단 정렬 = ①24h 신선분 전량 최우선 → ②KR 우선 → ③조회수(운영자 260712 KR우선 + 260726 "24시간 넘어가면 없는거")
     # ⚠ ①이 없으면 해외 신선분이 굶는다(실측 260726): 해외 24h분은 조회수가 낮아(하루 1~2건·9.5만·4.7천급) 해외 그룹
     #   조회수순 뒤쪽 → limit 60 절단에 탈락 → 뷰어 24h 컷이 쓸 해외 재료가 0건이 된다(저장분 실측 24h 해외 0개).
-    _out = sorted(seen.values(), key=lambda t: (_fresh_tk(t), t["region"] != "KR", -t["views"]))[:limit]   # KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
-    print("tiktok: %d지역 %d콜 → dedup %d건 · 저장 %d건(신선 %d) · KR %d"
-          % (len(_plan), _n, len(seen), len(_out), sum(1 for t in _out if _fresh_tk(t) == 0),
-             sum(1 for t in _out if t["region"] == "KR")), file=sys.stderr)   # 지역 확장 실효 관측(260727) — 신선분 수확량이 뷰어 tkv[18h+10만뷰+top10] 재료의 병목이라 런 로그로 추적
-    return _out
-
-
-def tk_refresh(items, n=None, budget=None):
-    """이월 신선분 조회수 재조회 — tikwm 단건(/api/?url=) 1콜/건으로 views·likes·cmts만 현재값 갱신(운영자 260727).
-    대상 = 이번 런 피드에 다시 안 걸린 이월분 중 TK_CUT_H 이내 신선분, 조회수 내림차순 상위 n건
-      (조회수 높은 쪽이 뷰어 하한[10만] 돌파에 가장 가깝다 = 같은 콜 예산으로 카드가 가장 많이 늘어나는 순서).
-    비파괴: 성공한 건의 views/likes/cmts만 덮어쓴다(published·url·region·first_seen 등 나머지 필드 무접촉 = 이월·dedup·정렬 계약 불변).
-    fail-soft: 콜 실패·code≠0·값 결측 = 그 건만 옛 값 유지 · 예산(budget초) 초과 = 잔여 스킵 · n=0 = no-op(롤백 스위치).
-    ⚠ 갱신은 items를 제자리 수정한다 — 호출부는 반환값(갱신 건수)만 로그로 쓴다."""
-    _n = TK_REFRESH_N if n is None else n
-    if _n <= 0 or not items:
-        return 0
-    _t0, _bud, _done = time.time(), (TK_REFRESH_BUDGET if budget is None else budget), 0
-    for t in sorted([x for x in items if _fresh_tk(x) == 0 and x.get("url")],
-                    key=lambda x: -(x.get("views") or 0))[:_n]:
-        if time.time() - _t0 > _bud:
-            print(f"::warning::tiktok 재조회 예산 {_bud}s 초과 — 잔여 스킵(갱신 {_done}건)", file=sys.stderr)
-            break
-        if _done:
-            time.sleep(2)   # free tier 레이트리밋 = 피드 콜과 동일 간격
-        try:
-            j = json.loads(_get("https://www.tikwm.com/api/?url=" + urllib.parse.quote(t["url"], safe=""), timeout=TK_TIMEOUT))
-            if j.get("code") != 0:
-                continue
-            _d = j.get("data") or {}
-            _v = _i(_d.get("play_count"))
-            if _v <= 0:   # 0·결측 = 갱신 안 함(옛 값이 낫다 — 삭제·비공개 전환분이 0으로 침몰하는 것 방지)
-                continue
-            t["views"], t["likes"], t["cmts"] = _v, _i(_d.get("digg_count")) or t.get("likes") or 0, _i(_d.get("comment_count")) or t.get("cmts") or 0
-            _done += 1
-        except Exception as e:  # noqa: BLE001
-            print(f"::warning::tiktok 재조회 실패(옛 값 유지): {type(e).__name__}: {str(e)[:80]}", file=sys.stderr)
-    return _done
+    return sorted(seen.values(), key=lambda t: (_fresh_tk(t), t["region"] != "KR", -t["views"]))[:limit]   # KR 0건 런 = 종전 글로벌 정렬과 동일(자연 폴백)
 
 
 _ACC_RX = re.compile(r"^@?[A-Za-z0-9][A-Za-z0-9._-]{0,29}$")   # snsacc.js RX와 동일 규격(3자 계약)
@@ -1665,7 +1590,7 @@ def main():
     _sh_q = _ytc.get("shorts") if (isinstance(_ytc.get("shorts"), list) and _ytc.get("shorts")) else IT_QUERIES
     _ai_q = _ytc.get("aivid") if (isinstance(_ytc.get("aivid"), list) and _ytc.get("aivid")) else AI_QUERIES
     _news_cat = _ytc.get("news_cat") if isinstance(_ytc.get("news_cat"), int) else 25
-    yt_all = youtube(limit=50)   # 15→50(운영자 260727 "유튜브 다 못받아 오는데" · 원인 실측 = mostPopular 차트 15건 중 24h 이내 7건뿐 → 뷰어 ytGrid[24h 컷 + 조회수순 top10]가 7칸으로 굶음). 50 = API maxResults 상한 · videos.list 쿼터는 건수 무관 1unit = 과금·쿼터 영향 0(런당 2units 불변)
+    yt_all = youtube(limit=15)
     yt_news = youtube(category_id=_news_cat, limit=10) if (YT_KEY and yt_all) else []   # 뉴스 카테고리(config news_cat · 기본 25 뉴스·정치)
     yt_src = "api" if yt_all else ""
     if not yt_all:
@@ -1673,7 +1598,7 @@ def main():
         yt_src = "innertube" if yt_all else ""
     gt_rss = gtrends(limit=20)   # 종전 RSS 축 = 이미지·뉴스 도너 + API 사망 시 단독 폴백 본체(운영자 260717 "최대한 수집" — RSS 원천 10개 상한)
     gt, gt_pool = merge_gtrends(gt_rss, gtrends_api())   # 하이브리드(운영자 260717 Q06) — RSS 커버 계승 + API 검색량 승급·25위 꼬리·전량 풀(월드 축 = 종전 RSS)
-    tk = tiktok(limit=120)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") → 60→120(260727 세계 확장 = 단일 런 dedup 풀이 138→230건 실측이라 60 절단이 다시 병목 · 정렬 1순위가 신선분이라 절단은 상록 꼬리부터 = 신선 재료 무손실) — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
+    tk = tiktok(limit=60)   # 풀 15→60(운영자 260724 "틱톡 2일 이내 top20") — 구 15 = KR-우선·조회수순 절단이라 저조회 신선분(<48h)이 상록 메가바이럴[수백만뷰]에 밀려 저장 전 굶김 · 60 = 10콜 KR 풀 전량 보존 → 뷰어 48h+top20 필터가 최종 선별 · tikwm 인기피드 = 상록 편중이라 신선 희소 가능(조용한 공백 정상)
     # 신선분 런 간 이월(운영자 260726 "틱톡이 10개가 안맞춰지는 이유 — 해결" · 원인 실측 260726 = tikwm feed가
     # region=KR 실효 약한 글로벌 혼합이라 단발 런 KR ≈ 7개·그중 24h 내 3개 → 뷰어 국내 인기[top20]가 굶주림):
     # 30분 크론이 런마다 줍는 신선분(콜당 실 KR 2~4개)을 직전 산출(prev tiktok.videos)에서 TK_CUT_H(18h) 창 안만 이어받아 누적.
@@ -1685,20 +1610,13 @@ def main():
     if tk:
         _tku = {t2.get("url") for t2 in tk}
         _t24 = datetime.now(KST) - timedelta(hours=TK_CUT_H)   # 이월 창 = 뷰어 컷 동축(18h)
-        _carried = []
         for _pv in ((prev.get("tiktok") or {}).get("videos") or []):
             try:
                 if _pv.get("url") not in _tku and datetime.fromisoformat(str(_pv.get("published"))) >= _t24:
                     tk.append(_pv)
                     _tku.add(_pv["url"])
-                    _carried.append(_pv)   # 이월분만 재조회 대상(신런 포착분은 이미 최신값 = 콜 낭비 0)
             except Exception:  # noqa: BLE001 — published 결측·파손·naive = 이월 제외(fail-soft)
                 pass
-        # 이월분 조회수 현재값 갱신(260727) — 옛 조회수 때문에 뷰어 10만 하한을 못 넘던 신선분 회수(근거·실측 = TK_REFRESH_N 주석).
-        # 정렬 앞에 둔다 = 갱신된 조회수로 재정렬·절단(limit)이 이뤄져야 회수분이 저장까지 살아남는다.
-        if _carried:
-            _rf = tk_refresh(_carried)
-            print("tiktok 이월 %d건 · 조회수 갱신 %d건" % (len(_carried), _rf), file=sys.stderr)
         tk.sort(key=lambda t2: (_fresh_tk(t2), t2.get("region") != "KR", -(t2.get("views") or 0)))   # 병합 후 재정렬 = tiktok() 반환 규약(신선분→KR→조회수) 유지 → 저장 순서 소비처(뷰어 코어 레인 slice) 안정
     # 월드 축(운영자 260712 "국내 기본 + 월드" · 주요국 병합 선택) — KR 제외 해외분만 별도 키 *_gl(국내 키 불변 = 하위호환)
     # · 뷰어 월드 모드 = 국내 + _gl 병합 · 유튜브 = 공식 API 경로만(innertube 폴백 = 국내 전용) · 쇼츠/AI = 국내 축 유지
@@ -1730,7 +1648,7 @@ def main():
     yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
     if YT_KEY and yt_all:
         for _gg in W_GEOS:
-            for v in youtube(limit=25, region=_gg):   # 15→25(260727 국내 50 상향 동축 — 월드 모드도 24h 컷을 받는데 뷰어가 병합 후 15개로 자르므로 25면 컷 통과분 확보에 충분 · 쿼터 1unit/국 불변)
+            for v in youtube(limit=15, region=_gg):
                 if not v.get("id") or v["id"] in _seen_v:
                     continue
                 _seen_v.add(v["id"])
