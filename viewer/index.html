@@ -10944,12 +10944,20 @@ function renderSnsTrends() {
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
     `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago${t._fresh24 ? ' fresh24' : ''}">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
-  const xcard = (t, i, nokw) =>   // X 트윗 카드 — 전문(클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입 · nokw = KEYWORD 줄 미출력(X 전용 · 운영자 260727)
-    `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
+  // 게시물 본문 속 영상 링크 = **링크가 아니라 영상**으로(운영자 260727) — 스레드·X 글이 유튜브·틱톡·릴스를 공유하면
+  //   ⓐ 커버 = 그 영상 프레임(유튜브만 썸네일 URL 산출 가능 · 틱톡·릴스는 비공개 → 커버 없이 재생 배선만)
+  //   ⓑ 탭 = 스레드 글 임베드가 아니라 **그 영상 재생**(카드 `data-emb` → 클릭 핸들러가 우선 채택 · 임베드 뷰어 정본 #trviewdlg 그대로)
+  const VID_RE = /https?:\/\/(?:www\.|m\.|vm\.|vt\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)[\w-]{6,}|youtu\.be\/[\w-]{6,}|tiktok\.com\/\S+|instagram\.com\/reel\/[\w-]+)\S*/i;
+  const vidOf = s => { const m = String(s || '').match(VID_RE); if (!m) return ''; const u = m[0].replace(/[),.\]]+$/, ''); const yb = u.match(/youtu\.be\/([\w-]{6,})/); return yb ? 'https://www.youtube.com/watch?v=' + yb[1] : u; };   // youtu.be → watch?v= 정규화 = `trEmbed` 정본 무접촉 계승(정본에 가지 추가 대신 입력을 정규화) · 꼬리 문장부호 컷
+  const vidCov = u => { const m = String(u).match(/youtube\.com\/(?:watch\?v=|shorts\/)([\w-]{6,})/); return m ? 'https://i.ytimg.com/vi/' + m[1] + '/hqdefault.jpg' : ''; };   // 유튜브 커버 = ytimg 핫링크(레포 관용 · 16:9 hqdefault) · id = [\w-] 추출이라 주입 안전
+  const xcard = (t, i, nokw) => {   // X·스레드 게시물 카드 — 전문(2줄 클램프)+대표 이미지 · 본문·계정 = textContent 후주입 · nokw = KEYWORD 줄 미출력(X 전용 · 운영자 260727)
+    const vu = vidOf(t.text), cov = t.thumb || (vu ? vidCov(vu) : '');   // 수집 thumb 우선(X 대표 이미지) → 없으면 본문 영상 커버
+    return `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}"${vu ? ` data-emb="${escUrl(vu)}"` : ''} target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
     (nokw ? '' : `<span class="xcard-kw"></span>`) + `<span class="xcard-tx s2"></span>` +
-    (t.thumb ? `<span class="xcard-cv"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.thumb)}" onerror="this.parentNode.style.display='none'" alt=""></span>` : '') +   // 대표 이미지(운영자 260726) — 수집 thumb(pbs.twimg 핫링크 · 영상 트윗 = poster 프레임) · 문법·onerror 은닉 = card() 커버 계승(깨진 링크 = 조용한 공백) · 결측 = 스팬 자체 미출력(fillT 인덱스 무관 = 후주입 대상 아님)
-    `<span class="tcard-m">${t.views > 0 ? `<span class="xcard-vw">${t.views >= 1e4 ? vfmt(t.views) : t.views.toLocaleString('ko')}</span>` : ''}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좌하단 조회수(운영자 260726 "81만 이런식으로만") = 메타행 첫 칸 · 0·결측 = 미표기(met() 0지표 규약 계승)   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)   // kw 스팬 = 항상 출력(빈 값 = :empty 비노출 — 조건부 출력이면 fillT 인덱스 어긋남) · 본문 = 무조건 s2(2줄 상수 — 미요약 원문 폴백도 2줄 컷 · 평의회 260726 E석: 혼재 시 클램프 7/2 갈림 = 높이 불일치 부활 차단) · 요약 생성 = sns_sum.sh(소넷 5 high) · 승계 = sns_trends.py
+    (cov ? `<span class="xcard-cv"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(cov)}" onerror="this.parentNode.style.display='none'" alt=""></span>` : '') +   // 대표 이미지(운영자 260726) — 수집 thumb(pbs.twimg 핫링크 · 영상 트윗 = poster 프레임) · 문법·onerror 은닉 = card() 커버 계승(깨진 링크 = 조용한 공백) · 결측 = 스팬 자체 미출력(fillT 인덱스 무관 = 후주입 대상 아님)
+    `<span class="tcard-m">${t.views > 0 ? `<span class="xcard-vw">${t.views >= 1e4 ? vfmt(t.views) : t.views.toLocaleString('ko')}</span>` : ''}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;
+  };   // 좌하단 조회수(운영자 260726 "81만 이런식으로만") = 메타행 첫 칸 · 0·결측 = 미표기(met() 0지표 규약 계승)   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)   // kw 스팬 = 항상 출력(빈 값 = :empty 비노출 — 조건부 출력이면 fillT 인덱스 어긋남) · 본문 = 무조건 s2(2줄 상수 — 미요약 원문 폴백도 2줄 컷 · 평의회 260726 E석: 혼재 시 클램프 7/2 갈림 = 높이 불일치 부활 차단) · 요약 생성 = sns_sum.sh(소넷 5 high) · 승계 = sns_trends.py
   // (구 bcard 블스 게시물 카드 = 운영자 260721 "블루스카이는 실검만 사용"으로 게시물 표면 소멸 · 데이터 축 bsky[]·번역 스키마는 보존 · 재도입 = git 이력)
   // (구 V3 조회수/좋아요/댓글 정렬바 옵션 = 260720 평의회 — 카드 그리드 전 섹션 정렬바 제거로 소멸 · xgrid 게시물 정렬바는 각자 리터럴 배열)
   // 정렬 리스트(그룹 본문·대시보드 공용) — 정렬칩 기억(nm_trend_sort) 그대로
@@ -11283,7 +11291,7 @@ function renderSnsTrends() {
       if (!a) return;
       const _hrf = a.getAttribute('href') || '';
       if (!_hrf || _hrf === '#') { e.preventDefault(); return; }   // url 결측 카드(href="#") = 네이티브 새탭이 앱 복제본을 열던 실버그 차단(260720 평의회 F1 재현 — preventDefault가 trEmbed null 조기 return보다 뒤라 발화하던 순서 결함)
-      const emb = trEmbed(_hrf);
+      const emb = trEmbed(a.dataset.emb || _hrf);   // data-emb = 게시물 본문이 공유한 영상(운영자 260727 "링크가 아니라 영상") — 있으면 글 임베드 대신 그 영상을 연다 · 없으면 종전 그대로(href)
       if (!emb) return;
       if (a.dataset.pt === '1' || a.closest('[data-sec=sh]')) emb.k = 'pt';   // 쇼츠 = 유튜브 임베드지만 세로 프레임(대시보드 행 = data-pt 마커)
       e.preventDefault();
@@ -11293,7 +11301,7 @@ function renderSnsTrends() {
         const secEl = a.closest('details.trend-sec, details.tgroup');
         const sibs = secEl ? [...secEl.querySelectorAll('a.tcard, a.trend-row, a.xcard')] : [];
         const k2 = sibs.indexOf(a);
-        if (k2 >= 0 && sibs.length > 1) seq = { arr: sibs.map(x3 => ({ url: x3.getAttribute('href') || '', t: ((x3.querySelector('.tcard-t, .trend-q, .xcard-h b') || {}).textContent || ''), pt: x3.dataset.pt === '1' || !!x3.closest('[data-sec=sh]') })), i: k2 };
+        if (k2 >= 0 && sibs.length > 1) seq = { arr: sibs.map(x3 => ({ url: x3.dataset.emb || x3.getAttribute('href') || '', t: ((x3.querySelector('.tcard-t, .trend-q, .xcard-h b') || {}).textContent || ''), pt: x3.dataset.pt === '1' || !!x3.closest('[data-sec=sh]') })), i: k2 };
       }
       openTrView(emb, a, seq);
     });
@@ -11459,7 +11467,7 @@ let _tvSeq = null;   // 대시보드발 시퀀스(운영자 260712 "모달 안 �
 function openTrView(emb, a, seq) {
   const t = a.querySelector('.tsk-t, .tlr-t, .tpc-t, .tcard-t, .xcard-h b, .trend-q');
   $('#tvTitle').textContent = ((t && t.textContent) || '').slice(0, 60) || '보기';
-  _tvUrl = a.getAttribute('href') || '';
+  _tvUrl = a.dataset.emb || a.getAttribute('href') || '';   // 본문 공유 영상이 있으면 그게 이 모달의 대상 = '원문'·다운로드·영상 스튜디오도 영상 URL을 받는다(글 URL이면 셋 다 헛발)
   $('#tvOpen').href = hrefOk(_tvUrl || '#');   // '원문' = 새탭 폴백(임베드 실패·풀화면 원할 때)
   tvReset();
   _tvSeq = (seq && seq.arr && seq.arr.length > 1) ? seq : null;
