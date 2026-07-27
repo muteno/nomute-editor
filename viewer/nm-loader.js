@@ -282,6 +282,7 @@
         for (i = 0; i < ls.length; i++) { l = ls[i]; paused.push({ el: l, rel: l.getAttribute('rel') }); l.setAttribute('rel', 'nm-fav-paused'); }
         document.head.appendChild(live);                 // 원본 <link>의 href는 건드리지 않는다 = 복원 불가 상태가 없음
         timer = setInterval(tick, 1000 / FPS);           // fps = 독립축(장수·주기와 무관)
+        document.documentElement.classList.add('nm-busy');   // 화면 안 갈래(.hdr-globe 회전) = CSS가 전담 · 로직 무접촉 유지(철거→260727 되돌림으로 부활)
       } catch (e) { halt(); }
     }
     function halt() {
@@ -291,6 +292,7 @@
       live = null;
       /* 보류시킨 원본 아이콘 링크 rel 원복 = 테마적응 SVG 파비콘이 그대로 되살아난다 */
       if (paused) { for (var i = 0; i < paused.length; i++) { try { paused[i].el.setAttribute('rel', paused[i].rel); } catch (e) {} } paused = null; }
+      try { document.documentElement.classList.remove('nm-busy'); } catch (e) {}
     }
     function start() { if (blocked()) return; refs++; if (refs === 1) build(function () { if (refs > 0) run(); }); }
     function stop() { refs = Math.max(0, refs - 1); if (!refs) halt(); }
