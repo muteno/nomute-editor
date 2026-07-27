@@ -10,7 +10,7 @@ PROMPT_FILE="prompts/news-analysis.md"
 source "$ROOT/shared/model_env.sh"   # 모델 단일 원천(PIPE_MODEL · 260702 SYS-08)
 MODEL="$PIPE_MODEL"
 INLINE_TRIES=4          # 인라인 재시도 횟수 = 4계정 폴오버 체인 깊이(서브3 MUTENONA까지 단일 잡서 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124) 흡수(260622·4계정 확장 3→4)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '기사 찾기'는 도구 왕복이 본질이라 max 는 헛사고로 타임아웃만 유발 → high 기본(ask.sh 와 동일 env · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+EFFORT="${PIPE_SEARCH_EFFORT:-medium}"   # 검색·요약 추론깊이 — opus5 는 medium 도 구세대 high급 품질에 지연·토큰 대폭 절감(요약 30분 단축 축 · 운영자 260727 일괄 하향, 구 high=260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(high).
 ANALYZE_TIMEOUT="${ANALYZE_TIMEOUT:-900}"   # claude -p 타임아웃(초) — analyze 는 콘텐츠 초안까지 생성이라 15분 유지(ask 요약보다 김). 초과 시 계정 1회 전환 후 격리(force·아래 · 운영자 260704).
 ANALYZE_JOB_DEADLINE="${ANALYZE_JOB_DEADLINE:-3400}"   # 스크립트 SECONDS 이 초 넘으면 새 기사 처리 시작 안 함(잔여 pending 잔류→sweep 재처리) — 과부하 다건 타임아웃이 잡 timeout(90분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 90분 - 셋업 - 다음기사 최악 2×900s).
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
