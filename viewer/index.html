@@ -646,6 +646,9 @@
   /* 실패/멈춤 = '진행되다 깨짐' 표식: 연 반투명 노랑 + 살짝 빗금, 라벨은 빨강 50% */
   .prog .seg.fail .sl { color:rgba(var(--danger-rgb),.5); opacity:1; }
   .prog .seg.fail .bar { background:repeating-linear-gradient(45deg,rgba(var(--accent-4-rgb),.26) 0 4px,rgba(var(--accent-4-rgb),.09) 4px 8px); box-shadow:none; }
+  /* 재시도 가능한 실패 세그(프롬프트) = 라벨이 곧 버튼 → 호버·포커스 때만 빨강 100%로 점등(평시 모양은 실패 표식 그대로 · 새 요소 0 · 운영자 260727).
+     ⚠ .seg.fail .sl(0,4,0)이 공용 :hover 규칙(0,4,0·선행)을 캐스케이드로 이기므로 fail엔 호버가 안 먹던 것 = 이 행이 전용으로 되살림. */
+  .prog .seg.fail[data-retry]:hover .sl, .prog .seg.fail[data-retry]:focus-visible .sl { color:var(--danger); opacity:1; }
   /* 실패 이력(error.log 잔존=한 번이라도 깨짐) = 영속 흉터: 라벨 빨강50 + 막대에 연 노랑 빗금 덧입힘(완료·대기 위에). */
   .prog .seg.scar .sl { color:rgba(var(--danger-rgb),.5); }
   .prog .seg.scar .bar::before { content:''; position:absolute; inset:0; border-radius:999px; pointer-events:none;
@@ -4090,7 +4093,7 @@ function render() {
   const list = $('#list');
   if (!rows.length) { list.innerHTML = (q || cardonly || FILTERS.cats.size || FILTERS.issue) ? '<div class="empty">결과 없음</div>' : '<div class="ghost-card" aria-hidden="true"></div><div class="ghost-card" aria-hidden="true"></div>'; _feedSig = ''; return; }   // 빈 기본 탭 = 고스트 카드 실루엣 2장(운영자 260712 Q2-ⓐ 승인 — 평의회⑩ 1순위 '기본 착지 백지' · 산문 0 = §디자인 e 정신 유지 · 검색·필터 걸렸을 때만 '결과 없음' 피드백)
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
+  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '') + (isCardRetrying(a) ? 'k' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
   if (sig === _feedSig && list.childElementCount) return;   // 구성·상태·필터 완전 동일 = DOM 무접촉 스킵(renderScrap 커밋 스킵 미러 · 평의회6 260707 — 탭 전환 즉시렌더 직후 fetch 재렌더가 통재빌드로 스태거를 절단·이중 비용 내던 것 차단 · sig에 rev/cards.state/긴급/수정중 전부 탑승이라 실변경은 항상 통과). ⚠️ 정직: dlReport/dlScrap의 relAge 상대시간 라벨·progGauge stuck 판정은 sig 밖 = 유휴 동일탭 폴에선 동결·다음 실변경/탭 전환 때 갱신(자가치유) — scrap 7309 커밋 스킵과 동일한 의도적 트레이드오프(신선도 한정·데이터 무영향). sig 밖 동적 요소 추가 시 여기 재검토.
   const _anim = sig !== _feedSig && !_searchRender;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더·검색 타이핑은 즉시(깜빡임 0) — sig 커밋은 루프 성공 후(아래)
   list.innerHTML = '';
@@ -4128,7 +4131,11 @@ function render() {
     c.querySelector('.mlink')?.addEventListener('click', e => e.stopPropagation());   // 대표 매체 = 원문 링크(새 탭) — 카드 열기(open)와 충돌 방지
     // 진행바 세그먼트 = N/M/T 모달 점프(nav 통합·A5). 본문 클릭(open)과 충돌 방지 stopPropagation.
     c.querySelectorAll('.prog .seg[data-j]').forEach(seg => {
-      const go = async e => { e.stopPropagation(); await open(a); requestAnimationFrame(() => jumpTo(seg.dataset.j)); };
+      const go = async e => {
+        e.stopPropagation();
+        if (seg.dataset.retry) return retryPromptSeg(a, seg);   // 실패한 프롬프트 세그 = 점프 대신 그 자리 재시도(운영자 260727)
+        await open(a); requestAnimationFrame(() => jumpTo(seg.dataset.j));
+      };
       seg.onclick = go;
       seg.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(e); } };
     });
@@ -4158,6 +4165,28 @@ function sensChips(tags) {
     return `<span class="tagchip${warn}">${esc(t)}</span>`;
   }).join('');
 }
+// ── 프롬프트 단계 실패 = 게이지 라벨 탭으로 그 자리 재시도(운영자 260727) ──
+// 경로 = #cardsec '프롬프트 다시 생성' 버튼과 완전 동일(makeCards 'text' = 2단계만 · 이미지 0). 유료 3단계는 이 축 아님.
+// 발사 후 서버 state(generating) 반영까지 60초 폴 공백이 있어, 그 사이만 클라 임시상태로 진행 중 표시(빗금 → 펄스).
+const CARD_RETRY = new Map();      // file → 발사 ts
+const RETRY_HOLD_MS = 3 * 60000;   // 폴백 해제 — 서버 미반영·응답 유실이어도 이 시간 뒤 진짜 상태로 복귀(영구 가짜 진행 차단)
+function isCardRetrying(a) {
+  const ts = a && CARD_RETRY.get(a.file); if (!ts) return false;
+  if (Date.now() - ts > RETRY_HOLD_MS) { CARD_RETRY.delete(a.file); return false; }
+  const up = a.cards && a.cards.updated ? Date.parse(a.cards.updated) : 0;
+  if (up && up > ts) { CARD_RETRY.delete(a.file); return false; }   // 서버가 새로 갱신 = 임시상태 종료(진짜 상태가 이김)
+  return true;
+}
+async function retryPromptSeg(a, seg) {
+  if (CARD_RETRY.has(a.file)) return;                       // 연타 = 중복 발사 차단
+  CARD_RETRY.set(a.file, Date.now());
+  seg.classList.remove('fail'); seg.classList.add('cur'); delete seg.dataset.retry;   // 탭 즉시 피드백(재렌더 전에도 빗금 → 진행 펄스)
+  seg.querySelector('.rn')?.remove();   // '(다시)' 표식 회수 — 이미 눌렀으니 그 칸은 다음 렌더의 회차 '(N)' 몫
+  const ok = await makeCards(a.file, null, 'text');         // btn 없음 = 게이지 버튼 상태머신 미사용(이 표면엔 버튼이 없다)
+  if (!ok) CARD_RETRY.delete(a.file);                       // 실패(alert는 makeCards가) = 임시상태 즉시 해제 → 다시 빗금
+  render();
+  setTimeout(load, 4000);                                   // 서버 state 조기 반영(60초 폴 대기 단축)
+}
 // 진행 스텝퍼 B안 — 요약·프롬프트·카드 3세그먼트. 클릭 = N/M/T 모달 점프(nav 통합·A5). 기존 cards.state만.
 function progGauge(a) {
   const st = (a.cards && a.cards.state) || '';
@@ -4176,6 +4205,7 @@ function progGauge(a) {
   else if (st === 'text_done') done = 2;                        // 프롬프트까지·카드 대기
   else if (st === 'generating') { if (genStuckG) fail = true; else busy = true; }   // 카드 프롬프팅 중(26분 = CARD_TIMEOUT 정합)
   else if (st === 'failed') { fail = true; if (hasMd) done = 2; }   // 텍스트 있으면 카드 단계 실패(seg 카드)
+  if (isCardRetrying(a)) { done = 1; busy = true; fail = false; }   // 라벨 탭 재시도 발사 직후(클라 임시) = 서버 state 반영 전까지 프롬프트 세그를 진행 중으로(빗금 → 펄스 · 운영자 260727)
   // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
   const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
   const aria = { n:'인스타 요약으로 이동', m:'카드 프롬프트로 이동', t:'카드 이미지로 이동' };
@@ -4186,8 +4216,14 @@ function progGauge(a) {
     else if (i === done && busy) cls = retry > 0 ? ' cur retry' : ' cur';   // 재시도(트라이 N) = cur에 .retry → 글자만 네온레몬(게이지바·펄스는 메인색 유지·운영자 260705)
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
-    const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N)'(숫자만·크기·정렬 라벨과 동일 · 운영자 260701)
-    return `<div class="seg${cls}" data-j="${j}" role="button" tabindex="0" aria-label="${aria[j]}"><span class="sl">${lb}${rn}</span><span class="bar"></span></div>`;
+    // 프롬프트 세그(i=1)가 실패면 그 라벨 자체가 재시도 버튼 = 모달 안 들어가고 그 자리에서 다시 생성(운영자 260727).
+    // 카드(i=2) 실패는 대상 아님 — 유료(제미나이 렌더)라 재확인 2탭 '카드 이미지 생성' 버튼 경로 유지.
+    const rt = (i === 1 && i === done && fail) ? ' data-retry="text"' : '';   // ⚠ i===done 필수 — fail은 카드 전체 플래그라, 카드(3단계) 실패 기사(done=2)에서 완료된 프롬프트 세그까지 재시도로 오표시되던 것 차단(260727 QA 실측)
+    // 우측 표식(.rn) 한 칸 = 배타 2용도: 재시도 가능 '(다시)' / 프롬프팅 중 회차 '(N)'. 둘은 동시에 안 뜬다(fail ↔ busy 배타).
+    // '(다시)' = 호버 없는 폰에서도 라벨이 눌린다는 걸 보이게(운영자 260727 한 수 채택) · 부품·색·정렬 전부 회차 표식 계승(새 값 0).
+    const rn = rt ? '<span class="rn">(다시)</span>'
+      : (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT 표식(크기·정렬 라벨과 동일 · 운영자 260701)
+    return `<div class="seg${cls}" data-j="${j}"${rt} role="button" tabindex="0" aria-label="${rt ? '프롬프트 다시 생성' : aria[j]}"${rt ? ' title="눌러서 프롬프트 다시 생성"' : ''}><span class="sl">${lb}${rn}</span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
 }
@@ -6803,11 +6839,12 @@ async function makeCards(target, btn, mode) {
         await new Promise(res => setTimeout(res, 520));
       }
       if (btn) btn.outerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(isText ? 'prompting' : 'solving', isText ? 'Prompting…' : 'Solving…') : (isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(카드뉴스=Prompting·이미지=Solving · 운영자 260723 Q461) · 폴백 = 구 점3
-      return;
+      return true;   // 발사 성공 — 버튼 없는 호출부(피드 게이지 라벨 재시도)가 성패로 임시상태를 켜고 끈다
     }
     if (btn) { gaugeClear(btn); btn.classList.remove('okdone', 'checking'); btn.style.pointerEvents = ''; }
     alert(j.error || `실패 (${r.status})`);
-  } catch (e) { if (btn) { gaugeClear(btn); btn.classList.remove('okdone', 'checking'); btn.style.pointerEvents = ''; } alert('요청 실패: ' + e.message); }
+    return false;
+  } catch (e) { if (btn) { gaugeClear(btn); btn.classList.remove('okdone', 'checking'); btn.style.pointerEvents = ''; } alert('요청 실패: ' + e.message); return false; }
 }
 // ── 입력칸 복사/붙여넣기/지우개·되돌리기 = 이미지 제작(thumb.html) attachCopyPaste 그대로 이식 (운영자 260627) ──
 const ERASE_UNDO_MS = 10000;   // 지움 후 되돌리기 노출 시간(~10초)
@@ -7746,7 +7783,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '092fe65 · 260727_1836';  /*BUILDSTAMP*/
+const BUILD_STAMP = '3bc1184 · 260727_1851';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
