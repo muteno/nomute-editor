@@ -82,6 +82,48 @@ def out_path(kind, theme):
     return BRAND / f"icon-notif-{kind}-{theme}-512-260727.png"
 
 
+# ── data URL 번들 ──────────────────────────────────────────────────────────────
+# 왜 = 알림 아이콘을 **URL로 주면 폰에서 못 가져온다**(실측 260727: 안드로이드가 사이트 첫 글자 'A' 폴백을
+#   그렸다 = 이미지 요청이 Cloudflare Access 벽/404에 막힘 · 인수인계서 §3-6이 지목한 같은 벽).
+#   push 수신 시점의 아이콘 로드는 SW fetch 핸들러를 안 거쳐 캐시로도 못 구제한다 → **이미지를 알림에
+#   통째로 실어보낸다**(data URL) = 네트워크 요청 0 = 벽과 무관.
+# 크기 = 웹푸시 페이로드 한도 4KB. 96px·32색 팔레트 = base64 약 2.3KB → 제목·본문·url·tag 포함 2.7KB(실측).
+DATAURL_JSON = BRAND / "notif_dataurl.json"
+DATAURL_PX = 96
+DATAURL_COLORS = 32
+PAYLOAD_BUDGET = 3300   # base64 상한(나머지 ~700B = 제목·본문·url·tag·kind 여유)
+
+
+def data_url(img):
+    import io, base64
+    from PIL import Image
+    q = img.resize((DATAURL_PX, DATAURL_PX), Image.LANCZOS)
+    q = q.quantize(colors=DATAURL_COLORS, method=Image.FASTOCTREE)   # RGBA는 FASTOCTREE만 가능(알파 보존)
+    buf = io.BytesIO()
+    q.save(buf, "PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def build_dataurls():
+    """{kind: {sig|blue: data URL}} 번들 — push_send.py가 --kind로 조회해 payload에 싣는다."""
+    from PIL import Image
+    import json
+    out, over = {}, []
+    for kind, spec in KINDS.items():
+        out[kind] = {}
+        for theme, src in SRC.items():
+            p = src if spec.get("same_as_source") else out_path(kind, theme)
+            u = data_url(Image.open(p).convert("RGBA"))
+            if len(u) > PAYLOAD_BUDGET:
+                over.append(f"{kind}/{theme} {len(u)}B > {PAYLOAD_BUDGET}B")
+            out[kind][theme] = u
+    if over:
+        raise SystemExit("❌ data URL 예산 초과(4KB 페이로드 한도 위험):\n  - " + "\n  - ".join(over))
+    DATAURL_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=0, sort_keys=True) + "\n", encoding="utf-8")
+    mx = max(len(v) for d in out.values() for v in d.values())
+    return len(out) * 2, mx
+
+
 def main():
     check = "--check" in sys.argv
     drift = []
@@ -108,12 +150,25 @@ def main():
                 made += 1
         print(f"· {kind:5s} {spec['token']:9s} {spec['label']} — hue {th:5.1f}°{' · 채도 억제' if spec.get('desaturate') else ''}")
     if check:
+        import json
+        try:
+            cur = json.loads(DATAURL_JSON.read_text(encoding="utf-8"))
+            exp = {}
+            from PIL import Image
+            for kind, spec in KINDS.items():
+                exp[kind] = {t: data_url(Image.open(SRC[t] if spec.get("same_as_source") else out_path(kind, t)).convert("RGBA")) for t in SRC}
+            if cur != exp:
+                drift.append(f"{DATAURL_JSON.name} 재생성 결과 상이")
+        except Exception as e:
+            drift.append(f"{DATAURL_JSON.name} 읽기 실패: {e}")
         if drift:
             print("❌ 드리프트:\n  - " + "\n  - ".join(drift))
             return 1
         print("✅ 알림 아이콘 재생성 = 커밋본 바이트 동일")
         return 0
+    n, mx = build_dataurls()
     print(f"✅ {made}장 생성 → assets/brand/icon-notif-*-512-260727.png")
+    print(f"✅ data URL 번들 {n}건 → {DATAURL_JSON.name} (최대 {mx}B · 예산 {PAYLOAD_BUDGET}B)")
     return 0
 
 

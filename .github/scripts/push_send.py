@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 SUBS = ROOT / "push" / "subscriptions.json"
 SENT = ROOT / "push" / "sent.json"
 CAND = ROOT / "viewer" / "candidates.json"
+NOTIF_ICONS = ROOT / "assets" / "brand" / "notif_dataurl.json"   # 종류별 아이콘 data URL 번들(생성 = shared/build_notif_icons.py)
+PAYLOAD_MAX = 3900   # 웹푸시 페이로드 실효 한도 4KB — 초과분은 아이콘을 떼고 보낸다(알림 자체가 사라지는 것보다 낫다)
 FAST_MAX_H = 4   # 최신 긴급만 푸시(뷰어 토스트와 동일 단일상수 정신)
 PUSH_MIN_CROSS = int(os.environ.get("PUSH_MIN_CROSS", "2"))   # 푸시 최소 교차매체(다매체 검증 = 오발송 가드 · MIN_CROSS 바뀌어도 푸시 하한 고정)
 PUSH_PUB_MAX_H = float(os.environ.get("PUSH_PUB_MAX_H", "8"))   # 발행 나이 상한 — 24→8h 조임(운영자 260722 · 실측: 재수집 뒷북 3발[발행 19.5~24h·first_seen 방금]이 24h 캡을 통과해 오발송 — 8h = 구주석 '8~12h 조임' 하단 = 관측 오발 전부 차단 + syndication 지연(4h+) 2배 완충). first_seen 전환의 뒷북 완충. ⚠️ 입력 = 현재 rep 기사 발행 나이(사건 나이 아님 · 검4-3)
@@ -171,6 +173,20 @@ def vapid_pem(raw_b64url):
     tf.write(pem); tf.close()
     return tf.name
 
+def notif_icon(kind, theme):
+    """종류 → 알림 아이콘 **data URL**. URL 대신 이미지를 통째로 실어보내는 이유(실측 260727):
+    payload에 아이콘 *주소*를 주면 폰이 그 이미지를 받아오지 못해(Access 벽/미배포 404) 안드로이드가
+    사이트 첫 글자 'A' 폴백을 그린다. data URL = 네트워크 요청 0 = 그 벽과 무관하게 항상 그려진다.
+    ⚠ 서버는 폰의 라이트/다크 테마를 모른다 → 기본은 다크판(sig · 앱 자체가 다크 UI). 미지 종류 = None(=SW 기본판)."""
+    if not kind:
+        return None
+    try:
+        b = json.loads(NOTIF_ICONS.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return (b.get(kind) or {}).get(theme or "sig")
+
+
 def main():
     test = "--test" in sys.argv
     suppressed_keys, sent_events = [], []   # 사건 dedup 상태 — 테스트·--notify 경로에서도 참조되므로 선초기화
@@ -183,10 +199,17 @@ def main():
         m = sys.argv.index("--kind")
         if len(sys.argv) > m + 1 and sys.argv[m + 1]:
             notify_kind = sys.argv[m + 1]
+    notify_theme = "sig"
+    if "--icon-theme" in sys.argv:   # sig = 다크 알림판(기본) / blue = 라이트 알림판
+        m = sys.argv.index("--icon-theme")
+        if len(sys.argv) > m + 1 and sys.argv[m + 1]:
+            notify_theme = "blue" if sys.argv[m + 1].lower() in ("blue", "light") else "sig"
     if "--icon" in sys.argv:
         m = sys.argv.index("--icon")
         if len(sys.argv) > m + 1 and sys.argv[m + 1]:
             notify_icon = sys.argv[m + 1]
+    if not notify_icon and notify_kind:            # 명시 지정이 없으면 종류별 data URL 자동 적재
+        notify_icon = notif_icon(notify_kind, notify_theme) or ""
     if "--url" in sys.argv:                           # 알림 탭 시 이동할 경로(제작완료=제작 화면으로) · 미지정이면 "/"
         j = sys.argv.index("--url")
         if len(sys.argv) > j + 1:
@@ -257,7 +280,7 @@ def main():
                     print(f"  ⊘ 사건중복 억제(AI): {(c.get('title') or '')[:34]} ≈ {str(sent_events[dup].get('title', ''))[:28]}", file=sys.stderr)
                     suppressed_keys.extend(ks)
                     continue
-            msgs.append({"keys": ks, "ev_title": c.get("title") or "", "title": "News", "body": ("(긴급) " + disp_title(c))[:120], "url": brk_url(c), "tag": "nomute-breaking", "kind": "brk"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(외신=번역 제목) · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
+            msgs.append({"keys": ks, "ev_title": c.get("title") or "", "title": "News", "body": ("(긴급) " + disp_title(c))[:120], "url": brk_url(c), "tag": "nomute-breaking", "kind": "brk", "icon": notif_icon("brk", "sig") or ""})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(외신=번역 제목) · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
         if not msgs:
             if suppressed_keys:   # 발송 0건이어도 억제 도장은 기록(다음 런 AI 재호출 0 — 조용한 반복 콜 차단)
                 _flush_ledgers([], suppressed_keys, [], sent_events)
@@ -271,6 +294,9 @@ def main():
         if m.get("kind"): pl["kind"] = m["kind"]     # SW가 종류→아이콘 매핑(신 SW) · 미지정 = 브랜드 기본
         if m.get("icon"): pl["icon"] = m["icon"]     # 직접 지정 = 최우선(구 SW 호환 검증 경로 · 정식 발송은 비움 = 테마짝 유지)
         payload = json.dumps(pl, ensure_ascii=False)
+        if len(payload.encode("utf-8")) > PAYLOAD_MAX and pl.pop("icon", None):   # 한도 초과 = 아이콘만 포기(알림은 반드시 뜬다)
+            payload = json.dumps(pl, ensure_ascii=False)
+            print(f"  ⚠ 페이로드 한도 초과 — 아이콘 생략하고 발송({m.get('kind') or '기본'})", file=sys.stderr)
         ok_any = False
         for s in subs:
             ep = (s or {}).get("endpoint")
