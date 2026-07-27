@@ -1332,6 +1332,14 @@
   body.has-kwhit .vh-acts .profile .ts-ico { stroke:var(--cat-tech); filter:drop-shadow(0 0 6px rgba(var(--cat-tech-rgb),.45)); }
   @media (hover:hover){ body.has-kwhit .vh-acts .profile:hover .ts-ico { stroke:var(--cat-tech); } }   /* hover 흰색이 점등을 덮지 않게(형제 규칙 동문법) */
   body.has-kwhit.has-freshbad .vh-acts .profile .ts-ico, body.has-kwhit.has-sysbad .vh-acts .profile .ts-ico { stroke:var(--danger); filter:none; }   /* 중대 고장 동시 = 보수색이 이긴다(경보 우선순위 = 기존 계약 보존) */
+  /* 🍋 뉴스 요약 막힘(대기열 실패) = 기어 픽토 레몬으로 '빛남'(운영자 260727 "뉴스요약을 했는데 막힌 게 있으면 설정버튼을 재시도 색 골드 레몬 그거로 뜨게") —
+     문법 = 바로 위 has-kwhit 사다리 100% 미러(도형·크기·정렬 무접촉 = stroke 색 + 동일 drop-shadow 글로우) · 색만 **재시도 표준색 arm**(레몬 = .qgo.go-arm·.mkbtn.retry 정본 계승 · 신설 값 0).
+     축 구분 = 수집 고장(danger 빨강) / 키워드 발견(--cat-tech 보라) / 요약 막힘(--arm 레몬) — 색으로 갈린다.
+     소등 = **대기열을 여는 즉시**(운영자 "그거 없애려면 대기열 들어가서 확인 · 확인 즉시" — openQueue→qfMarkSeen · 액션 0) · 새 실패가 생기면 재점등(영구 묵음 금지). */
+  body.has-qfail .vh-acts .profile .ts-ico { stroke:var(--arm); filter:drop-shadow(0 0 6px rgba(var(--arm-rgb),.45)); }
+  @media (hover:hover){ body.has-qfail .vh-acts .profile:hover .ts-ico { stroke:var(--arm); } }   /* hover 흰색이 점등을 덮지 않게(형제 규칙 동문법) */
+  body.has-qfail.has-freshbad .vh-acts .profile .ts-ico, body.has-qfail.has-sysbad .vh-acts .profile .ts-ico { stroke:var(--danger); filter:none; }   /* 중대 고장 동시 = 보수색이 이긴다(형제 계약 그대로) · 키워드(보라)와 동시면 소스순 뒤인 이 레몬이 노출 = 내 요청이 막힌 쪽 우선 */
+  body.has-qfail .vh-acts .profile:active .ts-ico, body.has-qfail .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누름·메뉴 열림 = 강조색 그대로(클릭 액티브 계약 보존) */
   @media (hover:hover){ body.has-freshbad .vh-acts .profile:hover .ts-ico, body.has-sysbad .vh-acts .profile:hover .ts-ico { stroke:var(--danger); } }   /* hover 흰색이 경보색을 덮지 않게(고장 표시 우선) — 특이도 동률이라 소스순 뒤 재선언 */
   body.has-freshbad .vh-acts .profile:active .ts-ico, body.has-freshbad .vh-acts .profile.on .ts-ico,
   body.has-sysbad .vh-acts .profile:active .ts-ico, body.has-sysbad .vh-acts .profile.on .ts-ico { stroke:var(--accent); filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.45)); }   /* 누름·메뉴 열림 = 강조색 그대로(클릭 액티브 계약 보존 · 위 accent 규칙과 동률이라 명시 재선언) */
@@ -8741,6 +8749,7 @@ if (qFeedBtn) {
 { const _qHeadBtn = document.getElementById('queueBtn');
   if (_qHeadBtn) _qHeadBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (!qpop.hidden) closeQueueUser(); else openQueue(_qHeadBtn); }); }
 let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
+let _qHistYield = false;   // 히스토리 칸 인계 플래그 — 대기열 위로 뜨는 모달(openTool)이 {qpop} 칸을 replaceState 로 가져갈 때 ON → closeQueueUser 가 back() 을 포기(back↔pushState 경쟁이 그 모달을 즉시 닫던 것 차단 · 운영자 260727 재시도 먹통 봉합)
 let _qAnchor = null;   // 대기열 앵커 = 헤더 픽토그램(#queueBtn·head 모드) or null(하단 뉴스요약 기본) — placeQpop 위치 분기(운영자 260710)
 function placeQpop() {   // 대기열 위치 — 헤더 픽토그램(head)=픽토 아래 우변 앵커 촤르륵 / 하단 네비=PC 버튼 위·모바일 화면중앙 · 둘 다 뷰포트 클램프(운영자 260705·260710)
   const head = !!(_qAnchor && _qAnchor.id === 'queueBtn');   // 헤더 대기열 픽토그램서 열림 = 아래로
@@ -8771,6 +8780,7 @@ function openQueue(anchor) {
   { const hb = document.getElementById('queueBtn'); if (hb) { hb.classList.toggle('on', !!_qAnchor); hb.setAttribute('aria-expanded', 'true'); } }   // 헤더서 열면 픽토 활성(accent 강조 · filterBtn.on 패턴)
   try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
   if (!_qPushed) { history.pushState({ qpop: true }, ''); _qPushed = true; }   // 폰 뒤로가기 한 번 = 대기열 먼저 닫기(딴 화면 안 벗어남)
+  qfMarkSeen();   // 🍋 확인 즉시 = 기어 레몬 소등(운영자 260727 "대기열 들어가서 확인 · 확인 즉시") — 지금 아는 실패분으로 먼저 끄고, 라이브 응답분은 아래 loadQueue 가 이어서 처리(네트워크 실패해도 소등은 성립)
   loadQueue();
 }
 function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른 오버레이·더블탭) → 재오픈 플래그 해제(↗ 네비게이션 닫힘과 구분 · 운영자 260622)
@@ -8781,7 +8791,7 @@ function closeQueueUser() {   // 사용자가 직접 닫음(X·바깥탭·다른
     else { qpop.classList.add('closing'); clearTimeout(_qCloseTimer); _qCloseTimer = setTimeout(() => { qpop.hidden = true; qpop.classList.remove('closing'); }, 190); }   // .18s 애니 + 버퍼
   }
   try { sessionStorage.removeItem('nomute_q_open'); } catch {}
-  if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
+  if (_qPushed) { _qPushed = false; if (_qPop) _qPop = false; else if (_qHistYield) { /* 칸은 위에 뜬 모달이 인계(openTool replaceState) — 여기서 back() 하면 그 모달을 삼킨다 */ } else if (history.state && history.state.qpop) history.back(); }   // 직접 닫기면 푸시한 히스토리 칸 정리(뒤로가기로 닫힌 경우는 이미 pop됨)
 }
 
 // ── (폐지 260710 · 운영자 "호버했을 때 메뉴 뜨게 하는 거 없애줘") 하단 네비·프로필 마우스 호버 자동 열기(hoverAuto) 제거 ──
@@ -8916,6 +8926,7 @@ async function loadQueue() {
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
   // 발견성 배지(진행중 건수)도 이 응답으로 즉시 동기화 — 리스트 열 때 별도 폴 안 기다리고 배지 최신화(stale 불일치 방지·추가 fetch 0·운영자 260701). status 기준(loadPending과 동일 = 파이프라인 처리중 = 어디서 세든 같은 값).
   PEND_PROC = items.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length; updateQBadge();
+  setQFail(items); qfMarkSeen();   // 리스트가 실제로 그려지는 이 응답으로 실패분 최신화 → 그 자리서 확인 처리(열어 놓은 채 새 실패가 들어와도 '보고 있는 중'이므로 소등 유지 · 운영자 260727)
   // 화면상 '진행중'(스피너로 그려지는 것) 최상단 고정 → 리스트 1페이지가 배지·진행상태와 일치.
   //   _qProg를 eff 기준(succ인데 피드 미반영=빌드랙도 qRowHtml서 스피너로 그려짐 → 상단)으로 잡아 '스피너인데 하단' 모순 차단(260701).
   //   시각 파싱 실패로 t=null이어도 진행중이면 status로 상단 → API 최신순 정렬 맨뒤로 밀려 안 뜨던 불일치 방어. 완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
@@ -9047,9 +9058,9 @@ function detectBreaking() {
 // 긴급 토스트 seen = 로컬(brkTSeen·즉시) + 계정(TF_SRV·viewer/toast-seen.json) 이중 — 운영자 260712 "한번 뜬 거는 플랫폼 바꿔서 접속해도 안 떠야 · 뜬 거/체크 = 계정 종속".
 //   ✓체크 = 확인 = 수집함 acked 동기화(ratings acked + postRate 원장 · toggleAck 불변) + 계정 seen · 만료/이동도 계정 seen 기록.
 //   계정 축 전파 = api/seen 직접 커밋 → Pages 배포(1~2분) — 그 사이 타 기기 1회 중복 표시는 허용 오차(로컬이 그 기기 재알림은 차단).
-const TF_AXES = ['t', 'f', 's', 'mr', 'md', 'pr', 'kw'];   // 계정 seen 축(서버 seen.js AXES와 동기): t=긴급·f=실패·s=시스템 경보 이벤트·mr=메시지 읽음·md=메시지 치움·pr=픽실패 해소·kw=키워드 알림 발송 dedup(slug#버킷)
+const TF_AXES = ['t', 'f', 's', 'mr', 'md', 'pr', 'kw', 'qf'];   // 계정 seen 축(서버 seen.js AXES와 동기): t=긴급·f=실패·s=시스템 경보 이벤트·mr=메시지 읽음·md=메시지 치움·pr=픽실패 해소·kw=키워드 알림 발송 dedup(slug#버킷)·qf=요약 막힘 확인(대기열 열면 기록 → 기어 레몬 소등 · 260727)
 let TF_SRV = Object.fromEntries(TF_AXES.map(k => [k, new Set()]));
-async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = Object.fromEntries(TF_AXES.map(k => [k, new Set(d[k] || [])])); renderMsgBadge(); } } catch { /* 없으면 로컬만 */ } }   // 적재 후 배지 재계산 = 타 기기 읽음/치움이 60s 폴에 반영(계정 종속 소급 감사 260717)
+async function loadToastSeen() { try { const r = await fetch('toast-seen.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); TF_SRV = Object.fromEntries(TF_AXES.map(k => [k, new Set(d[k] || [])])); renderMsgBadge(); paintQFailGear(); } } catch { /* 없으면 로컬만 */ } }   // 적재 후 배지 재계산 = 타 기기 읽음/치움이 60s 폴에 반영(계정 종속 소급 감사 260717)
 function postSeenIds(axis, ids) { const fresh = (ids || []).filter(id => id && !TF_SRV[axis].has(id)); if (!fresh.length) return; fresh.forEach(id => TF_SRV[axis].add(id)); fetch('api/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ [axis]: fresh.slice(0, 50) }) }).catch(() => {}); }   // 다건 계정 동기(postSeen 문법 미러 — 낙관 add·fail-soft·서버 50/축 상한 정합)
 // 시스템 경보 계정 ack(운영자 260717 "계정 종속이 이런 거에 모두 걸려야" — 260712 계정 종속 확립의 일반화): 이벤트형(append-only 롤링) 스키마에 '상태+재무장'을 싣기 위해
 //   ack:<epochMs>(✓ 처리 완료)·rearm:<epochMs>(확실 회복 = 재무장) 페어로 기록 — 유효 계정 ack = 최신 ack가 최신 rearm보다 뒤일 때만(삭제 없는 스토어에서 상태 되돌림 표현).
@@ -9317,11 +9328,30 @@ async function loadPending(render) {
       changed = m.size !== PEND.size || [...m].some(([k, v]) => PEND.get(k) !== v);   // 키 추가/삭제·상태 변화 모두 감지(전이 드묾 = 재렌더 비용 미미)
       PEND = m;
       PEND_PROC = (d.items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
-      updateQBadge(); }
+      updateQBadge(); setQFail(d.items); }   // setQFail = 요약 막힘(실패) 기어 레몬 점등 축(대기열 안 열어도 전 탭서 알림 · 운영자 260727)
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
   finally { PEND_LOADING = false; }   // 리셋 필수 = 안 하면 플래그 영구 true로 이후 폴링 전면 차단
   if ((render || changed) && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
 }
+// ── 🍋 요약 막힘 알림(운영자 260727 "뉴스요약을 했는데 막힌 게 있으면 설정버튼을 재시도 색 골드 레몬으로 뜨게 · 없애려면 대기열 들어가서 확인") ──
+//   점등 = 대기열에 '실패' 항목이 하나라도 있고 그걸 아직 확인 안 했을 때 → 기어 픽토 레몬(CSS body.has-qfail · 문법·소등축 = 키워드 발견 has-kwhit 사다리 그대로).
+//   소등 = **대기열을 여는 즉시**(openQueue → qfMarkSeen) · 액션 0(열기만 하면 꺼짐 = 시스템 알림 '메시지함 열면 읽음' 축 계승).
+//   확인 기록 = 로컬(즉시) ∪ 계정 qf축(api/seen — 폰에서 확인하면 PC도 소등 · CLAUDE.md D3-1 "localStorage 단독 금지").
+//   새 실패가 생기면 그 id는 미확인이라 다시 점등(영구 묵음 금지 = 형제 알림 계약 그대로).
+let QFAIL_IDS = [];   // 현재 대기열의 실패 항목 id 목록(loadPending·loadQueue 공용 갱신)
+const QF_SEEN_KEY = 'nomute_qfail_seen';
+function qfSeenSet() { try { const s = new Set(JSON.parse(localStorage.getItem(QF_SEEN_KEY) || '[]')); TF_SRV.qf.forEach(id => s.add(id)); return s; } catch { return new Set(TF_SRV.qf); } }   // 로컬(즉시성 캐시) ∪ 계정(qf축) = msgReadSet 문법 미러
+function paintQFailGear() { try { const s = qfSeenSet(); document.body.classList.toggle('has-qfail', QFAIL_IDS.some(id => !s.has(id))); } catch {} }   // 미확인 실패 잔존 = 점등(paintKwGear 문법 계승)
+function qfMarkSeen() {   // 대기열 열림 = 지금 보이는 실패분 전부 확인 처리(로컬 즉시 + 계정 동기) → 즉시 소등
+  const s = qfSeenSet(), fresh = QFAIL_IDS.filter(id => id && !s.has(id));
+  if (fresh.length) {
+    fresh.forEach(id => s.add(id));
+    try { localStorage.setItem(QF_SEEN_KEY, JSON.stringify([...s].slice(-300))); } catch {}   // 롤링 300 = 서버 CAP(800) 안쪽 · 실패 id 수명(24h 대기열)에 충분
+    postSeenIds('qf', fresh);   // 계정 종속(다건 배치 = 커밋 1회 · fail-soft = 로컬이 이 기기 커버)
+  }
+  paintQFailGear();
+}
+function setQFail(items) { QFAIL_IDS = (items || []).filter(it => it && it.status === 'fail' && it.id).map(it => String(it.id)); paintQFailGear(); }   // api/pending 응답 → 실패 id 갱신 + 재도색(loadPending·loadQueue 공용 = 어디서 세든 같은 값)
 function updateQBadge() {   // 처리중 건수 배지 = 하단 뉴스요약 + 헤더 대기열 픽토그램 공용(0이면 숨김 · 운영자 260710 헤더 추가)
   const txt = PEND_PROC > 99 ? '99+' : String(PEND_PROC), show = PEND_PROC > 0;
   ['qbadge', 'qbadgeHead'].forEach(id => { const b = document.getElementById(id); if (!b) return; if (show) { b.innerHTML = ''; const i = document.createElement('i'); i.textContent = txt; b.appendChild(i); b.hidden = false; } else b.hidden = true; });   // 이너 <i> = 잉크 서브픽셀 보정 앵커(운영자 260717 Q06 · textContent 주입 유지 = XSS 안전 동일)
@@ -12415,9 +12445,17 @@ function openTool(src, title, tabs, key) {
   renderToolTabs(tabs);
   if (realSrc && realSrc[0] === '#') askMount();   // 가상 탭(#ask) = iframe 로드 대신 askwrap 이식(운영자 260712 요약 셸)
   else loadToolFrame(realSrc);
+  // ⚠️ 대기열이 히스토리 칸({qpop})을 쥔 채 열려 있으면 그 칸을 이 모달이 **인계**한다(운영자 260727 "재시도 버튼 눌러도 작동을 안 해" 실측 봉합).
+  //   아래 closeOverlays()가 closeQueueUser → history.back() 을 부르는데, back 은 비동기라 같은 틱의 pushState({tool}) 가 먼저 스택에 얹힌다
+  //   → back 이 방금 얹은 {tool} 칸을 되돌리며 popstate 발동 → 막 연 요약창이 즉시 닫혔다(대기열 실패행 ↻ = 무반응으로 보임).
+  //   askRetry 가 closeQueueUser 를 일부러 안 부른 이유(평의회10 ★)와 같은 함정이 openTool 안에서 되살아난 것 = 여기서 봉합.
+  //   인계 = 대기열이 back() 을 포기(_qHistYield)하고, 모달이 pushState 대신 replaceState 로 그 칸을 {tool} 로 치환 → 칸 수 불변·백버튼 1회 = 도구 닫힘.
+  const qHandoff = !wasOpen && !(history.state && history.state.tool) && !qpop.hidden && _qPushed;
+  if (qHandoff) _qHistYield = true;
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   tooldlg.showModal(); toolVV(); setTimeout(() => $('#toolX').focus(), 0);   // toolVV 1회 = 키보드 이미 뜬 상태서 열기도 즉시 클램프(이후는 vv 리스너)
-  if (!wasOpen && !(history.state && history.state.tool)) history.pushState({ tool: true }, '');   // 백버튼 = 메인 복귀 · 최소화서 재오픈이면 기존 {tool}칸 재사용
+  if (!wasOpen && !(history.state && history.state.tool)) { if (qHandoff) history.replaceState({ tool: true }, ''); else history.pushState({ tool: true }, ''); }   // 백버튼 = 메인 복귀 · 최소화서 재오픈이면 기존 {tool}칸 재사용 · 대기열서 열렸으면 그 칸 치환(위 인계)
+  _qHistYield = false;   // 소비 완료(대기열이 닫히지 않는 예외 경로에 플래그가 남아 다음 닫기의 back 을 삼키는 것 차단)
 }
 // 도구 탭 클릭 = iframe 스왑(영상: src 스왑) / thumb: iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존) · 모달 유지·히스토리 칸 안 늘림
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
