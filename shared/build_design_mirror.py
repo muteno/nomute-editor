@@ -62,10 +62,7 @@ _TOKENS_HEADER = (
 # 구조 토큰 판정 — 색/의미색/팔레트와 접두사가 겹치지 않음(검증: --bg/--glass/--line/--accent/--fg/--mut/
 #   --danger/--warn/--amber/--info/--bias/--on-*/--hist/--arm/--thumb 중 아래 접두사로 시작하는 것 0).
 _STRUCT_EXACT = {"--r", "--font-status", "--ease"}
-_STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-", "--gauge", "--fav-")
-# --fav-* 편입 260727: --fav-spin(파비콘 생성중 스핀 주기)은 모션 축 구조토큰인데 접두사 목록에 없어
-#   tokens.css로 전파되지 않았다 → 도구 6탭에서 getPropertyValue('--fav-spin')가 빈 값 = 폴백 상수로만 돌아
-#   토큰 계승이 끊긴 상태였다(실측 260727 · edit.html 헤드리스). 색 접두사와 겹치지 않음(--fav-* 색 토큰 없음).
+_STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-", "--gauge")
 
 
 def _is_struct(name):
