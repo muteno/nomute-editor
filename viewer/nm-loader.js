@@ -205,11 +205,15 @@
 
   var SEL = '[aria-busy="true"], .firing, .picking, #jobs .job:not(.done):not(.err)';
   var SRC = 'favicon-globe-260724.svg';
-  var PX = 64;             // 탭 렌더 16~32px 대비 여유 배수(계단 방지)
-  var FPS = 20, POLL = 350;
+  /* 값·모션 = 플레이그라운드 `docs/reports/260727_파비콘애니_플레이그라운드.html` 계승(운영자 선택분).
+     mode=spin(§305 = 세로축 자전 · 평면 rotate 아님) · period 980 · fps 60 · res 64 · size 78% · amp 100 · ease=--ease 계승. */
+  var PX = 64;             // res — 탭 렌더 16~32px 대비 여유 배수(계단 방지)
+  var SIZE = .78;          // size 78% — 캔버스 대비 로고 크기(플레이그라운드 DEFAULTS)
+  var FPS = 60, POLL = 350;
   var slow = false;
   try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
-  var SPIN = slow ? 3600 : 1400;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
+  var SPIN = slow ? 2600 : 980;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
+  function ease(x) { return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }   // 플레이그라운드 easeF §273 `--ease` 분기 그대로
 
   var spin = null, kept = [], img = null, ready = false;
   var cv = null, cx = null, tick = null, t0 = 0, on = false;
@@ -225,9 +229,14 @@
     return false;
   }
   function draw() {
-    var a = ((Date.now() - t0) % SPIN) / SPIN * Math.PI * 2;
+    var ang = ease(((Date.now() - t0) % SPIN) / SPIN) * Math.PI * 2;   // 이징을 각도에 먹인다 = 한 바퀴 안에서 느려졌다 빨라짐
+    var s = Math.cos(ang), S = PX * SIZE;
     cx.clearRect(0, 0, PX, PX);
-    cx.save(); cx.translate(PX / 2, PX / 2); cx.rotate(a); cx.drawImage(img, -PX / 2, -PX / 2, PX, PX); cx.restore();
+    cx.save(); cx.translate(PX / 2, PX / 2);
+    cx.scale(Math.max(.06, Math.abs(s)), 1);   // ★ 세로축 자전 — 가로만 줄었다 펴진다(플레이그라운드 spin §305 · rotate = 팽이라 오답)
+    cx.globalAlpha = .55 + .45 * Math.abs(s);  // 옆면일수록 어둡게 = 앞뒤 입체감(같은 줄 a 계승)
+    cx.drawImage(img, -S / 2, -S / 2, S, S);
+    cx.restore();
     try { spin.setAttribute('href', cv.toDataURL('image/png')); } catch (_) { stop(); }   // toDataURL 실패(오염 등) = 조용히 원복
   }
   /* 기존 <link rel=icon>의 href만 갈아끼우면 크롬이 안 그린다(실측 260727: type="image/svg+xml" 태그에 PNG를
