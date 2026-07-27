@@ -53,12 +53,16 @@ jobs:
         with:
           node-version: '24'
 
-      # npm 캐시(운영자 260727 셋업 단축) — CLI 타르볼 재다운로드 회피(런당 ~1분↓). 미스 = 현행과 동일(무해).
+      # npm 캐시(운영자 260727 셋업 단축) — CLI 타르볼 재다운로드 회피(런당 ~1분↓ 추정). 미스 = 현행과 동일(무해).
+      # ⚠️ 정적 키 금지(페이블 검토 260727) — primary key 적중 시 잡 종료 후 재저장이 없어 CLI 릴리스에 곧 stale
+      #   (ly-make.yml "구 정적 키 = 드리프트" 정본 동형). run_id 가변 키 + restore-keys 접두 복원 = 매 런 최신 재저장.
       - name: npm 캐시 (셋업 단축)
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
+          key: npm-claude-code-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            npm-claude-code-${{ runner.os }}-
 
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
@@ -188,12 +192,14 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-      # npm 캐시(운영자 260727 셋업 단축) — analyze 잡과 동일 키 공유(무해 · 미스 = 현행 동일)
+      # npm 캐시(운영자 260727 셋업 단축) — analyze 잡과 동일 키 축 공유(무해 · 미스 = 현행 동일 · 가변 키 사유는 analyze 잡 주석)
       - name: npm 캐시 (셋업 단축)
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: npm-claude-code-${{ runner.os }}
+          key: npm-claude-code-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            npm-claude-code-${{ runner.os }}-
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 

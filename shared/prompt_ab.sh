@@ -20,7 +20,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 source shared/model_env.sh
 source shared/inject_guidelines.sh
 MODEL="$PIPE_MODEL"
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"
+EFFORT="${PIPE_SEARCH_EFFORT:-medium}"   # 프로덕션(analyze·ask) 기본과 동일 유지(260727 medium 일괄) — A/B 측정 조건 = 실전 조건
 RUN_TIMEOUT="${PAB_RUN_TIMEOUT:-500}"    # 본선 1런 상한(초) — analyze 900s의 실측 여유판(성공 실측 140~290s)
 JUDGE_TIMEOUT="${PAB_JUDGE_TIMEOUT:-600}"
 
