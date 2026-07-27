@@ -213,7 +213,7 @@
        ② 64px = 1x·2x 실용 · 3x 폰에서만 화질 손해(31.7 vs 19.8)를 감수. 용량이 128px의 1/3.3 = 운영자 판정
           "16px에 저 무게는 과하다". 되돌리려면 SIZE만 128로 올리면 된다(다른 축 무관). */
     var SIZE = 64, FRAMES = 60, FPS = 60, LOGO = 88 / 100;   // 캔버스 px · 반주기 사전렌더 장수 · 갱신 fps · 로고 비율
-    var frames = null, timer = null, live = null, refs = 0, building = 0, per = 0, t0 = 0;
+    var frames = null, timer = null, live = null, refs = 0, building = 0, per = 0, t0 = 0, paused = null;
 
     function period() {                                 // --fav-spin 토큰 계승(없으면 선택값 폴백)
       try {
@@ -276,17 +276,25 @@
         per = period() || 980; t0 = Date.now();
         live = document.createElement('link'); live.rel = 'icon'; live.id = 'nmfav-live';
         live.type = 'image/png'; live.href = frames[0];
-        document.head.appendChild(live);                 // 원본 <link>는 건드리지 않는다 = 복원 불가 상태가 없음
+        /* 경쟁 아이콘 링크 보류 — 크롬의 아이콘 선택은 스케일러블(SVG type)을 우선한다. 테마적응 SVG 선언이
+           있는 문서(index+6탭 전부 = 260724 정본 계승)에선 append한 PNG data-URL link가 **후보 경쟁에서 밀려
+           탭 아이콘이 안 바뀐다**(라이브 실측 260727 "오히려 파비콘이 안 도는데" — busy 신호·프레임·link 교체는
+           전부 정상, 선택 단계만 패배 · headless도 rel="icon" 3후보 공존으로 재현). 원본 href 무접촉 원칙은
+           유지 — rel 속성만 바꿔 후보에서 빼고, halt()가 저장분으로 원복한다(테마적응 SVG 즉시 복귀). */
+        paused = [];
+        var ls = document.querySelectorAll('link[rel~="icon"]'), i, l;
+        for (i = 0; i < ls.length; i++) { l = ls[i]; paused.push({ el: l, rel: l.getAttribute('rel') }); l.setAttribute('rel', 'nm-fav-paused'); }
+        document.head.appendChild(live);                 // 원본 <link>의 href는 건드리지 않는다 = 복원 불가 상태가 없음
         timer = setInterval(tick, 1000 / FPS);           // fps = 독립축(장수·주기와 무관)
-        document.documentElement.classList.add('nm-busy');   // 화면 안 갈래(.hdr-globe 회전) = CSS가 전담 · 로직 무접촉 유지
       } catch (e) { halt(); }
     }
     function halt() {
       try { if (timer) clearInterval(timer); } catch (e) {}
       timer = null; t0 = 0;
       try { if (live && live.parentNode) live.parentNode.removeChild(live); } catch (e) {}
-      live = null;                                       // 제거만으로 원본 파비콘이 그대로 되살아난다
-      try { document.documentElement.classList.remove('nm-busy'); } catch (e) {}
+      live = null;
+      /* 보류시킨 원본 아이콘 링크 rel 원복 = 테마적응 SVG 파비콘이 그대로 되살아난다 */
+      if (paused) { for (var i = 0; i < paused.length; i++) { try { paused[i].el.setAttribute('rel', paused[i].rel); } catch (e) {} } paused = null; }
     }
     function start() { if (blocked()) return; refs++; if (refs === 1) build(function () { if (refs > 0) run(); }); }
     function stop() { refs = Math.max(0, refs - 1); if (!refs) halt(); }
@@ -400,7 +408,7 @@
        콘솔에 `nmFavSpin.diag()` → 어느 관문에서 막혔는지가 바로 나온다. 원인 후보가 서로 겹쳐 있어
        (구버전 캐시 / reduced-motion / standalone / 로고 로드 실패 / busy 신호 자체가 없음) 추측으로는 못 가른다. */
     function diag() {
-      var d = { build: '260727-iframe', 스핀중: !!timer, 참조수: refs, 프레임준비: frames ? frames.length : 0,
+      var d = { build: '260727-iconsel', 스핀중: !!timer, 참조수: refs, 프레임준비: frames ? frames.length : 0,
                 사전렌더중: !!building, 현재busy: busySet ? busySet.size : 0, 주기ms: period(), 캔버스px: SIZE, fps: FPS };
       d.막힘 = [];
       try {
