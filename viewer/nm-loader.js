@@ -188,4 +188,115 @@
   }
   window.nmLoaderHydrate = hydrate;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { hydrate(); }); else hydrate();
+
+  /* ══ 파비콘 생성중 스핀 — 진행 표기 SSOT의 '탭 밖' 갈래(운영자 260727 · 플레이그라운드 선택값 그대로) ══
+     값 = spin · 주기 --fav-spin(2420ms) · 30fps · 로고 88% · 캔버스 128px · 배경판/틴트 없음 · 발동 = busy.
+     ⚠ 새 정본 파일을 만들지 않고 여기 얹는다(§B6 정본 신설 금지) — 역할이 같은 '진행 표기'라 nmLoader와 동축.
+
+     평의회 260727(8인 적대) 반영 설계:
+     · 배선 = **로직 무접촉**. 각 탭 상태머신을 고치지 않고 생성 버튼의 aria-busy/.busy를 MutationObserver로 관찰만 한다
+       (위원5 최대 치명 = "toDataURL throw가 goBusy 체인을 끊어 생성 버튼이 멈추는 진짜 회귀" → 호출 경로 자체를 안 만들어 구조적 해소).
+     · 사전 렌더 프레임 순환 = 런타임 toDataURL 0회(위원7 "매 프레임 인코딩은 구조적 낭비·GC 압력").
+     · 별도 <link>를 append/remove = 원본 href 무접촉이라 **복원 실패가 원리적으로 불가**(위원1·2·5 "회전 중간 프레임에서 굳는다").
+     · 참조 카운팅 = 잡 여러 개가 동시에 돌아도 마지막 하나가 끝나야 정지(위원2 "먼저 끝난 잡이 stop을 불러 꺼버린다").
+     · standalone(PWA 탭 없음)·reduced-motion = no-op(위원1·6).
+     · 전 경로 try/catch = 실패해도 조용히 원본 유지(위원5 canvas 오염).
+     ⚠ 미해소(정직) — 크롬 백그라운드 탭은 rAF/타이머가 1fps로 조여져 회전이 거의 안 읽힌다(위원6·7 "목적 붕괴").
+        운영자가 선택값을 재확인해 회전 표현 그대로 간다. 저프레임에서도 읽히는 점멸 표현은 후속 판단 몫. */
+  var FAV = (function () {
+    var SIZE = 128, FRAMES = 36, LOGO = 88 / 100;      // 캔버스 px · 반주기 사전렌더 장수 · 로고 비율
+    var frames = null, timer = null, live = null, refs = 0, building = 0, step = 0;
+
+    function period() {                                 // --fav-spin 토큰 계승(없으면 선택값 폴백)
+      try {
+        var v = getComputedStyle(document.documentElement).getPropertyValue('--fav-spin').trim();
+        var n = parseFloat(v); if (!isNaN(n)) return /ms$/.test(v) ? n : n * 1000;
+      } catch (e) {}
+      return 2420;
+    }
+    function blocked() {                                // 발동 자체를 막는 환경
+      try {
+        if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return 1;   // PWA = 탭 없음
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 1;                     // 모션 줄이기
+      } catch (e) {}
+      return 0;
+    }
+    function srcOf() {                                  // 로고 = 현행 파비콘 정본 그대로(테마적응 SVG 우선)
+      var l = document.querySelector('link[rel~="icon"][type="image/svg+xml"]');
+      return l ? l.getAttribute('href') : '/favicon-globe-260724.svg';
+    }
+    function build(done) {                              // 반주기(0~π) 사전 렌더 → 이후 런타임 인코딩 0
+      if (frames || building) return done && done();
+      building = 1;
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var out = [], c = document.createElement('canvas'), x = c.getContext('2d'), i, th, sx, a, S = SIZE * LOGO;
+          c.width = c.height = SIZE;
+          for (i = 0; i < FRAMES; i++) {
+            th = i / FRAMES * Math.PI;                  // Y축 회전 = |cos| 가로 압축 + 뒷면 감광(플레이그라운드 spin 그대로)
+            sx = Math.abs(Math.cos(th)); a = 0.55 + 0.45 * sx;
+            x.clearRect(0, 0, SIZE, SIZE);
+            x.save(); x.translate(SIZE / 2, SIZE / 2); x.scale(Math.max(0.06, sx), 1);
+            x.globalAlpha = a; x.drawImage(img, -S / 2, -S / 2, S, S); x.restore();
+            out.push(c.toDataURL('image/png'));          // 오염 시 여기서 throw → catch가 통째로 포기
+          }
+          frames = out;
+        } catch (e) { frames = null; if (window.console) console.warn('[nmFavSpin] 사전렌더 실패 — 파비콘 원본 유지', e); }
+        building = 0; done && done();
+      };
+      img.onerror = function () { building = 0; done && done(); };
+      try { img.src = srcOf(); } catch (e) { building = 0; done && done(); }
+    }
+    function tick() {
+      if (!frames || !live) return;
+      step = (step + 1) % (FRAMES * 2);
+      live.href = frames[step < FRAMES ? step : FRAMES * 2 - 1 - step];   // 삼각파 = 한 바퀴(2π)
+    }
+    function run() {
+      if (timer || !frames) return;
+      try {
+        live = document.createElement('link'); live.rel = 'icon'; live.id = 'nmfav-live';
+        live.type = 'image/png'; live.href = frames[0];
+        document.head.appendChild(live);                 // 원본 <link>는 건드리지 않는다 = 복원 불가 상태가 없음
+        timer = setInterval(tick, period() / (FRAMES * 2));
+        document.documentElement.classList.add('nm-busy');   // 화면 안 갈래(.hdr-globe 회전) = CSS가 전담 · 로직 무접촉 유지
+      } catch (e) { halt(); }
+    }
+    function halt() {
+      try { if (timer) clearInterval(timer); } catch (e) {}
+      timer = null; step = 0;
+      try { if (live && live.parentNode) live.parentNode.removeChild(live); } catch (e) {}
+      live = null;                                       // 제거만으로 원본 파비콘이 그대로 되살아난다
+      try { document.documentElement.classList.remove('nm-busy'); } catch (e) {}
+    }
+    function start() { if (blocked()) return; refs++; if (refs === 1) build(function () { if (refs > 0) run(); }); }
+    function stop() { refs = Math.max(0, refs - 1); if (!refs) halt(); }
+    function reset() { refs = 0; halt(); }
+
+    function busyOf(el) { return el.getAttribute('aria-busy') === 'true' || el.classList.contains('busy'); }
+    function watch(el) {                                 // 버튼 1개 관찰 = 이 부품이 유일하게 하는 '배선'
+      if (!el || el._nmFavW) return; el._nmFavW = 1;
+      var was = busyOf(el);
+      if (was) start();
+      try {
+        new MutationObserver(function () {
+          var now = busyOf(el);
+          if (now === was) return;
+          was = now; now ? start() : stop();
+        }).observe(el, { attributes: true, attributeFilter: ['aria-busy', 'class'] });
+      } catch (e) {}
+    }
+    function scan(root) {
+      var els = (root || document).querySelectorAll('#go, #editGo, .go[id]'), i;
+      for (i = 0; i < els.length; i++) watch(els[i]);
+    }
+    try {
+      addEventListener('pagehide', reset);
+      document.addEventListener('visibilitychange', function () { if (document.hidden) return; });   // 훅 자리(현행 = 정지 안 함)
+    } catch (e) {}
+    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan };
+  })();
+  window.nmFavSpin = FAV;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { FAV.scan(); }); else FAV.scan();
 })();
