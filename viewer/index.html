@@ -7519,7 +7519,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'b911081 · 260727_1247';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'b45dec2 · 260727_1352';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -10603,8 +10603,8 @@ function renderSnsTrends() {
   //   10만↑ 0건 · 24h 국내 4건·10만↑ 0건 · 48h로 늘려야 국내 23건·10만↑ 12건). 원인 = tikwm feed가 인기 랭킹이 아니라 무작위
   //   For-You 표본이라 10만+ 신작이 표본에 걸릴 확률이 낮은 것(수집 누락 아님 — 10콜 전부 code 0). 0건 = 조용한 공백(§디자인 e-가)이
   //   저조회 잡탕보다 낫다는 운영자 판단("그이하는 공유하지도 마")대로 채움 사다리 없음. 근본 해결 = 창구 교체(Creative Center 인기영상).
-  const TK_GL_MUL = .2, TK_MIN_V = 3e4, TK_TOP = 10, TK_CUT_H = 18, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);   // 조회수 하한 10만 → 3만(운영자 260727 채택 "틱톡 하한을 3만으로 할게") — 근거 = 18h 컷과 10만 하한이 구조적으로 상충(18h에 10만 = 시간당 5,500뷰 이상인 극소수)해 260727 세계 확장·이월 조회수 갱신 뒤에도 통과분이 3건에서 멎었다. 3만 = 18h에 시간당 1,700뷰 = 국내 신작이 실제로 도달하는 대역 · 컷(18h)·상한(top10)·국내 우대(GL_MUL)는 무변경
-  const tkvA = ((d.tiktok || {}).videos) || [], tkv = cutH(tkvA, TK_CUT_H).filter(t3 => (t3.views || 0) >= TK_MIN_V).sort(TRREG === 'kr' ? (a3, b3) => tkScore(b3) - tkScore(a3) : (a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, TK_TOP), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 월드 모드 = 감점 없는 순수 조회수순(종전 규약 유지 — 국내 우대는 국내 모드 전용 축) · slice = tkv 자체를 10개로 절단 = 하위 소비처(lane·sec·fillT) 전부 자동 10개 · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
+  const TK_GL_MUL = .2, TK_MIN_V = 3e4, TK_TOP = 10, TK_CUT_H = 24, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);   // 신선 컷 18h → 24h(운영자 260727 "24시간 있는데 10만을 못뚫는다며" 문제제기 → 실측으로 확정): 같은 파일에서 창만 넓혀 통과분 실측 = 18h 9건 / 24h **12건** = 10칸이 찬다. 근거 축은 운영자 자신의 기존 규칙 — 실시간 TOP은 이미 TOP_MAX_H=24("top10에는 항상 24시간 이내" 260721)인데 틱톡 소분류만 18h로 더 조여져 있던 것을 정렬 · 롤백 = 이 상수 하나   // 조회수 하한 10만 → 3만(운영자 260727 채택) — ⚠ 260727 오전엔 '무효 상수'로 판단했다(원본 조회수로 재면 18/24/36/48h 어느 창에서든 `10만↑ 개수 == 3만↑ 개수` = 3만~10만 구간이 tikwm 표본에서 구조적으로 빔). **그 판단은 같은 날 오후 보정 하한 도입으로 뒤집혔다** — 하한을 tkScore로 재면서 3만은 '해외 15만뷰'라는 실효 문턱이 됐다(국내는 종전대로 3만). 즉 이 상수는 이제 해외 게이트로 살아 있다   // 상한(top10)·국내 우대(GL_MUL)는 무변경
+  const tkvA = ((d.tiktok || {}).videos) || [], tkv = cutH(tkvA, TK_CUT_H).filter(TRREG === 'kr' ? t3 => tkScore(t3) >= TK_MIN_V : t3 => (t3.views || 0) >= TK_MIN_V).sort(TRREG === 'kr' ? (a3, b3) => tkScore(b3) - tkScore(a3) : (a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, TK_TOP), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 월드 모드 = 감점 없는 순수 조회수순(종전 규약 유지 — 국내 우대는 국내 모드 전용 축) · slice = tkv 자체를 10개로 절단 = 하위 소비처(lane·sec·fillT) 전부 자동 10개 · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)   // ⚠ 하한 판정축 = 모드별로 갈린다(운영자 260727 한 수 채택 "보정 ㄱ") — 국내 모드는 **보정 점수(tkScore)**로, 월드 모드는 원본 조회수로 잰다. 구 코드는 하한만 원본이고 정렬만 보정이라 비대칭이었다: 해외 136,596(보정 27,319)이 국내 125,837(점수 125,837)보다 실질가치가 5분의1인데 **입장 자격은 더 쉽게** 얻었다. 이제 국내 모드에선 해외가 실질 50만뷰↑라야 통과 = 하한·정렬이 같은 자로 잰다. 월드 모드는 해외가 주인공이라 원본 유지(보정을 걸면 그 화면의 본 항목이 탈락). 실측(파일 12:40 · 24h 창 · TK_MIN_V 3e4) = 통과 12건 → 11건 · **표시 10칸 만석 유지**(국내 5/해외 5 불변) · 탈락은 정확히 그 비대칭 1건(US 136,596 → 보정 27,319). 즉 대가 없이 문턱만 정직해졌다 — 해외 실효 문턱 = 15만뷰.
   const sb = d.subs || {}, sxRaw = sb.x || [], stkRaw = sb.tiktok || [], sreRaw = sb.insta || [], sytRaw = sb.youtube || [], sx = cut3d(sxRaw), stk = cut3d(stkRaw), sre = cut3d(sreRaw), syt = cut3d(sytRaw);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
   const shvRaw = d.shorts || [], aivRaw = d.aivid || [], shv = cut3d(shvRaw), aiv = cutH(aivRaw, 168);   // 쇼츠 = 3일 컷 · AI 영상 = 7일 컷 · Raw = 채움 풀(운영자 260721 "10개까지 안나오고 짤림" — 검색 파생 니치 = 일 1~3건 수집이라 3일 창 = 2건 고사 실측 · TOP 풀 제외 소스라 완화 무부작용)
   const sig = d.signal || [], xtr = d.xtrends || [];   // ⑨⑩ 시그널 실검·X 실시간 트렌드(운영자 260712 버튼 승인 · 국내 축 = 모드 무관 표시) — 검색어류 = 컷 비대상
@@ -10643,6 +10643,20 @@ function renderSnsTrends() {
   const NOHEAD = new Set(['yt', 'tk']);   // 소머리 줄을 CSS로 소거한 키(§671) = 접기 핸들이 없으니 TFOLD 무시하고 항상 open 렌더 — 과거에 접어둔 상태에 본문이 갇히는 것 차단(구 CSS 강제표시 안은 .trend-grid의 display:grid를 block으로 덮어써 2열 그리드가 1열로 깨졌다 · 실측 260726 본문높이 482.8→1256.8)
   const sec = (key, lbl, unit, n, body) =>
     `<details class="trend-sec" data-sec="${key}"${(TFOLD[key] && !NOHEAD.has(key)) ? '' : ' open'}><summary class="trend-lbl"><span class="trend-lbltx">${lbl}</span> <span class="trend-unit">${unit}</span><span class="trend-cnt">${n}</span></summary>${body}</details>`;
+  // 구독 축 stale = 섹션을 **지우지 않고 남겨** 사유를 고지(운영자 260727 "큐레이션에 인스타를 만들고 안 받아와지는지 알수있어야해") —
+  //   종전 = 0건이면 `if(arr.length)`가 섹션째 삭제 → 화면만 보면 "원래 없는 소분류"와 구분 불가 = 운영자가 세션에 물어봐야만 아는 사각(260727 인스타 429 판례).
+  //   발동 = health.subs.stale(= **등록 계정은 있는데 이번 수집 0건**) 한정이라, 계정 미등록 축은 종전대로 조용한 공백(§디자인 e-가 불변).
+  //   부품 = `.qempty`(레포 공용 인라인 빈 상태 정본 · 2700행 주석 "인라인 로딩 플레이스홀더 공용") + sec() 그대로 = 새 CSS·새 셀렉터 0.
+  //   사유 판정 = sysErrMsgs와 **동일 소스**(TRENDS.health.phone) — 알림과 화면이 어긋나지 않게 한 축으로 묶는다(상세 조치는 알림함이 정본이라 여긴 한 줄 + 유도).
+  const _subStale = new Set((((TRENDS && TRENDS.health) || {}).subs || {}).stale || []);
+  const _PHONE_PLAT = { insta: 1, threads: 1 };   // 메타 데센 IP 차단 = 폰 전용 공급원(sysErrMsgs SYS_PHONE_PLAT과 동일 축)
+  const subEmptySec = (key, lbl, plat) => {
+    if (!_subStale.has(plat)) return '';   // 계정 미등록·정상 = 종전대로 미표기
+    const ph = ((TRENDS && TRENDS.health) || {}).phone;
+    const why = (_PHONE_PLAT[plat] && ph && ph.ok === false) ? '폰 수집기가 멈춰서 못 걷고 있어요'
+      : (_PHONE_PLAT[plat] ? '지금은 막혀서 못 걷고 있어요' : '이번 수집에서 0건이에요 — 자동으로 다시 시도해요');
+    return sec(key, lbl, '', 0, '<div class="qempty">' + why + '<small>자세한 원인과 조치는 설정 → 알림메세지에</small></div>');
+  };
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
   // (구 TSORT/sortOf/sortbar 정렬 전환 칩 = 운영자 260726 "저 선택지 없애도 될듯 둘 다" 폐지 — X는 RSS 미러 폴백 구간 likes·rts·cmts 전멸(전부 0 · _x_rss)이라 어느 축이든 동순서 = 무기능 실측, 스레드도 좋아요 고정 통일 · nm_trend_sort 키 고아 · 재도입 = git 이력)
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
@@ -10729,14 +10743,17 @@ function renderSnsTrends() {
   if (shL.length) gCUR += sec('sh', '쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gCUR += sec('ai', 'AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   if (sytAll.length) gCUR += sec('syt', '유튜브', '', sytAll.length, '<div class="trend-grid wd">' + sytAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 유튜브 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 카드 계승 · 빈 = 미표기(조용한 공백)
+  else gCUR += subEmptySec('syt', '유튜브', 'youtube');   // 0건이어도 등록 계정이 있으면(stale) 사유를 남긴다(운영자 260727)
   if (tkL.length) gTK += sec('tk', '인기', rtBase, tkL.length, '<div class="trend-grid wd">' + tkL.map((t, i) => card({ ...t, cover: t.cover }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 16:9 wd 그리드(AI영상 계승) · 정렬바 제거(260720 평의회 — 유튜브 인기(무 정렬바)와 "같은 기능=같은 모양" 통일 · 카드 그리드 문법 = 정렬바 0 · 게시물 xgrid(X·블스·스레드)만 정렬바 유지)
   else if (tkv.length) gTK += sec('tk', '인기', rtBase, tkv.length, tkv.map((t, i) =>
     row(i, t.url || '#', t.views ? vfmt(t.views) : '', t, '')).join(''));
   else if (tk.length) gTK += sec('tk', '해시태그', '· 인기', Math.min(tk.length, 10), '<div class="trend-tags">' + tk.slice(0, 10).map(() => '<span class="trend-tag"></span>').join('') + '</div>');
   if (stkAll.length) gCUR += sec('stk', '틱톡', '', stkAll.length, '<div class="trend-grid wd">' + stkAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 틱톡 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일 · 정렬바 없음(stk 기본 조회수순)
+  else gCUR += subEmptySec('stk', '틱톡', 'tiktok');   // 0건이어도 등록 계정이 있으면(stale) 사유를 남긴다(운영자 260727)
   if (sreAll.length) gCUR += sec('sre', '인스타그램', '', sreAll.length, '<div class="trend-grid wd">' + sreAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 인스타 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일
+  else gCUR += subEmptySec('sre', '인스타그램', 'insta');   // 0건이어도 등록 계정이 있으면(stale) 사유를 남긴다(운영자 260727)
   // X 큐레이션 = 소분류 라벨('큐레이션 게시물 · 한국') 폐지·대분류 직속(운영자 260720 — kcomm 이중 라벨 해소 선례 계승) · 정렬 칩 = 대분류 헤더 xSeg 이관 · div.trend-sec = 형제 리듬(rt2col 리셋·모바일 구분선)만 계승(details 아님 = 접기 비대상) · data-sec 유지 = fill 계약 불변
-  const sxSec = sxAll.length ? sec('sx', 'X', '', sxAll.length, '<div class="xgrid xg-x">' + sxAll.map(xcard).join('') + '</div>') : '';   // X 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 정렬바 폐지 = 좋아요 고정(운영자 260726)
+  const sxSec = sxAll.length ? sec('sx', 'X', '', sxAll.length, '<div class="xgrid xg-x">' + sxAll.map(xcard).join('') + '</div>') : subEmptySec('sx', 'X', 'x');   // X 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 정렬바 폐지 = 좋아요 고정(운영자 260726)
   // ⑦ 블루스카이 = X 우측 열 합류(운영자 260720 "엑스랑 좌우로 배치 · 첨부1 참고" = rt2col 구글|시그널 문법 계승 · 기타(Q240) 대분류 통합 선례) — 한쪽 결측 = 단독 폭(조용한 공백 동축) · 번역본만 노출(운영자 260718) 유지
   gCUR += sxSec;   // X 구독 = 큐레이션 게시물 합류(운영자 260723 · 260724 지역 무관 단일 블록) · 구 gX(X 대분류) 소멸(트렌드는 gGG·구독은 gCUR)
   // (구 X 세계군 별도 sec[sx-gl] = 260724 지역 무관 통합으로 sx 단일 블록에 병합 · 국내/세계 구분 폐지)
@@ -10757,6 +10774,7 @@ function renderSnsTrends() {
   // ⑧ 스레드 구독 = 큐레이션 게시물(gCUR) 합류(운영자 260723) · 공급 = 폰/맥 phone_subs 전용 · 구 gTH(스레드 대분류) 소멸
   const sthAll = divRank(bySort(sth, 'likes')).slice(0, 10);   // 스레드 구독 = 지역 무관 통합(운영자 260724) · divRank = 계정 도배 감산(260725 Q557 — 운영자 "스레드도 동일한 느낌으로" · X sx 정본 이식 = 같은 함수·같은 쿼터3/밀기3) · 정렬 = 좋아요 고정(운영자 260726 정렬바 폐지)
   if (sthAll.length) gCUR += sec('sth', '스레드', '', sthAll.length, '<div class="xgrid xg-th">' + sthAll.map(xcard).join('') + '</div>');   // 스레드 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 정렬바 폐지(260726 · X sx와 동형)
+  else gCUR += subEmptySec('sth', '스레드', 'threads');   // 0건이어도 등록 계정이 있으면(stale) 사유를 남긴다(운영자 260727)
   let gHN = '';   // ⑫ 해커뉴스 그룹(운영자 260713 · 260720 brow = 순위+제목만[스코어·삼각형·시간열 제거] · 클릭 = 원문/HN)
   const hnL = hnl.slice(0, 8);   // 상한 12→8(운영자 260721 Q383 "해커도 8위까지만" — 박스오피스와 좌우 균형)
   if (hnL.length) gHN += sec('hn', '해커뉴스', '', hnL.length, hnL.map((p2, i) => brow(i, p2.url || p2.hn || '#')).join(''));   // 순위+제목만(운영자 260720 — 톱 스토리→해커뉴스 개명 · 구 삼각형▲·스코어·시간열 제거 · 반폭 rt2col서 제목 .trend-q 말줄임[…] 자동)

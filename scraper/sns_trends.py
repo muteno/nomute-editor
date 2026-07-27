@@ -995,6 +995,7 @@ def insta_subs(accounts, limit=10, deadline=None):
         except urllib.error.HTTPError as e:
             print(f"::warning::insta @{acc} HTTP {e.code}(스킵)", file=sys.stderr)
             if e.code == 429:
+                globals()["INSTA_429"] = True   # 호출측 백오프 신호(260727 판례: 쿠키 정상[401 아님]인데 첫 계정부터 429 8연속 = IP가 이미 리밋 · 30분 크론이 계속 두드려 리밋이 매번 **갱신**되던 자해 루프 → phone_subs.py가 이 플래그로 쿨다운 기록 · 러너는 미소비 = 무영향)
                 print("::warning::insta 429 — 잔여 계정 중단(IP 리밋)", file=sys.stderr)
                 break
         except Exception as e:  # noqa: BLE001
