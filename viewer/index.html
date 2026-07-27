@@ -772,6 +772,7 @@
   .xcard-lk { color:var(--mut); }   /* 트윗·스레드 본문 링크(t.co 등) = 저채도 mut(운영자 260717 "블루스카이처럼 링크 mut") — 본문(fg)과 구분·링크 노이즈 톤다운 · xlink() 래핑 · esc 경유 XSS 안전 */
   .xcard-kw { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--accent); }   /* AI 요약 1줄차 "KEYWORD : a, b, c"(운영자 260726 "첫줄에 핵심 키워드") — 1줄 고정·말줄임 = .xcard-h b 문법 계승 · 강조색 = 공유 팔레트 --accent 계승 · 값 전부 토큰 */
   .xcard-kw:empty { display:none; }   /* 요약 미생성(신규 게시물·LLM 실패 fail-soft) = 라벨 비노출 — 원문 폴백 카드와 공존 */
+  [data-sec=sx] .xcard-tx.s2 { -webkit-line-clamp:5; min-height:0; }   /* X 전용(운영자 260727) — ⓐ 클램프 4→5 = 폐지한 KEYWORD 한 줄을 본문이 그대로 물려받는다("그만큼 글자를 당기면됨") ⓑ min-height 예약 해제 = 2줄짜리 짧은 트윗 밑에 4줄분(약 42px) 빈칸이 깔려 이미지가 밀려나던 것 제거("여백 확보되는데 그거를 줄여서 스크롤 스트레스를 줄이셈") · 카드 높이 동기는 xgrid 그리드 stretch + 메타행 margin-top:auto가 계속 담당(본문 예약이 아니어도 메타 y·카드 바닥은 일렬) · 스코프 = X뿐(스레드 sth = 아래 정본 4줄 예약 유지) */
   .xcard-tx.s2 { -webkit-line-clamp:4; min-height:calc(4 * 1.5em); }   /* 본문 = 무조건 4줄 취급(운영자 260726 "그가 적은 정확한 글" — 원문 표시로 전환하며 2→4줄 · 요약 1줄과 달리 원문은 줄바꿈·2~3문장이 흔해 2줄컷이면 문장이 잘린다) — 클램프 + min-height 예약 산식(.tcard-t·rt2col 1.5em 문법 계승) = 전 카드 본문 높이 상수 유지(좌우 카드 높이 불일치 방지 · 평의회 260726 E석 취지 그대로) */
   .xcard-cv { display:block; margin-top:7px; aspect-ratio:16/9; border-radius:var(--r-s); overflow:hidden; background:var(--line); }   /* raw-ok: margin-top 7 = 같은 카드 메타행 간격(.xcard .tcard-m padding-top:7px) 미러 — 위·아래 두 간격이 sp-1(6)/7로 갈리면 카드 안에서 1px 리듬이 어긋난다(토큰 신설 대신 자기 카드 정본 계승) */   /* 트윗 대표 이미지(운영자 260726 "대표 이미지 섬네일") — 문법 = .tcard-cov 계승(비율 프레임 + overflow 크롭 + line 플레이스홀더) · 비율만 16:9(wd 변형 문법) = 2열 카드에서 세로 3/4는 카드가 통째 길어짐 · 라운드 = 셸 --r-m(11) 안쪽이라 한 단 아래 --r-s(9) 동심원 · 간격 7 = .xcard .tcard-m padding-top 미러 */
   .xcard-cv img { width:100%; height:100%; object-fit:cover; display:block; }   /* .tcard-cov img 그대로 */
@@ -10943,10 +10944,10 @@ function renderSnsTrends() {
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
     `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago${t._fresh24 ? ' fresh24' : ''}">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
-  const xcard = (t, i) =>   // X 트윗 카드 — 전문(7줄 클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입
+  const xcard = (t, i, nokw) =>   // X 트윗 카드 — 전문(클램프)+좋아요·RT·댓글 · 본문·계정 = textContent 후주입 · nokw = KEYWORD 줄 미출력(X 전용 · 운영자 260727)
     `<a class="xcard${i < 3 ? ' r3' : ''}" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
     `<span class="xcard-h"><span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span><b></b>${chg(t)}</span>` +
-    `<span class="xcard-kw"></span><span class="xcard-tx s2"></span>` +
+    (nokw ? '' : `<span class="xcard-kw"></span>`) + `<span class="xcard-tx s2"></span>` +
     (t.thumb ? `<span class="xcard-cv"><img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.thumb)}" onerror="this.parentNode.style.display='none'" alt=""></span>` : '') +   // 대표 이미지(운영자 260726) — 수집 thumb(pbs.twimg 핫링크 · 영상 트윗 = poster 프레임) · 문법·onerror 은닉 = card() 커버 계승(깨진 링크 = 조용한 공백) · 결측 = 스팬 자체 미출력(fillT 인덱스 무관 = 후주입 대상 아님)
     `<span class="tcard-m">${t.views > 0 ? `<span class="xcard-vw">${t.views >= 1e4 ? vfmt(t.views) : t.views.toLocaleString('ko')}</span>` : ''}${relT(t) ? `<span class="tcard-ago">${relT(t)}</span>` : ''}</span></a>`;   // 좌하단 조회수(운영자 260726 "81만 이런식으로만") = 메타행 첫 칸 · 0·결측 = 미표기(met() 0지표 규약 계승)   // 좋아요·RT·댓글 숫자 미표기(운영자 260721 "리트윗·좋아요 숫자 빼고 시간만") — met() 제거, relT(시간)만 유지   // 시간 = 트윗 time(운영자 260712 "모든 것에") · 우측 끝(.tcard-ago ml:auto)   // kw 스팬 = 항상 출력(빈 값 = :empty 비노출 — 조건부 출력이면 fillT 인덱스 어긋남) · 본문 = 무조건 s2(2줄 상수 — 미요약 원문 폴백도 2줄 컷 · 평의회 260726 E석: 혼재 시 클램프 7/2 갈림 = 높이 불일치 부활 차단) · 요약 생성 = sns_sum.sh(소넷 5 high) · 승계 = sns_trends.py
   // (구 bcard 블스 게시물 카드 = 운영자 260721 "블루스카이는 실검만 사용"으로 게시물 표면 소멸 · 데이터 축 bsky[]·번역 스키마는 보존 · 재도입 = git 이력)
@@ -11027,7 +11028,7 @@ function renderSnsTrends() {
   if (sreAll.length) gCUR += sec('sre', '인스타그램', '', sreAll.length, '<div class="trend-grid wd">' + sreAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 인스타 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 통일
   else gCUR += subEmptySec('sre', '인스타그램', 'insta');   // 0건이어도 등록 계정이 있으면(stale) 사유를 남긴다(운영자 260727)
   // X 큐레이션 = 소분류 라벨('큐레이션 게시물 · 한국') 폐지·대분류 직속(운영자 260720 — kcomm 이중 라벨 해소 선례 계승) · 정렬 칩 = 대분류 헤더 xSeg 이관 · div.trend-sec = 형제 리듬(rt2col 리셋·모바일 구분선)만 계승(details 아님 = 접기 비대상) · data-sec 유지 = fill 계약 불변
-  const sxSec = sxAll.length ? sec('sx', 'X', '', sxAll.length, '<div class="xgrid">' + sxAll.map(xcard).join('') + '</div>') : subEmptySec('sx', 'X', 'x');   // X 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 정렬바 폐지 = 좋아요 고정(운영자 260726)
+  const sxSec = sxAll.length ? sec('sx', 'X', '', sxAll.length, '<div class="xgrid">' + sxAll.map((t, i) => xcard(t, i, 1)).join('') + '</div>') : subEmptySec('sx', 'X', 'x');   // nokw=1 = KEYWORD 줄 폐지(운영자 260727 "엑스에 키워드는 빼줘 · 그만큼 글자를 당기면됨") — 그 한 줄을 본문 클램프가 흡수(#775 [data-sec=sx] 5줄) · 스레드(sth)는 종전대로 유지   // X 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 정렬바 폐지 = 좋아요 고정(운영자 260726)
   // ⑦ 블루스카이 = X 우측 열 합류(운영자 260720 "엑스랑 좌우로 배치 · 첨부1 참고" = rt2col 구글|시그널 문법 계승 · 기타(Q240) 대분류 통합 선례) — 한쪽 결측 = 단독 폭(조용한 공백 동축) · 번역본만 노출(운영자 260718) 유지
   gCUR += sxSec;   // X 구독 = 큐레이션 게시물 합류(운영자 260723 · 260724 지역 무관 단일 블록) · 구 gX(X 대분류) 소멸(트렌드는 gGG·구독은 gCUR)
   // (구 X 세계군 별도 sec[sx-gl] = 260724 지역 무관 통합으로 sx 단일 블록에 병합 · 국내/세계 구분 폐지)
@@ -11126,6 +11127,7 @@ function renderSnsTrends() {
   const fillT = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.textContent = vals[i] || ''; });
   const fillH = (key, sel, vals) => box.querySelectorAll(`[data-sec=${key}] ${sel}`).forEach((el2, i) => { el2.innerHTML = vals[i] || ''; });   // 신뢰 HTML 주입(링크 래핑 xlink 등) — 값은 반드시 esc 경유 조립분만(xlink) · 원시 텍스트 = fillT(textContent) 유지
   const xlink = s => String(s ?? '').split(/(https?:\/\/[^\s]+)/g).map((p, i) => i % 2 ? `<span class="xcard-lk">${esc(p)}</span>` : esc(p)).join('');   // X·스레드 본문 링크 = mut 저채도 래핑(운영자 260717 "블루스카이처럼 링크 mut") · split 캡처 홀수=URL만 래핑 · 전 조각 esc(전역 6691) 경유 = XSS 안전(신뢰 HTML은 span뿐)
+  const xtco = s => String(s ?? '').replace(/\s*https?:\/\/t\.co\/\w+/g, '').replace(/\n{3,}/g, '\n\n').trim();   // X 본문 t.co 단축 URL 제거(운영자 260727 "url 줄임 있는데 저거 없애주셈") — 난수 문자열이 한 줄을 통째 먹고 정보값 0(그림 = thumb · 이동 = 카드 전체 링크) · 표시단 필터라 구데이터도 즉시 적용(수집단 정본 = sns_trends.py _x_body 동일 처방) · t.co만 = 외부 도메인 링크는 보존
   const mdb = s => s.replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>').replace(/\*\*/g, '');   // ⑦ 블스 번역 속 **키워드** → <b> 볼드(운영자 260718 "핵심 키워드 볼드") — xlink(esc) 이후 적용 = XSS 안전(b 태그만 추가 조립) · 잔여 홀수 마커 제거(320자 컷 파손 방어)
   box.querySelectorAll('#tg-top .tlr-t').forEach((el2, i) => { el2.innerHTML = topShow[i] ? dimTags(topShow[i].t) : ''; });   // dimTags = 끝쪽 영문 해시태그 mut 회색(esc 경유 XSS 안전 · 운영자 260719)
   box.querySelectorAll('[data-tf]').forEach(b2 => b2.addEventListener('click', () => { TR_TOPF = b2.dataset.tf; const y2 = window.scrollY; renderSnsTrends(); window.scrollTo(0, y2); }));   // TOP 플랫폼 책갈피(운영자 260716) — 재렌더·스크롤 보존 = 메뉴4 data-bs 문법 미러 · _trSig에 TR_TOPF 동승이라 시그니처 가드 통과
@@ -11197,8 +11199,8 @@ function renderSnsTrends() {
   if (tkL.length) { fillH('tk', '.tcard-t', tkL.map(t => dimTags(t.ko || t.title || ('@' + (t.account || ''))))); }   // 틱톡 인기 그리드 제목 = ko 한글 우선 + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전 · 운영자 260719)
   // 구독 큐레이션 주입 = 지역 무관 단일 리스트(운영자 260724 — 구 한국/세계 2군 ['kr','gl'].forEach 폐지)
   fillT('sx', '.xcard-h b', sxAll.map(t => t.name || '@' + (t.account || '')));   // 표시 = 닉네임(운영자 260726 "@ 아이디 말고 닉네임으로" — "64비트사령부⚡️") · name = x_enrich 수집분 · 미보강·구데이터 = 종전 @핸들 폴백
-  fillT('sx', '.xcard-kw', sxAll.map(t => t.sum && t.kw ? 'KEYWORD : ' + t.kw : ''));   // AI 요약 1줄차(운영자 260726 "KEYWORD : 00, 000") — sum 있는 카드만 · textContent = XSS 안전
-  fillH('sx', '.xcard-tx', sxAll.map(t => t.text ? xlink(t.text) : esc(t.sum || '')));   // 본문 = 원문 그대로(운영자 260726 "그가 적은 정확한 글") — 구 = AI 한줄요약 우선이라 트윗 문구가 화면에 없었다 · 원문 = x_enrich full_text(끝의 미디어 t.co는 수집이 절단 = 썸네일로 대체) · 링크 mut 래핑 유지 · 원문 결측(구데이터) = 요약 폴백   // (구 주석) 2줄차 = 한줄요약(sum · S+V+O · sns_sum.sh 생성) · 미생성 = 원문 폴백(링크 mut 래핑 · 블스 표현법 · 운영자 260717)
+  // (구 KEYWORD 1줄차 fillT = 운영자 260727 "엑스에 키워드는 빼줘"로 X 표면 소멸 — 스팬 자체를 안 그리니 주입 대상 0 · 데이터 축 kw·sum은 보존[스레드·검색이 계속 쓴다] · 스레드 주입은 #11199 유지)
+  fillH('sx', '.xcard-tx', sxAll.map(t => t.text ? xlink(xtco(t.text)) : esc(t.sum || '')));   // 본문 = 원문 그대로(운영자 260726 "그가 적은 정확한 글") — 구 = AI 한줄요약 우선이라 트윗 문구가 화면에 없었다 · 원문 = x_enrich full_text(끝의 미디어 t.co는 수집이 절단 = 썸네일로 대체) · 링크 mut 래핑 유지 · 원문 결측(구데이터) = 요약 폴백   // (구 주석) 2줄차 = 한줄요약(sum · S+V+O · sns_sum.sh 생성) · 미생성 = 원문 폴백(링크 mut 래핑 · 블스 표현법 · 운영자 260717)
   fillT('stk', '.tcard-t', stkAll.map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 틱톡 구독 그리드 = ko 한글 번역 우선
   fillT('sre', '.tcard-t', sreAll.map(t => t.title || ('@' + (t.account || ''))));
   fillT('sth', '.xcard-h b', sthAll.map(t => '@' + (t.account || '')));   // ⑧ 스레드 구독(260713)
