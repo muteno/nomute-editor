@@ -773,6 +773,11 @@
   .xcard-lk { color:var(--mut); }   /* 트윗·스레드 본문 링크(t.co 등) = 저채도 mut(운영자 260717 "블루스카이처럼 링크 mut") — 본문(fg)과 구분·링크 노이즈 톤다운 · xlink() 래핑 · esc 경유 XSS 안전 */
   .xcard-kw { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--accent); }   /* AI 요약 1줄차 "KEYWORD : a, b, c"(운영자 260726 "첫줄에 핵심 키워드") — 1줄 고정·말줄임 = .xcard-h b 문법 계승 · 강조색 = 공유 팔레트 --accent 계승 · 값 전부 토큰 */
   .xcard-kw:empty { display:none; }   /* 요약 미생성(신규 게시물·LLM 실패 fail-soft) = 라벨 비노출 — 원문 폴백 카드와 공존 */
+  /* ── 스레드 카드 = 시간을 헤더 우상단으로 올려 메타행 한 줄 제거(운영자 260727 "1일전을 우상단으로 보내면 반으로 줄일수있을듯") ── */
+  .xg-th .xcard { display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:start; }   /* 1행 = 헤더 | 시간 · 2행 = 본문(2칸 스팬) · 컬럼 플렉스 → 그리드로만 교체(자식 문법·마크업 무변) */
+  .xg-th .xcard-h { grid-column:1; grid-row:1; }
+  .xg-th .xcard .tcard-m { grid-column:2; grid-row:1; margin-top:0; padding-top:0; justify-content:flex-end; align-items:center; }   /* 바닥 고정(margin-top:auto)·간격(padding-top:7) 해제 = 헤더 행에 동승 · 우측 정렬 = 우상단 */
+  .xg-th .xcard-bd { grid-column:1 / -1; grid-row:2; }
   .xg-th .xcard-tx.s2 { -webkit-line-clamp:2; min-height:calc(2 * 1.5em); }   /* 스레드 카드 높이 축소(운영자 260727 "이거 높이 1/2로 줄여주셈 스레드 픽") — 카드가 길었던 진짜 이유는 글이 길어서가 아니라 **본문 4줄을 상수 예약**해 1줄짜리 글 밑에 3줄치 빈칸이 상주했던 것(실측 예약 72px 중 대부분 공백) → 예약을 2줄로 반감 · 상수 예약 자체는 유지 = 좌우 카드 높이 일치(평의회 260726 E석 취지) 무회귀 · 스코프 = 스레드 그리드뿐(X·블스 무접촉) */
   .xcard-tx.s2 { -webkit-line-clamp:4; min-height:calc(4 * 1.5em); }   /* 본문 = 무조건 4줄 취급(운영자 260726 "그가 적은 정확한 글" — 원문 표시로 전환하며 2→4줄 · 요약 1줄과 달리 원문은 줄바꿈·2~3문장이 흔해 2줄컷이면 문장이 잘린다) — 클램프 + min-height 예약 산식(.tcard-t·rt2col 1.5em 문법 계승) = 전 카드 본문 높이 상수 유지(좌우 카드 높이 불일치 방지 · 평의회 260726 E석 취지 그대로) */
   .xcard-cv { display:block; margin-top:7px; aspect-ratio:16/9; border-radius:var(--r-s); overflow:hidden; background:var(--line); }   /* raw-ok: margin-top 7 = 같은 카드 메타행 간격(.xcard .tcard-m padding-top:7px) 미러 — 위·아래 두 간격이 sp-1(6)/7로 갈리면 카드 안에서 1px 리듬이 어긋난다(토큰 신설 대신 자기 카드 정본 계승) */   /* 트윗 대표 이미지(운영자 260726 "대표 이미지 섬네일") — 문법 = .tcard-cov 계승(비율 프레임 + overflow 크롭 + line 플레이스홀더) · 비율만 16:9(wd 변형 문법) = 2열 카드에서 세로 3/4는 카드가 통째 길어짐 · 라운드 = 셸 --r-m(11) 안쪽이라 한 단 아래 --r-s(9) 동심원 · 간격 7 = .xcard .tcard-m padding-top 미러 */
@@ -10478,7 +10483,7 @@ let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 
 // 🔥 SNS burst 색 티어 임계 — 7일치(14d 5스냅샷·고유 22사건) 분포: p90≈23.9(보라)·p70≈11.8(강조). 표시 전용(랭킹·정렬·진입 무관). 정본 = docs/social-burst.md.
 const SOC_HOT10 = 24, SOC_HOT30 = 12;
 // ── 트렌드 레인(메뉴2 상단) — sns_trends.json 렌더(수집 = sns-trends.yml 30분 주기 · 운영자 260710 "ㄱㄱ" 배치 승인). 있는 소스만 그림·전무 = 조용한 공백(§디자인 e-가). ──
-let TRENDS = null, BRIEF = null, _trFetched = 0;
+let TRENDS = null, BRIEF = null, PHONE_HB = null, _trFetched = 0;   // PHONE_HB = 폰 수집기가 **직접 쓰는** 하트비트(운영자 260727 한 수 채택) — 구조는 아래 loadTrends 주석
 async function loadTrends() {
   if (Date.now() - _trFetched < 5 * 60e3) return;   // 5분 TTL(수집 30분 주기 = 충분·탭 재진입 남발 방지)
   try {
@@ -10494,6 +10499,14 @@ async function loadTrends() {
     const rb = await fetch('sns_brief.json?t=' + Date.now());
     if (rb.ok) { const tb = await rb.text(); if (!/^\s*</.test(tb)) BRIEF = JSON.parse(tb); }
   } catch (e2) {}
+  try {   // ── 폰 하트비트 = 폰이 직접 쓰는 파일을 직접 읽는다(운영자 260727 한 수 채택) ──
+    // 왜: 종전엔 폰 상태를 sns_trends.json 안 `health.phone` **스냅샷**으로 읽었다. 그러면 SNS 레인이 멈춰
+    //   파일이 얼어붙는 순간 폰 판정까지 같이 얼어 **한 파일이 배지 두 개를 동시에 거짓말**하게 만든다
+    //   (260727 실사고: sns 커밋 착지 실패로 05:04 정지 → 폰은 10:32까지 멀쩡히 도는데 "폰 점검 필요" 오탐).
+    // 처방: viewer/sns_subs_phone.json(폰 크론이 30분마다 직접 커밋)의 updated를 1순위로. 두 판정이 독립한다.
+    const rp = await fetch('sns_subs_phone.json?t=' + Date.now());
+    if (rp.ok) { const tp = await rp.text(); if (!/^\s*</.test(tp)) PHONE_HB = JSON.parse(tp); }
+  } catch (e5) {}   // 실패 = PHONE_HB null → 종전 health.phone 스냅샷 폴백(무회귀)
   try { renderSnsTrends(); } catch (e3) {}   // 렌더 예외 격리 — loadTrends 프로미스 reject로 형제 배선까지 전파 차단(평의회 260713 ②)
   try { renderMsgBadge(); const mp = $('#msgpop'); if (mp && !mp.hidden) renderMsgList(); } catch (e4) {}   // 수집 고장(health.subs.stale) 반영 = 기어 색·알림메세지 목록 갱신(syncStaleMsg 본문 문법 계승 · 260725)
 }
@@ -10584,7 +10597,7 @@ function renderSnsTrends() {
   //   10만↑ 0건 · 24h 국내 4건·10만↑ 0건 · 48h로 늘려야 국내 23건·10만↑ 12건). 원인 = tikwm feed가 인기 랭킹이 아니라 무작위
   //   For-You 표본이라 10만+ 신작이 표본에 걸릴 확률이 낮은 것(수집 누락 아님 — 10콜 전부 code 0). 0건 = 조용한 공백(§디자인 e-가)이
   //   저조회 잡탕보다 낫다는 운영자 판단("그이하는 공유하지도 마")대로 채움 사다리 없음. 근본 해결 = 창구 교체(Creative Center 인기영상).
-  const TK_GL_MUL = .2, TK_MIN_V = 1e5, TK_TOP = 10, TK_CUT_H = 18, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);
+  const TK_GL_MUL = .2, TK_MIN_V = 3e4, TK_TOP = 10, TK_CUT_H = 18, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);   // 조회수 하한 10만 → 3만(운영자 260727 채택 "틱톡 하한을 3만으로 할게") — 근거 = 18h 컷과 10만 하한이 구조적으로 상충(18h에 10만 = 시간당 5,500뷰 이상인 극소수)해 260727 세계 확장·이월 조회수 갱신 뒤에도 통과분이 3건에서 멎었다. 3만 = 18h에 시간당 1,700뷰 = 국내 신작이 실제로 도달하는 대역 · 컷(18h)·상한(top10)·국내 우대(GL_MUL)는 무변경
   const tkvA = ((d.tiktok || {}).videos) || [], tkv = cutH(tkvA, TK_CUT_H).filter(t3 => (t3.views || 0) >= TK_MIN_V).sort(TRREG === 'kr' ? (a3, b3) => tkScore(b3) - tkScore(a3) : (a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, TK_TOP), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 월드 모드 = 감점 없는 순수 조회수순(종전 규약 유지 — 국내 우대는 국내 모드 전용 축) · slice = tkv 자체를 10개로 절단 = 하위 소비처(lane·sec·fillT) 전부 자동 10개 · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
   const sb = d.subs || {}, sxRaw = sb.x || [], stkRaw = sb.tiktok || [], sreRaw = sb.insta || [], sytRaw = sb.youtube || [], sx = cut3d(sxRaw), stk = cut3d(stkRaw), sre = cut3d(sreRaw), syt = cut3d(sytRaw);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
   const shvRaw = d.shorts || [], aivRaw = d.aivid || [], shv = cut3d(shvRaw), aiv = cutH(aivRaw, 168);   // 쇼츠 = 3일 컷 · AI 영상 = 7일 컷 · Raw = 채움 풀(운영자 260721 "10개까지 안나오고 짤림" — 검색 파생 니치 = 일 1~3건 수집이라 3일 창 = 2건 고사 실측 · TOP 풀 제외 소스라 완화 무부작용)
@@ -10802,10 +10815,11 @@ function renderSnsTrends() {
   const finUpdHtml = () => updChip(_finUt, 65);   // 금융 갱신 시각 = "nn분 전" 상대 표기(운영자 260723-2 "날짜 빼고 nn분 전 흰색" — 사다리 = qAgo 정본 재사용 · 무효 = '' fail-soft) + 수집 65분↑ = "(점검 필요)" 부착(운영자 260723-4 "65분 동일하게 · 괄호 점검 필요" — 임계 = .tdash-time.stale 65분 동률 · 시간 본문 표출 그대로 · 보라 = .fin-chk CSS) · 초기 렌더·라이브 틱 공용 빌더 · 소스 = 전체 수집 시각 d.updated(#vhTime 동일 정본 · finance._ts는 소스별 개별 dict라 단일값 부적격) · (구 GPEN·penSeg 펜 칩 = main 260723 설정 이관 삭제 유지)
   const FIN_UPD = finUpdHtml();
   const finHotAny = /fin-hot/.test(gFI);   // ⑬ 임계 초과 행 존재 신호(운영자 260723 hot 배지) — 행 판정(finHot 클래스 마커) 재사용 = 이중 임계 로직 0
-  const _phH = d.health && d.health.phone; const _phUt = (_phH && _phH.updated) ? new Date(_phH.updated).getTime() : 0;
+  const _phH = d.health && d.health.phone;
+  const _phSrc = (PHONE_HB && PHONE_HB.updated) ? PHONE_HB.updated : (_phH && _phH.updated) || '';   // 1순위 = 폰이 직접 쓰는 sns_subs_phone.json(운영자 260727 한 수 — SNS 레인이 얼어도 폰 판정은 독립) · 폴백 = 구 health.phone 스냅샷(파일 미도달·구 스키마)
+  const _phUt = _phSrc ? new Date(_phSrc).getTime() : 0;
   const phUpdHtml = () => updChip(_phUt, 180);   // 큐레이션 게시물(폰 수집) 갱신 시각 = 금융과 **동일 빌더**(운영자 260727) — 구 "폰 점검 필요" 맨 라벨(.tdash-time.stale)은 금융과 다른 문법이라 폐지 · 정상일 땐 금융처럼 "nn분 전"만, 180분+면 " (점검 필요)" 동반
   const PH_UPD = phUpdHtml();
-  const phoneStale = !!(_phH && (!_phH.updated || Date.now() - _phUt > 180 * 60000));   // 폰 하트비트(평의회 260723 #5 · health.phone) — 폰 수집기(스레드 유일 공급원)가 180분+ 멈춤 = 죽음(워치독 check_phone 임계 동률 · updated 무효/노후 판정) · updated = KST 오프셋 ISO라 기기 TZ 무관 · **health.phone 필드 부재(구 스키마·러너 미실행) = 판정보류 no-dim**(_phH undefined → false = 롤아웃 오탐 방지)
   h += GRPS.map(g => { const ttl = g[0] === 'fin' ? g[1] + (finHotAny ? '<span class="fin-hotdot" title="전일 대비 임계 초과 급변 있음"></span>' : '') + (FIN_UPD ? `<span class="tdash-time fin-upd" data-upd="fin">${FIN_UPD}</span>` : '') : (g[0] === 'cur' && PH_UPD) ? g[1] + `<span class="tdash-time fin-upd" data-upd="ph" title="폰 수집기 갱신 시각 — 3시간+ 멈추면 (점검 필요) · 재가동 = phone_subs">${PH_UPD}</span>` : g[1]; return gsec(g[0], ttl, g[2]); }).join('');   // 대분류 = 제목만(시각 = 좌상단 #vhTime) · 예외: 금융 갱신시각+hot배지(운영자 260723) · 큐레이션 게시물 폰stale 배지(스레드 공급원 = 폰 · sth→cur 이관 260723) · X 정렬칩 = sx 소분류 인라인(xSeg 헤더칩 폐지)
   const _sv2 = $('#snsview'); if (_sv2 && box.contains(_sv2)) $('#trendview').appendChild(_sv2);   // 재구축 전 대피(innerHTML 소실 방지)
   box.innerHTML = h;
