@@ -265,5 +265,29 @@ else:
   echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   echo "성공 → $outfile (${title:-$id})"
+  # ── 건별 조기 착지(운영자 260728 "원천 해결") — 레퍼런스 = ly-make.yml 조기 커밋 + Commit 스텝 pull 관용구 그대로.
+  #   유실의 뿌리 = 산출물 보존이 런 끝 단일 커밋 1점(260727 실측: 요약 완성 4초 뒤 커밋 거부 = 완성본 통째 유실 →
+  #   pending-sweep 크론 실측 62~140분 지연에 물려 회수까지 126분). 성공한 그 자리에서 {다이제스트 + 소비한 ask 삭제 +
+  #   failed 격리 정리}를 즉시 커밋·푸시하면 유실 창이 런 전체(수십 분) → 건당 수 초로 봉인 = 뒤 스텝·타 기사 실패·
+  #   러너 증발·push 전패 어느 방아쇠에도 완료분은 무사, 회수 크론 지연은 무해화.
+  #   ⓐ fail-soft — 미착지여도 런은 계속, 최종 Commit 스텝이 종전대로 줍는다(2중 방어 · 악화 경로 0).
+  #   ⓑ 이 푸시의 asks/** 변경 = 소비 삭제뿐 → news-ask 재트리거는 ASK_ONLY diff-filter=AM no-op 분기가 즉시 종료(기설계 계승).
+  #   ⓒ git_land.sh 미사용 사유 = reset --hard 재적층이 런 중간의 미커밋 상태(앞 기사 failed git mv 등)를 파괴 —
+  #      유일 기록자 전제도 asks 공유 경로라 미충족. 조기 커밋+rebase 관용구(ly-make 정본)가 상태 보존형이라 적합.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    git config user.name  "github-actions[bot]"
+    git config user.email "github-actions[bot]@users.noreply.github.com"
+    git add "$outfile" asks
+    if git commit -q -m "ask: 요약 요청 큐레이션(조기 착지) ${base}"; then
+      _landed=0
+      for _i in 1 2 3; do
+        if git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main; then _landed=1; break; fi
+        git rebase --abort 2>/dev/null || true
+        sleep $((_i * 2))
+      done
+      if [ "$_landed" = 1 ]; then echo "  조기 착지 완료 → $outfile"
+      else echo "::warning::조기 착지 push 미완(${base}) — 로컬 커밋은 보존, 최종 Commit 스텝이 줍는다"; fi
+    fi
+  fi
   echo "::endgroup::"
 done
