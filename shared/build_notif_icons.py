@@ -6,19 +6,19 @@
 ⚠️ 산출 PNG는 기계 산출물이다(CLAUDE.md D2-1) — 손으로 고치지 마라. 색을 바꾸려면 아래 KINDS의
    hex를 고치고 재실행한다. hex는 **viewer/index.html :root 토큰 실측 사본**이며 자유 창작이 아니다.
 
-입력(정본 2장 · 260724 시그니처 지구본에서 파생된 260727 투명배경판):
-  assets/brand/icon-notif-sig-512-260727.png    다크 알림판용(청록 hue~170 + 옐로 hue~60 2색)
-  assets/brand/icon-notif-blue-512-260727.png   라이트 알림판용(하늘 hue~195 + 남색 hue~228)
+입력(정본 1장 · 260727 21시 운영자 채택 = "흰색에 있는 예시"):
+  assets/brand/icon-notif-blue-512-260727.png   «같은 색의 밝은 톤 + 어두운 톤» 2단 구조(하늘 195 ~ 남색 240)
+  ⚠ 구 sig 원본(청록+옐로)은 더 이상 소스가 아니다 — 종류색 옆에 시그니처 옐로가 늘 붙어 "안 예쁘다" 판정.
 
-방법 — 「주색 대역의 hue만 타깃으로 치환, 채도·명도는 원본 유지」:
-  · 명암 구조와 2색 대비가 그대로 남는다(단색 알파 마스크 칠은 대비가 죽는다 = 260727 12안 각주).
-  · sig판은 **옐로 보조색(hue 30~90)을 건드리지 않는다** = 시그니처 옐로가 전 종류 공통 = 브랜드 일관성 유지.
-  · blue판은 파랑 대역(hue 180~260)이 곧 형태 전체라 통째로 이동한다.
+방법 — 「주색 대역의 hue만 타깃으로 치환, 채도·명도는 원본 유지 + 판별 부스트」:
+  · 어느 색을 넣어도 밝은/어두운 2단 대비가 남는다(단색 알파 마스크 칠은 대비가 죽는다 = 260727 12안 각주).
+  · **다크 알림판용(sig 슬롯) = 같은 결과 + 형광 부스트**(BOOST) — 어두운 톤이 검은 알림판에 묻히는 것을 살린다.
+    부스트 강도는 4단 대조 렌더(원본/약/중/강)에서 「중」 채택 = 운영자 "조금만 더 형광".
   · 무채 종류(test)는 hue 치환 대신 채도를 눌러 회색으로.
   · 알파는 무접촉 = 투명 배경 계약(운영자 260727 "배경이 투명이 아니라 색이 묻어나온다") 보존.
 
-산출: assets/brand/icon-notif-{kind}-{sig|blue}-512-260727.png
-  make(제작완료)는 브랜드 기본색 그대로라 **새 파일을 만들지 않고 원본을 그대로 쓴다**(중복 에셋 0).
+산출: assets/brand/icon-notif-{kind}-{sig|blue}-512-260727.png  (5종 × 2판 = 10장)
+  + assets/brand/notif_dataurl.json (알림 페이로드에 통째로 싣는 96px data URL 번들)
 
 실행: python3 shared/build_notif_icons.py          (생성)
       python3 shared/build_notif_icons.py --check   (재생성 결과가 커밋본과 바이트 동일한지 검사 · rc=1 = 드리프트)
@@ -29,7 +29,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BRAND = ROOT / "assets" / "brand"
-SRC = {"sig": BRAND / "icon-notif-sig-512-260727.png", "blue": BRAND / "icon-notif-blue-512-260727.png"}
+# ⚠️ 260727 21시 전환(운영자 "저거로 가자 너가 준 예시 흰색에 있는 예시 · 어두운색은 조금만 저기에 다 형광 조금 더"):
+#   **두 판 모두 blue 원본 하나에서 파생**한다. 구 sig 원본(청록+옐로)은 종류색 옆에 시그니처 옐로가 늘 붙어
+#   "안 예쁘다" 판정을 받았고, blue 원본은 «같은 색의 밝은 톤 + 어두운 톤» 2단이라 어느 색을 넣어도 깨끗하다.
+#   다크 알림판용(sig 슬롯)은 그 결과에 형광 부스트(채도·명도 배율)만 얹는다 = "조금 더 형광".
+SRC = {"sig": BRAND / "icon-notif-blue-512-260727.png", "blue": BRAND / "icon-notif-blue-512-260727.png"}
+BOOST = {"sig": (1.18, 1.42), "blue": (1.0, 1.0)}   # (채도 배율, 명도 배율) — 4단 대조 렌더에서 「중」 채택(강=어두운 톤 소실로 납작)
 
 # 종류 → 색. hex = viewer/index.html :root 실측 사본(토큰 의미축 그대로 계승 · 새 hex 창작 금지).
 #   brk   = --danger(--accent-3) #e23b2a   긴급 = 빨강
@@ -39,13 +44,13 @@ SRC = {"sig": BRAND / "icon-notif-sig-512-260727.png", "blue": BRAND / "icon-not
 #   test  = --mut               #8fa697    테스트 = 무채(중립)
 KINDS = {
     "brk":   {"hex": "#e23b2a", "token": "--danger", "label": "긴급 속보"},
-    "make":  {"hex": "#00EED2", "token": "--accent", "label": "제작 완료", "same_as_source": True},
+    "make":  {"hex": "#00EED2", "token": "--accent", "label": "제작 완료"},
     "sys":   {"hex": "#FFE13D", "token": "--warn",   "label": "시스템 경보"},
     "trend": {"hex": "#0FFD02", "token": "--info",   "label": "트렌드"},
     "test":  {"hex": "#8fa697", "token": "--mut",    "label": "테스트", "desaturate": True},
 }
 # 주색 대역(이 hue 구간만 타깃으로 치환) — 원본 실측: sig 청록 165~174 / blue 195~240
-BAND = {"sig": (120, 230), "blue": (170, 270)}
+BAND = {"sig": (170, 270), "blue": (170, 270)}   # 두 판 동일 소스라 대역도 동일(blue 원본 실측 하늘 195~남색 240)
 
 
 def hex_hue(h):
@@ -53,7 +58,7 @@ def hex_hue(h):
     return colorsys.rgb_to_hsv(r, g, b)[0] * 360
 
 
-def recolor(src_path, target_hue, desaturate, band):
+def recolor(src_path, target_hue, desaturate, band, boost=(1.0, 1.0)):
     from PIL import Image
     im = Image.open(src_path).convert("RGBA")
     px = im.load()
@@ -73,6 +78,8 @@ def recolor(src_path, target_hue, desaturate, band):
             if desaturate:
                 ss = min(ss, 0.10)
             hh = target_hue / 360.0
+            ss = min(1.0, ss * boost[0])          # 형광 부스트 — 다크 알림판에서 어두운 톤이 묻히는 것을 살린다
+            vv = min(1.0, vv * boost[1])
             nr, ng, nb = colorsys.hsv_to_rgb(hh, ss, vv)
             px[x, y] = (round(nr * 255), round(ng * 255), round(nb * 255), a)
     return im
@@ -112,7 +119,7 @@ def build_dataurls():
     for kind, spec in KINDS.items():
         out[kind] = {}
         for theme, src in SRC.items():
-            p = src if spec.get("same_as_source") else out_path(kind, theme)
+            p = out_path(kind, theme)
             u = data_url(Image.open(p).convert("RGBA"))
             if len(u) > PAYLOAD_BUDGET:
                 over.append(f"{kind}/{theme} {len(u)}B > {PAYLOAD_BUDGET}B")
@@ -129,12 +136,9 @@ def main():
     drift = []
     made = 0
     for kind, spec in KINDS.items():
-        if spec.get("same_as_source"):
-            print(f"· {kind:5s} {spec['token']:9s} {spec['label']} — 원본 그대로(파일 신설 없음)")
-            continue
         th = hex_hue(spec["hex"])
         for theme, src in SRC.items():
-            im = recolor(src, th, spec.get("desaturate", False), BAND[theme])
+            im = recolor(src, th, spec.get("desaturate", False), BAND[theme], BOOST[theme])
             dst = out_path(kind, theme)
             if check:
                 if not dst.exists():
@@ -156,7 +160,7 @@ def main():
             exp = {}
             from PIL import Image
             for kind, spec in KINDS.items():
-                exp[kind] = {t: data_url(Image.open(SRC[t] if spec.get("same_as_source") else out_path(kind, t)).convert("RGBA")) for t in SRC}
+                exp[kind] = {t: data_url(Image.open(out_path(kind, t)).convert("RGBA")) for t in SRC}
             if cur != exp:
                 drift.append(f"{DATAURL_JSON.name} 재생성 결과 상이")
         except Exception as e:

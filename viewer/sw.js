@@ -95,7 +95,7 @@ const PREF_CACHE = 'nm-pref-v1', THEME_KEY = '/__nm_theme';
 // 값 = 파일명 조각(''이면 위 브랜드 기본판). 색은 index :root 토큰 의미축 계승 — brk=--danger · make=--accent(기본)
 // · sys=--warn · trend=--info · test=--mut. 에셋 생성 = shared/build_notif_icons.py(손편집 금지 · D2-1).
 // 모르는 kind·미지정 = 기본판 폴백 = 구 발송 경로(kind 없는 워크플로) 무손상.
-const NOTIF_ICON = { brk: 'brk', make: '', sys: 'sys', trend: 'trend', test: 'test' };
+const NOTIF_ICON = { brk: 'brk', make: 'make', sys: 'sys', trend: 'trend', test: 'test' };
 function iconFor(kind, dark) {
   const t = dark ? 'sig' : 'blue', k = NOTIF_ICON[kind] || '';
   return `/assets/brand/icon-notif-${k ? k + '-' : ''}${t}-512-260727.png`;
