@@ -190,3 +190,73 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { hydrate(); }); else hydrate();
 
 })();
+
+/* ── nmFavBusy — 작업 중에만 브라우저 탭 파비콘(지구본)이 돈다 ─────────────────────────
+   운영자 260727 "뉴스 요약·이미지 제작 등 작업중에는 저 로고가 돌아가고, 작업중인게 없으면 그냥 일반 로고".
+   · 그림 = 기존 favicon-globe-260724.svg **그대로** 캔버스에 얹어 회전만(새 그림·새 색 창작 0 = B1).
+     SVG 안의 prefers-color-scheme 스왑(라이트 파랑 / 다크 시그니처)도 <img> 렌더가 그대로 따라온다.
+   · 작업중 판정 = index `lkProdBusy()`(index.html §유휴감시) 셀렉터 문법 계승 + 부모 문서 진행 신호(.firing/.picking) 합본.
+     iframe 관통도 그 함수와 같은 방식(도구 탭이 자식 문서라 부모가 대신 칠한다 = 도구 6탭 파일 무접촉).
+   · 끝나면 href를 원본 문자열로 되돌린다 = 평소엔 손 안 댄 상태와 동일.
+   · 검증 = `node shared/smoke_favtab.js --url /?qa=1`(탭바 픽셀 재도색 실측 · href 변경은 증거 아님 = 인수인계서 §7-3-1).
+   · 한계 = 비활성 탭은 크롬이 타이머를 1fps로 조여 '회전'이 '깜빡임'으로 읽힌다(활성 탭은 정상). */
+(function () {
+  if (window.nmFavBusy || window.top !== window.self) return;   // 최상위 문서만(도구 iframe이 자기 파비콘을 돌려봐야 탭에 안 보임)
+
+  var SEL = '[aria-busy="true"], .firing, .picking, #jobs .job:not(.done):not(.err)';
+  var SRC = 'favicon-globe-260724.svg';
+  var PX = 64;             // 탭 렌더 16~32px 대비 여유 배수(계단 방지)
+  var FPS = 20, POLL = 350;
+  var slow = false;
+  try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
+  var SPIN = slow ? 3600 : 1400;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
+
+  var spin = null, kept = [], img = null, ready = false;
+  var cv = null, cx = null, tick = null, t0 = 0, on = false;
+  function busy() {
+    try {
+      if (document.querySelector(SEL)) return true;
+      var fr = document.getElementsByTagName('iframe'), i, d;
+      for (i = 0; i < fr.length; i++) {
+        d = null; try { d = fr[i].contentDocument; } catch (_) {}
+        if (d && d.querySelector(SEL)) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+  function draw() {
+    var a = ((Date.now() - t0) % SPIN) / SPIN * Math.PI * 2;
+    cx.clearRect(0, 0, PX, PX);
+    cx.save(); cx.translate(PX / 2, PX / 2); cx.rotate(a); cx.drawImage(img, -PX / 2, -PX / 2, PX, PX); cx.restore();
+    try { spin.setAttribute('href', cv.toDataURL('image/png')); } catch (_) { stop(); }   // toDataURL 실패(오염 등) = 조용히 원복
+  }
+  /* 기존 <link rel=icon>의 href만 갈아끼우면 크롬이 안 그린다(실측 260727: type="image/svg+xml" 태그에 PNG를
+     넣으면 무시하고 앞의 .ico를 계속 씀). ∴ 도는 동안은 icon 링크를 통째로 떼고 PNG 전용 링크 하나만 세운다. */
+  function start() {
+    if (on || !ready) return;
+    if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = PX; cx = cv.getContext('2d'); }
+    kept = [].slice.call(document.querySelectorAll('link[rel~="icon"]'));   // apple-touch-icon은 rel 단어가 달라 미매치 = 무접촉
+    spin = document.createElement('link');
+    spin.setAttribute('rel', 'icon'); spin.setAttribute('type', 'image/png'); spin.setAttribute('sizes', PX + 'x' + PX);
+    on = true; t0 = Date.now(); draw();
+    kept.forEach(function (l) { if (l.parentNode) l.parentNode.removeChild(l); });
+    document.head.appendChild(spin);
+    tick = setInterval(draw, Math.round(1000 / FPS));
+  }
+  function stop() {
+    if (!on) return;
+    on = false; clearInterval(tick); tick = null;
+    if (spin && spin.parentNode) spin.parentNode.removeChild(spin);
+    kept.forEach(function (l) { document.head.appendChild(l); });   // 원본 태그 그대로 복귀 = 평소 지구본
+    spin = null; kept = [];
+  }
+
+  img = new Image();
+  img.onload = function () { ready = true; };
+  img.src = SRC;
+
+  setInterval(function () { var b = busy(); if (b) start(); else stop(); }, POLL);
+  window.addEventListener('pagehide', stop);
+
+  window.nmFavBusy = { start: start, stop: stop, busy: busy, on: function () { return on; } };   // 진단용
+})();
