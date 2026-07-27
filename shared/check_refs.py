@@ -1215,6 +1215,57 @@ def check_workflow_yaml():
     return bad
 
 
+def check_git_idiom():
+    """봇커밋 git 관용구 게이트(260728 Q981 · 운영자 지시 "재발 안하게 조치").
+
+    실사고(260727~28 Q980 · sns_brief/수집 8h 무음 정지): ① 1차 커밋 `git add A B C`에 미존재 경로
+    (push/kw_sent.json = 발송이 있어야 생성)가 1개 끼자 git add가 **전체를 원자 abort**(스테이징 0 =
+    "변동 없음" 위장 · `2>/dev/null || true`가 은폐) ② 그 탓에 미커밋 잔여(tbs_data.json)가 dirty로 남아
+    push 거부 후 구조용 `git pull --rebase`가 "You have unstaged changes"로 즉사(역시 은폐) → 재시도
+    전패 → 30분마다 초록불인 채 전량 유실. git_land.sh(260718)는 같은 지뢰를 실존 필터로 이미 봉합했으나
+    지식이 헬퍼 1곳에만 있고 인라인 관용구 27곳엔 강제가 없던 것이 재발 구조 → 이 게이트가 전 파일 강제.
+
+    검사(.github/workflows/*.yml|yaml + .github/scripts/*.sh · 주석부 제거 후):
+      ① `git pull --rebase` = `--autostash` 필수(미커밋 잔여가 있어도 구조 경로 생존).
+      ② 한 줄 다중 pathspec(2개↑) `git add` + 은폐(`2>/dev/null`·`|| true`) 금지 — 처방 = 파일별
+         `for f in …; do if [ -e "$f" ]; then git add "$f"; fi; done` 또는 git_land.sh 경유.
+         단일 pathspec 은폐 add = 줄별 독립(무산 파급 없음 = 기존 관용구 허용) · 배열 확장(`[@]`) =
+         정적 카운트 불가 스킵(git_land.sh가 실존 필터 보유 정본)."""
+    import glob as _g
+    bad = []
+    files = sorted(_g.glob(os.path.join(ROOT, '.github', 'workflows', '*.yml'))
+                   + _g.glob(os.path.join(ROOT, '.github', 'workflows', '*.yaml'))
+                   + _g.glob(os.path.join(ROOT, '.github', 'scripts', '*.sh')))
+    n_pull = 0
+    for p in files:
+        rel = os.path.relpath(p, ROOT)
+        try:
+            lines = open(p, encoding='utf-8').read().split('\n')
+        except Exception as e:
+            bad.append('%s 읽기 실패 — %s' % (rel, e))
+            continue
+        for i, ln in enumerate(lines, 1):
+            s = ln.strip()
+            if s.startswith('#'):
+                continue
+            code = re.split(r'\s+#', s, 1)[0]   # 행끝 주석 제거(주석 속 관용구 인용 = 오탐 차단)
+            if 'git pull --rebase' in code:
+                n_pull += 1
+                if '--autostash' not in code:
+                    bad.append('%s:%d `git pull --rebase`에 --autostash 없음 — dirty tree면 rebase 즉사 = push 재시도 전패·산출물 무음 유실(Q980 8h 정지) → `git pull --rebase --autostash`' % (rel, i))
+            m = re.search(r'\bgit add\s+(.+)$', code)
+            if m and ('2>/dev/null' in code or '|| true' in code):
+                tail = re.split(r'\s*(?:&&|\|\||;)\s*', m.group(1))[0]   # 후속 체인 절단
+                toks = [t for t in tail.split() if t and not t.startswith('-') and '>' not in t and t != 'true']
+                if any('[@]' in t for t in toks):
+                    continue
+                if len(toks) >= 2:
+                    bad.append('%s:%d 한 줄 다중 pathspec `git add` + 은폐 — 결측 경로 1개면 전체 원자 abort = 스테이징 0 무음(Q980) → 파일별 `if [ -e "$f" ]` add 루프나 git_land.sh로' % (rel, i))
+    if not bad:
+        print('✅ 봇커밋 git 관용구 게이트 — %d파일 스캔 · pull--rebase %d줄 전부 --autostash · 다중 pathspec 은폐 add 0(Q980 8h 무음유실 재발 차단).' % (len(files), n_pull))
+    return bad
+
+
 def check_qledger_unique():
     """지시 원장(docs/요구사항_큐.md) Q번호 유일성 게이트(운영자 260717 Q29 승인 — 동시 세션이 각자 '다음 번호'를
     추측 부여 → 같은 번호 경합 = 완료 보고 [Q.NN]↔원장 1:1 참조(CLAUDE.md [6]) 모호. 260717 실사고: Q24 이중 부여
@@ -1894,7 +1945,7 @@ def check_tabs_headers():
 
 
 def main():
-    fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers() + check_workflow_yaml()
+    fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers() + check_workflow_yaml() + check_git_idiom()
     rc = 0
     if fails:
         print('❌ check_refs 실패 %d건:' % len(fails))

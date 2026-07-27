@@ -43,11 +43,11 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add viewer/token-usage.json metrics 2>/dev/null || true
+          for f in viewer/token-usage.json metrics; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(Q980 전파: 결측 pathspec 1개 = add 전체 원자 abort 무음)
           if git diff --cached --quiet; then echo "변동 없음 — 커밋 생략"; exit 0; fi
           git commit -m "metrics: 토큰 사용량 롤업(10분 버킷)"
           for i in 1 2 3 4; do
-            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main && exit 0
             git rebase --abort 2>/dev/null || true; sleep $((2**i))
           done
           echo "::warning::롤업 push 실패(다음 회차 재시도)"

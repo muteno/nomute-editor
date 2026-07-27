@@ -34,7 +34,7 @@ done
 git add cards
 git commit -m "cards: 좀비 generating ${swept}건 → failed(스윕)" || exit 0
 for i in 1 2 3 4; do
-  git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+  git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main && exit 0
   git rebase --abort 2>/dev/null || true; sleep $((2**i))
 done
 echo "::warning::스윕 push 실패"

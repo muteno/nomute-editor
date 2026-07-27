@@ -124,16 +124,14 @@ jobs:
 
       # ── 수집분 즉시 커밋(1차) — 뒤 LLM 브리프/번역 스텝이 job timeout으로 죽어도 수집 데이터(TOP 10·트렌드)는 이미 라이브 확보(운영자 260714 "데이터 잘 받아오게 설계" · 근본원인 = 맨끝 단일 Commit이라 중간 LLM 단계 timeout 시 수집분 동반 유실 · 실측 12:04~13:45 = 세 run 연쇄 cancelled 102분 갭). sns_trends.json은 push paths(sns_subs_phone.json) 미감시 = 재트리거 0. 브리프/번역 갱신분은 맨끝 Commit이 2차로 마저 커밋(입력 동일 스킵 캐스케이드로 무변동 시 생략).
       - name: Commit 수집분(1차 · 유실 방지)
+        # git_land = 최신 main 재기점 재적층(insta·fb·lucy 4워크플로 공용 정본 · 260716 브리프 3일 정지 사고 처방).
+        # 직전 조치(Q980 cbf24be = {파일별 실존 add · pull --rebase --autostash · 사유 표면화})가 8h 유실의 두 축을 옳게 짚었지만 **잔여 구멍이 하나 남는다** — 샌드박스 6시나리오 대조 실측(260728 Q982):
+        #   {① kw_sent 부재 ② 커밋 대상 밖 dirty ③ 원격 레이스 ④ 레이스+dirty}는 직전 조치도 전부 착지 성공.
+        #   ⑤ **커밋 대상 밖 untracked 파일이 원격 신규 커밋과 같은 경로일 때** = `--autostash`가 untracked를 안 담아 rebase가 "would be overwritten"으로 죽고 → push 4연속 rejected = **수집분 전량 폐기(사고 재현)**. 직전 조치 FAIL · git_land PASS.
+        # git_land가 이기는 이유 = 리베이스를 아예 안 쓴다: {잔여 rebase/merge abort 청소 · fetch · reset --hard origin/main 재기점 · 산출물 스냅샷 재적층 · 6회} = 워킹트리 상태가 착지를 막을 경로 자체가 없다. 결측 인자도 자연 탈락(①과 동일 효과).
+        # ⚠ 전제 = 인자 경로의 유일 기록자여야 한다(재적층이 남의 동시 변경을 덮을 수 있음). sns_trends/tbs/kw_sent/sns_brief = 이 워크플로 단독 소유(social-scan은 social_candidates.json만 커밋) = 충족. 롤백 = 이 두 스텝을 cbf24be 관용구로 원복.
         run: |
-          git config user.name "nomute-bot"
-          git config user.email "bot@users.noreply.github.com"
-          for f in viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(260727 8h 유실 봉합): git add는 pathspec 하나만 없어도 '전체' 무산 — kw_sent(발송 있어야 생성)가 없던 탓에 trends·tbs 스테이징까지 0 = "변동 없음" 위장. 실존만 add = 은폐용 2>/dev/null 불요 · tbs = 키워드 알림 국내축(260726) · kw_sent = 키워드 푸시 dedup 원장(260727 · 미커밋이면 매 런 재발송)
-          git diff --cached --quiet && { echo "수집 변동 없음 — 1차 커밋 생략(신선도 게이트 스킵 등)"; exit 0; }
-          git commit -m "sns-trends: 수집 갱신"
-          for i in 1 2 3 4; do
-            git pull --rebase --autostash -X ours origin main || echo "::warning::1차 pull--rebase 실패(사유 = 바로 위 git 로그) — 그대로 push 재시도"   # --autostash = 미커밋 잔여가 있어도 rebase 진행(260727: dirty tree가 rebase를 즉사시켜 push 4연속 rejected = 전량 유실) · 2>/dev/null 제거 = 실패 사유 표면화(Q979 동축)
-            git push origin HEAD:main && exit 0 || { echo "1차 push 재시도 $i"; sleep $((2**i)); }
-          done
+          bash .github/scripts/git_land.sh "sns-trends: 수집 갱신" viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
         if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '1') == '1' || (inputs.sns_sum || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)·X/스레드 요약(sns_sum · 260726)도 CLI 필요(운영자 260713·260718 · gt_img 상시 ON 승격 = || '1')
@@ -188,16 +186,7 @@ jobs:
         run: python3 .github/scripts/trend_images.py   # 게이트(TREND_IMG)·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
 
       - name: Commit
+        # 1차와 동일 git_land(브리프·번역·이미지 갱신분까지 착지). 인자에 tbs_data·kw_sent 동반 = 1차가 경쟁에 져도 2차가 마저 줍는다(결측은 자연 탈락).
+        # 착지 실패 시 rc는 여전히 0 + ::warning만 = 종전 "다음 주기 재수집" 계약 그대로(후속 스텝·잡 비차단).
         run: |
-          git config user.name "nomute-bot"
-          git config user.email "bot@users.noreply.github.com"
-          for f in viewer/sns_trends.json viewer/sns_brief.json viewer/tbs_data.json push/kw_sent.json; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(1차와 동일 봉합) + 1차가 못 실은 잔여(tbs·kw_sent)도 여기서 줍는다 — 미커밋 잔여 = pull --rebase를 죽이던 dirty tree의 원천(260727 사고 2축)
-          git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
-          git commit -m "sns-trends: 유튜브·트렌드 갱신"
-          for i in 1 2 3 4; do
-            git pull --rebase --autostash -X ours origin main || echo "::warning::pull--rebase 실패(사유 = 바로 위 git 로그) — 그대로 push 재시도"   # --autostash·사유 표면화 = 1차와 동일(260727 봉합)
-            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
-          done
-          echo "::warning::push 실패(재시도 소진) — 다음 주기 재수집"
-          # push = HEAD:main — checkout ref:main이라 통상 로컬 main 존재하나 img-resize detached 사고(260710) 계승 방어.
-          # 실패 = warning 종료(트렌드는 30분 뒤 재수집이라 유실 개념 없음 = resize류 exit 1 불요).
+          bash .github/scripts/git_land.sh "sns-trends: 유튜브·트렌드 갱신" viewer/sns_trends.json viewer/sns_brief.json viewer/tbs_data.json push/kw_sent.json
