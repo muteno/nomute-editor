@@ -89,13 +89,10 @@ async function runOnce(pg) {
   await pg.waitForTimeout(1300);
   const ai = await pg.evaluate(() => {
     const host = document.querySelector('#geniHost'), box = document.querySelector('#geniPrevBox'), sum = document.querySelector('#geniSum');
-    // 셸 대조 대상 = 액자를 실제로 그리는 노드. 요약바 레일화(운영자 260727 "한줄넘으면 <>")로 셸이 #geniSum → 래퍼 .geni-sumwrap으로 이관됐다
-    // — 정본(thumb)도 .optstrip[셸] / .gospec[레일] 분리 구조라 이건 **정본과 같아지는 방향**의 셀렉터 정정이다(대조 항목·강도 무변 · 활자 fs/lh는 레일 노드 그대로 읽는다).
-    const shell = sum ? (sum.closest('.geni-sumwrap') || sum) : null;
     const lead = document.querySelector('#geniHost .geni-lead'), lcs = lead ? getComputedStyle(lead) : null, lca = lead ? getComputedStyle(lead, '::after') : null;   // 리드 = thumb 도크 파리티(mat·스커트 · 운영자 260720)
     const cs = el => { const c = getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
     return { hostVis: !!(host && !host.hidden), boxH: box ? box.getBoundingClientRect().height : 0, boxW: box ? box.getBoundingClientRect().width : 0, boxCS: box ? cs(box) : null,
-      sumCS: shell ? cs(shell) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
+      sumCS: sum ? cs(sum) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
       leadBg: lcs ? lcs.backgroundColor : '', leadBb: lcs ? lcs.borderBottomWidth : '', skirtH: lca ? lca.height : '', skirtBg: lca ? lca.backgroundImage : '',
       sumGram: sum ? { lbl: sum.querySelectorAll('.gs-lbl').length, v: sum.querySelectorAll('.gs-v').length, on: sum.querySelectorAll('.gs-v.on').length } : null,
       wishHidden: (() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return !!(r && r.hidden && h && h.hidden); })(),
