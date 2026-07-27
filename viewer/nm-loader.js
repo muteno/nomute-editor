@@ -383,7 +383,27 @@
       addEventListener('pagehide', reset);
       document.addEventListener('visibilitychange', function () { if (document.hidden) return; });   // 훅 자리(현행 = 정지 안 함)
     } catch (e) {}
-    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan, sweep: sweep, hookFrame: hookFrame };
+    /* 진단 — 라이브에서 "안 도는" 원인을 운영자가 F12 한 줄로 특정한다(운영자 260727 "일반 브라우저에서는 아직 작동안함").
+       콘솔에 `nmFavSpin.diag()` → 어느 관문에서 막혔는지가 바로 나온다. 원인 후보가 서로 겹쳐 있어
+       (구버전 캐시 / reduced-motion / standalone / 로고 로드 실패 / busy 신호 자체가 없음) 추측으로는 못 가른다. */
+    function diag() {
+      var d = { build: '260727-iframe', 스핀중: !!timer, 참조수: refs, 프레임준비: frames ? frames.length : 0,
+                사전렌더중: !!building, 현재busy: busySet ? busySet.size : 0, 주기ms: period(), 캔버스px: SIZE, fps: FPS };
+      d.막힘 = [];
+      try {
+        if (window.top !== window.self) d.막힘.push('iframe 안(부모가 대신 관찰 = 정상)');
+        if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) d.막힘.push('PWA standalone = 탭 없음');
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) d.막힘.push('OS 모션 줄이기 켜짐 → 의도적 no-op');
+      } catch (e) {}
+      if (!d.프레임준비 && !d.사전렌더중 && !d.막힘.length && d.현재busy) d.막힘.push('사전렌더 실패 — 로고 이미지 로드 or toDataURL 오염 의심(콘솔 [nmFavSpin] 경고 확인)');
+      if (!d.막힘.length && !d.현재busy) d.막힘.push('막힌 곳 없음 — 지금 aria-busy인 요소가 0개(생성이 안 도는 중)');
+      try {
+        d.busy목록 = [].slice.call(document.querySelectorAll('[aria-busy="true"]')).map(function (e) { return e.id || e.tagName; });
+        d.iframe수 = document.querySelectorAll('iframe').length;
+      } catch (e) {}
+      return d;
+    }
+    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan, sweep: sweep, hookFrame: hookFrame, diag: diag };
   })();
   window.nmFavSpin = FAV;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { FAV.watch(); }); else FAV.watch();
