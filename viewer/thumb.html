@@ -1365,9 +1365,11 @@ function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미
   const csub = $('#cSub').value.trim(), ctitle = $('#cTitle').value.trim();
   const lines = normEmph(stripStrayStars($('#cLines').value)).split('\n').map(s => s.trim()).filter(Boolean);   // 오타 단일 *(빗금) 자동삭제 후 강조 정규화 = 미리보기 == 산출물
   const v = [];
-  // 진짜예요 = 문구 1줄(부제 잠금)이라 제목만으로 헤더 성립 · nobg 변형 없음(하부가 이미 투명 = 배경 자리) · 노뮤트는 종전대로 부제+제목 둘 다 필요
+  // 진짜예요 = 문구 1줄(부제 잠금)이라 제목만으로 헤더 성립 · nobg 변형 없음(하부가 이미 투명 = 배경 자리)
+  // 노뮤트 = **한 칸만 채워도 헤더 변형 성립**(운영자 260727 "부제 입력할 때는 미리보기가 작동을 안 해") — 부제·제목을 순서대로 치는 동안 반쪽 헤더 그대로 미러(빈 칸은 빈 줄로 렌더 = 지금 만든 상태의 정직한 미리보기 · headerActive()·syncCnTog의 OR 축과 동일).
+  // ⚠ 발사 게이트는 무접촉 = 종전대로 부제+제목 둘 다 요구(아래 partHeader '부제를 넣어주세요' 분기) — 미리보기만 반쪽을 보여주고, 반쪽 제작은 여전히 막힌다.
   if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') { if (ctitle) v.push({ k: 'hdr', lbl: '진짜예요', fmt: 'reels' }); }
-  else if (csub && ctitle) { v.push({ k: 'hdr', lbl: '흰칸', fmt: 'reels' }); if ($('#cBg').checked) v.push({ k: 'nobg', lbl: '기본', fmt: 'reels' }); }
+  else if (csub || ctitle) { v.push({ k: 'hdr', lbl: '흰칸', fmt: 'reels' }); if ($('#cBg').checked) v.push({ k: 'nobg', lbl: '기본', fmt: 'reels' }); }
   if (typeof A2M !== 'undefined' && A2M === 'c') { const cl = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean); if (cl.length || CIMG.b64) v.push({ k: 'card', lbl: '카드뉴스', fmt: 'post', cl }); }   // 카드뉴스 모드 = 자막 변형 대신 카드 변형(운영자 260712 2차 "썸네일 미리보기에 카드뉴스 미리보기도")
   else if (lines.length || CIMG.b64) v.push({ k: 'ov', lbl: '자막', fmt: effOvFmt() });
   const gpvOn = guideMode && ($('#warnLines').value || '').trim();   // 안내문 미리보기 대상 여부(저작권과 독립 · 260712)
@@ -2291,6 +2293,7 @@ async function dlAllSeq(btn, urls, namer) {
 const RETRY_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3.51 14a9 9 0 1 0 .49-5"/></svg>';
 const PLUS_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';   // 한 장 더(잡 카드) — 대칭 viewBox 픽토그램(§🔒 3-1) · nm-svg 19종 밖 신규 로컬(RETRY_SVG 선례)
 const TRASH_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+const XCLOSE_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 취소·닫기 X = 기틀 정본 path(CII 「닫기 X」 · §🔒3-1 문자 × 금지) · 기하(15px·vb24·sw2·round) = 형제 TRASH_SVG 그대로 계승 — 삭제(휴지통)와 취소(X)를 픽토로 분리(운영자 260727)
 const ERASE_UNDO_MS = 10000;   // 지움 후 되돌리기 노출 시간(~10초) → 지나면 원래 지우개로
 async function clipCopy(text, btn, after) {   // 복사 → ✓ 피드백
   try { await navigator.clipboard.writeText(text || ''); } catch {}
@@ -2756,7 +2759,7 @@ function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+�
   if (t) t.textContent = tk > 0 ? fmtTok(tk) + ' 토큰' : '';   // 우상단 = 실측 중앙 토큰(운영자 260727 "종량제가 아닌 건 값이 안 뜨니 토큰으로만") · 앵커 없으면 빈칸
 }
 function wipEmptySync() { const em = $('#carEmpty'), box = $('#wips'); if (!em || !box) return; if (box.childElementCount) { em.hidden = true; return; } if (typeof carHSync === 'function') carHSync(); }   // 타일 있으면 '아직 제작한 게 없습니다' 숨김 · 비면 기존 판정(carHSync)에 반환
-function jobCancelTap(job, row, btn) {   // 취소 버튼 상태머신 = 휴지통 → (1탭) 재확인 arm → (2탭) 확정 ✓ → 행 회수. 인라인 재확인 정본 = #histClr(1차 arm·3s 원복) 그대로.
+function jobCancelTap(job, row, btn) {   // 취소 버튼 상태머신 = X → (1탭) 재확인 arm → (2탭) 확정 ✓ → 행 회수. 인라인 재확인 정본 = #histClr(1차 arm·3s 원복) 그대로.
   if (!job._cxArm) {
     job._cxArm = 1; btn.classList.add('arm'); btn.innerHTML = CHECK_SVG; btn.title = '한 번 더 누르면 취소'; btn.setAttribute('aria-label', '취소 확정');
     clearTimeout(job._cxT); job._cxT = setTimeout(() => { job._cxArm = 0; if (job.status === 'run') renderJob(job); }, 3000);   // 3s 내 재탭 없으면 원복(#histClr 동값)
@@ -2839,10 +2842,10 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     del.onclick = () => { const i = JOBS.indexOf(job); if (i >= 0) JOBS.splice(i, 1); row.remove(); };
     row.append(del);
   }
-  if (job.status === 'run') {   // 제작 중 = 우측 휴지통(취소) — 실패 행 .jdel 부품·자리 100% 계승(픽토·기하 동일) · 상태만 2단(운영자 260727)
+  if (job.status === 'run') {   // 제작 중 = 우측 X(취소) — 실패 행 .jdel 부품·자리·기하 100% 계승 + 픽토만 정본 X(운영자 260727 "휴지통 말고 X" — 삭제≠취소 의미 분리) · 상태 2단
     const cx = document.createElement('button'); cx.type = 'button'; cx.className = 'jdel jcancel';
     if (job._cxArm) { cx.classList.add('arm'); cx.innerHTML = CHECK_SVG; cx.title = '한 번 더 누르면 취소'; cx.setAttribute('aria-label', '취소 확정'); }   // 1s 재렌더에도 무장 유지 = 상태를 job에 보관(행은 매 틱 새로 그려진다)
-    else { cx.innerHTML = TRASH_SVG; cx.title = '이 제작 취소'; cx.setAttribute('aria-label', '제작 취소'); }
+    else { cx.innerHTML = XCLOSE_SVG; cx.title = '이 제작 취소'; cx.setAttribute('aria-label', '제작 취소'); }
     cx.onclick = () => jobCancelTap(job, row, cx);
     row.append(cx);
   }
