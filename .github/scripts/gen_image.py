@@ -449,6 +449,7 @@ def build_fallback(head, lead, scene, o):
         parts.append("EXPRESSION (of the protagonist, adapt to the scene): " + kw["expression"])
     if PLACE_FRAG[o["place"]]:
         parts.append("COMPOSITION: " + PLACE_FRAG[o["place"]])
+    parts += tg._craft(likeness)   # 해부학·개연성 락 = 썸네일 정본 계승(드리프트 0 · thumb_gen §_craft 260727)
     parts.append(tg._frame(False, likeness).replace("vertical 4:5", aspect_en(o["aspect"])))
     if o["mood"] == "axes":
         _mfr, _ = mood_axes_frag(o["mood_ax"])
@@ -506,6 +507,10 @@ def ask_opus(head, lead, insight, scene, o, free=False):
         lib_lines.append('- 피사체 배치 — COMPOSITION 지시에 포함: "{}"'.format(PLACE_FRAG[o["place"]]))
     lib_rule = "\n".join(lib_lines)
     wish_rule = ("- 운영자 추가 주문(최우선 반영): " + o["wish"]) if o["wish"] else ""
+    # 해부학·개연성 락(260727) = 썸네일 정본 문장을 Claude에게 '그대로 넣어라'로 전달(재작성 = 처방 희석).
+    _craft_lines = tg._craft(likeness)
+    craft_rule = "\n".join('  "{}"'.format(c) for c in _craft_lines)
+    craft_order = ("ANATOMY & PROPS → PLAUSIBILITY → " if len(_craft_lines) > 1 else "PLAUSIBILITY → ")
     ctx = ("[주제 — 운영자 자유 주문(기사 없음 · 이 주문이 장면의 전부다 · 소재를 스스로 결정적 장면으로 구성)]\n"
            + (o["wish"] or ("(주문 없음 — 첨부된 참고 이미지가 장면의 전부다: 렌더 모델에 그 이미지가 함께 전달되니 "
                             "피사체·구도는 레퍼런스에 맡기고 화풍·프레임·품질 지시에 집중하라)"
@@ -535,13 +540,16 @@ def ask_opus(head, lead, insight, scene, o, free=False):
 - 선정성·시신·유혈 클로즈업·미성년 위해 금지. 워터마크·로고 금지.
 - {locale}
 - 한글 무결성 지시는 긍정형 1회만(부정어 반복 강조 금지 — 부정 프라이밍 역효과).
-- 출력 = 영문 프롬프트 본문만, 이 레포 검증 골격의 라벨 블록 구조로: GOVERNING → (문구 있으면 TEXT) → STYLE → SCENE → CAMERA → (포인트 있으면 FOCUS) → LIGHT → MOOD → (배치 있으면 COMPOSITION) → FRAME → AVOID. 각 라벨 한 줄씩. 설명·번호·마크다운·코드블록 금지.""".format(
+- 해부학·개연성 절은 아래 정본 문장을 **그대로** 넣어라(운영자 260727 — 팔·소품이 몸과 안 맞고 상황이 비현실적인 사고의 처방 · 임의 재작성 금지):
+{craft_rule}
+- 출력 = 영문 프롬프트 본문만, 이 레포 검증 골격의 라벨 블록 구조로: GOVERNING → (문구 있으면 TEXT) → STYLE → SCENE → CAMERA → (포인트 있으면 FOCUS) → LIGHT → MOOD → (배치 있으면 COMPOSITION) → {craft_order}FRAME → AVOID. 각 라벨 한 줄씩. 설명·번호·마크다운·코드블록 금지.""".format(
         src=("운영자 자유 주문" if free else "한국 뉴스 기사"), ctx=ctx,
         decisive=("주문의 소재를 즉시 알아보게 하는 결정적 순간 하나" if free else "이 사건을 즉시 알아보게 하는 결정적 순간 하나"),
         locale=("주문에 지역·인물 맥락이 있으면 그대로, 없으면 한국 기준." if free else "국내 사건이면 인물·배경은 한국(명백한 해외 사건이면 실제 지역·인물)."),
         style_ko=STYLE_KO[o["style"]], frag=style_look(o),
         aspect=o["aspect"], aspect_en=aspect_en(o["aspect"]),
-        mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person)
+        mood_rule=mood_rule, lib_rule=lib_rule, text_rule=text_rule, wish_rule=wish_rule, person=person,
+        craft_rule=craft_rule, craft_order=craft_order)
 
     # 연료 방어 체인(운영자 260721) = 모델당 정확히 1콜: Fable 5 → (실패 시) Opus 5 → (그래도 실패) None(결정형 폴백 = 0콜).
     # 재시도 루프 없음 — 쿼터 폴오버(4계정)는 run_claude SSOT 내부 그대로(쿼터일 때만 발동 · 거절·오류는 즉시 다음 단계).
