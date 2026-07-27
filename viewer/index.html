@@ -7335,7 +7335,7 @@ function sysErrMsgs() {
   const hh = (TRENDS && TRENDS.health) || {};
   const st = (hh.subs || {}).stale || [];
   const ph = hh.phone || null, phDead = !!(ph && ph.ok === false);   // ok=false = 폰 파일이 90분 넘게 안 갱신됨(러너가 폰분 채택을 거른 상태)
-  return (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).map(k => {
+  const out = (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).map(k => {
     const head = SYS_PLAT_KO[k] + ' 구독이 안 걷히고 있어요 — ';
     let text;
     if (SYS_PHONE_PLAT[k] && phDead) {
@@ -7355,6 +7355,19 @@ function sysErrMsgs() {
     }
     return { id: 'sys:subs:' + k + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined, text };   // 시간 = epoch(t) 축 = shellUpdMsg 정본 계승 → qAgo 상대시간("5시간 전") · 구 ts 문자열 축은 msgAgo의 `/[+Z]$/` 판정이 "+09:00"의 끝문자 '0'에 걸려 파싱 실패 → 원문 ISO가 시간 칸을 넘쳐 옆 열을 덮던 원인(운영자 260725 스샷)
   });
+  // 레딧(운영자 260727 "이거 못받아올때, 메세지 오게 할 수있나? 지금 만들어진 틀 안에서") — 문법·id·✓축·구분·기어 극보수색 전부 위 계승, 다른 건 **판정 소스 하나**.
+  //   ⚠ 레딧은 계정 축이 아니라 서브레딧 축이라 `health.subs.stale`에 영영 안 잡힌다. `health.reddit`도 못 쓴다 —
+  //     러너는 레딧 게이트가 꺼져 있어(`off:true` 상주) 그 필드는 "러너가 안 함"만 뜻하고, 실제 공급은 폰이다(260727 실측).
+  //   → **데이터 유무로 직접 판정** + 폰이 살아 있을 때만(폰이 죽었으면 폰 알림이 이미 원인을 말하므로 중복 고지 억제).
+  const rddN = ((TRENDS && TRENDS.reddit) || []).length;
+  if (!rddN && ph && ph.ok === true) {
+    out.push({ id: 'sys:src:reddit:' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
+      text: '레딧이 안 걷히고 있어요 — 폰은 도는데 레딧만 0건이에요.\n\n'
+        + '레딧이 자동 수집을 막고 있을 때 이래요(403·429). 서브레딧 목록이나 계정 설정과는 무관해요.\n\n'
+        + '👉 네가 할 일: 없어요. 서버가 다음 수집부터 다른 경로(RSS)로 다시 시도해요. 며칠째 계속 뜨면 그때 알려줘.\n\n'
+        + '확인(✓)하면 오늘은 다시 안 떠요.' });
+  }
+  return out;
 }
 // 인구통계 기준일 밀림(운영자 260726 "채널이나 소셜 요약 위에 항상 동기화 시점이 있고, 그 시점을 못 따라가면 설정에서 경고 하게 되어있거든? 그거에 로직을 붙이면 됨") —
 //   문법·id·✓축·구분 = 바로 위 sysErrMsgs() **그대로**(새 부품·새 데이터·새 UI 0). 다른 건 소스 하나 = 화면이 이미 읽는 audience_sample.as_of(기준일) vs 그 소스의 동기화 시점(generated_kst).
@@ -7527,7 +7540,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '4ed1e2a · 260727_1509';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'e5e464b · 260727_1520';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
