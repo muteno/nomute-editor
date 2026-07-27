@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260727 알림 종류별 색 배합 — 흰/검 알림판 동시</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 템플릿 v1 (운영자 260713 정본 · §플레이그라운드 0-1)
+  ─ 사용법: 이 파일을 docs/reports/{yymmdd}_{라벨}_플레이그라운드.html로 복사한 뒤
+    맨 아래 "CONFIG(세션이 채우는 전부)" 블록만 교체한다.
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 양방향 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 스크롤 보존 · 한글 열맞춤.
+    골격을 손으로 다시 쓰면 위반 = check_refs.check_playground() 게이트(rc=1).
+  ─ 철학(운영자): 완제품을 부품으로 쪼개 미세조정 = 무의미.
+    부품 1개당 "방식 N가지"를 실물로 나란히(변형 갤러리 = 발산) → 선택 → 7축 미세조정(수렴).
+    핵심 7축 = 자간 · 폰트 크기 · 위치 · 불투명도 · 블러 · 라인 · 액티브 효과.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측값의 복사(자기완결 스냅샷 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer :root 실측 사본(값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-modal:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 미리보기 전용: 안드로이드 알림판 근사(세션 교체 영역) ── */
+.npanel{padding:10px 9px 16px}
+.npanel + .npanel{border-top:1px dashed rgba(255,255,255,.12)}
+.plabel{font-size:10.5px;color:var(--pg-mut);margin:0 2px 7px;display:flex;justify-content:space-between}
+.shade{border-radius:16px;padding:8px 7px;display:flex;flex-direction:column;gap:6px}
+.shade.dark{background:#0e1113}
+.shade.light{background:#eef0f3}
+.ncard{display:flex;gap:9px;align-items:flex-start;border-radius:13px;padding:9px 10px}
+.shade.dark  .ncard{background:#1c2023}
+.shade.light .ncard{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.10)}
+.nico{flex:0 0 auto;border-radius:50%;display:grid;place-items:center;overflow:hidden}
+.nico img{display:block;width:100%;height:100%;object-fit:contain}
+.ntx{min-width:0;flex:1}
+.napp{font-size:9.5px;letter-spacing:.01em;display:flex;gap:5px;align-items:center}
+.shade.dark  .napp{color:#9aa39d}
+.shade.light .napp{color:#6b7280}
+.ntitle{font-size:12.5px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shade.dark  .ntitle{color:#eef7f0}
+.shade.light .ntitle{color:#111418}
+.nbody{font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shade.dark  .nbody{color:#b9c2bc}
+.shade.light .nbody{color:#4b5563}
+.swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+/* 갤러리 미니 데모 = 실제와 같은 조립기를 쓴다(문법 단일) */
+.gdemo{display:flex;gap:6px;align-items:center;justify-content:center;padding:4px 0}
+.gdemo img{width:34px;height:34px;display:block}
+.gdemo.on-light{background:#eef0f3;border-radius:9px;padding:4px 6px}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>알림 종류별 <span style="color:var(--pg-accent)">색 배합</span></h1>
+<p class="sub">알림 5종의 로고 색을 고른다. <b>미리보기가 어두운 알림판·흰 알림판을 동시에</b> 보여준다 — 둘 다에서 살아야 채택. 색은 팔레트 폐쇄 셀렉트(자유 hex 없음 · viewer :root 실측 사본). 기본값 = 현행 반영본.</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 배합 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (색 배합 축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 세션이 채우는 전부(아래 샘플을 통째 교체) ═══════════ */
+/* 알림 종류별 색 배합 — 원본 지구본 2장(96px)을 임베드해 캔버스로 실시간 재색칠한다.
+   정본 소스 = assets/brand/icon-notif-{sig,blue}-512-260727.png 의 96px·32색 축소판(자기완결 스냅샷).
+   생성 정본 = shared/build_notif_icons.py — 여기서 고른 값을 그 파일 KINDS/BAND에 넣으면 그대로 재현된다. */
+const SRC_IMG = { sig: 'data:image/png;base64,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', blue: 'data:image/png;base64,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' };
+const PIX = {};                     // 원본 ImageData 캐시(로드 1회 → 이후 재색칠은 전부 동기)
+const CV = document.createElement('canvas'); CV.width = CV.height = 96;
+const CX = CV.getContext('2d');
+
+/* index :root 실측 사본 — 팔레트 폐쇄 셀렉트(자유 hex 금지 · 포터블 §7-2-3) */
+const PAL = [
+  ['#e23b2a', '--danger 빨강'], ['#00EED2', '--accent 터쿼이즈'], ['#FFE13D', '--warn 골드레몬'],
+  ['#0FFD02', '--info 형광그린'], ['#8fa697', '--mut 무채'], ['#FF5EC8', '--cat-cul 네온핑크'],
+  ['#38C6FF', '--cat-pol 스카이시안'], ['#2CF5A5', '--cat-soc 네온민트'], ['#ff7a6b', '--cat-intl 코랄'],
+  ['#AC5CFF', '--cat-tech 네온바이올렛'], ['#3a6ddb', '--bias-l2 블루'], ['#eef7f0', '--fg 화이트'],
+  ['#070a12', '--space-bg 딥네이비'],
+];
+const KINDS = [
+  ['brk', '긴급 속보', 'c_brk'], ['make', '제작 완료', 'c_make'], ['sys', '시스템 경보', 'c_sys'],
+  ['trend', '트렌드', 'c_trend'], ['test', '테스트', 'c_test'],
+];
+const BODY = { brk: '(긴급) 서울 도심 대형 화재 — 탭해서 확인', make: '영상 완성 · 자막 삽입 완료 — 14초',
+  sys: '수집 실패 3건 · 인스타 연결 끊김', trend: '키워드 급상승 — "환율" 1위', test: '웹푸시 연결 정상' };
+
+function hex2hsv(h) {
+  const r = parseInt(h.slice(1, 3), 16) / 255, g = parseInt(h.slice(3, 5), 16) / 255, b = parseInt(h.slice(5, 7), 16) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let hh = 0;
+  if (d) hh = mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? ((b - r) / d + 2) : ((r - g) / d + 4);
+  return [hh * 60, mx ? d / mx : 0, mx];
+}
+function rgb2hsv(r, g, b) { return hex2hsv('#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')); }
+function hsv2rgb(h, s, v) {
+  h = ((h % 360) + 360) % 360; const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+  const t = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return t.map(q => Math.round((q + m) * 255));
+}
+
+/* 재색칠기 — 이 함수 하나가 미리보기·갤러리·양 테마 전부를 만든다(문법 단일). */
+function recolor(theme, hex, s) {
+  const src = PIX[theme]; if (!src) return '';
+  const out = CX.createImageData(96, 96), d = out.data, o = src.data;
+  const [th, tsat] = hex2hsv(hex), mix = s.v.mix, half = +s.a.band / 2;
+  const lowSat = tsat < 0.25;        // 무채 계열(--mut 등)을 고르면 hue 치환이 아니라 **채도를 눌러** 회색으로
+                                     // (생성기 shared/build_notif_icons.py의 desaturate와 같은 규칙 = 미리보기≡실물)
+  const base = theme === 'sig' ? 170 : 205;          // 주색 대역 중심(원본 실측: sig 청록 165~174 / blue 195~240)
+  const subHex = s.a.sub, satK = +s.a.sat, valK = +s.a.val;
+  const [sh, ss2] = hex2hsv(subHex === 'keep' ? '#FFE13D' : subHex === 'same' ? hex : subHex);
+  for (let i = 0; i < o.length; i += 4) {
+    let r = o[i], g = o[i + 1], b = o[i + 2]; const a = o[i + 3];
+    d[i + 3] = a; if (!a) { d[i] = d[i + 1] = d[i + 2] = 0; continue; }
+    let [hh, sat, val] = rgb2hsv(r, g, b);
+    const dist = Math.abs(((hh - base + 540) % 360) - 180);   // 대역 중심과의 각거리
+    const isMain = dist <= half;
+    if (sat < 0.08) { d[i] = r; d[i + 1] = g; d[i + 2] = b; continue; }   // 무채 하이라이트 = 형태 유지
+    if (isMain) {
+      hh = th;
+      if (lowSat) sat = Math.min(sat, tsat);                    // 무채 계열 = 채도 억제(hue 치환만으론 초록이 된다)
+    } else {
+      if (mix === 'hue') { /* 보조색 무접촉 = 시그니처 옐로 유지(현행) */ }
+      else if (mix === 'rot') { hh = hh + (th - base); }         // 함께 회전
+      else if (mix === 'sub') { hh = sh; sat = Math.max(sat, ss2 * 0.9); }   // 보조색 지정
+      else if (mix === 'mut') { sat = Math.min(sat, 0.08); }     // 보조색 무채화
+      else if (mix === 'mono') { hh = th; if (lowSat) sat = Math.min(sat, tsat); }   // 단색 실루엣
+    }
+    sat = Math.max(0, Math.min(1, sat * satK));
+    val = Math.max(0, Math.min(1, val * valK));
+    const [nr, ng, nb] = hsv2rgb(hh, sat, val);
+    d[i] = nr; d[i + 1] = ng; d[i + 2] = nb;
+  }
+  CX.clearRect(0, 0, 96, 96); CX.putImageData(out, 0, 0);
+  if (s.v.plate !== 'none') {                                    // 판 = 글리프 아래로 깔기
+    const tmp = CX.getImageData(0, 0, 96, 96);
+    CX.clearRect(0, 0, 96, 96);
+    CX.globalAlpha = +s.a.plateA; CX.fillStyle = s.a.plate;
+    if (s.v.plate === 'circle') { CX.beginPath(); CX.arc(48, 48, 48, 0, 7); CX.fill(); }
+    else if (s.v.plate === 'squircle') { const r = 26; CX.beginPath(); CX.roundRect(0, 0, 96, 96, r); CX.fill(); }
+    else if (s.v.plate === 'ring') { CX.lineWidth = 6; CX.strokeStyle = s.a.plate; CX.beginPath(); CX.arc(48, 48, 44, 0, 7); CX.stroke(); }
+    CX.globalAlpha = 1;
+    const t2 = document.createElement('canvas'); t2.width = t2.height = 96;
+    t2.getContext('2d').putImageData(tmp, 0, 0);
+    const inset = s.v.plate === 'ring' ? 0 : (96 * (1 - +s.a.fill)) / 2;
+    CX.drawImage(t2, inset, inset, 96 - inset * 2, 96 - inset * 2);
+  }
+  return CV.toDataURL();
+}
+
+function card(kind, label, theme, s) {
+  const hex = s.a[KINDS.find(k => k[0] === kind)[2]];
+  const px = +s.a.size;
+  return '<div class="ncard"><div class="nico" style="width:' + px + 'px;height:' + px + 'px">'
+    + '<img src="' + recolor(theme, hex, s) + '" alt=""></div>'
+    + '<div class="ntx"><div class="napp"><span class="swatch" style="background:' + hex + '"></span>노뮤트 · 지금</div>'
+    + '<div class="ntitle">' + label + '</div><div class="nbody">' + BODY[kind] + '</div></div></div>';
+}
+function shade(theme, s) {
+  return '<div class="shade ' + (theme === 'sig' ? 'dark' : 'light') + '">'
+    + KINDS.map(k => card(k[0], k[1], theme, s)).join('') + '</div>';
+}
+
+const CONFIG = {
+  META: {
+    label: '알림 종류별 색 배합', frame: { w: 300, h: 560 }, ssot: 'viewer/index.html :root',
+    notes: [
+      '<b>흰 알림판이 판정선이다</b> — 어두운 판에서만 예쁜 색은 채택하면 안 된다. 위/아래 두 판에서 동시에 살아야 한다.',
+      '원본 = 정본 아이콘의 96px·32색 축소판을 임베드했다(실제 발송본과 같은 해상도 — 알림에 통째로 실어보내는 크기).',
+      '어두운 판 원본은 청록+옐로 2색, 흰 판 원본은 하늘+남색 2색이다. 「주색」은 각 판의 그 대역을 가리킨다.',
+      '실기기 알림판은 OS·런처 스킨마다 배경·모서리·아이콘 크기가 다르다 — 여기 카드는 근사 재현이다.',
+      '색은 팔레트 폐쇄 셀렉트만 연다(자유 hex 없음) — 값 = viewer :root 실측 사본.',
+      '고른 값은 shared/build_notif_icons.py의 KINDS(색)·BAND(대역)에 넣으면 그대로 재현된다.',
+    ],
+  },
+  GALLERY: [
+    { comp: 'mix', nm: '배합 방식 — 보조색을 어떻게 할 것인가', desc: '카드를 눌러 선택', variants: [
+      { id: 'hue', nm: '보조색 유지', tag: '현행 · 옐로 공통', r: s => gd(s, 'hue') },
+      { id: 'rot', nm: '함께 회전', tag: '2색 관계 보존', r: s => gd(s, 'rot') },
+      { id: 'sub', nm: '보조색 지정', tag: '아래 축에서 선택', r: s => gd(s, 'sub') },
+      { id: 'mut', nm: '보조색 무채', tag: '주색만 튀게', r: s => gd(s, 'mut') },
+      { id: 'mono', nm: '단색 실루엣', tag: '대비 없음', r: s => gd(s, 'mono') },
+    ] },
+    { comp: 'plate', nm: '배경판', desc: '투명이 현행', variants: [
+      { id: 'none', nm: '없음(투명)', tag: '현행', r: s => gd(s, null, 'none') },
+      { id: 'circle', nm: '원판', tag: '알림판 대비 확보', r: s => gd(s, null, 'circle') },
+      { id: 'squircle', nm: '둥근 사각', tag: '안드로이드 관례', r: s => gd(s, null, 'squircle') },
+      { id: 'ring', nm: '링만', tag: '테두리 강조', r: s => gd(s, null, 'ring') },
+    ] },
+  ],
+  AXES: [
+    { k: 'c_brk', nm: '긴급 속보', grp: '종류별 색', type: 'select', pal: PAL, tok: '현행 = --danger(의미축 계승)' },
+    { k: 'c_make', nm: '제작 완료', grp: '종류별 색', type: 'select', pal: PAL, tok: '현행 = --accent · 영상·이미지·노래·보이스·변환·트래킹 공통' },
+    { k: 'c_sys', nm: '시스템 경보', grp: '종류별 색', type: 'select', pal: PAL, tok: '현행 = --warn ⚠ 어두운 판에서 시그니처 옐로와 겹쳐 통짜가 된다' },
+    { k: 'c_trend', nm: '트렌드', grp: '종류별 색', type: 'select', pal: PAL, tok: '현행 = --info' },
+    { k: 'c_test', nm: '테스트', grp: '종류별 색', type: 'select', pal: PAL, tok: '현행 = --mut' },
+    { k: 'sub', nm: '보조색', grp: '배합', type: 'select', tok: '「보조색 지정」 방식일 때만 적용',
+      pal: [['keep', '원본 옐로 유지'], ['same', '주색과 동일'], ['#eef7f0', '--fg 화이트'], ['#8fa697', '--mut 무채'],
+            ['#FFE13D', '--warn 골드레몬'], ['#00EED2', '--accent 터쿼이즈'], ['#070a12', '--space-bg 딥네이비']] },
+    { k: 'band', nm: '주색 대역 폭', grp: '배합', type: 'range', min: 20, max: 200, step: 5, u: '°',
+      tok: '넓힐수록 더 많은 색이 주색으로 끌려온다(현행 110°)', eps: 2 },
+    { k: 'sat', nm: '채도 배율', grp: '배합', type: 'range', min: 0.2, max: 1.6, step: 0.05, u: '×', free: true, tok: '1.00 = 원본 그대로', eps: 0.02 },
+    { k: 'val', nm: '명도 배율', grp: '배합', type: 'range', min: 0.5, max: 1.4, step: 0.05, u: '×', free: true, tok: '흰 알림판에서 너무 밝으면 날아간다', eps: 0.02 },
+    { k: 'plate', nm: '판 색', grp: '배경판', type: 'select', tok: '판을 켠 경우에만 적용',
+      pal: [['#070a12', '--space-bg 딥네이비'], ['#000000', '검정'], ['#eef7f0', '--fg 화이트'], ['#00EED2', '--accent'], ['#8fa697', '--mut']] },
+    { k: 'plateA', nm: '판 불투명도', grp: '배경판', type: 'range', min: 0, max: 1, step: 0.05, u: '', free: true, tok: '같은 토큰 알파 변주 = 자유', eps: 0.02 },
+    { k: 'fill', nm: '글리프 채움률', grp: '배경판', type: 'range', min: 0.5, max: 1, step: 0.02, u: '', tok: '0.78 = 원형 크롭 세이프 실측 · 판이 없으면 1.00', eps: 0.01 },
+    { k: 'size', nm: '아이콘 크기', grp: '표시', type: 'range', min: 28, max: 56, step: 2, u: 'px', tok: '알림판 큰 아이콘 표시 크기(근사)', eps: 1 },
+  ],
+  DEFAULTS: {   // ★ 현행 실측값 = 지금 발송본과 동일(추천값 금지)
+    c_brk: '#e23b2a', c_make: '#00EED2', c_sys: '#FFE13D', c_trend: '#0FFD02', c_test: '#8fa697',
+    sub: 'keep', band: 110, sat: 1, val: 1, plate: '#070a12', plateA: 1, fill: 1, size: 40,
+    v_mix: 'hue', v_plate: 'none',
+  },
+  PRESETS: [
+    { nm: '현행(비교 기준)', st: {} },
+    { nm: '경보를 코랄로(옐로 겹침 해소)', star: 1, st: { c_sys: '#ff7a6b' } },
+    { nm: '보조색 무채 — 주색만 튀게', st: { v_mix: 'mut' } },
+    { nm: '신호등 계열', st: { c_brk: '#e23b2a', c_make: '#2CF5A5', c_sys: '#FFE13D', c_trend: '#38C6FF', c_test: '#8fa697' } },
+    { nm: '고채도 네온', st: { c_brk: '#FF5EC8', c_make: '#00EED2', c_sys: '#AC5CFF', c_trend: '#0FFD02', c_test: '#8fa697', sat: 1.25 } },
+    { nm: '원판 + 딥네이비', st: { v_plate: 'circle', fill: 0.78 } },
+    { nm: '단색 실루엣', st: { v_mix: 'mono' } },
+  ],
+  renderPreview(s) {
+    const st = { v: s.v || state.v, a: s.a || state.a };
+    return '<div class="npanel"><div class="plabel"><span>어두운 알림판(다크 모드)</span><span>icon-notif-*-sig</span></div>'
+      + shade('sig', st) + '</div>'
+      + '<div class="npanel"><div class="plabel"><span>흰 알림판(라이트 모드)</span><span>icon-notif-*-blue</span></div>'
+      + shade('blue', st) + '</div>';
+  },
+};
+/* 갤러리 미니 데모 — 실제와 같은 recolor()를 쓴다(문법 단일). 두 판을 나란히 보여 판정이 한눈에 되게. */
+function gd(s, mixOverride, plateOverride) {
+  const st = { v: Object.assign({}, state.v, mixOverride ? { mix: mixOverride } : {}, plateOverride ? { plate: plateOverride } : {}),
+               a: state.a };
+  const hex = st.a.c_brk;
+  return '<div class="gdemo"><img src="' + recolor('sig', hex, st) + '">'
+    + '<span class="gdemo on-light"><img src="' + recolor('blue', hex, st) + '"></span></div>';
+}
+/* 원본 2장 로드 후 부팅(재색칠은 이후 전부 동기) */
+(function () {
+  let n = 0;
+  ['sig', 'blue'].forEach(k => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 96;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0, 96, 96);
+      PIX[k] = x.getImageData(0, 0, 96, 96);
+      if (++n === 2) boot();
+    };
+    im.src = SRC_IMG[k];
+  });
+})();
+
+</script>
+</body>
+</html>
