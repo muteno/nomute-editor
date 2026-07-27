@@ -1230,7 +1230,17 @@ def check_git_idiom():
       ② 한 줄 다중 pathspec(2개↑) `git add` + 은폐(`2>/dev/null`·`|| true`) 금지 — 처방 = 파일별
          `for f in …; do if [ -e "$f" ]; then git add "$f"; fi; done` 또는 git_land.sh 경유.
          단일 pathspec 은폐 add = 줄별 독립(무산 파급 없음 = 기존 관용구 허용) · 배열 확장(`[@]`) =
-         정적 카운트 불가 스킵(git_land.sh가 실존 필터 보유 정본)."""
+         정적 카운트 불가 스킵(git_land.sh가 실존 필터 보유 정본).
+      ③ 러너 훅 격리 불변식(260728 Q983 추가) — 봇 커밋이 pre-commit(check_refs 전체 게이트)을 타면,
+         *사람 세션이 남긴* 원장 Q번호 중복 하나가 뉴스요약 파이프라인을 죽인다. 실사고 260727 3연속
+         (Q902·Q970): ask.sh가 요약을 다 만들어 `성공 → queue/…md` 까지 찍은 뒤 Commit 스텝의 git commit이
+         훅 rc=1로 거부 → `shell: bash -e` 즉사 → **완성된 다이제스트 통째 유실**, asks/ 원본만 남아 대기열에
+         영구 '실패'. 봉합 = 러너에 훅을 아예 안 붙이기(2겹). 이 축은 그 2겹이 조용히 되돌려지는 것을 막는다:
+           ⓐ `.githooks/pre-commit`에 GITHUB_ACTIONS 가드 존재
+           ⓑ `shared/check_refs.py` 훅 자동활성화에 GITHUB_ACTIONS 제외 존재
+           ⓒ 워크플로·스크립트가 `git config core.hooksPath`를 켜지 않음(러너 재부착 차단)
+         ⚠️ 사람 clone의 훅 강제(260702 원설계)는 무접촉 — CI 축 게이트는 ledger-gate.yml(PR)·
+         check-refs.yml(PR + 원장 push)이 그대로 담당하므로 커버리지 손실 0."""
     import glob as _g
     bad = []
     files = sorted(_g.glob(os.path.join(ROOT, '.github', 'workflows', '*.yml'))
@@ -1261,8 +1271,29 @@ def check_git_idiom():
                     continue
                 if len(toks) >= 2:
                     bad.append('%s:%d 한 줄 다중 pathspec `git add` + 은폐 — 결측 경로 1개면 전체 원자 abort = 스테이징 0 무음(Q980) → 파일별 `if [ -e "$f" ]` add 루프나 git_land.sh로' % (rel, i))
+            if 'git config' in code and 'core.hooksPath' in code:
+                bad.append('%s:%d 러너에서 `git config core.hooksPath` 설정 — 봇 커밋이 pre-commit(check_refs 전량)을 타면 *사람 세션이 남긴* 원장 Q번호 중복 하나가 파이프라인을 죽인다(260727 3연속 · 완성 요약 유실) → 이 줄을 지워라(사람 clone 훅은 check_refs가 자동 활성화)' % (rel, i))
+    # ③ 러너 훅 격리 불변식 — 봉합 2겹이 조용히 사라지면 그 자리에서 rc=1(재발 봉인 · 상세 = docstring ③)
+    # ⚠️ 검출은 **정규식**으로 — 평문 needle을 쓰면 이 게이트 코드 안의 리터럴이 스스로를 만족시켜(self-match)
+    #    정작 진짜 가드가 지워져도 초록으로 통과한다(자기참조 함정).
+    _inv = [
+        ('.githooks/pre-commit', r'GITHUB' + r'_ACTIONS',
+         '봇 커밋 통과 가드가 사라졌다 — `[ -n "$GITHUB_ACTIONS" ] && exit 0` 복원'),
+        ('shared/check_refs.py',
+         r"os\.path\.isdir\(os\.path\.join\(ROOT, '\.githooks'\)\)\s+and\s+not\s+os\.environ\.get\(",
+         '훅 자동활성화의 CI 제외가 사라졌다 — 러너에 hooksPath가 다시 붙는다(파이프라인 커밋이 훅에 걸려 산출물 유실) → 자동활성화 조건에 CI 제외 복원'),
+    ]
+    for rel, pat, fix in _inv:
+        p = os.path.join(ROOT, rel)
+        try:
+            body = open(p, encoding='utf-8').read()
+        except Exception as e:
+            bad.append('%s 읽기 실패 — %s' % (rel, e))
+            continue
+        if not re.search(pat, body):
+            bad.append('%s 러너 훅 격리 불변식 깨짐: %s' % (rel, fix))
     if not bad:
-        print('✅ 봇커밋 git 관용구 게이트 — %d파일 스캔 · pull--rebase %d줄 전부 --autostash · 다중 pathspec 은폐 add 0(Q980 8h 무음유실 재발 차단).' % (len(files), n_pull))
+        print('✅ 봇커밋 git 관용구 게이트 — %d파일 스캔 · pull--rebase %d줄 전부 --autostash · 다중 pathspec 은폐 add 0(Q980 8h 무음유실 재발 차단) · 러너 훅 격리 불변식 3종 생존(Q983 요약 유실 재발 차단).' % (len(files), n_pull))
     return bad
 
 
