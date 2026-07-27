@@ -614,11 +614,51 @@ def _x_syn_tok(tid):
     return ((out or "0") + "." + fs).replace("0", "").replace(".", "")
 
 
+def _x_med_gql(node, depth=0):
+    """GraphQL 노드에서 대표 이미지 1장 — 본문 미디어 → 링크 카드 → 인용 → RT(재귀 ≤2).
+    운영자 260727 "다 사진이나 링크 안에 사진이 있는데 어떤것만 있어" = 인용 트윗 안의 사진이 통째 결측이던 사각(실측:
+    유머저격수 20건 중 이미지 없던 10건 전부 quoted_status_result 안에 photo 보유) · 못 찾으면 "" (fail-soft)."""
+    if not isinstance(node, dict) or depth > 2:
+        return ""
+    leg = node.get("legacy") or {}
+    for m in (((leg.get("extended_entities") or leg.get("entities") or {}).get("media")) or []):
+        if m.get("media_url_https"):
+            return m["media_url_https"]
+    for bv in ((((node.get("card") or {}).get("legacy") or {}).get("binding_values")) or []):   # 링크 카드(요약 이미지) = 본문 미디어 없는 외부 링크 트윗의 유일한 그림
+        if str(bv.get("key") or "").startswith(("photo_image_full_size", "summary_photo_image", "thumbnail_image")):
+            v = ((bv.get("value") or {}).get("image_value") or {}).get("url")
+            if v:
+                return v
+    for k in ("quoted_status_result", "retweeted_status_result"):
+        v = _x_med_gql((node.get(k) or {}).get("result") or {}, depth + 1)
+        if v:
+            return v
+    return ""
+
+
+def _x_med_syn(node, depth=0):
+    """syndication 노드 동형 — mediaDetails/photos → 인용 → 부모(답글) → RT(재귀 ≤2).
+    GraphQL엔 없는 parent(답글이 달린 원글)까지 커버 = 답글 카드도 원글 사진을 얻는다(X 웹 표기와 동일)."""
+    if not isinstance(node, dict) or depth > 2:
+        return ""
+    for m in ((node.get("mediaDetails") or []) + (node.get("photos") or [])):
+        v = (m or {}).get("media_url_https") or (m or {}).get("url")
+        if v:
+            return v
+    for k in ("quoted_tweet", "parent", "retweeted_status"):
+        v = _x_med_syn(node.get(k) or {}, depth + 1)
+        if v:
+            return v
+    return ""
+
+
 def _x_one(tid, gt):
     """트윗 1건 상세 — 닉네임·전문·대표이미지·조회수(운영자 260726 "닉네임·정확한 글·섬네일·조회수").
     주 = GraphQL TweetResultByRestId(게스트 · views.count 유일 공급원 — syndication·RSS엔 조회수가 없다).
     폴백 = cdn.syndication.twimg.com/tweet-result(429 무관 실측 260726 · 조회수만 결측).
+    이미지만 결측이면 GraphQL 성공분이어도 syndication을 한 번 더 태워 thumb만 보충(운영자 260727 — parent는 GraphQL 미제공).
     실패 = {} (호출부가 기존 값 유지)."""
+    got = {}
     if gt:
         try:
             var = json.dumps({"tweetId": str(tid), "withCommunity": False, "includePromotedContent": False, "withVoice": False})
@@ -641,36 +681,43 @@ def _x_one(tid, gt):
             leg = r.get("legacy") or {}
             if leg:
                 usr = (((r.get("core") or {}).get("user_results") or {}).get("result") or {}).get("legacy") or {}
-                med = ((leg.get("extended_entities") or leg.get("entities") or {}).get("media")) or []
                 txt = ((r.get("note_tweet") or {}).get("note_tweet_results") or {}).get("result", {}).get("text") or leg.get("full_text") or ""
-                return {"name": usr.get("name") or "", "text": _x_body(txt, leg.get("display_text_range")),
-                        "thumb": (med[0].get("media_url_https") if med else "") or "",
-                        "views": _i(((r.get("views") or {}).get("count"))),
-                        "likes": _i(leg.get("favorite_count")), "rts": _i(leg.get("retweet_count")), "cmts": _i(leg.get("reply_count"))}
+                got = {"name": usr.get("name") or "", "text": _x_body(txt, leg.get("display_text_range")),
+                       "thumb": _x_med_gql(r),
+                       "views": _i(((r.get("views") or {}).get("count"))),
+                       "likes": _i(leg.get("favorite_count")), "rts": _i(leg.get("retweet_count")), "cmts": _i(leg.get("reply_count"))}
+                if got["thumb"]:
+                    return got
         except Exception as e:  # noqa: BLE001
             print(f"::warning::x gql {tid}: {e}", file=sys.stderr)
-    try:   # 폴백 = 임베드 신디케이션(조회수 없음 · 나머지 3값은 동일 품질)
+    try:   # 폴백 = 임베드 신디케이션(조회수 없음 · 나머지 3값은 동일 품질) · GraphQL 성공+이미지만 결측이면 thumb만 취한다
         u = "https://cdn.syndication.twimg.com/tweet-result?id=%s&lang=ko&token=%s" % (tid, _x_syn_tok(tid))
         d = json.loads(_get(u, timeout=12))
-        med = d.get("mediaDetails") or []
-        return {"name": (d.get("user") or {}).get("name") or "",
-                "text": _x_body(d.get("text") or "", d.get("display_text_range")),
-                "thumb": (med[0].get("media_url_https") if med else "") or "",
-                "views": 0, "likes": _i(d.get("favorite_count")), "rts": 0, "cmts": _i(d.get("conversation_count"))}
+        syn = {"name": (d.get("user") or {}).get("name") or "",
+               "text": _x_body(d.get("text") or "", d.get("display_text_range")),
+               "thumb": _x_med_syn(d),
+               "views": 0, "likes": _i(d.get("favorite_count")), "rts": 0, "cmts": _i(d.get("conversation_count"))}
+        if got:
+            got["thumb"] = syn["thumb"]   # 나머지 값은 GraphQL(조회수 유일 공급원)이 우선
+            return got
+        return syn
     except Exception as e:  # noqa: BLE001
         print(f"::warning::x syn {tid}: {e}", file=sys.stderr)
-    return {}
+    return got or {}
 
 
 def _x_body(txt, rng):
     """본문 = display_text_range 안쪽만(끝의 미디어 t.co = 카드 썸네일로 대체되니 잘라낸다 · X 웹 표기와 동일).
-    range 결측·비정상 = 원문 그대로(fail-soft) · 상한 280은 호출부 규약 계승."""
+    range 결측·비정상 = 원문 그대로(fail-soft) · 상한 280은 호출부 규약 계승.
+    본문에 남은 t.co 단축 URL은 제거(운영자 260727 "url 줄임 있는데 저거 없애주셈") — 표시할 수 없는 난수 문자열이라
+    카드에서 한 줄을 통째 잡아먹고 정보값 0(그림은 thumb·클릭은 카드 전체 링크가 이미 담당) · t.co만 제거 = 외부 도메인 링크는 보존."""
     s = str(txt or "")
     if isinstance(rng, list) and len(rng) == 2 and all(isinstance(v, int) for v in rng):
         cp = [c for c in s]   # 인덱스 = 코드포인트 기준(X 규약) — 파이썬 str 슬라이스와 동일 단위
         if 0 <= rng[0] < rng[1] <= len(cp):
             s = "".join(cp[rng[0]:rng[1]])
-    return s.strip()[:280]
+    s = re.sub(r"\s*https?://t\.co/\w+", "", s)
+    return re.sub(r"\n{3,}", "\n\n", s).strip()[:280]
 
 
 def x_enrich(items, deadline=None, gap=0.3):
@@ -1072,7 +1119,7 @@ _RD_UA = "nomute-editor/1.0 (news curation; +https://nomute-editor.pages.dev)"  
 def _reddit_rss(sr, per):
     """레딧 RSS 폴백 — `.json`이 막힐 때의 유일한 열린 문(260727 실측: {크롬UA·봇UA·old.reddit} × .json = 전부 403 ·
     **RSS + 봇UA = 200**. 폰 가정 IP에서도 .json 403이 상주해 레딧이 며칠째 0건이던 원인).
-    ⚠ RSS엔 score·댓글수·stickied·썸네일이 **없다** → 지표 0으로 두고(뷰어가 `score ? … : ''`라 0 = 미표기 = 무수정 호환),
+    ⚠ RSS엔 score·댓글수·stickied가 **없다** → 지표 0으로 두고(뷰어가 `score ? … : ''`라 0 = 미표기 = 무수정 호환),
       순서는 hot 그대로 보존(호출부 sorted가 안정 정렬이라 동점이면 원순서 유지) · 공지는 플래그가 없어
       **7일 초과분 컷**으로 대신 거른다(hot 상단에 7일 넘은 글 = 사실상 고정 공지)."""
     x = urllib.request.urlopen(urllib.request.Request(
@@ -1086,6 +1133,8 @@ def _reddit_rss(sr, per):
         ml = re.search(r'<link[^>]*href="([^"]+)"', b)
         mi = re.search(r"<id>(?:t3_)?([^<]+)</id>", b)
         mu = re.search(r"<updated>([^<]+)</updated>", b)
+        mth = re.search(r'<media:thumbnail\s+url="([^"]+)"', b)   # 썸네일(260727 실측 = RSS에도 있다) — preview.redd.it 640px(?width=640&crop=smart&auto=webp) · .json thumbnail 필드와 동급 · 텍스트 글은 태그 자체가 없어 자연 결측 = ""
+        mcat = re.search(r'<category\s+term="([^"]+)"', b)        # 실제 서브레딧(260727) — r/popular 피드의 글은 저마다 다른 서브 소속인데 종전엔 요청한 sr('popular')을 그대로 박아 화면이 전부 "[r/popular]"였다
         if not (mt and ml):
             continue
         ts = 0
@@ -1096,13 +1145,14 @@ def _reddit_rss(sr, per):
                 ts = 0
         if ts and (now - ts) > 7 * 86400:
             continue   # stickied 대체 컷(공지 = 상단 고정인데 날짜가 아주 오래됐다)
-        out.append({"sub": sr, "title": _h.unescape(mt.group(1)).strip()[:200],
-                    "score": 0, "cmts": 0, "thumb": "", "time": ts,
+        th = _h.unescape(mth.group(1)) if mth else ""
+        out.append({"sub": (mcat.group(1) if mcat else sr), "title": _h.unescape(mt.group(1)).strip()[:200],
+                    "score": 0, "cmts": 0, "thumb": th if th.startswith("http") else "", "time": ts,
                     "url": _h.unescape(ml.group(1)), "_id": (mi.group(1) if mi else ml.group(1))})
     return out
 
 
-def reddit_hot(subreddits, limit=12, per=8):
+def reddit_hot(subreddits, limit=15, per=12):   # per 8→12 · limit 12→15(운영자 260727 "10개까지 뜨게") — 뷰어 표시 상한이 10인데 per=8이면 7일컷·dedup·3일컷을 지나 10칸이 애초에 안 찬다(실측 260727 = 8건 상주). 여유분 = 컷 통과 후에도 10칸 보장용
     """⑥ 레딧 서브레딧 핫 — 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음").
     서브레딧별 fail-soft·콜 간 2s · sticky(공지)·NSFW 컷 · 교차 dedup. 정렬 = 스코어.
     ⚠️ 러너 데이터센터 IP 403/429 가능 — §📰-e 카나리아가 판정(실패 = [] = 직전분 보존).
@@ -1116,12 +1166,13 @@ def reddit_hot(subreddits, limit=12, per=8):
             try:
                 j = json.loads(_get("https://www.reddit.com/r/%s/hot.json?limit=%d&raw_json=1" % (urllib.parse.quote(sr), per)))
             except Exception as e1:  # noqa: BLE001 — .json 차단 = RSS로 건진다(둘 다 실패면 아래 except가 스킵)
+                n0 = len(out)   # 이번 서브가 실제로 보탠 건수 = 증분(260727: sub 필드가 '요청한 서브'에서 '글의 실제 서브'로 바뀌어 `o['sub']==sr` 집계는 상시 0을 찍는다 — 로그가 거짓말하던 것 봉합)
                 for it in _reddit_rss(sr, per):
                     if it["_id"] in seen:
                         continue
                     seen.add(it.pop("_id"))
                     out.append(it)
-                print(f"::notice::reddit r/{sr} .json 차단({type(e1).__name__}) → RSS 폴백 {len([o for o in out if o['sub'] == sr])}건", file=sys.stderr)
+                print(f"::notice::reddit r/{sr} .json 차단({type(e1).__name__}) → RSS 폴백 {len(out) - n0}건", file=sys.stderr)
                 time.sleep(2)   # 폴백 런은 서브레딧당 2콜(.json 실패 + RSS) = 종전 2s로는 촘촘 → 추가 유예(260727 실측: 3서브 중 3번째가 429)
                 continue
             for c in ((j.get("data") or {}).get("children") or []):

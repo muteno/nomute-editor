@@ -16,7 +16,7 @@ source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과�
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 source "$ROOT/shared/summary_repair.sh"    # 분량 가드 SSOT — IG/Thread 과소 시 1회 보강(기본 OFF·SUMMARY_LEN_GUARD='1' · 260705)
 INLINE_TRIES=4   # 인라인 재시도 = 4계정 폴오버 체인 깊이(서브3까지 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124)·버스트 ✨요약요청 유실 차단(analyze와 동일·260622·4계정 3→4)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+EFFORT="${PIPE_SEARCH_EFFORT:-medium}"   # 검색·요약 추론깊이 — opus5 는 medium 도 구세대 high급 품질에 지연·토큰 대폭 절감(요약 단축 축 · 운영자 260727 일괄 하향, 구 high=260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(high).
 ASK_TIMEOUT="${ASK_TIMEOUT:-600}"      # claude -p 타임아웃(초) — 요약요청은 요약만이라 10분이면 충분(검색완화 후). 초과 시 계정 1회 전환 후 격리(운영자 260704 "10분 넘으면 다른 계정" · 옛 900s는 배치 timeout 시 45분→워크플로 초과라 하향).
 ASK_JOB_DEADLINE="${ASK_JOB_DEADLINE:-2200}"   # 스크립트 SECONDS 이 초 넘으면 새 요약요청 처리 시작 안 함(잔여 잔류→다음 런) — 과부하 다건 타임아웃이 잡 timeout(60분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 60분 - 셋업 - 다음기사 최악 2×600s).
 GVER="$(guidelines_version summary)"
@@ -89,25 +89,32 @@ for f in "${files[@]}"; do
   workdir="$(mktemp -d)"
   text="$(python3 -c "import json; print(json.load(open('$f')).get('text',''))" 2>/dev/null || true)"
   nothumb="$(python3 -c "import json; print('1' if json.load(open('$f')).get('nothumb') in (1,'1',True) else '')" 2>/dev/null || true)"   # 뷰어 '이미지' 토글 OFF → 제미나이 썸네일 생성 skip(검색 og:image는 항상·운영자 260702)
-  # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 우선 · mj=주요 언론 기반) → 프롬프트 조건 블록.
+  # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 우선 · mj=주요 언론 기반 · og=원본 한정[260727·기본 소등]) → 프롬프트 조건 블록.
   #   미지정·전OFF(구 asks 포함) = 빈 블록 = 종전 동작 그대로. 블록 위치 = 고정부([★] 모드) 뒤·가변부(요청) 앞 = 캐시 prefix 불변.
   pres="$(python3 -c "
 import json
 p = (json.load(open('$f')).get('preset') or {})
-print(''.join(k for k in ('h24','fp','mj') if p.get(k) in (1,'1',True)))
+print(''.join(k for k in ('h24','fp','mj','og') if p.get(k) in (1,'1',True)))
 " 2>/dev/null || true)"
   PRESET_BLOCK=""
   if [ -n "$pres" ]; then
     PRESET_BLOCK="[⚙ 수집 프리셋 — 운영자가 요청 창에서 켠 수집 조건(ON만 나열). ⚠️ 위 1)의 전문 규칙이 항상 우선 — 요청문에 기사 본문급 전문이 있으면 추가 검색 없이 그 전문으로 큐레이션하고 이 프리셋 검색 조건은 무시한다(image_sources 예외만 유지). 검색이 필요한 요청(토픽·캡처·URL)에 적용:
 "
+    case "$pres" in *og*) PRESET_BLOCK="${PRESET_BLOCK} - 🔒 원본 한정(운영자 260727 · 이 항목이 켜져 있으면 아래 다른 수집 조건보다 **항상 우선**): **운영자가 이 요청문에 직접 준 원본 안에서만 큐레이션하라** — 원본 = 요청문에 붙여넣은 전문 + 요청문에 적힌 URL + 첨부 캡처, 그게 전부다. 다른 기사·자료를 WebSearch로 찾지 마라(URL이 적혀 있으면 그 URL만 WebFetch로 열어 원문으로 삼고, 거기서 더 뻗어나가지 않는다). 원본에 없는 사실·수치·인용·배경은 **지어내지 말고 쓰지 마라** — 정보가 얇으면 얇은 대로 원본 범위 안에서 best-effort로 완성한다(분량을 채우려고 외부 지식·추측으로 늘리는 것 금지 · 그래도 실패(ANALYSIS_FAILED) 금지 원칙은 불변). 아래 24시간 이내·외신·주요 언론 조건이 함께 켜져 있어도 **그 조건들이 요구하는 추가 검색은 수행하지 마라**(원본 한정이 이긴다 — 그 조건들은 원본을 고르는 취향이지 원본을 넘어설 권한이 아니다). 예외는 frontmatter image_sources 한 필드뿐 — 위 1)의 image_sources 규칙 그대로 소스 URL 2~3개까지 best-effort 검색해 채운다(뷰어 '검색 이미지'의 유일한 원료라 비우면 관련 이미지 0장 · 본문 내용은 여전히 원본에서만 온다).
+";; esac
     case "$pres" in *h24*) PRESET_BLOCK="${PRESET_BLOCK} - ⏱ 24시간 이내: 검색 수집·인용 후보 = 게시 24시간 이내 기사만(위 '18시간 우선' 규칙을 이 24시간 하드 창으로 대체 — 24시간 밖 기사는 소스로 쓰지 마라). 24시간 내 보도가 전무할 때만 가장 최근 보도로 best-effort(억지 최신화·날짜 조작 금지 · 실패 금지 원칙 유지). 운영자가 직접 준 URL은 오래됐어도 존중(종전 규칙).
 ";; esac
     case "$pres" in *fp*) PRESET_BLOCK="${PRESET_BLOCK} - 🌐 외신 기사: '외신만'이 아니라 **외신을 먼저·주로 탐색하라** — 주제 핵심을 영문 키워드로 옮겨 영어 WebSearch부터 시작한다(Reuters·AP·AFP·BBC·CNN·NYT·Bloomberg·Guardian 등 국제 통신사·주요 외신 우선). 외신에서 사실이 충분히 확보되면 그걸 축으로 삼고, 국내 보도는 교차확인·국내 맥락 보조로만 쓴다.
 ";; esac
     case "$pres" in *mj*) PRESET_BLOCK="${PRESET_BLOCK} - 📰 주요 언론 기반: 단일 기사 요약이 아니라 **주요 언론 2~4곳의 보도를 수집·교차 검증해**, 먼저 2,000자 가까운 보도형 종합 자료를 내부적으로 구성하라 — 기·승 = 사실을 기반으로 한 사건의 발단·전개 / 전 = 사건의 결말(현재 상태) / 결 = 시사점이 확실한 구조. 그 종합 자료를 이 요약의 원문 소스로 삼아 위 출력 포맷 그대로 큐레이션한다(출력 포맷·분량 규칙 불변 — 종합 자료 자체를 그대로 출력하지 마라 · frontmatter url = 수집 매체 중 실제 확인한 가장 메이저한 기사 URL). 운영자가 URL을 준 요청이면 그 기사가 축(url 그대로)이고 타 매체는 교차확인용.
 ";; esac
-    PRESET_BLOCK="${PRESET_BLOCK} - 검색 상한 완화: 이 프리셋 이행에 한해 WebSearch 총 6회까지 허용(외신 영문 검색 + 국내 교차 포함 — 위 '최대 2~3회' 제한의 프리셋 예외). 그래도 타임아웃 방지가 항상 우선 — 상한 내 확보된 것만으로 best-effort 완성하라(무한 검색 금지 불변).]
-"
+    # 검색 상한 완화 = 검색을 *하는* 프리셋(h24·fp·mj)이 켜졌을 때만. 원본 한정만 켜진 요청은 검색 자체가 금지라 이 줄이 모순 → 블록을 바로 닫는다(운영자 260727).
+    case "$pres" in
+      *h24*|*fp*|*mj*) PRESET_BLOCK="${PRESET_BLOCK} - 검색 상한 완화: 이 프리셋 이행에 한해 WebSearch 총 6회까지 허용(외신 영문 검색 + 국내 교차 포함 — 위 '최대 2~3회' 제한의 프리셋 예외). 그래도 타임아웃 방지가 항상 우선 — 상한 내 확보된 것만으로 best-effort 완성하라(무한 검색 금지 불변).]
+" ;;
+      *) PRESET_BLOCK="${PRESET_BLOCK}]
+" ;;
+    esac
   fi
   python3 - "$f" "$workdir" <<'PY' 2>/dev/null || true
 import json, sys, base64, re
