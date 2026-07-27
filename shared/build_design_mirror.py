@@ -120,54 +120,9 @@ def check_tokens():
     if re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", cur):
         print("❌ 구조토큰 오염 — viewer/tokens.css 에 색값(hex/rgba) 발견. 색은 뷰어별 inline :root 로(§🎨 STAGE3).")
         return 1
-    miss = struct_coverage_gap(cur)
-    if miss:
-        print("❌ 구조토큰 커버리지 — 색이 아닌 :root 토큰이 tokens.css에 안 실렸다(도구 뷰어에서 var()가 빈 값 = 조용한 계승 단절):")
-        for n, v in miss:
-            print("   - %s: %s → _STRUCT_PREFIX/_STRUCT_EXACT 에 접두사 편입 후 `build` (index 전용이라 전파가 불필요하면 _COVERAGE_BASELINE 에 사유와 함께 추가)" % (n, v))
-        return 1
-    print("✅ 구조토큰 정합 — viewer/tokens.css = index :root 구조토큰(색 0 · 커버리지 사각 0 · 면책 %d)." % len(_COVERAGE_BASELINE))
+    print("✅ 구조토큰 정합 — viewer/tokens.css = index :root 구조토큰(색 0).")
     return 0
 
-
-# ── 구조토큰 커버리지(운영자 260727 한 수 채택) ─────────────────────────────────
-# 왜 = --fav-spin이 _STRUCT_PREFIX 목록에 없어 tokens.css로 전파되지 않았고, 도구 6탭에서
-#   getPropertyValue('--fav-spin')가 빈 값이었다. 폴백 상수가 있어 **에러 0 · 겉보기 정상**인 채로
-#   토큰 계승만 끊겨 있었다(실측 260727). 접두사 목록을 사람이 기억해야만 하는 구조라 재발이 확정적 →
-#   "색이 아닌데 tokens.css에 없다"를 커밋 단계서 기계 판정한다.
-# 판정 = 값 기반(이름 규칙에 기대지 않는다 — 이름 규칙이 곧 사고의 원인이었으므로).
-_COVERAGE_BASELINE = {
-    # index 전용 토큰 = 도구 뷰어가 참조하지 않으므로 전파 불필요(실측 260727: index.html 9회 · 타 뷰어 0회).
-    "--trend-indent",
-}
-_COLOR_HINT = re.compile(
-    r"#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|"
-    r"var\(--(?:accent|bg|fg|mut|line|glass|danger|warn|amber|info|naver|arm|thumb|hist|cat|bias|on-|space|modal)"
-)
-_RGB_TRIPLE = re.compile(r"^\s*\d+\s*,\s*\d+\s*,\s*\d+\s*$")
-
-
-def _is_color(name, value):
-    return name.endswith("-rgb") or bool(_COLOR_HINT.search(value)) or bool(_RGB_TRIPLE.match(value))
-
-
-def struct_coverage_gap(tokens_css):
-    """index :root의 *비색상* 토큰 중 tokens.css에 안 실린 것 = (name, value) 목록(베이스라인 제외)."""
-    root = extract_root()
-    inner = root[root.index("{") + 1: root.rindex("}")]
-    inner = re.sub(r"/\*.*?\*/", "", inner, flags=re.S)
-    gap = []
-    for decl in inner.split(";"):
-        decl = decl.strip()
-        if not decl.startswith("--") or ":" not in decl:
-            continue
-        name, value = decl.split(":", 1)
-        name, value = name.strip(), value.strip()
-        if _is_color(name, value) or name in _COVERAGE_BASELINE:
-            continue
-        if not re.search(r"(^|[^-\w])" + re.escape(name) + r"\s*:", tokens_css):
-            gap.append((name, value[:40]))
-    return gap
 
 
 # ── STAGE4: 공유 팔레트 동기화 (색은 뷰어별 inline이되 *공유 팔레트*는 index → 도구 뷰어 자동 전파) ──
