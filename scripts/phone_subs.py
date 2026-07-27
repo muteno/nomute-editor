@@ -10,13 +10,92 @@
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scraper"))
 import sns_trends as st  # noqa: E402
 
+# ── 인스타 429 지수 백오프(운영자 260727) ─────────────────────────────────────────
+# 판례: 쿠키 주입 성공(길이 266·401 아님) 후에도 **첫 계정부터 429가 8연속**. 인스타 IP 리밋은
+#   두드릴 때마다 **갱신**되므로 30분 크론이 계속 때리면 영영 안 풀리는 자해 루프였다(로그 실측).
+#   → 429를 맞으면 그 시각부터 일정 시간 인스타 호출 자체를 건너뛴다 = IP에 회복할 틈을 준다.
+#   연속 실패마다 6h → 12h → 24h(상한)로 늘리고, 한 번 성공하면 카운터를 지워 즉시 정상 주기 복귀.
+# ── 요청량 축소(운영자 260727 "인스타 주기를 1시간 30분 해도됨") ──────────────────────
+# 진단 갱신: **LTE로 IP를 바꿔도 429** = IP축이 아니라 **계정·세션 단위 리밋**. 원인은 요청량 —
+#   30분 × 20계정 = 하루 약 960회. 사람이 남의 프로필을 하루 960번 열 리 없으니 자동화로 찍힌다.
+#   ⓐ 주기 90분(운영자 승인) + ⓑ 한 런에 5계정씩 **회전** → 하루 약 80회(-92%) · 20계정 한 바퀴 = 6시간.
+# ⚠ 회전은 **누적 병합이 없으면 데이터를 오히려 줄인다**(매 런 5건만 남고 나머지 15계정분 증발) →
+#   직전 산출물에서 이번 배치 계정분만 걷어내고 새로 붙인다. 뷰어의 3일 컷(cut3d)이 낡은 건 알아서 거른다.
+# 상태 = 폰 로컬 JSON(git 밖 · {until,cnt,last,off}) · 삭제 = 전체 초기화(즉시 재시도). 구 "until count"
+#   평문 형식도 읽어 계승(마이그레이션 무중단). 인스타 축에만 적용 — 다른 소스는 종전대로 매 런.
+_CD_PATH = os.path.expanduser("~/.nomute_insta_cooldown")
+_CD_STEPS = (6 * 3600, 12 * 3600, 24 * 3600)
+_GAP = float(os.environ.get("INSTA_MIN_GAP_MIN", "90")) * 60   # 최소 간격(분) — 크론은 30분이라 3런 중 1런만 실제 수집
+_BATCH = int(os.environ.get("INSTA_BATCH", "5"))               # 한 런에 도는 계정 수(0 이하 = 회전 끔 = 전량)
+
+
+def _st_read():
+    """{until, cnt, last, off} — JSON 우선, 구 평문("until cnt")도 계승. 파손·부재 = 전부 0(fail-open)."""
+    try:
+        raw = open(_CD_PATH, encoding="utf-8").read().strip()
+        if raw.startswith("{"):
+            d = json.loads(raw)
+            return float(d.get("until") or 0), int(d.get("cnt") or 0), float(d.get("last") or 0), int(d.get("off") or 0)
+        a, b = raw.split()
+        return float(a), int(b), 0.0, 0
+    except Exception:  # noqa: BLE001
+        return 0.0, 0, 0.0, 0
+
+
+def _st_write(until, cnt, last, off):
+    try:
+        json.dump({"until": until, "cnt": cnt, "last": last, "off": off},
+                  open(_CD_PATH, "w", encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001 — 기록 실패 = 다음 런 재시도(종전 동작)
+        print(f"::warning::insta 상태 기록 실패({type(e).__name__}) — 다음 런 재시도", file=sys.stderr)
+
+
+def _insta_collect(accounts, prev_items):
+    """쿨다운·주기·회전을 통과한 배치만 수집하고, 직전 산출물과 병합해 돌려준다."""
+    until, cnt, last, off = _st_read()
+    now = time.time()
+    if now < until:
+        print("::notice::insta 429 쿨다운 중 — %.1fh 남음(연속 %d회 · 두드릴수록 리밋이 갱신돼 회복이 늦어진다)"
+              % ((until - now) / 3600, cnt), file=sys.stderr)
+        return prev_items
+    if last and (now - last) < _GAP:
+        print("::notice::insta 주기 대기 — %.0f분 남음(최소 간격 %.0f분 · 계정 리밋 회피)"
+              % ((_GAP - (now - last)) / 60, _GAP / 60), file=sys.stderr)
+        return prev_items
+    accounts = list(accounts or [])
+    if not accounts:
+        return prev_items
+    batch = accounts if _BATCH <= 0 else [accounts[(off + i) % len(accounts)] for i in range(min(_BATCH, len(accounts)))]
+    st.INSTA_429 = False
+    got = st.insta_subs(batch, limit=20)
+    if getattr(st, "INSTA_429", False):
+        cnt = min(cnt + 1, len(_CD_STEPS))
+        wait = _CD_STEPS[cnt - 1]
+        _st_write(now + wait, cnt, last, off)   # 실패 배치는 off를 안 넘김 = 다음에 같은 계정부터 재시도
+        print("::warning::insta 429 → %.0fh 쿨다운(연속 %d회 · 해제 = rm %s)" % (wait / 3600, cnt, _CD_PATH), file=sys.stderr)
+        return prev_items
+    nxt = (off + len(batch)) % len(accounts)
+    _st_write(0, 0, now, nxt)   # 성공 = 백오프 초기화 + 회전 전진
+    done = {a.lower().lstrip("@") for a in batch}
+    kept = [it for it in (prev_items or []) if (it.get("account") or "").lower().lstrip("@") not in done]
+    print("::notice::insta 배치 %d계정(%d/%d 지점) 수집 %d건 · 이월 %d건"
+          % (len(batch), off, len(accounts), len(got), len(kept)), file=sys.stderr)
+    return kept + got
+
+
 acc, reg = st._load_accounts()
 _tk_kr, _tk_gl = st._region_split("tiktok", acc, reg)   # 틱톡 지역분리(러너 _rsubs 동일 정본) — KR 독립 top-N = 큐레이션 한국 굶김 방지(운영자 260719 봉인)
-out = {"x": st.x_subs(acc["x"], limit=20), "insta": st.insta_subs(acc["insta"], limit=20),
+P = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer", "sns_subs_phone.json")
+try:   # 직전 산출물 = 인스타 회전 병합의 이월분(다른 축은 종전대로 매 런 전량 재수집이라 미사용)
+    _prev_insta = (json.load(open(P, encoding="utf-8")) or {}).get("insta") or []
+except Exception:  # noqa: BLE001 — 최초 실행·파손 = 이월 없음(fail-open)
+    _prev_insta = []
+out = {"x": st.x_subs(acc["x"], limit=20), "insta": _insta_collect(acc["insta"], _prev_insta),
        # ⑯ x_search(가계정 X 검색) 폰 배선 제거 — adaptive.json 폐지 확정(빈 응답 실측 260723) + main() 미소비 = 데드콜. x_search 함수는 sns_trends.py에 dormant 존치(break-glass · env X_AUTH_TOKEN/X_CT0 보존) · 홈IP 밴 리스크 상환 · 딥링크(x.com/search)가 값 커버 · 평의회 260723 #3
        "threads": st.threads_subs(acc["threads"], limit=20),   # ⑧ 스레드(운영자 260712) — 계정 미등록 = [] no-op
        "tiktok": st.tiktok_subs(_tk_kr, limit=12) + st.tiktok_subs(_tk_gl, limit=12),   # 틱톡 구독(운영자 260721) — 러너 데센 IP가 tikwm /user/posts에 HTTP 403(WAF IP블록 실측 run 29800229859) → 가정 IP가 주 공급 · 지역별 독립 top-12(KR 먼저 = 큐레이션 한국 채움)
@@ -26,6 +105,5 @@ for k in ("x", "insta", "threads", "tiktok"):   # 지역 도장 = 러너 수집�
     for it in out[k]:
         it["region"] = reg.get(k, {}).get((it.get("account") or "").lower(), "gl")
 out["updated"] = st.datetime.now(st.KST).isoformat()   # KST(§📐 — 소비측 신선도 판정 기준)
-p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "viewer", "sns_subs_phone.json")
-json.dump(out, open(p, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
+json.dump(out, open(P, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
 print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · tiktok {len(out['tiktok'])}건 · reddit {len(out['reddit'])}건 · 재난 {len(out['disaster'])}건")
