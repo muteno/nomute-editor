@@ -50,7 +50,7 @@ push_main() {
   # news-analyze와 동일 전략: -X theirs(이 run의 산출물 우선), 충돌 시 abort 후 재시도
   for i in 0 1 2 3 4; do
     [ "$i" -gt 0 ] && sleep $((2**i))
-    git pull --rebase -X theirs origin main && git push origin HEAD:main && return 0
+    git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main && return 0
     git rebase --abort 2>/dev/null || true
   done
   return 1

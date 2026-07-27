@@ -62,7 +62,7 @@ jobs:
           git diff --cached --quiet && { echo "산출 없음(no-op)"; exit 0; }
           git commit -m "resize: 비율 재구성 산출 (${{ inputs.id }})"
           for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
+            git pull --rebase --autostash -X ours origin main || echo "::warning::pull--rebase 실패(사유 = 위 로그) — 재시도 계속"
             # resize.json 유실 봉합 — rebase -X ours(원격 승) 시 신규 항목 드랍 → /tmp 임시본 재병합(imggen.yml 계승)
             if [ -f /tmp/resize_new.json ]; then
               python3 -c 'import json,os;p="viewer/gen_out/resize.json";new=json.load(open("/tmp/resize_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
