@@ -169,7 +169,7 @@ def _new_dead_tokens(rel='viewer/index.html'):
 # 명시 면제(암묵 사각 금지 · Q165 §4 스코프 결정): viewer/tokens.html = 자체 :root 독립(index 주석
 #   '자체 :root라 무관' 명시 · 내부 데이터뷰) · viewer/enneagram/* = 자기완결 이식 앱(자체 팔레트·README)
 #   — baseline 강제 = 팔레트 예외 침해라 게이트 제외. 재편입 = 운영자 지시로만.
-VIEWERS_ALL = ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html')
+VIEWERS_ALL = ('viewer/index.html', 'viewer/thumb.html', 'viewer/ly.html', 'viewer/k.html', 'viewer/track.html', 'viewer/conv.html', 'viewer/edit.html', 'viewer/song.html', 'viewer/nb.html', 'viewer/sb.html', 'viewer/lucy.html')
 VIEWERS_TOOLS = tuple(v for v in VIEWERS_ALL if v != 'viewer/index.html')   # index 제외 게이트용(index = 값 SSOT 본체)
 
 # 머지 가산·복붙 중복 등으로 viewer 인라인 <script>에 SyntaxError(예: let 재선언)가 들어가면
