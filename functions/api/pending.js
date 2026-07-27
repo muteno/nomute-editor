@@ -178,12 +178,12 @@ export async function onRequestGet({ env }) {
   return json({ items, now });
 }
 
-// 수집 프리셋(Q491 스트립 · h24=24시간 이내/fp=외신 우선/mj=주요 언론 기반) — 켜진 키만 1로 정규화 · 전부 꺼짐/무필드(구 asks) = null(뷰어 미표기 · Q495 "프리셋 적용된 것에만 표기").
+// 수집 프리셋(Q491 스트립 · h24=24시간 이내/fp=외신 우선/mj=주요 언론 기반/og=원본 한정) — 켜진 키만 1로 정규화 · 전부 꺼짐/무필드(구 asks) = null(뷰어 미표기 · Q495 "프리셋 적용된 것에만 표기").
 function askPreset(j) {
   const p = (j && typeof j.preset === 'object' && j.preset) || null;
   if (!p) return null;
   const o = {};
-  for (const k of ['h24', 'fp', 'mj']) if (p[k] === 1 || p[k] === '1' || p[k] === true) o[k] = 1;
+  for (const k of ['h24', 'fp', 'mj', 'og']) if (p[k] === 1 || p[k] === '1' || p[k] === true) o[k] = 1;
   return Object.keys(o).length ? o : null;
 }
 // ask 파일명 = submit.js `toISOString().replace(/[:.]/g,'').replace('T','-').slice(0,15)` = YYYY-MM-DD-HHMM
