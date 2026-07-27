@@ -324,6 +324,22 @@
 
 
 
+  <!-- ⚠배치 = 표현방식 칩 아래 · 스타일 옵션 위 · 기본 접힘. 수노 Advanced Options 대응(Weirdness·Style Influence·Vocal Gender)을
+       우리 화면 문법으로 옮긴 것 — 부품 신설 0(게이지 행 .lyopt-row · 토글 .spbtn · 접기 label.fl+.selv).
+       기본값 50 = 수노 공식이 "normal"로 규정한 지점 = 안 만지면 종전 산출과 동일(하위호환). -->
+  <div class="selwrap">
+    <label class="fl">고급 <button type="button" class="selv" id="advV" aria-expanded="false">열기</button></label>
+    <div id="advbody" class="none">
+      <div class="lyopt-row"><span class="lyopt-k">실험성</span><input type="range" id="gW" min="0" max="100" step="5" value="50" aria-label="실험성 — 0 안전하게 · 50 기본 · 100 파격적으로"><span class="lypv-fs" id="gWV" aria-hidden="true">50%</span></div>
+      <div class="lyopt-row"><span class="lyopt-k">장르 충실</span><input type="range" id="gS" min="0" max="100" step="5" value="50" aria-label="장르 충실 — 0 느슨하게 · 50 기본 · 100 장르 관습 엄수"><span class="lypv-fs" id="gSV" aria-hidden="true">50%</span></div>
+      <div class="matgls" id="gVoc">
+        <button type="button" class="spbtn on" data-v="" aria-pressed="true">보컬 자동</button>
+        <button type="button" class="spbtn" data-v="male" aria-pressed="false">남성</button>
+        <button type="button" class="spbtn" data-v="female" aria-pressed="false">여성</button>
+      </div>
+    </div>
+  </div>
+
   <div id="optwrap" hidden>
     <label class="fl">스타일 옵션</label>
     <div class="optgrid" id="optgrid"></div>
@@ -436,6 +452,8 @@ const API_VOICE='/api/voice';
 const BUDGET=1000;   // 폴 예산(초) — 하드 ×2 = 2000s ≥ 잡 캡 25분(1500s)+디스패치+Pages 배포(conv 문법 · 재개 게이트는 24h 별도)
 const BUDGETS={voice:2600,'voice-train':5400};   // 클로닝 = Replicate 대기(apply 폴 ≤25분 · train ≤70분 + 잡 캡 85분) — 모드별 예산
 let USER_ACT=false, _curStop=null, RES=null, OPTS=[], PICK=null, SONG_ID='';
+const GAUGE={w:50,s:50,v:''};   // 고급 게이지(실험성·장르 충실·보컬) — 50 = 중립 = 안 만지면 종전 산출과 동일
+const gaugeLive=()=>GAUGE.w<40||GAUGE.w>60||GAUGE.s<40||GAUGE.s>60||!!GAUGE.v;
 
 const pendSet=o=>{ try{ localStorage.setItem(PEND_KEY, JSON.stringify(o)); }catch(e){} };
 const pendGet=()=>{ try{ return JSON.parse(localStorage.getItem(PEND_KEY)||'null'); }catch(e){ return null; } };
@@ -529,6 +547,7 @@ function fire(mode, gb){
   if(!story) return btnErr(gb,'스토리(대사나 상황)를 적어줘');
   const payload={ mode, genre:getGen(), express:getExp(), mood:getMood(), theme:getTheme(), story:story.slice(0,1500) };
   if(mode!=='options'&&PICK) payload.pick=PICK;
+  if(mode!=='options'&&gaugeLive()) payload.opts={w:GAUGE.w, s:GAUGE.s, v:GAUGE.v};   // 중립뿐이면 아예 안 싣는다(서버도 같은 판정 = 이중 방어)
   fireApi(gb, API, payload, (j,t0)=>{ pendSet({id:j.id, mode, t0, story:story.slice(0,1500)}); pollSong(j.id, mode, t0, t0-90000, gb); });
 }
 $('#optGo').addEventListener('click',()=>fire('options',$('#optGo')));
@@ -600,6 +619,9 @@ function updateGoSpec(){   // 결과물 명세 readout — 썸네일 goSpec 표�
     +(PICK&&PICK.bpm?(sep+L('BPM')+v(PICK.bpm,true)):'')
     +(mo!=='자동'?(sep+L('분위기')+v(mo,true)):'')
     +(th!=='자동'?(sep+L('테마')+v(th,true)):'')
+    +(GAUGE.w!==50?(sep+L('실험성')+v(GAUGE.w+'%',true)):'')
+    +(GAUGE.s!==50?(sep+L('장르 충실')+v(GAUGE.s+'%',true)):'')
+    +(GAUGE.v?(sep+L('성별')+v(GAUGE.v==='male'?'남성':'여성',true)):'')   /* 라벨 '보컬' = PICK 보컬(male/female/duet)이 이미 쓰는 축 — 겹치면 같은 줄에 '보컬'이 두 번 나온다(실측) */
     +sep+L('길이')+v('60초 미만',true)
     +sep+L('훅')+v('15초 내',true);
 }
@@ -736,6 +758,22 @@ function maFold(btnSel, bodySel){   // 접기·펴기 = .selv 토글 문법 계�
   b.addEventListener('click',()=>{ const open=body.classList.contains('none'); body.classList.toggle('none',!open); b.textContent=open?'닫기':'열기'; b.classList.toggle('on',open); b.setAttribute('aria-expanded',open?'true':'false'); });
 }
 maFold('#maV','#mabody'); maFold('#maAdvV','#maadv'); maFold('#maEqV','#maeq');
+
+// ── 고급 게이지(생성 축 · 수노 Weirdness/Style Influence 대응) — maFold·maPaint 문법 재사용 ──
+maFold('#advV','#advbody');
+[['gW','w'],['gS','s']].forEach(([id,k])=>{
+  const el=$('#'+id), out=$('#'+id+'V');
+  const paint=()=>{ const v=+el.value; GAUGE[k]=v;
+    out.textContent=v+'%'; out.classList.toggle('on', v!==50);
+    el.setAttribute('aria-valuetext', v+'퍼센트'+(v===50?' · 기본':''));
+    updateGoSpec(); };
+  el.addEventListener('input',paint); paint();
+});
+$('#gVoc').addEventListener('click',e=>{
+  const b=e.target.closest('.spbtn'); if(!b) return;
+  $$('#gVoc .spbtn').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
+  GAUGE.v=b.dataset.v||''; updateGoSpec();
+});
 $('#maTgls').addEventListener('click',e=>{
   const b=e.target.closest('.spbtn'); if(!b) return;
   const on=!b.classList.contains('on');
