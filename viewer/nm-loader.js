@@ -299,6 +299,19 @@
        기준 = `aria-busy` 하나. 이 레포는 이미 이걸 '작업 중' 정본으로 쓴다
        — index `lkProdBusy()`가 도구 프레임을 `[aria-busy="true"]`로 판정(자동잠금 보류 축).
        버튼이 아닌 요소(k·sb의 #status)도 자동 합류한다 = 진행 신호를 놓치지 않는다. */
+    /* 진행 신호 = lkProdBusy() **정본 전량** + 게이지/피킹 축(운영자 260727 라이브 실측으로 확장).
+       구판은 `aria-busy` 1종만 봤다 = 정본의 절반. 그래서 라이브에서 피킹·이미지 생성을 돌려도
+       `현재busy: 0`이었다(diag 실측 — build는 최신인데 신호가 0). 이 레포의 실제 진행 신호는:
+         ① [aria-busy="true"]                      — edit·thumb·ly·k·sb 생성 버튼(구판이 보던 것)
+         ② #jobs .job:not(.done):not(.err)         — 이미지 스튜디오 **잡 카드**(lkProdBusy 원본 2번째 축)
+         ③ .picking                                — 피킹·재분석(`fb.classList.contains('picking')`)
+         ④ .glive                                  — 라이브 게이지(fetch 완료까지 진행)
+       ②는 lkProdBusy가 이미 쓰던 것을 내가 옮기며 빠뜨린 것이고, ③④는 같은 '작업 중' 축이라 합류시킨다.
+       클래스로 표현되는 축이 생겼으므로 관찰 필터에 'class'를 더한다(빈도가 높지만 판정은 matches 1회). */
+    var BUSY_SEL = '[aria-busy="true"], #jobs .job:not(.done):not(.err), .picking, .glive';
+    function isBusy(el) {
+      try { return !!(el && el.matches && el.matches(BUSY_SEL)); } catch (e) { return false; }
+    }
     var busySet = null;
     function mark(el, on) {
       if (!busySet) return;
@@ -315,7 +328,7 @@
              ⓒ **소유 문서 자체가 죽었거나**(= iframe이 통째로 DOM에서 제거됨 · defaultView가 null이 된다).
              ⓒ가 없으면 도구 창을 생성 중에 닫았을 때 파비콘이 영원히 돈다(실측 260727 FAIL → 이 줄로 봉합). */
           var d = el.ownerDocument;
-          dead = !el.isConnected || !d || !d.defaultView || el.getAttribute('aria-busy') !== 'true';
+          dead = !el.isConnected || !d || !d.defaultView || !isBusy(el);
         } catch (e) { dead = true; }                      // 접근 자체가 막히면(문서 파괴) 죽은 것으로 본다
         if (dead) mark(el, false);
       });
@@ -323,7 +336,7 @@
     function scan(root) {
       if (!busySet) busySet = new Set();
       try {
-        var els = (root || document).querySelectorAll('[aria-busy="true"]'), i;
+        var els = (root || document).querySelectorAll(BUSY_SEL), i;
         for (i = 0; i < els.length; i++) mark(els[i], true);
       } catch (e) {}
     }
@@ -342,18 +355,18 @@
         new MutationObserver(function (ms) {
           for (var i = 0; i < ms.length; i++) {
             var m = ms[i], t = m.target, j, n;
-            if (m.type === 'attributes') { if (t && t.getAttribute) mark(t, t.getAttribute('aria-busy') === 'true'); continue; }
+            if (m.type === 'attributes') { if (t) mark(t, isBusy(t)); continue; }
             /* childList도 본다 — 속성을 먼저 달고 나중에 append되는 노드(동적 잡 카드 등)는
                attributes 이벤트가 안 온다(실측 260727: appendChild 전 setAttribute → 미검출). */
             for (j = 0; j < m.addedNodes.length; j++) {
               n = m.addedNodes[j];
               if (!n || n.nodeType !== 1) continue;
-              if (n.getAttribute && n.getAttribute('aria-busy') === 'true') mark(n, true);
+              if (isBusy(n)) mark(n, true);
               if (n.tagName === 'IFRAME') hookFrame(n); else { scan(n); hookFrames(n); }
             }
             for (j = 0; j < m.removedNodes.length; j++) sweep();   // 떼어낸 서브트리의 busy 회수
           }
-        }).observe(doc.documentElement, { attributes: true, subtree: true, childList: true, attributeFilter: ['aria-busy'] });
+        }).observe(doc.documentElement, { attributes: true, subtree: true, childList: true, attributeFilter: ['aria-busy', 'class'] });
       } catch (e) {}
     }
     function hookFrame(fr) {
@@ -398,8 +411,22 @@
       if (!d.프레임준비 && !d.사전렌더중 && !d.막힘.length && d.현재busy) d.막힘.push('사전렌더 실패 — 로고 이미지 로드 or toDataURL 오염 의심(콘솔 [nmFavSpin] 경고 확인)');
       if (!d.막힘.length && !d.현재busy) d.막힘.push('막힌 곳 없음 — 지금 aria-busy인 요소가 0개(생성이 안 도는 중)');
       try {
-        d.busy목록 = [].slice.call(document.querySelectorAll('[aria-busy="true"]')).map(function (e) { return e.id || e.tagName; });
-        d.iframe수 = document.querySelectorAll('iframe').length;
+        /* 부모 + 자식(iframe) 문서를 **모두** 훑는다. 구판 diag는 부모만 봐서, 도구 iframe 안에서
+           도는 작업이 목록에 안 나왔다(운영자 260727 라이브 실측 = "다 돌렸는데 busy목록 []"). */
+        var docs = [document], fs = document.querySelectorAll('iframe'), i;
+        for (i = 0; i < fs.length; i++) { try { if (fs[i].contentDocument) docs.push(fs[i].contentDocument); } catch (e) {} }
+        d.iframe수 = fs.length; d.관통문서 = docs.length; d.busy목록 = []; d.신호별 = {};
+        var SIGS = { 'aria-busy': '[aria-busy="true"]', '잡카드': '#jobs .job:not(.done):not(.err)', '피킹': '.picking', '게이지': '.glive' };
+        for (var k in SIGS) d.신호별[k] = 0;
+        docs.forEach(function (dd, di) {
+          for (var kk in SIGS) {
+            try {
+              var hit = dd.querySelectorAll(SIGS[kk]);
+              d.신호별[kk] += hit.length;
+              for (var j = 0; j < hit.length; j++) d.busy목록.push((di ? 'frame' + di + ':' : '') + (hit[j].id || hit[j].className || hit[j].tagName) + '(' + kk + ')');
+            } catch (e) {}
+          }
+        });
       } catch (e) {}
       return d;
     }
