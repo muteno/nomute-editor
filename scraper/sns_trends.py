@@ -1641,7 +1641,7 @@ def main():
     _sh_q = _ytc.get("shorts") if (isinstance(_ytc.get("shorts"), list) and _ytc.get("shorts")) else IT_QUERIES
     _ai_q = _ytc.get("aivid") if (isinstance(_ytc.get("aivid"), list) and _ytc.get("aivid")) else AI_QUERIES
     _news_cat = _ytc.get("news_cat") if isinstance(_ytc.get("news_cat"), int) else 25
-    yt_all = youtube(limit=15)
+    yt_all = youtube(limit=50)   # 15→50(운영자 260728 "10개를 못 받아오는 이유") — 뷰어 인기 그리드는 `cutH(ytRaw,24)` 24h 컷 뒤 조회수순 10개인데, mostPopular 차트는 며칠 묵은 영상이 섞여 상위 15건 중 24h 이내가 5건뿐이라(실측 260728 · sns_trends.json 50건 되짚기: 앞15=5건 · 앞30=11건 · 앞50=17건) 10칸이 원천적으로 안 찼다. 50 = videos.list maxResults 상한 · 쿼터는 part 기준이라 런당 비용 불변(maxResults 무관) · 뉴스(category25)는 별 축이라 10 유지 · 뷰어 컷/정렬 무접촉(24h 컷 취지 그대로 · 후보 풀만 확대)
     yt_news = youtube(category_id=_news_cat, limit=10) if (YT_KEY and yt_all) else []   # 뉴스 카테고리(config news_cat · 기본 25 뉴스·정치)
     yt_src = "api" if yt_all else ""
     if not yt_all:
