@@ -23,7 +23,7 @@ export async function onRequestPost({ request, env }) {
 
   // 옵션 화이트리스트 — gen_image.py와 동일 집합(이중 검증). 미지정/부적격 = 안전 기본값.
   const o = (body.opts && typeof body.opts === 'object') ? body.opts : {};
-  const STYLES = ['photo', 'webtoon', 'cartoon', 'watercolor', 'cinematic', 'illust', 'iso3d', 'pictogram'];
+  const STYLES = ['photo', 'webtoon', 'cartoon', 'watercolor', 'cinematic', 'illust', 'iso3d', 'pictogram', 'lego'];   // lego = 260727 추가(세부 화풍 없음 — python STYLE_SUB 키 미신설이라 sub는 항상 auto로 강하)
   const SIZES = ['720p', 'FHD', '2K', '4K'];   // 260710 개요 개편 — 픽셀 라벨(기본 FHD) · 레거시 '1K'는 아래서 FHD로 수렴
   const MOODS = ['auto', 'tense', 'somber', 'hope', 'calm', 'anger', 'eerie', 'warm'];   // 레거시 프리셋(구 클라이언트) — 신 UI = 'axes'+moodAx 게이지
   const FONTS = ['gothic', 'serif', 'brush', 'neon'];

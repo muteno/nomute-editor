@@ -85,7 +85,8 @@ def nearest_native(a):
 # likeness: 일러스트 계열만 공인 닮음 허용(실사=익명 — thumb_gen §닮음 정책 그대로).
 _TG = {s[0]: s for s in tg.STYLES}
 STYLE_KO = {"photo": "실사 보도", "webtoon": "웹툰 극화", "cartoon": "시사만평", "watercolor": "수채화",
-            "cinematic": "시네마틱", "illust": "플랫 일러스트", "iso3d": "3D 아이소메트릭", "pictogram": "픽토그램"}
+            "cinematic": "시네마틱", "illust": "플랫 일러스트", "iso3d": "3D 아이소메트릭", "pictogram": "픽토그램",
+            "lego": "레고 브릭 디오라마"}
 STYLE_FRAG = {
     "photo": (_TG.get("photo") or ("", "", "reportage press photograph, documentary realism", ""))[2],
     "webtoon": (_TG.get("webtoon") or ("", "", "korean webtoon serious drama illustration", ""))[2],
@@ -101,6 +102,12 @@ STYLE_FRAG = {
               "miniature diorama feel, high detail"),
     "pictogram": ("minimal infographic pictogram composition, bold iconographic shapes, strictly limited palette, "
                   "strong negative space, poster-like clarity"),
+    # 레고(운영자 260727 제보 프롬프트 3줄 = ①원본 분위기 유지 ②모든 요소를 실제 브릭으로 ③실물 디오라마를 찍은 사진처럼)를
+    # 3절로만 압축 — 운영자 "굳이 말 많이 쓰는 게 오히려 안 나올 수도". 상표어(LEGO)는 안 쓴다(엔진 정책 거절 = 렌더 0장 리스크)
+    # → 브릭 조형 실물 어휘(스터드·이음매·미니피겨)로 같은 룩을 지시한다.
+    "lego": ("the original scene's mood and staging kept intact but every element rebuilt from interlocking plastic "
+             "toy bricks and studded minifigure characters, shot as a real physical brick diorama — glossy "
+             "injection-molded plastic with visible studs and seams, natural studio light, true shadows and depth"),
 }
 LIKENESS_STYLES = ("webtoon", "cartoon", "watercolor", "illust")   # 일러스트 계열 = 공인 닮음 허용(캐리커처 전통)
 # 한국웹툰식 토글(전 화풍 공통 · 운영자 260707 "모든 장르 선택 시 옵션") — 선택 화풍을 한국 웹툰 만화 문법으로 번안.
