@@ -1829,6 +1829,7 @@
   .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
   @media (prefers-reduced-motion:reduce){ .qgo svg.ic-arrow .qsrc-shaft, .qgo svg.ic-arrow .qsrc-tip { animation:none; } }   /* 대기열 이동버튼 화살표 모션 = ic-arrow(공용 reduced-motion 블록서 정지) · 옛 qfly 폐지(운영자 260705) */
   .qpage { flex:none; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; min-height:30px; }   /* min-height = 페이저 비어도(단일페이지·빈상태) 높이 예약 → 팝업 크기 항상 동일(1·다·빈 상태 모두 같은 높이) · 운영자 260622 */
+  .qpop .qpage { margin-inline:-16px -11px; padding-inline:var(--sp-3); }   /* raw-ok: -16/-11 = 컨테이너 padding(좌16/우11) 상쇄 = .qh full-bleed 마진 문법 그대로 계승(파생 -5px 대신 SSOT 두 값을 직접 상쇄 = padding SSOT가 바뀌면 .qh와 같은 자리를 고치면 된다) · 페이저 justify-content:center의 기준을 콘텐츠박스→창으로 이관 = 로딩(#qpop .qempty)과 같은 축(운영자 260727 한 수 채택) · 전 실측 Δ+2.05(PC)~+2.50(모바일) 우편심 · 발행본도 .qpop 계승이라 같은 갭(Δ+2.49 실측) = 동시 교정 · 좌우 여백은 --sp-3(18) 근접 계승으로 대칭 회복(최악 9페이지도 여백 60px+ 잔여 = 잘림 0 실측) · margin-top은 미접촉 = .pubpop/.msgpop .qpage:empty 높이 해제 규칙 보존 */
   .qpg, .qpg-nav { min-width:30px; height:30px; padding:0 7px; display:grid; place-items:center; font-size:12px; font-weight:800;
     color:var(--mut); background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:7px; cursor:pointer; transition:color .15s, background .15s; }
   .qpg:hover, .qpg-nav:hover { color:var(--accent); }
@@ -7617,6 +7618,39 @@ function msgRptRows() {
   return allMsgs().filter(m => !(m.id && dis.has(String(m.id))))
     .filter(m => m._sys || m._health || m.level === 'warn' || m.action || String(m.id || '').startsWith('fail-'));   // 문제/조치 축 = msgKind '경고'·'시스템' + 조치형(m.action) — 판정식은 msgKind·renderMsgBadge(haswarn)와 같은 필드만 본다(새 플래그 0)
 }
+// ── 리포트 v2 = **조치 주체로 가른다**(운영자 260727 "가장 정보가 이렇게 와야 좋겠다 싶을정도로") ──
+//   받은 쪽이 제일 먼저 알아야 하는 건 "이거 누가 고치나"다. 뭉쳐 오면 세션이 못 고치는 폰·쿠키 건까지 붙잡고,
+//   반대로 코드로 고칠 건을 "기다리면 된다"로 흘린다. 판정은 **이미 있는 문구 규약**을 읽어서 한다(새 필드·새 분류 데이터 0):
+//     · '네가 할 일: 없어요' = 서버·플랫폼이 알아서 복구 → 대기        · '👉' 문단에 할 일이 있음 = 폰·쿠키·계정 = 운영자
+//     · m.action 보유 = 앱 안 버튼 한 번으로 끝                        · 조치문 없음 = 규약 밖 = 세션이 코드로 판단할 몫
+const RPT_WHO = { op: '운영자가 할 일', cc: '클로드가 볼 일', app: '앱 버튼 한 번', auto: '자동 복구 대기' };
+function _rptWho(m) {
+  const todo = _rptTodo(m.text);
+  if (todo) return /^없(어요|음)/.test(todo) ? 'auto' : 'op';
+  if (m.action && MSG_ACTIONS[m.action]) return 'app';
+  return 'cc';
+}
+// 출처 = 이 알림을 만든 **코드 위치와 판정 소스**(id 접두어가 곧 생산자 · sysErrMsgs·demoStaleMsgs 정본 대응) — 세션이 파일을 바로 열게 하는 값
+function _rptSrc(m) {
+  const id = String(m.id || '');
+  if (id.startsWith('sys:subs:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.stale', up: 'scraper/sns_trends.py' };
+  if (id.startsWith('sys:acct:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.cover[플랫폼].why[계정]', up: 'scraper/sns_trends.py _sfail()' };
+  if (id.startsWith('sys:src:reddit:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.reddit 길이 0 + health.phone.ok', up: 'scraper/sns_trends.py reddit_hot()/_reddit_rss()' };
+  if (id.startsWith('sys:demo:')) return { fn: 'viewer/index.html demoStaleMsgs()', src: 'CHAN/CHAN_FB.audience_sample.as_of vs generated_kst', up: 'scraper 인구통계 수집' };
+  if (m._health) return { fn: 'viewer/index.html staleDataMsg()', src: 'CAND_LIVE(라이브 소스 적재 실패)', up: 'functions/api + viewer/candidates.json' };
+  return { fn: '서버 발행 메시지', src: 'messages/' + (id || '<id>') + '.json', up: 'scraper/msg.py' };
+}
+const _rptAbs = m => (m.t ? new Date(m.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : (m.ts ? String(m.ts) : '(시각 없음)'));   // 절대 KST — 상대시간("2시간 전")만으론 며칠째인지 판별이 안 된다(D4 KST 고정)
+function msgRptEnv() {   // 환경 = "안 보인다·안 고쳐졌다"의 진위를 파일 하나로 가르는 값(옛 셸 열람 vs 실미해결 · 버전 도장 주석과 같은 목적)
+  return {
+    빌드도장: BUILD_STAMP,
+    셸출처: (navigator.serviceWorker && navigator.serviceWorker.controller) ? 'SW 캐시 셸(옛 코드일 수 있음 → 강제 새로고침으로 확인)' : '네트워크 셸(최신)',
+    주소: location.href,
+    화면: window.innerWidth + '×' + window.innerHeight + ' @' + (window.devicePixelRatio || 1) + 'x',
+    브라우저: navigator.userAgent,
+    온라인: navigator.onLine,
+  };
+}
 function msgRptDiag() {   // 진단 스냅샷 = 알림을 띄운 **판정 소스 원값**(sysErrMsgs가 읽는 필드 그대로) — "왜 떴나"를 리포트 안에서 되짚을 수 있게
   const h = (TRENDS && TRENDS.health) || {};
   return {
@@ -7632,16 +7666,30 @@ function msgRptDiag() {   // 진단 스냅샷 = 알림을 띄운 **판정 소스
 }
 function msgRptHtml() {
   const cs = getComputedStyle(document.documentElement), tk = n => cs.getPropertyValue(n).trim();
-  const rows = msgRptRows(), diag = msgRptDiag();
-  const card = rows.map((m, i) => {
-    const k = msgKind(m), todo = _rptTodo(m.text) || _rptAct(m);
+  const rows = msgRptRows(), diag = msgRptDiag(), env = msgRptEnv();
+  let n = 0;
+  const card = m => {
+    const k = msgKind(m), who = _rptWho(m), s = _rptSrc(m), todo = _rptTodo(m.text) || _rptAct(m);
+    n++;
     return '<li class="it' + (k.c === 'mk-warn' ? ' warn' : '') + '">'
-      + '<div class="ih"><span class="kind">' + qEsc(k.t) + '</span><span class="ago">' + qEsc(msgAgo(m)) + '</span><code class="id">' + qEsc(String(m.id || '(id없음)')) + '</code></div>'
+      + '<div class="ih"><span class="no">' + n + '</span><span class="kind">' + qEsc(k.t) + '</span><span class="ago">' + qEsc(_rptAbs(m)) + ' (' + qEsc(msgAgo(m)) + ')</span></div>'
       + '<div class="tx">' + qEsc(m.text || '') + '</div>'
-      + (todo ? '<div class="todo"><b>해결할 일 ' + (i + 1) + '.</b> ' + qEsc(todo) + '</div>' : '')
+      + (todo ? '<div class="todo"><b>' + qEsc(RPT_WHO[who]) + '</b> ' + qEsc(todo) + '</div>' : '<div class="todo"><b>' + qEsc(RPT_WHO[who]) + '</b> 조치문 규약(👉) 밖 — 코드로 원인 판단 필요.</div>')
+      + '<table class="meta"><tr><th>알림 id</th><td><code>' + qEsc(String(m.id || '(id없음)')) + '</code></td></tr>'
+      + '<tr><th>만든 곳</th><td><code>' + qEsc(s.fn) + '</code></td></tr>'
+      + '<tr><th>판정 소스</th><td><code>' + qEsc(s.src) + '</code></td></tr>'
+      + '<tr><th>상류</th><td><code>' + qEsc(s.up) + '</code></td></tr></table>'
       + '</li>';
+  };
+  // 그룹 = 조치 주체 순서 = **사람이 할 일 먼저**(운영자 → 앱 버튼 → 클로드 → 자동 대기) — 위에서부터 읽으면 곧 실행 순서
+  const grp = ['op', 'app', 'cc', 'auto'].map(w => {
+    const g = rows.filter(m => _rptWho(m) === w);
+    return g.length ? '<h2>' + qEsc(RPT_WHO[w]) + ' · ' + g.length + '건</h2><ol>' + g.map(card).join('') + '</ol>' : '';
   }).join('');
-  const dl = Object.entries(diag).map(([k, v]) => '<tr><th>' + qEsc(k) + '</th><td><code>' + qEsc(typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)) + '</code></td></tr>').join('');
+  const SHORT = { op: '운영자', app: '앱버튼', cc: '클로드', auto: '자동대기' };
+  const cnt = ['op', 'app', 'cc', 'auto'].map(w => SHORT[w] + ' ' + rows.filter(m => _rptWho(m) === w).length).join(' · ');
+  const tbl = o => Object.entries(o).map(([k, v]) => '<tr><th>' + qEsc(k) + '</th><td><code>' + qEsc(typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)) + '</code></td></tr>').join('');
+  const dl = tbl(diag), ev = tbl(env);
   // 틀 = 알림함 표(시간·구분·내용) 세로 전개 + 하단 진단표 · 토큰 실측 주입(위 ⚠) · 스크립트 태그엔 원본 JSON = 사람은 위를 읽고 세션은 아래를 파싱
   return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<title>노뮤트 알림 리포트 · ' + qEsc(diag.생성KST) + '</title><style>'
@@ -7654,9 +7702,9 @@ function msgRptHtml() {
     + '.it{background:var(--glass2);border:1px solid var(--line);border-radius:var(--r-m);padding:var(--sp-2);margin:0 0 var(--sp-2)}'
     + '.it.warn{border-color:var(--warn)}'
     + '.ih{display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap;margin-bottom:var(--sp-1)}'
+    + '.no{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--accent)}'
     + '.kind{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--mut)}.it.warn .kind{color:var(--warn)}'
     + '.ago{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--mut)}'
-    + '.id{font-size:var(--fs-xs);color:var(--mut);word-break:break-all}'
     + '.tx{white-space:pre-wrap;font-size:var(--fs-body)}'
     + '.todo{margin-top:var(--sp-2);padding:var(--sp-2);border-radius:var(--r-s);background:var(--bg);border:1px solid var(--line);font-size:var(--fs-label)}'
     + '.todo b{color:var(--accent)}'
@@ -7664,13 +7712,16 @@ function msgRptHtml() {
     + 'table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}'
     + 'th,td{text-align:left;vertical-align:top;padding:var(--sp-1);border-bottom:1px solid var(--line)}'
     + 'th{width:110px;color:var(--mut);font-weight:var(--fw-b)}code{word-break:break-all}'
+    + 'table.meta{margin-top:var(--sp-2)}table.meta th{width:90px}table.meta td,table.meta th{border-bottom:0;padding:2px var(--sp-1)}'   /* raw-ok: 2px = 카드 안 메타표만 행간 압축(본문 표 리듬 유지 · 토큰 사다리 최소값 6도 과함) */
     + '</style></head><body><div class="wrap">'
-    + '<h1>노뮤트 알림 리포트 — 해결할 일 ' + rows.length + '건</h1>'
-    + '<p class="sub">생성 ' + qEsc(diag.생성KST) + ' KST · 빌드 ' + qEsc(String(diag.빌드도장)) + '</p>'
-    + '<p class="lead">이 파일을 그대로 클로드 세션에 첨부하면 돼 — 아래 <b>해결할 일</b>이 작업 목록이고, 맨 끝 <b>진단 스냅샷</b>이 그 알림을 띄운 판정 소스 원값이야.</p>'
-    + '<ol>' + (card || '<li class="it">지금 해결할 문제 없음</li>') + '</ol>'
-    + '<h2>진단 스냅샷</h2><table>' + dl + '</table>'
-    + '<script type="application/json" id="nomute-report">' + JSON.stringify({ diag, items: rows.map(m => ({ id: m.id || null, kind: msgKind(m).t, ago: msgAgo(m), text: m.text || '', todo: _rptTodo(m.text) || _rptAct(m), action: m.action || null })) }).replace(/</g, '\\u003c') + '<\/script>'   // ⚠ script 안은 **원문 JSON**(qEsc 금지 — HTML 파서가 script 내용을 디코딩 안 해 &quot;가 그대로 남아 JSON.parse가 죽는다 · 260727 실측) · 닫는 태그 조기 종료만 `<`→<로 봉쇄
+    + '<h1>노뮤트 알림 리포트 — ' + rows.length + '건</h1>'
+    + '<p class="sub">' + qEsc(cnt) + ' · 생성 ' + qEsc(diag.생성KST) + ' KST · 빌드 ' + qEsc(String(env.빌드도장)) + '</p>'
+    + '<p class="lead"><b>클로드에게 이렇게 주면 돼</b> — 이 파일 첨부 + "알림 리포트야. <b>클로드가 볼 일</b>부터 고쳐줘." '
+    + '아래는 조치 주체로 갈라 놨어: <b>운영자가 할 일</b>=폰·쿠키·계정(코드로 못 고침) · <b>앱 버튼 한 번</b>=알림 상세에서 누르면 끝 · <b>클로드가 볼 일</b>=코드 축 · <b>자동 복구 대기</b>=아무것도 안 해도 됨.</p>'
+    + (grp || '<ol><li class="it">지금 해결할 문제 없음</li></ol>')
+    + '<h2>환경(이 화면이 뭘 돌리고 있었나)</h2><table>' + ev + '</table>'
+    + '<h2>진단 스냅샷(판정 소스 원값)</h2><table>' + dl + '</table>'
+    + '<script type="application/json" id="nomute-report">' + JSON.stringify({ env, diag, items: rows.map(m => ({ id: m.id || null, kind: msgKind(m).t, who: _rptWho(m), who_ko: RPT_WHO[_rptWho(m)], at_kst: _rptAbs(m), ago: msgAgo(m), text: m.text || '', todo: _rptTodo(m.text) || _rptAct(m), action: m.action || null, origin: _rptSrc(m) })) }).replace(/</g, '\\u003c') + '<\/script>'   // ⚠ script 안은 **원문 JSON**(qEsc 금지 — HTML 파서가 script 내용을 디코딩 안 해 &quot;가 그대로 남아 JSON.parse가 죽는다 · 260727 실측) · 닫는 태그 조기 종료만 `<`→<로 봉쇄
     + '</div></body></html>';
 }
 function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이티브 저장 · downloadImg의 프록시 경유는 외부 URL 축이라 여기선 불필요) · 받은 표식 = .dl-done(다운로드 표준 mut)
@@ -7684,7 +7735,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '186e706 · 260727_1749';  /*BUILDSTAMP*/
+const BUILD_STAMP = '4e5228d · 260727_1821';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
