@@ -97,6 +97,35 @@ def _sfail(plat, acc, code):
     except Exception:  # noqa: BLE001 — 기록 실패가 수집을 못 죽인다
         pass
 
+
+# 계정별 **컷 전** 수집 건수(운영자 260727 "원인이 확실히 있어서 고치기 쉽게") — cover.got 오탐의 근본.
+#   종전 got 판정 = 최종 산출물 subs[plat]에 등장한 계정 = `_rsubs(per=12)` **지역 top-12 컷을 통과한 계정만**.
+#   → 정상 수집인데 조회수 순위에 밀린 계정이 전부 "안 걷히고 있어요"로 잡혔다(260727 실측: 유튜브 30등록 중
+#   22계정이 그 사유로 알림 · why 전건 빈칸 = 실패한 적이 없어서 사유가 없던 것). 순위 컷은 **표시 정책**이지 수집 실패가 아니다.
+#   교정 = 각 수집 함수가 정렬·컷 **전** 원본을 이 표에 적재 → cover가 "받아오긴 했나"로 판정 → miss = 진짜 실패만 남고
+#   그 전건에 사유(SUB_FAIL·budget·empty)가 붙는다. 새 콜·새 데이터 0(이미 만든 결과를 세는 지점만 옮김).
+SUB_SEEN = {}
+
+
+def _sseen(plat, items):
+    """정렬·[:limit] 전 원본에서 계정별 건수 누적(지역 2회 호출분 합산) 후 items 그대로 반환."""
+    try:
+        d = SUB_SEEN.setdefault(plat, {})
+        for it in items:
+            a = str((it or {}).get("account") or "").lower().lstrip("@")
+            if a:
+                d[a] = d.get(a, 0) + 1
+    except Exception:  # noqa: BLE001 — 집계 실패가 수집을 못 죽인다(_sfail 정본 계승)
+        pass
+    return items
+
+
+def _sskip(plat, accounts, i):
+    """예산 소진으로 **시도조차 못 한** 잔여 계정을 'budget'으로 봉인 — 종전엔 로그로만 흘러
+    miss에 사유 없이 얹혔다(뷰어가 '계정이 비공개·삭제' 일반 문구로 오안내). 원인이 서버 쪽임을 명시."""
+    for a in list(accounts)[i:]:
+        _sfail(plat, a, "budget")
+
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
@@ -865,6 +894,7 @@ def x_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sskip("x", accounts, i)   # 시도조차 못 한 잔여 = 사유 budget(원인이 서버 예산임을 명시 · 260727)
             break
         if i:
             time.sleep(4)
@@ -915,7 +945,7 @@ def x_subs(accounts, limit=10, deadline=None):
     # → 절단 '직전'에 계정 다양성 재배열(_acct_spread · 260725): 최신순 단일 축 절단은 다작 계정이 limit를
     #   통째 먹어 다른 계정을 풀에서 지운다(뷰어는 없는 걸 못 살림) · 순서 = 정렬 → spread → [:limit] 고정
     #   (spread를 정렬 앞에 두면 재정렬이 덮어 무효 = 회귀 주의)
-    return _acct_spread(sorted(fresh, key=lambda t: _tts(t["time"]), reverse=True), limit)[:limit]
+    return _acct_spread(sorted(_sseen("x", fresh), key=lambda t: _tts(t["time"]), reverse=True), limit)[:limit]   # _sseen = 컷 전 원본 적재(순위 컷 = 표시 정책 · 수집 실패 아님 · 260727)
 
 
 def x_search(queries, per=8, limit=15, deadline=None):
@@ -985,6 +1015,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
     for acc in accounts:
         if _over(deadline):
             print("::warning::tiktok 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sskip("tiktok", accounts, i)   # 시도조차 못 한 잔여 = 사유 budget(원인이 서버 예산임을 명시 · 260727)
             break
         time.sleep(2)
         got = 0
@@ -1020,7 +1051,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("tiktok", acc, _hcode(e))
-    return sorted(out, key=lambda t: t["views"], reverse=True)[:limit]
+    return sorted(_sseen("tiktok", out), key=lambda t: t["views"], reverse=True)[:limit]   # 동
 
 
 def _tk_cover_fresh(items, budget=45):
@@ -1060,6 +1091,7 @@ def insta_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::insta 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sskip("insta", accounts, i)   # 시도조차 못 한 잔여 = 사유 budget(원인이 서버 예산임을 명시 · 260727)
             break
         if i:
             time.sleep(6)
@@ -1103,7 +1135,7 @@ def insta_subs(accounts, limit=10, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::insta @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("insta", acc, _hcode(e))
-    return sorted(out, key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]
+    return sorted(_sseen("insta", out), key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]   # 동
 
 
 def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
@@ -1114,6 +1146,7 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::yt 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sskip("youtube", accounts, i)   # 시도조차 못 한 잔여 = 사유 budget(원인이 서버 예산임을 명시 · 260727)
             break
         if i:
             time.sleep(1)
@@ -1125,6 +1158,7 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
                 m = re.search(r'"(?:channelId|externalId)":"(UC[\w-]{22})"', h) or re.search(r'channel/(UC[\w-]{22})', h)
                 if not m:
                     print(f"::warning::yt @{acc} channelId 해석 실패(스킵)", file=sys.stderr)
+                    _sfail("youtube", acc, "resolve")   # 핸들→채널ID 해석 실패 = 아이디 변경·삭제 신호(원인 확정 · 260727)
                     continue
                 cid = m.group(1)
             x = _get("https://www.youtube.com/feeds/videos.xml?channel_id=" + cid)
@@ -1149,7 +1183,7 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::yt @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("youtube", acc, _hcode(e))
-    return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
+    return sorted(_sseen("youtube", out), key=lambda v: v["views"], reverse=True)[:limit]   # 동
 
 
 def threads_subs(accounts, limit=10, deadline=None):
@@ -1165,6 +1199,7 @@ def threads_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::threads 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sskip("threads", accounts, i)   # 시도조차 못 한 잔여 = 사유 budget(원인이 서버 예산임을 명시 · 260727)
             break
         if i:
             time.sleep(4)
@@ -1217,7 +1252,7 @@ def threads_subs(accounts, limit=10, deadline=None):
     # → 절단 직전 계정 다양성 재배열(_acct_spread · 260725 Q557 = x_subs Q556 처방 이식): 스레드도 최신순 단일 축
     #   절단이라 다작 계정이 limit를 먹으면 다른 계정이 풀에서 사라진다(관측 = 19건/3계정 8·7·4 편중) · 순서 =
     #   정렬 → spread → [:limit] 고정(spread를 앞에 두면 재정렬이 덮어 무효)
-    return _acct_spread(sorted(fresh, key=lambda t: t["time"], reverse=True), limit)[:limit]
+    return _acct_spread(sorted(_sseen("threads", fresh), key=lambda t: t["time"], reverse=True), limit)[:limit]   # 동
 
 
 _RD_UA = "nomute-editor/1.0 (news curation; +https://nomute-editor.pages.dev)"   # 레딧 전용 **정직 봇 UA** — 260727 실측: 레딧은 브라우저 흉내 UA를 Cloudflare로 막고(크롬UA+RSS = 429) 명시적 봇 UA는 통과시킨다.
@@ -1991,10 +2026,14 @@ def main():
             if not acc[_k]:
                 continue
             _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])}
+            _got |= {a for a, n in (SUB_SEEN.get(_k) or {}).items() if n}   # 컷 전 원본에 있었으면 '걷힌 것'(순위 컷 = 표시 정책 · 260727 오탐 근본교정)
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
-            _why = {a: SUB_FAIL.get(_k, {}).get(a) for a in _miss[:20] if SUB_FAIL.get(_k, {}).get(a) is not None}
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 일반 문구로 폴백)
+            # 사유 = 수집기가 남긴 것 우선(HTTP 코드·wall·resolve·budget) · 없으면 'empty'(시도했고 오류도 없는데 새 글 0).
+            #   폴백을 여기서 채우는 이유 = **miss 전건에 원인이 붙어야** 뷰어·다운로드·복사 어디로 가든 "고치기 쉬운" 안내가 된다
+            #   (운영자 260727 "원인이 확실히 있어서 고치기 쉽게"). 종전 = 사유 없는 계정이 '비공개·삭제됐거나 차단' 일반 문구로 오안내.
+            _why = {a: (SUB_FAIL.get(_k, {}).get(a) or "empty") for a in _miss[:20]}
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 전건 보유 = 폴백 문구 소멸)
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
