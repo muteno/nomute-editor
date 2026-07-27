@@ -57,12 +57,137 @@ CUT_MIN_REMOVE = 0.40            # 무음 컷: 이만큼도 안 줄어드는 갭
 #   하한(pad≥0.05·min_remove≥0.20)은 극단 안전(평의회8) — 현 3단은 전부 하한 위라 *현재는 비활성*(미래 테이블/커스텀 방어선).
 CUT_LEVELS = {"soft": (0.45, 0.70, 0.35), "std": (CUT_PAD, CUT_MIN_REMOVE, 0.35), "hard": (0.15, 0.25, 0.45)}
 CUT_PAD_MIN, CUT_MIN_REMOVE_MIN = 0.05, 0.20   # 극단 클램프 하한(평의회8 · 현 3단엔 비활성)
+CUT_XFADE = 0.025                # 컷 이음매 오디오 마이크로 페이드(초) — 스플라이스 클릭·팝 억제(운영자 260727 ⑤)
+CUT_XFADE_MAX_JOINT = 120        # 이음매가 이보다 많으면 페이드 생략(표현식 비대 방지 · note 표면화)
+# ── 필러(군더더기) 컷 재료 — 운영자 260727 ①. 무음 컷이 '말 사이 빈 곳'을 지운다면 이건 '말 안에 낀 군말'을 지운다.
+#   원천 = segments.json 어절(word) 타임스탬프 = 이미 뽑아둔 전사 재료 재사용(신규 모델·API 0).
+#   2단 사전: HARD = 그 자체로 뜻이 없는 감탄·주저음(단독 컷) · SOFT = 문장 안에서 뜻을 가질 수 있는 말
+#     ('그 사람'의 '그' = 관형사) → **주저 신호(앞뒤 무음 갭 ≥ FILLER_HES)가 있을 때만** 컷 = 오컷 방어.
+FILLER_HARD = {"어", "어어", "엄", "음", "음음", "으음", "으", "에", "에또", "흠", "크흠", "어우", "머",
+               "uh", "uhh", "um", "umm", "er", "erm", "ah", "hmm", "mmm"}
+FILLER_SOFT = {"그", "이제", "인제", "뭐", "좀", "막", "약간", "뭐지", "뭐랄까", "그니까", "그러니까", "저기",
+               "like", "yaknow", "youknow"}
+FILLER_MAXDUR = 1.5              # 이보다 긴 어절 = 필러 아님(늘어진 발화·오인식) — 안 자른다
+FILLER_HES = 0.18                # SOFT 필러 판정에 필요한 앞·뒤 무음 갭(초) = 주저 신호
+FILLER_TAILGAP = 0.50            # 필러 직후 이 이하의 짧은 침묵은 같이 제거(끊김을 자연스럽게)
+FILLER_MAX_RATIO = 0.12          # 총 필러 제거 상한(영상 대비) — 초과 = SOFT 전량 철회 후 HARD만(과잉 컷 천장과 같은 정신)
 
 
 def cut_params(opts):
     # cutlv 3단 → (pad, min_remove, max_ratio). 결측·미지 = 'std'(현행 상수 = 파라미터 회귀 0). size_frac/coef 문자열 폴백 패턴 계승.
     p, m, r = CUT_LEVELS.get(opts.get("cutlv"), (CUT_PAD, CUT_MIN_REMOVE, 0.35))
     return max(CUT_PAD_MIN, p), max(CUT_MIN_REMOVE_MIN, m), r
+
+
+def _fnorm(t):
+    # 어절 정규화 = 구두점·공백 제거 + 소문자(사전 매칭용 · 원문 무접촉)
+    return re.sub(r"[\s.,!?…~\"'“”‘’·:;()\[\]\-]+", "", str(t or "")).lower()
+
+
+def load_words(outdir):
+    # segments.json 어절(word) 목록 → [(s, e, 정규화텍스트, 확률)] (원본 좌표 · 정렬). 재료 없으면 [].
+    p = os.path.join(outdir, "segments.json")
+    if not os.path.isfile(p):
+        return []
+    try:
+        j = json.load(open(p, encoding="utf-8"))
+    except Exception as e:
+        print("::warning::segments.json 파싱 실패 — 어절 소비 스킵:", e)
+        return []
+    words = []
+    for s in (j.get("segs") or []):
+        for w in (s.get("w") or []):
+            sp = _span(w.get("s"), w.get("e"))
+            if sp:
+                words.append((sp[0], sp[1], _fnorm(w.get("t")), w.get("p")))
+    words.sort()
+    return words
+
+
+def filler_scan(outdir, dur=0.0):
+    # 필러 어절 판정 정본(컴포지터·스캔 공용 = 로직 1벌). → ([{s,e,t,tier}…], 보조note) · 재료 없으면 ([], 사유).
+    words = load_words(outdir)
+    if not words:
+        return [], "필러 컷 건너뜀(어절 전사 없음)"
+    hits, n = [], len(words)
+    for i, (a, b, t, _p) in enumerate(words):
+        if not t or b - a > FILLER_MAXDUR:
+            continue
+        tier = 1 if t in FILLER_HARD else (2 if t in FILLER_SOFT else 0)
+        if not tier:
+            continue
+        gap_prev = (a - words[i - 1][1]) if i else a
+        gap_next = (words[i + 1][0] - b) if i + 1 < n else ((dur - b) if dur > 0 else 0.0)
+        if tier == 2 and max(gap_prev, gap_next) < FILLER_HES:
+            continue   # 주저 신호 없음 = 문장 성분(관형사 '그'·부사 '좀') → 보존이 기본값
+        e = b + min(max(0.0, gap_next), FILLER_TAILGAP)   # 필러 뒤 짧은 침묵 동반 제거(무음 컷과 겹쳐도 무해 = subtract_spans 멱등)
+        hits.append({"s": a, "e": e, "t": t, "tier": tier})
+    hits.sort(key=lambda x: x["s"])
+    extra = ""
+    tot = sum(x["e"] - x["s"] for x in hits)
+    if dur > 0 and hits and tot / dur > FILLER_MAX_RATIO:
+        hits = [x for x in hits if x["tier"] == 1]   # 과잉 = SOFT 전량 철회(오컷보다 덜 자르는 쪽이 안전 · 평의회1·10 정신 계승)
+        extra = " · 과잉 방지로 확실한 것만"
+    return hits, extra
+
+
+def filler_spans(outdir, dur=0.0):
+    # 필러 제거 스팬(원본 좌표) + 사유/보조 note — subtract_spans 소비형(쌍 목록).
+    hits, extra = filler_scan(outdir, dur)
+    return [(x["s"], x["e"]) for x in hits], extra
+
+
+def load_take_spans(outdir):
+    # 반복 테이크(재촬영) 버릴 스팬 = takes.json 'drop'(claude 판정 · 원본 좌표 [s,e]) → 검증·병합. 없으면 [].
+    p = os.path.join(outdir, "takes.json")
+    if not os.path.isfile(p):
+        return []
+    try:
+        j = json.load(open(p, encoding="utf-8"))
+    except Exception as e:
+        print("::warning::takes.json 파싱 실패 — 테이크 컷 스킵:", e)
+        return []
+    raw = []
+    for d in (j.get("drop") or [])[:200]:
+        sp = _span(d.get("s") if isinstance(d, dict) else None, d.get("e") if isinstance(d, dict) else None)
+        if sp:
+            raw.append(sp)
+    raw.sort()
+    merged = []
+    for a, b in raw:
+        if merged and a <= merged[-1][1] + 0.01:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return [(a, b) for a, b in merged]
+
+
+def load_ref_cuts(opts):
+    # 승인 컷(운영자 260727 ③) = 스캔 잡 cuts.json의 제거 스팬 중 뷰어가 뺀 인덱스(cutoff)를 제외한 것.
+    #   있으면 무음·필러·테이크 자동 계산을 전부 건너뛴다 = "확인한 그대로 렌더"(재계산이 결과를 바꾸면 승인이 무의미).
+    ref = str(opts.get("cutref") or "")
+    if not re.fullmatch(r"[0-9]{12}-[0-9a-f]{6}", ref):
+        return [], ""
+    p = os.path.join("viewer", "ly_out", ref, "cuts.json")
+    if not os.path.isfile(p):
+        return [], "승인 컷 목록을 못 찾음 — 자동 컷으로 진행"
+    try:
+        j = json.load(open(p, encoding="utf-8"))
+    except Exception as e:
+        print("::warning::cuts.json 파싱 실패 — 승인 컷 스킵:", e)
+        return [], "승인 컷 목록 읽기 실패 — 자동 컷으로 진행"
+    off = set()
+    for x in re.findall(r"\d+", str(opts.get("cutoff") or ""))[:400]:
+        off.add(int(x))
+    spans = []
+    for i, r in enumerate(j.get("rm") or []):
+        if i in off or not isinstance(r, dict):
+            continue
+        sp = _span(r.get("s"), r.get("e"))
+        if sp:
+            spans.append(sp)
+    spans.sort()
+    return spans, ""
 LINE_F = 1.0                     # libass 줄전진/폰트크기 비 = 1.0 실측(260707 ffmpeg+Noto CJK KR 프레임 픽셀 계측: 67px/fs67 — libass는 VSFilter 호환으로 fs를 줄높이로 정규화 · hhea 1.48 가정은 오류였음) · 중앙 불변 보정 전용
 
 
@@ -316,6 +441,24 @@ def strip_bgm(video):
         return ""
 
 
+def cut_xfade(keeps):
+    # 컷 이음매 마이크로 페이드(운영자 260727 ⑤) — select/aselect 스플라이스는 파형이 뚝 끊겨 '틱' 소리가 난다.
+    #   이음매(출력 시간축 누적 경계) 주변 ±CUT_XFADE에서 음량을 V자로 떨궈 그 불연속을 덮는다.
+    #   ⚠ 정직 한계 = volume eval=frame = **오디오 프레임(~21ms) 단위 근사**(샘플 단위 아님) · 이음매는 무음 경계라 체감 손실 0에 가깝다.
+    if len(keeps) < 2:
+        return ""
+    acc, joints = 0.0, []
+    for a, b in keeps[:-1]:
+        acc += b - a
+        joints.append(acc)
+    if not joints or len(joints) > CUT_XFADE_MAX_JOINT:
+        return ""   # 이음매 과다 = 표현식 비대 → 생략(클릭 억제만 포기 · 컷 자체는 정상)
+    env = "1"
+    for c in joints:
+        env = "min({},min(1,abs(t-{:.6f})/{}))".format(env, c, CUT_XFADE)
+    return ",volume=eval=frame:volume='{}'".format(env)
+
+
 def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
     # 단일 패스 select+setpts 시프트 — trim+concat 팬아웃은 브랜치 버퍼링으로 keep 10개에 피크 RSS 4.7GB 실측
     # (러너 7GB OOM 위험 · 평의회8) → select가 한 패스에서 갭 프레임만 드롭 = 메모리 O(1).
@@ -331,7 +474,7 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
     parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
         loud = ",loudnorm=I=-14:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정 — 목표 = 앱 표준 −14LUFS(audio_norm TARGET_I 동조 · 운영자 260722 통일: 구 −16은 배경음 제거만 켠 산출이 타 잡보다 2dB 조용하던 편차 · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
-        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}[ac];".format(asrc, sel_e, off_e, loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장)
+        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, cut_xfade(keeps), loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤)
     tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
     parts.append("[vs]" + (tail.rstrip(",") or "null") + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용
     return "\n".join(parts)
@@ -721,6 +864,17 @@ def run(vid_id, video, outdir):
     # 대본 삭제 컷(260711) — 삭제 조각 스팬(원본 시간축). opts.cutdel = 번인 게이트(검증④): subs.json에 del이
     #   커밋돼 있어도 토글 OFF(재번인 opts.cutdel 부재/false)면 컷 미적용 = 토글이 켜기·끄기 양방향으로 동작.
     del_spans = load_del_spans(outdir) if (segs and opts.get("cutdel")) else []
+    # ── 명시 제거 스팬 3종(운영자 260727 ①②③) — 대본 삭제 컷과 **같은 좌표축·같은 차감 함수**(subtract_spans) 레일에 합류.
+    #   ref(승인 컷)가 있으면 나머지 자동 계산은 전부 생략 = "확인한 그대로 렌더"(재계산이 결과를 바꾸면 승인이 무의미).
+    ref_spans, ref_note = load_ref_cuts(opts)
+    fil_spans, fil_note, take_spans = [], "", []
+    if not ref_spans:
+        if opts.get("cutfill"):
+            fil_spans, fil_note = filler_spans(outdir, dur)
+            if not fil_spans and not fil_note:
+                fil_note = "필러 없음"
+        if opts.get("take"):
+            take_spans = load_take_spans(outdir)
     # ── 편집기(edit) 축 파싱 — 전부 결측 = 순수 ly 경로(회귀 0 · 운영자 260710 골격 B 확정)
     V_AR = {"9:16": 9 / 16, "1:1": 1.0, "4:5": 4 / 5, "16:9": 16 / 9}
     vid_ar = opts.get("vid_ar") if opts.get("vid_ar") in V_AR else None
@@ -747,7 +901,7 @@ def run(vid_id, video, outdir):
     if segs and not no_burn and f_key and f_key in FONT_FAMILY and f_key != "gothic" and not font_avail(FONT_FAMILY[f_key]):
         opts["font"] = "gothic"   # 폰트 미설치 = 기본 폴백(fail-soft · 260711) — 이후 전 build_ass 호출(컷 실패 폴백 포함)이 이 opts를 봄 · 게이트 = 번인 실행 경로(segs·not no_burn)에만(컷 단독·전사 없음 = fc-list 불요·오해 note 차단 · v2평의회1 F2)
         edit_notes.append("선택 폰트 미설치 — 기본 고딕으로 합성")
-    if not segs and not (has_vid or aud_on or opts.get("bgm")):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합)
+    if not segs and not (has_vid or aud_on or opts.get("bgm") or ref_spans):   # bgm 단독도 유효 편집(보컬 트랙 교체 · P2평의회3 게이트 불일치 봉합) · 승인 컷 단독도 유효(자막 없이 컷만 = 260727 ③ · 전사 재실행 0)
         out_json(outdir, {"error": "전사가 안 돼 컷 불가 — 소리 있는 영상인지 확인해줘" if opts.get("cut")
                           else "자막 타이밍 데이터 없음(subs.json·segments.json) — 자막 텍스트만"}); return 0   # 컷 단독(STT-only) = 컷 맥락 문구(260711)
     if opts.get("cut") and not segs:
@@ -787,6 +941,8 @@ def run(vid_id, video, outdir):
                         edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")
                 if del_spans:   # 삭제 스팬도 트림 시간축으로 동행(원본 좌표 = segments 스팬과 동형 · 창 밖 = 드롭)
                     del_spans = [(max(0.0, x - trim[0]), min(dur, y - trim[0])) for x, y in del_spans if y > trim[0] and x < trim[0] + dur]
+                _shift = lambda sp: [(max(0.0, x - trim[0]), min(dur, y - trim[0])) for x, y in sp if y > trim[0] and x < trim[0] + dur]
+                ref_spans, fil_spans, take_spans = _shift(ref_spans), _shift(fil_spans), _shift(take_spans)   # 승인·필러·테이크도 동행 리맵(원본 좌표 → 트림 좌표 · 260727)
             else:
                 edit_notes.append("구간이 이상해 — 트림 건너뜀")
     if lang == "src":   # 원문 그대로 모드 = src(없으면 ko) 단일
@@ -808,8 +964,8 @@ def run(vid_id, video, outdir):
         bgm_note = "배경음 제거" if vocals else "배경음 제거 실패 — 원본 소리로 합성"
     cut_note, keeps = "", []
     segs_orig, dur_orig = segs, dur   # 컷 실패 폴백용(평의회6) — 재매핑 전 원본 타이밍·길이 보존
-    sil_note, del_note = "", ""
-    if opts.get("cut") and dur > 0:
+    sil_note, del_note, ext_note = "", "", ""
+    if opts.get("cut") and dur > 0 and not ref_spans:   # 승인 컷(cutref) = 무음 자동 계산 생략(승인본이 정본 · 260727 ③)
         pad, min_rm, max_ratio = cut_params(opts)   # 컷 강도(운영자 260708) — 살짝/기본/많이 → pad·min_remove·천장
         spans, spans_raw = load_speech_spans(outdir, segs)
         if trim and spans_raw:   # segments.json(원본 좌표) 스팬만 트림 시간축으로 — segs 폴백은 이미 리맵된 좌표 = 재시프트 금지(260711)
@@ -832,7 +988,7 @@ def run(vid_id, video, outdir):
                 sil_note += " · 과잉 컷 방지로 자동 완화"
         else:
             keeps = []
-    elif opts.get("cut"):
+    elif opts.get("cut") and not ref_spans:
         cut_note = "영상 길이 미상 — 무음 컷 건너뜀"   # dur=0(probe N/A) 침묵 스킵 표면화(평의회3·6 260709) — 조용한 무력화 금지
     # 대본 삭제 컷(운영자 260711 텍스트 컷): 상세 편집기 삭제 조각 스팬 = 명시 의도 → 무음컷과 달리 min_remove 임계 없음.
     #   무음 keeps(있으면)에서 추가 차감·없으면 전체에서 차감 · 전부 삭제 = 컷 포기(빈 출력 방지 · fail-soft).
@@ -847,6 +1003,27 @@ def run(vid_id, video, outdir):
             del_note = "전부 삭제 구간 — 삭제 컷 건너뜀"
     elif del_spans:
         del_note = "영상 길이 미상 — 삭제 컷 건너뜀"
+    # ── 승인·필러·테이크 컷(260727) — 대본 삭제 컷과 동일 차감 레일. 라벨별로 따로 차감해 **몇 초 줄었는지 축마다 정직 표기**.
+    #   필러는 발화 *안*에 있어 '생존 자막 보호'(위 del_spans 보호) 대상이 아니다 — 그걸 걸면 필러가 전부 되살아난다(설계상 제외).
+    _ext_notes = []
+    if ref_note:
+        _ext_notes.append(ref_note)
+    if fil_note and not fil_spans:
+        _ext_notes.append(fil_note)   # 재료 없음·필러 0 = 침묵 스킵 금지(조용한 무력화 금지 정신)
+    for _lbl, _sp in (("승인 컷", ref_spans), ("필러 컷", fil_spans), ("테이크 컷", take_spans)):
+        if not _sp:
+            continue
+        if dur <= 0:
+            _ext_notes.append("영상 길이 미상 — {} 건너뜀".format(_lbl)); continue
+        base = keeps if keeps else [(0.0, dur)]
+        k2 = subtract_spans(base, _sp)
+        cut_d = sum(b - a for a, b in base) - sum(b - a for a, b in k2)
+        if k2 and cut_d > 0.05:
+            keeps = k2
+            _ext_notes.append("{} {}군데 {:.1f}초".format(_lbl, len(_sp), cut_d) + (fil_note if _lbl == "필러 컷" else ""))
+        elif not k2:
+            _ext_notes.append("{} 전 구간 — 건너뜀".format(_lbl))   # 전부 삭제 = 빈 출력 방지(fail-soft · del 경로 동형)
+    ext_note = " · ".join(p for p in _ext_notes if p)
     if keeps:
         remap, new_dur = cut_remap(keeps)
         remapped = []
@@ -867,14 +1044,14 @@ def run(vid_id, video, outdir):
                 nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
             remapped.append(nsg)
         segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
-        if not remapped:
+        if segs_orig and not remapped:   # ⚠ 자막이 애초에 0개면(승인 컷 단독 렌더 = STT 미실행) remapped도 0 — 그걸 '붕괴'로 읽어 컷을 통째로 버리던 경로 봉합(260727)
             keeps = []
         else:
-            cut_note = " · ".join(p for p in [cut_note, sil_note, del_note] if p)   # 무음·대본삭제 결합 표기(무음 단독 = 종전 포맷 그대로 · 조용한 클램프 금지)
+            cut_note = " · ".join(p for p in [cut_note, sil_note, del_note, ext_note] if p)   # 무음·대본삭제·승인/필러/테이크 결합 표기(무음 단독 = 종전 포맷 그대로 · 조용한 클램프 금지)
             print("컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
             dur = new_dur
-    elif del_note:
-        cut_note = " · ".join(p for p in [cut_note, del_note] if p)   # 컷 미실행이어도 삭제 컷 스킵 사유는 표면화(침묵 금지)
+    elif del_note or ext_note:
+        cut_note = " · ".join(p for p in [cut_note, del_note, ext_note] if p)   # 컷 미실행이어도 삭제·필러·테이크 스킵 사유는 표면화(침묵 금지)
     # ── 지오메트리 확정 — 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스(자막이 검정 여백 위에도 앉게 · 260710).
     #    트림은 위에서 선확정(자막·스팬 동행 리맵 · 260711) — 여기선 tcut(입력 -ss/-t)로만 소비. 편집기 축 결측 = 종전 ly 캡·체인 그대로.
     cw, ch, cx, cy = w, h, 0, 0

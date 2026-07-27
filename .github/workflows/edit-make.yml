@@ -27,7 +27,7 @@ on:
         type: string
         default: ''
       opts:
-        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm,outline,pad,oc,font} + 편집기 축{vid_ar,vid_fit(crop/pad/blur),vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm} + 클리퍼{clip=배타 스캔: STT→구간픽→clips.json·컴포즈 스킵 · 260711}'
+        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm,outline,pad,oc,font} + 편집기 축{vid_ar,vid_fit(crop/pad/blur),vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm} + 클리퍼{clip=배타 스캔: STT→구간픽→clips.json·컴포즈 스킵 · 260711} + 컷 강화{cutfill=필러 컷·take=반복 테이크 감지(claude)·cutscan=컷 미리보기 스캔(컴포즈 스킵→cuts.json)·cutref/cutoff=승인 컷 소비 · 260727}'
         type: string
         default: '{}'
       account:
@@ -59,12 +59,12 @@ jobs:
 
       # ── 자막·클리퍼 ON 경로 전용 준비(claude 의역/구간픽) — 둘 다 아니면 Node·claude 설치 안 함(러너 분 절약)
       - name: Setup Node (자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"take":true') }}
         uses: actions/setup-node@v5
         with:
           node-version: '24'
       - name: Install claude-code (자막)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"take":true') }}
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Setup Python
@@ -73,14 +73,14 @@ jobs:
           python-version: '3.12'
 
       - name: Restore python deps (site-packages 캐시 · 자막·컷·클리퍼)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutfill":true') || contains(inputs.opts, '"take":true') || contains(inputs.opts, '"cutscan":true') }}
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
           key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)
 
       - name: STT 환경 (자막·컷·클리퍼 = whisper+ffmpeg+한글폰트)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutfill":true') || contains(inputs.opts, '"take":true') || contains(inputs.opts, '"cutscan":true') }}
         timeout-minutes: 20   # 첫 런 Whisper large-v3 3.1GB 다운 감안(260726 승격 · 캐시히트 즉시)
         uses: ./.github/actions/runner-setup
         with:
@@ -89,7 +89,7 @@ jobs:
           apt: ffmpeg fonts-noto-cjk fonts-nanum fonts-nanum-extra   # 나눔 2종 = 자막 폰트 축(gothic/serif = noto-cjk 안 · nanum=나눔고딕 · pen=Nanum Pen Script는 -extra) — apt 캐시 키에 목록 포함 = 첫 런만 다운(260711)
 
       - name: 변환 환경 (자막·컷·클리퍼 없음 = ffmpeg+yt-dlp만)
-        if: ${{ !contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"cut":true') && !contains(inputs.opts, '"clip":true') }}
+        if: ${{ !contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"cut":true') && !contains(inputs.opts, '"clip":true') && !contains(inputs.opts, '"cutfill":true') && !contains(inputs.opts, '"take":true') && !contains(inputs.opts, '"cutscan":true') }}
         timeout-minutes: 10
         uses: ./.github/actions/runner-setup
         with:
@@ -160,7 +160,7 @@ jobs:
           [ -n "${EDIT_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/edit_err.txt; echo "::error::EDIT_SRC 빈값"; exit 1; }
           DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"
           SPAN="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');t1=o.get('vid_t1');print(int(float(t1)-float(o.get('vid_t0') or 0)) if t1 else -1)" 2>/dev/null || echo -1)"
-          STT="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');print(1 if (o.get('burn') or o.get('cut') or o.get('clip')) else 0)" 2>/dev/null || echo 9)"   # 파싱 실패 = 9(미상) → 아래 분기 전부 미적중 = 종전 10분 보수 폴백
+          STT="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');print(1 if (o.get('burn') or o.get('cut') or o.get('clip') or o.get('cutfill') or o.get('take') or o.get('cutscan')) else 0)" 2>/dev/null || echo 9)"   # 파싱 실패 = 9(미상) → 아래 분기 전부 미적중 = 종전 10분 보수 폴백
           if [ "$STT" = "1" ]; then CAP=1200; MSG="자막·컷·클리퍼는 20분 이하만(전사가 원본 전체를 돎) — 더 길면 구간만 자르거나 20분 이하로."
           elif [ "$SPAN" -ge 0 ] && [ "$SPAN" -le 600 ] 2>/dev/null; then CAP=3600; MSG="구간 편집도 원본 60분까지야 — 더 길면 잘라서 올려줘."
           else CAP=600; MSG="편집기는 10분 이하만(릴스/쇼츠용) — 긴 영상은 구간 카드로 잘라줘."
@@ -170,11 +170,15 @@ jobs:
           fi
 
       - name: STT (자막·컷·클리퍼 — 오디오 추출 → Whisper)
-        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') }}
+        if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutfill":true') || contains(inputs.opts, '"take":true') || contains(inputs.opts, '"cutscan":true') }}
         timeout-minutes: 45   # large-v3 승격(260726) — 원본 20분 캡 × ~2×RT 최악 + 여유. 무한 행만 차단
         env:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
           HARD=0; case "$OPTS" in *'"burn":true'*) HARD=1;; esac; case "$OPTS" in *'"clip":true'*) HARD=1;; esac
@@ -185,11 +189,30 @@ jobs:
             echo "::warning::오디오 추출 실패 — 컷 건너뜀(소리 없는 영상?)"; exit 0
           fi
           SEGJSON="viewer/ly_out/${IN_ID}/segments.json"
+          mkdir -p "viewer/ly_out/${IN_ID}"
+          # ── STT 캐시(운영자 260727 ②) — 키 = 추출 오디오 sha256(+모델). 같은 소스 재렌더·후보 확정 렌더가
+          #    large-v3를 통째로 다시 돌던 낭비(20분 = 16~40분) 제거. 전면 fail-soft: 캐시가 어떤 이유로든 안 되면 그냥 전사한다.
+          CKEY=""; ENDP=""
+          if [ -n "${R2_BUCKET:-}" ] && [ -n "${R2_ACCOUNT_ID:-}" ]; then
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            ENDP="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            CKEY="$(python3 .github/scripts/stt_cache.py key /tmp/audio.mp3 2>/dev/null || true)"
+          fi
+          if [ -n "$CKEY" ] && aws s3 cp "s3://$R2_BUCKET/$CKEY" "$SEGJSON" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null; then
+            if python3 .github/scripts/stt_cache.py rebuild "$SEGJSON" > /tmp/transcript.txt; then
+              echo "STT 캐시 히트($CKEY) — 전사 건너뜀 · $(wc -l < /tmp/transcript.txt)줄"; exit 0
+            fi
+            echo "::warning::캐시 재구성 실패 — 정상 전사로 진행"; rm -f "$SEGJSON" /tmp/transcript.txt
+          fi
           if ! python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt; then
             [ "$HARD" = 1 ] && { echo "Whisper STT 실패 — 오디오 인식 불가. 자막·클리퍼 카드를 빼거나 다른 영상으로." > /tmp/edit_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
             rm -f "$SEGJSON"; echo "::warning::STT 실패 — 컷 건너뜀(부분 산출 정리)"; exit 0
           fi
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
+          if [ -n "$CKEY" ] && [ -s "$SEGJSON" ]; then
+            aws s3 cp "$SEGJSON" "s3://$R2_BUCKET/$CKEY" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null \
+              && echo "STT 캐시 적재: $CKEY" || echo "::warning::STT 캐시 적재 실패(비치명)"
+          fi
 
       - name: 자막 의역 (claude)
         if: ${{ contains(inputs.opts, '"burn":true') && !contains(inputs.opts, '"clip":true') }}   # clip 배타 러너 백스톱(검증⑤ — api 정규화와 이중 방어 · 수동 dispatch 혼합 opts 시 토큰 낭비 차단)
@@ -238,8 +261,8 @@ jobs:
       # 클리퍼 원본 보관(R2 ≤400MB) — 파일/R2 업로드 소스는 잡 끝에 삭제(일회용)라, 후보 확정 후 *재렌더*가 소스를 잃음 →
       #   스캔 성공 시 원본을 ly_out/<id>/src.*로 보관하고 clips.json src에 URL 기입(URL 소스는 clipmake가 원 URL 승계 = 보관 불요).
       #   전면 fail-soft: 실패 = 후보 목록은 정상·재렌더만 파일 재선택(뷰어 안내).
-      - name: 클리퍼 원본 보관 (R2)
-        if: ${{ contains(inputs.opts, '"clip":true') && inputs.url == '' }}
+      - name: 클리퍼·컷스캔 원본 보관 (R2)
+        if: ${{ (contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutscan":true')) && inputs.url == '' }}
         timeout-minutes: 8   # R2 PUT 스톨 백스톱(형제 R2 스텝 동형 · 검증⑤)
         env:
           IN_ID: ${{ inputs.id }}
@@ -257,8 +280,13 @@ jobs:
           sys.path.insert(0, ".github/scripts")
           import thumb_gen as tg   # r2_upload·R2_ON 재사용(ly_burn 동형)
           vid, src = sys.argv[1], sys.argv[2]
-          p = os.path.join("viewer", "ly_out", vid, "clips.json")
-          if not (tg.R2_ON and os.path.isfile(p) and src and os.path.isfile(src)):
+          p = ""
+          for cand in ("clips.json", "cuts.json"):   # 클리퍼 후보 · 컷 미리보기 = 둘 다 '확정 후 재렌더'가 원본을 필요로 함(260727 ③)
+              q = os.path.join("viewer", "ly_out", vid, cand)
+              if os.path.isfile(q):
+                  p = q
+                  break
+          if not (tg.R2_ON and p and src and os.path.isfile(src)):
               print("보관 조건 미충족(R2 미설정/산출·소스 없음) — 스킵")
               raise SystemExit(0)
           if os.path.getsize(src) > 400 * 1024 * 1024:
@@ -276,6 +304,44 @@ jobs:
               os.replace(tmp, p)   # 원자 교체 = 레포 표준(truncate-쓰기 금지 · 검증⑤)
               print("원본 보관:", url)
           PY
+
+      # ── 테이크 감지(claude · 260727 ④) — 전사에서 '같은 말 다시 한 자리'를 찾아 버릴 구간 takes.json 제안.
+      #    비치명: 실패해도 컷·자막 잡은 그대로 진행(테이크 컷만 빠짐 — 조용한 무력화가 아니라 note로 표면화됨).
+      - name: 테이크 감지 (claude)
+        if: ${{ contains(inputs.opts, '"take":true') && !contains(inputs.opts, '"clip":true') }}
+        timeout-minutes: 15
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::warning::id 없음 — 테이크 감지 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::warning::잘못된 id — 테이크 감지 스킵"; exit 0;; esac   # 문자셋 가드 = 형제 스텝 동형
+          [ -s /tmp/transcript.txt ] || { echo "::warning::전사 없음 — 테이크 감지 스킵"; exit 0; }
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::warning::OAuth 토큰 없음 — 테이크 감지 스킵"; exit 0; }
+          SUBS="$(cat /tmp/transcript.txt)"; export SUBS
+          EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/takemake.sh "$IN_ID" || echo "::warning::테이크 감지 실패 — 테이크 컷 없이 진행(비치명)"
+
+      # ── 컷 미리보기 스캔(260727 ③) — 렌더 없이 '자를 목록'만 뽑는다(cuts.json). 컴포즈 스킵 = 클리퍼와 같은 2단 흐름.
+      #    운영자가 뷰어에서 뺄 걸 빼고 확정하면 일반 렌더 잡이 opts{cutref,cutoff}로 그 승인본 그대로 자른다.
+      - name: 컷 미리보기 스캔 (cuts.json)
+        if: ${{ contains(inputs.opts, '"cutscan":true') && !contains(inputs.opts, '"clip":true') }}
+        timeout-minutes: 10
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          SRC_URL: ${{ inputs.url }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          python3 .github/scripts/cut_scan.py "$IN_ID" "${EDIT_SRC:-}"
 
       - name: Demucs 캐시 (배경음 제거)
         if: ${{ contains(inputs.opts, '"bgm":true') }}
@@ -300,7 +366,7 @@ jobs:
             || echo "::warning::Demucs 설치 실패 — 배경음 제거 스킵(원본 소리로 합성)"
 
       - name: 컴포즈 (ly_burn 단일 컴포지터 → R2 → video.json)
-        if: ${{ !contains(inputs.opts, '"clip":true') }}   # 클리퍼 = 스캔 전용(산출 = clips.json — 렌더는 후보 확정 후 별도 잡)
+        if: ${{ !contains(inputs.opts, '"clip":true') && !contains(inputs.opts, '"cutscan":true') }}   # 클리퍼·컷 미리보기 = 스캔 전용(산출 = clips.json/cuts.json — 렌더는 확정 후 별도 잡)
         timeout-minutes: 60   # 내부 백스톱 최악 스택{probe 60 + Demucs 분리 780 + 인코딩 enc_to 2400(4K)~2250(60i) + 음량 270 + R2} ≈ 59분에 정렬(4K 경로 260711) — 잡 85분 캡 전 우아한 실패 기록 창 확보
         env:
           IN_ID: ${{ inputs.id }}
@@ -393,6 +459,13 @@ jobs:
           [ -n "$IN_ID" ] || exit 0
           case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
           python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
+          KJ="viewer/ly_out/${IN_ID}/cuts.json"
+          if [ -s "$KJ" ]; then   # 컷 미리보기 스캔 = cuts.json이 산출(video.json 없음 · 260727 ③)
+            N="$(python3 -c "import json;print(len(json.load(open('$KJ')).get('rm') or []))" 2>/dev/null || echo 0)"
+            if [ "$N" -gt 0 ] 2>/dev/null; then BODY="자를 곳 ${N}군데 — 탭해서 확인"; else BODY="자를 곳 없음 — 그대로 편집해도 돼"; fi
+            python3 .github/scripts/push_send.py --notify "영상" "$BODY" --url "/edit.html?done=${IN_ID}" --tag "nomute-make-${IN_ID}" || echo "::warning::완료 푸시 실패(비치명)"
+            exit 0
+          fi
           CJ="viewer/ly_out/${IN_ID}/clips.json"
           if [ -s "$CJ" ]; then   # 클리퍼 스캔 = clips.json이 산출(video.json 없음) — 실패면 clips.json 부재 → 아래 error.log 경로가 받음
             N="$(python3 -c "import json;print(len(json.load(open('$CJ')).get('clips') or []))" 2>/dev/null || echo 0)"

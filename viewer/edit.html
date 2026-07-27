@@ -519,6 +519,7 @@
   <div class="status" id="cstatus" role="status"></div>
   <div class="vstage" id="vwrap" hidden></div>
   <div class="cliplist" id="cliplist" hidden role="listbox" aria-label="클립 후보 — 탭하면 구간 적용"></div>
+  <div class="cliplist" id="cutlist" hidden role="listbox" aria-label="컷 미리보기 — 탭하면 그 구간은 안 자름"></div><!-- 컷 미리보기 목록(260727 ③) — 스타일·문법 = 위 클립 후보 목록 그대로 계승(신규 CSS 0) -->
   <div class="footer">
     <button class="ghost dlbtn" id="dlVid" hidden aria-label="저장" title="저장"></button>
   </div>
@@ -623,12 +624,14 @@ const CARD={
   clip:{nm:'클리퍼', grp:'컷·구간', eta:230},   // 배타 스캔(STT→하이라이트 후보픽 · 260711) — 후보 탭 = 구간 적용 → 일반 렌더
 };
 let ON={sub:false,bgm:false,cut:false,trim:false,screen:false,res:false,fps:false,anorm:true,clip:false};
+let SCAN_ONCE=false;   // 다음 발사 1회를 '컷 미리보기 스캔'으로(버튼이 세움 · buildOpts가 읽고 즉시 내림 · 260727 ③)
+let CUT_REF=null;      // 승인 컷 참조 {id, off:[뺀 인덱스]} — 발사 성공 시 소진
 let CLIP_SAVE=null;   // 클리퍼 진입 직전 ON 스냅샷(운영자 260722 "도중에 누르면 다른 옵션값이 날아가 — 방지") — P값은 원래 보존이라 ON 플래그만 저장·복원
 function clipSnap(){ if(!ON.clip) CLIP_SAVE={...ON}; for(const kk in ON) ON[kk]=false; ON.clip=true; }   // 배타 진입 = 스냅샷 후 전축 off(발사 계약 불변 — buildOpts는 여전히 {clip:true} 단독)
 function clipRelease(){ if(!ON.clip) return; ON.clip=false; if(CLIP_SAVE){ for(const kk in CLIP_SAVE){ if(kk!=='clip') ON[kk]=CLIP_SAVE[kk]; } CLIP_SAVE=null; } }   // 배타 해제 = 스냅샷 복원(직후 탭한 축이 이겨야 하므로 호출측은 복원 뒤 자기 축 세팅)   // 음량 통일 = 기본 ON(운영자 260712 "음향 기본값 = 보정") — 나머지 축은 '원본/그대로/끔' 기본 유지 · 발사 게이트도 이 기본으로 통과(맨 발사 = 보정만 적용)
 let P={lang:'auto',tone:'sns',filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
   sh:100,shc:'black',font:'gothic',fg:'white',glow:0,   // 음영 크기 %(100 = 종전 편집기 렌더 그대로 = 기존 기능 불변 · 50 = ly 캡션 기본 파리티)·음영 색·폰트 — 운영자 260711 3축 · fg 글자색(프리셋 전용 · 기본 흰 = 종전)·glow 네온 번짐 %(운영자 260721 · 기본 0 = 종전)
-  cutlv:'std',t0:'',t1:'',ar:'9:16',fit:'blur',vpos:50,res:'1080',fps:'60i'};   // fit 기본 = 여백(블러)(운영자 260711 fitDef)   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
+  cutlv:'std',cutfill:false,take:false,t0:'',t1:'',ar:'9:16',fit:'blur',vpos:50,res:'1080',fps:'60i'};   // cutfill=필러 컷·take=반복 테이크 감지(운영자 260727 ①④ — 컷 카드 종속 서브 토글)   // fit 기본 = 여백(블러)(운영자 260711 fitDef)   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
 let OPEN='';
 const SUBPRE={   // 자막 스타일 프리셋(운영자 260711 배치 승인 — 자막 카드 최상단 칩) · 기존 축 조합만 원탭 점등(신규 렌더 축 0)
   news:{nm:'속보체', style:'box', karaoke:false, pop:false, keyword:true, bg:100, pos:57, size:38},
@@ -664,7 +667,7 @@ function loadPvFont(k){   // 구글 웹폰트 지연 로드(기본 고딕 = 로�
 
 function sum(k){
   if(k==='sub') return ({bold:'기본',clean:'깔끔',box:'박스'})[P.style]+(P.karaoke?'·카라오케':P.pop?'·팝':'')+(P.keyword?'·키워드':'')+(P.font!=='gothic'?'·'+((FONT_PV[P.font]||{}).lbl||''):'')+' · '+P.pos+'%';
-  if(k==='cut') return ({soft:'살짝',std:'기본',hard:'많이'})[P.cutlv];
+  if(k==='cut') return ({soft:'살짝',std:'기본',hard:'많이'})[P.cutlv]+(P.cutfill?'·필러':'')+(P.take?'·테이크':'');
   if(k==='trim') return (P.t0||0)+'~'+(P.t1||'끝')+'초';
   if(k==='screen') return P.ar+(P.fit==='pad'?' 검정 여백':P.fit==='blur'?' 블러 여백':' 자르기');   // 개명 동기(운영자 260712 3차)
   if(k==='res') return P.res==='src'?'원본 유지(≤4K)':P.res+'p 이하로';
@@ -691,7 +694,7 @@ function prm(k){
     +srow('음영 색', Object.keys(OC_DEF).map(c=>pc('shc',c,P.shc===c,false,'<span class="swd" style="--sw:'+OC_DEF[c]+'"></span>'+OC_LBL[c])))
     +srow('폰트', Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl)));
   if(k==='cut') return segs('cutlv',[['off','OFF'],['soft','살짝'],['std','기본'],['hard','많이']],ON.cut?P.cutlv:'off')
-    +(ON.cut?'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
+    +(ON.cut?'<div class="prow">'+pc('cutfill',P.cutfill?'0':'1',P.cutfill,false,'필러')+pc('take',P.take?'0':'1',P.take,false,'테이크')+'</div><div class="prow"><button class="pc" type="button" id="cutScanBtn">자를 곳 먼저 보기</button></div>'+'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
   if(k==='screen') return segs('ar',   // 미리보기 = 상단 PREVIEW 섹션 전담(운영자 260712 — 구 비율 카드 귀속 pvSlot 폐지)
     [['off','원본']].concat([['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']]),ON.screen?P.ar:'off')   // '원본' = 비율 변환 끔(운영자 260712 시안 정합 — 종전 카드 미장착과 동일)
@@ -709,6 +712,7 @@ function prm(k){
 function etaCalc(){
   let s=90;   // 러너 픽업+체크아웃 근사(구 40 — 20분 실측 잡 역산 상향 · 260722)
   for(const k of ORDER){ if(ON[k]) s+=CARD[k].eta; }
+  if(ON.cut&&P.take) s+=90;   // 테이크 감지 claude 1콜(클리퍼 구간픽 실측대 근사 · 260727 ④)
   if(ON.sub||ON.cut||ON.clip) s+=150;   // STT 환경(whisper·폰트 캐시 복원) 근사 — 전사 동반 축 공통(260722)
   if(ON.cut&&!ON.sub) s+=150;   // 컷 단독 = STT(전사)만 추가로 돈다(의역 0 · 자막 eta 210엔 STT 포함이라 동시엔 미가산)
   if((ON.sub||ON.cut||ON.clip)&&_dur) s+=Math.min(2400, Math.round(_dur*1.2));   // Whisper large-v3 전사 ≈ 1.2×실시간 근사(260726 turbo→승격 — 구 turbo 몫은 sub eta 210에 흡수돼 있었음 · 캡 = 원본 20분 게이트 대응)
@@ -750,6 +754,7 @@ function setAxis(k,v){   // 축 상태 단일 정본(순환값·잔존 chip 공�
   if(k==='bgm'||k==='anorm'||k==='sub'){ if(v==='on'){clipRelease();ON[k]=true;} else ON[k]=false; return; }   // sub 합류(운영자 260721 자막 복원 — 이진 토글·클리퍼 배타 동일 문법)
   if(k==='trim'){ if(v==='on'){clipRelease();ON.trim=true;} else ON.trim=false; return; }   // 구간 = OFF/ON 토글(운영자 260713 · ON시 구간 입력 펼침 · 클리퍼 배타)
   if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } if(!('fg' in pr)) P.fg='white'; } return; }   // 글자색 미동봉 프리셋 = 흰 복귀(fg = 색 UI 없는 프리셋 전용 축 — 감성 네온 이탈 시 노랑 잔존 차단 · ly 260720 동일 문법 · 음영색/폰트/글로우는 UI 실존 = 직교 유지)
+  if(['cutfill','take'].includes(k)){ P[k]=v==='1'; return; }   // 컷 카드 서브 토글(260727) — ON.cut 종속이라 축 상태(ON) 무접촉
   if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; return; }
   P[k]=v; if(k==='fit'&&v!=='crop') scrubClose();
 }
@@ -761,7 +766,7 @@ function cardHtml(k,half){   // 한 줄 순환값 헤더 + 잔여(위치 게이�
   let body='';
   if(k==='sub'&&ON.sub) body='<div class="prm">'+prm('sub')+'</div>';   // 자막 ON = 도먼트 보존해둔 풀 파라미터 카드(프리셋·언어·톤·모양·게이지·음영색·폰트) 재점등(운영자 260721 복원 — prm('sub') 원문 그대로)
   else if(k==='screen'&&ON.screen&&P.fit==='crop') body='<div class="prm">'+gauge('vpos','위치',0,100,P.vpos,'%')+'</div>';   // 위치 = 자르기일 때만(게이지 = 순환 불가라 아래)
-  else if(k==='cut'&&ON.cut) body='<div class="cnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>';
+  else if(k==='cut'&&ON.cut) body='<div class="prm">'+'<div class="prow">'+pc('cutfill',P.cutfill?'0':'1',P.cutfill,false,'필러')+pc('take',P.take?'0':'1',P.take,false,'테이크')+'</div><div class="prow"><button class="pc" type="button" id="cutScanBtn">자를 곳 먼저 보기</button></div>'+'</div><div class="cnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘</div>';   // 필러·테이크·미리보기(260727 ①③④) — 자막 카드 srow 문법 계승
   else if(k==='clip'&&ON.clip) body='<div class="cnote">하이라이트 후보 3~5개 · 단독 실행 — 다른 옵션은 잠시 꺼짐, 끄면 복원</div>';
   else if(k==='trim'&&ON.trim) body='<div class="prm"><div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div></div>';   // ON시만 펼침(운영자 260713 토글화) · '끝(비면 안 자름)' 산문 제거 = '끝'
   return '<div class="scard cyc'+(half?' half':'')+(ON.clip&&k!=='clip'?' dim':'')+'"><div class="hd st"><span class="nm">'+CARD[k].nm+'</span>'+vals+'</div>'+body+'</div>';   // 클리퍼 배타 중 = 타 축 dim(운영자 260712 6차 승인 — 시각만·탭=배타 해제 그대로)
@@ -1050,6 +1055,7 @@ function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 �
     $('#file').value=''; fileSlotClear();
     FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0; _dur=0;
     CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';
+    CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';
     if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
     FILE_URL='';
     try{ lyPvSet(null); }catch(e){}
@@ -1060,6 +1066,7 @@ $('#file').addEventListener('change',async()=>{
   const f=$('#file').files[0]; if(!f) return;
   FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0;
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';   // 새 소스 = 옛 스캔 후보 무효(엉뚱한 구간 적용 풋건 차단 · 검증⑦C)
+  CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';   // 컷 미리보기도 동일(다른 영상의 승인 컷이 붙는 사고 차단 · 260727)
   if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
   FILE_URL=''; render();   // 크롭 미리보기 버튼 즉시 소거(열린 비율 카드 · conv 이식 260711)
   if(f.size>2*1024*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('파일은 2GB까지 — 구간을 잘라서 올려줘'); }   // 거절 = 버튼 복구(직전 업로드가 잠근 상태 고착 방지 · 평의회7 F1)
@@ -1181,6 +1188,7 @@ function goFireFail(g){
 
 function buildOpts(){
   const o={};
+  if(SCAN_ONCE){ SCAN_ONCE=false; return {cutscan:true, cut:!!ON.cut, cutlv:P.cutlv, cutfill:!!P.cutfill, take:!!P.take}; }   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 서버 정규화와 계약 일치 · 260727 ③)
   if(ON.clip) return {clip:true, clip_model:P.clipmdl};   // 클리퍼 = 배타 스캔(후보만 · clip_model = 감독 모델 fable/opus · 운영자 260722)
   if(ON.sub){ o.burn=true; o.lang=P.lang; o.tone=P.tone; o.filler=P.filler; o.style=P.style;
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000;
@@ -1188,7 +1196,7 @@ function buildOpts(){
     o.pad=Math.min(.5,Math.max(.02,Math.round(P.sh)/1000));   // 같은 게이지 → 박스 패딩 계수(100% = 0.10 종전) — bg>0 줄박스에선 패딩이 곧 '주변부 음영'
     o.oc=P.shc; o.font=P.font; o.fg=P.fg; if(P.glow>0) o.glow=Math.round(P.glow); }   // 글자색·글로우(운영자 260721 — ly 축 파리티 · glow 0 = 미송신 = 종전 렌더 바이트 동일)
   if(ON.bgm) o.bgm=true;
-  if(ON.cut){ o.cut=true; o.cutlv=P.cutlv; if(!ON.sub) o.burn=false; }   // 컷 단독 = burn:false 명시(서버 번인 억제 신호 · STT-only 260711)
+  if(ON.cut){ o.cut=true; o.cutlv=P.cutlv; if(P.cutfill) o.cutfill=true; if(P.take) o.take=true; if(!ON.sub) o.burn=false; }   // 컷 단독 = burn:false 명시(서버 번인 억제 신호 · STT-only 260711) · 필러·테이크 동반(260727 ①④)
   if(ON.trim){ const a=parseFloat(P.t0), b=parseFloat(P.t1);   // 자막과 동시 OK(서버 리맵 · 260711)
     if(Number.isFinite(a)&&a>0) o.vid_t0=a;
     if(Number.isFinite(b)&&b>0) o.vid_t1=b; }
@@ -1196,17 +1204,22 @@ function buildOpts(){
   if(ON.res) o.vid_res=P.res;
   if(ON.fps) o.vid_fps=P.fps;
   if(ON.anorm) o.aud_norm=true;
+  if(CUT_REF){   // 승인 컷 렌더(260727 ③) — 자를 곳은 스캔 승인본이 정본이라 자동 컷 축을 뺀다 = **전사 재실행 0**(자막 ON이면 자막 몫으로만 돎)
+    delete o.cut; delete o.cutlv; delete o.cutfill; delete o.take;
+    o.cutref=CUT_REF.id; if(CUT_REF.off.length) o.cutoff=CUT_REF.off.join(',');
+    if(!ON.sub) o.burn=false;
+  }
   return o;
 }
 $('#editGo').addEventListener('click',async()=>{
   const url=$('#url').value.trim();
   if(!url && !FILE_B64 && !FILE_R2 && !_lastFile) return errStatus('영상 URL이나 파일을 넣어줘');
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
-  if(!ORDER.some(k=>ON[k])) return errStatus('처리를 하나는 넣어줘');
+  if(!ORDER.some(k=>ON[k])&&!CUT_REF) return errStatus('처리를 하나는 넣어줘');   // 승인 컷 렌더 = 컷 축이 opts에서 빠지므로 예외(260727 ③)
   const o=buildOpts();
   if(o.vid_t0!==undefined&&o.vid_t1!==undefined&&o.vid_t1<=o.vid_t0) return errStatus('끝이 시작보다 커야 해');
   if(_dur){   // 차등 길이 캡(운영자 260711 "잘라서 10분 이하로" — 서버 선게이트와 동형): 전사(자막·컷·클리퍼) = 20분 · 트림 구간≤10분 = 원본 60분 · 통짜 = 10분
-    const stt=!!(o.burn||o.cut||o.clip);
+    const stt=!!(o.burn||o.cut||o.clip||o.cutfill||o.take||o.cutscan);   // 전사 도는 축 전부(260727 — 서버 선게이트와 동형)
     const span=(o.vid_t1!==undefined)? o.vid_t1-(o.vid_t0||0) : -1;
     if(stt){ if(_dur>1201) return errStatus('자막·컷·클리퍼는 20분 이하만(전사가 전체를 돎) — 구간만 자르거나 20분 이하로'); }
     else if(span>=0&&span<=600){ if(_dur>3601) return errStatus('구간 편집도 원본 60분까지 — 잘라서 올려줘'); }
@@ -1234,13 +1247,14 @@ $('#editGo').addEventListener('click',async()=>{
     if(!res.ok||j.error){ goFireFail(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); FILE_R2=''; return; }   // 실패 시 키 폐기 = 죽은 키(만료·소진) 재사용 루프 차단 — 다음 발사는 _lastFile 재업로드(평의회7)
     FILE_R2='';   // R2 키 소진(러너가 잡 끝에 원본 삭제 = 일회용) — 재발사는 _lastFile 재업로드 경로
     try{ EDIT_SUB=false; lyHideEditor(); lyBurnReset(); }catch(e){}   // 새 발사 = 이전 자막 편집기·완성 영상 정리(B-2 — 편집 스냅샷은 lyHideEditor가 flush 저장)
-    pendSet({id:j.id, t0, lbl:editLbl(o), clip:o.clip?1:0});
+    CUT_REF=null;   // 승인 컷 소진(연속 발사에 딸려가지 않게 · FILE_R2 소진 문법 계승)
+    pendSet({id:j.id, t0, lbl:editLbl(o), clip:o.clip?1:0, cutscan:o.cutscan?1:0});
     goFireOk(gb);
-    pollEdit(j.id, t0, t0-90000, editLbl(o), o.clip?'clip':'');
+    pollEdit(j.id, t0, t0-90000, editLbl(o), o.clip?'clip':o.cutscan?'cutscan':'');
   }catch(e){ goFireFail(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
   finally{ $('#editGo').disabled=false; }
 });
-function editLbl(o){ return o.clip?'클립 후보 찾는 중':'편집 중'; }   // 작업명 추정 라벨('60fps 보간 중'·'자막+보간 편집' 등) 폐지(운영자 260712) — 러너 단계 실측 채널이 없어(원샷 워크플로·클라가 받는 산출 = 끝의 video.json/error.log뿐) 어떤 단계가 도는지 확인 불가 = 옵션발 단정 대신 범용 '편집 중' 정직 표기 · 클립 스캔은 잡 전체가 후보픽이라 명명 유지
+function editLbl(o){ return o.clip?'클립 후보 찾는 중':o.cutscan?'자를 곳 찾는 중':'편집 중'; }   // 작업명 추정 라벨('60fps 보간 중'·'자막+보간 편집' 등) 폐지(운영자 260712) — 러너 단계 실측 채널이 없어(원샷 워크플로·클라가 받는 산출 = 끝의 video.json/error.log뿐) 어떤 단계가 도는지 확인 불가 = 옵션발 단정 대신 범용 '편집 중' 정직 표기 · 클립 스캔은 잡 전체가 후보픽이라 명명 유지
 
 /* ══ 폴(conv pollConv 문법 계승 — ly_out 계약 · error.log 즉시 · 대기 스캔라인) · kind='clip' = clips.json 소비(260711) ══ */
 function pollEdit(id, t0, minTs, wlbl, kind){
@@ -1248,6 +1262,7 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   EDIT_ID=id;
   const status=$('#cstatus'); status.classList.remove('err');
   if(kind==='clip'){ $('#cliplist').hidden=true; $('#cliplist').innerHTML=''; }
+  if(kind==='cutscan'){ $('#cutlist').hidden=true; $('#cutlist').innerHTML=''; }
   const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; const _ps=$('#pvsec'); if(_ps) _ps.hidden=true; $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');   // 대기·결과 표시 중 = 라이브 미리보기+PREVIEW 섹션 숨김(중복 화면 방지 · 260711/260712)
   const wsrc=FILE_URL||'';
   vw.innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
@@ -1258,7 +1273,7 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }
   status.innerHTML='<span class="sronly">'+esc(wlbl||'편집 중')+'</span>';
   const wclear=()=>{ vw.innerHTML=''; vw.hidden=true; };
-  const outPath='ly_out/'+id+'/'+(kind==='clip'?'clips.json':'video.json');
+  const outPath='ly_out/'+id+'/'+(kind==='clip'?'clips.json':kind==='cutscan'?'cuts.json':'video.json');
   const errPath='ly_out/'+id+'/error.log';
   _pollLive=!!wsrc; _polling=true;
   let live=true; const stop=()=>{ live=false; _pollLive=false; _polling=false; clearInterval(disp); }; _curStop=stop;   // 버튼 원복 불요(260712 — 버튼은 접수 시퀀스가 자체 원복·대기 표기는 wmsg 전담) · _polling = 작업 내역 행 탭 차단 게이트
@@ -1294,11 +1309,12 @@ function pollEdit(id, t0, minTs, wlbl, kind){
         const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
         if(tx&&tx.trim()&&!isHtml){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
-          if(d&&(kind==='clip'? Array.isArray(d.clips) : (d.url||d.error||d.skip))){
+          if(d&&(kind==='clip'? Array.isArray(d.clips) : kind==='cutscan'? Array.isArray(d.rm) : (d.url||d.error||d.skip))){
             const ts=Date.parse(d.ts||'');
             if(!isNaN(ts)&&ts>=minTs){
               stop(); pendClear(); goFireDone($('#editGo'));   // 잡 완료 = 생성중 상주 해제(운영자 260723 Q454)
               if(kind==='clip'){ wclear(); showClips(d); }
+              else if(kind==='cutscan'){ wclear(); showCuts(d, id); }
               else if(d.url){ showResult(d, Math.round((Date.now()-t0)/1000)); editSubsInit(id); }   // 자막 산출 동반이면 편집기 활성(B-2)
               else { wclear(); status.innerHTML=ERR_SVG+' '+esc(String(d.error||d.skip)); status.classList.add('err'); }
               return;
@@ -1964,6 +1980,44 @@ function showClips(d){
   list.innerHTML=d.clips.map((c,i)=>'<button class="clip" type="button" role="option" aria-selected="false" data-ci="'+i+'"><span class="ct">'+mmss(c.s)+'–'+mmss(c.e)+' · '+Math.round(c.e-c.s)+'초</span><b>'+esc(c.title||('후보 '+(i+1)))+'</b>'+(c.why?'<span class="cw">'+esc(c.why)+'</span>':'')+'</button>').join('');
   list.hidden=false;
 }
+/* ══ 컷 미리보기(운영자 260727 ③) — 렌더 전에 '자를 곳'을 목록으로 확인·해제하고 확정하면 그대로 잘라 렌더.
+      골격 = 위 클립 후보(showClips/cliplist) 문법 그대로 계승(신규 CSS·신규 폴 경로 0). ══ */
+let CUTS=null, CUTOFF=new Set();
+const CUTK={sil:'무음', fil:'필러', take:'테이크'};
+function showCuts(d, id){
+  CUTS=d; if(id) CUTS.id=id; CUTOFF=new Set();
+  const st=$('#cstatus'), list=$('#cutlist');
+  st.classList.remove('err');
+  if(!(d.rm||[]).length){ st.innerHTML=WARN_SVG+' 자를 곳이 없어'+(d.note?' — '+esc(d.note):'')+' · 그대로 편집해도 돼'; list.hidden=true; list.innerHTML=''; return; }
+  renderCuts();
+}
+function renderCuts(){
+  const d=CUTS, rm=(d&&d.rm)||[], list=$('#cutlist');
+  const on=rm.filter((c,i)=>!CUTOFF.has(i));
+  const sec=on.reduce((a,c)=>a+(c.e-c.s),0);
+  $('#cstatus').classList.remove('err');
+  $('#cstatus').innerHTML=OK_SVG+' 자를 곳 '+on.length+'/'+rm.length+'군데 · '+sec.toFixed(1)+'초 줄어듦('+mmss(d.dur)+' → '+mmss(Math.max(0,d.dur-sec))+')'+(d.note?' · '+esc(d.note):'');
+  list.innerHTML=rm.map((c,i)=>{ const off=CUTOFF.has(i);
+    return '<button class="clip'+(off?'':' on')+'" type="button" role="option" aria-selected="'+(off?'false':'true')+'" data-ki="'+i+'"><span class="ct">'+mmss(c.s)+'–'+mmss(c.e)+' · '+(c.e-c.s).toFixed(1)+'초</span><b>'+esc(CUTK[c.k]||'컷')+(c.t?' · '+esc(String(c.t).slice(0,40)):'')+'</b><span class="cw">'+(off?'안 자름 — 탭하면 다시 자름':'자름 — 탭하면 뺌')+'</span></button>'; }).join('')
+    +'<button class="clip on" type="button" id="cutGo"><b>이대로 편집하기</b><span class="cw">고른 구간만 잘라서 렌더 — 전사는 다시 안 돌림</span></button>';
+  list.hidden=false;
+}
+$('#cutlist').addEventListener('click',e=>{
+  const b=e.target.closest('[data-ki]');
+  if(b&&CUTS){ const i=+b.dataset.ki; if(CUTOFF.has(i)) CUTOFF.delete(i); else CUTOFF.add(i); renderCuts(); return; }
+  if(!e.target.closest('#cutGo')||!CUTS) return;
+  const rm=CUTS.rm||[];
+  if(CUTOFF.size>=rm.length){ const st=$('#cstatus'); st.innerHTML=WARN_SVG+' 전부 뺐어 — 자를 게 없으면 컷 없이 편집해줘'; st.classList.add('err'); return; }
+  if(CUTS.src && !$('#url').value.trim() && !FILE_R2 && !FILE_B64 && !_lastFile) $('#url').value=CUTS.src;   // 스캔이 보관한 원본 승계(업로드 소스는 잡 끝 삭제 = 일회용 · 클립 후보 문법 동일)
+  if(!$('#url').value.trim() && !FILE_R2 && !FILE_B64 && !_lastFile){ const st=$('#cstatus'); st.innerHTML=WARN_SVG+' 원본 유실(보관 실패) — 파일 다시 선택 후 눌러줘'; st.classList.add('err'); return; }
+  CUT_REF={id:CUTS.id||EDIT_ID, off:[...CUTOFF].sort((x,y)=>x-y)};
+  ON.cut=true; render();
+  $('#editGo').click();
+});
+document.addEventListener('click',e=>{   // '자를 곳 먼저 보기' = 다음 발사 1회를 스캔으로(발사·업로드·폴 경로는 기존 것 그대로 탐)
+  if(!e.target.closest('#cutScanBtn')) return;
+  SCAN_ONCE=true; CUT_REF=null; $('#editGo').click();
+});
 $('#cliplist').addEventListener('click',e=>{
   const b=e.target.closest('[data-ci]'); if(!b||!CLIPS) return;
   const c=CLIPS.clips[+b.dataset.ci]; if(!c) return;
@@ -2059,6 +2113,10 @@ async function openJob(id){
     if(rc.ok){ const tc=await rc.text();
       if(tc&&!/^\s*</.test(tc)){ let dc=null; try{ dc=JSON.parse(tc); }catch(e){}
         if(dc&&Array.isArray(dc.clips)){ showClips(dc); return true; } } }
+    const rk=await fetch('ly_out/'+id+'/cuts.json?t='+Date.now());   // 컷 미리보기 잡 — 자를 곳 목록 직행(260727 ③)
+    if(rk.ok){ const tk=await rk.text();
+      if(tk&&!/^\s*</.test(tk)){ let dk=null; try{ dk=JSON.parse(tk); }catch(e){}
+        if(dk&&Array.isArray(dk.rm)){ showCuts(dk, id); return true; } } }
     const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
     if(er.ok){ const em=await er.text();
       if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return false; } }
@@ -2069,7 +2127,7 @@ async function openJob(id){
 
 /* ══ 완료 푸시 딥링크(?done=<id> · 구 #done 호환) — 알림 탭 = 그 작업 결과로 직행+강조(thumb 정본 계승 · 발송 = edit-make 완료 푸시 스텝) ══ */
 function edFocusResult(tries){   // 완성 결과 컨테이너로 스크롤+강조 = '그 작업' 핀포인트(thumb flashEl 미러). 우선순위 = 자막영상(#lyBurn) > 편집영상(#vwrap) > 클립(#cliplist) > 자막탭(#lyTabs) > 개요(#out) — editSubsInit(subs.md 라우팅)이 async라 보일 때까지 짧게 폴
-  const el=['#lyBurn','#vwrap','#cliplist','#lyTabs','#out'].map(s=>$(s)).find(e=>e&&!e.hidden&&e.offsetParent!==null);
+  const el=['#lyBurn','#vwrap','#cliplist','#cutlist','#lyTabs','#out'].map(s=>$(s)).find(e=>e&&!e.hidden&&e.offsetParent!==null);
   if(el){ try{ el.scrollIntoView({behavior:LY_RM.matches?'auto':'smooth',block:'center'}); }catch(e){}
     el.classList.add('edfocus'); setTimeout(()=>el.classList.remove('edfocus'),2200); return; }
   if(tries>0) setTimeout(()=>edFocusResult(tries-1),200);   // 아직 라우팅 전 = 재시도(캡 ~1.6s)
@@ -2087,7 +2145,7 @@ function edFocusResult(tries){   // 완성 결과 컨테이너로 스크롤+강�
   const p=pendGet(); if(!p||!p.id||USER_ACT) return;
   if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
   const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);
-  pollEdit(p.id, t0c, (p.t0||0)-90000, p.lbl||'편집 중', p.clip?'clip':'');   // 재개 표기 = 대기 스테이지(wmsg)만 — 버튼 상주 라벨(goWait) 폐지(260712)
+  pollEdit(p.id, t0c, (p.t0||0)-90000, p.lbl||'편집 중', p.clip?'clip':p.cutscan?'cutscan':'');   // 컷 미리보기 재개(260727)   // 재개 표기 = 대기 스테이지(wmsg)만 — 버튼 상주 라벨(goWait) 폐지(260712)
 })();
 
 render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유지) — ⚠ 구 recipe('reels') 제거 때 이 초기 렌더 트리거까지 사라져 '처리 추가' 시트가 빈 채 열리던 회귀(운영자 260712 스샷 실증) 봉합: 프리필 없이 render()만 복원(스택·시트·eta·요약 전부 이 호출이 첫 페인트)
