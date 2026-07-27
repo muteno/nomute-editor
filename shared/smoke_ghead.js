@@ -127,7 +127,7 @@ const within = ds => ds.every(d => d.d != null && Math.abs(d.d) <= TOL);
       return targets;
     });
     // ── 잘림 가드(H1 부속) ──
-    const clip = await pg.evaluate(() => { const u = document.querySelector('.tgroup-h .fin-upd'); return u ? { t: u.textContent.trim(), cw: u.clientWidth, sw: u.scrollWidth } : null; });
+    const clip = await pg.evaluate(() => { const u = document.querySelector('.tgroup-h .fin-upd[data-upd="fin"]'); return u ? { t: u.textContent.trim(), cw: u.clientWidth, sw: u.scrollWidth } : null; });   // [data-upd="fin"] 한정(260727) — 갱신칩 공용 빌더 도입으로 큐레이션(폰) 헤더에도 .fin-upd가 생겼고, DOM 순서상 그쪽(5번 그룹)이 금융(6번)보다 앞이라 무한정 셀렉터는 폰 칩을 집었다
     // ── 컨테이너별: 정수 스냅 → 클립 → 인페이지 캔버스 잉크 스캔 ──
     const NAMES = { H1: 'fin 대분류 헤더', H2: 'gg 대분류 헤더', H3: 'fin 시세 행', H4: '소분류 소머리' };
     for (const t of plan) {
