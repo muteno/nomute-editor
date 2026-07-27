@@ -2,25 +2,4 @@
 # 커밋 게이트(260702) — 어느 모델·어느 도구가 커밋해도 check_refs 하드게이트 강제.
 # 셋업(기기·clone마다 1회): git config core.hooksPath .githooks
 # 의도적 우회(비상시만): git commit --no-verify
-#
-# Q번호 경합 자동 해소(운영자 260727 한 수 채택) — 260727 하루에만 6회 경합(Q621·622·623·626·629+재경합).
-#   매번 게이트가 rc=1로 막은 **뒤에** 사람이 `--fix-qnum`을 손으로 쳤다 = 자동화는 이미 있는데 호출만 수동.
-#   그 왕복을 없앤다. 번호 체계는 그대로(260727 평의회 8인 = 시각 기반 전환 부결 · 실사고 0건 · 인간 가독성 우선).
-#   ⚠ 자동 수정 범위는 **Q번호 경합 한 가지로만** 한정 — 다른 rc≠0(참조 깨짐·토큰 고아·패리티 붕괴 등)은
-#      종전대로 즉시 차단(자동 수정이 게이트를 무력화하는 사고 방지).
-#   ⚠ 재부여분은 원장을 고치므로 이 커밋에 자동 스테이징된다(경합 = 내 신규 Q행이 있다는 뜻이라 원장은 이미 이 커밋 대상).
-ROOT="$(git rev-parse --show-toplevel)"
-OUT="$(python3 "$ROOT/shared/check_refs.py" 2>&1)"
-RC=$?
-printf '%s\n' "$OUT"
-[ "$RC" -eq 0 ] && exit 0
-
-# Q경합이 아니면 종전대로 차단(판정 문자열 = check_refs.py의 ❌ 원장 Q번호 신규 중복)
-printf '%s\n' "$OUT" | grep -q '원장 Q번호 신규 중복' || exit "$RC"
-
-printf '%s\n' "🔧 pre-commit: Q번호 경합 감지 → --fix-qnum 자동 재부여 후 재검사(타 세션 박제 행 무접촉)"
-python3 "$ROOT/shared/check_refs.py" --fix-qnum || true
-git add -- "$ROOT/docs/요구사항_큐.md" 2>/dev/null || true
-
-# 최종 판정 = 재부여 후 전체 게이트(양쪽 박제라 재부여 불가한 건은 여기서 rc=1 = 면책 승계 안내로 간다)
-exec python3 "$ROOT/shared/check_refs.py"
+exec python3 "$(git rev-parse --show-toplevel)/shared/check_refs.py"
