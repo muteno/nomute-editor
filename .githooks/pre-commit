@@ -25,9 +25,18 @@ printf '%s\n' "$OUT" | grep -q '원장 Q번호 신규 중복' || exit "$RC"
 
 printf '%s\n' "🔧 pre-commit: Q번호 경합 감지 → --fix-qnum 자동 재부여 후 재검사(타 세션 박제 행 무접촉)"
 BEFORE="$(git hash-object "$LEDGER" 2>/dev/null)"
-python3 "$ROOT/shared/check_refs.py" --fix-qnum || true
+FIXOUT="$(python3 "$ROOT/shared/check_refs.py" --fix-qnum 2>&1)" || true
+printf '%s\n' "$FIXOUT"
 git add -- "$LEDGER" 2>/dev/null || true
 AFTER="$(git hash-object "$LEDGER" 2>/dev/null)"
+# 스냅샷 신선도 경고 회수(운영자 260727 한 수) — check_refs가 낸 경고는 이 훅 로그 **한가운데** 묻혀
+#   마지막 게이트 결과만 눈에 남는다(실측: 오늘 이 세션이 그대로 놓쳤다). 그래서 끝단에 한 줄로 다시 띄운다
+#   = "경고를 냈다"와 "경고가 읽혔다"의 간극 메우기. 판정·rc는 불변(고지 전용).
+STALE="$(printf '%s\n' "$FIXOUT" | grep -o '스냅샷이 [0-9]*분 전' | head -1)"
+stale_tail() {
+  [ -n "$STALE" ] && printf '%s\n' "⚠ 마지막 고지 — origin/main $STALE 것이다(= 재부여 판정의 기준). git fetch origin main 후 재확인 권장."
+  return 0
+}
 
 # 최종 판정 = 재부여 후 전체 게이트(양쪽 박제라 재부여 불가한 건은 여기서 rc=1 = 면책 승계 안내로 간다)
 OUT2="$(python3 "$ROOT/shared/check_refs.py" 2>&1)"
@@ -44,6 +53,8 @@ printf '%s\n' "$OUT2"
 if [ "$RC2" -eq 0 ] && [ "$MERGE" -eq 1 ] && [ "$BEFORE" != "$AFTER" ]; then
   printf '%s\n' "⏸ 머지 커밋 보류 — Q번호 재부여분을 이 머지 커밋에 담기 위해 한 번 멈춘다(게이트는 전부 통과)."
   printf '%s\n' "   → 그대로 \`git commit --no-edit\` 을 치면 재부여분까지 담겨 끝난다(머지 상태는 유지된다)."
+  stale_tail
   exit 1
 fi
+stale_tail
 exit "$RC2"
