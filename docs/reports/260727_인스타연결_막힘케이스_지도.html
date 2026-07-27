@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260727 인스타 연결 — 막히는 자리 전부</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  인스타 API 연결 막힘 케이스 지도(운영자 260727 요청 "해당 방법 케이스 더 찾아서 HTML로").
+  ⚠ 정본이 아니다. 세팅 절차 정본 = docs/인스타_직결_세팅.md — 값이 갈리면 그쪽이 이긴다.
+     이 문서 = 그 정본 §8(트러블슈팅 2건)을 웹 조사분까지 합쳐 15케이스로 넓힌 '지도'.
+  출처 표기 규칙: [정본]=레포 문서에 이미 있던 것 · [웹]=이 세션에서 검색·공식문서 확인
+                  · [실측]=이 세션에서 레포 파일 직접 열어 확인 · [미확인]=근거 없음(안 해봄).
+  색·반경: viewer/index.html :root 실측 사본 계승(창작 0 · 260727_컷편집개선_확신도.html 헤더 문법 동일).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-info:#0FFD02; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--pg-bg);color:var(--pg-fg);
+  font:15px/1.75 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  padding:18px 16px 60px;max-width:760px;margin:0 auto;-webkit-text-size-adjust:100%}
+h1{font-size:21px;line-height:1.4;letter-spacing:-.3px}
+h2{font-size:17px;margin:34px 0 10px;letter-spacing:-.2px}
+h3{font-size:15px;margin:0 0 4px}
+p{margin:8px 0}
+.sub{color:var(--pg-mut);font-size:12.5px;margin:6px 0 18px}
+.big{border:1px solid rgba(var(--pg-accent-rgb),.35);background:rgba(var(--pg-accent-rgb),.07);
+  border-radius:var(--pg-r-l);padding:14px 15px;margin:14px 0 4px}
+.big b{color:var(--pg-accent)}
+.card{border:1px solid rgba(255,255,255,.12);border-radius:var(--pg-r-l);padding:14px 15px;margin:11px 0;background:rgba(255,255,255,.02)}
+.card.warn{border-color:rgba(255,225,61,.35)}
+.card.no{border-color:rgba(226,59,42,.4)}
+.card.now{border-color:rgba(var(--pg-accent-rgb),.45);background:rgba(var(--pg-accent-rgb),.05)}
+.bd{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;vertical-align:2px;margin-left:6px}
+.b1{background:rgba(var(--pg-accent-rgb),.16);color:var(--pg-accent)}
+.b2{background:rgba(255,225,61,.16);color:var(--pg-warn)}
+.b3{background:rgba(226,59,42,.16);color:#ff9a8e}
+.b4{background:rgba(255,255,255,.08);color:var(--pg-mut)}
+.q{color:var(--pg-mut);font-size:13px;margin-top:9px}
+.ev{border-left:2px solid rgba(var(--pg-accent-rgb),.5);padding:2px 0 2px 11px;margin:9px 0 2px;font-size:13.5px}
+.ev b{font-variant-numeric:tabular-nums}
+.sym{color:var(--pg-warn);font-size:13.5px;margin:2px 0 6px}
+.sym b{color:var(--pg-warn)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0}
+th,td{border:1px solid rgba(255,255,255,.12);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:rgba(255,255,255,.04);font-size:12.5px;color:var(--pg-mut)}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.wrap{overflow-x:auto}
+.mut{color:var(--pg-mut)}
+ol,ul{margin:8px 0 8px 20px}li{margin:4px 0}
+.foot{margin-top:34px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);color:var(--pg-mut);font-size:12px}
+code{background:rgba(255,255,255,.06);border-radius:var(--pg-r-s);padding:1px 5px;font-size:12.5px;word-break:break-all}
+a{color:var(--pg-accent)}
+.src{font-size:11.5px;font-weight:800;padding:1px 7px;border-radius:999px;margin-right:5px;vertical-align:1px}
+.s-web{background:rgba(15,253,2,.14);color:var(--pg-info)}
+.s-repo{background:rgba(var(--pg-accent-rgb),.16);color:var(--pg-accent)}
+.s-no{background:rgba(226,59,42,.16);color:#ff9a8e}
+</style>
+</head>
+<body>
+
+<h1>인스타 연결 — 막히는 자리 전부</h1>
+<p class="sub">260727 · 스크린샷(“Facebook 개발자로 등록해야 합니다”)에서 출발한 <b>15케이스 지도</b>. 절차 정본은 <code>docs/인스타_직결_세팅.md</code>이고, 이건 그 문서 §8을 넓힌 보조 지도다.</p>
+
+<div class="big">
+<p><b>한 줄 답 — 네가 연 창은 인스타랑 상관없는 창이다.</b></p>
+<p>“사람 추가 및 권한 설정”은 <b>비즈니스 포트폴리오에 페이스북 계정을 붙이는</b> 화면이야. 인스타 계정은 여기 안 붙는다(그래서 “개발자로 등록하라”고 튕긴 것). 인스타는 <b>앱 대시보드 → 앱 역할 → 인스타그램 테스터</b>에서 붙인다. 아래 <b>C1</b>이 그 케이스.</p>
+</div>
+
+<h2>0. 표기 약속 — 뭘 믿고 쓴 값인지</h2>
+<p>
+<span class="src s-repo">정본</span> 레포 문서·코드에 이미 있던 것(내가 파일을 열어 확인) ·
+<span class="src s-web">웹</span> 이 세션에서 검색·Meta 공식문서로 확인 ·
+<span class="src s-no">미확인</span> 근거 없음, 안 해봄.
+</p>
+<p class="mut" style="font-size:13px">지어낸 값은 없다. 확인 못 한 건 §6에 그대로 남겼다.</p>
+
+<h2>1. 먼저 갈림길 — 두 경로 중 어디로 갈 건가</h2>
+<p>Meta는 인스타 연결 경로를 <b>두 개</b>로 나눠놨다. 필요한 기능이 뭐냐로 갈린다. <span class="src s-web">웹</span></p>
+<div class="wrap">
+<table>
+<tr><th>항목</th><th>Instagram 로그인 <span class="bd b1">우리 현행</span></th><th>Facebook 로그인(비즈니스)</th></tr>
+<tr><td>공식명</td><td>Instagram API with Instagram Login</td><td>Instagram API with Facebook Login for Business</td></tr>
+<tr><td>계정 조건</td><td>인스타 <b>프로페셔널</b>(비즈니스/크리에이터)</td><td>프로페셔널 <b>+ 페이스북 페이지 연결</b></td></tr>
+<tr><td>페북 페이지</td><td class="n">불필요</td><td class="n">필수</td></tr>
+<tr><td>되는 것</td><td>메시지 · 게시/조회 · 댓글 · 멘션 · 내 계정 인사이트</td><td>위 전부 + <b>해시태그 검색</b> + <b>타 비즈니스 계정 지표</b></td></tr>
+<tr><td>API 호스트</td><td><code>graph.instagram.com</code></td><td><code>graph.facebook.com</code></td></tr>
+<tr><td>세팅 난이도</td><td>낮음(20분)</td><td>높음(페이지·BM 얽힘)</td></tr>
+</table>
+</div>
+<p class="q">→ 본인 계정 수집·게시만이면 <b>Instagram 로그인</b>으로 끝. 해시태그 검색이나 남의 계정 지표가 필요해지는 순간에만 갈아탄다. 우리 레포는 이미 앞쪽으로 깔려 있다(§5).</p>
+
+<h2>2. 막힘 케이스 15개</h2>
+
+<div class="card now">
+<h3>C1. “앱에 액세스하려면 이 사람이 Facebook 개발자로 등록해야 합니다” <span class="bd b1">지금 이거</span></h3>
+<p class="sym"><b>증상</b> — 비즈니스 관리자 “사람 추가 및 권한 설정”에서 인스타 계정을 고르면 툴팁이 뜨고 <b>할당</b> 버튼이 안 살아난다.</p>
+<p><b>원인</b> — 화면을 잘못 열었다. 이 창은 <b>비즈니스 포트폴리오에 사람(페이스북 계정)을 붙이는</b> 곳이라, 인스타 계정은 애초에 대상이 아니다. 목록에서 페북 아이콘 붙은 본인은 “이미 할당됨”인데 인스타 아이콘 쪽만 막히는 게 그 증거. <span class="src s-web">웹</span></p>
+<p><b>해결</b></p>
+<ol>
+<li>이 창 <b>닫는다</b>.</li>
+<li><code>developers.facebook.com/apps/&lt;앱ID&gt;/roles/roles/</code> 직행 (대시보드 좌측 <b>앱 역할 → 역할</b>).</li>
+<li><b>인스타그램 테스터</b> 섹션 → <b>사람 추가</b> → 인스타 <b>사용자명</b> 입력 → 상태 “대기 중”.</li>
+<li>인스타 쪽에서 수락(→ C3).</li>
+</ol>
+<p class="q">※ 페북 계정 자체가 개발자 등록이 안 돼 있어서 진짜로 필요할 때만: <code>developers.facebook.com/async/registration</code> (전화·이메일 인증 1회). <span class="src s-web">웹</span></p>
+</div>
+
+<div class="card warn">
+<h3>C2. OAuth 팝업 “개발자 역할 권한 부족”(insufficient developer role) <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 토큰 발급하려고 계정 추가를 누르면 로그인 팝업이 이 에러로 끝난다.</p>
+<p><b>원인</b> — 앱이 <b>개발 모드</b>면 “앱에 역할이 있는 계정”만 인증을 통과한다. 테스터 초대를 아직 안 했거나, 초대는 했는데 수락을 안 했다. <span class="src s-repo">정본</span> <span class="src s-web">웹</span></p>
+<p><b>해결</b> — C1의 3)~4)를 끝내고 재시도. 순서를 꼭 지켜라: <b>초대 → 수락 → 그 다음 토큰 발급</b>.</p>
+</div>
+
+<div class="card warn">
+<h3>C3. 인스타에 “테스터 초대” 탭이 안 보인다 <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 설정을 아무리 뒤져도 초대 수락할 데가 없다.</p>
+<p><b>원인</b> — 인스타 앱(모바일) 설정에는 이 메뉴가 잘 안 뜬다. 웹 전용 경로다. <span class="src s-repo">정본</span></p>
+<p><b>해결</b> — 웹 브라우저로 <code>instagram.com/accounts/manage_access/</code> <b>직행</b> → <b>테스터 초대(Tester Invites)</b> 탭 → 수락. (앱 설정의 “앱 및 웹사이트 권한” 경로도 같은 지점으로 간다.)</p>
+</div>
+
+<div class="card no">
+<h3>C4. 엉뚱한 계정으로 인증돼 버린다 <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 분명 초대·수락 다 했는데 계속 권한 부족. 또는 다른 계정이 연결된다.</p>
+<p><b>원인</b> — 브라우저에 인스타 <b>멀티 계정</b>이 로그인돼 있으면 팝업이 엉뚱한 세션을 집는다. <span class="src s-repo">정본</span> <span class="src s-web">웹</span></p>
+<p><b>해결</b> — <b>시크릿 창</b>에서 대상 계정만 로그인한 상태로 처음부터. (웹 사례에서도 “같은 세션에선 실패, 시크릿 창에선 바로 됨”이 반복 보고된다.)</p>
+</div>
+
+<div class="card">
+<h3>C5. 옛날에 붙였던 앱 잔재가 꼬여 있다 <span class="bd b4">드묾</span></h3>
+<p class="sym"><b>증상</b> — 새로 연결하는데 이유 없이 실패하거나, 권한이 이상하게 적게 잡힌다.</p>
+<p><b>원인</b> — 과거 연결·만료된 승인이 계정에 남아 스테일 상태. <span class="src s-repo">정본</span></p>
+<p><b>해결</b> — <code>instagram.com/accounts/manage_access/</code>에서 <b>그 앱의 기존 연결을 제거</b>하고 처음부터 다시.</p>
+</div>
+
+<div class="card no">
+<h3>C6. “the user is not an instagram business” <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 토큰은 나왔는데 API가 이 메시지로 거절.</p>
+<p><b>원인</b> — 개인 계정이다. API는 프로페셔널만 받는다. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 인스타 설정 → 계정 유형 → <b>비즈니스</b> 또는 <b>크리에이터</b> 전환 후 재연결. <span class="mut">판별 요령: 앱에서 인사이트 화면이 보이면 이미 프로페셔널이다.</span> <span class="src s-repo">정본</span></p>
+</div>
+
+<div class="card warn">
+<h3>C7. 권한을 일부만 승인해서 기능이 반쪽 <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 조회는 되는데 게시가 안 된다(“Not enough permissions to post”). 인사이트만 빈다.</p>
+<p><b>원인</b> — 로그인 팝업에서 스코프 체크를 일부 껐다. 나중에 체크만 추가로 켤 수는 없다. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 페이스북 <b>비즈니스 통합(Business Integrations)</b> 또는 인스타 <code>manage_access</code>에서 그 앱 연동을 <b>제거</b> → 다시 로그인하며 <b>전부 체크</b>. 읽기 최소 조합 = <code>instagram_business_basic</code> + <code>instagram_business_manage_insights</code>, 게시까지면 <code>instagram_business_content_publish</code>. <span class="src s-repo">정본</span></p>
+</div>
+
+<div class="card warn">
+<h3>C8. 60일 뒤 갑자기 다 죽는다 <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 잘 돌던 자동 수집이 어느 날 통째로 실패.</p>
+<p><b>원인</b> — 장수명 토큰 수명이 <b>60일</b>. 만료되면 끝이다. <span class="src s-repo">정본</span></p>
+<p><b>해결(2가지)</b></p>
+<ul>
+<li><b>수동</b> — API 설정 화면에서 <code>Generate token</code> 다시 → 시크릿 값만 교체(2분). <span class="src s-repo">정본</span></li>
+<li><b>자동</b> — <code>GET https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&amp;access_token=&lt;토큰&gt;</code> 을 만료 전에 호출하면 <b>그날부터 다시 60일</b>. 조건 = 토큰이 <b>24시간 이상 경과</b> + <b>아직 안 만료</b> + <code>instagram_business_basic</code> 보유. <span class="src s-web">웹</span></li>
+</ul>
+<p class="q">⚠ 만료된 뒤엔 갱신이 안 된다 — 죽고 나서 부르면 늦는다.</p>
+</div>
+
+<div class="card no">
+<h3>C9. 토큰이 살아있어야 할 시점인데 무효 <span class="bd b4">드묾</span></h3>
+<p class="sym"><b>증상</b> — <code>REVOKED_ACCESS_TOKEN</code> / “session has been invalidated”.</p>
+<p><b>원인</b> — ① 인스타 설정에서 앱 권한을 뺐거나 ② <b>비밀번호를 바꿨거나</b> ③ 보안 확인을 거쳤다. 셋 다 세션을 끊는다. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 재연결 후 토큰 재발급. <span class="mut">→ 비번 바꾸면 토큰도 갈아야 한다는 것만 기억하면 된다.</span></p>
+</div>
+
+<div class="card">
+<h3>C10. “Error validating access token” <span class="bd b4">드묾</span></h3>
+<p class="sym"><b>증상</b> — 발급 직후인데 검증 실패.</p>
+<p><b>원인</b> — 계정이 <b>미확인 상태</b>(이메일·전화 인증 미완). <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 페이스북/인스타에서 이메일·전화 확인 끝낸 뒤 재연결.</p>
+</div>
+
+<div class="card">
+<h3>C11. 해시태그 검색·남의 계정 지표가 필요해졌다 <span class="bd b4">경로 갈아타기</span></h3>
+<p class="sym"><b>증상</b> — 아무리 해도 해시태그 미디어 조회 엔드포인트가 없다.</p>
+<p><b>원인</b> — Instagram 로그인 경로엔 <b>애초에 없는 기능</b>이다. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — Facebook 로그인(비즈니스) 경로로 전환: 인스타를 <b>페이스북 페이지에 연결</b> → <code>graph.facebook.com</code>의 페이지 → <code>instagram_business_account</code> 경유. <span class="mut">우리 레포엔 이 비교를 실제로 쏴보는 진단 스크립트가 이미 있다(§5).</span> <span class="src s-repo">정본</span></p>
+</div>
+
+<div class="card">
+<h3>C12. 팔로워 인구통계가 빈다 <span class="bd b4">드묾</span></h3>
+<p class="sym"><b>증상</b> — <code>follower_demographics</code>만 계속 비어서 온다.</p>
+<p><b>원인</b> — Meta 제한: <b>팔로워 100명 이상</b>부터 제공. <span class="src s-repo">정본</span></p>
+<p><b>해결</b> — 없음(기다린다). 버그로 오해하지 말 것.</p>
+</div>
+
+<div class="card">
+<h3>C13. 지표 이름이 어느 날 사라진다 <span class="bd b2">자주</span></h3>
+<p class="sym"><b>증상</b> — 잘 되던 <code>impressions</code>가 에러. 묶음 요청이 통째로 실패.</p>
+<p><b>원인</b> — Meta가 지표를 개폐한다(<code>impressions</code> → <code>views</code> 이관이 실제 사례). 게다가 지표마다 요구 파라미터가 갈린다(<code>period=day+metric_type=total_value</code> / <code>period=day</code> / <code>period=lifetime</code>). <span class="src s-repo">정본</span> <span class="src s-web">실측</span></p>
+<p><b>해결</b> — 묶음으로 쏘지 말고 <b>낱개 폴백</b>으로 살아있는 지표만 건지고 죽은 건 기록. <span class="mut">우리 <code>insta_fetch.py</code>가 이미 이 구조다.</span></p>
+</div>
+
+<div class="card no">
+<h3>C14. 남의 계정까지 서비스하려면 <span class="bd b3">큰 벽</span></h3>
+<p class="sym"><b>증상</b> — 개발 모드에선 테스터로 넣은 계정만 된다. 실사용자를 못 받는다.</p>
+<p><b>원인</b> — 라이브 전환 = <b>앱 심사(App Review)</b> 필수. 권한 스코프마다 <b>용도를 보여주는 화면녹화 영상</b>을 제출해야 하고, 비즈니스 인증엔 사업자 서류가 든다. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 일정부터 잡아라. 표준 권한 심사 <b>2~4주</b>, 출시 계획엔 <b>6~8주</b>를 잡으라는 게 통설. <span class="mut">본인 계정만 쓸 거면 이 벽은 아예 안 만난다(Standard Access).</span></p>
+</div>
+
+<div class="card">
+<h3>C15. 요청이 자꾸 막힌다(레이트리밋) <span class="bd b4">운영 단계</span></h3>
+<p class="sym"><b>증상</b> — 429 / <code>80002</code> / “Instagram blocked your request”.</p>
+<p><b>원인</b> — 비즈니스 사용 사례(BUC) 기준 쿼터. 노출이 적은 계정일수록 한도가 빡빡해 예측이 어렵다. 게시는 <b>일 100개</b> 상한. <span class="src s-web">웹</span></p>
+<p><b>해결</b> — 15~30분 backoff 후 재시도 + 호출 분산. <span class="mut">우리처럼 하루 1회 배치면 사실상 안 만난다.</span></p>
+</div>
+
+<h2>3. 토큰 4종 — 뭘 쓰느냐로 운영 부담이 갈린다</h2>
+<div class="wrap">
+<table>
+<tr><th>종류</th><th>수명</th><th>갱신</th><th>조건</th></tr>
+<tr><td>단기(short-lived)</td><td class="n">1시간</td><td>장수명으로 교환</td><td>OAuth 직후 <span class="src s-web">웹</span></td></tr>
+<tr><td><b>장수명(long-lived)</b> <span class="bd b1">우리 현행</span></td><td class="n">60일</td><td><code>refresh_access_token</code> (24h↑·미만료)</td><td><code>instagram_business_basic</code> <span class="src s-web">웹</span></td></tr>
+<tr><td>시스템 사용자(만료형)</td><td class="n">60일</td><td>재발급</td><td>비즈니스 관리자 <span class="src s-web">웹</span></td></tr>
+<tr><td>시스템 사용자(무기한)</td><td class="n">만료 없음</td><td>불필요</td><td>비즈니스 인증 + BM에 앱 할당 <span class="src s-web">웹</span></td></tr>
+</table>
+</div>
+<p class="q">※ 마지막 줄이 “60일마다 갈아끼우기”를 없애는 유일한 정공법이다. 대신 <b>비즈니스 인증</b>(사업자 서류)이 선행이고, 이 세션에서 <b>실제로 해보지는 않았다</b> <span class="src s-no">미확인</span>. 참고로 네가 처음 연 그 “사람 추가” 화면이 바로 이 축(비즈니스 포트폴리오)에 속한다 — 방향 자체가 아주 틀린 건 아니었고, <b>지금 단계에 필요한 화면이 아니었을 뿐</b>이다.</p>
+
+<h2>4. 에러 코드 사전 <span class="src s-web">웹</span></h2>
+<div class="wrap">
+<table>
+<tr><th>코드</th><th>뜻</th><th>해결</th></tr>
+<tr><td class="n">2207050</td><td>계정 제한됨</td><td>인스타 직접 로그인해 경고 확인·이의제기</td></tr>
+<tr><td class="n">2207003</td><td>미디어 다운로드 타임아웃</td><td>URL 접근성 확인 후 재업로드</td></tr>
+<tr><td class="n">2207020</td><td>미디어 컨테이너 만료(24h)</td><td>새 컨테이너 만들고 <b>즉시</b> 발행</td></tr>
+<tr><td class="n">2207052</td><td>미디어 fetch 실패</td><td>URL 유효성 + <code>content-type</code> 헤더 확인</td></tr>
+<tr><td class="n">2207004</td><td>이미지 용량 초과(8MB)</td><td>압축</td></tr>
+<tr><td class="n">2207005</td><td>미지원 이미지 포맷</td><td>JPG/PNG로 변환</td></tr>
+<tr><td class="n">2207009</td><td>비율 미지원</td><td>4:5 ~ 1.91:1 안으로</td></tr>
+<tr><td class="n">36001</td><td>해상도 초과</td><td>1920×1080 이하로</td></tr>
+<tr><td class="n">2207026</td><td>미지원 영상 포맷</td><td>MP4 / H.264</td></tr>
+<tr><td class="n">2207010</td><td>캡션 길이 초과</td><td>2,200자 이내</td></tr>
+<tr><td class="n">2207001</td><td>스팸 판정</td><td>반복 게시·해시태그 과다 줄이고 재시도</td></tr>
+<tr><td class="n">2207051</td><td>요청 차단</td><td>15~30분 뒤 재시도</td></tr>
+<tr><td class="n">2207042</td><td>일 100게시물 한도</td><td>다음 날 / 분산</td></tr>
+<tr><td class="n">80002</td><td>BUC 쿼터 스로틀</td><td>backoff + 호출 분산</td></tr>
+</table>
+</div>
+
+<h2>5. 우리 레포는 지금 어디까지 와 있나 <span class="src s-repo">실측</span></h2>
+<ul>
+<li><b>경로</b> = Instagram 로그인(§1 왼쪽 열) · 호스트 <code>graph.instagram.com</code></li>
+<li><b>인증</b> = GitHub 시크릿 <code>IG_ACCESS_TOKEN</code> 하나 (없으면 no-op exit 0로 조용히 넘어감)</li>
+<li><b>수집기</b> = <code>.github/scripts/insta_fetch.py</code> — stdlib only · 지표 낱개 폴백 내장(C13 대응) · 토큰 원문 저장 안 함(sha256 꼬리 12자만)</li>
+<li><b>배치</b> = <code>.github/workflows/insta-fetch.yml</code> · 매일 06:25 KST</li>
+<li><b>산출</b> = <code>apps/insta/data/</code> {<code>insights_daily.jsonl</code> · <code>media_latest.json</code> · <code>audience.json</code> · <code>token_meta.json</code>}</li>
+<li><b>경로 비교 진단기</b> = <code>.github/scripts/ig_probe.py</code> — <code>FB_PAGE_TOKEN</code>(페북 경로)와 <code>IG_ACCESS_TOKEN</code>(인스타 경로)에 같은 지표를 쏴서 생존/사망 판정. READ-ONLY·산출 없음 → <b>C11 갈아타기 검토할 때 여기부터</b></li>
+<li><b>과거 시드</b> = <code>apps/insta/insta_history_import.py</code>로 수동 CSV를 소급 병합(2025-11~)</li>
+<li><b>절차 정본</b> = <code>docs/인스타_직결_세팅.md</code> — <b>값이 이 문서와 갈리면 정본이 이긴다</b></li>
+</ul>
+<p class="q">→ 즉 <b>no_mute 계정은 이미 붙어서 돌고 있다</b>. 지금 Lucy 앱에서 하려는 건 그것과 <b>별건</b>이라, C1대로 앱 역할에서 테스터를 넣는 게 맞는 출발점이다.</p>
+
+<h2>6. 아직 모르는 것 — 지어내지 않은 부분</h2>
+<ul>
+<li><b>Lucy 앱을 어디에 쓸 건지</b> 못 들었다. 본인 계정 수집·게시면 C1~C8로 끝이고, <b>남의 계정</b>까지면 C14(심사 2~4주)가 붙는다. 여기서 필요한 준비물이 완전히 갈린다. <span class="src s-no">미확인</span></li>
+<li><b>시스템 사용자 무기한 토큰</b>은 공식문서 근거만 있고 이 세션에서 <b>실제로 발급해보지 않았다</b>. 비즈니스 인증 서류 심사가 어느 정도 걸리는지도 모른다. <span class="src s-no">미확인</span></li>
+<li><b>Meta UI 문구</b>는 개편이 잦다. 여기 적은 메뉴 이름과 화면이 다르면 그 화면 스샷을 던져주면 짚어준다. <span class="src s-repo">정본과 동일 단서</span></li>
+<li>C4(시크릿 창)는 웹 사례 다수 + 정본 §8-1-a와 취지가 같아 신뢰도가 높지만, <b>이 세션에서 재현해본 건 아니다</b>. <span class="src s-no">미확인</span></li>
+</ul>
+
+<div class="foot">
+<p>260727 · 인스타 연결 막힘 케이스 지도 · 이 문서는 <b>보조 지도</b>이고 절차 정본은 <code>docs/인스타_직결_세팅.md</code>다.</p>
+<p style="margin-top:8px">출처 —
+<a href="https://developers.facebook.com/docs/instagram-platform">Instagram Platform</a> ·
+<a href="https://developers.facebook.com/docs/instagram-platform/reference/refresh_access_token/">refresh_access_token</a> ·
+<a href="https://developers.facebook.com/docs/development/register/">개발자 등록</a> ·
+<a href="https://developers.facebook.com/docs/business-management-apis/system-users/install-apps-and-generate-tokens/">시스템 사용자 토큰</a> ·
+<a href="https://zernio.com/instagram/errors">에러 코드 레퍼런스</a> ·
+<a href="https://www.getphyllo.com/post/instagram-api-integration-101-for-developers-of-the-creator-economy">Phyllo 통합 가이드 2026</a> ·
+<a href="https://www.upgrow.com/blog/common-instagram-api-errors-and-fixes">Common API Errors</a> ·
+<a href="https://forum.webcraftic.com/threads/insufficient-developer-role-error-with-instagram-api-during-oauth-flow.1055/">insufficient developer role 사례</a>
+</p>
+</div>
+
+</body>
+</html>
