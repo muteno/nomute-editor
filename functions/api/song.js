@@ -43,13 +43,28 @@ export async function onRequestPost({ request, env }) {
     if (Object.keys(p).length) pick = JSON.stringify(p).slice(0, 500);
   }
 
+  // 게이지(0~100 정수) + 보컬 성별 — 화이트리스트·클램프 후 JSON 1개로 직렬화(러너 입력 상한 회피 · genimg.js 문법 계승)
+  let opts = '';
+  if (body.opts && typeof body.opts === 'object') {
+    const o = {};
+    for (const k of ['w', 's']) {
+      const n = Number(body.opts[k]);
+      if (Number.isFinite(n)) o[k] = Math.max(0, Math.min(100, Math.round(n)));
+    }
+    const v = line(body.opts.v, 8).toLowerCase();
+    if (v === 'male' || v === 'female') o.v = v;
+    // 중립(40~60)뿐이고 보컬 지정도 없으면 = 종전과 동일 = 아예 안 싣는다(하위호환)
+    const live = (o.w != null && (o.w < 40 || o.w > 60)) || (o.s != null && (o.s < 40 || o.s > 60)) || o.v;
+    if (live) opts = JSON.stringify(o).slice(0, 200);
+  }
+
   const rl = await rateGate(GH, env.GH_TOKEN, 'song-make.yml');   // 발사 레이트리밋(파이프 공통 문법 · fail-open) — lyria = 유료라 연타 방어 필수
   if (rl) return json({ error: rl.error }, 429);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/song-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, mode, genre, express, mood, theme, story, pick },
+    ref: REF, inputs: { id, mode, genre, express, mood, theme, story, pick, opts },
   });
   if (r.status === 204) return json({ ok: true, id, mode, out: `song_out/${id}/${mode === 'options' ? 'options.json' : 'song.json'}` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
