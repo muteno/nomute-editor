@@ -206,33 +206,6 @@ const SEL = {
     ok('T8 접힘 토글(nm_trend_fold 기록·복원)', t8.skip ? true : (t8.closedOk && t8.reopened), JSON.stringify(t8));
 
     ok('T1 페이지 에러 0', errs.length === 0, errs.length ? errs.slice(0, 3).join(' · ') : '콘솔 pageerror 0건');
-
-    // ── [관측] 틱톡 판정 상수 리포트 — 운영자 260727 한 수 채택("ㄱㄱㄱㄱ") ──
-    // 왜: 틱톡 섹션이 몇 칸 차는지는 소스 안 상수 3개(TK_CUT_H·TK_MIN_V·TK_GL_MUL)와 하한 판정축이 결정하는데
-    //   그게 renderSnsTrends 한복판 한 줄에 묻혀 있어 매번 사람이 눈으로 찾아야 했다. 260727 같은 날 두 번
-    //   어긋났다 — ⓐ 옛 값(10만)으로 계산해 "10칸→8칸" 예고했으나 라이브 상수는 3만이라 실제는 만석 유지
-    //   ⓑ "3만은 무효 상수"로 단정했다가 보정 하한 도입으로 뒤집혔다(해외 15만 실효 문턱).
-    // 처방: 스모크가 **소스에서 상수를 직접 파싱**해 라이브 데이터와 함께 한 줄로 찍는다.
-    //   하드코딩 0 = 상수를 고치면 리포트가 자동 추종(리포트가 낡아 또 거짓말하는 경로 자체를 제거).
-    // 지위: 관측 라인 = PASS/FAIL 아님(R 미적재 · rc 영향 0). 파싱 실패도 관측 생략일 뿐 스모크를 안 깬다.
-    try {
-      const SRC = fs.readFileSync(path.join(VIEWER, 'index.html'), 'utf8');
-      const pick = (re, d) => { const m = re.exec(SRC); return m ? Number(m[1]) : d; };
-      const CUT = pick(/TK_CUT_H\s*=\s*([\d.]+)/, NaN), MINV = pick(/TK_MIN_V\s*=\s*([\d.e+]+)/, NaN);
-      const GL = pick(/TK_GL_MUL\s*=\s*([\d.]+)/, NaN), TOP = pick(/TK_TOP\s*=\s*(\d+)/, 10);
-      const krScored = /filter\(TRREG === 'kr' \? t3 => tkScore\(t3\) >= TK_MIN_V/.test(SRC);   // 하한 판정축(260727 보정 도입 여부)
-      const vids = ((DATA.tiktok || {}).videos) || [];
-      const ageH = v => { const t = Date.parse(v.published || ''); return isFinite(t) ? (Date.now() - t) / 36e5 : Infinity; };
-      const sc = v => (v.views || 0) * (v.region === 'KR' ? 1 : GL);
-      const win = vids.filter(v => ageH(v) < CUT);
-      const pass = win.filter(v => (krScored ? sc(v) : (v.views || 0)) >= MINV).sort((a, b) => sc(b) - sc(a));
-      const shown = pass.slice(0, TOP), kr = shown.filter(v => v.region === 'KR').length;
-      console.log('── [판정상수·틱톡] 컷 ' + CUT + '시간 · 하한 ' + MINV.toLocaleString() + ' · 해외 보정 ×' + GL
-        + ' · 상한 ' + TOP + '칸 · 하한축 ' + (krScored ? '보정점수(국내모드)' : '원본조회수'));
-      console.log('   수집 ' + vids.length + '건 → 창 안 ' + win.length + '건 → 통과 ' + pass.length
-        + '건 → 표시 ' + shown.length + '칸 (국내 ' + kr + ' · 해외 ' + (shown.length - kr) + ')'
-        + (shown.length < TOP ? '  ⚠ ' + (TOP - shown.length) + '칸 빔' : ''));
-    } catch (e2) { console.log('── [판정상수·틱톡] 소스 파싱 실패 — 관측 생략(' + String(e2.message).slice(0, 80) + ')'); }
   } catch (e) {
     R.push({ n: 'ABORT', c: false, d: String(e.message).slice(0, 200) });
     console.log('ABORT | ' + String(e.message).slice(0, 200));
