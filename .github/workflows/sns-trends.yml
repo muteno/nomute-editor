@@ -124,16 +124,18 @@ jobs:
 
       # ── 수집분 즉시 커밋(1차) — 뒤 LLM 브리프/번역 스텝이 job timeout으로 죽어도 수집 데이터(TOP 10·트렌드)는 이미 라이브 확보(운영자 260714 "데이터 잘 받아오게 설계" · 근본원인 = 맨끝 단일 Commit이라 중간 LLM 단계 timeout 시 수집분 동반 유실 · 실측 12:04~13:45 = 세 run 연쇄 cancelled 102분 갭). sns_trends.json은 push paths(sns_subs_phone.json) 미감시 = 재트리거 0. 브리프/번역 갱신분은 맨끝 Commit이 2차로 마저 커밋(입력 동일 스킵 캐스케이드로 무변동 시 생략).
       - name: Commit 수집분(1차 · 유실 방지)
+        # git_land.sh 이관(260727 사고 봉합) — 종전 `git add A B C 2>/dev/null || true`는 결측 pathspec이 1개라도
+        # 있으면 git이 **전체를 원자 abort**(rc=128·스테이징 0)해서 실존 산출물까지 통째로 무음 드롭됐다.
+        # 실측: push/kw_sent.json·scraper/obs/kw_last.json이 아직 안 태어난 런에서 1차 커밋이 매 런 "수집 변동 없음"으로
+        # 스킵 → tbs_data.json이 워킹트리 dirty로 남음 → 맨끝 Commit의 `git pull --rebase`가 네트워크도 못 가보고
+        # "cannot pull with rebase: You have unstaged changes"로 즉사 → push 4회 전부 fetch-first 거부 →
+        # viewer/sns_trends.json이 05:04 이후 5시간 미착지(뷰어 금융 헤더 "(점검 필요)"·health.phone 스냅샷 동결).
+        # git_land는 ① 결측 경로 자연 탈락 ② 리베이스 미사용(reset --hard origin/main 재기점 + 스냅샷 재적층)이라
+        # dirty 워킹트리·경쟁 push 양쪽에 면역. rc 항상 0(fail-soft) = 후속 스텝 비차단(종전 계약 동일).
+        # 대상: tbs = 키워드 알림 국내축(260726 러너 이관 · 신선도 게이트로 sns가 스킵돼도 tbs 단독 갱신분은 여기서 커밋) ·
+        # kw_sent = 키워드 푸시 dedup 원장(미커밋이면 매 런 재발송) · kw_last = 발송 관측(워치독 check_kwpush 입력).
         run: |
-          git config user.name "nomute-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json scraper/obs/kw_last.json 2>/dev/null || true   # tbs = 키워드 알림 국내축(260726 러너 이관 · 신선도 게이트로 sns가 스킵돼도 tbs 단독 갱신분은 여기서 커밋) · kw_sent = 키워드 푸시 dedup 원장(260727 · 미커밋이면 매 런 재발송) · kw_last = 발송 관측(워치독 check_kwpush 입력 · 미커밋이면 실패가 로그에만 남아 무증상)
-          git diff --cached --quiet && { echo "수집 변동 없음 — 1차 커밋 생략(신선도 게이트 스킵 등)"; exit 0; }
-          git commit -m "sns-trends: 수집 갱신"
-          for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
-            git push origin HEAD:main && exit 0 || { echo "1차 push 재시도 $i"; sleep $((2**i)); }
-          done
+          bash .github/scripts/git_land.sh "sns-trends: 수집 갱신" viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json scraper/obs/kw_last.json
 
       - name: Install Claude Code CLI (브리프 스텝용 — LLM 0콜 수집 레인이라 브리프 게이트와 동기)
         if: ${{ (inputs.brief || '1') == '1' || (inputs.bsky_tr || '0') == '1' || (inputs.gt_img || '1') == '1' || (inputs.sns_sum || '1') == '1' }}   # 기본 ON 승격(§📰-e 이행 — 카나리아 run 2차 실측 260712: rc=0·브리프 626자 생성·sns_brief.json 커밋 09:44 KST · 1차 rc=127 = CLI 부재 → 이 스텝 신설로 봉합) · 롤백 = || '0' · 블루스카이 번역(bsky_tr)·트렌드 이미지(gt_img)·X/스레드 요약(sns_sum · 260726)도 CLI 필요(운영자 260713·260718 · gt_img 상시 ON 승격 = || '1')
@@ -188,16 +190,10 @@ jobs:
         run: python3 .github/scripts/trend_images.py   # 게이트(TREND_IMG)·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 커밋 비차단)
 
       - name: Commit
+        # git_land.sh 이관(260727 사고 봉합 · 위 1차 커밋과 동일 사유) — 종전 `pull --rebase -X ours` 루프는
+        # ⓐ 워킹트리가 dirty면 fetch 전에 즉사하고 ⓑ 리베이스가 꼬이면 4연속 fetch-first 거부로 산출물이 증발했다
+        # (실측 run 30228857268: 커밋 b5864ad 생성 → push 4회 전부 rejected → 5시간 정지). git_land는 매 시도가
+        # 최신 origin/main 직계 자식 단일 커밋이라 경쟁에 져도 다음 시도서 재동기 → 결국 착지.
+        # 전제(git_land ⚠) 충족: sns_trends.json·sns_brief.json = 이 레인 단독 소유 산출물(append-only 공유 원장 아님).
         run: |
-          git config user.name "nomute-bot"
-          git config user.email "bot@users.noreply.github.com"
-          git add viewer/sns_trends.json viewer/sns_brief.json 2>/dev/null || true
-          git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
-          git commit -m "sns-trends: 유튜브·트렌드 갱신"
-          for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
-            git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
-          done
-          echo "::warning::push 실패(재시도 소진) — 다음 주기 재수집"
-          # push = HEAD:main — checkout ref:main이라 통상 로컬 main 존재하나 img-resize detached 사고(260710) 계승 방어.
-          # 실패 = warning 종료(트렌드는 30분 뒤 재수집이라 유실 개념 없음 = resize류 exit 1 불요).
+          bash .github/scripts/git_land.sh "sns-trends: 유튜브·트렌드 갱신" viewer/sns_trends.json viewer/sns_brief.json
