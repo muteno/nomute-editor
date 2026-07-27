@@ -274,6 +274,77 @@ def _save_state(st):
     os.replace(tmp, STATE)   # 원자 쓰기(부분쓰기 파손 방지 — 평의회9 원장 원칙 자기적용)
 
 
+INCID = os.path.join(ROOT, "scraper", "obs", "incidents.jsonl")   # 사고 이력 원장 — 문법 = obs/events.jsonl(사건 메타 append-only) 계승
+
+
+def _incid_now():
+    """지금 떠 있는 사고 집합 {키: 사유} — 판정 소스·기준 = 뷰어 sysErrMsgs와 동일(키만 계산 · 문구 없음).
+    키 = `stale:<플랫폼>`(전멸) · `acct:<플랫폼>:<계정>`(부분실패 · 80% 미만일 때만) · `phone` · `reddit`."""
+    out = {}
+    try:
+        d = json.load(open(SNS, encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — 못 읽으면 관측 스킵(경보는 다른 지표가 담당)
+        return out
+    h = d.get("health") or {}
+    ph = h.get("phone") or {}
+    if ph.get("ok") is False:
+        out["phone"] = ph.get("age_min")
+    if not (d.get("reddit") or []) and ph.get("ok") is True:
+        out["reddit"] = 0
+    subs = h.get("subs") or {}
+    for k in (subs.get("stale") or []):
+        out["stale:%s" % k] = 0
+    for k, c in (subs.get("cover") or {}).items():
+        if not isinstance(c, dict):
+            continue
+        got, reg = int(c.get("got") or 0), int(c.get("reg") or 0)
+        if not reg or not got or got * 5 >= reg * 4:   # 전멸은 stale이 담당 · 80% 이상은 정상(뷰어 임계 동일)
+            continue
+        why = c.get("why") or {}
+        for a in (c.get("miss") or []):
+            out["acct:%s:%s" % (k, a)] = why.get(a)
+    return out
+
+
+def _incid_log():
+    """**변화가 있을 때만** 한 줄 append(조용하면 0바이트 증가) — 열린 집합은 jsonl 재생으로 복원(상태 파일 0).
+    운영자 260727 한 수: "어떤 게 실제로 떴고 언제 사라졌는지" 기록이 없어 ✓ 누르면 흔적이 사라지던 것."""
+    cur, prev = _incid_now(), {}
+    try:
+        for ln in open(INCID, encoding="utf-8"):
+            try:
+                r = json.loads(ln)
+            except Exception:  # noqa: BLE001 — 파손 줄 스킵(원장 관용구)
+                continue
+            if r.get("ev") == "open":
+                prev[r.get("k")] = r
+            elif r.get("ev") == "close":
+                prev.pop(r.get("k"), None)
+    except FileNotFoundError:
+        pass
+    now = datetime.now(KST)
+    rows = []
+    for k, why in cur.items():
+        if k not in prev:
+            rows.append({"ts": now.isoformat(timespec="seconds"), "ev": "open", "k": k, "why": why})
+    for k, r in prev.items():
+        if k not in cur:
+            age = _age_min(r.get("ts"))
+            rows.append({"ts": now.isoformat(timespec="seconds"), "ev": "close", "k": k,
+                         "h": round((age or 0) / 60, 1)})
+    if not rows:
+        print(f"  [사고원장] 변화 없음(열린 사고 {len(cur)}건)")
+        return
+    try:
+        os.makedirs(os.path.dirname(INCID), exist_ok=True)
+        with open(INCID, "a", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        print("  [사고원장] %s" % " · ".join("%s %s" % (r["ev"], r["k"]) for r in rows))
+    except Exception as e:  # noqa: BLE001 — 기록 실패가 워치독을 못 죽인다
+        print(f"::warning::사고원장 기록 실패({type(e).__name__})")
+
+
 def main():
     checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "kwsrc": check_kwsrc, "kwpush": check_kwpush,
               "ledger": check_ledgers, "brief": check_brief, "smoke": check_smoke}
@@ -292,6 +363,10 @@ def main():
     # SNS stale 메시지함 점등/해제(운영자 260714 승인 한 수) — 웹푸시(쿨다운 6h)와 별개로 뷰어 프로필에
     #   상시 상태 표시: stale이면 단일 슬롯(wd-sns) set(재실행 = 덮어쓰기 = 스팸 0) · 정상 복귀면 clear.
     #   fail-soft(메시지함 실패가 점검·발송을 못 죽임) · 커밋은 워크플로 원장 스텝이 messages/ 동반 add.
+    try:
+        _incid_log()   # 사고 이력 원장(관측 전용 · 경보·발송과 무관 · fail-soft)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::사고원장 스킵({type(e).__name__})")
     if NOTIFY:
         try:
             mp = os.path.join(ROOT, "shared", "msg.py")
