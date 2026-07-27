@@ -3,13 +3,18 @@
 # 셋업(기기·clone마다 1회): git config core.hooksPath .githooks
 # 의도적 우회(비상시만): git commit --no-verify
 #
+# 인자: `--merge` = 머지 커밋 경로에서 호출됨(pre-merge-commit이 넘긴다). 아래 '보류' 절만 달라지고 판정은 동일.
+#
 # Q번호 경합 자동 해소(운영자 260727 한 수 채택) — 260727 하루에만 6회 경합(Q621·622·623·626·629+재경합).
 #   매번 게이트가 rc=1로 막은 **뒤에** 사람이 `--fix-qnum`을 손으로 쳤다 = 자동화는 이미 있는데 호출만 수동.
 #   그 왕복을 없앤다. 번호 체계는 그대로(260727 평의회 8인 = 시각 기반 전환 부결 · 실사고 0건 · 인간 가독성 우선).
 #   ⚠ 자동 수정 범위는 **Q번호 경합 한 가지로만** 한정 — 다른 rc≠0(참조 깨짐·토큰 고아·패리티 붕괴 등)은
 #      종전대로 즉시 차단(자동 수정이 게이트를 무력화하는 사고 방지).
 #   ⚠ 재부여분은 원장을 고치므로 이 커밋에 자동 스테이징된다(경합 = 내 신규 Q행이 있다는 뜻이라 원장은 이미 이 커밋 대상).
+MERGE=0
+[ "${1:-}" = "--merge" ] && MERGE=1
 ROOT="$(git rev-parse --show-toplevel)"
+LEDGER="$ROOT/docs/요구사항_큐.md"
 OUT="$(python3 "$ROOT/shared/check_refs.py" 2>&1)"
 RC=$?
 printf '%s\n' "$OUT"
@@ -19,8 +24,26 @@ printf '%s\n' "$OUT"
 printf '%s\n' "$OUT" | grep -q '원장 Q번호 신규 중복' || exit "$RC"
 
 printf '%s\n' "🔧 pre-commit: Q번호 경합 감지 → --fix-qnum 자동 재부여 후 재검사(타 세션 박제 행 무접촉)"
+BEFORE="$(git hash-object "$LEDGER" 2>/dev/null)"
 python3 "$ROOT/shared/check_refs.py" --fix-qnum || true
-git add -- "$ROOT/docs/요구사항_큐.md" 2>/dev/null || true
+git add -- "$LEDGER" 2>/dev/null || true
+AFTER="$(git hash-object "$LEDGER" 2>/dev/null)"
 
 # 최종 판정 = 재부여 후 전체 게이트(양쪽 박제라 재부여 불가한 건은 여기서 rc=1 = 면책 승계 안내로 간다)
-exec python3 "$ROOT/shared/check_refs.py"
+OUT2="$(python3 "$ROOT/shared/check_refs.py" 2>&1)"
+RC2=$?
+printf '%s\n' "$OUT2"
+
+# 머지 경로 보류(운영자 260727 근본 수리) — **머지 커밋의 트리는 이 훅 호출 전에 확정**돼 있어서,
+#   훅이 `git add`한 재부여분은 그 커밋에 안 담기고 인덱스에만 고아로 남는다(스크래치 레포 실측).
+#   고아로 두면 ⓐ 세션이 못 보고 그대로 푸시·머지 → main에 중복이 박제되고 ⓑ 그 뒤엔 내 행도 박제라
+#   재부여 자체가 금지(= [Q.NN] 1:1 참조 보전)라 고아분이 **틀린 수정**으로 뒤집힌다(260727 실사고 Q687).
+#   그래서 고쳤으면 머지 커밋을 **보류**한다 — git이 머지를 진행 중으로 남기고, 이어서 `git commit`을 치면
+#   그 재부여분이 머지 커밋 트리에 담겨 정상 착지한다(실측: 부모 2 · 원장 재부여 포함).
+#   고칠 게 없었으면(원장 무변경) 보류 안 함 = 평시 머지는 종전과 완전히 동일.
+if [ "$RC2" -eq 0 ] && [ "$MERGE" -eq 1 ] && [ "$BEFORE" != "$AFTER" ]; then
+  printf '%s\n' "⏸ 머지 커밋 보류 — Q번호 재부여분을 이 머지 커밋에 담기 위해 한 번 멈춘다(게이트는 전부 통과)."
+  printf '%s\n' "   → 그대로 \`git commit --no-edit\` 을 치면 재부여분까지 담겨 끝난다(머지 상태는 유지된다)."
+  exit 1
+fi
+exit "$RC2"
