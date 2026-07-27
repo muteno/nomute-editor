@@ -138,7 +138,7 @@ jobs:
           # 실패하면 rebase --abort로 깨끗이 되돌린 뒤 재시도 — abort 없이 pull만 반복하면
           # "unmerged files" fatal로 전 재시도가 무력화된다(run#5 원인).
           for i in 1 2 3 4; do
-            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then exit 0; fi
+            if git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main; then exit 0; fi
             git rebase --abort 2>/dev/null || true
             sleep $((2**i))
           done
@@ -327,7 +327,7 @@ jobs:
           if git diff --cached --quiet; then echo "썸네일 변경 없음"; exit 0; fi
           git commit -m "thumbs: AI 썸네일 후보 생성"
           for i in 1 2 3 4; do
-            git pull --rebase -X theirs origin main && git push origin HEAD:main && exit 0
+            git pull --rebase --autostash -X theirs origin main && git push origin HEAD:main && exit 0
             git rebase --abort 2>/dev/null || true; sleep $((2**i))
           done
           echo "::warning::썸네일 push 실패"

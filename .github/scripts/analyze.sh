@@ -31,7 +31,7 @@ ANALYZE_LAND_EACH="${ANALYZE_LAND_EACH:-1}"   # 성공 건별 즉시 커밋·푸
 land_article() {
   [ "$ANALYZE_LAND_EACH" = "1" ] || return 0
   local of="$1" ttl="$2"
-  git add "$of" pending 2>/dev/null || true
+  for f in "$of" pending; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(Q980 전파: 결측 pathspec 1개 = add 전체 원자 abort 무음)
   git diff --cached --quiet && return 0
   git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
       commit -q -m "analyze: ${ttl:-기사}" 2>/dev/null || return 0

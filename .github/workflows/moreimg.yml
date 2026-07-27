@@ -85,12 +85,12 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add cards/ queue/ 2>/dev/null || true   # queue/ = 원문 URL 백필분(more_images.py · url:"" 기사 한정)
+          for f in cards queue; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(Q980 전파: 결측 pathspec 1개 = add 전체 원자 abort 무음) · queue = 원문 URL 백필분(more_images.py · url:"" 기사 한정)
           if git diff --cached --quiet; then
             echo "변경 없음(새 이미지 0 · URL 백필 0)"; exit 0
           fi
           for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
+            git pull --rebase --autostash -X ours origin main || echo "::warning::pull--rebase 실패(사유 = 위 로그) — 재시도 계속"
             git commit -m "moreimg: 검색이미지 추가·원문URL 백필(Claude)" 2>/dev/null || true
             git push origin main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
