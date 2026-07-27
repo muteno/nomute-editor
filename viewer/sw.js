@@ -112,7 +112,7 @@ self.addEventListener('push', event => {
   const title = d.title || '🚨 긴급 속보';
   const opts = {
     body: d.body || '',
-    badge: d.badge || '/assets/brand/badge-260727.png',   // 상태바 배지 = 260724 시그니처 지구본 알파 실루엣(구 260723 = 구 브랜드 N). 안드로이드는 알파만 읽고 전부 흰색으로 칠하므로 색·그라데이션 무의미 = 판독은 실루엣이 전부(불투명 컬러를 주면 흰 네모가 된다). 96px 캔버스 안 글리프 72px(75%) 중앙 = 운영자 선택 sz18/24(260727 플레이그라운드) — OS 배지 슬롯은 24dp 고정이라 '작게'는 캔버스 여백으로만 구현된다. 여백0 원본을 그대로 쓰면 잉크 41.3%로 상태바에서 과밀. 버전도장 = _headers /assets/brand/badge-* immutable 편입 · 구 260723 파일은 존치(배포 완료된 구 SW가 아직 그 URL을 물고 있어 삭제 시 404 = 배지 소실)
+    badge: d.badge || '/assets/brand/badge-260723.png',   // 상태바 배지 = 흑백+투명 실루엣(N) — 불투명 컬러는 안드로이드가 흰 네모로 칠함 · 버전도장(260723) = immutable 캐시 편입
 
     tag: d.tag || 'nomute-breaking',          // 같은 tag = 교체(중복 알림 안 쌓임)
     data: { url: d.url || '/' },
