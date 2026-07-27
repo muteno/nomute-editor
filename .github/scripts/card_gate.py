@@ -20,8 +20,14 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "apps", "news"))
+_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+sys.path.insert(0, os.path.join(_ROOT, "apps", "news"))
+sys.path.insert(0, os.path.join(_ROOT, "apps", "comp"))
 import fact_guard  # tokens/check/coverage 재사용 (SSOT)
+try:
+    import card_news  # 합성기 폭 판정 SSOT — 폰트 실측(있으면)·폴백 표(없으면)
+except Exception:     # PIL/cv2 부재 등 — 구 가중폭 프록시로 폴백(rc 의미 불변)
+    card_news = None
 
 CARD_RE = re.compile(r'###\s*\[카드\s*(\d+)\]([\s\S]*?)(?=\n###\s*\[카드|\Z)')
 TEXT_RE = re.compile(r'\*\*텍스트\*\*\s*\n+```[a-zA-Z]*\n([\s\S]*?)```')
@@ -43,6 +49,27 @@ def _w(ch):
 
 def _hangul(s):
     return sum(1 for ch in s if 0xAC00 <= ord(ch) <= 0xD7A3)
+
+
+def _width_report(lines):
+    """줄별 렌더 폭 판정 — 합성기(card_news)와 **동일 계산**.
+
+    반환 = {idx: (총폭px, 상한px, 초과px)} (초과 줄만). card_news 를 못 불러오면 None
+    (호출부가 구 가중폭 프록시로 폴백).
+
+    왜 가중폭(0.5/1.0) 프록시를 안 쓰나 — 실측(Noto Sans CJK Bold 54px)에서 한글 50px·공백 13px·
+    숫자/영문/큰따옴표 31~32px 이다. 프록시는 공백을 2배로 세고 숫자를 0.78배로 세서, 숫자 많은 줄은
+    통과시키고(렌더 초과 = 게이트 헛방) 공백 많은 줄은 헛되이 붙잡았다(370덱 8135줄 실측: 놓침 5줄·
+    과잉 6줄). 여기선 렌더러가 실제로 쓰는 폭·따옴표 들여쓰기까지 그대로 계산한다.
+    """
+    if card_news is None:
+        return None
+    try:
+        font = card_news.load_font()   # 폰트 있으면 실측, 없으면(텍스트 전용 잡) 폴백 표
+        overflows = card_news.check_line_widths(lines, font)
+    except Exception:
+        return None
+    return {o["idx"]: (o["total"], o["max"], o["overflow"]) for o in overflows}
 
 
 def lint(md_path):
@@ -71,12 +98,27 @@ def lint(md_path):
             lines = [l for l in lines if l.strip()]
             if not (1 <= len(lines) <= 4):
                 viol.append("카드%s: %d줄 (허용 1~4)" % (n, len(lines)))
+            wide = _width_report(lines)   # 렌더 폭 실측(정본) · None = 합성기 모듈 부재 → 구 프록시
             for i, l in enumerate(lines, 1):
                 core = l.strip().replace("*", "")
-                w = sum(_w(ch) for ch in core)
                 h = _hangul(core)
-                if w > 19.5 or h > 18:
-                    viol.append("카드%s 줄%d: weight %.1f/hangul %d (상한 19.5/18): %r" % (n, i, w, h, core[:30]))
+                if wide is not None:
+                    # '몇 글자 줄여야 하나'까지 준다 — 교정 재시도가 실행 가능한 지시가 되도록
+                    # (한글 1자 = 50px · 절단 없이 줄 전문 표기 = 모델이 그 줄을 특정할 수 있게).
+                    why = []
+                    ov = wide.get(i - 1)
+                    if ov:
+                        why.append("폭 %dpx > 상한 %dpx(한글 %.1f자분 초과)" % (ov[0], ov[1], ov[2] / 50.0))
+                    if h > 18:
+                        why.append("한글 %d자 > 상한 18자" % h)
+                    if why:
+                        cut = max((ov[2] / 50.0) if ov else 0, (h - 18) if h > 18 else 0)
+                        viol.append("카드%s 줄%d: %s → 한글 %d자 이상 덜어내 다시 써라: %s"
+                                    % (n, i, " · ".join(why), -(-cut // 1), core))
+                else:
+                    w = sum(_w(ch) for ch in core)
+                    if w > 19.5 or h > 18:
+                        viol.append("카드%s 줄%d: weight %.1f/hangul %d (상한 19.5/18): %s" % (n, i, w, h, core))
                 if l.count("*") % 2 != 0:
                     viol.append("카드%s 줄%d: `*` 홀수(강조 줄넘김/미폐합)" % (n, i))
         pm = PROMPT_RE.search(body)
