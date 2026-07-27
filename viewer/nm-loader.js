@@ -204,8 +204,16 @@
      ⚠ 미해소(정직) — 크롬 백그라운드 탭은 rAF/타이머가 1fps로 조여져 회전이 거의 안 읽힌다(위원6·7 "목적 붕괴").
         운영자가 선택값을 재확인해 회전 표현 그대로 간다. 저프레임에서도 읽히는 점멸 표현은 후속 판단 몫. */
   var FAV = (function () {
-    var SIZE = 128, FRAMES = 36, LOGO = 88 / 100;      // 캔버스 px · 반주기 사전렌더 장수 · 로고 비율
-    var frames = null, timer = null, live = null, refs = 0, building = 0, step = 0;
+    /* 값 = 운영자 260727 2차 선택(플랫폼 비교 플레이그라운드) — 64px · 60장 · 60fps · 주기 --fav-spin(980ms).
+       ⚠ 캔버스 128 → 64 근거 = 해상도 실측(512px 기준선 대비 RMSE · 프레임 1장 PNG 바이트):
+         16px(1x) 표시 → 32캔 23.9 / 64캔 17.6 / 128캔 11.7 / 256캔 14.2
+         48px(3x) 표시 → 32캔 43.0 / 64캔 31.7 / 128캔 19.8 / 256캔  9.7
+         용량 60장 → 32px 117KB / 64px 335KB / 128px 1,092KB / 256px 3,517KB
+       ① 256px은 16px 표시에서 128px보다 **더 나쁘다**(축소비 과대 = 링잉) — 용량 3.2배에 화질 손해라 영구 배제.
+       ② 64px = 1x·2x 실용 · 3x 폰에서만 화질 손해(31.7 vs 19.8)를 감수. 용량이 128px의 1/3.3 = 운영자 판정
+          "16px에 저 무게는 과하다". 되돌리려면 SIZE만 128로 올리면 된다(다른 축 무관). */
+    var SIZE = 64, FRAMES = 60, FPS = 60, LOGO = 88 / 100;   // 캔버스 px · 반주기 사전렌더 장수 · 갱신 fps · 로고 비율
+    var frames = null, timer = null, live = null, refs = 0, building = 0, per = 0, t0 = 0;
 
     function period() {                                 // --fav-spin 토큰 계승(없으면 선택값 폴백)
       try {
@@ -249,23 +257,29 @@
       try { img.src = srcOf(); } catch (e) { building = 0; done && done(); }
     }
     function tick() {
+      /* 시간 기반 인덱싱 — 구 방식(step++ · interval = 주기/(FRAMES*2))은 fps가 장수·주기에 종속돼
+         60장·980ms면 122fps가 나와버렸다. 이제 fps·장수·주기가 서로 독립축이다(운영자 260727 2차 선택 반영). */
       if (!frames || !live) return;
-      step = (step + 1) % (FRAMES * 2);
-      live.href = frames[step < FRAMES ? step : FRAMES * 2 - 1 - step];   // 삼각파 = 한 바퀴(2π)
+      var t = ((Date.now() - t0) % per) / per;                    // 0~1 = 한 바퀴 진행률
+      var s = Math.floor(t * FRAMES * 2);
+      var i = s < FRAMES ? s : FRAMES * 2 - 1 - s;                // 삼각파 = |cos| 대칭이라 반주기만 보관
+      var f = frames[i < 0 ? 0 : i >= FRAMES ? FRAMES - 1 : i];
+      if (f) live.href = f;
     }
     function run() {
       if (timer || !frames) return;
       try {
+        per = period() || 980; t0 = Date.now();
         live = document.createElement('link'); live.rel = 'icon'; live.id = 'nmfav-live';
         live.type = 'image/png'; live.href = frames[0];
         document.head.appendChild(live);                 // 원본 <link>는 건드리지 않는다 = 복원 불가 상태가 없음
-        timer = setInterval(tick, period() / (FRAMES * 2));
+        timer = setInterval(tick, 1000 / FPS);           // fps = 독립축(장수·주기와 무관)
         document.documentElement.classList.add('nm-busy');   // 화면 안 갈래(.hdr-globe 회전) = CSS가 전담 · 로직 무접촉 유지
       } catch (e) { halt(); }
     }
     function halt() {
       try { if (timer) clearInterval(timer); } catch (e) {}
-      timer = null; step = 0;
+      timer = null; t0 = 0;
       try { if (live && live.parentNode) live.parentNode.removeChild(live); } catch (e) {}
       live = null;                                       // 제거만으로 원본 파비콘이 그대로 되살아난다
       try { document.documentElement.classList.remove('nm-busy'); } catch (e) {}
