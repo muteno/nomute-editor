@@ -2,7 +2,7 @@
 # SNS 트렌드 AI 브리프 — 수집 스냅샷(TOP 10·검색어·레인)을 보고 '원인을 역추적'해 브리핑(운영자 260712 v6).
 # 페르소나 = "친한 트렌드 애널리스트 · 호칭·이름 없이 친근 인사(KST · 운영자 260713) · SNS 결과→WebSearch로 원인·이상치 딥다이브·관련 링크 · 팬픽 문체 자연스러움 · 뉴스 신뢰선 사수".
 # 게이트 3중: ① SNS_BRIEF=1(§📰-e 카나리아 — 기본 OFF 머지 → dispatch 실측 → 승격) ② 입력 다이제스트 동일 = 스킵(토큰 0 · 운영자 "내용 변화 없으면 낭비 말고 그대로") ③ 실패 = fail-soft(직전 brief 유지 · rc 0 — 뷰어는 파일 없으면 블록 미표시).
-# 모델 = PIPE_MODEL(opus 5 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 8(리서치 = 원인·링크 다회 왕복) · timeout 600.
+# 모델 = PIPE_MODEL(opus 5 · shared/model_env.sh — §🤖 생성/하드작업 축) · effort max · turns 12(리서치 = 원인·링크 다회 왕복 · 8→12 = 260727 소재별 다중 링크 수용) · timeout 780(600→780 동반 · 초과 = fail-soft 직전 유지).
 # --safe-mode(CLAUDE.md/스킬/MCP 비활성 · 내장 도구는 활성 유지 · --bare 절대 금지 = OAuth 즉사 §📰-d) · 폴오버 SSOT 경유(§📰-f).
 # ⚠️ WebSearch/WebFetch = --allowedTools 명시 필수(analyze.sh·ask.sh·cardmake.sh 선례): 헤드리스는 미허용 도구를 '권한 대기'가 아니라 '즉시 거부(권한 없음)'로 처리 → 빠지면 원인 역추적이 6회 다 튕겨 '권한 열어줘' 반쪽 브리프만 나옴(실측 260713). --safe-mode는 도구를 켤 뿐 승인을 대신하지 않음.
 set -u
@@ -83,7 +83,7 @@ tail.append('[유튜브 뉴스] ' + ' / '.join((v.get('title') or '')[:40] for v
 tail.append('[쇼츠] ' + ' / '.join((v.get('title') or '')[:40] for v in sh[:5]))
 tail.append('[틱톡] ' + ' / '.join(((t.get('title') or ('@' + (t.get('account') or '')))[:40]) for t in tk[:5]))
 body = '\n'.join(L + tail)
-PVER = 'brief-v11-260714-2tier-bold'   # 캐시 1회 무효화 = v11: 강조 2층(*별표1*=강조색 / **별표2**=볼드만 · 운영자 260714 "모두 통일" — 채널 브리프와 강조 문법 일치) · v10 [신규 진입] 신상 딱지(first_seen 6h) · v9 이슈 원장 감쇠+채널·URL·댓글, v8 호칭 제거, v7 참고자료 카드 유지
+PVER = 'brief-v13-260727-linkledger'   # 캐시 1회 무효화 = v13: 링크 원장(최근 7일 사용 URL 재사용 금지 = 같은 기사 재탕 차단 · 밀도는 유지 · 260727 한 수 채택) · v12 소재별 다중 링크(문단 끝 1개 → 소재 바뀔 때마다 · 데이터 동봉 URL 직결 · refs 4→10 · 상한 URL 무과금 · 운영자 260727) · v11 강조 2층(*별표1*=강조색 / **별표2**=볼드만) · v10 [신규 진입] 신상 딱지(first_seen 6h) · v9 이슈 원장 감쇠+채널·URL·댓글, v8 호칭 제거, v7 참고자료 카드 유지
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print('\n'.join(E + tail))
 PY
@@ -113,6 +113,23 @@ for x in xs:
     k = str(x.get('key') or '').strip()
     if k:
         print(f"- {k[:40]} · 등장 {int(x.get('n') or 1)}회 · 마지막 {str(x.get('last') or '')[:10]}")
+PY
+)"
+
+# ── 링크 원장(같은 기사 재탕 차단 · 260727 한 수 채택) ──
+# 이슈 원장은 '이슈'만 감쇠시키고 URL은 안 본다 → 링크 밀도를 올린 v12 이후 같은 기사가 여러 브리프에 반복될 여지가 커졌다.
+# 최근 7일 동안 본문에 건 URL 목록(sns_brief.json links)을 프롬프트에 그대로 보여주고 재사용을 막는다.
+# 로드 실패·필드 부재 = 빈 원장(전부 새 링크 취급 · fail-soft — LEDGER와 동일 관용).
+LINKLOG="$(python3 - <<'PY' 2>/dev/null || true
+import json
+try:
+    xs = json.load(open('viewer/sns_brief.json')).get('links') or []
+except Exception:
+    xs = []
+for x in xs:
+    u = str(x.get('url') or '').strip()
+    if u:
+        print(f"- {u[:120]} ({str(x.get('term') or '')[:30]} · {str(x.get('last') or '')[:10]})")
 PY
 )"
 
@@ -149,13 +166,26 @@ ${LEDGER:-(비어 있음 — 전부 새 이슈)}
 [형식]
 - 자연스러운 문단 흐름: 인사 → 크게 뜬 주제와 그 원인(서사) → 이상치 딥다이브 + 링크. 6~14줄 안팎.
 - 강조는 2층: 가장 크게 튄 주제·수치 = *별표 하나*(1층 = 강조색·표준편차 벗어나는 것만) · 그다음 어느정도 중요한 대목 = **별표 둘**(2층 = 볼드만·강조색 아님 · 문장에서 눈이 먼저 가야 할 핵심 명사·동사구). 1층 0~1개·2층 1~3개 정도. 별표 사이 줄바꿈 금지 · 별표 짝 반드시 닫기.
-- 관련 링크는 [보이는 텍스트](URL) 형식 또는 URL 그대로 붙여라. 헤더·번호목록·마크다운 제목·이모지 금지.
+- 관련 링크는 [보이는 텍스트](URL) 형식으로 붙여라(아래 [링크] 절이 정본). 헤더·번호목록·마크다운 제목·이모지 금지.
 
-[참고자료 스크랩 카드 — 본문 링크와 짝 (매번)]
-본문에 [보이는 텍스트](URL)로 붙인 참고 기사·어려운 키워드·딥다이브 주제 각각에 대해, 응답 맨 끝에 '===참고자료===' 한 줄을 쓰고 그 아래 **한 줄에 카드 하나씩** JSON으로 적어라(블록 안에 다른 텍스트·마크다운 금지):
+[링크 — 소재가 바뀔 때마다 각각 (운영자 260727 · 매번 · 제일 중요)]
+링크는 브리핑 끝에 하나 붙이는 장식이 아니라 '이 대목의 근거'다. 새 인물·사건·수치·영상을 꺼내는 자리마다 그 자리의 근거를 각각 걸어라.
+- 문단당 1개로 묶지 마라. 한 문단 안이라도 다루는 대상이 바뀌면 각각 링크(예: 한 문단에서 '현대로템 대만 철도 소식'과 'K2전차 방산 영상'을 같이 말했으면 = 서로 다른 소재 = 링크 2개).
+- **데이터에 이미 URL이 붙어 있는 항목은 검색할 필요가 없다 — 그 URL을 그대로 걸어라.** [통합 TOP 10]은 항목마다 채널·링크가 동봉돼 있다(유튜브·쇼츠·틱톡). 본문에서 그 영상·채널·계정을 언급하면서 링크를 안 거는 건 실수다. 이상치 딥다이브에서 다룬 영상은 반드시 링크가 붙어야 한다.
+- 검색으로 원인을 확인한 기사·발표도 그 사실을 말하는 문장에 바로 걸어라(문단 끝에 몰아 붙이지 말고, 해당 대목에).
+- 보이는 텍스트는 짧게 = 매체명·채널명·영상 제목 일부(2~14자 권장 · 문장을 통째로 링크로 감싸지 마라 · URL 날것 노출 금지).
+- 같은 URL 반복 링크 금지(소재당 1개). 지어낸 주소 절대 금지 — 확인 못 한 건 링크 없이 넘어가라(신뢰선이 개수보다 위다).
+- 목표 = 본문 링크 4~10개. 소재가 적은 날은 적어도 된다(억지 증량 금지).
+- **아래 '링크 원장'에 있는 URL은 최근 브리핑이 이미 건 것 — 다시 걸지 마라(재탕).** 단 막는 건 '그 주소'뿐이다: 같은 사건이라도 **다른 기사·다른 매체·후속 보도면 새 URL이니 걸어도 된다**. 그 이슈에 새 국면이 생겼을 때도 마찬가지(새 소식의 새 출처를 걸어라). 원장 때문에 링크 수를 줄이지는 마라 — 바꿔 달라는 것이지 빼라는 게 아니다.
+<링크 원장 — 최근 7일 사용분>
+${LINKLOG:-(비어 있음 — 전부 새 링크)}
+
+[참고자료 스크랩 카드 — 본문 링크와 1:1 짝 (매번)]
+본문에 [보이는 텍스트](URL)로 붙인 링크 **전부**에 대해 카드를 하나씩 만들어라(기사·영상·딥다이브 주제 가리지 않고 · 링크 6개면 카드도 6개). 응답 맨 끝에 '===참고자료===' 한 줄을 쓰고 그 아래 **한 줄에 카드 하나씩** JSON으로 적어라(블록 안에 다른 텍스트·마크다운 금지):
 {\"url\":\"본문 링크와 완전히 동일한 URL\",\"term\":\"본문에서 링크로 쓴 보이는 텍스트 그대로\",\"title\":\"기사/영상 원제목\",\"source\":\"매체·채널명\",\"body\":\"보도자료 리드문처럼 사실 위주 3~5문장. 누가·언제·무엇을·왜가 담기게, WebSearch/WebFetch로 확인한 내용만.\"}
-- url이 본문 링크와 다르면 짝이 안 맞아 카드가 안 뜬다 — 반드시 동일하게.
-- 확인 못 한 항목은 카드를 만들지 마라(날조 금지). 카드 1~4개.
+- url이 본문 링크와 다르면 짝이 안 맞아 카드가 안 뜬다 — 반드시 동일하게. 카드 없는 링크는 밋밋한 외부 이동 링크가 되고, 카드가 있어야 창 안에서 열린다(영상 링크는 카드가 있으면 팝업에서 바로 재생된다).
+- 유튜브·쇼츠·틱톡 링크 카드 = title에 영상 원제목(원문 그대로), source에 채널명, body엔 무슨 영상이고 왜 떴는지(데이터에 붙은 인기 댓글 반응을 한 줄 녹여도 좋다).
+- 확인 못 한 항목은 카드를 만들지 마라(날조 금지). 카드 1~10개.
 - body는 뉴스 요약 톤(담백·사실)으로 — 본문 산문의 팬픽 톤과 달리 건조하게.
 
 [이슈 원장 갱신 — 응답 맨 끝 (매번)]
@@ -172,7 +202,7 @@ $BODY"
 claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 실측: 침묵 행은 본선 600s를 통째로 태움 · 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
-  out="$(printf '%s' "$PROMPT" | timeout 600 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 8 \
+  out="$(printf '%s' "$PROMPT" | timeout 780 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 12 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/brief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
@@ -185,6 +215,7 @@ done
 
 BRIEF_TEXT="$out" BRIEF_SHA="$SHA" python3 - <<'PY'
 import json, os, datetime, re, ssl, urllib.request
+from concurrent.futures import ThreadPoolExecutor
 KST = datetime.timezone(datetime.timedelta(hours=9))
 raw = (os.environ.get('BRIEF_TEXT') or '').strip()
 # ── 참고자료 스크랩 카드 분리(v7 · 운영자 260712 "참고 기사 = 인앱 팝업") — 관용 3층(§📰-c 정신):
@@ -211,13 +242,13 @@ if blocks.get('참고자료'):
             continue
         refs.append({'url': u[:500], 'term': str(r.get('term') or '')[:80], 'title': str(r.get('title') or '')[:160],
                      'source': str(r.get('source') or '')[:60], 'body': str(r.get('body') or '')[:900]})
-        if len(refs) >= 4:
+        if len(refs) >= 10:   # 4→10(운영자 260727 "문장이 소개하는 부류가 다르면 최대한 링크") — 상한 = 본문 링크 목표 4~10과 짝
             break
 # ── og:image 후처리(결정론 · 모델 부담 0) — 기사 대표 이미지: 실패 = 이미지 없이(fail-soft · 데이터센터 403 매체 상정) ──
 CTX = ssl.create_default_context()
 UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
       'Accept-Language': 'ko-KR,ko;q=0.9'}
-for r in refs:
+def _og(r):
     try:
         req = urllib.request.Request(r['url'], headers=UA)
         html = urllib.request.urlopen(req, timeout=8, context=CTX).read(400_000).decode('utf-8', 'ignore')
@@ -231,6 +262,10 @@ for r in refs:
                 r['image'] = u[:600]
     except Exception:
         pass   # 이미지 = 있으면 좋고(뷰어 onerror 숨김) — 실패가 브리프를 못 죽임
+# 병렬 5(260727 refs 4→10 수용): 순차면 타임아웃 8s×10 = 최악 80s가 브리프 뒤에 그대로 붙는다 → 최악 ~16s로 고정.
+# 스레드는 각자 자기 dict만 쓰고(경합 0) 예외는 _og 안에서 삼킨다 = fail-soft 불변.
+with ThreadPoolExecutor(max_workers=5) as _ex:
+    list(_ex.map(_og, refs))
 # ── 이슈 원장 병합(장기 투숙 감쇠 · 운영자 260714 "1번=서사·2번=언급만·3번부터=제외"의 기억장치) ──
 # 모델 = 원장 전체 재기술 → 코드가 보증: {정형 검증 · 직전 원장과 합집합(모델 누락 = 망각 방지 carry) · n 불변 항목 =
 # last 보존(만료 시계 유지)·n 변동/신규 = 오늘 도장 · 7일 무등장 만료 · 캡 24}. 블록 부재·전줄 파손 = 직전 원장 그대로(fail-soft).
@@ -270,10 +305,49 @@ issues.sort(key=lambda x: (x.get('last') or '', x.get('n') or 0), reverse=True)
 issues = issues[:24]
 # 줄바꿈 보존(요점별 개행 = 운영자 요구 · 구 ' '.join(split())는 개행 뭉갬) — 줄별 trim + 빈줄 3+ → 1 + 상한
 lines = [ln.rstrip() for ln in body_txt.replace('\r\n', '\n').split('\n')]
-t = re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip()[:1600]   # 독해 상한(원인+딥다이브 = 길어짐 · 과출력 가드 · refs 분리 후 본문에만 적용)
+# ── 독해 상한 = '읽는 글자' 1600(마크다운 URL 문자는 과금 안 함 · 운영자 260727) ──
+# 구 [:1600]은 링크 원문([텍스트](https://…) = 개당 ~70자)이 상한을 잠식 → 링크를 늘리면 본문 뒷단이 통째로 잘렸다
+# (실측 260727 = 본문 1427자 중 링크 3개가 206자 점유). 화면에 보이는 건 URL이 아니라 앵커 텍스트뿐이므로 그 기준으로 재정의.
+# 링크 토큰은 통째로 넣거나 통째로 버린다 = 마크다운 중간 절단(깨진 [텍스트](http…)이 날것으로 노출)도 같이 봉합.
+LIM = 1600
+MDLINK = re.compile(r'\[[^\]\n]+\]\((https?://[^\s)]+)\)')
+def trim_visible(s, lim=LIM):
+    out, vis, pos = [], 0, 0
+    for m in MDLINK.finditer(s):
+        plain = s[pos:m.start()]
+        if vis + len(plain) >= lim:
+            return ''.join(out) + plain[:lim - vis]
+        out.append(plain); vis += len(plain)
+        shown = len(m.group(0)) - len(m.group(1)) - 4   # 보이는 텍스트만 = 전체 - URL - '[](  )' 4자
+        if vis + shown > lim:
+            return ''.join(out)
+        out.append(m.group(0)); vis += shown
+        pos = m.end()
+    tail = s[pos:]
+    return ''.join(out) + (tail if vis + len(tail) <= lim else tail[:lim - vis])
+t = trim_visible(re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip())   # 과출력 가드 · refs 분리 후 본문에만 적용
+# ── 링크 원장 갱신(같은 기사 재탕 차단의 기억장치 · 260727 한 수 채택 · 이슈 원장 문법 계승) ──
+# 등재 기준 = **절단 후 t에 실제로 살아남은 링크**(잘려나간 링크는 화면에 없었으니 원장에도 안 쌓는다).
+# 직전 원장과 합집합(carry) · 같은 URL 재등장 = last 갱신 · 7일 만료(issues와 동일 cut) · 캡 40.
+# 뷰어는 text·refs·issues만 읽으므로 이 필드는 무시된다(표시 무영향) · 해시 미포함 = 재생성 게이트 무간섭.
+try:
+    prev_links = json.load(open('viewer/sns_brief.json')).get('links') or []
+except Exception:
+    prev_links = []
+lmap = {}
+for x in prev_links:
+    u = str(x.get('url') or '')[:500]
+    if u.startswith(('http://', 'https://')):
+        lmap[u] = {'url': u, 'term': str(x.get('term') or '')[:40], 'last': str(x.get('last') or '')[:10] or today}
+for m in MDLINK.finditer(t):
+    u = m.group(1)[:500]
+    lmap[u] = {'url': u, 'term': m.group(0)[1:m.group(0).index('](')][:40], 'last': today}
+links = [x for x in lmap.values() if (x.get('last') or today) >= cut]
+links.sort(key=lambda x: x.get('last') or '', reverse=True)
+links = links[:40]
 json.dump({'text': t, 'updated': datetime.datetime.now(KST).isoformat(timespec='seconds'),
-           'src_hash': os.environ.get('BRIEF_SHA') or '', 'refs': refs, 'issues': issues},
+           'src_hash': os.environ.get('BRIEF_SHA') or '', 'refs': refs, 'issues': issues, 'links': links},
           open('viewer/sns_brief.json', 'w', encoding='utf-8'), ensure_ascii=False)
-print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄', '· refs', len(refs), '개(이미지', sum(1 for r in refs if r.get('image')), ') · 이슈원장', len(issues), '건')
+print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄', '· 본문링크', len(MDLINK.findall(t)), '개 · refs', len(refs), '개(이미지', sum(1 for r in refs if r.get('image')), ') · 이슈원장', len(issues), '건 · 링크원장', len(links), '건')
 PY
 echo "brief: 갱신 완료($SHA)"
