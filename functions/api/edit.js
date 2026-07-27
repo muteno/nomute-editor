@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
   const o = (body.opts && typeof body.opts === 'object') ? body.opts : {};
   const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v)) ? Math.max(lo, Math.min(hi, v)) : null;
   const opts = {};
-  for (const k of ['burn', 'filler', 'karaoke', 'pop', 'keyword', 'cut', 'bgm', 'aud_norm', 'clip']) { if (typeof o[k] === 'boolean') opts[k] = o[k]; }   // clip = 클리퍼 스캔(하이라이트 후보픽 · 260711)
+  for (const k of ['burn', 'filler', 'karaoke', 'pop', 'keyword', 'cut', 'bgm', 'aud_norm', 'clip', 'cutfill', 'take', 'cutscan']) { if (typeof o[k] === 'boolean') opts[k] = o[k]; }   // clip = 클리퍼 스캔(하이라이트 후보픽 · 260711) · cutfill=필러 컷 · take=반복 테이크 감지 · cutscan=컷 미리보기 스캔(260727)
   if (typeof o.clip_model === 'string' && ['fable', 'opus'].includes(o.clip_model)) opts.clip_model = o.clip_model;   // 클리퍼 감독 모델(fable/opus · 운영자 260722 · 배타 정규화에서 보존 → 워크플로가 CLIP_MODEL로 매핑)
   const STR = { lang: ['auto', 'ko', 'dual', 'src'], tone: ['sns', 'plain'], style: ['bold', 'clean', 'box'], cutlv: ['soft', 'std', 'hard'],
     vid_ar: ['9:16', '1:1', '4:5', '16:9'], vid_fit: ['crop', 'pad', 'blur'], vid_res: ['src', '1080', '720'], vid_fps: ['60i', '30', '24'] };   // vid_res 'src' = 원본 유지(4K 캡 3840 · 260711) · vid_fit 'blur' = 원본 블러 확대 배경 여백(260711)
@@ -59,10 +59,21 @@ export async function onRequestPost({ request, env }) {
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;
   if (t1 !== null && t1 > 0) opts.vid_t1 = Math.round(t1 * 100) / 100;
   if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
+  // 승인 컷 소비(260727 ③) — cutref = 스캔 잡 id · cutoff = 뺀 항목 인덱스 CSV(러너 ly_burn.load_ref_cuts가 실측 재검증 = 이중 방어)
+  if (typeof o.cutref === 'string' && /^\d{12}-[a-f0-9]{6}$/.test(o.cutref)) opts.cutref = o.cutref;
+  if (opts.cutref && typeof o.cutoff === 'string' && /^[0-9]{1,4}(,[0-9]{1,4}){0,199}$/.test(o.cutoff)) opts.cutoff = o.cutoff.slice(0, 900);
+  if (!opts.cutref) delete opts.cutoff;   // 참조 없는 제외 목록 = 무의미(잔여 키 청소 = clip_model 선례)
+  if (opts.cutscan === true) { opts.clip = false; delete opts.clip; delete opts.clip_model; delete opts.cutref; delete opts.cutoff;
+    for (const k of Object.keys(opts)) { if (!['cutscan', 'cut', 'cutlv', 'cutfill', 'take'].includes(k)) delete opts[k]; }   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 러너 컴포즈 스킵과 계약 일치)
+    if (!opts.cut && !opts.cutfill && !opts.take) return json({ error: '미리보기할 컷이 없어 — 무음·필러·테이크 중 하나는 켜줘' }, 400); }
+  else delete opts.cutscan;
   if (opts.clip === true) { for (const k of Object.keys(opts)) { if (k !== 'clip' && k !== 'clip_model') delete opts[k]; } }   // 클리퍼 = 배타 스캔 모드(후보만 뽑음 · 렌더 옵션 무시 = 서버 정규화 — 러너 스텝 게이트와 계약 일치) · clip_model은 감독 선택이라 보존
   else { delete opts.clip; delete opts.clip_model; }   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단 · clip_model도 동반 삭제(clip 없이 잔존 방지·평의회 260722 P2 청결성)
-  if (!opts.clip && !opts.burn && !opts.cut && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
-    && opts.vid_t0 === undefined && opts.vid_t1 === undefined) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // cut 단독 = 유효(STT-only 컷 260711)
+  if (!opts.clip && !opts.cutscan && !opts.cutref && !opts.burn && !opts.cut && !opts.cutfill && !opts.take && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
+    && opts.vid_t0 === undefined && opts.vid_t1 === undefined) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // cut 단독 = 유효(STT-only 컷 260711) · 필러·테이크 단독도 유효(260727)
+
+  const optsStr = JSON.stringify(opts);   // 구 .slice(0,900) = 초과 시 *깨진 JSON*을 러너에 넘겨 옵션이 통째로 증발했다(조용한 무력화) → 길이 초과는 정직 거절(260727)
+  if (optsStr.length > 1400) return json({ error: '옵션이 너무 많아 — 처리를 몇 개 빼고 다시' }, 400);
 
   const rl = await rateGate(GH, env.GH_TOKEN, 'edit-make.yml');   // 발사 레이트리밋(업로드 전 = up-<id>·up_src 고아 방지 · fail-open)
   if (rl) return json({ error: rl.error }, 429);
@@ -105,7 +116,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/edit-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, url, file: filePath, up_branch: upBranch, r2_src: r2src, opts: JSON.stringify(opts).slice(0, 900) },
+    ref: REF, inputs: { id, url, file: filePath, up_branch: upBranch, r2_src: r2src, opts: optsStr },
   });
   if (r.status === 204) return json({ ok: true, id, out: `ly_out/${id}/video.json` });
   if (upBranch) { try { await GH(env.GH_TOKEN, `git/refs/heads/${upBranch}`, 'DELETE'); } catch { /* 고아 잔존 무해 — 수동 정리 대상 */ } }
