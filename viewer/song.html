@@ -171,11 +171,14 @@
      = 토글 .spbtn · 버튼행 .erow · 소머리 label.fl · 리드아웃 .rmeta */
   .lyopt-row { display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-1); margin:0 0 7px /* raw-ok: 행 간격 7 = ly .lyopt-row 정본 동값 */; }
   .lyopt-k { flex:none; min-width:64px; color:var(--mut); font-size:var(--fs-xs); }   /* min-width 30(ly 정본)→64 = 우리 라벨이 2~4자로 길어 게이지 좌끝이 행마다 어긋나던 것 정렬(B2 · 정직 명기) */
-  .lyopt-row input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); }   /* min-width 60 = ly 정본 동값(wrap 행 붕괴 방지 하한) */
+  .lyopt-row input[type=range] { flex:1; min-width:60px; accent-color:var(--accent); height:24px /* raw-ok: WCAG 2.5.8 최소 타깃 24px 하한 인용(브라우저 기본 16px = 실측 미달 · 값 창작 아님) */; }   /* min-width 60 = ly 정본 동값(wrap 행 붕괴 방지 하한) */
   .lypv-fs { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:44px; text-align:right; color:var(--mut); }   /* min-width 36(ly)→44 = '-14.0' 등 부호+소수 리드아웃 폭(우정렬 흔들림 0) */
   .lypv-fs.on { color:var(--accent); }
   .matgls { display:flex; flex-wrap:wrap; gap:10px var(--sp-1) /* raw-ok: row-gap 10 = .selpop 정본 동값(칩 세로 히트 확장 상쇄) */; margin:0 0 var(--sp-1); }
-  #masec[hidden], #mabody.none { display:none; }
+  #masec[hidden], #mabody.none, #maadv.none, #maeq.none { display:none; }
+  .maeqg { display:block; width:100%; height:88px /* raw-ok: 곡선 액자 높이 = ±15dB 스케일이 폰 폭에서 판독되는 최소치(미리보기 16:9 액자 계열 아님 · 1회성) */; margin:0 0 var(--sp-1); background:var(--well); border:1px solid var(--line); border-radius:var(--r-s); }
+  .maeqg path { fill:none; stroke:var(--accent); stroke-width:1.8; }   /* raw-ok: stroke 1.8 = 이 파일 픽토그램 정본 동값(.hpop .hx SVG) */
+  .maeqg .zero { stroke:var(--line); stroke-width:1; }   /* raw-ok: 0dB 기준선 = 최소 헤어라인 */
   #maMet { font-variant-numeric:tabular-nums; }
   #maMet b { color:var(--accent); font-weight:var(--fw-b); }
 
@@ -354,41 +357,42 @@
          전부 브라우저 로컬 연산 = 과금 0 · 서버 왕복 0. 엔진 = viewer/master.js(SUP3RMASS1VE/Suno-Song-Remaster ISC 이식) -->
     <div class="selwrap" id="masec">
       <label class="fl">마스터링 <button type="button" class="selv" id="maV" aria-expanded="false">열기</button></label>
-      <div id="mabody" class="none">
-        <div class="lyopt-row"><span class="lyopt-k">음량</span><input type="range" id="maLufs" min="-20" max="-6" step="0.5" value="-14" aria-label="음량 목표 — LUFS(숫자가 클수록 크게)"><span class="lypv-fs" id="maLufsV">-14</span></div>
-        <div class="lyopt-row"><span class="lyopt-k">피크 천장</span><input type="range" id="maCeil" min="-3" max="0" step="0.1" value="-1" aria-label="트루피크 천장 — dBTP(찢어짐 방지 상한)"><span class="lypv-fs" id="maCeilV">-1.0</span></div>
-        <div class="lyopt-row"><span class="lyopt-k">스테레오</span><input type="range" id="maWid" min="0" max="200" step="5" value="100" aria-label="스테레오 폭 — 0% 모노 · 100% 원본 · 200% 확장"><span class="lypv-fs" id="maWidV">100%</span></div>
-        <div class="lyopt-row"><span class="lyopt-k">입력 게인</span><input type="range" id="maGain" min="-12" max="12" step="0.5" value="0" aria-label="입력 게인 — dB"><span class="lypv-fs" id="maGainV">0.0</span></div>
-        <div class="matgls" id="maTgls">
-          <button type="button" class="spbtn on" data-t="normalize" aria-pressed="true">음량 맞추기</button>
-          <button type="button" class="spbtn on" data-t="limit" aria-pressed="true">찢어짐 방지</button>
-          <button type="button" class="spbtn on" data-t="cleanLowEnd" aria-pressed="true">저역 정리</button>
-          <button type="button" class="spbtn" data-t="centerBass" aria-pressed="false">베이스 가운데</button>
-          <button type="button" class="spbtn" data-t="glue" aria-pressed="false">묶어주기</button>
-          <button type="button" class="spbtn" data-t="cutMud" aria-pressed="false">탁함 빼기</button>
-          <button type="button" class="spbtn" data-t="tameHarsh" aria-pressed="false">쏘는 소리 줄이기</button>
-          <button type="button" class="spbtn" data-t="addAir" aria-pressed="false">공기감</button>
+      <div id="mabody" class="none"><!-- 순서 = 프리셋 먼저 → 사람 말 매크로 → 세부는 접힘(업계 수렴 위계 · 3단 중첩 금지라 형제 2접힘) -->
+        <div class="matgls" id="maEqPre">
+          <button type="button" class="spbtn on" data-p="flat" aria-pressed="true">그대로</button>
+          <button type="button" class="spbtn" data-p="vocal" aria-pressed="false">보컬 부스트</button>
+          <button type="button" class="spbtn" data-p="bass" aria-pressed="false">베이스 부스트</button>
+          <button type="button" class="spbtn" data-p="bright" aria-pressed="false">밝게</button>
+          <button type="button" class="spbtn" data-p="warm" aria-pressed="false">따뜻하게</button>
         </div>
-        <label class="fl">이퀄라이저 <button type="button" class="selv" id="maEqV" aria-expanded="false">열기</button></label><!-- 운영자 "후순위" = 기본 접힘 + 전 밴드 0(flat = 무개입) -->
-        <div id="maeq" class="none">
-          <div class="lyopt-row"><span class="lyopt-k">저음</span><input type="range" id="eq0" min="-12" max="12" step="0.5" value="0" aria-label="저음 200Hz 셸빙 — dB"><span class="lypv-fs" id="eq0V">0.0</span></div>
-          <div class="lyopt-row"><span class="lyopt-k">중저음</span><input type="range" id="eq1" min="-12" max="12" step="0.5" value="0" aria-label="중저음 500Hz — dB"><span class="lypv-fs" id="eq1V">0.0</span></div>
-          <div class="lyopt-row"><span class="lyopt-k">중음</span><input type="range" id="eq2" min="-12" max="12" step="0.5" value="0" aria-label="중음 2kHz — dB"><span class="lypv-fs" id="eq2V">0.0</span></div>
-          <div class="lyopt-row"><span class="lyopt-k">중고음</span><input type="range" id="eq3" min="-12" max="12" step="0.5" value="0" aria-label="중고음 5kHz — dB"><span class="lypv-fs" id="eq3V">0.0</span></div>
-          <div class="lyopt-row"><span class="lyopt-k">고음</span><input type="range" id="eq4" min="-12" max="12" step="0.5" value="0" aria-label="고음 12kHz 셸빙 — dB"><span class="lypv-fs" id="eq4V">0.0</span></div>
-          <div class="matgls" id="maEqPre">
-            <button type="button" class="spbtn on" data-p="flat" aria-pressed="true">플랫</button>
-            <button type="button" class="spbtn" data-p="vocal" aria-pressed="false">보컬 부스트</button>
-            <button type="button" class="spbtn" data-p="bass" aria-pressed="false">베이스 부스트</button>
-            <button type="button" class="spbtn" data-p="bright" aria-pressed="false">밝게</button>
-            <button type="button" class="spbtn" data-p="warm" aria-pressed="false">따뜻하게</button>
+        <div id="mamac"></div><!-- 매크로 5행 = JS가 nmMaMacros()로 생성(라벨 5자 이내 = .lyopt-k min-width 64 안에서 B2 정렬 유지) -->
+        <label class="fl">세부 조정 <button type="button" class="selv" id="maAdvV" aria-expanded="false">열기</button></label>
+        <div id="maadv" class="none">
+          <div class="lyopt-row"><span class="lyopt-k">음량</span><input type="range" id="maLufs" min="-20" max="-6" step="0.5" value="-14" aria-label="음량 목표 — LUFS(숫자가 클수록 크게)"><span class="lypv-fs" id="maLufsV" aria-hidden="true">-14</span></div>
+          <div class="lyopt-row"><span class="lyopt-k">피크 천장</span><input type="range" id="maCeil" min="-3" max="0" step="0.1" value="-1" aria-label="트루피크 천장 — dBTP(찢어짐 방지 상한)"><span class="lypv-fs" id="maCeilV" aria-hidden="true">-1.0</span></div>
+          <div class="lyopt-row"><span class="lyopt-k">스테레오</span><input type="range" id="maWid" min="0" max="200" step="5" value="100" aria-label="스테레오 폭 — 0% 모노 · 100% 원본 · 200% 확장"><span class="lypv-fs" id="maWidV" aria-hidden="true">100%</span></div>
+          <div class="lyopt-row"><span class="lyopt-k">입력 게인</span><input type="range" id="maGain" min="-12" max="12" step="0.5" value="0" aria-label="입력 게인 — dB"><span class="lypv-fs" id="maGainV" aria-hidden="true">0.0</span></div>
+          <div class="matgls" id="maTgls">
+            <button type="button" class="spbtn on" data-t="normalize" aria-pressed="true">음량 맞추기</button>
+            <button type="button" class="spbtn on" data-t="limit" aria-pressed="true">찢어짐 방지</button>
+            <button type="button" class="spbtn on" data-t="cleanLowEnd" aria-pressed="true">저역 정리</button>
+            <button type="button" class="spbtn" data-t="centerBass" aria-pressed="false">베이스 가운데</button>
+            <button type="button" class="spbtn" data-t="glue" aria-pressed="false">묶어주기</button>
+            <button type="button" class="spbtn" data-t="cutMud" aria-pressed="false">탁함 빼기</button>
+            <button type="button" class="spbtn" data-t="tameHarsh" aria-pressed="false">쏘는 소리 줄이기</button>
+            <button type="button" class="spbtn" data-t="addAir" aria-pressed="false">공기감</button>
+          </div>
+          <div class="matgls" id="maFmt">
+            <button type="button" class="spbtn on" data-sr="44100" aria-pressed="true">44.1kHz</button>
+            <button type="button" class="spbtn" data-sr="48000" aria-pressed="false">48kHz</button>
+            <button type="button" class="spbtn on" data-bd="16" aria-pressed="true">16bit</button>
+            <button type="button" class="spbtn" data-bd="24" aria-pressed="false">24bit</button>
           </div>
         </div>
-        <div class="matgls" id="maFmt">
-          <button type="button" class="spbtn on" data-sr="44100" aria-pressed="true">44.1kHz</button>
-          <button type="button" class="spbtn" data-sr="48000" aria-pressed="false">48kHz</button>
-          <button type="button" class="spbtn on" data-bd="16" aria-pressed="true">16bit</button>
-          <button type="button" class="spbtn" data-bd="24" aria-pressed="false">24bit</button>
+        <label class="fl">이퀄라이저 <button type="button" class="selv" id="maEqV" aria-expanded="false">열기</button></label><!-- 기본 접힘 + 전 밴드 0(flat = 무개입) -->
+        <div id="maeq" class="none">
+          <svg class="maeqg" id="maEqG" viewBox="0 0 320 88" preserveAspectRatio="none" role="img" aria-label="이퀄라이저 응답 곡선"><path class="zero" d="M0 44H320"/><path id="maEqPath" d="M0 44H320"/></svg>
+          <div id="maeqb"></div><!-- 10밴드 행 = JS가 nmMaBands()로 생성(가로 행 = 폰에서도 폭 온전 사용 · 세로 슬라이더·노브 미채택) -->
         </div>
         <div class="erow"><button class="go" id="maGo">다듬어 듣기</button><button class="go" id="maDl" disabled>WAV 저장</button></div>
         <div class="rmeta" id="maMet"></div>
@@ -683,32 +687,77 @@ $('#lDl').addEventListener('click',e=>{
 //    흐름 = R2 곡(api/dl 프록시 = same-origin) → decodeAudioData → nmMaster(2패스 정규화+리미터) → WAV Blob → <audio> 교체·저장
 const MA=nmMaDefaults(), MA_DEF=nmMaDefaults();
 let MA_SRCURL='', MA_BUF=null, MA_OUTBUF=null, MA_URL='', MA_ORIGSRC='';
-const maFmt={ maLufs:v=>v.toFixed(1), maCeil:v=>v.toFixed(1), maWid:v=>v+'%', maGain:v=>(v>0?'+':'')+v.toFixed(1),
-  eq0:v=>(v>0?'+':'')+v.toFixed(1), eq1:v=>(v>0?'+':'')+v.toFixed(1), eq2:v=>(v>0?'+':'')+v.toFixed(1), eq3:v=>(v>0?'+':'')+v.toFixed(1), eq4:v=>(v>0?'+':'')+v.toFixed(1) };
-const MA_KEY={ maLufs:'targetLufs', maCeil:'ceilingDb', maWid:'width', maGain:'gainDb', eq0:'eqLow', eq1:'eqLowMid', eq2:'eqMid', eq3:'eqHighMid', eq4:'eqHigh' };
+const MA_FMT={ maLufs:v=>v.toFixed(1), maCeil:v=>v.toFixed(1), maWid:v=>v+'%', maGain:v=>(v>0?'+':'')+v.toFixed(1) };
+const MA_KEY={ maLufs:'targetLufs', maCeil:'ceilingDb', maWid:'width', maGain:'gainDb' };
+const MA_UNIT={ maLufs:'LUFS', maCeil:'dBTP', maWid:'퍼센트', maGain:'데시벨' };
+function maPaint(el,out,key,txt,unit){   // aria-valuetext = 리드아웃과 등가(숫자만 읽히면 단위·기본 여부가 안 들린다) · readout은 aria-hidden으로 이중낭독 차단
+  out.textContent=txt;
+  const dflt = key==null ? false : (typeof MA_DEF[key]==='number' ? +el.value===MA_DEF[key] : false);
+  out.classList.toggle('on', !dflt);
+  el.setAttribute('aria-valuetext', txt+(unit?(' '+unit):'')+(dflt?' · 기본':''));
+}
 function maBind(id){
   const el=$('#'+id), out=$('#'+id+'V'), key=MA_KEY[id];
-  const paint=()=>{ const v=+el.value; MA[key]=v; out.textContent=maFmt[id](v); out.classList.toggle('on', v!==MA_DEF[key]); };
+  const paint=()=>{ const v=+el.value; MA[key]=v; maPaint(el,out,key,MA_FMT[id](v),MA_UNIT[id]); };
   el.addEventListener('input',paint); paint();
 }
 Object.keys(MA_KEY).forEach(maBind);
+
+// ── 매크로 5축(사람 말 슬라이더 1개 = 여러 밴드·파라미터 동시 구동 · 0 = 무개입) ──
+//    라벨 5자 이내 = .lyopt-k min-width 64px 안에서 게이지 좌끝 정렬(B2) 유지
+const MA_MAC=[['clarity','선명하게'],['bass','저음'],['space','공간감'],['punch','단단하게'],['smooth','부드럽게']];
+$('#mamac').innerHTML=MA_MAC.map(([k,l])=>'<div class="lyopt-row"><span class="lyopt-k">'+esc(l)+'</span><input type="range" id="mc_'+k+'" min="0" max="5" step="1" value="0" aria-label="'+esc(l)+' — 0 안 함 · 5 가장 세게"><span class="lypv-fs" id="mc_'+k+'V" aria-hidden="true">0</span></div>').join('');
+MA_MAC.forEach(([k])=>{
+  const el=$('#mc_'+k), out=$('#mc_'+k+'V');
+  const paint=()=>{ const v=+el.value; MA[k]=v; maPaint(el,out,k,String(v),'단계'); maDrawEq(); };
+  el.addEventListener('input',paint); paint();
+});
+
+// ── 10밴드 EQ — 밴드 목록은 엔진(nmMaBands) 단일 정본에서 받아 생성 ──
+const MA_BANDS=nmMaBands();
+$('#maeqb').innerHTML=MA_BANDS.map((b,i)=>'<div class="lyopt-row"><span class="lyopt-k">'+esc(b.label)+'</span><input type="range" id="eq'+i+'" min="-12" max="12" step="0.5" value="0" aria-label="'+esc(b.label)+'헤르츠 대역 — 데시벨"><span class="lypv-fs" id="eq'+i+'V" aria-hidden="true">0.0</span></div>').join('');
+function maDrawEq(){   // 곡선 = 매크로 합성까지 반영된 최종값(= 매크로를 밀면 그래프가 움직인다 = 영향도의 시각 증거)
+  const s=nmMaDefaults();
+  Object.assign(s, {eqBands:MA.eqBands.slice()});
+  MA_MAC.forEach(([k])=>{ s[k]=MA[k]; });
+  let final=MA.eqBands;
+  try{ final=(window.nmMaResolve?nmMaResolve(s):null)||MA.eqBands; }catch(e){}
+  const p=$('#maEqPath'); if(p) p.setAttribute('d', nmEqCurve(final, 320, 88, 15));
+}
+MA_BANDS.forEach((b,i)=>{
+  const el=$('#eq'+i), out=$('#eq'+i+'V');
+  const paint=()=>{ const v=+el.value; MA.eqBands[i]=v; out.textContent=(v>0?'+':'')+v.toFixed(1); out.classList.toggle('on',v!==0);
+    el.setAttribute('aria-valuetext',(v>0?'+':'')+v.toFixed(1)+' 데시벨'+(v?'':' · 기본')); maDrawEq(); };
+  el.addEventListener('input',paint); paint();
+});
+
 function maFold(btnSel, bodySel){   // 접기·펴기 = .selv 토글 문법 계승(팝업 아닌 인라인 블록이라 .none 재사용)
   const b=$(btnSel), body=$(bodySel);
   b.addEventListener('click',()=>{ const open=body.classList.contains('none'); body.classList.toggle('none',!open); b.textContent=open?'닫기':'열기'; b.classList.toggle('on',open); b.setAttribute('aria-expanded',open?'true':'false'); });
 }
-maFold('#maV','#mabody'); maFold('#maEqV','#maeq');
+maFold('#maV','#mabody'); maFold('#maAdvV','#maadv'); maFold('#maEqV','#maeq');
 $('#maTgls').addEventListener('click',e=>{
   const b=e.target.closest('.spbtn'); if(!b) return;
   const on=!b.classList.contains('on');
   b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); MA[b.dataset.t]=on;
 });
-const MA_EQP={ flat:[0,0,0,0,0], vocal:[-1,-2,3,2,1], bass:[5,2,0,0,0], bright:[0,-1,0,2,4], warm:[3,1,0,-2,-3] };   // 프리셋 = 원본 README 5밴드 프리셋 축 계승(값은 우리 밴드 배치에 맞춰 산정)
+// 프리셋 = 10밴드 값 세트(원본 README 프리셋 축 계승 · 값은 우리 밴드 배치[62·110·250·370·650·1.2k·2.13k·4.55k·6.85k·16k]에 맞춰 산정)
+const MA_EQP={
+  flat:  [0,0,0,0,0,0,0,0,0,0],
+  vocal: [0,0,-2,-1,0,1.5,3,2,1,0],
+  bass:  [5,3.5,-1,0,0,0,0,0,0,0],
+  bright:[0,0,-1,0,0,0,0,2,3,4],
+  warm:  [2,2.5,1.5,0,0,0,0,-1.5,-2,-2.5],
+};
 $('#maEqPre').addEventListener('click',e=>{
   const b=e.target.closest('.spbtn'); if(!b) return;
   const p=MA_EQP[b.dataset.p]; if(!p) return;
   $$('#maEqPre .spbtn').forEach(x=>{ const on=x===b; x.classList.toggle('on',on); x.setAttribute('aria-pressed',on?'true':'false'); });
-  p.forEach((v,i)=>{ const el=$('#eq'+i); el.value=v; el.dispatchEvent(new Event('input')); });
+  p.forEach((v,i)=>{ const el=$('#eq'+i); if(!el) return; el.value=v; el.dispatchEvent(new Event('input')); });
 });
+function maPreCustom(){ $$('#maEqPre .spbtn').forEach(x=>{ x.classList.remove('on'); x.setAttribute('aria-pressed','false'); }); }   // 값을 직접 만지면 프리셋 하이라이트 해제(업계 표준 = 커스텀 전환)
+$('#maeqb').addEventListener('input',e=>{ if(e.target.type==='range') maPreCustom(); });
+$('#mamac').addEventListener('input',e=>{ if(e.target.type==='range') maPreCustom(); });
 $('#maFmt').addEventListener('click',e=>{
   const b=e.target.closest('.spbtn'); if(!b) return;
   const grp=b.dataset.sr?'sr':(b.dataset.bd?'bd':''); if(!grp) return;
@@ -736,9 +785,10 @@ $('#maGo').addEventListener('click',async()=>{
   gb.disabled=true; $('#maDl').disabled=true; gb.setAttribute('aria-busy','true');
   const met=$('#maMet');
   try{
-    gb.textContent='곡 읽는 중…'; met.textContent='';
+    const step=m=>{ gb.innerHTML=window.nmLoader?nmLoader('solving',m,{size:15}):esc(m)+'…'; };   // 진행 표기 = orb 로더 SSOT(버튼 안팎 공통 · 평문 직접 표기 금지)
+    step('곡 읽는 중'); met.textContent='';
     const buf=await maLoad();
-    const res=await nmMaster(buf, MA, m=>{ gb.textContent=m+'…'; });
+    const res=await nmMaster(buf, MA, step);
     MA_OUTBUF=res.buffer;
     if(MA_URL) URL.revokeObjectURL(MA_URL);
     MA_URL=URL.createObjectURL(nmEncodeWAV(res.buffer, MA.bitDepth));
