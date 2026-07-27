@@ -10,9 +10,15 @@ v3 변경사항:
 import sys, re, os
 from datetime import datetime, timezone, timedelta
 
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageOps
-import cv2
+# 합성 의존성 — 폭 계산(글자 advance·줄 폭 검증)만 쓰는 호출부(card_gate.py lint)는 이게 없는
+# 환경(Actions card_plan = 텍스트 전용 잡)에서도 이 모듈을 import 할 수 있어야 한다. 없으면 None 으로
+# 두고, 합성 경로(generate/render_text/smart_crop)에서만 필요해진다 — 폭 판정 SSOT를 이 파일 하나로 유지.
+try:
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
+    import cv2
+except ImportError:
+    np = Image = ImageDraw = ImageFont = ImageOps = cv2 = None
 
 # ─── 고정 캔버스 ───
 CANVAS_W = 1080
@@ -46,6 +52,62 @@ QUOTE_PAIRS = {
 OPENING_QUOTES = set(QUOTE_PAIRS.keys())
 CLOSING_QUOTES = set(QUOTE_PAIRS.values())
 ASCII_QUOTES = {'"', "'"}  # 같은 문자라 토글 방식
+
+# ─── 글자 폭(advance) 폴백 표 — 폰트 없는 환경용 ───
+# 왜: 폭 판정의 정본은 실제 폰트 실측(check_line_widths)이다. 그런데 카드 *텍스트만* 만드는 경로
+#   (Actions card_plan = cardmake.sh MODE=text · 제미나이 0)엔 Noto CJK 가 설치돼 있지 않아,
+#   게이트(card_gate.py lint)가 폰트를 못 잡고 근사 프록시(가중폭 0.5/1.0)로 판정해 왔다.
+#   그 프록시는 실측과 어긋난다 — 공백 13px(0.26자)·숫자/영문/큰따옴표 31~32px(0.64자)인데
+#   둘 다 0.5로 세니, 숫자 많은 줄은 통과시키고(렌더 초과 = FN) 공백 많은 줄은 붙잡았다(FP).
+#   → FONT_PATH·FONT_SIZE 실측 advance 를 그대로 표로 박아, 폰트가 없어도 렌더러와 같은 판정을 낸다.
+# 재생성·검증: `python3 apps/comp/card_news.py --advtable`  (폰트 있는 환경에서 실행 · 어긋나면 표를 갱신)
+_ADV_GROUPS = {
+    13: " ", 16: "|", 17: "ijl", 18: "',.:;I‘’", 20: "!-f",
+    21: "()/[\\]{}", 23: "t", 24: "r", 27: "s", 28: "*?z", 29: "c",
+    30: "–", 31: "\"J_vxy“”", 32: "#$+0123456789<=>FLY^ae~·",
+    33: "Zgk", 34: "ESTVX`o", 35: "Abdhnpqu", 36: "CP", 37: "BKR", 39: "DG",
+    40: "&", 41: "HNU", 42: "OQ", 46: "M", 47: "w", 49: "—", 50: "W",
+    52: "%m", 55: "@",
+}
+ADV_TABLE = {ch: w for w, chars in _ADV_GROUPS.items() for ch in chars}
+ADV_HANGUL = 50   # 한글 음절·자모 (전부 균일 — 실측)
+ADV_WIDE = 54     # 한자·전각·낫표·… 등 광폭 (미등록 문자 보수 기본값도 이 값)
+
+
+def _is_hangul(ch):
+    o = ord(ch)
+    return 0xAC00 <= o <= 0xD7A3 or 0x1100 <= o <= 0x11FF or 0x3130 <= o <= 0x318F
+
+
+def char_adv(ch, font=None):
+    """글자 1개의 진행폭(px). font 가 있으면 실측, 없으면 폴백 표."""
+    if font is not None:
+        bbox = font.getbbox("가" + ch + "가")
+        base = font.getbbox("가가")
+        return (bbox[2] - bbox[0]) - (base[2] - base[0])
+    if _is_hangul(ch):
+        return ADV_HANGUL
+    return ADV_TABLE.get(ch, ADV_WIDE)
+
+
+def text_width(s, font=None):
+    """문자열 렌더 폭(px). font 있으면 실측 bbox, 없으면 폴백 합산(실측 대비 +1% 내외 보수)."""
+    if not s:
+        return 0
+    if font is not None:
+        bbox = font.getbbox(s)
+        return bbox[2] - bbox[0]
+    return sum(char_adv(ch) for ch in s)
+
+
+def load_font():
+    """합성용 폰트 로드 — 폰트·PIL 없으면 None(호출부는 폴백 표로 진행)."""
+    if ImageFont is None or not os.path.isfile(FONT_PATH):
+        return None
+    try:
+        return ImageFont.truetype(FONT_PATH, FONT_SIZE, index=1)
+    except Exception:
+        return None
 
 
 def detect_subject_center(img_cv):
@@ -197,16 +259,14 @@ def parse_segments(line):
     return segments
 
 
-def compute_line_offsets(text_lines, font):
+def compute_line_offsets(text_lines, font=None):
     """각 줄 시작 시점의 x 오프셋 계산.
 
     여는 따옴표가 줄을 넘어 닫힐 때, 그 사이 줄들은 따옴표 폭만큼 들여쓰기됨.
     페어드 따옴표는 스택, ASCII 따옴표는 토글 방식.
+    font=None = 폰트 없는 환경(게이트 전용) — 폴백 표로 같은 계산.
     """
-    ascii_widths = {
-        ch: font.getbbox(ch)[2] - font.getbbox(ch)[0]
-        for ch in ASCII_QUOTES
-    }
+    ascii_widths = {ch: char_adv(ch, font) for ch in ASCII_QUOTES}
 
     offsets = []
     paired_stack = []
@@ -222,8 +282,7 @@ def compute_line_offsets(text_lines, font):
         clean = _strip_emphasis(line)
         for ch in clean:
             if ch in OPENING_QUOTES:
-                w = font.getbbox(ch)[2] - font.getbbox(ch)[0]
-                paired_stack.append(w)
+                paired_stack.append(char_adv(ch, font))
             elif ch in CLOSING_QUOTES:
                 if paired_stack:
                     paired_stack.pop()
@@ -233,15 +292,18 @@ def compute_line_offsets(text_lines, font):
     return offsets
 
 
-def check_line_widths(text_lines, font, max_width=MAX_WIDTH):
-    """각 줄의 (들여쓰기 + 텍스트) 폭 측정. 초과 항목 리스트 반환."""
+def check_line_widths(text_lines, font=None, max_width=MAX_WIDTH):
+    """각 줄의 (들여쓰기 + 텍스트) 폭 측정. 초과 항목 리스트 반환.
+
+    font=None = 폴백 표(폰트 미설치 환경) — card_gate.py lint 가 이 경로로 렌더러와 같은 판정을 낸다.
+    """
     offsets = compute_line_offsets(text_lines, font)
     overflows = []
     for i, line in enumerate(text_lines):
         clean = _strip_emphasis(line)
         if not clean:
             continue
-        text_w = font.getbbox(clean)[2] - font.getbbox(clean)[0]
+        text_w = text_width(clean, font)
         total_w = offsets[i] + text_w
         if total_w > max_width:
             overflows.append({
@@ -352,9 +414,32 @@ def generate(image_path, text_lines, output_path):
     return True
 
 
+def _advtable_check():
+    """폴백 표 ↔ 실제 폰트 실측 대조(드리프트 감시). 어긋난 글자를 출력하고 rc=1."""
+    font = load_font()
+    if font is None:
+        print("폰트 없음(%s) — 대조 불가. 폰트 있는 환경에서 실행할 것." % FONT_PATH)
+        return 1
+    bad = []
+    for ch in list(ADV_TABLE) + ["가", "힣", "法", "「", "…"]:
+        real, tab = char_adv(ch, font), char_adv(ch)
+        if real != tab:
+            bad.append("%r 표 %d ≠ 실측 %d" % (ch, tab, real))
+    if bad:
+        print("ADVTABLE ✗ 드리프트 %d건:" % len(bad))
+        for b in bad:
+            print("  - " + b)
+        return 1
+    print("ADVTABLE ✓ %d자 일치 (FONT_SIZE=%d · MAX_WIDTH=%d)" % (len(ADV_TABLE), FONT_SIZE, MAX_WIDTH))
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) >= 2 and sys.argv[1] == "--advtable":
+        sys.exit(_advtable_check())
     if len(sys.argv) < 3:
         print("Usage: python3 card_news.py <image_path> <line1> [line2] ...")
+        print("       python3 card_news.py --advtable   (폭 폴백 표 ↔ 폰트 실측 대조)")
         sys.exit(1)
 
     image_path = sys.argv[1]

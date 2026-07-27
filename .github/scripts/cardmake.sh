@@ -237,8 +237,11 @@ for q in "${targets[@]}"; do
   if [ "$MODE" = shoot ] && [ -s "cards/$stem/cards.md" ]; then
     echo "슛(렌더만): 기존 cards.md 재사용 — 클로드 스킵"
     # 재촬영 경로 lint(비차단 · 9인 리뷰 ② 260702) — 레거시 카드의 규격 위반·비ASCII 혼입을 과금 렌더 전에 가시화(차단 안 함·재사용 유지)
-    python3 .github/scripts/card_gate.py lint "cards/$stem/cards.md" >/dev/null 2>&1 \
-      || echo "::warning::[$stem] 기존 cards.md 규격 위반 잔존(레거시) — 렌더는 진행하되 '텍스트만 수정'으로 교정 권장"
+    _slint="$(python3 .github/scripts/card_gate.py lint "cards/$stem/cards.md" 2>&1)" || {
+      # 폭 초과 줄은 card_news 가 '가로 초과 — 합성 중단'으로 그 카드를 통째로 거른다 → 어느 줄인지 보여준다.
+      echo "::warning::[$stem] 기존 cards.md 규격 위반 잔존(레거시) — 렌더는 진행하되 '텍스트만 수정'으로 교정 권장"
+      printf '%s\n' "$_slint" | grep '^LINT ✗' | sed 's/^/  /'
+    }
     pv="$(grep -o '"guidelines_version":[[:space:]]*"[^"]*"' "cards/$stem/status.json" 2>/dev/null | cut -d'"' -f4)"
     [ -n "$pv" ] || pv="$GVER"
   else
@@ -393,26 +396,47 @@ $(cat "$q")${disp_note}"
     printf '%s\n' "$out" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.tmp"
     lint_out="$(python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.tmp" 2>&1)"; lint_rc=$?
     if [ $lint_rc -ne 0 ]; then
-      echo "  ⚠️ 규격 린트 위반 — 교정 재시도 1회"
+      viol_n0="$(printf '%s\n' "$lint_out" | grep -c '^LINT ✗' || true)"
+      echo "  ⚠️ 규격 린트 위반 ${viol_n0}건 — 교정 재시도 1회"
       printf '%s\n' "$lint_out" | sed 's/^/    /'
-      LINT_PREFIX="⚠️⚠️ [규격 교정 — 강제]: 직전 시도가 아래 합성기 규격을 위반했다. 위반 항목만 고쳐 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(내용·구성은 유지·규격만 교정 · 응답 첫 글자부터 \`# {제목}\`).
-[위반 목록]
-${lint_out}
+      # ── 교정 재시도 = *서픽스* + 직전 산출물 첨부 (260728 근본 수리) ──
+      #   구 방식은 위반 목록만 담은 프리픽스 + fp_base 였다 = 모델이 **자기 직전 출력을 못 본 채** "위반 항목만
+      #   고쳐 같은 MD를 다시 내라"는 불가능한 지시를 받았다(맹목 재생성 → 같은 초과 재발 · 260727 카드덱 18줄
+      #   전부 위반 잔존이 이 경로). 이제 직전 cards.md 전문을 붙여 '고칠 원본'을 쥐여준다.
+      #   서픽스인 이유 = GBLOCK 프리픽스 캐시 보존(커버리지 가드와 동일 정신 · 프리픽스면 지침 전량이 캐시 미스).
+      LINT_SUFFIX="
 
+⚠️⚠️ [규격 교정 — 강제·최종 지시]: 위 지침·다이제스트로 **직전에 생성한 카드 MD**(아래 전문)가 합성기 물리 규격을 어겼다. 아래 원본을 기준으로 **지적된 줄만 짧게 다시 써서** 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라 — 카드 수·구성·서사·이미지 프롬프트·검색어는 **그대로 유지**하고, 위반 줄의 문구만 규격 안으로 줄인다(응답 첫 글자부터 \`# {제목}\`).
+⚠️ 줄이는 순서 = ①수식어·중복어 삭제 ②인용은 핵심 어절만 남기고 나머지는 서술로 풀기 ③그래도 넘치면 **의미 단위(구·절) 경계에서** 다음 줄로 넘기기(줄 ≤4 안에서). ⛔ 보존 6종(나이·형량·금액·인원·사건 식별 수치·서사 앵커 날짜)은 깎지 마라 — 깎을 건 분위기 카피다. ⛔ 새 사실·수치 추가 금지.
+[위반 목록 — 각 줄 끝 '한글 N자 이상 덜어내'가 그 줄에서 실제로 줄여야 하는 양이다]
+${lint_out}
+[직전 산출물 전문 — 이걸 고쳐서 다시 낸다]
+$(cat "/tmp/${stem}.cards.tmp")
 "
-      out2="$(printf '%s' "${LINT_PREFIX}${fp_base}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter "$CARD_TIMEOUT" \
+      out2="$(printf '%s' "${fp_base}${LINT_SUFFIX}" | METER_SRC=card METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter "$CARD_TIMEOUT" \
             --model "$MODEL" --effort "$CARD_EFFORT" \
             --allowedTools "WebFetch,WebSearch" \
             --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
             --max-turns 40 2>/dev/null)"
       if [ -n "${out2// }" ] && grep -qm1 '^### \[카드 1\]' <<<"$out2"; then
         printf '%s\n' "$out2" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.retry"
-        if python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.retry" >/dev/null 2>&1; then
+        lint2_out="$(python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.retry" 2>&1)"; lint2_rc=$?
+        viol_n1="$(printf '%s\n' "$lint2_out" | grep -c '^LINT ✗' || true)"
+        n0="$(grep -c '^### \[카드' "/tmp/${stem}.cards.tmp" || true)"
+        n1="$(grep -c '^### \[카드' "/tmp/${stem}.cards.retry" || true)"
+        if [ $lint2_rc -eq 0 ]; then
           echo "  ✓ 교정 재시도 통과 — 교정본 채택"
           cp "/tmp/${stem}.cards.retry" "/tmp/${stem}.cards.tmp"
+        elif [ "$n1" = "$n0" ] && [ "${viol_n1:-99}" -lt "${viol_n0:-0}" ]; then
+          # 완전 통과는 못 했어도 위반이 실제로 줄었고 덱 구성이 같으면 = 엄밀히 더 나은 산출물 → 채택
+          #   (구 동작은 '통과 아니면 원본' 이라, 18건→2건으로 줄여도 18건짜리를 저장했다).
+          echo "::warning::[$stem] 규격 교정 부분 성공(위반 ${viol_n0}→${viol_n1}건 · 카드 ${n0}장 유지) — 교정본 채택(잔존 위반은 아래)"
+          printf '%s\n' "$lint2_out" | grep '^LINT ✗' | sed 's/^/    /'
+          cp "/tmp/${stem}.cards.retry" "/tmp/${stem}.cards.tmp"
         else
-          echo "::warning::[$stem] 규격 교정 재시도도 위반 잔존 — 원본 저장(비차단·렌더 단계 방어에 위임)"
+          echo "::warning::[$stem] 규격 교정 재시도 개선 없음(위반 ${viol_n0}→${viol_n1}건 · 카드 ${n0}→${n1}장) — 원본 저장(비차단·렌더 단계 방어에 위임)"
         fi
+        rm -f "/tmp/${stem}.cards.retry"
       else
         echo "::warning::[$stem] 규격 교정 재시도 무출력/양식 위반 — 원본 저장(비차단)"
       fi
