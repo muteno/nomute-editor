@@ -7,7 +7,7 @@
 // 무엇을 검증하나 — viewer/index.html의 genidlg 이중 홈(팝업↔이식 탭) 전 생명주기 + thumb 잡 카드 흐름 13시나리오:
 //   S2 라디얼 +>이미지 셸 → S3 프롬프팅 탭 이식 6항 → S6 이식 모드 폼 상호작용(칩→요약 리드백)
 //   → S4 타 탭 이탈 원복 → S5 재진입 장면·화풍 보존 → S9 발사 실패(404) 강건성
-//   → S10 발사 성공(API 스텁) = 폼 원복+iframe 잡 카드 합류 → S11 완료 카드 '한 장 더' 노출
+//   → S10 발사 성공(API 스텁) = 폼 존속(연속 생성 · 260727 편집 탭 계승)+iframe 잡 카드 합류 → S11 완료 카드 '한 장 더' 노출
 //   → S12 한 장 더 = 새 잡 카드(같은 설정·1장) → S13 한 장 더 실패 = 버튼 상태 표기
 //   → S7 닫기 완전 원복 → S8 팝업 홈 무결 → S1 페이지 에러 0
 //   (S10~13 = 운영자 260713 "그 아이디어도 ㄱ" — api/genimg만 fetch 스텁 · 나머지 = 실코드 경로 그대로)
@@ -162,14 +162,14 @@ const STUB_FN = `(on) => {
     if (!tf) throw new Error('thumb iframe 미발견 — 잡 카드 검증 불가(셸 로드 순서 확인)');
     await pg.evaluate('(' + STUB_FN + ')(true)');   // 부모 발사 성공 흉내(genfree-fired 실경로 격발)
     await pg.evaluate(S => document.querySelector(S.host + ' ' + S.go).click(), SEL);
-    await pg.waitForTimeout(1600);   // 발사 피드백 시퀀스 대기(운영자 260718 Q137 ③ — free 모드 #geniGo도 게이지→✓ 노출 후 geniLeave = 폼 원복 지연[구 즉시 700ms → 게이지·✓ 후 recede] · 계약[폼 원복+잡카드]은 유지·시점만 후행 · thumb #go goFire 리듬 계승)
+    await pg.waitForTimeout(1600);   // 발사 피드백 시퀀스 대기(게이지→✓ · thumb #go goFire 리듬 계승 · 운영자 260718 Q137 ③)
     await pg.evaluate('(' + STUB_FN + ')(false)');
-    const s10p = await pg.evaluate(S => ({ hostHidden: document.querySelector(S.host).hidden, frameActive: !!document.querySelector(S.frActive) }), SEL);
+    const s10p = await pg.evaluate(S => ({ hostHidden: document.querySelector(S.host).hidden, frameActive: !!document.querySelector(S.frActive), goDisabled: !!document.querySelector(S.host + ' ' + S.go).disabled }), SEL);
     const s10f = await tf.evaluate(S => {
       const jobs = document.querySelectorAll(S.job); const t = document.querySelector('.tab.on');
       return { n: jobs.length, run: JOBS.length ? JOBS[0].status === 'run' : false, tab: t ? t.dataset.app : '' };
     }, SEL);
-    ok('S10 발사 성공 = 폼 원복+프롬프팅 탭 잡 카드 합류(run)', s10p.hostHidden && s10p.frameActive && s10f.n >= 1 && s10f.run && s10f.tab === '6', JSON.stringify({ ...s10p, ...s10f }));
+    ok('S10 발사 성공 = 폼 존속(연속 생성)+프롬프팅 탭 잡 카드 합류(run)', !s10p.hostHidden && !s10p.frameActive && !s10p.goDisabled && s10f.n >= 1 && s10f.run && s10f.tab === '6', JSON.stringify({ ...s10p, ...s10f }));   // ⚠ 계약 전환(운영자 260727 "생성 누르면 미리보기 창이 없어지거든? 추가로 생성할 수 있어야 하는데, 이미지 편집 부분같이 동일하게") — 구 계약 = 발사 = 폼 원복+iframe 노출(hostHidden·frameActive 참). 신 계약 = **편집 탭(app7 #topDock sticky 도크) 계승 = 폼 존속** → 미리보기·옵션·참고이미지 그대로 두고 바로 재발사. 완화가 아니라 새 설계 반영(260727 wip 타일 폐지 선례와 동축) · 버튼 원복(goDisabled=false)까지 물어 '존속했지만 못 누름' 회귀를 같이 막는다 · 잡 카드 합류(n·run·tab)는 구 계약 그대로 = 결과 축 무접촉 증명
 
     const s11 = await tf.evaluate(S => {
       const j = JOBS[0]; if (!j) return { ok: false };
