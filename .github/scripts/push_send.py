@@ -177,6 +177,16 @@ def main():
     notify = None
     notify_url = "/"
     notify_tag = "nomute-make"
+    notify_kind = ""   # 알림 종류(운영자 260727 "알림 종류별로 카테고라이징해서 로고를 다르게") — SW가 kind→아이콘 매핑. 정본 종류 = viewer/sw.js NOTIF_ICON
+    notify_icon = ""   # 아이콘 URL 직접 지정(최우선) — **구 SW 호환 검증용**. 정식 발송 경로는 비우고 kind만 보낸다(비워야 SW가 라이트/다크 테마짝을 스스로 고른다).
+    if "--kind" in sys.argv:
+        m = sys.argv.index("--kind")
+        if len(sys.argv) > m + 1 and sys.argv[m + 1]:
+            notify_kind = sys.argv[m + 1]
+    if "--icon" in sys.argv:
+        m = sys.argv.index("--icon")
+        if len(sys.argv) > m + 1 and sys.argv[m + 1]:
+            notify_icon = sys.argv[m + 1]
     if "--url" in sys.argv:                           # 알림 탭 시 이동할 경로(제작완료=제작 화면으로) · 미지정이면 "/"
         j = sys.argv.index("--url")
         if len(sys.argv) > j + 1:
@@ -203,10 +213,12 @@ def main():
 
     if test:
         msgs = [{"keys": [f"test-{int(time.time())}"], "title": "🔔 노뮤트 테스트",
-                 "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/", "tag": "nomute-breaking"}]
+                 "body": "웹푸시 연결 정상! 긴급 속보가 이렇게 와.", "url": "/", "tag": "nomute-breaking",
+                 "kind": notify_kind or "test", "icon": notify_icon}]
     elif notify:
         # 제작완료/요약완료 등 = 전용 tag(긴급 속보와 안 덮어씀) · url=대상 화면(notify_url) · tag=notify_tag(건별 고유면 누적)
-        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": notify_tag}]
+        msgs = [{"keys": [f"notify-{int(time.time())}"], "title": notify[0], "body": notify[1], "url": notify_url, "tag": notify_tag,
+                 "kind": notify_kind, "icon": notify_icon}]
     else:
         cands = jload(CAND, [])
         _raw = jload(SENT, {})
@@ -245,7 +257,7 @@ def main():
                     print(f"  ⊘ 사건중복 억제(AI): {(c.get('title') or '')[:34]} ≈ {str(sent_events[dup].get('title', ''))[:28]}", file=sys.stderr)
                     suppressed_keys.extend(ks)
                     continue
-            msgs.append({"keys": ks, "ev_title": c.get("title") or "", "title": "News", "body": ("(긴급) " + disp_title(c))[:120], "url": brk_url(c), "tag": "nomute-breaking"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(외신=번역 제목) · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
+            msgs.append({"keys": ks, "ev_title": c.get("title") or "", "title": "News", "body": ("(긴급) " + disp_title(c))[:120], "url": brk_url(c), "tag": "nomute-breaking", "kind": "brk"})   # 제목="News"(고정·OS 볼드) · 본문="(긴급) 헤드라인"(외신=번역 제목) · url=해당 건 딥링크(요약완료=요약창/미완료=메이저링크 · 운영자 260622)
         if not msgs:
             if suppressed_keys:   # 발송 0건이어도 억제 도장은 기록(다음 런 AI 재호출 0 — 조용한 반복 콜 차단)
                 _flush_ledgers([], suppressed_keys, [], sent_events)
@@ -255,8 +267,10 @@ def main():
     pem_path = vapid_pem(priv)
     dead, sent_keys, sent_evs = set(), [], []
     for m in msgs:
-        payload = json.dumps({"title": m["title"], "body": m["body"], "url": m["url"], "tag": m.get("tag", "nomute-breaking")},
-                             ensure_ascii=False)
+        pl = {"title": m["title"], "body": m["body"], "url": m["url"], "tag": m.get("tag", "nomute-breaking")}
+        if m.get("kind"): pl["kind"] = m["kind"]     # SW가 종류→아이콘 매핑(신 SW) · 미지정 = 브랜드 기본
+        if m.get("icon"): pl["icon"] = m["icon"]     # 직접 지정 = 최우선(구 SW 호환 검증 경로 · 정식 발송은 비움 = 테마짝 유지)
+        payload = json.dumps(pl, ensure_ascii=False)
         ok_any = False
         for s in subs:
             ep = (s or {}).get("endpoint")

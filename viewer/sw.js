@@ -91,8 +91,15 @@ self.addEventListener('fetch', event => {
 //    _sendTheme) 여기서 Cache에 적재 → push 때 읽는다. SW는 이벤트마다 재시작되므로 메모리 변수는 못 쓴다.
 // 기본값 = 다크(앱 자체가 다크 UI · 통지 도착 전 첫 알림도 어긋나지 않게).
 const PREF_CACHE = 'nm-pref-v1', THEME_KEY = '/__nm_theme';
-const ICON_DARK = '/assets/brand/icon-notif-sig-512-260727.png';
-const ICON_LIGHT = '/assets/brand/icon-notif-blue-512-260727.png';
+// ── 알림 종류별 아이콘(운영자 260727 "알림 종류별로 카테고라이징해서 로고를 다르게" · 선택 = 「5종 · 같은 지구본 + 색만」) ──
+// 값 = 파일명 조각(''이면 위 브랜드 기본판). 색은 index :root 토큰 의미축 계승 — brk=--danger · make=--accent(기본)
+// · sys=--warn · trend=--info · test=--mut. 에셋 생성 = shared/build_notif_icons.py(손편집 금지 · D2-1).
+// 모르는 kind·미지정 = 기본판 폴백 = 구 발송 경로(kind 없는 워크플로) 무손상.
+const NOTIF_ICON = { brk: 'brk', make: '', sys: 'sys', trend: 'trend', test: 'test' };
+function iconFor(kind, dark) {
+  const t = dark ? 'sig' : 'blue', k = NOTIF_ICON[kind] || '';
+  return `/assets/brand/icon-notif-${k ? k + '-' : ''}${t}-512-260727.png`;
+}
 async function readThemeDark() {
   try { const c = await caches.open(PREF_CACHE), r = await c.match(THEME_KEY); return r ? (await r.text()) !== 'light' : true; }
   catch (_) { return true; }
@@ -119,7 +126,7 @@ self.addEventListener('push', event => {
     lang: 'ko',
   };
   event.waitUntil((async () => {
-    opts.icon = d.icon || (await readThemeDark() ? ICON_DARK : ICON_LIGHT);   // 페이로드 지정이 우선 · 없으면 저장된 테마로 짝 선택
+    opts.icon = d.icon || iconFor(d.kind, await readThemeDark());   // 페이로드 icon 지정이 최우선 · 없으면 {종류 × 저장된 테마} 짝 선택
     return self.registration.showNotification(title, opts);
   })());
 });
