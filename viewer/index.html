@@ -7420,58 +7420,56 @@ function sysErrMsgs() {
   //   ⚠ 레딧은 계정 축이 아니라 서브레딧 축이라 `health.subs.stale`에 영영 안 잡힌다. `health.reddit`도 못 쓴다 —
   //     러너는 레딧 게이트가 꺼져 있어(`off:true` 상주) 그 필드는 "러너가 안 함"만 뜻하고, 실제 공급은 폰이다(260727 실측).
   //   → **데이터 유무로 직접 판정** + 폰이 살아 있을 때만(폰이 죽었으면 폰 알림이 이미 원인을 말하므로 중복 고지 억제).
-  // 부분 실패(운영자 260727 "재발 방지 대책") — 위 stale은 **전멸(0건)만** 잡는다. 등록 11계정 중 8개만 걷혀도
-  //   조용하던 사각(260727 판례: 틱톡 403 3계정이 며칠째 누락인데 화면·알림 어디에도 흔적 0).
-  //   소스 = `health.subs.cover` = [수집 성공 계정 수, 등록 계정 수](수집기가 세어 실어 보냄 = 새 콜 0).
-  //   임계 = **등록의 80% 미만**. 계정 1~2개가 비공개·삭제되는 정상 이탈에는 안 울리고(11 중 10·9 = 91%·82% = 침묵),
-  //   3개 이상 빠지면(73%) 잡힌다 = 260727 실제 사고를 재현 가능한 선. 전멸(got=0)은 stale이 담당하므로 제외(중복 억제).
-  //   **건별 분해**(운영자 260727 "사고는 다 개별건 건별로 · 10개 터지면 10개 각각 사고임") — 한 줄로 뭉치면 ✓ 한 번에
-  //   여러 계정이 같이 침묵한다. 계정마다 원인이 다를 수 있어(삭제 / 비공개 / 그 계정만 차단) **빠진 계정 하나 = 알림 하나**,
-  //   id도 계정을 물어(`sys:acct:<플랫폼>:<계정>:<날짜>`) ✓·재고지가 계정별로 독립한다. 전멸은 원인이 공통이라 위 stale이 1건으로 담당.
+  // ── 부족 고지 = **화면 10칸을 못 채웠나** 하나로 통합(운영자 260727 "내가 받으려는거는 10개를 못채웠다 or
+  //   연결이 끊겼다 이 2개만 받을거임") — 260727 낮의 계정별 건별 분해(`sys:acct:<계정>`)는 **폐지**한다.
+  //   왜 폐지가 맞나(실측) = 건별은 등록 계정 수만큼 알림이 불어난다(그날 실측 49건). 게다가 빠진 계정 대부분은
+  //   'budget'(서버가 시간을 다 써 시도조차 못 함)이라 계정마다 할 일이 다르지도 않다 = 분해의 전제가 성립 안 함.
+  //   판정 = 그 플랫폼의 **화면 표시 건수**(3일 컷 후 = renderSnsTrends cut3d와 같은 자)가 목표 10칸 미만.
+  //   원인은 버리지 않는다 — cover.why(수집기 사유)를 **집계해 본문에 싣고**, 네가 고쳐야 하는 계정(삭제·아이디 변경)은
+  //   이름까지 찍는다. 그래서 알림은 1건인데 "무엇을 고치면 되는지"는 그대로 남는다(다운로드·복사도 이 본문을 싣는다).
+  const _josaGa = w => { const c = String(w || '').slice(-1).charCodeAt(0); const han = c >= 0xAC00 && c <= 0xD7A3; return (han ? ((c - 0xAC00) % 28 !== 0) : true) ? '이' : '가'; };   // 받침 있으면 '이/은', 없으면 '가/는' — 한글 종성 판정(비한글 = 'X'→'엑스' 음독 = 받침 있음 취급)
+  const SUBS_FILL_N = 10;   // 화면 목표 칸 = 소분류 섹션 10칸(운영자 260726 "10개만 받아오는거로" 정본과 같은 수)
+  // 3일 컷 = renderSnsTrends `cut3d`(AGE_CUT_H 72h) **동식 계승** — 그 함수·상수는 렌더 지역 스코프라 여기서 못 부른다(실측: ageVerH 미정의 ReferenceError).
+  //   식은 `ageVerH`의 축소판: 구독 아이템이 실제로 쓰는 시각 필드 3개만(published=yt·insta / time=x·threads / create_time=tiktok) · 미상 = 통과(fail-soft 규약 그대로).
+  const _fresh3d = arr => (Array.isArray(arr) ? arr : []).filter(it => {
+    const p = it && (it.published || it.time || it.create_time);
+    if (p == null || p === '') return true;
+    const n = (typeof p === 'number' || /^\d{9,13}$/.test(String(p))) ? (+p < 1e12 ? +p * 1000 : +p) : new Date(String(p)).getTime();
+    const h = (Date.now() - n) / 3600e3;
+    return !(isFinite(h) && h >= 72);
+  }).length;
   const cov = (hh.subs || {}).cover || {};
-  for (const k of Object.keys(cov)) {
-    const c = cov[k] || {}, got = c.got | 0, reg = c.reg | 0, miss = Array.isArray(c.miss) ? c.miss : [];
-    if (!SYS_PLAT_KO[k] || !reg || !got) continue;   // 전멸(got=0) = stale 담당(중복 억제)
-    const covOk = got * 5 >= reg * 4;                // 80% 이상 = 정상 이탈 범위 = 원칙 침묵(아래 사유 예외만 통과)
+  const _subsData = (TRENDS && TRENDS.subs) || {};
+  for (const k of Object.keys(SYS_PLAT_KO)) {
+    if (st.indexOf(k) >= 0) continue;                     // 전멸(연결 끊김) = 위 stale이 1건으로 담당 = 중복 억제
+    const c = cov[k] || {}, reg = c.reg | 0;
+    if (!reg) continue;                                   // 계정 미등록 축 = 조용한 공백(종전 규약)
+    const shown = _fresh3d(_subsData[k]);
+    if (shown >= SUBS_FILL_N) continue;                   // 10칸 만석 = 침묵(계정이 몇 개 빠졌든 화면이 안 굶었다)
+    // 사유 집계 — 같은 사유끼리 묶어 세고, **네가 고쳐야 끝나는 것**(삭제·아이디 변경)만 계정 이름을 찍는다.
     const why = (c.why && typeof c.why === 'object') ? c.why : {};
-    for (const a of miss) {
-      // 원인별 문구(운영자 260727 "계정때문에 안받아와지는거랑 원인에 따라 메세지를 달리 해줄수있어?") —
-      //   수집기가 실어 보낸 `cover.why[계정]`으로 갈린다. 사유 미기록(구 데이터·미분류) = 일반 문구로 폴백 = 종전 동작.
-      //   조치 주체가 갈리는 게 핵심: **404·410 = 네 계정 목록 문제**(지워야 함) / 403·429·wall = 플랫폼 차단(기다리면 됨).
+    const dead = [], blocked = [], skipped = [], quiet = [];
+    for (const a of Object.keys(why)) {
       const w = why[a], wn = (typeof w === 'number') ? w : 0;
-      // 커버리지 임계 예외(운영자 260727 "원인이 확실히 있어서 고치기 쉽게") — **운영자가 고쳐야만 끝나는 사유**는
-      //   80% 위여도 고지한다. 404·410·resolve = "그 아이디는 이제 없다" = 시간이 해결하지 않는다 →
-      //   임계에 묻히면 죽은 계정이 목록에 영원히 남아 매 수집 빈자리를 만든다(침묵 = 사고 은폐 축).
-      //   반대로 시간이 해결하는 사유(budget·403·429·empty)는 종전대로 임계 아래에서만 = 알림 수 안 늘어난다.
-      if (covOk && !(wn === 404 || wn === 410 || w === 'resolve')) continue;
-      let cause, todo;
-      if (wn === 404 || wn === 410) {
-        cause = '이 계정이 없어졌어요 — 삭제됐거나 아이디를 바꾼 거예요.';
-        todo = '👉 네가 할 일: 설정에서 이 계정을 지우거나 새 아이디로 고쳐 줘. 그대로 두면 계속 빈자리로 남아요.';   // ⚠ 마크다운 금지 — 상세는 textContent라 별표가 그대로 보인다(260727 판례 재발 방지)
-      } else if (wn === 401 || wn === 403 || w === 'wall') {
-        cause = '이 계정만 ' + SYS_PLAT_KO[k] + '이(가) 막고 있어요(비공개 전환이거나 자동 수집 차단).';
-        todo = '👉 네가 할 일: 없어요. 차단은 풀리는 경우가 많아서 다음 수집에 자동으로 다시 시도해요. 며칠째면 그때 알려줘.';
-      } else if (wn === 429) {
-        cause = '요청이 몰려서 잠시 막혔어요(일시적).';
-        todo = '👉 네가 할 일: 없어요. 잠시 뒤 자동으로 다시 걷혀요.';
-      } else if (w === 'resolve') {
-        cause = '이 아이디를 못 찾았어요 — 계정 이름이 바뀌었거나 삭제된 거예요.';   // 유튜브 핸들→채널ID 해석 실패(수집기 'resolve')
-        todo = '👉 네가 할 일: 설정에서 이 계정의 아이디를 지금 쓰는 이름으로 고쳐 줘. 바뀐 이름을 모르면 목록에서 빼도 돼.';
-      } else if (w === 'budget') {
-        cause = '이 계정은 이번엔 아예 시도도 못 했어요 — 앞 계정들을 걷다가 서버 시간이 다 됐거든요.';   // 예산 소진 스킵(수집기 'budget') = 계정 잘못 0
-        todo = '👉 네가 할 일: 없어요. 계정 문제가 아니라 서버가 시간을 다 쓴 거라 다음 수집에 다시 시도해요. 며칠째 같은 계정만 계속 뜨면 등록 계정이 너무 많다는 뜻이니 그때 알려줘.';
-      } else if (w === 'empty') {
-        cause = '계정은 살아있는데 가져올 새 글이 없었어요(비공개이거나 최근 게시물이 없음).';
-        todo = '👉 네가 할 일: 없어요. 새 글이 올라오면 자동으로 들어와요.';
-      } else {
-        cause = '계정이 비공개·삭제됐거나 그 계정만 차단당한 거예요.';
-        todo = '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.';
-      }
-      out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
-        text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 안 걷히고 있어요.\n\n'
-          + cause + ' (' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락)\n\n'
-          + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
+      if (wn === 404 || wn === 410 || w === 'resolve') dead.push(a);
+      else if (w === 'budget') skipped.push(a);
+      else if (wn === 401 || wn === 403 || wn === 429 || w === 'wall') blocked.push(a);
+      else quiet.push(a);
     }
+    const bits = [];
+    if (dead.length) bits.push('없어진 계정 ' + dead.length + '개(@' + dead.slice(0, 5).join(' @') + (dead.length > 5 ? ' 외' : '') + ')');
+    if (skipped.length) bits.push('서버 시간이 모자라 못 돈 계정 ' + skipped.length + '개');
+    if (blocked.length) bits.push('플랫폼이 막은 계정 ' + blocked.length + '개');
+    if (quiet.length) bits.push('새 글이 없던 계정 ' + quiet.length + '개');
+    const todo = dead.length
+      ? '👉 네가 할 일: 설정에서 없어진 계정(@' + dead.slice(0, 5).join(' @') + ')을 지우거나 새 아이디로 고쳐 줘. 그 자리가 계속 비어서 10칸이 안 차는 거야.'
+      : (skipped.length
+        ? '👉 네가 할 일: 없어요. 계정 문제가 아니라 서버가 한 번에 도는 시간이 모자란 거예요. 계속 모자라면 등록 계정을 줄이거나 나한테 알려줘(수집 시간 상한을 늘릴 수 있어).'
+        : '👉 네가 할 일: 없어요. 막힌 건 대개 풀리고, 새 글이 올라오면 자동으로 채워져요. 며칠째 계속 모자라면 그때 알려줘.');
+    out.push({ id: 'sys:fill:' + k + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
+      text: SYS_PLAT_KO[k] + _josaGa(SYS_PLAT_KO[k]) + ' ' + SUBS_FILL_N + '개를 못 채웠어요 — 지금 ' + shown + '개예요.\n\n'
+        + (bits.length ? '왜 = ' + bits.join(' · ') + ' (등록 ' + reg + '개 중 ' + Math.max(0, reg - (c.got | 0)) + '개 누락)\n\n' : '')
+        + todo + '\n\n확인(✓)하면 오늘은 다시 안 떠요.' });
   }
   const rddN = ((TRENDS && TRENDS.reddit) || []).length;
   if (!rddN && ph && ph.ok === true) {
@@ -7701,7 +7699,8 @@ function _rptWho(m) {
 function _rptSrc(m) {
   const id = String(m.id || '');
   if (id.startsWith('sys:subs:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.stale', up: 'scraper/sns_trends.py' };
-  if (id.startsWith('sys:acct:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.cover[플랫폼].why[계정]', up: 'scraper/sns_trends.py _sfail()' };
+  if (id.startsWith('sys:fill:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.subs[플랫폼] 3일컷 건수 < 10 + health.subs.cover[플랫폼].why 집계', up: 'scraper/sns_trends.py _sfail()/_sseen()' };
+  if (id.startsWith('sys:acct:')) return { fn: '(폐지된 계정별 고지 · 260727 sys:fill 통합)', src: 'TRENDS.health.subs.cover[플랫폼].why[계정]', up: 'scraper/sns_trends.py _sfail()' };   // 옛 id 잔존분(계정 md축에 남은 ✓ 기록)이 리포트에 섞여도 출처가 비지 않게 존치
   if (id.startsWith('sys:src:reddit:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.reddit 길이 0 + health.phone.ok', up: 'scraper/sns_trends.py reddit_hot()/_reddit_rss()' };
   if (id.startsWith('sys:demo:')) return { fn: 'viewer/index.html demoStaleMsgs()', src: 'CHAN/CHAN_FB.audience_sample.as_of vs generated_kst', up: 'scraper 인구통계 수집' };
   if (m._health) return { fn: 'viewer/index.html staleDataMsg()', src: 'CAND_LIVE(라이브 소스 적재 실패)', up: 'functions/api + viewer/candidates.json' };
