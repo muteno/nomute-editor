@@ -265,8 +265,35 @@ def build_cartoon_prompt(look, cam_default, insight, hook="", lead="", wish="", 
 _LIGHT_MOD = {"webtoon": "pushed to harder dramatic contrast",
               "watercolor": "softened into gentle translucent washes"}
 
+# ── 해부학·개연성 락(운영자 260727 "팔·주요 물체 각도가 사람이랑 안 맞는다 · 상황이 현실적으로 안 어울린다") ──
+# 실물 판독 = 원인 2갈래. ① 그리기(극화 한정) = 팔·손·소품이 몸통과 다른 부착점·다른 원근으로 합성 →
+#    "한 인물 두 동작"의 잔재(만평 CAST & POSE가 잡던 바로 그 오류)가 극화엔 처방이 없어 그대로 남았다.
+# ② 상황(두 화풍 공통) = 그 역할·장소·시각의 실제 복장·장비·동작이 아님(시구자가 글러브를 낀 채 던지는 식) —
+#    SCENE 산문은 '무엇'만 주고 '실제로 그 자리에서 어떻게 보이는지'를 아무도 안 고정해서 생긴 빈칸.
+# 처방 = 만평 전용이던 CAST & POSE·SPATIAL CLARITY를 일반 화풍으로 이식·확장(만평 원문은 무변경 = dormant 보존).
+# 전부 긍정문(부정 프라이밍 최소화 = AVOID 1줄 응집 원칙 계승) · photo는 ①을 안 받는다(그리기 지시 = 실사에 무의미).
+def _craft(illustration=False):
+    out = []
+    if illustration:
+        out.append(
+            "ANATOMY & PROPS: the protagonist holds ONE single clear action for this frozen instant; each arm "
+            "grows from its own shoulder and keeps one consistent length and thickness, every visible hand "
+            "traces back along a visible arm to that shoulder with five fingers, wrist and elbow bent only the "
+            "way a real joint bends; head, shoulders, torso and hips all read as one body committed to that "
+            "single pose; whatever the person holds sits inside a closed grip, sized, angled and lit to match "
+            "the hand holding it, sharing the one perspective of the room; if a hand or an object is awkward "
+            "at this crop, let the frame edge cut it cleanly or tuck it behind the body — whatever stays "
+            "visible is drawn whole, from shoulder to fingertip.")
+    out.append(
+        "PLAUSIBILITY: this is exactly how the moment would really look to a witness standing there — the "
+        "clothing, gear, equipment and posture are the ones this specific person, in this role, place, season "
+        "and hour, would genuinely be wearing and doing, handled the way the task itself demands; each object "
+        "sits where that task puts it, in the hand that task uses, resting on a real surface; the body is "
+        "caught at one single point inside one motion, not blended between two different motions.")
+    return out
+
 def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotion="", foreign=False,
-                 cam_lock=False, light_mod="", likeness=False, subject=""):
+                 cam_lock=False, light_mod="", likeness=False, subject="", illustration=None):
     """v2(260703 분신술⑨) — 라벨+개행 구획(카드 cards.md 검증 문법 이식) · 고정문 영어·SCENE 한국어.
     옛 v1 = 1,300~1,500자 한 줄 " ".join(사건 정보 7~8%·금지 11절·카메라 자기모순 6/6본) → 구조 교체.
     카메라 = dispatch(AG/DF) 있으면 그쪽이 정본, 없으면 화풍 기본(cam_default 폴백) = 모순 제거.
@@ -306,6 +333,10 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         lines.append("STAGING (adapt this motif to the scene above, do not copy its literal props): " + b["staging"])
     if b.get("expression"):
         lines.append("EXPRESSION & ACTION: " + b["expression"])
+    # 해부학·개연성 락(260727) — 연출 버킷(카메라·초점·조명·연출·표정) *뒤*, 운영자 wish·FRAME *앞*.
+    # 버킷들이 서로 다른 동작·소품을 요구해 사지가 충돌하는 지점이 바로 여기라 마지막 정리 절로 놓는다.
+    # illustration 미지정이면 likeness가 곧 일러스트 계열 신호(webtoon·watercolor=True / photo=False).
+    lines += _craft(likeness if illustration is None else illustration)
     if wish:
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     if likeness and subject:
