@@ -1,0 +1,61 @@
+name: notif-kind-test
+
+# 수동 전용 — 알림 **종류별 로고**를 한 번에 발송해 폰에서 눈으로 판정한다
+#   (운영자 260727 "알림 종류별로 카테고라이징해서 로고를 다르게" → "그럼 종류별로 알림띄워봐 검증해줄게").
+#   tag를 종류마다 다르게 줘서 5건이 **안 덮이고 쌓인다** = 알림판 한 화면에서 로고 비교 가능.
+#
+#   ⚠️ 실발송 = 구독자 폰에 알림 5건. 자동 경로 부착 금지(수동 dispatch 전용 · push-test.yml 성격 계승).
+#
+#   icon 직접 지정(--icon)을 쓰는 이유 = **구 서비스워커 호환**. 폰에 깔린 SW가 갱신되기 전에도
+#   페이로드 icon이 최우선으로 먹으므로(sw.js `d.icon ||`) 배포 대기 없이 오늘 바로 판정할 수 있다.
+#   theme 입력으로 라이트판/다크판을 골라 쏜다(SW 갱신 후에는 --kind만으로 테마짝이 자동 선택된다).
+on:
+  workflow_dispatch:
+    inputs:
+      theme:
+        description: '아이콘 테마판 — dark = 시그니처(어두운 알림판) / light = 파랑(밝은 알림판)'
+        type: choice
+        options: [dark, light]
+        default: dark
+      kind_only:
+        description: 'kind만 보내고 icon은 생략(= 새 SW의 테마 자동선택 경로 검증). 구 SW면 전부 기본 로고로 뜬다.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: 종류별 알림 5건 발송
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          THEME: ${{ inputs.theme }}
+          KIND_ONLY: ${{ inputs.kind_only }}
+        run: |
+          python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 발송 생략"; exit 0; }
+          T=sig; [ "$THEME" = "light" ] && T=blue
+          # $1=kind $2=제목 $3=본문 $4=이동경로 — 아이콘 경로는 kind별 파일명 규약(make만 기본판 = 조각 없음)
+          send(){
+            ico=""
+            if [ "$KIND_ONLY" != "true" ]; then
+              if [ "$1" = "make" ]; then ico="/assets/brand/icon-notif-${T}-512-260727.png";
+              else ico="/assets/brand/icon-notif-$1-${T}-512-260727.png"; fi
+            fi
+            echo "→ $1 ($2)"
+            python3 .github/scripts/push_send.py --notify "$2" "$3" \
+              --url "$4" --tag "nomute-kindtest-$1" --kind "$1" ${ico:+--icon "$ico"} \
+              || echo "::warning::$1 발송 실패(비치명)"
+          }
+          send brk   "긴급 속보"   "① 긴급 속보는 이 로고 — 빨강(--danger)"       "/"
+          send make  "제작 완료"   "② 제작 완료는 이 로고 — 터쿼이즈(--accent · 영상·이미지·노래·보이스·변환·트래킹 공통)" "/thumb.html"
+          send sys   "시스템 경보" "③ 수집 실패·연결 끊김은 이 로고 — 골드(--warn)" "/"
+          send trend "트렌드"      "④ 키워드 급상승은 이 로고 — 초록(--info)"      "/#trend"
+          send test  "테스트"      "⑤ 테스트는 이 로고 — 무채(--mut)"              "/"
+          echo "발송 시도 5건 완료 · 테마판=${T}$([ "$KIND_ONLY" = "true" ] && echo ' · kind만(icon 생략)')"
