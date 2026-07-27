@@ -16,7 +16,8 @@
 //   덮으면(옛 .min-pick·.failmenu식 불투명 오버라이드) 프로브가 최종 캐스케이드를 읽어 즉시 FAIL. 로그 스캔은
 //   document.styleSheets(동일출처 인라인 <style>) 순회 = 화이트리스트(의도적 불투명 = 토스트·버튼) 밖 신규만 경보.
 // 코어: 부팅 에러 0 · 셸 글래스 {배경·테두리색·테두리굵기·그림자} 8멤버 동일 · 프로스트 blur 동일(.sc-rsn 무채
-//   saturate(0) = §🎨 무채색 글래스 기틀 의도 예외) · 불투명 글래스 로그 화이트리스트 밖 0 · 2런 결정론.
+//   saturate(0) = §🎨 무채색 글래스 기틀 의도 예외) · 불투명 글래스 로그 화이트리스트 밖 0 · 행 기하 계약
+//   4종(C4~C7) · **창 기준 중앙 계약 2종(C8~C9 = 로딩 표시·페이저가 비대칭 padding에 정렬 기준을 안 뺏김)** · 2런 결정론.
 // 리스크 통제: computedStyle+CSSOM만(스크린샷 베이스라인 diff 금지 · [15]) · 라이브 코드 무접촉(프로브 측정 후
 //   즉시 제거) · 서버 자체 종료 · 훅·pre-commit 편입 금지(수동 실행 전용 · CLAUDE.md [15]) · 포트 8816~8820
 //   (geni 8791~/preview 8796~/winnav 8801~/dlclip 8806~/rank 8811~ 와 분리).
@@ -115,8 +116,47 @@ async function runOnce(br, port) {
     return { members, rogue, shell };
   }, { GROUP, OPAQUE_WL, SHELL });
   const geo = await rowGeo(pg);
+  const ctr = await centerGeo(pg);
   await pg.close();
-  return { members: out.members, rogue: out.rogue, shell: out.shell, geo, errs };
+  return { members: out.members, rogue: out.rogue, shell: out.shell, geo, ctr, errs };
+}
+
+// ── 창 기준 중앙 계약(운영자 260727 Q911 · Q909/Q910 교정을 기계가 지키게) ──────────────────
+//   함 컨테이너 padding은 **좌16/우11 비대칭**(제목쪽 여백 크게 = 260712 SSOT 의도)이라, 안에서 그냥
+//   가운데정렬한 요소는 콘텐츠박스 기준이 되어 **창 기준으론 (16−11)/2 = 2.5px 오른쪽**으로 밀린다
+//   (Q909 로딩 실측 +2.5 · Q910 페이저 실측 +2.05~+2.50 · 발행본도 동일 갭). 사람 눈으로는 안 보이는
+//   폭이라 다음 세션이 padding을 만지면 조용히 재발한다 → 여기서 하드게이트.
+//   계약 = ① 로딩·빈 상태(#qpop .qempty 안 로더) 중심 = 창 4분할 중심(x·y 둘 다) ② 페이저 버튼 스팬
+//          중심 = 창 세로중심선 + 좌우 여백 대칭 + 잘림 0(대기열·발행본 공통 = .qpop 계승).
+//   ⚠ 재는 대상 = **구조물 박스중심**(로더 .nm-load 박스 · 버튼 rect)만 — 텍스트 잉크중심 하드게이트
+//   금지(디자인기틀 SSOT §0-4-1 · 애니 픽토도 기하 중심). 마크업은 라이브 빌더(nmLoader·pagerHtml) 사용.
+async function centerGeo(pg) {
+  return pg.evaluate(() => {
+    const mid = e => { const r = e.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, l: r.left, r: r.right }; };
+    const out = {};
+    const q = document.getElementById('qpop'), ql = document.getElementById('qpopList');
+    if (q && ql && typeof nmLoader === 'function') {   // 로딩 문구 = loadQueue 본문 문법 미러(원본은 fetch 의존이라 주입 대신 동형 · kwpop 행과 같은 사유)
+      q.hidden = false;
+      ql.innerHTML = '<div class="qempty">' + nmLoader('loading', 'Now loading…') + '</div>';
+      void document.body.offsetHeight;
+      const ld = ql.querySelector('.nm-load');
+      if (ld) { const c = mid(ld), p = mid(q); out['로딩'] = { dx: +(c.cx - p.cx).toFixed(2), dy: +(c.cy - p.cy).toFixed(2) }; }
+    }
+    for (const [name, popId, pageId] of [['대기열', 'qpop', 'qpopPage'], ['발행본', 'pubpop', 'pubpopPage']]) {
+      const p = document.getElementById(popId), g = document.getElementById(pageId);
+      if (!p || !g || typeof pagerHtml !== 'function') continue;
+      p.hidden = false;
+      g.innerHTML = pagerHtml(9, 1);   // 9페이지 = 버튼 최다(‹ + 5칸 + ›) = 여백 최악 케이스
+      void document.body.offsetHeight;
+      const bs = [...g.querySelectorAll('button')];
+      if (!bs.length) continue;
+      const l = Math.min(...bs.map(b => b.getBoundingClientRect().left)), r = Math.max(...bs.map(b => b.getBoundingClientRect().right));
+      const pc = mid(p);
+      out['페이저:' + name] = { dx: +((l + r) / 2 - pc.cx).toFixed(2), gapL: +(l - pc.l).toFixed(2), gapR: +(pc.r - r).toFixed(2),
+                                clip: g.scrollWidth > g.clientWidth, n: bs.length };
+    }
+    return out;
+  });
 }
 
 // ── 행 기하 패리티(운영자 260726 "대기열 기존 제약들을 그대로 적용 · 버튼 2개까지 · 낱낱히") ─────────────
@@ -218,6 +258,13 @@ function assess(r) {
   C('C5 .qact 폭 = --btn-sm(30) · 다중 액션 간격 = qrow gap(10)', got.length >= 3 && all(g => g.actW.every(w => Math.abs(w - 30) <= 0.5) && g.gaps.every(x => Math.abs(x - 10) <= 0.5)), det(g => 'w' + g.actW.join('/') + ' gap' + (g.gaps.join('/') || '-')));
   C('C6 액션 0개 행 0 + 함 안 행높이 균일(≤1.5px · 빈 셀 = 행 51→36 붕괴 차단)', got.length >= 3 && all(g => g.minActs >= 1 && g.rowHSpread <= 1.5), det(g => '최소액션' + g.minActs + ' 높이편차' + g.rowHSpread));
   C('C7 액션 +1 = 제목 우변만 40px(30+10) 좌측 · 최우측 중심 불변', got.length >= 3 && all(g => Math.abs(g.shift - 40) <= 0.5 && g.dCenter2 <= 0.5), det(g => '밀림' + g.shift + ' Δ중심' + g.dCenter2));
+  // ── C8~C9 = 창 기준 중앙 계약(운영자 260727 Q911) · 비대칭 padding에 정렬 기준을 뺏기면 여기서 FAIL ──
+  const K = r.ctr || {}, ld = K['로딩'], pgs = ['페이저:대기열', '페이저:발행본'].map(k => [k, K[k]]).filter(([, v]) => v);
+  C('C8 로딩 표시 중심 = 창 4분할 중심(x·y Δ≤1px)', !!ld && Math.abs(ld.dx) <= 1 && Math.abs(ld.dy) <= 1,
+    ld ? 'Δx' + ld.dx + ' Δy' + ld.dy : '미수집(nmLoader·#qpop 없음)');
+  C('C9 페이저 중심 = 창 세로중심선(Δ≤1px) + 좌우 여백 대칭 + 잘림 0(' + pgs.length + '함)', pgs.length >= 2 &&
+    pgs.every(([, v]) => Math.abs(v.dx) <= 1 && Math.abs(v.gapL - v.gapR) <= 1 && !v.clip),
+    pgs.length ? pgs.map(([k, v]) => k + ':Δx' + v.dx + ' 여백' + v.gapL + '/' + v.gapR + (v.clip ? ' 잘림!' : '') + ' 버튼' + v.n).join(' · ') : '미수집');
   return core;
 }
 
