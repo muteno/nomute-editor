@@ -1901,6 +1901,11 @@ def main():
               "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     if subs_new is not None and acc:
         health["subs"]["stale"] = [k for k in ("x", "tiktok", "insta", "youtube", "threads") if acc[k] and not subs_new[k]]   # 이번 런 carry 폴백 축 — 집계 ok=True가 개별 플랫폼 7일 부패를 가리던 은폐 보강(260721 틱톡 판례 · 표시 전용)
+        # 부분 실패 관측(운영자 260727 "재발 방지 대책") — stale은 **전멸(0건)만** 잡아서, 등록 11계정 중 8개만
+        #   걷혀도 화면·알림 어디에도 안 뜨던 사각(260727 판례: 틱톡 @g_i_dle·@kleague·@formula1 403 3계정 조용히 누락).
+        #   [수집 성공 계정 수, 등록 계정 수] 쌍만 실어 보낸다 = 새 수집·새 콜 0(이미 만든 결과를 세기만) · 판정은 뷰어가.
+        health["subs"]["cover"] = {k: [len({str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(k) or [])}), len(acc[k] or [])]
+                                   for k in ("x", "tiktok", "insta", "youtube", "threads") if acc[k]}
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
