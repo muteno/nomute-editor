@@ -81,6 +81,30 @@ self.addEventListener('fetch', event => {
     return netP.catch(() => Response.error());                              // 첫 방문 = 네트워크 그대로
   })());
 });
+// ── 알림 아이콘 테마 적응(운영자 260727 "배경이 투명이 아니라 색이 묻어나온다 · 어두운 테마엔 반대색") ──
+// ⓐ 배경 투명 = 알림판 색이 그대로 비쳐 검은 판이 안 뜬다. 78% 여백은 유지 → 크롬 안드로이드 원형 크롭에
+//    잘리는 픽셀 0.00%(실측). 구 maskable판(78% on #000)이 '색 묻어남'의 원인이었다.
+// ⓑ 테마 짝 = favicon-globe-260724.svg 의 @media(prefers-color-scheme) 매핑을 그대로 계승
+//    (라이트 = globe-blue 파랑 / 다크 = globe-sig 시그니처). 밝은 알림판엔 진한 파랑, 어두운 알림판엔 형광 —
+//    어느 쪽이든 배경과 반대 명도로 떠서 대비가 산다.
+// ⚠ SW에는 matchMedia가 없다 = OS 테마를 스스로 못 본다. 페이지가 message로 1비트를 넘겨주고(index.html
+//    _sendTheme) 여기서 Cache에 적재 → push 때 읽는다. SW는 이벤트마다 재시작되므로 메모리 변수는 못 쓴다.
+// 기본값 = 다크(앱 자체가 다크 UI · 통지 도착 전 첫 알림도 어긋나지 않게).
+const PREF_CACHE = 'nm-pref-v1', THEME_KEY = '/__nm_theme';
+const ICON_DARK = '/assets/brand/icon-notif-sig-512-260727.png';
+const ICON_LIGHT = '/assets/brand/icon-notif-blue-512-260727.png';
+async function readThemeDark() {
+  try { const c = await caches.open(PREF_CACHE), r = await c.match(THEME_KEY); return r ? (await r.text()) !== 'light' : true; }
+  catch (_) { return true; }
+}
+self.addEventListener('message', event => {
+  const d = event.data || {};
+  if (d.type !== 'nm-theme') return;
+  event.waitUntil(caches.open(PREF_CACHE)
+    .then(c => c.put(THEME_KEY, new Response(d.dark ? 'dark' : 'light')))
+    .catch(() => {}));
+});
+
 self.addEventListener('push', event => {
   if (!isCanonHost()) { event.waitUntil(selfDestructIfStale()); return; }   // 좀비 SW = 알림 억제 + 자기소멸(중복 차단)
   let d = {};
@@ -88,14 +112,16 @@ self.addEventListener('push', event => {
   const title = d.title || '🚨 긴급 속보';
   const opts = {
     body: d.body || '',
-    icon: d.icon || '/assets/brand/icon-sig-maskable-512-260724.png',   // 260724 시그니처 지구본 = manifest·apple-touch·favicon과 동일 브랜드축(구 260706c 워드마크는 리브랜딩 때 여기만 누락돼 폰 알림에 옛 로고가 남아 있었음). maskable판(78% on #000)을 쓰는 이유 = 크롬 안드로이드가 알림 아이콘을 원형 크롭 → 여백0 투명판(icon-sig-192)은 바깥 1.8%가 잘리고 어두운 알림 셰이드에 배경이 녹음. 파일명 버전도장 = _headers /assets/brand/icon-* immutable 규칙 자동 편입
     badge: d.badge || '/assets/brand/badge-260727.png',   // 상태바 배지 = 260724 시그니처 지구본 알파 실루엣(구 260723 = 구 브랜드 N). 안드로이드는 알파만 읽고 전부 흰색으로 칠하므로 색·그라데이션 무의미 = 판독은 실루엣이 전부(불투명 컬러를 주면 흰 네모가 된다). 96px 캔버스 안 글리프 72px(75%) 중앙 = 운영자 선택 sz18/24(260727 플레이그라운드) — OS 배지 슬롯은 24dp 고정이라 '작게'는 캔버스 여백으로만 구현된다. 여백0 원본을 그대로 쓰면 잉크 41.3%로 상태바에서 과밀. 버전도장 = _headers /assets/brand/badge-* immutable 편입 · 구 260723 파일은 존치(배포 완료된 구 SW가 아직 그 URL을 물고 있어 삭제 시 404 = 배지 소실)
 
     tag: d.tag || 'nomute-breaking',          // 같은 tag = 교체(중복 알림 안 쌓임)
     data: { url: d.url || '/' },
     lang: 'ko',
   };
-  event.waitUntil(self.registration.showNotification(title, opts));
+  event.waitUntil((async () => {
+    opts.icon = d.icon || (await readThemeDark() ? ICON_DARK : ICON_LIGHT);   // 페이로드 지정이 우선 · 없으면 저장된 테마로 짝 선택
+    return self.registration.showNotification(title, opts);
+  })());
 });
 
 self.addEventListener('notificationclick', event => {

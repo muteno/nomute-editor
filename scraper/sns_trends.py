@@ -69,6 +69,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor   # 유튜브 세로/가로 선판정 HEAD 병렬(_yt_vert_mark · 260727)
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime   # x_subs 최신순 정렬(created_at 파싱 · 260720)
 
@@ -96,6 +97,39 @@ EX_KEY = (os.environ.get("EX_KEY") or "").strip()                # ⑯ 도로공
 def _get(url, timeout=15):
     req = urllib.request.Request(url, headers=UA)
     return urllib.request.urlopen(req, timeout=timeout, context=CTX).read().decode("utf-8", "ignore")
+
+
+def _yt_vert(vid, timeout=4):
+    """세로원본(oardefault) 존재 = 쇼츠형 세로 영상인가. True/False/None(미판정).
+
+    왜 여기서 미리 보나(운영자 260727 "헛걸음 없애기" 승인): 뷰어는 구독·뉴스 커버로 세로원본
+    oardefault를 먼저 요청하는데 **가로 영상은 이 주소가 404**라, 카드마다 404를 한 번 맞고 나서야
+    hq720으로 갈아탄다(가로 10칸 = 헛왕복 10번 = 늦게 뜨는 체감). 여기서 HEAD 1회(본문 0바이트)로
+    미리 갈라 두면 뷰어가 처음부터 맞는 주소를 쏜다. 판정 못 하면 필드를 안 달아 종전 경로 유지."""
+    if not vid:
+        return None
+    try:
+        req = urllib.request.Request("https://i.ytimg.com/vi/%s/oardefault.jpg" % vid, headers=UA, method="HEAD")
+        with urllib.request.urlopen(req, timeout=timeout, context=CTX) as r:
+            return 200 <= r.status < 300
+    except urllib.error.HTTPError as e:
+        return False if e.code == 404 else None   # 404 = 가로 확정 · 그 외 상태(429·5xx 등) = 미판정(오분류보다 종전 사다리가 안전)
+    except Exception:  # noqa: BLE001
+        return None    # 타임아웃·네트워크 = 미판정(fail-soft)
+
+
+def _yt_vert_mark(items, cap=30):
+    """표시 상한 안쪽만 세로/가로 선판정해 vert 필드 주입(병렬 8 · 실패는 무필드 = 뷰어 사다리 폴백)."""
+    tgt = [v for v in (items or [])[:cap] if v.get("id") and "vert" not in v]   # 판정분(직전 런 carry 포함) 재조회 안 함 = 런당 HEAD 최소
+    if not tgt:
+        return
+    try:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for v, r in zip(tgt, ex.map(lambda x: _yt_vert(x.get("id")), tgt)):
+                if r is not None:
+                    v["vert"] = r
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::yt vert 선판정 실패(스킵·뷰어 사다리 폴백): {e}", file=sys.stderr)
 
 
 def youtube(category_id=None, limit=15, region="KR"):
@@ -1732,6 +1766,7 @@ def main():
     # 순위 변동 주입(직전 스냅샷 대비 · 표시 전용) — 키: 유튜브=id · gtrends=query · 틱톡=url(고유)
     _annotate_rank(yt_all, prev.get("youtube"), lambda v: v.get("id"))
     _annotate_rank(yt_news, prev.get("youtube_news"), lambda v: v.get("id"))
+    _yt_vert_mark(yt_news)   # 커버 주소 선판정(운영자 260727 승인) — oar 선요청 경로를 쓰는 축만 대상(뉴스 ytn · 구독 syt = 아래 subs 확정 뒤). 쇼츠·AI·인기는 mq 직행이라 무대상.
     _annotate_rank(gt, prev.get("gtrends"), lambda g: (g.get("query") or "").lower())   # lower 규약 = 병합 매칭과 통일(평의회 260717 — 표기 케이스 갈림의 가짜 NEW·first_seen 리셋 소거)
     # NEW 배지 시맨틱 보정(평의회 260717 데이터시맨틱 · 중요) — NEW = '표시구간(톱10) 신규 진입' 종전 의미 유지:
     # 비표시 꼬리(11~25위)에 있던 검색어가 톱10 진입 시 pmap 매칭돼 isNew 억제되는 오염 → prev 톱10 밖 = NEW 복원(first_seen 승계는 전체 원장 기준 그대로).
@@ -1827,6 +1862,7 @@ def main():
     except Exception:  # noqa: BLE001
         pass
     health["phone"] = _phh
+    _yt_vert_mark(subs.get("youtube") if isinstance(subs, dict) else None)   # 구독 유튜브 커버 선판정 = subs 확정(신선/carry/폰 병합 전부) 뒤 1회 — carry분은 vert가 이미 붙어 있어 HEAD 0
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
