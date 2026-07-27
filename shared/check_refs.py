@@ -23,6 +23,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -1181,6 +1182,32 @@ def check_qledger_unique():
     return 0
 
 
+_BASE_STALE_MIN = 15   # 로컬 origin/main 스냅샷이 이보다 낡으면 경고(자동 fetch는 **안 한다** — 훅에서 네트워크 = 금물·§D1 결)
+
+
+def _base_ref_age_min():
+    """로컬 `origin/main` 스냅샷을 마지막으로 **가져온 뒤** 흐른 분(못 재면 None = 경고 생략 = 오탐 0).
+    왜 = `--fix-qnum`의 '내 신규 행' 판정은 이 스냅샷 하나에 걸려 있다. ref가 낡았으면 그 사이 남이 민 행이
+    스냅샷에 없어 **'내 신규'로 오판** → 이미 박제된 남의 번호를 바꿔 [Q.NN] 참조를 깨뜨릴 여지가 남는다(운영자 260727 한 수).
+    척도 = 커밋 시각이 아니라 **fetch 시각**(reflog `@{unixtime}`) — 남이 5분 전 민 커밋을 내가 3시간 전에 받았을 수도 있어서다.
+    reflog가 없는 환경(갓 clone·CI)은 커밋 시각으로 폴백(그 경우 clone == fetch라 등가)."""
+    try:
+        r = subprocess.run(['git', 'reflog', 'show', '--date=unix', '-1', 'origin/main'],
+                           cwd=ROOT, capture_output=True, text=True, timeout=10)
+        m = re.search(r'@\{(\d+)\}', r.stdout) if r.returncode == 0 else None
+        if not m:
+            r2 = subprocess.run(['git', 'log', '-1', '--format=%ct', 'origin/main'],
+                                cwd=ROOT, capture_output=True, text=True, timeout=10)
+            if r2.returncode != 0 or not r2.stdout.strip().isdigit():
+                return None
+            stamp = int(r2.stdout.strip())
+        else:
+            stamp = int(m.group(1))
+        return max(0, int(time.time()) - stamp) // 60
+    except Exception:
+        return None
+
+
 def fix_qnum_reassign():
     """`--fix-qnum` = 원장 Q번호 경합 자동 해소(운영자 260726 승인 — 같은 날 4연속[Q556→558→560] 손 왕복이 규칙 실패 신호).
     ① `Q??` 스텁을 파일 최대+1로 확정(큐 헤더 규칙 6 — 확정이 공짜여야 세션이 스텁을 쓰고, 그래야 경합이 **애초에** 안 난다)
@@ -1199,6 +1226,11 @@ def fix_qnum_reassign():
     except Exception as e:
         print('⚠️ --fix-qnum no-op — git 실행 실패:', e)
         return 1
+    age = _base_ref_age_min()   # 스냅샷 신선도 고지(경고만 · rc 불변 · 자동 fetch 없음)
+    if age is not None and age >= _BASE_STALE_MIN:
+        print('⚠️ --fix-qnum 주의 — origin/main 스냅샷이 %d분 전 것이다. 그 사이 남이 민 행은 여기 없어서'
+              ' **박제 행을 "내 신규"로 오판**할 수 있다(번호를 바꾸면 [Q.NN] 1:1 참조가 깨진다).' % age)
+        print('   → `git fetch origin main` 먼저 하고 다시 돌려라(훅은 네트워크를 안 쓴다 = 자동 fetch 없음).')
     base_lines = set(base.stdout.splitlines())
     try:
         raw = open(path, encoding='utf-8').read()
