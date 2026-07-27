@@ -56,6 +56,28 @@ jobs:
           PICK_EKEY: ${{ inputs.event_key }}   # 사건 그룹라벨 → pending '# ekey:' → analyze frontmatter event_key(피드 티어 활성)
         run: python3 scraper/pick_pending.py | tee /tmp/pick.out
 
+      # 본문 선-fetch(운영자 260727) — 픽이 방금 만든 pending(신규 파일만)에 기사 본문을 미리 긁어
+      # `# body:`로 동봉 → analyze 의 모델 검색 왕복(WebFetch 턴) 축소 = 요약 단축. 폰 공유의 선-fetch
+      # 동봉(analyze.sh ① embedded 경로)과 같은 규격·같은 20000B 캡. ⚠️ 900B(analyze THIN_BYTES) 미만·
+      # 실패 = 동봉 안 함 — 빈약 본문을 심으면 analyze 의 대체매체 최장본문 폴백(embedded 있으면 미발동)이
+      # 죽어 품질 저하. 기존 커밋된 pending 은 안 건드림(analyze 소비와 modify/delete 레이스 차단) · fail-soft.
+      - name: 본문 선-fetch (# body: 동봉 — 분석 왕복 축소)
+        run: |
+          git status --porcelain pending 2>/dev/null | awk '$1=="??"{print $2}' | while read -r f; do
+            case "$f" in pending/*.txt) ;; *) continue;; esac
+            grep -qm1 '^# body:' "$f" && continue
+            url="$(head -n1 "$f" | tr -d '\r\n')"
+            case "$url" in http*) ;; *) continue;; esac
+            body="$(timeout 60 bash .github/scripts/fetch_article.sh "$url" 2>/dev/null | head -c 20000 || true)"
+            blen="$(printf %s "$body" | wc -c | tr -d ' ')"
+            if [ "${blen:-0}" -ge 900 ]; then
+              { echo "# body:"; printf '%s\n' "$body"; } >> "$f"
+              echo "선-fetch 동봉: $f (${blen}B)"
+            else
+              echo "선-fetch 생략(빈약/차단 ${blen:-0}B — analyze 기존 폴백 그대로): $f"
+            fi
+          done
+
       - name: Commit & trigger analyze
         env:
           GH_TOKEN: ${{ github.token }}

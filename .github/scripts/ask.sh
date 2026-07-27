@@ -16,7 +16,7 @@ source "$ROOT/shared/claude_transient.sh"  # is_transient() SSOT — 일시 과�
 source "$ROOT/shared/claude_meter.sh"      # claude_meter() SSOT — claude -p 토큰 사용량 계측(metrics shard · 옛 동작 호환)
 source "$ROOT/shared/summary_repair.sh"    # 분량 가드 SSOT — IG/Thread 과소 시 1회 보강(기본 OFF·SUMMARY_LEN_GUARD='1' · 260705)
 INLINE_TRIES=4   # 인라인 재시도 = 4계정 폴오버 체인 깊이(서브3까지 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124)·버스트 ✨요약요청 유실 차단(analyze와 동일·260622·4계정 3→4)
-EFFORT="${PIPE_SEARCH_EFFORT:-high}"   # 검색·요약 추론깊이 — '메이저 기사 찾기'는 도구 왕복이 본질이라 max 는 매 검색 사이 헛사고로 타임아웃만 유발(누락방지 실익≈0) → high 기본(효율·품질 균형 · 운영자 260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(max).
+EFFORT="${PIPE_SEARCH_EFFORT:-medium}"   # 검색·요약 추론깊이 — opus5 는 medium 도 구세대 high급 품질에 지연·토큰 대폭 절감(요약 단축 축 · 운영자 260727 일괄 하향, 구 high=260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(high).
 ASK_TIMEOUT="${ASK_TIMEOUT:-600}"      # claude -p 타임아웃(초) — 요약요청은 요약만이라 10분이면 충분(검색완화 후). 초과 시 계정 1회 전환 후 격리(운영자 260704 "10분 넘으면 다른 계정" · 옛 900s는 배치 timeout 시 45분→워크플로 초과라 하향).
 ASK_JOB_DEADLINE="${ASK_JOB_DEADLINE:-2200}"   # 스크립트 SECONDS 이 초 넘으면 새 요약요청 처리 시작 안 함(잔여 잔류→다음 런) — 과부하 다건 타임아웃이 잡 timeout(60분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 60분 - 셋업 - 다음기사 최악 2×600s).
 GVER="$(guidelines_version summary)"
