@@ -5658,6 +5658,7 @@ function cardSec(a) {
   const cs = $('#cardsum'); if (cs) cs.textContent = (st === 'generating' && genStuck) ? '2. 카드 뉴스 프롬프트 — 실패(시간초과)' : (sumlabel[st] || '카드 뉴스 프롬프트');   // phase 2 = 카드 뉴스 프롬프트(운영자 260629). 프롬프팅 10분 초과 = 접힌 헤더도 '실패'로
 
   if (!st || st === 'failed') {
+    if (cardFirePending(a.file)) { sec.innerHTML = cardFireStat(); return; }   // 발사됨·서버 상태 반영 전 = 버튼 대신 로더 유지(재열람 시 버튼 복귀 → 연타 → 큐 상호취소 봉합 · 260727)
     // 실패 = 로그 박스 노출 안 함(사유는 error.log에 기록됨) → 버튼만 '재생성'으로. 실패 표식은 헤더 '— 실패'(sumlabel)로 유지(운영자 260630).
     const b = document.createElement('button');
     b.className = st === 'failed' ? 'mkbtn retry' : 'mkbtn';   // 실패 재시도 = 레몬(노랑) 통일(운영자 260701)
@@ -5668,6 +5669,7 @@ function cardSec(a) {
   }
   if (st === 'generating') {
     if (genStuck) {   // 10분째 프롬프팅 멈춤 = 워크플로 중단/타임아웃 추정 → 실패로 표시·재시도(멘트 삭제·헤더 '실패(시간초과)'로 표식·운영자 260701 · 15→10분 260704)
+      if (cardFirePending(a.file)) { sec.innerHTML = cardFireStat(); return; }   // 재발사 접수 대기 중 = 재시도 버튼 대신 로더(위 ''/failed 분기와 동일 가드)
       const b = document.createElement('button');
       b.className = 'mkbtn retry';
       b.textContent = '프롬프트 다시 생성';
@@ -6488,6 +6490,45 @@ function startRevisePoll() {
     if (!REVISING.size) { clearInterval(_revPoll); _revPoll = null; }
   }, 20000);
 }
+// ── 카드 프롬프트 발사 임시상태(CARD_FIRE) — dispatch 204 후 서버 cards.state 반영 전 공백 구간 추적 ──
+// 그 공백에 기사를 다시 열면 버튼이 그대로 복귀해 '안 눌린' 오인 → 연타 → GitHub 큐 대기건이 서로 취소(실측 260727 08:21 KST 17:21 두 건 cancelled)까지 가던 것 봉합.
+// REVISING(위) 패턴 그대로 계승: localStorage 영속 + 20s 폴 + 20분 폴백 표면화(조용히 사라지지 않기).
+const CARD_FIRE = new Map();   // file → { req(발사 시점 카드 시그), ts } — 시그가 바뀌면(상태·updated·rev 무엇이든) 서버 접수로 보고 해제
+const CF_PEND_KEY = 'nomute_cardfire_pending';
+const cardSig = file => { const a = DATA.find(x => x.file === file), c = (a && a.cards) || {}; return (c.state || '') + '|' + (c.updated || '') + '|' + (c.rev || ''); };
+const saveCardFire = () => { try { localStorage.setItem(CF_PEND_KEY, JSON.stringify([...CARD_FIRE])); } catch {} };
+function loadCardFire() {   // 부팅 복원 — 20분 내 발사만 되살려 폴 재개(req 원값 보존 = 완료 오인 방지)
+  try {
+    const now = Date.now();
+    for (const [file, v] of JSON.parse(localStorage.getItem(CF_PEND_KEY) || '[]'))
+      if (v && typeof v.ts === 'number' && now - v.ts < 20 * 60000) CARD_FIRE.set(file, v);
+  } catch {}
+  if (CARD_FIRE.size) startCardFirePoll();
+}
+function startCardFire(file) { if (!file) return; CARD_FIRE.set(file, { req: cardSig(file), ts: Date.now() }); saveCardFire(); startCardFirePoll(); }
+let _cfPoll = null;
+function startCardFirePoll() {
+  if (_cfPoll) return;
+  _cfPoll = setInterval(async () => {
+    if (isComposingModalOpen()) return;   // 작성 모달 중 폴 보류(REVISING 6471 동일 사유)
+    await load();   // cards.state 최신화 — 열린 기사면 load 내 상태변화 감지가 cardSec까지 자동 재렌더
+    let changed = false;
+    for (const [file, v] of [...CARD_FIRE]) {
+      if (cardSig(file) !== v.req) { CARD_FIRE.delete(file); changed = true; }   // 서버가 카드 상태를 뭐라도 씀 = 접수 확인(이후는 기존 상태머신)
+      else if (Date.now() - v.ts > 20 * 60000) {   // 20분 폴백 — 큐 취소·워크플로 불발 표면화 후 버튼 복귀(재시도 가능)
+        CARD_FIRE.delete(file); changed = true;
+        const ra = DATA.find(x => x.file === file);
+        qFlash('프롬프트 생성 20분째 반영 안 됨 — 지연이거나 실패(다른 카드 제작 대기 중 취소됐을 수 있어). 다시 눌러봐' + (ra && ra.title ? ' (' + ra.title.slice(0, 16) + '…)' : ''), WARN_SVG);
+        if ($('#dlg').open && CUR === file && ra) { cardSec(ra); feedSec(ra); }
+      }
+    }
+    if (changed) saveCardFire();
+    if (!CARD_FIRE.size) { clearInterval(_cfPoll); _cfPoll = null; }
+  }, 20000);
+}
+const cardFirePending = file => CARD_FIRE.has(file);
+const cardFireStat = () => `<div class="genstat live">${window.nmLoader ? nmLoader('prompting', 'Prompting…') : '카드뉴스 프롬프팅 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // makeCards 성공 직후 로더와 동일 마크업(계승)
+
 // 연필 FAB 표기 = 제거(운영자 260623) — 진행/완료 회차색·물결·빗금 안 표시. 잔류 클래스만 방어적으로 정리.
 // 연필 FAB — 진행 중: 현재→다음 색 왕복 물결+빗금+'수정 중' / 완료(a.rev>0): 회차색 고정(물결 X) / 원본: 평소. (복원 260623)
 function applyReviseFab() {
@@ -6844,6 +6885,7 @@ async function makeCards(target, btn, mode) {
     });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.ok) {
+      if (reqMode !== 'shoot') startCardFire(target);   // 발사 접수 임시상태 등록(shoot는 text_done 이후라 상태 공백 없음) — cards.state 반영 전 재열람에도 로더 유지·연타 차단
       if (btn) {   // 응답 = 게이지 현위치→100% 급속 마무리(gdone) → ✓ 체크 그려짐 → 상태문구로 교체
         gaugeDone(btn);
         await new Promise(res => setTimeout(res, reduceMotion() ? 90 : 340));   // gdone(.3s) 채움이 눈에 따라오게
@@ -13451,7 +13493,7 @@ function askShowCheck(btn){ if (!btn || btn.querySelector('.ack')) return; btn.c
   d.innerHTML = '<svg viewBox="0 0 24 24" role="img" aria-label="완료"><path d="M5 13l4 4L19 7"/></svg>'; btn.appendChild(d); }
 function askHideCheck(btn){ if (!btn) return; btn.classList.remove('checked'); const d = btn.querySelector('.ack'); if (d) d.remove(); }
 // 라이브 게이지 헬퍼(전송·수정 3종·기록·발행 공용 · 운영자 260702) — fetch 전에 start(게이지가 응답까지 점근 진행 = 멈춤·무반응 제거), 성공 시 gaugeDone(현위치→100% 급속·askShowCheck는 호출부서 ~200ms 뒤), 실패·정리 시 gaugeClear.
-function gaugeStart(btn){ if (!btn) return; btn.classList.add('glive', 'firing'); requestAnimationFrame(() => requestAnimationFrame(() => btn.classList.add('grun'))); }   // 2중 rAF = scaleX(0) 한 프레임 페인트 후 .9 트리거(같은 프레임이면 transition 무시됨)
+function gaugeStart(btn){ if (!btn) return; btn.classList.add('glive', 'firing'); requestAnimationFrame(() => requestAnimationFrame(() => { if (btn.classList.contains('glive')) btn.classList.add('grun'); })); }   // 2중 rAF = scaleX(0) 한 프레임 페인트 후 .9 트리거(같은 프레임이면 transition 무시됨) · glive 가드 = 즉시 실패로 gaugeClear가 먼저 돌면 rAF가 grun을 도로 붙이던 잔류 차단(실측 260727)
 function gaugeDone(btn){ if (btn) btn.classList.add('gdone'); }
 function gaugeClear(btn){ if (btn) btn.classList.remove('glive', 'firing', 'grun', 'gdone'); }
 $('#askSend').addEventListener('click', async () => {
@@ -14668,6 +14710,7 @@ document.addEventListener('visibilitychange', ambKick);
 if (_ambRM.addEventListener) _ambRM.addEventListener('change', ambKick);   // 유휴 중 OS "동작 줄이기" 토글 즉응 — 진행 중 웨이브 즉시 정지·재개 판단(분신1 中)
 ambKick();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
+loadCardFire();   // 새로고침 전 발사해둔 카드 프롬프트 임시상태 복원(로더 유지·완료감지)
 loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
