@@ -90,6 +90,7 @@ for f in "${files[@]}"; do
   text="$(python3 -c "import json; print(json.load(open('$f')).get('text',''))" 2>/dev/null || true)"
   nothumb="$(python3 -c "import json; print('1' if json.load(open('$f')).get('nothumb') in (1,'1',True) else '')" 2>/dev/null || true)"   # 뷰어 '이미지' 토글 OFF → 제미나이 썸네일 생성 skip(검색 og:image는 항상·운영자 260702)
   # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 우선 · mj=주요 언론 기반 · og=원본 한정[260727·기본 소등]) → 프롬프트 조건 블록.
+  #   ⚠ 같은 스트립의 noai(AI 미제작·260727)는 여기 목록에 일부러 없다 = 수집 조건이 아니라 산출 조건 → 위 nothumb(frontmatter no_thumb) 축으로 흐른다(프롬프트 무접촉).
   #   미지정·전OFF(구 asks 포함) = 빈 블록 = 종전 동작 그대로. 블록 위치 = 고정부([★] 모드) 뒤·가변부(요청) 앞 = 캐시 prefix 불변.
   pres="$(python3 -c "
 import json

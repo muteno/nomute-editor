@@ -16,14 +16,14 @@ export async function onRequestPost({ request, env, waitUntil }) {
     ? body.images.slice(0, 8).map(s => String(s || '').slice(0, 2000000)).filter(s => s.startsWith('data:image/'))
     : [];
   if (!text && !images.length) return json({ error: '빈 요청 — 내용이나 캡처를 넣어줘' }, 400);
-  const nothumb = (body.nothumb === 1 || body.nothumb === '1' || body.nothumb === true) ? 1 : 0;   // 1=제미나이 썸네일 생성 skip(검색 og:image는 항상)·뷰어 '이미지' 토글 OFF·운영자 260702
   const _p = (body.preset && typeof body.preset === 'object') ? body.preset : {};
-  const preset = { h24: _p.h24 ? 1 : 0, fp: _p.fp ? 1 : 0, mj: _p.mj ? 1 : 0, og: _p.og ? 1 : 0 };   // 수집 프리셋(24시간 이내·외신 우선·주요 언론 기반·원본 한정) = 뷰어 스트립 토글 → ask.sh 프롬프트 배선(운영자 260723 · og 260727 · 미전송 구클라 = 전부 0 = 종전 동작)
+  const preset = { h24: _p.h24 ? 1 : 0, fp: _p.fp ? 1 : 0, mj: _p.mj ? 1 : 0, og: _p.og ? 1 : 0, noai: _p.noai ? 1 : 0 };   // 요약요청 스트립 토글(24시간 이내·외신 우선·주요 언론 기반·원본 한정 → ask.sh 프롬프트 · AI 미제작 noai → 바로 아래 nothumb) · 운영자 260723 · og·noai 260727 · 미전송 구클라 = 전부 0 = 종전 동작
+  const nothumb = ((body.nothumb === 1 || body.nothumb === '1' || body.nothumb === true) || preset.noai) ? 1 : 0;   // 1=제미나이 썸네일 생성 skip(검색 og:image는 항상)·운영자 260702 · 「AI 미제작」 켜짐이면 클라 nothumb 와 무관하게 강제 1(서버측 안전망 = 스트립만 켜고 보낸 구·타 클라도 의미대로 동작 · 운영자 260727)
 
   const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYY-MM-DD-HHMM (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) — pending.js askTime·ask.sh 파서가 이 형식 기대
   const rnd = Math.random().toString(36).slice(2, 7);
   const path = `asks/${ts}-${rnd}.json`;
-  const payload = JSON.stringify({ ts, text, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 수집 프리셋(h24·fp·mj·og)
+  const payload = JSON.stringify({ ts, text, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 요약요청 스트립(h24·fp·mj·og·noai)
 
   // UTF-8 안전 base64(Workers에 unescape 없음 → TextEncoder)
   const bytes = new TextEncoder().encode(payload);
