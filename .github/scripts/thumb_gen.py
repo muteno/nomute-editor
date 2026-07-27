@@ -362,10 +362,7 @@ def parse_md(path):
     insight = re.sub(r"\s+", " ", im_.group(1)).strip()[:400] if im_ else ""
     # 해외 사건 판정(분신술③ T8 — '한국 기본값'이 태국 사건을 한옥으로 오염) = image_query_en 채움 여부(해외 전용 키).
     extras = {"hook": hook, "emotion": emo, "insight": insight,
-              "foreign": bool(fm.get("image_query_en", "").strip()),
-              # 원 기사 제목·매체 = 구글 검색 폴백(fetch_article_images query)의 검색어 원료(260727).
-              # h1(head)은 에디토리얼 헤드라인이라 원문과 문구가 달라 검색 적중이 떨어진다 → title 1순위.
-              "title": fm.get("title", "").strip(), "media": fm.get("media", "").strip()}
+              "foreign": bool(fm.get("image_query_en", "").strip())}
     return head, lead, iq, ts, fm.get("url", "").strip(), fm.get("alt_urls", "").split(), fm.get("image_sources", "").split(), fm.get("thumb_dispatch", "").strip(), extras
 
 def _md_url(path):
@@ -529,38 +526,8 @@ def _small_dim(u):
     m2 = re.search(r"[?&]type=w(\d{1,4})", u, re.I)          # 네이버 mblogthumb type=w80
     return bool(m2 and int(m2.group(1)) < 400)
 
-_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.I)
-_ATTR_SRC_RE = re.compile(r'\b(?:data-(?:src|original|lazy-src|echo|url)|src)\s*=\s*["\']([^"\']+)', re.I)
-_SRCSET_RE = re.compile(r'\bsrcset\s*=\s*["\']([^"\']+)', re.I)
-_WH_RE = re.compile(r'\b(width|height)\s*=\s*["\']?(\d{2,5})', re.I)
-
-def _body_imgs(html, base):
-    """본문 <img> URL을 '선언 치수 큰 순'으로 나열(원문 최대 이미지 폴백 원료 · deep 전용).
-    ⚠️ 260622에 본문 긁기를 폐지한 이유(사이드바·추천기사 썸네일이 '유사'로 샘)는 그대로 유효 →
-    이 함수는 **대표(og/twitter/image_src/JSON-LD)가 0장일 때만** 호출한다(운영자 260727
-    "분명 기사에 쓰인 사진이 있을 거다" — 0장 카드 구제가 오염보다 우선인 구간에만 발동).
-    lazy 로딩 속성(data-src·srcset)까지 본다 = 요즘 매체가 src를 1x1로 두는 패턴 구제."""
-    cands = []
-    for i, tag in enumerate(_IMG_TAG_RE.findall(html)):
-        u = ""
-        ms = _SRCSET_RE.search(tag)
-        if ms:                                              # srcset = 마지막 항목이 통상 최대폭
-            parts = [p.strip().split()[0] for p in ms.group(1).split(",") if p.strip()]
-            if parts:
-                u = parts[-1]
-        if not u:
-            ma = _ATTR_SRC_RE.search(tag)
-            u = ma.group(1) if ma else ""
-        if not u:
-            continue
-        wh = {k.lower(): int(v) for k, v in _WH_RE.findall(tag)}
-        cands.append((-(wh.get("width", 0) * wh.get("height", 0)), i, u))
-    cands.sort()                                            # 큰 치수 먼저 · 동률은 문서 등장순(본문 상단 = 대표사진)
-    return [u for _a, _i, u in cands]
-
-def _img_candidates(html, base, deep=False):
-    """기사 HTML → 이미지 후보(대표 먼저·중복제거). 대표(og/twitter/image_src/JSON-LD)=신뢰·최소필터 / 본문 img=엄격필터.
-    deep=True = 대표가 0장일 때만 켜는 최후 폴백(본문 최대 <img> 최대 3장 · 운영자 260727 3단 폴백 ①)."""
+def _img_candidates(html, base):
+    """기사 HTML → 이미지 후보(대표 먼저·중복제거). 대표(og/twitter/JSON-LD)=신뢰·최소필터 / 본문 img=엄격필터."""
     import html as _html
     html = re.sub(r"<!--.*?-->", "", html, flags=re.S)      # 주석 제거(주석 og 오대표·주석 img 차단)
     out, seen, seen_key = [], set(), set()
@@ -568,7 +535,7 @@ def _img_candidates(html, base, deep=False):
         return _dom_core(urllib.parse.urlparse(u).hostname or "")
     def seg0(u):
         return ([s for s in urllib.parse.urlparse(u).path.split("/") if s] or [""])[0].lower()
-    def add(u, body=False, junk=False, trust=False):
+    def add(u, body=False, junk=False):
         if not u:
             return
         u = _html.unescape(u.strip())
@@ -577,13 +544,7 @@ def _img_candidates(html, base, deep=False):
         u = urllib.parse.urljoin(base, u)
         if not re.match(r"https?://", u, re.I):
             return
-        # 확장자 게이트 — 발행사 선언(og/twitter/image_src/itemprop = trust)은 면제. 확장자 없는 CDN 대표
-        # (…/photo/2026/07/27/123456 · ?type=w800 리사이저)를 통째로 버리던 구멍 봉합(260727). 안전은
-        # http_image 매직바이트가 최종 판정(비이미지·SVG는 거기서 컷) — svg만 여기서 선차단.
-        if trust:
-            if re.search(r"\.svgz?(?:[/?#]|$)", u, re.I):
-                return
-        elif not re.search(r"\.(jpe?g|png|webp|gif)(?:[/?#]|$)", u, re.I):
+        if not re.search(r"\.(jpe?g|png|webp|gif)(?:[/?#]|$)", u, re.I):
             return
         if _PLACEHOLDER.search(u):
             return
@@ -604,33 +565,11 @@ def _img_candidates(html, base, deep=False):
             return
         seen.add(u); seen_key.add(k); out.append(u)
     # 1) 대표 = og:image / twitter:image (속성 순서 무관 · 발행사 선언=신뢰, 호스트·크기 무관 허용)
-    #    og:image:secure_url·twitter:image:url 추가(260727) — https 전용 선언만 내보내는 매체를 통째로
-    #    놓치던 구멍(sns_trends.og_image는 이미 보던 어순 · 여기만 빠져 있었다).
     for tag in re.findall(r"<meta\b[^>]*>", html, re.I):
-        if re.search(r'(?:property|name)\s*=\s*["\']'
-                     r'(?:og:image(?::(?:url|secure_url))?|twitter:image(?::(?:src|url))?)["\']', tag, re.I):
+        if re.search(r'(?:property|name)\s*=\s*["\'](?:og:image(?::url)?|twitter:image(?::src)?)["\']', tag, re.I):
             cm = re.search(r'content\s*=\s*["\']([^"\']+)', tag, re.I)
             if cm:
-                add(cm.group(1), trust=True)
-    # 1-b) 폴백 선언 — <link rel="image_src">(og 이전 세대·구형 CMS·지역지에 아직 살아있다) + <meta itemprop="image">.
-    #    ⚠️ og/twitter가 하나라도 있으면 절대 안 본다 — 이 둘은 같은 사진의 크기변형(_1280·_700·_16v9)을
-    #    여러 줄로 선언하는 매체(SBS 실측 260727)가 많아 대표 1장이 3장 중복으로 불어난다. 폴백에서도 첫 1장만.
-    if not out:
-        for tag in re.findall(r"<link\b[^>]*>", html, re.I):
-            if re.search(r'\brel\s*=\s*["\'][^"\']*image_src', tag, re.I):
-                hm = re.search(r'href\s*=\s*["\']([^"\']+)', tag, re.I)
-                if hm:
-                    add(hm.group(1), trust=True)
-            if out:
-                break
-    if not out:
-        for tag in re.findall(r"<meta\b[^>]*>", html, re.I):
-            if re.search(r'\bitemprop\s*=\s*["\']image["\']', tag, re.I):
-                cm = re.search(r'content\s*=\s*["\']([^"\']+)', tag, re.I)
-                if cm:
-                    add(cm.group(1), trust=True)
-            if out:
-                break
+                add(cm.group(1))
     # 2) JSON-LD "image" — og/twitter 못 찾았을 때만(fallback) · 윈도 400자·앞 2개·로고/아바타/동영상 컷(bleed 방지)
     if not out:
         for m in re.finditer(r'"image"\s*:', html):
@@ -641,14 +580,6 @@ def _img_candidates(html, base, deep=False):
     #    사이드바 썸네일은 HTML상 구별이 안 됨 → 한 기사당 og/twitter/JSON-LD(발행사 선언) 1장만 = 대표.
     #    다장 '유사'는 관련기사(image_sources = 분석단계 AI가 *이 사건* 키워드로 찾은 소스 · alt_urls)의 og 로
     #    채운다(fetch_article_images 2단계) = 우측 검색버튼(AI 키워드) 로직과 정합 = 관련성 보장.
-    # 4) deep 폴백(260727 · 대표 0장 한정) — 그래도 0장이면 본문 <img> 중 '선언 치수 최대' 3장까지.
-    #    발동 조건이 '대표 0장'이라 260622 폐지 사유(og 있는데 사이드바 썸네일이 유사로 샘)와 충돌하지 않는다.
-    #    필터는 종전 본문 규칙 그대로(같은매체·같은디렉터리·소형·로고/광고/동영상 컷).
-    if deep and not out:
-        for u in _body_imgs(html, base)[:20]:
-            add(u, body=True)
-            if len(out) >= 3:
-                break
     return out
 
 def _url_ok(u):
@@ -743,102 +674,6 @@ def _related_urls(html, base):
             seen.add(u); out.append(u)
     return out[:6]
 
-# ── ② 구글 검색 폴백 (운영자 260727 "그 기사에 접근이 안 되면 그 기사를 구글 검색해서 가져와") ──────────
-# 경로 = 구글 뉴스 검색 RSS(news.google.com/rss/search) → 항목 링크는 구글 리다이렉트 토큰이라
-# 비공식 batchexecute(DotsSplashUi·Fbv4je "garturlreq")로 **실제 기사 URL**을 해석 → 그 기사 og:image 추출.
-# 왜 이 경로인가:
-#   · 구글 *웹/이미지* 검색 HTML(www.google.com/search[&tbm=isch])은 이제 JS 셸만 내려온다(실측 260727:
-#     결과 링크 0개·이미지 URL 0개) = 스크래핑 불가. Google CSE JSON API는 2025 신규발급 차단(死).
-#   · news.google.com RSS는 무키·안정(실측 100건) + 레포에 이미 같은 도메인 검색 URL을 쓰는 선례
-#     (analyze.sh·ask.sh의 '관련 기사 유추 검색' 링크) = 계승.
-#   · 같은 batchexecute 계열 비공식 API 호출은 sns_trends.gtrends_api(trends.google.com) 선례와 동형.
-# ⚠️ 비공식 = 예고 없는 스키마 변동 리스크 → 어떤 실패도 [](fail-soft) + 경고 1줄. 킬스위치 THUMB_GSEARCH=0.
-GS_ON = os.environ.get("THUMB_GSEARCH", "1").strip().lower() not in ("0", "off", "false", "no")
-_GNEWS_RSS = "https://news.google.com/rss/search?q={}&hl=ko&gl=KR&ceid=KR:ko"
-_GNEWS_BX = "https://news.google.com/_/DotsSplashUi/data/batchexecute"
-
-def _unesc_js(s):
-    """batchexecute 응답의 이중 이스케이프(\\u003d · \\/) 복원 — 백슬래시 개수 무관."""
-    s = re.sub(r"\\+u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), s)
-    return re.sub(r"\\+/", "/", s)
-
-def _gnews_resolve(gurl):
-    """구글뉴스 리다이렉트 링크 → 실제 기사 URL. 실패·스키마 변동 = None(fail-soft)."""
-    page = _fetch_html(gurl)
-    if not page:
-        return None
-    sg = re.search(r'data-n-a-sg="([^"]+)"', page)
-    ts = re.search(r'data-n-a-ts="([^"]+)"', page)
-    ai = re.search(r'data-n-a-id="([^"]+)"', page)
-    if not (sg and ts and ai):
-        print("  ⚠️ 구글뉴스 링크 서명 미발견(스키마 변동 가능) — 이 건 스킵", flush=True)
-        return None
-    inner = json.dumps(["garturlreq",
-                        [["X", "X", ["X", "X"], None, None, 1, 1, "US:en", None, 1,
-                          None, None, None, None, None, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, None, 0, 0, None, 0],
-                        ai.group(1), int(ts.group(1)), sg.group(1)])
-    body = ("f.req=" + urllib.parse.quote(json.dumps([[["Fbv4je", inner, None, "garturlreq"]]]))).encode("utf-8")
-    try:
-        req = urllib.request.Request(_GNEWS_BX, data=body,
-                                     headers={"User-Agent": UA,
-                                              "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"})
-        with _OPENER.open(req, timeout=20) as r:
-            raw = r.read(400000).decode("utf-8", "replace")
-    except Exception as e:
-        print("  ⚠️ 구글뉴스 URL 해석 실패: {}".format(e), flush=True)
-        return None
-    m = re.search(r'garturlres\\",\\"(.*?)\\"', raw)
-    if not m:
-        return None
-    u = _unesc_js(m.group(1)).strip()
-    return u if (u.startswith("http") and _url_ok(u)) else None
-
-def _gs_variants(query):
-    """검색어 변형 [정밀, 축약] — 제목 전문은 '그 기사' 1건만 물어오는 일이 잦다(실측 260727: 뉴스엔 제목
-    전문 = 1건·그 1건이 곧 막힌 원문 → 폴백 무의미 / 핵심어 3개 = 11건·접근 가능한 포털 미러 포함).
-    그래서 ① 제목 전문(같은 기사 정조준) → ② 핵심어 축약(같은 사건 타매체 확보) 순으로 두 번 던진다."""
-    q1 = re.sub(r"\s+", " ", re.sub(r"[\[\]【】<>\"'‘’“”·…‥|]", " ", str(query or ""))).strip()[:120]
-    toks = [t for t in q1.split(" ") if len(t) >= 2][:5]     # 앞쪽 = 인물·사건 고유명사(한국어 제목 관습)
-    q2 = " ".join(toks)
-    return [q for q in (q1, q2) if len(q) >= 4 and q != ""] if q1 != q2 else ([q1] if len(q1) >= 4 else [])
-
-def google_news_search(query, want=6, exclude=()):
-    """기사 제목으로 구글 뉴스를 검색해 **실제 기사 URL** 목록을 돌려준다(②단 폴백 · 과금 0).
-    같은 기사의 포털/타매체 재게재본이 상단에 오므로 '그 기사에 쓰인 사진'을 되찾을 확률이 가장 높다.
-    실패(검색 차단·해석 불가·비활성)는 전부 [] = 호출부는 종전 '0장' 경로로 조용히 되돌아간다."""
-    if not (GS_ON and query):
-        return []
-    import html as _h
-    links, seen_l = [], set()
-    for q in _gs_variants(query):
-        xml = _fetch_html(_GNEWS_RSS.format(urllib.parse.quote(q)))
-        if not xml:
-            print("  ⚠️ 구글뉴스 검색 응답 없음('{}')".format(q[:40]), flush=True)
-            continue
-        for it in re.findall(r"<item>(.*?)</item>", xml, re.S):
-            lm = re.search(r"<link>(.*?)</link>", it, re.S)
-            if not lm:
-                continue
-            g = _h.unescape(lm.group(1).strip())
-            if g not in seen_l:
-                seen_l.add(g); links.append(g)
-        if len(links) >= want + 4:                          # 정밀 쿼리로 충분히 모였으면 축약 쿼리 생략(요청 절약)
-            break
-    ex = {(u or "").rstrip("/") for u in exclude if u}
-    out, tried = [], 0
-    for g in links:
-        if len(out) >= want or tried >= want + 4:           # 해석 1건 = 페이지 1 + POST 1 → 상한으로 시간 바운드
-            break
-        tried += 1
-        real = _gnews_resolve(g)
-        if not real or real.rstrip("/") in ex or real in out:
-            continue
-        out.append(real)
-    print("  🔎 구글 검색 폴백 — '{}' → 후보 {}링크 · 실기사 {}건(해석 시도 {})".format(
-        str(query)[:34], len(links), len(out), tried), flush=True)
-    return out
-
-
 def _vision_keep(rep_src, cand_src):
     """비전 훅(기본 OFF=pass-through). THUMB_VISION=1일 때만 Gemini로 '대표와 같은 인물/장면이면 컷' 판정.
     기본(미설정)은 cand 그대로 반환 = 과금 0. 점화는 후속(운영자 승인 시 여기에 Gemini 1콜 배선)."""
@@ -891,28 +726,17 @@ def _band_fail(png_bytes):
     except Exception:
         return False
 
-def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7, query=""):
+def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7):
     """기사 관련 대표·유사 이미지 [{src,link,label}] 최대 want장.
     소스 우선순위: 원기사 og(대표) → AI 관련소스(image_sources, 분석단계 WebSearch 유추) → 클러스터(alt_urls) → 마커매체 관련.
     ⚠️ 원기사 URL이 없거나(전문 붙여넣기) 막혀도(403) image_sources로 채운다 = 소스 무관(운영자 260620).
-    품질 필터: 속보 배너(_is_breaking_article)·로고/광고/동영상(_BODY_SKIP)·소형(_small_dim)·플레이스홀더(_PLACEHOLDER) + 호출부 매직바이트.
-
-    3단 폴백(운영자 260727 "그 기사에서 가져오거나, 접근이 안 되면 그 기사를 구글 검색해서 가져와"):
-      ① 원문 페이지 = og:image → twitter:image → link[rel=image_src]/itemprop → JSON-LD → (0장이면) 본문 최대 <img>
-      ② 여기까지 0장이면 query(기사 제목)로 **구글 뉴스 검색** → 실기사 URL 해석 → 그 og:image
-      ③ 반환된 [{src,link,label}]을 호출부(process_one·more_images)가 그대로 search.json에 적재 = 카드에 들어간다
-    query 미전달(구버전 호출) = ②단 미발동 = 종전 동작 100% 보존."""
+    품질 필터: 속보 배너(_is_breaking_article)·로고/광고/동영상(_BODY_SKIP)·소형(_small_dim)·플레이스홀더(_PLACEHOLDER) + 호출부 매직바이트."""
     out, seen = [], set()
     have_art = bool(art_url and _url_ok(art_url))
     text = _fetch_html(art_url) if have_art else None
     # 1) 원기사 자체 대표(속보 배너면 컷) — URL 있고 fetch 되면(기존 동작 보존: og 대표 + 본문유사).
     if text is not None and not _is_breaking_article(text):
-        reps = _img_candidates(text, art_url)
-        if not reps:                                        # ①-2 발행사 선언 전무 = 본문 최대 img 폴백(260727)
-            reps = _img_candidates(text, art_url, deep=True)
-            if reps:
-                print("  🖼 원문 대표선언 없음 → 본문 최대 img {}장 채택".format(len(reps)), flush=True)
-        for u in reps[:want]:
+        for u in _img_candidates(text, art_url)[:want]:
             k = _norm_key(u)
             if k in seen:
                 continue
@@ -943,28 +767,6 @@ def fetch_article_images(art_url, alt_urls=None, image_sources=None, want=7, que
                 seen.add(_norm_key(rog))
                 out.append({"src": rog, "link": ru, "label": "" if not out else "유사"})
                 print("  🔗 관련이미지 +1 ({}…)".format(ru[:42]))
-    # 3) 구글 검색 폴백(260727) — **여기까지 0장일 때만**. 0장 = 원문이 막혔거나(403·타임아웃) og 선언이 없고
-    #    AI 관련소스·클러스터도 비어 있는 상태 = 운영자가 본 '사진 못 가져온 카드' 그 자체.
-    #    이미 1장이라도 있으면 발동 안 함 = 정상 기사의 네트워크·시간 비용 0(무회귀).
-    if not out and query:
-        g_ex = [art_url or ""] + list(image_sources or []) + list(alt_urls or [])
-        for gu in google_news_search(query, want=6, exclude=g_ex):
-            if len(out) >= want:
-                break
-            ghtml = _fetch_html(gu)
-            if not ghtml or _is_breaking_article(ghtml):
-                continue
-            gcands = _img_candidates(ghtml, gu) or _img_candidates(ghtml, gu, deep=True)
-            for gg in gcands:
-                if len(out) >= want:
-                    break
-                if not gg or _norm_key(gg) in seen or _small_dim(gg) or _BODY_SKIP.search(gg):
-                    continue
-                seen.add(_norm_key(gg))
-                out.append({"src": gg, "link": gu, "label": "" if not out else "유사"})
-                print("  🔎 구글검색 이미지 +1 ({}…)".format(gu[:42]), flush=True)
-        if not out:
-            print("  · 구글 검색 폴백도 0장 — 이 기사는 실사진 확보 실패(AI 썸네일이 커버)", flush=True)
     return out
 
 def http_image(url):
@@ -1042,9 +844,7 @@ def process_one(md, stem):
     # ⚠️ 소스 무관(운영자 260620): art_url 또는 image_sources 있고 아직 없을 때 채움 → paste·차단매체도 관련이미지 확보.
     # 대표=라벨'' / 유사='유사'. R2 재호스팅(핫링크 0)·매직바이트 검증, 실패 시 외부 핫링크 폴백.
     if (art_url or image_sources) and not os.path.exists(os.path.join(tdir, "search.json")):
-        # query = 구글 검색 폴백(3단 ②)의 검색어 — 원 기사 제목 우선, 없으면 에디토리얼 헤드라인·한줄요약(260727).
-        _gq = (extras.get("title") or head or lead or "").strip()
-        cand = fetch_article_images(art_url, alt_urls=alt_urls, image_sources=image_sources, want=7, query=_gq)   # 3→7장(og:image fetch는 과금0 · dedup·필터 그대로 = 유사 컷 동일 · 한·외신 공통 · 운영자 260622)
+        cand = fetch_article_images(art_url, alt_urls=alt_urls, image_sources=image_sources, want=7)   # 3→7장(og:image fetch는 과금0 · dedup·필터 그대로 = 유사 컷 동일 · 한·외신 공통 · 운영자 260622)
         items = []
         for i, c in enumerate(cand):
             final = None

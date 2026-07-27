@@ -138,19 +138,12 @@ if need_url and orig_url:
 elif need_url:
     print("· 원문 URL 미발견(ORIG_URL 없음) — url 백필 스킵", flush=True)
 
-if not urls and not existing:
-    # Claude가 소스를 못 냈고(쿼터·차단) 기존 검색이미지도 0장 = 운영자가 본 '사진 못 가져온 카드'.
-    # 종전엔 여기서 즉시 종료 = 영구 0장이었다. 이제는 그대로 진행해 fetch_article_images의
-    # 구글 검색 폴백(3단 ②)에 기회를 준다(과금 0 · 실패해도 아래 '새 이미지 0'로 조용히 끝난다 · 260727).
-    print("Claude 신규 소스 0 · 기존 0장 — 구글 검색 폴백으로 계속", flush=True)
-elif not urls:
+if not urls:
     print("새 소스 0 — 이미지 변경 없음 종료"); sys.exit(0)
 
 # og:image 추출(thumb_gen 재사용) — 원기사 URL(방금 백필분 포함)이 있으면 그 대표 og:image도 1순위로 시도
 # (차단매체면 fetch만 실패 = 무해), 없으면 종전대로 image_sources만(과금 0).
-# query = 구글 검색 폴백 검색어(원 기사 제목 우선 · 위 3단 폴백 ②는 '여기까지 0장'일 때만 발동 = 무회귀).
-cand = tg.fetch_article_images(orig_url or None, alt_urls=None, image_sources=urls, want=WANT,
-                               query=(fm_title or head or "").strip())
+cand = tg.fetch_article_images(orig_url or None, alt_urls=None, image_sources=urls, want=WANT)
 new_items = []
 for i, c in enumerate(cand):
     if tg._norm_key(c.get("src", "")) in existing_urls:

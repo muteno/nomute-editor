@@ -125,20 +125,7 @@ def check_sns():
                 if la is not None and la > 1440:
                     print(f"  [관측] SNS 소스 '{k}' 마지막 성공 {la / 60:.0f}시간 전")
         if age is None or age > SNS_MIN:
-            # 지문 구분(260727 사고 계승) — 같은 "정체"라도 원인이 둘이고 조치가 정반대다.
-            #   ⓐ 트리거·수집이 죽음 = 재발사로 회복 → "sns-trends 레인 확인"
-            #   ⓑ 수집은 도는데 **커밋 착지**가 막힘 = 재발사 무효(실측 260727: 5시간 동안 10런 전부 success인데
-            #      push 4연속 fetch-first 거부로 산출물 증발 → 재발사만 반복해도 영원히 안 낫는다)
-            # 판별자 = 폰 하트비트. sns-trends의 주 트리거는 폰 커밋 push(30분 고정)라, 폰이 신선한데 sns만 stale이면
-            # 트리거는 살아있다는 뜻 = ⓑ 확정. 실측 지문: 폰 10:32 신선 · sns_trends.updated 05:04 정지.
-            tail = "sns-trends 레인 확인"
-            try:
-                pha = _age_min((json.load(open(PHONE, encoding="utf-8")) or {}).get("updated"))
-                if pha is not None and pha <= PHONE_MIN:
-                    tail = f"트리거는 정상(폰 하트비트 {_dur_ko(pha)} 전) — sns-trends 커밋 착지 실패 의심(git_land 로그 확인)"
-            except Exception:  # noqa: BLE001 — 판별 실패 = 종전 문구 그대로(fail-soft)
-                pass
-            return f"SNS 트렌드 정체 {('%.0f분' % age) if age is not None else '나이 불명'}(임계 {SNS_MIN:.0f}) — {tail}"
+            return f"SNS 트렌드 정체 {('%.0f분' % age) if age is not None else '나이 불명'}(임계 {SNS_MIN:.0f}) — sns-trends 레인 확인"
     except FileNotFoundError:
         return None   # 파일 자체가 없는 초기 상태 = 경보 아님
     except Exception as e:  # noqa: BLE001
