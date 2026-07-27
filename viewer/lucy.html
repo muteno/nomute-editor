@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>루시봇 관리</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
+<style>
+  /* ⚠️ 기틀 계승 원본 = viewer/sb.html(스토리보드) — 헤드·셸 공유 블록은 바이트 동일 유지(운영자 260714 "그대로 기틀 참고·맘대로 생성 금지").
+     폼 부품(소머리·항목행·워드칩)은 index #genidlg 계열(.geni-sechead/.geni-row/.geni-opts/.geni-opt) 계승 = 【바인딩】「새 화면 = index #genidlg」 지목분. */
+  :root { --well:#0e0f11;   /* 인셋 웰(입력·코드박스 배경 — 7뷰어 공유 raw 추출 = 동값 · sb.html 계승) */ --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일) */ --warn:#FFE13D;   /* 역할색 warn = 골드레몬 */ --accent-dim:rgba(var(--accent-rgb),.13); --line2:rgba(255,255,255,.06); --on-accent:#032322; }
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(sb 계승) */
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  [hidden] { display:none !important; }   /* hidden 기저 가드 */
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  html { scrollbar-width:none; -ms-overflow-style:none; }   /* 폭 0 = cscroll 오버레이 바 주입값과 첫 페인트부터 동일(sb.html 계승 — 주입 순간 콘텐츠 밀림 차단) */
+  html::-webkit-scrollbar, body::-webkit-scrollbar { width:0; height:0; display:none; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(0,0,0,.42); border-radius:var(--r-pill); border:2px solid var(--bg); background-clip:padding-box; }
+  @font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:local('Pretendard Variable'),url(assets/fonts/pretendard.woff2) format('woff2-variations')}
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing:-.2px /* raw-ok: 자간 = index body 정본 exact 계승 */; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:600px; margin:0 auto; padding:var(--sp-3) 16px 70px; }   /* raw-ok: sb/k .wrap 동일값 계승(좌우 16·하단 70 = 엄지존 여백) */
+
+  /* ── 헤더(뒤로 + 타이틀) = index .modal-head 타이포 계승(15/800/ls-.2 = --fs-h2/--fw-x) ── */
+  .lh { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) 0 var(--sp-3); }
+  .lh b { font-size:var(--fs-h2); font-weight:var(--fw-x); letter-spacing:-.2px /* raw-ok: .modal-head b 정본 exact 계승 */; color:var(--fg); }
+  .lh .lh-sub { font-size:var(--fs-xs); color:var(--mut); margin-left:auto; font-variant-numeric:tabular-nums; }
+  .lback { display:inline-flex; align-items:center; justify-content:center; width:var(--btn-sm); height:var(--btn-sm); border:none; border-radius:9px /* raw-ok: .tool-x 둥근네모 9px 정본 계승 */;
+    background:rgba(255,255,255,.06); color:var(--fg); cursor:pointer; transition:color var(--dur), transform var(--dur-fast); }   /* reuse-ok: 계승원 = index .tool-x(둥근네모 9px·--btn-sm·글래스 .06 · CII 31행) — 모달 X가 아니라 페이지 뒤로가기라 글리프만 셰브론(.pm-chev 정본 path) */
+  .lback:active { transform:scale(var(--press-m)); color:var(--accent); }
+
+  /* ── 소머리 = label.fl(sb.html 계승 · 뉴스 .cref-lbl 표준) ── */
+  label.fl { display:block; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:var(--sp-4) 0 var(--sp-1); }
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  label.fl:first-of-type { margin-top:var(--sp-2); }
+
+  /* ── 항목 행 = index .geni-row/.geni-opts/.geni-opt 계승(【바인딩】 지목) ── */
+  .geni-row { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); padding:8px 0 /* raw-ok: .geni-row 정본 exact 계승 */; }
+  .geni-row .pub-l { font-size:var(--fs-label); color:var(--mut); white-space:nowrap; }
+  .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px /* raw-ok: .geni-opts 정본 exact 계승 */; justify-content:flex-end; min-width:0; }
+  .geni-opt { background:none; border:none; padding:6px 7px /* raw-ok: .geni-opt 정본 exact 계승(탭 타깃) */; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .geni-opt.on { color:var(--accent); }
+  .geni-opt.off { color:var(--mut); }
+  .geni-opt.bad { color:var(--danger); }
+  .geni-opt.wait { color:var(--warn); }
+
+  /* ── 액션 필 = .sc-tg 글래스 필 계승(CII .trend-accbtn 선례 — 텍스트 필 정본) ── */
+  .sc-tg { display:inline-flex; align-items:center; justify-content:center; height:24px /* raw-ok: .sc-tg 정본 exact 계승 */; padding:0 8px /* raw-ok: .sc-tg 정본 */;
+    border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(var(--blur-s));
+    color:var(--fg); font-size:var(--fs-xs); font-weight:var(--fw-b); text-decoration:none; cursor:pointer; transition:color var(--dur), transform var(--dur-fast); }   /* reuse-ok: 계승원 = index .sc-tg 글래스 필(CII 46행 .trend-accbtn 선례 = 텍스트 필 정본) */
+  .sc-tg:active { transform:scale(var(--press-m)); }
+  .sc-tg:hover { color:var(--accent); }
+
+  /* ── 이력 행 = .geni-row 리듬 위 2단(본문 + 메타) ── */
+  .lg { display:flex; flex-direction:column; gap:2px /* raw-ok: 본문↔메타 2단 행간 = --sp-1(6) 적용 시 한 항목이 두 항목처럼 벌어짐(광학 보정 · 근접 토큰 부적합) */; padding:var(--sp-2) 0; border-top:1px solid var(--line2); }
+  .lg:first-of-type { border-top:none; }
+  .lg .lg-t { font-size:var(--fs-sm); color:var(--fg); line-height:1.55; word-break:break-word; }
+  .lg .lg-m { font-size:var(--fs-xs); color:var(--mut); font-variant-numeric:tabular-nums; }
+  .lg .lg-m a { color:var(--mut); text-decoration:none; }
+  .lg .lg-m a:hover { color:var(--accent); }
+  .empty { font-size:var(--fs-sm); color:var(--mut); padding:var(--sp-2) 0; }
+
+  /* ── 경고 판 = .tbrief 무채 인셋 판 계승(CII 51행) ── */
+  .lnote { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:var(--r-m); padding:var(--sp-2) var(--sp-3); margin:var(--sp-3) 0 0; font-size:var(--fs-sm); color:var(--mut); line-height:1.7; }
+  .lnote b { color:var(--fg); font-weight:var(--fw-b); }
+</style>
+<noscript><style>html{scrollbar-width:thin}</style></noscript>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="lh">
+    <button class="lback" type="button" onclick="history.length>1?history.back():location.href='index.html'" aria-label="뒤로">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <b>루시봇</b>
+    <span class="lh-sub" id="upd">—</span>
+  </div>
+
+  <label class="fl">상태</label>
+  <div class="geni-row"><span class="pub-l">전원</span><span class="geni-opts"><span class="geni-opt" id="stPower">확인 중</span></span></div>
+  <div class="geni-row"><span class="pub-l">토큰</span><span class="geni-opts"><span class="geni-opt" id="stToken">확인 중</span></span></div>
+  <div class="geni-row"><span class="pub-l">페르소나 카드</span><span class="geni-opts"><span class="geni-opt" id="stCard">확인 중</span></span></div>
+  <div class="geni-row"><span class="pub-l">오늘 쓸 소재</span><span class="geni-opts"><span class="geni-opt" id="stStock">확인 중</span></span></div>
+
+  <label class="fl">운영</label>
+  <div class="geni-row"><span class="pub-l">발행</span><span class="geni-opts"><span class="geni-opt on">밤 23:00</span></span></div>
+  <div class="geni-row"><span class="pub-l">답글 스윕</span><span class="geni-opts"><span class="geni-opt on">23:00 · 01:30</span></span></div>
+  <div class="geni-row"><span class="pub-l">답글 상한</span><span class="geni-opts"><span class="geni-opt" id="stCap">8건 / 회</span></span></div>
+  <div class="geni-row"><span class="pub-l">누적</span><span class="geni-opts"><span class="geni-opt" id="stTotal">—</span></span></div>
+
+  <label class="fl">실행</label>
+  <div class="geni-row">
+    <span class="pub-l">수동 실행</span>
+    <span class="geni-opts">
+      <a class="sc-tg" href="https://github.com/muteno/nomute-editor/actions/workflows/lucy-threads.yml" rel="noopener">Actions 열기</a>
+    </span>
+  </div>
+  <div class="geni-row">
+    <span class="pub-l">전원 스위치</span>
+    <span class="geni-opts">
+      <a class="sc-tg" href="https://github.com/muteno/nomute-editor/settings/variables/actions" rel="noopener">LUCY_ON 변경</a>
+    </span>
+  </div>
+  <div class="geni-row">
+    <span class="pub-l">토큰 등록</span>
+    <span class="geni-opts">
+      <a class="sc-tg" href="https://github.com/muteno/nomute-editor/settings/secrets/actions" rel="noopener">Secret 열기</a>
+    </span>
+  </div>
+
+  <label class="fl">최근 발행</label>
+  <div id="posted"><p class="empty">불러오는 중</p></div>
+
+  <label class="fl">최근 답글</label>
+  <div id="replied"><p class="empty">불러오는 중</p></div>
+
+  <div class="lnote">
+    첫 가동은 <b>드라이런부터</b> — Actions → <b>Run workflow</b> → <b>dry_run 체크</b>.
+    실제로 안 올리고 어떤 글이 나갈지만 로그로 보여준다. 말투가 마음에 들면 체크만 풀면 된다.
+  </div>
+  <div class="lnote">
+    <b>재답글 차단 4중</b>이 걸려 있다 — 답글 단 id 영구 기록 · 자기 답글 필터 · 같은 사람 하루 1회 · 실행당 상한.
+    이 화면이 읽는 <b>threads_state.json</b>이 그 기록이라, 손으로 지우면 전량 재답글이 나갈 수 있다.
+  </div>
+
+</div>
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var esc = function(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+  // 시각 = KST 강제(CLAUDE.md §D4 · naive 금지)
+  var KFMT = { timeZone:'Asia/Seoul', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false };
+  function kst(iso){
+    try { return new Intl.DateTimeFormat('ko-KR', KFMT).format(new Date(iso)).replace(/\./g,'').trim(); }
+    catch(e){ return '—'; }
+  }
+  function set(id, txt, cls){
+    var el = $(id); if (!el) return;
+    el.textContent = txt;
+    el.className = 'geni-opt' + (cls ? ' ' + cls : '');
+  }
+
+  // ── 상태 파일(러너 산출 · 커밋 영속) ────────────────────────────────
+  fetch('threads_state.json', { cache:'no-store' }).then(function(r){
+    if (!r.ok) throw new Error('no state');
+    return r.json();
+  }).then(function(d){
+    var posted = (d && d.posted) || [], replied = (d && d.replied) || [];
+    var last = posted.length ? posted[posted.length - 1] : null;
+
+    // 전원 = 상태 파일 신선도로 추정(러너가 돌면 매 실행 커밋된다 · 실제 토글은 repo Variable)
+    if (d && d.updated) {
+      var age = (Date.now() - new Date(d.updated).getTime()) / 36e5;
+      if (age <= 30) set('stPower', '가동 중', 'on');
+      else set('stPower', Math.floor(age / 24) + '일째 조용', 'wait');
+      $('upd').textContent = kst(d.updated) + ' 갱신';
+    } else {
+      set('stPower', '기록 없음', 'off');
+    }
+    // 토큰·카드 = 발행 이력이 있으면 둘 다 통과한 것(게이트 4중이 앞에서 막으므로)
+    if (posted.length) { set('stToken', '작동 확인', 'on'); set('stCard', '투입됨', 'on'); }
+    else { set('stToken', '미확인', 'wait'); set('stCard', '미확인', 'wait'); }
+    set('stTotal', '발행 ' + posted.length + ' · 답글 ' + replied.length);
+
+    // 최근 발행
+    var ph = posted.slice(-8).reverse().map(function(p){
+      var src = p.src ? '<a href="' + esc(p.src) + '" rel="noopener">원문</a>' : '';
+      return '<div class="lg"><div class="lg-t">' + esc(p.len ? p.len + '자' : '발행') + '</div>' +
+             '<div class="lg-m">' + esc(kst(p.ts)) + (src ? ' · ' + src : '') + '</div></div>';
+    }).join('');
+    $('posted').innerHTML = ph || '<p class="empty">아직 없다</p>';
+
+    // 최근 답글 — 상대 username은 replied_users에만 남는다(id는 노출 가치 낮음)
+    var ru = (d && d.replied_users) || {};
+    var rh = Object.keys(ru).slice(-10).reverse().map(function(u){
+      return '<div class="lg"><div class="lg-t">@' + esc(u) + '</div><div class="lg-m">' + esc(ru[u]) + '</div></div>';
+    }).join('');
+    $('replied').innerHTML = rh || '<p class="empty">아직 없다</p>';
+  }).catch(function(){
+    set('stPower', '미가동', 'off');
+    set('stToken', '미등록 추정', 'off');
+    set('stCard', '미확인', 'wait');
+    set('stTotal', '0');
+    $('posted').innerHTML = '<p class="empty">아직 없다 — 토큰 등록 전이면 정상이다</p>';
+    $('replied').innerHTML = '<p class="empty">아직 없다</p>';
+    $('upd').textContent = '기록 없음';
+  });
+
+  // ── 원료 재고(스크래퍼 산출 · 읽기만 = D2-1) ──────────────────────
+  fetch('sns_trends.json', { cache:'no-store' }).then(function(r){
+    if (!r.ok) throw new Error('no trends');
+    return r.json();
+  }).then(function(t){
+    var n = ((t.hackernews || []).length) + ((t.aivid || []).length);
+    set('stStock', n + '건', n ? 'on' : 'off');
+  }).catch(function(){ set('stStock', '확인 실패', 'bad'); });
+})();
+</script>
+</body>
+</html>
