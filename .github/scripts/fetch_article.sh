@@ -9,15 +9,18 @@ url="${1:-}"
 [ -z "$url" ] && exit 0
 ua="Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Mobile Safari/537.36"
 
-tmp="$(mktemp)"; raw_u="${tmp}.u"
-trap 'rm -f "$tmp" "$raw_u"' EXIT
+tmp="$(mktemp)"; raw_u="${tmp}.u"; hdr="${tmp}.h"
+trap 'rm -f "$tmp" "$raw_u" "$hdr"' EXIT
 
-# 본문 바이트 취득(리다이렉트 추적). 실패해도 분석기 폴백을 위해 조용히 종료.
-curl -sL -A "$ua" --max-time 30 "$url" -o "$tmp" 2>/dev/null || exit 0
+# 본문 바이트 취득(리다이렉트 추적) + 응답 헤더 동시 덤프(-D) — 구 별도 HEAD 왕복(curl -sIL·max 20s) 제거
+#   (평의회 260727 채택: URL당 1왕복 = alt 루프·선-fetch 배수 절감 · HEAD 차단 매체 20s 공회전 소거 ·
+#    본문을 실제 준 GET 의 헤더라 charset 판정도 더 정확). -L 이라 홉마다 헤더 블록이 누적되므로
+#   아래 파싱은 종전 관용구 그대로 tail -1(마지막 홉의 content-type)만 취한다.
+curl -sL -A "$ua" --max-time 30 -D "$hdr" "$url" -o "$tmp" 2>/dev/null || exit 0
 [ -s "$tmp" ] || exit 0
 
-# charset: HTTP 헤더 우선 → 없으면 본문 <meta charset>
-ct="$(curl -sIL -A "$ua" --max-time 20 "$url" 2>/dev/null | tr -d '\r' | grep -i '^content-type:' | tail -1)"
+# charset: HTTP 헤더(GET -D 덤프) 우선 → 없으면 본문 <meta charset>
+ct="$(tr -d '\r' < "$hdr" 2>/dev/null | grep -i '^content-type:' | tail -1)"
 charset="$(printf '%s' "$ct" | grep -io 'charset=[a-z0-9_-]*' | tail -1 | cut -d= -f2)"
 [ -z "$charset" ] && charset="$(grep -aoiE 'charset=["'"'"']?[a-z0-9_-]+' "$tmp" | head -1 | grep -oiE '[a-z0-9_-]+$')"
 charset="$(printf '%s' "$charset" | tr 'A-Z' 'a-z')"
