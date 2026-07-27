@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>260727 컷편집 개선 — 진짜 좋아지는 거 맞아?</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  Q957 컷편집 강화 5종 + EDL 배선 — '확신도' 설명 문서(운영자 260727 요청).
+  규칙: 여기 적힌 숫자는 전부 이 세션에서 **실제로 돌려서 잰 값**이거나,
+        레포 문서에 이미 적혀 있던 값이다(그 경우 '레포에 적힌 추정'이라고 표시).
+        내가 안 해본 것은 §5 '아직 모르는 것'에 그대로 남겼다 — 지어내지 않음.
+  색·반경: viewer/index.html :root 실측 사본(플레이그라운드 템플릿 헤더와 동일 값 계승 · 창작 0).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--pg-bg);color:var(--pg-fg);
+  font:15px/1.75 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  padding:18px 16px 60px;max-width:760px;margin:0 auto;-webkit-text-size-adjust:100%}
+h1{font-size:21px;line-height:1.4;letter-spacing:-.3px}
+h2{font-size:17px;margin:34px 0 10px;letter-spacing:-.2px}
+h3{font-size:15px;margin:0 0 4px}
+p{margin:8px 0}
+.sub{color:var(--pg-mut);font-size:12.5px;margin:6px 0 18px}
+.big{border:1px solid rgba(var(--pg-accent-rgb),.35);background:rgba(var(--pg-accent-rgb),.07);
+  border-radius:var(--pg-r-l);padding:14px 15px;margin:14px 0 4px}
+.big b{color:var(--pg-accent)}
+.card{border:1px solid rgba(255,255,255,.12);border-radius:var(--pg-r-l);padding:14px 15px;margin:11px 0;background:rgba(255,255,255,.02)}
+.card.warn{border-color:rgba(255,225,61,.35)}
+.card.no{border-color:rgba(226,59,42,.4)}
+.bd{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;vertical-align:2px;margin-left:6px}
+.b1{background:rgba(var(--pg-accent-rgb),.16);color:var(--pg-accent)}
+.b2{background:rgba(255,225,61,.16);color:var(--pg-warn)}
+.b3{background:rgba(226,59,42,.16);color:#ff9a8e}
+.q{color:var(--pg-mut);font-size:13px;margin-top:9px}
+.ev{border-left:2px solid rgba(var(--pg-accent-rgb),.5);padding:2px 0 2px 11px;margin:9px 0 2px;font-size:13.5px}
+.ev b{font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0}
+th,td{border:1px solid rgba(255,255,255,.12);padding:7px 9px;text-align:left}
+th{background:rgba(255,255,255,.04);font-size:12.5px;color:var(--pg-mut)}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+.mut{color:var(--pg-mut)}
+ol,ul{margin:8px 0 8px 20px}li{margin:4px 0}
+.foot{margin-top:34px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);color:var(--pg-mut);font-size:12px}
+code{background:rgba(255,255,255,.06);border-radius:var(--pg-r-s);padding:1px 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+
+<h1>이번 컷편집 개선, 진짜 좋아지는 거 맞아?</h1>
+<p class="sub">260727 · Q957 · 솔직하게 = 6개 중 <b>4개는 확실</b>, 1개는 <b>계산은 확실한데 실전 미확인</b>, 1개는 <b>반반</b>.</p>
+
+<div class="big">
+<p><b>한 줄 답 — "다 확실하다"고는 못 한다.</b></p>
+<p>내가 컴퓨터로 <b>직접 돌려서 눈으로 확인한 것</b>과, <b>코드는 다 짰지만 아직 진짜 영상으로는 못 돌려본 것</b>이 섞여 있다. 아래에 어느 쪽인지 하나하나 갈라놨다. 확인 못 한 걸 확인한 척하지는 않았다.</p>
+</div>
+
+<h2>1. 신호등 한눈에</h2>
+<table>
+<tr><th>바꾼 것</th><th>쉽게 말하면</th><th>확신</th></tr>
+<tr><td>이음매 부드럽게</td><td>자른 자리에서 나는 '틱' 소리 없애기</td><td class="n">🟢 확실</td></tr>
+<tr><td>컷 미리보기</td><td>자르기 <i>전에</i> 어디 자를지 목록으로 보여주기</td><td class="n">🟢 확실</td></tr>
+<tr><td>필러 컷</td><td>"어…", "음…" 같은 군말을 소리에서 빼기</td><td class="n">🟢 확실(조건부)</td></tr>
+<tr><td>EDL 내보내기</td><td>다른 편집 프로그램에 넘길 파일 — 자리만 만듦</td><td class="n">🟢 확실(작게)</td></tr>
+<tr><td>전사 재사용</td><td>같은 영상 또 편집할 때 받아쓰기를 다시 안 함</td><td class="n">🟡 계산은 확실</td></tr>
+<tr><td>테이크 감지</td><td>"다시 갈게요" 하고 두 번 말한 데서 앞엣것 버리기</td><td class="n">🔴 반반</td></tr>
+</table>
+
+<h2>2. 🟢 확실한 것 — 내가 돌려봤다</h2>
+
+<div class="card">
+<h3>① 자른 자리 '틱' 소리 없애기<span class="bd b1">실측 완료</span></h3>
+<p>영상을 자르면 소리 물결이 뚝 끊긴다. 종이를 가위로 자르고 다른 종이랑 테이프로 붙인 것처럼, 그 이음매에서 "틱" 소리가 난다. 이걸 막으려고 <b>이음매 앞뒤 0.025초 동안만 소리를 살짝 줄였다가 다시 올린다.</b> 너무 짧아서 사람 귀엔 안 들리는데, '틱'은 사라진다.</p>
+<p class="q">진짜 되는지 어떻게 알았나 → 10초짜리 시험 영상을 만들어서 실제로 잘라보고, 이음매 지점의 소리 크기를 숫자로 쟀다.</p>
+<div class="ev">이음매(0.49~0.51초) 소리 크기 = <b>1360</b> · 아무 일 없는 구간 = <b>2833</b> → <b>절반 이하로 내려감(=작동)</b><br>
+같은 자리, 이 기능만 끈 대조군 = <b>2812</b> → <b>거의 그대로(=원래는 안 줄었다)</b><br>
+ffmpeg 처리 성공(rc=0) · 결과 길이 <b>4.84초</b>(남기기로 한 구간 합 4.8초와 일치)</div>
+<p>같은 코드, 이 기능만 켜고 끈 두 결과를 나란히 비교한 값이다. <b>그래서 이건 확실하다.</b></p>
+</div>
+
+<div class="card">
+<h3>② 자르기 전에 미리 보기<span class="bd b1">구조적으로 확실</span></h3>
+<p>지금까지는 "잘라줘" 누르고 <b>다 끝날 때까지 기다린 다음에야</b> 어디가 잘렸는지 알 수 있었다. 마음에 안 들면 처음부터 다시. 이제는 <b>자를 곳 목록을 먼저 보여주고</b>, 마음에 안 드는 줄을 톡 누르면 그 구간은 안 자른다. 그리고 "이대로 편집하기"를 누르면 <b>내가 확인한 그대로만</b> 잘린다.</p>
+<p class="q">이건 왜 확실한가 → 새로운 기술이 아니라 <b>순서를 바꾼 것</b>이기 때문이다. "결과를 보고 고른다"는 건 성능 문제가 아니라 흐름 문제라서, 흐름이 생긴 순간 효과도 생긴다.</p>
+<div class="ev">화면 실측 = 목록 3줄 + 확정 버튼 정상 표시 · 한 줄 빼니 요약이 <b>"자를 곳 2/3군데 · 12.4초 줄어듦"</b>으로 다시 계산됨 · 화면 오류 <b>0건</b></div>
+<p>덤: 확정해서 만들 때는 받아쓰기를 <b>다시 안 돌린다</b>(이미 해놨으니까). 그래서 "확인 → 확정"이 두 배 느려지지 않는다.</p>
+</div>
+
+<div class="card">
+<h3>③ 군말("어…", "음…") 빼기<span class="bd b1">규칙은 실측</span></h3>
+<p>받아쓰기를 할 때 <b>낱말 하나하나가 몇 초에 나왔는지</b>까지 이미 기록해두고 있었다. 그걸 그대로 써서 군말만 골라 뺀다. <b>새로 돈 드는 것도, 새로 기다릴 것도 없다.</b></p>
+<p>여기서 제일 무서운 건 <b>멀쩡한 말을 자르는 것</b>이다. 예를 들어 "<b>그</b> 사람이요"의 '그'는 군말이 아니다. 그래서 규칙을 두 칸으로 나눴다.</p>
+<ul>
+<li><b>확실한 군말</b>(어·음·엄·에·흠·uh·um…) → 바로 뺀다</li>
+<li><b>애매한 말</b>(그·이제·뭐·좀·막…) → <b>앞뒤에 0.18초 이상 뜸을 들였을 때만</b> 뺀다. 머뭇거리며 "그…" 한 거랑, 붙여서 "그 사람" 한 건 <b>말 사이 간격</b>이 다르니까.</li>
+<li>그래도 너무 많이 잘리면(영상의 12% 넘게) <b>애매한 건 전부 되살린다.</b> 덜 자르는 쪽이 안전하니까.</li>
+</ul>
+<p class="q">규칙이 진짜 그렇게 도는지 → 가짜 받아쓰기를 만들어 넣고 결과를 봤다.</p>
+<div class="ev">"어"·"음" → <b>잘림</b>(확실한 군말) · "그"(앞에 0.7초 뜸) → <b>잘림</b> · "좀"(붙여 발음) → <b>안 잘림</b> ✔</div>
+<p><b>조건부라고 쓴 이유:</b> 규칙이 도는 건 확인했지만, <b>진짜 네 영상에서 군말이 몇 개 잡힐지는 영상마다 다르다.</b> 말버릇이 "어…"인 사람은 확 줄고, 사투리나 본인만의 말버릇이면 못 잡는다(사전에 없는 말은 못 잡는다).</p>
+</div>
+
+<div class="card">
+<h3>④ EDL 내보내기 — 자리만 만듦<span class="bd b1">한 일은 확실</span></h3>
+<p>"어디부터 어디까지 남겼다"를 <b>다른 편집 프로그램이 읽는 종이</b>로 뽑아주는 것이다. 네가 "필요 없으면 배선만"이라고 해서 <b>딱 그만큼만</b> 했다 — 파일은 나오지만 <b>화면에 버튼은 안 만들었다.</b> 파이널컷·프리미어·다빈치용은 <b>자리만 만들고 안 만들었다</b>(필요해지면 함수 하나 꽂으면 된다).</p>
+<div class="ev">EDL 생성 실행 확인(구간별 시작·끝 시간표 정상 출력) · 미구현 3종은 "미구현"이라고 <b>말해주고 빈 파일을 안 만든다</b></div>
+</div>
+
+<h2>3. 🟡 계산은 확실한데, 실전은 아직</h2>
+<div class="card warn">
+<h3>⑤ 받아쓰기 재사용<span class="bd b2">러너 미검증</span></h3>
+<p>영상 소리를 글자로 바꾸는 일(받아쓰기)이 제일 오래 걸린다. 지금까지는 <b>같은 영상을 다시 편집할 때마다 처음부터 다시</b> 했다. 이제 <b>소리의 지문(sha256)</b>을 열쇠 삼아 저장해두고, 같은 소리면 저장해둔 걸 꺼내 쓴다.</p>
+<p class="q">왜 "계산은 확실"인가 → 다시 안 하면 그 시간이 통째로 없어지는 건 당연하다. 그런데 <b>얼마나 줄어드는지</b>는 원래 얼마나 걸리는지에 달렸다.</p>
+<div class="ev">레포 문서에 적힌 추정 = 받아쓰기(large-v3)는 영상 길이의 <b>0.8~2배</b> 걸린다 → 20분 영상이면 <b>16~40분</b><br>
+<span class="mut">⚠ 이 0.8~2배는 <b>내가 잰 값이 아니라</b> 레포 지침·워크플로 주석에 원래 적혀 있던 추정치다.</span></div>
+<p><b>솔직히:</b> 이 세션엔 저장소(R2) 열쇠가 없어서 <b>진짜 저장·불러오기는 못 돌려봤다.</b> 코드 경로는 다 짰고, 실패하면 그냥 원래대로 받아쓰기를 하도록 안전장치를 걸어놨다(캐시가 망가져도 편집은 된다). 진짜 확인은 <b>실제로 같은 영상을 두 번 편집해보면</b> 바로 나온다.</p>
+</div>
+
+<h2>4. 🔴 반반 — 솔직히 장담 못 함</h2>
+<div class="card no">
+<h3>⑥ 반복 테이크 감지<span class="bd b3">판단이라 흔들림</span></h3>
+<p>"다시 갈게요" 하고 같은 말을 두 번 했을 때, 앞엣것을 버리는 기능이다. 이건 <b>규칙</b>이 아니라 <b>AI의 판단</b>이다. 같은 말인지 아닌지는 사람도 헷갈릴 때가 있다.</p>
+<p>그래서 안전장치를 여러 겹 걸었다.</p>
+<ul>
+<li>애매하면 <b>버리지 마라</b>고 못 박았다(0개도 정답)</li>
+<li>전체의 <b>절반을 넘게 버리려 하면</b> 넘는 만큼 무시한다</li>
+<li>실패하면 <b>이 기능만 빠지고</b> 편집은 그대로 된다</li>
+<li>그리고 <b>②번 미리보기</b>에서 "테이크 · 같은 도입 2회 중 앞" 이렇게 <b>이유까지 같이 보여준다</b> — 아니다 싶으면 톡 눌러서 빼면 끝</li>
+</ul>
+<p><b>솔직히:</b> AI 호출 열쇠도 이 세션엔 없어서 <b>실제 판정은 한 번도 못 돌려봤다.</b> 그래서 "잘 맞을 것이다"라고 말 못 한다. 대신 <b>틀려도 네가 미리 보고 뺄 수 있게</b> 만들어 둔 게 이번 설계의 답이다.</p>
+</div>
+
+<h2>5. 아직 모르는 것 (지어내지 않은 목록)</h2>
+<ul>
+<li>실제 편집 작업(러너)에서 처음부터 끝까지 돌려본 적 <b>없음</b> — 저장소·AI 열쇠가 이 세션에 없다</li>
+<li>진짜 네 영상에서 군말이 <b>몇 개</b> 잡히는지 — 말버릇마다 다르다</li>
+<li>테이크 감지가 <b>얼마나 정확한지</b> — 한 번도 못 돌려봤다</li>
+<li>받아쓰기 재사용으로 <b>실제 몇 분</b> 줄어드는지 — 추정치만 있다</li>
+<li>이음매 소리 줄이기는 <b>기계 소리 파일</b>로 쟀다. 사람 목소리에서 체감이 어떤지는 귀로 들어봐야 안다</li>
+</ul>
+
+<h2>6. 그럼 어떻게 확인해?</h2>
+<ol>
+<li>말버릇 있는 <b>1~2분짜리 영상</b> 하나를 올린다</li>
+<li>컷 편집 켜고 → <b>[필러]</b>랑 <b>[테이크]</b> 켜고 → <b>[자를 곳 먼저 보기]</b></li>
+<li>목록이 뜨면 <b>맞게 잡았나 눈으로 확인</b>. 이상한 줄은 톡 눌러서 빼기</li>
+<li><b>[이대로 편집하기]</b> → 나온 영상 들어보기(이음매 '틱' 소리 나나?)</li>
+<li>같은 영상으로 <b>한 번 더</b> 편집 → 받아쓰기를 건너뛰는지(=훨씬 빨라지는지) 확인</li>
+</ol>
+<p>이 다섯 단계면 위 🟡🔴 두 개도 전부 판정 난다. 그때 결과를 알려주면 사전이든 기준이든 바로 손본다.</p>
+
+<h2>7. 안 망가지는 건 확인했다</h2>
+<p>새 기능을 안 켜면 <b>예전이랑 완전히 똑같이</b> 돌아가게 만들었다(새 설정을 안 보내면 옛날 길로 간다). 그리고 레포의 상비 검사도 다 통과했다.</p>
+<div class="ev">경로·정합 검사(check_refs) <b>통과</b> · 화면 상비 검사(smoke_all) <b>17종 전부 통과</b> · 화면 오류 <b>0건</b> · 새 버튼 세로 중심 어긋남 <b>0.00px</b></div>
+
+<p class="foot">근거 파일 — 화면 전·후 <code>docs/reports/260727_cut_{before,after,list}.png</code> · 코드 <code>.github/scripts/{cut_scan,stt_cache}.py</code> · <code>ly_burn.py</code> · <code>shared/cut_export.py</code> · <code>viewer/edit.html</code> · PR #3191<br>
+이 문서의 숫자는 전부 이 세션에서 직접 잰 값이거나(§2·§7), 레포 문서에 이미 있던 추정치라고 표시한 값(§3)이다.</p>
+
+</body>
+</html>
