@@ -12,6 +12,7 @@ MODEL="$PIPE_MODEL"
 INLINE_TRIES=4          # 인라인 재시도 횟수 = 4계정 폴오버 체인 깊이(서브3 MUTENONA까지 단일 잡서 실호출) + 일시 과부하(529/5xx)·타임아웃(rc=124) 흡수(260622·4계정 확장 3→4)
 EFFORT="${PIPE_SEARCH_EFFORT:-medium}"   # 검색·요약 추론깊이 — opus5 는 medium 도 구세대 high급 품질에 지연·토큰 대폭 절감(요약 30분 단축 축 · 운영자 260727 일괄 하향, 구 high=260704). 워크플로 env PIPE_SEARCH_EFFORT 로 카나리아/롤백(high).
 ANALYZE_TIMEOUT="${ANALYZE_TIMEOUT:-900}"   # claude -p 타임아웃(초) — analyze 는 콘텐츠 초안까지 생성이라 15분 유지(ask 요약보다 김). 초과 시 계정 1회 전환 후 격리(force·아래 · 운영자 260704).
+ANALYZE_TIMEOUT_RETRY="${ANALYZE_TIMEOUT_RETRY:-450}"   # rc=124 강제전환 *재시도분* 상한(초 · 평의회 260727 신규4) — 타임아웃은 대개 입력바운드(계정 바꿔도 반복 · 아래 293행 주석 자인)라 재시도에 풀 900s 재배정은 낭비 → 절반 캡 = 최악 30분→22.5분/건. 캡 넘겨 격리돼도 sweep(*/10)이 재분석 = 유실 아닌 지연 · 롤백 = env 900.
 ANALYZE_JOB_DEADLINE="${ANALYZE_JOB_DEADLINE:-3400}"   # 스크립트 SECONDS 이 초 넘으면 새 기사 처리 시작 안 함(잔여 pending 잔류→sweep 재처리) — 과부하 다건 타임아웃이 잡 timeout(90분) 초과해 처리 중 기사까지 잘리는 것 방지(평의회 260704 A · 여유 = 90분 - 셋업 - 다음기사 최악 2×900s).
 RETRY_CAP=5             # 같은 기사 pending 잔류 재시도 상한(sweep 회) — 초과하면 failed/ 격리(무한루프 차단)
 THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무관) ≈ 한글 ~250자(라벨 제외 본문 ~210자). 이보다 짧으면 통신사·제목스텁(뉴시스·연합 등) 의심 → 같은사건 더 완전한 기사 탐색. fetch_article 게이트(한글<200자=빈출력≈600B)보다 충분히 높고, 정상 단신 오탐은 줄임(평의회 권고 260622)
@@ -276,8 +277,9 @@ ${extracted}"
   claude_preflight "$MODEL" 2>/dev/null || true # 본선(≤900s) 직전 60s 핑으로 산 계정 선탑승 — 죽은 활성계정 침묵 행이 본선 timeout(최대 900s)을 통째로 태우던 공회전 소거(preflight SSOT를 브리프→본선으로 확장 배선 260717 · reset 후 호출 = 계정 복원 뒤 산 계정 선별 · fail-soft: 전 계정 무응답이면 마지막 계정으로 그대로 강행)
   _to_tried=0                                   # 이 기사에서 타임아웃 계정전환을 이미 1회 했는지(무한 전환 차단)
   _empty_tried=0                                # 빈 출력/무프레임 1회 한정 재시도 플래그(전수감사 260713 — 모델 1회성 소화 실패가 즉시 격리되던 것)
+  _cur_to="$ANALYZE_TIMEOUT"                    # 이 기사의 현재 타임아웃 — rc=124 강제전환 재시도부터는 절반 캡(ANALYZE_TIMEOUT_RETRY)으로 강하(평의회 260727 신규4)
   for attempt in $(seq 1 "$INLINE_TRIES"); do
-    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$ANALYZE_TIMEOUT" \
+    out="$(printf '%s' "$prompt" | METER_SRC=analyze METER_REF="$base" METER_MODEL="$MODEL" METER_EFFORT="$EFFORT" claude_meter "$_cur_to" \
           --model "$MODEL" \
           --effort "$EFFORT" \
           --allowedTools "WebFetch,WebSearch,Read,Glob,Grep" \
@@ -293,7 +295,7 @@ ${extracted}"
     if claude_failover "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then continue; fi
     # 타임아웃(rc=124 = ANALYZE_TIMEOUT 초과)은 출력이 비어 is_quota/is_transient 가 못 잡는 사각지대 → *딱 1회* 강제 계정 전환 후 재시도(ask.sh 와 동일 · 운영자 260704 "10분 넘으면 다른 계정").
     #   ⚠️ 1회 제한 = 타임아웃은 대개 입력바운드(계정 바꿔도 반복)라 무한 전환은 워크플로 시간·쿼터만 소진(평의회 260704). 그 1회도 claude_reset_force_swap 이 다음 기사서 되돌림.
-    if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; continue; fi
+    if [ $rc -eq 124 ] && [ "$_to_tried" = "0" ] && claude_failover_force; then _to_tried=1; _cur_to="$ANALYZE_TIMEOUT_RETRY"; continue; fi   # 재시도분 = 절반 캡(입력바운드 반복에 풀 예산 재배정 차단)
     # 빈 출력·frontmatter 누락(rc=0·비transient) = 모델 1회성 소화 실패 가능 → *딱 1회* 백오프 재시도(전수감사 260713 — 종전 "빈출력은 재시도 안 함"의 사각지대 완화 · 상한은 기존 INLINE_TRIES 안 = 폭주 0. ANALYSIS_FAILED는 위 성공/실패신호 분기에서 이미 탈출).
     if [ $rc -eq 0 ] && { [ -z "${out// }" ] || ! grep -qm1 '^---' <<<"$out"; } && [ "$_empty_tried" = "0" ] && [ "$attempt" -lt "$INLINE_TRIES" ]; then
       _empty_tried=1

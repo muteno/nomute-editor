@@ -8,15 +8,18 @@ on:
     branches: [main]
     paths:
       - 'pending/**'
-  workflow_dispatch:        # 수동 실행 — account 1회성 오버라이드(변수 안 건드림)
+  workflow_dispatch:        # 수동 실행 — account 선택 시만 1회성 오버라이드(변수 안 건드림) · 무선택 = 활성계정(vars)
     inputs:
       account:
-        description: '이 실행에 쓸 계정(구독 OAuth)'
+        description: '이 실행에 쓸 계정(구독 OAuth · 미선택 = 활성계정 자동)'
         type: choice
-        default: MUTENO
+        # ⚠️ default 금지(평의회 260727 만장일치) — 구 `default: MUTENO`는 pick·pending-sweep·scrape·breaking-judge 의
+        #   무입력 gh dispatch 에도 채워져 sticky 승격(vars.ACTIVE_ACCOUNT)을 가리고 승격 스텝(`!inputs.account`)을
+        #   상시 스킵시켰다(소진기 런마다 폴오버 공회전). 삭제 = 전 호출부 diff 0 중앙 수리.
+        #   options 첫 줄 = MUTENO(무default 수동 UI가 첫 옵션을 선선택해도 종전 수동 동작 보존).
         options:
-          - NOMUTEFB
           - MUTENO
+          - NOMUTEFB
           - EMS1130G
 
 # 동시 실행 충돌 방지 — ⚠️ 잠금은 '잡' 레벨(운영자 260717 대기열 기아 실측): 종전 워크플로(런) 레벨 그룹은
@@ -78,6 +81,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}   # 서브3 폴오버(체인 실꼬리 = 항상 MUTENONA · 앞 3계정 소진 후)
           ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
           SUMMARY_LEN_GUARD: ${{ vars.SUMMARY_LEN_GUARD || '' }}   # 분량 가드(IG/Thread 과소 시 1회 보강) — 기본 OFF·repo 변수 '1'로 카나리아→승격(§파이프라인 e · 260705)
+          PREFLIGHT_TIMEOUT: '25'   # 계정 생존 핑 상한(초) 60→25(평의회 260727 신규6) — 산 계정 = 수초 응답이라 25s 충분, 죽은 계정 침묵 행 판정만 빨라짐(핑당 35s↓). 오판 스왑은 다음 기사 reset 이 복원 = 수십초 우회로 그침 · 롤백 = 이 줄 삭제
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
