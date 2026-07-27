@@ -7376,12 +7376,33 @@ function sysErrMsgs() {
     const c = cov[k] || {}, got = c.got | 0, reg = c.reg | 0, miss = Array.isArray(c.miss) ? c.miss : [];
     if (!SYS_PLAT_KO[k] || !reg || !got) continue;   // 전멸(got=0) = stale 담당(중복 억제)
     if (got * 5 >= reg * 4) continue;                // 80% 이상 = 정상 이탈 범위 = 침묵
+    const why = (c.why && typeof c.why === 'object') ? c.why : {};
     for (const a of miss) {
+      // 원인별 문구(운영자 260727 "계정때문에 안받아와지는거랑 원인에 따라 메세지를 달리 해줄수있어?") —
+      //   수집기가 실어 보낸 `cover.why[계정]`으로 갈린다. 사유 미기록(구 데이터·미분류) = 일반 문구로 폴백 = 종전 동작.
+      //   조치 주체가 갈리는 게 핵심: **404·410 = 네 계정 목록 문제**(지워야 함) / 403·429·wall = 플랫폼 차단(기다리면 됨).
+      const w = why[a], wn = (typeof w === 'number') ? w : 0;
+      let cause, todo;
+      if (wn === 404 || wn === 410) {
+        cause = '이 계정이 없어졌어요 — 삭제됐거나 아이디를 바꾼 거예요.';
+        todo = '👉 네가 할 일: 설정에서 이 계정을 지우거나 새 아이디로 고쳐 줘. 그대로 두면 계속 빈자리로 남아요.';   // ⚠ 마크다운 금지 — 상세는 textContent라 별표가 그대로 보인다(260727 판례 재발 방지)
+      } else if (wn === 401 || wn === 403 || w === 'wall') {
+        cause = '이 계정만 ' + SYS_PLAT_KO[k] + '이(가) 막고 있어요(비공개 전환이거나 자동 수집 차단).';
+        todo = '👉 네가 할 일: 없어요. 차단은 풀리는 경우가 많아서 다음 수집에 자동으로 다시 시도해요. 며칠째면 그때 알려줘.';
+      } else if (wn === 429) {
+        cause = '요청이 몰려서 잠시 막혔어요(일시적).';
+        todo = '👉 네가 할 일: 없어요. 잠시 뒤 자동으로 다시 걷혀요.';
+      } else if (w === 'empty') {
+        cause = '계정은 살아있는데 가져올 새 글이 없었어요(비공개이거나 최근 게시물이 없음).';
+        todo = '👉 네가 할 일: 없어요. 새 글이 올라오면 자동으로 들어와요.';
+      } else {
+        cause = '계정이 비공개·삭제됐거나 그 계정만 차단당한 거예요.';
+        todo = '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.';
+      }
       out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
         text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 안 걷히고 있어요.\n\n'
-          + '이 계정만 안 들어와요(' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락). 계정이 비공개·삭제됐거나 그 계정만 차단당한 거예요.\n\n'
-          + '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.\n\n'
-          + '확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
+          + cause + ' (' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락)\n\n'
+          + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
     }
   }
   const rddN = ((TRENDS && TRENDS.reddit) || []).length;
