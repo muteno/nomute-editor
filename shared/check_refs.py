@@ -1254,10 +1254,25 @@ def fix_qnum_reassign():
             print('🔧 --fix-qnum 재부여 Q%d → Q%d (origin/main에 없는 = 이 브랜치 신규 행만)' % (a, b))
         print('   ⚠ 그 항목 본문이 구 번호를 참조하면 손으로 맞춰라([Q.NN] 1:1 참조 보전).')
     if stuck:
-        print('⚠️ --fix-qnum 미처리 %s — origin/main에 이미 박제된 타 세션 행이라 재부여 불가(양쪽 머지).'
+        # 재부여 뒤 **다시 세어** 아직도 초과인 번호만 '미처리'로 보고한다(운영자 260727 근본 수리).
+        #   왜 = 구판은 '박제라 못 건드린 행'을 무조건 알렸다. 내 행을 옆으로 옮겨 중복이 이미 풀린 경우에도
+        #   "면책 승계하라"고 말해, 세션이 필요 없는 _QDUP_BASE 항목을 넣게 만든다(면책 78종이 불어난 경로 · 실측 260727).
+        cnt2 = {}
+        for ln in lines:
+            m = rx.match(ln)
+            if not m:
+                continue
+            a, b = int(m.group(1)), int(m.group(2)) if m.group(2) else int(m.group(1))
+            for n in range(a, b + 1):
+                cnt2[n] = cnt2.get(n, 0) + 1
+        real = sorted({n for n in set(stuck) if cnt2.get(n, 0) > _QDUP_BASE.get(n, 1)})
+        if real:
+            print('⚠️ --fix-qnum 미처리 %s — origin/main에 이미 박제된 타 세션 행이라 재부여 불가(양쪽 머지).'
+                  % ' · '.join('Q%d' % n for n in real))
+            print('   → 관례대로 _QDUP_BASE 면책 승계 + 사유 주석(58종 선례와 같은 문법).')
+            return 1
+        print('· --fix-qnum 박제 행 무접촉 %s — 내 행을 옆 번호로 옮겨 중복이 풀렸다(면책 등재 불필요).'
               % ' · '.join('Q%d' % n for n in sorted(set(stuck))))
-        print('   → 관례대로 _QDUP_BASE 면책 승계 + 사유 주석(58종 선례와 같은 문법).')
-        return 1
     return 0
 
 
