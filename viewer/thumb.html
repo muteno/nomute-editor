@@ -3012,6 +3012,7 @@ const doneReq = () => {   // 완료 알림 딥링크 = ?done=<id> 정본(Access 
   return { on: false, id: '' };
 };
 const scrollMid = el => { if (!el) return; requestAnimationFrame(() => { try { const y = el.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18); window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 중상단(상단서 18%) 랜딩 · rAF=레이아웃 정착 후 측정(이미지 리플로우 뒤 정확)
+const scrollQueue = () => { const h = $('#carH'), el = (h && !h.hidden) ? h : $('#jobs'); if (!el) return; requestAnimationFrame(() => { try { const dk = $('#topDock'); const off = ((dk && getComputedStyle(dk).position === 'sticky') ? dk.getBoundingClientRect().height : 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 0); const y = el.getBoundingClientRect().top + window.pageYOffset - off; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 발사 = 대기열(결과 보드)로 이징 착지(운영자 260727 "카드 생성 누르면 대기열 아래로 이징 스크롤") — 위 scrollMid 정본 계승(rAF 측정·smooth·구형 폴백) · 랜딩선만 교체: '뷰포트 18%'는 sticky 도크(#topDock 실측 379.7px @412×915)에 가려 무용 → 도크 높이 + var(--sp-2) 아래 = 결과 소머리와 새 잡 행이 도크 바로 밑에 노출(신설 값 0)
 const flashEl = el => { if (!el) return; el.classList.add('thfocus'); setTimeout(() => el.classList.remove('thfocus'), 2200); };   // 착지 항목 잠깐 강조 = '해당 작업' 식별
 let SRV_HIST = [], SRV_CLEAR = 0;   // SRV_CLEAR = 서버 공용 기록지우기 시점(thumb-clear.json · 전 기기 공통 · epoch ms)
 try { SRV_CLEAR = +localStorage.getItem('nomute_thumb_srvclr') || 0; } catch {}   // 영속 시드 = 배포랙(30~90s) 중 새로고침해도 지운 상태 유지(총괄: SRV_CLEAR 비영속이라 지운 이력 되살아나던 최대결함 봉합)
@@ -3771,6 +3772,7 @@ function dispatchJob(endpoint, payload, label, src, reuse) {
   let job;
   if (reuse) { job = reuse; Object.assign(job, { t0: Date.now(), outs: [], done: [], status: 'run', msg: '', endpoint, payload, src }); delete job._queued; delete job.partErr; delete job._next; job._ready = {}; job.saves = []; renderJob(job); }   // 재시도 = 기존 실패 잡 재사용(같은 #n → 같은 행 갱신·새 큐 안 만듦 · 운영자 260630) · 폴 누산기(_next/_ready/saves) 리셋 = 부분완료 재시도 시 재렌더 변형 유실·전체다운로드 옛+새 URL 혼합 차단(실측 260720)
   else { job = { n: ++JOBSEQ, label, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', endpoint, payload, src }; JOBS.unshift(job); renderJob(job); }   // endpoint·payload 보관 = 실패 시 같은 설정 재발사 · src = 제작 조건 스냅샷(수정 복원·운영자 260624)
+  if (!reuse) scrollQueue();   // 새 발사 = 방금 쌓인 대기열 행으로 이징 착지 · 재시도(reuse)는 그 행에서 누른 것이라 제자리 갱신(화면 튐 0)
   (async () => {
     try {
       const res = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
@@ -3792,6 +3794,7 @@ function dispatchBatch(items, batchLabel, src, reuse) {
   let job;
   if (reuse) { job = reuse; Object.assign(job, { t0: Date.now(), outs: [], done: [], status: 'run', msg: '', batch: items, src }); delete job._queued; delete job.partErr; delete job._next; job._ready = {}; job.saves = []; renderJob(job); }   // 재시도 = 기존 잡 재사용(같은 #n·같은 행 · 운영자 260630) · 폴 누산기(_next/_ready/saves) 리셋 = 부분완료 재시도 시 변형 유실·다운로드 혼합 차단(실측 260720)
   else { job = { n: ++JOBSEQ, label: batchLabel, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', batch: items, src }; JOBS.unshift(job); renderJob(job); }   // batch = 실패 시 같은 묶음 재발사용
+  if (!reuse) scrollQueue();   // 묶음 발사도 동일 착지(dispatchJob 짝 · 재시도 제자리)
   (async () => {
     const groups = await Promise.all(items.map(async it => {
       const payload = it.payload;
