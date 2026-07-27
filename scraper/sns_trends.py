@@ -99,37 +99,82 @@ def _get(url, timeout=15):
     return urllib.request.urlopen(req, timeout=timeout, context=CTX).read().decode("utf-8", "ignore")
 
 
-def _yt_vert(vid, timeout=4):
-    """세로원본(oardefault) 존재 = 쇼츠형 세로 영상인가. True/False/None(미판정).
-
-    왜 여기서 미리 보나(운영자 260727 "헛걸음 없애기" 승인): 뷰어는 구독·뉴스 커버로 세로원본
-    oardefault를 먼저 요청하는데 **가로 영상은 이 주소가 404**라, 카드마다 404를 한 번 맞고 나서야
-    hq720으로 갈아탄다(가로 10칸 = 헛왕복 10번 = 늦게 뜨는 체감). 여기서 HEAD 1회(본문 0바이트)로
-    미리 갈라 두면 뷰어가 처음부터 맞는 주소를 쏜다. 판정 못 하면 필드를 안 달아 종전 경로 유지."""
-    if not vid:
-        return None
+def _yt_head(url, timeout=4):
+    """HEAD 1회(본문 0바이트) → True(존재)·False(404)·None(미판정)."""
     try:
-        req = urllib.request.Request("https://i.ytimg.com/vi/%s/oardefault.jpg" % vid, headers=UA, method="HEAD")
+        req = urllib.request.Request(url, headers=UA, method="HEAD")
         with urllib.request.urlopen(req, timeout=timeout, context=CTX) as r:
             return 200 <= r.status < 300
     except urllib.error.HTTPError as e:
-        return False if e.code == 404 else None   # 404 = 가로 확정 · 그 외 상태(429·5xx 등) = 미판정(오분류보다 종전 사다리가 안전)
+        return False if e.code == 404 else None   # 404 = 없음 확정 · 그 외 상태(429·5xx 등) = 미판정(오분류보다 종전 경로가 안전)
     except Exception:  # noqa: BLE001
         return None    # 타임아웃·네트워크 = 미판정(fail-soft)
 
 
+def _yt_probe(vid):
+    """썸네일 축 1회 판정 → "vert"(세로원본 있음) · "wide"(가로) · "dead"(영상 소멸) · None(미판정).
+
+    왜 여기서 미리 보나(운영자 260727 승인 2건):
+      ㉠ "헛걸음 없애기" — 뷰어는 구독·뉴스 커버로 세로원본 oardefault를 먼저 요청하는데 **가로 영상은
+         이 주소가 404**라, 카드마다 404를 한 번 맞고서야 hq720으로 갈아탔다(가로 10칸 = 헛왕복 10번).
+         여기서 갈라 두면 뷰어가 처음부터 맞는 주소를 쏜다.
+      ㉡ "항상 열칸이 꽉차야함" — 삭제·비공개 영상은 **모든 규격이 404**라 뷰어 가드가 숨기고 그 자리가
+         빈 칸으로 남았다. oar가 404일 때만 mq를 한 번 더 물어 가로(mq 200)와 소멸(mq 404)을 가른다.
+         소멸분은 목록에서 빼 다음 순위가 올라오게 한다(추가 콜 = 가로 영상 수만큼)."""
+    if not vid:
+        return None
+    oar = _yt_head("https://i.ytimg.com/vi/%s/oardefault.jpg" % vid)
+    if oar is True:
+        return "vert"    # 세로원본 존재 = 영상 생존 확정(추가 콜 0)
+    if oar is None:
+        return None
+    mq = _yt_head("https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid)   # oar 404 = 가로 아니면 소멸 — mq로 판별
+    return "wide" if mq is True else ("dead" if mq is False else None)
+
+
 def _yt_vert_mark(items, cap=30):
-    """표시 상한 안쪽만 세로/가로 선판정해 vert 필드 주입(병렬 8 · 실패는 무필드 = 뷰어 사다리 폴백)."""
+    """oar 선요청 축(뉴스·구독) — vert 주입 + 소멸분 제자리 제거. 반환 = 제거 건수.
+
+    items를 **제자리(slice 대입)로** 줄인다 = 호출부가 쓰는 리스트 객체 그대로 유지(참조 갈림 방지).
+    미판정(HEAD 실패·429 등)은 무필드·무제거 = 종전 경로 폴백(오분류보다 안전 · fail-soft)."""
     tgt = [v for v in (items or [])[:cap] if v.get("id") and "vert" not in v]   # 판정분(직전 런 carry 포함) 재조회 안 함 = 런당 HEAD 최소
     if not tgt:
-        return
+        return 0
+    dead = set()
     try:
         with ThreadPoolExecutor(max_workers=8) as ex:
-            for v, r in zip(tgt, ex.map(lambda x: _yt_vert(x.get("id")), tgt)):
-                if r is not None:
-                    v["vert"] = r
+            for v, r in zip(tgt, ex.map(lambda x: _yt_probe(x.get("id")), tgt)):
+                if r == "dead":
+                    dead.add(id(v))
+                elif r in ("vert", "wide"):
+                    v["vert"] = (r == "vert")
     except Exception as e:  # noqa: BLE001
-        print(f"::warning::yt vert 선판정 실패(스킵·뷰어 사다리 폴백): {e}", file=sys.stderr)
+        print(f"::warning::yt 썸네일 선판정 실패(스킵·뷰어 사다리 폴백): {e}", file=sys.stderr)
+        return 0
+    if dead:
+        items[:] = [v for v in items if id(v) not in dead]   # 소멸 영상 제거 = 다음 순위가 올라와 카드 10칸 유지(운영자 260727 "항상 열칸이 꽉차야함")
+    return len(dead)
+
+
+def _yt_alive_filter(items, cap=30):
+    """mq 직행 축(인기·쇼츠·AI) — 커버 주소는 그대로 두고 소멸분만 제자리 제거(HEAD 1회/건). 반환 = 제거 건수."""
+    tgt = [v for v in (items or [])[:cap] if v.get("id") and not v.get("_alive")]
+    if not tgt:
+        return 0
+    dead = set()
+    try:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for v, ok in zip(tgt, ex.map(lambda x: _yt_head("https://i.ytimg.com/vi/%s/mqdefault.jpg" % x.get("id")), tgt)):
+                if ok is False:
+                    dead.add(id(v))
+                elif ok is True:
+                    v["_alive"] = 1   # 재조회 억제 마커(다음 런 carry분 = HEAD 0)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::yt 생존 판정 실패(스킵): {e}", file=sys.stderr)
+        return 0
+    if dead:
+        items[:] = [v for v in items if id(v) not in dead]
+    return len(dead)
 
 
 def youtube(category_id=None, limit=15, region="KR"):
@@ -1811,10 +1856,17 @@ def main():
         print("전 소스 실패/무키 — 산출 생략(기존 보존)")
         return
     now = datetime.now(KST).isoformat(timespec="seconds")
+    # 썸네일 축 선판정(운영자 260727 승인 2건) — ㉠ 커버 주소 확정(oar 헛왕복 0) ㉡ 소멸(삭제·비공개) 영상 제거.
+    # ㉡의 요점: 소멸분은 모든 규격이 404라 뷰어 가드가 숨기고 **그 자리가 빈 칸**으로 남았다("8개있고 그러면 화난다").
+    #   여기서 빼면 다음 순위가 올라와 카드가 늘 10칸이다. oar 축(뉴스·구독) = vert 겸용 · mq 직행 축(인기·쇼츠·AI) = 생존만.
+    # ⚠ 순위 배지(_annotate_rank)보다 **먼저** 돌린다 — 표시 목록이 확정된 뒤라야 변동·NEW가 화면 순위와 일치.
+    _yt_dead = (_yt_vert_mark(yt_news) + _yt_vert_mark((subs_new or {}).get("youtube"))
+                + _yt_alive_filter(yt_all) + _yt_alive_filter(sh) + _yt_alive_filter(ai))
+    if _yt_dead:
+        print(f"yt 소멸 영상 제거: {_yt_dead}건(다음 순위 승격 = 카드 10칸 유지)")
     # 순위 변동 주입(직전 스냅샷 대비 · 표시 전용) — 키: 유튜브=id · gtrends=query · 틱톡=url(고유)
     _annotate_rank(yt_all, prev.get("youtube"), lambda v: v.get("id"))
     _annotate_rank(yt_news, prev.get("youtube_news"), lambda v: v.get("id"))
-    _yt_vert_mark(yt_news)   # 커버 주소 선판정(운영자 260727 승인) — oar 선요청 경로를 쓰는 축만 대상(뉴스 ytn · 구독 syt = 아래 subs 확정 뒤). 쇼츠·AI·인기는 mq 직행이라 무대상.
     _annotate_rank(gt, prev.get("gtrends"), lambda g: (g.get("query") or "").lower())   # lower 규약 = 병합 매칭과 통일(평의회 260717 — 표기 케이스 갈림의 가짜 NEW·first_seen 리셋 소거)
     # NEW 배지 시맨틱 보정(평의회 260717 데이터시맨틱 · 중요) — NEW = '표시구간(톱10) 신규 진입' 종전 의미 유지:
     # 비표시 꼬리(11~25위)에 있던 검색어가 톱10 진입 시 pmap 매칭돼 isNew 억제되는 오염 → prev 톱10 밖 = NEW 복원(first_seen 승계는 전체 원장 기준 그대로).
@@ -1924,7 +1976,7 @@ def main():
     except Exception:  # noqa: BLE001
         pass
     health["phone"] = _phh
-    _yt_vert_mark(subs.get("youtube") if isinstance(subs, dict) else None)   # 구독 유튜브 커버 선판정 = subs 확정(신선/carry/폰 병합 전부) 뒤 1회 — carry분은 vert가 이미 붙어 있어 HEAD 0
+    _yt_vert_mark(subs.get("youtube") if isinstance(subs, dict) else None)   # carry 경로 보강 — 신선 수집분은 위에서 이미 처리(HEAD 0), 직전분 유지 런의 미판정분만 여기서 갈린다(그 사이 소멸한 영상도 제거)
     data = {
         "updated": now,
         "youtube": yt_all or prev.get("youtube") or [],
