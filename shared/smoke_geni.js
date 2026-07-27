@@ -124,6 +124,18 @@ const STUB_FN = `(on) => {
     }, SEL);
     ok('S6 이식 모드 폼 상호작용(칩→요약 리드백)', s6.found && s6.on === 'watercolor' && s6.sum.includes(SEL.styleAltKo), JSON.stringify(s6));
 
+    // S6-2 요약바 = 무조건 1줄(운영자 260727 한 수 채택 "한줄넘으면 그 <>로 해놓은거 따라하게") — 항목이 늘거나 낱말이 길어지면 조용히 랩(2줄)되던 사고축(모델 풀네임 260727)을 기계로 봉쇄.
+    // 어서션 = 세로 넘침 0(랩 없음) + nowrap 선언 + 레일 부품 생존. ⚠ 가로 넘침(scrollWidth>clientWidth)은 정상 = 그때 ‹›로 미는 게 설계 — 잘림이 아니라 **랩**만 잡는다(SSOT §0-4-1: 어서션은 구조물·잘림·상대정렬 축 · 텍스트 잉크중심 하드게이트 금지 준수).
+    const s62 = await pg.evaluate(S => {
+      const el = document.querySelector(S.host + ' ' + S.sum); if (!el) return { found: false };
+      const cs = getComputedStyle(el), wrap = el.closest('.geni-railwrap');
+      return { found: true, nowrap: cs.whiteSpace === 'nowrap', rail: el.classList.contains('geni-rail'),
+        navs: wrap ? wrap.querySelectorAll('.geni-nav').length : 0,
+        wrapped: el.scrollHeight > el.clientHeight + 1, h: Math.round(el.clientHeight), sh: Math.round(el.scrollHeight) };
+    }, SEL);
+    ok('S6-2 요약바 1줄 강제 + 레일 부품(nowrap·.geni-rail·‹› 2개·랩 0)',
+      s62.found && s62.nowrap && s62.rail && s62.navs === 2 && !s62.wrapped, JSON.stringify(s62));
+
     await pg.evaluate(S => { const w = document.querySelector(S.wish); w.value = 'QA스모크 장면'; w.dispatchEvent(new Event('input', { bubbles: true })); }, SEL);   // 텍스트칸 260719 hidden 이주(운영자 "프리뷰 위에 텍스트 보낼테니 일단 빼봐") → fill(visible 요구)이 hidden에 타임아웃 → value 직접 주입(close 스냅샷 보존 로직은 살아있음 = DOM 생존·복원 시 재노출이라 S5 재진입 보존 계약 유효)
     await pg.click(SEL.tab2); await pg.waitForTimeout(350);
     const s4 = await pg.evaluate(S => ({

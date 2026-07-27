@@ -89,10 +89,13 @@ async function runOnce(pg) {
   await pg.waitForTimeout(1300);
   const ai = await pg.evaluate(() => {
     const host = document.querySelector('#geniHost'), box = document.querySelector('#geniPrevBox'), sum = document.querySelector('#geniSum');
+    // 셸 대조 대상 = 액자를 실제로 그리는 노드. 요약바 레일화(운영자 260727 "한줄넘으면 <>")로 셸이 #geniSum → 래퍼 .geni-sumwrap으로 이관됐다
+    // — 정본(thumb)도 .optstrip[셸] / .gospec[레일] 분리 구조라 이건 **정본과 같아지는 방향**의 셀렉터 정정이다(대조 항목·강도 무변 · 활자 fs/lh는 레일 노드 그대로 읽는다).
+    const shell = sum ? (sum.closest('.geni-sumwrap') || sum) : null;
     const lead = document.querySelector('#geniHost .geni-lead'), lcs = lead ? getComputedStyle(lead) : null, lca = lead ? getComputedStyle(lead, '::after') : null;   // 리드 = thumb 도크 파리티(mat·스커트 · 운영자 260720)
     const cs = el => { const c = getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
     return { hostVis: !!(host && !host.hidden), boxH: box ? box.getBoundingClientRect().height : 0, boxW: box ? box.getBoundingClientRect().width : 0, boxCS: box ? cs(box) : null,
-      sumCS: sum ? cs(sum) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
+      sumCS: shell ? cs(shell) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
       leadBg: lcs ? lcs.backgroundColor : '', leadBb: lcs ? lcs.borderBottomWidth : '', skirtH: lca ? lca.height : '', skirtBg: lca ? lca.backgroundImage : '',
       sumGram: sum ? { lbl: sum.querySelectorAll('.gs-lbl').length, v: sum.querySelectorAll('.gs-v').length, on: sum.querySelectorAll('.gs-v.on').length } : null,
       wishHidden: (() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return !!(r && r.hidden && h && h.hidden); })(),
@@ -158,6 +161,33 @@ async function runOnce(pg) {
   const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has916: on.includes('9:16') }; });
   core('C13 점등 = 상태 추종(비율 9:16 선택 → 비율만 추가 점등 = 2쌍)', lit.n === 2 && lit.has916, JSON.stringify(lit));
   await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="4:5"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
+
+  // ── C14~C15 번역 탭 스트립 = AI 생성 요약바와 같은 레일 계약(운영자 260727 한 수 채택 "대칭") ──
+  // 왜: ‹›·1줄 레일·접이를 두 탭에 다 넣어놨는데 대조는 AI 생성 쪽만 보고 있었다 = 한쪽만 드리프트해도 안 잡힌다.
+  // 실제로 이 사각에서 사고가 났다 — tr `.gospec`에 nowrap이 없어 스트립이 조용히 랩되던 걸 스모크가 아니라 수동 실측이 잡았다(260727).
+  // 어서션 = 랩 0 · nowrap 선언 · ‹› 2개 · 적응형(안 넘치면 화살표 숨김). 가로 넘침은 정상이라 안 잡는다(넘칠 때 미는 게 설계 · SSOT §0-4-1 = 구조물·잘림·상대정렬 축).
+  await pg.evaluate(() => { const t = document.querySelector('#toolTabs .tooltab[data-app="tr"]'); if (t) t.click(); });
+  await pg.waitForSelector('iframe.toolfr.trfr', { timeout: 8000 }).catch(() => {});
+  await pg.waitForFunction(() => [...document.querySelectorAll('iframe')].some(f => { try { return !!(f.contentDocument && f.contentDocument.getElementById('trSpec')); } catch (_) { return false; } }), { timeout: 12000 }).catch(() => {});   // tr 전용 프레임(trMount)은 about:blank 예열 → 실 로드 2단이라 src 속성이 아니라 **내용 도달**로 기다린다(구 src 매칭 = 예열 프레임에 걸려 found:false)
+  const tr = await pg.evaluate(() => {
+    const fr = [...document.querySelectorAll('iframe')].find(f => { try { return !!(f.contentDocument && f.contentDocument.getElementById('trSpec')); } catch (_) { return false; } });   // 내용으로 지목 = 프레임 복제·예열 구조 변동에 안 깨짐
+    const d = fr && fr.contentDocument, w = fr && fr.contentWindow;
+    if (!d || !w) return { found: false };
+    const spec = d.getElementById('trSpec'), navs = d.querySelector('.optstrip .geni-navs');
+    if (!spec || !navs) return { found: false, spec: !!spec, navs: !!navs };
+    const cs = w.getComputedStyle(spec);
+    return { found: true, nowrap: cs.whiteSpace === 'nowrap', ox: cs.overflowX,
+      wrapped: spec.scrollHeight > spec.clientHeight + 1,
+      navCount: d.querySelectorAll('.optstrip .geni-nav').length,
+      overflow: spec.scrollWidth > spec.clientWidth + 1,
+      navsDisplay: w.getComputedStyle(navs).display,
+      ratios: [...d.querySelectorAll('#arSeg .ropt')].map(b => b.textContent) };
+  });
+  core('C14 번역 스트립 = 1줄 레일 계약(nowrap·overflow-x auto·랩 0·‹› 2개) = AI 생성 #geniSum과 동일',
+    tr.found && tr.nowrap && tr.ox === 'auto' && !tr.wrapped && tr.navCount === 2, JSON.stringify(tr));
+  core('C15 ‹› 적응형 = 안 넘치면 숨김(운영자 260718 "토글 옆 <> 어색" 확립분 · 두 탭 공통)',
+    tr.found && (tr.overflow ? tr.navsDisplay !== 'none' : tr.navsDisplay === 'none'),
+    JSON.stringify({ overflow: tr.overflow, navsDisplay: tr.navsDisplay }));
 
   return out;
 }
