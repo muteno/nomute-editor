@@ -4181,6 +4181,7 @@ async function retryPromptSeg(a, seg) {
   if (CARD_RETRY.has(a.file)) return;                       // 연타 = 중복 발사 차단
   CARD_RETRY.set(a.file, Date.now());
   seg.classList.remove('fail'); seg.classList.add('cur'); delete seg.dataset.retry;   // 탭 즉시 피드백(재렌더 전에도 빗금 → 진행 펄스)
+  seg.querySelector('.rn')?.remove();   // '(다시)' 표식 회수 — 이미 눌렀으니 그 칸은 다음 렌더의 회차 '(N)' 몫
   const ok = await makeCards(a.file, null, 'text');         // btn 없음 = 게이지 버튼 상태머신 미사용(이 표면엔 버튼이 없다)
   if (!ok) CARD_RETRY.delete(a.file);                       // 실패(alert는 makeCards가) = 임시상태 즉시 해제 → 다시 빗금
   render();
@@ -4215,10 +4216,13 @@ function progGauge(a) {
     else if (i === done && busy) cls = retry > 0 ? ' cur retry' : ' cur';   // 재시도(트라이 N) = cur에 .retry → 글자만 네온레몬(게이지바·펄스는 메인색 유지·운영자 260705)
     else if (i === done && fail) cls = ' fail';
     if (i === scarSeg) cls += ' scar';
-    const rn = (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT '(N)'(숫자만·크기·정렬 라벨과 동일 · 운영자 260701)
     // 프롬프트 세그(i=1)가 실패면 그 라벨 자체가 재시도 버튼 = 모달 안 들어가고 그 자리에서 다시 생성(운영자 260727).
     // 카드(i=2) 실패는 대상 아님 — 유료(제미나이 렌더)라 재확인 2탭 '카드 이미지 생성' 버튼 경로 유지.
     const rt = (i === 1 && i === done && fail) ? ' data-retry="text"' : '';   // ⚠ i===done 필수 — fail은 카드 전체 플래그라, 카드(3단계) 실패 기사(done=2)에서 완료된 프롬프트 세그까지 재시도로 오표시되던 것 차단(260727 QA 실측)
+    // 우측 표식(.rn) 한 칸 = 배타 2용도: 재시도 가능 '(다시)' / 프롬프팅 중 회차 '(N)'. 둘은 동시에 안 뜬다(fail ↔ busy 배타).
+    // '(다시)' = 호버 없는 폰에서도 라벨이 눌린다는 걸 보이게(운영자 260727 한 수 채택) · 부품·색·정렬 전부 회차 표식 계승(새 값 0).
+    const rn = rt ? '<span class="rn">(다시)</span>'
+      : (i === done && busy && retry > 0) ? `<span class="rn">(${retry})</span>` : '';   // '프롬프트'는 가운데 고정(rn=absolute라 라벨 안 밀림), 그 우측에 MUT 표식(크기·정렬 라벨과 동일 · 운영자 260701)
     return `<div class="seg${cls}" data-j="${j}"${rt} role="button" tabindex="0" aria-label="${rt ? '프롬프트 다시 생성' : aria[j]}"${rt ? ' title="눌러서 프롬프트 다시 생성"' : ''}><span class="sl">${lb}${rn}</span><span class="bar"></span></div>`;
   }).join('');
   return `<div class="prog">${html}</div>`;
