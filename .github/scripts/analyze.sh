@@ -106,13 +106,16 @@ for f in "${files[@]}"; do
   url="$(head -n1 "$f" | tr -d '\r\n')"
   # 선택: 2번째 줄 '# title: …'(픽 경로가 심은 수집기 제목). fetch 차단 매체일 때
   # 같은 사건의 접근 가능한 다른 매체를 WebSearch 로 찾는 단서. 폰공유/자동분엔 없음(빈값).
-  title_hint="$(grep -m1 '^# title: ' "$f" 2>/dev/null | sed 's/^# title: //' | tr -d '\r\n')"
+  #   ⚠️ 헤더 마커 grep = '# body:' 이전 한정(sed -n '/^# body:/q;p' — FORCE와 동일 문법 · 페이블 검토 260727):
+  #   픽 선-fetch 도입으로 외부 기사 본문 동봉이 일반화 → 본문 속 '# alt:' 류 유사 줄이 헤더로 오인돼
+  #   analyze 가 임의 url 을 fetch 하는 표면 차단(정상 파일 = 헤더가 body 앞이라 무변형).
+  title_hint="$(sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -m1 '^# title: ' | sed 's/^# title: //' | tr -d '\r\n')"
   # 선택: '# alt: …'(픽 경로가 심은 cluster_members url — 공백구분). 원매체 fetch 가 막히면(403)
   # 같은 사건의 접근 가능한 다른 매체를 *직접 fetch* 하는 대체 소스. 폰공유/자동분엔 없음(빈값·item3).
-  alt_urls="$(grep -m1 '^# alt: ' "$f" 2>/dev/null | sed 's/^# alt: //' | tr -d '\r\n')"
+  alt_urls="$(sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -m1 '^# alt: ' | sed 's/^# alt: //' | tr -d '\r\n')"
   # 선택: '# ekey: …'(픽 경로가 심은 후보 event_key = 사건 그룹라벨). 산출 frontmatter 에 event_key 로 박아
   #   뷰어 feedMatch 의 event_key 티어(url 드리프트 요약을 제목폴백보다 먼저 강한 식별로 재연결)를 활성. 폰공유/자동분 빈값=무주입(하위호환).
-  ekey_val="$(grep -m1 '^# ekey: ' "$f" 2>/dev/null | sed 's/^# ekey: //' | tr -d '\r\n"')"   # 따옴표 제거 = YAML `event_key: "…"` 주입 안전(값은 보통 url·alias)
+  ekey_val="$(sed -n '/^# body:/q;p' "$f" 2>/dev/null | grep -m1 '^# ekey: ' | sed 's/^# ekey: //' | tr -d '\r\n"')"   # 따옴표 제거 = YAML `event_key: "…"` 주입 안전(값은 보통 url·alias)
   # 본문 우선순위 재배열 — 통신사·제목스텁(뉴시스·연합 등)을 뒤로, 본문 풍부한 신문사를 앞으로.
   #   대표(rep)는 '최초보도' 기준이라 통신사가 자주 뽑히는데(가장 빨리 송고) 본문이 빈약 → 더 완전한
   #   같은사건 신문사 기사를 먼저 fetch·모델에 제시(아래 본문폴백·프롬프트 alt목록 둘 다 이 순서 사용).
