@@ -28,7 +28,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 훅 자동 활성화(260725) — clone·기기마다 `git config core.hooksPath .githooks`를 손으로 치는 걸
 # 잊으면 게이트가 "조용히 미실행"되고 통과한 줄 착각한다. 실행기가 스스로 켠다(최초 1회).
-if os.path.isdir(os.path.join(ROOT, '.githooks')):
+# ⚠️ CI 러너 제외(260728) — 이 자동 활성화가 러너에도 훅을 붙여, *사람 세션이 남긴* 원장 Q번호 중복이
+#   뉴스요약 파이프라인의 산출물 커밋(queue/·asks/)을 pre-commit 거부로 죽였다(실측 260727 3연속:
+#   Q902·Q970 중복 → 요약은 성공했는데 commit rc=1 → 다이제스트 통째 유실·ask는 영원히 대기열 잔류).
+#   봇 커밋은 데이터 산출물뿐이라 원장·코드 무접촉 = 게이트 대상이 아니다(check-refs.yml 헤더의 선언 그대로).
+#   CI 축 커버리지 = ledger-gate.yml(PR) + check-refs.yml(PR + 원장 push) 이 그대로 담당 → 손실 0.
+if os.path.isdir(os.path.join(ROOT, '.githooks')) and not os.environ.get('GITHUB_ACTIONS'):
     try:
         import subprocess as _sp
         if not _sp.run(['git', 'config', 'core.hooksPath'], cwd=ROOT,

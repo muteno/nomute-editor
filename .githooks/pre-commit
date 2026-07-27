@@ -2,4 +2,9 @@
 # 커밋 게이트(260702) — 어느 모델·어느 도구가 커밋해도 check_refs 하드게이트 강제.
 # 셋업(기기·clone마다 1회): git config core.hooksPath .githooks
 # 의도적 우회(비상시만): git commit --no-verify
+# CI 러너 제외(260728 · 이중 방어) — 훅이 어떤 경로로 켜지든 GitHub Actions 봇 커밋은 통과시킨다.
+# 사유: 봇 커밋 = 데이터 산출물(queue/·asks/·metrics/·messages/)뿐이라 원장·코드 무접촉인데,
+#   *사람 세션이 남긴* 원장 Q번호 중복에 걸려 뉴스요약 파이프라인이 죽었다(실측 260727 3연속 · 요약 유실).
+#   CI 축 게이트는 ledger-gate.yml(PR)·check-refs.yml(PR + 원장 push)이 그대로 담당 = 커버리지 손실 0.
+[ -n "$GITHUB_ACTIONS" ] && exit 0
 exec python3 "$(git rev-parse --show-toplevel)/shared/check_refs.py"
