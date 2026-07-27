@@ -17,6 +17,9 @@ const ASK_ACTIVE_STUCK_MIN = 75; // ✨요약요청(ask) 전용 활성런 완화
                                  //   고아 구출 자체는 pending-sweep 45분 백스톱이 수행 — 이 값은 FAIL '표면화' 상한.
 const RECENT_MS = 24 * 3600e3;  // failed/queue 최근 창(24h — 폰 밤샘 실패도 대기열에 잔존·표면화, 운영자 260620 분신술)
 const CAP_PEND = 25, CAP_FAIL = 12, CAP_QUEUE = 20;
+const WF_SCAN = 20;              // 워크플로 시체 런(startup_failure) 스캔 창 = 최근 런 N개(GH 호출 1회 · 크론이 분 단위로 도는 레포라 무효 워크플로는 이 창에 반드시 걸린다)
+const WF_BROKEN_MS = 6 * 3600e3; // 그 창 안에서도 이 시간보다 오래된 실패런은 무시(오래 조용한 레포의 화석 경보 차단)
+const CAP_WFBROKEN = 3;          // 동시 표시 상한(한 커밋이 여러 워크플로를 깨도 대기열이 안 잠기게)
 
 export async function onRequestGet({ env }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), {
@@ -60,6 +63,45 @@ export async function onRequestGet({ env }) {
       return false;                                 // 둘 다 0 = 확정 비활성(진짜 고아)
     } catch { return null; }
   };
+
+  // 워크플로 '시체 런' 스캔 — 최근 런 목록 1회 조회로 **파일이 무효가 된 워크플로**를 찾는다(아래 4) 항목이 소비).
+  //   startup_failure = 잡이 하나도 안 생긴 런 = 워크플로 파일 자체가 무효(YAML 문법·참조 오류)라는 확정 신호.
+  //   워크플로별 **최신 런**만 판정 = 고친 뒤 남은 옛 실패런에 헛불 안 켬. 전면 fail-soft(조회 실패 = 빈 목록 = 종전 동작).
+  const wfBrokenP = (async () => {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/actions/runs?per_page=${WF_SCAN}&exclude_pull_requests=true`, { headers: H });
+      if (!r.ok) return [];
+      const j = await r.json();
+      const runs = Array.isArray(j && j.workflow_runs) ? j.workflow_runs : [];
+      const newest = new Map();   // 워크플로 → 스캔창 안 최신 런(목록은 최신순)
+      for (const w of runs) {
+        const wf = String((w && (w.path || w.name)) || '').split('/').pop();
+        if (wf && !newest.has(wf)) newest.set(wf, w);
+      }
+      const out = [];
+      for (const [wf, w] of newest) {
+        if (!w || w.status !== 'completed' || w.conclusion === 'success' || w.conclusion === 'cancelled' || w.conclusion === 'skipped') continue;
+        // 판정 = ⓐ conclusion 'startup_failure'(명시형) 또는 ⓑ **run.name === run.path**(실측형).
+        //   ⓑ 근거(260728 실측): 파일이 무효면 GitHub이 `name:` 을 못 읽어 런 이름에 **파일 경로**를 그대로 박는다
+        //   (정상 런은 `name: pick` → "pick"). 이 레포 워크플로 56개 전부 `name:` 보유 = 경로 = 무효 확정 신호.
+        //   ⚠️ 이 API가 오늘 실측에선 conclusion 을 'startup_failure' 가 아니라 **'failure'** 로 줬다 = ⓐ 단독 판정은 헛수고.
+        if (w.conclusion !== 'startup_failure' && String(w.name || '') !== String(w.path || '')) continue;
+        const t = Date.parse(w.created_at || '');
+        if (!Number.isFinite(t) || (now - t) > WF_BROKEN_MS) continue;
+        // 확증 = 잡 0개(파일을 못 읽었으니 잡이 생길 수 없다). 후보는 고장났을 때만 나와 평시 추가 호출 0.
+        try {
+          const jr = await fetch(`https://api.github.com/repos/${REPO}/actions/runs/${w.id}/jobs?per_page=1`, { headers: H });
+          if (!jr.ok) continue;
+          const jj = await jr.json();
+          if (Number(jj && jj.total_count) !== 0) continue;   // 잡이 있었다 = 평범한 실패(빌드·테스트) = 이 경보 대상 아님
+        } catch { continue; }
+        const k = new Date(t + 9 * 3600e3).toISOString();   // KST 시간 버킷(YYMMDD-HH · D4 = 전부 KST)
+        out.push({ wf, t, url: w.html_url || '', bucket: k.slice(2, 4) + k.slice(5, 7) + k.slice(8, 10) + '-' + k.slice(11, 13) });
+        if (out.length >= CAP_WFBROKEN) break;
+      }
+      return out;
+    } catch { return []; }
+  })();
 
   const items = [];
 
@@ -173,6 +215,22 @@ export async function onRequestGet({ env }) {
     .filter(x => x.t && (now - x.t) < RECENT_MS && !seen.has(x.id))
     .sort((a, b) => b.t - a.t).slice(0, CAP_QUEUE)
     .forEach(x => items.push({ id: x.id, t: x.t, status: 'succ' }));
+
+  // ── 4) 워크플로 파일 무효(startup_failure) 감지 = 조용한 파이프라인 정지 표면화(운영자 260728 지시 ② · Q976 후속) ──
+  //   260728 실사고: pick.yml YAML 한 줄이 깨져 **파일 전체가 무효** → GitHub이 dispatch 거절 → 뉴스 픽 4시간 전면 불능.
+  //   그동안 push 마다 '잡 0개' startup_failure 런이 쌓였는데 **보는 사람이 없었다**(운영자가 픽을 눌러보고서야 발견).
+  //   커밋 차단은 check_refs.check_workflow_yaml()(재발방지 ①)이 맡고, 이 항목은 **그 그물을 빠져나간 고장의 사후 표면화**다
+  //   (게이트 미실행 환경·손 편집·GitHub쪽 사유 등). 신규 UI 0 — 대기열 FAIL 행 + 🍋 기어 점등(has-qfail) 정본 그대로 탄다.
+  //   정밀도: 워크플로별 **최신 런이 startup_failure 일 때만** 경보(이미 고친 뒤 남은 옛 실패런으로 헛불 안 켬).
+  //   id = 시각 버킷(KST 시간) 포함 = 확인(소등) 후에도 고장이 이어지면 **한 시간에 한 번** 재점등(영구 묵음 금지 · 형제 알림 계약).
+  for (const b of await wfBrokenP) {
+    items.push({
+      id: `wfbroken-${b.wf}-${b.bucket}`, t: b.t, status: 'fail',
+      via: '워크플로', src: '',
+      title: `⚠️ 워크플로 파일 무효 — ${b.wf}(잡 0개 = 문법 오류) · 이 파이프라인 정지 중`,
+      diag: { kind: 'wf-startup-failure', wf: b.wf, url: b.url },
+    });
+  }
 
   items.sort((a, b) => (b.t || 0) - (a.t || 0));
   return json({ items, now });

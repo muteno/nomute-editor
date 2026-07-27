@@ -10508,6 +10508,16 @@ function rateCard(c, n) {
   clearTimeout(_rateTimers[id]);   // 빠른 재평가(3→4→5)는 묶어 1회만 발사(커밋 스팸 방지)
   _rateTimers[id] = setTimeout(() => { const s = ratingsAll()[id] || {}; postRate({ id, url: c.url || '', title: c.title || '', score: s.score || n, picked: !!s.picked, memo: s.memo || '' }); }, 1000);
 }
+// 실패 응답 → 사람이 읽는 사유 1줄(운영자 260728 지시 ③ · Q976 후속). 260728 실사고에서 화면엔 `HTTP 502`만 뜨고
+// **GitHub이 준 진짜 사유가 증발**해, 원인 찾는 데 Actions 기록 대조가 필요했다. 원인 = 우리 함수의 JSON({error})이
+// 아닌 응답(엣지가 만든 502 HTML 등)이면 `r.json()`이 깨져 `{}`가 되고, 남는 게 상태코드뿐이었던 것.
+// ∴ ⓐ JSON이면 error ⓑ 아니면 본문 앞머리(태그 제거·200자) ⓒ 어느 쪽이든 **상태코드는 항상 뒤에 붙인다**(유실 0).
+async function failWhy(r) {
+  let raw = ''; try { raw = await r.text(); } catch {}
+  let why = '';
+  try { why = String((JSON.parse(raw) || {}).error || ''); } catch { why = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200); }
+  return (why ? why + ' ' : '') + '(HTTP ' + r.status + ')';
+}
 async function pickCard(c) {
   const id = candId(c); const cur = ratingsAll()[id] || {};
   if (cur.picked) return;                                  // 한 번만(중복 발사 방지)
@@ -10520,8 +10530,7 @@ async function pickCard(c) {
     const alt = pickAlt(c).slice(0, 8);
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    if (!r.ok) throw new Error(await failWhy(r));
   } catch (e) {
     saveRating(id, { picked: false }); renderScrap();
     postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: false });   // 서버 원장도 롤백(로컬만 되돌리면 영구 불일치)
@@ -10632,10 +10641,10 @@ function applyTriage(act, c, el, reason, text) {
     const alt = pickAlt(c).slice(0, 8);
     fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) })
       .then(async r => { if (r.ok) return;   // 서버 거절 = 낙관 Picking 회수 + 표면화(시크릿 회귀 시 전 픽 무통보 유실 차단 · pickCard 패턴 · 평의회 260713 ⑦)
-        const j = await r.json().catch(() => ({}));
+        const why = await failWhy(r);   // 사유 유실 0(JSON error → 본문 앞머리 → 상태코드 항상 동봉 · 260728)
         saveRating(id, { picked: false }); postRate({ id, url: c.url || '', title: c.title || '', score: cur.score || 0, picked: false });
         if (CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
-        alert('큐레이션 발동 실패 — 다시 시도해줘\n' + (j.error || ('HTTP ' + r.status))); })
+        alert('큐레이션 발동 실패 — 다시 시도해줘\n' + why); })
       .catch(() => {});   // 네트워크 예외 = 종전대로 조용히(pickTimedOut 감시가 Failed 복귀 커버)
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 초록 게이지→✓ 체크→'Picking…'(분석 중) → 피드 진입 시 PICKED (운영자 260702·재시도 패턴 계승 · api/pick은 위서 이미 발사=모션 순수 시각)
