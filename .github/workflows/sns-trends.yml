@@ -71,7 +71,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 41   # 36→41(260726 · X/스레드 요약 스텝 추가 수용): 종전 실산 ≈ 35.7분 + 요약(sonnet timeout 300s) ≈ 40.7분 → 41 = 합+여유(요약은 통상 carry 스킵 = 0s). 33→36(260718 트렌드 이미지) · 20→33(260717 chan_brief 이틀 정지 사고 미러). 30분 주기 초과분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한 무접촉
+    timeout-minutes: 45   # 41→45(260727 · 틱톡 세계 확장 수용): 틱톡 수집이 구 KR 단일창구 10콜 ~30s → 12지역 21콜 + 이월 조회수 재조회 = 최대 240s(TK_BUDGET 180 + TK_REFRESH_BUDGET 60) = +3.5분. 41→45 = 종전 여유 유지 · 36→41(260726 · X/스레드 요약 스텝 추가 수용): 종전 실산 ≈ 35.7분 + 요약(sonnet timeout 300s) ≈ 40.7분 → 41 = 합+여유(요약은 통상 carry 스킵 = 0s). 33→36(260718 트렌드 이미지) · 20→33(260717 chan_brief 이틀 정지 사고 미러). 30분 주기 초과분은 concurrency 큐 대기(사이클 유실 0) · 평상시 소요 불변 · 스크립트 상한 무접촉
     steps:
       - uses: actions/checkout@v4
         with:
@@ -96,7 +96,7 @@ jobs:
           # 신선도 게이트 — sns_trends 최근 28분 내 갱신이면 이번 트리거 수집 스킵(push·schedule 근접 발사 중복·과금·IP차단 위험 차단). exit 0(성공) → 후속 브리프/번역/커밋이 '입력 동일·무변동' 스킵으로 캐스케이드(추가 손질 0). 파일 없음·파싱 실패·미래시각(음수 el) = 수집 진행(fail-safe = 백스톱 절대 불차단). 1680s=28분 < schedule 30분 = 백스톱 발사는 항상 통과.
           FRESH=$(python3 -c "import json,datetime as dt; u=json.load(open('viewer/sns_trends.json'))['updated']; t=dt.datetime.fromisoformat(u); el=(dt.datetime.now(t.tzinfo)-t).total_seconds(); print(1 if 0<=el<1680 else 0)" 2>/dev/null || echo 0)
           if [ "$FRESH" = "1" ]; then echo "::notice::sns_trends 최근 28분 내 갱신 — 이번 트리거 수집 스킵(중복 방지)"; exit 0; fi
-          timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
+          timeout 1080 python3 scraper/sns_trends.py   # 840→1080(260727 틱톡 세계 확장): 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 480s + 여유였는데, 틱톡이 ~30s → 최대 240s(TK_BUDGET 180 + TK_REFRESH_BUDGET 60)로 늘어 무키 최악 경로에서 840을 넘긴다(170+480+240 = 890). 1080 = 그 합 + 여유(정상 경로[YT 키 有]는 실측 234s라 영향 0). 틱톡 축 롤백 = env TIKTOK_REGIONS=KR · TIKTOK_REFRESH_N=0. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       # ── 국내 커뮤니티 베스트글(tbs · 21개 커뮤 630제목) — 폰 크론 전용이던 축을 러너로 이관(운영자 260726 "작동하게").
       #    근본원인 = 이 축의 유일 공급원이 폰(termux) 크론이었고 그게 죽어 viewer/tbs_data.json이 260720 22:47에서 정지 →
