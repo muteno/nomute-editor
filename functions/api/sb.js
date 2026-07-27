@@ -45,6 +45,7 @@ export async function onRequestPost({ request, env }) {
   for (const k of Object.keys(SB_SET)) {
     const v = set[k];
     if (typeof v !== 'string') continue;
+    if (k === '비율' && /^(?:[1-9]|[1-9][0-9]):(?:[1-9]|[1-9][0-9])$/.test(v)) { pairs.push(k + '=' + v); continue; }   // '직접' N:M 허용 = 각 1~99(뷰어 sbArVal 계약 · api/k.js '길이' 게이지 정규식 선례 동문법 — 화이트리스트 리터럴은 무접촉이라 2면 동기 게이트 그대로)
     if (SB_SET[k].includes(v)) pairs.push(k + '=' + v);
   }
   if (pairs.length) story += '\n\n[설정: ' + pairs.join(' · ') + ']';

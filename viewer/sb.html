@@ -70,6 +70,17 @@
   .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* raw-ok: index .geni-opts 동일값 계승(gap 3·4 — 우측 정렬 워드칩) */
   .geni-opt { background:none; border:none; padding:6px 7px; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); cursor:pointer; white-space:nowrap; transition:color var(--dur); -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-opt 동일값 계승(padding 6·7) · font 축약형→명시 분해 = 'inherit' 혼입 축약이 무효화돼 15px 상속되던 것 교정(폰트 단일 크기 통일 — 운영자 260714 6차 실측) */
   .geni-opt:active { transform:scale(var(--press-m)); }
+  /* 비율 직접 = 「직접」 칩 그 자리 인라인 전환(index #geniArWrap 정본 미러 · 260727 전 탭 통일) */
+  #sbArWrap { display:none; }
+  #sbArWrap.open { display:inline-flex; }
+  .geni-ar { display:flex; align-items:center; gap:0 /* 0 = 숫자칩 자체 좌우 패딩(7)이 「1 : 1」 사이 여백을 만든다 */; justify-content:flex-end; flex:0 0 auto; min-width:0; }
+  /* 숫자칩 = 켜진 워드칩(.geni-opt.on) 값 100% 계승 — 입력칸이되 생김새는 칩 */
+  .geni-ar-in { box-sizing:content-box; width:1ch /* 실폭 = sbArFit이 값 길이(1~2ch)로 동기 */; background:none; border:none; outline:none; border-radius:0; -webkit-appearance:none; appearance:none;
+    padding:6px 7px /* raw-ok: .geni-opt 워드칩 정본 동값 */; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent) /* = .geni-opt.on 정본 동값 */;
+    line-height:normal; text-align:center; font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent; }
+  .geni-ar-in:focus { border-color:transparent; box-shadow:none; }   /* 전역 input:focus 링(강조색 3px) 재승리 = 칩엔 링이 없다 */
+  .geni-ar-in::selection { background:rgba(var(--accent-rgb),.26); color:var(--accent); }
+  .geni-ar-c { color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); }
   .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }
   .geni-opt[data-num] { font-variant-numeric:tabular-nums; }
   /* ── 옵션 칸 그릇 = 편집(edit) `.scard` 카드 정본 계승(운영자 260725 첨부 스샷 "미리보기 아래 칸도 이거로 통일" · **형태만** — 옵션 값·기능 무접촉) ── */
@@ -196,7 +207,7 @@
   <div class="ogrid"><!-- 옵션 칸 = 편집 탭 카드 그릇(2열 · 라벨│값) 계승 · 항목·값은 콘티 것 그대로 -->
   <div class="geni-row"><span class="pub-l">감독</span><span class="geni-opts" id="dgrid" role="group" aria-label="감독 — 연출 모델"></span></div>
   <div class="geni-row"><span class="pub-l">촬영</span><span class="geni-opts" id="sgrid" role="group" aria-label="촬영 — 생성 엔진"></span></div>
-  <div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" id="axRatio" role="group" aria-label="비율"></span></div>
+  <div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" id="axRatio" role="group" aria-label="비율"></span><span class="geni-ar" id="sbArWrap" inert><input id="sbArW" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 가로값"><b class="geni-ar-c" aria-hidden="true">:</b><input id="sbArH" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 세로값"></span></div><!-- 직접 = 「직접」 칩 그 자리 인라인 N:M(index #geniArWrap 정본 미러 · 260727 전 탭 통일) -->
   <div class="geni-row"><span class="pub-l">길이</span><span class="geni-opts" id="axLen" role="group" aria-label="길이"></span></div>
   <div class="geni-row"><span class="pub-l">광고 모드</span><span class="geni-opts"><button type="button" class="geni-opt" id="adTg" aria-pressed="false" title="ON = 마지막 컷을 제품·슬로건 키비주얼로 (storyboard-v1 하드룰)">OFF</button></span></div>
   </div><!-- /.ogrid -->
@@ -279,8 +290,13 @@ const SB_VALS = {
 const SB_CUTS = { '6~8s': '6컷', '10~12s': '9컷', '15s': '12컷', '20~30s': '16컷' };   // storyboard-v1 컷수 하드룰(스킬 §규격)
 const SB_DEF = { '비율': '9:16', '길이': '15s' };
 let sbDirector = 'fable', sbShoot = 'kling', sbSet = Object.assign({}, SB_DEF), sbAd = false;
+let sbArW = '1', sbArH = '1';   // 비율 직접 기본 = 1:1(index _geniSel.arW/arH 정본 동값 — 빈 칸이 아니라 값이 앉아 있고 탭하면 그 자리가 비며 바로 타이핑)
+function sbArVal() { const w = parseInt(sbArW, 10), h = parseInt(sbArH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : null; }   // 직접 비율 유효값 = index geniArVal 정본 동일 계약(각 1~99 + 1:4~4:1) · 서버 api/sb.js가 같은 계약으로 재검증
+function sbRatio() { return sbSet['비율'] === 'custom' ? (sbArVal() || SB_DEF['비율']) : sbSet['비율']; }   // 발사·리드백 실값 — 직접 미완성 = 기본 비율 강하(k 「길이」 직접 선례 문법)
+function sbArFit(el) { if (el) el.style.width = Math.max(1, (el.value || '').length) + 'ch'; }   // 숫자칩 폭 = 값 길이 동기(index geniArFit 정본 미러)
 function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이트리스트 재검증)
-  return { director: sbDirector, shoot: sbShoot, set: Object.assign({}, sbSet), ad: sbAd };
+  const set = Object.assign({}, sbSet); if (set['비율'] === 'custom') set['비율'] = sbRatio();   // 'custom' = 화면 상태값 → 발사 시 실 N:M으로 치환(k 「길이」 직접 = segTotal()+'s' 선례 문법)
+  return { director: sbDirector, shoot: sbShoot, set, ad: sbAd };
 }
 (function () {
   const dg = $('#dgrid'), sg = $('#sgrid'), axR = $('#axRatio'), axL = $('#axLen'), ad = $('#adTg'), spec = $('#gospec');
@@ -290,10 +306,12 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     const s = JSON.parse(localStorage.getItem(KEY) || '{}');
     if (SB_DIRECTORS.some(x => x.id === s.d && !x.wip)) sbDirector = s.d;   // wip(배선 대기) 복원 차단 — 발사 불능 상태 영속 방지
     if (SB_SHOOTS.some(x => x.id === s.sh)) sbShoot = s.sh;
-    if (s.set && typeof s.set === 'object') Object.keys(SB_VALS).forEach(k => { const v = s.set[k]; if (SB_VALS[k].includes(v)) sbSet[k] = v; });
+    if (s.set && typeof s.set === 'object') Object.keys(SB_VALS).forEach(k => { const v = s.set[k]; if (SB_VALS[k].includes(v) || (k === '비율' && v === 'custom')) sbSet[k] = v; });   // 'custom' = 직접 상태(SB_VALS 밖 · k 「길이」 '직접' 복원 선례 동문법)
+    if (typeof s.arW === 'string' && /^[1-9][0-9]?$/.test(s.arW)) sbArW = s.arW;
+    if (typeof s.arH === 'string' && /^[1-9][0-9]?$/.test(s.arH)) sbArH = s.arH;
     if (typeof s.ad === 'boolean') sbAd = s.ad;
   } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ d: sbDirector, sh: sbShoot, set: sbSet, ad: sbAd, sv: 1 })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ d: sbDirector, sh: sbShoot, set: sbSet, ad: sbAd, arW: sbArW, arH: sbArH, sv: 1 })); } catch (e) {} };
   let sbFocusKey = null;   // 재렌더 포커스 복원(k 계승)
   const refocus = () => { if (!sbFocusKey) return; const el = document.querySelector('[data-fk="' + sbFocusKey + '"]'); sbFocusKey = null; if (el) try { el.focus({ preventScroll: true }); } catch (e) {} };
   const optBtn = (txt, on, fn, num) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'geni-opt' + (on ? ' on' : ''); if (num) b.dataset.num = '1'; b.textContent = txt; b.setAttribute('aria-pressed', String(!!on)); b.dataset.fk = 'opt|' + txt; b.addEventListener('click', () => { sbFocusKey = b.dataset.fk; fn(); }); return b; };   // 워드칩 = index .geni-opt 문법 계승(밝기·색 on/off · aria-pressed 하우스 패턴)
@@ -315,7 +333,7 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     const rows = [   // 항목별 줄바꿈(운영자 260714 6차) — 감독 / 촬영 / 규격 / 비용 각 1줄
       '감독 <b>' + esc(d.nm) + '</b> · ' + esc(d.hint),
       '촬영 <b>' + esc(sh.nm) + '</b>',
-      esc(sbSet['비율']) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' · 광고 막컷 키비주얼' : ''),
+      esc(sbRatio()) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' · 광고 막컷 키비주얼' : ''),
       '<span title="감독비 = 실측 전 추정(첫 발사 후 보정) · 콘티 텍스트 단계 자체는 크레딧 0">비용 ' + dcost + ' · ' + scost + '</span>'
     ];
     spec.innerHTML = rows.map(r => '<span class="gs-row">' + r + '</span>').join('');
@@ -327,11 +345,22 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     SB_SHOOTS.forEach(m => { const b = optBtn(m.nm, sbShoot === m.id, () => { sbShoot = m.id; render(); }); b.title = m.hint; sg.appendChild(b); });
     axR.innerHTML = '';
     SB_VALS['비율'].forEach(v => axR.appendChild(optBtn(v, sbSet['비율'] === v, () => { sbSet['비율'] = v; render(); }, true)));
+    const arOn = sbSet['비율'] === 'custom';
+    if (!arOn) axR.appendChild(optBtn('직접', false, () => { sbSet['비율'] = 'custom'; render(); setTimeout(() => { const w = $('#sbArW'); if (w) { w.focus(); w.select(); } }, 40); }));   // 「직접」 = 그 자리를 N:M 입력이 인계(칩은 소등) · 되돌아가기 = 프리셋 칩 탭
+    { const wrap = $('#sbArWrap'); if (wrap) { wrap.classList.toggle('open', arOn); if (arOn) wrap.removeAttribute('inert'); else wrap.setAttribute('inert', ''); }
+      const aw = $('#sbArW'), ah = $('#sbArH'); if (aw && aw.value !== sbArW) aw.value = sbArW; if (ah && ah.value !== sbArH) ah.value = sbArH; sbArFit(aw); sbArFit(ah); }
     axL.innerHTML = '';
     SB_VALS['길이'].forEach(v => { const b = optBtn(v, sbSet['길이'] === v, () => { sbSet['길이'] = v; render(); }, true); b.title = SB_CUTS[v] || ''; axL.appendChild(b); });
     ad.textContent = sbAd ? 'ON' : 'OFF'; ad.classList.toggle('on', sbAd); ad.setAttribute('aria-pressed', String(sbAd));   // ON/OFF = 우측 형광 텍스트 토글(Image Studio 한국웹툰화 ON 문법)
     drawSpec(); save(); refocus();
   }
+  [['#sbArW', 'W'], ['#sbArH', 'H']].forEach(([sel, side]) => {   // 비율 직접 N:M — 숫자만 · 폭 동기 · 리드백은 render(index geniInit 정본 미러)
+    const el = $(sel); if (!el) return;
+    el.addEventListener('input', () => { const v = el.value.replace(/\D/g, '').slice(0, 2); if (el.value !== v) el.value = v; if (side === 'W') sbArW = v; else sbArH = v; sbArFit(el); render(); });
+    el.addEventListener('focus', () => el.select());   // 탭하면 그 자리가 비는 느낌 = 전체 선택 → 첫 타건이 덮어쓴다
+    el.addEventListener('mouseup', e => e.preventDefault());   // 클릭 캐럿 배치가 위 select를 지우는 것 차단
+    el.addEventListener('blur', () => { if (!el.value) { el.value = '1'; if (side === 'W') sbArW = '1'; else sbArH = '1'; sbArFit(el); render(); } });   // 비운 채 떠나면 1 복귀
+  });
   ad.addEventListener('click', () => { sbAd = !sbAd; render(); });
   render();
 })();
