@@ -4417,7 +4417,7 @@ async function open(a) {
   const src = $('#src'); src.style.display='';
   if (a.url){ src.href=hrefOk(a.url); src.classList.remove('off'); src.removeAttribute('aria-disabled'); src.title='원문 열기'; src.setAttribute('aria-label','원문 열기'); }
   else { src.removeAttribute('href'); src.classList.add('off'); src.setAttribute('aria-disabled','true'); src.title='원문 링크 없음'; src.setAttribute('aria-label','원문 링크 없음'); }
-  const dlg = $('#dlg'); const _dlgWasOpen = dlg.open; if (!_dlgWasOpen) { dlg.showModal(); try { history.pushState({ dlg: true }, ''); } catch {} }   // 신규 열림만 showModal+pushState(폰 뒤로가기=요약모달 먼저 닫기·lbox 패턴·!wasOpen=재진입 이중 push/show 방지·260630 QA ③)
+  const dlg = $('#dlg'); const _dlgWasOpen = dlg.open; if (!_dlgWasOpen) { dlg.showModal(); try { qHistPush({ dlg: true }); } catch {} }   // 신규 열림만 showModal+pushState(폰 뒤로가기=요약모달 먼저 닫기·lbox 패턴·!wasOpen=재진입 이중 push/show 방지·260630 QA ③) · 대기열 닫으며 열린 경로면 그 칸 인계(§🔗 feedOpenBy qClaim)
   $('#dlgbody').scrollTop = 0;  // 재진입 시 이전 스크롤 위치 유지 버그 → 맨 위 리셋(스크롤=본문 래퍼 .dlg-body)
   const dt = $('#dlgtop'); if (dt) dt.classList.remove('show');   // 모달 탑 버튼(제거됨) 초기 숨김 — null 가드(없으면 throw로 아래 스크롤락·포커스가 안 돌던 잠복버그 차단)
   updateRevFab();   // 열릴 때 FAB 초기 상태(맨 위라 보통 숨김)
@@ -8654,13 +8654,14 @@ let _sovPushed = false, _sovPop = false;   // 폰 뒤로가기 = 오버레이 �
 function syncSearchBtn() { searchToggle.classList.toggle('on', !sovl.hidden || !!$('#q').value.trim()); searchToggle.setAttribute('aria-expanded', String(!sovl.hidden)); }   // 점등 = 열림 OR 검색어 활성(닫혀도 필터 중 표시)
 function openSearch() {
   if (!sovl.hidden) return;
+  if (!_sovPushed) qHistClaim();   // 대기열 칸 인계 예약(§🔗) — 아래 closeOverlays 가 대기열을 닫는다 · 조건 = 하단 qHistPush 와 동일(_sovPushed)
   closeOverlays('search');
   sovl.hidden = false; sovl.classList.remove('ent'); void sovl.offsetWidth; sovl.classList.add('ent');   // 재열림에도 라이즈 재생(reflow 재시작)
   document.body.classList.add('sov-open'); { const _ts = $('#topsearch'); if (_ts) _ts.inert = true; }   // 헤더 워드마크·타이틀 흐림 + 헤더 돋보기 숨김(운영자 260710) · inert = 키보드 Tab 포커스·SR 유령 잔존 차단(평의회5·9: opacity0+pe-none만으론 안 숨겨짐)
   searchActive(); sovXIcon();   // 열 때 검색어 있으면 뒤 리스트(누적/신규) 필터 반영 + 우측 아이콘 상태 동기(빈=돋보기/입력=X) — 구 renderSovResults·sovPill.has 토글 폐지(평의회8)
   const q = $('#q'); q.tabIndex = 0;
   setTimeout(() => { try { q.focus({ preventScroll: true }); } catch {} }, 120);   // 라이즈(.25s) 중반 포커스 = OS 키보드 슬라이드와 겹침 완화
-  if (!_sovPushed) { try { history.pushState({ sov: true }, ''); _sovPushed = true; } catch {} }
+  if (!_sovPushed) { try { qHistPush({ sov: true }); _sovPushed = true; } catch {} }   // 대기열서 열렸으면 그 칸 인계(§🔗 · 260727 실측 = 구 pushState 는 열자마자 popstate 로 닫혔다)
   syncSearchBtn();
 }
 function closeSearch() {   // 오버레이만 접음 — 검색어·필터는 유지(운영자 260706 버튼확답 "동작 유지·문구만 삭제" · 구 '닫기=쿼리 비움' 폐지)
@@ -8799,7 +8800,16 @@ if (qFeedBtn) {
 { const _qHeadBtn = document.getElementById('queueBtn');
   if (_qHeadBtn) _qHeadBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); if (!qpop.hidden) closeQueueUser(); else openQueue(_qHeadBtn); }); }
 let _qPushed = false, _qPop = false;   // 대기열 폰 뒤로가기 = 먼저 닫기(§🎨 pushState/popstate · 라이트박스 패턴 계승 · 운영자 260622)
-let _qHistYield = false;   // 히스토리 칸 인계 플래그 — 대기열 위로 뜨는 모달(openTool)이 {qpop} 칸을 replaceState 로 가져갈 때 ON → closeQueueUser 가 back() 을 포기(back↔pushState 경쟁이 그 모달을 즉시 닫던 것 차단 · 운영자 260727 재시도 먹통 봉합)
+// ── 🔗 히스토리 칸 인계 — 대기열을 **닫으며** 뜨는 오버레이 공용 문법(운영자 260727 한 수 채택) ──
+//   함정: closeQueueUser 는 history.back() 으로 자기 {qpop} 칸을 회수하는데 back 은 **비동기**다.
+//   같은 틱에 새 오버레이가 pushState 하면 그 새 칸이 먼저 얹히고, 뒤늦게 처리된 back 이 **그 새 칸**을
+//   되돌리며 popstate 를 쏴 방금 연 오버레이를 즉시 닫아버린다(260727 헤드리스 실측 = 요약창·검색·발행본 3경로 동일 사인).
+//   해법: 닫기 **전에** qHistClaim() 으로 인계를 예약 → 대기열은 back() 을 포기하고(_qHistYield),
+//   여는 쪽은 pushState 대신 replaceState 로 그 칸을 물려받는다 = 칸 수 불변 · 백버튼 1회 = 그 오버레이만 닫힘.
+//   ⚠️ 대기열을 **안 닫고** 위에 뜨는 것(라이트박스·병합모드·큐 ↗ keepQ)은 claim 대상이 아니다(자기 칸을 따로 가진다 · 실측 생존 확인).
+let _qHistYield = false;
+function qHistClaim() { if (qpop.hidden || !_qPushed) return false; _qHistYield = true; return true; }   // 예약(닫기 전 호출) — 대기열이 칸을 쥐고 열려 있을 때만
+function qHistPush(state) { if (_qHistYield) { _qHistYield = false; history.replaceState(state, ''); } else history.pushState(state, ''); }   // 예약 있으면 인계(치환)·없으면 평소대로 새 칸
 let _qAnchor = null;   // 대기열 앵커 = 헤더 픽토그램(#queueBtn·head 모드) or null(하단 뉴스요약 기본) — placeQpop 위치 분기(운영자 260710)
 function placeQpop() {   // 대기열 위치 — 헤더 픽토그램(head)=픽토 아래 우변 앵커 촤르륵 / 하단 네비=PC 버튼 위·모바일 화면중앙 · 둘 다 뷰포트 클램프(운영자 260705·260710)
   const head = !!(_qAnchor && _qAnchor.id === 'queueBtn');   // 헤더 대기열 픽토그램서 열림 = 아래로
@@ -8829,6 +8839,7 @@ function openQueue(anchor) {
   placeQpop();           // 위치 = 헤더 픽토 아래(head) or PC 버튼 위/모바일 중앙 + 뷰포트 클램프
   { const hb = document.getElementById('queueBtn'); if (hb) { hb.classList.toggle('on', !!_qAnchor); hb.setAttribute('aria-expanded', 'true'); } }   // 헤더서 열면 픽토 활성(accent 강조 · filterBtn.on 패턴)
   try { sessionStorage.setItem('nomute_q_open', '1'); } catch {}   // 열림 기억 → 외부 링크(↗) 갔다 돌아오면(pageshow) 자동 재오픈
+  _qHistYield = false;   // 재오픈 = 미소비 인계 예약 회수(§🔗 · 예약해 놓고 안 연 경로의 잔재가 이번 닫기의 back 을 삼키는 것 차단)
   if (!_qPushed) { history.pushState({ qpop: true }, ''); _qPushed = true; }   // 폰 뒤로가기 한 번 = 대기열 먼저 닫기(딴 화면 안 벗어남)
   qfMarkSeen();   // 🍋 확인 즉시 = 기어 레몬 소등(운영자 260727 "대기열 들어가서 확인 · 확인 즉시") — 지금 아는 실패분으로 먼저 끄고, 라이브 응답분은 아래 loadQueue 가 이어서 처리(네트워크 실패해도 소등은 성립)
   loadQueue();
@@ -8988,13 +8999,14 @@ async function loadQueue() {
 }
 // 피드(메뉴3) 이동 + 해당 기사 모달. 즉시 매칭되면 바로, 없으면(빌드 랙) load() 후 재매칭.
 async function feedOpenBy(match, keepQ) {
+  const qClaim = !keepQ && qHistClaim();   // 대기열을 닫으며 리더를 여는 경로 = 그 칸을 리더가 인계(§🔗) · keepQ(큐 ↗)는 대기열이 남으므로 claim 안 함
   if (!keepQ) closeQueueUser();   // 큐 ↗(keepQ)면 대기열 안 닫음 — 요약 모달(top-layer·모바일 풀스크린)이 위를 덮고 닫히면 그대로 다시 보임(close→reopen 깜빡임 제거·운영자 260622). 그 외(PICKED 등)는 정식 닫기.
   showTab('feed');
   let a = match();
   if (a) { open(a); return; }   // 즉시(이미 피드에 있음 = 흔한 경우)
   try { await load(); } catch {}   // 빌드 랙 — 기사 재요청 후 재매칭
   a = match();
-  if (a) open(a); else qFlash('피드 반영 중 — 곧 표시돼');
+  if (a) open(a); else { if (qClaim) _qHistYield = false; qFlash('피드 반영 중 — 곧 표시돼'); }   // 리더를 못 연 경로 = 예약 회수(안 쓰인 인계가 남아 다음 대기열 닫기의 back 을 삼키는 것 차단)
 }
 function qGo(id) {   // SUCC 링크 — queue 파일명(id) ↔ 피드 기사 매칭(qMatch 공용). 초록 버튼만 호출되므로 항상 매칭됨
   feedOpenBy(() => qMatch(id), true);   // true = 대기열 안 닫음(요약 모달이 위를 덮음)
@@ -12504,17 +12516,13 @@ function openTool(src, title, tabs, key) {
   renderToolTabs(tabs);
   if (realSrc && realSrc[0] === '#') askMount();   // 가상 탭(#ask) = iframe 로드 대신 askwrap 이식(운영자 260712 요약 셸)
   else loadToolFrame(realSrc);
-  // ⚠️ 대기열이 히스토리 칸({qpop})을 쥔 채 열려 있으면 그 칸을 이 모달이 **인계**한다(운영자 260727 "재시도 버튼 눌러도 작동을 안 해" 실측 봉합).
-  //   아래 closeOverlays()가 closeQueueUser → history.back() 을 부르는데, back 은 비동기라 같은 틱의 pushState({tool}) 가 먼저 스택에 얹힌다
-  //   → back 이 방금 얹은 {tool} 칸을 되돌리며 popstate 발동 → 막 연 요약창이 즉시 닫혔다(대기열 실패행 ↻ = 무반응으로 보임).
-  //   askRetry 가 closeQueueUser 를 일부러 안 부른 이유(평의회10 ★)와 같은 함정이 openTool 안에서 되살아난 것 = 여기서 봉합.
-  //   인계 = 대기열이 back() 을 포기(_qHistYield)하고, 모달이 pushState 대신 replaceState 로 그 칸을 {tool} 로 치환 → 칸 수 불변·백버튼 1회 = 도구 닫힘.
-  const qHandoff = !wasOpen && !(history.state && history.state.tool) && !qpop.hidden && _qPushed;
-  if (qHandoff) _qHistYield = true;
+  // 대기열이 쥔 히스토리 칸을 이 모달이 인계(문법·사유 = §🔗 qHistClaim — 실패행 ↻ 재시도가 열자마자 닫히던 사고 봉합 · 운영자 260727).
+  //   ⚠️ claim 조건 = 아래 qHistPush 조건과 **동일**해야 한다(칸을 안 얹는 경로가 예약만 남기면 다음 대기열 닫기의 back 을 삼킨다).
+  const qClaim = !wasOpen && !(history.state && history.state.tool) && qHistClaim();
   closeOverlays(); document.documentElement.style.overflow = 'hidden';
   tooldlg.showModal(); toolVV(); setTimeout(() => $('#toolX').focus(), 0);   // toolVV 1회 = 키보드 이미 뜬 상태서 열기도 즉시 클램프(이후는 vv 리스너)
-  if (!wasOpen && !(history.state && history.state.tool)) { if (qHandoff) history.replaceState({ tool: true }, ''); else history.pushState({ tool: true }, ''); }   // 백버튼 = 메인 복귀 · 최소화서 재오픈이면 기존 {tool}칸 재사용 · 대기열서 열렸으면 그 칸 치환(위 인계)
-  _qHistYield = false;   // 소비 완료(대기열이 닫히지 않는 예외 경로에 플래그가 남아 다음 닫기의 back 을 삼키는 것 차단)
+  if (!wasOpen && !(history.state && history.state.tool)) qHistPush({ tool: true });   // 백버튼 = 메인 복귀 · 최소화서 재오픈이면 기존 {tool}칸 재사용 · 대기열서 열렸으면 그 칸 치환(위 인계)
+  if (qClaim) _qHistYield = false;   // 소비 확인(예약했는데 위 분기가 안 탄 예외 경로 방어)
 }
 // 도구 탭 클릭 = iframe 스왑(영상: src 스왑) / thumb: iframe 내부 selApp 직접 호출(same-origin·리로드0·폼/IDB 보존) · 모달 유지·히스토리 칸 안 늘림
 $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.tooltab'); if (!b) return;
@@ -13950,11 +13958,12 @@ const _setToggle = $('#setToggle'); if (_setToggle) _setToggle.addEventListener(
 const _pmenuX = $('#pmenuX'); if (_pmenuX) _pmenuX.addEventListener('click', e => { e.stopPropagation(); hidePmenu(); });   // 헤더 X = 프로필 메뉴 닫기(촤르륵 접힘 popOut 재사용 · 운영자 260704)
 function placePubpop() { placePopNearMenu(pubpop); }   // 발행본 팝업 위치 = 메시지함 공용(placePopNearMenu) — 링크 메뉴(linkfab) 위 앵커(운영자 260707 "열린 메뉴 가까이" · 구 프로필 앵커 폐지)
 function openPub() {   // 발행본 팝업 열기 — 메시지함 UI/UX 계승(글래스·msgUnfold·앵커)
+  if (!_pubPushed) qHistClaim();   // 대기열 칸 인계 예약(§🔗) — 아래 closeOverlays 가 대기열을 닫는다 · 조건 = 하단 qHistPush 와 동일(_pubPushed)
   closeOverlays('pubpop');
   clearTimeout(_pubCloseTimer); pubpop.classList.remove('closing');
   pubpop.hidden = false;
   placePubpop();   // hidden 해제 후 배치(placePopNearMenu 폭 측정 요건)
-  if (!_pubPushed) { history.pushState({ pubpop: true }, ''); _pubPushed = true; }
+  if (!_pubPushed) { qHistPush({ pubpop: true }); _pubPushed = true; }   // 대기열서 열렸으면 그 칸 인계(§🔗 · 260727 실측 = 구 pushState 는 열자마자 popstate 로 닫혔다)
   loadPub();
 }
 function closePubUser() {   // 닫힘 = 즉시 hidden(메시지함 msgpop 동일 · 옛 popOut 슬라이드 폐지)
