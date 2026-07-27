@@ -79,6 +79,24 @@ OUT = os.path.join(ROOT, "viewer", "sns_trends.json")
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
       "Accept-Language": "ko-KR,ko;q=0.9"}
 CTX = ssl.create_default_context()
+# 계정별 실패 사유(운영자 260727 "계정때문에 안받아와지는거랑 원인에 따라 메세지를 달리") — 종전엔 ::warning:: 로그로만
+#   흘려보내 뷰어가 "비공개·삭제됐거나 차단"으로 뭉뚱그릴 수밖에 없었다. 코드만 남겨 두면 원인별 문구가 갈린다.
+#   값 = HTTP 코드(404 삭제·403 차단·429 리밋) 또는 문자열 태그('empty' 빈응답 · 'wall' 로그인월 · 'err' 기타).
+#   런 단위 휘발(프로세스 전역 · 파일 미기록) → main()이 health.subs.cover[plat].why 로 실어 보낸다.
+SUB_FAIL = {}
+
+
+def _hcode(e):
+    """예외에서 HTTP 코드만 뽑기(없으면 'err')."""
+    return getattr(e, "code", None) or "err"
+
+
+def _sfail(plat, acc, code):
+    try:
+        SUB_FAIL.setdefault(plat, {})[str(acc).lower().lstrip("@")] = code
+    except Exception:  # noqa: BLE001 — 기록 실패가 수집을 못 죽인다
+        pass
+
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
@@ -833,6 +851,7 @@ def x_subs(accounts, limit=10, deadline=None):
                             "url": "https://x.com/%s/status/%s" % (acc, tid)})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::x @{acc} 신디케이션 실패: {e}", file=sys.stderr)
+            _sfail("x", acc, _hcode(e))
         if len(out) == _n0:   # 그 계정 신디케이션 0건 = RSS 미러 폴백(260725 · 미러도 전멸이면 조용한 공백)
             for t in _x_rss(acc, dead):
                 tid = t.pop("_tid")
@@ -939,12 +958,14 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                     break
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 임베드 실패: {e}", file=sys.stderr)
+            _sfail("tiktok", acc, _hcode(e))
         if got:
             continue
         try:   # ② tikwm 구 창구 폴백(260714~ 403 — 복구 시 자동 재사용) · count 10→30(운영자 260720 "국내 큐레이션 10위까지")
             j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))
             if j.get("code") != 0:
                 print(f"::warning::tiktok @{acc} 응답 코드 {j.get('code')}(스킵)", file=sys.stderr)
+                _sfail("tiktok", acc, "empty")
                 continue
             for v in ((j.get("data") or {}).get("videos") or []):
                 if v.get("video_id"):
@@ -953,6 +974,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                           v.get("cover"), v.get("create_time"))
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 실패(스킵): {e}", file=sys.stderr)
+            _sfail("tiktok", acc, _hcode(e))
     return sorted(out, key=lambda t: t["views"], reverse=True)[:limit]
 
 
@@ -1028,12 +1050,14 @@ def insta_subs(accounts, limit=10, deadline=None):
                             "url": "https://www.instagram.com/reel/%s/" % n.get("shortcode")})
         except urllib.error.HTTPError as e:
             print(f"::warning::insta @{acc} HTTP {e.code}(스킵)", file=sys.stderr)
+            _sfail("insta", acc, e.code)
             if e.code == 429:
                 globals()["INSTA_429"] = True   # 호출측 백오프 신호(260727 판례: 쿠키 정상[401 아님]인데 첫 계정부터 429 8연속 = IP가 이미 리밋 · 30분 크론이 계속 두드려 리밋이 매번 **갱신**되던 자해 루프 → phone_subs.py가 이 플래그로 쿨다운 기록 · 러너는 미소비 = 무영향)
                 print("::warning::insta 429 — 잔여 계정 중단(IP 리밋)", file=sys.stderr)
                 break
         except Exception as e:  # noqa: BLE001
             print(f"::warning::insta @{acc} 실패(스킵): {e}", file=sys.stderr)
+            _sfail("insta", acc, _hcode(e))
     return sorted(out, key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]
 
 
@@ -1079,6 +1103,7 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
                             "url": "https://www.youtube.com/watch?v=" + vid})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::yt @{acc} 실패(스킵): {e}", file=sys.stderr)
+            _sfail("youtube", acc, _hcode(e))
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
@@ -1126,6 +1151,7 @@ def threads_subs(accounts, limit=10, deadline=None):
                 _sjs = len(re.findall(r'data-sjs', h))   # 임베드 JSON 블록 수(0 = 챌린지·스켈레톤 = 실브라우저 필요 신호 · N개인데 포스트 0 = 파서 갱신 필요)
                 _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
                 print(f"::warning::threads @{acc} 포스트 노드 0(HTML {len(h)//1000}KB·data-sjs {_sjs}개·{'로그인월' if _wall else '레이아웃?'}·쿠키{'유' if ck else '무'} — 스킵)", file=sys.stderr)
+                _sfail("threads", acc, "wall" if _wall else "empty")
             for p in posts:
                 code = p.get("code") or ""
                 txt = ((p.get("caption") or {}).get("text") or "").strip()
@@ -1139,6 +1165,7 @@ def threads_subs(accounts, limit=10, deadline=None):
                             "url": "https://www.threads.com/@%s/post/%s" % (user, code)})
         except Exception as e:  # noqa: BLE001
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
+            _sfail("threads", acc, _hcode(e))
     _now = datetime.now(KST).timestamp()
     fresh = [t for t in out if t["time"] and t["time"] >= _now - 86400]   # ⏱ 24h 이내만(x_subs L519 계승 · 속보 시사채널 = 신선도 핵심 · time=taken_at epoch · 0/결측 배제 · 평의회 260723 #4)
     # 최신순(x_subs 최신순 정렬 계승 · 표시 정렬 = 뷰어 정렬바 = 24h 내 좋아요순 '근 1일 가장 핫' · 빈 결과 = 조용한 공백)
@@ -1914,7 +1941,8 @@ def main():
             _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])}
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20]}
+            _why = {a: SUB_FAIL.get(_k, {}).get(a) for a in _miss[:20] if SUB_FAIL.get(_k, {}).get(a) is not None}
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 일반 문구로 폴백)
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
