@@ -68,9 +68,30 @@ FILLER_HARD = {"어", "어어", "엄", "음", "음음", "으음", "으", "에", 
 FILLER_SOFT = {"그", "이제", "인제", "뭐", "좀", "막", "약간", "뭐지", "뭐랄까", "그니까", "그러니까", "저기",
                "like", "yaknow", "youknow"}
 FILLER_MAXDUR = 1.5              # 이보다 긴 어절 = 필러 아님(늘어진 발화·오인식) — 안 자른다
-FILLER_HES = 0.18                # SOFT 필러 판정에 필요한 앞·뒤 무음 갭(초) = 주저 신호
+FILLER_HES = 0.18                # SOFT 필러 판정에 필요한 앞·뒤 무음 갭(초) = 주저 신호(기본 강도)
 FILLER_TAILGAP = 0.50            # 필러 직후 이 이하의 짧은 침묵은 같이 제거(끊김을 자연스럽게)
 FILLER_MAX_RATIO = 0.12          # 총 필러 제거 상한(영상 대비) — 초과 = SOFT 전량 철회 후 HARD만(과잉 컷 천장과 같은 정신)
+# 필러 강도 3단(운영자 260728 "강도 고를 수 있게") = **무음 컷 강도(cutlv)에 연동** — 신규 UI 0.
+#   값 근거 = 레포 실코퍼스 실측(viewer/ly_out 24작업·3,798어절·37.3분 · segments.json word 타임스탬프):
+#     · SOFT 단어 80회 출현의 앞뒤 최대 갭 = 중앙값 0.00초 · 90%지점 0.14초 · 최대 0.64초
+#       → 대부분 붙여 발음(= 문장 성분) · 0.18초 임계는 그중 8%(6/80)만 집는다 = 확실히 뜸 들인 것만
+#     · 강도별 실측 산출: 살짝 4곳 1.7초 / 기본 10곳 4.2초 / 많이 15곳 5.1초 / (참고)공격 17곳 5.9초
+#       → 임계를 아무리 낮춰도 더 얻는 건 1초 남짓인데 오컷 위험만 오른다 = **기본 = 현행값이 최적**
+#   ⚠ 정직한 배경: 이 코퍼스에서 확실한 군말(HARD)은 3,798어절 중 **4개뿐**이었다 —
+#     Whisper large-v3가 전사 단계에서 군말을 거의 안 적기 때문(24작업 중 필러가 잡힌 건 2건).
+#     즉 필러 컷의 상한은 임계가 아니라 **전사가 군말을 남기느냐**가 정한다(임계 조정으로는 못 넘는 천장).
+FILLER_LEVELS = {   # cutlv → (SOFT 갭 임계 · None = SOFT 미사용, 꼬리 침묵 동반 상한, 총 제거 천장)
+    "soft": (None, 0.30, 0.08),           # 살짝 = 확실한 군말만(애매한 말 전면 보존)
+    "std": (FILLER_HES, FILLER_TAILGAP, FILLER_MAX_RATIO),   # 기본 = 실측 최적(현행값 = 회귀 0)
+    "hard": (0.10, 0.70, 0.20),           # 많이 = 주저 기준 완화 + 천장 상향
+}
+FILLER_LV_LBL = {"soft": "살짝", "std": "기본", "hard": "많이"}
+
+
+def filler_params(opts):
+    # 필러 강도 = 무음 컷 강도(cutlv) 계승. 결측·미지 = 'std'(현행값 = 파라미터 회귀 0 · cut_params 문법 동형).
+    lv = opts.get("cutlv") if opts.get("cutlv") in FILLER_LEVELS else "std"
+    return lv, FILLER_LEVELS[lv]
 
 
 def cut_params(opts):
@@ -104,8 +125,10 @@ def load_words(outdir):
     return words
 
 
-def filler_scan(outdir, dur=0.0):
+def filler_scan(outdir, dur=0.0, lv="std"):
     # 필러 어절 판정 정본(컴포지터·스캔 공용 = 로직 1벌). → ([{s,e,t,tier}…], 보조note) · 재료 없으면 ([], 사유).
+    #   lv = 강도 키(soft/std/hard · FILLER_LEVELS) — 결측 = 기본.
+    gate, tailgap, max_ratio = FILLER_LEVELS.get(lv, FILLER_LEVELS["std"])
     words = load_words(outdir)
     if not words:
         return [], "필러 컷 건너뜀(어절 전사 없음)"
@@ -114,26 +137,26 @@ def filler_scan(outdir, dur=0.0):
         if not t or b - a > FILLER_MAXDUR:
             continue
         tier = 1 if t in FILLER_HARD else (2 if t in FILLER_SOFT else 0)
-        if not tier:
-            continue
+        if not tier or (tier == 2 and gate is None):
+            continue   # gate None = '살짝' = 애매한 말 전면 보존
         gap_prev = (a - words[i - 1][1]) if i else a
         gap_next = (words[i + 1][0] - b) if i + 1 < n else ((dur - b) if dur > 0 else 0.0)
-        if tier == 2 and max(gap_prev, gap_next) < FILLER_HES:
+        if tier == 2 and max(gap_prev, gap_next) < gate:
             continue   # 주저 신호 없음 = 문장 성분(관형사 '그'·부사 '좀') → 보존이 기본값
-        e = b + min(max(0.0, gap_next), FILLER_TAILGAP)   # 필러 뒤 짧은 침묵 동반 제거(무음 컷과 겹쳐도 무해 = subtract_spans 멱등)
+        e = b + min(max(0.0, gap_next), tailgap)   # 필러 뒤 짧은 침묵 동반 제거(무음 컷과 겹쳐도 무해 = subtract_spans 멱등)
         hits.append({"s": a, "e": e, "t": t, "tier": tier})
     hits.sort(key=lambda x: x["s"])
     extra = ""
     tot = sum(x["e"] - x["s"] for x in hits)
-    if dur > 0 and hits and tot / dur > FILLER_MAX_RATIO:
+    if dur > 0 and hits and tot / dur > max_ratio:
         hits = [x for x in hits if x["tier"] == 1]   # 과잉 = SOFT 전량 철회(오컷보다 덜 자르는 쪽이 안전 · 평의회1·10 정신 계승)
         extra = " · 과잉 방지로 확실한 것만"
     return hits, extra
 
 
-def filler_spans(outdir, dur=0.0):
+def filler_spans(outdir, dur=0.0, lv="std"):
     # 필러 제거 스팬(원본 좌표) + 사유/보조 note — subtract_spans 소비형(쌍 목록).
-    hits, extra = filler_scan(outdir, dur)
+    hits, extra = filler_scan(outdir, dur, lv)
     return [(x["s"], x["e"]) for x in hits], extra
 
 
@@ -870,7 +893,9 @@ def run(vid_id, video, outdir):
     fil_spans, fil_note, take_spans = [], "", []
     if not ref_spans:
         if opts.get("cutfill"):
-            fil_spans, fil_note = filler_spans(outdir, dur)
+            _flv, _ = filler_params(opts)   # 필러 강도 = 컷 강도 계승(운영자 260728)
+            fil_spans, fil_note = filler_spans(outdir, dur, _flv)
+            fil_note = (fil_note or "") + ("(" + FILLER_LV_LBL[_flv] + ")" if fil_spans else "")
             if not fil_spans and not fil_note:
                 fil_note = "필러 없음"
         if opts.get("take"):

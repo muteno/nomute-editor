@@ -77,13 +77,14 @@ def main():
             notes.append("무음 컷 건너뜀(전사 없음)")
     # ② 필러 컷
     if opts.get("cutfill"):
-        hits, extra = lb.filler_scan(outdir, dur)
+        _flv, _ = lb.filler_params(opts)   # 필러 강도 = 컷 강도(cutlv) 계승 — 미리보기와 렌더가 같은 값(260728)
+        hits, extra = lb.filler_scan(outdir, dur, _flv)
         for x in hits:
             rm.append({"s": round(x["s"], 2), "e": round(x["e"], 2), "k": "fil", "t": x["t"]})
         if not hits:
-            notes.append(extra or "필러 없음")
-        elif extra:
-            notes.append(extra.strip(" ·"))
+            notes.append(extra or "필러 없음({})".format(lb.FILLER_LV_LBL[_flv]))
+        else:
+            notes.append("필러 강도 {}".format(lb.FILLER_LV_LBL[_flv]) + (extra or ""))
     # ③ 테이크 컷(takes.json = 앞선 claude 스텝 산출)
     if opts.get("take"):
         tp = os.path.join(outdir, "takes.json")
