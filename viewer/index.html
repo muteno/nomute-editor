@@ -7561,7 +7561,7 @@ function openMsgbox(highlightId) {
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'e8412f0 · 260727_1544';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'e11b046 · 260727_1547';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -12569,7 +12569,7 @@ tooldlg.addEventListener('close', () => {
     try { $('#toolRestore').focus(); } catch (_) {}
     return;
   }
-  if (curToolKey === 'ask' && askImages.length) { askImages = []; renderAskImgs(); }   // 요약 셸 정규 닫기 = 첨부 비움(askdlg close 핸들러의 stale ✓N 배지 차단 이식 · 운영자 260622 규칙 승계 — 최소화는 위 return으로 보존)
+  if (curToolKey === 'ask') { if (askImages.length) { askImages = []; renderAskImgs(); } askDraftClear(); }   // 요약 셸 정규 닫기 = 첨부 비움(askdlg close 핸들러의 stale ✓N 배지 차단 이식 · 운영자 260622 규칙 승계 — 최소화는 위 return으로 보존) + 초안 폐기(260727 · askdlg 경로와 동일 규칙)
   discardTool(curToolKey);   // 닫는 도구 프레임 회수(복제면 DOM 제거·원본이면 blank)
   tooldlg.classList.remove('has-tabs'); $('#toolTabs').innerHTML = '';
   if (MIN_REG.size) { showRestoreNav(); minRegRefresh(); } else hideRestoreNav();   // 다른 도구가 최소화돼 있으면 ▲ 유지(독립 창)
@@ -12823,7 +12823,12 @@ askdlg.addEventListener('click', e => { if (e.target === askdlg) askdlg.close();
 askdlg.addEventListener('close', () => {
   if (askMinimizing) { askMinimizing = false; showRestoreNav(); if (!document.querySelector('dialog[open]')) document.documentElement.style.overflow = ''; try { $('#toolRestore').focus(); } catch (_) {} return; }   // ★ 최소화 경로 = 첨부·입력 보존(이미지 비움 스킵·운영자 260627)
   if (askImages.length) { askImages = []; renderAskImgs(); }   // 닫으면 첨부 비움 = 재오픈 시 stale '✓N' 배지/이미지 잔존 차단(운영자 260622)
+  askDraftClear();   // 초안도 함께 폐기(운영자 260727 "최소화 한 게 아닌데 다른 페이지 갔다오면 휘발") — 최소화는 위 return이 이미 보존
 });
+// 초안 폐기 = 「최소화 = 보존 / 그 밖의 이탈(X·백드롭·ESC·뒤로가기·도구 정규 닫기) = 비움」 규칙의 실행부(운영자 260727 승인 · 4작성면 통일).
+//   value 직접 비우고 input 디스패치 = 지우개·복사 노출·placeholder 리드백이 정본 경로로 한 번에 따라온다(각 UI 갱신자 산탄 호출 금지).
+function draftClear(sel, after) { const t = $(sel); if (!t || !t.value) return; t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })); if (after) after(); }
+function askDraftClear() { draftClear('#askText'); }
 // 복사·붙여넣기 = [복사][붙여넣기] 별도 2버튼(attachCopyPaste 정본과 동일 분리 · 운영자 260628): 붙여넣기 항상 / 복사는 내용 있을 때만.
 function updateAskClip() {
   const b = $('#askClip'); if (!b) return;
@@ -13768,7 +13773,7 @@ function openCrev() {
 function updateCrevClip() { const t = $('#crevText'); if (t) t.dispatchEvent(new Event('input', { bubbles: true })); }   // 클립 = attachCopyPaste 이식(이미지 제작 동일) → input 디스패치로 갱신(운영자 260627)
 $('#crevX').addEventListener('click', () => $('#crevdlg').close());
 $('#crevdlg').addEventListener('click', e => { if (e.target === $('#crevdlg')) $('#crevdlg').close(); });
-$('#crevdlg').addEventListener('close', () => { resetCrevSend(); });   // 닫으면 재확인만 해제 — 입력 텍스트 보존(수정 FAB 재진입 복원 · 최소화 폐지 · 운영자 260628)
+$('#crevdlg').addEventListener('close', () => { resetCrevSend(); if (!$('#crevdlg')._minimizing) draftClear('#crevText', updateCrevClip); });   // 닫으면 재확인 해제 + 초안 폐기(운영자 260727 · revdlg 미러 — 최소화만 보존)
 $('#crevText').addEventListener('input', () => { resetCrevSend(); });   // 복사/붙여넣기/지우개는 attachCopyPaste가 처리(이미지 제작 이식·260627)
 $('#crevSend').addEventListener('click', async () => {
   if (CUR && isCardRevising(CUR)) return;   // 진행 중 재전송 차단(silent)
@@ -14122,7 +14127,7 @@ function wirePinToggle(el, it) {   // 잠금/해제 = 클릭 즉시 토글(옛 �
 }
 $('#revX').addEventListener('click', () => revdlg.close());
 revdlg.addEventListener('click', e => { if (e.target === revdlg) revdlg.close(); });   // 바깥(백드롭) 클릭 닫기
-revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); });   // 닫으면 재확인만 해제 + FAB 재평가 — 입력 텍스트는 보존(수정 FAB 재진입 시 그대로 복원 · 최소화 폐지 · 운영자 260628)
+revdlg.addEventListener('close', () => { resetRevSend(); updateRevFab(); if (!revdlg._minimizing) draftClear('#revText', updateRevClip); });   // 닫으면 재확인 해제 + FAB 재평가 + 초안 폐기(운영자 260727 — 구 "재진입 복원" 보존 규칙 철회 · 최소화만 보존)
 $('#revText').addEventListener('input', () => { resetRevSend(); });    // 텍스트 바꾸면 재확인 취소(오발사 방지) · 복사/붙여넣기/지우개는 attachCopyPaste가 처리(이미지 제작 이식·260627)
 $('#revSend').addEventListener('click', async () => {
   if (CUR && isRevising(CUR)) { return; }   // 진행 중 재전송 차단 — silent(표기 없음·운영자 260623)
@@ -14185,7 +14190,7 @@ function openTredo(sid) {
   setTimeout(() => $('#tredoText').focus(), 60);
 }
 $('#tredoX').addEventListener('click', () => $('#tredodlg').close());
-$('#tredodlg').addEventListener('close', () => { resetTredoSend(); });   // 닫으면 재확인만 해제 — 입력 텍스트는 보존(재진입 복원 · revdlg 미러)
+$('#tredodlg').addEventListener('close', () => { resetTredoSend(); if (!$('#tredodlg')._minimizing) draftClear('#tredoText', updateTredoClip); });   // 닫으면 재확인 해제 + 초안 폐기(운영자 260727 · revdlg 미러 — 최소화만 보존) · TREDO_LAST 화풍 잔류 차단(openTredo)과 중복이지만 이탈 축은 여기가 담당
 $('#tredodlg').addEventListener('click', e => { if (e.target === $('#tredodlg')) $('#tredodlg').close(); });   // 백드롭 탭 닫기(형제 컴포즈 모달 전부 보유 · 평의회 UX 미러)
 $('#tredoText').addEventListener('input', () => { resetTredoSend(); });  // 텍스트 바꾸면 재확인 취소(오발사 방지) · 복사/붙여넣기/지우개는 attachCopyPaste가 처리
 $('#tredoSend').addEventListener('click', async () => {

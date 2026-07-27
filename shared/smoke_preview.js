@@ -9,6 +9,7 @@
 //
 // 2티어 구조(정직 신고):
 //   [코어] 오늘 코드가 지켜야 하는 계약 — 부팅 에러 0 · 빈 상태 = 상시 프레임+사진 픽토그램 진입점(Q03② 승격 260714 · 내용물 개정 260715 "문구 대신 그걸") · 첨부→미리보기 등장 ·
+//          반쪽 헤더(부제만·제목만) = 미리보기 즉시 반응(Q686 회귀 260727 — 픽스처가 전 칸을 한꺼번에 채워 '타이핑 중' 사각이 있었다) ·
 //          토글 상호작용 재렌더 · 스테이지 패널 내(수평) · 옆 샘 = 스테이지 컨테이너 내(Q03① 승격 260715 — 전면꽉·슬릿 봉합 반영 XPASS → C9) · 폰트 = 노토 실로드+적용(Q03③ 승격 260714) · 로고 자산 가시(Q03④ 승격 260714) ·
 //          동일 런 픽셀 프로브 3점(첨부 실페인트·로고 잉크·글자 잉크 = 잉크메트릭 · Q07 260714 — 색·이미지 내용 사각 절반 보강)
 //   [대기] Q03 큐 잔여('대기' 티어 — CLAUDE.md [8] '예약' 금지어와 동음 회피 · 평의회① 260714) — 잔여 0(① 옆 샘 = 260715 C9 코어 승격 완료)
@@ -87,6 +88,29 @@ async function runOnce(pg, reqLog) {
   // C0.5 전역 계약 — 참조 전역·함수 실존(개명·삭제 = 조용한 무효화 차단 · 평의회④)
   const g0 = await pg.evaluate(() => ['CIMG', 'ieSrcSync', 'A2M', 'renderCpPrev', 'syncCpMerge', 'cpMerge'].filter(k => { try { return eval('typeof ' + k) === 'undefined'; } catch (_) { return true; } }));
   core('C0.5 전역 계약(6종 실존)', g0.length === 0, g0.length ? '소실: ' + g0.join(',') : '전부 실존');
+
+  // C10(코어 · Q686 회귀 260727) 반쪽 헤더 = 부제만·제목만 채운 '타이핑 중' 상태에서도 미리보기가 즉시 반응
+  //   왜 = 이 스모크의 픽스처는 부제·제목·자막을 **한꺼번에** 채워서, 한 칸만 찬 중간 상태를 한 번도 안 봤다(그 사각으로 Q686 결함이 통과했다 —
+  //   구 조건 `csub && ctitle`이라 부제를 치는 동안 변형 목록이 통째로 비어 미리보기가 빈 상태로 남았고, 스모크는 전부 그린이었다).
+  //   판정 = 변형 ≥1 + 스테이지에 그 글자가 실제로 찍혔나(변형만 세면 렌더 누락을 못 잡는다) · 발사 게이트는 이 축 밖(반쪽 제작 차단은 종전대로).
+  const half = await pg.evaluate(() => {
+    const set = (id, val) => { const e = document.querySelector(id); e.value = val; e.dispatchEvent(new Event('input', { bubbles: true })); };
+    const probe = tx => {
+      const v = cpPrevVariants().v;
+      const txt = Array.from(document.querySelectorAll('#cpPrevStage .cpv')).map(e => e.textContent).join('|');
+      return { n: v.length, hdr: v.some(x => x.k === 'hdr'), ink: txt.includes(tx) };
+    };
+    set('#cSub', '반쪽 부제'); set('#cTitle', '');
+    const sub = probe('반쪽 부제');
+    set('#cSub', ''); set('#cTitle', '반쪽 제목');
+    const tit = probe('반쪽 제목');
+    set('#cSub', ''); set('#cTitle', '');   // 원복 = 후속 어서션 결정론 유지(아래 픽스처가 다시 채운다)
+    cpFocus = null;   // ⚠ 필수 원복 — input 이벤트가 액티브 칸을 'hdr'로 마킹해두면 renderCpPrev가 cpPrevSel보다 그걸 우선해(C8 setVar('카드뉴스')가 무력화 = p1 미측정 FAIL) 실측으로 확인한 오염 경로다
+    renderCpPrev();
+    return { sub, tit };
+  });
+  core('C10 반쪽 헤더 = 부제만·제목만도 미리보기 즉시 반응(Q686 회귀)',
+    half.sub.n >= 1 && half.sub.hdr && half.sub.ink && half.tit.n >= 1 && half.tit.hdr && half.tit.ink, JSON.stringify(half));
 
   // 첨부 시뮬 = 페이지 전역 실호출(라이브 흐름과 동일 함수 · smoke_geni 문법) · 픽스처 = 실물 비율 캔버스
   await pg.evaluate(() => {

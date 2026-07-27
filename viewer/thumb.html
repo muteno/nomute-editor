@@ -2759,8 +2759,10 @@ function wipSync(job, sec) {   // renderJob 동반 — 활성 = 타일 보장+�
   if (t) t.textContent = tk > 0 ? fmtTok(tk) + ' 토큰' : '';   // 우상단 = 실측 중앙 토큰(운영자 260727 "종량제가 아닌 건 값이 안 뜨니 토큰으로만") · 앵커 없으면 빈칸
 }
 function wipEmptySync() { const em = $('#carEmpty'), box = $('#wips'); if (!em || !box) return; if (box.childElementCount) { em.hidden = true; return; } if (typeof carHSync === 'function') carHSync(); }   // 타일 있으면 '아직 제작한 게 없습니다' 숨김 · 비면 기존 판정(carHSync)에 반환
-function jobCancelTap(job, row, btn) {   // 취소 버튼 상태머신 = X → (1탭) 재확인 arm → (2탭) 확정 ✓ → 행 회수. 인라인 재확인 정본 = #histClr(1차 arm·3s 원복) 그대로.
-  if (!job._cxArm) {
+const CX_FREE_MS = 10000;   // 발사 직후 유예 = 재확인 없이 1탭 취소(운영자 260727 "발사 10초내 ㄱㄱ") — 이 구간은 러너가 아직 안 물었을 확률이 높고 사유도 대개 "방금 잘못 눌렀다"라 2탭이 군더더기. 넘어가면 종전 2탭(오발 방지)로 자동 복귀.
+const cxFresh = job => (Date.now() - job.t0) < CX_FREE_MS;   // 발사 시각 기준 · 재발사(refire)는 t0를 갱신하므로 그때도 10초 유예가 새로 열린다
+function jobCancelTap(job, row, btn) {   // 취소 버튼 상태머신 = X → (1탭) 재확인 arm → (2탭) 확정 ✓ → 행 회수. 인라인 재확인 정본 = #histClr(1차 arm·3s 원복) 그대로. 단 발사 10초 안이면 1탭 직행.
+  if (!job._cxArm && !cxFresh(job)) {
     job._cxArm = 1; btn.classList.add('arm'); btn.innerHTML = CHECK_SVG; btn.title = '한 번 더 누르면 취소'; btn.setAttribute('aria-label', '취소 확정');
     clearTimeout(job._cxT); job._cxT = setTimeout(() => { job._cxArm = 0; if (job.status === 'run') renderJob(job); }, 3000);   // 3s 내 재탭 없으면 원복(#histClr 동값)
     return;
@@ -2845,7 +2847,7 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (job.status === 'run') {   // 제작 중 = 우측 X(취소) — 실패 행 .jdel 부품·자리·기하 100% 계승 + 픽토만 정본 X(운영자 260727 "휴지통 말고 X" — 삭제≠취소 의미 분리) · 상태 2단
     const cx = document.createElement('button'); cx.type = 'button'; cx.className = 'jdel jcancel';
     if (job._cxArm) { cx.classList.add('arm'); cx.innerHTML = CHECK_SVG; cx.title = '한 번 더 누르면 취소'; cx.setAttribute('aria-label', '취소 확정'); }   // 1s 재렌더에도 무장 유지 = 상태를 job에 보관(행은 매 틱 새로 그려진다)
-    else { cx.innerHTML = XCLOSE_SVG; cx.title = '이 제작 취소'; cx.setAttribute('aria-label', '제작 취소'); }
+    else { cx.innerHTML = XCLOSE_SVG; cx.title = cxFresh(job) ? '이 제작 취소 — 방금 발사라 한 번에 취소' : '이 제작 취소'; cx.setAttribute('aria-label', '제작 취소'); }   // 10초 유예 = 툴팁으로만 알린다(픽토·색은 동일 = 새 모양 0)
     cx.onclick = () => jobCancelTap(job, row, cx);
     row.append(cx);
   }
