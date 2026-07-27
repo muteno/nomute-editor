@@ -55,14 +55,18 @@ jobs:
           shopt -u nullglob
           if [ "$orphans" -eq 0 ]; then echo "orphan 없음 — 정상"; exit 0; fi
 
-          # news-analyze 가 이미 활성(진행/대기)이면 디스패치 생략 — concurrency 가 직렬화하지만 중복 run 절제.
-          active=$(gh run list --workflow=news-analyze.yml --limit 20 --json status \
-                   -q '[.[] | select(.status=="in_progress" or .status=="queued")] | length' 2>/dev/null || echo 0)
-          if [ "${active:-0}" -gt 0 ]; then
-            echo "news-analyze 이미 활성(${active}) — 디스패치 생략(처리 중)"; exit 0
+          # 구출 절제 = '최근 85분 내 생성된 news-analyze *dispatch* 런 존재 시 스킵'(창 85분 < analyze 잡 hard timeout 90분).
+          #   ⚠️ 구 '활성 런(status) 게이트'는 card_plan 꼬리(상한 165분)가 런을 활성으로 유지해 구출을 수 시간 막는
+          #   호스티지 사각(아래 asks 스텝 260720 실측 주석과 동형)이라 폐기(평의회 260728 신규3) — asks 스텝의
+          #   createdAt 창 패턴 계승. push 런은 안 셈(정상 트래픽이 구출을 안 막음) · 겹쳐도 analyze 잡 concurrency 가
+          #   직렬화 + 빈 pending 런은 즉시 exit = 정합 무해·빈 런 1회 낭비뿐.
+          recent=$(gh run list --workflow=news-analyze.yml --event=workflow_dispatch --limit 10 --json createdAt \
+                   -q '[.[] | select((now - (.createdAt | fromdateiso8601)) < 5100)] | length' 2>/dev/null || echo 0)
+          if [ "${recent:-0}" -gt 0 ]; then
+            echo "최근 85분 내 news-analyze 구출 디스패치 ${recent}건 — 이번 사이클 스킵(호스티지 사각 없는 절제)"; exit 0
           fi
 
-          echo "orphan ${orphans}건 · news-analyze 비활성 → 재디스패치"
+          echo "orphan ${orphans}건 · 최근 구출 디스패치 없음 → 재디스패치"
           ok=0
           for i in 1 2 3; do                       # 단발 silent-fail 방지 — pick.yml 패턴 계승(분신술4 I-2)
             if gh workflow run news-analyze.yml; then ok=1; break; fi
