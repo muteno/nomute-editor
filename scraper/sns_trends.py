@@ -1072,7 +1072,7 @@ _RD_UA = "nomute-editor/1.0 (news curation; +https://nomute-editor.pages.dev)"  
 def _reddit_rss(sr, per):
     """레딧 RSS 폴백 — `.json`이 막힐 때의 유일한 열린 문(260727 실측: {크롬UA·봇UA·old.reddit} × .json = 전부 403 ·
     **RSS + 봇UA = 200**. 폰 가정 IP에서도 .json 403이 상주해 레딧이 며칠째 0건이던 원인).
-    ⚠ RSS엔 score·댓글수·stickied·썸네일이 **없다** → 지표 0으로 두고(뷰어가 `score ? … : ''`라 0 = 미표기 = 무수정 호환),
+    ⚠ RSS엔 score·댓글수·stickied가 **없다** → 지표 0으로 두고(뷰어가 `score ? … : ''`라 0 = 미표기 = 무수정 호환),
       순서는 hot 그대로 보존(호출부 sorted가 안정 정렬이라 동점이면 원순서 유지) · 공지는 플래그가 없어
       **7일 초과분 컷**으로 대신 거른다(hot 상단에 7일 넘은 글 = 사실상 고정 공지)."""
     x = urllib.request.urlopen(urllib.request.Request(
@@ -1086,6 +1086,8 @@ def _reddit_rss(sr, per):
         ml = re.search(r'<link[^>]*href="([^"]+)"', b)
         mi = re.search(r"<id>(?:t3_)?([^<]+)</id>", b)
         mu = re.search(r"<updated>([^<]+)</updated>", b)
+        mth = re.search(r'<media:thumbnail\s+url="([^"]+)"', b)   # 썸네일(260727 실측 = RSS에도 있다) — preview.redd.it 640px(?width=640&crop=smart&auto=webp) · .json thumbnail 필드와 동급 · 텍스트 글은 태그 자체가 없어 자연 결측 = ""
+        mcat = re.search(r'<category\s+term="([^"]+)"', b)        # 실제 서브레딧(260727) — r/popular 피드의 글은 저마다 다른 서브 소속인데 종전엔 요청한 sr('popular')을 그대로 박아 화면이 전부 "[r/popular]"였다
         if not (mt and ml):
             continue
         ts = 0
@@ -1096,13 +1098,14 @@ def _reddit_rss(sr, per):
                 ts = 0
         if ts and (now - ts) > 7 * 86400:
             continue   # stickied 대체 컷(공지 = 상단 고정인데 날짜가 아주 오래됐다)
-        out.append({"sub": sr, "title": _h.unescape(mt.group(1)).strip()[:200],
-                    "score": 0, "cmts": 0, "thumb": "", "time": ts,
+        th = _h.unescape(mth.group(1)) if mth else ""
+        out.append({"sub": (mcat.group(1) if mcat else sr), "title": _h.unescape(mt.group(1)).strip()[:200],
+                    "score": 0, "cmts": 0, "thumb": th if th.startswith("http") else "", "time": ts,
                     "url": _h.unescape(ml.group(1)), "_id": (mi.group(1) if mi else ml.group(1))})
     return out
 
 
-def reddit_hot(subreddits, limit=12, per=8):
+def reddit_hot(subreddits, limit=15, per=12):   # per 8→12 · limit 12→15(운영자 260727 "10개까지 뜨게") — 뷰어 표시 상한이 10인데 per=8이면 7일컷·dedup·3일컷을 지나 10칸이 애초에 안 찬다(실측 260727 = 8건 상주). 여유분 = 컷 통과 후에도 10칸 보장용
     """⑥ 레딧 서브레딧 핫 — 공개 .json(무키·UA 필수 · 운영자 260712 "레딧은 좋음").
     서브레딧별 fail-soft·콜 간 2s · sticky(공지)·NSFW 컷 · 교차 dedup. 정렬 = 스코어.
     ⚠️ 러너 데이터센터 IP 403/429 가능 — §📰-e 카나리아가 판정(실패 = [] = 직전분 보존).
@@ -1116,12 +1119,13 @@ def reddit_hot(subreddits, limit=12, per=8):
             try:
                 j = json.loads(_get("https://www.reddit.com/r/%s/hot.json?limit=%d&raw_json=1" % (urllib.parse.quote(sr), per)))
             except Exception as e1:  # noqa: BLE001 — .json 차단 = RSS로 건진다(둘 다 실패면 아래 except가 스킵)
+                n0 = len(out)   # 이번 서브가 실제로 보탠 건수 = 증분(260727: sub 필드가 '요청한 서브'에서 '글의 실제 서브'로 바뀌어 `o['sub']==sr` 집계는 상시 0을 찍는다 — 로그가 거짓말하던 것 봉합)
                 for it in _reddit_rss(sr, per):
                     if it["_id"] in seen:
                         continue
                     seen.add(it.pop("_id"))
                     out.append(it)
-                print(f"::notice::reddit r/{sr} .json 차단({type(e1).__name__}) → RSS 폴백 {len([o for o in out if o['sub'] == sr])}건", file=sys.stderr)
+                print(f"::notice::reddit r/{sr} .json 차단({type(e1).__name__}) → RSS 폴백 {len(out) - n0}건", file=sys.stderr)
                 time.sleep(2)   # 폴백 런은 서브레딧당 2콜(.json 실패 + RSS) = 종전 2s로는 촘촘 → 추가 유예(260727 실측: 3서브 중 3번째가 429)
                 continue
             for c in ((j.get("data") or {}).get("children") or []):
