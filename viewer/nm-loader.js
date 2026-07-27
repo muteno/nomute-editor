@@ -288,29 +288,60 @@
     function stop() { refs = Math.max(0, refs - 1); if (!refs) halt(); }
     function reset() { refs = 0; halt(); }
 
-    function busyOf(el) { return el.getAttribute('aria-busy') === 'true' || el.classList.contains('busy'); }
-    function watch(el) {                                 // 버튼 1개 관찰 = 이 부품이 유일하게 하는 '배선'
-      if (!el || el._nmFavW) return; el._nmFavW = 1;
-      var was = busyOf(el);
-      if (was) start();
-      try {
-        new MutationObserver(function () {
-          var now = busyOf(el);
-          if (now === was) return;
-          was = now; now ? start() : stop();
-        }).observe(el, { attributes: true, attributeFilter: ['aria-busy', 'class'] });
-      } catch (e) {}
+    /* ── 배선 = 문서 전역 aria-busy 관찰(운영자 260727 고도화) ─────────────────────────
+       구 방식은 셀렉터 목록('#go, #editGo, .go[id]')이었고, 그래서 **index가 통째로 사각**이었다
+       (실측 260727: 뉴스요약 #askSend · 이미지생성 #geniGo · #pubGo · #edGo · #dgGo 등 14개 전부 미관찰).
+       목록을 사람이 관리하는 구조 = 구조토큰 접두사 사고(Q681)와 같은 실패형이라, 목록 자체를 없앤다.
+       기준 = `aria-busy` 하나. 이 레포는 이미 이걸 '작업 중' 정본으로 쓴다
+       — index `lkProdBusy()`가 도구 프레임을 `[aria-busy="true"]`로 판정(자동잠금 보류 축).
+       버튼이 아닌 요소(k·sb의 #status)도 자동 합류한다 = 진행 신호를 놓치지 않는다. */
+    var busySet = null;
+    function mark(el, on) {
+      if (!busySet) return;
+      var had = busySet.has(el);
+      if (on && !had) { busySet.add(el); start(); }
+      else if (!on && had) { busySet['delete'](el); stop(); }
+    }
+    function sweep() {                                   // DOM에서 사라진 busy 요소 회수(영구 회전 차단)
+      if (!busySet || !busySet.size) return;
+      busySet.forEach(function (el) {
+        if (!el.isConnected || el.getAttribute('aria-busy') !== 'true') mark(el, false);
+      });
     }
     function scan(root) {
-      var els = (root || document).querySelectorAll('#go, #editGo, .go[id]'), i;
-      for (i = 0; i < els.length; i++) watch(els[i]);
+      if (!busySet) busySet = new Set();
+      try {
+        var els = (root || document).querySelectorAll('[aria-busy="true"]'), i;
+        for (i = 0; i < els.length; i++) mark(els[i], true);
+      } catch (e) {}
+    }
+    function watch() {                                   // 문서 전역 1회 등록 — 이후 새로 생기는 버튼도 자동 합류
+      scan(document);
+      try {
+        new MutationObserver(function (ms) {
+          for (var i = 0; i < ms.length; i++) {
+            var m = ms[i], t = m.target, j, n;
+            if (m.type === 'attributes') { if (t && t.getAttribute) mark(t, t.getAttribute('aria-busy') === 'true'); continue; }
+            /* childList도 본다 — 속성을 먼저 달고 나중에 append되는 노드(동적 잡 카드 등)는
+               attributes 이벤트가 안 온다(실측 260727: appendChild 전 setAttribute → 미검출). */
+            for (j = 0; j < m.addedNodes.length; j++) {
+              n = m.addedNodes[j];
+              if (!n || n.nodeType !== 1) continue;
+              if (n.getAttribute && n.getAttribute('aria-busy') === 'true') mark(n, true);
+              scan(n);
+            }
+            for (j = 0; j < m.removedNodes.length; j++) sweep();   // 떼어낸 서브트리의 busy 회수
+          }
+        }).observe(document.documentElement, { attributes: true, subtree: true, childList: true, attributeFilter: ['aria-busy'] });
+        setInterval(sweep, 5000);
+      } catch (e) {}
     }
     try {
       addEventListener('pagehide', reset);
       document.addEventListener('visibilitychange', function () { if (document.hidden) return; });   // 훅 자리(현행 = 정지 안 함)
     } catch (e) {}
-    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan };
+    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan, sweep: sweep };
   })();
   window.nmFavSpin = FAV;
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { FAV.scan(); }); else FAV.scan();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { FAV.watch(); }); else FAV.watch();
 })();
