@@ -224,6 +224,10 @@
     }
     function blocked() {                                // 발동 자체를 막는 환경
       try {
+        /* iframe 안 = 탭 파비콘이 내 것이 아니다(최상위 문서 소유). 자식이 자기 <link>를 돌려봐야
+           아무도 못 보는 순수 낭비 → no-op. 자식 문서의 busy는 **부모가 hookFrame으로 관찰**한다.
+           도구를 주소로 직접 열면 그 문서가 최상위라 정상 발동(운영자 260727). */
+        if (window.top !== window.self) return 1;
         if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return 1;   // PWA = 탭 없음
         if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 1;                     // 모션 줄이기
       } catch (e) {}
@@ -305,7 +309,15 @@
     function sweep() {                                   // DOM에서 사라진 busy 요소 회수(영구 회전 차단)
       if (!busySet || !busySet.size) return;
       busySet.forEach(function (el) {
-        if (!el.isConnected || el.getAttribute('aria-busy') !== 'true') mark(el, false);
+        var dead = false;
+        try {
+          /* ⓐ 자기 문서에서 떨어졌거나 ⓑ busy 해제됐거나
+             ⓒ **소유 문서 자체가 죽었거나**(= iframe이 통째로 DOM에서 제거됨 · defaultView가 null이 된다).
+             ⓒ가 없으면 도구 창을 생성 중에 닫았을 때 파비콘이 영원히 돈다(실측 260727 FAIL → 이 줄로 봉합). */
+          var d = el.ownerDocument;
+          dead = !el.isConnected || !d || !d.defaultView || el.getAttribute('aria-busy') !== 'true';
+        } catch (e) { dead = true; }                      // 접근 자체가 막히면(문서 파괴) 죽은 것으로 본다
+        if (dead) mark(el, false);
       });
     }
     function scan(root) {
@@ -315,8 +327,17 @@
         for (i = 0; i < els.length; i++) mark(els[i], true);
       } catch (e) {}
     }
-    function watch() {                                   // 문서 전역 1회 등록 — 이후 새로 생기는 버튼도 자동 합류
-      scan(document);
+    /* ── iframe 관통(운영자 260727) ────────────────────────────────────────────────
+       index는 도구 탭을 **iframe으로 품는다**(activateToolFrame·toolFrames). 그래서 「＋로 도구를 열어
+       생성」하는 실제 주 경로는, 자식 문서가 자기 <link>만 바꿔서 **부모 탭 파비콘에 아무 반영이 없었다**.
+       파비콘은 최상위 문서 소유 하나뿐이므로 자식 문서의 busy를 부모가 대신 관찰해야 한다.
+       선례 = index `lkProdBusy()`가 이미 `toolFrames[k].contentDocument`를 `[aria-busy="true"]`로 관통
+       판정한다(자동잠금 보류 축) — 같은 접근을 부품 쪽에서 하므로 **index 코드는 무접촉**이다.
+       동일 출처라 contentDocument 접근이 되고, 아니면 throw → catch로 조용히 건너뛴다. */
+    function observeDoc(doc) {
+      if (!doc || !doc.documentElement || doc._nmFavD) return;
+      doc._nmFavD = 1;
+      scan(doc);
       try {
         new MutationObserver(function (ms) {
           for (var i = 0; i < ms.length; i++) {
@@ -328,19 +349,41 @@
               n = m.addedNodes[j];
               if (!n || n.nodeType !== 1) continue;
               if (n.getAttribute && n.getAttribute('aria-busy') === 'true') mark(n, true);
-              scan(n);
+              if (n.tagName === 'IFRAME') hookFrame(n); else { scan(n); hookFrames(n); }
             }
             for (j = 0; j < m.removedNodes.length; j++) sweep();   // 떼어낸 서브트리의 busy 회수
           }
-        }).observe(document.documentElement, { attributes: true, subtree: true, childList: true, attributeFilter: ['aria-busy'] });
-        setInterval(sweep, 5000);
+        }).observe(doc.documentElement, { attributes: true, subtree: true, childList: true, attributeFilter: ['aria-busy'] });
+      } catch (e) {}
+    }
+    function hookFrame(fr) {
+      if (!fr) return;
+      var attach = function () { try { observeDoc(fr.contentDocument); } catch (e) {} };
+      if (!fr._nmFavF) {
+        fr._nmFavF = 1;
+        // src가 about:blank → 실제 도구로 갈릴 때마다 문서가 새로 생긴다 = 재등록 필수
+        try { fr.addEventListener('load', function () { try { if (fr.contentDocument) fr.contentDocument._nmFavD = 0; } catch (e) {} attach(); }); } catch (e) {}
+      }
+      attach();                                          // 이미 로드가 끝난 프레임도 즉시 등록
+    }
+    function hookFrames(root) {
+      try {
+        var fs = (root || document).querySelectorAll('iframe'), i;
+        for (i = 0; i < fs.length; i++) hookFrame(fs[i]);
+      } catch (e) {}
+    }
+    function watch() {                                   // 최상위 1회 등록 — 이후 새 버튼·새 iframe 자동 합류
+      observeDoc(document);
+      hookFrames(document);
+      try {
+        setInterval(function () { sweep(); hookFrames(document); }, 5000);   // 프레임 문서 교체 취약 구간 보정
       } catch (e) {}
     }
     try {
       addEventListener('pagehide', reset);
       document.addEventListener('visibilitychange', function () { if (document.hidden) return; });   // 훅 자리(현행 = 정지 안 함)
     } catch (e) {}
-    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan, sweep: sweep };
+    return { start: start, stop: stop, reset: reset, watch: watch, scan: scan, sweep: sweep, hookFrame: hookFrame };
   })();
   window.nmFavSpin = FAV;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { FAV.watch(); }); else FAV.watch();
