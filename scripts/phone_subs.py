@@ -10,13 +10,58 @@
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "scraper"))
 import sns_trends as st  # noqa: E402
 
+# ── 인스타 429 지수 백오프(운영자 260727) ─────────────────────────────────────────
+# 판례: 쿠키 주입 성공(길이 266·401 아님) 후에도 **첫 계정부터 429가 8연속**. 인스타 IP 리밋은
+#   두드릴 때마다 **갱신**되므로 30분 크론이 계속 때리면 영영 안 풀리는 자해 루프였다(로그 실측).
+#   → 429를 맞으면 그 시각부터 일정 시간 인스타 호출 자체를 건너뛴다 = IP에 회복할 틈을 준다.
+#   연속 실패마다 6h → 12h → 24h(상한)로 늘리고, 한 번 성공하면 카운터를 지워 즉시 정상 주기 복귀.
+# 상태 파일 = 폰 로컬(git 밖 · 레포 커밋 0 · 형식 "until_epoch count"). 삭제하면 즉시 재시도 = 수동 해제.
+# 인스타 축에만 적용 — x·스레드·틱톡·레딧·재난은 종전대로 매 런 수집(무영향).
+_CD_PATH = os.path.expanduser("~/.nomute_insta_cooldown")
+_CD_STEPS = (6 * 3600, 12 * 3600, 24 * 3600)
+
+
+def _cd_read():
+    try:
+        a, b = open(_CD_PATH, encoding="utf-8").read().split()
+        return float(a), int(b)
+    except Exception:  # noqa: BLE001 — 파일 없음·파손 = 쿨다운 없음(fail-open = 수집 우선)
+        return 0.0, 0
+
+
+def _insta_collect(accounts):
+    until, cnt = _cd_read()
+    now = time.time()
+    if now < until:
+        print("::notice::insta 429 쿨다운 중 — %.1fh 남음(연속 %d회 · 두드릴수록 IP 리밋이 갱신돼 회복이 늦어진다)"
+              % ((until - now) / 3600, cnt), file=sys.stderr)
+        return []
+    st.INSTA_429 = False
+    got = st.insta_subs(accounts, limit=20)
+    if getattr(st, "INSTA_429", False):
+        cnt = min(cnt + 1, len(_CD_STEPS))
+        wait = _CD_STEPS[cnt - 1]
+        try:
+            open(_CD_PATH, "w", encoding="utf-8").write("%f %d" % (now + wait, cnt))
+        except Exception as e:  # noqa: BLE001 — 기록 실패 = 다음 런 재시도(종전 동작)
+            print(f"::warning::insta 쿨다운 기록 실패({type(e).__name__}) — 다음 런 재시도", file=sys.stderr)
+        print("::warning::insta 429 → %.0fh 쿨다운 기록(연속 %d회 · 해제 = rm %s)" % (wait / 3600, cnt, _CD_PATH), file=sys.stderr)
+    elif until or cnt:
+        try:
+            os.remove(_CD_PATH)   # 성공 = 백오프 초기화(다음 429는 다시 6h부터)
+        except Exception:  # noqa: BLE001
+            pass
+    return got
+
+
 acc, reg = st._load_accounts()
 _tk_kr, _tk_gl = st._region_split("tiktok", acc, reg)   # 틱톡 지역분리(러너 _rsubs 동일 정본) — KR 독립 top-N = 큐레이션 한국 굶김 방지(운영자 260719 봉인)
-out = {"x": st.x_subs(acc["x"], limit=20), "insta": st.insta_subs(acc["insta"], limit=20),
+out = {"x": st.x_subs(acc["x"], limit=20), "insta": _insta_collect(acc["insta"]),
        # ⑯ x_search(가계정 X 검색) 폰 배선 제거 — adaptive.json 폐지 확정(빈 응답 실측 260723) + main() 미소비 = 데드콜. x_search 함수는 sns_trends.py에 dormant 존치(break-glass · env X_AUTH_TOKEN/X_CT0 보존) · 홈IP 밴 리스크 상환 · 딥링크(x.com/search)가 값 커버 · 평의회 260723 #3
        "threads": st.threads_subs(acc["threads"], limit=20),   # ⑧ 스레드(운영자 260712) — 계정 미등록 = [] no-op
        "tiktok": st.tiktok_subs(_tk_kr, limit=12) + st.tiktok_subs(_tk_gl, limit=12),   # 틱톡 구독(운영자 260721) — 러너 데센 IP가 tikwm /user/posts에 HTTP 403(WAF IP블록 실측 run 29800229859) → 가정 IP가 주 공급 · 지역별 독립 top-12(KR 먼저 = 큐레이션 한국 채움)
