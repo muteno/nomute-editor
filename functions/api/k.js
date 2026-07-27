@@ -60,6 +60,7 @@ export async function onRequestPost({ request, env }) {
     if (k === '네거티브') { const arr = Array.isArray(v) ? v.filter(x => typeof x === 'string' && K_SET[k].includes(x)).slice(0, 7) : []; if (arr.length) pairs.push(k + '=' + arr.join('+')); continue; }
     if (typeof v !== 'string') continue;
     if (k === '길이' && /^(?:[3-9]|1[0-5])s$/.test(v)) { pairs.push(k + '=' + v); continue; }   // '직접' 게이지 3~15s 허용
+    if (k === '비율' && /^(?:[1-9]|[1-9][0-9]):(?:[1-9]|[1-9][0-9])$/.test(v)) { pairs.push(k + '=' + v); continue; }   // '직접' N:M 허용 = 각 1~99(뷰어 kArVal 계약 · 위 '길이' 정규식과 동축 — K_SET 리터럴 무접촉이라 check_k_models 3면 게이트 그대로)
     if (K_SET[k].includes(v)) pairs.push(k + '=' + v);
   }
   if (!drop.has('표현2') && (set['표현2'] === '극화' || set['표현2'] === '수채화') && (set['웹툰'] === 'ON' || set['웹툰'] === 'OFF')) pairs.push('웹툰=' + set['웹툰']);   // 한국웹툰 토글(극화·수채화 한정)

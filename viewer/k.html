@@ -115,6 +115,15 @@
   .axchip::before { content:""; position:absolute; inset:-5px 0; }   /* 세로 히트 확장 = 40px(규약 §16) */
   .axchip:active { transform:scale(var(--press-m,.9)); }
   .axchip.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14); }
+  /* 비율 직접 = 「직접」 칩 그 자리 인라인 N:M(index 정본의 동작 · 모양은 이 화면 문법 = 켜진 .axchip.on 알약 그대로 — 워드칩 화면[index·tr·thumb]과 달리 k는 테두리 칩 화면이라 그 계승원을 쓴다) */
+  .kar { position:relative; display:inline-flex; align-items:center; height:var(--btn-sm); padding:0 9px /* raw-ok: .axchip 11 − 입력 자체 좌우 2 = 알약 안 여백 동일 */;
+    border-radius:var(--r-pill); border:1px solid rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.14) /* = .axchip.on 정본 동값 */; }
+  .kar-in { box-sizing:content-box; width:1ch /* 실폭 = kArFit이 값 길이(1~2ch)로 동기 */; padding:0 2px; background:none; border:none; outline:none; border-radius:0; -webkit-appearance:none; appearance:none;
+    font-family:inherit; font-size:12px /* raw-ok: .axchip 활자 정본 동값 */; font-weight:600 /* raw-ok: .axchip 정본 동값 */; color:var(--accent) /* = .axchip.on 정본 동값 */;
+    line-height:normal; text-align:center; font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent; }
+  .kar-in:focus { border-color:transparent; box-shadow:none; }   /* 전역 input:focus 링(강조색 3px) 재승리 = 칩엔 링이 없다 */
+  .kar-in::selection { background:rgba(var(--accent-rgb),.3); color:var(--accent); }   /* 탭 = 전체 선택 — 브라우저 기본 파랑은 팔레트 밖 */
+  .kar-c { color:var(--accent); opacity:.62; font-size:12px /* raw-ok: .axchip 활자 정본 동값 */; font-weight:600 /* raw-ok: .axchip 정본 동값 */; }
   .kdiv { border-top:1px solid var(--line); margin:var(--sp-4) 0; }   /* 표현3(네거티브)↔오디오 구분선 = index .tb-div 헤어라인 문법 계승 · 색 = k엔 --line2 미정의(line 127 실측) → 근접 토큰 --line 자동 계승(§핵심명령 2-a) · 위아래 sp-4 = 표현 계열↔오디오 구획 분리(운영자 260717 "오디오랑 구분되게") */
   /* ── 영상 개요 축(비디오모델·비율·화질·프레임) = 설계(sb .geni-row) 우측정렬 인라인 픽커 계승(운영자 260717 "1을 2 느낌으로") · 라벨 좌·값 우·무테 텍스트 · 길이 슬라이더/표현은 비대상 ── */
   .axrow.kax { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--sp-2); margin-top:var(--sp-4); }
@@ -408,6 +417,10 @@ const K_VALS = {
 const K_DEF = { '비율': '9:16', '화질': '4K', '프레임': '60fps', '길이': '10s', '표현1': '실사 시네마틱', '표현2': '없음', '세부': '기본', '오디오': '의성어만' };   // 운영자 확정 기본값(260710 의성어만 · 260711 화질 4K — 3분류 선택값)
 // 표현2별 세부 화풍(운영자 260710 3차 "극화인데 다음 선택지가 없네" — 이미지 생성 GENI_SUB 개념 이식) · K_VALS['세부'] = 이 전체 합집합(api 패리티 축) · 미등재 화풍 = 세부 행 자체 숨김
 const K_SUB = { '극화': ['기본', '게키카', '하드보일드', '시대극', '순정', '명랑'], '수채화': ['기본', '번짐', '세밀', '수묵', '과슈', '유화'], '시사만평': ['기본', '붓선', '플랫', '판화'], '3D 애니': ['기본', '클레이', '로우폴리'], '인포그래픽': ['기본', '라인', '청사진'] };
+let kArW = '1', kArH = '1';   // 비율 직접 기본 = 1:1(index _geniSel.arW/arH 정본 동값)
+function kArVal() { const w = parseInt(kArW, 10), h = parseInt(kArH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : null; }   // 직접 비율 유효값 = index geniArVal 정본 동일 계약(각 1~99 + 1:4~4:1) · 서버 api/k.js가 같은 계약으로 재검증
+function kRatio() { return kSet['비율'] === '직접' ? (kArVal() || K_DEF['비율']) : kSet['비율']; }   // 발사·리드백 실값 — 미완성 = 기본 강하(같은 화면 「길이」 직접 = segTotal() 선례 문법)
+function kArFit(el) { if (el) el.style.width = Math.max(1, (el.value || '').length) + 'ch'; }   // 숫자칩 폭 = 값 길이 동기(index geniArFit 정본 미러)
 let kModel = 'kling', kSet = Object.assign({}, K_DEF), kNeg = K_VALS['네거티브'].slice(), kLen = 12, kWebtoon = true, kDial = '', kSegOn = false, kSegs = [{ s: 3, txt: '' }, { s: 0, txt: '' }];   // 네거티브 = 기본 전체 선택(운영자 260710 "있으면 다 좋은 것" — 전부 방지 계열·상충 0·Avoid 블록 합류)
 // 분막 산수(마지막 구간 = 나머지 자동 · 구간 최소 3s · 운영자 예 15s = 3+12) — go 핸들러도 써서 최상위 정의
 const segTotal = () => (kSet['길이'] === '직접' ? kLen : parseInt(kSet['길이'], 10));
@@ -416,6 +429,7 @@ const segLast = () => segTotal() - segFixed();
 function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이트리스트 재검증)
   const set = Object.assign({}, kSet);
   if (set['길이'] === '직접') set['길이'] = segTotal() + 's';
+  if (set['비율'] === '직접') set['비율'] = kRatio();   // '직접' = 화면 상태값 → 발사 시 실 N:M으로 치환(위 「길이」 선례 동문법 · 서버 정규식이 재검증)
   if (kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') set['웹툰'] = kWebtoon ? 'ON' : 'OFF';
   if (!(K_SUB[set['표현2']] || []).includes(set['세부']) || set['세부'] === '기본') delete set['세부'];   // 세부 = 보유 화풍 + 비기본일 때만 전송(기본·비적용 = 마커 노이즈 0)
   set['네거티브'] = kNeg.slice();
@@ -442,7 +456,9 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || '{}');
     if (K_MODELS.some(x => x.id === s.m && !x.draft)) kModel = s.m;   // 기본 = Kling 3.0 Omni(정식 모델 · 운영자 260717) — draft(veo·seedance = 미출시 초안)는 복원 안 함 → 열 때마다 정식 기본으로 · 세션 내 선택은 자유
-    if (s.set && typeof s.set === 'object') Object.keys(K_VALS).forEach(k => { if (k === '네거티브') return; const v = s.set[k]; if (K_VALS[k].includes(v) || (k === '길이' && v === '직접')) kSet[k] = v; });
+    if (s.set && typeof s.set === 'object') Object.keys(K_VALS).forEach(k => { if (k === '네거티브') return; const v = s.set[k]; if (K_VALS[k].includes(v) || (k === '길이' && v === '직접') || (k === '비율' && v === '직접')) kSet[k] = v; });
+    if (typeof s.arW === 'string' && /^[1-9][0-9]?$/.test(s.arW)) kArW = s.arW;
+    if (typeof s.arH === 'string' && /^[1-9][0-9]?$/.test(s.arH)) kArH = s.arH;
     if (!(K_SUB[kSet['표현2']] || []).includes(kSet['세부'])) kSet['세부'] = '기본';   // 복원 교차검증 — 세부는 현 표현2 보유분만(스테일 조합 봉합)
     if (s.sv !== 2) kSet['화질'] = K_DEF['화질'];   // 화질 4K 승격(운영자 260711 3분류) 1회 마이그레이션 — 구 저장분(첫 render save()가 1080p를 전 폰에 영속시킨 상태)의 화질만 신 기본으로, 나머지 선택 전부 보존(negV2 선례 · 배선평의회4 ③)
     if (Array.isArray(s.negV2)) kNeg = s.negV2.filter(v => K_VALS['네거티브'].includes(v)).slice(0, 7);   // negV2 = 기본 전체 선택 개편(운영자 260710) 마이그레이션 — 구 s.neg(부분 선택 저장분)는 1회 무시해 신 기본이 적용되게, 이후 사용자 조정은 영속
@@ -452,7 +468,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
     if (Array.isArray(s.segs) && s.segs.length >= 2 && s.segs.length <= 5 && s.segs.every((g, i) => g && Number.isInteger(g.s) && typeof g.txt === 'string' && (i === s.segs.length - 1 ? g.s >= 0 : g.s >= 3))) kSegs = s.segs.map(g => ({ s: g.s, txt: g.txt.slice(0, 500) }));   // 비-마지막 구간 = 3s 하한 재검증(최종감사2 #4)
     if (s.segOn === true && segTotal() >= 6) kSegOn = true;
   } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ m: kModel, set: kSet, negV2: kNeg, len: kLen, wt: kWebtoon, dial: kDial, segOn: kSegOn, segs: kSegs, sv: 2 })); } catch (e) {} };   // sv = 설정 세대 마커(2 = 화질 4K 승격 완료 · 260711)
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ m: kModel, set: kSet, negV2: kNeg, len: kLen, wt: kWebtoon, dial: kDial, segOn: kSegOn, segs: kSegs, sv: 2 , arW: kArW, arH: kArH})); } catch (e) {} };   // sv = 설정 세대 마커(2 = 화질 4K 승격 완료 · 260711)
   const segValid = () => {   // 길이 축소 시 구간 정합: 뒤 고정 구간부터 걷어 마지막(나머지) ≥3s 확보 · 그래도 안 되면 2구간 리셋
     while (kSegs.length > 2 && segLast() < 3) kSegs.splice(kSegs.length - 2, 1);
     if (segLast() < 3) { const t0 = kSegs[0].txt, t1 = kSegs[kSegs.length - 1].txt; kSegs = [{ s: 3, txt: t0 }, { s: 0, txt: t1 }]; }
@@ -463,6 +479,25 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
   let kFocusKey = null;   // 재렌더 포커스 복원(키보드/SR — innerHTML 재구축이 activeElement를 body로 떨굼 · 재감사7 F5-3)
   const refocus = () => { if (!kFocusKey) return; const el = document.querySelector('[data-fk="' + kFocusKey + '"]'); kFocusKey = null; if (el) try { el.focus({ preventScroll: true }); } catch (e) {} };
   const chipBtn = (cls, txt, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls + (on ? ' on' : ''); b.textContent = txt; b.setAttribute('aria-pressed', String(!!on)); b.dataset.fk = cls + '|' + txt; b.addEventListener('click', () => { kFocusKey = b.dataset.fk; fn(); }); return b; };   // 상태 노출 = aria-pressed(.refmulti 하우스 패턴 — radio 롤 폐기 · 감사6)
+  function kArSlot() {   // 인라인 N:M = 「직접」 칩 자리 · 입력 중엔 render() 대신 drawSpec()만(축 행이 통째로 재생성돼 포커스·캐럿이 날아가는 것 차단)
+    const box = document.createElement('span'); box.className = 'kar';
+    const mk = (id, val, set) => {
+      const el = document.createElement('input');
+      el.id = id; el.className = 'kar-in'; el.type = 'text'; el.inputMode = 'numeric'; el.maxLength = 2; el.value = val;
+      el.autocomplete = 'off'; el.autocapitalize = 'off'; el.setAttribute('autocorrect', 'off'); el.spellcheck = false;
+      el.setAttribute('aria-label', id === 'kArW' ? '비율 가로값' : '비율 세로값');
+      el.addEventListener('input', () => { const v = el.value.replace(/\D/g, '').slice(0, 2); if (el.value !== v) el.value = v; set(v); kArFit(el); drawSpec(); save(); });
+      el.addEventListener('focus', () => el.select());   // 탭하면 그 자리가 비는 느낌 = 전체 선택 → 첫 타건이 덮어쓴다
+      el.addEventListener('mouseup', e => e.preventDefault());   // 클릭 캐럿 배치가 위 select를 지우는 것 차단
+      el.addEventListener('blur', () => { if (!el.value) { el.value = '1'; set('1'); kArFit(el); drawSpec(); save(); } });   // 비운 채 떠나면 1 복귀
+      kArFit(el); return el;
+    };
+    const c = document.createElement('b'); c.className = 'kar-c'; c.setAttribute('aria-hidden', 'true'); c.textContent = ':';
+    box.appendChild(mk('kArW', kArW, v => { kArW = v; }));
+    box.appendChild(c);
+    box.appendChild(mk('kArH', kArH, v => { kArH = v; }));
+    return box;
+  }
   const rowEl = (name) => { const w = document.createElement('div'); w.className = 'axrow'; const lb = document.createElement('label'); lb.className = 'fl'; lb.textContent = name; w.appendChild(lb); return w; };
   // ── 화풍 가로 레일(운영자 260717 "표현 = 화풍 레일") = index .geni-rail 정본 배선 계승(드래그·‹›·끝선 페이드) ──
   const NAV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>';
@@ -490,7 +525,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
   }
   function drawSpec() {   // 리드아웃(발사 전 전체 스펙 가시화 — esc = 고정 배열값이지만 innerHTML 싱크 방어 일관)
     const m = K_MODELS.find(x => x.id === kModel) || K_MODELS[0];
-    const parts = ['<b>' + esc(m.nm) + '</b>', esc(kSet['비율']), esc(kSet['화질']), esc(kSet['프레임']), esc(kSet['길이'] === '직접' ? segTotal() + 's' : kSet['길이']), esc(kSet['표현1'])];
+    const parts = ['<b>' + esc(m.nm) + '</b>', esc(kRatio()), esc(kSet['화질']), esc(kSet['프레임']), esc(kSet['길이'] === '직접' ? segTotal() + 's' : kSet['길이']), esc(kSet['표현1'])];
     if (kSet['표현2'] !== '없음') parts.push(esc(kSet['표현2']) + (((K_SUB[kSet['표현2']] || []).includes(kSet['세부']) && kSet['세부'] !== '기본') ? '·' + esc(kSet['세부']) : '') + ((kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') ? '(웹툰 ' + (kWebtoon ? 'ON' : 'OFF') + ')' : ''));   // 리드아웃 = 극화·게키카(웹툰 ON) 꼴
     parts.push(esc(kSet['오디오']));
     if (kNeg.length) parts.push('네거 ' + kNeg.length + '종');
@@ -564,6 +599,10 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
     ['비율', '화질', '프레임'].forEach(k => {
       const w = rowEl(k); w.classList.add('kax'); const ch = document.createElement('div'); ch.className = 'axchips';   // kax = 설계 우측정렬 픽커(영상 개요 축만 · 표현/길이 비대상)
       K_VALS[k].forEach(v => ch.appendChild(chipBtn('axchip', v, kSet[k] === v, () => { kSet[k] = v; render(); })));
+      if (k === '비율') {   // 「직접」 = 그 자리를 N:M 입력이 인계(칩 소등) · 되돌아가기 = 프리셋 칩 탭 — index #geniArWrap 정본 미러(260727 전 탭 통일)
+        if (kSet['비율'] !== '직접') ch.appendChild(chipBtn('axchip', '직접', false, () => { kSet['비율'] = '직접'; render(); setTimeout(() => { const el = document.getElementById('kArW'); if (el) { el.focus(); el.select(); } }, 40); }));
+        else ch.appendChild(kArSlot());
+      }
       w.appendChild(ch); axes.appendChild(w);
     });
     { // 길이 = 게이지 상시 + 레일 위 프리셋 라벨(8s/10s/15s 클릭) · 직접 드래그 = 라벨 해제 + 값 골드레몬(운영자 260710 "항상 보여지게·라벨 클릭·직접은 노란색") — 칩 행 폐지

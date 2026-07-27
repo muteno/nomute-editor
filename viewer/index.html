@@ -3211,9 +3211,13 @@
   #geniArWrap { display:none; }
   #geniArWrap.open { display:inline-flex; }
   .geni-row:has(#geniArWrap.open) .geni-opts[data-k="aspect"] .geni-opt[data-v="custom"] { display:none; }   /* 「직접」 글자칩만 소등 → 그 자리에 N:M 입력이 앉는다(운영자 260727 "비율 직접이 아니라 누르면 n:m 으로 바뀌고 n, m을 각각 입력") · 프리셋 칩은 그대로 남아 되돌아가기 정문 */
-  .geni-ar { display:flex; align-items:center; gap:3px /* 인라인 = 숫자·구분자 밀착(구 6 = 별도 행 여유값) */; justify-content:flex-end; flex:0 0 auto /* 인라인 슬롯 = 내용폭(구 1 1 auto = 별도 행 전폭 점유값) */; min-width:0; }
-  .geni-ar-in { flex:0 0 26px /* 인라인 전환 = 두 자리 숫자 폭(구 46 = 별도 행 전용값 · 좁혀야 칩 행이 한 줄로 유지된다 = 실측 교정) */; text-align:center; font-variant-numeric:tabular-nums; padding-left:0; padding-right:0; }
-  .geni-ar-c { color:var(--mut); font-weight:var(--fw-x); }
+  .geni-ar { display:flex; align-items:center; gap:0 /* 0 = 숫자칩 자체 좌우 패딩(7)이 「1 : 1」 사이 여백을 만든다(구 3 = 박스 입력칸 시절 여유값) */; justify-content:flex-end; flex:0 0 auto /* 인라인 슬롯 = 내용폭(구 1 1 auto = 별도 행 전폭 점유값) */; min-width:0; }
+  /* 숫자칩 = 켜진 워드칩(.geni-opt.on) 값 100% 계승 — 입력칸이되 *생김새는 칩*(운영자 260727 "직접이라는 글자가 1:1로 바뀌면서") · 구 `.geni-in` 박스(면 .04 + --line2 테두리 + r-s)는 칩 줄에 회색 상자 둘을 세워 「못생김」의 진범이라 계승원 교체(폼 입력칸 → 워드칩) */
+  .geni-ar-in { box-sizing:content-box; width:1ch /* 시작폭 = 한 자리 · 실폭은 geniArFit이 값 길이(1~2ch)로 동기 = 「1 : 1」↔「16 : 9」가 칩처럼 자기 폭만 먹는다 */; background:none; border:none; outline:none; border-radius:0;
+    padding:6px 7px /* raw-ok: .geni-opt 워드칩 정본 동값 계승(칩 줄 안에서 탭 타깃·좌우 여백이 프리셋 칩과 1:1이어야 한다) */; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent) /* = .geni-opt.on 정본 동값(선택 상태) */;
+    text-align:center; font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent; }
+  .geni-ar-in::selection { background:rgba(var(--accent-rgb),.26); color:var(--accent); }   /* 탭 = 전체 선택(그 자리가 비는 느낌) — 브라우저 기본 파랑은 팔레트 밖이라 강조색 저투명으로 교체 */
+  .geni-ar-c { color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); }   /* 구분자 = 소등 톤(.geni-sep 파이프 문법 계승) · 활자값은 숫자칩과 동일 라인 */
   .geni-ar-out { display:none; }   /* 환산·안내 표기 = 인라인 전환 후 자리 없음(구 별도 행 전용) — 값 판정은 발사 게이트(geniArVal)가 전담 */
   .geni-gg { padding:9px 0; }   /* 게이지 1축 = 동일 패딩 그리드(운영자 260710 "게이지바·라벨 서로 간 간격 유지") · 무줄 = 항목 레벨 라인 통일(구분선은 소머리 밑줄 전담 · 운영자 260713) */
   .geni-moodsub.open .geni-gg { animation:cardIn .22s var(--ease) backwards; }   /* 촤르륵 = camsub 스태거 계승 */
@@ -3787,7 +3791,7 @@ try {
     <div class="geni-sum" id="geniEngTip" hidden><span class="gs-lbl">[화풍: 레고]</span><span class="gs-v on">는 <i class="eng-ico" aria-hidden="true"></i>GPT 추천</span></div><!-- ⚠배치 레고+GPT 조합 안내(운영자 260727 "지피티로 이 화풍 선택 후에 토글하면 바로 위에 안내 메세지 짧게") = 모델 행 바로 위 · 부품 = 선택요약 스트립 .geni-sum(#geniSum) 문법 그대로 계승(라벨 mut + 값 accent · 신규 CSS·토큰 0) · 노출 = 화풍 레고 && 엔진 GPT일 때만(geniApply 단일 토글점) -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">모델</span><span class="geni-opts"><button type="button" class="geni-opt" id="geniEngine">Gemini 3.1 Flash</button></span></div></div><!-- ⚠배치 렌더 엔진 토글(운영자 260727 "모델 영어로 각각 쓰고 토글하면 서로 바뀌면서 그걸로 만들어지게") = 개요 섹션 첫 행(해상도 위) · 셸·문법 = 한국웹툰화(#geniKweb) 카드 그대로 계승(신규 CSS 0) · 탭 = Gemini 3.1 Flash ↔ GPT Image 2.0 교대 · 값 = genimg.js engine → gen_image 백엔드 분기(GPT 실패 시 Gemini 폴백) -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-k="size"></span></div></div>
-    <div class="geni-card"><div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span><span class="geni-ar" id="geniArWrap" inert><input id="geniArW" class="geni-in geni-ar-in" type="text" inputmode="numeric" maxlength="2" placeholder="W" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 가로값"><b class="geni-ar-c" aria-hidden="true">:</b><input id="geniArH" class="geni-in geni-ar-in" type="text" inputmode="numeric" maxlength="2" placeholder="H" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 세로값"><span class="geni-ar-out" id="geniArOut"></span></span></div></div><!-- ⚠배치 비율 직접 = 「직접」 칩 **그 자리**에서 N:N으로 전환(운영자 260727 "직접누르면 비율 n : n 으로 순간 바껴서 넣을수있게하면되고 공간확보하려고그럼") — 구 = 칩 행 아래 아코디언(.geni-arwrap)이 따로 열려 카드가 두 줄로 커졌다(실측 257→298px = 공간확보의 반대). 지금 = 같은 .geni-row 안 .geni-opts 뒤 인라인 슬롯이라 카드 높이 불변 · 열림 판정은 종전 geniAccordion(.open+inert) 그대로 = 배선·상태 신설 0 · 되돌아가기 = 프리셋 칩 탭 -->
+    <div class="geni-card"><div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span><span class="geni-ar" id="geniArWrap" inert><input id="geniArW" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 가로값"><b class="geni-ar-c" aria-hidden="true">:</b><input id="geniArH" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 세로값"><span class="geni-ar-out" id="geniArOut"></span></span></div></div><!-- ⚠배치 비율 직접 = 「직접」 칩 **그 자리**에서 N:N으로 전환(운영자 260727 "직접누르면 비율 n : n 으로 순간 바껴서 넣을수있게하면되고 공간확보하려고그럼") — 구 = 칩 행 아래 아코디언(.geni-arwrap)이 따로 열려 카드가 두 줄로 커졌다(실측 257→298px = 공간확보의 반대). 지금 = 같은 .geni-row 안 .geni-opts 뒤 인라인 슬롯이라 카드 높이 불변 · 열림 판정은 종전 geniAccordion(.open+inert) 그대로 = 배선·상태 신설 0 · 되돌아가기 = 프리셋 칩 탭 -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">개수</span><span class="geni-opts" data-k="count"></span></div></div><!-- 라벨 '개수'(운영자 260713 · 구 '장수') -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">품질</span><span class="geni-opts" data-k="fmt"></span></div></div>
     </div></div></div><!-- .geni-cards → .geni-camsub-in → .geni-camsub(#geniOvSub) 순 폐합 -->
@@ -4901,6 +4905,7 @@ function geniEngIco() { const [ko, ico] = GENI_ENG_ICO[_geniSel.engine] || GENI_
 function geniStyleKo(v) { const hit = GENI_ALL_STYLES.find(x => x[0] === v); return hit ? hit[1] : v; }
 function geniSubKo(v) { if (v === 'auto') return '자동'; const hit = (GENI_SUB[_geniSel.style] || []).find(x => x[0] === v); return hit ? hit[1] : v; }
 function geniArVal() { const w = parseInt(_geniSel.arW, 10), h = parseInt(_geniSel.arH, 10); return (w >= 1 && w <= 99 && h >= 1 && h <= 99 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : null; }   // 직접 비율 유효값 — 각 1~99 + 비율 1:4~4:1(극단값 후처리 병리 차단 · 평의회3) = 서버·python 3층 동일 계약
+function geniArFit(el) { if (el) el.style.width = Math.max(1, (el.value || '').length) + 'ch'; }   // 숫자칩 폭 = 값 길이 동기(1~2ch · tabular-nums라 자릿수당 폭 일정) — 고정폭이면 「1 : 1」이 빈 상자처럼 벌어진다(구 26px 고정 = 박스 입력칸 잔재)
 function geniAspect() { return _geniSel.aspect === 'custom' ? geniArVal() : _geniSel.aspect; }   // 발사 비율 — 직접 미완성 = null(게이트가 막음)
 // 옵션바 모델 표기 = 축약(운영자 260727 "gemini는 gem, gpt는 gpt로 · 모델명 풀로 안나오게") — 풀네임(Gemini 3.1 Flash·GPT Image 2.0)이 요약 스트립을 2줄로 랩시키던 것 회수(구 5항 축소와 동축) · 스코프 = 옵션바 리드백 한정 = 본문 개요 '모델' 행(#geniEngine)은 값을 고르는 자리라 풀네임 유지(운영자 260727 "모델 영어로 각각 쓰고 토글" 정본 불변)
 const GENI_ENG_ICO = { gemini: ['Gemini 3.1 Flash', () => G_SVG], gpt: ['GPT Image 2.0', () => AI_SVG] };   // 요약 스트립 모델 값 = 브랜드 픽토(운영자 260727 "줄임말 gem/gpt … 아니, 픽토그램으로 대체") — 구글 = G 레터마크 · OpenAI = AI 스파클(정본 = nm-svg.js) · 지연 참조(() =>) = 스크립트 로드 순서 무관
@@ -5128,6 +5133,7 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
   const aw = $('#geniArW'), ah = $('#geniArH');
   if (aw && aw.value !== _geniSel.arW) aw.value = _geniSel.arW;
   if (ah && ah.value !== _geniSel.arH) ah.value = _geniSel.arH;
+  geniArFit(aw); geniArFit(ah);   // 값 세팅 조건 밖 = 외부 주입(실측비 역산 등)·초기 렌더에서도 폭이 따라온다
   const arout = $('#geniArOut');
   if (arout) {
     const val = geniArVal();
