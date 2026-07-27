@@ -7542,6 +7542,16 @@ const BUILD_STAMP = '9465846 · 260727_1446';  /*BUILDSTAMP*/
 // 옛날엔 푸시 켤 때만 등록 → 캐시 SW가 전 사용자에 안 깔림. 등록은 멱등(같은 sw.js = no-op)·푸시 플로우 재등록과 충돌 0.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+  // ── 알림 아이콘 테마 통지(운영자 260727 "어두운 테마 알림판에서는 반대색으로") ──
+  // 서비스워커에는 matchMedia가 없어 OS 테마를 스스로 못 본다 → 페이지가 1비트를 알려주고 SW가 Cache에 적재,
+  // push 수신 때 그 값으로 아이콘을 고른다(라이트=파랑 / 다크=시그니처 = favicon-globe-260724.svg 매핑 계승).
+  // 부팅 1회 + 테마 변경 시 재통지 = 폰 다크모드 토글이 다음 알림부터 반영.
+  try {
+    const _mq = matchMedia('(prefers-color-scheme: dark)');
+    const _sendTheme = () => navigator.serviceWorker.ready
+      .then(r => r.active && r.active.postMessage({ type: 'nm-theme', dark: _mq.matches })).catch(() => {});
+    _sendTheme(); _mq.addEventListener('change', _sendTheme);
+  } catch {}
   // Access 세션 만료 자가치유 — SW 재검증이 로그인 리다이렉트를 감지하면 통지 → ?nosw=1(캐시 우회) 재진입 = 로그인 화면 정상 노출.
   // ?nosw=1로 정상 착지(재로그인 복귀) = 가드 해제 → 같은 탭에서 Access가 *재*만료돼도 자가치유 재무장(평의회 1 지적).
   try { if (new URL(location.href).searchParams.has('nosw')) sessionStorage.removeItem('nmAuthKick'); } catch {}
