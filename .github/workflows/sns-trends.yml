@@ -127,11 +127,11 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json 2>/dev/null || true   # tbs = 키워드 알림 국내축(260726 러너 이관 · 신선도 게이트로 sns가 스킵돼도 tbs 단독 갱신분은 여기서 커밋) · kw_sent = 키워드 푸시 dedup 원장(260727 · 미커밋이면 매 런 재발송)
+          for f in viewer/sns_trends.json viewer/tbs_data.json push/kw_sent.json; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(260727 8h 유실 봉합): git add는 pathspec 하나만 없어도 '전체' 무산 — kw_sent(발송 있어야 생성)가 없던 탓에 trends·tbs 스테이징까지 0 = "변동 없음" 위장. 실존만 add = 은폐용 2>/dev/null 불요 · tbs = 키워드 알림 국내축(260726) · kw_sent = 키워드 푸시 dedup 원장(260727 · 미커밋이면 매 런 재발송)
           git diff --cached --quiet && { echo "수집 변동 없음 — 1차 커밋 생략(신선도 게이트 스킵 등)"; exit 0; }
           git commit -m "sns-trends: 수집 갱신"
           for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
+            git pull --rebase --autostash -X ours origin main || echo "::warning::1차 pull--rebase 실패(사유 = 바로 위 git 로그) — 그대로 push 재시도"   # --autostash = 미커밋 잔여가 있어도 rebase 진행(260727: dirty tree가 rebase를 즉사시켜 push 4연속 rejected = 전량 유실) · 2>/dev/null 제거 = 실패 사유 표면화(Q979 동축)
             git push origin HEAD:main && exit 0 || { echo "1차 push 재시도 $i"; sleep $((2**i)); }
           done
 
@@ -191,11 +191,11 @@ jobs:
         run: |
           git config user.name "nomute-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add viewer/sns_trends.json viewer/sns_brief.json 2>/dev/null || true
+          for f in viewer/sns_trends.json viewer/sns_brief.json viewer/tbs_data.json push/kw_sent.json; do if [ -e "$f" ]; then git add "$f"; fi; done   # 파일별 개별 add(1차와 동일 봉합) + 1차가 못 실은 잔여(tbs·kw_sent)도 여기서 줍는다 — 미커밋 잔여 = pull --rebase를 죽이던 dirty tree의 원천(260727 사고 2축)
           git diff --cached --quiet && { echo "변동 없음 — 커밋 생략"; exit 0; }
           git commit -m "sns-trends: 유튜브·트렌드 갱신"
           for i in 1 2 3 4; do
-            git pull --rebase -X ours origin main 2>/dev/null || true
+            git pull --rebase --autostash -X ours origin main || echo "::warning::pull--rebase 실패(사유 = 바로 위 git 로그) — 그대로 push 재시도"   # --autostash·사유 표면화 = 1차와 동일(260727 봉합)
             git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
           echo "::warning::push 실패(재시도 소진) — 다음 주기 재수집"
