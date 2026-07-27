@@ -83,7 +83,7 @@ tail.append('[유튜브 뉴스] ' + ' / '.join((v.get('title') or '')[:40] for v
 tail.append('[쇼츠] ' + ' / '.join((v.get('title') or '')[:40] for v in sh[:5]))
 tail.append('[틱톡] ' + ' / '.join(((t.get('title') or ('@' + (t.get('account') or '')))[:40]) for t in tk[:5]))
 body = '\n'.join(L + tail)
-PVER = 'brief-v13-260727-linkledger'   # 캐시 1회 무효화 = v13: 링크 원장(최근 7일 사용 URL 재사용 금지 = 같은 기사 재탕 차단 · 밀도는 유지 · 260727 한 수 채택) · v12 소재별 다중 링크(문단 끝 1개 → 소재 바뀔 때마다 · 데이터 동봉 URL 직결 · refs 4→10 · 상한 URL 무과금 · 운영자 260727) · v11 강조 2층(*별표1*=강조색 / **별표2**=볼드만) · v10 [신규 진입] 신상 딱지(first_seen 6h) · v9 이슈 원장 감쇠+채널·URL·댓글, v8 호칭 제거, v7 참고자료 카드 유지
+PVER = 'brief-v12-260727-multilink'   # 캐시 1회 무효화 = v12: 소재별 다중 링크(문단 끝 1개 → 소재 바뀔 때마다 · 데이터 동봉 URL 직결 · refs 4→10 · 상한 URL 무과금 · 운영자 260727) · v11 강조 2층(*별표1*=강조색 / **별표2**=볼드만) · v10 [신규 진입] 신상 딱지(first_seen 6h) · v9 이슈 원장 감쇠+채널·URL·댓글, v8 호칭 제거, v7 참고자료 카드 유지
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print('\n'.join(E + tail))
 PY
@@ -113,23 +113,6 @@ for x in xs:
     k = str(x.get('key') or '').strip()
     if k:
         print(f"- {k[:40]} · 등장 {int(x.get('n') or 1)}회 · 마지막 {str(x.get('last') or '')[:10]}")
-PY
-)"
-
-# ── 링크 원장(같은 기사 재탕 차단 · 260727 한 수 채택) ──
-# 이슈 원장은 '이슈'만 감쇠시키고 URL은 안 본다 → 링크 밀도를 올린 v12 이후 같은 기사가 여러 브리프에 반복될 여지가 커졌다.
-# 최근 7일 동안 본문에 건 URL 목록(sns_brief.json links)을 프롬프트에 그대로 보여주고 재사용을 막는다.
-# 로드 실패·필드 부재 = 빈 원장(전부 새 링크 취급 · fail-soft — LEDGER와 동일 관용).
-LINKLOG="$(python3 - <<'PY' 2>/dev/null || true
-import json
-try:
-    xs = json.load(open('viewer/sns_brief.json')).get('links') or []
-except Exception:
-    xs = []
-for x in xs:
-    u = str(x.get('url') or '').strip()
-    if u:
-        print(f"- {u[:120]} ({str(x.get('term') or '')[:30]} · {str(x.get('last') or '')[:10]})")
 PY
 )"
 
@@ -176,9 +159,6 @@ ${LEDGER:-(비어 있음 — 전부 새 이슈)}
 - 보이는 텍스트는 짧게 = 매체명·채널명·영상 제목 일부(2~14자 권장 · 문장을 통째로 링크로 감싸지 마라 · URL 날것 노출 금지).
 - 같은 URL 반복 링크 금지(소재당 1개). 지어낸 주소 절대 금지 — 확인 못 한 건 링크 없이 넘어가라(신뢰선이 개수보다 위다).
 - 목표 = 본문 링크 4~10개. 소재가 적은 날은 적어도 된다(억지 증량 금지).
-- **아래 '링크 원장'에 있는 URL은 최근 브리핑이 이미 건 것 — 다시 걸지 마라(재탕).** 단 막는 건 '그 주소'뿐이다: 같은 사건이라도 **다른 기사·다른 매체·후속 보도면 새 URL이니 걸어도 된다**. 그 이슈에 새 국면이 생겼을 때도 마찬가지(새 소식의 새 출처를 걸어라). 원장 때문에 링크 수를 줄이지는 마라 — 바꿔 달라는 것이지 빼라는 게 아니다.
-<링크 원장 — 최근 7일 사용분>
-${LINKLOG:-(비어 있음 — 전부 새 링크)}
 
 [참고자료 스크랩 카드 — 본문 링크와 1:1 짝 (매번)]
 본문에 [보이는 텍스트](URL)로 붙인 링크 **전부**에 대해 카드를 하나씩 만들어라(기사·영상·딥다이브 주제 가리지 않고 · 링크 6개면 카드도 6개). 응답 맨 끝에 '===참고자료===' 한 줄을 쓰고 그 아래 **한 줄에 카드 하나씩** JSON으로 적어라(블록 안에 다른 텍스트·마크다운 금지):
@@ -326,28 +306,9 @@ def trim_visible(s, lim=LIM):
     tail = s[pos:]
     return ''.join(out) + (tail if vis + len(tail) <= lim else tail[:lim - vis])
 t = trim_visible(re.sub(r'\n{3,}', '\n\n', '\n'.join(lines)).strip())   # 과출력 가드 · refs 분리 후 본문에만 적용
-# ── 링크 원장 갱신(같은 기사 재탕 차단의 기억장치 · 260727 한 수 채택 · 이슈 원장 문법 계승) ──
-# 등재 기준 = **절단 후 t에 실제로 살아남은 링크**(잘려나간 링크는 화면에 없었으니 원장에도 안 쌓는다).
-# 직전 원장과 합집합(carry) · 같은 URL 재등장 = last 갱신 · 7일 만료(issues와 동일 cut) · 캡 40.
-# 뷰어는 text·refs·issues만 읽으므로 이 필드는 무시된다(표시 무영향) · 해시 미포함 = 재생성 게이트 무간섭.
-try:
-    prev_links = json.load(open('viewer/sns_brief.json')).get('links') or []
-except Exception:
-    prev_links = []
-lmap = {}
-for x in prev_links:
-    u = str(x.get('url') or '')[:500]
-    if u.startswith(('http://', 'https://')):
-        lmap[u] = {'url': u, 'term': str(x.get('term') or '')[:40], 'last': str(x.get('last') or '')[:10] or today}
-for m in MDLINK.finditer(t):
-    u = m.group(1)[:500]
-    lmap[u] = {'url': u, 'term': m.group(0)[1:m.group(0).index('](')][:40], 'last': today}
-links = [x for x in lmap.values() if (x.get('last') or today) >= cut]
-links.sort(key=lambda x: x.get('last') or '', reverse=True)
-links = links[:40]
 json.dump({'text': t, 'updated': datetime.datetime.now(KST).isoformat(timespec='seconds'),
-           'src_hash': os.environ.get('BRIEF_SHA') or '', 'refs': refs, 'issues': issues, 'links': links},
+           'src_hash': os.environ.get('BRIEF_SHA') or '', 'refs': refs, 'issues': issues},
           open('viewer/sns_brief.json', 'w', encoding='utf-8'), ensure_ascii=False)
-print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄', '· 본문링크', len(MDLINK.findall(t)), '개 · refs', len(refs), '개(이미지', sum(1 for r in refs if r.get('image')), ') · 이슈원장', len(issues), '건 · 링크원장', len(links), '건')
+print('brief 저장:', len(t), '자', '·', t.count(chr(10)) + 1, '줄', '· 본문링크', len(MDLINK.findall(t)), '개 · refs', len(refs), '개(이미지', sum(1 for r in refs if r.get('image')), ') · 이슈원장', len(issues), '건')
 PY
 echo "brief: 갱신 완료($SHA)"
