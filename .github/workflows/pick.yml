@@ -61,7 +61,9 @@ jobs:
       # 동봉(analyze.sh ① embedded 경로)과 같은 규격·같은 20000B 캡. ⚠️ 900B(analyze THIN_BYTES) 미만·
       # 실패 = 동봉 안 함 — 빈약 본문을 심으면 analyze 의 대체매체 최장본문 폴백(embedded 있으면 미발동)이
       # 죽어 품질 저하. 기존 커밋된 pending 은 안 건드림(analyze 소비와 modify/delete 레이스 차단) · fail-soft.
-      - name: 본문 선-fetch (# body: 동봉 — 분석 왕복 축소)
+      # ⚠️ name 은 반드시 따옴표 — 값 안의 `# body:` 가 무따옴표 스칼라면 YAML `: ` 규칙에 걸려
+      #    워크플로 파일 전체가 무효(startup_failure) → workflow_dispatch 거절 = /api/pick 502(260728 실증).
+      - name: "본문 선-fetch (# body: 동봉 — 분석 왕복 축소)"
         run: |
           git status --porcelain pending 2>/dev/null | awk '$1=="??"{print $2}' | while read -r f; do
             case "$f" in pending/*.txt) ;; *) continue;; esac
