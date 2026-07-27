@@ -1051,7 +1051,11 @@ def tiktok_subs(accounts, limit=10, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("tiktok", acc, _hcode(e))
-    return sorted(_sseen("tiktok", out), key=lambda t: t["views"], reverse=True)[:limit]   # 동
+    # 계정 독식 봉인(운영자 260727 "이거 해결했어?" — 스샷의 @ted·@netflix 실측 재현 = **둘 다 15건씩 정상 수집**인데
+    #   조회수순 [:limit]에서 netflix가 10칸을 통째로 먹고 ted는 화면에서 소멸 → 운영자에겐 "ted가 안 걷힘"으로 보였다).
+    #   처방 = x_subs(Q556)·threads_subs(Q557)가 이미 쓰는 `_acct_spread` **그대로 이식**(새 로직 0) — 절단 '직전'에
+    #   계정 다양성 재배열 = 다작·메가 계정의 초과분만 뒤 블록으로 강등. 계정이 1곳뿐인 런 = no-op(자연 폴백).
+    return _acct_spread(sorted(_sseen("tiktok", out), key=lambda t: t["views"], reverse=True), limit)[:limit]   # _sseen = 컷 전 원본 적재(순위 컷 = 표시 정책 · 수집 실패 아님)
 
 
 def _tk_cover_fresh(items, budget=45):
@@ -1135,7 +1139,11 @@ def insta_subs(accounts, limit=10, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::insta @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("insta", acc, _hcode(e))
-    return sorted(_sseen("insta", out), key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]   # 동
+    # 계정 독식 봉인(운영자 260727 "이거 해결했어?" — 스샷의 @ted·@netflix 실측 재현 = **둘 다 15건씩 정상 수집**인데
+    #   조회수순 [:limit]에서 netflix가 10칸을 통째로 먹고 ted는 화면에서 소멸 → 운영자에겐 "ted가 안 걷힘"으로 보였다).
+    #   처방 = x_subs(Q556)·threads_subs(Q557)가 이미 쓰는 `_acct_spread` **그대로 이식**(새 로직 0) — 절단 '직전'에
+    #   계정 다양성 재배열 = 다작·메가 계정의 초과분만 뒤 블록으로 강등. 계정이 1곳뿐인 런 = no-op(자연 폴백).
+    return _acct_spread(sorted(_sseen("insta", out), key=lambda t: (t["views"], t["likes"]), reverse=True), limit)[:limit]   # _sseen = 컷 전 원본 적재(순위 컷 = 표시 정책 · 수집 실패 아님)
 
 
 def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
@@ -1183,7 +1191,11 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
         except Exception as e:  # noqa: BLE001
             print(f"::warning::yt @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("youtube", acc, _hcode(e))
-    return sorted(_sseen("youtube", out), key=lambda v: v["views"], reverse=True)[:limit]   # 동
+    # 계정 독식 봉인(운영자 260727 "이거 해결했어?" — 스샷의 @ted·@netflix 실측 재현 = **둘 다 15건씩 정상 수집**인데
+    #   조회수순 [:limit]에서 netflix가 10칸을 통째로 먹고 ted는 화면에서 소멸 → 운영자에겐 "ted가 안 걷힘"으로 보였다).
+    #   처방 = x_subs(Q556)·threads_subs(Q557)가 이미 쓰는 `_acct_spread` **그대로 이식**(새 로직 0) — 절단 '직전'에
+    #   계정 다양성 재배열 = 다작·메가 계정의 초과분만 뒤 블록으로 강등. 계정이 1곳뿐인 런 = no-op(자연 폴백).
+    return _acct_spread(sorted(_sseen("youtube", out), key=lambda v: v["views"], reverse=True), limit)[:limit]   # _sseen = 컷 전 원본 적재(순위 컷 = 표시 정책 · 수집 실패 아님)
 
 
 def threads_subs(accounts, limit=10, deadline=None):
