@@ -19,6 +19,31 @@ THIN_BYTES=900          # 본문 '충분' 기준(바이트·wc -c=로케일무�
 # 통신사·제목스텁 도메인 — 제일 먼저 송고하나 본문이 제목·리드뿐인 경우가 많아 본문 fetch·모델제시 우선순위에서 뒤로(신문사 우선).
 is_wire_url() { case "$1" in *newsis.com*|*yna.co.kr*|*yonhapnews*|*news1.kr*) return 0;; *) return 1;; esac; }
 blen() { printf %s "$1" | wc -c | tr -d ' '; }   # 바이트 길이(로케일 무관) — 본문 완전성 비교용
+ANALYZE_LAND_EACH="${ANALYZE_LAND_EACH:-1}"   # 성공 건별 즉시 커밋·푸시(평의회 260728 신규1 — 배치 꼬리 대기 제거 · k번째 기사 노출 = O(배치 잔여)→O(자기 처리시간)) · '0' = 종전 말미 일괄만(롤백 레버 = 워크플로 env 1줄)
+# 성공 1건을 즉시 main에 착지 — 범위 = 그 기사 산출(queue/*.md) + 소비한 pending(.txt 삭제·.retry 정리)만.
+#   메시지함·metrics 는 종전대로 말미 Commit 스텝 일괄(완료 푸시도 말미 = 알림 스팸 0 · 평의회 절충안 그대로).
+#   rebase.autostash = 미커밋 잔여물(metrics shard 등)로 인한 "unstaged changes" rebase 거부(260714 사고 동형) 회피.
+#   푸시 실패 = fail-soft: 로컬 커밋 잔류 → 말미 Commit 스텝의 pull--rebase·push 재시도가 함께 실어감(유실 0).
+#   GITHUB_TOKEN 푸시는 워크플로 재트리거 없음(news-analyze.yml 헤더 주석) = 자기 재발동 0.
+land_article() {
+  [ "$ANALYZE_LAND_EACH" = "1" ] || return 0
+  local of="$1" ttl="$2"
+  git add "$of" pending 2>/dev/null || true
+  git diff --cached --quiet && return 0
+  git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
+      commit -q -m "analyze: ${ttl:-기사}" 2>/dev/null || return 0
+  local i
+  for i in 1 2 3 4; do
+    if git -c rebase.autostash=true pull --rebase -X theirs origin main >/dev/null 2>&1 \
+       && git push -q origin HEAD:main 2>/dev/null; then
+      echo "  ⛳ 건별 착지 — main 푸시 완료(피드 즉시 노출 축)"; return 0
+    fi
+    git rebase --abort 2>/dev/null || true
+    sleep $((2**i))
+  done
+  echo "::warning::건별 푸시 실패(로컬 커밋 유지) — 말미 일괄 커밋·푸시가 회수"
+  return 0
+}
 : > /tmp/analyzed_titles.txt
 : > /tmp/analyzed_files.txt      # 생성된 queue 파일명(베이스) 적재 → 완료 푸시가 ?a=<파일>로 요약 딥링크(titles와 같은 순서)
 : > /tmp/analyzed_failures.txt   # 실패 URL 적재 → 워크플로가 잡을 빨갛게(조용한 실패 차단)
@@ -468,6 +493,7 @@ else:
   echo "${title_ko:-${title:-$id}}" >> /tmp/analyzed_titles.txt   # 완료 푸시 = 외신이면 번역 제목(title_ko 비면 원문 → id 폴백)
   basename "$outfile" >> /tmp/analyzed_files.txt   # 완료 푸시 딥링크용(요약 창 ?a=)
   [ -n "$FORCE" ] && [ -n "$REGEN_TARGET" ] && basename "$outfile" >> /tmp/force_regen_files.txt   # force 재분석 = 같은 GVER로 덮어써 card_plan all 게이트가 카드 스킵 → 단일 프롬프트 갱신 신호(운영자 260628)
+  land_article "$outfile" "${title_ko:-${title:-$id}}"   # 건별 즉시 착지(평의회 260728 신규1 · 실패 = 말미 일괄이 회수)
   echo "성공 → $outfile (지침 ${GVER})"
   echo "::endgroup::"
 done
