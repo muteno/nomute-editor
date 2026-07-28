@@ -13171,13 +13171,17 @@ function kwAlertOn() { return NM_SET.kwAlertOn === true; }
 function kwGetItems() { return Array.isArray(NM_SET.kwItems) ? NM_SET.kwItems : []; }
 function kwNorm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }   // 매칭·비교 정규화(대소문자·공백 무시)
 function kwSlug(s) { return kwNorm(s).replace(/[^a-z0-9가-힣]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'kw'; }   // seen id용 발송 dedup 키
+// 토큰 분해 = `+` **와 띄어쓰기 둘 다 AND 구분자**(운영자 260729 "띄어쓴 키워드도 자동 커버되게").
+//   구판은 공백을 문자 그대로 봐서 '그록 영상'이 "그록으로 영상 만들기"를 못 잡았다(연속 문자열 매칭) → 이제 '그록'·'영상' 각각 포함이면 매칭.
+//   `+` 문법은 그대로 살아 있다(구 등록분 무회귀 · 'a+b b c' = a·b·c 4토큰 → 중복 제거).
+function kwToks(kw) { return [...new Set(kwNorm(kw).split(/[+\s]+/).map(t => t.trim()).filter(Boolean))]; }
 function kwFind(kw, docs) {   // 매칭된 '그 글'을 돌려준다(없으면 null) — 발견 URL을 남기려면 참/거짓이 아니라 문서가 필요
-  const ts = kwNorm(kw).split('+').map(t => t.trim()).filter(Boolean); if (!ts.length) return null;
+  const ts = kwToks(kw); if (!ts.length) return null;
   const ds = Array.isArray(docs) ? docs : [{ t: kwNorm(docs), u: '' }];
   for (const d of ds) { const tx = (d && typeof d === 'object') ? d.t : String(d || ''); if (ts.every(t => tx.includes(t))) return (d && typeof d === 'object') ? d : { t: tx, u: '' }; }
   return null;
 }
-function kwMatch(kw, docs) { return !!kwFind(kw, docs); }   // 불리언 래퍼(기존 호출부 호환)   // "A+B+C" = *한 글 안에* A AND B AND C 전부(grok+image to video+no restrictions) · 배열 = kwDocs() 글 단위(문자열도 허용 = 단일 문서 취급 · 하위호환)
+function kwMatch(kw, docs) { return !!kwFind(kw, docs); }   // 불리언 래퍼(기존 호출부 호환)   // "A+B C" = *한 글 안에* A·B·C 전부(`+`·띄어쓰기 동급 AND) · 배열 = kwDocs() 글 단위(문자열도 허용 = 단일 문서 취급 · 하위호환)
 function kwSaveItems(items) { return saveSettings({ kwItems: _kwClean(items) }); }
 function paintKwRow() { const b = $('#kwAlertBtn'); if (!b) return; const on = kwAlertOn(); b.textContent = on ? 'ON' : 'OFF'; b.classList.toggle('on', on); paintKwGear(); }   /* OFF로 끄면 기어도 동반 소등 */
 function openKwpop() {   // 대기열 열기 = 설정 팝업(linkpop) 자리에 촤르륵(placeHeadPop 프로필 앵커 · head-pop 미러)
@@ -13310,6 +13314,14 @@ function kwDocs() {
     (T.bsky || []).forEach(p => put(p.text, p.url));
     (T.bsky_trends || []).forEach(p => put((p.query || '') + ' ' + (p.ko || ''), p.link));
     (T.xtrends || []).forEach(p => put(p.query, ''));
+    // 국내 실검 축 추가(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") —
+    //   gtrends = 구글 급상승(검색어 + 딸린 뉴스 제목 = 한 글 취급 · 이동 URL = 첫 뉴스) · gtrends_pool = 24h 급상승 풀(검색어만·155건) · signal = 시그널 실검.
+    //   해외 풀(gtrends_gl·youtube_gl)은 '국내 실검' 지시 밖이라 미편입. youtube/shorts = 커뮤·실검 아님 = 제외.
+    (T.gtrends || []).forEach(p => put((p.query || '') + ' ' + (Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : ''), (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
+    (T.gtrends_pool || []).forEach(p => put(p.q, ''));
+    (T.signal || []).forEach(p => put(p.query, ''));
+    // AI 영상 축(Q1051 갭② 이행) — '그록 영상'·'image to video'류 키워드가 실제로 뜨는 자리인데 감시 밖이었다.
+    (T.aivid || []).forEach(p => put((p.title || '') + ' ' + (p.ko || ''), p.url));
   } catch {}
   return docs;
 }
