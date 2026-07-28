@@ -10934,7 +10934,10 @@ function renderSnsTrends() {
   //   10만↑ 0건 · 24h 국내 4건·10만↑ 0건 · 48h로 늘려야 국내 23건·10만↑ 12건). 원인 = tikwm feed가 인기 랭킹이 아니라 무작위
   //   For-You 표본이라 10만+ 신작이 표본에 걸릴 확률이 낮은 것(수집 누락 아님 — 10콜 전부 code 0). 0건 = 조용한 공백(§디자인 e-가)이
   //   저조회 잡탕보다 낫다는 운영자 판단("그이하는 공유하지도 마")대로 채움 사다리 없음. 근본 해결 = 창구 교체(Creative Center 인기영상).
-  const TK_GL_MUL = .2, TK_MIN_V = 1e5, TK_TOP = 10, TK_CUT_H = 18, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);
+  // TK_MIN_V 10만 → 1만(260728 실측 = 운영자 "틱톡 인기가 없어졌다") — 수집은 멀쩡한데(117건 신선) **18h 컷 × 10만 문턱이 동시에 걸려 화면 3건**만 남았다.
+  //   18h 안에 조회수 10만을 넘기는 영상 자체가 드물다: 신선분 55건 중 1만↑ 9건 · 10만↑ 3건 · **한국분은 10만↑ 0건**(= KR 틱톡이 화면에서 통째로 실종).
+  //   시간컷(18h)은 "지금 뜨는 것" 성격이라 그대로 두고 **문턱만** 내린다 = TOP10 슬롯이 채워진다(9건). 되돌리기 = 이 상수 1e4 → 1e5.
+  const TK_GL_MUL = .2, TK_MIN_V = 1e4, TK_TOP = 10, TK_CUT_H = 18, tkScore = t3 => (t3.views || 0) * (t3.region === 'KR' ? 1 : TK_GL_MUL);
   const tkvA = ((d.tiktok || {}).videos) || [], tkv = cutH(tkvA, TK_CUT_H).filter(t3 => (t3.views || 0) >= TK_MIN_V).sort(TRREG === 'kr' ? (a3, b3) => tkScore(b3) - tkScore(a3) : (a3, b3) => (b3.views || 0) - (a3.views || 0)).slice(0, TK_TOP), tk = ((d.tiktok || {}).hashtags) || [];   // videos = tikwm 주 경로(260711) · 월드 모드 = 감점 없는 순수 조회수순(종전 규약 유지 — 국내 우대는 국내 모드 전용 축) · slice = tkv 자체를 10개로 절단 = 하위 소비처(lane·sec·fillT) 전부 자동 10개 · hashtags = 구 카나리아 폴백(무시각 = 컷 비대상)
   const sb = d.subs || {}, sxRaw = sb.x || [], stkRaw = sb.tiktok || [], sreRaw = sb.insta || [], sytRaw = sb.youtube || [], sx = cut3d(sxRaw), stk = cut3d(stkRaw), sre = cut3d(sreRaw), syt = cut3d(sytRaw);   // 구독 축(운영자 260711 — 수집 = SNS_SUBS 게이트) · 3일 컷(260721 — 큐레이션 스테일 carry["8개월 전"]가 최신처럼 랭킹되던 것 봉인 = 컷 후 0건 섹션은 조용한 공백)
   const shvRaw = d.shorts || [], aivRaw = d.aivid || [], shv = cut3d(shvRaw), aiv = cutH(aivRaw, 168);   // 쇼츠 = 3일 컷 · AI 영상 = 7일 컷 · Raw = 채움 풀(운영자 260721 "10개까지 안나오고 짤림" — 검색 파생 니치 = 일 1~3건 수집이라 3일 창 = 2건 고사 실측 · TOP 풀 제외 소스라 완화 무부작용)
