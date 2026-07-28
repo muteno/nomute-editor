@@ -1411,6 +1411,7 @@ async function lySpellFetch(lines) {   // 줄 배열 → 교정 줄 배열. 미�
 }
 async function lySpellScan() {   // → true = 교정 있음(리뷰 진입) / false = 없음(바로 진행)
   if (!LY_SEGS) return false;
+  const jid = LY_ID;   // 세대 토큰(레포 LY_VID_GEN 문법 계승) — 배치 직렬 스캔은 수십 초라 그 사이 작업이 바뀔 수 있다
   const tgt = LY_SEGS.map((sg, si) => ({ sg, si })).filter(o => !o.sg.del && lySegText(o.sg));
   if (!tgt.length) return false;
   const lines = tgt.map(o => lySegText(o.sg));
@@ -1428,7 +1429,8 @@ async function lySpellScan() {   // → true = 교정 있음(리뷰 진입) / fa
       aw.forEach((t, j) => { if (t !== bw[j] && on[j] && on[j].w.t === t) items.push({ w: on[j].w, from: t, to: bw[j], lit: true }); });
     } else items.push({ from: a, to: b2, skip: true, lit: false });   // 어절 수 변화(띄어쓰기) = 표시만
   });
-  LY_SPELL = items.length ? { items } : null;
+  if (jid !== LY_ID) return false;   // 스캔 중 작업이 바뀌었다(새 발사·다른 잡 열기) = 폐기된 잡의 결과를 되살리지 않는다(P2)
+  LY_SPELL = items.length ? { id: LY_ID, items } : null;   // id 동봉 = 적용 시점에 같은 작업인지 대조(P1 누수 방어)
   lySpellRender();
   return !!items.length;
 }
@@ -1448,8 +1450,14 @@ function lySpellRender() {
 }
 function lySpellApply() {   // 점등 칩만 적용 → 편집 모델 반영(= 다시 입히기가 '편집 있음'으로 인식해 편집분을 굽는다)
   let n = 0;
-  if (LY_SPELL) LY_SPELL.items.forEach(it => {
-    if (!it.lit || it.skip || !it.w) return;
+  // ⚠ 소속 검증(P3) — 편집 초기화·저장본 복원은 LY_SEGS를 통째로 재생성해 word 객체가 전부 새로 만들어진다.
+  //   그때 칩 참조는 *죽은 객체*를 가리키므로, 그대로 고치면 화면엔 "N곳 반영"이 뜨는데 LY_SEGS는 불변 →
+  //   dirty 판정이 false → 영상엔 아무것도 안 들어간다(조용한 유실). 살아있는 칩만 적용한다.
+  const alive = new Set();
+  (LY_SEGS || []).forEach(sg => (sg.w || []).forEach(w => alive.add(w)));
+  const stale = LY_SPELL && LY_SPELL.id && LY_SPELL.id !== LY_ID;   // 다른 작업의 리뷰 = 통째 폐기
+  if (LY_SPELL && !stale) LY_SPELL.items.forEach(it => {
+    if (!it.lit || it.skip || !it.w || !alive.has(it.w)) return;
     if (it.w.t === it.from) { it.w.t = it.to; n++; }   // 칩 객체 직접 참조 = 정렬·병합에도 안 밀림 · from 불일치 = 그 사이 손편집됨 → 덮어쓰지 않음(사용자 편집 우선)
   });
   LY_SPELL = null; lySpellRender();
@@ -1871,10 +1879,12 @@ async function lyPollVideo(outPath, t0, skipUrl) {   // 생성 완료 직후 연
     if (LY_SPELL) { const n = lySpellApply(); if (n) st.innerHTML = OK_SVG + ' 맞춤법 ' + n + '곳 교정 반영 — 다시 입히는 중'; }   // 2차 누름 = 리뷰 소비 후 아래 재합성으로 계속
     else if (LY_SEGS && LY_SEGS.length && LY_LANG === 'ko') {
       rb.disabled = true;
-      st.innerHTML = (window.nmLoader ? nmLoader('solving', '맞춤법 확인 중…') : '맞춤법 확인 중…');   // orb 로더 SSOT(raw 로더 금지 게이트) · 폴백 = 평문
       let found = false;
-      try { found = await lySpellScan(); } catch (e) {}   // 검사 실패 = 무보정 진행(fail-soft · 재합성을 막지 않는다)
-      rb.disabled = false;
+      try {   // ⚠ 로더 호출까지 try 안(P4) — 밖에 두면 그 한 줄이 던질 때 rb가 영구 비활성으로 남는다
+        st.innerHTML = (window.nmLoader ? nmLoader('solving', '맞춤법 확인 중…') : '맞춤법 확인 중…');   // orb 로더 SSOT(raw 로더 금지 게이트) · 폴백 = 평문
+        found = await lySpellScan();
+      } catch (e) {}   // 검사 실패 = 무보정 진행(fail-soft · 재합성을 막지 않는다)
+      finally { rb.disabled = false; }
       if (found) { st.innerHTML = OK_SVG + ' 맞춤법 ' + LY_SPELL.items.length + '곳 — 고칠 것만 켜고 다시 입히기를 한 번 더 눌러'; return; }   // 리뷰 대기(재합성 보류)
       st.innerHTML = '';
     }
