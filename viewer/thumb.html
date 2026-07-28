@@ -3058,6 +3058,24 @@ async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(
   } finally { _histPolling = false; }
 }
 // 제작완료 푸시 탭 → /thumb.html?done=<id>(구 #done 호환) 진입 시 그 결과를 맨 위로 복원·랜딩(완성 결과가 바로 보이게).
+// R2 메타 즉시 조회(운영자 260728 속도 반영 · 구 배포 게이트 폐지의 짝) — 러너가 렌더 직후 R2에 올린 _meta.json을 /api/thumb?meta=<id>로 끌어와
+// SRV_HIST에 선주입 = thumb-hist.json(Pages 빌드 30s~8분)을 안 기다리고 딥링크 복원. 배포 완료 후엔 정식 이력이 같은 url이라 자연 수렴(dedup).
+const thIdTs = id => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse('20' + m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + m[6] + '+09:00'); return Number.isFinite(t) ? t : 0; };   // id 12자리 = KST 제작시각(build-viewer thIdTs 미러)
+const thMetaLabel = f => { const b = String(f).replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // build-viewer thLabel 미러(파일명→변형 라벨)
+async function fetchMetaById(id, sig) {   // 성공 시 SRV_HIST 선주입(중복 url 스킵) — 실패·404(pending) = 조용히 폴백(종전 사다리)
+  try {
+    const r = await fetch('/api/thumb?meta=' + encodeURIComponent(id), sig ? { signal: sig } : undefined);
+    if (!r.ok) return false;
+    const m = await r.json();
+    if (!Array.isArray(m) || !m.length) return false;
+    const ts = thIdTs(id) || Date.now();
+    const have = new Set((SRV_HIST || []).map(e => e && e.url));
+    const add = m.filter(p => Array.isArray(p) && p[1] && !have.has(p[1]))
+      .map(p => ({ url: p[1], dlname: id + '_' + p[0], cap: thMetaLabel(p[0]), varStr: '', ts }));
+    if (add.length) SRV_HIST = add.concat(SRV_HIST || []);
+    return add.length > 0 || m.some(p => Array.isArray(p) && have.has(p[1]));
+  } catch (_) { return false; }
+}
 let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
 function maybeOpenHist(tries = 0) {
   const req = doneReq(); if (!req.on) return;
@@ -3074,6 +3092,10 @@ function maybeOpenHist(tries = 0) {
         _histRetry = true;
         _histTimer = setTimeout(async () => {
           _histTimer = 0; _histRetry = false;
+          {   // 1순위 = R2 메타 즉시 조회(배포 무관 · 260728) — 성공하면 아래 hist 재fetch 없이도 다음 maybeOpenHist가 복원
+            const msig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(6000) : null;
+            if (await fetchMetaById(wantId, msig)) { renderHist(); maybeOpenHist(tries + 1); return; }
+          }
           try {
             const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(6000) : null;   // 멈춘 요청 영구대기 차단(미지원 브라우저는 타임아웃 없이 정상 fetch · 평의회 FIX-2)
             const r = await fetch('thumb-hist.json?_=' + Date.now(), sig ? { signal: sig } : undefined);
