@@ -464,29 +464,35 @@ def strip_bgm(video):
         return ""
 
 
-def cut_xfade(keeps):
+def cut_xfade(keeps, ujoints=(), uw=0.0):
     # 컷 이음매 마이크로 페이드(운영자 260727 ⑤) — select/aselect 스플라이스는 파형이 뚝 끊겨 '틱' 소리가 난다.
     #   이음매(출력 시간축 누적 경계) 주변 ±CUT_XFADE에서 음량을 V자로 떨궈 그 불연속을 덮는다.
     #   ⚠ 정직 한계 = volume eval=frame = **오디오 프레임(~21ms) 단위 근사**(샘플 단위 아님) · 이음매는 무음 경계라 체감 손실 0에 가깝다.
-    if len(keeps) < 2:
-        return ""
+    #   + 구간 이어붙기 디졸브(운영자 260728) — 사용자 구간 이음매(ujoints·출력 시간축)는 반폭 uw(초)의 넓은 V-딥 = 강도 게이지 연동(무음 컷 마이크로 페이드와 독립).
     acc, joints = 0.0, []
     for a, b in keeps[:-1]:
         acc += b - a
         joints.append(acc)
     if not joints or len(joints) > CUT_XFADE_MAX_JOINT:
-        return ""   # 이음매 과다 = 표현식 비대 → 생략(클릭 억제만 포기 · 컷 자체는 정상)
+        joints = []   # 이음매 과다 = 마이크로 페이드 생략(종전 · 컷 자체는 정상) — 사용자 디졸브는 아래서 별도 유지
+    uj = [c for c in (ujoints or []) if uw > 0]
+    if not joints and not uj:
+        return ""
     env = "1"
     for c in joints:
         env = "min({},min(1,abs(t-{:.6f})/{}))".format(env, c, CUT_XFADE)
+    for c in uj:
+        env = "min({},min(1,abs(t-{:.6f})/{:.3f}))".format(env, c, uw)
     return ",volume=eval=frame:volume='{}'".format(env)
 
 
-def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
+def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True, ujoints=(), uw=0.0):
     # 단일 패스 select+setpts 시프트 — trim+concat 팬아웃은 브랜치 버퍼링으로 keep 10개에 피크 RSS 4.7GB 실측
     # (러너 7GB OOM 위험 · 평의회8) → select가 한 패스에서 갭 프레임만 드롭 = 메모리 O(1).
     # new_pts = t − (그 keep 앞 제거 누적) = cut_remap과 동일 사상 → 자막·영상·오디오 드리프트 구조적 0(VFR 포함 · 평의회1).
     # -filter_complex_script 파일로 전달(구간 수십 개여도 argv 한도 무관). 한계 = 컷 경계 정밀도는 프레임/오디오프레임(약 21ms) 단위.
+    # 구간 이어붙기 디졸브(운영자 260728 "붙을 때 자연스러운 디졸브 강도 조정") = 사용자 이음매(ujoints)에 딥 페이드(fade out→in · 출력 시간축 체인)
+    #   — select 단일 패스는 프레임 스트림이 하나라 교차 디졸브 불가(팬아웃 = 위 RSS 실측로 비채택) · 딥 투 블랙이 O(1) 메모리 유지의 정직 한계.
     sel, off, acc = [], [], 0.0
     for a, b in keeps:
         # [a,b) — 경계 프레임 이중 포함/누락 없음. 시간 변수 = select는 소문자 t · setpts는 대문자 T(다르면 파싱 실패 실측)
@@ -494,10 +500,18 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True):
         off.append("{:.6f}*gte(T,{:.6f})*lt(T,{:.6f})".format(a - acc, a, b))
         acc += b - a
     sel_e, off_e = "+".join(sel), "+".join(off)
-    parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
+    fades = ""
+    if uw > 0 and ujoints:
+        # ⚠ fade 필터 금지 — fade는 구간형이 아니라 전역 전환(fade-in 앞 전부·fade-out 뒤 전부 검정)이라 이음매마다 체인하면 전체 프레임이 검게 죽는다(로컬 ffmpeg 실측 260728).
+        #   → 오디오 V-딥과 동일한 식을 eq 밝기 프레임 표현식으로: 이음매에서 brightness 0→−1(검정)→0 = 딥 투 블랙.
+        env = "1"
+        for c in list(ujoints)[:12]:
+            env = "min({},min(1,abs(t-{:.3f})/{:.3f}))".format(env, c, uw)
+        fades = ",eq=eval=frame:brightness='-(1-{})'".format(env)
+    parts = ["[0:v]select='{}',setpts='(T-({}))/TB'{}[vs];".format(sel_e, off_e, fades)]
     if audio:
         loud = ",loudnorm=I=-14:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정 — 목표 = 앱 표준 −14LUFS(audio_norm TARGET_I 동조 · 운영자 260722 통일: 구 −16은 배경음 제거만 켠 산출이 타 잡보다 2dB 조용하던 편차 · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
-        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, cut_xfade(keeps), loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤)
+        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, cut_xfade(keeps, ujoints, uw), loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤) + 사용자 디졸브(260728)
     tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
     parts.append("[vs]" + (tail.rstrip(",") or "null") + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용
     return "\n".join(parts)
@@ -799,7 +813,7 @@ def build_ass(segs, w, h, opts):
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ])
     lines = []
-    small = max(14, int(fs * 0.62))
+    small = max(14, int(fs * coef(opts, "dual_small", 0.62, 0.3, 0.62)))   # 번역(원문) 줄 크기 계수(운영자 260728 "번역이 50% 작은 크기" — 편집기 번역 토글 = 0.5 · 결측 = 0.62 종전 바이트 동일)
     ref_px = fs * LINE_F   # 중앙 불변 기준 = 본선(한글) 1줄 높이 — 게이지가 가리키는 배치는 1줄 기준으로 고정(운영자 캡처 보존)
     floor_v = max(1, int(h * 0.01))   # ASS Dialogue MarginV=0은 '스타일값 사용' 폴백이라 1 이상 강제
     for sg in segs:
@@ -846,7 +860,7 @@ def build_ass(segs, w, h, opts):
     return head + "\n" + "\n".join(lines) + "\n"
 
 
-EDIT_KEYS = ("vid_ar", "vid_fit", "vid_pos", "vid_res", "vid_fps", "vid_t0", "vid_t1", "aud_norm")   # 편집기 축(재입히기 승계 대상 — cut·bgm은 ly 자막 축이라 제외)
+EDIT_KEYS = ("vid_ar", "vid_fit", "vid_pos", "vid_res", "vid_fps", "vid_t0", "vid_t1", "vid_segs", "vid_xfade", "aud_norm")   # 편집기 축(재입히기 승계 대상 — cut·bgm은 ly 자막 축이라 제외) · vid_segs/vid_xfade = n구간 이어붙기 동승(260728)
 
 
 def run(vid_id, video, outdir):
@@ -919,8 +933,41 @@ def run(vid_id, video, outdir):
         except Exception:
             return None
     t0_req, t1_req = _sec("vid_t0"), _sec("vid_t1")
-    has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req)
-    _EK_LBL = {"vid_ar": "비율", "vid_fit": "채움", "vid_pos": "위치", "vid_res": "해상도", "vid_fps": "프레임", "vid_t0": "구간", "vid_t1": "구간", "aud_norm": "음량"}
+    # ── n구간 이어붙기(운영자 260728 "1구간, 2구간 n구간 — 해당 구간만 확 붙어야") — vid_segs = [[s,e],…] 정렬·병합·≤12(api와 동일 정규화 = 이중 방어).
+    #   1구간 = 종전 단일 트림(-ss/-t)으로 강등(회귀 0) · 2구간+ = 아래 승인 컷과 같은 차감 레일에 보집합을 태움
+    #   → keeps·자막 리맵·select/concat·이음매 페이드 전부 기존 컷 기계 그대로(신규 시간축 로직 0).
+    useg = []
+    _rs = opts.get("vid_segs")
+    if isinstance(_rs, list):
+        for g in _rs[:12]:
+            try:
+                a, b = float(g[0]), float(g[1])
+            except Exception:
+                continue
+            if math.isfinite(a) and math.isfinite(b) and b > max(0.0, a) + 0.2:
+                useg.append([max(0.0, a), b])
+        useg.sort()
+        _m = []
+        for a, b in useg:
+            if _m and a <= _m[-1][1] + 0.05:
+                _m[-1][1] = max(_m[-1][1], b)
+            else:
+                _m.append([a, b])
+        useg = [(a, b) for a, b in _m]
+    if len(useg) == 1 and t0_req is None and t1_req is None:
+        t0_req = useg[0][0] if useg[0][0] > 0 else None
+        t1_req = useg[0][1]
+        useg = []
+    elif len(useg) >= 2:
+        t0_req = t1_req = None   # segs가 정본(api도 동시 수신 시 t0/t1 제거 — 여기는 방어 중복)
+    try:
+        _xf = max(0.0, min(100.0, float(opts.get("vid_xfade") or 0)))
+    except (TypeError, ValueError):
+        _xf = 0.0
+    xfade_w = round(_xf / 100.0 * 0.5, 3) if len(useg) >= 2 else 0.0   # 디졸브 반폭(초) — 강도 100% = 0.5s(이음매 양쪽 합 1s)
+    ujoints = []   # 사용자 이음매(출력 시간축) — keeps 확정 후 채움
+    has_vid = bool(vid_ar or vid_res or vid_fps or t0_req or t1_req or len(useg) >= 2)
+    _EK_LBL = {"vid_ar": "비율", "vid_fit": "채움", "vid_pos": "위치", "vid_res": "해상도", "vid_fps": "프레임", "vid_t0": "구간", "vid_t1": "구간", "vid_segs": "구간", "vid_xfade": "디졸브", "aud_norm": "음량"}
     edit_notes = (["이전 편집 설정 승계(" + "·".join(dict.fromkeys(_EK_LBL[k] for k in inherited)) + ")"] if inherited else [])   # 실승계 축만 표기(침묵 금지·과대 표기 금지 · 검증3)
     f_key = opts.get("font")
     if segs and not no_burn and f_key and f_key in FONT_FAMILY and f_key != "gothic" and not font_avail(FONT_FAMILY[f_key]):
@@ -1035,7 +1082,24 @@ def run(vid_id, video, outdir):
         _ext_notes.append(ref_note)
     if fil_note and not fil_spans:
         _ext_notes.append(fil_note)   # 재료 없음·필러 0 = 침묵 스킵 금지(조용한 무력화 금지 정신)
-    for _lbl, _sp in (("승인 컷", ref_spans), ("필러 컷", fil_spans), ("테이크 컷", take_spans)):
+    # 구간 이어붙기(운영자 260728) = 사용자 keep 구간의 보집합을 차감 스팬으로 — 승인 컷과 동일 레일 승차(자막 리맵·concat 전부 공유)
+    useg_rm = []
+    if len(useg) >= 2:
+        if dur <= 0:
+            edit_notes.append("영상 길이 미상 — 구간 이어붙기 건너뜀")   # probe N/A = 범위 검증 불가(트림 스킵과 동일 정신)
+            useg = []
+        else:
+            useg = [(max(0.0, a), min(dur, b)) for a, b in useg if a < dur - 0.05 and min(dur, b) > max(0.0, a) + 0.2]
+            _prev = 0.0
+            for _a, _b in useg:
+                if _a - _prev > 0.05:
+                    useg_rm.append((_prev, _a))
+                _prev = _b
+            if dur - _prev > 0.05:
+                useg_rm.append((_prev, dur))
+            if not useg:
+                edit_notes.append("구간이 전부 영상 밖 — 이어붙기 건너뜀")
+    for _lbl, _sp in (("구간 이어붙기", useg_rm), ("승인 컷", ref_spans), ("필러 컷", fil_spans), ("테이크 컷", take_spans)):
         if not _sp:
             continue
         if dur <= 0:
@@ -1075,6 +1139,12 @@ def run(vid_id, video, outdir):
             cut_note = " · ".join(p for p in [cut_note, sil_note, del_note, ext_note] if p)   # 무음·대본삭제·승인/필러/테이크 결합 표기(무음 단독 = 종전 포맷 그대로 · 조용한 클램프 금지)
             print("컷:", cut_note, "· keep", len(keeps), "구간 ·", round(dur, 1), "→", round(new_dur, 1), "초")
             dur = new_dur
+            if xfade_w > 0 and len(useg) >= 2:   # 사용자 구간 이음매 → 출력 시간축(remap)으로 — 디졸브는 여기만(무음 컷 이음매는 마이크로 페이드 유지 · 260728)
+                for _a, _b in useg[:-1]:
+                    _c = remap(_b)
+                    if 0.05 < _c < new_dur - 0.05:
+                        ujoints.append(round(_c, 3))
+                del ujoints[12:]
     elif del_note or ext_note:
         cut_note = " · ".join(p for p in [cut_note, del_note, ext_note] if p)   # 컷 미실행이어도 삭제·필러·테이크 스킵 사유는 표면화(침묵 금지)
     # ── 지오메트리 확정 — 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스(자막이 검정 여백 위에도 앉게 · 260710).
@@ -1205,7 +1275,7 @@ def run(vid_id, video, outdir):
             if keeps:
                 fc_path = "/tmp/ly_cut.filter"
                 with open(fc_path, "w", encoding="utf-8") as f:
-                    f.write(cut_filter(keeps, aud, mid, ass_path, "[1:a]" if vocals else "[0:a]", bool(ass)))
+                    f.write(cut_filter(keeps, aud, mid, ass_path, "[1:a]" if vocals else "[0:a]", bool(ass), ujoints, xfade_w))   # +구간 이어붙기 디졸브(260728 — 이음매 딥 페이드·오디오 V-딥)
                 cmd = ["ffmpeg", "-y"] + ins + ["-filter_complex_script", fc_path, "-map", "[vo]"] \
                     + (["-map", "[ac]"] if aud else []) \
                     + ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",   # crf 18 = 컷(자르기)+60fps 단일패스 경로 동일 상향(운영자 260722 · plain_cmd와 동값 = 이 경로가 '자르기 후 60프레임'의 실제 인코더)

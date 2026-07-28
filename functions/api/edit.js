@@ -59,6 +59,25 @@ export async function onRequestPost({ request, env }) {
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;
   if (t1 !== null && t1 > 0) opts.vid_t1 = Math.round(t1 * 100) / 100;
   if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
+  // n구간 이어붙기(운영자 260728 — vid_segs = [[s,e],…] ≤12 · 정렬·겹침 병합 · 러너 ly_burn이 실측 재클램프 = 이중 방어) + 이음매 디졸브 강도 vid_xfade %
+  if (Array.isArray(o.vid_segs)) {
+    const segs = [];
+    for (const g of o.vid_segs.slice(0, 12)) {
+      if (!Array.isArray(g)) continue;
+      const a = num(g[0], 0, 3600), b = num(g[1], 0, 3600);
+      if (a === null || b === null || b <= a + 0.2) continue;
+      segs.push([Math.round(a * 100) / 100, Math.round(b * 100) / 100]);
+    }
+    segs.sort((x, y) => x[0] - y[0]);
+    const merged = [];
+    for (const g of segs) { const L = merged[merged.length - 1]; if (L && g[0] <= L[1] + 0.05) L[1] = Math.max(L[1], g[1]); else merged.push(g); }
+    if (merged.length >= 2) { opts.vid_segs = merged; delete opts.vid_t0; delete opts.vid_t1; }   // 2구간+ = vid_segs 단일 정본(단일 t0/t1과 동시 수신 시 segs 우선)
+    else if (merged.length === 1) { if (merged[0][0] > 0) opts.vid_t0 = merged[0][0]; opts.vid_t1 = merged[0][1]; }   // 1구간 강등 = 종전 트림 계약(러너 -ss/-t 경로 = 회귀 0)
+  }
+  const xf = num(o.vid_xfade, 0, 100);
+  if (xf !== null && xf > 0 && opts.vid_segs) opts.vid_xfade = Math.round(xf);   // 이음매 없으면(단일 구간) 미송신 = 정직
+  const dsm = num(o.dual_small, 0.3, 0.62);
+  if (dsm !== null && opts.lang === 'dual') opts.dual_small = Math.round(dsm * 100) / 100;   // 번역 줄 크기 계수(운영자 260728 — dual 한정 · 결측 = 러너 0.62 종전 바이트)
   // 승인 컷 소비(260727 ③) — cutref = 스캔 잡 id · cutoff = 뺀 항목 인덱스 CSV(러너 ly_burn.load_ref_cuts가 실측 재검증 = 이중 방어)
   if (typeof o.cutref === 'string' && /^\d{12}-[a-f0-9]{6}$/.test(o.cutref)) opts.cutref = o.cutref;
   if (opts.cutref && typeof o.cutoff === 'string' && /^[0-9]{1,4}(,[0-9]{1,4}){0,199}$/.test(o.cutoff)) opts.cutoff = o.cutoff.slice(0, 900);
@@ -70,7 +89,7 @@ export async function onRequestPost({ request, env }) {
   if (opts.clip === true) { for (const k of Object.keys(opts)) { if (k !== 'clip' && k !== 'clip_model') delete opts[k]; } }   // 클리퍼 = 배타 스캔 모드(후보만 뽑음 · 렌더 옵션 무시 = 서버 정규화 — 러너 스텝 게이트와 계약 일치) · clip_model은 감독 선택이라 보존
   else { delete opts.clip; delete opts.clip_model; }   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단 · clip_model도 동반 삭제(clip 없이 잔존 방지·평의회 260722 P2 청결성)
   if (!opts.clip && !opts.cutscan && !opts.cutref && !opts.burn && !opts.cut && !opts.cutfill && !opts.take && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
-    && opts.vid_t0 === undefined && opts.vid_t1 === undefined) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // cut 단독 = 유효(STT-only 컷 260711) · 필러·테이크 단독도 유효(260727)
+    && opts.vid_t0 === undefined && opts.vid_t1 === undefined && !opts.vid_segs) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // vid_segs 단독 = 유효(n구간 이어붙기 · 260728)   // cut 단독 = 유효(STT-only 컷 260711) · 필러·테이크 단독도 유효(260727)
 
   const optsStr = JSON.stringify(opts);   // 구 .slice(0,900) = 초과 시 *깨진 JSON*을 러너에 넘겨 옵션이 통째로 증발했다(조용한 무력화) → 길이 초과는 정직 거절(260727)
   if (optsStr.length > 1400) return json({ error: '옵션이 너무 많아 — 처리를 몇 개 빼고 다시' }, 400);

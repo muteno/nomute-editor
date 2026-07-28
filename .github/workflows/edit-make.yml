@@ -27,7 +27,7 @@ on:
         type: string
         default: ''
       opts:
-        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm,outline,pad,oc,font} + 편집기 축{vid_ar,vid_fit(crop/pad/blur),vid_pos,vid_res,vid_fps,vid_t0,vid_t1,aud_norm} + 클리퍼{clip=배타 스캔: STT→구간픽→clips.json·컴포즈 스킵 · 260711} + 컷 강화{cutfill=필러 컷·take=반복 테이크 감지(claude)·cutscan=컷 미리보기 스캔(컴포즈 스킵→cuts.json)·cutref/cutoff=승인 컷 소비 · 260727}'
+        description: '편집 옵션 JSON — ly 자막 축{burn,lang,tone,filler,style,pos,size,bg,karaoke,pop,keyword,cut,cutlv,bgm,outline,pad,oc,font,dual_small} + 편집기 축{vid_ar,vid_fit(crop/pad/blur),vid_pos,vid_res,vid_fps,vid_t0,vid_t1,vid_segs([[s,e],…] n구간 이어붙기 · 260728),vid_xfade(이음매 디졸브 % · 260728),aud_norm} + 클리퍼{clip=배타 스캔: STT→구간픽→clips.json·컴포즈 스킵 · 260711} + 컷 강화{cutfill=필러 컷·take=반복 테이크 감지(claude)·cutscan=컷 미리보기 스캔(컴포즈 스킵→cuts.json)·cutref/cutoff=승인 컷 소비 · 260727}'
         type: string
         default: '{}'
       account:
@@ -164,7 +164,7 @@ jobs:
           set -e
           [ -n "${EDIT_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/edit_err.txt; echo "::error::EDIT_SRC 빈값"; exit 1; }
           DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"
-          SPAN="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');t1=o.get('vid_t1');print(int(float(t1)-float(o.get('vid_t0') or 0)) if t1 else -1)" 2>/dev/null || echo -1)"
+          SPAN="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');sg=o.get('vid_segs');t1=o.get('vid_t1');print(int(sum(max(0.0,float(b)-float(a)) for a,b in sg)) if isinstance(sg,list) and sg else (int(float(t1)-float(o.get('vid_t0') or 0)) if t1 else -1))" 2>/dev/null || echo -1)"   # n구간 = 합산 길이(260728)
           STT="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');print(1 if (o.get('burn') or o.get('cut') or o.get('clip') or o.get('cutfill') or o.get('take') or o.get('cutscan')) else 0)" 2>/dev/null || echo 9)"   # 파싱 실패 = 9(미상) → 아래 분기 전부 미적중 = 종전 10분 보수 폴백
           if [ "$STT" = "1" ]; then CAP=1200; MSG="자막·컷·클리퍼는 20분 이하만(전사가 원본 전체를 돎) — 더 길면 구간만 자르거나 20분 이하로."
           elif [ "$SPAN" -ge 0 ] && [ "$SPAN" -le 600 ] 2>/dev/null; then CAP=3600; MSG="구간 편집도 원본 60분까지야 — 더 길면 잘라서 올려줘."
