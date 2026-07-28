@@ -7,9 +7,9 @@
     수집 러너는 30분마다 어차피 돌고 있으니, 거기서 같은 매칭을 돌려 **웹푸시**로 밀면 앱을 닫아도 온다.
 
 무엇을(뷰어 규칙 100% 미러 — 판정이 두 곳에서 갈리면 안 된다):
-  · 감시 원문 = 국내(tbs_data 커뮤 베스트글 제목 + social_candidates 제목·출처) + 해외(sns_trends의
-    reddit·hackernews·bsky·bsky_trends·xtrends)  ← viewer/index.html `kwDocs()`
-  · 매칭 = "A+B+C" = **한 글 안에** 전 토큰 포함(대소문자·공백 정규화)  ← 같은 파일 `kwMatch()`
+  · 감시 원문 = 국내(tbs_data 커뮤 베스트글 제목 + social_candidates 제목·출처 + **실검 gtrends·gtrends_pool·signal**)
+    + 해외(sns_trends의 reddit·hackernews·bsky·bsky_trends·xtrends) + AI영상(aivid)  ← viewer/index.html `kwDocs()`
+  · 매칭 = "A+B C" = **한 글 안에** 전 토큰 포함(`+`·띄어쓰기 동급 AND · 대소문자·공백 정규화)  ← 같은 파일 `kwMatch()`
   · 발송 리듬 = 첫 발견 1회 + 24시간 동안 3시간마다(버킷 0~8)  ← 같은 파일 KW_BUCKET_MS·KW_MAX_BUCKET
   · 대상 = settings/app.json 의 kwAlertOn=true 이고 done=false 인 항목(체크 = 중단 = 여기서도 즉시 반영)
 
@@ -90,14 +90,32 @@ def docs():
         put(((p or {}).get("query") or "") + " " + ((p or {}).get("ko") or ""))
     for p in t.get("xtrends") or []:
         put((p or {}).get("query"))
+    # 국내 실검 축(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") — 뷰어 kwDocs 미러.
+    #   gtrends = 급상승 검색어 + 딸린 뉴스 제목(한 글 취급) · gtrends_pool = 24h 급상승 풀 · signal = 시그널 실검.
+    for p in t.get("gtrends") or []:
+        news = (p or {}).get("news")
+        titles = " ".join(((n or {}).get("title") or "") for n in news) if isinstance(news, list) else ""
+        put(((p or {}).get("query") or "") + " " + titles)
+    for p in t.get("gtrends_pool") or []:
+        put((p or {}).get("q"))
+    for p in t.get("signal") or []:
+        put((p or {}).get("query"))
+    # AI 영상 축(Q1051 갭② 이행) — '그록 영상'류가 실제로 뜨는 자리.
+    for p in t.get("aivid") or []:
+        put(((p or {}).get("title") or "") + " " + ((p or {}).get("ko") or ""))
     return out
 
 
 def matched(kw, ds):
-    """뷰어 kwMatch 미러 — 한 글이 전 토큰(+ 구분)을 다 품어야 참."""
-    ts = [x.strip() for x in norm(kw).split("+") if x.strip()]
+    """뷰어 kwMatch/kwToks 미러 — 한 글이 전 토큰을 다 품어야 참.
+
+    토큰 구분자 = `+` **와 띄어쓰기 둘 다**(운영자 260729). 구판은 공백을 문자 그대로 봐
+    '그록 영상'이 "그록으로 영상"을 못 잡았다 = 그 구멍을 뷰어와 같은 규칙으로 봉합.
+    """
+    ts = [x for x in re.split(r"[+\s]+", norm(kw)) if x.strip()]
     if not ts:
         return False
+    ts = list(dict.fromkeys(ts))   # 중복 제거(뷰어 Set 미러)
     return any(all(t in d for t in ts) for d in ds)
 
 
