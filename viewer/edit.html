@@ -16,7 +16,7 @@
     --hist-accent:#FFE13D; --hist-rgb:255,225,61;   /* raw-ok: 골드레몬(index --accent-4 동값) — 260723 "전 웹앱 레몬 → 골드 통일"(운영자) · 구 라임 → 골드(index --accent-2 골드화 동조 · 4뷰어 색 비공유 인라인 정본 · 이 뷰어 --accent-4 미정의라 raw hex 계승) · 작업 내역 접기 마커 · 되돌림 = 구 라임값 복원 */
     --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
     --accent-2:#FFE13D; --accent-2-rgb:255,225,61;   /* 골드레몬 = index --accent-2 값 계승(260723 "전 웹앱 레몬→골드 통일" 동조 · 로컬 :root 인라인 = 뷰어 관례 · 팔레트 핀 게이트 대상) */
-    --danger:#e23b2a; --danger-rgb:226,59,42; --warn:#FFE13D;
+    --danger:#e23b2a; --danger-rgb:226,59,42; --warn:#FFE13D; --warn-rgb:255,225,61;   /* warn-rgb = index --accent-4-rgb 동값 계승(짝 토큰 · 맞춤법 교정 칩 = ly 정본 문법이 요구 · 260728 일원화) */
     --accent-5:#0FFD02; --accent-6:#FF5EC8; --bias-l2:#3a6ddb;   /* 콘텐츠 산출물 색(index 값 계승 · ly/track 로컬 계승 관례 동형 · §핵심명령 3-b-1) = 자막 음영 색 선택지 견본·프리뷰 — :root 정본 정의는 게이트 미계수·컴포넌트는 var()만 */
     --press-pico:.72; --press-xs:.82; --press-s:.85; --press-m:.9; --press-l:.95;
   }
@@ -354,6 +354,15 @@
   .lyburn video { display:block; width:100%; max-height:min(320px, 40dvh); background:var(--bg); border:1px solid var(--line); border-radius:var(--r-m); }
   .lyburn video[hidden] { display:none; }
   .lyburn-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  /* 맞춤법 교정 칩 = thumb .spellchips/.spchip 정본 셀렉터·구조·상태문법 계승(운영자 260728 "썸네일 제작에 검수해주는 부분 참고") · 값은 토큰 계승(§🎨 · thumb 원본의 7/11/12/6px raw는 근접·동값 토큰으로 승격 — 신규 색 0) */
+  .spellchips { display:flex; flex-wrap:wrap; gap:var(--sp-1); margin-top:var(--sp-2); }
+  .spellchips[hidden] { display:none; }
+  .spchip { font:inherit; font-size:var(--fs-sm); padding:var(--sp-1) var(--sp-2); border-radius:var(--r-s); cursor:pointer; user-select:none;   /* reuse-ok: thumb .spchip 정본 계승(교정 쌍 on/off = 이 레포 유일 문법 · 새 생김새 창작 0) */
+    border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--mut); transition:var(--dur); display:inline-flex; align-items:center; gap:var(--sp-1); }
+  .spchip::before { content:''; width:7px /* raw-ok: 점 지름 = thumb 정본 동값(토큰 없음·시각 앵커) */; height:7px /* raw-ok: 상동 */; border-radius:50%; background:var(--mut); transition:var(--dur); flex:none; }
+  .spchip.on { border-color:rgba(var(--warn-rgb),.55); background:rgba(var(--warn-rgb),.12); color:var(--warn); font-weight:var(--fw-b); }
+  .spchip.on::before { background:var(--warn); box-shadow:0 0 7px rgba(var(--warn-rgb),.8); }
+  .spchip.skip { cursor:default; opacity:.55; }   /* 칩 경계를 넘는 교정(띄어쓰기 등) = 표시만·적용 불가(어절 타임스탬프 보존 우선) — 조용한 유실 금지 */
   /* 섹션 위계 들여쓰기 마감 — ly.html 260712 정본("위치 이런 것들 들여쓰기, 그 내용도") 계승 누락분 이식: 소머리(.fl) = 좌측 기둥 유지 · 하위 내용 = 한 단 인셋 --sp-2(블릿 '• ' 폭 근사 = 소머리 텍스트 선 정렬) · 소스/완성영상/작업내역 공통(PREVIEW #pvSlot 미리보기 = ly .lyoptpv 중앙 비대상 동일) */
   .srcrow, .lyburn-row, #lyJobList { margin-left:var(--sp-2); }
   #lyBurn video { width:calc(100% - var(--sp-2)); margin-left:var(--sp-2); }   /* width:100% 블록 = margin만 주면 우측 넘침 → 폭 동보정(ly 원문 동일 · id 특이도로 .lyburn video 원규칙을 이김) */
@@ -528,6 +537,8 @@
     <label class="fl">완성 영상</label>
     <video id="lyBurnVid" controls playsinline preload="metadata" hidden></video>
     <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><label class="dl-full" id="lyCutDelW" title="삭제한 조각 구간을 영상에서도 잘라냄 (다시 입히기와 함께)" hidden><input type="checkbox" id="lyCutDel"><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">삭제 컷</span></label><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집 있으면 상세 자막 전체로 구움 · 스타일 축 = 자막 탭에서 · 없으면 현행 자막 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
+    <!-- ⚠배치(3-2) 맞춤법 교정 칩 = ly 정본 위치 그대로(다시 입히기 행 바로 아래) — 1차 누름 = 검사 → 칩 리뷰 → 2차 = 적용 후 재합성 -->
+    <div class="spellchips" id="lySpellChips" hidden></div>
   </div>
   <!-- ══ 자막 편집기 이식(ly.html 원문 · 배치 B-2) — 편집 미리보기 + 결과 탭(상세/개요) ══ -->
   <div class="lypv" id="lyPv" hidden>
@@ -1632,6 +1643,82 @@ function lyRerenderCard(i) {   // 카드 1개 국소 재빌드 — 단어 편집
   lyStats(); lySave(); lyCapRefresh(); lyFindCount();
 }
 function lyRerender() { renderLySegs(); lyStats(); lySave(); lyCapRefresh(); lyFindCount(); }   // 구조 변경 후 찾기 건수 동기(평의회2 F3)
+// ══ 맞춤법 자동 교정(운영자 260728 "썸네일 제작에 검수해주는 부분 참고") — thumb runSpellCheck/applySpellReview 상태머신 정본 계승.
+//   흐름 = 다시 입히기 **1차 누름 = 검사** → 교정 있으면 칩 리뷰(재합성 보류) → **2차 누름 = 점등 칩만 적용 후 재합성**. 교정 0이면 리뷰 없이 바로 진행(thumb 동일 · 헛걸음 0).
+//   엔진 = /api/spellcheck(네이버 검사기 프록시 · 비-LLM·무료·토큰 0 = 썸네일과 같은 백엔드 재사용 · 신규 모델 호출 0).
+//   ⚠️ 상한 실측: 그 API는 요청당 MAX_CALLS=8줄이고 초과분은 *조용히* 원문 통과한다(썸네일은 1~3줄이라 무증상). 자막은 조각이 수십이라
+//      8조각씩 배치로 나눠 전량 검사한다 — 서버 상한 증량 없이(= 썸네일 축 무영향) 침묵 미검사 구간을 없애는 쪽.
+//   ⚠️ 어절 타임스탬프 보존 우선: 교정은 **칩(어절) 안에서만** 적용한다. 띄어쓰기 교정처럼 어절 수가 바뀌면 칩↔word 매핑이 깨지므로(= 싱크 손상)
+//      적용하지 않고 `.skip` 칩으로 표시만 한다(조용한 유실 금지 · 그 조각은 편집기에서 직접 고치면 됨).
+let LY_SPELL = null;   // null = 미검사 / {items:[…]} = 리뷰 대기(다음 누름이 소비)
+const LY_SPELL_LINES = 8;   // = functions/api/spellcheck.js MAX_CALLS(요청당 줄 예산) 동값 — 초과분 무교정 통과 차단
+async function lySpellFetch(lines) {   // 줄 배열 → 교정 줄 배열. 미도달·실패·형식이상 = 원문 그대로(fail-soft = thumb 정본 "무보정으로 진행")
+  try {
+    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 12000);
+    let res;
+    try { const r = await fetch('/api/spellcheck', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ texts: [lines.join('\n')] }), signal: ctrl.signal }); if (r.ok) res = await r.json(); } finally { clearTimeout(to); }
+    if (res && res.ok && Array.isArray(res.corrected) && typeof res.corrected[0] === 'string') {
+      const out = res.corrected[0].split('\n');   // 한 필드에 줄바꿈으로 묶어 보냄 = 서버가 줄 단위로 검사(checkText) → 줄 순서 1:1 복원
+      return lines.map((ln, i) => (typeof out[i] === 'string' && out[i].trim()) ? out[i] : ln);
+    }
+  } catch (e) {}
+  return lines.slice();
+}
+async function lySpellScan() {   // → true = 교정 있음(리뷰 진입) / false = 없음(바로 진행)
+  if (!LY_SEGS) return false;
+  const jid = LY_ID;   // 세대 토큰(레포 LY_VID_GEN 문법 계승) — 배치 직렬 스캔은 수십 초라 그 사이 작업이 바뀔 수 있다
+  const tgt = LY_SEGS.map((sg, si) => ({ sg, si })).filter(o => !o.sg.del && lySegText(o.sg));
+  if (!tgt.length) return false;
+  const lines = tgt.map(o => lySegText(o.sg));
+  const fixed = [];
+  for (let b = 0; b < lines.length; b += LY_SPELL_LINES) fixed.push(...await lySpellFetch(lines.slice(b, b + LY_SPELL_LINES)));   // 배치 직렬(동시 폭주 = 프록시 레이트 위험)
+  const items = [];
+  tgt.forEach((o, k) => {
+    const a = lines[k], b2 = fixed[k];
+    if (!b2 || a === b2) return;
+    const aw = a.split(/\s+/).filter(Boolean), bw = b2.split(/\s+/).filter(Boolean);
+    if (aw.length === bw.length) {   // 어절 수 동일 = 칩 1:1 매핑 가능(오타·받침·조사 교정)
+      const on = o.sg.w.map((w, wi) => ({ w, wi })).filter(x => x.w.on);   // lySegText는 on 칩만 이으므로 그 순서가 어절 순서
+      // ⚠ 인덱스(si/wi) 대신 **칩 객체 참조**를 들고 간다 — 검사(1차)와 적용(2차) 사이에 조각 병합·분열·타이밍 조절이
+      //   일어나면 lyResort()/splice가 배열을 재배치해 인덱스가 밀린다(엉뚱한 조각에 적용되거나 조용히 미적용 · 260728 적발).
+      aw.forEach((t, j) => { if (t !== bw[j] && on[j] && on[j].w.t === t) items.push({ w: on[j].w, from: t, to: bw[j], lit: true }); });
+    } else items.push({ from: a, to: b2, skip: true, lit: false });   // 어절 수 변화(띄어쓰기) = 표시만
+  });
+  if (jid !== LY_ID) return false;   // 스캔 중 작업이 바뀌었다(새 발사·다른 잡 열기) = 폐기된 잡의 결과를 되살리지 않는다(P2)
+  LY_SPELL = items.length ? { id: LY_ID, items } : null;   // id 동봉 = 적용 시점에 같은 작업인지 대조(P1 누수 방어)
+  lySpellRender();
+  return !!items.length;
+}
+function lySpellRender() {
+  const c = $('#lySpellChips'); if (!c) return;
+  if (!LY_SPELL) { c.hidden = true; c.innerHTML = ''; return; }
+  c.innerHTML = '';
+  LY_SPELL.items.forEach(it => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'spchip' + (it.lit ? ' on' : '') + (it.skip ? ' skip' : '');
+    b.textContent = (it.skip ? '띄어쓰기 · ' : '') + it.from + ' → ' + it.to;
+    if (it.skip) b.title = '띄어쓰기 교정 — 어절 경계가 바뀌어 자동 적용은 안 해(자막 싱크 보존). 조각을 직접 고쳐줘';
+    else { b.title = '탭 = 이 교정만 켜기/끄기'; b.addEventListener('click', () => { it.lit = !it.lit; b.classList.toggle('on', it.lit); }); }
+    c.appendChild(b);
+  });
+  c.hidden = false;
+}
+function lySpellApply() {   // 점등 칩만 적용 → 편집 모델 반영(= 다시 입히기가 '편집 있음'으로 인식해 편집분을 굽는다)
+  let n = 0;
+  // ⚠ 소속 검증(P3) — 편집 초기화·저장본 복원은 LY_SEGS를 통째로 재생성해 word 객체가 전부 새로 만들어진다.
+  //   그때 칩 참조는 *죽은 객체*를 가리키므로, 그대로 고치면 화면엔 "N곳 반영"이 뜨는데 LY_SEGS는 불변 →
+  //   dirty 판정이 false → 영상엔 아무것도 안 들어간다(조용한 유실). 살아있는 칩만 적용한다.
+  const alive = new Set();
+  (LY_SEGS || []).forEach(sg => (sg.w || []).forEach(w => alive.add(w)));
+  const stale = LY_SPELL && LY_SPELL.id && LY_SPELL.id !== LY_ID;   // 다른 작업의 리뷰 = 통째 폐기
+  if (LY_SPELL && !stale) LY_SPELL.items.forEach(it => {
+    if (!it.lit || it.skip || !it.w || !alive.has(it.w)) return;
+    if (it.w.t === it.from) { it.w.t = it.to; n++; }   // 칩 객체 직접 참조 = 정렬·병합에도 안 밀림 · from 불일치 = 그 사이 손편집됨 → 덮어쓰지 않음(사용자 편집 우선)
+  });
+  LY_SPELL = null; lySpellRender();
+  if (n) lyRerender();
+  return n;
+}
 function lyStats() {
   if (!LY_SEGS) return;
   const alive = LY_SEGS.filter(s => !s.del);
@@ -1853,7 +1940,7 @@ function wireCopy() {
 }
 let LY_WANTVID = '', LY_VID_T = null, LY_VID_GEN = 0;   // 완성 영상(번인) 폴 상태 · GEN = 세대 토큰(in-flight fetch가 리셋 후 옛 영상 표시·좀비 재예약하는 경쟁 봉인 — poll() live 패턴 이식·평의회)
 function lyBurnStop() { LY_VID_GEN++; if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
-function lyBurnReset() { lyBurnStop(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
+function lyBurnReset() { lyBurnStop(); LY_SPELL = null; lySpellRender(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
 function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','Solving…') + ' <span style="color:var(--mut)">(1~3분)</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q461) · 폴백 = 구 점3
 function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
@@ -1881,6 +1968,19 @@ async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(H
     if (!LY_ID) return;
     const prevUrl = ($('#lyBurnDl').dataset.url || '');   // 옛 결과 url — 폴이 이걸 완료로 오인 안 하게(평의회 불가 수정)
     const st = $('#cstatus'); st.classList.remove('err');
+    // 맞춤법 게이트(260728 일원화 · ly 정본 계승) — 1차 누름 = 검사 / 2차 = 점등분 적용 후 재합성. 한국어 자막에서만.
+    if (LY_SPELL) { const n = lySpellApply(); if (n) st.innerHTML = OK_SVG + ' 맞춤법 ' + n + '곳 교정 반영 — 다시 입히는 중'; }
+    else if (LY_SEGS && LY_SEGS.length && LY_LANG === 'ko') {
+      rb.disabled = true;
+      let found = false;
+      try {   // ⚠ 로더 호출까지 try 안(P4) — 밖에 두면 그 한 줄이 던질 때 rb가 영구 비활성으로 남는다
+        st.innerHTML = (window.nmLoader ? nmLoader('solving', '맞춤법 확인 중…') : '맞춤법 확인 중…');
+        found = await lySpellScan();
+      } catch (e) {}   // 검사 실패 = 무보정 진행(fail-soft · 재합성을 막지 않는다)
+      finally { rb.disabled = false; }
+      if (found) { st.innerHTML = OK_SVG + ' 맞춤법 ' + LY_SPELL.items.length + '곳 — 고칠 것만 켜고 다시 입히기를 한 번 더 눌러'; return; }
+      st.innerHTML = '';
+    }
     let segs = null, restore = false, skipNote = '';   // 편집이 *실제로* 있을 때만 동봉(원형 lyModel 재생성과 유효 조각 비교) — 미동봉 사유는 침묵 금지·1줄 고지(기능평의회9)
     if (LY_SEGS && LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length) {
       const cur = lyEffSegs(LY_SEGS);
@@ -1929,6 +2029,7 @@ const lyOptsNow=()=>({ lang:P.lang, tone:P.tone, filler:P.filler, style:P.style,
   outline:Math.round(P.sh*10)/1000, pad:Math.min(.5,Math.max(.02,Math.round(P.sh)/1000)), oc:P.shc, font:P.font, fg:P.fg, glow:Math.round(P.glow||0) });   // +글자색·글로우(운영자 260721 — 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)   // 다시 입히기 옵션 = 스택 카드(P/ON)가 정본(운영자 260711 "관련된 거에 카테고라이징" — ly 행 덩어리를 카드 분류로 대체) · buildOpts 자막 축과 동일 규칙(음영·색·폰트 포함 = 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)
 let EDIT_SUB=false;   // 이번 작업이 자막 산출(subs.md) 동반인가 — 완성 영상 표시를 vstage↔lyBurn 중 하나로 라우팅(이중 표시 방지)
 async function editSubsInit(id){   // 완료 후 자막 편집기 활성(pollEdit 완료·#done 공용) — subs.md 있으면 ly 문법 그대로
+  LY_SPELL = null; lySpellRender();   // 다른 잡을 열 때 옛 교정 리뷰 폐기(P1) — 이 경로는 lyBurnReset을 안 타므로 여기서 끊는다(작업 내역 탭·#done 딥링크 공용 진입점)
   EDIT_SUB=false;
   try{
     const out='ly_out/'+id+'/subs.md';
