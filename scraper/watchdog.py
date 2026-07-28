@@ -148,6 +148,13 @@ def check_phone():
     return None
 
 
+# 조치문 규약(👉 문단 · 운영자 260728 알림리포트) — 리포트 조치주체 분류(viewer/index.html _rptWho)는 👉 문단이 있어야
+#   '운영자가 할 일'로 가른다. wd-phone은 조치가 폰(termux/맥) 확인 = 운영자 몫인데 👉가 없어 '클로드가 볼 일'로 오분류되던 것.
+#   문장 = sysErrMsgs() 폰 정체 조치문 정본 그대로 계승(창작 0) · 푸시 body(due 110자)는 원문 유지라 메시지함 set에서만 결합.
+PHONE_TODO = ("\n\n👉 네가 할 일: 폰에서 phone_subs 크론이 도는지 확인해 줘 — termux(또는 맥) 앱이 꺼졌거나 "
+              "절전에 잠든 게 제일 흔한 원인이야. 다시 돌기 시작하면 30분 안에 저절로 채워져.")
+
+
 def check_kwsrc():
     """④-c 키워드 알림 감시망 — 국내축(tbs_data 나이)·해외축(sns_trends.reddit 건수)이 죽었는지.
     260726 사고: tbs가 6일(260720→260726) 정지하고 reddit이 0건인 채로 계속 커밋됐는데 *아무 지표도 안 떴다*
@@ -269,7 +276,8 @@ def main():
             #   폰 크론이 죽으면 뷰어·러너가 못 살린다 → 재발사 액션은 오도(무효). '가시화'가 조치 = 메시지함 점등 +
             #   텍스트 자체가 안내("termux/맥 phone_subs 크론 확인"). sns와 별 슬롯(wd-phone · 단일슬롯 덮어쓰기=스팸0).
             if alerts.get("phone"):
-                subprocess.run([sys.executable, mp, "set", "wd-phone", alerts["phone"], "warn"], timeout=30)
+                ph = alerts["phone"] + (PHONE_TODO if alerts["phone"].startswith("폰 수집 정체") else "")   # 파싱 실패 변형 = 코드 축 → 규약 밖(cc) 유지
+                subprocess.run([sys.executable, mp, "set", "wd-phone", ph, "warn"], timeout=30)
             else:
                 subprocess.run([sys.executable, mp, "clear", "wd-phone"], timeout=30)
             # 키워드 알림 감시망(운영자 260726) — 국내 tbs 정체·해외 reddit 0건 = 알림이 조용히 죽는 무증상 고장이라
