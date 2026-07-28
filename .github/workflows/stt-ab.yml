@@ -43,7 +43,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 동일 키 = 캐시 공유(A/B가 캐시를 새로 만들지 않는다)
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 동일 키 = 캐시 공유(A/B가 캐시를 새로 만들지 않는다)   # ↓ 근접 복원 폴백(260728 Q1001) — setup.sh **주석 한 줄만 고쳐도** hashFiles가 바뀌어 전체 재설치(콜드 318s)되던 구조 결함 봉합.
+          #    정확 키 miss여도 접두사가 같은 직전 캐시를 복원 → setup.sh의 `import faster_whisper` 체크가 통과해 pip 스킵.
+          #    ⚠ 의존성이 진짜 바뀐 경우도 옛 캐시를 복원하지만, setup.sh가 import 확인 후 없는 것만 설치하므로 신규 패키지는 정상 설치된다(= 원하는 동작).
+          restore-keys: |
+            nomute-ly-pydeps-${{ runner.os }}-py312-
 
       # ly-make와 같은 환경·같은 모델 캐시(runner-setup) — A/B가 별도 환경을 쓰면 시간 비교가 무의미해진다
       - name: STT 환경 (ly-make 동문)
