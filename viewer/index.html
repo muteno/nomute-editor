@@ -11109,7 +11109,7 @@ function renderSnsTrends() {
   lane('유튜브', 'yt', ytn, 5, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, ago: relT(v) }));
   lane('유튜브', 'yt', shv, 12, v => ({ url: v.url || '', t: v.title || '', rv: v.views ? vfmt(v.views) : '', th: v.thumb || '', v: v.views, pt: 1, ago: relT(v) }));
   lane('틱톡', 'tk', tkv, TK_TOP, tkMap, 10);   // 틱톡 코어 1~10(tkv가 이미 TK_TOP 절단 = 자연 한도)
-  // 확장 레인(코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 260721 재정의: 표시 심화(11위+ 스택·필터)는 폐지(_tsSeqX 10 봉인), 잔존 목적 = TOP 입장 후보 심화(구글 11~25 속 5천+ 진짜 이슈[실측 압록강 5만·11위]가 저검색 상위를 제치고 입장 + 강등·24h컷 결원 채움) · sc≤0 = 자연 침강이라 정상분 위협 없음
+  // 확장 레인(코어 전원 뒤 = 확장 항목이 경쟁 레인 URL 선점 불가) — 목적 2축: ① TOP 입장 후보 심화(구글 11~25 속 5천+ 진짜 이슈[실측 압록강 5만·11위]가 저검색 상위를 제치고 입장 + 강등·24h컷 결원 채움) ② 스택 11위+ 표시 심화(_tsSeqX 잔여 풀 확장 — 260721 10 봉인 → 260728 복원) · sc≤0 = 자연 침강이라 정상분 위협 없음
   lane('구글', 'gg', gt, 25, ggMap, 10, 10);   // 구글 11~25위(급상승 그룹 gt.slice(0,25) 동일 소스)
   lane('틱톡', 'tk', tkv, TK_TOP, tkMap, 10, 10);   // 구 월드 11~15위 축 = TK_TOP 10 절단으로 초과분 상시 0 → 무연산 유지(운영자 260726 "10개만" 통일 · 국내·월드 동일 상한)
   const GG_MIN_T = 5000;   // 구글 이슈 최소 검색량(운영자 260721 "5천 검색량 아니면 이슈 아니야 · 가점 내리셈") — 미만 = _pen 강등 티어(신선 우대 회수 + 전 정상분[확장 5천+ 포함] 아래) · 항목 제거는 안 함(하위 채움용 잔존 = 빈칸 회피) · 구 sc−1 방식 = 확장 레인 자연 음수 sc와 겹쳐 구글 탭서 저검색이 5만 이슈 위에 남던 결함(평의회 260721 B·P1) → 전용 티어로 교체
@@ -11448,8 +11448,9 @@ function renderSnsTrends() {
     box.querySelectorAll('.tgroup').forEach(g => box._trIO.observe(g));
   }
   // ── 앨범 스택(운영자 260712 "TOP1 크게+2·3만 · 위로 촤르륵 · 앨범 중첩 느낌") — TOP1 = 좌측 대형(세로 2행 스팬) · 2·3 = 우측 미니 · 순환 = mod(TOP10 끝 = 처음 랩) · 더보기 = 11위+(풀 확장·안 누르면 1위 랩) · 복귀 = 넘김 화살표 순환·꼬리 끝 ↻·11위+ ↻ 미니(구 '처음' pill·'처음|중간' 세그 폐지 260716·260717) · 입력 = main 스와이프/호버 휠 + 6s 자동(인터랙션 12s 홀드·화면 밖/탭 숨김 정지·reduced-motion 무효) ──
-  box._tsSeq = topShow;   // 상위 10 = TOP 리스트와 동일 축(전체=플랫폼캡 top · 플랫폼=pool.filter 상위10) · (구 _tsF 필터별 심화 소스 = _tsSeqX 10 봉인으로 소멸 260721)
-  box._tsSeqX = topShow;   // 확장 시퀀스 = 상위 10 동일 축(운영자 260721 "TOP 10인데 벗어남" — 구 top+잔여20=최대30 심화 폐지 · 스택 = 10 안에서 랩 순환 · 11위+ 카운터·확장 모드 = hasX false로 자연 휴면)
+  box._tsSeq = topShow;   // 상위 10 = TOP 리스트와 동일 축(전체=플랫폼캡 top · 플랫폼=pool.filter 상위10)
+  const xRest = TR_TOPF === 'all' ? pool.filter(p2 => !top.includes(p2)).slice(0, 20) : pool.filter(p2 => p2.mono === TR_TOPF).slice(10, 30);   // 확장 원천 = 잔여 풀 순위순 최대 +20(전체 = 캡 밖 잔여 · 플랫폼 = 그 mono 11~30위 = 구 _tsF 축)
+  box._tsSeqX = topShow.concat(xRest);   // 확장 시퀀스 = top+잔여20(최대 30) 복원(운영자 260728 "10 넘어가면 15, 20 계속 + 10 이상 5의 자릿수 ↻" — 260721 10 봉인 해제 · 260716 원설계) · 첫 10 = topShow 동일참조(data-si 절대 인덱스 계약 유지) · ↻ 노출 = 히어로 10·15·20·25(home5 260718 히어로 축 그대로)
   if (box._tsO === undefined || box._tsTopf !== TR_TOPF) { box._tsO = 0; box._tsMore = false; box._tsLast = 0; box._tsTopf = TR_TOPF; }   // 첫 진입·필터 전환 = 스택 1위로 리셋(다른 시퀀스라 오프셋 이월 금지)
   const stkEl = box.querySelector('#tstk');
   if (stkEl) {
