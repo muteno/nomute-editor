@@ -39,7 +39,7 @@ on:
         type: string
         default: '0'
       stt_prec:
-        description: 'STT 연산 정밀도(A/B용 · 빈값=기본 int8_float32) — int8(구본·가장 빠름·오인식↑) / int8_float32(기본 = 가중치 int8·연산 float32) / float32(최고 정밀·최저 속도 = 10분 영상은 STT 백스톱 위협). 같은 영상을 값만 바꿔 두 번 발사하면 정확도 대조가 된다(산출 segments.json `prec` 키로 어느 설정인지 식별)'
+        description: 'STT 연산 정밀도(A/B용 · 빈값=기본 int8_float32) — int8 / int8_float32(기본) / float32. ⚠ int8↔int8_float32는 260728 러너 A/B에서 **시간·어절확률·전사텍스트 전부 동일**로 나왔다(docs/reports/260728_1447_STT정밀도AB.md) = 이 노브로 정확도가 바뀐다고 기대하지 말 것. float32는 미검증. 같은 영상을 값만 바꿔 두 번 발사하면 대조가 되고, 산출 segments.json `prec` 키로 어느 설정인지 식별한다'
         type: string
         default: ''
       account:
@@ -196,7 +196,7 @@ jobs:
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
-        timeout-minutes: 50   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 40 · 260728 int8→int8_float32 승격 = int8 대비 ~1.1~1.3배 감안 40→50) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단. ⚠ float32 A/B는 10분 영상서 이 백스톱을 위협(짧은 클립으로 대조할 것)
+        timeout-minutes: 50   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 40 · 260728 40→50 · ⚠ 당초 근거였던 '정밀도 승격 감속'은 러너 A/B로 반증(int8과 동일~미세 빠름 · docs/reports/260728_1447_STT정밀도AB.md) → 현 근거 = 초장영상·콜드캐시 보수 여유) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단. ⚠ float32 A/B는 10분 영상서 이 백스톱을 위협(짧은 클립으로 대조할 것)
         env:
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
@@ -259,7 +259,7 @@ jobs:
 
       - name: STT (업로드 파일 → ffmpeg 오디오추출 → Whisper)
         if: ${{ inputs.file != '' || inputs.r2_src != '' }}
-        timeout-minutes: 50   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40 · 260728 int8_float32 승격 40→50) — URL 스텝과 동일 원칙
+        timeout-minutes: 50   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40 · 260728 40→50(정밀도 근거는 A/B 반증 · 보수 여유로 유지)) — URL 스텝과 동일 원칙
         env:
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}

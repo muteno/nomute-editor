@@ -100,10 +100,18 @@ jobs:
                   m = WhisperModel("large-v3", device="cpu", compute_type=prec)
                   load = time.time() - t_load                      # 모델 로드(캐시 히트여도 매번 드는 비용 — 인프라 축 지목분)
                   t_inf = time.time()
-                  segs, info = m.transcribe(wav, language=None, vad_filter=True,
+                  # ⚠️ ly_stt.py 계약 동형: VAD 과필터로 0개가 나오면 vad_filter=False로 1회 재시도한다.
+                  #    이 폴백을 빼면 '어절 0개'가 파이프라인 증상처럼 보이지만 실제로는 A/B 스크립트 결함이다(260728 적발).
+                  def run(vad):
+                      sg, nf = m.transcribe(wav, language=None, vad_filter=vad,
                                             condition_on_previous_text=False, word_timestamps=True)
+                      return list(sg), nf                           # 제너레이터 소진 = 여기서 실제 추론이 돈다
+                  raw, info = run(True)
+                  vad_fb = False
+                  if not [x for x in raw if (x.text or "").strip()]:
+                      raw, info = run(False); vad_fb = True         # 폴백 발동 = 리포트에 표기(VAD 과필터 실측 신호)
                   out, probs = [], []
-                  for s in segs:                                    # faster-whisper는 제너레이터 = 여기서 실제 추론이 돈다
+                  for s in raw:
                       t = (s.text or "").strip()
                       if not t: continue
                       ws = [{"t": w.word.strip(), "s": round(w.start, 2), "e": round(w.end, 2),
@@ -119,9 +127,11 @@ jobs:
                                "p_med": round(st.median(probs), 3) if probs else 0,
                                "p_min": round(min(probs), 2) if probs else 0,
                                "low70": len(low), "low70_pct": round(100.0 * len(low) / len(probs), 1) if probs else 0,
+                               "vad_fb": vad_fb,
                                "text": " ".join(o["t"] for o in out)})
-                  print("  %-44s %-14s 로드%5.1fs 추론%6.1fs (%.2fxRT) · 저확률<0.70 %d/%d"
-                        % (rows[-1]["video"], prec, load, inf, rows[-1]["rt"], len(low), len(probs)))
+                  print("  %-44s %-14s 로드%5.1fs 추론%6.1fs (%.2fxRT) · 저확률<0.70 %d/%d%s"
+                        % (rows[-1]["video"], prec, load, inf, rows[-1]["rt"], len(low), len(probs),
+                           " · ⚠VAD폴백" if vad_fb else ""))
                   del m
               os.remove(wav)
 
@@ -134,8 +144,9 @@ jobs:
                "| 영상 | 정밀도 | 오디오 | 추출 | 모델로드 | 추론 | 실시간배수 | 조각 |",
                "|---|---|---|---|---|---|---|---|"]
           for r in rows:
-              L.append("| %s | `%s` | %.1f초 | %.1fs | %.1fs | **%.1fs** | %.2f×RT | %d |"
-                       % (r["video"], r["prec"], r["audio_sec"], r["extract_s"], r["load_s"], r["infer_s"], r["rt"], r["segs"]))
+              L.append("| %s | `%s` | %.1f초 | %.1fs | %.1fs | **%.1fs** | %.2f×RT | %d%s |"
+                       % (r["video"], r["prec"], r["audio_sec"], r["extract_s"], r["load_s"], r["infer_s"], r["rt"], r["segs"],
+                          " ⚠VAD폴백" if r.get("vad_fb") else ""))
           L += ["", "## 인식 품질(어절 확률)", "",
                 "`p` = Whisper가 그 어절에 준 확률. **0.70 미만 = 오인식 의심**(`ly_stt.py` `is_unc` ① 신호와 동일 임계).", "",
                 "| 영상 | 정밀도 | 어절 | 확률 중앙값 | 최저 | <0.70 개수 | 비율 |", "|---|---|---|---|---|---|---|"]
