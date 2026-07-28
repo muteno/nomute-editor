@@ -13335,24 +13335,41 @@ async function loadTbsKw() {
 //   URL 필드는 소스마다 이름이 다르다(tbs/social/hn/bsky = url · bsky_trends = link · xtrends = 없음[검색 표면뿐]).
 function kwDocs() {
   const docs = [];
-  const put = (s, u) => { const v = kwNorm(s); if (v) docs.push({ t: v, u: u || '' }); };
-  try { (SOCIAL || []).forEach(r => put((r.title || '') + ' ' + (Array.isArray(r.sources) ? r.sources.join(' ') : ''), r.url)); } catch {}
+  // ⚠ 문자열 필드만 취한다 — 수집 산출물에 타입이 섞여 온다(260729 실측: tiktok.videos[].account 가 dict {'12': …}).
+  //    방어 없이 이으면 "[object object]"가 haystack에 박혀 조용한 오탐원이 된다(서버 kw_watch.txt() 미러).
+  const _s = v => (typeof v === 'string' ? v : '');
+  const put = (...a) => { const u = _s(a.pop()); const v = kwNorm(a.map(_s).join(' ')); if (v) docs.push({ t: v, u }); };
+  try { (SOCIAL || []).forEach(r => put(r.title, Array.isArray(r.sources) ? r.sources.join(' ') : '', r.url)); } catch {}
   try { KW_TBS.forEach(o => put(o && o.t, o && o.u)); } catch {}
   try {
     const T = TRENDS || {};
     (T.reddit || []).forEach(p => put(p.title, p.url));
-    (T.hackernews || []).forEach(p => put((p.title || '') + ' ' + (p.ko || ''), p.url));
+    (T.hackernews || []).forEach(p => put(p.title, p.ko, p.url));
     (T.bsky || []).forEach(p => put(p.text, p.url));
-    (T.bsky_trends || []).forEach(p => put((p.query || '') + ' ' + (p.ko || ''), p.link));
+    (T.bsky_trends || []).forEach(p => put(p.query, p.ko, p.link));
     (T.xtrends || []).forEach(p => put(p.query, ''));
-    // 국내 실검 축 추가(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") —
-    //   gtrends = 구글 급상승(검색어 + 딸린 뉴스 제목 = 한 글 취급 · 이동 URL = 첫 뉴스) · gtrends_pool = 24h 급상승 풀(검색어만·155건) · signal = 시그널 실검.
-    //   해외 풀(gtrends_gl·youtube_gl)은 '국내 실검' 지시 밖이라 미편입. youtube/shorts = 커뮤·실검 아님 = 제외.
-    (T.gtrends || []).forEach(p => put((p.query || '') + ' ' + (Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : ''), (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
+    // 실검 축(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") —
+    //   gtrends = 구글 급상승(검색어 + 딸린 뉴스 제목 = 한 글 취급 · 이동 URL = 첫 뉴스) · gtrends_pool = 24h 급상승 풀(검색어만) · signal = 시그널 실검.
+    (T.gtrends || []).forEach(p => put(p.query, Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : '', (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
     (T.gtrends_pool || []).forEach(p => put(p.q, ''));
     (T.signal || []).forEach(p => put(p.query, ''));
     // AI 영상 축(Q1051 갭② 이행) — '그록 영상'·'image to video'류 키워드가 실제로 뜨는 자리인데 감시 밖이었다.
-    (T.aivid || []).forEach(p => put((p.title || '') + ' ' + (p.ko || ''), p.url));
+    (T.aivid || []).forEach(p => put(p.title, p.ko, p.url));
+    // ── SNS 탭 잔여 축 전량 편입(운영자 260729 "sns채널에 있는 모든 소스를 대상으로 하면 더 좋은데") —
+    //   빠져 있던 큰 덩어리 = 틱톡 인기(제목이 뉴스 본문급) · 구독 계정 축(x·틱톡·유튜브·스레드·인스타 = 내가 고른 계정들의 실제 게시물).
+    //   해외 축(gtrends_gl·youtube_gl)도 함께 = '전부'가 지시 · 재난/고속도로는 지금 0건이나 배선은 미리(재난 문자 = 키워드 감시 가치 큼).
+    //   ⚠ 제외 2축 = `finance`(환율·지수·종목 = 고정 명칭 6건 → '삼성전자' 같은 등록어가 상시 hit = 알림 소음) · `health`(수집 상태 지표 = 글이 아님).
+    (T.youtube || []).forEach(p => put(p.title, p.ko, p.url));
+    (T.youtube_news || []).forEach(p => put(p.title, p.url));
+    (T.youtube_gl || []).forEach(p => put(p.title, p.ko, p.url));
+    (T.shorts || []).forEach(p => put(p.title, p.url));
+    ((T.tiktok && T.tiktok.videos) || []).forEach(p => put(p.title, p.account, p.url));
+    (T.gtrends_gl || []).forEach(p => put(p.query, p.ko, Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : '', (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
+    (T.kobis || []).forEach(p => put(p.title, p.url));
+    (T.disaster || []).forEach(p => put(p.title, p.text, p.msg, p.url));
+    (T.expressway || []).forEach(p => put(p.title, p.text, p.url));
+    const _sb = T.subs || {};   // 구독 축 = 계정별 실제 게시물(글 = text 또는 title · 계정명도 한 글에 포함 = "누가 올렸나"로도 잡힌다)
+    ['x', 'tiktok', 'insta', 'youtube', 'threads'].forEach(k => (_sb[k] || []).forEach(p => put(p.text, p.title, p.account, p.url)));
   } catch {}
   return docs;
 }
