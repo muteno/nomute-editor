@@ -58,7 +58,6 @@ export async function onRequestPost({ request, env }) {
   const t0 = num(o.vid_t0, 0, 3600), t1 = num(o.vid_t1, 0, 3600);
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;
   if (t1 !== null && t1 > 0) opts.vid_t1 = Math.round(t1 * 100) / 100;
-  if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   // n구간 이어붙기(운영자 260728 — vid_segs = [[s,e],…] ≤12 · 정렬·겹침 병합 · 러너 ly_burn이 실측 재클램프 = 이중 방어) + 이음매 디졸브 강도 vid_xfade %
   if (Array.isArray(o.vid_segs)) {
     const segs = [];
@@ -72,8 +71,10 @@ export async function onRequestPost({ request, env }) {
     const merged = [];
     for (const g of segs) { const L = merged[merged.length - 1]; if (L && g[0] <= L[1] + 0.05) L[1] = Math.max(L[1], g[1]); else merged.push(g); }
     if (merged.length >= 2) { opts.vid_segs = merged; delete opts.vid_t0; delete opts.vid_t1; }   // 2구간+ = vid_segs 단일 정본(단일 t0/t1과 동시 수신 시 segs 우선)
-    else if (merged.length === 1) { if (merged[0][0] > 0) opts.vid_t0 = merged[0][0]; opts.vid_t1 = merged[0][1]; }   // 1구간 강등 = 종전 트림 계약(러너 -ss/-t 경로 = 회귀 0)
+    else if (merged.length === 1) { if (merged[0][0] > 0) opts.vid_t0 = merged[0][0]; else delete opts.vid_t0; opts.vid_t1 = merged[0][1]; }   // 1구간 강등 = 종전 트림 계약(러너 -ss/-t 경로 = 회귀 0) · else delete = 시작 0인데 **낡은 vid_t0가 잔존**해 t1<t0 역전 구간이 검증 없이 러너로 나가던 것 차단(평의회④ 260728)
   }
+  // 역전 검사 = segs 정규화 **뒤**(평의회④ 260728) — 앞에 두면 ⓐ segs가 이길 요청을 400으로 오거부하고 ⓑ 위 강등 경로가 만든 역전은 못 잡는다
+  if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   const xf = num(o.vid_xfade, 0, 100);
   if (xf !== null && xf > 0 && opts.vid_segs) opts.vid_xfade = Math.round(xf);   // 이음매 없으면(단일 구간) 미송신 = 정직
   const dsm = num(o.dual_small, 0.3, 0.62);

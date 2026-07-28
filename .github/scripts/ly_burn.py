@@ -514,17 +514,25 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True, ujoints=(
     fades = ""
     if uw > 0 and ujoints:
         # ⚠ fade 필터 금지 — fade는 구간형이 아니라 전역 전환(fade-in 앞 전부·fade-out 뒤 전부 검정)이라 이음매마다 체인하면 전체 프레임이 검게 죽는다(로컬 ffmpeg 실측 260728).
-        #   → 오디오 V-딥과 동일한 식을 eq 밝기 프레임 표현식으로: 이음매에서 brightness 0→−1(검정)→0 = 딥 투 블랙.
+        #   → 오디오 V-딥과 동일한 식을 eq 프레임 표현식으로.
+        # ⚠⚠ brightness 단독 금지(평의회⑧ 260728 실측): eq의 brightness는 **루마(Y)만** 건드리고 색차(U/V)를 안 만져
+        #    파랑 (15,46,191)→(0,0,118) · 빨강 (252,0,0)→(158,0,0)로 **색이 그대로 살아남는다**(무채색만 검정).
+        #    게다가 brightness는 덧셈 오프셋이라 Y가 0에 클램프된 뒤로 페이드가 정지 = 어두운 장면일수록 하드컷에 가까워진다.
+        #    → contrast(곱셈 페이드) + saturation(색차 중성화)을 같이 태워 **진짜 검정**까지 내린다. 실측: E=0에서 (0,0,0).
         env = "1"
         for c in list(ujoints)[:12]:
             env = "min({},min(1,abs(t-{:.3f})/{:.3f}))".format(env, c, uw)
-        fades = ",eq=eval=frame:brightness='-(1-{})'".format(env)
-    parts = ["[0:v]select='{}',setpts='(T-({}))/TB'{}[vs];".format(sel_e, off_e, fades)]
+        fades = ",eq=eval=frame:contrast='{e}':brightness='-(1-{e})/2':saturation='{e}'".format(e=env)
+    parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
         loud = ",loudnorm=I=-14:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정 — 목표 = 앱 표준 −14LUFS(audio_norm TARGET_I 동조 · 운영자 260722 통일: 구 −16은 배경음 제거만 켠 산출이 타 잡보다 2dB 조용하던 편차 · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
         parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, cut_xfade(keeps, ujoints, uw), loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤) + 사용자 디졸브(260728)
+        #   ⚠ volume은 **loudnorm 앞**이 정본(재검② 260728 되돌림): loudnorm 통과 프레임은 19200샘플@192kHz = **100ms**라, 뒤에 두면 `volume=eval=frame` 분해능이 21ms→100ms로 무너져
+        #     이음매마다 100ms 완전 묵음이 뚫린다(로컬 실측: 3.00~3.09 게인 0.00). '틱' 억제하려다 더 큰 드롭아웃을 만드는 역효과.
+        #     평의회⑧이 우려한 "loudnorm이 딥을 되메움"은 실측에서 재현되지 않았다(딥 깊이 0.0242 vs 레퍼런스 0.0236 = 차이 무의미).
     tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
-    parts.append("[vs]" + (tail.rstrip(",") or "null") + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용
+    chain = (tail.rstrip(",") + fades) if tail else (fades.lstrip(",") or "null")
+    parts.append("[vs]" + chain + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용 · **디졸브(fades)를 ass 뒤로** = 자막도 함께 어두워짐(평의회⑧ 260728 실측: 앞에 두면 이음매 최심부에서 배경만 검고 자막은 255 순백으로 떠 이음매를 되레 지목했다) · 덤으로 스케일 뒤라 eq 픽셀 비용도 감소
     return "\n".join(parts)
 
 
@@ -852,8 +860,13 @@ def build_ass(segs, w, h, opts):
             sw = src.split(" ")
             src_chunks = chunk_lines(sw, avail / small)
             src_txt = "\\N".join(" ".join(sw[i] for i in ln) for ln in src_chunks)
-            src_pre = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N"   # 원문(작게) 위 · 한글 아래 — 팝 프레임에도 매 창 동일 부착
-            block_px += len(src_chunks) * small * LINE_F
+            # 원문(작게) 위 · 한글 아래 — 팝 프레임에도 매 창 동일 부착
+            # 줄간격(운영자 260728 "줄간격 어느정도 유지") = 두 줄 사이 스페이서 1줄(fs = 본선의 18%). 미리보기(edit.html pvSubTr marginBottom fs×0.18)와 동값 —
+            #   구현 전엔 미리보기만 띄우고 산출물은 딱 붙어 나왔다(평의회① 260728). 결측 계수(dual_small 미송신 = 종전 경로)에선 gap 0 = 렌더 바이트 동일.
+            gap = int(fs * 0.18) if opts.get("dual_small") else 0
+            gap_tag = ("{\\fs" + str(max(1, gap)) + "}\\h{\\r}\\N") if gap > 0 else ""
+            src_pre = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N" + gap_tag
+            block_px += len(src_chunks) * small * LINE_F + gap * LINE_F
         # 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선"): 하단 앵커는 위로만 자라 줄이 늘면 블록 중심이 떠오름 →
         #   초과 높이의 절반만큼 MarginV를 내려 블록 세로중심 고정(1줄 = 보정 0 = 종전·캡처 그대로). 패딩은 전 이벤트 동일이라 상쇄.
         mv_e = margin_v - int(round((block_px - ref_px) / 2))
@@ -1109,6 +1122,7 @@ def run(vid_id, video, outdir):
             if dur - _prev > 0.05:
                 useg_rm.append((_prev, dur))
             if not useg:
+                useg_rm = []   # ⚠ 필수(재검② 260728): 여기서 안 비우면 `useg_rm=[(0,dur)]`가 남아 아래 구간-우선 분기가 `subtract_spans([(0,dur)],[(0,dur)])=[]`를 만들어 **무음컷 산출까지 통째로 소실**된다
                 edit_notes.append("구간이 전부 영상 밖 — 이어붙기 건너뜀")
     for _lbl, _sp in (("구간 이어붙기", useg_rm), ("승인 컷", ref_spans), ("필러 컷", fil_spans), ("테이크 컷", take_spans)):
         if not _sp:
@@ -1122,7 +1136,14 @@ def run(vid_id, video, outdir):
             keeps = k2
             _ext_notes.append("{} {}군데 {:.1f}초".format(_lbl, len(_sp), cut_d) + (fil_note if _lbl == "필러 컷" else ""))
         elif not k2:
-            _ext_notes.append("{} 전 구간 — 건너뜀".format(_lbl))   # 전부 삭제 = 빈 출력 방지(fail-soft · del 경로 동형)
+            if _lbl == "구간 이어붙기":
+                # 사용자 명시 의도 우선(평의회③ 260728): 무음컷 keeps가 고른 구간과 안 겹치면 k2가 비어 fail-soft가 **무음컷을 살리고 사용자 구간을 버렸다**
+                #   (예: 발화 0~20초 → keeps=[(0,20)] · 구간 [30,40][50,60] → 출력이 0~20초 = 고른 구간이 한 프레임도 안 들어감).
+                #   자동 계산은 포기하고 구간을 살린다 — 아래 승인/필러/테이크는 자동축끼리라 종전 fail-soft 유지.
+                keeps = subtract_spans([(0.0, dur)], _sp)
+                _ext_notes.append("구간 이어붙기 {}군데 · 무음 컷은 구간 우선으로 해제".format(len(useg)))
+            else:
+                _ext_notes.append("{} 전 구간 — 건너뜀".format(_lbl))   # 전부 삭제 = 빈 출력 방지(fail-soft · del 경로 동형)
     ext_note = " · ".join(p for p in _ext_notes if p)
     if keeps:
         remap, new_dur = cut_remap(keeps)
@@ -1143,8 +1164,12 @@ def run(vid_id, video, outdir):
                         nw.append(dict(wd, s=round(ws, 3), e=round(we, 3)))
                 nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
             remapped.append(nsg)
-        segs = remapped or segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전
-        if segs_orig and not remapped:   # ⚠ 자막이 애초에 0개면(승인 컷 단독 렌더 = STT 미실행) remapped도 0 — 그걸 '붕괴'로 읽어 컷을 통째로 버리던 경로 봉합(260727)
+        if segs_orig and not remapped and useg_rm:
+            edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")   # 트림 경로의 짝(위 "구간 안에 자막 없음")을 이어붙기 경로에도(재검② 260728 — 없으면 자막이 조용히 빠진다)
+        segs = remapped if (remapped or useg_rm) else segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전 · 단 **사용자 구간이 있으면 자막을 버리더라도 구간을 살린다**(평의회③ 260728)
+        if segs_orig and not remapped and not useg_rm:   # ⚠ 자막이 애초에 0개면(승인 컷 단독 렌더 = STT 미실행) remapped도 0 — 그걸 '붕괴'로 읽어 컷을 통째로 버리던 경로 봉합(260727)
+            #    + useg_rm 예외(평의회③ 260728): 말소리가 고른 구간 **밖에만** 있으면 전 조각이 붕괴 판정을 받아 `keeps=[]` → 구간 이어붙기가 통째로 폐기되고
+            #      원본 통짜가 나갔다(note 한 글자도 없이 = 조용한 무력화). 사용자 명시 의도(구간)는 자동 계산(자막 리맵)보다 우선한다.
             keeps = []
         else:
             cut_note = " · ".join(p for p in [cut_note, sil_note, del_note, ext_note] if p)   # 무음·대본삭제·승인/필러/테이크 결합 표기(무음 단독 = 종전 포맷 그대로 · 조용한 클램프 금지)
@@ -1156,6 +1181,15 @@ def run(vid_id, video, outdir):
                     if 0.05 < _c < new_dur - 0.05:
                         ujoints.append(round(_c, 3))
                 del ujoints[12:]
+                if ujoints:   # 딥 반폭 클램프(평의회⑧ 260728) — 짧은 구간이 딥에 통째로 먹히던 것 차단
+                    #   반례: 구간 [0,3][5,5.3][8,11] + 강도 100%(uw 0.5) → 0.3초 구간은 전 프레임 env≤0.30 = 거의 검정·볼륨 30%.
+                    #   무손상 프레임이 남을 조건 = 구간길이 > 2·uw → 이웃 이음매 간격의 45%로 상한을 잡는다(양쪽 딥 합 90%).
+                    _edges = [0.0] + ujoints + [new_dur]
+                    _gap = min((_edges[i + 1] - _edges[i]) for i in range(len(_edges) - 1))
+                    _w2 = max(0.02, round(min(xfade_w, _gap * 0.45), 3))
+                    if _w2 < xfade_w:
+                        edit_notes.append("짧은 구간이 있어 디졸브를 {:.2f}초로 줄임".format(_w2))   # 조용한 클램프 금지 = 표면화
+                    xfade_w = _w2
     elif del_note or ext_note:
         cut_note = " · ".join(p for p in [cut_note, del_note, ext_note] if p)   # 컷 미실행이어도 삭제·필러·테이크 스킵 사유는 표면화(침묵 금지)
     # ── 지오메트리 확정 — 크롭 → 캡 스케일 → fps → 패드 · ASS PlayRes = 최종 캔버스(자막이 검정 여백 위에도 앉게 · 260710).
@@ -1300,7 +1334,7 @@ def run(vid_id, video, outdir):
                     if ass:   # no_burn(컷 단독)은 ASS 재작성도 불요 — vf에 ass 필터 자체가 없다(STT-only 260711)
                         with open(ass_path, "w", encoding="utf-8") as f:
                             f.write(build_ass(segs_orig, canvas_w, canvas_h, opts))
-                    cut_note, dur = ("무음 컷 실패 — 컷 없이 합성" if sil_note else "삭제 컷 실패 — 컷 없이 합성"), dur_orig   # 라벨 = 컷 출처 분기(검증① — del 단독 폴백 오표기 방지)
+                    cut_note, dur = ("무음 컷 실패 — 컷 없이 합성" if sil_note else "구간 이어붙기 실패 — 원본 그대로 합성" if useg_rm else "삭제 컷 실패 — 컷 없이 합성"), dur_orig   # 라벨 = 컷 출처 분기(검증① — del 단독 폴백 오표기 방지 · 평의회③ 260728: 구간 단독 실패가 "삭제 컷 실패"로 오표기되던 것 합류)
                 if vocals:
                     vocals, ins = "", tcut + ["-i", video]   # 트림 보존(-ss/-t 유지) — 폴백이 구간을 잃지 않게
                     bgm_note = "배경음 제거 실패 — 원본 소리로 합성"

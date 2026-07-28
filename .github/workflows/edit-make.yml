@@ -164,7 +164,8 @@ jobs:
           set -e
           [ -n "${EDIT_SRC:-}" ] || { echo "영상 입력이 없어 — URL이나 파일을 넣어줘." > /tmp/edit_err.txt; echo "::error::EDIT_SRC 빈값"; exit 1; }
           DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"
-          SPAN="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');sg=o.get('vid_segs');t1=o.get('vid_t1');print(int(sum(max(0.0,float(b)-float(a)) for a,b in sg)) if isinstance(sg,list) and sg else (int(float(t1)-float(o.get('vid_t0') or 0)) if t1 else -1))" 2>/dev/null || echo -1)"   # n구간 = 합산 길이(260728)
+          case "$DUR" in ''|*[!0-9]*) DUR="";; esac   # ffprobe가 webm 등에서 내는 'N/A' 정규화(재검③ 260728 — 비숫자면 아래 float()가 터져 segs 합산까지 -1로 떨어진다)
+          SPAN="$(DUR="$DUR" python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');d=float(os.environ.get('DUR') or 0);c=(lambda v: min(v,d) if d>0 else v);sg=o.get('vid_segs');t1=o.get('vid_t1');t0=float(o.get('vid_t0') or 0);print(int(sum(max(0.0,c(float(b))-float(a)) for a,b in sg)) if isinstance(sg,list) and sg else (int(c(float(t1))-t0) if t1 else (int(d-t0) if (o.get('vid_t0') and d>t0) else -1)))" 2>/dev/null || echo -1)"   # n구간 = 합산 길이(260728) · **끝값을 실길이로 클램프**(재검③ 260728 — 「끝 공란」이 3600 센티널로 오는데 SPAN만 클램프를 안 해 SPAN이 부풀고 CAP이 600으로 강등돼 **구간 카드를 이미 쓴 사용자를 되레 더 많이 거절**했다 · 러너 ly_burn `min(t1_req,dur)`와 동일 산식) · 「시작만 지정」도 실길이로 산출
           STT="$(python3 -c "import json,os;o=json.loads(os.environ.get('OPTS') or '{}');print(1 if (o.get('burn') or o.get('cut') or o.get('clip') or o.get('cutfill') or o.get('take') or o.get('cutscan')) else 0)" 2>/dev/null || echo 9)"   # 파싱 실패 = 9(미상) → 아래 분기 전부 미적중 = 종전 10분 보수 폴백
           if [ "$STT" = "1" ]; then CAP=1200; MSG="자막·컷·클리퍼는 20분 이하만(전사가 원본 전체를 돎) — 더 길면 구간만 자르거나 20분 이하로."
           elif [ "$SPAN" -ge 0 ] && [ "$SPAN" -le 600 ] 2>/dev/null; then CAP=3600; MSG="구간 편집도 원본 60분까지야 — 더 길면 잘라서 올려줘."
