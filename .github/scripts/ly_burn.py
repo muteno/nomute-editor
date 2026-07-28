@@ -225,9 +225,20 @@ def kst_now():
 
 def out_json(outdir, doc):
     doc["ts"] = kst_now()
+    body = json.dumps(doc, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(outdir, "video.json"), "w", encoding="utf-8") as f:
-        json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
-    print("video.json:", json.dumps(doc, ensure_ascii=False)[:200])
+        f.write(body)
+    print("video.json:", body[:200])
+    # ── R2 미러(260728) — 결과 쪽지를 git 커밋 말고 R2에도 즉시 올린다.
+    #   왜: 완성 mp4는 이미 R2에 있는데(위 r2_upload), 그 주소를 담은 이 video.json만 git → Pages 배포를 타느라
+    #   사용자가 최대 8분을 더 기다렸다(260728 실측: 674초 잡 중 배포 게이트 491초 = 73%). 뷰어가 /api/edit?stat=<id>로
+    #   R2를 먼저 읽으면 배포와 무관하게 즉시 뜬다. 실패해도 무해 = 종전 Pages 경로가 그대로 폴백.
+    try:
+        vid_id = os.path.basename(outdir.rstrip(os.sep))
+        if vid_id:
+            tg.r2_upload(body.encode("utf-8"), "ly_out/{}/video.json".format(vid_id), "application/json")
+    except Exception as e:
+        print("::warning::video.json R2 미러 실패(무해 — Pages 경로 폴백):", str(e)[:120])
 
 
 def probe(path):
