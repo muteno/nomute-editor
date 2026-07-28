@@ -33,6 +33,23 @@ export async function onRequestPost({ request, env }) {
     || uh === 'metadata.google.internal' || uh.endsWith('.internal') || uh === 'instance-data'
     || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(uh)) return json({ error: '지원하지 않는 URL 호스트' }, 400);
 
+  // 서버측 플랫폼 화이트리스트(평의회1 260729) — 뷰어 _dgVidPlat·러너 detect_plat과 3면 이중 차단.
+  //   호스트+경로 매칭(영상 게시물만) — 미매칭이면 러너에 임의 호스트를 넘기지 않는다(쿠키 잔·SSRF·과금 남용 봉합).
+  const path = (() => { try { return new URL(url).pathname.toLowerCase(); } catch { return ''; } })();
+  const hostIs = (d) => uh === d || uh.endsWith('.' + d);
+  const bh = uh.replace(/^www\./, '');
+  const hb = (d) => bh === d || bh.endsWith('.' + d);
+  let plat = '';
+  if (hb('youtu.be')) plat = path.length > 1 ? 'YT' : '';
+  else if (hb('youtube.com')) plat = /^\/(watch|shorts\/|live\/|embed\/)/.test(path) ? 'YT' : '';
+  else if (hb('instagram.com')) plat = /^\/(p|reel|reels|tv)\//.test(path) ? 'IG' : '';
+  else if (hb('x.com') || hb('twitter.com')) plat = /\/status\/\d/.test(path) ? 'X' : '';
+  else if (hb('tiktok.com')) plat = (/\/(video|photo)\/\d/.test(path) || /^\/(t|v)\//.test(path) || hostIs('vm.tiktok.com') || hostIs('vt.tiktok.com')) ? 'TT' : '';
+  else if (hb('fb.watch')) plat = path.length > 1 ? 'FB' : '';
+  else if (hb('facebook.com')) plat = (/\/(videos|reel|watch)\//.test(path) || path === '/watch') ? 'FB' : '';
+  else if (hb('threads.net') || hb('threads.com')) plat = /\/post\//.test(path) ? 'TH' : '';
+  if (!plat) return json({ error: '영상 게시물 주소가 아니야 — 유튜브·인스타·X·틱톡·페북·스레드의 영상 게시물 주소를 넣어줘.' }, 400);
+
   const rl = await rateGate(GH, env.GH_TOKEN, 'vidl-make.yml');   // 발사 레이트리밋(conv 관례 · fail-open)
   if (rl) return json({ error: rl.error }, 429);
 
