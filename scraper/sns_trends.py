@@ -82,6 +82,15 @@ CTX = ssl.create_default_context()
 #   값 = HTTP 코드(404 삭제·403 차단·429 리밋) 또는 문자열 태그('empty' 빈응답 · 'wall' 로그인월 · 'err' 기타).
 #   런 단위 휘발(프로세스 전역 · 파일 미기록) → main()이 health.subs.cover[plat].why 로 실어 보낸다.
 SUB_FAIL = {}
+# 계정별 **수집 성공** 기록(260728 판례 = 알림 42건 폭탄) — 종전 got은 `limit` 절단 **뒤** 결과에서 계정을
+#   세어, 정상 수집된 계정도 상위 N 밖으로 밀리면 전부 '누락'으로 잡혔다(틱톡 38계정 × 지역 top-12 =
+#   구조적으로 got≤24 = 80% 임계를 영영 못 넘김 = 알림 상주). 절단 **전**에 성공 계정을 찍어
+#   miss = 등록 − 실제수집 이 되게 한다. SUB_FAIL과 같은 런 단위 휘발(main()이 cover로 실어 보냄).
+SUB_OK = {}
+# 폰(가정 IP) 수집분의 성공·실패 기록 — 폰 채택 플랫폼(x·insta·threads·tiktok)은 **데이터는 폰 것인데
+#   사유는 러너 것**이라 miss와 why의 주체가 어긋나 있었다(260728: 러너 429/403 기록이 폰 결과 위에 얹힘).
+#   scripts/phone_subs.py가 sns_subs_phone.json `_cover`로 같이 실어 보내면 채택 시 이 값으로 갈아 끼운다.
+PHONE_COVER = {"ok": {}, "why": {}}
 
 
 def _hcode(e):
@@ -94,6 +103,20 @@ def _sfail(plat, acc, code):
         SUB_FAIL.setdefault(plat, {})[str(acc).lower().lstrip("@")] = code
     except Exception:  # noqa: BLE001 — 기록 실패가 수집을 못 죽인다
         pass
+
+
+def _sok(plat, acc):
+    """계정 수집 성공 도장(절단 전 · _sfail 대칭)."""
+    try:
+        SUB_OK.setdefault(plat, set()).add(str(acc).lower().lstrip("@"))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _sbudget(plat, accounts):
+    """예산 소진으로 **시도조차 못 한** 잔여 계정 = 실패가 아니라 미시도(뷰어가 별도 문구로 갈라 읽는다)."""
+    for a in accounts:
+        _sfail(plat, a, "budget")
 
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
@@ -758,6 +781,7 @@ def x_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::x 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sbudget("x", accounts[i:])
             break
         if i:
             time.sleep(4)
@@ -768,6 +792,7 @@ def x_subs(accounts, limit=10, deadline=None):
             if not m:
                 raise ValueError("빈 셸(429·차단 응답)")   # continue 대신 예외 = 아래 RSS 폴백까지 흘려보냄(260725)
             entries = ((json.loads(m.group(1)).get("props") or {}).get("pageProps") or {}).get("timeline") or {}
+            _sok("x", acc)   # 셸 파싱 성공 = 계정 살아있음(트윗 0건·상위 절단 = 사고 아님)
             for e in entries.get("entries") or []:
                 c = e.get("content") or {}
                 t = c.get("tweet")
@@ -875,9 +900,10 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                     "views": _i(views), "likes": _i(likes), "cmts": _i(cmts), "cover": cover or "",
                     "time": _i(ctime) or (int(vid) >> 32 if str(vid).isdigit() else 0),   # 임베드 = id 상위 32비트가 생성 epoch
                     "url": "https://www.tiktok.com/@%s/video/%s" % (handle, vid)})
-    for acc in accounts:
+    for _i2, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::tiktok 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sbudget("tiktok", accounts[_i2:])
             break
         time.sleep(2)
         got = 0
@@ -898,6 +924,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
             print(f"::warning::tiktok @{acc} 임베드 실패: {e}", file=sys.stderr)
             _sfail("tiktok", acc, _hcode(e))
         if got:
+            _sok("tiktok", acc)
             continue
         try:   # ② tikwm 구 창구 폴백(260714~ 403 — 복구 시 자동 재사용) · count 10→30(운영자 260720 "국내 큐레이션 10위까지")
             j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))
@@ -905,6 +932,7 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                 print(f"::warning::tiktok @{acc} 응답 코드 {j.get('code')}(스킵)", file=sys.stderr)
                 _sfail("tiktok", acc, "empty")
                 continue
+            _sok("tiktok", acc)
             for v in ((j.get("data") or {}).get("videos") or []):
                 if v.get("video_id"):
                     _push(v["video_id"], (v.get("author") or {}).get("unique_id") or acc, v.get("title"),
@@ -953,6 +981,7 @@ def insta_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::insta 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sbudget("insta", accounts[i:])
             break
         if i:
             time.sleep(6)
@@ -967,6 +996,7 @@ def insta_subs(accounts, limit=10, deadline=None):
                 headers=_hdr)
             j = json.loads(urllib.request.urlopen(req, timeout=15, context=CTX).read().decode("utf-8", "ignore"))
             edges = (((j.get("data") or {}).get("user") or {}).get("edge_owner_to_timeline_media") or {}).get("edges") or []
+            _sok("insta", acc)   # 프로필 응답 성공 = 계정 살아있음(영상 0건·상위 절단 = 사고 아님)
             for e in edges:
                 n = e.get("node") or {}
                 if not n.get("is_video") or not n.get("shortcode"):
@@ -990,6 +1020,7 @@ def insta_subs(accounts, limit=10, deadline=None):
             print(f"::warning::insta @{acc} HTTP {e.code}(스킵)", file=sys.stderr)
             _sfail("insta", acc, e.code)
             if e.code == 429:
+                _sbudget("insta", accounts[i + 1:])   # 잔여는 시도조차 못 함 = 계정 문제 아님(뷰어 미시도 문구)
                 globals()["INSTA_429"] = True   # 호출측 백오프 신호(260727 판례: 쿠키 정상[401 아님]인데 첫 계정부터 429 8연속 = IP가 이미 리밋 · 30분 크론이 계속 두드려 리밋이 매번 **갱신**되던 자해 루프 → phone_subs.py가 이 플래그로 쿨다운 기록 · 러너는 미소비 = 무영향)
                 print("::warning::insta 429 — 잔여 계정 중단(IP 리밋)", file=sys.stderr)
                 break
@@ -1007,6 +1038,7 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::yt 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sbudget("youtube", accounts[i:])
             break
         if i:
             time.sleep(1)
@@ -1018,9 +1050,11 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
                 m = re.search(r'"(?:channelId|externalId)":"(UC[\w-]{22})"', h) or re.search(r'channel/(UC[\w-]{22})', h)
                 if not m:
                     print(f"::warning::yt @{acc} channelId 해석 실패(스킵)", file=sys.stderr)
+                    _sfail("youtube", acc, "resolve")   # 종전 = 무기록 continue = 뷰어가 '비공개·삭제' 폴백 문구로 단정하던 사각(260728)
                     continue
                 cid = m.group(1)
             x = _get("https://www.youtube.com/feeds/videos.xml?channel_id=" + cid)
+            _sok("youtube", acc)   # RSS 응답 성공 = 채널 살아있음(최근 14일 업로드 0·상위 절단 = 사고 아님)
             for ent in re.finditer(r"<entry>(.*?)</entry>", x, re.S):
                 s = ent.group(1)
                 def tag(name, s=s):
@@ -1058,6 +1092,7 @@ def threads_subs(accounts, limit=10, deadline=None):
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::threads 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
+            _sbudget("threads", accounts[i:])
             break
         if i:
             time.sleep(4)
@@ -1090,6 +1125,8 @@ def threads_subs(accounts, limit=10, deadline=None):
                 _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
                 print(f"::warning::threads @{acc} 포스트 노드 0(HTML {len(h)//1000}KB·data-sjs {_sjs}개·{'로그인월' if _wall else '레이아웃?'}·쿠키{'유' if ck else '무'} — 스킵)", file=sys.stderr)
                 _sfail("threads", acc, "wall" if _wall else "empty")
+            else:
+                _sok("threads", acc)   # 포스트 노드 확보 = 계정 살아있음(24h 필터·spread 절단 = 사고 아님)
             for p in posts:
                 code = p.get("code") or ""
                 txt = ((p.get("caption") or {}).get("text") or "").strip()
@@ -1748,6 +1785,9 @@ def main():
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
             if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
+                _pc = _ph.get("_cover") if isinstance(_ph.get("_cover"), dict) else {}   # 폰이 실어 보낸 계정별 성공·사유(260728 — 데이터는 폰, 사유는 러너였던 주체 불일치 봉합)
+                PHONE_COVER["ok"] = {k3: set(v or ()) for k3, v in (_pc.get("ok") or {}).items() if isinstance(v, list)}
+                PHONE_COVER["why"] = {k3: v for k3, v in (_pc.get("why") or {}).items() if isinstance(v, dict)}
                 for k2 in ("x", "insta", "threads", "tiktok"):   # 틱톡 = 러너 데센 IP가 tikwm /user/posts에 통째 HTTP 403(WAF IP블록 · run 29800229859 실측 260721: KR13+GL17 30콜 전멸 → 구독 tiktok = 스테일 carry) → 폰 가정 IP 채택(insta/threads 동류 편입) · 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
@@ -1872,11 +1912,16 @@ def main():
         for _k in ("x", "tiktok", "insta", "youtube", "threads"):
             if not acc[_k]:
                 continue
-            _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])}
+            # got = **절단 전 수집 성공**(_sok) ∪ 최종 결과 등장 계정. 종전엔 결과만 세어 `limit` 상위 N 밖으로
+            #   밀린 정상 계정이 전부 누락으로 잡혔다(260728 판례 = 틱톡 38계정 top-12 → 상시 24% = 알림 42건 폭탄).
+            # 사유(why)도 데이터와 **같은 주체** 것으로 맞춘다 — 폰 채택분은 폰의 _cover, 러너분은 SUB_FAIL.
+            _okset = set(SUB_OK.get(_k) or ()) | set(PHONE_COVER["ok"].get(_k) or ())
+            _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])} | _okset
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
-            _why = {a: SUB_FAIL.get(_k, {}).get(a) for a in _miss[:20] if SUB_FAIL.get(_k, {}).get(a) is not None}
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 일반 문구로 폴백)
+            _fsrc = {**(SUB_FAIL.get(_k) or {}), **(PHONE_COVER["why"].get(_k) or {})}   # 폰 기록이 러너 잔향을 덮는다(폰 = 주 공급)
+            _why = {a: _fsrc[a] for a in _miss[:20] if _fsrc.get(a) is not None}
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
