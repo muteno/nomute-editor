@@ -32,7 +32,14 @@ def rebuild(segjson):
     segs = j.get("segs") or []
     if not segs:
         raise SystemExit(3)
-    lines = ["[{:.1f}-{:.1f}] {}".format(float(s["s"]), float(s["e"]), s.get("t") or "") for s in segs]
+    # 본문 + **어절 라인**(260728 Q991) — 어절 타임스탬프는 조각 경계·s/e를 추정 대신 실측값으로 잡는 재료다.
+    #   이걸 빼면 캐시 히트/미스에 따라 claude 입력이 달라진다(= 같은 소스인데 자막 경계가 갈린다) → 260728 적발·봉합.
+    lines = []
+    for s in segs:
+        lines.append("[{:.1f}-{:.1f}] {}".format(float(s["s"]), float(s["e"]), s.get("t") or ""))
+        ws = [w for w in (s.get("w") or []) if (w.get("t") or "").strip() and w.get("s") is not None and w.get("e") is not None]
+        if ws:
+            lines.append("# 어절: " + " ".join("{}={:.2f}-{:.2f}".format(w["t"], float(w["s"]), float(w["e"])) for w in ws))
     unc = [s for s in segs if s.get("unc")]
     if unc:
         lines.append("# 불명확(뭉개짐 의심) %d조각 — 오인식 가능·재생성(교정) 후보: %s"

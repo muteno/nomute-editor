@@ -1423,8 +1423,10 @@ async function lySpellScan() {   // → true = 교정 있음(리뷰 진입) / fa
     const aw = a.split(/\s+/).filter(Boolean), bw = b2.split(/\s+/).filter(Boolean);
     if (aw.length === bw.length) {   // 어절 수 동일 = 칩 1:1 매핑 가능(오타·받침·조사 교정)
       const on = o.sg.w.map((w, wi) => ({ w, wi })).filter(x => x.w.on);   // lySegText는 on 칩만 이으므로 그 순서가 어절 순서
-      aw.forEach((t, j) => { if (t !== bw[j] && on[j] && on[j].w.t === t) items.push({ si: o.si, wi: on[j].wi, from: t, to: bw[j], lit: true }); });
-    } else items.push({ si: o.si, from: a, to: b2, skip: true, lit: false });   // 어절 수 변화(띄어쓰기) = 표시만
+      // ⚠ 인덱스(si/wi) 대신 **칩 객체 참조**를 들고 간다 — 검사(1차)와 적용(2차) 사이에 조각 병합·분열·타이밍 조절이
+      //   일어나면 lyResort()/splice가 배열을 재배치해 인덱스가 밀린다(엉뚱한 조각에 적용되거나 조용히 미적용 · 260728 적발).
+      aw.forEach((t, j) => { if (t !== bw[j] && on[j] && on[j].w.t === t) items.push({ w: on[j].w, from: t, to: bw[j], lit: true }); });
+    } else items.push({ from: a, to: b2, skip: true, lit: false });   // 어절 수 변화(띄어쓰기) = 표시만
   });
   LY_SPELL = items.length ? { items } : null;
   lySpellRender();
@@ -1447,9 +1449,8 @@ function lySpellRender() {
 function lySpellApply() {   // 점등 칩만 적용 → 편집 모델 반영(= 다시 입히기가 '편집 있음'으로 인식해 편집분을 굽는다)
   let n = 0;
   if (LY_SPELL) LY_SPELL.items.forEach(it => {
-    if (!it.lit || it.skip) return;
-    const sg = LY_SEGS && LY_SEGS[it.si], w = sg && sg.w[it.wi];
-    if (w && w.t === it.from) { w.t = it.to; n++; }   // from 불일치 = 그 사이 손편집됨 → 덮어쓰지 않음(사용자 편집 우선)
+    if (!it.lit || it.skip || !it.w) return;
+    if (it.w.t === it.from) { it.w.t = it.to; n++; }   // 칩 객체 직접 참조 = 정렬·병합에도 안 밀림 · from 불일치 = 그 사이 손편집됨 → 덮어쓰지 않음(사용자 편집 우선)
   });
   LY_SPELL = null; lySpellRender();
   if (n) lyRerender();
