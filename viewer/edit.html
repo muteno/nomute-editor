@@ -277,6 +277,10 @@
   .vstage .wcorner { position:absolute; top:8px; left:10px; z-index:2; font-size:var(--fs-xs); font-weight:400; font-variant-numeric:tabular-nums; color:var(--fg); text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 운영자 260727 전역 규격 — 볼드 해제·fs-xs(75%)·흰색(thumb .wip .wcorner와 동일 · 네온레몬 글로우 폐지) */
   .status { margin-top:var(--sp-2); font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
+  /* 완료 부기(운영자 260728) — 경과시간 줄 **좌측 아래**에 토큰·예상비용. 진행 중엔 알 수 없으므로 완료 후에만 노출.
+     위계 = .scard .sum 보조 문법 계승(--fs-xs·mut·흐림) · 숫자는 tabular-nums로 자리 고정(경과시간 00분 00초와 세로 정렬) */
+  .status-sub { margin-top:var(--sp-1); font-size:var(--fs-xs); color:var(--mut); text-align:left; opacity:.55; font-variant-numeric:tabular-nums; }
+  .status-sub[hidden] { display:none; }
   /* 클리퍼 후보 목록(운영자 260711 배치 승인 — 편집기 탭 안 카드 플로우) · 톤 = .scard 계승(신규 색 0) */
   .cliplist { display:flex; flex-direction:column; gap:var(--sp-2); margin-top:var(--sp-2); }
   .cliplist[hidden] { display:none; }
@@ -526,6 +530,7 @@
   <div class="xtr" id="xtrsec"></div><!-- 기타 옵션 = 4번 섹션·스택 최하단(운영자 260712 2차 "번호 매겨 제일 아래" — 소스 아래 1차 선택 뒤집음) · 렌더 = renderXtr · 발사 옵션 아님 · 트래킹 진입은 여기가 유일 -->
 
   <div class="status" id="cstatus" role="status"></div>
+  <div class="status-sub" id="cstatusSub" hidden></div><!-- ⚠배치(3-2) 완료 부기 = 경과시간 좌측 아래 · 토큰+예상비용(완료 후에만) -->
   <div class="vstage" id="vwrap" hidden></div>
   <div class="cliplist" id="cliplist" hidden role="listbox" aria-label="클립 후보 — 탭하면 구간 적용"></div>
   <div class="cliplist" id="cutlist" hidden role="listbox" aria-label="컷 미리보기 — 탭하면 그 구간은 안 자름"></div><!-- 컷 미리보기 목록(260727 ③) — 스타일·문법 = 위 클립 후보 목록 그대로 계승(신규 CSS 0) -->
@@ -2054,9 +2059,25 @@ function estTokenKRW(d){
   const usd=Math.min(4, Math.max(.15, vmin*TOK_USD_PER_VMIN));
   return Math.round(usd*USD_KRW/50)*50;   // ₩50 단위 반올림
 }
-function estTokenNote(d){   // 완료 메시지 꼬리 = ' · 예상 토큰비 ~₩N'(자막) 또는 ' · 토큰 0'(ffmpeg)
+function estTokenNote(d){   // (구) 완료 메시지 꼬리 — 260728 부기 줄 이관으로 본문에선 미사용(호출부 잔존 시 회귀 0 위해 유지)
   const k=estTokenKRW(d);
   return (d&&d.sub)? ' · 예상 토큰비 ~₩'+k.toLocaleString('ko-KR') : ' · 토큰 0';
+}
+// 경과시간 표기 정본(운영자 260728 "항상 0분 00초로 · 00분일 수도 있으니 00분 00초") — 항상 두 자리 제로패딩.
+//   1시간 넘으면 시(HH)를 앞에 붙인다(자막 잡은 MAX_DUR 상 드물지만 표기가 깨지지 않게).
+function fmtDur(sec){
+  sec = Math.max(0, Math.round(sec || 0));
+  const h = (sec/3600)|0, m = ((sec%3600)/60)|0, ss = sec%60, p = n => String(n).padStart(2,'0');
+  return (h? p(h)+'시간 ' : '') + p(m)+'분 '+p(ss)+'초';
+}
+// 완료 부기(경과시간 좌측 아래) — 토큰·예상비용. **완료 후에만** 채운다(진행 중엔 실제 사용량을 알 수 없다 = 운영자 지시).
+function statusSub(d){
+  const el = document.getElementById('cstatusSub'); if(!el) return;
+  if(!d){ el.hidden = true; el.textContent = ''; return; }
+  if(!d.sub){ el.textContent = '토큰 0 · 비용 0원 (영상 처리만 — LLM 미사용)'; el.hidden = false; return; }
+  const krw = estTokenKRW(d);
+  el.textContent = '토큰 ~' + krw.toLocaleString('ko-KR') + '원 (자막 의역 · 영상 길이 기준 추정)';
+  el.hidden = false;
 }
 function showResult(d, sec){
   RESULT_URL=d.url||'';
@@ -2064,7 +2085,8 @@ function showResult(d, sec){
   const m=String(EDIT_ID||'').match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})-/);
   if(m){ const s=Math.round((Date.parse(d.ts||'')-Date.parse('20'+m[1]+'-'+m[2]+'-'+m[3]+'T'+m[4]+':'+m[5]+':'+m[6]+'+09:00'))/1000); if(isFinite(s)&&s>0&&s<86400) sec=s; }
   $('#cstatus').classList.remove('err');
-  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' ('+sec+'s)'):'')+(d.note?(' · '+esc(d.note)):'')+estTokenNote(d);
+  $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' · '+fmtDur(sec)):'')+(d.note?(' · '+esc(d.note)):'');   // 경과 = 00분 00초(운영자 260728) · 토큰·비용은 아래 부기 줄로 이관
+  statusSub(d);   // 완료 후에만 노출
   const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; const _ps=$('#pvsec'); if(_ps) _ps.hidden=true;   // 결과 = 라이브 미리보기+PREVIEW 숨김(중복 방지 · 260711/260712)
   vw.innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
   $('#dlVid').hidden=false;
