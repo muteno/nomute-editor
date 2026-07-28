@@ -12,6 +12,10 @@ import os
 import sys
 
 MODEL_TAG = os.environ.get("STT_MODEL_TAG") or "large-v3"   # 모델 바뀌면 키가 바뀌어야 한다(구 전사 오염 차단)
+# 연산 정밀도도 키의 일부다(운영자 260728 정밀도 승격 때 적발) — 구본 키는 모델명만 담아서, int8 시절 캐시가
+#   int8_float32 런에 그대로 히트하면 **승격이 조용히 무효화**된다(같은 오디오 = 같은 sha256 = 같은 키).
+#   ly_stt.py와 같은 env·같은 기본값을 읽어 키에 합류시킨다 = 정밀도가 바뀌면 자연 미스 → 새 정밀도로 재전사.
+PREC_TAG = (os.environ.get("LY_STT_PRECISION") or "").strip() or "int8_float32"
 
 
 def key(path):
@@ -19,7 +23,7 @@ def key(path):
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
-    return "stt/{}-{}.json".format(h.hexdigest(), MODEL_TAG)
+    return "stt/{}-{}-{}.json".format(h.hexdigest(), MODEL_TAG, PREC_TAG)
 
 
 def rebuild(segjson):
