@@ -1,0 +1,94 @@
+name: vidl-make
+
+# 영상 받기(설정 ▸ 다운로드 영상 플랫폼 경로 · /api/vidl 발사 · 운영자 260728 "배치파일 조건대로") — 단일 잡:
+#   URL → yt-dlp 3판{최고화질+자막(en,ko srt→txt) · 프레임별(maxfps_) · FHD별(1080p_)} → R2 vidl_res/<id>/
+#   → 드라이브 '내 드라이브/Shared' 업로드(GDRIVE_SA_JSON 있을 때 · 비치명) → viewer/vidl_out/<id>/result.json 커밋(폼이 폴링).
+# LLM 0콜 · 조건 정본 = apps/vidl/vidl_run.py(레퍼런스 = 운영자 Downloader.bat v7.0) · 골격 = conv-make 미러.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      url:
+        description: '영상 게시물 URL(yt-dlp)'
+        type: string
+
+concurrency:
+  group: vidl-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  vidl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55   # 최악 스택{환경 ~10 + 3판 다운로드 + R2·드라이브 업로드} — 무한 행만 차단(conv 문법)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 환경 (ffmpeg+yt-dlp)
+        timeout-minutes: 10
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/conv/setup.sh   # yt-dlp 설치 스크립트 재사용(내용 동일 — 정본 중복 신설 금지)
+          apt: ffmpeg
+
+      - name: 받기 (yt-dlp 3판 → R2·드라이브 → result.json)
+        timeout-minutes: 40   # 스텝 자체 캡 — 잡 55분 하드캔슬 전에 failure() error.log 표면화(conv 문법)
+        env:
+          IN_ID: ${{ inputs.id }}
+          IN_URL: ${{ inputs.url }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          GDRIVE_SA_JSON: ${{ secrets.GDRIVE_SA_JSON }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "$IN_URL" ] || { echo "영상 URL이 없어 — 다시 시도해줘." > /tmp/vidl_err.txt; echo "::error::url 빈값"; exit 1; }
+          python3 apps/vidl/vidl_run.py "$IN_ID" "$IN_URL"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/vidl_out/${IN_ID}"
+          if [ -s /tmp/vidl_err.txt ]; then cp /tmp/vidl_err.txt "viewer/vidl_out/${IN_ID}/error.log";
+          else echo "받기 실패 — Actions 로그를 확인해줘." > "viewer/vidl_out/${IN_ID}/error.log"; fi
+          echo "error.log: $(cat viewer/vidl_out/${IN_ID}/error.log)"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/vidl_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "vidl: ${IN_ID} 받기 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
