@@ -16,9 +16,16 @@ from faster_whisper import WhisperModel
 
 audio = sys.argv[1]
 seg_json = sys.argv[2] if len(sys.argv) > 2 else ""
-# device=cpu/int8 = 러너 기본(GPU 없음). large-v3 = 최고 정확도·3.1GB(운영자 260726 — turbo가 소음·현장음 클립서
+# device=cpu. large-v3 = 최고 정확도·3.1GB(운영자 260726 — turbo가 소음·현장음 클립서
 #   발화 누락·오인식 상습이라 승격. 속도 ~4배 손해는 STT 스텝 백스톱 증량으로 수용).
-model = WhisperModel("large-v3", device="cpu", compute_type="int8")
+# 연산 정밀도(운영자 260728 "일단 정확해야 돼 · 수정하는 건 손이 가므로 거의 실패") — 구본 int8은 *모델은 large-v3인데
+#   가중치를 8비트로 뭉개* 추론해 유사음 오인식을 키운다(260728121555 실측: '경찰서 가서' → '검찰서가' · 그 어절 확률 0.60
+#   vs 정상 어절 0.85~0.99 = 모델도 확신 없던 자리). int8_float32 = 가중치만 int8·**연산은 float32**라 누적 오차가 줄고,
+#   CPU 속도 손해는 int8 대비 ~1.1~1.3배라 STT 백스톱(40분·MAX_DUR 10분 영상 최악 ~20분) 안에 남는다.
+#   float32(최고 정밀·최저 속도)는 10분 영상서 백스톱을 위협하므로 기본값 아님 — A/B용 노브로만 연다.
+#   ⚠️ 이 파일은 ly·edit·nb 3개 워크플로 공용이라 여기 한 줄이 3파이프 정확도를 동시에 움직인다.
+PRECISION = os.environ.get("LY_STT_PRECISION", "int8_float32").strip() or "int8_float32"
+model = WhisperModel("large-v3", device="cpu", compute_type=PRECISION)
 
 
 def transcribe(vad):
@@ -57,8 +64,8 @@ rows, info = transcribe(True)
 if not rows:   # VAD 과필터(전 구간 무음 오판 → 0개 = 지침 STEP 0-2 실측 모드) 폴백 — 그래도 0개면 종전대로 rc 3
     print("# VAD 0개 → vad_filter=False 재시도(과필터 폴백)", file=sys.stderr)
     rows, info = transcribe(False)
-print(f"# STT: Whisper large-v3 · lang={info.language} ({info.language_probability:.2f})",
-      file=sys.stderr)
+print(f"# STT: Whisper large-v3 · {PRECISION} · lang={info.language} ({info.language_probability:.2f})",
+      file=sys.stderr)   # 정밀도 표기 = A/B 판정 근거(어느 설정으로 뽑힌 자막인지 로그·산출물 양쪽에 남긴다)
 n = 0
 segs = []
 unc = []
@@ -91,7 +98,7 @@ if seg_json and segs:
         created = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
     except Exception:
         created = datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
-    doc = {"v": 1, "model": "large-v3", "lang": info.language,
+    doc = {"v": 1, "model": "large-v3", "prec": PRECISION, "lang": info.language,   # prec = 이 전사가 어느 연산 정밀도로 나왔는지(A/B 대조 · 미지 키는 뷰어·번인 파서가 무시)
            "dur": round(float(getattr(info, "duration", 0) or 0), 2),
            "created": created,
            "segs": segs}
