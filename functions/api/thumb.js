@@ -24,6 +24,23 @@ const cleanLines = (v) => Array.isArray(v)
   ? v.map(s => clip(s, 200)).filter(s => s.length).slice(0, 12)
   : [];
 
+// GET /api/thumb?meta=<id> → R2 thumb_out/<id>/_meta.json 원문(운영자 260728 속도 반영 — 구 배포 게이트 대체).
+// 러너가 렌더 직후 R2에 PUT한 결과 쪽지를 배포 사이클과 무관하게 즉시 서빙 = 알림 딥링크·뷰어가 Pages 빌드(30s~8분)를 안 기다림 · 문법 = edit.js onRequestGet(Q1016) 그대로 계승.
+export async function onRequestGet({ request, env }) {
+  const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  const id = (new URL(request.url).searchParams.get('meta') || '').trim();
+  if (!id) return j({ error: 'meta 파라미터 필요' }, 400);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return j({ error: '잘못된 id' }, 400);   // 경로 탈출 차단(edit.js 동일 규칙)
+  if (!env.R2) return j({ pending: true, reason: 'r2-unbound' }, 404);   // 폴백 유도(오류 아님)
+  try {
+    const o = await env.R2.get(`thumb_out/${id}/_meta.json`);
+    if (!o) return j({ pending: true }, 404);
+    return new Response(o.body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  } catch (e) {
+    return j({ pending: true, reason: 'r2-error' }, 404);   // R2 장애 = 폴백(뷰어가 Pages 경로 계속 폴링)
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
   if (!env.GH_TOKEN) return json({ error: '서버 미설정 — Cloudflare 환경변수 GH_TOKEN 필요' }, 500);
