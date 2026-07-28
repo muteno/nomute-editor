@@ -1,0 +1,179 @@
+name: stt-ab
+
+# STT 정밀도 A/B 실측(운영자 260728 "너가 한번 테스트로 뽑아봐 · 걸리는 시간, 단축 방해요소, 결과").
+#   같은 오디오를 정밀도만 바꿔 연속 전사 → {소요 시간 · 어절 확률 분포 · 전사 텍스트}를 한 리포트로 뽑는다.
+#   ⚠️ 세션 컨테이너는 HuggingFace·R2가 프록시 403이라 Whisper 자체를 못 돌린다(260728 실측) → 러너가 유일한 판정 경로.
+#   ⚠️ 읽기 전용 성격: 자막 파이프라인(ly_out)에 아무것도 안 쓴다. 산출 = docs/reports/ 리포트 1장 + 아티팩트.
+on:
+  workflow_dispatch:
+    inputs:
+      videos:
+        description: '전사할 영상 경로(개행 또는 쉼표 구분 · 레포 상대경로). 빈값 = 레포 최상위 *.mp4 전부'
+        type: string
+        default: ''
+      precisions:
+        description: '비교할 연산 정밀도(쉼표) — 예 int8,int8_float32 / int8_float32,float32'
+        type: string
+        default: 'int8,int8_float32'
+      max_sec:
+        description: '영상당 전사 상한(초) — 앞부분만 잘라 비교(0=전체). 긴 영상 A/B가 잡 캡을 먹는 것 방지'
+        type: string
+        default: '0'
+
+permissions:
+  contents: write
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90   # 영상 N × 정밀도 M 직렬 = 최악 스택. 개별 폭주는 아래 스텝 백스톱이 먼저 끊는다.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore python deps (site-packages 캐시)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 동일 키 = 캐시 공유(A/B가 캐시를 새로 만들지 않는다)
+
+      # ly-make와 같은 환경·같은 모델 캐시(runner-setup) — A/B가 별도 환경을 쓰면 시간 비교가 무의미해진다
+      - name: STT 환경 (ly-make 동문)
+        timeout-minutes: 25
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+          apt: ffmpeg
+
+      - name: A/B 전사 실측
+        timeout-minutes: 75
+        env:
+          VIDEOS: ${{ inputs.videos }}
+          PRECISIONS: ${{ inputs.precisions }}
+          MAX_SEC: ${{ inputs.max_sec }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys, time, glob, statistics as st
+          from datetime import datetime, timedelta, timezone
+
+          def kst():
+              try:
+                  from zoneinfo import ZoneInfo
+                  return datetime.now(ZoneInfo("Asia/Seoul"))
+              except Exception:
+                  return datetime.now(timezone(timedelta(hours=9)))
+
+          raw = (os.environ.get("VIDEOS") or "").replace(",", "\n")
+          vids = [v.strip() for v in raw.split("\n") if v.strip()]
+          if not vids:
+              vids = sorted(glob.glob("*.mp4"))
+          vids = [v for v in vids if os.path.isfile(v)][:6]        # 상한 = 잡 캡 방어
+          precs = [p.strip() for p in (os.environ.get("PRECISIONS") or "int8,int8_float32").split(",") if p.strip()][:3]
+          cap = int(os.environ.get("MAX_SEC") or "0")
+          if not vids:
+              print("::error::전사할 영상 없음"); sys.exit(1)
+          print("대상 영상 %d개 · 정밀도 %s · 상한 %s초" % (len(vids), precs, cap or "전체"))
+
+          from faster_whisper import WhisperModel
+          rows = []
+          for v in vids:
+              wav = "/tmp/ab_%d.wav" % abs(hash(v))
+              cut = ["-t", str(cap)] if cap > 0 else []
+              t0 = time.time()
+              subprocess.run(["ffmpeg", "-y", "-i", v, "-vn", "-ac", "1", "-ar", "16000"] + cut + [wav],
+                             check=True, capture_output=True)
+              extract = time.time() - t0
+              dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                          "-of", "csv=p=0", wav], capture_output=True, text=True).stdout.strip() or 0)
+              for prec in precs:
+                  t_load = time.time()
+                  m = WhisperModel("large-v3", device="cpu", compute_type=prec)
+                  load = time.time() - t_load                      # 모델 로드(캐시 히트여도 매번 드는 비용 — 인프라 축 지목분)
+                  t_inf = time.time()
+                  segs, info = m.transcribe(wav, language=None, vad_filter=True,
+                                            condition_on_previous_text=False, word_timestamps=True)
+                  out, probs = [], []
+                  for s in segs:                                    # faster-whisper는 제너레이터 = 여기서 실제 추론이 돈다
+                      t = (s.text or "").strip()
+                      if not t: continue
+                      ws = [{"t": w.word.strip(), "s": round(w.start, 2), "e": round(w.end, 2),
+                             "p": round(getattr(w, "probability", 1.0) or 1.0, 2)} for w in (s.words or []) if w.word.strip()]
+                      probs += [w["p"] for w in ws]
+                      out.append({"s": round(s.start, 2), "e": round(s.end, 2), "t": t, "w": ws})
+                  inf = time.time() - t_inf
+                  low = [p for p in probs if p < 0.70]              # 오인식 의심 = ly_stt.py is_unc ① 신호와 같은 임계
+                  rows.append({"video": os.path.basename(v)[:44], "prec": prec, "audio_sec": round(dur, 1),
+                               "extract_s": round(extract, 1), "load_s": round(load, 1), "infer_s": round(inf, 1),
+                               "rt": round(inf / dur, 2) if dur else 0, "lang": info.language,
+                               "segs": len(out), "words": len(probs),
+                               "p_med": round(st.median(probs), 3) if probs else 0,
+                               "p_min": round(min(probs), 2) if probs else 0,
+                               "low70": len(low), "low70_pct": round(100.0 * len(low) / len(probs), 1) if probs else 0,
+                               "text": " ".join(o["t"] for o in out)})
+                  print("  %-44s %-14s 로드%5.1fs 추론%6.1fs (%.2fxRT) · 저확률<0.70 %d/%d"
+                        % (rows[-1]["video"], prec, load, inf, rows[-1]["rt"], len(low), len(probs)))
+                  del m
+              os.remove(wav)
+
+          os.makedirs("docs/reports", exist_ok=True)
+          stamp = kst().strftime("%y%m%d_%H%M")
+          p = "docs/reports/%s_STT정밀도AB.md" % stamp
+          L = ["# STT 연산 정밀도 A/B 실측 — %s KST" % kst().strftime("%Y-%m-%d %H:%M"), "",
+               "러너 = ubuntu-latest(4코어 CPU) · 모델 = large-v3 · vad_filter=True · word_timestamps=True",
+               "", "## 소요 시간", "",
+               "| 영상 | 정밀도 | 오디오 | 추출 | 모델로드 | 추론 | 실시간배수 | 조각 |",
+               "|---|---|---|---|---|---|---|---|"]
+          for r in rows:
+              L.append("| %s | `%s` | %.1f초 | %.1fs | %.1fs | **%.1fs** | %.2f×RT | %d |"
+                       % (r["video"], r["prec"], r["audio_sec"], r["extract_s"], r["load_s"], r["infer_s"], r["rt"], r["segs"]))
+          L += ["", "## 인식 품질(어절 확률)", "",
+                "`p` = Whisper가 그 어절에 준 확률. **0.70 미만 = 오인식 의심**(`ly_stt.py` `is_unc` ① 신호와 동일 임계).", "",
+                "| 영상 | 정밀도 | 어절 | 확률 중앙값 | 최저 | <0.70 개수 | 비율 |", "|---|---|---|---|---|---|---|"]
+          for r in rows:
+              L.append("| %s | `%s` | %d | %.3f | %.2f | **%d** | %.1f%% |"
+                       % (r["video"], r["prec"], r["words"], r["p_med"], r["p_min"], r["low70"], r["low70_pct"]))
+          L += ["", "## 전사 텍스트(정밀도별 대조)", ""]
+          for v in sorted({r["video"] for r in rows}):
+              L.append("### %s" % v)
+              for r in [x for x in rows if x["video"] == v]:
+                  L += ["", "**`%s`**" % r["prec"], "", "```text", r["text"][:2500], "```"]
+              L.append("")
+          open(p, "w", encoding="utf-8").write("\n".join(L))
+          json.dump(rows, open("/tmp/ab.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          print("리포트: %s" % p)
+          print("::notice::A/B 완료 — %d행" % len(rows))
+          PY
+
+      - name: 아티팩트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stt-ab
+          path: |
+            docs/reports/*_STT정밀도AB.md
+            /tmp/ab.json
+          if-no-files-found: warn
+
+      - name: 리포트 커밋
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/reports/*_STT정밀도AB.md 2>/dev/null || true
+          git diff --cached --quiet && { echo "변경 없음"; exit 0; }
+          git commit -m "stt-ab: 정밀도 A/B 실측 리포트 (러너)"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i*3))
+          done
+          echo "::warning::리포트 push 실패 — 아티팩트로 회수"
