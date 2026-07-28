@@ -6414,8 +6414,10 @@ const rpKey = (file, card) => file + '#' + card;
 // (옛 연필 물결/빗금/완료색·피드바 펄스·소주제 노랑·(변경 중) 표기 일체 삭제 — 1차든 n차든 안 뜸.)
 const REVISING = new Map();   // file → { reqRev(요청시 서버 회차), ts } — 진행 중 추적(시각 표기 없음)
 const REV_PEND_KEY = 'nomute_rev_pending';   // 진행 상태 영속 — 새로고침/앱종료에도 완료전환·reqRev 유지
-const RV_COLORS = ['0,238,210', '255,210,74', '12,208,247'];   // 0 강조색(터쿼이즈) · 1 노랑(이슈색) · 2 시안(SNS) · 순환 (260705 라벨 정정)
-const revColor = g => RV_COLORS[(((g % 3) + 3) % 3)];
+const RV_COLORS = ['0,238,210', '255,225,61', '56,198,255'];   // 0 강조색(터쿼이즈 = --accent · 원본 전용) · 1 골드레몬(--accent-4) · 2 스카이시안(--bias-l1) — 값은 :root 실측 계승(구 raw 255,210,74/12,208,247 정렬 · 1·2 = 피드카드 회차색 [data-gen] 정본과 동값)
+// ⚠ 완료 회차(g≥1)는 **0번(원본색)을 절대 안 쓴다** — 구 `RV_COLORS[g%3]` 3칸 순환은 3·6·9트가 RV_COLORS[0]으로 돌아왔고, 그 값이 .rev-fab 기본색 --accent와 같아 "3번 고쳤는데 한 번도 안 고친 것처럼" 보였다(운영자 260728 "3트에는 버튼이 이상" · 진단 = docs/reports/260728_수정회차버튼_진단.html).
+// 0트는 그대로 원본색 = 진행 중 물결 시작색(--rv-from)이 기본색에서 자연히 출발. 완료색만 1↔2 순환.
+const revColor = g => g <= 0 ? RV_COLORS[0] : RV_COLORS[1 + ((((g - 1) % 2) + 2) % 2)];
 const artRev = file => { const a = DATA.find(x => x.file === file); return a ? (Number(a.rev) || 0) : 0; };   // 서버 회차
 const isRevising = file => REVISING.has(file);
 const saveRevising = () => { try { localStorage.setItem(REV_PEND_KEY, JSON.stringify([...REVISING])); } catch {} };
@@ -7812,7 +7814,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'd3ef714 · 260728_1623';  /*BUILDSTAMP*/
+const BUILD_STAMP = '830dfd9 · 260728_1629';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');

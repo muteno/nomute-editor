@@ -180,12 +180,25 @@ tr.bad td:first-child{color:var(--danger);font-weight:800}
   <div class="st" id="demoSt">state: idle · 1트에 누르든 3트에 누르든 여기 동작은 100% 같다</div>
 </div>
 
-<h2>⑥ 근거(연 파일 · 실제 줄)</h2>
+<h2 id="after">⑥ 봉합 후 (AFTER · 260728 적용분)</h2>
+<div class="verdict ok">
+  <b>고친 것 = 값 2줄뿐. 새 요소·새 hex 0.</b>
+  <ol>
+    <li><code>RV_COLORS</code>의 raw 구값을 <b>:root 토큰 실측값으로 정렬</b> — <code>255,210,74 → 255,225,61(--accent-4 골드레몬)</code> · <code>12,208,247 → 56,198,255(--bias-l1 스카이시안)</code>. 둘 다 피드카드 회차색 <code>[data-gen]</code> 정본과 같은 값.</li>
+    <li><b>완료 회차(g≥1)는 0번(원본색)을 절대 안 쓴다</b> — <code>revColor = g =&gt; g&lt;=0 ? RV_COLORS[0] : RV_COLORS[1 + ((g-1)%2)]</code>. 0트는 그대로 원본색이라 진행 중 물결 시작색(<code>--rv-from</code>)은 예전처럼 기본색에서 자연히 출발한다.</li>
+  </ol>
+</div>
+<div class="note">아래는 고친 함수로 다시 그린 것 — 요약 FAB / 카드 FAB 둘 다 같은 함수라 동시에 낫는다.</div>
+<div class="gal" id="galAfter"></div>
+<div class="gal" id="galAfterC" style="margin-top:12px"></div>
+<div class="note" style="margin-top:10px">실제 <code>viewer/index.html</code> 헤드리스 실측(로컬서버 경유) — 0트 <code>rgb(0,238,210)</code> · 1·3·5트 <code>rgb(255,225,61)</code> · 2·4·6트 <code>rgb(56,198,255)</code> · <b>완료 회차 중 원본색 등장 0회</b> · pageerror 0.</div>
+
+<h2>⑦ 근거(연 파일 · 실제 줄)</h2>
 <table>
   <thead><tr><th style="width:210px">위치</th><th>내용</th></tr></thead>
   <tbody>
-    <tr><td><code>index.html:6417</code></td><td><code>RV_COLORS = ['0,238,210','255,210,74','12,208,247']</code> — 3색 배열</td></tr>
-    <tr><td><code>index.html:6418</code></td><td><code>revColor = g =&gt; RV_COLORS[((g%3)+3)%3]</code> — <b>%3 순환</b></td></tr>
+    <tr><td><code>index.html:6417</code> <b>(구본)</b></td><td><code>RV_COLORS = ['0,238,210','255,210,74','12,208,247']</code> — 3색 배열 · raw 값 <b>→ 봉합 후 <code>['0,238,210','255,225,61','56,198,255']</code>(:root 토큰 정렬)</b></td></tr>
+    <tr><td><code>index.html:6418</code> <b>(구본)</b></td><td><code>revColor = g =&gt; RV_COLORS[((g%3)+3)%3]</code> — <b>%3 순환 = 이 진단의 범인</b> · <b>→ 봉합 후 <code>g&lt;=0 ? RV_COLORS[0] : RV_COLORS[1 + ((g-1)%2)]</code></b></td></tr>
     <tr><td><code>index.html:2965</code></td><td><code>.rev-fab { color:var(--accent) }</code> — 0트 기본색 = <code>#00EED2</code> = <code>RV_COLORS[0]</code></td></tr>
     <tr><td><code>index.html:6503~6516</code></td><td><code>applyReviseFab()</code> — <code>revdone</code>일 때 <code>--rv-solid = revColor(g)</code></td></tr>
     <tr><td><code>index.html:7275~7290</code></td><td><code>applyCrevFab()</code> — 카드용, 위와 동일 구조</td></tr>
@@ -252,6 +265,27 @@ buildGal(document.getElementById('galCrev'), CARD);
   }
   document.getElementById('tbl').innerHTML = html;
 })();
+
+// ⑥ AFTER — 봉합된 index.html:6417~6420 그대로
+var RV_AFTER = ['0,238,210', '255,225,61', '56,198,255'];   // 0 --accent(원본 전용) · 1 --accent-4 · 2 --bias-l1
+var revColorAfter = function (g) { return g <= 0 ? RV_AFTER[0] : RV_AFTER[1 + ((((g - 1) % 2) + 2) % 2)]; };
+var NAMES_A = ['터쿼이즈(원본 전용)', '골드레몬(--accent-4)', '스카이시안(--bias-l1)'];
+function buildAfter(el, icon, head) {
+  var html = '';
+  for (var g = 0; g <= 5; g++) {
+    var done = g > 0, col = revColorAfter(g);
+    var same = done && col === RV_AFTER[0];
+    html += '<div class="cell' + (same ? ' bad' : '') + '">'
+      + '<div class="fabbox"><button class="rev-fab' + (done ? ' revdone' : '') + '" type="button" style="' + (done ? '--rv-solid:' + col : '') + '">' + icon + '</button></div>'
+      + '<div class="try">' + (g === 0 ? '0트 (원본)' : g + '트') + '</div>'
+      + '<div class="hex">' + rgbHex(col) + '<br>' + NAMES_A[RV_AFTER.indexOf(col)] + '</div>'
+      + (same ? '<div class="tag">0트와 같은 색</div>' : '')
+      + '</div>';
+  }
+  el.innerHTML = '<div style="flex:1 0 100%;font-size:11.5px;color:var(--mut);margin-bottom:-4px">' + head + '</div>' + html;
+}
+buildAfter(document.getElementById('galAfter'),  PEN,  '요약 수정 FAB(#revFab) — 봉합 후');
+buildAfter(document.getElementById('galAfterC'), CARD, '카드 프롬프트 수정 FAB(#crevFab) — 봉합 후');
 
 // ⑤ 전송버튼 실동작 — index.html:14351 핸들러 로직 그대로(fetch만 1.2s 가짜 응답)
 (function () {
