@@ -89,9 +89,8 @@ export async function onRequestPost({ request, env }) {
     }
   }
 
-  // 해상도(운영자 260718 "카드 생성 해상도 = AI 생성부 따라가") — 산출물 출력 짧은변 목표(720p·FHD·2K·4K · AI 생성 GENI_DICT.size 동일) · 러너(thumb-make) SIZE_SHORT 스냅 · 기본 FHD=1080=현행 무변화 · 전 앱 공통 통과
-  const SIZES = ['720p', 'FHD', '2K', '4K'];
-  if (SIZES.includes(p.size)) params.size = p.size;
+  // 해상도(운영자 260728 "각각 2K로 나오게 · 해상도 선택자 그냥 없애줘") — 선택 축 폐지 = params.size 미통과.
+  //   산출 크기는 러너(thumb-make) RES-SNAP이 짧은변 1440(2K) **고정**으로 결정한다. 구 클라(캐시된 뷰어)가 size를 보내도 여기서 버려지므로 결과는 항상 2K = 표기·산출 불일치("FHD인데 2K 이상") 재발 불가.
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // YYMMDDHHMMSS = KST(+9h · pick.js 규칙 · build-viewer thIdTs가 +09:00로 파싱 = 제작시각 정확) · -rand=동초 충돌 방지
 
