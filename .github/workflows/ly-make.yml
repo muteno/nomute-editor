@@ -92,7 +92,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # setup.sh 해시 키(track 정본 계승 · 평의회9) — 핀/패키지 변경 시 자동 재빌드(구 정적 키 = 변경분 미설치 드리프트) · -v1 = 수동 버스트 레버(track 동형 · 재평의회9)
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # setup.sh 해시 키(track 정본 계승 · 평의회9) — 핀/패키지 변경 시 자동 재빌드(구 정적 키 = 변경분 미설치 드리프트) · -v1 = 수동 버스트 레버(track 동형 · 재평의회9)   # ↓ 근접 복원 폴백(260728 Q1001) — setup.sh **주석 한 줄만 고쳐도** hashFiles가 바뀌어 전체 재설치(콜드 318s)되던 구조 결함 봉합.
+          #    정확 키 miss여도 접두사가 같은 직전 캐시를 복원 → setup.sh의 `import faster_whisper` 체크가 통과해 pip 스킵.
+          #    ⚠ 의존성이 진짜 바뀐 경우도 옛 캐시를 복원하지만, setup.sh가 import 확인 후 없는 것만 설치하므로 신규 패키지는 정상 설치된다(= 원하는 동작).
+          restore-keys: |
+            nomute-ly-pydeps-${{ runner.os }}-py312-
 
       # 재합성(reburn) 전용 경량 준비 — ffmpeg + 한글 폰트(whisper·yt-dlp 불요). ⚠️ fonts-noto-cjk 없으면 libass가
       #   에러 없이 두부(□)로 조용히 렌더 → 정상본을 깨진 영상으로 덮어씀(평의회 불가 적발) = 폰트 확인까지 하드게이트.
