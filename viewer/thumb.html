@@ -96,6 +96,7 @@
   .ie-hint b { color:var(--fg); font-weight:var(--fw-x); }
   .ie-stage { position:relative; width:100%; margin-top:8px; border-radius:var(--r-s); overflow:hidden; background:var(--bg); }
   .ie-img { display:block; width:100%; height:auto; }
+  .ie-wrap { position:relative; display:inline-block; max-width:100%; line-height:0; }   /* 검출 박스 오버레이 앵커 = 도크 원본 이미지에 딱 맞는 래퍼(구 .ie-stage 역할의 도크 이주 · 박스 % 좌표 정합 · 운영자 260728) */
   .ie-box { position:absolute; border:2px solid var(--mut); border-radius:var(--r-s); background:transparent; cursor:pointer; padding:0; -webkit-tap-highlight-color:transparent; transition:border-color var(--dur-fast), background var(--dur-fast); }
   .ie-box:active { transform:scale(var(--press-s,.97)); }
   .ie-box .ie-bn { position:absolute; top:2px; left:2px; min-width:16px; height:16px; padding:0 3px; display:inline-flex; align-items:center; justify-content:center; font-size:var(--fs-xs); font-weight:var(--fw-x); border-radius:var(--r-s); background:var(--bg); color:var(--mut); }
@@ -103,8 +104,7 @@
   .ie-box.on .ie-bn { background:var(--accent); color:var(--on-accent); }
   .ie-result { margin-top:12px; position:relative; }
   .ie-res-img { display:block; width:100%; border-radius:var(--r-s); }
-  .ie-res-dl { position:absolute; top:8px; right:8px; }
-  .ie-res-use { position:absolute; top:8px; right:50px; background:var(--bg); color:var(--accent); }   /* 소스 재첨부 = 다운로드 왼쪽(42px 피치·.caredit 미러 · 불투명 플레이트 §디자인 n · 운영자 260713 "그 한수") */
+  /* (구 .ie-res-dl/.ie-res-use 위치 규칙 = 이 자리서 폐지 · 260728 실측 수리 — .imgdl(아래 599행대 `top:10px;right:10px`)이 같은 특이도인데 뒤에 와서 이겨 두 버튼 rect가 완전 동일(330,544 34x34)로 겹쳤다 = 재첨부 버튼이 저장 버튼 밑에 깔려 클릭 불가. 정본 문법 = `.caredit`(다운로드 왼쪽 짝)처럼 .imgdl **뒤에** 두는 것 → 아래 .caredit 다음 줄로 이주) */
   .row { display:flex; gap:8px; }
   .row > * { flex:1; }
   .hint { font-size:12px; color:var(--mut); margin-top:5px; }
@@ -327,6 +327,7 @@
   .cpprev { margin:0 0 var(--sp-2); }   /* 260718: 도크(#topDock) 승계 — 구 sticky top:0·좌우 브레이크아웃·#121212 mat·::after 페이드 = .topdock으로 이관(미리보기+버튼 한 블록 상단고정) · margin-bottom sp-2 = 발사버튼과 gap(아래 원주석은 구 단독 sticky 시절 이력) */   /* 하단 = var(--sp-2)(12 · 운영자 260716 플레이그라운드 선택값 padB) */   /* 상단 -18 = .wrap padding-top 상쇄 = 액자가 스크롤 0에서도 뷰포트 상단 밀착 → 고정↔해제 전환 시 18px 내려앉는 '덜컹' 원천 소멸(운영자 260716 "맨 위 올라가면 살짝 덜컹") */   /* raw-ok: #121212 = .cpprev-box 필러 동일값 계승(스포티파이 블랙 · 창작 아님) · 고정 액자 mat(운영자 260716 "좌우 남는 틈을 저 살짝 어두운 회색으로 가득 + 위아래도 채운만큼 확보 · 채운거까지 같이 고정") — 좌우 -16 = .wrap padding-x(16) 상쇄 브레이크아웃 = 기존 좌우 마진 자리를 채색 · padding 16 = 좌우 채운 두께만큼 상하 신규 공간(균등 액자 · 그 안에 기존 도형(.cpprev-box) 안착) · 구 2px 슬릿 봉합(260715)은 불투명 mat가 포괄 승계 · 상단 고정(운영자 260713) = edit .pvsec 패턴 계승(position:sticky;top:0) · z-index 6 = 컴포넌트 로컬(§디자인 예외 1~8) */
   /* (구 .cpprev-opts 변형칩 마진 = 제거 · 운영자 260720 Q293 — 요소 삭제) */
   .cpprev-box { position:relative; height:min(29vh,300px); height:min(29svh,300px); width:100%; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* 필러박스 = 운영자 지정 '스포티파이 블랙'(18,18,18 · thumb 무토큰 표면 raw = baseline 사유 등재) · 높이 캡 = 29svh/300px = 쉘 정본(CII 「합성 미리보기 쉘」 · 운영자 260716 선택값 · edit pvSync .29/300 동미러 · 구 46/340 = 260713 "작게 보여도됨") · ⚠️ svh 필수 = 주소창 숨김에 고정(안 변함) → 첫 스크롤 리플로우 '덜컹' 차단(운영자 260713 실측 · 구 vh는 매 프레임 재계산 = 덜컹 · vh 선언은 svh 미지원 구형 폴백) · width:100% = 전면 꽉(운영자 260715 "미리보기 그냥 전면에 꽉" — 구 aspect 4:5 자기축소는 양옆에 페이지 배경 노출 = 필러가 안 보이던 구조 → 폭은 박스가·산출 비율은 스테이지가 소유 · 양옆 레터박스 = 이 필러가 채움) */
+  .cpprev-box.ie-full { height:min(50vh,520px); height:min(50svh,520px); }   /* raw-ok: 위 쉘 정본(min(29svh,300px))의 캡 문법·단위 그대로 계승, 배수만 모자이크용 — 모자이크 지정 단계 한정 도크 확대(운영자 260728 "상단 미리보기에 전면을 가득 원본을 채우는거로" · 박스를 탭해 지정하니 크게 봐야 확실) · 결과 나오면(IE.phase==='done') 즉시 원복 = 결과가 도크에 가리지 않게 */
   .cpprev-box.dropping { border-color:rgba(var(--accent-rgb),.35); }   /* 드래그 오버 = 첨부 가능 힌트(운영자 260716 "드롭 ㄱ") — .35 = rsz-origtag 링 동일 알파 계승 */
   .cpprev::after { content:none; }   /* 260718: 도크 안 mid-block이라 미리보기 자체 페이드 불필요(도크 .topdock::after가 하단 페이드 전담) */   /* raw-ok: 페이드 스커트(운영자 260716 플레이그라운드 선택값 — edge=페이드·skirtH 14·fadeOp .70) = 콘텐츠가 액자 밑으로 '서서히 잠기며' 가려짐 · 18,18,18 = 액자 #121212 동일 RGB 알파 변주(자유 축) · 글래스(블러) 방식은 비채택(선택값 blurPx 28은 글래스 전용 축 = 페이드에선 미적용) · 미리보기 쉘 정본 = CII 「합성 미리보기 쉘」 행 */
   .cpprev-stage { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); background:#000; overflow:hidden; font-family:'Noto Sans KR','Noto Sans CJK KR',sans-serif; }   /* 순수 흑 = 산출 배경 관례(트랙뷰어 레터박스 #000 선례) · -50% = 기하값 · 폰트 = PIL 정본 미러(Q03③ — 스테이지 스코프 한정 = UI 폰트 무접촉·저작권 줄 400까지 전 텍스트 동일 얼굴) */
@@ -613,6 +614,7 @@
   /* 이미지 위 오버레이 버튼(이력·캐러셀 다운로드) 플레이트 = 불투명 var(--bg)(펜 .imgedit·휴지통과 통일·녹색 아님 · §디자인 n · 운영자 260709 "아예 불투명·잘 보이는 게 우선" — 구 검정 20%/hover 24/active 32 반투명 폐지·누름=scale). 행 버튼(전체 .cref-dlall·.jvar-dl)·전역 .dlbtn 표준은 그린 유지. hover 핀 = 전역 .dlbtn:hover(accent .16) 재유입 차단. */
   .imgdl.dlbtn { background:var(--bg) !important; border-color:transparent !important; }
   @media (hover:hover){ .imgdl.dlbtn:hover { background:var(--bg) !important; } }
+  .ie-res-use { right:52px; background:var(--bg); color:var(--accent); }   /* raw-ok: 아래 .caredit 정본 동값 계승(다운로드 왼쪽 피치) — 모자이크 결과 소스 재첨부(운영자 260713 "그 한수") · ⚠ 이 규칙은 반드시 .imgdl 뒤(= 여기)여야 위치가 이긴다(260728 겹침 수리) */
   .caredit { right:52px; background:var(--bg); color:var(--accent); }   /* 수정(연필) = 다운로드 왼쪽 · 불투명 플레이트(이미지 위 오버레이 · .imgdl 위치/크기/누름 계승 · 운영자 260702·불투명 260709) */
   .caruse { right:94px; background:var(--bg); color:var(--accent); }   /* 소스 재첨부 = 수정 왼쪽(42px 피치 계승 · 리사이즈 결과 슬라이드만 노출 · 운영자 260713 "그 한수") */
   /* 개별 변형 다운로드(.jvar-dl) = 도형(글래스 박스) 제거·픽토그램만 · 색=다운로드 표준(전 강조색·후 mut .dl-done · 운영자 260701 통일·색 260706) · 26px 탭영역은 투명 유지(터치 보존) · 아이콘 14px = 12px 라벨과 광학 높이 정합 (운영자 260626) */
@@ -1186,7 +1188,7 @@ function selApp(a) {
   $('#copyBox').classList.toggle('none', a !== '3');   // 저작권+안내문 통합 = /3(도먼트)
   $('#abbrBox').classList.add('none');   // 축약 = 스트립 명세 ON 토글로 이동(버튼 안 체크박스 폐지)
   $('#opaBox').classList.toggle('none', a !== '1');   // (구 /1 포스트 OPA 세그 — app1 전용 유지)
-  $('#rszBox').classList.toggle('none', !edit);   // 비율 행 = 편집 탭(사진 유무 무관 = 260725 게이트 폐지)
+  $('#rszBox').classList.toggle('none', !edit || a === '8');   // 비율 행 = 편집 탭(사진 유무 무관 = 260725 게이트 폐지) · ⚠배치 모자이크 ON(8) = 숨김(운영자 260728 "모자이크랑 비율 조정은 동시에 안되게") — 상태는 이미 배타(ON=원본 강제·비율선택=OFF)였고 이제 화면도 배타 · 되돌아가는 길 = 요약 스트립 「비율」 탭(모자이크 자동 OFF)
   $('#imgeditBox').classList.toggle('none', a !== '8');   // 모자이크 UI = 옵션 ON(app8)일 때만 펼침(운영자 260712 3차)
   $('#ieTogRow').classList.toggle('none', !edit);   // 모자이크 옵션 행 = 편집 탭
   $('#upsRow').classList.toggle('none', !(a === '2' || edit));   // 해상도(구 화질) = 카드 생성 옵션 + 편집 탭 공유(운영자 260718 양쪽 명시 · 상태 1벌)
@@ -1387,6 +1389,8 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   const ipv = $('#iePrev');
   if (isEditApp(APP)) {   // 편집 탭 = 사진 있으면 rsz 스테이지(비율 확장·원본 치수 리드백) / 없으면 빈 상태 픽토그램(카드 생성과 동일 입구)
     pane.classList.remove('none');
+    const _bx = pane.querySelector('.cpprev-box');
+    if (_bx) _bx.classList.toggle('ie-full', APP === '8' && !!CIMG.b64 && IE.phase !== 'done');   // 모자이크 지정 단계만 도크 확대(운영자 260728) · && 단락 = IE(하단 선언) TDZ 회피 = 부팅 시 APP!=='8'이라 평가 안 함
     const st = $('#cpPrevStage');
     if (CIMG.b64) {
       if (ipv) ipv.classList.remove('none');
@@ -2150,7 +2154,11 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
   const stage = $('#rszStage'); if (!stage || !isEditApp(APP) || !CIMG.b64 || !RSZ.w) return;   // 소스 = 공유 첨부(CIMG) · 편집 탭 전 모드(7 비율·8 모자이크·9 해상도) 도크 미리보기 렌더(8·9 = 원본 orig 분기 · 260718 도크 이주)
   const W = RSZ.w, H = RSZ.h, ar = rszAspect();
   if (ar === 'orig') {   // 원본(무변환 기본 · 운영자 260712 3차) = 확장 캔버스 없이 원본 그대로 + 리드백 1줄(기존 noop 문구 결 계승)
-    stage.innerHTML = '<img class="rsz-orig" src="' + CIMG.b64 + '" style="position:static;display:block;max-width:100%;max-height:190px;margin:0 auto;outline:1px solid rgba(var(--accent-rgb),.4)">';
+    const mos = APP === '8' && IE.phase !== 'done';   // 모자이크 지정 단계 = 도크가 검출 스테이지 겸함(운영자 260728 "상단 미리보기에 전면을 가득 원본" — 하단 별도 스테이지 폐지로 이중 노출·스크롤 이탈 소멸 · 결과 나온 뒤엔 원래 크기로 원복)
+    const cap = mos ? 'min(42vh,430px);max-height:min(42svh,430px)' : '190px';   // 확대 캡 = .cpprev-box.ie-full(50svh/520) 안에 리드백 1줄까지 들어가는 값 · svh 필수(주소창 리플로우 덜컹 차단 = 쉘 정본 사유 계승)
+    const img = '<img class="rsz-orig" src="' + CIMG.b64 + '" style="position:static;display:block;max-width:100%;max-height:' + cap + ';margin:0 auto;outline:1px solid rgba(var(--accent-rgb),.4)">';
+    stage.innerHTML = mos ? '<div class="ie-wrap">' + img + ieBoxesHTML() + '</div>' : img;
+    if (mos) ieBindBoxes(stage);   // 박스 탭 = 지정 토글(구 하단 스테이지 핸들러 계승)
     const m0 = $('#rszMetric'); if (m0) m0.innerHTML = '원본 <b>' + W + '×' + H + '</b>' + (APP === '7' ? ' · <span class="n">원본 유지 — 변환 없음</span>' : '');   // app8(모자이크) = 치수만(변환 문구는 리사이즈 축 · 운영자 260713)
     return;
   }
@@ -3961,6 +3969,17 @@ function ieSyncGo() {
   gb.dataset.label = lbl; gb.textContent = lbl;
   gb.classList.toggle('rszbusy', !!IE.busy);   // 발사 버튼 펄스(app7 리사이즈 busy 시각 계승 · rszWait은 APP==='7'만 작동 = 간섭 0)
 }
+function ieBoxesHTML() {   // 검출 박스 오버레이 마크업 — 구 하단 #ieStage 마크업 그대로(좌표·클래스·번호칩 불변), 붙는 자리만 도크 원본 위로 이주(운영자 260728)
+  if (APP !== '8' || !IE.items.length) return '';
+  const mw = (IE.meta && IE.meta.w) || 1, mh = (IE.meta && IE.meta.h) || 1;
+  return IE.items.map(it => {
+    const b = it.box, on = IE.sel.has(it.id);
+    return '<button type="button" class="ie-box' + (on ? ' on' : '') + '" data-id="' + it.id + '" title="' + it.label + '" style="left:' + (b[0] / mw * 100).toFixed(2) + '%;top:' + (b[1] / mh * 100).toFixed(2) + '%;width:' + (b[2] / mw * 100).toFixed(2) + '%;height:' + (b[3] / mh * 100).toFixed(2) + '%"><span class="ie-bn">' + it.id + '</span></button>';
+  }).join('');
+}
+function ieBindBoxes(root) {   // 박스 탭 = 지정 토글(구 하단 스테이지 핸들러 계승 · 재렌더는 도크 경유)
+  root.querySelectorAll('.ie-box').forEach(el => el.onclick = () => { const id = +el.dataset.id; if (IE.sel.has(id)) IE.sel.delete(id); else IE.sel.add(id); ieRender(); });
+}
 function ieRender() {
   if (APP !== '8') return;
   if (CIMG.b64 && CIMG.b64 !== IE.lastImg) {   // 새 이미지 첨부 = 전체 초기화(스테일 박스 차단 · 소스 = app2 첨부 CIMG · 운영자 260713 → Q176: 구 부분 리셋은 진행 폴링·busy·id 잔존이라 미배선 ieReset로 승격 — 이미지 교체 중이던 검출/모자이크 폴링까지 정리)
@@ -3968,20 +3987,12 @@ function ieRender() {
   }
   const stage = $('#ieStage'), hint = $('#ieHint'), opts = $('#ieOpts');
   if (hint) hint.classList.toggle('none', !!(CIMG.b64 && IE.items.length));   // 힌트 줄 폐지(260712 §디자인 e) — null 가드 = 도먼트 복원 호환
-  if (!CIMG.b64 || !IE.items.length) { stage.classList.add('none'); stage.innerHTML = ''; opts.classList.add('none'); iePrevSync(); ieSyncGo(); return; }   // 검출 전 = 하단 원본 미리보기 복귀(운영자 260713)
-  const mw = (IE.meta && IE.meta.w) || 1, mh = (IE.meta && IE.meta.h) || 1;
-  let h = '<img class="ie-img" src="' + (CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64) + '" alt="">';
-  IE.items.forEach(it => {
-    const b = it.box, on = IE.sel.has(it.id);
-    h += '<button type="button" class="ie-box' + (on ? ' on' : '') + '" data-id="' + it.id + '" title="' + it.label + '" style="left:' + (b[0] / mw * 100).toFixed(2) + '%;top:' + (b[1] / mh * 100).toFixed(2) + '%;width:' + (b[2] / mw * 100).toFixed(2) + '%;height:' + (b[3] / mh * 100).toFixed(2) + '%"><span class="ie-bn">' + it.id + '</span></button>';
-  });
-  stage.innerHTML = h; stage.classList.remove('none');
-  // (구 260713 '검출 스테이지 = 하단 미리보기 대체' 숨김 = 폐지 · 260718 도크 이주 — 도크 미리보기(원본)는 상단 상시, 검출 박스는 폼 구역 = 인접 이중 노출 구조 소멸)
-  stage.querySelectorAll('.ie-box').forEach(el => el.onclick = () => { const id = +el.dataset.id; if (IE.sel.has(id)) IE.sel.delete(id); else IE.sel.add(id); ieRender(); });
-  opts.classList.remove('none');
+  if (stage) { stage.classList.add('none'); stage.innerHTML = ''; }   // 하단 별도 검출 스테이지 = 폐지(도크 승격 · 운영자 260728 "상단 미리보기 그대로 살리면서 모자이크 미리보기를 별도로 분리 안 하는 방법") — DOM·CSS는 도먼트 보존
+  opts.classList.toggle('none', !(CIMG.b64 && IE.items.length));
+  iePrevSync(); renderCpPrev();   // 도크 = 원본 전면(.ie-full) + 박스 오버레이 전담 — 발사 버튼도 같은 도크 안이라 스크롤과 무관하게 항상 짝(운영자 260728 "생성버튼이 옮겨와지게")
   ieSyncGo();
 }
-function ieBusy(on, phase) { IE.busy = on; if (phase) IE.phase = phase; ieSyncGo(); }
+function ieBusy(on, phase) { IE.busy = on; if (phase) IE.phase = phase; ieSyncGo(); if (APP === '8') renderCpPrev(); }   // 단계 전환 = 도크 동기 1곳(지정 단계 확대 ↔ 결과(done) 원복 · 운영자 260728)
 function ieGo() {
   if (IE.busy) return;
   if (!CIMG.b64) return errStatus('이미지를 넣어줘');
@@ -4013,8 +4024,10 @@ async function ieRenderGo() {
 function iePoll(kind) {
   if (IE.poll) clearInterval(IE.poll);
   const t0 = Date.now(), file = kind === 'boxes' ? 'boxes.json' : 'result.json';
+  // 대기 상한 = 워크플로 실측 상한에 맞춤(260728 수리 — 구 전건 5분은 imgedit-make timeout-minutes 25보다 짧아, 콜드런(pip+모델 다운)·정밀(SAM2 torch 설치)이 5분을 넘기면 결과가 나와도 뷰어가 먼저 포기 = 결과 고아). 경량 10분 / 헤비(정밀·누끼) 20분.
+  const limit = (kind !== 'boxes' && (IE.precise || IE.op === 'cutout')) ? 1200000 : 600000;
   IE.poll = setInterval(async () => {
-    if (Date.now() - t0 > 300000) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus('시간 초과 — 다시 시도해줘'); }
+    if (Date.now() - t0 > limit) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus('시간 초과 — 다시 시도해줘'); }
     // error.log — boxes(새 id) = 항상 인정 / result(같은 id 재렌더) = 발사 전 스냅(preErr)과 다를 때만 인정(스테일 실패 고정 차단 · C1)
     try { const er = await fetch('imgedit_out/' + IE.id + '/error.log?t=' + Date.now()); if (er.ok) { const tx = (await er.text()).trim(); if (tx && tx[0] !== '<' && (kind === 'boxes' || tx !== IE.preErr)) { clearInterval(IE.poll); IE.poll = null; ieBusy(false, kind === 'boxes' ? 'idle' : 'found'); return errStatus(tx.slice(0, 120)); } } } catch { /* 폴 지속 */ }
     try {
