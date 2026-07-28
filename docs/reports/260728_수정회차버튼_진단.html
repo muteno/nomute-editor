@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>수정 회차별 버튼 변화 — 뉴스요약 rev · 카드프롬프트 crev (260728 진단)</title>
+<!--
+  진단 재현물(시안 아님) — viewer/index.html 실측 사본.
+  색·모양·클래스 전부 index 정본 복사(창작 0):
+    RV_COLORS      = index.html:6417
+    revColor(g)    = index.html:6418  → RV_COLORS[((g%3)+3)%3]
+    applyReviseFab = index.html:6503  (요약 FAB)
+    applyCrevFab   = index.html:7275  (카드 FAB)
+    .rev-fab CSS   = index.html:2964~2988
+    .asksend/.revsend CSS = index.html:2922~2952, 3037~3045
+    revSend  click = index.html:14351
+    crevSend click = index.html:13997
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer/index.html :root 실측 사본 */
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322;
+  --arm:#FFE13D; --arm-rgb:255,225,61; --on-arm:#241C02;
+  --danger:#e23b2a; --on-danger:#eef7f0;
+  --line:rgba(255,255,255,.08); --r-pill:999px; --blur-s:8px;
+  --press-m:.9; --press-l:.95;
+  --gauge-ease:cubic-bezier(.22,.61,.36,1); --gauge-pop:1.15; --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box;margin:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--bg);color:var(--fg);padding:18px 16px 60px;
+  font:14px/1.55 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif}
+h1{font-size:18px;letter-spacing:-.4px}
+h2{font-size:14.5px;margin:26px 0 4px;letter-spacing:-.3px}
+.sub{color:var(--mut);font-size:11.5px;margin:4px 0 14px}
+.note{color:var(--mut);font-size:11.5px;margin:5px 0 12px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--accent)}
+
+/* 결론 배너 */
+.verdict{border:1px solid rgba(226,59,42,.5);background:rgba(226,59,42,.09);border-radius:14px;padding:13px 15px;margin:10px 0 6px}
+.verdict b{color:var(--danger)}
+.verdict ol{margin:7px 0 0 17px;padding:0;font-size:12.5px;line-height:1.75}
+.ok{border-color:rgba(0,238,210,.4);background:rgba(0,238,210,.07)}
+.ok b{color:var(--accent)}
+
+/* 회차 갤러리 */
+.gal{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+.cell{width:112px;border:1px solid var(--line);border-radius:14px;padding:12px 8px 10px;text-align:center;background:rgba(255,255,255,.015)}
+.cell.bad{border-color:rgba(226,59,42,.55);background:rgba(226,59,42,.07)}
+.cell .try{font-size:11.5px;font-weight:800;letter-spacing:-.2px}
+.cell .hex{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--mut);margin-top:6px;line-height:1.5}
+.cell .tag{font-size:10px;font-weight:800;margin-top:5px;color:var(--danger)}
+.fabbox{display:grid;place-items:center;height:74px;position:relative}
+
+/* ── .rev-fab 정본 사본(index.html:2964~2988) — position만 static(원본 absolute) ── */
+.rev-fab{position:relative;width:52px;height:52px;padding:0;display:grid;place-items:center;
+  border-radius:50%;cursor:pointer;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(var(--accent-rgb),.42);
+  box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(var(--accent-rgb),.14), 0 0 20px rgba(var(--accent-rgb),.26);
+  transition:transform .12s, background .15s, border-color .15s}
+.rev-fab:active{transform:scale(var(--press-m))}
+.rev-fab svg{display:block}
+@keyframes rvPulseC{0%,100%{color:var(--rv-from)}50%{color:var(--rv-to)}}
+@keyframes rvRing{from{box-shadow:0 0 0 0 var(--rv-ring,rgba(255,225,61,.5))}to{box-shadow:0 0 0 15px transparent}}
+.rev-fab.revving{animation:rvRing 1.5s ease-out infinite;border-color:var(--rv-to)}
+.rev-fab.revving svg{animation:rvPulseC 1.6s ease-in-out infinite}
+.rev-fab.locked{cursor:not-allowed}
+.rev-fab.revdone{color:rgb(var(--rv-solid,255,210,74));border-color:rgb(var(--rv-solid,255,210,74));background:rgba(var(--rv-solid,255,210,74),.14);
+  box-shadow:0 10px 26px rgba(0,0,0,.42), 0 0 0 1px rgba(var(--rv-solid,255,210,74),.18), 0 0 20px rgba(var(--rv-solid,255,210,74),.3)}
+.rev-fab.revdone svg{color:rgb(var(--rv-solid,255,210,74))}
+.rev-fab.locked::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(46deg, transparent 0 45%, rgba(255,255,255,.22) 45% 53%, transparent 53% 100%)}
+
+/* ── .asksend / .revsend 정본 사본(index.html:2922~2952, 3037~3045) ── */
+.asksend{flex:none;display:grid;place-items:center;line-height:1;position:relative;overflow:hidden;
+  background:rgba(255,255,255,.02);color:var(--accent);border:1px solid var(--line);border-radius:999px;
+  -webkit-backdrop-filter:blur(var(--blur-s));backdrop-filter:blur(var(--blur-s));
+  font:inherit;font-size:13px;font-weight:800;padding:6px 18px;cursor:pointer;
+  transition:background .18s ease, border-color .18s ease, color .18s ease}
+.asksend{line-height:1}
+.asksend > span{position:relative;z-index:1}
+.asksend:hover{background:rgba(255,255,255,.06);border-color:rgba(var(--accent-rgb),.32)}
+.asksend:disabled{opacity:.5;cursor:default}
+.asksend:active{transform:scale(var(--press-l))}
+.asksend.firing{color:var(--on-accent);opacity:1;border-color:var(--accent);pointer-events:none}
+.asksend.firing::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;
+  animation:pickGauge .72s var(--gauge-ease) forwards;z-index:0}
+@keyframes pickGauge{to{transform:scaleX(1)}}
+.asksend.glive.firing::before{animation:none;transition:transform 3.6s var(--gauge-ease)}
+.asksend.glive.firing.grun::before{transform:scaleX(.9)}
+.asksend.glive.firing.gdone::before{transform:scaleX(1);transition:transform .3s linear}
+.asksend .ack{position:absolute;inset:0;z-index:2;display:grid;place-items:center;transform:scale(0);
+  animation:ackPop .44s cubic-bezier(.18,1.5,.4,1) forwards}
+.asksend .ack svg{width:19px;height:19px}
+.asksend .ack path{fill:none;stroke:var(--on-accent);stroke-width:2.7;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:24;stroke-dashoffset:24;animation:ackTick .26s .12s ease forwards}
+.asksend.checked > span:not(.ack){opacity:0}
+@keyframes ackPop{0%{transform:scale(0)}60%{transform:scale(var(--gauge-pop,1.15))}100%{transform:scale(1)}}
+@keyframes ackTick{to{stroke-dashoffset:0}}
+.revsend{position:relative;overflow:hidden;padding:6px 12px;font-size:12px}
+.revsend span{position:relative;z-index:1}
+.revsend.confirm{background:rgba(var(--arm-rgb),.2);color:var(--arm);border-color:rgba(var(--arm-rgb),.5);box-shadow:none}
+
+/* 전송버튼 데모 */
+.smrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.smcell{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.015);min-width:132px;text-align:center}
+.smcell .cap{font-size:10.5px;color:var(--mut);margin-top:8px;letter-spacing:-.2px}
+.live{border:1px solid rgba(0,238,210,.3);border-radius:14px;padding:14px;margin-top:10px;background:rgba(0,238,210,.04)}
+.live .askhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.live b{font-size:13px}
+.live .st{font-size:11.5px;color:var(--mut);margin-top:9px;font-family:ui-monospace,Menlo,monospace}
+
+/* 표 */
+table{border-collapse:collapse;width:100%;max-width:720px;margin-top:10px;font-size:12px}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+th{background:rgba(255,255,255,.03);font-weight:800;color:var(--mut);font-size:11px}
+td .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:6px}
+tr.bad td{background:rgba(226,59,42,.09)}
+tr.bad td:first-child{color:var(--danger);font-weight:800}
+</style>
+</head>
+<body>
+
+<h1>수정 트라이 횟수당 버튼이 어떻게 바뀌나 — 실물 재현</h1>
+<div class="sub">viewer/index.html 실측 사본 · 색·클래스·모션 전부 정본 복사(창작 0) · 260728</div>
+
+<div class="verdict">
+  <b>결론 — 이상한 건 「전송버튼」이 아니라 「동그란 수정 FAB」이고, 3트에서 색이 원본으로 되돌아간다.</b>
+  <ol>
+    <li>회차 색은 <code>revColor(g) = RV_COLORS[g % 3]</code> — <b>3칸짜리 순환</b>이다(index.html:6418).</li>
+    <li>그래서 <b>3트 = 3 % 3 = 0번색 = 터쿼이즈</b>, 그런데 터쿼이즈는 <b>0트(수정 안 한 원본) FAB의 기본색 <code>--accent #00EED2</code>과 같은 색</b>이다.
+        → 3번 고쳤는데 화면은 "한 번도 안 고친 것"처럼 보인다.</li>
+    <li>전송버튼(<code>#revSend</code>/<code>#crevSend</code>)은 회차를 아예 안 본다 — 1트든 3트든 <b>수정 → 재확인 → 게이지 → ✓</b> 로 완전히 동일.</li>
+  </ol>
+</div>
+
+<h2>① 뉴스 요약 수정 FAB (<code>#revFab</code> · 연필) — 수정 완료 상태</h2>
+<div class="note">클래스 = <code>.rev-fab.revdone</code> + <code>--rv-solid: revColor(a.rev)</code> (index.html:6509·6515)</div>
+<div class="gal" id="galRev"></div>
+
+<h2>② 카드뉴스 프롬프트 수정 FAB (<code>#crevFab</code> · 카드스택) — 수정 완료 상태</h2>
+<div class="note">완전히 같은 함수 사다리(<code>applyCrevFab</code> index.html:7275) · 회차만 <code>a.cards.crev</code>로 독립 · <b>3트 되돌아감 증상도 똑같이 있음</b></div>
+<div class="gal" id="galCrev"></div>
+
+<h2>③ 수정 요청이 "진행 중"일 때 (물결 = 현재색 ↔ 다음색 왕복)</h2>
+<div class="note">클래스 = <code>.rev-fab.revving.locked</code> + <code>--rv-from: revColor(g)</code> / <code>--rv-to: revColor(g+1)</code> (index.html:6511~6513)</div>
+<div class="gal" id="galRun"></div>
+
+<h2>④ 회차 → 색 대응표</h2>
+<table>
+  <thead><tr><th style="width:70px">트라이</th><th style="width:74px">g % 3</th><th>FAB 색 (rgb)</th><th>보이는 것</th></tr></thead>
+  <tbody id="tbl"></tbody>
+</table>
+
+<h2>⑤ 전송버튼 (<code>#revSend</code> · <code>#crevSend</code>) — 회차와 무관, 항상 이 3단</h2>
+<div class="note">index.html:14351(요약) / 13997(카드) — 두 핸들러가 글자 하나까지 같은 구조다. 회차 <code>g</code>를 참조하는 코드가 <b>없다</b>.</div>
+<div class="smrow">
+  <div class="smcell">
+    <button class="asksend revsend" type="button"><span>수정</span></button>
+    <div class="cap">평시 — 글래스 + 강조색</div>
+  </div>
+  <div class="smcell">
+    <button class="asksend revsend confirm" type="button"><span>재확인</span></button>
+    <div class="cap">1차 클릭 — arm 레몬 · 4초 뒤 자동 원복</div>
+  </div>
+  <div class="smcell">
+    <button class="asksend revsend glive firing grun" type="button"><span>수정</span></button>
+    <div class="cap">2차 클릭 — 게이지 90% 점근</div>
+  </div>
+  <div class="smcell">
+    <button class="asksend revsend glive firing gdone checked" type="button"><span>수정</span><span class="ack"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></span></button>
+    <div class="cap">응답 도착 — 100% + ✓ 팝</div>
+  </div>
+</div>
+
+<div class="live">
+  <div class="askhead"><b>뉴스 수정 요청 — 실제로 눌러봐</b>
+    <button class="asksend revsend" id="demoSend" type="button"><span>수정</span></button></div>
+  <div class="st" id="demoSt">state: idle · 1트에 누르든 3트에 누르든 여기 동작은 100% 같다</div>
+</div>
+
+<h2>⑥ 근거(연 파일 · 실제 줄)</h2>
+<table>
+  <thead><tr><th style="width:210px">위치</th><th>내용</th></tr></thead>
+  <tbody>
+    <tr><td><code>index.html:6417</code></td><td><code>RV_COLORS = ['0,238,210','255,210,74','12,208,247']</code> — 3색 배열</td></tr>
+    <tr><td><code>index.html:6418</code></td><td><code>revColor = g =&gt; RV_COLORS[((g%3)+3)%3]</code> — <b>%3 순환</b></td></tr>
+    <tr><td><code>index.html:2965</code></td><td><code>.rev-fab { color:var(--accent) }</code> — 0트 기본색 = <code>#00EED2</code> = <code>RV_COLORS[0]</code></td></tr>
+    <tr><td><code>index.html:6503~6516</code></td><td><code>applyReviseFab()</code> — <code>revdone</code>일 때 <code>--rv-solid = revColor(g)</code></td></tr>
+    <tr><td><code>index.html:7275~7290</code></td><td><code>applyCrevFab()</code> — 카드용, 위와 동일 구조</td></tr>
+    <tr><td><code>index.html:14351</code> / <code>13997</code></td><td>전송버튼 핸들러 — <b>회차 참조 0</b>. 1차 재확인 / 2차 전송뿐</td></tr>
+    <tr><td><code>index.html:3002~3005</code></td><td>피드카드 진행바 회차색은 <code>[data-gen="1"]</code>·<code>["2"]</code>만 존재 — 3 이상 색 없음(같은 축의 3칸 한계)</td></tr>
+  </tbody>
+</table>
+<div class="note" style="margin-top:14px">각주 — 이 파일은 index.html의 색·클래스·모션을 값 그대로 복사한 재현물이다(라이브 데이터 연결 없음). FAB는 원본이 <code>position:absolute</code>로 모달 우측 중하단에 뜨지만, 여기선 나란히 보려고 <code>relative</code>로만 바꿨다 — 크기(52px)·테두리·글로우·빗금은 정본 그대로.</div>
+
+<script>
+// ── index.html:6417~6418 그대로 ──
+var RV_COLORS = ['0,238,210', '255,210,74', '12,208,247'];
+var revColor = function (g) { return RV_COLORS[(((g % 3) + 3) % 3)]; };
+var NAMES = ['터쿼이즈(강조색)', '노랑', '시안'];
+var PEN  = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+var CARD = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>';
+
+function rgbHex(s) { var p = s.split(',').map(Number); return '#' + p.map(function (n) { return ('0' + n.toString(16)).slice(-2); }).join('').toUpperCase(); }
+
+// ①② 완료(revdone) 갤러리 — 0트는 revdone 없음(평시), 1트부터 회차색 고정
+function buildGal(el, icon) {
+  var html = '';
+  for (var g = 0; g <= 5; g++) {
+    var done = g > 0;
+    var col  = revColor(g);
+    var same = done && col === RV_COLORS[0];             // 원본색과 육안 동일 = 증상
+    html += '<div class="cell' + (same ? ' bad' : '') + '">'
+      + '<div class="fabbox"><button class="rev-fab' + (done ? ' revdone' : '') + '" type="button" style="' + (done ? '--rv-solid:' + col : '') + '">' + icon + '</button></div>'
+      + '<div class="try">' + (g === 0 ? '0트 (원본)' : g + '트') + '</div>'
+      + '<div class="hex">' + rgbHex(done ? col : RV_COLORS[0]) + '<br>' + (done ? NAMES[g % 3] : '기본 --accent') + '</div>'
+      + (same ? '<div class="tag">0트와 같은 색</div>' : '')
+      + '</div>';
+  }
+  el.innerHTML = html;
+}
+buildGal(document.getElementById('galRev'), PEN);
+buildGal(document.getElementById('galCrev'), CARD);
+
+// ③ 진행 중(revving) — 현재색↔다음색 왕복 + 빗금
+(function () {
+  var html = '';
+  for (var g = 0; g <= 3; g++) {
+    var f = revColor(g), t = revColor(g + 1);
+    html += '<div class="cell">'
+      + '<div class="fabbox"><button class="rev-fab revving locked" type="button" style="--rv-from:rgb(' + f + ');--rv-to:rgb(' + t + ');--rv-ring:rgba(' + t + ',.5)">' + PEN + '</button></div>'
+      + '<div class="try">' + g + '트 → ' + (g + 1) + '트</div>'
+      + '<div class="hex">' + NAMES[g % 3] + ' ↔ ' + NAMES[(g + 1) % 3] + '</div>'
+      + '</div>';
+  }
+  document.getElementById('galRun').innerHTML = html;
+})();
+
+// ④ 표
+(function () {
+  var html = '';
+  for (var g = 0; g <= 6; g++) {
+    var done = g > 0, col = revColor(g), same = done && col === RV_COLORS[0];
+    html += '<tr' + (same ? ' class="bad"' : '') + '>'
+      + '<td>' + (g === 0 ? '0트 (원본)' : g + '트') + '</td>'
+      + '<td>' + (g % 3) + '</td>'
+      + '<td><span class="sw" style="background:rgb(' + col + ')"></span>' + rgbHex(col) + ' · ' + NAMES[g % 3] + '</td>'
+      + '<td>' + (g === 0 ? '수정 안 함(기본)' : same ? '⚠ 0트와 구분 불가' : '수정 ' + g + '회로 읽힘') + '</td>'
+      + '</tr>';
+  }
+  document.getElementById('tbl').innerHTML = html;
+})();
+
+// ⑤ 전송버튼 실동작 — index.html:14351 핸들러 로직 그대로(fetch만 1.2s 가짜 응답)
+(function () {
+  var btn = document.getElementById('demoSend'), st = document.getElementById('demoSt'), t = null;
+  var lbl = function () { return btn.querySelector('span'); };
+  function reset() { clearTimeout(t); btn.className = 'asksend revsend'; btn.disabled = false; lbl().textContent = '수정'; var a = btn.querySelector('.ack'); if (a) a.remove(); st.textContent = 'state: idle'; }
+  btn.addEventListener('click', function () {
+    if (btn.disabled) return;
+    if (!btn.classList.contains('confirm')) {                 // 1차 = 재확인
+      btn.classList.add('confirm'); lbl().textContent = '재확인';
+      st.textContent = 'state: confirm — 4초 안에 한 번 더 누르면 전송(안 누르면 자동 원복)';
+      clearTimeout(t); t = setTimeout(reset, 4000);
+      return;
+    }
+    clearTimeout(t);                                          // 2차 = 전송
+    btn.classList.remove('confirm'); lbl().textContent = '수정';
+    btn.disabled = true; btn.classList.add('glive', 'firing');
+    st.textContent = 'state: firing — 게이지 90% 점근(응답 대기)';
+    requestAnimationFrame(function () { requestAnimationFrame(function () { btn.classList.add('grun'); }); });
+    setTimeout(function () {                                  // 응답
+      btn.classList.add('gdone');
+      st.textContent = 'state: done — 100% 채움 + ✓ 팝';
+      setTimeout(function () {
+        var s = document.createElement('span'); s.className = 'ack';
+        s.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
+        btn.appendChild(s); btn.classList.add('checked');
+      }, 300);
+      setTimeout(reset, 1900);
+    }, 1200);
+  });
+})();
+</script>
+</body>
+</html>
