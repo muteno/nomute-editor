@@ -1,32 +1,32 @@
 # 🚑 입원 거부한 환자가 몰았다…골목 덮친 2.2km 구급차 질주
 
 **[프롬프트 설계]**
-- 화풍: B 극화(한국 웹툰 극화) — 도심 질주·충돌의 긴장과 정신응급 시스템 공백을 무겁고 사실적으로 짚기에 극화의 명암·사실성이 맞다.
-- 분위기: 해질녘의 아찔한 불안 — 잠깐의 무방비가 부른 골목 질주의 조임, 정신 위기와 무고한 피해가 겹친 무게.
-- 연출 방향: 독자훅 = "잠깐 자리 비운 그 몇 분에 응급차와 여고생 안전이 동시에 무너졌다"는 불안(왜 서로 무관한 셋이 겹쳐 사고가 됐나) → 전할 것 = 위기의 순간을 붙잡지 못한 시스템의 틈. 강조점은 '무방비의 몇 분'·'헤집는 골목'·'붙잡히는 순간' 같은 특정 순간과 '응급차'라는 사물에 쏠린다. 비주얼 키노트 = 해질녘 desaturated 거리 + 사이렌 빨강 1색 악센트 + 좁은 골목의 압박(thumb_dispatch의 golden-hour 톤·shock 정조만 계승, 앵글은 카드마다 분산).
-- 독자 동선: 起 카드1 → 承 카드2 → 轉 카드3 → 承·결 다리 카드4 → 結 카드5 · 훅=카드1 끝(단서형: 소리 없이 사라진 응급차)+카드2 끝(예고형: 골목 파고든 응급차) · 감정 피크=카드3(여고생 부상) · 착지=무관한 세 조각이 겹치자 사고가 됐다.
-- 연속성 앵커: Recurring subject: a Korean man in his early 20s, slim build, wearing a plain dark jacket, short messy hair (탈취 남성 · 카드2·4 등장 — 위기·소진 상태로, 위협적으로 그리지 않음) · 반복 장소 = a narrow Korean commercial alley at dusk (카드2·3·5).
+- 화풍: B극화 — 응급 시스템의 빈틈과 무고한 피해가 겹친 사회 고발 사안이라 사실적 무게가 필요
+- 분위기: 해질녘 도심의 일상이 몇 분 만에 뒤집히는 서늘한 긴장 — 비난보다 '아찔함'이 앞서는 정조
+- 연출 방향: 뉴스를 안 보는 독자도 "그 골목 나도 지나는데"로 걸리게, 사건을 거대 담론이 아니라 *빈 운전석·번져오는 사이렌 불빛·홱 돌아본 어깨* 같은 손에 잡히는 순간으로 잡는다. thumb_dispatch의 골든아워 온기를 키노트로 깔되(일상의 해질녘), 질주 구간에서 그 온기가 차갑게 식는 낙차를 만들어 '평범한 저녁'과 '무방비의 몇 분'을 대비시킨다. 악센트는 응급의 상징색인 앰버-오렌지 경광 계열 1색으로 통일해 카드마다 시선이 같은 위험 신호를 따라가게 한다.
+- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(단서형: 비어버린 운전석)+카드3 끝(예고형: 골목 진입) · 감정 피크=카드5 · 착지 한 줄 요지 = 서로 무관한 세 조각(치료를 거부한 몇 분·잠깐 방치된 응급차·우연히 지나던 두 학생)이 겹쳐 사고가 됐다는 것
+- 연속성 앵커: Recurring subject — a Korean man around 20 with short messy black hair, thin build, wearing a plain gray hooded sweatshirt and dark pants. 반복 장소 = a narrow commercial alley in a Korean provincial city at dusk, low shop awnings on both sides.
 
 ### [카드 1]
 **텍스트**
 ```text
-구급대원이 응급환자를 옮기려
-잠깐 자리를 비운 사이,
-119구급차 한 대가
-*감쪽같이 사라졌다*
+2018년 5월 8일 저녁 5시 30분
+천안 순천향대병원 앞이었다
+응급환자를 태운 119구급차가
+*운전석만 텅 빈 채 사라졌다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Emotional focal point: the driver's door of a 119 ambulance left ajar and unattended, sitting in the upper-center of the frame. A white Korean ambulance with orange and green striping is parked at a hospital emergency entrance at dusk, its driver's seat empty and the door slightly open. In the background a paramedic seen from behind carries an emergency patient toward the ER doors, turned away from the vehicle. The quiet driveway is momentarily unguarded, with long golden shadows stretching across the pavement.
-Camera: establishing wide shot from eye-level, shot on 24mm wide lens
-Lighting/mood: warm golden-hour dusk light, long soft shadows, a hushed calm-before with faint unease
-Accent: monochrome desaturated base with a single color accent (emergency red glow on the ambulance siren markings), muted daylight contrast
-Korean urban hospital setting with no legible text. Text handling: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
+Scene: Emotional focal point: the empty driver's seat, its door left swung open into the dusk air. A 119 ambulance stands at a hospital entrance driveway with its rear doors open and a stretcher rail still visible inside, nobody behind the wheel. Two paramedics are seen far in the background near the hospital doors, their backs turned as they push a patient inside, unaware. The wide hospital forecourt of a Korean provincial city stretches around the vehicle in the late afternoon.
+Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), muted daylight contrast
+Text handling: avoid incidental signage and lettering through framing and pictogram cues; no readable text on the vehicle body.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the hospital driveway pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the paved hospital forecourt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -35,29 +35,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-순천향대병원 천안 구급차
+순천향대 천안병원 119구급차
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-운전석을 차지한 건
-*정신과 입원 절차를 밟던 20대였다*
-그가 몬 구급차는
-2.2km 도심 골목을 파고들었다
+대원이 환자를 옮기려 자리를 뜬
+그 몇 분 사이, 곁에 있던
+20대 남성이 운전석에 올라탔다
+*그는 그날 입원 절차를 밟고 있었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Emotional focal point: white-knuckled hands clenched on the ambulance steering wheel, a panicked tension in the hunched posture, held in the upper-center of the frame. Recurring subject: a Korean man in his early 20s, slim build, wearing a plain dark jacket, short messy hair, seen from behind and three-quarter at the wheel, overwhelmed. The white 119 ambulance noses its front bumper into a narrow Korean commercial alley at dusk, red siren light sweeping the shuttered storefronts on both sides, the passage barely wider than the vehicle, the ambulance surging toward the right edge of the frame with nose room on the right.
-Camera: medium shot from a Dutch tilt angle, shot on 20mm wide lens
-Lighting/mood: fading golden dusk turning cold blue, harsh red siren light sweeping the alley walls, deep shadows, mounting tension
-Accent: monochrome desaturated base with a single color accent (emergency red siren glow), film-noir low-key lighting, deep shadows
-Korean commercial alley setting with no legible text. Text handling: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
+Scene: Emotional focal point: his hands gripping the steering wheel too tightly, knuckles taut. Recurring subject — a Korean man around 20 with short messy black hair, thin build, wearing a plain gray hooded sweatshirt and dark pants, sits in the ambulance driver's seat and stares straight ahead through the windshield, jaw clenched tight, muscle flexing at the jawline. The gear lever and the dashboard's emergency switches sit close under his right hand. The hospital building is a blurred mass beyond the glass.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from three-quarter angle, natural face depth, dimensional portrait, nose room on the right, gaze directed toward the right edge, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: avoid incidental lettering on the dashboard and switches through framing; no readable labels.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the alley pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the ambulance cabin interior wall and windshield) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -66,28 +66,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-신부동 골목 구급차
+119구급차 운전석 내부
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-*지나던 여고생 2명이 부딪혀 다쳤다*
-사이렌을 단 응급차가
-좁은 상가 골목을 헤집던 순간이었다
+그가 몰고 나간 구급차는
+병원에서 신부동까지 2.2km를
+10여 분간 도심으로 파고들었다
+*사이렌은 아무도 부르지 않았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-(This image is a scene composed for a film or television production; all figures are adult performers, and costumes and props are made for filming, a staged production piece and not documentary imagery.) Emotional focal point: the wide-eyed shock of a performer portraying a high-school student, eyes flung open and the upper body twisting sharply away at the instant of impact, positioned in the upper-center of the frame. Two adult performers portraying Korean high-school students in school-uniform costumes recoil in a narrow dusk shopping alley on a film set, one nearer with an arm thrown up, the other stumbling back, a dropped school bag skidding across the pavement, their faces generic and non-identifiable. A white 119 ambulance prop looms at the frame edge with its red siren glare washing the tight alley; the moment is staged just at contact, no wounds and no injuries shown, only the recoil and shock.
-Camera: medium close-up from eye-level, shot on 85mm portrait lens
-Lighting/mood: cold dim alley light, suffocating and tense, a harsh red siren glare cutting across, the deepest shadow and highest contrast of the sequence
-Accent: monochrome desaturated base with a single color accent (emergency red siren glare, most intense here), film-noir low-key lighting, deep shadows
-Korean shopping alley film-set setting with no legible text. Text handling: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
+Scene: Emotional focal point: the ambulance's roof beacon burning alone above a street where no one has called for it. The vehicle cuts diagonally across a wide city road, its front bumper pushing toward the mouth of a narrow commercial alley in a Korean provincial city at dusk, low shop awnings on both sides. A few pedestrians on the crossing turn their heads toward it, bodies already stepping back. Painted lane markings and a Korean traffic signal frame the intersection, right-hand traffic.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation from overhead shot, bird's-eye view, top-down angle, layout, geometry, nose room on the right, movement directed toward the right edge, shot on 20mm wide lens, subject and environment, documentary realism
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), muted daylight contrast
+Text handling: shop signage kept as shape and silhouette only, resolved into pictogram-like blocks; no readable script anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the alley pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the asphalt road) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -96,60 +97,91 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-천안 구급차 여고생
+천안 신부동 상가 골목
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-두 학생의 부상은 다행히 경상이었다
-17분 만에 붙잡힌 그가 남긴 이유는
-뜻밖에도 단순했다
-*"입원하기 싫어서"*
+좁은 상가 골목을 헤집는 동안
+그 길을 지나던 여고생 2명이
+차에 부딪혀 다쳤다
+*부상은 다행히 경상이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Emotional focal point: the hollow, exhausted face of a young man as officers take hold of him, his resistance draining into a blank stare, framed in the upper-center of the frame. Recurring subject: a Korean man in his early 20s, slim build, wearing a plain dark jacket, short messy hair, now slumped and unresisting between two police officers. The abandoned white 119 ambulance sits askew behind them at dusk with its door hanging open, red-and-blue emergency lights sweeping the quiet street. His posture is small and defeated, not defiant.
-Camera: medium shot from a high angle, shot on 50mm standard lens
-Lighting/mood: cold blue dusk with sweeping red-and-blue emergency light, harsh but beginning to settle
-Accent: monochrome desaturated base with a single color accent (emergency red-and-blue emergency light), film-noir low-key lighting, deep shadows
-Korean street setting with no legible text. Text handling: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
+Scene: Emotional focal point: a schoolgirl's eyes flung wide as she twists her shoulders away, the instant before contact. Two Korean high-school students in dark school uniforms are caught mid-step on the edge of a narrow commercial alley in a Korean provincial city at dusk, low shop awnings on both sides; one throws an arm across the other and pulls her back toward the shopfronts. A school bag has slipped off a shoulder and hangs from one hand. The blurred white flank of a large vehicle sweeps through the near foreground, only its side panel entering the frame, never touching them within the image.
+Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: alley signage cropped and turned away, resolved as shape only; no readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the street pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the alley shopfront wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no injury detail, no blood, no wounds, no moment of impact, no body being struck, no violent contact shown
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-구급차 탈취 검거
+상가 골목 교복 여학생 보행
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
+경찰에 붙잡히기까지 17분
+*"입원하기 싫어서 집에 가려고 했다"*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject — a Korean man around 20 with short messy black hair, thin build, wearing a plain gray hooded sweatshirt and dark pants, stands still at the center of the alley with his shoulders slumped and his hands hanging open at his sides, the fight gone out of him. Two police officers close in from either edge of the frame, one reaching for his arm. The abandoned ambulance sits askew behind him with its driver's door still open.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure from high angle shot, looking down, vulnerable subject, small, observed, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: uniform insignia and vehicle markings kept as abstract shapes; no readable script, no agency logo.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the alley asphalt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no violent restraint, no striking, no blood
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+경찰 검거 현장 구급차
+```
+
+### [카드 6]
+**텍스트**
+```text
 치료를 거부하고 뛰쳐나온 몇 분,
-키가 꽂힌 채 방치된 응급차 한 대,
-우연히 그 골목을 지나던 두 학생 —
+잠깐 비어 있던 응급차 한 대,
+그 골목을 지나던 학생 둘.
 *무관한 세 조각이 겹치자 사고가 됐다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Emotional focal point: the emptied ambulance standing still and abandoned in the fading dusk, its driver's door left open onto the silent alley, centered in the upper portion of the frame. The white 119 ambulance is parked askew in a narrow Korean commercial alley, the siren now dark, and a single school bag rests on the pavement nearby catching the last dim red glint of light. No people remain; the long shadows and the quiet aftermath hold all three absent threads: the vehicle, the unguarded gap, and the passers-by. The scene faces the viewer squarely, still and resolved.
-Camera: wide shot from eye-level, front-on, shot on 35mm lens
-Lighting/mood: warm soft residual dusk light, faint melancholy, the siren extinguished, a quiet release
-Accent: monochrome desaturated base with a single color accent (a last dim red glint of the extinguished siren), muted daylight contrast
-Korean commercial alley setting with no legible text. Text handling: no garbled or fake script, no meaningless letters, no random characters, no dense text; minimal Korean text only if essential.
+Scene: Emotional focal point: the ambulance's open driver's door still swaying, nobody in the seat. The emptied vehicle rests at a stop in a narrow commercial alley in a Korean provincial city at dusk, low shop awnings on both sides, its beacon dimmed. On the pavement beside it a dropped school bag lies where it fell, and further off a single hospital wristband band rests on the asphalt. No people remain in the alley, only the three traces sharing one stretch of road.
+Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (amber-orange emergency light as the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: all shop and vehicle lettering avoided by framing and shape simplification; no readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the alley pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the alley asphalt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -158,5 +190,5 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-119구급차 상가거리
+빈 구급차 골목 밤거리
 ```
