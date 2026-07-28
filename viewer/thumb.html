@@ -2999,6 +2999,9 @@ const THUMB_LAST_KEY = 'nomute_thumb_last';   // 가장 최근 제작 1건 = 창
 // 기기간 공유: build-viewer가 thumb_out/(전 기기 커밋 이미지) 스캔해 만든 thumb-hist.json을 읽어 로컬과 병합(운영자 260621).
 const baseUrl = u => String(u || '').split('?')[0];   // ?t= 캐시버스트 제거 = 저장·로드용 원본 URL(호스트 보존 = R2 이미지 로드 정상)
 const histKey = u => baseUrl(u).replace(/^https?:\/\/[^/]+\//, '');   // 중복판정 전용 키 = baseUrl서 호스트까지 제거 → R2 절대url(로컬·신규 제작)·상대경로(레거시·카드뉴스 서버 인덱스) 통일. 미통일 시 같은 제작이 두 키로 갈려 로컬+서버 이중 노출 = 간헐 누적(운영자 260713)
+const batchId = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);   // 배치(한 번의 '생성' 클릭) 그룹키 — 작업 id(서버 발급·요청마다 다름)와 별개 축. src에 실려 서버 이력까지 왕복 = 알림 진입·타 기기·새로고침 어디서 읽어도 같은 묶음 판정(dispatchBatch 주석 참조)
+const bidOf = e => { const s = e && e.src; return (s && typeof s === 'object' && typeof s.bid === 'string') ? s.bid : ''; };   // 이력 항목의 묶음 키(구 이력 = '' = 묶음 없음 = 종전대로 낱장)
+const biOf = e => { const s = e && e.src, n = s && +s.bi; return Number.isFinite(n) ? n : 99; };   // 묶음 안 순서(미기록 = 뒤로)
 const thIdOf = u => { const m = String(u || '').match(/(?:thumb_out|comp_out|resize)\/([^/?#]+)/); return m ? m[1] : ''; };   // 결과/이력 url서 작업 id 추출 = 알림 done=<id> 매칭·복원 그룹키(썸네일 thumb_out/<id> · 카드뉴스 comp_out/<id> · 리사이즈 R2 resize/<id> — gen_out 평면 폴백 파일명은 id 미추출=그룹 제외·표시만 · 운영자 260710 기기간 공유 확장)
 const doneReq = () => {   // 완료 알림 딥링크 = ?done=<id> 정본(Access 재로그인 리다이렉트에 해시는 유실·쿼리는 생존 · 운영자 260710) + 구 #done(기 발송 알림 호환). id는 [\w-]만(셀렉터 주입 가드).
   try { const q = new URLSearchParams(location.search).get('done'); if (q != null) return { on: true, id: (String(q).match(/^[\w-]+$/) || [])[0] || '' }; } catch (_) {}
@@ -3153,9 +3156,11 @@ function findResultById(id) {
   const loc = localLastResult();
   if (loc && Array.isArray(loc.items) && loc.items.some(it => thIdOf(it.url) === id)) return loc;   // 이 기기서 만든 거면 src까지
   if (Array.isArray(SRV_HIST)) {
-    const arr = SRV_HIST.filter(e => e && e.url && thIdOf(e.url) === id);
+    const hit = SRV_HIST.filter(e => e && e.url && thIdOf(e.url) === id);
+    const bid = bidOf(hit.find(e => bidOf(e)));   // 이 작업이 '한 번의 생성' 묶음(bid)에 속하면 형제 작업(다른 id)까지 통째로 = 1/2·2/2 한 캐러셀(운영자 260728) · 구 이력(bid 없음) = 종전대로 그 id만
+    const arr = bid ? SRV_HIST.filter(e => e && e.url && bidOf(e) === bid) : hit;
     if (arr.length) {
-      const sorted = arr.slice().sort((a, b) => String(a.dlname || '').localeCompare(String(b.dlname || '')));
+      const sorted = arr.slice().sort((a, b) => (biOf(a) - biOf(b)) || String(a.dlname || '').localeCompare(String(b.dlname || '')));   // 묶음 순서(bi = 헤더→자막 발사순) 우선 · 동순위·구 이력은 종전 파일명순
       const withSrc = sorted.find(e => e.src && e.src.app);   // 서버 이력 src(_src.json) 동봉 시 복원 결과에도 탑재 = 타 기기 부팅 복원서도 수정(연필) 활성(그리드 연필과 정합 · 운영자 260624 취지)
       return { ts: Math.max(...arr.map(e => e.ts || 0)), label: sorted[0].cap || '제작', src: withSrc ? withSrc.src : undefined, items: sorted.map(e => ({ url: e.url, dlname: e.dlname, cap: e.cap || '', varStr: e.varStr || '' })) };
     }
@@ -3784,15 +3789,16 @@ function dispatchJob(endpoint, payload, label, src, reuse) {
 function dispatchBatch(items, batchLabel, src, reuse) {
   if (!items || !items.length) return;
   if (items.length === 1) { dispatchJob(items[0].endpoint, items[0].payload, items[0].label, src, reuse); return; }   // 단일 = 기존 경로(원래 라벨·변형·전체 그대로) · reuse 전파(재시도 in-place)
+  src = Object.assign({}, src || {}, { bid: batchId() });   // 한 번의 '생성' = 한 묶음 그룹키(운영자 260728 "버튼 한 번 = 동시 제작건 1/2·2/2") — 배치는 서버에 요청 N개로 나가 작업 id가 N개 발급된다(api/thumb가 요청마다 발급) → 세션 메모리(JOBS·THUMB_LAST_KEY)에선 한 잡이지만, 이력(thumb-hist.json)·알림 진입·타 기기에선 id가 유일한 묶음 단서라 낱장으로 갈렸다. bid를 src(_src.json → 서버 이력 e.src)에 실어 보내 어디서 읽어도 같은 묶음으로 복원(파이프 무접촉 = api·워크플로·빌더 무수정 · src는 이미 통째 왕복하는 값)
   goFire(_spellApplied); clearRestored();
   let job;
   if (reuse) { job = reuse; Object.assign(job, { t0: Date.now(), outs: [], done: [], status: 'run', msg: '', batch: items, src }); delete job._queued; delete job.partErr; delete job._next; job._ready = {}; job.saves = []; renderJob(job); }   // 재시도 = 기존 잡 재사용(같은 #n·같은 행 · 운영자 260630) · 폴 누산기(_next/_ready/saves) 리셋 = 부분완료 재시도 시 변형 유실·다운로드 혼합 차단(실측 260720)
   else { job = { n: ++JOBSEQ, label: batchLabel, t0: Date.now(), outs: [], done: [], status: 'run', msg: '', batch: items, src }; JOBS.unshift(job); renderJob(job); }   // batch = 실패 시 같은 묶음 재발사용
   if (!reuse) scrollQueue();   // 묶음 발사도 동일 착지(dispatchJob 짝 · 재시도 제자리)
   (async () => {
-    const groups = await Promise.all(items.map(async it => {
+    const groups = await Promise.all(items.map(async (it, bi) => {
       const payload = it.payload;
-      if ((it.endpoint === '/api/thumb' || it.endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = rest; }   // dispatchJob과 동일 src 주입(기기간 '수정' 복원 · 카드뉴스 comp 포함 260713)
+      if ((it.endpoint === '/api/thumb' || it.endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = Object.assign(rest, { bi }); }   // dispatchJob과 동일 src 주입(기기간 '수정' 복원 · 카드뉴스 comp 포함 260713) + bi = 이 묶음 안 순서(헤더 0 · 자막 1 …) = 복원 시 발사 순서 그대로 1/2·2/2 배열(도착순·파일명순 무관)
       try {
         const res = await fetch(it.endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
         const j = await res.json();
