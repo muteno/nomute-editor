@@ -104,6 +104,10 @@ out = {"x": st.x_subs(acc["x"], limit=20), "insta": _insta_collect(acc["insta"],
 for k in ("x", "insta", "threads", "tiktok"):   # 지역 도장 = 러너 수집과 동일 규격(뷰어 한국/세계 접이 축 · 레딧 = 계정축 아님 = 무도장)
     for it in out[k]:
         it["region"] = reg.get(k, {}).get((it.get("account") or "").lower(), "gl")
+# 계정별 성공·사유 동봉(260728) — 폰 채택 축(x·insta·threads·tiktok)은 **데이터는 폰인데 사유는 러너**라
+#   miss와 why의 주체가 어긋나 있었다(러너 429/403 기록이 폰 결과 위에 얹혀 엉뚱한 계정을 지목). 같이 실어
+#   보내면 sns_trends main()이 PHONE_COVER로 갈아 끼운다. set = JSON 불가라 정렬 리스트로.
+out["_cover"] = {"ok": {k: sorted(v) for k, v in st.SUB_OK.items()}, "why": st.SUB_FAIL}
 out["updated"] = st.datetime.now(st.KST).isoformat()   # KST(§📐 — 소비측 신선도 판정 기준)
 json.dump(out, open(P, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
 print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · tiktok {len(out['tiktok'])}건 · reddit {len(out['reddit'])}건 · 재난 {len(out['disaster'])}건")
