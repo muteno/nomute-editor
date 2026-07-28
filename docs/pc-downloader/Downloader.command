@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-#  만능 다운로더 v6.2-mac  (Downloader.bat v6.2 맥 이식)
+#  만능 다운로더 v6.3-mac  (Downloader.bat v6.3 맥 이식)
 #  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 #
 #  동작 동일:
@@ -37,6 +37,13 @@
 #      JS런타임만 덧대선 web_safari의 PO토큰 요구가 남아 완치가 안 된다.)
 #     -> YT는 쿠키를 빼고 받는다. 공개영상은 쿠키가 필요 없다.
 #        연령제한·멤버십 등으로 실패하면 그때만 쿠키를 붙여 1회 재시도한다.
+#   - v6.3: [프레임 축 분리] 해상도 최고 1개 + 프레임 최고 1개를 각각 받는다(운영자 260728)
+#     지시 = "해상도랑 프레임별로 가장 높은 거 하나씩 뽑게 해. 그게 같으면 하나만".
+#     이유 = yt-dlp 기본 정렬은 res가 fps보다 우선이라, 4K가 30fps뿐이고 1440p가
+#       60fps인 영상에서 4K30만 받고 1440p60을 버렸다(셀렉터 오프라인 실측).
+#     구현 = 선행조회 2축(기본정렬 / -S "fps,res,br") -> format_id 비교.
+#       같으면 1개 · 다르면 본편(해상도) + maxfps_ 파일(프레임) 2개.
+#     파일 표식 = 본편(표식 없음) · maxfps_(프레임 최고) · 1080p_(호환용, v6.1 유지)
 # =====================================================================
 
 VENV_BIN="$HOME/.claude/skills/whisper/.venv/bin"
@@ -80,11 +87,11 @@ end_exit() {
 }
 
 ARGURL="$1"
-printf '\033]0;만능 다운로더 v6.2-mac\007'
+printf '\033]0;만능 다운로더 v6.3-mac\007'
 
 echo "==============================================="
-echo "  만능 다운로더 v6.2-mac"
-echo "  최고화질 자동 + 1080p 초과 가로영상은 1080p mp4 동반"
+echo "  만능 다운로더 v6.3-mac"
+echo "  해상도 최고 + 프레임 최고 각 1개(같으면 1개) + 1080p 호환본"
 echo "  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막"
 echo "  인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)"
 echo "  ESC 2번 연속 = 창 닫기"
@@ -331,17 +338,29 @@ while true; do
 
     # --- 최고화질 1회 선행조회 (v6.1 이식 · --print = quiet + simulate라 다운로드 안 함) ---
     #     선행조회도 본편과 '같은 인자'를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
-    VW=""; VH=""; VFID=""; VCOD=""
-    read -r VW VH VFID VCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
-        -f "bv*/b/best" --print "%(width)s %(height)s %(format_id)s %(vcodec)s" \
+    # v6.3 = 축 2개로 나눠 각각 조회 (① 해상도축 = 기본정렬 · ② 프레임축 = -S "fps,res,br")
+    VW=""; VH=""; VFPS=""; VFID=""; VCOD=""
+    read -r VW VH VFPS VFID VCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
+        -f "bv*/b/best" --print "%(width)s %(height)s %(fps)s %(format_id)s %(vcodec)s" \
+        --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
+    FW=""; FH=""; FFPS=""; FFID=""; FCOD=""
+    read -r FW FH FFPS FFID FCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
+        -f "bv*/b/best" -S "fps,res,br" --print "%(width)s %(height)s %(fps)s %(format_id)s %(vcodec)s" \
         --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
 
     # --- 화질 영수증(v6.2): 뭘 최고화질로 판단했는지 항상 화면에 남긴다 ---
     if [ -n "$VH" ] && [ "$VH" != "NA" ]; then
-        echo "[화질] 최고화질 조회 = ${VW}x${VH} / 코덱 ${VCOD} / format ${VFID}"
+        echo "[화질] 최고해상도 = ${VW}x${VH} @${VFPS}fps / ${VCOD} / format ${VFID}"
     else
-        echo "[화질] 최고화질 조회 실패 - 그래도 최고화질로 진행. 계속 저화질이면 yt-dlp 업데이트부터."
+        echo "[화질] 조회 실패 - 그래도 최고화질로 진행. 계속 이상하면 yt-dlp 업데이트부터."
     fi
+    [ -n "$FH" ] && [ "$FH" != "NA" ] && echo "[화질] 최고프레임 = ${FW}x${FH} @${FFPS}fps / ${FCOD} / format ${FFID}"
+
+    # --- 두 축이 같은 포맷이면 1개만(중복 다운로드 0) · 다르면 2개 ---
+    GETFPS=0
+    if [ -n "$FFID" ] && [ -n "$VFID" ] && [ "$FFID" != "$VFID" ]; then GETFPS=1; fi
+    [ "$GETFPS" = "1" ] && echo "[화질] 두 축이 다름 - 해상도본 + 프레임본 2개 받는다"
+    [ "$GETFPS" = "0" ] && [ -n "$VH" ] && echo "[화질] 두 축이 같음 - 1개만 받는다"
 
     # --- 1080p 초과 가로영상이면 호환용 1080p mp4 동반본도 받는다 (v6.1 이식) ---
     GET1080=0
@@ -376,6 +395,19 @@ while true; do
         YT_RC=$?
     fi
     [ "$YT_RC" -ne 0 ] && echo "[yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성."
+
+    # --- 최고프레임본(v6.3) : 해상도본과 format_id가 다를 때만 · 자막 재다운로드 안 함 ---
+    if [ "$GETFPS" = "1" ]; then
+        echo
+        echo "[프레임] 최고프레임본 ${FW}x${FH} @${FFPS}fps 다운로드..."
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+            --trim-filenames 120 --windows-filenames \
+            -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
+            -o "${TS}_${PLAT}_maxfps_%(uploader_id)s_%(title)s.%(ext)s" \
+            --no-write-subs --no-write-auto-subs \
+            -S "fps,res,br" -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL" \
+            || echo "[프레임] 최고프레임본 다운로드 실패 (해상도본은 정상)"
+    fi
 
     # --- 1080p mp4 동반본 (자막 재다운로드 안 함 · 파일명 표식 '1080p_'는 앞쪽 = trim에 안 잘림) ---
     if [ "$GET1080" = "1" ]; then
@@ -496,7 +528,8 @@ while true; do
     echo
     echo "==============================================="
     echo "  다운로드 완료"
-    [ -n "$VH" ] && [ "$VH" != "NA" ] && echo "  화질:    ${VW}x${VH} (${VCOD})"
+    [ -n "$VH" ] && [ "$VH" != "NA" ] && echo "  해상도본: ${VW}x${VH} @${VFPS}fps (${VCOD})"
+    [ "$GETFPS" = "1" ] && echo "  프레임본: ${FW}x${FH} @${FFPS}fps (${FCOD}) - maxfps_ 파일"
     echo "  로컬:    $LOCAL"
     if [ "$DUAL" = "1" ] && [ -z "$GD_WHY" ]; then
         echo "  GDRIVE : 전송 완료 ${GD_CNT}개 - $CLOUD"
