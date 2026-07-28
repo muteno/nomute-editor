@@ -1079,6 +1079,23 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
+def _th_img(p):
+    """스레드 포스트 대표 이미지(운영자 260728 "사진들이 썸네일 틀에 실제로 안 올라온다") — 뷰어 xcard `t.thumb`
+    공급(X 대표 이미지 260726 동축 · 종전엔 이 필드를 아예 안 걷어 틀만 있고 사진이 영영 결측).
+    후보 = 포스트 자신 → carousel_media(묶음 글은 이미지가 항목별 노드에만 있다) 순으로
+    image_versions2.candidates에서 640px 이상 중 최소폭(인스타 '소형 변형 우선' 평의회9 동축 — 카드 슬롯은
+    16:9 반폭이라 원본 대형은 셀룰러 낭비) · 640 미만뿐이면 최대폭 · 영상 글 = 같은 필드가 포스터 프레임 ·
+    없으면 ""(뷰어 = 커버 스팬 자체 미출력 = 조용한 공백)."""
+    for n in [p] + [c for c in (p.get("carousel_media") or []) if isinstance(c, dict)]:
+        cands = [c for c in ((n.get("image_versions2") or {}).get("candidates") or [])
+                 if isinstance(c, dict) and str(c.get("url") or "").startswith("http")]
+        if cands:
+            big = [c for c in cands if _i(c.get("width")) >= 640]
+            pick = min(big, key=lambda c: _i(c.get("width"))) if big else max(cands, key=lambda c: _i(c.get("width")))
+            return pick["url"]
+    return ""
+
+
 def threads_subs(accounts, limit=10, deadline=None):
     """⑧ 스레드 구독 계정 최신 포스트 — 프로필 HTML 임베드 JSON(무인증 게스트 · 운영자 260712).
     ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너 미호출(폰/맥 가정 IP = phone_subs.py 전용).
@@ -1135,9 +1152,10 @@ def threads_subs(accounts, limit=10, deadline=None):
                 seen.add(code)
                 user = ((p.get("user") or {}).get("username")) or acc
                 tpa = p.get("text_post_app_info") if isinstance(p.get("text_post_app_info"), dict) else {}
-                out.append({"account": user, "text": txt[:280], "likes": _i(p.get("like_count")),
+                out.append({"account": user, "text": txt[:500], "likes": _i(p.get("like_count")),
                             "cmts": _i(tpa.get("direct_reply_count")), "time": p.get("taken_at") or 0,
-                            "url": "https://www.threads.com/@%s/post/%s" % (user, code)})
+                            "thumb": _th_img(p),   # 대표 이미지(운영자 260728 — 뷰어 xcard-cv 틀은 이미 있는데 공급이 0이던 사각 봉합)
+                            "url": "https://www.threads.com/@%s/post/%s" % (user, code)})   # text 280→500(운영자 260728 — 표시가 4줄 클램프 원문이 되며 280이면 넓은 카드에서 클램프 도달 전에 원료가 끊겨 … 없이 뚝 끊긴다 · 시각 절단 = CSS 클램프 담당)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("threads", acc, _hcode(e))
