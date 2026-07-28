@@ -1814,6 +1814,8 @@
   .qgo.go-amber { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
   .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재시도 표준색 arm(레몬) 계승(운영자 260701 재시도=arm 정본) · viewer :root 에서 amber 와 동색(accent-4)이라 구분은 아이콘 ↻/↗으로 */
   .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
+  .qgo.qcx-ok { color:var(--on-accent); border-color:var(--accent); background:var(--accent); }   /* 취소 확정 ✓ = 이미지 스튜디오 제작 대기열 취소(.jdel.ok) 정본 계승 — accent 채움+on-accent 획(운영자 260728) */
+  .qb-cxl { color:var(--mut); font-size:12.5px; font-weight:800; }   /* raw-ok: 12.5px = 형제 상태셀(qb-done·qb-failt) 동값 계승(같은 셀 문법·크기 이탈 금지) — 취소 = 무채 한글(색만 mut) */
   .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
   @media (prefers-reduced-motion:reduce){ .qgo svg.ic-arrow .qsrc-shaft, .qgo svg.ic-arrow .qsrc-tip { animation:none; } }   /* 대기열 이동버튼 화살표 모션 = ic-arrow(공용 reduced-motion 블록서 정지) · 옛 qfly 폐지(운영자 260705) */
   .qpage { flex:none; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; min-height:30px; }   /* min-height = 페이저 비어도(단일페이지·빈상태) 높이 예약 → 팝업 크기 항상 동일(1·다·빈 상태 모두 같은 높이) · 운영자 260622 */
@@ -7814,7 +7816,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '6b03dd5 · 260729_0809';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'd23f4fb · 260729_0828';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -9135,9 +9137,8 @@ function qTitle(it) {
 const Q_REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>';   // ↻ 새로고침
 const Q_SPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';   // 스피너(열린 호)
 const Q_ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g class="qsrc-arrow"><path class="qsrc-shaft" pathLength="1" d="M7 17 17 7"/><path class="qsrc-tip" d="M8.5 7H17v8.5"/></g></svg>';   // ↗ 1시방향 · 3조각(지지대선 shaft + 촉 tip · 받침 없음) = ic-arrow 모션 훅(대기열·토스트 이동버튼 공용)
-function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | gray(갈 곳 없음)
-  const dis = kind === 'gray' ? ' disabled' : '';
-  return '<button class="qgo go-' + kind + '" type="button"' + dis + ' title="' + title + '">' + Q_ARR + '</button>';
+function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | gray(갈 곳 없음 — 모습·회색 톤은 비활성 그대로 두되 탭 = 취소 상태머신 진입이라 disabled 속성 제거 · 운영자 260728 "비활성일 때 클릭하면 휴지통")
+  return '<button class="qgo go-' + kind + '" type="button" title="' + title + '">' + Q_ARR + '</button>';
 }
 function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) ↻ · 클릭 = api/askget 으로 전문 복원 → 요약창 재오픈(askRetry)
   return '<button class="qgo go-arm qretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
@@ -9207,12 +9208,41 @@ function renderQueuePage() {
         if (main) { main.classList.remove('qm-flex'); main.textContent = qt.textContent; }
       }
     }
-    const go = row.querySelector('.qgo'); if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = (go.classList.contains('qretry') || go.classList.contains('qpretry')) ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('qpretry')) qPickRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
+    const go = row.querySelector('.qgo');
+    if (go && go.classList.contains('go-gray')) { go.onclick = (e) => { e.stopPropagation(); qCancelTap(it, row, go); }; }   // 비활성(회색 ↗) = 탭하면 취소 상태머신(휴지통 arm → 확정 · 정본 = thumb jobCancelTap · 운영자 260728)
+    else if (go && !go.disabled) go.onclick = (e) => { e.stopPropagation(); const s = go.querySelector('svg'); if (s) { const m = (go.classList.contains('qretry') || go.classList.contains('qpretry')) ? 'ic-spin' : 'ic-arrow'; s.classList.remove('ic-arrow', 'ic-spin'); void go.offsetWidth; s.classList.add(m); } if (go.classList.contains('qretry')) askRetry(it); else if (go.classList.contains('qpretry')) qPickRetry(it); else if (go.classList.contains('go-green')) qGo(it.id); else if (it.alt1 || it.key) failOpen({ url: it.alt1 || it.key }); };   // 이동(↗)=ic-arrow(지지대선 슉+촉 플레어+pop·버튼색) / 재시도(↻)=ic-spin 회전 · 리플로우는 버튼 기준(svg.offsetWidth undefined 함정 · 운영자 260705)   // ↗ 목적지 = 버튼 색 기준(초록=뉴스요약 준비됨만 / 주황=기사 원문 새 탭) → succ여도 피드 미반영이면 초록 안 뜨므로 조기 이동·'곧 표시' 토스트 0 · 주황 원문 = alt1(api/pending이 '# alt:' 첫 url = breaking_pick 있으면 메이저·없으면 타 클러스터 멤버) 우선 — 대표 url이 최초보도 속보 스텁(본문 한 줄)로 튀던 것 교정 = 수집함 카드 scLinkUrl(breaking_pick 우선)과 동일 방향 정책(운영자 260703) · failOpen 앵커클릭(window.open 모바일 빈모달 회피·hrefOk 정화) · 원문 없으면 qGoBtn('gray') disabled=완전 비활(운영자 260622)
   });
   if (pg) {
     pg.innerHTML = pagerHtml(pages, QPAGE);
     pg.querySelectorAll('[data-pg]').forEach(b => b.onclick = (e) => { e.stopPropagation(); QPAGE = +b.dataset.pg; setTimeout(() => renderQueuePage(), 0); });   // 재렌더를 클릭 종료 후로 미룸 — 클릭 도중 innerHTML 교체로 누른 버튼이 떨어져 팝업 닫히던 것 차단(가드+stopPropagation과 3중·운영자 260622)
   }
+}
+// ── 대기열 행 취소(운영자 260728 "비활성 ↗ 클릭=휴지통 → 또 클릭=취소") — 정본 = 이미지 스튜디오 제작 대기열 취소(thumb.html jobCancelTap) 그대로: 1탭 무장(3s 원복 = #histClr 동값) → 2탭 확정 ✓(ok) → 1200ms 잔상 후 행 회수 · 무장 픽토만 X 대신 휴지통(운영자 지목) ──
+//   취소 = 이 뷰의 추적만 끊는다(행 숨김·배지 제외·기어 레몬 제외) — 파이프라인 자체를 멈추는 API 없음(thumb jobCancel 동일 한계) · 기록 = localStorage(같은 함 '내역 지우기' nomute_q_cleared 문법 계승 = 기기별)
+const QCXL_KEY = 'nomute_q_cancelled';
+const qCxlId = it => String((it && (it.id || it.key)) || (it && it.t) || '');
+function qCxlSet() { try { return new Set(JSON.parse(localStorage.getItem(QCXL_KEY) || '[]')); } catch { return new Set(); } }
+function qCxlFilter(items) {   // api/pending 응답 공용 게이트(loadQueue·loadPending) — 취소분 제외 + 서버서 사라진 id 정리(저장분 무한 증식 방지)
+  const s = qCxlSet(); if (!s.size) return items || [];
+  const live = new Set((items || []).map(qCxlId));
+  const keep = [...s].filter(id => live.has(id));
+  if (keep.length !== s.size) { try { localStorage.setItem(QCXL_KEY, JSON.stringify(keep)); } catch {} }
+  return (items || []).filter(it => !s.has(qCxlId(it)));
+}
+function qCancelTap(it, row, btn) {   // 상태머신 = jobCancelTap 100% 계승(3s·1200ms 동값) · 아이콘 축만 ↗(회색)→휴지통(arm 레몬)→✓(ok)
+  if (!it._cxArm) {
+    it._cxArm = 1; btn._t0 = btn.title;
+    btn.classList.remove('go-gray'); btn.classList.add('go-arm'); btn.innerHTML = _TRASHSVG; btn.title = '한 번 더 누르면 이 요청 취소'; btn.setAttribute('aria-label', '취소 확정');
+    clearTimeout(it._cxT); it._cxT = setTimeout(() => { it._cxArm = 0; if (!row.isConnected) return; btn.classList.remove('go-arm'); btn.classList.add('go-gray'); btn.innerHTML = Q_ARR; btn.title = btn._t0 || ''; btn.removeAttribute('aria-label'); }, 3000);   // 3s 내 재탭 없으면 원복(#histClr·thumb 동값)
+    return;
+  }
+  clearTimeout(it._cxT); it._cxArm = 0;
+  try { const s = qCxlSet(); s.add(qCxlId(it)); localStorage.setItem(QCXL_KEY, JSON.stringify([...s])); } catch {}
+  const eff = (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;   // qRowHtml eff 동일 기준(빌드랙 succ=스피너)
+  if (eff === 'processing' || eff === 'retry') { PEND_PROC = Math.max(0, PEND_PROC - 1); updateQBadge(); }   // 배지 즉시 동기(이후 폴은 qCxlFilter가 유지)
+  btn.classList.remove('go-arm'); btn.classList.add('qcx-ok'); btn.innerHTML = CHECK_SVG; btn.title = '취소됨'; btn.setAttribute('aria-label', '취소됨'); btn.disabled = true;
+  const st = row.querySelector('.qst'); if (st) st.innerHTML = '<span class="qb-cxl">취소</span>';   // 상태셀 = 이 함 2자 문법(완료·실패) 계승
+  setTimeout(() => { const i = QITEMS.indexOf(it); if (i >= 0) QITEMS.splice(i, 1); renderQueuePage(); }, 1200);   // ✓ 잔상(thumb 1200 동값) 후 행 회수 — 리스트·페이저 재계산 = renderQueuePage 재사용
 }
 let qGen = 0;
 async function loadQueue() {
@@ -9224,7 +9254,7 @@ async function loadQueue() {
     const r = await fetch('api/pending?_=' + Date.now());
     if (g !== qGen) return;
     if (!r.ok) { box.innerHTML = '<div class="qempty">대기열 조회 실패 (' + r.status + ')</div>'; return; }
-    const j = await r.json(); items = j.items || [];
+    const j = await r.json(); items = qCxlFilter(j.items || []);   // 취소분 제외(qCancelTap 기록 · 운영자 260728)
   } catch { if (g === qGen) box.innerHTML = '<div class="qempty">네트워크 오류 — 다시 시도</div>'; return; }
   if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
@@ -9628,11 +9658,12 @@ async function loadPending(render) {
   try {
     const r = await fetch('api/pending?_=' + Date.now());
     if (r.ok) { const d = await r.json(); const m = new Map();
-      (d.items || []).forEach(it => { if (it && it.key) m.set(_normU(it.key), it.status); });
+      const its = qCxlFilter(d.items || []);   // 취소분 제외 = 배지·기어 레몬·픽칩 전 축 일관(qCancelTap 기록 · 운영자 260728)
+      its.forEach(it => { if (it && it.key) m.set(_normU(it.key), it.status); });
       changed = m.size !== PEND.size || [...m].some(([k, v]) => PEND.get(k) !== v);   // 키 추가/삭제·상태 변화 모두 감지(전이 드묾 = 재렌더 비용 미미)
       PEND = m;
-      PEND_PROC = (d.items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
-      updateQBadge(); setQFail(d.items); }   // setQFail = 요약 막힘(실패) 기어 레몬 점등 축(대기열 안 열어도 전 탭서 알림 · 운영자 260727)
+      PEND_PROC = its.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
+      updateQBadge(); setQFail(its); }   // setQFail = 요약 막힘(실패) 기어 레몬 점등 축(대기열 안 열어도 전 탭서 알림 · 운영자 260727)
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
   finally { PEND_LOADING = false; }   // 리셋 필수 = 안 하면 플래그 영구 true로 이후 폴링 전면 차단
   if ((render || changed) && CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
@@ -13304,24 +13335,41 @@ async function loadTbsKw() {
 //   URL 필드는 소스마다 이름이 다르다(tbs/social/hn/bsky = url · bsky_trends = link · xtrends = 없음[검색 표면뿐]).
 function kwDocs() {
   const docs = [];
-  const put = (s, u) => { const v = kwNorm(s); if (v) docs.push({ t: v, u: u || '' }); };
-  try { (SOCIAL || []).forEach(r => put((r.title || '') + ' ' + (Array.isArray(r.sources) ? r.sources.join(' ') : ''), r.url)); } catch {}
+  // ⚠ 문자열 필드만 취한다 — 수집 산출물에 타입이 섞여 온다(260729 실측: tiktok.videos[].account 가 dict {'12': …}).
+  //    방어 없이 이으면 "[object object]"가 haystack에 박혀 조용한 오탐원이 된다(서버 kw_watch.txt() 미러).
+  const _s = v => (typeof v === 'string' ? v : '');
+  const put = (...a) => { const u = _s(a.pop()); const v = kwNorm(a.map(_s).join(' ')); if (v) docs.push({ t: v, u }); };
+  try { (SOCIAL || []).forEach(r => put(r.title, Array.isArray(r.sources) ? r.sources.join(' ') : '', r.url)); } catch {}
   try { KW_TBS.forEach(o => put(o && o.t, o && o.u)); } catch {}
   try {
     const T = TRENDS || {};
     (T.reddit || []).forEach(p => put(p.title, p.url));
-    (T.hackernews || []).forEach(p => put((p.title || '') + ' ' + (p.ko || ''), p.url));
+    (T.hackernews || []).forEach(p => put(p.title, p.ko, p.url));
     (T.bsky || []).forEach(p => put(p.text, p.url));
-    (T.bsky_trends || []).forEach(p => put((p.query || '') + ' ' + (p.ko || ''), p.link));
+    (T.bsky_trends || []).forEach(p => put(p.query, p.ko, p.link));
     (T.xtrends || []).forEach(p => put(p.query, ''));
-    // 국내 실검 축 추가(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") —
-    //   gtrends = 구글 급상승(검색어 + 딸린 뉴스 제목 = 한 글 취급 · 이동 URL = 첫 뉴스) · gtrends_pool = 24h 급상승 풀(검색어만·155건) · signal = 시그널 실검.
-    //   해외 풀(gtrends_gl·youtube_gl)은 '국내 실검' 지시 밖이라 미편입. youtube/shorts = 커뮤·실검 아님 = 제외.
-    (T.gtrends || []).forEach(p => put((p.query || '') + ' ' + (Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : ''), (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
+    // 실검 축(운영자 260729 "국내 커뮤니티랑 실검 잡으면 사실상 거의 다 커버됨") —
+    //   gtrends = 구글 급상승(검색어 + 딸린 뉴스 제목 = 한 글 취급 · 이동 URL = 첫 뉴스) · gtrends_pool = 24h 급상승 풀(검색어만) · signal = 시그널 실검.
+    (T.gtrends || []).forEach(p => put(p.query, Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : '', (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
     (T.gtrends_pool || []).forEach(p => put(p.q, ''));
     (T.signal || []).forEach(p => put(p.query, ''));
     // AI 영상 축(Q1051 갭② 이행) — '그록 영상'·'image to video'류 키워드가 실제로 뜨는 자리인데 감시 밖이었다.
-    (T.aivid || []).forEach(p => put((p.title || '') + ' ' + (p.ko || ''), p.url));
+    (T.aivid || []).forEach(p => put(p.title, p.ko, p.url));
+    // ── SNS 탭 잔여 축 전량 편입(운영자 260729 "sns채널에 있는 모든 소스를 대상으로 하면 더 좋은데") —
+    //   빠져 있던 큰 덩어리 = 틱톡 인기(제목이 뉴스 본문급) · 구독 계정 축(x·틱톡·유튜브·스레드·인스타 = 내가 고른 계정들의 실제 게시물).
+    //   해외 축(gtrends_gl·youtube_gl)도 함께 = '전부'가 지시 · 재난/고속도로는 지금 0건이나 배선은 미리(재난 문자 = 키워드 감시 가치 큼).
+    //   ⚠ 제외 2축 = `finance`(환율·지수·종목 = 고정 명칭 6건 → '삼성전자' 같은 등록어가 상시 hit = 알림 소음) · `health`(수집 상태 지표 = 글이 아님).
+    (T.youtube || []).forEach(p => put(p.title, p.ko, p.url));
+    (T.youtube_news || []).forEach(p => put(p.title, p.url));
+    (T.youtube_gl || []).forEach(p => put(p.title, p.ko, p.url));
+    (T.shorts || []).forEach(p => put(p.title, p.url));
+    ((T.tiktok && T.tiktok.videos) || []).forEach(p => put(p.title, p.account, p.url));
+    (T.gtrends_gl || []).forEach(p => put(p.query, p.ko, Array.isArray(p.news) ? p.news.map(n => (n && n.title) || '').join(' ') : '', (Array.isArray(p.news) && p.news[0] && p.news[0].url) || ''));
+    (T.kobis || []).forEach(p => put(p.title, p.url));
+    (T.disaster || []).forEach(p => put(p.title, p.text, p.msg, p.url));
+    (T.expressway || []).forEach(p => put(p.title, p.text, p.url));
+    const _sb = T.subs || {};   // 구독 축 = 계정별 실제 게시물(글 = text 또는 title · 계정명도 한 글에 포함 = "누가 올렸나"로도 잡힌다)
+    ['x', 'tiktok', 'insta', 'youtube', 'threads'].forEach(k => (_sb[k] || []).forEach(p => put(p.text, p.title, p.account, p.url)));
   } catch {}
   return docs;
 }
