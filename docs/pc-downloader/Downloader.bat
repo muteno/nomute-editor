@@ -38,13 +38,29 @@ REM         · 전부 30fps        -> 둘 다 format 313 (같음 = 1개만)
 REM     구현 = 선행조회를 2축으로(기본정렬 / -S "fps,res,br") 돌려 format_id 비교.
 REM       같으면 본편 1개만. 다르면 본편(해상도) + maxfps_ 표식 파일(프레임) 2개.
 REM     파일 표식 = 본편(표식 없음) · maxfps_(프레임 최고) · 1080p_(호환용, v6.1 유지)
+REM === v6.4: [화질 3축 + 다운로드 범위 고정] (운영자 260728) ===
+REM     지시 = "1) 최고해상도 1개  2) 최고프레임 1개  (1==2면 1만)
+REM             3) 세로 1080p 1개  (1==3이면 1만)
+REM             영상 링크(또는 재생목록)에 해당하는 영상만 다운로드"
+REM     축3 = 세로 1080p = 짧은 변이 1080인 호환본. v6.1은 가로영상에만 줬는데 세로영상
+REM       (쇼츠·릴스)도 받게 확장했다. 가로영상 = height^<=1080(1920x1080) · 세로영상 =
+REM       width^<=1080(1080x1920). 세로영상에 height 필터를 쓰면 1080x1920의 height가
+REM       1920이라 매치가 아예 없다(오프라인 실측) - v6.1이 세로를 제외했던 이유가 이것.
+REM     '같으면 1개' 판정 = 화면 크기 비교가 아니라 format_id 비교. 축마다 다운로드와
+REM       같은 순서의 셀렉터로 1회 선행조회(--print = 다운로드 안 함) -^> 앞 축과 format_id가
+REM       겹치면 그 축은 안 받는다. 4K30+1080p60 영상처럼 축2와 축3이 겹치는 경우도 걸러진다.
+REM     범위 고정 = watch?v=..^&list=.. 링크는 재생목록이 통째로 딸려오므로 --no-playlist,
+REM       /playlist 링크만 --yes-playlist(재생목록 전체). 채널 URL엔 영향 없다.
+REM       ※ 재생목록이면 선행조회는 첫 영상 기준(--playlist-items 1)이라 축 판정도 첫 영상 기준.
+REM     파일 표식 = 본편(표식 없음) · maxfps_(프레임 최고) · 1080p_(짧은변 1080 호환본)
 REM === 주의: 이 파일은 CP949/ANSI로만 저장할 것 - UTF-8 재저장 시 한글 고정경로가 깨져 유령 폴더 생성 ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v6.3
+echo   만능 다운로더 v6.4
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
-echo   해상도 최고 + 프레임 최고 각 1개(같으면 1개) + 1080p 호환본
+echo   해상도 최고 + 프레임 최고 + 짧은변 1080p 각 1개(겹치면 생략)
+echo   링크가 가리키는 영상(또는 재생목록)만 다운로드
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
 echo ===============================================
@@ -260,6 +276,15 @@ echo "!URL!" | find /i "threads.com" >nul && set "PLAT=TH"
 for /f %%i in ('powershell -noprofile -c "Get-Date -Format 'yyyyMMdd_HHmmss'"') do set "TS=%%i"
 echo [감지] 플랫폼: !PLAT! / 시각: !TS!
 
+REM === 다운로드 범위 고정 (v6.4) : 링크가 가리키는 것만 받는다 ===
+REM     watch?v=..^&list=.. = 영상 링크에 재생목록이 얹힌 것 -^> 그 영상 1개만(--no-playlist)
+REM     /playlist?list=..  = 재생목록 그 자체 -^> 재생목록 전체(--yes-playlist)
+REM     채널·계정 URL엔 --no-playlist가 영향을 주지 않는다(비디오+목록 겸용 URL에만 작용).
+set "PLOPT=--no-playlist"
+set "PLSCOPE=이 영상 1개"
+echo "!URL!" | find /i "/playlist" >nul && set "PLOPT=--yes-playlist" && set "PLSCOPE=이 재생목록 전체"
+echo [범위] !PLSCOPE! 만 다운로드
+
 REM === Threads 안내 (v4.8) ===
 if "!PLAT!"=="TH" (
     echo [안내] Threads는 yt-dlp/gallery-dl 공식 지원이 불안정합니다.
@@ -285,12 +310,10 @@ set "CKV=!CK!"
 if "!PLAT!"=="YT" set "CKV="
 if "!PLAT!"=="YT" if "!HAS_COOKIES!"=="1" echo [화질] YouTube = 쿠키 미사용으로 받는다 ^(쿠키를 붙이면 고화질 포맷이 조용히 누락됨^)
 
-REM --- 최고화질 해상도 1회 선행조회(다운로드 없이 메타데이터만 · --print = quiet + simulate) ---
-REM     bv*/b/best = 실제로 선택될 최고화질 영상의 픽셀·코덱·format_id를 미리 읽음.
-REM     [주의] 선행조회도 본편과 '같은 인자'(!CKV! !JSRT!)를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
-REM     세로 1080 초과 + 가로영상(가로^>=세로)일 때만 = 최고화질 + 1080p mp4 동반본.
-REM     세로형(릴스·틱톡·쇼츠) / 1080 이하 / 조회 실패 = 최고화질 1개만(안전 폴백).
-REM     v6.3 = 축을 2개로 나눠 각각 조회한다(해상도축 / 프레임축).
+REM --- 화질 3축 선행조회(다운로드 없이 메타데이터만 · --print = quiet + simulate) ---
+REM     [주의] 선행조회도 본편과 '같은 인자'(!CKV! !JSRT! !PLOPT!)를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
+REM     v6.4 = 축 3개. ① 해상도 = 기본정렬 · ② 프레임 = -S "fps,res,br" · ③ 짧은변 1080p.
+REM     조회 셀렉터는 다운로드 셀렉터에서 오디오 병합만 뺀 같은 순서 = 같은 비디오 스트림이 잡힌다.
 set "VW="
 set "VH="
 set "VFPS="
@@ -301,44 +324,82 @@ set "FH="
 set "FFPS="
 set "FFID="
 set "FCOD="
-for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! -f "bv*/b/best" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
+set "TW="
+set "TH="
+set "TFPS="
+set "TFID="
+set "TCOD="
+REM --- 축① 해상도 = 기본 정렬 ---
+for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! !PLOPT! -f "bv*/b/best" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
     set "VW=%%a"
     set "VH=%%b"
     set "VFPS=%%c"
     set "VFID=%%d"
     set "VCOD=%%e"
 )
-REM --- 화질 영수증(v6.2): 뭘 최고화질로 판단했는지 항상 화면에 남긴다 = "안 받아졌다"를 눈으로 검증 ---
-REM --- 프레임축 조회 = -S "fps,res,br"(fps 최우선 정렬) ---
-for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! -f "bv*/b/best" -S "fps,res,br" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
+REM --- 축② 프레임 = -S "fps,res,br"(fps 최우선 정렬) ---
+for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! !PLOPT! -f "bv*/b/best" -S "fps,res,br" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
     set "FW=%%a"
     set "FH=%%b"
     set "FFPS=%%c"
     set "FFID=%%d"
     set "FCOD=%%e"
 )
+REM --- 화질 영수증(v6.2): 뭘 최고화질로 판단했는지 항상 화면에 남긴다 = "안 받아졌다"를 눈으로 검증 ---
 if defined VH echo [화질] 최고해상도 = !VW!x!VH! @!VFPS!fps / !VCOD! / format !VFID!
 if defined FH echo [화질] 최고프레임 = !FW!x!FH! @!FFPS!fps / !FCOD! / format !FFID!
 if not defined VH echo [화질] 조회 실패 - 그래도 최고화질로 진행. 계속 이상하면 yt-dlp 업데이트부터.
-REM --- 두 축이 같은 포맷이면 1개만(중복 다운로드 0) · 다르면 2개 ---
+REM --- 축② 판정 : 해상도본과 format_id가 같으면 안 받는다(중복 0) ---
 set "GETFPS=0"
 if defined FFID if defined VFID if not "!FFID!"=="!VFID!" set "GETFPS=1"
-if "!GETFPS!"=="1" echo [화질] 두 축이 다름 - 해상도본 + 프레임본 2개 받는다
-if "!GETFPS!"=="0" if defined VH echo [화질] 두 축이 같음 - 1개만 받는다
+if "!GETFPS!"=="1" echo [화질] 해상도축과 프레임축이 다름 - 프레임본도 받는다
+if "!GETFPS!"=="0" if defined VH echo [화질] 해상도축 = 프레임축 - 프레임본 생략
+REM --- 축③ 짧은변 1080p(v6.4) : 가로영상 = height^<=1080 / 세로영상 = width^<=1080 ---
+REM     셀렉터를 변수에 담지 않고 가로/세로 리터럴로 나눠 쓴다 = for 백틱 재파싱 위험 제거.
+set "DIMK="
+echo !VH!| findstr /r "^[0-9][0-9]*$" >nul && echo !VW!| findstr /r "^[0-9][0-9]*$" >nul && set "DIMK=height"
+if defined DIMK if !VW! lss !VH! set "DIMK=width"
+REM     분기는 goto 라벨로 한다 = 이 파일이 이미 쓰는 방식(if + 여러 줄 for 블록보다 파싱이 단순).
+if "!DIMK!"=="height" goto ax3_land
+if "!DIMK!"=="width" goto ax3_port
+goto ax3_done
+
+:ax3_land
+for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! !PLOPT! -f "bv*[height<=1080][ext=mp4]/b[height<=1080][ext=mp4]/bv*[height<=1080]/b[height<=1080]" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
+    set "TW=%%a"
+    set "TH=%%b"
+    set "TFPS=%%c"
+    set "TFID=%%d"
+    set "TCOD=%%e"
+)
+goto ax3_done
+
+:ax3_port
+for /f "usebackq tokens=1,2,3,4,5 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! !PLOPT! -f "bv*[width<=1080][ext=mp4]/b[width<=1080][ext=mp4]/bv*[width<=1080]/b[width<=1080]" --print "%%(width)s %%(height)s %%(fps)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
+    set "TW=%%a"
+    set "TH=%%b"
+    set "TFPS=%%c"
+    set "TFID=%%d"
+    set "TCOD=%%e"
+)
+
+:ax3_done
+REM --- 축③ 판정 : 축①과 같으면 생략 · 축②를 실제로 받는 경우 그것과 같아도 생략 ---
 set "GET1080=0"
-echo !VH!| findstr /r "^[0-9][0-9]*$" >nul && echo !VW!| findstr /r "^[0-9][0-9]*$" >nul && if !VH! gtr 1080 if !VW! geq !VH! set "GET1080=1"
-if "!GET1080!"=="1" echo [화질] 1080p 초과 가로영상 - 최고화질 + 1080p mp4 동반 다운로드
-if "!GET1080!"=="0" echo [화질] 최고화질 1개만 다운로드 ^(1080p 이하 / 세로영상 / 조회불가^)
+if defined TFID if not "!TFID!"=="!VFID!" set "GET1080=1"
+if "!GET1080!"=="1" if "!GETFPS!"=="1" if "!TFID!"=="!FFID!" set "GET1080=0"
+if "!GET1080!"=="1" echo [화질] 1080p축 = !TW!x!TH! @!TFPS!fps / !TCOD! / format !TFID! - 호환본도 받는다
+if "!GET1080!"=="0" if defined VH echo [화질] 1080p축이 위 축과 겹침 또는 1080p 없음 - 호환본 생략
 
 REM --- 최고화질 본편 + 자막(항상 실행) ---
-"%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+"%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
 set "YT_RC=!errorlevel!"
 
 REM --- YT 쿠키 폴백(v6.2): 쿠키 없이 실패한 경우에만 쿠키를 붙여 1회 재시도(연령제한·멤버십·비공개) ---
 if !YT_RC! neq 0 if "!PLAT!"=="YT" if "!HAS_COOKIES!"=="1" (
     echo [재시도] 쿠키 없이 실패 - 연령제한/멤버십 가능성. 쿠키 붙여 1회 재시도...
     echo          ^(이 경로는 화질이 낮게 잡힐 수 있다. deno 설치 시 개선^)
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CK! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CK! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
     set "YT_RC=!errorlevel!"
 )
 if !YT_RC! neq 0 echo [yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성.
@@ -348,17 +409,18 @@ REM     표식 maxfps_ 는 앞쪽 = --trim-filenames 120이 뒤(제목)를 자르므로 안 잘�
 if "!GETFPS!"=="1" (
     echo.
     echo [프레임] 최고프레임본 !FW!x!FH! @!FFPS!fps 다운로드...
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_maxfps_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -S "fps,res,br" -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_maxfps_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -S "fps,res,br" -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
     if errorlevel 1 echo [프레임] 최고프레임본 다운로드 실패 ^(해상도본은 정상^)
 )
 
-REM --- 1080p mp4 동반본(최고화질이 1080p 초과 가로영상일 때만 · 자막 재다운로드 안 함) ---
+REM --- 짧은변 1080p 호환본(축③ · 위 축과 겹치지 않을 때만 · 자막 재다운로드 안 함) ---
 REM     파일명 표식 '1080p_'을 앞쪽에 둠 = --trim-filenames 120은 뒤(제목)를 자르므로 앞표식은 안 잘림 -^> 본편과 충돌 없음.
 REM     포맷 = 1080 이하 mp4 우선(h264 mp4 = 어디서나 재생) -^> 없으면 1080 이하 최선.
 if "!GET1080!"=="1" (
     echo.
-    echo [1080p] 호환용 1080p mp4 동반본 다운로드...
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format mp4 -N 4 "!URL!"
+    echo [1080p] 호환용 1080p mp4 동반본 다운로드... 기준=!DIMK!
+    if "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[width<=1080][ext=mp4]+ba[ext=m4a]/b[width<=1080][ext=mp4]/bv*[width<=1080]+ba/b[width<=1080]" --merge-output-format mp4 -N 4 "!URL!"
+    if not "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format mp4 -N 4 "!URL!"
     if errorlevel 1 echo [1080p] 동반본 다운로드 실패 ^(본편은 정상^)
 )
 
@@ -456,6 +518,7 @@ echo ===============================================
 echo   다운로드 완료
 if defined VH echo   해상도본: !VW!x!VH! @!VFPS!fps ^(!VCOD!^)
 if "!GETFPS!"=="1" echo   프레임본: !FW!x!FH! @!FFPS!fps ^(!FCOD!^) - maxfps_ 파일
+if "!GET1080!"=="1" echo   1080p본 : !TW!x!TH! @!TFPS!fps ^(!TCOD!^) - 1080p_ 파일
 echo   로컬:    %LOCAL%
 if "!DUAL!"=="1" if not defined GD_WHY echo   GDRIVE : 전송 완료 !GD_CNT!개 - %CLOUD%
 if "!DUAL!"=="1" if defined GD_WHY echo   GDRIVE : 전송 이상 - 도착 !GD_CNT!개 / !GD_WHY!

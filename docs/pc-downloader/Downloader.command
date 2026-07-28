@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-#  만능 다운로더 v6.3-mac  (Downloader.bat v6.3 맥 이식)
+#  만능 다운로더 v6.4-mac  (Downloader.bat v6.4 맥 이식)
 #  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 #
 #  동작 동일:
@@ -22,6 +22,23 @@
 #   - v5.9.2 낙오자 재송 스위프 이식: 지난 7일 미전송분 시작 시 재송(동명 존재 = 스킵)
 #   - v5.9.3(윈도 G: 문자 마운트 고정)은 윈도 전용 - 맥은 CloudStorage 경로 그대로(변경 무관)
 #   - v6.0(드라이브 문자 자동감지)도 윈도 전용 - 맥은 CloudStorage 고정이라 비대상
+#
+#  ▶ v6.4 [화질 3축 + 다운로드 범위 고정] (운영자 260728):
+#   지시 = "1) 최고해상도 1개  2) 최고프레임 1개  (1==2면 1만)
+#           3) 세로 1080p 1개  (1==3이면 1만)
+#           영상 링크(또는 재생목록)에 해당하는 영상만 다운로드"
+#   - 축3 = '세로 1080p' = 짧은 변이 1080인 호환본. v6.1은 가로영상에만 줬는데
+#     세로영상(쇼츠·릴스)도 받게 확장했다. 가로영상 = height<=1080(1920x1080),
+#     세로영상 = width<=1080(1080x1920) — 세로영상에 height 필터를 쓰면 1080x1920의
+#     height가 1920이라 걸러져 608p 같은 게 잡힌다(그래서 v6.1이 세로를 제외했던 것).
+#   - '같으면 1개' 판정 = 화면 크기 비교가 아니라 format_id 비교로 한다.
+#     축마다 다운로드와 '같은 순서의 셀렉터'로 1회 선행조회(--print = 다운로드 안 함) ->
+#     format_id가 앞 축과 겹치면 그 축은 안 받는다. 2축과 3축이 겹치는 경우
+#     (4K30 + 1080p60 영상 = 프레임본과 1080p본이 동일 포맷)도 이걸로 걸러진다.
+#   - 범위 고정 = watch?v=..&list=.. 링크는 재생목록이 통째로 딸려오므로 --no-playlist,
+#     /playlist 링크만 --yes-playlist(재생목록 전체). 채널 URL엔 영향 없다.
+#     ※ 재생목록이면 선행조회는 첫 영상 기준(--playlist-items 1)이라 축 판정도 첫 영상 기준.
+#   - 파일 표식 = 본편(표식 없음) · maxfps_(프레임 최고) · 1080p_(짧은변 1080 호환본)
 #
 #  ▶ v6.1/v6.2 화질 축 이식 (260728):
 #   - v6.1: 최고화질 1회 선행조회 + 1080p 초과 가로영상이면 1080p mp4 동반본
@@ -87,11 +104,12 @@ end_exit() {
 }
 
 ARGURL="$1"
-printf '\033]0;만능 다운로더 v6.3-mac\007'
+printf '\033]0;만능 다운로더 v6.4-mac\007'
 
 echo "==============================================="
-echo "  만능 다운로더 v6.3-mac"
-echo "  해상도 최고 + 프레임 최고 각 1개(같으면 1개) + 1080p 호환본"
+echo "  만능 다운로더 v6.4-mac"
+echo "  해상도 최고 + 프레임 최고 + 짧은변 1080p 각 1개(겹치면 생략)"
+echo "  링크가 가리키는 영상(또는 재생목록)만 다운로드"
 echo "  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막"
 echo "  인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)"
 echo "  ESC 2번 연속 = 창 닫기"
@@ -309,6 +327,17 @@ while true; do
     TS=$(date +%Y%m%d_%H%M%S)
     echo "[감지] 플랫폼: $PLAT / 시각: $TS"
 
+    # === 다운로드 범위 고정 (v6.4) : 링크가 가리키는 것만 받는다 ===
+    #     watch?v=..&list=.. = 영상 링크에 재생목록이 얹힌 것 -> 그 영상 1개만(--no-playlist)
+    #     /playlist?list=..  = 재생목록 그 자체 -> 재생목록 전체(--yes-playlist)
+    #     채널·계정 URL엔 --no-playlist가 영향을 주지 않는다(비디오+목록 겸용 URL에만 작용).
+    PLOPT=(--no-playlist)
+    PLSCOPE="이 영상 1개"
+    case "$URLLC" in
+        */playlist*) PLOPT=(--yes-playlist); PLSCOPE="이 재생목록 전체" ;;
+    esac
+    echo "[범위] $PLSCOPE 만 다운로드"
+
     # === Threads 안내 ===
     if [ "$PLAT" = "TH" ]; then
         echo "[안내] Threads는 yt-dlp/gallery-dl 공식 지원이 불안정합니다."
@@ -338,13 +367,15 @@ while true; do
 
     # --- 최고화질 1회 선행조회 (v6.1 이식 · --print = quiet + simulate라 다운로드 안 함) ---
     #     선행조회도 본편과 '같은 인자'를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
-    # v6.3 = 축 2개로 나눠 각각 조회 (① 해상도축 = 기본정렬 · ② 프레임축 = -S "fps,res,br")
+    # v6.4 = 축 3개로 나눠 각각 조회한다
+    #   ① 해상도축 = 기본정렬  ② 프레임축 = -S "fps,res,br"  ③ 짧은변 1080p축
+    #   조회 셀렉터는 다운로드 셀렉터에서 '오디오 병합만 뺀' 같은 순서 = 같은 비디오 스트림이 잡힌다.
     VW=""; VH=""; VFPS=""; VFID=""; VCOD=""
-    read -r VW VH VFPS VFID VCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
+    read -r VW VH VFPS VFID VCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" "${PLOPT[@]}" \
         -f "bv*/b/best" --print "%(width)s %(height)s %(fps)s %(format_id)s %(vcodec)s" \
         --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
     FW=""; FH=""; FFPS=""; FFID=""; FCOD=""
-    read -r FW FH FFPS FFID FCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
+    read -r FW FH FFPS FFID FCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" "${PLOPT[@]}" \
         -f "bv*/b/best" -S "fps,res,br" --print "%(width)s %(height)s %(fps)s %(format_id)s %(vcodec)s" \
         --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
 
@@ -356,23 +387,45 @@ while true; do
     fi
     [ -n "$FH" ] && [ "$FH" != "NA" ] && echo "[화질] 최고프레임 = ${FW}x${FH} @${FFPS}fps / ${FCOD} / format ${FFID}"
 
-    # --- 두 축이 같은 포맷이면 1개만(중복 다운로드 0) · 다르면 2개 ---
+    # --- 축② 판정 : 해상도본과 format_id가 같으면 안 받는다(중복 0) ---
     GETFPS=0
     if [ -n "$FFID" ] && [ -n "$VFID" ] && [ "$FFID" != "$VFID" ]; then GETFPS=1; fi
-    [ "$GETFPS" = "1" ] && echo "[화질] 두 축이 다름 - 해상도본 + 프레임본 2개 받는다"
-    [ "$GETFPS" = "0" ] && [ -n "$VH" ] && echo "[화질] 두 축이 같음 - 1개만 받는다"
+    [ "$GETFPS" = "1" ] && echo "[화질] 해상도축 ≠ 프레임축 - 프레임본도 받는다"
+    [ "$GETFPS" = "0" ] && [ -n "$VH" ] && echo "[화질] 해상도축 = 프레임축 - 프레임본 생략"
 
-    # --- 1080p 초과 가로영상이면 호환용 1080p mp4 동반본도 받는다 (v6.1 이식) ---
-    GET1080=0
+    # --- 축③ 짧은변 1080p (v6.4) : 가로영상 = height<=1080 / 세로영상 = width<=1080 ---
+    #     세로영상(1080x1920)에 height 필터를 쓰면 height가 1920이라 걸러져 저해상도가 잡힌다.
+    DIMK=""
     case "$VW$VH" in
         ''|*[!0-9]*) : ;;
-        *) [ "$VH" -gt 1080 ] && [ "$VW" -ge "$VH" ] && GET1080=1 ;;
+        *) DIMK="height"; [ "$VW" -lt "$VH" ] && DIMK="width" ;;
     esac
-    [ "$GET1080" = "1" ] && echo "[화질] 1080p 초과 가로영상 - 최고화질 + 1080p mp4 동반 다운로드"
-    [ "$GET1080" = "0" ] && echo "[화질] 최고화질 1개만 다운로드 (1080p 이하 / 세로영상 / 조회불가)"
+    SEL1080V=""   # 조회용(비디오 단일)
+    SEL1080D=""   # 다운로드용(오디오 병합)
+    if [ -n "$DIMK" ]; then
+        SEL1080V="bv*[$DIMK<=1080][ext=mp4]/b[$DIMK<=1080][ext=mp4]/bv*[$DIMK<=1080]/b[$DIMK<=1080]"
+        SEL1080D="bv*[$DIMK<=1080][ext=mp4]+ba[ext=m4a]/b[$DIMK<=1080][ext=mp4]/bv*[$DIMK<=1080]+ba/b[$DIMK<=1080]"
+    fi
+    TW=""; TH=""; TFPS=""; TFID=""; TCOD=""
+    if [ -n "$SEL1080V" ]; then
+        read -r TW TH TFPS TFID TCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" "${PLOPT[@]}" \
+            -f "$SEL1080V" --print "%(width)s %(height)s %(fps)s %(format_id)s %(vcodec)s" \
+            --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
+    fi
+    GET1080=0
+    if [ -n "$TFID" ] && [ "$TFID" != "NA" ] && [ "$TFID" != "$VFID" ]; then
+        GET1080=1
+        # 축②를 실제로 받는 경우, 그것과도 같으면 또 받지 않는다(4K30+1080p60 영상 = ②③ 동일)
+        [ "$GETFPS" = "1" ] && [ "$TFID" = "$FFID" ] && GET1080=0
+    fi
+    if [ "$GET1080" = "1" ]; then
+        echo "[화질] 1080p축 = ${TW}x${TH} @${TFPS}fps / ${TCOD} / format ${TFID} - 호환본도 받는다"
+    elif [ -n "$VH" ]; then
+        echo "[화질] 1080p축이 위 축과 겹침(또는 1080p 없음) - 호환본 생략"
+    fi
 
     # --- 최고화질 본편 + 자막 ---
-    yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+    yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" "${PLOPT[@]}" \
         --trim-filenames 120 --windows-filenames \
         -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
         -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
@@ -385,7 +438,7 @@ while true; do
     if [ "$YT_RC" -ne 0 ] && [ "$PLAT" = "YT" ] && [ "$HAS_COOKIES" = "1" ]; then
         echo "[재시도] 쿠키 없이 실패 - 연령제한/멤버십 가능성. 쿠키 붙여 1회 재시도..."
         echo "         (이 경로는 화질이 낮게 잡힐 수 있다. deno/node 있으면 개선)"
-        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CK[@]}" \
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CK[@]}" "${PLOPT[@]}" \
             --trim-filenames 120 --windows-filenames \
             -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
             -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
@@ -400,7 +453,7 @@ while true; do
     if [ "$GETFPS" = "1" ]; then
         echo
         echo "[프레임] 최고프레임본 ${FW}x${FH} @${FFPS}fps 다운로드..."
-        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" "${PLOPT[@]}" \
             --trim-filenames 120 --windows-filenames \
             -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
             -o "${TS}_${PLAT}_maxfps_%(uploader_id)s_%(title)s.%(ext)s" \
@@ -409,16 +462,16 @@ while true; do
             || echo "[프레임] 최고프레임본 다운로드 실패 (해상도본은 정상)"
     fi
 
-    # --- 1080p mp4 동반본 (자막 재다운로드 안 함 · 파일명 표식 '1080p_'는 앞쪽 = trim에 안 잘림) ---
+    # --- 짧은변 1080p 호환본 (자막 재다운로드 안 함 · 파일명 표식 '1080p_'는 앞쪽 = trim에 안 잘림) ---
     if [ "$GET1080" = "1" ]; then
         echo
-        echo "[1080p] 호환용 1080p mp4 동반본 다운로드..."
-        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+        echo "[1080p] 호환용 1080p mp4 동반본 다운로드... (${DIMK}<=1080)"
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" "${PLOPT[@]}" \
             --trim-filenames 120 --windows-filenames \
             -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
             -o "${TS}_${PLAT}_1080p_%(uploader_id)s_%(title)s.%(ext)s" \
             --no-write-subs --no-write-auto-subs \
-            -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" \
+            -f "$SEL1080D" \
             --merge-output-format mp4 -N 4 "$URL" \
             || echo "[1080p] 동반본 다운로드 실패 (본편은 정상)"
     fi
@@ -530,6 +583,7 @@ while true; do
     echo "  다운로드 완료"
     [ -n "$VH" ] && [ "$VH" != "NA" ] && echo "  해상도본: ${VW}x${VH} @${VFPS}fps (${VCOD})"
     [ "$GETFPS" = "1" ] && echo "  프레임본: ${FW}x${FH} @${FFPS}fps (${FCOD}) - maxfps_ 파일"
+    [ "$GET1080" = "1" ] && echo "  1080p본 : ${TW}x${TH} @${TFPS}fps (${TCOD}) - 1080p_ 파일"
     echo "  로컬:    $LOCAL"
     if [ "$DUAL" = "1" ] && [ -z "$GD_WHY" ]; then
         echo "  GDRIVE : 전송 완료 ${GD_CNT}개 - $CLOUD"
