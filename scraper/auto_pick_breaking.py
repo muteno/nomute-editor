@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# 긴급 grade≥3 자동 픽 — candidates.json 의 새 isBreaking(breaking·grade≥3·cross≥2·<4h) 사건을
+# 긴급 grade≥2 자동 픽 — candidates.json 의 새 isBreaking(breaking·grade≥2·cross≥2·<4h) 사건을
 # 자동으로 pending/ 적재(분석 입구) → news-analyze 발동(요약·카드 자동 생성). breaking-judge.yml 이 판정 직후 호출.
 # ⚠️⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + Gemini 썸네일 2장($). 보수적 다중 가드:
-#   ① grade≥3 (대형·다수피해만 · 운영자 260622 — push 의 grade≥2 보다 엄격 = 자동픽 ⊆ push 의도)
+#   ① grade≥2 = **뷰어 🚨긴급 배지(isBreaking = breaking ∧ grade≥2)와 동일 문턱**(운영자 260728 승인:
+#      "배지와 일치하고, 나중에 이 긴급을 손보던지 하는게 안 헷갈릴 듯"). 화면에 빨간 '긴급'이 떴는데 자동요약엔
+#      안 들어가는 갭(breaking 17건 중 grade2 6건 = 35%가 침몰 · 260728 실측)을 없애는 것이 목적 — 이제
+#      배지 기준을 손보면 자동픽 기준도 같이 움직인다(단일 문턱). ⚠️ 구 grade≥3(운영자 260622)에서 완화 ·
+#      grade 미채점(None)은 여전히 보류(아래 eligible) · 260704 '대규모 군중 급박위험' grade2 티어도 이제
+#      자동과금 대상(당시 평의회는 배지까지만으로 제한했으나 260728 배지 정합 승인이 그 상한을 대체) ·
+#      롤백 = 이 줄 아래 MIN_GRADE 디폴트를 "3"으로(또는 env AUTOPICK_MIN_GRADE=3) = 1줄.
 #   ② cross≥2(다매체 검증) ③ first_seen·published *둘 다* <4h (운영자 260623 — first_seen=갓 감지 + 발행도 신선해야:
 #      발행 16h stale 건이 방금 수집됐다고 자동분석 들어가던 것 차단 · published 없는 매체는 first_seen 만으로 폴백)
 #   ④ 사건당 1회 영구 dedup(push/autopick.json — event_key/url **+ 제목해시** 다중키 = url 점프에도 안정 ·
@@ -31,7 +37,7 @@ PICK = ROOT / "scraper" / "pick_pending.py"
 KST = dt.timezone(dt.timedelta(hours=9))
 
 FAST_MAX_H = 4                                                        # 최신만(푸시·토스트와 동일 단일상수 정신)
-MIN_GRADE = int(os.environ.get("AUTOPICK_MIN_GRADE", "3"))           # grade≥3 (운영자 260622 — 대형 긴급만)
+MIN_GRADE = int(os.environ.get("AUTOPICK_MIN_GRADE", "2"))           # grade≥2 = 뷰어 🚨긴급 배지(isBreaking)와 단일 문턱(운영자 260728 · 구 3 = 260622). 롤백 = 이 값 "3"
 MIN_CROSS = int(os.environ.get("AUTOPICK_MIN_CROSS", "2"))           # 다매체 검증(오발 가드 · push 정신)
 MAX_PER_RUN = int(os.environ.get("AUTOPICK_MAX_PER_RUN", "2"))       # 런당 상한(버스트 캡)
 MAX_PER_DAY = int(os.environ.get("AUTOPICK_MAX_PER_DAY", "8"))       # 일 상한(안전밸브 · KST 기준)
