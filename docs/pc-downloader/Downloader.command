@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-#  만능 다운로더 v5.9.3-mac  (Downloader.bat v5.9.3 맥 이식)
+#  만능 다운로더 v6.2-mac  (Downloader.bat v6.2 맥 이식)
 #  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 #
 #  동작 동일:
@@ -21,6 +21,22 @@
 #   - 이 파일은 UTF-8 저장 (맥 표준. CP949 금지)
 #   - v5.9.2 낙오자 재송 스위프 이식: 지난 7일 미전송분 시작 시 재송(동명 존재 = 스킵)
 #   - v5.9.3(윈도 G: 문자 마운트 고정)은 윈도 전용 - 맥은 CloudStorage 경로 그대로(변경 무관)
+#   - v6.0(드라이브 문자 자동감지)도 윈도 전용 - 맥은 CloudStorage 고정이라 비대상
+#
+#  ▶ v6.1/v6.2 화질 축 이식 (260728):
+#   - v6.1: 최고화질 1회 선행조회 + 1080p 초과 가로영상이면 1080p mp4 동반본
+#   - v6.2: [최고화질 실패 봉합] YouTube에 쿠키를 넘기지 않는다
+#     yt-dlp는 --cookies가 붙으면 '인증 세션'으로 판단해 유튜브 플레이어
+#     클라이언트를 android_vr 에서 tv_downgraded + web_safari 로 갈아끼운다.
+#       · android_vr    = JS런타임 불필요 · PO토큰 불필요  -> 고화질 포맷 전부 나옴
+#       · tv_downgraded = JS런타임(deno/node) 필요
+#       · web_safari    = JS런타임 + PO토큰 필요 -> 없으면 URL 누락(SABR)으로 통째 스킵
+#     게다가 인증 상태에선 android_vr가 "쿠키 미지원"이라 강제 제거되고,
+#     "JS런타임 없음" 경고조차 인증 경로에선 안 떠서 조용히 저화질로 떨어진다.
+#     (아래 JS 런타임 블록의 "없으면 240p로 떨어짐" 메모가 이 증상의 절반이었다 —
+#      JS런타임만 덧대선 web_safari의 PO토큰 요구가 남아 완치가 안 된다.)
+#     -> YT는 쿠키를 빼고 받는다. 공개영상은 쿠키가 필요 없다.
+#        연령제한·멤버십 등으로 실패하면 그때만 쿠키를 붙여 1회 재시도한다.
 # =====================================================================
 
 VENV_BIN="$HOME/.claude/skills/whisper/.venv/bin"
@@ -112,6 +128,11 @@ if [ -z "$YTDLP_BIN" ]; then
     close_terminal_window
 fi
 
+# === yt-dlp 버전 표시 (v6.2) - 화질 문제의 흔한 원인이 '구버전'이라 항상 보이게 ===
+YTV=$(yt-dlp --version 2>/dev/null)
+[ -n "$YTV" ] && echo "[확인] yt-dlp 버전: $YTV"
+[ -z "$YTV" ] && echo "[경고] yt-dlp 버전 확인 실패."
+
 # === ffmpeg 체크 ===
 FFMPEG_BIN=$(command -v ffmpeg)
 if [ -n "$FFMPEG_BIN" ]; then
@@ -122,11 +143,15 @@ else
 fi
 
 # === JS 런타임 (유튜브 고화질 포맷용) ===
-#     yt-dlp가 기본으론 deno만 찾음. deno 없고 node 있으면 node 사용 (없으면 240p로 떨어짐)
+#     yt-dlp가 기본으론 deno만 찾음. deno 없고 node 있으면 node 사용.
+#     v6.2 주석: 이게 없어서 화질이 떨어지는 건 '쿠키를 쓰는 경로'에 한한다.
+#     YT 기본 경로는 v6.2부터 쿠키를 안 써서 android_vr(JS런타임 불필요)로 붙으므로
+#     JS 런타임이 없어도 최고화질에 지장 없다. 아래는 연령제한 재시도용 보험.
 JSRT=()
 if ! command -v deno >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
     JSRT=(--js-runtimes node)
 fi
+[ ${#JSRT[@]} -gt 0 ] && echo "[확인] JS 런타임: node 사용(deno 없음)"
 
 # === gallery-dl 체크 ===
 HAS_GDL=0
@@ -137,7 +162,7 @@ command -v gallery-dl >/dev/null 2>&1 && HAS_GDL=1
 # === 쿠키 파일 체크 ===
 HAS_COOKIES=0
 [ -f "$COOKIES" ] && HAS_COOKIES=1
-[ "$HAS_COOKIES" = "1" ] && echo "[확인] 쿠키 파일 있음 (IG/X 이미지 가능)"
+[ "$HAS_COOKIES" = "1" ] && echo "[확인] 쿠키 파일 있음 (IG/X 이미지 가능 · YT는 v6.2부터 미사용)"
 [ "$HAS_COOKIES" = "0" ] && echo "[알림] 쿠키 파일 없음. IG/X 이미지는 쿠키 필요."
 
 # === 자막 설정 표시 ===
@@ -288,28 +313,82 @@ while true; do
         echo "       IG/X/TT/FB/Threads는 자막 트랙이 드물어 .srt/.txt가 안 생길 수 있습니다."
     fi
 
-    # === [1/2] yt-dlp 비디오 + 자막 시도 ===
+    # === [1/2] yt-dlp 비디오 + 자막 시도 (v6.2: 최고화질 봉합) ===
     echo
     echo "[1/2] yt-dlp 비디오 + 자막 시도..."
-    if [ "$HAS_COOKIES" = "1" ]; then
-        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" --cookies "$COOKIES" \
-            --trim-filenames 120 --windows-filenames \
-            -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
-            -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
-            -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
-            --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
-            -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
-    else
-        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" \
-            --trim-filenames 120 --windows-filenames \
-            -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
-            -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
-            -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
-            --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
-            -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
+
+    # --- 쿠키 인자 (v6.2: YT 분리) ---
+    #     CK  = 원래 쿠키 인자(IG/X/TT/FB/TH용 · 거기선 쿠키가 있어야 받아진다)
+    #     CKV = yt-dlp 비디오 경로에 실제로 넘길 인자. YT면 빈 배열(파일 머리말 v6.2 설명 참조).
+    CK=()
+    [ "$HAS_COOKIES" = "1" ] && CK=(--cookies "$COOKIES")
+    CKV=("${CK[@]}")
+    if [ "$PLAT" = "YT" ]; then
+        CKV=()
+        [ "$HAS_COOKIES" = "1" ] && echo "[화질] YouTube = 쿠키 미사용으로 받는다 (쿠키를 붙이면 고화질 포맷이 조용히 누락됨)"
     fi
+
+    # --- 최고화질 1회 선행조회 (v6.1 이식 · --print = quiet + simulate라 다운로드 안 함) ---
+    #     선행조회도 본편과 '같은 인자'를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
+    VW=""; VH=""; VFID=""; VCOD=""
+    read -r VW VH VFID VCOD <<<"$(yt-dlp --no-warnings --no-cache-dir "${CKV[@]}" "${JSRT[@]}" \
+        -f "bv*/b/best" --print "%(width)s %(height)s %(format_id)s %(vcodec)s" \
+        --playlist-items 1 "$URL" 2>/dev/null | tail -1)"
+
+    # --- 화질 영수증(v6.2): 뭘 최고화질로 판단했는지 항상 화면에 남긴다 ---
+    if [ -n "$VH" ] && [ "$VH" != "NA" ]; then
+        echo "[화질] 최고화질 조회 = ${VW}x${VH} / 코덱 ${VCOD} / format ${VFID}"
+    else
+        echo "[화질] 최고화질 조회 실패 - 그래도 최고화질로 진행. 계속 저화질이면 yt-dlp 업데이트부터."
+    fi
+
+    # --- 1080p 초과 가로영상이면 호환용 1080p mp4 동반본도 받는다 (v6.1 이식) ---
+    GET1080=0
+    case "$VW$VH" in
+        ''|*[!0-9]*) : ;;
+        *) [ "$VH" -gt 1080 ] && [ "$VW" -ge "$VH" ] && GET1080=1 ;;
+    esac
+    [ "$GET1080" = "1" ] && echo "[화질] 1080p 초과 가로영상 - 최고화질 + 1080p mp4 동반 다운로드"
+    [ "$GET1080" = "0" ] && echo "[화질] 최고화질 1개만 다운로드 (1080p 이하 / 세로영상 / 조회불가)"
+
+    # --- 최고화질 본편 + 자막 ---
+    yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+        --trim-filenames 120 --windows-filenames \
+        -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
+        -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
+        -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
+        --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
+        -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
     YT_RC=$?
+
+    # --- YT 쿠키 폴백(v6.2): 쿠키 없이 실패한 경우에만 쿠키 붙여 1회 재시도 ---
+    if [ "$YT_RC" -ne 0 ] && [ "$PLAT" = "YT" ] && [ "$HAS_COOKIES" = "1" ]; then
+        echo "[재시도] 쿠키 없이 실패 - 연령제한/멤버십 가능성. 쿠키 붙여 1회 재시도..."
+        echo "         (이 경로는 화질이 낮게 잡힐 수 있다. deno/node 있으면 개선)"
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CK[@]}" \
+            --trim-filenames 120 --windows-filenames \
+            -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
+            -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
+            -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
+            --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
+            -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
+        YT_RC=$?
+    fi
     [ "$YT_RC" -ne 0 ] && echo "[yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성."
+
+    # --- 1080p mp4 동반본 (자막 재다운로드 안 함 · 파일명 표식 '1080p_'는 앞쪽 = trim에 안 잘림) ---
+    if [ "$GET1080" = "1" ]; then
+        echo
+        echo "[1080p] 호환용 1080p mp4 동반본 다운로드..."
+        yt-dlp --no-cache-dir "${FFLOC[@]}" "${JSRT[@]}" "${CKV[@]}" \
+            --trim-filenames 120 --windows-filenames \
+            -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
+            -o "${TS}_${PLAT}_1080p_%(uploader_id)s_%(title)s.%(ext)s" \
+            --no-write-subs --no-write-auto-subs \
+            -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" \
+            --merge-output-format mp4 -N 4 "$URL" \
+            || echo "[1080p] 동반본 다운로드 실패 (본편은 정상)"
+    fi
 
     # === 자막 후처리 (txt 변환 + Shared 바닥 평평 복사) ===
     #     폰 파이프라인은 Shared 바닥만 훑으므로 자막을 '시각_플랫폼_업로더_제목.언어.확장자'로 바닥에 복사(로컬은 제목 폴더 유지)
@@ -416,6 +495,7 @@ while true; do
     echo
     echo "==============================================="
     echo "  다운로드 완료"
+    [ -n "$VH" ] && [ "$VH" != "NA" ] && echo "  화질:    ${VW}x${VH} (${VCOD})"
     echo "  로컬:    $LOCAL"
     if [ "$DUAL" = "1" ] && [ -z "$GD_WHY" ]; then
         echo "  GDRIVE : 전송 완료 ${GD_CNT}개 - $CLOUD"
