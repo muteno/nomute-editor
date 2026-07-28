@@ -101,8 +101,7 @@ jobs:
           JPGQ = 95                                   # 합성본·헤더 JPG 품질(운영자 260621)
           def save_jpg(img, dst):                     # 합성본·헤더 = JPG q95 (해상도 유지=2K) · 4:4:4=형광그린 텍스트 크로마 번짐 방지
               img.convert('RGB').save(dst, 'JPEG', quality=JPGQ, subsampling=0, optimize=True)
-          def save_fhd_png(img, dst, scale=2):        # 면책 오버레이(/3·/4) = 2K→FHD PNG (투명 보존·화질 비중요)
-              img.resize((img.width // scale, img.height // scale), _PIM.LANCZOS).save(dst, optimize=True)
+          # (구 save_fhd_png = 면책 오버레이(/3·/4) 2K→FHD 선다운 · 260728 폐지 — 전 산출물이 아래 RES-SNAP 한 곳에서 짧은변 1440으로 통일되므로 중간 다운은 이중 리샘플일 뿐)
           def fit_tracking(lines, fmt, lm_offsets=None):   # §오버플로우(F06): measure(알파 실측)→자간 sweep → generate에 넘길 tr(없으면 None=기본)
               from nomute_overlay import draw_t, SPECS, FONT_PATH
               from PIL import Image as _I, ImageDraw as _D, ImageFont as _F
@@ -147,7 +146,7 @@ jobs:
                   subprocess.run(['python3', 'apps/thumbnail/nomute_copyright.py', tmp, fmt4, '--raw', ln], check=True)
                   part = _I.open(tmp).convert('RGBA')
                   canvas.paste(part, (0, i * 46 * _CS), part)   # copyright Y=100 기준 줄간 46px × SCALE
-              save_fhd_png(canvas, out, _CS)   # 2K→FHD(post 1080×1350/reels 1080×1920) PNG·투명 보존
+              canvas.save(out, optimize=True)   # 2K 원본 저장(post 2160×2700/reels 2160×3840) PNG·투명 보존 — 아래 RES-SNAP이 짧은변 1440으로 다운(운영자 260728). ⚠ 구 save_fhd_png(1080 선다운)를 두면 스냅이 1080→1440 **업**샘플이 돼 가짜 화질이 된다 = 다운 한 번만 타게 순서 정리
               produced.append(out)
           elif app == '2':          # 릴스 — 헤더(흰칸+nobg 2장) | 오버레이(opa별 2~3장)
               mode = params.get('mode', 'header')
@@ -200,8 +199,7 @@ jobs:
               else:
                   argv += [str(params['year']), params['name'], params['platform']]
               subprocess.run(argv, check=True)
-              from nomute_copyright import SCALE as _CS3
-              save_fhd_png(_PIM.open(out), out, _CS3)   # 2K→FHD PNG·투명 보존
+              # 스크립트 출력(2K) 그대로 둔다 — 아래 RES-SNAP이 짧은변 1440으로 다운(운영자 260728 · app4와 동일 축 · 구 save_fhd_png 선다운 제거 = 업샘플 회피)
               produced.append(out)
           elif app == '1':          # 포스트 — opas별 1장. 배경 있으면 JPG합성(2K)·없으면 FHD PNG (릴스와 통일).
               from nomute_overlay import generate
@@ -253,24 +251,25 @@ jobs:
               except Exception as _e:
                   print(f'::warning::저작권 합성 실패({_e}) — 원본 산출 유지')
           from PIL import Image
-          # ── 해상도 스냅(운영자 260718 "카드 생성 해상도 = AI 생성부 따라가") — 산출물 짧은변 = 목표(720p·FHD·2K·4K) · 등비 리사이즈라 1080 기준 좌표 비율 보존(레이아웃 무손상) · FHD(1080)=현행 무변화 = 스킵 · 값 = img_sizes SSOT(운영자 260718 "한 상수파일"). ──
+          # ── 해상도 스냅(운영자 260728 "각각 2K로 나오게 · 해상도 선택자 그냥 없애줘") — 산출물 짧은변 = **2K(1440) 고정** · 등비 리사이즈라 1080 기준 좌표 비율 보존(레이아웃 무손상) · 값 = img_sizes SSOT.
+          #   구조: params.size 선택(720p·FHD·2K·4K)이었고 **FHD면 스킵**이라, 렌더 원본(SCALE=2 = 포스트 2160×2700·릴스 2160×3840)이 그대로 나갔다 = "FHD를 골랐는데 2K 이상·릴스는 4K"의 진범(운영자 260728 실측 보고).
+          #   지금: 클라가 size를 보내도 무시하고 전 산출물(헤더·자막·저작권·안내문)을 1440 짧은변으로 통일 → 포스트 1440×1800 · 릴스 1440×2560.
           import sys as _sys; _sys.path.insert(0, '.github/scripts')
           from img_sizes import SIZE_SHORT as _SIZE_SHORT
-          _tgt = _SIZE_SHORT.get(params.get('size', 'FHD'), 1080)
-          if _tgt != 1080:   # FHD 아닌 목표만 재저장(현행 1080 산출을 등비 스냅)
-              for f in list(produced):
-                  try:
-                      im = Image.open(f); cur = min(im.size)
-                      if cur != _tgt:
-                          r = _tgt / float(cur)
-                          im2 = im.resize((max(1, round(im.width * r)), max(1, round(im.height * r))), Image.LANCZOS)
-                          if f.endswith('.jpg'):
-                              im2.convert('RGB').save(f, 'JPEG', quality=95, subsampling=0, optimize=True)
-                          else:
-                              im2.save(f, optimize=True)   # PNG 투명 보존
-                          print(f'RES-SNAP {os.path.basename(f)} {cur} -> {_tgt}')
-                  except Exception as _se:
-                      print(f'::warning::해상도 스냅 실패({_se}) — 원본 유지: {f}')
+          _tgt = _SIZE_SHORT['2K']   # 2K 고정(선택자 폐지 = 사용자 선택 축 없음)
+          for f in list(produced):
+              try:
+                  im = Image.open(f); cur = min(im.size)
+                  if cur != _tgt:
+                      r = _tgt / float(cur)
+                      im2 = im.resize((max(1, round(im.width * r)), max(1, round(im.height * r))), Image.LANCZOS)
+                      if f.endswith('.jpg'):
+                          im2.convert('RGB').save(f, 'JPEG', quality=95, subsampling=0, optimize=True)
+                      else:
+                          im2.save(f, optimize=True)   # PNG 투명 보존
+                      print(f'RES-SNAP {os.path.basename(f)} {cur} -> {_tgt}')
+              except Exception as _se:
+                  print(f'::warning::해상도 스냅 실패({_se}) — 원본 유지: {f}')
           for f in produced:
               im = Image.open(f)
               print(f'RENDERED app={app} {im.size} {im.mode} -> {f}')
