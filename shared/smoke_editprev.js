@@ -135,11 +135,11 @@ function chk(name, pass, detail) { R.push({ name, pass, detail }); console.log((
       att.pv && att.pe && att.sw && att.dl && att.badge && Math.abs(att.ar - 320 / 568) <= 0.03,
       'pv ' + att.pv + ' · 배지 ' + att.badge + ' · AR ' + att.ar + ' (기대 ' + (320 / 568).toFixed(3) + ')');
 
-    // C6 비율 칩 → 미리보기 리사이즈(9:16 → 1:1)
-    await pg.click('[data-cyc="ar"]'); await pg.waitForTimeout(350);
-    const a1 = await pg.evaluate(() => { const b = document.querySelector('.pvbox').getBoundingClientRect(); return { l: document.querySelector('[data-cyc="ar"]').textContent.trim(), ar: +(b.width / b.height).toFixed(3) }; });
-    await pg.click('[data-cyc="ar"]'); await pg.waitForTimeout(350);
-    const a2 = await pg.evaluate(() => { const b = document.querySelector('.pvbox').getBoundingClientRect(); return { l: document.querySelector('[data-cyc="ar"]').textContent.trim(), ar: +(b.width / b.height).toFixed(3) }; });
+    // C6 비율 칩 → 미리보기 리사이즈(9:16 → 1:1) — 260728 재편: 순환값(data-cyc) → 칩 상시 나열(data-p="ar:…" · 이미지 스튜디오 형식) = 조작만 칩 클릭으로
+    const arPick = async v => { await pg.click('[data-p="ar:' + v + '"]'); await pg.waitForTimeout(350);
+      return pg.evaluate(() => { const b = document.querySelector('.pvbox').getBoundingClientRect(); const on = document.querySelector('[data-p^="ar:"].on'); return { l: on ? on.textContent.trim() : '', ar: +(b.width / b.height).toFixed(3) }; }); };
+    const a1 = await arPick('9:16');
+    const a2 = await arPick('1:1');
     chk('C6 비율 조정 = 미리보기 실시간 반영(9:16→1:1)',
       a1.l === '9:16' && Math.abs(a1.ar - 0.5625) <= 0.02 && a2.l === '1:1' && Math.abs(a2.ar - 1) <= 0.02,
       a1.l + ' AR ' + a1.ar + ' → ' + a2.l + ' AR ' + a2.ar);
