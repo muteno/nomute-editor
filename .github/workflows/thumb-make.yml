@@ -363,9 +363,18 @@ jobs:
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+          NM_APP: ${{ inputs.app }}
+          NM_PARAMS: ${{ inputs.params }}
         run: |
           python3 -m pip install --quiet --break-system-packages pywebpush || { echo "::warning::pywebpush 미설치 — 푸시 생략"; exit 0; }
-          case "${{ inputs.app }}" in 1) T=포스트;; 2) T=릴스;; 3) T=저작권;; 4) T=경고문;; *) T=썸네일;; esac
+          # 알림 문구 = 앱번호 + **모드**(운영자 260728 "릴스 제작 ✗ → 릴스 오버레이 제작 · 포스트는 포스트 오버레이 제작").
+          # 구: app만 봐서 app2의 헤더형(흰칸)·오버레이형(자막)이 똑같이 '릴스 제작 완료'로 뭉쳤다 = 알림만 보고 뭘 만든 건지 모름.
+          # 분기 = 위 렌더 블록(app=='2')과 1:1 — ⚠ 노뮤트 오버레이는 params.fmt와 무관하게 generate('reels') 고정이라
+          #   fmt로 판정하면 오표기('포스트 오버레이')된다. fmt 분기는 진짜예요(tpl=jinjja · render_overlay(jfmt))에만 유효.
+          # params = env 경유(셸 보간 금지 = 문구 안 따옴표·백틱 주입 차단) · 파싱 실패 = 종전 폴백 라벨.
+          # ⚠ 한 줄 유지 = run 블록 스칼라 규칙(여러 줄 파이썬을 컬럼1로 붙이면 YAML 파싱이 깨져 워크플로 전체 무효 · 260728 실측)
+          T=$(python3 -c 'import json,os;a=os.environ.get("NM_APP","");r=os.environ.get("NM_PARAMS") or "";p=json.loads(r) if r.lstrip().startswith("{") else {};m=p.get("mode") or "header";t=p.get("tpl") or "nomute";print("포스트 오버레이" if a=="1" else (((("포스트" if (t=="jinjja" and p.get("fmt")=="post") else "릴스")+" 오버레이") if m=="overlay" else (("진짜예요" if t=="jinjja" else "릴스")+" 헤더")) if a=="2" else {"3":"저작권","4":"경고문"}.get(a,"썸네일")))' || true)
+          [ -n "$T" ] || case "${{ inputs.app }}" in 1) T=포스트;; 2) T=릴스;; 3) T=저작권;; 4) T=경고문;; *) T=썸네일;; esac   # 폴백 = 파싱 실패·파이썬 사망 시 종전 라벨(알림 자체는 반드시 나간다 · -e 셸에서 죽지 않게 || true와 짝)
           # 탭하면 제작 화면으로 이동 → ?done=<id> 로 *그 작업* 결과를 맨 위 캐러셀로 복원·중상단 랜딩(운영자 260622).
           # 딥링크 = 해시(#) 아닌 쿼리(?) — Access 재로그인 리다이렉트에 해시는 유실·쿼리는 생존(운영자 260710 · 뷰어는 구 #done도 호환).
           # 잡별 고유 tag = 알림 안 덮어씀(여러 건 동시 제작 시 각자 탭 → 각자 그 작업으로).
