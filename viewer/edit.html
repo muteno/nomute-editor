@@ -1316,11 +1316,21 @@ function pollEdit(id, t0, minTs, wlbl, kind){
       }
     }catch(e){ /* 재시도 */ }
     try{
-      const r=await fetch(outPath+'?t='+Date.now());
+      // R2 우선 조회(260728) — 결과 쪽지(video.json)는 러너가 R2에도 즉시 올린다. Pages 배포를 안 기다리니 합성 끝나는 즉시 착지.
+      //   실측 근거: 674초 잡 중 배포 대기가 491초(73%) — 영상은 이미 R2에 있는데 주소 쪽지만 배포를 타고 있었다.
+      //   미러 대상 = video.json만이라 클리퍼·컷스캔(clips/cuts.json)은 종전 경로 · 404·미바인딩·장애 전부 아래 Pages 폴백으로 흘러 회귀 0.
+      let ct='', tx='', got=false;
+      if(kind!=='clip'&&kind!=='cutscan'){
+        try{
+          const rr=await fetch('/api/edit?stat='+encodeURIComponent(id)+'&t='+Date.now(), {cache:'no-store'});
+          if(!live) return;
+          if(rr.ok){ tx=await rr.text(); ct='application/json'; got=true; }
+        }catch(e){ /* 폴백 */ }
+      }
+      const r=got?null:await fetch(outPath+'?t='+Date.now());
       if(!live) return;
-      if(r.ok){
-        const ct=(r.headers.get('content-type')||'').toLowerCase();
-        const tx=await r.text();
+      if(got||(r&&r.ok)){
+        if(!got){ ct=(r.headers.get('content-type')||'').toLowerCase(); tx=await r.text(); }
         if(!live) return;
         const isHtml=ct.includes('text/html')||/^\s*<!doctype/i.test(tx)||/<html[\s>]/i.test(tx.slice(0,300));
         if(tx&&tx.trim()&&!isHtml){
