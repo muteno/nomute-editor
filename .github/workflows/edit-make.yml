@@ -56,6 +56,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          filter: blob:none   # 부분 클론 — ly-make(260721)엔 있는데 여기만 빠져 있던 누락(260728 Q1001 실측: 편집 실런 Checkout 81s = 전체의 26%로 STT보다 큼). 커밋 그래프는 전부 받으므로 rebase·push 종전 그대로 · 역사 블롭만 지연 회수(필요 시 promisor 자동 fetch)
 
       # ── 자막·클리퍼 ON 경로 전용 준비(claude 의역/구간픽) — 둘 다 아니면 Node·claude 설치 안 함(러너 분 절약)
       - name: Setup Node (자막)
@@ -77,7 +78,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.pythonLocation }}/lib/python3.12/site-packages
-          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)
+          key: nomute-ly-pydeps-${{ runner.os }}-py312-${{ hashFiles('apps/ly/setup.sh') }}-v1   # ly-make와 캐시 공유(동일 키 = 재설치 0)   # ↓ 근접 복원 폴백(260728 Q1001) — setup.sh **주석 한 줄만 고쳐도** hashFiles가 바뀌어 전체 재설치(콜드 318s)되던 구조 결함 봉합.
+          #    정확 키 miss여도 접두사가 같은 직전 캐시를 복원 → setup.sh의 `import faster_whisper` 체크가 통과해 pip 스킵.
+          #    ⚠ 의존성이 진짜 바뀐 경우도 옛 캐시를 복원하지만, setup.sh가 import 확인 후 없는 것만 설치하므로 신규 패키지는 정상 설치된다(= 원하는 동작).
+          restore-keys: |
+            nomute-ly-pydeps-${{ runner.os }}-py312-
 
       - name: STT 환경 (자막·컷·클리퍼 = whisper+ffmpeg+한글폰트)
         if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutfill":true') || contains(inputs.opts, '"take":true') || contains(inputs.opts, '"cutscan":true') }}
