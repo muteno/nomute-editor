@@ -203,6 +203,10 @@ jobs:
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
           LY_STT_PRECISION: ${{ inputs.stt_prec }}   # 빈값 = ly_stt.py 기본(int8_float32) · A/B 시에만 지정
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}   # STT 캐시(Q999) — 미설정이면 CKEY가 빈값 = 캐시 경로 자연 우회(fail-soft)
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
           # YouTube/IG 봇차단 우회 — YT_COOKIES 시크릿(쿠키 Netscape txt 본문) 있으면 사용
@@ -231,10 +235,31 @@ jobs:
           [ -s /tmp/audio.mp3 ] || python3 -m yt_dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/audio.%(ext)s" "$URL" \
             || { echo "유튜브 다운로드 실패 — YouTube가 봇 인증(로그인·쿠키)을 요구해. 파일 업로드나 SRT 텍스트로 해줘. (운영자: YT_COOKIES 시크릿 등록 시 URL 가능)" > /tmp/ly_err.txt; echo "::error::yt-dlp 다운로드 실패: $URL"; exit 1; }
           SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          # ── STT 캐시(260728 Q999 · edit-make 정본 계승) — 키 = 추출 오디오 sha256(+모델+연산 정밀도).
+          #    같은 소스를 다시 굽는 재작업이 large-v3를 통째로 재전사하던 낭비 제거(41초 클립 실측 STT 62초 · 10분급 ~7분).
+          #    ⚠ 품질 무손실: 캐시는 **같은 정밀도로 뽑은 전사 결과 그대로**를 되쓴다(정밀도가 바뀌면 키가 갈려 자연 미스 = 재전사).
+          #    전면 fail-soft: 캐시가 어떤 이유로든 안 되면 그냥 전사한다(회귀 0).
+          CKEY=""; ENDP=""
+          if [ -n "${R2_BUCKET:-}" ] && [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "$SEGJSON" ]; then
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            ENDP="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            CKEY="$(python3 .github/scripts/stt_cache.py key /tmp/audio.mp3 2>/dev/null || true)"
+          fi
+          if [ -n "$CKEY" ] && aws s3 cp "s3://$R2_BUCKET/$CKEY" "$SEGJSON" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null; then
+            if python3 .github/scripts/stt_cache.py rebuild "$SEGJSON" > /tmp/transcript.txt; then
+              echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
+              echo "STT 캐시 히트($CKEY) — 전사 건너뜀 · $(wc -l < /tmp/transcript.txt)줄"; exit 0
+            fi
+            echo "::warning::캐시 재구성 실패 — 정상 전사로 진행"; rm -f "$SEGJSON" /tmp/transcript.txt
+          fi
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
+          if [ -n "$CKEY" ] && [ -s "$SEGJSON" ]; then
+            aws s3 cp "$SEGJSON" "s3://$R2_BUCKET/$CKEY" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null \
+              && echo "STT 캐시 적재: $CKEY" || echo "::warning::STT 캐시 적재 실패(비치명)"
+          fi
 
       # R2 직업로드 소스 회수(edit-make 동문 · 260722) — 20MB 초과 영상 = up_src/* 키로 회수해 아래 STT 파일 스텝에 인계(FILE 폴백)
       - name: R2 소스 회수 (r2_src → /tmp)
@@ -265,6 +290,10 @@ jobs:
           IN_ID: ${{ inputs.id }}
           UP_BRANCH: ${{ inputs.up_branch }}
           LY_STT_PRECISION: ${{ inputs.stt_prec }}   # 빈값 = ly_stt.py 기본(int8_float32) · A/B 시에만 지정
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}   # STT 캐시(Q999) — 미설정이면 CKEY가 빈값 = 캐시 경로 자연 우회(fail-soft)
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
           # 일회용 업로드 브랜치(up-<id>) 경로 = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 브랜치 삭제)
@@ -295,10 +324,31 @@ jobs:
           ffmpeg -y -i "$FILE" -vn -ar 16000 -ac 1 -b:a 48k /tmp/audio.mp3 \
             || { echo "오디오 추출 실패 — 지원 안 되는 형식일 수 있어. 다른 파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::ffmpeg 오디오 추출 실패: $FILE"; exit 1; }
           SEGJSON=""; [ -n "$IN_ID" ] && SEGJSON="viewer/ly_out/${IN_ID}/segments.json"   # word 타임스탬프 사이드카(상세 편집기) — 트랜스크립트 포맷 불변·타임코드/경계는 word 정렬로 미세 변동 가능(ly_stt.py 헤더 참조·위험 수용 기록)
+          # ── STT 캐시(260728 Q999 · edit-make 정본 계승) — 키 = 추출 오디오 sha256(+모델+연산 정밀도).
+          #    같은 소스를 다시 굽는 재작업이 large-v3를 통째로 재전사하던 낭비 제거(41초 클립 실측 STT 62초 · 10분급 ~7분).
+          #    ⚠ 품질 무손실: 캐시는 **같은 정밀도로 뽑은 전사 결과 그대로**를 되쓴다(정밀도가 바뀌면 키가 갈려 자연 미스 = 재전사).
+          #    전면 fail-soft: 캐시가 어떤 이유로든 안 되면 그냥 전사한다(회귀 0).
+          CKEY=""; ENDP=""
+          if [ -n "${R2_BUCKET:-}" ] && [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "$SEGJSON" ]; then
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            ENDP="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+            CKEY="$(python3 .github/scripts/stt_cache.py key /tmp/audio.mp3 2>/dev/null || true)"
+          fi
+          if [ -n "$CKEY" ] && aws s3 cp "s3://$R2_BUCKET/$CKEY" "$SEGJSON" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null; then
+            if python3 .github/scripts/stt_cache.py rebuild "$SEGJSON" > /tmp/transcript.txt; then
+              echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
+              echo "STT 캐시 히트($CKEY) — 전사 건너뜀 · $(wc -l < /tmp/transcript.txt)줄"; exit 0
+            fi
+            echo "::warning::캐시 재구성 실패 — 정상 전사로 진행"; rm -f "$SEGJSON" /tmp/transcript.txt
+          fi
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
+          if [ -n "$CKEY" ] && [ -s "$SEGJSON" ]; then
+            aws s3 cp "$SEGJSON" "s3://$R2_BUCKET/$CKEY" --endpoint-url "$ENDP" --only-show-errors 2>/dev/null \
+              && echo "STT 캐시 적재: $CKEY" || echo "::warning::STT 캐시 적재 실패(비치명)"
+          fi
 
       # 조기 segments.json 푸시(LY-EARLY) — STT가 끝나는 즉시 전사 사이드카만 먼저 커밋
       #   → 뷰어 편집기가 의역(claude 1~5분)을 안 기다리고 바로 뜸(260706 평의회R2 E7 배점미달 후속 = 별도 카나리아 트랙 · 카나리아 e2etest-early 실측 = 전사 89초 선행).
