@@ -11551,7 +11551,7 @@ function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-
 }
 let _tvSeq = null;   // 대시보드발 시퀀스(운영자 260712 "모달 안 인라인 — 위로 넘길 때마다 다음 순위") — {arr, i} · 랩/더보기 규칙 = 스택과 동일(전달 시점 배열로 확정)
 function openTrView(emb, a, seq) {
-  const t = a.querySelector('.tsk-t, .tlr-t, .tpc-t, .tcard-t, .xcard-h b, .trend-q');
+  const t = a.querySelector('.tsk-t, .tlr-t, .tpc-t, .tcard-t, .xcard-h b, .trend-q, .soc-title');   // .soc-title = 국내 커뮤니티 카드(운영자 260728 인앱 배선 — 아래 renderSns 위임 핸들러와 짝)
   $('#tvTitle').textContent = ((t && t.textContent) || '').slice(0, 60) || '보기';
   _tvUrl = a.dataset.emb || a.getAttribute('href') || '';   // 본문 공유 영상이 있으면 그게 이 모달의 대상 = '원문'·다운로드·영상 스튜디오도 영상 URL을 받는다(글 URL이면 셋 다 헛발)
   $('#tvOpen').href = hrefOk(_tvUrl || '#');   // '원문' = 새탭 폴백(임베드 실패·풀화면 원할 때)
@@ -11580,7 +11580,7 @@ function tvNav(d) {   // 다음/이전 순위 인라인 로드 — 임베드 불
   for (let st2 = 1; st2 <= N; st2++) {
     const k = (((_tvSeq.i + d * st2) % N) + N) % N;
     const it = _tvSeq.arr[k];
-    const emb = it && it.url ? trEmbed(it.url) : null;
+    const emb = it && it.url ? (trEmbed(it.url) || (it.soc ? { src: it.url, k: 'tw' } : null)) : null;   // soc 마커(국내 커뮤니티 시퀀스 · 운영자 260728) = 매치 없는 커뮤니티 원글도 tw 프레임으로 항행 — 기존 경로(마커 없음)는 종전대로 스킵
     if (!emb) continue;
     if (it.pt) emb.k = 'pt';
     _tvSeq.i = k;
@@ -11716,6 +11716,20 @@ $('#accSave').addEventListener('click', async () => {
 });
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
+  if (!list._socBound) {   // 국내 커뮤니티 카드 = 인앱 임베드 뷰어(운영자 260728 "첨부2처럼 내부 인앱창") — 트렌드 box 위임 1핸들러 문법 계승 · 커뮤니티 원글 = trEmbed 매치 없음 → X 트윗과 동일 tw 프레임(높이 가변 내부 스크롤 · 다운로드/편집기 자동 숨김 · 요약 요청 유지) · 프레임 거부(X-Frame-Options) 사이트 = '원문' 새탭이 폴백(릴스 로그인벽 관례) · 롱프레스/새탭 = href 보존
+    list._socBound = true;
+    list.addEventListener('click', e => {
+      const a = e.target.closest('a.soc-item'); if (!a) return;
+      const _hrf = a.getAttribute('href') || '';
+      if (!_hrf || _hrf === '#') { e.preventDefault(); return; }   // url 결측 카드 = 새탭 앱 복제본 차단(260720 평의회 F1 계승)
+      const emb = trEmbed(_hrf) || { src: _hrf, k: 'tw' };   // 유튜브·X 등 매치 = 종전 임베드 그대로 · 그 외 커뮤니티 글 = 원글 iframe
+      e.preventDefault();
+      const sibs = [...list.querySelectorAll('a.soc-item')];
+      const k2 = sibs.indexOf(a);
+      const seq = (k2 >= 0 && sibs.length > 1) ? { arr: sibs.map(x3 => ({ url: x3.getAttribute('href') || '', t: ((x3.querySelector('.soc-title') || {}).textContent || ''), soc: 1 })), i: k2 } : null;   // 섹션 즉석 시퀀스 계승(쇼츠 루프 보편화 문법) — soc:1 = tvNav tw 폴백 마커
+      openTrView(emb, a, seq);
+    });
+  }
   let _ss = '';   // 이번 렌더 구성 시그니처(행 ID·순서+검색어 · 아래서 선계산 = 커밋 스킵 판정용)
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">${window.nmLoader?nmLoader('loading','Now loading…'):'Now loading…'}</div>`; _snsSig = ''; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
