@@ -12728,12 +12728,17 @@ function trWarm() {   // 예열(운영자 260723) = Image Studio 열 때 tr 프�
 function trMount() {   // 번역 탭 활성 = 전용 프레임 표시(예열됐으면 즉시 · 미예열이면 로드 후 페이드인)
   const f = trEnsureFrame();
   if (!f._trLoaded) { frWatch(f, '/tr.html'); frEarly(f); }   // 미완 프레임 = 워치독+조기리빌 재무장(운영자 260725) — 이 토글이 워치독 fail-safe 리빌을 다시 벗겨 무한 orb로 되돌리는 경로 봉합
-  f.classList.remove('ready');   // 노출 순간은 항상 미리빌(운영자 260725 "살짝 펑 튄다") — display:none 프레임은 레이아웃도 0×0이라(실측: 뷰포트 0×0 · .wrap 0폭 · #prevBox 0×0) 표시되는 그 프레임에 0폭→실폭 재레이아웃이 일어난다. 구 코드는 예열분에 .ready를 바로 붙여 opacity 1로 노출 = 그 재레이아웃이 통째로 눈에 보였다(= 펑). 리빌은 아래 rAF가 전담
+  // ⚠ 구 `f.classList.remove('ready')`(260725 "살짝 펑 튄다" 처방) 폐지 — **그 은폐 구간 자체가 지금의 번쩍이었다**(운영자 260728 "번역부분 번쩍거리는데").
+  //   왜: 리빌을 벗기면 프레임이 opacity 0 = *투명*이라 그 자리에 모달 글래스(--modal-glass 반투명)+::backdrop blur7이 그대로 비친다 → 뒤 피드가 유리 너머로 밝게 들어온 프레임이 2×rAF 동안 끼어든다.
+  //   .toolfr 배경을 불투명 --bg로 깔아둔 260727 처방(2122행)도 opacity 0 앞에선 무력 = 판 색이 아니라 '투명해지는 것'이 진범.
+  //   실측(헤드리스 CDP 스크린캐스트 = DOM 무접촉 · 430×900): 구 코드 = 클릭 +143ms에 20KB 빈-유리 프레임 1장 → +177ms에 37KB 완성 화면(= 34ms 번쩍). 신 코드 = 빈 프레임 0장, 첫 페인트가 곧바로 37KB 완성 화면.
+  //   은폐가 막으려던 0폭 재레이아웃은 아래 동기 강제로 대체한다(같은 프레임 안에서 레이아웃을 끝내고 그리게 하는 쪽 = 숨겼다 보여주는 쪽보다 정직).
   if (f._trLoaded) tooldlg.classList.add('frame-ready');   // 전역 보조 신호(재클릭 가드·trWarm)만 동반 갱신 — 예열·보존 프레임(로드 완료) 기준
   else tooldlg.classList.remove('frame-ready');   // 로딩 중(방금 생성/예열 미완)
   const ah = $('#askHost'); if (ah) ah.hidden = true;   // 호스트 슬롯 상호 배타(geniMount 방어 미러)
   for (const k in toolFrames) toolFrames[k].classList.toggle('active', toolFrames[k] === f);   // 활성 1개만 표시(activateToolFrame 토글 문법 · curToolKey 불변 = activeToolFrame()는 thumb 문서를 계속 가리켜 selApp 경로 무변)
-  if (f._trLoaded) { f.classList.add('snap'); requestAnimationFrame(() => requestAnimationFrame(() => { if (f.classList.contains('active')) { f.classList.add('ready'); requestAnimationFrame(() => f.classList.remove('snap')); } })); }   // 보존 프레임 = 재레이아웃 뒤 '스냅' 노출(운영자 260727 번쩍 교정 — 구 0.2s 페이드가 매 클릭 깜빡임으로 읽혔다) · snap 해제 = 다음 프레임(이후 상태 변화는 종전 페이드 문법 복귀)   // 재레이아웃이 끝난 *다음* 프레임에 리빌 = 완성된 화면이 0.2s 페이드로 들어옴(튐 0) · 2×rAF ≈ 32ms = 체감 즉시 · .tool-loading orb는 transition-delay .28s라 이 사이 미표시(플래시 0) · 활성 확인 = 32ms 안에 타 탭으로 떠난 경우 고아 리빌 차단 · 미로드분은 종전대로 load/워치독이 .ready 부여
+  if (f._trLoaded) { f.classList.add('snap'); try { const _d = f.contentDocument; if (_d && _d.body) { void _d.body.getBoundingClientRect().width; void _d.documentElement.offsetHeight; } } catch (_) {}   // display:none→block 직후 자식 문서 레이아웃을 **동기로** 끝낸다(부모가 자식 기하를 읽으면 그 자리에서 재레이아웃이 강제된다) = 이 프레임의 첫 페인트가 이미 실폭 화면 → 0폭 잔상(구 "펑") 없이 은폐 구간도 없앤다 · cross-origin·미로드 = catch로 종전 경로
+    f.classList.add('ready'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('snap'))); }   // 보존 프레임 = 같은 프레임에 '스냅' 노출(빈-유리 프레임 0장 · snap 해제 = 2×rAF 뒤 = 이후 상태 변화는 종전 페이드 문법 복귀)   // 구 주석: 재레이아웃 뒤 '스냅' 노출(운영자 260727 번쩍 교정 — 구 0.2s 페이드가 매 클릭 깜빡임으로 읽혔다) · snap 해제 = 다음 프레임(이후 상태 변화는 종전 페이드 문법 복귀)   // 재레이아웃이 끝난 *다음* 프레임에 리빌 = 완성된 화면이 0.2s 페이드로 들어옴(튐 0) · 2×rAF ≈ 32ms = 체감 즉시 · .tool-loading orb는 transition-delay .28s라 이 사이 미표시(플래시 0) · 활성 확인 = 32ms 안에 타 탭으로 떠난 경우 고아 리빌 차단 · 미로드분은 종전대로 load/워치독이 .ready 부여
 }
 function trLeave() { const f = toolFrames.thumbtr; if (f && f.classList.contains('active')) activateToolFrame(curToolKey); }   // 번역 이탈(thumb 앱 탭 클릭) = 이 도구 프레임 재활성(geniLeave 미러 · 번역 프레임은 숨김-보존)
 window.addEventListener('popstate', () => { if (_composeRecovering) return; if (tooldlg.open) { toolPopHandled = true; tooldlg.close(); } });   // ⚠️ 컴포즈 회수 back은 무시(뒤 도구모달 over-close 차단·평의회 V4) · 최소화 중 백버튼은 {tool}칸만 소비(복원 ▲는 DOM으로 유지) — 다른 모달(#lbox 등) popstate 핸들러와 한 번에 둘 다 발화해 편집기가 잘못 펼쳐지던 것 차단(재펼침 안 함). 재오픈은 ▲ 탭으로.
