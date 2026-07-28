@@ -1,31 +1,31 @@
 # 🌊 멕시코·과테말라 앞바다 7.4 강진…쓰나미 경보 켜졌다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 규모 7.4·쓰나미 경보라는 재난의 무게와 긴장을 사실적으로 옮기려면 수채화의 온기보다 극화의 명암·굳은 선이 맞는다.
-- 분위기: 잿빛 불안 — 흔들림의 크기는 확실한데 피해는 보이지 않는 '모름'의 긴장. thumb_dispatch의 muted somber 톤(overcast·잿빛 바다)을 키노트로 상속.
-- 연출 방향: 뉴스 안 보는 독자도 '내 연고지/여행지가 저기인데' 하고 멈추는 지점 = 규모는 큰데 피해 집계가 비어 있다는 공백. 그 불안을 겁에 질린 해안 주민의 눈과, 얕은 바다가 밀어올린 잿빛 앞바다에 쏠리게 잡는다. 전 카드가 공유할 키노트 = 색을 뺀 바탕 + 경보 신호의 네온그린 1점 + 무겁게 내려앉은 흐린 아침.
-- 독자 동선: 起 카드1 → 承 카드2~3 → 轉 카드4 → 結 카드5 · 훅=카드1 끝(단서형: 얕은 진원 10㎞) + 카드3 끝(국경 넘어 확산) · 감정 피크=카드4(잇단 여진에 다시 움츠러드는 순간) · 착지=규모는 곧바로 왔지만 무엇을 부쉈는지는 한참 뒤에야 온다.
-- 연속성 앵커: Recurring subject — a Central American man in his 40s with weathered tan skin, short dark hair, wearing a faded work shirt (카드1·4·5 등장) · 반복 장소 — a Mexican Pacific coastal town in Chiapas under a gray overcast sky.
+- 화풍: B 극화 — 재난 속보의 무게와 해안 주민의 긴장을 사실적으로 실어야 해 극화의 고대비·묵직한 선이 맞다
+- 분위기: 흐린 아침 바다의 잿빛 정적 위에 경보 사이렌만 날카롭게 얹힌, 아직 아무것도 확정되지 않은 불안
+- 연출 방향: 뉴스를 안 보는 독자도 '규모 7.4'라는 숫자보다 *바다를 돌아보는 사람의 얼굴*에서 먼저 멈춘다 — 흔들린 땅과 아직 잠잠한 바다 사이의 시차를 잡는다. 피해 장면은 없다(집계 자체가 비어 있으니까) → 강조점은 '보이지 않는 것을 기다리는 몸짓': 앞바다를 향한 시선, 언덕으로 오르는 발, 울리지 않은 경보기. 카드 전체가 잿빛 확산광 위 단 하나의 경보색으로 흐르고, 마지막에만 시선을 정면으로 돌려 독자에게 착지한다
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 경보가 켜졌다는 사실만 남기고 대상 유보)+카드3 끝(예고형: 한 번으로 안 끝났다는 예고) · 감정 피크=카드4 · 착지 한 줄 요지 = 확인된 건 흔들림과 경보뿐, 피해의 윤곽은 아직 비어 있고 땅은 자기 시간표대로 움직인다
+- 연속성 앵커: Recurring subject — a Korean-featured Latin American coastal resident, a man in his 40s with short black hair and a weathered tanned face, wearing a faded navy work shirt · 반복 장소 = a small Pacific coastal town facing an overcast gray sea, low concrete houses and a cracked seaside road
 
 ### [카드 1]
 **텍스트**
 ```text
-현지시간 17일 오전
-멕시코 남부 앞바다가
-*규모 7.4로 크게 흔들렸다*
-진원은 땅속 10㎞, 얕았다
+현지시간 17일 오전 8시 48분
+멕시코와 과테말라가 맞닿은
+남부 앞바다가 크게 흔들렸다
+그리고 *경보가 켜졌다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a resident's frightened, frozen face, eyebrows raised and pulled together with eyes wide, turned back over his shoulder toward the sea. Recurring subject — a Central American man in his 40s with weathered tan skin, short dark hair, wearing a faded work shirt, stands in the foreground of a coastal town and looks back at the gray water. Behind him a fresh crack splits the asphalt and a few small figures carry bundles up toward higher ground. A muted overcast morning sea stretches beyond the shoreline.
-Camera: wide establishing shot from eye-level, shot on 24mm wide lens
+Scene: Emotional focal point: his eyebrows raised high, eyes wide open, jaw slack as he turns his head back toward the open sea. Recurring subject — a Korean-featured Latin American coastal resident, a man in his 40s with short black hair and a weathered tanned face, wearing a faded navy work shirt stands frozen on a cracked seaside road, one hand still gripping a doorframe. A small Pacific coastal town faces an overcast gray sea behind him, low concrete houses lining the shore. His gaze is directed toward the right edge of the frame where the water meets the horizon, nose room on the right.
+Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on an emergency signal light, muted daylight contrast
-Setting: a Mexican Pacific coastal town in Chiapas, Central American residents, no Korean elements, no Korean signage. No readable text needed; keep any incidental signage abstract and blurred.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: no signage text, avoid background lettering by composition and cropping.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous coastal landscape extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the cracked coastal road and shoreline) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Chiapas Mexico earthquake coastal
+치아파스 해안 마을 지진
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-진앙은 푸에르토마데로
-남서쪽 71㎞ 앞바다였다
-얕고 강한 해저 지진에
-*미국은 쓰나미를 경고했다*
+규모는 7.4, 진원 깊이는 10㎞
+얕은 바다 밑에서 터진 흔들림이라
+미국 당국은 곧바로
+*쓰나미 가능성을 경고했다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the vast gray sea swelling and looming, heavy and ominous, dwarfing the thin strip of coast beneath it. Tiny powerless figures stand at the shoreline at the base of the towering wall of water, looking up at it. The shallow undersea quake off Puerto Madero has stirred the Pacific into a menacing swell under a colorless sky. The coast is a small Mexican Pacific fishing town.
-Camera: extreme long shot from a low angle, shot on 20mm wide lens
-Lighting/mood: cold dim overcast light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on a distant buoy warning light, muted daylight contrast
-Setting: a Mexican Pacific coastal town in Chiapas, Central American residents, no Korean elements, no Korean signage. No readable text needed; keep any incidental signage abstract and blurred.
+Scene: Emotional focal point: a technician's fingertips hovering just above a glowing seismograph trace, not yet touching it. Two staff members in a dim coastal monitoring room lean over a wide console, one pointing at the sharp spike drawn across the paper roll, the other reaching for a handset. A wall map of the Pacific coastline hangs behind them, and the single lit console is the only bright object in the room. Their eyes are locked on the trace, bodies angled toward the right edge of the frame.
+Camera: medium shot, waist-up framing, face and gestures, conversational from high angle shot, looking down, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: cold blue screen under-glow lighting the faces from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: no readable signage or document text, keep the map and console labels out of focus and cropped.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sea) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the console desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Mexico Pacific coast tsunami
+태평양쓰나미경보센터 관측소
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-경보는 곧바로 켜졌다
-미국과 멕시코 해군이
-*멕시코 남부·과테말라에 경보*
-흔들림은 국경까지 넘었다
+진앙은 푸에르토마데로에서
+남서쪽으로 약 71㎞ 떨어진 바다
+멕시코 남부와 과테말라 해안에
+*쓰나미 경보가 발령됐다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a mother's tense face, jaw set and eyes darting, as she pulls her child by the hand toward higher ground. A Central American family gathers bundles and hurries along a coastal street, glancing back toward the water. A civil-defense loudspeaker on a tall pole looms above them mid-alert. The setting is a Mexican Pacific coastal town under a gray morning sky.
-Camera: medium shot from eye-level, shot on 50mm standard lens
-Lighting/mood: muted overcast daylight, tense and urgent, low flat shadows
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on the loudspeaker's alert beacon, muted daylight contrast
-Setting: a Mexican Pacific coastal town in Chiapas, Central American residents, no Korean elements, no Korean signage. No readable text needed; keep any incidental signage abstract and blurred.
+Scene: Emotional focal point: a mother's hand clamped tight around a child's wrist as they climb. Recurring subject — a Korean-featured Latin American coastal resident, a man in his 40s with short black hair and a weathered tanned face, wearing a faded navy work shirt walks near them carrying a plastic crate, glancing back over his shoulder. A dozen residents move up a steep hillside road away from a small Pacific coastal town facing an overcast gray sea, low concrete houses shrinking below them. A siren pole stands at the roadside, its horn turned toward the water.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation from low angle shot, looking up, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: no signage text, the siren pole and buildings carry no lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the coastal street) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the hillside road) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +97,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-tsunami warning evacuation coast
+푸에르토마데로 항구 대피
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-*한 번으로 끝나지 않았다*
-규모 4.7, 5.2, 6.1
-땅은 계속 흔들렸다
+흔들림은 한 번으로 끝나지 않았다
+본진 앞뒤로 *4.7, 5.2, 6.1*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the resident's eyes wide with fear and jaw clenched tight, one hand thrown out flat to brace against a trembling wall as the ground shakes again. Recurring subject — a Central American man in his 40s with weathered tan skin, short dark hair, wearing a faded work shirt, presses his palm against a cracking concrete wall, body low and unsteady. Fine dust shakes loose from the wall around his hand. The scene is a narrow street in a Mexican Pacific coastal town.
-Camera: close-up from a Dutch tilted angle, shot on 85mm portrait lens
+Scene: Emotional focal point: his jaw clenched tight, muscle flexing at the jawline, eyes fixed on a swaying ceiling lamp. Recurring subject — a Korean-featured Latin American coastal resident, a man in his 40s with short black hair and a weathered tanned face, wearing a faded navy work shirt crouches low in a narrow concrete house, one palm pressed flat against the trembling floor, the other arm shielding a seated child beside him. A glass slides toward the table edge above them. The room is cramped and bare, one small window showing the gray sea outside.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 85mm portrait lens, flattering face, soft background separation
 Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single sharp neon green #0FFD02 accent from a phone alert glow, film-noir low-key lighting, deep shadows
-Setting: a Mexican Pacific coastal town in Chiapas, Central American residents, no Korean elements, no Korean signage. No readable text needed; keep any incidental signage abstract and blurred.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: no text anywhere in the frame, the interior carries no lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the concrete wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the interior concrete wall and floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +126,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Chiapas aftershock earthquake
+치아파스 여진 실내 흔들림
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-규모 7.4는 곧바로 왔지만
-그게 무엇을 부쉈는지는
-아직 아무도 모른다
-확인은 *한참 뒤에야 온다*
+정작 멕시코시티는 사이렌도 안 울렸다
+기준에 못 미친 흔들림이었기 때문이다
+지금 확실한 건 규모 7.4와 경보뿐,
+*피해의 윤곽은 아직 비어 있다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the resident's vacant thousand-yard stare, unfocused eyes gazing out past the horizon, standing still and quiet. Recurring subject — a Central American man in his 40s with weathered tan skin, short dark hair, wearing a faded work shirt, stands facing the camera and the sea, a few other residents beside him also looking out at the water in silence. The Mexican Pacific coastal town is calm but uneasy, cracked ground still visible underfoot. A pale still sea meets an empty gray sky.
-Camera: wide shot from eye-level front-on, shot on 35mm lens
-Lighting/mood: muted overcast daylight, quiet and still, faint lingering unease
-Accent: monochrome desaturated base with a single neon green #0FFD02 accent on a lone signal light along the shore, muted daylight contrast
-Setting: a Mexican Pacific coastal town in Chiapas, Central American residents, no Korean elements, no Korean signage. No readable text needed; keep any incidental signage abstract and blurred.
+Scene: Emotional focal point: his eyes looking straight ahead in steady unwavering eye contact, exhausted but unmoving. Recurring subject — a Korean-featured Latin American coastal resident, a man in his 40s with short black hair and a weathered tanned face, wearing a faded navy work shirt stands still at the edge of a small Pacific coastal town facing an overcast gray sea, a cracked seaside road running behind him. Far behind, a silent siren pole rises against the pale sky and a few residents wait without moving. The sea is flat and empty, nothing arriving yet.
+Camera: full shot, head-to-toe, full body, clear silhouette from eye-level shot, neutral perspective, front-on shot, direct gaze, symmetrical composition, shot on 40mm lens, neutral perspective, natural human-vision feel
+Lighting/mood: cold blue pre-dawn tone, desolate stillness, faint light returning at the horizon
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: no signage text anywhere, the siren pole and buildings carry no lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the shoreline) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the shoreline ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,5 +157,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Mexico coast earthquake aftermath
+멕시코시티 지진경보 스피커
 ```

@@ -17,8 +17,10 @@
   - 하부 투명 유지 → RGBA PNG 산출(운영자 확정: 영상·사진 위에 얹는 프레임)
     ⚠ reels2.py:65의 `convert('RGB')`는 계승하지 않는다(알파 즉사 = 투명 프레임 불가)
 
-노뮤트 무접촉 보증: 이 파일은 자기 상수만 쓴다. 노뮤트 헤더 축(MARGIN 60 / AVAIL 960 /
-자간 시작 0)과 자막 축(fit_tracking limit 920·844 / floor -45·-30)은 어느 것도 참조·변경하지 않는다.
+노뮤트 무접촉 보증: 노뮤트 헤더 축(MARGIN 60 / AVAIL 960 / 자간 시작 0)과 자막 축(SPECS lm·tr /
+fit_tracking limit 920·844 / floor -45·-30)의 값을 **변경하지 않는다**(파일 무접촉 = 절대규칙1).
+⚠ 260728 개정: 오버레이형 가로축은 이제 노뮤트 자막 축을 **참조(계승)** 한다 — 운영자
+"진짜예요일 때 좌측정렬이여야 하는데, 노뮤트때 나오는거랑 똑같이 적용". 헤더형은 종전대로 자기 상수만 쓴다.
 """
 import os
 
@@ -97,18 +99,18 @@ def render_header(line, out, base_path=None, fs=TXT_FS, ty=TXT_Y):
 #          (베이스 실측: 릴스 잉크 x362~721/y1010~1154 중앙 · 포스트 x108~500/y654~796)
 JJ_BASE = {'reels': 'assets/jinjja_reels_base.png', 'post': 'assets/jinjja_post_base.png'}
 
-# 진짜예요 오버레이 전용 축(운영자 260726 확정) — 노뮤트 자막 축(좌측정렬 lm101/85 · 폭 844/920 ·
-# 자간 하한 -30/-45 · 강조 형광그린)과 **완전 별개**. 노뮤트 값은 어느 것도 참조·변경하지 않는다.
-#   · 가운데 정렬("가운데 정렬로")  · 좌우 마진 150 → 가용폭 780("좌우 폭 150px 보존")
-#   · 자간 하한 -45("자간 최대 -45")  · 구분선 없음("저 줄은 빼도 되는거 알지?")
-#   · 강조색 = 네온 파랑("강조색 진짜예요는 … 네온 파란색으루") = index :root --bias-l1 #38C6FF 계승
-OV_MARGIN = 150
-OV_AVAIL = 1080 - OV_MARGIN * 2        # = 780 (1080 기준)
-OV_TR_MIN = -45
+# 진짜예요 오버레이 축(운영자 260728 개정 "진짜예요일 때 좌측정렬이여야 하는데, 노뮤트때 나오는거랑
+# 똑같이 적용") — 가로축(정렬·좌마진 lm·가용폭·자간 sweep·따옴표 들여쓰기)은 **노뮤트 자막 축 그대로**
+# = SPECS[fmt]['lm'] 계승 + 워크플로 fit_tracking(limit 920/844 · floor -45/-30)과 동일 한도.
+#   구 260726 축(가운데 정렬 · 좌우 150 · 폭 780)은 폐기 — 서버 자간은 이미 노뮤트 fit_tracking을
+#   받고 있었으므로(thumb-make.yml:166) 이 개정으로 정렬·폭·자간 3축이 한 번에 정합된다.
+# 진짜예요 고유로 남는 것 = CI 베이스(로고 구움) · 강조색 네온 파랑 · 첫 줄 y/글자크기/줄간(OV_SPEC).
+OV_LIMIT = {'post': 920, 'reels': 844}   # 워크플로 fit_tracking limit 1:1 미러(post lm85/rm75 · reels lm101/rm135)
+OV_FLOOR = {'post': -45, 'reels': -30}   # 워크플로 fit_tracking floor 1:1 미러(sweep 하한)
 OV_EMPH = (56, 198, 255)               # 네온 파랑 = --bias-l1 #38C6FF 동값(발행 콘텐츠 색 축 · UI 팔레트 재유입 아님)
 OV_PLAIN = (255, 255, 255)
-# 첫 줄 y·글자크기·줄간 = 운영자가 플레이그라운드에서 고른 선택값 그대로(260726)
-#   릴스 = {"align":"center","ty":1214,"fs":76,"lh":96,"rule":false} ← 복사본 원문
+# 첫 줄 y·글자크기·줄간 = 운영자가 플레이그라운드에서 고른 선택값 그대로(260726 · 정렬만 260728 개정)
+#   릴스 = {"align":"center","ty":1214,"fs":76,"lh":96,"rule":false} ← 복사본 원문(align은 260728 좌측으로 개정)
 #   포스트 = 운영자 "릴스형 오버레이도 그대로 가야돼. 얘는 오히려 쉬워 로고만 교체하면 되니까"
 #     → fs·lh는 릴스 선택값 그대로(76·96) · ty는 **워터마크 아래 여백을 릴스와 동일(60px)** 로 환산:
 #       릴스 워터마크 잉크 하단 1154 + 60 = 1214(운영자 선택값과 일치) →
@@ -117,22 +119,29 @@ OV_SPEC = {'reels': {'ty': 1214, 'fs': 76, 'lh': 96},
            'post':  {'ty': 856,  'fs': 76, 'lh': 96}}
 
 
-def _ov_fit_tr(segs_lines, font, fs, start):
-    """전 줄이 OV_AVAIL 안에 드는 전역 자간(start → OV_TR_MIN). 헤더형 _fit_tr 동형 · 줄 단위 최댓값 기준."""
-    avail = OV_AVAIL * SCALE
+def _ov_fit_tr(segs_lines, font, fs, fmt, start, lm_offsets=None):
+    """전 줄이 노뮤트 가용폭(OV_LIMIT[fmt]) 안에 드는 전역 자간(start → OV_FLOOR[fmt]).
+
+    워크플로 fit_tracking(thumb-make.yml:106-127) 미러 — 폭 측정만 알파 bbox 대신 draw_t 진행폭
+    (잉크폭 bb + 자간) 합산 근사(폴백 전용 경로 · 정본 tracking은 러너가 계산해 넘긴다).
+    따옴표 들여쓰기(lm_offsets)도 우측 한도를 침범하므로 노뮤트 widest와 동일하게 합산한다."""
+    avail = OV_LIMIT[fmt] * SCALE
+    floor = OV_FLOOR[fmt]
     def widest(tr):
         tp = tr / 1000.0 * fs
         w = 0
-        for segs in segs_lines:
+        for i, segs in enumerate(segs_lines):
             txt = ''.join(t for _, t in segs)
             if not txt:
                 continue
-            w = max(w, sum(font.getlength(ch) for ch in txt) + tp * (len(txt) - 1))
+            ink = sum(font.getbbox(ch)[2] - font.getbbox(ch)[0] for ch in txt)   # draw_t 진행폭 = 잉크폭
+            off = (lm_offsets[i] * SCALE) if lm_offsets and i < len(lm_offsets) else 0
+            w = max(w, ink + tp * (len(txt) - 1) + 5 + off)
         return w
-    for tr in range(start, OV_TR_MIN - 1, -1):
+    for tr in range(start, floor - 1, -1):
         if widest(tr) <= avail:
             return tr
-    return OV_TR_MIN
+    return floor
 
 
 def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None, base_path=None):
@@ -146,7 +155,7 @@ def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None
     fs = ov['fs'] * S
     fnt = ImageFont.truetype(FONT_PATH, fs, index=1)
     segs_lines = [parse(ln) for ln in lines]   # 강조 세그먼트(1~2별표=토글 · 3+=리터럴) — 폭 측정은 별표 제거분
-    tr_val = tracking if tracking is not None else _ov_fit_tr(segs_lines, fnt, fs, sp['tr'])
+    tr_val = tracking if tracking is not None else _ov_fit_tr(segs_lines, fnt, fs, fmt, sp['tr'], lm_offsets)
     tp = tr_val / 1000 * fs
     c = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
 
@@ -166,17 +175,13 @@ def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None
     tx = Image.new('RGBA', (cw, chh), (0, 0, 0, 0))
     dr = ImageDraw.Draw(tx)
     cy = ov['ty'] * S
-    for segs in segs_lines:
-        # 가운데 정렬(운영자 260726) — 줄 전체 폭을 먼저 재고 시작 x 산출. 헤더형 _draw_line 문법 동형.
-        # lm_offsets(따옴표 들여쓰기)는 좌측정렬 전용 보정이라 가운데정렬에선 미적용(중앙 기준이 깨짐).
-        txt = ''.join(t for _, t in segs)
-        total = sum(fnt.getlength(ch) for ch in txt) + tp * max(len(txt) - 1, 0)
-        cx = (cw - total) / 2.0
+    for i, segs in enumerate(segs_lines):
+        # 좌측정렬(운영자 260728 "노뮤트때 나오는거랑 똑같이") — generate:156-161 축자 계승:
+        # 시작 x = lm×SCALE + 따옴표 들여쓰기 · 진행 = draw_t(잉크폭+자간) · 색만 진짜예요 축(네온 파랑).
+        cx = sp['lm'] * S + (lm_offsets[i] * S if lm_offsets and i < len(lm_offsets) else 0)
         for st, stx in segs:
             co = OV_EMPH if st == 'h' else OV_PLAIN   # 강조 = 네온 파랑(운영자 260726 · 구 형광그린 폐기)
-            for ch in stx:
-                dr.text((cx, cy), ch, font=fnt, fill=co)
-                cx += fnt.getlength(ch) + tp
+            cx = draw_t(dr, cx, cy, stx, fnt, co, tp, sp['stroke'])
         cy += ov['lh'] * S
 
     cb = Image.alpha_composite(ll, tx)

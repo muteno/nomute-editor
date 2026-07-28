@@ -209,11 +209,17 @@
      mode=spin(§305 = 세로축 자전 · 평면 rotate 아님) · period 980 · fps 60 · res 64 · size 78% · amp 100 · ease=--ease 계승. */
   var PX = 64;             // res — 탭 렌더 16~32px 대비 여유 배수(계단 방지)
   var SIZE = .78;          // size 78% — 캔버스 대비 로고 크기(플레이그라운드 DEFAULTS)
-  var FPS = 60, POLL = 350;
+  var FPS = 30, POLL = 350;
   var slow = false;
   try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
-  var SPIN = slow ? 2600 : 980;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
-  function ease(x) { return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }   // 플레이그라운드 easeF §273 `--ease` 분기 그대로
+  var SPIN = slow ? 4800 : 2420;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
+  /* 2420ms·30fps = 운영자 260727 첫 선택값 복귀. 980ms·60fps는 플랫폼 비교판 맥락의 수치였고
+     실제 탭에서 "너무 빠르게 동작한다"는 판정을 받았다(운영자 260728). */
+  /* 플레이그라운드 easeF §273 `--ease` 분기(easeInOutCubic)를 **등속과 반반 블렌드**한다.
+     그 커브를 연속 회전 각도에 통째로 먹이면 980ms 중 340ms를 폭 1.00(정면)에 붙박여 보내
+     탭에서 '안 움직이다 가끔 깜빡'으로 읽힌다(실측 260728 · 운영자 "무빙이 없는데").
+     easeInOutCubic은 본디 한 번의 전환용 커브다 — 반만 섞으면 가속·감속은 남고 멈춤만 사라진다. */
+  function ease(x) { var e = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; return (x + e) / 2; }
 
   var spin = null, kept = [], img = null, ready = false;
   var cv = null, cx = null, tick = null, t0 = 0, on = false;

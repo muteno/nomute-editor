@@ -141,3 +141,24 @@ export async function onRequestPost({ request, env }) {
   if (upBranch) { try { await GH(env.GH_TOKEN, `git/refs/heads/${upBranch}`, 'DELETE'); } catch { /* 고아 잔존 무해 — 수동 정리 대상 */ } }
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
+
+// ── 결과 조회(260728) — GET /api/edit?stat=<id> → R2의 ly_out/<id>/video.json 즉시 반환.
+//   왜: 완성 mp4도 결과 쪽지(video.json)도 러너가 R2에 올리는데, 뷰어는 Pages 정적 경로만 폴링해서
+//   git 커밋 → Pages 빌드가 끝날 때까지 결과를 못 봤다(260728 실측: 674초 잡 중 배포 대기 491초 = 73%).
+//   Function은 이미 배포돼 있으니 이 경로는 배포 사이클과 무관 = 합성 끝나는 즉시 착지.
+//   계약: 있으면 200 + 원문 JSON · 없으면 404({pending:true}) · R2 미바인딩도 404(뷰어가 종전 Pages 경로로 폴백).
+//   캐시 = no-store(폴링 응답을 엣지가 굳히면 완료를 영영 못 본다).
+export async function onRequestGet({ request, env }) {
+  const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  const id = (new URL(request.url).searchParams.get('stat') || '').trim();
+  if (!id) return j({ error: 'stat 파라미터 필요' }, 400);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return j({ error: '잘못된 id' }, 400);   // 경로 탈출 차단(ly_burn.py 동일 규칙)
+  if (!env.R2) return j({ pending: true, reason: 'r2-unbound' }, 404);   // 폴백 유도(오류 아님)
+  try {
+    const o = await env.R2.get(`ly_out/${id}/video.json`);
+    if (!o) return j({ pending: true }, 404);
+    return new Response(o.body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  } catch (e) {
+    return j({ pending: true, reason: 'r2-error' }, 404);   // R2 장애 = 폴백(뷰어가 Pages 경로 계속 폴링)
+  }
+}

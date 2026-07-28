@@ -1818,6 +1818,13 @@ function lyBurnShow(j) {
   $('#lyBurnNote').textContent = (j.note ? j.note + ' · ' : '') + (j.bytes ? (j.bytes / 1048576).toFixed(1) + 'MB' : '');
 }
 async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(HTML 200) 무시 = poll()과 동일 가드
+  const jid = (outPath.match(/ly_out\/([^/]+)\//) || [])[1] || '';
+  if (jid) {   // R2 우선(260728) — 러너가 결과 쪽지를 R2에도 즉시 올린다 = Pages 배포 대기(실측 최대 8분) 없이 착지 · 실패는 전부 아래 Pages 경로로 폴백
+    try {
+      const rr = await fetch('/api/edit?stat=' + encodeURIComponent(jid) + '&t=' + Date.now(), { cache: 'no-store' });
+      if (rr.ok) { const t = await rr.text(); if (t && !/^\s*</.test(t)) return JSON.parse(t); }
+    } catch (e) { /* 폴백 */ }
+  }
   try {
     const r = await fetch(outPath.replace(/[^/]+$/, 'video.json') + '?t=' + Date.now());
     if (!r.ok) return null;

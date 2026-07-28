@@ -13,12 +13,27 @@ REM === v5.9: 클라우드 경로 고정 - 유저프로필\Google Drive 스트리밍\내 드라이브\
 REM === v5.9.1: 스트리밍 폴더 실존 게이트(유령 로컬 폴더 차단) + 끝화면 robocopy 실패 오보 봉합 - 오퍼스 3인 검증 반영 ===
 REM === v5.9.2: 낙오자 재송 스위프 - 시작 시 지난 7일 미전송분 자동 재송(날짜 = 파일명 앞 8자리 · 아이데이션 Q229 반영) ===
 REM === v5.9.3: 클라우드 = G:\내 드라이브\Shared 문자 마운트 고정(스트리밍 폴더 경로 폐기 · 운영자 260721) ===
+REM === v6.0: 클라우드 = 드라이브 문자 자동 감지 복원(계정 동일 · G:/I: 등 문자 가변 PC 대응 - 볼륨 라벨 우선 + 문자 스캔 폴백 · 운영자 260723) ===
+REM === v6.1: 최고화질 강제 + 최고화질이 1080p 초과(가로영상)면 최고화질 + 1080p mp4 동반본 다운로드 · 화질 1회 선행조회 · 쿠키 인자 통합(운영자 260723) ===
+REM === v6.2: [최고화질 실패 봉합] YouTube에 쿠키를 넘기지 않는다 + 화질 영수증 상시 출력 + deno 감지 + 자막 후처리 복원(운영자 260728) ===
+REM     ▶ v6.1까지 유튜브가 최고화질로 안 받아진 진짜 이유(yt-dlp 2026.07 소스 실측):
+REM       --cookies가 붙으면 yt-dlp가 '인증 세션'으로 판단해 유튜브 플레이어 클라이언트를
+REM       기본값 android_vr 에서 tv_downgraded + web_safari 로 통째로 갈아끼운다.
+REM         · android_vr    = JS런타임 불필요 · PO토큰 불필요  -^> 고화질 포맷 전부 나옴
+REM         · tv_downgraded = JS런타임(deno) 필요
+REM         · web_safari    = JS런타임 + PO토큰 필요 -^> 없으면 URL 누락(SABR)으로 포맷이 통째 스킵
+REM       게다가 인증 상태에선 android_vr가 "쿠키 미지원"이라 강제 제거되고,
+REM       "JS런타임 없음" 경고조차 인증 경로에선 안 뜬다 = 조용히 저화질로 떨어진다.
+REM       -^> 그래서 -f "bv*+ba/b/best"(포맷 문자열 자체는 정상)여도 고화질이 안 잡혔다.
+REM       -^> v6.2는 YT에 한해 쿠키를 빼고 받는다. 공개영상은 쿠키가 필요 없다.
+REM          연령제한·멤버십 등으로 실패하면 그때만 쿠키를 붙여 1회 재시도한다.
 REM === 주의: 이 파일은 CP949/ANSI로만 저장할 것 - UTF-8 재저장 시 한글 고정경로가 깨져 유령 폴더 생성 ===
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v5.9.3
+echo   만능 다운로더 v6.2
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
+echo   최고화질 자동 + 1080p 초과 가로영상은 1080p mp4 동반
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
 echo ===============================================
@@ -35,13 +50,14 @@ REM === 경로 설정 ===
 set "YTDLP=%OneDriveCommercial%\황세웅\6.  Nomute\창고\05. Utility\yt-dlp"
 set "GDL=%YTDLP%\gallery-dl.exe"
 set "COOKIES=%YTDLP%\cookies.txt"
-REM === 클라우드 저장 = 고정 경로 (v5.9.3 · 운영자 260721) - G:\내 드라이브\Shared ===
-REM     자동 탐지 폐기 → 항상 G:\내 드라이브\Shared 로 복사 (문자 G: 마운트 기준)
-REM     GDFS_ON(앱 실행 체크)은 유지: 앱 꺼짐 시 로컬만(죽은 잔재 폴더 생성 방지) · 다른 PC = 같은 G: 문자 마운트 가정
+REM === 클라우드 저장 = 드라이브 문자 자동 감지 (v6.0 · 운영자 260723) - 문자:\내 드라이브\Shared ===
+REM     PC마다 마운트 문자가 G:/I: 등 달라도(구글 계정 동일) 같은 '내 드라이브\Shared'를 찾아 복사
+REM     감지 = 아래 [검증] 단계에서 1)Google Drive 볼륨 라벨 문자 2)문자 전수 스캔(Shared 있는 마운트 우선) 순
+REM     GDFS_ON(앱 실행 체크)은 유지: 앱 꺼짐 시 로컬만(죽은 잔재 폴더 오탐 방지 · v5.7 계승)
 set "GDFS_ON=0"
 tasklist /fi "imagename eq GoogleDriveFS.exe" 2>nul | find /i "GoogleDriveFS.exe" >nul && set "GDFS_ON=1"
-REM 클라우드 = 고정 경로 G:\내 드라이브\Shared (운영자 260721)
-set "CLOUD=G:\내 드라이브\Shared"
+REM 클라우드 경로 = 아래 [검증]에서 자동 감지로 확정 (미감지 = 이번 실행 로컬만)
+set "CLOUD="
 set "LOCAL=%USERPROFILE%\Downloads\yt-dlp"
 set "GTEMP=%LOCAL%\_gallery_temp"
 
@@ -66,10 +82,27 @@ if not exist "%YTDLP%\yt-dlp.exe" (
     goto end
 )
 
+REM === yt-dlp 버전 표시 (v6.2) - 화질 문제의 흔한 원인이 '구버전'이라 항상 보이게 ===
+set "YTV="
+for /f "usebackq delims=" %%v in (`"%YTDLP%\yt-dlp.exe" --version 2^>nul`) do set "YTV=%%v"
+if defined YTV echo [확인] yt-dlp 버전: !YTV!
+if not defined YTV echo [경고] yt-dlp 버전 확인 실패.
+
 REM === ffmpeg 체크 (v4.8) ===
 if not exist "%YTDLP%\ffmpeg.exe" (
     echo [경고] ffmpeg.exe 없음. 영상 병합^(mp4^) 및 자막 srt 변환이 실패할 수 있음.
 )
+
+REM === JS 런타임(deno) 감지 (v6.2) ===
+REM     쿠키를 쓰는 경로(연령제한 재시도·다른 플랫폼)에서 yt-dlp가 서명 해독에 JS 런타임을 요구한다.
+REM     YT 기본 경로는 쿠키를 안 쓰므로(android_vr) deno가 없어도 최고화질에 지장 없다.
+set "JSRT="
+if exist "%YTDLP%\deno.exe" set "JSRT=--js-runtimes deno:"%YTDLP%\deno.exe""
+if defined JSRT goto jsrt_done
+where deno >nul 2>&1 && set "JSRT=--js-runtimes deno"
+:jsrt_done
+if defined JSRT echo [확인] JS 런타임: deno 감지
+if not defined JSRT echo [알림] JS 런타임^(deno^) 없음 - YT 기본 경로는 무관. 연령제한 영상만 영향.
 
 REM === gallery-dl 체크 ===
 set "HAS_GDL=0"
@@ -80,7 +113,7 @@ if "!HAS_GDL!"=="0" echo [경고] gallery-dl.exe 없음. 이미지 다운로드 비활성화.
 REM === 쿠키 파일 체크 ===
 set "HAS_COOKIES=0"
 if exist "%COOKIES%" set "HAS_COOKIES=1"
-if "!HAS_COOKIES!"=="1" echo [확인] 쿠키 파일 있음 (IG/X 이미지 가능)
+if "!HAS_COOKIES!"=="1" echo [확인] 쿠키 파일 있음 ^(IG/X 이미지 가능 · YT는 v6.2부터 미사용^)
 if "!HAS_COOKIES!"=="0" echo [알림] 쿠키 파일 없음. IG/X 이미지는 쿠키 필요.
 
 REM === 자막 설정 표시 (v4.9) ===
@@ -100,13 +133,24 @@ if "%GDFS_ON%"=="0" (
     set "GD_WHY=드라이브 앱 꺼짐/미로그인 - 시작메뉴에서 Google Drive 실행"
     goto cloud_done
 )
-REM v5.9.3: G: 마운트 실존 게이트 - 'G:\내 드라이브'가 실제로 있을 때만 Shared 생성(유령 로컬 폴더 차단)
-if not exist "G:\내 드라이브\" (
-    echo [알림] G:\내 드라이브 없음 - 드라이브 문자 마운트가 안 보임. 이번엔 로컬에만 저장
-    set "GD_WHY=G:\내 드라이브 없음 - 드라이브 설정에서 문자 G: 마운트 확인"
+REM v6.0: 드라이브 문자 자동 감지 - 계정 동일 전제, 마운트 문자(G:/I: 등)는 PC마다 달라도 됨
+REM       1순위 = Google Drive 볼륨 라벨의 문자(앱이 어디 마운트했든 정확) · 2순위 = 문자 전수 스캔(C: 제외)
+REM       각 단계 = Shared 이미 있는 마운트 우선(오탐 최소화) · 한/영 로케일(내 드라이브/My Drive) 모두 지원
+REM       실존 폴더만 채택 = 유령 로컬 폴더 차단(v5.9.1 계승) · Shared 생성은 감지된 마운트 안에서만
+set "GLET="
+for /f "usebackq delims=" %%a in (`powershell -noprofile -c "foreach($d in [IO.DriveInfo]::GetDrives()){ try{ if($d.IsReady -and $d.VolumeLabel -like 'Google Drive*'){ $d.Name.Substring(0,1); break } }catch{} }"`) do set "GLET=%%a"
+set "GROOT="
+for %%d in (!GLET! G H I J K L M N O P Q R S T U V W X Y Z D E F) do if not defined GROOT if exist "%%d:\내 드라이브\Shared\" set "GROOT=%%d:\내 드라이브"
+for %%d in (!GLET! G H I J K L M N O P Q R S T U V W X Y Z D E F) do if not defined GROOT if exist "%%d:\My Drive\Shared\" set "GROOT=%%d:\My Drive"
+for %%d in (!GLET! G H I J K L M N O P Q R S T U V W X Y Z D E F) do if not defined GROOT if exist "%%d:\내 드라이브\" set "GROOT=%%d:\내 드라이브"
+for %%d in (!GLET! G H I J K L M N O P Q R S T U V W X Y Z D E F) do if not defined GROOT if exist "%%d:\My Drive\" set "GROOT=%%d:\My Drive"
+if not defined GROOT (
+    echo [알림] 어느 드라이브에서도 '내 드라이브' 마운트를 못 찾음. 이번엔 로컬에만 저장
+    set "GD_WHY=내 드라이브 마운트 미발견 - 드라이브 앱 설정에서 문자 마운트 확인"
     goto cloud_done
 )
-echo [확인] 클라우드(고정): %CLOUD%
+set "CLOUD=!GROOT!\Shared"
+echo [확인] 클라우드(자동감지): !CLOUD!
 set "GD_WHY=Shared 폴더 생성/쓰기 실패"
 if not exist "%CLOUD%" mkdir "%CLOUD%" 2>nul
 if not exist "%CLOUD%" goto cloud_done
@@ -146,7 +190,7 @@ powershell -noprofile -c "$e=0;while($true){$k=[Console]::ReadKey($true);if($k.K
 if !errorlevel! equ 27 goto esc_exit
 if !errorlevel! equ 113 goto end
 set "URL="
-set /p URL=URL 붙여넣기 ^(q=종료^): 
+set /p URL=URL 붙여넣기 ^(q=종료^):
 
 :url_have
 if /i "!URL!"=="q" goto end
@@ -217,16 +261,64 @@ if not "!PLAT!"=="YT" (
     echo        IG/X/TT/FB/Threads는 자막 트랙이 드물어 .srt/.txt가 안 생길 수 있습니다.
 )
 
-REM === [1/2] yt-dlp 비디오 + 자막 시도 ===
+REM === [1/2] yt-dlp 비디오 + 자막 시도 (v6.2: 최고화질 봉합) ===
 echo.
 echo [1/2] yt-dlp 비디오 + 자막 시도...
-if "!HAS_COOKIES!"=="1" (
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" --cookies "%COOKIES%" --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
-) else (
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+
+REM --- 쿠키 인자 (v6.1 통합 · v6.2에서 YT 분리) ---
+REM     CK  = 원래 쿠키 인자(IG/X/TT/FB/TH용 · 거기선 쿠키가 있어야 받아진다)
+REM     CKV = yt-dlp 비디오 경로에 실제로 넘길 인자. YT면 비운다(파일 머리말 v6.2 설명 참조).
+set "CK="
+if "!HAS_COOKIES!"=="1" set "CK=--cookies "%COOKIES%""
+set "CKV=!CK!"
+if "!PLAT!"=="YT" set "CKV="
+if "!PLAT!"=="YT" if "!HAS_COOKIES!"=="1" echo [화질] YouTube = 쿠키 미사용으로 받는다 ^(쿠키를 붙이면 고화질 포맷이 조용히 누락됨^)
+
+REM --- 최고화질 해상도 1회 선행조회(다운로드 없이 메타데이터만 · --print = quiet + simulate) ---
+REM     bv*/b/best = 실제로 선택될 최고화질 영상의 픽셀·코덱·format_id를 미리 읽음.
+REM     [주의] 선행조회도 본편과 '같은 인자'(!CKV! !JSRT!)를 써야 한다 - 인자가 다르면 보이는 포맷이 달라져 판단이 틀어진다.
+REM     세로 1080 초과 + 가로영상(가로^>=세로)일 때만 = 최고화질 + 1080p mp4 동반본.
+REM     세로형(릴스·틱톡·쇼츠) / 1080 이하 / 조회 실패 = 최고화질 1개만(안전 폴백).
+set "VW="
+set "VH="
+set "VFID="
+set "VCOD="
+for /f "usebackq tokens=1,2,3,4 delims= " %%a in (`"%YTDLP%\yt-dlp.exe" --no-warnings --no-cache-dir !CKV! !JSRT! -f "bv*/b/best" --print "%%(width)s %%(height)s %%(format_id)s %%(vcodec)s" --playlist-items 1 "!URL!" 2^>nul`) do (
+    set "VW=%%a"
+    set "VH=%%b"
+    set "VFID=%%c"
+    set "VCOD=%%d"
 )
+REM --- 화질 영수증(v6.2): 뭘 최고화질로 판단했는지 항상 화면에 남긴다 = "안 받아졌다"를 눈으로 검증 ---
+if defined VH echo [화질] 최고화질 조회 = !VW!x!VH! / 코덱 !VCOD! / format !VFID!
+if not defined VH echo [화질] 최고화질 조회 실패 - 그래도 최고화질로 진행. 계속 저화질이면 yt-dlp 업데이트부터.
+set "GET1080=0"
+echo !VH!| findstr /r "^[0-9][0-9]*$" >nul && echo !VW!| findstr /r "^[0-9][0-9]*$" >nul && if !VH! gtr 1080 if !VW! geq !VH! set "GET1080=1"
+if "!GET1080!"=="1" echo [화질] 1080p 초과 가로영상 - 최고화질 + 1080p mp4 동반 다운로드
+if "!GET1080!"=="0" echo [화질] 최고화질 1개만 다운로드 ^(1080p 이하 / 세로영상 / 조회불가^)
+
+REM --- 최고화질 본편 + 자막(항상 실행) ---
+"%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
 set "YT_RC=!errorlevel!"
+
+REM --- YT 쿠키 폴백(v6.2): 쿠키 없이 실패한 경우에만 쿠키를 붙여 1회 재시도(연령제한·멤버십·비공개) ---
+if !YT_RC! neq 0 if "!PLAT!"=="YT" if "!HAS_COOKIES!"=="1" (
+    echo [재시도] 쿠키 없이 실패 - 연령제한/멤버십 가능성. 쿠키 붙여 1회 재시도...
+    echo          ^(이 경로는 화질이 낮게 잡힐 수 있다. deno 설치 시 개선^)
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CK! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+    set "YT_RC=!errorlevel!"
+)
 if !YT_RC! neq 0 echo [yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성.
+
+REM --- 1080p mp4 동반본(최고화질이 1080p 초과 가로영상일 때만 · 자막 재다운로드 안 함) ---
+REM     파일명 표식 '1080p_'을 앞쪽에 둠 = --trim-filenames 120은 뒤(제목)를 자르므로 앞표식은 안 잘림 -^> 본편과 충돌 없음.
+REM     포맷 = 1080 이하 mp4 우선(h264 mp4 = 어디서나 재생) -^> 없으면 1080 이하 최선.
+if "!GET1080!"=="1" (
+    echo.
+    echo [1080p] 호환용 1080p mp4 동반본 다운로드...
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format mp4 -N 4 "!URL!"
+    if errorlevel 1 echo [1080p] 동반본 다운로드 실패 ^(본편은 정상^)
+)
 
 REM === 자막 후처리 (v4.9 txt 변환 + v5.7 Shared 바닥 평평 복사) ===
 REM     폰 파이프라인은 Shared 바닥만 훑으므로 자막을 '시각_플랫폼_업로더_제목.언어.확장자'로 바닥에 복사(로컬은 제목 폴더 유지)
@@ -320,6 +412,7 @@ if "!DUAL!"=="1" for /f %%c in ('dir /b "%CLOUD%\!TS!_!PLAT!_*" 2^>nul ^| find /
 echo.
 echo ===============================================
 echo   다운로드 완료
+if defined VH echo   화질:    !VW!x!VH! ^(!VCOD!^)
 echo   로컬:    %LOCAL%
 if "!DUAL!"=="1" if not defined GD_WHY echo   GDRIVE : 전송 완료 !GD_CNT!개 - %CLOUD%
 if "!DUAL!"=="1" if defined GD_WHY echo   GDRIVE : 전송 이상 - 도착 !GD_CNT!개 / !GD_WHY!
