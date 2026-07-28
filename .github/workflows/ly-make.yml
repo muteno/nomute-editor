@@ -38,6 +38,10 @@ on:
         description: '재합성 모드(1=ON) — 기존 ly_out/<id>/subs.json 의역 + video.json src(R2 원본 보관본)로 번인만 재실행(STT·claude 스킵 = LLM 0콜·1분급)'
         type: string
         default: '0'
+      stt_prec:
+        description: 'STT 연산 정밀도(A/B용 · 빈값=기본 int8_float32) — int8(구본·가장 빠름·오인식↑) / int8_float32(기본 = 가중치 int8·연산 float32) / float32(최고 정밀·최저 속도 = 10분 영상은 STT 백스톱 위협). 같은 영상을 값만 바꿔 두 번 발사하면 정확도 대조가 된다(산출 segments.json `prec` 키로 어느 설정인지 식별)'
+        type: string
+        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -57,7 +61,7 @@ permissions:
 jobs:
   ly:
     runs-on: ubuntu-latest
-    timeout-minutes: 75   # 콜드캐시(STT 환경 20)+STT(40)+claude+Demucs(12)+번인(35) 최악 겹침 재산정(260726 large-v3 승격 — turbo 대비 추론 ~4배 = MAX_DUR 10분 영상 최악 ~20분·구 60은 스택보다 짧아짐). 개별 폭주는 스텝 백스톱이 먼저 끊고 잡 캡 = 최후 보루
+    timeout-minutes: 85   # 콜드캐시(STT 환경 20)+STT(50)+claude+Demucs(12)+번인(35) 최악 겹침 재산정(260726 large-v3 승격 — turbo 대비 추론 ~4배 = MAX_DUR 10분 영상 최악 ~20분·구 60은 스택보다 짧아짐). 개별 폭주는 스텝 백스톱이 먼저 끊고 잡 캡 = 최후 보루
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -192,12 +196,13 @@ jobs:
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
-        timeout-minutes: 40   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 승격 = turbo 대비 ~4배 감안 25→40) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단
+        timeout-minutes: 50   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 40 · 260728 int8→int8_float32 승격 = int8 대비 ~1.1~1.3배 감안 40→50) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단. ⚠ float32 A/B는 10분 영상서 이 백스톱을 위협(짧은 클립으로 대조할 것)
         env:
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
+          LY_STT_PRECISION: ${{ inputs.stt_prec }}   # 빈값 = ly_stt.py 기본(int8_float32) · A/B 시에만 지정
         run: |
           set -e
           # YouTube/IG 봇차단 우회 — YT_COOKIES 시크릿(쿠키 Netscape txt 본문) 있으면 사용
@@ -254,11 +259,12 @@ jobs:
 
       - name: STT (업로드 파일 → ffmpeg 오디오추출 → Whisper)
         if: ${{ inputs.file != '' || inputs.r2_src != '' }}
-        timeout-minutes: 40   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40) — URL 스텝과 동일 원칙
+        timeout-minutes: 50   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40 · 260728 int8_float32 승격 40→50) — URL 스텝과 동일 원칙
         env:
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
           UP_BRANCH: ${{ inputs.up_branch }}
+          LY_STT_PRECISION: ${{ inputs.stt_prec }}   # 빈값 = ly_stt.py 기본(int8_float32) · A/B 시에만 지정
         run: |
           set -e
           # 일회용 업로드 브랜치(up-<id>) 경로 = 파일을 브랜치에서 /tmp로 회수(main 워킹트리엔 없음 · 잡 끝에 브랜치 삭제)
