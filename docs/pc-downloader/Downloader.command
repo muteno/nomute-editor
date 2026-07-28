@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================
-#  만능 다운로더 v6.4-mac  (Downloader.bat v6.4 맥 이식)
+#  만능 다운로더 v6.5-mac  (Downloader.bat v6.4 맥 이식)
 #  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 #
 #  동작 동일:
@@ -104,10 +104,10 @@ end_exit() {
 }
 
 ARGURL="$1"
-printf '\033]0;만능 다운로더 v6.4-mac\007'
+printf '\033]0;만능 다운로더 v6.5-mac\007'
 
 echo "==============================================="
-echo "  만능 다운로더 v6.4-mac"
+echo "  만능 다운로더 v6.5-mac"
 echo "  해상도 최고 + 프레임 최고 + 짧은변 1080p 각 1개(겹치면 생략)"
 echo "  링크가 가리키는 영상(또는 재생목록)만 다운로드"
 echo "  YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막"
@@ -159,13 +159,35 @@ YTV=$(yt-dlp --version 2>/dev/null)
 [ -n "$YTV" ] && echo "[확인] yt-dlp 버전: $YTV"
 [ -z "$YTV" ] && echo "[경고] yt-dlp 버전 확인 실패."
 
-# === ffmpeg 체크 ===
+# === ffmpeg 확보 (v6.5) = 저화질의 진범 ===
+#     yt-dlp는 고화질을 "영상 따로 + 음성 따로"로 받아 ffmpeg으로 합친다.
+#     ffmpeg이 없으면 그 조합(bv*+ba)을 아예 못 고르고 "이미 합쳐진 파일"로 떨어지는데,
+#     유튜브가 주는 합본은 format 18 = 640x360 하나뿐이다. 그래서 360p가 받아졌다.
+#     -> 없으면 경고만 하고 넘어가지 않는다. 설치를 시도하고, 그래도 없으면 멈춘다.
 FFMPEG_BIN=$(command -v ffmpeg)
+if [ -z "$FFMPEG_BIN" ]; then
+    echo
+    echo "[중요] ffmpeg 이 없다. 이게 없으면 무조건 360p만 받아진다."
+    if command -v brew >/dev/null 2>&1; then
+        echo "[설치] brew install ffmpeg 실행 중... (몇 분 걸릴 수 있다)"
+        brew install ffmpeg && FFMPEG_BIN=$(command -v ffmpeg)
+    fi
+fi
 if [ -n "$FFMPEG_BIN" ]; then
     FFLOC=(--ffmpeg-location "$(dirname "$FFMPEG_BIN")")
+    echo "[확인] ffmpeg 있음 - 고화질 병합 가능 ($FFMPEG_BIN)"
 else
-    FFLOC=()
-    echo "[경고] ffmpeg 없음. 영상 병합(mp4) 및 자막 srt 변환이 실패할 수 있음."
+    echo
+    echo "==============================================="
+    echo "  [중단] ffmpeg 을 못 구했다."
+    echo "  이 상태로 받으면 360p 만 나오므로 받지 않는다."
+    echo
+    echo "  해결 = 터미널에 아래 한 줄"
+    echo "     brew install ffmpeg"
+    echo "  (brew 자체가 없으면 https://brew.sh 먼저)"
+    echo "==============================================="
+    read -r -p "엔터로 종료... " _
+    close_terminal_window
 fi
 
 # === JS 런타임 (유튜브 고화질 포맷용) ===
