@@ -7444,32 +7444,66 @@ function sysErrMsgs() {
     if (!SYS_PLAT_KO[k] || !reg || !got) continue;   // 전멸(got=0) = stale 담당(중복 억제)
     if (got * 5 >= reg * 4) continue;                // 80% 이상 = 정상 이탈 범위 = 침묵
     const why = (c.why && typeof c.why === 'object') ? c.why : {};
-    for (const a of miss) {
+    // 같은 사유끼리 묶는다(260728 판례 = 알림 42건 폭탄 · 유튜브 20계정 동시 404) — 한 플랫폼에서 **같은 코드가 3건 이상**이면
+    //   계정마다 사정이 있는 게 아니라 **수집 경로가 통째로 막힌 것**이다(@CNN·@BBCNews·@MrBeast가 한날 같이 삭제될 수 없다).
+    //   그런데 종전 문구는 404를 곧이곧대로 "삭제됐으니 설정에서 지워 줘"로 옮겨 **멀쩡한 구독 20개를 지우라고 시켰다** = 최악의 오지시.
+    //   → 묶음 1건으로 바꾸고 조치도 "지우지 마"로 뒤집는다. 1~2건 = 종전대로 계정별(진짜 개별 이탈 = 지우는 게 맞다).
+    // 사유 미기록(why 키 부재) = 실패 근거가 없는 것이라 **사고로 단정하지 않는다** — 종전 폴백 문구가
+    //   "비공개·삭제됐거나 차단당한 거예요"라고 단정해 근거 없는 지목을 찍어내던 자리(260728 리포트 16건).
+    const grp = {};
+    for (const a of miss) { const g = (why[a] === undefined || why[a] === null || why[a] === '') ? '' : String(why[a]); (grp[g] || (grp[g] = [])).push(a); }
+    for (const g of Object.keys(grp)) {
+      const accs = grp[g], w = why[accs[0]], wn = (typeof w === 'number') ? w : 0, many = accs.length >= 3;
       // 원인별 문구(운영자 260727 "계정때문에 안받아와지는거랑 원인에 따라 메세지를 달리 해줄수있어?") —
-      //   수집기가 실어 보낸 `cover.why[계정]`으로 갈린다. 사유 미기록(구 데이터·미분류) = 일반 문구로 폴백 = 종전 동작.
-      //   조치 주체가 갈리는 게 핵심: **404·410 = 네 계정 목록 문제**(지워야 함) / 403·429·wall = 플랫폼 차단(기다리면 됨).
-      const w = why[a], wn = (typeof w === 'number') ? w : 0;
+      //   조치 주체가 갈리는 게 핵심: **404·410 단건 = 네 계정 목록 문제**(지워야 함) / 대량·403·429·wall = 플랫폼 축(기다리면 됨).
       let cause, todo;
-      if (wn === 404 || wn === 410) {
-        cause = '이 계정이 없어졌어요 — 삭제됐거나 아이디를 바꾼 거예요.';
-        todo = '👉 네가 할 일: 설정에서 이 계정을 지우거나 새 아이디로 고쳐 줘. 그대로 두면 계속 빈자리로 남아요.';   // ⚠ 마크다운 금지 — 상세는 textContent라 별표가 그대로 보인다(260727 판례 재발 방지)
+      if (!g) {
+        if (!many) continue;   // 1~2개 = 정상 이탈 범위 = 침묵(종전 임계 정신 계승)
+        cause = '왜 빠졌는지 기록이 없어요 — 수집은 됐는데 상위권에 못 들었거나, 이번 회차에 시도되지 않은 거예요.';
+        todo = '👉 네가 할 일: 없어요. 계정이 잘못됐다는 뜻이 아니니 지우지 마. 며칠째 계속 뜨면 그때 알려줘.';
+      } else if (wn === 404 || wn === 410 || w === 'resolve') {
+        cause = many
+          ? (SYS_PLAT_KO[k] + '이(가) 등록 계정 ' + accs.length + '개를 한꺼번에 "없는 계정"이라고 답했어요. 계정이 한날 그렇게 많이 사라질 수는 없어요 — 계정 문제가 아니라 수집하는 서버 주소(IP)가 막힌 거예요.')
+          : (w === 'resolve' ? '이 계정의 채널 주소를 못 읽었어요(프로필 페이지가 안 열렸어요).' : '이 계정이 없어졌어요 — 삭제됐거나 아이디를 바꾼 거예요.');
+        todo = many
+          ? '👉 네가 할 일: 없어요. 계정을 지우지 마 — 지우면 멀쩡한 구독이 통째로 날아가요. 며칠째 계속 뜨면 그때 알려줘.'   // ⚠ 마크다운 금지 — 상세는 textContent라 별표가 그대로 보인다(260727 판례 재발 방지)
+          : (w === 'resolve' ? '👉 네가 할 일: 없어요. 다음 수집에 자동으로 다시 시도해요.'
+                             : '👉 네가 할 일: 설정에서 이 계정을 지우거나 새 아이디로 고쳐 줘. 그대로 두면 계속 빈자리로 남아요.');
       } else if (wn === 401 || wn === 403 || w === 'wall') {
-        cause = '이 계정만 ' + SYS_PLAT_KO[k] + '이(가) 막고 있어요(비공개 전환이거나 자동 수집 차단).';
+        cause = many
+          ? (SYS_PLAT_KO[k] + '이(가) 계정 ' + accs.length + '개를 한꺼번에 막았어요 — 계정별 문제가 아니라 자동 수집 자체를 차단한 거예요.')
+          : ('이 계정만 ' + SYS_PLAT_KO[k] + '이(가) 막고 있어요(비공개 전환이거나 자동 수집 차단).');
         todo = '👉 네가 할 일: 없어요. 차단은 풀리는 경우가 많아서 다음 수집에 자동으로 다시 시도해요. 며칠째면 그때 알려줘.';
       } else if (wn === 429) {
-        cause = '요청이 몰려서 잠시 막혔어요(일시적).';
+        cause = '요청이 몰려서 잠시 막혔어요(일시적).' + (many ? ' 계정 ' + accs.length + '개가 같이 막힌 걸 보니 주소(IP) 단위 제한이에요.' : '');
         todo = '👉 네가 할 일: 없어요. 잠시 뒤 자동으로 다시 걷혀요.';
+      } else if (wn >= 500) {
+        cause = SYS_PLAT_KO[k] + ' 쪽 서버가 오류를 냈어요(' + wn + ' — 그쪽 문제라 계정과 무관해요).';
+        todo = '👉 네가 할 일: 없어요. 다음 수집에 자동으로 다시 시도해요.';
+      } else if (w === 'budget') {
+        cause = '이번 수집은 시간이 모자라 이 계정까지 못 갔어요(실패가 아니라 미시도).';
+        todo = '👉 네가 할 일: 없어요. 다음 수집에 다시 시도해요.';
       } else if (w === 'empty') {
         cause = '계정은 살아있는데 가져올 새 글이 없었어요(비공개이거나 최근 게시물이 없음).';
         todo = '👉 네가 할 일: 없어요. 새 글이 올라오면 자동으로 들어와요.';
       } else {
-        cause = '계정이 비공개·삭제됐거나 그 계정만 차단당한 거예요.';
+        cause = '수집이 실패했어요(사유 코드 ' + g + ').';
         todo = '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.';
       }
-      out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
-        text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 안 걷히고 있어요.\n\n'
-          + cause + ' (' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락)\n\n'
-          + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
+      const _tail = ' (' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락)';
+      if (many) {   // 묶음 1건 — id의 계정 자리에 `*사유` = ✓·재고지 축·출처 매핑(sys:acct:) 전부 종전 계승
+        out.push({ id: 'sys:acct:' + k + ':*' + (g || 'nowhy') + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
+          text: SYS_PLAT_KO[k] + ' 계정 ' + accs.length + '개가 한꺼번에 안 걷히고 있어요.\n\n'
+            + cause + _tail + '\n\n안 걷힌 계정: ' + accs.map(a => '@' + a).join(', ') + '\n\n'
+            + todo + '\n\n확인(✓)하면 이 건은 오늘 다시 안 떠요.' });
+      } else {
+        for (const a of accs) {
+          out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
+            text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 안 걷히고 있어요.\n\n'
+              + cause + _tail + '\n\n'
+              + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
+        }
+      }
     }
   }
   const rddN = ((TRENDS && TRENDS.reddit) || []).length;
@@ -7780,7 +7814,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '4958648 · 260728_1614';  /*BUILDSTAMP*/
+const BUILD_STAMP = 'd3ef714 · 260728_1623';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
