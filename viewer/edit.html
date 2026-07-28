@@ -113,7 +113,8 @@
   .cyrow { display:flex; gap:8px; }   /* 반폭 페어 = 남는 공간 활용(운영자 260712 "행 반만 쓰니 반으로 잘라 둘 다") */
   .cyrow > .scard { flex:1 1 0; min-width:0; }
   .cyrow.tri > .scard .hd { padding-inline:8px /* raw-ok: 3분할(자막|번역|고프레임 · 운영자 260728) 한정 좌우 축약 — 구 10px는 390px에서만 통과하고 **360px(갤럭시 S8·A)에서 '고프레임' 2줄 꺾임(카드 40→64.2px) 실측**(평의회⑥ 260728) · 8px+gap4 = 360px 여유 확보 · 세로 8 = 정본 유지 */; gap:4px /* raw-ok: 동일 사유 */; }
-  .cyrow.tri > .scard .hd .nm, .cyrow.tri > .scard .hd .cyv { min-width:0; }   /* 3분할 셀 축소 허용(꺾임 대신 폭 양보) */
+  /* (철회 260728 재검④) `.cyrow.tri .nm/.cyv { min-width:0 }` = 특이도(0,4,0)로 아래 `.cyrow .cyv { min-width:3ch }`(운영자 260712 확정 "한 음절 늘어나도 무너지면 안됨")를 tri 행에서 통째 무효화했다.
+     게다가 `.cyv`는 `white-space:nowrap`이라 애초에 안 꺾인다 = 꺾임 방지 기여 0·폭 지터 부활만 남는 순손실. 360px 수용은 위 padding 8/gap 4가 전담(실측). */
   .cnote { padding:2px 13px 10px; font-size:var(--fs-xs); color:var(--mut); line-height:1.5; }   /* 카드 하단 STT/클립 노트(켰을 때만 · 산문 최소) */
   .grow { display:grid; grid-template-columns:60px 1fr 44px; align-items:center; gap:9px; margin-top:9px; font-size:var(--fs-xs); }   /* 라벨 열 60px = track .mo-k 미러(구 52px = 「부드럽게」·「키잉 페더」 2줄 꺾임 — 이미지 제작 폼 결 정렬 · 운영자 260712) */
   .grow .k { color:var(--mut); font-weight:var(--fw-b); }
@@ -142,7 +143,8 @@
   .pvsub span { display:block; }
   .pvsub .pvsub-tr { opacity:.92; }   /* 번역 줄(운영자 260728 — 50% 작게 위·자막 아래) 미리보기 미러 */
   .cpv-url { position:absolute; left:0; right:0; bottom:var(--sp-2); margin:0 auto; max-width:86%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; color:var(--mut); font-size:var(--fs-xs); cursor:pointer; }   /* URL 소스 표식 겸 진입로(Q01 · 평의회① — 폰에서 URL 도달 경로) · **absolute = 스테이지 흐름 밖**: 흐름에 두면 첨부 픽토를 위로 밀어 4분할 중앙 정렬이 −50px 깨진다(smoke_editprev C3 실측 260728) */
-  .cpv-url::before { content:''; position:absolute; inset:-9px 0; }   /* 탭존 확장(.scard .rm 히트슬롭 정본 동값) */
+  /* (철회 260728 재검④) `.cpv-url::before { inset:-9px 0 }` 히트슬롭 = 자기 자신의 `overflow:hidden`(ellipsis용)에 잘려 **아무 일도 안 하는 죽은 코드**였다.
+     같은 함정을 `.tl-track` 주석에 이미 적어놓고 옆 요소에서 그대로 밟았다 → 탭존은 padding으로 확보(아래 선언). */
 
   /* 바텀시트(처리 추가 · 높이 64% = 운영자 선택값) */
   .sheetdim { position:fixed; inset:0; z-index:30; background:rgba(8,9,10,.55); }
@@ -875,7 +877,10 @@ function dockSync(){
   const d=document.getElementById('topDock'); if(!d) return;
   const vw=document.getElementById('vwrap'), lb=document.getElementById('lyBurn');
   const lv=document.getElementById('lyBurnVid');
-  const res=(vw&&!vw.hidden&&!vw.querySelector('.scanline'))||(lb&&!lb.hidden&&lv&&!lv.hidden);   // **완성본이 실제로 재생 가능한 시점**만 접힘(평의회⑨ 260728 — 구 판정은 결과 '슬롯 점유'라 자막 재입히기의 1~3분짜리 Solving 로더 단계에서 미리 접혔다 · .scanline = 편집 대기 스테이지 마커)
+  // 접힘 조건 = **결과 흐름에 들어선 순간부터**(대기 + 완성본). 운영자 원문 "완성본 미리보기까지 나오는 타이밍이 있으면 위아래가 너무 꽉차거든?" = 대기 스테이지도 그 '꽉 참'의 일부다.
+  //   ⚠ 재검① 260728: 판정을 「완성본 가시」로만 좁히고 dockSync를 DOM 갱신 **전에** 부르는 바람에 **대기 중 접히고 완성되면 펼쳐지는** 정반대 동작이 됐다(호출 순서는 아래 4곳에서 갱신 뒤로 이동).
+  //   _pollLive 합류 = 구 `_ps.hidden=true`(하드 숨김)가 막던 **대기 스테이지 ↔ 미리보기 중복 화면**도 같은 축으로 차단(하드 숨김 대신 부드러운 접힘).
+  const res=!!_pollLive||(vw&&!vw.hidden&&!vw.querySelector('.scanline'))||(lb&&!lb.hidden&&lv&&!lv.hidden);
   if(res&&_dockHold==='src') _dockHold=null;   // 소스 첨부 펼침은 완성본 등장에 양보(수동 'open'은 유지)
   const fold=(_dockHold==='open'||_dockHold==='src')?false:_dockHold==='fold'?true:!!res;
   d.classList.toggle('fold', fold);
@@ -900,8 +905,8 @@ function pvSync(){
   const _pe=document.getElementById('pvEmpty'), _sw=document.getElementById('pvSwap'), _dl=document.getElementById('pvDel');
   if(!FILE_URL || !slot || _pollLive){ pv.hidden=true;
     if(sec){ sec.hidden=!!_pollLive; const _pa0=document.getElementById('pvAttr'); if(_pa0) _pa0.innerHTML=''; }   // 상시 노출(운영자 260722 thumb 유닛 이식 — 빈 상태 = 박스+픽토 진입점 · 구 파일 있을 때만 = 폐지) · 대기/결과 중엔 종전대로 숨김(중복 화면 차단)
-    if(_pe) _pe.hidden=!!_pollLive; if(_sw) _sw.hidden=true; if(_dl) _dl.hidden=true;   // 빈 상태 = 중앙 픽토 진입점만(우상단 교체 숨김 = thumb 빈상태 cpToolSync(true) 규칙 정합 · 운영자 260723 — 구 '상시 교체' = 드리프트 교정 · 교체/삭제는 첨부 시에만 노출)
-    const _pu=document.getElementById('pvUrl'); if(_pu&&!_pu.dataset.up){ const _uv=($('#url')&&$('#url').value.trim())||''; _pu.hidden=false; if(_uv){ let _h='URL 소스'; try{ _h='URL 소스 · '+new URL(_uv).hostname; }catch(_){} _pu.textContent=_h; } else _pu.textContent='주소 붙여넣기'; }   // URL 상태 표식 겸 진입로(Q01 · 평의회① — 상시 노출로 폰에서도 URL 경로 도달 가능 · 미리보기 픽셀은 없어 정직하게 텍스트만) · data-up = 업로드 진행률 점유 중 보호
+    if(_pe) _pe.hidden=!!_pollLive; if(_sw) _sw.hidden=true; if(_dl) _dl.hidden=!(($('#url')&&$('#url').value.trim())&&!_pollLive);   // 빈 상태 = 중앙 픽토 진입점만(thumb 빈상태 규칙 계승) · 단 **URL이 붙어 있으면 삭제 버튼 노출**(재검⑥ 260728 — 잘못 붙인 주소를 지울 수단이 없어 그대로 발사되던 것)
+    const _pu=document.getElementById('pvUrl'); if(_pu){ const _uv=($('#url')&&$('#url').value.trim())||''; _pu.hidden=false; if(_uv){ let _h='URL 소스'; try{ _h='URL 소스 · '+new URL(_uv).hostname; }catch(_){} _pu.textContent=_h; } else _pu.textContent='주소 붙여넣기'; }   // URL 상태 표식 겸 진입로(Q01 · 평의회① — 상시 노출로 폰에서도 URL 경로 도달 가능 · 미리보기 픽셀은 없어 정직하게 텍스트만) · 업로드 진행률은 #pvAttr가 전담(재검⑤ — 구 data-up 가드는 실패 이탈 경로에서 해제가 안 돼 라벨이 '업로드 57%'로 영구 고착됐다)
     const _sr0=document.querySelector('.srcwrap'); if(_sr0) _sr0.style.display=''; if(!FILE_URL && vv.getAttribute('src')){ vv.removeAttribute('src'); vv.load(); } return; }   // _pollLive 게이트 = 대기 표시 중 재렌더가 미리보기 부활시키던 중복 화면 차단 · 소스 섹션 복원(첨부 해제 시 · 260722 도크 아래 이주로 라벨 포함 래퍼째 토글 — 행만 숨기면 'Contents' 소머리가 섹션 사이 고아로 부유)
   if(pv.parentElement!==slot) slot.appendChild(pv);   // 영속 노드 이주(재렌더에도 video 리로드 0)
   pv.hidden=false; if(sec) sec.hidden=false;
@@ -1063,7 +1068,7 @@ const PREC=[['종합',null],['릴스 완성','reels'],['포맷만','fmt'],['화�
 })();
 /* 내 프리셋(운영자 260722 "저장 ㄱ") — 현재 ON+P(t0/t1 구간 = 파일 종속 제외) 스냅샷 · 저장소 = nm_edit_mypre 로컬(nm_track_preset 관례 · seen.js 계정 축 = id append 모델이라 비대상 — 계정 동기화 = 별도 축 설계 필요 시 후속) */
 const MYPRE_K='nm_edit_mypre';
-let MYPRE=[]; try{ MYPRE=(JSON.parse(localStorage.getItem(MYPRE_K)||'[]')||[]).filter(m=>m&&m.nm&&m.on&&m.p).map(m=>{ m.on.clip=false; return m; }).slice(0,5); }catch{ MYPRE=[]; }   // 저장분 클리퍼 무장해제(평의회⑦ 260728 — 숨김 이전에 저장된 clip:true가 복원되면 카드가 없어 **끌 수단 없는 유령 상태**(전 카드 dim + 발사가 클리퍼 스캔으로 나감) · 클리퍼 재점등 시 이 map만 제거)
+let MYPRE=[]; try{ MYPRE=(JSON.parse(localStorage.getItem(MYPRE_K)||'[]')||[]).filter(m=>m&&m.nm&&m.on&&m.p).slice(0,5); }catch{ MYPRE=[]; }   // ⚠ 로더에서 m.on.clip을 손대지 않는다(재검⑤ 260728) — 배열을 변형하면 이후 myPreStore()가 **저장소의 clip:true를 영구 덮어써** 클리퍼 재점등 시 복원이 불가능해진다 · 무장해제는 아래 '적용' 시점에서만
 const myPreStore=()=>{ try{ localStorage.setItem(MYPRE_K, JSON.stringify(MYPRE)); }catch{} };
 /* 프리셋 칩 행 탭(운영자 260722 "PRESET 표기 지우고 첨부처럼 아래에 · 여러 프리셋 고르게") — 적용 = 기존 recipe() 재사용 · '종합' = 상태 무변경 점등만 · _preSet 선행 = recipe 내부 render()가 새 점등으로 그림 · 890행 [data-p] 위임 밖(별도 속성 = _preManual 오발동 차단) · 내 프리셋 = ON/P 복원(recipe 동형 직대입) · + 저장 = 스냅샷 push */
 document.addEventListener('click',e=>{
@@ -1074,7 +1079,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-precnm]'); if(!b) return;
   const nm=b.dataset.precnm, rec=b.dataset.prec;
   if(b.dataset.premine){ const m=MYPRE.find(x=>x.nm===nm); if(!m) return;
-    ON={...m.on}; for(const k in m.p) P[k]=m.p[k]; OPEN=''; _preSet(nm); render(); return; }   // 복원 = recipe() 동형(ON 직대입+render · 구간 t0/t1 = 현 값 보존)
+    ON={...m.on, clip:false}; for(const k in m.p) P[k]=m.p[k]; OPEN=''; _preSet(nm); render(); return; }   // 복원 = recipe() 동형(ON 직대입+render · 구간 t0/t1 = 현 값 보존) · clip:false = **적용 시점 무장해제**(평의회⑦: 숨긴 클리퍼가 되살아나면 카드가 없어 끌 수단이 없다 / 재검⑤: 로더에서 지우면 저장소가 영구 훼손되므로 여기서만) · 클리퍼 재점등 = 이 `clip:false`만 제거
   if(nm===_preN && !rec) return;
   _preSet(nm); if(rec) recipe(rec); else render(); });
 /* 내 프리셋 길게(600ms) = 삭제(edit 실패칩 '길게=메뉴' 홀드 관례 계승 · 삭제 후 render로 칩 소멸 = 뒤따르는 click은 죽은 노드라 무해) */
@@ -1183,10 +1188,10 @@ renderXtr();
 
 /* ══ 입력(파일 좌·URL 우 — 운영자 260710 · .file 픽토 계승) ══ */
 const FILE_ICON=$('#fileTxt').innerHTML;
-const fileSlotName=f=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; try{ if(/^video\//.test(f.type||'')) lyPvSet(f); }catch(e){} };   // lyPvSet = 자막 편집 미리보기 소스(이 세션 첨부 한정 · B-2 — 영상만)
-const fileSlotPct=(f,p)=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+p+'%</span><span class="fname">'+esc(f.name)+'</span>';
-  const _pu=document.getElementById('pvUrl'); if(_pu){ if(p>=100){ delete _pu.dataset.up; pvSync(); } else { _pu.dataset.up='1'; _pu.hidden=false; _pu.textContent='업로드 '+p+'%'; } } };   // 업로드 진행 = 확장자 배지 자리에 %(기존 슬롯) + **미리보기 빈 상태에도 미러**(평의회⑦ 260728 — 구 표시처가 도먼트된 Contents 안에 갇혀 큰 파일 올릴 때 아무 표시 없이 수 분간 멈춘 화면만 보이던 것)
-const fileSlotClear=()=>{ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; };
+const fileSlotName=f=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+esc((f.name.split('.').pop()||'VID').toUpperCase())+'</span><span class="fname">'+esc(f.name)+'</span>'; upMirror(null); try{ if(/^video\//.test(f.type||'')) lyPvSet(f); }catch(e){} };   // upMirror(null) = 업로드 완료·확정 시 진행률 해제(재검⑤ 고착 봉합) · lyPvSet = 자막 편집 미리보기 소스(이 세션 첨부 한정 · B-2 — 영상만)
+const upMirror=p=>{ const el=document.getElementById('pvAttr'); if(!el) return; el.textContent=(p==null)?'':('업로드 '+p+'%'); el.style.display=(p==null)?'':'block'; };   // 업로드 진행 미러 = **#pvAttr**(미리보기 박스 아래·빈 상태 컨테이너 밖) — 평의회⑦ 지적(구 표시처가 도먼트 Contents 안에 갇힘)의 처방인데, 재검⑤가 잡았듯 #pvUrl은 첨부 순간 `#pvEmpty`째 display:none이 돼 **한 번도 안 보였다** · #pvAttr = 도먼트 명세줄 자리(display:none 기본)라 진행 중에만 켠다
+const fileSlotPct=(f,p)=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+p+'%</span><span class="fname">'+esc(f.name)+'</span>'; upMirror(p>=100?null:p); };
+const fileSlotClear=()=>{ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; upMirror(null); };   // 실패·삭제 이탈에서도 진행률 해제(재검⑤)
 function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 경로 그대로(≤30MB · 회귀 0) · _lastFile 신선도 가드 = 연속 선택 last-writer 꼬임 방지(평의회7 F3)
   const rd=new FileReader();
   rd.onload=()=>{ if(_lastFile!==f) return; FILE_B64=String(rd.result||''); btn.disabled=false; fileSlotName(f); };
@@ -1216,6 +1221,7 @@ function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 �
     CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';
     if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
     FILE_URL='';
+    const _u=$('#url'); if(_u) _u.value='';   // URL 소스도 함께 해제(재검⑥ 260728 — 붙인 주소를 지울 경로가 없어 오발사로 이어지던 것)
     try{ lyPvSet(null); }catch(e){}
     const b=$('#editGo'); if(b) b.disabled=false; setEta(); render();
   });
@@ -1224,7 +1230,6 @@ $('#file').addEventListener('change',async()=>{
   const f=$('#file').files[0]; if(!f) return;
   _dockHold='src';   // 새 소스 첨부 = 미리보기 펼침(이전 완성본이 남아 있어도 새 작업 준비가 우선 · 다음 완성본 표시에 자동 해제 · 운영자 260728 도크 접힘 축)
   FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0;
-  segsReset();   // 새 소스 = 옛 구간 무효(평의회⑤ 260728 — CLIPS/CUTS는 비우면서 P.segs만 빠져 60초 영상 구간이 10초 영상에 그대로 발사되던 사고 차단 · 같은 줄 아래 클립·컷 가드와 동문)
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';   // 새 소스 = 옛 스캔 후보 무효(엉뚱한 구간 적용 풋건 차단 · 검증⑦C)
   CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';   // 컷 미리보기도 동일(다른 영상의 승인 컷이 붙는 사고 차단 · 260727)
   if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
@@ -1232,6 +1237,7 @@ $('#file').addEventListener('change',async()=>{
   if(f.size>2*1024*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('파일은 2GB까지 — 구간을 잘라서 올려줘'); }   // 거절 = 버튼 복구(직전 업로드가 잠근 상태 고착 방지 · 평의회7 F1)
   const r2on=await nmUpArm();   // R2 직업로드 가용(문서당 1회 핑 · 4s 타임아웃) — 미가용 = 종전 30MB 경로 폴백
   if(!r2on&&f.size>30*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('30MB 초과 — 대용량 저장 미설정(R2 바인딩 필요). URL로 해줘'); }
+  segsReset();   // 새 소스 = 옛 구간 무효(평의회⑤ 260728 — 60초 영상 구간이 10초 영상에 그대로 발사되던 사고 차단) · ⚠ **첨부가 확정된 뒤**에 비운다(재검⑤ 260728 — 크기 거절 앞에 두면 첨부는 거절됐는데 기존 구간만 날아가 복구 불가)
   FILE_NAME=f.name; FILE_URL=URL.createObjectURL(f); render();   // 미리보기 버튼 노출(objectURL = 업로드 완료 전에도 로컬 프리뷰 가능)
   const v=document.createElement('video'); v.preload='metadata'; v.src=FILE_URL;
   v.onloadedmetadata=()=>{ _dur=v.duration||0; _varea=(v.videoWidth||0)*(v.videoHeight||0); setEta(); pvSync(); };
@@ -1442,12 +1448,13 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   const status=$('#cstatus'); status.classList.remove('err');
   if(kind==='clip'){ $('#cliplist').hidden=true; $('#cliplist').innerHTML=''; }
   if(kind==='cutscan'){ $('#cutlist').hidden=true; $('#cutlist').innerHTML=''; }
-  const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done'); dockSync();   // 구 `_ps.hidden=true`(하드 숨김) 제거 = 접힘 전환 복원(평의회⑨ 260728 — display:none 요소는 transition이 안 돌아 "자연스러운 접힘"이 **주 경로에서 통째로 사문**이었다 · showResult만 고치고 이 대기 경로를 놓쳤던 짝)
+  const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; $('#dlVid').hidden=true; $('#dlVid').classList.remove('dl-done');   // 구 `_ps.hidden=true`(하드 숨김) 제거 = 접힘 전환 복원(평의회⑨ 260728 — display:none 요소는 transition이 안 돌아 "자연스러운 접힘"이 **주 경로에서 통째로 사문**이었다) · ⚠ dockSync는 이 아래 대기 스테이지 주입 **뒤**에서 부른다(재검① 260728 — 갱신 전에 부르면 판정이 뒤집힌다)
   const wsrc=FILE_URL||'';
   vw.innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
     +'<div class="wscrim"></div><div class="scanline"></div>'
     +'<div class="wcorner" aria-hidden="true"></div>'   // 경과 = 좌상단 코너 네온레몬(운영자 260723 Q454/Q456)
     +'<div class="wmsg">'+ (window.nmLoader? nmLoader('solving','Solving…') : esc(wlbl||'편집 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>') +'</div>';   // 중앙 = orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3
+  dockSync();   // 대기 스테이지 주입 **뒤** 판정(재검① 260728) — _pollLive는 아직 false지만 .scanline이 들어와 res 판정이 정확해진다
   const wv=vw.querySelector('.wv');
   if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }
   status.innerHTML='<span class="sronly">'+esc(wlbl||'편집 중')+'</span>';
@@ -2119,11 +2126,12 @@ function wireCopy() {
 let LY_WANTVID = '', LY_VID_T = null, LY_VID_GEN = 0;   // 완성 영상(번인) 폴 상태 · GEN = 세대 토큰(in-flight fetch가 리셋 후 옛 영상 표시·좀비 재예약하는 경쟁 봉인 — poll() live 패턴 이식·평의회)
 function lyBurnStop() { LY_VID_GEN++; if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
 function lyBurnReset() { lyBurnStop(); LY_SPELL = null; lySpellRender(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
-function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; dockSync(); $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','Solving…') + ' <span style="color:var(--mut)">(1~3분)</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q461) · 폴백 = 구 점3
+function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; dockSync();   /* dockSync = lyBurnVid 숨김 **뒤**(재검① 260728 — 앞에 두면 직전 완성본 video가 아직 가시라 Solving 1~3분 내내 접혀 있었다) */ $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','Solving…') + ' <span style="color:var(--mut)">(1~3분)</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q461) · 폴백 = 구 점3
 function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
-  const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; dockSync();
+  const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
   const v = $('#lyBurnVid'); if (v.getAttribute('src') !== j.url) v.src = j.url; v.hidden = false;
+  dockSync();   // 완성본 video가 실제로 노출된 **뒤** 판정(재검① 260728 — 앞에 두면 lv가 아직 hidden이라 접힘이 안 걸렸다)
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url;
   const rb = $('#lyReburn'); if (rb) rb.hidden = !(j.src && /^https?:\/\//i.test(j.src));   // 원본 보관본 있을 때만 다시 입히기(의역 재사용 = LLM 0)
   const cdw = $('#lyCutDelW'); if (cdw && rb) cdw.hidden = rb.hidden;   // 삭제 컷 토글 = 다시 입히기와 동행(운영자 260711 텍스트 컷)
@@ -2260,8 +2268,9 @@ function showResult(d, sec){
   $('#cstatus').classList.remove('err');
   $('#cstatus').innerHTML=OK_SVG+' 완료'+(sec?(' · '+fmtDur(sec)):'')+(d.note?(' · '+esc(d.note)):'');   // 경과 = 00분 00초(운영자 260728) · 토큰·비용은 아래 부기 줄로 이관
   statusSub(d);   // 완료 후에만 노출
-  const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true; dockSync();   // 결과 = 미리보기 도크 자동 접힘(운영자 260728 "완성본 보이는 타이밍에 자동으로 접히게 — 자연스럽게" · 구 _ps.hidden 즉시 소멸 → .fold 전환 · 재펼침 = 요약 스트립 탭)
+  const vw=$('#vwrap'); vw.hidden=false; $('#pv').hidden=true;   // 결과 = 미리보기 도크 자동 접힘(운영자 260728 "완성본 보이는 타이밍에 자동으로 접히게 — 자연스럽게" · 구 _ps.hidden 즉시 소멸 → .fold 전환 · 재펼침 = 요약 스트립 탭)
   vw.innerHTML='<video controls playsinline preload="metadata" src="'+esc(d.url)+'"></video>';
+  dockSync();   // 대기 스테이지(.scanline)가 완성본 video로 교체된 **뒤** 판정(재검① 260728 — 앞에 두면 scanline이 살아 있어 완성본에서 되레 펼쳐졌다)
   $('#dlVid').hidden=false;
 }
 /* ══ 클리퍼 후보(260711) — 스캔 결과 목록 · 탭 = 구간+쇼츠 기본 스택 적용(선택·렌더 = 운영자 2단 · 자동 발행 없음) ══ */
@@ -2317,7 +2326,7 @@ document.addEventListener('click',e=>{   // '자를 곳 먼저 보기' = 다음 
 $('#cliplist').addEventListener('click',e=>{
   const b=e.target.closest('[data-ci]'); if(!b||!CLIPS) return;
   const c=CLIPS.clips[+b.dataset.ci]; if(!c) return;
-  P.t0=String(c.s); P.t1=String(c.e);
+  P.segs=[{s:String(c.s), e:String(c.e)}]; P.t0=String(c.s); P.t1=String(c.e);   // ⚠ P.segs가 정본(재검① 260728) — n구간 이관 후 이 줄이 도먼트 P.t0/t1만 채워 **클립 후보를 탭해도 구간이 안 걸리고 원본 통째로 렌더**되면서 화면엔 "구간 적용" 토스트가 뜨던 조용한 무력화 · P.t0/t1은 잔존 가드로 병기
   for(const kk in ON) ON[kk]=false;
   ON.trim=ON.screen=ON.anorm=true;   // 쇼츠 기본 스택 = 구간+비율+음량(자막 = 자막 탭 전담 · 운영자 260711 m1Sub=m2 — 무음컷은 하이라이트 구간이라 제외 · 스택에서 조정 가능)
   P.ar='9:16'; if(P.fit==='crop') P.fit='pad';

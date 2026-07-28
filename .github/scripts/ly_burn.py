@@ -526,7 +526,10 @@ def cut_filter(keeps, audio, mid, ass_path, asrc="[0:a]", ass_on=True, ujoints=(
     parts = ["[0:v]select='{}',setpts='(T-({}))/TB'[vs];".format(sel_e, off_e)]
     if audio:
         loud = ",loudnorm=I=-14:TP=-1.5:LRA=11" if asrc != "[0:a]" else ""   # 보컬 분리 후 체감 음량 하락 보정 — 목표 = 앱 표준 −14LUFS(audio_norm TARGET_I 동조 · 운영자 260722 통일: 구 −16은 배경음 제거만 켠 산출이 타 잡보다 2dB 조용하던 편차 · 원본 경로 무변경 = 회귀 0 · 평의회8 P1)
-        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, loud, cut_xfade(keeps, ujoints, uw)))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤) + 사용자 디졸브(260728) — **loudnorm 뒤**로 이동(평의회⑧: 앞에 두면 loudnorm 적응 게인이 1초짜리 딥을 되메워 배경음 제거 ON에서만 디졸브가 약해졌다)
+        parts.append("{}aselect='{}',asetpts='(T-({}))/TB'{}{}[ac];".format(asrc, sel_e, off_e, cut_xfade(keeps, ujoints, uw), loud))   # asrc = 배경음 제거 시 보컬 입력 [1:a](배경음 먼저 → 컷 순서 보장) · xfade = 이음매 클릭 억제(260727 ⑤) + 사용자 디졸브(260728)
+        #   ⚠ volume은 **loudnorm 앞**이 정본(재검② 260728 되돌림): loudnorm 통과 프레임은 19200샘플@192kHz = **100ms**라, 뒤에 두면 `volume=eval=frame` 분해능이 21ms→100ms로 무너져
+        #     이음매마다 100ms 완전 묵음이 뚫린다(로컬 실측: 3.00~3.09 게인 0.00). '틱' 억제하려다 더 큰 드롭아웃을 만드는 역효과.
+        #     평의회⑧이 우려한 "loudnorm이 딥을 되메움"은 실측에서 재현되지 않았다(딥 깊이 0.0242 vs 레퍼런스 0.0236 = 차이 무의미).
     tail = ((mid + ",") if mid else "") + ("ass={}".format(ass_path) if ass_on else "")
     chain = (tail.rstrip(",") + fades) if tail else (fades.lstrip(",") or "null")
     parts.append("[vs]" + chain + "[vo]")   # mid = 편집기 지오메트리(크롭·스케일·fps·패드) — 컷 시간축 뒤에 적용 · **디졸브(fades)를 ass 뒤로** = 자막도 함께 어두워짐(평의회⑧ 260728 실측: 앞에 두면 이음매 최심부에서 배경만 검고 자막은 255 순백으로 떠 이음매를 되레 지목했다) · 덤으로 스케일 뒤라 eq 픽셀 비용도 감소
@@ -1119,6 +1122,7 @@ def run(vid_id, video, outdir):
             if dur - _prev > 0.05:
                 useg_rm.append((_prev, dur))
             if not useg:
+                useg_rm = []   # ⚠ 필수(재검② 260728): 여기서 안 비우면 `useg_rm=[(0,dur)]`가 남아 아래 구간-우선 분기가 `subtract_spans([(0,dur)],[(0,dur)])=[]`를 만들어 **무음컷 산출까지 통째로 소실**된다
                 edit_notes.append("구간이 전부 영상 밖 — 이어붙기 건너뜀")
     for _lbl, _sp in (("구간 이어붙기", useg_rm), ("승인 컷", ref_spans), ("필러 컷", fil_spans), ("테이크 컷", take_spans)):
         if not _sp:
@@ -1160,6 +1164,8 @@ def run(vid_id, video, outdir):
                         nw.append(dict(wd, s=round(ws, 3), e=round(we, 3)))
                 nsg["w"] = nw   # 전부 붕괴 = 빈 리스트 → _sync_cs가 글자수 비례 폴백(회귀 0)
             remapped.append(nsg)
+        if segs_orig and not remapped and useg_rm:
+            edit_notes.append("구간 안에 자막 없음 — 자막 없이 합성")   # 트림 경로의 짝(위 "구간 안에 자막 없음")을 이어붙기 경로에도(재검② 260728 — 없으면 자막이 조용히 빠진다)
         segs = remapped if (remapped or useg_rm) else segs_orig   # 전 조각 붕괴(교차 출처 극단) = 컷 포기가 안전 · 단 **사용자 구간이 있으면 자막을 버리더라도 구간을 살린다**(평의회③ 260728)
         if segs_orig and not remapped and not useg_rm:   # ⚠ 자막이 애초에 0개면(승인 컷 단독 렌더 = STT 미실행) remapped도 0 — 그걸 '붕괴'로 읽어 컷을 통째로 버리던 경로 봉합(260727)
             #    + useg_rm 예외(평의회③ 260728): 말소리가 고른 구간 **밖에만** 있으면 전 조각이 붕괴 판정을 받아 `keeps=[]` → 구간 이어붙기가 통째로 폐기되고
