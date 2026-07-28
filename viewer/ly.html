@@ -134,7 +134,7 @@
   .code button:active { transform:scale(var(--press-s,.85)); }
   .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
   /* ══ 자막 상세 편집기(조각 카드·단어 칩·미리보기 싱크) — 부품 전부 정본 계승: 탭=.tooltab(index) · 단어칩=.ed-chip(index #edChips 어절칩 엔진) · 체크=.dl-cbox(index) · 다운로드=.dlbtn(전 앱 표준) · 아이콘=nm-svg SSOT · 색=기존 ly 팔레트 var()만(신규 raw 색 0·신규 blur 0) ══ */
-  .lyfind[hidden], .lypv-row[hidden], .lypv-cap[hidden] { display:none; }   /* ⚠️ display:flex가 UA [hidden]을 덮는 함정 가드(#rfab .ro[hidden] 전례 동일 · lypv-cap 누락은 평의회5 적발 = 생성 전 빈 캡션바 노출 버그) */
+  .lyfind[hidden], .lypv-row[hidden] { display:none; }   /* ⚠️ display:flex가 UA [hidden]을 덮는 함정 가드(#rfab .ro[hidden] 전례 동일) · 구 .lypv-cap 항목 = 캡션 바 폐지(260728)로 소멸 */
   .lyseg-a, .lyseg-t, .lybtn, .lyrate, .lyfbtn, .lytab, .lyreset { touch-action:manipulation; }   /* 더블탭 줌·300ms 지연 차단(평의회4·.ed-chip와 동일) */
   .lytabs { display:none; grid-template-columns:1fr 1fr; gap:6px; padding:0 2px; border-bottom:1px solid var(--line); margin:16px 0 12px; }
   .lytabs.show { display:grid; }
@@ -144,16 +144,29 @@
   .lytab.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
   .lytab-n { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; padding:0 4px; box-sizing:border-box; margin-left:6px; vertical-align:1px; background:var(--accent); color:var(--on-accent); font-size:10px; font-weight:800; line-height:1; border-radius:9px; box-shadow:0 0 8px rgba(var(--accent-rgb),.5); }   /* 상세 탭 조각수 뱃지 = index .qbadge 계승(absolute→인라인 변형·on-accent 토큰) — 편집기 발견성(평의회R2 B1) · 숫자 배지 = §표기 공존금지 비대상 */
   .lytab-n[hidden] { display:none; }   /* display:inline-flex가 UA [hidden] 덮는 함정 가드(#rfab .ro 전례) */
-  /* 미리보기 = 이 세션에 첨부한 파일만(objectURL·업로드/호스팅 0) — 자막 캡션 바 + 컷스킵·속도·자막크기 */
-  .lypv { margin:14px 0 0; }
-  .lypv video { display:block; width:100%; max-height:min(320px, 40dvh); background:var(--bg); border:1px solid var(--line); border-radius:var(--r-m); }   /* 40dvh 캡 = 키보드 열림 시 편집영역 확보(평의회4) */
-  .lypv-cap { min-height:34px; display:flex; align-items:center; justify-content:center; text-align:center; padding:7px 10px; margin-top:6px; background:var(--pan); border:1px solid var(--line); border-radius:var(--r-m); color:var(--fg); font-weight:700; font-size:18px; line-height:1.45; white-space:pre-wrap; word-break:keep-all; }
+  /* 미리보기 = 이 세션에 첨부한 파일만(objectURL·업로드/호스팅 0) — (260728) 아래 '작업 전 원본 플레이어'는 폐지하고
+     영상 레이어가 상단 스테이지(#lyOptPv) 안으로 이주(운영자 "영상 불러오면 미리보기에 그 모습이 안떠 · 아래 작업 전 원본은 그럴 필요 없음")
+     = 구 정지 프레임 스냅(seeked canvas) 대신 라이브 재생 · 딤+블러+스캔 = '편집 중' 상태 · 완성(.done)에서 전부 해제 */
+  .lypv { position:absolute; inset:0; overflow:hidden; }   /* 스테이지 바닥 레이어(자막 .pvb 아래) — 구 블록 마진 크롬(14/테두리/40dvh 캡)은 스테이지가 대신하니 폐지 */
+  .lypv[hidden] { display:none; }
+  .lypv video { position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:cover; border:0; border-radius:0; filter:blur(calc(var(--blur-s) / 2)) saturate(1.05); transform:scale(1.05); }   /* 블러 질감 = edit .pvbg 정본 계승(blur 토큰 + saturate 1.05) · ÷2 = 운영자 "블러가 좀"(약하게) + 자막 위치·프레이밍이 읽혀야 하는 편집 캔버스 = 토큰 파생(신규 단 창작 0 · 정본 8px는 여백 연출용이라 전경엔 과함 · 260728 실렌더 판정) · scale = 블러 가장자리 투명 페이드 가림 기하보정(edit 여백용 1.2는 크롭 과다라 비계승) */
+  .lypv::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,.3); pointer-events:none; }   /* 검정 30% 딤(운영자 260728 지시값) = 편집 중 표시 + 자막 대비 확보 */
+  .lypv-scan { position:absolute; left:0; right:0; top:0; height:22%; pointer-events:none; background:linear-gradient(180deg, rgba(var(--accent-rgb),0), rgba(var(--accent-rgb),.10) 45%, rgba(var(--accent-rgb),.34) 50%, rgba(var(--accent-rgb),.10) 55%, rgba(var(--accent-rgb),0)); animation:lyscan 2.6s linear infinite; }   /* 위→아래 스캔(운영자 260728 "사진과 다르게 위아래로 스캔하는 모션") = 영상 소스일 때만 · 색 = accent 알파 변주(신규색 0) */
+  @keyframes lyscan { from { transform:translateY(-120%); } to { transform:translateY(560%); } }
+  @media (prefers-reduced-motion:reduce){ .lypv-scan { animation:none; opacity:0; } }
+  .lyoptpv.done .lypv video { filter:none; transform:none; }   /* 작업 완료 = 제대로 보이기(딤·블러·스캔·오버레이 자막 전부 해제 — 자막은 이미 번인됨) */
+  .lyoptpv.done .lypv::after, .lyoptpv.done .lypv-scan { display:none; }
+  .lyoptpv.done .pvb { display:none; }
+  #lyOptPv.vid ~ .cpv-photobtn { display:none; }   /* 영상이 실제로 떠 있으면 = 빈 상태 첨부 픽토 철수(교체는 우상단 파일 도구 담당) — nosrc(자막 생성 전)와 겹치던 것 교정 */
+  .lyoptpv:not(.vid) .lypv-scan { display:none; }   /* 스캔 = 영상 소스 전용(음성·텍스트 = 빈 무대 그대로) */
+  .lyoptpv.capoff .pvb { visibility:hidden; }   /* 자막 없는 구간 = 오버레이도 빈 화면(번인 결과와 동일 · 레이아웃은 유지) */
+  .lypv-ar { position:absolute; left:10px; bottom:8px; z-index:2; }   /* 미리보기 비율 토글(원본 ↔ 9:16) — 좌하단 = .wcorner(좌상단 10/8) 미러 · 크롬 = .lyrate 알약 정본 계승 */
+  .lypv-ar[hidden] { display:none; }
   .lypv-row { display:flex; align-items:center; gap:10px; margin-top:8px; color:var(--mut); font-size:var(--fs-sm); }
   .lypv-row .dl-full { flex:none; height:24px; }
   .lypv-row .lbl { user-select:none; -webkit-user-select:none; }
   .lyrate { flex:none; min-width:36px; height:24px; padding:0 8px; border-radius:var(--r-pill); border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--mut); font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast), color var(--dur); }
   .lyrate:active { transform:scale(var(--press-m,.9)); color:var(--accent); }
-  .lypv-row input[type=range] { flex:1; min-width:0; accent-color:var(--accent); }
   .lypv-fs { flex:none; font:11px ui-monospace,SFMono-Regular,Menlo,monospace; min-width:36px; text-align:right; }
   /* 상세 툴바 — 전체선택(.dl-cbox)+아이콘 버튼(.sbtn 규격 30px) */
   .lytool { display:flex; align-items:center; gap:7px; margin:0 0 10px; }
@@ -473,7 +486,8 @@
 <body>
 <div class="wrap">
   <div class="topdock" id="topDock"><!-- 상단 도크 = edit #topDock 정본 계승(미리보기+선택 요약+발사바 한 몸 sticky) -->
-  <div class="lysh"><div class="lysh-box"><div class="wcorner" aria-hidden="true"></div><div class="wtok" aria-hidden="true"></div><div class="lyoptpv nosrc" id="lyOptPv" aria-hidden="true"><span class="pvb"><span class="pv-src">Subtitles pop right here</span><span class="pvt"><span class="pv-lo"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span><span class="pv-hi" aria-hidden="true"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span></span></span></div><button class="cpv-photobtn" type="button" aria-label="파일 첨부 — 탭=파일 선택" title="파일 첨부 (영상·음성·TXT·SRT)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg></button>
+  <div class="lysh"><div class="lysh-box"><div class="wcorner" aria-hidden="true"></div><div class="wtok" aria-hidden="true"></div><div class="lyoptpv nosrc" id="lyOptPv" aria-hidden="true"><div class="lypv" id="lyPv" hidden><video id="lyVid" playsinline muted loop autoplay preload="metadata" aria-hidden="true"></video><span class="lypv-scan" aria-hidden="true"></span></div><span class="pvb"><span class="pv-src">Subtitles pop right here</span><span class="pvt"><span class="pv-lo"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span><span class="pv-hi" aria-hidden="true"><span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span></span></span></span></div><button class="cpv-photobtn" type="button" aria-label="파일 첨부 — 탭=파일 선택" title="파일 첨부 (영상·음성·TXT·SRT)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg></button>
+      <button class="lyrate lypv-ar" id="lyPvAr" type="button" hidden aria-pressed="false" aria-label="미리보기 비율 — 원본 ↔ 9:16" title="미리보기 비율 (탭 = 원본 ↔ 9:16 쇼츠 프레이밍 · 출력은 항상 원본비)">원본</button><!-- ⚠배치: 스테이지 좌하단(경과 표기 .wcorner 좌상단 10/8 미러) · 크롬 = .lyrate 알약 정본 계승 · 영상 첨부 시에만 노출 -->
       <button class="cpv-tool" id="srcFileBtn" type="button" aria-label="영상·음성 파일 첨부" title="파일 첨부 (영상·음성·TXT·SRT)"><svg class="ic-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg><svg class="ic-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></svg></button>
       <button class="cpv-tool" id="srcUrlBtn" type="button" aria-label="URL로 불러오기" aria-expanded="false" title="URL로 불러오기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
       <button class="cpv-tool" id="srcPickBtn" type="button" aria-label="편집 제작본 목록" aria-expanded="false" title="편집 제작본 목록"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></button>
@@ -537,16 +551,11 @@
 
   <div class="status" id="status" role="status"></div><!-- role=status = 바꿈/복사/내보내기 피드백 SR 고지(평의회9) -->
   <hr class="divider">
-  <!-- 미리보기(이 세션 첨부 파일 한정 · objectURL) — 자막 캡션 바 = 조각 타이밍 싱크 · 컷스킵/속도/자막크기 -->
-  <div class="lypv" id="lyPv" hidden>
-    <video id="lyVid" controls playsinline preload="metadata"></video>
-    <div class="lypv-cap" id="lyCap" hidden></div>
-    <div class="lypv-row" id="lyPvRow" hidden>
-      <label class="dl-full" title="삭제한 조각은 재생에서 건너뜀"><input type="checkbox" id="lySkip" checked><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">컷 스킵</span></label>
-      <button class="lyrate" id="lyRate" type="button" aria-label="재생 속도" title="재생 속도">1x</button>
-      <input type="range" id="lyFs" min="13" max="30" step="1" value="18" aria-label="자막 크기">
-      <span class="lypv-fs" id="lyFsV">18px</span>
-    </div>
+  <!-- (260728) 구 '작업 전 원본' 플레이어 = 폐지 — 영상·캡션 표시는 상단 스테이지가 전담(운영자 "아래 작업 전 원본이 보이는데 그럴 필요는 없음")
+       남는 건 재생 컨트롤 행뿐: 컷 스킵·속도(스테이지 영상에 그대로 작용) · 구 자막크기 슬라이더 = 캡션 바와 함께 폐지(스테이지 자막은 '크기' 게이지가 정본) -->
+  <div class="lypv-row" id="lyPvRow" hidden>
+    <label class="dl-full" title="삭제한 조각은 재생에서 건너뜀"><input type="checkbox" id="lySkip" checked><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">컷 스킵</span></label>
+    <button class="lyrate" id="lyRate" type="button" aria-label="재생 속도" title="재생 속도">1x</button>
   </div>
   <!-- 완성 영상(자막 자동 합성 결과) — video.json 폴링 → R2/git 산출 표시 · 다운로드 = .dlbtn 표준 -->
   <div class="lyburn" id="lyBurn" hidden>
@@ -1175,7 +1184,7 @@ function renderResult(md, segs) {   // 자막 결과 표시 라우터 — 세그
   out.setAttribute('role', 'tabpanel'); out.setAttribute('aria-labelledby', 'lyTabOv');   // 탭 모드일 때만 패널 시맨틱(대칭 · 평의회9 재검)
   $('#lyTabOv').hidden = !md;   // 의역 실패 복구 = 상세만
   $('#lyReset').hidden = !(LY_ORIG && LY_ORIG.segs && LY_ORIG.segs.length);
-  $('#lyCap').setAttribute('lang', LY_LANG || 'ko');   // 캡션 언어 = 자막 언어(SR 발음·폰트 폴백 · 평의회9)
+  { const pb = document.querySelector('#lyOptPv .pvb'); if (pb) pb.setAttribute('lang', LY_LANG || 'ko'); }   // 캡션 언어 = 자막 언어(SR 발음·폰트 폴백 · 평의회9) — 구 캡션 바에서 스테이지 자막으로 이관
   lyTab(!md);   // 기본 = 개요(다듬은 완성 자막이 첫인상 · 평의회8 P0) · 의역 없는 복구 케이스만 상세
   renderLySegs(); lyStats(); lySave(); lyPrune(); lyPvSync();
 }
@@ -1465,35 +1474,37 @@ function lyPickSegs() { if (!LY_SEGS) return []; const alive = LY_SEGS.filter(sg
     LY_RESTORE_PEND = true;   // 다음 다시 입히기 = 서버 원본 의역 스냅샷 복원 요청(기능평의회2 — 초기화가 서버 정본까지 되돌리게)
   };
 })();
-let LY_SNAP = false;   // 첨부 직후 1회 프레임 스냅 대기 플래그(사용자 스크럽 seeked와 구분)
+const LY_PV_DEMO = '<span class="kt">자막이 이렇게 </span><b class="kw">강조</b><span class="kt">돼</span>';   // 자막 생성 전 스타일 데모 문구(정본 = HTML 초기 마크업 동문)
+function lyStageCap(html) {   // 스테이지 오버레이 자막 = 재생 중인 실제 조각(운영자 260728 "실제 편집하는 느낌") — 구 아래 캡션 바(.lypv-cap)를 승계 · null = 데모 문구 복귀
+  const o = $('#lyOptPv'); if (!o) return;
+  const lo = o.querySelector('.pv-lo'), hi = o.querySelector('.pv-hi'), src = o.querySelector('.pv-src');
+  if (!lo || !hi) return;
+  const demo = (html == null);
+  const body = demo ? LY_PV_DEMO : (html ? '<span class="kt">' + esc(html) + '</span>' : '');
+  if (lo.innerHTML !== body) { lo.innerHTML = body; hi.innerHTML = body; }   // 두 겹(바닥·카라오케 채움) 동일 텍스트 = 스윕 정합
+  if (src && !demo) src.textContent = '';   // 실싱크 중 = 데모 원문 줄 제거(dual 원문은 번인 전용)
+  o.classList.toggle('capoff', !demo && !html);   // 자막 없는 구간 = 빈 화면(번인 결과와 동일)
+}
 function lyPvSet(f) {   // 미리보기 = 이 세션 첨부 파일 한정(objectURL·업로드/호스팅 0) — URL·복원 잡은 미리보기 없음(정직)
   const pv = $('#lyPv'), v = $('#lyVid'); if (!pv || !v) return;
   if (LY_MEDIA_URL) { try { URL.revokeObjectURL(LY_MEDIA_URL); } catch (e) {} LY_MEDIA_URL = ''; }
-  const opv = $('#lyOptPv'); if (opv) { opv.style.removeProperty('--lypv-arn'); opv.style.removeProperty('background-image'); }   // 파일 교체/해제 = 예시 비율 9:16·샘플 배경 리셋(새 영상은 loadedmetadata 실측 + seeked 스냅이 재설정 · 운영자 260710/260717)
-  LY_SNAP = false;
-  if (!f) { try { v.pause(); } catch (e) {} v.removeAttribute('src'); try { v.load(); } catch (e) {} pv.hidden = true; $('#lyCap').hidden = true; $('#lyPvRow').hidden = true; return; }
-  LY_SNAP = true;   // 새 소스 = 스냅 1회 무장
-  LY_MEDIA_URL = URL.createObjectURL(f); v.src = LY_MEDIA_URL; pv.hidden = false; lyPvSync();
+  const opv = $('#lyOptPv'); if (opv) { opv.classList.remove('done', 'vid'); opv.style.removeProperty('--lypv-arn'); }   // 파일 교체/해제 = 예시 비율 9:16 리셋(새 영상은 loadedmetadata 실측이 재설정 · 운영자 260710) · done = 완성본 표시 해제
+  if (!f) { try { v.pause(); } catch (e) {} v.removeAttribute('src'); try { v.load(); } catch (e) {} pv.hidden = true; $('#lyPvRow').hidden = true; lyStageCap(null); return; }
+  LY_MEDIA_URL = URL.createObjectURL(f); v.src = LY_MEDIA_URL; pv.hidden = false; lyPvPlay(); lyPvSync();
 }
-function lyPvSync() { const has = !!(LY_SEGS && LY_SEGS.length && !$('#lyPv').hidden); $('#lyCap').hidden = !has; $('#lyPvRow').hidden = !has; if (!has) { $('#lyCap').textContent = ''; document.querySelectorAll('.lyseg.cur').forEach(x => x.classList.remove('cur')); } }
+function lyPvPlay() { const v = $('#lyVid'); if (!v || !v.src) return; v.muted = true; try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }   // 무음 루프 = 자동재생 허용 조건(모바일 포함) · 실패해도 무해(첫 프레임 정지 = 종전 스냅과 동급)
+function lyPvSync() { const has = !!(LY_SEGS && LY_SEGS.length && !$('#lyPv').hidden); $('#lyPvRow').hidden = !has; if (!has) { document.querySelectorAll('.lyseg.cur').forEach(x => x.classList.remove('cur')); lyStageCap(null); } }
 function lySeek(t) { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || !v.src) return; try { v.currentTime = Math.max(0, t + 0.02); } catch (e) {} }
-function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || $('#lyCap').hidden || !LY_SEGS) return; const t = v.currentTime; const sg = LY_SEGS.find(s => s.s != null && t >= s.s && t < s.e); $('#lyCap').textContent = (sg && !sg.del) ? lySegText(sg) : ''; }
+function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || !LY_SEGS || !LY_SEGS.length) return; const t = v.currentTime; const sg = LY_SEGS.find(s => s.s != null && t >= s.s && t < s.e); lyStageCap((sg && !sg.del) ? lySegText(sg) : ''); }
 (function () {   // 미리보기 싱크 — 캡션·현재 조각 하이라이트·컷 스킵·속도·자막 크기
   const v = $('#lyVid'); if (!v) return; let last = -9;
-  v.addEventListener('loadedmetadata', () => {   // 첨부 영상 실비율 → 예시 미리보기 박스(운영자 260710 "항상 내가 선택한 비율만큼") · 음성(비디오 트랙 0) = 9:16 기본 유지
+  v.addEventListener('loadedmetadata', () => {   // 첨부 영상 실비율 → 스테이지 박스(운영자 260710 "항상 내가 선택한 비율만큼") · 음성(비디오 트랙 0) = 9:16 기본 유지
     const opv = $('#lyOptPv'); if (!opv) return;
-    if (v.videoWidth > 0 && v.videoHeight > 0) opv.style.setProperty('--lypv-arn', (v.videoWidth / v.videoHeight).toFixed(4));
-    if (LY_SNAP && v.videoWidth > 0) { try { v.currentTime = Math.min(1, (v.duration || 2) * 0.25); } catch (e) { LY_SNAP = false; } }   // 스냅 지점 = 초반 25%(최대 1s — 페이드인 검은 프레임 회피) → seeked서 1회 캡처
-  });
-  v.addEventListener('seeked', () => {   // 첨부 직후 1회: 실제 프레임을 스타일 미리보기 배경으로(운영자 260717 Q15 "특정 장면이 프리뷰로 꽂혀야 자막 위치 확인" — 샘플 잔존 해소) · 이후 사용자 스크럽 = LY_SNAP 꺼져 무시
-    if (!LY_SNAP) return; LY_SNAP = false;
-    try {
-      const opv = $('#lyOptPv'); if (!opv || !v.videoWidth) return;
-      const W = Math.min(720, v.videoWidth), H = Math.round(W * v.videoHeight / v.videoWidth);
-      const c = document.createElement('canvas'); c.width = W; c.height = H;
-      c.getContext('2d').drawImage(v, 0, 0, W, H);
-      opv.style.backgroundImage = 'url(' + c.toDataURL('image/jpeg', .82) + ')';   // 같은 파일 픽셀 = taint 없음 · position/size는 기존 center/cover 규칙 유지
-    } catch (e) {}
+    const isVid = v.videoWidth > 0 && v.videoHeight > 0;
+    opv.classList.toggle('vid', isVid);   // 영상일 때만 = 스캔 모션·영상 레이어(음성 = 종전 빈 무대 · 운영자 260728 "영상 같은경우에는 사진과 다르게")
+    if (isVid) { LY_PV_AR = (v.videoWidth / v.videoHeight).toFixed(4); lyPvArApply(); }
+    else { LY_PV_AR = ''; opv.style.removeProperty('--lypv-arn'); const pv = $('#lyPv'); if (pv) pv.hidden = true; }
+    lyPvPlay();   // 메타데이터 도착 = 재생 재시도(src 세팅 직후 play가 이른 경우 보정)
   });
   v.addEventListener('timeupdate', () => {
     if (!LY_SEGS || $('#lyPv').hidden) return;
@@ -1509,7 +1520,7 @@ function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || 
     const useCur = cur >= 0 ? cur : curDel;
     if (useCur !== last) {
       last = useCur; LY_CUR = useCur;   // 재빌드 시 .cur 재적용용(평의회2 F4)
-      $('#lyCap').textContent = (cur >= 0) ? lySegText(LY_SEGS[cur]) : '';
+      lyStageCap((cur >= 0) ? lySegText(LY_SEGS[cur]) : '');   // 스테이지 오버레이 자막 = 재생 위치의 실제 조각(구 캡션 바 승계)
       document.querySelectorAll('.lyseg.cur').forEach(x => x.classList.remove('cur'));
       if (useCur >= 0) { const el = document.querySelector('.lyseg[data-i="' + useCur + '"]'); if (el) { el.classList.add('cur');
         if (!v.paused && !$('#lydet').hidden && !(document.activeElement && document.activeElement.isContentEditable) && Date.now() - LY_USRSCROLL > 3000) {   // 편집 중 = 자동 스크롤 정지(커서 뺏김 차단 · 평의회4④) · 수동 스크롤 후 3s 보류 = 열람 납치 차단(평의회R2 검토1)
@@ -1517,8 +1528,18 @@ function lyCapRefresh() { const v = $('#lyVid'); if (!v || $('#lyPv').hidden || 
     }
   });
   $('#lyRate').onclick = () => { const r = v.playbackRate >= 2 ? 1 : (v.playbackRate >= 1.5 ? 2 : 1.5); v.playbackRate = r; $('#lyRate').textContent = r === 1 ? '1x' : (r === 1.5 ? '1.5x' : '2x'); };
-  const fs = $('#lyFs'); if (fs) fs.addEventListener('input', () => { $('#lyCap').style.fontSize = fs.value + 'px'; $('#lyFsV').textContent = fs.value + 'px'; });
+  v.addEventListener('click', () => { if (v.paused) lyPvPlay(); else { try { v.pause(); } catch (e) {} } });   // 스테이지 탭 = 재생/정지(네이티브 controls 미노출 = 편집 캔버스 · 스크럽은 조각 알약 탭이 담당)
 })();
+// ── 미리보기 비율(원본 ↔ 9:16) — 번인 출력은 항상 원본비 · 이건 '쇼츠에 올리면 어떻게 잘리나' 확인용 프레이밍(운영자 260728 "9대 16으로 들어갔을때 어떤 모양인지도 알 수 있어야") ──
+let LY_PV_AR = '';        // 첨부 영상 실비율(빈 값 = 영상 없음)
+let LY_PV_916 = false;    // true = 9:16 프레이밍(스테이지 9:16 고정 + 영상 중앙 크롭 = cover)
+function lyPvArApply() {
+  const o = $('#lyOptPv'), b = $('#lyPvAr'); if (!o) return;
+  if (LY_PV_916 || !LY_PV_AR) o.style.setProperty('--lypv-arn', '.5625');   // 9:16 = .5625(스테이지 기본값과 동수)
+  else o.style.setProperty('--lypv-arn', LY_PV_AR);
+  if (b) { b.hidden = !LY_PV_AR; b.textContent = LY_PV_916 ? '9:16' : '원본'; b.setAttribute('aria-pressed', LY_PV_916 ? 'true' : 'false'); }
+}
+(function () { const b = $('#lyPvAr'); if (!b) return; b.onclick = () => { LY_PV_916 = !LY_PV_916; lyPvArApply(); }; })();
 function lyGoDim() { const g = $('#go'); if (!g) return; g.classList.remove('dim'); }   // 생성 버튼 = 조건 무관 상시 점등(운영자 260727 "조건부 아니여도 켜져있게 해야됨") — 구 '입력 전 dim(.55)'가 꺼진 것처럼 읽혀 폐지 · 입력 없이 누르면 안내 흔들림(기존 가드)이 그대로 담당 · 호출부·함수명 불변(배선 무접촉)   // 입력 전 = 생성 버튼 dim(시각 위계를 파일/URL 입력으로 · 탭하면 기존 안내 흔들림 그대로 · 평의회8)
 (function(){ const seg = document.getElementById('srcSeg'); if (!seg) return;   // 소스 1행 3칩(시안 M2 정합 · 운영자 260712) — 표시 토글만(발사 로직 무접촉)
   seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v;
@@ -1603,7 +1624,7 @@ function lyOptRender() {
   const pv = $('#lyOptPv');
   if (pv) {   // 실시간 스타일 미리보기 — 모양/크기 클래스 + 키워드 그린 + 카라오케 스윕 + 배경 알파(번인 실렌더 근사) · 값은 칩 닫힌 집합 + 게이지 정수 클램프라 클래스 조립 안전
     pv.hidden = !LY_OPTS.burn;
-    pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.pop ? ' pop' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '') + (LY_OPTS.lang === 'dual' ? ' dual' : '') + (pv.classList.contains('nosrc') ? ' nosrc' : '');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size 클래스 경로 폐지(마이그레이션으로 항상 소수 = --lypv-size 단일) · dual = 원문 줄(.pv-src) 노출(운영자 260710 언어 모드 미러) · nosrc 보존 = 빈 무대 상태(Q18)가 옵션 렌더에 지워지지 않게(통재구성 함정 — 260717 실측)
+    pv.className = 'lyoptpv ' + (LY_OPTS.style || LY_OPT_DEF.style) + (LY_OPTS.karaoke ? ' kara' : '') + (LY_OPTS.pop ? ' pop' : '') + (LY_OPTS.bg > 0 ? ' bgon' : '') + (LY_OPTS.lang === 'dual' ? ' dual' : '') + ['nosrc', 'vid', 'done', 'capoff'].filter(c => pv.classList.contains(c)).map(c => ' ' + c).join('');   // style 결측 폴백 = 기본값 참조(#1807 병합) · size 클래스 경로 폐지(마이그레이션으로 항상 소수 = --lypv-size 단일) · dual = 원문 줄(.pv-src) 노출(운영자 260710 언어 모드 미러) · nosrc 보존 = 빈 무대 상태(Q18)가 옵션 렌더에 지워지지 않게(통재구성 함정 — 260717 실측)
     const T = LY_OPTS.lang === 'src' ? ['Subtitles pop ', 'right', ' here'] : ['자막이 이렇게 ', '강조', '돼'];   // 원문만(src) = 주 줄 자체가 원문(번인 lang==src와 동일 — 모양·카라오케·키워드 규칙은 그대로) · 자동/한글만/원문+한글 = 주 줄 한글
     pv.querySelectorAll('.pv-lo, .pv-hi').forEach(L => { const c = L.children; for (let i = 0; i < 3; i++) if (c[i] && c[i].textContent !== T[i]) c[i].textContent = T[i]; });   // 동일 텍스트 재대입 회피(팝/스윕 애니 노드 보존)
     pv.style.setProperty('--lybg', (LY_OPTS.bg / 100).toFixed(2));
@@ -1684,12 +1705,26 @@ function lyOptSave() { try { localStorage.setItem(LY_OPT_KEY, JSON.stringify(LY_
 })();
 // ══ 완성 영상(자막 번인 결과) — video.json 확인·폴·표시·다운로드 ══
 function lyBurnStop() { LY_VID_GEN++; if (LY_VID_T) { clearTimeout(LY_VID_T); LY_VID_T = null; } }
-function lyBurnReset() { lyBurnStop(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
+function lyStageDone(url) {   // 스테이지 = 완성본 무음 루프(딤·블러·스캔·오버레이 자막은 .done CSS가 해제) — 소리·컨트롤은 아래 완성 영상이 담당
+  const o = $('#lyOptPv'), pv = $('#lyPv'), v = $('#lyVid'); if (!o || !pv || !v || !url) return;
+  o.classList.add('done', 'vid'); pv.hidden = false;
+  if (v.getAttribute('src') !== url) { v.src = url; }
+  lyPvPlay();
+}
+function lyStageUndone() {   // 새 작업·초기화 = 편집 중 상태로 복귀(완성본 → 첨부 원본)
+  const o = $('#lyOptPv'), v = $('#lyVid'), pv = $('#lyPv'); if (!o || !v || !pv || !o.classList.contains('done')) return;
+  o.classList.remove('done');
+  if (LY_MEDIA_URL) { v.src = LY_MEDIA_URL; lyPvPlay(); }
+  else { try { v.pause(); } catch (e) {} v.removeAttribute('src'); try { v.load(); } catch (e) {} pv.hidden = true; o.classList.remove('vid'); }
+  lyCapRefresh();
+}
+function lyBurnReset() { lyBurnStop(); lyStageUndone(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
 function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','Solving…') + ' <span style="color:var(--mut)">(1~3분)</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3   // msg = 경로 인지 분기(편집본/복원 · 기능평의회9 — 자체 리터럴만·기본 = 종전 문구 불변)
 function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
   const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
   const v = $('#lyBurnVid'); if (v.getAttribute('src') !== j.url) v.src = j.url; v.hidden = false;
+  lyStageDone(j.url);   // 작업 완료 = 위 스테이지도 완성본으로 전환(딤·블러·스캔·오버레이 자막 해제 = '제대로 보이는' 상태 · 운영자 260728)
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url; lyEarlyFixSync();   // 완성 영상 도착 = 조기 교정 창 종료(버튼 숨김 · 이후는 다시 입히기 경로)
   const rb = $('#lyReburn'); if (rb) rb.hidden = !(j.src && /^https?:\/\//i.test(j.src));   // 원본 보관본 있을 때만 다시 입히기(의역 재사용 = LLM 0)
   const cdw = $('#lyCutDelW'); if (cdw && rb) cdw.hidden = rb.hidden;   // 삭제 컷 토글 = 다시 입히기와 동행(운영자 260711 텍스트 컷)
