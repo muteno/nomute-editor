@@ -1813,10 +1813,10 @@
   .qgo.go-green { color:var(--accent); border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.10); }
   .qgo.go-amber { color:var(--amber); border-color:rgba(var(--amber-rgb),.55); background:rgba(var(--amber-rgb),.10); }
   .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재시도 표준색 arm(레몬) 계승(운영자 260701 재시도=arm 정본) · viewer :root 에서 amber 와 동색(accent-4)이라 구분은 아이콘 ↻/↗으로 */
-  .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); cursor:default; }
+  .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); }   /* 회색(갈 곳 없음) = 색만 무채 · cursor:default 폐지 = 이제 탭하면 취소 무장(정본 .jcancel 대기상태 = cursor pointer) · 운영자 260728 "액티브 모션 그대로" */
   .qgo.qcx-ok { color:var(--on-accent); border-color:var(--accent); background:var(--accent); }   /* 취소 확정 ✓ = 이미지 스튜디오 제작 대기열 취소(.jdel.ok) 정본 계승 — accent 채움+on-accent 획(운영자 260728) */
   .qb-cxl { color:var(--mut); font-size:12.5px; font-weight:800; }   /* raw-ok: 12.5px = 형제 상태셀(qb-done·qb-failt) 동값 계승(같은 셀 문법·크기 이탈 금지) — 취소 = 무채 한글(색만 mut) */
-  .qgo:not(.go-gray):active { transform:scale(var(--press-m,.9)); }
+  .qgo:active { transform:scale(var(--press-m,.9)); }   /* 누름 = 전 상태 공통(회색 제외 폐지 — 회색도 탭=취소 무장이라 액티브 모션이 있어야 한다 · 정본 .jdel:active 계승 · 확정 ✓는 disabled라 :active 미발동)  */
   @media (prefers-reduced-motion:reduce){ .qgo svg.ic-arrow .qsrc-shaft, .qgo svg.ic-arrow .qsrc-tip { animation:none; } }   /* 대기열 이동버튼 화살표 모션 = ic-arrow(공용 reduced-motion 블록서 정지) · 옛 qfly 폐지(운영자 260705) */
   .qpage { flex:none; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; min-height:30px; }   /* min-height = 페이저 비어도(단일페이지·빈상태) 높이 예약 → 팝업 크기 항상 동일(1·다·빈 상태 모두 같은 높이) · 운영자 260622 */
   .qpg, .qpg-nav { min-width:30px; height:30px; padding:0 7px; display:grid; place-items:center; font-size:12px; font-weight:800;
@@ -9324,7 +9324,9 @@ const Q_REFR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const Q_SPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.55"/></svg>';   // 스피너(열린 호)
 const Q_ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><g class="qsrc-arrow"><path class="qsrc-shaft" pathLength="1" d="M7 17 17 7"/><path class="qsrc-tip" d="M8.5 7H17v8.5"/></g></svg>';   // ↗ 1시방향 · 3조각(지지대선 shaft + 촉 tip · 받침 없음) = ic-arrow 모션 훅(대기열·토스트 이동버튼 공용)
 function qGoBtn(kind, title) {   // kind: green(요약완료) | amber(원문) | gray(갈 곳 없음 — 모습·회색 톤은 비활성 그대로 두되 탭 = 취소 상태머신 진입이라 disabled 속성 제거 · 운영자 260728 "비활성일 때 클릭하면 휴지통")
-  return '<button class="qgo go-' + kind + '" type="button" title="' + title + '">' + Q_ARR + '</button>';
+  const gray = kind === 'gray';
+  const t = gray ? title + ' · 탭하면 이 요청 취소' : title;   // 회색 = 사유(왜 못 가나) + 조치(탭=취소) 병기 — 정본 .jcancel 대기상태가 title 로 취소를 알리는 문법 계승(어포던스 없이 눌러야 알던 것 봉합)
+  return '<button class="qgo go-' + kind + '" type="button" title="' + t + '"' + (gray ? ' aria-label="이 요청 취소"' : '') + '>' + Q_ARR + '</button>';
 }
 function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) ↻ · 클릭 = api/askget 으로 전문 복원 → 요약창 재오픈(askRetry)
   return '<button class="qgo go-arm qretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
