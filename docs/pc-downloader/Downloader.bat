@@ -57,10 +57,11 @@ REM === 주의: 이 파일은 CP949/ANSI로만 저장할 것 - UTF-8 재저장 시 한글 고정경로
 set "ARGURL=%~1"
 
 echo ===============================================
-echo   만능 다운로더 v6.4
+echo   만능 다운로더 v6.5
 echo   YT/IG/X/TT/FB/Threads - 비디오 + 이미지 + 자막
 echo   해상도 최고 + 프레임 최고 + 짧은변 1080p 각 1개(겹치면 생략)
 echo   링크가 가리키는 영상(또는 재생목록)만 다운로드
+echo   ffmpeg 자동확보 = 360p 폴백 차단
 echo   인자/클립보드=첫 URL 자동 / 이후 계속 입력 가능 (q 종료)
 echo   ESC 2번 연속 = 창 닫기
 echo ===============================================
@@ -115,9 +116,35 @@ for /f "usebackq delims=" %%v in (`"%YTDLP%\yt-dlp.exe" --version 2^>nul`) do se
 if defined YTV echo [확인] yt-dlp 버전: !YTV!
 if not defined YTV echo [경고] yt-dlp 버전 확인 실패.
 
-REM === ffmpeg 체크 (v4.8) ===
-if not exist "%YTDLP%\ffmpeg.exe" (
-    echo [경고] ffmpeg.exe 없음. 영상 병합^(mp4^) 및 자막 srt 변환이 실패할 수 있음.
+REM === ffmpeg 확보 (v6.5) = 저화질의 진범 ===
+REM     yt-dlp는 고화질을 "영상 따로 + 음성 따로"로 받아 ffmpeg으로 합친다.
+REM     ffmpeg이 없으면 그 조합(bv*+ba)을 아예 못 고르고 "이미 합쳐진 파일"로 떨어지는데,
+REM     유튜브가 주는 합본은 format 18 = 640x360 하나뿐이다. 그래서 360p가 받아졌다.
+REM     -^> 없으면 경고만 하고 넘어가지 않는다. 자동으로 받아 설치하고, 그래도 없으면 멈춘다.
+set "FFOK=0"
+if exist "%YTDLP%\ffmpeg.exe" set "FFOK=1"
+if "!FFOK!"=="1" echo [확인] ffmpeg 있음 - 고화질 병합 가능
+if "!FFOK!"=="0" (
+    echo.
+    echo [중요] ffmpeg.exe 가 없다. 이게 없으면 무조건 360p만 받아진다.
+    echo [설치] 자동 다운로드 시작 ^(약 80MB · 1~3분 · 한 번만 하면 된다^)...
+    powershell -noprofile -c "$ErrorActionPreference='Stop'; $t='%YTDLP%'; $u='https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip'; $z=Join-Path $env:TEMP 'nmff.zip'; $x=Join-Path $env:TEMP 'nmffx'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $u -OutFile $z -UseBasicParsing; if(Test-Path $x){Remove-Item $x -Recurse -Force}; Expand-Archive -Path $z -DestinationPath $x -Force; Get-ChildItem -Path $x -Recurse -Include ffmpeg.exe,ffprobe.exe | ForEach-Object { Copy-Item $_.FullName -Destination $t -Force }; Remove-Item $z -Force; Remove-Item $x -Recurse -Force; Write-Output '  [설치] ffmpeg 배치 완료'"
+    if exist "%YTDLP%\ffmpeg.exe" set "FFOK=1"
+)
+if "!FFOK!"=="0" (
+    echo.
+    echo ===============================================
+    echo   [중단] ffmpeg 을 못 구했다.
+    echo   이 상태로 받으면 360p 만 나오므로 받지 않는다.
+    echo.
+    echo   해결 = 아래 둘 중 하나
+    echo    1^) 인터넷/방화벽 확인 후 이 창을 다시 실행 ^(자동설치 재시도^)
+    echo    2^) https://www.gyan.dev/ffmpeg/builds/ 에서 essentials 압축을 받아
+    echo       bin 안의 ffmpeg.exe ffprobe.exe 를 아래 폴더에 복사
+    echo       %YTDLP%
+    echo ===============================================
+    pause
+    goto end
 )
 
 REM === JS 런타임(deno) 감지 (v6.2) ===
