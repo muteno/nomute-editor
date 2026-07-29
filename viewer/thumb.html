@@ -3108,10 +3108,15 @@ async function fetchMetaById(id, sig) {   // 성공 시 SRV_HIST 선주입(중�
     if (!r.ok) return false;
     const m = await r.json();
     if (!Array.isArray(m) || !m.length) return false;
+    // 제작 조건 스냅샷도 같은 R2 즉시 경로로(260729 수리) — 구: _meta만 실어와 src가 없으니 findResultById의 withSrc가 비고, 복원된 '가장 최근 제작'만
+    // 수정(연필)이 안 떴다(#carEdit = cur.src 있을 때만 · renderHist 연필도 e.src 조건). 실패 = 종전대로 조용히 폴백(Pages thumb-hist.json이 src 동봉본으로 수렴).
+    let msrc = null;
+    try { const rs = await fetch('/api/thumb?src=' + encodeURIComponent(id), sig ? { signal: sig } : undefined); if (rs.ok) { const s = await rs.json(); if (s && typeof s === 'object' && s.app) msrc = s; } } catch (_) {}
+    const _mlbl = (msrc && typeof msrc.lbl === 'string' && msrc.lbl.trim()) || '';   // 발사 아이템 라벨(포스트/릴스 자막/저작권 …) = 로컬 캡션·build-viewer와 동일 표기
     const ts = thIdTs(id) || Date.now();
     const have = new Set((SRV_HIST || []).map(e => e && e.url));
     const add = m.filter(p => Array.isArray(p) && p[1] && !have.has(p[1]))
-      .map(p => ({ url: p[1], dlname: id + '_' + p[0], cap: thMetaLabel(p[0]), varStr: '', ts }));
+      .map(p => { const e = { url: p[1], dlname: id + '_' + p[0], cap: _mlbl || thMetaLabel(p[0]), varStr: _mlbl ? ' · ' + thMetaLabel(p[0]) : '', ts }; if (msrc) e.src = msrc; return e; });
     if (add.length) SRV_HIST = add.concat(SRV_HIST || []);
     return add.length > 0 || m.some(p => Array.isArray(p) && have.has(p[1]));
   } catch (_) { return false; }
@@ -3842,7 +3847,7 @@ function goFire(yellow) {   // yellow=맞춤법 교정 적용 생성 → 게이�
 function dispatchJob(endpoint, payload, label, src, reuse) {
   // 제작 조건 스냅샷(문구·설정)을 서버에도 보존 → 기기 간 '수정' 복원(api/thumb→워크플로 _src.json→build-viewer→thumb-hist.json). 썸네일(/api/thumb)만(카드 /api/compose는 별도 파이프 = 미적용). 이미지 b64는 미동봉(snapForm이 이미 제외·IDB만).
   // 서버 보존본 = imgName(원본 파일명=공개 레포 신규 노출 차단)·imgKey(타 기기서 무의미한 로컬 IDB 키) 제거. imgUsed는 유지(빗금 참고본 분기용). 로컬 src(localStorage)는 원본 유지 = 같은 기기 복원 무손실. (분신술 평의회 3·9·10)
-  if ((endpoint === '/api/thumb' || endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = rest; }   // 썸네일+카드뉴스(comp) src 서버 보존 → 기기 간 '수정' 복원(카드 연필 기기간 봉합 260713)
+  if ((endpoint === '/api/thumb' || endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = label ? Object.assign(rest, { lbl: label }) : rest; }   // 썸네일+카드뉴스(comp) src 서버 보존 → 기기 간 '수정' 복원(카드 연필 기기간 봉합 260713) · lbl = 이 발사의 라벨(=로컬 이력 캡션 어간) 동봉(260729) — 서버 이력이 app 번호(APP_CAP)로 캡션을 짐작하던 것 대체(app '2' = 포스트·릴스 공용 통합 폼이라 포스트 산출도 '릴스'로 오표기됐음)
   goFire(_spellApplied);   // 전송 피드백 = 실제 전송 시점에만(검증 통과·재발사 포함) · 맞춤법 적용 시 노랑 게이지
   clearRestored();   // 새 제작 = 복원된 최근 결과 고스트 치움(새 결과가 맨 위·운영자 260622)
   let job;
@@ -3875,7 +3880,7 @@ function dispatchBatch(items, batchLabel, src, reuse) {
   (async () => {
     const groups = await Promise.all(items.map(async (it, bi) => {
       const payload = it.payload;
-      if ((it.endpoint === '/api/thumb' || it.endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = Object.assign(rest, { bi }); }   // dispatchJob과 동일 src 주입(기기간 '수정' 복원 · 카드뉴스 comp 포함 260713) + bi = 이 묶음 안 순서(헤더 0 · 자막 1 …) = 복원 시 발사 순서 그대로 1/2·2/2 배열(도착순·파일명순 무관)
+      if ((it.endpoint === '/api/thumb' || it.endpoint === '/api/compose') && src && payload && !payload.src) { const { imgKey, imgName, ...rest } = src; payload.src = Object.assign(rest, { bi }, it.label ? { lbl: it.label } : {}); }   // dispatchJob과 동일 src 주입(+lbl = 이 아이템 라벨 = 배치는 아이템마다 별도 작업 id라 묶음 라벨이 아니라 개별 라벨이 정본)(기기간 '수정' 복원 · 카드뉴스 comp 포함 260713) + bi = 이 묶음 안 순서(헤더 0 · 자막 1 …) = 복원 시 발사 순서 그대로 1/2·2/2 배열(도착순·파일명순 무관)
       try {
         const res = await fetch(it.endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
         const j = await res.json();

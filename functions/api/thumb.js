@@ -26,14 +26,17 @@ const cleanLines = (v) => Array.isArray(v)
 
 // GET /api/thumb?meta=<id> → R2 thumb_out/<id>/_meta.json 원문(운영자 260728 속도 반영 — 구 배포 게이트 대체).
 // 러너가 렌더 직후 R2에 PUT한 결과 쪽지를 배포 사이클과 무관하게 즉시 서빙 = 알림 딥링크·뷰어가 Pages 빌드(30s~8분)를 안 기다림 · 문법 = edit.js onRequestGet(Q1016) 그대로 계승.
+// GET /api/thumb?src=<id> → 같은 문법으로 _src.json(제작 조건 스냅샷) 원문 — 알림 딥링크 복원분의 '수정'(연필) 버튼 재료(260729 수리).
 export async function onRequestGet({ request, env }) {
   const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
-  const id = (new URL(request.url).searchParams.get('meta') || '').trim();
-  if (!id) return j({ error: 'meta 파라미터 필요' }, 400);
+  const q = new URL(request.url).searchParams;
+  const kind = q.get('src') != null ? 'src' : 'meta';   // src= 있으면 조건 스냅샷 · 없으면 종전 meta(기본)
+  const id = (q.get(kind) || '').trim();
+  if (!id) return j({ error: kind + ' 파라미터 필요' }, 400);
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return j({ error: '잘못된 id' }, 400);   // 경로 탈출 차단(edit.js 동일 규칙)
   if (!env.R2) return j({ pending: true, reason: 'r2-unbound' }, 404);   // 폴백 유도(오류 아님)
   try {
-    const o = await env.R2.get(`thumb_out/${id}/_meta.json`);
+    const o = await env.R2.get(`thumb_out/${id}/_${kind}.json`);
     if (!o) return j({ pending: true }, 404);
     return new Response(o.body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   } catch (e) {

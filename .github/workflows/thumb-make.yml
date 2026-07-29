@@ -320,6 +320,15 @@ jobs:
                   src_obj = json.loads(src_raw)
                   json.dump(src_obj, open(f'{outdir}/_src.json', 'w'), ensure_ascii=False)
                   print(f'SRC SNAPSHOT → {outdir}/_src.json')
+                  # ── _src.json도 R2에 PUT(위 _meta.json PUT 문법 그대로 계승) — 알림 딥링크(/api/thumb?src=<id>)가 Pages 배포 전에도 제작 조건을 받아
+                  #    '가장 최근 제작'에 수정(연필) 버튼을 띄운다. 구: _meta만 R2라 배포 전(30s~8분) 복원분은 src 결측 = 최신 1건만 연필 없음(260729 수리).
+                  _su = None
+                  for _t in range(3):
+                      _su = tg.r2_upload(json.dumps(src_obj, ensure_ascii=False).encode('utf-8'), f'thumb_out/{in_id}/_src.json', 'application/json')
+                      if _su:
+                          break
+                      time.sleep(2 * (_t + 1))
+                  print(f'R2 SRC {"OK" if _su else "::warning::업로드 실패 — Pages 폴백"} → thumb_out/{in_id}/_src.json')
               except Exception as e:
                   print(f'::warning::_src.json 생략(파싱 실패): {e}')
 
