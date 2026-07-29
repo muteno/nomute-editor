@@ -1036,7 +1036,10 @@ def insta_subs(accounts, limit=10, deadline=None):
 
 def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
     """유튜브 구독 채널 최신 영상 — 채널 RSS(무키·media:statistics 조회수 포함·채널당 최근 15개).
-    @핸들 = 채널페이지 HTML서 channelId 해석(계정당 +1콜). 최근 fresh_days일 필터 · 정렬 = 조회수."""
+    @핸들 해석 1차 = 공식 API channels.list forHandle(1유닛/계정 · 봇월 무관) — 260728~29 이틀 연속
+    러너 데센 IP가 @핸들 HTML 페이지에서 봇월 404/500 대량(20→24계정 = 구독 28/30 누락 알림 폭탄)이라
+    스크레이프 해석을 상시 경로에서 무키·API 실패 폴백으로 강등. RSS 축은 동일 런에 2계정 통과 실측 = 비차단.
+    최근 fresh_days일 필터 · 정렬 = 조회수."""
     import html as _html
     out, cutoff = [], datetime.now(timezone.utc) - timedelta(days=fresh_days)
     for i, acc in enumerate(accounts):
@@ -1048,6 +1051,14 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
             time.sleep(1)
         try:
             cid = acc if re.match(r"^UC[\w-]{22}$", acc) else None
+            if not cid and YT_KEY:
+                try:
+                    _j = json.loads(_get("https://www.googleapis.com/youtube/v3/channels?" + urllib.parse.urlencode(
+                        {"part": "id", "forHandle": acc.lstrip("@"), "key": YT_KEY})))
+                    _cid = ((_j.get("items") or [{}])[0]).get("id") or ""
+                    cid = _cid if re.match(r"^UC[\w-]{22}$", _cid) else None
+                except Exception as _e:  # noqa: BLE001 — API 실패(쿼터·순단) = 종전 HTML 폴백으로 계속(무회귀)
+                    print(f"::warning::yt @{acc} API 해석 실패({_e}) — HTML 폴백", file=sys.stderr)
             if not cid:
                 h = _get("https://www.youtube.com/@" + urllib.parse.quote(acc.lstrip("@")))
                 # 핸들페이지 표기 가변(channelId 없이 externalId만 실림 실측 260711) → 3단 폴백
