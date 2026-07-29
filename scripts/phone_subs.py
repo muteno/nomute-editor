@@ -55,20 +55,33 @@ def _st_write(until, cnt, last, off):
         print(f"::warning::insta 상태 기록 실패({type(e).__name__}) — 다음 런 재시도", file=sys.stderr)
 
 
+def _skip_stamp(accounts, tag):
+    """인스타를 **안 돈 런**의 사유 도장(260730 판례 봉합) — 종전엔 쿨다운·주기 대기로 스킵하면
+    SUB_FAIL/SUB_OK에 insta 키가 통째로 안 실려, sns_trends main()의
+    `_fsrc = {**SUB_FAIL, **PHONE_COVER.why}`가 **러너(데센 IP)의 429/budget 잔향**으로 채워졌다
+    = 데이터는 폰인데 사유는 러너인 주체 뒤바뀜(260728 봉합의 스킵 경로 재발). 화면엔 폰이 쿠키 때문에
+    막힌 것처럼 보여 운영자에게 '쿠키 갈아라'는 헛 조치를 시킨다. 폰이 스스로 '안 돌았다'고 찍어
+    러너 기록을 덮는다 = 뷰어가 대기 상태로 갈라 읽는다(값 = 'cooldown' 쿨다운 · 'gap' 주기 대기)."""
+    for a in accounts:
+        st._sfail("insta", a, tag)
+
+
 def _insta_collect(accounts, prev_items):
     """쿨다운·주기·회전을 통과한 배치만 수집하고, 직전 산출물과 병합해 돌려준다."""
     until, cnt, last, off = _st_read()
     now = time.time()
+    accounts = list(accounts or [])
+    if not accounts:
+        return prev_items
     if now < until:
         print("::notice::insta 429 쿨다운 중 — %.1fh 남음(연속 %d회 · 두드릴수록 리밋이 갱신돼 회복이 늦어진다)"
               % ((until - now) / 3600, cnt), file=sys.stderr)
+        _skip_stamp(accounts, "cooldown")
         return prev_items
     if last and (now - last) < _GAP:
         print("::notice::insta 주기 대기 — %.0f분 남음(최소 간격 %.0f분 · 계정 리밋 회피)"
               % ((_GAP - (now - last)) / 60, _GAP / 60), file=sys.stderr)
-        return prev_items
-    accounts = list(accounts or [])
-    if not accounts:
+        _skip_stamp(accounts, "gap")
         return prev_items
     batch = accounts if _BATCH <= 0 else [accounts[(off + i) % len(accounts)] for i in range(min(_BATCH, len(accounts)))]
     st.INSTA_429 = False
@@ -76,7 +89,11 @@ def _insta_collect(accounts, prev_items):
     if getattr(st, "INSTA_429", False):
         cnt = min(cnt + 1, len(_CD_STEPS))
         wait = _CD_STEPS[cnt - 1]
-        _st_write(now + wait, cnt, last, off)   # 실패 배치는 off를 안 넘김 = 다음에 같은 계정부터 재시도
+        # 회전은 실패해도 전진(260730 봉합) — 종전엔 off를 고정해 "다음에 같은 계정부터 재시도"였는데,
+        #   첫 계정이 429 상주면 insta_subs가 잔여 배치를 _sbudget으로 통째 미시도 처리하므로 **성공이 영영 0**,
+        #   cnt는 성공해야만 리셋되니 6→12→24h 상한에 박혀 자동 복구가 구조적으로 수렴하지 못했다(실측 260730 cnt=3).
+        #   전진시키면 다음 깨어남에 **다른 5계정**을 두드린다 = 한 계정의 리밋이 20계정 전체를 인질로 잡지 못한다.
+        _st_write(now + wait, cnt, last, (off + len(batch)) % len(accounts))
         print("::warning::insta 429 → %.0fh 쿨다운(연속 %d회 · 해제 = rm %s)" % (wait / 3600, cnt, _CD_PATH), file=sys.stderr)
         return prev_items
     nxt = (off + len(batch)) % len(accounts)
