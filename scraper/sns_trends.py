@@ -59,6 +59,7 @@
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
 import html
+import http.cookiejar   # 스레드 302 챌린지 추적(_th_fetch · 260729)
 import json
 import os
 import re
@@ -1096,6 +1097,21 @@ def _th_img(p):
     return ""
 
 
+def _th_fetch(url, hdr, ck):
+    """스레드 요청 = CookieJar 경유(260729 폰 실측 봉합 — 부계 쿠키를 고정 Cookie 헤더로 달자 4계정 전원
+    「HTTP Error 302 … infinite loop」). Meta의 302 + Set-Cookie 챌린지 패턴: 체인 중간에 서버가 얹는
+    쿠키를 다음 홉에 실어야 통과하는데, urlopen 고정 헤더는 그걸 못 실어 무한루프가 된다 → 부계 쿠키를
+    Jar에 심고 HTTPCookieProcessor가 체인 누적 쿠키로 추적. 게스트(ck 빈값) = 빈 Jar로 동일 경로."""
+    jar = http.cookiejar.CookieJar()
+    for kv in (ck or "").split(";"):
+        if "=" in kv:
+            n, v = kv.strip().split("=", 1)
+            jar.set_cookie(http.cookiejar.Cookie(0, n, v, None, False, ".threads.com", True, True, "/",
+                                                 True, False, None, False, None, None, {}))
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), urllib.request.HTTPSHandler(context=CTX))
+    return op.open(urllib.request.Request(url, headers=hdr), timeout=15).read().decode("utf-8", "ignore")
+
+
 def threads_subs(accounts, limit=10, deadline=None):
     """⑧ 스레드 구독 계정 최신 포스트 — 프로필 HTML 임베드 JSON(무인증 게스트 · 운영자 260712).
     ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너 미호출(폰/맥 가정 IP = phone_subs.py 전용).
@@ -1117,10 +1133,14 @@ def threads_subs(accounts, limit=10, deadline=None):
             _hdr = {**UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none",
                     "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1"}   # 실브라우저 헤더 근접(운영자 260723 · 봇 챌린지 완화 시도 · 게스트·쿠키 공통 경로)
-            if ck:
-                _hdr["Cookie"] = ck
-            _rq = urllib.request.Request("https://www.threads.com/@" + urllib.parse.quote(acc), headers=_hdr)
-            h = urllib.request.urlopen(_rq, timeout=15, context=CTX).read().decode("utf-8", "ignore")
+            _u = "https://www.threads.com/@" + urllib.parse.quote(acc)
+            try:
+                h = _th_fetch(_u, _hdr, ck)   # 쿠키 = Jar 경유(302 챌린지 추적 · 260729) — 구 고정 Cookie 헤더 = 무한루프
+            except urllib.error.HTTPError as _e:
+                if ck and _e.code in (301, 302, 303, 307, 308):
+                    h = _th_fetch(_u, _hdr, "")   # 쿠키가 루프를 부르면 게스트 1회 폴백(260713 이전 기본 경로 · fail-soft)
+                else:
+                    raise
             posts = []
 
             def walk(n):
