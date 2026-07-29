@@ -47,6 +47,13 @@ MIN_ATTACH = int(os.environ.get("GROUP_MIN_ATTACH", "2"))
 #   ⚠️ 부분어는 '저cross 부착 단계'에만 쓴다(평의회2 260723): 앵커끼리 부분어로 이어붙이면 클린 그룹이 >MAX_SIZE 블롭에
 #   삼켜져 판정권을 잃는 순손실(실측 13그룹) — 앵커 1패스는 종전 same_topic(정확일치) 그대로.
 SUBTOK = os.environ.get("GROUP_SUBTOK", "1").strip().lower() not in ("0", "false", "no", "")   # 빈값 = OFF(SAFE 파싱과 정합 — 평의회4)
+# 앵커리스 사건 구제(260730 연준 FOMC 실측: 같은 발표가 5개 cross=2 클러스터로 파편 — 인용문 위주 속보라 제목 간
+#   정확일치 ≤2토큰 → knews서 cross 3 미달 → 앵커 0 → 260723 부착 경로(앵커 전제)도 무력 = AI 판정 기회 0 →
+#   수집함 중복 카드 5장). 부착 실패 잔여 저cross끼리 완화 매칭(공유 ≥ORPHAN_SHARED · SUBTOK이면 한글 부분어 포함)
+#   union-find → 2~MAX_SIZE 컴포넌트만 판정 리프로 방출 = 최종 확정은 종전대로 AI(오병합 백스톱 불변).
+#   >MAX_SIZE 블롭 = 드롭(현상유지 — 이 풀은 오늘도 판정 0이라 회귀 없음). 앵커 1패스·부착 2패스 미접촉(가산 전용) ·
+#   정렬상 cross=2라 꼬리 = 앵커 그룹 판정 우선권 보존. 롤백 = env GROUP_ORPHAN_SHARED=0(0·빈값 = OFF = 종전 동작).
+ORPHAN_SHARED = int(os.environ.get("GROUP_ORPHAN_SHARED", "2") or "0")
 # NO 판정 시 기존 YES 코어 group_id 보존(연좌 해제 방지 · 자기 앵커가 현 그룹에 실존할 때만 = 확장→축소 sticky 차단 — 평의회1).
 #   롤백 = env GROUP_KEEP_YES=0(종전 'NO=전원 group_id 해제' 복원).
 KEEP_YES = os.environ.get("GROUP_KEEP_YES", "1").strip().lower() not in ("0", "false", "no", "")
@@ -205,7 +212,33 @@ def build_groups(cands):
             if len(still) == len(left):
                 break
             left = still
-    # ── 리프 방출(컴포넌트 전원 앵커 1패스 발원 = 저cross끼리 잡음 그룹 원천 불가) ──
+        # ── 3패스: 앵커리스 구제(260730) — 부착 실패 잔여끼리 완화 union-find. 가산 전용(앵커 컴포넌트 미접촉) ·
+        #   빈 토큰 제외 · >MAX_SIZE 컴포넌트는 리프 방출 단계서 자연 드롭(잡음 체인 = 현상유지) ──
+        if ORPHAN_SHARED and left:
+            oidx = [i for i in left if ltoks[i]]
+            oparent = {i: i for i in oidx}
+
+            def ofind(x):
+                while oparent[x] != x:
+                    oparent[x] = oparent[oparent[x]]
+                    x = oparent[x]
+                return x
+
+            for a in range(len(oidx)):
+                ia = oidx[a]
+                for b in range(a + 1, len(oidx)):
+                    ib = oidx[b]
+                    n = (_sub_match(ltoks[ia], ltoks[ib], lhan[ia], lhan[ib])
+                         if SUBTOK else len(ltoks[ia] & ltoks[ib]))
+                    if n >= ORPHAN_SHARED:
+                        oparent[ofind(ib)] = ofind(ia)
+            oroot = {}
+            for i in oidx:
+                oroot.setdefault(ofind(i), []).append(i)
+            for sub in sorted(oroot.values(), key=lambda s: min(s)):   # 결정적 순서
+                if len(sub) >= 2:
+                    comps.append([(low[i], ltoks[i], lhan[i]) for i in sub])
+    # ── 리프 방출(앵커 1패스 발원 + 앵커리스 3패스 — 저cross끼리는 3패스 컴포넌트로만 · 2~MAX_SIZE 한정) ──
     leaves = []
     for mem in comps:
         members = [m for m, _, _ in mem]
