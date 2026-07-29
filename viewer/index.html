@@ -760,6 +760,11 @@
   .tcard:active { opacity:.7; }
   .tcard-cov { position:relative; display:block; aspect-ratio:3/4; border-radius:var(--r-l); overflow:hidden; background:var(--line); }   /* 몰입 = 대형화 라운드 --r-m→--r-l(최외곽 16px 문법 · 플레이그라운드 확정값) */
   .tcard-cov img { width:100%; height:100%; object-fit:cover; display:block; }
+  /* 레딧 텍스트 게시물(썸네일 없는 셀프포스트) 폴백 커버(운영자 260729 "텍스트 없는 레딧 게시물은 레딧 이미지를 썸네일로 · 단 채도를 0으로") — 종전 .noc 조용한 공백이 2열 그리드에 구멍을 내던 것을 브랜드 판으로 채움.
+     채도 0 = 레딧 브랜드 오렌지 FF4500을 Rec.709 루마로 무채화한 값 676767(계산값 · 눈대중 회색 창작 아님) + 순백 워드마크 = 첨부 원본의 grayscale(1) 상태 그대로. 팔레트 예외축(커버 이미지 내부 색 = index :root 의미색 아님 · 발행 콘텐츠와 동축).
+     ⚠ 워드마크 = 상표 비트맵을 못 받는 환경이라 Pretendard 소문자 굵기로 근사(레딧 커스텀 폰트 아님) · 원본 비트맵 확보 시 img 1장으로 교체 가능한 구조. */
+  .tcard-cov.noc.rdfb { container-type:inline-size; background:#676767; display:grid; place-items:center; }   /* raw-ok: 676767 = 레딧 오렌지 FF4500의 luma(0.2126·255+0.7152·69+0.0722·0 = 103) 무채값 = "채도 0" 지시의 산출값 */
+  .tcard-cov.noc.rdfb::after { content:'reddit'; color:#fff; font-size:19cqw; font-weight:var(--fw-x); letter-spacing:-.045em; line-height:1; }   /* raw-ok: fff = 원본 워드마크 순백(무채 = 채도0 축 그대로) · 19cqw = 카드 폭 비례(폰 145px→27.6px · PC 확장 시 동반 확대 = 고정 px의 축소 파손 회피) · 자간 -.045em = 원본 워드마크 밀착 근사 */
   /* ── 커버 몰입 오버레이(구 .imm 2안·스크림) 폐지 = 제목/메타 항상 커버 아래(운영자 260712 #6 "썸네일 안에 제목 vs 업로더 = 중구난방" 통일 · 제목 위치 일관 = 아래) ── */
   .tcard-rank { position:absolute; top:5px; left:5px; display:inline-flex; align-items:center; box-sizing:border-box; height:18px; padding:2.3px 7.25px 0 6.75px; border-radius:var(--r-pill);   /* raw-ok: 광학 정렬 1회성 보정(운영자 260717 Q04 필 4분할 중심 = 문자열 잉크 중심 · 260721 재보정: Pretendard 실장 후 1~10위 전수 실측 — 구 6.2/7.8은 극단(1·10위)만 재서 중간 자릿수 좌편심 -0.84 노출 → 家족 미니맥스 6.75/7.25 = 잔차 ±0.30 · 합 14 = 전폭 불변·외형 18px 불변 · 수치 판정 = smoke_rank) */
     background:rgba(0,0,0,.55); color:var(--fg); font-size:10.5px; font-weight:800; font-variant-numeric:tabular-nums; }   /* raw-ok: 10.5px = 기존 확정값 줄 재작성분(260712 선택값 유지·값 무변) — 순위 필 = 이미지 위 라벨/배지 솔리드 관례(.slide-no 톤 · §🎨 n 예외축) · padding-top 2.3 = 광학정렬(운영자 260717 Q04 "필 4분할 중심 = 문자열 4분할 중심" — DPR3 잉크 실측 상편심 1.17px → border-box 외형 18px 불변·잉크만 하향 Δ0) */
@@ -11329,7 +11334,7 @@ function renderSnsTrends() {
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
   const card = (t, i, wd) =>   // 통일 카드(운영자 260712 #6 "쇼츠형 중구난방 해소") — 썸네일(쇼츠식 커버 크롭) + 아래에 [제목 → 조회수(vfmt 000만) · N일전] · 업로더 제거·오버레이 제목 폐지(제목/메타 항상 커버 아래 = 뉴스식 배치) · 제목 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
-    `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc'}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
+    `<span class="tcard-cov${wd ? ' wd' : ''}${t.cover ? '' : ' noc' + (t.nocls ? ' ' + t.nocls : '')}">${t.cover ? `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(t.cover)}" onerror="this.style.display='none'" alt="">` : ''}<span class="tcard-rank${i < 3 ? ' top' : ''}">${i + 1}위</span>${chg(t)}</span>` +
     `<span class="tcard-t"></span><span class="tcard-m">${t.metricHtml != null ? t.metricHtml : (t.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(t.views)}</span></i>` : '')}${relT(t) ? `<span class="tcard-ago${t._fresh24 ? ' fresh24' : ''}">${relT(t)}</span>` : ''}</span></a>`;   // 시간 = published∥time∥first_seen 공통(운영자 260712 "모든 것에") · metricHtml = 사전조립 지표(구글 검색량 등 · 미정의 = 조회수 폴백 = 쇼츠·뉴스·AI 무영향)
   // 게시물 본문 속 영상 링크 = **링크가 아니라 영상**으로(운영자 260727) — 스레드·X 글이 유튜브·틱톡·릴스를 공유하면
   //   ⓐ 커버 = 그 영상 프레임(유튜브만 썸네일 URL 산출 가능 · 틱톡·릴스는 비공개 → 커버 없이 재생 배선만)
@@ -11443,7 +11448,7 @@ function renderSnsTrends() {
   //   소머리('핫 게시물 · 레딧') = yt·tk와 동일하게 CSS 소거(NOHEAD) — 대분류가 이미 '레딧'이고 소분류 1개 = 동어반복
   //   커버 = 수집 thumb(레딧 preview 이미지 · 결측 = .tcard-cov.noc 조용한 공백 = 종전 무썸네일 데이터 무회귀) · 지표 = 스코어(업보트 = 조회수 아님 → 눈 픽토 대신 위화살 §3-1 정본 path) · 시간 = relT(time) 공통
   let gRD = '';
-  const rddL = rdd.slice(0, 10).map(p2 => ({ ...p2, cover: p2.thumb || '', metricHtml: (p2.score > 0 ? `<i>${RD_UP_SVG}<span>${mag(p2.score)}</span></i>` : '') }));   // 상한 10(운영자 260727 "10개까지") · mag = <1만 콤마·≥1만 만단위(스코어는 플랫폼 내부 크기 = 조회수 vfmt 축과 별개)
+  const rddL = rdd.slice(0, 10).map(p2 => ({ ...p2, cover: p2.thumb || '', nocls: 'rdfb', metricHtml: (p2.score > 0 ? `<i>${RD_UP_SVG}<span>${mag(p2.score)}</span></i>` : '') }));   // 상한 10(운영자 260727 "10개까지") · mag = <1만 콤마·≥1만 만단위(스코어는 플랫폼 내부 크기 = 조회수 vfmt 축과 별개)
   if (rddL.length) gRD += sec('rdd', '핫 게시물', '· 레딧', rddL.length, '<div class="trend-grid wd">' + rddL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   // (구 gBS 독립 대분류 = 260720 X 우측 열 합류 → 260721 게시물 표면 소멸 "블루스카이는 실검만" — bskS/bskL/bskSec/bcard 정의 = git 이력 · 잔존 블스 표면 = 실시간 트렌드 반갈 btrSec뿐)
   // ⑧ 스레드 구독 = 큐레이션 게시물(gCUR) 합류(운영자 260723) · 공급 = 폰/맥 phone_subs 전용 · 구 gTH(스레드 대분류) 소멸
