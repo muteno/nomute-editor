@@ -207,9 +207,15 @@
   var SRC = 'favicon-globe-260724.svg';
   /* 값·모션 = 플레이그라운드 `docs/reports/260727_파비콘애니_플레이그라운드.html` 계승(운영자 선택분).
      mode=spin(§305 = 세로축 자전 · 평면 rotate 아님) · period 980 · fps 60 · res 64 · size 78% · amp 100 · ease=--ease 계승. */
-  var PX = 64;             // res — 탭 렌더 16~32px 대비 여유 배수(계단 방지)
+  /* 【260729 경량화 = 렉 실측 후 재조정 · 운영자 "렉이 많이 걸려 … 시각적으로 표현만 되고 부드러우면 된다(고화질 아니어도 될듯)"】
+     크로미엄은 **탭 파비콘 재도색을 초당 3~4.5회로 조인다**(실측: 0.5s 2색 토글 = 2.0회/초 그대로 통과 /
+     0.1s 토글 = 10회/초를 넣어도 3.2회만 화면 반영 / 60fps·30fps·15fps 교체 전부 4회/초 수렴 · 픽셀 임계
+     1px까지 낮춰도 동일 = 과소측정 아님). 즉 **30fps로 구워봐야 87%는 브라우저가 버린다** —
+     비용만 내고 부드러움은 못 산다. ∴ 상한 바로 위인 5fps로 낮춘다(시각 결과 = 전과 동일 4회/초).
+     비용 지배축도 픽셀 수가 아니라 **교체 횟수**였다(64→32px = −5%p / 30→5fps = −80%p · Xvfb headful 실측). */
+  var PX = 32;             // res — 탭 렌더 16~20px의 2x(레티나)까지 커버 · 64는 굽고 버리는 픽셀이었다
   var SIZE = .78;          // size 78% — 캔버스 대비 로고 크기(플레이그라운드 DEFAULTS)
-  var FPS = 30, POLL = 350;
+  var FPS = 5, POLL = 350;
   var slow = false;
   try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
   var SPIN = slow ? 4800 : 2420;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
@@ -222,7 +228,7 @@
   function ease(x) { var e = x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; return (x + e) / 2; }
 
   var spin = null, kept = [], img = null, ready = false;
-  var cv = null, cx = null, tick = null, t0 = 0, on = false;
+  var cv = null, cx = null, tick = null, t0 = 0, on = false, cache = null;
   function busy() {
     try {
       if (document.querySelector(SEL)) return true;
@@ -234,8 +240,8 @@
     } catch (_) {}
     return false;
   }
-  function draw() {
-    var ang = ease(((Date.now() - t0) % SPIN) / SPIN) * Math.PI * 2;   // 이징을 각도에 먹인다 = 한 바퀴 안에서 느려졌다 빨라짐
+  function paint(ph) {   // ph = 한 바퀴 안 위상(0~1) — 그림만 그린다(굽기는 buildCache가 한 번만)
+    var ang = ease(ph) * Math.PI * 2;   // 이징을 각도에 먹인다 = 한 바퀴 안에서 느려졌다 빨라짐
     var s = Math.cos(ang), S = PX * SIZE;
     cx.clearRect(0, 0, PX, PX);
     cx.save(); cx.translate(PX / 2, PX / 2);
@@ -243,7 +249,19 @@
     cx.globalAlpha = .55 + .45 * Math.abs(s);  // 옆면일수록 어둡게 = 앞뒤 입체감(같은 줄 a 계승)
     cx.drawImage(img, -S / 2, -S / 2, S, S);
     cx.restore();
-    try { spin.setAttribute('href', cv.toDataURL('image/png')); } catch (_) { stop(); }   // toDataURL 실패(오염 등) = 조용히 원복
+  }
+  /* 프리렌더 캐시(260729) — 한 바퀴치 프레임을 **처음 한 번만** 굽고 이후엔 문자열만 갈아끼운다.
+     구 방식은 매 프레임 toDataURL(= PNG 인코딩)을 다시 돌렸다(30fps × 8초 = 90~140ms 순수 인코딩).
+     12장 × 32px ≈ 25KB · 굽는 시간 3ms(실측) = 시작 지연 체감 0. */
+  function buildCache() {
+    var n = Math.max(2, Math.round(SPIN / (1000 / FPS))), a = [], i;
+    for (i = 0; i < n; i++) { paint(i / n); a.push(cv.toDataURL('image/png')); }
+    return a;
+  }
+  function draw() {
+    if (!cache) { try { cache = buildCache(); } catch (_) { stop(); return; } }   // toDataURL 실패(오염 등) = 조용히 원복
+    var i = Math.floor(((Date.now() - t0) % SPIN) / SPIN * cache.length) % cache.length;   // 위상 기준 = setInterval 지터가 회전 속도를 안 흔든다
+    try { spin.setAttribute('href', cache[i]); } catch (_) { stop(); }
   }
   /* 기존 <link rel=icon>의 href만 갈아끼우면 크롬이 안 그린다(실측 260727: type="image/svg+xml" 태그에 PNG를
      넣으면 무시하고 앞의 .ico를 계속 씀). ∴ 도는 동안은 icon 링크를 통째로 떼고 PNG 전용 링크 하나만 세운다. */
