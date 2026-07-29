@@ -380,19 +380,25 @@ def openai_image(prompt, img_bytes, aspect_wh):
     url = "https://api.openai.com/v1/images/" + ("edits" if img_bytes else "generations")
 
     def _post(model, with_fidelity):
-        bnd = "----nomute" + hashlib.sha1((model + prompt).encode()).hexdigest()[:12]
         parts = [("model", model), ("prompt", prompt), ("size", "{}x{}".format(sw, sh)), ("n", "1")]
         if with_fidelity and img_bytes:
             parts.append(("input_fidelity", "high"))
-        body = b""
-        for k, v in parts:
-            body += ('--{}\r\nContent-Disposition: form-data; name="{}"\r\n\r\n{}\r\n'.format(bnd, k, v)).encode()
-        if img_bytes:
+        if not img_bytes:
+            # 생성(images/generations) = **JSON 전용** — multipart로 보내면 400 "Unsupported content type"(실측 260729 로그
+            # run 30457842395: gpt-image-2·gpt-image-1 양쪽 400 → Gemini 폴백까지 밀려 전건 실패). multipart 정본은 아래 편집(edits)뿐이다.
+            body = json.dumps({k: (int(v) if k == "n" else v) for k, v in parts}).encode()
+            req = urllib.request.Request(url, data=body, headers={
+                "Authorization": "Bearer " + key, "Content-Type": "application/json"})
+        else:
+            bnd = "----nomute" + hashlib.sha1((model + prompt).encode()).hexdigest()[:12]
+            body = b""
+            for k, v in parts:
+                body += ('--{}\r\nContent-Disposition: form-data; name="{}"\r\n\r\n{}\r\n'.format(bnd, k, v)).encode()
             body += ('--{}\r\nContent-Disposition: form-data; name="image"; filename="ref.jpg"\r\n'
                      'Content-Type: image/jpeg\r\n\r\n'.format(bnd)).encode() + img_bytes + b"\r\n"
-        body += ("--{}--\r\n".format(bnd)).encode()
-        req = urllib.request.Request(url, data=body, headers={
-            "Authorization": "Bearer " + key, "Content-Type": "multipart/form-data; boundary=" + bnd})
+            body += ("--{}--\r\n".format(bnd)).encode()
+            req = urllib.request.Request(url, data=body, headers={
+                "Authorization": "Bearer " + key, "Content-Type": "multipart/form-data; boundary=" + bnd})
         with urllib.request.urlopen(req, timeout=300) as resp:
             j = json.loads(resp.read().decode())
         b64 = (j.get("data") or [{}])[0].get("b64_json")
