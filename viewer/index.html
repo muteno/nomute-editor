@@ -7561,9 +7561,9 @@ function sysErrMsgs() {
     //   전멸일수록 틀린 문구만 남는 이중 사각이었다 → 여기서 같은 사유 코드를 읽어 대기/조치를 가른다.
     //   'cooldown'·'gap' = 폰이 스스로 쉬는 중(scripts/phone_subs.py _skip_stamp) · 429 = 플랫폼 레이트리밋.
     const _wv = Object.values((cov[k] || {}).why || {}).map(v => String(v));
-    const _wait = _wv.filter(v => v === 'cooldown' || v === 'gap' || v === '429').length;
+    const _wait = _wv.filter(v => v === 'cooldown' || v === 'gap' || v === 'rotate' || v === '429').length;
     if (SYS_PHONE_PLAT[k] && !phDead && _wv.length && _wait * 2 > _wv.length) {
-      text = head + (_wv.filter(v => v === 'gap').length * 2 > _wv.length
+      text = head + (_wv.filter(v => v === 'gap' || v === 'rotate').length * 2 > _wv.length
         ? '폰이 다음 수집 차례를 기다리는 중이에요(계정 리밋을 피하려고 일부러 띄엄띄엄 걷어요).\n\n'
         : '요청이 몰려 잠시 막혀서, 폰이 일부러 쉬는 중이에요 — 계속 두드리면 오히려 더 늦게 풀려요.\n\n')
         + '👉 네가 할 일: 없어요. 쉬는 시간이 끝나면 자동으로 다시 걷혀요. 이틀 넘게 계속 뜨면 그때 알려줘.\n\n'
@@ -7641,11 +7641,12 @@ function sysErrMsgs() {
       } else if (w === 'budget') {
         cause = '이번 수집은 시간이 모자라 이 계정까지 못 갔어요(실패가 아니라 미시도).';
         todo = '👉 네가 할 일: 없어요. 다음 수집에 다시 시도해요.';
-      } else if (w === 'cooldown' || w === 'gap') {
+      } else if (w === 'cooldown' || w === 'gap' || w === 'rotate') {
         // 폰이 **일부러 쉰** 회차(scripts/phone_subs.py _skip_stamp · 260730) = 실패가 아니라 백오프·주기 대기.
         //   도장이 없으면 이 자리가 러너(데센 IP) 429 잔향으로 채워져 원인이 뒤바뀐다 — 위 stale 분기와 같은 축.
-        cause = w === 'gap' ? '아직 이 계정 차례가 아니에요(계정 리밋을 피하려고 띄엄띄엄 걷어요).'
-                            : '요청이 몰려 잠시 막혀서, 폰이 쉬는 중이라 이번엔 시도하지 않았어요.';
+        cause = (w === 'gap' || w === 'rotate')
+          ? '아직 이 계정 차례가 아니에요(계정 리밋을 피하려고 몇 개씩 돌아가며 걷어요 · 한 바퀴 약 6시간).'
+          : '요청이 몰려 잠시 막혀서, 폰이 쉬는 중이라 이번엔 시도하지 않았어요.';
         todo = '👉 네가 할 일: 없어요. 차례가 오면 자동으로 다시 걷혀요.';
       } else if (w === 'empty') {
         // 'empty' = 수집기가 페이지를 정상으로 받고 **글 노드가 없다고 판정**한 코드(sns_trends.py L1164) = 차단이 아니라 공급 공백.

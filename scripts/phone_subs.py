@@ -98,7 +98,12 @@ def _insta_collect(accounts, prev_items):
         return prev_items
     nxt = (off + len(batch)) % len(accounts)
     _st_write(0, 0, now, nxt)   # 성공 = 백오프 초기화 + 회전 전진
+    # 이번 회차에 **차례가 안 온** 계정 = 미시도 도장(260730) — 커버 판정은 등록 20계정 전량 기준인데
+    #   회전은 한 런에 _BATCH(5)개만 돈다 → 이월분이 쌓이기 전(약 한 바퀴 6h)까지 got=5/20=25%로
+    #   80% 임계에 상시 미달 = "왜 빠졌는지 기록이 없어요" 묶음 알림이 매 런 뜬다(260728 틱톡 판례와 동형).
+    #   도장을 찍어 두면 뷰어가 '아직 차례 아님'으로 갈라 읽어 침묵한다(실패로 오인 금지).
     done = {a.lower().lstrip("@") for a in batch}
+    _skip_stamp([a for a in accounts if a.lower().lstrip("@") not in done], "rotate")
     kept = [it for it in (prev_items or []) if (it.get("account") or "").lower().lstrip("@") not in done]
     print("::notice::insta 배치 %d계정(%d/%d 지점) 수집 %d건 · 이월 %d건"
           % (len(batch), off, len(accounts), len(got), len(kept)), file=sys.stderr)
