@@ -110,6 +110,13 @@
   .cpv-empty { position:absolute; inset:0; display:grid; place-items:center; }
   .cpv-empty .cpv-stage { width:min(100%, calc(min(29svh,300px) * 16 / 9)) /* raw-ok: 300 = .cpprev-box 높이캡 파생 16:9 contain 폭 = edit 정본 동식 */; aspect-ratio:16/9; background:#000 /* raw-ok: 산출 배경 순흑 = edit .cpv-stage 동값 */; display:grid; place-items:center; }
   .cpv-wait { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); letter-spacing:.02em; }   /* 대기 표기(텍스트 산출형) — 각색 결과가 아래 결과부로 나온다는 안내 */
+  /* 레퍼런스 대표 1장 = 이미지 스튜디오(AI 생성) 미리보기 스테이지 문법 그대로(index .geni-prev .cpprev-stage img.cpv-bg 정본 미러 · 운영자 260730 "이미지 스튜디오의 미리보기를 그대로") */
+  .cpv-stage img.cpv-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }   /* contain = 원본 무크롭 전체 가시(정본 동값 — 생성 비율과 스테이지 비율이 달라도 잘리지 않는다) */
+  .cpv-stage img.cpv-bg[hidden] { display:none; }   /* 숨김 재승리(display:block이 UA [hidden]을 이김 — 정본 좀비 가드 계승) */
+  .cpv-empty.has .cpv-wait { display:none; }   /* 이미지 앉으면 대기 문구 퇴장(정본 .geni-prev.has 문법 계승) */
+  /* 엔진 브랜드 픽토 = index .eng-ico 정본 2줄 계승(픽토 자체는 nm-svg.js G_SVG SSOT — 인라인 재선언 0) */
+  #gospec .eng-ico svg { width:1em; height:1em; flex:none; display:block; }
+  #gospec .eng-ico { display:inline-flex; align-items:center; vertical-align:-.13em /* raw-ok: 텍스트 흐름 안 픽토 광학 보정 = index .eng-ico 정본 동값 */; margin-right:2px /* raw-ok: 문장 안 픽토↔글자 2 = index #geniEngTip .eng-ico 정본 동값 */; }
   .optstrip .geni-sum { padding:0; text-align:left; line-height:1.9; white-space:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .optstrip .geni-sum .gs-row { display:inline; }   /* 구 항목별 줄바꿈(display:block) → 1줄 인라인(운영자 260725 간소화 1줄 · JS 무접촉) */
   .optstrip .geni-sum .gs-row + .gs-row::before { content:'|'; color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = .gs-sep 정본 동값 */; }   /* 파이프 구분자 = 이미지 스튜디오 요약 스트립 문법(라벨:값 | 라벨:값) */   /* 요약 = 도크 스트립 안 = edit .gospec 좌측정렬 문법 계승(우측정렬 구 문법 대체 · JS 무접촉) */
@@ -203,7 +210,7 @@
 <div class="wrap"><!-- 폼 문법 = Image Studio(#genidlg) 이식(운영자 260714 4차) — 위 = 내용+선택요약+생성 · 아래 = 항목 행(라벨 좌·값 우 워드칩) -->
   <!-- 상단 도크 = 편집(edit) #topDock 정본 100% 계승(운영자 260725 통일) — 미리보기 + 선택 요약 스트립 + 발사바 한 몸 sticky · Contents는 도크 아래로 이주(edit 구조 미러) -->
   <div class="topdock" id="topDock">
-    <div class="pvsec"><div class="cpprev-box"><div class="cpv-empty"><div class="cpv-stage"><span class="cpv-wait">Contents 입력 · 각색 대기</span></div></div></div></div>
+    <div class="pvsec"><div class="cpprev-box"><div class="cpv-empty" id="pvEmpty"><div class="cpv-stage"><img class="cpv-bg" id="pvImg" hidden alt=""><span class="cpv-wait">Contents 입력 · 각색 대기</span></div></div></div></div><!-- 스테이지 내용물 = 앱별 축(쉘은 CII 정본) — 콘티는 레퍼런스 대표 1장(운영자 260730 "이미지 스튜디오의 미리보기를 그대로") · 없으면 종전 대기 문구 -->
     <div class="optstrip" id="optStrip"><div class="geni-sum gospec" id="gospec"></div></div><!-- 선택 요약 = 구 우측정렬 #gospec 이주(채움 JS 무접촉) -->
     <div class="firebar"><div class="inner"><button class="go" id="go">생성</button></div></div><!-- 발사 = 도크 안(구 Contents 아래 인라인 폐지) · 라벨 "생성" 통일 · 발사 로직 불변 -->
   </div><!-- /.topdock -->
@@ -338,9 +345,11 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
       : '촬영 0원 · 클링 구독';
     // 이미지 엔진 점등(운영자 260730 "고르는 순간 gemini에 불 들어오게") — 촬영=Seedance면 콘티와 함께 레퍼런스 이미지가 돌아간다(Gemini 종량제 과금 발생) · Kling은 프롬프팅 레인이 따로 뽑으므로 여기선 미과금.
     // 점등 문법 = 요약 스트립 활성값 정본 `.gs-v.on`(edit 계승 — 신규 클래스·신규 색 0).
+    // 엔진 표기 = 이미지 스튜디오 정본(운영자 260730 "제미나이 어떻게 표현되는지 등등도 나와있음"): 브랜드 픽토 G_SVG(구글 G 레터마크 · nm-svg.js SSOT) + 정본 모델명 `Gemini 3.1 Flash`(index GENI_ENG_ICO 동일 문자열 — 줄임말·창작 라벨 금지).
+    const ENG_ICO = '<i class="eng-ico" title="Gemini 3.1 Flash" aria-label="Gemini 3.1 Flash">' + (typeof G_SVG !== 'undefined' ? G_SVG : '') + '</i>';   // 픽토 조합 문법 = index geniEngIco() 정본 미러
     const gem = sbShoot === 'seedance'
-      ? ' · <span class="gs-v on" title="촬영=Seedance = 콘티와 함께 레퍼런스 이미지 생성(Gemini 종량제 과금 · sb_out/&lt;id&gt;/ref.json — 시댄스 1-way 주입 재료) · Kling 선택 시 미과금(프롬프팅 레인이 따로 생성)">Gemini 이미지 ON</span>'
-      : ' · <span class="gs-v" title="촬영=Kling = 여기선 이미지 미생성(프롬프팅 탭이 @참조 레퍼런스를 따로 뽑는다) = Gemini 미과금">Gemini OFF</span>';
+      ? ' · <span class="gs-v on" title="촬영=Seedance = 콘티와 함께 레퍼런스 이미지 생성(Gemini 종량제 과금 · sb_out/&lt;id&gt;/ref.json — 시댄스 1-way 주입 재료) · Kling 선택 시 미과금(프롬프팅 레인이 따로 생성)">' + ENG_ICO + 'Gemini 3.1 Flash</span>'
+      : ' · <span class="gs-v" title="촬영=Kling = 여기선 이미지 미생성(프롬프팅 탭이 @참조 레퍼런스를 따로 뽑는다) = Gemini 미과금">' + ENG_ICO + 'Gemini 미사용</span>';
     const rows = [   // 항목별 줄바꿈(운영자 260714 6차) — 감독 / 촬영 / 규격 / 비용 각 1줄
       '감독 <b>' + esc(d.nm) + '</b> · ' + esc(d.hint),
       '촬영 <b>' + esc(sh.nm) + '</b>' + gem,   // Seedance 선택 = 이미지 종량제 점등(운영자 260730 "고르는 순간 gemini에 불 들어오게")
@@ -440,6 +449,11 @@ async function renderOut(md, outEl, outPath) {   // 결과 렌더 공통(폴 성
     try { const jr = await fetch(base + 'ref.json?t=' + Date.now()); if (jr.ok) { const j = await jr.json(); if (j && Array.isArray(j.urls) && j.urls.length) srcs = j.urls; else if (j && j.url) srcs = [j.url]; } } catch (e) { /* 폴백 */ }
     if (!srcs) { try { const hr = await fetch(base + 'ref.jpg?t=' + Date.now(), { method: 'HEAD' }); if (hr.ok && !(hr.headers.get('content-type') || '').includes('text/html')) srcs = [base + 'ref.jpg']; } catch (e) {} }   // git 폴백 = 실존 확인 후에만(SPA 폴백이 HTML을 200으로 주는 함정 = poll 가드와 동일 축)
     if (srcs && srcs.length) {
+      // 대표 1장 = 상단 도크 미리보기 스테이지(이미지 스튜디오 정본 문법 · 운영자 260730) — 아래 결과부 .ref는 전량(다장·실패 슬롯) 담당 = 도크는 대표·결과부는 전량 역할 분리(edit·thumb 구조와 동일 축)
+      const first = srcs.find(Boolean);
+      const pv = document.getElementById('pvImg'), pe = document.getElementById('pvEmpty');
+      if (pv && first) { pv.src = first + (first.includes('?') ? '' : '?t=' + Date.now()); pv.hidden = false; if (pe) pe.classList.add('has'); }
+      if (pv) pv.addEventListener('error', () => { pv.hidden = true; if (pe) pe.classList.remove('has'); }, { once: true });   // 로드 실패 = 대기 문구 복귀(빈 액자 방지)
       const cells = srcs.map((u, ix) => {
         if (!u) return '<div class="refmiss">레퍼런스 ' + (ix + 1) + '번 생성/업로드 실패 — 참조 순서는 유지(이 장만 빼고 주입)</div>';   // null 슬롯 = 번호 보존(압축 금지 · k 검증1 계승)
         const bust = u.includes('?') ? '' : '?t=' + Date.now();
