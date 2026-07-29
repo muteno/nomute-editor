@@ -122,7 +122,15 @@
   .cysep { color:var(--mut); opacity:.45; font-weight:400; }
   .cyrow { display:flex; gap:8px; }   /* 반폭 페어 = 남는 공간 활용(운영자 260712 "행 반만 쓰니 반으로 잘라 둘 다") */
   .cyrow > .scard { flex:1 1 0; min-width:0; }
-  .cyrow.tri > .scard .hd { padding-inline:8px /* raw-ok: 3분할(자막|번역|고프레임 · 운영자 260728) 한정 좌우 축약 — 구 10px는 390px에서만 통과하고 **360px(갤럭시 S8·A)에서 '고프레임' 2줄 꺾임(카드 40→64.2px) 실측**(평의회⑥ 260728) · 8px+gap4 = 360px 여유 확보 · 세로 8 = 정본 유지 */; gap:4px /* raw-ok: 동일 사유 */; }
+  /* ── 옵션 카드 스택(운영자 260729 "이미지 스튜디오 디자인을 비디오 스튜디오 편집에 녹여") = thumb .optcards 정본 계승 —
+       이미지 스튜디오는 **행 하나가 곧 카드 하나**(.scard > .csec)이고 편집 탭은 한 카드 안에 행이 나열돼 있었다.
+       행 문법(.geni-row 라벨·칩·파이프)은 이미 양쪽이 같은 정본 이식이라, 감싸는 껍데기와 간격만 맞추면 결이 붙는다. ── */
+  .optcards { display:flex; flex-direction:column; gap:8px /* raw-ok: 카드 스택 8 = thumb .optcards 정본 동값(.cyrow gap과 같은 리듬) */; }
+  .optcards > .scard > .srow, .optcards > .scard > .grow, .optcards > .scard > .swrow { margin:0; padding:8px 13px /* raw-ok: 세로8·좌우13 = thumb .scard > .csec 정본 동값(= edit .scard .hd 계승 사다리) */; }
+  .optcards > .scard > .grow { display:grid; }   /* 게이지 행도 같은 카드 패딩 안에서 3열 그리드 유지 */
+  .optcards > .scard > .swrow { justify-content:space-between; }   /* 색 줄 = 카드 안쪽 폭을 그대로 사용(마진 상쇄는 아래 규칙이 담당) */
+  .optcards > .scard > .swrow { margin-left:0; margin-right:0; }   /* 카드가 이미 13px 좌우 패딩을 주므로 게이지 트랙 맞춤 마진(71/51)은 카드 문법에서 해제 */
+  @media (max-width:379px) { .cyrow.tri > .scard .hd { padding-inline:8px /* raw-ok: 3분할(자막|번역|고프레임 · 운영자 260728) 한정 좌우 축약 — 구 10px는 390px에서만 통과하고 **360px(갤럭시 S8·A)에서 '고프레임' 2줄 꺾임(카드 40→64.2px) 실측**(평의회⑥ 260728) · 8px+gap4 = 360px 여유 확보 · 세로 8 = 정본 유지 */; gap:4px /* raw-ok: 동일 사유 */; } }   /* (260729) 축약을 **협폭 전용**으로 격리 — 운영자 "뭐가 기준에서 튀어나가는지 모르겠네": 이 8px가 전 폭에 걸려 있어서 3분할 행(자막·번역·고프레임) 제목만 다른 카드보다 5px 왼쪽에 서 있었다(표준 13 vs 8 = 잉크 30 vs 25 실측). 360px 꺾임 방어는 그 폭에서만 필요하므로 379 이하로 한정 = 390 이상에서는 전 카드 제목 좌변이 한 줄로 정렬 */
   /* (철회 260728 재검④) `.cyrow.tri .nm/.cyv { min-width:0 }` = 특이도(0,4,0)로 아래 `.cyrow .cyv { min-width:3ch }`(운영자 260712 확정 "한 음절 늘어나도 무너지면 안됨")를 tri 행에서 통째 무효화했다.
      게다가 `.cyv`는 `white-space:nowrap`이라 애초에 안 꺾인다 = 꺾임 방지 기여 0·폭 지터 부활만 남는 순손실. 360px 수용은 위 padding 8/gap 4가 전담(실측). */
   .cnote { padding:2px 13px 10px; font-size:var(--fs-xs); color:var(--mut); line-height:1.5; }   /* 카드 하단 STT/클립 노트(켰을 때만 · 산문 최소) */
@@ -687,6 +695,8 @@ let CLIP_SAVE=null;   // 클리퍼 진입 직전 ON 스냅샷(운영자 260722 "
 function clipSnap(){ if(!ON.clip) CLIP_SAVE={...ON}; for(const kk in ON) ON[kk]=false; ON.clip=true; }   // 배타 진입 = 스냅샷 후 전축 off(발사 계약 불변 — buildOpts는 여전히 {clip:true} 단독)
 function clipRelease(){ if(!ON.clip) return; ON.clip=false; if(CLIP_SAVE){ for(const kk in CLIP_SAVE){ if(kk!=='clip') ON[kk]=CLIP_SAVE[kk]; } CLIP_SAVE=null; } }   // 배타 해제 = 스냅샷 복원(직후 탭한 축이 이겨야 하므로 호출측은 복원 뒤 자기 축 세팅)   // 음량 통일 = 기본 ON(운영자 260712 "음향 기본값 = 보정") — 나머지 축은 '원본/그대로/끔' 기본 유지 · 발사 게이트도 이 기본으로 통과(맨 발사 = 보정만 적용)
 let P={lang:'ko',tone:'sns',   /* 언어 기본 = 한글만(운영자 260729 "기본은 항상 한글만으로") — 구 'auto'는 원문 언어에 따라 원문 줄이 딸려 나올 수 있어 기본값으로선 예측 불가였다(P는 영속 저장 안 함 = 매 진입 이 값) */filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
+  shtype:'box',   // 음영 종류(운영자 260729 "지금은 무조건 네모인데, 획·그림자 등 다른것도 · 기본값은 음영인데 기본도 있어야") — none 기본(효과 없음) | box 음영(네모 = 종전 동작·디폴트) | stroke 획(글자 외곽선) | shadow 그림자
+  lgap:18,     // 한국어↔외국어 줄간격 %(한국어 글자 높이 기준 · 운영자 260729 게이지 승격 · 18 = 구 하드코딩 fs×0.18 동값 = 기본 렌더 불변) · 러너 dual_gap 짝
   srcsz:-50,   // 원문(외국어) 줄 크기 = 한국어 줄 대비 상대 %(운영자 260729 "한글 자막 기준해서 -50% 크기를 기준으로, -75%~00%까지") · 0 = 한글과 동일 · -75 = 한글의 25% · 러너 dual_small = (100+srcsz)/100
   sh:100,shc:'black',font:'gothic',fg:'white',glow:0,   // 음영 크기 %(100 = 종전 편집기 렌더 그대로 = 기존 기능 불변 · 50 = ly 캡션 기본 파리티)·음영 색·폰트 — 운영자 260711 3축 · fg 글자색(프리셋 전용 · 기본 흰 = 종전)·glow 네온 번짐 %(운영자 260721 · 기본 0 = 종전)
   cutlv:'std',cutfill:false,take:false,t0:'',t1:'',segs:[{s:'',e:''}],xfade:20,ar:'9:16',fit:'blur',vpos:50,res:'1080',fps:'60i'};   // segs = n구간(운영자 260728 "1구간, 2구간 n구간" — [{s,e}] 문자열 · t0/t1 = 구 단일 구간 도먼트 보존) · xfade = 이음매 디졸브 강도 %(0=딱 붙임 · 발사 vid_xfade)   // cutfill=필러 컷·take=반복 테이크 감지(운영자 260727 ①④ — 컷 카드 종속 서브 토글)   // fit 기본 = 여백(블러)(운영자 260711 fitDef)   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
@@ -757,19 +767,22 @@ const px1=v=>Math.max(0, Math.round(v*10)/10);   // 음영 px = 0.1 단위 연�
 const gvTxt=(k,v,u)=>v+u;   // (260729) 구 'sh 100% = 기본' 특례 폐지 — 운영자 "딱딱 끊겨서 조절되는 게 아니라 자연스럽게": 숫자가 도중에 낱말로 바뀌면 연속 조절이 끊겨 보인다 → 전 게이지 숫자 단일 · 기준선 안내는 게이지 title로 이관
 function gauge(k, lbl, min, max, val, unit, tip){ return '<div class="grow"><span class="k">'+lbl+'</span><input type="range" min="'+min+'" max="'+max+'" step="1" value="'+val+'" data-g="'+k+'" aria-label="'+lbl+(tip?(' — '+tip):'')+'"'+(tip?(' title="'+esc(tip)+'"'):'')+'><span class="v">'+gvTxt(k,val,unit)+'</span></div>'; }   // tip = 기준선 안내(260729 — 구 값칸 낱말 치환 대체)
 function prm(k){
-  if(k==='sub') return '<div class="pvslot" id="pvSlotSub"></div>'   // 도먼트(자막 탭 이관 260711) — 복원 시 비율 카드 pvSlot과 id 충돌 방지(배선평의회1 F5)   // 라이브 미리보기 자리(영속 #pv 노드를 render()가 이주 — innerHTML 재생성이 video를 파괴·리로드하지 않게 · 운영자 260711 3차)
-    +srow('프리셋', Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm)))   // 행 문법 = geni-row 정본 이식(운영자 260721 "이런 케이스로 통일" — 라벨 좌·값 우측정렬 워드칩·파이프)
-    +(ON.trn?'':srow('언어', [['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1]))))   // 번역 ON = 언어 행 숨김(운영자 260728 Q06 — 번역이 곧 '원문+한글' 강제라 선택지가 무의미 = 조용한 무시 대신 비노출 · OFF 시 P.lang 그대로 복귀)
-    +srow('톤', [['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).concat([pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')]))
-    +srow('폰트', Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl)))   // (260729) 폰트 행 = '모양·강조' **위**로 이관(운영자 지목 배치) — 글자꼴을 먼저 고르고 모양·강조를 얹는 순서
-    +srow('모양·강조', [['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).concat([pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케'),pc('pop',P.pop?'0':'1',P.pop,false,'팝'),pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')]))
-    +gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰')
-    +gauge('sh','음영',0,300,P.sh,'%','0% = 음영 없음 · 100% = 기본 두께')   // 주변부 음영 크기(운영자 260711) — bg=0 외곽선 두께·bg>0 줄박스 패딩 한 손잡이 · (260729) 하한 25→0 = 운영자 "0% 일자리수도 반영"(구 하한 25%는 '음영 끄기'가 아예 불가능했다) · 기준선 안내는 title로
-    +gauge('glow','글로우',0,100,P.glow,'%')   // 네온 번짐(운영자 260721 — ASS \blur · 0 = 없음 = 종전 · ly 글로우 게이지 파리티)
-    +((ON.trn||P.lang==='dual')?gauge('srcsz','외국어',-75,0,P.srcsz,'%','한국어 줄 대비 크기 — 0% = 같은 크기 · -50% = 절반(기본) · 줄간격과 한국어 줄 위치는 고정, 외국어만 아래로 펼쳐짐'):'')   // 원문 줄 크기(운영자 260729 · ⚠배치 = 글로우 바로 아래 · 행 문법 = 형제 게이지 100% 계승) — 원문이 실제로 붙는 모드에서만 노출(구 '언어' 행 조건부 문법 계승 · 그 외엔 조절 대상이 없어 죽은 손잡이)
-    +swrow()   // 색 = 라벨 없는 중앙정렬 한 줄(운영자 260729 "좌측 메뉴 설명자는 빼고 가운데 정렬") — 탭=음영 색 · 우클릭/길게=글자 색 · 선택된 두 색만 옆칸에 '음영'·'자막' 흰 글자
-
-    ;
+  if(k==='sub'){ const C=x=>x?'<div class="scard">'+x+'</div>':'';   // 행 → 카드 1:1(운영자 260729 "이미지 스튜디오 디자인과 같이" · thumb .scard > .csec 정본 계승 · 빈 행은 카드도 안 만든다)
+    return '<div class="pvslot" id="pvSlotSub"></div>'   // 도먼트(자막 탭 이관 260711) · 라이브 미리보기 자리(영속 #pv 노드를 render()가 이주)
+    +'<div class="optcards">'
+    +C(srow('프리셋', Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm))))
+    +C(ON.trn?'':srow('언어', [['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1]))))   // 번역 ON = 언어 행 숨김(260728 Q06 — dual 강제라 선택이 무의미)
+    +C(srow('톤', [['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).concat([pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')])))
+    +C(srow('폰트', Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))
+    +C(srow('모양·강조', [['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).concat([pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케'),pc('pop',P.pop?'0':'1',P.pop,false,'팝'),pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')])))
+    +C(gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰'))   // 위치·크기 3형제 = 한 카드(같은 축 묶음)
+    +C(srow('음영', [['none','기본'],['box','음영'],['stroke','획'],['shadow','그림자']].map(a=>pc('shtype',a[0],P.shtype===a[0],false,a[1])))
+       +(P.shtype==='none'?'':gauge('sh', P.shtype==='box'?'여백':P.shtype==='stroke'?'획 굵기':'그림자',0,300,P.sh,'%','선택한 음영 종류의 세기 — 100% = 기본')))   // 종류 + 세기 = 한 카드(무엇을/얼마나가 붙어 있어야 읽힌다)
+    +C((ON.trn||P.lang==='dual')?(gauge('srcsz','외국어',-75,0,P.srcsz,'%','한국어 줄 대비 크기 — 0% = 같은 크기 · -50% = 절반(기본) · 줄간격과 한국어 줄 위치는 고정, 외국어만 아래로 펼쳐짐')
+       +gauge('lgap','줄간격',0,60,P.lgap,'%','한국어 줄과 외국어 줄 사이 간격 — 한국어 글자 높이 기준 % · 18% = 기본')):'')   // 외국어 2형제 = 원문이 붙는 모드에서만
+    +C(swrow())
+    +'</div>';
+  }
   if(k==='cut') return segs('cutlv',[['off','OFF'],['soft','살짝'],['std','기본'],['hard','많이']],ON.cut?P.cutlv:'off')
     +(ON.cut?'<div class="prow">'+pc('cutfill',P.cutfill?'0':'1',P.cutfill,false,'필러')+pc('take',P.take?'0':'1',P.take,false,'테이크')+'</div><div class="prow"><button class="pc" type="button" id="cutScanBtn">자를 곳 먼저 보기</button></div>'+'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘'+(P.cutfill?' · 필러 세기도 위 강도를 따라감':'')+'</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
@@ -972,18 +985,22 @@ function pvSync(){
     const om=P.sh/100, padc=Math.min(.5,Math.max(0,P.sh/1000)), oc=ocRGB(P.shc);   // 음영 크기 배율·박스 패딩 계수(서버 coef 클램프 미러)·음영 색 — 100%·검정 = 종전 산식 그대로(260711) · (260729) 패딩 하한 .02→0 = 음영 0% 도달(게이지 하한 0 짝 · 서버 coef min도 동행)
     sp.style.color=(P.fg&&P.fg!=='white')?('rgb('+ocRGB(P.fg)+')'):'';   // 글자색 미러(운영자 260721 — 기본 흰 = 상속 = 종전)
     const gpx=P.glow>0?Math.round(fs*0.0025*P.glow*10)/10:0;   // 글로우 = 번인 blur px 산식 동일(fs×0.0025×glow — 프리뷰 fs가 곧 스케일)
-    if(P.bg>0){ sp.style.background='rgba('+oc+','+(P.bg/100)+')'; sp.style.padding=px1(fs*padc)+'px'; sp.style.textShadow='none'; }
-    else{
+    // 음영 종류 분기(운영자 260729) — 구 'bg>0이면 네모 / 아니면 획' 암묵 결정을 명시 선택(P.shtype)으로 대체.
+    //   none 기본(아무것도 안 그림) · box 음영(줄박스 = 종전 bg>0 경로 그대로) · stroke 획(글리프 외곽선 = 종전 bg=0 경로) · shadow 그림자(오프셋 드롭)
+    sp.style.background='transparent'; sp.style.padding='0'; sp.style.textShadow='none';
+    if(P.shtype==='box'){ sp.style.background='rgba('+oc+','+(Math.max(1,P.bg)/100)+')'; sp.style.padding=px1(fs*padc)+'px'; }   // 배경 알파는 bg 게이지 유지 · 하한 1 = '음영'을 골랐는데 bg 0이라 아무것도 안 보이는 죽은 조합 차단
+    else if(P.shtype==='stroke'){
       const o=px1(fs*(P.style==='bold'?0.064:0.032)*om);
-      sp.style.background='transparent'; sp.style.padding='0';
       sp.style.textShadow='-'+o+'px 0 0 rgba('+oc+',1), '+o+'px 0 0 rgba('+oc+',1), 0 -'+o+'px 0 rgba('+oc+',1), 0 '+o+'px 0 rgba('+oc+',1)'+(P.style==='bold'?(', '+o+'px '+o+'px 0 rgba('+oc+',1)'):'')
-        +(gpx>0?(', 0 0 '+gpx+'px rgba('+oc+',1), 0 0 '+(gpx*2)+'px rgba('+oc+',.55)'):'');   // 글로우 2겹(운영자 260721 — 0 = 종전 그림자 바이트 동일 · bg>0 줄박스는 미적용 = ly 프리뷰와 동일 정직 한계)
+        +(gpx>0?(', 0 0 '+gpx+'px rgba('+oc+',1), 0 0 '+(gpx*2)+'px rgba('+oc+',.55)'):'');   // 글로우 = 프리셋 경로 보존(UI 행은 260729 폐지)
     }
+    else if(P.shtype==='shadow'){ const d=px1(fs*0.05*om), bl=px1(fs*0.07*om);
+      sp.style.textShadow=d+'px '+d+'px '+bl+'px rgba('+oc+',.85)'; }   // 그림자 = 우하 오프셋 1겹(러너 ASS Shadow 미러 · 세기 = 같은 sh 게이지)
     const tl=document.getElementById('pvSubTr');   // 원문 줄 미러(운영자 260728 Q06 — 50% 작게 · 260729 순서 반전으로 자막 **아래** · 줄간격 유지 = 러너 dual 레이아웃 · fs×0.18 = 그 사이 스페이서)
     if(tl){ if(ON.trn||P.lang==='dual'){ tl.hidden=false;   // (260729) 조건에 lang='dual' 합류 — 운영자 "영문을 추가할 때만 미리보기에 영문 부분이 나오게, 그 외에는 한국문 단일만": 구 코드는 번역 토글만 봐서 「언어 = 원문+한글」을 골라도 원문 줄이 안 뜨고, 반대로 한글만·자동에서도 이 줄이 남아 보이던 축이 어긋나 있었다(자동·한글만·원문만 = 한 줄 = 종전 그대로)
       const tfs=Math.max(3, fs*srcRatio());   // 크기 = 한국어 줄 × 상대비(운영자 260729 게이지 · 0% = 1.0 동일 크기 · -75% = 0.25) · 하한 3 = 캔버스가 작아도 비율 왜곡 최소(구 5)
       tl.style.fontSize=tfs+'px'; tl.style.lineHeight='1.15';
-      tl.style.top='100%'; tl.style.marginTop=px1(fs*0.18)+'px';   // ★ 줄간격은 **한국어 fs 기준 고정**(운영자 260729 "줄간격은 유지") — 원문 크기를 키워도 간격은 그대로고 원문만 아래로 자란다 · top:100% = 한국어 줄 바로 아래(CSS absolute 앵커 짝) · 값 fs×0.18 = 러너 스페이서와 동값
+      tl.style.top='100%'; tl.style.marginTop=px1(fs*(P.lgap||0)/100)+'px';   // ★ 줄간격은 **한국어 fs 기준 고정**(운영자 260729 "줄간격은 유지") — 원문 크기를 키워도 간격은 그대로고 원문만 아래로 자란다 · top:100% = 한국어 줄 바로 아래(CSS absolute 앵커 짝) · 값 fs×0.18 = 러너 스페이서와 동값
       sp.style.marginBottom='0';   // 간격 주인이 tl의 marginTop으로 이동(원문이 흐름 밖이라 sp 마진은 캔버스 하단만 밀어냈다)
       tl.style.fontFamily=sp.style.fontFamily;
       tl.style.background='transparent'; tl.style.padding='0';   // 원문 줄 = 색·그림자 고정 축(운영자 260729 "영문은 항상 흰색 고정에, 그림자 조금 줘서 항상 고정으로") — 글자색(fg)·음영색(shc)·배경(bg)·음영 크기(sh)·글로우 어느 것도 안 따른다. 실제 색·그림자는 CSS .pvsub-tr가 전담(인라인으로 덮지 않는다 = 게이지를 만져도 원문 줄은 불변)
@@ -1416,9 +1433,11 @@ function buildOpts(){
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000;
     o.outline=Math.round(P.sh*10)/1000;   // 음영 게이지 % → 외곽선 배율(100% = ×1.0 = 종전 편집기 렌더 바이트 그대로 · 260711)
     o.pad=Math.min(.5,Math.max(0,Math.round(P.sh)/1000));   // 같은 게이지 → 박스 패딩 계수(100% = 0.10 종전) — bg>0 줄박스에선 패딩이 곧 '주변부 음영' · (260729) 하한 .02→0 = 음영 0% 도달(러너 coef 클램프 동행)
-    o.oc=P.shc; o.font=P.font; o.fg=P.fg; if(P.glow>0) o.glow=Math.round(P.glow); }   // 글자색·글로우(운영자 260721 — ly 축 파리티 · glow 0 = 미송신 = 종전 렌더 바이트 동일)
+    o.oc=P.shc; o.font=P.font; o.fg=P.fg; if(P.glow>0) o.glow=Math.round(P.glow);
+    o.shtype=P.shtype; if(P.shtype==='box') o.bg=Math.max(1,P.bg); else o.bg=0; }   // 음영 종류(260729) — 러너가 이 키로 BorderStyle을 고른다(구 bg>0 암묵 분기 대체) · box가 아니면 배경 0 = 박스 미생성   // 글자색·글로우(운영자 260721 — ly 축 파리티 · glow 0 = 미송신 = 종전 렌더 바이트 동일)
   if(ON.sub&&ON.trn) o.lang='dual';   // 번역 토글(운영자 260728 Q06) = dual 번인 강제(언어 행은 숨김)
-  if(ON.sub&&o.lang==='dual') o.dual_small=Math.round(srcRatio()*100)/100;   // 원문 줄 크기 = 게이지(운영자 260729 · 구 번역토글 전용 0.5 고정 → 언어 dual 선택 경로도 포함) · 미리보기 tfs와 동일 산식
+  if(ON.sub&&o.lang==='dual') o.dual_small=Math.round(srcRatio()*100)/100;
+  if(ON.sub&&o.lang==='dual') o.dual_gap=Math.round(Math.max(0,Math.min(60,+P.lgap||0)))/100;   // 한-외국어 줄간격 계수(운영자 260729 게이지 · 러너 gap = fs×이 값 · 0.18 = 종전 하드코딩 동값)   // 원문 줄 크기 = 게이지(운영자 260729 · 구 번역토글 전용 0.5 고정 → 언어 dual 선택 경로도 포함) · 미리보기 tfs와 동일 산식
   if(ON.bgm) o.bgm=true;
   if(ON.cut){ o.cut=true; o.cutlv=P.cutlv; if(P.cutfill) o.cutfill=true; if(P.take) o.take=true; if(!ON.sub) o.burn=false; }   // 컷 단독 = burn:false 명시(서버 번인 억제 신호 · STT-only 260711) · 필러·테이크 동반(260727 ①④)
   if(ON.trim){ const ss=fireSegs();   // n구간(운영자 260728) — 1구간 = 종전 vid_t0/t1 계약 그대로(러너 -ss/-t 경로 = 회귀 0) · 2구간+ = vid_segs 이어붙기 + 디졸브
@@ -2253,7 +2272,7 @@ async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(H
 })();
 /* ── 어댑터(배치 B-2 신규 · 유일한 비원문 코드): 편집기 작업 ↔ 이식 자막 편집기 배선 ── */
 const lyOptsNow=()=>({ lang:(ON.trn?'dual':P.lang), tone:P.tone, filler:P.filler, style:P.style, pos:P.pos, size:Math.round(P.size)/1000, bg:P.bg, karaoke:P.karaoke, pop:P.pop, keyword:P.keyword, cut:ON.cut, cutlv:P.cutlv, bgm:ON.bgm,
-  outline:Math.round(P.sh*10)/1000, pad:Math.min(.5,Math.max(0,Math.round(P.sh)/1000)), oc:P.shc, font:P.font, fg:P.fg, glow:Math.round(P.glow||0), ...((ON.trn||P.lang==='dual')?{dual_small:Math.round(srcRatio()*100)/100}:{}) });   // 번역 토글 = 재입히기도 dual+50%(운영자 260728 Q06 · api/ly.js dual_small 화이트리스트 짝)   // +글자색·글로우(운영자 260721 — 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)   // 다시 입히기 옵션 = 스택 카드(P/ON)가 정본(운영자 260711 "관련된 거에 카테고라이징" — ly 행 덩어리를 카드 분류로 대체) · buildOpts 자막 축과 동일 규칙(음영·색·폰트 포함 = 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)
+  outline:Math.round(P.sh*10)/1000, pad:Math.min(.5,Math.max(0,Math.round(P.sh)/1000)), shtype:P.shtype, oc:P.shc, font:P.font, fg:P.fg, glow:Math.round(P.glow||0), ...((ON.trn||P.lang==='dual')?{dual_small:Math.round(srcRatio()*100)/100, dual_gap:Math.round(Math.max(0,Math.min(60,+P.lgap||0)))/100}:{}) });   // 번역 토글 = 재입히기도 dual+50%(운영자 260728 Q06 · api/ly.js dual_small 화이트리스트 짝)   // +글자색·글로우(운영자 260721 — 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)   // 다시 입히기 옵션 = 스택 카드(P/ON)가 정본(운영자 260711 "관련된 거에 카테고라이징" — ly 행 덩어리를 카드 분류로 대체) · buildOpts 자막 축과 동일 규칙(음영·색·폰트 포함 = 재입히기도 카드 설정 그대로 · api/ly.js 화이트리스트 짝)
 let EDIT_SUB=false;   // 이번 작업이 자막 산출(subs.md) 동반인가 — 완성 영상 표시를 vstage↔lyBurn 중 하나로 라우팅(이중 표시 방지)
 async function editSubsInit(id){   // 완료 후 자막 편집기 활성(pollEdit 완료·#done 공용) — subs.md 있으면 ly 문법 그대로
   LY_SPELL = null; lySpellRender();   // 다른 잡을 열 때 옛 교정 리뷰 폐기(P1) — 이 경로는 lyBurnReset을 안 타므로 여기서 끊는다(작업 내역 탭·#done 딥링크 공용 진입점)
