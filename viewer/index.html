@@ -11743,7 +11743,7 @@ function thDarkQ() {   // 스레드 임베드 다크 색 = :root 토큰 계승�
   const cs = getComputedStyle(document.documentElement);
   return '&c=' + encodeURIComponent(['--bg', '--fg', '--mut', '--line'].map(t => cs.getPropertyValue(t).trim()).join('|'));
 }
-function cEmbedSrc(url) { return '/api/cembed?u=' + encodeURIComponent(url) + thDarkQ(); }   // 커뮤니티 원글 = 다크·폭맞춤 프록시(api/cembed.js · 운영자 260729 "다크 모드로 · 인앱 창 폭에 맞춰서") — 색 전달 = thDarkQ 공용(스레드와 동일 축 · :root 단일 SSOT) · 미등재 호스트·실패 = 서버가 원본으로 302(종전 직접 iframe 폴백)
+function cEmbedSrc(url, sum) { return '/api/cembed?u=' + encodeURIComponent(url) + thDarkQ() + (sum ? '&s=' + encodeURIComponent(String(sum).slice(0, 200)) : ''); }   // s = 수집 단계 본문 스니펫(운영자 260729 "1") — 원글을 못 띄우면 서버가 안내 카드에 이 요약을 함께 그린다(추가 수집 0)   // 커뮤니티 원글 = 다크·폭맞춤 프록시(api/cembed.js · 운영자 260729 "다크 모드로 · 인앱 창 폭에 맞춰서") — 색 전달 = thDarkQ 공용(스레드와 동일 축 · :root 단일 SSOT) · 미등재 호스트·실패 = 서버가 원본으로 302(종전 직접 iframe 폴백)
 function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-Options로 못 띄우므로 필수 · 매치 없음 = null(종전 새 탭)
   let m;
   if ((m = url.match(/youtube\.com\/watch\?v=([\w-]{6,})/))) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&playsinline=1', k: 'pt' };   // 유튜브도 세로 프레임 통일(운영자 260712 "창 다 다름 · 어차피 안 넓게 봄 · 세로면 제목 오버레이가 영상 안 덮음") — 16:9 = 세로 프레임 중앙 레터박스·임베드 제목 오버레이 = 상단 검정띠에 얹힘 · 구 k:'wd'는 유튜브 일반만 가로라 쇼츠·틱톡과 창 이원화 + pt 마커 못 받은 쇼츠가 16:9 속 좌우 필러박스("가운데만")로 보이던 원인
@@ -11785,7 +11785,7 @@ function tvNav(d) {   // 다음/이전 순위 인라인 로드 — 임베드 불
   for (let st2 = 1; st2 <= N; st2++) {
     const k = (((_tvSeq.i + d * st2) % N) + N) % N;
     const it = _tvSeq.arr[k];
-    const emb = it && it.url ? (trEmbed(it.url) || (it.soc ? { src: cEmbedSrc(it.url), k: 'tw' } : null)) : null;   // soc 마커(국내 커뮤니티 시퀀스 · 운영자 260728) = 매치 없는 커뮤니티 원글도 tw 프레임으로 항행 — 기존 경로(마커 없음)는 종전대로 스킵
+    const emb = it && it.url ? (trEmbed(it.url) || (it.soc ? { src: cEmbedSrc(it.url, it.sum), k: 'tw' } : null)) : null;   // soc 마커(국내 커뮤니티 시퀀스 · 운영자 260728) = 매치 없는 커뮤니티 원글도 tw 프레임으로 항행 — 기존 경로(마커 없음)는 종전대로 스킵
     if (!emb) continue;
     if (it.pt) emb.k = 'pt';
     _tvSeq.i = k;
@@ -11927,11 +11927,11 @@ function renderSns() {
       const a = e.target.closest('a.soc-item'); if (!a) return;
       const _hrf = a.getAttribute('href') || '';
       if (!_hrf || _hrf === '#') { e.preventDefault(); return; }   // url 결측 카드 = 새탭 앱 복제본 차단(260720 평의회 F1 계승)
-      const emb = trEmbed(_hrf) || { src: cEmbedSrc(_hrf), k: 'tw' };   // 유튜브·X 등 매치 = 종전 임베드 그대로 · 그 외 커뮤니티 글 = 다크·폭맞춤 프록시 경유(운영자 260729) · 미등재 호스트 = 프록시가 원본으로 302 = 종전 직접 iframe
+      const emb = trEmbed(_hrf) || { src: cEmbedSrc(_hrf, a.dataset.sum), k: 'tw' };   // 유튜브·X 등 매치 = 종전 임베드 그대로 · 그 외 커뮤니티 글 = 다크·폭맞춤 프록시 경유(운영자 260729) · 미등재 호스트 = 프록시가 원본으로 302 = 종전 직접 iframe
       e.preventDefault();
       const sibs = [...list.querySelectorAll('a.soc-item')];
       const k2 = sibs.indexOf(a);
-      const seq = (k2 >= 0 && sibs.length > 1) ? { arr: sibs.map(x3 => ({ url: x3.getAttribute('href') || '', t: ((x3.querySelector('.soc-title') || {}).textContent || ''), soc: 1 })), i: k2 } : null;   // 섹션 즉석 시퀀스 계승(쇼츠 루프 보편화 문법) — soc:1 = tvNav tw 폴백 마커
+      const seq = (k2 >= 0 && sibs.length > 1) ? { arr: sibs.map(x3 => ({ url: x3.getAttribute('href') || '', t: ((x3.querySelector('.soc-title') || {}).textContent || ''), soc: 1, sum: x3.dataset.sum || '' })), i: k2 } : null;   // 섹션 즉석 시퀀스 계승(쇼츠 루프 보편화 문법) — soc:1 = tvNav tw 폴백 마커
       openTrView(emb, a, seq);
     });
   }
@@ -11949,6 +11949,7 @@ function renderSns() {
     const el = document.createElement('a');
     el.className = 'soc-item';
     el.href = r.url || '#'; el.target = '_blank'; el.rel = 'noopener';
+    if (r.desc) el.dataset.sum = r.desc;   // 수집 단계 본문 스니펫(운영자 260729 "1") — 원글을 못 띄우는 커뮤니티에서 안내 카드가 요약이라도 보여주도록 프록시에 넘긴다
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge((+r.age_h || 0) + _socEl);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)

@@ -173,15 +173,21 @@ export function frameAllowed(h) {
 // 폴백 안내 카드(운영자 260729 "이렇게 안나오는 커뮤가 있는데, 확인 좀 해줘 각각") — 세션이 외부망 차단으로 사이트별
 // 실측을 못 하므로, **화면이 스스로 사유를 말하게** 한다. 구 동작(빈 화면으로 끝남)을 대체 = 매번 물어볼 필요가 없다.
 // ⚠배치: 인앱 창 안, 원글이 뜰 자리에 사유 1줄 + 「원문 열기」 버튼. 색·모서리·글자는 넘겨받은 :root 토큰 계승(신규 값 0).
-export function noticeHtml(c, reason, url) {
+export function noticeHtml(c, reason, url, sum) {
   const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  // 수집 단계 스니펫(운영자 260729 "1")이 있으면 **요약을 주인공으로** 올린다 — 원글이 안 뜨는 커뮤니티에서도
+  // 최소한 무슨 내용인지는 읽히게. 없으면 종전대로 사유+원문 버튼만(조용한 공백).
+  const body = sum
+    ? `<div class="t">요약</div><div class="s">${esc(sum)}</div><div class="r">${esc(reason)}</div>`
+    : `<div class="t">이 글은 앱 안에서 열 수 없어</div><div class="r">${esc(reason)}</div>`;
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>html,body{margin:0;height:100%;background:${c.bg};color:${c.fg};font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
 .w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;box-sizing:border-box}
 .t{font-weight:800;font-size:15px}
-.r{color:${c.mut};font-size:13px;max-width:34em}
+.s{font-size:14px;line-height:1.7;max-width:34em;text-align:left}
+.r{color:${c.mut};font-size:12.5px;max-width:34em}
 a{display:inline-block;padding:9px 16px;border:1px solid ${c.line};border-radius:11px;color:${c.fg};text-decoration:none;font-weight:700;font-size:13px}
-</style><div class="w"><div class="t">이 글은 앱 안에서 열 수 없어</div><div class="r">${esc(reason)}</div>
+</style><div class="w">${body}
 <a href="${esc(url)}" target="_blank" rel="noopener">원문 열기</a></div>`;
 }
 
@@ -211,10 +217,11 @@ export async function onRequestGet({ request }) {
   if (!/^https?:$/.test(target.protocol)) return bad('잘못된 u', 400);
   // 폴백 = ⓐ 원본이 프레임을 허용하면 302(원본이 그대로 뜬다 = 종전 최선) ⓑ 거부하거나 알 수 없으면 **사유 안내 카드**
   // (구 동작은 무조건 302라, 거부 사이트에선 빈 화면으로 끝나 운영자가 원인을 알 수 없었다 · 260729)
+  const _sum = (q.get('s') || '').slice(0, 200);   // 수집 단계 본문 스니펫(뷰어가 실어보냄 · 추가 수집 0)
   let _cc = { bg: '#121212', fg: '#eef7f0', mut: '#8fa697', line: 'rgba(255,255,255,.08)' };   // raw-ok: c 파싱 전 폴백용 :root 동값 사본
   const back = (reason, hdrs) => {
     if (!reason || frameAllowed(hdrs)) return Response.redirect(target.toString(), 302);
-    return new Response(noticeHtml(_cc, reason, target.toString()), {
+    return new Response(noticeHtml(_cc, reason, target.toString(), _sum), {
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "sandbox allow-popups allow-popups-to-escape-sandbox; script-src 'none'; frame-ancestors 'self'" },
     });
   };
