@@ -198,9 +198,12 @@ def cluster_and_score(posts, now, src_total=None):
             "age_h": round(age, 1),
             "burst": round(burst, 2),
             # 본문 스니펫(운영자 260729 승인 "1" — 인앱 창이 원글을 못 띄우는 커뮤니티에서 최소한 요약이라도 읽히게).
-            # 이미 fetch_naver가 받아두고 버리던 값이라 **추가 요청 0**(차단 위험 순증 0) · 클러스터 멤버 중 가장 긴 스니펫 채택
-            # (대표 글이 스니펫 없는 소스여도 같은 화제의 다른 글이 있으면 살린다) · 없으면 빈 문자열.
-            "desc": max((posts[m].get("desc") or "" for m in members), key=len, default="")[:200],
+            # 이미 fetch_naver가 받아두고 버리던 값이라 **추가 요청 0**(차단 위험 순증 0).
+            # ⚠ 반드시 **대표 글(rep) 자신의 스니펫만** 쓴다 — 초판은 "멤버 중 가장 긴 것"이었는데, 실수집 실측(260729)에서
+            #    「아내 목 졸라 숨지게 한 90대」 카드에 **박나래 갑질 의혹** 스니펫이 붙었다. 소셜 클러스터링은 느슨해서
+            #    (SOCIAL_OVERLAP/JACCARD) 다른 화제가 한 묶음에 들어올 수 있고, 그때 남의 요약을 카드 제목 밑에 붙이면
+            #    **틀린 정보를 사실처럼 보여준다**. 커버리지를 잃더라도 정확성을 택한다(없으면 빈 문자열 = 조용한 공백).
+            "desc": (posts[rep].get("desc") or "").strip()[:200],
         })
     rows.sort(key=lambda r: (r["platform_count"], r["burst"]), reverse=True)   # 플랫폼수 1차 → 네이버 단독(1)은 커뮤(2+) 아래·생존은 게이트가 보장
     return rows
