@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>콘티 ← 프롬프팅 통합 플레이그라운드 (260729)</title>
+<style>
+  /* 값 = viewer/sb.html 정본 사본(재설계 0) — 이 파일은 시안이라 토큰 대신 sb :root 실값을 인라인 복제 */
+  :root { --well:#0e0f11; --bg:#121212; --pan:#16171a; --line:#2a2c31; --line2:rgba(255,255,255,.06); --fg:#eef7f0; --mut:#8fa697;
+    --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(0,238,210,.13); --on-accent:#032322;
+    --danger:#e23b2a; --danger-rgb:226,59,42; --warn:#FFE13D;
+    --sp-1:6px; --sp-2:12px; --sp-3:18px; --r-s:10px; --r-m:12px; --r-pill:999px;
+    --fs-xs:11px; --fs-label:13px; --fs-sm:12px; --fw-b:700; --fw-x:800; --dur:.18s; --dur-fast:.09s;
+    --press-s:.85; --press-m:.9; --press-l:.95; --gauge-ease:cubic-bezier(.2,.9,.3,1); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(0,238,210,.06), transparent 55%) fixed, var(--bg); color:var(--fg);
+    font:15px/1.6 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing:-.2px; -webkit-font-smoothing:antialiased; }
+  .page { max-width:1180px; margin:0 auto; padding:var(--sp-3) 16px 60px; display:grid; gap:var(--sp-3); grid-template-columns:minmax(0,600px) minmax(0,1fr); align-items:start; }
+  @media (max-width:900px) { .page { grid-template-columns:minmax(0,1fr); } }
+  h1 { font-size:20px; margin:0 0 var(--sp-1); }
+  h1 + p { margin:0 0 var(--sp-2); color:var(--mut); font-size:var(--fs-label); }
+  .hdr { grid-column:1/-1; }
+  .side { display:grid; gap:var(--sp-2); }
+  /* ── 실물 재현: sb.html 도크·카드 문법 그대로 ── */
+  .wrap { max-width:600px; }
+  .topdock { padding:0 0 var(--sp-2); background:#121212; }
+  .pvsec { margin:0 0 var(--sp-2); }
+  .cpprev-box { position:relative; height:min(29vh,300px); width:100%; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }
+  .cpv-empty { position:absolute; inset:0; display:grid; place-items:center; }
+  .cpv-stage { width:min(100%, calc(min(29vh,300px) * 16 / 9)); aspect-ratio:16/9; background:#000; display:grid; place-items:center; }
+  .cpv-wait { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); letter-spacing:.02em; }
+  .optstrip { margin:0 0 var(--sp-2); padding:8px 13px; background:#000; border:1px solid var(--line); border-radius:var(--r-s); }
+  .optstrip .gospec { margin:0; padding:0; font-size:11.25px; line-height:1.9; text-align:left; color:var(--mut); white-space:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .optstrip .gospec::-webkit-scrollbar { display:none; }
+  .gospec .gs-row { display:inline; }
+  .gospec .gs-row + .gs-row::before { content:'|'; color:var(--mut); opacity:.45; font-weight:400; margin:0 5px; }
+  .gospec b { color:var(--fg); font-weight:var(--fw-b); }
+  .gospec .hot { color:var(--accent); font-weight:var(--fw-b); }
+  .go { width:100%; margin:0; padding:var(--sp-1); background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:var(--r-m);
+    font-weight:800; font-size:var(--fs-label); font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; transition:transform var(--dur-fast) ease, background var(--dur) ease, border-color var(--dur) ease; }
+  .go:active { transform:scale(.955); background:rgba(0,238,210,.08); border-color:rgba(0,238,210,.35); }
+  label.fl { display:block; font-size:var(--fs-label); color:var(--fg); font-weight:var(--fw-x); margin:14px 0 var(--sp-1); }
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  textarea { width:100%; min-height:76px; padding:var(--sp-2); background:var(--well); border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:16px; resize:none; }
+  .geni-sechead { display:flex; align-items:center; gap:8px; width:100%; padding:var(--sp-2) 0 var(--sp-1); border-bottom:1px solid var(--line2); }
+  .cref-lbl { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); }
+  .geni-sechead .cref-lbl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  .ogrid { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .geni-row { display:flex; align-items:center; justify-content:space-between; gap:7px; padding:8px 13px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.015); border-radius:var(--r-s); min-width:0; }
+  .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }
+  .pub-l::after { content:'│'; margin-left:7px; color:var(--mut); opacity:.35; font-weight:400; }
+  .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-start; min-width:0; flex:1; }
+  .geni-opts.rail { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .geni-opts.rail::-webkit-scrollbar { display:none; }
+  .geni-opt { background:none; border:none; padding:6px 7px; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); cursor:pointer; white-space:nowrap; transition:color var(--dur); }
+  .geni-opt:active { transform:scale(var(--press-m)); }
+  .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }
+  .geni-opt[data-num] { font-variant-numeric:tabular-nums; }
+  .geni-row.off { opacity:.3; }
+  .geni-row.off .geni-opts { pointer-events:none; }
+  .ix { flex:none; font-size:var(--fs-xs); font-weight:var(--fw-x); color:var(--mut); opacity:.5; font-variant-numeric:tabular-nums; width:24px; cursor:pointer; }
+  .ix:hover { opacity:1; color:var(--accent); }
+  .ix.on { color:var(--accent); opacity:.9; }
+  .src { font-size:var(--fs-xs); color:var(--mut); opacity:.55; white-space:nowrap; flex:none; }
+  .src.k { color:var(--warn); opacity:.7; }
+  /* 길이 슬라이더 = 값이 실제로 계산되는 축(k 「직접」 게이지 정신) */
+  .lenrow { display:flex; align-items:center; gap:10px; padding:8px 13px; border:1px solid rgba(255,255,255,.06); background:rgba(255,255,255,.015); border-radius:var(--r-s); }
+  input[type=range] { -webkit-appearance:none; appearance:none; flex:1; height:22px; background:none; }
+  input[type=range]::-webkit-slider-runnable-track { height:3px; background:var(--line); border-radius:var(--r-pill); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; margin-top:-6.5px; border-radius:50%; background:var(--accent); border:none; cursor:pointer; }
+  input[type=range]::-moz-range-track { height:3px; background:var(--line); border-radius:var(--r-pill); }
+  input[type=range]::-moz-range-thumb { width:16px; height:16px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; }
+  .lenv { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  /* 사이드 = 프리셋·인덱스표·복사·각주 */
+  .card { border:1px solid var(--line); background:var(--pan); border-radius:var(--r-s); padding:var(--sp-2) 13px; }
+  .card h2 { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent); margin:0 0 8px; }
+  .card h2::before { content:'• '; }
+  .presets { display:flex; flex-wrap:wrap; gap:6px; }
+  .pbtn { padding:8px 11px; border-radius:var(--r-pill); border:1px solid rgba(0,238,210,.34); background:rgba(0,238,210,.08); color:var(--accent);
+    font:inherit; font-size:var(--fs-label); font-weight:800; cursor:pointer; transition:transform var(--dur-fast), background var(--dur); }
+  .pbtn:active { transform:scale(var(--press-l)); }
+  .pbtn.on { background:var(--accent); color:var(--on-accent); }
+  .pbtn.ghost { border-color:var(--line); background:rgba(255,255,255,.02); color:var(--mut); }
+  .phint { margin:8px 0 0; font-size:var(--fs-xs); color:var(--mut); line-height:1.7; }
+  table.ixt { width:100%; border-collapse:collapse; font-size:var(--fs-xs); }
+  table.ixt th, table.ixt td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line2); vertical-align:top; }
+  table.ixt th { color:var(--mut); font-weight:var(--fw-b); }
+  table.ixt td.n { color:var(--accent); font-weight:var(--fw-x); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.ixt tr.dropped td { opacity:.35; }
+  table.ixt td.o { white-space:nowrap; color:var(--mut); }
+  pre.out { margin:0; padding:10px; background:var(--well); border:1px solid var(--line); border-radius:var(--r-s);
+    font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); white-space:pre-wrap; word-break:break-word; max-height:260px; overflow:auto; }
+  .cprow { display:flex; gap:6px; margin-top:8px; }
+  ol.notes { margin:0; padding-left:18px; font-size:var(--fs-xs); color:var(--mut); line-height:1.85; }
+  ol.notes b { color:var(--fg); }
+  ol.notes code { font-family:ui-monospace,Menlo,monospace; color:var(--warn); }
+  .lgd { display:flex; gap:12px; flex-wrap:wrap; font-size:var(--fs-xs); color:var(--mut); margin:6px 0 0; }
+  .lgd i { font-style:normal; }
+  .lgd .sw { color:var(--warn); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hdr">
+    <h1>콘티 ← 프롬프팅 통합 시안 (260729)</h1>
+    <p>의도: 프롬프팅(k) 탭의 축을 콘티(sb) 폼 하나로 합친다 → 콘티에서 <b>Kling</b>이면 복붙 프롬프트까지, <b>Seedance</b>면 힉스필드 자동생성까지. 그릇·칩·도크 = sb 정본 100% 계승(신규 모양 0) · 번호를 눌러 축을 켜고/끄면 우측 인덱스표·전송 페이로드가 즉시 갱신된다.</p>
+    <div class="lgd"><i>회색 캡션 <b>sb</b> = 콘티에 이미 있는 축</i><i class="sw">노란 캡션 <b>k</b> = 프롬프팅에서 이관되는 축</i><i>번호 탭 = 포함/제외</i></div>
+  </div>
+
+  <!-- ── 좌: 실물 재현 미리보기 ── -->
+  <div class="wrap">
+    <div class="topdock">
+      <div class="pvsec"><div class="cpprev-box"><div class="cpv-empty"><div class="cpv-stage"><span class="cpv-wait">Contents 입력 · 각색 대기</span></div></div></div></div>
+      <div class="optstrip"><div class="gospec" id="gospec"></div></div>
+      <div><button class="go" id="go">생성</button></div>
+    </div>
+    <label class="fl">Contents</label>
+    <div><textarea id="scene" placeholder="이야기·기사·장면을 넣는다 (콘티 입력칸 그대로 · 8000자)"></textarea></div>
+
+    <div class="geni-sechead"><span class="cref-lbl">설계</span></div>
+    <div class="ogrid" id="grid1"></div>
+
+    <div class="geni-sechead"><span class="cref-lbl">촬영 지시 <span class="src k" style="margin-left:6px">← 프롬프팅 이관</span></span></div>
+    <div class="ogrid" id="grid2"></div>
+
+    <div class="geni-sechead"><span class="cref-lbl">화풍 <span class="src k" style="margin-left:6px">← 프롬프팅 이관</span></span></div>
+    <div class="ogrid" id="grid3"></div>
+
+    <div class="geni-sechead"><span class="cref-lbl">오디오·보정 <span class="src k" style="margin-left:6px">← 프롬프팅 이관</span></span></div>
+    <div class="ogrid" id="grid4"></div>
+  </div>
+
+  <!-- ── 우: 프리셋 · 인덱스 · 복사 · 각주 ── -->
+  <div class="side">
+    <div class="card">
+      <h2>프리셋 — 어디까지 합칠까</h2>
+      <div class="presets" id="presets"></div>
+      <p class="phint" id="phint"></p>
+    </div>
+
+    <div class="card">
+      <h2>전송 페이로드 (api/sb.js가 받을 마커)</h2>
+      <pre class="out" id="payload"></pre>
+      <div class="cprow"><button class="pbtn" id="cpBtn">선택값 복사</button><button class="pbtn ghost" id="cpMd">마커 문자열만 복사</button></div>
+    </div>
+
+    <div class="card">
+      <h2>인덱스 (선택자 <span id="ixTot">0</span>개)</h2>
+      <table class="ixt"><thead><tr><th>#</th><th>선택자</th><th>출처</th><th>현재값</th></tr></thead><tbody id="ixt"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>한계 각주 (시안이 못 보여주는 것)</h2>
+      <ol class="notes">
+        <li><b>3면 동기 게이트</b> — 축을 sb로 옮기면 <code>viewer/k.html</code>·<code>functions/api/k.js</code>·<code>apps/k/01_모델프로필_영상엔진.md</code> 3면을 강제하는 <code>check_refs.check_k_models()</code>가 sb 쪽에도 걸려야 한다(한쪽만 고치면 커밋 rc=1). 이 시안은 게이트를 통과하지 않는 정적 사본.</li>
+        <li><b>k 탭을 지우면 잃는 것</b> — 리롤(축 지정 재설계)·장면 분막(구간별 초·내용)·레퍼런스 다장(≤7장)·대사 리터럴 칸·모델 <b>Veo 3.1</b>. 위 「프롬프팅 전량」 프리셋은 이걸 전부 켜서 개수를 보여주지만, 배치까지 확정한 건 아니다(⚠배치 = 사후 확인 대상).</li>
+        <li><b>Seedance 자동생성 블로커</b> — 대화 세션엔 힉스필드 MCP가 붙어 있어 지금도 돌지만, 웹앱 경로(GitHub Actions 러너 <code>claude -p</code>)의 <code>--mcp-config</code> 인증은 미실측 = 설계확정본 §2 <b>M2 블로커</b>. 잔액 실측 = <b>10크레딧 · free</b>(15s·720p·std 1편 = 68cr) → 충전 없이는 자동 레인 자체가 못 돈다.</li>
+        <li><b>비용 줄은 보수 추정</b> — 720p·std 4.5cr/s + 운영자 규칙(≤8s=8s가·9s=10s가·10~15s 선형·애매하면 위로)로 계산. 확정 견적 = 생성 직전 실시간 <code>get_cost</code>가 정본.</li>
+        <li><b>「촬영」과 「비디오 모델」은 중복 축</b> — 콘티 촬영(Kling/Seedance) = 레인 분기 · k 비디오 모델(Kling/Veo/Seedance) = 방언 분기로, 합치면 같은 걸 두 번 고르게 된다. 이 시안은 두 축을 <b>종속 동기</b>(하나 고르면 다른 쪽 따라옴)로 묶었다 — 라이브에선 <b>축 하나로 합치는 게 정답</b>이고, 그러면 <b>Veo 3.1</b>을 촬영 칩에 3번째로 올릴지 결정해야 한다(각주 2).</li>
+        <li><b>화풍 레일</b> — k 탭의 표현1·2·네거티브는 가로 레일(끝선 페이드·화살표) 부품이다. 여기선 카드 안 가로 스크롤로만 재현했으니, 라이브 이관 때는 k의 <code>railRow</code> 부품을 그대로 들고 와야 한다(재설계 금지).</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+// ── 축 정의: sb = 콘티 기존 / k = 프롬프팅 이관(값 = viewer/k.html K_VALS·viewer/sb.html SB_VALS 실사본) ──
+const AXES = [
+  { id:'director', g:1, lbl:'감독',      src:'sb', vals:['페이블 5','오퍼스 5','GPT 5.6'], def:'페이블 5' },
+  { id:'shoot',    g:1, lbl:'촬영',      src:'sb', vals:['Kling 3.0','Seedance 2.0'], def:'Kling 3.0', lock:true },
+  { id:'ad',       g:1, lbl:'광고 모드', src:'sb', vals:['OFF','ON'], def:'OFF' },
+  { id:'model',    g:2, lbl:'비디오 모델', src:'k', vals:['Kling 3.0 Omni','Veo 3.1','Seedance 2.5'], def:'Kling 3.0 Omni' },
+  { id:'ratio',    g:2, lbl:'비율',      src:'sb', vals:['9:16','16:9','1:1','직접'], def:'9:16', num:true },
+  { id:'quality',  g:2, lbl:'화질',      src:'k', vals:['720p','1080p','2K','4K'], def:'4K', num:true },
+  { id:'fps',      g:2, lbl:'프레임',    src:'k', vals:['60fps','30fps'], def:'60fps', num:true },
+  { id:'ex1',      g:3, lbl:'표현1 — 실사 베이스', src:'k', vals:['실사 시네마틱','포토 에디토리얼'], def:'실사 시네마틱', rail:true },
+  { id:'ex2',      g:3, lbl:'표현2 — 화풍 치환',   src:'k', vals:['없음','데포르메 3등신','극화','수채화','3D 애니','미니어처 디오라마','뉴스릴 빈티지','인포그래픽','시사만평'], def:'없음', rail:true },
+  { id:'sub',      g:3, lbl:'세부',      src:'k', vals:['기본'], def:'기본', rail:true, dyn:true },
+  { id:'webtoon',  g:3, lbl:'한국웹툰화', src:'k', vals:['OFF','ON'], def:'ON' },
+  { id:'neg',      g:4, lbl:'표현3 — 네거티브', src:'k', vals:['AI 티 제거','손 왜곡 방지','얼굴 유지','글자 왜곡 방지','과장 미소 방지','배경 고정','워터마크 방지'], multi:true, rail:true },
+  { id:'audio',    g:4, lbl:'오디오',    src:'k', vals:['의성어만','대사 삽입','음악 무드'], def:'의성어만' },
+  { id:'refs',     g:4, lbl:'레퍼런스',  src:'k', vals:['대표 1장','다장 ≤7'], def:'대표 1장' },
+  { id:'seg',      g:4, lbl:'장면 분막',  src:'k', vals:['OFF','ON'], def:'OFF' },
+  { id:'reroll',   g:4, lbl:'리롤 축',    src:'k', vals:['없음','카메라','조명','액션','화풍','오디오'], def:'없음', rail:true }
+];
+const K_SUB = { '극화':['기본','게키카','하드보일드','시대극','순정','명랑'], '수채화':['기본','번짐','세밀','수묵','과슈','유화'], '시사만평':['기본','붓선','플랫','판화'], '3D 애니':['기본','클레이','로우폴리'], '인포그래픽':['기본','라인','청사진'] };
+const CUTS = s => s <= 8 ? '6컷' : s <= 12 ? '9컷' : s <= 18 ? '12컷' : '16컷';           // storyboard-v1 컷수 하드룰(길이→컷)
+const vidCr = s => s <= 8 ? 36 : s <= 9 ? 45 : s <= 15 ? 45 + (s - 10) * 4.5 : s * 4.5;   // 운영자 비용 규칙 260714 8차
+const CR_WON = 46.2;
+const PRESETS = [
+  { id:'all',  nm:'프롬프팅 전량', on:AXES.map(a=>a.id), hint:'k 탭을 지우고 14축 전부 콘티로. 잃는 것 0 · 대신 콘티 폼이 16행으로 길어진다(스크롤 ↑).' },
+  { id:'core', nm:'코어 9축만',    on:['director','shoot','ad','ratio','quality','fps','ex1','ex2','sub','audio','neg'], hint:'화질·프레임·표현·네거티브·오디오만 이관. 리롤·분막·다장 레퍼런스·Veo는 AI 자동 판단에 위임(k 탭 폐지 가능·산출 품질 축은 유지).' },
+  { id:'lean', nm:'촬영 조건부',   on:['director','shoot','ad','ratio','quality','ex1','ex2','sub','audio'], hint:'콘티는 얇게 유지 — Kling이면 프롬프트만, Seedance면 자동생성. 세밀 축은 결과부에서 리롤로 조정(=폼 최단·운영자 탭 1개).' },
+  { id:'now',  nm:'현재 콘티(전)',  on:['director','shoot','ad','ratio'], hint:'지금 라이브 상태 = 5축(감독·촬영·비율·길이·광고). 촬영 칩은 「다음 단계」 안내 문구만 바꾸고 프롬프트는 안 나온다.' }
+];
+let inc = {}, sel = {}, negSel = [], lenS = 15, preset = 'core';
+AXES.forEach(a => { sel[a.id] = a.def || ''; });
+negSel = AXES.find(a=>a.id==='neg').vals.slice();
+
+function subVals() { return K_SUB[sel.ex2] || ['기본']; }
+function applyPreset(id) { const p = PRESETS.find(x=>x.id===id); preset = id; inc = {}; p.on.forEach(k => inc[k] = true); inc.len = true; render(); }
+
+function chip(txt, on, fn, num) {
+  const b = document.createElement('button'); b.type='button'; b.className='geni-opt' + (on?' on':''); if (num) b.dataset.num='1';
+  b.textContent = txt; b.setAttribute('aria-pressed', String(!!on)); b.addEventListener('click', fn); return b;
+}
+function axRow(a, n) {
+  const row = document.createElement('div'); row.className = 'geni-row' + (inc[a.id] ? '' : ' off');
+  const ix = document.createElement('button'); ix.type='button'; ix.className='ix' + (inc[a.id]?' on':''); ix.textContent = String(n).padStart(2,'0');
+  ix.title = inc[a.id] ? '축 제외' : '축 포함';
+  ix.addEventListener('click', () => { inc[a.id] = !inc[a.id]; preset='custom'; render(); });
+  row.appendChild(ix);
+  const l = document.createElement('span'); l.className='pub-l'; l.textContent = a.lbl; row.appendChild(l);
+  const opts = document.createElement('span'); opts.className = 'geni-opts' + (a.rail?' rail':'');
+  const vals = a.dyn ? subVals() : a.vals;
+  vals.forEach(v => {
+    if (a.multi) opts.appendChild(chip(v, negSel.includes(v), () => { negSel = negSel.includes(v) ? negSel.filter(x=>x!==v) : negSel.concat(v); render(); }));
+    else opts.appendChild(chip(v, sel[a.id]===v, () => { sel[a.id]=v;
+      if (a.id==='ex2' && !subVals().includes(sel.sub)) sel.sub='기본';
+      if (a.id==='shoot') sel.model = v.startsWith('Kling') ? 'Kling 3.0 Omni' : 'Seedance 2.5';        // 촬영 ↔ 비디오 모델 = 중복 축 → 종속 동기(각주 6)
+      if (a.id==='model') sel.shoot = v.startsWith('Kling') ? 'Kling 3.0' : 'Seedance 2.0';             // 역방향도 동기(Veo 선택 = 콘티 촬영축에 없는 값 = 각주 2 손실)
+      render(); }, a.num));
+  });
+  row.appendChild(opts);
+  const s = document.createElement('span'); s.className = 'src' + (a.src==='k'?' k':''); s.textContent = a.src; row.appendChild(s);
+  return row;
+}
+function lenRow(n) {
+  const row = document.createElement('div'); row.className='lenrow';
+  const ix = document.createElement('button'); ix.type='button'; ix.className='ix on'; ix.textContent=String(n).padStart(2,'0'); ix.title='길이 = 콘티·프롬프팅 공통축(항상 포함)';
+  const l = document.createElement('span'); l.className='pub-l'; l.textContent='길이';
+  const r = document.createElement('input'); r.type='range'; r.min='5'; r.max='30'; r.step='1'; r.value=String(lenS); r.setAttribute('aria-label','길이(초)');
+  r.addEventListener('input', () => { lenS = +r.value; render(); });
+  const v = document.createElement('span'); v.className='lenv'; v.textContent = lenS + 's · ' + CUTS(lenS);
+  const s = document.createElement('span'); s.className='src'; s.textContent='sb+k';
+  row.append(ix, l, r, v, s); return row;
+}
+function drawSpec() {
+  const cr = vidCr(lenS), won = '₩' + Math.round(cr*CR_WON).toLocaleString('ko-KR');
+  const auto = sel.shoot === 'Seedance 2.0';
+  const rows = [
+    '감독 <b>' + sel.director + '</b>',
+    '촬영 <b>' + sel.shoot + '</b> · ' + (auto ? '<span class="hot">힉스필드 자동생성</span>' : '복붙 프롬프트 산출'),
+    (inc.ratio ? sel.ratio : '9:16') + ' · ' + lenS + 's — <b>' + CUTS(lenS) + '</b>' + (inc.quality ? ' · ' + sel.quality : '') + (inc.fps ? ' · ' + sel.fps : ''),
+    (inc.ex2 && sel.ex2 !== '없음' ? '화풍 <b>' + sel.ex2 + (inc.sub && sel.sub !== '기본' ? '·' + sel.sub : '') + '</b>' : '화풍 <b>' + (inc.ex1 ? sel.ex1 : '실사 시네마틱') + '</b>'),
+    '비용 ' + (auto ? '<b>' + cr + 'cr ≈ ' + won + '</b> · 월 3,000cr의 ' + (cr/30).toFixed(1) + '%' : '<b>0원</b> · 클링 구독')
+  ];
+  $('#gospec').innerHTML = rows.map(r => '<span class="gs-row">' + r + '</span>').join('');
+}
+function drawPayload() {
+  const auto = sel.shoot === 'Seedance 2.0';
+  const set = {};
+  if (inc.ratio) set['비율'] = sel.ratio; set['길이'] = lenS + 's';
+  if (inc.quality) set['화질'] = sel.quality; if (inc.fps) set['프레임'] = sel.fps;
+  if (inc.ex1) set['표현1'] = sel.ex1; if (inc.ex2) set['표현2'] = sel.ex2;
+  if (inc.sub && sel.ex2 !== '없음') set['세부'] = sel.sub;
+  if (inc.webtoon) set['웹툰'] = sel.webtoon; if (inc.audio) set['오디오'] = sel.audio;
+  if (inc.neg) set['네거티브'] = negSel;
+  if (inc.refs) set['레퍼런스'] = sel.refs; if (inc.seg) set['분막'] = sel.seg;
+  if (inc.reroll && sel.reroll !== '없음') set['리롤'] = sel.reroll;
+  const body = { director: sel.director, shoot: auto ? 'seedance' : 'kling', model: inc.model ? sel.model : (auto ? 'seedance' : 'kling'), ad: sel.ad === 'ON', set };
+  const lane = auto
+    ? '→ sb-make(콘티) → seedance-continuity-builder → 힉스필드 MCP generate_video  ⚠ get_cost 프리플라이트 게이트'
+    : '→ sb-make(콘티) → k-make(프롬프트 번들) → 코드블록 복사 → Kling 웹앱 수동 붙여넣기';
+  $('#payload').textContent = 'POST /api/sb\n' + JSON.stringify(body, null, 2) + '\n\n// 프롬프트로 붙는 마커\n' + markers(set, body) + '\n\n// 레인\n' + lane;
+}
+function markers(set, body) {
+  const L = ['[감독: ' + body.director + ']', '[촬영: ' + body.shoot + ']'];
+  if (inc.model) L.push('[모델: ' + body.model.split(' ')[0].toLowerCase() + ']');
+  const pairs = Object.keys(set).map(k => k + '=' + (Array.isArray(set[k]) ? set[k].join('+') : set[k]));
+  if (pairs.length) L.push('[설정: ' + pairs.join(' · ') + ']');
+  if (body.ad) L.push('[광고: ON]');
+  return L.join('\n');
+}
+function drawIx() {
+  const tb = $('#ixt'); tb.innerHTML = ''; let n = 0, tot = 0;
+  const push = (num, lbl, src, val, off) => { const tr = document.createElement('tr'); if (off) tr.className='dropped';
+    tr.innerHTML = '<td class="n">' + String(num).padStart(2,'0') + '</td><td>' + lbl + '</td><td class="o">' + src + '</td><td>' + val + '</td>'; tb.appendChild(tr); };
+  AXES.forEach(a => { n++; const vals = a.dyn ? subVals() : a.vals;
+    const val = a.multi ? negSel.length + '/' + a.vals.length + '개' : sel[a.id];
+    push(n, a.lbl + ' <span style="opacity:.5">(값 ' + vals.length + ')</span>', a.src, inc[a.id] ? val : '— 제외', !inc[a.id]);
+    if (inc[a.id]) tot += vals.length; tot += 1; });
+  n++; push(n, '길이 <span style="opacity:.5">(5~30s 슬라이더)</span>', 'sb+k', lenS + 's · ' + CUTS(lenS), false); tot += 2;
+  $('#ixTot').textContent = tot;
+}
+function render() {
+  [1,2,3,4].forEach(g => $('#grid' + g).innerHTML = '');
+  let n = 0;
+  AXES.forEach(a => { n++; const row = axRow(a, n);
+    if (a.id === 'sub' && sel.ex2 !== '없음' && !K_SUB[sel.ex2]) row.hidden = true;   // 미등재 화풍 = 세부 행 숨김(k 정본 동작)
+    $('#grid' + a.g).appendChild(row);
+    if (a.id === 'ratio') { n++; $('#grid2').appendChild(lenRow(n)); }
+  });
+  $('#presets').innerHTML = '';
+  PRESETS.forEach(p => { const b = document.createElement('button'); b.type='button'; b.className='pbtn' + (preset===p.id?' on':' ghost'); b.textContent = p.nm;
+    b.addEventListener('click', () => applyPreset(p.id)); $('#presets').appendChild(b); });
+  $('#phint').textContent = (PRESETS.find(p=>p.id===preset) || {}).hint || '커스텀 — 번호를 눌러 직접 고른 조합. 포함 축 ' + Object.keys(inc).filter(k=>inc[k]).length + '개.';
+  drawSpec(); drawPayload(); drawIx();
+}
+$('#cpBtn').addEventListener('click', async e => { try { await navigator.clipboard.writeText($('#payload').textContent); e.target.textContent='복사됨 ✓'; setTimeout(()=>e.target.textContent='선택값 복사',1200); } catch {} });
+$('#cpMd').addEventListener('click', async e => { const t = $('#payload').textContent.split('// 프롬프트로 붙는 마커')[1].split('// 레인')[0].trim();
+  try { await navigator.clipboard.writeText(t); e.target.textContent='복사됨 ✓'; setTimeout(()=>e.target.textContent='마커 문자열만 복사',1200); } catch {} });
+$('#go').addEventListener('click', () => { const b = $('#go'); b.textContent = sel.shoot === 'Seedance 2.0' ? '자동생성 — get_cost 확인 필요' : '프롬프트 생성 (크레딧 0)'; setTimeout(()=>b.textContent='생성', 1400); });
+applyPreset('core');
+</script>
+</body>
+</html>
