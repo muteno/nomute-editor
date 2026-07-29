@@ -59,6 +59,7 @@
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
 import html
+import http.cookiejar   # 스레드 302 챌린지 추적(_th_fetch · 260729)
 import json
 import os
 import re
@@ -977,6 +978,7 @@ def insta_subs(accounts, limit=10, deadline=None):
     csrftoken = 쿠키에 있으면 x-csrftoken 헤더로 승격(인스타 웹앱이 항상 동반 전송하는 관례값 — 누락 시 로그인 요청이 401)."""
     ck = (os.environ.get("INSTA_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
     _csrf = (re.search(r"csrftoken=([^;]+)", ck) or [None, ""])[1].strip() if ck else ""
+    _ua = (os.environ.get("INSTA_UA") or "").strip()   # 쿠키 발급 브라우저의 실제 UA(선택 · 260729 폰 실측 「useragent mismatch」 봉합 — 메타가 세션을 발급 브라우저 UA에 묶어 모듈 고정 UA(Chrome/126.0 가짜)로는 유효 쿠키도 400 거절) · 쿠키와 짝으로만 적용(게스트 = 종전 UA 불변) · 주입 = ~/.nomute_phone_env(레포 커밋 0)
     out = []
     for i, acc in enumerate(accounts):
         if _over(deadline):
@@ -991,6 +993,8 @@ def insta_subs(accounts, limit=10, deadline=None):
                 _hdr["Cookie"] = ck
                 if _csrf:
                     _hdr["x-csrftoken"] = _csrf
+                if _ua:
+                    _hdr["User-Agent"] = _ua   # 세션-UA 짝 맞춤(260729 useragent mismatch) — 쿠키 있을 때만
             req = urllib.request.Request(
                 "https://i.instagram.com/api/v1/users/web_profile_info/?username=" + urllib.parse.quote(acc),
                 headers=_hdr)
@@ -1096,6 +1100,21 @@ def _th_img(p):
     return ""
 
 
+def _th_fetch(url, hdr, ck):
+    """스레드 요청 = CookieJar 경유(260729 폰 실측 봉합 — 부계 쿠키를 고정 Cookie 헤더로 달자 4계정 전원
+    「HTTP Error 302 … infinite loop」). Meta의 302 + Set-Cookie 챌린지 패턴: 체인 중간에 서버가 얹는
+    쿠키를 다음 홉에 실어야 통과하는데, urlopen 고정 헤더는 그걸 못 실어 무한루프가 된다 → 부계 쿠키를
+    Jar에 심고 HTTPCookieProcessor가 체인 누적 쿠키로 추적. 게스트(ck 빈값) = 빈 Jar로 동일 경로."""
+    jar = http.cookiejar.CookieJar()
+    for kv in (ck or "").split(";"):
+        if "=" in kv:
+            n, v = kv.strip().split("=", 1)
+            jar.set_cookie(http.cookiejar.Cookie(0, n, v, None, False, ".threads.com", True, True, "/",
+                                                 True, False, None, False, None, None, {}))
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), urllib.request.HTTPSHandler(context=CTX))
+    return op.open(urllib.request.Request(url, headers=hdr), timeout=15).read().decode("utf-8", "ignore")
+
+
 def threads_subs(accounts, limit=10, deadline=None):
     """⑧ 스레드 구독 계정 최신 포스트 — 프로필 HTML 임베드 JSON(무인증 게스트 · 운영자 260712).
     ⚠️ Meta = 인스타와 동일 데이터센터 IP 차단 → 러너 미호출(폰/맥 가정 IP = phone_subs.py 전용).
@@ -1117,10 +1136,14 @@ def threads_subs(accounts, limit=10, deadline=None):
             _hdr = {**UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none",
                     "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1"}   # 실브라우저 헤더 근접(운영자 260723 · 봇 챌린지 완화 시도 · 게스트·쿠키 공통 경로)
-            if ck:
-                _hdr["Cookie"] = ck
-            _rq = urllib.request.Request("https://www.threads.com/@" + urllib.parse.quote(acc), headers=_hdr)
-            h = urllib.request.urlopen(_rq, timeout=15, context=CTX).read().decode("utf-8", "ignore")
+            _u = "https://www.threads.com/@" + urllib.parse.quote(acc)
+            try:
+                h = _th_fetch(_u, _hdr, ck)   # 쿠키 = Jar 경유(302 챌린지 추적 · 260729) — 구 고정 Cookie 헤더 = 무한루프
+            except urllib.error.HTTPError as _e:
+                if ck and _e.code in (301, 302, 303, 307, 308):
+                    h = _th_fetch(_u, _hdr, "")   # 쿠키가 루프를 부르면 게스트 1회 폴백(260713 이전 기본 경로 · fail-soft)
+                else:
+                    raise
             posts = []
 
             def walk(n):
@@ -1925,7 +1948,12 @@ def main():
         #   [수집 성공 계정 수, 등록 계정 수] 쌍만 실어 보낸다 = 새 수집·새 콜 0(이미 만든 결과를 세기만) · 판정은 뷰어가.
         #   건별 분해(운영자 260727 "사고는 다 개별건 건별로 적용되게 · 10개 터지면 10개 각각 사고임") — 개수만 세면
         #   "11 중 8"이 한 덩어리라 ✓ 한 번에 세 계정이 같이 침묵한다. 계정마다 원인이 다를 수 있으므로(삭제 / 비공개 / 차단)
-        #   **빠진 계정 목록(miss)**을 실어 보내 뷰어가 계정별 알림으로 쪼갠다. 상한 20 = 알림함 폭주 방지(전멸은 아래 stale이 1건으로 담당).
+        #   **빠진 계정 목록(miss)**을 실어 보내 뷰어가 계정별 알림으로 쪼갠다.
+        #   ⚠ 구 `miss[:20]` 상한 폐지(260729 리포트 판례) — got·reg는 절단 **전** 실제값이라 뷰어 문구는
+        #   "30개 중 29개 누락"인데 목록은 20개만 = 나머지 **9계정이 어느 알림에도 안 잡히는 조용한 결측**이었다
+        #   (260727·260728에 두 번 봉합한 그 사각의 3번째 판례 · 자기 알림이 자기 숫자와 안 맞는 자기모순도 동반).
+        #   상한의 원래 목적이던 알림함 폭주는 이제 **뷰어가 같은 사유 3건↑을 묶음 1건으로** 처리해 그쪽에서 막는다
+        #   (전멸은 아래 stale이 1건으로 담당) · 등록 총 98계정 = 전량 실어도 JSON 증분 무시 가능.
         health["subs"]["cover"] = {}
         for _k in ("x", "tiktok", "insta", "youtube", "threads"):
             if not acc[_k]:
@@ -1938,8 +1966,8 @@ def main():
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
             _fsrc = {**(SUB_FAIL.get(_k) or {}), **(PHONE_COVER["why"].get(_k) or {})}   # 폰 기록이 러너 잔향을 덮는다(폰 = 주 공급)
-            _why = {a: _fsrc[a] for a in _miss[:20] if _fsrc.get(a) is not None}
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
+            _why = {a: _fsrc[a] for a in _miss if _fsrc.get(a) is not None}
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:

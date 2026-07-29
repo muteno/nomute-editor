@@ -63,14 +63,18 @@ export function scrollCss() {
 ::-webkit-scrollbar,html::-webkit-scrollbar,body::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}`;
 }
 
-export function transform(html, c, origin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
+// ⚠ 사진 경유 URL은 **절대 경로**여야 한다(운영자 260729 "아예 내용이 안뜨넹" 회귀의 진범):
+//    아래 <base href="원본오리진">가 문서의 상대 URL 기준을 원본 사이트로 바꾸므로, `/api/cembed?img=`를 상대로 쓰면
+//    브라우저가 `https://원본사이트/api/cembed?img=…`로 해석 → 전부 404 → (Q1061의 투명 폴백과 겹쳐) 사진이 전량
+//    투명해진다 = 이미지 위주 게시글은 화면이 통째로 빈다. selfOrigin을 붙여 우리 오리진으로 고정한다.
+export function transform(html, c, origin, selfOrigin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/?>/gi, '');
   // 사진 = 전량 이 라우트 경유(운영자 260729 "안되면 아예 안나와도 괜찮은데 엑박뜨는거보다는") — 못 가져오는 건
   // 서버가 투명 1x1로 돌려주므로 깨진 아이콘·alt 문자열이 본문에 끼어들지 않는다(판정·폴백 = 서버 단일 지점).
   html = html.replace(/(<img\b[^>]*?\bsrc=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
     const dec = src.replace(/&amp;/g, '&');
     try { new URL(dec); } catch { return m0; }
-    return a + '/api/cembed?img=' + encodeURIComponent(dec) + z;
+    return a + (selfOrigin || '') + '/api/cembed?img=' + encodeURIComponent(dec) + z;
   });
   html = html.replace(/<img\b[^>]*?\bsrcset="[^"]*"/gi, m0 => m0.replace(/\bsrcset="[^"]*"/i, ''));   // srcset = 원본 URL 재지정 경로 → 제거(프록시 src만 남겨 경유 일관)
   const vp = '<meta name="viewport" content="width=device-width, initial-scale=1">';
@@ -80,6 +84,59 @@ export function transform(html, c, origin) {   // 순수 변환(테스트 대상
   const base = origin ? `<base href="${origin}">` : '';   // 상대경로 자원(이미지·CSS)이 우리 오리진으로 새는 것 방지
   const style = `${base}<style>${darkCss(c)}${fitCss()}${scrollCss()}</style>`;
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, style + '</body>') : html + style;
+}
+
+// 네이버 블로그(운영자 260729 스샷 "2026.07.27(월) 경제 뉴스 모음" = 빈 화면)는 `blog.naver.com/{id}/{logNo}`가
+// 껍데기 프레임이고 본문은 안쪽 PostView 문서에 있다 → 스크립트를 제거하는 우리 경로에선 영원히 빈 화면.
+// 프레임 안 주소로 바꿔 부르면 본문이 정적 HTML로 온다(같은 축 = m.blog도 수용).
+export function realUrl(u) {
+  let x; try { x = new URL(u); } catch { return u; }
+  if (/(^|\.)blog\.naver\.com$/.test(x.hostname)) {
+    const m = x.pathname.match(/^\/([A-Za-z0-9_-]+)\/(\d+)/);
+    if (m) return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}&redirect=Dlog&widgetTypeCall=true&directAccess=false`;
+    const id = x.searchParams.get('blogId'), no = x.searchParams.get('logNo');
+    if (id && no) return `https://blog.naver.com/PostView.naver?blogId=${id}&logNo=${no}&redirect=Dlog&widgetTypeCall=true&directAccess=false`;
+  }
+  return u;
+}
+
+// 본문이 실제로 담겼는지 = 태그·스크립트를 걷어낸 '보이는 글자' 길이로 판정한다. 스크립트로 본문을 그리는 사이트는
+// 우리 경로에서 글자가 거의 0이 되는데, 그때 프록시 결과를 그대로 주면 **빈 화면**이 된다(운영자 260729 "아예 내용이
+// 안뜨넹"의 잔여 축). 그런 문서는 프록시를 포기하고 원본으로 넘겨 = 최소한 원본이 뜰 기회를 준다.
+export function visibleTextLen(html) {
+  return String(html || '')
+    .replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z#0-9]{1,8};/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
+const TEXT_MIN = 120;   // 이 미만 = '본문 없음'으로 보고 원본 폴백(짧은 짤방 글도 제목·메뉴·댓글로 이 이상은 나온다)
+function diagRes(d) { return new Response(JSON.stringify(d, null, 2), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } }); }
+
+// 원 응답이 프레임을 허용하는가(허용 = 원본 302로 넘겨도 화면에 뜬다 / 거부 = 넘기면 빈 화면이 된다).
+export function frameAllowed(h) {
+  const xfo = String(h?.get?.('x-frame-options') || '').toLowerCase();
+  if (xfo.includes('deny') || xfo.includes('sameorigin')) return false;
+  const csp = String(h?.get?.('content-security-policy') || '').toLowerCase();
+  const m = csp.match(/frame-ancestors([^;]*)/);
+  if (m && !/\*/.test(m[1])) return false;   // frame-ancestors가 있고 와일드카드가 아니면 우리 오리진은 사실상 거부
+  return true;
+}
+
+// 폴백 안내 카드(운영자 260729 "이렇게 안나오는 커뮤가 있는데, 확인 좀 해줘 각각") — 세션이 외부망 차단으로 사이트별
+// 실측을 못 하므로, **화면이 스스로 사유를 말하게** 한다. 구 동작(빈 화면으로 끝남)을 대체 = 매번 물어볼 필요가 없다.
+// ⚠배치: 인앱 창 안, 원글이 뜰 자리에 사유 1줄 + 「원문 열기」 버튼. 색·모서리·글자는 넘겨받은 :root 토큰 계승(신규 값 0).
+export function noticeHtml(c, reason, url) {
+  const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+  return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;height:100%;background:${c.bg};color:${c.fg};font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.w{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;box-sizing:border-box}
+.t{font-weight:800;font-size:15px}
+.r{color:${c.mut};font-size:13px;max-width:34em}
+a{display:inline-block;padding:9px 16px;border:1px solid ${c.line};border-radius:11px;color:${c.fg};text-decoration:none;font-weight:700;font-size:13px}
+</style><div class="w"><div class="t">이 글은 앱 안에서 열 수 없어</div><div class="r">${esc(reason)}</div>
+<a href="${esc(url)}" target="_blank" rel="noopener">원문 열기</a></div>`;
 }
 
 export async function onRequestGet({ request }) {
@@ -106,23 +163,51 @@ export async function onRequestGet({ request }) {
   const u = q.get('u') || '';
   let target; try { target = new URL(u); } catch { return bad('잘못된 u', 400); }
   if (!/^https?:$/.test(target.protocol)) return bad('잘못된 u', 400);
-  const back = () => Response.redirect(target.toString(), 302);   // 어떤 단계든 실패 = 원본 URL(종전 동작 = 직접 iframe) 폴백
-  if (!hostOk(target.hostname)) return back();                    // 미등재 커뮤니티 = 프록시 안 태움(오픈 프록시 방지)
+  // 폴백 = ⓐ 원본이 프레임을 허용하면 302(원본이 그대로 뜬다 = 종전 최선) ⓑ 거부하거나 알 수 없으면 **사유 안내 카드**
+  // (구 동작은 무조건 302라, 거부 사이트에선 빈 화면으로 끝나 운영자가 원인을 알 수 없었다 · 260729)
+  let _cc = { bg: '#121212', fg: '#eef7f0', mut: '#8fa697', line: 'rgba(255,255,255,.08)' };   // raw-ok: c 파싱 전 폴백용 :root 동값 사본
+  const back = (reason, hdrs) => {
+    if (!reason || frameAllowed(hdrs)) return Response.redirect(target.toString(), 302);
+    return new Response(noticeHtml(_cc, reason, target.toString()), {
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': "sandbox allow-popups allow-popups-to-escape-sandbox; script-src 'none'; frame-ancestors 'self'" },
+    });
+  };
+  if (!hostOk(target.hostname)) {                                 // 미등재 커뮤니티 = 프록시 안 태움(오픈 프록시 방지)
+    return q.get('diag') === '1'
+      ? diagRes({ url: target.toString(), host: target.hostname, whitelist: false, verdict: '화이트리스트 미등재 → 프록시 안 태우고 원본 폴백(다크·폭맞춤 미적용)' })
+      : back('아직 앱 안에서 여는 목록에 없는 사이트야.', null);
+  }
 
   const raw = (q.get('c') || '').split('|');
   const pick = (i, d) => (COLOR_RE.test((raw[i] || '').trim()) ? raw[i].trim() : d);
   const c = { bg: pick(0, '#121212'), fg: pick(1, '#eef7f0'), mut: pick(2, '#8fa697'), line: pick(3, 'rgba(255,255,255,.08)') };   // raw-ok: 폴백 = c 결측 시에만 쓰는 :root 동값 사본(값 SSOT는 뷰어)
 
+  _cc = c;   // 뷰어가 실어보낸 :root 토큰으로 안내 카드 색 갱신(색 SSOT = 뷰어)
+  const diag = q.get('diag') === '1';   // 진단 모드(운영자 260729 "각 커뮤별로 확인좀 해줄래? 어떤 원인인지") — 같은 URL에 &diag=1을 붙이면
+  // 단계별 실측값(HTTP·content-type·HTML 길이·보이는 글자 수·판정)을 JSON으로 돌려준다. 세션이 외부망 차단으로
+  // 사이트별 실측을 못 하므로, 판정을 눈으로 확인할 수 있는 창구를 남긴다. 화면 렌더는 하지 않는다.
+  const dg = { url: target.toString(), fetched: realUrl(target.toString()), host: target.hostname, whitelist: true };
+
+  const fetchUrl = realUrl(target.toString());   // 네이버 블로그 등 = 프레임 안 실제 본문 주소로 교체
   let html;
   try {
-    const r = await fetch(target.toString(), { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow' });
-    if (!r.ok) return back();
-    if (!(r.headers.get('content-type') || '').toLowerCase().includes('text/html')) return back();
+    const r = await fetch(fetchUrl, { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow' });
+    dg.status = r.status; dg.contentType = (r.headers.get('content-type') || '').split(';')[0];
+    if (!r.ok) { dg.verdict = `원 서버가 ${r.status}로 거부 — 봇 차단·로그인벽 계열`; return diag ? diagRes(dg) : back(`이 커뮤니티가 외부 요청을 막고 있어(HTTP ${r.status}). 봇 차단이나 로그인이 필요한 글이야.`, r.headers); }
+    if (!(r.headers.get('content-type') || '').toLowerCase().includes('text/html')) { dg.verdict = 'HTML이 아님 → 폴백'; return diag ? diagRes(dg) : back('이 주소는 웹페이지가 아니라 앱 안에서 그릴 수 없어.', r.headers); }
     html = await r.text();
-  } catch { return back(); }
-  if (html.length > HTML_MAX) return back();
+  } catch (e) { dg.status = 0; dg.verdict = '연결 실패(차단·타임아웃)'; return diag ? diagRes(dg) : back('이 커뮤니티 서버에 연결하지 못했어(차단 또는 응답 지연).', null); }
+  dg.htmlKB = Math.round(html.length / 1024);
+  if (html.length > HTML_MAX) { dg.verdict = 'HTML 상한 초과'; return diag ? diagRes(dg) : back('글이 너무 커서 앱 안에서 열 수 없어.', null); }
+  dg.textLen = visibleTextLen(html);
+  if (dg.textLen < TEXT_MIN) {   // 스크립트로 본문을 그리는 사이트 = 우리 경로에선 빈 화면 → 프록시 포기(빈 화면보다 원본 시도가 낫다)
+    dg.verdict = `본문 글자 ${dg.textLen}자(<${TEXT_MIN}) = 스크립트 렌더 사이트로 판단`;
+    return diag ? diagRes(dg) : back('이 커뮤니티는 본문을 자바스크립트로 그려서, 보안상 스크립트를 막는 앱 창에서는 글이 나오지 않아.', null);
+  }
+  dg.verdict = `정상 — 다크·폭맞춤 적용해 전달(보이는 글자 ${dg.textLen}자)`;
+  if (diag) return diagRes(dg);
 
-  return new Response(transform(html, c, target.origin), {
+  return new Response(transform(html, c, target.origin, new URL(request.url).origin), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=300',
