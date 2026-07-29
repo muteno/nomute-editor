@@ -30,27 +30,53 @@ import sns_trends as st  # noqa: E402
 #   평문 형식도 읽어 계승(마이그레이션 무중단). 인스타 축에만 적용 — 다른 소스는 종전대로 매 런.
 _CD_PATH = os.path.expanduser("~/.nomute_insta_cooldown")
 _CD_STEPS = (6 * 3600, 12 * 3600, 24 * 3600)
-_GAP = float(os.environ.get("INSTA_MIN_GAP_MIN", "90")) * 60   # 최소 간격(분) — 크론은 30분이라 3런 중 1런만 실제 수집
-_BATCH = int(os.environ.get("INSTA_BATCH", "5"))               # 한 런에 도는 계정 수(0 이하 = 회전 끔 = 전량)
+def _envf(name, dflt):
+    """env 숫자 파싱 — 오타 하나로 모듈 임포트가 죽던 자리(260730 검증 A-D8). 스크립트가 죽으면
+    phone_subs.sh의 `|| exit 0`가 무음 종료시켜 x·스레드·틱톡·레딧·재난까지 **전 축이 같이 굶는다**
+    (sns_trends.py:1822가 `_i(env) or 240`으로 이미 막아 둔 함정과 동형) → 폴백 = 기본값."""
+    try:
+        return float(str(os.environ.get(name) or dflt).strip())
+    except Exception:  # noqa: BLE001
+        print(f"::warning::{name} 값이 숫자가 아님 — 기본값 {dflt} 사용", file=sys.stderr)
+        return float(dflt)
+
+_GAP = _envf("INSTA_MIN_GAP_MIN", 90) * 60   # 최소 간격(분) — 크론은 30분이라 3런 중 1런만 실제 수집
+_BATCH = int(_envf("INSTA_BATCH", 5))       # 한 런에 도는 계정 수(0 이하 = 회전 끔 = 전량)
 
 
 def _st_read():
-    """{until, cnt, last, off} — JSON 우선, 구 평문("until cnt")도 계승. 파손·부재 = 전부 0(fail-open)."""
+    """{until, cnt, last, off} — JSON 우선, 구 평문("until cnt")도 계승. 파손·부재 = 전부 0(fail-open).
+    ⚠ 미래값 클램프(260730 검증 A-D3) — 폰 시계 점프·NTP 보정으로 until/last가 미래에 박히면 게이트를
+    영원히 못 통과하고(해제 조건 = 성공, 성공 조건 = 게이트 통과 = 자기잠금) 뷰어엔 "자동으로 걷혀요"만
+    영구 출력되는 **침묵 사망**이 된다 → 상한(최장 쿨다운) 넘는 값·미래 last = 파손과 동급 fail-open."""
     try:
         raw = open(_CD_PATH, encoding="utf-8").read().strip()
         if raw.startswith("{"):
             d = json.loads(raw)
-            return float(d.get("until") or 0), int(d.get("cnt") or 0), float(d.get("last") or 0), int(d.get("off") or 0)
-        a, b = raw.split()
-        return float(a), int(b), 0.0, 0
+            u, c, l, o = float(d.get("until") or 0), int(d.get("cnt") or 0), float(d.get("last") or 0), int(d.get("off") or 0)
+        else:
+            a, b = raw.split()
+            u, c, l, o = float(a), int(b), 0.0, 0
+        now = time.time()
+        if u - now > max(_CD_STEPS):
+            print("::warning::insta 쿨다운 시각이 상한 초과(시계 점프 추정) — 무시하고 재시도", file=sys.stderr)
+            u = 0.0
+        if l > now:
+            l = 0.0
+        return u, c, l, o
     except Exception:  # noqa: BLE001
         return 0.0, 0, 0.0, 0
 
 
 def _st_write(until, cnt, last, off):
+    """원자적 기록(260730 검증 A-D4) — 종전 직접 open("w")은 도즈·강제종료가 그 순간에 걸리면 잘린 JSON을
+    남겼고, _st_read가 그걸 fail-open으로 0 처리해 **off가 0으로 리셋** = 계정 0~4만 계속 돌고 5~19는
+    영영 안 도는 starvation(회전 자체는 건전한데 상태 유실로 무력화) → tmp+os.replace로 원자 교체."""
     try:
-        json.dump({"until": until, "cnt": cnt, "last": last, "off": off},
-                  open(_CD_PATH, "w", encoding="utf-8"))
+        tmp = _CD_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"until": until, "cnt": cnt, "last": last, "off": off}, f)
+        os.replace(tmp, _CD_PATH)
     except Exception as e:  # noqa: BLE001 — 기록 실패 = 다음 런 재시도(종전 동작)
         print(f"::warning::insta 상태 기록 실패({type(e).__name__}) — 다음 런 재시도", file=sys.stderr)
 
@@ -64,6 +90,20 @@ def _skip_stamp(accounts, tag):
     러너 기록을 덮는다 = 뷰어가 대기 상태로 갈라 읽는다(값 = 'cooldown' 쿨다운 · 'gap' 주기 대기)."""
     for a in accounts:
         st._sfail("insta", a, tag)
+
+
+_CUT3D = 3 * 86400   # 이월 나이 컷 = 뷰어 cut3d(viewer/index.html)와 같은 창 — 두 축이 어긋나면 화면엔 없는데 커버는 성공으로 세는 은폐가 생긴다
+
+
+def _merge(prev_items, got, done):
+    """이번 회차 수집분(got) + 직전 산출물 이월(kept) 병합. done = 이번에 갱신된 계정(중복 제거 축).
+    ⚠ 나이 컷(260730 검증 A-D9) — 종전 이월엔 필터가 없어 목록에서 지운 계정·영구 고장 계정의 옛 항목이
+    무기한 잔존했고, main()의 got 산식이 **나이 무관하게 항목 등장 계정을 성공으로 계산**해(sns_trends.py L1977)
+    8개월 된 시체 1건이 그 계정을 miss·why에서 영영 빼는 조용한 은폐를 만들었다. 뷰어 3일 컷과 같은 창으로 자른다."""
+    cut = time.time() - _CUT3D
+    kept = [it for it in (prev_items or [])
+            if (it.get("account") or "").lower().lstrip("@") not in done and (it.get("time") or 0) >= cut]
+    return kept + list(got or [])
 
 
 def _insta_collect(accounts, prev_items):
@@ -86,6 +126,8 @@ def _insta_collect(accounts, prev_items):
     batch = accounts if _BATCH <= 0 else [accounts[(off + i) % len(accounts)] for i in range(min(_BATCH, len(accounts)))]
     st.INSTA_429 = False
     got = st.insta_subs(batch, limit=20)
+    done = {a.lower().lstrip("@") for a in batch}
+    _skip_stamp([a for a in accounts if a.lower().lstrip("@") not in done], "rotate")   # 배치 밖 = 미시도(성공·429 양 경로 공통 · 260730 검증 A-D2: 429 경로에 도장이 없어 러너 잔향이 15계정을 다시 오염시켰다)
     if getattr(st, "INSTA_429", False):
         cnt = min(cnt + 1, len(_CD_STEPS))
         wait = _CD_STEPS[cnt - 1]
@@ -95,19 +137,17 @@ def _insta_collect(accounts, prev_items):
         #   전진시키면 다음 깨어남에 **다른 5계정**을 두드린다 = 한 계정의 리밋이 20계정 전체를 인질로 잡지 못한다.
         _st_write(now + wait, cnt, last, (off + len(batch)) % len(accounts))
         print("::warning::insta 429 → %.0fh 쿨다운(연속 %d회 · 해제 = rm %s)" % (wait / 3600, cnt, _CD_PATH), file=sys.stderr)
-        return prev_items
+        # 429여도 **그 배치의 성공분은 살린다**(260730 검증 A-D1) — insta_subs는 계정별 fail-soft라
+        #   5계정 중 4개 성공 후 5번째에서 429가 날 수 있는데, 종전 `return prev_items`는 그 4개를
+        #   통째로 버렸다(배치에 리밋 상주 계정 1개가 끼면 그 5계정은 영원히 0건). 성공 계정만
+        #   갈아끼우고 실패 계정은 이월 유지 = 데이터 순손실 0.
+        return _merge(prev_items, got, {a for a in (st.SUB_OK.get("insta") or ())})
     nxt = (off + len(batch)) % len(accounts)
     _st_write(0, 0, now, nxt)   # 성공 = 백오프 초기화 + 회전 전진
-    # 이번 회차에 **차례가 안 온** 계정 = 미시도 도장(260730) — 커버 판정은 등록 20계정 전량 기준인데
-    #   회전은 한 런에 _BATCH(5)개만 돈다 → 이월분이 쌓이기 전(약 한 바퀴 6h)까지 got=5/20=25%로
-    #   80% 임계에 상시 미달 = "왜 빠졌는지 기록이 없어요" 묶음 알림이 매 런 뜬다(260728 틱톡 판례와 동형).
-    #   도장을 찍어 두면 뷰어가 '아직 차례 아님'으로 갈라 읽어 침묵한다(실패로 오인 금지).
-    done = {a.lower().lstrip("@") for a in batch}
-    _skip_stamp([a for a in accounts if a.lower().lstrip("@") not in done], "rotate")
-    kept = [it for it in (prev_items or []) if (it.get("account") or "").lower().lstrip("@") not in done]
+    out = _merge(prev_items, got, done)
     print("::notice::insta 배치 %d계정(%d/%d 지점) 수집 %d건 · 이월 %d건"
-          % (len(batch), off, len(accounts), len(got), len(kept)), file=sys.stderr)
-    return kept + got
+          % (len(batch), off, len(accounts), len(got), len(out) - len(got)), file=sys.stderr)
+    return out
 
 
 acc, reg = st._load_accounts()
