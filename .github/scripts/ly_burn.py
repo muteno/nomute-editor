@@ -40,8 +40,11 @@ KW = {"c": GREEN_BGR}            # 키워드 강조색 슬롯(운영자 260711 k
 # 자막 음영(외곽선·그림자·박스) 색 — 닫힌 집합(260711 운영자 "음영 색상 조정"). BGR 6자리(#RRGGBB 역순).
 #   그린 #0FFD02(콘텐츠 그린)·핑크 #FF5EC8·블루 #3a6ddb·레몬 #FFE13D·레드 #e23b2a = 전부 콘텐츠 산출물 색 상수(§핵심명령 3-b-1 · UI 팔레트 비대상).
 #   결측/black = 종전 검정과 바이트 동일(회귀 0). bg>0 줄박스 색·bg=0 글리프 외곽선·bold 그림자색 전부 이 한 색을 따른다(= '주변부 음영' 단일 축).
-OC_BGR = {"black": "000000", "white": "FFFFFF", "green": "02FD0F", "pink": "C85EFF",
-          "blue": "DB6D3A", "yellow": "3DE1FF", "red": "2A3BE2"}
+OC_BGR = {"black": "000000", "white": "FFFFFF", "green": "02FD0F", "mint": "D2EE00",
+          "sky": "FFC638", "blue": "DB6D3A", "pink": "C85EFF",
+          "yellow": "3DE1FF", "red": "2A3BE2"}
+# ↑ ASS는 BGR 순서. 증설 2색(260729 운영자 "색 토글 더 여러개로") = 뷰어 OC_DEF 짝 —
+#   mint = --accent #00EED2 · sky = --bias-l1 #38C6FF (신규 색 창작 아님 = 기존 UI 토큰 계승).
 # 자막 폰트 — 닫힌 집합(260711 운영자 "폰트 조정"). 러너 설치 = edit-make·ly-make 자막 경로 apt{fonts-noto-cjk + fonts-nanum + fonts-nanum-extra}.
 #   패밀리명 = fc-scan 실측(NanumPen.ttf = "Nanum Pen Script" — 구글 웹폰트와 동명이라 뷰어 미리보기 정합). 미설치 = run()이 기본 폴백+note.
 FONT_FAMILY = {"gothic": "Noto Sans CJK KR", "serif": "Noto Serif CJK KR",
@@ -607,6 +610,14 @@ def font_avail(family):
         return True
 
 
+def ass_px(v):
+    # ASS Outline/Shadow 픽셀 = 소수 허용(libass float 파싱) → 0.1px 단위 연속값(260729).
+    #   구 max(1|2, int(...)) = ① 정수 절삭이라 게이지 여러 칸이 같은 px로 뭉개져 '딱딱 끊기게' 조절됐고(운영자 지목)
+    #                            ② 하한 1|2px 탓에 음영 0%에서도 테두리·박스 패딩이 남아 '끄기'가 불가능했다.
+    #   하한 0 = 진짜 끄기 · 뷰어 미리보기 px1()과 같은 반올림 자릿수(미리보기=결과 정합).
+    return max(0.0, round(float(v), 1))
+
+
 def coef(opts, key, dflt, lo, hi):
     # 연속 계수 축(outline·pad) 안전 파서 — 숫자 아님·NaN·범위 밖 = 기본값/클램프
     try:
@@ -766,8 +777,8 @@ def bg_pct(opts, style):
 def build_ass(segs, w, h, opts):
     size_f = size_frac(opts)
     fs = max(18, int(h * size_f))
-    omul = coef(opts, "outline", 1.0, 0.25, 3.0)   # 외곽선 두께 배율(운영자 260707 ×0.5)
-    pad = coef(opts, "pad", 0.10, 0.02, 0.5)       # 박스 패딩 계수 fs×pad(운영자 260707 ×0.16 · 구 box 0.10 승계 기본)
+    omul = coef(opts, "outline", 1.0, 0.0, 3.0)    # 외곽선 두께 배율(운영자 260707 ×0.5) · (260729) 하한 0.25→0 = 음영 0%(끄기) 도달 — 뷰어 게이지 하한 0 짝
+    pad = coef(opts, "pad", 0.10, 0.0, 0.5)        # 박스 패딩 계수 fs×pad(운영자 260707 ×0.16 · 구 box 0.10 승계 기본) · (260729) 하한 0.02→0 동행
     # 위치 = 하단 앵커(align 2) 고정 + MarginV 연속값 — 게이지가 전 높이를 선형 커버(구 중앙/상단 앵커 분기 폐지)
     #   0% = 바닥 2% · 24% ≈ 구 하단 세이프존 22%(실측 420@1920) · 100% = 84% 명목 상한
     p = pos_pct(opts)
@@ -789,13 +800,13 @@ def build_ass(segs, w, h, opts):
     if bg > 0:               # 배경 게이지 ON = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지) — 전 모양 수렴(260707)
         # 패딩 = Outline값(구 box 전용 oc==back 패딩 겸용 메서드를 전 모양으로 승격 · pad 계수 = 운영자 선택 ×0.16).
         # 글리프 외곽선색도 back 동일 = 박스 위 이중 테두리 0(같은 색 박스 위 같은 색 스트로크 = 어차피 비가시 · 모양 분기는 bg=0에서만 의미).
-        border_style, outline, shadow, oc = 4, max(2, int(fs * pad)), 0, back
+        border_style, outline, shadow, oc = 4, ass_px(fs * pad), 0, back
     else:                    # 배경 0% — bold/clean = 종전 그대로(omul 배율만) · box = 얇은 외곽선 폴백(흰 글자 보호)
         back = "&H90" + ocb  # BorderStyle 1의 BackColour = 그림자색(bold shadow=1) — 알파 &H90 종전값 유지·색만 음영 색 추종(260711)
         if style == "clean" or style == "box":
-            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.032 * omul)), 0, "&H00" + ocb
+            border_style, outline, shadow, oc = 1, ass_px(fs * 0.032 * omul), 0, "&H00" + ocb
         else:                # bold(기본) = 흰 글자+외곽선+그림자(쇼츠 정석) — 외곽선 색 = 음영 색(기본 검정)
-            border_style, outline, shadow, oc = 1, max(1, int(fs * 0.064 * omul)), 1, "&H00" + ocb
+            border_style, outline, shadow, oc = 1, ass_px(fs * 0.064 * omul), 1, "&H00" + ocb
     try:   # 글로우(운영자 260721 "글로우 정도도 편집" — 네온 번짐) = ASS \blur 라인 선두 오버라이드(0~100% → 블러 0~0.25fs px · 0/결측 = 태그 자체 미부착 = 종전 렌더 바이트 동일)
         glow = max(0.0, min(100.0, float(opts.get("glow") or 0)))
     except (TypeError, ValueError):
