@@ -1266,8 +1266,10 @@
   .soc-send.sent { color:var(--accent); background:rgba(var(--accent-rgb),.15); border-color:rgba(var(--accent-rgb),.5); }   /* 전송 성공 ✓팝(공유 accent 계승) */
   .soc-send.sending { pointer-events:none; opacity:.7; }
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
+  .soc-title { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }   /* 제목 2줄 클램프(운영자 260729 "제목도 마찬가지") — .tcard-t 정본 계승(넘치면 … 자동) · 원 라인 무접촉 = 값 유지 */
   .soc-srcs { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
   .soc-chip { font-size:10.5px; font-weight:700; color:var(--fg); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:2px 8px; }   /* 기본 = 중립(무성향·미분류) */
+  .soc-chip.soc-more { color:var(--mut); background:transparent; border-color:var(--line); }   /* 넘침 표시 '…'(운영자 260729 "2줄 넘어가면 … 끝에") — 소스칩 2줄 클램프 후 잔여 = socClampChips 실측 후처리가 붙임 */
   /* 정치성향 5단 = 편향 토큰 재사용(뉴스 편향바와 정합·운영자 260704·통념근사). 강진보 파랑↔강보수 빨강·중립 흰. */
   .soc-chip.lean-ll  { color:var(--fg); background:rgba(var(--bias-l2-rgb),.2); border-color:rgba(var(--bias-l2-rgb),.55); }   /* 강진보 = 파랑칩(흰 글자 = 소형 10.5px 대비 AA · 파랑 tint/border로 식별 · bias-l2 텍스트는 3.38:1 실패라 흰색 채택 · 검증 260704) */
   .soc-chip.lean-l   { color:var(--fg); background:rgba(var(--bias-l1-rgb),.14); border-color:rgba(var(--bias-l1-rgb),.42); }   /* 약진보 — accent-5(그린 이동)→bias-l1 스카이시안 재배선(운영자 260705 분리) */
@@ -11952,6 +11954,24 @@ $('#accSave').addEventListener('click', async () => {
 // 카드 우상단 체크 → 뉴스 요약으로 전송(운영자 260729) — 상태머신 = 뉴스 요약 재확인 토글(#revSend) 계승:
 // 1탭 = arm '전송'(맑은노랑 · 4초 미클릭 자동 원복) → 2탭 = api/submit 전송(뉴스 요약 발사 정본 재사용) → ✓팝 → 원복.
 // 전송 text = 제목 + URL + (있으면)수집 스니펫 = tvAsk 프리필 문법과 동일 축(러너가 URL 본문 보강 시도 · 못 하면 이 재료로 요약).
+// 소스칩 2줄 클램프(운영자 260729 "출처표시가 2줄 넘어가면 … 딱 넘어가지 않을 정도로만") — flex-wrap이라 CSS
+// line-clamp가 안 먹어 실측 후처리. 3줄째로 넘어가는 칩부터 제거하고 끝에 '…' 배지. '…'가 3줄로 밀리면 앞칩을 더 뺀다.
+function socClampChips(box) {
+  if (!box) return;
+  const old = box.querySelector('.soc-more'); if (old) old.remove();   // 재렌더 잔여 정리(멱등)
+  const chips = [...box.querySelectorAll('.soc-chip')];
+  if (chips.length < 3) return;   // 2개 이하 = 항상 1줄
+  const top0 = chips[0].offsetTop, rowH = chips[0].offsetHeight || 20, limit = top0 + rowH * 1.5;   // 3줄째 = top > 2줄 경계
+  if (chips.every(c => c.offsetTop <= limit)) return;   // 2줄 안에 다 들어감
+  chips.forEach(c => { if (c.offsetTop > limit) c.remove(); });   // 넘침 칩 제거
+  const more = document.createElement('span'); more.className = 'soc-chip soc-more'; more.textContent = '…';
+  box.appendChild(more);
+  let guard = chips.length;   // '…'가 3줄로 밀리면 앞칩을 하나씩 빼 2줄 유지(무한루프 가드)
+  while (more.offsetTop > limit && guard-- > 0) {
+    const rem = [...box.querySelectorAll('.soc-chip:not(.soc-more)')].pop();
+    if (!rem) break; rem.remove();
+  }
+}
 function socDisarm(sb) { clearTimeout(sb._t); sb.classList.remove('arm'); }
 function socBindSend(list) {
   list._sendBound = true;
@@ -12024,6 +12044,7 @@ function renderSns() {
       else c.textContent = s;   // 커뮤니티 소스명
     });
     list.appendChild(el);
+    socClampChips(el.querySelector('.soc-srcs'));   // 부착 직후 = offsetTop 실측 가능 → 소스칩 2줄 클램프('…')
   });
   list.classList.toggle('no-anim', _searchRender);   // 검색 타이핑 = 스태거 생략(동일 구성 케이스는 위 커밋 스킵이 흡수 · 분신술 A2 계승 · 평의회6 260707)
   _snsSig = _ss;
