@@ -609,7 +609,7 @@
   .sbtn svg { display:block; }
   .sbtn:hover:not(:disabled) { background:rgba(255,255,255,.16); }
   .sbtn:active { transform:scale(var(--press-s,.85)); }
-  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; margin-top:4px; }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) · 변형 없을 때만 단독 행 */
+  .job .jsave-row { flex-basis:100%; display:flex; justify-content:flex-end; align-items:center; gap:var(--sp-1); margin-top:4px; /* raw-ok: 기존 값 그대로 보존(이 줄은 gap 추가로 재작성된 것 · 값 변경 0) */ }   /* 전체 = 완료 시각줄 아래·우측정렬(운영자 260622) · 변형 없을 때만 단독 행 · gap = 수정 버튼 합류(260729)로 형제 2개 = --sp-1 계승(신규 raw 0) */
   .job .jgrid { flex-basis:100%; display:flex; align-items:flex-start; gap:8px; margin-top:2px; }   /* 변형목록(좌) + 전체(우) 한 띠 = 전체 줄 좌측 공백 활용 · 1개/n개 동일(운영자 260626) */
   .job .jgrid .jvars { flex:1 1 auto; margin-top:0; }     /* 좌측 = 변형 [1]…[n] 채움 */
   .job .jgrid .jsave-row { flex:0 0 auto; margin-top:1px; }   /* 우측 = 전체(변형 [1]과 상단 정렬·광학 1px) */
@@ -2851,6 +2851,13 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
     sv.innerHTML = DLSEQ_IC + '<span class="cref-dllbl">전체</span>';
     sv.onclick = e => { e.stopPropagation(); dlAllSeq(e.currentTarget, _saves.map(s => s.url), i => _saves[i].dlname).then(() => { job._dled = 1; }); };   // index 핸들러 1:1 — 부가 = job._dled(잡 재렌더·복원 시 받음색(mut) 유지용) 한 줄뿐
     if (job._dled) sv.classList.add('dl-done');   // 전체 받은 잡 = mut 유지(재렌더 복원·운영자 260701·색 260706)
+    if (job.src) {   // ⚠배치(운영자 260729 스샷 "여기 수정본이 없어") — 수정(연필) = '전체' **왼쪽** 같은 띠. 결과 카드가 접혀 있어도(캐러셀 미노출) 바로 수정 진입 = 스샷이 가리킨 자리.
+      // 레퍼런스 = 형제 .jretry(기하) + .jmore(강조색 변주) 그대로 계승(신규 클래스·값 0) · 게이트·행위 = 캐러셀 #carEdit·이전 제작 .imgedit와 동일(src 있을 때만 · importToEditor).
+      const je = document.createElement('button'); je.type = 'button'; je.className = 'jretry jmore'; je.title = '이 설정으로 수정';
+      je.innerHTML = EDIT_SVG + '<span>수정</span>';
+      je.onclick = e => { e.stopPropagation(); importToEditor(job.src, (_saves[0] || {}).url); };   // compUrl = 첫 산출(이미지 원본 없을 때 빗금 참고본) = 캐러셀 연필 인자 동형
+      svRow.appendChild(je);
+    }
     svRow.appendChild(sv);   // append는 아래 배치에서(변형 있으면 같은 띠 우측·없으면 단독 우측)
   }
   if (job.status === 'done' && job.gfree && job.payload && job.endpoint) {   // 성공 생성 잡 = '한 장 더' 원탭(운영자 260713 승인 — 같은 설정, 장수만 1 고정) · .jretry 기하 계승+.jmore 강조색 변주 · 새 표준 잡 카드로 합류(genRefire in-place와 달리 이 완료 카드·결과는 보존) · payload 미동봉(구 캐시) = 미노출(.jretry 게이트 동일)
