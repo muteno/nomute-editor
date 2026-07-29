@@ -1098,12 +1098,12 @@
   .feednav.tstk-rst-sm:active { transform:scale(var(--press-m,.9)); }   /* base .feednav:active의 translateY 동반 스케일 대체(이 버튼은 bottom 앵커 = translate 무) */
   .tsk-empty { visibility:hidden; pointer-events:none; }   /* 확장 꼬리 끝 빈 셀 = 3열 그리드 자리만 유지(운영자 260716) */
   /* 매거진 오버레이(운영자 260712 20안 中 10안 채택) = 히어로(1위 와이드+좌측 오버레이 제목) + 미니 행(2·3·4위) · 순환/스와이프/자동은 앨범 스택 로직 그대로 보존(레이아웃만 교체) */
-  .tstk-g { display:flex; flex-direction:column; gap:10px; max-width:340px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) */
+  .tstk-g { display:flex; flex-direction:column; gap:10px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) · 폭 = 컨테이너 가득(구 max-width:340px 캡 폐지 260729 — 260712 "가득 사용" 풀폭 밴토가 ≥640에만 걸려 협폭 창에서 리스트 455 vs 스택 340 = 우측 115px 휑함 잔존 · 실측 봉합 · 캡 해제만 = 신규 값 0) */
   .tstk-g { position:relative; }   /* 좌우 넘김 화살표(.feednav) 앵커(운영자 260713) — 별도 규칙 = 확립 간격 줄 무변경(diff 오인 회피) */
   .tstk-g > .feednav { display:none; z-index:4; }   /* TOP 스택 좌우 넘김 화살표 = .feednav 정본 계승(원형 글래스·CHEV SVG SSOT) · z4 = mag-ov(z3) 위 · 모바일 숨김(스와이프 전담) */
   @media (hover:hover) and (pointer:fine) { .tstk-g > .feednav { display:grid; } }   /* PC 노출(.feednav·.geni-nav "PC 화살표+모바일 스와이프" 관례 계승) · display:grid = SVG 정중앙 유지 */
-  @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 모바일(340 캡·세로 스택) 불변 · 값 = 기존 토큰/비율 계승(신규 raw 0) */
-    .tstk-g { max-width:none; flex-direction:row; align-items:stretch; }
+  @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 협폭(<640) = 세로 스택 그대로 + 폭만 컨테이너 가득(캡 폐지 260729) · 값 = 기존 토큰/비율 계승(신규 raw 0) */
+    .tstk-g { flex-direction:row; align-items:stretch; }
     .tsk.mag { flex:0 0 44%; min-width:0; }
     .tstk-mini { flex:1; min-width:0; }
     .tsk.mini { display:flex; flex-direction:column; }
@@ -11660,7 +11660,7 @@ function renderSnsTrends() {
       stkEl.innerHTML =
         `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), mRk(1), 'mini')}${skCard(mAt(2), mRk(2), 'mini')}${skCard(mAt(3), mRk(3), 'mini')}</div>` +
         (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
-        (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${rk}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
+        (rk >= 10 ? `<span class="tstk-cnt">${rk}/${box._tsSeqX.length}</span>` : '') +   // 10위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30) · 하한 11→10·분모 sN()→_tsSeqX.length(260729): 첫 ↻(히어로 10위)가 정규 모드라 카운터 미출력 → 화면 최대 숫자가 미니 13이라 "↻가 13에서 뜬다"로 읽히던 것(운영자 260729 지적) 봉합 · ↻ 노출 순위(home5)는 무접촉 = 10·15·20·25·30 불변
         (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
         `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>` + `</div>`;   // > = 항상 노출 · 꼬리 끝 = 전진 로직이 처음 랩(_tsAdv · 운영자 260717) · .feednav 정본 계승(운영자 260713)
       const ts2 = [sAt(O), mAt(1), mAt(2), mAt(3)].filter(Boolean);
