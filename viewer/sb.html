@@ -136,6 +136,12 @@
   .job .jdel:hover { background:rgba(var(--danger-rgb),.18); color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
   .job .jdel:active { transform:scale(var(--press-s,.85)); }
   .job .jdel svg { display:block; width:14px; height:14px; }
+  /* 레퍼런스 이미지(촬영=seedance 레인) = k.html .ref 블록 바이트 계승 — 공용 수정은 k.html과 양쪽 동시 */
+  .ref { margin:0 0 16px; }   /* raw-ok: k.html .ref 동일값 계승(하단 16) */
+  .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }   /* raw-ok: k.html .ref img 동일값 계승(r10) */
+  .ref.multi img { margin-bottom:8px /* raw-ok: k.html .ref.multi img 동일값 계승(픽셀 패리티) */; }   /* 다장 = 세로 나열(참조 순서 = 콘티 참조 순 · k:224 계승) */
+  .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }   /* raw-ok: k.html .ref .cap 동일값 계승(fs12·상단5) */
+  .refmiss { color:var(--warn); font-size:12px; border:1px dashed var(--line); border-radius:var(--r-s); padding:8px 10px; margin:0 0 8px; }   /* raw-ok: k.html .refmiss 동일값 계승 — 슬롯 자리 경고 칩(무음 숨김 폐지·번호 보존) */
   .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; }   /* raw-ok: k.html .status 동일값 계승(margin 16) */
   .status.err { color:var(--danger); }
   .out { margin-top:var(--sp-3); }
@@ -419,9 +425,32 @@ function wireCopy() {
   });
 }
 
-async function renderOut(md, outEl) {   // 결과 렌더 공통(폴 성공·재열람 재사용) — sb = 텍스트 콘티만(레퍼런스·오버레이 없음 = 0크레딧 단계)
-  outEl.innerHTML = renderMd(md);
+async function renderOut(md, outEl, outPath) {   // 결과 렌더 공통(폴 성공·재열람 재사용) — 텍스트 콘티 + (촬영=seedance면) 레퍼런스 이미지. AI 표기 오버레이는 k 레인 전담(콘티는 영상 산출물 아님)
+  let html = renderMd(md);
+  // 레퍼런스: R2 URL(ref.json — urls 배열 = 다장·url 단수 = 하위호환) 우선 · 없으면 git 폴백(ref.jpg). k.html renderOut 문법 계승(공용 수정 양쪽 동시)
+  // 없으면(=kling 레인·GEMINI 키 미등록·생성 실패) 아무것도 안 붙는다 = 종전 동작 그대로(무회귀)
+  if (outPath) {
+    const base = outPath.replace(/board\.md$/, '');
+    let srcs = null;
+    try { const jr = await fetch(base + 'ref.json?t=' + Date.now()); if (jr.ok) { const j = await jr.json(); if (j && Array.isArray(j.urls) && j.urls.length) srcs = j.urls; else if (j && j.url) srcs = [j.url]; } } catch (e) { /* 폴백 */ }
+    if (!srcs) { try { const hr = await fetch(base + 'ref.jpg?t=' + Date.now(), { method: 'HEAD' }); if (hr.ok && !(hr.headers.get('content-type') || '').includes('text/html')) srcs = [base + 'ref.jpg']; } catch (e) {} }   // git 폴백 = 실존 확인 후에만(SPA 폴백이 HTML을 200으로 주는 함정 = poll 가드와 동일 축)
+    if (srcs && srcs.length) {
+      const cells = srcs.map((u, ix) => {
+        if (!u) return '<div class="refmiss">레퍼런스 ' + (ix + 1) + '번 생성/업로드 실패 — 참조 순서는 유지(이 장만 빼고 주입)</div>';   // null 슬롯 = 번호 보존(압축 금지 · k 검증1 계승)
+        const bust = u.includes('?') ? '' : '?t=' + Date.now();
+        return '<img src="' + (u + bust).replace(/"/g, '%22') + '" data-ix="' + (ix + 1) + '">';   // 속성 인젝션 싱크 봉합(k 계승)
+      }).join('');
+      const okN = srcs.filter(Boolean).length;   // 결손 시 "전장" 단언 금지 — 정직 캡션(k 검증7 계승)
+      html = '<div class="ref' + (srcs.length > 1 ? ' multi' : '') + '">' + cells
+        + '<div class="cap">레퍼런스 이미지'   /* 아이콘 없음 = 의도 — k.html PHOTO_SVG는 그 파일 인라인 지역 상수라 여기 복제하면 아이콘 드리프트(공유 승격 = nm-svg.js SSOT 편입이 정문 · 후속) */
+        + (srcs.length > 1 ? (okN === srcs.length ? ' ×' + srcs.length + ' — 시댄스 주입 순서 = 콘티 참조 순' : ' ' + okN + '/' + srcs.length + '장 — 실패 슬롯 자리 표시(번호 기준·수동 보충)') : '')
+        + '</div></div>' + html;
+    }
+  }
+  outEl.innerHTML = html;
   wireCopy();
+  // 이미지 로드 실패 = 그 장 자리에 경고 칩(공유 캡션 오염 금지 · k 검증4 계승 · innerHTML 직후 동일 틱 부착 = 레이스 없음)
+  outEl.querySelectorAll('.ref img').forEach(im => im.addEventListener('error', () => { const d = document.createElement('div'); d.className = 'refmiss'; d.textContent = '레퍼런스 ' + (im.dataset.ix || '') + '번 이미지 없음/로드 실패'; im.replaceWith(d); }, { once: true }));
 }
 // ── 작업 내역(운영자 260714 5차 — Image Studio 배선 미러): 발사마다 누적 · 최신 done = #out에 우선 표시 · 라벨 탭 = 재열람 · 변형 = 그 콘티 기반 재설계 ──
 const JKEY = 'sb_jobs';
@@ -440,7 +469,7 @@ async function loadJob(j) {   // 아카이브 재열람 — SPA 폴백 가드는
     const d = new Date(j.ts), p2 = n => String(n).padStart(2, '0');
     $('#status').innerHTML = OK_SVG + ' ' + esc(j.label) + ' · ' + p2(d.getHours()) + ':' + p2(d.getMinutes());
     $('#status').classList.remove('err');
-    await renderOut(md, $('#out'));
+    await renderOut(md, $('#out'), j.out);   // 재열람도 레퍼런스 동반(ref.json = R2 URL이라 만료 없음)
     return true;
   } catch (e) { return false; }
 }
@@ -512,7 +541,7 @@ function poll(outPath, jid) {
           stop();
           status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)';
           try { localStorage.removeItem(CKEY); } catch (e) {}   // 새 생성 = 복사 표식 리셋(k 계승)
-          await renderOut(md, out);
+          await renderOut(md, out, outPath);   // outPath = sb_out/<id>/board.md → 같은 폴더 ref.json 조회
           if (jid) jupd(jid, { status: 'done' });   // 작업 내역 완료 반영(아카이브 = 재열람 정본 · 구 LKEY 재열람 대체)
           try { out.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
           return;

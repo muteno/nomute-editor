@@ -54,7 +54,7 @@ export async function onRequestPost({ request, env }) {
   const base = (typeof body.base === 'string' && /^sb_out\/[0-9]{12}-[0-9a-f]{6}\/board\.md$/.test(body.base)) ? body.base : '';
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/sb-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, story, director, base },
+    ref: REF, inputs: { id, story, director, shoot, base },   // shoot = 워크플로 입력(레퍼런스 이미지 스텝 게이트 — seedance만 생성 · 260730). 마커([촬영: …])와 별개 축 = 러너 조건 분기용.
   });
   if (r.status === 204) return json({ ok: true, id, out: `sb_out/${id}/board.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
