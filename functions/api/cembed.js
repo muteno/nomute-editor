@@ -86,6 +86,34 @@ export function transform(html, c, origin, selfOrigin) {   // 순수 변환(테�
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, style + '</body>') : html + style;
 }
 
+// 네이버 블로그(운영자 260729 스샷 "2026.07.27(월) 경제 뉴스 모음" = 빈 화면)는 `blog.naver.com/{id}/{logNo}`가
+// 껍데기 프레임이고 본문은 안쪽 PostView 문서에 있다 → 스크립트를 제거하는 우리 경로에선 영원히 빈 화면.
+// 프레임 안 주소로 바꿔 부르면 본문이 정적 HTML로 온다(같은 축 = m.blog도 수용).
+export function realUrl(u) {
+  let x; try { x = new URL(u); } catch { return u; }
+  if (/(^|\.)blog\.naver\.com$/.test(x.hostname)) {
+    const m = x.pathname.match(/^\/([A-Za-z0-9_-]+)\/(\d+)/);
+    if (m) return `https://blog.naver.com/PostView.naver?blogId=${m[1]}&logNo=${m[2]}&redirect=Dlog&widgetTypeCall=true&directAccess=false`;
+    const id = x.searchParams.get('blogId'), no = x.searchParams.get('logNo');
+    if (id && no) return `https://blog.naver.com/PostView.naver?blogId=${id}&logNo=${no}&redirect=Dlog&widgetTypeCall=true&directAccess=false`;
+  }
+  return u;
+}
+
+// 본문이 실제로 담겼는지 = 태그·스크립트를 걷어낸 '보이는 글자' 길이로 판정한다. 스크립트로 본문을 그리는 사이트는
+// 우리 경로에서 글자가 거의 0이 되는데, 그때 프록시 결과를 그대로 주면 **빈 화면**이 된다(운영자 260729 "아예 내용이
+// 안뜨넹"의 잔여 축). 그런 문서는 프록시를 포기하고 원본으로 넘겨 = 최소한 원본이 뜰 기회를 준다.
+export function visibleTextLen(html) {
+  return String(html || '')
+    .replace(/<(script|style|noscript|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z#0-9]{1,8};/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
+const TEXT_MIN = 120;   // 이 미만 = '본문 없음'으로 보고 원본 폴백(짧은 짤방 글도 제목·메뉴·댓글로 이 이상은 나온다)
+function diagRes(d) { return new Response(JSON.stringify(d, null, 2), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } }); }
+
 export async function onRequestGet({ request }) {
   const q = new URL(request.url).searchParams;
   const bad = (s, code) => new Response(s, { status: code, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
@@ -111,20 +139,39 @@ export async function onRequestGet({ request }) {
   let target; try { target = new URL(u); } catch { return bad('잘못된 u', 400); }
   if (!/^https?:$/.test(target.protocol)) return bad('잘못된 u', 400);
   const back = () => Response.redirect(target.toString(), 302);   // 어떤 단계든 실패 = 원본 URL(종전 동작 = 직접 iframe) 폴백
-  if (!hostOk(target.hostname)) return back();                    // 미등재 커뮤니티 = 프록시 안 태움(오픈 프록시 방지)
+  if (!hostOk(target.hostname)) {                                 // 미등재 커뮤니티 = 프록시 안 태움(오픈 프록시 방지)
+    return q.get('diag') === '1'
+      ? diagRes({ url: target.toString(), host: target.hostname, whitelist: false, verdict: '화이트리스트 미등재 → 프록시 안 태우고 원본 폴백(다크·폭맞춤 미적용)' })
+      : back();
+  }
 
   const raw = (q.get('c') || '').split('|');
   const pick = (i, d) => (COLOR_RE.test((raw[i] || '').trim()) ? raw[i].trim() : d);
   const c = { bg: pick(0, '#121212'), fg: pick(1, '#eef7f0'), mut: pick(2, '#8fa697'), line: pick(3, 'rgba(255,255,255,.08)') };   // raw-ok: 폴백 = c 결측 시에만 쓰는 :root 동값 사본(값 SSOT는 뷰어)
 
+  const diag = q.get('diag') === '1';   // 진단 모드(운영자 260729 "각 커뮤별로 확인좀 해줄래? 어떤 원인인지") — 같은 URL에 &diag=1을 붙이면
+  // 단계별 실측값(HTTP·content-type·HTML 길이·보이는 글자 수·판정)을 JSON으로 돌려준다. 세션이 외부망 차단으로
+  // 사이트별 실측을 못 하므로, 판정을 눈으로 확인할 수 있는 창구를 남긴다. 화면 렌더는 하지 않는다.
+  const dg = { url: target.toString(), fetched: realUrl(target.toString()), host: target.hostname, whitelist: true };
+
+  const fetchUrl = realUrl(target.toString());   // 네이버 블로그 등 = 프레임 안 실제 본문 주소로 교체
   let html;
   try {
-    const r = await fetch(target.toString(), { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow' });
-    if (!r.ok) return back();
-    if (!(r.headers.get('content-type') || '').toLowerCase().includes('text/html')) return back();
+    const r = await fetch(fetchUrl, { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow' });
+    dg.status = r.status; dg.contentType = (r.headers.get('content-type') || '').split(';')[0];
+    if (!r.ok) { dg.verdict = '원 서버가 거부(4xx/5xx) — 봇 차단·로그인벽 계열 → 원본 폴백'; return diag ? diagRes(dg) : back(); }
+    if (!(r.headers.get('content-type') || '').toLowerCase().includes('text/html')) { dg.verdict = 'HTML이 아님 → 원본 폴백'; return diag ? diagRes(dg) : back(); }
     html = await r.text();
-  } catch { return back(); }
-  if (html.length > HTML_MAX) return back();
+  } catch (e) { dg.status = 0; dg.verdict = '연결 실패(차단·타임아웃) → 원본 폴백'; return diag ? diagRes(dg) : back(); }
+  dg.htmlKB = Math.round(html.length / 1024);
+  if (html.length > HTML_MAX) { dg.verdict = 'HTML이 상한 초과 → 원본 폴백'; return diag ? diagRes(dg) : back(); }
+  dg.textLen = visibleTextLen(html);
+  if (dg.textLen < TEXT_MIN) {   // 스크립트로 본문을 그리는 사이트 = 우리 경로에선 빈 화면 → 프록시 포기(빈 화면보다 원본 시도가 낫다)
+    dg.verdict = `본문 글자 ${dg.textLen}자(<${TEXT_MIN}) = 스크립트 렌더 사이트로 판단 → 원본 폴백(빈 화면 방지)`;
+    return diag ? diagRes(dg) : back();
+  }
+  dg.verdict = `정상 — 다크·폭맞춤 적용해 전달(보이는 글자 ${dg.textLen}자)`;
+  if (diag) return diagRes(dg);
 
   return new Response(transform(html, c, target.origin, new URL(request.url).origin), {
     headers: {
