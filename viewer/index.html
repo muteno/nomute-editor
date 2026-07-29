@@ -7439,7 +7439,19 @@ function sysErrMsgs() {
   const hh = (TRENDS && TRENDS.health) || {};
   const st = (hh.subs || {}).stale || [];
   const ph = hh.phone || null, phDead = !!(ph && ph.ok === false);   // ok=false = 폰 파일이 90분 넘게 안 갱신됨(러너가 폰분 채택을 거른 상태)
-  const out = (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).map(k => {
+  const cov = (hh.subs || {}).cover || {};
+  // 전멸 알림 = **막혔을 때만** 띄운다(운영자 260729 "가져올게 없는거라면 그거는 알림 안오게 — 시스템 구조 문제가 아니니까").
+  //   stale은 "이번 런 신선 수집 0건"이라 원인을 안 가린다(scraper/sns_trends.py L1942) → 종전엔 원인 불문 "메타 로그인월"로 단정했다.
+  //   260729 판례: 스레드 등록 4계정 중 @aicoffeechat·@promppy_com은 302로 막혔지만, @choi.openai·@kopp는 **정상 응답인데
+  //   24h 내 새 글이 없어** 0건이었다(수집기 fresh 필터 L1183 · 화면 잔여 9건 = 40~45h 전 승계분) = 사고가 아닌 정상 침묵인데
+  //   "부계 쿠키를 갈아라"는 헛 조치를 시켰다.
+  //   판정은 cover.got(수집 성공 계정 수) 하나로 갈린다 — got>0 = 최소 한 계정이 페이지를 정상으로 받았다 = 경로는 안 막혔다 = 침묵.
+  //   막힌 계정이 섞여 있어도 은폐가 아니다: 그 계정은 **아래 cover 축이 계정별로 이미 보고**한다(중복 1건만 제거).
+  //   got=0(전멸) = 진짜 차단이라 종전 문구 그대로 · cover가 아예 없으면(reg=0) 판단 근거가 없으니 종전대로 띄운다(무근거 침묵 금지).
+  const out = (Array.isArray(st) ? st : []).filter(k => SYS_PLAT_KO[k]).filter(k => {
+    const c = cov[k] || {}, _got = c.got | 0, _reg = c.reg | 0;
+    return !(_reg && _got);
+  }).map(k => {
     const head = SYS_PLAT_KO[k] + ' 구독이 안 걷히고 있어요 — ';
     let text;
     if (SYS_PHONE_PLAT[k] && phDead) {
@@ -7471,7 +7483,6 @@ function sysErrMsgs() {
   //   **건별 분해**(운영자 260727 "사고는 다 개별건 건별로 · 10개 터지면 10개 각각 사고임") — 한 줄로 뭉치면 ✓ 한 번에
   //   여러 계정이 같이 침묵한다. 계정마다 원인이 다를 수 있어(삭제 / 비공개 / 그 계정만 차단) **빠진 계정 하나 = 알림 하나**,
   //   id도 계정을 물어(`sys:acct:<플랫폼>:<계정>:<날짜>`) ✓·재고지가 계정별로 독립한다. 전멸은 원인이 공통이라 위 stale이 1건으로 담당.
-  const cov = (hh.subs || {}).cover || {};
   for (const k of Object.keys(cov)) {
     const c = cov[k] || {}, got = c.got | 0, reg = c.reg | 0, miss = Array.isArray(c.miss) ? c.miss : [];
     if (!SYS_PLAT_KO[k] || !reg || !got) continue;   // 전멸(got=0) = stale 담당(중복 억제)
@@ -7517,8 +7528,12 @@ function sysErrMsgs() {
         cause = '이번 수집은 시간이 모자라 이 계정까지 못 갔어요(실패가 아니라 미시도).';
         todo = '👉 네가 할 일: 없어요. 다음 수집에 다시 시도해요.';
       } else if (w === 'empty') {
-        cause = '계정은 살아있는데 가져올 새 글이 없었어요(비공개이거나 최근 게시물이 없음).';
-        todo = '👉 네가 할 일: 없어요. 새 글이 올라오면 자동으로 들어와요.';
+        // 'empty' = 수집기가 페이지를 정상으로 받고 **글 노드가 없다고 판정**한 코드(sns_trends.py L1164) = 차단이 아니라 공급 공백.
+        //   1~2건 = 그 계정에 새 글이 없을 뿐이라 알릴 게 없다 → 침묵(운영자 260729 · 위 무사유 `if (!many) continue` 문법 계승).
+        //   3건 이상은 계정 사정이 아니라 파서가 늙은 신호라 유지한다(수집기 L1161 "data-sjs N개인데 포스트 0 = 파서 갱신 필요").
+        if (!many) continue;
+        cause = SYS_PLAT_KO[k] + ' 계정 ' + accs.length + '개가 한꺼번에 "글 없음"으로 나왔어요 — 계정마다 그럴 수는 없으니 읽는 방식이 낡았을 가능성이 커요.';
+        todo = '👉 네가 할 일: 없어요. 계정을 지우지 마 — 며칠째 계속 뜨면 그때 알려줘.';
       } else {
         cause = '수집이 실패했어요(사유 코드 ' + g + ').';
         todo = '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.';
