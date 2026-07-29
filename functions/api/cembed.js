@@ -41,6 +41,15 @@ img,video,picture,canvas,table,pre,iframe,embed,object{max-width:100% !important
 body *{max-width:100% !important;box-sizing:border-box !important}`;
 }
 
+// 스크롤바 투명(운영자 260729 "스크롤 형태도 조절 가능해? 아예 투명했으면") — 정본 = viewer/conv.html:20~21·edit.html:30~31
+// (`scrollbar-width:none` + `-ms-overflow-style:none` + 웹킷 짝 `width:0;height:0;display:none`) 값 그대로 계승.
+// 정본과 다른 점 = 셀렉터 범위: 정본은 html/body 한정이지만 여기는 임의 사이트 문서라 내부 스크롤 컨테이너(div)가
+// 제각각 존재 → 전역까지 넓힌다("아예 투명" 요구 충족). 스크롤 기능 자체는 그대로(막대만 안 보임).
+export function scrollCss() {
+  return `html,body,*{scrollbar-width:none !important;-ms-overflow-style:none !important}
+::-webkit-scrollbar,html::-webkit-scrollbar,body::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}`;
+}
+
 export function transform(html, c, origin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/?>/gi, '');
   html = html.replace(/(<img\b[^>]*?\bsrc=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
@@ -53,7 +62,7 @@ export function transform(html, c, origin) {   // 순수 변환(테스트 대상
     ? html.replace(/<meta[^>]+name=["']?viewport[^>]*>/i, vp)   // 데스크탑 고정폭 선언(width=1200 등) 교체 = 폭맞춤의 실제 스위치
     : (/<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, m => m + vp) : vp + html);
   const base = origin ? `<base href="${origin}">` : '';   // 상대경로 자원(이미지·CSS)이 우리 오리진으로 새는 것 방지
-  const style = `${base}<style>${darkCss(c)}${fitCss()}</style>`;
+  const style = `${base}<style>${darkCss(c)}${fitCss()}${scrollCss()}</style>`;
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, style + '</body>') : html + style;
 }
 
