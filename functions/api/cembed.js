@@ -63,14 +63,18 @@ export function scrollCss() {
 ::-webkit-scrollbar,html::-webkit-scrollbar,body::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}`;
 }
 
-export function transform(html, c, origin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
+// ⚠ 사진 경유 URL은 **절대 경로**여야 한다(운영자 260729 "아예 내용이 안뜨넹" 회귀의 진범):
+//    아래 <base href="원본오리진">가 문서의 상대 URL 기준을 원본 사이트로 바꾸므로, `/api/cembed?img=`를 상대로 쓰면
+//    브라우저가 `https://원본사이트/api/cembed?img=…`로 해석 → 전부 404 → (Q1061의 투명 폴백과 겹쳐) 사진이 전량
+//    투명해진다 = 이미지 위주 게시글은 화면이 통째로 빈다. selfOrigin을 붙여 우리 오리진으로 고정한다.
+export function transform(html, c, origin, selfOrigin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/?>/gi, '');
   // 사진 = 전량 이 라우트 경유(운영자 260729 "안되면 아예 안나와도 괜찮은데 엑박뜨는거보다는") — 못 가져오는 건
   // 서버가 투명 1x1로 돌려주므로 깨진 아이콘·alt 문자열이 본문에 끼어들지 않는다(판정·폴백 = 서버 단일 지점).
   html = html.replace(/(<img\b[^>]*?\bsrc=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
     const dec = src.replace(/&amp;/g, '&');
     try { new URL(dec); } catch { return m0; }
-    return a + '/api/cembed?img=' + encodeURIComponent(dec) + z;
+    return a + (selfOrigin || '') + '/api/cembed?img=' + encodeURIComponent(dec) + z;
   });
   html = html.replace(/<img\b[^>]*?\bsrcset="[^"]*"/gi, m0 => m0.replace(/\bsrcset="[^"]*"/i, ''));   // srcset = 원본 URL 재지정 경로 → 제거(프록시 src만 남겨 경유 일관)
   const vp = '<meta name="viewport" content="width=device-width, initial-scale=1">';
@@ -122,7 +126,7 @@ export async function onRequestGet({ request }) {
   } catch { return back(); }
   if (html.length > HTML_MAX) return back();
 
-  return new Response(transform(html, c, target.origin), {
+  return new Response(transform(html, c, target.origin, new URL(request.url).origin), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'public, max-age=300',
