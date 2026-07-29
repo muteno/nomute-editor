@@ -217,7 +217,8 @@
      운영자 판정 = "화질이 중요한 게 아니라 높은 프레임" → PX는 32 유지(굽고 버리던 픽셀), FPS만 되돌린다. */
   var PX = 32;             // res — 탭 렌더 16~20px의 2x(레티나)까지 커버 · 64는 굽고 버리는 픽셀이었다
   var SIZE = .78;          // size 78% — 캔버스 대비 로고 크기(플레이그라운드 DEFAULTS)
-  var FPS = 30, POLL = 350;   // 30fps × 2420ms = 73장 캐시(32px 156KB 실측) = 고유 36모양 · 6모양이던 것의 6배
+  var FPS = 60, POLL = 350;   // 60fps × 2420ms = 145장 캐시(32px ~310KB) = 고유 72모양(운영자 260729 "60fps 한번 가보자")
+  var MAXF = 180;             // 캐시 장수 상한 — reduced-motion(SPIN 4800)에서 288장까지 불어나는 것만 막는 방어선(정상 경로 145장은 무영향)
   var slow = false;
   try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
   var SPIN = slow ? 4800 : 2420;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
@@ -256,7 +257,7 @@
      구 방식은 매 프레임 toDataURL(= PNG 인코딩)을 다시 돌렸다(30fps × 8초 = 90~140ms 순수 인코딩).
      12장 × 32px ≈ 25KB · 굽는 시간 3ms(실측) = 시작 지연 체감 0. */
   function buildCache() {
-    var n = Math.max(2, Math.round(SPIN / (1000 / FPS))), a = [], i;
+    var n = Math.min(MAXF, Math.max(2, Math.round(SPIN / (1000 / FPS)))), a = [], i;
     for (i = 0; i < n; i++) { paint(i / n); a.push(cv.toDataURL('image/png')); }
     return a;
   }
