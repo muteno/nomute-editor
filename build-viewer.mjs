@@ -362,6 +362,20 @@ const THH_CAP = 400;
 const thIdTs = (id) => { const m = String(id).match(/^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/); if (!m) return 0; const t = Date.parse(`20${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}+09:00`); return Number.isFinite(t) ? t : 0; };
 const thLabel = (f) => { const b = f.replace(/\.(png|jpe?g)$/i, ''); if (b === 'box') return '흰칸'; if (b === 'nobg' || b === 'out') return '기본'; const m = b.match(/^opa(\d+)$/i); return m ? 'OPA' + m[1] : b; };   // api/thumb.js 라벨 규칙과 맞춤
 const APP_CAP = { '1': '포스트', '2': '릴스', '3': '저작권', '4': '경고문' };   // _src.json app → 로컬 스튜디오 캡션과 통일된 앱명(§표기표준). 서버 인덱스가 파일명 파생 라벨만 쓰던 것 → 기기 간 캡션 일치 + 릴스 box '포스트' 오분류 봉합(운영자 260713)
+// ⚠ app 번호 = *탭*이지 포맷이 아니다 — app '2'는 260624 통합 이후 포스트·릴스 공용 카드 생성 폼이라, 포스트로 만든 산출도 APP_CAP만 보면 '릴스'로 찍혔다.
+// 증상 = 로컬 이력(12h·이 기기)엔 잡 라벨 그대로 '포스트'인데, 서버 인덱스로 넘어간 뒤(타 기기·시간 경과) 같은 제작이 '릴스'로 둔갑(운영자 260729 신고).
+// 1순위 = src.lbl(발사 시 클라가 실어보낸 그 아이템 라벨 = 로컬 캡션과 같은 문자열) · 2순위 = 폼값 추정(헤더 단독 = 흰칸 9:16 / 자막 단독 = ovFmt) · 3순위 = 종전 APP_CAP.
+const capOfSrc = (s) => {
+  if (!s) return '';
+  if (typeof s.lbl === 'string' && s.lbl.trim()) return s.lbl.trim();
+  if (s.app === '2') {   // lbl 없는 구 이력 = 폼값으로 추정(헤더+자막 동시 발사분은 한 스냅샷을 공유해 구분 불가 → 추정 포기·APP_CAP 폴백 = 종전 표기 유지)
+    const hasHdr = !!(String(s.cSub || '').trim() && String(s.cTitle || '').trim());
+    const hasOv = !!String(s.cLines || '').trim();
+    if (hasHdr && !hasOv) return '릴스 헤더';
+    if (hasOv && !hasHdr) return s.ovFmt === 'post' ? '포스트' : '릴스 자막';
+  }
+  return APP_CAP[s.app] || '';
+};
 const thHist = [];
 try {
   const troot = 'viewer/thumb_out';
@@ -374,7 +388,7 @@ try {
     let src = null;   // 제작 조건 스냅샷(문구·설정) — 있으면 기기 간 '수정' 복원 가능(연필 버튼·thumb.html). 없으면(구버전·미전달) 생략.
     try { src = JSON.parse(readFileSync(join(troot, id, '_src.json'), 'utf8')); } catch {}
     const isPost = meta.some(([f]) => /^(opa\d+|box|nobg)\.(png|jpe?g)$/i.test(f));   // 포스트(/1) = opa/box/nobg 산출 → '포스트' 타입 라벨(로컬 cap='포스트 #N'과 통일). 릴스/저작권/경고문=out.png은 파일명으론 구분 불가 → 백엔드 마커 후속(운영자 260622)
-    const appName = src && src.app && APP_CAP[src.app];   // app 있으면 로컬과 통일된 앱명 · 없으면(레거시 _src 부재) isPost 파일명 추정 폴백
+    const appName = capOfSrc(src);   // lbl(정본) → app2 폼값 추정 → APP_CAP 순 · 전부 없으면(레거시 _src 부재) isPost 파일명 추정 폴백
     for (const [f, url] of meta) { const e = { url, dlname: `${id}_${f}`, cap: appName || (isPost ? '포스트' : thLabel(f)), varStr: (appName || isPost) ? ' · ' + thLabel(f) : '', ts }; if (src && src.app) e.src = src; thHist.push(e); }
   }
 } catch { /* thumb_out 없음 */ }

@@ -1098,12 +1098,24 @@
   .feednav.tstk-rst-sm:active { transform:scale(var(--press-m,.9)); }   /* base .feednav:active의 translateY 동반 스케일 대체(이 버튼은 bottom 앵커 = translate 무) */
   .tsk-empty { visibility:hidden; pointer-events:none; }   /* 확장 꼬리 끝 빈 셀 = 3열 그리드 자리만 유지(운영자 260716) */
   /* 매거진 오버레이(운영자 260712 20안 中 10안 채택) = 히어로(1위 와이드+좌측 오버레이 제목) + 미니 행(2·3·4위) · 순환/스와이프/자동은 앨범 스택 로직 그대로 보존(레이아웃만 교체) */
-  .tstk-g { display:flex; flex-direction:column; gap:10px; max-width:340px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) */
+  .tstk-g { display:flex; flex-direction:column; gap:10px; touch-action:pan-y; }   /* pan-y = 세로 제스처를 페이지 스크롤에 반환(운영자 260712 "위아래로 하니 스크롤 안 먹음" 봉합) · 전환 = 가로 스와이프(JS) · 폭 = 컨테이너 가득(구 max-width:340px 캡 폐지 260729 — 260712 "가득 사용" 풀폭 밴토가 ≥640에만 걸려 협폭 창에서 리스트 455 vs 스택 340 = 우측 115px 휑함 잔존 · 실측 봉합 · 캡 해제만 = 신규 값 0) */
   .tstk-g { position:relative; }   /* 좌우 넘김 화살표(.feednav) 앵커(운영자 260713) — 별도 규칙 = 확립 간격 줄 무변경(diff 오인 회피) */
   .tstk-g > .feednav { display:none; z-index:4; }   /* TOP 스택 좌우 넘김 화살표 = .feednav 정본 계승(원형 글래스·CHEV SVG SSOT) · z4 = mag-ov(z3) 위 · 모바일 숨김(스와이프 전담) */
   @media (hover:hover) and (pointer:fine) { .tstk-g > .feednav { display:grid; } }   /* PC 노출(.feednav·.geni-nav "PC 화살표+모바일 스와이프" 관례 계승) · display:grid = SVG 정중앙 유지 */
-  @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 모바일(340 캡·세로 스택) 불변 · 값 = 기존 토큰/비율 계승(신규 raw 0) */
-    .tstk-g { max-width:none; flex-direction:row; align-items:stretch; }
+  /* 협폭 PC(<640 = 세로 스택) 컨트롤 앵커 교정(운영자 260729 "기준점 설정이 잘못되었나 — 10에 새로고침이 안 나오고 13에 나와") —
+     ◀▶·↻·카운터는 `.tstk-g`(히어로+미니 3열) 기준 50%라, 세로 스택에선 그 중심선이 히어로 아래쪽~미니 행 경계로 내려가
+     ↻가 3번째 미니(= 히어로+3 = 13위) 열 위에 얹혀 "13에 뜬다"로 읽혔다(260718 "10이어야 하는데 12" 재발 = 같은 앵커 축).
+     가로 밴토(≥640)는 `.tstk-g` 높이 == 히어로 높이라 원래 정합 = 무접촉. 값 = 기존 것 산술 분해만(신규 raw 0):
+     히어로 중심 = 폭 × (10/16) ÷ 2 = 31.25cqw(`.tsk.mag .tsk-cov` aspect-ratio 16/10 계승) ·
+     36 = ▶반경 21 + 간격 4 + 카운터 11(구 `bottom:calc(50%+25px)` 분해) · 68 = 36 + 간격 4 + ↻ 28(구 `+40px` 분해). */
+  @media (max-width:639.98px) and (hover:hover) and (pointer:fine) {
+    .tstk-g { container-type:inline-size; }
+    .tstk-g > .feednav { top:31.25cqw; }   /* translateY(-50%) 그대로 = 히어로 세로 중심 */
+    .tstk-g .tstk-cnt { top:calc(31.25cqw - 36px); bottom:auto; }
+    .feednav.tstk-rst-sm { top:calc(31.25cqw - 68px); bottom:auto; }
+  }
+  @media (min-width:640px) {   /* 와이드 = 우측 공백 소거(운영자 260712 "가득 사용") — 히어로 좌 44% + 미니 우 3열 등고 밴토 · 행높이 = 히어로 16/10이 결정·미니 커버가 stretch로 따라감 · 협폭(<640) = 세로 스택 그대로 + 폭만 컨테이너 가득(캡 폐지 260729) · 값 = 기존 토큰/비율 계승(신규 raw 0) */
+    .tstk-g { flex-direction:row; align-items:stretch; }
     .tsk.mag { flex:0 0 44%; min-width:0; }
     .tstk-mini { flex:1; min-width:0; }
     .tsk.mini { display:flex; flex-direction:column; }
@@ -1239,6 +1251,20 @@
   .soc-src { color:var(--accent); }   /* SNS 연시안 폐지 = 강조색(운영자 260705) */
   .soc-posts { color:var(--mut); font-weight:700; }
   .soc-age { color:var(--mut); margin-left:auto; font-weight:700; }
+  /* 카드 우상단 '뉴스 요약으로 보내기' 체크(운영자 260729) — soc-top 행 맨 오른쪽(age 다음) flex = 다른 요소 무침범.
+     상태머신 = 뉴스 요약 재확인 토글(.revsend.confirm) 계승: 기본 체크 → 1탭 arm '전송'(맑은노랑 --arm) → 2탭 전송 → ✓팝 → 원복.
+     arm 값 = .revsend.confirm 그대로(rgba(--arm-rgb,.2)·--arm·rgba(--arm-rgb,.5)) · 성공 = 공유 accent(계승) */
+  .soc-send { flex:none; margin-left:auto; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-1);
+    height:24px; min-width:24px; padding:0; border:1px solid var(--line); border-radius:var(--r-pill); background:transparent; color:var(--mut);
+    cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease); }   /* reuse-ok: 신설 = 카드용 재확인 토글(정본 .revsend는 팝업 하단 큰 버튼 = 카드 우상단 미소버튼과 크기축 달라 계승 불가 · 상태·색은 .revsend.confirm 계승) */
+  .soc-send svg { width:14px; height:14px; }
+  .soc-send .soc-send-lb { display:none; font-size:var(--fs-xs); font-weight:800; letter-spacing:-.2px; padding:0 var(--sp-1); }
+  .soc-send:hover { color:var(--fg); border-color:rgba(var(--accent-rgb),.5); }
+  .soc-send.arm { padding:0 var(--sp-2); color:var(--arm); background:rgba(var(--arm-rgb),.2); border-color:rgba(var(--arm-rgb),.5); }   /* 재확인 = .revsend.confirm 값 계승 */
+  .soc-send.arm svg { display:none; }
+  .soc-send.arm .soc-send-lb { display:inline; }
+  .soc-send.sent { color:var(--accent); background:rgba(var(--accent-rgb),.15); border-color:rgba(var(--accent-rgb),.5); }   /* 전송 성공 ✓팝(공유 accent 계승) */
+  .soc-send.sending { pointer-events:none; opacity:.7; }
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
   .soc-srcs { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
   .soc-chip { font-size:10.5px; font-weight:700; color:var(--fg); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:2px 8px; }   /* 기본 = 중립(무성향·미분류) */
@@ -2121,7 +2147,7 @@
   /* 닫기 X·헤더 유틸 픽토그램 글리프 = 15px·stroke 1.8 통일 (운영자 260707 "필터 X와 다른 부분 동일하게" → 필터 X=정본 기준 수렴 · §디자인 d stroke 1.8) — ⚠️ X전용 셀렉터만 열거(비-X `.tool-x` 통칭 금지: toolMin·초기화 등은 각 행에서 별도 정합) · 인라인 sw="2"를 CSS 1.8이 덮음(presentation attr < CSS) · 옛 svg width="1em"이 버튼 font-size(13/14/16) 물어 글리프 제각각이던 것 15 고정 */
   .mx svg, .pmenu-x svg, .pmenu-rf svg, .ed-x svg, .askx svg, .pin-x svg,
   .qpop .qh .tool-x svg, .tool-x.dlg-x svg, .lbox-x svg, #toolX svg, #toolMin svg { width:15px; height:15px; stroke-width:1.8; }   /* #toolX(닫기)·#toolMin(− 유틸) 260717 편입 = 도구 헤더도 15·1.8 정본 수렴(옛 인라인 sw2 잔존 아웃라이어 교정 · ID 열거 = 비-X .tool-x 통칭 금지 준수) */
-  .toolfr { flex:1; width:100%; border:0; background:var(--bg); display:none; opacity:0; transition:none; }   /* 배경·전이 = 번역 프레임(.trfr) 처방을 전 프레임으로 승격(운영자 260727 "이미지 스튜디오에 편집, 번역 부분이랑 동일하게 해" — 영상 스튜디오 5탭이 정지 화면에서도 초당 1회 통째로 1프레임 사라지던 것[녹화 실측 f107→f108→f109 · 전후 프레임 diff 1.9 = 재오픈 아닌 렌더 드롭 · 밝기 19→42]의 처방). 구 --modal-tabs-bg = **반투명**이라 프레임 뒤로 모달 글래스+::backdrop blur7이 겹쳐 비쳤고, 이 다층 반투명 스택을 모바일 GPU가 재합성할 때 top-layer가 통째로 한 프레임 누락됐다 — 번역 탭만 안 번쩍이던 이유가 곧 이 --bg 불투명 판(260727 trfr)이었다. 전이도 같은 사유로 폐지(0.2s 페이드 = 재합성 구간을 늘리는 쪽) */
+  .toolfr { flex:1; width:100%; border:0; background:var(--modal-tabs-bg); display:none; opacity:0; transition:none; }   /* 배경 = **`--modal-tabs-bg` 반투명 글래스**(운영자 260729 "AI 생성만 글래스모피즘이고 나머지 세부메뉴는 아니다 — 같은 톤으로") — 이 한 줄이 카드 생성·편집·번역 3탭의 유일한 차단막이었다(실측 260729: iframe 요소 불투명 rgb(18,18,18)이 뒤 층을 물리적으로 막아, iframe 안을 아무리 투명하게 해도 모달 글래스가 못 올라온다 · 뷰어 body는 html.inmodal로 이미 투명 = 남은 판은 여기 하나뿐). 값 = **AI 생성 `.genihost` 실측 동값**(`rgba(24,25,28,.5)` = 이 토큰) 계승이라 4탭이 정확히 한 층 = 완전 투명으로 두면 이 층이 빠져 3탭만 3레벨 어두워진다(260729 실측 (15.0,18.0,20.2) vs AI (18.0,21.0,22.5)) · 결과적으로 260727 이전 원값 복귀. 픽셀 증거 = 콘텐츠 좌측 거터 4탭 동좌표 샘플: 카드생성/편집/번역 전부 완전 무채 rgb(18,18,18)·표준편차 0.00~0.13(균일 = 불투명) vs AI 생성 rgb(18,21,22.5)·표준편차 2.58(청록 색조 = 뒤 배경 비침). ⚠ **트레이드 = 260727 번쩍임 처방의 되돌림**(아래 원 주석 보존) — 재발하면 롤백 1커밋 또는 프레임 레이어 승격(translateZ)으로 재처방. 도크는 무접촉 = AI 생성 `.genihost .geni-lead`도 --bg 불투명이라 3탭과 이미 동층(비치는 건 본문뿐) */   /* (구 260727) 배경·전이 = 번역 프레임(.trfr) 처방을 전 프레임으로 승격(운영자 260727 "이미지 스튜디오에 편집, 번역 부분이랑 동일하게 해" — 영상 스튜디오 5탭이 정지 화면에서도 초당 1회 통째로 1프레임 사라지던 것[녹화 실측 f107→f108→f109 · 전후 프레임 diff 1.9 = 재오픈 아닌 렌더 드롭 · 밝기 19→42]의 처방). 구 --modal-tabs-bg = **반투명**이라 프레임 뒤로 모달 글래스+::backdrop blur7이 겹쳐 비쳤고, 이 다층 반투명 스택을 모바일 GPU가 재합성할 때 top-layer가 통째로 한 프레임 누락됐다 — 번역 탭만 안 번쩍이던 이유가 곧 이 --bg 불투명 판(260727 trfr)이었다. 전이도 같은 사유로 폐지(0.2s 페이드 = 재합성 구간을 늘리는 쪽) */
   .askhost { flex:1; min-height:0; overflow-y:auto; background:var(--modal-tabs-bg); }   /* 요약 요청 가상 탭 = iframe 자리와 동일 표면(내용부 = 탭 띠 색 통일 · 운영자 260712) */
   .askhost .askwrap { padding-top:20px; }   /* 첫 요소 화면선 = 영상 셸 첫 소머리와 정렬(실측 175.6 vs 177.6 = +2px 보정 · §디자인 y 연쇄 — 탭바 높이 바뀌면 재실측) */
   .askhost[hidden] { display:none; }
@@ -2133,7 +2159,7 @@
   #tooldlg .toolfr.active { display:block; }   /* 활성 프레임만 노출 */
   #tooldlg .toolfr.active.ready { opacity:1; }
   #tooldlg .toolfr.snap { transition:none; }   /* 보존 프레임 재노출(번역 재클릭) = 페이드 없이 스냅(운영자 260727 "번역 누를때마다 번쩍") — 최초 로드 프레임은 종전 0.2s 페이드 유지 */
-  #tooldlg .toolfr.trfr { background:var(--bg); transition:none; }   /* 번역 프레임 = 노출 페이드 전면 폐지(운영자 260727 "번역 진입만 신경쓰면 될 듯") — 보존 프레임 재노출(.snap)뿐 아니라 **첫 노출 경로**(frEarly·워치독이 .ready를 붙이는 길)까지 스냅 = 재레이아웃 은폐 구간이 곧바로 완성 화면으로 바뀐다(0.2s 페이드가 '창이 다시 뜨는' 잔상의 마지막 조각) · 다른 도구 프레임은 종전 페이드 유지 */   /* 재레이아웃 은폐 구간의 판 색 = tr.html body 바탕(--bg) 동값 — 구 --modal-tabs-bg(밝은 반투명)가 콘텐츠보다 밝아 어두워지는 번쩍의 나머지 절반이었다 */   /* load 완료 = 페이드인(로드 중엔 다크 글래스만) · 리빌 게이트 = 프레임별 .ready(한수 260724: 구 전역 #tooldlg.frame-ready 승격 — 전역은 아무 프레임 load에나 붙어 로딩중 활성 프레임을 조기 노출[번역탭 "안 떠"]시켰음 → 프레임 자신이 로드돼야 .ready). frame-ready(전역)는 재클릭 가드·trWarm 보조 신호로만 존속 */
+  #tooldlg .toolfr.trfr { background:var(--modal-tabs-bg); transition:none; }   /* raw-ok: 아래 주석 산문의 `0.2s`는 260727에 **폐지된** 구 전이값의 이력 서술이다(CSS 선언 아님 — 이 규칙의 실제 전이는 `transition:none`) */   /* 배경 = 투명(260729 글래스 통일 — 위 .toolfr와 동축 · 번역 탭만 불투명으로 남으면 3탭 통일이 깨진다) · 페이드 스냅(transition:none)은 별개 축이라 그대로 존치 */   /* (구 260727 배경) 번역 프레임 = 노출 페이드 전면 폐지(운영자 260727 "번역 진입만 신경쓰면 될 듯") — 보존 프레임 재노출(.snap)뿐 아니라 **첫 노출 경로**(frEarly·워치독이 .ready를 붙이는 길)까지 스냅 = 재레이아웃 은폐 구간이 곧바로 완성 화면으로 바뀐다(0.2s 페이드가 '창이 다시 뜨는' 잔상의 마지막 조각) · 다른 도구 프레임은 종전 페이드 유지 */   /* 재레이아웃 은폐 구간의 판 색 = tr.html body 바탕(--bg) 동값 — 구 --modal-tabs-bg(밝은 반투명)가 콘텐츠보다 밝아 어두워지는 번쩍의 나머지 절반이었다 */   /* load 완료 = 페이드인(로드 중엔 다크 글래스만) · 리빌 게이트 = 프레임별 .ready(한수 260724: 구 전역 #tooldlg.frame-ready 승격 — 전역은 아무 프레임 load에나 붙어 로딩중 활성 프레임을 조기 노출[번역탭 "안 떠"]시켰음 → 프레임 자신이 로드돼야 .ready). frame-ready(전역)는 재클릭 가드·trWarm 보조 신호로만 존속 */
   .tool-loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity var(--dur) var(--ease); }   /* 도구 프레임 로딩 오버레이(한수 260724) — dialog(position:absolute UA기본)가 컨테이닝블록 · inset:0 중앙정렬(orb = 콘텐츠 영역 중앙) · pointer-events none = 로드된 프레임 클릭 무간섭 */
   #tooldlg:has(.toolfr.active:not(.ready)) .tool-loading { opacity:1; transition-delay:.28s; /* raw-ok: 빠른로드 플래시 방지 의도 지연(지속시간 토큰 아님) */ }   /* 리빌 게이트(.ready) 미준비 = 로딩중 → orb 표시 · 지연 = 빠른 로드는 지연 내 완료돼 플래시 0 · 준비되면 즉시(지연 없이) 페이드아웃 · 가상탭(ask/geni)은 .toolfr.active 없어 미표시 */
   /* 도구 모달 탭(자막생성 = 자막 생성기 ↔ 영상 프롬프트 분기 · thumb.html .tab 계승) — 탭 클릭 = iframe src 스왑 */
@@ -3116,6 +3142,11 @@
   .geni-sechead { display:flex; align-items:center; gap:8px /* raw-ok: 소머리 gap 8 = 기존 정본 유지(밑줄만 제거) */; width:100%; padding:var(--sp-2) 0 var(--sp-1); background:none; border:none; text-align:left; -webkit-tap-highlight-color:transparent; }   /* 그룹 소머리 행 — 라벨 = .cref-lbl 계승(블릿·13px·800) · 밑줄 구분선 제거(운영자 260718 "개요 아래 구분선 빠지고" — 편집 탭처럼 카드 테두리가 구분 전담) · 간격 = --sp 토큰 사다리(구 raw 12px/2px → sp-2/sp-1 · 운영자 260713 "간격 기틀") */
   .geni-sechead .cref-lbl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 소머리 블릿 = 뉴스 정본(.cref-lbl) 동일 문법(k/ly 폼 label.fl 선례) */
   .geni-sechead + .geni-row { border-top:none; }   /* 소머리 밑줄이 구분선 전담 — 바로 다음 행 border-top 중복(이중선) 제거(운영자 260713 구분선 위치 교정과 한 쌍) */
+  /* ── 도구 셸(.genihost) 안 = 편집 탭 리듬 계승(운영자 260729 "ai제작이 카드뉴스 쪽으로 ui가 조금 덜 왔어") ──
+     실측 갭(430px · index 모달 안 편집↔AI 생성 대조): ⓐ 소머리 행 높이 **33 vs 20.8**(AI padding 12/6 + gap 8 vs 편집 .csec margin-top 16 + gap 6) = 12.2px 헐렁 ⓑ 요약바 라벨 굵기 **700 vs 400**.
+     ⚠ 스코프 = `.genihost`(도구 셸 이식분)만 — 팝업 `#genidlg` 자체는 종전 리듬 유지(무접촉). 도크 상단 sp-3(18)은 260721 정합값이라 무접촉. */
+  .genihost .geni-sechead { padding:0; margin:16px 0 0 /* raw-ok: 편집 .csec 정본 동값(margin 16 0 0 · #rOptHead margin-bottom 0) */; gap:6px /* raw-ok: 편집 .csec gap 6 정본 동값 */; line-height:var(--lh-base); }   /* line-height = 편집 .csec(div)가 body 1.6을 상속해 행 20.8인데 소머리가 button이라 UA `normal`(~1.15)로 끊겨 15로 쪼그라들던 것 교정 — 토큰 --lh-base 계승 */
+  .genihost .geni-sum .gs-lbl { font-weight:400 /* raw-ok: 편집 .optstrip 라벨 = 굵기 미지정 400 정본 동값(AI만 --fw-b 700이라 요약바가 무거웠다) */; }
   .geni-fold { cursor:pointer; }
   .geni-chev { margin-left:auto; flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* V자 = .pm-chev 계승(우측 정렬·30px 박스) */
   .geni-chev svg { display:block; transition:transform var(--dur-acc) var(--ease); }
@@ -7862,7 +7893,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'c097b9c · 260729_1401';  /*BUILDSTAMP*/
+const BUILD_STAMP = '3233107 · 260729_1734';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -11655,7 +11686,7 @@ function renderSnsTrends() {
       stkEl.innerHTML =
         `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), mRk(1), 'mini')}${skCard(mAt(2), mRk(2), 'mini')}${skCard(mAt(3), mRk(3), 'mini')}</div>` +
         (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
-        (box._tsMore && i0 >= 10 ? `<span class="tstk-cnt">${rk}/${sN()}</span>` : '') +   // 11위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30)
+        (rk >= 10 ? `<span class="tstk-cnt">${rk}/${box._tsSeqX.length}</span>` : '') +   // 10위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30) · 하한 11→10·분모 sN()→_tsSeqX.length(260729): 첫 ↻(히어로 10위)가 정규 모드라 카운터 미출력 → 화면 최대 숫자가 미니 13이라 "↻가 13에서 뜬다"로 읽히던 것(운영자 260729 지적) 봉합 · ↻ 노출 순위(home5)는 무접촉 = 10·15·20·25·30 불변
         (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
         `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>` + `</div>`;   // > = 항상 노출 · 꼬리 끝 = 전진 로직이 처음 랩(_tsAdv · 운영자 260717) · .feednav 정본 계승(운영자 260713)
       const ts2 = [sAt(O), mAt(1), mAt(2), mAt(3)].filter(Boolean);
@@ -11743,7 +11774,6 @@ function thDarkQ() {   // 스레드 임베드 다크 색 = :root 토큰 계승�
   const cs = getComputedStyle(document.documentElement);
   return '&c=' + encodeURIComponent(['--bg', '--fg', '--mut', '--line'].map(t => cs.getPropertyValue(t).trim()).join('|'));
 }
-function cEmbedSrc(url, sum) { return '/api/cembed?u=' + encodeURIComponent(url) + thDarkQ() + (sum ? '&s=' + encodeURIComponent(String(sum).slice(0, 200)) : ''); }   // s = 수집 단계 본문 스니펫(운영자 260729 "1") — 원글을 못 띄우면 서버가 안내 카드에 이 요약을 함께 그린다(추가 수집 0)   // 커뮤니티 원글 = 다크·폭맞춤 프록시(api/cembed.js · 운영자 260729 "다크 모드로 · 인앱 창 폭에 맞춰서") — 색 전달 = thDarkQ 공용(스레드와 동일 축 · :root 단일 SSOT) · 미등재 호스트·실패 = 서버가 원본으로 302(종전 직접 iframe 폴백)
 function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-Options로 못 띄우므로 필수 · 매치 없음 = null(종전 새 탭)
   let m;
   if ((m = url.match(/youtube\.com\/watch\?v=([\w-]{6,})/))) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1&playsinline=1', k: 'pt' };   // 유튜브도 세로 프레임 통일(운영자 260712 "창 다 다름 · 어차피 안 넓게 봄 · 세로면 제목 오버레이가 영상 안 덮음") — 16:9 = 세로 프레임 중앙 레터박스·임베드 제목 오버레이 = 상단 검정띠에 얹힘 · 구 k:'wd'는 유튜브 일반만 가로라 쇼츠·틱톡과 창 이원화 + pt 마커 못 받은 쇼츠가 16:9 속 좌우 필러박스("가운데만")로 보이던 원인
@@ -11756,7 +11786,7 @@ function trEmbed(url) {   // 임베드 전용 URL 변환 — 원 URL은 X-Frame-
 }
 let _tvSeq = null;   // 대시보드발 시퀀스(운영자 260712 "모달 안 인라인 — 위로 넘길 때마다 다음 순위") — {arr, i} · 랩/더보기 규칙 = 스택과 동일(전달 시점 배열로 확정)
 function openTrView(emb, a, seq) {
-  const t = a.querySelector('.tsk-t, .tlr-t, .tpc-t, .tcard-t, .xcard-h b, .trend-q, .soc-title');   // .soc-title = 국내 커뮤니티 카드(운영자 260728 인앱 배선 — 아래 renderSns 위임 핸들러와 짝)
+  const t = a.querySelector('.tsk-t, .tlr-t, .tpc-t, .tcard-t, .xcard-h b, .trend-q');   // .soc-title = 국내 커뮤니티 카드(운영자 260728 인앱 배선 — 아래 renderSns 위임 핸들러와 짝)
   $('#tvTitle').textContent = ((t && t.textContent) || '').slice(0, 60) || '보기';
   _tvUrl = a.dataset.emb || a.getAttribute('href') || '';   // 본문 공유 영상이 있으면 그게 이 모달의 대상 = '원문'·다운로드·영상 스튜디오도 영상 URL을 받는다(글 URL이면 셋 다 헛발)
   $('#tvOpen').href = hrefOk(_tvUrl || '#');   // '원문' = 새탭 폴백(임베드 실패·풀화면 원할 때)
@@ -11785,7 +11815,7 @@ function tvNav(d) {   // 다음/이전 순위 인라인 로드 — 임베드 불
   for (let st2 = 1; st2 <= N; st2++) {
     const k = (((_tvSeq.i + d * st2) % N) + N) % N;
     const it = _tvSeq.arr[k];
-    const emb = it && it.url ? (trEmbed(it.url) || (it.soc ? { src: cEmbedSrc(it.url, it.sum), k: 'tw' } : null)) : null;   // soc 마커(국내 커뮤니티 시퀀스 · 운영자 260728) = 매치 없는 커뮤니티 원글도 tw 프레임으로 항행 — 기존 경로(마커 없음)는 종전대로 스킵
+    const emb = it && it.url ? trEmbed(it.url) : null;   // soc 마커(국내 커뮤니티 시퀀스 · 운영자 260728) = 매치 없는 커뮤니티 원글도 tw 프레임으로 항행 — 기존 경로(마커 없음)는 종전대로 스킵
     if (!emb) continue;
     if (it.pt) emb.k = 'pt';
     _tvSeq.i = k;
@@ -11919,22 +11949,43 @@ $('#accSave').addEventListener('click', async () => {
   } catch (e2) { $('#accErr').textContent = '저장 실패 — ' + (e2 && e2.message ? e2.message : '네트워크'); }
   busy.hidden = true; btn.disabled = false;
 });
+// 카드 우상단 체크 → 뉴스 요약으로 전송(운영자 260729) — 상태머신 = 뉴스 요약 재확인 토글(#revSend) 계승:
+// 1탭 = arm '전송'(맑은노랑 · 4초 미클릭 자동 원복) → 2탭 = api/submit 전송(뉴스 요약 발사 정본 재사용) → ✓팝 → 원복.
+// 전송 text = 제목 + URL + (있으면)수집 스니펫 = tvAsk 프리필 문법과 동일 축(러너가 URL 본문 보강 시도 · 못 하면 이 재료로 요약).
+function socDisarm(sb) { clearTimeout(sb._t); sb.classList.remove('arm'); }
+function socBindSend(list) {
+  list._sendBound = true;
+  list.addEventListener('click', async e => {
+    const sb = e.target.closest('.soc-send'); if (!sb) return;
+    e.preventDefault(); e.stopPropagation();   // 카드(앵커) 새 탭 전파 차단
+    if (sb.classList.contains('sending')) return;
+    if (!sb.classList.contains('arm')) {   // 1탭 = 재확인(다른 카드 arm은 단일화 해제)
+      list.querySelectorAll('.soc-send.arm').forEach(o => { if (o !== sb) socDisarm(o); });
+      sb.classList.add('arm'); clearTimeout(sb._t); sb._t = setTimeout(() => socDisarm(sb), 4000);
+      return;
+    }
+    clearTimeout(sb._t); sb.classList.remove('arm'); sb.classList.add('sending');   // 2탭 = 전송
+    const card = sb.closest('.soc-item');
+    const title = ((card && card.querySelector('.soc-title')) || {}).textContent || '';
+    const url = (card && card.getAttribute('href')) || '';
+    const sum = (card && card.dataset.sum) || '';
+    const text = [title, url, sum].filter(Boolean).join('\n').slice(0, 12000);
+    if (!text) { qFlash('보낼 내용이 없어'); sb.classList.remove('sending'); return; }
+    try {
+      const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, preset: { h24: 1, fp: 0, mj: 1, og: 0, noai: 1 } }) });   // preset = openAsk 기본 수집 프리셋 계승
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok) {
+        sb.classList.add('sent'); sb.title = '요약 요청 보냄';
+        setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 대기열 배지 즉시 갱신(askSend 계승)
+        setTimeout(() => { sb.classList.remove('sent', 'sending'); sb.title = '뉴스 요약으로 보내기'; }, 1600);
+      } else { qFlash(d.error || `서버 ${r.status}`); sb.classList.remove('sending'); }
+    } catch { qFlash('전송 실패 (백엔드 배선 전이면 예상된 동작)'); sb.classList.remove('sending'); }
+  });
+  list.addEventListener('keydown', e => { const sb = e.target.closest('.soc-send'); if (sb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sb.click(); } });   // role=button 키보드 활성
+}
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
-  if (!list._socBound) {   // 국내 커뮤니티 카드 = 인앱 임베드 뷰어(운영자 260728 "첨부2처럼 내부 인앱창") — 트렌드 box 위임 1핸들러 문법 계승 · 커뮤니티 원글 = trEmbed 매치 없음 → X 트윗과 동일 tw 프레임(높이 가변 내부 스크롤 · 다운로드/편집기 자동 숨김 · 요약 요청 유지) · 프레임 거부(X-Frame-Options) 사이트 = '원문' 새탭이 폴백(릴스 로그인벽 관례) · 롱프레스/새탭 = href 보존
-    list._socBound = true;
-    list.addEventListener('click', e => {
-      const a = e.target.closest('a.soc-item'); if (!a) return;
-      const _hrf = a.getAttribute('href') || '';
-      if (!_hrf || _hrf === '#') { e.preventDefault(); return; }   // url 결측 카드 = 새탭 앱 복제본 차단(260720 평의회 F1 계승)
-      const emb = trEmbed(_hrf) || { src: cEmbedSrc(_hrf, a.dataset.sum), k: 'tw' };   // 유튜브·X 등 매치 = 종전 임베드 그대로 · 그 외 커뮤니티 글 = 다크·폭맞춤 프록시 경유(운영자 260729) · 미등재 호스트 = 프록시가 원본으로 302 = 종전 직접 iframe
-      e.preventDefault();
-      const sibs = [...list.querySelectorAll('a.soc-item')];
-      const k2 = sibs.indexOf(a);
-      const seq = (k2 >= 0 && sibs.length > 1) ? { arr: sibs.map(x3 => ({ url: x3.getAttribute('href') || '', t: ((x3.querySelector('.soc-title') || {}).textContent || ''), soc: 1, sum: x3.dataset.sum || '' })), i: k2 } : null;   // 섹션 즉석 시퀀스 계승(쇼츠 루프 보편화 문법) — soc:1 = tvNav tw 폴백 마커
-      openTrView(emb, a, seq);
-    });
-  }
+  if (!list._sendBound) socBindSend(list);   // 카드 우상단 체크 = 뉴스 요약 전송(위임 1핸들러 · list 유지라 1회 바인딩)
   let _ss = '';   // 이번 렌더 구성 시그니처(행 ID·순서+검색어 · 아래서 선계산 = 커밋 스킵 판정용)
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">${window.nmLoader?nmLoader('loading','Now loading…'):'Now loading…'}</div>`; _snsSig = ''; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
@@ -11949,7 +12000,7 @@ function renderSns() {
     const el = document.createElement('a');
     el.className = 'soc-item';
     el.href = r.url || '#'; el.target = '_blank'; el.rel = 'noopener';
-    if (r.desc) el.dataset.sum = r.desc;   // 수집 단계 본문 스니펫(운영자 260729 "1") — 원글을 못 띄우는 커뮤니티에서 안내 카드가 요약이라도 보여주도록 프록시에 넘긴다
+    if (r.desc) el.dataset.sum = r.desc;   // 수집 스니펫 = 체크→전송 시 요약 재료(본문 못 긁는 커뮤니티 폴백 · 운영자 260729)
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge((+r.age_h || 0) + _socEl);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
@@ -11960,7 +12011,7 @@ function renderSns() {
     const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
     const _zone = _mid == null ? '' : (_mid <= 2 ? '강진보' : _mid <= 4 ? '약진보' : _mid <= 6 ? '중립' : _mid <= 8 ? '약보수' : '강보수');
     const _gauge = _mid == null ? '' : `<div class="soc-gauge" role="img" aria-label="출처성향 ${_zone}" title="출처성향: ${_zone} (커뮤 통념근사)"><span class="soc-dot" style="left:${((_mid - 1) / 8 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 위치=(_mid-1)/8[성향값 1~9축, 옛 /9는 강보수 우끝 미달·중립 좌편향 버그·검토6인 260704] · title/aria=툴팁·a11y(시각 라벨은 요구'라벨없이' 존중) */
-    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</div>
+    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}<span class="soc-send" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg><i class="soc-send-lb">전송</i></span></div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
       ${_gauge}`;
@@ -12397,7 +12448,13 @@ function renderChan() {
   const dlRate = (key, unit) => { const w = winAvgPair(key); return w ? dl(w.d < 0 ? -rnd(-w.d) : rnd(w.d), unit) : ''; };   // 일평균 증감 = '±N만/일'·'±N.N개/일'(dl 의미색·만 축약 계승 · rnd = 크기 기준 부호 분리 — 음수 −503.3 소수 잔존/양수 503 정수 비대칭 방지 · 소수 지표 1자리 보존)
   const rateSub = (key, unit, fb) => { const r = dlRate(key, unit); return sub(r, r ? '' : (fb !== undefined ? fb : rt(key))); };   // 증감 불가(전체·직전 창 결측) = 종전 일평균(또는 지정 폴백) 단독 fail-soft
   const sub = (dh, rh) => { const vs = dh && CHAN_PROF_R !== 'all' ? `<span class="ch-vs">${CHAN_PROF_R}일 대비</span>` : ''; const rte = rh ? `<span class="ch-rte">${dh ? '<i class="ch-sep" aria-hidden="true"></i>' : ''}${rh}</span>` : ''; return (dh || rh) ? `<div class="ch-sub">${vs}${dh}${rte}</div>` : ''; };   // 'N일 대비' 접두 = 프로필 세그(CHAN_PROF_R) 연동(운영자 260721 "7일 대비 +1,100명 | 37.3/일" — 전체 = 접두 생략 "전체는 어쩔수없는거고") · 구분 세로선+일평균 = 한 덩어리(.ch-rte — 협폭 개행 시 선이 줄 끝에 홀로 안 남게 동반 이동)
-  const sumTile = (lb, key, unit, fbv) => { const w = winSum(key); if (!(w && w.cur != null)) return st(lb, fbv, rateSub(key, '/일')); return st(lb, vf(w.cur) + (unit === '개' ? '개' : ''), rateSub(key, '/일')); };   // 본값 = 창 합계 · 단위 = 게시 '개'만(목업 — 조회·도달·방문은 라벨이 의미 담당) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 — 구 창 합계 증감+일평균 병기 대체) · 결측 = 당일값 폴백(fail-soft)
+  const PER_D = ' <span class="ch-per">/일</span>';   // '/일' 접미(70% 축소·앞 띄어쓰기) = 게시 postsTile PER 문법 계승 — 개수 단위('개')가 없는 지표(조회·도달·상호작용)용
+  const avgTile = (lb, key, fbv, tf, chart) => {   // 주값 = 창 일평균 'N /일'(운영자 260729 "조회수랑 도달 일평균 수로") — 구 창 합계 주값(sumTile) 대체 · 구성 = 게시 postsTile 100% 계승(주값 일평균 + 하단 'N일 대비 ±X만/일' 증감 + 증감 불가 시 누적 합계 폴백) · 결측 = 당일값(fbv) fail-soft
+    const wa = winAvg(key), ws = winSum(key);
+    const big = wa ? vf(rnd(wa.a)) + PER_D : fbv;   // 주값 = 창 일평균(토글 연동 · 앵커·결측 처리 = winAvg 문법 그대로)
+    const cumul = (ws && ws.cur != null) ? `<span class="ch-rt">${vf(ws.cur)}</span>` : '';   // 누적 합계 = 증감 불가(전체 창·직전 창 결측)일 때만 하단 폴백 = postsTile cumul 동일 문법(구 주값 강등)
+    return (tf || st)(lb, big, rateSub(key, '/일', cumul), chart);
+  };
   const postsTile = () => {   // 게시(운영자 260722 자리·폰트 스왑) — 주값 = 일평균 '개/일'(토글 연동 · 그 기간 꾸준함이 핵심) · 하단 보조 = 누적량 'N개'(구 주값 51개 강등 = 그냥 누적) + 직전창 대비 증감 · 구 sumTile(누적 주값) 대체
     const w = winSum('posts'), a = winAvg('posts');
     const PER = '개 <span class="ch-per">/일</span>';   // '/일' = 70% 축소 + 앞 띄어쓰기(운영자 260722 "강조될만한 내용 아님") · '개'는 주값 크기 유지
@@ -12484,12 +12541,12 @@ function renderChan() {
         st('댓글 (최근 10게시물)', (d.fb_totals && d.fb_totals.comments != null) ? vf(d.fb_totals.comments) + ' 회' : '—') +
         st('공유 (최근 10게시물)', (d.fb_totals && d.fb_totals.shares != null) ? vf(d.fb_totals.shares) + ' 회' : '—') +
         postsTile() +
-        sumTile('상호작용', 'interactions', '회', vu(a.interactions, '회')) + demoTile()
+        avgTile('상호작용', 'interactions', vu(a.interactions, '회')) + demoTile()
       : (() => { const _dg = demoTile('g'), _da = demoTile('a'), _tall = !!(_dg || _da);   // 인구통계 결측 = 6타일→4타일 · tall 해제(2행 우측 구멍 방어 · 평의회2/5 — 라이브 = 데이터 상존이라 통상 미발동 fail-soft)
         const _fT = _tall ? stTall : st, _fC = k2 => _tall ? chTileChart(series, k2 === 'f' ? 'follower_net' : 'views', k2 === 'f' ? 'zero' : 'avg', k2 === 'f' ? '명' : '회') : '';
         return _fT('팔로워', flwVal(), flwSub(), _fC('f')) +   // 팔로워 차트 = 일일 순증감(총수 차이 = 언팔 반영 · 0 기준선 아래 = 감소일 danger · 운영자 260722 · 구 follows[신규유입 항상≥0] 대체 — IG follows_and_unfollows 빈반환이라 총수 diff만이 감소원)
-        (w2 => w2 && w2.cur != null ? _fT('조회수', vf(w2.cur), rateSub('views', '/일'), _fC('v')) : _fT('조회수', vu(a.views, '회'), rateSub('views', '/일'), _fC('v')))(winSum('views')) +   // 조회수 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 "조회수 7일 대비 +-00만/일")
-        sumTile('도달', 'reach', '계정', vu(a.reach, '계정')) + _dg +
+        avgTile('조회수', 'views', vu(a.views, '회'), _fT, _fC('v')) +   // 주값 = 창 일평균(운영자 260729 · 구 창 합계 대체 — 차트 평균 기준선과 같은 수치 = 도형·숫자 정합) · 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 "조회수 7일 대비 +-00만/일")
+        avgTile('도달', 'reach', vu(a.reach, '계정')) + _dg +
         postsTile() + _da + demoTile('c') + demoTile('n'); })()) + '</div>', pfSeg);   // 3행 = 도시·국가(가로 2칸씩 = 행 꽉 참 · 데이터 부재 = 행 자체 미생성 조용한 공백 · 운영자 260726)   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
