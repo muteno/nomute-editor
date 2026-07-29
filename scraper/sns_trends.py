@@ -1945,7 +1945,12 @@ def main():
         #   [수집 성공 계정 수, 등록 계정 수] 쌍만 실어 보낸다 = 새 수집·새 콜 0(이미 만든 결과를 세기만) · 판정은 뷰어가.
         #   건별 분해(운영자 260727 "사고는 다 개별건 건별로 적용되게 · 10개 터지면 10개 각각 사고임") — 개수만 세면
         #   "11 중 8"이 한 덩어리라 ✓ 한 번에 세 계정이 같이 침묵한다. 계정마다 원인이 다를 수 있으므로(삭제 / 비공개 / 차단)
-        #   **빠진 계정 목록(miss)**을 실어 보내 뷰어가 계정별 알림으로 쪼갠다. 상한 20 = 알림함 폭주 방지(전멸은 아래 stale이 1건으로 담당).
+        #   **빠진 계정 목록(miss)**을 실어 보내 뷰어가 계정별 알림으로 쪼갠다.
+        #   ⚠ 구 `miss[:20]` 상한 폐지(260729 리포트 판례) — got·reg는 절단 **전** 실제값이라 뷰어 문구는
+        #   "30개 중 29개 누락"인데 목록은 20개만 = 나머지 **9계정이 어느 알림에도 안 잡히는 조용한 결측**이었다
+        #   (260727·260728에 두 번 봉합한 그 사각의 3번째 판례 · 자기 알림이 자기 숫자와 안 맞는 자기모순도 동반).
+        #   상한의 원래 목적이던 알림함 폭주는 이제 **뷰어가 같은 사유 3건↑을 묶음 1건으로** 처리해 그쪽에서 막는다
+        #   (전멸은 아래 stale이 1건으로 담당) · 등록 총 98계정 = 전량 실어도 JSON 증분 무시 가능.
         health["subs"]["cover"] = {}
         for _k in ("x", "tiktok", "insta", "youtube", "threads"):
             if not acc[_k]:
@@ -1958,8 +1963,8 @@ def main():
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
             _fsrc = {**(SUB_FAIL.get(_k) or {}), **(PHONE_COVER["why"].get(_k) or {})}   # 폰 기록이 러너 잔향을 덮는다(폰 = 주 공급)
-            _why = {a: _fsrc[a] for a in _miss[:20] if _fsrc.get(a) is not None}
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss[:20], "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
+            _why = {a: _fsrc[a] for a in _miss if _fsrc.get(a) is not None}
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
