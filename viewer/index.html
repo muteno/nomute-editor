@@ -13095,9 +13095,10 @@ function activateToolFrame(key) {   // 이 도구 전용 iframe을 .active로(�
 function discardTool(key) {   // 도구 완전 종료 = 프레임 회수(원본은 blank해 재사용·복제는 DOM 제거)·메타/레지스트리 정리
   if (key === 'thumb' && toolFrames.thumbtr) discardTool('thumbtr');   // 번역 전용 프레임 = thumb 수명 동반(정규 닫기 = 함께 회수 · 고아 스테일 프레임 차단 · 260721)
   if (!key) { const af = activeToolFrame(); if (af) { af.src = 'about:blank'; af.classList.remove('ready'); } return; }   // .ready 제거(한수 260724) = blank된 프레임이 스테일 리빌 게이트로 재사용 시 조기 노출되는 것 방어
-  const f = toolFrames[key], orig = document.getElementById('toolframe');
-  if (f) { if (f === orig) { f.src = 'about:blank'; f.classList.remove('active', 'ready'); } else { try { f.remove(); } catch (_) {} } }   // 원본 재사용 대비 .ready strip(한수 260724 · 재오픈 loadToolFrame도 제거하나 이중 방어)
-  delete toolFrames[key]; delete toolMeta[key]; MIN_REG.delete(key);
+  const orig = document.getElementById('toolframe');
+  const kill = f => { if (!f) return; if (f === orig) { f.src = 'about:blank'; f.classList.remove('active', 'ready', 'snap'); } else { try { f.remove(); } catch (_) {} } };   // 원본 재사용 대비 .ready strip(한수 260724 · 재오픈 loadToolFrame도 제거하나 이중 방어)
+  Object.keys(toolFrames).forEach(k => { if (k === key || k.indexOf(key + SUBSEP) === 0) { kill(toolFrames[k]); delete toolFrames[k]; } });   // 세부탭 보존 프레임(key+SUBSEP+src · subMount)도 함께 회수 = 고아 iframe 0(도구 닫기 = 그 스튜디오 전체 종료 계약 유지)
+  delete toolMeta[key]; MIN_REG.delete(key);
   if (curToolKey === key) curToolKey = null;
 }
 // ── 번역(tr.html) 탭 전용 프레임 (운영자 260721 "tr 메뉴 = 이미지 생성기 3번째 탭") ──
@@ -13153,6 +13154,33 @@ function trMount() {   // 번역 탭 활성 = 전용 프레임 표시(예열됐�
     f.classList.add('ready'); requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('snap'))); }   // 보존 프레임 = 같은 프레임에 '스냅' 노출(빈-유리 프레임 0장 · snap 해제 = 2×rAF 뒤 = 이후 상태 변화는 종전 페이드 문법 복귀)   // 구 주석: 재레이아웃 뒤 '스냅' 노출(운영자 260727 번쩍 교정 — 구 0.2s 페이드가 매 클릭 깜빡임으로 읽혔다) · snap 해제 = 다음 프레임(이후 상태 변화는 종전 페이드 문법 복귀)   // 재레이아웃이 끝난 *다음* 프레임에 리빌 = 완성된 화면이 0.2s 페이드로 들어옴(튐 0) · 2×rAF ≈ 32ms = 체감 즉시 · .tool-loading orb는 transition-delay .28s라 이 사이 미표시(플래시 0) · 활성 확인 = 32ms 안에 타 탭으로 떠난 경우 고아 리빌 차단 · 미로드분은 종전대로 load/워치독이 .ready 부여
 }
 function trLeave() { const f = toolFrames.thumbtr; if (f && f.classList.contains('active')) activateToolFrame(curToolKey); }   // 번역 이탈(thumb 앱 탭 클릭) = 이 도구 프레임 재활성(geniLeave 미러 · 번역 프레임은 숨김-보존)
+// ── 세부 탭(src 다른 탭) = 탭별 전용 보존 프레임 (운영자 260729 "비디오 스튜디오 세부 메뉴 전환할때마다 번쩍") ──
+// 왜: 영상 5탭(편집·자막·콘티·프롬프팅·음원)은 탭마다 src가 달라 클릭 = loadToolFrame = **한 iframe에 다른 문서 통재로드**였다.
+//   ① `.ready` 벗김 = 프레임 opacity 0(투명) → 그 자리에 모달 글래스+::backdrop이 비치는 은폐 구간(260728 번역 탭과 동일 진범)
+//   ② `?v=Date.now()` 캐시버스트 = 문서·CSS·폰트를 전부 새 리소스로 재수신 = 진짜 재로딩(빈 판 → 폼 순으로 그려짐 · 260727 tr 진단 동문)
+//   두 구간이 겹쳐 매 전환이 '창이 다시 뜨는' 번쩍으로 읽혔다. 이미지 스튜디오가 멀쩡한 이유가 곧 리로드 0(selApp·tr 전용 프레임).
+// 처방: 번역 탭(trEnsureFrame/trMount) 정본 그대로 이 셸에 일반화 — 탭별 iframe 숨김-보존 + 재방문 리로드 0(폼·업로드 그대로) +
+//   동기 재레이아웃 후 '스냅' 노출(빈-유리 프레임 0장). 캐시버스트 폐지 = `_headers`의 edit/ly/sb/k/song no-cache가 신선도 담당(tr 선례).
+const SUBSEP = '\u0001';   // 세부탭 레지스트리 합성키 구분자(도구키+SUBSEP+src) — src에 못 들어가는 제어문자 = 실키 충돌 0
+function subMount(src) {   // 세부 탭 활성 = 그 src 전용 보존 프레임 표시(최초 1회만 로드)
+  const key = curToolKey || 'tool', sk = key + SUBSEP + src;
+  let f = toolFrames[sk];
+  if (!f) {
+    const orig = document.getElementById('toolframe');
+    f = orig.cloneNode(false); f.removeAttribute('id'); f.classList.add('toolfr'); f.classList.remove('active', 'ready', 'snap'); f.src = 'about:blank'; orig.parentNode.appendChild(f); bindToolFrameLoad(f);   // trEnsureFrame 복제 문법 계승(⚠ cloneNode가 활성 원본의 active·ready 복사 → strip 필수)
+    toolFrames[sk] = f;
+    try { f.contentWindow.location.replace(src); } catch (_) { f.src = src; }   // location.replace = 세션 히스토리 미적재(폰 백버튼 빈화면 차단 · loadToolFrame 계약 동일)
+    frWatch(f, src);   // 무한로딩 탈출구(운영자 260725)
+    frEarly(f);        // 틀 먼저 = DOM 파싱 완료 즉시 리빌
+  }
+  toolFrames[key] = f;   // 활성 참조 승계 = activeToolFrame()·최소화 복원(activateToolFrame(key))이 이 세부 프레임을 가리킨다(탭 기억 = 복원도 같은 탭)
+  const loaded = f.classList.contains('ready');
+  tooldlg.classList.toggle('frame-ready', loaded);   // 전역 보조 신호(재클릭 가드) = 이 프레임 로드 기준(trMount 미러)
+  const ah = $('#askHost'); if (ah && !ah.hidden) { ah.hidden = true; }   // 가상 탭(#ask) 이탈 = 호스트 숨김(askwrap은 보존)
+  for (const k in toolFrames) toolFrames[k].classList.toggle('active', toolFrames[k] === f);   // 활성 1개만 표시(activateToolFrame 토글 문법)
+  if (loaded) { f.classList.add('snap'); try { const _d = f.contentDocument; if (_d && _d.body) { void _d.body.getBoundingClientRect().width; void _d.documentElement.offsetHeight; } } catch (_) {}   // display:none→block 직후 자식 문서 레이아웃을 동기로 끝낸다 = 첫 페인트가 이미 실폭 완성 화면(0폭 잔상 0 · trMount 260728 정본)
+    requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('snap'))); }   // 스냅 해제 = 2×rAF 뒤(이후 상태 변화는 종전 페이드 문법 복귀)
+}
 window.addEventListener('popstate', () => { if (_composeRecovering) return; if (tooldlg.open) { toolPopHandled = true; tooldlg.close(); } });   // ⚠️ 컴포즈 회수 back은 무시(뒤 도구모달 over-close 차단·평의회 V4) · 최소화 중 백버튼은 {tool}칸만 소비(복원 ▲는 DOM으로 유지) — 다른 모달(#lbox 등) popstate 핸들러와 한 번에 둘 다 발화해 편집기가 잘못 펼쳐지던 것 차단(재펼침 안 함). 재오픈은 ▲ 탭으로.
 // 도구 모달: showModal()을 src보다 먼저(iframe가 표시된 상태서 로드 → 애니 정상·빈화면 차단) · 배경 스크롤 락 · 열 때 #toolX 포커스
 // iframe 로드 = location.replace(.src 대신 = 세션 히스토리에 항목 안 쌓음 · 폰 백버튼 빈화면 차단 · 운영자 260623) + 캐시버스트(stale 방지 · _headers no-cache 한 쌍)
@@ -13178,7 +13206,7 @@ function openTool(src, title, tabs, key) {
   toolMeta[key] = { title: title || '제작 도구', tabs: tabs || null, src: realSrc };
   renderToolTabs(tabs);
   if (realSrc && realSrc[0] === '#') askMount();   // 가상 탭(#ask) = iframe 로드 대신 askwrap 이식(운영자 260712 요약 셸)
-  else loadToolFrame(realSrc);
+  else { loadToolFrame(realSrc); if (tabs && tabs.length > 1 && key !== 'thumb') toolFrames[key + SUBSEP + realSrc] = toolFrames[key]; }   // 첫 탭 프레임을 세부탭 레지스트리에 등재(subMount 인계 = 1번 탭으로 되돌아와도 리로드 0) · thumb 3탭은 동일-src selApp 계약이라 제외
   // ⚠️ 대기열이 히스토리 칸({qpop})을 쥔 채 열려 있으면 그 칸을 이 모달이 **인계**한다(운영자 260727 "재시도 버튼 눌러도 작동을 안 해" 실측 봉합).
   //   아래 closeOverlays()가 closeQueueUser → history.back() 을 부르는데, back 은 비동기라 같은 틱의 pushState({tool}) 가 먼저 스택에 얹힌다
   //   → back 이 방금 얹은 {tool} 칸을 되돌리며 popstate 발동 → 막 연 요약창이 즉시 닫혔다(대기열 실패행 ↻ = 무반응으로 보임).
@@ -13206,8 +13234,7 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
   }
   if (curToolKey && toolMeta[curToolKey]) toolMeta[curToolKey].src = b.dataset.src;   // 활성 서브탭 기억(복원 시 하이라이트 정합)
   if (b.dataset.src === '#ask') { askMount(); return; }   // 요약 요청 가상 탭 = askwrap 재표시(iframe 보존 · 리로드 0)
-  const h = $('#askHost'); if (h && !h.hidden) { h.hidden = true; activateToolFrame(curToolKey); }   // 가상 탭 이탈 = 호스트 숨김 + 이 도구 프레임 재활성(askwrap은 남겨둠 = 입력 보존 · 원복은 닫기/최소화 때)
-  loadToolFrame(b.dataset.src);   // 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626
+  subMount(b.dataset.src);   // 세부 탭 = 탭별 전용 보존 프레임 표시(리로드 0 = 번쩍 0 · 운영자 260729) — 구 loadToolFrame(같은 iframe 통재로드) 폐지 · 타이틀 고정(탭은 세부기능만 전환) · 운영자 260626 · 가상 탭(#ask) 이탈 호스트 숨김도 subMount가 인계
 });
 // 라디얼 제작 메뉴 라우팅 — 타이틀 = 라디얼 라벨과 통일(뉴스 요약·이미지·영상 고정 · 세부는 탭) · 운영자 260626
 const ASK_TABS = [{ src: '#ask', label: '요약 요청', icon: '' }, { src: '/nb.html', label: '미디어 요약', icon: '' }];   // 요약 셸 2탭(운영자 260712 "요약 요청 = 이미지와 동일 UIUX · 기본 요약 요청(뉴스) / 2번째 미디어 요약") — #ask = 가상 탭(askdlg 폼 이식 · iframe 아님) · 미디어 요약 = nb.html(유튜브 자료화 · 구 영상 스튜디오 자료 탭서 이동 = 진입로 단일화)
