@@ -797,11 +797,22 @@ def build_ass(segs, w, h, opts):
     KW["c"] = "&H" + OC_BGR.get(str(opts.get("kwc") or "green"), OC_BGR["green"]) + "&"   # 키워드 강조색(운영자 260711 kwc · 결측 = 그린 &H02FD0F& 종전 동일)
     fgc = OC_BGR.get(str(opts.get("fg") or "white"), OC_BGR["white"])   # 자막 글자색(운영자 260711 fg · 결측 = 흰 FFFFFF 종전 동일)
     back = "&H{:02X}".format(255 - int(round(bg * 2.55))) + ocb    # ASS 알파 = 00 불투명·FF 투명 · 44% → 0x8F ≈ 구 &H90(스타일 라인 = & 접미 없음)
-    if bg > 0:               # 배경 게이지 ON = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지) — 전 모양 수렴(260707)
+    # 음영 종류(운영자 260729 opts.shtype) — 구 'bg>0이면 박스 / 아니면 획' **암묵 결정**을 명시 선택으로 대체.
+    #   결측 = 종전 규칙으로 폴백(bg>0 → box · bg=0 → stroke) = 구 페이로드 렌더 바이트 동일.
+    shtype = opts.get("shtype")
+    if shtype not in ("none", "box", "stroke", "shadow"):
+        shtype = "box" if bg > 0 else "stroke"
+    if shtype == "box":      # 음영 = 줄 단위 박스(BorderStyle 4 · 3은 다줄 겹침 = 금지)
         # 패딩 = Outline값(구 box 전용 oc==back 패딩 겸용 메서드를 전 모양으로 승격 · pad 계수 = 운영자 선택 ×0.16).
-        # 글리프 외곽선색도 back 동일 = 박스 위 이중 테두리 0(같은 색 박스 위 같은 색 스트로크 = 어차피 비가시 · 모양 분기는 bg=0에서만 의미).
+        # 글리프 외곽선색도 back 동일 = 박스 위 이중 테두리 0(같은 색 박스 위 같은 색 스트로크 = 어차피 비가시).
         border_style, outline, shadow, oc = 4, ass_px(fs * pad), 0, back
-    else:                    # 배경 0% — bold/clean = 종전 그대로(omul 배율만) · box = 얇은 외곽선 폴백(흰 글자 보호)
+    elif shtype == "none":   # 기본 = 아무것도 안 그림(맨 글자 · 운영자 "기본도 있어야 한다")
+        back = "&H00" + ocb
+        border_style, outline, shadow, oc = 1, 0, 0, "&H00" + ocb
+    elif shtype == "shadow":  # 그림자 = 외곽선 없이 드롭섀도만(세기 = 같은 음영 게이지 · 뷰어 textShadow 미러)
+        back = "&H40" + ocb
+        border_style, outline, shadow, oc = 1, 0, ass_px(max(1.0, fs * 0.05 * omul)), "&H00" + ocb
+    else:                    # stroke(획) = 글리프 외곽선 — bold/clean 두께 사다리는 종전 그대로(omul 배율)
         back = "&H90" + ocb  # BorderStyle 1의 BackColour = 그림자색(bold shadow=1) — 알파 &H90 종전값 유지·색만 음영 색 추종(260711)
         if style == "clean" or style == "box":
             border_style, outline, shadow, oc = 1, ass_px(fs * 0.032 * omul), 0, "&H00" + ocb
@@ -876,7 +887,7 @@ def build_ass(segs, w, h, opts):
             #   그게 원문 줄까지 상속되지 않게 스타일 리셋(반전 전엔 원문이 앞이라 필요 없던 방어) → 그 뒤 {\fs}로 원문 크기 재지정.
             # 줄간격(운영자 260728 "줄간격 어느정도 유지") = 두 줄 사이 스페이서 1줄(fs = 본선의 18%). 미리보기(edit.html 한국어 줄 marginBottom fs×0.18)와 동값 —
             #   구현 전엔 미리보기만 띄우고 산출물은 딱 붙어 나왔다(평의회① 260728). 결측 계수(dual_small 미송신 = 종전 경로)에선 gap 0 = 줄 수·높이 종전 동일.
-            gap = int(fs * 0.18) if opts.get("dual_small") else 0
+            gap = int(fs * coef(opts, "dual_gap", 0.18, 0.0, 0.6)) if opts.get("dual_small") else 0   # 줄간격 = 게이지(운영자 260729 · 0.18 = 종전 하드코딩 동값 = 결측 시 렌더 바이트 동일)
             gap_tag = ("{\\fs" + str(max(1, gap)) + "}\\h{\\r}\\N") if gap > 0 else ""
             # 원문 줄 = 색·그림자 **고정** 축(운영자 260729 "영문은 항상 흰색 고정에, 그림자 조금 줘서 항상 고정으로") —
             #   글자색(fg)·음영색(oc)·배경(bg)·음영 크기(outline/pad)·글로우 어느 것도 안 따른다. 뷰어 .pvsub-tr 고정 스타일과 짝.

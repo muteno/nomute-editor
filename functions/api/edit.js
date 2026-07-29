@@ -77,6 +77,9 @@ export async function onRequestPost({ request, env }) {
   if (opts.vid_t0 !== undefined && opts.vid_t1 !== undefined && opts.vid_t1 <= opts.vid_t0) return json({ error: '구간이 이상해 — 끝이 시작보다 커야 해' }, 400);
   const xf = num(o.vid_xfade, 0, 100);
   if (xf !== null && xf > 0 && opts.vid_segs) opts.vid_xfade = Math.round(xf);   // 이음매 없으면(단일 구간) 미송신 = 정직
+  if (typeof o.shtype === 'string' && ['none', 'box', 'stroke', 'shadow'].includes(o.shtype)) opts.shtype = o.shtype;   // 음영 종류(운영자 260729 · 닫힌 집합 = ly_burn 짝 · 결측 = 러너가 종전 bg 규칙으로 폴백)
+  const dgp = num(o.dual_gap, 0, 0.6);
+  if (dgp !== null && opts.lang === 'dual') opts.dual_gap = Math.round(dgp * 100) / 100;   // 한-외국어 줄간격 계수(운영자 260729 · 결측 = 0.18 종전)
   const dsm = num(o.dual_small, 0.25, 1);   // (260729) 범위 0.3~0.62 → 0.25~1.0 = 편집기 '외국어' 게이지(−75%~0%) 전 구간 수용 · 상한 1.0 = 한국어 줄과 같은 크기
   if (dsm !== null && opts.lang === 'dual') opts.dual_small = Math.round(dsm * 100) / 100;   // 번역 줄 크기 계수(운영자 260728 — dual 한정 · 결측 = 러너 0.62 종전 바이트)
   // 승인 컷 소비(260727 ③) — cutref = 스캔 잡 id · cutoff = 뺀 항목 인덱스 CSV(러너 ly_burn.load_ref_cuts가 실측 재검증 = 이중 방어)
