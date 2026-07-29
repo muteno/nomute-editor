@@ -27,6 +27,43 @@ export function blankPx() {
   return new Response(u, { headers: { 'content-type': 'image/gif', 'cache-control': 'public, max-age=600', 'x-content-type-options': 'nosniff' } });
 }
 
+// 문서 요청 헤더 — 구 버전은 UA + accept + accept-language 3개뿐이라 얕은 WAF·게시판 자체 룰에 쉽게 걸렸다.
+// 실제 브라우저가 보내는 항해(navigate) 세트를 **UA 지문과 일관되게** 맞춘다. UA가 iOS Safari이므로 `Sec-CH-UA*`는
+// 일부러 넣지 않는다 — Safari는 그 헤더를 보내지 않아서, 넣으면 오히려 지문 불일치로 더 잘 걸린다.
+// ⚠ 한계(정직): Worker의 아웃바운드는 데이터센터 IP에서 나가므로, IP 평판·챌린지로 막는 앞단(Cloudflare 등)은
+//    헤더로 뚫리지 않는다. 이 보강은 '헤더만 보는 사이트'의 통과율을 올릴 뿐이다.
+export function docHeaders(u) {
+  let origin = '';
+  try { origin = new URL(u).origin + '/'; } catch {}
+  return {
+    'user-agent': UA,
+    accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+    'upgrade-insecure-requests': '1',
+    'sec-fetch-dest': 'document',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-site': 'none',
+    'sec-fetch-user': '?1',
+    ...(origin ? { referer: origin } : {}),   // 무-referer 직접 접근을 봇으로 보는 구형 게시판 대응
+  };
+}
+
+// 한국 구형 게시판(뽐뿌·웃대·일부 zeroboard 계열)은 아직 EUC-KR로 내려온다. `Response.text()`는 UTF-8 고정 디코딩이라
+// 그런 문서는 통째로 모지바케가 되고, 글자는 '있으니' visibleTextLen 게이트도 통과해 **깨진 글이 그대로 화면에 뜬다**.
+// content-type charset → (없으면) 앞부분 meta charset 순으로 실제 인코딩을 잡아 디코딩한다. 미지원 인코딩은 UTF-8 폴백.
+export async function decodeBody(r) {
+  const buf = await r.arrayBuffer();
+  const ct = r.headers?.get?.('content-type') || '';
+  let enc = (ct.match(/charset=["']?([\w-]+)/i) || [])[1] || '';
+  if (!enc) {
+    const head = new TextDecoder('utf-8').decode(buf.slice(0, 4096));
+    enc = (head.match(/charset=["']?([\w-]+)/i) || [])[1] || '';
+  }
+  enc = String(enc).toLowerCase().replace(/^ks_c_5601.*$|^ksc5601$|^cp949$/, 'euc-kr');   // 한국 구형 표기 별칭 → 표준 라벨
+  try { return { text: new TextDecoder(enc || 'utf-8').decode(buf), charset: enc || 'utf-8' }; }
+  catch { return { text: new TextDecoder('utf-8').decode(buf), charset: 'utf-8(폴백)' }; }
+}
+
 export function hostOk(h) {   // 화이트리스트 판정(서브도메인 허용 · 접미 경계 고정 = "evil-fmkorea.com" 통과 차단)
   h = String(h || '').toLowerCase();
   return HOSTS.some(d => h === d || h.endsWith('.' + d));
@@ -71,12 +108,21 @@ export function transform(html, c, origin, selfOrigin) {   // 순수 변환(테�
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/?>/gi, '');
   // 사진 = 전량 이 라우트 경유(운영자 260729 "안되면 아예 안나와도 괜찮은데 엑박뜨는거보다는") — 못 가져오는 건
   // 서버가 투명 1x1로 돌려주므로 깨진 아이콘·alt 문자열이 본문에 끼어들지 않는다(판정·폴백 = 서버 단일 지점).
-  html = html.replace(/(<img\b[^>]*?\bsrc=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
+  html = html.replace(/(<img\b[^>]*?(?<![-\w])src=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
     const dec = src.replace(/&amp;/g, '&');
     try { new URL(dec); } catch { return m0; }
     return a + (selfOrigin || '') + '/api/cembed?img=' + encodeURIComponent(dec) + z;
   });
   html = html.replace(/<img\b[^>]*?\bsrcset="[^"]*"/gi, m0 => m0.replace(/\bsrcset="[^"]*"/i, ''));   // srcset = 원본 URL 재지정 경로 → 제거(프록시 src만 남겨 경유 일관)
+  // 지연로딩(lazy) 이미지 — 커뮤니티 짤방은 실제 주소가 data-src/data-original 등에 있고 src는 1x1 placeholder다.
+  // 스크립트를 제거하는 우리 경로에선 그 치환이 영원히 안 일어나 **사진이 통째로 안 보인다** → 서버에서 미리 승격한다.
+  html = html.replace(/<img\b[^>]*>/gi, tag => {
+    if (/(?<![-\w])src="[^"]*\/api\/cembed\?img=/.test(tag)) return tag;   // 이미 경유된 것 = 손대지 않음
+    const lazy = (tag.match(/\bdata-(?:src|original|lazy-src|echo|url)="(https?:\/\/[^"]+)"/i) || [])[1];
+    if (!lazy) return tag;
+    const proxied = (selfOrigin || '') + '/api/cembed?img=' + encodeURIComponent(lazy.replace(/&amp;/g, '&'));
+    return /(?<![-\w])src="/i.test(tag) ? tag.replace(/(?<![-\w])src="[^"]*"/i, `src="${proxied}"`) : tag.replace(/<img\b/i, `<img src="${proxied}"`);
+  });
   const vp = '<meta name="viewport" content="width=device-width, initial-scale=1">';
   html = /<meta[^>]+name=["']?viewport/i.test(html)
     ? html.replace(/<meta[^>]+name=["']?viewport[^>]*>/i, vp)   // 데스크탑 고정폭 선언(width=1200 등) 교체 = 폭맞춤의 실제 스위치
@@ -191,11 +237,12 @@ export async function onRequestGet({ request }) {
   const fetchUrl = realUrl(target.toString());   // 네이버 블로그 등 = 프레임 안 실제 본문 주소로 교체
   let html;
   try {
-    const r = await fetch(fetchUrl, { headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow' });
+    const r = await fetch(fetchUrl, { headers: docHeaders(fetchUrl), redirect: 'follow' });
     dg.status = r.status; dg.contentType = (r.headers.get('content-type') || '').split(';')[0];
     if (!r.ok) { dg.verdict = `원 서버가 ${r.status}로 거부 — 봇 차단·로그인벽 계열`; return diag ? diagRes(dg) : back(`이 커뮤니티가 외부 요청을 막고 있어(HTTP ${r.status}). 봇 차단이나 로그인이 필요한 글이야.`, r.headers); }
     if (!(r.headers.get('content-type') || '').toLowerCase().includes('text/html')) { dg.verdict = 'HTML이 아님 → 폴백'; return diag ? diagRes(dg) : back('이 주소는 웹페이지가 아니라 앱 안에서 그릴 수 없어.', r.headers); }
-    html = await r.text();
+    html = await decodeBody(r);   // EUC-KR 구형 게시판 대응 — r.text()는 UTF-8 고정이라 뽐뿌·웃대류가 모지바케로 나온다
+    dg.charset = html.charset; html = html.text;
   } catch (e) { dg.status = 0; dg.verdict = '연결 실패(차단·타임아웃)'; return diag ? diagRes(dg) : back('이 커뮤니티 서버에 연결하지 못했어(차단 또는 응답 지연).', null); }
   dg.htmlKB = Math.round(html.length / 1024);
   if (html.length > HTML_MAX) { dg.verdict = 'HTML 상한 초과'; return diag ? diagRes(dg) : back('글이 너무 커서 앱 안에서 열 수 없어.', null); }
