@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""k_refgen.py — /k(영상 프롬프트) 레퍼런스 이미지 '직영' 생성.
+"""k_refgen.py — /k(영상 프롬프트)·콘티(sb) 레퍼런스 이미지 '직영' 생성.
 
   k_refgen.py <prompt.md> <out_dir>
+  env REFGEN_PREFIX(R2 키 접두 · 기본 k_out) · REFGEN_ASPECT(생성 비율 · 기본 16:9)
+
+레인 2개 공용(260730 — 콘티 레인 재사용 · 스크립트 복제 0):
+  · k  레인 = k_out/<id>/prompt.md  · 기본값 그대로(16:9 · k_out)
+  · sb 레인 = sb_out/<id>/board.md · REFGEN_PREFIX=sb_out REFGEN_ASPECT=9:16(숏폼 기본)
+    ↳ 콘티 md + 참조 이미지 URL이 한 폴더에 앉는다 = 힉스필드(시댄스) 1-way 주입 재료.
 
 prompt.md 의 '## 🖼 레퍼런스' ```text 블록(1개 = 대표 1장 · 여러 개 = 다장 — 운영자 토글 260708·합 ≤7)을
 뽑아 Gemini(직접 호출)로 블록당 이미지 1장 생성 →
@@ -52,11 +58,15 @@ def main():
 
     os.makedirs(out_dir, exist_ok=True)
     stem = os.path.basename(out_dir.rstrip("/"))
+    # 레인 파라미터(260730 · 콘티[sb] 레인 재사용 — 기본값 = k 레인 종전 동작 = 무회귀):
+    #   REFGEN_PREFIX = R2 키 접두(k_out|sb_out) · REFGEN_ASPECT = 생성 비율(k=16:9 가로 · sb=9:16 숏폼 기본)
+    prefix = os.environ.get("REFGEN_PREFIX") or "k_out"
+    aspect = os.environ.get("REFGEN_ASPECT") or "16:9"
     # 영상 레퍼런스 = 16:9 기본(가로 영상). 1K(토큰 절감, 썸네일/카드와 동일).
     # 부분 실패 = 슬롯 보존(압축 금지) — slot N ≡ 🔗 첨부 순서 범례 N 불변이 다장의 핵심 계약(검증1 260708 · 실패 슬롯 = null → 뷰어 실패 칩).
     slots = []
     for i, ref in enumerate(refs, 1):
-        png = tg.gemini_image(ref + REF_STYLE, "1K", tag="kref", aspect="16:9")
+        png = tg.gemini_image(ref + REF_STYLE, "1K", tag="kref", aspect=aspect)
         slots.append(png)
         if not png:
             print("::warning::레퍼런스 {}번 생성 실패(비치명 — 슬롯 보존·나머지 계속)".format(i))
@@ -68,7 +78,7 @@ def main():
         for i, png in enumerate(slots, 1):
             if png is None:
                 urls.append(None); continue
-            key = "k_out/{}/ref.jpg".format(stem) if i == 1 else "k_out/{}/ref_{}.jpg".format(stem, i)   # 키 인덱스 = 범례 번호 고정(첫 장 = ref.jpg 하위호환 — 1번 실패 시 ref.jpg 미생성이나 뷰어는 ref.json 우선이라 무해)
+            key = "{}/{}/ref.jpg".format(prefix, stem) if i == 1 else "{}/{}/ref_{}.jpg".format(prefix, stem, i)   # 키 인덱스 = 범례 번호 고정(첫 장 = ref.jpg 하위호환 — 1번 실패 시 ref.jpg 미생성이나 뷰어는 ref.json 우선이라 무해)
             url = tg.r2_upload(png, key, tg._img_type(png)[0] or "image/jpeg")   # Content-Type = 매직바이트 실측(Gemini는 보통 JPEG — 거짓 선언 방지 · 키는 하위호환 유지)
             urls.append(url)   # 실패 = None 그대로(슬롯 보존)
             if not url:

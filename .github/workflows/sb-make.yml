@@ -21,6 +21,13 @@ on:
           - fable
           - opus
           - gpt
+      shoot:
+        description: '촬영 레인(kling = 수동 복붙 · seedance = 레퍼런스 이미지 동반 생성)'
+        type: choice
+        default: kling
+        options:
+          - kling
+          - seedance
       base:
         description: '변형 기준 콘티 경로(sb_out/<id>/board.md · 빈값 = 신규)'
         type: string
@@ -80,6 +87,28 @@ jobs:
           # OAuth를 조용히 덮어쓰는 변수 방어적 제거(k-make와 동일)
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/sbmake.sh "$IN_ID"
+
+      # ⚠️ 레퍼런스 이미지 = 촬영=seedance 전용 후속 스텝(k-make.yml 동일 스텝 계승 · 직영 Gemini→R2 · 260730).
+      #    kling은 프롬프팅(k) 레인이 자기 레퍼런스를 따로 뽑으므로 여기서 뽑으면 중복 생성·중복 과금.
+      #    산출 = sb_out/<id>/{board.md + ref.json|ref.jpg} 한 폴더 = 힉스필드(시댄스) 1-way 주입 재료.
+      - name: Reference images (seedance lane)
+        if: inputs.shoot == 'seedance'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          REFGEN_PREFIX: sb_out   # R2 키 접두(k_refgen env 계약) — k 레인 키공간과 분리
+          REFGEN_ASPECT: '9:16'   # 콘티 기본 = 숏폼 세로(SB_DEF 비율 9:16 · k 레인 16:9와 분리)
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$GEMINI_API_KEY" ] || { echo "::warning::GEMINI_API_KEY 미등록 — 레퍼런스 생략"; exit 0; }
+          MD="viewer/sb_out/${IN_ID}/board.md"
+          [ -s "$MD" ] || { echo "::warning::board.md 없음 — 레퍼런스 생략"; exit 0; }
+          pip install --quiet requests pillow || { echo "::warning::deps 설치 실패 — 생략"; exit 0; }
+          python3 .github/scripts/k_refgen.py "$MD" "viewer/sb_out/${IN_ID}" || echo "::warning::레퍼런스 생성 실패(비치명)"
 
       - name: Commit output
         if: always()
