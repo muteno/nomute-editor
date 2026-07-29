@@ -20,6 +20,13 @@ const IMG_MAX = 12 * 1024 * 1024;
 const HTML_MAX = 4 * 1024 * 1024;                               // 원글 HTML 상한(커뮤니티 페이지 = 수백 KB 규모)
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
+const BLANK_GIF = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';   // 1x1 투명 GIF — 못 가져온 사진의 착지점(엑박·alt 노출 0)
+export function blankPx() {
+  const b = atob(BLANK_GIF), u = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+  return new Response(u, { headers: { 'content-type': 'image/gif', 'cache-control': 'public, max-age=600', 'x-content-type-options': 'nosniff' } });
+}
+
 export function hostOk(h) {   // 화이트리스트 판정(서브도메인 허용 · 접미 경계 고정 = "evil-fmkorea.com" 통과 차단)
   h = String(h || '').toLowerCase();
   return HOSTS.some(d => h === d || h.endsWith('.' + d));
@@ -30,9 +37,15 @@ export function hostOk(h) {   // 화이트리스트 판정(서브도메인 허�
 export function darkCss(c) {
   return `html{background:${c.bg} !important;color-scheme:dark}
 body{background:transparent !important;filter:invert(1) hue-rotate(180deg)}
-img,video,picture,canvas,svg,iframe,embed,object,[style*="background-image"]{filter:invert(1) hue-rotate(180deg)}
+img,video,picture,canvas,svg,iframe,embed,object{filter:invert(1) hue-rotate(180deg)}
+img{color:transparent !important}
 ::selection{background:${c.line} !important;color:${c.fg} !important}`;
 }
+// ⚠ [style*="background-image"] 이중 반전 금지(운영자 260729 "글자까지 검정색이 되어버림" — 실측 재현 확정):
+//    filter는 그 요소의 **자식 텍스트까지** 함께 반전한다 → 배경이미지를 품은 컨테이너·버튼 안 글자가 원래 검정으로
+//    되돌아가 다크 배경에 묻혔다(운영자 스샷의 "취소/신고" 버튼이 밝은 면+검은 글씨였던 것이 이 증상).
+//    배경이미지는 반전된 채로 두고 **가독성을 택한다**(사진 원색 복원은 img 등 잎 노드 한정 = 자식 텍스트 없음).
+//    img{color:transparent} = 로드 실패 시 alt 문자열이 본문에 끼어드는 것 차단(엑박 정리와 짝).
 
 // 폭맞춤 — 데스크탑 고정폭 문서가 좁은 창에 들어가 가로 스크롤이 나던 것을 창 폭 기준으로 접는다.
 export function fitCss() {
@@ -52,11 +65,14 @@ export function scrollCss() {
 
 export function transform(html, c, origin) {   // 순수 변환(테스트 대상) — 스크립트 제거 → 사진 경유 → viewport 교체 → 스타일 주입
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<script\b[^>]*\/?>/gi, '');
+  // 사진 = 전량 이 라우트 경유(운영자 260729 "안되면 아예 안나와도 괜찮은데 엑박뜨는거보다는") — 못 가져오는 건
+  // 서버가 투명 1x1로 돌려주므로 깨진 아이콘·alt 문자열이 본문에 끼어들지 않는다(판정·폴백 = 서버 단일 지점).
   html = html.replace(/(<img\b[^>]*?\bsrc=")(https?:\/\/[^"]+)(")/gi, (m0, a, src, z) => {
     const dec = src.replace(/&amp;/g, '&');
-    let h; try { h = new URL(dec).hostname; } catch { return m0; }
-    return hostOk(h) ? a + '/api/cembed?img=' + encodeURIComponent(dec) + z : m0;   // 같은 커뮤니티 호스트 사진만 경유(핫링크 차단·referrer 변덕 우회)
+    try { new URL(dec); } catch { return m0; }
+    return a + '/api/cembed?img=' + encodeURIComponent(dec) + z;
   });
+  html = html.replace(/<img\b[^>]*?\bsrcset="[^"]*"/gi, m0 => m0.replace(/\bsrcset="[^"]*"/i, ''));   // srcset = 원본 URL 재지정 경로 → 제거(프록시 src만 남겨 경유 일관)
   const vp = '<meta name="viewport" content="width=device-width, initial-scale=1">';
   html = /<meta[^>]+name=["']?viewport/i.test(html)
     ? html.replace(/<meta[^>]+name=["']?viewport[^>]*>/i, vp)   // 데스크탑 고정폭 선언(width=1200 등) 교체 = 폭맞춤의 실제 스위치
@@ -73,13 +89,16 @@ export async function onRequestGet({ request }) {
   // ── ① 사진 경유(?img=) — 변환된 HTML 안 img src가 이 경로로 온다 ──
   const img = q.get('img');
   if (img) {
-    let iu; try { iu = new URL(img); } catch { return bad('잘못된 img', 400); }
-    if (!/^https?:$/.test(iu.protocol) || !hostOk(iu.hostname)) return bad('허용되지 않은 호스트', 400);
-    let r; try { r = await fetch(iu.toString(), { headers: { 'user-agent': UA, accept: 'image/*', referer: iu.origin + '/' }, redirect: 'follow' }); } catch { return bad('사진 요청 실패', 502); }
-    if (!r.ok) return bad(`사진 ${r.status}`, 502);
+    // 실패는 전부 '투명 1x1'로 착지한다(운영자 260729 "엑박뜨는거보다는") — 에러 코드를 주면 브라우저가 깨진 아이콘을
+    // 그리고 alt 문자열이 본문에 끼어든다. 조용한 공백이 낫다는 판단(§디자인 '조용한 공백' 관례와 동축).
+    let iu = null; try { iu = new URL(img); } catch { return blankPx(); }
+    if (!/^https?:$/.test(iu.protocol)) return blankPx();
+    let r;
+    try { r = await fetch(iu.toString(), { headers: { 'user-agent': UA, accept: 'image/*', referer: iu.origin + '/' }, redirect: 'follow' }); } catch { return blankPx(); }
+    if (!r.ok) return blankPx();
     const ct = (r.headers.get('content-type') || '').toLowerCase();
-    if (!ct.startsWith('image/')) return bad('이미지가 아님', 502);
-    if (+(r.headers.get('content-length') || 0) > IMG_MAX) return bad('사진이 너무 큼', 502);
+    if (!ct.startsWith('image/')) return blankPx();
+    if (+(r.headers.get('content-length') || 0) > IMG_MAX) return blankPx();
     return new Response(r.body, { headers: { 'content-type': ct, 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
   }
 
