@@ -12398,7 +12398,13 @@ function renderChan() {
   const dlRate = (key, unit) => { const w = winAvgPair(key); return w ? dl(w.d < 0 ? -rnd(-w.d) : rnd(w.d), unit) : ''; };   // 일평균 증감 = '±N만/일'·'±N.N개/일'(dl 의미색·만 축약 계승 · rnd = 크기 기준 부호 분리 — 음수 −503.3 소수 잔존/양수 503 정수 비대칭 방지 · 소수 지표 1자리 보존)
   const rateSub = (key, unit, fb) => { const r = dlRate(key, unit); return sub(r, r ? '' : (fb !== undefined ? fb : rt(key))); };   // 증감 불가(전체·직전 창 결측) = 종전 일평균(또는 지정 폴백) 단독 fail-soft
   const sub = (dh, rh) => { const vs = dh && CHAN_PROF_R !== 'all' ? `<span class="ch-vs">${CHAN_PROF_R}일 대비</span>` : ''; const rte = rh ? `<span class="ch-rte">${dh ? '<i class="ch-sep" aria-hidden="true"></i>' : ''}${rh}</span>` : ''; return (dh || rh) ? `<div class="ch-sub">${vs}${dh}${rte}</div>` : ''; };   // 'N일 대비' 접두 = 프로필 세그(CHAN_PROF_R) 연동(운영자 260721 "7일 대비 +1,100명 | 37.3/일" — 전체 = 접두 생략 "전체는 어쩔수없는거고") · 구분 세로선+일평균 = 한 덩어리(.ch-rte — 협폭 개행 시 선이 줄 끝에 홀로 안 남게 동반 이동)
-  const sumTile = (lb, key, unit, fbv) => { const w = winSum(key); if (!(w && w.cur != null)) return st(lb, fbv, rateSub(key, '/일')); return st(lb, vf(w.cur) + (unit === '개' ? '개' : ''), rateSub(key, '/일')); };   // 본값 = 창 합계 · 단위 = 게시 '개'만(목업 — 조회·도달·방문은 라벨이 의미 담당) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 — 구 창 합계 증감+일평균 병기 대체) · 결측 = 당일값 폴백(fail-soft)
+  const PER_D = ' <span class="ch-per">/일</span>';   // '/일' 접미(70% 축소·앞 띄어쓰기) = 게시 postsTile PER 문법 계승 — 개수 단위('개')가 없는 지표(조회·도달·상호작용)용
+  const avgTile = (lb, key, fbv, tf, chart) => {   // 주값 = 창 일평균 'N /일'(운영자 260729 "조회수랑 도달 일평균 수로") — 구 창 합계 주값(sumTile) 대체 · 구성 = 게시 postsTile 100% 계승(주값 일평균 + 하단 'N일 대비 ±X만/일' 증감 + 증감 불가 시 누적 합계 폴백) · 결측 = 당일값(fbv) fail-soft
+    const wa = winAvg(key), ws = winSum(key);
+    const big = wa ? vf(rnd(wa.a)) + PER_D : fbv;   // 주값 = 창 일평균(토글 연동 · 앵커·결측 처리 = winAvg 문법 그대로)
+    const cumul = (ws && ws.cur != null) ? `<span class="ch-rt">${vf(ws.cur)}</span>` : '';   // 누적 합계 = 증감 불가(전체 창·직전 창 결측)일 때만 하단 폴백 = postsTile cumul 동일 문법(구 주값 강등)
+    return (tf || st)(lb, big, rateSub(key, '/일', cumul), chart);
+  };
   const postsTile = () => {   // 게시(운영자 260722 자리·폰트 스왑) — 주값 = 일평균 '개/일'(토글 연동 · 그 기간 꾸준함이 핵심) · 하단 보조 = 누적량 'N개'(구 주값 51개 강등 = 그냥 누적) + 직전창 대비 증감 · 구 sumTile(누적 주값) 대체
     const w = winSum('posts'), a = winAvg('posts');
     const PER = '개 <span class="ch-per">/일</span>';   // '/일' = 70% 축소 + 앞 띄어쓰기(운영자 260722 "강조될만한 내용 아님") · '개'는 주값 크기 유지
@@ -12485,12 +12491,12 @@ function renderChan() {
         st('댓글 (최근 10게시물)', (d.fb_totals && d.fb_totals.comments != null) ? vf(d.fb_totals.comments) + ' 회' : '—') +
         st('공유 (최근 10게시물)', (d.fb_totals && d.fb_totals.shares != null) ? vf(d.fb_totals.shares) + ' 회' : '—') +
         postsTile() +
-        sumTile('상호작용', 'interactions', '회', vu(a.interactions, '회')) + demoTile()
+        avgTile('상호작용', 'interactions', vu(a.interactions, '회')) + demoTile()
       : (() => { const _dg = demoTile('g'), _da = demoTile('a'), _tall = !!(_dg || _da);   // 인구통계 결측 = 6타일→4타일 · tall 해제(2행 우측 구멍 방어 · 평의회2/5 — 라이브 = 데이터 상존이라 통상 미발동 fail-soft)
         const _fT = _tall ? stTall : st, _fC = k2 => _tall ? chTileChart(series, k2 === 'f' ? 'follower_net' : 'views', k2 === 'f' ? 'zero' : 'avg', k2 === 'f' ? '명' : '회') : '';
         return _fT('팔로워', flwVal(), flwSub(), _fC('f')) +   // 팔로워 차트 = 일일 순증감(총수 차이 = 언팔 반영 · 0 기준선 아래 = 감소일 danger · 운영자 260722 · 구 follows[신규유입 항상≥0] 대체 — IG follows_and_unfollows 빈반환이라 총수 diff만이 감소원)
-        (w2 => w2 && w2.cur != null ? _fT('조회수', vf(w2.cur), rateSub('views', '/일'), _fC('v')) : _fT('조회수', vu(a.views, '회'), rateSub('views', '/일'), _fC('v')))(winSum('views')) +   // 조회수 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 "조회수 7일 대비 +-00만/일")
-        sumTile('도달', 'reach', '계정', vu(a.reach, '계정')) + _dg +
+        avgTile('조회수', 'views', vu(a.views, '회'), _fT, _fC('v')) +   // 주값 = 창 일평균(운영자 260729 · 구 창 합계 대체 — 차트 평균 기준선과 같은 수치 = 도형·숫자 정합) · 차트 = 창 평균 기준선 대비 오르내림(운영자 260721 11) · 하단 행 = 'N일 대비 ±X만/일' 일평균 증감(운영자 260722 "조회수 7일 대비 +-00만/일")
+        avgTile('도달', 'reach', vu(a.reach, '계정')) + _dg +
         postsTile() + _da + demoTile('c') + demoTile('n'); })()) + '</div>', pfSeg);   // 3행 = 도시·국가(가로 2칸씩 = 행 꽉 참 · 데이터 부재 = 행 자체 미생성 조용한 공백 · 운영자 260726)   // 공통 기간 세그(pfSeg) = 헤더 우측 extra · fb = 종전 6칸+성별·연령(무접촉)
   // ── 일일 추이 단위(지표 칩 + 기간 세그 + SVG 차트 + 변곡 마커) — 전체(일별 상세) 필 = 단위 헤더 우측 ──
   if (series.length >= 2) {
