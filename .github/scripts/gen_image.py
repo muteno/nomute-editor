@@ -43,6 +43,26 @@ def die(msg, code=1):
     sys.exit(code)
 
 
+PUSH_SEND = Path(__file__).resolve().parent / "push_send.py"   # 웹푸시 발송 정본(구독자·VAPID·죽은구독 정리 전부 그쪽 계약)
+
+
+def notify_fail(reason):
+    """이미지 생성 전건 실패 = **지금 알림이 가는 그 경로 그대로** 알린다(운영자 260730 Q01 "지금 가는 경로 있는데
+    거기로 알림가게 해줘"). 배선 = kw_watch.send()와 동문법: push_send.py --notify 재사용(중복 구현 0).
+    kind='make' = 제작 계열 아이콘(정본 = viewer/sw.js NOTIF_ICON) · rc 무시 = 알림 실패가 파이프를 안 깬다."""
+    import subprocess
+    title = "⚠️ 이미지 생성 실패"
+    try:
+        r = subprocess.run([sys.executable, str(PUSH_SEND), "--notify", title, reason,
+                            "--url", "/", "--tag", "nomute-genimg", "--kind", "make"],
+                           capture_output=True, text=True, timeout=180)
+        print((r.stdout or "").strip()[-300:], flush=True)
+        if r.returncode != 0:
+            print("::warning::생성 실패 푸시 rc={} — {}".format(r.returncode, (r.stderr or "")[-200:]), flush=True)
+    except Exception as e:  # noqa: BLE001
+        print("::warning::생성 실패 푸시 생략(무시): {}".format(e), flush=True)
+
+
 # ── 옵션 화이트리스트(genimg.js와 동일 집합 — 이중 검증) ──────────────────────────
 # 260710 개요 개편(운영자): 해상도 = 픽셀 라벨(720p/FHD/2K/4K · 기본 FHD) · 비율 = 자유 N:N(각 1~99) · 품질 = PNG/JPG90.
 NATIVE_ASPECTS = ("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")   # Gemini imageConfig.aspectRatio 실지원 집합 — 커스텀 비율은 근접 네이티브로 렌더 → post_process가 정확 크롭
@@ -705,6 +725,7 @@ def _render(o, prompt, free, stem):
         except Exception as _e:  # noqa: BLE001 — PIL 부재·디코드 실패 = 운영자 선택 비율 그대로(fail-soft · post_process와 동일 정책)
             print("::warning::복제 비율 동기 실패(운영자 선택 비율 유지): {}: {}".format(type(_e).__name__, _e), flush=True)
     new_items = []
+    fail_reasons = []   # 렌더 실패 사유 누적(대기열 카드·웹푸시 재료 · 운영자 260730)
     ar_wh = _parse_aspect(o["aspect"]) or (4, 5)   # GPT Image 사이즈 선택 재료(요청비)
     for i in range(o["count"]):
         png = None
@@ -714,6 +735,16 @@ def _render(o, prompt, free, stem):
                 print("::warning::GPT Image 전건 실패 — Gemini로 폴백 렌더", flush=True)
         if not png:
             png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)
+            if not png and tg.LAST_ERR:
+                fail_reasons.append(tg.LAST_ERR)
+            # 역방향 폴백(운영자 260729 "AI 생성이 작동 안 함") — 기본 엔진 Gemini가 죽으면(실측 run 30457842395:
+            # HTTP 429 "monthly spending cap" = 종량제 한도 소진) 지금까지는 그대로 전건 실패였다. GPT 방향 폴백은
+            # 이미 있었으나 반대편이 비어 있어 **기본값 사용자가 통째로 막히는** 비대칭이었다 → 양방향으로 봉합.
+            if not png and o.get("engine") != "gpt":
+                print("::warning::Gemini 렌더 실패 — GPT Image로 폴백 렌더", flush=True)
+                png = openai_image(prompt, ref_png, ar_wh)
+                if not png:
+                    fail_reasons.append("GPT Image 폴백도 실패")
         if not png:
             print("::warning::{}번째 렌더 실패(fail-soft — 나머지 계속)".format(i + 1), flush=True)
             continue
@@ -735,7 +766,28 @@ def _render(o, prompt, free, stem):
         print("  ✅ {}/{} → {}".format(i + 1, o["count"], url), flush=True)
 
     if not new_items:
-        die("렌더 전건 실패 — 생성 이미지 0")
+        # 전건 실패 = 조용히 죽지 않는다(운영자 260730 Q01·Q02). 종전엔 러너 로그에만 남아 뷰어 대기열 카드가
+        # '제작 중'으로 영영 남았다(Q1118 ⚠잔여 = 운영자가 "반응 없음"으로 인지한 실체).
+        #   ① free.json에 **실패 레코드**를 남긴다 → 뷰어 폴링(thumb genJob)이 그대로 집어 카드를 실패+사유로 전환
+        #   ② 기존 웹푸시 경로(push_send.py --notify · 키워드 알림과 동일 배선)로 사유를 즉시 알린다
+        reason = fail_reasons[0] if fail_reasons else "렌더 실패(사유 미상)"
+        for r_ in fail_reasons:   # 한도 사유가 섞여 있으면 그걸 대표로(운영자 조치가 필요한 유일한 축)
+            if r_ == tg.QUOTA_MSG:
+                reason = r_
+                break
+        fail_item = {"url": "fail:" + h8, "fail": 1, "reason": reason, "link": "", "label": "실패",
+                     "style": o["style"], "prompt": prompt[:600],
+                     "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
+        if free:
+            try:
+                merged_f = ([fail_item] + existing)[:24]
+                json.dump(merged_f, open(sjson, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+                json.dump([fail_item], open("/tmp/genimg_new.json", "w", encoding="utf-8"), ensure_ascii=False)   # 커밋 스텝 재병합과 한 쌍(성공분과 동일 계약)
+                print("📝 실패 레코드 기록 → {} · 사유={}".format(sjson, reason), flush=True)
+            except Exception as e_:  # noqa: BLE001 — 기록 실패해도 알림·종료는 진행(fail-soft)
+                print("::warning::실패 레코드 기록 실패: {}: {}".format(type(e_).__name__, e_), flush=True)
+        notify_fail(reason)
+        die("렌더 전건 실패 — 생성 이미지 0 · 사유=" + reason)
     merged = (new_items + existing)[:24] if free else (new_items + existing)   # 자유 목록 = 캡 24(최근만 · 비대 방지)
     json.dump(merged, open(sjson, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     if free:   # 유실 봉합(260707 실측 사고): push 경합 재시도의 pull --rebase -X ours = 리베이스에선 원격 승 →

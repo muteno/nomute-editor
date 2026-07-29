@@ -439,6 +439,26 @@ def _usage_total(calls):
     s = lambda k: sum(int(c.get(k) or 0) for c in calls)
     return {"calls": len(calls), "prompt_tokens": s("prompt"), "output_tokens": s("output"), "total_tokens": s("total")}
 
+# 마지막 렌더 실패 사유(사람이 읽는 한 줄) — 호출부가 대기열 카드·웹푸시에 그대로 싣는다(운영자 260730
+# "한도 막혀서 생성 안될 때는 대기열까지 들어가서 실패 하고 사유 표기"). fail-soft 계약(None 반환)은 그대로 두고
+# **사유만 곁들이는** 부가 채널이라 기존 호출부(gen_cards·k_refgen 등) 무접촉 = 안 읽으면 종전 동작 그대로.
+LAST_ERR = ""
+QUOTA_MSG = "제미나이 사용 한도 초과 — AI Studio 지출 상한 확인 필요"
+
+
+def classify_err(code, msg):
+    """HTTP 코드+본문 → 대기열/알림에 띄울 한 줄 사유. 한도(429·RESOURCE_EXHAUSTED)는 전용 문구로 분리한다
+    — 운영자가 즉시 해야 할 조치(지출 상한 해제)가 다른 실패와 완전히 다르기 때문."""
+    low = (msg or "").lower()
+    if code == 429 or "resource_exhausted" in low or "quota" in low or "spending cap" in low:
+        return QUOTA_MSG
+    if code in (401, 403):
+        return "제미나이 인증 거부(HTTP {}) — API 키 확인 필요".format(code)
+    if code in (500, 502, 503, 504):
+        return "제미나이 서버 오류(HTTP {}) — 잠시 후 재시도".format(code)
+    return "제미나이 오류(HTTP {})".format(code)
+
+
 def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None):
     """Gemini 이미지 1장 생성 → 이미지 bytes(실측: 모델이 보통 JPEG 반환 — 'PNG' 가정 금지 · 실패 시 None, fail-soft).
     usageMetadata는 _USAGE에 기록.
@@ -448,6 +468,8 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
     ref_png: 참조 얼굴 사진 bytes(운영자 260703 참조 체이닝) — 있으면 parts 앞에 inline_data로 첨부해
              "이 실제 얼굴로 그려라". 실사진→일러스트 = 공인 캐리커처 전통(안전 하한은 프롬프트가 유지). 없으면 텍스트 전용.
     """
+    global LAST_ERR
+    LAST_ERR = ""
     parts = []
     if ref_png:
         parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(ref_png).decode()}})
@@ -472,17 +494,20 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
                         return base64.b64decode(inl["data"])
             # 이미지 파트 없는 200(안전거부·무이미지)도 확률적 — HTTP 일시 오류와 동일하게 1회 재시도(260710)
             print("  ⚠️ 이미지 파트 없음(응답에 inlineData 부재){}".format(" — 4s 후 재시도" if attempt == 0 else ""), flush=True)
+            LAST_ERR = "제미나이가 이미지를 안 돌려줌(안전 거부 추정)"
             if attempt == 0:
                 time.sleep(4); continue
             return None
         except urllib.error.HTTPError as e:
             msg = e.read().decode()[:300]
             print("  ⚠️ HTTP {} — {}".format(e.code, msg), flush=True)
+            LAST_ERR = classify_err(e.code, msg)
             if e.code in (429, 500, 503) and attempt == 0:
                 time.sleep(4); continue
             return None
         except Exception as e:
             print("  ⚠️ 호출 실패: {}".format(e), flush=True)
+            LAST_ERR = "제미나이 호출 실패: {}".format(str(e)[:80])
             if attempt == 0:
                 time.sleep(4); continue
             return None

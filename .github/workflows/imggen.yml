@@ -55,9 +55,11 @@ jobs:
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치(없으면 exit 127)
 
-      - name: Deps (pillow — 후처리)
-        continue-on-error: true   # 설치 실패해도 잡 지속 — gen_image.post_process가 PIL 부재 시 원본 PNG 유지(fail-soft)
-        run: timeout 120 python3 -m pip install --quiet pillow || { sleep 3; timeout 120 python3 -m pip install --quiet pillow; }   # §인프라 네트워크 op 타임아웃(+1 재시도) — 커스텀 비율 크롭·해상도 스냅·JPG 인코딩용 · python3 -m pip = 실행 인터프리터 일치(6인 검증)
+      - name: Deps (pillow — 후처리 · pywebpush — 실패 알림)
+        continue-on-error: true   # 설치 실패해도 잡 지속 — gen_image.post_process가 PIL 부재 시 원본 PNG 유지(fail-soft) · pywebpush 부재는 push_send가 "미설치 — 생략"으로 자체 fail-soft
+        run: |
+          timeout 120 python3 -m pip install --quiet pillow || { sleep 3; timeout 120 python3 -m pip install --quiet pillow; }   # §인프라 네트워크 op 타임아웃(+1 재시도) — 커스텀 비율 크롭·해상도 스냅·JPG 인코딩용 · python3 -m pip = 실행 인터프리터 일치(6인 검증)
+          timeout 120 python3 -m pip install --quiet pywebpush || echo "::warning::pywebpush 미설치 — 생성 실패 알림 생략"   # 렌더 전건 실패 시 웹푸시(운영자 260730 Q01) · conv-make 등 형제 워크플로 동일 설치 문법
 
       - name: Generate images
         env:
@@ -77,6 +79,9 @@ jobs:
           R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          # 웹푸시 = 렌더 전건 실패(특히 제미나이 한도 소진) 즉시 알림(운영자 260730 Q01 "지금 가는 경로 있는데 거기로") — 배선 = push_send.py --notify(키워드 알림·제작완료와 동일 정본)
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           GENIMG_STEM: ${{ github.event.inputs.stem }}
           GENIMG_OPTS: ${{ github.event.inputs.opts || '{}' }}
           GENIMG_FREE: ${{ github.event.inputs.free || '0' }}
