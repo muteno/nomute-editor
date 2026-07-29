@@ -843,7 +843,7 @@ def build_ass(segs, w, h, opts):
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ])
     lines = []
-    small = max(14, int(fs * coef(opts, "dual_small", 0.62, 0.3, 0.62)))   # 번역(원문) 줄 크기 계수(운영자 260728 "번역이 50% 작은 크기" — 편집기 번역 토글 = 0.5 · 결측 = 0.62 종전 바이트 동일)
+    small = max(14, int(fs * coef(opts, "dual_small", 0.62, 0.25, 1.0)))   # 번역(원문) 줄 크기 계수(운영자 260728 "번역이 50% 작은 크기" — 편집기 번역 토글 = 0.5 · 결측 = 0.62 종전 바이트 동일)
     ref_px = fs * LINE_F   # 중앙 불변 기준 = 본선(한글) 1줄 높이 — 게이지가 가리키는 배치는 1줄 기준으로 고정(운영자 캡처 보존)
     floor_v = max(1, int(h * 0.01))   # ASS Dialogue MarginV=0은 '스타일값 사용' 폴백이라 1 이상 강제
     for sg in segs:
@@ -878,7 +878,11 @@ def build_ass(segs, w, h, opts):
             #   구현 전엔 미리보기만 띄우고 산출물은 딱 붙어 나왔다(평의회① 260728). 결측 계수(dual_small 미송신 = 종전 경로)에선 gap 0 = 줄 수·높이 종전 동일.
             gap = int(fs * 0.18) if opts.get("dual_small") else 0
             gap_tag = ("{\\fs" + str(max(1, gap)) + "}\\h{\\r}\\N") if gap > 0 else ""
-            src_suf = "\\N" + gap_tag + "{\\r}{\\fs" + str(small) + "}" + src_txt + "{\\r}"
+            # 원문 줄 = 색·그림자 **고정** 축(운영자 260729 "영문은 항상 흰색 고정에, 그림자 조금 줘서 항상 고정으로") —
+            #   글자색(fg)·음영색(oc)·배경(bg)·음영 크기(outline/pad)·글로우 어느 것도 안 따른다. 뷰어 .pvsub-tr 고정 스타일과 짝.
+            #   {\r} = 본선이 남긴 카라오케·팝·키워드 태그 리셋 → {\1c 흰} {\3c 검정 외곽선} {\4c 검정 그림자} {\bord 얇게} {\shad 1} {\blur0}.
+            src_fx = ("{\\r}{\\fs" + str(small) + "}{\\1c&HFFFFFF&}{\\3c&H000000&}{\\4c&H000000&}{\\bord" + ("%.1f" % max(1.0, small * 0.04)) + "}{\\shad1}{\\blur0}{\\1a&H00&}{\\3a&H00&}{\\4a&H60&}")
+            src_suf = "\\N" + gap_tag + src_fx + src_txt + "{\\r}"
             block_px += len(src_chunks) * small * LINE_F + gap * LINE_F
         # 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선"): 하단 앵커는 위로만 자라 줄이 늘면 블록 중심이 떠오름 →
         #   초과 높이의 절반만큼 MarginV를 내려 블록 세로중심 고정(1줄 = 보정 0 = 종전·캡처 그대로). 패딩은 전 이벤트 동일이라 상쇄.
