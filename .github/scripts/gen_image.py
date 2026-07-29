@@ -714,6 +714,12 @@ def _render(o, prompt, free, stem):
                 print("::warning::GPT Image 전건 실패 — Gemini로 폴백 렌더", flush=True)
         if not png:
             png = tg.gemini_image(prompt, image_size=render_size, tag="genimg", aspect=render_aspect, ref_png=ref_png)
+            # 역방향 폴백(운영자 260729 "AI 생성이 작동 안 함") — 기본 엔진 Gemini가 죽으면(실측 run 30457842395:
+            # HTTP 429 "monthly spending cap" = 종량제 한도 소진) 지금까지는 그대로 전건 실패였다. GPT 방향 폴백은
+            # 이미 있었으나 반대편이 비어 있어 **기본값 사용자가 통째로 막히는** 비대칭이었다 → 양방향으로 봉합.
+            if not png and o.get("engine") != "gpt":
+                print("::warning::Gemini 렌더 실패 — GPT Image로 폴백 렌더", flush=True)
+                png = openai_image(prompt, ref_png, ar_wh)
         if not png:
             print("::warning::{}번째 렌더 실패(fail-soft — 나머지 계속)".format(i + 1), flush=True)
             continue
