@@ -121,6 +121,7 @@ def _sbudget(plat, accounts):
 
 YT_KEY = (os.environ.get("YOUTUBE_API_KEY") or "").strip()
 ACC = os.path.join(ROOT, "viewer", "sns_accounts.json")
+PHONE_FRESH = int((os.environ.get("PHONE_FRESH_MIN") or "").strip() or 0) if (os.environ.get("PHONE_FRESH_MIN") or "").strip().isdigit() else 90   # 폰 산출물 신선도 임계(분) — 채택 게이트와 health.phone.ok 판정이 **같은 값**을 봐야 한다(260730 검증 B-F7: 한쪽만 env를 보고 다른 쪽은 90 하드코딩이라, env를 조정하면 "채택은 됐는데 폰 죽음"으로 뷰어 분기가 데이터와 어긋났다)
 SUBS_ON = (os.environ.get("SNS_SUBS") or "").strip() == "1"   # 구독 축 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
 REDDIT_ON = (os.environ.get("SNS_REDDIT") or "").strip() == "1"   # ⑥ 레딧 게이트(§📰-e 카나리아 — 승격 전 cron OFF)
 BSKY_ON = (os.environ.get("SNS_BSKY") or "").strip() == "1"       # ⑦ 블루스카이 게이트(동일)
@@ -1825,9 +1826,23 @@ def main():
         def _rsubs(fn, plat, per=12):
             kr, gl = _region_split(plat, acc, accreg)   # 지역분리 = 모듈 공용 헬퍼(폰 phone_subs.py와 단일 정본)
             return fn(kr, limit=per, deadline=dl) + fn(gl, limit=per, deadline=dl)
+        # 인스타 러너 수집 = 폰이 살아 있으면 **건너뛴다**(260730 검증 A-D7a/B-F6 · 운영자 승인 축) —
+        #   러너는 쿠키 없는 데센 IP라 결과가 100% 429이고(실측 why: kr·gl 각 첫 계정 429 + 잔여 budget),
+        #   그 결과는 폰 채택 시 전량 폐기되는데도 30분마다 같은 계정을 두드려 **계정·세션 리밋을 계속 갱신**한다
+        #   (phone_subs.py §요청량 축소가 폰을 -92%로 줄인 바로 그 원인을 러너가 상쇄하던 구조).
+        #   폰이 스테일이면 종전대로 러너가 시도 = 공급 공백 0(fail-soft). 스레드가 이미 []인 선례와 동형.
+        _ph_fresh = False
+        try:
+            _phm = (datetime.now(KST) - datetime.fromisoformat(str((json.load(open(
+                os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8")) or {}).get("updated")))).total_seconds() / 60
+            _ph_fresh = -5 <= _phm <= PHONE_FRESH
+        except Exception:  # noqa: BLE001 — 파일 없음·파손 = 폰 없음 취급(러너가 종전대로 시도)
+            pass
         subs_new = {"x": _rsubs(x_subs, "x"), "tiktok": _rsubs(tiktok_subs, "tiktok"),
-                    "insta": _rsubs(insta_subs, "insta"), "youtube": _rsubs(yt_subs, "youtube"),
+                    "insta": [] if _ph_fresh else _rsubs(insta_subs, "insta"), "youtube": _rsubs(yt_subs, "youtube"),
                     "threads": []}   # ⑧ 스레드 = 러너 미수집(Meta 데센 IP 차단 — 인스타 동류) · 폰/맥 채택(아래)이 유일 공급원
+        if _ph_fresh:
+            print("insta 러너 수집 생략 — 폰 신선(리밋 갱신 방지 · 폰 채택이 정본)")
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
                 it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
@@ -1836,15 +1851,23 @@ def main():
         try:
             _ph = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
             _pm = (datetime.now(KST) - datetime.fromisoformat(str(_ph.get("updated")))).total_seconds() / 60
-            if 0 <= _pm <= (_i(os.environ.get("PHONE_FRESH_MIN")) or 90):
+            if -5 <= _pm <= PHONE_FRESH:   # 하한 -5분 = 폰 시계가 조금 앞서도 폰 전용 축(스레드·인스타·틱톡·레딧·재난)이 통째로 러너 폴백되지 않게(260730 검증 B-F8)
                 _pc = _ph.get("_cover") if isinstance(_ph.get("_cover"), dict) else {}   # 폰이 실어 보낸 계정별 성공·사유(260728 — 데이터는 폰, 사유는 러너였던 주체 불일치 봉합)
-                PHONE_COVER["ok"] = {k3: set(v or ()) for k3, v in (_pc.get("ok") or {}).items() if isinstance(v, list)}
-                PHONE_COVER["why"] = {k3: v for k3, v in (_pc.get("why") or {}).items() if isinstance(v, dict)}
+                _pok = {k3: set(v or ()) for k3, v in (_pc.get("ok") or {}).items() if isinstance(v, list)}
+                _pwhy = {k3: v for k3, v in (_pc.get("why") or {}).items() if isinstance(v, dict)}
+                _padopt = set()
                 for k2 in ("x", "insta", "threads", "tiktok"):   # 틱톡 = 러너 데센 IP가 tikwm /user/posts에 통째 HTTP 403(WAF IP블록 · run 29800229859 실측 260721: KR13+GL17 30콜 전멸 → 구독 tiktok = 스테일 carry) → 폰 가정 IP 채택(insta/threads 동류 편입) · 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
                     if _pl:
                         subs_new[k2] = _pl
+                        _padopt.add(k2)
                         print(f"phone-subs 채택: {k2} {len(_pl)}건({_pm:.0f}분 전 수집)")
+                # 사유 도장은 **채택된 축에만** 갈아 끼운다(260730 검증 B-F1) — 종전엔 도장을 무조건 전량 설치하면서
+                #   데이터는 `if _pl:` 조건부라, 폰이 0건인 축에서 "데이터는 러너 / 사유는 폰"이라는 **반대 방향
+                #   주체 뒤바뀜**이 열렸다(러너 실패분을 보여주면서 "폰이 쉬는 중 · 할 일 없음"으로 안내 = 실패가
+                #   실패로 안 보임). 러너도 0건인 축은 보여줄 러너 데이터가 없으니 폰 사유가 정본(260730 봉합 의도 보존).
+                PHONE_COVER["ok"] = {k3: v for k3, v in _pok.items() if k3 in _padopt or not subs_new.get(k3)}
+                PHONE_COVER["why"] = {k3: v for k3, v in _pwhy.items() if k3 in _padopt or not subs_new.get(k3)}
                 _pr = [it for it in (_ph.get("reddit") or []) if isinstance(it, dict)]   # ⑥ 레딧 = 러너 403 Blocked 실측(run 29197039475) → 폰 신선분이 주 공급(게이트 무관 채택)
                 if _pr:
                     rd = _pr
@@ -1973,7 +1996,13 @@ def main():
             #   밀린 정상 계정이 전부 누락으로 잡혔다(260728 판례 = 틱톡 38계정 top-12 → 상시 24% = 알림 42건 폭탄).
             # 사유(why)도 데이터와 **같은 주체** 것으로 맞춘다 — 폰 채택분은 폰의 _cover, 러너분은 SUB_FAIL.
             _okset = set(SUB_OK.get(_k) or ()) | set(PHONE_COVER["ok"].get(_k) or ())
-            _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])} | _okset
+            # 항목 유래 got은 **신선분만**(뷰어 cut3d와 같은 72h 창 · 260730 검증 B-F3/A-D9) — 종전엔 나이 무관이라
+            #   carry가 살아 있는 한 got=20/20으로 계산돼 stale·80% 두 알림 축이 **동시에 침묵**하고, 72h 뒤 뷰어가
+            #   컷하면 화면 섹션만 조용히 비는 완전 무경보 구간이 생겼다(260727 봉합의 3번째 재발 경로).
+            #   time 필드가 없는 축(youtube 등)은 종전대로 신선 취급 = 회귀 0.
+            _cut = int(time.time()) - 3 * 86400
+            _got = {str(it.get("account") or "").lower().lstrip("@") for it in (subs.get(_k) or [])
+                    if not it.get("time") or _i(it.get("time")) >= _cut} | _okset
             _reg = [str(a).lower().lstrip("@") for a in (acc[_k] or [])]
             _miss = [a for a in _reg if a not in _got]
             _fsrc = {**(SUB_FAIL.get(_k) or {}), **(PHONE_COVER["why"].get(_k) or {})}   # 폰 기록이 러너 잔향을 덮는다(폰 = 주 공급)
@@ -1984,7 +2013,7 @@ def main():
     try:
         _phj = json.load(open(os.path.join(ROOT, "viewer", "sns_subs_phone.json"), encoding="utf-8"))
         _pha = (datetime.now(KST) - datetime.fromisoformat(str(_phj.get("updated")))).total_seconds() / 60
-        _phh = {"ok": bool(0 <= _pha <= 90), "age_min": round(_pha), "updated": str(_phj.get("updated") or "")}
+        _phh = {"ok": bool(-5 <= _pha <= PHONE_FRESH), "age_min": round(_pha), "updated": str(_phj.get("updated") or "")}
     except Exception:  # noqa: BLE001
         pass
     health["phone"] = _phh

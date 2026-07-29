@@ -7558,27 +7558,34 @@ function sysErrMsgs() {
     return !(_reg && _got);
   }).map(k => {
     const head = SYS_PLAT_KO[k] + ' 구독이 안 걷히고 있어요 — ';
-    let text;
+    let text, _c = 'srv';   // _c = 사유 갈래 태그(id에 물린다 · 260730 적대검증 C-D4) — 종전 id는 날짜만 물어, 아침에 '대기' 알림을 ✓ 처리한 뒤 낮에 폰이 죽어도 같은 id라 "폰 크론 살려라"가 하루 통째로 소실됐다(계정 축은 이미 사유를 id에 문다 = 두 축 규약 정합)
     // 대기 사유 판정(운영자 260730 "ip 제한 걸려있다가 자동으로 들어온다고했는데") — 종전 이 분기는 `why`를
     //   **한 번도 안 읽고** 폰 축이면 무조건 "메타 로그인월 = 쿠키 갈아라"로 단정했다. 실제 원인이 레이트리밋
     //   백오프(폰이 일부러 쉬는 중)여도 이미 넣어둔 쿠키를 또 넣으라는 헛 조치가 나갔다(260730 판례).
     //   원인별 문구는 아래 cover 축이 이미 정확히 가르는데, 그 축은 got=0(전멸)이면 통째로 억제돼(L7588)
     //   전멸일수록 틀린 문구만 남는 이중 사각이었다 → 여기서 같은 사유 코드를 읽어 대기/조치를 가른다.
     //   'cooldown'·'gap' = 폰이 스스로 쉬는 중(scripts/phone_subs.py _skip_stamp) · 429 = 플랫폼 레이트리밋.
+    //   ⚠ 분모에서 '미시도'를 뺀다(260730 적대검증 C-D2) — rotate는 회전 구조상 **항상 15/20 = 75%**라
+    //     그것만으로 과반이 확정돼, 실제로 시도된 5계정이 무슨 사유든(쿠키 만료 wall 포함) 대기 문구가 이겨
+    //     "기다리면 됨"으로 덮였다 = 이 봉합이 고치려던 헛 조치의 정반대 재발. 판정은 **시도된 사유끼리** 한다.
     const _wv = Object.values((cov[k] || {}).why || {}).map(v => String(v));
-    const _wait = _wv.filter(v => v === 'cooldown' || v === 'gap' || v === 'rotate' || v === '429').length;
-    if (SYS_PHONE_PLAT[k] && !phDead && _wv.length && _wait * 2 > _wv.length) {
-      text = head + (_wv.filter(v => v === 'gap' || v === 'rotate').length * 2 > _wv.length
+    const _try = _wv.filter(v => v !== 'rotate' && v !== 'budget');   // 실제로 시도된 계정의 사유만
+    const _wait = _try.filter(v => v === 'cooldown' || v === 'gap' || v === '429').length;
+    if (SYS_PHONE_PLAT[k] && !phDead && _wv.length && (_try.length ? _wait * 2 > _try.length : true)) {
+      _c = 'wait';
+      text = head + (_try.filter(v => v === 'gap').length * 2 > _try.length || !_try.length
         ? '폰이 다음 수집 차례를 기다리는 중이에요(계정 리밋을 피하려고 일부러 띄엄띄엄 걷어요).\n\n'
         : '요청이 몰려 잠시 막혀서, 폰이 일부러 쉬는 중이에요 — 계속 두드리면 오히려 더 늦게 풀려요.\n\n')
         + '👉 네가 할 일: 없어요. 쉬는 시간이 끝나면 자동으로 다시 걷혀요. 이틀 넘게 계속 뜨면 그때 알려줘.\n\n'
         + '확인(✓)하면 오늘은 다시 안 떠요.';
     } else if (SYS_PHONE_PLAT[k] && phDead) {
+      _c = 'dead';
       text = head + '폰 수집기가 ' + _sysDurKo(ph.age_min) + '째 멈춰 있어서예요.\n\n'
         + '스레드·인스타는 폰에서만 걷혀요(메타가 서버 IP를 막아서 서버가 대신 못 해요).\n\n'
         + '👉 네가 할 일: 폰에서 phone_subs 크론이 도는지 확인해 줘 — termux(또는 맥) 앱이 꺼졌거나 절전에 잠든 게 제일 흔한 원인이야. 다시 돌기 시작하면 30분 안에 저절로 채워져.\n\n'
         + '확인(✓)하면 오늘은 다시 안 떠요.';
     } else if (SYS_PHONE_PLAT[k]) {
+      _c = 'wall';
       text = head + '폰 수집기는 도는데 메타 로그인월에 막혀 0건이에요.\n\n'
         + '👉 네가 할 일: ' + SYS_PLAT_KO[k] + ' 부계정(본계 말고 — 자동화 감지 밴) 세션쿠키를 폰 크론 환경변수 ' + SYS_PHONE_PLAT[k] + '에 넣어 줘. '
         + (k === 'threads' ? '전에 넣어둔 쿠키가 만료된 걸 수도 있어 — 그럼 새로 뽑아서 갈아 줘.' : '스레드가 지금 걷히는 것도 같은 방식이야.') + '\n\n'
@@ -7588,7 +7595,7 @@ function sysErrMsgs() {
         + '이건 서버가 30분마다 알아서 다시 시도해 — 네가 할 일은 없어. 며칠째 계속 뜨면 등록한 계정이 비공개·삭제됐는지만 확인해 줘.\n\n'
         + '확인(✓)하면 오늘은 다시 안 떠요.';
     }
-    return { id: 'sys:subs:' + k + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined, text };   // 시간 = epoch(t) 축 = shellUpdMsg 정본 계승 → qAgo 상대시간("5시간 전") · 구 ts 문자열 축은 msgAgo의 `/[+Z]$/` 판정이 "+09:00"의 끝문자 '0'에 걸려 파싱 실패 → 원문 ISO가 시간 칸을 넘쳐 옆 열을 덮던 원인(운영자 260725 스샷)
+    return { id: 'sys:subs:' + k + ':' + _c + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined, text };   // 시간 = epoch(t) 축 = shellUpdMsg 정본 계승 → qAgo 상대시간("5시간 전") · 구 ts 문자열 축은 msgAgo의 `/[+Z]$/` 판정이 "+09:00"의 끝문자 '0'에 걸려 파싱 실패 → 원문 ISO가 시간 칸을 넘쳐 옆 열을 덮던 원인(운영자 260725 스샷)
   });
   // 레딧(운영자 260727 "이거 못받아올때, 메세지 오게 할 수있나? 지금 만들어진 틀 안에서") — 문법·id·✓축·구분·기어 극보수색 전부 위 계승, 다른 건 **판정 소스 하나**.
   //   ⚠ 레딧은 계정 축이 아니라 서브레딧 축이라 `health.subs.stale`에 영영 안 잡힌다. `health.reddit`도 못 쓴다 —
@@ -7643,13 +7650,16 @@ function sysErrMsgs() {
       } else if (wn >= 500) {
         cause = SYS_PLAT_KO[k] + ' 쪽 서버가 오류를 냈어요(' + wn + ' — 그쪽 문제라 계정과 무관해요).';
         todo = '👉 네가 할 일: 없어요. 다음 수집에 자동으로 다시 시도해요.';
-      } else if (w === 'budget') {
-        cause = '이번 수집은 시간이 모자라 이 계정까지 못 갔어요(실패가 아니라 미시도).';
-        todo = '👉 네가 할 일: 없어요. 다음 수집에 다시 시도해요.';
-      } else if (w === 'cooldown' || w === 'gap' || w === 'rotate') {
+      } else if (w === 'budget' || w === 'rotate') {
+        // 미시도 = 사고가 아니라 **이번 회차에 차례가 안 온 것** → 침묵(260730 적대검증 C-D3).
+        //   종전엔 문구만 바꾸고 발행은 그대로여서, 회전이 정상으로 도는 런마다 miss 15건이 한 그룹으로 묶여
+        //   "계정 15개가 한꺼번에 안 걷히고 있어요"(본문은 "아직 차례가 아니에요") = 자기모순 경고가 매일 1건 떴다.
+        //   진짜 정체는 stale 축(got=0)과 cooldown 사유가 담당하므로 은폐 아님.
+        continue;
+      } else if (w === 'cooldown' || w === 'gap') {
         // 폰이 **일부러 쉰** 회차(scripts/phone_subs.py _skip_stamp · 260730) = 실패가 아니라 백오프·주기 대기.
         //   도장이 없으면 이 자리가 러너(데센 IP) 429 잔향으로 채워져 원인이 뒤바뀐다 — 위 stale 분기와 같은 축.
-        cause = (w === 'gap' || w === 'rotate')
+        cause = (w === 'gap')
           ? '아직 이 계정 차례가 아니에요(계정 리밋을 피하려고 몇 개씩 돌아가며 걷어요 · 한 바퀴 약 6시간).'
           : '요청이 몰려 잠시 막혀서, 폰이 쉬는 중이라 이번엔 시도하지 않았어요.';
         todo = '👉 네가 할 일: 없어요. 차례가 오면 자동으로 다시 걷혀요.';
@@ -11363,8 +11373,15 @@ function renderSnsTrends() {
   const subEmptySec = (key, lbl, plat) => {
     if (!_subStale.has(plat)) return '';   // 계정 미등록·정상 = 종전대로 미표기
     const ph = ((TRENDS && TRENDS.health) || {}).phone;
+    // 대기 사유는 알림함과 **같은 판정**으로 읽는다(260730 적대검증 C-D5) — 종전엔 입력이 health.phone 하나뿐이라
+    //   폰이 살아 있으면 무조건 "막혀서 못 걷고 있어요"였고, 같은 상황에서 알림함은 "차례를 기다리는 중"이라
+    //   두 화면이 서로 다른 말을 했다(이 블록 주석의 "한 축으로 묶는다" 규약 자기위반).
+    const _cw = (((((TRENDS && TRENDS.health) || {}).subs || {}).cover || {})[plat] || {}).why || {};
+    const _tv = Object.values(_cw).map(v => String(v)).filter(v => v !== 'rotate' && v !== 'budget');   // 미시도 제외 = sysErrMsgs 대기 판정과 동일 문법
+    const _waiting = !_tv.length || _tv.filter(v => v === 'cooldown' || v === 'gap' || v === '429').length * 2 > _tv.length;
     const why = (_PHONE_PLAT[plat] && ph && ph.ok === false) ? '폰 수집기가 멈춰서 못 걷고 있어요'
-      : (_PHONE_PLAT[plat] ? '지금은 막혀서 못 걷고 있어요' : '이번 수집에서 0건이에요 — 자동으로 다시 시도해요');
+      : (_PHONE_PLAT[plat] ? (_waiting ? '차례를 기다리는 중이에요 — 자동으로 다시 걷혀요' : '지금은 막혀서 못 걷고 있어요')
+                           : '이번 수집에서 0건이에요 — 자동으로 다시 시도해요');
     return sec(key, lbl, '', 0, '<div class="qempty">' + why + '<small>자세한 원인과 조치는 설정 → 알림메세지에</small></div>');
   };
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
