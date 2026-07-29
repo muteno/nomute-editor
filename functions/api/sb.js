@@ -33,7 +33,9 @@ export async function onRequestPost({ request, env }) {
   const SB_SHOOTS = ['kling', 'seedance'];
   const SB_SET = {
     '비율': ['9:16', '16:9', '1:1'],
-    '길이': ['6~8s', '10~12s', '15s', '20~30s'],
+    '화질': ['720p', '1080p', '2K', '4K'],     // 프롬프팅 이관 축(운영자 Q1145) — 값 집합 = api/k.js K_SET 동일
+    '프레임': ['60fps', '30fps'],              // 동상
+    '길이': ['8s', '10s', '15s', '30s'],       // 단일값 축(구 구간칩 상한 초 승계 · 컷수 하드룰 = 뷰어 SB_CUTS)
   };
   const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 5', gpt: 'GPT 5.6 Sol' };
   const director = SB_DIRECTORS.includes(body.director) ? body.director : 'fable';
@@ -49,12 +51,15 @@ export async function onRequestPost({ request, env }) {
     if (SB_SET[k].includes(v)) pairs.push(k + '=' + v);
   }
   if (pairs.length) story += '\n\n[설정: ' + pairs.join(' · ') + ']';
+  // 레퍼런스 이미지 생성 여부(운영자 Q1161): 시댄스 = 강제 ON(md만 산출하는 레인 = 이미지가 발사 필수 재료) · 클링 = 폼 선택값(옵션)
+  const refimage = (shoot === 'seedance') ? 'true' : ((body.ref === false || body.ref === 'false') ? 'false' : 'true');
+  story += '\n\n[레퍼런스: ' + (refimage === 'true' ? 'ON' : 'OFF') + ']';   // 절 출력 게이트(prompts/sb-make.md)
   if (body.ad === true || body.ad === 'true') story += '\n\n[광고: ON]';   // 광고 모드 = 마지막 컷 키비주얼 의무(storyboard-v1 하드룰)
   // 변형(운영자 260714 5차 — 작업 내역에서 이전 콘티 기반 재설계): 경로 화이트리스트 정규식 = sb_out 산출물만(임의 파일 읽기 차단)
   const base = (typeof body.base === 'string' && /^sb_out\/[0-9]{12}-[0-9a-f]{6}\/board\.md$/.test(body.base)) ? body.base : '';
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/sb-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, story, director, shoot, base },   // shoot = 워크플로 입력(레퍼런스 이미지 스텝 게이트 — seedance만 생성 · 260730). 마커([촬영: …])와 별개 축 = 러너 조건 분기용.
+    ref: REF, inputs: { id, story, director, shoot, refimage, base },   // shoot·refimage = 워크플로 입력(러너 조건 분기 — 마커와 별개 축).
   });
   if (r.status === 204) return json({ ok: true, id, out: `sb_out/${id}/board.md` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
