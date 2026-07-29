@@ -978,6 +978,7 @@ def insta_subs(accounts, limit=10, deadline=None):
     csrftoken = 쿠키에 있으면 x-csrftoken 헤더로 승격(인스타 웹앱이 항상 동반 전송하는 관례값 — 누락 시 로그인 요청이 401)."""
     ck = (os.environ.get("INSTA_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
     _csrf = (re.search(r"csrftoken=([^;]+)", ck) or [None, ""])[1].strip() if ck else ""
+    _ua = (os.environ.get("INSTA_UA") or "").strip()   # 쿠키 발급 브라우저의 실제 UA(선택 · 260729 폰 실측 「useragent mismatch」 봉합 — 메타가 세션을 발급 브라우저 UA에 묶어 모듈 고정 UA(Chrome/126.0 가짜)로는 유효 쿠키도 400 거절) · 쿠키와 짝으로만 적용(게스트 = 종전 UA 불변) · 주입 = ~/.nomute_phone_env(레포 커밋 0)
     out = []
     for i, acc in enumerate(accounts):
         if _over(deadline):
@@ -992,6 +993,8 @@ def insta_subs(accounts, limit=10, deadline=None):
                 _hdr["Cookie"] = ck
                 if _csrf:
                     _hdr["x-csrftoken"] = _csrf
+                if _ua:
+                    _hdr["User-Agent"] = _ua   # 세션-UA 짝 맞춤(260729 useragent mismatch) — 쿠키 있을 때만
             req = urllib.request.Request(
                 "https://i.instagram.com/api/v1/users/web_profile_info/?username=" + urllib.parse.quote(acc),
                 headers=_hdr)
