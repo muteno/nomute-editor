@@ -336,9 +336,14 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     const scost = sbShoot === 'seedance'
       ? '촬영 ' + vc + 'cr ≈ ' + won(vc) + ' · 월 3,000cr의 ' + pct + '% <span title="Seedance 2.0 · 720p·std 실측 기반 보수 추정(구간 상한 초 기준 · ≤8s 동일가·9s=10s가·10~15s 선형) · 울트라 월 크레딧 대비 — 확정 견적은 생성 직전 실시간 재확인">720p 기준</span>'
       : '촬영 0원 · 클링 구독';
+    // 이미지 엔진 점등(운영자 260730 "고르는 순간 gemini에 불 들어오게") — 촬영=Seedance면 콘티와 함께 레퍼런스 이미지가 돌아간다(Gemini 종량제 과금 발생) · Kling은 프롬프팅 레인이 따로 뽑으므로 여기선 미과금.
+    // 점등 문법 = 요약 스트립 활성값 정본 `.gs-v.on`(edit 계승 — 신규 클래스·신규 색 0).
+    const gem = sbShoot === 'seedance'
+      ? ' · <span class="gs-v on" title="촬영=Seedance = 콘티와 함께 레퍼런스 이미지 생성(Gemini 종량제 과금 · sb_out/&lt;id&gt;/ref.json — 시댄스 1-way 주입 재료) · Kling 선택 시 미과금(프롬프팅 레인이 따로 생성)">Gemini 이미지 ON</span>'
+      : ' · <span class="gs-v" title="촬영=Kling = 여기선 이미지 미생성(프롬프팅 탭이 @참조 레퍼런스를 따로 뽑는다) = Gemini 미과금">Gemini OFF</span>';
     const rows = [   // 항목별 줄바꿈(운영자 260714 6차) — 감독 / 촬영 / 규격 / 비용 각 1줄
       '감독 <b>' + esc(d.nm) + '</b> · ' + esc(d.hint),
-      '촬영 <b>' + esc(sh.nm) + '</b>',
+      '촬영 <b>' + esc(sh.nm) + '</b>' + gem,   // Seedance 선택 = 이미지 종량제 점등(운영자 260730 "고르는 순간 gemini에 불 들어오게")
       esc(sbRatio()) + ' · ' + esc(sbSet['길이']) + ' — <b>' + esc(SB_CUTS[sbSet['길이']] || '') + '</b>' + (sbAd ? ' · 광고 막컷 키비주얼' : ''),
       '<span title="감독비 = 실측 전 추정(첫 발사 후 보정) · 콘티 텍스트 단계 자체는 크레딧 0">비용 ' + dcost + ' · ' + scost + '</span>'
     ];
