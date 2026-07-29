@@ -8,7 +8,8 @@
 <title>스토리보드</title>
 <link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
 <style>
-  /* ⚠️ 기틀 계승 원본 = viewer/k.html(영상 프롬프트) — 공유 블록은 바이트 동일 유지(운영자 260714 "그대로 기틀 참고·맘대로 생성 금지"). 여기만 고치면 드리프트 — 공용 수정은 k.html과 양쪽 동시. */
+  /* ⚠️ 기틀 계승 원본 = viewer/k.html(영상 프롬프트) — 공유 블록은 바이트 동일 유지(운영자 260714 "그대로 기틀 참고·맘대로 생성 금지"). 여기만 고치면 드리프트 — 공용 수정은 k.html과 양쪽 동시.
+     ※ **의도 divergence(공유 블록 예외 · 260730)**: `textarea{min-height}` = sb 단독 64px(운영자 Q1159 "높이 2/3" 지정 실값 · k/tr/lucy는 96px 유지 = 이 한 줄만 갈라지고 나머지 전 규칙은 바이트 동일). 선례 문법 = CII 「단어칩 편집기」 의도 divergence 표기. */
   :root { --well:#0e0f11;   /* 인셋 웰(입력·코드박스 배경 — 7뷰어 공유 raw 추출 = 동값·픽셀 0 · 평의회 260713 ⑨) */ --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
     --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일·감사 260704) */ --warn:#FFE13D;   /* 역할색 warn = 골드레몬(k:12 계승) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322; --line2:rgba(255,255,255,.06); }   /* --press-* = tokens.css 상속(k:12 계승) · line2 = index :root 정본값 계승(평의회 Q165 — .geni-sechead 소머리 밑줄이 폴백 없는 var() 미정의로 무효였던 수리 · sb 전용 소비라 k 동시수정 비대상) */
   @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(k:13 계승) */
@@ -95,7 +96,7 @@
   .topdock::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 하단 페이드 스커트 = edit .topdock::after 동일 미러(h14·18,18,18) */
   .optstrip { margin:0 0 var(--sp-2); padding:8px 13px /* raw-ok: 세로8·좌우13 = edit .optstrip 정본 동값 */; background:#000 /* raw-ok: 미리보기 스테이지 전경색 동값 */; border:1px solid var(--line); border-radius:var(--r-s); }
   .optstrip .gospec { margin:0; padding:0; font-size:11.25px /* raw-ok: edit .optstrip .gospec 명세 활자값 동값 */; line-height:1.9; text-align:left; color:var(--mut);  white-space:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-   /* 간소화 1줄 가로 nav(운영자 260725 "옵션 선택 간소화 1줄 가로 nav" · 레퍼런스 = 이미지 스튜디오 요약 스트립 1줄) — 랩 금지·넘치면 가로 레일 = index .fi-tech 정본 문법 계승(nowrap+overflow-x+스크롤바 숨김) */
+   /* 가로 레일 문법(랩 금지·넘치면 스크롤 = index .fi-tech 정본 계승) — **줄 수 계약은 260730 Q1141이 갱신: sb 한정 2줄**(구 "간소화 1줄"[운영자 260725 Q525·Q527]은 이 탭에서 대체됨 · 타 탭[edit·ly·song·thumb·tr]은 1줄 유지). 랩 금지·레일 문법 자체는 불변 */
   .optstrip .gospec::-webkit-scrollbar, .optstrip .geni-sum::-webkit-scrollbar { display:none; }   /* 레일 스크롤바 숨김(webkit 짝 · index 레일 관례) */
   /* 2줄 리모트바(운영자 Q1160) — 줄 = block · 줄 사이 옅은 구분선 = --line2(가장 옅은 정본 선색 계승 · 신규 값 0) */
   .optstrip .gs-l1, .optstrip .gs-l2 { display:block; white-space:nowrap; overflow-x:auto; scrollbar-width:none; }
@@ -290,7 +291,10 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
   const flush = () => { clearTimeout(saveT); try { localStorage.setItem(DKEY, ta.value); } catch (e) {} };
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   try { const d = localStorage.getItem(DKEY); if (d && !ta.value.trim()) ta.value = d; } catch (e) {}
-  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); save(); upd(); }); upd();
+  // 자동 증장(적대검증 260730 유효 지적): 높이 2/3(64px = 2행)로 줄인 대가로 8000자 입력이 2행에 갇히는 회귀 → 입력량만큼 상한까지 늘린다(상한 = 5행 ≈ 160px · 넘으면 내부 스크롤). resize 핸들 없음·sticky 도크 안이라 자동 증장이 유일한 출구.
+  const GROW_MAX = 160;   /* raw-ok: 64px(2행 = Q1159 지정값) × 2.5 = 5행 상한 — 도크가 화면을 잠식하지 않는 실측 한계 */
+  const grow = () => { ta.style.height = 'auto'; const h = Math.min(ta.scrollHeight, GROW_MAX); ta.style.height = Math.max(64, h) + 'px'; ta.style.overflowY = (ta.scrollHeight > GROW_MAX) ? 'auto' : 'hidden'; };
+  ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); save(); upd(); grow(); }); upd(); grow();
 })();
 // 감독×촬영 2축 + 설정(운영자 260714 확정 — 감독 = 연출 LLM · 촬영 = 생성 엔진 · 항상 스토리보드 경유)
 // 값 2면 동기: 이 표 = functions/api/sb.js SB_DIRECTORS/SB_SHOOTS/SB_SET.
@@ -381,8 +385,10 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
       + [V(esc(sbSet['화질'])), V(esc(sbSet['프레임'])), V(esc(sbRatio())), V(esc(sbSet['길이']) + ' · ' + esc(SB_CUTS[sbSet['길이']] || ''))].join(' <i class="gs-dot" aria-hidden="true">·</i> ')
       + (sbAd ? ' <i class="gs-dot" aria-hidden="true">·</i> ' + V('광고 막컷') : '')
       + '</span>';
-    spec.innerHTML = '<span class="gs-l1" title="감독 = 연출 LLM · 촬영 = 생성 엔진 · 콘티 = 레퍼런스 이미지 엔진">' + line1 + '</span>'
-      + '<span class="gs-l2" title="비용 ' + dcost + ' · ' + scost.replace(/<[^>]*>/g, '') + ' — 콘티 텍스트 단계 자체는 크레딧 0">' + line2 + '</span>';
+    // 비용·월체감 = 2줄 끝에 이어붙임(가로 레일 = 넘치면 스크롤 · 운영자 260714 5·7·8·9차 요구분 삭제 금지 — 2줄 계약은 '줄 수'라 레일 안 이어붙이기로 양립)
+    const cost = '<span class="gs-row">' + L('비용') + ' : ' + '<span class="gs-v">' + dcost + ' · ' + scost + '</span></span>';
+    spec.innerHTML = '<span class="gs-l1" title="감독 = 연출 LLM · 촬영 = 생성 엔진 · 콘티 = 레퍼런스 이미지 엔진(Gemini)">' + line1 + '</span>'
+      + '<span class="gs-l2" title="콘티 텍스트 단계 자체는 크레딧 0 — 과금은 레퍼런스 이미지(Gemini 종량제)·시댄스 영상(힉스필드 크레딧)">' + line2 + cost + '</span>';
   }
   function render() {
     dg.innerHTML = '';
