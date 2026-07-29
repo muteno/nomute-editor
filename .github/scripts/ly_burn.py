@@ -865,18 +865,20 @@ def build_ass(segs, w, h, opts):
             frames = None
         if not main:
             continue
-        src_pre = ""
+        src_suf = ""
         block_px = n_main * m_fs * LINE_F
         if lang == "dual" and src and ko:
             sw = src.split(" ")
             src_chunks = chunk_lines(sw, avail / small)
             src_txt = "\\N".join(" ".join(sw[i] for i in ln) for ln in src_chunks)
-            # 원문(작게) 위 · 한글 아래 — 팝 프레임에도 매 창 동일 부착
-            # 줄간격(운영자 260728 "줄간격 어느정도 유지") = 두 줄 사이 스페이서 1줄(fs = 본선의 18%). 미리보기(edit.html pvSubTr marginBottom fs×0.18)와 동값 —
-            #   구현 전엔 미리보기만 띄우고 산출물은 딱 붙어 나왔다(평의회① 260728). 결측 계수(dual_small 미송신 = 종전 경로)에선 gap 0 = 렌더 바이트 동일.
+            # (260729) 순서 반전 = 한글(크게) 위 · 원문(작게) **아래**(운영자 "외국어+국문일때는 국문이 위에 그리고 외국어가 그 아래로").
+            #   구 src_pre(원문 접두) → src_suf(접미). 선두 {\r} = 본선이 카라오케·팝·키워드로 색/타이밍 태그를 남겼을 때
+            #   그게 원문 줄까지 상속되지 않게 스타일 리셋(반전 전엔 원문이 앞이라 필요 없던 방어) → 그 뒤 {\fs}로 원문 크기 재지정.
+            # 줄간격(운영자 260728 "줄간격 어느정도 유지") = 두 줄 사이 스페이서 1줄(fs = 본선의 18%). 미리보기(edit.html 한국어 줄 marginBottom fs×0.18)와 동값 —
+            #   구현 전엔 미리보기만 띄우고 산출물은 딱 붙어 나왔다(평의회① 260728). 결측 계수(dual_small 미송신 = 종전 경로)에선 gap 0 = 줄 수·높이 종전 동일.
             gap = int(fs * 0.18) if opts.get("dual_small") else 0
             gap_tag = ("{\\fs" + str(max(1, gap)) + "}\\h{\\r}\\N") if gap > 0 else ""
-            src_pre = "{\\fs" + str(small) + "}" + src_txt + "{\\r}\\N" + gap_tag
+            src_suf = "\\N" + gap_tag + "{\\r}{\\fs" + str(small) + "}" + src_txt + "{\\r}"
             block_px += len(src_chunks) * small * LINE_F + gap * LINE_F
         # 중앙 불변 배치(운영자 260707 "1줄/2줄 중앙점 동일선"): 하단 앵커는 위로만 자라 줄이 늘면 블록 중심이 떠오름 →
         #   초과 높이의 절반만큼 MarginV를 내려 블록 세로중심 고정(1줄 = 보정 0 = 종전·캡처 그대로). 패딩은 전 이벤트 동일이라 상쇄.
@@ -889,9 +891,9 @@ def build_ass(segs, w, h, opts):
                 if fst >= e - 0.004:
                     break   # 초단컷(0.05s대) 보호 — cs 하한 분배가 실구간을 넘치면 잔여 창 스킵
                 fe = e if fi == len(frames) - 1 else min(e, s + (off + dur) / 100.0)
-                lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(fst), ass_time(fe), mv_e, glow_tag + src_pre + ftxt))
+                lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(fst), ass_time(fe), mv_e, glow_tag + ftxt + src_suf))
         else:
-            lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, glow_tag + src_pre + main))
+            lines.append("Dialogue: 0,{},{},nomute,,0,0,{},,{}".format(ass_time(s), ass_time(e), mv_e, glow_tag + main + src_suf))
     return head + "\n" + "\n".join(lines) + "\n"
 
 
