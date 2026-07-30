@@ -1838,32 +1838,44 @@ def main():
     # 2단(운영자 260729 "그걸 항상 키워드를 구글에서 검색한 걸 가져와서 넣게끔") — ① 딸린 기사 og:image(종전) →
     # ② 그래도 비면 **키워드를 구글 뉴스에 검색**해 기사 확보 후 og:image(gnews_search · 무키·LLM 0콜).
     # 종전엔 딸린 기사 URL이 없는 항목을 통째로 `continue`해서 커버가 영구히 빈 채 'G 로고 타일'로 나갔다(실측 260729 = 11~25위 전량 결측).
-    # 슬라이스 18 → 25 = 스택 확장 시퀀스(_tsSeqX) 노출대 전체 커버 · 예산 = og 10회(종전 불변) + 검색 12건, 검색 파트는 90s 벽시계 캡
-    # (건당 최대 1 RSS + 후보 2건 × (해석 6s + og 6s)) = 크론 러닝타임 보호 · 전부 fail-soft(실패 = 기존 picture 유지 = 리스크 0).
-    _og_budget, _gs_budget, _gs_t0 = 10, 12, time.time()
-    for _g in (gt[:25] + gt_gl[:8]):
+    # 슬라이스 18 → 25 = 스택 확장 시퀀스(_tsSeqX) 노출대 전체 커버.
+    # ⚠ 2패스 분리(260730 실사격 봉합) — 초판(260729)은 한 루프에 og·검색을 섞고 벽시계 `_gs_t0`를 **루프 시작 전**에
+    #   찍어, 1~10위 저해상 승급 og fetch 10회(건당 최대 6s+ 본문 read)가 90s를 다 먹고 꼬리 검색이 **전량 조용히
+    #   스킵**됐다(run 30504564994 실측: gnews_search 경고 0건 = 호출 자체 0 · 이어진 LLM 백필 대상이 상한 14 그대로).
+    #   게다가 성공·스킵 카운터가 없어 로그로 관측조차 불가능했다 → ① 패스 분리 + 검색 전용 독립 벽시계 ② 결과 1줄 집계 출력.
+    # 예산 = og 10회(종전 불변) · 검색 12건 + **검색 시작 시점부터** 120s 벽시계(건당 최대 1 RSS + 후보 2건 ×
+    #   (해석 6s + og 6s)) = 크론 러닝타임 보호 · 전부 fail-soft(실패 = 기존 picture 유지 = 리스크 0).
+    _tgt = gt[:25] + gt_gl[:8]
+    _og_budget = 10
+    for _g in _tgt:   # 1단 = 딸린 기사 og:image(종전 계약 그대로 · 저해상 gstatic 승급 포함)
+        if _og_budget <= 0:
+            break
         _pic = _g.get("picture") or ""
         _low = ("gstatic.com" in _pic) or ("googleusercontent.com" in _pic)   # 구글 썸네일 도메인 = 저해상 축(실측 260716 — RSS ht:picture 전량 이 축)
-        if _pic and not _low:
+        if (_pic and not _low) or not (_g.get("news") and _g["news"][0].get("url")):
             continue
-        _art = _g["news"][0].get("url") if (_g.get("news") and _g["news"][0].get("url")) else ""
-        if _art and _og_budget > 0:
-            _og_budget -= 1
-            _p = og_image(_art)
-            if _p:
-                _g["picture"] = _p
-        if (_g.get("picture") or ""):   # 저해상 승급 실패분 포함 = 기존 커버 유지(종전 계약) · 검색 예산 미소모
+        _og_budget -= 1
+        _p = og_image(_g["news"][0]["url"])
+        if _p:
+            _g["picture"] = _p
+    _gs_budget, _gs_t0, _gs_hit, _gs_out = 12, time.time(), 0, 0
+    for _g in _tgt:   # 2단 = 그래도 빈 커버 → 키워드를 구글 뉴스에 검색(독립 예산·독립 벽시계 = 1단이 못 잡아먹는다)
+        if (_g.get("picture") or "").strip() or not (_g.get("query") or "").strip():
             continue
-        if _gs_budget <= 0 or (time.time() - _gs_t0) > 90:
+        if _gs_budget <= 0 or (time.time() - _gs_t0) > 120:
+            _gs_out += 1
             continue
         _gs_budget -= 1
-        for _u in gnews_search(_g.get("query") or ""):
+        for _u in gnews_search(_g["query"]):
             _p = og_image(_u)
             if _p:
                 _g["picture"] = _p
+                _gs_hit += 1
                 if not _g.get("news"):
                     _g["news"] = [{"title": "", "url": _u, "source": ""}]   # 카드 클릭 링크는 ggUrl(구글 검색창) 고정 = 표시 무영향 · 다음 주기 og 백필 원료로 승계
                 break
+    print("gtrends 커버: 구글검색 백필 %d건 · 예산·시간 초과 미시도 %d건 · 잔여 결측 %d건"
+          % (_gs_hit, _gs_out, sum(1 for _g in _tgt if not (_g.get("picture") or "").strip())))   # 관측 가능성 = 초판 결함의 진짜 교훈(0건이어도 '시도했는데 무소득'과 '아예 미시도'가 구분된다)
     yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
     if YT_KEY and yt_all:
         for _gg in W_GEOS:
