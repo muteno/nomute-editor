@@ -65,8 +65,12 @@ async function runOnce(pg) {
   await pg.evaluate(() => { openTool('/thumb.html', 'Image Studio', THUMB_TABS, 'thumb'); });
   await pg.waitForTimeout(2600);   // iframe 로드 + thumbTabBridge
 
-  // ── 편집 탭(app7) 실측 = 파리티 기준(정본) ──
-  await pg.evaluate(() => { const t = document.querySelector('#toolTabs .tooltab[data-app="7"]'); if (t) t.click(); });
+  // ── 카드 생성 탭(app2) 실측 = 파리티 기준(정본) ──
+  //    ⚠ 계약 갱신(운영자 260731 승인 · 구 기준 = 편집 탭 app7): 편집 도크가 「좌 미리보기 / 우 옵션 컬럼」 2분할로 재편되며
+  //    미리보기 폭·요약 스트립이 AI 생성 도크와 구조적으로 갈라졌다(스트립 = 카드 생성 전용 복귀 · 폭 = 옵션 컬럼에 양도).
+  //    파리티가 지켜야 할 계약 = 「AI 생성 도크 ↔ 이미지 스튜디오 1단 도크」 동형이므로, 1단을 유지하는 카드 생성 탭으로 기준을 옮긴다.
+  //    편집 2분할 도크의 자체 계약(컬럼 폭·폭맞춤·잠금)은 별도 축 = 여기서 감시하지 않는다.
+  await pg.evaluate(() => { const t = document.querySelector('#toolTabs .tooltab[data-app="2"]'); if (t) t.click(); });
   await pg.waitForTimeout(1200);
   const ed = await pg.evaluate(() => {
     const fr = document.querySelector('#tooldlg .toolfr.active'); if (!fr) return null;
@@ -81,7 +85,7 @@ async function runOnce(pg) {
       dockBg: dcs.backgroundColor, dockBb: dcs.borderBottomWidth, skirtH: dca.height, skirtBg: dca.backgroundImage,
       specGram: spec ? { lbl: spec.querySelectorAll('.gs-lbl').length, v: spec.querySelectorAll('.gs-v').length } : null };
   });
-  core('E0 편집 탭 미리보기·스트립 실측 성립', !!(ed && ed.boxH > 0 && ed.stripVis), ed ? JSON.stringify({ boxH: Math.round(ed.boxH), stripVis: ed.stripVis }) : '편집 프레임 미탐');
+  core('E0 카드 생성 탭 미리보기·스트립 실측 성립', !!(ed && ed.boxH > 0 && ed.stripVis), ed ? JSON.stringify({ boxH: Math.round(ed.boxH), stripVis: ed.stripVis }) : '편집 프레임 미탐');
   if (!ed) return out;
 
   // ── AI 생성 탭(app6) 전환 + 실측 ──
@@ -99,12 +103,12 @@ async function runOnce(pg) {
       wishAlive: !!document.querySelector('#geniWish') };
   });
   core('C0 AI 탭 = genihost 폼 표시(app6 역동기)', ai.hostVis, 'hostVis=' + ai.hostVis);
-  core('C1 미리보기 박스 높이 = 편집 탭 등가(Δ≤1px)', Math.abs(ai.boxH - ed.boxH) <= 1, 'edit=' + ed.boxH.toFixed(1) + ' ai=' + ai.boxH.toFixed(1) + ' Δ=' + (ai.boxH - ed.boxH).toFixed(2));
+  core('C1 미리보기 박스 높이 = 편집 탭 등가(Δ≤1px)', Math.abs(ai.boxH - ed.boxH) <= 1, 'card=' + ed.boxH.toFixed(1) + ' ai=' + ai.boxH.toFixed(1) + ' Δ=' + (ai.boxH - ed.boxH).toFixed(2));
   core('C2 박스 쉘 색 동일(bg·border·radius — 크로스-파일 토큰 갈라짐 게이트)', !!ai.boxCS && ai.boxCS.bg === ed.boxCS.bg && ai.boxCS.bd === ed.boxCS.bd && ai.boxCS.bw === ed.boxCS.bw && ai.boxCS.rad === ed.boxCS.rad,
     JSON.stringify({ edit: ed.boxCS, ai: ai.boxCS }));
   core('C3 요약 스트립 박스 동일(bg·border·radius·padding — .optstrip 정본)', !!(ed.stripCS && ai.sumCS) && ai.sumCS.bg === ed.stripCS.bg && ai.sumCS.bd === ed.stripCS.bd && ai.sumCS.rad === ed.stripCS.rad && ai.sumCS.pt === ed.stripCS.pt && ai.sumCS.pl === ed.stripCS.pl,
     JSON.stringify({ edit: ed.stripCS, ai: ai.sumCS }));
-  core('C4 스트립 활자 동일(fs·lh)', ai.sumFs === ed.specFs && ai.sumLh === ed.specLh, 'edit=' + ed.specFs + '/' + ed.specLh + ' ai=' + ai.sumFs + '/' + ai.sumLh);
+  core('C4 스트립 활자 동일(fs·lh)', ai.sumFs === ed.specFs && ai.sumLh === ed.specLh, 'card=' + ed.specFs + '/' + ed.specLh + ' ai=' + ai.sumFs + '/' + ai.sumLh);
   core('C5 텍스트칸 기본 숨김(#geniWishRow/Head hidden · DOM 생존 — 노출은 글 픽토 탭 C5c)', ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
 
   // ── C5b·C5c 미리보기 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") ──
@@ -149,7 +153,7 @@ async function runOnce(pg) {
   await pg.evaluate(() => { geniRefClear(); geniApply(); });
 
   // ── C10~C13 리드 도크·폭·스트립 점등 파리티(운영자 260720 "겉 도형 너비·다 점등·그라데이션 닫힘이 다르다 — 다른쪽 이식") ──
-  core('C10 미리보기 박스 폭 = 편집 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'edit=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
+  core('C10 미리보기 박스 폭 = 카드 생성 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'card=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
   core('C11 리드 = thumb 도크 파리티(mat 배경·경계선 0·페이드 스커트 h/그라데 동일)', ai.leadBg === ed.dockBg && ai.leadBb === ed.dockBb && ai.skirtH === ed.skirtH && ai.skirtBg === ed.skirtBg,
     JSON.stringify({ edit: { bg: ed.dockBg, bb: ed.dockBb, sh: ed.skirtH }, ai: { bg: ai.leadBg, bb: ai.leadBb, sh: ai.skirtH, sameGrad: ai.skirtBg === ed.skirtBg } }));
   core('C12 스트립 문법 = 6항 나열(모델·비율·화풍·세부 = 라벨+값 4쌍 · 한국웹툰화·문구 = 자립 토글 2 · 운영자 260727 "ON/OFF 없애고 글자만") · 기본 상태 = 값 축 4 + 웹툰화 ON = 5점등(운영자 260728 "선택된 옵션은 모두 강조색" — 구 "한국웹툰화만 점등" 계약 갱신 · 문구 OFF만 소등)', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 4 && ai.sumGram.v === 6 && ai.sumGram.on === 5,
