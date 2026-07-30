@@ -468,6 +468,13 @@
   /* 옵션 컬럼 */
   .dockopt.none { display:none; }
   .topdock[data-lay="edit"] .dockopt { padding-top:var(--sp-3) /* 옵션 y 기준선 = 미리보기 상단보다 한 단 아래(운영자 260731 "옵션이 너무 위에서부터 시작 · 좀 더 아래로") */; }
+  /* 옵션 컬럼 세로 레일(운영자 260731 "옵션쪽을 살짝 위로 밀면 추가 옵션들이 나오게 · 생성쪽으로 가면 직전에 그라데이션되면서 감춰지고")
+     — 문법 정본 = index #geniStyle.geni-rail(가로 레일: overflow + scrollbar 0 + --rail-fade 끝단 마스크)을 축만 세로로 계승 · 신규 문법 창작 0
+     — 폭·활자 무접촉 = 위 --optw/--optk/fs 그대로(운영자 "그 옵션 저 크기를 유지하면서") */
+  .topdock[data-lay="edit"] .dockopt { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; -ms-overflow-style:none; touch-action:pan-y; --rail-fade:22px /* raw-ok: 페이드 폭 = .geni-rail 정본 동값(가로→세로 축 이동만) */; }
+  .topdock[data-lay="edit"] .dockopt::-webkit-scrollbar { width:0; height:0; display:none; }
+  .topdock[data-lay="edit"] .dockopt.ovf { -webkit-mask-image:linear-gradient(180deg,black 0,black calc(100% - var(--rail-fade)),transparent 100%); mask-image:linear-gradient(180deg,black 0,black calc(100% - var(--rail-fade)),transparent 100%); }   /* 하단(=생성 버튼 직전)만 페이드 · .ovf = 실제로 넘칠 때만(안 넘치면 마지막 옵션이 괜히 흐려진다 = .geni-rail atStart/atEnd 동문) */
+  .topdock[data-lay="edit"] .dockopt.ovf.atEnd { -webkit-mask-image:none; mask-image:none; }   /* 바닥까지 내리면 페이드 해제(마지막 옵션 선명) */
   .dockopt .dopt-h { margin:0 0 var(--sp-1); font-size:var(--fs-label) /* 소머리 = 세부 옵션과 동일 크기(운영자 260731) */; font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 정본 = label.fl(흰색 --fg · 800 --fw-x) */
   .dockopt .dopt-h::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 정본 label.fl::before content:'• ' 동일 */
   .dockopt .rsz-opts { flex-direction:column; align-items:stretch; margin:0; gap:0 /* 운영자 260731 2차 선택값(칩 세로 간격 3→0 · 간격은 칩 상하 패딩이 전담) */; }
@@ -2324,6 +2331,22 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
   m.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b> → 캔 <b class="g">' + rszN(cw) + ' × ' + rszN(ch) + '</b>';   // 한 줄 「원 → 캔」(운영자 260731 선택값 · 구 2줄 = 오버레이 이주로 높이 절약)
   m.title = ar + ' 확장 — ' + dir + ' +' + rszN(gain) + 'px · ' + (horiz ? '폭 ' : '높이 ') + mult.toFixed(2) + '×';
 }
+// 옵션 컬럼 세로 레일 = 넘칠 때만 하단 페이드(.ovf) · 바닥 도달 시 해제(.atEnd) — 배선 정본 = index .geni-rail atStart/atEnd 동문(축만 세로)
+function dockOptFade() {
+  const c = document.querySelector('#editCol'); if (!c) return;
+  const b = document.querySelector('#cpPrev .cpprev-box');   // 컬럼 높이 상한 = 미리보기 쉘 실높이(CSS로는 못 묶는다 — grid 행 높이를 컬럼 자신이 밀어올려 영원히 안 넘친다)
+  if (b) { const h = b.getBoundingClientRect().height; if (h > 0) c.style.maxHeight = h + 'px'; }
+  const ovf = c.scrollHeight - c.clientHeight > 1;
+  c.classList.toggle('ovf', ovf);
+  c.classList.toggle('atEnd', ovf && c.scrollTop + c.clientHeight >= c.scrollHeight - 1);
+}
+(function () {
+  const c = document.querySelector('#editCol'); if (!c) return;
+  c.addEventListener('scroll', dockOptFade, { passive: true });
+  if (window.ResizeObserver) { const ro = new ResizeObserver(dockOptFade); ro.observe(c); const b = document.querySelector('#cpPrev .cpprev-box'); if (b) ro.observe(b); }   // 컬럼 자체 + 미리보기 쉘(높이가 행 높이를 정한다) 양쪽 관찰 = 사진·비율 바뀔 때 자동 재판정
+  window.addEventListener('resize', dockOptFade);
+  dockOptFade();
+})();
 function rszCapH() {   // 미리보기 쉘 높이 캡 = CSS(.cpprev-box max-height) 단일 출처 — JS가 숫자를 따로 들고 있으면 한쪽만 고쳐도 조용히 어긋난다(검수 260731)
   const b = document.querySelector('#cpPrev .cpprev-box'); if (!b) return 198;
   const mh = parseFloat(getComputedStyle(b).maxHeight);
