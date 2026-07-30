@@ -38,7 +38,7 @@ h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
 /* ═══ 16:9 무대 — 좌 = 실물 재현(고정 반면) / 우 = 콘솔 ═══ */
 .pgwrap{width:min(97vw,1560px);aspect-ratio:16/9;min-height:520px;
   display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);}
-.stagewrap{min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;
+.stagewrap{position:sticky;top:var(--sp-2);min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:var(--sp-1);
   background:#0e0f0e;border:1px solid var(--line);border-radius:var(--r-l);padding:var(--sp-2)}
 .stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center}
@@ -64,6 +64,9 @@ h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
   --t-dockA:1; --t-glassBlur:22; --t-panelA:0;
   --t-dur:.18s; --t-durAcc:.26s;
   --t-lineA:.08;
+  --t-optk:4;          /* 이름 열 고정폭(em) — 값 x 일괄 정렬 축 */
+  --t-colTop:18;       /* 옵션 컬럼 y 시작선(도크 상단 대비 px) */
+  --t-chipPxSide:0;    /* 칩 좌우 패딩(컬럼 폭을 글자폭까지 당기는 축) */
 }
 .stdock{position:sticky;top:0;z-index:6;margin:0 -16px;
   padding:calc(var(--t-padT)*1px) 16px calc(var(--t-padB)*1px);
@@ -76,6 +79,7 @@ h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
 
 .dockgrid{display:grid;gap:calc(var(--t-gap)*1px);align-items:start;
   grid-template-columns:minmax(0,1fr) calc(var(--t-col)*1%)}
+.dockgrid[data-col="auto"]{grid-template-columns:minmax(0,1fr) max-content}
 .dockgrid[data-lay="one"]{grid-template-columns:minmax(0,1fr)}
 .dockgrid[data-lay="one"] .dockopt{display:none}
 .dockgrid[data-lay="over"]{grid-template-columns:minmax(0,1fr)}
@@ -88,6 +92,10 @@ h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
   border:1px solid var(--line);border-radius:calc(var(--t-r-stage)*1px);overflow:hidden;
   height:min(calc(var(--t-pvsvh)*1svh),calc(var(--t-pvpx)*1px));
   transition:height var(--t-durAcc) var(--ease)}
+.fitw .cpprev-box{height:auto;min-height:min(29svh,300px);
+  max-height:min(calc(var(--t-pvsvh)*1svh),calc(var(--t-pvpx)*1px))}
+.fitw #iePrev{position:static}
+.fitw .rsz-stage{flex:1 1 auto}
 .cpprev-box.ie-full{height:min(50svh,520px)}
 #iePrev{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
   align-items:center;justify-content:center;overflow:hidden;background:#121212}
@@ -115,25 +123,37 @@ h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
 .ie-box.soft{border-radius:44%;border-style:dashed}
 
 /* 옵션 컬럼 */
-.dockopt{min-width:0}
-.dopt-h{margin:0 0 var(--sp-1);font-weight:var(--fw-b);font-size:calc(var(--t-fs-head)*1px);color:var(--fg)}
+.dockopt{min-width:0;padding-top:calc(var(--t-colTop)*1px)}
+.dopt-h{margin:0 0 var(--sp-1);font-weight:var(--fw-x);font-size:calc(var(--t-fs-head)*1px);color:var(--fg)}
+.bullet-on .dopt-h::before{content:'• ';color:var(--accent);font-weight:var(--fw-b)}
 .dopt-h.hid{display:none}
 .rsz-opts{display:flex;flex-direction:column;align-items:stretch;gap:calc(var(--t-chipgap)*1px);margin:0}
 .dopt-h + .rsz-opts{margin:0 0 calc(var(--t-grpgap)*1px)}
 .dockopt > .rsz-opts:last-child{margin-bottom:0}
-.ropt{background:none;border:none;padding:calc(var(--t-chipPy)*1px) calc(var(--t-chipPx)*1px);
+.ropt{background:none;border:none;
+  padding:calc(var(--t-chipPy)*1px) calc(var(--t-chipPxSide)*1px);
   font-family:inherit;font-size:calc(var(--t-fs-chip)*1px);font-weight:var(--fw-b);line-height:normal;
-  color:var(--mut);cursor:pointer;white-space:nowrap;text-align:center;border-radius:calc(var(--t-r-chip)*1px);
-  transition:color var(--t-dur),background var(--t-dur);-webkit-tap-highlight-color:transparent}
-.ropt:active{transform:scale(var(--press-m))}
-.ropt.on{color:var(--fg);font-weight:var(--fw-x)}
+  color:var(--mut);cursor:pointer;white-space:nowrap;border-radius:calc(var(--t-r-chip)*1px);
+  transition:color var(--t-dur),background var(--t-dur);-webkit-tap-highlight-color:transparent;
+  display:grid;grid-template-columns:calc(var(--t-optk)*1em) minmax(0,auto);
+  justify-content:start;align-items:baseline;column-gap:var(--sp-1);text-align:left}
 .ropt.none{display:none}
-.ropt .k{display:block;font-size:calc(var(--t-fs-chip)*.82px);font-weight:var(--fw-b);color:var(--mut);opacity:.9}
-.chipmode-row .ropt{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-1);text-align:left}
-.chipmode-row .ropt .k{font-size:calc(var(--t-fs-chip)*.85px)}
-.shell-pill .ropt{border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.ropt .k{color:var(--fg);font-weight:var(--fw-b)}
+.ropt .vv{color:var(--mut);font-weight:var(--fw-b)}
+.ropt.on .vv{color:var(--accent)}
+.ropt.tog{grid-template-columns:calc(var(--t-optk)*1em);color:var(--mut)}
+.ropt.tog.on{color:var(--accent);font-weight:var(--fw-x)}
+.ropt.gs-locked{opacity:.5;cursor:default}
+.ropt:active{transform:scale(var(--press-m))}
+/* 값 색 규칙 대안 */
+.valcol-fg .ropt.on .vv,.valcol-fg .ropt.tog.on{color:var(--fg)}
+.valcol-amber .ropt.on .vv,.valcol-amber .ropt.tog.on{color:var(--amber)}
+/* 이름 열 자유폭(정렬 끔) 비교용 */
+.optk-auto .ropt{grid-template-columns:auto minmax(0,auto);justify-content:space-between}
+.optk-auto .ropt.tog{grid-template-columns:auto}
+.shell-pill .ropt{border:1px solid var(--line);background:rgba(255,255,255,.03);padding-left:var(--sp-1);padding-right:var(--sp-1)}
 .shell-pill .ropt.on{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.12)}
-.shell-fill .ropt{background:rgba(255,255,255,.05)}
+.shell-fill .ropt{background:rgba(255,255,255,.05);padding-left:var(--sp-1);padding-right:var(--sp-1)}
 .shell-fill .ropt.on{background:rgba(255,255,255,.17)}
 .align-l .ropt{text-align:left}
 .align-r .ropt{text-align:right}
@@ -214,7 +234,8 @@ pre{margin:var(--sp-1) 0 0;padding:var(--sp-2);border-radius:var(--r-s);backgrou
 
 @media (max-width:900px){
   .pgwrap{aspect-ratio:auto;grid-template-columns:1fr}
-  .stagewrap{min-height:64vh}
+  /* 세로 스택에선 미리보기가 위에 고정 = 콘솔을 굴려도 결과가 계속 보인다(운영자 260731 "미리보는 부분 스크롤해도 고정") */
+  .stagewrap{min-height:64vh;position:sticky;top:0;z-index:2;align-self:start}
   .console{max-height:none}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -359,33 +380,40 @@ const CTL=[
   {id:'col',   l:'옵션 컬럼 폭',      cur:16, min:8, max:46, step:1, u:'%',  kind:'rng', t:'--t-col', neo:1},
   {id:'gap',   l:'2분할 gap',         cur:12, lad:'sp', kind:'lad', t:'--t-gap'},
   {id:'padT',  l:'도크 상단 패딩',    cur:16, min:0, max:28, step:2, u:'px', kind:'rng', t:'--t-padT'},
-  {id:'padB',  l:'도크 하단 패딩',    cur:12, min:0, max:28, step:2, u:'px', kind:'rng', t:'--t-padB'},
-  {id:'pvsvh', l:'미리보기 캡(svh)',  cur:29, min:18, max:56, step:1, u:'svh',kind:'rng', t:'--t-pvsvh', neo:1},
-  {id:'pvpx',  l:'미리보기 캡 상한',  cur:300,min:160,max:520,step:10,u:'px', kind:'rng', t:'--t-pvpx',  neo:1},
-  {id:'fade',  l:'하단 페이드 스커트',cur:14, min:0, max:32, step:2, u:'px', kind:'rng', t:'--t-fade'},
+  {id:'padB',  l:'도크 하단 패딩',    cur:10, min:0, max:28, step:2, u:'px', kind:'rng', t:'--t-padB'},
+  {id:'pvsvh', l:'미리보기 캡(svh)',  cur:52, min:18, max:56, step:1, u:'svh',kind:'rng', t:'--t-pvsvh', neo:1},
+  {id:'pvpx',  l:'미리보기 캡 상한',  cur:520,min:160,max:520,step:10,u:'px', kind:'rng', t:'--t-pvpx',  neo:1},
+  {id:'fade',  l:'하단 페이드 스커트',cur:16, min:0, max:32, step:2, u:'px', kind:'rng', t:'--t-fade'},
   {id:'grpgap',l:'그룹 사이 간격',    cur:12, lad:'sp', kind:'lad', t:'--t-grpgap'}
 ]},
 {g:'B. 옵션 컬럼 — 구성·배치',items:[
   {id:'lay',   l:'옵션 배치',   cur:'two', kind:'sel', opt:[['two','우측 컬럼 2분할 (현행)'],['over','미리보기 위 오버레이 ⚠'],['one','도크 밖 아래(구 1단) ⚠']]},
-  {id:'chipmode',l:'칩 표기',   cur:'v',   kind:'sel', opt:[['v','값만 (현행)'],['kv','라벨+값 한 줄'],['stack','라벨 위 · 값 아래']]},
   {id:'grpshow',l:'그룹 소머리',cur:'on',  kind:'sel', opt:[['on','표시 (기본/옵션)'],['off','숨김 — 칩만']]},
   {id:'grping',l:'그룹 구성',   cur:'2',   kind:'sel', opt:[['2','기본 / 옵션 2그룹 (현행)'],['1','한 덩어리'],['3','기본 / 편집 / 고급 3그룹']]},
-  {id:'align', l:'칩 정렬',     cur:'c',   kind:'sel', opt:[['c','중앙 (현행)'],['l','좌측'],['r','우측']]},
+  {id:'align', l:'칩 정렬',     cur:'l',   kind:'sel', opt:[['l','좌측 (260731 확정)'],['c','중앙 ⚠'],['r','우측 ⚠']]},
+  {id:'optk',  l:'이름 열 폭(값 정렬 축)', cur:4, min:2.4, max:7, step:.2, u:'em', kind:'rng', t:'--t-optk', neo:1},
+  {id:'optkMode',l:'값 x 정렬', cur:'fix', kind:'sel', opt:[['fix','이름 열 고정폭 = 값 일괄 정렬 (260731 확정)'],['auto','이름 길이 따라 제각각 ⚠']]},
+  {id:'colTop',l:'옵션 y 시작선', cur:18, min:0, max:64, step:2, u:'px', kind:'rng', t:'--t-colTop', neo:1},
+  {id:'bullet',l:'소머리 블릿', cur:'on', kind:'sel', opt:[['on','• 형광 블릿 (label.fl 정본)'],['off','없음 ⚠']]},
+  {id:'headFs',l:'소머리 = 세부옵션 크기', cur:'same', kind:'sel', opt:[['same','동일 (260731 확정)'],['big','한 단 크게 ⚠']]},
+  {id:'chipPxSide',l:'칩 좌우 패딩', cur:0, min:0, max:14, step:1, u:'px', kind:'rng', t:'--t-chipPxSide'},
   {id:'shell', l:'칩 셸',       cur:'text',kind:'sel', opt:[['text','글자만 (.ropt 정본)'],['pill','테두리 알약 ⚠'],['fill','면 채움 ⚠']]},
+  {id:'togWord',l:'불리언 표기', cur:'word', kind:'sel', opt:[['word','단어 자체가 토글 — 색으로 on/off (260731 확정)'],['onoff','이름 + ON/OFF 값 ⚠']]},
+  {id:'valcol',l:'켜짐·선택값 색', cur:'accent', kind:'sel', opt:[['accent','--accent 강조색 (260731 확정)'],['fg','흰색 --fg (구 260729 선택칩 규칙) ⚠'],['amber','--amber ⚠']]},
+  {id:'colw',  l:'컬럼 폭 산정', cur:'auto', kind:'sel', opt:[['auto','콘텐츠 최소폭 max-content (260731 확정)'],['pct','고정 % (아래 슬라이더) ⚠']]},
   {id:'chipgap',l:'칩 세로 간격',cur:3, min:0, max:14, step:1, u:'px', kind:'rng', t:'--t-chipgap'},
   {id:'chipPy',l:'칩 상하 패딩',cur:6, min:2, max:16, step:1, u:'px', kind:'rng', t:'--t-chipPy'},
-  {id:'chipPx',l:'칩 좌우 패딩',cur:7, min:0, max:18, step:1, u:'px', kind:'rng', t:'--t-chipPx'},
   {id:'firePos',l:'생성 버튼 자리',cur:'wide', kind:'sel', opt:[['wide','도크 아래 전폭 (현행)'],['col','옵션 컬럼 밑 ⚠'],['none','숨김 ⚠']]},
-  {id:'metricPos',l:'원/캔 리드백 자리',cur:'in', kind:'sel', opt:[['in','미리보기 안 하단 (현행)'],['under','미리보기 박스 밖 아래'],['over','미리보기 위 오버레이']]},
-  {id:'metricFmt',l:'원/캔 표기',cur:'2', kind:'sel', opt:[['2','원 / 캔 2줄 (현행)'],['1','한 줄 원 → 캔'],['long','구 서술형(확장량·배수 노출)']]}
+  {id:'metricPos',l:'원/캔 리드백 자리',cur:'over', kind:'sel', opt:[['over','미리보기 위 오버레이 (현행)'],['in','미리보기 안 하단'],['under','미리보기 박스 밖 아래']]},
+  {id:'metricFmt',l:'원/캔 표기',cur:'1', kind:'sel', opt:[['1','한 줄 원 → 캔 (현행)'],['2','원 / 캔 2줄'],['long','구 서술형(확장량·배수 노출)']]}
 ]},
 {g:'C. 기능 배치 — 어디에 놓을까 (편집 탭 + 타 세부메뉴)',items:[
-  {id:'fRsz',  l:'비율',            cur:'col', kind:'sel', opt:[['col','옵션 컬럼 · 기본'],['card','도크 아래 카드'],['both','양쪽 ⚠'],['off','숨김 ⚠']]},
+  {id:'fRsz',  l:'비율',            cur:'card', kind:'sel', opt:[['card','도크 아래 카드 (현행)'],['col','옵션 컬럼 · 기본'],['both','양쪽 ⚠'],['off','숨김 ⚠']]},
   {id:'fUps',  l:'해상도',          cur:'col', kind:'sel', opt:[['col','옵션 컬럼 · 기본'],['card','도크 아래 카드'],['both','양쪽 ⚠'],['off','숨김 ⚠']]},
   {id:'fLock', l:'보존(원본 픽셀)', cur:'col', kind:'sel', opt:[['col','옵션 컬럼 · 기본'],['card','도크 아래 카드'],['both','양쪽 ⚠'],['off','숨김 ⚠']]},
   {id:'fMos',  l:'모자이크',        cur:'col', kind:'sel', opt:[['col','옵션 컬럼 · 옵션'],['card','도크 아래 카드'],['both','양쪽 ⚠'],['off','숨김 ⚠']]},
-  {id:'fPre',  l:'정밀(SAM2 윤곽)', cur:'off', kind:'sel', opt:[['off','숨김 (현행 = 모자이크 ON일 때만)'],['col','옵션 컬럼 · 옵션'],['card','도크 아래 카드']]},
-  {id:'fOp',   l:'출력(가리기/떼기)',cur:'off',kind:'sel', opt:[['off','숨김 (현행 = 모자이크 ON일 때만)'],['col','옵션 컬럼 · 옵션'],['card','도크 아래 카드']]},
+  {id:'fPre',  l:'정밀(SAM2 윤곽)', cur:'col', kind:'sel', opt:[['col','옵션 컬럼 · 옵션 (현행 · 모자이크 OFF면 잠금)'],['off','숨김'],['card','도크 아래 카드']]},
+  {id:'fOp',   l:'출력(가리기/떼기)',cur:'col',kind:'sel', opt:[['col','옵션 컬럼 · 옵션 (현행 · 모자이크 OFF면 잠금)'],['off','숨김'],['card','도크 아래 카드']]},
   {id:'fCr',   l:'저작권 (카드 생성)',cur:'off',kind:'sel',opt:[['off','편집 탭엔 없음 (현행)'],['col','옵션 컬럼 ⚠ 축 혼입'],['card','도크 아래 카드 ⚠ 축 혼입']]},
   {id:'fGuide',l:'안내문 (카드 생성)',cur:'off',kind:'sel',opt:[['off','편집 탭엔 없음 (현행)'],['col','옵션 컬럼 ⚠ 축 혼입'],['card','도크 아래 카드 ⚠ 축 혼입']]},
   {id:'fOpa',  l:'OPA (오버레이 투명도)',cur:'off',kind:'sel',opt:[['off','편집 탭엔 없음 (현행)'],['col','옵션 컬럼 ⚠ 축 혼입'],['card','도크 아래 카드 ⚠ 축 혼입']]},
@@ -394,6 +422,7 @@ const CTL=[
   {id:'fHist', l:'작업 내역',       cur:'below',kind:'sel',opt:[['below','도크 아래 (현행)'],['off','숨김 ⚠']]}
 ]},
 {g:'D. 미리보기 동작 — 기능 누르면 뭐가 바뀌나',items:[
+  {id:'fitw',  l:'미리보기 맞춤', cur:'w', kind:'sel', opt:[['w','폭맞춤 — 프레임이 좌측 칸을 꽉 (260731 확정)'],['h','높이맞춤 = 캡 고정(구 동작) ⚠']]},
   {id:'src',   l:'소스',        cur:'0', kind:'sel', opt:[['0','가로 스샷 2286×840'],['1','세로 사진 1080×1920'],['2','정사각 1400×1400']]},
   {id:'ar',    l:'비율(실동작)', cur:'9:16', kind:'sel', opt:[['orig','원본'],['4:5','4:5'],['9:16','9:16'],['16:9','16:9'],['1:1','1:1']]},
   {id:'ups',   l:'해상도(실동작)',cur:'FHD', kind:'sel', opt:[['720p','720p'],['FHD','FHD'],['2K','2K'],['4K','4K']]},
@@ -466,24 +495,24 @@ const COLV={accent:'var(--accent)',amber:'var(--amber)',mut:'var(--mut)',fg:'var
 
 /* ══════════ 옵션 컬럼 · 아래 카드 빌드 ══════════ */
 function chip(id,k,v,on,extra){
-  const kv=V.chipmode;
-  let inner = kv==='v' ? v : (kv==='kv' ? '<span class="k">'+k+'</span><span>'+v+'</span>'
-                                        : '<span class="k">'+k+'</span>'+v);
-  return '<span class="ropt'+(on?' on':'')+'" data-act="'+id+'" role="button" tabindex="0" title="'+(extra||k)+'">'+inner+'</span>';
+  const cls='ropt'+(on?' on':'');
+  return '<span class="'+cls+'" data-act="'+id+'" role="button" tabindex="0" title="'+(extra||k)+'"><span class="k">'+k+'</span><span class="vv">'+v+'</span></span>';
 }
-// 토글형 값 표기 — '값만' 모드는 기능명이 곧 값(현행 문법) / 라벨 동반 모드는 ON·OFF로 갈라 중복 제거
-const tv=(on,nm)=> V.chipmode==='v' ? nm : (on?'ON':'OFF');
+function tog(id,k,on,extra){   // 불리언 = 단어 자체가 토글(운영자 260731) · 'onoff' 모드면 이름+ON/OFF 값형으로 폴백
+  if(V.togWord==='onoff') return chip(id,k,on?'ON':'OFF',on,extra);
+  return '<span class="ropt tog'+(on?' on':'')+'" data-act="'+id+'" role="button" tabindex="0" aria-pressed="'+(!!on)+'" title="'+(extra||k)+'">'+k+'</span>';
+}
 const FEAT={
   fRsz:  ()=>chip('ar','비율', V.ar==='orig'?'원본':V.ar, true, '탭=다음 비율'),
   fUps:  ()=>chip('ups','해상도', V.ups, true, '탭=다음 해상도'),
-  fLock: ()=>V.ar==='orig'?'':chip('lock','보존', tv(V.lock==='on','보존'), V.lock==='on', '탭=원본 픽셀 보존 ON/OFF'),
-  fMos:  ()=>chip('mos','모자이크', tv(V.mos==='on','모자이크'), V.mos==='on', '탭=피사체 모자이크 ON/OFF'),
-  fPre:  ()=>chip('pre','정밀', tv(V.pre==='on','정밀'), V.pre==='on', '탭=윤곽에 딱 맞게(SAM2)'),
+  fLock: ()=>V.ar==='orig'?'':tog('lock','보존', V.lock==='on', '탭=원본 픽셀 보존 ON/OFF'),
+  fMos:  ()=>tog('mos','모자이크', V.mos==='on', '탭=피사체 모자이크 ON/OFF'),
+  fPre:  ()=>tog('pre','정밀', V.pre==='on', '탭=윤곽에 딱 맞게(SAM2)'),
   fOp:   ()=>chip('op','출력', V.op==='cut'?'떼기':'가리기', V.op==='cut', '탭=가리기↔떼기(누끼)'),
-  fCr:   ()=>chip('noop2','저작권', tv(false,'저작권'), false, '카드 생성 축'),
-  fGuide:()=>chip('noop2','안내문', tv(false,'안내문'), false, '카드 생성 축'),
+  fCr:   ()=>tog('noop2','저작권', false, '카드 생성 축'),
+  fGuide:()=>tog('noop2','안내문', false, '카드 생성 축'),
   fOpa:  ()=>chip('noop2','OPA','60', true, '카드 생성 축'),
-  fAbbr: ()=>chip('noop2','축약', tv(true,'축약'), true, '카드 생성 축')
+  fAbbr: ()=>tog('noop2','축약', true, '카드 생성 축')
 };
 const FEATNM={fRsz:'비율',fUps:'해상도',fLock:'보존',fMos:'모자이크',fPre:'정밀',fOp:'출력',fCr:'저작권',fGuide:'안내문',fOpa:'OPA',fAbbr:'축약'};
 const FEATVAL={fRsz:()=>V.ar==='orig'?'원본':V.ar, fUps:()=>V.ups, fLock:()=>V.lock==='on'?'ON':'OFF',
@@ -519,7 +548,7 @@ function buildCol(){
   });
   if(V.firePos==='col') html+='<button class="fire incol" data-act="fireC">생성</button>';
   col.innerHTML=html;
-  col.className='dockopt shell-'+V.shell+' align-'+V.align+(V.chipmode==='kv'?' chipmode-row':'');
+  col.className='dockopt shell-'+V.shell+' valcol-'+V.valcol+(V.optkMode==='auto'?' optk-auto':'')+(V.bullet==='on'?' bullet-on':'');
   col.style.background = V.panelA>0 ? 'rgba(255,255,255,'+V.panelA+')' : 'none';
   col.style.borderRadius='var(--r-m)';
   col.style.padding = V.panelA>0 ? 'var(--sp-1)' : '0';
@@ -533,7 +562,9 @@ function buildCol(){
 function render(){
   const scr=$('.scr'), keep=scr?scr.scrollTop:0;   // 재렌더 스크롤 튕김 차단(§플레이그라운드 · 도크 높이가 바뀌면 스크롤이 튄다)
   buildCol();
-  const dg=$('#dgrid'); dg.dataset.lay=V.lay;
+  const dg=$('#dgrid'); dg.dataset.lay=V.lay; dg.dataset.col=V.colw;
+  app.classList.toggle('fitw', V.fitw==='w');
+  app.style.setProperty('--t-fs-head', (V.headFs==='big'?V.fsChip+2:V.fsChip)+'');
   const dock=$('#dock'); dock.classList.toggle('glass', V.glass==='on');
   const box=$('#pvbox'); box.classList.toggle('ie-full', V.mos==='on' && V.mosFull==='on');
   const fire=$$('.fire'); fire.forEach(f=>{f.className='fire'+(V.firePos==='col'&&f.dataset.act==='fireC'?' incol':'')+(V.cFire==='solid'?' solid':V.cFire==='neutral'?' neutral':'');});
@@ -542,12 +573,16 @@ function render(){
   const src=SRC[+V.src], W=src.w, H=src.h, ar=V.ar;
   const stage=$('#stage');
   const sb=stage.getBoundingClientRect();
-  const availW=Math.max(30, sb.width-8), availH=Math.max(30, sb.height-8);
+  const capH=Math.min(innerHeight*(V.pvsvh/100), V.pvpx)-8;   // 쉘 캡 = CSS max-height 동값 미러
+  const availW=Math.max(30, sb.width-8);
+  const availH=V.fitw==='w' ? Math.max(40, capH) : Math.max(30, sb.height-8);   // 폭맞춤 = 쉘 높이가 콘텐츠 종속(auto)이라 rect로 재면 0으로 수렴 → 캡을 직접 쓴다
   const noopOn = V.noop==='on';
   let cw,ch,x,y,noop=false;
   if(ar==='orig' || (noopOn && rszRatioOk(W,H,ar))){ cw=W;ch=H;x=0;y=0;noop=true; }
   else ({cw,ch,x,y}=rszPad(W,H,ar,V.snap8==='on'));
-  const k=Math.min(availW/cw, availH/ch);
+  let k;
+  if(V.fitw==='w'){ k=availW/cw; if(ch*k>availH) k=availH/ch; }   // 폭맞춤 우선 · 캡 넘으면 높이맞춤 폴백
+  else k=Math.min(availW/cw, availH/ch);
   const CW=cw*k, CH=ch*k, OX=x*k, OY=y*k, OW=W*k, OH=H*k;
 
   const canvOut = noop ? 'outline:1px solid rgba(var(--accent-rgb),.4);'
