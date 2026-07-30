@@ -3810,6 +3810,51 @@ function updateComboTrk() {   // 썸네일 단일 폼 = 헤더(부제/제목) �
 $('#cSub').addEventListener('input', updateComboTrk);
 $('#cTitle').addEventListener('input', updateComboTrk);
 $('#cLines').addEventListener('input', updateComboTrk);
+
+// ── '축약 필요'(자간 하한으로도 초과) 행 = 그 행 추가 입력 차단(운영자 260729 "축약필요 뜨면 더 글자가 입력할 수 없게 · 그 행에서") ──
+// 판정기 = 기존 estHeaderTr/estTracking 재사용(빨강 힌트와 동일 계산기 = 힌트 뜨는 순간이 곧 차단 시점 · 새 한도·새 UI 0).
+// 지우기·수정은 항상 허용(초과분을 줄일 길을 막으면 잠김) · 프로그램 주입(복원·축약·맞춤법 교정)은 비대상(isTrusted 게이트 = 값 유실 차단).
+function _rowOverText(el) {   // 그 행의 초과 여부 — 헤더 = 칸 1개가 1행 / 자막 = 캐럿이 놓인 줄만(다른 줄 초과는 이 줄 입력을 막지 않음)
+  const id = el.id;
+  if (id === 'cSub') return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? false : estHeaderTr(el.value.trim(), HDR.sub).over;   // 진짜예요 = 부제 잠금(로고 대신) → 판정 제외
+  if (id === 'cTitle') return estHeaderTr(el.value.trim(), (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? HDR.jinjja : HDR.title).over;
+  const fmt = (id === 'cLines') ? ovTrkKey() : 'post';
+  const v = el.value, i = el.selectionStart ?? v.length;
+  const s = i === 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1;
+  let e = v.indexOf('\n', i); if (e < 0) e = v.length;
+  const line = v.slice(s, e).trim();
+  return !!line && estTracking([line], fmt).over;
+}
+function bindOverClamp(sel) {
+  const el = $(sel); if (!el) return;
+  // preOver = '변경 전' 초과 여부만 차단 근거 — 초과를 *만드는* 그 글자는 통과시켜야 빨강 힌트가 먼저 뜬다(안내 없이 먹통 = 금지).
+  let composing = false, snap = el.value, preOver = false;
+  const sync = () => { snap = el.value; preOver = false; };
+  el.addEventListener('focus', sync);
+  el.addEventListener('compositionstart', () => { composing = true; snap = el.value; preOver = _rowOverText(el); });   // 조합 세션 시작값 기준(조합 중 snap 갱신 금지 = 되돌림 표적 고정)
+  el.addEventListener('beforeinput', e => {   // 영문·숫자·붙여넣기 = 삽입 자체를 취소(값이 넘친 적 없음 = 깜빡임 0)
+    if (composing) return;
+    if (!e.isTrusted || !e.inputType || !e.inputType.startsWith('insert')) return;
+    if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { sync(); return; }   // 개행 = 차단 대상 아님(막는 건 '그 행'뿐 — 다음 줄로 넘어갈 길은 열어둔다)
+    snap = el.value; preOver = _rowOverText(el);
+    if (preOver) e.preventDefault();
+  });
+  const clamp = () => {   // 취소 불가 경로(한글 조합 확정본) 되돌림 — 이미 초과였고 길이가 늘어난 경우만
+    if (preOver && el.value.length > snap.length) {
+      const p = Math.min(el.selectionStart ?? snap.length, snap.length);
+      el.value = snap;
+      try { el.setSelectionRange(p, p); } catch (_) {}
+      preOver = false;
+      el.dispatchEvent(new Event('input', { bubbles: true }));   // 힌트·미리보기 = 되돌린 값으로 재동기(비신뢰 이벤트라 재차단 없음)
+      return;
+    }
+    sync();
+  };
+  el.addEventListener('input', e => { if (composing) return; if (!e.isTrusted) { sync(); return; } clamp(); });
+  el.addEventListener('compositionend', () => { composing = false; clamp(); });
+}
+['#cSub', '#cTitle', '#cLines', '#lines'].forEach(bindOverClamp);   // 축약필요 힌트를 내는 행 전부(헤더 부제·제목 + 릴스 자막 + 포스트 텍스트) = 같은 축 통일
+
 // • 오버레이 포맷 토글(포스트↔릴스) — 헤더 입력 중엔 릴스 강제라 토글 무시. 클릭 시 자간 한도 즉시 전환(전환 = 가능해야 하므로 초과구간 빨강 표시).
 (function () {
   const t = $('#ovFmtTog'); if (!t) return;

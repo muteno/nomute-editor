@@ -1,0 +1,161 @@
+<meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>260729 이미지 제작 — '축약필요' 행 추가 입력 차단 전후</title>
+<style>
+:root { --bg:#0b0d0c; --fg:#eef7f0; --mut:#9aa8a0; --accent:#00EED2; --line:rgba(255,255,255,.14); --line2:rgba(255,255,255,.09); --warn:#FFE13D; --danger:#e23b2a; }
+body { background:var(--bg); color:var(--fg); font:14px/1.65 -apple-system,'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif; margin:0; padding:22px 16px 60px; }
+h1 { font-size:19px; margin:0 0 4px; } h1 b { color:var(--accent); }
+h2 { font-size:15px; margin:34px 0 10px; color:var(--accent); }
+.meta { color:var(--mut); font-size:12px; margin-bottom:18px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; } @media(max-width:760px){ .grid{grid-template-columns:1fr} }
+.panel { border:1px solid var(--line); border-radius:14px; padding:14px; background:rgba(255,255,255,.02); }
+.panel h3 { margin:0 0 10px; font-size:13px; color:var(--mut); font-weight:700; } .panel h3.af { color:var(--accent); }
+.mock { background:#101312; border:1px solid var(--line2); border-radius:12px; padding:14px; }
+.sech { font-size:13px; font-weight:800; padding:0 0 8px; } .sech i { color:var(--accent); font-style:normal; }
+.cf { display:block; width:100%; box-sizing:border-box; background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:9px; color:var(--fg); font:15px/1.6 inherit; padding:9px 11px; margin:0 0 7px; }
+.cf::placeholder { color:var(--mut); }
+.covta { display:block; width:100%; box-sizing:border-box; min-height:66px; background:rgba(255,255,255,.04); border:1px solid var(--line2); border-radius:9px; color:var(--fg); font:15px/1.6 inherit; padding:9px 11px; resize:vertical; }
+.trk { display:block; font-size:11px; font-weight:700; color:var(--mut); min-height:16px; margin:2px 0 0; }
+.trk.on { color:var(--accent); } .trk.over { color:var(--danger); }
+.tag { display:inline-block; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:2px; }
+.tag.b { background:rgba(226,59,42,.16); color:var(--danger); } .tag.a { background:rgba(0,238,210,.14); color:var(--accent); }
+.bad { color:var(--danger); font-size:11px; font-weight:700; } .good { color:var(--accent); font-size:11px; font-weight:700; }
+.tw { overflow-x:auto; border:1px solid var(--line); border-radius:12px; margin-top:10px; }
+table { border-collapse:collapse; width:100%; font-size:12px; }
+th,td { padding:8px 10px; border-bottom:1px solid var(--line2); text-align:left; vertical-align:top; }
+th { color:var(--mut); font-weight:700; background:rgba(255,255,255,.03); }
+tr:last-child td { border-bottom:none; }
+code { background:rgba(255,255,255,.06); border-radius:4px; padding:1px 5px; font-size:11px; }
+ul { margin:8px 0 0; padding-left:18px; color:var(--mut); } li { margin:3px 0; } li b { color:var(--fg); }
+.note { color:var(--mut); font-size:11px; margin-top:8px; }
+</style>
+
+<h1>이미지 제작 — <b>'축약필요'가 뜬 행은 더 이상 글자가 안 들어감</b></h1>
+<div class="meta">260729 · 대상 = 이미지 스튜디오 <code>/2 제작</code> 헤더(부제·제목)·자막, <code>/1 포스트</code> 텍스트 · 판정기 = 기존 <code>estHeaderTr</code>/<code>estTracking</code>(빨강 힌트와 동일 계산기) 재사용 · 아래 칸은 <b>실제로 타이핑되는 재현</b>(실물 로직 미러)</div>
+
+<h2>1. 제목 행 — 전 / 후</h2>
+<div class="grid">
+  <div class="panel">
+    <h3>BEFORE — 종전<span class="tag b">경고만 뜨고 계속 입력</span></h3>
+    <div class="mock">
+      <div class="sech">헤더 <i>노뮤트</i></div>
+      <input class="cf" data-role="b-sub" placeholder="부제">
+      <input class="cf" data-role="b-title" placeholder="제목">
+      <span class="trk" data-role="b-trk"></span>
+    </div>
+    <p class="bad">→ 빨강 '축약필요'가 떠도 글자는 계속 들어감. 발사 시점에 게이트가 막아 되돌아와 다시 지워야 했다.</p>
+  </div>
+  <div class="panel">
+    <h3 class="af">AFTER — 이번 변경<span class="tag a">그 행에서 입력 정지</span></h3>
+    <div class="mock">
+      <div class="sech">헤더 <i>노뮤트</i></div>
+      <input class="cf" data-role="a-sub" placeholder="부제">
+      <input class="cf" data-role="a-title" placeholder="제목">
+      <span class="trk" data-role="a-trk"></span>
+    </div>
+    <p class="good">→ '축약필요'가 뜨는 그 글자까지는 들어가고(안내가 먼저 보여야 함), 그 다음 글자·붙여넣기가 막힌다. 지우기는 그대로.</p>
+  </div>
+</div>
+<div class="note">※ 이 재현칸의 폭 계산 = 실물 <code>estHeaderTr</code>(제목 fs 90 · 가용폭 960 · 자간 0→−45) 미러. 실물은 Pretendard 실측폭이라 임계 글자수가 ±1 다를 수 있다.</div>
+
+<h2>2. 자막(여러 줄) — '그 행'만 막힌다</h2>
+<div class="panel">
+  <div class="mock">
+    <div class="sech">오버레이 <i>릴스</i></div>
+    <textarea class="covta" data-role="a-lines" placeholder="강조는 별표로, 최대 3줄 가능"></textarea>
+    <span class="trk" data-role="al-trk"></span>
+  </div>
+  <ul>
+    <li><b>초과한 줄</b> = 그 줄만 추가 입력 차단</li>
+    <li><b>엔터(개행)</b> = 안 막음 → 다음 줄로 넘어가서 계속 쓸 수 있다</li>
+    <li><b>다른 줄</b> = 영향 없음(캐럿이 놓인 줄만 판정)</li>
+  </ul>
+</div>
+
+<h2>3. 실렌더 검증(Playwright · viewer/thumb.html)</h2>
+<div class="tw"><table>
+<tr><th>케이스</th><th>결과</th></tr>
+<tr><td>제목에 계속 타이핑</td><td class="good">13자에서 '제목 축약필요'(빨강) 뜨고 정지 — PASS</td></tr>
+<tr><td>초과 상태에서 추가 타이핑</td><td class="good">길이 13 불변 — PASS(차단)</td></tr>
+<tr><td>초과 상태에서 붙여넣기(insertText)</td><td class="good">길이 13 불변 — PASS(차단)</td></tr>
+<tr><td>Backspace</td><td class="good">12자로 줄고 빨강 해제 — PASS(삭제 허용)</td></tr>
+<tr><td>짧은 값으로 되돌린 뒤 타이핑</td><td class="good">정상 입력 — PASS(잠김 없음)</td></tr>
+<tr><td>자막 1행 초과 → 추가 타이핑</td><td class="good">차단 — PASS</td></tr>
+<tr><td>자막 1행 초과 → 엔터 + 2행 입력</td><td class="good">["…초과행", "둘째줄"] — PASS(행 단위)</td></tr>
+<tr><td>페이지 에러</td><td class="good">0건</td></tr>
+</table></div>
+
+<h2>4. 안전장치</h2>
+<ul>
+  <li><b>지우기·수정은 항상 허용</b> — 초과분을 줄일 길을 막으면 칸이 잠긴다</li>
+  <li><b>프로그램 주입은 비대상</b>(<code>isTrusted</code> 게이트) — 임시저장 복원·축약 적용·맞춤법 교정본이 잘려나가지 않는다</li>
+  <li><b>한글 조합(IME)</b> — <code>beforeinput</code>이 취소 불가한 경로라 조합 확정 시 되돌림(<code>compositionend</code>)</li>
+  <li><b>새 UI·새 한도 0</b> — 표시는 기존 빨강 '축약필요' 힌트 그대로, 발사 게이트도 그대로</li>
+</ul>
+
+<script>
+// 실물 estHeaderTr/estTracking 미러(리포트 재현용) — 상수·한도는 viewer/thumb.html HDR·TRK 동값
+const HDR = { sub: { H:60.72, S:14.98, N:38.94, fs:66, avail:960, floor:-45 }, title: { H:82.80, S:20.44, N:53.09, fs:90, avail:960, floor:-45 } };
+const OVL = { H:72, S:18, N:48, fs:78, limit:844, start:-1, floor:-30 };
+let _cx = null;
+function chW(ch, fs) {
+  try { if (!_cx) _cx = document.createElement('canvas').getContext('2d'); _cx.font = '700 ' + fs + 'px Pretendard, "Noto Sans KR", sans-serif';
+    return document.fonts && document.fonts.check('700 ' + fs + 'px Pretendard') ? _cx.measureText(ch).width : null; } catch (_) { return null; }
+}
+function widthAt(text, tr, cfg, pad) {
+  let s = 0;
+  for (const ch of text.replace(/\*/g, '')) { const w = chW(ch, cfg.fs); s += (w != null) ? w : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N); }
+  return s + (tr / 1000 * cfg.fs) * Math.max(text.replace(/\*/g, '').length - 1, 0) + (pad || 0);
+}
+function estHdr(text, cfg) {
+  if (!text) return { tr: 0, over: false };
+  if (widthAt(text, 0, cfg) <= cfg.avail) return { tr: 0, over: false };
+  for (let x = -1; x >= cfg.floor; x--) if (widthAt(text, x, cfg) <= cfg.avail) return { tr: x, over: false };
+  return { tr: cfg.floor, over: true };
+}
+function estLine(line) {
+  if (!line) return { tr: OVL.start, over: false };
+  if (widthAt(line, OVL.start, OVL, 5) <= OVL.limit) return { tr: OVL.start, over: false };
+  for (let x = OVL.start; x >= OVL.floor; x--) if (widthAt(line, x, OVL, 5) <= OVL.limit) return { tr: x, over: false };
+  return { tr: OVL.floor, over: true };
+}
+const $r = r => document.querySelector('[data-role="' + r + '"]');
+function hdrHint(subEl, titleEl, trkEl) {
+  const s = estHdr(subEl.value.trim(), HDR.sub), t = estHdr(titleEl.value.trim(), HDR.title), parts = [];
+  if (s.over) parts.push('부제 축약필요'); else if (s.tr < 0) parts.push('부제 자간' + s.tr + ' 적용');
+  if (t.over) parts.push('제목 축약필요'); else if (t.tr < 0) parts.push('제목 자간' + t.tr + ' 적용');
+  trkEl.textContent = parts.length ? '· ' + parts.join(' · ') : '';
+  trkEl.classList.remove('on', 'over');
+  if (s.over || t.over) trkEl.classList.add('over'); else if (parts.length) trkEl.classList.add('on');
+  return { s, t };
+}
+// BEFORE = 힌트만(차단 없음)
+['b-sub', 'b-title'].forEach(r => $r(r).addEventListener('input', () => hdrHint($r('b-sub'), $r('b-title'), $r('b-trk'))));
+// AFTER = 힌트 + 그 행 초과 시 추가 입력 차단(viewer/thumb.html bindOverClamp 미러)
+function clampBind(el, isOver) {
+  let snap = el.value, preOver = false, composing = false;
+  const sync = () => { snap = el.value; preOver = false; };
+  el.addEventListener('focus', sync);
+  el.addEventListener('compositionstart', () => { composing = true; snap = el.value; preOver = isOver(); });
+  el.addEventListener('beforeinput', e => {
+    if (composing || !e.inputType || !e.inputType.startsWith('insert')) return;
+    if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { sync(); return; }
+    snap = el.value; preOver = isOver(); if (preOver) e.preventDefault();
+  });
+  const clamp = () => { if (preOver && el.value.length > snap.length) { const p = Math.min(el.selectionStart, snap.length); el.value = snap; el.setSelectionRange(p, p); preOver = false; el.dispatchEvent(new Event('input', { bubbles: true })); return; } sync(); };
+  el.addEventListener('input', e => { if (composing) return; clamp(); });
+  el.addEventListener('compositionend', () => { composing = false; clamp(); });
+}
+['a-sub', 'a-title'].forEach(r => $r(r).addEventListener('input', () => hdrHint($r('a-sub'), $r('a-title'), $r('a-trk'))));
+clampBind($r('a-sub'), () => estHdr($r('a-sub').value.trim(), HDR.sub).over);
+clampBind($r('a-title'), () => estHdr($r('a-title').value.trim(), HDR.title).over);
+const ta = $r('a-lines'), tt = $r('al-trk');
+function caretLine(el) { const v = el.value, i = el.selectionStart ?? v.length, s = i === 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1; let e = v.indexOf('\n', i); if (e < 0) e = v.length; return v.slice(s, e).trim(); }
+ta.addEventListener('input', () => {
+  const lines = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+  const over = lines.some(l => estLine(l).over), tr = lines.length ? Math.min(...lines.map(l => estLine(l).tr)) : 0;
+  tt.classList.remove('on', 'over');
+  tt.textContent = over ? '⚠ 자간 -30로도 초과 — 축약 필요' : (tr < OVL.start ? '· 자간 ' + tr + ' 적용' : '');
+  if (over) tt.classList.add('over'); else if (tr < OVL.start) tt.classList.add('on');
+});
+clampBind(ta, () => { const l = caretLine(ta); return !!l && estLine(l).over; });
+</script>
