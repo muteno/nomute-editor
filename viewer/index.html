@@ -7907,7 +7907,11 @@ function _rptSrc(m) {
   if (id.startsWith('sys:acct:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.cover[플랫폼].why[계정]', up: 'scraper/sns_trends.py _sfail()' };
   if (id.startsWith('sys:src:reddit:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.reddit 길이 0 + health.phone.ok', up: 'scraper/sns_trends.py reddit_hot()/_reddit_rss()' };
   if (id.startsWith('sys:demo:')) return { fn: 'viewer/index.html demoStaleMsgs()', src: 'CHAN/CHAN_FB.audience_sample.as_of vs generated_kst', up: 'scraper 인구통계 수집' };
-  if (m._health) return { fn: 'viewer/index.html staleDataMsg()', src: 'CAND_LIVE(라이브 소스 적재 실패)', up: 'functions/api + viewer/candidates.json' };
+  // _health 계열은 3종(새버전·갱신실패·맞춤법)이 같은 플래그를 공유 → 플래그별로 갈라야 한다. 뭉치면 "새 버전" 알림에 CAND_LIVE가 찍혀
+  //   세션이 없는 고장(진단 스냅샷 후보라이브=true인데 적재 실패라고 지목)을 쫓는다(실증 260730 리포트 1번 항목).
+  if (m._shellupd) return { fn: 'viewer/index.html shellUpdMsg()', src: '_shellUpdPending(SW nm-shell-updated → flagShellUpdate)', up: 'sw.js 셸 SWR 재검증 + viewer/index.html 배포' };
+  if (m._stale) return { fn: 'viewer/index.html staleDataMsg()', src: 'CAND_LIVE(라이브 소스 적재 실패)', up: 'functions/api + viewer/candidates.json' };
+  if (m._health) return { fn: 'viewer/index.html healthMsg()', src: "SHC(localStorage 'nomute_shc').healthy=false", up: 'thumb.html 맞춤법 검사기 + ?selftest 프로브' };
   return { fn: '서버 발행 메시지', src: 'messages/' + (id || '<id>') + '.json', up: 'scraper/msg.py' };
 }
 const _rptAbs = m => (m.t ? new Date(m.t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : (m.ts ? String(m.ts) : '(시각 없음)'));   // 절대 KST — 상대시간("2시간 전")만으론 며칠째인지 판별이 안 된다(D4 KST 고정)
