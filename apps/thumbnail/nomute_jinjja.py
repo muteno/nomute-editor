@@ -40,6 +40,7 @@ MARGIN = 100                 # 좌우 마진(운영자 확정 100/100)
 AVAIL = W - 2 * MARGIN * SCALE   # 가용폭 = 880×SCALE = 1760
 TR_START = -10               # 자간 시작(운영자 확정 · 노뮤트 0/-1과 별개 축)
 TR_MIN = -45                 # 자간 하한 = em-상대(스케일 무관 · reels2 TR_MIN 동값)
+HDR_EMPH = (255, 225, 61)    # 헤더 문구 **강조** = 골드레몬(운영자 260730 "**로 하면 강조 … 노란색 가까운 색") — index :root --accent-2/--accent-4/--amber #FFE13D 동값(발행 콘텐츠 색 축 · UI 재유입 아님 · 자막 강조 OV_EMPH와 별개 축)
 
 
 def _line_width(text, font, tr, fs):
@@ -60,17 +61,31 @@ def _fit_tr(text, font, fs):
 
 
 def _draw_line(d, text, y, font, color, fs):
-    """가운데 정렬 + 자간 압축. reels2.py:44-60 축자 계승.
+    """가운데 정렬 + 자간 압축 + **강조**(골드레몬). reels2.py:44-60 축자 계승.
     진짜예요는 시작 자간이 -10이라 '자간0 통줄 렌더' 단축 경로가 없다(항상 글자별 렌더).
+
+    강조(운영자 260730) = 자막과 같은 별표 문법(1~2개 = 델리미터 토글 · 3+ = 리터럴) →
+    파서는 `nomute_overlay.parse` 그대로 재사용(절대규칙1 = import만 · 파서 4면 일치 유지).
+    ⚠ 별표는 **폭 0** = 자간 sweep·가운데 정렬 계산에 안 들어간다(마커 제거분 plain으로만 측정).
     적용 tr 반환."""
-    tr = _fit_tr(text, font, fs)
+    from nomute_overlay import parse   # 절대규칙1 = import만(수정 0)
+
+    segs = parse(text or '')
+    plain = ''.join(t for _, t in segs)   # 별표 제거분 = 폭·자간·중앙정렬의 유일한 기준
+    tr = _fit_tr(plain, font, fs)
+    if not plain:
+        return tr
     tp = tr / 1000.0 * fs
-    advs = [font.getlength(ch) for ch in text]
-    total = sum(advs) + tp * (len(text) - 1)
+    advs = [font.getlength(ch) for ch in plain]
+    total = sum(advs) + tp * (len(plain) - 1)
     x = (W - total) / 2.0
-    for ch, adv in zip(text, advs):
-        d.text((x, y), ch, font=font, fill=color)
-        x += adv + tp
+    i = 0
+    for st, stx in segs:
+        co = HDR_EMPH if st == 'h' else color   # 강조 = 골드레몬 · 일반 = 순백(호출자 color)
+        for ch in stx:
+            d.text((x, y), ch, font=font, fill=co)
+            x += advs[i] + tp
+            i += 1
     return tr
 
 
@@ -105,8 +120,12 @@ JJ_BASE = {'reels': 'assets/jinjja_reels_base.png', 'post': 'assets/jinjja_post_
 #   구 260726 축(가운데 정렬 · 좌우 150 · 폭 780)은 폐기 — 서버 자간은 이미 노뮤트 fit_tracking을
 #   받고 있었으므로(thumb-make.yml:166) 이 개정으로 정렬·폭·자간 3축이 한 번에 정합된다.
 # 진짜예요 고유로 남는 것 = CI 베이스(로고 구움) · 강조색 네온 파랑 · 첫 줄 y/글자크기/줄간(OV_SPEC).
+# ⚠ 260730 개정: **릴스만 가운데 정렬**(운영자 "릴스 진짜예요는 릴스 오버레이 가운데 정렬로") — 폭·자간 한도(844/-30)는
+#   그대로 노뮤트 계승이고 시작 x 계산만 좌/우 마지노선(lm 101 / rm 135) 박스 중심으로 바뀐다. 포스트 = 좌측정렬 유지.
 OV_LIMIT = {'post': 920, 'reels': 844}   # 워크플로 fit_tracking limit 1:1 미러(post lm85/rm75 · reels lm101/rm135)
 OV_FLOOR = {'post': -45, 'reels': -30}   # 워크플로 fit_tracking floor 1:1 미러(sweep 하한)
+OV_RM = {'post': 75, 'reels': 135}       # 우 마지노선 = 워크플로 fit_tracking 주석 "post lm85/rm75 · reels lm101/rm135" 1:1 미러(좌 마지노선 = SPECS lm)
+OV_CENTER = {'post': False, 'reels': True}   # 릴스만 가운데 정렬(운영자 260730 "릴스 진짜예요는 릴스 오버레이 가운데 정렬") — 중심 = 좌/우 마지노선 사이 박스 중심(101 … 1080-135) = 523이라 최대폭(844)에서도 양 마진 각각 보존 · 포스트는 260728 좌측정렬 유지
 OV_EMPH = (56, 198, 255)               # 네온 파랑 = --bias-l1 #38C6FF 동값(발행 콘텐츠 색 축 · UI 팔레트 재유입 아님)
 OV_PLAIN = (255, 255, 255)
 # 첫 줄 y·글자크기·줄간 = 운영자가 플레이그라운드에서 고른 선택값 그대로(260726 · 정렬만 260728 개정)
@@ -144,6 +163,18 @@ def _ov_fit_tr(segs_lines, font, fs, fmt, start, lm_offsets=None):
     return floor
 
 
+def _ov_line_w(segs, font, tp, stroke):
+    """draw_t 진행폭 실측(스크래치 렌더 = 실제 배치와 동일 산식) — 가운데 정렬 시작 x 계산용.
+    draw_t는 마지막 글자 뒤에도 tp를 더하므로 한 칸(tp) 뺀 값이 줄 폭이다."""
+    from nomute_overlay import draw_t   # 절대규칙1 = import만
+
+    txt = ''.join(t for _, t in segs)
+    if not txt:
+        return 0.0
+    probe = Image.new('RGBA', (8, 8), (0, 0, 0, 0))   # 8×8 = 버리는 캔버스(글자는 화면 밖 y로 흘림 = 클리핑)
+    return draw_t(ImageDraw.Draw(probe), 0, -10000, txt, font, OV_PLAIN, tp, stroke) - tp
+
+
 def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None, base_path=None):
     """진짜예요 오버레이 1장 → 투명 RGBA PNG. nomute_overlay.generate(:138-171) 스택 축자 계승."""
     from nomute_overlay import SPECS, FONT_PATH, mk_grad, mk_shadow, draw_t, parse   # 절대규칙1 = import만
@@ -178,7 +209,19 @@ def render_overlay(fmt, lines, out, opacity=None, tracking=None, lm_offsets=None
     for i, segs in enumerate(segs_lines):
         # 좌측정렬(운영자 260728 "노뮤트때 나오는거랑 똑같이") — generate:156-161 축자 계승:
         # 시작 x = lm×SCALE + 따옴표 들여쓰기 · 진행 = draw_t(잉크폭+자간) · 색만 진짜예요 축(네온 파랑).
-        cx = sp['lm'] * S + (lm_offsets[i] * S if lm_offsets and i < len(lm_offsets) else 0)
+        if OV_CENTER.get(fmt):
+            # 릴스 = 가운데 정렬(운영자 260730) — 좌/우 마지노선 사이 박스 중심 기준(양 마진 각각 보존).
+            # 따옴표 들여쓰기(lm_offsets)는 중앙 기준을 깨므로 미적용(연속줄 hanging indent = 좌측정렬 전용 장치).
+            bl, br = sp['lm'] * S, cw - OV_RM[fmt] * S
+            plain = ''.join(t for _, t in segs)
+            cx = bl + (br - bl - _ov_line_w(segs, fnt, tp, sp['stroke'])) / 2.0
+            # 중심 정의 = **글자 박스 중심**(draw_t 진행폭 기준 = 노뮤트 lm 의미축과 동일) → 최대폭 844에서 좌101/우135 정확.
+            # 좌측 베어링 보정(라틴·숫자는 bb[0]>0 · 한글은 0 = 무동작) · 잔여 Δ = 글리프 내부 여백(실측 ≤2.3px = 광학 노이즈).
+            # ⚠ 자간 하한(-30)으로도 844를 넘는 줄은 양쪽으로 흘러넘친다(구 좌측정렬은 우측만) — 프론트 자간 게이트가 그 발사를 이미 차단한다.
+            if plain:
+                cx -= (fnt.getbbox(plain[0])[0] + fnt.getbbox(plain[-1])[0]) / 2.0
+        else:
+            cx = sp['lm'] * S + (lm_offsets[i] * S if lm_offsets and i < len(lm_offsets) else 0)
         for st, stx in segs:
             co = OV_EMPH if st == 'h' else OV_PLAIN   # 강조 = 네온 파랑(운영자 260726 · 구 형광그린 폐기)
             cx = draw_t(dr, cx, cy, stx, fnt, co, tp, sp['stroke'])
