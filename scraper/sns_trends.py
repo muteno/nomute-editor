@@ -58,6 +58,7 @@
 불변: LLM 0콜 · 과금 0 · 수집·표시 전용 = 큐레이션 신호·임계·랭킹·판정 0 접촉(§1 보수성)
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
+import base64   # 구글 뉴스 RSS 링크(news.google.com/rss/articles/…) 페이로드 → 언론사 원문 URL 해석(gnews_url · 260729)
 import html
 import http.cookiejar   # 스레드 302 챌린지 추적(_th_fetch · 260729)
 import json
@@ -400,6 +401,66 @@ def og_image(url, timeout=6):
         return u if u.startswith(("http://", "https://")) else ""
     except Exception:  # noqa: BLE001
         return ""
+
+
+def gnews_url(link, timeout=6):
+    """구글 뉴스 검색 결과 링크(news.google.com/rss/articles/…) → 언론사 원문 URL 해석.
+    ① 링크 안 base64 페이로드에 원문 URL이 그대로 박혀 있는 다수 케이스 = 무네트워크 즉시 해석(예산 0)
+    ② 실패 시 1회 GET = 리다이렉트 추적(geturl) → 그래도 구글이면 인터스티셜 HTML 속 외부 링크 추출
+    실패 = "" (fail-soft · 호출측이 다음 후보로 넘어감)."""
+    link = (link or "").replace("&amp;", "&").strip()
+    if not link or not link.startswith(("http://", "https://")):
+        return ""
+    if "news.google.com" not in link:
+        return link
+    m = re.search(r"/articles/([A-Za-z0-9_\-]{16,})", link)
+    if m:
+        s = m.group(1)
+        try:
+            raw = base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode("utf-8", "ignore")
+            u = re.search(r"https?://[^\s\x00-\x1f\"'<>\\]{12,}", raw)   # 제어문자 제외 = 프로토버프 길이·태그 바이트가 URL 꼬리에 섞이는 것 차단(실측 260729)
+            if u and "news.google.com" not in u.group(0):
+                return u.group(0)
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        with urllib.request.urlopen(urllib.request.Request(link, headers=UA), timeout=timeout, context=CTX) as r:
+            fin = r.geturl() or ""
+            if fin and "news.google.com" not in fin:
+                return fin
+            body = r.read(300000).decode("utf-8", "ignore")
+        m2 = (re.search(r'data-n-au=["\']([^"\']+)', body)
+              or re.search(r'<a[^>]+href=["\'](https?://(?!(?:\w+\.)*(?:google|gstatic|googleusercontent)\.com)[^"\']+)', body))
+        return m2.group(1).replace("&amp;", "&") if m2 else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def gnews_search(q, limit=2, timeout=8):
+    """**키워드를 구글에 검색해서** 관련 기사 원문 URL 확보(무키 · 구글 뉴스 검색 RSS · LLM 0콜) —
+    트렌드 카드 커버가 'G 로고 타일'로 비는 것 봉합(운영자 260729 "구글 관련 내용이 g라고만 나올 때가 있어 ·
+    그걸 항상 키워드를 구글에서 검색한 걸 가져와서 넣게끔"). 종전 백필은 딸린 기사(news[0].url)가 있는 항목만
+    대상이라, API 페이로드에 기사·이미지가 둘 다 없던 꼬리 검색어는 영구히 빈 커버였다(실측 260729: 11~25위 전량).
+    실패 = [] (fail-soft · 수집을 못 깨뜨림)."""
+    q = (q or "").strip()
+    if not q:
+        return []
+    try:
+        body = _get("https://news.google.com/rss/search?q=" + urllib.parse.quote(q) + "&hl=ko&gl=KR&ceid=KR:ko", timeout=timeout)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::gnews_search 실패(스킵 · {q}): {e}", file=sys.stderr)
+        return []
+    out = []
+    for m in re.finditer(r"<item>(.*?)</item>", body, re.S):
+        l = re.search(r"<link>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</link>", m.group(1), re.S)
+        if not l:
+            continue
+        u = gnews_url(l.group(1).strip())
+        if u and u not in out:
+            out.append(u)
+        if len(out) >= limit:
+            break
+    return out
 
 
 TK_CUT_H = 18   # 틱톡 신선 창(시간) — 뷰어 index.html TK_CUT_H와 동축(운영자 260726 "올린지 18시간으로 변경" · 구 24h·구구 48h)
@@ -1774,18 +1835,35 @@ def main():
     # 구글 카드 커버 백필+화질업(운영자 260716 "백필 ㄱ" → "한수 적용 100% 나은거 아닌지 진행 ㄱㄱ" · 260718 Q111 꼬리 확장) —
     # 대상 = ① picture 결측 ② gstatic 저해상 썸네일(구글 RSS산·API tbn = 카드 확대 시 흐림). 딸린 뉴스(news[0]) og:image로 보충/승급.
     # 범위 = KR 18위(꼬리 API 항목이 art로 news[0] 확보 → 백필 대상 편입 · 스택 노출대 커버) + 월드 8 · 총예산 10회 + 건당 6s = 크론 러닝타임 보호(슬라이스 확장해도 예산 10이 총 fetch 상한 = 런타임 무증가) · og 실패 = 기존 picture 유지(저해상/API 썸네일 > 무이미지 = 리스크 0 fail-soft).
-    _og_budget = 10
-    for _g in (gt[:18] + gt_gl[:8]):
-        if _og_budget <= 0:
-            break
+    # 2단(운영자 260729 "그걸 항상 키워드를 구글에서 검색한 걸 가져와서 넣게끔") — ① 딸린 기사 og:image(종전) →
+    # ② 그래도 비면 **키워드를 구글 뉴스에 검색**해 기사 확보 후 og:image(gnews_search · 무키·LLM 0콜).
+    # 종전엔 딸린 기사 URL이 없는 항목을 통째로 `continue`해서 커버가 영구히 빈 채 'G 로고 타일'로 나갔다(실측 260729 = 11~25위 전량 결측).
+    # 슬라이스 18 → 25 = 스택 확장 시퀀스(_tsSeqX) 노출대 전체 커버 · 예산 = og 10회(종전 불변) + 검색 12건, 검색 파트는 90s 벽시계 캡
+    # (건당 최대 1 RSS + 후보 2건 × (해석 6s + og 6s)) = 크론 러닝타임 보호 · 전부 fail-soft(실패 = 기존 picture 유지 = 리스크 0).
+    _og_budget, _gs_budget, _gs_t0 = 10, 12, time.time()
+    for _g in (gt[:25] + gt_gl[:8]):
         _pic = _g.get("picture") or ""
         _low = ("gstatic.com" in _pic) or ("googleusercontent.com" in _pic)   # 구글 썸네일 도메인 = 저해상 축(실측 260716 — RSS ht:picture 전량 이 축)
-        if (_pic and not _low) or not (_g.get("news") and _g["news"][0].get("url")):
+        if _pic and not _low:
             continue
-        _og_budget -= 1
-        _p = og_image(_g["news"][0]["url"])
-        if _p:
-            _g["picture"] = _p
+        _art = _g["news"][0].get("url") if (_g.get("news") and _g["news"][0].get("url")) else ""
+        if _art and _og_budget > 0:
+            _og_budget -= 1
+            _p = og_image(_art)
+            if _p:
+                _g["picture"] = _p
+        if (_g.get("picture") or ""):   # 저해상 승급 실패분 포함 = 기존 커버 유지(종전 계약) · 검색 예산 미소모
+            continue
+        if _gs_budget <= 0 or (time.time() - _gs_t0) > 90:
+            continue
+        _gs_budget -= 1
+        for _u in gnews_search(_g.get("query") or ""):
+            _p = og_image(_u)
+            if _p:
+                _g["picture"] = _p
+                if not _g.get("news"):
+                    _g["news"] = [{"title": "", "url": _u, "source": ""}]   # 카드 클릭 링크는 ggUrl(구글 검색창) 고정 = 표시 무영향 · 다음 주기 og 백필 원료로 승계
+                break
     yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
     if YT_KEY and yt_all:
         for _gg in W_GEOS:
