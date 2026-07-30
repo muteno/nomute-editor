@@ -1603,6 +1603,23 @@ function cpToolSync(empty) {   // 미리보기 사진 도구(교체·삭제) 노
   const sw = $('#cpImgSwap'), dl = $('#cpImgDel');
   if (sw) sw.hidden = !!empty;
   if (dl) dl.hidden = !!empty || !CIMG.b64;
+  cpToolAnchor();
+}
+// 도구 앵커 = 「창(사진·캔버스) 안 우상단」(운영자 260731 "창 안으로 넣어, 다른 디자인 기틀 따라하셈")
+//   — 기틀 정본 = .covimg .covimg-x(이미지 슬롯 *안* 우상단 top6/right6). 구 코드는 같은 6/6을 쓰되 기준이 쉘(.cpprev-box)이라,
+//     세로 사진처럼 캔버스가 쉘보다 좁으면 도구가 사진 밖 빈 필러 위에 떠서 기틀과 어긋났다.
+//   — 여기서 실측(rect)으로 캔버스 우상단에 붙인다 · 캔버스가 없으면(카드 합성 등) 종전 쉘 기준 6/6으로 복귀.
+function cpToolAnchor() {
+  const box = document.querySelector('#cpPrev .cpprev-box'); if (!box) return;
+  const sw = $('#cpImgSwap'), dl = $('#cpImgDel'); if (!sw || !dl) return;
+  const art = box.querySelector('.rsz-canv') || box.querySelector('.rsz-orig');
+  if (!art || sw.hidden) { sw.style.top = dl.style.top = ''; sw.style.right = dl.style.right = ''; return; }
+  const br = box.getBoundingClientRect(), ar = art.getBoundingClientRect();
+  if (!ar.width || !ar.height) return;
+  const top = Math.max(0, ar.top - br.top) + 6, right = Math.max(0, br.right - ar.right) + 6;   // 6 = .covimg-x 정본 인셋 동값
+  sw.style.top = dl.style.top = top + 'px';
+  dl.style.right = right + 'px';
+  sw.style.right = (right + 36) + 'px';   // 36 = 30(버튼) + 6(간격) = 구 right 42−6 = 기존 두 버튼 간격 그대로
 }
 let _cpwT = null, _cpwT0 = 0;
 function cpPrevWait(on) {   // 제작 발사 → 미리보기 '합성 중' 딤(§디자인 g 처리중 · edit wmsg 계승) · 해제 = 첫 완성(carAppend) 또는 8분 백스톱 · 미대기 no-op · (Q469) 발사 경로 (true) 점등 = .wip 타일로 이주 → 현재 도먼트(해제 콜만 잔존 = no-op 안전)
@@ -2299,7 +2316,8 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
     const img = '<img class="rsz-orig" src="' + CIMG.b64 + '" style="position:static;display:block;width:100%;max-width:100%;height:auto;object-fit:contain;max-height:' + cap + ';margin:0 auto;outline:1px solid rgba(var(--accent-rgb),.4)">';
     stage.innerHTML = mos ? '<div class="ie-wrap">' + img + ieBoxesHTML() + '</div>' : img;
     if (mos) ieBindBoxes(stage);   // 박스 탭 = 지정 토글(구 하단 스테이지 핸들러 계승)
-    const m0 = $('#rszMetric'); if (m0) m0.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b>' + (APP === '7' ? ' <span class="n">· 변환 없음</span>' : '');   /* 한 줄(운영자 260731 "원 ↔ 변환된 부분 한 줄이어야 함") — 구 <br> 2줄은 오버레이 리드백이 사진을 두 배로 가렸다 */   // 리드백 = 「원/캔」 2줄 문법(운영자 260730) · 원본 비율은 캔 = 원과 동일이라 캔 줄 생략 + 변환 없음 고지   // app8(모자이크) = 치수만(변환 문구는 리사이즈 축 · 운영자 260713)
+    const m0 = $('#rszMetric'); if (m0) m0.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b>' + (APP === '7' ? ' <span class="n">· 변환 없음</span>' : '');
+    cpToolAnchor();   // 캔버스 재렌더 = 도구 앵커 재계산(창 안 우상단 고정)   /* 한 줄(운영자 260731 "원 ↔ 변환된 부분 한 줄이어야 함") — 구 <br> 2줄은 오버레이 리드백이 사진을 두 배로 가렸다 */   // 리드백 = 「원/캔」 2줄 문법(운영자 260730) · 원본 비율은 캔 = 원과 동일이라 캔 줄 생략 + 변환 없음 고지   // app8(모자이크) = 치수만(변환 문구는 리사이즈 축 · 운영자 260713)
     return;
   }
   const noop = rszRatioOk(W, H, ar);
@@ -2325,11 +2343,12 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
   stage.innerHTML = '<div class="rsz-canv" style="width:' + CW + 'px;height:' + CH + 'px;' + canvOutline + '">' + strips +
     '<img class="rsz-orig" src="' + CIMG.b64 + '" style="left:' + OX + 'px;top:' + OY + 'px;width:' + OW + 'px;height:' + OH + 'px;' + origBorder + '">' + tag + '</div>';
   const m = $('#rszMetric'); if (!m) return;
-  if (noop) { m.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b> <span class="n">· 이미 ' + ar + ' 비율, 확장 없음</span>'; m.removeAttribute('title'); return; }   /* 한 줄 통일(운영자 260731) */
+  if (noop) { m.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b> <span class="n">· 이미 ' + ar + ' 비율, 확장 없음</span>'; m.removeAttribute('title'); cpToolAnchor(); return; }   /* 한 줄 통일(운영자 260731) */
   const gain = horiz ? (cw - W) / 2 : (ch - H) / 2, dir = horiz ? '좌우 각' : '상하 각', mult = horiz ? cw / W : ch / H;
   // 리드백 = 「원 / 캔」 2줄(운영자 260730 "미리보기 아래측 · 원 2,286 × 840 / 캔 2,286 × 4,064") — 구 1줄 화살표 서술(원본→비율·확장량·배수)을 치수 대조 2줄로 압축 · 확장량·배수는 소실 없이 title 툴팁으로 이관
   m.innerHTML = '원 <b>' + rszN(W) + ' × ' + rszN(H) + '</b> → 캔 <b class="g">' + rszN(cw) + ' × ' + rszN(ch) + '</b>';   // 한 줄 「원 → 캔」(운영자 260731 선택값 · 구 2줄 = 오버레이 이주로 높이 절약)
   m.title = ar + ' 확장 — ' + dir + ' +' + rszN(gain) + 'px · ' + (horiz ? '폭 ' : '높이 ') + mult.toFixed(2) + '×';
+  cpToolAnchor();
 }
 // 옵션 컬럼 세로 레일 = 넘칠 때만 하단 페이드(.ovf) · 바닥 도달 시 해제(.atEnd) — 배선 정본 = index .geni-rail atStart/atEnd 동문(축만 세로)
 function dockOptFade() {
