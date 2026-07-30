@@ -12488,7 +12488,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   const sx0 = spts.length && !hlin ? spts[0][0] : mL, sx1 = spts.length && !hlin ? spts[spts.length - 1][0] : W - mR;   // area 폐합 x = 숄더 반영 양끝(비선형축 = 기존 첫/끝 점 그대로)
   const sline = spts.length >= 2 ? chPath(shoulder(spts).map(p => [p[0], p[1]]), 1) : '';
   // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 재개정: 음영 바닥 = X축 정지 — 눈금·요일 라벨 행 침범 금지 · 축 살짝 관통 = 양옆 세로변 선분만 · "인덱싱까지 이어짐"은 선분 +4 관통 + 해당 눈금 보라 틴트가 대체) — 코어 = 팔로워가 앱 사용자 위인 연속 우위 런(경계 = 선형 보간 교차점 · 버킷 스냅 금지) · 팔로워 area(파도→X축)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .06 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침)
-  let coreX = null, coreXR = null;
+  let coreX = null, coreXR = null, coreY = null;
   if (gpts && gpts.length === bs.length && spts.length === bs.length && sline) {
     const dfs = spts.map((p, i) => gpts[i][1] - p[1]);   // >0 = 팔로워 곡선이 위(픽셀 y 반전축)
     let pk = 0; spts.forEach((p, i) => { if (p[1] < spts[pk][1]) pk = i; });   // 팔로워 피크 = y 최소
@@ -12506,6 +12506,8 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       s += `<path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigCore-${ax})" stroke="none" clip-path="url(#sigCoreClip-${ax})"/>`;   // 팔로워 area(파도→X축)를 코어 컬럼으로 하드 클립 = 세로 커튼(라벨 행 무접촉)
       [[x0, e0.y], [x1, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--cat-tech)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 양 옆 세로변(파도 곡선 y → X축 +4) = 선분만 아주 살짝 축 관통(운영자 260723 "선분 쫙 이어서 · 음영을 넘기란 게 아니야") — 아래 해당 눈금 숫자와 연결감
       coreX = (x0 + x1) / 2; coreXR = [x0, x1];
+      const yWave = xq => { const q = Math.max(spts[0][0], Math.min(spts[spts.length - 1][0], xq)); for (let i = 1; i < spts.length; i++) { if (spts[i][0] >= q) { const [xa, ya] = spts[i - 1], [xb, yb] = spts[i]; return xb === xa ? ya : ya + (yb - ya) * (q - xa) / (xb - xa); } } return spts[spts.length - 1][1]; };   // 음영 상단(팔로워 파도) y = 중앙 x에서 선형 보간(곡선 chPath와 미세차 있으나 라벨 배치용 = 육안 무차)
+      coreY = (yWave(coreX) + aB) / 2;   // 라벨 세로 위치 = 음영 상단(파도)~바닥(X축) 중앙(운영자 260730 "음영 부분 양옆 중앙 위아래 중앙")
     }
   }
   if (gl) s += `<path d="${gl}" fill="none" stroke="var(--accent-4)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
@@ -12555,7 +12557,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
     topLabs.push({ x: cx, y });
     s += `<text x="${cx.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="8" fill="${fill}" font-weight="700">${txt}</text>`;
   };
-  if (coreX != null) putTop(coreX, ax === 'hour_band' ? '핵심 시간대' : '핵심 요일', 'var(--cat-tech)');   // 핵심 구간 라벨 = 상단 선반 공용 문법(putTop 충돌 회피 그대로) · 색 = 음영 동색 네온바이올렛(운영자 260723 "핵심인 시간대다 차트 안에서 표시")
+  if (coreX != null) s += `<text x="${coreX.toFixed(1)}" y="${coreY.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="8" fill="var(--cat-tech)" font-weight="700" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">${ax === 'hour_band' ? '핵심 시간대' : '핵심 요일'}</text>`;   // 핵심 구간 라벨 = 상단 선반(putTop) 이탈 → 음영 블록 정중앙 각인(운영자 260730 "양옆 중앙·위아래 중앙") · 색 = 음영 동색 네온바이올렛(260723 계승) · 그림자 = 레포 텍스트 가독 정본값 drop-shadow(0 1px 2px rgba(0,0,0,.45)) 계승(.ch-th .rl·.dlbtn) = 파도·볼륨바 위 판독
   bandLabs.forEach(l => putTop(l.x, esc(l.txt), 'var(--mut)'));   // 접속 피크 라벨 = 무채(운영자 260723 한 수 · 밴드 무채 워시와 동색 · 일반 평균 노랑과 분리)
   if (mkX != null) putTop(mkX, mkTxt, 'var(--mut)');
   const inCore = x => coreXR && x >= coreXR[0] - 1 && x <= coreXR[1] + 1;   // 핵심 구간에 드는 눈금/라벨 = 음영 동색 보라 틴트(운영자 260723 "해당하는 숫자를 보라색 음영" · ±1px = 경계 부동소수 여유) — 구 경계시각 별도 라벨("9시/18시" 행) 대체
