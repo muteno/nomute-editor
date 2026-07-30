@@ -2290,7 +2290,7 @@ window.addEventListener('message', e => {   // 부모(index) genidlg 자유 생�
 function rszWait(on) {   // 변환 중 = 발사 버튼(#go) 자체 점등(별도 #rszWait 박스 폐지 · 작업 1건씩 = 버튼 대체 · 운영자 260710) — on 생략 = 탭 전환 재동기(selApp) · 상태는 버튼에 보관(_rszBusy)=세션 단위.
   const gb = $('#go'); if (!gb) return;
   if (on !== undefined) gb._rszBusy = !!on;
-  const busy = gb._rszBusy && APP === '7';
+  const busy = gb._rszBusy && (APP === '7' || APP === '9');   // 점등 대상 = rid 잡을 발사하는 탭 전부(비율7 · 해상도9) — 구 '7' 단독은 app9(/api/upscale)가 4393행에서 rszWait(true)를 부르고도 이 게이트에 탈락해 '변환 중'이 조용히 안 떴다(실측 260730: 발사→게이지→✓→'전송됨'→그냥 '생성' 복귀 = 변환이 도는지 화면에 단서 0). 소등 축(rszRunning = rid 잡 전체)은 이미 app 무관이라 대칭이 맞는다 · 모자이크8 제외 = ieBusy/ieSyncGo가 rszbusy 라벨을 자체 관리(겹치면 '피사체 찾는 중…'을 덮어씀)
   if (busy) {   // 발사 애니(firing/okdone) 진행 중이면 그 종료(goFire _fT3)가 '변환 중'을 이어받음 — 여기선 손대지 않음(✓체크 애니 보존)
     if (!gb.classList.contains('firing') && !gb.classList.contains('okdone')) rszPaintBusy(gb);
   } else if (gb.classList.contains('rszbusy')) {   // 변환 종료·타 탭 이탈 = '변환 중'에서만 복귀(발사 애니 중엔 불간섭)
@@ -4092,7 +4092,7 @@ function goFire(yellow) {   // yellow=맞춤법 교정 적용 생성 → 게이�
     gb._fT2 = setTimeout(() => {                                   // 체크 후 → '전송됨'(이미지 완료 아님 = 진행은 작업카드가 표시)
       gb.classList.remove('checking'); gb.textContent = '전송됨';
       gb._fT3 = setTimeout(() => { gb.classList.remove('okdone', 'fy');
-        if (gb._rszBusy && APP === '7') { rszPaintBusy(gb); return; }   // /7 리사이즈 = '전송됨' 다음 라벨 복귀 대신 '변환 중' 이어감(별도 박스 폐지 · 운영자 260710)
+        if (gb._rszBusy && (APP === '7' || APP === '9')) { rszPaintBusy(gb); return; }   // /7 리사이즈 · /9 해상도 = '전송됨' 다음 라벨 복귀 대신 '변환 중' 이어감(별도 박스 폐지 · 운영자 260710) — 조건은 rszWait 게이트와 짝(2260행): 한쪽만 넓히면 점등됐다가 850ms 뒤 이 타이머가 라벨로 덮어써 도로 사라진다
         gb.textContent = gb.dataset.label || '생성'; }, 850);
     }, 560);
   }, 900);
