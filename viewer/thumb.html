@@ -170,6 +170,7 @@
   .covrow textarea { min-height:104px; }                   /* 자막 텍스트칸 = 3줄(콘텐츠 96px) 스크롤 없이 들어가게 +헤드룸(전역 96 → 104·운영자 260625). 슬롯도 ResizeObserver로 동기 */
   /* 입력칸 별표(*) 강조색 하이라이트(운영자 260720) — textarea는 글자별 색이 불가 → 동일 타이포 오버레이를 위에 겹쳐 * 글리프만 accent. 정상 글자는 textarea 본체(항상 crisp)·오버레이의 정상 글자는 transparent(자리만 차지해 * x위치 정합) · 굵기=본체와 동일(폭 정합 = 다중 *** 안 밀림) · pointer-events 없음 = 편집/캐럿/선택 무간섭. 강조(*) 쓰는 칸(#cLines·#lines)만 attachStarHL로 부착. 폰트·패딩(클립 우측 여백 포함)·자간·행높이 = attachStarHL이 textarea computedStyle을 그대로 복사(정합 보장·raw 창작 0). */
   .ta-star { position:absolute; top:0; left:0; width:100%; height:100%; margin:0; border:1px solid transparent; box-sizing:border-box; white-space:pre-wrap; overflow-wrap:break-word; word-break:break-word; overflow:hidden; pointer-events:none; color:transparent; background:transparent; z-index:1; -webkit-user-select:none; user-select:none; }   /* 구조만 — 타이포·패딩은 JS computed 복사 */
+  .ta-star-1l { white-space:pre; overflow-wrap:normal; word-break:normal; }   /* 한 줄 입력칸(진짜예요 문구 = input) 변형 — 줄바꿈 0·가로 스크롤(세로 중앙정렬 = JS가 line-height를 콘텐츠 높이로 = input 한 줄 중앙 규칙 등가 · 운영자 260730) */
   /* 입력칸 별표쌍 색순환(운영자 260720) — 강조쌍(1~2별표·사이 글자)마다 색 순환(1라임·2터콰·3핑크·4레몬), 3+연속·빈열림 = 제외(mut). 굵기 미변경 = 본체 *와 폭 동일(정합 유지). */
   .ta-star .hs { color:var(--mut); }   /* 폴백(미분류 안전망) */
   .ta-star .hs-p0 { color:var(--accent-2); } .ta-star .hs-p1 { color:var(--accent); } .ta-star .hs-p2 { color:var(--accent-6); } .ta-star .hs-p3 { color:var(--accent-4); }
@@ -2461,27 +2462,37 @@ function attachCopyPaste(el, withErase) {   // 빈칸=붙여넣기 / 내용 있�
 function attachStarHL(ta) {
   const wrap = ta && ta.parentElement; if (!wrap || !wrap.classList.contains('iowrap') || wrap._starHL) return;
   wrap._starHL = true;
-  const hl = document.createElement('div'); hl.className = 'ta-star'; hl.setAttribute('aria-hidden', 'true');
+  // 한 줄 입력칸(진짜예요 문구 = #cTitle · input) 변형(운영자 260730) — textarea 경로는 한 줄도 안 고치고 분기만 추가:
+  //   ① 줄바꿈 없음 = .ta-star-1l(white-space:pre) ② 스크롤 동기축 = scrollLeft(가로) ③ 세로 = line-height를 콘텐츠 높이로(input 한 줄 중앙 규칙 등가)
+  const oneLine = ta.tagName === 'INPUT';
+  const hl = document.createElement('div'); hl.className = 'ta-star' + (oneLine ? ' ta-star-1l' : ''); hl.setAttribute('aria-hidden', 'true');
   wrap.insertBefore(hl, ta.nextSibling);   // textarea 바로 위(z-index 1) · 클립버튼(z-index 2) 아래
-  const sync = () => { const cs = getComputedStyle(ta); ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'textIndent', 'textAlign'].forEach(k => { hl.style[k] = cs[k]; }); };   // 타이포·패딩(클립 우측 42 포함) 실측 복사 = 정합 · 폭/좌상은 CSS(100%·0,0)이 textarea와 이미 일치
+  const sync = () => { const cs = getComputedStyle(ta); ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'textIndent', 'textAlign'].forEach(k => { hl.style[k] = cs[k]; });
+    if (oneLine && ta.clientHeight) hl.style.lineHeight = Math.max(0, ta.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0)) + 'px'; };   // 타이포·패딩(클립 우측 42 포함) 실측 복사 = 정합 · 폭/좌상은 CSS(100%·0,0)이 textarea와 이미 일치 · 한 줄 칸은 line-height = 콘텐츠 높이(= input이 한 줄을 콘텐츠 박스 중앙에 두는 규칙과 동일 결과)
   const syncBox = () => { if (ta.offsetHeight) hl.style.height = ta.offsetHeight + 'px'; };   // 높이만 textarea 실높이로(래퍼가 클립여유 7px 더 큼 배제) · 숨김(offsetHeight 0)일 땐 스킵 → 표시 시 ResizeObserver가 정합
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // 헤더 문구칸(#cTitle)은 **진짜예요일 때만** 별표가 강조 마커 = 그 템플릿에서만 색칠(노뮤트 제목은 별표가 그냥 글자 → 색칠하면 거짓 안내).
+  // cTpl은 파일 하단 let 선언(여기서 참조 = TDZ) → try 가드로 초기 paint 안전(부팅 시 false = 노뮤트 기본과 동일).
+  const starOn = () => { if (ta.id !== 'cTitle') return true; try { return cTpl === 'jinjja'; } catch (_) { return false; } };
+  const scrollSync = () => { if (oneLine) hl.scrollLeft = ta.scrollLeft; else hl.scrollTop = ta.scrollTop; };
   const paint = () => {   // 별표쌍 색순환 색칠(classifyStars) — 정상 글자는 transparent(본체 crisp), * 글리프만 쌍색/제외
-    const s = ta.value, cls = classifyStars(s); let h = '';
+    const s = ta.value, on = starOn(), cls = on ? classifyStars(s) : null; let h = '';
     for (let i = 0; i < s.length; i++) {
       const ch = s[i];
-      if (ch === '*') { const c = cls[i]; const mod = (c === 'x' || c === 'd' || c === 's') ? (' hs-' + c) : (typeof c === 'number' ? (' hs-p' + c) : ''); h += '<span class="hs' + mod + '">*</span>'; }
+      if (ch === '*' && on) { const c = cls[i]; const mod = (c === 'x' || c === 'd' || c === 's') ? (' hs-' + c) : (typeof c === 'number' ? (' hs-p' + c) : ''); h += '<span class="hs' + mod + '">*</span>'; }
       else h += esc(ch);
     }
-    hl.innerHTML = h; hl.scrollTop = ta.scrollTop;
+    hl.innerHTML = h; scrollSync();
   };
+  ta._starPaint = paint;   // 템플릿 전환(syncCTpl)이 재색칠 = 노뮤트↔진짜예요 즉시 반영
   ta.addEventListener('input', paint);
-  ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop; });
+  ta.addEventListener('scroll', scrollSync);
+  if (oneLine) ['keyup', 'click', 'focus', 'blur'].forEach(ev => ta.addEventListener(ev, scrollSync));   // 한 줄 칸 = 캐럿 이동만으로도 가로 스크롤이 움직인다(scroll 이벤트가 안 오는 경로 보강)
   window.addEventListener('resize', () => { sync(); syncBox(); });
-  try { new ResizeObserver(syncBox).observe(ta); } catch {}   // 탭 전환으로 textarea 표시(높이 0→104)될 때 높이 정합(초기 숨김 상태 대응)
+  try { new ResizeObserver(() => { sync(); syncBox(); }).observe(ta); } catch {}   // 탭 전환으로 입력칸 표시(높이 0→실측)될 때 정합 — sync 포함(구 syncBox 단독은 숨김 상태에서 clientHeight 0이라 한 줄 칸 세로중앙 line-height가 안 잡혔다 · 실측 260730) · 스타일 복사는 멱등
   sync(); syncBox(); paint();
 }
-['lines', 'cLines'].forEach(id => { const el = $('#' + id); if (el) attachStarHL(el); });   // 강조(*) 쓰는 칸만 · 부제/제목/안내문(cSub·cTitle·warnLines)은 강조 미사용 = 제외
+['lines', 'cLines', 'cTitle'].forEach(id => { const el = $('#' + id); if (el) attachStarHL(el); });   // 강조(*) 쓰는 칸만 — cTitle 편입(운영자 260730 "문구칸에도 별표쌍 하이라이트" · 진짜예요에서만 색칠 = starOn) · 부제·안내문(cSub·warnLines)은 강조 미사용 = 제외
 // covrow: 이미지 슬롯(.covimg) 높이 = 텍스트칸(textarea) 높이로 동기화 — 수동 리사이즈 포함(stretch만으론 어긋난다는 운영자 실측 · 260624). textarea(클립 wrap 안)를 ResizeObserver로 추적해 형제 .covimg에 명시 height 부여.
 (function () {
   if (typeof ResizeObserver === 'undefined') return;
@@ -3887,6 +3898,7 @@ function syncCTpl() {
     sb.classList.toggle('locked', lock);   // 45° 빗금(운영자 260726) — 구 `.off` dim + 긴 placeholder 안내문 폐기(칸 안 글자 0)
     sb.placeholder = '부제';               // 잠금 여부와 무관하게 원문 유지 = 빗금이 잠금 신호를 전담
   }
+  const ct = $('#cTitle'); if (ct && ct._starPaint) ct._starPaint();   // 별표쌍 하이라이트 = 진짜예요에서만 색칠(운영자 260730) → 전환 즉시 재색칠
   if (typeof updateComboTrk === 'function') updateComboTrk();   // 자간 힌트·미리보기 = 템플릿 전환 즉시 재계산(880/-10 ↔ 960/0)
 }
 (function () {
