@@ -7583,7 +7583,19 @@ function sysErrMsgs() {
     const _wv = Object.values((cov[k] || {}).why || {}).map(v => String(v));
     const _try = _wv.filter(v => v !== 'rotate' && v !== 'budget');   // 실제로 시도된 계정의 사유만
     const _wait = _try.filter(v => v === 'cooldown' || v === 'gap' || v === '429').length;
-    if (SYS_PHONE_PLAT[k] && !phDead && _wv.length && (_try.length ? _wait * 2 > _try.length : true)) {
+    // 승격 = 무소득 장기화(운영자 260730 "원론적으로 해결해서 다음에 안뜨게") — 아래 'wait' 문구는 "이틀 넘게 계속 뜨면
+    //   그때 알려줘"라고 약속하는데 **이틀을 재는 축이 없어** 쿨다운이 상주하면 같은 대기 알림이 날마다 영구 재발했다
+    //   (260730 실측: insta 20계정 전부 cooldown·got 0 · 조치 없음 = 아무도 안 고침). 수집기가 마지막 수확 시각을 재
+    //   임계(INSTA_STUCK_H 기본 48h)를 넘으면 사유를 'stuck'으로 승격해 보낸다(scripts/phone_subs.py _tag) →
+    //   여기서 대기(무조치)와 갈라 **운영자 조치 문구**로 바꾼다 = 알림이 조치로 소멸한다(무한 대기 종결).
+    const _stk = _try.filter(v => v === 'stuck').length;
+    if (SYS_PHONE_PLAT[k] && !phDead && _stk * 2 > _try.length) {
+      _c = 'stuck';
+      text = head + '이틀 넘게 한 건도 못 걷었어요 — 쉬었다 다시 시도하는 자동 복구로는 안 풀리는 상태예요.\n\n'
+        + '👉 네가 할 일: ' + SYS_PLAT_KO[k] + ' 부계정(본계 말고 — 자동화 감지 밴) 세션쿠키를 폰 크론 환경변수 ' + SYS_PHONE_PLAT[k] + '에 새로 뽑아 갈아 줘. '
+        + '그래도 그대로면 그 부계정이 막힌 거라 계정을 새로 하나 만들어야 해. 쿠키를 갈았으면 폰에서 `rm ~/.nomute_insta_cooldown`으로 쉬는 시간을 지워 바로 재시도시킬 수 있어.\n\n'
+        + '확인(✓)하면 오늘은 다시 안 떠요.';
+    } else if (SYS_PHONE_PLAT[k] && !phDead && _wv.length && (_try.length ? _wait * 2 > _try.length : true)) {
       _c = 'wait';
       text = head + (_try.filter(v => v === 'gap').length * 2 > _try.length || !_try.length
         ? '폰이 다음 수집 차례를 기다리는 중이에요(계정 리밋을 피하려고 일부러 띄엄띄엄 걷어요).\n\n'
@@ -7675,6 +7687,12 @@ function sysErrMsgs() {
           ? '아직 이 계정 차례가 아니에요(계정 리밋을 피하려고 몇 개씩 돌아가며 걷어요 · 한 바퀴 약 6시간).'
           : '요청이 몰려 잠시 막혀서, 폰이 쉬는 중이라 이번엔 시도하지 않았어요.';
         todo = '👉 네가 할 일: 없어요. 차례가 오면 자동으로 다시 걷혀요.';
+      } else if (w === 'stuck') {
+        // 승격 코드(scripts/phone_subs.py · 무소득 임계 초과) = 위 stale 축과 **같은 사유**를 계정축에서 본 것.
+        //   여기 오는 조건은 got>0(3일 이월이 아직 살아 있음)뿐이라 화면엔 옛 글이 남아 정상처럼 보인다 = 가장 조용한 구간 →
+        //   폴백 문구("사유 코드 stuck")로 흘리지 않고 조치를 그대로 말한다(stale 축 문구와 한 축).
+        cause = '이틀 넘게 한 건도 못 걷었어요 — 쉬었다 재시도하는 자동 복구로는 안 풀리는 상태예요(지금 보이는 글은 며칠 전 걷은 거예요).';
+        todo = '👉 네가 할 일: ' + SYS_PLAT_KO[k] + ' 부계정 세션쿠키를 폰 크론 환경변수 ' + (SYS_PHONE_PLAT[k] || '<플랫폼>_COOKIE') + '에 새로 뽑아 갈아 줘. 자세한 조치는 위 「구독이 안 걷히고 있어요」 알림에 있어.';
       } else if (w === 'empty') {
         // 'empty' = 수집기가 페이지를 정상으로 받고 **글 노드가 없다고 판정**한 코드(sns_trends.py L1164) = 차단이 아니라 공급 공백.
         //   1~2건 = 그 계정에 새 글이 없을 뿐이라 알릴 게 없다 → 침묵(운영자 260729 · 위 무사유 `if (!many) continue` 문법 계승).

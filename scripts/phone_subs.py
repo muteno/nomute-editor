@@ -30,6 +30,14 @@ import sns_trends as st  # noqa: E402
 #   평문 형식도 읽어 계승(마이그레이션 무중단). 인스타 축에만 적용 — 다른 소스는 종전대로 매 런.
 _CD_PATH = os.path.expanduser("~/.nomute_insta_cooldown")
 _CD_STEPS = (6 * 3600, 12 * 3600, 24 * 3600)
+# ── 무소득 장기화 승격(운영자 260730 "원론적으로 해결해서 다음에 안뜨게") ────────────────
+# 위 백오프·회전은 **일시적** 리밋을 전제한다. 전제가 깨지면(쿠키 만료·계정 제재 = 두드려도 영원히 429)
+#   cnt는 성공해야 리셋되니 24h 상한에 상주하고, 뷰어는 사유가 'cooldown'/'gap'인 동안 계속
+#   "네가 할 일: 없어요 · 자동으로 걷혀요"만 출력한다 = **날마다 같은 알림이 뜨는데 아무도 안 고치는 무한 대기**.
+#   그 문구 자체가 "이틀 넘게 계속 뜨면 그때 알려줘"라고 약속하는데 **이틀을 재는 코드가 없었다**(260730 실측: insta 0/20).
+#   → 마지막 수확 시각(okat)을 상태에 남기고 임계를 넘으면 사유를 'stuck'으로 승격 = 뷰어가 운영자 조치로 갈라 읽는다.
+#   [관측] 조항 = fail-soft는 실패를 감추는 장치가 아니다 → 스킵 런도 집계 1줄을 남기고 임계 이탈은 ::warning::.
+_STUCK_DFLT_H = 48   # 임계 = 뷰어 'wait' 문구가 약속한 "이틀"과 같은 값(두 축이 어긋나면 약속과 동작이 갈린다)
 def _envf(name, dflt):
     """env 숫자 파싱 — 오타 하나로 모듈 임포트가 죽던 자리(260730 검증 A-D8). 스크립트가 죽으면
     phone_subs.sh의 `|| exit 0`가 무음 종료시켜 x·스레드·틱톡·레딧·재난까지 **전 축이 같이 굶는다**
@@ -42,10 +50,12 @@ def _envf(name, dflt):
 
 _GAP = _envf("INSTA_MIN_GAP_MIN", 90) * 60   # 최소 간격(분) — 크론은 30분이라 3런 중 1런만 실제 수집
 _BATCH = int(_envf("INSTA_BATCH", 5))       # 한 런에 도는 계정 수(0 이하 = 회전 끔 = 전량)
+_STUCK = _envf("INSTA_STUCK_H", _STUCK_DFLT_H) * 3600   # 무소득 연속 임계(0 이하 = 승격 끔)
 
 
 def _st_read():
-    """{until, cnt, last, off} — JSON 우선, 구 평문("until cnt")도 계승. 파손·부재 = 전부 0(fail-open).
+    """{until, cnt, last, off, okat} — JSON 우선, 구 평문("until cnt")도 계승. 파손·부재 = 전부 0(fail-open).
+    okat = 마지막으로 **1건이라도 걷은** 시각(승격 판정 축 · 0 = 미관측 = 이번 런부터 시계 시작).
     ⚠ 미래값 클램프(260730 검증 A-D3) — 폰 시계 점프·NTP 보정으로 until/last가 미래에 박히면 게이트를
     영원히 못 통과하고(해제 조건 = 성공, 성공 조건 = 게이트 통과 = 자기잠금) 뷰어엔 "자동으로 걷혀요"만
     영구 출력되는 **침묵 사망**이 된다 → 상한(최장 쿨다운) 넘는 값·미래 last = 파손과 동급 fail-open."""
@@ -54,28 +64,31 @@ def _st_read():
         if raw.startswith("{"):
             d = json.loads(raw)
             u, c, l, o = float(d.get("until") or 0), int(d.get("cnt") or 0), float(d.get("last") or 0), int(d.get("off") or 0)
+            k = float(d.get("okat") or 0)
         else:
             a, b = raw.split()
-            u, c, l, o = float(a), int(b), 0.0, 0
+            u, c, l, o, k = float(a), int(b), 0.0, 0, 0.0
         now = time.time()
         if u - now > max(_CD_STEPS):
             print("::warning::insta 쿨다운 시각이 상한 초과(시계 점프 추정) — 무시하고 재시도", file=sys.stderr)
             u = 0.0
         if l > now:
             l = 0.0
-        return u, c, l, o
+        if k > now:   # 미래 okat = 무소득 시계가 영원히 안 차는 침묵(위 last 클램프와 동형 함정)
+            k = 0.0
+        return u, c, l, o, k
     except Exception:  # noqa: BLE001
-        return 0.0, 0, 0.0, 0
+        return 0.0, 0, 0.0, 0, 0.0
 
 
-def _st_write(until, cnt, last, off):
+def _st_write(until, cnt, last, off, okat=0.0):
     """원자적 기록(260730 검증 A-D4) — 종전 직접 open("w")은 도즈·강제종료가 그 순간에 걸리면 잘린 JSON을
     남겼고, _st_read가 그걸 fail-open으로 0 처리해 **off가 0으로 리셋** = 계정 0~4만 계속 돌고 5~19는
     영영 안 도는 starvation(회전 자체는 건전한데 상태 유실로 무력화) → tmp+os.replace로 원자 교체."""
     try:
         tmp = _CD_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"until": until, "cnt": cnt, "last": last, "off": off}, f)
+            json.dump({"until": until, "cnt": cnt, "last": last, "off": off, "okat": okat}, f)
         os.replace(tmp, _CD_PATH)
     except Exception as e:  # noqa: BLE001 — 기록 실패 = 다음 런 재시도(종전 동작)
         print(f"::warning::insta 상태 기록 실패({type(e).__name__}) — 다음 런 재시도", file=sys.stderr)
@@ -106,22 +119,48 @@ def _merge(prev_items, got, done):
     return kept + list(got or [])
 
 
+def _metric(accounts, got, out, okat, now, note):
+    """[관측] 인스타 레인 집계 1줄 — **스킵 런에도 반드시 찍는다**. 종전엔 실제 수집 런만 찍어
+    쿨돈·주기 대기로 안 돈 런은 로그에 '아무 일 없음'으로 남았다 = "시도했는데 무소득"과 "아예 미시도"가
+    구분되지 않는 조용한 0(레포 관례 = trend_images "N개 백필"·sns_tr "번역 N건")."""
+    dry = (now - okat) / 3600 if okat else 0.0
+    print("insta 계측: 수확 %d건 · 등록 %d계정 · 이월잔여 %d건 · 무소득 %.1fh(임계 %.0fh) · %s"
+          % (len(got or ()), len(accounts), max(0, len(out or ()) - len(got or ())), dry, _STUCK / 3600, note))
+
+
 def _insta_collect(accounts, prev_items):
     """쿨다운·주기·회전을 통과한 배치만 수집하고, 직전 산출물과 병합해 돌려준다."""
-    until, cnt, last, off = _st_read()
+    until, cnt, last, off, okat = _st_read()
     now = time.time()
     accounts = list(accounts or [])
     if not accounts:
         return prev_items
+    # 최초 관측(okat=0) = 측정 구간이 없는 것 → '고장'으로 단정하지 않고 이번 런을 시계 0점으로 잡는다(fail-open 유예).
+    if not okat:
+        okat = now
+        _st_write(until, cnt, last, off, okat)
+    stuck = _STUCK > 0 and (now - okat) > _STUCK
+    def _tag(base):
+        """무소득이 임계를 넘으면 대기 사유를 'stuck'으로 승격 — 뷰어 sysErrMsgs가 대기(무조치)와
+        승격(운영자 조치)을 이 코드 하나로 가른다. 승격해도 백오프 동작 자체는 종전 그대로(회복 시도는 계속)."""
+        return "stuck" if stuck else base
     if now < until:
         print("::notice::insta 429 쿨다운 중 — %.1fh 남음(연속 %d회 · 두드릴수록 리밋이 갱신돼 회복이 늦어진다)"
               % ((until - now) / 3600, cnt), file=sys.stderr)
-        _skip_stamp(accounts, "cooldown")
+        if stuck:
+            print("::warning::insta 무소득 %.1fh(임계 %.0fh 초과) — 자동 백오프로 회복되지 않는 상태 = 세션쿠키·계정 축 점검 필요"
+                  % ((now - okat) / 3600, _STUCK / 3600), file=sys.stderr)
+        _skip_stamp(accounts, _tag("cooldown"))
+        _metric(accounts, [], prev_items, okat, now, "미시도(쿨다운 %.1fh 남음)" % ((until - now) / 3600))
         return prev_items
     if last and (now - last) < _GAP:
         print("::notice::insta 주기 대기 — %.0f분 남음(최소 간격 %.0f분 · 계정 리밋 회피)"
               % ((_GAP - (now - last)) / 60, _GAP / 60), file=sys.stderr)
-        _skip_stamp(accounts, "gap")
+        if stuck:
+            print("::warning::insta 무소득 %.1fh(임계 %.0fh 초과) — 주기 대기 중이나 이전 시도들이 전부 무소득 = 세션쿠키·계정 축 점검 필요"
+                  % ((now - okat) / 3600, _STUCK / 3600), file=sys.stderr)
+        _skip_stamp(accounts, _tag("gap"))
+        _metric(accounts, [], prev_items, okat, now, "미시도(주기 %.0f분 남음)" % ((_GAP - (now - last)) / 60))
         return prev_items
     batch = accounts if _BATCH <= 0 else [accounts[(off + i) % len(accounts)] for i in range(min(_BATCH, len(accounts)))]
     st.INSTA_429 = False
@@ -135,18 +174,35 @@ def _insta_collect(accounts, prev_items):
         #   첫 계정이 429 상주면 insta_subs가 잔여 배치를 _sbudget으로 통째 미시도 처리하므로 **성공이 영영 0**,
         #   cnt는 성공해야만 리셋되니 6→12→24h 상한에 박혀 자동 복구가 구조적으로 수렴하지 못했다(실측 260730 cnt=3).
         #   전진시키면 다음 깨어남에 **다른 5계정**을 두드린다 = 한 계정의 리밋이 20계정 전체를 인질로 잡지 못한다.
-        _st_write(now + wait, cnt, last, (off + len(batch)) % len(accounts))
+        if got:
+            okat = now   # 429가 섞였어도 1건이라도 걷었으면 '무소득'이 아니다 = 승격 시계 리셋(승격은 진짜 전멸만)
+        _st_write(now + wait, cnt, last, (off + len(batch)) % len(accounts), okat)
         print("::warning::insta 429 → %.0fh 쿨다운(연속 %d회 · 해제 = rm %s)" % (wait / 3600, cnt, _CD_PATH), file=sys.stderr)
+        if stuck and not got:
+            # 시도했는데 전멸 + 무소득 장기화 = 사유를 429가 아니라 'stuck'으로 덮는다. 429를 그대로 두면
+            #   뷰어 _wait 판정이 그걸 대기로 세어 "기다리면 돼요"가 계속 이기고, 승격이 무력화된다.
+            _skip_stamp(batch, "stuck")
+            print("::warning::insta 무소득 %.1fh(임계 %.0fh 초과) — 두드려도 전멸 = 세션쿠키·계정 축 점검 필요"
+                  % ((now - okat) / 3600, _STUCK / 3600), file=sys.stderr)
         # 429여도 **그 배치의 성공분은 살린다**(260730 검증 A-D1) — insta_subs는 계정별 fail-soft라
         #   5계정 중 4개 성공 후 5번째에서 429가 날 수 있는데, 종전 `return prev_items`는 그 4개를
         #   통째로 버렸다(배치에 리밋 상주 계정 1개가 끼면 그 5계정은 영원히 0건). 성공 계정만
         #   갈아끼우고 실패 계정은 이월 유지 = 데이터 순손실 0.
-        return _merge(prev_items, got, {a for a in (st.SUB_OK.get("insta") or ())})
+        out = _merge(prev_items, got, {a for a in (st.SUB_OK.get("insta") or ())})
+        _metric(accounts, got, out, okat, now, "시도 %d계정 → 429 쿨다운 %.0fh" % (len(batch), wait / 3600))
+        return out
     nxt = (off + len(batch)) % len(accounts)
-    _st_write(0, 0, now, nxt)   # 성공 = 백오프 초기화 + 회전 전진
+    if got:
+        okat = now
+    _st_write(0, 0, now, nxt, okat)   # 성공 = 백오프 초기화 + 회전 전진
     out = _merge(prev_items, got, done)
+    if stuck and not got:
+        _skip_stamp(batch, "stuck")   # 429도 안 났는데 전멸 = 로그인월·계정 축(위 429 경로와 동일 승격)
+        print("::warning::insta 무소득 %.1fh(임계 %.0fh 초과) — 리밋도 아닌데 전멸 = 세션쿠키·계정 축 점검 필요"
+              % ((now - okat) / 3600, _STUCK / 3600), file=sys.stderr)
     print("::notice::insta 배치 %d계정(%d/%d 지점) 수집 %d건 · 이월 %d건"
           % (len(batch), off, len(accounts), len(got), len(out) - len(got)), file=sys.stderr)
+    _metric(accounts, got, out, okat, now, "시도 %d계정(%d/%d 지점)" % (len(batch), off, len(accounts)))
     return out
 
 
