@@ -145,6 +145,20 @@ def main():
     else:
         print("백필 0(로고컷·사진無·차단·중복)")
 
+    # 산출물 워치독(운영자 260730 "재발 안하려면?") — 이 스텝이 파이프의 마지막 커버 채움 지점이라
+    # **최종 사용자 화면 상태**를 여기서 판정한다(코드 경로가 아니라 결과물을 감시 = 260729~30 '조용한 0' 재발 차단).
+    # 대상 = 뷰어 TOP 스택 노출대 gt[:25](ggMap th 원천) · 임계 40% = 실측 근거: 정상 구간 4~6건(16~24% · 260730)
+    # vs 사고 구간 15건(60% · 260729 gnews 미시도 사고) 사이 중간선 → 사고는 잡고 정상 변동엔 안 운다.
+    _band = gt[:25]
+    _miss = [g for g in _band if isinstance(g, dict) and not (g.get("picture") or "").strip()]
+    _rate = (len(_miss) * 100 // max(1, len(_band)))
+    _line = "gtrends 커버 최종: {}/{} 채움 · 결측 {}건({}%)".format(len(_band) - len(_miss), len(_band), len(_miss), _rate)
+    if _rate >= 40:
+        print("::warning::{} — 임계 40% 초과(백필 경로 열화 의심 · 결측 키워드: {})".format(
+            _line, ", ".join((g.get("query") or "?") for g in _miss[:8])))
+    else:
+        print(_line)
+
 
 if __name__ == "__main__":
     try:

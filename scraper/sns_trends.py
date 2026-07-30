@@ -436,28 +436,41 @@ def gnews_url(link, timeout=6):
         return ""
 
 
+_GNS_DIAG = {"call": 0, "rss_ok": 0, "bytes": 0, "items": 0, "resolved": 0}   # gnews_search 단계별 진단(§관측 의무 · 260730) — 집계 출력은 백필 직후 1줄
+
+
 def gnews_search(q, limit=2, timeout=8):
     """**키워드를 구글에 검색해서** 관련 기사 원문 URL 확보(무키 · 구글 뉴스 검색 RSS · LLM 0콜) —
     트렌드 카드 커버가 'G 로고 타일'로 비는 것 봉합(운영자 260729 "구글 관련 내용이 g라고만 나올 때가 있어 ·
     그걸 항상 키워드를 구글에서 검색한 걸 가져와서 넣게끔"). 종전 백필은 딸린 기사(news[0].url)가 있는 항목만
     대상이라, API 페이로드에 기사·이미지가 둘 다 없던 꼬리 검색어는 영구히 빈 커버였다(실측 260729: 11~25위 전량).
-    실패 = [] (fail-soft · 수집을 못 깨뜨림)."""
+    실패 = [] (fail-soft · 수집을 못 깨뜨림).
+
+    단계별 진단 카운터(_GNS_DIAG) 동반 — 실사격 260730 실측이 "10건 시도·0건 성공·실패 경고 0"이라
+    (= 네트워크는 뚫렸는데 어느 단계에서 죽는지 특정 불가) 다음 크론 1사이클로 원인이 확정되게 계측한다:
+    rss_ok=0 → RSS fetch 실패 / items=0 → 응답은 왔는데 <item> 0(포맷 변동·빈 응답) /
+    resolved=0(items>0) → 링크 해석 실패(gnews_url) / resolved>0인데 백필 0 → og:image 추출 실패."""
     q = (q or "").strip()
     if not q:
         return []
+    _GNS_DIAG["call"] += 1
     try:
         body = _get("https://news.google.com/rss/search?q=" + urllib.parse.quote(q) + "&hl=ko&gl=KR&ceid=KR:ko", timeout=timeout)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::gnews_search 실패(스킵 · {q}): {e}", file=sys.stderr)
         return []
+    _GNS_DIAG["rss_ok"] += 1
+    _GNS_DIAG["bytes"] = max(_GNS_DIAG["bytes"], len(body))
     out = []
     for m in re.finditer(r"<item>(.*?)</item>", body, re.S):
+        _GNS_DIAG["items"] += 1
         l = re.search(r"<link>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</link>", m.group(1), re.S)
         if not l:
             continue
         u = gnews_url(l.group(1).strip())
         if u and u not in out:
             out.append(u)
+            _GNS_DIAG["resolved"] += 1
         if len(out) >= limit:
             break
     return out
@@ -1874,8 +1887,9 @@ def main():
                 if not _g.get("news"):
                     _g["news"] = [{"title": "", "url": _u, "source": ""}]   # 카드 클릭 링크는 ggUrl(구글 검색창) 고정 = 표시 무영향 · 다음 주기 og 백필 원료로 승계
                 break
-    print("gtrends 커버: 구글검색 백필 %d건 · 예산·시간 초과 미시도 %d건 · 잔여 결측 %d건"
-          % (_gs_hit, _gs_out, sum(1 for _g in _tgt if not (_g.get("picture") or "").strip())))   # 관측 가능성 = 초판 결함의 진짜 교훈(0건이어도 '시도했는데 무소득'과 '아예 미시도'가 구분된다)
+    print("gtrends 커버: 구글검색 백필 %d건 · 예산·시간 초과 미시도 %d건 · 잔여 결측 %d건 · 진단[검색 %d회 · RSS응답 %d(최대 %dB) · item %d · 링크해석 %d]"
+          % (_gs_hit, _gs_out, sum(1 for _g in _tgt if not (_g.get("picture") or "").strip()),
+             _GNS_DIAG["call"], _GNS_DIAG["rss_ok"], _GNS_DIAG["bytes"], _GNS_DIAG["items"], _GNS_DIAG["resolved"]))   # 관측 가능성 = 초판 결함의 진짜 교훈(0건이어도 '시도했는데 무소득'과 '아예 미시도'가 구분되고, 진단으로 죽는 단계까지 특정된다)
     yt_gl, _seen_v = [], {v.get("id") for v in (yt_all or [])}
     if YT_KEY and yt_all:
         for _gg in W_GEOS:
@@ -2141,6 +2155,15 @@ def main():
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
     print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 블스트렌드 {len(data['bsky_trends'])}{'' if BSKY_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
+    # 산출물 워치독(운영자 260730 "재발 안하려면?") — fail-soft 파이프의 '조용한 0'을 크론 로그에서 즉시 보이게.
+    # fail-soft는 파이프가 '안 깨지게' 하는 장치지 '실패를 감추는' 장치가 아니다 → 게이트 OFF·무키가 아닌데 0건이면 경보.
+    # 대상 = 항상 켜져 있고 0이면 화면이 실제로 비는 코어 레인만(옵션·키 게이트 레인은 정상 0이 있어 제외 = 거짓경보 0).
+    _core = [("youtube", len(data["youtube"])), ("gtrends", len(data["gtrends"])), ("tiktok", tk_n)]
+    if SUBS_ON and sb:
+        _core.append(("구독 합계", sum(len(sb.get(k) or []) for k in ("x", "tiktok", "insta", "youtube", "threads"))))
+    _dead = [n for n, c in _core if c == 0]
+    if _dead:
+        print("::warning::수집 워치독 — 코어 레인 0건: %s (게이트 OFF·무키 아님 = 상류 차단·스키마 변동 의심)" % ", ".join(_dead), file=sys.stderr)
 
 
 if __name__ == "__main__":

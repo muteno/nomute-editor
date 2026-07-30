@@ -1792,6 +1792,42 @@ def _ssot_resolve(p):
     return hits[0] if len(hits) == 1 else None
 
 
+def check_failsoft_metrics():
+    """fail-soft 계측·산출물 워치독 생존 게이트(운영자 260730 "재발 안하려면?" · CLAUDE.md [관측] 조항의 기계화).
+    왜: fail-soft 경로는 실패해도 rc=0이라 **계측이 지워지면 사고가 다시 조용해진다**(실증 260729 — gnews_search가
+    계측 0인 채 3시간 동안 0건을 채우고 있었고 아무도 못 봤다). 계측·워치독 자체가 회귀하는 것을 막는 게 이 게이트다.
+    대조 = 선언된 정본 2축에 {집계 출력 · 단계 진단 · 임계 경보}가 살아 있는가(문자열 존재 = 삭제·주석화 차단).
+    ⚠️ 값(임계 40 등)의 정당성까지는 안 본다 — 근거는 각 주석이 지고, 여기선 '기계가 존재한다'만 지킨다."""
+    need = [
+        ('scraper/sns_trends.py', [
+            ('gtrends 커버:', 'gtrends 커버 백필 집계 1줄'),
+            ('_GNS_DIAG', 'gnews_search 단계별 진단 카운터'),
+            ('::warning::수집 워치독', '코어 레인 0건 워치독'),
+        ]),
+        ('.github/scripts/trend_images.py', [
+            ('gtrends 커버 최종', '최종 커버 집계 1줄'),
+            ('_rate >= 40', '커버 결측 임계 경보(40%)'),
+        ]),
+    ]
+    bad = []
+    for rel, toks in need:
+        p = os.path.join(ROOT, rel)
+        if not os.path.exists(p):
+            bad.append('%s ← 파일 없음' % rel)
+            continue
+        src = open(p, encoding='utf-8').read()
+        for tok, why in toks:
+            if tok not in src:
+                bad.append('%s ← %s 소실(%s)' % (rel, why, tok))
+    if bad:
+        print('❌ fail-soft 계측 게이트 — 조용한 0을 드러내는 계측·워치독이 사라졌다(CLAUDE.md [관측] 위반):')
+        for b in bad:
+            print('   -', b)
+        return 1
+    print('✅ fail-soft 계측 게이트 — 수집·백필 2축 계측 생존(집계 1줄·단계 진단·임계 경보 · 조용한 0 재발 차단).')
+    return 0
+
+
 def check_ssot_coverage():
     """정본 커버리지 역방향 게이트(운영자 260725 한 수 · `check_gate_docs`의 반대 방향).
     정본 문서가 「정본 = `<코드/데이터/워크플로 파일>`」로 **선언**한 축 중 `check_refs.py`가 손대지 않는 것 =
@@ -2167,6 +2203,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_model_ids 예외(fail-closed):', e); rc = 1
+    try:
+        if check_failsoft_metrics() != 0:   # fail-soft 계측 생존(하드 — 계측이 지워지면 사고가 다시 조용해진다 · 실증 260729 gnews_search · 운영자 260730)
+            rc = 1
+    except Exception as e:
+        print('❌ check_failsoft_metrics 예외(fail-closed):', e); rc = 1
     try:
         if check_ssot_coverage() != 0:   # 정본 커버리지 역방향(하드 — 문서가 정본이라 선언했는데 기계가 없는 사각 = 신규만 차단 · 운영자 260725 한 수)
             rc = 1
