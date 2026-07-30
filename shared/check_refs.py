@@ -1993,6 +1993,141 @@ def check_ssot_linkage():
     return 0
 
 
+# ── WCAG 명암비 게이트 (운영자 260730 "그것만 가져와보자" · 이식원 = google-labs-code/design.md `lint`) ──
+# 왜: 이 레포 팔레트는 폐쇄형(자유 hex 금지)이고 색 SSOT도 1곳이라 *드리프트*는 이미 막혀 있는데, **그 값이
+# 읽히는 색인가**는 아무도 기계로 안 봤다(실측 260730 — check_refs 전 게이트에 contrast/WCAG 검사 0건).
+# 토큰 1줄 교체가 전 웹앱 32곳에 즉시 전파되는 구조라(--accent-2 라임→골드 260723 선례) 대비 미달도 그 폭으로
+# 번진다. design.md에서 가져온 것 = 「토큰 쌍을 WCAG로 린트한다」는 발상 하나뿐 — 포맷·CLI·npm 의존은 비채택
+# (우리 값 SSOT = `:root`, 게이트 = 이 파일 = 이미 상위 호환).
+# 판정 = WCAG 2.x 상대휘도 대비식. 임계 = 본문 텍스트 4.5:1(AA 1.4.3) · 그래픽/큰글자 3:1(AA 1.4.11).
+# 알파 색(글래스·딤)은 --bg 위에 합성해서 실효색으로 잰다(alpha를 무시하면 글래스 표면이 전부 통과로 둔갑).
+# 쌍 목록 = 손으로 큐레이션(자동 조합 폭발·오탐 방지) · role = 그 토큰의 *실사용* 축(color: 텍스트냐 게이지·픽토냐).
+# 테두리(--line·--line2)는 장식 = WCAG 대상 아님 → 비대상(넣으면 영구 위반으로 노이즈).
+_CONTRAST_PAIRS = (
+    # (전경, 배경, role) — role: 'text'=4.5:1 · 'ui'=3:1
+    ('--fg', '--bg', 'text'), ('--mut', '--bg', 'text'),
+    ('--fg', '--space-bg', 'text'), ('--mut', '--space-bg', 'text'),
+    ('--fg', '--glass2', 'text'), ('--mut', '--glass2', 'text'),
+    ('--fg', '--modal-glass', 'text'), ('--mut', '--modal-glass', 'text'),
+    ('--fg', '--modal-glass-anchor', 'text'), ('--mut', '--modal-glass-anchor', 'text'),
+    ('--fg', '--modal-head-bg', 'text'), ('--fg', '--modal-tabs-bg', 'text'), ('--mut', '--modal-tabs-bg', 'text'),
+    ('--on-accent', '--accent', 'text'), ('--on-amber', '--amber', 'text'),
+    ('--on-arm', '--arm', 'text'), ('--on-danger', '--danger', 'text'),
+    ('--accent', '--bg', 'text'), ('--accent-2', '--bg', 'text'), ('--accent-5', '--bg', 'text'),
+    ('--accent-6', '--bg', 'text'), ('--accent-bright', '--bg', 'text'), ('--danger', '--bg', 'text'),
+    ('--bias-l2', '--bg', 'text'),   # 게이지색이지만 color:로도 실사용(실측 3곳) = 텍스트 티어로 잰다
+    ('--cat-pol', '--bg', 'text'), ('--cat-soc', '--bg', 'text'), ('--cat-eco', '--bg', 'text'),
+    ('--cat-intl', '--bg', 'text'), ('--cat-cul', '--bg', 'text'), ('--cat-tech', '--bg', 'text'),
+    ('--bias-l1', '--bg', 'ui'), ('--bias-mid', '--bg', 'ui'),   # 편향 게이지 = 그래픽(다이버징 바)
+    ('--bias-r1', '--bg', 'ui'), ('--bias-r2', '--bg', 'ui'),
+)
+_CONTRAST_MIN = {'text': 4.5, 'ui': 3.0}
+_CONTRAST_BASELINE = {   # 260730 스냅샷 = 기존 미달분 면책(WARN) · 축소 지향 · 신규 추가 = 회피라 지양
+    # 교정 = 팔레트 값 변경 = 폐쇄형 팔레트 갱신 = 운영자 승인 축(세션이 임의로 색을 못 바꾼다) → 여기선 경보만.
+    ('--on-danger', '--danger'): '빨강 플래시 위 흰 글자(3.92) — 큰글자·짧은 플래시 티어(3:1)는 통과',
+    ('--danger', '--bg'): '빨강 본문색(4.36) — AA 4.5 근접 미달 · 팔레트 폐쇄형이라 색 변경은 운영자 승인 축',
+    ('--bias-l2', '--bg'): '강진보 파랑 텍스트(3.92) — 주용도는 게이지(3:1 통과) · 텍스트 사용 3곳',
+}
+_CONTRAST_HEX = re.compile(r'^#([0-9a-f]{3}|[0-9a-f]{6})$')
+_CONTRAST_FUNC = re.compile(r'^rgba?\(([^)]*)\)$')
+
+
+def _contrast_rgba(val, table):
+    """토큰값 → [r,g,b,a] (var() 체인·rgba(var(--x-rgb),a) 해결 · 해석 불가 = None)."""
+    v = _resolve(val, table)
+    m = _CONTRAST_FUNC.match(v)
+    if m:
+        parts = [p.strip() for p in m.group(1).split(',')]
+        vm = re.fullmatch(r'var\((--[a-z0-9-]+)\)', parts[0])
+        if vm:   # rgba(var(--accent-rgb),.13) 꼴 = 앞 인자가 3채널 묶음
+            if vm.group(1) not in table:
+                return None
+            ch = _resolve(table[vm.group(1)], table).split(',')
+            if len(ch) != 3:
+                return None
+            parts = ch + parts[1:]
+        try:
+            rgb = [max(0, min(255, int(round(float(x))))) for x in parts[:3]]
+        except ValueError:
+            return None
+        try:
+            a = float(parts[3]) if len(parts) > 3 else 1.0
+        except ValueError:
+            a = 1.0
+        return rgb + [max(0.0, min(1.0, a))]
+    m = _CONTRAST_HEX.match(v)
+    if m:
+        h = m.group(1)
+        if len(h) == 3:
+            h = ''.join(c * 2 for c in h)
+        return [int(h[i:i + 2], 16) for i in (0, 2, 4)] + [1.0]
+    return None
+
+
+def _contrast_ratio(fg, bg, base):
+    """WCAG 2.x 대비비 — 알파는 base(=--bg) 위 합성으로 실효색화."""
+    def flat(c, under):
+        return c[:3] if c[3] >= 1 else [c[i] * c[3] + under[i] * (1 - c[3]) for i in range(3)]
+
+    def lum(rgb):
+        def ch(c):
+            c /= 255.0
+            return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+        r, g, b = [ch(c) for c in rgb]
+        return .2126 * r + .7152 * g + .0722 * b
+    b = flat(bg, base)
+    f = flat(fg, b)
+    l1, l2 = lum(f), lum(b)
+    if l1 < l2:
+        l1, l2 = l2, l1
+    return (l1 + .05) / (l2 + .05)
+
+
+def check_contrast():
+    """WCAG 명암비 게이트(운영자 260730 · 이식 아이디어 = google-labs-code/design.md lint · SSOT §6 등재).
+    값 SSOT(`viewer/index.html :root`)의 큐레이션된 전경↔배경 토큰 쌍을 WCAG 2.x 대비식으로 판정 —
+    본문 4.5:1 / 그래픽·큰글자 3:1. **기존 미달 = `_CONTRAST_BASELINE` 면책(WARN·비차단)** · 그 밖의 미달 =
+    rc=1 차단(래칫 = 신규 색 갱신이 읽히지 않는 조합을 들고 오는 것만 막는다 · 색 교정 자체는 운영자 승인 축).
+    한계 = 실사용 조합의 *전수*가 아니라 등재된 쌍만(자동 조합은 폭발·오탐) · 텍스트 위 텍스트·그라데·이미지 위
+    글자는 대상 아님 · alpha는 --bg 단일 배경 가정(실제로는 그 위에 콘텐츠가 깔릴 수 있음 = 보수적 근사)."""
+    idx = _root_tokens('viewer/index.html')
+    base = _contrast_rgba(idx.get('--bg', '#000'), idx) or [0, 0, 0, 1.0]
+    bad, warn, unres, ok, stale = [], [], [], 0, []
+    for fg, bg, role in _CONTRAST_PAIRS:
+        if fg not in idx or bg not in idx:
+            unres.append('%s on %s (토큰 부재)' % (fg, bg)); continue
+        f, b = _contrast_rgba(idx[fg], idx), _contrast_rgba(idx[bg], idx)
+        if not f or not b:
+            unres.append('%s on %s (값 해석 실패)' % (fg, bg)); continue
+        r, need = _contrast_ratio(f, b, base), _CONTRAST_MIN[role]
+        line = '%s on %s = %.2f:1 (필요 %.1f · %s)' % (fg, bg, r, need, role)
+        if r >= need:
+            ok += 1
+            if (fg, bg) in _CONTRAST_BASELINE:
+                stale.append(line)
+        elif (fg, bg) in _CONTRAST_BASELINE:
+            warn.append('%s ← %s' % (line, _CONTRAST_BASELINE[(fg, bg)]))
+        else:
+            bad.append(line)
+    # 계측 1줄(CLAUDE.md [관측] — 쌍이 조용히 0이 되거나 해석 실패로 빠지는 것을 로그에서 가른다)
+    print('명암비 게이트 — 검사 %d쌍 · 통과 %d · 면책 %d · 위반 %d · 미판정 %d'
+          % (len(_CONTRAST_PAIRS), ok, len(warn), len(bad), len(unres)))
+    for u in unres:
+        print('::warning::명암비 미판정(쌍 등재가 낡았거나 토큰 개편) —', u)
+    for w in warn:
+        print('::warning::명암비 AA 미달(면책·기존) —', w)
+    for s in stale:
+        print('   · 면책 해제 후보(이제 통과) —', s, '→ _CONTRAST_BASELINE에서 지워라')
+    if bad:
+        print('❌ 명암비 게이트 — 신규 AA 미달(색 갱신이 읽히지 않는 조합 · 정본 = viewer/index.html :root):')
+        for d in bad:
+            print('   -', d)
+        print('   → 교정 = 그 토큰 값 조정(운영자 승인) or 역할 재분류(그래픽 축이면 role=ui) · 의도된 미달이면 _CONTRAST_BASELINE에 사유와 함께 등재.')
+        return 1
+    print('✅ 명암비 게이트 — 등재 쌍 전건 WCAG AA(본문 4.5 · 그래픽 3.0) 충족(면책 %d 제외).' % len(warn))
+    return 0
+
+
 def check_tabs_headers():
     """도구 스튜디오 탭 src(.html)의 _headers no-cache 등재 게이트(운영자 260724 한 수 · 순수 인프라 · SSOT §6 등재).
     index.html THUMB_TABS·CAP_TABS·ASK_TABS의 모든 스튜디오 /x.html이 viewer/_headers에 /x·/x.html 두 경로
@@ -2223,6 +2358,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_form_font_inherit 예외(fail-closed):', e); rc = 1
+    try:
+        if check_contrast() != 0:   # WCAG 명암비(하드·신규만 래칫 — 기존 미달 = 베이스라인 WARN · 이식 아이디어 = design.md lint · 운영자 260730)
+            rc = 1
+    except Exception as e:
+        print('❌ check_contrast 예외(fail-closed):', e); rc = 1
     try:
         check_branch_freshness()   # 브랜치 신선도(WARN — 평행 구현 사고 재발방지 · 260727)
     except Exception as e:
