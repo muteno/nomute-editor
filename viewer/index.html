@@ -667,15 +667,17 @@
   .snsview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }      /* SNS = 첫 글래스 블록(소셜 카드) 시작선을 feed·scrap과 통일(pt 2→10 · 운영자 260627 점1) */
   .trendview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }    /* 트렌드(메뉴4) = snsview와 *완전 동일*(최대폭 860·중앙·좌우 16) — 운영자 260712 "나머지 3탭과 창 크기 일치"(구 36 레일 차선 폐지 → 글래스 래퍼 폭 = SNS 카드 동일). 레일(.trail)은 fixed라 무영향: PC = 컨테이너 밖(50vw−464) 그대로, 모바일 = 래퍼 좌측 빈 패딩 띠(soc-item 14px) 위에 책갈피처럼 얹힘(레일 우변 30 = 콘텐츠 시작 x 접점·텍스트 충돌 0) */
   .wrap, .scrapview, .snsview, .trendview { min-height:72vh; }   /* 로딩(빈 상태)에도 뷰가 화면을 채워 푸터가 상단으로 솟지 않게 */
-  /* ── 실검 키워드 티커(운영자 260729 · MengTo marquee-loop 역이식) — 트렌드 탭 최상단 한 줄 흐름 ──
+  /* ── 실검 키워드 티커(운영자 260729 · MengTo marquee-loop 역이식) — 전 탭(4메뉴) 공통 헤더 직하 한 줄 흐름 ──
      트랙 2벌 복제 → -50% 이동 = 이음매 없는 순환 · 가장자리 마스크 페이드로 끊김 은폐 · 호버 = 일시정지.
-     색·서체 창작 0(--fg-2/--mut/--line2/--accent 계승) · 마크업 = renderSnsTrends가 조립(.tkr) ·
-     장식 = pointer-events 없음(카드 탭 무간섭) · 되돌림 = 이 블록 + 조립 블록 삭제. */
+     색·서체 창작 0(--fg-2/--mut/--line2/--accent 계승) · 마크업 = renderSnsTrends가 조립 → #tkrHost 주입 ·
+     장식 = pointer-events 없음(카드 탭 무간섭) · 되돌림 = 이 블록 + 조립 블록 + #tkrHost 삭제. */
+  .tkrhost { max-width:860px; margin:0 auto; padding:10px 16px 0; }   /* raw-ok: 860/10/16 = .topbanner(173행) 정본 수치 그대로 복사(레퍼런스 100% 모방 · 토큰 --sp-2/12·--sp-3/18로 갈면 헤더·카드 좌우변과 2px 어긋남 = 세로선 파괴) — 전 탭 공통 호스트(운영자 260730 "4개 메뉴 전부") — 폭·중앙·좌우 = .topbanner(173행) 100% 계승 = 워드마크·카드 좌우변 동일 세로선 · 위 10 = 구 .trendview padding-top 10(668행)에서 이관(뷰 밖으로 승격돼도 헤더↔티커 간격 불변) · 빈 상태(데이터 0) = 자식 0이라 10px만 남음 = 아래 .tkrhost:empty로 소거 */
+  .tkrhost:empty { padding:0; }   /* 데이터 없거나 로드 전 = 유령 여백 0(조용한 공백 §디자인 e) */
   .tkr { margin:0 0 10px; padding:8px 0; overflow:hidden; border-top:1px solid var(--line2); border-bottom:1px solid var(--line2); pointer-events:none;
     -webkit-mask:linear-gradient(90deg, transparent, rgba(0,0,0,1) 8%, rgba(0,0,0,1) 92%, transparent); mask:linear-gradient(90deg, transparent, rgba(0,0,0,1) 8%, rgba(0,0,0,1) 92%, transparent); }   /* 마스크 색 표기 = rgba(0,0,0,1) 선례 계승(raw hex 축약 금지 · §🎨 토큰 게이트 — 주석 안 표기도 카운트됨) */
   .tkr-track { display:inline-flex; white-space:nowrap; will-change:transform; animation:tkrLoop 28s linear infinite; }
   .tkr:hover .tkr-track { animation-play-state:paused; }
-  .tkr-i { display:inline-flex; align-items:center; gap:16px; padding:0 16px; font-size:var(--fs-sm); color:var(--fg); }
+  .tkr-i { display:inline-flex; align-items:center; gap:16px; padding:0 16px 0 0; font-size:var(--fs-sm); color:var(--fg); }   /* raw-ok: 좌패딩 0 = 블릿 좌우 간격 대칭(운영자 260730 "좌우 블릿간 간격 동일") — 구 `padding:0 16px` = 글자→블릿 16 vs 블릿→다음글자 32(우패딩16+좌패딩16) 비대칭이라 블릿이 왼쪽 글자에 붙어 보였다 · 우패딩 16 = 기존 gap 16과 동값 유지 = 블릿이 두 글자 덩이 정가운데 */
   .tkr-i::after { content:''; width:5px; height:5px; border-radius:50%; background:var(--accent); opacity:.8; }
   @keyframes tkrLoop { to { transform:translateX(-50%); } }
   @media (prefers-reduced-motion:reduce) { .tkr-track { animation:none; } }
@@ -2850,6 +2852,7 @@
   @media (max-width:640px) {
     .wrap { padding:0 12px 48px; }
     .topbanner { padding:8px 12px 0; }
+    .tkrhost { padding:10px 12px 0; }   /* raw-ok: 측면 12 = .topbanner 모바일 티어(위 줄) 동값 계승 — 카드 좌우변 세로선 유지(위 10은 데스크톱 불변) */
     .profile { width:54px; height:54px; right:22px; bottom:-20px; }
     .topsearch { bottom:-26px; height:54px; }   /* 모바일 — 프로필 동일 box + ~6px 더 아래(운영자 260621) · 구 모바일 펼침폭 규칙은 중앙 오버레이 전환으로 삭제(260706 5차) */
     .topbanner.slim { padding:calc(var(--sp-4) * 2.25) 12px 0; }   /* 워드마크 단독 줄 — 위 여백 54(--sp-4×2.25 · 운영자 260706 3차 "현재 대비 150%") 데스크톱과 동일 · 측면 12 모바일 계승 */
@@ -3689,6 +3692,8 @@ try {
     <!-- 메시지·발행본·설정 아코디언(알림·잠금) = #linkpop으로 이관(운영자 260707 통합) → pmenu는 도먼트(헤더만 · 진입로 lpSettings 핸들러 제거) · showPmenu/hidePmenu는 openMsgbox 등서 참조 유지(빈 껍데기 토글 안전) · 재분리 시 위 4줄 복원 · 전광판은 marqpop 도먼트 보존 -->
   </div>
 </div>
+
+<div class="tkrhost" id="tkrHost" aria-hidden="true"></div><!-- 실검 키워드 티커 호스트(운영자 260730 "4개 메뉴 전부") — 뷰(#trendview) 안 → 뷰 밖 전역 승격: 여기 = #viewhead 직하·전 뷰 위 = 탭 전환과 무관하게 항상 노출(feed·scrap·trend·chan 공통) · 내용 조립 = renderSnsTrends(로드 1회로 전 탭 동시 채움) · 장식(aria-hidden·pointer-events 0) = 열람 경로는 트렌드 탭 실검 레인이 정본 · 되돌림 = 이 줄 + CSS .tkrhost + 조립 블록 -->
 
 <div class="wrap"><div id="list"></div></div>
 <section class="scrapview" id="scrapview" hidden>
@@ -11587,14 +11592,16 @@ function renderSnsTrends() {
   const _phH = d.health && d.health.phone; const phoneStale = !!(_phH && (!_phH.updated || Date.now() - new Date(_phH.updated).getTime() > 180 * 60000));   // 폰 하트비트(평의회 260723 #5 · health.phone) — 폰 수집기(스레드 유일 공급원)가 180분+ 멈춤 = 죽음(워치독 check_phone 임계 동률 · updated 무효/노후 판정) · updated = KST 오프셋 ISO라 기기 TZ 무관 · **health.phone 필드 부재(구 스키마·러너 미실행) = 판정보류 no-dim**(_phH undefined → false = 롤아웃 오탐 방지)
   h += GRPS.map(g => { const ttl = g[0] === 'fin' ? g[1] + (finHotAny ? '<span class="fin-hotdot" title="전일 대비 임계 초과 급변 있음"></span>' : '') + (FIN_UPD ? `<span class="tdash-time fin-upd">${FIN_UPD}</span>` : '') : (g[0] === 'cur' && phoneStale) ? g[1] + '<span class="tdash-time stale" title="폰 수집기가 3시간+ 멈춤 — 스레드 최신 글이 지연 중(재가동 = phone_subs)">폰 점검 필요</span>' : g[1]; return gsec(g[0], ttl, g[2]); }).join('');   // 대분류 = 제목만(시각 = 좌상단 #vhTime) · 예외: 금융 갱신시각+hot배지(운영자 260723) · 큐레이션 게시물 폰stale 배지(스레드 공급원 = 폰 · sth→cur 이관 260723) · X 정렬칩 = sx 소분류 인라인(xSeg 헤더칩 폐지)
   const _sv2 = $('#snsview'); if (_sv2 && box.contains(_sv2)) $('#trendview').appendChild(_sv2);   // 재구축 전 대피(innerHTML 소실 방지)
-  // ── 실검 키워드 티커(운영자 260729 · MengTo marquee-loop 역이식) — 트렌드 탭 최상단 한 줄 무한 루프.
+  // ── 실검 키워드 티커(운영자 260729 · MengTo marquee-loop 역이식) — 전 탭(feed·scrap·trend·chan) 공통 헤더 직하 한 줄 무한 루프.
   //    소스 = d.gtrends(이미 든 데이터 · 추가 fetch 0) 상위 10 검색어 · 트랙 2벌 복제 → 0→-50% 이동이 이음매 없이 순환.
   //    장식성(aria-hidden · 링크 아님 = 열람 경로는 아래 실검 레인 카드가 정본) · 데이터 없으면 미출력(빈 띠 0).
-  //    esc() 경유 조립만(XSS) · 재구축 때마다 함께 갱신(시그니처 가드 안) · 되돌림 = 이 블록 + CSS .tkr* 삭제.
+  //    ⚠ 주입 대상 = 뷰 밖 전역 호스트 #tkrHost(운영자 260730 "4개 메뉴 전부") — 구 `h = _tkr + h`(트렌드 레인 맨앞 삽입)는
+  //       #snsTrends 안이라 트렌드 탭에서만 보였다. loadTrends가 탭 무관 1회 호출하므로 어느 탭에서 시작해도 채워진다.
+  //    esc() 경유 조립만(XSS) · 재구축 때마다 함께 갱신(시그니처 가드 안) · 되돌림 = 이 블록 + CSS .tkr*/.tkrhost + #tkrHost 삭제.
   const _tkQ = (Array.isArray(d.gtrends) ? d.gtrends : []).map(x => (x && x.query) || '').filter(Boolean).slice(0, 10);
   const _tkr = !_tkQ.length ? '' : '<div class="tkr" aria-hidden="true"><div class="tkr-track">' +
     [..._tkQ, ..._tkQ].map(q2 => '<span class="tkr-i">' + esc(q2) + '</span>').join('') + '</div></div>';
-  h = _tkr + h;
+  { const _tkH = document.getElementById('tkrHost'); if (_tkH && _tkH.innerHTML !== _tkr) _tkH.innerHTML = _tkr; }   // 동일 마크업이면 무접촉 = 재렌더마다 애니 리셋(키워드 튐) 차단
   box.innerHTML = h;
   const _kh = box.querySelector('#snsHost'); if (_kh && _sv2) { _kh.appendChild(_sv2); _sv2.hidden = false; } else if (_sv2) _sv2.hidden = true;   // 국내 커뮤니티 그룹① 본체 장착 + 해금(운영자 260716 "이전 버전이 안뜨게" — 장착 = 노출·미장착(그룹① 부재 재구축) = 재숨김 · showTab 게이트와 짝 = 구버전 맨몸 노출 불가침)
   box._trSig = _trSig;   // 시그니처 커밋(렌더 완료 시점 — 실패·조기 return엔 미커밋 = 다음 호출 재시도)
@@ -15319,6 +15326,7 @@ window.addEventListener('pageshow', e => { if (e.persisted) { try { if (CURTAB =
 setViewhead('feed');   // 기본 탭=뉴스요약 헤더 초기화
 try { var _qs=new URLSearchParams(location.search); if(_qs.get('qa')==='1'){ try{ document.documentElement.classList.remove('boot-lock'); }catch(e){} var _applyHash=function(){ var h=(location.hash||'').replace(/^#/,'').trim().toLowerCase(); var al={feed:'feed',news:'feed','뉴스':'feed',scrap:'scrap',legacy:'scrap','레거시':'scrap',trend:'trend',sns:'trend',social:'trend','트렌드':'trend',chan:'chan',channel:'chan','채널':'chan'}; var t=al[h]; if(!t) return; var n=0; (function go(){ var b=document.querySelector('.bnav-i[data-tab="'+t+'"]'); if(b){ try{b.click();}catch(e){} return; } if(n++<40) setTimeout(go,100); })(); }; window.addEventListener('hashchange',_applyHash); setTimeout(_applyHash,500); } } catch(e){}   // [QA] ?qa=1 = 부트락 해제 + #feed|scrap|trend|chan 전 섹션 딥링크(운영자 260725 승인 · [E1] 실브라우저 현물 확인용)
 try { const _lt0 = localStorage.getItem('nomute_tab'), _lt = _lt0 === 'sns' ? 'trend' : _lt0; showTab(['feed', 'scrap', 'trend', 'chan'].includes(_lt) ? _lt : 'scrap'); } catch { try { showTab('scrap'); } catch {} }   // 새로고침 = 보던 탭 그대로 복원(feed·scrap·sns·trend 전부) · 저장 없으면 기본 홈=수집함(운영자 260623)
+try { if (CURTAB !== 'trend') loadTrends(); } catch {}   // 실검 티커 부팅 킥(운영자 260730 "4개 메뉴 전부") — 티커 소스 = TRENDS인데 loadTrends는 trend 탭 진입(showTab 11167)·livePoll(60s 주기)에서만 돌아 첫 진입이 feed·scrap·chan이면 최대 60초간 빈 띠였다. trend 탭 = showTab이 이미 호출 = 중복 fetch 회피(loadTrends 5분 TTL은 성공 후 스탬프라 동시 2발은 안 막힘) · 비용 = json 1회(livePoll이 어차피 매분 호출하는 같은 파일)
 
 // ── 당겨서 새로고침(커스텀 링) — 네이티브 끄고 현재 탭색 링을 직접 그림. '원'만 메뉴색 = 주소창/상태바 불변(운영자 260623). 새로고침은 hardReload()(SW 셸 캐시 우회 = 최신 셸 즉시 · 운영자 260713) = 탭은 localStorage로 복원(현재 페이지 유지).
 (function () {
