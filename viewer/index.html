@@ -9728,7 +9728,8 @@ async function loadCandidates(quiet) {   // quiet=라이브 폴링: CANDS·속�
     // api/candidates = 라이브 서빙(GitHub 직독, 빌드 우회) 우선 → 실패 시 정적 candidates.json 폴백.
     for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
       try {
-        const r = await fetch(u);
+        const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : null;   // 12s 상한 = loadTrends(11244행) 관용구 그대로(새 규칙 창작 0 · 기능검출 가드 동일). 없으면 **매달린 소켓이 SCRAP_LOADING을 영구 점유**한다 — 그 상태에선 재진입 가드(9725행)가 이후 모든 폴을 즉시 return시키고, 그 return엔 finally가 안 붙어 checkFreshLane·syncStaleMsg가 **아예 안 돈다** = 서버가 회복돼도 빨강 기어·상주 토스트가 스스로 못 꺼진다(260725 "자가 소등 불능" 봉합의 재발 경로 · 모바일 백그라운드 전환 중 소켓 정지가 실제 트리거). 12s 초과 = 죽은 요청이라 폴 주기(60s·15345행) 안에서 다음 시도가 정상 재개
+        const r = await fetch(u, sig ? { signal: sig } : undefined);
         if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) { CANDS = d; CAND_LIVE = (u === 'api/candidates'); CAND_TS = Date.now(); SCRAP_LOADED = true; detectBreaking(); detectPickFail(); if (!quiet && CURTAB === 'scrap') renderScrap(); return; } }   // &&d.length: api/candidates가 GitHub 서빙 실패 시 빈 [](HTTP 200)을 뱉으면 그걸 유효응답으로 수용해 정적 폴백을 건너뛰고 수집함이 통째로 비던 SPOF 봉합(260714) — 빈 배열이면 다음 소스(정적 candidates.json)로 폴백. 실뉴스 0건은 현실적 부재라 [] = 서빙실패 신호
       } catch { /* 다음 소스 */ }
     }
