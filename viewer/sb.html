@@ -552,15 +552,32 @@ async function loadJob(j) {   // 아카이브 재열람 — SPA 폴백 가드는
     return true;
   } catch (e) { return false; }
 }
+let SRV_JOBS = [], _sjSig = '', _sjBusy = false;   // 서버 인덱스(sb-hist.json = build-viewer 스캔 · 전 기기) — 운영자 260731 "서버 인덱스로 승격"
+async function pollSrvJobs() {   // 10s 폴 + 부모 셸 새로고침 훅 공용 — 무변경 sig 게이트(재렌더 0 = 깜빡임 0 · thumb pollServerHist 문법 미러)
+  if (document.hidden || _sjBusy) return; _sjBusy = true;
+  try {
+    const r = await fetch('sb-hist.json?t=' + Date.now()); if (!r.ok) return;
+    const ct = (r.headers.get('content-type') || '').toLowerCase(); const tx = await r.text();
+    if (!tx || ct.includes('text/html') || /^\s*</.test(tx) || tx === _sjSig) return;   // SPA 폴백 가드 = poll 동일 · 무변경 skip
+    const j = JSON.parse(tx); if (!Array.isArray(j)) return;
+    _sjSig = tx; SRV_JOBS = j; renderJobs();
+  } catch (e) { /* 미배포·오프라인 = 로컬 내역만(조용한 폴백) */ } finally { _sjBusy = false; }
+}
+window.nmRefresh = pollSrvJobs;   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅
+setInterval(pollSrvJobs, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 자동 폴(스튜디오 동기화 통일 축 · visible 게이트 내장)
 function renderJobs() {
   const box = $('#jobs'), head = $('#jobsHead'); if (!box || !head) return;
-  const a = jload();
+  const loc = jload();
+  const has = new Set(loc.map(x => x.id));
+  const srv = SRV_JOBS.filter(s => s && s.id && !has.has(s.id) && /^[A-Za-z0-9_-]+$/.test(s.id) && /^sb_out\/[A-Za-z0-9_-]+\/board\.md$/.test(s.out || ''))
+    .map(s => ({ id: s.id, out: s.out, ts: +s.ts || 0, label: (s.t || '콘티').slice(0, 24), status: 'done', srv: 1 }));   // 타 기기 제작분(경로 화이트리스트 = 복원 정규식 정신) — 라벨 = board.md 첫 줄(감독·촬영 캡션은 발사 스냅샷 미보존이라 '다른 기기'로 갈음)
+  const a = loc.concat(srv).sort((x, y) => (y.ts || 0) - (x.ts || 0));
   head.hidden = !a.length; box.innerHTML = '';
   a.forEach(j => {
     const row = document.createElement('div'); row.className = 'job' + (j.status === 'done' ? ' done' : j.status === 'err' ? ' err' : '');
     const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = j.label; lab.title = '탭 = 이 콘티 불러오기'; lab.setAttribute('role', 'button'); lab.setAttribute('tabindex', '0');
     lab.addEventListener('click', () => { if (j.status === 'run') { poll(j.out, j.id); } else { loadJob(j); } try { $('#out').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} });
-    const v = document.createElement('span'); v.className = 'jvar'; v.textContent = (DNM[j.d] || j.d) + ' · ' + (SNM[j.sh] || j.sh) + (j.base ? ' · 변형' : '');
+    const v = document.createElement('span'); v.className = 'jvar'; v.textContent = j.srv ? '다른 기기' : (DNM[j.d] || j.d) + ' · ' + (SNM[j.sh] || j.sh) + (j.base ? ' · 변형' : '');   // 서버 인덱스 행 = 발사 스냅샷(감독·촬영) 미보존 → 출처 표기(260731)
     const st = document.createElement('span'); st.className = 'jst';
     const d = new Date(j.ts), p2 = n => String(n).padStart(2, '0');
     st.innerHTML = j.status === 'done' ? CHECK_SVG + ' 완료 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) : j.status === 'err' ? ERR_SVG + ' 실패' : JOB_SPIN + ' 설계 중';
@@ -576,9 +593,12 @@ function renderJobs() {
       });
       row.appendChild(m);
     }
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'jdel'; del.innerHTML = JOB_X; del.setAttribute('aria-label', '내역 삭제'); del.title = '내역에서 삭제(생성물 파일은 유지)';
-    del.addEventListener('click', () => { jsave(jload().filter(x => x.id !== j.id)); if (sbBase && sbBase.out === j.out) sbBase = null; renderJobs(); });
-    row.appendChild(del); row.appendChild(st); box.appendChild(row);
+    if (!j.srv) {   // 삭제 = 로컬 내역만(서버 인덱스 행은 로컬 삭제 개념이 없어 다음 폴에 되살아남 — 노출 자체를 안 함 · 260731)
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'jdel'; del.innerHTML = JOB_X; del.setAttribute('aria-label', '내역 삭제'); del.title = '내역에서 삭제(생성물 파일은 유지)';
+      del.addEventListener('click', () => { jsave(jload().filter(x => x.id !== j.id)); if (sbBase && sbBase.out === j.out) sbBase = null; renderJobs(); });
+      row.appendChild(del);
+    }
+    row.appendChild(st); box.appendChild(row);
   });
 }
 let _curStop = null;   // 진행 폴 중단 핸들(k 계승)
@@ -669,6 +689,7 @@ $('#go').onclick = async () => {
 // 부팅 재열람(운영자 260714 5차 — 구 sb_last_out 단건 재열람을 작업 내역이 대체): 최신 done = #out 우선 표시 · 진행 중이던 잡 = 폴 재개
 (async function bootJobs() {
   renderJobs();
+  pollSrvJobs();   // 부팅 즉시 서버 인덱스 1회(전 기기 내역 · 10s 첫 틱 대기 없이 · 260731)
   const a = jload(); if (!a.length) return;
   if (_fired || _curStop || $('#out').innerHTML) return;   // 새 생성 시작했으면 양보(레이스 가드 · k restoreLast 계승)
   if (a[0].status === 'run') { poll(a[0].out, a[0].id); return; }   // 리로드로 끊긴 진행 잡 = 폴 재개(완료돼 있으면 즉시 done 전환)
