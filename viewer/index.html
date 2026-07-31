@@ -7512,7 +7512,7 @@ function staleDataMsg() {
            text: '갱신이 안 되고 있어요 — 지금 화면은 저장된 옛 사본이라 새 뉴스가 안 보여요. 다시 받아오면 최신으로 돌아와요.' };
 }
 function syncStaleMsg() {   // 상태 변화에서만 배지·목록 갱신(매 폴 재렌더 방지) — flagShellUpdate 본문 문법 계승
-  const bad = !CAND_LIVE && CANDS.length > 0;
+  const bad = candStale();   // !CAND_LIVE → candStale(260731): 라이브 소스에서 받았어도 **받아온 지 오래면**(fetch 연속 실패 = 지금 화면이 옛 사본) 여기가 켜져야 한다. 붉은 경보(checkFreshLane)가 같은 축으로 자격미달 판정될 때 그 자리를 이 노란 항목이 메우는 짝 = 게이트가 무알림 침묵으로 안 떨어짐(CLAUDE.md [관측])
   if (bad === _staleShown) return;
   _staleShown = bad; if (bad) _staleWhen = Date.now();
   try { renderMsgBadge(); } catch {}   // 프로필 상태·카운트 갱신
@@ -7845,7 +7845,7 @@ async function shellApply(btn) {   // 새 버전 반영 = 최신 셸 재확보 �
 async function dataRetry(btn) {   // 갱신 실패 조치 = 라이브 소스 재시도(loadCandidates가 api → 정적 순으로 다시 탐색) · 버튼 문법 = shellApply 그대로
   if (btn) { btn.disabled = true; const s = btn.querySelector('span'); if (s) s.textContent = '받는 중…'; }
   await loadCandidates();
-  if (CAND_LIVE) { try { renderMsgList(); msgShowList(); } catch {} return; }   // 회복 = 항목 자체가 사라짐(syncStaleMsg) → 목록으로 복귀
+  if (candFresh()) { try { renderMsgList(); msgShowList(); } catch {} return; }   // 회복 = 항목 자체가 사라짐(syncStaleMsg) → 목록으로 복귀 · 판정축은 syncStaleMsg의 `bad`와 **반드시 동일**(260731: CAND_LIVE만 보던 구식은 재시도가 실패했는데도 CAND_LIVE 잔류값 때문에 '회복'으로 오판 → 항목은 그대로인데 목록으로 튕겨 버튼이 거짓말을 했다)
   if (btn) { btn.disabled = false; const s = btn.querySelector('span'); if (s) s.textContent = '아직 안 돼 — 다시'; }   // 실패 = 재시도 여지 남김(snsRecollect '네트워크 오류 — 다시' 문법 계승)
 }
 const MSG_ACTIONS = {
@@ -7912,7 +7912,7 @@ function _rptSrc(m) {
   // _health 계열은 3종(새버전·갱신실패·맞춤법)이 같은 플래그를 공유 → 플래그별로 갈라야 한다. 뭉치면 "새 버전" 알림에 CAND_LIVE가 찍혀
   //   세션이 없는 고장(진단 스냅샷 후보라이브=true인데 적재 실패라고 지목)을 쫓는다(실증 260730 리포트 1번 항목).
   if (m._shellupd) return { fn: 'viewer/index.html shellUpdMsg()', src: '_shellUpdPending(SW nm-shell-updated → flagShellUpdate)', up: 'sw.js 셸 SWR 재검증 + viewer/index.html 배포' };
-  if (m._stale) return { fn: 'viewer/index.html staleDataMsg()', src: 'CAND_LIVE(라이브 소스 적재 실패)', up: 'functions/api + viewer/candidates.json' };
+  if (m._stale) return { fn: 'viewer/index.html staleDataMsg()', src: 'candStale() = 소스축 CAND_LIVE(정적 폴백) ∪ 시간축 CAND_TS(수신 경과 > CAND_STALE_MS)', up: 'functions/api + viewer/candidates.json' };   // 260731: src를 'CAND_LIVE' 단독으로 두면 새 조건(라이브인데 수신이 낡음 = CAND_LIVE **true**)에서 진단이 원인을 잘못 지목한다 — 260730 리포트 1번 항목("후보라이브=true인데 적재 실패로 지목")과 같은 모양의 재발이라 두 축을 병기(원값은 msgRptDiag.후보수신경과분)
   if (m._health) return { fn: 'viewer/index.html healthMsg()', src: "SHC(localStorage 'nomute_shc').healthy=false", up: 'thumb.html 맞춤법 검사기 + ?selftest 프로브' };
   return { fn: '서버 발행 메시지', src: 'messages/' + (id || '<id>') + '.json', up: 'scraper/msg.py' };
 }
@@ -7938,6 +7938,7 @@ function msgRptDiag() {   // 진단 스냅샷 = 알림을 띄운 **판정 소스
     계정커버: (h.subs || {}).cover || {},
     레딧건수: ((TRENDS && TRENDS.reddit) || []).length,
     후보라이브: typeof CAND_LIVE === 'undefined' ? null : !!CAND_LIVE,
+    후보수신경과분: typeof CAND_TS === 'undefined' || !CAND_TS ? null : Math.round((Date.now() - CAND_TS) / 60000),   // 260731 신설 — 경보 자격검사(candFresh)의 시간축 원값. 이게 없으면 "왜 떴나/왜 안 떴나"를 사후에 추측으로만 갈라야 한다(리포트 = 판정 소스 원값 스냅샷이라는 이 함수의 계약 그대로)
   };
 }
 function msgRptHtml() {
@@ -9693,7 +9694,16 @@ window.addEventListener('pageshow', () => { try { if (sessionStorage.getItem('no
 
 // ── 스크랩(수집·큐레이션) 뷰 ─────────────────────────────────────
 // candidates.json = RSS 후보(제목·매체·시각·교차점수·카테고리·url). 관심도 ★ = localStorage(UI 상태) + api/rate(레포 누적=취향 데이터).
-let CANDS = [], SCRAP_LOADED = false, CAND_LIVE = false;   // CAND_LIVE = 지금 든 CANDS가 *라이브*(api/candidates = GitHub main 직독)인지 · false = 정적 candidates.json 폴백 = Cloudflare Pages **빌드 시점 스냅샷**(재빌드 한도 때문에 며칠~몇 주 낡음) → 그 데이터로 '수집 고장'을 판정하면 100% 오탐(260725 채굴: 리포 실데이터는 4h내 25건 = 정상인데 경보가 뜨던 경로)
+let CANDS = [], SCRAP_LOADED = false, CAND_LIVE = false, CAND_TS = 0;   // CAND_LIVE = 지금 든 CANDS가 *라이브*(api/candidates = GitHub main 직독)인지 · false = 정적 candidates.json 폴백 = Cloudflare Pages **빌드 시점 스냅샷**(재빌드 한도 때문에 며칠~몇 주 낡음) → 그 데이터로 '수집 고장'을 판정하면 100% 오탐(260725 채굴: 리포 실데이터는 4h내 25건 = 정상인데 경보가 뜨던 경로)   // CAND_TS = 지금 든 CANDS를 **실제로 받아온 시각**(loadTrends `_trFetched` 관용구 계승) — CAND_LIVE는 "어느 소스에서 왔나"만 말하고 "언제 받았나"를 못 말해서 생긴 260731 오탐의 짝(아래 candFresh 주석)
+// 후보 데이터 신선도 = 소스축(CAND_LIVE) × 시간축(CAND_TS) — '수집 고장' 판정의 **자격 검사**(억제 스위치 아님).
+//   왜(260731 실증): loadCandidates는 두 소스가 다 실패하면 CANDS·CAND_LIVE를 last-good 그대로 두는데(9727행) finally의 판정은 그대로 돈다(9728행).
+//   폰은 백그라운드면 폴이 아예 멈추므로(livePoll 15336행) 몇 시간 자다 깨어나 복귀 첫 fetch가 실패하면 = **몇 시간 묵은 CANDS + CAND_LIVE=true**로 4h창을 세게 되고, 당연히 비어 있어 붉은 경보가 뜬다.
+//   실측: 그날 서버 n은 24시간 내내 8건 밑으로 안 내려갔는데(임계 5) 12:20 폰에서 경보 발화·✓ 기록(toast-seen `ack:1785468042205`) = 100% 오탐.
+//   이 게이트가 막은 상황은 **침묵이 아니라 채널 이관**이다 — syncStaleMsg(7515행)가 같은 축을 써서 노란 "갱신이 안 되고 있어요"를 켠다(CLAUDE.md [관측] "fail-soft는 실패를 감추는 장치가 아니다").
+//   ⚠ 이 게이트는 laneBad에서 끝난다 — ack·rearm·야간·탭 양보 축은 무접촉(평의회A·B·C·E 봉합분 회귀 금지).
+const CAND_STALE_MS = 20 * 60000;   // 20분 = 폴 20회(60s·15336행) 연속 실패 허용. 하한 근거 = 정상 경로도 데이터가 최대 ~6.5분 묵는다(functions/api/candidates.js: 브라우저 max-age 60s + 엣지 cacheTtl 30s + raw 폴백 ~5분 캐시) · 수집 크론 15분(scrape.yml 외부 cron-job.org)이 실측 20~25분까지 벌어짐(260731 실측: max last_seen 12:07 vs 현재 12:33). 상한은 널널해도 무해 = 이 오탐이 성립하려면 데이터가 최소 4h(FAST_MAX_H) 묵어야 하므로 20분이든 60분이든 차단력 동일 · 반대로 값이 짧을수록 짧은 블립에 진짜 고장을 놓친다(미탐) → 큰 값이 정답. 조정 가능.
+const candFresh = () => CAND_LIVE && Date.now() - CAND_TS < CAND_STALE_MS;
+const candStale = () => !candFresh() && CANDS.length > 0;   // "지금 화면이 옛 사본" 상태 = 붉은 경보의 자격미달분 + 260725 정적 폴백분. **기어 점등·노란 메시지가 이 한 축을 공유**한다(syncStaleMsg 7515행 = 기어 토글 9843행) — 갈라두면 "기어는 빨간데 메시지함은 비어 있음" 같은 드리프트가 난다. len>0 = 부팅 전패(빈 화면)는 이 축 밖(기존 구멍 · 별건)
 let SOCIAL = [], SOCIAL_LOADED = false, SOCIAL_LOADING = false, SOC_LM = 0;   // 소셜 버스트(커뮤니티 공론화) 레인 = SNS 탭(메뉴2). social_candidates.json(scraper/social_burst.py 출력 · 설계 docs/social-burst.md). SOC_LM = 파일 Last-Modified(ms) — age_h 스냅샷 경과 보정 앵커(Q359 ㉠)
 const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
@@ -9719,7 +9729,7 @@ async function loadCandidates(quiet) {   // quiet=라이브 폴링: CANDS·속�
     for (const u of ['api/candidates', 'candidates.json?_=' + Date.now()]) {
       try {
         const r = await fetch(u);
-        if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) { CANDS = d; CAND_LIVE = (u === 'api/candidates'); SCRAP_LOADED = true; detectBreaking(); detectPickFail(); if (!quiet && CURTAB === 'scrap') renderScrap(); return; } }   // &&d.length: api/candidates가 GitHub 서빙 실패 시 빈 [](HTTP 200)을 뱉으면 그걸 유효응답으로 수용해 정적 폴백을 건너뛰고 수집함이 통째로 비던 SPOF 봉합(260714) — 빈 배열이면 다음 소스(정적 candidates.json)로 폴백. 실뉴스 0건은 현실적 부재라 [] = 서빙실패 신호
+        if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) { CANDS = d; CAND_LIVE = (u === 'api/candidates'); CAND_TS = Date.now(); SCRAP_LOADED = true; detectBreaking(); detectPickFail(); if (!quiet && CURTAB === 'scrap') renderScrap(); return; } }   // &&d.length: api/candidates가 GitHub 서빙 실패 시 빈 [](HTTP 200)을 뱉으면 그걸 유효응답으로 수용해 정적 폴백을 건너뛰고 수집함이 통째로 비던 SPOF 봉합(260714) — 빈 배열이면 다음 소스(정적 candidates.json)로 폴백. 실뉴스 0건은 현실적 부재라 [] = 서빙실패 신호
       } catch { /* 다음 소스 */ }
     }
     if (!SCRAP_LOADED) CANDS = []; SCRAP_LOADED = true; if (!quiet && CURTAB === 'scrap') renderScrap();   // last-good 유지(분신8 — loadSocial 실패 처리와 패턴 통일 260706)
@@ -9830,9 +9840,9 @@ function checkFreshLane() {
   const el = document.getElementById('sysFreshToast');
   const kstH = new Date(Date.now() + 9 * 3600000).getUTCHours();   // 브라우저 로컬 tz 무관 KST 시(naive Date 금지 축과 무관한 산술 시프트)
   const n = CANDS.filter(c => (Date.now() - scTs(c)) < FAST_MAX_H * 3600000).length;   // scTs = 발행(미래 오기록 = first_seen 폴백) — 신규 칼럼 판정과 동축
-  const laneBad = CAND_LIVE && CANDS.length > 100 && n < FRESH_ALERT_MIN;   // CAND_LIVE = 정적 폴백 스냅샷(낡은 게 정상)으로 '수집 고장'을 외치던 오탐 차단 — 라이브 서빙(api) 데이터일 때만 판정(260725 · 폴백 상태는 '수집 고장'이 아니라 '서빙 실패'라 이 문구가 원인을 잘못 지목했다)   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)
-  if (CANDS.length > 100 && n >= FRESH_ALERT_MIN * 2) { try { localStorage.removeItem(FRESH_ACK_KEY); } catch {} _freshMute = false; _freshAckTs = 0; if (srvFreshAckTs()) postSysSeen('rearm'); }   // 재무장 = 확실 회복(임계×2 히스테리시스)만 — 경계 진동(4↔6건 = 주간 12.9% 체류 실측)이 ✓·✗를 10~30분마다 지우던 플리커 봉합(평의회B). ✗(접속 숨김)도 확실 회복 후 재고장 = 새 사건이라 재표시(의도). 계정 ack 활성 시 rearm 이벤트 1회 동기(낙관 add로 srvFreshAckTs 즉시 0 = 매 폴 재발송 차단·운영자 260717 계정 종속 일반화).
-  document.body.classList.toggle('has-freshbad', laneBad && kstH >= 8);   // 🚨 기어 빨강 점등 = 고장 판정만 따른다(운영자 260725 "해결될 때까지 출력") — ✓·✗ 억제도, 수집함 탭 양보도 무시(그건 *토스트* 잔소리 억제 축) · 야간 오탐 가드(08시)만 공유 · 소등 = 신규 수집 실회복. 선례 = body.has-pickfail 토글 문법 그대로
+  const laneBad = candFresh() && CANDS.length > 100 && n < FRESH_ALERT_MIN;   // candFresh = 소스축(CAND_LIVE) × 시간축(CAND_TS) 자격검사(정의·사유 = 9696행 블록). CAND_LIVE만이던 구식은 정적 폴백 스냅샷 오탐만 막고(260725), *fetch가 통째로 실패해 last-good이 몇 시간 묵는* 경로는 못 막아 260731 오탐이 났다 — 둘 다 "낡은 데이터로 수집 고장을 외치는" 같은 뿌리   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)   // 건강 판정 = 야간·탭 게이트와 분리(평의회A "야간 게이트 ≠ 회복" — 융합 시 자정마다 ack 무단 리셋)
+  if (candFresh() && CANDS.length > 100 && n >= FRESH_ALERT_MIN * 2) { try { localStorage.removeItem(FRESH_ACK_KEY); } catch {} _freshMute = false; _freshAckTs = 0; if (srvFreshAckTs()) postSysSeen('rearm'); }   // ⚠ candFresh 동반 필수(260731 실측) — **회복 선언은 고장 판정과 같은 신뢰 등급의 데이터로만**. 게이트를 고장 선언(laneBad)에만 걸고 이 줄을 밖에 두면, 서빙이 죽어 얼어붙은 last-good에 4h내 건이 남아 있는 동안 그 기기가 "고장 판정은 못 하면서 회복 선언만 하는 기기"가 된다 = 계정 ack·로컬 ack·✗뮤트를 무단 해제하고 rearm을 쏴서, ✓를 눌러도 타 기기서 되살아나는 잔소리 루프(최대 4h). 교착 없음 = 계정 ack 12h TTL·_freshMute 세션한정·서빙 복구 첫 성공 폴에서 정상 재무장   // 재무장 = 확실 회복(임계×2 히스테리시스)만 — 경계 진동(4↔6건 = 주간 12.9% 체류 실측)이 ✓·✗를 10~30분마다 지우던 플리커 봉합(평의회B). ✗(접속 숨김)도 확실 회복 후 재고장 = 새 사건이라 재표시(의도). 계정 ack 활성 시 rearm 이벤트 1회 동기(낙관 add로 srvFreshAckTs 즉시 0 = 매 폴 재발송 차단·운영자 260717 계정 종속 일반화).
+  document.body.classList.toggle('has-freshbad', (laneBad && kstH >= 8) || candStale());   // ⚠ `|| candStale()` 동반 필수(260731 실측) — 붉은 경보에 자격검사를 걸면서 기어까지 같이 끄면 "진짜 고장 + 서빙 사망"에서 **화면 표시가 0**이 된다. 대체 채널이라던 staleDataMsg는 id도 `_sys`도 없어 renderMsgBadge(7766~7769행)의 unread·warn·sysbad 어디에도 안 잡히기 때문(= 메시지함을 직접 열어야만 보임 · 260725 "항상 뜨게"가 실제로는 무점등이던 구멍의 동반 봉합). 역할 분리 = **기어(상태: 정상 아님) vs 붉은 경보(원인 주장: 수집이 죽었다)** — 원인을 단정 못 할 땐 경보는 침묵하고 기어만 켠다(원인 설명은 메시지 문구 담당)   // 🚨 기어 빨강 점등 = 고장 판정만 따른다(운영자 260725 "해결될 때까지 출력") — ✓·✗ 억제도, 수집함 탭 양보도 무시(그건 *토스트* 잔소리 억제 축) · 야간 오탐 가드(08시)만 공유 · 소등 = 신규 수집 실회복. 선례 = body.has-pickfail 토글 문법 그대로
   if (!laneBad || kstH < 8 || CURTAB === 'scrap') { if (el) el.classList.remove('show'); return; }   // 소등만(ack·mute 무접촉): 회복 완충대(5~9건)·야간(08시 전 = 새벽 발행 저조 오탐 가드)·수집함 탭(빈 신규 칼럼을 직접 보는 중 = 잔소리 0 — 긴급 토스트 CURTAB!=='scrap' 관례 계승 · 평의회B)
   let ack = 0; try { ack = +localStorage.getItem(FRESH_ACK_KEY) || 0; } catch {}
   const _rT = srvSysMax().r;   // 계정 rearm(재무장)을 로컬 축에도 전파(평의회① — ✓ 누른 기기가 회복 시점에 닫혀 있으면 로컬 ✓가 살아남아 12h 내 '새 고장'을 그 기기만 놓치던 구멍): 최신 계정 rearm보다 과거인 로컬 ✓ = 그 사건 종결 = 무효
