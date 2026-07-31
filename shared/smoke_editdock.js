@@ -91,6 +91,42 @@ async function runOnce(browser, port) {
   await pg.evaluate(() => goFireDone(document.querySelector('#editGo')));   // 잡 완료 원복
   await pg.waitForTimeout(60);
   m.back = await pg.evaluate(() => document.querySelector('#editGo').textContent.trim());
+
+  // ── 도크 홀드 4단(C12) — 사고 260731 "편집에 영상 넣으면 아예 영상 사라짐"의 상비 회귀 케이스 ──
+  //   구 dockSync는 홀드 해제를 `res`(결과 가시)만 보고 판정해, **이미 떠 있던 옛 결과**가 새 첨부를 그 틱에 덮었다
+  //   (2회차 첨부부터 항상 .pvsec 높이 0 = 넣은 영상이 안 보임 · 첫 첨부만 정상이라 fresh 경로 스모크가 못 잡던 사각).
+  //   측정축 = 도크 fold + .pvsec 실높이(기하) — 접힘 계약(운영자 260728)과 사고 축을 한 흐름에서 같이 검증한다.
+  const attach = async () => {   // 첨부 픽스처 = 캔버스 녹화 webm(smoke_editprev C5 문법 계승 · 외부 파일·ffmpeg 의존 0)
+    await pg.evaluate(async () => {
+      const cv = document.createElement('canvas'); cv.width = 320; cv.height = 568;
+      const cx = cv.getContext('2d'); let hue = 0;
+      const tick = setInterval(() => { cx.fillStyle = 'hsl(' + ((hue += 40) % 360) + ',60%,50%)'; cx.fillRect(0, 0, 320, 568); }, 60);
+      const rec = new MediaRecorder(cv.captureStream(12), { mimeType: 'video/webm' });
+      const parts = []; rec.ondataavailable = e => parts.push(e.data);
+      const done = new Promise(r => { rec.onstop = r; });
+      rec.start(); await new Promise(r => setTimeout(r, 700)); rec.stop(); await done; clearInterval(tick);
+      const f = new File([new Blob(parts, { type: 'video/webm' })], 'smoke.webm', { type: 'video/webm' });
+      const dt = new DataTransfer(); dt.items.add(f);
+      const inp = document.getElementById('file'); inp.files = dt.files; inp.dispatchEvent(new Event('change'));
+    });
+    await pg.waitForTimeout(900);
+  };
+  const dockState = () => pg.evaluate(() => ({
+    fold: document.getElementById('topDock').classList.contains('fold'),
+    h: +document.getElementById('pvsec').getBoundingClientRect().height.toFixed(1)
+  }));
+  await attach();                       // ① 첫 첨부 = 펼침
+  m.d1 = await dockState();
+  await pg.evaluate(() => { const vw = document.getElementById('vwrap'); vw.innerHTML = '<video></video>'; vw.hidden = false; dockSync(); });
+  await pg.waitForTimeout(500);         // ② 결과 스테이지 노출 = 접힘(260728 계약)
+  m.d2 = await dockState();
+  await attach();                       // ③ **결과가 떠 있는 상태에서 재첨부** = 펼침(사고 축 · 구 코드는 여기서 h 0)
+  m.d3 = await dockState();
+  await pg.evaluate(() => { _pollLive = true; dockSync(); });
+  await pg.waitForTimeout(500);         // ④ 새 발사 대기 진입 = 다시 접힘(접힘 계약 회귀 확인)
+  m.d4 = await dockState();
+  await pg.evaluate(() => { _pollLive = false; const vw = document.getElementById('vwrap'); vw.hidden = true; vw.innerHTML = ''; dockSync(); });   // 상태 원복(2런 결정론 보호)
+
   m.errs = errs.length;
   await pg.close();
   return m;
@@ -116,6 +152,9 @@ async function runOnce(browser, port) {
     ck('C8 라벨 잉크 중심 = 4분할 중심 Δ≤0.5', r1.inkD[0] <= 0.5 && r1.inkD[1] <= 0.5, JSON.stringify(r1.inkD));
     ck('C9 sticky 도크 = 스크롤 후 top 0 + 스트립 가시(따라다님)', r1.stick && r2.stick, String(r1.stick));
     ck('C10 폰트 = Pretendard 로드+자간 정본', r1.font && r2.font, String(r1.font));
+    const dOK = x => x.d1.fold === false && x.d1.h > 0 && x.d2.fold === true && x.d2.h === 0 && x.d3.fold === false && x.d3.h > 0 && x.d4.fold === true && x.d4.h === 0;
+    ck('C12 도크 홀드 = 첨부 펼침→결과 접힘→**재첨부 펼침**→새 발사 접힘(사고 260731 "영상 넣으면 사라짐" 회귀 · 재첨부 h>0이 판정선)',
+      dOK(r1) && dOK(r2), ['첨부', '결과', '재첨부', '발사'].map((n, i) => n + ' ' + (r1['d' + (i + 1)].fold ? '접힘' : '펼침') + '(' + r1['d' + (i + 1)].h + 'px)').join(' → '));
     const det = JSON.stringify({ a: r1.goTriple, b: r1.stripBox, c: r1.readback, d: r1.inkD }) === JSON.stringify({ a: r2.goTriple, b: r2.stripBox, c: r2.readback, d: r2.inkD });
     ck('C11 결정론 = 2런 측정 동일', det, det ? '일치' : 'run1≠run2');
     console.log('── smoke_editdock ' + (FAIL ? 'FAIL ' + FAIL : '코어 전부 PASS'));
