@@ -1785,6 +1785,44 @@ def check_model_ids():
     return 0
 
 
+def check_frame7_contract():
+    """미리보기 프레임 7표면 파리티 하드게이트(운영자 260731 22차 "모든 창 80%% 겹침에 튀는 곳 없게" → 23차 "한쪽이 어긋났을 때 고치는 사람에게 컴파일도 불가능한 수준의 알람").
+    계약(정본 = thumb 편집 도크): 폭 calc(100%% - 8.8em - 6px) · aspect 9/16 · 캡 min(58svh,620px) — 7표면 사본이
+    한 글자라도 갈라지면 rc=1 = 커밋 훅·CI 동시 차단. 런타임 좌표 등가는 shared/smoke_frame7.js(실렌더)가 짝.
+    ⚠️ 미래 세션에게: 이 게이트가 떴다 = 프레임 값을 한 표면만 고쳤다는 뜻이다. 7표면(아래 목록)을 **동시에** 같은 값으로
+    고치고 smoke_frame7 rc=0을 확인해라. 한 파일만 고쳐서 게이트를 통과시키는 유일한 방법은 7파일 전부를 바꾸는 것뿐이다."""
+    SIG_W, SIG_A, SIG_C = 'calc(100% - 8.8em - 6px)', 'aspect-ratio:9/16', 'min(58svh,620px)'
+    surf = {
+        'viewer/thumb.html': (SIG_A, SIG_C),             # 편집 도크 정본 — 폭은 grid(minmax(0,1fr) var(--optw))가 소비 = --optw 축으로 별도 검사
+        'viewer/tr.html': (SIG_W, SIG_A, SIG_C),
+        'viewer/edit.html': (SIG_W, SIG_A, SIG_C),
+        'viewer/k.html': (SIG_W, SIG_A, SIG_C),
+        'viewer/song.html': (SIG_W, SIG_A, SIG_C),
+        'viewer/index.html': (SIG_W, SIG_C, 'w * 16 / 9'),   # AI 생성 = geni 쉘 + geniPrevSize 9:16 등가 산식
+    }
+    bad = []
+    for rel, sigs in surf.items():
+        try:
+            body = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            bad.append((rel, '파일 열람 실패')); continue
+        miss = [g for g in sigs if g not in body]
+        if rel == 'viewer/thumb.html' and '--optw:8.8em' not in body:
+            miss.append('--optw:8.8em')
+        if miss:
+            bad.append((rel, '누락 시그니처 = ' + ' · '.join(miss)))
+    if bad:
+        print('❌' * 3 + ' 미리보기 프레임 7표면 파리티 붕괴 — 이 커밋은 여기서 막힌다(운영자 260731 23차 계약) ' + '❌' * 3)
+        print('   계약: 폭 calc(100% - 8.8em - 6px) · aspect-ratio 9/16 · 캡 min(58svh,620px) — 이미지·영상 스튜디오 전 세부메뉴 미리보기 창 동일')
+        for rel, why in bad:
+            print('   ✗ %s — %s' % (rel, why))
+        print('   → 고치는 법: 프레임 값은 7표면 동시 수정만 허용{thumb(편집 도크 정본) · tr · edit · k · song · index(geni 쉘+geniPrevSize)}')
+        print('   → 수정 후 검증: node shared/smoke_frame7.js rc=0(실렌더 좌표 등가) + 이 게이트 재실행 · 정본 규칙 = 디자인기틀_SSOT.md §0-16-2')
+        return 1
+    print('✅ 미리보기 프레임 7표면 파리티 — 계약 시그니처 전 표면 생존(폭·9:16·캡 · 실렌더 짝 = smoke_frame7).')
+    return 0
+
+
 # ── 게이트 문서화 메타 게이트 (운영자 260723 Q468 "게이트 문서화 강제 = 만들어놓고 안 봄 구조 차단") ──
 # 모든 게이트(def check_*)가 정본 문서에 *이름으로* 등재됐는지 대조 → 미등재 신규 게이트 = rc=1 차단.
 # = 색 전파 골격(STAGE4·check_palette_sync)의 SSOT 인덱스 완전성 소프트룰("새 기틀 = 인덱스 행 추가 · 누락
@@ -2383,6 +2421,8 @@ def main():
         if check_loader_ssot() != 0:   # 로딩 표기 SSOT(하드 게이트 — 새 로더 = window.nmLoader만·raw gdots 신설 차단 · 운영자 260723 Q461 "정해진 로딩만")
             rc = 1
         if check_cards_ssot() != 0:   # 다운로드·결과/이전제작 카드 CSS SSOT(하드 게이트 — 인라인 사본 부활·미로드·토큰 댕글링 차단 · 운영자 260731 "하나 바꾸면 다 연동")
+            rc = 1
+        if check_frame7_contract() != 0:   # 미리보기 프레임 7표면 파리티(하드 게이트 — 한 표면만 고친 드리프트 즉사 · 운영자 260731 23차 "컴파일도 불가능한 수준의 알람")
             rc = 1
     except Exception as e:
         print('⚠️ check_loader_ssot 스킵:', e)
