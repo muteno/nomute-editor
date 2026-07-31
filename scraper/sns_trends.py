@@ -1805,8 +1805,30 @@ def main():
     _sh_q = _ytc.get("shorts") if (isinstance(_ytc.get("shorts"), list) and _ytc.get("shorts")) else IT_QUERIES
     _ai_q = _ytc.get("aivid") if (isinstance(_ytc.get("aivid"), list) and _ytc.get("aivid")) else AI_QUERIES
     _news_cat = _ytc.get("news_cat") if isinstance(_ytc.get("news_cat"), int) else 25
+    # 주제(카테고리)별 인기 급상승 다중 수집(운영자 260731 "유튜브 주제별로 24시간 내 상위 5개까지 모든 주제 · 반려동물·노하우스타일·교육 제외")
+    #   축 = mostPopular 차트를 videoCategoryId로 좁힌 것(채널 목록 아님 · 카테고리 번호 = 유튜브 공식) — 단일 news_cat(int)의 다중판.
+    #   기본값 = 뷰어 YT_CATS 14종 - {26 노하우·스타일 · 27 교육 · 15 반려동물} = 11종(운영자 제외 지시) · 순서 = 뷰어 YT_CATS 정렬 그대로.
+    #   설정(news_cats 배열)이 오면 그쪽이 정본 = 하드코딩 해체 축(news_cat 단일 축과 동거 · 구 설정만 있는 기기 = 기본 11종).
+    #   쿼터 = 카테고리당 1unit(part 기준·maxResults 무관) → 11unit/런 × 48런 ≈ 528unit/일(무료 1만의 ~5%) = §1 보수성 내.
+    #   limit 10 = 뷰어가 24h 컷 뒤 상위 5개를 뽑는 후보 풀(컷 통과분이 5 미만이면 조용한 공백 = ytGrid 선례).
+    _CAT_DEF = [25, 24, 10, 17, 28, 20, 22, 1, 23, 19, 2]
+    _news_cats = [c for c in (_ytc.get("news_cats") or []) if isinstance(c, int) and 0 < c < 100] or _CAT_DEF
+    yt_cats, _cat_empty = {}, []
+    if YT_KEY:
+        for _cid in _news_cats:
+            _r = youtube(category_id=_cid, limit=10)
+            if _r:
+                yt_cats[str(_cid)] = _r
+            else:
+                _cat_empty.append(_cid)   # 0건 = 그 카테고리 한국 차트가 비었거나 콜 실패(fail-soft · 아래 계측이 갈라 찍는다)
+    # [관측] 계측 의무 — "시도했는데 무소득"과 "아예 미시도"를 로그에서 가른다(CLAUDE.md 위반 실증 = 260729 gnews_search 조용한 0건).
+    print(f"✅ yt_cats: 주제 {len(yt_cats)}/{len(_news_cats)}건 수집 · 0건 {len(_cat_empty)}{'(' + ','.join(map(str, _cat_empty)) + ')' if _cat_empty else ''} · 미시도 {0 if YT_KEY else len(_news_cats)}{'' if YT_KEY else '(무키)'} · 항목 {sum(len(v) for v in yt_cats.values())}개")
+    # 워치독 임계 = 커버 50%(요청 대비 수집 카테고리 비율) — 근거: 정상 실측은 요청분 거의 전건 수집(카테고리별 KR 차트는 상시 존재),
+    #   사고 국면(키 만료·쿼터 소진·API 스키마 변경)은 전건 0으로 무너진다 → 정상(≈100%)과 사고(0%) 사이 중간선.
+    if YT_KEY and _news_cats and len(yt_cats) * 2 < len(_news_cats):
+        print(f"::warning::yt_cats 커버 결측 — 요청 {len(_news_cats)} 중 {len(yt_cats)}건만 수집(임계 50% 미만 · 키·쿼터·차트 축 점검)", file=sys.stderr)
     yt_all = youtube(limit=50)   # 15→50(운영자 260728 "10개를 못 받아오는 이유") — 뷰어 인기 그리드는 `cutH(ytRaw,24)` 24h 컷 뒤 조회수순 10개인데, mostPopular 차트는 며칠 묵은 영상이 섞여 상위 15건 중 24h 이내가 5건뿐이라(실측 260728 · sns_trends.json 50건 되짚기: 앞15=5건 · 앞30=11건 · 앞50=17건) 10칸이 원천적으로 안 찼다. 50 = videos.list maxResults 상한 · 쿼터는 part 기준이라 런당 비용 불변(maxResults 무관) · 뉴스(category25)는 별 축이라 10 유지 · 뷰어 컷/정렬 무접촉(24h 컷 취지 그대로 · 후보 풀만 확대)
-    yt_news = youtube(category_id=_news_cat, limit=10) if (YT_KEY and yt_all) else []   # 뉴스 카테고리(config news_cat · 기본 25 뉴스·정치)
+    yt_news = yt_cats.get(str(_news_cat)) or (youtube(category_id=_news_cat, limit=10) if (YT_KEY and yt_all) else [])   # 뉴스 카테고리(config news_cat · 기본 25 뉴스·정치) — 260731부터 주제 다중수집(yt_cats)에 25가 이미 들어 있으면 그 결과 재사용(중복 콜 0) · 25가 선택 밖이면 종전 단독 콜(하위 소비처 kw_watch 무회귀)
     yt_src = "api" if yt_all else ""
     if not yt_all:
         yt_all = youtube_innertube()   # 무키 폴백(검색 파생 근사) — 키 등록 시 이 줄 미도달 = 공식 자동 승격
@@ -2126,6 +2148,7 @@ def main():
         "youtube": yt_all or prev.get("youtube") or [],
         "youtube_src": yt_src or prev.get("youtube_src") or "",   # "api"(공식 차트)/"innertube"(검색 파생) 정직 표기
         "youtube_news": yt_news or prev.get("youtube_news") or [],
+        "youtube_cats": yt_cats or prev.get("youtube_cats") or {},   # 주제별 인기(운영자 260731) — {"25":[…],"24":[…]} · 키 = 유튜브 공식 videoCategoryId 문자열 · 전멸(무키·전 카테고리 실패) = 직전분 보존(fail-soft 관용구)
         "gtrends": gt or prev.get("gtrends") or [],
         "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 풀(vol≥500 또는 6h내 신선 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
         "gtrends_pool_updated": (now if gt_pool else prev.get("gtrends_pool_updated") or ""),   # 풀 신선도 마커(평의회 260717) — 미래 소비처의 스테일 게이트 원천 + API 축 사망 가시화(health.gtrends_api와 교차 판독)

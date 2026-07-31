@@ -43,6 +43,13 @@ function cleanPlat(v, k) {   // 한국/세계 2군(운영자 260712) — 구 평
     if (Array.isArray(v.shorts)) o.shorts = cleanKw(v.shorts);
     if (Array.isArray(v.aivid)) o.aivid = cleanKw(v.aivid);
     if (Number.isInteger(v.news_cat) && v.news_cat > 0 && v.news_cat < 100) o.news_cat = v.news_cat;
+    // 주제 다중 선택(운영자 260731 "모든 주제 다 나오게") — 유튜브 공식 videoCategoryId 배열 · **순서 = 표시 순서**(운영자가 위아래로 재배열한 그대로 저장 = 정렬 금지)
+    //   상한 14 = 뷰어 YT_CATS 노출 종수(그 이상은 고를 수단 자체가 없다) · 정수·범위·중복만 거른다(스크래퍼 _news_cats와 2면 대칭)
+    if (Array.isArray(v.news_cats)) {
+      const s2 = new Set(), a2 = [];
+      for (const c of v.news_cats) if (Number.isInteger(c) && c > 0 && c < 100 && !s2.has(c)) { s2.add(c); a2.push(c); if (a2.length >= 14) break; }
+      o.news_cats = a2;
+    }
   }
   return o;
 }
