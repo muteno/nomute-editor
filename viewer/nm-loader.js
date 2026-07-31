@@ -193,6 +193,57 @@
 
 })();
 
+/* ══ nmEta — 「예상 : N분 NN초」 값 SSOT(운영자 260731 "예상도 일단 다 보이게, 점차 많이 쓰면 평균값으로 안정화") ══
+   · 왜 = 각 작업의 실제 소요는 아무도 모른다(운영자 확인). 그래서 **초기엔 시드(추정)로 다 보여주고,
+     쓸 때마다 실측을 누적해 평균으로 수렴**시킨다. "처음엔 틀려도 된다"가 설계 전제.
+   · 저장 = localStorage `nm-eta-v1` = { key: {n, avg} } (기기 로컬 · 서버 왕복 0 · 실패해도 시드로 폴백 = 표시는 절대 안 깨짐).
+   · 수렴 = EMA(가중 .3) — 최근 실행에 더 무게. 첫 실측 1건은 시드를 즉시 대체하지 않고(n<MIN) 섞이는 동안 시드 유지 = 튐 방지.
+   · 이상치 방어 = 0초 이하·10시간 초과 표본은 버린다(탭 방치·시계 점프).
+   · **계측**(CLAUDE.md [관측]) = `nmEta.dump()`가 {키 · 시드 · 표본수 · 현재 평균}을 한 줄씩 콘솔에 찍는다.
+     조용히 학습이 멈추는 사고(스토리지 차단·done 미배선)를 표본수 0으로 즉시 구분할 수 있어야 한다.
+   · 배선 = 표시 `nmEta.label(key)` / 학습 `nmEta.done(key, 경과초)`(**성공 완료 지점에서만** — 실패·타임아웃을 섞으면 평균이 오염된다).
+   · 시드 근거 = 코드에 이미 있던 문구·주석(k 3분/15분 · sb·ly·edit "1~3분" · track "보통 2–6분" · index "1~2분")을 우선 채택,
+     근거가 없던 축(conv·song·tr·카드뉴스·편집)은 잡 예산의 1/3 안팎을 임시 시드로 두고 실측이 덮게 한다(운영자 승인 = "처음엔 틀려도"). */
+(function () {
+  if (window.nmEta) return;
+  var KEY = 'nm-eta-v1', MIN = 2, W = 0.3, MAXS = 36000;
+  var SEED = {           // 초(sec) · 근거는 위 주석 참조
+    'k-img': 180, 'k-ref': 900,          // k.html 기존 문구(3분 / 레퍼런스 15분)
+    'sb': 180,                            // sb.html 기존 "보통 1–3분"
+    'ly-burn': 180, 'edit-burn': 180,     // ly·edit 기존 "(1~3분)"
+    'track-analyze': 360,                 // track.html 폴백 문구 "보통 2–6분"
+    'track-render': 900,                  // track.html RENDER_BUDGET 900s(소프트 예산)
+    'conv': 600,                          // 근거 없음 — 잡 캡 58분의 1/6 임시 시드
+    'song': 300, 'song-voice': 900,       // 근거 없음 — 잡 캡 25분/70분 기준 임시 시드
+    'tr': 120,                            // 근거 없음 — 임시 시드
+    'edit-video': 600,                    // 근거 없음 — 잡 캡 85분 기준 임시 시드
+    'cards-prompt': 300, 'cards-img': 600,// index 타임아웃(프롬프팅 25분·렌더 10분) 기준 임시 시드
+    'thumb-copy': 180,                    // thumb "변환 실측 1~3분"
+    'img-gen': 120, 'img-research': 120   // index 주석·툴팁 "1~2분"
+  };
+  function db() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } }
+  function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (_) {} }   // quota·프라이빗모드 = 조용히 포기(시드로 계속 표시)
+  function seed(k) { return SEED[k] || 180; }
+  function sec(k) { var e = db()[k]; return (e && e.n >= MIN && e.avg > 0) ? e.avg : seed(k); }
+  function fmt(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + '분 ' + String(s % 60).padStart(2, '0') + '초'; }
+  function label(k) { return ' (예상 : ' + fmt(sec(k)) + ')'; }
+  function done(k, s) {
+    s = Number(s); if (!(s > 0) || s > MAXS) return false;   // 이상치 = 학습 안 함(표본 오염 차단)
+    var d = db(), e = d[k] || { n: 0, avg: seed(k) };
+    e.avg = e.n ? e.avg * (1 - W) + s * W : (seed(k) + s) / 2;   // 첫 표본 = 시드와 반반(급변 방지) · 이후 EMA
+    e.n = e.n + 1; d[k] = e; save(d); return true;
+  }
+  function dump() {   // 계측 = 학습이 조용히 멈추는 사고(스토리지 차단·done 미배선)를 표본수로 구분
+    var d = db(), ks = Object.keys(SEED), i, k, e, live = 0;
+    for (i = 0; i < ks.length; i++) { k = ks[i]; e = d[k];
+      console.log('[nmEta] ' + k + ' · 시드 ' + fmt(seed(k)) + ' · 표본 ' + ((e && e.n) || 0) + ' · 현재 ' + fmt(sec(k)));
+      if (e && e.n) live++; }
+    console.log('[nmEta] 학습된 축 ' + live + ' / 등록 ' + ks.length + ' · 미학습 ' + (ks.length - live) + '(표본 0 = done() 미배선이거나 아직 완료 이력 없음)');
+    return { live: live, total: ks.length };
+  }
+  window.nmEta = { sec: sec, fmt: fmt, label: label, done: done, dump: dump, seed: seed, SEED: SEED };
+})();
+
 /* ── nmFavBusy — 작업 중에만 브라우저 탭 파비콘(지구본)이 돈다 ─────────────────────────
    운영자 260727 "뉴스 요약·이미지 제작 등 작업중에는 저 로고가 돌아가고, 작업중인게 없으면 그냥 일반 로고".
    · 그림 = 기존 favicon-globe-260724.svg **그대로** 캔버스에 얹어 회전만(새 그림·새 색 창작 0 = B1).

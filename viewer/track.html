@@ -426,7 +426,7 @@ function goWait(on,t0){
     const paint=()=>{ if(g._flash||g.classList.contains('err')) return;   // ✓ 접수 플래시·에러 문구(errStatus 1.7s 복귀)는 안 덮음
       const tEl=g.querySelector('.gtime');
       if(tEl){ tEl.textContent=fmtT((Date.now()-_goT0)/1000); return; }   // 시간만 갱신 = gdots DOM 유지(점모션 위상 리셋 0)
-      g.innerHTML=(window.nmLoader?nmLoader('solving','제작중…',{size:15,gap:7,fs:12.5}):'분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>')+'<span class="gtime nm-shim">'+fmtT((Date.now()-_goT0)/1000)+'</span>'; };   // 경과시간도 빛 스윕(운영자 260731)
+      g.innerHTML=(window.nmLoader?nmLoader('solving','제작중…',{size:15,gap:7,fs:12.5}):'분석 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>')+'<span class="gtime nm-shim">'+fmtT((Date.now()-_goT0)/1000)+(window.nmEta?nmEta.label('track-analyze'):'')+'</span>'; };   // 예상 = nmEta(시드 6분 = 기존 폴백 문구 '보통 2–6분' → 실측 평균 수렴)   // 경과시간도 빛 스윕(운영자 260731)
     paint(); _goTick=setInterval(paint,1000);
   } else { _goT0=0; g.classList.remove('wait'); g.removeAttribute('aria-busy'); if(g.dataset.label) g.textContent=g.dataset.label; }
 }
@@ -853,7 +853,7 @@ function pollRender(t0, prevUrl, minTs, wantMode){
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
     if(sec>budget*2){ stop(); wclear(); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pend 유지(재개 클램프가 이어받음)
-    const ws=$('#vwrap .wsec'); if(ws) ws.textContent=' '+fmtT(sec);   // 경과 = m:ss 통일(0:42 기준 · 운영자 260731)   // 경과 = 프리뷰 안 병기(아래 캡션 폐지 — 운영자 260710)
+    const ws=$('#vwrap .wsec'); if(ws) ws.textContent=' '+fmtT(sec)+(window.nmEta?nmEta.label('track-render'):'');   // 경과 = m:ss 통일(0:42 기준 · 운영자 260731)   // 경과 = 프리뷰 안 병기(아래 캡션 폐지 — 운영자 260710)
   };
   const disp=setInterval(draw,1000); draw();
   const fresh=ts=>{ const t=Date.parse(ts||''); return !isNaN(t) && t>=minTs; };   // 이번 디스패치 이후 산출만(과거 video.json 오인 차단 · ts=KST ISO) — 재개 시 minTs=원 디스패치 기준(늦은 완성도 수신)
