@@ -1668,6 +1668,51 @@ def check_loader_ssot():
     return 0
 
 
+def check_cards_ssot():
+    """다운로드·결과/이전제작 카드 CSS SSOT 게이트(운영자 260731 "하나 바꾸면 다 연동" · 정본 = viewer/nm-cards.css).
+    선행 사고 = `.dlbtn` 표준이 뷰어 9벌로 인라인 복제돼 색 하나 바꾸려면 9곳(실제 드리프트 = edit 이중선언·border .34).
+    ① 라이브 뷰어 전부가 nm-cards.css를 로드하는가(미로드 = 그 앱만 옛 색으로 남음)
+    ② 뷰어 인라인에 `.dlbtn` **베이스 색 선언**이 부활했는가(인라인이 링크보다 뒤 = 남으면 SSOT가 조용히 죽음)
+    ③ nm-cards.css가 참조하는 var() 토큰을 각 뷰어 :root가 정의하는가(미정의 = 댕글링 = 다운로드 색 죽음 · 260731 실사고)
+    tokens.html = 토큰 레퍼런스 데모(라이브 아님) = 스코프 밖. fail-closed 아님(파일 못 읽으면 스킵)."""
+    import glob as _g
+    css = os.path.join(ROOT, 'viewer', 'nm-cards.css')
+    try:
+        src = open(css, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 카드 CSS SSOT — 정본 viewer/nm-cards.css 없음:', e); return 1
+    need = sorted(set(re.findall(r'var\((--[a-z0-9-]+)\)', src)))
+    bad_load, bad_inline, dangling = [], [], []
+    try:
+        for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+            b = os.path.basename(fp)
+            if b == 'tokens.html':
+                continue
+            t = open(fp, encoding='utf-8').read()
+            if 'nm-cards.css' not in t:
+                bad_load.append(b); continue
+            for i, ln in enumerate(t.splitlines(), 1):
+                st = ln.strip()
+                if st.startswith('.dlbtn {') or st.startswith('.dlbtn.dl-done {') or st.startswith('@media (hover:hover){ .dlbtn:hover'):
+                    bad_inline.append('%s:%d' % (b, i))
+            for tok in need:
+                if (tok + ':') not in t:
+                    dangling.append('%s → %s' % (b, tok))
+    except Exception as e:
+        print('⚠️ check_cards_ssot 스킵:', e); return 0
+    if bad_load or bad_inline or dangling:
+        print('❌ 카드 CSS SSOT — 공용 정본(viewer/nm-cards.css) 이탈:')
+        for x in bad_load[:6]:
+            print('   · 미로드(옛 색 고립):', x)
+        for x in bad_inline[:6]:
+            print('   · 인라인 .dlbtn 베이스 부활(SSOT 무력화):', x)
+        for x in dangling[:6]:
+            print('   · :root 토큰 미정의(var() 댕글링):', x)
+        return 1
+    print('✅ 카드 CSS SSOT — 라이브 뷰어 전부 nm-cards.css 참조 · 인라인 .dlbtn 베이스 부활 0 · 참조 토큰 %d개 전 뷰어 정의(다운로드·결과 카드 = 1곳 수정 = 전 앱 반영).' % len(need))
+    return 0
+
+
 # ── 모델 ID 드리프트 게이트 (운영자 260725 한 수 · 정본 = shared/models.json) ──
 # 모델 ID가 20+ 호출처에 리터럴로 흩어져 있어 승격(260725 Opus 4.8→5 = 22곳 실측)마다 전수 grep = 빠뜨림.
 # 런타임 결합(호출처가 json을 읽게)은 Cloudflare Functions·정적 뷰어에 파일 접근이 없어 불가 → 「정본 1곳 +
@@ -2330,6 +2375,8 @@ def main():
         print('❌ check_qledger_unique 예외(fail-closed — 게이트 무력화 방지):', e); rc = 1
     try:
         if check_loader_ssot() != 0:   # 로딩 표기 SSOT(하드 게이트 — 새 로더 = window.nmLoader만·raw gdots 신설 차단 · 운영자 260723 Q461 "정해진 로딩만")
+            rc = 1
+        if check_cards_ssot() != 0:   # 다운로드·결과/이전제작 카드 CSS SSOT(하드 게이트 — 인라인 사본 부활·미로드·토큰 댕글링 차단 · 운영자 260731 "하나 바꾸면 다 연동")
             rc = 1
     except Exception as e:
         print('⚠️ check_loader_ssot 스킵:', e)
