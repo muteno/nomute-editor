@@ -3263,10 +3263,12 @@ async function loadServerHist() {
     if (pick) doRestore(pick, true);
   }
   maybeOpenHist();   // 제작완료 알림(?done=<id> · 구 #done)로 들어왔으면 서버 병합 후 그 결과를 맨 위로(restoreById)
+  reconcileRestoredBatch();   // R2 즉시 조회로 낱장 복원됐던 딥링크 결과 = 서버 이력 병합분으로 묶음(bid) 재수렴(새로고침 즉시 회복)
 }
 let _histPolling = false, _histSig = '';   // in-flight 가드 + 변경감지 시그니처(무변경 재빌드 차단)
 async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(PWA)이 타 기기 제작을 새로고침 없이 받게 · 변경감지 게이트+in-flight 가드로 무변경 재빌드(깜빡임·죽은항목 404 재스팸)·중복 fetch 차단 · 부팅복원 미재발동(고스트 안 함)
   if (document.hidden || _histPolling) return;   // in-flight 가드 = focus+visibilitychange 동시 발동 코얼레싱(중복 fetch 0)
+  reconcileRestoredBatch();   // sig 게이트(무변경 skip) 앞 = 이미 받아둔 SRV_HIST에 형제가 있는데 결과만 낱장인 상태도 그 자리서 회복(재fetch 대기 불필요)
   _histPolling = true;
   try {
     let hist = null, clr = SRV_CLEAR;
@@ -3277,7 +3279,7 @@ async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(
     _histSig = sig;
     if (hist) SRV_HIST = hist;
     if (clr > SRV_CLEAR) { SRV_CLEAR = clr; try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} }
-    renderHist();
+    if (!reconcileRestoredBatch()) renderHist();   // 새 이력에 형제가 실려오면 묶음 재복원(doRestore가 renderHist까지 수행 = 이중 렌더 0)
   } finally { _histPolling = false; }
 }
 // 제작완료 푸시 탭 → /thumb.html?done=<id>(구 #done 호환) 진입 시 그 결과를 맨 위로 복원·랜딩(완성 결과가 바로 보이게).
@@ -3387,7 +3389,7 @@ function renderHist() {
   });
 }
 // ── 가장 최근 제작 1건 = 창 닫아도 맨 위 '결과'로 복원 (전체 다운+캐러셀 · 이 기기 · 운영자 260622) ──
-let RESTORED = false, RESTORED_TS = 0; const RESTORED_URLS = new Set();   // 맨 위에 복원된 최근 제작 url·ts(이전 제작서 제외·cross-device 최신비교용)
+let RESTORED = false, RESTORED_TS = 0, RESTORED_BID = ''; const RESTORED_URLS = new Set();   // 맨 위에 복원된 최근 제작 url·ts·묶음키(이전 제작서 제외·cross-device 최신비교·묶음 재수렴용)
 function saveLastResult(job) {   // 잡 완료 시 최근 제작 스냅샷 저장(URL은 캐시버스트 제거)
   try { if (!job || !(job.saves || []).length) return;
     let prev; try { prev = JSON.parse(localStorage.getItem(THUMB_LAST_KEY) || 'null'); } catch {}
@@ -3396,7 +3398,7 @@ function saveLastResult(job) {   // 잡 완료 시 최근 제작 스냅샷 저�
       items: job.saves.map(s => ({ url: baseUrl(s.url), dlname: s.dlname, cap: s.cap || '', varStr: s.varStr || '' })) })); } catch {}
 }
 function clearRestored() {   // 새 제작 발사 = 복원 고스트 치우고 새 결과로(복원분은 '이전 제작'으로 되돌림)
-  if (!RESTORED) return; RESTORED = false; RESTORED_URLS.clear();
+  if (!RESTORED) return; RESTORED = false; RESTORED_BID = ''; RESTORED_URLS.clear();
   const r = document.getElementById('job-R'); if (r) r.remove();
   CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) { tr.innerHTML = ''; tr.style.height = ''; }   // 높이 핏 잔존값 해제(QA3 260706)
   $('#carwrap').hidden = true; $('#carbar').hidden = true; carUpdate(); carHSync(); renderHist();   // 접기 헤더도 동기(비면 숨김 · 260706)
@@ -3412,7 +3414,8 @@ function doRestore(pick, collapsed) {   // pick(items/ts/label[/src])을 맨 위
   const rjob = { n: 'R', label: pick.label || '제작', t0: pick.ts, status: 'done', _restored: true, _saved: true, src: pick.src,
     outs: pick.items.map(it => ({ label: (it.varStr || '').replace(/^\s*·\s*/, '') })), done: pick.items.map(() => true), saves: [] };
   pick.items.forEach((it, i) => { RESTORED_URLS.add(histKey(it.url)); carAppend(it.url, it.dlname, it.cap || pick.label || '', rjob, it.varStr || '', rjob.outs[i], true, undefined, collapsed); });
-  RESTORED = true; RESTORED_TS = pick.ts || 0; renderJob(rjob); renderHist();   // 맨 위 결과 + 이전 제작서 제외
+  RESTORED = true; RESTORED_TS = pick.ts || 0; RESTORED_BID = (pick.src && typeof pick.src.bid === 'string') ? pick.src.bid : '';   // 묶음키 보관 = 뒤늦게 도착한 형제 작업 재수렴(reconcileRestoredBatch)
+  renderJob(rjob); renderHist();   // 맨 위 결과 + 이전 제작서 제외
   return true;
 }
 // 특정 작업 id(완성 알림 #done=<id>)의 결과 찾기 — 로컬 마지막이 그 id면 그걸로(src 보유=수정가능), 아니면 서버(thumb-hist.json) 같은 id 그룹.
@@ -3438,11 +3441,31 @@ function restoreById(id) {
   const pick = findResultById(id);
   if (!pick) return false;                                      // 아직 없음(빌드·배포 랙) → 호출측이 재시도
   if (RESTORED) {                                               // 다른 게 복원돼 있으면 치우고 교체
-    RESTORED = false; RESTORED_URLS.clear();
+    RESTORED = false; RESTORED_BID = ''; RESTORED_URLS.clear();
     const r = document.getElementById('job-R'); if (r) r.remove();
     CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) { tr.innerHTML = ''; tr.style.height = ''; }   // 높이 핏 잔존값 해제(QA3 260706)
   }
   return doRestore(pick);
+}
+// 묶음(bid) 재수렴 — 복원된 결과가 '한 번의 생성' 중 일부만 담고 있으면, 뒤늦게 도착한 형제 작업을 합쳐 다시 복원(운영자 260731 "저작권+미셸 같이 만들었는데 작업내역이 분리됨 · 2/2여야 함").
+// 왜 갈렸나: 딥링크(?done=<id>)·타 기기 진입은 R2 즉시 조회(fetchMetaById)로 **그 id 하나만** SRV_HIST에 선주입한다 — 배치는 요청마다 작업 id가 따로 발급되므로(bi 0=자막·1=저작권)
+// 형제 id는 그 순간 SRV_HIST에 없고, bid 그룹 필터(findResultById)가 자기 자신만 잡아 결과는 '1장'으로 굳었다. 그 뒤 thumb-hist.json이 배포돼 형제가 도착해도 결과를 다시 짜는 경로가 없어
+// 형제는 '이전 제작'에 낱장으로 떨어졌다(= 스크린샷 상태: 결과 저작권 1장 / 이전 제작 릴스 자막 1장). 로컬 제작 기기·부팅 자동복원은 원래 묶음이라 무접촉 = 회귀 0.
+function reconcileRestoredBatch() {
+  if (!RESTORED || !RESTORED_BID) return false;                 // 묶음 아님(단발·구 이력) = 종전대로
+  const sib = (SRV_HIST || []).filter(e => e && e.url && bidOf(e) === RESTORED_BID && (e.ts || 0) > SRV_CLEAR);
+  if (!sib.some(e => !RESTORED_URLS.has(histKey(e.url)))) return false;   // 새로 붙일 형제 없음 = 무동작(재복원 깜빡임 0)
+  const sorted = sib.slice().sort((a, b) => (biOf(a) - biOf(b)) || String(a.dlname || '').localeCompare(String(b.dlname || '')));   // 발사순(bi) = 1/2·2/2 배열(findResultById 정본 미러)
+  const withSrc = sorted.find(e => e.src && e.src.app);
+  const pick = { ts: Math.max(...sorted.map(e => e.ts || 0)), label: sorted[0].cap || '제작', src: withSrc ? withSrc.src : undefined,
+    items: sorted.map(e => ({ url: e.url, dlname: e.dlname, cap: e.cap || '', varStr: e.varStr || '' })) };
+  const collapsed = !!($('#carwrap') && $('#carwrap').hidden);   // 접힘·펼침 = 지금 보고 있는 상태 유지(재복원이 화면을 열거나 닫지 않음)
+  RESTORED = false; RESTORED_BID = ''; RESTORED_URLS.clear();
+  const r = document.getElementById('job-R'); if (r) r.remove();
+  CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) { tr.innerHTML = ''; tr.style.height = ''; }   // 캐러셀 비우고 묶음 전체로 재구성(restoreById 교체 블록 미러)
+  const ok = doRestore(pick, collapsed);
+  console.log('[thumb] 묶음 재수렴 — bid=' + (pick.src && pick.src.bid || '?') + ' · 합류 ' + pick.items.length + '장');   // 계측(CLAUDE.md [관측]) — 조용한 재구성 금지
+  return ok;
 }
 let _histCloseT = null;   // 이전 제작 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(직전 제작 _carCloseT 미러·운영자 260707)
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden;   // hidden이면 지금 펼치는 동작
