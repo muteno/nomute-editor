@@ -11504,7 +11504,25 @@ function renderSnsTrends() {
   const ytGrid = bySort(cutH(ytRaw, 24), 'views').slice(0, 10).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = 24h 이내만 + 조회수 내림차순(운영자 260726 "24시간 지난 것은 안나오게 · 조회수가 기준이면 동물이 1위여야" — 구 표시순 = mostPopular 차트 순서 그대로[상승속도·최신성 가중]라 58만이 352만 위에 서던 것 교정) · 컷 경계 = TOP 입장컷 TOP_MAX_H(24h · 260721) 동축 · 미상(NaN) = fail-soft 통과(cutH 공통) · 구 freshFirst(12h 부양)·fill10(24h 밖 스테일 채움 10개 보장 260721) = 조회수 순서 왜곡·24h 컷 위반이라 이 섹션 한정 폐지 → 부족분 = 조용한 공백(kobL "10개 안 나와도 괜찮아" 선례)
   if (ytGrid.length) gYT += sec('yt', '유튜브', rtBase, ytGrid.length, '<div class="trend-grid wd">' + ytGrid.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
   // 뉴스·쇼츠·AI 영상 = 큐레이션(검색·카테고리 파생 = 유튜브 mostPopular 전체 인기 차트 아님) → 큐레이션 게시물(gCUR)로 이관(운영자 260724 "유튜브 기본 인기 게시물 말고 큐레이션된 부분[뉴스·쇼츠·AI] 모두 큐레이션 영역으로"). 뉴스 = mostPopular category25 뉴스·정치 필터(온-미션 카테고리 선정) · 쇼츠·AI = InnerTube 키워드 검색 파생. 인기(mostPopular 전체)만 유튜브 대분류(gYT) 잔존. gCUR 순서 = 뉴스·쇼츠·AI(키워드/카테고리) → 유튜브·틱톡·인스타·X·스레드(구독)
-  if (ytnL.length) gCUR += sec('ytn', '유튜브 - 뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
+  // ── 유튜브 주제별 인기(운영자 260731 "유튜브 주제별로 24시간 내 상위 5개까지 · 모든 주제 · 반려동물·노하우스타일·교육 제외") ──
+  //   축 = mostPopular 차트를 videoCategoryId로 좁힌 것(채널 목록 아님) · 수집 = scraper youtube_cats{"25":[…]} · 표시 순서 = YT_CATS 배열 순서(설정 재배열분이 오면 그 순서가 정본 = 후속 UI)
+  //   컷·정렬 = 유튜브 인기 그리드(ytGrid 11504) **문법 그대로 계승** — cutH 24h → 조회수 내림차순 → slice(상한만 10→5) · 부족분 = 조용한 공백(채움 금지 = 24h 컷 취지 보존)
+  //   카드 = .trend-grid.wd + card(,,1) 16:9(형제 소분류 전원 동일) · 신규 CSS·신규 컴포넌트 0
+  const YTC_N = 5;   // 주제당 상한(운영자 "상위 5개까지") — 11주제 × 5 = 최대 55장이라 상한을 올리면 큐레이션 스크롤이 배로 는다
+  const ytcRaw = d.youtube_cats || {};
+  const ytcL = YT_CATS.map(c => [c[0], c[1], bySort(cutH(ytcRaw[String(c[0])] || [], 24), 'views').slice(0, YTC_N).map(v => ({ ...v, cover: v.thumb }))]).filter(z => z[2].length);
+  // 노뮤트 픽 = **고른 주제들 안에서만** 재랭킹(운영자 260731) — 새 수집 0(위 주제 카드 재사용) · 점수 = 실시간 TOP의 lane() 문법 계승
+  //   (주제 내 순위 정규화 sc = 1 - r/L 주정렬 + 조회수 log 타이브레이크 — 주제 간 절대 조회수 비교는 장르 스케일 격차로 무의미) ·
+  //   주제 캡 2 = 한 장르 독식 방지(TOP 10 플랫폼 캡 4 문법 미러) · 상한 10 · 주제가 1개뿐이면 그 주제 복제라 미표기
+  const npPool = [];
+  ytcL.forEach(z => z[2].forEach((v, r) => npPool.push({ v, cat: z[0], sc: 1 - r / z[2].length, ht: Math.log10(1 + (v.views || 0)) })));
+  npPool.sort((a2, b2) => (b2.sc - a2.sc) || (b2.ht - a2.ht));
+  const npCap = {}, npL = [];
+  npPool.forEach(p2 => { if (npL.length >= 10) return; const n2 = npCap[p2.cat] || 0; if (n2 >= 2) return; npCap[p2.cat] = n2 + 1; npL.push(p2.v); });
+  if (ytcL.length > 1 && npL.length) gCUR += sec('nmp', '노뮤트 픽', rtBase, npL.length, '<div class="trend-grid wd">' + npL.map((t, i) => card(t, i, 1)).join('') + '</div>');
+  ytcL.forEach(z => { gCUR += sec('ytc-' + z[0], '유튜브 - ' + z[1], rtBase, z[2].length, '<div class="trend-grid wd">' + z[2].map((t, i) => card(t, i, 1)).join('') + '</div>'); });
+  // 폴백 = youtube_cats 미도착(구 산출·무키)일 때만 구 단일 '유튜브 - 뉴스' 섹션 유지(화면 공백 회귀 차단 · 수집이 새 키를 채우면 이 줄은 미도달)
+  if (!ytcL.length && ytnL.length) gCUR += sec('ytn', '유튜브 - 뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
   if (shL.length) gCUR += sec('sh', '유튜브 - 쇼츠', rtBase, shL.length, '<div class="trend-grid wd">' + shL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 쇼츠 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — wd 가로 16:9 · 상한 10 = shL slice) · 뉴스와 동일 스타일 계승
   if (aiL.length) gCUR += sec('ai', '유튜브 - AI 영상', rtBase, aiL.length, '<div class="trend-grid wd">' + aiL.map((t, i) => card(t, i, 1)).join('') + '</div>');
   if (sytAll.length) gCUR += sec('syt', '유튜브 - 구독', '', sytAll.length, '<div class="trend-grid wd">' + sytAll.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 유튜브 구독 = 큐레이션 게시물 소분류(운영자 260723 · 260724 지역 무관 단일 블록) · 16:9 wd 카드 계승 · 빈 = 미표기(조용한 공백)
@@ -11685,7 +11703,9 @@ function renderSnsTrends() {
   fillT('xtr', '.trend-q', xtr.slice(0, 10).map(g => g.ko || g.query || ''));   // ⑩ X 실시간 트렌드 · ko 우선 · 상한 10(운영자 260721 반갈 "1위~10위")
   fillT('btr', '.trend-q', (d.bsky_trends || []).slice(0, 10).map(g => g.ko || g.query || ''));   // ⑦-b 블스 실시간 트렌드(운영자 260721 반갈 · textContent 주입 = XSS 안전 · ko = 미래 번역축 대비 동일 폴백)
   fillT('yt', '.tcard-t', ytGrid.map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = ytGrid 동일 원본(260721 채움 리스트와 1:1 — 별도 slice면 채움분 제목 밀림)
-  fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서)
+  fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서) · 260731부터 youtube_cats 폴백 경로 전용(정상 국면은 아래 주제 루프가 담당)
+  ytcL.forEach(z => fillT('ytc-' + z[0], '.tcard-t', z[2].map(v => v.title || '')));   // 주제별 인기 제목(운영자 260731) — 섹션 키 = ytc-<videoCategoryId> · textContent 주입 = XSS 안전(형제 fillT 관용구)
+  fillT('nmp', '.tcard-t', npL.map(v => v.title || ''));   // 노뮤트 픽 제목(재랭킹 리스트와 1:1)
   document.querySelectorAll('[data-sec=ytn] .tcard-cov img, [data-sec^="syt"] .tcard-cov img').forEach(im => {   // ⚠ 접두 = "syt"(하이픈 없음) — 구독 블록이 지역 2군(syt-kr·syt-gl)에서 지역 무관 단일 sec('syt')로 합쳐질 때(260724) 이 셀렉터만 구 하이픈 접두로 남아 사다리가 통째로 미부착 = 가로 영상 oardefault 404(120×90 회색 플레이스홀더 · 200 아닌 404도 이미지 본문이라 브라우저가 그려버림)가 그대로 노출되던 회귀(260727 실측 봉합) · 구독(syt)도 동일 사다리 합류(운영자 260720 "썸네일 다 16:9" — oar 세로원본 → 16:9 cover 중앙 크롭 = Q04 "크롭되어도 되니까 동일하게" 판례 동축)   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
     const steps = [im.src.replace('oardefault', 'hq720'), im.src.replace('oardefault', 'mqdefault')];
     const down = () => { const nx = steps.shift(); if (nx) im.src = nx; else { im.onerror = null; im.style.display = 'none'; } };
@@ -12083,6 +12103,7 @@ function accPlat(p) {   // 구 평면 배열 = 세계(gl) 흡수(서버 cleanPla
     if (Array.isArray(p.shorts)) o.shorts = p.shorts.slice();
     if (Array.isArray(p.aivid)) o.aivid = p.aivid.slice();
     if (Number.isInteger(p.news_cat)) o.news_cat = p.news_cat;
+    if (Array.isArray(p.news_cats)) o.news_cats = p.news_cats.slice();   // 주제 다중선택(운영자 260731) — 저장 시 동봉 필수(미동봉 = 서버 patch가 통째 교체라 설정 유실 · shorts·aivid와 동일 계약)
   }
   return o;
 }
@@ -12103,7 +12124,7 @@ function renderAccChips() {
   $('#accIn').placeholder = isSubs ? '계정명 (예: OpenAI)' : '검색어 (예: 요리 레시피)';
   $('.acc-note').textContent = isSubs ? '넣은 계정의 최신 글을 그대로 가져옵니다 · 팔로우·알고리즘 무관(인기 랭킹엔 미반영)'
     : isKw ? '이 검색어로 찾은 영상을 가져옵니다 · 비우면 기본 검색어로 동작해요'
-    : '이 카테고리의 인기 영상을 가져옵니다 · 하나만 고를 수 있어요';
+    : '지금은 기본 11개 주제가 모두 나옵니다 · 주제 고르기·순서 바꾸기는 준비 중이에요';   // 260731 정직 표기 — 수집이 news_cats(주제 다중)로 넘어가 이 단일 칩은 표시에 영향하지 않는다. 조용히 죽은 컨트롤로 두지 않는다(선택 UI 도입 시 이 줄 교체)
   if (isSubs) {
     box.innerHTML = ['kr', 'gl'].map(r => `<div class="acc-glbl">${r === 'kr' ? '한국' : '세계'}<i>${(P[r] || []).length}/${ACC_CAP[_accTab]}</i></div><div class="acc-grow">` +
       (P[r] || []).map((a, i) => `<button class="acc-chip" type="button" data-r="${r}" data-i="${i}">@<span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg></button>`).join('') + '</div>').join('');
