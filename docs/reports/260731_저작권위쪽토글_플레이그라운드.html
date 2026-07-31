@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko" data-pg-template="v1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>260731 · 저작권 「위쪽」 토글 — 위치 플레이그라운드</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   토큰 사본 — 값 정본 = viewer/index.html :root / viewer/tokens.css
+   (창작 0 · 실측 발췌 · --accent-4 #FFE13D·--bias-l1 #38C6FF = thumb.html 미러 주석 실측)
+   ══════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13);
+  --accent-4:#FFE13D; --bias-l1:#38C6FF;
+  --on-accent:#032322; --amber:#FF9E3D; --danger:#FF5A5A;
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --btn:34px; --btn-sm:30px; --btn-lg:46px;
+  --blur-backdrop:7px;
+  --fs-h2:15px; --fs-h3:14px; --fs-label:13px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s; --dur-acc:.26s;
+  --press-m:.96;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0a0a0a;color:var(--fg);
+  font:var(--fs-label)/var(--lh-base) -apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+body{padding:var(--sp-2);display:flex;flex-direction:column;align-items:center;gap:var(--sp-2)}
+h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
+.top{width:min(97vw,1560px);display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
+.top .sub{color:var(--mut);font-size:var(--fs-xs);margin:0}
+.top .drift{margin-left:auto;font-size:var(--fs-xs);color:var(--mut)}
+.top .drift b{color:var(--amber);font-weight:var(--fw-b)}
+
+.pgwrap{width:min(97vw,1560px);aspect-ratio:16/9;min-height:520px;
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+.stagewrap{position:sticky;top:var(--sp-2);min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:var(--sp-1);
+  background:#0e0f0e;border:1px solid var(--line);border-radius:var(--r-l);padding:var(--sp-2)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center}
+.stagecap b{color:var(--fg)}
+.stagecol{width:100%;height:100%;min-height:0;display:flex;flex-direction:column;align-items:center;gap:var(--sp-1)}
+
+/* ── 옵션 행 재현(thumb.html #cpThumbRow · .scard/.csec/.ovfmt 실측 계승) ── */
+.scard{width:100%;max-width:340px;padding:8px 13px;border:1px solid var(--line);border-radius:var(--r-s);
+  background:rgba(255,255,255,.015)}
+.csec{display:flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:var(--fw-x);color:var(--fg);margin:0}
+.csec::before{content:'•';color:var(--accent);font-weight:var(--fw-b)}
+.cysep{color:var(--mut);font-weight:400}
+.csec .ovfmt{cursor:pointer;font-weight:800;-webkit-tap-highlight-color:transparent;user-select:none;
+  padding:3px 5px;margin:-3px 0;transition:color var(--dur),transform var(--dur-fast)}
+.csec .ovfmt:active{transform:scale(var(--press-m))}
+.csec .ovfmt.reels{color:var(--accent-4)}
+.csec .ovfmt.post{color:var(--bias-l1)}
+.csec .ovfmt.cpoff{color:var(--mut)}
+.uptog{display:inline-flex;align-items:center;gap:2px;cursor:pointer;font-weight:800;color:var(--mut);
+  padding:3px 5px;margin:-3px 0;-webkit-tap-highlight-color:transparent;user-select:none;
+  background:none;border:none;font-family:inherit;font-size:var(--fs-label);
+  transition:color var(--dur),transform var(--dur-fast)}
+.uptog:active{transform:scale(var(--press-m))}
+.uptog svg{width:12px;height:12px;display:block}
+.uptog.on{color:var(--accent)}
+.uptog.on.c-lemon{color:var(--accent-4)}
+.uptog.on.c-green{color:#0FFD02}
+
+/* ── 산출물 캔버스(1080 좌표계 실척 축소) ── */
+.canvwrap{position:relative;min-height:0;flex:1 1 auto;display:grid;place-items:center;width:100%}
+.canv{position:relative;background:#000;border:1px solid var(--line);overflow:hidden;border-radius:6px}
+.canv img,.canv .bgfill{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.checker{background:conic-gradient(#2a2a2a 0 25%,#1a1a1a 0 50%,#2a2a2a 0 75%,#1a1a1a 0) 0 0/22px 22px}
+.crline{position:absolute;white-space:nowrap;color:#fff;font-weight:400;
+  font-family:"Noto Sans KR",sans-serif;text-shadow:none;transition:top var(--dur) var(--ease)}
+.gdline{position:absolute;white-space:nowrap;color:#fff;font-weight:400;
+  font-family:"Noto Sans KR",sans-serif;transition:top var(--dur) var(--ease)}
+.ghosty{position:absolute;left:0;right:0;border-top:1px dashed rgba(255,255,255,.4);pointer-events:none}
+.ghosty i{position:absolute;right:4px;top:1px;font-style:normal;font-size:9px;color:rgba(255,255,255,.55)}
+.sel-y{position:absolute;left:0;right:0;border-top:1px solid rgba(var(--accent-rgb),.75);pointer-events:none}
+.sel-y i{position:absolute;left:4px;top:1px;font-style:normal;font-size:9px;color:var(--accent);font-weight:700}
+.ruler{position:absolute;inset:0;pointer-events:none}
+.ruler div{position:absolute;left:0;right:0;border-top:1px solid rgba(255,255,255,.08)}
+.ruler div.maj{border-top-color:rgba(255,255,255,.2)}
+.ruler div i{position:absolute;left:2px;top:0;font-style:normal;font-size:8px;color:rgba(255,255,255,.4)}
+.safez{position:absolute;pointer-events:none;background:repeating-linear-gradient(45deg,rgba(255,90,90,.16) 0 6px,transparent 6px 12px);
+  border:1px dashed rgba(255,90,90,.4)}
+.safez i{position:absolute;left:4px;bottom:2px;font-style:normal;font-size:8px;color:rgba(255,120,120,.8)}
+
+/* ═══ 콘솔 ═══ */
+.console{min-width:0;min-height:0;overflow-y:auto;background:#141414;border:1px solid var(--line);
+  border-radius:var(--r-l);padding:var(--sp-2)}
+.console::-webkit-scrollbar{width:8px}
+.console::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
+.grp{border-top:1px solid var(--line2);padding-top:var(--sp-2);margin-top:var(--sp-2)}
+.grp:first-child{border-top:0;margin-top:0;padding-top:0}
+.grp__h{font-size:var(--fs-xs);letter-spacing:.08em;color:var(--mut);margin:0 0 var(--sp-1);font-weight:var(--fw-b)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:var(--sp-1) var(--sp-2)}
+.ctl__l{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-1);
+  font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px}
+.ctl__v{color:var(--fg);font-weight:var(--fw-b);font-variant-numeric:tabular-nums;white-space:nowrap;
+  max-width:58%;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ctl__l > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.ctl__v.warn{color:var(--amber)}
+input[type=range]{width:100%;accent-color:var(--accent);height:16px;margin:0}
+select{width:100%;height:var(--btn-sm);background:#101210;color:var(--fg);font:inherit;
+  font-size:var(--fs-sm);border:1px solid var(--line);border-radius:var(--r-s);padding:0 var(--sp-1)}
+.presets{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin-bottom:var(--sp-2)}
+.pbtn{height:var(--btn-sm);padding:0 var(--sp-2);font:inherit;font-size:var(--fs-sm);
+  color:var(--fg);background:rgba(255,255,255,.06);border:1px solid var(--line);
+  border-radius:var(--r-s);cursor:pointer}
+.pbtn:hover{background:rgba(255,255,255,.11)}
+.pbtn.on{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.3);font-weight:var(--fw-b)}
+.pbtn.star{color:var(--accent);border-color:rgba(var(--accent-rgb),.42);background:var(--accent-dim)}
+pre{margin:var(--sp-1) 0 0;padding:var(--sp-2);border-radius:var(--r-s);background:#0c0e0c;
+  border:1px solid var(--line);overflow-x:auto;white-space:pre-wrap;
+  font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8bfae}
+.foot{font-size:var(--fs-xs);color:var(--mut);line-height:1.8;padding-left:16px;margin:var(--sp-1) 0 0}
+.foot code{color:var(--fg);font-size:10px}
+
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(var(--blur-backdrop));
+  display:none;place-items:center;z-index:99;padding:var(--sp-3)}
+.mask.on{display:grid}
+.dlg{width:min(92vw,520px);max-height:80vh;overflow-y:auto;background:rgba(24,25,28,.96);
+  border:1px solid var(--line);border-radius:var(--r-modal);padding:var(--sp-3)}
+.dlg h2{margin:0 0 var(--sp-1);font-size:var(--fs-h2);font-weight:var(--fw-x)}
+.dlg h2 b{color:var(--amber)}
+.dlg ul{margin:var(--sp-1) 0;padding-left:16px;font-size:var(--fs-sm);color:var(--mut);line-height:1.8}
+.dlg ul b{color:var(--fg)}
+.dlgbtns{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin-top:var(--sp-2)}
+.dlgbtns .pbtn{flex:1 1 auto}
+
+@media (max-width:900px){
+  .pgwrap{aspect-ratio:auto;grid-template-columns:1fr}
+  .stagewrap{min-height:64vh;position:sticky;top:0;z-index:2;align-self:start}
+  .console{max-height:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>저작권 「위쪽」 토글 — 위치 플레이그라운드</h1>
+  <p class="sub">260731 · 대상 = <b>apps/thumbnail/nomute_copyright.py</b> TEXT_Y(현행 100) + <b>viewer/thumb.html</b> 저작권 행 · 좌 = 산출물 실척 재현 / 우 = 콘솔</p>
+  <p class="drift" id="drift"></p>
+</div>
+
+<div class="pgwrap">
+  <!-- ① 실물 재현 -->
+  <div class="stagewrap">
+    <div class="stagecol">
+      <!-- 옵션 행 재현: 저작권 3단 토글 옆에 신설 「위쪽」 토글(실클릭) -->
+      <div class="scard"><div class="csec"><span class="nm">저작권</span><span class="cysep">|</span>
+        <span id="pvFmt" class="ovfmt reels" role="button" tabindex="0" title="탭=릴스↔포스트">릴스</span>
+        <button class="uptog" id="pvUp" aria-pressed="false" title="탭=저작권 문구를 위쪽으로"></button>
+      </div></div>
+      <div class="canvwrap" data-pg-preview><div class="canv" id="canv"></div></div>
+    </div>
+    <p class="stagecap">미리보기 안 <b>「위쪽」 토글·포맷이 실제로 눌러진다</b> — ON = 지정 Y로 상승 · 점선 = 현행 Y100 기준선</p>
+    <button class="pbtn" id="baseBtn" data-pg-baseline title="누르고 있는 동안 현행(토글 없음 · Y100) 실측값으로 되돌려 그린다 — 비교 기준 고정">◉ 누르고 있기 = 현행과 비교</button>
+  </div>
+
+  <!-- ②③④⑤ 콘솔 -->
+  <aside class="console">
+    <div class="grp">
+      <p class="grp__h">② 프리셋 — 현행 포함 · ★ 추천</p>
+      <div class="presets" id="presets" data-pg-presets></div>
+    </div>
+    <div id="deck"></div>
+    <div class="grp">
+      <p class="grp__h">④ 선택값</p>
+      <div class="presets">
+        <button class="pbtn star" id="btnCopy" data-pg-copy>선택값 복사</button>
+        <button class="pbtn" id="btnReset">현행으로 초기화</button>
+      </div>
+      <pre id="out"></pre>
+    </div>
+    <div class="grp">
+      <p class="grp__h">⑤ 재현 한계</p>
+      <ul class="foot" data-pg-note>
+        <li>산출물 정본 = PIL <code>NotoSansCJK-Regular 29px</code> · 여기는 웹폰트 <code>Noto Sans KR 400</code> 근사(자간·글리프 폭 미세 차이 있음 — <b>Y 좌표 판정에는 영향 0</b>)</li>
+        <li>배경 더미 = SVG 그라데(자기완결 · 외부 요청 0) — 실사진 아님. 실제 산출물은 <b>투명 PNG</b>(체커 배경으로 확인)</li>
+        <li>플랫폼 UI 세이프존 = <b>근사치</b>(IG 릴스 상단 아이콘·우측 레일·하단 캡션 대역) — 실기기 픽셀 정본 아님. 포스트(4:5 피드)는 UI가 이미지를 안 덮어 미표시</li>
+        <li>안내문 46px 리듬 = 뷰어 renderCpPrev 미러 — 저작권 Y가 오르면 안내문 스택도 같은 기준선에서 시작(현행 로직)</li>
+        <li>「위쪽」 토글 = <b>신설 UI ⚠배치</b> — 여기 배치(저작권 행 오른쪽)는 시안이고, 확정은 선택값 회신 후</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="mask" id="mask">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+    <h2 id="dlgT"><b>⚠ 정본 이탈</b> — 그대로 복사할까?</h2>
+    <p style="margin:0;font-size:var(--fs-sm);color:var(--mut)">아래 축은 산출물 정본(<b>nomute_copyright.py</b> · 뷰어 미러)의 확립값을 벗어났어. 「역제안 포함 복사」로 보내면 회신이 <b>정본 갱신 승인</b> 경로가 돼.</p>
+    <ul id="dlgList"></ul>
+    <div class="dlgbtns">
+      <button class="pbtn star" id="dlgAll">역제안 포함 복사</button>
+      <button class="pbtn" id="dlgSafe">계승분만 복사</button>
+      <button class="pbtn" id="dlgNo">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ══════════ 산출물 정본 상수(실측 발췌 · 창작 0) ══════════ */
+const SPEC={reels:{w:1080,h:1920},post:{w:1080,h:1350}};   // nomute_copyright.py SPECS
+const CUR_Y=100, CUR_FS=29, CUR_GAP=46;                    // TEXT_Y=100 · FONT_SIZE=29 · 안내문 46 리듬(renderCpPrev)
+
+/* 배경 더미(자기완결 SVG · 썸네일풍) */
+function bgURL(fmt,light){
+  const s=SPEC[fmt];
+  const c1=light?'#cfd8cf':'#131b24', c2=light?'#9fb3a8':'#28323f';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+s.w+'" height="'+s.h+'" viewBox="0 0 '+s.w+' '+s.h+'">'
+    +'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient></defs>'
+    +'<rect width="100%" height="100%" fill="url(#g)"/>'
+    +'<circle cx="'+(s.w*.78)+'" cy="'+(s.h*.3)+'" r="'+(s.w*.32)+'" fill="rgba(255,255,255,'+(light?'.25':'.05')+')"/>'
+    +'<rect x="'+(s.w*.08)+'" y="'+(s.h*.62)+'" width="'+(s.w*.84)+'" height="'+(s.h*.075)+'" rx="14" fill="rgba('+(light?'0,0,0,.28':'255,255,255,.1')+')"/>'
+    +'<rect x="'+(s.w*.08)+'" y="'+(s.h*.72)+'" width="'+(s.w*.6)+'" height="'+(s.h*.05)+'" rx="12" fill="rgba('+(light?'0,0,0,.2':'255,255,255,.07')+')"/></svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+
+/* ══════════ ③ 컨트롤 정의 — kind: rng(자유)·sel(폐쇄) · cur = 현행 실측 ══════════ */
+const CTL=[
+{g:'A. 위치 — 핵심 축',items:[
+  {id:'tog',  l:'「위쪽」 토글',      cur:'on', kind:'sel', opt:[['off','OFF — 현행 Y100 그대로'],['on','ON — 아래 지정 Y로 상승']]},
+  {id:'upY',  l:'위쪽 ON 시 Y(1080좌표)', cur:100, min:8, max:140, step:2, u:'px', kind:'rng'},   /* 결정축 = 이탈 판정 제외(Y 변경이 이 시안의 목적 — 출력에 '신설 인자'로 명기) */
+  {id:'fmt',  l:'포맷',              cur:'reels', kind:'sel', opt:[['reels','릴스 9:16 (1080×1920)'],['post','포스트 4:5 (1080×1350)']]},
+  {id:'xAlign',l:'수평 정렬',        cur:'c', kind:'sel', opt:[['c','중앙 (현행)'],['l','좌측 ⚠'],['r','우측 ⚠']], canon:'c', cn:'중앙'}
+]},
+{g:'B. 문구 — 템플릿 변수',items:[
+  {id:'year', l:'연도',   cur:'2026', kind:'sel', opt:[['2025','2025'],['2026','2026 (기본)'],['2027','2027']]},
+  {id:'name', l:'이름',   cur:'', kind:'sel', opt:[['','빈값 — 플랫폼만 (기본)'],['nomute','nomute'],['muteno','muteno']]},
+  {id:'plat', l:'플랫폼', cur:'threads', kind:'sel', opt:[['threads','threads (기본)'],['인스타그램','인스타그램'],['유튜브','유튜브']]}
+]},
+{g:'C. 안내문 동반 — 46px 리듬',items:[
+  {id:'guideOn', l:'안내문',      cur:'off', kind:'sel', opt:[['off','OFF (기본)'],['on','ON — 저작권 아래 스택']]},
+  {id:'guideN',  l:'안내문 줄 수', cur:2, min:1, max:4, step:1, u:'줄', kind:'rng'},
+  {id:'guideGap',l:'줄 간격',     cur:46, min:28, max:64, step:2, u:'px', kind:'rng', canon:CUR_GAP, cn:'46 리듬'},
+  {id:'guideFollow',l:'안내문 기준선', cur:'follow', kind:'sel', opt:[['follow','저작권 Y 따라 상승 (현행 로직)'],['stay','안내문은 Y100 잔류 ⚠ 로직 분기']], canon:'follow', cn:'동반 상승'}
+]},
+{g:'D. 활자 — 산출물 정본 축 (이탈 = ⚠ 스크립트 갱신 역제안)',items:[
+  {id:'fs',   l:'글자 크기', cur:29, min:20, max:40, step:1, u:'px', kind:'rng', canon:CUR_FS, cn:'FONT_SIZE 29'},
+  {id:'fwB',  l:'굵기',     cur:'400', kind:'sel', opt:[['400','400 (현행)'],['700','700 ⚠']], canon:'400', cn:'Regular 400'},
+  {id:'col',  l:'색',       cur:'fff', kind:'sel', opt:[['fff','순백 #FFFFFF (현행)'],['e8','옅은 흰 #E8E8E8 ⚠'],['mut','--mut 톤 ⚠']], canon:'fff', cn:'#FFFFFF'},
+  {id:'alpha',l:'불투명도', cur:1, min:.4, max:1, step:.05, kind:'rng', canon:1, cn:'1.0'},
+  {id:'ls',   l:'자간',     cur:0, min:-1, max:3, step:.5, u:'px', kind:'rng', canon:0, cn:'0(트래킹 없음)'}
+]},
+{g:'E. 보기 보조 — 미리보기 전용(산출물 무관)',items:[
+  {id:'bg',    l:'배경',       cur:'dark', kind:'sel', opt:[['dark','어두운 썸네일풍 더미'],['light','밝은 사진풍 더미'],['black','검정'],['checker','체커(투명 산출물 실상태)']]},
+  {id:'safez', l:'플랫폼 UI 세이프존', cur:'on', kind:'sel', opt:[['on','표시 — IG 릴스 UI 근사'],['off','숨김']]},
+  {id:'ruler', l:'Y 눈금자',   cur:'on', kind:'sel', opt:[['on','20px 눈금 · 100px 굵은선'],['off','숨김']]},
+  {id:'ghost', l:'현행 Y100 기준선', cur:'on', kind:'sel', opt:[['on','점선 표시 (비교 기준)'],['off','숨김']]},
+  {id:'zoom',  l:'보기 배율',  cur:'full', kind:'sel', opt:[['full','전체 프레임'],['top','상단 320px 확대 — 미세 판정용']]}
+]},
+{g:'F. 「위쪽」 토글 UI — 신설 ⚠배치 시안',items:[
+  {id:'togLabel',l:'토글 표기', cur:'both', kind:'sel', opt:[['both','위쪽 + SVG 셰브론 ∧'],['text','「위쪽」 글자만'],['svg','SVG 셰브론만']]},
+  {id:'togColor',l:'ON 점등색', cur:'accent', kind:'sel', opt:[['accent','--accent 형광 (onoff ON 계승)'],['lemon','--accent-4 골드레몬 ⚠ 릴스색 재지정'],['green','#0FFD02 형광그린 ⚠']], canon:'accent', cn:'--accent'},
+  {id:'togHome',l:'토글 자리',  cur:'row', kind:'sel', opt:[['row','저작권 행 — 3단 토글 오른쪽'],['block','문구 블록(#cpBlock) 안 ⚠ 접힘 시 은닉']], canon:'row', cn:'저작권 행'}
+]}
+];
+
+const ITEMS=CTL.flatMap(g=>g.items);
+const DEF={}; ITEMS.forEach(it=>DEF[it.id]=it.cur);
+let V={...DEF};
+
+const PRESETS={
+  '현행(Y100 고정)':{tog:'off', upY:100},
+  '★ 위쪽 Y64':{tog:'on', upY:64},
+  '위쪽 Y48':{tog:'on', upY:48},
+  '최상단 근접 Y28':{tog:'on', upY:28},
+  '안내문 동반 확인':{tog:'on', upY:64, guideOn:'on', guideN:2}
+};
+
+const near=(a,b,eps)=>Math.abs(a-b)<(eps===undefined?1e-9:eps);
+const COLMAP={fff:'#FFFFFF', e8:'#E8E8E8', mut:'#8fa697'};
+
+function crText(){
+  const nm=V.name, pl=V.plat;
+  const attr=nm?nm+'('+pl+')':pl;
+  return 'ⓒ '+V.year+'. '+attr+'. all rights reserved.';   // ⓒ · nomute_copyright.py 템플릿 동형
+}
+function effY(){ return V.tog==='on'?+V.upY:CUR_Y; }
+
+/* ══════════ 이탈 판정(실시간 · 값 기준) ══════════ */
+function drifts(){
+  const d=[];
+  ITEMS.forEach(it=>{
+    if(it.canon===undefined) return;
+    const bad = it.kind==='rng' ? !near(+V[it.id],+it.canon,.001) : V[it.id]!==it.canon;
+    if(bad) d.push(it);
+  });
+  return d;
+}
+
+/* ══════════ 미리보기 렌더 ══════════ */
+function render(){
+  const cw=$('.canvwrap'), keep=document.scrollingElement.scrollTop;   // 재렌더 스크롤 보존(§7-1-6)
+  const spec=SPEC[V.fmt];
+  const rect=cw.getBoundingClientRect();
+  const availW=Math.max(60,rect.width-8), availH=Math.max(80,rect.height-8);
+  let k=Math.min(availW/spec.w, availH/spec.h);
+  let viewH=spec.h;
+  if(V.zoom==='top'){ viewH=320; k=Math.min(availW/spec.w, availH/viewH); }
+  const CW=spec.w*k, CH=viewH*k;
+  const py=v=>(v*k).toFixed(2)+'px', px=py;
+
+  const canv=$('#canv');
+  canv.style.width=CW+'px'; canv.style.height=CH+'px';
+  let h='';
+  /* 배경 */
+  if(V.bg==='checker') h+='<div class="bgfill checker"></div>';
+  else if(V.bg==='black') h+='<div class="bgfill" style="background:#000"></div>';
+  else h+='<img alt="" src="'+bgURL(V.fmt,V.bg==='light')+'" style="object-position:top">';
+  /* 눈금자 */
+  if(V.ruler==='on'){
+    h+='<div class="ruler">';
+    for(let y=20;y<viewH;y+=20){
+      const maj=y%100===0;
+      h+='<div class="'+(maj?'maj':'')+'" style="top:'+py(y)+'">'+(maj?'<i>'+y+'</i>':'')+'</div>';
+    }
+    h+='</div>';
+  }
+  /* 세이프존(릴스만 · 근사) */
+  if(V.safez==='on'&&V.fmt==='reels'){
+    h+='<div class="safez" style="left:0;right:0;top:0;height:'+py(150)+'"><i>IG 릴스 상단 UI 대역(근사)</i></div>';
+    if(V.zoom!=='top'){
+      h+='<div class="safez" style="right:0;width:'+px(120)+';top:'+py(700)+';height:'+py(900)+'"><i></i></div>';
+      h+='<div class="safez" style="left:0;right:'+px(120)+';top:'+py(1600)+';bottom:0"><i>캡션 대역</i></div>';
+    }
+  }
+  /* 현행 기준선 + 선택 Y 선 */
+  if(V.ghost==='on') h+='<div class="ghosty" style="top:'+py(CUR_Y)+'"><i>현행 Y100</i></div>';
+  if(V.tog==='on'&&effY()!==CUR_Y) h+='<div class="sel-y" style="top:'+py(effY())+'"><i>Y'+effY()+'</i></div>';
+  /* 저작권 문구 — 정본 좌표계 미러 */
+  const colv=COLMAP[V.col], y0=effY();
+  const alignCss = V.xAlign==='c' ? 'left:0;right:0;text-align:center'
+                 : V.xAlign==='l' ? 'left:'+px(40)+';text-align:left' : 'right:'+px(40)+';text-align:right';
+  h+='<div class="crline" style="'+alignCss+';top:'+py(y0)+';font-size:'+px(V.fs)+';font-weight:'+V.fwB
+    +';color:'+colv+';opacity:'+V.alpha+';letter-spacing:'+px(V.ls)+'">'+crText()+'</div>';
+  /* 안내문 스택(renderCpPrev 미러: y = base + gap*(i+1)) */
+  if(V.guideOn==='on'){
+    const base=V.guideFollow==='follow'?y0:CUR_Y;
+    for(let i=0;i<+V.guideN;i++){
+      h+='<div class="gdline" style="'+alignCss+';top:'+py(base+ +V.guideGap*(i+1))+';font-size:'+px(V.fs)
+        +';font-weight:'+V.fwB+';color:'+colv+';opacity:'+V.alpha+'">※ 안내문 '+(i+1)+'행 예시입니다</div>';
+    }
+  }
+  canv.innerHTML=h;
+
+  /* 옵션 행 재현 동기 */
+  const pf=$('#pvFmt');
+  pf.textContent=V.fmt==='reels'?'릴스':'포스트';
+  pf.className='ovfmt '+(V.fmt==='reels'?'reels':'post');
+  const up=$('#pvUp'), on=V.tog==='on';
+  const chev='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14l6-6 6 6"/></svg>';   // 표지판 도형 = SVG(정본 위 화살표 축 · 유니코드 렌더 금지)
+  up.innerHTML=(V.togLabel!=='svg'?'위쪽':'')+(V.togLabel!=='text'?chev:'');
+  up.className='uptog'+(on?' on':'')+(V.togColor==='lemon'?' c-lemon':V.togColor==='green'?' c-green':'');
+  up.setAttribute('aria-pressed',on);
+  up.title='탭=저작권 문구를 위쪽으로 (ON = Y'+V.upY+')';
+  up.style.display = V.togHome==='row' ? '' : 'none';
+
+  syncCtl(); buildOut();
+  const dl=drifts();
+  $('#drift').innerHTML = dl.length ? '기틀·정본 이탈 <b>'+dl.length+'축</b>' : '이탈 0 — 전부 계승';
+  document.scrollingElement.scrollTop=keep;
+}
+
+/* ══════════ 콘솔 빌드 ══════════ */
+function buildDeck(){
+  let h='';
+  CTL.forEach(g=>{
+    h+='<div class="grp"><p class="grp__h">③ '+g.g+'</p><div class="grid">';
+    g.items.forEach(it=>{
+      h+='<label class="ctl" data-id="'+it.id+'"><span class="ctl__l"><span>'+it.l+'</span><span class="ctl__v" id="v-'+it.id+'"></span></span>';
+      if(it.kind==='rng'){
+        h+='<input type="range" id="c-'+it.id+'" min="'+it.min+'" max="'+it.max+'" step="'+it.step+'" value="'+V[it.id]+'">';
+      }else{
+        h+='<select id="c-'+it.id+'">'+it.opt.map(o=>'<option value="'+o[0]+'"'+(V[it.id]===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
+      }
+      h+='</label>';
+    });
+    h+='</div></div>';
+  });
+  $('#deck').innerHTML=h;
+  ITEMS.forEach(it=>{
+    $('#c-'+it.id).addEventListener('input',e=>{
+      V[it.id]=it.kind==='rng'?+e.target.value:e.target.value;
+      markPreset(); render();
+    });
+  });
+}
+function syncCtl(){
+  ITEMS.forEach(it=>{
+    const el=$('#c-'+it.id), vv=$('#v-'+it.id); if(!el) return;
+    el.value=V[it.id];
+    let txt = it.kind==='rng' ? V[it.id]+(it.u||'') : (it.opt.find(o=>o[0]===V[it.id])||['',''])[1].split(' ')[0];
+    let warn=false;
+    if(it.canon!==undefined){
+      const bad = it.kind==='rng' ? !near(+V[it.id],+it.canon,.001) : V[it.id]!==it.canon;
+      if(bad){ warn=true; txt='⚠ '+txt; } else txt+=' ·계승';
+    }
+    vv.textContent=txt; vv.classList.toggle('warn',warn);
+  });
+}
+function buildPresets(){
+  const box=$('#presets');
+  box.innerHTML=Object.keys(PRESETS).map(nm=>'<button class="pbtn'+(nm.startsWith('★')?' star':'')+'" data-p="'+nm+'">'+nm+'</button>').join('');
+  $$('#presets .pbtn').forEach(b=>b.addEventListener('click',()=>{
+    V={...DEF,...PRESETS[b.dataset.p]}; render(); markPreset();
+  }));
+  markPreset();
+}
+function markPreset(){
+  $$('#presets .pbtn').forEach(b=>{
+    const p={...DEF,...PRESETS[b.dataset.p]};
+    b.classList.toggle('on', ITEMS.every(it=>String(p[it.id])===String(V[it.id])));
+  });
+}
+
+/* ══════════ ④ 선택값 출력 ══════════ */
+function buildOut(){
+  const y=effY(), dl=drifts();
+  const lines=[
+    '[저작권 「위쪽」 토글 — 선택값]',
+    '토글 상태   : '+(V.tog==='on'?'ON':'OFF')+'   [현행 = 토글 없음·Y100 고정]',
+    '위쪽 ON Y  : '+V.upY+'px (1080 좌표)   [현행 TEXT_Y 100]'+(near(+V.upY,100)?' = 계승':' → nomute_copyright.py 신설 인자'),
+    '포맷        : '+(V.fmt==='reels'?'릴스 1080×1920':'포스트 1080×1350')+' — Y값 양 포맷 공용',
+    '토글 표기   : '+(V.togLabel==='both'?'위쪽+SVG셰브론':V.togLabel==='text'?'글자만':'SVG만')
+      +' · ON색 '+(V.togColor==='accent'?'--accent(계승)':'⚠ '+V.togColor)
+      +' · 자리 '+(V.togHome==='row'?'저작권 행(계승)':'⚠ 문구 블록'),
+    '안내문      : '+(V.guideOn==='on'?('ON '+V.guideN+'줄 · gap '+V.guideGap+(near(+V.guideGap,46)?'(계승)':'⚠')+' · 기준선 '+(V.guideFollow==='follow'?'동반 상승(현행 로직)':'⚠ Y100 잔류')):'OFF'),
+    '활자        : fs '+V.fs+(near(+V.fs,29)?'(계승)':'⚠')+' · fw '+V.fwB+(V.fwB==='400'?'(계승)':'⚠')
+      +' · '+(V.col==='fff'?'#FFFFFF(계승)':'⚠ '+V.col)+' · α '+V.alpha+(near(+V.alpha,1)?'(계승)':'⚠')
+  ];
+  if(dl.length){
+    lines.push('','⚠ 정본 이탈 '+dl.length+'축 — 복사 시 역제안 블록 포함');
+  }
+  $('#out').textContent=lines.join('\n');
+}
+function outWithProposal(safeOnly){
+  let t=$('#out').textContent;
+  const dl=drifts();
+  if(dl.length&&!safeOnly){
+    t+='\n\n[🔁 정본 갱신 역제안]\n'+dl.map(it=>{
+      const curv=it.kind==='rng'?it.canon:it.cn;
+      return '- '+it.l+' : 현행 '+(it.cn||curv)+' → 제안 '+V[it.id]+' (적용 = 산출물 정본 전역)';
+    }).join('\n');
+  }
+  return t;
+}
+function doCopy(text){
+  (navigator.clipboard?navigator.clipboard.writeText(text):Promise.reject()).catch(()=>{
+    const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+  });
+  const b=$('#btnCopy'), o=b.textContent; b.textContent='복사됨 ✓'; setTimeout(()=>b.textContent=o,1200);
+}
+$('#btnCopy').addEventListener('click',()=>{
+  const dl=drifts();
+  if(!dl.length) return doCopy($('#out').textContent);
+  $('#dlgList').innerHTML=dl.map(it=>'<li><b>'+it.l+'</b> — 현행 '+(it.cn||it.canon)+' → '+V[it.id]+'</li>').join('');
+  $('#mask').classList.add('on');
+});
+$('#dlgAll').addEventListener('click',()=>{ doCopy(outWithProposal(false)); $('#mask').classList.remove('on'); });
+$('#dlgSafe').addEventListener('click',()=>{ doCopy(outWithProposal(true)); $('#mask').classList.remove('on'); });
+$('#dlgNo').addEventListener('click',()=>$('#mask').classList.remove('on'));
+$('#btnReset').addEventListener('click',()=>{ V={...DEF}; render(); markPreset(); });
+
+/* 현행 비교 홀드(레퍼런스 #baseBtn 정본 계승) — 누르는 동안만 현행 상태로 되돌려 그림 */
+let BASE_HOLD=null;
+function baseOn(){ if(BASE_HOLD) return; BASE_HOLD={...V}; V={...DEF,tog:'off',fmt:V.fmt,bg:V.bg,zoom:V.zoom,ruler:V.ruler,safez:V.safez,ghost:V.ghost}; render(); }
+function baseOff(){ if(!BASE_HOLD) return; V=BASE_HOLD; BASE_HOLD=null; render(); }
+['pointerdown'].forEach(e=>$('#baseBtn').addEventListener(e,ev=>{ev.preventDefault();baseOn();}));
+['pointerup','pointerleave','pointercancel'].forEach(e=>$('#baseBtn').addEventListener(e,baseOff));
+
+/* 미리보기 안 실물 트리거(§7-1-4) */
+$('#pvFmt').addEventListener('click',()=>{ V.fmt=V.fmt==='reels'?'post':'reels'; markPreset(); render(); });
+$('#pvUp').addEventListener('click',()=>{ V.tog=V.tog==='on'?'off':'on'; markPreset(); render(); });
+
+addEventListener('resize',()=>render());
+buildDeck(); buildPresets(); render();
+</script>
+</body>
+</html>
