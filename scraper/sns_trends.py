@@ -1109,27 +1109,110 @@ def insta_subs(accounts, limit=10, deadline=None):
     return sorted(out, key=lambda t: (t["views"], t["likes"]), reverse=True)[:limit]
 
 
-def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
-    """유튜브 구독 채널 최신 영상 — 채널 RSS(무키·media:statistics 조회수 포함·채널당 최근 15개).
-    @핸들 해석 1차 = 공식 API channels.list forHandle(1유닛/계정 · 봇월 무관) — 260728~29 이틀 연속
-    러너 데센 IP가 @핸들 HTML 페이지에서 봇월 404/500 대량(20→24계정 = 구독 28/30 누락 알림 폭탄)이라
-    스크레이프 해석을 상시 경로에서 무키·API 실패 폴백으로 강등. RSS 축은 동일 런에 2계정 통과 실측 = 비차단.
-    최근 fresh_days일 필터 · 정렬 = 조회수."""
+YT_CID = {}      # 핸들(소문자·@뗀 것)→채널ID 캐시 — 산출물 `yt_cids`로 실려 다음 런이 계승(해석 콜·쿼터 0 · www 의존 0)
+YT_DIAG = {"ok": 0, "budget": 0, "fail": {}, "path": {}, "got": 0}   # [관측] 레인 집계(성공/미시도/사유별 실패/경로) — main이 1줄로 찍는다
+
+
+def _yt_api(path, params, timeout=15):
+    """유튜브 Data API GET(googleapis.com · 키 인증). 이 축은 러너 IP 봇월과 **무관**하다 —
+    260731 실증: 같은 런에서 www.youtube.com은 404/500 전멸(구독 3/30)인데 이 축은 정상(youtube_src='api')."""
+    q = dict(params)
+    q["key"] = YT_KEY
+    return json.loads(_get("https://www.googleapis.com/youtube/v3/%s?%s" % (path, urllib.parse.urlencode(q)), timeout=timeout))
+
+
+def _yt_uploads(acc, cid, cutoff, limit=15):
+    """업로드 재생목록에서 최근 영상(공식 API · 1유닛/계정). 업로드 목록 id = 채널 id의 'UC'→'UU'(유튜브 규약).
+    조회수는 여기 안 실리므로 None으로 두고 호출측이 videos.list 배치 1콜로 채운다(계정 수와 무관하게 50개당 1유닛)."""
+    j = _yt_api("playlistItems", {"part": "snippet", "playlistId": "UU" + cid[2:], "maxResults": limit})
+    out = []
+    for it in (j.get("items") or []):
+        sn = it.get("snippet") or {}
+        vid = ((sn.get("resourceId") or {}).get("videoId") or "").strip()
+        pub = str(sn.get("publishedAt") or "")
+        if not vid:
+            continue
+        try:
+            if datetime.fromisoformat(pub.replace("Z", "+00:00")) < cutoff:
+                continue   # 오래된 업로드(휴면 채널 잔존물) 제외 — RSS 축과 같은 창
+        except Exception:  # noqa: BLE001
+            pass
+        out.append({"id": vid, "account": acc, "title": str(sn.get("title") or "")[:120],
+                    "views": None, "published": pub,
+                    "thumb": "https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid,
+                    "url": "https://www.youtube.com/watch?v=" + vid})
+    return out
+
+
+def _yt_rss(acc, cid, cutoff):
+    """폴백 = 채널 RSS(무키 · media:statistics 조회수 포함). ⚠ www.youtube.com 축이라 러너 IP가 봇월에 걸리면
+    통째로 404/500이다(260731 판례) — 무키 런과 API 실패 때만 쓰는 2차 경로."""
     import html as _html
+    x = _get("https://www.youtube.com/feeds/videos.xml?channel_id=" + cid)
+    out = []
+    for ent in re.finditer(r"<entry>(.*?)</entry>", x, re.S):
+        s = ent.group(1)
+        def tag(name, s=s):
+            t = re.search(r"<%s>([^<]*)</%s>" % (name, name), s)
+            return t.group(1) if t else ""
+        vid, pub = tag("yt:videoId"), tag("published")
+        if not vid:
+            continue
+        try:
+            if datetime.fromisoformat(pub.replace("Z", "+00:00")) < cutoff:
+                continue
+        except Exception:  # noqa: BLE001
+            pass
+        vw = re.search(r'<media:statistics views="(\d+)"', s)
+        out.append({"id": vid, "account": acc, "title": _html.unescape(tag("title"))[:120],
+                    "views": int(vw.group(1)) if vw else 0, "published": pub,
+                    "thumb": "https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid,
+                    "url": "https://www.youtube.com/watch?v=" + vid})
+    return out
+
+
+def _yt_views(items):
+    """조회수 미상(None) 항목을 videos.list 배치로 채운다 — 50개당 1유닛. 실패 = 0으로 남긴다(정렬만 뒤로 밀릴 뿐
+    항목 소실 0 = fail-soft). RSS 경로 항목은 이미 값이 있어 대상에서 빠진다."""
+    todo = [it for it in items if it.get("views") is None]
+    for i in range(0, len(todo), 50):
+        chunk = todo[i:i + 50]
+        try:
+            j = _yt_api("videos", {"part": "statistics", "id": ",".join(it["id"] for it in chunk)})
+            st = {v.get("id"): ((v.get("statistics") or {}).get("viewCount") or 0) for v in (j.get("items") or [])}
+            for it in chunk:
+                it["views"] = _i(st.get(it["id"])) or 0
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning::yt 조회수 배치 실패({e}) — 해당 {len(chunk)}건 0 표기(항목 보존)", file=sys.stderr)
+    for it in items:
+        if it.get("views") is None:
+            it["views"] = 0
+    return items
+
+
+def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
+    """유튜브 구독 채널 최신 영상 — **1차 = 공식 API 업로드 재생목록**(googleapis.com · 키 인증) · 폴백 = 채널 RSS.
+    260731 판례(근본교정): 12:18 런 30/30 정상 → 12:42 런 3/30(404 22·500 5)로 붕괴. 같은 런에서 API 축은
+    멀쩡했다(youtube_src='api') = 계정 사고가 아니라 **그 런의 러너 IP가 www.youtube.com에서 봇월**을 맞은 것.
+    러너 IP는 런마다 로터리라 종전 구조는 '언제든 다시' 터진다(260728·29에도 동형 발생) → 상시 경로에서
+    www 의존을 통째로 걷어낸다: 해석(핸들→채널ID)은 캐시+forHandle, 목록은 playlistItems, 조회수는 videos.list 배치.
+    쿼터 = 계정당 1유닛 + 50영상당 1유닛(30계정 기준 런당 ≈35 · 일 48런 ≈1,700 / 무료 10,000).
+    무키(YT_KEY 없음)·API 실패 = 종전 RSS로 폴백(무회귀). 최근 fresh_days일 필터 · 정렬 = 조회수."""
     out, cutoff = [], datetime.now(timezone.utc) - timedelta(days=fresh_days)
     for i, acc in enumerate(accounts):
         if _over(deadline):
             print("::warning::yt 구독 예산 소진 — 잔여 계정 스킵", file=sys.stderr)
             _sbudget("youtube", accounts[i:])
+            YT_DIAG["budget"] += len(accounts[i:])
             break
         if i:
             time.sleep(1)
+        _k = str(acc).lower().lstrip("@")
         try:
-            cid = acc if re.match(r"^UC[\w-]{22}$", acc) else None
+            cid = acc if re.match(r"^UC[\w-]{22}$", acc) else YT_CID.get(_k)   # 캐시 적중 = 해석 콜 0(쿼터·www 둘 다 아낀다)
             if not cid and YT_KEY:
                 try:
-                    _j = json.loads(_get("https://www.googleapis.com/youtube/v3/channels?" + urllib.parse.urlencode(
-                        {"part": "id", "forHandle": acc.lstrip("@"), "key": YT_KEY})))
+                    _j = _yt_api("channels", {"part": "id", "forHandle": acc.lstrip("@")})
                     _cid = ((_j.get("items") or [{}])[0]).get("id") or ""
                     cid = _cid if re.match(r"^UC[\w-]{22}$", _cid) else None
                 except Exception as _e:  # noqa: BLE001 — API 실패(쿼터·순단) = 종전 HTML 폴백으로 계속(무회귀)
@@ -1141,31 +1224,29 @@ def yt_subs(accounts, limit=10, fresh_days=14, deadline=None):
                 if not m:
                     print(f"::warning::yt @{acc} channelId 해석 실패(스킵)", file=sys.stderr)
                     _sfail("youtube", acc, "resolve")   # 종전 = 무기록 continue = 뷰어가 '비공개·삭제' 폴백 문구로 단정하던 사각(260728)
+                    YT_DIAG["fail"]["resolve"] = YT_DIAG["fail"].get("resolve", 0) + 1
                     continue
                 cid = m.group(1)
-            x = _get("https://www.youtube.com/feeds/videos.xml?channel_id=" + cid)
-            _sok("youtube", acc)   # RSS 응답 성공 = 채널 살아있음(최근 14일 업로드 0·상위 절단 = 사고 아님)
-            for ent in re.finditer(r"<entry>(.*?)</entry>", x, re.S):
-                s = ent.group(1)
-                def tag(name, s=s):
-                    t = re.search(r"<%s>([^<]*)</%s>" % (name, name), s)
-                    return t.group(1) if t else ""
-                vid, pub = tag("yt:videoId"), tag("published")
-                if not vid:
-                    continue
+            YT_CID[_k] = cid   # 해석 성공분만 캐시(다음 런은 www·forHandle 둘 다 안 탄다)
+            got, path = None, "api"
+            if YT_KEY:
                 try:
-                    if datetime.fromisoformat(pub.replace("Z", "+00:00")) < cutoff:
-                        continue   # 오래된 업로드(휴면 채널 잔존물) 제외
-                except Exception:
-                    pass
-                vw = re.search(r'<media:statistics views="(\d+)"', s)
-                out.append({"id": vid, "account": acc, "title": _html.unescape(tag("title"))[:120],
-                            "views": int(vw.group(1)) if vw else 0, "published": pub,
-                            "thumb": "https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid,
-                            "url": "https://www.youtube.com/watch?v=" + vid})
+                    got = _yt_uploads(acc, cid, cutoff)
+                except Exception as _e:  # noqa: BLE001 — API 순단·쿼터 = RSS 폴백(무회귀)
+                    print(f"::warning::yt @{acc} 업로드목록 API 실패({_e}) — RSS 폴백", file=sys.stderr)
+                    got = None
+            if got is None:
+                got, path = _yt_rss(acc, cid, cutoff), "rss"
+            _sok("youtube", acc)   # 목록 응답 성공 = 채널 살아있음(최근 14일 업로드 0·상위 절단 = 사고 아님)
+            YT_DIAG["ok"] += 1
+            YT_DIAG["path"][path] = YT_DIAG["path"].get(path, 0) + 1
+            out += got
         except Exception as e:  # noqa: BLE001
             print(f"::warning::yt @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("youtube", acc, _hcode(e))
+            YT_DIAG["fail"][str(_hcode(e))] = YT_DIAG["fail"].get(str(_hcode(e)), 0) + 1
+    out = _yt_views(out) if YT_KEY else out
+    YT_DIAG["got"] += len(out)
     return sorted(out, key=lambda v: v["views"], reverse=True)[:limit]
 
 
@@ -1797,6 +1878,13 @@ def main():
             prev = json.load(open(OUT, encoding="utf-8")) or {}
         except Exception:
             prev = {}
+    # 유튜브 핸들→채널ID 캐시 계승(260731) — 한 번 해석한 계정은 다음 런부터 해석 콜 자체가 없다(쿼터 0 · www 봇월 노출 0).
+    #   형식 검증까지 해서 싣는다(파손·수기오염분이 그대로 재사용되면 조용한 404를 만든다).
+    try:
+        YT_CID.update({str(k).lower().lstrip("@"): v for k, v in (prev.get("yt_cids") or {}).items()
+                       if isinstance(v, str) and re.match(r"^UC[\w-]{22}$", v)})
+    except Exception:  # noqa: BLE001 — 캐시 파손 = 캐시 없음 취급(해석부터 다시 = 무회귀)
+        pass
     # 유튜브 큐레이션 config(운영자 260723 하드코딩 해체) — sns_accounts.json "youtube" 키에서 쇼츠·AI영상 키워드·뉴스 카테고리를 읽되 현재 하드코딩값 = 기본 폴백(설정 미도입/파손 = 종전 동작 · 채널 스코프 = kr/gl 계정과 동거 · _load_accounts는 kr/gl만 읽어 무충돌)
     try:
         _ytc = (json.load(open(ACC, encoding="utf-8")) or {}).get("youtube") or {} if os.path.exists(ACC) else {}
@@ -1969,6 +2057,21 @@ def main():
                     "threads": []}   # ⑧ 스레드 = 러너 미수집(Meta 데센 IP 차단 — 인스타 동류) · 폰/맥 채택(아래)이 유일 공급원
         if _ph_fresh:
             print("insta 러너 수집 생략 — 폰 신선(리밋 갱신 방지 · 폰 채택이 정본)")
+        # [관측] 유튜브 구독 레인 집계 1줄(CLAUDE.md [관측] · 레포 관례 = "N개 백필"·"번역 N건") — 성공/미시도/실패를 갈라 찍는다.
+        #   왜: 종전엔 계정별 ::warning::만 흩어져 있어 "27개가 한꺼번에 죽었다"가 로그에서 한눈에 안 보였고,
+        #   **어느 단계**(해석/목록/조회수)가 죽었는지도 못 갈랐다 → 사고 때마다 원인 특정에 로그 정독이 필요했다.
+        #   경로[api/rss] 표기가 핵심 진단축 = rss가 늘면 API 축이 죽어 www 봇월 사정권으로 되돌아간 것이다.
+        _yd, _yreg = YT_DIAG, YT_DIAG["ok"] + YT_DIAG["budget"] + sum(YT_DIAG["fail"].values())
+        print("yt-subs 계측: 성공 %d · 실패 %d(%s) · 미시도 %d · 등록 %d · 수확 %d건 · 경로[%s]"
+              % (_yd["ok"], sum(_yd["fail"].values()),
+                 " ".join("%s×%d" % (k, v) for k, v in sorted(_yd["fail"].items(), key=lambda kv: -kv[1])) or "없음",
+                 _yd["budget"], _yreg, _yd["got"],
+                 " ".join("%s×%d" % (k, v) for k, v in sorted(_yd["path"].items())) or "-"))
+        # 임계 = 등록의 50% — 실측 정상(260731 12:18 = 30/30 = 100%)과 사고(12:42 = 3/30 = 10% · 260728 동형)의 중간선.
+        #   계정 1~2개가 삭제·비공개로 빠지는 정상 이탈엔 안 울리고(28/30 = 93%), 경로가 통째로 막힌 사고에만 울린다.
+        if _yreg and _yd["ok"] * 2 < _yreg:
+            print("::warning::yt-subs 커버 %d/%d(임계 50%%) — 계정 사고가 아니라 수집 경로 차단 의심(경로 표기 확인: api면 쿼터·키, rss면 러너 IP 봇월)"
+                  % (_yd["ok"], _yreg), file=sys.stderr)
         for k2, items in subs_new.items():   # 지역 도장(한국/세계 접이 그룹 렌더 축 · 운영자 260712) — 맵 미스(구 데이터·계정 변형) = 세계
             for it in items:
                 it["region"] = accreg.get(k2, {}).get((it.get("account") or "").lower(), "gl")
@@ -2153,6 +2256,7 @@ def main():
         "gtrends_pool": gt_pool or prev.get("gtrends_pool") or [],   # 트렌딩나우 API 풀(vol≥500 또는 6h내 신선 · q·vol·started 콤팩트) — 실검 교차 부스트 원료(운영자 260717 · 실패 = 직전분)
         "gtrends_pool_updated": (now if gt_pool else prev.get("gtrends_pool_updated") or ""),   # 풀 신선도 마커(평의회 260717) — 미래 소비처의 스테일 게이트 원천 + API 축 사망 가시화(health.gtrends_api와 교차 판독)
         "gtrends_gl": gt_gl or prev.get("gtrends_gl") or [],   # 월드 축(KR 제외 주요국 병합 · 실패 = 직전분 · 운영자 260712)
+        "yt_cids": {**(prev.get("yt_cids") or {}), **YT_CID} if (YT_CID or prev.get("yt_cids")) else {},   # 핸들→채널ID 캐시(기계 산출 · 손편집 금지) — 병합 저장 = SUBS_ON OFF 런·예산 절단 런에서도 기존 캐시 무손실
         "youtube_gl": yt_gl or prev.get("youtube_gl") or [],   # 월드 축(공식 API 경로만 · 실패/무키 = 직전분)
         # tikwm 성공 = videos 갱신 / 실패 = 기존 보존(구 카나리아 hashtags 폴백 포함)
         "tiktok": ({"updated": now, "videos": tk} if tk else prev.get("tiktok") or {}),
