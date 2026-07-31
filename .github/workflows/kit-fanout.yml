@@ -1,8 +1,8 @@
 name: 기틀 훅킷 전파 (kit-fanout)
 
-# nomute-editor의 기틀 훅킷 + 상비 도구 사본을 등록된 전 레포로 전파한다.
-# 소스 정본 = docs/reports/260716_기틀훅킷_v2.sh + shared/measure_align.js([픽셀실측] 상비 측정기 · 운영자 260731 "하나 고치면 다 연동" 한수 편입 — 사본 개조 금지 축과 짝)
-# 동작: 각 대상 레포를 체크아웃 → 킷 --install 재실행 + 측정기 사본 복사 → 변경 있으면 PR 생성.
+# nomute-editor의 기틀 훅킷을 등록된 전 레포로 전파한다.
+# 소스 정본 = docs/reports/260716_기틀훅킷_v2.sh
+# 동작: 각 대상 레포를 체크아웃 → 킷 --install 재실행 → .claude/ 변경 있으면 PR 생성.
 #        머지 = 기본 리뷰모드(사람이 머지) · automerge=true 명시 dispatch일 때만 자동 스쿼시머지(B).
 # 인증 = secrets.KIT_SYNC_TOKEN (대상 레포들에 Contents:RW + Pull requests:RW 파인그레인드 PAT).
 # v2(260717 Q60) = push 자동 발사: 킷 정본 파일이 main에 머지되면 자동 전파(리뷰모드 PR — automerge는 dispatch로 명시했을 때만).
@@ -14,7 +14,6 @@ on:
     branches: [main]
     paths:
       - docs/reports/260716_기틀훅킷_v2.sh
-      - shared/measure_align.js
   workflow_dispatch:
     inputs:
       automerge:
@@ -66,30 +65,24 @@ jobs:
           set -euo pipefail
           CLAUDE_PROJECT_DIR="$GITHUB_WORKSPACE/_target" bash "$GITHUB_WORKSPACE/_source/$KIT_REL" --install
 
-      - name: 상비 측정기 사본 동기(shared/measure_align.js)
-        run: |
-          set -euo pipefail
-          mkdir -p "$GITHUB_WORKSPACE/_target/shared"
-          cp "$GITHUB_WORKSPACE/_source/shared/measure_align.js" "$GITHUB_WORKSPACE/_target/shared/measure_align.js"
-
       - name: 변경 있으면 PR 생성(+자동머지)
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/_target"
-          if [ -z "$(git status --porcelain .claude shared/measure_align.js)" ]; then
+          if [ -z "$(git status --porcelain .claude)" ]; then
             echo "✅ $TARGET : 이미 최신 — 변경 없음(스킵)"; exit 0
           fi
           git config user.name "kit-fanout[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$SYNC_BRANCH"
-          git add .claude shared/measure_align.js
-          git commit -m "chore: 기틀 훅킷·상비 측정기 동기화 (자동 팬아웃 · nomute-editor발)"
+          git add .claude
+          git commit -m "chore(.claude): 기틀 훅킷 동기화 (자동 팬아웃 · nomute-editor발)"
           git push -f origin "$SYNC_BRANCH"
           PRNUM="$(gh pr list --repo "$TARGET" --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)"
           if [ -z "$PRNUM" ] || [ "$PRNUM" = "null" ]; then
             URL="$(gh pr create --repo "$TARGET" --base main --head "$SYNC_BRANCH" \
-              --title '기틀 훅킷·상비 측정기 동기화 — kit-fanout' \
-              --body 'nomute-editor 기틀 훅킷·상비 측정기(shared/measure_align.js) 변경 자동 전파(kit-fanout). 변경은 .claude/ + shared/measure_align.js 한정.')"
+              --title '기틀 훅킷 동기화 — foundation_hook 갱신' \
+              --body 'nomute-editor 기틀 훅킷 변경 자동 전파(kit-fanout). 변경은 .claude/ 한정.')"
             PRNUM="$(echo "$URL" | grep -oE '[0-9]+$' || true)"
           fi
           echo "📮 $TARGET : PR #$PRNUM ( $SYNC_BRANCH → main )"
