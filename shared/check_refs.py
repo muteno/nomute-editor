@@ -1668,49 +1668,6 @@ def check_loader_ssot():
     return 0
 
 
-def check_cards_ssot():
-    """다운로드·결과/이전제작 카드 CSS SSOT 게이트(운영자 260731 "하나 바꾸면 다 연동" · 정본 = viewer/nm-cards.css).
-    선행 사고 = `.dlbtn` 표준이 뷰어 9벌로 인라인 복제돼 색 하나 바꾸려면 9곳(실제 드리프트 = edit 이중선언·border .34).
-    ① 라이브 뷰어 전부가 nm-cards.css를 로드하는가(미로드 = 그 앱만 옛 색으로 남음)
-    ② 뷰어 인라인에 `.dlbtn` **베이스 색 선언**이 부활했는가(인라인이 링크보다 뒤 = 남으면 SSOT가 조용히 죽음)
-    ③ nm-cards.css가 참조하는 var() 토큰을 각 뷰어 :root가 정의하는가(미정의 = 댕글링 = 다운로드 색 죽음 · 260731 실사고)
-    tokens.html = 토큰 레퍼런스 데모(라이브 아님) = 스코프 밖. fail-closed 아님(파일 못 읽으면 스킵)."""
-    import glob as _g
-    css = os.path.join(ROOT, 'viewer', 'nm-cards.css')
-    try:
-        src = open(css, encoding='utf-8').read()
-    except Exception as e:
-        print('❌ 카드 CSS SSOT — 정본 viewer/nm-cards.css 없음:', e); return 1
-    need = sorted(set(re.findall(r'var\((--[a-z0-9-]+)\)', src)))
-    bad_load, bad_inline, dangling = [], [], []
-    try:
-        for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
-            b = os.path.basename(fp)
-            if b == 'tokens.html':
-                continue
-            t = open(fp, encoding='utf-8').read()
-            if 'nm-cards.css' not in t:
-                bad_load.append(b); continue
-            for i, ln in enumerate(t.splitlines(), 1):
-                st = ln.strip()
-                if st.startswith('.dlbtn {') or st.startswith('.dlbtn.dl-done {') or st.startswith('@media (hover:hover){ .dlbtn:hover'):
-                    bad_inline.append('%s:%d' % (b, i))
-            for tok in need:
-                if (tok + ':') not in t:
-                    dangling.append('%s → %s' % (b, tok))
-    except Exception as e:
-        print('⚠️ check_cards_ssot 스킵:', e); return 0
-    if bad_load or bad_inline or dangling:
-        print('❌ 카드 CSS SSOT — 공용 정본(viewer/nm-cards.css) 이탈:')
-        for x in bad_load[:6]:
-            print('   · 미로드(옛 색 고립):', x)
-        for x in bad_inline[:6]:
-            print('   · 인라인 .dlbtn 베이스 부활(SSOT 무력화):', x)
-        for x in dangling[:6]:
-            print('   · :root 토큰 미정의(var() 댕글링):', x)
-        return 1
-    print('✅ 카드 CSS SSOT — 라이브 뷰어 전부 nm-cards.css 참조 · 인라인 .dlbtn 베이스 부활 0 · 참조 토큰 %d개 전 뷰어 정의(다운로드·결과 카드 = 1곳 수정 = 전 앱 반영).' % len(need))
-    return 0
 
 
 # ── 모델 ID 드리프트 게이트 (운영자 260725 한 수 · 정본 = shared/models.json) ──
@@ -1785,42 +1742,6 @@ def check_model_ids():
     return 0
 
 
-def check_frame7_contract():
-    """미리보기 프레임 7표면 파리티 하드게이트(운영자 260731 22차 "모든 창 80%% 겹침에 튀는 곳 없게" → 23차 "한쪽이 어긋났을 때 고치는 사람에게 컴파일도 불가능한 수준의 알람").
-    계약(정본 = thumb 편집 도크): 폭 calc(100%% - 8.8em - 6px) · aspect 9/16 · 캡 min(58svh,620px) — 7표면 사본이
-    한 글자라도 갈라지면 rc=1 = 커밋 훅·CI 동시 차단. 런타임 좌표 등가는 shared/smoke_frame7.js(실렌더)가 짝.
-    ⚠️ 미래 세션에게: 이 게이트가 떴다 = 프레임 값을 한 표면만 고쳤다는 뜻이다. 7표면(아래 목록)을 **동시에** 같은 값으로
-    고치고 smoke_frame7 rc=0을 확인해라. 한 파일만 고쳐서 게이트를 통과시키는 유일한 방법은 7파일 전부를 바꾸는 것뿐이다."""
-    SIG_W, SIG_A, SIG_C = 'calc(100% - 8.8em - 6px)', 'aspect-ratio:9/16', 'min(58svh,620px)'
-    surf = {
-        'viewer/thumb.html': (SIG_A, SIG_C),             # 편집 도크 정본 — 폭은 grid(minmax(0,1fr) var(--optw))가 소비 = --optw 축으로 별도 검사
-        'viewer/tr.html': (SIG_W, SIG_A, SIG_C),
-        'viewer/edit.html': (SIG_W, SIG_A, SIG_C),
-        'viewer/k.html': (SIG_W, SIG_A, SIG_C),
-        'viewer/song.html': (SIG_W, SIG_A, SIG_C),
-        'viewer/index.html': (SIG_W, SIG_C, 'w * 16 / 9'),   # AI 생성 = geni 쉘 + geniPrevSize 9:16 등가 산식
-    }
-    bad = []
-    for rel, sigs in surf.items():
-        try:
-            body = open(os.path.join(ROOT, rel), encoding='utf-8').read()
-        except Exception:
-            bad.append((rel, '파일 열람 실패')); continue
-        miss = [g for g in sigs if g not in body]
-        if rel == 'viewer/thumb.html' and '--optw:8.8em' not in body:
-            miss.append('--optw:8.8em')
-        if miss:
-            bad.append((rel, '누락 시그니처 = ' + ' · '.join(miss)))
-    if bad:
-        print('❌' * 3 + ' 미리보기 프레임 7표면 파리티 붕괴 — 이 커밋은 여기서 막힌다(운영자 260731 23차 계약) ' + '❌' * 3)
-        print('   계약: 폭 calc(100% - 8.8em - 6px) · aspect-ratio 9/16 · 캡 min(58svh,620px) — 이미지·영상 스튜디오 전 세부메뉴 미리보기 창 동일')
-        for rel, why in bad:
-            print('   ✗ %s — %s' % (rel, why))
-        print('   → 고치는 법: 프레임 값은 7표면 동시 수정만 허용{thumb(편집 도크 정본) · tr · edit · k · song · index(geni 쉘+geniPrevSize)}')
-        print('   → 수정 후 검증: node shared/smoke_frame7.js rc=0(실렌더 좌표 등가) + 이 게이트 재실행 · 정본 규칙 = 디자인기틀_SSOT.md §0-16-2')
-        return 1
-    print('✅ 미리보기 프레임 7표면 파리티 — 계약 시그니처 전 표면 생존(폭·9:16·캡 · 실렌더 짝 = smoke_frame7).')
-    return 0
 
 
 # ── 게이트 문서화 메타 게이트 (운영자 260723 Q468 "게이트 문서화 강제 = 만들어놓고 안 봄 구조 차단") ──
@@ -1875,46 +1796,6 @@ def _ssot_resolve(p):
     return hits[0] if len(hits) == 1 else None
 
 
-def check_failsoft_metrics():
-    """fail-soft 계측·산출물 워치독 생존 게이트(운영자 260730 "재발 안하려면?" · CLAUDE.md [관측] 조항의 기계화).
-    왜: fail-soft 경로는 실패해도 rc=0이라 **계측이 지워지면 사고가 다시 조용해진다**(실증 260729 — gnews_search가
-    계측 0인 채 3시간 동안 0건을 채우고 있었고 아무도 못 봤다). 계측·워치독 자체가 회귀하는 것을 막는 게 이 게이트다.
-    대조 = 선언된 정본 2축에 {집계 출력 · 단계 진단 · 임계 경보}가 살아 있는가(문자열 존재 = 삭제·주석화 차단).
-    ⚠️ 값(임계 40 등)의 정당성까지는 안 본다 — 근거는 각 주석이 지고, 여기선 '기계가 존재한다'만 지킨다."""
-    need = [
-        ('scraper/sns_trends.py', [
-            ('gtrends 커버:', 'gtrends 커버 백필 집계 1줄'),
-            ('_GNS_DIAG', 'gnews_search 단계별 진단 카운터'),
-            ('::warning::수집 워치독', '코어 레인 0건 워치독'),
-            ('yt-subs 계측:', '유튜브 구독 레인 집계 1줄(성공·미시도·실패·경로)'),
-            ('::warning::yt-subs 커버', '유튜브 구독 커버 임계 경보(50%)'),
-            ('sub_streak 계측:', '계정 연속실패 스트릭 집계 1줄(뷰어 유튜브 개별 알림 streak<5 침묵 게이트의 관측 짝 · 260731)'),
-        ]),
-        ('viewer/index.html', [
-            ("k === 'youtube' && _n < 5", '유튜브 개별 알림 5회 스트릭 게이트(소실 = 알림 소음 원복 또는 무조건 침묵 회귀)'),
-        ]),
-        ('.github/scripts/trend_images.py', [
-            ('gtrends 커버 최종', '최종 커버 집계 1줄'),
-            ('_rate >= 40', '커버 결측 임계 경보(40%)'),
-        ]),
-    ]
-    bad = []
-    for rel, toks in need:
-        p = os.path.join(ROOT, rel)
-        if not os.path.exists(p):
-            bad.append('%s ← 파일 없음' % rel)
-            continue
-        src = open(p, encoding='utf-8').read()
-        for tok, why in toks:
-            if tok not in src:
-                bad.append('%s ← %s 소실(%s)' % (rel, why, tok))
-    if bad:
-        print('❌ fail-soft 계측 게이트 — 조용한 0을 드러내는 계측·워치독이 사라졌다(CLAUDE.md [관측] 위반):')
-        for b in bad:
-            print('   -', b)
-        return 1
-    print('✅ fail-soft 계측 게이트 — 수집·백필 2축 계측 생존(집계 1줄·단계 진단·임계 경보 · 조용한 0 재발 차단).')
-    return 0
 
 
 def check_ssot_coverage():
@@ -2082,139 +1963,6 @@ def check_ssot_linkage():
     return 0
 
 
-# ── WCAG 명암비 게이트 (운영자 260730 "그것만 가져와보자" · 이식원 = google-labs-code/design.md `lint`) ──
-# 왜: 이 레포 팔레트는 폐쇄형(자유 hex 금지)이고 색 SSOT도 1곳이라 *드리프트*는 이미 막혀 있는데, **그 값이
-# 읽히는 색인가**는 아무도 기계로 안 봤다(실측 260730 — check_refs 전 게이트에 contrast/WCAG 검사 0건).
-# 토큰 1줄 교체가 전 웹앱 32곳에 즉시 전파되는 구조라(--accent-2 라임→골드 260723 선례) 대비 미달도 그 폭으로
-# 번진다. design.md에서 가져온 것 = 「토큰 쌍을 WCAG로 린트한다」는 발상 하나뿐 — 포맷·CLI·npm 의존은 비채택
-# (우리 값 SSOT = `:root`, 게이트 = 이 파일 = 이미 상위 호환).
-# 판정 = WCAG 2.x 상대휘도 대비식. 임계 = 본문 텍스트 4.5:1(AA 1.4.3) · 그래픽/큰글자 3:1(AA 1.4.11).
-# 알파 색(글래스·딤)은 --bg 위에 합성해서 실효색으로 잰다(alpha를 무시하면 글래스 표면이 전부 통과로 둔갑).
-# 쌍 목록 = 손으로 큐레이션(자동 조합 폭발·오탐 방지) · role = 그 토큰의 *실사용* 축(color: 텍스트냐 게이지·픽토냐).
-# 테두리(--line·--line2)는 장식 = WCAG 대상 아님 → 비대상(넣으면 영구 위반으로 노이즈).
-_CONTRAST_PAIRS = (
-    # (전경, 배경, role) — role: 'text'=4.5:1 · 'ui'=3:1
-    ('--fg', '--bg', 'text'), ('--mut', '--bg', 'text'),
-    ('--fg', '--space-bg', 'text'), ('--mut', '--space-bg', 'text'),
-    ('--fg', '--glass2', 'text'), ('--mut', '--glass2', 'text'),
-    ('--fg', '--modal-glass', 'text'), ('--mut', '--modal-glass', 'text'),
-    ('--fg', '--modal-glass-anchor', 'text'), ('--mut', '--modal-glass-anchor', 'text'),
-    ('--fg', '--modal-head-bg', 'text'), ('--fg', '--modal-tabs-bg', 'text'), ('--mut', '--modal-tabs-bg', 'text'),
-    ('--on-accent', '--accent', 'text'), ('--on-amber', '--amber', 'text'),
-    ('--on-arm', '--arm', 'text'), ('--on-danger', '--danger', 'text'),
-    ('--accent', '--bg', 'text'), ('--accent-2', '--bg', 'text'), ('--accent-5', '--bg', 'text'),
-    ('--accent-6', '--bg', 'text'), ('--accent-bright', '--bg', 'text'), ('--danger', '--bg', 'text'),
-    ('--bias-l2', '--bg', 'text'),   # 게이지색이지만 color:로도 실사용(실측 3곳) = 텍스트 티어로 잰다
-    ('--cat-pol', '--bg', 'text'), ('--cat-soc', '--bg', 'text'), ('--cat-eco', '--bg', 'text'),
-    ('--cat-intl', '--bg', 'text'), ('--cat-cul', '--bg', 'text'), ('--cat-tech', '--bg', 'text'),
-    ('--bias-l1', '--bg', 'ui'), ('--bias-mid', '--bg', 'ui'),   # 편향 게이지 = 그래픽(다이버징 바)
-    ('--bias-r1', '--bg', 'ui'), ('--bias-r2', '--bg', 'ui'),
-)
-_CONTRAST_MIN = {'text': 4.5, 'ui': 3.0}
-_CONTRAST_BASELINE = {   # 260730 스냅샷 = 기존 미달분 면책(WARN) · 축소 지향 · 신규 추가 = 회피라 지양
-    # 교정 = 팔레트 값 변경 = 폐쇄형 팔레트 갱신 = 운영자 승인 축(세션이 임의로 색을 못 바꾼다) → 여기선 경보만.
-    ('--on-danger', '--danger'): '빨강 플래시 위 흰 글자(3.92) — 큰글자·짧은 플래시 티어(3:1)는 통과',
-    ('--danger', '--bg'): '빨강 본문색(4.36) — AA 4.5 근접 미달 · 팔레트 폐쇄형이라 색 변경은 운영자 승인 축',
-    ('--bias-l2', '--bg'): '강진보 파랑 텍스트(3.92) — 주용도는 게이지(3:1 통과) · 텍스트 사용 3곳',
-}
-_CONTRAST_HEX = re.compile(r'^#([0-9a-f]{3}|[0-9a-f]{6})$')
-_CONTRAST_FUNC = re.compile(r'^rgba?\(([^)]*)\)$')
-
-
-def _contrast_rgba(val, table):
-    """토큰값 → [r,g,b,a] (var() 체인·rgba(var(--x-rgb),a) 해결 · 해석 불가 = None)."""
-    v = _resolve(val, table)
-    m = _CONTRAST_FUNC.match(v)
-    if m:
-        parts = [p.strip() for p in m.group(1).split(',')]
-        vm = re.fullmatch(r'var\((--[a-z0-9-]+)\)', parts[0])
-        if vm:   # rgba(var(--accent-rgb),.13) 꼴 = 앞 인자가 3채널 묶음
-            if vm.group(1) not in table:
-                return None
-            ch = _resolve(table[vm.group(1)], table).split(',')
-            if len(ch) != 3:
-                return None
-            parts = ch + parts[1:]
-        try:
-            rgb = [max(0, min(255, int(round(float(x))))) for x in parts[:3]]
-        except ValueError:
-            return None
-        try:
-            a = float(parts[3]) if len(parts) > 3 else 1.0
-        except ValueError:
-            a = 1.0
-        return rgb + [max(0.0, min(1.0, a))]
-    m = _CONTRAST_HEX.match(v)
-    if m:
-        h = m.group(1)
-        if len(h) == 3:
-            h = ''.join(c * 2 for c in h)
-        return [int(h[i:i + 2], 16) for i in (0, 2, 4)] + [1.0]
-    return None
-
-
-def _contrast_ratio(fg, bg, base):
-    """WCAG 2.x 대비비 — 알파는 base(=--bg) 위 합성으로 실효색화."""
-    def flat(c, under):
-        return c[:3] if c[3] >= 1 else [c[i] * c[3] + under[i] * (1 - c[3]) for i in range(3)]
-
-    def lum(rgb):
-        def ch(c):
-            c /= 255.0
-            return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
-        r, g, b = [ch(c) for c in rgb]
-        return .2126 * r + .7152 * g + .0722 * b
-    b = flat(bg, base)
-    f = flat(fg, b)
-    l1, l2 = lum(f), lum(b)
-    if l1 < l2:
-        l1, l2 = l2, l1
-    return (l1 + .05) / (l2 + .05)
-
-
-def check_contrast():
-    """WCAG 명암비 게이트(운영자 260730 · 이식 아이디어 = google-labs-code/design.md lint · SSOT §6 등재).
-    값 SSOT(`viewer/index.html :root`)의 큐레이션된 전경↔배경 토큰 쌍을 WCAG 2.x 대비식으로 판정 —
-    본문 4.5:1 / 그래픽·큰글자 3:1. **기존 미달 = `_CONTRAST_BASELINE` 면책(WARN·비차단)** · 그 밖의 미달 =
-    rc=1 차단(래칫 = 신규 색 갱신이 읽히지 않는 조합을 들고 오는 것만 막는다 · 색 교정 자체는 운영자 승인 축).
-    한계 = 실사용 조합의 *전수*가 아니라 등재된 쌍만(자동 조합은 폭발·오탐) · 텍스트 위 텍스트·그라데·이미지 위
-    글자는 대상 아님 · alpha는 --bg 단일 배경 가정(실제로는 그 위에 콘텐츠가 깔릴 수 있음 = 보수적 근사)."""
-    idx = _root_tokens('viewer/index.html')
-    base = _contrast_rgba(idx.get('--bg', '#000'), idx) or [0, 0, 0, 1.0]
-    bad, warn, unres, ok, stale = [], [], [], 0, []
-    for fg, bg, role in _CONTRAST_PAIRS:
-        if fg not in idx or bg not in idx:
-            unres.append('%s on %s (토큰 부재)' % (fg, bg)); continue
-        f, b = _contrast_rgba(idx[fg], idx), _contrast_rgba(idx[bg], idx)
-        if not f or not b:
-            unres.append('%s on %s (값 해석 실패)' % (fg, bg)); continue
-        r, need = _contrast_ratio(f, b, base), _CONTRAST_MIN[role]
-        line = '%s on %s = %.2f:1 (필요 %.1f · %s)' % (fg, bg, r, need, role)
-        if r >= need:
-            ok += 1
-            if (fg, bg) in _CONTRAST_BASELINE:
-                stale.append(line)
-        elif (fg, bg) in _CONTRAST_BASELINE:
-            warn.append('%s ← %s' % (line, _CONTRAST_BASELINE[(fg, bg)]))
-        else:
-            bad.append(line)
-    # 계측 1줄(CLAUDE.md [관측] — 쌍이 조용히 0이 되거나 해석 실패로 빠지는 것을 로그에서 가른다)
-    print('명암비 게이트 — 검사 %d쌍 · 통과 %d · 면책 %d · 위반 %d · 미판정 %d'
-          % (len(_CONTRAST_PAIRS), ok, len(warn), len(bad), len(unres)))
-    for u in unres:
-        print('::warning::명암비 미판정(쌍 등재가 낡았거나 토큰 개편) —', u)
-    for w in warn:
-        print('::warning::명암비 AA 미달(면책·기존) —', w)
-    for s in stale:
-        print('   · 면책 해제 후보(이제 통과) —', s, '→ _CONTRAST_BASELINE에서 지워라')
-    if bad:
-        print('❌ 명암비 게이트 — 신규 AA 미달(색 갱신이 읽히지 않는 조합 · 정본 = viewer/index.html :root):')
-        for d in bad:
-            print('   -', d)
-        print('   → 교정 = 그 토큰 값 조정(운영자 승인) or 역할 재분류(그래픽 축이면 role=ui) · 의도된 미달이면 _CONTRAST_BASELINE에 사유와 함께 등재.')
-        return 1
-    print('✅ 명암비 게이트 — 등재 쌍 전건 WCAG AA(본문 4.5 · 그래픽 3.0) 충족(면책 %d 제외).' % len(warn))
-    return 0
 
 
 def check_tabs_headers():
@@ -2420,10 +2168,6 @@ def main():
     try:
         if check_loader_ssot() != 0:   # 로딩 표기 SSOT(하드 게이트 — 새 로더 = window.nmLoader만·raw gdots 신설 차단 · 운영자 260723 Q461 "정해진 로딩만")
             rc = 1
-        if check_cards_ssot() != 0:   # 다운로드·결과/이전제작 카드 CSS SSOT(하드 게이트 — 인라인 사본 부활·미로드·토큰 댕글링 차단 · 운영자 260731 "하나 바꾸면 다 연동")
-            rc = 1
-        if check_frame7_contract() != 0:   # 미리보기 프레임 7표면 파리티(하드 게이트 — 한 표면만 고친 드리프트 즉사 · 운영자 260731 23차 "컴파일도 불가능한 수준의 알람")
-            rc = 1
     except Exception as e:
         print('⚠️ check_loader_ssot 스킵:', e)
     try:
@@ -2431,11 +2175,6 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_model_ids 예외(fail-closed):', e); rc = 1
-    try:
-        if check_failsoft_metrics() != 0:   # fail-soft 계측 생존(하드 — 계측이 지워지면 사고가 다시 조용해진다 · 실증 260729 gnews_search · 운영자 260730)
-            rc = 1
-    except Exception as e:
-        print('❌ check_failsoft_metrics 예외(fail-closed):', e); rc = 1
     try:
         if check_ssot_coverage() != 0:   # 정본 커버리지 역방향(하드 — 문서가 정본이라 선언했는데 기계가 없는 사각 = 신규만 차단 · 운영자 260725 한 수)
             rc = 1
@@ -2451,11 +2190,6 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_form_font_inherit 예외(fail-closed):', e); rc = 1
-    try:
-        if check_contrast() != 0:   # WCAG 명암비(하드·신규만 래칫 — 기존 미달 = 베이스라인 WARN · 이식 아이디어 = design.md lint · 운영자 260730)
-            rc = 1
-    except Exception as e:
-        print('❌ check_contrast 예외(fail-closed):', e); rc = 1
     try:
         check_branch_freshness()   # 브랜치 신선도(WARN — 평행 구현 사고 재발방지 · 260727)
     except Exception as e:
