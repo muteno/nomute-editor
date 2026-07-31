@@ -22,12 +22,13 @@ on:
           - opus
           - gpt
       shoot:
-        description: '촬영 레인(kling = 수동 복붙 · seedance = 레퍼런스 이미지 동반 생성)'
+        description: '촬영 레인(kling = 수동 복붙 · seedance = 레퍼런스 이미지 동반 생성 · motion = 플랫 모션그래픽 사내 렌더 → mp4)'
         type: choice
         default: kling
         options:
           - kling
           - seedance
+          - motion
       refimage:
         description: '레퍼런스 이미지도 생성(Gemini 종량제 · 시댄스=항상 true · 클링=폼 옵션)'
         type: string
@@ -113,6 +114,36 @@ jobs:
           [ -s "$MD" ] || { echo "::warning::board.md 없음 — 레퍼런스 생략"; exit 0; }
           pip install --quiet requests pillow || { echo "::warning::deps 설치 실패 — 생략"; exit 0; }
           python3 .github/scripts/k_refgen.py "$MD" "viewer/sb_out/${IN_ID}" || echo "::warning::레퍼런스 생성 실패(비치명)"
+
+      # 🎞 모션그래픽 렌더 = 촬영=motion 전용 후속 스텝(운영자 260731 — 실사 생성 AI가 아닌 3번째 레인).
+      #    board.md 「## 🎞 모션 스펙」 json → Chromium 헤드리스 프레임 캡처 → ffmpeg → sb_out/<id>/motion.mp4.
+      #    외부 API 0 = 크레딧 0(Actions 분만 소모) · 디자인 값은 viewer/index.html :root 계승(창작 0).
+      #    fail-soft(rc=0 · 콘티 md는 이미 정상) — 단 결과 집계 1줄은 mg_render.py가 항상 stdout에 찍는다(CLAUDE.md [관측]).
+      - name: Playwright 브라우저 캐시
+        if: inputs.shoot == 'motion'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: nomute-pw-chromium-v1
+
+      - name: Motion render
+        if: inputs.shoot == 'motion'
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/mg/setup.sh
+          apt: fonts-noto-cjk ffmpeg
+
+      - name: Motion render — run
+        if: inputs.shoot == 'motion'
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          MD="viewer/sb_out/${IN_ID}/board.md"
+          if [ ! -s "$MD" ]; then
+            echo "모션 렌더: 씬 0/0 · 레이어 0/0 · 프레임 0장 — 미시도(board.md 없음)"   # 무성 스킵 금지(계측 문법 = mg_render.py와 동일)
+            echo "::warning::board.md 없음 — 모션 렌더 생략"; exit 0
+          fi
+          python3 .github/scripts/mg_render.py "$MD" "viewer/sb_out/${IN_ID}"
 
       - name: Commit output
         if: always()
