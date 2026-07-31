@@ -3381,6 +3381,27 @@ async function fetchMetaById(id, sig) {   // 성공 시 SRV_HIST 선주입(중�
     return add.length > 0 || m.some(p => Array.isArray(p) && have.has(p[1]));
   } catch (_) { return false; }
 }
+// ── R2 즉시 발견 폴(운영자 260731 "즉시 경로 얹기") — 타 기기·타 플랫폼 제작분을 Pages 빌드·배포 랙(30s~8분) 없이 10s 폴로 수신.
+//    /api/thumb?recent= 가 최근 id만 발견 → 미보유 id는 기존 fetchMetaById 정본(SRV_HIST 선주입·url dedup·src 동봉)으로 주입 = 신규 병합 로직 0.
+//    배포가 따라오면 같은 url이라 자연 수렴(딥링크 선주입과 동일 계약) · 표시 중복은 renderHist histKey dedup이 최종 방어.
+let _r2Polling = false; const _r2Known = new Set();   // in-flight 가드 + 처리완료 id 캐시(매 폴 meta 재fetch 방지 · pending 실패는 미등재 = 다음 폴 재시도)
+async function pollR2Recent() {
+  if (document.hidden || _r2Polling) return; _r2Polling = true;
+  try {
+    const r = await fetch('/api/thumb?recent=24'); if (!r.ok) return;
+    const d = await r.json(); const ids = (d && Array.isArray(d.ids)) ? d.ids : []; if (!ids.length) return;
+    const have = new Set(); (SRV_HIST || []).forEach(e => { const i = e && thIdOf(e.url); if (i) have.add(i); });   // 이미 보유(서버 이력·선주입분) = 스킵
+    const cut = Math.max(histClearedCut(), SRV_CLEAR);   // 기록 지우기 컷(로컬·서버 공용) — 지운 제작 부활 차단
+    let added = false;
+    for (const id of ids) {
+      if (!/^[A-Za-z0-9_-]{1,64}$/.test(id) || _r2Known.has(id) || have.has(id)) continue;
+      const ts = thIdTs(id);
+      if (ts && ts <= cut) { _r2Known.add(id); continue; }
+      if (await fetchMetaById(id)) { added = true; _r2Known.add(id); }   // 실패(pending·일시 오류) = known 미등재 → 다음 폴 재시도
+    }
+    if (added) renderHist();
+  } catch (_) { /* API 미가용 = 종전 Pages 폴 사다리 유지(조용한 폴백) */ } finally { _r2Polling = false; }
+}
 let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
 function maybeOpenHist(tries = 0) {
   const req = doneReq(); if (!req.on) return;
@@ -4644,8 +4665,9 @@ maybeOpenHist();     // #done=<id>(제작완료 알림) 진입이면 그 결과�
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
 document.addEventListener('visibilitychange', pollServerHist);   // 포그라운드 복귀 시 재fetch(원인2 — 상시 탭 desync 봉합 = 7개 기기 제각각 최대원인)
 window.addEventListener('focus', pollServerHist);
-setInterval(() => pollServerHist(), 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 주기 재폴링(visible일 때만 · 구 90s → 운영자 260731 "동기화가 십초 단위로" 승격) — 타 기기·타 플랫폼 제작이 파일 이동 없이 자동 수렴 · 무변경 = sig 게이트가 재렌더 억제(깜빡임 0) · 대상 = Pages 정적 JSON(CDN)이라 비용 무시가능
-window.nmRefresh = pollServerHist;   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시 재fetch(무변경 = sig 게이트가 재렌더 억제 = 깜빡임 0)
+setInterval(() => { pollServerHist(); pollR2Recent(); }, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 주기 재폴링(visible일 때만 · 구 90s → 운영자 260731 "동기화가 십초 단위로" 승격) — Pages 이력 + R2 즉시 발견 2축(즉시 축 = 배포 랙 없이 10~20s 수신 · 운영자 260731 "즉시 경로 얹기") · 무변경 = sig·known 게이트가 재렌더 억제(깜빡임 0)
+pollR2Recent();   // 부팅 1회 = 열자마자 최근 창 즉시 수신(10s 첫 틱 대기 없이)
+window.nmRefresh = () => { pollR2Recent(); return pollServerHist(); };   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시(R2)·정식(Pages) 두 축 동시 재fetch
 </script>
 <script src="cscroll.js"></script>
 

@@ -194,7 +194,7 @@ async function runOnce(pg, reqLog) {
       const pg = await browser.newPage({ viewport: vp });
       const errs = [];
       const reqLog = { ext: [], api: [] };
-      pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:')) reqLog.ext.push(u.slice(0, 60)); if (u.includes('/api/')) reqLog.api.push(u.slice(0, 60)); });
+      pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:')) reqLog.ext.push(u.slice(0, 60)); if (u.includes('/api/') && !u.includes('/api/thumb?recent=')) reqLog.api.push(u.slice(0, 60)); });   // recent= 면책(260731 즉시 발견 폴 = 읽기전용 id 목록 · 부팅+10s 상시라 미리보기 흐름과 무관 발화 — C5 취지{발사·과금성 API 0}는 유지)
       pg.on('pageerror', e => errs.push(String(e.message).slice(0, 120)));
       await pg.goto('http://127.0.0.1:' + st.port + '/thumb.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       const o = await runOnce(pg, reqLog);
