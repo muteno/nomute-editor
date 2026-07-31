@@ -51,7 +51,6 @@ FONT_FAMILY = {"gothic": "Noto Sans CJK KR", "serif": "Noto Serif CJK KR",
                "nanum": "NanumGothic", "pen": "Nanum Pen Script"}
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
-OVL_MAX_SEC = 600                # 자막 오버레이(투명 WebM) 산출 상한 — VP9 알파 인코딩 예산 보호(운영자 260731 · 릴스/쇼츠 주사용 ≤ 수 분이라 실사용 전량 커버)
 
 
 def req_span(opts, dur):
@@ -1429,50 +1428,6 @@ def run(vid_id, video, outdir):
         "받아쓴 자막(원문)으로 합성" if (src_kind == "stt" and not no_burn) else "",   # no_burn = 전사는 컷 계산용일 뿐(자막 합성 아님)
         bgm_note, cut_note] + edit_notes if p)   # 처리 순서대로 표기: 편집 → 배경음 → 컷 → 편집기(트림/보간/음량)
     sub_burned = bool(segs) and not no_burn   # 자막이 실제로 번인됐는가 — 완료 알림 표면화용(운영자 260717 "자막 삽입 포함 알람"). 컷단독(no_burn)·전사없음·구간내 자막0(segs 소거) = False = 정직
-    # ── 자막 오버레이 영상(운영자 260731 "자막만 시간에 맞춰서 있는 영상 — 오버레이 영상용") — 자막만 투명 배경 WebM(VP9 alpha) 별도 산출.
-    #   타임라인·캔버스 = 완성 영상(subbed.mp4)과 동일(컷·트림 리맵 뒤의 ASS 그대로 = 완성본 위에 겹치면 정합) · 오디오 없음.
-    #   레시피 실측(260731 로컬 ffmpeg 6.1): ① format=yuva420p는 lavfi 소스 그래프 **안**에(밖 -vf에 두면 color 소스가
-    #   yuv420p로 먼저 협상돼 알파 소실 실측) ② ass는 **:alpha=1** 필수(기본 false = 알파 플레인 미기록 → 전 픽셀 투명 실측)
-    #   ③ libvpx-vp9 알파 = -auto-alt-ref 0. WebM 채택 = 알파 지원 중 유일한 저용량 옵션(ProRes4444 = 수백 MB급 · 프리미어는 WebM 미지원 = 정직 한계, 캡컷·웹 편집기 대상).
-    #   fail-soft + [관측] 계측 의무: 성공/미시도/실패가 아래 stdout 1줄로 갈린다 — 본 산출(subbed.mp4)에는 무영향.
-    ovl_url, ovl_note = "", ""
-    if sub_burned and ass:
-        if dur <= 0 or dur > OVL_MAX_SEC:
-            ovl_note = "자막 오버레이는 {}분까지 — 건너뜀".format(OVL_MAX_SEC // 60) if dur > 0 else ""
-            print("오버레이: 미시도({})".format("길이 {}초 > 캡 {}초".format(int(dur), OVL_MAX_SEC) if dur > 0 else "길이 미상"))
-        else:
-            ovl_webm = "/tmp/ly_overlay.webm"
-            try:
-                r = subprocess.run(["ffmpeg", "-y", "-f", "lavfi",
-                                    "-i", "color=c=black@0.0:s={}x{}:r=30:d={:.3f},format=yuva420p".format(canvas_w, canvas_h, dur),
-                                    "-vf", "ass={}:alpha=1".format(ass_path),
-                                    "-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-auto-alt-ref", "0",
-                                    "-crf", "32", "-b:v", "0", "-row-mt", "1", "-cpu-used", "5", "-an", ovl_webm],
-                                   capture_output=True, text=True, timeout=min(900, 180 + int(dur * 3)))   # 대부분 투명·정지 프레임 = VP9 스킵이 잘 먹어 실측 수십 초급 — 백스톱만 길이 비례
-                if r.returncode == 0 and os.path.isfile(ovl_webm) and os.path.getsize(ovl_webm) >= 1024:
-                    odata = open(ovl_webm, "rb").read()
-                    if tg.R2_ON:
-                        ovl_url = tg.r2_upload(odata, "ly_out/{}/overlay.webm".format(vid_id), "video/webm") or ""
-                    if not ovl_url and len(odata) <= GIT_FALLBACK_MAX:
-                        with open(os.path.join(outdir, "overlay.webm"), "wb") as f:
-                            f.write(odata)
-                        ovl_url = "ly_out/{}/overlay.webm".format(vid_id)
-                    print("오버레이: {} · {}bytes".format("성공" if ovl_url else "실패(저장 불가)", len(odata)))
-                    if not ovl_url:
-                        ovl_note = "자막 오버레이 저장 실패"
-                else:
-                    print("::warning::오버레이 합성 실패(본 영상 무영향):", (r.stderr or "")[-160:])
-                    ovl_note = "자막 오버레이 합성 실패"
-            except subprocess.TimeoutExpired:
-                print("::warning::오버레이 합성 시간 초과(본 영상 무영향)")
-                ovl_note = "자막 오버레이 시간 초과 — 건너뜀"
-            except Exception as e:
-                print("::warning::오버레이 예외(본 영상 무영향):", str(e)[:120])
-                ovl_note = "자막 오버레이 실패"
-    else:
-        print("오버레이: 미시도(자막 번인 없음)")
-    if ovl_note:
-        note = (note + " · " if note else "") + ovl_note
     snap = {k: opts[k] for k in EDIT_KEYS if k in opts}   # 재입히기 승계 스냅샷 — 성공 산출에 도장(reburn이 읽어 병합)
     # 원본 보관(재합성용 · ≤60MB) — 의역 재사용 '다시 입히기'의 소스. reburn 실행은 기존 src 승계(재업로드 0).
     src_url = ""
@@ -1494,7 +1449,6 @@ def run(vid_id, video, outdir):
         url = tg.r2_upload(data, "ly_out/{}/subbed.mp4".format(vid_id), "video/mp4")
         if url:
             out_json(outdir, dict({"url": url + "?v=" + bust, "src": src_url, "bytes": len(data), "dur": round(dur, 1), "note": note, "sub": sub_burned},
-                                  **({"ovl": ovl_url + "?v=" + bust} if ovl_url else {}),
                                   **({"edit_opts": snap} if snap else {}))); return 0
         print("::warning::R2 업로드 실패 — git 폴백 시도")
     if len(data) <= GIT_FALLBACK_MAX:
@@ -1502,7 +1456,6 @@ def run(vid_id, video, outdir):
             f.write(data)
         out_json(outdir, dict({"url": "ly_out/{}/subbed.mp4?v={}".format(vid_id, bust), "src": src_url, "bytes": len(data), "dur": round(dur, 1),
                                "note": (note + " · " if note else "") + "git 저장(R2 미설정)", "sub": sub_burned},
-                              **({"ovl": ovl_url + "?v=" + bust} if ovl_url else {}),
                               **({"edit_opts": snap} if snap else {}))); return 0   # src 승계 = 폴백서도 재합성 버튼 유지(평의회)
     out_json(outdir, {"error": "R2 미설정 + 파일 {}MB(30MB 초과) — 저장 불가".format(len(data) // 1048576)})
     return 0
