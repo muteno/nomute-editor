@@ -1426,6 +1426,25 @@ function setPlat(plat) {   // 라벨·이탤릭·직접입력칸 노출 = 순환
   t.classList.toggle('cph-noplat', noP);
   $('#cplat').classList.toggle('none', !custom);
 }
+// 고정폭 실기기 실측 보정(운영자 260731 "인스타만 살짝 밀리거든") — CSS min-width:5.2em은 폰트별로 instagram이 넘칠 수 있어(기기 서체 편차), 부팅 시 6개 라벨을 같은 스타일로 실측해 최장값을 min-width로 확정. 웹폰트 지연 대비 fonts.ready 후 재실측.
+function fitPlatWidth() {
+  const t = $('#cphPlat'); if (!t) return;
+  const cs = getComputedStyle(t);   // 숨김(copyBox none) 상태에서도 폰트값은 resolve된다 — 부모에 붙여 재면 rect가 0이라 body 측정 + 폰트 상속만 고정
+  const c = t.cloneNode(false);
+  c.style.cssText = 'position:absolute; visibility:hidden; min-width:0; white-space:pre; left:-9999px';
+  c.style.fontSize = cs.fontSize; c.style.fontFamily = cs.fontFamily;   // .cphline 상속분 고정(굵기·이탤릭·패딩은 .cph-plat/.cph-noplat 클래스가 body에서도 적용)
+  document.body.appendChild(c);
+  let w = 0;
+  [['threads', 0], ['youtube', 0], ['X', 0], ['instagram', 0], ['플랫폼 없음', 1], ['직접', 0]].forEach(([lab, noP]) => {
+    c.classList.toggle('cph-noplat', !!noP); c.textContent = lab;
+    w = Math.max(w, c.getBoundingClientRect().width);
+  });
+  c.remove();
+  const fs = parseFloat(cs.fontSize) || 14;
+  if (w && w + 1 > fs * 5.2) t.style.minWidth = ((w + 1) / fs).toFixed(3) + 'em';   // CSS 5.2em보다 넘칠 때만 확장(+1px 여유 · em = 폰트 티어 자가 스케일) — 안 넘치는 기기는 종전 폭 그대로
+}
+fitPlatWidth();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitPlatWidth);   // 웹폰트 늦게 뜨면 폭이 변한다 — 로드 후 한 번 더
 // 포맷 단일 토글 UI — 한 번에 하나만 표시(썸네일 #ovFmtTog 패턴) · 포스트=시안/릴스=레몬
 function syncCpFmt() {
   const t = $('#cpFmtTog'); if (!t) return;
