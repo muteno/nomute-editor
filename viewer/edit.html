@@ -2641,21 +2641,28 @@ render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유�
 
 // ── 작업 내역 게시판(운영자 260712 "이미지 생성기처럼 최근·기존 제작 라이브러리화" · 자막 탭 260707 게시판 원문 계승) — ly_out/index.json(서버측 = 기기간 공유·만료 없음) 로드 · 행 = 일시(KST)·라벨·길이·상태 · 탭 = openJob(과거 산출 상시 재열람 — 종전엔 pend 24h·푸시 딥링크뿐이라 시간 지나면 접근 불가였던 공백 봉합) · 자막-전용(subs) 잡 = 자막 탭 전담이라 제외 ──
 let _jlSig='',_jlBusy=false;   // 무변경 감지 시그니처(재렌더 억제 = 깜빡임·스크롤 튐 0 · thumb pollServerHist sig 게이트 미러) + in-flight 가드(폴·수동 새로고침 동시 발동 코얼레싱)
+const _r2Extra=new Set(),_jlIds=new Set();   // R2 즉시 발견 id(Pages 인덱스 합류 전 임시 행) · 인덱스 렌더 완료 id(합류 = 임시 축 자연 소거 — 같은 id는 인덱스 행이 대체)
 async function loadJobLib(){   // 재호출 가능(구 1회성 IIFE → 부모 셸 헤더 새로고침 #toolRf 훅 + 10s 자동 폴 · 운영자 260731 "동기화가 십초 단위로") — 서버 인덱스 재fetch = 타 기기·타 플랫폼 제작분 수신
   if(_jlBusy) return; _jlBusy=true;
   try{
-    const r=await fetch('ly_out/index.json?t='+Date.now()); if(!r.ok) return;
-    const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
-    if(ct.includes('text/html')||/^\s*</.test(tx)) return;   // SPA 폴백(HTML 200) 무시 = poll 동일 가드
-    if(tx===_jlSig) return;   // 무변경 = 재렌더 skip(10s 폴이 목록을 매번 다시 그리며 깜빡이는 것 차단)
-    const jobs=JSON.parse(tx); if(!Array.isArray(jobs)) return;
-    _jlSig=tx;   // 파싱 성공분만 시그니처 확정(불량 응답이 정상 목록 폴을 잠그지 않게)
-    const vids=jobs.filter(j=>j&&j.st!=='subs');   // 영상 산출·클립 후보·실패·진행만(자막-전용 잡 제외)
-    if(!vids.length) return;   // 빈 목록 = 조용한 공백(§디자인 빈 상태) — 재진입 시에도 기존 표시 유지(축소 스테일은 수용)
+    let jobs=null, tx='x';   // tx 'x' = 인덱스 무소득 표식(sig 축 — thumb pollServerHist 'x' 문법 미러)
+    try{
+      const r=await fetch('ly_out/index.json?t='+Date.now());
+      if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const t=await r.text();
+        if(t&&!ct.includes('text/html')&&!/^\s*</.test(t)){ const p=JSON.parse(t); if(Array.isArray(p)){ jobs=p; tx=t; } } }   // SPA 폴백(HTML 200)·불량 응답 = 무소득 취급(정상 sig 안 잠금)
+    }catch(e){ /* 미배포·오프라인 = 무소득 — R2 즉시 발견분만이라도 아래서 렌더(260731 보강: 구 조기 return이 인덱스 결손 시 즉시분까지 삼켰다) */ }
+    const vids=(jobs||[]).filter(j=>j&&j.st!=='subs');   // 영상 산출·클립 후보·실패·진행만(자막-전용 잡 제외)
+    vids.forEach(j=>{ if(j&&j.id) _jlIds.add(j.id); });   // 인덱스 보유 id 등재 = R2 임시 행과 중복 차단(합류 시 인덱스 행이 대체)
+    const extra=[..._r2Extra].filter(id=>!_jlIds.has(id)).map(id=>({ id, ts:'20'+id.slice(0,2)+'-'+id.slice(2,4)+'-'+id.slice(4,6)+'T'+id.slice(6,8)+':'+id.slice(8,10)+':'+id.slice(10,12), t:'편집 영상', d:0, st:'done' }));   // R2 즉시 발견분 임시 행(운영자 260731) — 시각 = id 12자리 KST 도장 절단(인덱스 ts와 동일 문자열 문법) · 라벨·길이는 배포 합류 시 인덱스 값으로 자연 교체
+    const all=extra.concat(vids);   // 임시(최신) 먼저 — 인덱스 최신순 유지
+    if(!all.length) return;   // 빈 목록 = 조용한 공백(§디자인 빈 상태) — 재진입 시에도 기존 표시 유지(축소 스테일은 수용)
+    const sig=tx+'|'+extra.map(e=>e.id).join(',');   // 인덱스 원문 + 임시 행 구성 = 통합 무변경 감지(어느 축이 바뀌어도 재렌더 · 둘 다 그대로면 skip = 깜빡임 0)
+    if(sig===_jlSig) return;
+    _jlSig=sig;
     const box=$('#lyJobs'), list=$('#lyJobList'); if(!box||!list) return;
     list.textContent='';   // 재진입 = 비우고 재렌더(중복 누적 차단 · 접힘/펼침 상태는 list.hidden에 그대로 보존)
     const ST={done:'완료',clip:'클립 후보',cut:'컷 후보',fail:'실패',gen:'진행중'};   // cut 합류(260731) = build-viewer 인덱서가 cuts.json을 읽게 된 짝 — 이게 없으면 완료된 컷 스캔이 `ST[j.st]||'진행중'` 폴백으로 다시 "진행중" 거짓말이 된다
-    vids.slice(0,60).forEach(j=>{   // 캡 20→60(전체 보관 취지 정합 · 운영자 260712 "항상 기존 작업분" — 인덱스 자체는 만료 없음)
+    all.slice(0,60).forEach(j=>{   // 캡 20→60(전체 보관 취지 정합 · 운영자 260712 "항상 기존 작업분" — 인덱스 자체는 만료 없음)
       if(!/^[A-Za-z0-9_-]+$/.test(j.id||'')) return;   // 경로 화이트리스트(복원 정규식과 동일 정신)
       const b=document.createElement('button'); b.type='button'; b.className='lyjob';
       const ts=String(j.ts||'');
@@ -2691,9 +2698,20 @@ async function loadJobLib(){   // 재호출 가능(구 1회성 IIFE → 부모 �
     }
   }catch(e){} finally{_jlBusy=false;}
 }
-loadJobLib();
-window.nmRefresh=loadJobLib;   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 작업 내역 서버 인덱스 재fetch
-setInterval(()=>{ if(!document.hidden) loadJobLib(); },10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 자동 폴(운영자 260731 "동기화가 십초 단위로" — 타 기기·타 플랫폼 제작이 파일 이동 없이 자동 수렴) · visible 게이트 + sig 게이트(무변경 재렌더 0) + in-flight 가드 = thumb pollServerHist 문법 미러 · 대상 = Pages 정적 JSON(CDN)
+let _r2eBusy=false;   // R2 즉시 발견 폴 in-flight 가드
+async function pollR2RecentEdit(){   // R2 즉시 발견(운영자 260731 "비디오 스튜디오도 즉시") — 최근 완성 영상 id를 배포 랙 없이 발견 → 임시 행. 열람 = openJob 기존 R2 폴백(?stat=)이 즉시 서빙 · Pages 인덱스 합류 시 정식 행으로 자연 교체
+  if(document.hidden||_r2eBusy) return; _r2eBusy=true;
+  try{
+    const r=await fetch('/api/edit?recent=24'); if(!r.ok) return;
+    const d=await r.json(); const ids=(d&&Array.isArray(d.ids))?d.ids:[]; if(!ids.length) return;
+    let changed=false;
+    for(const id of ids){ if(!/^[A-Za-z0-9_-]{1,64}$/.test(id)||_jlIds.has(id)||_r2Extra.has(id)) continue; _r2Extra.add(id); changed=true; }
+    if(changed){ _jlSig=''; await loadJobLib(); }   // 신규 발견 때만 sig 리셋 + 재렌더(무변경 = 종전 게이트 그대로 = 깜빡임 0)
+  }catch(e){ /* API 미가용 = 종전 Pages 인덱스 사다리 유지(조용한 폴백) */ } finally{_r2eBusy=false;}
+}
+loadJobLib().then(()=>pollR2RecentEdit());   // 부팅 = 인덱스 먼저(_jlIds 등재) → R2 발견(이미 인덱스에 있는 id 임시행 방지)
+window.nmRefresh=()=>{ pollR2RecentEdit(); return loadJobLib(); };   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시(R2)·정식(Pages) 두 축 동시 재fetch
+setInterval(()=>{ if(!document.hidden){ loadJobLib(); pollR2RecentEdit(); } },10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 자동 폴(운영자 260731 "동기화가 십초 단위로" — 타 기기·타 플랫폼 제작이 파일 이동 없이 자동 수렴) · visible 게이트 + sig 게이트(무변경 재렌더 0) + in-flight 가드 = thumb pollServerHist 문법 미러 · 대상 = Pages 정적 JSON(CDN) + R2 발견 1콜
 </script>
 <script src="cscroll.js"></script><!-- 커스텀 오버레이 스크롤바 = 제작·합성(thumb)·ly·k와 동일 표준(운영자 260713 "다 같게") -->
 </body>
