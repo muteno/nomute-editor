@@ -695,7 +695,7 @@ let CUT_REF=null;      // 승인 컷 참조 {id, off:[뺀 인덱스]} — 발사
 let CLIP_SAVE=null;   // 클리퍼 진입 직전 ON 스냅샷(운영자 260722 "도중에 누르면 다른 옵션값이 날아가 — 방지") — P값은 원래 보존이라 ON 플래그만 저장·복원
 function clipSnap(){ if(!ON.clip) CLIP_SAVE={...ON}; for(const kk in ON) ON[kk]=false; ON.clip=true; }   // 배타 진입 = 스냅샷 후 전축 off(발사 계약 불변 — buildOpts는 여전히 {clip:true} 단독)
 function clipRelease(){ if(!ON.clip) return; ON.clip=false; if(CLIP_SAVE){ for(const kk in CLIP_SAVE){ if(kk!=='clip') ON[kk]=CLIP_SAVE[kk]; } CLIP_SAVE=null; } }   // 배타 해제 = 스냅샷 복원(직후 탭한 축이 이겨야 하므로 호출측은 복원 뒤 자기 축 세팅)   // 음량 통일 = 기본 ON(운영자 260712 "음향 기본값 = 보정") — 나머지 축은 '원본/그대로/끔' 기본 유지 · 발사 게이트도 이 기본으로 통과(맨 발사 = 보정만 적용)
-let P={lang:'ko',tone:'sns',   /* 언어 기본 = 한글만(운영자 260729 "기본은 항상 한글만으로") — 구 'auto'는 원문 언어에 따라 원문 줄이 딸려 나올 수 있어 기본값으로선 예측 불가였다(P는 영속 저장 안 함 = 매 진입 이 값) */filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
+let P={lang:'dual',tone:'plain',   /* 언어·톤 기본 = 원문 포함·직역(운영자 260731 19차 "각 옵션 기본값 및 기본값을 가장 좌측으로" — 나열 첫째 = 기본값 계약 · 구 260729 '한글만'·'감성 의역' 번복) · P는 영속 저장 안 함 = 매 진입 이 값 */filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
   shtype:'box',   // 음영 종류(운영자 260729 "지금은 무조건 네모인데, 획·그림자 등 다른것도 · 기본값은 음영인데 기본도 있어야") — none 기본(효과 없음) | box 음영(네모 = 종전 동작·디폴트) | stroke 획(글자 외곽선) | shadow 그림자
   lgap:18,     // 한국어↔외국어 줄간격 %(한국어 글자 높이 기준 · 운영자 260729 게이지 승격 · 18 = 구 하드코딩 fs×0.18 동값 = 기본 렌더 불변) · 러너 dual_gap 짝
   srcsz:-50,   // 원문(외국어) 줄 크기 = 한국어 줄 대비 상대 %(운영자 260729 "한글 자막 기준해서 -50% 크기를 기준으로, -75%~00%까지") · 0 = 한글과 동일 · -75 = 한글의 25% · 러너 dual_small = (100+srcsz)/100
@@ -718,7 +718,7 @@ const preOn=k=>Object.entries(SUBPRE[k]).every(([p,v])=>p==='nm'||P[p]===v);
 const OC_DEF={black:'#000',white:'#fff',green:'var(--accent-5)',mint:'var(--accent)',sky:'var(--bias-l1)',blue:'var(--bias-l2)',pink:'var(--accent-6)',yellow:'var(--warn)',red:'var(--danger)'};   // 콘텐츠 산출물 색(§핵심명령 3-b-1) — 순수 흑/백만 리터럴·나머지 var 계승 · (260729) 민트·스카이 2색 증설(운영자 "색 토글 더 여러개로") = 기존 토큰 계승만(신규 hex 0) · 9색 = 폰 390 한 줄 상한 실측치(슬롯 = 점11+라벨칸 → 10색부터 랩)
 const OC_LBL={black:'검정',white:'흰',green:'그린',mint:'민트',sky:'스카이',blue:'블루',pink:'핑크',yellow:'레몬',red:'레드'};
 const FONT_PV={   // 폰트 = 러너 설치 패밀리(fc-scan 실측)와 동명 구글 웹폰트 지연 로드 = 미리보기 실체 정합 · 기본 고딕만 = 시스템 폰트 근사(안드로이드 = Noto 계열 실질 동일 · 평상시 외부요청 0)
-  gothic:{lbl:'기본',ff:''},
+  gothic:{lbl:'고딕',ff:'"Noto Sans KR","Noto Sans CJK KR",sans-serif',gf:'Noto+Sans+KR:wght@700;800'},   // 본고딕 명시(운영자 260731 19차 "본고딕·본명조만") — 구 시스템 근사(ff:'')는 기기마다 달라 러너(Noto 계열)와 미리보기가 갈렸다
   serif:{lbl:'명조',ff:'"Noto Serif KR","Noto Serif CJK KR",serif',gf:'Noto+Serif+KR:wght@700'},
   nanum:{lbl:'나눔고딕',ff:'"Nanum Gothic","NanumGothic",sans-serif',gf:'Nanum+Gothic:wght@700;800'},
   pen:{lbl:'손글씨',ff:'"Nanum Pen Script",cursive',gf:'Nanum+Pen+Script'},
@@ -776,11 +776,11 @@ function prm(k){
   if(k==='sub'){ const C=x=>x?'<div class="scard">'+x+'</div>':'';   // 행 → 카드 1:1(운영자 260729 "이미지 스튜디오 디자인과 같이" · thumb .scard > .csec 정본 계승 · 빈 행은 카드도 안 만든다)
     return '<div class="pvslot" id="pvSlotSub"></div>'   // 도먼트(자막 탭 이관 260711) · 라이브 미리보기 자리(영속 #pv 노드를 render()가 이주)
     +'<div class="optcards">'
-    +C(srow('프리셋', Object.keys(SUBPRE).map(pk=>pc('spre',pk,preOn(pk),false,SUBPRE[pk].nm))))
-    +C(ON.trn?'':srow('언어', [['auto','자동'],['ko','한글만'],['dual','원문+한글'],['src','원문만']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1]))))   // 번역 ON = 언어 행 숨김(260728 Q06 — dual 강제라 선택이 무의미)
-    +C(srow('톤', [['sns','감성 의역'],['plain','담백 직역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1])).concat([pc('filler',P.filler?'0':'1',P.filler,false,'군더더기 빼기')])))
-    +C(srow('폰트', Object.keys(FONT_PV).map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))
-    +C(srow('모양·강조', [['bold','기본'],['clean','깔끔'],['box','박스']].map(a=>pc('style',a[0],P.style===a[0],false,a[1])).concat([pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'카라오케'),pc('pop',P.pop?'0':'1',P.pop,false,'팝'),pc('keyword',P.keyword?'0':'1',P.keyword,false,'키워드')])))
+    /* 프리셋 행 = 폐지(운영자 260731 19차 "자막 on 시 세부 기능 정리 — 프리셋 > 삭제") · SUBPRE·spre 핸들러는 도먼트 보존(복원 = 이 자리 srow 한 줄) */
+    +C(ON.trn?'':srow('언어', [['dual','원문 포함'],['ko','한글'],['src','원문']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1]))))   // 운영자 260731 19차 — 기본값(원문 포함)이 최좌측 · 'auto' 폐지(도먼트 = CYC/러너 값 그대로)   // 번역 ON = 언어 행 숨김(260728 Q06 — dual 강제라 선택이 무의미)
+    +C(srow('톤', [['plain','직역'],['sns','의역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1]))))   // 운영자 260731 19차 — 기본값(직역) 최좌측 · 군더더기 빼기 칩 = 도먼트(filler 상태·발사 경로 불변)
+    +C(srow('글자 형태', ['gothic','serif','pen'].map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))   // 운영자 260731 19차 — 라벨 '폰트'→'글자 형태' · 고딕(본고딕)·명조(본명조)·손글씨 3종 · 나눔고딕 = 도먼트(러너 화이트리스트 불변)
+    /* 모양·강조 행 = 폐지(운영자 260731 19차 "모양-강조 없애자 · 모양 = 깔끔(기본)으로 가고 나머진 다 숨김") — style 기본값이 'clean'으로 고정(아래 P 기본값) · karaoke·pop·keyword 축은 도먼트 보존 */
     +C(gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰'))   // 위치·크기 3형제 = 한 카드(같은 축 묶음)
     +C(srow('음영', [['none','기본'],['box','음영'],['stroke','획'],['shadow','그림자']].map(a=>pc('shtype',a[0],P.shtype===a[0],false,a[1])))
        +(P.shtype==='none'?'':gauge('sh', P.shtype==='box'?'여백':P.shtype==='stroke'?'획 굵기':'그림자',0,300,P.sh,'%','선택한 음영 종류의 세기 — 100% = 기본')))   // 종류 + 세기 = 한 카드(무엇을/얼마나가 붙어 있어야 읽힌다)
@@ -789,7 +789,7 @@ function prm(k){
     +C(swrow())
     +'</div>';
   }
-  if(k==='cut') return segs('cutlv',[['off','OFF'],['soft','살짝'],['std','기본'],['hard','많이']],ON.cut?P.cutlv:'off')
+  if(k==='cut') return segs('cutlv',[['off','OFF'],['std','기본'],['soft','살짝'],['hard','많이']],ON.cut?P.cutlv:'off')   // 운영자 260731 19차 — ON = 3옵션 분리(기본·살짝·많이) · 기본값(std)이 OFF 다음 최좌측
     +(ON.cut?'<div class="prow">'+pc('cutfill',P.cutfill?'0':'1',P.cutfill,false,'필러')+pc('take',P.take?'0':'1',P.take,false,'테이크')+'</div><div class="prow"><button class="pc" type="button" id="cutScanBtn">자를 곳 먼저 보기</button></div>'+'<div class="xnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘'+(P.cutfill?' · 필러 세기도 위 강도를 따라감':'')+'</div>':'');   // STT-only 노트(운영자 260711 cutSttNote=on · 켰을 때만 = 산문 최소)
   if(k==='trim') return '<div class="trimrow"><input type="number" id="t0" min="0" step="0.1" placeholder="0" inputmode="decimal" aria-label="시작 초" value="'+esc(P.t0)+'"><span class="tsep">~</span><input type="number" id="t1" min="0" step="0.1" placeholder="끝(비면 안 자름)" inputmode="decimal" aria-label="끝 초" value="'+esc(P.t1)+'"><span class="tu">초</span></div>';
   if(k==='screen') return segs('ar',   // 미리보기 = 상단 PREVIEW 섹션 전담(운영자 260712 — 구 비율 카드 귀속 pvSlot 폐지)
