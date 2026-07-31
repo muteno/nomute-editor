@@ -138,15 +138,29 @@
       '.nm-orb .nm-bd{transform-box:fill-box;transform-origin:center;animation:nmbd .92s var(--ease,cubic-bezier(.2,.7,.3,1)) infinite}' +
       '.nm-orb .nm-bd.b2{animation-delay:.15s}.nm-orb .nm-bd.b3{animation-delay:.3s}' +
       '@keyframes nmbd{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-52%);opacity:1}}' +
-      '.nm-load{display:inline-flex;align-items:center;gap:9px}' +
+      /* vertical-align:middle = 인라인 흐름에서 로더와 붙은 글자를 **둘 다 박스중앙 기준**으로 세운다(운영자 260731 한 수).
+         ⚠ 실측으로 잡은 기존 결함: `.nm-load`는 inline-flex라 인라인 baseline이 **orb 박스 하단**에 잡힌다 →
+         부모가 flex가 아닌 표면(인라인 흐름)에서는 붙은 글자가 라벨보다 **7.66px 아래**로 밀려 있었다(Δ 실측 · fs 13.5).
+         둘 다 middle이면 박스중앙이 같은 선에 서고, .nm-shim의 -.049em 보정이 박스중앙=잉크중심을 만들어 주므로 결과가 곧 **잉크선 일치**다.
+         부모가 flex인 표면(.row·버튼 등)에서는 align-items가 지배해 vertical-align은 무시된다 = 무해(양쪽 표면 동시 성립). */
+      '.nm-load{display:inline-flex;align-items:center;gap:9px;vertical-align:middle}' +
       '.nm-load .nm-orb{width:22px;height:22px}' +
       /* .nm-shim = 빛 스윕 **도료만**(로더에 붙어 있는 경과시간·주석 등 어디에나 부착 가능 · 폰트 무간섭).
          -webkit-text-fill-color = 붙는 쪽 스타일시트의 color(예 `.go .gtime{color:var(--mut)}` = 더 높은 특정성)가
          투명 클립을 되돌려 스윕이 안 보이던 것을 막는 잠금(다른 프로퍼티라 특정성 싸움 자체가 없다). */
       '.nm-shim{background:linear-gradient(100deg,var(--mut,#8fa697) 0%,var(--mut,#8fa697) 38%,#ffffff 50%,var(--mut,#8fa697) 62%,var(--mut,#8fa697) 100%);' +
         'background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;' +
-        'animation:nmshim 1.9s linear infinite}' +
-      '.nm-load>.nm-shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center}' +   // 로더 안 라벨만 = 종전 타이포(붙은 글자엔 안 물림)
+        'animation:nmshim 1.9s linear infinite;' +
+        /* 활자·보정도 도료와 한 벌(운영자 260731 한 수 "붙은 글자도 라벨과 같은 잉크선") — 붙은 글자(경과시간·예상·회차)가
+           라벨과 **같은 크기·굵기·같은 -.049em 보정**을 쓰면 baseline이 정확히 겹쳐 한 줄이 한 덩어리로 읽힌다.
+           보정을 라벨에만 걸면 라벨만 0.66px 떠서 오히려 붙은 글자와 어긋난다(같은 em이라 함께 걸어야 Δ0).
+           tabular-nums = 초 카운터 자릿수 흔들림 0(붙은 글자 대부분이 숫자 · 기존 각 사이트 선언과 동의도). */
+        'font-size:13.5px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;vertical-align:middle;transform:translateY(-.049em)}' +
+      /* 로더 안 라벨만 = 종전 타이포(붙은 글자엔 안 물림) + **광학 잉크 정렬 보정**(운영자 260731 "점 세개랑 옆 글자 광학 잉크 기준 픽셀단위 수평 확인").
+         실측(Playwright · 20배 확대 measureText = 0.05px 해상도 · 애니 0% 정지 프레임): 한글 잉크가 baseline 위 10.336 / 아래 2.320으로 비대칭이라
+         **글자 잉크중심이 박스중심보다 0.667px 아래**(fs 13.5) · 0.575px 아래(fs 13.5→12.5 좁은버튼). 도트는 cy=50 = 박스 정중앙이라 그만큼 위로 떠 보였다.
+         → 라벨을 자기 폰트 비례(-0.049em)만큼 올려 잉크중심끼리 맞춘다(13.5×.049=0.662 · 12.5×.049=0.613 = 두 티어 동시 수렴 · 도트를 내리면 em 기준이 상속 폰트라 불안정). */
+      '.nm-load>.nm-shim{letter-spacing:0;display:inline-flex;align-items:center}' +   // 로더 안 라벨만 = 도트와 같은 줄에 정중앙 배치(활자·보정은 위 .nm-shim 공통)
       '@keyframes nmshim{from{background-position:120% 0}to{background-position:-120% 0}}' +
       '@media(prefers-reduced-motion:reduce){.nm-shim{animation:none;color:var(--mut,#8fa697);-webkit-text-fill-color:var(--mut,#8fa697)}.nm-orb *{animation:none!important}}';
     var st = document.createElement('style'); st.id = 'nm-orb-css'; st.textContent = css;
@@ -160,15 +174,19 @@
   function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // nmLoader(type,label[,opts]) — opts={size:orb px, gap, fs:글자 px}. 좁은 버튼 = size 18·fs 12.5, 기본 pill = 22·13.5
+  /* type='loading' = **글자만**(도트 픽토 미부착 · 운영자 260731 "나우로딩은 그냥 글자만 — 옆에 ...이 있으니까")
+     — 라벨 끝 말줄임(…)이 이미 점 3개라 도트3까지 붙으면 점이 두 벌로 읽힌다. 나머지 3종(thinking·solving·prompting)만 도트3. */
   window.nmLoader = function (type, label, opts) {
     opts = opts || {}; var g = opts.gap != null ? opts.gap : 9;
     var fs = opts.fs ? ' style="font-size:' + opts.fs + 'px"' : '';
-    return '<span class="nm-load" style="gap:' + g + 'px">' + orbHTML(type, opts.size) + '<span class="nm-shim"' + fs + '>' + esc(label) + '</span></span>';
+    var orb = orbType(type) === 'loading' ? '' : orbHTML(type, opts.size);
+    return '<span class="nm-load" style="gap:' + g + 'px">' + orb + '<span class="nm-shim"' + fs + '>' + esc(label) + '</span></span>';
   };
   window.nmOrbHTML = orbHTML;   // orb만(버튼 좁은 폭 등)
   function hydrate(root) {   // 선언형: <span class="nm-load" data-orb="thinking" data-label="Thinking…"></span>
     var els = (root || document).querySelectorAll('.nm-load[data-orb]:not([data-nm-done])'), i, e;
-    for (i = 0; i < els.length; i++) { e = els[i]; e.setAttribute('data-nm-done', '1'); e.innerHTML = orbHTML(e.getAttribute('data-orb')) + '<span class="nm-shim">' + esc(e.getAttribute('data-label')) + '</span>'; }
+    for (i = 0; i < els.length; i++) { e = els[i]; e.setAttribute('data-nm-done', '1');
+      e.innerHTML = (orbType(e.getAttribute('data-orb')) === 'loading' ? '' : orbHTML(e.getAttribute('data-orb'))) + '<span class="nm-shim">' + esc(e.getAttribute('data-label')) + '</span>'; }   // loading = 글자만(위 nmLoader와 동일 규칙)
   }
   window.nmLoaderHydrate = hydrate;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { hydrate(); }); else hydrate();

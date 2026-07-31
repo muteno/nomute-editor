@@ -586,16 +586,18 @@ function poll(outPath, jid) {
   if (_curStop) _curStop();
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = 1800;   // 워크플로 증발 백스톱(k 계승 — 초과 유실은 재열람이 2차 안전망)
+  const fmtSec = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };   // 경과 = m:ss(track·conv·song fmtT 동문법 계승 · 운영자 260731 "0:42에 맞춰서 통일")
+  const ETA = ' (예상 : 3분 00초)';   // 예상 표기 정본 형식 = (예상 : N분 NN초)
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = sbmake 실패 메시지(k 계승)
   let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); if (_curStop === stop) _curStop = null; }; _curStop = stop;
   status.setAttribute('aria-busy', 'true');   // 진행 표식 — 부모 뷰어 자동잠금 보류 신호(k 계승)
-  if (window.nmLoader) status.innerHTML = nmLoader('prompting','Prompting…') + '<span class="sbtime nm-shim" style="margin-left:var(--sp-1);font-variant-numeric:tabular-nums"></span>';   // 경과시간도 빛 스윕(운영자 260731) — color는 .nm-shim 그라디언트가 대체   // orb(Prompting · 콘티 설계) 1회 생성 · 시간만 갱신(운영자 260723 Q460)
+  if (window.nmLoader) status.innerHTML = nmLoader('prompting','제작중…') + '<span class="sbtime nm-shim" style="margin-left:var(--sp-1)"></span>';   // 경과시간도 빛 스윕(운영자 260731) — color는 .nm-shim 그라디언트가 대체   // orb(Prompting · 콘티 설계) 1회 생성 · 시간만 갱신(운영자 260723 Q460)
   const draw = () => {
     if (!live) return;
     const sec = Math.round((Date.now() - t0) / 1000);
     if (sec > budget) { stop(); status.textContent = '표시 시간 초과 — 생성은 계속 돌고 있을 수 있어. 잠시 뒤 다시 열어봐(바로 재클릭 = 이중 발사)'; status.classList.add('err'); return; }
-    if (window.nmLoader) { const bt = status.querySelector('.sbtime'); if (bt) bt.textContent = sec + 's (보통 1–3분)'; }
-    else status.innerHTML = WAIT_SVG + ' 콘티 설계 중… ' + sec + 's (보통 1–3분)';
+    if (window.nmLoader) { const bt = status.querySelector('.sbtime'); if (bt) bt.textContent = fmtSec(sec) + ETA; }   // 경과 = m:ss 통일(0:42 기준) · 예상 = (예상 : N분 NN초) 통일(운영자 260731 — 구 '보통 1–3분' 범위·수식어를 상한 단일값으로: 예상보다 빨리 끝나는 쪽이 안전)
+    else status.innerHTML = WAIT_SVG + ' 콘티 설계 중… ' + fmtSec(sec) + ETA;
   };
   const disp = setInterval(draw, 1000); draw();
   const tick = async () => {
