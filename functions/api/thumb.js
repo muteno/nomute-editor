@@ -30,6 +30,25 @@ const cleanLines = (v) => Array.isArray(v)
 export async function onRequestGet({ request, env }) {
   const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   const q = new URL(request.url).searchParams;
+  // GET /api/thumb?recent=<시간> → 최근 제작 id 목록(운영자 260731 "즉시 경로 얹기" — 타 기기·타 플랫폼 제작분을 Pages 빌드·배포 랙 없이 발견).
+  // id 선두 12자리 = KST 제작시각(thIdTs 계약) → 컷오프 id를 startAfter로 = 전체 버킷 스캔 없이 최근 창만 목록(R2 list Class A 1~3회/호출).
+  // 발견만 담당 — 내용은 클라가 기존 ?meta=/?src= 즉시 경로(fetchMetaById 정본)로 끌어와 dedup·지운기록 컷까지 기존 문법 그대로.
+  if (q.get('recent') != null) {
+    if (!env.R2) return j({ ids: [], reason: 'r2-unbound' });
+    const hrs = Math.max(1, Math.min(48, +q.get('recent') || 24));
+    const d = new Date(Date.now() - hrs * 3600e3 + 9 * 3600e3);   // KST 벽시계 = UTC+9(id 도장과 동일 축)
+    const p2 = n => String(n).padStart(2, '0');
+    const cut = String(d.getUTCFullYear()).slice(2) + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + p2(d.getUTCSeconds());
+    const ids = new Set(); let cursor;
+    try {
+      for (let i = 0; i < 3; i++) {   // 상한 3페이지(24h 창 실사용량 대비 여유 · 폭주 방어)
+        const l = await env.R2.list(cursor ? { prefix: 'thumb_out/', limit: 1000, cursor } : { prefix: 'thumb_out/', startAfter: 'thumb_out/' + cut, limit: 1000 });
+        for (const o of (l.objects || [])) { const m = o.key.match(/^thumb_out\/([A-Za-z0-9_-]{1,64})\/_meta\.json$/); if (m) ids.add(m[1]); }
+        if (!l.truncated) break; cursor = l.cursor;
+      }
+    } catch (e) { return j({ ids: [], reason: 'r2-error' }); }   // R2 장애 = 빈 목록(클라는 종전 Pages 폴 사다리 유지)
+    return j({ ids: [...ids].sort().reverse().slice(0, 60) });   // 최신 먼저 · 캡 60(이력 캡 400의 최근 창 부분집합)
+  }
   const kind = q.get('src') != null ? 'src' : 'meta';   // src= 있으면 조건 스냅샷 · 없으면 종전 meta(기본)
   const id = (q.get(kind) || '').trim();
   if (!id) return j({ error: kind + ' 파라미터 필요' }, 400);
