@@ -415,6 +415,24 @@ thHist.sort((a, b) => b.ts - a.ts);
 writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, THH_CAP), null, 2));
 console.log(`viewer/thumb-hist.json 생성 — ${Math.min(thHist.length, THH_CAP)}건${thHist.length > THH_CAP ? ` (전체 ${thHist.length}건 중 최신 ${THH_CAP}장만 — 오래된 ${thHist.length - THH_CAP}건 절단)` : ''}`);
 
+// ── 콘티(sb)·프롬프팅(k) 작업 내역 cross-device(운영자 260731 "서버 인덱스로 승격") — sb_out/<id>/board.md · k_out/<id>/prompt.md(git 커밋·전기기 서빙) 스캔 → sb-hist.json/k-hist.json ──
+//   thumb-hist 문법 계승(시간 컷 없음·최신순·캡 절단 정직 고지) · 라벨 = md 첫 의미줄 절단(발사 조건 스냅샷 미보존 → 감독·촬영 캡션은 로컬 내역 전용 유지) · 클라(sb/k.html)가 로컬 localStorage 내역과 id 병합.
+const SBK_CAP = 120;
+const mdTitle = (p) => { try { for (const ln of readFileSync(p, 'utf8').split('\n')) { const t = ln.replace(/^[#>*\-\s|:]+/, '').trim(); if (t) return t.slice(0, 48); } return ''; } catch { return null; } };   // null = 파일 없음(항목 제외) · '' = 빈 문서(항목 유지·라벨 폴백은 클라)
+for (const [root, file, out] of [['viewer/sb_out', 'board.md', 'sb-hist.json'], ['viewer/k_out', 'prompt.md', 'k-hist.json']]) {
+  const hist = [];
+  try {
+    for (const id of readdirSync(root)) {
+      const ts = thIdTs(id); if (!ts) continue;
+      const t = mdTitle(join(root, id, file)); if (t === null) continue;   // 산출 md 없는 폴더(실패 잡 error.log 등) = 제외
+      hist.push({ id, out: `${root.replace('viewer/', '')}/${id}/${file}`, ts, t });
+    }
+  } catch { /* 산출 폴더 없음(아직 0건) */ }
+  hist.sort((a, b) => b.ts - a.ts);
+  writeFileSync('viewer/' + out, JSON.stringify(hist.slice(0, SBK_CAP), null, 2));
+  console.log(`viewer/${out} 생성 — ${Math.min(hist.length, SBK_CAP)}건${hist.length > SBK_CAP ? ` (전체 ${hist.length}건 중 최신 ${SBK_CAP}건만 절단)` : ''}`);
+}
+
 // ── 잡 실측 통계: metrics/token-usage.jsonl → viewer/job_stats.json (wf/job별 중앙 비용·소요) ──
 //   왜: 진행 타일의 '예상 시간'·'비용'을 실측 앵커로 표기(운영자 260727 "토큰 안나오는 문제 · 예상시간까지").
 //   ⚠ 표기 단위 = 토큰(운영자 260727 "종량제인 게 아닌 거는 값이 안 뜰 테니 그냥 토큰으로만").
