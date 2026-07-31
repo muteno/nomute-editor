@@ -2249,7 +2249,7 @@ def main():
                     for a in _miss}   # miss 계정만 보유 = 성공 시 키 소멸이 곧 리셋 · 상한 99 = 무한 증식 방지
             health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why, "streak": _stk}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음) · streak = 연속 실패 런 수(뷰어 유튜브 개별 알림 5회 게이트)
         # [관측] 스트릭 집계 1줄(CLAUDE.md [관측] — 뷰어에 streak<5 침묵 게이트가 새로 생긴 만큼, 몇 계정이 어디까지
-        #   쌓였는지는 로그가 말해야 한다 · 게이트 = check_refs check_failsoft_metrics 'sub_streak 계측:')
+        #   쌓였는지는 로그가 말해야 한다)
         _stka = {k2: ((health["subs"]["cover"].get(k2) or {}).get("streak") or {}) for k2 in health["subs"]["cover"]}
         _trk = sum(1 for m2 in _stka.values() for n2 in m2.values() if n2 > 0)
         _hot = sorted("%s@%s×%d" % (k2, a2, n2) for k2, m2 in _stka.items() for a2, n2 in m2.items() if n2 >= 5)
