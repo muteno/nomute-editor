@@ -17,10 +17,13 @@ if [ -n "$NEED_APT" ]; then
     || { sleep 3; timeout 300 $SUDO apt-get install -y -qq $NEED_APT; }
 fi
 
-# Playwright(파이썬 바인딩)
+# Playwright(파이썬 바인딩) + edge-tts(나레이션 · API 키 불필요·무료)
 python3 -c "import playwright" 2>/dev/null \
   || timeout 300 pip3 install -q playwright \
   || { sleep 3; timeout 300 pip3 install -q playwright; }
+python3 -c "import edge_tts" 2>/dev/null \
+  || timeout 300 pip3 install -q edge-tts \
+  || { sleep 3; timeout 300 pip3 install -q edge-tts; }
 
 # Chromium 본체 — 이미 있는 브라우저를 재다운로드하지 않는다.
 #   ① 이 환경(Claude Code)엔 /opt/pw-browsers에 선설치 = PLAYWRIGHT_BROWSERS_PATH가 잡아준다(다운로드 금지 계약).
