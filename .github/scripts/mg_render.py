@@ -25,6 +25,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parent))   # mg_tts 동거 import(러너 cwd 무관)
 
 # ── 렌더 상한(운영자 기본값 SB_DEF는 2K지만 프레임 캡처는 픽셀 비례로 느려진다) ──
 #   근거: 1080×1920 30fps 15s = 450프레임 · 캡처 ~60ms/프레임 실측 대역 = ~30s. 2K는 면적 1.8배·4K는 4배라
@@ -373,14 +374,33 @@ def normalize(spec, total_dur):
             layers.append(ly)
         if not layers:
             continue
-        scenes.append({'t': [t0, min(t1, total_dur)], 'trans': sc.get('trans', 'cut'), 'layers': layers})
+        scenes.append({'t': [t0, min(t1, total_dur)], 'trans': sc.get('trans', 'cut'),
+                       'vo': (sc.get('vo') or '').strip(), 'layers': layers})
         stat['scene_out'] += 1
     scenes.sort(key=lambda s: s['t'][0])
     return scenes, stat
 
 
 # ── 렌더 ─────────────────────────────────────────────────────────────────────
-def render(html, w, h, fps, dur, out_mp4):
+def fit_narration(scenes, vos):
+    """나레이션이 씬 구간보다 길면 그 씬을 늘리고 **뒤 씬을 통째로 민다**(말 잘림 = 사고).
+       반환 = (총 길이, 늘어난 씬 수). 스펙의 t는 '최소 이만큼'으로 해석한다(prompts/sb-make.md §나레이션)."""
+    by_scene = {v['i']: v['dur'] for v in vos}
+    PAD = 0.35          # 문장 끝 여운 — 다음 씬이 말꼬리를 밟지 않게(TTS 꼬리 무음과 별개로 시각 여백)
+    shift, stretched = 0.0, 0
+    for i, sc in enumerate(scenes):
+        t0, t1 = sc['t'][0] + shift, sc['t'][1] + shift
+        need = by_scene.get(i, 0.0)
+        if need and need + PAD > (t1 - t0):
+            grow = (need + PAD) - (t1 - t0)
+            t1 += grow
+            shift += grow
+            stretched += 1
+        sc['t'] = [t0, t1]
+    return (scenes[-1]['t'][1] if scenes else 0.0), stretched
+
+
+def render(html, w, h, fps, dur, out_mp4, audio=None):
     from playwright.sync_api import sync_playwright
 
     n_frames = max(1, int(round(dur * fps)))
@@ -388,12 +408,16 @@ def render(html, w, h, fps, dur, out_mp4):
     if not ff:
         raise RuntimeError('ffmpeg 없음')
 
-    proc = subprocess.Popen(
-        [ff, '-hide_banner', '-loglevel', 'error', '-y',
-         '-f', 'image2pipe', '-framerate', str(fps), '-i', '-',
-         '-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
-         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(out_mp4)],
-        stdin=subprocess.PIPE)
+    args = [ff, '-hide_banner', '-loglevel', 'error', '-y',
+            '-f', 'image2pipe', '-framerate', str(fps), '-i', '-']
+    if audio:
+        args += ['-i', str(audio)]
+    args += ['-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
+             '-pix_fmt', 'yuv420p', '-movflags', '+faststart']
+    if audio:
+        args += ['-c:a', 'aac', '-b:a', '128k', '-shortest']
+    args += [str(out_mp4)]
+    proc = subprocess.Popen(args, stdin=subprocess.PIPE)
 
     launch = {'args': ['--no-sandbox', '--font-render-hinting=none', '--force-color-profile=srgb']}
     if (exe := os.environ.get('MG_CHROMIUM')):
@@ -451,24 +475,53 @@ def main():
 
     # 스펙 끝이 길이보다 짧으면 그 지점에서 끊는다(검은 꼬리 방지) · 길면 길이 캡이 이긴다
     dur = min(dur, max(s['t'][1] for s in scenes))
+
+    # ── 나레이션(vo) — 있으면 합성하고 **타임라인을 음성에 맞춘다**(말 잘림 방지) ──
+    #    엔진 = edge-tts(무료·키 불필요). 실패해도 무음 영상으로 계속 간다(fail-soft) — 단 집계에 남는다.
+    vo_want = sum(1 for s in scenes if (s.get('vo') or '').strip())
+    vos, audio, stretched = [], None, 0
+    if vo_want:
+        try:
+            import mg_tts
+            vos = mg_tts.synth_scenes(scenes, outdir / 'vo', proxy=os.environ.get('MG_TTS_PROXY'))
+            if vos:
+                dur, stretched = fit_narration(scenes, vos)
+                dur = min(dur, DUR_CAP)
+                audio = mg_tts.build_track(vos, scenes, dur, outdir)
+        except Exception as e:
+            print(f'  나레이션 단계 실패(무음으로 계속) — {e}')
+
     out_mp4 = outdir / 'motion.mp4'
     frames, err = 0, None
     try:
-        frames = render(build_html(scenes, w, h, root_tokens()), w, h, fps, dur, out_mp4)
+        frames = render(build_html(scenes, w, h, root_tokens()), w, h, fps, dur, out_mp4, audio)
     except Exception as e:                     # fail-soft — 콘티 md는 이미 성공했다(렌더가 잡을 죽이면 안 됨)
         err = e
         out_mp4.unlink(missing_ok=True)
 
     # ── 결과 집계 1줄(CLAUDE.md [관측] 의무 — 성공/미시도/잔여가 갈릴 것) ──
     size = out_mp4.stat().st_size if out_mp4.exists() else 0
+    vo_txt = (f'나레이션 {len(vos)}/{vo_want}건'
+              + (f'(씬 {stretched}개 연장)' if stretched else '')
+              + ('' if audio else ' · 트랙 미부착 = 무음')) if vo_want else '나레이션 0건(vo 미기재)'
     print(f'모션 렌더: 씬 {stat["scene_out"]}/{stat["scene_in"]} · '
           f'레이어 {stat["layer_in"] - stat["layer_out"]}/{stat["layer_in"]} · '
+          f'{vo_txt} · '
           f'프레임 {frames}장 · {w}x{h}@{fps}fps {dur:.1f}s · '
           f'잔여 {stat["layer_out"]}(미지원 어휘 {stat["bad_anim"]} · 타입 {stat["bad_type"]}) · '
           f'산출 {size // 1024}KB' + (f' — 렌더 실패({err})' if err else ''))
 
     if err:
         warn(f'모션 렌더 실패(비치명 — 콘티 md는 정상 산출) — {err}')
+    # 나레이션 워치독 — vo를 썼는데 트랙이 안 붙으면 "정보전달형 영상인데 무음"이라 사실상 반쪽 산출.
+    #   전량 실패는 곧 엔진 접근 불가(네트워크·차단) 신호라 조용히 넘기면 안 된다(260729 무성 0건 사고 축).
+    if vo_want and not audio:
+        # 합성 성공분 유무로 원인을 갈라 찍는다 — "엔진에 못 닿음"과 "합성은 됐는데 믹스가 깨짐"은 고칠 곳이 다르다
+        cause = ('edge-tts 접근 실패 추정(러너 네트워크·프록시 확인)' if not vos
+                 else f'합성 {len(vos)}건은 성공했으나 트랙 믹스 실패(ffmpeg filter_complex 확인)')
+        warn(f'나레이션 {vo_want}건 요청 → 트랙 0(무음 영상) — {cause}')
+    elif vo_want and len(vos) < vo_want:
+        warn(f'나레이션 부분 실패 {len(vos)}/{vo_want}건 — 실패 씬은 그 구간만 무음으로 지나간다')
     if downscaled:
         warn(f'화질 {st["quality"]} 요청 → 긴 변 {MAX_LONG_EDGE} 캡으로 다운스케일 렌더(프레임 캡처 시간 = 픽셀 비례)')
     if int(st['fps']) > FPS_CAP:
