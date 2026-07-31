@@ -327,6 +327,7 @@
   .vstage .wmsg .wsec { color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }   /* 경과 = 무트·탭귤러(시안 승인 렌더와 동일) */
   /* 경과 시간 = 스캔라인 위 레이어 좌상단 코너 · 네온레몬(운영자 260723 Q456 = 우상단→좌상단 이동 · efs 15=--fs-body 계승) — 색 = --accent-2 토큰 계승(네온레몬) · 창작 0 */
   .vstage .wcorner { position:absolute; top:8px; left:10px; z-index:2; font-size:var(--fs-xs); font-weight:400; font-variant-numeric:tabular-nums; color:var(--fg); text-shadow:0 1px 10px rgba(0,0,0,.5); }   /* 운영자 260727 전역 규격 — 볼드 해제·fs-xs(75%)·흰색(thumb .wip .wcorner와 동일 · 네온레몬 글로우 폐지) */
+  .vstage .wcorner .wc-hi { color:var(--accent); }   /* 'N분 NN초 경과' = 강조색(운영자 260731) · 예상 병기는 흰색 유지 */
   .status { margin-top:var(--sp-2); font-size:13px; color:var(--mut); white-space:pre-wrap; text-align:center; }
   .status.err { color:var(--danger); }
   /* 완료 부기(운영자 260728) — 경과시간 줄 **좌측 아래**에 토큰·예상비용. 진행 중엔 알 수 없으므로 완료 후에만 노출.
@@ -408,6 +409,12 @@
   .lyburn video { display:block; width:100%; max-height:min(320px, 40dvh); background:var(--bg); border:1px solid var(--line); border-radius:var(--r-m); }
   .lyburn video[hidden] { display:none; }
   .lyburn-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  /* 완성 영상 우상단 오버레이 다운로드(운영자 260731 "이미지 스튜디오처럼") — 기하 = thumb .imgdl 정본 그대로(top/right 10 · 34px · r10) · 플레이트/색 = nm-cards.css .imgdl.dlbtn 상속(여긴 위치/크기만) */
+  .lyburn-stage { position:relative; }
+  .lyburn-stage .imgdl { position:absolute; top:10px; right:10px; width:34px; height:34px; display:grid; place-items:center; border:0; border-radius:10px; z-index:2; transition:transform var(--dur-fast), background var(--dur), color var(--dur); }   /* raw-ok: thumb .imgdl 정본 바이트 계승(top/right 10 · 34px · r10 — 전 앱 오버레이 다운로드 동형 유지, 토큰 치환 시 thumb와 1px 드리프트) */
+  .lyburn-stage .imgdl:active { transform:scale(var(--press-xs,.82)); }
+  .lyburn-stage .imgdl[hidden] { display:none; }
+  .lyburn-stage .imgdl svg { display:block; width:14px; height:14px; }
   /* 맞춤법 교정 칩 = thumb .spellchips/.spchip 정본 셀렉터·구조·상태문법 계승(운영자 260728 "썸네일 제작에 검수해주는 부분 참고") · 값은 토큰 계승(§🎨 · thumb 원본의 7/11/12/6px raw는 근접·동값 토큰으로 승격 — 신규 색 0) */
   .spellchips { display:flex; flex-wrap:wrap; gap:var(--sp-1); margin-top:var(--sp-2); }
   .spellchips[hidden] { display:none; }
@@ -581,8 +588,8 @@
   <!-- 완성 영상(자막 자동 합성 결과) — video.json 폴링 → R2/git 산출 표시 · 다운로드 = .dlbtn 표준 -->
   <div class="lyburn" id="lyBurn" hidden>
     <label class="fl">완성 영상</label>
-    <video id="lyBurnVid" controls playsinline preload="metadata" hidden></video>
-    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><label class="dl-full" id="lyCutDelW" title="삭제한 조각 구간을 영상에서도 잘라냄 (다시 입히기와 함께)" hidden><input type="checkbox" id="lyCutDel"><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">삭제 컷</span></label><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집 있으면 상세 자막 전체로 구움 · 스타일 축 = 자막 탭에서 · 없으면 현행 자막 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button><button class="lybtn dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div>
+    <div class="lyburn-stage"><video id="lyBurnVid" controls playsinline preload="metadata" hidden></video><button class="imgdl dlbtn" id="lyBurnDl" type="button" aria-label="영상 다운로드" title="자막 입힌 영상 다운로드" hidden></button></div><!-- 다운로드 = 영상 우상단 오버레이(운영자 260731 "이미지 스튜디오처럼") — thumb .imgdl 정본 계승(위치/크기 = 호스트 · 플레이트/색 = nm-cards.css .imgdl.dlbtn) -->
+    <div class="lyburn-row"><span class="lyburn-note" id="lyBurnNote"></span><span class="lysp"></span><label class="dl-full" id="lyCutDelW" title="삭제한 조각 구간을 영상에서도 잘라냄 (다시 입히기와 함께)" hidden><input type="checkbox" id="lyCutDel"><span class="dl-cbox"><svg viewBox="0 0 24 24"><path class="dl-dash" d="M6 12h12"/><path class="dl-chk" d="M5 13l4 4L19 7"/></svg></span><span class="lbl">삭제 컷</span></label><button class="lybtn" id="lyReburn" type="button" aria-label="다시 입히기" title="지금 설정으로 자막 다시 입히기 (편집 있으면 상세 자막 전체로 구움 · 스타일 축 = 자막 탭에서 · 없으면 현행 자막 재사용 = 빠름)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></button></div>
     <!-- ⚠배치(3-2) 맞춤법 교정 칩 = ly 정본 위치 그대로(다시 입히기 행 바로 아래) — 1차 누름 = 검사 → 칩 리뷰 → 2차 = 적용 후 재합성 -->
     <div class="spellchips" id="lySpellChips" hidden></div>
   </div>
@@ -1581,7 +1588,7 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   vw.innerHTML=(wsrc?'<video class="wv" muted loop playsinline preload="metadata" src="'+esc(wsrc)+'"></video>':'')
     +'<div class="wscrim"></div><div class="scanline"></div>'
     +'<div class="wcorner" aria-hidden="true"></div>'   // 경과 = 좌상단 코너 네온레몬(운영자 260723 Q454/Q456)
-    +'<div class="wmsg">'+ (window.nmLoader? nmLoader('solving','제작중…') + (window.nmEta?'<span class="nm-shim">'+nmEta.label('edit-video')+'</span>':'') : esc(wlbl||'편집 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>') +'</div>';   // 중앙 = orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3
+    +'<div class="wmsg">'+ (window.nmLoader? nmLoader('solving','제작중') : esc(wlbl||'편집 중')+'<span class="gdots"><i>.</i><i>.</i><i>.</i></span>') +'</div>';   // 중앙 = orb 로더(Solving · 운영자 260723 Q460) · '…'·예상 병기 제거 = 좌상단 wcorner가 전담(운영자 260731 "…안보이게·예상 빼줘 — 어짜피 좌측 상단에 나오니까") · 폴백 = 구 점3
   dockSync();   // 대기 스테이지 주입 **뒤** 판정(재검① 260728) — _pollLive는 아직 false지만 .scanline이 들어와 res 판정이 정확해진다
   const wv=vw.querySelector('.wv');
   if(wv){ if(matchMedia('(prefers-reduced-motion:reduce)').matches){ wv.removeAttribute('loop'); wv.addEventListener('loadedmetadata',()=>{ try{ wv.currentTime=.01; }catch(e){} },{once:true}); } else { wv.play().catch(()=>{}); } }
@@ -1595,9 +1602,9 @@ function pollEdit(id, t0, minTs, wlbl, kind){
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
     if(sec>BUDGET*2){ stop(); wclear(); pendClear(); goFireDone($('#editGo')); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pendClear 추가(평의회7 260731) — 실패·성공 분기(1605·1631행)에만 있고 **타임아웃 경로만 빠져** 있었다. 재개(2569행)는 t0를 `max(t0, now-BUDGET)`로 클램프해 경과를 0 근처로 되돌리므로, 새로고침할 때마다 90분 헛폴이 되살아나 **24시간 동안 반복**됐다(그동안 _polling=true라 작업 내역 탭도 막힘). error.log를 안 남기는 실패 모드(Actions 런 취소·러너 킬·디스패치 후 미시작)엔 사실상 종료 조건이 없었다
-    const ws=vw.querySelector('.wcorner'); if(ws){ const mm=(x)=>{x=Math.max(0,x|0);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
+    const ws=vw.querySelector('.wcorner'); if(ws){ const km=(x)=>{x=Math.max(0,x|0);return Math.floor(x/60)+'분 '+String(x%60).padStart(2,'0')+'초';};   // 분 = 한자리 기본(10분 넘으면 자연히 두자리 — 운영자 260731 "한자리 수 분으로, 넘어가면 십의자리 하나만 더")
       const eta=(EDIT_STATS && EDIT_STATS['edit-make/edit'] && EDIT_STATS['edit-make/edit'].dur)|0;
-      ws.textContent=mm(sec)+' 진행시간'+(eta?' (예상 '+mm(eta)+')':''); }   // 예상 배선(운영자 260727 "일부에서는 예상시간이 안 뜬다") — 표기 문법 = thumb .wip 좌상단 정본 그대로 · 앵커 = viewer/job_stats.json의 edit-make/edit(실측 중앙 소요) · 데이터 없으면 종전처럼 경과만   // 운영자 260727 전역 표기(00:00 진행시간) — 영상 잡 예상시간 앵커(edit-make/edit n=5)는 thumb 배선과 별개 축이라 이번 스코프 밖   // 경과 = 0:17 포맷 우상단 코너(운영자 260712 waitTimeFmt=mmss · 260723 Q454 코너 이주)
+      ws.innerHTML='<span class="wc-hi">'+km(sec)+' 경과</span>'+(eta?' (예상 '+km(eta)+')':''); }   // 예상 배선(운영자 260727 "일부에서는 예상시간이 안 뜬다") — 표기 문법 = thumb .wip 좌상단 정본 그대로 · 앵커 = viewer/job_stats.json의 edit-make/edit(실측 중앙 소요) · 데이터 없으면 종전처럼 경과만   // 운영자 260727 전역 표기(00:00 진행시간) — 영상 잡 예상시간 앵커(edit-make/edit n=5)는 thumb 배선과 별개 축이라 이번 스코프 밖   // 경과 = 0:17 포맷 우상단 코너(운영자 260712 waitTimeFmt=mmss · 260723 Q454 코너 이주)
   };
   const disp=setInterval(draw,1000); draw();
   const tick=async()=>{
@@ -2260,6 +2267,8 @@ function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
   const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
   const v = $('#lyBurnVid'); if (v.getAttribute('src') !== j.url) v.src = j.url; v.hidden = false;
+  const opv = $('#lyPv'); if (opv && !opv.hidden) { try { const ov = $('#lyVid'); if (ov && !ov.paused) ov.pause(); } catch (e) {} opv.hidden = true; lyPvSync(); }   // 완성본 등장 = 원본 미리보기 숨김(운영자 260731 "작업본만 나오게" — 위아래 이중 영상 제거) · src 보존 = 조각 편집 lySeek는 hidden 가드로 무동작
+
   if (window.nmEta && _lyBurnT0) { nmEta.done('edit-burn', (Date.now() - _lyBurnT0) / 1000); _lyBurnT0 = 0; }   // 예상 학습 = 성공 완료만(ly 동문 · sb·k 배선 그대로)
   dockSync();   // 완성본 video가 실제로 노출된 **뒤** 판정(재검① 260728 — 앞에 두면 lv가 아직 hidden이라 접힘이 안 걸렸다)
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url;
