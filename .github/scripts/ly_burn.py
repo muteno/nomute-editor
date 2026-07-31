@@ -51,6 +51,26 @@ FONT_FAMILY = {"gothic": "Noto Sans CJK KR", "serif": "Noto Serif CJK KR",
                "nanum": "NanumGothic", "pen": "Nanum Pen Script"}
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
+
+
+def req_span(opts, dur):
+    """요청 구간의 실길이 합(트림 미지정 = -1) — 워크플로 edit-make.yml의 SPAN 산식과 **문자 그대로 동일**.
+    끝값은 실길이로 클램프한다(「끝 공란」이 3600 센티널로 올라오는 계약 때문 — 클램프를 빼면 SPAN이 부풀어
+    캡이 되레 강등되고, 구간 카드를 이미 쓴 사용자를 더 많이 거절한다 · 재검③ 260728 동일 함정)."""
+    try:
+        c = (lambda v: min(v, dur) if dur > 0 else v)
+        sg = opts.get("vid_segs")
+        if isinstance(sg, list) and sg:
+            return sum(max(0.0, c(float(b)) - float(a)) for a, b in sg)
+        t1 = opts.get("vid_t1")
+        t0 = float(opts.get("vid_t0") or 0)
+        if t1:
+            return c(float(t1)) - t0
+        if opts.get("vid_t0") and dur > t0:
+            return dur - t0
+    except Exception:
+        pass
+    return -1
 CUT_PAD = 0.30                   # 무음 컷: 발화 구간 앞뒤 보존 여유(초) — 어두·어미 잘림 방지
 CUT_MIN_REMOVE = 0.40            # 무음 컷: 이만큼도 안 줄어드는 갭은 붙여둠(미세컷 = 튐만 유발·자연스러운 호흡 보존)
 # 컷 강도(운영자 260708 · 분신술 10인): 3단 칩 살짝/기본/많이 → (pad, min_remove, max_ratio) 테이블.
@@ -854,7 +874,12 @@ def build_ass(segs, w, h, opts):
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ])
     lines = []
-    small = max(14, int(fs * coef(opts, "dual_small", 0.62, 0.25, 1.0)))   # 번역(원문) 줄 크기 계수(운영자 260728 "번역이 50% 작은 크기" — 편집기 번역 토글 = 0.5 · 결측 = 0.62 종전 바이트 동일)
+    # 번역(원문) 줄 크기 계수(운영자 260728 "번역이 50% 작은 크기" — 편집기 번역 토글 = 0.5 · 결측 = 0.62 종전 바이트 동일).
+    # ⚠ 하한 14 고정(구 `max(14, …)`)은 **저해상도 가로 영상에서 비율을 통째로 깨뜨렸다**: fs 자체가 `max(18, h*size)`의
+    #   하한 18에 걸리는 480p급(h=480 → fs 18)에서는 원문이 18×0.5=9로 계산돼도 14로 끌어올려져 한국어 줄의 **78%**가 된다
+    #   (720p도 56%). 게이지는 50%를 가리키고 미리보기(하한 3px)도 50%로 그리는데 산출물만 커지는 미리보기≠결과 구간.
+    #   → 하한을 10으로 낮추고 `min(fs, …)`로 본선을 절대 넘지 못하게 한다(1080p 이상 = 종전과 동일 값 = 회귀 0).
+    small = max(10, min(fs, int(round(fs * coef(opts, "dual_small", 0.62, 0.25, 1.0)))))
     ref_px = fs * LINE_F   # 중앙 불변 기준 = 본선(한글) 1줄 높이 — 게이지가 가리키는 배치는 1줄 기준으로 고정(운영자 캡처 보존)
     floor_v = max(1, int(h * 0.01))   # ASS Dialogue MarginV=0은 '스타일값 사용' 폴백이라 1 이상 강제
     for sg in segs:
@@ -942,8 +967,19 @@ def run(vid_id, video, outdir):
         out_json(outdir, {"error": "영상 정보 읽기 실패: {}".format(str(e)[:120])}); return 0
     if not w or not h:
         out_json(outdir, {"error": "영상 스트림 없음(오디오 파일) — 자막 텍스트만"}); return 0
-    if dur > MAX_DUR:
-        out_json(outdir, {"error": "영상이 {}분 — 10분 이하만 합성(릴스/쇼츠용)".format(int(dur // 60))}); return 0
+    # ── 길이 캡 = 워크플로 선게이트(edit-make.yml '길이 캡' 스텝)와 **동형**(260731 봉합) ──
+    #   구 코드는 조건 없이 `dur > MAX_DUR`였고, 그것도 트림 파싱(아래 t0_req/t1_req·useg)보다 **앞**이라
+    #   판정 기준이 언제나 '트림 전 원본 길이'였다. 그래서 워크플로가 방금 "구간 편집도 원본 60분까지"로
+    #   통과시킨 요청을 마지막 컴포즈 단계에서 "10분 이하만"으로 되거절했다(사용자 눈엔 앞뒤가 안 맞는 거절).
+    #   자막 ON이면 더 나쁘다 — STT(최대 45분)와 claude 의역 토큰을 **전부 태운 뒤** 여기서 떨어졌다(평의회5 260731).
+    _stt = bool(opts.get("burn") or opts.get("cut") or opts.get("clip") or opts.get("cutfill") or opts.get("take") or opts.get("cutscan"))
+    _span = req_span(opts, dur)
+    _cap = 1200 if _stt else (3600 if 0 <= _span <= 600 else MAX_DUR)
+    if dur > _cap:
+        _msg = ("자막·컷·클리퍼는 20분 이하만(전사가 원본 전체를 돎) — 구간만 자르거나 20분 이하로" if _stt
+                else ("구간 편집도 원본 60분까지야 — 잘라서 올려줘" if _cap > MAX_DUR
+                      else "10분 이하만 합성(릴스/쇼츠용) — 긴 영상은 구간 카드로 잘라줘"))
+        out_json(outdir, {"error": "영상이 {}분 — {}".format(int(dur // 60), _msg)}); return 0
     segs, src_kind = load_segs(outdir)
     if segs and opts.get("burn") is not False:   # no_burn(컷 단독) = word 주입 불요 — build_ass 미호출이라 순수 낭비(검증9)
         try:
