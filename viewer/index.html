@@ -11490,15 +11490,10 @@ function renderSnsTrends() {
   const YTC_N = 5;   // 주제당 상한(운영자 "상위 5개까지") — 11주제 × 5 = 최대 55장이라 상한을 올리면 큐레이션 스크롤이 배로 는다
   const ytcRaw = d.youtube_cats || {};
   const ytcL = YT_CATS.map(c => [c[0], c[1], bySort(cutH(ytcRaw[String(c[0])] || [], 24), 'views').slice(0, YTC_N).map(v => ({ ...v, cover: v.thumb }))]).filter(z => z[2].length);
-  // 노뮤트 픽 = **고른 주제들 안에서만** 재랭킹(운영자 260731) — 새 수집 0(위 주제 카드 재사용) · 점수 = 실시간 TOP의 lane() 문법 계승
-  //   (주제 내 순위 정규화 sc = 1 - r/L 주정렬 + 조회수 log 타이브레이크 — 주제 간 절대 조회수 비교는 장르 스케일 격차로 무의미) ·
-  //   주제 캡 2 = 한 장르 독식 방지(TOP 10 플랫폼 캡 4 문법 미러) · 상한 10 · 주제가 1개뿐이면 그 주제 복제라 미표기
-  const npPool = [];
-  ytcL.forEach(z => z[2].forEach((v, r) => npPool.push({ v, cat: z[0], sc: 1 - r / z[2].length, ht: Math.log10(1 + (v.views || 0)) })));
-  npPool.sort((a2, b2) => (b2.sc - a2.sc) || (b2.ht - a2.ht));
-  const npCap = {}, npL = [];
-  npPool.forEach(p2 => { if (npL.length >= 10) return; const n2 = npCap[p2.cat] || 0; if (n2 >= 2) return; npCap[p2.cat] = n2 + 1; npL.push(p2.v); });
-  if (ytcL.length > 1 && npL.length) gCUR += sec('nmp', '유튜브 - 노뮤트 픽', rtBase, npL.length, '<div class="trend-grid wd">' + npL.map((t, i) => card(t, i, 1)).join('') + '</div>');
+  // (구 '유튜브 - 노뮤트 픽' = 주제들을 섞어 재랭킹한 통합 블릿 → 260731 폐지. 운영자 "주제별로 조회수가 많이 차이날거같아서 개별로 봐야할듯" —
+  //  실측이 근거: 같은 런에서 뉴스 89.7만·스포츠 46.1만인데 게임은 최고 39.1만이라, 순위 정규화로 섞으면 장르 스케일 차이가 통째로 뭉개진다.
+  //  또 그 재랭킹 결과는 유튜브 인기 TOP 10과 2/10건만 겹치되 겹치는 건 전부 게임 = 정보 증분이 주제 블릿 자체보다 작았다.
+  //  주제별 블릿(아래 ytcL 루프)이 정본 · 되돌림 = git 이력)
   ytcL.forEach(z => { gCUR += sec('ytc-' + z[0], '유튜브 - ' + z[1], rtBase, z[2].length, '<div class="trend-grid wd">' + z[2].map((t, i) => card(t, i, 1)).join('') + '</div>'); });
   // 폴백 = youtube_cats 미도착(구 산출·무키)일 때만 구 단일 '유튜브 - 뉴스' 섹션 유지(화면 공백 회귀 차단 · 수집이 새 키를 채우면 이 줄은 미도달)
   if (!ytcL.length && ytnL.length) gCUR += sec('ytn', '유튜브 - 뉴스', rtBase, ytnL.length, '<div class="trend-grid wd">' + ytnL.map((t, i) => card(t, i, 1)).join('') + '</div>');   // 뉴스 = AI영상 카드 통일(운영자 260717 "뉴스·쇼츠 2블릿 AI영상처럼" — 뉴스 영상 원본 16:9 → wd 가로 카드로 자연 비율 노출[구 3/4 크롭 폐기] · card(,,1)=.tcard-cov.wd) · 뉴스 소재 훑기 온-미션(평의회10 결판)
@@ -11684,7 +11679,6 @@ function renderSnsTrends() {
   fillT('yt', '.tcard-t', ytGrid.map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = ytGrid 동일 원본(260721 채움 리스트와 1:1 — 별도 slice면 채움분 제목 밀림)
   fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서) · 260731부터 youtube_cats 폴백 경로 전용(정상 국면은 아래 주제 루프가 담당)
   ytcL.forEach(z => fillT('ytc-' + z[0], '.tcard-t', z[2].map(v => v.title || '')));   // 주제별 인기 제목(운영자 260731) — 섹션 키 = ytc-<videoCategoryId> · textContent 주입 = XSS 안전(형제 fillT 관용구)
-  fillT('nmp', '.tcard-t', npL.map(v => v.title || ''));   // 노뮤트 픽 제목(재랭킹 리스트와 1:1)
   document.querySelectorAll('[data-sec=ytn] .tcard-cov img, [data-sec^="syt"] .tcard-cov img').forEach(im => {   // ⚠ 접두 = "syt"(하이픈 없음) — 구독 블록이 지역 2군(syt-kr·syt-gl)에서 지역 무관 단일 sec('syt')로 합쳐질 때(260724) 이 셀렉터만 구 하이픈 접두로 남아 사다리가 통째로 미부착 = 가로 영상 oardefault 404(120×90 회색 플레이스홀더 · 200 아닌 404도 이미지 본문이라 브라우저가 그려버림)가 그대로 노출되던 회귀(260727 실측 봉합) · 구독(syt)도 동일 사다리 합류(운영자 260720 "썸네일 다 16:9" — oar 세로원본 → 16:9 cover 중앙 크롭 = Q04 "크롭되어도 되니까 동일하게" 판례 동축)   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
     const steps = [im.src.replace('oardefault', 'hq720'), im.src.replace('oardefault', 'mqdefault')];
     const down = () => { const nx = steps.shift(); if (nx) im.src = nx; else { im.onerror = null; im.style.display = 'none'; } };
