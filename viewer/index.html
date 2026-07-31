@@ -11792,7 +11792,7 @@ function renderSnsTrends() {
       if (nv) { e.preventDefault(); box._tsLast = Date.now(); if (box._tsAdv) box._tsAdv(+(nv.dataset.nav || 0)); return; }   // 전진 = _tsAdv 단일 축(10위→11위 연속·꼬리 랩 · 운영자 260716)
       const mb = e.target.closest('.tstk-rst');   // 스택 컨트롤(↻ 처음부터) = 앵커보다 선처리 — 구 더보기·[처음|중간] 세그·처음 pill 폐지(운영자 260716·260717)
       if (mb) { e.preventDefault(); box._tsO = +(mb.dataset.go || 0); box._tsMore = false; box._tsLast = Date.now(); if (box._tsDraw) box._tsDraw(); return; }   // ↻·처음 = 모드 리셋(1~10 순환으로 복귀 — 재진입은 > 연속으로)
-      if (box._tsSw) { box._tsSw = 0; e.preventDefault(); return; }   // 스와이프 직후 클릭 = 항행 오탭 억제
+      if (box._tsSw) { const _swT = box._tsSw; box._tsSw = 0; if (Date.now() - _swT < 500 && e.target.closest('#tstk')) { e.preventDefault(); return; } }   // 스와이프 직후 클릭 = 항행 오탭 억제 — **스택(#tstk) 안 + 500ms 이내만**(운영자 260731 "TOP 10 내역 클릭 무반응" 봉합): 구 무조건 억제는 스와이프가 _tsDraw로 손가락 밑 앵커를 갈아치워 합성 click이 아예 안 오면 플래그가 잔류 → 그 다음 무관 클릭(TOP 10 행·카드)을 통째로 삼켰다(실측 260731 — 스와이프 후 1번째 탭 무반응·2번째만 열림). 스코프+TTL 이중 가드 = 잔류해도 무해(다음 클릭에서 소거만)
       const a = e.target.closest('a.tcard, a.xcard, a.trend-row, a.tlr, a.tsk');   // 인앱 임베드(운영자 260711 "웹앱 내 팝업 모달") — TOP 리스트(.tlr)·스택(.tsk) 포함 · 임베드 불가(실검 뉴스 등) = 종전 새 탭 · a.tpc 가지 제거(tpc 렌더 삭제 260720 평의회)
       if (!a) return;
       const _hrf = a.getAttribute('href') || '';
@@ -11895,7 +11895,7 @@ function renderSnsTrends() {
       stkEl.addEventListener('touchend', e2 => {   // main 위 가로 스와이프 = 한 칸(좌 = 다음 · 우 = 이전) — 운영자 260712 "좌우로 넘기면 메인 창" · 세로는 touch-action:pan-y가 페이지 스크롤로 반환("스크롤 안 먹음" 봉합)
         if (!tx) return; const dx = e2.changedTouches[0].clientX - tx, dy2 = e2.changedTouches[0].clientY - ty0; tx = 0;
         if (Math.abs(dx) < 28 || Math.abs(dx) <= Math.abs(dy2) * 1.2 || Date.now() - tm2 > 900) return;   // 세로 우세 = 스크롤 의도(전환 오발 차단)
-        box._tsSw = 1; adv(dx < 0 ? 1 : -1);
+        box._tsSw = Date.now(); adv(dx < 0 ? 1 : -1);   // 시각 도장(구 1) = 위임 핸들러 TTL 가드 짝
       }, { passive: true });
       let wl = 0;
       stkEl.addEventListener('wheel', e2 => {   // 데스크톱 = main 호버 트랙패드 가로 스와이프(deltaX 우세일 때만) — 세로휠 무간섭 통과 = 페이지 스크롤 보전(운영자 260712)
@@ -11917,7 +11917,7 @@ function renderSnsTrends() {
         if (e2.pointerType !== 'mouse' || !box._tsMx) return;
         const dx = e2.clientX - box._tsMx, dy2 = e2.clientY - box._tsMy; box._tsMx = 0;
         if (Math.abs(dx) < 28 || Math.abs(dx) <= Math.abs(dy2) * 1.2 || Date.now() - box._tsMt > 900) return;   // 터치 스와이프와 동일 임계 계승(좌 = 다음 · 우 = 이전)
-        box._tsSw = 1; box._tsLast = Date.now(); if (box._tsAdv) box._tsAdv(dx < 0 ? 1 : -1);   // 상태 전부 box(재렌더 생존) = 구렌더 클로저 무의존 · 전진 = _tsAdv 단일 축(운영자 260716)
+        box._tsSw = Date.now(); box._tsLast = Date.now(); if (box._tsAdv) box._tsAdv(dx < 0 ? 1 : -1);   // 시각 도장(구 1) = 위임 핸들러 TTL 가드 짝 · 상태 전부 box(재렌더 생존) = 구렌더 클로저 무의존 · 전진 = _tsAdv 단일 축(운영자 260716)
       });
     }
     if (box._trRot) { clearInterval(box._trRot); box._trRot = null; }
