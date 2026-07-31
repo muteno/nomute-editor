@@ -402,6 +402,8 @@
   /* 디폴트 값(연도 2026·이름 빈값[=플레이스홀더 Anonymous]·플랫폼 threads) = mut 톤 — 입력값일 때만 강조색(운영자 260707 "이거 MUT으로 — 입력값 아닐 때는") · 판정 = 값==디폴트(JS updCphDef · 상태 무저장 = 스냅샷/드래프트 복원 자가 정합) · :not(:focus) = 편집 중 타이핑은 즉시 강조색 */
   .cph-ed.cph-def:not(:focus), .cph-plat.cph-def { color:var(--mut); border-bottom-color:var(--line); }
   .cph-ed.cph-def:not(:focus):hover, .cph-plat.cph-def:hover { border-bottom-color:var(--mut); }
+  .cph-plat.cph-noplat { font-style:italic; font-weight:400; color:var(--mut); border-bottom-color:var(--line); }   /* '플랫폼 없음' = 플레이스홀더 문법 계승(이탤릭·비볼드·mut = .cph-ed:empty::before 미러) — 편집화면 표시만, 출력엔 괄호째 생략(getPlatform='') */
+  .cph-plat.cph-noplat:hover { border-bottom-color:var(--mut); }
   /* 플랫폼 픽토그램 팝업 — 작은 글래스 메뉴(.seg button 글래스 톤 계승) */
   /* ── 카드뉴스 토글(app2 · 운영자 260712 3차 확정 — 상단 세그 폐지·포맷 토글이 1차 분기: 포스트(4:5)일 때만 옆에 '카드뉴스 OFF/ON' 등장 = 카드 = 포스트 패밀리) · ON = covrow 좌측 텍스트 위젯만 교체(textarea↔칩 · histIn 결 슬라이드+페이드 · 이전 위젯 즉시 숨김) · 두 산출물 스펙 = 완전 별개(상호 간섭 금지) ── */
   .a2hide { display:none !important; }   /* 카드 모드 = textarea(wrap)·자간 안내만 숨김(헤더·포맷·옵션·저작권·안내문 = 자리 유지 · 운영자 260712 2차 "썸네일 틀 유지") — 숨김 유틸 재승리(label.chk.none 좀비 선례) */
@@ -1038,7 +1040,7 @@
       <!-- #cpBlock = 문구(cphLine)+플랫폼직접입력+안내문 = 저작권 탭(app3)↔썸네일 옵션(app2) 공유 이동 단위(운영자 260711 썸네일 저작권 통합). 홈=copyBox / 썸네일 = #cpThumbSlot로 appendChild 이동(핸들러·상태 보존). -->
       <div id="cpBlock">
       <div class="cphline" id="cphLine">
-        <span class="cph-st">ⓒ&nbsp;</span><span class="cph-ed cph-yr" id="cphYear" contenteditable="true" inputmode="numeric" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="연도" data-ph="2026" title="탭=연도 수정">2026</span><span class="cph-st">.&nbsp;</span><span class="cph-ed cph-nm" id="cphName" contenteditable="true" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="계정명" data-ph="Anonymous" title="탭=이름 수정"></span><!-- 이름 = 미입력이면 빈 값(출력에 이름 없음) · 'Anonymous'는 .cph-ed:empty::before 플레이스홀더(이탤릭·비볼드·mut) · 운영자 260713(구 260706 강제 텍스트 폐지) --><span class="cph-st">(</span><span id="cphPlat" class="cph-plat" data-plat="threads" role="button" tabindex="0" title="탭=플랫폼 순환(스레드·유튜브·X·인스타·직접)">threads</span><span class="cph-st">).</span><span class="cph-br"></span><span class="cph-st">all rights reserved.</span>
+        <span class="cph-st">ⓒ&nbsp;</span><span class="cph-ed cph-yr" id="cphYear" contenteditable="true" inputmode="numeric" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="연도" data-ph="2026" title="탭=연도 수정">2026</span><span class="cph-st">.&nbsp;</span><span class="cph-ed cph-nm" id="cphName" contenteditable="true" enterkeyhint="done" spellcheck="false" role="textbox" aria-label="계정명" data-ph="Anonymous" title="탭=이름 수정"></span><!-- 이름 = 미입력이면 빈 값(출력에 이름 없음) · 'Anonymous'는 .cph-ed:empty::before 플레이스홀더(이탤릭·비볼드·mut) · 운영자 260713(구 260706 강제 텍스트 폐지) --><span class="cph-st">(</span><span id="cphPlat" class="cph-plat" data-plat="threads" role="button" tabindex="0" title="탭=플랫폼 순환(스레드·유튜브·X·인스타·플랫폼 없음·직접)">threads</span><span class="cph-st">).</span><span class="cph-br"></span><span class="cph-st">all rights reserved.</span>
         <!-- 플랫폼 = 순환값(운영자 260712 팝업 폐지 · 탭=한 바퀴 · fb 삭제 = 선택지 피로 감소 · 구 #platPop 도먼트 제거) -->
       </div>
       <input type="text" id="cplat" class="none" placeholder="플랫폼 직접입력 (예: tiktok)" style="margin-top:8px" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -1409,9 +1411,18 @@ function updCphDef() {   // 저작권 칸 디폴트 표시(운영자 260707 "입
   if (pl) pl.classList.toggle('cph-def', (pl.dataset.plat || 'threads') === 'threads');   // 디폴트 = threads(운영자 260712 · 기본값 스레드)
   renderCpPrev();   // 문구(연도·이름·플랫폼) 수정 = 합성 미리보기 동기(운영자 260712 · 호이스팅 함수라 안전)
 }
-// 플랫폼 = 픽토그램 span(#cphPlat)의 data-plat. custom이면 직접입력칸(#cplat) 값.
+// 플랫폼 = 픽토그램 span(#cphPlat)의 data-plat. custom이면 직접입력칸(#cplat) 값. none = 플랫폼 없음(출력에 괄호째 생략 · 운영자 260731).
 function getPlatform() {
-  return $('#cphPlat').dataset.plat === 'custom' ? $('#cplat').value.trim() : $('#cphPlat').dataset.plat;
+  const p = $('#cphPlat').dataset.plat;
+  if (p === 'none') return '';
+  return p === 'custom' ? $('#cplat').value.trim() : p;
+}
+function setPlat(plat) {   // 라벨·이탤릭·직접입력칸 노출 = 순환·복원 공용 1곳(포커스 없음 — 순환 탭의 custom 포커스는 호출부)
+  const t = $('#cphPlat'), custom = plat === 'custom', noP = plat === 'none';
+  t.dataset.plat = plat;
+  t.textContent = noP ? '플랫폼 없음' : (custom ? '직접' : plat);   // none = 이탤릭 '플랫폼 없음'(.cph-noplat) · custom = 라벨 '직접'(실제 값은 #cplat)
+  t.classList.toggle('cph-noplat', noP);
+  $('#cplat').classList.toggle('none', !custom);
 }
 // 포맷 단일 토글 UI — 한 번에 하나만 표시(썸네일 #ovFmtTog 패턴) · 포스트=시안/릴스=레몬
 function syncCpFmt() {
@@ -1601,9 +1612,9 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   if (showCR) {   // 저작권(y100·fs29·순백·중앙) + 안내문(아래 46px 리듬 = app4 스택 미러) · 저작권 OFF면 안내문이 y100부터
     let idx = 0;
     if (cpThumb !== 'off') {
-      const _nm = getName(), _pl = getPlatform() || 'threads';
-      const _attr = _nm ? `${_nm}(${_pl})` : _pl;   // 이름 미입력 = 이름·괄호 생략, 플랫폼만(서버 nomute_copyright.py와 동일 로직 · 운영자 260713)
-      const txt = `ⓒ ${getYear()}. ${_attr}. all rights reserved.`;
+      const _nm = getName(), _noP = $('#cphPlat').dataset.plat === 'none', _pl = _noP ? '' : (getPlatform() || 'threads');
+      const _attr = (_nm && _pl) ? `${_nm}(${_pl})` : (_nm || _pl);   // 이름 미입력 = 이름·괄호 생략, 플랫폼만 · 플랫폼 없음(none) = 괄호째 생략(서버 nomute_copyright.py와 동일 로직 · 운영자 260713·260731)
+      const txt = _attr ? `ⓒ ${getYear()}. ${_attr}. all rights reserved.` : `ⓒ ${getYear()}. all rights reserved.`;
       h += `<div class="cpv" style="left:0;right:0;top:${py(100)};text-align:center;color:${CPV_WHITE};font-size:${px(29)};font-weight:400">${esc(txt)}</div>`;
       idx = 1;
     }
@@ -1769,17 +1780,14 @@ function setGuide(gm) {
   trig.addEventListener('click', e => { e.stopPropagation(); cyc(); });
   trig.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cyc(); } });
 })();
-// 플랫폼 = 순환값(운영자 260712 팝업 폐지 — #cphPlat 탭 = 유튜브→인스타→스레드→X→직접 한 바퀴 · fb 삭제)
+// 플랫폼 = 순환값(운영자 260712 팝업 폐지 — #cphPlat 탭 = 스레드→유튜브→X→인스타→플랫폼 없음→직접 한 바퀴 · fb 삭제)
 (function () {
   const trig = $('#cphPlat'); if (!trig) return;
-  const ORDER = ['threads', 'youtube', 'X', 'instagram', 'custom'];   // 순서 = 운영자 260712(스레드→유튜브→X→인스타→직접) · fb 삭제 · custom = 직접입력(#cplat)
+  const ORDER = ['threads', 'youtube', 'X', 'instagram', 'none', 'custom'];   // 순서 = 운영자 260712(스레드→유튜브→X→인스타→직접) · fb 삭제 · custom = 직접입력(#cplat) · none = 플랫폼 없음(운영자 260731 "직접보다 먼저" — 출력에 괄호째 생략)
   const apply = (plat) => {
-    const custom = plat === 'custom';
-    trig.dataset.plat = plat;
-    trig.textContent = custom ? '직접' : plat;   // custom = 라벨 '직접'(실제 값은 #cplat)
-    $('#cplat').classList.toggle('none', !custom);
+    setPlat(plat);   // 라벨·이탤릭·직접입력칸 = 공용 1곳(복원 경로와 동일)
     updCphDef();   // 플랫폼 변경 = 디폴트(mut)/입력(강조) 재판정(운영자 260707)
-    if (custom) $('#cplat').focus();
+    if (plat === 'custom') $('#cplat').focus();
   };
   const cyc = () => { const i = (ORDER.indexOf(trig.dataset.plat) + 1) % ORDER.length; apply(ORDER[i]); };   // 폐지된 fb 등 미지정값 = indexOf −1 → youtube(우아한 복구)
   trig.addEventListener('click', e => { e.stopPropagation(); cyc(); });
@@ -2847,9 +2855,8 @@ function importToEditor(src, compUrl, quiet) {   // compUrl = 이 제작의 합�
     cpMerge = !!src.cpMerge;   // 합성 복원(260712) — 미기록(구 스냅샷) = 기본 OFF(운영자 260712 별도 선택)
     if (cpThumb !== 'off') {
       setYear(src.cyear != null ? src.cyear : '2026'); setName(src.cname || '');
-      const cP = src.plat || 'threads', cCustom = cP === 'custom';
-      $('#cphPlat').dataset.plat = cP; $('#cphPlat').textContent = cCustom ? '직접' : cP;
-      $('#cplat').classList.toggle('none', !cCustom); if (cCustom) $('#cplat').value = src.cplat || '';
+      const cP = src.plat || 'threads';
+      setPlat(cP); if (cP === 'custom') $('#cplat').value = src.cplat || '';   // 라벨·이탤릭('플랫폼 없음')·직접입력칸 = 순환과 공용 1곳(260731)
       updCphDef();
     }
     guideMode = src.guideMode || '';   // 안내문 = 저작권과 독립 복원(운영자 260712)
@@ -2861,9 +2868,8 @@ function importToEditor(src, compUrl, quiet) {   // compUrl = 이 제작의 합�
     // 연도: 신본 cyear(자유·전체) 우선, 레거시 cySuf(끝자리)는 '202'+suf로 복원
     setYear(src.cyear != null ? src.cyear : (src.cySuf != null ? '202' + src.cySuf : '2026'));
     setName(src.cname || '');
-    const plat = src.plat || src.platSel || 'threads', custom = plat === 'custom';
-    $('#cphPlat').dataset.plat = plat; $('#cphPlat').textContent = custom ? '직접' : plat;
-    $('#cplat').classList.toggle('none', !custom); if (custom) $('#cplat').value = src.cplat || '';
+    const plat = src.plat || src.platSel || 'threads';
+    setPlat(plat); if (plat === 'custom') $('#cplat').value = src.cplat || '';   // 라벨·이탤릭('플랫폼 없음')·직접입력칸 = 순환과 공용 1곳(260731)
     updCphDef();   // 복원값 = 디폴트(mut)/입력(강조) 재판정(운영자 260707 · setYear/setName 경로 포함 일괄)
     // 저작권 ON/OFF: 신본 copyOn(없으면 ON · 레거시 경고문만이면 OFF로 = 안내문만 만든 것)
     copyOn = (src.copyOn != null) ? !!src.copyOn : !src._wasWarn;
