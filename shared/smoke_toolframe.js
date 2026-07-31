@@ -102,10 +102,11 @@ async function probe(browser, url) {
     const f = document.querySelector('#tooldlg .toolfr.active');
     return { frameReadyOn: document.getElementById('tooldlg').classList.contains('frame-ready'), ready: f.classList.contains('ready'), op: getComputedStyle(f).opacity };
   });
-  // ── 한수 260724: 로딩중(.ready OFF)이면 nm-loader orb 오버레이(.tool-loading) 표시(:has 게이트) — 트랜지션 kill로 즉시 ──
+  // ── 한수 260724: 로딩중(.ready OFF)이면 nm-loader 오버레이(.tool-loading) 표시(:has 게이트) — 트랜지션 kill로 즉시 ──
+  //    260731: type=loading = **글자만**(도트 픽토 미부착 · 라벨 끝 …이 이미 점 3개) → 수화 판정 = .nm-shim 존재·도트 부재.
   const orbLoading = await page.evaluate(() => {
     const tl = document.querySelector('.tool-loading'); if (!tl) return { exists: false };
-    return { exists: true, op: getComputedStyle(tl).opacity, hydrated: !!tl.querySelector('.nm-orb'), label: (tl.querySelector('.nm-shim') || {}).textContent };
+    return { exists: true, op: getComputedStyle(tl).opacity, hydrated: !!tl.querySelector('.nm-shim'), noOrb: !tl.querySelector('.nm-orb'), label: (tl.querySelector('.nm-shim') || {}).textContent };
   });
 
   // ── .ready 재부여 → 프레임 페이드인 복귀 + orb 오버레이 은닉(리빌은 .ready가 전담함을 확인)
@@ -188,8 +189,8 @@ async function probeTr(browser, url) {
   A(r1.opGated.frameReadyOn && !r1.opGated.ready && hidden(r1.opGated.op),
     'C3 리빌 게이트 = 프레임별 .ready — 전역 frame-ready ON·.ready OFF면 opacity≈0(숨김 · 구 전역게이트 회귀 시 FAIL)', JSON.stringify(r1.opGated));
   A(shown(r1.opBack), 'C4 .ready 재부여 → opacity≈1(페이드인 복귀)', 'op=' + r1.opBack);
-  A(r1.orbLoading.exists && r1.orbLoading.hydrated && r1.orbLoading.label === '불러오는 중' && parseFloat(r1.orbLoading.op) > 0.9 && parseFloat(r1.orbHidden) < 0.1,
-    'C5 로딩중 nm-loader orb 오버레이 표시("불러오는 중") + 준비되면 은닉(한수 260724)', JSON.stringify([r1.orbLoading, r1.orbHidden]));
+  A(r1.orbLoading.exists && r1.orbLoading.hydrated && r1.orbLoading.noOrb && r1.orbLoading.label === '불러오는 중' && parseFloat(r1.orbLoading.op) > 0.9 && parseFloat(r1.orbHidden) < 0.1,
+    'C5 로딩중 nm-loader 오버레이 표시("불러오는 중" · loading = 글자만 = 도트 미부착 · 운영자 260731) + 준비되면 은닉(한수 260724)', JSON.stringify([r1.orbLoading, r1.orbHidden]));
   const det = (hidden(r1.opGated.op) === hidden(r2.opGated.op)) && (shown(r1.opRevealed.op) === shown(r2.opRevealed.op)) && (parseFloat(r1.orbLoading.op) > 0.9) === (parseFloat(r2.orbLoading.op) > 0.9);   // 판정 불리언 동일(잔차 무관)
   A(det, 'C6 결정론(2런 동일)', JSON.stringify([r1.opGated.op, r2.opGated.op, r1.orbLoading.op, r2.orbLoading.op]));
 
