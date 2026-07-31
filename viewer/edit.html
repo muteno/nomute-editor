@@ -1175,6 +1175,12 @@ $('#shx').addEventListener('click',closeSheet);
 $('#sheetdim').addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{ if(e.key!=='Escape') return; if(!$('#scrub').hidden){ e.stopImmediatePropagation(); scrubClose(); return; } if(!$('#sheet').hidden){ e.stopImmediatePropagation(); closeSheet(); } });   // 스크럽·시트 열림 = ESC 소비(부모 브릿지 차단 · 평의회 260713 ③)   // 스크럽(전체화면) 우선 닫기
 // 다운로드 버튼 표준 클릭효과 = ✓ 팝 + 링 리플(.dlbtn 전 앱 공통 · 위임·캡처 — thumb 정본 바이트 계승 · Q176: CSS만 있고 핸들러가 빠져 색 변화뿐이던 것 합류)
+function dlWhereHint(){   // 기기별 기본 저장 위치 안내(운영자 260731 "다운로드한 경로 pc/모바일마다 기본 지적") — 브라우저는 실제 경로를 웹에 안 알려줘서 플랫폼별 '기본 위치' 안내가 상한(정확 경로 단정 금지 = "보통" 표기)
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/.test(ua) || (/Mac/.test(ua) && navigator.maxTouchPoints > 1)) return '파일 앱 → 다운로드 폴더(사파리 기본 · 크롬은 나의 iPhone → Chrome)';   // 아이패드OS 13+ = Mac 위장 UA라 터치점수로 판별
+  if (/Android/i.test(ua)) return '내 파일(파일 앱) → Download 폴더';
+  return '브라우저 다운로드 폴더(보통 내 PC → 다운로드 · 브라우저 설정에서 변경 가능)';
+}
 document.addEventListener('click', e => {
   const b = e.target.closest('.dlbtn'); if (!b) return;
   if (!b.matches('.cref-dlall')) b.classList.add('dl-done');   // 클릭 즉시 '받음' mut(전체=.cref-dlall은 완료 시점 처리 — edit엔 미존재·가드 무해)
@@ -1182,6 +1188,8 @@ document.addEventListener('click', e => {
   o.innerHTML = '<span class="dl-ring"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>';
   if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
   b.appendChild(o); setTimeout(() => o.remove(), 700);
+  const st = $('#cstatus');   // 저장 위치 안내 — 캡처 단계라 각 버튼 고유 핸들러(빈 자막 경고·dlVerify 실패 등)가 뒤에 쓰면 그쪽이 최종 승리(안내가 경고를 덮지 않음)
+  if (st) { st.classList.remove('err'); st.innerHTML = OK_SVG + ' 저장 위치 = ' + dlWhereHint(); }
 }, true);
 
 /* ══ 레시피(원탭 · UX 평의회3 — 기본값이 일) ══ */
