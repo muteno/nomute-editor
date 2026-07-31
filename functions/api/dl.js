@@ -46,6 +46,17 @@ function _blockedHost(host) {
   return false;
 }
 
+// HEAD = 저장 성공 여부를 뷰어가 알 **유일한 통로**(평의회7 260731).
+//   `a[download]`는 같은 출처 응답이면 상태코드와 무관하게 본문을 그대로 저장하므로, R2에서 지워진 옛 잡을
+//   저장하면 'upstream 404'라고 적힌 12바이트짜리 .mp4가 저장되고 버튼은 '받음'(dl-done)으로 바뀌었다
+//   = 실패가 성공으로 위장. 클라가 응답 상태를 볼 방법이 없어서, 눌린 뒤 같은 URL로 HEAD를 던져 확인한다.
+//   본문은 즉시 취소해 업스트림 전송을 끊는다(존재·상태 확인만이 목적).
+export async function onRequestHead(ctx) {
+  const r = await onRequestGet(ctx);
+  try { if (r.body) await r.body.cancel(); } catch { /* 이미 닫힘 = 무해 */ }
+  return new Response(null, { status: r.status, headers: r.headers });
+}
+
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   const u = q.get('u') || '';

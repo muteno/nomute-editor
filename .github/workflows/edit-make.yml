@@ -187,6 +187,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -e
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝 동형(260731 봉합 — 이 스텝과 아래 '자막 의역'만 빠져 대칭이 깨져 있었다: 수동 dispatch로 id="../../../tmp/x"를 주면 `mkdir -p viewer/ly_out/$IN_ID`가 트리 밖에 segments.json을 떨궜고, 커밋 스텝은 가드에 걸려 스킵되니 잡은 green인데 산출은 0이 됐다 · 평의회4 260731)
           HARD=0; case "$OPTS" in *'"burn":true'*) HARD=1;; esac; case "$OPTS" in *'"clip":true'*) HARD=1;; esac
           # 컷 단독(STT-only 260711) = 전사 실패해도 잡 살림(fail-soft) — segments.json 없으면 ly_burn이 '무음 컷 건너뜀' note.
           #   자막·클리퍼 ON = 정직 거절(전사가 산출 원료 — 없으면 잡 의미 없음 · clip은 api 배타 정규화라 cut과 혼합 불가).
@@ -233,6 +234,7 @@ jobs:
           OPTS: ${{ inputs.opts }}
         run: |
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝 동형(260731 봉합 — lymake.sh도 `mkdir -p viewer/ly_out/${ID}`를 하므로 STT 스텝과 같은 트리 밖 기록 통로였다 · 평의회4)
           [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN_<계정> 시크릿이 비어있음"; exit 1; }
           SUBS="$(cat /tmp/transcript.txt)"; export SUBS
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
@@ -264,6 +266,49 @@ jobs:
           unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
           bash .github/scripts/clipmake.sh "$IN_ID"
 
+      # ── 테이크 감지(claude · 260727 ④) — 전사에서 '같은 말 다시 한 자리'를 찾아 버릴 구간 takes.json 제안.
+      #    비치명: 실패해도 컷·자막 잡은 그대로 진행(테이크 컷만 빠짐 — 조용한 무력화가 아니라 note로 표면화됨).
+      - name: 테이크 감지 (claude)
+        if: ${{ contains(inputs.opts, '"take":true') && !contains(inputs.opts, '"clip":true') }}
+        timeout-minutes: 15
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
+          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
+          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "::warning::id 없음 — 테이크 감지 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::warning::잘못된 id — 테이크 감지 스킵"; exit 0;; esac   # 문자셋 가드 = 형제 스텝 동형
+          [ -s /tmp/transcript.txt ] || { echo "::warning::전사 없음 — 테이크 감지 스킵"; exit 0; }
+          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::warning::OAuth 토큰 없음 — 테이크 감지 스킵"; exit 0; }
+          SUBS="$(cat /tmp/transcript.txt)"; export SUBS
+          EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
+          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+          bash .github/scripts/takemake.sh "$IN_ID" || echo "::warning::테이크 감지 실패 — 테이크 컷 없이 진행(비치명)"
+
+      # ── 컷 미리보기 스캔(260727 ③) — 렌더 없이 '자를 목록'만 뽑는다(cuts.json). 컴포즈 스킵 = 클리퍼와 같은 2단 흐름.
+      #    운영자가 뷰어에서 뺄 걸 빼고 확정하면 일반 렌더 잡이 opts{cutref,cutoff}로 그 승인본 그대로 자른다.
+      - name: 컷 미리보기 스캔 (cuts.json)
+        if: ${{ contains(inputs.opts, '"cutscan":true') && !contains(inputs.opts, '"clip":true') }}
+        timeout-minutes: 10
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          SRC_URL: ${{ inputs.url }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          python3 .github/scripts/cut_scan.py "$IN_ID" "${EDIT_SRC:-}"
+
+      # ⚠ 이 스텝은 반드시 **클리퍼 구간픽·컷 미리보기 스캔 뒤**에 온다(260731 봉합) — 아래 파이썬이 clips.json/cuts.json을
+      #   찾아서 그 옆에 원본을 보관하는데, 구 배치는 cuts.json을 만드는 스텝보다 **69줄 앞**이라 cutscan 경로에서
+      #   항상 "보관 조건 미충족 … 스킵"으로 빠졌다(로그엔 정상 스킵처럼 찍혀 조용했다). 그 결과 cuts.json에 src가
+      #   안 박혀 컷 확정 후 재렌더가 원본을 잃고 2GB 재업로드를 요구했다 = 사실상 기능 무력화(평의회4 260731).
+      #   clip 경로는 구간픽(243행)이 앞이라 정상이었다 — cutscan만 구조적으로 100% 미스.
       # 클리퍼 원본 보관(R2 ≤400MB) — 파일/R2 업로드 소스는 잡 끝에 삭제(일회용)라, 후보 확정 후 *재렌더*가 소스를 잃음 →
       #   스캔 성공 시 원본을 ly_out/<id>/src.*로 보관하고 clips.json src에 URL 기입(URL 소스는 clipmake가 원 URL 승계 = 보관 불요).
       #   전면 fail-soft: 실패 = 후보 목록은 정상·재렌더만 파일 재선택(뷰어 안내).
@@ -310,44 +355,6 @@ jobs:
               os.replace(tmp, p)   # 원자 교체 = 레포 표준(truncate-쓰기 금지 · 검증⑤)
               print("원본 보관:", url)
           PY
-
-      # ── 테이크 감지(claude · 260727 ④) — 전사에서 '같은 말 다시 한 자리'를 찾아 버릴 구간 takes.json 제안.
-      #    비치명: 실패해도 컷·자막 잡은 그대로 진행(테이크 컷만 빠짐 — 조용한 무력화가 아니라 note로 표면화됨).
-      - name: 테이크 감지 (claude)
-        if: ${{ contains(inputs.opts, '"take":true') && !contains(inputs.opts, '"clip":true') }}
-        timeout-minutes: 15
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
-          CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
-          ACTIVE_ACCOUNT: ${{ inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO' }}
-          IN_ID: ${{ inputs.id }}
-          OPTS: ${{ inputs.opts }}
-        run: |
-          [ -n "$IN_ID" ] || { echo "::warning::id 없음 — 테이크 감지 스킵"; exit 0; }
-          case "$IN_ID" in *[!0-9a-f-]*) echo "::warning::잘못된 id — 테이크 감지 스킵"; exit 0;; esac   # 문자셋 가드 = 형제 스텝 동형
-          [ -s /tmp/transcript.txt ] || { echo "::warning::전사 없음 — 테이크 감지 스킵"; exit 0; }
-          [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] || { echo "::warning::OAuth 토큰 없음 — 테이크 감지 스킵"; exit 0; }
-          SUBS="$(cat /tmp/transcript.txt)"; export SUBS
-          EDIT_DUR="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$EDIT_SRC" 2>/dev/null | cut -d. -f1 || true)"; export EDIT_DUR
-          unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
-          bash .github/scripts/takemake.sh "$IN_ID" || echo "::warning::테이크 감지 실패 — 테이크 컷 없이 진행(비치명)"
-
-      # ── 컷 미리보기 스캔(260727 ③) — 렌더 없이 '자를 목록'만 뽑는다(cuts.json). 컴포즈 스킵 = 클리퍼와 같은 2단 흐름.
-      #    운영자가 뷰어에서 뺄 걸 빼고 확정하면 일반 렌더 잡이 opts{cutref,cutoff}로 그 승인본 그대로 자른다.
-      - name: 컷 미리보기 스캔 (cuts.json)
-        if: ${{ contains(inputs.opts, '"cutscan":true') && !contains(inputs.opts, '"clip":true') }}
-        timeout-minutes: 10
-        env:
-          IN_ID: ${{ inputs.id }}
-          OPTS: ${{ inputs.opts }}
-          SRC_URL: ${{ inputs.url }}
-        run: |
-          set -e
-          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
-          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
-          python3 .github/scripts/cut_scan.py "$IN_ID" "${EDIT_SRC:-}"
 
       - name: Demucs 캐시 (배경음 제거)
         if: ${{ contains(inputs.opts, '"bgm":true') }}
