@@ -2218,6 +2218,14 @@ def main():
         #   상한의 원래 목적이던 알림함 폭주는 이제 **뷰어가 같은 사유 3건↑을 묶음 1건으로** 처리해 그쪽에서 막는다
         #   (전멸은 아래 stale이 1건으로 담당) · 등록 총 98계정 = 전량 실어도 JSON 증분 무시 가능.
         health["subs"]["cover"] = {}
+        # 연속 실패 스트릭(운영자 260731 "특정 유튜브 글이 5회 이상 안 걷힐 때 알림") — 러너 IP 로터리 순단(500·404
+        #   한두 런)이 런마다 유튜브 개별 계정 알림으로 새던 소음의 원천 차단축. 직전 런 산출물(prev.health.subs.cover)을
+        #   main()이 이미 읽고 있어 새 파일·새 콜 0: 이번 런도 실패 = 직전 스트릭 +1 · 수집 성공 = 키 소멸(리셋).
+        #   ⚠ 미시도(budget·rotate·cooldown·gap)·무사유(상위권 밀림 등)는 **동결**(+0 · 리셋도 안 함) — 스트릭 5 =
+        #   "실제로 5번 시도해 5번 다 실패"여야 임계가 정직하다(미시도가 키우면 거짓 경보 · 미시도가 리셋하면 영영 미도달).
+        #   소비 = 뷰어 sysErrMsgs() 유튜브 개별 알림 게이트(streak<5 = 침묵) · 묶음(같은 사유 3계정↑)·타 플랫폼 = 종전 그대로.
+        _pcov = (_hprev.get("subs") or {}).get("cover") or {}
+        _NOTRY = ("budget", "rotate", "cooldown", "gap")
         for _k in ("x", "tiktok", "insta", "youtube", "threads"):
             if not acc[_k]:
                 continue
@@ -2236,7 +2244,17 @@ def main():
             _miss = [a for a in _reg if a not in _got]
             _fsrc = {**(SUB_FAIL.get(_k) or {}), **(PHONE_COVER["why"].get(_k) or {})}   # 폰 기록이 러너 잔향을 덮는다(폰 = 주 공급)
             _why = {a: _fsrc[a] for a in _miss if _fsrc.get(a) is not None}
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음)
+            _pstk = (_pcov.get(_k) or {}).get("streak") or {}
+            _stk = {a: min(_i(_pstk.get(a)) + (1 if (a in _why and str(_why[a]) not in _NOTRY) else 0), 99)
+                    for a in _miss}   # miss 계정만 보유 = 성공 시 키 소멸이 곧 리셋 · 상한 99 = 무한 증식 방지
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why, "streak": _stk}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음) · streak = 연속 실패 런 수(뷰어 유튜브 개별 알림 5회 게이트)
+        # [관측] 스트릭 집계 1줄(CLAUDE.md [관측] — 뷰어에 streak<5 침묵 게이트가 새로 생긴 만큼, 몇 계정이 어디까지
+        #   쌓였는지는 로그가 말해야 한다 · 게이트 = check_refs check_failsoft_metrics 'sub_streak 계측:')
+        _stka = {k2: ((health["subs"]["cover"].get(k2) or {}).get("streak") or {}) for k2 in health["subs"]["cover"]}
+        _trk = sum(1 for m2 in _stka.values() for n2 in m2.values() if n2 > 0)
+        _hot = sorted("%s@%s×%d" % (k2, a2, n2) for k2, m2 in _stka.items() for a2, n2 in m2.items() if n2 >= 5)
+        print("✅ sub_streak 계측: 추적 %d계정 · 5회+ %d계정%s" % (
+            _trk, len(_hot), (" (" + " ".join(_hot[:12]) + (" 외 %d" % (len(_hot) - 12) if len(_hot) > 12 else "") + ")") if _hot else ""))
     # 폰 하트비트(평의회 260723 #5a) — 폰 파일 나이를 채택 게이트 무관하게 항상 기록(스테일이어도) → 워치독 check_phone·뷰어 스테일 필이 폰 죽음 감지(threads/insta/reddit/재난 = 폰 전용 축이라 폰 죽어도 러너 updated는 신선 = 2일 무경보 공백 근원 봉합). 자립 재읽기(채택 블록 _pm 스코프 비의존).
     _phh = {"ok": False, "age_min": None, "updated": ""}
     try:
