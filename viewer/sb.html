@@ -587,7 +587,7 @@ function poll(outPath, jid) {
   const t0 = Date.now(), status = $('#status'), out = $('#out');
   const budget = 1800;   // 워크플로 증발 백스톱(k 계승 — 초과 유실은 재열람이 2차 안전망)
   const fmtSec = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };   // 경과 = m:ss(track·conv·song fmtT 동문법 계승 · 운영자 260731 "0:42에 맞춰서 통일")
-  const ETA = ' (예상 : 3분 00초)';   // 예상 표기 정본 형식 = (예상 : N분 NN초)
+  const ETA = window.nmEta ? nmEta.label('sb') : ' (예상 : 3분 00초)';   // 예상 = nmEta(시드 3분 → 실측 평균으로 수렴 · 운영자 260731) · 형식 = (예상 : N분 NN초)
   const errPath = outPath.replace(/[^/]+$/, 'error.log');   // 같은 폴더 error.log = sbmake 실패 메시지(k 계승)
   let live = true; const stop = () => { live = false; clearInterval(disp); status.removeAttribute('aria-busy'); if (_curStop === stop) _curStop = null; }; _curStop = stop;
   status.setAttribute('aria-busy', 'true');   // 진행 표식 — 부모 뷰어 자동잠금 보류 신호(k 계승)
@@ -619,6 +619,7 @@ function poll(outPath, jid) {
         const isHtml = ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300));
         if (md && md.trim() && !isHtml) {
           stop();
+          if (window.nmEta) nmEta.done('sb', (Date.now() - t0) / 1000);   // 성공 완료만 학습(실패·초과는 stop 경로가 달라 미계수 = 평균 오염 차단)
           status.innerHTML = OK_SVG + ' 완료 (' + Math.round((Date.now() - t0) / 1000) + 's)';
           try { localStorage.removeItem(CKEY); } catch (e) {}   // 새 생성 = 복사 표식 리셋(k 계승)
           await renderOut(md, out, outPath);   // outPath = sb_out/<id>/board.md → 같은 폴더 ref.json 조회
