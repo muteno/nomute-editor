@@ -515,6 +515,7 @@ function pollAnalyze(outPath, t0){
           let d=null; try{ d=JSON.parse(tx); }catch(e){}
           if(d&&Array.isArray(d.people)){
             stop();
+            if(window.nmEta) nmEta.done('track-analyze',(Date.now()-t0)/1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
             status.innerHTML=OK_SVG+' 완료 ('+Math.round((Date.now()-t0)/1000)+'s)';
             TK.meta=d.meta||{}; TK.people=d.people; TK.subjects=Array.isArray(d.subjects)?d.subjects:[];
             buildCards(); unlocked[1]=true; go(1);
@@ -887,7 +888,7 @@ function pollRender(t0, prevUrl, minTs, wantMode){
             if(d.error){ stop(); wclear(); pendReady(); status.innerHTML=ERR_SVG+' '+esc(String(d.error)); status.classList.add('err'); return; }
             const got=d.url||d.preview||'';   // 키잉 master-lost(마스터 유실·프리뷰만)도 결과 — url만 보면 영영 못 받음(헤드리스 실측 적발)
             const modeOk=!wantMode||!d.mode||d.mode===wantMode;   // 발사 모드 불일치 = 직전 다른 모드 결과 오인 차단(평의회8 · 구 video.json엔 mode 없을 수 있어 관용)
-            if(got&&got!==prevUrl&&modeOk){ stop(); pendReady(); TK.lastGot=got; showResult(d, Math.round((Date.now()-t0)/1000)); return; }
+            if(got&&got!==prevUrl&&modeOk){ stop(); if(window.nmEta) nmEta.done('track-render',(Date.now()-t0)/1000); pendReady(); TK.lastGot=got; showResult(d, Math.round((Date.now()-t0)/1000)); return; }
           }
         }
       }

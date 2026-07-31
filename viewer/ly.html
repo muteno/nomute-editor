@@ -1802,11 +1802,13 @@ function lyStageUndone() {   // 새 작업·초기화 = 편집 중 상태로 복
   lyCapRefresh();
 }
 function lyBurnReset() { lyBurnStop(); lyStageUndone(); LY_SPELL = null; lySpellRender(); const bx = $('#lyBurn'); if (!bx) return; bx.hidden = true; const v = $('#lyBurnVid'); v.hidden = true; v.removeAttribute('src'); try { v.load(); } catch (e) {} $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; const cd = $('#lyCutDel'); if (cd) cd.checked = false; $('#lyBurnNote').textContent = ''; }   // 삭제 컷 체크 = 작업 전환 시 해제(세션 간 상태 누수 차단 · 검증⑦A)
-function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','제작중…') + ' <span class="nm-shim">' + (window.nmEta?nmEta.label('ly-burn').trim():'(예상 : 3분 00초)') + '</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3   // msg = 경로 인지 분기(편집본/복원 · 기능평의회9 — 자체 리터럴만·기본 = 종전 문구 불변)
+let _lyBurnT0 = 0;   // 자막 굽기 시작 시각 = nmEta 학습 기점(운영자 260731)
+function lyBurnWait(msg) { const bx = $('#lyBurn'); if (!bx) return; _lyBurnT0 = Date.now(); bx.hidden = false; $('#lyBurnVid').hidden = true; $('#lyBurnDl').hidden = true; const rb = $('#lyReburn'); if (rb) rb.hidden = true; const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true; $('#lyBurnNote').innerHTML = (window.nmLoader ? nmLoader('solving','제작중…') + ' <span class="nm-shim">' + (window.nmEta?nmEta.label('ly-burn').trim():'(예상 : 3분 00초)') + '</span>' : (msg || '영상에 자막 입히는 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span> (1~3분)'); }   // orb 로더(Solving · 운영자 260723 Q460) · 폴백 = 구 점3   // msg = 경로 인지 분기(편집본/복원 · 기능평의회9 — 자체 리터럴만·기본 = 종전 문구 불변)
 function lyBurnShow(j) {
   if (!/^https?:\/\//i.test(j.url || '') && !/^ly_out\//.test(j.url || '')) return;   // 스킴 화이트리스트 = javascript:/data: 싱크 차단(방어심화·평의회)
   const bx = $('#lyBurn'); if (!bx) return; bx.hidden = false;
   const v = $('#lyBurnVid'); if (v.getAttribute('src') !== j.url) v.src = j.url; v.hidden = false;
+  if (window.nmEta && _lyBurnT0) { nmEta.done('ly-burn', (Date.now() - _lyBurnT0) / 1000); _lyBurnT0 = 0; }   // 예상 학습 = 성공 완료만(sb·k 배선 그대로)
   lyStageDone(j.url);   // 작업 완료 = 위 스테이지도 완성본으로 전환(딤·블러·스캔·오버레이 자막 해제 = '제대로 보이는' 상태 · 운영자 260728)
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url; lyEarlyFixSync();   // 완성 영상 도착 = 조기 교정 창 종료(버튼 숨김 · 이후는 다시 입히기 경로)
   const rb = $('#lyReburn'); if (rb) rb.hidden = !(j.src && /^https?:\/\//i.test(j.src));   // 원본 보관본 있을 때만 다시 입히기(의역 재사용 = LLM 0)

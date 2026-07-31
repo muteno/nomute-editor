@@ -594,6 +594,7 @@ function pollSong(id, mode, t0, minTs, gb){
             const ts=Date.parse(d.ts||'');
             if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단 · ts=KST ISO)
               stop(); pendClear();
+              if(window.nmEta) nmEta.done(mode&&/voice/.test(mode)?'song-voice':'song',(Date.now()-t0)/1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
               if(mode==='options') renderOptions(d, Math.round((Date.now()-t0)/1000));
               else if(d.engine==='lyria'||d.engine==='rvc'||d.url) showLyria(d, Math.round((Date.now()-t0)/1000));   // 오디오 있는 산출 = 완성곡 뷰(lyria·rvc 커버)
               else showSuno(d, Math.round((Date.now()-t0)/1000));
@@ -989,6 +990,7 @@ function pollVoice(id, t0, minTs){   // 학습 폴 — pollSong 미러(voice_out
             const ts=Date.parse(d.ts||'');
             if(!isNaN(ts)&&ts>=minTs){   // 원 디스패치 이후 산출만(과거 오인 차단)
               stop(); pendClear();
+              if(window.nmEta) nmEta.done('song-voice',(Date.now()-t0)/1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
               status.classList.remove('err');
               status.innerHTML=OK_SVG+' 보이스 학습 완료 — '+esc(d.name||'보이스');
               VSEL=id; vcLoad();   // 새 보이스 자동 선택 + 목록 갱신([보이스 입히기] 활성)
