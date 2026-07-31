@@ -498,12 +498,12 @@
   .dockopt .scard .nm { flex:0 0 3.4em /* raw-ok: 이름 열 고정폭 = 최장 라벨 '해상도'(3자) + 여유 · em = 활자 추종(--optk 4em 선례 문법 · 운영자 260731 8차 "인덱싱이 몇 글자든 값끼리 항상 좌측 정렬") */; padding-block:2px /* raw-ok: 칩 패딩(2) 동값 = 라벨↔칩 등고 장치(.scard .nm 정본 6의 6차 압축 동반) */; }
   .dockopt .scard .rsz-opts { justify-content:flex-start; }   /* 값 래퍼 = 좌측정렬(운영자 260731 8차) — 정본 flex-end는 칸이 빠듯하면 넘친 폭이 왼쪽으로 삐져 값 시작 x가 흔들렸다(실측 Δ0.73px → 0) */
   /* ‹› 값 넘김(운영자 260731 8차 "<> 로 선택 참조") = OPA 레일 .opa-nav 정본 exact 계승(17×22 히트·11 픽토·mut→hover accent·press-m · PC 한정 = 모바일 스와이프/탭 순환 종전) */
-  .dockopt .opt-navs { display:none; flex:0 0 auto; align-items:center; margin-left:2px /* raw-ok: 레일↔화살표 광학 간격 = index .geni-navs 정본(= #opaRow .opa-navs 동값) */; }
-  @media (hover:hover) and (pointer:fine) { .dockopt .opt-navs { display:flex; } }
+  .dockopt .opt-navs { display:flex; flex:0 0 auto; align-items:center; margin-left:2px /* raw-ok: 레일↔화살표 광학 간격 = index .geni-navs 정본(= #opaRow .opa-navs 동값) */; }   /* 상시 노출 = 모바일 포함(운영자 260731 9차 "저렇게 해주고" — OPA 레일의 PC 한정 media는 이 축에서 해제 · 값 탭 순환도 병존) */
   .dockopt .opt-nav { width:17px; height:22px /* raw-ok: 화살표 히트 = index .geni-nav 정본 exact(= #opaRow .opa-nav 동값) */; display:grid; place-items:center; background:none; border:none; color:var(--mut); cursor:pointer; padding:0; border-radius:var(--r-s); transition:color var(--dur), background var(--dur); -webkit-tap-highlight-color:transparent; }
   .dockopt .opt-nav:hover { color:var(--accent); background:rgba(var(--accent-rgb),.08); }
   .dockopt .opt-nav:active { transform:scale(var(--press-m)); }
   .dockopt .opt-nav svg { width:11px; height:11px; }
+  .dockopt .opt-nav[disabled] { opacity:.28; pointer-events:none; }   /* 끝단 = 회색(#opaRow .opa-nav[disabled] 정본 exact) — 기본값 = 왼쪽 끝이라 ‹가 기본 상태에서 비활성(운영자 260731 9차 "기본값이 가장 좌측") */
   .dockopt .scard .nm { font-size:var(--fs-xs) /* 운영자 260731 6차 선택값 = 사다리 이동(fs-label → fs-xs) */; }
   .dockopt .scard .rsz-opts { gap:3px /* 운영자 260731 6차 선택값(칩 가로 간격 4→3 · 세로 3 계승) */; }
   .dockopt .rsz-opts .ropt { font-size:var(--fs-xs) /* 운영자 260731 6차 선택값 = 사다리 이동(fs-label → fs-xs) */; padding:2px 0 /* 운영자 260731 6차 선택값(칩 패딩 6/7 → 2/0) */; }
@@ -1838,6 +1838,7 @@ function updateGoSpec() {
       const ie = $('#esIe'); if (ie) { ie.classList.toggle('on', mosOn); ie.setAttribute('aria-pressed', mosOn ? 'true' : 'false'); }
       const rz = $('#esRsz'); if (rz) { const a = rszAspect(); setv(rz, a === 'orig' ? '원본' : a); rz.classList.add('on'); }   // 비율 = N택1 선택값 상시 점등(#rszOpts .ropt.on 미러 · 운영자 260731 2차 컬럼 복귀)
       const up = $('#esUps'); if (up) { setv(up, upsLabel(upsV)); up.classList.add('on'); }   // 해상도 = N택1 선택값 상시 점등
+      if (typeof edNavSync === 'function') edNavSync();   // ‹› 끝단 disabled 동기(모자이크 원본 강제 등 외부 경로 포함 · 운영자 260731 9차)
       const lk = $('#esLock'), lk0 = $('#rszLock'); if (lk && lk0) { const on = lk0.classList.contains('on'); lk.classList.toggle('on', on); lk.setAttribute('aria-pressed', on ? 'true' : 'false'); }   // 보존 = #rszLock 상태 1벌 미러
       // 정밀·출력 = 모자이크 축 종속 — 노출은 상시, 모자이크 OFF면 .gs-locked(정본 잠금 = dim + 탭 무효)
       const pr = $('#esPre'), pr0 = $('#iePrecise');
@@ -1865,7 +1866,7 @@ $('#abbr').addEventListener('change', updateGoSpec);
     const cur = list.findIndex(b => b.classList.contains('on'));
     list[(cur + (dir || 1) + list.length) % list.length].click();   // 정본 핸들러 경유(pick → 상태·게이트·리드백 전부 기존 경로)
   };
-  const acts = { esRsz: () => cycle('#rszOpts', ['custom']), esIe: () => { const t = $('#ieTog'); if (t) t.click(); }, esUps: () => cycle('#upsOpts'), esLock: () => { const t = $('#rszLock'); if (t) t.click(); },
+  const acts = { esRsz: () => edCycleTap('esRsz'), esIe: () => { const t = $('#ieTog'); if (t) t.click(); }, esUps: () => edCycleTap('esUps'), esLock: () => { const t = $('#rszLock'); if (t) t.click(); },   // 값 탭 = ED_ORD 순서 순환(기본값 시작 · 운영자 260731 9차)
     esPre: () => { if (APP !== '8') return; const t = $('#iePrecise'); if (t) t.click(); },
     esOp: () => { if (APP !== '8') return; const t = $('#ieOp'); if (t) t.click(); } }   // 정밀·출력 = 모자이크(8) 축에서만 유효(잠금 상태 탭 무효 = .gs-locked 표시와 한 몸);   // 보존도 동일 위임(#rszLock 정본 핸들러 경유 = 상태·미리보기·발사 경로 1벌 · 운영자 260730)
   Object.keys(acts).forEach(id => {
@@ -1873,12 +1874,22 @@ $('#abbr').addEventListener('change', updateGoSpec);
     el.addEventListener('click', e => { e.stopPropagation(); acts[id](); });
     el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); acts[id](); } });
   });
-  // ‹› 값 넘김(운영자 260731 8차 "선택지가 많아지면 옆으로 넘겨서 선택 — <> 참조") — 레퍼런스 = OPA 레일 .opa-nav 정본 그대로(PC 한정 노출 · 모바일 = 값 탭 순환 종전) · 같은 cycle 위임 = 상태 1벌
+  // ‹› 값 넘김(운영자 260731 8차 "옆으로 넘겨서 선택 — <> 참조" → 9차 개정 "기본값이 가장 좌측") — 레퍼런스 = OPA 레일 .opa-nav 정본 · 순서 = ED_ORD(기본값이 첫째 = 왼쪽 끝) · ‹› = 비순환(끝단 disabled = opa-nav 정본) · 값 탭 = 같은 순서로 순환(모바일 병존) · 전부 정본 칩 대리 클릭 = 상태 1벌
   document.querySelectorAll('#editCol .opt-nav').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); const dir = +btn.dataset.dir;
-      if (btn.dataset.nav === 'esRsz') cycle('#rszOpts', ['custom'], dir); else cycle('#upsOpts', [], dir); });
+    btn.addEventListener('click', e => { e.stopPropagation(); edStep(btn.dataset.nav, +btn.dataset.dir); });
   });
+  // (초기 disabled 동기 = 리드백(updateGoSpec showE) 경유 — 여기서 즉시 호출하면 아래 const ED_ORD가 TDZ)
 })();
+// ── 편집 값 순서 = 기본값이 맨 왼쪽(운영자 260731 9차 "항상 기본값이 가장 좌측 · fhd · 다른 것도 일괄") — 해상도 = FHD→2K→4K→720p(구 DOM 순 720p 첫째 폐기) · 비율 = 원본 첫째(이미 기본) · '직접'은 ‹›·탭 순환 밖(종전) ──
+const ED_ORD = { esRsz: { wrap: '#rszOpts', ord: ['orig', '4:5', '9:16', '16:9', '1:1'] }, esUps: { wrap: '#upsOpts', ord: ['FHD', '2K', '4K', '720p'] } };
+function edCur(c) { const on = document.querySelector(c.wrap + ' .ropt.on'); const i = on ? c.ord.indexOf(on.dataset.v) : 0; return i < 0 ? 0 : i; }
+function edPick(c, j) { const t = [...document.querySelectorAll(c.wrap + ' .ropt')].find(b => b.dataset.v === c.ord[j]); if (t) t.click(); edNavSync(); }
+function edStep(id, dir) { const c = ED_ORD[id]; if (!c) return; const i = edCur(c); const j = Math.min(Math.max(i + dir, 0), c.ord.length - 1); if (j !== i) edPick(c, j); }   // ‹› = 비순환(왼쪽 끝 = 기본값)
+function edCycleTap(id) { const c = ED_ORD[id]; if (!c) return; edPick(c, (edCur(c) + 1) % c.ord.length); }   // 값 탭 = 같은 순서 순환(모바일 종전 동작 유지)
+function edNavSync() {   // ‹› 끝단 disabled 동기 — 기본값(첫째)에선 ‹ 소등 · 마지막에선 › 소등
+  Object.keys(ED_ORD).forEach(id => { const c = ED_ORD[id], i = edCur(c);
+    document.querySelectorAll('.opt-nav[data-nav="' + id + '"]').forEach(b => { b.disabled = (+b.dataset.dir === -1) ? i <= 0 : i >= c.ord.length - 1; }); });
+}
 // ── 릴스 옵션줄 컨트롤 — 배경·OPA30·축약 클릭 토글(hidden 체크박스 연동 → 발사 로직 그대로). ──
 (function () {
   const tog = cb => { if (cb) { cb.checked = !cb.checked; updateGoSpec(); } };
