@@ -693,6 +693,7 @@ go.addEventListener('click', async () => {
     if (!r.ok || j.error) throw new Error(j.error || ('서버 오류 ' + r.status));
     const plan = j.plan ? j.plan : await pollPlan(j.id);   // 즉답 경로(유료 API 직결 · 운영자 260721 승인 — 수신 즉시 합성) · 없으면 워크플로 폴링 폴백(구독 무료)
     RESULT = { cut: composeOverlay(plan), band: String(plan.band || '').trim(), plan };   /* plan 보관 = compose에서 4:5 스케일로 칩 재합성 */
+    if (window.nmEta) nmEta.done('tr', (Date.now() - goT0) / 1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
     fired = true;   // 내용칸은 처음부터 떠 있다(운영자 260727) = 여기서 열 것 없음 · fired는 버튼 라벨(생성→재생성)·payload.redo 분기 전담
     gaugeDone(go);
     await ensureCardFonts(); compose();   // 카드 폰트 지연 로드 완료 후 합성(캔버스 정본 서체 보장 · 구 document.fonts.ready = 미요청 폰트 누락으로 폴백 렌더되던 것 교정)
