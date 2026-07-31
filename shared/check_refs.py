@@ -1642,7 +1642,7 @@ def check_label_fill():
 
 def check_loader_ssot():
     """로딩 표기 SSOT 게이트(운영자 260723 Q461 — "전역 앱 세션에서 정해진 로딩만 쓰도록").
-    정본 = viewer/nm-loader.js window.nmLoader(type,label[,opts]) · orb 2종·라벨 3개(Thinking/Solving/Prompting).
+    정본 = viewer/nm-loader.js window.nmLoader(type,label[,opts]) · **그래픽 1종(통통 튀는 도트3 · 운영자 260731 단일화)**·라벨 4개(Now loading/Thinking/Solving/Prompting = data-orb 의미 라벨).
     규칙 = 새 로더는 nmLoader만. raw 3점 로더(`gdots"><i>` 마크업)가 nmLoader 폴백이 아닌 채로 baseline 초과 = 차단(신규 raw 재발 방지·기존 잔량은 점진 감축 래칫).
     raw 로더 = ① gdots 3점(`gdots"><i>`) ② 구 팩토리 도트(`class="nmld"` · SPIN_SVG 포함) — **하드락 baseline 0(운영자 260723 Q463 "한 수" = 전 뷰어 orb 통일 완료 · 신규 raw = 전면 금지)**. tokens.html = 토큰 레퍼런스 페이지(nm-loader 미로드·데모)라 스코프 제외. fail-closed 아님(뷰어 못 읽으면 스킵)."""
     import glob as _g
