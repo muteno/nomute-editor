@@ -464,7 +464,7 @@
   /* 미리보기 틀 = 창 대비 고정(운영자 260731 "16대9에 세로를 채운다고 저 미리보기 화면이 세로로 길어지면 안됨 · 항상 저만큼이 유지 · 16:9가 9:16으로 바뀔 때는 저 틀 안에서 바뀌는 거지")
      — 구 height:auto = 캔버스 종속이라 원본 16:9(263) → 9:16 확장(468)에서 틀이 통째로 늘어났다(실측 260731).
      — 고정값 = 구 min-height(빈 상태 높이) 그대로 = 운영자가 도형으로 칠한 그 크기 · svh = 주소창 리플로우 덜컹 차단(쉘 정본 사유 계승) */
-  .topdock[data-lay="edit"] .cpprev-box { height:min(58vh,600px); height:min(58svh,600px); min-height:0; max-height:min(58vh,600px); max-height:min(58svh,600px) /* raw-ok: 미리보기 창 세로 2배(운영자 260731 3차 "아래 방향으로 2배 확장") = 쉘 정본 캡(29svh/300)의 ×2 배수 변주(캡 문법·단위 그대로 · .ie-full 배수 변주 선례) — 고정 해제와 짝(sticky였다면 화면 잠식) · height=max-height 동값 = rszCapH 단일 출처 무접촉 · 폭·활자 무접촉 = 폰트 불변(운영자 "폰트 크기는 그대로") */; border-radius:var(--r-modal) /* 창 둥글기 계승(운영자 260731 "위에 미리보기 창도 네모 둥글기 맞추고") = 모달 셸과 같은 사다리 단 · 편집 도크 한정 */; }
+  .topdock[data-lay="edit"] .cpprev-box { height:auto; aspect-ratio:9/16 /* 창 = 폭 기준 9:16 비율(운영자 260731 4차 "2배(58svh/600 고정)는 9:21에 가깝다 · 9:16 정도까지만" — 고정 px는 폭이 기기마다 달라 비율이 흔들린다 → 비율 선언으로 폭 추종) */; contain:size /* 내용물 크기 무시 = 캔버스가 커져도 틀 불변(구 height:auto 틀 늘어남 사고(위 260731 실측)의 재발 차단 장치 — 내용 높이는 rszCapH 실측이 박스에 맞춰줌) */; min-height:0; max-height:min(58vh,600px); max-height:min(58svh,600px) /* raw-ok: 캡 = 260731 3차 2배값 유지(쉘 정본 29svh/300의 ×2 배수 변주) — 세로 짧은 화면에서 비율보다 우선하는 상한 · rszCapH = min(캡, 실측높이)로 동기 */; border-radius:var(--r-modal) /* 창 둥글기 계승(운영자 260731 "위에 미리보기 창도 네모 둥글기 맞추고") = 모달 셸과 같은 사다리 단 · 편집 도크 한정 */; }
   /* 세부 선택지 행 = 미리보기 창 아래(운영자 260731) — 모자이크 ON일 때만 등장 · 칩 스펙 = .dockopt .ropt 통계승(축만 가로) */
   .docksub { display:flex; gap:var(--sp-3); margin-top:var(--sp-2); padding-left:var(--sp-1); }
   .docksub.none { display:none; }   /* ⚠️ 숨김 재승리 필수 — display:flex가 .none을 이기던 좀비 차단(.cpv-tool·label.chk.none 선례) */
@@ -2385,6 +2385,8 @@ function dockOptFade() {
 function rszCapH() {   // 미리보기 쉘 높이 캡 = CSS(.cpprev-box max-height) 단일 출처 — JS가 숫자를 따로 들고 있으면 한쪽만 고쳐도 조용히 어긋난다(검수 260731)
   const b = document.querySelector('#cpPrev .cpprev-box'); if (!b) return 198;
   const mh = parseFloat(getComputedStyle(b).maxHeight);
+  const rh = b.getBoundingClientRect().height;   // 실측 높이 — 편집 도크는 aspect-ratio 9:16(운영자 260731 4차)라 실높이 < max-height 캡일 수 있다 · contain:size라 내용물 역류(스테이지가 박스를 늘림) 없음 = 측정 안정
+  if (rh > 0) return Number.isFinite(mh) ? Math.min(mh, rh) : rh;   // min(캡, 실측) = 비율 박스에 내용이 넘치지 않게 · rh 0 = 숨김 상태 → 캡 폴백(종전 동작)
   return Number.isFinite(mh) ? mh : 198;   // 폴백 198 = 구 하드코딩 190 + 상쇄분(편집 외 경로 동작 불변)
 }
 function rszN(n) { return Math.round(n).toLocaleString('en-US'); }   // 치수 천단위 쉼표(운영자 260730 "2,286 × 840") — .rsz-metric은 tabular-nums라 자릿수 흔들림 0
