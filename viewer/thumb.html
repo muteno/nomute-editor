@@ -478,6 +478,9 @@
   .topdock[data-lay="edit"] .cpprev-box { transition:max-height var(--dur-acc) var(--ease), border-radius var(--dur) var(--ease); height:auto; aspect-ratio:9/16 /* 창 = 폭 기준 9:16 비율(운영자 260731 4차 "2배(58svh/600 고정)는 9:21에 가깝다 · 9:16 정도까지만" — 고정 px는 폭이 기기마다 달라 비율이 흔들린다 → 비율 선언으로 폭 추종) */; contain:size /* 내용물 크기 무시 = 캔버스가 커져도 틀 불변(구 height:auto 틀 늘어남 사고(위 260731 실측)의 재발 차단 장치 — 내용 높이는 rszCapH 실측이 박스에 맞춰줌) */; min-height:0; max-height:min(58vh,620px); max-height:min(58svh,620px) /* raw-ok: 캡 상한 600→620 = 운영자 260731 6차 선택값(역제안 무시 승인 · svh 축은 계승) · rszCapH = min(캡, 실측높이)로 동기 */; border-radius:var(--r-s) /* 운영자 260731 6차 선택값 = 사다리 이동(r-modal → r-s) · 편집 도크 한정 */; }
   .topdock[data-lay="edit"] .cpprev-box.ocfit { aspect-ratio:auto; height:auto; contain:none; }   /* 원본(무변환)+사진 = 콘텐츠 맞춤(운영자 260731 21차 "원본일 때 창을 가득 · 남는 공간은 비워서 아래 옵션들이 더 잘 보이게") — 9:16 틀 고정은 비율 변환 상태 전용 유지 · contain:size는 auto 높이와 상극이라 동반 해제 */
   .topdock[data-lay="edit"] .cpprev-box.ocfit #iePrev { height:auto; }
+  /* 미리보기 창 = 무테 단색 면(운영자 260731 "테두리만 삭제하고 해당 부분에 다 스포티파이 블랙으로 음영") — 편집 도크 한정 · 카드 생성(순흑 산출배경 미러)·AI 생성 쉘 무접촉 */
+  .topdock[data-lay="edit"] .cpprev-box { border-color:transparent; }   /* 테두리 '삭제' = 선 색만 투명(폭 1px 유지 = 레이아웃·9:16 산식 무변동 · 바탕 스포티파이 블랙이 border-box까지 칠해져 이음매 0) · .dropping 강조 링은 border-color 오버라이드라 그대로 살아 있음 */
+  .topdock[data-lay="edit"] .cpprev-box .cpprev-stage { background-color:inherit; }   /* 스테이지 = 쉘 필러색(.cpprev-box 스포티파이 블랙) 그대로 상속 = 값 재기입 0 — 구 순흑 스테이지가 좌우 레터박스와 2톤으로 갈라지던 것을 한 면으로 통일("해당 부분에 다") · 사진 첨부 시엔 #iePrev(동색)·cpv-bg가 덮으므로 무변화 */
   /* 세부 선택지 행 = 미리보기 창 아래(운영자 260731) — 모자이크 ON일 때만 등장 · 칩 스펙 = .dockopt .ropt 통계승(축만 가로) */
   .docksub { display:flex; gap:var(--sp-3); }   /* 세부(정밀·출력) 행 — 260731 21차 모자이크 카드 안 접이로 이주(구 미리보기 아래 별도 행 margin·padding-left 폐지 · 숨김 = .cfoldsub 0fr 전담이라 .none 규칙도 퇴역) */
   .dockopt .scard .docksub { padding:0 6px 5px; }   /* raw-ok: 좌우 6·아래 5 = .dockopt .scard>.csec 카드 패딩 동값(6차 선택값 계승) — 정밀 x선 = 모자이크 x선 */
@@ -2255,7 +2258,7 @@ bindSlotImg('#pImgSlot', '#pFile', PIMG);   // 포스트 배경 슬롯(전 full-
 // ==== 붙여넣기↔복사 + 다운로드 (뷰어 버튼 UIUX 계승) ====
 // 잡 상태 픽토그램(이모지 ✅⚠⏳ 폐지 → SVG 통일·글자와 수직중앙 · 운영자 260622)
 const SPIN_SVG = (window.nmOrbHTML?nmOrbHTML('solving',14):'…');   // 로딩 = orb(Solving · Q463 · 잡행은 nmOrbHTML 직접)   // 로딩 스피너 → 도트 픽토그램(nm-loader.js · beui dots 계승 · 강조색 --accent · 컴팩트 6px)
-const EDIT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';   // 연필 = 수정(이전 제작 → 작성기 복원)
+// EDIT_SVG(연필 = 수정) = nm-svg.js 정본 승격(260731) — 구 사본은 경로 꼬리(12.5-12.5) 결손 드리프트였음(통합으로 봉합)
 const REUSE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 16v-6M9 12.5 12 9.5l3 3"/></svg>';   // 프레임+상승 화살 = 결과를 소스 슬롯으로 재첨부(24뷰박스·stroke2·round 규격 §디자인 q · 운영자 260713 "그 한수")
 // 전체저장(.cref-dlall) 다운로드 시퀀스 버튼 = 다운↔체크 스왑 한 벌 (완료 시 ✓ 팝 · 정본 패턴 구성도 §9)
 const DLSEQ_IC = '<span class="dlseq-ic">' + DOWNLOAD_SVG.replace('<svg ', '<svg class="dn" ') + CHECK_SVG.replace('<svg ', '<svg class="chk" ') + '</span>';
