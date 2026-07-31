@@ -146,7 +146,11 @@
       '.nm-shim{background:linear-gradient(100deg,var(--mut,#8fa697) 0%,var(--mut,#8fa697) 38%,#ffffff 50%,var(--mut,#8fa697) 62%,var(--mut,#8fa697) 100%);' +
         'background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;' +
         'animation:nmshim 1.9s linear infinite}' +
-      '.nm-load>.nm-shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center}' +   // 로더 안 라벨만 = 종전 타이포(붙은 글자엔 안 물림)
+      /* 로더 안 라벨만 = 종전 타이포(붙은 글자엔 안 물림) + **광학 잉크 정렬 보정**(운영자 260731 "점 세개랑 옆 글자 광학 잉크 기준 픽셀단위 수평 확인").
+         실측(Playwright · 20배 확대 measureText = 0.05px 해상도 · 애니 0% 정지 프레임): 한글 잉크가 baseline 위 10.336 / 아래 2.320으로 비대칭이라
+         **글자 잉크중심이 박스중심보다 0.667px 아래**(fs 13.5) · 0.575px 아래(fs 13.5→12.5 좁은버튼). 도트는 cy=50 = 박스 정중앙이라 그만큼 위로 떠 보였다.
+         → 라벨을 자기 폰트 비례(-0.049em)만큼 올려 잉크중심끼리 맞춘다(13.5×.049=0.662 · 12.5×.049=0.613 = 두 티어 동시 수렴 · 도트를 내리면 em 기준이 상속 폰트라 불안정). */
+      '.nm-load>.nm-shim{font-size:13.5px;font-weight:700;letter-spacing:0;line-height:1;display:inline-flex;align-items:center;transform:translateY(-.049em)}' +
       '@keyframes nmshim{from{background-position:120% 0}to{background-position:-120% 0}}' +
       '@media(prefers-reduced-motion:reduce){.nm-shim{animation:none;color:var(--mut,#8fa697);-webkit-text-fill-color:var(--mut,#8fa697)}.nm-orb *{animation:none!important}}';
     var st = document.createElement('style'); st.id = 'nm-orb-css'; st.textContent = css;
@@ -160,15 +164,19 @@
   function esc(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   // nmLoader(type,label[,opts]) — opts={size:orb px, gap, fs:글자 px}. 좁은 버튼 = size 18·fs 12.5, 기본 pill = 22·13.5
+  /* type='loading' = **글자만**(도트 픽토 미부착 · 운영자 260731 "나우로딩은 그냥 글자만 — 옆에 ...이 있으니까")
+     — 라벨 끝 말줄임(…)이 이미 점 3개라 도트3까지 붙으면 점이 두 벌로 읽힌다. 나머지 3종(thinking·solving·prompting)만 도트3. */
   window.nmLoader = function (type, label, opts) {
     opts = opts || {}; var g = opts.gap != null ? opts.gap : 9;
     var fs = opts.fs ? ' style="font-size:' + opts.fs + 'px"' : '';
-    return '<span class="nm-load" style="gap:' + g + 'px">' + orbHTML(type, opts.size) + '<span class="nm-shim"' + fs + '>' + esc(label) + '</span></span>';
+    var orb = orbType(type) === 'loading' ? '' : orbHTML(type, opts.size);
+    return '<span class="nm-load" style="gap:' + g + 'px">' + orb + '<span class="nm-shim"' + fs + '>' + esc(label) + '</span></span>';
   };
   window.nmOrbHTML = orbHTML;   // orb만(버튼 좁은 폭 등)
   function hydrate(root) {   // 선언형: <span class="nm-load" data-orb="thinking" data-label="Thinking…"></span>
     var els = (root || document).querySelectorAll('.nm-load[data-orb]:not([data-nm-done])'), i, e;
-    for (i = 0; i < els.length; i++) { e = els[i]; e.setAttribute('data-nm-done', '1'); e.innerHTML = orbHTML(e.getAttribute('data-orb')) + '<span class="nm-shim">' + esc(e.getAttribute('data-label')) + '</span>'; }
+    for (i = 0; i < els.length; i++) { e = els[i]; e.setAttribute('data-nm-done', '1');
+      e.innerHTML = (orbType(e.getAttribute('data-orb')) === 'loading' ? '' : orbHTML(e.getAttribute('data-orb'))) + '<span class="nm-shim">' + esc(e.getAttribute('data-label')) + '</span>'; }   // loading = 글자만(위 nmLoader와 동일 규칙)
   }
   window.nmLoaderHydrate = hydrate;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { hydrate(); }); else hydrate();
