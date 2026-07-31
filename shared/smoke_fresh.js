@@ -91,8 +91,10 @@ async function startServer() {
       const nowK = new Date(window.__dn() + 9 * 3600e3);
       const off = (h - nowK.getUTCHours()) * 3600e3 - nowK.getUTCMinutes() * 60e3 - nowK.getUTCSeconds() * 1e3;
       Date.now = () => window.__dn() + off;
+      try { CAND_TS = Date.now(); } catch (e) {}   // 시프트 프레임마다 재도장 — CAND_TS는 candFresh(자격검사)의 시간축이라 시계를 옮기면 같이 옮겨야 한다(안 그러면 프레임 점프 폭이 그대로 '수신 경과'로 잡혀 게이트가 코드 무관 FAIL을 낸다)
     };
     window.__setKstH(12);
+    CAND_LIVE = true;   // ⚠ 필수(260731 실측): 정적 서버엔 api/candidates가 없어 부트가 정적 폴백으로 떨어지고 CAND_LIVE=false가 된다 → 260725에 붉은 경보에 CAND_LIVE 게이트가 붙은 시점부터 **S2~S11이 통째로 위양성 FAIL**이었다(대기 티어·수동이라 아무도 못 봄 = 이 경보의 회귀 검증이 그날부터 죽어 있었다). 시나리오는 CANDS를 직접 주입하므로 소스축은 여기서 라이브로 고정하는 게 정직하다.
     SCRAP_LOADING = true;   // 라이브폴 loadCandidates의 CANDS 덮어쓰기 차단(가드 재사용 — 평의회I 검증 경로)
     try { detectBreaking = () => {}; detectPickFail = () => {}; } catch (e) {}   // 가족 토스트 재점등 경로 스텁 — 부트가 정적 candidates/picks-failed로 띄운 긴급·실패 토스트가 경보 점유 체크(정상 양보)를 먹어 테스트가 오탐하던 것 중화(경보 로직 자체는 무접촉)
     ['nmToast', 'nmFailToast'].forEach(id => { const t = document.getElementById(id); if (t) t.classList.remove('show'); });
@@ -246,6 +248,46 @@ async function startServer() {
     return new Promise(res => setTimeout(() => res({ oneShot, rateLimited: posts === 1 }), 250));
   });
   ok('S11 rearm 1발·낙관add·덮어쓰기 재발송 0', s11.oneShot && s11.rateLimited, JSON.stringify(s11));
+
+  // S12 수신 신선도 자격검사(candFresh · 260731 오탐 봉합) — 260731 사고: 폰이 백그라운드에서 깨어나 복귀 첫 fetch가 실패하면
+  //   loadCandidates가 last-good CANDS·CAND_LIVE를 그대로 두는데(9727행) finally 판정은 그대로 돌아 **몇 시간 묵은 데이터로** 붉은 경보가 떴다.
+  //   계약 3항을 한 시나리오로 못박는다: ⓐ 수신 경과가 임계 초과면 붉은 경보 자격미달(소등·기어 소등) ⓑ 그 자리를 노란 staleDataMsg가 메움(침묵 금지)
+  //   ⓒ 수신이 갱신되면 즉시 원복(자격 회복 = 같은 CANDS로 재점등 — 게이트가 경보를 *영구* 죽이지 않음).
+  const s12 = await page.evaluate(async () => {
+    const nap = () => new Promise(r => setTimeout(r, 350));   // .show는 requestAnimationFrame에서 붙는다(S2~S11 관용구) → 판독 전 대기 필수
+    try { localStorage.removeItem('nmFreshAck'); localStorage.removeItem('nmRearmPost'); } catch (e) {}
+    _freshMute = false; _freshAckTs = 0; TF_SRV.s = new Set(); CURTAB = 'feed';
+    CANDS = window.__mk('q', 120, (FAST_MAX_H + 1) * 3600e3);   // 전량 낡음 = 원래대로면 발화하는 입력
+    CAND_LIVE = true; CAND_TS = Date.now();
+    checkFreshLane(); await nap();
+    const freshFires = window.__show();                                    // 대조군: 방금 받은 데이터면 종전대로 발화
+    CAND_TS = Date.now() - (CAND_STALE_MS + 60e3);                         // 수신 경과 = 임계+1분(fetch 연속 실패 재현)
+    checkFreshLane(); syncStaleMsg(); await nap();
+    const staleSilent = !window.__show();                                  // ⓐ 붉은 경보(원인 주장) = 자격미달로 침묵
+    const gearKept = document.body.classList.contains('has-freshbad');     // ⓐ' 기어(상태 표시)는 **유지** — 같이 끄면 "진짜 고장 + 서빙 사망"에서 화면 표시가 0이 된다(staleDataMsg는 id·_sys가 없어 배지·기어에 안 잡힘 · 260725 "해결될 때까지 출력" 보존)
+    const yellowOn = !!(typeof staleDataMsg === 'function' && staleDataMsg());   // ⓑ 채널 이관 = 무알림 침묵 아님
+    // ⓓ 회복 선언 금지 — 서빙이 죽어 **얼어붙은** last-good에 4h내 12건이 남아 '확실 회복'처럼 보여도 재무장·ack해제 0발
+    let posts = 0; const f0 = window.fetch;
+    window.fetch = (u, o) => String(u).includes('api/seen') ? (posts++, Promise.reject(new Error('down'))) : f0(u, o);   // S11 관용구 계승
+    _lastRearmPost = 0;
+    localStorage.setItem('nmFreshAck', String(Date.now() - 3600e3));   // 이 기기 ✓(1시간 전)
+    TF_SRV.s = new Set(['ack:' + (Date.now() - 3600e3)]);              // 타 기기 ✓(계정축)
+    CANDS = window.__mk('q', 120, (FAST_MAX_H + 1) * 3600e3).concat(window.__mk('qf', FRESH_ALERT_MIN * 2 + 2, 60e3));
+    checkFreshLane(); await nap();
+    const rearmZero = posts === 0;
+    const ackKept = localStorage.getItem('nmFreshAck') !== null && srvFreshAckTs() > 0;
+    window.fetch = f0;
+    // ⓒ 수신 회복(다음 폴 성공) = 자격 복구 → 같은 입력으로 재발화(게이트가 경보를 영구 죽이지 않음)
+    try { localStorage.removeItem('nmFreshAck'); } catch (e) {}
+    TF_SRV.s = new Set(); _freshAckTs = 0; _freshMute = false;
+    CANDS = window.__mk('q', 120, (FAST_MAX_H + 1) * 3600e3);
+    CAND_TS = Date.now();
+    checkFreshLane(); syncStaleMsg(); await nap();
+    return { freshFires, staleSilent, gearKept, yellowOn, rearmZero, ackKept,
+             refireAfterRecv: window.__show(), yellowOff: !(typeof staleDataMsg === 'function' && staleDataMsg()) };
+  });
+  ok('S12 수신 자격검사 = 경보 침묵·기어 유지·노란 이관·재무장 0발·수신 회복 시 재발화',
+     s12.freshFires && s12.staleSilent && s12.gearKept && s12.yellowOn && s12.rearmZero && s12.ackKept && s12.refireAfterRecv && s12.yellowOff, JSON.stringify(s12));
 
   ok('S1b 시나리오 주행 중 JS예외 0', jsErrs.length === 0, JSON.stringify(jsErrs));
 
