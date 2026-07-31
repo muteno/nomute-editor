@@ -7690,10 +7690,19 @@ function sysErrMsgs() {
             + cause + _tail + '\n\n안 걷힌 계정: ' + accs.map(a => '@' + a).join(', ') + '\n\n'
             + todo + '\n\n확인(✓)하면 이 건은 오늘 다시 안 떠요.' });
       } else {
+        // 유튜브 개별 계정 = 연속 5회 실패부터 고지(운영자 260731 "특정 유튜브 글 안 걷힘 알림은 안 오게, 5회 이상 안 걷힐 때 오게") —
+        //   러너 IP 로터리 순단(500·404 한두 런 · 260731 판례 @bbcnews·@shortbox)이 날마다 개별 알림으로 새던 소음 차단.
+        //   소스 = cover.streak(수집기가 런 연속 실패를 세어 실어 보냄 · 미시도는 동결이라 5 = 실제 5번 시도 5번 다 실패 ·
+        //   30분 주기 기준 약 2시간 반). 진짜 삭제·개명 계정은 계속 실패해 다섯 런이면 그대로 다시 뜬다 = 지연이지 은폐 아님.
+        //   묶음(같은 사유 3계정↑ = 경로 사고)·타 플랫폼 = 종전 즉시 고지 · streak 필드 없는 구 데이터 = 0 = 침묵(다음 런이 채움).
+        const _stk = (c.streak && typeof c.streak === 'object') ? c.streak : {};
         for (const a of accs) {
+          const _n = _stk[String(a)] | 0;
+          if (k === 'youtube' && _n < 5) continue;
           out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
-            text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 안 걷히고 있어요.\n\n'
+            text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 ' + (k === 'youtube' ? _n + '회 연속 ' : '') + '안 걷히고 있어요.\n\n'
               + cause + _tail + '\n\n'
+              + (k === 'youtube' ? '원래 나올 자리: 트렌드 → 큐레이션 게시물 → 「유튜브 - 구독」 카드(등록 계정 전체에서 조회수 상위 10개 안에 들 때 노출 · 지금은 이 계정 글만 빠진 채 랭킹돼요).\n\n' : '')
               + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
         }
       }

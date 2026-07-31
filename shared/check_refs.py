@@ -1850,6 +1850,10 @@ def check_failsoft_metrics():
             ('::warning::수집 워치독', '코어 레인 0건 워치독'),
             ('yt-subs 계측:', '유튜브 구독 레인 집계 1줄(성공·미시도·실패·경로)'),
             ('::warning::yt-subs 커버', '유튜브 구독 커버 임계 경보(50%)'),
+            ('sub_streak 계측:', '계정 연속실패 스트릭 집계 1줄(뷰어 유튜브 개별 알림 streak<5 침묵 게이트의 관측 짝 · 260731)'),
+        ]),
+        ('viewer/index.html', [
+            ("k === 'youtube' && _n < 5", '유튜브 개별 알림 5회 스트릭 게이트(소실 = 알림 소음 원복 또는 무조건 침묵 회귀)'),
         ]),
         ('.github/scripts/trend_images.py', [
             ('gtrends 커버 최종', '최종 커버 집계 1줄'),
