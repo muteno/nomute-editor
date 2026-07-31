@@ -151,7 +151,7 @@
   .job .jdel svg { display:block; width:14px; height:14px; }
   /* 레퍼런스 이미지(촬영=seedance 레인) = k.html .ref 블록 바이트 계승 — 공용 수정은 k.html과 양쪽 동시 */
   .ref { margin:0 0 16px; }   /* raw-ok: k.html .ref 동일값 계승(하단 16) */
-  .ref img { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }   /* raw-ok: k.html .ref img 동일값 계승(r10) */
+  .ref img, .ref video { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }   /* raw-ok: k.html .ref img 동일값 계승(r10) — video = 촬영=motion 산출 mp4(같은 액자 문법 계승 · 신규 기하 0) */
   .ref.multi img { margin-bottom:8px /* raw-ok: k.html .ref.multi img 동일값 계승(픽셀 패리티) */; }   /* 다장 = 세로 나열(참조 순서 = 콘티 참조 순 · k:224 계승) */
   .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }   /* raw-ok: k.html .ref .cap 동일값 계승(fs12·상단5) */
   .refmiss { color:var(--warn); font-size:12px; border:1px dashed var(--line); border-radius:var(--r-s); padding:8px 10px; margin:0 0 8px; }   /* raw-ok: k.html .refmiss 동일값 계승 — 슬롯 자리 경고 칩(무음 숨김 폐지·번호 보존) */
@@ -306,7 +306,8 @@ const SB_DIRECTORS = [
 ];
 const SB_SHOOTS = [
   { id: 'kling', nm: 'Kling 3.0', hint: '수동 복붙 · 무료' },
-  { id: 'seedance', nm: 'Seedance 2.0', hint: 'MCP 자동 · 준비 중' }
+  { id: 'seedance', nm: 'Seedance 2.0', hint: 'MCP 자동 · 준비 중' },
+  { id: 'motion', nm: '모션그래픽', hint: '플랫 모션 · 사내 렌더 → mp4 즉시 · 0원' }   // 실사 생성 AI가 아닌 3번째 레인(정보전달형 플랫 모션 — 콘티 🎞 모션 스펙 → mg_render.py가 같은 잡에서 mp4까지 뽑음 · 외부 API 0 = 레퍼런스 이미지도 불요)
 ];
 // 축 = 프롬프팅(k) 이관분 흡수(운영자 Q1145 "프레임까지 콘티로 이동" · Q1147 "따로 노는걸 합치되 품질·기능성 유지").
 // 값 3면 동기: 이 표 = functions/api/sb.js SB_SET · 화질·프레임 값 집합 = viewer/k.html K_VALS 동일(드리프트 0).
@@ -325,7 +326,7 @@ function sbRatio() { return sbSet['비율'] === 'custom' ? (sbArVal() || SB_DEF[
 function sbArFit(el) { if (el) el.style.width = Math.max(1, (el.value || '').length) + 'ch'; }   // 숫자칩 폭 = 값 길이 동기(index geniArFit 정본 미러)
 function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이트리스트 재검증)
   const set = Object.assign({}, sbSet); if (set['비율'] === 'custom') set['비율'] = sbRatio();   // 'custom' = 화면 상태값 → 발사 시 실 N:M으로 치환(k 「길이」 직접 = segTotal()+'s' 선례 문법)
-  return { director: sbDirector, shoot: sbShoot, set, ad: sbAd, ref: (sbShoot === 'seedance') ? true : sbRef };   // ref = 레퍼런스 이미지 생성 여부(시댄스 강제 true · 서버 api/sb.js가 워크플로 입력으로 재검증)
+  return { director: sbDirector, shoot: sbShoot, set, ad: sbAd, ref: (sbShoot === 'seedance') ? true : (sbShoot === 'motion' ? false : sbRef) };   // ref = 레퍼런스 이미지 생성 여부(시댄스 강제 true · 모션 강제 false = 실사 레퍼런스 쓸 곳 없음 · 서버 api/sb.js가 워크플로 입력으로 재검증)
 }
 (function () {
   const dg = $('#dgrid'), sg = $('#sgrid'), axR = $('#axRatio'), axL = $('#axLen'), ad = $('#adTg'), spec = $('#gospec');
@@ -360,17 +361,19 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     const pct = (vc / 30).toFixed(1);   // 월 체감(운영자 260714 9차 "반영해줘") = 울트라 월 3,000cr 대비 % — 절대금액 대신 "이번 달 몇 편" 감각
     const scost = sbShoot === 'seedance'
       ? '촬영 ' + vc + 'cr ≈ ' + won(vc) + ' · 월 3,000cr의 ' + pct + '% <span title="Seedance 2.0 · 720p·std 실측 기반 보수 추정(구간 상한 초 기준 · ≤8s 동일가·9s=10s가·10~15s 선형) · 울트라 월 크레딧 대비 — 확정 견적은 생성 직전 실시간 재확인">720p 기준</span>'
-      : '촬영 0원 · 클링 구독';
+      : (sbShoot === 'motion' ? '촬영 0원 · 사내 렌더' : '촬영 0원 · 클링 구독');   // 모션 = 외부 API 0(Actions 분만 소모)
     // 이미지 엔진 점등(운영자 260730 "고르는 순간 gemini에 불 들어오게") — 촬영=Seedance면 콘티와 함께 레퍼런스 이미지가 돌아간다(Gemini 종량제 과금 발생) · Kling은 프롬프팅 레인이 따로 뽑으므로 여기선 미과금.
     // 점등 문법 = 요약 스트립 활성값 정본 `.gs-v.on`(edit 계승 — 신규 클래스·신규 색 0).
     // 엔진 표기 = 이미지 스튜디오 정본(운영자 260730 "제미나이 어떻게 표현되는지 등등도 나와있음"): 브랜드 픽토 G_SVG(구글 G 레터마크 · nm-svg.js SSOT) + 정본 모델명 `Gemini 3.1 Flash`(index GENI_ENG_ICO 동일 문자열 — 줄임말·창작 라벨 금지).
     const ENG_ICO = '<i class="eng-ico" title="Gemini 3.1 Flash" aria-label="Gemini 3.1 Flash">' + (typeof G_SVG !== 'undefined' ? G_SVG : '') + '</i>';   // 픽토 조합 문법 = index geniEngIco() 정본 미러
     // 콘티 엔진 값 = 브랜드 픽토 + 정본 모델명. **시댄스 = 무조건 생성 / 클링 = 옵션**(운영자 Q1161 정정본 — 시댄스는 md만 산출해 이미지가 발사 필수 재료 · 클링은 프롬프트가 본체라 @참조 이미지는 옵션).
-    const gemOn = sbShoot === 'seedance' ? true : sbRef;
+    const gemOn = sbShoot === 'seedance' ? true : (sbShoot === 'motion' ? false : sbRef);
     const gemV = '<span class="gs-v' + (gemOn ? ' on' : '') + '" title="'
       + (sbShoot === 'seedance'
           ? 'Seedance = 레퍼런스 이미지 무조건 생성(끌 수 없음 · sb_out/&lt;id&gt;/ref.json = 1-way 주입 필수 재료) · Gemini 종량제 과금'
-          : (sbRef ? 'Kling = 레퍼런스 이미지 생성 ON(옵션 · @참조용) · Gemini 종량제 과금' : 'Kling = 레퍼런스 이미지 OFF(옵션 해제) · Gemini 미과금'))
+          : (sbShoot === 'motion'
+              ? '모션그래픽 = 실사 레퍼런스를 쓸 곳이 없다(플랫 도형·숫자·글자만) → 강제 OFF · Gemini 미과금'
+              : (sbRef ? 'Kling = 레퍼런스 이미지 생성 ON(옵션 · @참조용) · Gemini 종량제 과금' : 'Kling = 레퍼런스 이미지 OFF(옵션 해제) · Gemini 미과금')))
       + '">' + ENG_ICO + (gemOn ? 'Gemini 3.1 Flash' : 'Gemini OFF') + '</span>';
     // 2줄 리모트바(운영자 Q1160 "미리보기 옵션 리모트바 2줄 · 1줄과 2줄 사이에 옅은 구분선") —
     //   1줄 = 감독│촬영│콘티(엔진) · 2줄 = 옵션(규격 4축). **라벨 = mut · 값 = 강조색**(Q1152·Q1156·Q1157 · 점등 문법 = .gs-v.on 정본).
@@ -408,12 +411,14 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     axL.innerHTML = '';
     SB_VALS['길이'].forEach(v => { const b = optBtn(v, sbSet['길이'] === v, () => { sbSet['길이'] = v; render(); }, true); b.title = SB_CUTS[v] || ''; axL.appendChild(b); });
     // 참조 이미지 토글 — 시댄스 = 강제 ON·비활성(끌 수 없음) / 클링 = 선택 가능(운영자 Q1161)
-    const refOn = sbShoot === 'seedance' ? true : sbRef;
+    const refOn = sbShoot === 'seedance' ? true : (sbShoot === 'motion' ? false : sbRef);
     rf.textContent = refOn ? 'ON' : 'OFF'; rf.classList.toggle('on', refOn); rf.setAttribute('aria-pressed', String(refOn));
-    rf.disabled = (sbShoot === 'seedance');
+    rf.disabled = (sbShoot === 'seedance' || sbShoot === 'motion');
     rf.title = sbShoot === 'seedance'
       ? 'Seedance = 레퍼런스 이미지 강제 ON — md만 산출하는 레인이라 이미지가 발사 필수 재료(끌 수 없음)'
-      : 'Kling = 선택 가능 — ON이면 @참조용 레퍼런스 이미지를 함께 생성(Gemini 종량제)';
+      : (sbShoot === 'motion'
+          ? '모션그래픽 = 레퍼런스 이미지 강제 OFF — 플랫 도형·숫자·글자만 그리는 레인이라 실사 참조를 쓸 곳이 없다(켤 수 없음)'
+          : 'Kling = 선택 가능 — ON이면 @참조용 레퍼런스 이미지를 함께 생성(Gemini 종량제)');
     ad.textContent = sbAd ? 'ON' : 'OFF'; ad.classList.toggle('on', sbAd); ad.setAttribute('aria-pressed', String(sbAd));   // ON/OFF = 우측 형광 텍스트 토글(Image Studio 한국웹툰화 ON 문법)
     drawSpec(); save(); refocus();
   }
@@ -425,7 +430,7 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     el.addEventListener('blur', () => { if (!el.value) { el.value = '1'; if (side === 'W') sbArW = '1'; else sbArH = '1'; sbArFit(el); render(); } });   // 비운 채 떠나면 1 복귀
   });
   ad.addEventListener('click', () => { sbAd = !sbAd; render(); });
-  rf.addEventListener('click', () => { if (sbShoot === 'seedance') return; sbRef = !sbRef; render(); });   // 시댄스면 무시(강제 ON · disabled와 이중 가드)
+  rf.addEventListener('click', () => { if (sbShoot === 'seedance' || sbShoot === 'motion') return; sbRef = !sbRef; render(); });   // 시댄스(강제 ON)·모션(강제 OFF)이면 무시 — disabled와 이중 가드
   render();
 })();
 // 최소 마크다운 렌더 — k.html renderMd 바이트 계승(펜스 코드블록·헤딩·표/굵게 누출 폴백)
@@ -489,6 +494,15 @@ async function renderOut(md, outEl, outPath) {   // 결과 렌더 공통(폴 성
   // 없으면(=kling 레인·GEMINI 키 미등록·생성 실패) 아무것도 안 붙는다 = 종전 동작 그대로(무회귀)
   if (outPath) {
     const base = outPath.replace(/board\.md$/, '');
+    // 모션그래픽 산출(촬영=motion): 같은 폴더의 motion.mp4 = 렌더 완료물. 없으면(=다른 레인·렌더 실패) 아무것도 안 붙는다 = 무회귀.
+    // 실존 확인 = HEAD + content-type 가드(SPA 폴백이 HTML을 200으로 주는 함정 — 아래 ref.jpg 폴백과 동일 축).
+    try {
+      const mr = await fetch(base + 'motion.mp4?t=' + Date.now(), { method: 'HEAD' });
+      if (mr.ok && !(mr.headers.get('content-type') || '').includes('text/html')) {
+        html = '<div class="ref"><video src="' + (base + 'motion.mp4').replace(/"/g, '%22') + '" controls playsinline preload="metadata"></video>'
+          + '<div class="cap">모션그래픽 렌더 — 사내 렌더러(외부 API 0)</div></div>' + html;
+      }
+    } catch (e) { /* 폴백 = 미부착 */ }
     let srcs = null;
     try { const jr = await fetch(base + 'ref.json?t=' + Date.now()); if (jr.ok) { const j = await jr.json(); if (j && Array.isArray(j.urls) && j.urls.length) srcs = j.urls; else if (j && j.url) srcs = [j.url]; } } catch (e) { /* 폴백 */ }
     if (!srcs) { try { const hr = await fetch(base + 'ref.jpg?t=' + Date.now(), { method: 'HEAD' }); if (hr.ok && !(hr.headers.get('content-type') || '').includes('text/html')) srcs = [base + 'ref.jpg']; } catch (e) {} }   // git 폴백 = 실존 확인 후에만(SPA 폴백이 HTML을 200으로 주는 함정 = poll 가드와 동일 축)
@@ -521,7 +535,7 @@ const jload = () => { try { const a = JSON.parse(localStorage.getItem(JKEY) || '
 const jsave = a => { try { localStorage.setItem(JKEY, JSON.stringify(a.slice(0, 30))); } catch (e) {} };
 function jupd(id, patch) { const a = jload(); const j = a.find(x => x.id === id); if (j) { Object.assign(j, patch); jsave(a); } renderJobs(); }
 let sbBase = null;   // 변형 모드: {out, label} — 발사 시 base로 전달·발사 후 해제
-const DNM = { fable: '페이블 5', opus: '오퍼스 5', gpt: 'GPT 5.6' }, SNM = { kling: 'Kling', seedance: 'Seedance' };
+const DNM = { fable: '페이블 5', opus: '오퍼스 5', gpt: 'GPT 5.6' }, SNM = { kling: 'Kling', seedance: 'Seedance', motion: '모션그래픽' };
 const JOB_SPIN = (window.nmOrbHTML?nmOrbHTML('prompting',14):'…');   // 로딩 = orb(Prompting · 콘티 · Q463)   // 로딩 스피너 → 도트 픽토그램(nm-loader.js · beui dots 계승 · 강조색 --accent · 컴팩트 6px)
 const JOB_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기/삭제 X = SVG 정본(문자 × 금지 게이트)
 async function loadJob(j) {   // 아카이브 재열람 — SPA 폴백 가드는 poll과 동일
