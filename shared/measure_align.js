@@ -22,6 +22,7 @@
 //         --viewport WxH      뷰포트(기본 420x900)
 //         --ink bright|dark   잉크 판정 모드(기본 bright = 어두운 배경 위 밝은 잉크)
 //         --ink-gate          잉크 Δ도 하드 판정에 포함(텍스트 필용)
+//         --root <디렉토리>    정적 서빙 루트(운영자 260731 한수 — 4레포 공용 이식용) · 결측 = viewer/ 있으면 viewer/ · 없으면 레포 루트
 //   종료코드: 0 = 전 대상 기하 |Δ| ≤ 0.67(+옵션 시 잉크) · 1 = 초과/대상 미발견.
 //
 // 문법 계승: 서버·브라우저 부팅 = smoke_rank.js(포트만 8816~8820 분리) · DPR3 캡처 · 인페이지 캔버스
@@ -33,7 +34,6 @@ const fs = require('fs');
 const os = require('os');
 const { spawn, execSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const VIEWER = path.join(ROOT, 'viewer');
 const BAR = 0.67;   // 기틀 [픽셀실측] 0.5 + DPR3 양자화 반스텝(≈0.17) — smoke_rank 동값
 
 function loadPlaywright() {
@@ -52,15 +52,15 @@ function chromiumPath() {
   try { cands.push(execSync('which chromium chromium-browser google-chrome 2>/dev/null | head -1').toString().trim()); } catch (_) {}
   return cands.find(Boolean);
 }
-async function startServer() {
+async function startServer(rootDir) {
   for (const port of [8816, 8817, 8818, 8819, 8820]) {   // smoke_* 대역과 분리
-    const srv = spawn('python3', ['-m', 'http.server', String(port), '-d', VIEWER], { stdio: 'ignore' });
+    const srv = spawn('python3', ['-m', 'http.server', String(port), '-d', rootDir], { stdio: 'ignore' });
     const ok = await new Promise(res => {
       let done = false;
       srv.on('exit', () => { if (!done) { done = true; res(false); } });
       setTimeout(async () => {
         if (done) return;
-        try { const r = await fetch('http://127.0.0.1:' + port + '/index.html', { method: 'HEAD' }); done = true; res(r.ok); }
+        try { const r = await fetch('http://127.0.0.1:' + port + '/', { method: 'HEAD' }); done = true; res(r.ok); }   // 프로브 = 루트(디렉토리 목록 200) — index.html 없는 레포도 통과(--root 이식 260731)
         catch (_) { done = true; try { srv.kill(); } catch (e) {} res(false); }
       }, 700);
     });
@@ -71,11 +71,12 @@ async function startServer() {
 }
 
 function parseArgs(argv) {
-  const a = { sels: [], out: '/tmp/measure_align.png', viewport: [420, 900], ink: 'bright', inkGate: false, prep: '' };
+  const a = { sels: [], out: '/tmp/measure_align.png', viewport: [420, 900], ink: 'bright', inkGate: false, prep: '', root: '' };
   const rest = argv.slice(2);
   for (let i = 0; i < rest.length; i++) {
     const v = rest[i];
     if (v === '--prep') a.prep = rest[++i] || '';
+    else if (v === '--root') a.root = rest[++i] || '';
     else if (v === '--out') a.out = rest[++i] || a.out;
     else if (v === '--viewport') { const m = /^(\d+)x(\d+)$/.exec(rest[++i] || ''); if (m) a.viewport = [+m[1], +m[2]]; }
     else if (v === '--ink') a.ink = (rest[++i] === 'dark') ? 'dark' : 'bright';
@@ -89,11 +90,15 @@ function parseArgs(argv) {
 (async () => {
   const A = parseArgs(process.argv);
   if (!A.page || !A.sels.length) {
-    console.log('사용: node shared/measure_align.js <페이지.html> <셀렉터> [셀렉터…] [--prep js] [--out png] [--viewport WxH] [--ink bright|dark] [--ink-gate]');
+    console.log('사용: node shared/measure_align.js <페이지.html> <셀렉터> [셀렉터…] [--prep js] [--out png] [--viewport WxH] [--ink bright|dark] [--ink-gate] [--root 디렉토리]');
     process.exit(1);
   }
   const pw = loadPlaywright();
-  const { srv, port } = await startServer();
+  // 서빙 루트: --root 명시 > viewer/(노뮤트 계열 기본) > 레포 루트 — 4레포 공용 원본 이식(개조 0 · 운영자 260731 한수)
+  const rootDir = A.root ? path.resolve(process.cwd(), A.root)
+    : (fs.existsSync(path.join(ROOT, 'viewer')) ? path.join(ROOT, 'viewer') : ROOT);
+  if (!fs.existsSync(rootDir)) { console.log('FAIL | --root 디렉토리 없음: ' + rootDir); process.exit(1); }
+  const { srv, port } = await startServer(rootDir);
   let rc = 0;
   const browser = await pw.chromium.launch({ executablePath: chromiumPath() });
   try {
@@ -105,17 +110,21 @@ function parseArgs(argv) {
     await pg.waitForTimeout(150);
     await pg.evaluate(() => document.fonts && document.fonts.ready);
 
+    // 기하 = 전 대상 일괄 선측정(단일 스냅샷) — 아래 잉크 캡처가 요소를 자동 스크롤해 좌표계를 옮기므로
+    //   대상별 순차 측정은 정렬선Δ에 스크롤 델타가 오염된다(260731 실측 -306px 허위 FAIL → 선측정으로 봉합).
+    const geos = await pg.evaluate(sels => sels.map(s => {
+      const el = document.querySelector(s);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const kid = el.querySelector('svg,img') || el.firstElementChild;
+      const kr = kid ? kid.getBoundingClientRect() : null;
+      return { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2,
+               kid: kr ? { cx: kr.x + kr.width / 2, cy: kr.y + kr.height / 2, x: kr.x, y: kr.y, w: kr.width, h: kr.height } : null };
+    }), A.sels);
     const rows = [];
-    for (const sel of A.sels) {
-      const geo = await pg.evaluate(s => {
-        const el = document.querySelector(s);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        const kid = el.querySelector('svg,img') || el.firstElementChild;
-        const kr = kid ? kid.getBoundingClientRect() : null;
-        return { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2,
-                 kid: kr ? { cx: kr.x + kr.width / 2, cy: kr.y + kr.height / 2, x: kr.x, y: kr.y, w: kr.width, h: kr.height } : null };
-      }, sel);
+    for (let si = 0; si < A.sels.length; si++) {
+      const sel = A.sels[si];
+      const geo = geos[si];
       if (!geo) { console.log('FAIL | ' + sel + ' | 대상 미발견'); rc = 1; continue; }
       // 광학(잉크) — 대상 단독 캡처(DPR3) → 인페이지 캔버스 무게중심
       let inkD = null;
@@ -165,20 +174,27 @@ function parseArgs(argv) {
 
     // 십자선 캡처(증빙) — 빨강 = 컨테이너 중심 · 초록 = 픽토 중심
     if (rows.length) {
-      await pg.evaluate(sels => {
+      // 십자선·클립은 **캡처 시점의 좌표**로 재계산 — 잉크 캡처가 스크롤을 옮겨 선측정 좌표는 캡처엔 부적격(260731 실측: 옛 좌표 클립 = 빈 영역 예외)
+      const bb = await pg.evaluate(sels => {
+        const first = sels.map(s => document.querySelector(s)).find(Boolean);
+        if (first) first.scrollIntoView({ block: 'center' });
         const mk = (l, t, w, h, col) => { const dv = document.createElement('div');
           dv.style.cssText = 'position:fixed;left:' + l + 'px;top:' + t + 'px;width:' + w + 'px;height:' + h + 'px;background:' + col + ';z-index:2147483647;pointer-events:none;';
           dv.dataset.measureCross = '1'; document.body.appendChild(dv); };
         const cross = (r, col) => { mk(r.x + r.width / 2 - 0.5, r.y - 4, 1, r.height + 8, col); mk(r.x - 4, r.y + r.height / 2 - 0.5, r.width + 8, 1, col); };
+        const b = { x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9 };
         for (const s of sels) { const el = document.querySelector(s); if (!el) continue;
-          cross(el.getBoundingClientRect(), 'rgba(255,80,80,.9)');
+          const r = el.getBoundingClientRect();
+          cross(r, 'rgba(255,80,80,.9)');
           const kid = el.querySelector('svg,img') || el.firstElementChild;
-          if (kid) cross(kid.getBoundingClientRect(), 'rgba(80,255,120,.9)'); }
+          if (kid) cross(kid.getBoundingClientRect(), 'rgba(80,255,120,.9)');
+          b.x0 = Math.min(b.x0, r.x); b.y0 = Math.min(b.y0, r.y); b.x1 = Math.max(b.x1, r.x + r.width); b.y1 = Math.max(b.y1, r.y + r.height); }
+        return b;
       }, A.sels);
-      const bb = rows.reduce((a, r) => ({ x0: Math.min(a.x0, r.geo.x), y0: Math.min(a.y0, r.geo.y), x1: Math.max(a.x1, r.geo.x + r.geo.w), y1: Math.max(a.y1, r.geo.y + r.geo.h) }),
-        { x0: 1e9, y0: 1e9, x1: -1e9, y1: -1e9 });
-      await pg.screenshot({ path: A.out, clip: { x: Math.max(0, bb.x0 - 10), y: Math.max(0, bb.y0 - 10), width: bb.x1 - bb.x0 + 20, height: bb.y1 - bb.y0 + 20 } });
-      console.log('십자선 캡처: ' + A.out);
+      if (bb.x1 > bb.x0) {
+        await pg.screenshot({ path: A.out, clip: { x: Math.max(0, bb.x0 - 10), y: Math.max(0, bb.y0 - 10), width: bb.x1 - bb.x0 + 20, height: bb.y1 - bb.y0 + 20 } });
+        console.log('십자선 캡처: ' + A.out);
+      }
     }
   } catch (e) {
     console.log('FAIL | 측정기 예외 | ' + String(e).slice(0, 200));
