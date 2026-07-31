@@ -1848,6 +1848,8 @@ def check_failsoft_metrics():
             ('gtrends 커버:', 'gtrends 커버 백필 집계 1줄'),
             ('_GNS_DIAG', 'gnews_search 단계별 진단 카운터'),
             ('::warning::수집 워치독', '코어 레인 0건 워치독'),
+            ('yt-subs 계측:', '유튜브 구독 레인 집계 1줄(성공·미시도·실패·경로)'),
+            ('::warning::yt-subs 커버', '유튜브 구독 커버 임계 경보(50%)'),
         ]),
         ('.github/scripts/trend_images.py', [
             ('gtrends 커버 최종', '최종 커버 집계 1줄'),
