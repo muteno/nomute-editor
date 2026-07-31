@@ -165,29 +165,30 @@ export async function onRequestGet({ request, env }) {
   // GET /api/edit?recent=<시간> → 최근 완성 영상 id 목록(운영자 260731 "비디오 스튜디오도 즉시" — thumb ?recent= 미러).
   // 러너(ly_burn)가 R2에 올리는 ly_out/<id>/video.json을 발견 → 클라 작업 내역이 Pages 빌드·배포 랙 없이 임시 행 표시,
   // 열람은 기존 openJob R2 폴백(?stat=)이 전담. id 선두 12자리 = KST 시각(edit.js 발급 규칙)이라 컷오프 startAfter = 최근 창만 목록.
-  // 한계 = 완성 영상만(clips/cuts 스캔 JSON은 R2 미업로드 → 종전 Pages 인덱스 합류) · 실패 = 빈 목록(클라 폴백 유지).
+  // 대상 = video.json(완성 영상 · ly_burn 260728) + clips.json/cuts.json(스캔 산출 · edit-make 'R2 즉시 게시' 스텝 260731) · 실패 = 빈 목록(클라 폴백 유지).
   if (q.get('recent') != null) {
-    if (!env.R2) return j({ ids: [], reason: 'r2-unbound' });
+    if (!env.R2) return j({ items: [], reason: 'r2-unbound' });
     const hrs = Math.max(1, Math.min(48, +q.get('recent') || 24));
     const d = new Date(Date.now() - hrs * 3600e3 + 9 * 3600e3);   // KST 벽시계 = UTC+9(id 도장과 동일 축)
     const p2 = n => String(n).padStart(2, '0');
     const cut = String(d.getUTCFullYear()).slice(2) + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + p2(d.getUTCSeconds());
-    const ids = new Set(); let cursor;
+    const found = new Map(); let cursor;   // id → kind(video 우선 — 같은 잡에 둘이 있으면 완성 영상이 대표)
     try {
       for (let i = 0; i < 3; i++) {   // 상한 3페이지(24h 창 실사용량 대비 여유 · 폭주 방어)
         const l = await env.R2.list(cursor ? { prefix: 'ly_out/', limit: 1000, cursor } : { prefix: 'ly_out/', startAfter: 'ly_out/' + cut, limit: 1000 });
-        for (const o of (l.objects || [])) { const m = o.key.match(/^ly_out\/([A-Za-z0-9_-]{1,64})\/video\.json$/); if (m) ids.add(m[1]); }
+        for (const o of (l.objects || [])) { const m = o.key.match(/^ly_out\/([A-Za-z0-9_-]{1,64})\/(video|clips|cuts)\.json$/); if (m && (m[2] === 'video' || !found.has(m[1]))) found.set(m[1], m[2]); }
         if (!l.truncated) break; cursor = l.cursor;
       }
-    } catch (e) { return j({ ids: [], reason: 'r2-error' }); }
-    return j({ ids: [...ids].sort().reverse().slice(0, 60) });   // 최신 먼저 · 캡 60(작업 내역 표시 캡과 동일)
+    } catch (e) { return j({ items: [], reason: 'r2-error' }); }
+    return j({ items: [...found].sort((a, b) => b[0] < a[0] ? -1 : 1).slice(0, 60).map(([id, k]) => ({ id, k })) });   // 최신 먼저 · 캡 60(작업 내역 표시 캡과 동일)
   }
   const id = (q.get('stat') || '').trim();
+  const kind = { clips: 'clips', cuts: 'cuts' }[q.get('k') || ''] || 'video';   // ?k=clips|cuts = 스캔 산출 R2 서빙(260731 · 화이트리스트) · 기본 = 종전 video.json
   if (!id) return j({ error: 'stat 파라미터 필요' }, 400);
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return j({ error: '잘못된 id' }, 400);   // 경로 탈출 차단(ly_burn.py 동일 규칙)
   if (!env.R2) return j({ pending: true, reason: 'r2-unbound' }, 404);   // 폴백 유도(오류 아님)
   try {
-    const o = await env.R2.get(`ly_out/${id}/video.json`);
+    const o = await env.R2.get(`ly_out/${id}/${kind}.json`);
     if (!o) return j({ pending: true }, 404);
     return new Response(o.body, { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
   } catch (e) {

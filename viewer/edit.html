@@ -2609,6 +2609,15 @@ async function openJob(id){
           if(ds&&ds.url){ showResult(ds,0); await editSubsInit(id); return true; }
           if(ds&&(ds.error||ds.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(ds.error||ds.skip)); st.classList.add('err'); return false; } } }
     }catch(e){ /* 미바인딩·장애 = 아래 안내로(회귀 0) */ }
+    for(const kk of ['clips','cuts']){   // 스캔 산출 R2 즉시 열람(운영자 260731 "클립·컷도 즉시" — 위 ?stat 영상 폴백의 스캔판 · 러너 'R2 즉시 게시' 스텝과 한 쌍 · 실패 = 아래 안내 그대로)
+      try{
+        const rq=await fetch('/api/edit?stat='+encodeURIComponent(id)+'&k='+kk+'&t='+Date.now(), {cache:'no-store'});
+        if(rq.ok){ const tq=await rq.text();
+          if(tq&&!/^\s*</.test(tq)){ let dq=null; try{ dq=JSON.parse(tq); }catch(e){}
+            if(kk==='clips'&&dq&&Array.isArray(dq.clips)){ showClips(dq); return true; }
+            if(kk==='cuts'&&dq&&Array.isArray(dq.rm)){ showCuts(dq, id); return true; } } }
+      }catch(e){ /* 개별 종류 실패 = 다음 종류 시도 */ }
+    }
     st.textContent='결과를 못 찾았어 — 진행 중이면 완성 후 다시 열어줘';
   }catch(e){ st.textContent='결과 불러오기 실패 — 새로고침해줘'; }
   return false;
@@ -2641,7 +2650,7 @@ render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유�
 
 // ── 작업 내역 게시판(운영자 260712 "이미지 생성기처럼 최근·기존 제작 라이브러리화" · 자막 탭 260707 게시판 원문 계승) — ly_out/index.json(서버측 = 기기간 공유·만료 없음) 로드 · 행 = 일시(KST)·라벨·길이·상태 · 탭 = openJob(과거 산출 상시 재열람 — 종전엔 pend 24h·푸시 딥링크뿐이라 시간 지나면 접근 불가였던 공백 봉합) · 자막-전용(subs) 잡 = 자막 탭 전담이라 제외 ──
 let _jlSig='',_jlBusy=false;   // 무변경 감지 시그니처(재렌더 억제 = 깜빡임·스크롤 튐 0 · thumb pollServerHist sig 게이트 미러) + in-flight 가드(폴·수동 새로고침 동시 발동 코얼레싱)
-const _r2Extra=new Set(),_jlIds=new Set();   // R2 즉시 발견 id(Pages 인덱스 합류 전 임시 행) · 인덱스 렌더 완료 id(합류 = 임시 축 자연 소거 — 같은 id는 인덱스 행이 대체)
+const _r2Extra=new Map(),_jlIds=new Set();   // R2 즉시 발견 id→종류(video|clips|cuts · Pages 인덱스 합류 전 임시 행) · 인덱스 렌더 완료 id(합류 = 임시 축 자연 소거 — 같은 id는 인덱스 행이 대체)
 async function loadJobLib(){   // 재호출 가능(구 1회성 IIFE → 부모 셸 헤더 새로고침 #toolRf 훅 + 10s 자동 폴 · 운영자 260731 "동기화가 십초 단위로") — 서버 인덱스 재fetch = 타 기기·타 플랫폼 제작분 수신
   if(_jlBusy) return; _jlBusy=true;
   try{
@@ -2653,7 +2662,8 @@ async function loadJobLib(){   // 재호출 가능(구 1회성 IIFE → 부모 �
     }catch(e){ /* 미배포·오프라인 = 무소득 — R2 즉시 발견분만이라도 아래서 렌더(260731 보강: 구 조기 return이 인덱스 결손 시 즉시분까지 삼켰다) */ }
     const vids=(jobs||[]).filter(j=>j&&j.st!=='subs');   // 영상 산출·클립 후보·실패·진행만(자막-전용 잡 제외)
     vids.forEach(j=>{ if(j&&j.id) _jlIds.add(j.id); });   // 인덱스 보유 id 등재 = R2 임시 행과 중복 차단(합류 시 인덱스 행이 대체)
-    const extra=[..._r2Extra].filter(id=>!_jlIds.has(id)).map(id=>({ id, ts:'20'+id.slice(0,2)+'-'+id.slice(2,4)+'-'+id.slice(4,6)+'T'+id.slice(6,8)+':'+id.slice(8,10)+':'+id.slice(10,12), t:'편집 영상', d:0, st:'done' }));   // R2 즉시 발견분 임시 행(운영자 260731) — 시각 = id 12자리 KST 도장 절단(인덱스 ts와 동일 문자열 문법) · 라벨·길이는 배포 합류 시 인덱스 값으로 자연 교체
+    const XK={video:{t:'편집 영상',st:'done'},clips:{t:'클립 후보',st:'clip'},cuts:{t:'컷 후보',st:'cut'}};   // R2 발견 종류 → 임시 라벨·상태(인덱스 ST 축과 동일 어휘)
+    const extra=[..._r2Extra].filter(([id])=>!_jlIds.has(id)).map(([id,k])=>({ id, ts:'20'+id.slice(0,2)+'-'+id.slice(2,4)+'-'+id.slice(4,6)+'T'+id.slice(6,8)+':'+id.slice(8,10)+':'+id.slice(10,12), t:(XK[k]||XK.video).t, d:0, st:(XK[k]||XK.video).st }));   // R2 즉시 발견분 임시 행(운영자 260731 · 스캔 산출 합류 = clips/cuts 260731 2차) — 시각 = id 12자리 KST 도장 절단(인덱스 ts와 동일 문자열 문법) · 라벨·길이는 배포 합류 시 인덱스 값으로 자연 교체
     const all=extra.concat(vids);   // 임시(최신) 먼저 — 인덱스 최신순 유지
     if(!all.length) return;   // 빈 목록 = 조용한 공백(§디자인 빈 상태) — 재진입 시에도 기존 표시 유지(축소 스테일은 수용)
     const sig=tx+'|'+extra.map(e=>e.id).join(',');   // 인덱스 원문 + 임시 행 구성 = 통합 무변경 감지(어느 축이 바뀌어도 재렌더 · 둘 다 그대로면 skip = 깜빡임 0)
@@ -2703,9 +2713,9 @@ async function pollR2RecentEdit(){   // R2 즉시 발견(운영자 260731 "비�
   if(document.hidden||_r2eBusy) return; _r2eBusy=true;
   try{
     const r=await fetch('/api/edit?recent=24'); if(!r.ok) return;
-    const d=await r.json(); const ids=(d&&Array.isArray(d.ids))?d.ids:[]; if(!ids.length) return;
+    const d=await r.json(); const items=(d&&Array.isArray(d.items))?d.items:[]; if(!items.length) return;
     let changed=false;
-    for(const id of ids){ if(!/^[A-Za-z0-9_-]{1,64}$/.test(id)||_jlIds.has(id)||_r2Extra.has(id)) continue; _r2Extra.add(id); changed=true; }
+    for(const it of items){ const id=it&&it.id; if(!id||!/^[A-Za-z0-9_-]{1,64}$/.test(id)||_jlIds.has(id)||_r2Extra.has(id)) continue; _r2Extra.set(id,{video:1,clips:1,cuts:1}[it.k]?it.k:'video'); changed=true; }   // 종류(k) 동봉 = 임시 행 라벨·상태 + 열람 폴백 힌트(화이트리스트 밖 = video 취급)
     if(changed){ _jlSig=''; await loadJobLib(); }   // 신규 발견 때만 sig 리셋 + 재렌더(무변경 = 종전 게이트 그대로 = 깜빡임 0)
   }catch(e){ /* API 미가용 = 종전 Pages 인덱스 사다리 유지(조용한 폴백) */ } finally{_r2eBusy=false;}
 }
