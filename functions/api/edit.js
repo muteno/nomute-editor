@@ -49,7 +49,7 @@ export async function onRequestPost({ request, env }) {
   const pos = num(o.pos, 0, 100); if (pos !== null) opts.pos = Math.round(pos);          // 자막 세로 위치 %
   const bg = num(o.bg, 0, 100); if (bg !== null) opts.bg = Math.round(bg);               // 자막 배경 %
   const size = num(o.size, 0.02, 0.2); if (size !== null) opts.size = Math.round(size * 1000) / 1000;   // 자막 높이비
-  for (const k of ['outline', 'pad']) { const v = o[k]; if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 3) opts[k] = Math.round(v * 1000) / 1000; }   // 음영 크기(외곽선 배율·박스 패딩 계수 — ly.js 미러 · 의미 재클램프 = ly_burn coef · 260711)
+  for (const k of ['outline', 'pad']) { const v = o[k]; if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 3) opts[k] = Math.round(v * 1000) / 1000; }   // 음영 크기(외곽선 배율·박스 패딩 계수 — ly.js 미러 · 의미 재클램프 = ly_burn coef · 260711) · ⚠ 하한 = **0 포함**(구 `v > 0`) — 260729 "음영 0% 도달"에서 뷰어(edit.html buildOpts Math.max(0,…))와 러너(ly_burn coef lo=0.0)만 0으로 내리고 이 화이트리스트를 안 내려, 게이지 0%가 보내는 정확한 0이 **키째 탈락** → 러너가 결측으로 보고 기본값(omul 1.0 / pad 0.10)을 써서 미리보기엔 없는 음영이 결과물엔 그대로 찍혔다(= 끄기가 UI에만 존재 · 평의회3·5 독립 일치 260731). 0 = "음영 없음"이라는 **유효한 값**이지 결측이 아니다
   if (typeof o.oc === 'string' && ['black', 'white', 'green', 'mint', 'sky', 'blue', 'pink', 'yellow', 'red'].includes(o.oc)) opts.oc = o.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711)
   if (typeof o.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(o.font)) opts.font = o.font;                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 — 러너 설치 폰트만 · 260711)
   if (typeof o.fg === 'string' && ['black', 'white', 'green', 'mint', 'sky', 'blue', 'pink', 'yellow', 'red'].includes(o.fg)) opts.fg = o.fg;                   // 자막 글자색(ly.js 미러 · 기본 white = 종전 · 260721 자막 카드 복원) — (260729) 9색 통일 동행
@@ -84,7 +84,14 @@ export async function onRequestPost({ request, env }) {
   if (dsm !== null && opts.lang === 'dual') opts.dual_small = Math.round(dsm * 100) / 100;   // 번역 줄 크기 계수(운영자 260728 — dual 한정 · 결측 = 러너 0.62 종전 바이트)
   // 승인 컷 소비(260727 ③) — cutref = 스캔 잡 id · cutoff = 뺀 항목 인덱스 CSV(러너 ly_burn.load_ref_cuts가 실측 재검증 = 이중 방어)
   if (typeof o.cutref === 'string' && /^\d{12}-[a-f0-9]{6}$/.test(o.cutref)) opts.cutref = o.cutref;
-  if (opts.cutref && typeof o.cutoff === 'string' && /^[0-9]{1,4}(,[0-9]{1,4}){0,199}$/.test(o.cutoff)) opts.cutoff = o.cutoff.slice(0, 900);
+  if (opts.cutref && typeof o.cutoff === 'string' && /^[0-9]{1,4}(,[0-9]{1,4}){0,199}$/.test(o.cutoff)) {
+    // ⚠ 절단은 **토큰 경계**에서(구 `.slice(0,900)` = 문자 단위) — 정규식이 통과시키는 최대 길이는 200개×4자리 = 999자라
+    //   900번째가 숫자 중간이면 마지막 인덱스가 반토막 나고(예 183 → 18), 러너 load_ref_cuts의 `re.findall(r"\d+")`는
+    //   그 반쪽을 정상 인덱스로 읽는다 = **엉뚱한 컷이 대신 제외**되고 400도 로그도 안 남는 조용한 오작동(평의회3 260731).
+    let cf = o.cutoff;
+    if (cf.length > 900) { const t = cf.split(','); while (t.length && t.join(',').length > 900) t.pop(); cf = t.join(','); }
+    if (cf) opts.cutoff = cf;
+  }
   if (!opts.cutref) delete opts.cutoff;   // 참조 없는 제외 목록 = 무의미(잔여 키 청소 = clip_model 선례)
   if (opts.cutscan === true) { opts.clip = false; delete opts.clip; delete opts.clip_model; delete opts.cutref; delete opts.cutoff;
     for (const k of Object.keys(opts)) { if (!['cutscan', 'cut', 'cutlv', 'cutfill', 'take'].includes(k)) delete opts[k]; }   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 러너 컴포즈 스킵과 계약 일치)

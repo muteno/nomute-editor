@@ -517,10 +517,16 @@ if (existsSync(LY_ROOT)) {
     if (existsSync(join(dir, 'video.json'))) { try { v = JSON.parse(readFileSync(join(dir, 'video.json'), 'utf8')); } catch { v = null; } }
     let clip = false;   // 클리퍼 스캔 산출(후보 목록만·영상 산출 없음) — 판독은 필요할 때만(done/subs가 아닐 때)
     if (!(v && v.url) && !existsSync(subsP) && existsSync(join(dir, 'clips.json'))) { try { clip = Array.isArray(JSON.parse(readFileSync(join(dir, 'clips.json'), 'utf8')).clips); } catch { clip = false; } }
+    let cuts = false;   // 컷 미리보기 스캔 산출(cut_scan.py의 유일한 성공 산출 = cuts.json · 그 외엔 error.log뿐)
+    // ⚠ 이 인덱서는 cuts.json을 **한 번도 읽지 않았다**(평의회7 260731) — 그래서 스캔이 정상 완료돼도 상태가
+    //   'gen'에 머물러 작업 내역에 **영구 "진행중"**으로 남았다. 탭하면 결과는 정상으로 열리니 라벨만 거짓말이고,
+    //   사용자는 계속 기다리거나 같은 스캔을 재발사했다. clips.json 짝(위 줄)과 동형으로 합류시킨다.
+    if (!(v && v.url) && !existsSync(subsP) && !clip && existsSync(join(dir, 'cuts.json'))) { try { cuts = Array.isArray(JSON.parse(readFileSync(join(dir, 'cuts.json'), 'utf8')).rm); } catch { cuts = false; } }
     let st = 'gen';                                                        // 산출물 조합 → 상태(실패 표기 = 운영자 요구)
     if (v && v.url) st = 'done';                                           // 번인 완성
     else if (existsSync(subsP)) st = 'subs';                               // 자막만(합성 스킵/실패·구작업 포함 — 자막은 살아있음)
     else if (clip) st = 'clip';                                            // 클립 후보 대기(구 'gen' 영구 오표기 정정 · 260712)
+    else if (cuts) st = 'cut';                                             // 컷 후보 대기(구 'gen' 영구 오표기 정정 · 260731 — 클립과 동형)
     else if ((v && (v.error || v.skip)) || existsSync(join(dir, 'error.log'))) st = 'fail';   // 산출물 없이 에러 기록만
     if (!title && v) title = eoLabel(v.edit_opts);
     const d = v && Number.isFinite(v.dur) ? Math.round(v.dur) : 0;

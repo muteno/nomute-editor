@@ -27,7 +27,18 @@ export async function onRequestPost({ request, env }) {
   const r2key = String(body.r2key || '');
   const name = String(body.name || '');
   if (!url && !fileB64 && !r2key) return json({ error: '영상 URL이나 파일이 필요해' }, 400);
-  if (url && !/^https?:\/\//i.test(url)) return json({ error: 'URL은 http(s)로 시작해야 해' }, 400);
+  if (url) {
+    // 러너發 SSRF 가드 — edit.js:31-38 / conv.js / vidl.js 완전 동수 이식(260731 평의회2).
+    // ⚠ 구 코드는 `/^https?:\/\//` 접두 검사 **하나뿐**이었다. 이 파일 머리말이 "발사 골격 = conv.js 미러"라고
+    //   선언하는데 정작 형제 3개가 다 가진 이 블록만 빠져 있어, 인증 사용자 누구나 임의 호스트·내부 메타데이터
+    //   주소(169.254.169.254 등)를 러너 yt_dlp로 때리게 할 수 있었다(쉘 인젝션은 아님 — $URL은 따옴표 인용 확인).
+    if (/[\r\n\t]/.test(url)) return json({ error: '잘못된 URL' }, 400);
+    let uh = '';
+    try { const x = new URL(url); if (x.protocol !== 'http:' && x.protocol !== 'https:') return json({ error: 'URL은 http(s)로 시작해야 해' }, 400); uh = x.hostname.toLowerCase(); } catch { return json({ error: '잘못된 URL' }, 400); }
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(uh) || uh === 'localhost' || uh.endsWith('.local') || uh.startsWith('[')
+      || uh === 'metadata.google.internal' || uh.endsWith('.internal') || uh === 'instance-data'
+      || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(uh)) return json({ error: '지원하지 않는 URL 호스트' }, 400);
+  }
 
   // 옵션 화이트리스트(conv opts 관례)
   const o = (body.opts && typeof body.opts === 'object') ? body.opts : {};

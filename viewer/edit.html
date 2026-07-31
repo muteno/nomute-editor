@@ -162,6 +162,7 @@
   .cyrow .cyv { min-width:3ch; white-space:nowrap; }   /* ON↔OFF 전환 폭 고정 = 기타 옵션 규칙(운영자 260712)을 토글 행 전반 계승 */
   .pvsub { flex-direction:column; align-items:center; }   /* 번역 ON = 위(번역)·아래(자막) 2줄 세로 적층(운영자 260728 Q06) — 아래 .pvsub display:flex 기본이 행 방향이라 두 줄이 가로로 붙던 것 교정(헤드리스 실측 260728) · 1줄(번역 OFF)일 땐 align-items:center가 구 justify-content:center와 동일 가운데 = 종전 배치 불변 */
   .pvsub span { display:block; }
+  .pvsub span[hidden] { display:none; }   /* ⚠ 위 `display:block`이 **hidden 속성의 기본 display:none을 덮는다**(저자 스타일 > UA 규칙) — 그래서 「한글만」·「자동」에서 pvSync가 `tl.hidden=true`로 꺼놓은 원문 줄이 화면엔 그대로 보였다(운영자 260731 "기본은 한글만이 맞는데 미리보기에는 영문까지 뜬다"). 게다가 hidden 경로에선 pvSync가 인라인 font-size(한국어×50%)를 안 먹이므로 아래 .pvsub-tr의 CSS 폴백 .5em(=부모 15px 기준 7.5px)이 남아, 한국어 줄(9.24px)의 **81%** 크기로 크게 떴다 = "영문 자막이 굉장히 크다"와 동일 뿌리(실측 260731 · 두 증상 = 한 원인). 컨테이너용 `.pvsub[hidden]`(241행 아래)의 자식 짝 */
   .pvsub .pvsub-tr { opacity:.92; font-size:.5em /* raw-ok: em 비례 폴백 = pvSync 인라인 산식(주 줄 × 상대비)과 같은 축 · 고정 px 아님 */;
     position:absolute; top:100%; left:0; right:0;   /* ★ 한국어 줄이 기준선(운영자 260729 "한글말 줄을 기준선으로 삼아서 아래로 펼쳐져야함") — 원문을 흐름에서 빼 한국어 줄 **바로 아래**에 띄운다. 흐름에 두면 .pvsub가 bottom 앵커라 원문이 커질수록 한국어 줄이 위로 밀려 올라갔다(크기 조절 = 위치 이동 = 운영자 지시 위배) */
     color:#fff /* raw-ok: 원문 줄 흰색 고정(운영자 260729 "영문은 항상 흰색 고정") — 글자색(fg) 축을 일부러 안 따른다 = 순수 흰 리터럴(팔레트 반입 아님 · OC_DEF.white 동값) */;
@@ -308,8 +309,7 @@
   .ftres:empty { display:none; }   /* 빈 상태 = 조용한 공백(§디자인 e-가) */
   .ftit { position:relative; flex:0 0 auto; }
   .ftit img { height:132px; border-radius:var(--r-m); border:1px solid var(--line); display:block; }
-  .ftit .ftdl.dlbtn { position:absolute; right:6px; bottom:6px; width:30px; height:30px; display:grid; place-items:center; border-radius:var(--r-s); background:var(--bg)!important; border-color:transparent!important; }
-  @media (hover:hover){ .ftit .ftdl.dlbtn:hover { background:var(--bg)!important; } }   /* 이미지 위 플레이트 = hover 배경 불변(§디자인 n) */
+  .ftit .ftdl.dlbtn { position:absolute; right:6px; bottom:6px; width:30px; height:30px; display:grid; place-items:center; border-radius:var(--r-s); }   /* 호스트 기하(위치·크기·radius)만 — **플레이트 색 계약은 nm-cards.css:27·33 정본이 전담**(같은 셀렉터로 이미 선언 중). 구 코드는 여기에 `background:var(--bg)!important; border-color:transparent!important`와 hover 짝을 사본으로 들고 있었는데, 인라인 <style>이 <link>보다 소스순 뒤라 **이 사본이 SSOT를 이겼다** = SSOT에서 플레이트 색을 바꾸면 베스트컷 스틸 위 다운로드 버튼만 옛 색으로 남는 드리프트(260731 실사고와 동형). check_cards_ssot()는 `.dlbtn {`류 3개 접두만 봐서 이런 컨텍스트 사본은 못 잡는 사각지대였다(평의회6 260731) */
   .ftit .ftdl.dlbtn svg { width:16px; height:16px; }
   .pvattr { display:none; margin-top:5px /* raw-ok: 기존값 사본(구 명세줄 마진 — 이 편집 = display:none 추가만) */; font-size:var(--fs-xs,11px); color:var(--mut); font-weight:600; }   /* 구 속성 명세줄 = 도크 선택 요약 스트립(#optStrip)으로 이주(thumb 구#goSpec→.optstrip 이주 미러 · 운영자 260718) — 도먼트 보존(복원 = display:none 제거 · pvSync 기록 로직은 유지) */
   .pvattr b { color:var(--accent); font-weight:var(--fw-b,700); }
@@ -371,7 +371,7 @@
   .out table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
   .out td, .out th { border:1px solid var(--line); padding:6px 8px; text-align:left; color:var(--mut); }
   .code { position:relative; background:var(--well); border:1px solid var(--line); border-radius:10px; margin:8px 0 12px; }
-  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#eef7f0; }
+  .code pre { margin:0; padding:13px /* raw-ok: --trend-indent(13px)는 index :root 전용이라 이 뷰어에선 댕글링 = 게이트 rc=1(실측 260731) · 기존값 그대로 유지 */; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--fg); }   /* 글자색 = 토큰 계승(구 raw #eef7f0 = :root --fg와 **같은 값의 복사본**이었다 — 툴톤을 바꾸면 코드블록 글자만 옛 색으로 남는 드리프트 벡터 · §0-A1 계승 디폴트 · 평의회6 260731) */
   .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
     color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform var(--dur-fast), background var(--dur), color var(--dur), border-color var(--dur); }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
@@ -472,7 +472,7 @@
   .lyjob .jts { flex:none; color:var(--mut); font-variant-numeric:tabular-nums; font-size:12px; }
   .lyjob .jt { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
   .lyjob .jst { flex:none; font-size:12px; font-weight:800; color:var(--mut); }
-  .lyjob .jst.done { color:var(--accent); } .lyjob .jst.fail { color:var(--danger); }
+  .lyjob .jst.done { color:var(--fg); } .lyjob .jst.fail { color:var(--danger); }   /* 완료 상태줄 = **흰색**(운영자 260731 · 정본 = nm-cards.css `.job.done .jst{color:var(--fg)}`) — 이 목록은 클래스가 `.job`이 아니라 `.lyjob`이라 SSOT 규칙이 아예 안 걸려 혼자 형광 민트로 남아 있었다: 같은 자리 이미지 스튜디오는 흰색인데 비디오 스튜디오만 달라 §0-B3 "같은 기능 = 같은 모양"을 이탈(평의회6 260731) */
   .edfocus { animation:edfocus 2.2s ease both; border-radius:var(--r-m); }   /* 알림 ?done=<id> 착지 결과 강조 = '해당 작업' 식별(thumb .thfocus 정본 계승 · radius = 근접토큰 자동계승) */
   @keyframes edfocus { 0%,100%{ box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); } 18%,46%{ box-shadow:0 0 0 3px rgba(var(--accent-rgb),.55); } }
   @media (prefers-reduced-motion:reduce){ .edfocus { animation:none; } }
@@ -695,10 +695,15 @@ let P={lang:'ko',tone:'sns',   /* 언어 기본 = 한글만(운영자 260729 "�
   cutlv:'std',cutfill:false,take:false,t0:'',t1:'',segs:[{s:'',e:''}],xfade:20,ar:'9:16',fit:'blur',vpos:50,res:'1080',fps:'60i'};   // segs = n구간(운영자 260728 "1구간, 2구간 n구간" — [{s,e}] 문자열 · t0/t1 = 구 단일 구간 도먼트 보존) · xfade = 이음매 디졸브 강도 %(0=딱 붙임 · 발사 vid_xfade)   // cutfill=필러 컷·take=반복 테이크 감지(운영자 260727 ①④ — 컷 카드 종속 서브 토글)   // fit 기본 = 여백(블러)(운영자 260711 fitDef)   // 자막 기본 = ly LY_OPT_DEF 계승(캡션형)
 let OPEN='';
 const SUBPRE={   // 자막 스타일 프리셋(운영자 260711 배치 승인 — 자막 카드 최상단 칩) · 기존 축 조합만 원탭 점등(신규 렌더 축 0)
-  news:{nm:'속보체', style:'box', karaoke:false, pop:false, keyword:true, bg:100, pos:57, size:38},
-  fun:{nm:'예능체', style:'bold', karaoke:false, pop:true, keyword:true, bg:0, pos:24, size:46},
-  min:{nm:'담백체', style:'clean', karaoke:false, pop:false, keyword:false, bg:0, pos:24, size:32},
-  mood:{nm:'감성 네온', style:'bold', karaoke:false, pop:false, keyword:false, bg:0, pos:55, size:50, sh:140, shc:'pink', font:'serif', fg:'yellow', glow:40},   // 운영자 260721 — ly 감성 네온 파리티(노랑 글자·핑크 글로우 40%·명조·중단 55%·크기 5.0%) · 유일하게 색·폰트 동봉(fg = 색 UI 없는 프리셋 전용 축)
+  // ⚠ shtype 명시(260731 봉합) — 이 표의 `bg:0`은 **구 러너 규칙**(`shtype = "box" if bg > 0 else "stroke"`)에서 '획/네온을 켜라'는
+  //   신호였다. 260729에 음영 종류가 명시축(P.shtype)으로 승격되면서 그 암묵 신호가 죽었는데 프리셋에는 shtype 키가 안 들어가,
+  //   기본 'box'가 그대로 남고 buildOpts가 `o.bg=Math.max(1,P.bg)=1`을 보냈다 → 러너 `back=&HFC`(사실상 완전 투명 박스)에
+  //   외곽선색도 back 동일 → **핑크 외곽선도 그림자도 글로우(sh140·glow40)도 한 픽셀 안 그려지고 맨 노란 명조 글자만** 나왔다.
+  //   4종 중 3종(예능·담백·감성 네온) 동시 파손 · 260729 이전엔 bg:0 → stroke 분기 = 정상이었다(평의회5 260731).
+  news:{nm:'속보체', style:'box', karaoke:false, pop:false, keyword:true, bg:100, shtype:'box', pos:57, size:38},
+  fun:{nm:'예능체', style:'bold', karaoke:false, pop:true, keyword:true, bg:0, shtype:'stroke', pos:24, size:46},
+  min:{nm:'담백체', style:'clean', karaoke:false, pop:false, keyword:false, bg:0, shtype:'stroke', pos:24, size:32},
+  mood:{nm:'감성 네온', style:'bold', karaoke:false, pop:false, keyword:false, bg:0, shtype:'stroke', pos:55, size:50, sh:140, shc:'pink', font:'serif', fg:'yellow', glow:40},   // 운영자 260721 — ly 감성 네온 파리티(노랑 글자·핑크 글로우 40%·명조·중단 55%·크기 5.0%) · 유일하게 색·폰트 동봉(fg = 색 UI 없는 프리셋 전용 축) · 네온 = 획(stroke) 위에 글로우가 얹히는 구조라 box면 성립 자체가 안 된다
 };
 const preOn=k=>Object.entries(SUBPRE[k]).every(([p,v])=>p==='nm'||P[p]===v);
 /* ── 자막 음영 색·폰트 축 상수(운영자 260711 · 러너 ly_burn OC_BGR·FONT_FAMILY와 1:1 짝) ── */
@@ -1147,9 +1152,9 @@ document.addEventListener('click',e=>{
    롱프레스로 확정한 뒤 손을 떼면 click이 뒤따라 와 음영까지 덮어쓰므로 _swLP 플래그로 그 1회를 삼킨다. ── */
 let _swLPt=null, _swLP=false;
 function swSet(el, axis){ const c=el&&el.dataset&&el.dataset.sw; if(!c||!OC_DEF[c]) return; if(typeof _preManual==='function') _preManual(); P[axis]=c; render(); }
-document.addEventListener('click',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s) return; if(_swLP){ _swLP=false; return; } swSet(s,'shc'); });
+document.addEventListener('click',e=>{ if(_swLP){ _swLP=false; return; } const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s) return; swSet(s,'shc'); });   // ⚠ 플래그 해제를 **타깃 검사보다 먼저**(구 코드는 `if(!s) return`이 앞) — 롱프레스 콜백이 swSet→render()로 `#stack`을 통째로 다시 그려 **누른 그 버튼이 DOM에서 사라지므로**, 뒤따르는 click은 살아남은 조상으로 리타깃돼 closest('[data-sw]')가 null이 되고 `_swLP`가 안 꺼진 채 고착 → **다음 색 탭 1회가 통째로 삼켜졌다**(사용자 눈엔 "가끔 색이 안 눌린다" · 평의회1 260731)
 document.addEventListener('contextmenu',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s) return; e.preventDefault(); swSet(s,'fg'); });   // 우클릭 = 글자색(브라우저 기본 메뉴는 이 칩 위에서만 억제)
-document.addEventListener('pointerdown',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s||(e.button&&e.button!==0)) return; clearTimeout(_swLPt); _swLPt=setTimeout(()=>{ _swLPt=null; _swLP=true; swSet(s,'fg'); },550); });
+document.addEventListener('pointerdown',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s||(e.button&&e.button!==0)) return; clearTimeout(_swLPt); _swLPt=setTimeout(()=>{ _swLPt=null; _swLP=true; setTimeout(()=>{ _swLP=false; },700); swSet(s,'fg'); },550); });   // 700ms 자동 해제 = 뒤따르는 click이 **아예 오지 않는** 경로(pointercancel·스크롤 이탈 등)에서도 플래그가 남지 않게 하는 백스톱(위 click 핸들러 해제와 이중 방어 · 값 = 롱프레스 550 + 여유)
 ['pointerup','pointercancel','pointermove'].forEach(t=>document.addEventListener(t,()=>{ if(_swLPt){ clearTimeout(_swLPt); _swLPt=null; } },true));   // 뗌·이탈·스크롤 = 롱프레스 취소(종전 롱프레스 문법 동일)
 /* 순환값 탭 = 다음 값으로 한 바퀴(운영자 260712 5문법) — setAxis 공유(기능 100% 보존) · 수동 = 프리셋 '종합' 복귀 */
 function doCyc(el){ const k=el.dataset.cyc, list=CYC[k]; if(!list) return; const cur=curCyc(k); const i=(list.indexOf(cur)+1)%list.length; if(typeof _preManual==='function') _preManual(); setAxis(k,list[i]); render(); }
@@ -1244,17 +1249,25 @@ const fileSlotName=f=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerH
 const upMirror=p=>{ const el=document.getElementById('pvAttr'); if(!el) return; el.textContent=(p==null)?'':('업로드 '+p+'%'); el.style.display=(p==null)?'':'block'; };   // 업로드 진행 미러 = **#pvAttr**(미리보기 박스 아래·빈 상태 컨테이너 밖) — 평의회⑦ 지적(구 표시처가 도먼트 Contents 안에 갇힘)의 처방인데, 재검⑤가 잡았듯 #pvUrl은 첨부 순간 `#pvEmpty`째 display:none이 돼 **한 번도 안 보였다** · #pvAttr = 도먼트 명세줄 자리(display:none 기본)라 진행 중에만 켠다
 const fileSlotPct=(f,p)=>{ $('#fileLab').classList.add('has'); $('#fileTxt').innerHTML='<span class="ftype">'+p+'%</span><span class="fname">'+esc(f.name)+'</span>'; upMirror(p>=100?null:p); };
 const fileSlotClear=()=>{ $('#file').value=''; $('#fileLab').classList.remove('has'); $('#fileTxt').innerHTML=FILE_ICON; upMirror(null); };   // 실패·삭제 이탈에서도 진행률 해제(재검⑤)
-function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 경로 그대로(≤30MB · 회귀 0) · _lastFile 신선도 가드 = 연속 선택 last-writer 꼬임 방지(평의회7 F3)
+/* base64 폴백 상한 = **서버 실한도와 동값**(평의회2 260731). api/edit·framethumb은 `fileB64.length > 40_000_000`으로 거절하는데
+   base64 길이 = 4*ceil(n/3) → 원본 실한도는 30,000,000 B(= 28.6MiB)다. 구 클라 가드는 `30*1024*1024`(31,457,280 B)라
+   그 사이 1.4MB 폭(28.6~30MiB)의 파일이 **클라를 통과 → 40MB JSON을 느린 회선에서 최대 180초 전송 → 서버 400**,
+   그것도 "파일은 ≤30MB"라는 **모순 문구**(사용자 파일은 29MB)로 떨어져 원인 파악이 불가능했다. 두 층을 한 값으로 묶는다. */
+const B64_MAX=30000000;
+let _uploading=false;   // 업로드·로컬읽기 왕복 중 = true(발사 진입 가드 + 먹통 백신 goHeal이 '업로드중' 표시를 오해제하지 않게 하는 신호)
+function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 경로 그대로(≤B64_MAX · 회귀 0) · _lastFile 신선도 가드 = 연속 선택 last-writer 꼬임 방지(평의회7 F3)
   const rd=new FileReader();
-  rd.onload=()=>{ if(_lastFile!==f) return; FILE_B64=String(rd.result||''); btn.disabled=false; fileSlotName(f); };
-  rd.onerror=()=>{ if(_lastFile!==f) return; _lastFile=null; btn.disabled=false; FILE_NAME=''; fileSlotClear(); errStatus('파일을 못 읽었어 — 다시'); };
+  rd.onload=()=>{ if(_lastFile!==f) return; FILE_B64=String(rd.result||''); _uploading=false; goUpDone(btn); fileSlotName(f); };
+  rd.onerror=()=>{ if(_lastFile!==f) return; _lastFile=null; _uploading=false; goUpDone(btn); FILE_NAME=''; fileSlotClear(); errStatus('파일을 못 읽었어 — 다시'); };
   rd.readAsDataURL(f);
 }
 (function(){   // 미리보기 쉘 드롭 = 영상 첨부/교체(운영자 260716 "동일하게" — thumb 드롭 문법 계승) · 기존 #file change 파이프에 DataTransfer 주입으로 그대로 태움(업로드·프리뷰·상태머신 무접촉) · video/*만
   const sec=document.getElementById('pvsec'); if(!sec) return;
   sec.addEventListener('dragover',e=>{ const t=e.dataTransfer; if(t&&Array.from(t.types||[]).includes('Files')){ e.preventDefault(); t.dropEffect='copy'; sec.classList.add('dropping'); } });
   sec.addEventListener('dragleave',e=>{ if(!sec.contains(e.relatedTarget)) sec.classList.remove('dropping'); });
-  sec.addEventListener('drop',e=>{ e.preventDefault(); sec.classList.remove('dropping'); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(!f||!/^video\//.test(f.type||'')) return; const inp=$('#file'); try{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; }catch(_){ return; } inp.dispatchEvent(new Event('change')); });
+  sec.addEventListener('drop',e=>{ e.preventDefault(); sec.classList.remove('dropping'); const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(!f) return;
+    if(!/^video\//.test(f.type||'') && !/\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(f.name||'')) return errStatus('영상 파일만 돼 — mp4·mov·m4v·webm·mkv·avi 중에 골라줘');   // 구 코드는 여기서 **조용히 return**했다 — 드래그 하이라이트만 꺼지고 안내 한 줄이 없어 사용자는 "드롭이 안 먹네" 외엔 아무 정보도 못 얻었다(평의회2 260731). 확장자 폴백 = #file change와 동일 판정(OS가 .mkv/.avi MIME을 못 매핑해 f.type이 빈 문자열이 되는 환경 대응)
+    const inp=$('#file'); try{ const dt=new DataTransfer(); dt.items.add(f); inp.files=dt.files; }catch(_){ return; } inp.dispatchEvent(new Event('change')); });
 })();
 (function(){   // 미리보기 유닛 버튼 배선(thumb 이식 260722) — 픽·교체 = #file 위임(입구 단일화 · thumb #cFile 위임 미러) · 삭제 = 첨부 해제(#file change 리셋 라인 미러 = 상태 축 동일)
   const pick=()=>{ const i=$('#file'); if(i) i.click(); };
@@ -1267,6 +1280,7 @@ function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 �
   const sw=document.getElementById('pvSwap'); if(sw) sw.addEventListener('click',pick);
   const dl=document.getElementById('pvDel'); if(dl) dl.addEventListener('click',()=>{
     $('#file').value=''; fileSlotClear();
+    if(FILE_R2) nmUpDrop(FILE_R2);   // 휴지통 = 완료 키 회수(평의회2 260731 — 1.5GB를 다 올린 뒤 "잘못 골랐다"고 지우면 객체가 R2에 영구 잔존했다 · up_src/ 수명규칙은 대시보드 선택사항이라 백스톱이 못 됨)
     FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0; _dur=0;
     segsReset();   // 새 소스 = 옛 구간 무효(평의회⑤ 260728 — CLIPS/CUTS는 비우면서 P.segs만 빠져 60초 영상 구간이 10초 영상에 그대로 발사되던 사고 차단 · 같은 줄 아래 클립·컷 가드와 동문)
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';
@@ -1280,31 +1294,41 @@ function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 �
 })();
 $('#file').addEventListener('change',async()=>{
   const f=$('#file').files[0]; if(!f) return;
+  // 타입 검증(평의회2 260731) — accept="video/*"는 **필터 힌트일 뿐**(파일 대화상자에서 "모든 파일" 선택 가능)이라
+  //   .png를 골라도 그대로 통과했다: api/upload가 확장자 미매칭 시 `['.mp4']` 기본값으로 키를 발급 → 2GB까지 다 올라간 뒤
+  //   발사 시점 edit.js 정규식에서야 실패. 오디오(.mp3)는 더 나빴다 — upload KEY_RE는 오디오를 허용해 업로드가 100% 성공하는데
+  //   edit.js는 영상만 허용 → "잘못된 업로드 키 — 파일을 다시 선택해줘"라는 **오진 문구**로 같은 파일을 계속 재선택하게 만들었다.
+  //   판정 = 러너가 실제로 받는 집합(edit.js/framethumb.js r2key 정규식)과 동수인 확장자 6종 · MIME은 보조(OS가 .mkv/.avi를 못 매핑해 빈 문자열이 되는 환경 존재).
+  if(!/^video\//.test(f.type||'') && !/\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(f.name||'')){
+    $('#file').value=''; return errStatus('영상 파일만 돼 — mp4·mov·m4v·webm·mkv·avi 중에 골라줘');
+  }
   _dockHold='src'; _srcSig=resSig();   // 새 소스 첨부 = 미리보기 펼침(이전 완성본이 남아 있어도 새 작업 준비가 우선 · **다음** 완성본 표시에 자동 해제 · 운영자 260728 도크 접힘 축) — 서명 기록 = 지금 떠 있는 결과와 나중 결과를 구분(구 코드엔 이게 없어 dockSync가 「지금 떠 있는 결과」도 「다음 완성본」으로 오인 = 260731 영상 사라짐 사고)
-  FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0;
+  if(FILE_R2) nmUpDrop(FILE_R2);   // 교체 = 앞 완료 키 회수(평의회2 260731 — 이 경로만 nmUpDrop이 빠져 1.5GB 객체가 R2에 고아로 남았다 · 같은 파일 1301/1489/2433행은 이미 정리 중)
+  FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0; _dur=0;   // _dur 리셋(평의회1 260731) — 같은 줄에서 _varea만 0으로 돌리고 _dur을 빠뜨려, 25분 영상을 첨부했다 크기 초과로 거절되면 _dur=1500이 살아남아 **다음에 넣은 3분 영상까지** "자막·컷·클리퍼는 20분 이하만"으로 영구 오거절했다(반대 방향은 게이트가 뚫림)
+  { const _u0=$('#url'); if(_u0) _u0.value=''; }   // URL 소스 동시 해제(평의회1 260731 High) — 구 코드는 FILE_* 만 비우고 #url을 남겨, 주소를 붙였다가 마음을 바꿔 **파일을 첨부해도** 발사 페이로드가 `url? {url,…}` 분기를 타 화면·미리보기와 다른 **URL 영상**이 렌더됐다(.srcwrap이 hidden이라 화면에 URL이 안 보여 완전 무증상 · 게다가 1489행이 방금 올린 R2 키를 지워 추적 불가). pvDel(1275행)의 `_u.value=''`와 동문
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';   // 새 소스 = 옛 스캔 후보 무효(엉뚱한 구간 적용 풋건 차단 · 검증⑦C)
   CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';   // 컷 미리보기도 동일(다른 영상의 승인 컷이 붙는 사고 차단 · 260727)
   if(FILE_URL&&!_pollLive){ try{ URL.revokeObjectURL(FILE_URL); }catch(e){} }
   FILE_URL=''; render();   // 크롭 미리보기 버튼 즉시 소거(열린 비율 카드 · conv 이식 260711)
   if(f.size>2*1024*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('파일은 2GB까지 — 구간을 잘라서 올려줘'); }   // 거절 = 버튼 복구(직전 업로드가 잠근 상태 고착 방지 · 평의회7 F1)
   const r2on=await nmUpArm();   // R2 직업로드 가용(문서당 1회 핑 · 4s 타임아웃) — 미가용 = 종전 30MB 경로 폴백
-  if(!r2on&&f.size>30*1024*1024){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('30MB 초과 — 대용량 저장 미설정(R2 바인딩 필요). URL로 해줘'); }
+  if(!r2on&&f.size>B64_MAX){ fileSlotClear(); $('#editGo').disabled=false; return errStatus('28MB 초과 — 대용량 저장 미설정(R2 바인딩 필요). URL로 해줘'); }   // 문구 = 실한도 표기(구 "30MB"는 서버 실한도 28.6MiB와 어긋나 29MB 파일이 "30MB까지 된다"는 안내를 받고도 거절당했다)
   segsReset();   // 새 소스 = 옛 구간 무효(평의회⑤ 260728 — 60초 영상 구간이 10초 영상에 그대로 발사되던 사고 차단) · ⚠ **첨부가 확정된 뒤**에 비운다(재검⑤ 260728 — 크기 거절 앞에 두면 첨부는 거절됐는데 기존 구간만 날아가 복구 불가)
   FILE_NAME=f.name; FILE_URL=URL.createObjectURL(f); render();   // 미리보기 버튼 노출(objectURL = 업로드 완료 전에도 로컬 프리뷰 가능)
   const v=document.createElement('video'); v.preload='metadata'; v.src=FILE_URL;
-  v.onloadedmetadata=()=>{ _dur=v.duration||0; _varea=(v.videoWidth||0)*(v.videoHeight||0); setEta(); pvSync(); };
-  const btn=$('#editGo'); btn.disabled=true;
+  v.onloadedmetadata=()=>{ if(_lastFile!==f) return; _dur=v.duration||0; _varea=(v.videoWidth||0)*(v.videoHeight||0); setEta(); pvSync(); };   // 신선도 가드(평의회1 260731) — 파이프의 다른 곳(1248·1300·1301)이 다 가진 `_lastFile===f` 검사가 여기만 없어, A→B를 연달아 첨부하면 늦게 도착한 A의 메타데이터가 **B가 붙은 상태의 _dur/_varea를 덮었다**(길이 게이트·ETA가 남의 영상 값으로 판정)
+  const btn=$('#editGo'); _uploading=true; goUpBusy(btn);   // 업로드중 상주 표시(운영자 260731) — 구 `btn.disabled=true`는 '생성' 글자가 흐려질 뿐 **왜 안 눌리는지 이유가 화면에 없었다**
   _lastFile=f;
   if(!r2on){ legacyRead(f, btn); return; }
   fileSlotPct(f,0);
   try{
     const up=await nmUpload(f,p=>{ if(_lastFile===f) fileSlotPct(f,p); });
-    if(_lastFile!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 즉시 정리(평의회7 F2)
-    FILE_R2=up.key; btn.disabled=false; fileSlotName(f);
+    if(_lastFile!==f){ nmUpDrop(up.key); return; }   // 업로드 중 다른 파일 선택 = 낡은 완료 무시 + 고아 키 즉시 정리(평의회7 F2) · 표시·_uploading 원복은 **새 선택의 goUpBusy가 이미 갱신**(여기서 끄면 진행 중인 새 업로드 표시를 지운다)
+    FILE_R2=up.key; _uploading=false; goUpDone(btn); fileSlotName(f);
   }catch(e){
     if(_lastFile!==f) return;
-    if(f.size<=30*1024*1024){ legacyRead(f, btn); return; }   // 작은 파일 = 종전 경로 폴백(가용성 우선)
-    btn.disabled=false; _lastFile=null; FILE_NAME=''; fileSlotClear();
+    if(f.size<=B64_MAX){ legacyRead(f, btn); return; }   // 작은 파일 = 종전 경로 폴백(가용성 우선 · 상한 = 서버 실한도 동값)
+    _uploading=false; goUpDone(btn); _lastFile=null; FILE_NAME=''; fileSlotClear();
     errStatus('업로드 실패 — 다시 ('+String(e&&e.message||'').slice(0,60)+')');
   }
 });
@@ -1393,6 +1417,21 @@ function goBusy(g){   // 생성중 상주 = orb 로더(Solving) 상주 + 비활�
   g.innerHTML = window.nmLoader ? nmLoader('solving','제작중…',{size:15,gap:7,fs:12.5}) : '생성 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';   // orb 15px = 버튼 높이 동결(27 유지 · 실측) · 미로드 = 구 점3 폴백
   g.setAttribute('aria-busy','true');
 }
+function goUpBusy(g){   // 업로드중 상주(운영자 260731 "업로드 다 될 때까지는 생성도 못 하니 버튼에 '업로드중'이 떠야 함")
+  // 레퍼런스 = 바로 위 goBusy **그대로**(도트3 orb + 빛 스윕 글자 = 260731 로더 표기 정본 · nmLoader 문법·size 15·gap 7·fs 12.5 동일) — 라벨만 「업로드중…」.
+  // 구 동작 = `btn.disabled=true`뿐이라 버튼은 '생성' 글자 그대로 흐려지기만 했다 → 왜 안 눌리는지 화면에 이유가 없었다(진행률은 파일칩·#pvAttr에만).
+  // disabled 대신 `.busy`(pointer-events:none) = goBusy와 동일 시각 계약(:disabled opacity .47 딤이 로더를 흐리는 겹침 회피 · .go.firing 주석과 동축).
+  // 키보드 Enter·프로그램 .click()은 pointer-events가 못 막으므로 발사 핸들러 진입 가드(_uploading)가 짝으로 차단한다.
+  if(!g) return;
+  clearTimeout(_goFT2); clearTimeout(_goFT3);
+  g.classList.remove('firing','okdone','checking','err','shake'); g.classList.add('busy');
+  g.innerHTML = window.nmLoader ? nmLoader('solving','업로드중…',{size:15,gap:7,fs:12.5}) : '업로드중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>';
+  g.setAttribute('aria-busy','true'); g.setAttribute('aria-disabled','true');
+}
+function goUpDone(g){   // 업로드 종료(완료·실패·취소 공통) = 버튼 원복 — goFireDone 미러 + aria-disabled 해제
+  if(!g) return;
+  g.removeAttribute('aria-disabled'); g.disabled=false; goFireDone(g);
+}
 function goFireDone(g){   // 잡 완료·실패·타임아웃 = 버튼 원복(생성중 상주 해제)
   clearTimeout(_goFT2); clearTimeout(_goFT3);
   g.classList.remove('firing','okdone','checking','busy','err','shake'); g.removeAttribute('aria-busy');
@@ -1413,7 +1452,7 @@ function goFireFail(g){
 let _firing=false;   // 접수 fetch 왕복 중 = true(먹통 백신이 진행 중 발사를 건드리지 않게 하는 유일 신호)
 function goHeal(){
   const g=document.getElementById('editGo'); if(!g) return;
-  if(_firing||_polling||_pollLive) return;   // 진행 중 = 잠금이 정당 → 무접촉
+  if(_firing||_polling||_pollLive||_uploading) return;   // 진행 중 = 잠금이 정당 → 무접촉 · _uploading 추가(260731) = 업로드중 상주 표시도 `.busy`를 쓰므로, 이게 없으면 앱 전환 후 복귀 시 백신이 **진행 중인 업로드의 '업로드중…' 표시를 '생성'으로 되돌려** 눌러도 되는 것처럼 보이게 만든다
   if(g.classList.contains('firing')||g.classList.contains('busy')||g.disabled){ goFireDone(g); g.disabled=false; }   // 주인 없는 잠금만 회수
 }
 window.addEventListener('pageshow',e=>{ if(e.persisted) goHeal(); });   // bfcache 복원(폰 뒤로가기) = 타이머·핸들러 주인 소실 창
@@ -1435,9 +1474,9 @@ function fireSegs(){   // n구간 발사 정규화(운영자 260728) — 유효(
   const m=[]; for(const g of raw){ const L=m[m.length-1]; if(L&&g[0]<=L[1]+0.05) L[1]=Math.max(L[1],g[1]); else m.push(g); }
   return m.slice(0,SEG_MAX);
 }
-function buildOpts(){
+function buildOpts(scan){   // scan = 이번 발사가 '컷 미리보기 스캔'인지(호출자가 **이미 소진해서** 넘긴 값 — 아래 누수 주석 참조)
   const o={};
-  if(SCAN_ONCE){ SCAN_ONCE=false; return {cutscan:true, cut:!!ON.cut, cutlv:P.cutlv, cutfill:!!P.cutfill, take:!!P.take}; }   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 서버 정규화와 계약 일치 · 260727 ③)
+  if(scan) return {cutscan:true, cut:!!ON.cut, cutlv:P.cutlv, cutfill:!!P.cutfill, take:!!P.take};   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 서버 정규화와 계약 일치 · 260727 ③)
   if(ON.clip) return {clip:true, clip_model:P.clipmdl};   // 클리퍼 = 배타 스캔(후보만 · clip_model = 감독 모델 fable/opus · 운영자 260722)
   if(ON.sub){ o.burn=true; o.lang=P.lang; o.tone=P.tone; o.filler=P.filler; o.style=P.style;
     o.karaoke=P.karaoke; o.pop=P.pop; o.keyword=P.keyword; o.pos=P.pos; o.bg=P.bg; o.size=Math.round(P.size)/1000;
@@ -1465,11 +1504,20 @@ function buildOpts(){
   return o;
 }
 $('#editGo').addEventListener('click',async()=>{
+  // ── 진입 잠금(평의회7 260731) ──
+  //   `.go.firing`·`#editGo.busy`의 pointer-events:none은 **마우스 탭만** 막는다. 포커스된 <button>의 키보드 활성화(Enter/Space)와
+  //   프로그램 호출(`$('#editGo').click()` = 2422·2426행의 '이대로 편집하기'·'자를 곳 먼저 보기')은 그대로 관통해,
+  //   연타하면 탭 횟수만큼 /api/edit이 나가 Actions 잡이 여러 개 뜨고 **앞엣것들은 pendSet 단일 슬롯에 덮여
+  //   결과가 영영 표시되지 않는 고아**가 됐다(러너 시간만 소모). 잠금 판정은 클래스가 아니라 상태 플래그로 한다.
+  if(_uploading) return errStatus('업로드가 끝나면 눌러줘 — 지금 올리는 중이야');
+  if(_firing||_polling||_pollLive) return;   // 접수 왕복·폴 진행 중 = 조용히 무시(이미 진행 표시가 떠 있어 문구가 오히려 소음)
+  const _scan=SCAN_ONCE; SCAN_ONCE=false;   // ⚠ 소진은 **가드보다 먼저**(구 코드는 buildOpts 안에서 내렸다) — 소스 없이 '자를 곳 먼저 보기'를 누르면 아래 1500~1502행 가드가 buildOpts 도달 전에 return해 SCAN_ONCE가 true로 살아남았고, 나중에 영상을 넣고 「생성」하면 자막·비율·해상도 옵션이 통째로 무시된 채 **컷 스캔 잡**이 나갔다(잡 1회 낭비 + 몇 분 뒤에야 인지 · 평의회1 260731)
   const url=$('#url').value.trim();
   if(!url && !FILE_B64 && !FILE_R2 && !_lastFile) return errStatus('영상 URL이나 파일을 넣어줘');
   if(url && !/^https?:\/\//i.test(url)) return errStatus('URL은 http(s)로');
   if(!ORDER.some(k=>ON[k])&&!CUT_REF) return errStatus('처리를 하나는 넣어줘');   // 승인 컷 렌더 = 컷 축이 opts에서 빠지므로 예외(260727 ③)
-  const o=buildOpts();
+  if(!_scan && !ON.clip && ON.trim && (P.segs||[]).length && !fireSegs().length) return errStatus('구간이 이상해 — 끝이 시작보다 커야 해');   // 전량 탈락 구간 = 정직 거절(평의회3 260731) — fireSegs가 유효하지 않은 구간을 continue로 버리면 vid_t0/t1이 **애초에 undefined**라 아래 1504행 역전 가드도, 서버 edit.js의 역전 검사도 발동하지 못한다. 다른 축이 하나라도 켜져 있으면 "처리 없음" 400에도 안 걸려, 사용자는 잘랐다고 믿는데 **원본 전체 길이로 렌더**되고 잡 시간만 태웠다
+  const o=buildOpts(_scan);
   if(o.vid_t0!==undefined&&o.vid_t1!==undefined&&o.vid_t1<=o.vid_t0) return errStatus('끝이 시작보다 커야 해');
   if(_dur){   // 차등 길이 캡(운영자 260711 "잘라서 10분 이하로" — 서버 선게이트와 동형): 전사(자막·컷·클리퍼) = 20분 · 트림 구간≤10분 = 원본 60분 · 통짜 = 10분
     const stt=!!(o.burn||o.cut||o.clip||o.cutfill||o.take||o.cutscan);   // 전사 도는 축 전부(260727 — 서버 선게이트와 동형)
@@ -1500,7 +1548,16 @@ $('#editGo').addEventListener('click',async()=>{
     const _sig=(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(payload.fileB64?180000:60000):null;   // 접수 무응답 상한(운영자 260731 "생성 버튼 안 눌린다") — ⚠ 이 fetch가 응답 없이 매달리면 `.go.firing{pointer-events:none}`(213행)이 안 벗겨져 **버튼이 영구 먹통**(finally도 fetch가 끝나야 도달)이었다. 관용구 = thumb 정본(`sig? {signal:sig}:undefined` · 미지원 브라우저는 타임아웃 없이 정상 fetch). 값 = 용도별(tr.html 150000 선례 동축): 기본 60s = R2키·URL 발사(본문 = 옵션 JSON 수 KB) 여유 · base64 폴백은 30MB 본문이 실려 180s(회선 1.5Mbps 기준 상한 근사) — 12s 정본을 그대로 쓰면 느린 회선의 정상 발사를 오탐한다
     const res=await fetch(API,Object.assign({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}, _sig?{signal:_sig}:{}));
     const j=await res.json();
-    if(!res.ok||j.error){ goFireFail(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); FILE_R2=''; return; }   // 실패 시 키 폐기 = 죽은 키(만료·소진) 재사용 루프 차단 — 다음 발사는 _lastFile 재업로드(평의회7)
+    if(!res.ok||j.error){
+      goFireFail(gb);
+      const _msg=String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'));
+      status.innerHTML=WARN_SVG+' '+esc(_msg); status.classList.add('err');
+      // 키 폐기는 **죽은 키일 때만**(구 코드는 모든 4xx/5xx에 무차별 `FILE_R2=''`). 429(동시 3개 초과)·502(dispatch 실패)는
+      //   업로드 키가 멀쩡히 살아 있는 **일시 실패**인데, 폐기해버리면 다음 발사가 _lastFile 재업로드 경로로 떨어져
+      //   1GB를 처음부터 다시 올리고 첫 키는 nmUpDrop도 없이 R2 고아로 남았다(평의회3 260731). 판정 = 서버 정본 문구.
+      if(FILE_R2 && /업로드 키|업로드 파일이 없어|업로드 미설정/.test(_msg)){ nmUpDrop(FILE_R2); FILE_R2=''; }
+      return;
+    }
     FILE_R2='';   // R2 키 소진(러너가 잡 끝에 원본 삭제 = 일회용) — 재발사는 _lastFile 재업로드 경로
     try{ EDIT_SUB=false; lyHideEditor(); lyBurnReset(); }catch(e){}   // 새 발사 = 이전 자막 편집기·완성 영상 정리(B-2 — 편집 스냅샷은 lyHideEditor가 flush 저장)
     CUT_REF=null;   // 승인 컷 소진(연속 발사에 딸려가지 않게 · FILE_R2 소진 문법 계승)
@@ -1537,7 +1594,7 @@ function pollEdit(id, t0, minTs, wlbl, kind){
   const draw=()=>{
     if(!live) return;
     const sec=Math.round((Date.now()-t0)/1000);
-    if(sec>BUDGET*2){ stop(); wclear(); goFireDone($('#editGo')); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }
+    if(sec>BUDGET*2){ stop(); wclear(); pendClear(); goFireDone($('#editGo')); status.innerHTML=ERR_SVG+' 시간 초과 — 완성되면 다음에 열 때 이어받아'; status.classList.add('err'); return; }   // pendClear 추가(평의회7 260731) — 실패·성공 분기(1605·1631행)에만 있고 **타임아웃 경로만 빠져** 있었다. 재개(2569행)는 t0를 `max(t0, now-BUDGET)`로 클램프해 경과를 0 근처로 되돌리므로, 새로고침할 때마다 90분 헛폴이 되살아나 **24시간 동안 반복**됐다(그동안 _polling=true라 작업 내역 탭도 막힘). error.log를 안 남기는 실패 모드(Actions 런 취소·러너 킬·디스패치 후 미시작)엔 사실상 종료 조건이 없었다
     const ws=vw.querySelector('.wcorner'); if(ws){ const mm=(x)=>{x=Math.max(0,x|0);return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
       const eta=(EDIT_STATS && EDIT_STATS['edit-make/edit'] && EDIT_STATS['edit-make/edit'].dur)|0;
       ws.textContent=mm(sec)+' 진행시간'+(eta?' (예상 '+mm(eta)+')':''); }   // 예상 배선(운영자 260727 "일부에서는 예상시간이 안 뜬다") — 표기 문법 = thumb .wip 좌상단 정본 그대로 · 앵커 = viewer/job_stats.json의 edit-make/edit(실측 중앙 소요) · 데이터 없으면 종전처럼 경과만   // 운영자 260727 전역 표기(00:00 진행시간) — 영상 잡 예상시간 앵커(edit-make/edit n=5)는 thumb 배선과 별개 축이라 이번 스코프 밖   // 경과 = 0:17 포맷 우상단 코너(운영자 260712 waitTimeFmt=mmss · 260723 Q454 코너 이주)
@@ -2279,8 +2336,10 @@ async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(H
     const a = document.createElement('a');
     a.href = /^https?:\/\//i.test(u) ? ('api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent(name)) : u;
     a.download = name;
+    const _href = a.href;
     document.body.appendChild(a); a.click();
     setTimeout(() => { try { a.remove(); } catch (e) {} }, 1500);
+    dlVerify(_href, dl);   // 사후 검증(평의회7 260731 — 만료 키를 눌러도 '받음'만 뜨던 것 · 위 dlVid와 동형)
   });
 })();
 /* ── 어댑터(배치 B-2 신규 · 유일한 비원문 코드): 편집기 작업 ↔ 이식 자막 편집기 배선 ── */
@@ -2420,9 +2479,22 @@ $('#dlVid').addEventListener('click',e=>{
   if(/^https:\/\//.test(u)) a.href='api/dl?u='+encodeURIComponent(u)+'&n='+encodeURIComponent(name);   // R2 = api/dl 프록시(ly/track/conv 정본)
   else if(/^ly_out\//.test(u)) a.href=u;   // git 폴백 = 같은 출처 상대경로
   else return;
-  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  a.download=name; const _href=a.href; document.body.appendChild(a); a.click(); a.remove();
   b.classList.add('dl-done');
+  dlVerify(_href, b);   // 사후 검증 — 동기 클릭(유저 제스처 = iOS 필수)은 그대로 두고 결과만 확인
 });
+function dlVerify(href, btn){   // 저장 실패를 드러낸다(평의회7 260731)
+  // `a[download]`는 같은 출처 응답이면 **상태코드와 무관하게 본문을 그대로 저장**한다. 그래서 R2에서 지워진
+  // 옛 잡을 저장하면 'upstream 404'라고 적힌 12바이트짜리 .mp4가 저장되고 버튼은 '받음'으로 바뀌었다
+  // (#cstatus에 오류 한 줄도 안 떴다 = 실패가 성공으로 위장). 클릭 자체는 되돌릴 수 없으니, 같은 URL로
+  // HEAD를 던져 실패면 '받음' 표시를 회수하고 사유를 띄운다(api/dl onRequestHead 짝).
+  if(!href) return;
+  fetch(href,{method:'HEAD',cache:'no-store'}).then(r=>{
+    if(r.ok) return;
+    if(btn) btn.classList.remove('dl-done');
+    errStatus(r.status===502? '저장 실패 — 파일이 만료됐거나 지워졌어(다시 만들어야 해)' : '저장 실패 — 잠시 후 다시 ('+r.status+')');
+  }).catch(()=>{ /* 네트워크 실패 = 판정 불가 → 침묵(오탐으로 성공을 실패라 하지 않는다) */ });
+}
 
 /* ══ 베스트컷(CH1 한 버튼) — PREVIEW 헤더 우측(운영자 260713 배치 확정) · /api/framethumb 발사{fx_chain 베스트 프레임→업스케일→Gemini 4:5 확장 · 수동 유료 = 슛류} → ft_out/<id>/frames.json 폴 → 스틸 스트립 · 소스 사다리 = 메인 발사 동형{URL > R2 직업로드(일회용 키 소진·고아 정리·재업로드) > base64 ≤30MB} ══ */
 $('#ftGo').addEventListener('click', async e=>{
@@ -2441,11 +2513,19 @@ $('#ftGo').addEventListener('click', async e=>{
   }
   const FT_O={n:2,scale:2,ar:'4:5'};
   const payload = url? {url, opts:FT_O} : FILE_R2? {r2key:FILE_R2, name:FILE_NAME, opts:FT_O} : {fileB64:FILE_B64, name:FILE_NAME, opts:FT_O};
-  fetch('/api/framethumb',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)})
+  // 접수 무응답 상한 = 메인 발사(#editGo) 정본 관용구 그대로 계승(260731 29298db) — ⚠ 이 fetch에만 상한이 없어서
+  //   응답이 안 오면 `b.disabled=true` + '추출 중'이 **영구 고착**했다(.catch가 영영 안 불림 = 새로고침 말고는 복구 불가).
+  //   먹통 백신 goHeal은 #editGo만 회수하므로 이 형제 버튼은 백신 사각지대였다(평의회2 260731 High).
+  const _ftSig=(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(payload.fileB64?180000:60000):null;
+  fetch('/api/framethumb',Object.assign({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}, _ftSig?{signal:_ftSig}:{}))
     .then(async r=>({r, j:await r.json().catch(()=>null)}))
     .then(({r,j})=>{
-      if(!url) FILE_R2='';   // 키 소진/폐기(성공=러너가 잡 끝 원본 삭제 · 실패=죽은 키 재사용 루프 차단 — 다음 발사 = _lastFile 재업로드)
-      if(!r.ok||!j||!j.ok) return fail((j&&j.error)||('발사 실패 '+r.status));
+      if(!r.ok||!j||!j.ok){
+        const _m=(j&&j.error)||('발사 실패 '+r.status);
+        if(FILE_R2 && /업로드 키|업로드 파일이 없어|업로드 미설정/.test(_m)){ nmUpDrop(FILE_R2); FILE_R2=''; }   // 죽은 키만 폐기(메인 발사와 동일 규칙) — 429·5xx는 키가 멀쩡하니 보존해 재업로드를 막는다
+        return fail(_m);
+      }
+      if(!url) FILE_R2='';   // 성공 = 키 소진(러너가 잡 끝에 원본 삭제 = 일회용)
       const t0=Date.now();
       (function tick(){
         if(Date.now()-t0>8*60000) return fail('시간 초과 — 잠시 뒤 다시 눌러줘');
@@ -2457,7 +2537,7 @@ $('#ftGo').addEventListener('click', async e=>{
         }).catch(()=>setTimeout(tick, 7000));
       })();
     })
-    .catch(()=>{ if(!url) FILE_R2=''; fail('네트워크 오류 — 다시 눌러줘'); });
+    .catch(err=>{ const _to=(err&&(err.name==='TimeoutError'||err.name==='AbortError')); fail(_to?'접수가 응답이 없어 — 회선 확인하고 다시':'네트워크 오류 — 다시 눌러줘'); });   // 키 보존(구 `FILE_R2=''`) = 네트워크 실패는 키가 죽은 게 아니라 재업로드만 강요했다 · 문구 = 메인 발사 타임아웃 계승
 });
 function ftRender(d){
   const res=$('#ftRes'); res.innerHTML='';
@@ -2470,8 +2550,9 @@ function ftRender(d){
       const a=document.createElement('a');
       if(/^https:\/\//.test(f.url)) a.href='api/dl?u='+encodeURIComponent(f.url)+'&n='+encodeURIComponent(name);   // R2 = api/dl 프록시(완성 영상 정본 동형)
       else a.href=f.url;   // git 폴백 = 같은 출처 상대경로
-      a.download=name; document.body.appendChild(a); a.click(); a.remove();
+      a.download=name; const _href=a.href; document.body.appendChild(a); a.click(); a.remove();
       dl.classList.add('dl-done');
+      dlVerify(_href, dl);   // 사후 검증(평의회7 260731 — 베스트컷 스틸도 동일 위장 경로)
     });
     it.appendChild(im); it.appendChild(dl); res.appendChild(it);
   });
@@ -2498,6 +2579,20 @@ async function openJob(id){
     const er=await fetch('ly_out/'+id+'/error.log?t='+Date.now());
     if(er.ok){ const em=await er.text();
       if(em&&em.trim()&&!/^\s*</.test(em)){ st.innerHTML=ERR_SVG+' '+esc(em.trim().slice(0,160)); st.classList.add('err'); return false; } }
+    // ── R2 즉시조회 폴백(평의회3 260731) ──
+    //   위 4연타는 전부 **Pages 정적 경로**라, 러너가 R2에 올린 결과가 아직 git 커밋 → Pages 빌드를 안 거쳤으면
+    //   전부 404다. 260728에 그 배포 대기(674초 잡 중 491초 = 73%)를 없애려고 `GET /api/edit?stat=`을 신설했는데
+    //   **폴 경로(1622행)만 그걸 쓰고 openJob은 안 썼다** — 과거 작업 열기·완료 푸시 딥링크가 여기로 들어온다.
+    //   그래서 영상이 R2에 멀쩡히 있고 1콜이면 나오는데도 "결과를 못 찾았어"를 띄웠다. 게다가 edit-make.yml의
+    //   배포 게이트 2곳(180s 폴백·8분 미확인)은 `::warning::`만 남기고 통과하며 그 근거로 "뷰어 재시도 사다리가
+    //   커버"를 들고 있었는데, 이 경로엔 그 사다리가 **존재하지 않았다**(주석이 사실과 달랐다).
+    try{
+      const rs=await fetch('/api/edit?stat='+encodeURIComponent(id)+'&t='+Date.now(), {cache:'no-store'});
+      if(rs.ok){ const ts=await rs.text();
+        if(ts&&!/^\s*</.test(ts)){ let ds=null; try{ ds=JSON.parse(ts); }catch(e){}
+          if(ds&&ds.url){ showResult(ds,0); await editSubsInit(id); return true; }
+          if(ds&&(ds.error||ds.skip)){ st.innerHTML=ERR_SVG+' '+esc(String(ds.error||ds.skip)); st.classList.add('err'); return false; } } }
+    }catch(e){ /* 미바인딩·장애 = 아래 안내로(회귀 0) */ }
     st.textContent='결과를 못 찾았어 — 진행 중이면 완성 후 다시 열어줘';
   }catch(e){ st.textContent='결과 불러오기 실패 — 새로고침해줘'; }
   return false;
@@ -2538,7 +2633,7 @@ render();   // 초기 렌더(빈 스택 = 운영자 260711 stackInit=empty 유�
     const vids=jobs.filter(j=>j&&j.st!=='subs');   // 영상 산출·클립 후보·실패·진행만(자막-전용 잡 제외)
     if(!vids.length) return;   // 빈 목록 = 조용한 공백(§디자인 빈 상태)
     const box=$('#lyJobs'), list=$('#lyJobList'); if(!box||!list) return;
-    const ST={done:'완료',clip:'클립 후보',fail:'실패',gen:'진행중'};
+    const ST={done:'완료',clip:'클립 후보',cut:'컷 후보',fail:'실패',gen:'진행중'};   // cut 합류(260731) = build-viewer 인덱서가 cuts.json을 읽게 된 짝 — 이게 없으면 완료된 컷 스캔이 `ST[j.st]||'진행중'` 폴백으로 다시 "진행중" 거짓말이 된다
     vids.slice(0,60).forEach(j=>{   // 캡 20→60(전체 보관 취지 정합 · 운영자 260712 "항상 기존 작업분" — 인덱스 자체는 만료 없음)
       if(!/^[A-Za-z0-9_-]+$/.test(j.id||'')) return;   // 경로 화이트리스트(복원 정규식과 동일 정신)
       const b=document.createElement('button'); b.type='button'; b.className='lyjob';
