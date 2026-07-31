@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko" data-pg-template="v1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>260731 · 편집 도크 옵션 카드 — 값 N택1 나열 플레이그라운드</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════════
+   토큰 사본 — 값 정본 = viewer/index.html :root / viewer/tokens.css
+   (창작 0 · 실측 발췌만 · 사다리 밖 값은 UI가 ⚠ 실시간 표시)
+   ══════════════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13);
+  --on-accent:#032322; --amber:#FF9E3D; --amber-rgb:255,158,61;
+  --danger:#FF5A5A; --danger-rgb:255,90,90;
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --blur-backdrop:7px; --blur-s:8px; --blur-m:14px; --blur-l:22px; --blur-xl:30px;
+  --btn:34px; --btn-sm:30px; --btn-xs:22px; --btn-lg:46px;
+  --fs-display:22px; --fs-h1:19px; --fs-h2:15px; --fs-h3:14px;
+  --fs-label:13px; --fs-body:15px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s; --dur-acc:.26s;
+  --press-m:.96; --press-s:.97;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#0a0a0a;color:var(--fg);
+  font:var(--fs-label)/var(--lh-base) -apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+body{padding:var(--sp-2);display:flex;flex-direction:column;align-items:center;gap:var(--sp-2)}
+h1{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:0;letter-spacing:-.2px}
+.top{width:min(97vw,1560px);display:flex;align-items:baseline;gap:var(--sp-2);flex-wrap:wrap}
+.top .sub{color:var(--mut);font-size:var(--fs-xs);margin:0}
+.top .drift{margin-left:auto;font-size:var(--fs-xs);color:var(--mut)}
+.top .drift b{color:var(--amber);font-weight:var(--fw-b)}
+
+/* ═══ 16:9 무대 — 좌 = 실물 재현(고정 반면 · 운영자 "해당 부분은 좌측 고정") / 우 = 콘솔 ═══ */
+.pgwrap{width:min(97vw,1560px);aspect-ratio:16/9;min-height:520px;
+  display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);}
+.stagewrap{position:sticky;top:var(--sp-2);min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:var(--sp-1);
+  background:#0e0f0e;border:1px solid var(--line);border-radius:var(--r-l);padding:var(--sp-2)}
+.stagecap{font-size:var(--fs-xs);color:var(--mut);text-align:center}
+.stagecap b{color:var(--fg)}
+.phone{height:100%;aspect-ratio:9/18;max-width:100%;background:#0b0d0c;
+  border:1px solid var(--line);border-radius:var(--r-modal);overflow:hidden;position:relative;
+  box-shadow:0 24px 60px -22px #000}
+/* 페이지 배경 = 글래스 실크 근사(도크 투명화 확인용 — 검정 매트 삭제(260731 3차) 후 이 배경이 비친다) */
+.phone::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(120% 90% at 18% 8%,rgba(0,238,210,.05),transparent 42%),
+             radial-gradient(130% 100% at 85% 88%,rgba(255,255,255,.045),transparent 52%),#0b0d0c}
+.scr{position:absolute;inset:0;overflow-y:auto;overscroll-behavior:contain}
+.wrap{padding:0 16px 24px}
+
+/* ── 실물 도크 재현(값 = viewer/thumb.html d6cea67 실측 · 튜닝 축만 var(--t-*)) ── */
+.app{
+  /* ⚠ 기본값 = 전부 현행(머지 d6cea67) 실측값 — 추천값 아님(전/후 기준 보존 · 포터블 §3-2) */
+  --t-optw:10;        /* 옵션 컬럼 폭 em (현행 260731 5차) */
+  --t-gap:18;         /* 2분할 gap = --sp-3 */
+  --t-colTop:18;      /* 옵션 y 시작선 = --sp-3 */
+  --t-arH:16;         /* 미리보기 비율 = 9 : N (현행 9:16) */
+  --t-capSvh:58; --t-capPx:600;
+  --t-fade:0;         /* 하단 페이드 스커트 (현행 = 삭제 = 0) */
+  --t-cardPx:13; --t-cardPy:8; --t-cardGap:8; --t-cardR:9;
+  --t-cardFaceA:.015; --t-cardLineA:.06;
+  --t-chipFs:13; --t-chipPy:6; --t-chipPx:7; --t-chipGapX:4; --t-chipGapY:3;
+  --t-nmFs:13; --t-headFs:13; --t-metricFs:11;
+  --t-nmk:0;          /* 이름 열 고정폭 em (0 = 자연폭 · 좌측 고정 정렬축) */
+  --t-stageR:22; --t-fireR:22; --t-fireH:30;
+  --t-lineA:.15;      /* 편집 도크 --line 알파 변주(현행 .15) */
+  --t-dur:.18s;
+}
+.stdock{margin:0 -16px;padding:16px 16px var(--sp-2);position:relative}
+.stdock.stick{position:sticky;top:0;z-index:6}
+.stdock.blackmat{background:#121212}
+.stdock.glass{background:rgba(18,18,18,.55);backdrop-filter:blur(var(--blur-l)) saturate(1.3);
+  -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.3)}
+.stdock::after{content:'';position:absolute;top:100%;left:0;right:0;height:calc(var(--t-fade)*1px);
+  pointer-events:none;background:linear-gradient(180deg,rgba(18,18,18,.7),rgba(18,18,18,0))}
+
+.dockgrid{display:grid;gap:calc(var(--t-gap)*1px);align-items:start;margin-bottom:var(--sp-2);
+  grid-template-columns:minmax(0,1fr) calc(var(--t-optw)*1em)}
+
+.cpprev{margin:0;position:relative}
+.cpprev-box{position:relative;width:100%;background:#121212;
+  border:1px solid rgba(255,255,255,var(--t-lineA));border-radius:calc(var(--t-stageR)*1px);overflow:hidden;
+  aspect-ratio:9/var(--t-arH);
+  max-height:min(calc(var(--t-capSvh)*1svh),calc(var(--t-capPx)*1px));
+  transition:border-radius var(--t-dur) var(--ease)}
+#iePrev{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;overflow:hidden}
+.rsz-stage{position:relative;width:100%;min-height:0;flex:1 1 auto;padding:4px;
+  display:grid;place-items:center}
+.rsz-canv{position:relative;transition:width var(--t-dur) var(--ease),height var(--t-dur) var(--ease)}
+.rsz-orig{position:absolute;display:block;object-fit:fill}
+.rsz-strip{position:absolute}
+.rsz-origtag{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-size:var(--fs-xs);font-weight:var(--fw-b);color:var(--fg);background:rgba(0,0,0,.52);
+  border:1px solid var(--line);padding:1px var(--sp-1);border-radius:var(--r-pill);
+  white-space:nowrap;pointer-events:none}
+.rsz-metric{position:absolute;left:0;right:0;bottom:0;z-index:2;text-align:center;
+  font-size:calc(var(--t-metricFs)*1px);line-height:1.5;color:var(--mut);
+  font-variant-numeric:tabular-nums;padding:10px var(--sp-1) 4px;
+  background:linear-gradient(0deg,rgba(18,18,18,.72),rgba(18,18,18,0))}
+.rsz-metric b{color:var(--fg);font-weight:var(--fw-x)}
+.rsz-metric .g{color:var(--accent)}
+.rsz-metric .n{color:var(--amber)}
+.cpv-tool{position:absolute;top:6px;width:30px;height:30px;display:grid;place-items:center;
+  padding:0;color:var(--accent);background:var(--bg);border:0;border-radius:var(--r-s);
+  cursor:pointer;z-index:3;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+.cpv-tool svg{width:15px;height:15px}
+.ie-box{position:absolute;border:2px solid rgba(var(--accent-rgb),.9);border-radius:3px;
+  background:rgba(var(--accent-rgb),.14)}
+.ie-box.soft{border-radius:44%;border-style:dashed}
+
+/* ── 옵션 컬럼 = 「• 옵션」 소머리 + .scard 카드 스택(현행 d6cea67 · 레퍼런스 = tr.html) ── */
+.dockopt{min-width:0;padding-top:calc(var(--t-colTop)*1px)}
+.dopt-h{margin:0 0 var(--sp-1);font-weight:var(--fw-x);font-size:calc(var(--t-headFs)*1px);color:var(--fg)}
+.dopt-h.stick{position:sticky;top:0;z-index:1;padding-block:2px}
+.bullet-on .dopt-h::before{content:'• ';color:var(--accent);font-weight:var(--fw-b)}
+.dopt-h.hid{display:none}
+.optcards{display:flex;flex-direction:column;gap:calc(var(--t-cardGap)*1px)}
+.scard{border:1px solid rgba(255,255,255,var(--t-cardLineA));border-radius:calc(var(--t-cardR)*1px);
+  background:rgba(255,255,255,var(--t-cardFaceA))}
+.scard .csec{display:flex;align-items:center;gap:var(--sp-2);justify-content:space-between;
+  padding:calc(var(--t-cardPy)*1px) calc(var(--t-cardPx)*1px)}
+.scard .nm{font-weight:var(--fw-b);font-size:calc(var(--t-nmFs)*1px);color:var(--fg);white-space:nowrap;
+  line-height:normal;flex:0 0 auto}
+.nmk-fix .scard .nm{flex-basis:calc(var(--t-nmk)*1em)}   /* 이름 열 고정폭 = 칩 시작 x 일괄(좌측 고정 정렬축) */
+/* 라벨 아랫줄 모드 */
+.row-below .scard .csec{flex-direction:column;align-items:stretch;gap:calc(var(--t-chipGapY)*1px)}
+/* 칩 묶음 */
+.copts{display:flex;flex-wrap:wrap;align-items:center;min-width:0;
+  gap:calc(var(--t-chipGapY)*1px) calc(var(--t-chipGapX)*1px)}
+.align-r .copts{justify-content:flex-end;margin-left:auto}      /* 우측(번역 탭 정본) */
+.align-l .copts{justify-content:flex-start;margin-left:0}       /* 좌측 고정(운영자 260731 지정) */
+.align-l .scard .csec{justify-content:flex-start}
+.rail-on .copts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(90deg,black 0,black calc(100% - 16px),transparent 100%);
+  mask-image:linear-gradient(90deg,black 0,black calc(100% - 16px),transparent 100%)}
+.rail-on .copts::-webkit-scrollbar{display:none}
+.copt{background:none;border:none;font-family:inherit;line-height:normal;
+  padding:calc(var(--t-chipPy)*1px) calc(var(--t-chipPx)*1px);
+  font-size:calc(var(--t-chipFs)*1px);font-weight:var(--fw-b);color:var(--mut);
+  cursor:pointer;white-space:nowrap;border-radius:var(--r-s);
+  transition:color var(--t-dur);-webkit-tap-highlight-color:transparent}
+.copt:active{transform:scale(var(--press-m))}
+/* N택1 선택칩 색 — 260729 나열형 정본 = 흰색 fg */
+.selc-fg .copt.on{color:var(--fg)}
+.selc-accent .copt.on{color:var(--accent)}
+.selc-amber .copt.on{color:var(--amber)}
+.selw-x .copt.on{font-weight:var(--fw-x)}
+/* 순환 값칩(현행) — 리드백형 = 켜짐 accent */
+.cycv-accent .copt.cyc{color:var(--accent);font-weight:var(--fw-x)}
+.cycv-fg .copt.cyc{color:var(--fg);font-weight:var(--fw-x)}
+/* 워드 토글(보존·모자이크) */
+.copt.tog{color:var(--mut)}
+.copt.tog.on{color:var(--accent);font-weight:var(--fw-x)}
+.copt.dim{opacity:.5;cursor:default}
+.csep{color:var(--mut);opacity:.35;font-weight:var(--fw-b);pointer-events:none;
+  font-size:calc(var(--t-chipFs)*1px)}
+/* 세부 선택지 행(모자이크 종속 · 미리보기 아래) */
+.docksub{display:flex;gap:var(--sp-3);margin-top:var(--sp-2);padding-left:var(--sp-1)}
+.docksub .copt{padding:0}
+
+.fire{margin-top:0;width:100%;height:calc(var(--t-fireH)*1px);
+  font-size:var(--fs-label);font-weight:var(--fw-b);font-family:inherit;
+  border-radius:calc(var(--t-fireR)*1px);cursor:pointer;
+  color:var(--accent);background:var(--accent-dim);border:1px solid rgba(var(--accent-rgb),.42)}
+.sec{margin-top:var(--sp-3)}
+.fl{display:block;font-size:var(--fs-label);font-weight:var(--fw-x);margin:0 0 var(--sp-1)}
+.fl::before{content:'• ';color:var(--accent);font-weight:var(--fw-b)}
+.hist{display:flex;flex-direction:column;gap:var(--sp-1)}
+.hi{display:flex;align-items:center;gap:var(--sp-1);padding:var(--sp-1);
+  border:1px solid var(--line);border-radius:var(--r-m);background:rgba(255,255,255,.03)}
+.hi__t{width:40px;height:40px;border-radius:var(--r-s);overflow:hidden;flex:0 0 auto;background:rgba(0,0,0,.4)}
+.hi__t img{width:100%;height:100%;object-fit:cover}
+.hi__m{flex:1;min-width:0}.hi__m b{display:block;font-size:var(--fs-sm)}
+.hi__m span{font-size:var(--fs-xs);color:var(--mut)}
+.hi__s{font-size:var(--fs-xs);color:var(--accent);font-weight:var(--fw-b)}
+
+/* ═══ 콘솔 ═══ */
+.console{min-width:0;min-height:0;overflow-y:auto;background:#141414;border:1px solid var(--line);
+  border-radius:var(--r-l);padding:var(--sp-2)}
+.console::-webkit-scrollbar{width:8px}
+.console::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
+.grp{border-top:1px solid var(--line2);padding-top:var(--sp-2);margin-top:var(--sp-2)}
+.grp:first-child{border-top:0;margin-top:0;padding-top:0}
+.grp__h{font-size:var(--fs-xs);letter-spacing:.08em;color:var(--mut);margin:0 0 var(--sp-1);font-weight:var(--fw-b)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:var(--sp-1) var(--sp-2)}
+.ctl__l{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-1);
+  font-size:var(--fs-xs);color:var(--mut);margin-bottom:2px}
+.ctl__v{color:var(--fg);font-weight:var(--fw-b);font-variant-numeric:tabular-nums;white-space:nowrap;
+  max-width:58%;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.ctl__l > span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.ctl__v.warn{color:var(--amber)}
+.ctl__l em{color:var(--amber);font-style:normal;font-size:9.5px;font-weight:var(--fw-b)}
+input[type=range]{width:100%;accent-color:var(--accent);height:16px;margin:0}
+select{width:100%;height:var(--btn-sm);background:#101210;color:var(--fg);font:inherit;
+  font-size:var(--fs-sm);border:1px solid var(--line);border-radius:var(--r-s);padding:0 var(--sp-1)}
+.lad{display:flex;justify-content:space-between;font-size:9px;color:#5f7266;
+  font-variant-numeric:tabular-nums;margin-top:1px}
+.lad b{color:var(--accent);font-weight:var(--fw-b)}
+.presets{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin-bottom:var(--sp-2)}
+.pbtn{height:var(--btn-sm);padding:0 var(--sp-2);font:inherit;font-size:var(--fs-sm);
+  color:var(--fg);background:rgba(255,255,255,.06);border:1px solid var(--line);
+  border-radius:var(--r-s);cursor:pointer}
+.pbtn:hover{background:rgba(255,255,255,.11)}
+.pbtn.on{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.3);font-weight:var(--fw-b)}
+.pbtn.star{color:var(--accent);border-color:rgba(var(--accent-rgb),.42);background:var(--accent-dim)}
+pre{margin:var(--sp-1) 0 0;padding:var(--sp-2);border-radius:var(--r-s);background:#0c0e0c;
+  border:1px solid var(--line);overflow-x:auto;white-space:pre-wrap;
+  font:10.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a8bfae}
+.foot{font-size:var(--fs-xs);color:var(--mut);line-height:1.8;padding-left:16px;margin:var(--sp-1) 0 0}
+.foot code{color:var(--fg);font-size:10px}
+
+/* 역제안 알림창 */
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(var(--blur-backdrop));
+  display:none;place-items:center;z-index:99;padding:var(--sp-3)}
+.mask.on{display:grid}
+.dlg{width:min(92vw,520px);max-height:80vh;overflow-y:auto;background:rgba(24,25,28,.96);
+  border:1px solid var(--line);border-radius:var(--r-modal);padding:var(--sp-3)}
+.dlg h2{margin:0 0 var(--sp-1);font-size:var(--fs-h2);font-weight:var(--fw-x)}
+.dlg h2 b{color:var(--amber)}
+.dlg ul{margin:var(--sp-1) 0;padding-left:16px;font-size:var(--fs-sm);color:var(--mut);line-height:1.8}
+.dlg ul b{color:var(--fg)}
+.dlgbtns{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin-top:var(--sp-2)}
+.dlgbtns .pbtn{flex:1 1 auto}
+
+@media (max-width:900px){
+  .pgwrap{aspect-ratio:auto;grid-template-columns:1fr}
+  .stagewrap{min-height:64vh;position:sticky;top:0;z-index:2;align-self:start}
+  .console{max-height:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>옵션 카드 — 값 N택1 나열 플레이그라운드</h1>
+  <p class="sub">260731 · 대상 = <b>viewer/thumb.html</b> #editCol 옵션 카드(편집 7·8·9) · 기준점 = 현행(순환 값칩 · 머지 d6cea67) · 좌 = 실물 재현(고정 반면)</p>
+  <p class="drift" id="drift"></p>
+</div>
+
+<div class="pgwrap">
+  <!-- ① 실물 재현 -->
+  <div class="stagewrap">
+    <div class="phone" data-pg-preview>
+      <div class="scr">
+        <div class="wrap">
+          <div class="app" id="app">
+            <div class="stdock" id="dock">
+              <div class="dockgrid">
+                <div class="cpprev">
+                  <div class="cpprev-box" id="pvbox">
+                    <button class="cpv-tool" id="tSwap" style="right:42px" data-act="swap" aria-label="사진 교체" title="사진 교체(=소스 순환)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+                    <button class="cpv-tool" id="tDel" style="right:6px" data-act="del" aria-label="사진 삭제" title="삭제(=비율 원본 복귀)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+                    <div id="iePrev">
+                      <div class="rsz-stage" id="stage"></div>
+                      <div class="rsz-metric" id="metricIn"></div>
+                    </div>
+                  </div>
+                  <div class="docksub" id="editSub" hidden></div>
+                </div>
+                <div class="dockopt" id="optcol"></div>
+              </div>
+              <button class="fire" id="fire">생성</button>
+            </div>
+            <div class="sec" id="histSec">
+              <label class="fl">이전 제작</label>
+              <div class="hist" id="hist"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="stagecap">칩·픽토그램 <b>실제로 눌러진다</b> — 순환 모드는 값 탭 = 다음 값, N택1 모드는 원하는 값 직접 탭</p>
+    <button class="pbtn" id="baseBtn" data-pg-baseline title="누르고 있는 동안 현행(머지 d6cea67) 실측값으로 되돌려 그린다 — 비교 기준 고정">◉ 누르고 있기 = 현행과 비교</button>
+  </div>
+
+  <!-- ②③④⑤ 콘솔 -->
+  <aside class="console">
+    <div class="grp">
+      <p class="grp__h">② 프리셋 — 현행 포함 · ★ 추천</p>
+      <div class="presets" id="presets" data-pg-presets></div>
+    </div>
+    <div id="deck"></div>
+    <div class="grp">
+      <p class="grp__h">④ 선택값</p>
+      <div class="presets">
+        <button class="pbtn star" id="btnCopy" data-pg-copy>선택값 복사</button>
+        <button class="pbtn" id="btnReset">현행으로 초기화</button>
+      </div>
+      <pre id="out"></pre>
+    </div>
+    <div class="grp">
+      <p class="grp__h">⑤ 재현 한계</p>
+      <ul class="foot" data-pg-note>
+        <li>소스 = <b>SVG 합성 더미</b> 3종(자기완결 · 외부 요청 0). 실사진 노이즈·색분포는 미재현</li>
+        <li><code>svh</code>는 폰 프레임이 아니라 <b>실제 뷰포트</b> 기준 → 미리보기 캡의 svh 축은 근사(px 상한·9:N 비율 축은 정확)</li>
+        <li>확장 캔버스 = <code>rszPad()</code>·<code>rszRatioOk()</code> thumb.html 원문 이식(8배수 반올림 · tol 0.02 no-op 포함)</li>
+        <li>페이지 글래스 배경(도크 투명화로 비치는 실크)은 <b>근사 그라데이션</b> — 실물은 index 모달 뒤 라이브 콘텐츠</li>
+        <li>모자이크 검출박스·정밀 윤곽 = 모양만 재현(실검출 0) · 생성 버튼 = 발사 없음</li>
+        <li>이전 제작 = 더미 3건 · 「직접」 칩 = 표기만(N:M 인라인 입력은 실물 #rszArWrap 정본 이식 별도)</li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<div class="mask" id="mask">
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT">
+    <h2 id="dlgT"><b>⚠ 기틀 이탈</b> — 그대로 복사할까?</h2>
+    <p style="margin:0;font-size:var(--fs-sm);color:var(--mut)">아래 축은 노뮤트 <b>기틀(전 앱 동일 축)</b>을 벗어난 값이야. 「역제안 포함 복사」로 보내면 회신이 <b>기틀 갱신 승인</b>의 정문 경로가 돼(적용 범위 = 전 앱 동축).</p>
+    <ul id="dlgList"></ul>
+    <div class="dlgbtns">
+      <button class="pbtn star" id="dlgAll">역제안 포함 복사</button>
+      <button class="pbtn" id="dlgSafe">계승분만 복사</button>
+      <button class="pbtn" id="dlgNo">취소</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const app=$('#app');
+
+/* ══════════ 더미 소스(자기완결 SVG) ══════════ */
+const SRC=[
+  {n:'가로 스샷', w:2560, h:1440, c1:'#1b2430', c2:'#2a3a4d'},
+  {n:'세로 사진', w:1080, h:1920, c1:'#2b1f33', c2:'#4a2f52'},
+  {n:'정사각',    w:1400, h:1400, c1:'#1f2e28', c2:'#2f4a3f'}
+];
+function svgURL(s){
+  let bars='';
+  for(let i=0;i<7;i++){
+    const y=s.h*(.16+i*.1), w=s.w*(.28+((i*37)%50)/100*.5);
+    bars+='<rect x="'+(s.w*.08)+'" y="'+y+'" width="'+w+'" height="'+(s.h*.035)+'" rx="'+(s.h*.017)+'" fill="rgba(255,255,255,'+(.07+(i%3)*.04)+')"/>';
+  }
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+s.w+'" height="'+s.h+'" viewBox="0 0 '+s.w+' '+s.h+'">'
+    +'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+s.c1+'"/><stop offset="1" stop-color="'+s.c2+'"/></linearGradient></defs>'
+    +'<rect width="100%" height="100%" fill="url(#g)"/>'
+    +'<rect x="0" y="0" width="100%" height="'+(s.h*.09)+'" fill="rgba(0,0,0,.3)"/>'
+    +'<circle cx="'+(s.w*.06)+'" cy="'+(s.h*.045)+'" r="'+(s.h*.018)+'" fill="#00EED2" opacity=".8"/>'
+    +bars+'<text x="'+(s.w/2)+'" y="'+(s.h*.93)+'" font-family="sans-serif" font-size="'+(s.h*.05)+'" fill="rgba(255,255,255,.35)" text-anchor="middle">'+s.w+'×'+s.h+'</text></svg>';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+}
+SRC.forEach(s=>s.url=svgURL(s));
+
+/* ══════════ 확립 축 사다리(실존 토큰 값) ══════════ */
+const LAD={
+  r:[['--r-s',9],['--r-m',11],['--r-l',16],['--r-modal',22]],
+  sp:[['--sp-1',6],['--sp-2',12],['--sp-3',18],['--sp-4',24]],
+  btn:[['--btn-xs',22],['--btn-sm',30],['--btn',34],['--btn-lg',46]],
+  fs:[['--fs-xs',11],['--fs-sm',12],['--fs-label',13],['--fs-h3',14],['--fs-h2',15]],
+  dur:[['--dur-fast',.12],['--dur',.18],['--dur-acc',.26]]
+};
+
+/* ══════════ ③ 컨트롤 정의 — 51축 ══════════
+   kind: rng(자유) · lad(확립 사다리 · 밖=⚠) · sel(폐쇄 선택 · ⚠ 옵션 = 기틀 이탈)
+   cur = 현행 실측값(= 기본값 · 머지 d6cea67) ══════ */
+const CTL=[
+{g:'A. 값 표시 방식 — 이번 결정의 핵심 축',items:[
+  {id:'valMode', l:'값 표시',      cur:'cycle', kind:'sel', opt:[['cycle','순환 값칩 — 탭=다음 값 (현행 기준점)'],['nlist','N택1 나열 — 선택지 전부 보임 (제안)']]},
+  {id:'listAlign',l:'나열 정렬',   cur:'r', kind:'sel', opt:[['r','우측 정렬 (번역 탭 정본)'],['l','좌측 고정 (운영자 260731 지정)'],['sb','라벨-값 양끝 벌림 ⚠']]},
+  {id:'listRow', l:'나열 위치',    cur:'inline', kind:'sel', opt:[['inline','라벨 옆 같은 행 (번역 탭 정본)'],['below','라벨 아래 둘째 행']]},
+  {id:'nmk',     l:'이름 열 고정폭(칩 시작 x 일괄)', cur:0, min:0, max:6, step:.2, u:'em', kind:'rng', t:'--t-nmk', neo:1},
+  {id:'sep',     l:'칩 사이 구분', cur:'none', kind:'sel', opt:[['none','없음 — gap만 (geni-opts 정본)'],['pipe','파이프 | (OPA 레일 정본)'],['dot','점 · ⚠']]},
+  {id:'customChip',l:'「직접」 N:M 칩', cur:'off', kind:'sel', opt:[['off','없음 (현행 컬럼 — 진입로 소멸 상태)'],['on','복원 — 나열 끝에 「직접」 (rszOpts 정본)']]},
+  {id:'wrapMode',l:'칩 넘침 처리', cur:'wrap', kind:'sel', opt:[['wrap','줄바꿈 랩 (geni-opts 정본)'],['rail','가로 스크롤 레일 ⚠ 좁은 폭 전용']]},
+  {id:'upsList', l:'해상도 나열',  cur:'4', kind:'sel', opt:[['4','720p·FHD·2K·4K 전부'],['3','FHD·2K·4K ⚠ 720p 진입로 상실']]}
+]},
+{g:'B. 칩 스펙',items:[
+  {id:'chipFs',  l:'칩 활자',      cur:13, lad:'fs', kind:'lad', t:'--t-chipFs', v:'--fs-label'},
+  {id:'chipPy',  l:'칩 상하 패딩', cur:6, min:2, max:12, step:1, u:'px', kind:'rng', t:'--t-chipPy'},
+  {id:'chipPx',  l:'칩 좌우 패딩', cur:7, min:0, max:14, step:1, u:'px', kind:'rng', t:'--t-chipPx'},
+  {id:'chipGapX',l:'칩 가로 간격', cur:4, min:0, max:12, step:1, u:'px', kind:'rng', t:'--t-chipGapX'},
+  {id:'chipGapY',l:'칩 세로 간격', cur:3, min:0, max:12, step:1, u:'px', kind:'rng', t:'--t-chipGapY'},
+  {id:'selColor',l:'N택1 선택칩 색', cur:'fg', kind:'sel', opt:[['fg','흰색 --fg (260729 나열형 정본)'],['accent','--accent ⚠ 1강조색 재지정'],['amber','--amber ⚠']]},
+  {id:'selWeight',l:'선택칩 굵기', cur:'x', kind:'sel', opt:[['x','800 --fw-x (정본)'],['b','700 유지 ⚠ 위계 소실']]},
+  {id:'cycVv',   l:'순환 값칩 색', cur:'accent', kind:'sel', opt:[['accent','--accent (현행 리드백형)'],['fg','흰색 --fg ⚠ 축 혼동']]}
+]},
+{g:'C. 카드 골격',items:[
+  {id:'optw',    l:'옵션 컬럼 폭', cur:10, min:7, max:18, step:.2, u:'em', kind:'rng', t:'--t-optw', neo:1},
+  {id:'cardPx',  l:'카드 좌우 패딩', cur:13, min:6, max:20, step:1, u:'px', kind:'rng', t:'--t-cardPx'},
+  {id:'cardPy',  l:'카드 상하 패딩', cur:8, min:4, max:16, step:1, u:'px', kind:'rng', t:'--t-cardPy'},
+  {id:'cardGap', l:'카드 사이 간격', cur:8, min:0, max:16, step:1, u:'px', kind:'rng', t:'--t-cardGap'},
+  {id:'cardR',   l:'카드 라운드',  cur:9, lad:'r', kind:'lad', t:'--t-cardR', v:'--r-s'},
+  {id:'cardFaceA',l:'카드 면 알파', cur:.015, min:0, max:.08, step:.005, kind:'rng', t:'--t-cardFaceA'},
+  {id:'cardLineA',l:'카드 테두리 알파', cur:.06, min:0, max:.2, step:.01, kind:'rng', t:'--t-cardLineA'},
+  {id:'nmFs',    l:'라벨 활자',    cur:13, lad:'fs', kind:'lad', t:'--t-nmFs', v:'--fs-label'},
+  {id:'togLayout',l:'보존·모자이크 배치', cur:'each', kind:'sel', opt:[['each','카드 하나씩 (현행)'],['merged','한 카드에 나란히 ⚠'],['naked','카드 없이 맨글자 ⚠']]},
+  {id:'lockHide',l:'보존(비율 원본일 때)', cur:'hide', kind:'sel', opt:[['hide','카드째 은닉 (현행 :has)'],['dim','자리 유지 + 딤 ⚠ 죽은 옵션 점유']]}
+]},
+{g:'D. 컬럼·소머리',items:[
+  {id:'colTop',  l:'옵션 y 시작선', cur:18, lad:'sp', kind:'lad', t:'--t-colTop', v:'--sp-3'},
+  {id:'gap',     l:'2분할 gap',    cur:18, lad:'sp', kind:'lad', t:'--t-gap', v:'--sp-3'},
+  {id:'headTxt', l:'소머리 문구',  cur:'opt', kind:'sel', opt:[['opt','「옵션」 (현행)'],['basic','「기본」 ⚠'],['hid','숨김 — 카드만 ⚠']]},
+  {id:'bullet',  l:'소머리 블릿',  cur:'on', kind:'sel', opt:[['on','• 형광 블릿 (label.fl 정본)'],['off','없음 ⚠']]},
+  {id:'headFs',  l:'소머리 활자',  cur:13, lad:'fs', kind:'lad', t:'--t-headFs', v:'--fs-label'},
+  {id:'headStick',l:'소머리 스크롤 고정', cur:'on', kind:'sel', opt:[['on','sticky (현행)'],['off','같이 흐름']]}
+]},
+{g:'E. 미리보기·도크 — 폭이 줄면 9:N 높이도 같이 준다',items:[
+  {id:'arH',     l:'미리보기 비율 9 : N', cur:16, min:12, max:21, step:.5, kind:'rng', t:'--t-arH', neo:1},
+  {id:'capSvh',  l:'미리보기 캡(svh)', cur:58, min:30, max:70, step:1, u:'svh', kind:'rng', t:'--t-capSvh', neo:1},
+  {id:'capPx',   l:'미리보기 캡 상한', cur:600, min:300, max:760, step:10, u:'px', kind:'rng', t:'--t-capPx', neo:1},
+  {id:'stageR',  l:'미리보기 라운드', cur:22, lad:'r', kind:'lad', t:'--t-stageR', v:'--r-modal'},
+  {id:'dockBg',  l:'도크 배경',    cur:'clear', kind:'sel', opt:[['clear','투명 — 글래스 배경 비침 (현행 260731 3차)'],['black','#121212 매트 ⚠ 구판 부활'],['glass','반투명 + blur ⚠']]},
+  {id:'dockStick',l:'도크 상단 고정', cur:'off', kind:'sel', opt:[['off','해제 — 같이 스크롤 (현행 260731 3차)'],['on','sticky 부활 ⚠']]},
+  {id:'fade',    l:'하단 페이드 스커트', cur:0, min:0, max:24, step:2, u:'px', kind:'rng', t:'--t-fade'},
+  {id:'lineA',   l:'도크 테두리 알파', cur:.15, min:0, max:.3, step:.01, kind:'rng', t:'--t-lineA'}
+]},
+{g:'F. 실동작 — 기능 누르면 미리보기가 바뀐다',items:[
+  {id:'src',  l:'소스',        cur:'0', kind:'sel', opt:[['0','가로 스샷 2560×1440'],['1','세로 사진 1080×1920'],['2','정사각 1400×1400']]},
+  {id:'ar',   l:'비율(실동작)', cur:'orig', kind:'sel', opt:[['orig','원본'],['4:5','4:5'],['9:16','9:16'],['16:9','16:9'],['1:1','1:1']]},
+  {id:'ups',  l:'해상도(실동작)',cur:'FHD', kind:'sel', opt:[['720p','720p'],['FHD','FHD'],['2K','2K'],['4K','4K']]},
+  {id:'lock', l:'보존(실동작)', cur:'on', kind:'sel', opt:[['on','ON — 원본 실선·픽셀 불변'],['off','OFF — 원본도 재구성(점선)']]},
+  {id:'mos',  l:'모자이크(실동작)',cur:'off',kind:'sel',opt:[['off','OFF'],['on','ON — 검출박스 + 세부 행']]},
+  {id:'pre',  l:'정밀(실동작)', cur:'off',kind:'sel', opt:[['off','OFF — 사각 박스'],['on','ON — 윤곽 마스크(둥근)']]},
+  {id:'op',   l:'출력(실동작)', cur:'cover',kind:'sel',opt:[['cover','가리기(모자이크)'],['cut','떼기(누끼)']]}
+]},
+{g:'G. 발사·모션 — 확립 축',items:[
+  {id:'fireH', l:'생성 버튼 높이', cur:30, lad:'btn', kind:'lad', t:'--t-fireH', v:'--btn-sm'},
+  {id:'fireR', l:'생성 라운드',   cur:22, lad:'r', kind:'lad', t:'--t-fireR', v:'--r-modal'},
+  {id:'dur',   l:'칩 전환',       cur:.18, lad:'dur', kind:'lad', t:'--t-dur', v:'--dur', u:'s'},
+  {id:'metricFs',l:'원/캔 리드백 활자', cur:11, lad:'fs', kind:'lad', t:'--t-metricFs', v:'--fs-xs'}
+]}
+];
+
+const ITEMS=CTL.flatMap(g=>g.items);
+const DEF={}; ITEMS.forEach(it=>DEF[it.id]=it.cur);
+let V={...DEF};
+
+const PRESETS={
+  '현행(순환 값칩)':{},
+  '★ N택1 · 좌측 고정':{valMode:'nlist', listAlign:'l', nmk:4},
+  'N택1 · 라벨 아랫줄':{valMode:'nlist', listRow:'below', listAlign:'l', optw:12},
+  'N택1 · 우측(번역 탭 정본)':{valMode:'nlist', listAlign:'r', optw:12},
+  'N택1 · 레일 ⚠':{valMode:'nlist', listAlign:'l', wrapMode:'rail', sep:'pipe'}
+};
+
+/* ══════════ rszPad — thumb.html 원문 이식 ══════════ */
+function rszPad(W,H,ar,snap){
+  const [aw,ah]=ar.split(':').map(Number); let cw,ch;
+  const q=n=>snap?Math.round(n/8)*8:Math.round(n);
+  if(aw/ah >= W/H){ ch=H; cw=q(H*aw/ah); }
+  else            { cw=W; ch=q(W*ah/aw); }
+  return {cw,ch,x:Math.floor((cw-W)/2),y:Math.floor((ch-H)/2)};
+}
+function rszRatioOk(W,H,ar,tol){
+  const [aw,ah]=ar.split(':').map(Number);
+  return Math.abs(W/H - aw/ah) <= (aw/ah)*(tol===undefined?0.02:tol);
+}
+const N=n=>Math.round(n).toLocaleString('en-US');
+const near=(a,b,eps)=>Math.abs(a-b)<(eps===undefined?1e-9:eps);   // 기존 토큰·현행 동값 판정(포터블 §3-4)
+const SIZE_SHORT={'720p':720,'FHD':1080,'2K':1440,'4K':2160};
+
+/* ══════════ 옵션 카드 빌드 ══════════ */
+const AR_ORDER=['orig','4:5','9:16','16:9','1:1'], UPS_ORDER=['720p','FHD','2K','4K'];
+const arLbl=v=>v==='orig'?'원본':v;
+function chipsN(act,order,curv,lbl){   // N택1 나열
+  const sepH = V.sep==='pipe' ? '<span class="csep">|</span>' : V.sep==='dot' ? '<span class="csep">·</span>' : '';
+  let h=order.map(v=>'<button class="copt'+(v===curv?' on':'')+'" data-act="'+act+'" data-v="'+v+'">'+(lbl?lbl(v):v)+'</button>').join(sepH);
+  if(V.customChip==='on' && act==='ar') h+=sepH+'<button class="copt" data-act="noop">직접</button>';
+  return h;
+}
+function chipCyc(act,txt,title){       // 순환 값칩(현행)
+  return '<button class="copt cyc" data-act="'+act+'" title="'+title+'">'+txt+'</button>';
+}
+function tog(act,word,on,dim){         // 워드 토글
+  return '<button class="copt tog'+(on?' on':'')+(dim?' dim':'')+'" data-act="'+(dim?'noop':act)+'" aria-pressed="'+(!!on)+'">'+word+'</button>';
+}
+function card(nm,inner){
+  return '<div class="scard"><div class="csec">'+(nm?'<span class="nm">'+nm+'</span>':'')+'<span class="copts">'+inner+'</span></div></div>';
+}
+function buildCol(){
+  const nl=V.valMode==='nlist';
+  let cards='';
+  cards+=card('비율',   nl?chipsN('ar',AR_ORDER,V.ar,arLbl):chipCyc('arCyc',arLbl(V.ar),'탭=다음 비율'));
+  cards+=card('해상도', nl?chipsN('ups',V.upsList==='3'?UPS_ORDER.slice(1):UPS_ORDER,V.ups):chipCyc('upsCyc',V.ups,'탭=다음 해상도'));
+  const lockChip=tog('lock','보존',V.lock==='on', V.lockHide==='dim'&&V.ar==='orig');
+  const mosChip=tog('mos','모자이크',V.mos==='on');
+  if(V.togLayout==='merged'){ cards+=card('', (V.ar!=='orig'||V.lockHide==='dim'?lockChip:'')+mosChip); }
+  else if(V.togLayout==='naked'){
+    if(V.ar!=='orig'||V.lockHide==='dim') cards+='<div style="padding:2px 4px">'+lockChip+'</div>';
+    cards+='<div style="padding:2px 4px">'+mosChip+'</div>';
+  }else{
+    if(V.ar!=='orig'||V.lockHide==='dim') cards+=card('',lockChip);
+    cards+=card('',mosChip);
+  }
+  const headCls='dopt-h'+(V.headStick==='on'?' stick':'')+(V.headTxt==='hid'?' hid':'');
+  $('#optcol').innerHTML='<p class="'+headCls+'">'+(V.headTxt==='basic'?'기본':'옵션')+'</p><div class="optcards">'+cards+'</div>';
+  app.className='app'
+    +(V.bullet==='on'?' bullet-on':'')
+    +' align-'+(V.listAlign==='sb'?'r':V.listAlign)
+    +(V.listRow==='below'&&nl?' row-below':'')
+    +(V.nmk>0?' nmk-fix':'')
+    +' selc-'+V.selColor+(V.selWeight==='x'?' selw-x':'')
+    +' cycv-'+V.cycVv
+    +(V.wrapMode==='rail'&&nl?' rail-on':'');
+  if(V.listAlign==='sb') $$('.scard .csec').forEach(c=>{c.style.justifyContent='space-between';});
+  // 세부 행(모자이크 종속) = 미리보기 아래
+  const sub=$('#editSub');
+  if(V.mos==='on'){ sub.hidden=false;
+    sub.innerHTML=tog('pre','정밀',V.pre==='on')+tog('op2','출력',V.op==='cut'); }
+  else { sub.hidden=true; sub.innerHTML=''; }
+  const dock=$('#dock');
+  dock.className='stdock'+(V.dockStick==='on'?' stick':'')+(V.dockBg==='black'?' blackmat':V.dockBg==='glass'?' glass':'');
+}
+
+/* ══════════ 미리보기 렌더 ══════════ */
+function render(){
+  const scr=$('.scr'), keep=scr?scr.scrollTop:0;   // 재렌더 스크롤 튕김 차단(포터블 §7-1-6 · scrollTop 보존)
+  buildCol();
+  const stage=$('#stage');
+  const sb=stage.getBoundingClientRect();
+  const availW=Math.max(30, sb.width-8), availH=Math.max(30, sb.height-8);
+  const src=SRC[+V.src], W=src.w, H=src.h, ar=V.ar;
+  let cw,ch,x,y,noop=false;
+  if(ar==='orig' || rszRatioOk(W,H,ar)){ cw=W;ch=H;x=0;y=0;noop=true; }
+  else ({cw,ch,x,y}=rszPad(W,H,ar,true));
+  const k=Math.min(availW/cw, availH/ch);
+  const CW=cw*k, CH=ch*k, OX=x*k, OY=y*k, OW=W*k, OH=H*k;
+  const canvOut = noop ? 'outline:1px solid rgba(var(--accent-rgb),.4);' : 'outline:2px dashed var(--mut);';
+  const origOut = V.lock==='on' ? 'outline:2px solid var(--accent);outline-offset:-1px;box-shadow:0 0 12px rgba(var(--accent-rgb),.4);'
+                                : 'outline:2px dashed var(--mut);';
+  const st=(L,T,Wd,Ht)=>'<div class="rsz-strip" style="left:'+L+'px;top:'+T+'px;width:'+Wd+'px;height:'+Ht+'px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 5px,transparent 5px 10px)"></div>';
+  const horiz = OW < CW-0.5;
+  const strips = noop ? '' : (horiz ? st(0,0,OX,CH)+st(OX+OW,0,CW-OX-OW,CH)
+                                    : st(0,0,CW,OY)+st(0,OY+OH,CW,CH-OY-OH));
+  const cut = V.mos==='on' && V.op==='cut';
+  const imgStyle='left:'+OX+'px;top:'+OY+'px;width:'+OW+'px;height:'+OH+'px;'+origOut+(cut?'opacity:.28;':'');
+  let boxes='';
+  if(V.mos==='on'){
+    const mk=(l,t,w,h)=>'<div class="ie-box'+(V.pre==='on'?' soft':'')+'" style="left:'+(OX+OW*l)+'px;top:'+(OY+OH*t)+'px;width:'+(OW*w)+'px;height:'+(OH*h)+'px"></div>';
+    boxes = mk(.10,.22,.24,.5)+mk(.55,.34,.2,.42);
+  }
+  const tag = noop ? '<div class="rsz-origtag" style="color:var(--amber)">'+(ar==='orig'?'원본':'원본 그대로')+'</div>'
+                   : '<div class="rsz-origtag">원본</div>';
+  const checker = cut ? '<div style="position:absolute;inset:0;background-image:linear-gradient(45deg,#2a2a2a 25%,transparent 25%),linear-gradient(-45deg,#2a2a2a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2a2a 75%),linear-gradient(-45deg,transparent 75%,#2a2a2a 75%);background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0"></div>' : '';
+  stage.innerHTML='<div class="rsz-canv" style="width:'+CW+'px;height:'+CH+'px;'+canvOut+'">'
+    +checker+strips+'<img class="rsz-orig" src="'+src.url+'" alt="" style="'+imgStyle+'">'+boxes+tag+'</div>';
+  const m = noop ? '원 <b>'+N(W)+' × '+N(H)+'</b>'
+                 : '원 <b>'+N(W)+' × '+N(H)+'</b> → 캔 <b class="g">'+N(cw)+' × '+N(ch)+'</b>';
+  $('#metricIn').innerHTML=m;
+  writeOut();
+  if(scr && scr.scrollTop!==keep) scr.scrollTop=keep;
+}
+
+/* ══════════ 현행 대조(baseline) — 누르고 있는 동안 현행 실측값으로 렌더 ══════════ */
+(function(){
+  const btn=$('#baseBtn'); let saved=null;
+  const on=()=>{ if(saved) return; saved={...V}; V={...DEF}; syncDeck(); render(); btn.classList.add('on'); };
+  const off=()=>{ if(!saved) return; V=saved; saved=null; syncDeck(); render(); btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown',on); ['pointerup','pointerleave','pointercancel'].forEach(e=>btn.addEventListener(e,off));
+  btn.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); saved?off():on(); } });
+})();
+
+/* ══════════ 미리보기 안 실조작 ══════════ */
+function act(a,v){
+  if(a==='ar')        V.ar=v;
+  else if(a==='ups')  V.ups=v;
+  else if(a==='arCyc')  V.ar = AR_ORDER[(AR_ORDER.indexOf(V.ar)+1)%AR_ORDER.length];
+  else if(a==='upsCyc') V.ups= UPS_ORDER[(UPS_ORDER.indexOf(V.ups)+1)%UPS_ORDER.length];
+  else if(a==='lock') V.lock = V.lock==='on'?'off':'on';
+  else if(a==='mos')  V.mos  = V.mos==='on'?'off':'on';
+  else if(a==='pre')  V.pre  = V.pre==='on'?'off':'on';
+  else if(a==='op2')  V.op   = V.op==='cut'?'cover':'cut';
+  else if(a==='swap') V.src  = String((+V.src+1)%SRC.length);
+  else if(a==='del')  V.ar   = 'orig';
+  else return;
+  if(V.ar==='orig' && V.lock!=='on') V.lock='on';
+  syncDeck(); render();
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]'); if(!t) return;
+  act(t.dataset.act, t.dataset.v);
+});
+
+/* ══════════ 콘솔 빌드 ══════════ */
+function buildDeck(){
+  $('#deck').innerHTML = CTL.map(g=>'<div class="grp"><p class="grp__h">'+g.g+'</p><div class="grid">'
+    + g.items.map(it=>{
+      if(it.kind==='sel'){
+        return '<div><div class="ctl__l"><span>'+it.l+'</span><span class="ctl__v" id="v_'+it.id+'"></span></div>'
+          +'<select id="i_'+it.id+'">'+it.opt.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select></div>';
+      }
+      const lad=it.lad?LAD[it.lad]:null;
+      const min=lad?lad[0][1]:it.min, max=lad?lad[lad.length-1][1]:it.max;
+      const step=lad?(it.u==='s'?.01:1):it.step;
+      return '<div><div class="ctl__l"><span>'+it.l+(it.neo?' <em>⚠신규</em>':'')+'</span>'
+        +'<span class="ctl__v" id="v_'+it.id+'"></span></div>'
+        +'<input type="range" id="i_'+it.id+'" min="'+min+'" max="'+max+'" step="'+step+'">'
+        +(lad?'<div class="lad" id="l_'+it.id+'">'+lad.map(x=>'<span data-x="'+x[1]+'">'+x[1]+'</span>').join('')+'</div>':'')
+        +'</div>';
+    }).join('') + '</div></div>').join('');
+  ITEMS.forEach(it=>{
+    const el=$('#i_'+it.id); el.value=V[it.id];
+    el.addEventListener('input',()=>{ V[it.id]= it.kind==='sel'?el.value:+el.value; markCustom(); applyOne(it); render(); });
+  });
+}
+function applyOne(it){
+  if(it.t) app.style.setProperty(it.t, it.u==='s' ? V[it.id]+'s' : V[it.id]);
+  const lbl=$('#v_'+it.id);
+  if(it.kind==='sel'){
+    const o=(it.opt.find(o=>o[0]===V[it.id])||['','']);
+    lbl.textContent=o[1].replace(/ ⚠.*/,'');
+    lbl.classList.toggle('warn', /⚠/.test(o[1]));
+  }else{
+    const v=V[it.id];
+    lbl.textContent=(typeof v==='number' ? (v%1 ? String(+v.toFixed(3)) : v) : v)+(it.u||'');
+    if(it.lad){
+      const hit=LAD[it.lad].some(x=>Math.abs(x[1]-v)<1e-6);
+      lbl.classList.toggle('warn',!hit);
+      const b=$('#l_'+it.id);
+      if(b) b.querySelectorAll('span').forEach(s=>{
+        s.innerHTML = Math.abs(+s.dataset.x-v)<1e-6 ? '<b>'+s.dataset.x+'</b>' : s.dataset.x; });
+    } else lbl.classList.toggle('warn', !!it.neo && !near(v,it.cur));
+  }
+}
+function syncDeck(){ ITEMS.forEach(it=>{ const el=$('#i_'+it.id); if(el) el.value=V[it.id]; applyOne(it); }); }
+function markCustom(){ $$('#presets .pbtn').forEach(b=>b.classList.remove('on')); }
+
+/* ══════════ 프리셋 ══════════ */
+$('#presets').innerHTML=Object.keys(PRESETS).map((k,i)=>
+  '<button class="pbtn'+(i===1?' star':'')+'" data-p="'+k+'">'+k+'</button>').join('');
+$('#presets').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-p]'); if(!b) return;
+  $$('#presets .pbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  V={...DEF, ...PRESETS[b.dataset.p]};
+  syncDeck(); render();
+});
+$('#btnReset').addEventListener('click',()=>{ $$('#presets .pbtn')[0].click(); });
+
+/* ══════════ ④ 선택값 + 기틀 이탈 판정 ══════════ */
+function drift(){
+  const list=[];
+  ITEMS.forEach(it=>{
+    const v=V[it.id];
+    if(it.kind==='sel'){
+      const o=it.opt.find(o=>o[0]===v); if(o && /⚠/.test(o[1]))
+        list.push({l:it.l, from:(it.opt.find(o=>o[0]===it.cur)||['',''])[1].replace(/ ⚠.*/,''), to:o[1].replace(/ ⚠.*/,''), why:'역할·배치 재지정'});
+      return;
+    }
+    if(it.lad){
+      const hit=LAD[it.lad].some(x=>Math.abs(x[1]-v)<1e-6);
+      if(!hit) list.push({l:it.l, from:it.cur+(it.u||'px'), to:v+(it.u||'px'), why:'사다리 밖('+LAD[it.lad].map(x=>x[1]).join('/')+')'});
+      else if(!near(v,it.cur)){
+        const t=LAD[it.lad].find(x=>Math.abs(x[1]-v)<1e-6);
+        list.push({l:it.l, from:it.cur+(it.u||'px'), to:v+(it.u||'px'), why:'사다리 이동 → '+t[0], soft:1});
+      }
+      return;
+    }
+    if(it.neo && !near(v,it.cur))
+      list.push({l:it.l, from:it.cur+(it.u||''), to:v+(it.u||''), why:'대응 토큰 없음 = 신규값', soft:1});
+  });
+  return list;
+}
+function rows(){
+  return ITEMS.map(it=>{
+    const v=V[it.id];
+    if(it.kind==='sel'){
+      const lab=(it.opt.find(o=>o[0]===v)||['',''])[1].replace(' ⚠','');
+      return [it.l, lab, v===it.cur?'계승':(/⚠/.test((it.opt.find(o=>o[0]===v)||['',''])[1])?'⚠ 기틀 축':'갱신 후보'), it.v||it.t||''];
+    }
+    let tag;
+    if(it.lad){
+      const hit=LAD[it.lad].find(x=>Math.abs(x[1]-v)<1e-6);
+      tag = hit ? (near(it.cur,v) ? '계승 '+hit[0] : '사다리 이동 → '+hit[0]) : '⚠ 사다리 밖';
+    } else tag = near(it.cur,v) ? '계승' : (it.neo?'⚠ 신규값':'갱신 후보');
+    return [it.l, v+(it.u||''), tag, it.v||it.t||''];
+  });
+}
+function outText(withDrift){
+  const R=rows(), w=Math.max.apply(null,R.map(r=>r[0].length));
+  const body=R.map(r=>'  '+r[0].padEnd(w,' ')+'  '+String(r[1]).padStart(14,' ')+'   '+r[2]+(r[3]?'   ('+r[3]+')':'')).join('\n');
+  const D=drift(), hard=D.filter(d=>!d.soft);
+  let t='【옵션 카드 값 N택1 — 선택값 260731】\n대상 = viewer/thumb.html #editCol 옵션 카드(편집 7·8·9)\n\n'+body
+   +'\n\n── 배선 지점 ──\n'
+   +'  thumb.html  #editCol .scard  카드 안 값칩 → N택1 버튼 나열(#rszOpts·#upsOpts 정본 칩 문법)\n'
+   +'  thumb.html  esRsz/esUps 순환 핸들러 → 선택 위임(#rszOpts 대리 클릭 = 상태 1벌 유지)\n'
+   +'  thumb.html  --optw(컬럼 폭) · .cpprev-box aspect-ratio(9:N)\n'
+   +'  게이트       python3 shared/check_refs.py · bash shared/smoke_all.sh';
+  if(withDrift && D.length){
+    t+='\n\n🔁 기틀 갱신 역제안 — '+D.length+'축(하드 '+hard.length+')\n'
+      +D.map(d=>'  · '+d.l+' : '+d.from+' → '+d.to+'   ['+d.why+']').join('\n')
+      +'\n  적용 범위 = 전 앱 동축(토큰·CII 정본 동반 갱신) · 회신 = 「기틀 갱신 승인」';
+  }
+  return t;
+}
+function writeOut(){
+  $('#out').textContent=outText(true);
+  const D=drift(), hard=D.filter(d=>!d.soft).length;
+  $('#drift').innerHTML = D.length ? '기틀 이탈 <b>'+hard+'</b>축 (+연성 '+(D.length-hard)+')' : '기틀 이탈 0 — 전부 계승';
+}
+async function copy(text,btn){
+  try{ await navigator.clipboard.writeText(text); btn.textContent='복사됨 ✓'; }
+  catch(e){ const r=document.createRange(); r.selectNodeContents($('#out'));
+    getSelection().removeAllRanges(); getSelection().addRange(r); btn.textContent='선택했음 — ⌘C'; }
+  setTimeout(()=>btn.textContent='선택값 복사',1500);
+}
+$('#btnCopy').addEventListener('click',()=>{
+  const D=drift();
+  if(!D.length){ copy(outText(false), $('#btnCopy')); return; }
+  $('#dlgList').innerHTML=D.map(d=>'<li><b>'+d.l+'</b> : '+d.from+' → '+d.to+' <span style="opacity:.7">['+d.why+']</span></li>').join('');
+  $('#mask').classList.add('on');
+});
+$('#dlgAll').addEventListener('click',()=>{ $('#mask').classList.remove('on'); copy(outText(true), $('#btnCopy')); });
+$('#dlgSafe').addEventListener('click',()=>{ $('#mask').classList.remove('on'); copy(outText(false), $('#btnCopy')); });
+$('#dlgNo').addEventListener('click',()=>{ $('#mask').classList.remove('on'); });
+$('#mask').addEventListener('click',e=>{ if(e.target===$('#mask')) $('#mask').classList.remove('on'); });
+addEventListener('keydown',e=>{ if(e.key==='Escape') $('#mask').classList.remove('on'); });
+
+/* ══════════ 이전 제작 더미 ══════════ */
+$('#hist').innerHTML=[['9:16 확장','07-31 04:02','완료'],['모자이크 2곳','07-30 22:40','완료'],['4K 업스케일','07-30 18:03','완료']]
+  .map((r,i)=>'<div class="hi"><div class="hi__t"><img src="'+SRC[i%3].url+'" alt=""></div>'
+    +'<div class="hi__m"><b>'+r[0]+'</b><span>'+r[1]+'</span></div><span class="hi__s">'+r[2]+'</span></div>').join('');
+
+/* ══════════ 부팅 — 첫 화면 = 결정 대상(★ N택1 좌측 고정)으로 오픈(포터블 §7-1-3) ══════════ */
+buildDeck();
+V={...DEF, ...PRESETS['★ N택1 · 좌측 고정']};
+$$('#presets .pbtn')[1].classList.add('on');
+syncDeck(); render();
+addEventListener('resize',render);
+let _sw=0,_sh=0;   // 스테이지 실측 변화만 재렌더 = 자기유발 루프 차단
+new ResizeObserver(es=>{ const r=es[0].contentRect;
+  if(Math.abs(r.width-_sw)<0.5 && Math.abs(r.height-_sh)<0.5) return;
+  _sw=r.width; _sh=r.height; render(); }).observe($('#stage'));
+</script>
+</body>
+</html>
