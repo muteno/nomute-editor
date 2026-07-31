@@ -434,6 +434,7 @@
   .lysp { flex:1; }
   .lybtn { flex:none; width:var(--btn-sm); height:var(--btn-sm); display:grid; place-items:center; padding:0; border-radius:var(--r-s); border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--fg); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast), background var(--dur), color var(--dur), border-color var(--dur); position:relative; }
   .lybtn svg { display:block; width:15px; height:15px; }
+  .lybtn[hidden], .dl-full[hidden] { display:none; }   /* hidden 가드(전뷰어 260710 정본) — display:grid/inline-flex가 [hidden] UA 스타일을 이겨 되돌이표·삭제 컷이 hidden=true에도 상시 노출되던 잠복 버그 봉합(운영자 260731 도먼트 처리로 가시화) */
   .lybtn:active { transform:scale(var(--press-s,.85)); }
   .lybtn[aria-pressed="true"] { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }
   .lystats { color:var(--mut); font-size:var(--fs-sm); margin:0 0 10px; line-height:1.7; }
@@ -2280,8 +2281,8 @@ function lyBurnShow(j) {
   if (window.nmEta && _lyBurnT0) { nmEta.done('edit-burn', (Date.now() - _lyBurnT0) / 1000); _lyBurnT0 = 0; }   // 예상 학습 = 성공 완료만(ly 동문 · sb·k 배선 그대로)
   dockSync();   // 완성본 video가 실제로 노출된 **뒤** 판정(재검① 260728 — 앞에 두면 lv가 아직 hidden이라 접힘이 안 걸렸다)
   const dl = $('#lyBurnDl'); dl.hidden = false; if (!dl._icon) { dl.innerHTML = DOWNLOAD_SVG; dl._icon = 'dl'; } dl.dataset.url = j.url;
-  const rb = $('#lyReburn'); if (rb) rb.hidden = !(j.src && /^https?:\/\//i.test(j.src));   // 원본 보관본 있을 때만 다시 입히기(의역 재사용 = LLM 0)
-  const cdw = $('#lyCutDelW'); if (cdw && rb) cdw.hidden = rb.hidden;   // 삭제 컷 토글 = 다시 입히기와 동행(운영자 260711 텍스트 컷)
+  const rb = $('#lyReburn'); if (rb) rb.hidden = true;   // 다시 입히기(되돌이표)·삭제 컷 = 도먼트(운영자 260731 "삭제컷이랑 되돌이표 필요없을거같음" — 코드 보존 · 복원 = 구 조건 `!(j.src && /^https?:\/\//i.test(j.src))` 노출)
+  const cdw = $('#lyCutDelW'); if (cdw) cdw.hidden = true;   // 삭제 컷 토글 = 위와 동행 도먼트(운영자 260711 텍스트 컷 축 보존)
   $('#lyBurnNote').textContent = (j.note ? j.note + ' · ' : '') + (j.bytes ? (j.bytes / 1048576).toFixed(1) + 'MB' : '');
 }
 async function lyVidFetch(outPath) {   // video.json 1회 fetch — SPA 폴백(HTML 200) 무시 = poll()과 동일 가드
