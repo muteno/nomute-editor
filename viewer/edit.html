@@ -1402,6 +1402,21 @@ function goFireFail(g){
   g.classList.remove('firing','okdone','checking','busy'); g.removeAttribute('aria-busy');
   g.textContent=g.dataset.label||'생성'; setEta();
 }
+// ── 발사 버튼 먹통 백신(운영자 260731 "생성 버튼 안 눌린다") ──
+//   `.go.firing`·`#editGo.busy`는 둘 다 pointer-events:none = 이 클래스가 남으면 버튼이 **영구히 안 눌린다**.
+//   정상 해제는 (접수 응답 → goFireFail/goFireOk) · (폴 종료 → goFireDone) 두 경로뿐이라, 그 사이 페이지가
+//   백그라운드로 빠졌다 돌아오거나 bfcache로 복원되면 해제 주체가 없어진 채 잠금만 남는 창이 생긴다.
+//   판정 = 「폴이 안 돌고(_polling·_pollLive 둘 다 false) 접수도 진행 중이 아닌데(_firing false) 잠금 클래스가 있다」
+//   = 주인 없는 잠금 → 원복. 진행 중인 발사는 _firing/_polling이 참이라 절대 안 건드린다(오해제 0).
+//   선례 = index.html pageshow(persisted) firing 잔존 해제(영구 먹통 방지 · 분신술1·3·7·10).
+let _firing=false;   // 접수 fetch 왕복 중 = true(먹통 백신이 진행 중 발사를 건드리지 않게 하는 유일 신호)
+function goHeal(){
+  const g=document.getElementById('editGo'); if(!g) return;
+  if(_firing||_polling||_pollLive) return;   // 진행 중 = 잠금이 정당 → 무접촉
+  if(g.classList.contains('firing')||g.classList.contains('busy')||g.disabled){ goFireDone(g); g.disabled=false; }   // 주인 없는 잠금만 회수
+}
+window.addEventListener('pageshow',e=>{ if(e.persisted) goHeal(); });   // bfcache 복원(폰 뒤로가기) = 타이머·핸들러 주인 소실 창
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) goHeal(); });   // 앱 전환 복귀
 
 function fireSegs(){   // n구간 발사 정규화(운영자 260728) — 유효(끝>시작+0.2s)만 · 정렬 · 겹침 병합 · 2자리 반올림 · ≤SEG_MAX(api 재검증 = 이중 방어) · 끝 공란 = 영상 끝까지
   const raw=[];
@@ -1478,10 +1493,11 @@ $('#editGo').addEventListener('click',async()=>{
     catch(e){ gb.disabled=false; return errStatus('재업로드 실패 — 다시 ('+String(e&&e.message||'').slice(0,60)+')'); }
   }
   const t0=Date.now();
-  gb.disabled=false; goFireStart(gb);   // 잠금은 .firing pointer-events:none이 담당(disabled 딤이 풀필 게이지를 흐리는 겹침 방지 — 재업로드 창에서만 disabled)
+  gb.disabled=false; goFireStart(gb); _firing=true;   // 잠금은 .firing pointer-events:none이 담당(disabled 딤이 풀필 게이지를 흐리는 겹침 방지 — 재업로드 창에서만 disabled) · _firing = 접수 왕복 표식(먹통 백신 goHeal이 진행 중 발사를 오해제하지 않게)
   try{
     const payload = url? {url, opts:o} : FILE_R2? {r2key:FILE_R2, name:FILE_NAME, opts:o} : {fileB64:FILE_B64, name:FILE_NAME, opts:o};
-    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const _sig=(typeof AbortSignal!=='undefined'&&AbortSignal.timeout)?AbortSignal.timeout(payload.fileB64?180000:60000):null;   // 접수 무응답 상한(운영자 260731 "생성 버튼 안 눌린다") — ⚠ 이 fetch가 응답 없이 매달리면 `.go.firing{pointer-events:none}`(213행)이 안 벗겨져 **버튼이 영구 먹통**(finally도 fetch가 끝나야 도달)이었다. 관용구 = thumb 정본(`sig? {signal:sig}:undefined` · 미지원 브라우저는 타임아웃 없이 정상 fetch). 값 = 용도별(tr.html 150000 선례 동축): 기본 60s = R2키·URL 발사(본문 = 옵션 JSON 수 KB) 여유 · base64 폴백은 30MB 본문이 실려 180s(회선 1.5Mbps 기준 상한 근사) — 12s 정본을 그대로 쓰면 느린 회선의 정상 발사를 오탐한다
+    const res=await fetch(API,Object.assign({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}, _sig?{signal:_sig}:{}));
     const j=await res.json();
     if(!res.ok||j.error){ goFireFail(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); FILE_R2=''; return; }   // 실패 시 키 폐기 = 죽은 키(만료·소진) 재사용 루프 차단 — 다음 발사는 _lastFile 재업로드(평의회7)
     FILE_R2='';   // R2 키 소진(러너가 잡 끝에 원본 삭제 = 일회용) — 재발사는 _lastFile 재업로드 경로
@@ -1490,8 +1506,8 @@ $('#editGo').addEventListener('click',async()=>{
     pendSet({id:j.id, t0, lbl:editLbl(o), clip:o.clip?1:0, cutscan:o.cutscan?1:0});
     goFireOk(gb);
     pollEdit(j.id, t0, t0-90000, editLbl(o), o.clip?'clip':o.cutscan?'cutscan':'');
-  }catch(e){ goFireFail(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
-  finally{ $('#editGo').disabled=false; }
+  }catch(e){ goFireFail(gb); const _to=(e&&(e.name==='TimeoutError'||e.name==='AbortError')); status.innerHTML=WARN_SVG+(_to?' 접수가 응답이 없어 — 회선 확인하고 다시 (버튼은 다시 눌러도 됨)':' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'); status.classList.add('err'); }   // 타임아웃 = 원인 지목 문구(구 e.message는 "signal timed out" 원문이라 무슨 일인지 안 보였다) · 어느 경로든 goFireFail이 잠금을 벗겨 재시도 가능
+  finally{ _firing=false; $('#editGo').disabled=false; }
 });
 function editLbl(o){ return o.clip?'클립 후보 찾는 중':o.cutscan?'자를 곳 찾는 중':'편집 중'; }   // 작업명 추정 라벨('60fps 보간 중'·'자막+보간 편집' 등) 폐지(운영자 260712) — 러너 단계 실측 채널이 없어(원샷 워크플로·클라가 받는 산출 = 끝의 video.json/error.log뿐) 어떤 단계가 도는지 확인 불가 = 옵션발 단정 대신 범용 '편집 중' 정직 표기 · 클립 스캔은 잡 전체가 후보픽이라 명명 유지
 
