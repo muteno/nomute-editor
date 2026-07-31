@@ -128,6 +128,15 @@
   .kar-in::selection { background:rgba(var(--accent-rgb),.3); color:var(--accent); }   /* 탭 = 전체 선택 — 브라우저 기본 파랑은 팔레트 밖 */
   .kar-c { color:var(--accent); opacity:.62; font-size:12px /* raw-ok: .axchip 활자 정본 동값 */; font-weight:600 /* raw-ok: .axchip 정본 동값 */; }
   .kdiv { border-top:1px solid var(--line); margin:var(--sp-4) 0; }   /* 표현3(네거티브)↔오디오 구분선 = index .tb-div 헤어라인 문법 계승 · 색 = k엔 --line2 미정의(line 127 실측) → 근접 토큰 --line 자동 계승(§핵심명령 2-a) · 위아래 sp-4 = 표현 계열↔오디오 구획 분리(운영자 260717 "오디오랑 구분되게") */
+  /* ── 작업 내역(운영자 260731 "서버 인덱스로 승격") = sb.html .jobs 블록 그대로 계승(sb = thumb .jobs/.job 동일값 계승 체인) — --line2만 --line(k 미정의 → 근접 토큰 자동 계승 = 위 .kdiv 선례) ── */
+  .cref-lbl { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 라벨 = 뉴스 .cref-lbl 정본 계승(sb:69 동값) */
+  .geni-sechead { display:flex; align-items:center; gap:8px; width:100%; padding:var(--sp-2) 0 var(--sp-1); background:none; border:none; border-bottom:1px solid var(--line); text-align:left; -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-sechead 동일값 계승(gap8 · sb:70 동값 — 밑줄색만 --line = k 근접 계승 선례) */
+  .jobs { display:flex; flex-direction:column; gap:var(--sp-1); margin:10px 0 0; }   /* raw-ok: thumb .jobs 동일값 계승(margin 10 · sb 동값) */
+  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:var(--fs-label); padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* raw-ok: thumb .job 동일값 계승(gap8·padding 8/11 · sb 동값) */
+  .job .jlab { font-weight:800; color:var(--accent); cursor:pointer; }   /* reuse-ok: sb.html .jlab 정본 그대로 계승(신설 아님 — 라벨 탭 = 재열람) */
+  .job .jlab:active { transform:scale(var(--press-l,.95)); }
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }   /* raw-ok: thumb .jst 동일값 계승(gap5 · sb 동값) */
+  .job .jst svg { display:block; width:14px; height:14px; flex:none; }
   /* ── 영상 개요 축(비디오모델·비율·화질·프레임) = 설계(sb .geni-row) 우측정렬 인라인 픽커 계승(운영자 260717 "1을 2 느낌으로") · 라벨 좌·값 우·무테 텍스트 · 길이 슬라이더/표현은 비대상 ── */
   .axrow.kax { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--sp-2); margin-top:var(--sp-4); }
   .axrow.kax label.fl { margin:0; flex:none; }
@@ -325,6 +334,8 @@
 
   <div class="status" id="status"></div>
   <div class="out" id="out"></div>
+  <div class="geni-sechead" id="jobsHead" hidden><span class="cref-lbl">작업 내역</span></div><!-- 서버 인덱스(k-hist.json = 전 기기 제작분) 재열람 — sb 작업 내역 문법 그대로 계승(운영자 260731 "서버 인덱스로 승격") · 비었으면 섹션째 숨김 -->
+  <div class="jobs" id="jobs"></div>
 </div>
 
 <!-- 빠른메뉴(이미지/자막 도구 #rfab 계승) — 코어(+) 펼치면 웹 렌더 생성 · 코어 위 '-' 최소화 -->
@@ -895,6 +906,46 @@ $('#go').onclick = async () => {
   } finally { $('#go').disabled = false; }
 };
 // 재열람(260707 2차): 닫기·새로고침 = iframe 파기로 결과 증발 → 마지막 결과(TTL 24h)를 재진입 시 복원(index REVISING/loadRevising 선례 · 새 생성 시작 전까지만 — 화면 요소 신설 0·기존 #out/#status 재사용)
+// ── 작업 내역(운영자 260731 "서버 인덱스로 승격") — k-hist.json(build-viewer 스캔 = 전 기기 제작분) 재열람 · sb 작업 내역 문법 계승(k엔 로컬 잡 적립 축이 없어 서버 축 단독 · 행 탭 = prompt.md 재열람 = restoreLast 렌더 경로 재사용) ──
+let SRV_JOBS = [], _sjSig = '', _sjBusy = false;
+async function pollSrvJobs() {   // 10s 폴 + 부모 셸 새로고침 훅 공용 — 무변경 sig 게이트(재렌더 0 · sb 동문법)
+  if (document.hidden || _sjBusy) return; _sjBusy = true;
+  try {
+    const r = await fetch('k-hist.json?t=' + Date.now()); if (!r.ok) return;
+    const ct = (r.headers.get('content-type') || '').toLowerCase(); const tx = await r.text();
+    if (!tx || ct.includes('text/html') || /^\s*</.test(tx) || tx === _sjSig) return;   // SPA 폴백 가드 = poll 동일 · 무변경 skip
+    const j = JSON.parse(tx); if (!Array.isArray(j)) return;
+    _sjSig = tx; SRV_JOBS = j; renderJobs();
+  } catch (e) { /* 미배포·오프라인 = 조용한 폴백(내역 없음 = 섹션 숨김 유지) */ } finally { _sjBusy = false; }
+}
+function renderJobs() {
+  const box = $('#jobs'), head = $('#jobsHead'); if (!box || !head) return;
+  const a = SRV_JOBS.filter(s => s && s.id && /^[A-Za-z0-9_-]+$/.test(s.id) && /^k_out\/[A-Za-z0-9_-]+\/prompt\.md$/.test(s.out || ''));   // 경로 화이트리스트(복원 정규식 정신)
+  head.hidden = !a.length; box.innerHTML = '';
+  a.forEach(s => {
+    const row = document.createElement('div'); row.className = 'job done';
+    const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = (s.t || '프롬프트').slice(0, 24); lab.title = '탭 = 이 결과 불러오기'; lab.setAttribute('role', 'button'); lab.setAttribute('tabindex', '0');
+    lab.addEventListener('click', async () => {   // 재열람 = restoreLast 렌더 경로 재사용(SPA 폴백 가드 동일 · 레퍼런스 이미지는 발사 스냅샷 미보존 = 미표시)
+      try {
+        const r = await fetch(s.out + '?t=' + Date.now()); if (!r.ok) return;
+        const ct = (r.headers.get('content-type') || '').toLowerCase(); const md = await r.text();
+        if (!md || !md.trim() || ct.includes('text/html') || /^\s*<!doctype/i.test(md) || /<html[\s>]/i.test(md.slice(0, 300))) return;
+        const d = new Date(s.ts || 0), p2 = n => String(n).padStart(2, '0');
+        $('#status').classList.remove('err');
+        $('#status').innerHTML = OK_SVG + ' 지난 결과 · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' (새로 생성하면 대체)';
+        await renderOut(md, null, $('#out'));
+        try { $('#out').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+      } catch (e) { /* 재열람은 보조 — 실패 무시 */ }
+    });
+    const st = document.createElement('span'); st.className = 'jst';
+    const d = new Date(s.ts || 0), p2 = n => String(n).padStart(2, '0');
+    st.innerHTML = CHECK_SVG + ' 완료 · ' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes());   // 서버 축 = 여러 날 누적이라 일자 동반(sb '완료 · HH:MM'의 전기기판)
+    row.appendChild(lab); row.appendChild(st); box.appendChild(row);
+  });
+}
+window.nmRefresh = pollSrvJobs;   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅
+setInterval(pollSrvJobs, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 자동 폴(스튜디오 동기화 통일 축 · visible 게이트 내장)
+pollSrvJobs();   // 부팅 즉시 1회(10s 첫 틱 대기 없이)
 (async function restoreLast() {
   try {
     const s = JSON.parse(localStorage.getItem(LKEY) || 'null');
