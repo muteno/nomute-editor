@@ -910,7 +910,9 @@ function render(){
 //    · 좌우 마진 7.4%[:560] · 배경 게이지>0 = 검정띠 알파 bg%+패딩 fs×0.10[:548·563-567] · 배경 0 = bold 외곽선 0.064fs+그림자 / clean·box 0.032fs[:571-573].
 //    정직 한계: 시스템폰트(러너 Noto CJK와 미세차) · 1줄 샘플(다줄 상단캡 비반영) · 키워드 그린·카라오케 채색은 미표시(콘텐츠 그린 = UI 게이트 밖 콘텐츠 색이라 프리뷰 생략)
 //    · 여백(블러) = 프레임 스냅샷 블러로 연출(운영자 260712 — 실물은 움직이는 블러·프리뷰는 정지 질감·첫 프레임 loadeddata 스냅) · URL 소스 = 프리뷰 불가(픽셀이 브라우저에 없음 = 크롭 스크럽과 동일 정직).
-let _dockHold=null;   // null=자동(완성본 보이면 접힘) · 'open'/'fold'=수동(요약 스트립 탭 — 새 발사에 자동 복귀) · 'src'=새 소스 첨부 펼침(완성본이 다시 표시되는 순간 자동 해제 — 운영자 260728 도크 자동 접힘)
+let _dockHold=null, _srcSig='';   // null=자동(완성본 보이면 접힘) · 'open'/'fold'=수동(요약 스트립 탭 — 새 발사에 자동 복귀) · 'src'=새 소스 첨부 펼침(완성본이 **새로** 표시되는 순간 자동 해제 — 운영자 260728 도크 자동 접힘) · _srcSig = 그 첨부 시점의 결과 서명(아래 resSig)
+function resSig(){ const lv=document.getElementById('lyBurnVid'); const vw=document.getElementById('vwrap');   // 결과 스테이지 신원 = {대기중 · 편집 결과 URL · 자막 번인 결과 src · 결과 스테이지 가시}
+  return (_pollLive?'L':'-')+'|'+(RESULT_URL||'')+'|'+((lv&&lv.getAttribute('src'))||'')+'|'+((vw&&!vw.hidden)?'V':'-'); }
 function dockSync(){
   const d=document.getElementById('topDock'); if(!d) return;
   const vw=document.getElementById('vwrap'), lb=document.getElementById('lyBurn');
@@ -919,7 +921,7 @@ function dockSync(){
   //   ⚠ 재검① 260728: 판정을 「완성본 가시」로만 좁히고 dockSync를 DOM 갱신 **전에** 부르는 바람에 **대기 중 접히고 완성되면 펼쳐지는** 정반대 동작이 됐다(호출 순서는 아래 4곳에서 갱신 뒤로 이동).
   //   _pollLive 합류 = 구 `_ps.hidden=true`(하드 숨김)가 막던 **대기 스테이지 ↔ 미리보기 중복 화면**도 같은 축으로 차단(하드 숨김 대신 부드러운 접힘).
   const res=!!_pollLive||(vw&&!vw.hidden&&!vw.querySelector('.scanline'))||(lb&&!lb.hidden&&lv&&!lv.hidden);
-  if(res&&_dockHold==='src') _dockHold=null;   // 소스 첨부 펼침은 완성본 등장에 양보(수동 'open'은 유지)
+  if(res&&_dockHold==='src'&&resSig()!==_srcSig) _dockHold=null;   // 소스 첨부 펼침은 **새** 완성본 등장에만 양보(수동 'open'은 유지) — ⚠ 사고 260731(운영자 "편집에 영상 넣으면 아예 영상 사라짐"): 구 조건은 `res`만 봐서, **직전 제작 결과가 화면에 남아 있는 상태**에서 새 영상을 첨부하면 첨부 그 틱의 dockSync가 곧바로 'src' 홀드를 벗겨 미리보기가 max-height:0으로 접힌 채 남았다(실측: 2회차 첨부부터 항상 pvsec 높이 0·opacity 0 = 넣은 영상이 통째로 안 보임 · 첫 첨부만 정상이라 상비 스모크 fresh 경로가 못 잡았다). 서명 비교 = 첨부 시점의 결과와 **다른** 결과가 떴을 때만 접힘(발사 경로는 _dockHold=null 리셋이 이미 담당 = 이중 방어)
   const fold=(_dockHold==='open'||_dockHold==='src')?false:_dockHold==='fold'?true:!!res;
   d.classList.toggle('fold', fold);
   const ps=document.querySelector('.pvsec'); if(ps){ try{ ps.inert=fold; }catch(_){} }   // 접힘 = SR·Tab 제거(CII §접이 정본 — pointer-events:none은 키보드를 못 막아 안 보이는 첨부·교체·삭제 버튼에 포커스가 들어가던 것)
@@ -1277,7 +1279,7 @@ function legacyRead(f, btn){   // R2 미가용·실패 폴백 = 종전 base64 �
 })();
 $('#file').addEventListener('change',async()=>{
   const f=$('#file').files[0]; if(!f) return;
-  _dockHold='src';   // 새 소스 첨부 = 미리보기 펼침(이전 완성본이 남아 있어도 새 작업 준비가 우선 · 다음 완성본 표시에 자동 해제 · 운영자 260728 도크 접힘 축)
+  _dockHold='src'; _srcSig=resSig();   // 새 소스 첨부 = 미리보기 펼침(이전 완성본이 남아 있어도 새 작업 준비가 우선 · **다음** 완성본 표시에 자동 해제 · 운영자 260728 도크 접힘 축) — 서명 기록 = 지금 떠 있는 결과와 나중 결과를 구분(구 코드엔 이게 없어 dockSync가 「지금 떠 있는 결과」도 「다음 완성본」으로 오인 = 260731 영상 사라짐 사고)
   FILE_B64=''; FILE_NAME=''; FILE_R2=''; _lastFile=null; _varea=0;
   CLIPS=null; $('#cliplist').hidden=true; $('#cliplist').innerHTML='';   // 새 소스 = 옛 스캔 후보 무효(엉뚱한 구간 적용 풋건 차단 · 검증⑦C)
   CUTS=null; CUT_REF=null; $('#cutlist').hidden=true; $('#cutlist').innerHTML='';   // 컷 미리보기도 동일(다른 영상의 승인 컷이 붙는 사고 차단 · 260727)
