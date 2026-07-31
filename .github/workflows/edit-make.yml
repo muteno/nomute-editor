@@ -356,6 +356,42 @@ jobs:
               print("원본 보관:", url)
           PY
 
+      # ── 스캔 산출 R2 즉시 게시(운영자 260731 "클립·컷 스캔도 즉시") — video.json 즉시 경로(ly_burn 260728)의 스캔판.
+      #    clips.json/cuts.json을 R2 ly_out/<id>/에 PUT → /api/edit?recent=(발견)·?stat&k=(열람)가 Pages 배포 랙 없이 서빙.
+      #    ⚠ 반드시 위 '원본 보관' 스텝 **뒤**(src URL 기입이 끝난 최종본을 올린다 — 앞이면 src 없는 사본이 R2에 남아
+      #    확정 재렌더가 원본을 잃는 평의회4 사고의 R2판 재발). 전면 fail-soft: 실패 = 종전 Pages 배포 경로 그대로(즉시성만 상실).
+      - name: 스캔 산출 R2 즉시 게시 (clips/cuts.json)
+        if: ${{ contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutscan":true') }}
+        timeout-minutes: 4   # JSON 소형 PUT — R2 스톨 백스톱(형제 스텝 동형)
+        env:
+          IN_ID: ${{ inputs.id }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac   # 문자셋 가드 = 형제 스텝 동형
+          python3 - "$IN_ID" <<'PY' || echo "::warning::스캔 산출 R2 게시 실패(비치명 — Pages 배포 경로가 커버 · 즉시성만 상실)"
+          import os
+          import sys
+          sys.path.insert(0, ".github/scripts")
+          import thumb_gen as tg   # r2_upload·R2_ON 재사용(원본 보관 스텝 동형)
+          vid = sys.argv[1]
+          if not tg.R2_ON:
+              print("R2 미설정 — 스킵")
+              raise SystemExit(0)
+          n = 0
+          for cand in ("clips.json", "cuts.json"):
+              p = os.path.join("viewer", "ly_out", vid, cand)
+              if not os.path.isfile(p):
+                  continue
+              if tg.r2_upload(open(p, "rb").read(), "ly_out/{}/{}".format(vid, cand), "application/json"):
+                  n += 1
+                  print("R2 게시:", cand)
+          print("스캔 산출 R2 게시 {}건".format(n))   # 집계 1줄(§관측 — 0건도 로그에 남긴다)
+          PY
+
       - name: Demucs 캐시 (배경음 제거)
         if: ${{ contains(inputs.opts, '"bgm":true') }}
         uses: actions/cache@v4
