@@ -59,6 +59,7 @@
       · KST(§📐) · 네트워크는 타임아웃 필수(§9) · 소스·계정 단위 fail-soft(실패 = 기존 보존).
 """
 import base64   # 구글 뉴스 RSS 링크(news.google.com/rss/articles/…) 페이로드 → 언론사 원문 URL 해석(gnews_url · 260729)
+import gzip   # 인스타 내부 API 브라우저 지문(_ig_get · 260801) — gzip을 요청해야 urllib 기본 `Accept-Encoding: identity` 봇 티가 사라진다
 import html
 import http.cookiejar   # 스레드 302 챌린지 추적(_th_fetch · 260729)
 import json
@@ -1041,8 +1042,79 @@ def _tk_cover_fresh(items, budget=45):
             pass
 
 
+INSTA_PATH = {}   # [관측] 계정별로 어느 경로가 먹혔나(feed/web) — 메타가 한쪽을 또 깨면 이 집계가 먼저 알려준다
+
+
+def _ig_get(url, hdr, timeout=15):
+    """인스타 내부 API GET → JSON. 지문 교정(260801 폰 실측) — urllib은 기본으로 `Accept-Encoding: identity`를
+    붙이고 `Accept`를 아예 안 보낸다(브라우저·curl은 절대 그러지 않는다). 같은 폰·같은 쿠키·같은 순간에
+    curl은 응답을 받는데 urllib만 429가 났던 자리 → 헤더를 브라우저 쪽으로 맞추고 gzip을 직접 푼다."""
+    r = urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=timeout, context=CTX)
+    b = r.read()
+    if "gzip" in (r.headers.get("Content-Encoding") or "").lower():
+        b = gzip.decompress(b)
+    return json.loads(b.decode("utf-8", "ignore"))
+
+
+def _ig_cover(cands):
+    """커버 = 240px 이상 중 **가장 작은** 변형(표시 슬롯 33×44라 원본은 셀룰러 낭비 · 종전 thumbnail_resources 정본 계승)."""
+    ok = [c for c in (cands or []) if isinstance(c, dict) and c.get("url") and _i(c.get("width")) >= 240]
+    return (min(ok, key=lambda c: _i(c.get("width"))) if ok else ((cands or [{}])[0] or {})).get("url") or ""
+
+
+def _ig_from_feed(acc, j):
+    """모바일 피드 응답(items[]) → 표준 항목. **프로필 직렬화를 안 거치는 게 핵심** —
+    260801 파손(`ig_business_category_subvertical has been deleted` 400)은 프로필 응답을 만들 때 터지므로
+    피드 경로는 그 스키마를 아예 안 건드린다(실측: web_profile_info는 호스트·계정 무관 전멸)."""
+    out = []
+    for n in (j.get("items") or []):
+        if _i(n.get("media_type")) != 2 or not n.get("code"):   # 2 = 동영상(1 사진·8 캐러셀 제외 = 종전 is_video 대응)
+            continue
+        cap = (((n.get("caption") or {}).get("text")) or "").strip().split("\n")[0]
+        out.append({"account": acc, "title": cap[:120],
+                    "views": _i(n.get("play_count") or n.get("ig_play_count") or n.get("view_count")),
+                    "likes": _i(n.get("like_count")), "cmts": _i(n.get("comment_count")),
+                    "cover": _ig_cover((n.get("image_versions2") or {}).get("candidates")),
+                    "time": _i(n.get("taken_at")),
+                    "url": "https://www.instagram.com/reel/%s/" % n.get("code")})
+    return out
+
+
+def _ig_from_web(acc, j):
+    """레거시 web_profile_info(edges[]) → 표준 항목. 260801 현재 대부분 400이지만 **경로를 지운 게 아니라 뒤로 미뤘다** —
+    메타가 스키마를 되돌리면 이쪽이 다시 살아나고, 피드 경로가 막히는 날엔 이게 폴백이 된다(양다리 = 전멸 방지)."""
+    out = []
+    for e in ((((j.get("data") or {}).get("user") or {}).get("edge_owner_to_timeline_media") or {}).get("edges") or []):
+        n = e.get("node") or {}
+        if not n.get("is_video") or not n.get("shortcode"):
+            continue
+        ce = ((n.get("edge_media_to_caption") or {}).get("edges") or [])
+        cap = (((ce[0] if ce else {}).get("node") or {}).get("text") or "").strip().split("\n")[0]
+        cover = n.get("thumbnail_src") or n.get("display_url") or ""
+        for tr in (n.get("thumbnail_resources") or []):
+            if isinstance(tr, dict) and _i(tr.get("config_width")) >= 240 and tr.get("src"):
+                cover = tr["src"]
+                break
+        out.append({"account": acc, "title": cap[:120], "views": _i(n.get("video_view_count")),
+                    "likes": _i((n.get("edge_liked_by") or {}).get("count")),
+                    "cmts": _i((n.get("edge_media_to_comment") or {}).get("count")),
+                    "cover": cover, "time": n.get("taken_at_timestamp") or 0,
+                    "url": "https://www.instagram.com/reel/%s/" % n.get("shortcode")})
+    return out
+
+
+# 경로 사다리(260801) — 앞에서부터 시도하고 400/404면 다음 경로. 429는 사다리를 타지 않는다(리밋은 경로 문제가 아님).
+_IG_PATHS = (("feed", "https://i.instagram.com/api/v1/feed/user/%s/username/?count=12", _ig_from_feed),
+             ("web", "https://i.instagram.com/api/v1/users/web_profile_info/?username=%s", _ig_from_web))
+
+
 def insta_subs(accounts, limit=10, deadline=None):
-    """인스타 구독 계정 최신 릴스 — 웹 내부 API web_profile_info(무인증·계정당 최근 12게시물).
+    """인스타 구독 계정 최신 릴스 — 내부 API 경로 사다리(_IG_PATHS: 모바일 피드 → 레거시 web_profile_info · 계정당 최근 12게시물).
+    ⚠️ 260801 판례(폰 실측 · 이 사다리가 생긴 이유) — `web_profile_info`가 호스트(i·www)·계정 무관 **전멸 400**
+    {"message":"Asset asset://laser.provider/ig_business_category_subvertical has been deleted"} = 메타가 프로필
+    직렬화 스키마를 지워 놓고 응답 코드가 아직 참조하는 서버측 파손(외부 관측 동일 — instantgram v2026.07.23 릴리즈 노트).
+    쿠키·CSRF·UA 전부 정상인데도 인스타가 **한 번도** 안 들어온 진짜 원인이 이거였다(쿠키 교체로는 영원히 안 고쳐진다).
+    → 프로필을 안 거치는 피드 경로를 1순위로 두고, 레거시는 지우지 않고 2순위로 미룬다(메타가 되돌리면 자동 복귀).
     차단 리스크 최고 소스 → 콜 간 6s 보수 운용·계정별 fail-soft·429 = 잔여 중단(IP 단위 리밋이라
     연타 무의미 · 컨테이너 실측 260711 — 그때까지 수집분 사용·실패런은 main()이 직전분 보존).
     영상만 · 정렬 = 조회수(숨김 0 = 좋아요 보조).
@@ -1063,38 +1135,31 @@ def insta_subs(accounts, limit=10, deadline=None):
         if i:
             time.sleep(6)
         try:
-            _hdr = {**UA, "x-ig-app-id": "936619743392459"}   # 인스타 웹앱 공개 앱ID(웹 내부 API 관례값)
+            _hdr = {**UA, "Accept": "*/*", "Accept-Encoding": "gzip, deflate",
+                    "x-ig-app-id": "936619743392459"}   # 인스타 웹앱 공개 앱ID(웹 내부 API 관례값)
             if ck:                                            # 쿠키 주입 = threads_subs 문법 계승(게스트 경로 불변)
                 _hdr["Cookie"] = ck
                 if _csrf:
                     _hdr["x-csrftoken"] = _csrf
                 if _ua:
                     _hdr["User-Agent"] = _ua   # 세션-UA 짝 맞춤(260729 useragent mismatch) — 쿠키 있을 때만
-            req = urllib.request.Request(
-                "https://i.instagram.com/api/v1/users/web_profile_info/?username=" + urllib.parse.quote(acc),
-                headers=_hdr)
-            j = json.loads(urllib.request.urlopen(req, timeout=15, context=CTX).read().decode("utf-8", "ignore"))
-            edges = (((j.get("data") or {}).get("user") or {}).get("edge_owner_to_timeline_media") or {}).get("edges") or []
-            _sok("insta", acc)   # 프로필 응답 성공 = 계정 살아있음(영상 0건·상위 절단 = 사고 아님)
-            for e in edges:
-                n = e.get("node") or {}
-                if not n.get("is_video") or not n.get("shortcode"):
-                    continue
-                ce = ((n.get("edge_media_to_caption") or {}).get("edges") or [])
-                cap = (((ce[0] if ce else {}).get("node") or {}).get("text") or "").strip()
-                cap = cap.split("\n")[0]   # 캡션 첫 줄만(해시태그 덩어리 컷 — 업로드 도구 검증 트림 계승)
-                # 커버 = 소형 변형 우선(thumbnail_resources ≥240px · 표시 슬롯 33×44라 640px 원본은 셀룰러 낭비 — 평의회9)
-                cover = n.get("thumbnail_src") or n.get("display_url") or ""
-                for tr in (n.get("thumbnail_resources") or []):
-                    if isinstance(tr, dict) and _i(tr.get("config_width")) >= 240 and tr.get("src"):
-                        cover = tr["src"]
-                        break
-                out.append({"account": acc, "title": cap[:120], "views": _i(n.get("video_view_count")),
-                            "likes": _i((n.get("edge_liked_by") or {}).get("count")),
-                            "cmts": _i((n.get("edge_media_to_comment") or {}).get("count")),
-                            "cover": cover,
-                            "time": n.get("taken_at_timestamp") or 0,
-                            "url": "https://www.instagram.com/reel/%s/" % n.get("shortcode")})
+            _q = urllib.parse.quote(acc)
+            _last = None
+            for _name, _url, _parse in _IG_PATHS:
+                try:
+                    _items = _parse(acc, _ig_get(_url % _q, _hdr))
+                except urllib.error.HTTPError as he:
+                    _last = he
+                    if he.code in (400, 404):   # 스키마 파손·경로 폐지 = **다음 경로로**(260801 web_profile_info 전멸 대응)
+                        print(f"::notice::insta @{acc} {_name} 경로 HTTP {he.code} — 다음 경로 시도", file=sys.stderr)
+                        continue
+                    raise   # 429·5xx = 경로 문제가 아니다(사다리를 더 타면 리밋만 악화) → 바깥 핸들러로
+                INSTA_PATH[_name] = INSTA_PATH.get(_name, 0) + 1
+                _sok("insta", acc)   # 응답 성공 = 계정 살아있음(영상 0건·상위 절단 = 사고 아님)
+                out.extend(_items)
+                break
+            else:
+                raise _last if _last else urllib.error.URLError("insta 경로 전멸")
         except urllib.error.HTTPError as e:
             print(f"::warning::insta @{acc} HTTP {e.code}(스킵)", file=sys.stderr)
             _sfail("insta", acc, e.code)
