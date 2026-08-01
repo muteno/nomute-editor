@@ -18,6 +18,30 @@ on:
         description: '운영자 정리 지시(선택 — 관점·초점)'
         type: string
         default: ''
+      mode:
+        description: '소스 갈래 — url(유튜브·기본) / file(영상·음성 업로드 → Whisper large-v3) / text(사진 OCR·붙여넣기·기존 요약본 기사)'
+        type: string
+        default: 'url'
+      text:
+        description: 'text 모드 본문(OCR·붙여넣기·기사 본문 — 8000자 상한)'
+        type: string
+        default: ''
+      title:
+        description: 'text·file 모드 제목(파일명·기사 제목 — 노트 헤더)'
+        type: string
+        default: ''
+      kind:
+        description: 'text 모드 출처 갈래 — ocr / text / article(뷰어 신뢰도 배너 원천)'
+        type: string
+        default: 'text'
+      file:
+        description: 'file 모드 업로드 경로(uploads/<id>/src.<ext> · 20MB 이하 base64 경로)'
+        type: string
+        default: ''
+      r2_src:
+        description: 'file 모드 R2 직업로드 키(up_src/<id>.<ext> · 20MB 초과)'
+        type: string
+        default: ''
       account:
         description: '이 실행에 쓸 계정(구독 OAuth)'
         type: choice
@@ -37,7 +61,7 @@ permissions:
 jobs:
   nb:
     runs-on: ubuntu-latest
-    timeout-minutes: 75   # 자막 경로 ≈3~6분 · STT 폴백(1h 오디오 whisper) 백스톱 포함
+    timeout-minutes: 100   # 자막 경로 ≈3~6분 · STT 폴백(1h 오디오 whisper) 백스톱 · 파일 소스(회수 8 + 환경 15 + large-v3 50) 합산 여유(260801)
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,6 +83,7 @@ jobs:
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
 
       - name: 메타·자막 추출 (yt-dlp — 영상 다운로드 없음)
+        if: ${{ inputs.mode == '' || inputs.mode == 'url' }}   # 5입구 확장(운영자 260801) — 파일·텍스트 소스는 유튜브 경로를 통째로 건너뜀
         timeout-minutes: 12
         env:
           URL: ${{ inputs.url }}
@@ -187,9 +212,84 @@ jobs:
             echo "자막 없음 → Whisper STT 폴백 예정"
           fi
 
+      # ── 텍스트 소스(사진 OCR·붙여넣은 전문·기존 요약본 기사) = 전사 단계 없이 노트 파이프의 입력 2파일만 만들어 준다(운영자 260801) ──
+      #    타임코드가 없는 소스라 rows.s = 전부 0(뷰어 [00:00] 표기) · tr_src = kind(ocr/text/article)가 신뢰도 배너 원천.
+      - name: 텍스트 소스 수용 (OCR·붙여넣기·기사 참조)
+        if: ${{ inputs.mode == 'text' }}
+        env:
+          IN_ID: ${{ inputs.id }}
+          NB_TEXT: ${{ inputs.text }}
+          NB_TITLE: ${{ inputs.title }}
+          NB_KIND: ${{ inputs.kind }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          mkdir -p "viewer/nb_out/${IN_ID}"
+          python3 - <<'PY'
+          import json, os, re
+          txt = (os.environ.get("NB_TEXT") or "").strip()
+          if len(txt) < 40:
+              open("viewer/nb_out/%s/error.log" % os.environ["IN_ID"], "w", encoding="utf-8").write("내용이 너무 짧아 — 더 긴 본문으로 다시 해줘.")
+              raise SystemExit("텍스트 소스 부족")
+          kind = os.environ.get("NB_KIND") or "text"
+          if kind not in ("ocr", "text", "article"):
+              kind = "text"
+          title = (os.environ.get("NB_TITLE") or "").strip()[:200]
+          if not title:   # 제목 미지정 = 첫 줄을 제목으로(노트 헤더 공백 방지)
+              title = re.split(r"[\n。.!?]", txt.strip())[0][:80] or "붙여넣은 자료"
+          ch = {"ocr": "사진 글자 인식(OCR)", "text": "붙여넣은 텍스트", "article": "기존 요약본 기사"}[kind]
+          json.dump({"yt_id": "", "url": "", "title": title, "channel": ch, "uploaded": "", "dur": 0, "lang": ""},
+                    open("/tmp/nb_meta.json", "w", encoding="utf-8"), ensure_ascii=False)
+          # 문단 단위 rows — 전사 패스스루 계약(nbmake.sh)이 rows를 그대로 note.transcript로 싣는다
+          paras = [p.strip() for p in re.split(r"\n{2,}", txt) if p.strip()] or [txt]
+          rows = []
+          for p in paras:
+              for i in range(0, len(p), 1200):   # nbmake.sh의 t 캡(1200자)과 동수 = 절단 0
+                  rows.append({"s": 0, "t": p[i:i + 1200]})
+          json.dump({"src": kind, "lang": "", "rows": rows}, open("/tmp/nb_tr.json", "w", encoding="utf-8"), ensure_ascii=False)
+          print(f"텍스트 소스 수용 — {kind} · {len(txt)}자 · {len(rows)}조각")
+          PY
+
+      # ── 파일 소스(영상·음성 업로드) 회수 — R2 직업로드(20MB 초과) 또는 uploads/<id>/src.<ext>(base64) ──
+      - name: 파일 소스 회수 (업로드 → /tmp)
+        if: ${{ inputs.mode == 'file' }}
+        timeout-minutes: 8
+        env:
+          IN_ID: ${{ inputs.id }}
+          NB_FILE: ${{ inputs.file }}
+          R2_SRC: ${{ inputs.r2_src }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          mkdir -p "viewer/nb_out/${IN_ID}"
+          ELOG="viewer/nb_out/${IN_ID}/error.log"
+          if [ -n "$R2_SRC" ]; then
+            printf '%s' "$R2_SRC" | grep -Eqx 'up_src/[0-9]{12}-[a-f0-9]{6}\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|ogg|aac|flac)' \
+              || { echo "::error::잘못된 r2_src: $R2_SRC"; exit 1; }   # api 정규식 자체 재검증(상류 신뢰 대신 최후 방어선 · ly-make 계승)
+            [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > "$ELOG"; echo "::error::R2 시크릿 미설정"; exit 1; }
+            EXT="${R2_SRC##*.}"
+            export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+            aws s3 cp "s3://$R2_BUCKET/$R2_SRC" "/tmp/nbsrc.$EXT" --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+              || { echo "업로드 파일 회수 실패 — 다시 올려줘." > "$ELOG"; echo "::error::R2 소스 회수 실패: $R2_SRC"; exit 1; }
+          else
+            printf '%s' "$NB_FILE" | grep -Eqx 'uploads/[0-9a-f-]{12,32}/src\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|ogg|aac|flac)' \
+              || { echo "::error::잘못된 file 경로: $NB_FILE"; exit 1; }
+            [ -f "$NB_FILE" ] || { echo "업로드 파일을 못 찾았어 — 다시 올려줘." > "$ELOG"; echo "::error::업로드 파일 없음: $NB_FILE"; exit 1; }
+            EXT="${NB_FILE##*.}"
+            cp "$NB_FILE" "/tmp/nbsrc.$EXT"
+          fi
+          echo "NB_SRC=/tmp/nbsrc.$EXT" >> "$GITHUB_ENV"
+          ls -la "/tmp/nbsrc.$EXT"
+
       # 자막 없는 영상만 — ffmpeg+faster-whisper+yt-dlp(apps/ly/setup.sh 단일출처) + 모델 캐시(ly 레일 그대로)
       - name: STT 환경 (자막 없음 폴백)
-        if: ${{ env.NB_NEED_STT == '1' }}
+        if: ${{ env.NB_NEED_STT == '1' || inputs.mode == 'file' }}   # 파일 소스도 같은 환경(faster-whisper large-v3 + ffmpeg) 공유 = 스텝 신설 0
         timeout-minutes: 15
         uses: ./.github/actions/runner-setup
         with:
@@ -215,6 +315,42 @@ jobs:
             || { echo "Whisper STT 실패 — 오디오 인식 불가. 자막 있는 영상으로 해줘." > "viewer/nb_out/${IN_ID}/error.log"; echo "::error::Whisper STT 실패"; exit 1; }
           python3 .github/scripts/nb_sub.py --stt /tmp/nb_stt.txt > /tmp/nb_tr.json
           echo "STT 전사 $(python3 -c "import json;print(len(json.load(open('/tmp/nb_tr.json')).get('rows') or []))")줄"
+
+      # ── 파일 소스 전사 = ffmpeg 오디오 추출(16k mono) → faster-whisper large-v3(ly_stt.py 정본 그대로) ──
+      - name: 파일 STT (ffmpeg 오디오 추출 → Whisper large-v3)
+        if: ${{ inputs.mode == 'file' }}
+        timeout-minutes: 50   # ly-make STT 백스톱 동값(large-v3 · 260728)
+        env:
+          IN_ID: ${{ inputs.id }}
+          NB_TITLE: ${{ inputs.title }}
+          NB_STT_MAX_SEC: ${{ vars.NB_STT_MAX_SEC || 3600 }}
+        run: |
+          set -e
+          ELOG="viewer/nb_out/${IN_ID}/error.log"
+          [ -n "$NB_SRC" ] && [ -f "$NB_SRC" ] || { echo "업로드 파일을 못 읽었어 — 다시 올려줘." > "$ELOG"; echo "::error::NB_SRC 없음"; exit 1; }
+          DUR="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$NB_SRC" 2>/dev/null | cut -d. -f1)"
+          case "$DUR" in ''|*[!0-9]*) DUR=0;; esac
+          if [ "$DUR" -gt "$NB_STT_MAX_SEC" ] 2>/dev/null; then
+            echo "파일이 $((DUR/60))분이라 전사 상한($((NB_STT_MAX_SEC/60))분)을 넘어 — 더 짧게 잘라서 올려줘." > "$ELOG"
+            echo "::error::파일 길이 상한 초과"; exit 1
+          fi
+          ffmpeg -nostdin -v error -y -i "$NB_SRC" -vn -ar 16000 -ac 1 -b:a 48k /tmp/nb_audio.mp3 \
+            || { echo "오디오를 추출하지 못했어 — 소리가 있는 영상·음성 파일로 다시 올려줘." > "$ELOG"; echo "::error::ffmpeg 오디오 추출 실패"; exit 1; }
+          python3 .github/scripts/ly_stt.py /tmp/nb_audio.mp3 "" > /tmp/nb_stt.txt \
+            || { echo "Whisper STT 실패 — 소리가 또렷한 파일로 다시 해줘." > "$ELOG"; echo "::error::Whisper STT 실패"; exit 1; }
+          python3 .github/scripts/nb_sub.py --stt /tmp/nb_stt.txt > /tmp/nb_tr.json
+          DUR="$DUR" python3 - <<'PY'
+          import json, os
+          title = (os.environ.get("NB_TITLE") or "").strip()[:200] or "업로드 파일"
+          json.dump({"yt_id": "", "url": "", "title": title, "channel": "업로드 파일", "uploaded": "",
+                     "dur": int(os.environ.get("DUR") or 0), "lang": ""},
+                    open("/tmp/nb_meta.json", "w", encoding="utf-8"), ensure_ascii=False)
+          tr = json.load(open("/tmp/nb_tr.json", encoding="utf-8"))
+          tr["src"] = "stt-file"   # 뷰어 신뢰도 배너 = '업로드 파일 Whisper'(유튜브 stt와 구분)
+          json.dump(tr, open("/tmp/nb_tr.json", "w", encoding="utf-8"), ensure_ascii=False)
+          print(f"파일 전사 {len(tr.get('rows') or [])}줄 · {title}")
+          PY
+          rm -f /tmp/nb_audio.mp3 "$NB_SRC"
 
       - name: 자료 노트 생성 (claude 1콜 — 전사 패스스루)
         if: ${{ env.NB_LIST != '1' }}
@@ -258,6 +394,7 @@ jobs:
           git config user.email "bot@nomute.local"
           git add "viewer/nb_out/${IN_ID}" 2>/dev/null || true
           git add metrics 2>/dev/null || true
+          git rm -r -q --ignore-unmatch "uploads/${IN_ID}" 2>/dev/null || true   # 파일 소스 원본 = 일회용(전사 끝 = 즉시 회수 · ly up-브랜치 수명 규칙과 동축 · 260801)
           git commit -m "nb: ${IN_ID} 자료 노트" || { echo "커밋할 것 없음"; exit 0; }
           pushed=0
           for i in 1 2 3 4 5; do
