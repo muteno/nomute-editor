@@ -54,8 +54,12 @@ export async function onRequestGet({ request }) {
     });
     if (!r.ok) return json({ kind, subs: null });
     const html = (await r.text()).slice(0, 3000000);
-    if (/"captionTracks"\s*:\s*\[\s*\{/.test(html)) return json({ kind, subs: true });     // 자막 트랙 1개 이상 = 자막 경로
-    if (/"playerCaptionsTracklistRenderer"|"captionTracks"/.test(html)) return json({ kind, subs: false });   // 자막 블록은 있는데 트랙 0 = 전사 경로
-    return json({ kind, subs: null });   // 동의 페이지·봇 차단 등 = 미상(보수적으로 흐림 표시)
+    // 판정(실측 260731 · 유튜브 2편 대조): 자막 있는 영상 = `"captions":` 객체 + `captionTracks` 배열이 함께 옴 /
+    //   자막 없는 영상 = **`"captions":` 키 자체가 없다**(유튜브가 통째로 생략) — 이 둘을 가르는 게 핵심.
+    //   단 `ytInitialPlayerResponse`(플레이어 응답)가 실려야 판정 유효 = 동의 페이지·봇 차단(응답 없음)은 미상으로 남긴다.
+    if (/"captionTracks"\s*:\s*\[\s*\{/.test(html)) return json({ kind, subs: true });    // 자막 트랙 1개 이상 = 자막 경로
+    if (!/ytInitialPlayerResponse/.test(html) || !/"playabilityStatus"/.test(html)) return json({ kind, subs: null });   // 페이지를 제대로 못 받음 = 미상
+    if (/"captions"\s*:/.test(html) || /"playerCaptionsTracklistRenderer"/.test(html)) return json({ kind, subs: false });   // 자막 블록은 있는데 트랙 0 = 전사 경로
+    return json({ kind, subs: false });   // 정상 응답 + captions 키 자체 없음 = 자막 없는 영상 = large-v3 전사 경로
   } catch { return json({ kind, subs: null }); }
 }
