@@ -2785,7 +2785,18 @@
   @keyframes dlChkPop { 0%{transform:scale(.3);opacity:0} 58%{transform:scale(1.3);opacity:1} 100%{transform:scale(1);opacity:1} }   /* opacity 동반 = scale(.3) 오프닝 프레임서 축소된 체크가 '점'으로 보이던 잔상 차단(분신술 260702·cref-dlall 15px서 더 뚜렷) */
   @media (prefers-reduced-motion:reduce){ .cref-dlall.dlbtn.dlseq-done .dlseq-ic .chk { animation:none; } }
   .cref-more { color:var(--accent); }   /* '+5장 더'(AI 재검색) = 초록 강조 + 버튼(운영자 260622) */
+  /* 'AI' 라벨 동반 발사 버튼(운영자 260801 "거기에 ai라고 하나 넣어줄래") = 같은 헤더 줄 형제 .cref-dlall(↓+'전체') 문법 100% 계승 —
+     아이콘+텍스트 공존은 §📐 원칙상 금지지만 이 헤더 줄엔 .cref-dlall 선례가 이미 정본으로 있고 운영자 명시 지시 = 승인 예외(setToolTitle 260712 선례 동축). */
+  .cref-more.cref-gen { width:auto; height:var(--btn-sm); border-radius:var(--r-s); display:inline-flex; align-items:center; gap:5px; padding:0 11px; /* raw-ok: gap 5·padding 11 = .cref-dlall 정본 값 그대로 복사(값 창작 0) */ }   /* 높이만 --btn-sm = 나란한 정사각(.cref-srch)과 동일 티어 = 세로 중심 Δ0.00px(실측 260801) */
+  .cref-more .cref-dllbl { font-size:var(--fs-xs); font-weight:700; color:inherit; white-space:nowrap; }   /* 라벨 활자 = .cref-dlall .cref-dllbl 선언 동값 계승 */
+  /* ── 등장·교체 결(운영자 260801 "버튼 누르고 제작중 뜨는게 딱딱 안끊기게") = cardIn 정본 통계승(520·522) · 스태거 = JS animationDelay i×32ms(4223 산식 동일) ──
+     구 동작 = 로딩 슬롯 insertBefore 즉시(애니 0) + 도착 시 섹션 통째 replaceWith = 두 번 튀었다. */
+  .thumbsec .cref-slot.chin, .thumbsec .cref.chin { animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards; }   /* 새 슬롯·새 카러셀 틀 둘 다 촤르륵(틀이 없던 상태서 생기면 섹션째 튐 = 같은 결로 흡수) */
+  @keyframes crefSwapOut { from { opacity:1; transform:none; } to { opacity:0; transform:scale(.985); } }   /* 로딩 슬롯 퇴장 = cardIn 역결(popOut 문법 계승·scale .985 동값) */
+  .thumbsec .cref-slot.swapout { animation:crefSwapOut .18s cubic-bezier(.4,0,1,1) both; pointer-events:none; }   /* 커브 = popOut 퇴장 정본(.4,0,1,1) 계승 */
+  @media (prefers-reduced-motion:reduce){ .thumbsec .cref-slot.chin, .thumbsec .cref.chin, .thumbsec .cref-slot.swapout { animation:none; } }   /* 스태거·전환 무효 = 전정계 배려(523 형제 규칙 계승) */
   .thumbsec .cref-slot.cref-loading { display:grid; place-items:center; background:rgb(20,22,24); border:1px dashed rgba(var(--accent-rgb),.18); cursor:default; animation:crefDim 5s ease-in-out infinite; }   /* 로딩 슬라이드 = N장 추가 예정(맨 좌측) · 테두리 알파 .18(은은) · 무채 검정 겉면(도형 안 채색)만 진해졌다↔연해졌다 디밍 = background 밝기 진동(알파 아님 = 뒤 배경 어두워도 보임 · 주변부 글로우/전체 opacity 아님 → 스피너·테두리·글자는 또렷 유지) · 5s 초은은 breathing · 밝기 변화폭 축소(peak 절반) · 브랜드 무채 다크(rgb 18,19,22) 명도 스케일 = 초록기 없음 · 운영자 260705 */
+  .thumbsec .cref-slot.cref-loading.chin { animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards, crefDim 5s ease-in-out infinite; }   /* 등장 촤르륵 + 브리딩 동시(운영자 260801) — 위 .chin 단독 선언은 뒤 .cref-loading 캐스케이드가 덮어 사문이라 여기서 2애니 합성(선언 순서 승자) · JS가 animationDelay '0ms, 0s'로 각각 지정 */
   @keyframes crefDim { 0%,100% { background-color:rgb(12,13,15); } 50% { background-color:rgb(26,28,31); } }   /* 진(어두운 무채검정)↔연(살짝 밝은 무채회색·peak 절반) · 18,19,22 톤 명도 변주(무채) */
   .cref-loading .cref-ld { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--mut); font-size:11px; font-weight:700; text-align:center; padding:6px; }
   .cref-loading .cref-ld-sp { width:22px; height:22px; border:2.5px solid rgba(var(--accent-rgb),.25); border-top-color:var(--accent); border-radius:50%; animation:crefspin .9s linear infinite; }
@@ -4838,6 +4849,7 @@ function decorate(root) {
 // ── 썸네일 후보 섹션 — 기사 제목 바로 아래(픽한 기사). 검색 이미지 + AI 생성 2화풍(각 4:5 캐러셀). ──
 // 데이터: a.cards.thumb_search[]={img,link,label} (기사 og:image+유사 · label=''(대표)/'유사') · a.cards.thumb_gen[]={img,label} (Gemini 2화풍).
 // 백엔드 채워지기 전(P1): 검색=라이브 폴백(Wikimedia 이미지 + 구글 검색 링크) / 생성=대기 플레이스홀더.
+const _thumbFile = a => (a && a.file) || '';   // 발사 대상 stem(api/genimg body.file) — 없으면 버튼 미표시(free 모드 아님)
 function thumbSec(a) {
   const c = a.cards || {};
   if (!a.has_body && !a.body && !c.state) return null;   // 픽(분석)된 기사에만 (has_body=경량 인덱스 플래그·body는 detail lazy → 게이트는 플래그 우선)
@@ -4857,7 +4869,10 @@ function thumbSec(a) {
   const wrap = document.createElement('div'); wrap.className = 'thumbsec'; wrap.dataset.sig = thumbSecSig(a);
   const dlAllH = (search.length + gen.length) ? '<button type="button" class="sbtn cref-dlall dlbtn thsec-dlall" title="썸네일 후보 전체 저장" aria-label="썸네일 후보 전체 저장">' + DLSEQ_IC + '<span class="cref-dllbl">전체</span></button>' : '';   // 전체저장 = 제목 라인 우측(검색+AI생성 통합 · .dlbtn 표준 · 운영자 260622)
   const secLbl = (search.length ? ['검색'] : []).concat(gen.length ? ['AI 생성'] : []).join(' · ');   // 헤더 = 실존 캐러셀만 표기 — AI 생성 스킵(no_thumb) 기사에 'AI 생성' 영구 오버-프로미스 방지(평의회 260711)
-  wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — ' + secLbl + '</span>' + dlAllH + '</div>';
+  // 발사 버튼 폴백 = 검색 카러셀이 없는 기사(og:image 0장 = fetch 차단 매체 등)에만 섹션 헤더로 이주 — 정상 기사는 종전대로 검색 소머리 우측 그대로(운영자 260801 "거기 버튼 위치 좋고").
+  // 없으면 그 기사만 영영 진입로 0(누를 + 자체가 안 그려짐) = 사후 AI 생성 불가 구멍이었다.
+  const secGenH = (!search.length && _thumbFile(a)) ? '<button type="button" class="sbtn cref-more cref-gen thsec-gen" title="AI 이미지 생성" aria-label="AI 이미지 생성"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="cref-dllbl">AI</span></button>' : '';
+  wrap.innerHTML = '<div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — ' + secLbl + '</span>' + secGenH + dlAllH + '</div>';
   // 1) 검색 이미지(4:5 캐러셀) — 실제 추출분이 있을 때만. 라벨 옆 토큰=검색·비전 비용(현재 0)
   if (search.length) {
     // 좌측(회색 돋보기) = 기사 제목 검색(불변) · 키워드(한/영 + 토글)는 thumbStatic이 kwData로 처리(운영자 260622)
@@ -4867,6 +4882,8 @@ function thumbSec(a) {
   }
   // 2) AI 생성(4:5 × 2화풍) — 생성분이 있을 때만. 라벨 옆 토큰=생성 비용(2화풍+재생성 누적)
   if (gen.length) wrap.appendChild(thumbStatic('AI 생성', gen, 'gen', null, c.thumb_usage));
+  const genH = wrap.querySelector('.thsec-gen');   // 폴백 발사(검색 카러셀 부재 기사) = 검색 소머리 + 와 동일 경로(openGenIdlg) · wrap = 섹션(=imgFetchGo가 AI 트랙을 찾거나 만든다)
+  if (genH) genH.addEventListener('click', e => { e.stopPropagation(); openGenIdlg(_thumbFile(a), wrap, genH); });
   const dlH = wrap.querySelector('.thsec-dlall');   // 제목 라인 전체저장 = 검색+AI생성 전 이미지 통합 순차 다운로드(.dlbtn 표준 dlAllSeq)
   if (dlH) {
     const meta = search.map((it, i) => ['검색 이미지', it, i]).concat(gen.map((it, i) => ['AI 생성', it, i]));
@@ -4911,7 +4928,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
       + '</span>'
     : '';
   const dlAll = '';   // 전체저장 = 섹션 제목 라인(.thumbsec-h)으로 이관 = 검색+AI생성 통합 1버튼(운영자 260622)
-  const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more" title="이미지 생성·더 가져오기 — 버튼 옵션 프롬프팅(Opus 작성·제미나이 렌더) 또는 관련 실사진 재검색(1~2분)" aria-label="이미지 생성·더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>' : '';   // + = 이미지 생성 팝업(#genidlg · 기존 실사진 재검색 = 팝업 보조 버튼으로 보존 · 운영자 260707)
+  const moreBtn = _moreFile ? '<button type="button" class="sbtn cref-more cref-gen" title="AI 이미지 생성·더 가져오기 — 버튼 옵션 프롬프팅(Opus 작성·제미나이 렌더) 또는 관련 실사진 재검색(1~2분)" aria-label="AI 이미지 생성·더 가져오기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="cref-dllbl">AI</span></button>' : '';   // + AI = 이미지 생성 팝업(#genidlg · 기존 실사진 재검색 = 팝업 보조 버튼으로 보존 · 운영자 260707) · 'AI' 라벨 = 운영자 260801(픽토만으론 발사 버튼 식별 불가 — .cref-dlall 문법 계승)
   const acts = (hbtn || kwbox || moreBtn) ? '<span class="cref-acts">' + moreBtn + hbtn + kwbox + '</span>' : '';   // 전체(dlAll)는 키워드와 함께 cref-kwrow 한 줄(우측정렬·세로중앙 · 운영자 260622)
   const bucket = usage ? (kind === 'gen' ? usage.gen : kind === 'search' ? usage.search : null) : null;
   const kwHtml = hasKw ? '<span class="cref-kw"></span>' : '';   // 키워드 칩(검정 글래스) — 텍스트·색은 언어따라 JS가 채움
@@ -4935,6 +4952,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
   wrap.querySelectorAll('.cref-slot').forEach(slot => {
     const i = +slot.dataset.i, it = list[i]; if (!it) return;
     const acts = slot.querySelector('.timg-acts');
+    if (kind === 'gen') { slot.classList.add('chin'); slot.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; }   // 생성물 등장 촤르륵 = cardIn + i×32ms 스태거(4223 산식 그대로 · 운영자 260801 "추가되는 거 촤르륵으로") — 검색 슬롯은 무접촉(재검색 5장 누적이라 매번 전체 재생 = 과함)
     if (kind === 'gen' && it.sid) acts.insertBefore(thumbRedoSbtn(it.sid), acts.firstChild);   // 생성 슬롯마다 수정 .sbtn(저장 앞)
     if (kind === 'gen' && it.sid && CUR_A && thumbRedoPending(CUR_A.file, it.sid)) markSlotReshooting(slot);   // 재생성 대기 중 화풍이면 진행바 오버레이 복원(재렌더 후에도 유지)
     const _tdl = slot.querySelector('.timg-dl'); if (dlSeen(it.img)) _tdl.classList.add('dl-done');   // 재렌더 시 '받음' mut 복원
@@ -4976,14 +4994,28 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
 }
 // 이미지 받아오기 공통기 — api 발사(moreimg 재검색·genimg 제미나이 생성 공용 · 운영자 260707) ·
 // 맨 좌측 반투명 로딩 슬라이드 · articles.json 폴링(~25s×ticks)으로 thumb_search 늘면 thumbsec 재렌더(새 이미지 좌측·번호 갱신).
+// 생성(thumb_gen) 로딩 슬롯이 들어갈 트랙 = **AI 생성 카러셀**. 발사 버튼은 검색 소머리(또는 섹션 헤더)에 있어 wrap이 검색 카러셀/섹션이라
+// 종전엔 생성 로딩이 검색 카러셀에 떴고(산출은 AI 카러셀 = 자리 불일치), AI 카러셀이 없던 기사는 도착 순간 섹션째 튀어나왔다(운영자 260801 "딱딱 안끊기게").
+// → 있으면 그 트랙을 쓰고, 없으면 정본 문법(.cref/.cref-h/.cref-lbl/.cref-track) 그대로 카러셀을 만들어 붙인다(틀도 cardIn 촤르륵으로 등장).
+function genTrackOf(wrap) {
+  const sec = wrap.closest('.thumbsec') || wrap;
+  const cur = sec.querySelector('.cref-slot.gen, .cref-slot.cref-loading');
+  if (cur) return cur.closest('.cref').querySelector('.cref-track');
+  const cf = document.createElement('div'); cf.className = 'cref chin';
+  cf.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">AI 생성</span></span></div><div class="cref-track"></div>';
+  sec.appendChild(cf);
+  const t = sec.querySelector('.thsec-t'); if (t && !/AI 생성/.test(t.textContent)) t.textContent += ' · AI 생성';   // 헤더 라벨 = 실존 카러셀만 표기(secLbl 계약) — 이제 실존하므로 추가
+  return cf.querySelector('.cref-track');
+}
 async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 문구), ticks, field(완료 폴링 대상) }
-  const track = wrap.querySelector('.cref-track'); if (!track) return false;
+  const track = (o.field === 'thumb_gen') ? genTrackOf(wrap) : wrap.querySelector('.cref-track'); if (!track) return false;
   const field = o.field || 'thumb_search';   // 완료 감지 대상 = moreimg(재검색)=thumb_search / genimg(생성)=thumb_gen (운영자 260713 정합 봉합 — genimg가 thumb_search 폴링해 완료 영영 미감지=로딩 잔류·화면 이상 버그)
   if (track.querySelector('.cref-loading')) return 'busy';   // 이미 진행 중(중복 발사 가드) — 발사측이 조용히 처리
   const a0 = DATA.find(x => x && x.file === file);
   const before = ((a0 && a0.cards && a0.cards[field]) || []).length;   // 기준 = 현재 해당 카러셀(검색/생성) 이미지 수
   // 로딩 슬라이드를 await 전에 먼저(동기) 꽂는다 = .cref-loading 가드 즉시 작동 → 연타 레이스 차단(평의회 검증·260622)
-  const ph = document.createElement('div'); ph.className = 'cref-slot cref-loading';   // 맨 좌측 반투명 로딩(N장 추가 예정 의미)
+  const ph = document.createElement('div'); ph.className = 'cref-slot cref-loading chin';   // 맨 좌측 반투명 로딩(N장 추가 예정 의미) · chin = 등장 촤르륵(cardIn — 구 즉시 삽입 = 툭 튐 · 운영자 260801)
+  ph.style.animationDelay = '0ms, 0s';   // cardIn(등장) 지연 0 · crefDim(브리딩)은 즉시 = 2값 = 두 애니 각각(단일 값이면 브리딩까지 밀림)
   ph.innerHTML = '<div class="cref-ld">' + (window.nmLoader?nmLoader('thinking', o.ld):'<span class="cref-ld-tx">'+esc(o.ld)+'</span>') + '</div>';   // 로딩 스피너 → 도트 픽토그램(nm-loader.js · 강조색 --accent)
   track.insertBefore(ph, track.firstChild);
   track.scrollTo({ left: 0, behavior: 'smooth' });
@@ -5004,7 +5036,14 @@ async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 
       if (a && now > before) {   // 새 이미지 도착 → DATA 갱신 + 열린 모달이면 thumbsec 통째 재렌더(로딩 슬라이드 자동 소거·새 이미지 좌측·번호 갱신)
         await ensureDetail(a);   // 경량 인덱스라 body/md 빈 채 → CUR_A/DATA 교체 전 detail 복원(다운로드 카드·출처 유실 방지 · 평의회 260624)
         const idx = DATA.findIndex(x => x && x.file === file); if (idx >= 0) { DATA[idx] = a; _feedIdxRef = null; }   // 같은 배열참조·요소 교체 = feedMatch 색인 강제 재구축(다음 조회 시 346회·~0ms) — 인덱스 필드 in-place 변경 대비 구조적 보험(병렬검증 성능 한 수)
-        if (CUR_A && CUR_A.file === file) { CUR_A = a; const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); }
+        // 교체 = 로딩 슬롯을 그 자리서 .18s 페이드아웃(crefSwapOut)한 뒤 섹션 스왑 → 새 슬롯이 촤르륵(chin)으로 들어온다.
+        // 구 동작 = 즉시 replaceWith = 로딩→이미지가 한 프레임에 번쩍(운영자 260801 "딱딱 안끊기게"). 도착 슬롯 스태거는 thumbStatic이 i×32ms로 부여.
+        if (CUR_A && CUR_A.file === file) {
+          CUR_A = a;
+          const swap = () => { const old = $('#mdbody .thumbsec'), fresh = thumbSec(a); if (old && fresh) old.replaceWith(fresh); };
+          const lds = [...document.querySelectorAll('#mdbody .thumbsec .cref-loading')];
+          if (lds.length && !matchMedia('(prefers-reduced-motion:reduce)').matches) { lds.forEach(el => el.classList.add('swapout')); setTimeout(swap, 180); } else swap();   // 관용구 = 6978행 동일(전정계 배려 = 즉시 교체)
+        }
         return;   // 완료
       }
     } catch {}
