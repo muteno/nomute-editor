@@ -1974,13 +1974,17 @@ function edStep(id, dir) { const c = ED_ORD[id]; if (!c) return; const i = edCur
 function edCycleTap(id) { const c = ED_ORD[id]; if (!c) return; edPick(c, (edCur(c) + 1) % c.ord.length); }   // 값 탭 = 같은 순서 순환(모바일 종전 동작 유지)
 // ── 편집 도크 스크롤 축소(운영자 260731 14차) — 내리면 미리보기 캡 절반(.dockmin) · 올라오면 원복 · 히스테리시스(on 120 / off 8) = 축소로 문서높이가 줄 때 문턱 왕복 떨림 차단 · 축소 후 스테이지 재렌더 = rszPreview(캡 단일출처 rszCapH가 실높이를 읽음) ──
 (function () {
-  let min = false, raf = 0;
+  let min = false, raf = 0, lock = 0;
   const sync = () => { raf = 0;
     const td = $('#topDock'); if (!td || td.dataset.lay !== 'edit') { if (min) { min = false; td && td.classList.remove('dockmin'); } return; }
+    if (performance.now() < lock) return;   // 전환 애니(dur-acc 260) 구간 = 재판정 동결 — 축소가 문서높이를 줄이면 브라우저가 scrollY를 클램프하고, 그 클램프가 스크롤 이벤트로 되돌아와 반대 문턱을 즉시 때린다(되먹임) · 애니가 끝나 높이가 안정될 때까지 판정을 막아 1왕복을 끊는다
     const y = window.scrollY || document.documentElement.scrollTop;
     const room = document.documentElement.scrollHeight - innerHeight;
-    const next = min ? y > 8 : (y > 120 && room > 240);
-    if (next !== min) { min = next; td.classList.toggle('dockmin', min);
+    // 축소량 = 미리보기 창 폭 감소분(폭 52% · aspect-ratio 1/1이라 높이 감소 = 폭 감소) — 축소 뒤 남는 여유(room - drop)가 켜짐 문턱(120)을 못 넘기면 켜자마자 클램프로 y가 꺼짐 문턱(8)까지 떨어져 무한 왕복("통통 튀는" 실측 260802: 840×820 0.4초에 4회 전환 · 430×900 y120→23 강제 이동)
+    const bx = $('#cpPrev .cpprev-box'), bw = (bx && !min) ? bx.getBoundingClientRect().width : 0;
+    const drop = bw * 0.48;   // 100% → 52%
+    const next = min ? y > 8 : (y > 120 && room - drop > 240);
+    if (next !== min) { min = next; td.classList.toggle('dockmin', min); lock = performance.now() + 420;
       setTimeout(() => { if (typeof rszPreview === 'function') try { rszPreview(); } catch (_) {} }, 280); }   // dur-acc(260ms) 후 실높이 기준 재렌더
   };
   addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(sync); }, { passive: true });
