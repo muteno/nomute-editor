@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>영상 기능 맵 — 프리미어 프로 메뉴 대응 (260802)</title>
+<!-- ⚠️ 이 문서의 외형은 **의도적으로 Adobe Premiere Pro UI 모방**이다(운영자 260802 "프리미어 프로 메뉴인 거처럼").
+     그래서 노뮤트 :root 토큰이 아니라 프리미어 크롬 색을 재현한다 — 앱 UI가 아닌 docs 리포트라 §🎨 계승 축 비대상.
+     내용(기능·개수·명령)은 전부 heygen-com/hyperframes @343c025 + 이 레포 실측. 추정·창작 0. -->
+<style>
+  :root{
+    --pr-bg:#1e1e1e; --pr-panel:#2b2b2b; --pr-menu:#333; --pr-hover:#4a4a4a; --pr-line:#000;
+    --pr-fg:#e8e8e8; --pr-dim:#9a9a9a; --pr-accent:#6a9fd8;
+    --ok:#4caf50; --maybe:#e0a800; --no:#e05a4f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--pr-bg);color:var(--pr-fg);
+    font:13px/1.55 'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.2px}
+  .app{max-width:1180px;margin:0 auto;padding:0 0 60px}
+
+  /* ── 프리미어 타이틀바 + 메뉴바 ── */
+  .titlebar{display:flex;align-items:center;gap:10px;background:var(--pr-panel);
+    border-bottom:1px solid var(--pr-line);padding:8px 12px}
+  .titlebar .dots{display:flex;gap:6px}
+  .titlebar .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .titlebar .dots i:nth-child(1){background:#ff5f57}
+  .titlebar .dots i:nth-child(2){background:#febc2e}
+  .titlebar .dots i:nth-child(3){background:#28c840}
+  .titlebar .name{font-weight:700;letter-spacing:.2px}
+  .titlebar .name b{color:var(--pr-accent)}
+  .titlebar .proj{color:var(--pr-dim);font-size:12px}
+
+  .menubar{display:flex;flex-wrap:wrap;background:var(--pr-menu);border-bottom:1px solid var(--pr-line);
+    padding:0 6px;position:sticky;top:0;z-index:5}
+  .menubar button{appearance:none;background:transparent;border:0;color:var(--pr-fg);font:inherit;
+    padding:7px 12px;cursor:pointer;border-radius:3px}
+  .menubar button:hover{background:var(--pr-hover)}
+  .menubar button[aria-expanded=true]{background:var(--pr-accent);color:#0d1a26;font-weight:700}
+
+  /* ── 드롭다운(= 섹션) ── */
+  .sheet{display:none;background:var(--pr-panel);border:1px solid var(--pr-line);
+    border-top:0;padding:6px 0 10px}
+  .sheet.open{display:block}
+  .sheet h2{margin:0;padding:10px 16px 6px;font-size:12px;color:var(--pr-dim);font-weight:600;letter-spacing:.4px}
+  .row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;
+    padding:7px 16px;border-left:3px solid transparent}
+  .row:hover{background:var(--pr-hover);border-left-color:var(--pr-accent)}
+  .row + .row{border-top:1px solid rgba(255,255,255,.045)}
+  .lbl{min-width:0}
+  .lbl b{font-weight:600}
+  .lbl .k{display:block;color:var(--pr-dim);font-size:11.5px;margin-top:2px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;word-break:break-word}
+  .sep{height:1px;background:rgba(255,255,255,.08);margin:6px 16px}
+
+  .pill{flex:none;font-size:10.5px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;line-height:1.4}
+  .p-ok{color:#0d2412;background:var(--ok)}
+  .p-maybe{color:#2a2100;background:var(--maybe)}
+  .p-no{color:#2a0f0c;background:var(--no)}
+
+  /* ── 범례·요약 ── */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:12px 16px;
+    background:var(--pr-panel);border-bottom:1px solid var(--pr-line);font-size:12px;color:var(--pr-dim)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px 16px}
+  .stat{background:var(--pr-panel);border:1px solid var(--pr-line);border-radius:4px;padding:10px 12px}
+  .stat b{display:block;font-size:20px;color:var(--pr-accent);line-height:1.2}
+  .stat span{font-size:11.5px;color:var(--pr-dim)}
+  footer{padding:18px 16px;color:var(--pr-dim);font-size:11.5px;line-height:1.7;border-top:1px solid var(--pr-line);margin-top:20px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:3px}
+  @media (max-width:620px){ .menubar button{padding:7px 9px;font-size:12px} .row{padding:7px 12px} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="titlebar">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <div class="name">노뮤트 <b>큐영상</b> — 기능 맵</div>
+    <div class="proj">프리미어 프로 메뉴 대응 · 260802 실측</div>
+  </div>
+
+  <nav class="menubar" id="mb"></nav>
+  <div id="sheets"></div>
+
+  <div class="legend">
+    <span><i class="pill p-ok">붙임</i> 지금 앱에서 됨</span>
+    <span><i class="pill p-maybe">가능</i> hyperframes에 있음 · 아직 안 붙임</span>
+    <span><i class="pill p-no">없음</i> 이 스택에 대응 없음</span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <footer>
+    출처 = <code>heygen-com/hyperframes</code> @343c025(2026-07-31) 실측 + 이 레포 <code>video/</code>·<code>viewer/vd.html</code>·<code>.github/workflows/vd-make.yml</code>.<br>
+    개수는 전부 실제 파일 카운트다(레지스트리 블록 113 · 컴포넌트 25 · CLI 명령 46). 추정값 없음.<br>
+    ⚠️ 이 문서 외형은 의도적 Premiere UI 모방 — 앱 UI가 아니므로 노뮤트 <code>:root</code> 토큰 계승 축 비대상.
+  </footer>
+</div>
+
+<script>
+/* 메뉴 = 프리미어 프로 메뉴바 순서. 각 항목 = {프리미어에서 부르는 이름, 이 스택의 실체, 상태} */
+const MENUS = [
+  ['파일', [
+    ['새 프로젝트', 'hyperframes init <이름> — 우린 video/ 하나로 고정 운영', 'maybe'],
+    ['프로젝트 열기', '폴더 = 프로젝트. 루트 index.html이 컴포지션', 'ok'],
+    ['미디어 가져오기', '/media-use resolve — bgm · sfx · image · icon · logo · voice · grade · lut', 'maybe'],
+    ['라이브러리에서 가져오기', 'hyperframes add <블록> — 블록 113종 · 컴포넌트 25종', 'maybe'],
+    ['Figma에서 가져오기', 'hyperframes figma — 토큰·컴포넌트·스토리보드 섹션', 'maybe'],
+    ['SEP'],
+    ['내보내기 › 미디어', 'render --format mp4 | mov(ProRes 투명) | webm | gif | png-sequence', 'ok'],
+    ['내보내기 › 설정', '--fps --resolution(4K 업샘플) --crf --video-bitrate --quality --hdr/--sdr', 'maybe'],
+    ['일괄 내보내기', 'render --batch rows.json -o "out/{name}.mp4" — 기사 1건 = 영상 1편', 'ok'],
+    ['프로젝트 설정', 'data-width · data-height · 루트 data-duration (지금 1080×1920 · 6초)', 'ok'],
+  ]],
+  ['편집', [
+    ['실행 취소 / 다시 실행', '선언형이라 히스토리 스택 없음 — 되돌리기 = git revert', 'no'],
+    ['찾기 / 바꾸기', '컴포지션은 HTML이라 에디터 찾기·바꾸기가 대신함', 'no'],
+    ['환경 설정', 'video/env.sh(텔레메트리 차단·크롬 경로) + hyperframes doctor', 'ok'],
+    ['템플릿 변수', 'data-composition-variables + --variables / --variables-file — 큐 행이 이걸로 주입', 'ok'],
+    ['키보드 단축키', '앱 셸(모달 ESC 브릿지)만 · 렌더러는 CLI', 'no'],
+  ]],
+  ['클립', [
+    ['지속 시간', 'data-duration (클립) · 루트 data-duration (전체)', 'ok'],
+    ['속도', 'data-playback-rate — 영상 클립 재생 배속', 'maybe'],
+    ['시작 지점(In)', 'data-media-start · data-playback-start', 'maybe'],
+    ['오디오 게인', 'data-volume + 볼륨 엔벨로프(engine audioVolumeEnvelope)', 'maybe'],
+    ['프레임 고정', 'freeze-frame-dressing 블록', 'maybe'],
+    ['트랙에 배치', 'data-track-index — 트랙 수 제한 없음', 'ok'],
+    ['중첩(Nest)', 'data-composition-src 서브 컴포지션 + data-variable-values(인스턴스별 값)', 'maybe'],
+  ]],
+  ['시퀀스', [
+    ['시퀀스 설정', '가로·세로·fps = 컴포지션 루트 속성 (9:16 1080×1920 30fps)', 'ok'],
+    ['트랙 추가', 'data-track-index 증가 = 새 트랙', 'ok'],
+    ['렌더 미리보기', 'hyperframes preview — 브라우저 라이브 리로드', 'maybe'],
+    ['마커', 'hyperframes beats — 음악 비트 마커 추출', 'maybe'],
+    ['다중 카메라', '대응 없음 — 컷은 클립 시작·끝으로 설계', 'no'],
+  ]],
+  ['그래픽 및 제목', [
+    ['텍스트 레이어', 'HTML·CSS 그대로. 지금 훅·제목·매체·날짜·편향칩', 'ok'],
+    ['하위 3분의 1(로어서드)', 'lt-* 10종 + lower-third-bild + yt-lower-third = 12종', 'maybe'],
+    ['자막', 'caption-* 컴포넌트 16종 + hyperframes transcribe(로컬 whisper·parakeet)', 'maybe'],
+    ['모션 그래픽 템플릿', '레지스트리 블록 113종(인트로·아웃트로·소셜·VFX·UI)', 'maybe'],
+    ['차트', 'data-chart 블록 — 애니메이션 차트', 'maybe'],
+    ['지도', 'us-map · us-map-bubble · us-map-flow · us-map-hex · world-map · spain-map', 'maybe'],
+    ['코드 화면', 'code-* 8종 + code-snippet 테마 25종(터미널·VS Code 테마)', 'maybe'],
+  ]],
+  ['효과', [
+    ['비디오 전환', 'transitions-* 13팩(3d·blur·cover·destruction·dissolve·distortion·grid·light·mechanical·push·radial·scale·기타) + 개별 셰이더(flash-through-white·whip-pan·cross-warp-morph·sdf-iris·swirl-vortex·ripple-waves·domain-warp-dissolve·ridged-burn·gravitational-lens 등)', 'maybe'],
+    ['비디오 효과', 'motion-blur · grain-overlay · vignette · parallax-zoom/unzoom · shimmer-sweep · glitch · light-leak · thermal-distortion', 'maybe'],
+    ['Lumetri 색상', '/media-use grade + .cube LUT + hyperframes grade-compare(전후 대조)', 'maybe'],
+    ['크로마키 / 배경 제거', 'hyperframes remove-background — 로컬 onnxruntime', 'maybe'],
+    ['마스크', 'SVG 마스크·clip-path·path draw (keyframes 스킬 계약)', 'maybe'],
+    ['모션 트래킹', '자동 트래킹 없음 — 좌표는 키프레임으로 직접', 'no'],
+    ['워프 스태빌라이저', '대응 없음', 'no'],
+    ['3D', 'Three.js 어댑터 · transitions-3d · code-3d-extrude · ui-3d-reveal', 'maybe'],
+    ['키프레임 엔진', 'GSAP · Lottie · Three.js · Anime.js · WAAPI · CSS keyframes · TypeGPU (지금은 CSS keyframes)', 'ok'],
+  ]],
+  ['오디오', [
+    ['오디오 트랙', '<audio data-start data-duration data-track-index data-volume> — 구조는 있고 아직 안 씀', 'maybe'],
+    ['음악(BGM)', '/media-use bgm — HeyGen 카탈로그 10,000곡+ · 로컬 MusicGen 폴백', 'maybe'],
+    ['효과음(SFX)', '/media-use sfx — 번들 19파일 + 카탈로그', 'maybe'],
+    ['내레이션 녹음', 'hyperframes tts — HeyGen 무료 경로 또는 로컬 Kokoro', 'maybe'],
+    ['오디오 게인 / 믹싱', 'engine audioMixer + 볼륨 엔벨로프 · shared/audio_norm.py(−14LUFS)와 별개 축', 'maybe'],
+    ['자동 더킹', '대응 없음 — 볼륨 엔벨로프로 직접', 'no'],
+  ]],
+  ['보기 · 검사', [
+    ['안전 영역 / 레이아웃', 'hyperframes layout — 레이아웃 감사', 'maybe'],
+    ['대비 검사', 'contrast-bg · contrast-fg · contrast-sample', 'maybe'],
+    ['스코프 / 프레임 비교', 'hyperframes compare (PSNR) · inspect · snapshot', 'maybe'],
+    ['키프레임 진단', 'hyperframes keyframes — 렌더된 모션 실측', 'maybe'],
+    ['성능', 'benchmark · --workers · --low-memory-mode · --experimental-fast-capture', 'ok'],
+    ['린트', 'hyperframes lint — 컴포지션 계약 검사(우린 0 errors 유지)', 'ok'],
+  ]],
+  ['창', [
+    ['프로그램 모니터', 'hyperframes preview(브라우저) / 앱은 큐영상 탭 리드아웃', 'ok'],
+    ['편집기(Studio)', '@hyperframes/studio — 브라우저 편집·타임라인 표면', 'maybe'],
+    ['이펙트 컨트롤', 'data-composition-variables 폼(Studio가 자동 생성)', 'maybe'],
+    ['렌더 큐', '앱 「작업 내역」 = GitHub Actions 잡 + 10초 폴링 + 내려받기', 'ok'],
+  ]],
+  ['렌더 위치', [
+    ['로컬', 'npm run render — headless Chrome + FFmpeg (이 컨테이너 실측 6초/약 18초)', 'ok'],
+    ['GitHub Actions', 'vd-make.yml — 앱에서 발사하는 정규 경로(실발사 성공 260802)', 'ok'],
+    ['Docker(결정론)', 'render --docker — 동일 입력 = 동일 바이트', 'maybe'],
+    ['AWS Lambda(분산)', 'hyperframes lambda deploy / render / progress', 'maybe'],
+    ['HeyGen 클라우드', 'hyperframes cloud render — 계정 필요', 'maybe'],
+    ['⚠️ 병렬 워커', '--workers 2 이상 = 청크 경계 프레임 1장 깨짐(실측 260801) → 1 고정', 'ok'],
+  ]],
+];
+
+const PILL = { ok: ['p-ok', '붙임'], maybe: ['p-maybe', '가능'], no: ['p-no', '없음'] };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const mb = document.getElementById('mb'), sheets = document.getElementById('sheets');
+MENUS.forEach(([name, items], i) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.textContent = name; b.setAttribute('aria-expanded', i === 0 ? 'true' : 'false');
+  b.addEventListener('click', () => open(i));
+  mb.appendChild(b);
+
+  const s = document.createElement('div');
+  s.className = 'sheet' + (i === 0 ? ' open' : '');
+  s.innerHTML = '<h2>' + esc(name) + '</h2>' + items.map(it => {
+    if (it[0] === 'SEP') return '<div class="sep"></div>';
+    const [cls, txt] = PILL[it[2]];
+    return '<div class="row"><div class="lbl"><b>' + esc(it[0]) + '</b><span class="k">' + esc(it[1]) + '</span></div>'
+      + '<span class="pill ' + cls + '">' + txt + '</span></div>';
+  }).join('');
+  sheets.appendChild(s);
+});
+function open(i) {
+  [...mb.children].forEach((b, j) => b.setAttribute('aria-expanded', String(i === j)));
+  [...sheets.children].forEach((s, j) => s.classList.toggle('open', i === j));
+}
+
+/* 요약 카운트 = 위 표에서 직접 집계(하드코딩 0) */
+const all = MENUS.flatMap(m => m[1]).filter(it => it[0] !== 'SEP');
+const c = k => all.filter(it => it[2] === k).length;
+document.getElementById('stats').innerHTML = [
+  [c('ok'), '지금 붙어 있음'],
+  [c('maybe'), 'hyperframes에 있음 · 미부착'],
+  [c('no'), '이 스택에 없음'],
+  [all.length, '전체 항목'],
+].map(([n, l]) => '<div class="stat"><b>' + n + '</b><span>' + l + '</span></div>').join('');
+</script>
+</body>
+</html>
