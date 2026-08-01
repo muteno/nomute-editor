@@ -229,6 +229,9 @@
   .vdrow:not(.on) .dl-cbox svg { opacity:0; }
   .vdrow.on .dl-cbox svg { opacity:1; color:var(--on-accent); }
   .vdempty { color:var(--mut); font-size:var(--fs-label); padding:var(--sp-2) 0; }
+  /* 목록 = 5행 창(운영자 260802 "5개 보이는거로 · 리스트 구역 안에서만 스크롤 · 개수 많아져도 세로로 늘어지지 않게") — 높이는 JS 실측(vdFit: 5번째 행 bottom − 1번째 top)으로 박는다(고정 px 창작 0 · 폰트 티어 함정 회피 §🎨 3-4) · 스크롤바 = 파일 상단 공용 규칙(폭 5·알약 3) 상속 */
+  #list { overflow-y:auto; overscroll-behavior:contain; }   /* contain = 목록 끝에서 부모(도크 아래 본문)로 스크롤 전파 차단 = "구역 안에서만" */
+  #list.vdscroll { padding-right:3px /* raw-ok: 스크롤바 알약 실폭 3(위 ::-webkit-scrollbar-thumb 계약) 만큼만 행 우측 확보 = 오버레이 바가 매체명 위를 덮지 않게 */; }
   .job .jdl { flex:none; }
 </style>
 
@@ -254,6 +257,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';   /* ✓ = 표지판성 도형 = SVG(§🎨 3-1 · 문자 렌더 금지) */
 const MAX = 12;   // 한 번에 고를 수 있는 상한 = 러너 1잡 예산(6초×12편 ≈ 4분 렌더)
+const VIS = 5;    // 목록 창 = 5행(운영자 260802) — 초과분은 목록 안 스크롤(페이지가 세로로 안 늘어남)
+const TS_RE = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/;   // 파일명 YYMMDD-HHMM = 수집 시각(KST wall-clock · index feedAgeH 정본과 동일 파싱 계약)
 
 let picked = [];   // 선택 순서 보존(렌더 순서 = 고른 순서)
 
@@ -296,14 +301,28 @@ async function loadList() {
     $('#list').innerHTML = '<div class="vdempty">기사 목록을 못 불러왔어 — 새로고침해줘.</div>';
     return;
   }
-  const use = arts.filter(a => a.file && a.title).slice(0, 60);   // 최신 60건(피드 정렬 = 파일명 역순 = build-viewer 산출 순서)
-  $('#list').innerHTML = use.length ? use.map(rowHtml).join('') : '<div class="vdempty">큐가 비었어.</div>';
+  const use = arts
+    .filter(a => a.file && a.title && a.has_body)   // 요약 게이트 = index 피드 정본 계승(index:4856 "픽(분석)된 기사에만" · has_body = 요약 본문 존재 플래그) — 운영자 260802 "뉴스 요약으로 선택 된 것만"
+    .sort((a, b) => (a.file < b.file ? 1 : a.file > b.file ? -1 : 0))   // 시간순(최신 위) = 파일명 YYMMDD-HHMM 역순 = build-viewer:275 정렬 계약 재확인(articles.json 순서에 기대지 않고 뷰어가 직접 보증)
+    .slice(0, 60);
+  $('#list').innerHTML = use.length ? use.map(rowHtml).join('') : '<div class="vdempty">요약된 기사가 아직 없어 — 뉴스 요약이 끝나면 여기 뜬다.</div>';
   $('#list').querySelectorAll('.vdrow').forEach(el => {
     el.addEventListener('click', () => toggle(el));
     el.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(el); } });
   });
+  vdFit();
   syncSpec();
 }
+
+/* 목록 창 높이 = 5행 실측 고정(운영자 260802) — 행 높이는 활자·티어에 따라 변하므로 상수 px 금지, 렌더 뒤 rect로 잰다 */
+function vdFit() {
+  const box = $('#list'), rows = box.querySelectorAll('.vdrow');
+  if (rows.length <= VIS) { box.style.maxHeight = ''; box.classList.remove('vdscroll'); return; }   // 5행 이하 = 창 불필요(스크롤 0)
+  const h = rows[VIS - 1].getBoundingClientRect().bottom - rows[0].getBoundingClientRect().top;
+  box.style.maxHeight = Math.round(h) + 'px';
+  box.classList.add('vdscroll');
+}
+addEventListener('resize', vdFit);   // 회전·폭 변화 = 제목 줄수·행 높이 재계산
 
 /* ── 작업 내역 = sb.html #jobs 문법 계승(localStorage 누적 + 폴링) ── */
 const JKEY = 'vd_jobs';
