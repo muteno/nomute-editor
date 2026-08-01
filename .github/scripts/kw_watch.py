@@ -168,9 +168,12 @@ def main():
     if st.get("kwAlertOn") is not True:
         print("키워드 알림 OFF — 감시 생략")
         return
-    items = [i for i in (st.get("kwItems") or []) if isinstance(i, dict) and i.get("kw") and not i.get("done")]
+    # 제외 = done(대기열 체크 = 확인·중단) + moved(뷰어에서 이동↗를 눌러 처리한 줄 = 밑줄 · 운영자 260801)
+    #   재가동(밑줄 재클릭)은 moved를 0으로 되돌리고 rearm 도장을 찍으므로 다음 실행부터 자동 복귀한다.
+    items = [i for i in (st.get("kwItems") or [])
+             if isinstance(i, dict) and i.get("kw") and not i.get("done") and not i.get("moved")]
     if not items:
-        print("감시 대상 키워드 없음(전부 체크됐거나 미등록)")
+        print("감시 대상 키워드 없음(전부 체크·이동 처리됐거나 미등록)")
         return
 
     ds = docs()
@@ -189,6 +192,15 @@ def main():
         key = slug(kw)
         hit = matched(kw, ds)
         rec = led.get(key) if isinstance(led.get(key), dict) else None
+
+        # 재가동(뷰어 밑줄 재클릭 = kwRearm)은 rearm(ms) 도장을 찍는다 — 그 시각 이후 원장은 **옛 세대**라 버린다.
+        #   안 버리면 '이미 보냈다'로 도장돼 재가동해도 영영 침묵(뷰어 claimSeen id @rearm 접미와 같은 축).
+        rearm = int((it.get("rearm") or 0) / 1000) if isinstance(it.get("rearm"), (int, float)) else 0
+        if rec and rearm and rearm >= int(rec.get("first") or 0):
+            led.pop(key, None)
+            rec = None
+            changed = True
+            print(f"  ↻ «{kw}» 재가동 감지 — 원장 리셋(첫 발견부터 다시)")
 
         if not rec:
             if not hit:

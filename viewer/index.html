@@ -1898,6 +1898,11 @@
   .kwrow .kws-wait { color:var(--fg); }   /* 미발견 = 그냥 흰색(운영자 260727) */
   .kwrow .kws-hit { color:var(--accent); }   /* 발견 = 1강조색(운영자 260727 "발견 이라는 키워드는 1강조색") — 보라는 알림 축 색(토스트·기어·체크)이고 이 열은 상태 텍스트라 강조색 사다리를 쓴다 */
   .kwrow .kws-done { color:var(--mut); }   /* 확인 완료 = 무채(빗금 줄과 톤 일치) */
+  .kwrow .kws-at { display:block; font-style:normal; font-size:var(--fs-xs); font-weight:var(--fw-b); color:var(--mut); font-variant-numeric:tabular-nums; }   /* 발견 일시 = 상태 라벨 **아래 한 줄**(운영자 260801 "발견 하고 아래에 () 써서 발견일자") · 활자·색 = 등록 시기 셀(.qt = fs-xs·mut) 문법 그대로 계승 = 새 모양 0 · tabular-nums = 분·시 자릿수 바뀌어도 폭 고정(§0-11) */
+  /* 이동(↗)을 누른 줄 = **그 줄 전체 밑줄**(운영자 260801) — 형제 상태 표기 kw-done(빗금)과 같은 text-decoration 축, 방향만 밑줄.
+     누르면 발견 재가동(kwRearm)이라 커서도 손가락. ⚠ .kwst는 2줄용 flex 컨테이너라 데코가 자식으로 안 번진다 → 잎 텍스트(.kws-t·.kws-at)에 직접 건다. */
+  .kwrow.kw-moved { cursor:pointer; }
+  .kwrow.kw-moved .qno, .kwrow.kw-moved .qt, .kwrow.kw-moved .qmain, .kwrow.kw-moved .kws-t, .kwrow.kw-moved .kws-at { text-decoration:underline; text-decoration-thickness:1px; }
   .kw-chk { flex:none; }   /* 체크박스 = ed-match 계승(입력 숨김·ed-cbx 커스텀) · 260727 5열 개편으로 좌단 → .qst 셀 안으로 이동 */
   /* 5열 = no · 등록 시기 · 키워드 · 체크 · 휴지통(운영자 260727) — 신규 셀은 .qno 하나뿐, 문법은 형제 .qt(시간 고정폭 셀) 100% 미러(fs-xs·800·mut·nowrap·flex:none)에서 폭만 순번 자릿수로 좁힘 = 새 모양 0 */
   /* 헤더 + = X 왼쪽에 나란히(운영자 260727). .qh-xcell의 margin-left:auto(우측 앵커)를 +로 옮겨 [제목]—auto—[+][X] 배치 → X 우변 = 행 액션셀 우변 계약(§🎨 X정렬 정본) 그대로 유지 */
@@ -1911,7 +1916,7 @@
   .kwrow .ed-match .ed-cbx .sc-chk { stroke:var(--mut); opacity:1; stroke-dashoffset:0; }
   .kwrow.kw-done .qmain { text-decoration:line-through; text-decoration-thickness:1px; color:var(--mut); }   /* 확인 = 키워드에 빗금 + 무채(운영자 260727 "빗금 쳐지면서 mut컬러로") · 이 줄의 액션은 휴지통으로 교체됨 */
   /* 체크 = 휴지통 바로 옆(운영자 260727 "휴지통 옆에 체크가 잇어야될거같은데") — .qst 고정폭 58 좌측정렬이라 키워드와 휴지통 사이에 붕 떠 보였다 → 액션셀과 동일 폭·중앙정렬로 좁혀 두 픽토가 붙는다(형제 .qact 문법 미러) */
-  .kwrow .kwst { flex:none; }
+  .kwrow .kwst { flex:none; width:72px; flex-direction:column; align-items:flex-start; justify-content:center; line-height:1.35; }   /* raw-ok: 58→72 = 같은 파일 형제 상태셀 값(.msgrow .qst 72 · 새 값 창작 0) — 2줄 표기('발견' + '(8.27. 13:00)')가 자기 칸 안에서 안 잘리는 최소 사다리(헤드리스 실측 = 최장 표기 '(12.28. 22:58)' 잉크폭 60.79 < 72 · 여유 11.2 · scrollWidth ≤ clientWidth 무잘림 확인) · 세로배치(column)만 신설 = 한 셀 2줄 · 좌측정렬·시작 x 고정 계약 유지 */
   /* 액션 2칸(운영자 260727) — 우 = 헤더 X 세로선(정본 .qact) · 좌 = 헤더 + 세로선. 둘 다 --btn-sm 동일 폭이라 행 gap 10만큼 나란히 선다. */
   .kwrow .kw-a1 { flex:none; }
   .kwrow .qact .kw-go, .kwrow .qact .kw-edit { color:var(--accent); }   /* 이동·수정 = 형광 강조색(운영자 260727 "둘다 형광색") · .pub-ico 기본 mut을 이기려면 셀까지 물린 (0,3,0) 필요[실측 교정] */
@@ -8780,7 +8785,7 @@ $('#msgback').addEventListener('click', e => { e.stopPropagation(); msgShowList(
 const SET_CACHE = 'nm_settings_cache', SET_SEEDED = 'nm_settings_seeded';
 const KW_CAP = 40;   // 등록 키워드 상한(서버 settings.js KW_CAP 미러)
 const SET_DEFAULTS = { lockOn: true, lockPinHash: '', lockLen: 4, lockMin: 2, genImgOn: true, kwAlertOn: false, kwItems: [] };
-function _kwClean(a) {   // 키워드 항목 정규화(서버 settings.js cleanKwItems 미러) — { kw, ts(등록 epoch), hit(첫 매칭 epoch·0=미매칭), done(체크=확인), url(발견 출처) }
+function _kwClean(a) {   // 키워드 항목 정규화(서버 settings.js cleanKwItems 미러) — { kw, ts(등록 epoch), hit(첫 매칭 epoch·0=미매칭), done(체크=확인), url(발견 출처), moved(이동 누른 epoch=밑줄·감시중단), rearm(재가동 epoch=발송 세대) }
   if (!Array.isArray(a)) return [];
   const out = [];
   for (const it of a) {
@@ -8788,7 +8793,8 @@ function _kwClean(a) {   // 키워드 항목 정규화(서버 settings.js cleanK
     const kw = typeof it.kw === 'string' ? it.kw.slice(0, 120).trim() : '';
     if (!kw) continue;
     const url = (typeof it.url === 'string' && /^https?:\/\//i.test(it.url)) ? it.url.slice(0, 400) : '';   // 발견 출처(이동 버튼 목적지) · http(s)만 허용 = javascript: 등 차단
-    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, doneAt: Number.isFinite(it.doneAt) ? it.doneAt : 0, url });
+    out.push({ kw, ts: Number.isFinite(it.ts) ? it.ts : 0, hit: Number.isFinite(it.hit) ? it.hit : 0, done: it.done === true, doneAt: Number.isFinite(it.doneAt) ? it.doneAt : 0, url,
+      moved: Number.isFinite(it.moved) ? it.moved : 0, rearm: Number.isFinite(it.rearm) ? it.rearm : 0 });   // moved = 이동(↗) 누른 시각 = 밑줄 + 감시 중단 · rearm = 재가동 시각 = 알림 발송 세대 도장(운영자 260801)
     if (out.length >= KW_CAP) break;
   }
   return out;
@@ -13938,11 +13944,16 @@ function kwAddBox(show) {
   if (next) { setTimeout(() => { try { inp.focus(); } catch (_) {} }, 40); }
   else if (inp) { inp.value = ''; kwEditCancel(); }   // 접으면 수정 모드도 해제(버튼 라벨 '추가' 복귀)
 }
-function kwStatusLabel(it) {   // 상태 셀 = 발견 / 미발견 2분류(운영자 260727 "키워드 나오고 우측에 발견 미발견")
-  if (!it.hit) return { t: '미발견', c: 'kws-wait' };
-  return { t: '발견', c: it.done ? 'kws-done' : 'kws-hit' };   // 확인(done)해도 '발견'은 사실 = 라벨 유지·색만 무채로
+function kwStatusLabel(it) {   // 상태 셀 = 발견 / 미발견 2분류(운영자 260727 "키워드 나오고 우측에 발견 미발견") + 발견이면 그 아래 일시 한 줄(운영자 260801)
+  if (!it.hit) return { t: '미발견', c: 'kws-wait', at: '' };
+  return { t: '발견', c: it.done ? 'kws-done' : 'kws-hit', at: kwHitAt(it.hit) };   // 확인(done)해도 '발견'은 사실 = 라벨 유지·색만 무채로
 }
 function kwDate(ts) { const d = ts ? new Date(ts) : null; return d && !isNaN(d) ? (d.getMonth() + 1) + '. ' + d.getDate() + '.' : '-'; }   // 등록 시기 = "10. 28." 날짜 표기(운영자 260727 "7시간 전 > 10. 28. 이런식으로")
+function kwHitAt(ts) {   // 발견 일시 = "(8.27. 13:00)"(운영자 260801 표기 지목 그대로) · 기준시 = 형제 kwDate와 동일(브라우저 로컬 = 운영자 기기 KST)
+  const d = ts ? new Date(ts) : null; if (!d || isNaN(d)) return '';
+  const p2 = n => String(n).padStart(2, '0');
+  return '(' + (d.getMonth() + 1) + '.' + d.getDate() + '. ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ')';
+}
 function renderKwList() {
   const list = $('#kwpopList'); if (!list) return;
   kwPurgeDone();   // 그릴 때마다 만료분 정리 → 목록이 스스로 갱신된다
@@ -13964,11 +13975,11 @@ function renderKwList() {
     const act = it.hit
       ? '<label class="ed-match kw-chk" title="' + (it.done ? '확인 해제 — 알림 재개' : '확인 — 알림 중단(하루 뒤 자동 삭제)') + '"><input type="checkbox"' + (it.done ? ' checked' : '') + '><span class="ed-cbx">' + ACK_MORPH + '</span></label>'
       : '<button class="pub-ico pub-rm kw-del" type="button" title="삭제" aria-label="삭제">' + _TRASHSVG + '</button>';
-    return '<div class="qrow kwrow' + (it.done ? ' kw-done' : '') + '" data-i="' + i + '">'
+    return '<div class="qrow kwrow' + (it.done ? ' kw-done' : '') + (it.moved ? ' kw-moved' : '') + '" data-i="' + i + '"' + (it.moved ? ' title="눌러서 발견 재가동 — 이 키워드를 다시 감시한다"' : '') + '>'
       + '<span class="qno">' + (i + 1) + '</span>'
       + '<span class="qt">' + qEsc(kwDate(it.ts)) + '</span>'
       + '<span class="qmain" title="' + qEsc(it.kw) + '">' + qEsc(it.kw) + '</span>'
-      + '<span class="qst kwst ' + st.c + '">' + st.t + '</span>'
+      + '<span class="qst kwst ' + st.c + '"><span class="kws-t">' + st.t + '</span>' + (st.at ? '<em class="kws-at">' + qEsc(st.at) + '</em>' : '') + '</span>'
       + '<span class="qact kw-a1">' + left + '</span>'
       + '<span class="qact">' + act + '</span></div>';
   }).join('');
@@ -13976,6 +13987,7 @@ function renderKwList() {
   list.querySelectorAll('.kw-del').forEach(b => b.onclick = (e) => { e.stopPropagation(); const row = b.closest('.qrow'), i = +row.dataset.i; animateRowOut(row, () => kwRemove(i)); });
   list.querySelectorAll('.kw-go').forEach(b => b.onclick = (e) => { e.stopPropagation(); kwOpenSrc(kwGetItems()[+b.closest('.kwrow').dataset.i]); });   /* 이동 = 발견한 글(대기열에서도 이동 가능 · 운영자 260727 "키워드 알림창에서 이동하는 방법이 없더라고") */
   list.querySelectorAll('.kw-edit').forEach(b => b.onclick = (e) => { e.stopPropagation(); kwEdit(+b.closest('.kwrow').dataset.i); });   /* 수정 = 미발견 항목만(발견 뒤엔 이동 버튼이 그 자리) */
+  list.querySelectorAll('.kwrow.kw-moved').forEach(row => row.onclick = (e) => { if (e.target.closest('button, label, input')) return; e.stopPropagation(); kwRearm(+row.dataset.i); });   /* 밑줄 줄 클릭 = 발견 재가동(운영자 260801) · 행 안 액션(이동·체크·삭제)은 자기 일 그대로 = 제외 */
   paintKwGear();   // 목록이 그려질 때마다 기어 점등 재평가(체크·삭제 직후 반영)
 }
 function kwAdd(raw) {
@@ -14010,6 +14022,27 @@ function kwEdit(i) {
 }
 function kwEditCancel() { _kwEditIdx = -1; const b = $('#kwAddBtn'); if (b) b.textContent = '추가'; }
 function kwRemove(i) { const items = kwGetItems().slice(); if (i < 0 || i >= items.length) return; items.splice(i, 1); kwSaveItems(items); renderKwList(); paintKwGear(); }
+// 이동(↗)을 누른 그 시점 = '이 건은 봤다' 처리(운영자 260801 "이동버튼을 누르면 그 시점부터 그 키워드 라인에 모두 밑줄").
+//   밑줄 = 알림 중단(반복 토스트·기기 알림·서버 웹푸시 전부 정지) · 삭제는 안 한다(체크=done의 24h 자동삭제와 다른 축).
+//   되돌리기 = 그 줄을 다시 눌러 재가동(kwRearm) — 운영자 지시 5번의 짝.
+function kwMarkMoved(it) {
+  const items = kwGetItems().slice();
+  const i = items.findIndex(x => x && kwNorm(x.kw) === kwNorm(it && it.kw));
+  if (i < 0 || items[i].moved) return;
+  items[i] = { ...items[i], moved: Date.now() };
+  kwSaveItems(items);
+  if (!$('#kwpop').hidden) renderKwList();
+  paintKwGear();
+}
+// 밑줄 줄 클릭 = **발견 재가동**(운영자 260801 "밑줄 사용자가 누르면 다시 발견 재가동") — 발견 이력·URL을 비워 '미발견'으로 되돌리고 감시 재개.
+//   rearm = 재가동 시각 = **발송 세대 도장**: 뷰어 dedup(claimSeen 'kw' id)과 서버 원장(push/kw_sent.json)이 이 값으로 세대를 갈라
+//   같은 키워드가 다시 떠도 알림이 '이미 보냈다'로 삼켜지지 않는다(구판 id = slug#버킷 뿐이라 재가동해도 영구 침묵이었다).
+function kwRearm(i) {
+  const items = kwGetItems().slice(); if (!items[i] || !items[i].moved) return;
+  items[i] = { ...items[i], hit: 0, url: '', moved: 0, done: false, doneAt: 0, rearm: Date.now() };
+  kwSaveItems(items); renderKwList(); paintKwGear();
+  checkKwAlerts();   // 재가동 즉시 1회 재검사(kwAdd 문법 계승) — 아직 원문에 떠 있으면 바로 다시 '발견'
+}
 function kwSetDone(i, done) { const items = kwGetItems().slice(); if (!items[i]) return; items[i] = { ...items[i], done: !!done, doneAt: done ? Date.now() : 0 }; kwSaveItems(items); renderKwList(); paintKwGear(); }   /* 대기열 체크 = 기어 소등의 유일 경로 · doneAt = 자동 삭제 기산점(운영자 260727) */
 // 빗금(확인) 상태로 하루를 넘긴 항목은 스스로 사라진다(운영자 260727 "빗금 1일 유지된건 자동으로 삭제되고 리스트 갱신").
 //   기산 = doneAt(체크한 시각) · 구 데이터(doneAt 없음)는 hit 시각으로 폴백해 영구 잔존을 막는다. 반환 = 실제로 지웠는지(호출부 재렌더 판단).
@@ -14023,7 +14056,7 @@ function kwPurgeDone() {
 // 기어 점등 = '미확인 발견'(hit 있고 done 아님)이 하나라도 있으면 ON — 소등 조건 = 대기열 체크(done)뿐(운영자 260727).
 //   body 클래스 토글 = has-freshbad/has-sysbad(수집 고장) 관용구 그대로 계승 = 새 표시물 0.
 function paintKwGear() {
-  try { document.body.classList.toggle('has-kwhit', kwAlertOn() && kwGetItems().some(it => it && it.hit && !it.done)); } catch {}
+  try { document.body.classList.toggle('has-kwhit', kwAlertOn() && kwGetItems().some(it => it && it.hit && !it.done && !it.moved)); } catch {}   /* 이동으로 처리한 줄(moved)도 소등 축에 편입(260801) — 봤다는 뜻이라 기어를 계속 켜둘 이유가 없다 */
 }
 function kwMarkDoneByKw(kw) { const items = kwGetItems().slice(); const i = items.findIndex(it => kwNorm(it.kw) === kwNorm(kw)); if (i < 0) return; items[i] = { ...items[i], done: true }; kwSaveItems(items); if (!$('#kwpop').hidden) renderKwList(); }
 // 국내 커뮤니티 전반(tbs_data = 21개 커뮤니티 베스트글 제목 ≈630) — 프론트 미로드라 키워드 매칭용으로만 별도 fetch(4분 캐시)
@@ -14081,7 +14114,7 @@ let _kwChecking = false;
 async function checkKwAlerts() {
   if (!kwAlertOn() || _kwChecking) return;
   if (kwPurgeDone() && !$('#kwpop').hidden) renderKwList();   // 폴링(60s)마다 만료분 자동 삭제 — 대기열을 안 열어둬도 정리된다
-  const active = kwGetItems().filter(it => it && it.kw && !it.done);
+  const active = kwGetItems().filter(it => it && it.kw && !it.done && !it.moved);   // moved = 이동으로 처리한 줄 = 감시 중단(재가동 = 밑줄 클릭 · 운영자 260801)
   if (!active.length) return;
   _kwChecking = true;
   try {
@@ -14106,16 +14139,42 @@ async function checkKwAlerts() {
   } finally { _kwChecking = false; }
 }
 async function fireKwToast(it, bucket) {   // 발송 dedup = seen 'kw'축(slug#bucket claimSeen) → 크로스기기·재방문 정확히 1회
-  const id = kwSlug(it.kw) + '#' + bucket;
+  const id = kwSlug(it.kw) + '#' + bucket + (it.rearm ? '@' + it.rearm : '');   // 재가동분은 세대 도장(@rearm)으로 id를 갈라 '이미 보냈다'에 안 삼켜진다(구 등록분 = 접미 없음 = 무회귀)
   let ok = true;
   try { ok = await claimSeen('kw', { id }); } catch {}
-  if (ok) showKwToast(it);
+  if (ok) { showKwToast(it); kwNotify(it, bucket); }   // 인앱 토스트 + 기기 알림 동시(운영자 260801 "포그라운드 알림이 오게 · 웹앱 알림도")
 }
-// 발견한 글로 이동 — 새 탭(noopener) · URL 미보유 소스(xtrends 등)면 대기열로 폴백해 '눌러도 아무 일 없음'을 만들지 않는다.
+// 발견 알림 = **앱을 보고 있는 그 순간에도 기기 알림**(운영자 260801). 서버 감시(.github/scripts/kw_watch.py)는 앱을 *닫았을 때*의 웹푸시 축이고,
+//   이건 앱이 켜져 있어 인앱 토스트만 뜨던 구간(토스트는 8초 뒤 사라지고 다른 토스트에 양보하면 아예 안 뜸)을 메운다.
+//   중복 방지 = 서버 푸시와 **같은 tag('nomute-kw')** = 같은 자리 교체(둘이 겹쳐도 알림은 1개) · 아이콘·배지·data.url = sw.js push 핸들러 문법 100% 미러.
+//   권한 요청은 여기서 안 한다 — 알림 권한·구독 정본 경로 = 설정 알림 토글(pushToggle) · 미허용이면 조용히 스킵(토스트는 그대로).
+async function kwNotify(it, bucket) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.ready;
+    if (!reg || !reg.showNotification) return;
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;   // sw.js iconFor(kind 없음) 미러 = 라이트 파랑 / 다크 시그니처
+    await reg.showNotification('🔔 키워드 발견', {
+      body: "'" + it.kw + "' 가 커뮤니티에 떴어요" + (bucket ? ' (재알림 ' + bucket * 3 + '시간째)' : ''),   // 문구 = 서버 kw_watch.send() 미러(«» 폐지·'' 표기 = 260727 토스트 계약)
+      icon: '/assets/brand/icon-notif-' + (dark ? 'sig' : 'blue') + '-512-260727.png',
+      badge: '/assets/brand/badge-260723.png',
+      tag: 'nomute-kw', renotify: true, data: { url: '/' }, lang: 'ko',
+    });
+  } catch (_) {}   // fail-soft — 알림이 안 떠도 인앱 토스트·대기열은 그대로(감시 파이프 무영향)
+}
+// 발견한 글로 이동 — URL 미보유 소스(xtrends 등)면 대기열로 폴백해 '눌러도 아무 일 없음'을 만들지 않는다.
+//   ⚠ window.open 금지(실측 260801 재발) — 이 앱은 전역 `async function open(a)`(기사 열기)가 window.open을 **가려서**
+//   눌러도 발견한 글로 안 가고 **빈 요약 모달**이 떴다(운영자 260801 "해당 건을 찾은 곳으로 안 가고"). 정본 = 앵커클릭 openExt(failOpen 가족·PWA 안전).
+//   이동에 성공한 그 시점 = 그 줄 밑줄 처리(kwMarkMoved · 운영자 260801 지시4) — 못 간 경우(URL 없음)엔 안 찍는다.
 function kwOpenSrc(it) {
   const u = it && typeof it.url === 'string' && /^https?:\/\//i.test(it.url) ? it.url : '';
   if (!u) { openKwpop(); return; }
-  try { window.open(u, '_blank', 'noopener'); } catch (_) { location.href = u; }
+  const kp = $('#kwpop'), wasOpen = kp && !kp.hidden;
+  const ok = openExt(u);
+  // ⚠ openExt의 합성 앵커는 body에 붙었다가 클릭된다 = 그 클릭이 document까지 올라가 **바깥클릭 닫기**(아래 kwpop 핸들러)에 걸린다
+  //   → 대기열에서 이동을 누르면 창이 같이 닫혀 '밑줄 처리된 그 줄'을 못 본다. 앵커 클릭은 동기라 여기서 복원하면 깜빡임 0.
+  if (wasOpen && kp) kp.hidden = false;
+  if (ok) kwMarkMoved(it);
 }
 let _kwToastT = null, _kwToastIt = null;
 function hideKwToast() { const t = $('#nmKwToast'); if (t) t.classList.remove('show'); }
