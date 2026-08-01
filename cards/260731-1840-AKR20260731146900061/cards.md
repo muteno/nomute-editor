@@ -1,32 +1,33 @@
-# 🏭 파지 창고 칸막이 뜯다…40대 노동자, 무너진 철제에 깔렸다
+# 파지 창고 칸막이 뜯다…40대 노동자, 무너진 철제에 깔렸다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 산업재해 사망 사고의 무게와 해체 작업의 물리적 위험을 사실적으로 고발해야 하는 사건이라 극화 고정
-- 분위기: 한여름 정오의 무심한 직사광 아래, 사람 하나가 사라졌는데도 창고는 그대로 서 있는 건조한 무게. 비명이 아니라 정적으로 누르는 톤
-- 연출 방향: 독자훅 = "세우다가 아니라 뜯다가" — 매일 같은 작업을 하는 40~50대 현장 노동자가 '이거 나도 하는 일인데'에서 멈춘다. 전할 것 = 해체는 균형을 사람 손으로 무너뜨리는 일이고, 그 계산을 누가 했는지가 지금 유일하게 남은 질문이라는 관점. 그래서 강조점은 ①철제 칸막이라는 사물의 무게감 ②그것을 뜯는 사람의 손과 자세 ③사고 이후 남은 통제선·빈자리로 옮겨간다. 사람을 가격하는 순간은 절대 그리지 않고, 직전의 균형과 직후의 부재로 낙차를 만든다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 그가 하던 일이 무엇이었는지 미공개)+카드3 끝(예고형: 쓰러짐 직전의 균형) · 감정 피크=카드4 · 착지 = 계산과 확인이 누구 몫이었는지가 오늘 남은 유일한 질문
-- 연속성 앵커: Recurring subject — a Korean man in his 40s, short cropped black hair, stocky build, wearing a navy work uniform with sleeves rolled up and worn cotton work gloves. 반복 장소 — a dim warehouse bay stacked with baled waste paper.
+- 화풍: B 극화 — 산업재해의 책임 소재가 아직 비어 있는 사건이라, 정황을 사실 그대로 재구성하는 무게가 필요하다
+- 분위기: 한여름 정오의 빛은 셔터 바깥에만 있고 창고 안은 식어 있는 정적 — 사고가 지나간 뒤의 삭막함
+- 연출 방향: 뉴스를 안 보던 독자도 "세우다가 아니라 뜯다가 죽었다"는 한 줄에서 멈춘다 — 물류센터 하면 떠올리는 화재·컨베이어가 아니라, 목록에 없던 자리(파지 창고의 철제 칸막이) 앞에서 사람이 죽었다는 낙차가 이 덱의 훅이다. 그래서 카메라는 사건을 넓게 설명하지 않고 **철제와 사람 손의 거리**에 집착한다 — 붙잡고 있던 손(카드2) → 그 손 위로 덮치는 그림자(카드3) → 아무도 없는 자리(카드5). 깔리는 순간은 그리지 않는다: 강도는 타격이 아니라 닿기 직전의 정지와, 뜯다 만 칸막이가 아직 서 있다는 사실에서 나온다. 악센트 네온그린은 작업 장갑 한 색으로만 흘려 덱 전체를 관통시킨다
+- 독자 동선: **제시** 카드1(사고 후 현장)→**발단·전개** 카드2(파지 보관 시설물의 철제 칸막이 해체)→**피크** 카드3(구조물 전도·사망)→**해소** 카드4(경찰 조사·전부 미공개)→**시사점** 카드5 · 훅=카드1 끝(단서형: "화재도, 컨베이어도 아니었다" → 카드2 첫 줄이 즉시 회수)+카드2 끝(예고형: 뜯는 일이었다 → 카드3이 회수) · 착지 한 줄 요지=떼는 순서를 누가 계산하고 누가 확인했는지가 남은 질문이다 · 명도 아크=카드1 정오 직사광(밝) → 카드2 실내 저조도(점강) → 카드3 단일 광웅덩이(최암·악센트 최강) → 카드4 평면 형광(삭막) → 카드5 확산광 릴리즈
+- 연속성 앵커: Recurring subject — a Korean man in his 40s in a worn navy work jumpsuit and lime-green coated work gloves, short cropped hair, sturdy build (등장 카드 = 2·3) / 반복 장소 — the concrete floor of a Korean logistics warehouse bay stacked with baled waste paper
 
 ### [카드 1]
 **텍스트**
 ```text
-7월 31일 오전 10시께
-경기 이천의 한 물류센터에서
-40대 노동자가 철제에 깔렸다
-*그가 하던 일은 짓는 게 아니었다*
+7월 31일 오전 10시, 경기 이천
+한 물류센터의 파지 창고에서
+40대 노동자 한 명이 숨졌다
+*화재도, 컨베이어도 아니었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his gloved hands gripping a steel partition frame, knuckles taut through the worn fabric. Recurring subject — a Korean man in his 40s, short cropped black hair, stocky build, wearing a navy work uniform with sleeves rolled up and worn cotton work gloves, stands with his back partly to the viewer and looks up along the tall steel partition in front of him. One bare steel partition structure leans over him, its upper edge cutting across the top of the frame. The place is a dim warehouse bay stacked with baled waste paper, wide floor bare around him.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion, nose room on the right, gaze directed toward the right edge
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the work gloves and a strip of safety marking), muted daylight contrast
-Text handling: no signage text, no legible writing on the bales or walls, resolve any surface lettering by cropping and shadow.
+Scene: Emotional focal point: a police officer's steady downward gaze at the toppled steel partition, eyes cast low, jaw still. Two uniformed officers stand just inside a slack cordon tape on the concrete loading apron of a warehouse bay, one crouching with an open palm held above the fallen frame without touching it, the other standing and looking down at the same spot. A large steel partition panel lies flat on the ground beside stacked bales of pressed waste paper, and a single lime-green work glove rests on the paper where it was left. The open roller shutter of the warehouse yawns behind them under a white midday sun.
+Camera: wide establishing shot from eye-level, shot on 35mm lens
+Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the lone work glove), muted daylight contrast
+Korean context: a Korean logistics warehouse and Korean police uniforms, Korean industrial site conventions.
+Text handling: avoid all incidental lettering on the paper bales, cordon tape and shutter by framing and shallow angle; render no signage and no labels anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warehouse concrete floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the concrete loading apron) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -35,29 +36,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이천 물류센터 창고 내부
+물류센터 사고현장 폴리스라인
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-파지를 쌓아두던 시설물의
-철제 칸막이를 뜯는 작업이었다
-세우는 일이 아니라
-*이미 서 있던 걸 무너뜨리는 일*
+그가 하던 일은 해체였다
+파지를 쌓아두던 시설물에서
+철제 칸막이를 뜯어내는 중이었다
+*세우는 게 아니라 뜯는 일이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the narrowing gap between a loosened steel bracket and the gloved fingertips reaching for it. Recurring subject — a Korean man in his 40s, short cropped black hair, stocky build, wearing a navy work uniform with sleeves rolled up and worn cotton work gloves, crouches at the base of the partition and works a bolt loose with a wrench, eyes fixed on the joint. The steel partition rises past him, one panel already removed leaving an empty slot. The place is a dim warehouse bay stacked with baled waste paper behind him.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from high angle shot, looking down, vulnerable subject, small, observed, shot on 70mm short telephoto, gentle background compression, subject isolation
-Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the work gloves), muted daylight contrast
-Text handling: the bale surfaces are shown edge-on and cropped so no printed lettering is legible.
+Scene: Emotional focal point: his gloved fingertips clamped on the edge of the steel panel, tendons taut through the glove. Recurring subject - a Korean man in his 40s in a worn navy work jumpsuit and lime-green coated work gloves, short cropped hair, sturdy build, stands beside a tall steel partition wall and pulls one loosened panel away from its frame, eyes fixed on the joint he is working. Bales of pressed waste paper are stacked behind him on the concrete warehouse floor, and a pry bar leans against the frame at his feet. A hard shaft of daylight from the half-open roller shutter cuts across his forearms while the rest of the interior stays dim.
+Camera: medium shot from eye-level three-quarter angle, shot on 50mm lens
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on his work gloves), film-noir low-key lighting, deep shadows
+Korean context: a Korean logistics warehouse interior and Korean work clothing conventions.
+Text handling: avoid all incidental lettering on the paper bales and the steel frame by cropping and angle; render no signage and no labels anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warehouse concrete floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the concrete warehouse floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -66,58 +68,62 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-철제 칸막이 구조물 해체 작업
+창고 철제 파티션 해체작업
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-작업 도중 구조물이
-갑자기 쓰러졌다
-그는 그 아래 깔렸고
-*무게는 사람 쪽으로 쏟아졌다*
+*버티고 있던 철제가 쓰러졌다*
+그 아래 사람이 있었다
+심정지로 옮겨졌지만 끝내 숨졌다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the wrench dropped mid-air a hand's width from the empty glove, still falling. The tall steel partition has begun to tip past its balance point, its top edge sweeping down through the frame, dust lifting off the floor beneath it. No person is shown in the frame — only the toppling structure, the falling tool and a single work glove on the concrete mark where he had been. The place is a dim warehouse bay stacked with baled waste paper.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 20mm wide lens, subject and environment, documentary realism, nose room on the right
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the single fallen work glove), film-noir low-key lighting, deep shadows
-Text handling: all surfaces are cropped or shadowed so no lettering appears anywhere.
+Scene: Emotional focal point: a lime-green gloved hand open on the concrete, fingers still curled from the grip it just lost. Recurring subject - a Korean man in his 40s in a worn navy work jumpsuit and lime-green coated work gloves, only his forearm and that hand visible entering the upper-center of the frame on the warehouse floor. A vast hard-edged shadow of a tipping steel partition sweeps across the concrete toward the hand, its leading edge still one hand-width away, fine dust lifting through the light. Nothing has touched him in this frame; the whole image holds the instant before contact.
+Camera: extreme close-up from floor-level eye height, shot on 100mm macro lens
+Lighting/mood: single pool of hard light isolating the subject in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the glove), film-noir low-key lighting, deep shadows
+Korean context: a Korean logistics warehouse interior and Korean work glove conventions.
+Text handling: no lettering of any kind in frame; keep the floor and shadow clean of marks and stencils.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warehouse concrete floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the concrete warehouse floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no blood, no injury, no crushed body, no impact moment
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-물류창고 파지 압축 더미
+철제 적재선반 전도사고
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-심정지 상태로 병원에 옮겨졌다
-*오전 10시, 그는 오후를 맞지 못했다*
+경찰이 목격자를 조사하고 있다
+해체 순서도 지지 장치도
+업체 규모도 알려지지 않았다
+*중대재해처벌법 대상인지도 모른다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a single worn cotton work glove lying on the concrete, its fingers still curled from grip. The floor around it is empty, marked only by the drag lines of a stretcher and a folded emergency blanket left behind. Two paramedics in uniform are seen only as retreating backs far at the right edge, small and already leaving. The place is a dim warehouse bay stacked with baled waste paper.
-Camera: extreme close-up, single detail, eye, lips, hand, texture from ground-level shot, worm's-eye view, near floor, exaggerated scale, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the abandoned work glove), film-noir low-key lighting, deep shadows
-Text handling: the blanket and floor are shown blurred and cropped so no lettering is readable.
+Scene: Emotional focal point: the gap between the two men, close enough to speak but neither turned toward the other. A uniformed Korean police officer seen in profile holds an open notebook and a pen and looks sideways at a warehouse worker standing next to him, while the worker in a gray work shirt keeps his eyes cast down and away toward the floor, answering without moving his head. Behind them on the same concrete floor the toppled steel partition lies where it fell, slack cordon tape crossing the depth of the bay. Flat cold ceiling tubes light the whole space evenly with no warmth anywhere.
+Camera: over-the-shoulder medium shot from profile side view, shot on 70mm short telephoto
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a work glove tucked in the worker's belt), muted daylight contrast
+Korean context: Korean police uniforms and a Korean logistics warehouse interior.
+Text handling: keep the notebook page turned away and unwritten; avoid all incidental lettering on tape, uniforms and bales; render no signage and no labels anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warehouse concrete floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the concrete warehouse floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -126,29 +132,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-산업재해 사고 현장 통제선
+사고현장 경찰 목격자 진술
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-경찰은 목격자를 조사하고 있다
-해체 순서도 지지 장치가 있었는지도
-업체 규모도 아직 공개되지 않았다
-*그 계산을 누가 확인했는지가 남았다*
+세울 때 무게는 아래로 쌓이고
+뜯을 때는 사람 쪽으로 쏟아진다
+떼는 순서를 누가 계산하고
+*누가 확인했는지가 남은 질문이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the steady eyes of a police officer looking straight out at the viewer, notebook lowered in one hand. Two officers in uniform stand just inside a taped line at the warehouse entrance, one facing the viewer and one turned toward the fallen steel partition behind them. The toppled structure lies flat on the floor in the background, no person beneath it. The place is a dim warehouse bay stacked with baled waste paper.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the boundary tape running across the frame), film-noir low-key lighting, deep shadows
-Text handling: the boundary tape is shown edge-on and partly cropped so no lettering is legible; the notebook page faces away.
+Scene: Emotional focal point: a lone worker's flat steady gaze directed straight into the camera, jaw set, saying nothing. A Korean man in his 50s in a gray work shirt and a scuffed safety helmet stands centered on the concrete warehouse floor with his arms at his sides, stopped in front of the remaining steel partition wall that is still standing, facing the viewer. The dark gap where one panel was already removed opens behind his shoulder, and bales of pressed waste paper recede into the depth of the empty bay. Diffused overcast daylight comes through the open shutter and fills the space without a single hard shadow.
+Camera: wide shot from eye-level front-on, shot on 35mm lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the work gloves in his hand), muted daylight contrast
+Korean context: a Korean logistics warehouse interior and Korean work clothing conventions.
+Text handling: avoid all incidental lettering on the helmet, bales and partition by framing and angle; render no signage and no labels anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the warehouse concrete floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the concrete warehouse floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -157,5 +164,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-경찰 사고 현장 조사 목격자
+파지 압축 보관창고 내부
 ```
