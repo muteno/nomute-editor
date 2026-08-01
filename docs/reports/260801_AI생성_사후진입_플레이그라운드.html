@@ -98,6 +98,22 @@ body{margin:0;background:#0b0d0c;color:var(--fg);
 @keyframes crefpulse{0%,100%{opacity:.4}50%{opacity:.85}}
 @media(prefers-reduced-motion:reduce){.nmld i,.thumbsec .cref-slot.cref-loading,.thumb-pending .tp-dot{animation:none}}
 
+/* ── 촤르륵 = cardIn 정본 계승(index 520·522 · 스태거 = JS animationDelay i×32ms · index 4223) ── */
+@keyframes cardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes tskIn{from{transform:translateX(18px)}to{transform:none}}
+.thumbsec .cref-slot.chin{animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards}
+.thumbsec .cref-slot.chin.tsk{animation:tskIn .34s cubic-bezier(.22,.61,.36,1) backwards}
+@media(prefers-reduced-motion:reduce){.thumbsec .cref-slot.chin{animation:none}}
+
+/* 조준 링 = 발사 버튼 위치 지시(플레이그라운드 전용 주석 레이어 · 실물 미포함) */
+.aim{position:relative}
+.aim::after{content:'';position:absolute;inset:-5px;border-radius:14px;border:2px solid var(--accent-4);
+  animation:aimPulse 1.3s ease-in-out infinite;pointer-events:none}
+@keyframes aimPulse{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+.aim-tag{position:absolute;top:50%;right:calc(100% + 12px);transform:translateY(-50%);white-space:nowrap;font-size:10px;font-weight:800;
+  color:#241C02;background:var(--accent-4);border-radius:var(--r-pill);padding:3px 9px;pointer-events:none;z-index:5}
+@media(prefers-reduced-motion:reduce){.aim::after{animation:none;opacity:1}}
+
 /* 사진 자리 = 실이미지 대신 톤 재현(외부 자산 0 · 한계 각주 ①) */
 .ph{width:100%;height:100%;display:grid;place-items:center;font-size:10px;font-weight:800;color:rgba(255,255,255,.35);letter-spacing:.04em}
 .ph.p1{background:linear-gradient(160deg,#3b4a52,#20272b 55%,#7a4a2e)}
@@ -171,6 +187,24 @@ pre.val{margin:var(--sp-2) 0 0;padding:10px 12px;background:rgba(0,0,0,.35);bord
       </div>
 
       <div class="ctl">
+        <label class="ctl-l">발사(생성) 버튼 위치 — ⚠배치 갈림</label>
+        <div class="seg" id="segPos">
+          <button data-v="search" class="on">가 · 검색 카러셀 헤더</button>
+          <button data-v="sec">나 · 섹션 헤더</button>
+        </div>
+        <p class="note"><b>가</b> = 지금 코드에 이미 있는 그 <code>+</code>(<code>.cref-more</code> 4882) — 검색 카러셀 소머리 우측. <b>검색 0장이면 사라짐</b>.<br><b>나</b> = "썸네일 후보" 섹션 헤더 '전체' 옆 — 항상 있음. <b>노란 링이 그 위치입니다.</b></p>
+      </div>
+
+      <div class="ctl">
+        <label class="ctl-l">등장 결(촤르륵)</label>
+        <div class="seg" id="segAnim">
+          <button data-v="cardin" class="on">cardIn(정본)</button>
+          <button data-v="tsk">tskIn(가로)</button>
+        </div>
+        <p class="note"><b>cardIn</b> = 전역 촤르륵 정본(<code>.34s cubic-bezier(.22,.61,.36,1)</code> + <code>i×32ms</code> 스태거 · index 520·4223). <b>tskIn</b> = 가로 슬라이드 스태거(index 1180·트렌드 스택).</p>
+      </div>
+
+      <div class="ctl">
         <label class="ctl-l">'AI 생성' 라벨을 언제 띄우나</label>
         <div class="seg" id="segLbl">
           <button data-v="fire" class="on">발사 후에만</button>
@@ -187,7 +221,10 @@ pre.val{margin:var(--sp-2) 0 0;padding:10px 12px;background:rgba(0,0,0,.35);bord
 
       <div class="ctl">
         <label class="ctl-l">발사 시뮬레이션</label>
-        <div class="seg"><button id="btnSim" style="flex:1 1 100%;color:var(--accent);border-color:rgba(var(--accent-rgb),.45)">+ 눌러 생성 → 도착까지 재생</button></div>
+        <div class="seg">
+          <button id="btnSim" style="flex:1 1 100%;color:var(--accent);border-color:rgba(var(--accent-rgb),.45)">+ 눌러 생성 → 도착까지 재생</button>
+          <button id="btnChar" style="flex:1 1 100%;color:var(--accent-4);border-color:rgba(var(--accent-4-rgb),.45)">촤르륵만 다시보기</button>
+        </div>
       </div>
 
       <button class="copy" id="btnCopy">선택값 복사</button>
@@ -217,7 +254,7 @@ const IC_SRCH  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" st
 const IC_DL    = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>';
 const IC_EDIT  = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 
-const S = { stage:0, cse:'both', lbl:'fire', cnt:1 };
+const S = { stage:0, cse:'both', lbl:'fire', cnt:1, pos:'search', anim:'cardin' };
 const $ = s => document.querySelector(s);
 
 const STAGE_TX = [
@@ -227,11 +264,13 @@ const STAGE_TX = [
   '<b>3 · 도착</b> — 폴링이 <code>thumb_gen</code> 증가를 감지하면 로딩 슬롯이 실제 이미지로 교체(=지금 캡처와 동일 화면).'
 ];
 
-function slot(kind, n, tot, cap, phc){
+function slot(kind, n, tot, cap, phc, i){
   const acts = kind==='gen'
     ? '<div class="timg-acts"><button class="sbtn">'+IC_EDIT+'</button><button class="sbtn">'+IC_DL+'</button></div>'
     : '<div class="timg-acts"><button class="sbtn">'+IC_DL+'</button></div>';
-  return '<div class="cref-slot '+kind+'"><div class="ph '+phc+'">사진</div>'
+  // 촤르륵 = cardIn 정본 + i×32ms 스태거(index 4223 동일 산식)
+  const ch = (i==null) ? '' : ' chin'+(S.anim==='tsk'?' tsk':'')+'" style="animation-delay:'+(Math.min(i,14)*32)+'ms';
+  return '<div class="cref-slot '+kind+ch+'"><div class="ph '+phc+'">사진</div>'
        + '<span class="cref-no"><b>'+n+'</b>/'+tot+'</span>'
        + (cap?'<span class="tgen-cap">'+cap+'</span>':'') + acts + '</div>';
 }
@@ -240,8 +279,9 @@ function loadSlot(){
        + '<span class="nmld"><i></i><i></i><i></i></span><span>생성 중…</span></div></div>';
 }
 function cref(label, usage, inner, plus){
-  const acts = '<span class="cref-acts">'
-    + (plus?'<button class="sbtn cref-more" title="이미지 생성">'+IC_PLUS+'</button>':'')
+  const aim = plus ? ' aim' : '';
+  const acts = '<span class="cref-acts" style="position:relative">'
+    + (plus?'<span class="aim-tag">발사(생성) 버튼 = 여기</span><button class="sbtn cref-more'+aim+'" title="이미지 생성">'+IC_PLUS+'</button>':'')
     + (label==='검색 이미지'?'<button class="sbtn cref-srch">'+IC_SRCH+'</button>':'')
     + '</span>';
   return '<div class="cref"><div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">'+label+'</span>'
@@ -267,21 +307,27 @@ function render(){
     flow(); return;
   }
 
+  const posSec = (S.pos==='sec') || !hasSearch;   // 나안 · 또는 검색 0장(가안이 불가능한 케이스)
+  const secPlus = posSec
+    ? '<span style="position:relative;display:inline-flex"><span class="aim-tag">발사(생성) 버튼 = 여기</span>'
+      + '<button class="sbtn cref-more aim" title="이미지 생성">'+IC_PLUS+'</button></span>'
+    : '';
+
   let h = '<div class="thumbsec"><div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — '+parts.join(' · ')+'</span>'
-    + '<button class="sbtn cref-dlall">'+IC_DL+'<span class="cref-dllbl">전체</span></button></div>';
+    + secPlus + '<button class="sbtn cref-dlall">'+IC_DL+'<span class="cref-dllbl">전체</span></button></div>';
 
   if (hasSearch){
-    h += cref('검색 이미지','0.0', slot('search',1,2,'','s1')+slot('search',2,2,'유사','s2'), true);
+    h += cref('검색 이미지','0.0', slot('search',1,2,'','s1')+slot('search',2,2,'유사','s2'), !posSec);
   }
   if (showGen){
     let inner = '';
     if (firing) for(let i=0;i<S.cnt;i++) inner += loadSlot();
     if (done){
-      inner += slot('gen',1,2,'포토 에디토리얼','p1') + slot('gen',2,2,'웹툰 극화','p2');
+      inner += slot('gen',1,2,'포토 에디토리얼','p1',0) + slot('gen',2,2,'웹툰 극화','p2',1);
     }
     if (!firing && !done) inner = '<div class="cref-slot gen cref-loading" style="animation:none;opacity:.5">'
       + '<div class="cref-ld">비어 있음</div></div>';
-    h += cref('AI 생성', done?'0.2':'', inner, !hasSearch || S.lbl==='always');
+    h += cref('AI 생성', done?'0.2':'', inner, false);
   }
   h += '</div>';
   $('#sec').innerHTML = h;
@@ -309,6 +355,16 @@ document.querySelectorAll('#segLbl button').forEach(b=>b.addEventListener('click
   document.querySelectorAll('#segLbl button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
   S.lbl=b.dataset.v; render();
 }));
+document.querySelectorAll('#segPos button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#segPos button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  S.pos=b.dataset.v; render();
+}));
+document.querySelectorAll('#segAnim button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#segAnim button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  S.anim=b.dataset.v; S.stage=3; $('#rStage').value=3; render();
+}));
+$('#btnChar').addEventListener('click',()=>{ S.stage=2; $('#rStage').value=2; render();
+  setTimeout(()=>{ S.stage=3; $('#rStage').value=3; render(); }, 900); });
 $('#btnSim').addEventListener('click',()=>{
   const seq=[1,2,3]; let i=0;
   const go=()=>{ if(i>=seq.length) return; S.stage=seq[i]; $('#rStage').value=S.stage; render(); i++; setTimeout(go, i===1?700:2600); };
