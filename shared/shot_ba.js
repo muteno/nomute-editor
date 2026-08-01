@@ -26,6 +26,10 @@ const ROUTES = {
     steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] } ] },
   'thumb-tr': { url: '/index.html', label: 'Image Studio · 번역', vw: 430, vh: 900,
     steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] }, { clickText: '번역' } ] },
+  // 편집 탭 옵션 배치 확인용 — 소스 미첨부 상태에선 옵션 컬럼(#editCol)이 .none이라 안 보이므로 강제 노출(배치 전용 · 기능 상태 아님)
+  'thumb-edit-opt': { url: '/index.html', label: 'Image Studio · 편집(옵션 노출)', vw: 430, vh: 900,
+    steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] }, { clickText: '편집' },
+             { frameEval: 'thumb.html' } ] },
   'feed': { url: '/index.html', label: '피드', vw: 430, vh: 900, steps: [] },
 };
 
@@ -61,6 +65,9 @@ async function shoot(browser, viewerDir, route, port) {
   for (const st of R.steps) {
     if (st.openTool) await pg.evaluate(a => { openTool(a[0], a[1], window[a[2]], a[3]); }, st.openTool);
     if (st.clickText) await pg.evaluate(t => { const e = [...document.querySelectorAll('#tooldlg *')].filter(x => !x.children.length && x.textContent.trim() === t); if (e[0]) e[0].click(); }, st.clickText);
+    if (st.frameEval) { for (const fr of pg.frames()) { if (!fr.url().includes(st.frameEval)) continue;
+      await fr.evaluate(() => { const c = document.querySelector('#editCol'); if (c) c.classList.remove('none');
+        const st2 = document.querySelector('#optStrip'); if (st2) st2.classList.remove('none'); }); } }
     await pg.waitForTimeout(2500);
   }
   const buf = await pg.screenshot();
