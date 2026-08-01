@@ -39,22 +39,53 @@ h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
   .console{flex:1 1 100%}
 }
 
-/* ── ① 실물 재현 무대 = 폰 화면(뒤 배경 전환 가능 = 투명도 대조용) ── */
-.stage{position:relative;height:300px;border-radius:var(--r-l);border:1px solid var(--pan-line);
-  overflow:hidden;background:#0e0f11;padding:var(--t-spad,14px)}
-.stage.bgFeed{background:linear-gradient(180deg,#141518,#0e0f11)}
-.stage.bgLight{background:linear-gradient(180deg,#e9ece9,#cfd6d1)}
-.stage.bgPhoto{background:
-  radial-gradient(120% 90% at 30% 20%, rgba(0,238,210,.30), transparent 60%),
-  radial-gradient(110% 80% at 75% 75%, rgba(179,107,255,.34), transparent 62%), #1a1d22}
-.stage.bgDense{background:#101114}
-.bgin{height:100%;overflow:hidden}
-.ln{height:7px;border-radius:4px;background:rgba(255,255,255,.05);margin:0 0 8px}
-.stage.bgLight .ln{background:rgba(0,0,0,.09)}
-.ln.s{width:52%} .ln.m{width:76%} .ln.l{width:90%}
-.cardx{height:52px;border-radius:12px;border:1px solid var(--line2);background:rgba(255,255,255,.03);margin:0 0 9px}
-.stage.bgLight .cardx{border-color:rgba(0,0,0,.08);background:rgba(0,0,0,.04)}
-.stage.bgDense .ln{margin-bottom:4px}
+/* ── ① 실물 재현 무대 = "실제로 토스트가 뜨는 그 구간"을 층째로 재현(운영자 260801) ──
+   층 = viewer/index.html 정본값 그대로 쌓는다:
+     .bgfx 우주 워시(--space-bg #070a12 + rgba(--space-hi-rgb,.28) 상단 글로우) + #wavebg 물결(근사)
+     → .card 뉴스 피드(글래스 .18/.20 · blur 12 · --line · --r-l · 그림자+인셋 하이라이트)
+     → [#pubdlg 발행 모달 + ::backdrop rgba(4,8,5,.46) blur 7]  ← 성공 토스트가 실제로 뜨는 순간의 층
+     → .qflash → .bnav 하단 네비(rgba(0,0,0,.30) · blur --blur-l 22 saturate 1.35 · border-top .12)
+   ⚠ 글래스·블러는 뒤에 진짜 그림이 있어야 판단된다 — 이 층들이 곧 그 배경이다(회색 막대 목업으론 알파를 못 고른다) */
+.stage{position:relative;height:340px;border-radius:var(--r-l);border:1px solid var(--pan-line);overflow:hidden;
+  background:radial-gradient(130% 100% at 50% 14%, rgba(var(--space-hi-rgb,26,47,102),.28), rgba(0,0,0,0) 62%), #070a12}
+.stage.sLight{background:linear-gradient(180deg,#e9ece9,#cfd6d1)}
+.stage.sPhoto{background:
+  radial-gradient(120% 90% at 28% 18%, rgba(0,238,210,.34), transparent 58%),
+  radial-gradient(110% 80% at 76% 74%, rgba(179,107,255,.38), transparent 60%),
+  radial-gradient(92% 70% at 50% 52%, rgba(255,225,61,.16), transparent 66%), #12161c}
+.wave{position:absolute;inset:0;pointer-events:none;filter:brightness(1) saturate(.95);
+  background:radial-gradient(58% 40% at 18% 28%, rgba(255,255,255,.055), transparent 70%),
+             radial-gradient(54% 36% at 80% 60%, rgba(255,255,255,.045), transparent 72%),
+             radial-gradient(70% 44% at 50% 95%, rgba(255,255,255,.030), transparent 70%)}
+.feed{position:absolute;inset:0;overflow:hidden;padding:var(--t-spad,14px) 14px 78px}
+/* .card = viewer/index.html 514행 정본 사본(패딩만 18→14 = 축소 무대 비례) */
+.card{background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--line);border-radius:var(--r-l);padding:14px;margin:0 0 14px;
+  box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05)}
+.stage.sLight .card{background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.08)}
+.ttl{height:10px;border-radius:5px;background:rgba(255,255,255,.16);width:80%;margin:0 0 9px}
+.ln{height:7px;border-radius:4px;background:rgba(255,255,255,.07);margin:0 0 7px}
+.ln:last-child{margin-bottom:0}
+.ln.s{width:46%} .ln.m{width:72%} .ln.l{width:92%}
+.stage.sLight .ttl{background:rgba(0,0,0,.20)} .stage.sLight .ln{background:rgba(0,0,0,.10)}
+/* 발행 모달 = #pubdlg 정본 셸(--modal-glass .64 · --r-modal) + dialog::backdrop 정본(rgba(4,8,5,.46)·blur 7) */
+.mbd{position:absolute;inset:0;background:rgba(4,8,5,.46);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.mdlg{position:absolute;left:50%;top:24px;transform:translateX(-50%);width:86%;
+  background:rgba(17,18,20,.64);border:1px solid var(--line);border-radius:var(--r-modal);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:12px 14px 14px}
+.mdlg b{font-size:var(--fs-h2);font-weight:var(--fw-x);display:block;margin:0 0 10px}
+.mrow{display:flex;justify-content:space-between;font-size:var(--fs-sm);color:var(--mut);border-top:1px solid var(--line2);padding:7px 0}
+.mgo{margin-top:10px;height:var(--btn-sm);display:grid;place-items:center;border-radius:var(--r-m);
+  background:var(--accent);color:#032322;font-size:var(--fs-label);font-weight:var(--fw-x)}
+/* 하단 네비 = .bnav 정본 1721행 사본 */
+.bnav{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;align-items:flex-end;
+  padding:0 8px 6px;background:rgba(0,0,0,.30);
+  backdrop-filter:blur(var(--blur-l)) saturate(1.35);-webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);
+  border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.bnav i{flex:1;text-align:center;min-height:39px;padding:9px 4px 0;margin:0 0 4px;font-style:normal;
+  color:var(--mut);font-size:var(--fs-label);font-weight:var(--fw-b);letter-spacing:-.2px}
+.bnav i.on{color:var(--accent)}
 
 /* ★ .qflash 정본 사본 — 무대 안이라 fixed → absolute만 교체, 나머지 문법은 정본 그대로.
    튜닝 축만 var(--t-*)로 치환(포터블 §3-2) · 기본값 = 현행 실측 */
@@ -118,8 +149,15 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
   <div class="stagewrap">
     <h1>안내 토스트 <b>.qflash</b> 셸 — 정본 문법 그대로</h1>
     <p class="sub">발행 성공 안내가 뜨는 그 토스트. <b>무대는 화면에 고정</b>돼 있으니 오른쪽(폰은 아래) 조정값을 아무리 스크롤해도 결과가 눈앞에 남습니다.</p>
-    <div class="stage bgFeed" id="stage" data-pg-preview>
-      <div class="bgin" id="bgin"></div>
+    <div class="stage" id="stage" data-pg-preview>
+      <div class="wave"></div>
+      <div class="feed" id="feed"></div>
+      <div class="mbd" id="mbd"></div>
+      <div class="mdlg" id="mdlg"><b>공개 링크로 발행</b>
+        <div class="mrow"><span>공개 범위</span><span>누구나</span></div>
+        <div class="mrow"><span>만료</span><span>3일</span></div>
+        <div class="mgo">발행</div></div>
+      <div class="bnav"><i>홈</i><i class="on">뉴스</i><i>SNS</i><i>트렌드</i></div>
       <div class="qflash ghost" id="ghost"><span class="ft-msg">키워드 알림 등 가족 토스트(비교용)</span></div>
       <div class="qflash" id="tst"><span class="ft-msg">발행 및 링크 복사 완료</span></div>
     </div>
@@ -167,8 +205,8 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 
     <div class="csec">
       <h3>③-e 뒤 배경 (대조용)</h3>
-      <div class="slab">배경 화면 — 같은 알파도 뒤가 바뀌면 체감이 달라진다</div>
-      <div class="seg" id="segBg"><button data-v="bgFeed">피드</button><button data-v="bgDense">빽빽한 글</button><button data-v="bgPhoto">사진</button><button data-v="bgLight">밝은 화면</button></div>
+      <div class="slab">장면 — 이 토스트가 실제로 뜨는 구간(기본 = 발행 성공 순간)</div>
+      <div class="seg" id="segBg"><button data-v="sModal">발행 모달 위</button><button data-v="sApp">피드 위(모달 닫힌 뒤)</button><button data-v="sPhoto">사진 위</button><button data-v="sLight">밝은 화면</button></div>
       <div class="row"><label>배경 패딩 <small>뒤 콘텐츠 여백 = 겹침 대조</small></label><span class="val" id="vSpad">—</span><input type="range" id="sSpad" min="0" max="40" step="2"></div>
       <div class="slab">문구 길이 (말줄임 확인)</div>
       <div class="seg" id="segMsg"><button data-v="s">짧게</button><button data-v="m">현행</button><button data-v="l">PIN 포함</button></div>
@@ -185,8 +223,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div class="csec note" data-pg-note>
       <b>⑤ 재현 한계</b><br>
       · 셸 = <b>viewer/index.html <code>.qflash</code> 정본 CSS 그대로</b>(무대 안이라 <code>fixed → absolute</code>만 교체). 슬라이더를 안 만지면 「지금 그 토스트 그대로」다 — 기본값이 전부 현행 실측값이라서.<br>
-      · 실물 위치는 <code>bottom:calc(86px + env(safe-area-inset-bottom))</code>. 이 무대는 300px짜리 축소 화면이라 하단 여백 비율이 다르다 — 최종 확인은 브랜치 프리뷰에서.<br>
-      · <b>알파 체감은 뒤 배경에 좌우된다</b>. 그래서 ③-e에 배경 4종을 뒀다. 실앱은 대부분 「피드」에 가깝고, 사진 카드 위에 뜰 때가 가장 불리하다.<br>
+      · <b>무대 = 실제로 이 토스트가 뜨는 구간을 층째로 재현</b>했다 — 우주 워시 배경(<code>--space-bg</code> + 상단 글로우) · <code>.card</code> 뉴스 피드(글래스 blur 12) · <code>#pubdlg</code> 발행 모달 + <code>::backdrop</code>(rgba(4,8,5,.46)·blur 7) · <code>.bnav</code> 하단 네비(blur <code>--blur-l</code>·saturate 1.35). 값은 전부 index 정본 사본이고, <b>글래스·블러는 이 뒤 그림 위에서만 판단이 선다</b>.<br>
+      · <b>기본 장면 = 「발행 모달 위」</b>가 맞다 — 성공 토스트는 모달이 열린 채 뜨고(qFlash가 top-layer dialog 안으로 이주), 1.5초 뒤 모달이 닫히면 <code>close</code> 캡처가 body로 되돌려 「피드 위」로 넘어간다. 두 장면을 다 확인해야 한다.<br>
+      · 위치는 정본 <code>bottom:calc(86px + env(safe-area-inset-bottom))</code> 그대로. 다만 무대가 340px 축소 화면이라 <b>화면 대비 하단 여백 비율은 실물보다 크다</b> — 최종 확인은 브랜치 프리뷰에서.<br>
+      · <b>물결(<code>#wavebg</code>)은 근사다</b> — 실물은 WebGL2 셰이더(무채색 mesh, INT .13)라 정지 그라디언트 3장으로 대신했다. 알파를 아주 미세하게(±.02) 고를 때는 실물과 다를 수 있다.<br>
       · <b>가족 통일 계약</b> — <code>.qflash</code>와 <code>.nm-toast</code>는 운영자 260712 회신으로 폭·라운드·글자·모션이 맞춰져 있다. <code>.qflash</code>만 바꾸면 그 통일이 깨지고, 가족 전체를 바꾸면 긴급·실패·새버전·키워드 토스트 4종이 같이 변한다(③-e 마지막 체크박스로 미리 본다).<br>
       · 글꼴은 Pretendard 가정. 미설치 기기는 시스템 고딕으로 대체돼 <b>같은 px에서 높이가 ±1px</b> 흔들린다.
     </div>
@@ -216,13 +256,15 @@ const LAD = {
   ba:   { '--line':.08, '--line2':.06 },
 };
 const MSGS = { s:'복사 완료', m:'발행 및 링크 복사 완료', l:'발행 및 링크 복사 완료 · PIN 481920 별도 전달' };
-const BGIN = {
-  bgFeed:  '<div class="ln l"></div><div class="cardx"></div><div class="ln m"></div><div class="ln s"></div><div class="cardx"></div><div class="ln m"></div>',
-  bgDense: new Array(16).fill('<div class="ln l"></div><div class="ln m"></div>').join(''),
-  bgPhoto: '<div class="ln s" style="opacity:.5"></div>',
-  bgLight: '<div class="ln l"></div><div class="cardx"></div><div class="ln m"></div><div class="ln s"></div><div class="cardx"></div>',
+// 피드 = .card 정본 3장(뉴스 카드 = 제목줄 + 본문줄) · 사진 장면은 카드 없이 배경만 = 글래스 최악 조건
+const CARD = '<div class="card"><div class="ttl"></div><div class="ln l"></div><div class="ln m"></div><div class="ln s"></div></div>';
+const SCENE = {
+  sModal: { feed:CARD + CARD + CARD, modal:1 },   // 발행 성공 = #pubdlg 열린 채 토스트가 뜬다(정본 경로 · qFlash 호스트 이주)
+  sApp:   { feed:CARD + CARD + CARD, modal:0 },   // 1.5s 뒤 모달 닫힘 = 토스트가 body로 귀환해 피드 위에 남는다
+  sPhoto: { feed:'', modal:0 },
+  sLight: { feed:CARD + CARD, modal:0 },
 };
-const DEFAULTS = Object.assign({}, CANON, { bot:20, align:'l', fill:'1', bg:'bgFeed', spad:14, msg:'m', ghost:1, scope:0 });
+const DEFAULTS = Object.assign({}, CANON, { align:'l', fill:'1', bg:'sModal', spad:14, msg:'m', ghost:1, scope:0 });
 const PRESETS = [
   { id:'p0', nm:'현행 그대로', st:{...DEFAULTS} },
   { id:'p1', nm:'지시 70% 높이', st:{...DEFAULTS, pady:3} },
@@ -304,7 +346,10 @@ function apply(){
   tst.querySelector('.ft-msg').textContent = MSGS[state.msg];
   stage.className = 'stage ' + state.bg;
   stage.style.setProperty('--t-spad', state.spad + 'px');
-  $('#bgin').innerHTML = BGIN[state.bg];
+  const sc = SCENE[state.bg];
+  $('#feed').innerHTML = sc.feed;
+  $('#mbd').style.display = sc.modal ? '' : 'none';
+  $('#mdlg').style.display = sc.modal ? '' : 'none';
 
   const h = boxH(state), pct = h / boxH(CANON) * 100, w = warnAxes();
   $('#capBox').textContent = Math.round(tst.getBoundingClientRect().width) + '×' + h.toFixed(1) + 'px';
