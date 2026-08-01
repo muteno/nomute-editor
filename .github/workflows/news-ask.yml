@@ -42,7 +42,7 @@ permissions:
 jobs:
   ask:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 100   # 60 → 100(운영자 260731 링크 전사 레일): 최악 스택 = 셋업 + large-v3 STT(1시간 미디어 ≈ 최대 50분·ASK_LINK_STT_TIMEOUT 3000s 캡) + 요약 배치(ASK_JOB_DEADLINE 2200s). 링크 없는 평시 런은 종전과 동일하게 수 분에 끝난다(캡은 최후 보루).
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -61,6 +61,30 @@ jobs:
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code   # 러너엔 claude 미설치 — analyze와 동일하게 설치(없으면 exit 127)
 
+      # ── 링크 레일(운영자 260731 "링크가 원문이면 원문 활용 · 미디어면 large v3 전사") ──
+      # 잔류 asks 중 '미디어' 링크가 하나라도 있으면 STT 환경·모델(3.1GB)을 캐시로 미리 깐다.
+      #   ⚠ 스코프(ASK_ONLY)는 아래 스텝에서 산출되므로 여기선 전건을 훑는다 = 과탐지해도 캐시 워밍뿐(무해),
+      #     미탐지면 ask.sh 인라인 전사가 apps/ly/setup.sh 를 직접 깔아 진행(fail-soft 이중화).
+      - name: 미디어 링크 감지 (전사 필요 여부)
+        id: linkscan
+        run: |
+          NEED=0
+          shopt -s nullglob
+          for p in asks/*.json; do
+            if python3 .github/scripts/ask_link.py --scan "$p" | cut -f2 | grep -qx media; then NEED=1; break; fi
+          done
+          echo "need_stt=$NEED" >> "$GITHUB_OUTPUT"
+          echo "미디어 링크 전사 필요: $NEED"
+
+      - name: STT 환경 (미디어 링크 — ffmpeg+faster-whisper+large-v3 · 캐시)
+        if: ${{ steps.linkscan.outputs.need_stt == '1' }}
+        timeout-minutes: 20   # 첫 런 large-v3 3.1GB 다운 감안(nb-make·edit-make 동일 · 캐시히트 즉시)
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/ly/setup.sh
+          whisper: 'true'
+          apt: ffmpeg
+
       - name: Process asks
         env:
           # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
@@ -74,6 +98,10 @@ jobs:
           EVT_BEFORE: ${{ github.event.before || '' }}   # push 직전 head — 병렬 스코프 범위 산출용(헤더 주석 ②)
           EVT_SHA: ${{ github.sha }}
           ASK_MIN_AGE_MIN: ${{ inputs.min_age_min || '0' }}   # 스윕 신선 배제(dispatch 전용 — push 스코프엔 무관)
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}   # 미디어 링크 전사(yt-dlp) — 유튜브 봇 인증 회피(nb/ly 레일 공용 · 없으면 쿠키 없이 진행)
+          ASK_LINK_DIR: /tmp/asklink   # 미디어 링크 전사문 캐시 경로(ask.sh 링크 레일 · 운영자 260731)
+          ASK_LINK_MAX_SEC: ${{ vars.NB_MAX_SEC || 14400 }}       # 자막 경로 길이 상한(nb 와 동일 값 공유)
+          ASK_LINK_STT_MAX_SEC: ${{ vars.NB_STT_MAX_SEC || 3600 }}   # 자막 없어 Whisper 로 갈 때의 길이 상한
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then
