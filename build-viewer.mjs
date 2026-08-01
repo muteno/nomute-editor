@@ -134,6 +134,7 @@ for (const f of files) {
       bias: meta.bias || '',
       bias_src: biasSrcOf(body),   // 원문 편향 N(본문 '편향: 원문 N/10…'서 파싱) — 게이지 보정 시각화용. 분석 본문에 이미 있음=요약 알고리즘 무변경·옛 기사 소급. 없으면 ''.
       tags: withDrugTag(meta.tags, body),   // #마약 백스톱 — 본문 약물어면 #마약 보강(LLM 누락·기존 분석분 즉시 구제 · 운영자 260625)
+      tags_why: meta.tags_why || '',   // 민감 태그 부착 근거 한 줄(요약 frontmatter 패스스루) — 뷰어 민감 칩 title 툴팁 = 오탐·미탐을 운영자가 그 자리서 봄(운영자 260801 오탐 수리). 옛 분석분은 빈값(툴팁 없음 = 종전 동작).
       image_query_en: meta.image_query_en || '',   // 🌍해외사건 영문 검색쿼리(돋보기·검색이미지 영문화) — 분석 frontmatter 패스스루·국내=빈값(운영자 260622)
       image_query: meta.image_query || '',   // 상징 검색 키워드(AI 추출) — 돋보기 초록버튼=키워드 검색(회색=제목·기존)·운영자 260622
       category: meta.category || CAT.get(meta.url || '') || '',   // frontmatter category 우선 → 없으면 후보 cat(gate_judge AI 분류) 승계 → 둘 다 없으면 뷰어 articleCat 키워드 폴백(미술관 흉기난동=사회 교정·260626)

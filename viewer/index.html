@@ -4231,7 +4231,7 @@ function render() {
         <div class="kv">
           <div class="outcol"><span>매체</span>${a.media ? (/^https?:\/\//i.test(a.url || '') ? `<a class="mlink" href="${esc(a.url)}" target="_blank" rel="noopener"><b>${esc(outletShort(primaryMedia(a.media)))}</b></a>` : `<b>${esc(outletShort(primaryMedia(a.media)))}</b>`) : '<b class="senshyphen">—</b>'}</div>
           <div><span>편향</span>${a.bias ? biasLabel(a) : '<b class="senshyphen">—</b>'}</div>
-          ${(_sc => _sc ? `<div class="typecol"><span>민감</span><div class="typewrap">${_sc}</div></div>` : '')(sensChips(a.tags))}
+          ${(_sc => _sc ? `<div class="typecol"><span>민감</span><div class="typewrap">${_sc}</div></div>` : '')(sensChips(a.tags, a.tags_why))}
         </div>
         <div class="botrow">
           ${progGauge(a)}
@@ -4268,13 +4268,16 @@ function gauge(b) {
 // (NMT 레일 제거 — 진행바 세그먼트가 N/M/T 점프 겸함. A5)
 // 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 '' (민감 칸 자체를 안 그림 — 옛 '—' 대시는 베이스라인서 떠 보여 폐지·운영자 260625).
 // 본체 7개(SENS_PROTECT)=앰버 경고 틴트(.warn). 목록 외(옛 큐 잔여 태그)=기본 흰 칩(.tagchip).
-function sensChips(tags) {
+// why = frontmatter tags_why(부착 근거 한 줄) → 칩 hover 툴팁. 오탐(주제 아닌 배경 언급으로 붙은 태그)·미탐을
+//   운영자가 칩 위에서 바로 판별(운영자 260801 · 황정민 스토킹 기사 #아동피해 오탐 수리의 관측 장치). 옛 분석분은 빈값 = 툴팁 없음(종전 동작).
+function sensChips(tags, why) {
   if (!tags || tags === '해당 없음') return '';
   const arr = tags.split(/\s+/).filter(Boolean).slice(0, 2);   // 민감 = 최대 2개(카드 게이지바 우측선 안 · 초과분은 typewrap …클립·운영자 260702)
   if (!arr.length) return '';
+  const tip = (why || '').trim();
   return arr.map(t => {
     const warn = SENS_PROTECT.includes(t) ? ' warn' : '';
-    return `<span class="tagchip${warn}">${esc(t)}</span>`;
+    return `<span class="tagchip${warn}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(t)}</span>`;
   }).join('');
 }
 // ── 프롬프트 단계 실패 = 게이지 라벨 탭으로 그 자리 재시도(운영자 260727) ──
