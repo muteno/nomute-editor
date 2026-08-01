@@ -7447,6 +7447,27 @@ const dimTags = s => { const t = String(s ?? ''); const m = t.match(/((?:#[A-Za-
 // URL 속성 전용 — 위험 스킴(javascript:·data:·vbscript:) 차단 후 esc. 외부 출처(CSE 검색 link/img) href·src 하드닝.
 const escUrl = u => { const s = String(u ?? '').trim().replace(/[\u0000-\u001f]/g, ''); return /^(javascript|data|vbscript):/i.test(s) ? '#' : esc(s); };   // 제어문자 스트립 = `java\tscript:` 류 스킴 검사 우회 봉합(평의회 260711 하드닝 — 브라우저는 탭/개행 제거 후 스킴 해석)
 const hrefOk = u => { const s = String(u ?? '').trim().replace(/[\u0000-\u001f]/g, ''); return /^(javascript|data|vbscript):/i.test(s) ? '#' : s; };   // DOM .href 프로퍼티 대입용(HTML 이스케이프 X·스킴만 차단 — 앵글9 · 동일 하드닝)
+// ── 설치앱(홈 화면 아이콘 = display:standalone) 새 탭 폴백 봉합(운영자 260731 "TOP 10 내역 클릭해도 반응 없음") ──
+//   iOS 설치앱은 target="_blank" 링크를 **통째로 무시**한다(새 탭도·현재 창 이동도 없음 = 탭해도 무반응).
+//   임베드 불가 항목(구글 검색 URL 등 X-Frame-Options 차단분)은 trEmbed null → 새 탭 폴백이라 이 함정에 그대로 빠졌다
+//   (실측 260731 TOP 10 전 행 클릭: 틱톡·유튜브 7행 = 인앱 모달 정상 / 구글 3행 = 모달 0·새 탭 = 설치앱서 무반응).
+//   처방 = 위임 1핸들러(레포 관용구): **iOS 설치앱에서만** 가로채 같은 창 이동으로 대체("반응 0" 탈출).
+//   판정 = navigator.standalone === true 한정(사파리 전용 비표준 플래그 = 깨지는 그 플랫폼만 정조준):
+//     · 안드로이드 크롬 설치앱·데스크톱 설치앱 = display-mode:standalone이지만 새 탭이 정상 작동 → 무접촉(하이재킹 금지)
+//     · 브라우저 탭 = 전부 무접촉 = 종전 그대로
+//   ⚠ window.open 사용 금지 — 이 앱은 전역에 `async function open(a)`(기사 열기)를 선언해 window.open을
+//     **가린다**(실측 260731: window.open(url)이 기사 열기로 새어 들어가 Promise[truthy] 반환 = 폴백 침묵 실패).
+const nmStandalone = () => matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;   // 설치앱 판정 정본(구 pushToggle 인라인 중복 흡수 · 안내문·표시용 = 플랫폼 무관 광의)
+document.addEventListener('click', e => {
+  if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey) return;   // 앱이 이미 처리(인앱 모달·스와이프 억제 등) = 무접촉 · 보조클릭·수식키 = 브라우저 기본 존중
+  if (navigator.standalone !== true) return;   // iOS 설치앱 한정(광의 nmStandalone 아님 = 멀쩡한 플랫폼 무접촉)
+  const a = e.target.closest && e.target.closest('a[target="_blank"]');
+  if (!a) return;
+  const u = a.getAttribute('href') || '';
+  if (!/^https?:\/\//i.test(u)) return;   // 외부 http(s)만(앱 내부 상대경로·해시 앵커 무접촉)
+  e.preventDefault();
+  location.href = u;   // 같은 창 이동 = iOS 설치앱 스와이프백으로 복귀
+});
 
 
 // Z: 요약 헤더 아래 기본 개요 — 대분류·매체·기자명·WRITE·IN. 기존 데이터만(기자명=본문 Fact 출처 패턴).
@@ -8151,7 +8172,7 @@ async function pushRefresh() {
 async function pushToggle() {
   const btn = $('#pushbtn'); if (!btn || !pushOK()) return;
   if (Notification.permission === 'denied') {   // denied는 JS로 못 풂(웹 표준·PWA도 동일·설정 deeplink API 없음) → 환경별 설정 안내
-    const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    const pwa = nmStandalone();   // 설치앱 판정 = nmStandalone 정본 계승(구 인라인 중복 · 260731 SSOT화)
     alert(pwa
       ? '알림이 꺼져 있어요(설치된 앱). 버튼으론 못 켜요(보안 제약).\n\n켜는 법:\n① 홈 화면 노뮤트 아이콘 꾹 누르기 → 앱 정보(ⓘ) → 알림 → 허용\n② 또는 폰 설정 → 앱 → 노뮤트(없으면 Chrome) → 알림 → 허용\n→ 앱 다시 열고 알림 ON\n\n그래도 안 되면: 아이콘 삭제 후 다시 "홈 화면에 추가"로 재설치 = 권한 초기화(가장 확실).'
       : '알림이 브라우저에서 차단돼 있어요. 켜는 법:\n주소창 왼쪽 🔒 → 사이트 설정 → 알림 → "허용" → 새로고침.');
