@@ -12563,6 +12563,7 @@ const SIG_GEN = {
   hour_band: { '새벽0-6': 22, '오전6-11': 60, '점심11-14': 74, '오후14-18': 82, '저녁18-22': 100, '밤22-24': 78 },
   dow: { '월': 84, '화': 86, '수': 88, '목': 90, '금': 94, '토': 100, '일': 96 }
 };
+const CORE_TH = .85;   // 핵심 구간 폭 임계 = 도달 기대값 피크 대비 비율(운영자 260801 플레이그라운드 선택 ★ · 90% = 시간대 15:00~20:38 좁음 / 78% = 12:56~21:23 넓음 / 85% = 14:08~20:57) — '어디를' 고르는 건 데이터, 이 상수는 '얼마나 넓게'만 정한다
 let SIG_HIT = {};   // 축별 툴팁 히트 포인트(chChart CH_HIT 대칭 · 렌더마다 재산출)
 function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 260719 "ㄱ 고도화 뭐든") — {peaks: 접속 피크 시각[], now: KST 시각, today: KST 요일} · 전부 선택(없으면 조용히 생략 = fail-soft)
   x2 = x2 || {};
@@ -12604,20 +12605,23 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   const spts = []; bs.forEach((b, i) => { const v = val(b, 'share_pm'); if (v != null) spts.push([X(i), Y(v), !!b.low_sample]); });   // 팔로워(공유) 곡선 좌표 = 핵심 구간 산출·시리즈 렌더 공용(단일 산출)
   const sx0 = spts.length && !hlin ? spts[0][0] : mL, sx1 = spts.length && !hlin ? spts[spts.length - 1][0] : W - mR;   // area 폐합 x = 숄더 반영 양끝(비선형축 = 기존 첫/끝 점 그대로)
   const sline = spts.length >= 2 ? chPath(shoulder(spts).map(p => [p[0], p[1]]), 1) : '';
-  // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 재개정: 음영 바닥 = X축 정지 — 눈금·요일 라벨 행 침범 금지 · 축 살짝 관통 = 양옆 세로변 선분만 · "인덱싱까지 이어짐"은 선분 +4 관통 + 해당 눈금 보라 틴트가 대체) — 코어 = 팔로워가 앱 사용자 위인 연속 우위 런(경계 = 선형 보간 교차점 · 버킷 스냅 금지) · 팔로워 area(파도→X축)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .06 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침)
+  // 핵심 구간 = 팔로워 파도 아래 세로 커튼(운영자 260723 재개정: 음영 바닥 = X축 정지 — 눈금·요일 라벨 행 침범 금지 · 축 살짝 관통 = 양옆 세로변 선분만 · "인덱싱까지 이어짐"은 선분 +4 관통 + 해당 눈금 보라 틴트가 대체) — 팔로워 area(파도→X축)를 [x0,x1] 컬럼으로 하드 클립 · 세로 그라데이션(위 파도 .34 → 바닥 .06 잔광) · 색 = --cat-tech(팔레트 유일 형광 보라) · 불투명 금지(아래 무채 볼륨 바 비침). ⚠️ 표현 문법(음영·세로변·라벨·눈금 틴트) = 260723 확립본 그대로 — 아래는 *어디를 칠할지 고르는 산출식*만 교체(운영자 260801 "표현방법은 기존과 동일").
+  // 코어 산출 = 도달 기대값(운영자 260801 판정 "동그라미 친 18~19시가 제일 핵심 아닌지 · 앱 사용자가 주로 쓰는 시간대로 늘려야 · 좌측 − 우측 +") — score = 공유 lift × 앱 사용자 이용 강도(반응률 × 볼 사람 수) · 피크 중심 연속 런 { score ≥ 피크 × CORE_TH }.
+  //   구식(팔로워 곡선이 앱 사용자 곡선 '위'인 런) 폐기 사유 3점(실측 insta 1,005건): ① 단위 불일치 — 팔로워는 lift를 데이터 산포 lo~hi로 자동 스케일 / 앱 사용자는 0~100을 ph×.82로 고정 매핑 = 두 곡선의 픽셀 교차에 물리적 의미 없음(밤22-24 ×0.68 하나가 lo를 끌어내리면 코어가 통째로 이동). ② 상대 우위 판정이라 *앱 사용자가 적은 한산한 시간대*가 유리 — 오전6-11은 공유 ×0.93으로 통과(여유 +0.9px)·저녁18-22는 ×1.01인데 탈락(표본은 저녁이 최다 n=225). ③ 같은 차트의 접속 피크 1위 18시를 코어가 17:54에서 배제 = 두 오버레이가 반대를 지시.
+  //   전후(현 데이터 실렌더 실측): 시간대 08:30~17:54 → 14:08~20:57(좌 −5.6h·우 +3.1h · 접속 피크 1·2위 15·18시 포섭 — 구식은 18시를 17:54로 잘랐다 · 3위 21시는 경계 3분 밖 = 저녁 밴드 대표값이 20시라 곱이 21시부터 꺾임 = 데이터 그대로) · 요일 목 → 금22시~일12시(주말 = 260724 "주말이 이용 훨 높은데" 판정과 동방향). 시안·전후 = docs/reports/260801_핵심구간_산출식_플레이그라운드.html
   let coreX = null, coreXR = null, coreY = null;
   if (gpts && gpts.length === bs.length && spts.length === bs.length && sline) {
-    const dfs = spts.map((p, i) => gpts[i][1] - p[1]);   // >0 = 팔로워 곡선이 위(픽셀 y 반전축)
-    let pk = 0; spts.forEach((p, i) => { if (p[1] < spts[pk][1]) pk = i; });   // 팔로워 피크 = y 최소
-    if (dfs[pk] > 0) {
-      let i0 = pk, i1 = pk;   // 피크 중심 확장 — 골짜기 컷(운영자 260723): 앱사용자 위 유지 AND 팔로워 하강 중일 때만 뻗음 → 팔로워 곡선의 골짜기(로컬 최저)를 만나면 정지(새벽·심야 저활동대로 벽까지 번지는 것 차단 · 픽셀 y 클수록 낮은 값 = spts[i±1][1] > spts[i][1] = 이웃이 더 낮음 = 아직 하강)
-      while (i0 > 0 && dfs[i0 - 1] > 0 && spts[i0 - 1][1] > spts[i0][1]) i0--;   // 좌: 골짜기(이웃이 더 높음) or 교차(dfs≤0)면 정지
-      while (i1 < dfs.length - 1 && dfs[i1 + 1] > 0 && spts[i1 + 1][1] > spts[i1][1]) i1++;   // 우: 대칭
-      // (운영자 260723 한 수 "최소 폭 보장" 실측 결론 = 불요·유해) — 골짜기 컷이 이미 피크±1을 자연 보장(피크 이웃은 항상 피크보다 낮아 첫 스텝 확장 · 양옆 즉시 교차 시엔 e0/e1 edge()가 교차점 밴드로 처리 = 0폭 없음). 억지 Math.max(i1,pk+1)로 교차 너머 확장 시 edge()가 "두 점 다 dfs≤0"서 음수 t → 경계 오이동(18→17시 실측). ∴ 가드 미도입이 정답.
-      const edge = (a, b) => { const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; };   // 곡선 교차점 = 선형 보간(x·팔로워 파도 y) — 구 프랙셔널 인덱스(fi) = 경계시각 별도 라벨("9시/18시") 폐지(260723 눈금 보라 틴트로 대체)로 제거
-      const at = i => ({ x: X(i), y: spts[i][1] });   // 골짜기·엣지 정지 = 그 버킷 중심(교차 아님 = 보간 불요)
-      const e0 = (i0 > 0 && dfs[i0 - 1] <= 0) ? edge(i0 - 1, i0) : at(i0);   // 교차로 멈춤 = 보간점 · 골짜기/엣지로 멈춤 = 버킷 중심
-      const e1 = (i1 < dfs.length - 1 && dfs[i1 + 1] <= 0) ? edge(i1, i1 + 1) : at(i1);
+    const sc = spts.map((p, i) => val(bs[i], 'share_pm') * (gpts[i][2] / 100));   // 도달 기대값 = 공유 lift × 앱 사용자 지수/100(둘 다 이 차트가 이미 그리는 정본 — 새 데이터·새 상수 0)
+    let pk = 0; sc.forEach((v, i) => { if (v > sc[pk]) pk = i; });   // 코어 중심 = 도달 기대값 최대(구식 '팔로워 y 최소' = lift 최대와 다름 — 볼 사람 수를 곱한 뒤의 최대)
+    if (sc[pk] > 0) {
+      const T = sc[pk] * CORE_TH;
+      let i0 = pk, i1 = pk;   // 피크 중심 확장 = 임계 이상인 동안(구 '골짜기 컷'은 불요 — 임계 자체가 저활동대 번짐을 막는다: 새벽 .222·밤 .530 ≪ T)
+      while (i0 > 0 && sc[i0 - 1] >= T) i0--;
+      while (i1 < sc.length - 1 && sc[i1 + 1] >= T) i1++;
+      const cross = (a, b) => { const t = (sc[a] - T) / (sc[a] - sc[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; };   // 경계 = 임계 교차점 선형 보간(x·팔로워 파도 y) — 버킷 스냅 금지 = 구 edge() 문법 계승 · a는 항상 임계 이상·b는 미만이라 t∈(0,1) 보장(구식 '두 점 다 dfs≤0 음수 t' 오이동 구조적 소멸)
+      const at = i => ({ x: X(i), y: spts[i][1] });   // 축 끝(확장 벽)에서 멈춤 = 그 버킷 중심(교차 아님 = 보간 불요)
+      const e0 = i0 > 0 ? cross(i0, i0 - 1) : at(i0);
+      const e1 = i1 < sc.length - 1 ? cross(i1, i1 + 1) : at(i1);
       const x0 = e0.x, x1 = e1.x, aB = H - mB;   // aB = X축(하단 눈금선) = 음영 바닥(운영자 260723 "음영이 눈금/요일 라벨 영역 넘지 않게" — 구 +11 라벨행 연장 폐지 · 축 관통은 아래 세로변 선분만)
       s += `<defs><clipPath id="sigCoreClip-${ax}"><rect x="${x0.toFixed(1)}" y="${mT}" width="${(x1 - x0).toFixed(1)}" height="${ph}"/></clipPath><linearGradient id="sigCore-${ax}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${aB.toFixed(1)}"><stop offset="0" stop-color="var(--cat-tech)" stop-opacity=".34"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity=".06"/></linearGradient></defs>`;
       s += `<path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigCore-${ax})" stroke="none" clip-path="url(#sigCoreClip-${ax})"/>`;   // 팔로워 area(파도→X축)를 코어 컬럼으로 하드 클립 = 세로 커튼(라벨 행 무접촉)
@@ -12697,7 +12701,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreX != null ? '<i class="lg-core">핵심 구간</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
+  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreX != null ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 연속 구간 — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
