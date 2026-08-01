@@ -44,6 +44,23 @@
   textarea::placeholder, input::placeholder { color:var(--mut); }
   #note[hidden] { display:none; }
 
+  /* ── 자료 소스 5입구 픽토 행(운영자 260801 "위쪽 상단에 url·파일·사진·텍스트·기존 요약본 기사 참조 5개 나열 · 아래 정리 지시 불요 · 영상 url 길게 있는 것도 불요 = 픽토그램으로 갈음") ──
+     셸 = index #genidlg `.cpv-empty` 「빈 상태 반갈」 정본의 n분할 계승(tr.html 이식본과 동문 · 값 신설 0) — 균등 flex 칸 + 버튼 grid place-items:center = 픽토 중심이 자기 칸 4분할 정중앙
+     픽토 path = 전부 레포 정본 복사(창작 0): URL = ly #srcUrlBtn · 파일 = ly FILE_PICTO(§디자인 u 첨부행 정본) · 사진 = thumb .cpv-photobtn · 텍스트 = index #geniTxtBtn(pastedlg 문서 정본) · 기사 참조 = nb .histbtn(자료 목록 정본)
+     소등/점등 = #askStrip .gs-v 정본(선택 = accent · 미선택 = mut · 운영자 260728 "선택된 옵션은 모두 강조색") — 구 .cpv-photobtn 상시 accent는 '단일 진입점'일 때의 값이라, N택1로 바뀐 이 행에선 점등 규칙이 이긴다
+     세로 마진 sp-4 = 우상단 .histbtn(top10+btn-sm30 = 40px 점유)과 겹치지 않게 행을 그 아래로 내림(가로 패딩 비대칭 = 5분할 중심 흔들림이라 배제 · 값 = 토큰) */
+  .srcpick { display:flex; align-items:center; justify-content:center; height:var(--btn); margin:var(--sp-4) 0 var(--sp-2); }
+  .srcpick .cpv-photobtn { flex:1 1 20%; width:auto; height:100%; }
+  .cpv-photobtn { display:grid; place-items:center; width:var(--btn); height:var(--btn); padding:0; background:none; border:0; cursor:pointer; color:var(--mut); -webkit-tap-highlight-color:transparent; transition:color var(--dur); }
+  .cpv-photobtn svg { width:26px; height:26px; display:block; transition:transform .14s cubic-bezier(.2,.9,.3,1.25); }   /* raw-ok: 26px·.14s 탄성 = index .geni-prev .cpv-photobtn svg 정본 동값 */
+  .cpv-photobtn:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(박스 전체 scale 금지 · 정본) */
+  .cpv-photobtn.on { color:var(--accent); }
+  .cpv-photobtn:disabled { opacity:.45; cursor:default; }
+
+  #artList .vrow { cursor:pointer; }   /* 기사 참조 목록 = 이 파일 .vrow 목록 정본 그대로(#recent 동문 · 새 행 문법 0) */
+  #artList .vt b { display:block; font-weight:var(--fw-b); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #artList .vt .m { font-size:10.5px; color:var(--mut); font-variant-numeric:tabular-nums; }   /* raw-ok: #recent .vt .m 정본 동값 */
+
   /* 발사 버튼 = thumb/song 발사 상태머신 정본 계승(운영자 260721 "게이지바 이미지 스튜디오 참고 통일" — 구 song glive 반투명 .34 게이지 = song이 thumb goFire로 이주하기 전 잔재라 폐지 · 복원 = git 이력) */
   .go { width:100%; padding:var(--sp-2); margin-top:var(--sp-3); background:rgba(255,255,255,.02); border:1px solid var(--line); border-radius:var(--r-pill);   /* 흰글래스 .02+--line(운영자 260713 B) · ⭐thumb .go 발사 게이지바 정본 통일 = padding sp-2(12 · "9→6 줄어든 만큼" ⅔·33%↓ · 운영자 260713 2차 · 높이 52→40)·마진 sp-3(18)·r-pill·font 14px·line-height:1 → 글자 정중앙 dy0 */
     color:var(--accent); font-weight:800; font-size:14px; font-family:inherit; line-height:1; cursor:pointer; transition:transform var(--dur-fast); position:relative; overflow:hidden; }
@@ -82,6 +99,7 @@
 
   /* 결과 노트 — 소머리 라벨 + 우측 복사(song .rhead/.cpy 계승) */
   .rhead { display:flex; align-items:center; gap:8px; margin:20px 0 6px; }
+  .rhead[hidden] { display:none; }   /* ⚠️ 숨김 재승리 필수 — display:flex가 UA `[hidden]{display:none}`을 이긴다(tr.html `.rsz-ar.none` 좀비 선례 · 실측 260801: 기사 참조 모드에서 접혔어야 할 '• 내용' 소머리가 살아 있었다) */
   .rhead label { margin:0; flex:1; }
   .rhead .cnt { font-size:11px; color:var(--mut); font-variant-numeric:tabular-nums; }
   .cpy { display:grid; place-items:center; width:26px; height:26px; padding:0; opacity:.75; position:relative;
@@ -197,11 +215,22 @@
 <div class="wrap">
   <button class="histbtn" id="histBtn" type="button" aria-label="자료 목록"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></button>
 
-  <label class="fl" for="url">영상 URL</label>
-  <input type="text" id="url" inputmode="url" placeholder="유튜브 링크 — 영상 1개 = 자료 노트 · 채널/재생목록 = 영상 목록" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+  <!-- ⚠배치(운영자 260801 지시 · §디자인 3-2 사후 명세) — 자료 소스 5입구를 화면 **최상단**에 픽토그램만으로 나열(라벨 문자 없음 = .cpv-empty 정본 문법) · 탭 = 그 소스의 입력만 아래에 펼침(N택1) · 구 [영상 URL 긴 입력칸]·[정리 지시 textarea] = 폐지(URL은 URL 픽토가 갈음 · 지시칸은 운영자 불요 판정) -->
+  <div class="srcpick" id="srcPick" role="group" aria-label="자료 소스 선택">
+    <button class="cpv-photobtn" id="mURL" type="button" aria-label="URL — 유튜브 링크" title="URL — 유튜브 링크(영상 1개 = 자료 노트 · 채널/재생목록 = 영상 목록)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><!-- 픽토 = ly #srcUrlBtn 정본 path -->
+    <button class="cpv-photobtn" id="mFile" type="button" aria-label="파일 — 영상·음성 전사" title="파일 — 영상·음성 파일 전사(Whisper large-v3)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-5"/><path d="m9.5 15 2.5-2.5 2.5 2.5"/></svg></button><!-- 픽토 = ly FILE_PICTO 정본(문서+위화살표 · §디자인 u 첨부행 정본) -->
+    <button class="cpv-photobtn" id="mPhoto" type="button" aria-label="사진 — 글자 인식" title="사진 — 이미지 속 글자 인식(OCR)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button><!-- 픽토 = thumb .cpv-photobtn 사진 정본 path -->
+    <button class="cpv-photobtn" id="mText" type="button" aria-label="텍스트 — 전문 붙여넣기" title="텍스트 — 전문·메모 붙여넣기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><!-- 픽토 = index #geniTxtBtn(pastedlg 문서 정본) path -->
+    <button class="cpv-photobtn" id="mRef" type="button" aria-label="기사 참조 — 기존 요약본" title="기사 참조 — 기존 요약본·수집 기사에서 고르기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></button><!-- 픽토 = 이 파일 .histbtn(자료 목록) 정본 path -->
+  </div>
 
-  <label class="fl" for="ask">정리 지시 <span style="font-weight:400;color:var(--mut)">(선택)</span></label>
-  <textarea id="ask" placeholder="예: 부동산 규제 관점으로. 수치 위주로." autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+  <input type="text" id="url" inputmode="url" placeholder="유튜브 링크" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" hidden><!-- URL 픽토 탭에서만 등장(상시 노출 폐지 = 운영자 260801) -->
+  <div class="rhead" id="txHead" hidden><label class="fl" for="tx" id="txLb">내용</label><span class="cnt" id="txCnt"></span></div>
+  <textarea id="tx" hidden placeholder="내용을 붙여넣어줘" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+  <div id="artList" hidden></div><!-- 기사 참조 목록(articles.json 요약본 + candidates.json 수집분 = tr.html 참고 자료 정본 원천 그대로) -->
+  <div class="fine" id="pickT" hidden></div><!-- 고른 소스 표시(파일명·기사 제목) -->
+  <input type="file" id="fFile" accept="video/*,audio/*,.mp4,.mov,.m4v,.webm,.mkv,.avi,.mp3,.m4a,.wav,.ogg,.aac,.flac" hidden>
+  <input type="file" id="fPhoto" accept="image/*" hidden>
 
   <button class="go" id="go">자료화</button>
   <div class="status" id="sstatus" role="status"></div>
@@ -216,6 +245,7 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT — COPY/CHECK/OK/ERR/WARN/DOWNLOAD_SVG -->
+<script src="upload.js"></script><!-- R2 직업로드 SSOT(nmUpArm·nmUpload·nmUpDrop) — 파일 소스 20MB 초과분(편집기·변환과 동일 계약 · 미설정이면 base64 폴백) -->
 <script src="nm-loader.js"></script><!-- 로더 팩토리 SSOT(yeulmaru-promo mkLoader 이식) — .nmld 도트 · 강조색 --accent(thumb/sb 동문 · 자료화 진행 픽토) -->
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -232,7 +262,8 @@ const pendClear=()=>{ try{ localStorage.removeItem(PEND_KEY); }catch(e){} };
 const fmtT=s=>{ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
 const mmss=s=>{ s=Math.max(0,Math.floor(+s||0)); const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
   return h? h+':'+String(m).padStart(2,'0')+':'+String(x).padStart(2,'0') : String(m).padStart(2,'0')+':'+String(x).padStart(2,'0'); };
-const SRC_LB={ 'subs':'업로더 자막', 'subs-auto':'자동 생성 자막', 'stt':'Whisper 음성 인식' };
+const SRC_LB={ 'subs':'업로더 자막', 'subs-auto':'자동 생성 자막', 'stt':'Whisper 음성 인식',
+  'stt-file':'Whisper 음성 인식(업로드 파일)', 'ocr':'사진 글자 인식(OCR)', 'text':'붙여넣은 텍스트', 'article':'기존 요약본 기사' };   // 5입구 확장(운영자 260801) — 신뢰도 배너 원천
 
 // ── 발사 상태머신 = thumb/song goFire verbatim 계승('전송 중…' 풀필 → ✓ 스트로크 드로우 → 종단) + 진행 = 버튼 안 jobrun(운영자 260721 "게이지바 이미지 스튜디오 참고 통일 · 자료화 중 = 버튼 안 · 진행 픽토그램 모션") — 구 glive/flashCheck/statusWait(상태줄 대기) = 폐지 · 복원 = git 이력 ──
 function btnErr(g,m){
@@ -288,22 +319,159 @@ function busyEnd(gb,done){   // 종료 — done=완료 ✓ 스트로크 드로�
   } else { gb.classList.remove('okdone','checking'); gb.textContent=gb.dataset.label||'자료화'; }
 }
 
+// ── 자료 소스 5입구 상태기(운영자 260801 "url·파일·사진·텍스트·기사참조 5개 상단 나열 · 아예 뒤집으려고함") ──
+//    N택1 = 픽토 점등(accent)·나머지 소등(mut) · 그 소스의 입력만 아래에 펼침. 발사(자료화)는 단일 버튼 그대로.
+let MODE='', SRC_TEXT='', SRC_TITLE='', FILE_R2='', FILE_B64='', FILE_NAME='';
+const FILE_MAX=20*1024*1024;   // 이하 = base64 직송(ly FILE_MAX 정본 동값) · 초과 = R2 직업로드(upload.js)
+const MODE_EL={ url:'#mURL', file:'#mFile', photo:'#mPhoto', text:'#mText', ref:'#mRef' };
+const TX_LB={ photo:'사진에서 읽은 글자', text:'내용' };
+function pickT(msg){ const el=$('#pickT'); if(!msg){ el.hidden=true; el.textContent=''; return; } el.textContent=msg; el.hidden=false; }
+function setMode(m){
+  MODE=m;
+  for(const k in MODE_EL) $(MODE_EL[k]).classList.toggle('on', k===m);
+  $('#url').hidden=(m!=='url');
+  const showTx=(m==='text'||m==='photo');
+  $('#txHead').hidden=!showTx; $('#tx').hidden=!showTx;
+  if(showTx) $('#txLb').textContent=TX_LB[m];
+  if(m!=='ref') $('#artList').hidden=true;
+  if(m!=='file'&&m!=='ref') pickT('');
+  if(m==='url') setTimeout(()=>{ try{ $('#url').focus(); }catch(e){} },20);
+  if(m==='text') setTimeout(()=>{ try{ $('#tx').focus(); }catch(e){} },20);
+}
+$('#mURL').addEventListener('click',()=>setMode('url'));
+$('#mText').addEventListener('click',()=>setMode('text'));
+$('#mFile').addEventListener('click',()=>{ setMode('file'); $('#fFile').click(); });
+$('#mPhoto').addEventListener('click',()=>{ setMode('photo'); $('#fPhoto').click(); });
+$('#mRef').addEventListener('click',()=>{ setMode('ref'); openArts(); });
+$('#tx').addEventListener('input',()=>{ $('#txCnt').textContent=$('#tx').value.trim().length.toLocaleString()+'자'; });
+
+// ── 파일 소스(영상·음성) = ly/edit 업로드 계약 그대로 — 20MB 이하 base64 · 초과 R2 직업로드(러너가 ffmpeg 오디오 추출 → Whisper large-v3) ──
+const EXT_OK=/\.(mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|ogg|aac|flac)$/i;
+$('#fFile').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value='';
+  if(!f) return;
+  const st=$('#sstatus'); st.classList.remove('err'); st.textContent='';
+  if(FILE_R2){ try{ nmUpDrop(FILE_R2); }catch(e2){} }   // 대체 선택 = 옛 키 고아 정리(edit 관례)
+  FILE_R2=''; FILE_B64=''; FILE_NAME=f.name||'src.mp4';
+  if(!EXT_OK.test(FILE_NAME)){ st.innerHTML=WARN_SVG+' 영상·음성 파일만 돼 (mp4·mov·webm·mkv·mp3·m4a·wav 등)'; st.classList.add('err'); return; }
+  if(f.size>2*1024*1024*1024){ st.innerHTML=WARN_SVG+' 파일이 너무 커 — 2GB 이하로'; st.classList.add('err'); return; }
+  try{
+    if(f.size>FILE_MAX){
+      const armed=await nmUpArm();
+      if(!armed){ st.innerHTML=WARN_SVG+' 20MB 초과 파일은 대용량 저장(R2) 설정이 필요해 — 더 작은 파일이나 URL로 해줘'; st.classList.add('err'); return; }
+      pickT('올리는 중… 0%');
+      const r=await nmUpload(f,p=>pickT('올리는 중… '+p+'%'));
+      FILE_R2=r.key;
+    } else {
+      FILE_B64=await new Promise((res,rej)=>{ const rd=new FileReader(); rd.onload=()=>res(String(rd.result).split(',')[1]||''); rd.onerror=()=>rej(new Error('파일 읽기 실패')); rd.readAsDataURL(f); });
+    }
+    pickT('파일 — '+FILE_NAME+' ('+(f.size/1048576).toFixed(1)+'MB)');
+  }catch(err){ FILE_R2=''; FILE_B64=''; pickT(''); st.innerHTML=WARN_SVG+' 파일 준비 실패 — 다시 골라줘 ('+esc((err&&err.message)||'error')+')'; st.classList.add('err'); }
+});
+
+// ── 사진 소스 = 브라우저 OCR(tesseract.js 지연 로드 · 이미지는 서버로 안 감) = tr.html 정본 이식(withCap/loadTess 문법 그대로) ──
+const withCap=(p,ms,msg)=>{ let t; return Promise.race([
+  Promise.resolve(p).finally(()=>clearTimeout(t)),
+  new Promise((_,rj)=>{ t=setTimeout(()=>rj(new Error(msg)),ms); }),
+]); };
+function loadTess(){   /* OCR 라이브러리 = 누를 때만 지연 로드(평시 페이지 무게 0) */
+  if(window.Tesseract) return Promise.resolve();
+  return withCap(new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=res; s.onerror=()=>rej(new Error('OCR 라이브러리 로드 실패 — 네트워크 확인'));
+    document.head.appendChild(s);
+  }),25000,'OCR 라이브러리 로드 지연 — 네트워크 확인 후 다시 눌러줘');
+}
+$('#fPhoto').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value='';
+  if(!f) return;
+  const st=$('#sstatus'); st.classList.remove('err');
+  st.innerHTML=NB_SPIN+' 사진에서 글자 읽는 중…';
+  SRC_TITLE=(f.name||'').replace(/\.[a-z0-9]+$/i,'').slice(0,120);
+  let url='';
+  try{
+    await loadTess();
+    const w=await withCap(Tesseract.createWorker('kor+eng'),90000,'글자 인식 준비 지연(언어 데이터 내려받기) — 잠시 후 다시 시도해줘');   /* 한글 우선 = 자료화 소스가 국내 캡처 중심(tr.html eng 전용은 외신 번역 축) */
+    url=URL.createObjectURL(f);
+    let data;
+    try{ ({data}=await withCap(w.recognize(url),150000,'글자 읽기가 너무 오래 걸려 — 더 작은/선명한 이미지로 다시')); }
+    finally{ try{ await w.terminate(); }catch(e2){} }
+    const txt=String((data&&data.text)||'').replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim();
+    $('#tx').value=txt; $('#tx').dispatchEvent(new Event('input'));
+    st.innerHTML=txt.length>20? (OK_SVG+' 글자 '+txt.length.toLocaleString()+'자 읽음 — 확인·수정 후 자료화') : (WARN_SVG+' 글자를 거의 못 읽었어 — 더 선명한 사진으로');
+    if(txt.length<=20) st.classList.add('err');
+  }catch(err){ st.innerHTML=WARN_SVG+' '+esc((err&&err.message)||'글자 인식 실패'); st.classList.add('err'); }
+  finally{ if(url) setTimeout(()=>URL.revokeObjectURL(url),1000); }
+});
+
+// ── 기사 참조 = 기존 요약본(articles.json) + 수집 기사(candidates.json) — tr.html 참고 자료 정본 원천·행은 이 파일 .vrow 문법 ──
+let ARTS=[];
+async function openArts(){
+  const el=$('#artList');
+  if(!el.hidden){ el.hidden=true; return; }   // 열려 있으면 접기(tr.html openArts 문법)
+  const rows=[];
+  try{
+    const r=await fetch('articles.json?t='+Date.now());
+    const raw=r.ok? await r.text():'[]';
+    if(!/^\s*</.test(raw)){
+      const j=JSON.parse(raw);
+      (Array.isArray(j)? j:(j.articles||[])).filter(a=>a&&a.title).slice(0,10)
+        .forEach(a=>rows.push({k:'요약', t:String(a.title), m:String(a.media||''), file:a.file}));
+    }
+  }catch(e){}
+  try{
+    const c=await (await fetch('candidates.json?t='+Date.now())).json();
+    (Array.isArray(c)? c:[]).filter(x=>x&&x.title)
+      .sort((a,b)=>String(b.published||'').localeCompare(String(a.published||''))).slice(0,10)
+      .forEach(x=>rows.push({k:'수집', t:String(x.title), m:String(x.media||''), s:String(x.summary||x.desc||'')}));
+  }catch(e){}
+  ARTS=rows;
+  el.innerHTML=rows.length
+    ? '<div class="rhead"><label class="fl">기사 참조</label><span class="cnt">'+rows.length+'건</span></div>'
+      +rows.map((r,i)=>'<div class="vrow" data-i="'+i+'"><div class="vt"><b>'+esc(r.t.slice(0,80))+'</b><span class="m">'+esc(r.k+(r.m?(' · '+r.m):''))+'</span></div></div>').join('')
+    : '<div class="rhead"><label class="fl">기사 참조</label></div><div class="vrow"><div class="vt"><b>불러올 기사가 아직 없어</b></div></div>';
+  el.hidden=false;
+}
+$('#artList').addEventListener('click',async e=>{
+  const row=e.target.closest('.vrow'); if(!row||row.dataset.i===undefined) return;
+  const r=ARTS[+row.dataset.i]; if(!r) return;
+  let body=r.s||'';
+  if(r.file){ try{ const d=await (await fetch('detail/'+encodeURIComponent(r.file)+'.json?t='+Date.now())).json(); body=String(d.body||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }catch(e2){} }
+  SRC_TITLE=r.t.slice(0,200); SRC_TEXT=(r.t+'\n'+(r.m?('매체: '+r.m+'\n'):'')+'\n'+body).slice(0,8000);
+  pickT('참조 — '+SRC_TITLE);
+  $('#artList').hidden=true;
+});
+
 async function fire(){
   const gb=$('#go');
-  const url=$('#url').value.trim();
-  if(!url) return btnErr(gb,'영상 URL을 넣어줘');
-  if(!/^https?:\/\//i.test(url)) return btnErr(gb,'URL은 http(s)로 시작');
   if(gb.classList.contains('firing')||gb.classList.contains('okdone')||gb.classList.contains('jobrun')) return;   // 재발사 방어(연타·Enter — pointer-events는 클릭만 막음)
+  const url=$('#url').value.trim();
+  let payload=null, pendLb='';
+  if(MODE==='url'||(!MODE&&url)){
+    if(!url) return btnErr(gb,'영상 URL을 넣어줘');
+    if(!/^https?:\/\//i.test(url)) return btnErr(gb,'URL은 http(s)로 시작');
+    payload={url}; pendLb=url;
+  } else if(MODE==='file'){
+    if(!FILE_R2&&!FILE_B64) return btnErr(gb,'파일을 골라줘');
+    payload=FILE_R2? {r2key:FILE_R2, name:FILE_NAME} : {fileB64:FILE_B64, name:FILE_NAME}; pendLb=FILE_NAME;
+  } else if(MODE==='photo'||MODE==='text'||MODE==='ref'){
+    const t=(MODE==='ref'? SRC_TEXT : $('#tx').value).trim();
+    if(!t) return btnErr(gb, MODE==='ref'?'기사를 골라줘':'내용을 넣어줘');
+    if(t.length<40) return btnErr(gb,'내용이 너무 짧아');
+    payload={text:t.slice(0,8000), title:SRC_TITLE, kind:(MODE==='photo'?'ocr':MODE==='ref'?'article':'text')}; pendLb=SRC_TITLE||'텍스트';
+  } else return btnErr(gb,'위에서 소스를 골라줘');
   USER_ACT=true;
   const status=$('#sstatus'); status.classList.remove('err'); status.textContent='';
   const t0=Date.now();
   goFire(gb);   // thumb/song 문법 — 낙관 발사(접수 실패 = goIdle 회수)
   try{
-    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url, ask:$('#ask').value.trim().slice(0,500)})});
+    const res=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await res.json();
     if(!res.ok||j.error){ goIdle(gb); status.innerHTML=WARN_SVG+' '+esc(String(j.error||('서버 오류 '+res.status+' — 잠시 후 다시'))); status.classList.add('err'); return; }
     goAccept(gb);   // 접수 = 게이지 100% 마무리 → ✓ 드로우(문구 무변)
-    pendSet({id:j.id, t0, url});
+    if(FILE_R2) FILE_R2='';   // R2 키 소진(러너가 잡 끝 원본 삭제 = 일회용 · edit/ly 동문)
+    pendSet({id:j.id, t0, url:pendLb});
     pollNote(j.id, t0, t0-90000);   // 표시는 goEnd가 ✓ 홀드 뒤 버튼 인계(jobrun)
   }catch(e){ goIdle(gb); status.innerHTML=WARN_SVG+' 요청 실패 — 잠시 후 다시 ('+esc(e.message)+')'; status.classList.add('err'); }
 }
@@ -373,14 +541,16 @@ function renderNote(d){
   const durLb=s.dur? mmss(s.dur):'';
   const meta=[s.channel, s.uploaded, durLb].filter(Boolean).map(esc).join(' · ');
   const srcLb=SRC_LB[d.tr_src]||'전사';
-  const warn=(d.tr_src==='subs-auto'||d.tr_src==='stt')? ' — 고유명사·수치 오인식 가능(원문 대조 전 인용 주의)':'';
+  const TXTSRC=['ocr','text','article'].includes(d.tr_src);   // 비영상 소스(사진 OCR·붙여넣기·기사 참조 · 운영자 260801) = 타임코드 없는 본문 → 라벨 '전사'→'본문'
+  const BODY_LB=TXTSRC?'본문':'전사';
+  const warn=(d.tr_src==='subs-auto'||d.tr_src==='stt'||d.tr_src==='stt-file'||d.tr_src==='ocr')? ' — 고유명사·수치 오인식 가능(원문 대조 전 인용 주의)':'';
   const trTxt=(d.transcript||[]).map(r=>'['+mmss(r.s)+'] '+r.t).join('\n');
   let h='';
   h+='<div class="ntitle">'+esc(s.title||'(제목 없음)')+'</div>';
   h+='<div class="nmeta">'+meta+(s.url?(' · <a href="'+esc(s.url)+'" target="_blank" rel="noopener">원본 보기</a>'):'')+'</div>';
   h+='<div class="nchips"><span class="nchip kind">'+esc(d.kind||'일반')+'</span><span class="nchip">'+esc(srcLb)+'</span>'
     +(d.topics||[]).map(t=>'<span class="nchip">'+esc(t)+'</span>').join('')+'</div>';
-  h+='<div class="srcnote">전사 출처: '+esc(srcLb)+esc(warn)+'</div>';
+  h+='<div class="srcnote">'+BODY_LB+' 출처: '+esc(srcLb)+esc(warn)+'</div>';
   if(d.one) h+='<div class="one">'+esc(d.one)+'</div>';
   h+=sect('summary','요약')+'<div class="rbox">'+esc(d.summary||'')+'</div>';
   if((d.points||[]).length){
@@ -408,10 +578,10 @@ function renderNote(d){
   }
   if((d.use||[]).length) h+=sect('use','활용 포인트')+'<div class="rbox">'+esc(d.use.join('\n'))+'</div>';
   // 전체 전사 — 기본 접힘 + 자수 배지 · 전문 복사/.txt(펼치지 않고 반출 = 평의회 앵글8)
-  h+='<div class="rhead"><label class="fl">전체 전사</label><span class="cnt">'+trTxt.length.toLocaleString()+'자</span>'
-    +'<button class="cpy" type="button" data-k="tr" aria-label="전사 전문 복사"></button>'
+  h+='<div class="rhead"><label class="fl">전체 '+BODY_LB+'</label><span class="cnt">'+trTxt.length.toLocaleString()+'자</span>'
+    +'<button class="cpy" type="button" data-k="tr" aria-label="'+BODY_LB+' 전문 복사"></button>'
     +'<button class="cpy dlbtn" type="button" id="mdDl" aria-label="노트 파일(.md) 저장" title="노트 전체 .md"></button>'
-    +'<button class="cpy dlbtn" type="button" id="trDl" aria-label="전사 .txt 저장" title="전사만 .txt"></button></div>';
+    +'<button class="cpy dlbtn" type="button" id="trDl" aria-label="'+BODY_LB+' .txt 저장" title="'+BODY_LB+'만 .txt"></button></div>';
   h+='<details class="fold" id="trFold"><summary>'+CHEV_R_SVG_INLINE()+'펼쳐 보기<span class="cnt">'+(d.transcript||[]).length+'줄</span></summary><div class="fbody tr">'
     +(d.transcript||[]).map(r=>'<p>'+tl(d,r.s)+esc(r.t)+'</p>').join('')+'</div></details>';
   // 뉴스 요약 연결(운영자 260712 3차 "효용적으로 뭉치기") — 이 노트를 기존 요약 요청 파이프(api/submit → news-ask)로 승격 = 피드 카드·카드뉴스·X·영상 다운스트림 전부 기존 동선 재사용
@@ -427,7 +597,7 @@ function renderNote(d){
   $$('#note .cpy:not(.dlbtn)').forEach(b=>{ b.innerHTML=COPY_SVG; });
   const dl=$('#trDl'); if(dl){ dl.innerHTML=DOWNLOAD_SVG; dl.addEventListener('click',()=>{
     const name='transcript_'+((d.src&&d.src.yt_id)||d.id||'nb')+'.txt';
-    const head=(s.title||'')+'\n'+(s.url||'')+'\n전사 출처: '+srcLb+'\n\n';
+    const head=(s.title||'')+'\n'+(s.url||'')+'\n'+BODY_LB+' 출처: '+srcLb+'\n\n';
     saveBlob(head+trTxt,name,'text/plain'); dl.classList.add('dl-done');
   }); }
   const md=$('#mdDl'); if(md){ md.innerHTML=DOWNLOAD_SVG; md.addEventListener('click',()=>{
@@ -459,7 +629,7 @@ function renderVlist(d){
 $('#note').addEventListener('click',e=>{
   const g=e.target.closest('.vgo');
   if(g&&VLIST){ const v=(VLIST.items||[])[+g.dataset.i]; if(!v) return;
-    $('#url').value=v.url; g.classList.add('done');   // 행 발사 = 기존 단건 파이프(연타 방어 = fire 내 disabled) · done = 이 목록에서 보낸 표시
+    setMode('url'); $('#url').value=v.url; g.classList.add('done');   // 행 발사 = 기존 단건 파이프(연타 방어 = fire 내 disabled) · done = 이 목록에서 보낸 표시 · setMode = 5입구 상태기를 URL로 되돌림(운영자 260801)
     try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e2){}
     fire(); return; }
   const f=e.target.closest('#nbFeed');
@@ -473,8 +643,9 @@ const nbFedMark=id=>{ try{ const j=JSON.parse(localStorage.getItem(FED_KEY)||'{}
 function buildNewsText(d){
   const s=d.src||{};
   const L=[];
-  L.push('[유튜브 영상 자료화 노트 — 아래 내용을 기사 다이제스트로 정리해줘. 출처는 유튜브 채널이고, 노트의 사실·인용만 근거로(전사 기준 오인식 가능 표기는 유지).]');
-  L.push('제목: '+(s.title||'')); L.push('매체: '+(s.channel||'')+' (유튜브)');
+  const isTx=['ocr','text','article'].includes(d.tr_src);   // 비영상 소스 = 머리말도 그 출처로(운영자 260801 · 구 '유튜브' 고정 문구는 오표기)
+  L.push('['+(isTx?(SRC_LB[d.tr_src]||'자료'):'유튜브 영상')+' 자료화 노트 — 아래 내용을 기사 다이제스트로 정리해줘. 노트의 사실·인용만 근거로('+(isTx?'판독':'전사')+' 기준 오인식 가능 표기는 유지).]');
+  L.push('제목: '+(s.title||'')); L.push('매체: '+(s.channel||'')+(isTx?'':' (유튜브)'));
   if(s.url) L.push('URL: '+s.url);
   if(s.uploaded) L.push('업로드: '+s.uploaded);
   L.push(''); L.push('한 줄: '+(d.one||'')); L.push(''); L.push('요약:'); L.push(d.summary||'');
@@ -521,7 +692,8 @@ function buildNoteMd(d){   // 노트 전체 → 마크다운(.md — NotebookLM�
   L.push('');
   L.push('- 채널: '+(s.channel||'')+(s.uploaded?(' · 업로드 '+s.uploaded):'')+(s.dur?(' · '+mmss(s.dur)):''));
   if(s.url) L.push('- 원본: '+s.url);
-  L.push('- 유형: '+(d.kind||'일반')+' · 전사 출처: '+(SRC_LB[d.tr_src]||'전사')+((d.tr_src==='subs-auto'||d.tr_src==='stt')?' (고유명사·수치 오인식 가능)':'')+' · 생성: '+String(d.ts||'').slice(0,16).replace('T',' '));
+  const mdLb=['ocr','text','article'].includes(d.tr_src)?'본문':'전사';   // 비영상 소스 = 라벨 통일(운영자 260801)
+  L.push('- 유형: '+(d.kind||'일반')+' · '+mdLb+' 출처: '+(SRC_LB[d.tr_src]||'전사')+((d.tr_src==='subs-auto'||d.tr_src==='stt'||d.tr_src==='stt-file'||d.tr_src==='ocr')?' (고유명사·수치 오인식 가능)':'')+' · 생성: '+String(d.ts||'').slice(0,16).replace('T',' '));
   if((d.topics||[]).length) L.push('- 주제: '+d.topics.join(' · '));
   if(d.one){ L.push(''); L.push('> '+d.one); }
   L.push(''); L.push('## 요약'); L.push(''); L.push(d.summary||'');
@@ -540,7 +712,7 @@ function buildNoteMd(d){   // 노트 전체 → 마크다운(.md — NotebookLM�
   if((d.use||[]).length){ L.push(''); L.push('## 활용 포인트'); L.push('');
     d.use.forEach(u=>L.push('- '+u)); }
   if(d.coverage){ L.push(''); L.push('_반영 범위: '+d.coverage+'_'); }
-  L.push(''); L.push('## 전체 전사'); L.push('');
+  L.push(''); L.push('## 전체 '+mdLb); L.push('');
   (d.transcript||[]).forEach(r=>L.push('['+mmss(r.s)+'] '+r.t));
   return L.join('\n');
 }
@@ -626,7 +798,8 @@ loadRecent();
 (function(){
   const p=pendGet(); if(!p||!p.id||USER_ACT) return;
   if(Date.now()-(p.t0||0)>24*3600e3){ pendClear(); return; }
-  if(p.url&&!$('#url').value) $('#url').value=p.url;
+  if(p.url&&/^https?:\/\//i.test(p.url)&&!$('#url').value){ setMode('url'); $('#url').value=p.url; }   // 재개 라벨이 URL일 때만 URL칸 복원(파일·텍스트 소스 라벨은 표시만 = 5입구 전환 · 260801)
+  else if(p.url) pickT('진행 중 — '+p.url);
   const t0c=Math.max(p.t0||0, Date.now()-BUDGET*1000);
   pollNote(p.id, t0c, (p.t0||0)-90000);
 })();
