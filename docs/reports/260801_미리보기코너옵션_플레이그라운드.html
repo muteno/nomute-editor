@@ -31,7 +31,7 @@ h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
 
 /* ── ① 실물 재현 = 이미지 스튜디오 도크(1:1 미리보기 · 260801 배선분) ── */
 .screenpad{overflow:auto}
-.frame{width:600px;max-width:100%;margin:0 auto;background:#121212;border:1px solid var(--line);
+.frame{width:var(--t-fw,600px);max-width:100%;margin:0 auto;background:#121212;border:1px solid var(--line);
   border-radius:var(--r-modal);overflow:hidden}
 .dtabs{display:flex;height:52px;border-bottom:1px solid var(--line2)}
 .dtabs span{flex:1;display:grid;place-items:center;font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--mut);border-right:1px solid var(--line2)}
@@ -39,7 +39,7 @@ h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
 .iwrap{padding:18px 16px var(--sp-3)}
 .topdock{margin:0 -16px;padding:var(--sp-3) 16px var(--sp-4);background:rgba(18,18,18,.72);border-bottom:1px solid var(--line2)}
 .cpprev{margin:0 0 var(--sp-2)}
-.cpprev-box{position:relative;width:100%;aspect-ratio:1/1;background:#121212;border:1px solid transparent;
+.cpprev-box{position:relative;width:100%;aspect-ratio:var(--t-ar,1);background:#121212;border:1px solid transparent;
   border-radius:var(--r-s);overflow:hidden}
 .cpprev-stage{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);background:#000;overflow:hidden;
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 6% 9%}
@@ -72,7 +72,8 @@ h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
    — 정본은 그룹 안만 gap 2px로 밀착시키고 그룹끼리는 .trail-div로 가른다 · 여기선 [교체·삭제] 묶음이 그 자리 */
 .trail-g{display:flex;flex-direction:column;flex-wrap:nowrap;gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착) */;flex:none}
 .trail.trail-row .trail-g{flex-direction:row}
-.trail-g .trail-i{width:22px;border-radius:50%}   /* 픽토 묶음은 정본 22×22 원형 고정 — 폭·라운드 축(--t-iw/--t-irad)은 '값 칩'만 대상("9:16" 4자 수납용) · 정본 .trail-rg 아이템도 22 원형 그대로다 */
+.trail-g{align-self:stretch}
+.trail-g .trail-i{width:100%}   /* 운영자 260801 Q06 「버튼들 이 넓이에 맞춰서 각 네비 안에 가운데에」 — 픽토 버튼을 값 칩과 같은 폭으로 늘리고 place-items:center가 글리프를 정중앙에. 구 22px 고정은 값 칩(39px)보다 좁아 좌측으로 쏠려 있었다(실측 260801) · 배경·테두리가 없는 버튼이라 라운드는 시각에 안 잡힘 = 원형 정체성 손실 0 */
 .trail.trail-row .trail-div{width:1px;height:14px;margin:0 1px}
 .trail-i{position:relative;display:grid;place-items:center;flex:none /* 줄바꿈·수축 금지 — 가로 레일에서 아이템이 접혀 캡슐이 3줄이 되던 것(실측 260801) */;width:var(--t-iw);height:22px;padding:0;border:0;
   background:none;border-radius:var(--t-irad);color:var(--mut);font-size:var(--t-ifs);font-weight:var(--fw-x);
@@ -201,6 +202,15 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
       <label class="chk"><input type="checkbox" id="cOpen"> 팝 열어둔 채로 보기</label>
     </div>
 
+    <div class="csec">
+      <h3>③-d 미리보기 창 (260801 확정분 — 같이 보기)</h3>
+      <div class="row"><label>창 비율 w/h<small>확정 = 1:1 폭 기준 고정비</small></label><span class="val" id="vAr">—</span>
+        <input type="range" id="sAr" min="0.5" max="2" step="0.001" list="arTicks">
+        <datalist id="arTicks"><option value="0.5625" label="9:16"></option><option value="0.8" label="4:5"></option><option value="1" label="1:1"></option><option value="1.7778" label="16:9"></option></datalist></div>
+      <div class="row"><label>스튜디오 창 폭<small>모달 = min(600, 94vw)</small></label><span class="val" id="vFw">—</span>
+        <input type="range" id="sFw" min="340" max="600" step="4"></div>
+    </div>
+
     <div class="csec"><h3>④ 선택값</h3><pre id="out"></pre><button id="copy">선택값 복사</button></div>
 
     <div class="csec note">
@@ -231,13 +241,15 @@ const OPTS = [
   { k:'ie',   nm:'모자이크', pic:'▓', vals:['끔','켬'], cur:0 },
 ];
 const DEFAULTS = { corner:'tr', dir:'col', pad:6, tool:1 /* 교체·삭제를 레일 안으로 = 운영자 260801 확정 */, iw:22, ifs:10.5, irad:50, gap:6, fill:.34, blur:8,
-                   label:'v', origin:'tr', on:'rsz,ups', div:1, open:0 };
+                   label:'v', origin:'tr', on:'rsz,ups', div:1, open:0, ar:1, fw:600 };
 const PRESETS = [
   { id:'p0', nm:'정본 그대로(.trail)', st:{...DEFAULTS, iw:22, irad:50} },
-  { id:'p1', nm:'A · 값 알약 우상단', star:1, st:{...DEFAULTS, iw:40, irad:9, pad:6} },
+  { id:'p1', nm:'A · 값 알약 우상단', st:{...DEFAULTS, iw:40, irad:9, pad:6} },
   { id:'p2', nm:'B · 픽토+값 우하단', st:{...DEFAULTS, label:'ic', iw:46, irad:9, corner:'br', origin:'tl'} },
   { id:'p3', nm:'C · 가로 레일 우상단', st:{...DEFAULTS, dir:'row', iw:40, irad:9, tool:1} },
-  { id:'p4', nm:'D · 라벨+값 4옵션', st:{...DEFAULTS, label:'lv', iw:56, irad:9, on:'rsz,ups,lock,ie', tool:1} },
+  { id:'p4', nm:'D · 라벨+값 4옵션', st:{...DEFAULTS, label:'lv', iw:56, irad:9, on:'rsz,ups,lock,ie'} },
+  { id:'p5', nm:'★ E · 운영자 260801 확정', star:1, st:{...DEFAULTS, corner:'br', pad:15, origin:'c', label:'v',
+      on:'rsz,ups,lock', iw:39, ifs:12, irad:50, gap:9} },
 ];
 let state = {...DEFAULTS};
 let sel = {}; OPTS.forEach(o => sel[o.k] = o.cur);
@@ -285,6 +297,8 @@ function apply(){
   box.style.setProperty('--t-gap',  state.gap + 'px');
   box.style.setProperty('--t-fill', state.fill);
   box.style.setProperty('--t-blur', state.blur + 'px');
+  box.style.setProperty('--t-ar', state.ar);
+  document.querySelector('.frame').style.setProperty('--t-fw', state.fw + 'px');
   box.style.setProperty('--t-origin', ({tr:'top right', tl:'top left', c:'center'})[state.origin]);
   rail.className = 'trail' + (state.dir === 'row' ? ' trail-row' : '');
   rail.innerHTML = railHTML();
@@ -357,6 +371,7 @@ function buildOut(){
   L.push('담을 옵션  : ' + onList().map(k => (OPTS.find(o=>o.k===k)||{}).nm).join(' · '));
   L.push('구분선     : ' + (state.div?'있음 [.trail-div 정본]':'없음  ⚠ 정본 이탈'));
   L.push('교체·삭제  : ' + (state.tool?'레일 안으로 흡수(코너 요소 1개)':'현행 .cpv-tool 자리 유지'));
+  L.push('미리보기 창 : 비율 ' + state.ar.toFixed(3) + (Math.abs(state.ar-1)<.002?' = 1:1 [260801 확정 = 계승]':'  ⚠ 확정 1:1 이탈') + ' · 스튜디오 폭 ' + state.fw + 'px' + (state.fw===600?' [모달 정본]':'  ⚠ 축소 미리보기'));
   L.push('');
   L.push('— 캡슐 값(정본 대비) —');
   const row = (nm, now, val, unit) => nm + ' : ' + val + unit + (now === val ? '  [정본 동값 = 계승]' : '  ⚠ 정본 ' + now + unit + ' → 갱신 후보');
@@ -387,6 +402,8 @@ const SL = [
   { k:'gap',  el:'sGap',  v:'vGap',  fmt:v=>v+'px',        warn:v=>v!==CANON.gap },
   { k:'fill', el:'sFill', v:'vFill', fmt:v=>v.toFixed(2),  warn:v=>Math.abs(v-CANON.fill)>.001 },
   { k:'blur', el:'sBlur', v:'vBlur', fmt:v=>v+'px',        warn:v=>v!==CANON.blur },
+  { k:'ar',   el:'sAr',   v:'vAr',   fmt:v=>v.toFixed(3)+(Math.abs(v-1)<.002?' = 1:1':''), warn:v=>Math.abs(v-1)>.002 },
+  { k:'fw',   el:'sFw',   v:'vFw',   fmt:v=>v+'px',        warn:v=>v!==600 },
 ];
 $('#presets').innerHTML = PRESETS.map(p => '<button class="pill" data-id="' + p.id + '">' + (p.star?'★ ':'') + p.nm + '</button>').join('');
 $('#presets').onclick = e => { const b = e.target.closest('.pill'); if (!b) return;
