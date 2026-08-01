@@ -3,9 +3,9 @@
 **[프롬프트 설계]**
 - 화풍: B 극화 — 기업 법무·언론 구조를 겨눈 고발형 사건이라 잉크선과 명암 대비가 필요하다
 - 분위기: 한여름 낮의 뻔뻔한 공지와 늦은 밤 잠긴 화면이 맞부딪히는 무게 — 분노보다 앞서는 건 계산기를 두들기고 물러선 사람들의 침묵이다
-- 연출 방향: 이번 판은 결과(무혐의)보다 **경위**를 앞세우되, 무엇을 주장했다가 고소당했는지를 덱 앞머리에서 못 박는다 — 아데나를 건 슬라임 경주로 쌓인 운영 불신, 2월 영상의 핵심 주장(작업장은 놔두고 신고자를 막았다), 회사가 맞세운 597만 계정 제재, 매크로 2천 명을 신고했다가 도리어 막힌 계정, 그리고 그 일을 두고 나온 한 마디 "감옥에 보냈다". 독자훅은 이 경위의 낙차와 *숫자의 비대칭*(74 대 1)이다. 전하려는 관점은 "위축은 판결을 기다려주지 않는다"이므로, 결정문의 승리가 아니라 그 석 달 반 사이 꺼진 마이크를 잡는다. thumb_dispatch의 데스크램프 온기(LGT04)와 전/후 대비(SG-01) 정조를 키노트로 계승하되, 앵글은 카드마다 분산한다. 카드마다 강조점은 사물 하나 — 접힌 통지서, 쌓인 게임 코인, 똑같이 멈춰 선 화면 속 무리, 잠긴 화면, 도장 찍힌 결정문, 꺼진 마이크, 얇아진 기사 벽
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6~7 · 훅=카드1 끝(단서형: 숫자 74)+카드4 끝(발언 인용으로 다음 장 예고) · 감정 피크=카드6 · 착지 한 줄 요지 = 고소를 실었던 74곳 중 몇 곳이 불송치를 실을 것인가
-- 명도 아크: 起 데스크램프 온기(LGT04) → 承 스크린 언더글로·블라인드 낮빛·저조도로 단계 하강 → 轉 형광등 백광(무감정) → 감정 피크 단일 광웅덩이 최저 명도(LGT15) → 結 새벽 여운광(LGT02) 릴리즈 · 샷 조임: MS → MCU/ECU → 轉 ECU → 피크 빅CU(덱 유일 최타이트) → 結 다시 MS
+- 연출 방향: 이번 판은 결과(무혐의)보다 **경위**를 앞세우되, 무엇을 주장했다가 고소당했는지를 덱 앞머리에서 못 박는다 — 아데나를 건 슬라임 경주로 쌓인 운영 불신, 2월 영상의 핵심 주장(작업장은 놔두고 신고자를 막았다), 회사가 맞세운 597만 계정 제재, 매크로 2천 명을 신고했다가 도리어 막힌 계정, 그리고 그 일을 두고 나온 한 마디 "감옥에 보냈다". 독자훅은 이 경위의 낙차와 *숫자의 비대칭*(74 대 1)이다. 전하려는 관점은 "위축은 판결을 기다려주지 않는다"이므로, 결정문의 승리가 아니라 그 넉 달 사이 꺼진 마이크를 피크에 놓고 무혐의는 그 뒤에 붙인다. thumb_dispatch의 데스크램프 온기(LGT04)와 전/후 대비(SG-01) 정조를 키노트로 계승하되, 앵글은 카드마다 분산한다. 카드마다 강조점은 사물 하나 — 접힌 통지서, 쌓인 게임 코인, 똑같이 멈춰 선 화면 속 무리, 잠긴 화면, 도장 찍힌 결정문, 꺼진 마이크, 얇아진 기사 벽
+- 독자 동선: 제시 카드1(起) → **발단** 카드2 → **전개** 카드3~4(承) → **피크** 카드5(轉·감정 최저점) → **해소** 카드6(불송치) → **시사점** 카드7(結) · 훅=카드1 끝(단서형: 숫자 74)+카드4 끝(발언 인용으로 다음 장 예고) · 착지 한 줄 요지 = 고소를 실었던 74곳 중 몇 곳이 불송치를 실을 것인가
+- 명도 아크: 제시 데스크램프 온기(LGT04) → 발단·전개 스크린 언더글로·블라인드 낮빛·저조도로 단계 하강 → 피크 단일 광웅덩이 최저 명도(LGT15) → 해소 형광등 백광(무감정) → 시사점 새벽 여운광(LGT02) 릴리즈 · 샷 조임: MS → MCU/ECU → 피크 빅CU(덱 유일 최타이트) → 해소 ECU → 結 다시 MS
 - 연속성 앵커: Recurring subject — a Korean man in his 30s with short cropped hair and dark circles under his eyes, wearing a plain gray hoodie. 반복 장소 — a cramped late-night room with a desk lamp and a wall of printed news clippings.
 
 ### [카드 1]
@@ -135,37 +135,6 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-석 달 반 뒤 경찰은 불송치로 끝냈다
-허위로 단정할 수 없다고 했다
-*업무방해의 목적도 인정되지 않았다*
-감옥은 이용자 말버릇이라고 봤다
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a pair of hands laying a stamped decision document flat on a desk, fingertips still resting on its edge. Two investigators in plain shirts stand over the desk in a police office, one closing a thick case file while the other looks down at the single sheet between them. The overhead view flattens the desk into one plane and no faces are the focus, only the hands and the paper.
-Camera: extreme close-up, single detail, hand, texture, from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: the document surface is shown at an angle and partly cut off by the frame edge, its lines rendered as soft unreadable grain; only a round ink stamp shape is legible as a graphic mark. Keep the hands, the stamp and the closing file in the upper two-thirds of the frame.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-서울 강남경찰서 불송치 결정문
-```
-
-### [카드 6]
-**텍스트**
-```text
 그사이 74곳 중 반론을 실은 곳은
 한 곳이었고 비판 방송인 수는
 *10분의 1로 줄어 있었다*
@@ -193,11 +162,42 @@ NEGATIVE — strictly avoid:
 게임 유튜버 방송 스튜디오 마이크
 ```
 
+### [카드 6]
+**텍스트**
+```text
+넉 달 뒤 경찰은 불송치로 끝냈다
+허위로 단정할 수 없다고 했다
+*업무방해의 목적도 인정되지 않았다*
+감옥은 이용자 말버릇이라고 봤다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a pair of hands laying a stamped decision document flat on a desk, fingertips still resting on its edge. Two investigators in plain shirts stand over the desk in a police office, one closing a thick case file while the other looks down at the single sheet between them. The overhead view flattens the desk into one plane and no faces are the focus, only the hands and the paper.
+Camera: extreme close-up, single detail, hand, texture, from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: the document surface is shown at an angle and partly cut off by the frame edge, its lines rendered as soft unreadable grain; only a round ink stamp shape is legible as a graphic mark. Keep the hands, the stamp and the closing file in the upper two-thirds of the frame.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+서울 강남경찰서 불송치 결정문
+```
+
 ### [카드 7]
 **텍스트**
 ```text
 고소가 실리는 데는 하루가 걸렸고
-무혐의가 나오는 데는 107일이었다
+무혐의가 나오는 데는 넉 달이 걸렸다
 물러선 사람들은 돌아오지 않았다
 *74곳 중 몇 곳이 이 결과를 실을까*
 ```
