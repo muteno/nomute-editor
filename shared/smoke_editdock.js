@@ -9,7 +9,7 @@
 //
 // 원커맨드:  node shared/smoke_editdock.js   (종료코드 0 = 코어 전부 PASS)
 // 어서션 원칙: 기하(rect)·computedStyle·잉크(Range) — 환경 간 스크린샷 베이스라인 diff 금지 · 동일 런 2회 결정론.
-// 값 SSOT: thumb .optstrip/#go 정본 동값(#000·r-s 9·11.25px·11/6/13) — 값 변경은 thumb 정본 먼저(여긴 미러 감시).
+// 값 SSOT: thumb .optstrip/#go 정본 동값(#121212·r-s 9·11.25px·11/6/13 — 260731 순흑 전면 철회분) — 값 변경은 thumb 정본 먼저(여긴 미러 감시).
 // ═══════════════════════════════════════════════════════════════════════════════
 'use strict';
 const path = require('path');
@@ -144,7 +144,7 @@ async function runOnce(browser, port) {
     const r2 = await runOnce(browser, port);   // 결정론 2런
     ck('C1 부팅 pageerror 0', r1.errs === 0 && r2.errs === 0, r1.errs + '건');
     ck('C2 도크 순서 pvsec→optstrip→firebar', /pvsec.*optstrip.*firebar/.test(r1.dockKids), r1.dockKids);
-    ck('C3 스트립 박스 = thumb 정본(#000·9px·11.25px) + 폭=발사바 Δ≤0.5', r1.stripBox === 'rgb(0, 0, 0)/9px/11.25px' && r1.widthD <= 0.5, r1.stripBox + ' · Δ=' + r1.widthD.toFixed(2));
+    ck('C3 스트립 박스 = thumb 정본(#121212·9px·11.25px) + 폭=발사바 Δ≤0.5', r1.stripBox === 'rgb(18, 18, 18)/9px/11.25px' && r1.widthD <= 0.5, r1.stripBox + ' · Δ=' + r1.widthD.toFixed(2));
     ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) 전부 원본/OFF·무점등(운영자 260724 노출 항목 축소 · 260728 프레임→고프레임 개명 = OFF/ON 토글)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 OFF \/ 배경음 OFF \/ 컷 편집 OFF$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
