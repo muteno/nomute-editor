@@ -840,6 +840,43 @@ def check_autocomplete():
     return rc
 
 
+# ── URL 입력칸 placeholder 단일 문법 게이트(CII 「URL 입력칸」 행 · 운영자 260801 "예시 문구 없어도 될듯") ──
+#   type=url 입력칸의 placeholder는 `https://…` 하나로 고정. 뒤에 안내 산문을 붙이면(구 askLink
+#   "https://… — 기사면 원문으로, 영상·음성이면 전사해서 활용" 류) 빈 칸이 설명문으로 붐빈다 = §🎨 e 위반.
+#   부연 = title 툴팁 / 판정·상태 = 입력 후 상태줄(#askLinkSt·#dgSelRow)이 낸다.
+#   면책 = 도먼트(hidden) 행이라 라이브 0인 칸만. 신규 면책은 사유와 함께 여기 1줄(산탄 금지).
+_URL_PH = 'https://…'
+_URL_PH_EXEMPT = {
+    ('viewer/edit.html', 'url'),   # .srcwrap 도먼트(운영자 260728 "Contents 하위 없애줘" · hidden) = 화면 미노출 + 「≤2GB」 상한 고지가 딴 데 없음
+}
+
+def check_url_placeholder():
+    rc = 0
+    for rel in VIEWERS_ALL:
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        for m in _INPUT_RE.finditer(s):
+            tag = m.group(0)
+            if not re.search(r'type\s*=\s*["\']?url', tag, re.I):
+                continue
+            pm = re.search(r'placeholder\s*=\s*"([^"]*)"', tag)
+            if not pm:
+                continue
+            im = re.search(r'\bid\s*=\s*"([^"]*)"', tag)
+            if (rel, im.group(1) if im else '') in _URL_PH_EXEMPT:
+                continue
+            if pm.group(1) != _URL_PH:
+                ln = s[:m.start()].count('\n') + 1
+                print('❌ URL 입력칸 placeholder 이탈 — %s:%d "%s" → "%s" 단일 문법(설명은 title 툴팁·판정은 상태줄 · CII 「URL 입력칸」)'
+                      % (rel, ln, pm.group(1), _URL_PH))
+                rc = 1
+    if rc == 0:
+        print('✅ URL 입력칸 게이트 — type=url placeholder 전부 "%s" 단일 문법(안내 산문 0 · 면책 %d).' % (_URL_PH, len(_URL_PH_EXEMPT)))
+    return rc
+
+
 # render-text × (닫기/삭제 버튼이 SVG 아닌 문자 ×/✕ 사용) = 드리프트(§🎨 닫기=SVG X-path 단일 권장).
 # 컴포넌트 컨텍스트(aria-label 닫기·삭제 류 또는 close/del/x 클래스)이고 *내용이 ×문자 하나뿐*일 때만 잡아
 # 치수 텍스트('1080×1350')·JS 문자열 오탐 0. WARN(점진 통일 — thumb 등 병렬작업 파일이라 비차단).
@@ -2145,6 +2182,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_autocomplete 스킵:', e)
+    try:
+        if check_url_placeholder() != 0:   # URL 입력칸 placeholder = "https://…" 단일 문법(하드 게이트 — 안내 산문 재유입 차단·CII 「URL 입력칸」·260801)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_url_placeholder 스킵:', e)
     try:
         check_x_char()   # 닫기/삭제 × 문자 → SVG 권장(WARN-only·병렬작업 파일 비차단)
     except Exception as e:
