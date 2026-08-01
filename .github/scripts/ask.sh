@@ -129,8 +129,12 @@ print(''.join(k for k in ('h24','fp','mj','og') if p.get(k) in (1,'1',True)))
       trfile="${ASK_LINK_DIR:-/tmp/asklink}/${base}.txt"
       if [ ! -s "$trfile" ]; then
         mkdir -p "$(dirname "$trfile")"
+        # 전사 강행(운영자 260731 "자막없으면 영상길이 제한, 단 강제 활성화 가능") — 링크칸에서 켠 건만 상한을 FORCE 값으로 올린다.
+        lforce="$(python3 -c "import json; print('1' if json.load(open('$f')).get('linkForce') in (1,'1',True) else '')" 2>/dev/null || true)"
+        _cap="${ASK_LINK_STT_MAX_SEC:-1800}"
+        [ -n "$lforce" ] && _cap="${ASK_LINK_STT_FORCE_SEC:-3300}" && echo "· 전사 강행 ON — 길이 상한 ${_cap}s"
         echo "· 미디어 링크 전사(자막 우선 → Whisper large-v3): $link"
-        timeout "${ASK_LINK_STT_TIMEOUT:-3000}" bash .github/scripts/ask_link_stt.sh "$link" "$trfile" || { echo "::warning::링크 전사 실패 — URL만 전달(fail-soft): $link"; rm -f "$trfile"; }
+        ASK_LINK_STT_MAX_SEC="$_cap" timeout "${ASK_LINK_STT_TIMEOUT:-4800}" bash .github/scripts/ask_link_stt.sh "$link" "$trfile" || { echo "::warning::링크 전사 실패 — URL만 전달(fail-soft): $link"; rm -f "$trfile"; }
       fi
       if [ -s "$trfile" ]; then
         LINK_BLOCK="[🎧 운영자가 준 미디어 링크(${link})를 전사한 전문 — **이 전사문이 곧 원문이다**. 다른 기사를 WebSearch 로 찾지 말고 이 전사 내용만으로 위 출력 포맷대로 큐레이션하라(전사에 없는 사실·수치·인용은 지어내지 마라 · 타임코드 [mm:ss]는 위치 표시일 뿐이니 본문에 옮기지 마라 · frontmatter url = 이 미디어 링크 · media/reporter/date 는 전사 메타에 있는 만큼만). image_sources 만 위 1)의 예외 규칙대로 best-effort 검색:

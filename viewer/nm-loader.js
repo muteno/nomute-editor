@@ -224,7 +224,7 @@
     //   예상 = `ask-link`(고정 오버헤드) + `ask-link-stt-min` × 영상분. ⚠️ `ask-link-stt-min` 만 단위가 **영상 1분당 초**다
     //   (다른 키 = 총 소요초). 전사는 영상 길이에 비례해 늘어나 단일 스칼라로는 3분짜리와 40분짜리를 같이 못 맞춘다.
     //   학습도 같은 단위로 넣는다 — done('ask-link-stt-min', (총소요 − 오버헤드) / 영상분). nmEta 내부(EMA·이상치·저장)는 불변.
-    'ask-link': 240, 'ask-link-stt-min': 90
+    'ask-link': 500, 'ask-link-stt-min': 90   // 실측 260731: 오버헤드 = ask 2건 428s(19s 영상·전사)·594s(3분33초·자막) 평균 ≈ 500s / 분당배율 = 러너 large-v3 A/B(260728) 40s 이상 구간 1.39×RT 에 여유 = 1.5×RT = 90s
   };
   function db() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } }
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (_) {} }   // quota·프라이빗모드 = 조용히 포기(시드로 계속 표시)
