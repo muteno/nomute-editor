@@ -124,6 +124,13 @@ h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
   white-space:nowrap;transition:color var(--dur),background var(--dur)}
 .opt-pop button.on{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
 .opt-pop button:active{transform:scale(var(--press-m))}
+/* ── 전 조합 갤러리 = 헤더형/오버레이형 × 릴스·포스트·카드 6칸 동시 렌더(운영자 260801 「모두 넣었을 때 어떻게 되는지」) ── */
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2);margin-top:var(--sp-3)}
+@media (max-width:640px){.gallery{grid-template-columns:repeat(2,1fr)}}
+.gcell{min-width:0}
+.gcell .gcap{font-size:10px;color:var(--mut);font-weight:var(--fw-b);margin:0 0 4px;text-align:center}
+.gcell .gcap b{color:var(--accent);font-weight:var(--fw-x)}
+.gcell .cpprev-box{aspect-ratio:var(--t-ar,1)}
 .stagecap{color:var(--mut);font-size:var(--fs-sm);margin-top:var(--sp-2);text-align:center}
 .stagecap b{color:var(--fg);font-variant-numeric:tabular-nums}
 
@@ -189,6 +196,7 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
         </div>
       </div></div></div>
     </div>
+    <div class="gallery" id="gallery"></div>
     <p class="stagecap">레일 <b id="capRail">—</b> · 아이템 <b id="capItem">—</b> · 툴 버튼과 겹침 <b id="capHit">—</b></p>
   </div>
 
@@ -401,6 +409,20 @@ function apply(){
   $('#capItem').textContent = fi ? Math.round(R(fi).width) + '×' + Math.round(R(fi).height) : '—';
   $('#capHit').textContent = ov > 0 ? Math.round(ov) + 'px²' : '없음';
 
+  // 전 조합 갤러리 = 현재 레일 설정 그대로 6칸에 동시 적용
+  const GC = [];
+  for (const t of ['hdr','ov']) for (const f of [{v:0.5625,nm:'릴스 9:16'},{v:0.8,nm:'포스트 4:5'},{v:1,nm:'카드 1:1'}]) GC.push({t,f});
+  $('#gallery').innerHTML = GC.map(({t,f}) => {
+    const gg = f.v > 1.5 ? 'g-post' : (Math.abs(f.v-1)<.01 ? 'g-card' : 'g-reels');
+    const inner = (t === 'ov' ? '<div class="cpv-scrim ' + gg + '"></div>' : '<div class="cpv-band" style="top:41%;bottom:0"></div>')
+      + '<div class="cpv-logo" style="' + (t==='hdr'?'top:18%':'bottom:26%') + '">NO<em>mute</em></div>'
+      + '<div class="cpv-tx"><b>황정민-K씨,</b><i>"단둘이 술 먹은 적…"</i></div>';
+    const pos = (state.corner[0]==='t'?'top:':'bottom:') + state.pad + 'px;' + (state.corner[1]==='r'?'right:':'left:') + state.pad + 'px';
+    return '<div class="gcell"><p class="gcap"><b>' + (t==='hdr'?'헤더형':'오버레이형') + '</b> · ' + f.nm + '</p>'
+      + '<div class="cpprev-box"><div class="cpprev-stage ' + (state.bg||'') + ' tpl-' + t + '" style="--t-stg:' + f.v + '">' + inner + '</div>'
+      + '<div class="trailwrap" style="position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;' + pos + '">'
+      + '<nav class="trail' + (state.dir==='row'?' trail-row':'') + '">' + railHTML() + '</nav></div></div></div>';
+  }).join('');
   SL.forEach(s => { const el = $('#' + s.el); el.value = state[s.k];
     el.style.setProperty('--p', (el.value - el.min) / (el.max - el.min));
     const v = $('#' + s.v); v.textContent = s.fmt(+state[s.k]); v.classList.toggle('warn', !!(s.warn && s.warn(+state[s.k]))); });
