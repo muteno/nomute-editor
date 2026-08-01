@@ -83,7 +83,7 @@ fi
 
 [ "$ROWS" -ge 1 ] || { echo "전사 결과가 비었음" >&2; exit 1; }
 
-WD="$WD" OUT="$OUT" python3 - <<'PY'
+WD="$WD" OUT="$OUT" ELAPSED="$SECONDS" METRICS="${ASK_LINK_METRICS:-metrics/asklink}" python3 - <<'PY'
 import json, os
 wd, out = os.environ["WD"], os.environ["OUT"]
 m = json.load(open(f"{wd}/meta.json", encoding="utf-8"))
@@ -95,5 +95,20 @@ for r in d.get("rows") or []:
     s = int(r.get("s") or 0)
     L.append(f"[{s//60:02d}:{s%60:02d}] {r.get('t','')}")
 open(out, "w", encoding="utf-8").write("\n".join(L) + "\n")
-print(f"전사 저장: {out} ({len(d.get('rows') or [])}줄)")
+rows = len(d.get("rows") or [])
+el = int(os.environ.get("ELAPSED") or 0)
+dur = int(m.get("dur") or 0)
+print(f"전사 저장: {out} ({rows}줄) · 영상 {dur}s · 소요 {el}s · 배율 {(el / dur):.2f}×RT" if dur else f"전사 저장: {out} ({rows}줄) · 소요 {el}s")
+# 실측 shard(운영자 260731 "걸린시간을 유튜브 시간과 대조") — 뷰어 예상시간(nmEta 시드) 갱신 근거.
+#   {영상길이·소요·경로}만 남기는 append-only 조각(런별 고유 파일 = 병렬 커밋 충돌 0 · metrics 관용구 계승).
+try:
+    md = os.environ.get("METRICS") or "metrics/asklink"
+    os.makedirs(md, exist_ok=True)
+    tag = (os.environ.get("GITHUB_RUN_ID") or "local") + "-" + (os.environ.get("GITHUB_RUN_ATTEMPT") or "1")
+    rec = {"dur": dur, "elapsed": el, "src": d.get("src") or "", "rows": rows}
+    p = f"{md}/{tag}.jsonl"
+    with open(p, "a", encoding="utf-8") as fp:
+        fp.write(json.dumps(rec, ensure_ascii=False) + "\n")
+except Exception:
+    pass   # 계측 실패가 전사를 막지 않는다
 PY

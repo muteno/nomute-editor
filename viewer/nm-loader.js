@@ -219,7 +219,12 @@
     'edit-video': 600,                    // 근거 없음 — 잡 캡 85분 기준 임시 시드
     'cards-prompt': 300, 'cards-img': 600,// index 타임아웃(프롬프팅 25분·렌더 10분) 기준 임시 시드
     'thumb-copy': 180,                    // thumb "변환 실측 1~3분"
-    'img-gen': 120, 'img-research': 120   // index 주석·툴팁 "1~2분"
+    'img-gen': 120, 'img-research': 120,  // index 주석·툴팁 "1~2분"
+    // ── 요약 요청 링크 레일(운영자 260731 "걸린시간을 유튜브 시간과 대조해서 예상 시간이 항상 나오게") ──
+    //   예상 = `ask-link`(고정 오버헤드) + `ask-link-stt-min` × 영상분. ⚠️ `ask-link-stt-min` 만 단위가 **영상 1분당 초**다
+    //   (다른 키 = 총 소요초). 전사는 영상 길이에 비례해 늘어나 단일 스칼라로는 3분짜리와 40분짜리를 같이 못 맞춘다.
+    //   학습도 같은 단위로 넣는다 — done('ask-link-stt-min', (총소요 − 오버헤드) / 영상분). nmEta 내부(EMA·이상치·저장)는 불변.
+    'ask-link': 240, 'ask-link-stt-min': 90
   };
   function db() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } }
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (_) {} }   // quota·프라이빗모드 = 조용히 포기(시드로 계속 표시)
