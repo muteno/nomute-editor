@@ -4231,7 +4231,7 @@ function render() {
         <div class="kv">
           <div class="outcol"><span>매체</span>${a.media ? (/^https?:\/\//i.test(a.url || '') ? `<a class="mlink" href="${esc(a.url)}" target="_blank" rel="noopener"><b>${esc(outletShort(primaryMedia(a.media)))}</b></a>` : `<b>${esc(outletShort(primaryMedia(a.media)))}</b>`) : '<b class="senshyphen">—</b>'}</div>
           <div><span>편향</span>${a.bias ? biasLabel(a) : '<b class="senshyphen">—</b>'}</div>
-          ${(_sc => _sc ? `<div class="typecol"><span>민감</span><div class="typewrap">${_sc}</div></div>` : '')(sensChips(a.tags))}
+          ${(_sc => _sc ? `<div class="typecol"><span>민감</span><div class="typewrap">${_sc}</div></div>` : '')(sensChips(a.tags, a.tags_why))}
         </div>
         <div class="botrow">
           ${progGauge(a)}
@@ -4268,13 +4268,16 @@ function gauge(b) {
 // (NMT 레일 제거 — 진행바 세그먼트가 N/M/T 점프 겸함. A5)
 // 민감 태그 → 개별 칩. "#성범죄 #자살자해" 공백 split. "해당 없음"/빈값이면 '' (민감 칸 자체를 안 그림 — 옛 '—' 대시는 베이스라인서 떠 보여 폐지·운영자 260625).
 // 본체 7개(SENS_PROTECT)=앰버 경고 틴트(.warn). 목록 외(옛 큐 잔여 태그)=기본 흰 칩(.tagchip).
-function sensChips(tags) {
+// why = frontmatter tags_why(부착 근거 한 줄) → 칩 hover 툴팁. 오탐(주제 아닌 배경 언급으로 붙은 태그)·미탐을
+//   운영자가 칩 위에서 바로 판별(운영자 260801 · 황정민 스토킹 기사 #아동피해 오탐 수리의 관측 장치). 옛 분석분은 빈값 = 툴팁 없음(종전 동작).
+function sensChips(tags, why) {
   if (!tags || tags === '해당 없음') return '';
   const arr = tags.split(/\s+/).filter(Boolean).slice(0, 2);   // 민감 = 최대 2개(카드 게이지바 우측선 안 · 초과분은 typewrap …클립·운영자 260702)
   if (!arr.length) return '';
+  const tip = (why || '').trim();
   return arr.map(t => {
     const warn = SENS_PROTECT.includes(t) ? ' warn' : '';
-    return `<span class="tagchip${warn}">${esc(t)}</span>`;
+    return `<span class="tagchip${warn}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(t)}</span>`;
   }).join('');
 }
 // ── 프롬프트 단계 실패 = 게이지 라벨 탭으로 그 자리 재시도(운영자 260727) ──
@@ -6032,24 +6035,14 @@ function moodLabel(md = '') {
   for (const [re, ko] of MOOD_MAP) if (re.test(s)) return ko;
   return '진중';
 }
-// 마약 정규식 = 단일 출처(SENSITIVE_MAP 카드개요 + build-viewer #마약 백스톱이 동일하게 씀 = 따로 놀기 방지·운영자 260625).
+// 마약 정규식 = 단일 출처(build-viewer #마약 백스톱과 바이트 동일 = 따로 놀기 방지·운영자 260625 · check_refs check_sens_vocab 게이트의 뷰어측 앵커).
+//   ⚠️ 뷰어 내 소비처는 260801에 사라졌다(구 SENSITIVE_MAP 폐지) — 이 상수는 **미러 정합 게이트의 정본 사본**으로 남는다(삭제 금지 = 게이트 무력화).
 const DRUG_RE = /마약|펜타닐|필로폰|대마초|코카인|헤로인|메스암페타민|향정신성|엑스터시|케타민|아편/;   // build-viewer.mjs와 바이트 동일 유지(check_refs 게이트)
-// 민감 키워드 — 제목+요약 스캔(카드뉴스 민감 토픽 태그). 없으면 빈값.
-const SENSITIVE_MAP = [
-  [/성범죄|성착취|불법촬영|디지털\s?성|n번방/, '디지털성범죄'], [/전쟁|공습|미사일|교전|종전|개전|폭격/, '전쟁'],
-  [/자살|부고|사망|숨졌|목숨|투신/, '인명피해'], [DRUG_RE, '마약'], [/아동|미성년|소아/, '아동'],
-  [/참사|재난|붕괴|화재|침몰/, '참사'], [/학대|폭행|폭력|구타/, '폭력'], [/혐오|차별|증오/, '혐오'], [/테러/, '테러'],
-];
-// 주의(민감) 태그 — 제목+요약 스캔, 유관도(매칭 횟수)순 최대 2개.
-function sensitiveTags(text = '') {
-  const hits = [];
-  for (const [re, ko] of SENSITIVE_MAP) {
-    const m = text.match(new RegExp(re.source, 'gi'));
-    if (m) hits.push({ ko, n: m.length });
-  }
-  hits.sort((a, b) => b.n - a.n);   // 많이 언급 = 더 유관
-  return hits.slice(0, 2).map(h => h.ko);
-}
+// ⛔ 구 SENSITIVE_MAP / sensitiveTags() 폐지 — 통제어휘 밖 유령 태그의 발생원(운영자 260801).
+//   폐지 사유: 제목+한줄요약을 자체 단어목록(아동·미성년·소아 → '#아동' 등 9종)으로 스캔해 태그를 **뷰어가 직접 만들어냈다**.
+//   ① 어휘가 통제 7개(SENS_PROTECT)와 불일치('#아동' vs 정본 '#아동피해') ② check_refs 민감 통제어휘 게이트의 사정권 밖(드리프트 무검출)
+//   ③ 판정이 '본문 1회 등장 = 부착'이라 오탐이 구조적. → 태그 생산자를 요약 LLM(prompts/news-analysis.md `tags:` 부착 임계 3규칙) +
+//   #마약 키워드 백스톱 **2곳으로 축소**하고, 카드뉴스 개요 '주의 :' 는 그 정본 태그(a.tags)를 그대로 표시한다(SSOT 단일화).
 function buildFeedModel(a) {
   const c = a.cards || {}, imgs = c.images || [], vmap = c.versions || {};
   const cards = parseCards(c.md);
@@ -6087,7 +6080,7 @@ function feedSec(a, keepIdx = 0) {
 
   // 개요 = 제목(부제·박스 밖) + 한줄요약 + 표현기법 1줄(총 N장 | 화풍 | 분위기 | 민감 키워드). 전부 기존 데이터 유도.
   const summary = oneLineSummary(a.body);
-  const stags = sensitiveTags(`${title} ${summary}`);   // 최대 2개·유관도순
+  const stags = (a.tags && a.tags !== '해당 없음' ? a.tags.split(/\s+/).filter(Boolean) : []).slice(0, 2);   // 정본 = 요약 frontmatter tags(통제어휘 7개) · 최대 2개(구 뷰어 자체 regex 스캔 폐지·260801)
   // 비용 = 카드 제미나이 생성 누적 토큰/추정$(c.card_usage) — 슛·재생성마다 갱신(썸네일 usageText와 동일 단가). 없으면 '—'.
   const _cu = c.card_usage;
   const _ctok = (_cu && _cu.cumulative) || 0;
@@ -6096,7 +6089,7 @@ function feedSec(a, keepIdx = 0) {
   const tech = `총 <b>${totalN}</b>장${partial ? ` (${totalN - doneN} 대기)` : ''}<span class="fi-sep">|</span>`
     + `화풍 : <b>${esc(styles[0] || '—')}</b><span class="fi-sep">|</span>분위기 : <b>${esc(moodLabel(c.md))}</b>`
     + `<span class="fi-sep">|</span>비용 : <b title="${esc(_costTitle)}">${_costStr}</b>`
-    + (stags.length ? `<span class="fi-sep">|</span>주의 : ${stags.map(s => `<b class="acc">#${esc(s)}</b>`).join(' ')}` : '');
+    + (stags.length ? `<span class="fi-sep">|</span>주의 : ${stags.map(s => `<b class="acc"${a.tags_why ? ` title="${esc(a.tags_why)}"` : ''}>${esc(s)}</b>`).join(' ')}` : '');   // 태그 문자열에 '#'이 이미 포함(정본 통제어휘) — 접두 '#' 재부착 금지
 
   const intro = document.createElement('div'); intro.className = 'feedhead';
   intro.innerHTML =

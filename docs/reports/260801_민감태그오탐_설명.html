@@ -1,0 +1,235 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>민감 태그 오탐 버그 — 그림 설명</title>
+<style>
+:root{
+  --bg:#121212; --glass2:rgba(18,19,22,.55);
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-dim:rgba(var(--accent-rgb),.13);
+  --accent-2:#FFE13D; --accent-2-rgb:255,225,61;
+  --accent-3:#e23b2a; --accent-3-rgb:226,59,42;
+  --accent-5:#0FFD02;
+  --warn:var(--accent-2); --warn-rgb:var(--accent-2-rgb);
+  --danger:var(--accent-3); --danger-rgb:var(--accent-3-rgb);
+  --on-amber:#241C02;
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --fs-display:22px; --fs-h1:19px; --fs-h2:15px; --fs-h3:14px; --fs-body:14px; --fs-sm:13px; --fs-xs:11px;
+  --fw-b:600; --fw-x:800; --lh-base:1.7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);line-height:var(--lh-base);font-size:var(--fs-body);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",sans-serif;
+  padding:var(--sp-4) var(--sp-3) 64px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:var(--fs-display);font-weight:var(--fw-x);letter-spacing:-.02em;margin-bottom:var(--sp-1)}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin-bottom:var(--sp-4)}
+section{background:var(--glass2);border:1px solid var(--line);border-radius:var(--r-l);
+  padding:var(--sp-3);margin-bottom:var(--sp-3)}
+h2{font-size:var(--fs-h1);font-weight:var(--fw-x);margin-bottom:var(--sp-2);letter-spacing:-.01em}
+h2 .num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+  border-radius:var(--r-pill);background:var(--accent);color:#032322;font-size:var(--fs-h3);
+  font-weight:var(--fw-x);margin-right:8px;vertical-align:2px}
+h3{font-size:var(--fs-h2);font-weight:var(--fw-b);color:var(--accent);margin:var(--sp-3) 0 var(--sp-1)}
+p{margin-bottom:var(--sp-1)}
+.lead{font-size:var(--fs-h2);font-weight:var(--fw-b);margin-bottom:var(--sp-2)}
+.mut{color:var(--mut)}
+.sm{font-size:var(--fs-sm)}
+b.hl{color:var(--accent-2)}
+b.bad{color:var(--danger)}
+b.ok{color:var(--accent-5)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--fs-sm);
+  background:rgba(255,255,255,.06);border-radius:var(--r-s);padding:1px 6px}
+
+/* 태그 칩 = 뷰어 .tagchip 계승 */
+.chip{display:inline-block;font-size:var(--fs-xs);font-weight:var(--fw-b);padding:3px 9px;
+  border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--fg)}
+.chip.warn{background:rgba(var(--warn-rgb),.16);border-color:rgba(var(--warn-rgb),.45);color:var(--warn)}
+
+/* 흐름 상자 */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:var(--sp-1);margin:var(--sp-2) 0}
+.box{flex:1 1 150px;min-width:150px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:var(--r-m);padding:var(--sp-2)}
+.box .cap{font-size:var(--fs-xs);color:var(--mut);margin-bottom:4px;letter-spacing:.04em}
+.box .val{font-size:var(--fs-sm);font-weight:var(--fw-b)}
+.box.bad{border-color:rgba(var(--danger-rgb),.5);background:rgba(var(--danger-rgb),.09)}
+.box.warn{border-color:rgba(var(--warn-rgb),.45);background:rgba(var(--warn-rgb),.09)}
+.box.ok{border-color:rgba(var(--accent-rgb),.45);background:var(--accent-dim)}
+.arw{display:flex;align-items:center;color:var(--mut);flex:0 0 auto}
+
+/* 도미노 */
+.domino{display:grid;gap:var(--sp-1);margin-top:var(--sp-2)}
+.dom{display:grid;grid-template-columns:30px 1fr;gap:var(--sp-2);align-items:start;
+  background:rgba(var(--danger-rgb),.07);border:1px solid rgba(var(--danger-rgb),.28);
+  border-radius:var(--r-m);padding:var(--sp-2)}
+.dom .n{width:26px;height:26px;border-radius:var(--r-pill);background:rgba(var(--danger-rgb),.9);
+  color:#fff;font-size:var(--fs-sm);font-weight:var(--fw-x);display:flex;align-items:center;justify-content:center}
+.dom .t{font-weight:var(--fw-b);font-size:var(--fs-sm)}
+.dom .d{color:var(--mut);font-size:var(--fs-sm)}
+
+table{width:100%;border-collapse:collapse;margin-top:var(--sp-2);font-size:var(--fs-sm)}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+th{color:var(--mut);font-size:var(--fs-xs);font-weight:var(--fw-b);letter-spacing:.04em;
+  border-bottom:1px solid var(--line)}
+.tw{overflow-x:auto}
+
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-top:var(--sp-2)}
+@media(max-width:640px){.ba{grid-template-columns:1fr}}
+.pane{border:1px solid var(--line);border-radius:var(--r-m);padding:var(--sp-2);background:rgba(255,255,255,.03)}
+.pane h4{font-size:var(--fs-xs);letter-spacing:.06em;color:var(--mut);margin-bottom:var(--sp-1)}
+.pane.before{border-color:rgba(var(--danger-rgb),.4)}
+.pane.after{border-color:rgba(var(--accent-rgb),.4)}
+ul{padding-left:18px}li{margin-bottom:4px}
+.q{border-left:3px solid var(--accent);padding-left:var(--sp-2);color:var(--mut);
+  font-size:var(--fs-sm);margin:var(--sp-2) 0}
+</style>
+
+<div class="wrap">
+
+<h1>민감 태그가 잘못 붙는 버그</h1>
+<div class="sub">황정민 기사 · <code>queue/260801-1249-ask-2026080103495fcsb.md</code> · 2026-08-01</div>
+
+<!-- ─────────── 0. 한 줄 ─────────── -->
+<section>
+  <p class="lead">이 기사는 아동 기사가 아닙니다. 그런데 시스템은 이 기사에 <span class="chip warn">#아동피해</span> 를 붙였습니다.</p>
+  <p class="mut sm">기사 주제는 배우 스토킹 폭로전입니다. 아동은 본문에 딱 한 번 나옵니다. "미성년 아들" 한 마디입니다.</p>
+</section>
+
+<!-- ─────────── 3-1 ─────────── -->
+<section>
+  <h2><span class="num">1</span>버그가 뭔데?</h2>
+  <p class="lead">시스템은 <b class="hl">주제</b>를 봐야 합니다. 그런데 시스템은 <b class="bad">단어</b>를 봅니다.</p>
+
+  <div class="flow">
+    <div class="box"><div class="cap">누가</div><div class="val">요약 AI가</div></div>
+    <div class="arw">→</div>
+    <div class="box"><div class="cap">무엇을</div><div class="val">기사 본문을</div></div>
+    <div class="arw">→</div>
+    <div class="box"><div class="cap">어떻게</div><div class="val">읽는다</div></div>
+    <div class="arw">→</div>
+    <div class="box bad"><div class="cap">그래서</div><div class="val">"미성년" 한 단어를 보고<br>#아동피해를 붙인다</div></div>
+  </div>
+
+  <div class="q">
+    본문에 이렇게 나옵니다 — "K씨는 황정민의 <b class="hl">미성년</b> 아들 소셜미디어 계정으로 협박성 메시지를 보냈다."<br>
+    이 한 문장이 태그를 불렀습니다.
+  </div>
+
+  <p class="sm">기사는 어른 두 명의 싸움을 다룹니다. 아이는 사건의 배경으로 한 번 등장합니다. 그런데 태그는 "이 기사는 아동 피해 기사다"라고 선언합니다. <b class="bad">이게 버그입니다.</b></p>
+</section>
+
+<!-- ─────────── 3-2 ─────────── -->
+<section>
+  <h2><span class="num">2</span>왜 생겼는데?</h2>
+  <p class="lead">우리가 AI에게 <b class="bad">기준을 안 줬습니다.</b></p>
+
+  <p class="sm">지시문은 <code>prompts/news-analysis.md</code> 49번째 줄에 있습니다. 거기엔 이렇게만 적혀 있습니다.</p>
+  <div class="q">"민감 태그 7개 중 <b class="hl">해당하는 것만</b> 쓴다."</div>
+
+  <p class="sm">여기서 "해당한다"가 무슨 뜻인지 아무도 안 정했습니다. 그래서 AI는 가장 쉬운 뜻으로 읽습니다. <b class="bad">"나오면 해당한다."</b></p>
+
+  <h3>더 나쁜 점 — AI는 나쁜 본보기까지 배웠습니다</h3>
+  <p class="sm">같은 지시문 안에 <span class="chip warn">#마약</span> 규칙이 같이 들어 있습니다. 그 규칙은 이렇게 동작합니다. <b>"본문에 마약이라는 단어가 있으면 무조건 붙인다."</b> 이건 일부러 그렇게 만든 안전장치입니다. 마약은 놓치면 안 되기 때문입니다.</p>
+  <p class="sm">그런데 AI는 그 규칙을 옆에서 봅니다. 그리고 <b class="bad">"아, 여기선 단어만 있으면 붙이는구나"</b>라고 배웁니다. 나머지 6개 태그에도 그 방식을 그대로 씁니다.</p>
+
+  <h3>같은 병이 하나 더 있습니다</h3>
+  <p class="sm">뷰어에도 똑같은 방식이 따로 있습니다. <code>viewer/index.html</code> 6036번째 줄입니다. 여기는 아예 사람이 짠 단어 목록으로 태그를 붙입니다. <code>아동 · 미성년 · 소아</code> 중 하나만 나오면 <span class="chip">#아동</span>을 답니다. 이건 진짜로 <b class="bad">한 번 = 무조건</b>입니다.</p>
+  <p class="sm mut">그리고 이 목록은 정식 태그 7개와 다릅니다. 정식은 <code>#아동피해</code>, 뷰어는 <code>#아동</code>입니다. 이름부터 따로 놉니다. 검사 도구(<code>check_refs</code>)도 이쪽은 안 봅니다.</p>
+</section>
+
+<!-- ─────────── 나비효과 ─────────── -->
+<section>
+  <h2><span class="num">!</span>이게 왜 위험한데?</h2>
+  <p class="lead">태그 하나가 <b class="bad">기사 전체를 바꿉니다.</b> 태그는 라벨이 아닙니다. 태그는 <b class="hl">스위치</b>입니다.</p>
+  <p class="sm mut">아래는 <span class="chip warn">#아동피해</span> 가 켜지면 자동으로 일어나는 일입니다. 전부 지침에 실제로 적혀 있습니다.</p>
+
+  <div class="domino">
+    <div class="dom"><div class="n">1</div><div>
+      <div class="t">그림 스타일이 강제로 바뀝니다</div>
+      <div class="d">지침이 "아동 → A(수채화)"로 못 박습니다. 이 기사는 원래 B(극화)로 가야 합니다. 폭로·법정 기사이기 때문입니다. 그런데 태그 하나 때문에 따뜻한 수채화가 나옵니다.</div>
+    </div></div>
+    <div class="dom"><div class="n">2</div><div>
+      <div class="t">사람을 그릴 수 없게 됩니다</div>
+      <div class="d">지침이 "이미지 = 간접 중심"으로 바꿉니다. 인물 대신 빈 의자·닫힌 문·흔적만 그리게 됩니다. 카드뉴스의 힘이 빠집니다.</div>
+    </div></div>
+    <div class="dom"><div class="n">3</div><div>
+      <div class="t">제목과 문장이 밋밋해집니다</div>
+      <div class="d">지침이 "민감 태그 기사는 후킹보다 톤 절제 우선"이라고 정합니다. 후킹을 일부러 죽입니다.</div>
+    </div></div>
+    <div class="dom"><div class="n">4</div><div>
+      <div class="t">인스타 추천을 미리 포기합니다</div>
+      <div class="d">운영 문서가 "민감 태그 기사는 인스타 추천 배제가 기본 전제"라고 정합니다. 도달이 안 나와도 실패로 안 칩니다. 그래서 <b class="bad">진짜 실패를 못 알아챕니다.</b></div>
+    </div></div>
+    <div class="dom"><div class="n">5</div><div>
+      <div class="t">좌우 게이지를 꺼버립니다</div>
+      <div class="d">민감 태그 기사는 좌우 판정에서 면제됩니다. 판단이 하나 사라집니다.</div>
+    </div></div>
+  </div>
+
+  <p class="sm" style="margin-top:var(--sp-2)">정리하면 이렇습니다. <b class="bad">단어 하나가 그림·글·유통을 한꺼번에 틀어버립니다.</b> 사람은 그 사실을 모릅니다. 화면엔 노란 칩 하나만 보이기 때문입니다.</p>
+</section>
+
+<!-- ─────────── 3-3 ─────────── -->
+<section>
+  <h2><span class="num">3</span>어떻게 잡을 건데?</h2>
+  <p class="lead">고칠 곳은 <b class="ok">두 군데</b>입니다. 코드를 크게 뜯지 않습니다.</p>
+
+  <h3>고침 ① — AI에게 기준을 준다 (지시문 3줄 추가)</h3>
+  <div class="ba">
+    <div class="pane before">
+      <h4>지금</h4>
+      <p class="sm">"7개 중 해당하는 것만 쓴다."</p>
+      <p class="sm mut" style="margin-top:8px">→ AI가 "나오면 해당"으로 읽습니다.</p>
+    </div>
+    <div class="pane after">
+      <h4>고친 뒤</h4>
+      <ul class="sm">
+        <li><b>주제일 때만 붙인다.</b> 그 피해를 지우면 기사가 성립 안 되는 경우다.</li>
+        <li><b>배경 언급은 안 붙인다.</b> 한두 번 스쳐 나오면 뺀다.</li>
+        <li><b>애매하면 안 붙인다.</b> 단 마약은 지금처럼 무조건 붙인다.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="sm mut" style="margin-top:var(--sp-1)">추가로 <code>tags_why</code> 한 줄을 같이 쓰게 합니다. AI가 왜 붙였는지 한 문장으로 적습니다. 사람이 바로 확인할 수 있습니다.</p>
+
+  <h3>고침 ② — 뷰어의 단어 목록을 없앤다</h3>
+  <p class="sm">뷰어가 따로 만들던 <span class="chip">#아동</span> 같은 태그를 버립니다. 대신 AI가 쓴 정식 태그를 그대로 보여줍니다. <b class="ok">태그를 만드는 곳이 한 곳으로 줄어듭니다.</b></p>
+
+  <div class="flow" style="margin-top:var(--sp-2)">
+    <div class="box bad"><div class="cap">지금</div><div class="val">태그 만드는 곳 <b>3개</b><br><span class="mut sm">AI · 마약 백스톱 · 뷰어 단어목록</span></div></div>
+    <div class="arw">→</div>
+    <div class="box ok"><div class="cap">고친 뒤</div><div class="val">태그 만드는 곳 <b>2개</b><br><span class="mut sm">AI(기준 있음) · 마약 백스톱</span></div></div>
+  </div>
+</section>
+
+<!-- ─────────── 3-4 · 3-5 ─────────── -->
+<section>
+  <h2><span class="num">4</span>그럼 새 위험은 없나?</h2>
+  <p class="lead">있습니다. <b class="bad">3개</b>입니다. 그리고 <b class="ok">셋 다 막을 수 있습니다.</b></p>
+
+  <div class="tw">
+  <table>
+    <tr><th style="width:34%">새 위험</th><th style="width:33%">왜 생기나</th><th style="width:33%">어떻게 막나</th></tr>
+    <tr>
+      <td><b class="bad">① 진짜를 놓친다</b><br><span class="mut">아이가 진짜 피해자인데 태그가 안 붙는다</span></td>
+      <td>기준을 "주제일 때만"으로 좁혔기 때문입니다. 좁히면 놓치는 게 생깁니다.</td>
+      <td>예외 한 줄을 같이 넣습니다. <b class="ok">"아이가 직접 피해를 입었으면, 주제가 아니어도 붙인다."</b> 주제 판정과 피해자 판정을 분리합니다.</td>
+    </tr>
+    <tr>
+      <td><b class="bad">② 왜 붙었는지 여전히 모른다</b><br><span class="mut">사람이 오탐을 못 잡는다</span></td>
+      <td>화면에 칩만 보입니다. 근거가 안 보입니다.</td>
+      <td><code>tags_why</code> 한 줄을 뷰어 칩에 붙입니다. 마우스를 올리면 이유가 뜹니다. <b class="ok">운영자가 그 자리에서 오탐을 봅니다.</b></td>
+    </tr>
+    <tr>
+      <td><b class="bad">③ 옛날 기사는 안 고쳐진다</b><br><span class="mut">이미 나온 기사의 태그는 그대로다</span></td>
+      <td>태그는 요약할 때 파일에 박힙니다. 지시문을 바꿔도 과거는 안 바뀝니다.</td>
+      <td>과거는 건드리지 않습니다. 문제되는 건만 <b class="ok">재분석 한 번</b>으로 고칩니다. 전체를 다시 돌리지 않습니다. 돈과 시간을 안 씁니다.</td>
+    </tr>
+  </table>
+  </div>
+
+  <p class="sm mut" style="margin-top:var(--sp-2)">되돌리기도 쉽습니다. 고침 ①은 지시문 3줄입니다. 고침 ②는 뷰어 한 덩이입니다. 각각 따로 커밋합니다. 마음에 안 들면 <b>한 줄 명령으로 되돌립니다.</b></p>
+</section>
+
+</div>
