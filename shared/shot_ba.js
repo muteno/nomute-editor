@@ -24,6 +24,8 @@ const ROUTES = {
     steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] }, { clickText: '편집' } ] },
   'thumb-card': { url: '/index.html', label: 'Image Studio · 카드 생성', vw: 430, vh: 900,
     steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] } ] },
+  'thumb-tr': { url: '/index.html', label: 'Image Studio · 번역', vw: 430, vh: 900,
+    steps: [ { openTool: ['/thumb.html', 'Image Studio', 'THUMB_TABS', 'thumb'] }, { clickText: '번역' } ] },
   'feed': { url: '/index.html', label: '피드', vw: 430, vh: 900, steps: [] },
 };
 
