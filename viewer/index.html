@@ -9697,7 +9697,7 @@ async function loadQueue() {
   if (g !== qGen) return;
   let cut = 0; try { cut = +localStorage.getItem('nomute_q_cleared') || 0; } catch {}
   // 발견성 배지(진행중 건수)도 이 응답으로 즉시 동기화 — 리스트 열 때 별도 폴 안 기다리고 배지 최신화(stale 불일치 방지·추가 fetch 0·운영자 260701). status 기준(loadPending과 동일 = 파이프라인 처리중 = 어디서 세든 같은 값).
-  PEND_PROC = items.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length; updateQBadge();
+  PEND_PROC = qProcCount(items); updateQBadge();
   setQFail(items); qfMarkSeen();   // 리스트가 실제로 그려지는 이 응답으로 실패분 최신화 → 그 자리서 확인 처리(열어 놓은 채 새 실패가 들어와도 '보고 있는 중'이므로 소등 유지 · 운영자 260727)
   // 화면상 '진행중'(스피너로 그려지는 것) 최상단 고정 → 리스트 1페이지가 배지·진행상태와 일치.
   //   _qProg를 eff 기준(succ인데 피드 미반영=빌드랙도 qRowHtml서 스피너로 그려짐 → 상단)으로 잡아 '스피너인데 하단' 모순 차단(260701).
@@ -9740,7 +9740,7 @@ async function qPickRetry(it) {   // URL 픽/분석 실패 재시도 — api/pic
   if (!/^https?:\/\//i.test(u)) { qFlash('원문 링크가 없어 다시 분석 못 해 — 전문을 다시 붙여넣어줘'); return; }   // 전문(paste) 실패 = url無(복원 경로 없음)
   try { await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: u, title: it.title || '', alt: (it.alt1 && it.alt1 !== u) ? [it.alt1] : [] }) }); } catch {}   // 수집함 failRetry와 동일 재발사(alt=대체 매체로 원매체 403 우회)
   qFlash('다시 분석 요청했어 — 잠시 뒤 처리중으로 바뀌어');
-  setTimeout(loadQueue, 1200); setTimeout(loadQueue, 4000);   // 재발사 후 대기열 갱신(실패행→처리중 · submit 패턴 계승)
+  qBump();   // 재발사 후 대기열 갱신(실패행→처리중 · submit 패턴 계승) — 260801 qBump 승격으로 **배지도** 같이 갱신(옛 loadQueue 2회는 리스트만 = 열려 있을 때만 효과였음)
 }
 function qFlash(msg, iconSvg) {   // 짧은 토스트(링크 빌드 랙 안내 + 팝업 상태문구 전량 위임 · 운영자 260720 "문자열 말고 포스트 알림") · iconSvg 주면 픽토그램+esc(메시지) innerHTML(XSS 가드)
   let t = document.getElementById('qFlash');
@@ -10110,7 +10110,7 @@ async function loadPending(render) {
       its.forEach(it => { if (it && it.key) m.set(_normU(it.key), it.status); });
       changed = m.size !== PEND.size || [...m].some(([k, v]) => PEND.get(k) !== v);   // 키 추가/삭제·상태 변화 모두 감지(전이 드묾 = 재렌더 비용 미미)
       PEND = m;
-      PEND_PROC = its.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
+      PEND_PROC = qProcCount(its);   // 발견성 배지 = 처리중 + 재시도 대기 + 빌드랙(succ인데 피드 미반영 = 세션 직접 적재 포함) · 술어 SSOT = qProcCount(운영자 260622·260801)
       updateQBadge(); setQFail(its); }   // setQFail = 요약 막힘(실패) 기어 레몬 점등 축(대기열 안 열어도 전 탭서 알림 · 운영자 260727)
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
   finally { PEND_LOADING = false; }   // 리셋 필수 = 안 하면 플래그 영구 true로 이후 폴링 전면 차단
@@ -10138,6 +10138,22 @@ function setQFail(items) { QFAIL_IDS = (items || []).filter(it => it && it.statu
 function updateQBadge() {   // 처리중 건수 배지 = 하단 뉴스요약 + 헤더 대기열 픽토그램 공용(0이면 숨김 · 운영자 260710 헤더 추가)
   const txt = PEND_PROC > 99 ? '99+' : String(PEND_PROC), show = PEND_PROC > 0;
   ['qbadge', 'qbadgeHead'].forEach(id => { const b = document.getElementById(id); if (!b) return; if (show) { b.innerHTML = ''; const i = document.createElement('i'); i.textContent = txt; b.appendChild(i); b.hidden = false; } else b.hidden = true; });   // 이너 <i> = 잉크 서브픽셀 보정 앵커(운영자 260717 Q06 · textContent 주입 유지 = XSS 안전 동일)
+}
+// 배지 건수 SSOT(운영자 260801 "어떤 경로든 들어가면 대기열 뜨게") — loadPending·loadQueue 공용 = 어디서 세든 같은 값.
+//   ⚠️ succ여도 **피드(DATA) 미반영이면 진행중으로 센다** — qRowHtml eff 기준과 동일(리스트는 이미 스피너로 그리는데 배지만 0이던 불일치 봉합).
+//   이게 곧 세션 직접 적재(/q = pending 안 거치고 queue/ 바로 커밋) 경로의 번호표다: pending 단계가 없어 status가 처음부터 succ라
+//   종전 문법(status만 보기)으론 영원히 0이었고, Pages 재빌드(1~2분) 동안 '뜬 게 없음'으로 보였다.
+//   DATA_LOADED 가드 = 피드 로드 전(부팅 eager loadPending)엔 qMatch가 무조건 null이라 24h succ 전량이 진행중으로 튀는 것 차단 → 종전값 유지.
+//   영구 잔류 위험 0 실측(260801): 라이브 articles.json 503건 ⊇ queue/*.md 502건 전량 = 빌드가 큐 파일을 떨구는 경로 없음 → 미매칭 = 빌드 랙뿐(유한).
+function qProcCount(items) {
+  return (items || []).filter(it => it && (it.status === 'processing' || it.status === 'retry' || (it.status === 'succ' && DATA_LOADED && !qMatch(it.id)))).length;
+}
+// 발사 직후 대기열 즉시 반영 SSOT(운영자 260801) — 60s 폴 안 기다리고 배지(loadPending) + 열려 있으면 리스트(loadQueue)까지.
+//   2회 = GitHub 전파 랙 대비(askSend 정본 1200/4000·리스트 1300/4200 그대로 계승 · 신규 값 0).
+//   전 발사 경로 공용: ✨요약요청·SNS 보내기·수집함 PICK·픽 재시도·대기열 재시도·전문 붙여넣기 재분석.
+function qBump() {
+  setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);
+  if (!qpop.hidden) { setTimeout(loadQueue, 1300); setTimeout(loadQueue, 4200); }
 }
 const pendStatus = c => { for (const u of [_normU(c.url), ...((c.cluster_members || []).map(_normU))].filter(Boolean)) { const s = PEND.get(u); if (s) return s; } return null; };   // 이 후보 url(또는 클러스터 멤버)이 pending에 있나 = 전역 픽 진행/실패
 function pickState(c) {   // 픽 상태 통합 = 로컬(r.picked) + 전역(api/pending·picks-failed·피드 DATA). null=트리아지 / 'picking' / 'settled' / 'failed'
@@ -10268,6 +10284,7 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
         saveRating(id, { picked: false }); pfRemoveResub(id); if (CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
         alert('재시도 발사 실패 — 다시 시도해줘\n' + (j.error || ('HTTP ' + r.status))); })
       .catch(() => {});   // 네트워크 예외 = 종전대로 조용히(오프라인 순간 등 — 타임아웃 감시가 Failed 복귀 커버)
+    qBump();   // 수집함 Failed ↻ 재시도도 대기열 즉시 반영(운영자 260801 "어떤 경로든")
   }
   if (!(opts && opts.noOpen)) {   // ② 가까운 관련기사 원문 새 탭 — 토스트 재시도만(칩 재시도는 생략 = 대기열만 · 원문은 제목 탭)
     const go = alt[0] || c.url;
@@ -11046,6 +11063,7 @@ async function pickCard(c) {
     const r = await fetch('api/pick', { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ url: c.url, title: c.title || '', alt, event_key: c.event_key || '' }) });
     if (!r.ok) throw new Error(await failWhy(r));
+    qBump();   // 수집함 PICK도 대기열 즉시 반영(운영자 260801 "어떤 경로든") — 종전엔 pollPicking 25s·폴 60s 뒤에야 번호표가 떴다
   } catch (e) {
     saveRating(id, { picked: false }); renderScrap();
     postRate({ id, url: c.url, title: c.title || '', score: cur.score || 0, picked: false });   // 서버 원장도 롤백(로컬만 되돌리면 영구 불일치)
@@ -11161,6 +11179,7 @@ function applyTriage(act, c, el, reason, text) {
         if (CURTAB === 'scrap' && SCRAP_LOADED) renderScrap();
         alert('큐레이션 발동 실패 — 다시 시도해줘\n' + why); })
       .catch(() => {});   // 네트워크 예외 = 종전대로 조용히(pickTimedOut 감시가 Failed 복귀 커버)
+    qBump();   // 트리아지 PICK도 대기열 즉시 반영(운영자 260801 "어떤 경로든")
   }
   if (act === 'pick') {   // 픽 = 사라지지 말고 제자리서 초록 게이지→✓ 체크→'Picking…'(분석 중) → 피드 진입 시 PICKED (운영자 260702·재시도 패턴 계승 · api/pick은 위서 이미 발사=모션 순수 시각)
     if (el) {
@@ -12311,7 +12330,7 @@ function socBindSend(list) {
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ok) {
         sb.classList.add('sent'); sb.title = '요약 요청 보냄';
-        setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 대기열 배지 즉시 갱신(askSend 계승)
+        qBump();   // 대기열 즉시 갱신(askSend 계승 → 260801 qBump SSOT)
         setTimeout(() => { sb.classList.remove('sent', 'sending'); sb.title = '뉴스 요약으로 보내기'; }, 1600);
       } else { qFlash(d.error || `서버 ${r.status}`); sb.classList.remove('sending'); }
     } catch { qFlash('전송 실패 (백엔드 배선 전이면 예상된 동작)'); sb.classList.remove('sending'); }
@@ -14226,8 +14245,7 @@ $('#askSend').addEventListener('click', async () => {
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { btn.classList.remove('done'); void btn.offsetWidth; btn.classList.add('done', 'gdone');   // 성공 = done팝 + gdone(게이지 현재위치→100% 급속 마무리 = 멈춤 없이 응답 즉시 채움) · 입력 리셋은 닫은 뒤(아래)로 — 즉시 비우면 1.6s 빈화면(운영자 260622)
       setTimeout(() => askShowCheck(btn), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·시안2·운영자 260703)
-      setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 접수 즉시 대기열 배지 갱신(60s 폴링 안 기다림 · asks/ 표면화 = '처리중' 확인 · GitHub 전파 대비 2회 · 운영자 260622)
-      if (!qpop.hidden) { setTimeout(loadQueue, 1300); setTimeout(loadQueue, 4200); }   // 대기열 열린 채면(재시도 재오픈 = closeQueueUser 안 함) 리스트도 재fetch → 옛 실패행 소멸·새 '처리중' 표시(loadPending 은 배지만 · 평의회 260704 R4 스테일)
+      qBump();   // 접수 즉시 대기열 배지+리스트 갱신(60s 폴링 안 기다림 · asks/ 표면화 = '처리중' 확인 · GitHub 전파 대비 2회 · 운영자 260622) — 값·타이밍 정본이 이 자리였고 260801에 qBump로 승격(전 발사 경로 공용화)
       if (_askResolveId) { pfAddResolved(_askResolveId); _askResolveId = null; markPickFailSeen(); if (CURTAB === 'scrap') renderScrap(); }   // 실패 픽 복구 전송 완료 → '분석 실패' 표시·링 소거
       _askRetryOf = null;   // 재시도 재제출 접수 완료 → 옛 실패 id 소비(submit 이 옛 asks/failed 삭제 처리)
       setTimeout(() => { closeAskSurface(); gaugeClear(btn); askHideCheck(btn); btn.disabled = false;   // 닫기 = 표면 자동 판별(도구 셸 vs 레거시 askdlg · 운영자 260712 요약 셸)
@@ -14266,6 +14284,7 @@ $('#pasteSend').addEventListener('click', async () => {
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) {
       qFlash('재분석 시작 — 곧 Picking…으로, 완료되면 PICKED');   // 성공 안내도 qFlash(호스트 모달 1.3s 뒤 닫혀도 close 캡처가 body 귀환 = 잔여 표시 보존)
+      qBump();   // 전문 붙여넣기 재분석도 대기열 즉시 반영(운영자 260801 "어떤 경로든") — 이 경로만 즉시갱신이 빠져 pollPicking 25s·폴 60s를 기다려야 번호표가 떴다
       const id = candId(c);
       saveRating(id, { picked: true, pickedAt: Date.now() });   // pickedAt 리셋 → pickTimedOut 해제(새 분석창)
       pfAddResub(id);                                            // pfailHas 억제 → Failed→Picking(임시창)
