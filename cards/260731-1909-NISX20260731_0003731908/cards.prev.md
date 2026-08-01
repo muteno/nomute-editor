@@ -1,31 +1,31 @@
 # 🗳 '피습'은 연출이었다…후보가 직접 짠 음료 투척 자작극
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 선거 공정성을 무너뜨린 범죄의 재구성이라 사실성·고발 톤이 맞다
-- 분위기: 흐린 여름 낮의 건조한 사실감에서 출발해, 연출이 벗겨지는 순간 최저 명도·최고 대비로 떨어뜨리고, 마지막에 여운광으로 릴리즈
-- 연출 방향: 독자를 멈추게 하는 건 '내가 안쓰럽게 봤던 그 장면이 연기였다'는 배신감이다 — 그래서 카드 전체가 *같은 몇 초를 두 번 보게* 만든다: 처음엔 피해자로, 다음엔 연출자로. 강조점은 날아가는 음료컵이라는 단 하나의 사물과, 그것을 바라보는 시선의 방향 변화(맞는 자 → 지시한 자 → 지켜보는 카메라)에 둔다. 동정을 자극했던 표정과 그것이 계산이었다는 사실 사이의 낙차를 시각적으로 맞세우는 것이 이 덱의 전부다. 얼굴을 자극적으로 파헤치지 않고, 사물·시선·거리로 말한다.
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: '같은 편'이라는 말을 남기고 다음 장이 회수)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 표심이 움직인 속도와 사실이 밝혀진 속도가 달랐고, 선거는 그 사이에 이미 끝나 있었다
-- 연속성 앵커: Recurring subject — a Korean man in his 30s with short neatly parted black hair, a lean build, wearing a plain campaign windbreaker over a white shirt / Recurring place — a wide suburban roadside near a highway interchange in Busan, low-rise buildings behind
+- 화풍: B 극화 — 선거법 위반 수사·기소로 이어진 범죄 재구성이라 극화의 사실성과 고발 톤이 사건 무게에 맞다
+- 분위기: 흐린 초여름 낮의 무감한 공기에서 출발해 조사실의 차갑고 좁은 빛을 지나 새벽 빈 광장으로 식어가는 톤 — 동정했던 장면이 연기였다는 걸 알고 난 뒤의 서늘함
+- 연출 방향: 독자훅은 "내가 안타까워했던 그 장면이 표를 얻으려 짠 연기였다"는 배신감이다. 그래서 카드마다 '보는 눈'을 심는다 — 그날의 취재 카메라, 아무 온기 없이 지켜보는 빛, 기록을 넘기는 검사의 시선, 그리고 맞는 순간에도 카메라를 흘깃 확인하는 눈. 강조점은 사건의 전부인 '몇 초'(튄 음료와 그때의 눈)에 몰고, 마지막엔 아무도 없는 광장으로 시선을 비워 표가 이미 지나간 자리를 남긴다. thumb_dispatch의 흐린 확산광 톤과 허탈한 정조를 시퀀스 첫 카드와 마지막 카드의 온도로 계승
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(예고형: "믿었다" 과거형으로 뒤집힘 예고)+카드3 끝(단서형: 혐의가 뒤늦게 붙은 이유) · 감정 피크=카드4 · 착지 한 줄 요지 = 연출은 밝혀졌지만 그 몇 초를 되돌릴 표는 남아 있지 않다
+- 연속성 앵커: Recurring subject — a Korean man in his 30s with short neatly parted black hair, wearing a light blue campaign windbreaker over a white dress shirt / Second recurring subject — a Korean man in his 30s with a heavy muscular build and cropped hair, wearing a dark cap and a plain black t-shirt / 반복 장소 없음
 
 ### [카드 1]
 **텍스트**
 ```text
-4월 27일 부산 구서나들목 앞
-유세 중이던 후보가 음료를 맞았다
-*그날 뉴스는 피습이라고 했다*
-던진 사람과 맞은 사람은 같은 편이었다
+6·3 지방선거를 한 달여 앞둔 4월 27일
+개혁신당 정이한 후보가 유세 중이었다
+부산 금정구에서 음료가 날아들었다
+카메라도 유권자도 *그 장면을 믿었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a paper cup frozen in mid-air, its liquid arcing open toward the man. Recurring subject — a Korean man in his 30s with short neatly parted black hair, a lean build, wearing a plain campaign windbreaker over a white shirt, stands mid-speech with one arm still raised, his face turning toward the flying cup. A wide suburban roadside near a highway interchange in Busan stretches behind him, low-rise buildings in the far background, a few passersby stopped and looking. The single continuous asphalt road surface runs edge to edge beneath everything.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Scene: Emotional focal point: the dark wet splash spreading across his chest and the stunned half-open mouth caught mid-sentence. Recurring subject — a Korean man in his 30s with short neatly parted black hair, wearing a light blue campaign windbreaker over a white dress shirt — stands on a low roadside platform gripping a handheld microphone, his upper body recoiling half a step back, his gaze thrown toward the right edge of the frame where the drink came from. Behind and around him a dense wall of supporters and plain blank cloth campaign banners fills the entire backdrop, and two press cameras are raised above the heads with their lenses turned on him. The place is a broad roadside in a Korean city district on an overcast early summer afternoon.
+Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, nose room on the right, gaze directed toward the right edge, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the flying cup), muted daylight contrast
-Text handling: no signage text, no banner lettering; any writing avoided by framing and posture.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the campaign windbreaker trim), muted daylight contrast
+Text handling: the campaign banners and placards are plain blank cloth with no writing at all; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the asphalt roadside) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the crowd-and-banner backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-부산 구서나들목 선거유세
+부산 지방선거 거리유세
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-석 달 뒤 검찰이 내놓은 결론은
-정반대였다 음료를 던진 30대
-헬스 트레이너는 공범이었고
-*둘은 그날을 함께 짰다*
+석 달 뒤 검찰의 결론은 정반대였다
+음료를 던진 30대 헬스 트레이너는
+*처음부터 후보와 같은 편이었다*
+검찰은 둘이 그날을 함께 짰다고 본다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two pairs of hands resting on the same table, close enough that the gap between them reads as agreement. Recurring subject — a Korean man in his 30s with short neatly parted black hair, a lean build, wearing a plain campaign windbreaker over a white shirt, sits leaning forward across a small table from a broad-shouldered Korean man in his 30s in a fitted training top. Both look down at a single paper cup standing between them on the table. A dim plain interior surrounds them, one continuous table surface filling the frame.
-Camera: medium shot, waist-up framing, face and gestures, conversational from high angle shot, looking down, vulnerable subject, small, observed, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the paper cup), film-noir low-key lighting, deep shadows
-Text handling: no documents with writing, no signage; surfaces kept blank by framing.
+Scene: Emotional focal point: the narrow gap between two men and the brief sideways glance that passes across it, seen from above. Recurring subject — a Korean man in his 30s with short neatly parted black hair, wearing a light blue campaign windbreaker over a white dress shirt — walks along the outer edge of a thinning crowd, his face turned slightly aside. Second recurring subject — a Korean man in his 30s with a heavy muscular build and cropped hair, wearing a dark cap and a plain black t-shirt — passes him from the opposite direction, one hand holding a paper cup low at his hip, his eyes flicking toward the first man for a single instant. Nobody in the surrounding crowd is looking at either of them; the ground is a broad flat asphalt roadway.
+Camera: medium shot, waist-up framing, face and gestures, conversational, two-shot, two characters in frame, relationship distance, emotional dynamic, from high angle shot, looking down, vulnerable subject, small, observed, shot on 70mm short telephoto, gentle background compression, subject isolation
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the campaign windbreaker trim), muted daylight contrast
+Text handling: the paper cup is unbranded and blank; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the flat asphalt roadway) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-정이한 개혁신당 부산시장 후보
+선거 유세차량 운동원
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-부산지검은 31일 두 사람을 구속 기소했다
-후보 혐의는 선거자유방해 교사와
-허위사실공표 그리고 위계공무집행방해
-*없는 피습에 경찰이 움직였기 때문이다*
+부산지검은 31일 둘을 구속 기소했다
+선거자유방해 교사에 허위사실공표
+없는 피습에 *경찰까지 움직인 혐의였다*
+교사 혐의는 검찰에 와서야 붙었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a prosecutor's hand pressing flat on a closed case file, fingers spread and still. In the near foreground that hand rests on a wide desk; in the deep background along the same sightline, uniformed officers walk a cordoned roadside searching the ground where nothing was ever thrown at anyone. One continuous desk-and-floor surface carries the eye from the near hand to the far scene.
-Camera: extreme close-up, single detail, hand, texture from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Scene: Emotional focal point: the prosecutor's pen tip pausing on the page while his eyes have already moved to the right edge of the desk. A Korean prosecutor in his 40s in a dark suit sits at a wide desk seen slightly from above, one hand pressing a thick stack of case records flat, the other gripping a pen mid-stroke, head bent in concentration. The records are angled and folded away from the viewer so their pages read as blank paper texture only. A single hard light falls straight down onto the desk while everything around it sinks into darkness; this is a bare institutional office at night.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context, from overhead shot, bird's-eye view, top-down angle, layout, geometry, nose room on the right, gaze directed toward the right edge, shot on 70mm short telephoto, gentle background compression, subject isolation
 Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the file edge), film-noir low-key lighting, deep shadows
-Text handling: the case file stays closed and blank, no writing rendered anywhere.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a single tab marker in the case file), film-noir low-key lighting, deep shadows
+Text handling: all documents are shown at a sharp angle or folded so that no writing is legible; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,26 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-부산지방검찰청 청사
+부산지방검찰청 검사실 수사기록
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-검찰은 보완수사에서 하나를 더 확인했다
-*후보가 직접 짜고 지시한 몇 초였다*
+보완수사가 밝힌 건 우발이 아니었다
+지시한 사람은 음료를 맞은 후보였다
+*피해자 역할까지 그가 직접 설계했다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his eyes, wide open and fixed on nothing, a vacant thousand-yard stare that does not blink. Recurring subject — a Korean man in his 30s with short neatly parted black hair, a lean build, wearing a plain campaign windbreaker over a white shirt, fills the frame from the chest up, jaw set, head slightly lowered. Behind him a single dark wall surface runs unbroken across the whole frame. korean manhwa emphasis lines radiating toward the subject, no panel border.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Scene: Emotional focal point: a fleeting micro-expression flashing across an otherwise shocked face — the eyes slide to the upper right to check whether the cameras caught it. Recurring subject — a Korean man in his 30s with short neatly parted black hair, wearing a light blue campaign windbreaker over a white dress shirt — fills the frame in tight close-up, liquid running down his temple and jaw, mouth still open in the shape of a cry, but his pupils already cut sideways and calculating. A single hard light rakes across one half of his face while the other half falls into black; the background is a single unbroken dark tone with manhwa emphasis lines radiating toward the subject, no panel border.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure, from high angle shot, looking down, vulnerable subject, small, observed, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
 Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 rim on his shoulder line), film-noir low-key lighting, deep shadows
-Text handling: no text anywhere in frame, the wall behind is bare.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 catching the windbreaker collar), film-noir low-key lighting, deep shadows
+Text handling: no writing anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the single-tone dark backdrop behind the face) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -126,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-구속영장 실질심사 법원 호송
+정이한 부산시장 후보 음료 투척
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-이름을 알리는 가장 빠른 길로 그는
-피해자를 골랐고 그 연출은 통했다
-그날 이것이 짜인 장면일 수 있다고
-*의심한 이는 거의 없었고 선거는 끝났다*
+그렇게 얻으려 한 건 이름값 하나였다
+동정도 수사력도 그 몇 초가 끌어갔다
+연출이 드러났을 때 선거는 끝난 뒤였다
+*그 몇 초를 되돌릴 표는 남아 있지 않다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: an empty campaign placard stand left standing alone at the roadside, its board bare. A wide suburban roadside near a highway interchange in Busan opens out behind it, low-rise buildings in the far background, no people anywhere, a single paper cup lying flattened on the asphalt near the stand. The one continuous asphalt surface runs edge to edge from top to bottom.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Scene: Emotional focal point: a microphone stand left standing alone on an empty campaign platform, tilted slightly as if someone left in a hurry. The low roadside platform sits at the upper center of the frame with nobody on it, its cloth skirt loose and blank, and a single unbranded paper cup lies crushed on the pavement a few steps away. Cable ties and cut lengths of rope hang from the empty banner rail where banners used to be. The whole place is a broad open Korean city plaza before sunrise, completely deserted, with no person anywhere in the frame.
+Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, symmetrical composition, static centered framing, shot on 20mm wide lens, subject and environment, documentary realism
 Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the flattened cup), film-noir low-key lighting, deep shadows
-Text handling: the placard board is deliberately blank, no lettering rendered anywhere.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a strip of tape still stuck to the empty banner rail), film-noir low-key lighting, deep shadows
+Text handling: the platform skirt, the banner rail and the paper cup carry no writing at all; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the asphalt roadside) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the empty plaza pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -157,5 +158,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-빈 선거 유세차 거리
+선거 유세 연단 철거
 ```
