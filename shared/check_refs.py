@@ -1064,6 +1064,7 @@ def check_playground():
     검증 = 구성 5요소 마커 · near() 계승판정 · 재렌더 scrollTop 보존(스크롤 튕김 = 운영자 반복 실측 260712) · 자유 hex 피커 금지 · 현행 비교 기준."""
     import glob as _g
     hard = []
+    soft = []
     targets = sorted(_g.glob('docs/reports/*플레이그라운드*.html'))
     if os.path.exists('shared/playground_template.html'):
         targets.append('shared/playground_template.html')
@@ -1086,12 +1087,25 @@ def check_playground():
             hard.append('%s: 자유 hex 피커 금지(팔레트 폐쇄 셀렉트만 · 포터블 §7-2-3)' % p)
         if '현행' not in s:
             hard.append('%s: 현행 비교 기준 없음(기본값 = 현행 실측)' % p)
+        # ⑥ 미리보기 고정(운영자 260801 · 포터블 §3-1 ⑥) — 콘솔이 길어지면 조작 중 미리보기가 화면 밖으로 나간다.
+        #   PC sticky + **폰 티어(≤900px) sticky** 둘 다 있어야 계약 성립(PC만이면 flex-wrap 후 그대로 스크롤 아웃).
+        #   동결 골격 = 하드(우리가 통제) · 개별 시안 = WARN(스탬프 23종 소급 실패 방지 · 신규는 골격 복사라 자동 충족).
+        _fix = ('position:sticky' in s) and re.search(r'@media[^{]*max-width:\s*9\d\dpx[\s\S]{0,600}?position:sticky', s)
+        if not _fix:
+            if p.startswith('shared/'):
+                hard.append('%s: ⑥ 미리보기 고정 누락(PC sticky + 폰 티어 sticky 둘 다 · 포터블 §3-1)' % p)
+            else:
+                soft.append('%s: ⑥ 미리보기 고정 미확인(폰 티어 sticky 없음 — 신규 시안은 골격 복사로 자동 충족)' % p)
     if hard:
         print('❌ 플레이그라운드 게이트 %d건:' % len(hard))
         for h in hard:
             print('  -', h)
         return 1
-    print('✅ 플레이그라운드 게이트 — 템플릿 세대(data-pg-template) 5요소·near·스크롤 보존 확인')
+    if soft:
+        print('⚠️ 플레이그라운드 게이트(WARN·비차단) %d건 — 신설 축(⑥ 미리보기 고정 · 260801) 소급 미충족:' % len(soft))
+        for h in soft:
+            print('  -', h)
+    print('✅ 플레이그라운드 게이트 — 템플릿 세대(data-pg-template) 5요소+⑥고정·near·스크롤 보존 확인')
     return 0
 
 
