@@ -1,0 +1,93 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>개별 계정 알림 — 자동복구 사유 5회 게이트 전후(260801)</title><style>
+:root{--bg:#121212;--fg:#eef7f0;--mut:#8fa697;--line:rgba(255,255,255,.08);--accent:#00EED2;--warn:#FFE13D;--danger:#FF5A6E;--glass2:rgba(18,19,22,.55);--r-m:11px;--r-s:9px;--sp-1:6px;--sp-2:12px;--sp-3:18px;--sp-4:24px;--fs-h1:19px;--fs-h2:15px;--fs-body:15px;--fs-label:13px;--fs-sm:12px;--fs-xs:11px;--lh-base:1.6;--fw-b:700;--fw-x:800}
+body{margin:0;padding:var(--sp-4) var(--sp-3);background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;font-size:var(--fs-h2);line-height:var(--lh-base)}
+.wrap{max-width:940px;margin:0 auto}h1{font-size:var(--fs-h1);font-weight:var(--fw-x);margin:0 0 var(--sp-1)}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin:0 0 var(--sp-3)}
+.lead{background:var(--glass2);border:1px solid var(--line);border-radius:var(--r-m);padding:var(--sp-2);margin:0 0 var(--sp-3);font-size:var(--fs-label)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}@media(max-width:720px){.cols{grid-template-columns:1fr}}
+h2{font-size:var(--fs-h2);font-weight:var(--fw-x);margin:var(--sp-3) 0 var(--sp-1)}
+.tag{font-size:var(--fs-xs);font-weight:var(--fw-x);letter-spacing:.04em}.tag.b{color:var(--danger)}.tag.a{color:var(--accent)}
+.it{background:var(--glass2);border:1px solid var(--warn);border-radius:var(--r-m);padding:var(--sp-2)}
+.it.none{border-color:var(--line);color:var(--mut)}
+.ih{display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap;margin-bottom:var(--sp-1)}
+.kind{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--warn)}.ago{font-size:var(--fs-xs);font-weight:var(--fw-x);color:var(--mut)}
+.tx{white-space:pre-wrap;font-size:var(--fs-body)}
+.todo{margin-top:var(--sp-2);padding:var(--sp-2);border-radius:var(--r-s);background:var(--bg);border:1px solid var(--line);font-size:var(--fs-label)}
+.todo b{color:var(--accent)}.todo.op b{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:var(--fs-sm);margin-top:var(--sp-2)}
+th,td{text-align:left;vertical-align:top;padding:var(--sp-1);border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:var(--fw-b);width:150px}
+code{word-break:break-all;font-size:var(--fs-sm)}
+.note{color:var(--mut);font-size:var(--fs-sm);margin-top:var(--sp-3)}
+</style></head><body><div class="wrap">
+<h1>개별 계정 「안 걷히고 있어요」 — 자동복구 사유는 5회 연속부터</h1>
+<p class="sub">260801 · 대상 = 설정 → 알림메세지 · 판정 소스 <code>TRENDS.health.subs.cover[플랫폼].why[계정] · .streak[계정]</code> · 코드 <code>viewer/index.html sysErrMsgs()</code></p>
+
+<p class="lead"><b>운영자 질문</b> — "개별 안 들어오는 거는 그 채널이 뭘 안 올려서 갱신할 게 없는 건가? 그렇다면 경고알림은 아닌데."<br>
+<b>확인 결과</b> — ① <b>"안 올려서 0건"은 이미 알림이 안 뜬다.</b> 수집기가 응답 성공 시점에 계정별 성공 도장(<code>_sok</code>)을 찍어, 글이 0건이어도 <code>miss</code>에 안 들어간다(5개 플랫폼 전부 · <code>scraper/sns_trends.py</code> L871·1003·1078·1240·1336). 파서가 "글 없음"으로 판정한 <code>empty</code>도 1~2계정이면 뷰어가 침묵한다.<br>
+② <b>그래서 260801 리포트의 개별 2건은 그 케이스가 아니다.</b> 사유는 <code>429</code> = X 신디케이션이 요청을 막은 것. 다만 <b>조치문이 "네가 할 일: 없어요"</b>라 운영자 말대로 <b>경고로 띄울 건이 아니다</b> — 아래가 그 봉합.</p>
+
+<h2>왜 X만 매일 샜나</h2>
+<p class="lead">이미 같은 사고를 <b>260731에 유튜브에서 한 번 고쳤다</b> — "러너 IP 로터리 순단이 날마다 개별 알림으로 새던 소음" → <b>연속 5회 실패부터 고지</b>(<code>cover.streak</code> 게이트). 그런데 그 게이트가 <code>k === 'youtube'</code>로 <b>플랫폼에 하드코딩</b>돼 있었다.<br>
+X 신디케이션은 러너(데이터센터 IP)가 <b>상시 429 로터리</b>다(작업이력 5116·7307 실측: "X 전 계정 429 → 런마다 확률 수집"). 즉 매 런 1~2계정이 확률적으로 빠지는 게 <b>기본 동작</b>인데, 게이트 밖이라 그때마다 새 경고가 떴다. 같은 사고, 플랫폼만 다름.</p>
+
+<h2>알림함 — 260801 리포트 실데이터(<code>x: got 4/reg 6 · why 429 · streak 2</code>)</h2>
+<div class="cols">
+  <div>
+    <p class="tag b">BEFORE — 경고 2건</p>
+    <div class="it">
+      <div class="ih"><span class="kind">시스템</span><span class="ago">13분 전</span></div>
+      <div class="tx">X @jajaja7878uu 글이 안 걷히고 있어요.
+
+요청이 몰려서 잠시 막혔어요(일시적). (X 등록 6개 중 2개 누락)
+
+👉 네가 할 일: 없어요. 잠시 뒤 자동으로 다시 걷혀요.
+
+확인(✓)하면 이 계정은 오늘 다시 안 떠요.</div>
+      <div class="todo"><b>자동 복구 대기</b> 없어요. 잠시 뒤 자동으로 다시 걷혀요. — <b>할 일이 없는데 경고가 뜬 자리</b></div>
+    </div>
+    <div class="it" style="margin-top:12px">
+      <div class="ih"><span class="kind">시스템</span><span class="ago">13분 전</span></div>
+      <div class="tx">X @economysniper0 글이 안 걷히고 있어요.
+
+요청이 몰려서 잠시 막혔어요(일시적). (X 등록 6개 중 2개 누락)
+
+👉 네가 할 일: 없어요. 잠시 뒤 자동으로 다시 걷혀요.
+
+확인(✓)하면 이 계정은 오늘 다시 안 떠요.</div>
+      <div class="todo"><b>자동 복구 대기</b> 없어요. 잠시 뒤 자동으로 다시 걷혀요. — <b>매 런 계정만 바뀌며 재발</b></div>
+    </div>
+  </div>
+  <div>
+    <p class="tag a">AFTER — 0건(침묵)</p>
+    <div class="it none">
+      <div class="ih"><span class="kind" style="color:var(--mut)">시스템</span></div>
+      <div class="tx">(알림 없음)
+
+streak 2 &lt; 5 = 아직 순단 구간 = 30분 주기로 두 런 실패.
+X 429는 이 계정 문제도, 운영자가 만질 것도 아니다.</div>
+      <div class="todo"><b>은폐 아님</b> 5런(약 2시간 반) 연속 실패하면 「X @… 글이 5회 연속 안 걷히고 있어요」로 그대로 뜬다. 지연이지 침묵이 아니다 — 260731 유튜브 판례 문구 그대로.</div>
+    </div>
+  </div>
+</div>
+
+<h2>바뀐 것 — <code>viewer/index.html</code> 개별 알림 게이트 1줄</h2>
+<table>
+<tr><th>전</th><td><code>if (k === 'youtube' &amp;&amp; _n &lt; 5) continue;</code> — 플랫폼으로 가름</td></tr>
+<tr><th>후</th><td><code>const _autoFix = (wn === 429 || wn &gt;= 500 || w === 'resolve');</code><br><code>if ((k === 'youtube' || _autoFix) &amp;&amp; _n &lt; 5) continue;</code> — <b>사유</b>로 가름</td></tr>
+<tr><th>대상 사유</th><td>조치문이 "없어요 · 자동으로 다시 시도해요"인 자동복구 축 = <code>429</code>(레이트리밋) · <code>5xx</code>(플랫폼 서버 오류) · <code>resolve</code>(프로필 미열림)</td></tr>
+<tr><th>제외 ①</th><td><code>cooldown</code>·<code>gap</code> — 수집기가 <b>미시도라 스트릭을 동결</b>한다(<code>sns_trends.py _NOTRY</code>). 게이트에 넣으면 5에 영영 못 닿아 <b>영구 묵음 = 은폐</b>. 종전대로 즉시 고지 + 이틀 넘기면 <code>stuck</code> 승격이 조치 문구로 받는다.</td></tr>
+<tr><th>제외 ②</th><td><code>404</code>·<code>410</code> 단건(설정에서 지워라) · <code>403</code>·<code>wall</code> · <code>stuck</code> — <b>운영자 조치가 있는 사유</b>라 지연 0으로 종전 유지.</td></tr>
+<tr><th>제외 ③</th><td>묶음(같은 사유 3계정↑ = 수집 경로 통째 사고) — 이 블록 밖이라 무영향. 전멸(<code>got=0</code>)은 <code>stale</code> 축 담당(무영향).</td></tr>
+</table>
+
+<h2>검증 — 실데이터 + 회귀(전/후 실행 비교)</h2>
+<table>
+<tr><th>260801 실데이터</th><td>전 3건 → 후 1건. 사라진 건 = X 429 개별 2건(streak 2). 남은 건 = 인스타 <code>stale</code> 대기 1건(무영향 확인).</td></tr>
+<tr><th>회귀 · 404 단건</th><td>X @… <code>404</code> streak 1 → <b>전·후 모두 즉시 고지</b>(조치 있는 사유 = 지연 0).</td></tr>
+<tr><th>회귀 · 429 장기</th><td>X @… <code>429</code> streak 6 → <b>후에도 고지</b>, 문구가 「6회 연속 안 걷히고 있어요」로 정직해짐.</td></tr>
+<tr><th>회귀 · 유튜브 판례</th><td><code>500</code> streak 5 = 고지 / streak 3 = 침묵 — 260731 게이트 동작 <b>불변</b>.</td></tr>
+<tr><th>회귀 · 묶음</th><td>같은 사유 3계정↑ 묶음 1건 = <b>불변</b>.</td></tr>
+</table>
+
+<p class="note">한계(정직) — 이 봉합은 <b>알림 축만</b> 고친다. X 429 자체(러너 데이터센터 IP 차단)는 그대로이고, 공급은 종전처럼 RSS 미러 폴백(<code>_x_rss</code>)과 다음 런 재시도가 받는다. 429가 <b>구조적으로 상주</b>하게 되면 streak가 5를 넘겨 다시 고지되고, 그때는 폰(가정 IP) 경로 채택 여부가 논의 대상이다.</p>
+</div></body></html>

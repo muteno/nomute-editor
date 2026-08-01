@@ -100,8 +100,13 @@ jobs:
           ASK_MIN_AGE_MIN: ${{ inputs.min_age_min || '0' }}   # 스윕 신선 배제(dispatch 전용 — push 스코프엔 무관)
           YT_COOKIES: ${{ secrets.YT_COOKIES }}   # 미디어 링크 전사(yt-dlp) — 유튜브 봇 인증 회피(nb/ly 레일 공용 · 없으면 쿠키 없이 진행)
           ASK_LINK_DIR: /tmp/asklink   # 미디어 링크 전사문 캐시 경로(ask.sh 링크 레일 · 운영자 260731)
-          ASK_LINK_MAX_SEC: ${{ vars.NB_MAX_SEC || 14400 }}       # 자막 경로 길이 상한(nb 와 동일 값 공유)
-          ASK_LINK_STT_MAX_SEC: ${{ vars.NB_STT_MAX_SEC || 3600 }}   # 자막 없어 Whisper 로 갈 때의 길이 상한
+          # 길이 정책(운영자 260731 실측 확정 · "자막있으면 영상길이 상관없이 / 자막없으면 영상길이 제한, 단 강제 활성화 가능"):
+          #   실측 = 총소요 ≈ 요약 오버헤드 500s + 전사 1.5×영상길이(러너 large-v3 A/B 260728 = 40s 이상 구간 1.39×RT · 오늘 ask 2건 = 428s·594s).
+          #   → 자막 경로는 길이와 사실상 무관(다운로드뿐) = 24시간 = 상한 해제 / 전사 경로만 제한(30분 = 총 53분) ·
+          #     운영자가 링크칸에서 '전사 강행'을 켜면 ASK_LINK_STT_FORCE_SEC(55분 = 총 98분 · 잡 캡 100분 물리 한계)까지 허용.
+          ASK_LINK_MAX_SEC: ${{ vars.ASK_LINK_MAX_SEC || 86400 }}          # 자막 경로 = 길이 무제한(24h = 사실상 해제)
+          ASK_LINK_STT_MAX_SEC: ${{ vars.ASK_LINK_STT_MAX_SEC || 1800 }}   # 전사 경로 기본 상한 = 영상 30분(총 ≈53분)
+          ASK_LINK_STT_FORCE_SEC: ${{ vars.ASK_LINK_STT_FORCE_SEC || 3300 }}   # '전사 강행' 시 상한 = 영상 55분(총 ≈98분 = 잡 캡 100분 한계 · 이 이상은 물리적으로 못 담아 강행도 거절)
         run: |
           echo "활성 계정: ${ACTIVE_ACCOUNT}"
           if [ -z "${CLAUDE_CODE_OAUTH_TOKEN}" ]; then

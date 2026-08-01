@@ -18,6 +18,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   // 링크(운영자 260731 "우측 사진 아래에 링크도") — 기사면 원문 활용 · 영상·음성이면 Whisper large-v3 전사 후 그 전사문 활용.
   //   판별·전사는 파이프(ask.sh 링크 레일)가 담당 = 여기선 http(s) 형식·길이만 검증해 그대로 실어 보낸다(빈 문자열 = 링크 없음).
   const link = (() => { const s = String(body.link || '').trim().slice(0, 500); return /^https?:\/\/\S+$/i.test(s) ? s : ''; })();
+  const linkForce = (link && (body.linkForce === 1 || body.linkForce === '1' || body.linkForce === true)) ? 1 : 0;   // '전사 강행'(운영자 260731) — 자막 없는 긴 영상의 길이 상한을 FORCE 값까지 올린다(ask.sh) · 링크 없으면 무의미 = 0
   if (!text && !images.length && !link) return json({ error: '빈 요청 — 내용이나 캡처, 링크를 넣어줘' }, 400);
   const _p = (body.preset && typeof body.preset === 'object') ? body.preset : {};
   const preset = { h24: _p.h24 ? 1 : 0, fp: _p.fp ? 1 : 0, mj: _p.mj ? 1 : 0, og: _p.og ? 1 : 0, noai: _p.noai ? 1 : 0 };   // 요약요청 스트립 토글(24시간 이내·외신 우선·주요 언론 기반·원본 한정 → ask.sh 프롬프트 · AI 미제작 noai → 바로 아래 nothumb) · 운영자 260723 · og·noai 260727 · 미전송 구클라 = 전부 0 = 종전 동작
@@ -26,7 +27,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYY-MM-DD-HHMM (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) — pending.js askTime·ask.sh 파서가 이 형식 기대
   const rnd = Math.random().toString(36).slice(2, 7);
   const path = `asks/${ts}-${rnd}.json`;
-  const payload = JSON.stringify({ ts, text, link, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 요약요청 스트립(h24·fp·mj·og·noai) · link = 원문/미디어 링크(ask.sh 가 판별 — 미디어면 large-v3 전사)
+  const payload = JSON.stringify({ ts, text, link, linkForce, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 요약요청 스트립(h24·fp·mj·og·noai) · link = 원문/미디어 링크(ask.sh 가 판별 — 미디어면 large-v3 전사) · linkForce = 전사 길이 상한 강행
 
   // UTF-8 안전 base64(Workers에 unescape 없음 → TextEncoder)
   const bytes = new TextEncoder().encode(payload);
