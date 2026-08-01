@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<!-- 전역 버튼 탭 햅틱 = 폐지(운영자 260706 5차) --><!-- 부모(index)와 color-scheme 일치 필수 — k.html:7 계승 -->
+<title>큐 영상</title>
+<link rel="stylesheet" href="tokens.css">   <!-- 공유 구조토큰(§🎨 STAGE3·index :root 파생·색 제외). 인라인 :root가 팔레트 오버라이드 -->
+<link rel="stylesheet" href="nm-cards.css">   <!-- 다운로드·결과/이전제작 카드 공용 CSS SSOT(전 앱 단일정본 · 운영자 260731 "하나 바꾸면 다 연동") — 색·플레이트·✓팝 계약은 여기서만 고친다(인라인 사본 금지 · 인라인이 뒤라 남기면 이 SSOT가 죽음) -->
+<style>
+  /* ⚠️ 기틀 계승 원본 = viewer/sb.html(콘티) 1~216행 **바이트 계승**(그 위 원본 = viewer/k.html) — 공용 수정은 sb.html과 양쪽 동시.
+     원 주석 = 기틀 계승 원본 = viewer/k.html(영상 프롬프트) — 공유 블록은 바이트 동일 유지(운영자 260714 "그대로 기틀 참고·맘대로 생성 금지"). 여기만 고치면 드리프트 — 공용 수정은 k.html과 양쪽 동시.
+     ※ **의도 divergence(공유 블록 예외 · 260730)**: `textarea{min-height}` = sb 단독 64px(운영자 Q1159 "높이 2/3" 지정 실값 · k/tr/lucy는 96px 유지 = 이 한 줄만 갈라지고 나머지 전 규칙은 바이트 동일). 선례 문법 = CII 「단어칩 편집기」 의도 divergence 표기. */
+  :root { --well:#0e0f11;   /* 인셋 웰(입력·코드박스 배경 — 7뷰어 공유 raw 추출 = 동값·픽셀 0 · 평의회 260713 ⑨) */ --bg:#121212;   /* 스포티파이 블랙(중립)·운영자 260623 */ --pan:#16171a; --line:#2a2c31; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210;
+    --accent-4:#FFE13D; --accent-4-rgb:255,225,61;   /* raw-ok: index :root 정본 동값 exact 계승(골드레몬) — 공용 nm-cards.css(다운로드 SSOT)가 참조하는 토큰이라 전 뷰어 정의 필수(미정의 = var() 댕글링 = 다운로드 색 죽음) · 이후 값 동기 = build_design_mirror STAGE4 자동 전파(운영자 260731) */
+    --danger:#e23b2a; --danger-rgb:226,59,42;   /* 역할색 danger = 브랜드 유일 레드(index 동일·감사 260704) */ --warn:#FFE13D;   /* 역할색 warn = 골드레몬(k:12 계승) */ --accent-dim:rgba(var(--accent-rgb),.13); --on-accent:#032322; --line2:rgba(255,255,255,.06); }   /* --press-* = tokens.css 상속(k:12 계승) · line2 = index :root 정본값 계승(평의회 Q165 — .geni-sechead 소머리 밑줄이 폴백 없는 var() 미정의로 무효였던 수리 · sb 전용 소비라 k 동시수정 비대상) */
+  @media (prefers-reduced-motion:reduce){ :root{ --press-pico:1; --press-xs:1; --press-s:1; --press-m:1; --press-l:1; } }   /* 눌림 토큰 무효화 = 로컬(k:13 계승) */
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }   /* k:14 계승 */
+  [hidden] { display:none !important; }   /* hidden 기저 가드(k:15 계승) */
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }   /* 포커스 링(k:17 계승) */
+  html { scrollbar-width:none; -ms-overflow-style:none; scrollbar-color:rgba(255,255,255,.05) transparent; }   /* 스크롤바 폭 0 = 문서 끝 cscroll.js(오버레이 바) 주입값과 **첫 페인트부터 동일** — index 115행 정본 계승(구 thin은 cscroll 실행 전까지 네이티브 바가 폭을 차지했다가 주입 순간 0으로 풀려, 스크롤이 생긴 화면에서 콘텐츠가 통째로 옆으로 밀렸다 · 운영자 260726 index 픽토 점프[Q579]와 같은 축 · 데스크톱 클래식 스크롤바 환경 전용 = 헤드리스는 오버레이라 재현 불가) · no-JS 폴백 = head 끝 noscript */
+  html::-webkit-scrollbar, body::-webkit-scrollbar { width:0; height:0; display:none; }   /* 위 scrollbar-width:none의 웹킷 짝(cscroll.js 주입 규칙 계승) — 아래 공통 10px은 모달·내부 스크롤 표면 전용으로 존치 */   /* 스크롤바 = 반투명 흰색(k:19 계승 · 260801) */
+  ::-webkit-scrollbar { width:5px; height:5px; }   /* 두께 = 구 10 의 50%(운영자 260801) — 알약 실폭 = 5 - 테두리 1×2 = 3px(구 6px 의 50%) */
+  * { scrollbar-width:thin; }   /* 표준 짝(크로미엄은 scrollbar-color·width 가 지정되면 ::-webkit-scrollbar-* 를 무시 = 실화면은 이 줄이 담당) — thin = 실존값(.draft-scroll·no-JS 폴백 동문) · html 은 자기 규칙(scrollbar-width:none)이 특이도로 승 = 페이지 바 숨김 불변 */
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.05); border-radius:var(--r-pill);
+    border:1px solid var(--bg); background-clip:padding-box; }   /* 테두리(=바 여백)도 50%: 2→1 = 알약 실폭 3px 유지 */
+  ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.08); background-clip:padding-box; }
+  @font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:local('Pretendard Variable'),url(assets/fonts/pretendard.woff2) format('woff2-variations')}   /* 본문 폰트 = index 정본 이식(운영자 260719 승인 = Q160 잔여 4탭 폰트 확장 · thumb/edit 동문 — iframe이라 부모 index Pretendard 미상속) */
+  body { margin:0; background:radial-gradient(125% 70% at 50% -8%, rgba(var(--accent-rgb),.06), transparent 55%) fixed, var(--bg); color:var(--fg); font:15px/1.6 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing:-.2px /* raw-ok: 자간 = index body 정본 exact 계승 */; -webkit-font-smoothing:antialiased; }   /* 폰트 = index body 정본 문자단위 exact 계승(M1 판례 — 구 시스템 스택 폐지 · 콘텐츠 폰트[코드박스 모노]는 개별 명시라 무접촉) */
+  button, input, textarea, select { font-family:inherit; letter-spacing:inherit; }   /* 폼 활자 상속 강제 = thumb:39 정본 계승(운영자 260727 "같은 형태에 있는 애들은 다 같아야함" · 점검 v2 ③ — UA 기본 스택으로 새던 입력칸·버튼 봉합) */
+  .wrap { max-width:600px; margin:0 auto; padding:var(--sp-3) 16px 70px; }   /* raw-ok: k.html .wrap 동일값 계승(좌우 16·하단 70 = rfab 엄지존 여백 — 픽셀 패리티) */
+  label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 var(--sp-1); }   /* 비-소머리 라벨 베이스(k:29 계승) · raw-ok: k.html label 동일값 계승(상단 14 행 리듬) */
+  label.fl { font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색·800(k:30 계승 — 뉴스 .cref-lbl 표준 형광통일) */
+  label.fl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(k:31 계승) */
+  label:first-of-type { margin-top:0; }
+  textarea { width:100%; min-height:64px /* raw-ok: 종전 96의 2/3 = 운영자 Q1159 "콘텐츠 입력 높이 2/3으로" 지정 실값 */; padding:var(--sp-2); background:var(--well); border:1px solid var(--line); border-radius:var(--r-s); color:var(--fg); font:inherit; font-size:16px; resize:none; }   /* k:33 계승 · raw-ok: 16px = iOS 자동줌 방지 하한(font 축약 뒤 개별 선언이라 승리 · 감사3 §1) */
+  textarea:focus, input:focus { border-color:rgba(var(--accent-rgb),.35); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08); outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--mut); }
+  /* 입력칸 [복사][붙여넣기][지우개] 3버튼 = k.html .scnclip 블록 바이트 계승(운영자 260714 "텍스트 입력창엔 항상 토글 버튼 3개") */
+  .scnwrap { position:relative; }
+  .scnclip { position:absolute; top:0; right:14px; transform:translateY(-50%); display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6;
+    border-radius:50%; border:1px solid rgba(255,255,255,.17); background:rgba(26,28,26,.3); color:var(--mut); cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,.2);
+    /* 오버레이 backdrop-filter 없음 = 입력칸 위에 떠서 타이핑·포커스마다 그 밑 텍스트를 재샘플하며 번쩍이던 것(260701 판례) 차단 — index .askclip 정본 동문 계승 · 배경 링(.3)+border+inset로 버튼 형태 유지(운영자 260725 "콘텐츠 입력 누르면 번쩍거리는데 없애주라") */ -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast), color var(--dur), border-color var(--dur); }   /* G1 글래스모피즘(260625) · raw-ok: k.html .scnclip 동일값 계승(blur13 — 픽셀 패리티) */
+  .scnclip svg { display:block; width:13px; height:13px; }
+  .scnclip::before { content:""; position:absolute; inset:-8px; }
+  .scnclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+  .scnclip:active { transform:translateY(-50%) scale(var(--press-s,.85)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+  .scnclip.ok { color:var(--accent); border-color:rgba(255,255,255,.14); }
+  .scnclip.scn-pp { right:46px; }                       /* 붙여넣기 = 지우개 좌측·항상 노출 · 운영자 260627 */
+  .scn-copy { right:78px; }                             /* 복사 = 내용 있을 때만 좌측 별도 노출(운영자 260628 3버튼 분리) */
+  .scn-hide { display:none; }                           /* 내용 비면 복사 숨김 */
+  .scn-erase { right:14px; }                            /* 지우개 = 최우측 · 비움→~10초 되돌리기 */
+  .scn-erase.scn-off { opacity:.3; pointer-events:none; }
+  .scn-erase.scn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }
+  /* 생성 버튼 = 글래스 고스트(.mkbtn 정합 — k.html .go 바이트 계승) */
+  .go { width:100%; margin-top:2px; padding:var(--sp-1); background:rgba(255,255,255,.02); color:var(--accent); border:1px solid var(--line); border-radius:var(--r-m); font-weight:800; font-size:var(--fs-label); font-family:inherit; line-height:1; cursor:pointer; position:relative; overflow:hidden; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; transition:transform var(--dur-fast) ease, background var(--dur) ease, border-color var(--dur) ease; }   /* raw-ok: index .geni-go(asksend·pub-go 합성) 동일 문법 계승 — 모서리 r-m·글자 accent(운영자 260714 4차 Image Studio 기틀) · padding·font = geni-go 정본값(--sp-1 6·--fs-label 13)으로 정정(페이블/스튜디오감사: 구 9px6px·14px = 260713·260718 통일 미역류 stale = Image Studio 6px/13px과 어긋난 제3형태 → 계승 선언대로 실현) · margin 2 = geni-sum 리듬 */
+  .go:active { transform:scale(.955); background:rgba(var(--accent-rgb),.08); border-color:rgba(var(--accent-rgb),.35); }
+  .go:disabled { opacity:.5; cursor:default; transform:none; }
+  .go.shake { animation:edshake .42s; }
+  @media (prefers-reduced-motion:reduce) { .go.shake { animation:none; } }
+  .go.err { background:rgba(var(--danger-rgb),.14); color:var(--danger); border-color:var(--danger); }
+  @keyframes edshake { 0%,100%{transform:translateX(0)} 18%{transform:translateX(-4px)} 38%{transform:translateX(4px)} 58%{transform:translateX(-3px)} 78%{transform:translateX(2px)} }
+  .go.firing { color:var(--on-accent); pointer-events:none; opacity:1;
+    background:linear-gradient(var(--accent),var(--accent)) left/0% 100% no-repeat, linear-gradient(var(--accent-dim),var(--accent-dim));
+    animation:goFill .72s var(--gauge-ease) forwards; }
+  @keyframes goFill { from { background-size:0% 100%, 100% 100%; } to { background-size:100% 100%, 100% 100%; } }
+  @media (prefers-reduced-motion:reduce) { .go.firing { animation-duration:.2s; } }
+  /* ── Image Studio(#genidlg) 폼 문법 이식 — 운영자 260714 4차 "이미지 제작부분 그대로 가져와 항목만 교체 · 만드는 화면 전부 이 기틀 계승". 값 = viewer/index.html #genidlg 블록 동일값 복제(재설계 0) · 공용 수정은 index와 양쪽 동시 ── */
+  .cref-lbl { font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 라벨 = 뉴스 .cref-lbl 정본 계승 */
+  .geni-sechead { display:flex; align-items:center; gap:8px; width:100%; padding:var(--sp-2) 0 var(--sp-1); background:none; border:none; border-bottom:1px solid var(--line2); text-align:left; -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-sechead 동일값 계승(gap8 — 소머리 밑줄 = 구분선 전담) */
+  .geni-sechead .cref-lbl::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 소머리 블릿 = 뉴스 정본 동일 문법 */
+  .geni-row { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); padding:8px 0; }   /* raw-ok: index .geni-row 동일값 계승(padding 8 — 라벨 좌·값 우 baseline) */
+  .pub-l { font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--fg); white-space:nowrap; }   /* 항목 라벨 = index .pub-l 동일값 */
+  .geni-opts { display:flex; flex-wrap:wrap; gap:3px 4px; justify-content:flex-end; min-width:0; }   /* raw-ok: index .geni-opts 동일값 계승(gap 3·4 — 우측 정렬 워드칩) */
+  .geni-opt { background:none; border:none; padding:6px 7px; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-b); color:var(--mut); cursor:pointer; white-space:nowrap; transition:color var(--dur); -webkit-tap-highlight-color:transparent; }   /* raw-ok: index .geni-opt 동일값 계승(padding 6·7) · font 축약형→명시 분해 = 'inherit' 혼입 축약이 무효화돼 15px 상속되던 것 교정(폰트 단일 크기 통일 — 운영자 260714 6차 실측) */
+  .geni-opt:active { transform:scale(var(--press-m)); }
+  /* 비율 직접 = 「직접」 칩 그 자리 인라인 전환(index #geniArWrap 정본 미러 · 260727 전 탭 통일) */
+  #sbArWrap { display:none; }
+  #sbArWrap.open { display:inline-flex; }
+  .geni-ar { display:flex; align-items:center; gap:0 /* 0 = 숫자칩 자체 좌우 패딩(7)이 「1 : 1」 사이 여백을 만든다 */; justify-content:flex-end; flex:0 0 auto; min-width:0; }
+  /* 숫자칩 = 켜진 워드칩(.geni-opt.on) 값 100% 계승 — 입력칸이되 생김새는 칩 */
+  .geni-ar-in { box-sizing:content-box; width:1ch /* 실폭 = sbArFit이 값 길이(1~2ch)로 동기 */; background:none; border:none; outline:none; border-radius:0; -webkit-appearance:none; appearance:none;
+    padding:6px 7px /* raw-ok: .geni-opt 워드칩 정본 동값 */; font-family:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--accent) /* = .geni-opt.on 정본 동값 */;
+    line-height:normal; text-align:center; font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent; }
+  .geni-ar-in:focus { border-color:transparent; box-shadow:none; }   /* 전역 input:focus 링(강조색 3px) 재승리 = 칩엔 링이 없다 */
+  .geni-ar-in::selection { background:rgba(var(--accent-rgb),.26); color:var(--accent); }
+  .geni-ar-c { color:var(--mut); font-weight:var(--fw-x); font-size:var(--fs-label); }
+  .geni-opt.on { color:var(--accent); font-weight:var(--fw-x); }
+  .geni-opt[data-num] { font-variant-numeric:tabular-nums; }
+  /* ── 옵션 칸 그릇 = 편집(edit) `.scard` 카드 정본 계승(운영자 260725 첨부 스샷 "미리보기 아래 칸도 이거로 통일" · **형태만** — 옵션 값·기능 무접촉) ── */
+  .ogrid { display:flex; flex-direction:column; gap:8px /* raw-ok: 카드 스택 세로간격 8 = thumb .optcards·index .geni-cards 정본 동값 */; }   /* **1열 세로 스택**(운영자 260729 "이거 가로로 다른곳 처럼 배치해줄래?") — 구 2열 그리드는 260725에 「편집 탭 옵션 칸 배치 계승」으로 적었으나 실측하면 편집(thumb `.optcards`)·카드 생성·번역·AI 생성(`.geni-cards`) **전부 1열 full-width flex column**이라 콘티만 2열로 갈라져 있었다(반폭이라 칩 3~4개가 매번 2줄로 꺾임 = 스샷 '감독/비율/길이'). 그릇 문법까지 정본으로 회수 */
+  .ogrid .geni-row { padding:8px 13px /* raw-ok: 카드 안쪽 8/13 = edit .scard .hd 정본 동값 */; border:1px solid rgba(255,255,255,.06) /* raw-ok: 카드 테두리 알파 = edit .scard 정본 동값 */; background:rgba(255,255,255,.015) /* raw-ok: 카드 배경 알파 = edit .scard 정본 동값 */; border-radius:var(--r-s); align-items:center; gap:7px; min-width:0; }
+  .ogrid .pub-l::after { content:'│'; margin-left:7px /* raw-ok: 파이프 좌우 여백 = edit 카드 라벨│값 리듬 사본 */; color:var(--mut); opacity:.35; font-weight:400; }   /* 라벨│값 파이프 = 편집 탭 카드 정본 문법 */
+  .ogrid .geni-opts { justify-content:flex-start; gap:3px 4px; }   /* 값 = 라벨 바로 뒤(카드 안이라 우측 끝 정렬 불필요) */
+  /* (구 400px 1열 폴백 = 260729 상시 1열 전환으로 불요 — 폭 무관 동일 배치) */
+  .geni-opt:disabled { opacity:.28; pointer-events:none; }   /* 배선 대기 칩(GPT 5.6 — OpenAI 키 미배선) = index .geni-nav[disabled] 동일값 계승 */
+  /* ══ 상단 도크 = 편집(edit) 정본 100% 계승(운영자 260725 "미리보기·아래 옵션까지 편집이랑 통일") — 미리보기+선택 요약 스트립(.optstrip)+발사바(.firebar 생성) 한 sticky 블록([4-2] 강제 골격 ①) ══ */
+  .topdock { position:sticky; top:0; z-index:6; margin:0 -16px; padding:16px 16px var(--sp-2); background:#121212; }   /* raw-ok: 전 값 = edit .topdock 정본 그대로(#121212 전폭{-16 = .wrap padding-x 상쇄}·padding 16/16/--sp-2·z6) */
+  .topdock::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none; background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); }   /* raw-ok: 하단 페이드 스커트 = edit .topdock::after 동일 미러(h14·18,18,18) */
+  .optstrip { margin:0 0 var(--sp-2); padding:8px 13px /* raw-ok: 세로8·좌우13 = edit .optstrip 정본 동값 */; background:#000 /* raw-ok: 미리보기 스테이지 전경색 동값 */; border:1px solid var(--line); border-radius:var(--r-s); }
+  .optstrip .gospec { margin:0; padding:0; font-size:11.25px /* raw-ok: edit .optstrip .gospec 명세 활자값 동값 */; line-height:1.9; text-align:left; color:var(--mut);  white-space:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+   /* 가로 레일 문법(랩 금지·넘치면 스크롤 = index .fi-tech 정본 계승) — **줄 수 계약은 260730 Q1141이 갱신: sb 한정 2줄**(구 "간소화 1줄"[운영자 260725 Q525·Q527]은 이 탭에서 대체됨 · 타 탭[edit·ly·song·thumb·tr]은 1줄 유지). 랩 금지·레일 문법 자체는 불변 */
+  .optstrip .gospec::-webkit-scrollbar, .optstrip .geni-sum::-webkit-scrollbar { display:none; }   /* 레일 스크롤바 숨김(webkit 짝 · index 레일 관례) */
+  /* 2줄 리모트바(운영자 Q1160) — 줄 = block · 줄 사이 옅은 구분선 = --line2(가장 옅은 정본 선색 계승 · 신규 값 0) */
+  .optstrip .gs-l1, .optstrip .gs-l2 { display:block; white-space:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .optstrip .gs-l1::-webkit-scrollbar, .optstrip .gs-l2::-webkit-scrollbar { display:none; }
+  .optstrip .gs-l2 { border-top:1px solid var(--line2); margin-top:var(--sp-1); padding-top:var(--sp-1); }
+  .gospec .gs-dot { color:var(--mut); opacity:.45; font-style:normal; font-weight:400; margin:0 3px /* raw-ok: 값 사이 중점 여백 = .geni-opts gap 3 리듬 사본 */; }
+  .gospec .gs-lbl { color:var(--mut); font-weight:var(--fw-b); }
+  .gospec .gs-v { color:var(--mut); }
+  .gospec .gs-v.on { color:var(--accent); font-weight:var(--fw-b); }   /* 활성값(적용 중) = accent 점등(edit 정본) */
+  .optstrip .gs-sep { color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = edit .gs-sep 정본 동값 */; }
+  .firebar { position:static; padding:0; background:none; }   /* 도크 안 = 미리보기 바로 아래 발사바(edit .firebar 정본) */
+  .firebar .inner { max-width:600px; margin:0 auto; }
+  .firebar .go { margin:0; }   /* 스트립↔생성 간격 = 스트립 margin-bottom(--sp-2) 단독 = edit 정본 실측 12px 정렬(운영자 260725 "다 이거로 박아" — 구 잔여 상단 마진 ly 16·sb 2가 탭마다 간격을 다르게 만들던 것 소거) */
+  /* 미리보기 액자 = edit .cpprev-box 정본 계승 · 콘티는 텍스트 산출형이라 내용물만 변형 허용([4-2] "sb·k·song = Contents 입력·각색 대기 표기") */
+  .pvsec { margin:0 0 var(--sp-2); }
+  .cpprev-box { position:relative; height:min(29vh,300px); height:min(29svh,300px); width:100%; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* raw-ok: 전 값 = edit .cpprev-box 정본 그대로(29svh/300 캡) */
+  .cpv-empty { position:absolute; inset:0; display:grid; place-items:center; }
+  .cpv-empty .cpv-stage { width:min(100%, calc(min(29svh,300px) * 16 / 9)) /* raw-ok: 300 = .cpprev-box 높이캡 파생 16:9 contain 폭 = edit 정본 동식 */; aspect-ratio:16/9; background:#000 /* raw-ok: 산출 배경 순흑 = edit .cpv-stage 동값 */; display:grid; place-items:center; }
+  .cpv-wait { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); letter-spacing:.02em; }   /* 대기 표기(텍스트 산출형) — 각색 결과가 아래 결과부로 나온다는 안내 */
+  /* 레퍼런스 대표 1장 = 이미지 스튜디오(AI 생성) 미리보기 스테이지 문법 그대로(index .geni-prev .cpprev-stage img.cpv-bg 정본 미러 · 운영자 260730 "이미지 스튜디오의 미리보기를 그대로") */
+  .cpv-stage img.cpv-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }   /* contain = 원본 무크롭 전체 가시(정본 동값 — 생성 비율과 스테이지 비율이 달라도 잘리지 않는다) */
+  .cpv-stage img.cpv-bg[hidden] { display:none; }   /* 숨김 재승리(display:block이 UA [hidden]을 이김 — 정본 좀비 가드 계승) */
+  .cpv-empty.has .cpv-wait { display:none; }   /* 이미지 앉으면 대기 문구 퇴장(정본 .geni-prev.has 문법 계승) */
+  /* 엔진 브랜드 픽토 = index .eng-ico 정본 2줄 계승(픽토 자체는 nm-svg.js G_SVG SSOT — 인라인 재선언 0) */
+  #gospec .eng-ico svg { width:1em; height:1em; flex:none; display:block; }
+  #gospec .eng-ico { display:inline-flex; align-items:center; vertical-align:-.13em /* raw-ok: 텍스트 흐름 안 픽토 광학 보정 = index .eng-ico 정본 동값 */; margin-right:2px /* raw-ok: 문장 안 픽토↔글자 2 = index #geniEngTip .eng-ico 정본 동값 */; }
+  .optstrip .geni-sum { padding:0; text-align:left; line-height:1.9; white-space:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .optstrip .geni-sum .gs-row { display:inline; }   /* 구 항목별 줄바꿈(display:block) → 1줄 인라인(운영자 260725 간소화 1줄 · JS 무접촉) */
+  .optstrip .geni-sum .gs-row + .gs-row::before { content:'|'; color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = .gs-sep 정본 동값 */; }   /* 파이프 구분자 = 이미지 스튜디오 요약 스트립 문법(라벨:값 | 라벨:값) */   /* 요약 = 도크 스트립 안 = edit .gospec 좌측정렬 문법 계승(우측정렬 구 문법 대체 · JS 무접촉) */
+  .geni-sum { color:var(--mut); font-size:var(--fs-label); font-weight:var(--fw-b); line-height:1.5; padding:8px 2px; text-align:right; font-variant-numeric:tabular-nums; }   /* raw-ok: index .geni-sum 동일값 계승(padding 8·2) · fs-sm→fs-label = 폼 폰트 단일 크기 통일(운영자 260714 6차 "폰트 제각각 금지") */
+  .geni-sum b { color:var(--fg); font-weight:var(--fw-b); }
+  .geni-sum .gs-row { display:block; }   /* 항목별 줄바꿈(운영자 260714 6차 "감독·촬영 각각 나누자") — 우측 정렬 유지 */
+  /* ── 작업 내역 = thumb.html .jobs/.job 동일값 계승(운영자 260714 5차 "이미지 배선과 동일 — 최신 1건 우선 + 아래 아카이빙 + 변형") ── */
+  .jobs { display:flex; flex-direction:column; gap:var(--sp-1); margin:10px 0 0; }   /* raw-ok: thumb .jobs 동일값 계승(margin 10) */
+  .job { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:var(--fs-label); padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); }   /* raw-ok: thumb .job 동일값 계승(gap8·padding 8/11) · fs 12→fs-label = 콘티 탭 폰트 단일 크기 통일(운영자 260714 6차 · sb 스코프 한정 상향) */
+  .job .jlab { font-weight:800; color:var(--accent); cursor:pointer; }   /* 라벨 탭 = 그 결과 불러오기(아카이브 재열람) */
+  .job .jlab:active { transform:scale(var(--press-l,.95)); }
+  .job .jvar { color:var(--fg); font-weight:400; }   /* 감독·촬영 캡션 = thumb .jvar 문법(흰색·일반체) */
+  .job .jst { margin-left:auto; color:var(--mut); white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }   /* raw-ok: thumb .jst 동일값 계승(gap5) */
+  .job .jst svg { display:block; width:14px; height:14px; flex:none; }
+  .job .jst .jspin { animation:sbspin .9s linear infinite; }
+  @keyframes sbspin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){ .job .jst .jspin { animation:none; } }
+  .job.err { border-color:rgba(var(--danger-rgb),.4); } .job.err .jst { color:var(--danger); }
+  .job .jmore { flex:none; display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:10.5px; line-height:1; cursor:pointer; white-space:nowrap; border-radius:var(--r-pill); padding:6px 11px; backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); transition:transform var(--dur-fast), background var(--dur), color var(--dur), border-color var(--dur); color:var(--accent); background:rgba(var(--accent-rgb),.08); border:1px solid rgba(var(--accent-rgb),.34); }   /* raw-ok: thumb .jretry 기하+.jmore 강조 동일값 계승(fs10.5·padding 6/11) — 변형 버튼 */
+  .job .jmore:hover { background:rgba(var(--accent-rgb),.18); color:var(--fg); border-color:rgba(var(--accent-rgb),.6); }
+  .job .jmore:active { transform:scale(var(--press-l,.95)); }
+  .job .jdel { flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; color:rgba(255,255,255,.6); cursor:pointer; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; transition:transform var(--dur-fast), background var(--dur), color var(--dur), border-color var(--dur); }   /* raw-ok: thumb .jdel 동일값 계승(28px·r8) */
+  .job .jdel:hover { background:rgba(var(--danger-rgb),.18); color:var(--danger); border-color:rgba(var(--danger-rgb),.5); }
+  .job .jdel:active { transform:scale(var(--press-s,.85)); }
+  .job .jdel svg { display:block; width:14px; height:14px; }
+  /* 레퍼런스 이미지(촬영=seedance 레인) = k.html .ref 블록 바이트 계승 — 공용 수정은 k.html과 양쪽 동시 */
+  .ref { margin:0 0 16px; }   /* raw-ok: k.html .ref 동일값 계승(하단 16) */
+  .ref img, .ref video { width:100%; border:1px solid var(--line); border-radius:10px; display:block; }   /* raw-ok: k.html .ref img 동일값 계승(r10) — video = 촬영=motion 산출 mp4(같은 액자 문법 계승 · 신규 기하 0) */
+  .ref.multi img { margin-bottom:8px /* raw-ok: k.html .ref.multi img 동일값 계승(픽셀 패리티) */; }   /* 다장 = 세로 나열(참조 순서 = 콘티 참조 순 · k:224 계승) */
+  .ref .cap { color:var(--mut); font-size:12px; margin-top:5px; }   /* raw-ok: k.html .ref .cap 동일값 계승(fs12·상단5) */
+  .refmiss { color:var(--warn); font-size:12px; border:1px dashed var(--line); border-radius:var(--r-s); padding:8px 10px; margin:0 0 8px; }   /* raw-ok: k.html .refmiss 동일값 계승 — 슬롯 자리 경고 칩(무음 숨김 폐지·번호 보존) */
+  .status { margin-top:16px; font-size:13px; color:var(--mut); white-space:pre-wrap; }   /* raw-ok: k.html .status 동일값 계승(margin 16) */
+  .status.err { color:var(--danger); }
+  .out { margin-top:var(--sp-3); }
+  .out h1.t { font-size:20px; color:var(--fg); margin:var(--sp-3) 0 var(--sp-1); }   /* raw-ok: k.html .out h1.t 동일값 계승(fs20 — 픽셀 패리티) */
+  .out h2 { font-size:16px; color:var(--accent); margin:var(--sp-3) 0 var(--sp-1); }   /* raw-ok: k.html .out h2 동일값 계승(fs16 — 픽셀 패리티) */
+  .out h3 { font-size:14px; color:var(--fg); margin:16px 0 var(--sp-1); }   /* raw-ok: k.html .out h3 동일값 계승(상단 16) */
+  .out p { margin:var(--sp-1) 0; color:var(--mut); }
+  .out p.legend { color:var(--fg); }   /* 범례 강조(k:202 계승 — renderMd 공통 계약) */
+  .code { position:relative; background:var(--well); border:1px solid var(--line); border-radius:10px; margin:8px 0 14px; }   /* raw-ok: k.html .code 동일값 계승(10·8·14 리듬) */
+  .code pre { margin:0; padding:13px; white-space:pre-wrap; word-break:break-word; font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:#eef7f0; }   /* raw-ok: k.html .code pre 동일값 계승(13) */
+  .code button { position:absolute; top:8px; right:8px; display:grid; place-items:center; width:30px; height:30px; padding:0;
+    color:rgba(255,255,255,.92); background:rgba(8,15,11,.4); border:1px solid rgba(255,255,255,.14); border-radius:var(--r-s); cursor:pointer;
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform var(--dur-fast), background var(--dur), color var(--dur), border-color var(--dur); }   /* 캐러셀 .sbtn 글래스 아이콘 계승(§📋) */
+  .code button svg { display:block; }
+  .code button:hover { background:rgba(255,255,255,.16); }
+  .code button:active { transform:scale(var(--press-s,.85)); }
+  .code button.copied { color:var(--mut); border-color:rgba(255,255,255,.08); }   /* 복사 완료 영속 표식(k:211 계승) */
+  .code button.done { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  html.inmodal, html.inmodal body { background:transparent; }   /* 모달(iframe) 안에선 투명 → tooldlg 글래스 비침(k:213 계승) */
+  /* 빠른메뉴 #rfab = k.html 바이트 계승(id kFocusFab/kGenFab/kTabFab 포함 — 파일 스코프 무충돌 · 바이트 동일 = 드리프트 검증 용이) */
+  #rfab { position:fixed; right:18px; bottom:34%; z-index:70; width:0; height:0; }
+  #rfab .rc { position:absolute; right:0; bottom:0; width:54px; height:54px; border-radius:50%; cursor:pointer;
+    background:rgba(0,0,0,.34); color:var(--accent); border:1px solid rgba(var(--accent-rgb),.4); display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    box-shadow:0 10px 26px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12);
+    transition:transform .25s; -webkit-tap-highlight-color:transparent; }
+    #rfab.open .rc { transform:rotate(135deg); }
+  #rfab .rc:active { transform:scale(var(--press-m)); }
+  #rfab.open .rc:active { transform:rotate(135deg) scale(var(--press-m)); }
+  #rfab .rc svg { width:26px; height:26px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; }
+  #rfab .ro { position:absolute; right:7px; bottom:7px; width:35px; height:35px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:1px solid rgba(var(--accent-rgb),.4); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    display:grid; place-items:center; box-shadow:0 6px 16px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+    opacity:0; transform:translate(0,0) scale(.3); pointer-events:none;
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
+  #rfab .ro svg { width:18px; height:18px; stroke:currentColor; stroke-width:1.9; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  #rfab .ro[hidden] { display:none; }   /* hidden 봉합(k:231 계승) */
+  #rfab #kFocusFab { --rp:translate(-66px,-2.5px); }
+  #rfab #kGenFab   { --rp:translate(-47.4px,-47.4px); }
+  #rfab #kTabFab   { --rp:translate(-2.5px,-66px); }
+  #rfab.open .ro { opacity:1; pointer-events:auto; transform:var(--rp,translate(0,-66px)) scale(1); }
+  #rfab.open #kGenFab { transition-delay:.06s; }
+  #rfab.open #kTabFab { transition-delay:.12s; }
+  #rfab .ro:active { transform:var(--rp,translate(0,-66px)) scale(var(--press-m,.9)); }
+  #rfab .rmin { position:absolute; right:13px; bottom:62px; width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--accent);
+    background:rgba(0,0,0,.34); border:0; display:grid; place-items:center;
+    backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3);
+    transition:transform .32s cubic-bezier(.2,.9,.3,1.25), opacity .22s; -webkit-tap-highlight-color:transparent; }
+  #rfab .rmin svg { width:15px; height:15px; stroke:currentColor; stroke-width:2.6; fill:none; stroke-linecap:round; transition:transform var(--dur-fast) cubic-bezier(.2,.9,.3,1.25); }
+  #rfab .rmin:active svg { transform:scale(var(--press-pico,.72)); }
+  #rfab.open .rmin { opacity:0; transform:translateY(8px) scale(.3); pointer-events:none; }
+  @media (prefers-reduced-motion:reduce){ #rfab .rc,#rfab .ro,#rfab .rmin { transition:opacity var(--dur); } #rfab.open .ro{ transform:var(--rp,translate(0,-66px)); } #rfab.open .rmin{ transform:none; } #rfab .rmin:active svg{ transition:transform .09s; } }
+  @media (hover:hover) and (pointer:fine) { #rfab { display:none; } }   /* PC = 숨김(k:248 계승) */
+</style>
+<script>if(window.self!==window.top)document.documentElement.classList.add('inmodal');</script>
+<noscript><style>html{scrollbar-width:thin}html::-webkit-scrollbar,body::-webkit-scrollbar{width:10px;height:10px;display:block}</style></noscript><!-- no-JS 폴백 = 네이티브 스크롤바 복귀(구 html 규칙 원값) — JS가 있으면 cscroll.js 오버레이가 담당하므로 폭 0이 정답이고, JS가 죽은 창에서만 네이티브 바가 되살아난다(index 정본 계승 · 운영자 260726) -->
+<style>
+  /* ── 기사 행 = .job(작업 내역) 기하 바이트 계승 + 체크 = index .dl-cbox 정본 이식(ly:263 동문) ── */
+  .vdrow { display:flex; align-items:center; gap:8px; font-size:var(--fs-label); padding:8px 11px; border-radius:var(--r-s); background:rgba(8,15,11,.34); border:1px solid var(--line); cursor:pointer; transition:border-color var(--dur), background var(--dur); }   /* raw-ok: .job 동일값 계승(gap8·padding 8/11) */
+  .vdrow + .vdrow { margin-top:var(--sp-1); }
+  .vdrow.on { border-color:rgba(var(--accent-rgb),.5); background:rgba(var(--accent-rgb),.06); }
+  .vdrow:active { transform:scale(var(--press-l,.95)); }
+  .vdrow .vdt { flex:1 1 auto; min-width:0; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vdrow .vdm { flex:none; color:var(--mut); font-size:var(--fs-xs); white-space:nowrap; }
+  .dl-cbox { width:12px; height:12px; flex:none; border-radius:4px; margin-right:6px; position:relative; top:-1px; border:1.5px solid rgba(255,255,255,.28); background:rgba(255,255,255,.04); display:inline-flex; align-items:center; justify-content:center; transition:background var(--dur), border-color var(--dur), box-shadow var(--dur); }   /* index .dl-cbox 정본 이식(ly:263 바이트 동일) · top:-1px = 광학 보정 */
+  .dl-cbox svg { position:absolute; width:8px; height:8px; display:block; }
+  .vdrow.on .dl-cbox { background:rgba(var(--accent-rgb),.9); border-color:var(--accent); }
+  .vdrow:not(.on) .dl-cbox svg { opacity:0; }
+  .vdrow.on .dl-cbox svg { opacity:1; color:var(--on-accent); }
+  .vdempty { color:var(--mut); font-size:var(--fs-label); padding:var(--sp-2) 0; }
+  .job .jdl { flex:none; }
+</style>
+
+<body>
+<div class="wrap">
+
+  <div class="geni-sechead"><span class="cref-lbl">기사 고르기</span></div>
+  <div id="list"><div class="vdempty">불러오는 중…</div></div>
+
+  <div class="gospec" id="spec" aria-live="polite">0건 선택 · 9:16 세로 · 6초 · 1080×1920</div>
+  <button class="go" id="go" type="button">영상 만들기</button>
+
+  <div class="geni-sechead" id="jobsHead" hidden><span class="cref-lbl">작업 내역</span></div>
+  <div class="jobs" id="jobs"></div>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';   /* ✓ = 표지판성 도형 = SVG(§🎨 3-1 · 문자 렌더 금지) */
+const MAX = 12;   // 한 번에 고를 수 있는 상한 = 러너 1잡 예산(6초×12편 ≈ 4분 렌더)
+
+let picked = [];   // 선택 순서 보존(렌더 순서 = 고른 순서)
+
+function syncSpec() {
+  $('#spec').textContent = picked.length + '건 선택 · 9:16 세로 · 6초 · 1080×1920';
+  $('#go').disabled = false;   // 상시 활성 = 이미지 스튜디오 도크 규격(CII · 정적 disabled 금지)
+}
+
+function rowHtml(a) {
+  return '<div class="vdrow" data-file="' + esc(String(a.file).replace(/\.md$/, '')) + '" role="button" tabindex="0" aria-pressed="false">'
+    + '<span class="dl-cbox">' + CK_SVG + '</span>'
+    + '<span class="vdt">' + esc(a.title) + '</span>'
+    + '<span class="vdm">' + esc(a.media || '') + '</span>'
+    + '</div>';
+}
+
+function toggle(el) {
+  const f = el.dataset.file;
+  const i = picked.indexOf(f);
+  if (i >= 0) { picked.splice(i, 1); el.classList.remove('on'); el.setAttribute('aria-pressed', 'false'); }
+  else {
+    if (picked.length >= MAX) { $('#go').classList.add('shake'); setTimeout(() => $('#go').classList.remove('shake'), 460); return; }
+    picked.push(f); el.classList.add('on'); el.setAttribute('aria-pressed', 'true');
+  }
+  syncSpec();
+}
+
+async function loadList() {
+  let arts = [];
+  try {
+    const r = await fetch('articles.json?t=' + Date.now());
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || ct.includes('text/html')) throw new Error('articles.json 없음');
+    arts = (await r.json()).articles || [];
+  } catch (e) {
+    $('#list').innerHTML = '<div class="vdempty">기사 목록을 못 불러왔어 — 새로고침해줘.</div>';
+    return;
+  }
+  const use = arts.filter(a => a.file && a.title).slice(0, 60);   // 최신 60건(피드 정렬 = 파일명 역순 = build-viewer 산출 순서)
+  $('#list').innerHTML = use.length ? use.map(rowHtml).join('') : '<div class="vdempty">큐가 비었어.</div>';
+  $('#list').querySelectorAll('.vdrow').forEach(el => {
+    el.addEventListener('click', () => toggle(el));
+    el.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(el); } });
+  });
+  syncSpec();
+}
+
+/* ── 작업 내역 = sb.html #jobs 문법 계승(localStorage 누적 + 폴링) ── */
+const JKEY = 'vd_jobs';
+const jload = () => { try { const a = JSON.parse(localStorage.getItem(JKEY) || '[]'); return Array.isArray(a) ? a.slice(0, 30) : []; } catch (e) { return []; } };
+const jsave = a => { try { localStorage.setItem(JKEY, JSON.stringify(a.slice(0, 30))); } catch (e) {} };
+
+const SPIN_SVG = '<svg class="jspin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>';
+const DONE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
+
+function renderJobs() {
+  const box = $('#jobs'), head = $('#jobsHead');
+  const a = jload();
+  head.hidden = !a.length;
+  box.innerHTML = a.map(j => {
+    const st = j.status === 'done' ? (DONE_SVG + '완료 ' + (j.n || 0) + '편')
+      : j.status === 'err' ? '실패'
+      : (SPIN_SVG + '만드는 중');
+    const dl = (j.status === 'done' && j.files && j.files.length)
+      ? j.files.map(u => '<a class="dlbtn jdl" href="' + esc(u) + '" download aria-label="영상 내려받기" title="영상 내려받기"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 19h14"/></svg></a>').join('')
+      : '';
+    return '<div class="job' + (j.status === 'err' ? ' err' : '') + '"><span class="jlab">' + esc(j.id) + '</span>'
+      + '<span class="jvar">' + (j.n || 0) + '건</span>' + dl
+      + '<span class="jst">' + st + '</span></div>';
+  }).join('');
+}
+
+async function poll(outPath, jid) {
+  for (let i = 0; i < 240; i++) {   // 최대 ≈40분(10s×240) = 러너 잡 상한 여유
+    await new Promise(r => setTimeout(r, 10000));
+    let d = null;
+    try {
+      const r = await fetch(outPath + '?t=' + Date.now());
+      const ct = r.headers.get('content-type') || '';
+      if (!r.ok || ct.includes('text/html')) continue;   // SPA 폴백 가드(sb poll 동문)
+      d = await r.json();
+    } catch (e) { continue; }
+    if (!d) continue;
+    const a = jload(); const j = a.find(x => x.id === jid); if (!j) return;
+    if (d.error) { j.status = 'err'; } else { j.status = 'done'; j.files = d.files || []; j.n = (d.files || []).length; }
+    jsave(a); renderJobs(); return;
+  }
+}
+
+async function fire() {
+  if (!picked.length) { $('#go').classList.add('shake'); setTimeout(() => $('#go').classList.remove('shake'), 460); return; }
+  $('#go').disabled = true; $('#go').classList.add('firing');
+  try {
+    const res = await fetch('/api/vd', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ files: picked }) });
+    const j = await res.json();
+    if (!res.ok || j.error) throw new Error(j.error || ('HTTP ' + res.status));
+    const a = jload(); a.unshift({ id: j.id, out: j.out, n: picked.length, status: 'run' }); jsave(a); renderJobs();
+    poll(j.out, j.id);
+    picked = []; $('#list').querySelectorAll('.vdrow.on').forEach(el => { el.classList.remove('on'); el.setAttribute('aria-pressed', 'false'); });
+    syncSpec();
+  } catch (e) {
+    $('#go').classList.add('err'); setTimeout(() => $('#go').classList.remove('err'), 1200);
+    $('#spec').textContent = '발사 실패 — ' + e.message;
+  } finally { $('#go').disabled = false; $('#go').classList.remove('firing'); }
+}
+
+$('#go').addEventListener('click', fire);
+window.nmRefresh = renderJobs;   // 부모 셸 헤더 새로고침 훅(sb:568 계승)
+loadList(); renderJobs();
+const _run = jload().find(j => j.status === 'run'); if (_run) poll(_run.out, _run.id);   // 리로드로 끊긴 진행 잡 = 폴 재개(sb:697 계승)
+</script>
+</body>
+</html>
