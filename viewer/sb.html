@@ -253,6 +253,7 @@
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — 인라인 복제 폐지·단일정본 -->
 <script src="nm-loader.js"></script><!-- 로더 팩토리 SSOT(yeulmaru-promo mkLoader 이식) — .nmld 도트 · 강조색 --accent -->
+<script src="draft.js"></script><!-- 입력 드래프트 30분 만료 SSOT(운영자 260801) -->
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
@@ -289,10 +290,10 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
   });
   // 입력 드래프트 영속(k 계승 — 도구모달 닫기 = iframe 리로드 대비 localStorage 미러)
   const DKEY = 'sb_scene_draft'; let saveT = null;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(DKEY, ta.value); } catch (e) {} }, 400); };
-  const flush = () => { clearTimeout(saveT); try { localStorage.setItem(DKEY, ta.value); } catch (e) {} };
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { nmDraftSave(DKEY, ta.value); }, 400); };
+  const flush = () => { clearTimeout(saveT); nmDraftSave(DKEY, ta.value); };
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
-  try { const d = localStorage.getItem(DKEY); if (d && !ta.value.trim()) ta.value = d; } catch (e) {}
+  const d = nmDraftLoad(DKEY); if (d && !ta.value.trim()) ta.value = d;   // 30분 만료(draft.js SSOT · 운영자 260801 "전역" · k 계승)
   // 자동 증장(적대검증 260730 유효 지적): 높이 2/3(64px = 2행)로 줄인 대가로 8000자 입력이 2행에 갇히는 회귀 → 입력량만큼 상한까지 늘린다(상한 = 5행 ≈ 160px · 넘으면 내부 스크롤). resize 핸들 없음·sticky 도크 안이라 자동 증장이 유일한 출구.
   const GROW_MAX = 160;   /* raw-ok: 64px(2행 = Q1159 지정값) × 2.5 = 5행 상한 — 도크가 화면을 잠식하지 않는 실측 한계 */
   const grow = () => { ta.style.height = 'auto'; const h = Math.min(ta.scrollHeight, GROW_MAX); ta.style.height = Math.max(64, h) + 'px'; ta.style.overflowY = (ta.scrollHeight > GROW_MAX) ? 'auto' : 'hidden'; };
