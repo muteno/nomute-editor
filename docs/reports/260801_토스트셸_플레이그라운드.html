@@ -1,0 +1,447 @@
+<meta charset="utf-8">
+<title>안내 토스트(.qflash) 셸 — 플레이그라운드 (260801)</title>
+<style data-pg-template="v2-sticky">
+/* ── 토큰 사본 = viewer/index.html :root 실측 발췌(창작 0) ── */
+:root{
+  --bg:#0b0d0c; --pan:#16171a; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --pan-line:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --amber:#FFE13D; --amber-rgb:255,225,61;
+  --cat-tech:#B36BFF; --danger:#e23b2a;
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-modal:22px; --r-pill:999px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px; --btn-sm:30px;
+  --fs-xs:11px; --fs-sm:12px; --fs-label:13px; --fs-h3:14px; --fs-h2:15px; --fs-body:15px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --blur-s:8px; --blur-m:14px; --blur-l:22px; --blur-xl:30px;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{width:0;height:0;display:none}
+.console,pre#out{scrollbar-width:none;-ms-overflow-style:none}
+.console::-webkit-scrollbar,pre#out::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:var(--fs-body)/var(--lh-base) 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin:0 0 var(--sp-2)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--sp-3);padding:var(--sp-3);align-items:flex-start}
+
+/* ★ 미리보기 고정 = 콘솔을 아무리 스크롤해도 무대가 화면에 남는다(운영자 260801 "고정이 안되있어서 스크롤 올려서 다시 봐야된다") */
+.stagewrap{flex:1 1 500px;min-width:0;position:sticky;top:0;z-index:5;
+  background:var(--bg);padding-bottom:var(--sp-2)}
+.console{flex:0 0 380px;max-width:100%;display:flex;flex-direction:column;gap:var(--sp-2)}
+@media (max-width:900px){
+  .wrap{padding:0 var(--sp-2) var(--sp-3)}
+  /* 좁은 화면 = 무대를 상단에 붙이고 높이를 줄여 조정값이 함께 보이게(운영자 260801 "창 작게 하면 조정값이 안 보인다") */
+  .stagewrap{flex:1 1 100%;padding:var(--sp-2) 0;border-bottom:1px solid var(--pan-line)}
+  .stagewrap h1{font-size:15px} .stagewrap .sub{display:none}
+  .stage{height:210px}
+  .console{flex:1 1 100%}
+}
+
+/* ── ① 실물 재현 무대 = "실제로 토스트가 뜨는 그 구간"을 층째로 재현(운영자 260801) ──
+   층 = viewer/index.html 정본값 그대로 쌓는다:
+     .bgfx 우주 워시(--space-bg #070a12 + rgba(--space-hi-rgb,.28) 상단 글로우) + #wavebg 물결(근사)
+     → .card 뉴스 피드(글래스 .18/.20 · blur 12 · --line · --r-l · 그림자+인셋 하이라이트)
+     → [#pubdlg 발행 모달 + ::backdrop rgba(4,8,5,.46) blur 7]  ← 성공 토스트가 실제로 뜨는 순간의 층
+     → .qflash → .bnav 하단 네비(rgba(0,0,0,.30) · blur --blur-l 22 saturate 1.35 · border-top .12)
+   ⚠ 글래스·블러는 뒤에 진짜 그림이 있어야 판단된다 — 이 층들이 곧 그 배경이다(회색 막대 목업으론 알파를 못 고른다) */
+.stage{position:relative;height:340px;border-radius:var(--r-l);border:1px solid var(--pan-line);overflow:hidden;
+  background:radial-gradient(130% 100% at 50% 14%, rgba(var(--space-hi-rgb,26,47,102),.28), rgba(0,0,0,0) 62%), #070a12}
+.stage.sLight{background:linear-gradient(180deg,#e9ece9,#cfd6d1)}
+.stage.sPhoto{background:
+  radial-gradient(120% 90% at 28% 18%, rgba(0,238,210,.34), transparent 58%),
+  radial-gradient(110% 80% at 76% 74%, rgba(179,107,255,.38), transparent 60%),
+  radial-gradient(92% 70% at 50% 52%, rgba(255,225,61,.16), transparent 66%), #12161c}
+.wave{position:absolute;inset:0;pointer-events:none;filter:brightness(1) saturate(.95);
+  background:radial-gradient(58% 40% at 18% 28%, rgba(255,255,255,.055), transparent 70%),
+             radial-gradient(54% 36% at 80% 60%, rgba(255,255,255,.045), transparent 72%),
+             radial-gradient(70% 44% at 50% 95%, rgba(255,255,255,.030), transparent 70%)}
+.feed{position:absolute;inset:0;overflow:hidden;padding:var(--t-spad,14px) 14px 78px}
+/* .card = viewer/index.html 514행 정본 사본(패딩만 18→14 = 축소 무대 비례) */
+.card{background:linear-gradient(135deg,rgba(18,30,34,.18),rgba(11,19,23,.20));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--line);border-radius:var(--r-l);padding:14px;margin:0 0 14px;
+  box-shadow:0 8px 22px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05)}
+.stage.sLight .card{background:rgba(255,255,255,.55);border-color:rgba(0,0,0,.08)}
+.ttl{height:10px;border-radius:5px;background:rgba(255,255,255,.16);width:80%;margin:0 0 9px}
+.ln{height:7px;border-radius:4px;background:rgba(255,255,255,.07);margin:0 0 7px}
+.ln:last-child{margin-bottom:0}
+.ln.s{width:46%} .ln.m{width:72%} .ln.l{width:92%}
+.stage.sLight .ttl{background:rgba(0,0,0,.20)} .stage.sLight .ln{background:rgba(0,0,0,.10)}
+/* 발행 모달 = #pubdlg 정본 셸(--modal-glass .64 · --r-modal) + dialog::backdrop 정본(rgba(4,8,5,.46)·blur 7) */
+.mbd{position:absolute;inset:0;background:rgba(4,8,5,.46);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.mdlg{position:absolute;left:50%;top:24px;transform:translateX(-50%);width:86%;
+  background:rgba(17,18,20,.64);border:1px solid var(--line);border-radius:var(--r-modal);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:12px 14px 14px}
+.mdlg b{font-size:var(--fs-h2);font-weight:var(--fw-x);display:block;margin:0 0 10px}
+.mrow{display:flex;justify-content:space-between;font-size:var(--fs-sm);color:var(--mut);border-top:1px solid var(--line2);padding:7px 0}
+.mgo{margin-top:10px;height:var(--btn-sm);display:grid;place-items:center;border-radius:var(--r-m);
+  background:var(--accent);color:#032322;font-size:var(--fs-label);font-weight:var(--fw-x)}
+/* 하단 네비 = .bnav 정본 1721행 사본 */
+.bnav{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-around;align-items:flex-end;
+  padding:0 8px 6px;background:rgba(0,0,0,.30);
+  backdrop-filter:blur(var(--blur-l)) saturate(1.35);-webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.35);
+  border-top:1px solid rgba(255,255,255,.12);box-shadow:0 -10px 30px rgba(0,0,0,.4)}
+.bnav i{flex:1;text-align:center;min-height:39px;padding:9px 4px 0;margin:0 0 4px;font-style:normal;
+  color:var(--mut);font-size:var(--fs-label);font-weight:var(--fw-b);letter-spacing:-.2px}
+.bnav i.on{color:var(--accent)}
+
+/* ★ .qflash 정본 사본 — 무대 안이라 fixed → absolute만 교체, 나머지 문법은 정본 그대로.
+   튜닝 축만 var(--t-*)로 치환(포터블 §3-2) · 기본값 = 현행 실측 */
+.qflash{position:absolute;left:0;right:0;margin-inline:auto;bottom:var(--t-bot,20px);
+  width:min(92%,var(--t-w,430px));display:flex;align-items:center;justify-content:var(--t-just,flex-start);
+  padding:var(--t-pady,9px) var(--t-padx,16px);border-radius:var(--t-rad,11px);
+  font-size:var(--t-fs,12px);font-weight:var(--t-fw,700);color:var(--fg);
+  background:linear-gradient(165deg, rgba(24,25,28,var(--t-a,.97)), rgba(15,16,18,calc(var(--t-a,.97) + .01)));
+  border:var(--t-bw,1px) solid rgba(255,255,255,var(--t-ba,.08));
+  box-shadow:0 14px 36px rgba(0,0,0,var(--t-sh,.55));
+  backdrop-filter:blur(var(--t-blur,14px));-webkit-backdrop-filter:blur(var(--t-blur,14px));
+  transition:none}
+.qflash .ft-msg{flex:var(--t-flex,1);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-align:var(--t-ta,left)}
+.qflash.ghost{opacity:.6}
+.stagecap{color:var(--mut);font-size:var(--fs-sm);margin:var(--sp-2) 0 0;text-align:center}
+.stagecap b{color:var(--fg);font-variant-numeric:tabular-nums}
+.stagecap b.warn{color:var(--amber)}
+
+/* ── 콘솔(정본 플레이그라운드 문법 그대로 계승) ── */
+.csec{background:var(--pan);border:1px solid var(--pan-line);border-radius:var(--r-m);padding:var(--sp-2)}
+.csec h3{margin:0 0 var(--sp-1);font-size:var(--fs-xs);font-weight:var(--fw-b);color:var(--mut);letter-spacing:.4px;text-transform:uppercase}
+.pills{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.pill{border:1px solid var(--pan-line);background:transparent;color:var(--fg);border-radius:var(--r-pill);
+  padding:6px 11px;font:600 var(--fs-sm)/1 inherit;letter-spacing:-.2px;cursor:pointer;
+  transition:transform var(--dur-fast) var(--ease),color var(--dur),border-color var(--dur)}
+.pill:active{transform:scale(.96)}
+.pill.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.55);background:rgba(var(--accent-rgb),.08)}
+.seg{display:flex;border:1px solid var(--pan-line);border-radius:var(--r-s);overflow:hidden;margin-top:5px}
+.seg button{flex:1;background:transparent;border:0;border-right:1px solid var(--pan-line);color:var(--mut);
+  padding:7px 3px;font:600 11px/1 inherit;letter-spacing:-.2px;cursor:pointer;transition:color var(--dur),background var(--dur)}
+.seg button:last-child{border-right:0} .seg button.on{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+.slab{font-size:10px;color:var(--mut);margin-top:9px}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--sp-1);margin-top:9px}
+.row label{font-size:var(--fs-sm)} .row label small{color:var(--mut);display:block;font-size:10px;line-height:1.3}
+.row .val{font-size:var(--fs-sm);font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;min-width:6.6em;text-align:right}
+.row .val.warn{color:var(--amber)}
+.row input[type=range]{grid-column:1/-1;width:100%;margin:2px 0 0;-webkit-appearance:none;background:transparent;height:18px}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:999px;background:linear-gradient(90deg,var(--accent) calc(var(--p,0)*100%),var(--pan-line) 0)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5.5px;border-radius:50%;background:var(--accent);border:0;cursor:pointer}
+input[type=range]::-moz-range-track{height:3px;border-radius:999px;background:var(--pan-line)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--accent);cursor:pointer}
+.chk{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);margin-top:8px;cursor:pointer}
+.chk input{accent-color:var(--accent);width:15px;height:15px}
+pre#out{margin:0 0 var(--sp-1);white-space:pre-wrap;word-break:break-all;font:11.5px/1.62 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:var(--fg);background:#0d0f0e;border:1px solid var(--pan-line);border-radius:var(--r-s);padding:10px;max-height:300px;overflow:auto}
+#copy{width:100%;height:var(--btn-sm);border:1px solid rgba(var(--accent-rgb),.4);border-radius:var(--r-m);
+  background:rgba(var(--accent-rgb),.08);color:var(--accent);font:700 var(--fs-label)/1 inherit;letter-spacing:-.2px;cursor:pointer;transition:transform var(--dur-fast) var(--ease)}
+#copy:active{transform:scale(.97)}
+.note{color:var(--mut);font-size:var(--fs-xs);line-height:1.7} .note b{color:var(--fg)}
+.dev{margin-top:var(--sp-1);padding:9px 10px;border-radius:var(--r-s);font-size:var(--fs-sm);border:1px solid var(--pan-line);background:#0d0f0e}
+.dev.ok{border-color:rgba(var(--accent-rgb),.4);color:var(--accent)}
+.dev.bad{border-color:rgba(var(--amber-rgb),.5);color:var(--amber)}
+dialog{border:0;border-radius:var(--r-modal);padding:0;background:var(--pan);color:var(--fg);max-width:430px;width:88vw}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.dlgin{padding:var(--sp-3)} .dlgin h4{margin:0 0 var(--sp-1);font-size:var(--fs-h3)}
+.dlgin p{margin:0 0 var(--sp-2);font-size:var(--fs-sm);color:var(--mut);line-height:1.65}
+</style>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <h1>안내 토스트 <b>.qflash</b> 셸 — 정본 문법 그대로</h1>
+    <p class="sub">발행 성공 안내가 뜨는 그 토스트. <b>무대는 화면에 고정</b>돼 있으니 오른쪽(폰은 아래) 조정값을 아무리 스크롤해도 결과가 눈앞에 남습니다.</p>
+    <div class="stage" id="stage" data-pg-preview>
+      <div class="wave"></div>
+      <div class="feed" id="feed"></div>
+      <div class="mbd" id="mbd"></div>
+      <div class="mdlg" id="mdlg"><b>공개 링크로 발행</b>
+        <div class="mrow"><span>공개 범위</span><span>누구나</span></div>
+        <div class="mrow"><span>만료</span><span>3일</span></div>
+        <div class="mgo">발행</div></div>
+      <div class="bnav"><i>홈</i><i class="on">뉴스</i><i>SNS</i><i>트렌드</i></div>
+      <div class="qflash ghost" id="ghost"><span class="ft-msg">키워드 알림 등 가족 토스트(비교용)</span></div>
+      <div class="qflash" id="tst"><span class="ft-msg">발행 및 링크 복사 완료</span></div>
+    </div>
+    <p class="stagecap">토스트 <b id="capBox">—</b> · 현행 대비 높이 <b id="capPct">—</b> · 기틀 이탈 <b id="capWarn">—</b></p>
+  </div>
+
+  <aside class="console">
+    <div class="csec" data-pg-presets><h3>② 프리셋</h3><div class="pills" id="presets"></div></div>
+
+    <div class="csec">
+      <h3>③-a 크기·자리</h3>
+      <div class="row"><label>세로 패딩 <small>= 높이 축 · 정본 9px</small></label><span class="val" id="vPady">—</span><input type="range" id="sPady" min="2" max="16" step="1"></div>
+      <div class="row"><label>가로 패딩 <small>정본 16px</small></label><span class="val" id="vPadx">—</span><input type="range" id="sPadx" min="6" max="28" step="1"></div>
+      <div class="row"><label>최대 폭 <small>정본 min(92vw,430)</small></label><span class="val" id="vW">—</span><input type="range" id="sW" min="240" max="560" step="10"></div>
+      <div class="row"><label>하단 위치 <small>정본 86px + 안전영역</small></label><span class="val" id="vBot">—</span><input type="range" id="sBot" min="8" max="90" step="2"></div>
+    </div>
+
+    <div class="csec">
+      <h3>③-b 정렬</h3>
+      <div class="slab">글자 정렬 (운영자 260801 요청 축)</div>
+      <div class="seg" id="segAlign"><button data-v="l">좌측(정본)</button><button data-v="c">가운데</button><button data-v="r">우측</button></div>
+      <div class="slab">셸 폭 채움</div>
+      <div class="seg" id="segFill"><button data-v="1">전폭(정본)</button><button data-v="0">글자만큼</button></div>
+    </div>
+
+    <div class="csec">
+      <h3>③-c 셸(불투명도·테두리·그림자)</h3>
+      <div class="row"><label>배경 알파 <small>정본 .97 · 가족 .86</small></label><span class="val" id="vA">—</span><input type="range" id="sA" min="0.3" max="1" step="0.01" list="aTick"></div>
+      <datalist id="aTick"><option value="0.55"></option><option value="0.64"></option><option value="0.86"></option><option value="0.97"></option></datalist>
+      <div class="row"><label>블러 <small>정본 --blur-m 14</small></label><span class="val" id="vBlur">—</span><input type="range" id="sBlur" min="0" max="30" step="1" list="bTick"></div>
+      <datalist id="bTick"><option value="8"></option><option value="14"></option><option value="22"></option><option value="30"></option></datalist>
+      <div class="row"><label>라운드 <small>정본 --r-m 11</small></label><span class="val" id="vRad">—</span><input type="range" id="sRad" min="0" max="26" step="1" list="rTick"></div>
+      <datalist id="rTick"><option value="9"></option><option value="11"></option><option value="16"></option><option value="22"></option></datalist>
+      <div class="row"><label>테두리 알파 <small>정본 --line .08</small></label><span class="val" id="vBa">—</span><input type="range" id="sBa" min="0" max="0.5" step="0.01"></div>
+      <div class="row"><label>테두리 두께 <small>정본 1px</small></label><span class="val" id="vBw">—</span><input type="range" id="sBw" min="0" max="3" step="0.5"></div>
+      <div class="row"><label>그림자 세기 <small>정본 .55</small></label><span class="val" id="vSh">—</span><input type="range" id="sSh" min="0" max="0.9" step="0.05"></div>
+    </div>
+
+    <div class="csec">
+      <h3>③-d 활자</h3>
+      <div class="row"><label>글자 크기 <small>정본 --fs-sm 12</small></label><span class="val" id="vFs">—</span><input type="range" id="sFs" min="10" max="16" step="0.5" list="fTick"></div>
+      <datalist id="fTick"><option value="11"></option><option value="12"></option><option value="13"></option><option value="14"></option><option value="15"></option></datalist>
+      <div class="row"><label>글자 굵기 <small>정본 --fw-b 700</small></label><span class="val" id="vFw">—</span><input type="range" id="sFw" min="500" max="800" step="100"></div>
+    </div>
+
+    <div class="csec">
+      <h3>③-e 뒤 배경 (대조용)</h3>
+      <div class="slab">장면 — 이 토스트가 실제로 뜨는 구간(기본 = 발행 성공 순간)</div>
+      <div class="seg" id="segBg"><button data-v="sModal">발행 모달 위</button><button data-v="sApp">피드 위(모달 닫힌 뒤)</button><button data-v="sPhoto">사진 위</button><button data-v="sLight">밝은 화면</button></div>
+      <div class="row"><label>배경 패딩 <small>뒤 콘텐츠 여백 = 겹침 대조</small></label><span class="val" id="vSpad">—</span><input type="range" id="sSpad" min="0" max="40" step="2"></div>
+      <div class="slab">문구 길이 (말줄임 확인)</div>
+      <div class="seg" id="segMsg"><button data-v="s">짧게</button><button data-v="m">현행</button><button data-v="l">PIN 포함</button></div>
+      <label class="chk"><input type="checkbox" id="cGhost" checked> 가족 셸(.nm-toast 급) 같이 보기</label>
+      <label class="chk"><input type="checkbox" id="cScope"> 가족 전체에 같은 값 적용해 보기</label>
+    </div>
+
+    <div class="csec" data-pg-copy>
+      <h3>④ 선택값 — 현행 병기 · 계승/갱신 자동 표기</h3>
+      <div data-pg-baseline id="base"></div>
+      <pre id="out"></pre><button id="copy">선택값 복사</button>
+    </div>
+
+    <div class="csec note" data-pg-note>
+      <b>⑤ 재현 한계</b><br>
+      · 셸 = <b>viewer/index.html <code>.qflash</code> 정본 CSS 그대로</b>(무대 안이라 <code>fixed → absolute</code>만 교체). 슬라이더를 안 만지면 「지금 그 토스트 그대로」다 — 기본값이 전부 현행 실측값이라서.<br>
+      · <b>무대 = 실제로 이 토스트가 뜨는 구간을 층째로 재현</b>했다 — 우주 워시 배경(<code>--space-bg</code> + 상단 글로우) · <code>.card</code> 뉴스 피드(글래스 blur 12) · <code>#pubdlg</code> 발행 모달 + <code>::backdrop</code>(rgba(4,8,5,.46)·blur 7) · <code>.bnav</code> 하단 네비(blur <code>--blur-l</code>·saturate 1.35). 값은 전부 index 정본 사본이고, <b>글래스·블러는 이 뒤 그림 위에서만 판단이 선다</b>.<br>
+      · <b>기본 장면 = 「발행 모달 위」</b>가 맞다 — 성공 토스트는 모달이 열린 채 뜨고(qFlash가 top-layer dialog 안으로 이주), 1.5초 뒤 모달이 닫히면 <code>close</code> 캡처가 body로 되돌려 「피드 위」로 넘어간다. 두 장면을 다 확인해야 한다.<br>
+      · 위치는 정본 <code>bottom:calc(86px + env(safe-area-inset-bottom))</code> 그대로. 다만 무대가 340px 축소 화면이라 <b>화면 대비 하단 여백 비율은 실물보다 크다</b> — 최종 확인은 브랜치 프리뷰에서.<br>
+      · <b>물결(<code>#wavebg</code>)은 근사다</b> — 실물은 WebGL2 셰이더(무채색 mesh, INT .13)라 정지 그라디언트 3장으로 대신했다. 알파를 아주 미세하게(±.02) 고를 때는 실물과 다를 수 있다.<br>
+      · <b>가족 통일 계약</b> — <code>.qflash</code>와 <code>.nm-toast</code>는 운영자 260712 회신으로 폭·라운드·글자·모션이 맞춰져 있다. <code>.qflash</code>만 바꾸면 그 통일이 깨지고, 가족 전체를 바꾸면 긴급·실패·새버전·키워드 토스트 4종이 같이 변한다(③-e 마지막 체크박스로 미리 본다).<br>
+      · 글꼴은 Pretendard 가정. 미설치 기기는 시스템 고딕으로 대체돼 <b>같은 px에서 높이가 ±1px</b> 흔들린다.
+    </div>
+  </aside>
+</div>
+
+<dialog id="warnDlg"><div class="dlgin">
+  <h4>기틀 이탈 축이 있습니다</h4><p id="warnMsg"></p>
+  <div class="pills"><button class="pill" id="wAll">역제안 포함 복사</button><button class="pill" id="wOk">계승분만 복사</button><button class="pill" id="wNo">취소</button></div>
+</div></dialog>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+// ── .qflash 정본 실측값(viewer/index.html 1924~1930행) = 기본값 ──
+const CANON = { pady:9, padx:16, w:430, bot:86, a:.97, blur:14, rad:11, ba:.08, bw:1, sh:.55, fs:12, fw:700 };
+const LINEH = 1.6;                                    // --lh-base
+// 토큰 사다리(near 판정용) — 레포 실존값만
+const LAD = {
+  pady: { '--sp-1':6, '--sp-2':12, '--sp-3':18, '--sp-4':24 },
+  padx: { '--sp-2':12, '--sp-3':18, '--sp-4':24 },
+  blur: { '--blur-s':8, '--blur-m':14, '--blur-l':22, '--blur-xl':30 },
+  rad:  { '--r-s':9, '--r-m':11, '--r-l':16, '--r-modal':22 },
+  fs:   { '--fs-xs':11, '--fs-sm':12, '--fs-label':13, '--fs-h3':14, '--fs-h2':15 },
+  fw:   { '--fw-b':700, '--fw-x':800 },
+  a:    { '.nm-toast 가족':.86, '--modal-glass':.64, '--glass2':.55, '현행 .qflash':.97 },
+  ba:   { '--line':.08, '--line2':.06 },
+};
+const MSGS = { s:'복사 완료', m:'발행 및 링크 복사 완료', l:'발행 및 링크 복사 완료 · PIN 481920 별도 전달' };
+// 피드 = .card 정본 3장(뉴스 카드 = 제목줄 + 본문줄) · 사진 장면은 카드 없이 배경만 = 글래스 최악 조건
+const CARD = '<div class="card"><div class="ttl"></div><div class="ln l"></div><div class="ln m"></div><div class="ln s"></div></div>';
+const SCENE = {
+  sModal: { feed:CARD + CARD + CARD, modal:1 },   // 발행 성공 = #pubdlg 열린 채 토스트가 뜬다(정본 경로 · qFlash 호스트 이주)
+  sApp:   { feed:CARD + CARD + CARD, modal:0 },   // 1.5s 뒤 모달 닫힘 = 토스트가 body로 귀환해 피드 위에 남는다
+  sPhoto: { feed:'', modal:0 },
+  sLight: { feed:CARD + CARD, modal:0 },
+};
+const DEFAULTS = Object.assign({}, CANON, { align:'l', fill:'1', bg:'sModal', spad:14, msg:'m', ghost:1, scope:0 });
+const PRESETS = [
+  { id:'p0', nm:'현행 그대로', st:{...DEFAULTS} },
+  { id:'p1', nm:'지시 70% 높이', st:{...DEFAULTS, pady:3} },
+  { id:'p2', nm:'70% + 가운데', st:{...DEFAULTS, pady:3, align:'c'} },
+  { id:'p3', nm:'--sp-1 슬림 + 가운데', st:{...DEFAULTS, pady:6, align:'c'} },
+  { id:'p4', nm:'반투명 유리(α.64)', st:{...DEFAULTS, pady:6, a:.64, blur:22, ba:.14} },
+  { id:'p5', nm:'가족 α(.86) 합류', st:{...DEFAULTS, pady:6, a:.86, align:'c'} },
+  { id:'p6', nm:'알약 · 글자만큼', st:{...DEFAULTS, pady:6, rad:22, fill:'0', align:'c'} },
+];
+let state = {...DEFAULTS};
+
+function near(v, ladder, tol){                       // 사다리 최근접 = 계승 판정
+  let best = null;
+  for (const k in ladder){ const d = Math.abs(ladder[k] - v); if (!best || d < best.d) best = { k, v:ladder[k], d }; }
+  return (best && best.d <= tol) ? best : null;
+}
+function boxH(s){ return s.pady * 2 + s.fs * LINEH + s.bw * 2; }
+function warnAxes(){
+  const w = [];
+  const add = (ax, now, want) => w.push({ ax, now, want });
+  if (state.pady !== CANON.pady) add('세로 패딩(높이)', CANON.pady + 'px', state.pady + 'px');
+  if (state.padx !== CANON.padx) add('가로 패딩',      CANON.padx + 'px', state.padx + 'px');
+  if (state.w    !== CANON.w)    add('최대 폭',        CANON.w + 'px',    state.w + 'px');
+  if (state.align !== 'l')       add('글자 정렬',      '좌측',            ({c:'가운데',r:'우측'})[state.align]);
+  if (state.fill !== '1')        add('셸 폭',          '전폭',            '글자만큼');
+  if (Math.abs(state.a - CANON.a) > .004)   add('배경 알파',   CANON.a,        state.a.toFixed(2));
+  if (state.blur !== CANON.blur) add('블러',           CANON.blur + 'px', state.blur + 'px');
+  if (state.rad  !== CANON.rad)  add('라운드',         CANON.rad + 'px',  state.rad + 'px');
+  if (Math.abs(state.ba - CANON.ba) > .004) add('테두리 알파', CANON.ba,       state.ba.toFixed(2));
+  if (state.bw   !== CANON.bw)   add('테두리 두께',    CANON.bw + 'px',   state.bw + 'px');
+  if (Math.abs(state.sh - CANON.sh) > .004) add('그림자 세기', CANON.sh,       state.sh.toFixed(2));
+  if (state.fs   !== CANON.fs)   add('글자 크기',      CANON.fs + 'px',   state.fs + 'px');
+  if (state.fw   !== CANON.fw)   add('글자 굵기',      CANON.fw,          state.fw);
+  return w;
+}
+
+const SL = [
+  { k:'pady', el:'sPady', v:'vPady', lad:'pady', fmt:v=>v+'px' },
+  { k:'padx', el:'sPadx', v:'vPadx', lad:'padx', fmt:v=>v+'px' },
+  { k:'w',    el:'sW',    v:'vW',                fmt:v=>v+'px' },
+  { k:'bot',  el:'sBot',  v:'vBot',              fmt:v=>v+'px', noWarn:1 },
+  { k:'a',    el:'sA',    v:'vA',    lad:'a',    fmt:v=>v.toFixed(2), tol:.004 },
+  { k:'blur', el:'sBlur', v:'vBlur', lad:'blur', fmt:v=>v+'px' },
+  { k:'rad',  el:'sRad',  v:'vRad',  lad:'rad',  fmt:v=>v+'px' },
+  { k:'ba',   el:'sBa',   v:'vBa',   lad:'ba',   fmt:v=>v.toFixed(2), tol:.004 },
+  { k:'bw',   el:'sBw',   v:'vBw',               fmt:v=>v+'px' },
+  { k:'sh',   el:'sSh',   v:'vSh',               fmt:v=>v.toFixed(2), tol:.004 },
+  { k:'fs',   el:'sFs',   v:'vFs',   lad:'fs',   fmt:v=>v+'px' },
+  { k:'fw',   el:'sFw',   v:'vFw',   lad:'fw',   fmt:v=>String(v) },
+  { k:'spad', el:'sSpad', v:'vSpad',             fmt:v=>v+'px', noWarn:1 },
+];
+
+function apply(){
+  const stage = $('#stage'), tst = $('#tst'), gh = $('#ghost');
+  const keep = $('.console') ? $('.console').scrollTop : 0;   // 재렌더 스크롤 보존(§플레이그라운드)
+  const set = (el, s) => {
+    el.style.setProperty('--t-pady', s.pady + 'px');
+    el.style.setProperty('--t-padx', s.padx + 'px');
+    el.style.setProperty('--t-w',    s.w + 'px');
+    el.style.setProperty('--t-a',    s.a);
+    el.style.setProperty('--t-blur', s.blur + 'px');
+    el.style.setProperty('--t-rad',  s.rad + 'px');
+    el.style.setProperty('--t-ba',   s.ba);
+    el.style.setProperty('--t-bw',   s.bw + 'px');
+    el.style.setProperty('--t-sh',   s.sh);
+    el.style.setProperty('--t-fs',   s.fs + 'px');
+    el.style.setProperty('--t-fw',   s.fw);
+    el.style.setProperty('--t-ta',   ({l:'left',c:'center',r:'right'})[s.align]);
+    el.style.setProperty('--t-just', s.fill === '1' ? 'flex-start' : 'center');
+    el.style.setProperty('--t-flex', s.fill === '1' ? '1' : '0 1 auto');
+    el.style.width = s.fill === '1' ? '' : 'auto';
+    el.style.left = s.fill === '1' ? '' : '0'; el.style.right = s.fill === '1' ? '' : '0';
+  };
+  set(tst, state);
+  set(gh, state.scope ? state : Object.assign({}, CANON, { align:'l', fill:'1' }));
+  tst.style.setProperty('--t-bot', state.bot + 'px');
+  gh.style.display = state.ghost ? '' : 'none';
+  gh.style.setProperty('--t-bot', (state.bot + boxH(state.scope ? state : CANON) + 8) + 'px');
+  tst.querySelector('.ft-msg').textContent = MSGS[state.msg];
+  stage.className = 'stage ' + state.bg;
+  stage.style.setProperty('--t-spad', state.spad + 'px');
+  const sc = SCENE[state.bg];
+  $('#feed').innerHTML = sc.feed;
+  $('#mbd').style.display = sc.modal ? '' : 'none';
+  $('#mdlg').style.display = sc.modal ? '' : 'none';
+
+  const h = boxH(state), pct = h / boxH(CANON) * 100, w = warnAxes();
+  $('#capBox').textContent = Math.round(tst.getBoundingClientRect().width) + '×' + h.toFixed(1) + 'px';
+  const cp = $('#capPct'); cp.textContent = pct.toFixed(0) + '%'; cp.className = Math.abs(pct-100) > .5 ? 'warn' : '';
+  const cw = $('#capWarn'); cw.textContent = w.length ? w.length + '축' : '없음'; cw.className = w.length ? 'warn' : '';
+
+  SL.forEach(s => { const el = $('#' + s.el); el.value = state[s.k];
+    el.style.setProperty('--p', (el.value - el.min) / (el.max - el.min));
+    const vv = $('#' + s.v), hit = s.lad ? near(+state[s.k], LAD[s.lad], s.tol || 0) : null;
+    vv.textContent = s.fmt(+state[s.k]) + (hit ? '  ' + hit.k : '');
+    vv.classList.toggle('warn', !s.noWarn && +state[s.k] !== CANON[s.k]); });
+  [['segAlign','align'],['segFill','fill'],['segBg','bg'],['segMsg','msg']].forEach(([id,k]) =>
+    document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === state[k])));
+  $('#cGhost').checked = !!state.ghost; $('#cScope').checked = !!state.scope;
+  document.querySelectorAll('#presets .pill').forEach(p => { const pr = PRESETS.find(x => x.id === p.dataset.id);
+    p.classList.toggle('on', !!pr && Object.keys(pr.st).every(k =>
+      typeof pr.st[k] === 'number' ? Math.abs(pr.st[k] - state[k]) < .0005 : pr.st[k] === state[k])); });
+  buildOut(h, pct, w);
+  if ($('.console')) $('.console').scrollTop = keep;
+}
+
+function buildOut(h, pct, w){
+  const tag = (k, lad, tol) => { const hit = lad ? near(+state[k], LAD[lad], tol || 0) : null;
+    return hit ? '  [계승 ' + hit.k + ']' : (state[k] === CANON[k] ? '  [현행 동값]' : '  ⚠ 갱신 후보'); };
+  const B = [];
+  B.push('<div style="font-size:12px;line-height:1.95;margin-bottom:8px">' +
+    '높이 <b>' + h.toFixed(1) + 'px</b> — 현행 ' + boxH(CANON).toFixed(1) + 'px 대비 <b style="color:' +
+    (Math.abs(pct-100) > .5 ? 'var(--amber)' : 'var(--accent)') + '">' + pct.toFixed(0) + '%</b><br>' +
+    '기틀 이탈 <b>' + w.length + '축</b>' + (w.length ? ' — ' + w.map(x=>x.ax).join(' · ') : '') + '</div>');
+  $('#base').innerHTML = B.join('');
+
+  const sel = state.scope ? '.qflash, .nm-toast' : '.qflash';
+  const L = [];
+  L.push('[안내 토스트 .qflash 셸 — 선택값]');
+  L.push('레퍼런스 : viewer/index.html .qflash (안내 토스트) 정본 · 가족 = .nm-toast');
+  L.push('적용 범위: ' + (state.scope ? '토스트 가족 전체(.qflash + .nm-toast 4종 = 통일 유지)' : '.qflash 안내 토스트만 (⚠ 가족과 높이·톤 갈라짐)'));
+  L.push('');
+  L.push('높이     : ' + h.toFixed(1) + 'px  (현행 ' + boxH(CANON).toFixed(1) + 'px = ' + pct.toFixed(0) + '%)');
+  L.push('세로 패딩: ' + state.pady + 'px' + tag('pady','pady'));
+  L.push('가로 패딩: ' + state.padx + 'px' + tag('padx','padx'));
+  L.push('최대 폭  : ' + state.w + 'px' + (state.w === CANON.w ? '  [현행 동값]' : '  ⚠ 갱신 후보'));
+  L.push('글자 정렬: ' + ({l:'좌측(정본)',c:'가운데',r:'우측'})[state.align] + (state.align === 'l' ? '  [현행 동값]' : '  ⚠ 갱신 후보'));
+  L.push('셸 폭    : ' + (state.fill === '1' ? '전폭  [현행 동값]' : '글자만큼  ⚠ 갱신 후보'));
+  L.push('배경 알파: ' + state.a.toFixed(2) + tag('a','a',.004));
+  L.push('블러     : ' + state.blur + 'px' + tag('blur','blur'));
+  L.push('라운드   : ' + state.rad + 'px' + tag('rad','rad'));
+  L.push('테두리   : ' + state.bw + 'px · 알파 ' + state.ba.toFixed(2) + tag('ba','ba',.004));
+  L.push('그림자   : ' + state.sh.toFixed(2) + (Math.abs(state.sh - CANON.sh) < .004 ? '  [현행 동값]' : '  ⚠ 갱신 후보'));
+  L.push('활자     : ' + state.fs + 'px / ' + state.fw + tag('fs','fs') + tag('fw','fw'));
+  L.push('');
+  L.push('— CSS —');
+  L.push(sel + ' {');
+  L.push('  padding:' + state.pady + 'px ' + state.padx + 'px;');
+  L.push('  width:min(92vw,' + state.w + 'px);');
+  if (state.fill !== '1') L.push('  width:auto; justify-content:center;   /* 글자만큼 = 전폭 폐지 */');
+  L.push('  border-radius:' + state.rad + 'px;');
+  L.push('  font-size:' + state.fs + 'px; font-weight:' + state.fw + ';');
+  L.push('  background:linear-gradient(165deg, rgba(24,25,28,' + state.a.toFixed(2) + '), rgba(15,16,18,' + (state.a + .01).toFixed(2) + '));');
+  L.push('  border:' + state.bw + 'px solid rgba(255,255,255,' + state.ba.toFixed(2) + ');');
+  L.push('  box-shadow:0 14px 36px rgba(0,0,0,' + state.sh.toFixed(2) + ');');
+  L.push('  backdrop-filter:blur(' + state.blur + 'px);');
+  L.push('}');
+  if (state.align !== 'l') L.push(sel.split(',').map(s => s.trim() + ' .ft-msg').join(', ') + ' { text-align:' + ({c:'center',r:'right'})[state.align] + '; }');
+  if (w.length){
+    L.push('');
+    L.push('🔁 기틀 갱신 역제안 (' + w.length + '축)');
+    w.forEach(x => L.push('  · ' + x.ax + ' : ' + x.now + '  →  ' + x.want));
+    L.push('  적용 범위 = ' + (state.scope ? '.qflash + .nm-toast 전 토스트(가족 통일 유지)' : '.qflash 만 — 가족 통일(운영자 260712) 이탈이 됩니다'));
+  }
+  $('#out').textContent = L.join('\n');
+}
+
+$('#presets').innerHTML = PRESETS.map(p => '<button class="pill" data-id="' + p.id + '">' + p.nm + '</button>').join('');
+$('#presets').onclick = e => { const b = e.target.closest('.pill'); if (!b) return;
+  state = {...state, ...PRESETS.find(x => x.id === b.dataset.id).st}; apply(); };
+[['segAlign','align'],['segFill','fill'],['segBg','bg'],['segMsg','msg']].forEach(([id,k]) =>
+  $('#'+id).onclick = e => { const b = e.target.closest('button'); if (!b) return; state[k] = b.dataset.v; apply(); });
+SL.forEach(s => $('#'+s.el).addEventListener('input', e => { state[s.k] = +e.target.value; apply(); }));
+$('#cGhost').onchange = e => { state.ghost = e.target.checked ? 1 : 0; apply(); };
+$('#cScope').onchange = e => { state.scope = e.target.checked ? 1 : 0; apply(); };
+
+function doCopy(t){ const done = () => { const b = $('#copy'); b.textContent='복사됨 ✓'; setTimeout(()=>b.textContent='선택값 복사',1400); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => fb(t,done)); else fb(t,done); }
+function fb(t,done){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta);
+  const r=document.createRange(); r.selectNodeContents(ta); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+  ta.setSelectionRange(0,t.length); try{document.execCommand('copy');done();}catch(_){} ta.remove(); }
+$('#copy').onclick = () => { const w = warnAxes(); if (!w.length) return doCopy($('#out').textContent);
+  $('#warnMsg').textContent = '.qflash 정본에서 벗어난 축이 ' + w.length + '개 있습니다: ' + w.map(x=>x.ax).join(' · ')
+    + '. 이대로 복사하면 「🔁 기틀 갱신 역제안」 블록이 함께 나가고, 회신이 곧 기틀 편입 승인 경로가 됩니다.';
+  $('#warnDlg').showModal(); };
+$('#wAll').onclick = () => { $('#warnDlg').close(); doCopy($('#out').textContent); };
+$('#wOk').onclick  = () => { $('#warnDlg').close(); doCopy($('#out').textContent.split('🔁 기틀 갱신 역제안')[0].trimEnd() + '\n(계승분만 복사 — 이탈 축 제외)'); };
+$('#wNo').onclick  = () => $('#warnDlg').close();
+apply();
+</script>
