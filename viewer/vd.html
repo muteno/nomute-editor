@@ -235,11 +235,14 @@
 <body>
 <div class="wrap">
 
+  <!-- 상단 도크 = 편집(edit) #topDock 정본 100% 계승(CII 「합성 미리보기 쉘」 배치 계약 = "생성역할 버튼도 미리보기 아래·한 몸 상단 고정" · sb #topDock 미러) — 구 배치는 도크 없이 [기사 60행 → 요약 → 발사]라 발사 버튼이 목록 아래로 잠겨 사용법이 안 보였다(운영자 260802 "큐 영상이 이렇게만 있는데 어떻게 쓰라는거야") · 메이킹 예외 = 미리보기 액자 없음(선택 전 미리볼 소스 자체가 없는 탭 — sb 선례) -->
+  <div class="topdock" id="topDock">
+    <div class="optstrip" id="optStrip"><div class="gospec" id="spec" aria-live="polite"></div></div><!-- 리드백 = 기본값 mut·변경분만 .gs-v.on(CII 도크 규격 ① · 정적 .on 하드코딩 금지 = 내용은 syncSpec 단독 생성) -->
+    <div class="firebar"><div class="inner"><button class="go" id="go" type="button">생성</button></div></div><!-- 라벨 "생성" = 전 탭 통일(edit·sb·thumb 정본) · 상시 활성(CII 도크 규격 ②) -->
+  </div><!-- /.topdock -->
+
   <div class="geni-sechead"><span class="cref-lbl">기사 고르기</span></div>
   <div id="list"><div class="vdempty">불러오는 중…</div></div>
-
-  <div class="gospec" id="spec" aria-live="polite">0건 선택 · 9:16 세로 · 6초 · 1080×1920</div>
-  <button class="go" id="go" type="button">영상 만들기</button>
 
   <div class="geni-sechead" id="jobsHead" hidden><span class="cref-lbl">작업 내역</span></div>
   <div class="jobs" id="jobs"></div>
@@ -254,8 +257,12 @@ const MAX = 12;   // 한 번에 고를 수 있는 상한 = 러너 1잡 예산(6�
 
 let picked = [];   // 선택 순서 보존(렌더 순서 = 고른 순서)
 
+const SPEC_AX = [['선택', () => picked.length + '건', () => !!picked.length], ['비율', () => '9:16 세로', () => false], ['길이', () => '6초', () => false], ['해상도', () => '1080×1920', () => false]];   // 리드백 축(고정값 3 = 현 러너 계약 · 변경 UI 생기면 on 판정만 교체)
+
 function syncSpec() {
-  $('#spec').textContent = picked.length + '건 선택 · 9:16 세로 · 6초 · 1080×1920';
+  $('#spec').innerHTML = SPEC_AX.map(([lbl, v, on]) =>
+    '<span class="gs-lbl">' + lbl + '</span> <span class="gs-v' + (on() ? ' on' : '') + '">' + esc(v()) + '</span>'
+  ).join(' <span class="gs-sep">/</span> ');   // 라벨│값 · 구분자 = edit updateGoSpec 정본 문법(기본 mut · 변경분만 .on)
   $('#go').disabled = false;   // 상시 활성 = 이미지 스튜디오 도크 규격(CII · 정적 disabled 금지)
 }
 
@@ -353,7 +360,7 @@ async function fire() {
     syncSpec();
   } catch (e) {
     $('#go').classList.add('err'); setTimeout(() => $('#go').classList.remove('err'), 1200);
-    $('#spec').textContent = '발사 실패 — ' + e.message;
+    $('#spec').textContent = '발사 실패 — ' + e.message; setTimeout(syncSpec, 2400);   // 실패 문구 → 리드백 복귀(도크 스트립이 영구 오염되지 않게)
   } finally { $('#go').disabled = false; $('#go').classList.remove('firing'); }
 }
 

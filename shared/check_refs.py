@@ -1590,10 +1590,12 @@ def check_launch_spec():
 _DOCK_READBACK_STRIPS = {   # file → [리드백 스트립 div id](정적 콘텐츠·값=기본 mut)
     'viewer/thumb.html': ['editSpec'],
     'viewer/tr.html':    ['trSpec'],
+    'viewer/vd.html':    ['spec'],       # 큐영상 도크 편입(260802) — 정적 내용 0·리드백은 syncSpec 단독 생성
 }
 _DOCK_ACTIVE_BTNS = {   # file → [상시 활성 발사 버튼 id](입력-disabled 금지)
     'viewer/thumb.html': ['go'],
     'viewer/tr.html':    ['go'],
+    'viewer/vd.html':    ['go'],         # 큐영상 발사 = 상시 활성(0건 클릭 = shake 안내)
 }
 
 def check_imgstudio_dock_spec():
