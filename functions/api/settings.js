@@ -5,8 +5,23 @@
 // ⚠️ 성격 = 클라 검증 사생활 가림막(발행본 pinHash와 동일 등급 · DevTools 우회 가능) — 접근 보안 자체는 CF Access. lockPinHash = sha256(pin+':nmlock') 클라 계산분(평문 미저장).
 // env: GH_TOKEN = fine-grained PAT(Contents:read+write · publish/push/published 동일 토큰).
 const REPO = 'muteno/nomute-editor', FILE = 'settings/app.json';
-const DEFAULTS = { lockOn: true, lockPinHash: '', lockLen: 4, lockMin: 2, genImgOn: true, kwAlertOn: false, kwItems: [] };
+const DEFAULTS = { lockOn: true, lockPinHash: '', lockLen: 4, lockMin: 2, genImgOn: true, kwAlertOn: false, kwItems: [], memos: [] };
 const KW_CAP = 40;   // 등록 키워드 상한(계정 1인 · 오염·비대 차단)
+const MEMO_CAP = 200, MEMO_LEN = 4000;   // 메모(작업 기록) 상한 — 건수·1건 길이(kwItems 선례 · 설정 파일 비대 차단)
+
+// 메모 항목 정규화(index.html _mmClean 미러) — { ts(작성 epoch), text(본문) }
+function cleanMemos(a) {
+  if (!Array.isArray(a)) return [];
+  const out = [];
+  for (const it of a) {
+    if (!it || typeof it !== 'object') continue;
+    const text = typeof it.text === 'string' ? it.text.slice(0, MEMO_LEN).trim() : '';
+    if (!text) continue;
+    out.push({ ts: Number.isFinite(it.ts) ? it.ts : 0, text });
+    if (out.length >= MEMO_CAP) break;
+  }
+  return out;
+}
 
 // 키워드 알림 항목 정규화(index.html _setNorm 미러) — 각 항목 { kw, ts(등록 epoch), hit(첫 매칭 epoch·0=미매칭), done(체크=알림 중단) }
 function cleanKwItems(a) {
@@ -35,6 +50,7 @@ function clean(raw) {
     if (typeof raw.genImgOn === 'boolean') o.genImgOn = raw.genImgOn;
     if (typeof raw.kwAlertOn === 'boolean') o.kwAlertOn = raw.kwAlertOn;
     if (Array.isArray(raw.kwItems)) o.kwItems = cleanKwItems(raw.kwItems);
+    if (Array.isArray(raw.memos)) o.memos = cleanMemos(raw.memos);
   }
   return o;
 }
@@ -48,6 +64,7 @@ function pickPatch(patch) {
   if (typeof patch.genImgOn === 'boolean') o.genImgOn = patch.genImgOn;
   if (typeof patch.kwAlertOn === 'boolean') o.kwAlertOn = patch.kwAlertOn;
   if (Array.isArray(patch.kwItems)) o.kwItems = cleanKwItems(patch.kwItems);   // 목록 = 통째 교체(부분병합 아님 · 등록/삭제/체크가 전체 배열 커밋)
+  if (Array.isArray(patch.memos)) o.memos = cleanMemos(patch.memos);           // 메모도 동일(작성/수정/삭제가 전체 배열 커밋)
   return o;
 }
 
