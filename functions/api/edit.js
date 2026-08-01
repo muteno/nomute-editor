@@ -166,6 +166,8 @@ export async function onRequestGet({ request, env }) {
   // 러너(ly_burn)가 R2에 올리는 ly_out/<id>/video.json을 발견 → 클라 작업 내역이 Pages 빌드·배포 랙 없이 임시 행 표시,
   // 열람은 기존 openJob R2 폴백(?stat=)이 전담. id 선두 12자리 = KST 시각(edit.js 발급 규칙)이라 컷오프 startAfter = 최근 창만 목록.
   // 대상 = video.json(완성 영상 · ly_burn 260728) + clips.json/cuts.json(스캔 산출 · edit-make 'R2 즉시 게시' 스텝 260731) · 실패 = 빈 목록(클라 폴백 유지).
+  // 키 매칭 = 12자리 숫자 선두 강제(260801 수리 · thumb.js ?recent= 미러) — id 계약 밖 수기 키가 사전순으로 컷오프를 항상 통과하던 혼입 차단.
+  //   '발견' 축만 좁힘 — ?stat= 열람은 종전 규칙 유지(딥링크 무영향).
   if (q.get('recent') != null) {
     if (!env.R2) return j({ items: [], reason: 'r2-unbound' });
     const hrs = Math.max(1, Math.min(48, +q.get('recent') || 24));
@@ -176,7 +178,7 @@ export async function onRequestGet({ request, env }) {
     try {
       for (let i = 0; i < 3; i++) {   // 상한 3페이지(24h 창 실사용량 대비 여유 · 폭주 방어)
         const l = await env.R2.list(cursor ? { prefix: 'ly_out/', limit: 1000, cursor } : { prefix: 'ly_out/', startAfter: 'ly_out/' + cut, limit: 1000 });
-        for (const o of (l.objects || [])) { const m = o.key.match(/^ly_out\/([A-Za-z0-9_-]{1,64})\/(video|clips|cuts)\.json$/); if (m && (m[2] === 'video' || !found.has(m[1]))) found.set(m[1], m[2]); }
+        for (const o of (l.objects || [])) { const m = o.key.match(/^ly_out\/(\d{12}[A-Za-z0-9_-]{0,52})\/(video|clips|cuts)\.json$/); if (m && (m[2] === 'video' || !found.has(m[1]))) found.set(m[1], m[2]); }
         if (!l.truncated) break; cursor = l.cursor;
       }
     } catch (e) { return j({ items: [], reason: 'r2-error' }); }
