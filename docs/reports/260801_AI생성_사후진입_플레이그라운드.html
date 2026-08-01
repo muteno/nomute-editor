@@ -78,6 +78,10 @@ body{margin:0;background:#0b0d0c;color:var(--fg);
 .cref-srch,.cref-more{width:var(--btn-sm);height:var(--btn-sm);border-radius:var(--r-s)}
 .cref-srch svg{width:15px;height:15px}
 .cref-more{color:var(--accent)}
+/* 'AI' 라벨 동반 = 형제 .cref-dlall(↓+'전체') 문법 100% 계승 — width:auto·gap 5·padding 0 11 정본 값 그대로,
+   높이만 나란한 정사각(.cref-srch)과 같은 --btn-sm(30) · 색은 .cref-more 형광(발사 축) 유지 · 신규 값 0 */
+.cref-more.cref-gen{width:auto;height:var(--btn-sm);border-radius:var(--r-s);display:inline-flex;align-items:center;gap:5px;padding:0 11px}
+.cref-more .cref-dllbl{font-size:var(--fs-xs);font-weight:700;color:inherit;white-space:nowrap}
 .cref-dlall{width:auto;height:var(--btn);border-radius:var(--r-s);display:inline-flex;align-items:center;gap:5px;padding:0 11px;
   background:none;border:none;color:var(--accent-4)}
 .cref-dlall .cref-dllbl{font-size:var(--fs-xs);font-weight:700;color:inherit;white-space:nowrap}
@@ -103,7 +107,12 @@ body{margin:0;background:#0b0d0c;color:var(--fg);
 @keyframes tskIn{from{transform:translateX(18px)}to{transform:none}}
 .thumbsec .cref-slot.chin{animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards}
 .thumbsec .cref-slot.chin.tsk{animation:tskIn .34s cubic-bezier(.22,.61,.36,1) backwards}
-@media(prefers-reduced-motion:reduce){.thumbsec .cref-slot.chin{animation:none}}
+/* 카러셀 틀 자체가 새로 생길 때(AI 카러셀 신설)도 같은 결 = 섹션이 툭 튀어나오지 않게 */
+.thumbsec .cref.chin{animation:cardIn .34s cubic-bezier(.22,.61,.36,1) backwards}
+/* 로딩 슬롯 → 실제 이미지 교체 = 그 자리서 크로스페이드(번쩍 차단 · popOut 역결 계승) */
+@keyframes crefSwapOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.985)}}
+.thumbsec .cref-slot.swapout{animation:crefSwapOut .18s cubic-bezier(.4,0,1,1) both;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.thumbsec .cref-slot.chin,.thumbsec .cref.chin,.thumbsec .cref-slot.swapout{animation:none}}
 
 /* 조준 링 = 발사 버튼 위치 지시(플레이그라운드 전용 주석 레이어 · 실물 미포함) */
 .aim{position:relative}
@@ -196,6 +205,24 @@ pre.val{margin:var(--sp-2) 0 0;padding:10px 12px;background:rgba(0,0,0,.35);bord
       </div>
 
       <div class="ctl">
+        <label class="ctl-l">발사 버튼 표기</label>
+        <div class="seg" id="segTag">
+          <button data-v="ai" class="on">+ AI</button>
+          <button data-v="plain">+ 만</button>
+        </div>
+        <p class="note"><b>+ AI</b> = 같은 헤더 줄 <code>.cref-dlall</code>(↓+'전체') 문법 100% 계승 — <code>width:auto·gap 5·padding 0 11</code> 정본 값 그대로, 높이만 형제 정사각과 같은 <code>--btn-sm</code>. 색은 <code>.cref-more</code> 형광 유지.</p>
+      </div>
+
+      <div class="ctl">
+        <label class="ctl-l">제작 중 → 도착 전환</label>
+        <div class="seg" id="segSoft">
+          <button data-v="1" class="on">부드럽게(권장)</button>
+          <button data-v="0">구 동작(즉시 교체)</button>
+        </div>
+        <p class="note"><b>부드럽게</b> = 로딩 슬롯이 그 자리서 <code>.18s</code> 페이드아웃(<code>crefSwapOut</code>) → 새 슬롯이 촤르륵으로 진입. <b>구 동작</b> = <code>old.replaceWith(fresh)</code> 즉시 교체(현행 index 4972) = 번쩍. 눌러서 바로 비교됩니다.</p>
+      </div>
+
+      <div class="ctl">
         <label class="ctl-l">등장 결(촤르륵)</label>
         <div class="seg" id="segAnim">
           <button data-v="cardin" class="on">cardIn(정본)</button>
@@ -254,7 +281,17 @@ const IC_SRCH  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" st
 const IC_DL    = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 12 5 5 5-5"/><path d="M5 21h14"/></svg>';
 const IC_EDIT  = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 
-const S = { stage:0, cse:'both', lbl:'fire', cnt:1, pos:'search', anim:'cardin' };
+const S = { stage:0, cse:'both', lbl:'fire', cnt:1, pos:'search', anim:'cardin', tag:'ai', soft:1 };
+
+/* 단계 전환 = 딱딱 끊김 차단(운영자 260801). 로딩 슬롯을 그 자리서 .18s 페이드아웃(crefSwapOut)한 뒤
+   교체 렌더 → 새 슬롯이 촤르륵으로 들어온다. soft=0이면 구 동작(즉시 replaceWith) 비교용. */
+function goStage(next){
+  const cur = S.stage;
+  const swapping = S.soft && cur===2 && next===3;
+  if (!swapping){ S.stage=next; $('#rStage').value=next; render(); return; }
+  document.querySelectorAll('#sec .cref-loading').forEach(el=>el.classList.add('swapout'));
+  setTimeout(()=>{ S.stage=next; $('#rStage').value=next; render(); }, 180);
+}
 const $ = s => document.querySelector(s);
 
 const STAGE_TX = [
@@ -274,17 +311,22 @@ function slot(kind, n, tot, cap, phc, i){
        + '<span class="cref-no"><b>'+n+'</b>/'+tot+'</span>'
        + (cap?'<span class="tgen-cap">'+cap+'</span>':'') + acts + '</div>';
 }
-function loadSlot(){
-  return '<div class="cref-slot gen cref-loading"><div class="cref-ld">'
-       + '<span class="nmld"><i></i><i></i><i></i></span><span>생성 중…</span></div></div>';
+function loadSlot(i){
+  // 로딩 슬롯도 촤르륵으로 들어온다 = "버튼 눌렀는데 툭 튀어나옴" 차단
+  const d = Math.min(i,14)*32;
+  return '<div class="cref-slot gen cref-loading chin'+(S.anim==='tsk'?' tsk':'')+'" style="animation-delay:'+d+'ms,0s">'
+       + '<div class="cref-ld"><span class="nmld"><i></i><i></i><i></i></span><span>생성 중…</span></div></div>';
 }
-function cref(label, usage, inner, plus){
-  const aim = plus ? ' aim' : '';
+function genBtn(){   // 발사 버튼 = .cref-dlall(↓+'전체') 문법 계승 · 'AI' 라벨(운영자 260801)
+  return '<button class="sbtn cref-more'+(S.tag==='ai'?' cref-gen':'')+' aim" title="AI 이미지 생성">'
+       + IC_PLUS + (S.tag==='ai'?'<span class="cref-dllbl">AI</span>':'') + '</button>';
+}
+function cref(label, usage, inner, plus, fresh){
   const acts = '<span class="cref-acts" style="position:relative">'
-    + (plus?'<span class="aim-tag">발사(생성) 버튼 = 여기</span><button class="sbtn cref-more'+aim+'" title="이미지 생성">'+IC_PLUS+'</button>':'')
+    + (plus?'<span class="aim-tag">발사</span>'+genBtn():'')
     + (label==='검색 이미지'?'<button class="sbtn cref-srch">'+IC_SRCH+'</button>':'')
     + '</span>';
-  return '<div class="cref"><div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">'+label+'</span>'
+  return '<div class="cref'+(fresh?' chin':'')+'"><div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">'+label+'</span>'
        + (usage?'<span class="cref-usage">$ '+usage+'</span>':'') + '</span>'+acts+'</div>'
        + '<div class="cref-track">'+inner+'</div></div>';
 }
@@ -309,25 +351,24 @@ function render(){
 
   const posSec = (S.pos==='sec') || !hasSearch;   // 나안 · 또는 검색 0장(가안이 불가능한 케이스)
   const secPlus = posSec
-    ? '<span style="position:relative;display:inline-flex"><span class="aim-tag">발사(생성) 버튼 = 여기</span>'
-      + '<button class="sbtn cref-more aim" title="이미지 생성">'+IC_PLUS+'</button></span>'
+    ? '<span style="position:relative;display:inline-flex"><span class="aim-tag">발사</span>'+genBtn()+'</span>'
     : '';
 
   let h = '<div class="thumbsec"><div class="thumbsec-h"><span class="thsec-t">썸네일 후보 — '+parts.join(' · ')+'</span>'
     + secPlus + '<button class="sbtn cref-dlall">'+IC_DL+'<span class="cref-dllbl">전체</span></button></div>';
 
   if (hasSearch){
-    h += cref('검색 이미지','0.0', slot('search',1,2,'','s1')+slot('search',2,2,'유사','s2'), !posSec);
+    h += cref('검색 이미지','0.0', slot('search',1,2,'','s1')+slot('search',2,2,'유사','s2'), !posSec, false);
   }
   if (showGen){
     let inner = '';
-    if (firing) for(let i=0;i<S.cnt;i++) inner += loadSlot();
+    if (firing) for(let i=0;i<S.cnt;i++) inner += loadSlot(i);
     if (done){
       inner += slot('gen',1,2,'포토 에디토리얼','p1',0) + slot('gen',2,2,'웹툰 극화','p2',1);
     }
     if (!firing && !done) inner = '<div class="cref-slot gen cref-loading" style="animation:none;opacity:.5">'
       + '<div class="cref-ld">비어 있음</div></div>';
-    h += cref('AI 생성', done?'0.2':'', inner, false);
+    h += cref('AI 생성', done?'0.2':'', inner, false, firing);   // firing = AI 카러셀이 그 순간 신설 = 틀도 촤르륵
   }
   h += '</div>';
   $('#sec').innerHTML = h;
@@ -345,7 +386,15 @@ function flow(){
   }, null, 1);
 }
 
-$('#rStage').addEventListener('input', e=>{ S.stage=+e.target.value; render(); });
+$('#rStage').addEventListener('input', e=>{ goStage(+e.target.value); });
+document.querySelectorAll('#segTag button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#segTag button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  S.tag=b.dataset.v; render();
+}));
+document.querySelectorAll('#segSoft button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#segSoft button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  S.soft=+b.dataset.v; S.stage=2; $('#rStage').value=2; render(); setTimeout(()=>goStage(3), 800);
+}));
 $('#rCnt').addEventListener('input', e=>{ S.cnt=+e.target.value; $('#vCnt').textContent=S.cnt; render(); });
 document.querySelectorAll('#segCase button').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('#segCase button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
@@ -367,8 +416,8 @@ $('#btnChar').addEventListener('click',()=>{ S.stage=2; $('#rStage').value=2; re
   setTimeout(()=>{ S.stage=3; $('#rStage').value=3; render(); }, 900); });
 $('#btnSim').addEventListener('click',()=>{
   const seq=[1,2,3]; let i=0;
-  const go=()=>{ if(i>=seq.length) return; S.stage=seq[i]; $('#rStage').value=S.stage; render(); i++; setTimeout(go, i===1?700:2600); };
-  S.stage=0; $('#rStage').value=0; render(); setTimeout(go,400);
+  const go=()=>{ if(i>=seq.length) return; goStage(seq[i]); i++; setTimeout(go, i===1?700:2600); };
+  goStage(0); setTimeout(go,400);
 });
 $('#btnCopy').addEventListener('click',e=>{
   navigator.clipboard.writeText($('#valBox').textContent).then(()=>{
