@@ -1731,6 +1731,10 @@ function cpPrevWait(on) {   // 제작 발사 → 미리보기 '합성 중' 딤(�
   const ovt = $('#ovFmtTog');   // 오버레이 포맷(포스트↔릴스) 전환 = 미리보기 포맷·저작권 매칭 반영 — 기존 tog 핸들러가 이 IIFE보다 늦게 등록되므로 0ms 디퍼로 상태 갱신 *뒤* 렌더(등록 순서 무관 안전)
   if (ovt) { ovt.addEventListener('click', () => setTimeout(renderCpPrev, 0)); ovt.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') setTimeout(renderCpPrev, 0); }); }
   window.addEventListener('resize', () => { if (APP === '2') renderCpPrev(); });
+  // 무대 폭 변화 = 재렌더(운영자 260802 "이렇게 축소되면 미리보기도 깨지거든") — 카드 산출 미리보기는 `const W = st.offsetWidth`로 활자·마진을 px 환산해 굽는 1회성 렌더라, 창이 좁아져도 다시 굽지 않으면 옛 폭 기준 활자가 그대로 남아 우측이 잘린다(실측 260802: 도크 스크롤 축소 .dockmin으로 무대 폭이 줄었는데 제목이 옛 폭 그대로 = 글자 잘림). window resize만 듣던 구 배선은 '창 크기는 그대로인데 무대만 좁아지는' 이 경로를 못 본다 → 폭 자체를 관측한다(축소 애니 중에도 프레임마다 따라가 팝 없음 · rAF 디바운스 = 프레임당 1회 · 폭 무변동이면 무동작 = 루프 차단)
+  if (window.ResizeObserver) { const stg = $('#cpPrevStage'); if (stg) { let pw = 0, r = 0;
+    new ResizeObserver(() => { if (r) return; r = requestAnimationFrame(() => { r = 0;
+      const w = stg.offsetWidth; if (APP !== '2' || !w || Math.abs(w - pw) < 0.5) return; pw = w; renderCpPrev(); }); }).observe(stg); } }
 })();
 
 // ── 썸네일 ↔ 카드뉴스 세그 전환 (app2 · 운영자 260712 2차 확정 — "썸네일 틀 유지 · covrow 좌측 텍스트 위젯만 교체(textarea↔칩) · 우측 사진 슬롯(CIMG) 양 모드 공유 · 헤더/옵션/저작권/안내문 = 자리 유지 · 미리보기 = 같은 칸에 카드뉴스 변형 합류") ──
