@@ -33,6 +33,9 @@ export async function onRequestGet({ request, env }) {
   // GET /api/thumb?recent=<시간> → 최근 제작 id 목록(운영자 260731 "즉시 경로 얹기" — 타 기기·타 플랫폼 제작분을 Pages 빌드·배포 랙 없이 발견).
   // id 선두 12자리 = KST 제작시각(thIdTs 계약) → 컷오프 id를 startAfter로 = 전체 버킷 스캔 없이 최근 창만 목록(R2 list Class A 1~3회/호출).
   // 발견만 담당 — 내용은 클라가 기존 ?meta=/?src= 즉시 경로(fetchMetaById 정본)로 끌어와 dedup·지운기록 컷까지 기존 문법 그대로.
+  // 키 매칭 = 12자리 숫자 선두 강제(260801 수리) — id 계약(L134 발급 = YYMMDDHHMMSS-rand)에 없는 수기 키(speedtest-* 등)가
+  //   사전순으로 숫자 prefix 뒤라 startAfter 컷오프를 항상 통과 = 시간창 무관 상시 혼입했다. 클라 thIdTs도 0이라 지운기록 컷 방어 밖.
+  //   좁히는 건 '발견' 축만 — ?meta=/?src= 열람(L53~)은 종전 규칙 유지라 딥링크·기존 복원 무영향.
   if (q.get('recent') != null) {
     if (!env.R2) return j({ ids: [], reason: 'r2-unbound' });
     const hrs = Math.max(1, Math.min(48, +q.get('recent') || 24));
@@ -43,7 +46,7 @@ export async function onRequestGet({ request, env }) {
     try {
       for (let i = 0; i < 3; i++) {   // 상한 3페이지(24h 창 실사용량 대비 여유 · 폭주 방어)
         const l = await env.R2.list(cursor ? { prefix: 'thumb_out/', limit: 1000, cursor } : { prefix: 'thumb_out/', startAfter: 'thumb_out/' + cut, limit: 1000 });
-        for (const o of (l.objects || [])) { const m = o.key.match(/^thumb_out\/([A-Za-z0-9_-]{1,64})\/_meta\.json$/); if (m) ids.add(m[1]); }
+        for (const o of (l.objects || [])) { const m = o.key.match(/^thumb_out\/(\d{12}[A-Za-z0-9_-]{0,52})\/_meta\.json$/); if (m) ids.add(m[1]); }
         if (!l.truncated) break; cursor = l.cursor;
       }
     } catch (e) { return j({ ids: [], reason: 'r2-error' }); }   // R2 장애 = 빈 목록(클라는 종전 Pages 폴 사다리 유지)
