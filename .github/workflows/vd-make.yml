@@ -1,0 +1,145 @@
+name: vd-make
+
+# 영상 스튜디오 「큐영상」 탭(Pages Function /api/vd)이 발사 — 단일 잡:
+#   queue/<file>.md → video/build.mjs(팔레트·행 산출) → hyperframes 렌더(1080×1920·6s)
+#   → R2 vd_res/<id>/<file>.mp4 → viewer/vd_out/<id>/video.json 커밋(폼이 폴링).
+# LLM 0콜 · 업로드 0(소스가 이미 레포 안) · 골격 = conv-make 미러.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: '작업 id(타임스탬프-hex6)'
+        type: string
+      files:
+        description: '큐 파일명 쉼표 목록(확장자 없이 · 최대 12건 · api/vd.js가 정규식 검증)'
+        type: string
+        default: ''
+
+concurrency:
+  group: vd-make-${{ inputs.id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  checks: read   # 배포 게이트(deploy-then-notify) — Pages 체크런 조회(conv/edit-make 정본 계승 · §완료알림 기틀)
+
+jobs:
+  vd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40   # 최악 스택{환경 ~10 + 렌더 25} + 커밋 창 — 무한 행만 차단(§9 · conv 문법)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'   # hyperframes 요구 = Node 22+
+
+      - name: 렌더 환경 (hyperframes + ffmpeg)
+        timeout-minutes: 10
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: video/setup.sh
+          apt: ffmpeg
+
+      - name: 렌더 (queue → MP4)
+        timeout-minutes: 25   # 스텝 자체 캡 — 잡 40분 하드캔슬 전에 failure() error.log 표면화(conv 문법)
+        env:
+          IN_ID: ${{ inputs.id }}
+          IN_FILES: ${{ inputs.files }}
+        run: |
+          set -e
+          [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          # api/vd.js 정규식과 동형 자체 재검증(상류 신뢰 대신 최후 방어선 · conv r2_src 선례)
+          printf '%s' "$IN_FILES" | grep -Eqx '[0-9]{6}-[0-9]{4}-[A-Za-z0-9._-]{1,100}(,[0-9]{6}-[0-9]{4}-[A-Za-z0-9._-]{1,100}){0,11}' \
+            || { echo "고른 기사가 이상해 — 다시 골라줘." > /tmp/vd_err.txt; echo "::error::잘못된 files: $IN_FILES"; exit 1; }
+          case "$IN_FILES" in *..*) echo "::error::경로 탈출 시도"; exit 1;; esac
+
+          cd video
+          . ./env.sh
+          node build.mjs --files "$IN_FILES"
+          COUNT=$(node -e "console.log(require('./.build/rows.json').length)")
+          [ "$COUNT" -gt 0 ] || { echo "고른 기사에 훅·제목이 없어 — 요약이 끝난 기사를 골라줘." > /tmp/vd_err.txt; echo "::error::rows 0"; exit 1; }
+          echo "렌더 대상 ${COUNT}건"
+          rm -rf out && mkdir -p out
+          # --workers 1 고정 = 2 이상이면 청크 경계 프레임 1장이 t=0 상태로 깨진다(실측 260801 · video/README §함정)
+          node_modules/.bin/hyperframes render . --workers 1 --batch .build/rows.json -o "out/{name}.mp4" \
+            || echo "::warning::배치 렌더가 비정상 종료 — 산출 개수로 재판정"
+          ls -la out || true
+          MADE=$(ls out/*.mp4 2>/dev/null | wc -l)
+          # 부분 실패 관측(로컬 4회 중 1회 · 원인 미규명) = 전량 실패만 잡을 실패로, 부분은 만든 것만 내보내고 경고.
+          [ "$MADE" -gt 0 ] || { echo "영상이 하나도 안 만들어졌어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::산출 0/${COUNT}"; exit 1; }
+          [ "$MADE" -eq "$COUNT" ] || echo "::warning::부분 산출 ${MADE}/${COUNT} — 만들어진 것만 내보낸다"
+
+      - name: R2 업로드 → video.json
+        timeout-minutes: 8
+        env:
+          IN_ID: ${{ inputs.id }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -e
+          case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
+          [ -n "$R2_BUCKET" ] || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/vd_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
+          export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+          mkdir -p "viewer/vd_out/${IN_ID}"
+          : > /tmp/vd_urls.txt
+          for f in video/out/*.mp4; do
+            [ -e "$f" ] || continue
+            b=$(basename "$f")
+            aws s3 cp "$f" "s3://$R2_BUCKET/vd_res/${IN_ID}/${b}" --content-type video/mp4 \
+              --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
+              || { echo "결과 업로드에 실패했어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::R2 업로드 실패: $b"; exit 1; }
+            echo "${R2_PUBLIC_BASE}/vd_res/${IN_ID}/${b}" >> /tmp/vd_urls.txt
+          done
+          [ -s /tmp/vd_urls.txt ] || { echo "만들어진 영상이 없어." > /tmp/vd_err.txt; echo "::error::산출 0"; exit 1; }
+          node -e '
+            const fs = require("fs");
+            const files = fs.readFileSync("/tmp/vd_urls.txt", "utf8").split("\n").filter(Boolean);
+            const out = { id: process.env.IN_ID, generated: new Date().toISOString(), files };
+            fs.writeFileSync("viewer/vd_out/" + process.env.IN_ID + "/video.json", JSON.stringify(out, null, 2) + "\n");
+          '
+          cat "viewer/vd_out/${IN_ID}/video.json"
+
+      - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
+        if: failure()
+        env:
+          IN_ID: ${{ inputs.id }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          mkdir -p "viewer/vd_out/${IN_ID}"
+          if [ -s /tmp/vd_err.txt ]; then MSG=$(cat /tmp/vd_err.txt); else MSG="영상 만들기에 실패했어 — Actions 로그를 확인해줘."; fi
+          export MSG
+          node -e '
+            const fs = require("fs");
+            fs.writeFileSync("viewer/vd_out/" + process.env.IN_ID + "/video.json",
+              JSON.stringify({ id: process.env.IN_ID, error: process.env.MSG }, null, 2) + "\n");
+          '
+          echo "error: $MSG"
+
+      - name: Commit output
+        if: always()
+        env:
+          IN_ID: ${{ inputs.id }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          [ -n "$IN_ID" ] || { echo "id 없음 — 커밋 스킵"; exit 0; }
+          case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
+          git config user.name "nomute-bot"
+          git config user.email "bot@nomute.local"
+          git add "viewer/vd_out/${IN_ID}" 2>/dev/null || true
+          git commit -m "vd: ${IN_ID} 큐영상 출력" || { echo "커밋할 것 없음"; exit 0; }
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+          done
+          [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }

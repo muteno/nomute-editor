@@ -7,7 +7,8 @@
  *  ② queue/*.md 프런트매터        →  video/.build/rows.json
  *     `hyperframes render --batch` 가 먹는 변수 행 배열. 기사 1건 = 영상 1편.
  *
- *  사용: node video/build.mjs [--limit N] [--queue-dir queue]
+ *  사용: node video/build.mjs [--limit N] [--files a,b,c] [--queue-dir queue]
+ *        --files = 큐 파일명(확장자 없이·쉼표 구분) 지정 렌더. 주면 --limit 무시·지정 순서 유지.
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
@@ -24,6 +25,10 @@ const argOf = (flag, dflt) => {
 };
 const LIMIT = Number(argOf('--limit', '12'));
 const QUEUE_DIR = join(ROOT, argOf('--queue-dir', 'queue'));
+// 지정 렌더 = 큐 파일명(확장자 없이). 경로 분리자·상대참조는 거른다(러너 인자 경유 = 경로 탈출 차단).
+const FILES = String(argOf('--files', ''))
+  .split(',').map((s) => s.trim().replace(/\.md$/, ''))
+  .filter((s) => s && !s.includes('/') && !s.includes('\\') && !s.includes('..'));
 
 mkdirSync(BUILD, { recursive: true });
 
@@ -71,10 +76,13 @@ const biasZoneCol = (v) => {
 };
 
 function buildRows() {
-  const files = readdirSync(QUEUE_DIR).filter((f) => f.endsWith('.md')).sort().reverse();
+  const all = readdirSync(QUEUE_DIR).filter((f) => f.endsWith('.md')).sort().reverse();
+  // --files = 지정 순서 그대로(존재하는 것만) · 없으면 최신순 LIMIT건
+  const files = FILES.length ? FILES.map((n) => n + '.md').filter((f) => all.includes(f)) : all;
+  const cap = FILES.length ? files.length : LIMIT;
   const rows = [];
   for (const f of files) {
-    if (rows.length >= LIMIT) break;
+    if (rows.length >= cap) break;
     const fm = parseFrontMatter(readFileSync(join(QUEUE_DIR, f), 'utf8'));
     if (!fm || !fm.hook || !fm.title) continue;
     const m = (fm.bias || '').match(/^(\d+)\s*\/\s*10/);
