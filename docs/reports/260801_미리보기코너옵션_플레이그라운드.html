@@ -1,0 +1,415 @@
+<meta charset="utf-8">
+<title>미리보기 코너 옵션 레일 — 플레이그라운드 (260801)</title>
+<style>
+/* ── 토큰 사본 = viewer/index.html :root + viewer/thumb.html :root 실측 발췌(창작 0) ── */
+:root{
+  --bg:#0b0d0c; --pan:#16171a; --line:#2a2c31; --line2:#2a2c31; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210; --accent-5:#0FFD02;
+  --danger:#e23b2a; --danger-rgb:226,59,42; --amber:#FFE13D; --amber-rgb:255,225,61;
+  --r-l:16px; --r-m:11px; --r-s:9px; --r-pill:999px; --r-modal:22px;
+  --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px;
+  --btn:34px; --btn-sm:30px;
+  --fs-h2:15px; --fs-h3:14px; --fs-label:13px; --fs-body:15px; --fs-sm:12px; --fs-xs:11px;
+  --fw-b:700; --fw-x:800; --lh-base:1.6;
+  --ease:cubic-bezier(.2,.7,.3,1); --dur:.18s; --dur-fast:.12s; --dur-acc:.14s;
+  --blur-s:8px; --blur-l:22px; --press-m:.9; --press-xs:.8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* 스크롤바 전면 비표시 = viewer/thumb.html 정본 계승(운영자 260801) */
+html{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{width:0;height:0;display:none}
+.screenpad,pre#out,.console,.dfrin{scrollbar-width:none;-ms-overflow-style:none}
+.screenpad::-webkit-scrollbar,pre#out::-webkit-scrollbar,.console::-webkit-scrollbar,.dfrin::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:var(--fs-body)/var(--lh-base) 'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  letter-spacing:-.2px;-webkit-font-smoothing:antialiased}
+h1{font-size:19px;margin:0 0 4px} h1 b{color:var(--accent)}
+.sub{color:var(--mut);font-size:var(--fs-sm);margin:0 0 var(--sp-3)}
+.wrap{display:flex;flex-wrap:wrap;gap:var(--sp-3);padding:var(--sp-3);align-items:flex-start}
+.stagewrap{flex:1 1 520px;min-width:0} .console{flex:0 0 400px;max-width:100%;display:flex;flex-direction:column;gap:var(--sp-2)}
+@media (max-width:900px){.console{flex:1 1 100%}}
+
+/* ── ① 실물 재현 = 이미지 스튜디오 도크(1:1 미리보기 · 260801 배선분) ── */
+.screenpad{overflow:auto}
+.frame{width:600px;max-width:100%;margin:0 auto;background:#121212;border:1px solid var(--line);
+  border-radius:var(--r-modal);overflow:hidden}
+.dtabs{display:flex;height:52px;border-bottom:1px solid var(--line2)}
+.dtabs span{flex:1;display:grid;place-items:center;font-size:var(--fs-label);font-weight:var(--fw-b);color:var(--mut);border-right:1px solid var(--line2)}
+.dtabs span:last-child{border-right:0} .dtabs span.on{color:var(--accent)}
+.iwrap{padding:18px 16px var(--sp-3)}
+.topdock{margin:0 -16px;padding:var(--sp-3) 16px var(--sp-4);background:rgba(18,18,18,.72);border-bottom:1px solid var(--line2)}
+.cpprev{margin:0 0 var(--sp-2)}
+.cpprev-box{position:relative;width:100%;aspect-ratio:1/1;background:#121212;border:1px solid transparent;
+  border-radius:var(--r-s);overflow:hidden}
+.cpprev-stage{position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);background:#000;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 6% 9%}
+.cpprev-stage b{color:var(--accent-5);font-weight:800;font-size:14px;text-align:center;line-height:1.25}
+.cpprev-stage i{color:#fff;font-weight:800;font-size:11px;font-style:normal;margin-top:.3em}
+/* 기존 교체·삭제 툴(.cpv-tool 정본) = 위치 충돌 확인용으로 함께 재현 */
+.cpv-tool{position:absolute;top:6px;width:30px;height:30px;display:grid;place-items:center;color:var(--accent);
+  background:var(--bg);border:0;border-radius:var(--r-s);z-index:2;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+.cpv-tool svg{width:15px;height:15px;display:block}
+#cpImgDel{right:6px} #cpImgSwap{right:42px}
+.optstrip{margin:0 0 var(--sp-2);padding:var(--sp-1) var(--sp-3);background:rgba(255,255,255,.015);
+  border:1px solid rgba(255,255,255,.06);border-radius:var(--r-s);font-size:11.25px;color:var(--mut)}
+.gobtn{height:var(--btn-sm);display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);
+  border-radius:var(--r-modal);color:var(--accent);font-size:var(--fs-label);font-weight:var(--fw-b)}
+.below{padding-top:var(--sp-3);color:var(--mut);font-size:var(--fs-label)}
+.below div{padding:9px 0;border-bottom:1px solid var(--line2)}
+
+/* ── ★ 코너 옵션 레일 = viewer/index.html `.trail`/`.trail-i`/`.trail-div` 정본 100% 모방 ──
+      정본값: 캡슐 r-pill · 테두리 rgba(255,255,255,.14) · 바탕 rgba(8,15,11,.34) · blur --blur-s
+              gap --sp-1 · padding 5px 2px · 아이템 22×22 원형 · 10.5px/--fw-x · mut → on=--accent
+              히트패드 ::after inset -6 -4 · 눌림 scale(--press-m) · 구분선 14×1 rgba(255,255,255,.16)
+      ⚠ 정본 이탈 후보 = 값 글자가 "9:16"(4자)라 22px 원 안에 안 들어갈 수 있다 → 아래 --t-iw(아이템 폭) 축 */
+.trailwrap{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px}
+.trail{display:flex;flex-direction:column;flex-wrap:nowrap;gap:var(--t-gap);padding:5px 2px;border-radius:var(--r-pill);
+  border:1px solid rgba(255,255,255,.14);background:rgba(8,15,11,var(--t-fill));
+  backdrop-filter:blur(var(--t-blur));-webkit-backdrop-filter:blur(var(--t-blur))}
+.trail.trail-row{flex-direction:row;padding:2px 5px}   /* ⚠ 모디파이어명 = trail-row(그냥 `row`는 콘솔의 `.row{display:grid;grid-template-columns:1fr auto}`와 충돌해 레일이 2열 그리드로 접혔다 · 실측 260801) */
+.trail-div{width:14px;height:1px;margin:1px 0;flex:none;background:rgba(255,255,255,.16)}
+.trail.trail-row .trail-div{width:1px;height:14px;margin:0 1px}
+.trail-i{position:relative;display:grid;place-items:center;flex:none /* 줄바꿈·수축 금지 — 가로 레일에서 아이템이 접혀 캡슐이 3줄이 되던 것(실측 260801) */;width:var(--t-iw);height:22px;padding:0;border:0;
+  background:none;border-radius:var(--t-irad);color:var(--mut);font-size:var(--t-ifs);font-weight:var(--fw-x);
+  font-family:inherit;letter-spacing:-.2px;cursor:pointer;white-space:nowrap;
+  transition:color var(--dur),transform var(--dur-fast) var(--ease)}
+.trail-i::after{content:'';position:absolute;inset:-6px -4px}
+.trail-i svg{width:12px;height:12px;display:block}
+.trail-i.on{color:var(--accent)}
+.trail-i:active{transform:scale(var(--press-m))}
+.trail-i .lb{color:var(--mut);font-weight:var(--fw-b);opacity:.7;margin-right:2px}
+
+/* 펼침 팝 = index 앵커 팝업 셸 문법(.min-pick 계승: 세로 스택 · gap 4 · padding --sp-1 · radius --r-l · 글래스) */
+.opt-pop{position:absolute;z-index:4;display:flex;flex-direction:column;gap:4px;padding:var(--sp-1);
+  border-radius:var(--r-l);border:1px solid rgba(255,255,255,.14);background:rgba(8,15,11,.62);
+  backdrop-filter:blur(var(--blur-l)) saturate(1.2);-webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2);
+  box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+  transform:translateY(-4px) scale(.97);transform-origin:var(--t-origin);
+  transition:opacity var(--dur-acc) var(--ease),transform var(--dur-acc) var(--ease)}
+.opt-pop.open{opacity:1;pointer-events:auto;transform:none}
+.opt-pop button{display:block;width:100%;text-align:left;padding:5px 9px;border:0;border-radius:var(--r-s);
+  background:none;color:var(--mut);font:var(--fw-x) 10.5px/1.5 inherit;letter-spacing:-.2px;cursor:pointer;
+  white-space:nowrap;transition:color var(--dur),background var(--dur)}
+.opt-pop button.on{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+.opt-pop button:active{transform:scale(var(--press-m))}
+.stagecap{color:var(--mut);font-size:var(--fs-sm);margin-top:var(--sp-2);text-align:center}
+.stagecap b{color:var(--fg);font-variant-numeric:tabular-nums}
+
+/* ── 콘솔 ── */
+.csec{background:var(--pan);border:1px solid var(--line);border-radius:var(--r-m);padding:var(--sp-2)}
+.csec h3{margin:0 0 var(--sp-1);font-size:var(--fs-xs);font-weight:var(--fw-b);color:var(--mut);letter-spacing:.4px;text-transform:uppercase}
+.pills{display:flex;flex-wrap:wrap;gap:var(--sp-1)}
+.pill{border:1px solid var(--line);background:transparent;color:var(--fg);border-radius:var(--r-pill);
+  padding:6px 11px;font:600 var(--fs-sm)/1 inherit;letter-spacing:-.2px;cursor:pointer;transition:transform var(--dur-fast) var(--ease),color var(--dur),border-color var(--dur)}
+.pill:active{transform:scale(.96)}
+.pill.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.55);background:rgba(var(--accent-rgb),.08)}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--r-s);overflow:hidden;margin-top:5px}
+.seg button{flex:1;background:transparent;border:0;border-right:1px solid var(--line);color:var(--mut);
+  padding:7px 3px;font:600 11px/1 inherit;letter-spacing:-.2px;cursor:pointer;transition:color var(--dur),background var(--dur)}
+.seg button:last-child{border-right:0} .seg button.on{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+.slab{font-size:10px;color:var(--mut);margin-top:9px}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--sp-1);margin-top:9px}
+.row label{font-size:var(--fs-sm)} .row label small{color:var(--mut);display:block;font-size:10px;line-height:1.3}
+.row .val{font-size:var(--fs-sm);font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700;min-width:5.4em;text-align:right}
+.row .val.warn{color:var(--amber)}
+.row input[type=range]{grid-column:1/-1;width:100%;margin:2px 0 0;-webkit-appearance:none;background:transparent;height:18px}
+input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:999px;background:linear-gradient(90deg,var(--accent) calc(var(--p,0)*100%),var(--line) 0)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5.5px;border-radius:50%;background:var(--accent);border:0;cursor:pointer}
+input[type=range]::-moz-range-track{height:3px;border-radius:999px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--accent);cursor:pointer}
+.chk{display:flex;align-items:center;gap:7px;font-size:var(--fs-sm);margin-top:8px;cursor:pointer}
+.chk input{accent-color:var(--accent);width:15px;height:15px}
+pre#out{margin:0 0 var(--sp-1);white-space:pre-wrap;word-break:break-all;font:11.5px/1.62 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:var(--fg);background:#0d0f0e;border:1px solid var(--line);border-radius:var(--r-s);padding:10px;max-height:300px;overflow:auto}
+#copy{width:100%;height:var(--btn-sm);border:1px solid rgba(var(--accent-rgb),.4);border-radius:var(--r-m);
+  background:rgba(var(--accent-rgb),.08);color:var(--accent);font:700 var(--fs-label)/1 inherit;letter-spacing:-.2px;cursor:pointer;transition:transform var(--dur-fast) var(--ease)}
+#copy:active{transform:scale(.97)}
+.note{color:var(--mut);font-size:var(--fs-xs);line-height:1.7} .note b{color:var(--fg)}
+.dev{margin-top:var(--sp-1);padding:9px 10px;border-radius:var(--r-s);font-size:var(--fs-sm);border:1px solid var(--line);background:#0d0f0e}
+.dev.ok{border-color:rgba(var(--accent-rgb),.4);color:var(--accent)}
+.dev.bad{border-color:rgba(var(--amber-rgb),.5);color:var(--amber)}
+dialog{border:0;border-radius:var(--r-modal);padding:0;background:var(--pan);color:var(--fg);max-width:430px;width:88vw}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.dlgin{padding:var(--sp-3)} .dlgin h4{margin:0 0 var(--sp-1);font-size:var(--fs-h3)}
+.dlgin p{margin:0 0 var(--sp-2);font-size:var(--fs-sm);color:var(--mut);line-height:1.65}
+</style>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <h1>미리보기 <b>코너 옵션 레일</b> — SNS 네비(<code>.trail</code>) 문법 그대로</h1>
+    <p class="sub">우측 옵션 컬럼을 없앤 자리를, 미리보기 창 코너의 값 칩으로. <b>미리보기 안의 칩을 실제로 눌러보세요</b> — 눌린 지점 기준으로 선택지가 펼쳐집니다.</p>
+    <div class="screenpad">
+      <div class="frame">
+        <div class="dtabs"><span>카드 생성</span><span class="on">편집</span><span>번역</span><span>AI 생성</span></div>
+        <div class="iwrap">
+          <div class="topdock">
+            <div class="cpprev"><div class="cpprev-box" id="cpbox">
+              <div class="cpprev-stage" id="cpstage"><b>황정민-K씨,</b><i>"단둘이 술 먹은 적 있어…"</i></div>
+              <button class="cpv-tool" id="cpImgSwap" aria-label="사진 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
+              <button class="cpv-tool" id="cpImgDel" aria-label="사진 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+              <div class="trailwrap" id="railwrap"><nav class="trail" id="rail" aria-label="미리보기 옵션"></nav></div>
+              <div class="opt-pop" id="pop"></div>
+            </div></div>
+            <div class="optstrip">배경 | 축약 | 배경 합성 | OPA: 60</div>
+            <div class="gobtn">생성</div>
+          </div>
+          <div class="below"><div>• 헤더</div><div>• 오버레이</div><div>• 저작권</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="stagecap">레일 <b id="capRail">—</b> · 아이템 <b id="capItem">—</b> · 툴 버튼과 겹침 <b id="capHit">—</b></p>
+  </div>
+
+  <aside class="console">
+    <div class="csec"><h3>② 프리셋</h3><div class="pills" id="presets"></div></div>
+
+    <div class="csec">
+      <h3>③-a 레일 자리</h3>
+      <div class="slab">모서리</div>
+      <div class="seg" id="segCorner"><button data-v="tr">우상단</button><button data-v="br">우하단</button><button data-v="tl">좌상단</button><button data-v="bl">좌하단</button></div>
+      <div class="slab">방향</div>
+      <div class="seg" id="segDir"><button data-v="col">세로(정본)</button><button data-v="row">가로</button></div>
+      <div class="row"><label>모서리 여백<small>정본 툴 버튼 = 6px</small></label><span class="val" id="vPad">—</span><input type="range" id="sPad" min="0" max="24" step="1"></div>
+      <div class="row"><label>툴 버튼(교체·삭제) 자리<small>0 = 그대로 · 1 = 레일 안으로 흡수</small></label><span class="val" id="vTool">—</span><input type="range" id="sTool" min="0" max="1" step="1"></div>
+      <div class="dev" id="hit">—</div>
+    </div>
+
+    <div class="csec">
+      <h3>③-b 캡슐(.trail 정본 축)</h3>
+      <div class="row"><label>아이템 폭<small>정본 22px 원형 · "9:16"은 4자</small></label><span class="val" id="vIw">—</span><input type="range" id="sIw" min="22" max="60" step="1"></div>
+      <div class="row"><label>아이템 글자<small>정본 10.5px</small></label><span class="val" id="vIfs">—</span><input type="range" id="sIfs" min="8" max="14" step="0.5"></div>
+      <div class="row"><label>아이템 라운드<small>정본 50%(원형)</small></label><span class="val" id="vIrad">—</span><input type="range" id="sIrad" min="0" max="16" step="1"></div>
+      <div class="row"><label>아이템 간격<small>정본 --sp-1 = 6px</small></label><span class="val" id="vGap">—</span><input type="range" id="sGap" min="0" max="14" step="1"></div>
+      <div class="row"><label>캡슐 바탕 알파<small>정본 .34</small></label><span class="val" id="vFill">—</span><input type="range" id="sFill" min="0" max="0.9" step="0.02"></div>
+      <div class="row"><label>캡슐 블러<small>정본 --blur-s = 8px</small></label><span class="val" id="vBlur">—</span><input type="range" id="sBlur" min="0" max="30" step="1"></div>
+    </div>
+
+    <div class="csec">
+      <h3>③-c 표기·내용</h3>
+      <div class="slab">칩에 뭘 보이나</div>
+      <div class="seg" id="segLabel"><button data-v="v">값만(9:16)</button><button data-v="lv">라벨+값</button><button data-v="ic">픽토+값</button></div>
+      <div class="slab">펼침 기준점</div>
+      <div class="seg" id="segOrigin"><button data-v="tr">우상단</button><button data-v="tl">좌상단</button><button data-v="c">칩 옆</button></div>
+      <div class="slab">담을 옵션(편집 탭 #editCol 이주분)</div>
+      <div class="pills" id="optPills"></div>
+      <label class="chk"><input type="checkbox" id="cDiv" checked> 그룹 구분선(.trail-div 정본)</label>
+      <label class="chk"><input type="checkbox" id="cOpen"> 팝 열어둔 채로 보기</label>
+    </div>
+
+    <div class="csec"><h3>④ 선택값</h3><pre id="out"></pre><button id="copy">선택값 복사</button></div>
+
+    <div class="csec note">
+      <b>⑤ 재현 한계</b><br>
+      · 레일·캡슐·팝 = <b>index.html <code>.trail</code>/<code>.trail-i</code>/<code>.trail-div</code> + <code>.min-pick</code> 정본값 그대로</b>. 기본값 = 정본 실측이라 슬라이더를 안 만지면 「그 컴포넌트 그대로」다.<br>
+      · 미리보기 창은 260801 배선분(1:1 고정비·전폭)을 그대로 재현. 도크 여백·스트립·생성 버튼도 실물 값.<br>
+      · <b>정본 이탈이 불가피한 축 하나</b> — <code>.trail-i</code>는 22×22 <b>원형</b>인데 "9:16"은 4자라 안 들어간다. 폭·라운드를 늘리면 원형이 알약이 되고, 그건 <code>.trail</code> 정체성 변경 = ⚠ 기틀 갱신 역제안 대상.<br>
+      · 겹침 판정(<code>.cpv-tool</code> 교체·삭제와의 충돌)은 실제 사각형 교차로 계산 — 실물 히트패드(::after -6/-4)까지 포함.<br>
+      · 산출 스테이지 글자는 근사(실제는 Noto Sans CJK Bold + PIL 합성).
+    </div>
+  </aside>
+</div>
+
+<dialog id="warnDlg"><div class="dlgin">
+  <h4>기틀 이탈 축이 있습니다</h4><p id="warnMsg"></p>
+  <div class="pills"><button class="pill" id="wAll">역제안 포함 복사</button><button class="pill" id="wOk">계승분만 복사</button><button class="pill" id="wNo">취소</button></div>
+</div></dialog>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+// ── .trail 정본 실측값(viewer/index.html 1196~1207행) ──
+const CANON = { iw:22, ifs:10.5, irad:'50%', gap:6, fill:.34, blur:8, pad:6 };
+const OPTS = [
+  { k:'rsz',  nm:'비율',    pic:'▭', vals:['원본','4:5','9:16','16:9','1:1'], cur:2 },
+  { k:'ups',  nm:'해상도',  pic:'HD', vals:['720p','FHD','2K','4K'], cur:1 },
+  { k:'lock', nm:'보존',    pic:'🔒', vals:['끔','켬'], cur:1 },
+  { k:'ie',   nm:'모자이크', pic:'▓', vals:['끔','켬'], cur:0 },
+];
+const DEFAULTS = { corner:'tr', dir:'col', pad:6, tool:0, iw:22, ifs:10.5, irad:50, gap:6, fill:.34, blur:8,
+                   label:'v', origin:'tr', on:'rsz,ups', div:1, open:0 };
+const PRESETS = [
+  { id:'p0', nm:'정본 그대로(.trail)', st:{...DEFAULTS} },
+  { id:'p1', nm:'A · 값 알약 우상단', star:1, st:{...DEFAULTS, iw:40, irad:9, pad:6, tool:1} },
+  { id:'p2', nm:'B · 픽토+값 우하단', st:{...DEFAULTS, label:'ic', iw:46, irad:9, corner:'br', origin:'tl'} },
+  { id:'p3', nm:'C · 가로 레일 우상단', st:{...DEFAULTS, dir:'row', iw:40, irad:9, tool:1} },
+  { id:'p4', nm:'D · 라벨+값 4옵션', st:{...DEFAULTS, label:'lv', iw:56, irad:9, on:'rsz,ups,lock,ie', tool:1} },
+];
+let state = {...DEFAULTS};
+let sel = {}; OPTS.forEach(o => sel[o.k] = o.cur);
+let popFor = null;
+
+const onList = () => state.on.split(',').filter(Boolean);
+const warnAxes = () => {
+  const w = [];
+  if (state.iw !== CANON.iw)   w.push({ ax:'.trail-i 폭',       now:CANON.iw + 'px(원형)', want:state.iw + 'px' });
+  if (state.irad !== 50)       w.push({ ax:'.trail-i 라운드',   now:'50%(원형)',           want:state.irad + 'px' });
+  if (state.ifs !== CANON.ifs) w.push({ ax:'.trail-i 글자',     now:CANON.ifs + 'px',      want:state.ifs + 'px' });
+  if (state.gap !== CANON.gap) w.push({ ax:'.trail gap',        now:'--sp-1 6px',          want:state.gap + 'px' });
+  if (Math.abs(state.fill - CANON.fill) > .001) w.push({ ax:'.trail 바탕 알파', now:'.34', want:state.fill.toFixed(2) });
+  if (state.blur !== CANON.blur) w.push({ ax:'.trail 블러',     now:'--blur-s 8px',        want:state.blur + 'px' });
+  return w;
+};
+
+function railHTML(){
+  const ks = onList(); const parts = [];
+  ks.forEach((k, i) => {
+    const o = OPTS.find(x => x.k === k); if (!o) return;
+    if (i && state.div) parts.push('<span class="trail-div"></span>');
+    const v = o.vals[sel[k]];
+    const face = state.label === 'lv' ? '<span class="lb">' + o.nm.slice(0,1) + '</span>' + v
+               : state.label === 'ic' ? '<span class="lb">' + o.pic + '</span>' + v : v;
+    parts.push('<button type="button" class="trail-i on" data-k="' + k + '" title="' + o.nm + ' — 탭=선택지">' + face + '</button>');
+  });
+  if (state.tool) parts.push((state.div ? '<span class="trail-div"></span>' : '') +
+    '<button type="button" class="trail-i" data-k="_swap" title="사진 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>' +
+    '<button type="button" class="trail-i" data-k="_del" title="사진 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>');
+  return parts.join('');
+}
+
+function apply(){
+  const box = $('#cpbox'), rw = $('#railwrap'), rail = $('#rail');
+  box.style.setProperty('--t-iw',   state.iw + 'px');
+  box.style.setProperty('--t-ifs',  state.ifs + 'px');
+  box.style.setProperty('--t-irad', state.irad === 50 ? '50%' : state.irad + 'px');
+  box.style.setProperty('--t-gap',  state.gap + 'px');
+  box.style.setProperty('--t-fill', state.fill);
+  box.style.setProperty('--t-blur', state.blur + 'px');
+  box.style.setProperty('--t-origin', ({tr:'top right', tl:'top left', c:'center'})[state.origin]);
+  rail.className = 'trail' + (state.dir === 'row' ? ' trail-row' : '');
+  rail.innerHTML = railHTML();
+  const p = state.pad + 'px';
+  rw.style.cssText = 'position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;' +
+    (state.corner[0] === 't' ? 'top:' + p + ';' : 'bottom:' + p + ';') +
+    (state.corner[1] === 'r' ? 'right:' + p + ';' : 'left:' + p + ';');
+  // 레일에 흡수하면 원래 툴 버튼은 퇴장
+  $('#cpImgSwap').style.display = $('#cpImgDel').style.display = state.tool ? 'none' : 'grid';
+
+  // 겹침 실측 = 실제 사각형 교차(히트패드 포함)
+  const R = el => el.getBoundingClientRect();
+  const inter = (a,b) => Math.max(0, Math.min(a.right,b.right)-Math.max(a.left,b.left)) *
+                         Math.max(0, Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+  let ov = 0;
+  if (!state.tool) [ '#cpImgSwap', '#cpImgDel' ].forEach(s => { const e = $(s); if (e && e.offsetParent) ov += inter(R(rail), R(e)); });
+  const hit = $('#hit');
+  hit.className = 'dev ' + (ov > 0 ? 'bad' : 'ok');
+  hit.textContent = ov > 0 ? '⚠ 교체·삭제 버튼과 ' + Math.round(ov) + 'px² 겹침 — 레일을 옮기거나 툴을 레일 안으로'
+                           : (state.tool ? '✅ 툴 버튼을 레일 안으로 흡수 = 코너 요소 1개' : '✅ 겹침 없음');
+  const rr = R(rail), rb = R(box);
+  $('#capRail').textContent = Math.round(rr.width) + '×' + Math.round(rr.height) + ' @' +
+    ({tr:'우상',br:'우하',tl:'좌상',bl:'좌하'})[state.corner];
+  const fi = rail.querySelector('.trail-i');
+  $('#capItem').textContent = fi ? Math.round(R(fi).width) + '×' + Math.round(R(fi).height) : '—';
+  $('#capHit').textContent = ov > 0 ? Math.round(ov) + 'px²' : '없음';
+
+  SL.forEach(s => { const el = $('#' + s.el); el.value = state[s.k];
+    el.style.setProperty('--p', (el.value - el.min) / (el.max - el.min));
+    const v = $('#' + s.v); v.textContent = s.fmt(+state[s.k]); v.classList.toggle('warn', !!(s.warn && s.warn(+state[s.k]))); });
+  [['segCorner','corner'],['segDir','dir'],['segLabel','label'],['segOrigin','origin']].forEach(([id,k]) =>
+    document.querySelectorAll('#' + id + ' button').forEach(b => b.classList.toggle('on', b.dataset.v === state[k])));
+  document.querySelectorAll('#optPills .pill').forEach(b => b.classList.toggle('on', onList().includes(b.dataset.k)));
+  $('#cDiv').checked = !!state.div; $('#cOpen').checked = !!state.open;
+  document.querySelectorAll('#presets .pill').forEach(p => { const pr = PRESETS.find(x => x.id === p.dataset.id);
+    p.classList.toggle('on', !!pr && Object.keys(pr.st).every(k =>
+      typeof pr.st[k] === 'number' ? Math.abs(pr.st[k] - state[k]) < .0005 : pr.st[k] === state[k])); });
+  if (state.open && !popFor) openPop(onList()[0]);
+  if (!state.open && popFor) closePop();
+  if (popFor) openPop(popFor);
+  buildOut();
+}
+
+function openPop(k){
+  const o = OPTS.find(x => x.k === k); if (!o) return; popFor = k;
+  const pop = $('#pop');
+  pop.innerHTML = o.vals.map((v,i) => '<button type="button" data-i="' + i + '" class="' + (sel[k]===i?'on':'') + '">' + v + '</button>').join('');
+  const box = $('#cpbox').getBoundingClientRect();
+  const chip = $('#rail').querySelector('[data-k="' + k + '"]');
+  const c = chip ? chip.getBoundingClientRect() : $('#rail').getBoundingClientRect();
+  pop.classList.add('open');
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x, y;
+  if (state.origin === 'c'){ x = c.left - box.left - pw - 6; y = c.top - box.top; }
+  else if (state.origin === 'tl'){ x = state.pad; y = state.corner[0]==='t' ? state.pad : box.height - ph - state.pad; }
+  else { x = box.width - pw - state.pad; y = state.corner[0]==='t' ? state.pad : box.height - ph - state.pad; }
+  pop.style.left = Math.max(4, Math.min(x, box.width - pw - 4)) + 'px';
+  pop.style.top  = Math.max(4, Math.min(y, box.height - ph - 4)) + 'px';
+}
+function closePop(){ popFor = null; $('#pop').classList.remove('open'); $('#pop').innerHTML = ''; }
+
+function buildOut(){
+  const w = warnAxes(), L = [];
+  L.push('[미리보기 코너 옵션 레일 — 선택값]');
+  L.push('레퍼런스   : viewer/index.html .trail / .trail-i / .trail-div (SNS 세로 레일) 100% 모방');
+  L.push('자리       : ' + ({tr:'우상단',br:'우하단',tl:'좌상단',bl:'좌하단'})[state.corner] + ' · 여백 ' + state.pad + 'px' + (state.pad===6?'  [.cpv-tool 정본 6 동값 = 계승]':'  ⚠ 정본 6 이탈'));
+  L.push('방향       : ' + (state.dir==='col'?'세로 [정본]':'가로  ⚠ .trail 정본은 세로'));
+  L.push('칩 표기    : ' + ({v:'값만(예 9:16)',lv:'라벨 머리글자+값',ic:'픽토+값'})[state.label]);
+  L.push('펼침 기준  : ' + ({tr:'우상단',tl:'좌상단',c:'칩 옆'})[state.origin] + ' (transform-origin + 좌표 앵커)');
+  L.push('담을 옵션  : ' + onList().map(k => (OPTS.find(o=>o.k===k)||{}).nm).join(' · '));
+  L.push('구분선     : ' + (state.div?'있음 [.trail-div 정본]':'없음  ⚠ 정본 이탈'));
+  L.push('교체·삭제  : ' + (state.tool?'레일 안으로 흡수(코너 요소 1개)':'현행 .cpv-tool 자리 유지'));
+  L.push('');
+  L.push('— 캡슐 값(정본 대비) —');
+  const row = (nm, now, val, unit) => nm + ' : ' + val + unit + (now === val ? '  [정본 동값 = 계승]' : '  ⚠ 정본 ' + now + unit + ' → 갱신 후보');
+  L.push(row('아이템 폭  ', CANON.iw, state.iw, 'px'));
+  L.push(row('아이템 글자', CANON.ifs, state.ifs, 'px'));
+  L.push('아이템 라운드: ' + (state.irad===50?'50%  [정본 원형 = 계승]':state.irad+'px  ⚠ 정본 50%(원형) → 갱신 후보'));
+  L.push(row('아이템 간격', CANON.gap, state.gap, 'px'));
+  L.push(row('바탕 알파  ', CANON.fill, +state.fill.toFixed(2), ''));
+  L.push(row('블러       ', CANON.blur, state.blur, 'px'));
+  L.push('');
+  L.push('— 판정 —');
+  L.push($('#hit').textContent.replace(/^[✅⚠]\s*/, '겹침 : '));
+  if (w.length){
+    L.push('');
+    L.push('🔁 기틀 갱신 역제안 (' + w.length + '축)');
+    w.forEach(x => L.push('  · ' + x.ax + ' : ' + x.now + '  →  ' + x.want));
+    L.push('  적용 범위 = .trail 컴포넌트를 쓰는 전 표면(SNS 레일·채널 레일·이 코너 레일) — 코너 레일만 별도 변주로 둘지도 회신에 적어주면 그대로.');
+  }
+  $('#out').textContent = L.join('\n');
+}
+
+const SL = [
+  { k:'pad',  el:'sPad',  v:'vPad',  fmt:v=>v+'px',        warn:v=>v!==CANON.pad },
+  { k:'tool', el:'sTool', v:'vTool', fmt:v=>v?'레일 흡수':'현행 유지' },
+  { k:'iw',   el:'sIw',   v:'vIw',   fmt:v=>v+'px',        warn:v=>v!==CANON.iw },
+  { k:'ifs',  el:'sIfs',  v:'vIfs',  fmt:v=>v+'px',        warn:v=>v!==CANON.ifs },
+  { k:'irad', el:'sIrad', v:'vIrad', fmt:v=>v===50?'50% 원형':v+'px', warn:v=>v!==50 },
+  { k:'gap',  el:'sGap',  v:'vGap',  fmt:v=>v+'px',        warn:v=>v!==CANON.gap },
+  { k:'fill', el:'sFill', v:'vFill', fmt:v=>v.toFixed(2),  warn:v=>Math.abs(v-CANON.fill)>.001 },
+  { k:'blur', el:'sBlur', v:'vBlur', fmt:v=>v+'px',        warn:v=>v!==CANON.blur },
+];
+$('#presets').innerHTML = PRESETS.map(p => '<button class="pill" data-id="' + p.id + '">' + (p.star?'★ ':'') + p.nm + '</button>').join('');
+$('#presets').onclick = e => { const b = e.target.closest('.pill'); if (!b) return;
+  state = {...state, ...PRESETS.find(x=>x.id===b.dataset.id).st}; closePop(); apply(); };
+$('#optPills').innerHTML = OPTS.map(o => '<button class="pill" data-k="' + o.k + '">' + o.nm + '</button>').join('');
+$('#optPills').onclick = e => { const b = e.target.closest('.pill'); if (!b) return;
+  const l = onList(), k = b.dataset.k; const i = l.indexOf(k);
+  if (i >= 0) { if (l.length > 1) l.splice(i,1); } else l.push(k);
+  state.on = l.join(','); if (popFor && !l.includes(popFor)) closePop(); apply(); };
+[['segCorner','corner'],['segDir','dir'],['segLabel','label'],['segOrigin','origin']].forEach(([id,k]) =>
+  $('#'+id).onclick = e => { const b = e.target.closest('button'); if (!b) return; state[k] = b.dataset.v; apply(); });
+SL.forEach(s => $('#'+s.el).addEventListener('input', e => { state[s.k] = +e.target.value; apply(); }));
+$('#cDiv').onchange = e => { state.div = e.target.checked?1:0; apply(); };
+$('#cOpen').onchange = e => { state.open = e.target.checked?1:0; if (!state.open) closePop(); apply(); };
+// ④ 미리보기 안의 실물 칩도 진짜 배선(§7-1-4)
+$('#rail').addEventListener('click', e => { const b = e.target.closest('.trail-i'); if (!b) return;
+  const k = b.dataset.k; if (k[0] === '_') return;
+  if (popFor === k) closePop(); else openPop(k); });
+$('#pop').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !popFor) return;
+  sel[popFor] = +b.dataset.i; const k = popFor; closePop(); apply(); if (state.open) openPop(k); else apply(); });
+document.addEventListener('click', e => { if (popFor && !e.target.closest('#pop') && !e.target.closest('#rail') && !state.open) closePop(); });
+
+function doCopy(t){ const done = () => { const b = $('#copy'); b.textContent='복사됨 ✓'; setTimeout(()=>b.textContent='선택값 복사',1400); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => fb(t,done)); else fb(t,done); }
+function fb(t,done){ const ta=document.createElement('textarea'); ta.value=t; document.body.appendChild(ta);
+  const r=document.createRange(); r.selectNodeContents(ta); const s=getSelection(); s.removeAllRanges(); s.addRange(r);
+  ta.setSelectionRange(0,t.length); try{document.execCommand('copy');done();}catch(_){} ta.remove(); }
+$('#copy').onclick = () => { const w = warnAxes(); if (!w.length) return doCopy($('#out').textContent);
+  $('#warnMsg').textContent = '.trail 정본에서 벗어난 축이 ' + w.length + '개 있습니다: ' + w.map(x=>x.ax).join(' · ')
+    + '. 이대로 복사하면 「🔁 기틀 갱신 역제안」 블록이 함께 나가고, 회신이 곧 기틀 편입 승인 경로가 됩니다.';
+  $('#warnDlg').showModal(); };
+$('#wAll').onclick = () => { $('#warnDlg').close(); doCopy($('#out').textContent); };
+$('#wOk').onclick  = () => { $('#warnDlg').close(); doCopy($('#out').textContent.split('🔁 기틀 갱신 역제안')[0].trimEnd() + '\n(계승분만 복사 — 이탈 축 제외)'); };
+$('#wNo').onclick  = () => $('#warnDlg').close();
+addEventListener('resize', () => { if (popFor) openPop(popFor); });
+apply();
+</script>
