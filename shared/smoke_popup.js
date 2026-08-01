@@ -198,7 +198,7 @@ function assess(r) {
   //   운영자 260725 지시 = "더 불투명 · 대기열 함 그대로" · 앵커 .42는 뒤 피드 글자가 메시지 글자와 겹쳐 안 읽힘(실측 스샷)
   const _q = (r.shell || []).find(([s2]) => s2 === '.bpop.qpop'), _m = (r.shell || []).find(([s2]) => s2 === '.qpop.msgpop');
   const shellOk = !!_q && !!_m && ['bcol', 'bw', 'shadow', 'blur'].every(k => _q[1][k] === _m[1][k])
-    && /rgba\(0,\s*0,\s*0,\s*0?\.64\)/.test(_m[1].bg);
+    && /rgba\(17,\s*18,\s*20,\s*0?\.64\)/.test(_m[1].bg);
   C('C1b 알림메세지 셸 = 대기열 함 {테두리·그림자·blur} 동일 + 배경 --modal-glass(.64)', shellOk,
     _q && _m ? '대기열 ' + _q[1].bg + ' / 알림 ' + _m[1].bg + ' · 테두리 ' + _m[1].bcol + ' ' + _m[1].bw + ' · blur ' + _m[1].blur : '미수집');
   // C2 = 프로스트 blur 동일(.sc-rsn = --anchor-sat:0 무채색 글래스 기틀 의도 예외 · §🎨)
