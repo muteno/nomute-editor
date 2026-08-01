@@ -1,0 +1,318 @@
+<meta charset="utf-8">
+<title>핵심 구간 산출식 — 현행 vs 제안(도달 기대값) 플레이그라운드</title>
+<style>
+:root{
+  /* viewer/index.html :root 사본(계승 · 창작 0) */
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --accent:#00EED2; --accent-4:#FFE13D; --cat-tech:#AC5CFF;
+  --glass2:rgba(18,19,22,.55);
+  --r-s:9px; --r-m:11px; --r-l:16px; --r-pill:999px;
+  --sp-2:12px; --sp-3:18px;
+  --fs-xs:11px; --fs-sm:12px; --fs-body:15px; --fw-b:700; --fw-x:800;
+}
+*{box-sizing:border-box}
+body{margin:0; padding:18px; background:var(--bg); color:var(--fg);
+  font:var(--fs-body)/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;}
+h1{font-size:17px; font-weight:var(--fw-x); margin:0 0 4px}
+.sub{color:var(--mut); font-size:var(--fs-sm); margin:0 0 16px}
+.wrap{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start}
+.stagewrap{flex:1 1 520px; min-width:320px}
+.console{flex:0 1 340px; min-width:280px}
+.card{background:var(--glass2); border:1px solid var(--line); border-radius:var(--r-l); padding:var(--sp-3); margin-bottom:14px}
+.card h2{font-size:var(--fs-body); font-weight:var(--fw-b); margin:0 0 2px}
+.card h2 em{font-style:normal; color:var(--mut); font-weight:400; font-size:var(--fs-sm); margin-left:6px}
+.chart{width:100%; height:auto; display:block; margin-top:8px}
+.cap{display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:var(--fs-sm); margin-top:6px}
+.cap i{font-style:normal; color:var(--mut); display:inline-flex; align-items:center; gap:5px}
+.cap i::before{content:''; width:6px; height:6px; border-radius:50%; background:currentColor}
+.cap .sh::before{background:var(--accent)} .cap .gen::before{background:var(--accent-4); width:14px; height:2px; border-radius:0}
+.cap .core::before{background:var(--cat-tech)} .cap .pk::before{background:var(--mut)}
+.row{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:var(--fs-sm)}
+.row label{flex:0 0 96px; color:var(--mut)}
+.row input[type=range]{flex:1; accent-color:var(--cat-tech)}
+.val{font-variant-numeric:tabular-nums; font-weight:var(--fw-b); min-width:52px; text-align:right}
+.seg{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+.seg button{background:transparent; color:var(--mut); border:1px solid var(--line); border-radius:var(--r-pill);
+  padding:6px 12px; font-size:var(--fs-sm); font-weight:var(--fw-b); cursor:pointer; transition:transform .12s, color .12s, border-color .12s}
+.seg button:active{transform:scale(.97)}
+.seg button.on{color:var(--bg); background:var(--cat-tech); border-color:var(--cat-tech)}
+.preset{display:block; width:100%; text-align:left; background:transparent; color:var(--fg); border:1px solid var(--line);
+  border-radius:var(--r-m); padding:9px 12px; font-size:var(--fs-sm); margin-bottom:6px; cursor:pointer}
+.preset.on{border-color:var(--cat-tech); box-shadow:inset 0 0 0 1px var(--cat-tech)}
+.preset s{display:block; text-decoration:none; color:var(--mut); font-size:var(--fs-xs); margin-top:2px}
+table{width:100%; border-collapse:collapse; font-size:var(--fs-sm); font-variant-numeric:tabular-nums}
+th,td{text-align:right; padding:4px 6px; border-bottom:1px solid var(--line2)}
+th:first-child,td:first-child{text-align:left; color:var(--mut)}
+td.hit{color:var(--cat-tech); font-weight:var(--fw-b)}
+.out{white-space:pre-wrap; font:var(--fs-xs)/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--mut);
+  background:rgba(255,255,255,.03); border:1px solid var(--line2); border-radius:var(--r-s); padding:10px; margin-top:8px}
+.copy{width:100%; background:var(--accent); color:#062b27; border:0; border-radius:var(--r-m); padding:10px;
+  font-weight:var(--fw-x); font-size:var(--fs-sm); cursor:pointer; margin-top:8px}
+.copy:active{transform:scale(.98)}
+.note{font-size:var(--fs-xs); color:var(--mut); line-height:1.6}
+.note b{color:var(--fg)}
+.warn{color:var(--accent-4)}
+</style>
+
+<h1>핵심 구간 산출식 — 현행 vs 제안</h1>
+<p class="sub">실데이터 = <b>viewer/insta_data.json</b>(2026-08-01 · 표본 1,005건) · 차트 기하는 <b>chLiftChart</b> 상수 그대로(W600·H154·mL46·mR16·mT16·mB26·ph112) 재현</p>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="seg" id="axseg">
+      <button data-ax="hour_band" class="on">시간대</button>
+      <button data-ax="dow">요일</button>
+    </div>
+    <div class="card">
+      <h2>현행 <em>배포본 그대로 — 팔로워 곡선이 앱 사용자 곡선 위인 구간</em></h2>
+      <svg class="chart" id="svgA" viewBox="0 0 600 154" preserveAspectRatio="none"></svg>
+      <div class="cap"><i class="sh">팔로워</i><i class="gen">앱 사용자</i><i class="core">핵심 구간</i><i class="pk">접속 피크</i></div>
+      <div class="out" id="outA"></div>
+    </div>
+    <div class="card">
+      <h2>제안 <em>도달 기대값 = 팔로워 공유 lift × 앱 사용자 이용 강도</em></h2>
+      <svg class="chart" id="svgB" viewBox="0 0 600 154" preserveAspectRatio="none"></svg>
+      <div class="cap"><i class="sh">팔로워</i><i class="gen">앱 사용자</i><i class="core">핵심 구간</i><i class="pk">접속 피크</i></div>
+      <div class="out" id="outB"></div>
+    </div>
+  </div>
+
+  <div class="console">
+    <div class="card">
+      <h2>프리셋</h2>
+      <button class="preset" data-th="90">엄격 <s>피크 90% 이상 — 가장 좁게(핵심만)</s></button>
+      <button class="preset on" data-th="85">★ 추천 <s>피크 85% 이상 — 현행 폭보다 좁고 저녁 포함</s></button>
+      <button class="preset" data-th="78">넉넉 <s>피크 78% 이상 — 오후~밤까지</s></button>
+      <button class="preset" data-th="0">현행식 <s>비교용 — 제안 패널도 현행 산출로</s></button>
+      <div class="row"><label>임계(피크 대비)</label><input type="range" id="th" min="60" max="98" step="1" value="85"><span class="val" id="thv">85%</span></div>
+      <p class="note">임계 = <b>핵심 구간의 폭</b>만 정한다(어디를 고르냐는 데이터가 정함). 60%로 내리면 하루 대부분이 핵심이 되어 의미가 없어지고, 95%↑는 한 밴드로 붙는다.</p>
+    </div>
+
+    <div class="card">
+      <h2>계산 표 <em id="axname">시간대</em></h2>
+      <table id="tbl"></table>
+      <p class="note">도달 기대값 = <b>공유 lift × (앱 사용자 지수 / 100)</b> — 두 값 다 이미 차트가 그리고 있는 정본 데이터. 새 데이터·새 상수 도입 0.</p>
+    </div>
+
+    <div class="card">
+      <h2>선택값</h2>
+      <div class="out" id="spec"></div>
+      <button class="copy" id="cp">선택값 복사</button>
+      <p class="note warn">⚠ 이 시안은 <b>색·px·모션 무변경</b>(음영·곡선·눈금 문법 전부 현행 계승) — 바뀌는 건 <b>핵심 구간의 시작·끝을 정하는 산출식</b> 하나다.</p>
+    </div>
+
+    <div class="card">
+      <h2>재현 한계 각주</h2>
+      <p class="note">
+        ① 곡선 = 실제 <b>chPath(Catmull-Rom→베지어)</b> 이식 · 숄더 연장·볼륨바·접속 피크 밴드·눈금 보라 틴트까지 동일 구현.<br>
+        ② 툴팁·호버·저표본 점(low_sample) 표기는 이 시안에서 생략(판단에 무관).<br>
+        ③ 앱 사용자 곡선(SIG_GEN)은 <b>측정치가 아니라 업계 이용시간 지수</b> — 제안식도 이 한계를 그대로 물려받는다(가중치일 뿐 근거 상승 아님).<br>
+        ④ 요일 축도 같은 식이 적용된다 — 시간대만 고치고 요일을 두면 두 차트의 '핵심'이 서로 다른 뜻이 된다.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── 실데이터(viewer/insta_data.json 발췌 · 손대지 않은 값) ── */
+const DATA = {
+  hour_band: [
+    {bucket:'새벽0-6',   n:92,  share:1.01},
+    {bucket:'오전6-11',  n:274, share:0.93},
+    {bucket:'점심11-14', n:159, share:1.03},
+    {bucket:'오후14-18', n:149, share:1.18},
+    {bucket:'저녁18-22', n:225, share:1.01},
+    {bucket:'밤22-24',   n:106, share:0.68}
+  ],
+  dow: [
+    {bucket:'월', n:171, share:0.94}, {bucket:'화', n:133, share:0.75},
+    {bucket:'수', n:133, share:1.08}, {bucket:'목', n:125, share:1.18},
+    {bucket:'금', n:121, share:0.87}, {bucket:'토', n:160, share:1.09},
+    {bucket:'일', n:162, share:1.07}
+  ]
+};
+const SIG_GEN = {   // viewer/index.html 12562 그대로
+  hour_band:{'새벽0-6':22,'오전6-11':60,'점심11-14':74,'오후14-18':82,'저녁18-22':100,'밤22-24':78},
+  dow:{'월':84,'화':86,'수':88,'목':90,'금':94,'토':100,'일':96}
+};
+const PEAKS = [18,21,15];   // online_peak_kst
+const W=600,H=154,mL=46,mR=16,mT=16,mB=26,pw=W-mL-mR,ph=H-mT-mB,aB=H-mB;
+
+let AX='hour_band', TH=85;
+
+function chPath(pts,curve){
+  if(!curve||pts.length<3) return pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  let d='M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||pts[i+1];
+    d+=' C'+(p1[0]+(p2[0]-p0[0])/6).toFixed(1)+' '+(p1[1]+(p2[1]-p0[1])/6).toFixed(1)
+      +' '+(p2[0]-(p3[0]-p1[0])/6).toFixed(1)+' '+(p2[1]-(p3[1]-p1[1])/6).toFixed(1)
+      +' '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+  }
+  return d;
+}
+
+function model(ax){
+  const bs=DATA[ax], gen=SIG_GEN[ax];
+  const SPAN = ax==='dow'?168:24;
+  const cH = bs.map((b,i)=>{
+    if(ax==='dow') return i*24+12;
+    const m=/(\d+)\s*-\s*(\d+)/.exec(b.bucket); return (+m[1]+ +m[2])/2;
+  });
+  const vals=bs.map(b=>b.share);
+  const lo=Math.max(0,Math.min(...vals,1)-.1), hi=Math.max(...vals,1)+.1;
+  const X=i=>mL+pw*cH[i]/SPAN, Y=v=>mT+ph*(1-(v-lo)/(hi-lo));
+  const spts=bs.map((b,i)=>[X(i),Y(b.share)]);
+  const gpts=bs.map((b,i)=>[X(i),aB-(gen[b.bucket]/100)*ph*.82,gen[b.bucket]]);
+  return {bs,gen,cH,SPAN,X,Y,spts,gpts,lo,hi};
+}
+
+/* 현행 산출 = viewer/index.html 12609~12627 이식 */
+function coreCurrent(M){
+  const {spts,gpts,X}=M;
+  const dfs=spts.map((p,i)=>gpts[i][1]-p[1]);
+  let pk=0; spts.forEach((p,i)=>{ if(p[1]<spts[pk][1]) pk=i; });
+  if(!(dfs[pk]>0)) return null;
+  let i0=pk,i1=pk;
+  while(i0>0&&dfs[i0-1]>0&&spts[i0-1][1]>spts[i0][1]) i0--;
+  while(i1<dfs.length-1&&dfs[i1+1]>0&&spts[i1+1][1]>spts[i1][1]) i1++;
+  const edge=(a,b)=>{const t=dfs[a]/(dfs[a]-dfs[b]); return X(a)+(X(b)-X(a))*t;};
+  const x0=(i0>0&&dfs[i0-1]<=0)?edge(i0-1,i0):X(i0);
+  const x1=(i1<dfs.length-1&&dfs[i1+1]<=0)?edge(i1,i1+1):X(i1);
+  return {x0,x1,rule:'현행'};
+}
+
+/* 제안 산출 = 도달 기대값(곱) 피크 중심 · 임계 교차까지 */
+function coreProposed(M,th){
+  if(!th) return coreCurrent(M);
+  const {bs,gen,X}=M;
+  const sc=bs.map(b=>b.share*gen[b.bucket]/100);
+  let pk=0; sc.forEach((v,i)=>{ if(v>sc[pk]) pk=i; });
+  const T=sc[pk]*th/100;
+  let i0=pk,i1=pk;
+  while(i0>0&&sc[i0-1]>=T) i0--;
+  while(i1<sc.length-1&&sc[i1+1]>=T) i1++;
+  const cross=(a,b)=>{const t=(sc[a]-T)/(sc[a]-sc[b]); return X(a)+(X(b)-X(a))*t;};
+  const x0=i0>0?cross(i0,i0-1):X(i0);
+  const x1=i1<sc.length-1?cross(i1,i1+1):X(i1);
+  return {x0,x1,rule:'제안 '+th+'%',sc,pk,T};
+}
+
+function hourOfX(M,x){ return (x-mL)/pw*M.SPAN; }
+function fmtPos(M,x,ax){
+  const h=hourOfX(M,x);
+  if((ax||AX)==='dow'){ const D=['월','화','수','목','금','토','일']; const d=Math.floor(h/24), hh=h%24;
+    return D[Math.max(0,Math.min(6,d))]+' '+String(Math.round(hh)).padStart(2,'0')+'시'; }
+  const H2=Math.floor(h), M2=Math.round((h-H2)*60);
+  return String(H2).padStart(2,'0')+':'+String(M2).padStart(2,'0');
+}
+
+function render(svg,M,core,tag){
+  const {bs,spts,gpts,X,Y,lo,hi}=M;
+  let s='';
+  for(let g=0;g<=3;g++){
+    const v=lo+(hi-lo)*g/3,y=Y(v);
+    s+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    s+=`<text x="${mL-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--mut)">×${v.toFixed(2)}</text>`;
+  }
+  s+=`<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${aB}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  const maxN=Math.max(...bs.map(b=>b.n),1), bw=Math.min(26,pw/bs.length*.42);
+  bs.forEach((b,i)=>{const bh=b.n/maxN*ph*.26;
+    s+=`<rect x="${(X(i)-bw/2).toFixed(1)}" y="${(aB-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1" fill="var(--mut)" opacity=".13"/>`;});
+  const shoulder=p=>[[mL,p[0][1]],...p,[W-mR,p[p.length-1][1]]];
+  const gl=chPath(shoulder(gpts).map(p=>[p[0],p[1]]),1);
+  const sline=chPath(shoulder(spts).map(p=>[p[0],p[1]]),1);
+  if(core){
+    const {x0,x1}=core;
+    s+=`<defs><clipPath id="cc${tag}"><rect x="${x0.toFixed(1)}" y="${mT}" width="${(x1-x0).toFixed(1)}" height="${ph}"/></clipPath>`
+      +`<linearGradient id="cg${tag}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${aB}">`
+      +`<stop offset="0" stop-color="var(--cat-tech)" stop-opacity=".34"/><stop offset="1" stop-color="var(--cat-tech)" stop-opacity=".06"/></linearGradient></defs>`;
+    s+=`<path d="${sline} L${W-mR} ${aB} L${mL} ${aB} Z" fill="url(#cg${tag})" stroke="none" clip-path="url(#cc${tag})"/>`;
+    const yWave=xq=>{const q=Math.max(spts[0][0],Math.min(spts[spts.length-1][0],xq));
+      for(let i=1;i<spts.length;i++){ if(spts[i][0]>=q){const[xa,ya]=spts[i-1],[xb,yb]=spts[i];return xb===xa?ya:ya+(yb-ya)*(q-xa)/(xb-xa);} }
+      return spts[spts.length-1][1];};
+    [x0,x1].forEach(xe=>{ s+=`<line x1="${xe.toFixed(1)}" y1="${(aB+4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${yWave(xe).toFixed(1)}" stroke="var(--cat-tech)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });
+    const cx=(x0+x1)/2, cy=(yWave(cx)+aB)/2;
+    s+=`<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="8" fill="var(--cat-tech)" font-weight="700" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">${AX==='hour_band'?'핵심 시간대':'핵심 요일'}</text>`;
+  }
+  s+=`<path d="${gl}" fill="none" stroke="var(--accent-4)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  if(AX==='hour_band'){
+    const hx=h=>mL+pw*h/24;
+    [...new Set(PEAKS)].sort((a,b)=>a-b).forEach(h=>{
+      const top=h===PEAKS[0];
+      s+=`<rect x="${hx(h).toFixed(1)}" y="${mT}" width="${(pw/24).toFixed(1)}" height="${ph}" fill="var(--mut)" opacity="${top?'.16':'.09'}"/>`;});
+  }
+  s+=`<path d="${sline} L${W-mR} ${aB} L${mL} ${aB} Z" fill="var(--accent)" opacity=".07" stroke="none"/>`;
+  s+=`<path d="${sline}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  spts.forEach(p=>{ s+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="var(--accent)"/>`; });
+  const inCore=x=>core&&x>=core.x0-1&&x<=core.x1+1;
+  if(AX==='hour_band'){
+    for(let h=0;h<=24;h++){
+      const x=mL+pw*h/24;
+      s+=`<line x1="${x.toFixed(1)}" y1="${aB}" x2="${x.toFixed(1)}" y2="${aB+3}" stroke="var(--mut)" stroke-width="1" opacity=".55" vector-effect="non-scaling-stroke"/>`;
+      s+=`<text x="${x.toFixed(1)}" y="${H-7}" text-anchor="${h===0?'start':h===24?'end':'middle'}" font-size="8" font-weight="700" fill="${inCore(x)?'var(--cat-tech)':'var(--mut)'}">${h}</text>`;
+    }
+  }else{
+    DATA.dow.forEach((b,i)=>{ const x=X(i);
+      s+=`<line x1="${x.toFixed(1)}" y1="${aB}" x2="${x.toFixed(1)}" y2="${aB+3}" stroke="var(--mut)" stroke-width="1" opacity=".55" vector-effect="non-scaling-stroke"/>`;
+      s+=`<text x="${x.toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="8" font-weight="700" fill="${inCore(x)?'var(--cat-tech)':'var(--mut)'}">${b.bucket}</text>`;});
+  }
+  svg.innerHTML=s;
+}
+
+function draw(){
+  const M=model(AX);
+  const A=coreCurrent(M), B=coreProposed(M,TH);
+  render(document.getElementById('svgA'),M,A,'A'+AX);
+  render(document.getElementById('svgB'),M,B,'B'+AX);
+  const span=c=>c?`${fmtPos(M,c.x0)} ~ ${fmtPos(M,c.x1)}  (폭 ${(hourOfX(M,c.x1)-hourOfX(M,c.x0)).toFixed(1)}h)`:'핵심 구간 없음';
+  document.getElementById('outA').textContent='핵심 구간 : '+span(A);
+  document.getElementById('outB').textContent='핵심 구간 : '+span(B)+(TH?'':'   ← 현행식 비교 모드');
+
+  const gen=SIG_GEN[AX];
+  let t='<tr><th>밴드</th><th>n</th><th>공유</th><th>앱</th><th>도달</th></tr>';
+  const sc=DATA[AX].map(b=>b.share*gen[b.bucket]/100), mx=Math.max(...sc);
+  DATA[AX].forEach((b,i)=>{
+    const hit=TH?sc[i]>=mx*TH/100:false;
+    t+=`<tr><td>${b.bucket}</td><td>${b.n}</td><td>×${b.share.toFixed(2)}</td><td>${gen[b.bucket]}</td><td class="${hit?'hit':''}">${sc[i].toFixed(3)}</td></tr>`;});
+  document.getElementById('tbl').innerHTML=t;
+  document.getElementById('axname').textContent=AX==='hour_band'?'시간대':'요일';
+
+  const M2=model('hour_band'), M3=model('dow');
+  const h=coreProposed(M2,TH||85), d=coreProposed(M3,TH||85);
+  document.getElementById('spec').textContent =
+`핵심 구간 산출식 = 도달 기대값
+  score(b) = lift.share_pm(b) × SIG_GEN[ax][b]/100
+  peak     = argmax score
+  band     = peak 중심 연속 런 { score ≥ peak × CORE_TH }
+  경계     = 임계 교차점 선형 보간(버킷 스냅 금지 · 현행 edge() 문법 계승)
+CORE_TH = ${TH||85}%
+결과(현 데이터)
+  시간대 : ${fmtPos(M2,h.x0,'hour_band')} ~ ${fmtPos(M2,h.x1,'hour_band')}   (현행 ${fmtPos(M2,coreCurrent(M2).x0,'hour_band')} ~ ${fmtPos(M2,coreCurrent(M2).x1,'hour_band')})
+  요일   : ${fmtPos(M3,d.x0,'dow')} ~ ${fmtPos(M3,d.x1,'dow')}   (현행 ${fmtPos(M3,coreCurrent(M3).x0,'dow')} ~ ${fmtPos(M3,coreCurrent(M3).x1,'dow')})
+색·px·모션 = 무변경(전부 현행 계승) · 신규 토큰 0`;
+}
+
+document.getElementById('axseg').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  AX=b.dataset.ax; [...e.currentTarget.children].forEach(c=>c.classList.toggle('on',c===b)); draw();
+});
+document.querySelectorAll('.preset').forEach(p=>p.addEventListener('click',()=>{
+  document.querySelectorAll('.preset').forEach(q=>q.classList.remove('on')); p.classList.add('on');
+  TH=+p.dataset.th; const r=document.getElementById('th');
+  if(TH){ r.value=TH; document.getElementById('thv').textContent=TH+'%'; }
+  else document.getElementById('thv').textContent='현행식';
+  draw();
+}));
+document.getElementById('th').addEventListener('input',e=>{
+  TH=+e.target.value; document.getElementById('thv').textContent=TH+'%';
+  document.querySelectorAll('.preset').forEach(q=>q.classList.toggle('on',+q.dataset.th===TH));
+  draw();
+});
+document.getElementById('cp').addEventListener('click',()=>{
+  navigator.clipboard.writeText(document.getElementById('spec').textContent)
+    .then(()=>{const b=document.getElementById('cp'); b.textContent='복사됨'; setTimeout(()=>b.textContent='선택값 복사',1200);});
+});
+draw();
+</script>
