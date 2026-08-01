@@ -117,6 +117,35 @@ print(''.join(k for k in ('h24','fp','mj','og') if p.get(k) in (1,'1',True)))
 " ;;
     esac
   fi
+  # ── 링크 레일(운영자 260731 "우측 사진 아래에 링크도 · 원문이면 원문 활용 · 미디어면 large v3 전사해서 그 내용 활용") ──
+  #   기사(article) = URL 블록으로 프롬프트에 실어 Claude 가 WebFetch 로 원문을 연다(종전 'URL만 있으면 그 기사' 규칙에 그대로 물림).
+  #   미디어(media) = ask_link_stt.sh(자막 우선 → Whisper large-v3)로 전사문을 확보해 **전문(원문)으로** 주입 = 검색 없이 그 내용만으로 큐레이션.
+  #   전사는 워크플로 선처리(ASK_LINK_DIR/<base>.txt)를 우선 쓰고, 없으면 여기서 인라인 전사(수동 dispatch·구 런 호환). 실패 = fail-soft(링크는 URL로라도 전달).
+  link="$(python3 -c "import json; print((json.load(open('$f')).get('link') or '').strip())" 2>/dev/null || true)"
+  LINK_BLOCK=""
+  if [ -n "${link// }" ]; then
+    lkind="$(python3 .github/scripts/ask_link.py --classify "$link" 2>/dev/null || true)"
+    if [ "$lkind" = "media" ]; then
+      trfile="${ASK_LINK_DIR:-/tmp/asklink}/${base}.txt"
+      if [ ! -s "$trfile" ]; then
+        mkdir -p "$(dirname "$trfile")"
+        echo "· 미디어 링크 전사(자막 우선 → Whisper large-v3): $link"
+        timeout "${ASK_LINK_STT_TIMEOUT:-3000}" bash .github/scripts/ask_link_stt.sh "$link" "$trfile" || { echo "::warning::링크 전사 실패 — URL만 전달(fail-soft): $link"; rm -f "$trfile"; }
+      fi
+      if [ -s "$trfile" ]; then
+        LINK_BLOCK="[🎧 운영자가 준 미디어 링크(${link})를 전사한 전문 — **이 전사문이 곧 원문이다**. 다른 기사를 WebSearch 로 찾지 말고 이 전사 내용만으로 위 출력 포맷대로 큐레이션하라(전사에 없는 사실·수치·인용은 지어내지 마라 · 타임코드 [mm:ss]는 위치 표시일 뿐이니 본문에 옮기지 마라 · frontmatter url = 이 미디어 링크 · media/reporter/date 는 전사 메타에 있는 만큼만). image_sources 만 위 1)의 예외 규칙대로 best-effort 검색:
+$(head -c 60000 "$trfile")
+]
+"
+      else
+        LINK_BLOCK="[🔗 운영자가 준 미디어 링크(${link}) — 전사에 실패했다. WebFetch 로 열어 제목·설명 등 확보 가능한 정보로 best-effort 큐레이션하고, 부족하면 그 주제를 WebSearch 로 보완하라(frontmatter url = 이 링크).]
+"
+      fi
+    elif [ "$lkind" = "article" ]; then
+      LINK_BLOCK="[🔗 운영자가 준 원문 링크: ${link} — **이 링크가 원문이다**. WebFetch 로 열어 그 기사 본문으로 큐레이션하라(다른 기사 탐색은 이 원문이 안 열릴 때만 · frontmatter url = 이 링크 · 매체·기자·게시일시는 이 원문에서 추출). 요청문 텍스트는 이 원문을 어떻게 다룰지에 대한 운영자 지시로 읽어라.]
+"
+    fi
+  fi
   python3 - "$f" "$workdir" <<'PY' 2>/dev/null || true
 import json, sys, base64, re
 d = json.load(open(sys.argv[1])); wd = sys.argv[2]
@@ -129,7 +158,7 @@ PY
   imglist=""
   for im in "$workdir"/img-*.jpg; do [ -e "$im" ] && imglist="${imglist}- ${im}\n"; done
 
-  if [ -z "${text// }" ] && [ -z "$imglist" ]; then
+  if [ -z "${text// }" ] && [ -z "$imglist" ] && [ -z "$LINK_BLOCK" ]; then   # 링크만 넣은 요청도 유효(운영자 260731)
     mkdir -p asks/failed; echo "빈 요청" > "asks/failed/${base}.log"
     git mv "$f" "asks/failed/${base}.json" 2>/dev/null || mv "$f" "asks/failed/${base}.json"
     echo "$base" >> "$ASK_FAIL_RUN"   # 이번 런 실패 기록(stale-red 차단)
@@ -151,6 +180,7 @@ ${GBLOCK}
  ⛔ Write/Edit/Bash 금지(스크립트가 저장한다). frontmatter '---' 로 시작하는 다이제스트만 출력.]
 
 ${PRESET_BLOCK}
+${LINK_BLOCK}
 사용자 요청(자연어):
 ${text:-(없음 — 캡처만)}
 
