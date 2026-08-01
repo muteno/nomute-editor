@@ -1,0 +1,216 @@
+<!doctype html><html lang="ko" data-pg-template="v1"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안내 토스트(.qflash) 높이·불투명도 — 플레이그라운드 (260801)</title>
+<style>
+  /* 값 = viewer/index.html :root 정본 계승(창작 0) */
+  :root{ --bg:#121212; --fg:#eef7f0; --mut:#8fa697; --accent:#00EED2; --accent-rgb:0,238,210; --on-accent:#032322;
+         --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+         --r-s:9px; --r-m:11px; --blur-m:14px; --fs-sm:12px; --fs-xs:11px; --fw-b:700; --fw-x:800; --lh-base:1.6;
+         --sp-1:6px; --sp-2:12px; --sp-3:18px; --sp-4:24px; --cat-tech:#B36BFF; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif; padding:20px 16px 70px; }
+  h1{ font-size:19px; margin:0 0 4px; }
+  .sub{ color:var(--mut); font-size:13px; margin:0 0 18px; max-width:680px; }
+  .sub b{ color:var(--accent); }
+  .wrap{ max-width:680px; }
+  .panel{ border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.02); padding:14px; margin:0 0 14px; }
+  .panel h2{ font-size:12px; letter-spacing:.04em; color:var(--mut); margin:0 0 10px; font-weight:var(--fw-x); }
+
+  /* ── 미리보기 = 실제 화면(폰) 위 토스트 재현 · .qflash 정본 문법 그대로, 튜닝축만 변수화 ── */
+  .stage{ position:relative; height:250px; border-radius:14px; border:1px solid var(--line2); overflow-y:auto; overflow-x:hidden;
+          background:linear-gradient(180deg,#141518,#0e0f11); padding:14px 12px 74px; }
+  .stage .ln{ height:7px; border-radius:4px; background:rgba(255,255,255,.05); margin:0 0 8px; }
+  .stage .ln.s{ width:52%; } .stage .ln.m{ width:76%; } .stage .ln.l{ width:88%; }
+  .stage .card{ height:54px; border-radius:12px; border:1px solid var(--line2); background:rgba(255,255,255,.03); margin:0 0 10px; }
+  /* .qflash 정본 사본 — 무대 안이라 position:absolute(정본은 fixed) · 튜닝축 = --pgPad(세로 패딩) / --pgA(배경 알파) */
+  .qflash{ position:absolute; left:0; right:0; margin-inline:auto; bottom:16px; transform:translateY(0);
+    width:min(92%,430px); display:flex; align-items:center; padding:var(--pgPad,9px) 16px; border-radius:var(--r-m);
+    font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--fg);
+    background:linear-gradient(165deg, rgba(24,25,28,var(--pgA,.97)), rgba(15,16,18,calc(var(--pgA,.97) + .01)));
+    border:1px solid var(--line); box-shadow:0 14px 36px rgba(0,0,0,.55);
+    backdrop-filter:blur(var(--blur-m)); -webkit-backdrop-filter:blur(var(--blur-m)); }
+  .qflash .ft-msg{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fam{ margin-top:10px; }   /* 가족 비교용 두 번째 셸 */
+  .stage .qflash.ghost{ bottom:calc(16px + var(--pgH,39px) + 8px); opacity:.55; }
+
+  /* ── 컨트롤 ── */
+  .ctl{ display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
+  .ctl label{ font-size:var(--fs-sm); font-weight:var(--fw-b); width:104px; flex:none; }
+  .ctl input[type=range]{ flex:1; min-width:150px; accent-color:var(--accent); }
+  .val{ font-size:var(--fs-sm); font-weight:var(--fw-x); color:var(--accent); min-width:112px; text-align:right;
+        font-variant-numeric:tabular-nums; }
+  .val .cur{ color:var(--mut); font-weight:var(--fw-b); }
+  select{ background:rgba(255,255,255,.04); color:var(--fg); border:1px solid var(--line); border-radius:var(--r-s);
+          padding:6px 9px; font-size:var(--fs-sm); font-weight:var(--fw-b); }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chip{ background:transparent; border:1px solid var(--line); color:var(--fg); border-radius:999px;
+         padding:7px 14px; font-size:var(--fs-sm); font-weight:var(--fw-b); cursor:pointer; }
+  .chip:hover{ border-color:rgba(var(--accent-rgb),.5); }
+  .chip.on{ border-color:var(--accent); color:var(--accent); }
+  .chip small{ display:block; font-size:10px; color:var(--mut); font-weight:var(--fw-b); }
+
+  /* ── 선택값 출력 ── */
+  .out{ background:rgba(0,0,0,.35); border:1px solid var(--line2); border-radius:var(--r-s); padding:11px 12px;
+        font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; white-space:pre-wrap; word-break:break-all; color:#cfe; }
+  .copy{ margin-top:10px; background:var(--accent); color:var(--on-accent); border:1px solid var(--accent);
+         border-radius:var(--r-m); padding:8px 18px; font-size:var(--fs-sm); font-weight:var(--fw-x); cursor:pointer; }
+  .badge{ display:inline-block; font-size:10px; font-weight:var(--fw-x); padding:1px 7px; border-radius:999px; margin-left:6px; vertical-align:1px; }
+  .badge.keep{ color:var(--accent); border:1px solid rgba(var(--accent-rgb),.5); }
+  .badge.new{ color:var(--cat-tech); border:1px solid rgba(179,107,255,.5); }
+  .note{ font-size:12px; color:var(--mut); line-height:1.75; }
+  .note b{ color:var(--accent); } .note ul{ margin:6px 0 0; padding-left:17px; } .note li{ margin:3px 0; }
+  code{ background:rgba(255,255,255,.08); padding:1px 5px; border-radius:4px; font-size:11px; }
+</style></head><body>
+<div class="wrap">
+  <h1>안내 토스트(<code>.qflash</code>) 높이·불투명도 튜닝</h1>
+  <p class="sub">발행 성공 안내가 뜨는 그 토스트입니다. <b>기틀은 이미 있습니다</b> — <code>.qflash</code>(안내)와 <code>.nm-toast</code>(긴급·실패·새버전·키워드) 두 셸이 운영자 260712 회신으로 <b>폭·라운드·글자·모션이 통일</b>돼 있어요. 그래서 높이·불투명도를 건드리면 그 통일 계약을 손대는 것이라, 값을 정하고 승인해 주시면 기틀에 편입하겠습니다.</p>
+
+  <!-- ① 실물 재현 미리보기 -->
+  <div class="panel">
+    <h2>① 미리보기 (실물 재현)</h2>
+    <div class="stage" data-pg-preview id="stage">
+      <div class="ln l"></div><div class="card"></div><div class="ln m"></div><div class="ln s"></div>
+      <div class="card"></div><div class="ln m"></div><div class="ln s"></div><div class="ln l"></div>
+      <div class="qflash ghost" id="ghost"><span class="ft-msg">키워드 알림 등 다른 토스트(비교용)</span></div>
+      <div class="qflash" id="tst"><span class="ft-msg">발행 및 링크 복사 완료</span></div>
+    </div>
+  </div>
+
+  <!-- ② 프리셋 -->
+  <div class="panel" data-pg-presets>
+    <h2>② 프리셋</h2>
+    <div class="chips" id="presets">
+      <button class="chip" type="button" data-p="9,0.97">현행<small>39.2px · α.97</small></button>
+      <button class="chip" type="button" data-p="3,0.97">지시 70%<small>27.2px · α.97</small></button>
+      <button class="chip" type="button" data-p="3,0.86">70% + 가족 α<small>27.2px · α.86</small></button>
+      <button class="chip" type="button" data-p="6,0.86">--sp-1 슬림<small>33.2px · α.86</small></button>
+      <button class="chip" type="button" data-p="6,0.64">--sp-1 + 모달 α<small>33.2px · α.64</small></button>
+    </div>
+  </div>
+
+  <!-- ③ 슬라이더 -->
+  <div class="panel">
+    <h2>③ 슬라이더</h2>
+    <div class="ctl">
+      <label for="pad">세로 패딩</label>
+      <input type="range" id="pad" min="2" max="12" step="1" value="9">
+      <span class="val" id="padV"></span>
+    </div>
+    <div class="ctl">
+      <label for="alp">배경 알파</label>
+      <input type="range" id="alp" min="0.5" max="1" step="0.01" value="0.97">
+      <span class="val" id="alpV"></span>
+    </div>
+    <div class="ctl">
+      <label for="scope">적용 범위</label>
+      <select id="scope">
+        <option value="q">.qflash 만 (안내 토스트)</option>
+        <option value="all">토스트 가족 전체 (.qflash + .nm-toast)</option>
+      </select>
+    </div>
+    <div class="ctl" style="margin-bottom:0">
+      <label for="ghostOn">비교 셸</label>
+      <select id="ghostOn"><option value="1">가족 셸 같이 보기</option><option value="0">안내 토스트만</option></select>
+    </div>
+  </div>
+
+  <!-- ④ 선택값 복사 (현행 병기 + 계승/갱신 표기) -->
+  <div class="panel" data-pg-copy>
+    <h2>④ 선택값 — 현행 병기 · 계승/갱신 자동 표기</h2>
+    <div data-pg-baseline id="base"></div>
+    <div class="out" id="out"></div>
+    <button class="copy" id="copyBtn" type="button">선택값 복사</button>
+  </div>
+
+  <!-- ⑤ 한계 각주 -->
+  <div class="panel" data-pg-note>
+    <h2>⑤ 한계 각주</h2>
+    <div class="note">
+      <ul>
+        <li><b>이 미리보기의 한계</b> — 무대가 <code>position:absolute</code>입니다(정본은 <code>fixed</code> + <code>bottom:calc(86px + safe-area)</code>). 실제 폰에서는 하단 내비 위 86px 지점에 뜨고, 뒤 배경이 실제 앱 화면이라 <b>같은 알파라도 체감 투명도가 달라집니다</b> — 최종 확인은 브랜치 프리뷰에서.</li>
+        <li><b>"창 높이 70%"의 해석</b> — 폭·글자 크기·라운드는 가족 통일 계약이라 건드리지 않고, <b>세로 패딩만 줄여</b> 박스 높이를 낮춘 것으로 읽었습니다(현행 39.2px → 27.2px = 69.4%). 글자 크기까지 줄이길 원하시면 알려주세요(그건 <code>--fs-sm</code> 이탈이라 별건).</li>
+        <li><b>패딩 3px = 토큰 밖</b> — 간격 사다리는 <code>--sp-1</code>(6) 아래가 없습니다. 3px을 고르시면 raw 값이라 <b>토큰 신설(갱신)</b>이 필요하고, 6px을 고르시면 <code>--sp-1</code> 그대로 <b>계승</b>입니다.</li>
+        <li><b>알파는 셋 다 선례가 있습니다</b> — .97(현행 .qflash) / .86(<code>.nm-toast</code> 가족 글래스) / .64(<code>--modal-glass</code>). 가족과 맞추실 거면 .86이 계승입니다.</li>
+        <li><b>적용 범위</b> — <code>.qflash</code>만 바꾸면 긴급·실패·키워드 토스트와 높이가 갈라집니다. 통일을 유지하려면 "가족 전체"를 고르셔야 하고, 그건 5개 토스트 표면이 함께 낮아집니다.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var LINE = 12 * 1.6, BORDER = 2;                 // 글자 12(--fs-sm) × 1.6(--lh-base) + 상하 테두리 1+1
+  var CUR = { pad:9, alpha:0.97 };                 // 현행 실측 = 기본값(포터블 §3-2)
+  var SP = { '--sp-1':6, '--sp-2':12, '--sp-3':18, '--sp-4':24 };
+  var ALPHA_LADDER = { '.nm-toast 가족 글래스':0.86, '--modal-glass':0.64, '--glass2':0.55, '현행 .qflash':0.97 };
+  var st = { pad:CUR.pad, alpha:CUR.alpha, scope:'q', ghost:true };
+
+  function h(pad){ return pad*2 + LINE + BORDER; }                                  // 박스 높이 산식
+  function near(v, ladder, tol){                                                     // 계승 판정 = 사다리 최근접(허용오차 안이면 계승)
+    var best = null;
+    for (var k in ladder){ var d = Math.abs(ladder[k] - v); if (best === null || d < best.d) best = { k:k, v:ladder[k], d:d }; }
+    return (best && best.d <= tol) ? best : null;
+  }
+  function badge(hit){ return hit ? '<span class="badge keep">계승 ' + hit.k + '</span>' : '<span class="badge new">갱신(토큰 신설 필요)</span>'; }
+
+  function render(){
+    var stage = document.getElementById('stage'), keep = stage.scrollTop;            // 재렌더 스크롤 보존(§플레이그라운드)
+    var box = h(st.pad), pct = box / h(CUR.pad) * 100;
+    [document.getElementById('tst'), document.getElementById('ghost')].forEach(function(el){
+      el.style.setProperty('--pgPad', st.pad + 'px');
+      el.style.setProperty('--pgA', st.alpha);
+    });
+    document.getElementById('tst').style.setProperty('--pgH', box + 'px');
+    document.getElementById('ghost').style.setProperty('--pgH', box + 'px');
+    document.getElementById('ghost').style.display = st.ghost ? '' : 'none';
+    document.getElementById('ghost').style.setProperty('--pgA', st.scope === 'all' ? st.alpha : CUR.alpha);
+    document.getElementById('ghost').style.setProperty('--pgPad', (st.scope === 'all' ? st.pad : CUR.pad) + 'px');
+    document.getElementById('tst').style.bottom = '16px';
+    document.getElementById('ghost').style.bottom = (16 + box + 8) + 'px';
+
+    document.getElementById('padV').innerHTML = st.pad + 'px → 높이 ' + box.toFixed(1) + 'px <span class="cur">(현행 ' + h(CUR.pad).toFixed(1) + 'px · ' + pct.toFixed(0) + '%)</span>';
+    document.getElementById('alpV').innerHTML = 'α ' + st.alpha.toFixed(2) + ' <span class="cur">(현행 ' + CUR.alpha.toFixed(2) + ')</span>';
+
+    var pHit = near(st.pad, SP, 0), aHit = near(st.alpha, ALPHA_LADDER, 0.005);
+    document.getElementById('base').innerHTML =
+      '<div style="font-size:12px;line-height:2;margin-bottom:8px">세로 패딩 <b>' + st.pad + 'px</b>' + badge(pHit) +
+      '<br>배경 알파 <b>' + st.alpha.toFixed(2) + '</b>' + badge(aHit) + '</div>';
+
+    var sel = st.scope === 'all' ? '.qflash, .nm-toast' : '.qflash';
+    document.getElementById('out').textContent =
+      '/* 현행: padding:9px 16px · background alpha .97/.98 */\n' +
+      sel + ' {\n' +
+      '  padding:' + (pHit ? 'var(' + pHit.k + ')' : st.pad + 'px') + ' 16px;   /* 높이 ' + box.toFixed(1) + 'px = 현행의 ' + pct.toFixed(0) + '% */\n' +
+      '  background:linear-gradient(165deg, rgba(24,25,28,' + st.alpha.toFixed(2) + '), rgba(15,16,18,' + (st.alpha + 0.01).toFixed(2) + '));\n' +
+      '}\n' +
+      '/* 적용 범위: ' + (st.scope === 'all' ? '토스트 가족 전체(5표면 함께 변경)' : '.qflash 안내 토스트만(가족과 높이 갈라짐)') + ' */';
+
+    [].forEach.call(document.querySelectorAll('#presets .chip'), function(b){
+      var p = b.dataset.p.split(',');
+      b.classList.toggle('on', +p[0] === st.pad && Math.abs(+p[1] - st.alpha) < 0.005);
+    });
+    stage.scrollTop = keep;
+  }
+
+  document.getElementById('pad').addEventListener('input', function(e){ st.pad = +e.target.value; render(); });
+  document.getElementById('alp').addEventListener('input', function(e){ st.alpha = +e.target.value; render(); });
+  document.getElementById('scope').addEventListener('change', function(e){ st.scope = e.target.value; render(); });
+  document.getElementById('ghostOn').addEventListener('change', function(e){ st.ghost = e.target.value === '1'; render(); });
+  [].forEach.call(document.querySelectorAll('#presets .chip'), function(b){
+    b.addEventListener('click', function(){
+      var p = b.dataset.p.split(',');
+      st.pad = +p[0]; st.alpha = +p[1];
+      document.getElementById('pad').value = st.pad; document.getElementById('alp').value = st.alpha;
+      render();
+    });
+  });
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var t = document.getElementById('out').textContent, b = this;
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){
+      var o = b.textContent; b.textContent = '복사됨'; setTimeout(function(){ b.textContent = o; }, 1200);
+    }, function(){ b.textContent = '복사 실패 — 직접 선택해줘'; });
+  });
+  render();
+})();
+</script>
+</body></html>
