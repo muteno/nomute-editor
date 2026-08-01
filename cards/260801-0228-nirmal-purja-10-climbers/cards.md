@@ -1,32 +1,33 @@
-# 14좌 최속의 그가, 눈사태 앞에선 신호 한 줄로 남았다
+# 14좌 최속 기록의 그가, 8047m에서 신호만 남겼다
 
 **[프롬프트 설계]**
-- 화풍: A 한국웹툰 수채화 — 고발이 아니라 상실·기다림의 사건이라, 극화의 날선 대비보다 번짐과 여백이 정조에 맞다
-- 분위기: 흐린 고산의 무채색 정적. 애도와 기다림이 함께 눌린 톤 — 소리 없이 큰 것 앞에 선 사람들
-- 연출 방향: 뉴스 안 보는 독자도 멈추는 지점은 '기록을 다 갈아치운 사람도 눈사태 앞에선 똑같았다'는 낙차다. 그래서 카드마다 *산의 크기*와 *사람이 남긴 작은 것*(로프·장비·무전기·화면의 점)을 한 프레임에 함께 두고, 후자에만 색을 남긴다. 시사점(산은 기록을 참고하지 않는다)은 마지막에 말로 닫기 전에 이미 화면의 크기 대비로 먼저 읽히게 한다. thumb_dispatch에서 흐린 확산광의 침울한 톤과 거대 대 왜소의 정조만 키노트로 이어받는다
-- 독자 동선: 起 카드1→承 카드2~5→轉 카드6→結 카드7 · 훅=카드1 끝(단서형: 끊긴 무전)+카드5 끝(예고형: 흘러가는 시간) · 감정 피크=카드6 · 착지 한 줄 요지: 기록을 다 세운 사람도 산 앞에선 같은 조건에 서 있었다
-- 연속성 앵커: Recurring subject — a Pakistani rescue worker in his 40s with a short black beard, wearing a muted grey-blue high-altitude shell jacket and a wool cap (카드3·카드5) / 반복 장소 — a Karakoram base camp on packed snow, dome tents and a snow wall behind
+- 화풍: A 수채화 — 상실과 경의가 결인 산악 재난이라, 번짐과 여백으로 흰 설면을 감싸는 수채가 사건을 선정적으로 만들지 않으면서 감정을 옮긴다.
+- 분위기: 잿빛 하늘 아래 낮은 채도의 설산, 그 흰 벌판 위에 살아 있는 색은 네온그린 한 점뿐인 정조 — 추모가 아니라 아직 끝나지 않은 수색의 긴장.
+- 연출 방향: 독자가 멈추는 자리는 낙차다. 기록으로 증명해온 사람이 마지막에 남긴 것이 화면 위 점 하나라는 사실 — 그래서 카메라는 매 카드에서 '사람의 크기'와 '산·화면의 크기'를 나란히 두고, 초록은 사람이 남긴 흔적(재킷·로프·신호점)에만 붙여 그것이 꺼지지 않았음을 붙든다. 명도는 흐린 낮에서 시작해 밤과 화면빛의 최저점까지 내려갔다가 마지막 아침빛으로만 풀린다.
+- 독자 동선: **발단** 카드1→**전개** 카드2~4→**피크** 카드5→**해소** 카드6→**시사점** 카드7 · 훅=카드1 끝(예고형 "그중 한 명이 니르말 푸르자였다" → 카드2 첫 줄 즉시 회수)+카드4 끝(절단형 — "한 사면에 얽혔다"에서 끊고 카드5가 "그 며칠"로 받음) · 착지 한 줄 요지 = 기록을 다 세운 사람에게도 산은 그 기록을 참고하지 않았다.
+- 연속성 앵커: Recurring subject A - a Nepali climber in his early 40s with a short dark beard, wearing a neon green high-altitude down suit and a dark wool beanie (카드1·2) / Recurring subject B - a Pakistani rescue coordinator in his 40s with close-cropped black hair and a thick moustache, wearing an olive field jacket over a gray fleece (카드5·6) / 반복 장소 = the Skardu rescue staging area, low gray hangars and snow-dusted tarmac.
 
 ### [카드 1]
 **텍스트**
 ```text
-7월 30일 파키스탄 브로드피크,
-해발 8047m 사면이 통째로 무너졌다
-그 아래 등반대 열 명이 있었다
-*그리고 그들의 무전이 모두 끊겼다*
+현지시간 7월 30일 파키스탄
+브로드피크 8047m에 눈사태가 났다
+등반대 10명이 그 사면 위에 있었다
+*그중 한 명이 니르말 푸르자였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the fresh fracture line torn open across the vast white face, and how impossibly small the roped climbers look beneath it. Ten tiny climbers are strung out in a single line along the lower snow ridge, moving upward, their heads turned back toward the collapsing slope above them. A wall of powder snow is already rolling down the couloir toward their rope. The place is a high Karakoram peak in Pakistan on an overcast late morning, no shelter and no structure anywhere in the frame.
-Camera: extreme long shot with tiny figures in a vast environment from a low angle looking up at the towering face, shot on a 14mm ultra-wide lens with dramatic depth
+Scene: Emotional focal point: how impossibly small the three roped climbers look against the wall of snow breaking loose above them. Recurring subject A - a Nepali climber in his early 40s with a short dark beard, wearing a neon green high-altitude down suit and a dark wool beanie - stands at the head of the rope line just above the center of the frame and slightly to the right, head tilted up toward the upper slope. Two other climbers in dull orange and gray shells follow him on the same fixed rope, all three turned to look up and toward the right edge as a vast plume of avalanche snow rolls down the face of an 8000-meter Karakoram peak. The place is a high glacier basin in northern Pakistan under a flat gray sky, no buildings and no vehicles anywhere. The faces are generic composites, not likenesses of any real person.
+Camera: extreme long shot from eye-level, shot on 14mm ultra-wide lens
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the climbers' rope tape and tracker lights), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on the lead climber's down suit), muted daylight contrast
+Framing note: nose room on the right, the climbers' gaze directed toward the right edge.
+Text handling: no signage, no banners, no flags, no printed matter anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the snow slope) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -35,29 +36,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Broad Peak Karakoram avalanche
+Broad Peak avalanche Karakoram
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-*그 팀을 이끈 건 니르말 푸르자, 43세다*
-2019년 6개월 6일 만에 14좌를 올랐고
-2021년엔 K2 동계 초등을 해냈다
-2024년엔 무산소 14좌 최속도 세웠다
+네팔 태생의 43세, 전직 영국 해병이다
+*8000m급 14좌를 6개월 6일에 올랐다*
+2021년 K2 동계 초등을 이끌었고
+2024년엔 무산소 최속 기록도 세웠다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his weathered eyes fixed steadily on the ridge line, calm and unblinking, the jaw relaxed. A Nepali mountaineer in his early forties with generic non-specific features, wind-burned cheeks and a short dark beard, stands alone at a high camp terrace in a plain muted parka, one gloved hand gripping a coiled climbing rope at his hip, his gaze directed toward the right edge of the frame. Behind him a single strand of small worn prayer flags stretches between two anchors, marking the seasons he has spent up here. The snow ridge he is watching runs away behind him into cloud.
-Camera: medium close-up with chest-up framing from a three-quarter angle at eye level, shot on an 85mm portrait lens with soft background separation
+Scene: Emotional focal point: the steady unblinking calm in his eyes as he sets his boot on the last stretch of ridge. Recurring subject A - a Nepali climber in his early 40s with a short dark beard, wearing a neon green high-altitude down suit and a dark wool beanie - walks alone up a narrow corniced snow ridge in the upper center of the frame, an ice axe in his right hand and no oxygen mask on his face. He looks up and toward the right along the ridge line ahead, his breath fogging in the cold. Far below and behind him a sea of lower Himalayan summits fills the horizon. The face is a generic composite, not a likeness of any real person.
+Camera: full shot from a low angle, shot on 35mm lens
 Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the tape wrapped around his coiled rope), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; the prayer flags are plain colored cloth with no characters on them; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on his down suit), muted daylight contrast
+Framing note: nose room on the right, gaze directed toward the right edge.
+Text handling: no summit banners, no flags, no sponsor logos, no printed matter anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the packed snow terrace of the high camp) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the summit ridge snowfield) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -66,60 +68,62 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Nirmal Purja mountaineer portrait
+Nirmal Purja summit climb
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-열 명은 다섯 나라에서 온 등반가였다
-하루 뒤 구조팀이 시신 4구를 찾았다
-그중 한 명은 나디라 알 하르시였다
-*에베레스트에 오른 첫 오만 여성이었다*
+함께 사라진 9명은 다국적이었다
+하루 뒤 시신 4구가 수습됐다
+그중엔 에베레스트에 선 첫 오만 여성,
+*나디라 알 하르시가 있었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the rescuers' downcast eyes and the slow drop of their shoulders as they set an empty folded stretcher onto the snow. Recurring subject — a Pakistani rescue worker in his 40s with a short black beard, wearing a muted grey-blue high-altitude shell jacket and a wool cap, stands at the center of a group of four rescuers on the packed snow of a Karakoram base camp, all of them standing still and looking down at the ground with empty hands. Four coiled ropes and four small kit bags are laid out in a quiet row on the snow beside them. Dome tents and a snow wall fill the background.
-Camera: full shot with head-to-toe framing and clear silhouettes from a high angle looking down, shot on a 35mm lens with natural documentary perspective
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a single rescue marker flag planted in the snow), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the way the rescuer's gloved hand hovers just above the goggles without touching them. Two Pakistani ground rescuers in dark red shell jackets kneel side by side on a wide snow shelf in the upper center of the frame, heads bowed and eyes cast downward. Laid out in a neat row on the snow in front of their knees are a woman climber's cracked ski goggles, a single glove and a coiled length of rope. Nothing else stands on the snow in any direction. The place is a high shelf in the Karakoram of northern Pakistan at first light. The faces are generic composites, not likenesses of any real person.
+Camera: medium close-up from a high angle, shot on 85mm portrait lens
+Lighting/mood: cold blue pre-dawn tone, desolate stillness, faint light only on the objects
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on the coiled rope), film-noir low-key lighting, deep shadows
+Text handling: no name tags, no labels, no printed matter on the gear; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the packed snow of the base camp) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the snow field) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no body, no injury, no blood, no stretcher, no covered figure on the ground
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
 ```text
-Karakoram base camp rescue team
+Nadira Al Harthy Omani climber
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-*그런데 이들은 한 팀이 아니었다*
+*이들은 한 팀이 아니었다*
+날씨가 열리는 며칠에 팀들이 몰린 탓에
 세븐서밋트렉스 3명, 푸르자 팀 3명,
-이매진네팔 2명이 같은 사면에 얽혔다
-좋은 날씨 며칠에 모두가 몰린 탓이다
+이매진네팔 2명이 한 사면에 얽혔다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: three differently colored rope lines converging and crossing over one another into a single narrow boot track. Seen from far above, three separate expedition parties of small climbers move up the same snow couloir in one long queue, each team roped together and marked by a different muted jacket color, so tightly packed that one team's line crosses another team's line halfway up. Two small tent clusters sit on ledges below the queue. The whole frame is one continuous glacier slope in the Karakoram before sunrise.
-Camera: wide shot with full spatial context from an overhead bird's-eye view looking straight down, shot on a 20mm wide lens with documentary realism
-Lighting/mood: cold blue pre-dawn tone over the snow, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the tracker lights blinking along the queue), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: how little empty snow is left between the three separate clusters of tents. Seen from directly above at night, three small groups of dome tents - one group of three, one of three, one of two - sit crowded onto one narrow glacier shelf in the upper center of the frame, their fabric glowing cold blue from the headlamps burning inside. A few small figures in down suits move between the nearest tents, coiling rope and sorting gear, none of them turned toward another group. A single line of boot tracks runs across the snow linking all three clusters and continues off toward the right edge. The place is a high camp in the Karakoram of northern Pakistan.
+Camera: wide shot from a bird's-eye overhead angle, shot on 20mm wide lens
+Lighting/mood: cold blue dim light spilling from inside the tents, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on one tent's guy line), film-noir low-key lighting, deep shadows
+Framing note: the track line leads toward the right edge.
+Text handling: no tent branding, no expedition banners, no printed matter anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the glacier slope) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the glacier snow field) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -128,29 +132,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Broad Peak expedition camp tents climbers
+Broad Peak camp tents expedition
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-수색은 처음부터 순조롭지 않았다
-악천후로 헬기가 한동안 뜨지 못했고
-파키스탄군이 헬기 2대를 투입했다
-*군이 주관하는 절차만큼 시간이 더 갔다*
+*그 며칠 사이 신호가 끊겼다*
+마지막 위성 기록은 해발 6600m였다
+14좌를 오른 사람이 남긴 점 하나였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his jaw clenched tight as he grips a handheld radio against his chest and lifts his eyes to the low grey sky. Recurring subject — a Pakistani rescue worker in his 40s with a short black beard, wearing a muted grey-blue high-altitude shell jacket and a wool cap, stands on an airfield apron waiting, his gaze directed toward the right edge of the frame. Behind him two military helicopters sit with their rotors just beginning to turn while crew members load rescue bundles through the side door. A ridge of snow mountains on the horizon is swallowed by cloud.
-Camera: medium shot with waist-up framing from a low angle looking up, shot on a 24mm wide lens for cinematic spatial context
-Lighting/mood: overcast diffused daylight fading toward dusk, heavy leaden sky, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the webbing of the rescue bundles being loaded), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; the helicopters carry no markings, no logos, no letters, no numbers; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his vacant thousand-yard stare at a dot that has stopped moving. Recurring subject B - a Pakistani rescue coordinator in his 40s with close-cropped black hair and a thick moustache, wearing an olive field jacket over a gray fleece - sits alone in a darkened operations room with both hands flat on the desk, his face filling the upper center of the frame. He looks straight ahead at the glow of a tracking screen just outside the frame to the left, which lights his face from below and leaves the room behind him in blackness. A handheld radio and a folded paper chart lie untouched beside his hands. The face is a generic composite, not a likeness of any real person.
+Camera: tight close-up from eye-level, shot on 85mm portrait lens
+Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, appearing only as the screen glow reflected in his eyes), film-noir low-key lighting, deep shadows
+Text handling: the screen itself stays outside the frame, only its light is visible; no printed matter, no charts with legible marks; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the airfield apron) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the dark rear wall of the operations room) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -159,27 +162,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Skardu helicopter rescue Pakistan
+mountain rescue operations room Skardu
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-*마지막 위성 신호는 6600m에서 멈췄다*
-4명의 위치는 아직 GPS에 떠 있다
+그 점을 향해 헬기 두 대가 올랐다
+악천후에 발이 묶였다가 겨우 뜬 헬기다
+군이 주관하는 절차 탓에 수색은 더뎠고
+*네 사람의 위치는 아직 화면에 떠 있다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: one gloved hand holding a small satellite tracker whose screen shows four tiny glowing dots and nothing else. The hand rests on the dark surface of a folding field table at night inside a search post, lit only by the screen glow and one narrow headlamp beam; everything beyond the table edge falls into blackness. Fine snow crystals have settled on the glove and are not melting. The screen shows only the four dots, no map lines, no numbers, no interface.
-Camera: extreme close-up on a single detail of hand and texture from a high angle looking down, shot on a 100mm macro lens with shallow depth of field
-Lighting/mood: single pool of hard light isolating the subject in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the four glowing dots), film-noir low-key lighting, deep shadows
-Text handling: the tracker screen shows four plain glowing dots only, absolutely no numbers, no letters, no interface text, no map labels; no signage anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his jaw clenched tight as he looks up into a sky that is still closing. Recurring subject B - a Pakistani rescue coordinator in his 40s with close-cropped black hair and a thick moustache, wearing an olive field jacket over a gray fleece - stands in the upper center of the frame on a snow-dusted tarmac, gripping a handheld radio against his chest with his chin lifted toward the overcast sky. In his other hand he holds a small tablet whose screen shows only four tiny glowing green dots on a blank dark field, with no letters and no numbers on it. Behind him two military helicopters sit with rotors turning, and beyond them stand the low gray hangars of the Skardu staging area. The face is a generic composite, not a likeness of any real person.
+Camera: medium shot from a low angle, shot on 35mm lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on the four dots of the tablet screen), muted daylight contrast
+Text handling: the tablet screen carries four dots and nothing else - render no letters, no numbers, no interface labels on it; no unit markings on the helicopters, no signage on the hangars; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark field table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the snow-dusted tarmac) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -188,29 +193,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-satellite tracker beacon mountaineering
+Pakistan Army helicopter Skardu rescue
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-그는 고산에서 인간이 어디까지 가는지
-숫자로 증명해온 사람이었다
-그 기록 어디에도 운은 적혀 있지 않다
+그는 인간이 어디까지 오르는지를
+숫자로 증명해온 사람이다
+그 목록 어디에도 운은 적혀 있지 않다
 *산은 사람의 기록을 참고하지 않는다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the immense quiet of the ridge at first light, and one small climber standing perfectly still on the snow crest, facing the viewer. The unbroken ridge line runs across the whole frame behind and beyond the figure, wind lifting a thin plume of snow off the crest above the figure's head. There are no tracks ahead of the climber and no equipment on the snow, only the wide morning sky. This is an 8000-meter class Karakoram ridge in Pakistan at dawn.
-Camera: extreme long shot with a tiny subject in a vast environment from eye level in a front-on centered composition, shot on a 24mm wide lens
+Scene: Emotional focal point: the single line of bootprints that simply stops halfway across the snow. No people appear anywhere in the frame. A wide snow field carries one line of bootprints running from the lower edge toward the middle of the frame, where it ends without reaching anything, and a short length of climbing rope lies half buried beside the very last print. Directly above and beyond it the 8000-meter Karakoram summit stands square in the middle of the frame, facing the viewer, its ridge just catching the first light of morning. The sky is pale and enormous over northern Pakistan.
+Camera: wide shot from eye-level, shot on 24mm wide lens
 Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the small climber's rope tape), muted daylight contrast
-Text handling: no signage and no readable writing anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02, used only on the half-buried rope), muted daylight contrast
+Framing note: the summit sits centered and static, facing the viewer straight on.
+Text handling: no markers, no plaques, no signage, no printed matter anywhere in the frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the snow ridge) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the snow field) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -219,5 +225,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Broad Peak summit ridge sunrise
+Broad Peak sunrise Karakoram ridge
 ```
