@@ -349,6 +349,7 @@
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1·운영자 260628) — 인라인 복제 폐지·단일정본 -->
 <script src="nm-loader.js"></script><!-- 로딩 표기 SSOT(orb + shimmer · 운영자 260723 Q460) -->
+<script src="draft.js"></script><!-- 입력 드래프트 30분 만료 SSOT(운영자 260801) -->
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
@@ -387,10 +388,10 @@ const PHOTO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
   });
   // 입력 드래프트 영속(260707 2차): 도구모달 닫기 = iframe 리로드로 입력 증발(최소화만 생존) → localStorage 미러·재진입 시 복원(지우개로 비우면 ''가 저장 = 의도 반영·undo 복원도 input 이벤트로 재저장 = 자가 정합)
   const DKEY = 'k_scene_draft'; let saveT = null;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(DKEY, ta.value); } catch (e) {} }, 400); };
-  const flush = () => { clearTimeout(saveT); try { localStorage.setItem(DKEY, ta.value); } catch (e) {} };   // 디바운스 꼬리 유실 방지(마지막 타이핑 400ms 내 모달 닫기 · B2 #6)
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { nmDraftSave(DKEY, ta.value); }, 400); };
+  const flush = () => { clearTimeout(saveT); nmDraftSave(DKEY, ta.value); };   // 디바운스 꼬리 유실 방지(마지막 타이핑 400ms 내 모달 닫기 · B2 #6)
   addEventListener('pagehide', flush); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
-  try { const d = localStorage.getItem(DKEY); if (d && !ta.value.trim()) ta.value = d; } catch (e) {}
+  const d = nmDraftLoad(DKEY); if (d && !ta.value.trim()) ta.value = d;   // 30분 만료(draft.js SSOT · 운영자 260801 "전역") — 구 raw 문자열 잔재는 파손 취급으로 1회 자연 소멸
   ta.addEventListener('input', () => { if (!prog && undoTimer) exitUndo(); save(); upd(); }); upd();
 })();
 
