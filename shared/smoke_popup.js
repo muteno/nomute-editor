@@ -73,7 +73,7 @@ const GROUP = ['.pmenu', '.filterpop', '.pubpop', '#linkpop', '.sc-rsn', '.min-p
 const SHELL = ['.bpop.qpop', '.qpop.msgpop'];   // 대기열 함(실물 = class="bpop qpop") ↔ 알림메세지 함 셸 대조축
 // ── 의도적 불투명 글래스 화이트리스트(로그 스캔 예외 · 신설 시 사유와 함께 등재) ──
 //   .nm-toast/.qflash = 토스트(danger·status 강조 = 프로스트 메뉴 가족 아님) · .dlgtop = 스크롤 맨위 버튼(팝업 아님)
-const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop'];
+const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop', '.asksend'];   // .asksend = 발사 버튼 면 = 미리보기 스테이지 #121212 동값(운영자 260731 '생성 버튼 스포티파이 블랙으로' · 겉 순흑 전환 후 흰글래스 .02는 면이 안 잡힘) = 의도적 불투명
 
 async function runOnce(br, port) {
   const pg = await br.newPage({ viewport: { width: 1280, height: 900 } });
