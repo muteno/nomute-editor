@@ -1,0 +1,82 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# live-smoke.yml — 배포 직후 라이브 실물 검문 → 실패 시 웹푸시 (운영자 260802 "이런 일 안 생기게" 승인)
+# 왜: 260802 '상단만 렌더' 사고 축 — 로컬 게이트(check_refs·smoke_all)는 레포 사본만 보고, 상용이
+#     실제로 내주는 바이트는 사람이 열기 전까지 무검문 사각이었다. 이 워크플로가 배포마다
+#     apps.nomute.kr 실물을 레포 정본과 대조(절단·센티널·부속 바이트·articles 파싱 = shared/live_smoke.py 헤더가 정본 설명)
+#     하고, 실패만 웹푸시(발송 정본 = push_send --notify 재사용 · watchdog/notify_fail 문법 계승).
+# 오경보 0 계약(운영자 "품질 저하 없이"): fetch 3회 재시도·전파 재검은 스크립트 내장 · 후속 푸시로
+#     대체된 런 = 중립 스킵 · 도장(nomute-bot) 커밋 재트리거 차단(stamp-version 작성자 가드 계승) ·
+#     봇 데이터 커밋(paths 밖 *.json)엔 애초에 안 붙음 = 러너 소모 증가 미미.
+# 배포 수렴 신호 = BUILD_STAMP(stamp-version이 코드 SHA를 구움) — 라이브 도장이 이 코드 커밋 SHA로
+#     바뀌는 순간이 곧 '이 코드의 최종(도장 포함) 빌드가 서빙 중'이라는 뜻(도장 커밋만이 그 값을 만듦).
+# 롤백: 이 파일 삭제 = 검문만 멈춤(라이브·파이프라인 무영향 · live_smoke.py는 수동 도구로 잔존).
+# ═══════════════════════════════════════════════════════════════════════════════
+name: live-smoke
+on:
+  push:
+    branches: [main]
+    paths:                     # 코드 배포 표면만(stamp-version paths + js/css/_headers) — 봇 데이터 *.json 제외
+      - 'viewer/*.html'
+      - 'viewer/*.js'
+      - 'viewer/*.css'
+      - 'viewer/_headers'
+      - 'functions/**'
+  schedule:
+    - cron: '40 19 * * *'      # 19:40 UTC = 04:40 KST(§📐 KST 환산 명기 · smoke-nightly 03:30 뒤 소강대 · 데이터축 일일 안전망)
+  workflow_dispatch: {}        # 수동 실측(카나리아·검증)용
+permissions:
+  contents: read               # 읽기 전용 검문(커밋 0) — watchdog류 원장도 없음(상태 무저장 = 배포당 1판정이라 쿨다운 불요)
+concurrency:
+  group: live-smoke
+  cancel-in-progress: true     # 연속 배포 = 최신만 의미(stamp-version 동축)
+jobs:
+  probe:
+    if: ${{ github.event_name != 'push' || github.event.head_commit.author.name != 'nomute-bot' }}   # 도장 커밋 재트리거 차단(작성자 기준 = stamp-version 검증된 가드 · 도장 빌드 자체는 코드 런의 도장 수렴 대기가 검문)
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4   # push = 트리거 커밋(코드 정본) · schedule/dispatch = main 최신
+      - name: 배포 수렴 대기(코드 푸시 한정 — 라이브 BUILD_STAMP = 이 커밋 SHA)
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          EXPECT=$(git rev-parse --short=7 HEAD)
+          echo "기대 도장 = $EXPECT"
+          LIVE=""
+          for i in $(seq 1 36); do   # 10s×36 = 최대 6분(CF Pages 빌드 실측 1~3분 + 여유)
+            LIVE=$(curl -sS --max-time 20 "https://apps.nomute.kr/?nosw=1" | grep -o "BUILD_STAMP = '[0-9a-f]\{7\}" | grep -o "[0-9a-f]\{7\}$" || true)
+            [ "$LIVE" = "$EXPECT" ] && { echo "수렴(${i}0s 내) ✓"; echo "SHA=$EXPECT" >> "$GITHUB_ENV"; exit 0; }
+            sleep 10
+          done
+          git fetch --quiet origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "후속 푸시로 대체됨(main 전진) — 중립 스킵(최신 푸시의 런이 검문)"; echo "SKIP=1" >> "$GITHUB_ENV"; exit 0
+          fi
+          echo "MISS=배포 미수렴: 라이브 도장 ${LIVE:-?} ≠ 기대 ${EXPECT}(6분 초과)" >> "$GITHUB_ENV"   # 검문 단계가 알림·실패 처리
+      - name: 라이브 검문(live_smoke.py C1~C4)
+        if: ${{ env.SKIP != '1' }}
+        run: |
+          set +e
+          if [ -n "${MISS:-}" ]; then
+            echo "$MISS" | tee smoke_fail.txt; RC=1
+          else
+            python3 shared/live_smoke.py ${SHA:+--sha "$SHA"} | tee live_smoke.log; RC=${PIPESTATUS[0]}
+            grep '^요약:' live_smoke.log | sed 's/^요약: //' > smoke_fail.txt || true
+          fi
+          echo "RC=$RC" >> "$GITHUB_ENV"
+          exit 0
+      - name: 실패 시 웹푸시(발송 정본 push_send --notify · 비치명 fail-soft)
+        if: ${{ env.SKIP != '1' && env.RC != '0' }}
+        env:
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null \
+            || { echo "::warning::pywebpush 미설치 — 푸시 생략(비치명)"; exit 0; }
+          BODY=$(cut -c1-160 smoke_fail.txt | head -1)
+          python3 .github/scripts/push_send.py --notify "라이브 검문 실패" "${BODY:-원인 요약 없음 — 런 로그 확인}" \
+            --url "/" --tag "nomute-livesmoke" --kind sys \
+            || echo "::warning::검문 실패 푸시 발송 실패(비치명)"
+      - name: 판정 반영(실패 = 런 적색 — 이력 가시화)
+        if: ${{ env.SKIP != '1' }}
+        run: |
+          [ "${RC:-0}" = "0" ] && echo "라이브 검문 통과 ✓" || { echo "라이브 검문 실패 — 위 로그·웹푸시 참조"; exit 1; }
