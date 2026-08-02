@@ -132,6 +132,7 @@ for (const f of files) {
       media: meta.media || '',
       reporter: meta.reporter || '',   // 기자명(요약 frontmatter reporter) — 미상이면 빈칸. 요약 PDF·개요 표시용(바이라인 보존의 출구).
       bias: meta.bias || '',
+      hook: meta.hook || '',   // 훅 한 줄(분석 frontmatter 패스스루) — 큐영상 탭 프로그램 모니터가 '실제 영상의 큰 문장'을 그대로 미리보기(260802 · 없던 시절엔 제목으로 대체 표시해 실렌더와 어긋났다)
       bias_src: biasSrcOf(body),   // 원문 편향 N(본문 '편향: 원문 N/10…'서 파싱) — 게이지 보정 시각화용. 분석 본문에 이미 있음=요약 알고리즘 무변경·옛 기사 소급. 없으면 ''.
       tags: withDrugTag(meta.tags, body),   // #마약 백스톱 — 본문 약물어면 #마약 보강(LLM 누락·기존 분석분 즉시 구제 · 운영자 260625)
       tags_why: meta.tags_why || '',   // 민감 태그 부착 근거 한 줄(요약 frontmatter 패스스루) — 뷰어 민감 칩 title 툴팁 = 오탐·미탐을 운영자가 그 자리서 봄(운영자 260801 오탐 수리). 옛 분석분은 빈값(툴팁 없음 = 종전 동작).

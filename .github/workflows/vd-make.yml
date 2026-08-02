@@ -14,6 +14,10 @@ on:
         description: '큐 파일명 쉼표 목록(확장자 없이 · 최대 12건 · api/vd.js가 정규식 검증)'
         type: string
         default: ''
+      opts:
+        description: '효과 컨트롤 JSON {"format":"mp4|mov|webm|gif","res":"portrait|portrait-4k","fps":"24|30|60","quality":"draft|standard|high"} — api/vd.js 화이트리스트 통과분'
+        type: string
+        default: '{}'
 
 concurrency:
   group: vd-make-${{ inputs.id }}
@@ -50,6 +54,7 @@ jobs:
         env:
           IN_ID: ${{ inputs.id }}
           IN_FILES: ${{ inputs.files }}
+          IN_OPTS: ${{ inputs.opts }}
         run: |
           set -e
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
@@ -66,11 +71,25 @@ jobs:
           [ "$COUNT" -gt 0 ] || { echo "고른 기사에 훅·제목이 없어 — 요약이 끝난 기사를 골라줘." > /tmp/vd_err.txt; echo "::error::rows 0"; exit 1; }
           echo "렌더 대상 ${COUNT}건"
           rm -rf out && mkdir -p out
+
+          # 효과 컨트롤 → render 플래그. 상류(api/vd.js)를 신뢰하지 않고 여기서 한 번 더 화이트리스트(conv 선례).
+          OPTS_LINE=$(node -e 'const o=JSON.parse(process.env.IN_OPTS||"{}");const p=(v,a,d)=>a.includes(String(v))?String(v):d;console.log([p(o.format,["mp4","mov","webm","gif"],"mp4"),p(o.res,["portrait","portrait-4k"],"portrait"),p(o.fps,["24","30","60"],"30"),p(o.quality,["draft","standard","high"],"standard")].join(" "))')
+          set -- $OPTS_LINE
+          FMT=$1; RES=$2; FPS=$3; QUA=$4
+          echo "효과 컨트롤: format=$FMT resolution=$RES fps=$FPS quality=$QUA"
+
           # --workers 1 고정 = 2 이상이면 청크 경계 프레임 1장이 t=0 상태로 깨진다(실측 260801 · video/README §함정)
-          node_modules/.bin/hyperframes render . --workers 1 --batch .build/rows.json -o "out/{name}.mp4" \
+          # ⚠ 실측 260802: --resolution 은 알파 경로(mov/webm/gif)와 결합 불가(CLI가 컴파일 단계서 거부).
+          #    컴포지션이 이미 1080×1920이라 portrait는 플래그 자체가 불필요 → 4K + mp4 일 때만 얹는다.
+          RESFLAG=""
+          [ "$RES" = "portrait-4k" ] && [ "$FMT" = "mp4" ] && RESFLAG="--resolution portrait-4k"
+          [ "$RES" = "portrait-4k" ] && [ "$FMT" != "mp4" ] && echo "::warning::4K는 MP4에서만 — ${FMT}는 1080으로 렌더"
+          node_modules/.bin/hyperframes render . --workers 1 \
+            --format "$FMT" $RESFLAG --fps "$FPS" --quality "$QUA" \
+            --batch .build/rows.json -o "out/{name}.$FMT" \
             || echo "::warning::배치 렌더가 비정상 종료 — 산출 개수로 재판정"
           ls -la out || true
-          MADE=$(ls out/*.mp4 2>/dev/null | wc -l)
+          MADE=$(find out -maxdepth 1 -type f ! -name 'manifest.json' 2>/dev/null | wc -l)
           # 부분 실패 관측(로컬 4회 중 1회 · 원인 미규명) = 전량 실패만 잡을 실패로, 부분은 만든 것만 내보내고 경고.
           [ "$MADE" -gt 0 ] || { echo "영상이 하나도 안 만들어졌어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::산출 0/${COUNT}"; exit 1; }
           [ "$MADE" -eq "$COUNT" ] || echo "::warning::부분 산출 ${MADE}/${COUNT} — 만들어진 것만 내보낸다"
@@ -91,10 +110,12 @@ jobs:
           export AWS_DEFAULT_REGION=auto AWS_REQUEST_CHECKSUM_CALCULATION=when_required AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
           mkdir -p "viewer/vd_out/${IN_ID}"
           : > /tmp/vd_urls.txt
-          for f in video/out/*.mp4; do
-            [ -e "$f" ] || continue
+          for f in video/out/*; do
+            [ -f "$f" ] || continue
             b=$(basename "$f")
-            aws s3 cp "$f" "s3://$R2_BUCKET/vd_res/${IN_ID}/${b}" --content-type video/mp4 \
+            case "$b" in manifest.json) continue;; esac
+            case "${b##*.}" in mp4) CT=video/mp4;; mov) CT=video/quicktime;; webm) CT=video/webm;; gif) CT=image/gif;; *) CT=application/octet-stream;; esac
+            aws s3 cp "$f" "s3://$R2_BUCKET/vd_res/${IN_ID}/${b}" --content-type "$CT" \
               --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
               || { echo "결과 업로드에 실패했어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::R2 업로드 실패: $b"; exit 1; }
             echo "${R2_PUBLIC_BASE}/vd_res/${IN_ID}/${b}" >> /tmp/vd_urls.txt

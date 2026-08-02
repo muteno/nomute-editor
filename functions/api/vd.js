@@ -42,14 +42,24 @@ export async function onRequestPost({ request, env }) {
   if (!files.length) return json({ error: '기사를 하나 이상 골라줘' }, 400);
   if (files.length > MAX_FILES) return json({ error: `한 번에 ${MAX_FILES}건까지야` }, 400);
 
+  // ── 효과 컨트롤 = 화이트리스트 클램프(conv.js opts 관례) · 값 집합 = hyperframes render CLI 실측
+  //    format mp4|mov|webm|gif · resolution portrait|portrait-4k · quality draft|standard|high · fps 24|30|60
+  const o = (body.opts && typeof body.opts === 'object' && !Array.isArray(body.opts)) ? body.opts : {};
+  const opts = {
+    format: ['mp4', 'mov', 'webm', 'gif'].includes(o.format) ? o.format : 'mp4',
+    res: ['portrait', 'portrait-4k'].includes(o.res) ? o.res : 'portrait',
+    fps: ['24', '30', '60'].includes(String(o.fps)) ? String(o.fps) : '30',
+    quality: ['draft', 'standard', 'high'].includes(o.quality) ? o.quality : 'standard',
+  };
+
   const rl = await rateGate(GH, env.GH_TOKEN, 'vd-make.yml');   // 발사 레이트리밋(conv/track 동형 · fail-open)
   if (rl) return json({ error: rl.error }, 429);
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 
   const r = await GH(env.GH_TOKEN, 'actions/workflows/vd-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, files: files.join(',') },
+    ref: REF, inputs: { id, files: files.join(','), opts: JSON.stringify(opts) },
   });
-  if (r.status === 204) return json({ ok: true, id, n: files.length, out: `vd_out/${id}/video.json` });
+  if (r.status === 204) return json({ ok: true, id, n: files.length, opts, out: `vd_out/${id}/video.json` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }
