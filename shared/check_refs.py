@@ -630,6 +630,46 @@ def check_shell_cache_parity():
     return 0
 
 
+def check_shell_put_integrity():
+    """셸캐시 put 절단 검문 의무 게이트(260802 '상단만 렌더' **재발** 실사고 — 1차 봉합이 sw.js put에만 </html>
+    꼬리 검문을 달고, index.html applyShellUpdate의 페이지측 put은 무검문으로 남아 '탭하면 반영' 중 전송 절단이
+    잘린 셸을 두 키(/·/index.html)에 동시에 꽂았다. 같은 리터럴이 파일 두 곳에 복제된 축 = 패리티 게이트와 동형).
+    규칙 = 셸 캐시에 닿는 모든 `.put(` 호출은 상행 15줄 안에 intact 술어 리터럴(`/<\\/html>`)을 동반해야 한다.
+    검출 = `caches.open('<셸명>')`/`caches.open(SHELL_CACHE)` 상행 25줄 근접 휴리스틱(PREF 캐시·IDB put 비대상).
+    put 지점 0곳 추출 = 게이트 자멸(선언 형태 변경) 방지 fail-closed."""
+    try:
+        sw = open(os.path.join(ROOT, 'viewer', 'sw.js'), encoding='utf-8').read()
+        shell = re.search(r"const SHELL_CACHE\s*=\s*'([^']+)'", sw).group(1)
+    except Exception as e:
+        print('❌ check_shell_put_integrity 추출 실패(fail-closed):', e); return 1
+    targets = [os.path.join('viewer', 'sw.js')]
+    vdir = os.path.join(ROOT, 'viewer')
+    for f in sorted(os.listdir(vdir)):
+        if f.endswith('.html'):
+            targets.append(os.path.join('viewer', f))
+    total, bad = 0, []
+    for rel in targets:
+        try:
+            lines = open(os.path.join(ROOT, rel), encoding='utf-8').read().splitlines()
+        except Exception:
+            continue
+        ctx = [i for i, l in enumerate(lines) if ("caches.open('%s')" % shell) in l or 'caches.open(SHELL_CACHE)' in l]
+        if not ctx:
+            continue
+        for i, l in enumerate(lines):
+            if '.put(' not in l or not any(0 <= i - c <= 25 for c in ctx):
+                continue   # 셸 캐시 컨텍스트(상행 25줄) 밖 put = 다른 저장소(PREF·IDB) = 비대상
+            total += 1
+            if '<\\/html>' not in '\n'.join(lines[max(0, i - 15):i + 1]):
+                bad.append('%s:%d' % (rel, i + 1))
+    if bad:
+        print('❌ 셸캐시 put 절단 검문 누락(260802 재발 축): %s — put 상행 15줄 안에 꼬리 술어 /<\\/html>\\s*$/ 검문을 달아라(잘린 셸 캐시 주입 = 기기 감금).' % ', '.join(bad)); return 1
+    if total == 0:
+        print('❌ 셸캐시 put 지점 0곳 추출 — 선언·호출 형태 변경 시 이 게이트도 갱신(fail-closed)'); return 1
+    print('✅ 셸캐시 put 절단 검문 — %d지점 전부 intact 술어 동반(무검문 put 0).' % total)
+    return 0
+
+
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
 
 
@@ -2523,6 +2563,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_shell_cache_parity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_shell_put_integrity() != 0:   # 셸캐시 put = 절단 검문(</html> 꼬리) 의무(하드 게이트 — 260802 재발: sw.js만 검문·페이지측 put 무검문 = 절단 셸 재주입)
+            rc = 1
+    except Exception as e:
+        print('❌ check_shell_put_integrity 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1

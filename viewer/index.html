@@ -8349,8 +8349,15 @@ async function applyShellUpdate(t) {
   try {
     const res = await fetch(location.pathname, { cache: 'no-store', signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined });   // 비내비게이션 fetch = SW fetch 핸들러 불간섭(mode≠navigate) = 순수 네트워크 최신 · 4s 상한 = 무한 대기 차단
     if (res.ok && !res.redirected && res.type === 'basic') {   // 가드 = sw.js ⓐ 동일(Access 로그인 리다이렉트로 캐시 오염 차단) · 'nm-shell-v1' = sw.js SHELL_CACHE와 짝(check_refs 셸캐시 패리티 게이트가 기계 감시 · 260717)
-      const c = await caches.open('nm-shell-v1');
-      await Promise.all(['/', '/index.html'].map(p => c.put(location.origin + p, res.clone())));   // sw.js SHELL_PATHS 두 키 동시 갱신 — 현재 경로만 put하면 형제 키가 옛 세대로 남아 그 경로 진입 때 토스트 재발(평의회 260717-9) · 키 = 쿼리 제거 정규화 동일
+      // 절단 검문(260802 '상단만 렌더' 재발 실사고 봉합) — sw.js put에만 검문을 달고 이 페이지측 put이 무검문이라,
+      // '탭하면 반영' 중 전송 절단(청크 스트림 = content-length 없음 = res.ok 그대로)이 잘린 셸을 두 키에 동시에 꽂았다.
+      // 꼬리 </html> 확인 후에만 캐시 자격(sw.js intact 술어와 동일 축 · check_refs check_shell_put_integrity가 기계 감시).
+      // 절단이면 put 생략 = 기존 정상 사본 보존 → 아래 reload는 종전 셸 서빙 · 수렴은 다음 진입 SWR 재검증이 담당(fail-soft).
+      const body = await res.text().catch(() => null);
+      if (body != null && /<\/html>\s*$/i.test(body)) {
+        const c = await caches.open('nm-shell-v1');
+        await Promise.all(['/', '/index.html'].map(p => c.put(location.origin + p, new Response(body, { status: 200, statusText: 'OK', headers: res.headers }))));   // sw.js SHELL_PATHS 두 키 동시 갱신 — 현재 경로만 put하면 형제 키가 옛 세대로 남아 그 경로 진입 때 토스트 재발(평의회 260717-9) · 키 = 쿼리 제거 정규화 동일 · Response 재조립 = 검문서 본문을 이미 소비(헤더 원본 계승)
+      }
     }
   } catch {}   // 오프라인·quota·타임아웃 = 캐시 무접촉 → 아래 reload가 통지 시점 셸로 종전과 동일 동작(fail-soft · 최소 1세대는 전진)
   if (window._nmAuthKicked) return;   // fetch 창(≤4s)에 Access 만료 자가치유(nosw replace)가 발사됐으면 reload로 밟지 않음(평의회 260717-7)
