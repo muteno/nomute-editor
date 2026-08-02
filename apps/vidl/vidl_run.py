@@ -129,6 +129,11 @@ def plopt(url, plat):
     """재생목록 방지(bat v6.6) — YT·비게시물형 = 1편 강제 · 게시물형 = --no-playlist만(IG 캐러셀 등 통짜 허용)."""
     if plat == "YT":
         return ["--no-playlist", "--playlist-items", "1"]
+    if plat == "TH":
+        # 스레드 = 전 형식(/post/·/t/·/share/)이 게시물이다. 구판은 아래 표식에 /share/·/t/가 없어 공유 링크가
+        # 비게시물형 → --playlist-items 1이 붙었고, 4장 캐러셀이 1장만 받아졌다(260802 run 30752917025
+        # "Downloading 1 items of 4" + 운영자 "여러 이미지인데 메인 1개만" 실측). 표식 나열이 아니라 플랫폼으로 판정.
+        return ["--no-playlist"]
     u = url.lower()   # 평의회6 P1-1: u 정의(구판 NameError)
     post = any(m in u for m in ("instagram.com/p/", "instagram.com/reel/", "instagram.com/reels/", "instagram.com/tv/",
                                 "/video/", "/videos/", "/photo/", "/status/", "/post/", "/watch?", "/watch/",
@@ -454,14 +459,16 @@ def main():
 
     # ── 3축 사전조회(bat v6.8) — 자막만 모드는 화질 판단이 무의미하나 계정·제목(pretty_rename 재료)은 여기서 나온다 ──
     best = probe(url, "bv*/b/best", [], ck_use, pl)
-    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" else None
+    # 스레드 = video_versions에 fps가 아예 없다(플러그인 실측 · 전부 0) → 프레임별 판정이 구조적으로 항상 False
+    #   = fps 사전조회는 페이지 fetch 1회를 그냥 버리는 것 → 생략(260802 · 사전조회 1회당 수 초).
+    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" and PLAT != "TH" else None
+    short_side = (best["w"] if best["w"] < best["h"] else best["h"]) if best else 0
     fhd = None
-    if best and MODE != "subs":
+    if best and MODE != "subs" and short_side > 1080:   # 짧은 변 ≤1080 = ③FHD판 자체가 불성립(get_1080 항상 False) → 사전조회도 생략(구판은 전 플랫폼서 무조건 1회 낭비 · 260802)
         dimk = "width" if best["w"] < best["h"] else "height"   # 세로영상 = width 필터(bat v6.4)
         ffilt = f"bv*[{dimk}<=1080][ext=mp4]/b[{dimk}<=1080][ext=mp4]/bv*[{dimk}<=1080]/b[{dimk}<=1080]"
         fhd = probe(url, ffilt, [], ck_use, pl)
     get_fps = bool(best and fpsb and fpsb["fps"] > best["fps"])
-    short_side = (best["w"] if best["w"] < best["h"] else best["h"]) if best else 0
     get_1080 = bool(best and fhd and short_side > 1080)
     if get_1080 and fhd and ((get_fps and fhd["fid"] == fpsb["fid"]) or fhd["fid"] == best["fid"]):
         get_1080 = False   # 중복 판(fps판·최고화질판과 동일 format) 차단(bat v6.8 + 평의회4 P2)

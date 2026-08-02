@@ -34,7 +34,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          # 체크아웃 다이어트(운영자 260802 "스레드 다운로드 굉장히 오래걸리는데" · thumb-make 260728 정본 계승) —
+          #   구 fetch-depth:0(전 히스토리)이 114s를 먹었다(260802 run 30752917025 실측: 체크아웃 114s·환경 57s·받기 19s = 370KB jpg 1장에 잡 3분27초).
+          #   이 잡이 읽는 것 = apps/vidl+apps/ly(setup)+.github+push/assets(웹푸시)+viewer/vidl_out 뿐 → depth 1 + sparse = 수초 · 레포가 커져도 안 늘어나는 구조.
+          # 결과 커밋은 아래 Commit output이 shallow-safe 재작성(fetch tip→reset→재적용 · 구 rebase는 얕은 클론에서 공통조상 부재로 실패 가능).
+          fetch-depth: 1
+          sparse-checkout: |
+            apps/vidl
+            apps/ly
+            .github
+            push
+            assets/brand
+            viewer/vidl_out
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -103,13 +114,22 @@ jobs:
           case "$IN_ID" in *[!0-9a-f-]*) echo "잘못된 id — 커밋 스킵"; exit 0;; esac
           git config user.name "nomute-bot"
           git config user.email "bot@nomute.local"
-          git add -- "viewer/vidl_out/${IN_ID}" 2>/dev/null || true   # -- = id 옵션주입 차단(평의회1 P3)
-          git diff --cached --quiet && { echo "커밋할 것 없음"; exit 0; }   # 빈 커밋 가드(평의회5 P2)
-          git commit -m "vidl: ${IN_ID} 받기 출력" || { echo "커밋 실패"; exit 0; }
+          # shallow-safe 재작성(thumb-make 260728 정본 계승 · 체크아웃 다이어트 동행) — depth 1 클론엔 공통조상이 없어 구 rebase 재시도가 실패 가능.
+          # 방식: 산출 디렉토리(result.json·error.log)를 밖에 보관 → 매 시도 {최신 tip fetch → reset --hard → 재적용 → 재커밋 → push}.
+          STAGE="$(mktemp -d)"
+          cp -r "viewer/vidl_out/${IN_ID}" "$STAGE/out" 2>/dev/null || { echo "커밋할 것 없음(산출 부재)"; exit 0; }
           pushed=0
           for i in 1 2 3 4 5; do
-            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
-            git rebase --abort 2>/dev/null || true; sleep $((i*3))
+            if git fetch --depth=1 origin "$BRANCH"; then
+              git reset --hard FETCH_HEAD
+              mkdir -p "viewer/vidl_out/${IN_ID}"
+              cp -r "$STAGE/out/." "viewer/vidl_out/${IN_ID}/"
+              git add -- "viewer/vidl_out/${IN_ID}"   # -- = id 옵션주입 차단(평의회1 P3)
+              git diff --cached --quiet && { echo "커밋할 것 없음"; pushed=1; break; }   # 빈 커밋 가드(평의회5 P2)
+              git commit -m "vidl: ${IN_ID} 받기 출력" || { echo "커밋 실패"; pushed=1; break; }
+              if git push origin "HEAD:$BRANCH"; then pushed=1; break; fi
+            fi
+            sleep $((i*3))
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
 
