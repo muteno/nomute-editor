@@ -104,3 +104,18 @@ jobs:
             git rebase --abort 2>/dev/null || true; sleep $((i*3))
           done
           [ "$pushed" = 1 ] || { echo "::error::push ${BRANCH} 5회 실패 — 출력 유실"; exit 1; }
+
+      - name: 완료 알림(웹푸시) — 창을 닫고 있어도 다 됐다는 걸 알린다
+        if: success()
+        continue-on-error: true   # 알림 실패는 비치명 — 결과 커밋이 본체(conv-make 관례)
+        env:
+          IN_ID: ${{ inputs.id }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+        run: |
+          timeout 120 python3 -m pip install --quiet pywebpush || { echo "::warning::pywebpush 미설치 — 완료 알림 생략"; exit 0; }
+          N=$(python3 -c "import json;print(len(json.load(open('viewer/vidl_out/${IN_ID}/result.json'))['files']))" 2>/dev/null || echo 0)
+          # url = 뷰어 딥링크(?vidl=<id>) → 앱이 다운로드 창 + 그 결과 패널을 바로 연다(index.html _dgDeepLink)
+          python3 .github/scripts/push_send.py --notify "영상 받기" "다 받았어요 — 파일 ${N}건, 눌러서 저장하세요" \
+            --url "/?vidl=${IN_ID}" --tag "nomute-make-${IN_ID}" --kind make \
+            || echo "::warning::완료 푸시 실패(비치명)"
