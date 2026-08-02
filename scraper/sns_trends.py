@@ -2447,7 +2447,23 @@ def main():
             _pstk = (_pcov.get(_k) or {}).get("streak") or {}
             _stk = {a: min(_i(_pstk.get(a)) + (1 if (a in _why and str(_why[a]) not in _NOTRY) else 0), 99)
                     for a in _miss}   # miss 계정만 보유 = 성공 시 키 소멸이 곧 리셋 · 상한 99 = 무한 증식 방지
-            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why, "streak": _stk}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음) · streak = 연속 실패 런 수(뷰어 유튜브 개별 알림 5회 게이트)
+            # 연속 실패 **시작 시각**(운영자 260803 "알림이 안와도 되는거면 안오게") — streak(런 횟수)만으론 자동복구 사유의
+            #   "얼마나 오래 안 풀렸나"를 정직하게 못 잰다: 런 간격이 30분 규칙이 아니고(백스톱 schedule 드롭 실측 3~4h ·
+            #   워크플로 L8 주석) 미시도는 동결이라 횟수↔시간 환산이 어긋난다. 429·5xx 같은 **무조치 사유**는 뷰어가
+            #   "자동복구가 실패했다고 확정된 뒤"에만 고지해야 하는데, 그 확정선은 횟수가 아니라 경과 시간이다
+            #   (260803 판례: X @economysniper0 429·streak 6 = 겨우 3시간짜리 순단인데 무조치 알림 1건).
+            #   규약 = streak와 **같은 축**: 실제 시도 실패의 첫 회차에 시계 시작 · 미시도 회차는 값 보존(동결) ·
+            #   수집 성공 = miss 이탈 = 키 소멸 = 리셋. 새 파일·새 콜 0(직전 산출물 _pcov를 이미 읽고 있다).
+            _psnc = (_pcov.get(_k) or {}).get("since") or {}
+            _now_iso = datetime.now(KST).isoformat(timespec="seconds")
+            _snc = {}
+            for _a in _miss:
+                _prev_s = str(_psnc.get(_a) or "")
+                if _prev_s:
+                    _snc[_a] = _prev_s
+                elif _a in _why and str(_why[_a]) not in _NOTRY:
+                    _snc[_a] = _now_iso   # 실제로 시도해서 실패한 첫 회차 = 시계 시작(미시도만으론 시작 안 함)
+            health["subs"]["cover"][_k] = {"got": len(_reg) - len(_miss), "reg": len(_reg), "miss": _miss, "why": _why, "streak": _stk, "since": _snc}   # why = 계정별 실패 사유(뷰어 원인별 문구 · 사유 미기록 = 키 부재 = 뷰어가 '원인 미기록'으로 갈라 읽음) · streak = 연속 실패 런 수(뷰어 유튜브 개별 알림 5회 게이트) · since = 연속 실패 시작 KST(뷰어 자동복구 사유 48h 승격 게이트)
         # [관측] 스트릭 집계 1줄(CLAUDE.md [관측] — 뷰어에 streak<5 침묵 게이트가 새로 생긴 만큼, 몇 계정이 어디까지
         #   쌓였는지는 로그가 말해야 한다)
         _stka = {k2: ((health["subs"]["cover"].get(k2) or {}).get("streak") or {}) for k2 in health["subs"]["cover"]}

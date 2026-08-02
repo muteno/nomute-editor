@@ -7827,6 +7827,12 @@ function sysErrMsgs() {
     if (!SYS_PLAT_KO[k] || !reg || !got) continue;   // 전멸(got=0) = stale 담당(중복 억제)
     if (got * 5 >= reg * 4) continue;                // 80% 이상 = 정상 이탈 범위 = 침묵
     const why = (c.why && typeof c.why === 'object') ? c.why : {};
+    // 자동복구 사유의 **경과 시간** 축(운영자 260803 "알림이 안와도 되는거면 안오게") — 소스 = cover.since
+    //   (= 연속 실패 시작 KST · scraper/sns_trends.py가 streak와 같은 규약으로 실어 보냄 · 새 데이터 콜 0).
+    //   구 데이터(since 없음) = 0 = 침묵 → 다음 런이 시계를 심는다(승격이 최대 한 번 늦어질 뿐, 사유가 살아 있으면 반드시 뜬다).
+    const snc = (c.since && typeof c.since === 'object') ? c.since : {};
+    const _elapH = a => { const t = Date.parse(String(snc[String(a)] || '')); return t ? Math.max(0, (Date.now() - t) / 3600e3) : 0; };
+    const _dayKo = h => (h >= 48 ? Math.floor(h / 24) + '일' : Math.round(h) + '시간');
     // 같은 사유끼리 묶는다(260728 판례 = 알림 42건 폭탄 · 유튜브 20계정 동시 404) — 한 플랫폼에서 **같은 코드가 3건 이상**이면
     //   계정마다 사정이 있는 게 아니라 **수집 경로가 통째로 막힌 것**이다(@CNN·@BBCNews·@MrBeast가 한날 같이 삭제될 수 없다).
     //   그런데 종전 문구는 404를 곧이곧대로 "삭제됐으니 설정에서 지워 줘"로 옮겨 **멀쩡한 구독 20개를 지우라고 시켰다** = 최악의 오지시.
@@ -7897,11 +7903,32 @@ function sysErrMsgs() {
         todo = '👉 네가 할 일: 급하지 않아요. 계속 뜨면 설정에서 이 계정이 살아있는지만 확인해 줘.';
       }
       const _tail = ' (' + SYS_PLAT_KO[k] + ' 등록 ' + reg + '개 중 ' + (reg - got) + '개 누락)';
+      // ── 자동복구 사유(429·5xx·resolve) = **조치 없는 알림 = 알림 아님**(운영자 260803 "알림이 안와도 되는거면 안오게") ──
+      //   위 분기가 이 사유들에 붙이는 조치문은 전부 "👉 네가 할 일: 없어요"다 = 받아도 운영자가 할 수 있는 게 0
+      //   (리포트 v2도 같은 문구 규약으로 읽어 '자동 복구 대기'로 분류한다 = _rptWho).
+      //   260801 봉합은 발행을 **미루기만** 했고(streak<5) 그래서 못 막았다 — 실측 260803_0038 리포트 1건 = X
+      //   @economysniper0 429·streak 6(≈3시간짜리 순단)인데 "자동 복구 대기" 알림. X 신디케이션은 데센 IP 상시
+      //   429 로터리라(작업이력 5116·7307) 스트릭은 시간이 흐르면 반드시 5를 넘는다 = **횟수 임계로는 영영 못 막는 축**.
+      //   → 자동복구 구간엔 발행 0 · 자동복구가 **실패했다고 확정된 뒤에만**(since 48h 초과) 조치형 문구로 승격
+      //     = 폰 축 'stuck' 승격(무소득 48h → 조치 고지) 정본과 같은 문법·같은 임계.
+      //   은폐 아님 3중 근거: ⓐ 전멸(got=0)은 stale 축이 별도 1건으로 담당 ⓑ 48h 넘기면 여기서 반드시 뜬다(영구 묵음 0)
+      //     ⓒ 404·410·403·wall·stuck 등 **조치가 있는 사유**는 이 게이트 밖 = 종전 그대로 즉시 고지.
+      const _autoFix = (wn === 429 || wn >= 500 || w === 'resolve');   // 자동복구 = 무조치 축(위 cause/todo 분기와 같은 코드를 본다)
+      const _AUTO_H = 48;   // 승격 임계(시간) — 폰 축 무소득 승격(scripts/phone_subs.py INSTA_STUCK_H 기본 48h)과 같은 값 = 두 축 규약 정합
+      //   ⚠ 승격문은 위 cause를 **재사용하지 않는다** — 429 cause가 "요청이 몰려서 잠시 막혔어요(일시적)"이라
+      //     "2일째 안 풀렸어요"와 붙으면 한 문단 안에서 자기모순이다(실렌더 확인 260803).
+      const _proWhy = (w === 'resolve') ? '프로필 페이지가 계속 안 열려요' : (wn + ' 응답이 계속 와요');
+      const _proCause = h => '자동 복구를 기다렸는데 ' + _dayKo(h) + '째 안 풀렸어요 — 잠깐 막힌 게 아니에요(' + _proWhy + ').';
+      const _proTodo = many
+        ? '👉 네가 할 일: 계정을 지우지 마 — 여러 개가 같이 막힌 건 계정이 아니라 수집 경로 문제야. 이 알림 리포트를 클로드에게 넘겨 줘.'
+        : '👉 네가 할 일: 이 계정이 지금도 열리는지(비공개·삭제 아닌지) 한 번만 확인해 줘. 멀쩡하면 수집 경로가 막힌 거라 그대로 둬도 되고, 없어졌으면 설정에서 빼 줘.';
       if (many) {   // 묶음 1건 — id의 계정 자리에 `*사유` = ✓·재고지 축·출처 매핑(sys:acct:) 전부 종전 계승
+        const _eh = accs.reduce((mx, a) => Math.max(mx, _elapH(a)), 0);   // 묶음 = 그룹 최댓값(한 계정이라도 48h 넘겼으면 그 경로는 이미 자동복구 실패)
+        if (_autoFix && _eh < _AUTO_H) continue;   // 아직 자동 복구 구간 = 운영자가 할 일 0 = 발행 안 함
         out.push({ id: 'sys:acct:' + k + ':*' + (g || 'nowhy') + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
-          text: SYS_PLAT_KO[k] + ' 계정 ' + accs.length + '개가 한꺼번에 안 걷히고 있어요.\n\n'
-            + cause + _tail + '\n\n안 걷힌 계정: ' + accs.map(a => '@' + a).join(', ') + '\n\n'
-            + todo + '\n\n확인(✓)하면 이 건은 오늘 다시 안 떠요.' });
+          text: SYS_PLAT_KO[k] + ' 계정 ' + accs.length + '개가 ' + (_autoFix ? _dayKo(_eh) + '째 ' : '한꺼번에 ') + '안 걷히고 있어요.\n\n'
+            + (_autoFix ? _proCause(_eh) : cause) + _tail + '\n\n안 걷힌 계정: ' + accs.map(a => '@' + a).join(', ') + '\n\n'
+            + (_autoFix ? _proTodo : todo) + '\n\n확인(✓)하면 이 건은 오늘 다시 안 떠요.' });
       } else {
         // 유튜브 개별 계정 = 연속 5회 실패부터 고지(운영자 260731 "특정 유튜브 글 안 걷힘 알림은 안 오게, 5회 이상 안 걷힐 때 오게") —
         //   러너 IP 로터리 순단(500·404 한두 런 · 260731 판례 @bbcnews·@shortbox)이 날마다 개별 알림으로 새던 소음 차단.
@@ -7917,17 +7944,19 @@ function sysErrMsgs() {
         //   ⚠ cooldown·gap은 **제외** — 수집기가 미시도라 스트릭을 동결한다(sns_trends.py _NOTRY) → 넣으면 5에 영영 못 닿아
         //     영구 묵음 = 은폐. 종전대로 즉시 고지하고, 이틀 넘긴 건은 'stuck' 승격이 조치 문구로 받는다.
         //   ⚠ 404·410 단건(= 설정에서 지워라)·403·wall·stuck = 운영자 조치가 있는 사유라 지연 0으로 종전 유지.
-        const _autoFix = (wn === 429 || wn >= 500 || w === 'resolve');   // 자동복구 = 무조치 축(위 cause/todo 분기와 같은 코드를 본다)
-        const _gate = (k === 'youtube' || _autoFix);
+        // ⚠ 260803 개정 — 자동복구 사유의 `streak<5` 지연 게이트는 위 시간 게이트(since 48h)로 **교체**됐다(무조치 알림 발행 0).
+        //   유튜브 개별 5회 게이트(운영자 260731)는 조치가 있는 사유(404·410 등)에서만 종전대로 산다.
+        //   계정별 판정 = `_eh`도 **계정마다** 잰다(묶음의 그룹 최댓값과 다른 축) — 한 그룹에 60시간짜리와 3시간짜리가
+        //   섞였을 때 최댓값으로 뭉치면 3시간짜리에 "이틀째 안 풀렸어요"라는 거짓 문구가 붙는다.
         const _stk = (c.streak && typeof c.streak === 'object') ? c.streak : {};
         for (const a of accs) {
-          const _n = _stk[String(a)] | 0;
-          if (_gate && _n < 5) continue;
+          const _n = _stk[String(a)] | 0, _eh = _elapH(a);
+          if (_autoFix ? _eh < _AUTO_H : (k === 'youtube' && _n < 5)) continue;
           out.push({ id: 'sys:acct:' + k + ':' + String(a) + ':' + day, _sys: true, level: 'warn', t: Date.parse(up) || undefined,
-            text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 ' + (_gate ? _n + '회 연속 ' : '') + '안 걷히고 있어요.\n\n'
-              + cause + _tail + '\n\n'
+            text: SYS_PLAT_KO[k] + ' @' + a + ' 글이 ' + (_autoFix ? _dayKo(_eh) + '째 ' : (k === 'youtube' ? _n + '회 연속 ' : '')) + '안 걷히고 있어요.\n\n'
+              + (_autoFix ? _proCause(_eh) : cause) + _tail + '\n\n'
               + (k === 'youtube' ? '원래 나올 자리: 트렌드 → 큐레이션 게시물 → 「유튜브 - 구독」 카드(등록 계정 전체에서 조회수 상위 10개 안에 들 때 노출 · 지금은 이 계정 글만 빠진 채 랭킹돼요).\n\n' : '')
-              + todo + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
+              + (_autoFix ? _proTodo : todo) + '\n\n확인(✓)하면 이 계정은 오늘 다시 안 떠요.' });
         }
       }
     }
