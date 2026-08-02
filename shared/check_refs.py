@@ -1704,8 +1704,29 @@ _TRAIL_EMPTY_PRED = ':not(:has(.trail-g>button:not([hidden]))):not(:has(.trail-v
 #   세어 6px 껍데기가 상주[실측 rails[1].w=6] → 판정을 「보이는 도구·보이는 값 그룹」으로 좁힌 표면별 정본).
 #   게이트가 이 개정을 미추적해 main 적색이던 드리프트 봉합(260802) — 타 표면 = 직계 button 정본 유지.
 _TRAIL_EMPTY_PRED_BY = {'viewer/thumb.html': ':not(:has(.trail-g.cpv-tool:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'}
-_TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
-                   'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
+_TRAIL_SURFACES_DECL = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
+                        'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')
+
+
+def _trail_surfaces():
+    """레일 보유 표면 = **자동 발견**(운영자 260802 "항상 이미지 스튜디오나 영상 스튜디오는 저 로직을 따르게 만드셈 죽는 한이 있더라도").
+    구조 = 손으로 관리하는 레지스트리는 **새 스튜디오 탭이 생기면 조용히 빠진다**(260802 실측: edit·k·song·vd가
+    「비슷하게 생긴」 상태로 몇 세대를 지났다). 그래서 등재 여부가 아니라 **마크업 사실**로 대상을 정한다 —
+    `viewer/*.html` 중 `class="trail`(레일 캡슐)을 가진 파일은 **전부** 이 게이트를 받는다.
+    선언 목록(_TRAIL_SURFACES_DECL)은 사라진 표면을 잡는 역방향 안전망으로만 남긴다."""
+    found = []
+    for path in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = 'viewer/' + os.path.basename(path)
+        try:
+            html = open(path, encoding='utf-8').read()
+        except Exception:
+            continue
+        if re.search(r'class="trail[ "]|class="trail\b', html):
+            found.append(rel)
+    return tuple(found)
+
+
+_TRAIL_SURFACES = _trail_surfaces()   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
 #   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
 
 
