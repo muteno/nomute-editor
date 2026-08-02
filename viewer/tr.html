@@ -43,7 +43,7 @@
   @media (min-width:900px) {
     html.inmodal .wrap { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:var(--sp-3); align-items:start; }
     html.inmodal .wrap > * { grid-column:1; }
-    html.inmodal .wrap > .hist { grid-column:2; grid-row:1 / span 99; align-self:start; }   /* 이전 제작(공유) = 우측 2번 칼럼 = thumb `.wrap > .out` 정본 동값 사본(운영자 260802 일맥상통 — 형제 4탭과 같은 골격: 좌 제작 / 우 이력) */
+    html.inmodal .wrap > .out { grid-column:2; grid-row:1 / span 99; align-self:start; }   /* 컨테이너 = .out(thumb 정본 셀렉터 그대로 · 260803 결과 섹션 합류로 래퍼 승격) */   /* 이전 제작(공유) = 우측 2번 칼럼 = thumb `.wrap > .out` 정본 동값 사본(운영자 260802 일맥상통 — 형제 4탭과 같은 골격: 좌 제작 / 우 이력) */
     html.inmodal .topdock { margin-right:0; }
   }
   label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 var(--sp-1); }   /* raw-ok: k.html label 동일값 계승 */
@@ -308,6 +308,16 @@
   </div></div><!-- .optcards → .csec-sub-in → .csec-sub(#optSub) 순 폐합 -->
 
   <!-- ⚠배치 이전 제작(공유) — 정본 = thumb.html #hist 섹션 마크업 그대로 계승(운영자 260802 "편집·번역·AI생성에도 결과·이전제작 일맥상통 공유") · 표시 = thumb-hist.json(전 기기 공통 인덱스) + 로컬 12h 브리지(thumb 동일 키 = 탭 간 즉시 공유) · 읽기 전용(다운로드만 — '기록 지우기'·수정 복원은 카드 생성 탭 전속) · 위치 = 본문 맨 아래(폰 1단) / 우측 2번 칼럼(PC 2단 = thumb .out 자리) -->
+  <div class="out"><!-- 결과+이전 제작 = thumb #out 골격 그대로(운영자 260803 Q1228 "결과와 이전 작업물을 나타내는거는 당연히 똑같아야" — 2단 우칼럼의 단일 그리드 아이템) -->
+  <!-- ⚠배치 결과(이번 세션 완료분) — 접이 소머리 = thumb #carH 정본 마크업 그대로(기본 펼침 · .car-h = nm-hist.css SSOT) · 항목 = 이전 제작 .hist-it 정본 빌더 사본(읽기 전용·다운로드만) · 카드 생성의 대기열(#jobs)·캐러셀 축은 tr 발사가 단일 이미지+버튼 게이지라 대응물 없음(정직 각주) -->
+  <button class="hist-h car-h" id="resH" type="button" aria-expanded="true">
+    <span class="hist-ttl"><span class="car-bul" aria-hidden="true">•</span>결과 <span class="hist-cnt" id="resCnt">(0)</span></span>
+    <svg class="hist-ar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <div class="hist-body" id="resBody">
+    <div class="hist-empty" id="resEmpty">아직 제작한 게 없습니다</div>
+    <div class="hist-grid" id="resGrid"></div>
+  </div>
   <div class="hist" id="hist">
     <button class="hist-h" id="histH" type="button" aria-expanded="false">
       <span class="hist-ttl"><span class="hist-bul" aria-hidden="true">•</span>이전 제작 <span class="hist-cnt" id="histCnt">(0)</span></span>
@@ -319,6 +329,7 @@
       <div class="hist-grid" id="histGrid"></div>
     </div>
   </div>
+  </div><!-- .out -->
 
 </div>
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — 인라인 복제 폐지·단일정본 -->
@@ -894,6 +905,34 @@ async function loadServerHist() {   // thumb loadServerHist 축약 동문(복원
   try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) { SRV_CLEAR = Math.max(SRV_CLEAR, +j.ts); try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} } } } catch { /* 없으면 0 = 안 지움 */ }
   renderTrHist();
 }
+// ── 결과(이번 세션 완료분) = thumb #carH 축 계승(운영자 260803 Q1228) — 항목 = renderTrHist 빌더 사본(읽기 전용) · 세션 메모리(과거분 = 이전 제작 전담) ──
+const TR_RES = [];
+function trResAdd(e) { TR_RES.unshift(e); renderTrRes(); }
+function renderTrRes() {
+  const grid = $('resGrid'); if (!grid) return;
+  $('resCnt').textContent = '(' + TR_RES.length + ')';
+  $('resEmpty').hidden = !!TR_RES.length;
+  grid.innerHTML = '';
+  TR_RES.forEach(e => {
+    const it = document.createElement('div'); it.className = 'hist-it';
+    const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);
+    const th = document.createElement('div'); th.className = 'hist-thumb';
+    const dl = document.createElement('a'); dl.className = 'imgdl dlbtn'; dl.href = e.url;
+    dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG;
+    dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'tr.jpg'); });
+    const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url;
+    const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
+    th.append(dl, img, cap); it.append(hd, th); grid.appendChild(it);
+  });
+}
+let _resCloseT = null;   // 결과 접이 토글 = #histH 정본 동문(점등 = .car-h[aria-expanded] CSS 전담)
+$('resH').addEventListener('click', () => { const b = $('resBody'), open = b.hidden;
+  clearTimeout(_resCloseT); b.classList.remove('closing');
+  $('resH').setAttribute('aria-expanded', String(open));
+  if (open) { b.hidden = false; }
+  else if (matchMedia('(prefers-reduced-motion:reduce)').matches) { b.hidden = true; }
+  else { b.classList.add('closing'); _resCloseT = setTimeout(() => { b.hidden = true; b.classList.remove('closing'); }, 270); }
+});
 let _histCloseT = null;   // 접힘 토글 = thumb #histH 정본 동문(닫힘 촤르륵 histOut 포함 · 2단 자동 스크롤은 tr 무대상 = 우칼럼 상주)
 $('histH').addEventListener('click', () => { const b = $('histBody'), open = b.hidden;
   clearTimeout(_histCloseT); b.classList.remove('closing');
@@ -914,7 +953,7 @@ async function trPersist() {
     const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(bl); });
     const r = await fetch('/api/trhist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ b64 }), signal: AbortSignal.timeout(30000) });
     const j = await r.json().catch(() => ({}));
-    if (j && j.url) histAdd({ url: j.url, dlname: '번역_' + (j.id || 'tr') + '.jpg', cap: '번역', varStr: '', ts: Date.now() });   // 스키마 = thumb histAdd 동일(src 없음 = 연필 미노출)
+    if (j && j.url) { const _e = { url: j.url, dlname: '번역_' + (j.id || 'tr') + '.jpg', cap: '번역', varStr: '', ts: Date.now() }; histAdd(_e); trResAdd(_e); }   // 스키마 = thumb histAdd 동일(src 없음 = 연필 미노출) · trResAdd = 결과 섹션 합류(운영자 260803 Q1228 — 같은 완료점 한 번에)
   } catch (e) { /* 영속 실패 = 조용히(R2/GH 미설정·네트워크 — 다운로드·미리보기 무손상 fail-soft) */ }
 }
 </script>

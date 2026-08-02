@@ -132,6 +132,10 @@ const PROBE = () => {
     zoom: (zb && bb) ? [+(zb.x - (bb.x + bb.width)).toFixed(1), +(zb.y - bb.y).toFixed(1), +zb.width.toFixed(1), +zb.height.toFixed(1)] : null,
     stage: stEl ? [w.getComputedStyle(stEl).backgroundColor] : null,   // 무대 필러색(운영자 260802 9차 "검정창" — 번역만 순흑 노출 사고의 편입)
     pb: [!!pbEl],   // 빈 상태 사진 픽토 존재(운영자 260802 9차 "특수에는 사진이 없다던지")
+    res: [   // 결과·이전 제작 섹션 존재(운영자 260803 Q1228 "결과와 이전 작업물은 당연히 똑같아야" — tr 결과 부재·geni 접힘 드리프트 사고의 편입)
+      !!([...d.querySelectorAll('#carH, #resH')].filter(seen)[0] || (d !== document ? null : [...document.querySelectorAll('#geniResH')].filter(seen)[0])),
+      !!([...d.querySelectorAll('#histH')].filter(seen)[0] || (d !== document ? null : [...document.querySelectorAll('#geniPrevH')].filter(seen)[0])),
+    ],
   };
   return {
     full: !!(dlg && dlg.classList.contains('tool-full')),
@@ -215,7 +219,7 @@ async function runOnce(pg) {
     if (!refE) continue;
     const refPM = refE[1].prevMod; pmRefs[pre + '기준=' + refE[0].split('_')[1]] = refPM;
     const norm = pm => pre === '영상_' && pm.box ? Object.assign({}, pm, { box: [pm.box[1]] }) : pm;   // 영상 창 = 높이만(폭 = 탭별 산출비 산식이 정본 — 16:9/9:16 따라 다른 게 맞다 · 실측 547.5/498.7/530.6 · 높이 457 균일)
-    const axes = pre === '이미지_' ? ['box', 'fire', 'zoom', 'stage', 'pb'] : ['box', 'fire', 'zoom'];   // 무대색·빈상태 픽토 축 = 이미지 셸 한정(운영자 260802 9차 통일 — 영상 무대(모니터)는 자기 계약)
+    const axes = pre === '이미지_' ? ['box', 'fire', 'zoom', 'stage', 'pb', 'res'] : ['box', 'fire', 'zoom'];   // 무대색·빈상태 픽토·결과/이전제작 존재 축 = 이미지 셸 한정(운영자 260802 9차·260803 통일 — 영상 무대(모니터)는 자기 계약)
     pmBad.push(...grp.filter(([, v]) => {
       const p = norm(v.prevMod || {}), r = norm(refPM);
       return axes.some(ax => p[ax] && r[ax] && pmDiff(p[ax], r[ax]));
