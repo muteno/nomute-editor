@@ -2242,6 +2242,13 @@
   .tooltab:active { transform:scale(var(--press-l,.96)); }
   .tooltab.on { color:var(--accent); font-weight:800; text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
   @media (max-width:640px){ #tooldlg { width:94vw; max-width:94vw; height:88dvh; max-height:88dvh; margin:auto; } }   /* 폰 = 풀스크린 폐지 → 여백 팝업 모달(뒤 피드 비침·border-radius 22 상속·중앙정렬 88dvh가 노치 비킴 = safe-area 패딩 불요). margin:auto = 전역 dialog{margin:0}(모바일) 덮어 가로·세로 중앙(없으면 좌상단 쏠림) · 운영자 260626 */
+  /* ── 전체창(최대화) 셸 = 이미지 스튜디오 한정(운영자 260801 "팝업으로 뜨게 하는게 아니라 전체창으로 · 최대화 느낌") ──
+     선언 = **전역 모바일 dialog 풀스크린 정본(아래 2862행) 100% 모방** — width/max-width 100vw · height/max-height 100dvh · margin 0 · radius 0 · border none 그대로(신규 값 0 · 새 산식 창작 0).
+     스코프 = 클래스 1개(.tool-full = activateToolFrame이 thumb·thumbtr 키에만 부착 · .tool-glass 선례 미러) → 영상(cap)·요약(ask) 셸은 종전 팝업 그대로 = 회귀 0 · 롤백 = 이 블록 + JS 토글 1줄.
+     특정성 (1,1,0) > 위 모바일 미디어 (1,0,0) = 폰에서도 94vw/88dvh를 이긴다(미디어 안 재선언 불요). */
+  #tooldlg.tool-full { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
+  #tooldlg.tool-full .tool-h { padding-top:calc(11px + env(safe-area-inset-top)); }   /* raw-ok: 11 = .modal-head/.tool-h padding-top 정본 문자 계승(#dlg 풀스크린 노치 처방 `#dlg .dlg-h`와 동일 산식 — 전체창은 헤더가 화면 최상단 = 상태바·노치 밑으로 밀어야 함 · 헤더 radius 0 처방은 dialog overflow:hidden이 갈음 = 불요) */
+  #tooldlg.tool-full .genihost { max-width:600px; margin-left:auto; margin-right:auto; }   /* raw-ok: 600 = thumb `.wrap { max-width:600px; margin:0 auto }` 정본 문자 계승(창작 아님) — AI 생성 탭만 부모(index)가 그리는 판이라 셸을 넓히면 이 탭만 창폭까지 늘어나 형제 3탭(iframe 안 .wrap 600 고정)과 등가가 깨진다(실측: 전체창 1280에서 미리보기 박스 card 568 vs ai 980 = smoke_parity C1·C10 FAIL) → 형제와 같은 600 칼럼으로 묶어 4탭 등가 복구(리드 도크 = thumb .topdock 실폭 600 동일 · 본문 콘텐츠 568 동일) */
   /* ── 제작 도구 모달 최소화/복원 (운영자 260627) — 최소화 버튼(#toolMin)·복원 ▲·접힘 고스트. .tool-x 계승 + accent/danger 토큰. ── */
   /* 최소화 버튼 = .tool-x 클래스 계승 → 기존 .tool-x:active(아래 rotate(180) scale(var(--press-m,.92)) 공통 규칙)·:hover accent를 X와 동일하게 자동 상속(별도 :active 신설 안 함 = 드리프트 차단). */
   .tool-hbtns { display:flex; align-items:center; gap:8px; }   /* 최소화 + X 묶음(헤더 우측 그룹) */
@@ -5579,9 +5586,10 @@ function geniVV() {   // 키보드로 축소된 visual viewport에 팝업 높이
 function toolVV() {   // 스튜디오 셸(tooldlg) 키보드 클램프 — geniVV의 셸 일반화(260713 B 회귀 봉합: 프롬프팅·요약이 팝업→이식 탭이 되며 geniVV의 genidlg.open 게이트 밖 = 88/90dvh 하단이 키보드에 가림 · 평의회 260713 ③) · geniVV(팝업 경로)와 독립 병존
   if (!tooldlg || !tooldlg.open || !window.visualViewport) return;
   const vv = window.visualViewport;
+  const full = tooldlg.classList.contains('tool-full');                                  // 전체창(이미지 스튜디오) = 여백 없이 '보이는 영역'을 그대로 채운다(팝업 셸의 92%+4% 인셋은 최대화 계약과 모순 · 운영자 260801)
   if (vv.height < window.innerHeight - 60) {   // 시각 뷰포트 < 레이아웃 −60px = 키보드류 괴리일 때만(평시·PC = 인라인 0 = 현행 CSS 그대로 → 출렁 0)
-    tooldlg.style.maxHeight = Math.round(vv.height * 0.92) + 'px';                       // height:dvh 고정은 max-height가 클램프
-    tooldlg.style.marginTop = Math.round(vv.offsetTop + vv.height * 0.04) + 'px';        // 보이는 영역 상단 기준 배치(margin:auto는 layout viewport 중앙 = 키보드 위 아님) · top만 오버라이드 = 좌우 중앙 유지
+    tooldlg.style.maxHeight = Math.round(vv.height * (full ? 1 : 0.92)) + 'px';           // height:dvh 고정은 max-height가 클램프 · 전체창 = 배율 1(키보드 위 잔여 영역 전부)
+    tooldlg.style.marginTop = Math.round(vv.offsetTop + (full ? 0 : vv.height * 0.04)) + 'px';   // 보이는 영역 상단 기준 배치(margin:auto는 layout viewport 중앙 = 키보드 위 아님) · top만 오버라이드 = 좌우 중앙 유지 · 전체창 = 인셋 0(margin:0 CSS와 동일선)
   } else { tooldlg.style.maxHeight = ''; tooldlg.style.marginTop = ''; }                 // 키보드 내려감 = 즉시 원복(CSS dvh 복귀)
 }
 function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGenIdlg·이식 geniMount 겸용 분리 · 운영자 260713 B)
@@ -13424,6 +13432,7 @@ function activateToolFrame(key) {   // 이 도구 전용 iframe을 .active로(�
   for (const k in toolFrames) toolFrames[k].classList.toggle('active', toolFrames[k] === f);   // 활성 1개만 표시
   curToolKey = key;
   tooldlg.classList.toggle('tool-glass', key === 'thumb' || key === 'thumbtr');   // 프레임 글래스 = 이미지 스튜디오 한정(영상 5탭 깜빡임 회귀 차단 · 운영자 260729 실기기)
+  tooldlg.classList.toggle('tool-full', key === 'thumb' || key === 'thumbtr');    // 전체창(최대화) = 이미지 스튜디오 한정(운영자 260801 "팝업 아니라 전체창") — 부착 지점 = tool-glass 동일(열기 openTool·복원 restoreTool·번역 전용 프레임 전부 이 함수를 지나감 = 단일 관문) · 영상·요약 셸은 false로 벗겨져 종전 팝업 유지
 }
 function discardTool(key) {   // 도구 완전 종료 = 프레임 회수(원본은 blank해 재사용·복제는 DOM 제거)·메타/레지스트리 정리
   if (key === 'thumb' && toolFrames.thumbtr) discardTool('thumbtr');   // 번역 전용 프레임 = thumb 수명 동반(정규 닫기 = 함께 회수 · 고아 스테일 프레임 차단 · 260721)
