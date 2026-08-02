@@ -7957,10 +7957,15 @@ function demoStaleMsgs() {
 //   발동 = kind '지진' 한정. 폭염·호우까지 기기 알림을 울리면 여름엔 매시간 울려 알림 자체가 무시된다(= "긴급 뉴스와 동급" 취지의 정반대).
 //   ✓(md dismiss)로 그 지진 1건만 묵음 — id에 발령시각을 물려 **다음 지진은 새 id**라 영구 묵음이 안 된다(demoStaleMsgs 규약 계승).
 const QUAKE_TTL_H = 12;   // 12시간 지난 지진 = 무발동(옛 스냅샷으로 부팅할 때 유령 경보 차단 · staleDataMsg와 같은 성격)
+const QUAKE_MIN_MAG = 3.0;   // 규모 3.0 미만 = 무발동(운영자 260802 "지진은 3.0 이상 만") — 국내 지진 대부분이 2점대라 그것까지 울리면 경보가 소음이 된다
 function quakeMsgs() {
   const dl = (TRENDS && TRENDS.disaster) || [], now = Date.now(), out = [];
   for (const d of (Array.isArray(dl) ? dl : [])) {
     if (!d || d.kind !== '지진') continue;
+    // 규모 = 라벨(「지진 (규모 3.4)」)·원문 어느 쪽에서든 첫 숫자. ⚠ 규모를 못 읽으면 **울린다**(fail-open) —
+    //   안전 축은 헛알림보다 '놓침'이 훨씬 비싸다. 지진 재난문자는 관례상 규모를 싣지만 그걸 전제로 묵음하지 않는다.
+    const mg = parseFloat((String(d.title || '') + ' ' + String(d.text || '')).match(/규모\s*([0-9]+\.?[0-9]*)/)?.[1]);
+    if (Number.isFinite(mg) && mg < QUAKE_MIN_MAG) continue;
     const t = Date.parse(d.time || '') || 0;
     if (!t || now - t > QUAKE_TTL_H * 3600e3) continue;
     out.push({ id: 'sys:quake:' + (d.time || ''), _sys: true, level: 'warn', t, action: 'quake-go',
