@@ -413,6 +413,24 @@ try {
     thHist.push({ url: it.url, dlname: `${it.id || 'resize'}_리사이즈${akey ? '_' + akey : ''}.jpg`, cap: '리사이즈', varStr: it.aspect ? ' · ' + it.aspect : '', ts });
   }
 } catch { /* resize.json 없음 */ }
+// AI 생성(/6) — gen_out/free.json(imggen prepend · R2 절대 url·ts=KST isoformat)도 병합(운영자 260802 "편집·번역·AI생성에도 결과·이전제작 일맥상통 공유" — 구판은 미병합이라 AI 생성분이 로컬 12h 브리지 만료 후 이전 제작서 소멸·기기간 공유 0이던 구멍)
+try {
+  const fr = JSON.parse(readFileSync('viewer/gen_out/free.json', 'utf8'));
+  for (const it of (Array.isArray(fr) ? fr : [])) {
+    if (!it || !it.url || it.fail || !/^https?:/.test(it.url)) continue;   // 실패 레코드(url='fail:<h8>')·비URL 제외
+    const ts = Date.parse(it.ts || ''); if (!Number.isFinite(ts)) continue;   // 시간 컷 없음(free.json 자체 캡이 상한 — resize 동축)
+    const fn = String(it.url).split('/').pop().split('?')[0] || 'gen.png';
+    thHist.push({ url: it.url, dlname: `생성_${fn}`, cap: it.label || '생성', varStr: it.style ? ' · ' + it.style : '', ts });   // 캡션 = 잡 라벨 · 변형칩 = 스타일(리사이즈 aspect 동축)
+  }
+} catch { /* free.json 없음 */ }
+// 번역(tr) — gen_out/trhist.json(api/trhist 커밋 · R2 trout/ 절대 url·ts=KST isoformat) 병합(운영자 260802 동일 축 — 번역 합성본은 클라 캔버스뿐이라 5탭 중 유일하게 이력 0이던 구멍의 서버 절반)
+try {
+  const th = JSON.parse(readFileSync('viewer/gen_out/trhist.json', 'utf8'));
+  for (const it of (Array.isArray(th) ? th : [])) {
+    const ts = Date.parse((it && it.ts) || ''); if (!it || !it.url || !Number.isFinite(ts)) continue;
+    thHist.push({ url: it.url, dlname: `번역_${it.id || 'tr'}.jpg`, cap: '번역', varStr: '', ts });   // dlname = tr.html 로컬 브리지와 동일 산식(같은 제작 = 같은 파일명)
+  }
+} catch { /* trhist.json 없음(첫 번역 전) */ }
 thHist.sort((a, b) => b.ts - a.ts);
 writeFileSync(THH_OUT, JSON.stringify(thHist.slice(0, THH_CAP), null, 2));
 console.log(`viewer/thumb-hist.json 생성 — ${Math.min(thHist.length, THH_CAP)}건${thHist.length > THH_CAP ? ` (전체 ${thHist.length}건 중 최신 ${THH_CAP}장만 — 오래된 ${thHist.length - THH_CAP}건 절단)` : ''}`);

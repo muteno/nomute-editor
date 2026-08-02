@@ -1055,9 +1055,14 @@ def check_soremeori():
         mcb = re.search(r'\.csec::before\s*\{([^}]*)\}', t)
         if not mcb or 'var(--accent)' not in mcb.group(1) or 'var(--fw-b)' not in mcb.group(1):
             print('❌ 소머리 게이트 — thumb .csec::before 블릿이 형광(--accent)·700(--fw-b) 아님(§📐)'); rc = 1
-        mh = re.search(r'\.hist-bul\s*\{([^}]*)\}', t)
+        # .hist-bul 정본 = nm-hist.css(운영자 260802 일맥상통 — thumb 인라인 → 공유 링크 SSOT 승격 · tr.html 동승) · 파일 소실 = t_hist '' = 게이트 실패(정본 증발 검출)
+        try:
+            t_hist = open(os.path.join(ROOT, 'viewer', 'nm-hist.css'), encoding='utf-8').read()
+        except OSError:
+            t_hist = ''
+        mh = re.search(r'\.hist-bul\s*\{([^}]*)\}', t + t_hist)
         if not mh or 'var(--hist-accent)' not in mh.group(1):
-            print('❌ 소머리 게이트 — thumb .hist-bul 특수 블릿이 보라(--hist-accent) 아님(§📐 특수)'); rc = 1
+            print('❌ 소머리 게이트 — .hist-bul 특수 블릿이 이력색(--hist-accent) 아님(§📐 특수 · 정본 = viewer/nm-hist.css)'); rc = 1
         # 토글(.ovfmt/.onoff) 붙는 .csec 행높이 상쇄 = 토글 세로패딩(3px·탭영역)이 flex 행 키워 첫 소머리 • 내려앉는 것 차단(§📐 첫 블릿 화면선·운영자 260629 저작권탭 교정)
         mn = re.search(r'\.csec \.ovfmt\s*,\s*\.csec \.onoff\s*\{([^}]*)\}', t)
         nb = mn.group(1) if mn else ''
