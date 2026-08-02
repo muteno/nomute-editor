@@ -3345,7 +3345,8 @@
   .geni-prev .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착) */; flex:none; align-self:stretch; }
   .geni-prev .trail-g:not(:has(button:not([hidden]))) { display:none; }
   .geni-prev .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }
-  .geni-prev #geniRail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }   /* 스코프 = 옵션 캡슐 한정(돋보기·생성 캡슐 제외) */
+  .geni-prev .trail svg { width:12px; height:12px; display:block; }   /* ⭐ 네비 레일 픽토그램 **기준 크기**(운영자 260802 "픽토그램이 네비게이션 안에 들어갔을 때의 기준 크기가 없는듯 · 설정해줘") = 버튼 22×22 / 글리프 12×12 — 값 = 이 파일 `.trail-i svg`(1205) 정본 동값(창작 0) · 스코프 = AI 생성 레일 한정(SNS·채널 정본 레일 `.trail-rg .trail-i svg` 15px는 특이도 0,3,1로 그대로 이긴다 = 무접촉) · 게이트 = check_refs `_TRAIL_AXES` 「픽토 글리프(.trail svg)」 축 */
+  .geni-prev #geniRail:not(:has(.trail-g > button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }   /* ⚠ 술어 = 도구 묶음(.trail-g) **직계** 버튼만(thumb 260802 교정분 전파 · 운영자 260802 "내용이 없으면 확대 아래에 아무것도 안 뜨게") — 구 `button:not([hidden])`은 숨은 컬럼 안의 버튼까지 세서 빈 캡슐이 상주했다 */   /* 스코프 = 옵션 캡슐 한정(돋보기·생성 캡슐 제외) */
   .geni-prev .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(6/42)·플레이트·그림자 해제 = thumb 정본 동일 처방 · id·핸들러·hidden 토글 불변 */
   .geni-prev .cpv-tool svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값 */
   .geni-prev .trail .cpv-photobtn { width:100%; height:22px; }   /* 레일 안 진입 픽토(글 프롬프팅) = .cpv-tool과 같은 규격(origin/main e17767a 신설분 계승 · 레일 이설로 스코프만 .geni-prev) */
@@ -7951,7 +7952,28 @@ function demoStaleMsgs() {
   }
   return out;
 }
-const allMsgs = () => { const out = MSGS.slice(); const h = healthMsg(); if (h) out.unshift(h); const s = shellUpdMsg(); if (s) out.unshift(s); sysErrMsgs().forEach(e => out.unshift(e)); demoStaleMsgs().forEach(e => out.unshift(e)); const d = staleDataMsg(); if (d) out.unshift(d); return out; };   // 클라 알림(맞춤법·새버전·수집고장·갱신실패)을 서버 메시지 앞에 병합(갱신실패가 최상단 = 화면 전체가 낡았다는 뜻이라 다른 알림보다 먼저 읽혀야)
+// ⑭ 지진 = 경고 알림(운영자 260802 "지진같은경우는 그 경고 알림처럼 웹앱 알림 뜨게 · 포그라운드 알림도 · 일반 긴급 뉴스랑 동급 · 누르면 안전 탭으로 이동").
+//   문법·id·✓축·구분 = 바로 위 demoStaleMsgs() **그대로**(새 부품·새 데이터·새 UI 0) — 소스 = 화면이 이미 읽는 TRENDS.disaster.
+//   발동 = kind '지진' 한정. 폭염·호우까지 기기 알림을 울리면 여름엔 매시간 울려 알림 자체가 무시된다(= "긴급 뉴스와 동급" 취지의 정반대).
+//   ✓(md dismiss)로 그 지진 1건만 묵음 — id에 발령시각을 물려 **다음 지진은 새 id**라 영구 묵음이 안 된다(demoStaleMsgs 규약 계승).
+const QUAKE_TTL_H = 12;   // 12시간 지난 지진 = 무발동(옛 스냅샷으로 부팅할 때 유령 경보 차단 · staleDataMsg와 같은 성격)
+const QUAKE_MIN_MAG = 3.0;   // 규모 3.0 미만 = 무발동(운영자 260802 "지진은 3.0 이상 만") — 국내 지진 대부분이 2점대라 그것까지 울리면 경보가 소음이 된다
+function quakeMsgs() {
+  const dl = (TRENDS && TRENDS.disaster) || [], now = Date.now(), out = [];
+  for (const d of (Array.isArray(dl) ? dl : [])) {
+    if (!d || d.kind !== '지진') continue;
+    // 규모 = 라벨(「지진 (규모 3.4)」)·원문 어느 쪽에서든 첫 숫자. ⚠ 규모를 못 읽으면 **울린다**(fail-open) —
+    //   안전 축은 헛알림보다 '놓침'이 훨씬 비싸다. 지진 재난문자는 관례상 규모를 싣지만 그걸 전제로 묵음하지 않는다.
+    const mg = parseFloat((String(d.title || '') + ' ' + String(d.text || '')).match(/규모\s*([0-9]+\.?[0-9]*)/)?.[1]);
+    if (Number.isFinite(mg) && mg < QUAKE_MIN_MAG) continue;
+    const t = Date.parse(d.time || '') || 0;
+    if (!t || now - t > QUAKE_TTL_H * 3600e3) continue;
+    out.push({ id: 'sys:quake:' + (d.time || ''), _sys: true, level: 'warn', t, action: 'quake-go',
+      text: (d.title || '지진') + ' — ' + (d.area || '') + (d.text ? '\n' + d.text : '') });
+  }
+  return out;
+}
+const allMsgs = () => { const out = MSGS.slice(); const h = healthMsg(); if (h) out.unshift(h); const s = shellUpdMsg(); if (s) out.unshift(s); sysErrMsgs().forEach(e => out.unshift(e)); demoStaleMsgs().forEach(e => out.unshift(e)); quakeMsgs().forEach(e => out.unshift(e)); const d = staleDataMsg(); if (d) out.unshift(d); return out; };   // 클라 알림(맞춤법·새버전·수집고장·갱신실패)을 서버 메시지 앞에 병합(갱신실패가 최상단 = 화면 전체가 낡았다는 뜻이라 다른 알림보다 먼저 읽혀야)
 async function loadHealth(force) {
   try { SHC = JSON.parse(localStorage.getItem('nomute_shc') || 'null'); } catch { SHC = null; }
   if (force || !SHC || (Date.now() - (SHC.ts || 0)) > SHC_PROBE_TTL) {   // 능동 백스톱(force=수동 새로고침=즉시 재확인) — 검사기 명시 healthy:false일 때만 불건강(거짓경보 방지)
@@ -8068,7 +8090,21 @@ const MSG_ACTIONS = {
   'sns-recollect': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: snsRecollect },
   'shell-apply': { label: '반영하기', svg: _RECOLLECT_SVG, fn: shellApply },
   'data-retry': { label: '다시 받아오기', svg: _RECOLLECT_SVG, fn: dataRetry },
+  'quake-go': { label: '안전 탭 열기', svg: ARROW_R_SVG, fn: goDisSec },   // ⑭ 지진 경고 → 안전(재난문자) 섹션 이동(운영자 260802) · 아이콘 = 공유 정본 ARROW_R_SVG 계승(새 픽토 0)
 };
+// ⑭ 안전(재난문자) 섹션으로 이동 — 경고 알림 조치 버튼 · 기기 알림 탭(/?dis=1) 공통 착지점(운영자 260802 "누르면 저기 안전 탭으로 이동하면 됨").
+//   ⚠ 새 탭·새 화면 0 — 이미 있는 showTab('trend') + 그 섹션 열기·스크롤만 한다.
+function goDisSec() {
+  try {
+    closeOverlays(); showTab('trend');
+    setTimeout(() => {
+      const s = document.querySelector('details.trend-sec[data-sec="dis"]');
+      if (!s) return;
+      s.open = true;   // 접혀 있어도 펼쳐서 착지(TFOLD 사용자 접기 상태 무관 = '눌렀는데 아무것도 없음' 차단)
+      s.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 260);   // 탭 전환 촤르륵(showTab _tabIn) 뒤 측정 = 좌표 튐 방지
+  } catch (_) {}
+}
 function openMsgDetail(m) {
   if (!m) return;
   const d = $('#msgdetail'), l = $('#msglist'); if (!d || !l) return;
@@ -8228,7 +8264,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = '5c7d64e · 260802_1642';  /*BUILDSTAMP*/
+const BUILD_STAMP = '4f585a8 · 260802_1716';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');
@@ -8502,7 +8538,7 @@ const _accBtnEl = $('#accBtn'); if (_accBtnEl) _accBtnEl.addEventListener('click
 const DG_GOT_KEY = 'dg_got_v1', DG_HIST_KEY = 'dg_hist_v1';   // 받음(URL 키 · 최대 500) · 입력 기록(기기당 최근 1건)
 const DG_SECTIONS = [['img', '사진'], ['video', '영상'], ['doc', '문서'], ['audio', '음성'], ['zip', '압축'], ['link', '기타 링크']];
 const DG_CHK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';   // 체크 경로 = nm-svg CHECK 정본 동일(문자 ✓ 금지)
-let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, histOpen: false, ytConsent: false, yt: {} };
+let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, histOpen: false, vdOpen: false, ytConsent: false, yt: {} };
 let _dgPop = false;   // 폰 뒤로가기로 닫혔는지(§🎨 pushState/popstate · tooldlg toolPopHandled 패턴 계승)
 function _dgLoadGot() { try { return JSON.parse(localStorage.getItem(DG_GOT_KEY) || '{}') || {}; } catch { return {}; } }
 function _dgLoadHist() {   // {u,title,t} 1건 — 읽을 때마다 12시간 지난 건 청소(원본 설계 = 서버/깃 무저장 · 운영자 260721)
@@ -8514,7 +8550,7 @@ function _dgLoadHist() {   // {u,title,t} 1건 — 읽을 때마다 12시간 지
 }
 function _dgHistSave(u, title) { try { localStorage.setItem(DG_HIST_KEY, JSON.stringify({ u, title: String(title || '').slice(0, 80), t: Date.now() })); } catch {} }
 function openDlGrab() {
-  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), histOpen: false, ytConsent: false, yt: {}, vid: null, driveState: null };   // 결과는 매번 새로(공용 PC 원칙) · 받음/기록만 기기 보존
+  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), histOpen: false, vdOpen: false, ytConsent: false, yt: {}, vid: null, driveState: null };   // 결과는 매번 새로(공용 PC 원칙) · 받음/기록만 기기 보존
   const d = $('#dlgrab'); const inp = $('#dgUrl'); if (inp) inp.value = '';
   const job = _dgVidLoadJob();   // 진행 중 영상 받기 = 창 닫았다 다시 열어도 복원(평의회2·8)
   if (job) { _dg.vid = { url: job.url, plat: job.plat, id: job.id, t0: job.t0, st: 'run', msg: '받는 중' }; _dg.ytConsent = true; }
@@ -8533,6 +8569,7 @@ function _dgRenderBody() {
     + (he ? '<div class="dg-histrow"><div class="dg-hmain" data-act="histpick" role="button" tabindex="0"><div class="dg-ittl">' + esc(he.title || he.u) + '</div><div class="dg-hurl">' + esc(he.u) + '</div></div><button type="button" class="geni-opt" data-act="histdel">지움</button></div>'
       : '<div class="geni-histempty">기록이 없어요 — 주소를 한 번 가져오면 여기에 남아요</div>')
     + '</div></div></div>';
+  h += _dgDoneHtml();   // 받은 영상 보관함 = 기록 접이 바로 아래(둘 다 '지난 것' 축 = 같은 자리에 모음 · 운영자 260802)
   if (_dg.err) h += '<div class="dg-err">' + esc(_dg.err) + '</div>';
   if (_dg.vid) h += _dgVidHtml();
   const r = _dg.res;
@@ -8745,6 +8782,54 @@ function _dgVidPlat(u) {
 function _dgVidPlatName(p) { return ({ YT: '유튜브', IG: '인스타그램', X: 'X(트위터)', TT: '틱톡', FB: '페이스북', TH: '스레드' })[p] || p; }
 // 진행 중 작업 계정축 보존(평의회2·8) — run 중 창 닫아도 job id를 기기에 남겨 재열람 시 폴 재개(백그라운드 상주 아님 = 창 열 때만 폴).
 const DG_VID_KEY = 'dg_vid_job_v1';
+// 받은 영상 보관함(운영자 260802 "다운로드 되면 내가 다운로드를 어떻게 받아") — 종전엔 완료 결과가 _dg.vid에만
+//   살아 있어서 창을 닫으면 그대로 증발했다(R2엔 파일이 멀쩡히 있는데 그 URL로 가는 길이 사라짐 = 다시 못 받음).
+//   최근 10건·7일을 기기에 남겨 언제든 다시 받게 한다. 저장분 = 파일 이름·URL·용량뿐(영상 실물 아님 = 용량 무해).
+const DG_VDONE_KEY = 'dg_vid_done_v1', DG_VDONE_MAX = 10, DG_VDONE_TTL = 7 * 24 * 3600e3;
+function _dgDoneLoad() {
+  try {
+    const a = JSON.parse(localStorage.getItem(DG_VDONE_KEY) || '[]');
+    if (!Array.isArray(a)) return [];
+    const cut = Date.now() - DG_VDONE_TTL;
+    const live = a.filter(x => x && x.t > cut && x.res && x.res.files && x.res.files.length);
+    if (live.length !== a.length) localStorage.setItem(DG_VDONE_KEY, JSON.stringify(live));   // 만료분 청소 = 읽을 때(_dgLoadHist 관례)
+    return live;
+  } catch { return []; }
+}
+function _dgDoneSave(v) {
+  if (!v || !v.res || !(v.res.files || []).length) return;
+  try {
+    const a = _dgDoneLoad().filter(x => x.id !== v.id);   // 같은 건 재요청 = 최신으로 승격
+    a.unshift({ id: v.id, url: v.url, plat: v.plat, t: Date.now(), res: v.res });
+    localStorage.setItem(DG_VDONE_KEY, JSON.stringify(a.slice(0, DG_VDONE_MAX)));
+  } catch {}   // 용량 초과 = 조용히 포기(보관함은 편의 · 현재 결과 표시는 무영향)
+}
+function _dgDoneOpen(i) {   // 보관함 항목 → 그때 그 완료 패널 그대로 복원(파일 목록·받기·전부 받기)
+  const e = _dgDoneLoad()[i]; if (!e) return;
+  _dg.vid = { url: e.url, plat: e.plat, id: e.id, t0: e.t, st: 'done', res: e.res };
+  _dg.res = null; _dg.err = ''; _dg.vdOpen = false;
+  _dgRenderBody();
+}
+function _dgAgo(t) {   // 상대시각 = 보관함 행 부제(형제 목록 관례 · 절대시각 병기 없이 1줄)
+  const s = Math.max(0, Date.now() - t) / 1000;
+  if (s < 3600) return Math.max(1, Math.round(s / 60)) + '분 전';
+  if (s < 86400) return Math.round(s / 3600) + '시간 전';
+  return Math.round(s / 86400) + '일 전';
+}
+// 받은 영상 접이 — 껍데기·행·빈상태 전부 위 '기록' 접이(geni-histwrap) 100% 모방 · 신규 클래스·색 0.
+//   .prev = 「이전 제작」 이력색 변형(정본 = #geni 이전 제작 접이) 계승 = 기록(강조색)과 축 구분.
+function _dgDoneHtml() {
+  const list = _dgDoneLoad();
+  let h = '<div class="geni-histwrap"><button class="geni-histfold prev" type="button" data-act="vdfold" aria-expanded="' + (_dg.vdOpen ? 'true' : 'false') + '" aria-controls="dgDoneBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>받은 영상 <span class="geni-histcnt">(' + list.length + ')</span></span><span class="dg-histnote">이 기기 · 7일 뒤 자동 삭제</span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>'
+    + '<div class="geni-histbody' + (_dg.vdOpen ? ' open' : '') + '" id="dgDoneBody"' + (_dg.vdOpen ? '' : ' inert') + '><div class="geni-histbody-in">';
+  if (!list.length) h += '<div class="geni-histempty">아직 없어요 — 영상을 한 번 받으면 여기 남아서 언제든 다시 받을 수 있어요</div>';
+  list.forEach((e, i) => {
+    const fs = e.res.files || [];
+    const vn = fs.filter(f => f.kind === 'video').length;
+    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' 영상 · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';
+  });
+  return h + '</div></div></div>';
+}
 function _dgVidSaveJob(v) { try { if (v && v.st === 'run' && v.id) localStorage.setItem(DG_VID_KEY, JSON.stringify({ url: v.url, plat: v.plat, id: v.id, t0: v.t0 })); } catch {} }
 function _dgVidClearJob() { try { localStorage.removeItem(DG_VID_KEY); } catch {} }
 function _dgVidLoadJob() {
@@ -8776,7 +8861,7 @@ function _dgVidHtml() {
       + '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" data-act="vidscan">사진·파일로 스캔</button></div>';
   } else if (v.st === 'run') {
     h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 — 보통 3~8분(긴 영상은 더 걸려요)</div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>'
-      + '<div class="dg-hint">창을 닫아도 받기는 계속돼요 — 다시 열면 진행 상황이 이어져요.</div>';
+      + '<div class="dg-hint">창을 닫아도 받기는 계속돼요 — <b>다 되면 알림이 가요</b>(설정 ▸ 기본값 ▸ 알림 ON일 때). 알림을 누르면 이 화면이 바로 열려요.</div>';   // 3~8분을 창 보며 기다리게 두지 않는다(운영자 260802) — 발송 = vidl-make.yml 완료 푸시
   } else if (v.st === 'fail') {
     h += '<div class="dg-err">' + esc(v.msg || '받기 실패') + '</div>'
       + '<div class="dg-item"><div class="dg-imain"><div class="dg-imeta">다시 받으려면 아래 [다시 시도]를 눌러요</div></div>'
@@ -8793,6 +8878,7 @@ function _dgVidHtml() {
         + '<button type="button" class="geni-opt" data-act="vidget" data-i="' + i + '">받기</button></div>';
     });
     if (fs.length > 1) h += '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" id="dgVidAll" data-act="vidall">' + fs.length + '개 전부 내려받기</button></div>';   // 목록 아래·개수 명시(평의회8)
+    h += '<div class="dg-hint"><b>받는 법</b> — 위 [받기]를 누르면 이 기기의 <b>다운로드 폴더</b>로 바로 저장돼요(폰이면 파일 앱 ▸ 다운로드). 지금 안 받아도 괜찮아요 — <b>7일 동안 위 [받은 영상]에 남아</b> 언제든 다시 받을 수 있어요.</div>';   // 운영자 260802 "다운로드를 어떻게 받아" — 저장 위치·재수신 경로를 완료 화면에서 못박는다
     const dr = r.drive || {};
     const dmsg = (dr.on && dr.n) ? ('드라이브 내 드라이브/Shared에도 ' + dr.n + '건 복사됐어요' + (dr.why ? ' · ' + esc(dr.why) : ''))
       : ('드라이브엔 복사 안 됐어요 — ' + esc(_dgDriveWhy(dr.why)));   // n=0 = 실패 정직표기(평의회7)
@@ -8833,7 +8919,7 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
     }
     if (_dg.vid !== v) return;   // 콜백 await 중 교체됐으면 폐기(고아에 done 쓰지 않음)
     if (fail) { v.st = 'fail'; v.msg = '실패 — ' + fail; _dgVidClearJob(); _dgRenderBody(); return; }
-    if (done) { v.st = 'done'; _dgVidClearJob(); _dgRenderBody(); return; }
+    if (done) { v.st = 'done'; _dgVidClearJob(); _dgDoneSave(v); _dgRenderBody(); return; }   // 완료분 = 보관함 편입(창을 닫아도 다시 받을 수 있게 · 운영자 260802)
     _dgVidPoll(v);   // 계속(네트워크 일시 실패도 여기로 = 체인 안 끊김)
   }, 8000);
 }
@@ -8888,6 +8974,23 @@ async function _dgGo(forceUrl) {
   _dgRenderBody();
 }
 const _dgBtnEl = $('#dgBtn'); if (_dgBtnEl) _dgBtnEl.addEventListener('click', e => { e.stopPropagation(); openDlGrab(); });   // 설정 ▸ 다운로드(운영자 260721) — accBtn(계정→snsaccdlg) 선례 미러
+// 완료 푸시 딥링크(?vidl=<id>) — 알림 탭 = 다운로드 창 + 그 결과 패널 즉시(운영자 260802 "다운로드를 어떻게 받아").
+//   보관함에 있으면 그것으로, 없으면(폰↔PC 다른 기기·캐시 초기화) 서버 result.json을 읽어 복원 = 알림 받은 기기에서 항상 받아진다.
+async function _dgDeepLink(id) {
+  id = String(id || '').replace(/[^0-9a-f-]/gi, '').slice(0, 32); if (!id) return;
+  openDlGrab();
+  const hit = _dgDoneLoad().findIndex(x => x.id === id);
+  if (hit >= 0) { _dgDoneOpen(hit); return; }
+  try {
+    const r = await fetch('vidl_out/' + id + '/result.json?t=' + Date.now());
+    if (!r.ok) return;
+    const tx = await r.text(); if (/^\s*</.test(tx)) return;   // 404 폴백 HTML = 무시(폴링 가드와 동일 문법)
+    const d = JSON.parse(tx); if (!d || !d.files) return;
+    const v = { url: '', plat: d.plat || '', id, t0: Date.now(), st: 'done', res: d };
+    _dg.vid = v; _dgDoneSave(v); _dgRenderBody();
+  } catch {}
+}
+try { const _vq = new URLSearchParams(location.search).get('vidl'); if (_vq) setTimeout(() => _dgDeepLink(_vq), 0); } catch {}
 $('#dgX').addEventListener('click', () => $('#dlgrab').close());   // 닫기 = geniX 미러
 $('#dgGo').addEventListener('click', _dgGo);
 $('#dgDl').addEventListener('click', _dgDlSel);
@@ -8906,6 +9009,9 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(); }
   else if (act === 'vidscan') { e.stopPropagation(); _dgVidToScan(); }
   else if (act === 'selsec') { const kd = el.dataset.k; _dgEach((it, n) => { if (it.dl && (it.kind || 'link') === kd) _dg.sel[n] = true; }); _dgRepaintAll(); }
+  else if (act === 'vdfold') { _dg.vdOpen = !_dg.vdOpen; _dgRenderBody(); }
+  else if (act === 'vdopen') { e.stopPropagation(); _dgDoneOpen(i); }
+  else if (act === 'vddel') { e.stopPropagation(); try { const a = _dgDoneLoad(); a.splice(i, 1); localStorage.setItem(DG_VDONE_KEY, JSON.stringify(a)); } catch {} _dgRenderBody(); }
   else if (act === 'hist') { _dg.histOpen = !_dg.histOpen; _dgRenderBody(); }
   else if (act === 'histpick') { const he = _dgLoadHist(); if (he) { const inp = $('#dgUrl'); if (inp) inp.value = he.u; _dg.histOpen = false; _dgGo(); } }
   else if (act === 'histdel') { try { localStorage.removeItem(DG_HIST_KEY); } catch {} _dgRenderBody(); }
@@ -11486,6 +11592,7 @@ async function loadTrends() {
   } catch (e2) {}
   try { renderSnsTrends(); } catch (e3) {}   // 렌더 예외 격리 — loadTrends 프로미스 reject로 형제 배선까지 전파 차단(평의회 260713 ②)
   try { renderMsgBadge(); const mp = $('#msgpop'); if (mp && !mp.hidden) renderMsgList(); } catch (e4) {}   // 수집 고장(health.subs.stale) 반영 = 기어 색·알림메세지 목록 갱신(syncStaleMsg 본문 문법 계승 · 260725)
+  try { quakeNotify(); } catch (e5) {}   // ⑭ 지진 = 기기 알림(운영자 260802) — 알림함 경고(quakeMsgs)는 위 renderMsgBadge가 이미 반영
 }
 // SNS 트렌드 = 완전 독립체(운영자 260711 "SNS는 뉴스 레거시에 영향 0 · 별개로 간다") — sns_trends.json만 읽어 표시.
 // 수집함(CANDS)·큐레이션 신호·임계·랭킹·판정 전부 무접촉(옛 수집함 매칭 칩 = 레거시 커플링이라 철거).
@@ -14330,6 +14437,32 @@ async function kwNotify(it, bucket) {
     });
   } catch (_) {}   // fail-soft — 알림이 안 떠도 인앱 토스트·대기열은 그대로(감시 파이프 무영향)
 }
+// ⑭ 지진 포그라운드 기기 알림 — 문법·아이콘·배지·data.url = 바로 위 kwNotify **100% 미러**(운영자 260802 "포그라운드 알림도 박아").
+//   중복 방지 2중: ① tag 'nomute-quake' = 같은 자리 교체(겹쳐도 알림 1개) ② 발령시각 도장(로컬) = 새로고침·탭 재진입에 재발동 0.
+//   권한 요청은 여기서 안 한다 — 정본 경로 = 설정 알림 토글(pushToggle) · 미허용이면 조용히 스킵(알림함 경고는 그대로 남는다).
+const QUAKE_SEEN_K = 'nomute_quake_seen';
+function quakeSeen() { try { return new Set(JSON.parse(localStorage.getItem(QUAKE_SEEN_K) || '[]')); } catch { return new Set(); } }
+function quakeMark(id) { try { const s = quakeSeen(); s.add(id); localStorage.setItem(QUAKE_SEEN_K, JSON.stringify([...s].slice(-40))); } catch (_) {} }
+async function quakeNotify() {
+  const ms = quakeMsgs(); if (!ms.length) return;
+  const seen = quakeSeen();
+  const fresh = ms.filter(m => !seen.has(m.id));
+  if (!fresh.length) return;
+  fresh.forEach(m => quakeMark(m.id));   // 도장은 알림 성공 여부와 무관하게 먼저 = 권한 거부 기기서 매 로드 재시도 루프 차단
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.ready;
+    if (!reg || !reg.showNotification) return;
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;   // sw.js iconFor 미러 = 라이트 파랑 / 다크 시그니처
+    const top = fresh[0];
+    await reg.showNotification('⚠️ ' + String(top.text || '').split('\n')[0], {
+      body: fresh.length > 1 ? '지진 재난문자 ' + fresh.length + '건 — 눌러서 안전 탭에서 확인' : '눌러서 안전 탭에서 확인',
+      icon: '/assets/brand/icon-notif-' + (dark ? 'sig' : 'blue') + '-512-260727.png',
+      badge: '/assets/brand/badge-260723.png',
+      tag: 'nomute-quake', renotify: true, data: { url: '/?dis=1' }, lang: 'ko',
+    });
+  } catch (_) {}   // fail-soft — 기기 알림이 안 떠도 알림함 경고(quakeMsgs)는 그대로
+}
 // 발견한 글로 이동 — URL 미보유 소스(xtrends 등)면 대기열로 폴백해 '눌러도 아무 일 없음'을 만들지 않는다.
 //   ⚠ window.open 금지(실측 260801 재발) — 이 앱은 전역 `async function open(a)`(기사 열기)가 window.open을 **가려서**
 //   눌러도 발견한 글로 안 가고 **빈 요약 모달**이 떴다(운영자 260801 "해당 건을 찾은 곳으로 안 가고"). 정본 = 앵커클릭 openExt(failOpen 가족·PWA 안전).
@@ -15735,6 +15868,15 @@ ambKick();
 loadRevising();   // 새로고침 전 진행 중이던 수정 복원(잠금·완료감지·라이브 전환 유지)
 loadCardFire();   // 새로고침 전 발사해둔 카드 프롬프트 임시상태 복원(로더 유지·완료감지)
 loadMessages().then(() => openMsgDeepLink());   // ?msg=fail-… (수집 실패 푸시 탭) → 메시지함 열고 강조
+// ⑭ 지진 알림 탭(/?dis=1) → 안전(재난문자) 섹션 착지(운영자 260802) — openMsgDeepLink 문법 미러(쿼리 제거까지 동일).
+//   트렌드가 아직 안 실렸을 수 있어 loadTrends 뒤에 간다(섹션이 없으면 goDisSec가 조용히 빠져 '눌러도 아무 일 없음'이 되는 걸 차단).
+(function openDisDeepLink() {
+  try {
+    if (new URLSearchParams(location.search).get('dis') !== '1') return;
+    history.replaceState(null, '', location.pathname);   // 쿼리 제거(새로고침·공유 시 재발동 방지)
+    Promise.resolve(loadTrends()).then(() => goDisSec()).catch(() => goDisSec());
+  } catch (_) {}
+})();
 loadHealth();       // eager — 맞춤법 검사기 건강(불건강이면 프로필 노란 링 + 메시지)
 loadCandidates();   // eager — 속보(breaking) 감지로 링/토스트(수집함 미진입이어도 알림)
 loadPickFails();    // eager — 픽 분석 실패(전문 필요) 감지로 앰버 링/토스트(수집함 밖에서도 알림)
