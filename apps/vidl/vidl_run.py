@@ -115,7 +115,8 @@ def install_plugins():
 
 def ytd(args, timeout, cookies=None, capture=False):
     """python3 -m yt_dlp 공통 호출 — sys.executable(인터프리터 일치 · 평의회6 P1-2) · cookies=경로(없으면 미사용)."""
-    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30"]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30",
+           "--concat-playlist", "never"]   # 캐러셀 = 개별 파일 납품(bat v7.0 동일) — 기본값 multi_video가 TH 캐러셀 jpg 6장을 이어붙이려다 "different streams/codecs" 전량 실패(260802 러너 실측 run 30743201191)
     if cookies:
         cmd += ["--cookies", cookies]
     if JSRT:
