@@ -415,7 +415,8 @@
   .cpprev .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착 — 「한국｜세계」 미니바 문법 차용) */; flex:none; align-self:stretch; }
   .cpprev .trail-div { width:14px; height:1px; margin:1px 0 /* raw-ok: 헤어라인 미세 광학 = index `.trail-div` 정본(1202) 동값 사본 — 값 변경 0(셀렉터 스코프만 .cpprev-box → .cpprev) */; flex:none; background:rgba(255,255,255,.16); }
   .cpprev .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(top6/right6·42)·플레이트·그림자 해제 · 폭 100% = 캡슐 폭에 맞춰 글리프 정중앙(운영자 260801) · id·핸들러·hidden 토글 불변 */
-  .cpprev .cpv-tool svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값(구 15 → 레일 규격) */
+  .cpprev .cpv-tool svg { width:12px; height:12px; }
+  .cpprev .cpv-tool:disabled { opacity:.5; cursor:default; }   /* raw-ok: .5 = 이 파일 `.ropt.gs-locked` 잠금 딤 정본 동값 계승(신규 값 0) — 비활성 = 자리 유지·탭 무효 */   /* 정본 .trail-i svg 동값(구 15 → 레일 규격) */
   .cpprev .trail-g:not(:has(button:not([hidden]))) { display:none; }   /* 툴이 전부 hidden(사진 없음)이면 픽토 묶음만 은닉 — .scard:has(.none) 은닉 동문 · 구 「캡슐 통째 은닉」은 옵션 이주(260802)로 폐지: 값 칩은 사진 없어도 살아 있어야 한다 */
   .cpprev .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }   /* 묶음이 숨으면 그 아래 구분선도 동반(홀로 뜬 헤어라인 방지) */
   .cpprev #cpRail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }   /* 툴도 옵션도 없는 탭(빈 미리보기) = 빈 캡슐 잔존 방지 · 스코프 = 옵션 캡슐(#cpRail) 한정(260802 2차 3분할 — 돋보기·생성 캡슐은 내용물이 상시라 이 은닉 대상이 아니다) */
@@ -1741,7 +1742,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
 function cpToolSync(empty) {   // 미리보기 사진 도구(교체·삭제) 노출 게이트 — 구 슬롯(#cImgSlot) 이주분(운영자 260716)
   const sw = $('#cpImgSwap'), dl = $('#cpImgDel');
   if (sw) sw.hidden = !!empty;
-  if (dl) dl.hidden = !!empty || !CIMG.b64;
+  if (dl) { dl.hidden = !!empty; dl.disabled = !CIMG.b64; }   /* 휴지통 = 사진 없으면 **비활성**(운영자 260802 "휴지통 누르면 휴지통 버튼이 사라지는데 비활성화로 바껴야할듯") — 구 hidden은 누른 직후 픽토가 통째로 증발해 자리가 흔들렸다 · 딤 = .gs-locked 정본(opacity .5·cursor default) 동값 계승 */
   cpToolAnchor();
 }
 // 도구 앵커 = 「창(사진·캔버스) 안 우상단」(운영자 260731 "창 안으로 넣어, 다른 디자인 기틀 따라하셈")
@@ -2346,7 +2347,7 @@ function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 
     r.onload = () => { normalizeImg(r.result, f.name || '붙여넣기.png').then(({ url, name }) => { store.b64 = url; store.name = name; filled(url, Math.round((url.length * 0.75) / 1024)); }); };   // 정규화(HEIC·AVIF·GIF·초대형→JPEG) 후 저장 = 합성 서버가 읽는 포맷 보장(운영자 260717) · KB = base64 길이 환산(변환 후 실크기)
     r.readAsDataURL(f);
   };
-  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); };
+  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); e.target.value = ''; };   /* value 리셋 = **같은 파일 재선택도 change 발화**(운영자 260802 "교체 2~3회 하고 나면 사진 첨부·교체·없애기가 안 먹힘" — 브라우저는 값이 같으면 change를 안 쏜다 = 두 번째 같은 사진 선택이 무반응) · 정본 선례 = index `rfFile.value = ''`(같은 파일 재선택) 동문 · read()는 동기 호출 뒤라 파일 참조 유실 0 */
   bindImgPaste(slot, read);   // 붙여넣기(Ctrl+V) = 슬롯 포커스 상태 클립보드 이미지(운영자 260713 "모든 곳에 다")
   const _cr = slot.closest('.covrow'); const _ta = _cr && _cr.querySelector('textarea'); if (_ta) bindImgPaste(_ta, read);   // 짝 텍스트칸(covta·lines/cLines)에 붙여넣기 = askText 선례
   slot._reset = () => { store.b64 = ''; store.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
@@ -3460,6 +3461,7 @@ const doneReq = () => {   // 완료 알림 딥링크 = ?done=<id> 정본(Access 
   if (/\bdone\b/.test(location.hash)) return { on: true, id: (location.hash.match(/done=([\w-]+)/) || [])[1] || '' };
   return { on: false, id: '' };
 };
+const _twoCol = () => { try { return document.documentElement.classList.contains('inmodal') && matchMedia('(min-width:900px)').matches; } catch (_) { return false; } };   // 결과 레일 2단 티어 판정 = 레일 @media 조건과 같은 식(단일출처 · 값 900 = 그 미디어 쿼리와 한 몸)
 const scrollMid = el => { if (!el) return; requestAnimationFrame(() => { try { const y = el.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18); window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 중상단(상단서 18%) 랜딩 · rAF=레이아웃 정착 후 측정(이미지 리플로우 뒤 정확)
 const scrollQueue = () => { const h = $('#carH'), el = (h && !h.hidden) ? h : $('#jobs'); if (!el) return; requestAnimationFrame(() => { try { const dk = $('#topDock'); const off = ((dk && getComputedStyle(dk).position === 'sticky') ? dk.getBoundingClientRect().height : 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 0); const y = el.getBoundingClientRect().top + window.pageYOffset - off; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 발사 = 대기열(결과 보드)로 이징 착지(운영자 260727 "카드 생성 누르면 대기열 아래로 이징 스크롤") — 위 scrollMid 정본 계승(rAF 측정·smooth·구형 폴백) · 랜딩선만 교체: '뷰포트 18%'는 sticky 도크(#topDock 실측 379.7px @412×915)에 가려 무용 → 도크 높이 + var(--sp-2) 아래 = 결과 소머리와 새 잡 행이 도크 바로 밑에 노출(신설 값 0)
 const flashEl = el => { if (!el) return; el.classList.add('thfocus'); setTimeout(() => el.classList.remove('thfocus'), 2200); };   // 착지 항목 잠깐 강조 = '해당 작업' 식별
@@ -3709,7 +3711,7 @@ $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b
   $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open);
   if (open) {   // 펼침 = hist-it 스태거 histIn(hidden 해제 시 재생)
     b.hidden = false;
-    requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   // 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
+    if (!_twoCol()) requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   /* 2단(PC)에선 생략(운영자 260802 "pc버전에서는 이전 제작 토글 눌러서 펼쳐도 포커싱되서 결과가 밀릴 필요없을듯") — 레일이 이미 화면에 고정이라 스크롤 이동이 오히려 결과를 밀어낸다 · 1단(폰)은 종전 이징 유지 */   // 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
   } else {   // 닫힘 = 촤르륵(histOut 역재생 후 hidden · 직전 제작 carToggle 미러 · 운영자 260707)
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) { b.hidden = true; }
     else { b.classList.add('closing'); _histCloseT = setTimeout(() => { b.hidden = true; b.classList.remove('closing'); }, 270); }   // .26s 애니 + 여유
@@ -3732,7 +3734,7 @@ $('#carH').addEventListener('click', () => {
   clearTimeout(_carCloseT); cw.classList.remove('closing'); cb.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
   if (open) {   // 펼침
     cw.hidden = false; cb.hidden = false; $('#carH').setAttribute('aria-expanded', 'true');
-    requestAnimationFrame(() => { carUpdate(); try { $('#carH').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} });   // 재펼침 = 높이 핏 재계산(접힘 중 리사이즈 대비 · QA3 260706)
+    requestAnimationFrame(() => { carUpdate(); if (_twoCol()) return; try { $('#carH').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} });   /* 결과 재펼침도 동축(2단 = 스크롤 생략 · 높이 재계산 carUpdate는 유지) */   // 재펼침 = 높이 핏 재계산(접힘 중 리사이즈 대비 · QA3 260706)
   } else {   // 접힘 = 촤르륵(histOut 역재생 후 hidden · 운영자 260706 "결과 닫힐 때 촤르륵")
     $('#carH').setAttribute('aria-expanded', 'false');
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) { cw.hidden = true; cb.hidden = true; }
