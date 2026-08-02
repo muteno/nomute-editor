@@ -409,11 +409,24 @@ ${extracted}"
     elif [ "$_fk" = "congest" ]; then
       fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 모델 혼잡(분석 도구 일시 과부하)\n\n→ 잠시 후 자동 재시도되거나, 그 기사를 다시 보내면 돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
     else
+      # 사유 = 모델이 낸 ANALYSIS_FAILED 실사유를 그대로 싣는다(운영자 260802 실측 fail-260802-170530-17098).
+      #   구판은 '원문이 막혔거나 본문이 비어'를 고정 문구로 박아, *뉴스 기사가 아닌 입력*(소셜 게시물 링크 등)까지
+      #   '차단당했다'로 오표기했다 — 실측 = threads.com/share 링크 · fetch 성공(캡션 한 줄 읽음) · 날조 하드가드가
+      #   정상 중단시킨 건인데 알림만 차단으로 읽혀 운영자가 원인을 못 봤다. 진짜 사유는 이미 .log 에 있고
+      #   build-viewer.mjs(picks-failed.json)는 그걸 쓴다 = 뷰어엔 보이는데 알림에만 안 실리던 비대칭 봉합(같은 축 계승).
+      #   모델 사유가 없을 때(빈 응답·크래시)만 종전 고정 문구로 폴백.
+      #   ⚠️ 자르기는 *문자* 단위(python3) — `head -c`(바이트)로 자르면 한글이 중간에서 쪼개져 알림에 U+FFFD 가 박힌다(실측 260802).
+      #     python3 부재·오류면 빈 값 → 바로 아래 폴백이 고정 문구로 받는다(fail-soft).
+      _why="$(printf '%s\n' "$out" | grep -m1 '^ANALYSIS_FAILED:' | sed 's/^ANALYSIS_FAILED:[[:space:]]*//' | tr -d '\r' \
+             | python3 -c 'import sys
+w = " ".join(sys.stdin.buffer.read().decode("utf-8", "ignore").split())
+print(w[:220] + ("…" if len(w) > 220 else ""))' 2>/dev/null)"
+      [ -z "${_why// }" ] && _why='소스 결함(원문이 막혔거나 본문이 비어 내용을 못 가져옴)'
       _sug="$(printf '%s\n' "$out" | grep -m1 '^SUGGEST_URL:' | sed 's/^SUGGEST_URL:[[:space:]]*//' | tr -d '\r' | head -c 400)"
       if [ -n "${_sug// }" ]; then
-        fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 소스 결함(원문이 막혔거나 본문이 비어 내용을 못 가져옴)\n\n→ 아래 기사를 열어 본문을 전체선택→복사해서 다시 보내줘(전문 붙여넣기 = 차단 우회):\n%s\n\n[내가 보낸 내용]\n%s' "$_sug" "$input_echo")"
+        fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: %s\n\n→ 아래 기사를 열어 본문을 전체선택→복사해서 다시 보내줘(전문 붙여넣기 = 차단 우회):\n%s\n\n[내가 보낸 내용]\n%s' "$_why" "$_sug" "$input_echo")"
       else
-        fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 소스 결함(원문이 막혔거나 본문이 비어 내용을 못 가져옴)\n\n→ 같은 사건의 본문 충실한 기사(통신사·속보 말고 종합지)를 열어 본문을 전체선택→복사해서 다시 보내줘.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
+        fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: %s\n\n→ 같은 사건의 본문 충실한 기사(통신사·속보 말고 종합지)를 열어 본문을 전체선택→복사해서 다시 보내줘.\n\n[내가 보낸 내용]\n%s' "$_why" "$input_echo")"
       fi
     fi
     # 관련 기사 링크 무조건 동봉(운영자 260712) — 본문에 링크가 이미 있으면(SUGGEST·url-mode 에코) 생략 · 없으면(전문 paste 등) 입력 첫 조각으로 구글뉴스 유추 검색 합성(비-LLM·토큰 0 · fail-soft)
