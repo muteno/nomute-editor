@@ -1,21 +1,26 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# live-smoke.yml — 배포 직후 라이브 실물 검문 → 실패 시 웹푸시 (운영자 260802 "이런 일 안 생기게" 승인)
+# live-smoke.yml — 배포 직후 라이브 실물 검문 + 연속 실패 자가 롤백 (운영자 260802 승인 · "6-4 ㄱ")
 # 왜: 260802 '상단만 렌더' 사고 축 — 로컬 게이트(check_refs·smoke_all)는 레포 사본만 보고, 상용이
 #     실제로 내주는 바이트는 사람이 열기 전까지 무검문 사각이었다. 이 워크플로가 배포마다
 #     apps.nomute.kr 실물을 레포 정본과 대조(절단·센티널·부속 바이트·articles 파싱 = shared/live_smoke.py 헤더가 정본 설명)
 #     하고, 실패만 웹푸시(발송 정본 = push_send --notify 재사용 · watchdog/notify_fail 문법 계승).
+#     + 연속 2회 실패 = last_good 코드 표면 자가 롤백(액터·안전 레일 정본 설명 = .github/scripts/live_rollback.py 헤더
+#     · 원장 = scraper/obs/livesmoke_state.json 단일 기록자 · 손편집 금지) → 새벽·부재중에도 라이브가 먼저 산다.
 # 오경보 0 계약(운영자 "품질 저하 없이"): fetch 3회 재시도·전파 재검은 스크립트 내장 · 후속 푸시로
 #     대체된 런 = 중립 스킵 · 도장(nomute-bot) 커밋 재트리거 차단(stamp-version 작성자 가드 계승) ·
-#     봇 데이터 커밋(paths 밖 *.json)엔 애초에 안 붙음 = 러너 소모 증가 미미.
+#     봇 데이터 커밋(paths 밖 *.json)엔 애초에 안 붙음 · 롤백 = 연속 2회+1회 래치+킬스위치 겹레일.
 # 배포 수렴 신호 = BUILD_STAMP(stamp-version이 코드 SHA를 구움) — 라이브 도장이 이 코드 커밋 SHA로
 #     바뀌는 순간이 곧 '이 코드의 최종(도장 포함) 빌드가 서빙 중'이라는 뜻(도장 커밋만이 그 값을 만듦).
-# 롤백: 이 파일 삭제 = 검문만 멈춤(라이브·파이프라인 무영향 · live_smoke.py는 수동 도구로 잔존).
+#     ⚠ 롤백 커밋은 GITHUB_TOKEN 푸시 = 워크플로 연쇄 미발화(GitHub 설계) → 도장·검문 재트리거 없음 =
+#     루프 원천 봉쇄 · 검증은 이 런이 인라인으로 수행(복원된 index 안의 옛 도장으로 수렴 감지).
+# 롤백 되돌리기 = git revert <롤백커밋> 한 줄(히스토리 보존 · 강제 푸시 0) · 킬스위치 = repo variable
+#     LIVE_ROLLBACK=0(vars 부재 = ON · ALGO_LEDGER 롤백 레버 문법 계승) · 이 파일 삭제 = 검문 전체 정지(무해).
 # ═══════════════════════════════════════════════════════════════════════════════
 name: live-smoke
 on:
   push:
     branches: [main]
-    paths:                     # 코드 배포 표면만(stamp-version paths + js/css/_headers) — 봇 데이터 *.json 제외
+    paths:                     # 코드 배포 표면만(stamp-version paths + js/css/_headers) — 봇 데이터 *.json 제외 · live_rollback.py CODE_SPECS와 동기
       - 'viewer/*.html'
       - 'viewer/*.js'
       - 'viewer/*.css'
@@ -23,19 +28,26 @@ on:
       - 'functions/**'
   schedule:
     - cron: '40 19 * * *'      # 19:40 UTC = 04:40 KST(§📐 KST 환산 명기 · smoke-nightly 03:30 뒤 소강대 · 데이터축 일일 안전망)
-  workflow_dispatch: {}        # 수동 실측(카나리아·검증)용
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: '자가 롤백 — 0=이 런만 강제 OFF(카나리아·검증용 · 평시 킬스위치는 vars.LIVE_ROLLBACK)'
+        default: ''
+        required: false
 permissions:
-  contents: read               # 읽기 전용 검문(커밋 0) — watchdog류 원장도 없음(상태 무저장 = 배포당 1판정이라 쿨다운 불요)
+  contents: write              # 원장(livesmoke_state.json) + 자가 롤백 커밋 — 그 외 쓰기 0
 concurrency:
   group: live-smoke
-  cancel-in-progress: true     # 연속 배포 = 최신만 의미(stamp-version 동축)
+  cancel-in-progress: true     # 연속 배포 = 최신만 의미(stamp-version 동축) · 취소로 원장 커밋이 유실돼도 연속성 카운터는 적게 세는 쪽 = 롤백을 늦출지언정 서두르지 않음(안전 방향)
 jobs:
   probe:
     if: ${{ github.event_name != 'push' || github.event.head_commit.author.name != 'nomute-bot' }}   # 도장 커밋 재트리거 차단(작성자 기준 = stamp-version 검증된 가드 · 도장 빌드 자체는 코드 런의 도장 수렴 대기가 검문)
     runs-on: ubuntu-latest
-    timeout-minutes: 14
+    timeout-minutes: 22        # 검문(≤14) + 롤백 수렴 검증(≤6) + 여유
     steps:
       - uses: actions/checkout@v4   # push = 트리거 커밋(코드 정본) · schedule/dispatch = main 최신
+        with:
+          fetch-depth: 0            # 자가 롤백 = last_good 시점 파일 복원(git ls-tree/restore)이라 전 히스토리 필요
       - name: 배포 수렴 대기(코드 푸시 한정 — 라이브 BUILD_STAMP = 이 커밋 SHA)
         if: ${{ github.event_name == 'push' }}
         run: |
@@ -64,19 +76,59 @@ jobs:
           fi
           echo "RC=$RC" >> "$GITHUB_ENV"
           exit 0
-      - name: 실패 시 웹푸시(발송 정본 push_send --notify · 비치명 fail-soft)
-        if: ${{ env.SKIP != '1' && env.RC != '0' }}
+      - name: 연속성 원장 + 자가 롤백 판정(live_rollback.py — 레일 = 연속2회·1회 래치·킬스위치·코드 표면 한정)
+        if: ${{ env.SKIP != '1' }}
+        env:
+          LIVE_ROLLBACK: ${{ inputs.rollback || vars.LIVE_ROLLBACK || '1' }}   # dispatch 입력 > repo variable > 기본 ON · '0'만 OFF
+        run: |
+          python3 .github/scripts/live_rollback.py --rc "${RC:-1}" ${SHA:+--sha "$SHA"} --enabled "$LIVE_ROLLBACK" | tee rb.out
+          grep -E '^(ACTION|GOOD|NOTE)=' rb.out >> "$GITHUB_ENV"
+      - name: 롤백 수렴 검증(rolled_back 한정 — 복원 셸 서빙 확인 후 전문 재검문)
+        if: ${{ env.SKIP != '1' && env.ACTION == 'rolled_back' }}
+        run: |
+          WANT=$(grep -o "BUILD_STAMP = '[0-9a-f]\{7\}" viewer/index.html | grep -o "[0-9a-f]\{7\}$" || true)   # 복원된 index 안의 옛 도장 = 롤백 빌드의 신원(GITHUB_TOKEN 푸시라 재도장 없음)
+          echo "복원 도장 = ${WANT:-?}"
+          VERIFY=red
+          for i in $(seq 1 12); do
+            sleep 30
+            OUT=$(python3 shared/live_smoke.py 2>&1); RC2=$?
+            echo "$OUT" | tail -2
+            if [ "$RC2" = "0" ] && echo "$OUT" | grep -q "완전 일치"; then VERIFY=green; break; fi   # '완전 일치' 필수 = 전이 중 C2 생략 통과를 회복으로 오판 않기
+          done
+          echo "VERIFY=$VERIFY" >> "$GITHUB_ENV"
+      - name: 원장 커밋(비롤백 런 — 롤백 커밋엔 원장이 이미 동승 · watchdog 쿨다운 원장 문법 계승)
+        if: ${{ env.SKIP != '1' && env.ACTION != 'rolled_back' }}
+        run: |
+          git config user.name "nomute-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add scraper/obs/livesmoke_state.json 2>/dev/null || true
+          git diff --cached --quiet && { echo "원장 변동 없음 — 커밋 생략"; exit 0; }
+          git commit -m "live-smoke: 연속성 원장 도장 (bot)"
+          for i in 1 2 3 4; do   # fetch+rebase(FETCH_HEAD) = detached HEAD 안전(actions/checkout 기본 = 브랜치 아님 → pull --rebase 불가 · 260802 실측 축)
+            git fetch origin main && git rebase FETCH_HEAD || echo "::warning::rebase 실패(사유 = 위 로그) — 재시도 계속"
+            git push origin HEAD:main && exit 0 || { echo "원장 push 재시도 $i"; sleep $((2**i)); }
+          done
+          echo "::warning::원장 push 실패(재시도 소진) — 연속성 1회 유실 = 롤백이 늦어질 뿐 안전 방향"
+      - name: 웹푸시(실패·롤백 결과·회복 — 발송 정본 push_send --notify · 비치명 fail-soft)
+        if: ${{ env.SKIP != '1' && (env.RC != '0' || env.ACTION == 'recovered') }}
         env:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: |
           python3 -m pip install --quiet --break-system-packages pywebpush 2>/dev/null \
             || { echo "::warning::pywebpush 미설치 — 푸시 생략(비치명)"; exit 0; }
-          BODY=$(cut -c1-160 smoke_fail.txt | head -1)
-          python3 .github/scripts/push_send.py --notify "라이브 검문 실패" "${BODY:-원인 요약 없음 — 런 로그 확인}" \
+          SUM=$(cut -c1-120 smoke_fail.txt 2>/dev/null | head -1)
+          case "${ACTION}" in
+            recovered)    T="라이브 회복 확인";        B="자가 롤백 이후 검문 녹색 — 정상 서빙 중";;
+            rolled_back)  if [ "${VERIFY}" = "green" ]; then T="자가 롤백 완료 — 라이브 회복"; B="연속 실패 → ${GOOD} 코드 표면 복원·재검문 통과 · 재적용 = git revert";
+                          else T="자가 롤백 후에도 실패"; B="${GOOD} 복원했으나 검문 여전히 적색 — 수동 개입 필요"; fi;;
+            manual|push_failed) T="라이브 수동 개입 필요"; B="${NOTE}";;
+            *)            T="라이브 검문 실패";        B="${SUM:-원인 요약 없음} · ${NOTE}";;
+          esac
+          python3 .github/scripts/push_send.py --notify "$T" "$B" \
             --url "/" --tag "nomute-livesmoke" --kind sys \
-            || echo "::warning::검문 실패 푸시 발송 실패(비치명)"
-      - name: 판정 반영(실패 = 런 적색 — 이력 가시화)
+            || echo "::warning::검문 푸시 발송 실패(비치명)"
+      - name: 판정 반영(실패 = 런 적색 — 이력 가시화 · 롤백 성공해도 '깨진 배포' 이력은 적색 유지)
         if: ${{ env.SKIP != '1' }}
         run: |
-          [ "${RC:-0}" = "0" ] && echo "라이브 검문 통과 ✓" || { echo "라이브 검문 실패 — 위 로그·웹푸시 참조"; exit 1; }
+          [ "${RC:-0}" = "0" ] && echo "라이브 검문 통과 ✓" || { echo "라이브 검문 실패(ACTION=${ACTION:-?}) — 위 로그·웹푸시 참조"; exit 1; }
