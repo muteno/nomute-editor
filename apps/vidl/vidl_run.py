@@ -82,18 +82,33 @@ def detect_plat(url):
     return ""
 
 
-PLUGIN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
 # 스레드(Threads) = yt-dlp 코어에 extractor가 없어 종전 TH 경로는 구조적 100% 실패였다(260802 러너 실측
-#   "ERROR: Unsupported URL"). 운영자 제공 플러그인(plugins/yt_dlp_plugins/extractor/nomute_threads.py)이
-#   SSR data-sjs JSON에서 서명 CDN 주소를 뽑는다 = 토큰·로그인·추가요청 0.
-#   ⚠ --plugin-dirs는 **절대경로만** 먹는다(상대경로 = "Plugin directories: none" 실측) · 로드 확인 =
-#   `-v` 출력의 "[debug] Extractor Plugins: NomuteThreadsIE".
+#   "ERROR: Unsupported URL" → generic 폴백). 운영자 제공 플러그인이 포스트 HTML의
+#   <script type="application/json" data-sjs> SSR JSON에서 서명 CDN 주소를 뽑는다 = 토큰·로그인·추가요청 0.
+# ⚠ 배선은 **홈 설정 경로 복사만** 통한다 — `--plugin-dirs`(상대·절대 both)는 "Plugin directories: none"으로
+#   무시됐다(260802 로컬 실측 + 러너 실측 2회). 유효 경로 = ~/.config/yt-dlp/plugins/<pkg>/yt_dlp_plugins/extractor/.
+# ⚠ 파일명은 반드시 파이썬 모듈명으로 유효해야 한다(하이픈·숫자 시작 = import 조용히 실패 · 실측).
+PLUGIN_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins", "yt_dlp_plugins", "extractor")
+PLUGIN_DST = os.path.expanduser("~/.config/yt-dlp/plugins/nomute/yt_dlp_plugins/extractor")
+
+
+def install_plugins():
+    """레포 동봉 extractor 플러그인을 yt-dlp가 실제로 읽는 홈 경로에 깐다. 실패해도 비치명(스레드만 못 받음)."""
+    try:
+        os.makedirs(PLUGIN_DST, exist_ok=True)
+        n = 0
+        for fn in sorted(os.listdir(PLUGIN_SRC)):
+            if fn.endswith(".py"):
+                shutil.copyfile(os.path.join(PLUGIN_SRC, fn), os.path.join(PLUGIN_DST, fn))
+                n += 1
+        print(f"[플러그인] {n}개 설치 → {PLUGIN_DST}", flush=True)
+    except Exception as e:
+        print(f"::warning::플러그인 설치 실패(스레드 경로만 영향): {e}", flush=True)
 
 
 def ytd(args, timeout, cookies=None, capture=False):
     """python3 -m yt_dlp 공통 호출 — sys.executable(인터프리터 일치 · 평의회6 P1-2) · cookies=경로(없으면 미사용)."""
-    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30",
-           "--plugin-dirs", PLUGIN_DIR]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30"]
     if cookies:
         cmd += ["--cookies", cookies]
     if JSRT:
@@ -471,6 +486,7 @@ MODE_OK = ("both", "video", "subs")
 if __name__ == "__main__":
     URL = sys.argv[2] if len(sys.argv) > 2 else ""
     MODE = (sys.argv[3] if len(sys.argv) > 3 else "both").strip().lower()
+    install_plugins()   # yt-dlp 첫 호출(사전조회) 전에 깔아야 스레드가 [threads]로 잡힌다
     if MODE not in MODE_OK:
         MODE = "both"   # 미지정·오타 = 종전 동작(영상+자막) = 하위호환
     PLAT = detect_plat(URL)
