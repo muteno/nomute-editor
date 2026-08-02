@@ -19,9 +19,11 @@ name: stamp-version
 on:
   push:
     branches: [main]
-    paths:
+    paths:                     # live-smoke.yml paths와 동일 집합(평의회 260802 — 부분집합이면 js/css/_headers 푸시가 도장 없이 배포돼 라이브 검문의 수렴 대기가 원리적으로 불가 = 침묵 스킵/오MISS의 근원)
       - 'viewer/*.html'
-      - 'viewer/sw.js'
+      - 'viewer/*.js'
+      - 'viewer/*.css'
+      - 'viewer/_headers'
       - 'functions/**'
   workflow_dispatch:   # 수동 도장(백필·검증용 · paths 무관 상시 실행 · 첫 배포 스킵 사고 후 즉시 검증 경로로 추가)
 permissions:
@@ -40,7 +42,7 @@ jobs:
           ref: main
       - name: 도장 굽기(커밋 SHA·KST → index.html BUILD_STAMP)
         run: |
-          SHA=$(git rev-parse --short=7 HEAD)               # 지금 배포되는 코드 커밋(도장 커밋 이전 HEAD)
+          SHA="${GITHUB_SHA::7}"                             # 지금 배포되는 코드 커밋 = 트리거 SHA 고정(평의회 260802 — 구 rev-parse HEAD는 체크아웃 큐 지연 사이 낀 봇 데이터 커밋 SHA를 구워 라이브 검문 수렴이 어긋나던 레이스 · dispatch도 GITHUB_SHA=main tip이라 동작 동일)
           TS=$(TZ='Asia/Seoul' date '+%y%m%d_%H%M')          # KST(러너=UTC라 TZ 강제 · CLAUDE.md [12])
           # BUILDSTAMP 마커 줄만 치환 = 마커 영속(다음 배포도 재매칭) · 값은 'dev' 또는 직전 도장 무관하게 통째 교체
           sed -i "s|const BUILD_STAMP = '[^']*';\(.*\)/\*BUILDSTAMP\*/|const BUILD_STAMP = '${SHA} · ${TS}';\1/*BUILDSTAMP*/|" viewer/index.html

@@ -29,7 +29,7 @@ from pathlib import Path
 
 UA = {"User-Agent": "nomute-live-smoke/1.0"}
 SUBRES = ["cscroll.js", "draft.js", "marked.min.js", "marquee.js", "marquee_pet.js",
-          "nm-loader.js", "nm-svg.js", "purify.min.js", "nm-cards.css", "sw.js", "manifest.json"]   # index 부팅 사슬 + 셸 한 쌍(260802 사고 축) — viewer/index.html 참조 목록과 동기(추가 시 여기도)
+          "nm-loader.js", "nm-svg.js", "purify.min.js", "nm-cards.css", "sw.js", "manifest.json"]   # index 부팅 사슬 + 셸 한 쌍(260802 사고 축) — viewer/index.html 참조 목록과 동기(추가 시 여기도) · 실행 시 레포 트리 부재 파일은 자동 스킵(평의회 260802 L3: 정식 폐기 커밋이 라이브 404로 영구 FAIL → 의도된 삭제를 오롤백하는 축 차단)
 
 def fetch(url, tries=3):
     # 순단 흡수 3회(2s·4s) — 마지막 실패만 (None, 사유)로 반환
@@ -84,21 +84,29 @@ def main():
     a = ap.parse_args()
     root = Path(a.root)
     fails = []
+    code_fail = {"v": False}   # 코드-귀속 실패(평의회 260802 L3·L7 — 롤백 카운터는 이것만 센다): C1 내용 훼손·C2 대조 불일치·C3 바이트 불일치. fetch 불가(인프라)·도장 미수렴(배포축)·C4(데이터축) = 알림 전용
     ok = lambda tag, msg: print(f"PASS | {tag} | {msg}")
-    def bad(tag, msg):
+    def bad(tag, msg, code=False):
         print(f"FAIL | {tag} | {msg}")
         fails.append(f"{tag}: {msg}")
+        if code:
+            code_fail["v"] = True
+
+    def finish(compare_ran):
+        print(f"MARK VERIFIED={'full' if compare_ran else 'partial'} CODEFAIL={1 if code_fail['v'] else 0}")   # 기계 판독(live-smoke.yml → live_rollback.py) — full = 바이트 대조 실제 수행(앵커 자격 · 평의회 L5/L7/L8)
+        print("\n요약: " + (" · ".join(fails) if fails else "라이브 검문 전부 통과"))
+        return 1 if fails else 0
 
     # ── C1 index 온전성(?nosw=1 = sw.js 캐시 전면 우회 = 순수 원서버 실물) ──
     raw, err = fetch(f"{a.base}/?nosw=1")
     if raw is None:
-        bad("C1 index", f"fetch 실패 — {err}")
-        print(f"\n요약: {' · '.join(fails)}"); return 1
+        bad("C1 index", f"fetch 실패 — {err}")   # 인프라축(CF 순단·러너 egress) = 롤백 부적용
+        return finish(False)
     live = raw.decode("utf-8", "replace")
     if not re.search(r"</html>\s*$", live):
-        bad("C1 index", f"꼬리 </html> 없음(절단 의심 · {len(raw)}B)")
+        bad("C1 index", f"꼬리 </html> 없음(절단 의심 · {len(raw)}B)", code=True)
     elif 'id="nm-eod"' not in live or "nmShellHeal" not in live:
-        bad("C1 index", "자가치유 가드/센티널 실종(260802 봉합분 회귀)")
+        bad("C1 index", "자가치유 가드/센티널 실종(260802 봉합분 회귀)", code=True)
     else:
         ok("C1 index", f"{len(raw)}B · 꼬리·센티널·가드 온전")
 
@@ -127,31 +135,36 @@ def main():
             raw2, _ = fetch(f"{a.base}/?nosw=1")
             na2, nb2 = norm_pair(raw2.decode("utf-8", "replace"), repo_idx) if raw2 is not None else ("", nb)
             if na2 != nb2:
-                bad("C2 index 대조", f"라이브 ≠ 레포(정규화 후 불일치) — {diff_at(na2, nb2)}")
+                bad("C2 index 대조", f"라이브 ≠ 레포(정규화 후 불일치) — {diff_at(na2, nb2)}", code=True)
             else:
                 ok("C2 index 대조", "재검 일치(전파 지연 흡수)")
         else:
             ok("C2 index 대조", "라이브 = 레포 완전 일치")
 
-    # ── C3 부속 정적 파일 = 200 + 바이트 동일 ──
+    # ── C3 부속 정적 파일 = 200 + 바이트 동일(레포 트리 부재 파일 = 스킵 — 손목록 드리프트·정식 폐기 오탐 차단) ──
     if compare:
-        difflist = []
+        bytediff, fetchfail, skipped = [], [], []
         for f in SUBRES:
+            fp = root / "viewer" / f
+            if not fp.exists():
+                skipped.append(f); continue
             b, err = fetch(f"{a.base}/{f}")
             if b is None:
-                difflist.append(f"{f}(fetch: {err.split(':')[0]})"); continue
-            want = (root / "viewer" / f).read_bytes()
+                fetchfail.append(f"{f}(fetch: {err.split(':')[0]})"); continue
+            want = fp.read_bytes()
             if b != want:
                 time.sleep(8)
                 b2, _ = fetch(f"{a.base}/{f}")
                 if b2 != want:
-                    difflist.append(f"{f}(라이브 {len(b)}B ≠ 레포 {len(want)}B)")
-        if difflist:
-            bad("C3 부속", " · ".join(difflist[:5]))
+                    bytediff.append(f"{f}(라이브 {len(b)}B ≠ 레포 {len(want)}B)")
+        if bytediff:
+            bad("C3 부속", " · ".join((bytediff + fetchfail)[:5]), code=True)
+        elif fetchfail:
+            bad("C3 부속", " · ".join(fetchfail[:5]))   # fetch만 실패 = 인프라축(롤백 부적용)
         else:
-            ok("C3 부속", f"{len(SUBRES)}파일 전부 바이트 동일")
+            ok("C3 부속", f"{len(SUBRES) - len(skipped)}파일 전부 바이트 동일" + (f" · 스킵 {len(skipped)}(레포 부재)" if skipped else ""))
 
-    # ── C4 articles.json 파싱(부팅 데이터 생존 — 봇 데이터 커밋이 계속 갈아치우므로 파싱·비공허만 · 신선도 = watchdog 축) ──
+    # ── C4 articles.json 파싱(부팅 데이터 생존 — 봇 데이터 커밋이 계속 갈아치우므로 파싱·비공허만 · 신선도 = watchdog 축 · 데이터축 = 롤백 부적용) ──
     b, err = fetch(f"{a.base}/articles.json")
     if b is None:
         bad("C4 articles", f"fetch 실패 — {err}")
@@ -165,8 +178,7 @@ def main():
         except Exception as e:
             bad("C4 articles", f"JSON 파싱 실패 — {type(e).__name__}")
 
-    print("\n요약: " + (" · ".join(fails) if fails else "라이브 검문 전부 통과"))
-    return 1 if fails else 0
+    return finish(compare)
 
 if __name__ == "__main__":
     sys.exit(main())
