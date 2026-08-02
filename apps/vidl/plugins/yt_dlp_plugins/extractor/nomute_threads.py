@@ -186,18 +186,43 @@ def _pick_image(media):
     }]
 
 
-_CANON_RE = re.compile(r'threads\.(?:net|com)/@(?P<user>[^/"\'?#]+)/post/(?P<code>[\w-]+)')
+_META_RE = re.compile(r'<meta\b[^>]*>', re.I)
+_PROP_RE = re.compile(r'property=["\']([^"\']+)["\']', re.I)
+_CONTENT_RE = re.compile(r'content=["\']([^"\']*)["\']', re.I)
+# @ 는 페이지 안에서 &#064; 로 이스케이프돼 있다(실측) — 그래서 '@' 만 보는 정규식은 못 잡는다.
+_POST_PATH_RE = re.compile(
+    r'threads\.(?:net|com)/(?:@|&#0*64;|%40)(?P<user>[^/"\'?#&]+)/post/(?P<code>[\w-]+)', re.I)
+_IOS_RE = re.compile(r'shortcode=(?P<code>[\w-]+)', re.I)
 
 
-def find_canonical_post(webpage):
-    """공유 링크(/share/<코드>) 페이지에서 진짜 포스트 주소(@계정/post/<코드>)를 되찾는다.
+def page_metas(webpage):
+    """<meta property=… content=…> 를 dict로. 속성 순서가 뒤집혀도 잡히게 태그 단위로 훑는다."""
+    out = {}
+    for tag in _META_RE.findall(webpage or ''):
+        p, c = _PROP_RE.search(tag), _CONTENT_RE.search(tag)
+        if p and c:
+            out.setdefault(p.group(1).lower(), c.group(1))
+    return out
 
-    공유 코드는 포스트 shortcode가 아니라서 그대로는 SSR JSON과 대조할 수 없다.
-    페이지는 canonical/og:url/딥링크 등 여러 자리에 정규 주소를 싣고 있으므로,
-    형태로 한 번에 훑어 첫 히트를 쓴다(고정 경로 의존 0). 못 찾으면 None.
+
+def find_shared_post(webpage):
+    """공유 링크(/share/<코드>) 페이지 → 그 글의 진짜 shortcode(+계정).
+
+    공유 코드는 포스트 shortcode가 아니라서 SSR JSON과 그대로는 대조가 안 된다.
+    다행히 페이지가 **메타에 정답을 싣는다**(실측 260802):
+        og:url            = https://www.threads.com/&#064;oleg_mikushkin/post/DbgefN_D39T
+        al:android:url    = 같은 주소
+        al:ios:url        = barcelona://media?shortcode=DbgefN_D39T
+    ⚠ 본문 아무 데서나 정규 주소 형태를 줍는 폴백은 두지 않는다 — 한 페이지에 추천글 코드가
+      36개씩 섞여 있어(실측) 엉뚱한 글을 받아 버린다. 메타(= 메타사가 스스로 밝힌 정답)만 믿는다.
     """
-    m = _CANON_RE.search(webpage or '')
-    return (m.group('user'), m.group('code')) if m else None
+    metas = page_metas(webpage)
+    for key in ('og:url', 'al:android:url'):
+        m = _POST_PATH_RE.search(metas.get(key) or '')
+        if m:
+            return m.group('user'), m.group('code')
+    m = _IOS_RE.search(metas.get('al:ios:url') or '')
+    return (None, m.group('code')) if m else None
 
 
 class NomuteThreadsIE(InfoExtractor):
@@ -219,16 +244,19 @@ class NomuteThreadsIE(InfoExtractor):
             note='포스트 페이지 받는 중', errnote='포스트 페이지를 못 받았다')
 
         if mobj.group('kind') == 'share':
-            hit = find_canonical_post(webpage)
+            hit = find_shared_post(webpage)
             if not hit:
                 raise ExtractorError(
                     '공유 링크가 어느 글인지 못 찾았다 — 스레드 앱에서 「링크 복사」로 나오는 '
                     'threads.com/@계정/post/… 주소를 넣어줘', expected=True)
-            user, shortcode = hit
-            url = f'https://www.threads.com/@{user}/post/{shortcode}'
-            webpage = self._download_webpage(
-                url, shortcode, headers=_NAV_HEADERS,
-                note='공유 링크 → 원글 페이지 받는 중', errnote='원글 페이지를 못 받았다')
+            user, shortcode = hit[0] or user, hit[1]
+            # 공유 페이지 자체가 그 글의 SSR JSON을 이미 싣고 있다(실측) → 추가 요청 0.
+            # 혹시 안 실렸으면(축약 응답) 그때만 정규 주소로 한 번 더 연다.
+            if not extract_post_nodes(webpage, shortcode) and user:
+                url = f'https://www.threads.com/@{user}/post/{shortcode}'
+                webpage = self._download_webpage(
+                    url, shortcode, headers=_NAV_HEADERS,
+                    note='공유 링크 → 원글 페이지 받는 중', errnote='원글 페이지를 못 받았다')
 
         posts = extract_post_nodes(webpage, shortcode)
         self.write_debug(f'포스트 노드 {len(posts)}개 · data-sjs 블록 {len(_SJS_RE.findall(webpage))}개')
