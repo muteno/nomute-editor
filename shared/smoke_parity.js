@@ -115,7 +115,7 @@ async function runOnce(pg) {
   core('C3 요약 스트립 박스 동일(bg·border·radius·padding — .optstrip 정본)', !!(ed.stripCS && ai.sumCS) && ai.sumCS.bg === ed.stripCS.bg && ai.sumCS.bd === ed.stripCS.bd && ai.sumCS.rad === ed.stripCS.rad && ai.sumCS.pt === ed.stripCS.pt && ai.sumCS.pl === ed.stripCS.pl,
     JSON.stringify({ edit: ed.stripCS, ai: ai.sumCS }));
   core('C4 스트립 활자 동일(fs·lh)', ai.sumFs === ed.specFs && ai.sumLh === ed.specLh, 'card=' + ed.specFs + '/' + ed.specLh + ' ai=' + ai.sumFs + '/' + ai.sumLh);
-  core('C5 텍스트칸 기본 숨김(#geniWishRow/Head hidden · DOM 생존 — 노출은 글 픽토 탭 C5c)', ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
+  core('C5 텍스트칸 상시 노출(#geniWishRow/Head 고정 — 운영자 260802 「아래에 입력창을 고정값으로」 · 구 픽토 관문 폐지)', !ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
 
   // ── C5b·C5c 미리보기 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") ──
   //   계약 갱신(운영자 260802 "중앙에는 사진 업로드 그것만 있고 텍스트 버튼은 우측 네비게이션으로") —
@@ -127,16 +127,13 @@ async function runOnce(pg) {
     if (btns.length !== 1) return { n: btns.length };
     const sr = st.getBoundingClientRect();
     const r = btns[0].querySelector('svg').getBoundingClientRect();
-    return { n: 1, isPhoto: btns[0].id === 'geniRefBtn', txtInRail: !!(rail && txt && rail.contains(txt)),
+    return { n: 1, isPhoto: btns[0].id === 'geniRefBtn', txtGone: !txt,   // 글 픽토 = 폐지(운영자 260802 — 주문칸이 아래 고정이라 진입점 불요)
       dx: (r.left + r.width / 2) - (sr.left + sr.width / 2), dy: (r.top + r.height / 2) - (sr.top + sr.height / 2) };
   });
-  core('C5b 중앙 = 사진 픽토 단독·무대 정중앙(Δ≤0.5px) · 글 픽토는 코너 레일 흡수', duo.n === 1 && duo.isPhoto && duo.txtInRail && [duo.dx, duo.dy].every(v => Math.abs(v) <= 0.5),
+  core('C5b 중앙 = 사진 픽토 단독·무대 정중앙(Δ≤0.5px) · 글 픽토 폐지(주문칸 아래 고정)', duo.n === 1 && duo.isPhoto && duo.txtGone && [duo.dx, duo.dy].every(v => Math.abs(v) <= 0.5),
     JSON.stringify(duo, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v));
-  await pg.evaluate(() => { const b = document.querySelector('#geniTxtBtn'); if (b) b.click(); });
-  await pg.waitForTimeout(250);   // geniWishShow 포커스 지연(60ms) 흡수
-  const wsh = await pg.evaluate(() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return { rowVis: !!(r && !r.hidden), headVis: !!(h && !h.hidden), focused: document.activeElement === document.querySelector('#geniWish') }; });
-  core('C5c 글 픽토 탭 = 주문칸 노출(발사 = 기존 wish 배선 그대로)', wsh.rowVis && wsh.headVis, JSON.stringify(wsh));
-  await pg.evaluate(() => geniWishShow(false, false));   // 원복(후속 어서션 결정론 — 다음 geniPrep이 값 유무로 재판정하는 실경로와 동일)
+  const wsh = await pg.evaluate(() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return { rowVis: !!(r && !r.hidden), headVis: !!(h && !h.hidden) }; });
+  core('C5c 주문칸 = 관문 없이 바로 보임(글 픽토 폐지분 · 발사 = 기존 wish 배선 그대로)', wsh.rowVis && wsh.headVis, JSON.stringify(wsh));
 
   // ── C6 첨부 고스트(운영자 260719 승인) = 같은 이미지 cover .22 언더레이 + 원본 contain 겹침 ──
   await pg.evaluate(async () => {
