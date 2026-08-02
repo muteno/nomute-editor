@@ -3317,8 +3317,23 @@
   .geni-prev .cpv-tool[hidden] { display:none; }   /* 숨김 재승리 필수 — display:grid가 UA [hidden]을 이김(thumb 동일 가드) */
   .geni-prev .cpv-tool:active { transform:scale(var(--press-xs,.82)); }
   .geni-prev .cpv-tool svg { width:15px; height:15px; display:block; }
-  #geniRefX { right:6px; }   /* 삭제(휴지통) = 최우측(thumb #cpImgDel 좌표 동값) */
-  #geniRefSwap { right:42px; }   /* 교체(사진) = 삭제 좌측 30+6(thumb #cpImgSwap 좌표 동값) */
+  /* (구 `#geniRefX{right:6px}` · `#geniRefSwap{right:42px}` 절대좌표 = 260802 코너 레일 흡수로 사문 — 아래 `.cpprev-box .cpv-tool{position:static}`이 이긴다. 복원 = 레일 DOM 되돌리고 이 두 줄 재삽입) */
+  /* ── 코너 옵션 레일 = 이 문서 `.trail`/`.trail-div`/`.trail-i` 정본(1196~1207) **그대로 재사용** + 코너 배치·값 칩 스킨만 추가
+     (운영자 260802 "배경·축약·opa 이런거 우측 네비게이션바로 · 모든 페이지에 해당 미리보기 똑같이") — thumb·tr은 별도 문서라 값 사본이지만 여기선 정본 재사용 = 사본 0 ── */
+  .cpprev-box .trailwrap { position:absolute; left:auto; top:0; right:0; transform:none; z-index:2 /* z2 = 구 .cpv-tool 동값(합성중 딤 z3 아래 = 진행 중 조작 차단) */; gap:8px; }
+  .cpprev-box .trail { background:rgba(8,15,11,.54) /* raw-ok: thumb 코너 레일 동값(운영자 260801 선택값 = 정본 .34의 알파 변주) — 사진 위에 뜨는 코너라 한 단 더 불투명 */; }
+  .cpprev-box .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착) */; flex:none; align-self:stretch; }
+  .cpprev-box .trail-g:not(:has(.cpv-tool:not([hidden]))) { display:none; }
+  .cpprev-box .trail-g:not(:has(.cpv-tool:not([hidden]))) + .trail-div { display:none; }
+  .cpprev-box .trail:not(:has(.cpv-tool:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }
+  .cpprev-box .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(6/42)·플레이트·그림자 해제 = thumb 정본 동일 처방 · id·핸들러·hidden 토글 불변 */
+  .cpprev-box .cpv-tool svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값 */
+  .cpprev-box .trail-v { display:flex; flex-direction:column; gap:var(--sp-1); align-self:stretch; margin:0; padding:0; background:transparent; border:1px solid transparent /* 폭 1px 유지·색만 투명 = thumb #optStrip 동일 처방(파리티 = 크로스-파일 계산값 동일) */; border-radius:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값 */; line-height:1; text-align:center; }
+  .cpprev-box .trail-v.none { display:none; }
+  .cpprev-box .trail-v .gs-sep, .cpprev-box .trail-v .gs-lbl { display:none; }   /* 표기 = 값만(운영자 260801 확정) — DOM 존치 = 리드백 문법·게이트 카운트 무접촉 */
+  .cpprev-box .trail-v .gs-v { position:relative /* reuse-ok: 신설 부품 아님 — 기존 요약 칩(.gs-v) 그 노드에 정본 `.trail-i` 외형만 입힌 스킨(계승원 = .trail-i 1200행) */; display:grid; place-items:center; min-width:22px; height:22px; padding:0 5px; border:0; background:none; border-radius:var(--r-l); color:var(--mut); font-size:10.5px; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
+  .cpprev-box .trail-v .gs-v.on { color:var(--accent); font-weight:var(--fw-x); }
+  .cpprev-box .trail-v .gs-v:active { transform:scale(var(--press-m)); }
   /* ── 260710 개요 개편 컴포넌트: 선택박스(기타·직접 드롭다운) · 비율 직접 N:N · 무드 게이지 4축 · 요약 리드백 ── */
   .geni-dd { position:absolute; z-index:21; min-width:104px; max-height:230px; overflow-y:auto; padding:4px;
     background:rgba(24,25,28,.97); border:1px solid var(--line); border-radius:var(--r-m);
@@ -3917,15 +3932,23 @@ try {
           <img class="cpv-bg" id="geniRefThumb" alt="" hidden>
           <div class="cpv-empty"><button type="button" class="cpv-photobtn" id="geniTxtBtn" aria-label="글로 프롬프팅 — 탭=주문 입력" title="글로 프롬프팅 — 탭=주문 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><button type="button" class="cpv-photobtn" id="geniRefBtn" aria-label="참고 이미지 첨부 — 탭=파일 선택" title="참고 이미지 첨부 — 탭=파일 선택"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button></div><!-- 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") — 좌 = 글 프롬프팅 진입점(#geniTxtBtn · 픽토 = pastedlg 문서 정본 path · 탭 = 주문칸 #geniWishRow 노출·포커스 = 260719 "미리보기 위 새 입력" 예약 배선) · 우 = 사진(#geniRefBtn id·라우팅 불변) · 버튼 셸 = .cpv-photobtn 정본 공유 -->
         </div>
-        <button type="button" class="cpv-tool" id="geniRefSwap" hidden aria-label="참고 이미지 교체 — 탭=파일 선택" title="참고 이미지 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button>
-        <button type="button" class="cpv-tool" id="geniRefX" hidden aria-label="참고 이미지 삭제" title="참고 이미지 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+        <!-- ── 코너 옵션 레일(운영자 260802 "우측 네비게이션바로 · 모든 페이지에 똑같이") = 이 문서 `.trail` 정본 재사용 —
+             [교체·삭제 픽토 묶음] → 구분선 → [값 칩 = 선택요약 #geniSum] · id·핸들러·geniApply 리드백 전부 불변 ── -->
+        <div class="trailwrap" id="geniRailWrapPv"><nav class="trail" id="geniRail" aria-label="미리보기 옵션">
+          <span class="trail-g">
+          <button type="button" class="cpv-tool" id="geniRefSwap" hidden aria-label="참고 이미지 교체 — 탭=파일 선택" title="참고 이미지 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button>
+          <button type="button" class="cpv-tool" id="geniRefX" hidden aria-label="참고 이미지 삭제" title="참고 이미지 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+          </span>
+          <span class="trail-div"></span>
+          <div class="geni-sum trail-v" id="geniSum"></div><!-- 선택요약(극화·웹툰화 / 4:5·FHD·3장·PNG / 무드 자동) = 레일 값 칩으로 이주(운영자 260802) — aria-live 미부여 = 게이지 드래그마다 SR 재낭독 스팸 방지(6인 검증) · 시각 리드백 전용 · 내용 생성(geniApply)·탭 토글(data-tg) 배선 전부 불변 -->
+        </nav></div>
       </div>
     </div>
     <div class="geni-sechead" id="geniWishHead" hidden><span class="cref-lbl">내용</span></div>
     <div class="geni-row geni-wishrow" id="geniWishRow" hidden><textarea id="geniWish" class="geni-in" rows="2" maxlength="300" placeholder="선택 · 자유 요청 한 줄" aria-label="주문" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea></div><!-- 주문 텍스트칸 = 일단 숨김(운영자 260719 "프리뷰 위에 내가 텍스트를 보낼테니까 일단 텍스트 빼봐 · 편집 탭과 완전 동일") — 편집 탭 리드 = [미리보기→요약 스트립→생성]에 텍스트칸 없음 = 동일 구조 수렴 · DOM 유지(값·close 스냅샷·bindImgPaste·focus 참조 무손상 = 크래시 0)·복원 = hidden 2곳 제거 · 발사 정책 무변경(미리보기 위 새 입력 = 다음 지시 배선) -->
     <input id="geniRefFile" type="file" accept="image/*" hidden><!-- 참고 이미지 파일 input = wishrow 밖 형제로 이주(텍스트칸 숨김과 무관하게 첨부 유지 · 프로그램 click 재버블 차단) -->
     <div class="geni-row geni-refmode" id="geniRefModeRow" hidden><span class="pub-l">참고 이미지</span><span class="geni-opts" id="geniRefMode"><button type="button" class="geni-opt" data-v="keep">원본 유지</button><button type="button" class="geni-opt" data-v="ref">참고</button><button type="button" class="geni-opt" data-v="clone">이미지와 동일하게</button></span></div><!-- 첨부 시만 표시(운영자 260713 "이 이미지를 참고할거냐 원본 그대로 유지할거냐") — 원본 유지(keep)=피사체·구도 충실 재현 / 참고(ref·기본)=시각 레퍼런스로 신규 구성 · gen_image가 ref_png 공통 전달, 프롬프트 지시만 분기 · ⚠배치 이미지와 동일하게(clone · 운영자 260726 "이미지와 동일하게 라는 옵션") = 같은 행 세 번째 워드칩(.geni-opt 문법 그대로 계승 · 신규 CSS 0) — 첨부를 AI가 그대로 재탄생: 프롬프트에서 화풍·무드·카메라·문구 지시를 전부 빼고(스타일 낱말 0개) 첨부 원본비로 렌더 -->
-    <div class="geni-sum" id="geniSum"></div><!-- 우측하단 선택요약(극화·웹툰화 / 4:5·FHD·3장·PNG / 무드 자동) — aria-live 미부여 = 게이지 드래그마다 SR 재낭독 스팸 방지(6인 검증) · 시각 리드백 전용 --><button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button><button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button><!-- 생성 CTA도 리드에 상주(운영자 "생성 버튼까지 그대로 따라오기") · geniMore5 = 기사 카러셀 전용(자유 모드 hidden) -->
+    <!-- (구 선택요약 스트립 #geniSum = 미리보기 코너 레일로 이주 · 운영자 260802 — DOM·id·핸들러는 레일 안에 존치) --><button id="geniGo" class="asksend pub-go geni-go" type="button"><span>생성</span></button><button id="geniMore5" class="geni-alt" type="button">실사진 5장 더 찾기</button><!-- 생성 CTA도 리드에 상주(운영자 "생성 버튼까지 그대로 따라오기") · geniMore5 = 기사 카러셀 전용(자유 모드 hidden) -->
   </div>
   <div class="geni-body"><!-- 스크롤 영역(운영자 260713 재배치): 카메라·구도 → 개요{해상도·비율·장수·품질} → 표현{화풍·세부·웹툰화·무드} → 문구(맨 아래). 소머리 = .cref-lbl 계승 -->
     <button class="geni-sechead geni-fold" id="geniCamHead" type="button" aria-expanded="false" aria-controls="geniCamSub"><span class="cref-lbl">카메라 · 구도</span><span class="geni-n" id="geniCamN" hidden aria-hidden="true"></span><span class="geni-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button><!-- 구분선 아래 첫 항목(운영자 260713) · 접기 = .pmenu-sub/.pm-chev 아코디언 계승 · 배지 = 내부 non-auto 개수(숨은 활성 은폐 방지 · 숫자만 = §디자인 e) -->
