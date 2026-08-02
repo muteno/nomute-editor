@@ -116,11 +116,11 @@ const PROBE = () => {
   // C7 재료 = 미리보기 모듈 3부품(창·발사 버튼·돋보기 캡슐) — 좌표는 창 기준 상대값(절대 x·y = 탭마다 폼 높이가 달라 위양성)
   const boxEl = [...d.querySelectorAll('.cpprev-box')].filter(seen)[0]
     || (d !== document ? null : [...document.querySelectorAll('.geni-prev .cpprev-box')].filter(seen)[0]) || null;
-  const goBtn = [...d.querySelectorAll('#go')].filter(seen)[0]
+  const goBtn = [...d.querySelectorAll('#go, #editGo, #optGo')].filter(seen)[0]   // 영상 셸 발사 id 합류(edit #editGo · song #optGo — _LAUNCH_BTNS 레지스트리 · C7 영상 확장 260802 7차)
     || (d !== document ? null : [...document.querySelectorAll('#geniGo')].filter(seen)[0]) || null;
   const twEl = [...d.querySelectorAll('.trailwrap')].filter(seen)[0]
     || (d !== document ? null : [...document.querySelectorAll('.geni-prev .trailwrap')].filter(seen)[0]) || null;
-  const zoomCap = twEl ? twEl.querySelector(':scope > .trail') : null;
+  const zoomCap = twEl ? twEl.querySelector(':scope > .trail[id*="Zoom"], :scope > .trail[aria-label*="확대"]') : null;   // 돋보기 캡슐만(영상 레일은 돋보기 캡슐이 없어 첫 캡슐 = 옵션 캡슐 오측정 = C7 확장 첫 실행 위양성 실측)
   const bb = boxEl ? boxEl.getBoundingClientRect() : null;
   const gb2 = goBtn ? goBtn.getBoundingClientRect() : null;
   const zb = zoomCap && seen(zoomCap) ? zoomCap.getBoundingClientRect() : null;
@@ -199,17 +199,26 @@ async function runOnce(pg) {
   // ── C7 미리보기 모듈 등가 = 이미지 셸 5탭(운영자 260802 6차 "미리보기 창이 미세하게 크기가 달라" · 기준 = 카드생성) ──
   //   축 = 창 w/h · 발사 버튼 h/radius/fs · 돋보기 캡슐(창 우변 기준 dx·dy·w·h) — 이번에 실제로 갈라져 있던 축(번역 발사 27px/r11 ·
   //   돋보기 x 탭별 표류 343.4/342.1/347.2/326.5)이라 게이트 없이는 재발한다. 영상 셸은 자기 도크 계약이 별개라 비대상(§3-5는 레일 로직 한정).
-  const imgs = E.filter(([k]) => k.startsWith('이미지_'));
-  const refPM = (imgs.find(([k]) => k === '이미지_카드생성') || [null, {}])[1].prevMod || null;
   const pmDiff = (a, b) => a.length !== b.length || a.some((x, i) =>
     typeof x === 'number' && typeof b[i] === 'number' ? Math.abs(x - b[i]) > 0.6 : x !== b[i]);   // 수치 = 0.6px 허용(AI 생성 창 높이 = JS 산출 반올림 vs CSS 소수 = 0.5px 실측 · 문자열(radius·fs) = 엄격)
-  const pmBad = refPM ? imgs.filter(([, v]) => {
-    const p = v.prevMod || {};
-    return ['box', 'fire', 'zoom'].some(ax => p[ax] && refPM[ax] && pmDiff(p[ax], refPM[ax]));
-  }).map(([k, v]) => k + '=' + JSON.stringify(v.prevMod)) : ['기준(카드생성) 미측정'];
-  core('C7 미리보기 모듈 등가(이미지 5탭) = 창 w/h · 발사 h/r/fs · 돋보기 dx/dy/w/h(기준 = 카드생성)',
-    refPM !== null && pmBad.length === 0,
-    pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(refPM) : imgs.length + '탭 = ' + JSON.stringify(refPM));
+  // 셸 **안** 등가만 잰다(운영자 260802 7차 아이디어 승인 = 영상 셸 확장) — 셸 사이는 도크 계약이 별개(이미지 30px 발사 vs 영상 자체 규격)라 비대상.
+  //   이미지 기준 = 카드생성(정본) · 영상 기준 = 부품 보유 첫 탭(편집) · 부품이 없는 탭(콘티 = 액자 폐지)은 그 축만 비대상.
+  const pmBad = []; const pmRefs = {};
+  for (const [pre, refKey] of [['이미지_', '이미지_카드생성'], ['영상_', null]]) {
+    const grp = E.filter(([k]) => k.startsWith(pre));
+    const refE = (refKey && grp.find(([k]) => k === refKey))
+      || grp.find(([, v]) => v.prevMod && (v.prevMod.box || v.prevMod.fire || v.prevMod.zoom));
+    if (!refE) continue;
+    const refPM = refE[1].prevMod; pmRefs[pre + '기준=' + refE[0].split('_')[1]] = refPM;
+    const norm = pm => pre === '영상_' && pm.box ? Object.assign({}, pm, { box: [pm.box[1]] }) : pm;   // 영상 창 = 높이만(폭 = 탭별 산출비 산식이 정본 — 16:9/9:16 따라 다른 게 맞다 · 실측 547.5/498.7/530.6 · 높이 457 균일)
+    pmBad.push(...grp.filter(([, v]) => {
+      const p = norm(v.prevMod || {}), r = norm(refPM);
+      return ['box', 'fire', 'zoom'].some(ax => p[ax] && r[ax] && pmDiff(p[ax], r[ax]));
+    }).map(([k, v]) => k + '=' + JSON.stringify(v.prevMod)));
+  }
+  core('C7 미리보기 모듈 등가(셸 안) = 창 w/h · 발사 h/r/fs · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
+    Object.keys(pmRefs).some(k => k.startsWith('이미지_')) && pmBad.length === 0,
+    pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(pmRefs) : JSON.stringify(pmRefs));
 
   return out;
 }

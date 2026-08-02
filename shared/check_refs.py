@@ -1643,6 +1643,8 @@ _LAUNCH_BTNS = {   # 스튜디오 발사 버튼 레지스트리(selector → 규
     'viewer/edit.html':  ['#editGo', '.xtr .xgo'],
     'viewer/track.html': ['#analyze'],
     'viewer/song.html':  ['#optGo', '#sunoGo', '#lyriaGo', '#vApply'],
+    'viewer/vd.html':    ['.go'],   # 큐영상 발사(id 규칙 없음 = 클래스 등재 · 260802 7차 — 미등재 탓에 height:var(--btn) 34 드리프트가 게이트 밖에 있었다)
+    'viewer/sb.html':    ['.go'],   # 콘티 발사(동축 편입 260802 7차)
 }
 _CSS_RULE = re.compile(r'^([^\n{}]*?)\{([^{}]*)\}', re.M)   # 단일레벨 CSS 규칙(prelude{body}) — 발사 규칙은 전부 한 줄
 
