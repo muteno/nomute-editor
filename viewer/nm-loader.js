@@ -224,6 +224,8 @@
     //   예상 = `ask-link`(고정 오버헤드) + `ask-link-stt-min` × 영상분. ⚠️ `ask-link-stt-min` 만 단위가 **영상 1분당 초**다
     //   (다른 키 = 총 소요초). 전사는 영상 길이에 비례해 늘어나 단일 스칼라로는 3분짜리와 40분짜리를 같이 못 맞춘다.
     //   학습도 같은 단위로 넣는다 — done('ask-link-stt-min', (총소요 − 오버헤드) / 영상분). nmEta 내부(EMA·이상치·저장)는 불변.
+    // ── 설정 ▸ 다운로드 영상 받기(운영자 260802 "받은 리스트는 필요 시간 기록") — 완료 시 실측 초를 done()으로 먹여 평균 수렴.
+    'vidl': 330, 'vidl-subs': 120,   // 시드 근거 = 구 화면 문구 "보통 3~8분"(중앙값 330s) / 자막만 = 영상 트랙 스킵(--skip-download · vidl_run.py) + 러너 기동 = 임시 시드 120s
     'ask-link': 500, 'ask-link-stt-min': 90   // 실측 260731: 오버헤드 = ask 2건 428s(19s 영상·전사)·594s(3분33초·자막) 평균 ≈ 500s / 분당배율 = 러너 large-v3 A/B(260728) 40s 이상 구간 1.39×RT 에 여유 = 1.5×RT = 90s
   };
   function db() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (_) { return {}; } }

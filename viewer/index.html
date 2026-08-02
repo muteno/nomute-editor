@@ -3444,6 +3444,8 @@
   @media (max-width:600px) { #dlgrab { margin:8vh auto auto; margin:8dvh auto auto; } }   /* 주소 입력 키보드 가림 회피 = genidlg 상단 anchoring 계승 */
   #dlgrab .dlg-top { min-height:var(--btn-sm); }
   .dg-urlrow { display:flex; align-items:center; gap:var(--sp-1); }
+  .dg-urlrow .sbtn { flex:none; color:var(--mut); }   /* 링크 행 픽토([받기][자막]) = .sbtn 정본 계승 · 평시(주소 없음) = 무채 + :disabled 투명도 .5(=.sbtn 정본 상태) */
+  .dg-urlrow .sbtn.on { color:var(--accent); }   /* 활성 = 강조색 점등 — 값·의미 = .alk-i.on(요약 링크 자막 리드백) 정본 동값 계승 */
   .dg-selrow { display:flex; align-items:center; gap:var(--sp-1); margin-top:var(--sp-2); flex-wrap:wrap; }
   .dg-urlrow .geni-go, .dg-selrow .geni-go { width:auto; }   /* 입력/요약 옆 인라인 배치 = .pub-go 전폭만 회수(발사 규격 3속성 r-m·sp-1·fs-label = .geni-go 그대로) */
   .dg-selrow .geni-sum { flex:1 1 auto; min-width:0; margin:0; }   /* 선택요약 = .geni-sum 스트립 계승 · 리드 한 행 배치라 하단 마진만 회수 */
@@ -3476,9 +3478,6 @@
   .dg-ittl .dg-got { margin-left:var(--sp-1); }
   .dg-imeta { font-size:var(--fs-xs); color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dg-ytst { color:var(--accent); font-weight:var(--fw-b); }
-  .dg-consent { margin-top:var(--sp-1); }
-  .dg-conrow { display:flex; align-items:flex-start; gap:var(--sp-1); padding:var(--sp-1) 0; font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--fg); line-height:var(--lh-base); cursor:pointer; }
-  .dg-conrow input { accent-color:var(--accent); flex:none; }
   .dg-histnote { color:var(--mut); font-size:var(--fs-xs); font-weight:var(--fw-b); margin-left:auto; }
   .dg-histrow { display:flex; align-items:center; gap:var(--sp-1); padding:var(--sp-1) 0; }
   .dg-hmain { flex:1 1 auto; min-width:0; cursor:pointer; }
@@ -4032,7 +4031,8 @@ try {
   <div class="dlg-h"><div class="dlg-top"><b class="pub-title" id="dgTitle">다운로드</b></div><button class="tool-x dlg-x" id="dgX" type="button" aria-label="닫기" title="닫기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
   <div class="geni-lead">
     <div class="dg-urlrow">
-      <input id="dgUrl" class="geni-in" type="url" placeholder="https://…" aria-label="가져올 페이지 주소" title="자료가 있는 페이지 주소 — 붙여넣고 [가져오기]" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <input id="dgUrl" class="geni-in" type="url" aria-label="주소" title="주소" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><!-- placeholder 예시 제거(운영자 260802 "링크 안에 예시조차 다 없애") · 안내 산문 0 = check_url_placeholder 면제축(placeholder 없음) -->
+      <button id="dgVidDl" class="sbtn" type="button" disabled aria-label="영상 받기" title="영상 받기"></button><button id="dgVidSub" class="sbtn" type="button" disabled aria-label="자막만 받기" title="자막만 받기"></button><!-- ⚠배치(3-2) 링크 행 우측 [받기][자막] 픽토 2개(운영자 260802 "입력하면 다운로드 픽토그램이 활성화 / 자막 있으면 자막 픽토그램 활성화") — 부품 = .sbtn 34px 정본(R8 grid중앙·svg block) · 픽토 = nm-svg DOWNLOAD_SVG / SUBS_SVG(JS 주입 = .pin-eye 관례) · 점등 = 영상 게시물 주소 입력 시(자막칸은 linkprobe 자막 확인 시) -->
       <button id="dgGo" class="asksend pub-go geni-go" type="button"><span>가져오기</span></button>
     </div>
     <div class="dg-selrow" id="dgSelRow" hidden>
@@ -8559,11 +8559,12 @@ const _accBtnEl = $('#accBtn'); if (_accBtnEl) _accBtnEl.addEventListener('click
 //  노뮤트 커스터마이징(§5·§6): esc()/escUrl 계승 · 같은 오리진 무헤더 fetch(인증 = CF Access 엣지 · X-App-Password 폐지) · UI = #genidlg 문법
 //  (geni-lead/geni-body/geni-sechead/geni-opt/geni-sum/geni-hist* · 이모지 섹션머리 → 소머리) · 체크 픽토 = nm-svg CHECK 경로(문자 ✓ 금지)
 //  · 받음 표시·입력 기록 = 기기 로컬(원본 설계 유지 = 서버/깃 무저장 · 기록 = 최근 1건 12시간 휘발) · 프록시 저장 = 같은 오리진 attachment(블롭 불요).
-//  스트리밍 영상 = 권리 보유·이용 허가 동의 체크 후 [저장 요청](repository_dispatch → ytdl.yml yt-dlp 변환 · 동의 체크 제거 금지 = 운영자 260721).
+//  ⚠ 동의 체크(dgConsent) 폐지 = 운영자 260802 명시 지시("나머지 부가적 설명 및 동의 … 다 없애주셈") — 구 260721 "동의 체크 제거 금지"를 오늘 지시가 개정한다.
+//   진입 = 링크 행 픽토 2개([받기]=영상+자막 · [자막]=자막만) 즉시 발사 · 부가 산문·예시 placeholder·동의 줄 전부 제거(리드백은 점등/디밍 한 축).
 const DG_GOT_KEY = 'dg_got_v1', DG_HIST_KEY = 'dg_hist_v1';   // 받음(URL 키 · 최대 500) · 입력 기록(기기당 최근 1건)
 const DG_SECTIONS = [['img', '사진'], ['video', '영상'], ['doc', '문서'], ['audio', '음성'], ['zip', '압축'], ['link', '기타 링크']];
 const DG_CHK_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';   // 체크 경로 = nm-svg CHECK 정본 동일(문자 ✓ 금지)
-let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, histOpen: false, vdOpen: false, ytConsent: false, yt: {} };
+let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, histOpen: false, vdOpen: false, yt: {} };
 let _dgPop = false;   // 폰 뒤로가기로 닫혔는지(§🎨 pushState/popstate · tooldlg toolPopHandled 패턴 계승)
 function _dgLoadGot() { try { return JSON.parse(localStorage.getItem(DG_GOT_KEY) || '{}') || {}; } catch { return {}; } }
 function _dgLoadHist() {   // {u,title,t} 1건 — 읽을 때마다 12시간 지난 건 청소(원본 설계 = 서버/깃 무저장 · 운영자 260721)
@@ -8575,10 +8576,12 @@ function _dgLoadHist() {   // {u,title,t} 1건 — 읽을 때마다 12시간 지
 }
 function _dgHistSave(u, title) { try { localStorage.setItem(DG_HIST_KEY, JSON.stringify({ u, title: String(title || '').slice(0, 80), t: Date.now() })); } catch {} }
 function openDlGrab() {
-  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), histOpen: false, vdOpen: false, ytConsent: false, yt: {}, vid: null, driveState: null };   // 결과는 매번 새로(공용 PC 원칙) · 받음/기록만 기기 보존
+  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), histOpen: false, vdOpen: false, yt: {}, vid: null };   // 결과는 매번 새로(공용 PC 원칙) · 받음/기록만 기기 보존
   const d = $('#dlgrab'); const inp = $('#dgUrl'); if (inp) inp.value = '';
+  _dgSubs = null; _dgProbeSeq++;   // 창을 새로 열면 자막 리드백도 초기화(옛 프로브 응답 폐기)
   const job = _dgVidLoadJob();   // 진행 중 영상 받기 = 창 닫았다 다시 열어도 복원(평의회2·8)
-  if (job) { _dg.vid = { url: job.url, plat: job.plat, id: job.id, t0: job.t0, st: 'run', msg: '받는 중' }; _dg.ytConsent = true; }
+  if (job) _dg.vid = { url: job.url, plat: job.plat, id: job.id, mode: job.mode, t0: job.t0, st: 'run', msg: '받는 중' };
+  _dgPaintPic();
   _dgRenderBody();
   if (!d.open) { d.showModal(); try { history.pushState({ dlgrab: true }, ''); } catch {} }
   if (_dg.vid && _dg.vid.st === 'run') _dgVidPoll(_dg.vid);   // 복원 폴 재개(모달 open 후)
@@ -8587,7 +8590,7 @@ function _dgKey(it) { return String(it.dl || it.url || ''); }
 function _dgFmt(b) { b = Number(b) || 0; if (!b) return ''; if (b < 1024) return b + 'B'; if (b < 1048576) return (b / 1024).toFixed(b < 10240 ? 1 : 0) + 'KB'; if (b < 1073741824) return (b / 1048576).toFixed(1) + 'MB'; return (b / 1073741824).toFixed(2) + 'GB'; }
 function _dgRenderBody() {
   const body = $('#dgBody'); if (!body) return;
-  let h = '<div class="dg-hint">주소를 붙여넣으면 그 페이지의 <b>사진·영상·문서·음성을 전부 스캔</b>해 종류별로 보여줘요 — 원하는 것만 골라 받으세요. 유튜브·인스타·X·틱톡·페북·스레드 <b>영상 게시물 주소는 최고화질 영상+자막으로 받아요</b>(동의 체크 후 몇 분 걸려요). 한 번 받은 항목엔 받음 표시가 남아요.</div>';
+  let h = '';   // 상단 안내 산문 폐지(운영자 260802) — 리드백은 링크 행 픽토 점등/디밍 한 축이 전담
   const he = _dgLoadHist();   // 기록 접이 = geni-histwrap(이전 제작) 문법 계승
   h += '<div class="geni-histwrap"><button class="geni-histfold" type="button" data-act="hist" aria-expanded="' + (_dg.histOpen ? 'true' : 'false') + '" aria-controls="dgHistBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>기록 <span class="geni-histcnt">(' + (he ? 1 : 0) + ')</span></span><span class="dg-histnote">이 기기 · 12시간 뒤 자동 삭제</span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>'
     + '<div class="geni-histbody' + (_dg.histOpen ? ' open' : '') + '" id="dgHistBody"' + (_dg.histOpen ? '' : ' inert') + '><div class="geni-histbody-in">'
@@ -8607,10 +8610,7 @@ function _dgRenderBody() {
       const idxs = []; items.forEach((it, i) => { if ((it.kind || 'link') === kind) idxs.push(i); });
       if (!idxs.length) return;
       const selectable = idxs.filter(i => items[i].dl);
-      h += '<div class="geni-sechead"><span class="cref-lbl">' + label + ' <span class="dg-cnt">' + idxs.length + '</span></span>' + (selectable.length ? '<button type="button" class="geni-opt dg-selsec" data-act="selsec" data-k="' + kind + '">모두 선택</button>' : '') + '</div>';
-      if (kind === 'video' && idxs.some(i => items[i].stream && !items[i].dl)) {   // 권리 확인 동의 — 체크 후에만 [저장 요청](운영자 260721 · 제거 금지)
-        h += '<div class="geni-card dg-consent"><label class="dg-conrow"><input type="checkbox" id="dgConsent"' + (_dg.ytConsent ? ' checked' : '') + '><span>이 영상들은 <b>내가 권리를 보유했거나 이용 허가를 받은 콘텐츠</b>(예: 기획사가 공유해 준 홍보 영상)임을 확인하고 저장 요청에 동의합니다</span></label></div>';
-      }
+      h += '<div class="geni-sechead"><span class="cref-lbl">' + label + ' <span class="dg-cnt">' + idxs.length + '</span></span>' + (selectable.length ? '<button type="button" class="geni-opt dg-selsec" data-act="selsec" data-k="' + kind + '">모두 선택</button>' : '') + '</div>';   // 구 권리 동의 줄(dgConsent) 폐지 = 운영자 260802
       if (kind === 'img') {
         h += '<div class="dg-grid">';
         idxs.forEach(i => { h += _dgCardHtml(items[i], i); });
@@ -8646,7 +8646,7 @@ function _dgRowHtml(it, i) {
     + (it.thumb ? '<span class="dg-ithumb"><img src="' + escUrl(it.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(it.title || '자료') + '<span class="dg-got" id="dgg' + i + '"' + (got ? '' : ' hidden') + '>받음</span></div>'
     + '<div class="dg-imeta"><span id="dgsz' + i + '">' + (_dgFmt(m.size) || (it.dl ? '용량 확인 중' : '')) + '</span>' + (it.note ? ' · ' + esc(it.note) : '') + ' <span class="dg-ytst" id="dgy' + i + '"></span></div></div>'
-    + (it.stream && !it.dl ? '<button type="button" class="geni-opt" id="dgyb' + i + '" data-act="ytreq" data-i="' + i + '"' + (_dg.ytConsent ? '' : ' disabled') + '>저장 요청</button>' : '')
+    + (it.stream && !it.dl ? '<button type="button" class="geni-opt" id="dgyb' + i + '" data-act="ytreq" data-i="' + i + '">저장 요청</button>' : '')
     + '<button type="button" class="geni-opt" data-act="open" data-i="' + i + '">열기</button>'
     + '</div>';
 }
@@ -8718,16 +8718,9 @@ function _dgMetaScan() {   // 용량 = head 지연 조회(동시 4 · 캡 80 = �
   };
   for (let w = 0; w < 4 && w < list.length; w++) next();
 }
-// --- 스트리밍 영상 저장(yt-dlp 파이프라인) — 동의 체크 후 요청 → Actions 변환(2~5분) → 서명 URL 직접 수신 ---
-function _dgYtConsentSet(v) {
-  _dg.ytConsent = !!v;
-  _dgEach((it, i) => { if (it.stream && !it.dl) { const b = $('#dgyb' + i); const y = _dg.yt[i]; if (b && !(y && y.st && y.st !== 'idle')) b.disabled = !v; } });
-  const off = !_dg.ytConsent || !(_dg.vid && _dg.vid.st === 'idle');
-  document.querySelectorAll('#dgBody [data-act="vidgo"]').forEach(b => { b.disabled = off; });   // 영상 플랫폼 경로(배치 조건) 발사 버튼도 같은 동의 게이트 — 「다운로드+자막/다운로드/자막」 3택 전부(구 #dgVidGo 단건 셀렉터는 나머지 2개를 잠근 채 뒀다 · 260802)
-}
+// --- 스트리밍 영상 저장(yt-dlp 파이프라인) — 요청 → Actions 변환(2~5분) → 서명 URL 직접 수신 (동의 체크 폐지 · 운영자 260802) ---
 async function _dgYtReq(i) {
   const it = ((_dg.res || {}).items || [])[i]; if (!it || !it.stream) return;
-  if (!_dg.ytConsent) { _dgYtPaint(i, '먼저 권리 보유·이용 허가 동의에 체크해 주세요', false); return; }
   const y = _dg.yt[i] = { st: 'req', polls: 0 };
   _dgYtPaint(i, '요청 중', true);
   try {
@@ -8757,7 +8750,7 @@ function _dgYtPoll(i) {
 }
 function _dgYtPaint(i, msg, busy) {
   const st = $('#dgy' + i); if (st) st.textContent = msg || '';
-  const b = $('#dgyb' + i); if (b && b.dataset.act === 'ytreq') b.disabled = !!busy || !_dg.ytConsent;
+  const b = $('#dgyb' + i); if (b && b.dataset.act === 'ytreq') b.disabled = !!busy;
 }
 function _dgYtReady(i) {
   const y = _dg.yt[i]; if (!y) return;
@@ -8788,7 +8781,7 @@ async function _dgYtGet(i) {
 // --- 영상 플랫폼 경로(운영자 260728 "배치파일 조건대로") — 조건 정본 = apps/vidl/vidl_run.py(로컬 Downloader.bat v7.0 이식):
 //     최고화질+자막(en,ko srt·txt) / 프레임별(maxfps_) / FHD별(1080p_) · 재생목록 방지 · 파일명 TS_플랫폼_계정_제목.
 //     받기 = api/dl 프록시(같은 오리진 attachment) = 항상 로컬 다운로드 폴더 · 드라이브 연결(GDRIVE_SA_JSON) 시 러너가 내 드라이브/Shared에도 업로드(= bat robocopy 축).
-//     UI = 기존 #dlgrab 문법 그대로(geni-sechead/dg-item/geni-opt/dg-consent — 신규 클래스·색 0) · 동의 게이트 = 기존 dgConsent 계승(운영자 260721 제거 금지).
+//     UI = 기존 #dlgrab 문법 그대로(geni-sechead/dg-item/geni-opt — 신규 클래스·색 0) · 발사 = 링크 행 픽토([받기]/[자막])(구 동의 게이트 dgConsent 폐지 = 운영자 260802).
 // 영상 게시물 URL만 vidl 경로로(호스트 + 경로 이중 화이트리스트 · 평의회1·3) — 프로필·채널·탐색 페이지는 '' 반환 = 기존 스캔 폴백(사진 수집 보존).
 //   서버(functions/api/vidl.js·apps/vidl/vidl_run.py)도 동일 목록으로 이중 차단 = 이 감지는 UX용, 최종 게이트는 서버.
 function _dgVidPlat(u) {
@@ -8826,13 +8819,13 @@ function _dgDoneSave(v) {
   if (!v || !v.res || !(v.res.files || []).length) return;
   try {
     const a = _dgDoneLoad().filter(x => x.id !== v.id);   // 같은 건 재요청 = 최신으로 승격
-    a.unshift({ id: v.id, url: v.url, plat: v.plat, mode: v.mode || (v.res && v.res.mode) || 'both', t: Date.now(), res: v.res });
+    a.unshift({ id: v.id, url: v.url, plat: v.plat, mode: v.mode || (v.res && v.res.mode) || 'both', t: Date.now(), sec: v.sec || 0, res: v.res });   // sec = 이번 건이 실제로 걸린 시간(운영자 260802 "받은 리스트는 필요 시간 기록") · 딥링크 복원분은 t0 미상 = 0(=미표시)
     localStorage.setItem(DG_VDONE_KEY, JSON.stringify(a.slice(0, DG_VDONE_MAX)));
   } catch {}   // 용량 초과 = 조용히 포기(보관함은 편의 · 현재 결과 표시는 무영향)
 }
 function _dgDoneOpen(i) {   // 보관함 항목 → 그때 그 완료 패널 그대로 복원(파일 목록·받기·전부 받기)
   const e = _dgDoneLoad()[i]; if (!e) return;
-  _dg.vid = { url: e.url, plat: e.plat, id: e.id, mode: e.mode || 'both', t0: e.t, st: 'done', res: e.res };
+  _dg.vid = { url: e.url, plat: e.plat, id: e.id, mode: e.mode || 'both', t0: e.t, sec: e.sec || 0, st: 'done', res: e.res };
   _dg.res = null; _dg.err = ''; _dg.vdOpen = false;
   _dgRenderBody();
 }
@@ -8842,6 +8835,9 @@ function _dgAgo(t) {   // 상대시각 = 보관함 행 부제(형제 목록 관�
   if (s < 86400) return Math.round(s / 3600) + '시간 전';
   return Math.round(s / 86400) + '일 전';
 }
+// 소요·예상 시간 문자열 = nmEta.fmt 정본(「N분 NN초」) — 로더·요약 링크 레일과 같은 시간 문법(자체 포맷 창작 금지) · nmEta 미로드 폴백만 로컬 산식.
+function _dgSecTxt(s) { s = Math.max(0, Math.round(Number(s) || 0)); return window.nmEta ? nmEta.fmt(s) : (Math.floor(s / 60) + '분 ' + String(s % 60).padStart(2, '0') + '초'); }
+function _dgVidEta(v) { return window.nmEta ? '(예상 : ' + nmEta.fmt(nmEta.sec(v && v.mode === 'subs' ? 'vidl-subs' : 'vidl')) + ')' : ''; }   // 예상 = 실측 평균 수렴(nmEta) · 시드 근거 = nm-loader.js SEED 주석
 // 받은 영상 접이 — 껍데기·행·빈상태 전부 위 '기록' 접이(geni-histwrap) 100% 모방 · 신규 클래스·색 0.
 //   .prev = 「이전 제작」 이력색 변형(정본 = #geni 이전 제작 접이) 계승 = 기록(강조색)과 축 구분.
 function _dgDoneHtml() {
@@ -8852,11 +8848,11 @@ function _dgDoneHtml() {
   list.forEach((e, i) => {
     const fs = e.res.files || [];
     const vn = fs.filter(f => f.kind === 'video' || f.kind === 'img').length;   // 스레드 사진 게시물(img)도 본편 취급 = '(자막만)' 오표기 방지
-    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' · ' + ({ both: '다운로드+자막', video: '다운로드', subs: '자막' }[e.mode] || '다운로드+자막') + ' · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';
+    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' · ' + ({ both: '영상+자막', video: '영상', subs: '자막' }[e.mode] || '영상+자막') + ' · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + (e.sec ? ' · ' + _dgSecTxt(e.sec) + ' 걸림' : '') + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';   // 필요 시간(운영자 260802) = 상대시각 옆 · 옛 항목(sec 없음)은 생략 = 없는 값 지어내지 않음
   });
   return h + '</div></div></div>';
 }
-function _dgVidSaveJob(v) { try { if (v && v.st === 'run' && v.id) localStorage.setItem(DG_VID_KEY, JSON.stringify({ url: v.url, plat: v.plat, id: v.id, t0: v.t0 })); } catch {} }
+function _dgVidSaveJob(v) { try { if (v && v.st === 'run' && v.id) localStorage.setItem(DG_VID_KEY, JSON.stringify({ url: v.url, plat: v.plat, id: v.id, mode: v.mode, t0: v.t0 })); } catch {} }   // mode 동반 저장 = 창 닫았다 열어도 예상시간·머리 라벨이 그 모드 것으로 복원
 function _dgVidClearJob() { try { localStorage.removeItem(DG_VID_KEY); } catch {} }
 function _dgVidLoadJob() {
   try {
@@ -8875,32 +8871,22 @@ function _dgDriveWhy(w) {
 }
 function _dgVidHtml() {
   const v = _dg.vid;
-  const gd = _dg.driveState;   // 'on'|'off'|null(모름) — 이 기기에 드라이브 연결됐는지 UX 힌트(러너가 최종 판정)
-  let h = '<div class="geni-sechead"><span class="cref-lbl">영상 받기 <span class="dg-cnt">— ' + esc(_dgVidPlatName(v.plat)) + ' · 최고화질 + 프레임별·FHD판 + 자막</span></span></div>'
-    + '<div class="dg-hint">이 주소는 <b>영상으로 받아요</b>. 사진·문서 수집이 필요하면 아래 <b>[사진·파일로 스캔]</b>을 눌러요.</div>';
-  if (v.st === 'idle') {
-    h += '<div class="geni-card dg-consent"><label class="dg-conrow"><input type="checkbox" id="dgConsent"' + (_dg.ytConsent ? ' checked' : '') + '><span>이 영상은 <b>내가 권리를 보유했거나 이용 허가를 받은 콘텐츠</b>(예: 기획사가 공유해 준 홍보 영상)임을 확인하고 저장 요청에 동의합니다</span></label></div>'
-      + '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">' + esc(v.url) + '</div>'
-      + '<div class="dg-imeta"><b>다운로드+자막</b> = 최고화질 1편(+프레임·1080p판은 다를 때만)과 자막 srt·txt · <b>다운로드</b> = 영상만 · <b>자막</b> = 자막만(몇 초). 고른 것만 나와요. 영상은 <b>3~8분</b> 걸려요 — 받은 파일은 이 기기 다운로드 폴더로'
-      + (gd === 'off' ? ', 드라이브에도 올리려면 아래 [사진·파일로 스캔] 옆 설정에서 드라이브를 연결해요' : ' 저장되고, 드라이브 내 드라이브/Shared에도 올라가요') + '.</div></div>'
-      + '</div>'
-      + '<div class="dg-item"><div class="dg-imain"><div class="dg-imeta">받을 것을 고르세요</div></div>'
-      + '<button type="button" class="geni-opt" id="dgVidGo" data-act="vidgo" data-mode="both"' + (_dg.ytConsent ? '' : ' disabled') + '>다운로드+자막</button>'
-      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="video"' + (_dg.ytConsent ? '' : ' disabled') + '>다운로드</button>'
-      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="subs"' + (_dg.ytConsent ? '' : ' disabled') + '>자막</button></div>'
-      + '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" data-act="vidscan">사진·파일로 스캔</button></div>';
-  } else if (v.st === 'run') {
-    h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 — ' + (v.mode === 'subs' ? '자막만이라 금방 끝나요' : '보통 3~8분(긴 영상은 더 걸려요)') + '</div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>'
-      + '<div class="dg-hint">창을 닫아도 받기는 계속돼요 — <b>다 되면 알림이 가요</b>(설정 ▸ 기본값 ▸ 알림 ON일 때). 알림을 누르면 이 화면이 바로 열려요.</div>';   // 3~8분을 창 보며 기다리게 두지 않는다(운영자 260802) — 발송 = vidl-make.yml 완료 푸시
+  // 산문 리드·동의·3택 idle 패널 폐지(운영자 260802) — 발사는 링크 행 픽토([받기]/[자막])가 전담하므로 이 패널은 진행·실패·완료만 그린다.
+  let h = '<div class="geni-sechead"><span class="cref-lbl">' + ({ subs: '자막 받기', video: '영상 받기' }[v.mode] || '영상 받기') + ' <span class="dg-cnt">— ' + esc(_dgVidPlatName(v.plat)) + '</span></span></div>';
+  if (v.st === 'run') {
+    h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 <span class="dg-cnt">' + esc(_dgVidEta(v)) + '</span></div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>';   // 예상 = nmEta 정본(실측 평균 수렴 · 운영자 260802 "필요 시간")
   } else if (v.st === 'fail') {
     h += '<div class="dg-err">' + esc(v.msg || '받기 실패') + '</div>'
-      + '<div class="dg-item"><div class="dg-imain"><div class="dg-imeta">다시 받으려면 아래 [다시 시도]를 눌러요</div></div>'
-      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="' + esc(v.mode || 'both') + '">다시 시도</button></div>'
-      + '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" data-act="vidscan">사진·파일로 스캔</button></div>';
+      + '<div class="dg-item"><div class="dg-imain"></div>'
+      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="' + esc(v.mode || 'both') + '">다시 시도</button></div>';
   } else if (v.st === 'done') {
     const r = v.res || {}, fs = r.files || [];
     const b = r.best || {};
-    h += '<div class="geni-sechead"><span class="cref-lbl">받은 파일 <span class="dg-cnt">' + fs.length + '건' + (b && b.w ? ' · 최고 ' + b.w + '×' + b.h + ' @' + (b.fps || '?') + 'fps' : '') + '</span></span></div>';
+    const dr0 = r.drive || {};
+    h += '<div class="geni-sechead"><span class="cref-lbl">받은 파일 <span class="dg-cnt">' + fs.length + '건'
+      + (b && b.w ? ' · 최고 ' + b.w + '×' + b.h + ' @' + (b.fps || '?') + 'fps' : '')
+      + (v.sec ? ' · ' + _dgSecTxt(v.sec) + ' 걸림' : '')   // 필요 시간(운영자 260802) — 완료 화면·보관함 양쪽에 같은 값
+      + ' · 드라이브 ' + ((dr0.on && dr0.n) ? dr0.n + '건' : '없음') + '</span></span></div>';   // 구 산문 2줄(받는 법·드라이브 사유) → 머리 한 줄 사실값으로 압축
     fs.forEach((f, i) => {
       const got = !!_dg.got[f.url];
       h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">' + esc(f.name) + '<span class="dg-got" id="dgvg' + i + '"' + (got ? '' : ' hidden') + '>받음</span></div>'
@@ -8908,18 +8894,14 @@ function _dgVidHtml() {
         + '<button type="button" class="geni-opt" data-act="vidget" data-i="' + i + '">받기</button></div>';
     });
     if (fs.length > 1) h += '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" id="dgVidAll" data-act="vidall">' + fs.length + '개 전부 내려받기</button></div>';   // 목록 아래·개수 명시(평의회8)
-    h += '<div class="dg-hint"><b>받는 법</b> — 위 [받기]를 누르면 이 기기의 <b>다운로드 폴더</b>로 바로 저장돼요(폰이면 파일 앱 ▸ 다운로드). 지금 안 받아도 괜찮아요 — <b>7일 동안 위 [받은 영상]에 남아</b> 언제든 다시 받을 수 있어요.</div>';   // 운영자 260802 "다운로드를 어떻게 받아" — 저장 위치·재수신 경로를 완료 화면에서 못박는다
-    const dr = r.drive || {};
-    const dmsg = (dr.on && dr.n) ? ('드라이브 내 드라이브/Shared에도 ' + dr.n + '건 복사됐어요' + (dr.why ? ' · ' + esc(dr.why) : ''))
-      : ('드라이브엔 복사 안 됐어요 — ' + esc(_dgDriveWhy(dr.why)));   // n=0 = 실패 정직표기(평의회7)
-    h += '<div class="dg-hint">로컬 저장은 위 [받기]로(이 기기 다운로드 폴더) · ' + dmsg + '.' + (r.up_err ? ' <b>일부 파일 업로드 실패 ' + r.up_err + '건.</b>' : '') + '</div>';
+    if (!(dr0.on && dr0.n) || r.up_err) h += '<div class="dg-err">' + esc(_dgDriveWhy(dr0.why)) + (r.up_err ? ' · 업로드 실패 ' + r.up_err + '건' : '') + '</div>';   // 실패만 말한다(정상 = 위 머리 '드라이브 N건'으로 충분 · 산문 안내 폐지 260802) · n=0 = 실패 정직표기(평의회7)
   }
   return h;
 }
 async function _dgVidFire(mode) {
-  const v = _dg.vid; if (!v || (v.st !== 'idle' && v.st !== 'fail') || !_dg.ytConsent) return;   // fail에서도 재시도(평의회8)
-  v.mode = ['both', 'video', 'subs'].indexOf(mode) >= 0 ? mode : 'both';   // 받을 것 3택(운영자 260802) — 서버·러너도 같은 화이트리스트로 재검증
-  v.st = 'run'; v.msg = '요청 중'; v.t0 = Date.now(); v.res = null; _dgRenderBody();
+  const v = _dg.vid; if (!v || (v.st !== 'idle' && v.st !== 'fail')) return;   // fail에서도 재시도(평의회8) · 동의 게이트 폐지(운영자 260802)
+  v.mode = ['both', 'video', 'subs'].indexOf(mode) >= 0 ? mode : 'both';   // 받을 것 = 픽토 2택([받기]=both · [자막]=subs) · video는 서버·러너 화이트리스트에 존치(구 3택 호환)
+  v.st = 'run'; v.msg = '요청 중'; v.t0 = Date.now(); v.sec = 0; v.res = null; _dgPaintPic(); _dgRenderBody();
   try {
     const r = await fetch('/api/vidl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v.url, mode: v.mode }) });
     const d = await r.json().catch(() => ({}));
@@ -8932,8 +8914,8 @@ async function _dgVidFire(mode) {
 function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의회2) — _dg.vid와 동일할 때만 진행
   if (!v || _dg.vid !== v || v.st !== 'run') return;
   if (!$('#dlgrab').open) return;   // 창 닫으면 폴 멈춤 · job은 localStorage에 남아 재열람 시 복원(백그라운드 상주 아님)
-  if (Date.now() - v.t0 > 40 * 60e3) { v.st = 'fail'; v.msg = '시간이 너무 오래 걸려요 — 잠시 후 다시 시도해줘'; _dgVidClearJob(); _dgRenderBody(); return; }
-  const el = $('#dgVidSt'); if (el) el.textContent = '받는 중 (' + Math.round((Date.now() - v.t0) / 1000) + 's) — 러너가 원본 화질로 받는 중';
+  if (Date.now() - v.t0 > 40 * 60e3) { v.st = 'fail'; v.msg = '시간이 너무 오래 걸려요 — 잠시 후 다시 시도해줘'; _dgVidClearJob(); _dgPaintPic(); _dgRenderBody(); return; }
+  const el = $('#dgVidSt'); if (el) el.textContent = _dgSecTxt((Date.now() - v.t0) / 1000) + ' 경과';   // 경과 = 예상(머리)과 같은 시간 문법(nmEta.fmt)
   if (v.tm) clearTimeout(v.tm);
   v.tm = setTimeout(async () => {
     if (_dg.vid !== v || v.st !== 'run' || !$('#dlgrab').open) return;   // 콜백도 identity 재검사(스테일 방지)
@@ -8949,8 +8931,12 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
       } catch (e4) {}
     }
     if (_dg.vid !== v) return;   // 콜백 await 중 교체됐으면 폐기(고아에 done 쓰지 않음)
-    if (fail) { v.st = 'fail'; v.msg = '실패 — ' + fail; _dgVidClearJob(); _dgRenderBody(); return; }
-    if (done) { v.st = 'done'; _dgVidClearJob(); _dgDoneSave(v); _dgRenderBody(); return; }   // 완료분 = 보관함 편입(창을 닫아도 다시 받을 수 있게 · 운영자 260802)
+    if (fail) { v.st = 'fail'; v.msg = '실패 — ' + fail; _dgVidClearJob(); _dgPaintPic(); _dgRenderBody(); return; }
+    if (done) {   // 완료분 = 보관함 편입(창을 닫아도 다시 받을 수 있게 · 운영자 260802)
+      v.st = 'done'; v.sec = Math.max(1, Math.round((Date.now() - v.t0) / 1000));   // 필요 시간 실측(운영자 260802) — 보관함 기록 + nmEta 학습 원료
+      try { if (window.nmEta) nmEta.done(v.mode === 'subs' ? 'vidl-subs' : 'vidl', v.sec); } catch {}   // 성공 완료 지점에서만 학습(nmEta 계약)
+      _dgVidClearJob(); _dgDoneSave(v); _dgPaintPic(); _dgRenderBody(); return;
+    }
     _dgVidPoll(v);   // 계속(네트워크 일시 실패도 여기로 = 체인 안 끊김)
   }, 8000);
 }
@@ -8972,27 +8958,54 @@ function _dgVidGetAll() {
   fs.forEach((f, seq) => { setTimeout(() => { if (_dg.vid === v) _dgVidGet(seq); }, seq * 700); });   // 700ms 순차(_dgDlSel 계승)
   setTimeout(() => { if (_dg.vid === v) v.allBusy = false; }, fs.length * 700 + 500);
 }
-// 사진·파일 스캔 폴백(평의회3·8) — 플랫폼 URL이라도 사용자가 명시하면 기존 linkgrab 스캔을 강제.
-function _dgVidToScan() { const v = _dg.vid; const u = v && v.url; if (!u) return; _dg.vid = null; _dgGo(u); }
-async function _dgGo(forceUrl) {
+// ── 링크 행 픽토 2개(운영자 260802) — [받기] = 영상+자막 발사 · [자막] = 자막만 발사. 점등 규칙:
+//   [받기]  = 주소가 영상 게시물(_dgVidPlat)이면 점등 · 아니면 디밍+잠금(그 주소는 [가져오기] 스캔 축).
+//   [자막]  = api/linkprobe 가 자막을 **확인**했을 때만 점등(정본 계승 = 요약창 #alkSubs 리드백) · 미확인 = 디밍(누를 순 있음 = 과신 금지·시도 자유)
+//            · 자막 없음이 확인되면 잠금([받기]로 받으면 러너가 받아쓰기 자막을 대신 만들어 준다 = vidl_run.py STT 폴백).
+let _dgProbeSeq = 0, _dgSubs = null, _dgProbeTm = null;   // _dgSubs = true(자막 확인)·false(없음 확인)·null(미확인)
+function _dgUrlNorm() { let u = String(($('#dgUrl') || {}).value || '').trim(); if (!u) return ''; return /^https?:\/\//i.test(u) ? u : 'https://' + u; }
+function _dgPaintPic() {
+  const dl = $('#dgVidDl'), sb = $('#dgVidSub'); if (!dl || !sb) return;
+  const plat = _dgVidPlat(_dgUrlNorm());
+  const busy = !!(_dg.vid && _dg.vid.st === 'run') || _dg.busy;   // 받는 중엔 이중 발사 금지(평의회2 축)
+  dl.disabled = !plat || busy; dl.classList.toggle('on', !!plat && !busy);
+  sb.disabled = !plat || busy || _dgSubs === false; sb.classList.toggle('on', !!plat && !busy && _dgSubs === true);
+  dl.title = plat ? _dgVidPlatName(plat) + ' 영상 받기 — 최고화질 + 프레임별·FHD판 + 자막' : '영상 받기';
+  sb.title = !plat ? '자막만 받기'
+    : _dgSubs === true ? '자막만 받기 — 이 영상엔 자막이 있어(몇 초면 끝나)'
+    : _dgSubs === false ? '이 영상엔 플랫폼 자막이 없어 — [받기]로 받으면 받아쓰기 자막이 같이 나와'
+    : '자막만 받기 — 자막 유무는 미확인(유튜브만 미리 확인돼)';
+}
+async function _dgProbeSubs() {   // 자막 유무 사전판별 = api/linkprobe(정본 = 요약창 probeAskLink) · 화면 표시 전용(실제 판정은 러너)
+  const u = _dgUrlNorm(), seq = ++_dgProbeSeq;
+  _dgSubs = null; _dgPaintPic();
+  if (!u || !_dgVidPlat(u)) return;
+  try {
+    const r = await fetch('api/linkprobe?u=' + encodeURIComponent(u));
+    const d = await r.json().catch(() => ({}));
+    if (seq !== _dgProbeSeq) return;   // 늦게 온 옛 응답 폐기(타이핑 중 순서 뒤집힘 차단 · probeAskLink 관례)
+    _dgSubs = (d && typeof d.subs === 'boolean') ? d.subs : null;
+  } catch { if (seq !== _dgProbeSeq) return; _dgSubs = null; }
+  _dgPaintPic();
+}
+function _dgVidStart(mode) {   // 픽토 발사 = 주소 → 영상 받기 경로 즉시(구 idle 패널·동의 체크 경유 폐지 · 운영자 260802)
+  if (_dg.busy || (_dg.vid && _dg.vid.st === 'run')) return;
+  const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
+  _dg.err = ''; _dg.lastUrl = u; _dg.res = null; _dg.sel = {}; _dg.meta = {}; _dg.yt = {}; _dg.histOpen = false;
+  _dg.vid = { url: u, plat, st: 'idle' };
+  _dgHistSave(u, _dgVidPlatName(plat) + ' 영상');
+  _dgVidFire(mode);
+}
+async function _dgGo() {   // [가져오기] = 페이지 자료 스캔 전담(영상 게시물이어도 사진·문서 수집 = 구 '사진·파일로 스캔' 폴백 흡수)
   if (_dg.busy) return;
   if (_dg.vid && _dg.vid.st === 'run') { _dg.err = '받는 중이야 — 끝나면 다음 주소를 넣어줘'; _dgRenderBody(); return; }   // 진행 중 폐기 방지(평의회2)
-  const scanForce = typeof forceUrl === 'string';   // _dgVidToScan이 넘기면 플랫폼 감지 우회(사진 스캔 폴백)
-  const inp = $('#dgUrl'); let u = scanForce ? forceUrl : String((inp && inp.value) || '').trim();
-  if (!u) { _dg.err = '페이지 주소를 먼저 붙여넣어 주세요'; _dgRenderBody(); return; }
-  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-  const vp = scanForce ? '' : _dgVidPlat(u);   // 영상 플랫폼 게시물 = 배치 조건 영상 받기 경로(스캔 대신 즉시 패널 · 운영자 260728)
-  if (vp) {
-    _dg.err = ''; _dg.lastUrl = u; _dg.res = null; _dg.sel = {}; _dg.meta = {}; _dg.yt = {}; _dg.ytConsent = false; _dg.histOpen = false;
-    _dg.vid = { url: u, plat: vp, st: 'idle' };
-    _dgHistSave(u, _dgVidPlatName(vp) + ' 영상');
-    _dgRenderBody();
-    return;
-  }
+  const u = _dgUrlNorm();
+  if (!u) { _dg.err = '주소를 먼저 붙여넣어 주세요'; _dgRenderBody(); return; }
   _dg.vid = null;
-  _dg.busy = true; _dg.err = ''; _dg.lastUrl = u; _dg.sel = {}; _dg.meta = {}; _dg.ytConsent = false; _dg.yt = {};   // 동의는 가져오기마다 새로 받는다(운영자 260721)
+  _dg.busy = true; _dg.err = ''; _dg.lastUrl = u; _dg.sel = {}; _dg.meta = {}; _dg.yt = {};
   const btn = $('#dgGo'), sp = btn && btn.querySelector('span');
   if (btn) { btn.disabled = true; if (sp) sp.textContent = '스캔 중'; }
+  _dgPaintPic();
   try {
     const r = await fetch('/api/linkgrab?url=' + encodeURIComponent(u));   // 같은 오리진 무헤더(인증 = CF Access 엣지)
     const d = await r.json().catch(() => ({ error: '응답 해석 실패' }));
@@ -9002,6 +9015,7 @@ async function _dgGo(forceUrl) {
   } catch (e2) { _dg.res = null; _dg.err = '가져오기 실패 — ' + ((e2 && e2.message) || '네트워크 오류'); }
   _dg.busy = false; _dg.histOpen = false;
   if (btn) { btn.disabled = false; if (sp) sp.textContent = '가져오기'; }
+  _dgPaintPic();
   _dgRenderBody();
 }
 const _dgBtnEl = $('#dgBtn'); if (_dgBtnEl) _dgBtnEl.addEventListener('click', e => { e.stopPropagation(); openDlGrab(); });   // 설정 ▸ 다운로드(운영자 260721) — accBtn(계정→snsaccdlg) 선례 미러
@@ -9027,7 +9041,12 @@ $('#dgGo').addEventListener('click', _dgGo);
 $('#dgDl').addEventListener('click', _dgDlSel);
 $('#dgSelAll').addEventListener('click', _dgSelAll);
 $('#dgSelNone').addEventListener('click', _dgSelNone);
-$('#dgUrl').addEventListener('keydown', e => { if (e.key === 'Enter') _dgGo(); });
+// 링크 행 픽토 = nm-svg 정본 주입(인라인 SVG 복제 0 · .pin-eye 주입 관례) + 발사 배선
+$('#dgVidDl').innerHTML = DOWNLOAD_SVG; $('#dgVidSub').innerHTML = SUBS_SVG;
+$('#dgVidDl').addEventListener('click', () => _dgVidStart('both'));   // [받기] = 영상+자막(플랫폼 자막 0개면 러너가 받아쓰기 자막까지)
+$('#dgVidSub').addEventListener('click', () => _dgVidStart('subs'));   // [자막] = 자막만(영상 트랙 건너뜀 = 몇 초)
+$('#dgUrl').addEventListener('input', () => { _dgPaintPic(); if (_dgProbeTm) clearTimeout(_dgProbeTm); _dgProbeTm = setTimeout(_dgProbeSubs, 600); });   // 600ms 디바운스 = 타이핑 중 과호출 차단(probeAskLink 동값 계승)
+$('#dgUrl').addEventListener('keydown', e => { if (e.key === 'Enter') { const p = _dgVidPlat(_dgUrlNorm()); if (p) _dgVidStart('both'); else _dgGo(); } });   // Enter = 영상 게시물이면 바로 받기, 아니면 스캔
 $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아이콘 위임 관례) — 카드/행/워드칩/기록 전 액션
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, i = +(el.dataset.i || -1);
@@ -9038,16 +9057,14 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(el.dataset.mode || 'both'); }
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(); }
-  else if (act === 'vidscan') { e.stopPropagation(); _dgVidToScan(); }
   else if (act === 'selsec') { const kd = el.dataset.k; _dgEach((it, n) => { if (it.dl && (it.kind || 'link') === kd) _dg.sel[n] = true; }); _dgRepaintAll(); }
   else if (act === 'vdfold') { _dg.vdOpen = !_dg.vdOpen; _dgRenderBody(); }
   else if (act === 'vdopen') { e.stopPropagation(); _dgDoneOpen(i); }
   else if (act === 'vddel') { e.stopPropagation(); try { const a = _dgDoneLoad(); a.splice(i, 1); localStorage.setItem(DG_VDONE_KEY, JSON.stringify(a)); } catch {} _dgRenderBody(); }
   else if (act === 'hist') { _dg.histOpen = !_dg.histOpen; _dgRenderBody(); }
-  else if (act === 'histpick') { const he = _dgLoadHist(); if (he) { const inp = $('#dgUrl'); if (inp) inp.value = he.u; _dg.histOpen = false; _dgGo(); } }
+  else if (act === 'histpick') { const he = _dgLoadHist(); if (he) { const inp = $('#dgUrl'); if (inp) inp.value = he.u; _dg.histOpen = false; _dgPaintPic(); _dgProbeSubs(); _dgRenderBody(); } }   // 기록 재선택 = 주소만 되채움(자동 발사 폐지 — 받기/스캔은 픽토·버튼으로 명시 선택)
   else if (act === 'histdel') { try { localStorage.removeItem(DG_HIST_KEY); } catch {} _dgRenderBody(); }
 });
-$('#dgBody').addEventListener('change', e => { if (e.target && e.target.id === 'dgConsent') _dgYtConsentSet(e.target.checked); });
 $('#dgBody').addEventListener('load', e => {   // 썸네일 실측 → 해상도 기입(캡처 단계 — load는 버블 안 함)
   const img = e.target; if (!img || img.tagName !== 'IMG' || !img.dataset.metai) return;
   const i = +img.dataset.metai; const m = _dg.meta[i] = _dg.meta[i] || {};
