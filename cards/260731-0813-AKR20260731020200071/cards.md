@@ -1,32 +1,33 @@
-# 🕊 합의는 발표됐는데, 합의문은 어디 있나
+# 트럼프 "가자 완전 무장해제 합의"… 합의문은 아직 없다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 국제 권력·거버넌스 구조를 묻는 기사라 사실성과 무게를 쥔 극화가 맞다
-- 분위기: 승전보의 들뜸이 아니라 늦은 밤 사무실의 서늘한 정적 — '선언'과 '절차' 사이의 빈칸을 체감시키는 톤
-- 연출 방향: 독자는 '드디어'와 '또 발표뿐인가' 사이에서 멈춘다 — 그 멈칫함을 화면빛 하나로 밝혀진 얼굴, 서명자 없는 문서, 비어 있는 맞은편 의자로 잡는다. 전하려는 건 합의의 내용이 아니라 **합의를 말한 사람과 그 말을 지킬 절차 사이의 거리**다. 그래서 카드가 갈수록 인물은 좁혀지고 주변은 비어 간다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 발표 통로가 한 곳뿐이었다는 여운)+카드3 끝(예고형: 그 기구를 누가 세웠나) · 감정 피크=카드4 · 착지 = 역사적 합의라는 말과 그 말을 지킬 절차 사이의 거리가 지금 공개된 전부다
-- 연속성 앵커: Recurring subject — an elderly Western man in his late 70s, silver-blond swept-back hair, heavy build, dark navy suit with a long red tie / Recurring place — a wide dim executive office at night, tall windows behind
+- 화풍: B 극화 — 한 사람의 게시글이 한 지역의 무장 해제를 선언한 사안이라, 발표의 무게와 그 발표를 받치는 구조를 사실적으로 해부해야 한다
+- 분위기: 늦은 밤 책상 위 온기에서 시작해 회의실의 찬 빛으로 내려가고, 텅 빈 서명란에서 가장 어두워졌다가 새벽 거리에서 풀리는 정조 — 선언의 온도와 절차의 냉기가 한 덱 안에서 갈린다
+- 연출 방향: 뉴스를 안 보던 독자도 "합의됐대"에서 멈추고, 다음 장에서 "근데 그 말을 한 사람이 한 명뿐이네"로 갸웃하게 만든다(독자훅 = 회의 섞인 기대). 그래서 카메라는 사건 현장이 아니라 **말이 나온 자리와 그 말을 받아야 할 빈 자리**를 번갈아 잡는다 — 화면 빛을 받은 입가, 마주 앉은 사람 없는 의자, 이름표 없는 세 자리, 아무도 서명하지 않은 줄. 시사점(💡)의 관점대로 "약속의 문장은 있고 그것을 확인할 절차는 비어 있다"를 그림이 먼저 말하게 한다. thumb_dispatch에서는 데스크램프 톤과 부재의 정조만 이어받고, 앵글은 카드마다 분산한다
+- 독자 동선: 제시 카드1→**발단** 카드2→**전개** 카드3~5→**피크** 카드6→**해소·시사점** 카드7(사건이 진행 중이라 독립 해소 비트가 없다 — 結 카드가 열린 해소로 흡수, 새 사실 비트는 두지 않는다) · 훅=카드1 끝(단서형: 공개되지 않은 합의문 → 카드2 첫 줄이 "공개된 건 계획뿐"으로 즉시 회수)+카드4 끝(단서형: 못 박은 다짐 → 카드5 첫 줄이 "그 합의를 알린 곳"으로 회수) · 질문형 0회 · 명도 아크 = 起 중간(LGT04/17) → 承 하강(LGT08→LGT15→LGT21) → 轉 최저·최고 대비(LGT09) → 結 여운(LGT02) · 착지 = 합의라는 말과 그 말을 지킬 절차 사이의 거리
+- 연속성 앵커: Recurring subject - an elderly Western statesman in his seventies, heavyset build, pale swept-back hair, dark navy suit with a long crimson tie, a generic face resembling no real person (카드 1·2·4·5에 그대로 복사) / 반복 장소 = a wide dark executive interior with heavy wooden furniture and empty chairs
 
 ### [카드 1]
 **텍스트**
 ```text
-가자의 총을 다 내려놓기로 했다고 한다
-스무 달 어떤 협상도 못 넘은 문턱이다
-그 소식이 세상에 나온 통로는
-*그의 계정 하나였다*
+7월 30일 밤 트루스소셜에 글이 올랐다
+가자의 모든 무장 단체가
+무기를 내려놓기로 합의했다고 한다
+*합의문은 어디에도 공개되지 않았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the cold phone glow lighting only the lower half of his face while his eyes stay in shadow. Recurring subject — an elderly Western man in his late 70s, silver-blond swept-back hair, heavy build, dark navy suit with a long red tie, sits alone behind a wide desk and looks down at the phone held in both hands. Recurring place — a wide dim executive office at night, tall windows behind him. The chairs across the desk are empty, and his gaze drifts toward the right edge of the frame.
-Camera: medium shot, waist-up framing, face and gestures from eye-level shot, neutral perspective, shot on 50mm standard lens, minimal distortion, natural cinematic composition, nose room on the right
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: avoid incidental lettering by cropping and shadow; the phone screen is turned away from the viewer so no interface text is readable.
+Scene: Emotional focal point: the tightly pressed lips of an old man, lit from below by the glow of the phone in his hand. Recurring subject - an elderly Western statesman in his seventies, heavyset build, pale swept-back hair, dark navy suit with a long crimson tie, a generic face resembling no real person. He sits alone behind a heavy wooden desk in a wide dark office late at night, holding the phone up and reading its screen with his eyes cast down, his shoulders turned slightly toward the right edge of the frame. Two empty chairs face the desk from the far side, with no one seated across from him.
+Camera: medium close-up from eye-level, three-quarter angle, shot on 85mm portrait lens, nose room on the right, gaze directed toward the right edge
+Lighting/mood: warm soft desk-lamp light, quiet wistful tone
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried by the phone screen glow, film-noir low-key lighting, deep shadows
+This is a Western government office interior, not a Korean setting.
+Text handling: the phone screen is angled away from the viewer and cropped so that no readable characters appear; no signage, no documents, no lettering anywhere in the frame. no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark office desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the dark office wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -35,29 +36,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-트럼프 트루스소셜 게시글
+Trump Truth Social post
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그는 이걸 역사적인 합의라고 불렀다
-*평화와 안보를 향한 기념비적 발걸음*
-지난해 9월 내놓은 20개항 계획의
-가장 어려운 항목이 넘어갔다는 뜻이다
+공개된 건 2025년 9월 계획뿐이다
+그때 트럼프 미국 대통령은
+가자 전쟁을 끝낼 20개항 구상을 냈다
+*계획이 넘지 못한 게 무장 해제였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the fingertips pressed together in a steeple just below his chin, a confident power gesture. Recurring subject — an elderly Western man in his late 70s, silver-blond swept-back hair, heavy build, dark navy suit with a long red tie, stands at a podium and speaks toward a cluster of microphones, chin lifted. Recurring place — the same wide dim executive office at night is now behind him as a press backdrop, tall windows dark. A single sheet of paper rests untouched on the podium in front of his hands, and his gaze runs toward the right edge of the frame.
-Camera: medium close-up, chest-up framing, facial emotion from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 70mm short telephoto, gentle background compression, subject isolation, nose room on the right
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the sheet on the podium is seen at a steep angle so its surface reads as blank paper; no lettering is rendered anywhere.
+Scene: Emotional focal point: the lifted chin and the wide-open palms of a man presenting a plan to a room he cannot see. Recurring subject - an elderly Western statesman in his seventies, heavyset build, pale swept-back hair, dark navy suit with a long crimson tie, a generic face resembling no real person. He stands behind a podium in a large hall, both hands opened outward at chest height, his gaze level and forward. A thick bound document lies closed on the podium ledge in front of him. Plain flags without any emblem stand in a row behind him.
+Camera: wide shot from a low angle, shot on 35mm lens
+Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the closed document cover, muted daylight contrast
+This is a Western press hall interior, not a Korean setting.
+Text handling: the document stays closed and the flags carry no emblem or lettering; the podium front is bare. no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark wooden podium front) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the plain curtain wall behind the podium) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -66,29 +68,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-트럼프 가자 평화구상 발표
+Trump Gaza 20-point peace plan
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-이후의 순서도 함께 내놨다
-무장 해제가 끝나면 이스라엘군이 빠지고
-국제안정화군이 새 팔레스타인 경찰과
-*가자 주민의 안전을 맡는다*고 했다
+*글에는 그 이후의 순서까지 있었다*
+해제가 끝나면 이스라엘군이 철수하고
+국제안정화군과 새 팔레스타인 경찰이
+가자의 치안을 맡는다는 그림이다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a soldier's hand resting flat on a rifle slung across his chest, unmoving, neither surrendering it nor raising it. Two figures stand a few steps apart on a cracked street of a bombed town at dusk — one in unmarked military fatigues and helmet, one in a plain police-style jacket — both facing the same direction down the road toward the right edge, neither looking at the other. No insignia, no flags, no lettering on any garment or wall.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion, nose room on the right
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: all signage, vehicle markings and uniform patches are avoided entirely through framing and shadow; no lettering is rendered.
+Scene: Emotional focal point: the wide band of empty road left between two columns, with no one standing in it. Seen from directly above, an armored column withdraws along a dusty road toward the lower left, its vehicles facing away. From the upper right a thin line of newly uniformed police officers walks in on foot, and a separate small group of stabilization personnel follows a few steps behind them. A broad stretch of bare road separates the two groups and stays completely empty. All uniforms and vehicles carry no insignia and no flags.
+Camera: extreme long shot from a bird's-eye view, shot on 20mm wide lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) marking the empty road band between the two columns, muted daylight contrast
+This is a Middle Eastern street setting, not a Korean setting.
+Text handling: no road signs, no vehicle markings, no banners; surfaces stay bare. no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the cracked asphalt road) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the dusty road surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -97,28 +100,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-가자지구 거리 파괴 현장
+Israeli troops withdrawal Gaza road
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-합의를 알린 평화위원회는
-*그가 직접 세우고 의장까지 맡은 기구*다
-2027년 말까지 가자를 통치할 기구다
+발표 말미엔 감사 인사가 붙었다
+중재국은 이집트·카타르·튀르키예다
+2025년 10월 7일의 위협을 두고는
+*다시는 용납하지 않겠다고 못 박았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his vacant thousand-yard stare, unfocused eyes looking past everything in front of him. Recurring subject — an elderly Western man in his late 70s, silver-blond swept-back hair, heavy build, dark navy suit with a long red tie, sits alone at the head of a long conference table in the chairman's seat. Recurring place — the same wide dim executive office at night, tall windows behind him. Every other chair along the table is empty and pushed in, and one hard pool of light falls on the tabletop in front of him.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from high angle shot, looking down, vulnerable subject, small, observed, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: no nameplates, no documents and no signage appear anywhere in frame; the tabletop is bare.
+Scene: Emotional focal point: the level, unblinking eyes and the set jaw of a man speaking to seats no one has taken. Recurring subject - an elderly Western statesman in his seventies, heavyset build, pale swept-back hair, dark navy suit with a long crimson tie, a generic face resembling no real person. Seen from above, he stands at the near edge of a round conference table with one palm flat on its surface, his head turned toward the right edge of the frame. Three empty chairs are set in a row along the far side of the table, each with a blank nameplate holder in front of it, and the rest of the room falls away into blackness.
+Camera: medium shot from a high angle looking down, shot on 50mm standard lens, nose room on the right
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the three empty nameplate holders, film-noir low-key lighting, deep shadows
+This is a Western conference room interior, not a Korean setting.
+Text handling: the nameplate holders are empty and blank, no lettering on them or anywhere else in the frame. no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long dark conference table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the round conference table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -127,29 +132,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-평화위원회 Board of Peace 트럼프
+Egypt Qatar Turkey Gaza mediation talks
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그런데 그 발표문 안에 무장 해제를
-언제까지 끝내는지도, 끝났다고 누가
-판정하는지도 적혀 있지 않다
-*역사적 합의라는 말과 그 절차 사이가*
+그 합의를 알린 곳은 평화위원회다
+트럼프 대통령이 직접 세운 기구이고
+2027년 말까지 가자를 통치한다
+*초대 의장은 그 자신이 맡았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a single sheet of paper lying alone on a desk with the signature line at its foot left blank. The wide desk is otherwise bare, one pen set beside the sheet untouched, and no person is present in the room. Recurring place — the same wide dim executive office at night, tall windows behind the desk, the chairman's chair pushed back and empty, a faint warm lamp glow falling across the void where someone should be sitting.
-Camera: extreme close-up, single detail, texture from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: warm soft desk-lamp light, quiet wistful tone
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the sheet of paper is rendered as a blank surface with only a faint ruled signature line and no words; no lettering is rendered anywhere in the frame.
+Scene: Emotional focal point: the fingertips pressed together in a steeple on the table in front of him. Recurring subject - an elderly Western statesman in his seventies, heavyset build, pale swept-back hair, dark navy suit with a long crimson tie, a generic face resembling no real person. He is seated alone at the head of a long conference table, chin slightly raised, looking out over two receding rows of empty delegate chairs. A plain unmarked banner hangs on the wall behind his seat.
+Camera: medium close-up from a low angle looking up, shot on 70mm short telephoto
+Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) along the edge of the banner behind him, film-noir low-key lighting, deep shadows
+This is a Western institutional interior, not a Korean setting.
+Text handling: the banner stays blank with no emblem and no lettering; no nameplates, no papers on the table. no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the unmarked banner wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -158,5 +164,68 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-백지 서명란 문서 책상
+Board of Peace Gaza governing body
+```
+
+### [카드 6]
+**텍스트**
+```text
+*그 발표문엔 시한이 적혀 있지 않다*
+완료를 누가 판정하는지도 없다
+하마스가 받아들였다는 말도 없다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: one bare fingertip resting on an empty ruled line where a date and a signature should be. A single sheet of printed paper lies flat on a dark desk, cropped so tightly that all printed lines fall outside the frame above and only the blank lower portion of the page remains visible. The fingertip hovers and then settles on that one empty ruled line, and the paper below it stays completely bare.
+Camera: extreme close-up from a high angle looking straight down, shot on 100mm macro lens
+Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) as a thin rim of light running along the empty ruled line, film-noir low-key lighting, deep shadows
+This is a Western office desk, not a Korean setting.
+Text handling: all printed characters are cropped outside the frame; the visible portion of the page is blank paper with one ruled line and nothing written on it. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the paper sheet) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+Gaza disarmament agreement unsigned document
+```
+
+### [카드 7]
+**텍스트**
+```text
+합의라는 말은 이미 세상에 나왔다
+그 말을 지킬 절차는 아직 문서에 없다
+가자의 총이 실제로 내려가는지는
+*그 절차가 채워질 때 드러날 일이다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the steady, forward-looking eyes of one civilian waiting in an empty street at first light. A lone adult civilian stands near the center of a cleared street at dawn, facing the camera straight on with hands at their sides. Low buildings line both sides behind them and the street runs empty toward the far end. No soldiers, no vehicles and no weapons appear anywhere in the frame.
+Camera: wide shot from eye-level, front-on angle, shot on 35mm lens, centered static composition
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) in the first light along the far end of the street, film-noir low-key lighting, deep shadows
+This is a Middle Eastern street setting, not a Korean setting.
+Text handling: no shop signs, no banners, no graffiti; all wall surfaces stay bare. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the open street surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+Gaza street dawn residents
 ```
