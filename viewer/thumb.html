@@ -1714,7 +1714,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     if (lines.length) {
       const sp = cur.fmt === 'reels' ? { fs: 78, lh: 96, lm: 101, ty: 1119 } : { fs: 76, lh: 89, lm: 85, ty: 822 };
       const trO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post').tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
-      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'ink'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
+      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'adv'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
@@ -4108,17 +4108,22 @@ function buildEmphText() {
 // ---- 실시간 자간(tracking) 추정 — 워크플로 measure+sweep의 브라우저판 ----
 // 글자폭 = 1순위 캔버스 measureText 실측(웹폰트 advance = PIL getbbox·getlength와 ±0.3px 일치 실측 260716 — 숫자45·라틴~50·공백17 혼합폭까지 정확) · 폰트 미로드 시 2순위 레거시 상수(H/S/N · 한글 위주 근사) 폴백.
 // ⚑ basis = **폭 재는 자**(운영자 260802 "잴 때 항상 한개의 기준" · 축마다 서버 렌더러가 다른 자를 쓴다 = 축 안에서 하나로 통일한다)
-//   'ink' = 서버가 글자 **잉크폭**만큼 전진(오버레이 = nomute_overlay.draw_t `bb[2]-bb[0] + tp`)
-//   'adv' = 서버가 **advance**만큼 전진(헤더 = nomute_reels2 `font.getlength(ch)` · _line_width)
+//   'adv' = 서버가 **advance**만큼 전진 — 오버레이·헤더 전 축(오버레이 = draw_t `getbbox(ch)[2]-[0]` = 단일 글자에선 advance 반올림 · 헤더 = reels2 `font.getlength(ch)`)
+//   'ink' = 진짜 잉크폭(actualBoundingBox) 축 — **현재 사용 축 없음**(아래 오진 교정 기록용으로만 보존)
+//   ⚠ 오진 교정(운영자 260802 3차 "자간이 무한정 줄어서") — 260802 2차가 오버레이를 'ink'로 선언했으나 PIL 실측 반증:
+//     draw_t의 `getbbox(ch)[2]-[0]`는 단일 글자에서 advance 반올림('가' 71.8→72 · 공백 17.7→**18** · 진짜 잉크 아님)이고
+//     자간을 실제로 정하는 워크플로 fit_tracking measure(렌더 알파 bbox)도 Σadv ±4px('신림 상가에서 화재' 611 vs Σadv 610).
+//     반면 브라우저 actualBoundingBox는 진짜 잉크(공백 = **0** · 한글도 advance보다 좁음) = 서버에 없는 자였다
+//     → 미리보기 보정 (Σink−Σadv)/n이 자간 0에서도 공백 실종·글자 압착을 그렸다(스크린샷 진범).
 //   → 이 한 글자를 바꾸면 힌트·미리보기 보정·발사 게이트·입력 클램프가 **일괄로** 그 자를 쓴다(소비처 전부 spec만 읽는다).
 const TRK = {
-  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
-  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30, basis: 'ink' },
+  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'adv' },
+  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30, basis: 'adv' },
   // 진짜예요 오버레이 축(운영자 260728 "노뮤트때 나오는거랑 똑같이") — limit·start·floor = 노뮤트 동값 계승
   // (구 260726 폭 780/floor -45 축 폐기 · 서버 자간은 원래부터 노뮤트 fit_tracking을 받고 있었다 = 클라 힌트가 어긋나 있던 것).
   // fs 76만 진짜예요 고유(플레이그라운드 선택값) · H/S/N 폴백 = post(fs76) 상수 동값(같은 fs라 재계산 불요)
-  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30, basis: 'ink' },
-  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
+  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30, basis: 'adv' },
+  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'adv' },
 };
 // 진짜예요 오버레이 좌표(운영자 플레이그라운드 선택값) — nomute_jinjja.OV_SPEC과 1:1 미러 · lm = 노뮤트 SPECS lm 계승(260728 좌측정렬 개정)
 // ctr = 가운데 정렬(릴스만 · 운영자 260730) · rm = 우 마지노선(워크플로 fit_tracking "post lm85/rm75 · reels lm101/rm135" 미러) = nomute_jinjja.OV_CENTER/OV_RM와 1:1
@@ -4133,10 +4138,10 @@ const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlengt
       if (cache.has(key)) return cache.get(key);
       cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
       const m = cx.measureText(ch);
-      // 측정 기준 = **잉크폭 단일 기준**(운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자").
-      //   실렌더 정본 = nomute_overlay.draw_t → `bb = f.getbbox(ch); cx += bb[2]-bb[0] + tp` = **글자 잉크폭 + 자간**(advance 아님).
-      //   구 `measureText().width`(= advance)는 잉크보다 넓어 힌트가 서버보다 항상 한 단 더 조여 나왔다(기준 2개 = 표기와 산출 불일치원).
-      //   actualBoundingBoxLeft+Right = 캔버스의 잉크폭 = PIL getbbox 폭과 같은 축 · 미지원 엔진은 advance 폴백(종전 동작).
+      // 측정 기준 = basis 선언이 정하는 **한 자**(운영자 260802 "잴 때 항상 한개의 기준") — 현재 전 축 'adv'(advance).
+      //   ⚠ 오진 교정(260802 3차) — 2차의 "draw_t = 잉크폭 전진 · advance는 서버보다 넓다"는 PIL 실측으로 반증:
+      //   단일 글자 `f.getbbox(ch)[2]-[0]` = advance 반올림(공백 18 ≠ 잉크 0 · '가' 72 ≈ adv 71.8) = measureText().width와 같은 자.
+      //   'ink' 분기(actualBoundingBox = 진짜 잉크)는 서버에 대응 자가 없어 미사용 보존(공백 0 → 공백 실종 미리보기 진범이었다).
       const w = (basis === 'adv' || typeof m.actualBoundingBoxLeft !== 'number' || typeof m.actualBoundingBoxRight !== 'number')
         ? m.width                                                   // adv 축(헤더 = reels2 font.getlength) · 잉크 메트릭 미지원 폴백
         : Math.max(0, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);   // ink 축(오버레이 = draw_t getbbox)
@@ -4158,11 +4163,11 @@ const _trkAdvW = (() => {   // 글자 **advance**(브라우저 배치폭) 캐시
     } catch (_) { return null; }
   };
 })();
-// 미리보기 자간 = **서버 폭 재현값**(운영자 260802 "두개의 기준에 다 맞추던지") — 판정 기준은 잉크(서버 draw_t) 하나로 통일했지만,
-//   브라우저는 글자를 advance로 배치하므로 같은 tr을 그대로 쓰면 미리보기만 Σ(adv−ink)만큼 넓게 그려진다(실측 16자 한 줄 = 143px).
-//   → 줄마다 `(Σink − Σadv)/(n−1)`를 자간에 더해 **렌더 폭 = 서버 산출 폭**으로 맞춘다(1080 좌표계 px · 폰트 미로드면 null = 종전 tr 그대로).
+// 미리보기 자간 = 서버 폭 재현값 — 전 축 'adv'(브라우저 배치 = 서버 전진과 같은 자)라 보정 0 = **tr 그대로**(자간 값이 곧 미리보기).
+//   ⚠ 구 잉크 보정 `(Σink−Σadv)/(n−1)`은 오진 위 보정(260802 3차 교정) — 서버는 잉크 자로 안 재는데 미리보기만 잉크폭으로 눌러
+//   자간 0에서도 공백이 사라지고 글자가 무한정 압착돼 보였다(운영자 스크린샷 진범). 'ink' 축이 실존할 때만 이 보정이 유효하다.
 function prevLetterSpace(line, tr, fs, basis) {
-  if (basis === 'adv') return tr / 1000 * fs;   // adv 축(헤더) = 브라우저 배치와 서버가 같은 자 → 보정 0(그대로 tr)
+  if (basis === 'adv') return tr / 1000 * fs;   // adv 축(현행 전부) = 브라우저 배치와 서버가 같은 자 → 보정 0(그대로 tr)
   const plain = String(line).replace(/\*/g, '');
   const n = plain.length - 1;
   if (n < 1) return null;
