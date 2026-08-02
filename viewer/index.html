@@ -8708,7 +8708,8 @@ function _dgJobHtml(v, i) {
   let h = '<div class="job' + (v.st === 'done' ? ' done' : '') + (v.st === 'fail' ? ' err' : '') + '" id="dgjob' + i + '">'
     + '<span class="jlab">' + esc(_dgVidPlatName(v.plat) || '링크') + ' · ' + modeLbl + ' #' + (v.n || (i + 1)) + '</span>'
     + '<span class="jst">' + ic + '<span>' + tx + '</span></span>';
-  if (v.st === 'run') h += '<button type="button" class="jdel" data-act="jcancel" data-i="' + i + '" title="받기 취소" aria-label="받기 취소"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button>';   // 제작 중 취소 = thumb .jcancel 자리·부품 계승(픽토 = 정본 X · §3-1)
+  // (받는 중 취소 X = 운영자 260802 미채택 — 러너를 실제로 멈추는 API가 없어 「이 화면의 추적만 끊는」 반쪽 취소였다.
+  //  버튼이 없어도 40분 폴 상한이 스스로 실패로 닫고, 창을 닫으면 폴은 멈춘 채 잡만 보존된다 = 갇히는 상태 없음.)
   if (v.st === 'fail') h += '<button type="button" class="geni-opt" data-act="vidgo" data-i="' + i + '">다시 시도</button>';
   if (v.st === 'done' && fs.length) {
     h += '<div class="jgrid"><div class="jvars">'
@@ -9011,11 +9012,6 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
     _dgVidPoll(v);   // 계속(네트워크 일시 실패도 여기로 = 체인 안 끊김)
   }, 8000);
 }
-function _dgJobCancel(ji) {   // 받는 중 취소 = 이 화면의 추적만 끊는다(thumb jobCancel과 동일 한계 — 러너를 멈추는 API는 없다 · 결과는 다음 열람 때 서버에 남을 수 있음)
-  const v = _dg.jobs[ji]; if (!v) return;
-  if (v.tm) { clearTimeout(v.tm); v.tm = null; }
-  _dg.jobs.splice(ji, 1); _dgVidSaveJobs(); _dgPaintPic(); _dgRenderBody();
-}
 function _dgVidGet(ji, i) {
   const v = _dg.jobs[ji]; const f = v && v.st === 'done' && v.res && v.res.files && v.res.files[i];
   if (!f || !f.url || !$('#dlgrab').open) return;   // 상태·모달 가드(평의회2)
@@ -9127,7 +9123,6 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(_dg.jobs[i], (_dg.jobs[i] || {}).mode || 'both'); }
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(ji, i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(el, ji); }
-  else if (act === 'jcancel') { e.stopPropagation(); _dgJobCancel(i); }
   else if (act === 'secall') { e.stopPropagation(); _dgDlSec(el, el.dataset.k); }
   else if (act === 'vdfold') { _dg.vdOpen = !_dg.vdOpen; _dgRenderBody(); }
   else if (act === 'vdopen') { e.stopPropagation(); _dgDoneOpen(i); }
