@@ -8863,7 +8863,17 @@ function _dgAgo(t) {   // 상대시각 = 보관함 행 부제(형제 목록 관�
 }
 // 소요·예상 시간 문자열 = nmEta.fmt 정본(「N분 NN초」) — 로더·요약 링크 레일과 같은 시간 문법(자체 포맷 창작 금지) · nmEta 미로드 폴백만 로컬 산식.
 function _dgSecTxt(s) { s = Math.max(0, Math.round(Number(s) || 0)); return window.nmEta ? nmEta.fmt(s) : (Math.floor(s / 60) + '분 ' + String(s % 60).padStart(2, '0') + '초'); }
-function _dgVidEta(v) { return window.nmEta ? '(예상 : ' + nmEta.fmt(nmEta.sec(v && v.mode === 'subs' ? 'vidl-subs' : 'vidl')) + ')' : ''; }   // 예상 = 실측 평균 수렴(nmEta) · 시드 근거 = nm-loader.js SEED 주석
+// 예상시간 학습·표시 키 = **모드 × 플랫폼**(운영자 260802-2) — 유튜브 20분짜리와 X 40초 클립을 한 평균에 담으면 둘 다 틀린다.
+//   시드는 전 플랫폼 동일(nm-loader.js SEED) = 차이를 지어내지 않고 실측이 갈라놓게 둔다 · 플랫폼 미상(딥링크 복원) = 폴백 'vidl'/'vidl-subs'.
+const DG_PLATS = ['YT', 'IG', 'X', 'TT', 'FB', 'TH'];
+function _dgEtaKey(v) { const b = (v && v.mode === 'subs') ? 'vidl-subs' : 'vidl'; const p = v && v.plat; return (p && DG_PLATS.indexOf(p) >= 0) ? b + '-' + p : b; }
+// 예상 표기 = 이미지 스튜디오 카드 제작이 제작 대기열에 들어갈 때 뜨는 그 부품(운영자 260802-2) = `.genstat.live` 알약 안
+//   orb 로더 + `.nm-shim` 붙은 글자(정본 = cardFireStat · 재설계 0 · 문구만 '받는 중…'). 경과도 같은 알약 안 .nm-shim 으로 붙인다(로더 옆 경과시간 = nm-loader 계약).
+function _dgVidStat(v) {
+  const eta = window.nmEta ? '<span class="nm-shim">' + nmEta.label(_dgEtaKey(v)) + '</span>' : '';
+  const el = '<span class="nm-shim" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span>';
+  return '<div class="genstat live">' + (window.nmLoader ? nmLoader('solving', '받는 중…') : '받는 중…') + eta + el + '</div>';   // 폴백 = 글자만(구 gdots 점3 = 로딩 SSOT 하드락 금지 · nm-loader.js는 상시 로드)
+}
 // 받은 영상 접이 — 껍데기·행·빈상태 전부 위 '기록' 접이(geni-histwrap) 100% 모방 · 신규 클래스·색 0.
 //   .prev = 「이전 제작」 이력색 변형(정본 = #geni 이전 제작 접이) 계승 = 기록(강조색)과 축 구분.
 function _dgDoneHtml() {
@@ -8900,7 +8910,7 @@ function _dgVidHtml() {
   // 산문 리드·동의·3택 idle 패널 폐지(운영자 260802) — 발사는 링크 행 픽토([받기]/[자막])가 전담하므로 이 패널은 진행·실패·완료만 그린다.
   let h = '<div class="geni-sechead"><span class="cref-lbl">' + ({ subs: '자막 받기', video: '영상 받기' }[v.mode] || '영상 받기') + ' <span class="dg-cnt">— ' + esc(_dgVidPlatName(v.plat)) + '</span></span></div>';
   if (v.st === 'run') {
-    h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 <span class="dg-cnt">' + esc(_dgVidEta(v)) + '</span></div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>';   // 예상 = nmEta 정본(실측 평균 수렴 · 운영자 260802 "필요 시간")
+    h += _dgVidStat(v);   // 받는 중 알약 = 카드 제작 대기열 진입 표기(.genstat.live + orb + 예상 + 경과) 정본 계승
   } else if (v.st === 'fail') {
     h += '<div class="dg-err">' + esc(v.msg || '받기 실패') + '</div>'
       + '<div class="dg-item"><div class="dg-imain"></div>'
@@ -8941,7 +8951,7 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
   if (!v || _dg.vid !== v || v.st !== 'run') return;
   if (!$('#dlgrab').open) return;   // 창 닫으면 폴 멈춤 · job은 localStorage에 남아 재열람 시 복원(백그라운드 상주 아님)
   if (Date.now() - v.t0 > 40 * 60e3) { v.st = 'fail'; v.msg = '시간이 너무 오래 걸려요 — 잠시 후 다시 시도해줘'; _dgVidClearJob(); _dgPaintPic(); _dgRenderBody(); return; }
-  const el = $('#dgVidSt'); if (el) el.textContent = _dgSecTxt((Date.now() - v.t0) / 1000) + ' 경과';   // 경과 = 예상(머리)과 같은 시간 문법(nmEta.fmt)
+  const el = $('#dgVidSt'); if (el) el.textContent = '(경과 : ' + _dgSecTxt((Date.now() - v.t0) / 1000) + ')';   // 경과 = 예상과 같은 괄호·시간 문법(nmEta.fmt) · 같은 알약 안 .nm-shim = 로더와 한 잉크선
   if (v.tm) clearTimeout(v.tm);
   v.tm = setTimeout(async () => {
     if (_dg.vid !== v || v.st !== 'run' || !$('#dlgrab').open) return;   // 콜백도 identity 재검사(스테일 방지)
@@ -8960,7 +8970,7 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
     if (fail) { v.st = 'fail'; v.msg = '실패 — ' + fail; _dgVidClearJob(); _dgPaintPic(); _dgRenderBody(); return; }
     if (done) {   // 완료분 = 보관함 편입(창을 닫아도 다시 받을 수 있게 · 운영자 260802)
       v.st = 'done'; v.sec = Math.max(1, Math.round((Date.now() - v.t0) / 1000));   // 필요 시간 실측(운영자 260802) — 보관함 기록 + nmEta 학습 원료
-      try { if (window.nmEta) nmEta.done(v.mode === 'subs' ? 'vidl-subs' : 'vidl', v.sec); } catch {}   // 성공 완료 지점에서만 학습(nmEta 계약)
+      try { if (window.nmEta) nmEta.done(_dgEtaKey(v), v.sec); } catch {}   // 성공 완료 지점에서만 학습(nmEta 계약) · 키 = 모드×플랫폼
       _dgVidClearJob(); _dgDoneSave(v); _dgPaintPic(); _dgRenderBody(); return;
     }
     _dgVidPoll(v);   // 계속(네트워크 일시 실패도 여기로 = 체인 안 끊김)
