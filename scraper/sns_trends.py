@@ -1881,7 +1881,10 @@ def disaster_km(limit=10):
             msg = (it.get("text") or "").strip()
             if not msg:
                 continue
-            out.append({"title": msg[:200], "area": (it.get("region") or "").strip(),
+            # 지역 = 광역 발령이면 원문이 10개까지 콤마로 붙어온다 → 뷰어 우측 열이 본문 열을 0폭으로 밀어버린다(260802 실렌더 실측)
+            rg = [x.strip() for x in (it.get("region") or "").split(",") if x.strip()]
+            area = rg[0] + (f" 외 {len(rg) - 1}곳" if len(rg) > 1 else "") if rg else ""
+            out.append({"title": msg[:200], "area": area,
                         "level": (it.get("level") or "").strip(), "time": it.get("sentAt") or "",
                         "url": "https://koreamonitor.nangman.cloud/"})
         return out[:limit]
