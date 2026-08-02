@@ -232,7 +232,26 @@
   .mon { height:204px /* raw-ok: 운영자 260802 플레이그라운드 선택값 — .cpprev min(29svh,300px) 사다리 안 */;
     border:1px solid var(--line); border-radius:var(--r-s); background:#000 /* raw-ok: 플레이어 레터박스 순수 흑(§🎨 선례) */;
     display:grid; place-items:center; overflow:hidden; position:relative; }
+  .monwrap { position:relative; }   /* 코너 레일 앵커 = 모니터와 같은 사각(레일을 .mon **안**에 두면 renderMon()의 `mon.innerHTML=` 이 통째로 지운다 — 실측 260802 "Cannot set properties of null(#spec)") */
   .mon video { height:100%; width:auto; display:block; }
+  /* ── 코너 옵션 레일 = viewer/thumb.html 정본 **값 사본**(운영자 260802 "영상도 동일하게해줘") — 드리프트 차단 = check_refs `check_trail_spec` ── */
+  .monwrap .trailwrap { position:absolute; top:0; right:0; z-index:2; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .monwrap .trail { display:flex; flex-direction:column; flex-wrap:nowrap; gap:var(--sp-1); padding:5px 2px; border-radius:var(--r-pill);
+    border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.54) /* raw-ok: 정본 동값(운영자 260801 선택값 = .34의 알파 변주) */;
+    backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }
+  .monwrap .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값 */; flex:none; align-self:stretch; }
+  .monwrap .trail-div { width:14px; height:1px; margin:1px 0; flex:none; background:rgba(255,255,255,.16); }
+  .monwrap .trail-g:not(:has(button:not([hidden]))) { display:none; }
+  .monwrap .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }
+  .monwrap .trail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }
+  .monwrap .trail-v { display:flex; flex-direction:column; gap:var(--sp-1); align-self:stretch; margin:0; padding:0; background:transparent; border:1px solid transparent /* 폭 유지·색만 투명 = 정본 동일 처방 */; border-radius:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값 */; line-height:1; text-align:center; }
+  .monwrap .trail-v.none { display:none; }
+  .monwrap .trail-v .gs-sep, .mon .trail-v .gs-lbl, .mon .trail-v .gs-dot { display:none; }   /* 표기 = 값만(운영자 260801 확정) — DOM 존치 */
+  .monwrap .trail-v .gospec { display:flex; flex-direction:column; gap:var(--sp-1); margin:0; padding:0; font-size:10.5px; line-height:1; text-align:center; white-space:nowrap; overflow:visible; }
+  .monwrap .trail-v .gs-v { position:relative /* reuse-ok: 신설 부품 아님 — 기존 리드백 칩(.gs-v)에 정본 `.trail-i` 외형만 입힌 스킨 */; display:grid; place-items:center; min-width:22px; height:22px; padding:0 5px; border:0; background:none; border-radius:var(--r-l); color:var(--mut); font-size:10.5px; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
+  .monwrap .trail-v .gs-v.on { color:var(--accent); font-weight:var(--fw-x); }
+  .monwrap .trail-v .gs-v:active { transform:scale(var(--press-m)); }
+
   .mon .mock { height:100%; aspect-ratio:9/16; background:var(--bg); padding:10px 11px; display:flex; flex-direction:column; gap:6px; }
   .mon .mk-meta { display:flex; gap:6px; align-items:center; font-size:7px; color:var(--mut); }
   .mon .mk-chip { border:1px solid var(--line); border-radius:var(--r-pill); padding:0 4px; }
@@ -441,9 +460,9 @@
 
   <!-- 작업 영역 = 프로그램 모니터 + 발사(메뉴는 이 위로 떨어진다) -->
   <div class="dock">
-    <div class="mon" id="mon"><div class="empty">기사를 고르면 여기에 나온다</div></div>
+    <div class="monwrap"><div class="mon" id="mon"><div class="empty">기사를 고르면 여기에 나온다</div></div><div class="trailwrap" id="cpRailWrap"><nav class="trail" id="cpRail" aria-label="미리보기 옵션"><div class="gospec trail-v" id="spec" aria-live="polite"></div></nav></div></div>
     <button class="go" id="go" type="button">영상 만들기</button>
-    <div class="gospec" id="spec" aria-live="polite"></div>
+    <!-- (구 모니터 아래 선택 요약 = 코너 레일로 이주 · 운영자 260802 — id·핸들러(syncSpec) 불변) -->
   </div>
 
   <!-- 본문 = 현재 시퀀스 소스(고른 기사) — 빈 영역 없이 캔버스를 채운다 -->
@@ -614,8 +633,11 @@ function paintSrc() {
 function syncSpec() {
   const fmt = (AXES[0].vals.find(v => v[0] === opts.format) || [])[1];
   const res = opts.res === 'portrait-4k' ? '4K 세로' : '1080×1920';
-  $('#spec').innerHTML = '<span class="gs-v' + (picked.length ? ' on' : '') + '">' + picked.length + '건</span> · '
-    + esc(res) + ' · ' + esc(fmt) + ' · ' + esc(opts.fps) + 'fps · 6초';
+  $('#spec').innerHTML = [   // 값 = 전부 `.gs-v` 칩(정본 리드백 문법 · 운영자 260802 코너 레일 이주 동반) — 구 맨 텍스트 ' · ' 조인은 세로 레일에서 한 줄로 삐져나온다(k 동일 교정)
+    '<span class="gs-v' + (picked.length ? ' on' : '') + '">' + picked.length + '건</span>',
+    '<span class="gs-v">' + esc(res) + '</span>', '<span class="gs-v">' + esc(fmt) + '</span>',
+    '<span class="gs-v">' + esc(opts.fps) + 'fps</span>', '<span class="gs-v">6초</span>'
+  ].join('<span class="gs-sep">·</span>');
   $('#cntSel').textContent = picked.length ? ' ' + picked.length : '';
   $('#sumProj').textContent = picked.length ? picked.length + '건 선택' : '최대 ' + MAX + '건';
   const es = $('#editSum'); if (es) es.textContent = picked.length + '건 선택 중';
