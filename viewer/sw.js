@@ -54,15 +54,19 @@ self.addEventListener('fetch', event => {
     const cachedClone = cached ? cached.clone() : null;   // 새버전 감지(본문 폴백)용 = 반환 전 클론(스트림 락 회피 · text()는 필요 시만)
     const netP = fetch(req).then(async res => {
       if (res.ok && !res.redirected && res.type === 'basic') {
+        // ── 절단 검문(260802 '상단만 렌더' 사고) — 라이브 index 응답은 content-length 없는 청크 스트림이라(실측)
+        //    전송 중 절단이 '정상 EOF'로 보여 res.ok 그대로다. 잘린 셸을 put하면 SWR이 그걸 매 진입 서빙 = 기기 감금.
+        //    본문 꼬리가 </html>인 것만 캐시 자격(아니면 기존 정상 사본 보존·서빙은 그대로 = 페이지 쪽 head 자가치유 가드가 탈출 담당).
+        //    비용 = 진입당 백그라운드 1회 전문 read(구 ETag 빠른 경로 대체 — 무결성 > 마이크로 성능 · ETag 부재 실측이라 실질 동일).
+        const body = await res.clone().text().catch(() => null);
+        const intact = body != null && /<\/html>\s*$/i.test(body);
         let changed = false;   // 새 index 셸 배포 감지(옛≠새) → 열린 페이지에 nm-shell-updated 통지(운영자 260717 새버전 토스트)
-        if (cached) {
-          const norm = e => (e || '').replace(/^W\//, '');   // 약(W/)·강 ETag 정규화 = Cloudflare 압축·PoP별 W/ 변이가 같은 바이트를 '다름'으로 오판하는 것 차단(평의회 260717)
+        if (cached && intact) {
           const scrub = s => (s || '').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, m => (/cdn-cgi|cloudflareinsights/i.test(m) ? '' : m));   // 엣지 주입 노이즈 소거(운영자 260717 무한루프 실기록) — Cloudflare가 응답마다 다르게 심는 스크립트(RUM beacon rayId·챌린지 토큰)를 비교에서 제외. 같은 셸인데 주입 토큰만 달라 '다름' 오판 → 반영 탭 직후 또 "새 버전" 무한 재알림의 근원 차단(앱 자체 스크립트는 cdn-cgi·cloudflareinsights 문자열 0 = 소거 비대상)
-          const oe = norm(cached.headers.get('etag')), ne = norm(res.headers.get('etag'));
-          if (oe && ne && oe === ne) changed = false;   // ETag 동일 = 확실히 동일 = 빠른 경로(본문 안 읽음)
-          else { const [a, b] = await Promise.all([cachedClone.text().catch(() => null), res.clone().text().catch(() => null)]); changed = a != null && b != null && scrub(a) !== scrub(b); }   // ETag 다르거나 없으면 본문(주입 노이즈 소거 후)으로 최종 확인 = 오탐 차단(실배포 때만 본문 읽음)
+          const a = await cachedClone.text().catch(() => null);   // (구 ETag 동일 빠른 경로 = 절단 검문의 전문 read로 대체 — 비교 문법은 종전 그대로)
+          changed = a != null && scrub(a) !== scrub(body);
         }
-        await cache.put(key, res.clone()).then(() => {}, () => {});   // put을 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 실패(quota 등)해도 진행 = 정상 응답 폐기 안 함
+        if (intact) await cache.put(key, res.clone()).then(() => {}, () => {});   // put을 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 실패(quota 등)해도 진행 = 정상 응답 폐기 안 함 · 절단 사본 = put 자격 없음
         if (changed) self.clients.matchAll({ type: 'window' }).then(list => list.forEach(c => c.postMessage({ type: 'nm-shell-updated' })));   // 갱신 완료 후 통지 = 탭→reload가 새 셸 서빙 보장
         return res;
       }

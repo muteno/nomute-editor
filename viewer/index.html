@@ -2,6 +2,32 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<script>
+/* 셸 절단 자가치유(260802 웹앱 '상단만 렌더·하단 nav 실종' 사고) — sw.js가 index 셸을 캐시-우선(SWR)으로 서빙하는데
+   라이브 응답이 content-length 없는 청크 스트림이라(실측 260802) 전송 중 절단이 '정상 EOF'처럼 보여 잘린 셸이
+   nm-shell-v1에 박힐 수 있다 → 그 기기는 매 진입 상단만 렌더(§: 정적 #bnav조차 DOM에 없음 = 인라인 부팅 JS 전멸 =
+   갱신 리스너도 없어 자가회복 불능). 이 가드는 head 최상단이라 절단 사본 안에서도 살아남는다:
+   DCL 때 문서 끝 센티널 #nm-eod(</body> 직전 · 이 스크립트와 한 쌍 = 삭제·이동 금지)가 없으면 절단 셸로 판정 →
+   nm-shell-v1 퍼지 + ?nosw=1(sw.js ⓑ 캐시 전면 우회 탈출구) 1회 재진입 = 순수 네트워크 온전 셸.
+   루프 가드 3중: ①sessionStorage 세션당 1회 ②nosw 진입서 또 절단 = 회선 자체 문제 → 재발사 안 함 ③저장 불가(프라이빗) = 치유 포기.
+   짝 = sw.js 절단 검문(put 전 </html> 꼬리 확인 = 오염 원천 차단) — 이쪽은 이미 오염된 기기의 탈출로. */
+(function () {
+  function heal() {
+    try {
+      if (document.getElementById('nm-eod')) { try { sessionStorage.removeItem('nmShellHeal'); } catch (_) {} return; }   // 온전 셸 = 무동작(+다음 사고 대비 가드 리셋)
+      var qs = new URLSearchParams(location.search);
+      if (qs.has('nosw')) return;                                                     // 순수 네트워크로도 절단 = 회선 문제 — 재발사 무의미(루프 차단 ②)
+      try { if (sessionStorage.getItem('nmShellHeal')) return; sessionStorage.setItem('nmShellHeal', '1'); } catch (_) { return; }   // 루프 차단 ①·③
+      var fired = false, go = function () { if (fired) return; fired = true; qs.set('nosw', '1'); location.replace(location.pathname + '?' + qs.toString() + location.hash); };
+      var t = setTimeout(go, 1500);                                                   // caches API 무응답 대비 상한
+      try { caches.delete('nm-shell-v1').then(function () { clearTimeout(t); go(); }, function () { clearTimeout(t); go(); }); }
+      catch (_) { clearTimeout(t); go(); }                                            // caches 미지원(비보안 컨텍스트 등) = 캐시 퍼지 생략하고 재진입만
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', heal);
+  else heal();
+})();
+</script>
 <link rel="stylesheet" href="nm-cards.css">   <!-- 다운로드·결과/이전제작 카드 공용 CSS SSOT(전 앱 단일정본 · 운영자 260731 "하나 바꾸면 다 연동") — 색·플레이트·✓팝 계약은 여기서만 고친다(인라인 사본 금지 · 인라인이 뒤라 남기면 이 SSOT가 죽음) -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#070a12"><!-- 상태바 = 웨이브 배경(#wavebg) 상단 실측 톤 — 스플래시→앱 연속 설계(운영자 260706 5차 "배경에 깔린 움직이는 그림을 그대로" · manifest theme/background와 한 세트·meta는 var() 불가라 실측값 복사) -->
@@ -16114,5 +16140,6 @@ try { if (CURTAB !== 'trend') loadTrends(); } catch {}   // 실검 티커 부팅
 
 <script src="cscroll.js"></script><!-- 메인(트렌드 포함 전 탭) 스크롤바 = 제작·합성(thumb)·ly·k 오버레이 표준 이식(운영자 260713 "다 같게" · 색 변경 = viewer/cscroll.js) · ⚠ 이 스크립트가 주입하는 html{scrollbar-width:none}은 **인라인 CSS 115행이 이미 같은 값으로 선언**(첫 페인트 = 최종 상태 일치 = 레이아웃 점프 0 · 운영자 260726) → 여기 주입은 타 페이지 공용 모듈의 자기완결분이라 중복 무해. 구조상 이 태그는 문서 끝 로드라 실행이 늦다 = CSS를 여기에 의존하면 안 됨(그게 픽토 점프의 원인이었다) · no-JS 폴백 = head 끝 noscript -->
 <script>if (window.cscrollAttach) cscrollAttach(document.querySelector('.geni-body'));   // 프롬프팅(이미지 생성) 바디 = 요소 부착 모드 — 내부 컨테이너 스크롤이라 window 바가 못 잡음 · 팝업(#genidlg)↔이식 탭(#geniHost) DOM 이동 동행(운영자 260713)</script>
+<div id="nm-eod" hidden></div><!-- 문서 끝 센티널 — head 최상단 '셸 절단 자가치유' 가드와 한 쌍(여기 없으면 절단 셸로 판정·재진입). </body> 직전 고정 = 삭제·이동 금지 -->
 </body>
 </html>
