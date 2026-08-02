@@ -44,7 +44,7 @@ jobs:
   probe:
     if: ${{ github.event_name != 'push' || github.event.head_commit.author.name != 'nomute-bot' }}   # 도장·롤백 커밋(nomute-bot) 재트리거 차단(stamp-version 검증된 작성자 가드)
     runs-on: ubuntu-latest
-    timeout-minutes: 22        # 수렴 대기(≤6) + 검문 + 롤백·수렴 검증(≤6) + 여유
+    timeout-minutes: 28        # 수렴 대기(≤12) + 검문 + 롤백·수렴 검증(≤6) + 여유
     steps:
       - uses: actions/checkout@v4   # push = 트리거 커밋(코드 정본) · schedule/dispatch = main 최신
         with:
@@ -56,7 +56,7 @@ jobs:
           EXPECT="${GITHUB_SHA::7}"
           echo "기대 도장 = $EXPECT"
           LIVE=""
-          for i in $(seq 1 36); do   # 10s×36 = 최대 6분(CF Pages 빌드 실측 1~3분 + 여유)
+          for i in $(seq 1 72); do   # 10s×72 = 최대 12분 — 코드 빌드→도장 빌드 2연속 배포가 CF 큐에서 직렬 처리(260802 런#13 실측: 6분 창을 수 분 초과 도착 = 오MISS)라 여유 2배
             LIVE=$(curl -sS --max-time 20 "https://apps.nomute.kr/?nosw=1" | grep -o "BUILD_STAMP = '[0-9a-f]\{7\}" | grep -o "[0-9a-f]\{7\}$")
             [ "$LIVE" = "$EXPECT" ] && { echo "수렴(${i}0s 내) ✓"; echo "SHA=$EXPECT" >> "$GITHUB_ENV"; exit 0; }
             sleep 10
