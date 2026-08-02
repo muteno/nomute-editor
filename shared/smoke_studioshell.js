@@ -17,11 +17,13 @@
 // 어서션 축(= §3-5 「무조건 상속」의 런타임 몫):
 //   C1 전체창 = 10탭 전부 tool-full(창 폭 = 뷰포트 폭)      ← ① 재발 차단
 //   C2 도크 유리 = 도크 보유 탭 전부 bg·blur·하단선 1종      ← ② 재발 차단
-//   C3 레일 칩 광학 잉크 = **2셸 교차 한 세로선**            ← smoke_parity C15(이미지 4탭)의 크로스-셸 확장
+//   C3 레일 칩 광학 잉크 = **2셸 교차 한 중앙축**            ← smoke_parity C15(이미지 4탭)의 크로스-셸 확장 · 260802 6차 중앙정렬 개정
 //   C4 레일 픽토 = 버튼 22×22 / 글리프 12×12 실측            ← check_refs 정적 5축의 런타임 대조
 //   C5 페이지 에러 0 · C6 외부 호스트 유출 0
-// 왜 잉크인가: 박스 x가 같아도 padding이 갈리면 눈에 보이는 글자 시작선이 어긋난다(260802 롤백 사고) —
-//   판정은 **캡슐 좌변 기준 상대 잉크선**(절대 x = 탭마다 창 폭이 달라 위양성).
+//   C7 미리보기 모듈 등가(이미지 셸 5탭) = 창 w/h · 발사 버튼 h/radius/fs · 돋보기 캡슐 상대좌표/크기
+//      ← 운영자 260802 6차 "미리보기 창이 미세하게 크기가 달라" — 구 게이트가 안 재던 축(번역 발사 27px·돋보기 x 표류가 조용히 통과했다)의 편입
+// 왜 잉크인가: 박스 x가 같아도 padding이 갈리면 눈에 보이는 글자 위치가 어긋난다(260802 롤백 사고) —
+//   판정은 **잉크 중심 vs 캡슐 중심 Δ**(절대 x = 탭마다 창 폭이 달라 위양성).
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 openTool만) · 서버 자체 종료 · 외부 네트워크 0 · 결정론 2런.
 // ═══════════════════════════════════════════════════════════════════════════════
 'use strict';
@@ -49,7 +51,7 @@ const SHELLS = [
 const KEY = (s, t) => s.ko + '_' + t.ko;
 
 // 알려진 미승인 드리프트 면책표(값 **이하**면 통과 · 커지거나 새 탭이 갈라지면 FAIL = check_refs raw baseline 문법 동문)
-const INK_BASE = {};        // 비어 있음 = 2셸 10탭 전부 한 세로선이 현재 정본(260802 실측 9px)
+const INK_BASE = {};        // 비어 있음 = 2셸 10탭 전부 캡슐 중앙축 정합이 현재 정본(260802 6차 중앙정렬 개정 · 실측 |Δ|≤0.05)
 const DOCK_EXEMPT = new Set();   // 도크 유리에서 면책할 탭(없음 — 면책을 늘리려면 사유를 여기 주석에 남긴다)
 
 function loadPlaywright() {
@@ -97,25 +99,44 @@ const PROBE = () => {
   // DOM에 남아, 레일 없는 탭(영상 콘티)이 남의 레일을 자기 것으로 잘못 재던 사각이 생긴다(2셸 편입 260802).
   const gr = document.querySelector('#geniRail');
   const rail = d.querySelector('#cpRail') || (seen(gr) ? gr : null);
-  const rx = rail ? rail.getBoundingClientRect().x : 0;
-  const ink = el => { const rg = el.ownerDocument.createRange(); rg.selectNodeContents(el); return +(rg.getBoundingClientRect().x - rx).toFixed(1); };
+  // 판정 축 = 잉크 **중심** vs 캡슐 중심 Δ(운영자 260802 6차 "중앙정렬로 할게" — 구 좌변 시작선 판정은 중앙정렬에선 글자폭 따라 갈라져 무효)
+  const rcx = rail ? (rr => rr.x + rr.width / 2)(rail.getBoundingClientRect()) : 0;
+  const inkC = el => { const rg = el.ownerDocument.createRange(); rg.selectNodeContents(el); const r = rg.getBoundingClientRect(); return +((r.x + r.width / 2) - rcx).toFixed(2); };
   const dlg = document.querySelector('#tooldlg');
   const dock = d.querySelector('.topdock') || d.querySelector('.dock');
   const dcs = dock ? w.getComputedStyle(dock) : null;
-  const chip = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])]
-    .filter(e => seen(e) && !e.closest('.gs-og'))[0] || null;   // OPA 스테퍼 제외 = 자체 좁은 패딩(3)이 정본 = 낱말 칩과 다른 축
+  const chips = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])]
+    .filter(e => seen(e) && !e.closest('.gs-og') && e.textContent.trim());   // OPA 스테퍼 제외 = 자체 좁은 패딩(3)이 정본 = 낱말 칩과 다른 축 · 전 칩 검사(중앙정렬은 칩마다 어긋날 수 있다)
+  const worst = chips.length ? chips.map(c => ({ t: c.textContent.trim().slice(0, 8), d: inkC(c) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0] : null;
   const pics = [...(rail ? rail.querySelectorAll('button') : [])].filter(seen).map(b => {
     const s = b.querySelector('svg'); const br = b.getBoundingClientRect();
     return { id: b.id || b.className.slice(0, 14), h: +br.height.toFixed(1),
       svg: s ? [+s.getBoundingClientRect().width.toFixed(1), +s.getBoundingClientRect().height.toFixed(1)] : null };
   });
+  // C7 재료 = 미리보기 모듈 3부품(창·발사 버튼·돋보기 캡슐) — 좌표는 창 기준 상대값(절대 x·y = 탭마다 폼 높이가 달라 위양성)
+  const boxEl = [...d.querySelectorAll('.cpprev-box')].filter(seen)[0]
+    || (d !== document ? null : [...document.querySelectorAll('.geni-prev .cpprev-box')].filter(seen)[0]) || null;
+  const goBtn = [...d.querySelectorAll('#go')].filter(seen)[0]
+    || (d !== document ? null : [...document.querySelectorAll('#geniGo')].filter(seen)[0]) || null;
+  const twEl = [...d.querySelectorAll('.trailwrap')].filter(seen)[0]
+    || (d !== document ? null : [...document.querySelectorAll('.geni-prev .trailwrap')].filter(seen)[0]) || null;
+  const zoomCap = twEl ? twEl.querySelector(':scope > .trail') : null;
+  const bb = boxEl ? boxEl.getBoundingClientRect() : null;
+  const gb2 = goBtn ? goBtn.getBoundingClientRect() : null;
+  const zb = zoomCap && seen(zoomCap) ? zoomCap.getBoundingClientRect() : null;
+  const prevMod = {
+    box: bb ? [+bb.width.toFixed(1), +bb.height.toFixed(1)] : null,
+    fire: gb2 ? [+gb2.height.toFixed(1), w.getComputedStyle(goBtn).borderRadius, w.getComputedStyle(goBtn).fontSize] : null,
+    zoom: (zb && bb) ? [+(zb.x - (bb.x + bb.width)).toFixed(1), +(zb.y - bb.y).toFixed(1), +zb.width.toFixed(1), +zb.height.toFixed(1)] : null,
+  };
   return {
     full: !!(dlg && dlg.classList.contains('tool-full')),
     dlgW: dlg ? +dlg.getBoundingClientRect().width.toFixed(0) : null,
     vpW: window.innerWidth,
+    prevMod,
     dock: dcs ? [dcs.backgroundColor, dcs.backdropFilter || dcs.webkitBackdropFilter, dcs.borderBottomWidth + ' ' + dcs.borderBottomColor].join(' / ') : null,
-    inkX: chip ? ink(chip) : null,
-    chipT: chip ? chip.textContent.trim().slice(0, 8) : null,
+    inkC: worst ? worst.d : null,   // 최악 칩의 잉크 중심 − 캡슐 중심(중앙정렬 정본 = 0 근방)
+    chipT: worst ? worst.t : null,
     pics,
   };
 };
@@ -159,12 +180,11 @@ async function runOnce(pg) {
   core('C2 도크 유리(bg·blur·하단선) = 도크 보유 탭 전부 1종', dset.length <= 1,
     dset.length <= 1 ? docks.length + '탭 = ' + (dset[0] || 'N/A') : JSON.stringify(docks.map(([k, v]) => k + ' = ' + v.dock)));
 
-  // ── C3 레일 칩 광학 잉크 = 2셸 교차 한 세로선(smoke_parity C15의 크로스-셸 확장) ──
-  const inks = E.filter(([, v]) => v.inkX !== null);
-  const ref = inks.length ? inks[0][1].inkX : null;
-  const drift = inks.map(([k, v]) => ({ k, d: +(v.inkX - ref).toFixed(1), over: Math.abs(v.inkX - ref) > (INK_BASE[k] || 0) + 0.5 }));
-  core('C3 레일 칩 광학 잉크 = 2셸 교차 한 세로선(기준 ' + ref + 'px · baseline 초과·신규 어긋남 = FAIL)',
-    ref !== null && inks.length >= 8 && drift.every(x => !x.over),
+  // ── C3 레일 칩 광학 잉크 = 2셸 교차 한 중앙축(운영자 260802 6차 중앙정렬 개정 — 전 칩 잉크 중심 = 캡슐 중심 · smoke_parity C15의 크로스-셸 확장) ──
+  const inks = E.filter(([, v]) => v.inkC !== null);
+  const drift = inks.map(([k, v]) => ({ k, d: v.inkC, over: Math.abs(v.inkC) > (INK_BASE[k] || 0) + 0.5 }));
+  core('C3 레일 칩 광학 잉크 = 2셸 교차 한 중앙축(전 칩 |잉크 중심 − 캡슐 중심| ≤ 0.5 · baseline 초과 = FAIL)',
+    inks.length >= 8 && drift.every(x => !x.over),
     JSON.stringify({ 측정: inks.length, 이탈: drift.filter(x => x.over).map(x => x.k + ':' + (x.d > 0 ? '+' : '') + x.d) }));
 
   // ── C4 레일 픽토 = 버튼 22 / 글리프 12×12(§3-5 ① · check_refs 정적 5축의 런타임 대조) ──
@@ -175,6 +195,21 @@ async function runOnce(pg) {
   }
   const picN = E.reduce((a, [, v]) => a + (v.pics || []).length, 0);
   core('C4 레일 픽토 = 버튼 22×22 / 글리프 12×12 실측', bad.length === 0, bad.length ? bad.slice(0, 4).join(' · ') : picN + '개 전부 규격');
+
+  // ── C7 미리보기 모듈 등가 = 이미지 셸 5탭(운영자 260802 6차 "미리보기 창이 미세하게 크기가 달라" · 기준 = 카드생성) ──
+  //   축 = 창 w/h · 발사 버튼 h/radius/fs · 돋보기 캡슐(창 우변 기준 dx·dy·w·h) — 이번에 실제로 갈라져 있던 축(번역 발사 27px/r11 ·
+  //   돋보기 x 탭별 표류 343.4/342.1/347.2/326.5)이라 게이트 없이는 재발한다. 영상 셸은 자기 도크 계약이 별개라 비대상(§3-5는 레일 로직 한정).
+  const imgs = E.filter(([k]) => k.startsWith('이미지_'));
+  const refPM = (imgs.find(([k]) => k === '이미지_카드생성') || [null, {}])[1].prevMod || null;
+  const pmDiff = (a, b) => a.length !== b.length || a.some((x, i) =>
+    typeof x === 'number' && typeof b[i] === 'number' ? Math.abs(x - b[i]) > 0.6 : x !== b[i]);   // 수치 = 0.6px 허용(AI 생성 창 높이 = JS 산출 반올림 vs CSS 소수 = 0.5px 실측 · 문자열(radius·fs) = 엄격)
+  const pmBad = refPM ? imgs.filter(([, v]) => {
+    const p = v.prevMod || {};
+    return ['box', 'fire', 'zoom'].some(ax => p[ax] && refPM[ax] && pmDiff(p[ax], refPM[ax]));
+  }).map(([k, v]) => k + '=' + JSON.stringify(v.prevMod)) : ['기준(카드생성) 미측정'];
+  core('C7 미리보기 모듈 등가(이미지 5탭) = 창 w/h · 발사 h/r/fs · 돋보기 dx/dy/w/h(기준 = 카드생성)',
+    refPM !== null && pmBad.length === 0,
+    pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(refPM) : imgs.length + '탭 = ' + JSON.stringify(refPM));
 
   return out;
 }

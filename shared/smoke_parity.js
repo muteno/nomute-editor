@@ -195,7 +195,7 @@ async function runOnce(pg) {
   //   260802 실측 = 박스는 4탭 전부 330.5로 같았는데 잉크는 편집만 330.5(pad 0) / 나머지 335.5(pad 5) →
   //   박스 기준 검사였다면 통과했을 어긋남이다. 그래서 판정 축 = Range 잉크 사각형(사람이 보는 것과 동일).
   //   기준선 = 카드 생성 탭(파리티 정본 · 위 C10~C14와 동일 기준). 낱말 칩만 대상(OPA ± 스테퍼는 자체 좁은 패딩이 정본).
-  const INK_BASE = {};   // **비어 있음 = 4탭 전부 한 세로선이 현재 정본**(260802 3차 실측 9px). 구 `{편집:2.6}` 면책은 그 드리프트가 실제로 해소되며 회수 — 처방은 주석이 예고했던 그 한 줄(`.cpprev .trail-v.dockopt .rsz-opts .ropt{padding:0 5px;font-size:10.5px}` 특이도 0,5,0 승격 = 컬럼 시절 규칙 `.dockopt .rsz-opts .ropt{padding:2px 0}`의 소스 후행 승리 차단). ⚠ 면책을 남겨두면 같은 2.6px 회귀가 조용히 다시 통과한다 = 회수가 수리의 일부 · 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문)
+  const INK_BASE = {};   // **비어 있음 = 4탭 전 칩 캡슐 중앙축 정합이 현재 정본**(260802 6차 중앙정렬 개정 · 실측 |Δ|≤0.05). ⚠ 면책을 남겨두면 같은 회귀가 조용히 다시 통과한다 = 회수가 수리의 일부 · 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문)
   const ink = {};
   for (const [app, ko] of [['2', '카드생성'], ['7', '편집'], ['tr', '번역'], ['6', 'AI생성']]) {
     await pg.evaluate(a => { const t = document.querySelector('#toolTabs .tooltab[data-app="' + a + '"]'); if (t) t.click(); }, app);
@@ -204,18 +204,20 @@ async function runOnce(pg) {
       const fr = document.querySelector('#tooldlg .toolfr.active');
       const d = (fr && fr.contentDocument) ? fr.contentDocument : document;
       const rail = d.querySelector('#cpRail') || document.querySelector('#geniRail');
-      const c = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])].filter(e => e.offsetParent !== null && !e.closest('.gs-og'))[0];
-      if (!c) return null;
-      const rg = d.createRange(); rg.selectNodeContents(c);
-      // 잉크선 = **캡슐 좌변 기준 상대값**(절대 x 금지 — 레일은 미리보기 창 우변에 붙어 탭마다 창 폭이 다르면 절대 x가 갈린다 = 정렬과 무관한 위양성)
-      return { t: c.textContent.trim().slice(0, 6), inkX: +(rg.getBoundingClientRect().x - rail.getBoundingClientRect().x).toFixed(1), padL: getComputedStyle(c).paddingLeft, fs: getComputedStyle(c).fontSize };
+      const cs = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])].filter(e => e.offsetParent !== null && !e.closest('.gs-og') && e.textContent.trim());
+      if (!cs.length) return null;
+      // 판정 축 = 잉크 **중심** vs 캡슐 중심 Δ(운영자 260802 6차 "중앙정렬로 할게" — 구 좌변 시작선 판정은 중앙정렬에선 글자폭 따라 갈라져 무효 · 절대 x 금지는 동일)
+      const rr = rail.getBoundingClientRect(); const rcx = rr.x + rr.width / 2;
+      const worst = cs.map(c => { const rg = d.createRange(); rg.selectNodeContents(c); const r = rg.getBoundingClientRect();
+        return { t: c.textContent.trim().slice(0, 6), d: +((r.x + r.width / 2) - rcx).toFixed(2), padL: getComputedStyle(c).paddingLeft, fs: getComputedStyle(c).fontSize }; })
+        .sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
+      return worst;
     });
   }
-  const ref = ink['카드생성'] ? ink['카드생성'].inkX : null;
-  const drift = Object.entries(ink).filter(([, v]) => v).map(([ko, v]) => ({ ko, d: +(v.inkX - ref).toFixed(1), over: Math.abs(v.inkX - ref) > (INK_BASE[ko] || 0) + 0.5 }));
-  core('C15 레일 칩 광학 잉크 시작선 = 4탭 한 세로선(기준 = 카드 생성 · 알려진 baseline 초과·신규 어긋남 = FAIL · 운영자 260802 "광학-잉크")',
-    ref !== null && drift.length === 4 && drift.every(x => !x.over),
-    JSON.stringify({ ref, drift: drift.map(x => x.ko + ':' + (x.d > 0 ? '+' : '') + x.d + (x.over ? '⚠' : '')), 상세: ink }));
+  const drift = Object.entries(ink).filter(([, v]) => v).map(([ko, v]) => ({ ko, d: v.d, over: Math.abs(v.d) > (INK_BASE[ko] || 0) + 0.5 }));
+  core('C15 레일 칩 광학 잉크 = 4탭 한 중앙축(전 칩 |잉크 중심 − 캡슐 중심| ≤ 0.5 · baseline 초과 = FAIL · 운영자 260802 6차 중앙정렬)',
+    drift.length === 4 && drift.every(x => !x.over),
+    JSON.stringify({ drift: drift.map(x => x.ko + ':' + (x.d > 0 ? '+' : '') + x.d + (x.over ? '⚠' : '')), 상세: ink }));
 
   return out;
 }

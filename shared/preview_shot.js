@@ -112,12 +112,14 @@ const PROBE = () => {
   const gr = document.querySelector('#geniRail');
   const rail = d.querySelector('#cpRail') || (seen(gr) ? gr : null);
   const r1 = el => { const r = el.getBoundingClientRect(); return { x: +r.x.toFixed(1), y: +r.y.toFixed(1), w: +r.width.toFixed(1), h: +r.height.toFixed(1) }; };
-  const rx = rail ? rail.getBoundingClientRect().x : 0;
-  const ink = el => { const rg = (el.ownerDocument).createRange(); rg.selectNodeContents(el); return +(rg.getBoundingClientRect().x - rx).toFixed(1); };   // 캡슐 좌변 기준 상대 잉크선(절대 x = 탭마다 창 폭이 달라 위양성)
+  const rb = rail ? rail.getBoundingClientRect() : null;
+  const rcx = rb ? rb.x + rb.width / 2 : 0;
+  // 판정 축 = 잉크 **중심** vs 캡슐 중심 Δ(운영자 260802 6차 "중앙정렬로 할게" — 구 좌변 시작선은 중앙정렬에선 글자폭 따라 갈라져 무효 · 절대 x 금지는 동일)
+  const inkC = el => { const rg = (el.ownerDocument).createRange(); rg.selectNodeContents(el); const r = rg.getBoundingClientRect(); return +((r.x + r.width / 2) - rcx).toFixed(2); };
   const out = { rail: rail && seen(rail) ? r1(rail) : null };
   const chips = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])]
-    .filter(e => seen(e) && !e.closest('.gs-og'))   // OPA 스테퍼(−/값/+) 제외 = 자체 좁은 패딩(3)이 정본이라 낱말 칩과 다른 축
-    .map(e => { const cs = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 8), inkX: ink(e), boxX: +e.getBoundingClientRect().x.toFixed(1), padL: cs.paddingLeft, fs: cs.fontSize }; });
+    .filter(e => seen(e) && !e.closest('.gs-og') && e.textContent.trim())   // OPA 스테퍼(−/값/+) 제외 = 자체 좁은 패딩(3)이 정본이라 낱말 칩과 다른 축
+    .map(e => { const cs = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 8), inkC: inkC(e), boxX: +e.getBoundingClientRect().x.toFixed(1), padL: cs.paddingLeft, fs: cs.fontSize }; });
   out.chips = chips;
   const pics = [...(rail ? rail.querySelectorAll('button') : [])].filter(seen)
     .map(b => { const s = b.querySelector('svg'); return { id: b.id, box: r1(b).w + '×' + r1(b).h, svg: s ? r1(s).w + '×' + r1(s).h : null }; });
@@ -167,23 +169,26 @@ const PROBE = () => {
     fs.writeFileSync(path.join(OUTDIR, SLOT + '.json'), JSON.stringify(rep, null, 1));
     await ctx.close();
 
-    // ── 잉크선 정합 요약 = 셸 안 + 셸 사이 2단(§3-5 = 두 스튜디오가 **같은** 레일 정본을 따른다) ──
-    const allLines = [];
+    // ── 잉크 중앙축 정합 요약 = 셸 안 + 셸 사이 2단(§3-5 = 두 스튜디오가 **같은** 레일 정본을 따른다 · 260802 6차 중앙정렬 개정) ──
+    const allDs = [];
     for (const s of PICKED) {
       const line = {};
-      for (const t of s.tabs) { const v = rep.tabs[tabKey(s, t)]; if (v && v.chips && v.chips.length) line[t.ko] = v.chips[0].inkX; }
-      const xs = [...new Set(Object.values(line))];
-      console.log('── [' + s.ko + ' 스튜디오] 레일 칩 광학 잉크 시작선(탭별 첫 칩)');
-      if (!xs.length) { console.log('   (레일 칩 0 — 측정 대상 없음)'); continue; }
-      for (const [ko, x] of Object.entries(line)) console.log('   · ' + ko.padEnd(6) + ' ' + x + 'px' + (xs.length > 1 && x !== xs[0] ? '   ⚠ 다름' : ''));
-      console.log(xs.length === 1 ? '   ✅ 셸 안 전 탭 동일선' : '   ⚠️ 어긋남 ' + (Math.max(...xs) - Math.min(...xs)).toFixed(1) + 'px — 원인 = 칩 padding-left/정렬(위 json의 padL 참조)');
-      allLines.push(...Object.values(line));
+      for (const t of s.tabs) {
+        const v = rep.tabs[tabKey(s, t)];
+        if (v && v.chips && v.chips.length) line[t.ko] = Math.max(...v.chips.map(c => Math.abs(c.inkC)));
+      }
+      console.log('── [' + s.ko + ' 스튜디오] 레일 칩 광학 잉크 중앙축(탭별 최악 |잉크 중심 − 캡슐 중심|)');
+      if (!Object.keys(line).length) { console.log('   (레일 칩 0 — 측정 대상 없음)'); continue; }
+      for (const [ko, dv] of Object.entries(line)) console.log('   · ' + ko.padEnd(6) + ' Δ' + dv + 'px' + (dv > 0.5 ? '   ⚠ 중앙축 이탈' : ''));
+      const bad = Object.values(line).filter(dv => dv > 0.5);
+      console.log(!bad.length ? '   ✅ 셸 안 전 탭 중앙축 정합(Δ≤0.5)' : '   ⚠️ 중앙축 이탈 ' + bad.length + '탭 — 원인 = 칩 정렬/padding(위 json의 padL 참조)');
+      allDs.push(...Object.values(line));
     }
-    if (PICKED.length > 1 && allLines.length) {
-      const xs = [...new Set(allLines)];
-      console.log(xs.length === 1
-        ? '── ✅ 2셸 교차 = 한 세로선(' + xs[0] + 'px · §3-5 레일 상속 유지)'
-        : '── ⚠️ 2셸 교차 어긋남 ' + (Math.max(...xs) - Math.min(...xs)).toFixed(1) + 'px — 영상이 이미지 레일 정본에서 이탈(§3-5 위반)');
+    if (PICKED.length > 1 && allDs.length) {
+      const bad = allDs.filter(dv => dv > 0.5);
+      console.log(!bad.length
+        ? '── ✅ 2셸 교차 = 한 중앙축 문법(전 탭 Δ≤0.5 · §3-5 레일 상속 유지)'
+        : '── ⚠️ 2셸 교차 중앙축 이탈 ' + bad.length + '탭 — 레일 정본(중앙정렬)에서 이탈(§3-5 위반)');
     }
     // 셸 골격 = 전체창·도크 유리 계승 한눈 표(값이 갈리면 그 탭이 뒤처진 것)
     console.log('── 셸 골격(전체창·도크)');
@@ -213,8 +218,9 @@ const PROBE = () => {
         for (let i = 0; i < Math.max(bc.length, hc.length); i++) {
           const x = bc[i], y = hc[i];
           if (!x || !y) { console.log('      칩 ' + (x ? '삭제 ' + x.t : '추가 ' + y.t)); continue; }
-          if (x.inkX !== y.inkX || x.padL !== y.padL || x.fs !== y.fs || x.t !== y.t)
-            console.log('      ' + (x.t || '·') + (x.t !== y.t ? '→' + y.t : '') + ' 잉크 ' + x.inkX + '→' + y.inkX + ' · pad ' + x.padL + '→' + y.padL + ' · 활자 ' + x.fs + '→' + y.fs);
+          const xi = x.inkC !== undefined ? x.inkC : x.inkX, yi = y.inkC !== undefined ? y.inkC : y.inkX;   // 구판 base(inkX = 좌변)와도 비교 생존(축 표기만 다름)
+          if (xi !== yi || x.padL !== y.padL || x.fs !== y.fs || x.t !== y.t)
+            console.log('      ' + (x.t || '·') + (x.t !== y.t ? '→' + y.t : '') + ' 잉크 ' + xi + '→' + yi + ' · pad ' + x.padL + '→' + y.padL + ' · 활자 ' + x.fs + '→' + y.fs);
         }
         const bp = JSON.stringify(B.pics), hp = JSON.stringify(H.pics);
         if (bp !== hp) console.log('      픽토 ' + bp + '\n         → ' + hp);
