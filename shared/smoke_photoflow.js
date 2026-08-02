@@ -44,14 +44,18 @@ const snap=async()=>await pg.evaluate(()=>{
   const _h=s=>{let x=0;for(let i=0;i<s.length;i++){x=(x*31+s.charCodeAt(i))|0;}return String(x);};
   return {b64: (typeof CIMG!=='undefined'&&CIMG.b64)?_h(CIMG.b64):'', len:(typeof CIMG!=='undefined'&&CIMG.b64)?CIMG.b64.length:0,
     swHidden: sw?sw.hidden:null, dlHidden: dl?dl.hidden:null, dlDisabled: dl?dl.disabled:null,
+    swPic: sw?(sw.querySelector('rect')?'add':'swap'):null,   // 픽토 판정 = 구조(첨부 SVG만 <rect> 프레임 보유 · 운영자 260802 "첫 첨부 전에는 첨부 픽토그램")
+    swLabel: sw?(sw.title||''):null,
     fileValue: f?f.value:null, stageImg: !!q('#cpPrev .cpprev-box img, #cpPrev .rsz-canv, #cpPrev .cpv-bg')};
 });
 const attach=async(p)=>{await pg.setInputFiles('#cFile', path.join(SC,p)); await pg.waitForTimeout(900);};
 
 ok('S0 초기 = 사진 없음·휴지통 비활성(사라지지 않음)', await (async()=>{const s=await snap(); return s.len===0 && s.dlDisabled===true && s.dlHidden===false;})(), JSON.stringify(await snap()));
+ok('S0b 첫 첨부 전 = 첨부 픽토(교체 아님 · 운영자 260802)', await (async()=>{const s=await snap(); return s.swPic==='add' && s.swLabel==='사진 첨부';})(), JSON.stringify(await (async()=>{const s=await snap();return {swPic:s.swPic,swLabel:s.swLabel};})()));
 await attach('p1.jpg');
 let s1=await snap();
 ok('S1 첨부 = store 채움·미리보기 그림·휴지통 활성', s1.len>200 && s1.dlDisabled===false && s1.stageImg, JSON.stringify({len:s1.len,dlDisabled:s1.dlDisabled,stage:s1.stageImg}));
+ok('S1c 첨부 후 = 교체 픽토로 전환', s1.swPic==='swap' && s1.swLabel==='사진 교체', JSON.stringify({swPic:s1.swPic,swLabel:s1.swLabel}));
 ok('S1b 파일칸 value 리셋(같은 파일 재선택 대비)', s1.fileValue==='', 'value="'+s1.fileValue+'"');
 // 교체 3회(다른 파일 → 같은 파일 반복까지)
 await attach('p2.jpg'); const s2=await snap();
@@ -64,6 +68,7 @@ ok('S4 교체 3회차 = 내용 바뀜·버튼 정상', s3.b64!==s2.b64 && s3.dlD
 await pg.click('#cpImgDel'); await pg.waitForTimeout(700);
 const s4=await snap();
 ok('S5 삭제 = store 비움·휴지통 남되 비활성(사라지지 않음)', s4.len===0 && s4.dlHidden===false && s4.dlDisabled===true, JSON.stringify({len:s4.len,dlHidden:s4.dlHidden,dlDisabled:s4.dlDisabled}));
+ok('S5b 삭제 후 = 다시 첨부 픽토 복귀', s4.swPic==='add' && s4.swLabel==='사진 첨부', JSON.stringify({swPic:s4.swPic,swLabel:s4.swLabel}));
 // 삭제 후 재첨부
 await attach('p1.jpg'); const s5=await snap();
 ok('S6 삭제 후 재첨부 = 다시 채움·휴지통 재활성', s5.len>200 && s5.dlDisabled===false, 'len '+s5.len);
