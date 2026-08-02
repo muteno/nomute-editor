@@ -69,13 +69,12 @@ async function runOnce(browser, port) {
       font: cs('body').fontFamily.includes('Pretendard Variable') && cs('body').letterSpacing === '-0.2px' && document.fonts.check("13px 'Pretendard Variable'"),
       dockKids, goTriple: [cs('#editGo').borderRadius, cs('#editGo').paddingTop, cs('#editGo').fontSize].join('/'), goLabel: go.textContent.trim(),
       stripBox: [cs('#optStrip').backgroundColor, cs('#optStrip').borderRadius, cs('#editSpec').fontSize].join('/'),
-      stripInRail: (() => { const rail = document.querySelector('.cpprev-box .trail'); return !!(rail && strip && rail.contains(strip)); })(),
-      railFlush: (() => {   // 레일 = 창(.cpprev-box) 우상단 여백 0(운영자 260801 확정값 · 이미지 스튜디오 정본 동일)
-        const box = document.querySelector('.cpprev-box'), rail = document.querySelector('.cpprev-box .trail');
+      stripInRail: (() => { const rail = document.querySelector('.pvsec .trail'); return !!(rail && strip && rail.contains(strip)); })(),
+      railFlush: (() => {   // 레일 = 창 **밖 우측**·간격 8·상변 정렬(운영자 260802 2차 규격 · 이미지 스튜디오 정본 동일)
+        const box = document.querySelector('.cpprev-box'), rail = document.querySelector('.pvsec .trail');
         if (!box || !rail) return null;
         const b = box.getBoundingClientRect(), q = rail.getBoundingClientRect();
-        const bw = parseFloat(getComputedStyle(box).borderTopWidth) || 0;
-        return [+(b.right - bw - q.right).toFixed(1), +(q.top - (b.top + bw)).toFixed(1)];
+        return [+(q.left - b.right).toFixed(1), +(q.top - b.top).toFixed(1)];   // [창↔레일 간격, 상변 편차]
       })(),
       readback: spec.textContent.replace(/\s+/g, ' ').trim(), onN: spec.querySelectorAll('.gs-v.on').length,
       onColor: spec.querySelector('.gs-v.on') ? getComputedStyle(spec.querySelector('.gs-v.on')).color : '',
@@ -154,8 +153,8 @@ async function runOnce(browser, port) {
     //   구 계약 = 도크 자식 [미리보기 → 하단 옵션 스트립 → 발사바] · 스트립 = 검정 박스(#000/9px)·폭 = 발사바 동일.
     //   신 계약 = 스트립이 **미리보기 창 코너 레일 안**으로 들어갔다 → 도크 자식은 [미리보기 → 발사바] · 스트립 셸은 투명 값 칩 그룹.
     ck('C2 도크 순서 pvsec→firebar(옵션 스트립 = 미리보기 코너 레일로 이주)', /pvsec.*firebar/.test(r1.dockKids) && !/optstrip/.test(r1.dockKids), r1.dockKids);
-    ck('C3 스트립 = 코너 레일 값 칩 그룹(투명·radius 0·10.5px) + 레일 = 창 우상단 여백 0(Δ≤0.5px)',
-       r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && r1.railFlush.every(v => Math.abs(v) <= 0.5),
+    ck('C3 스트립 = 코너 레일 값 칩 그룹(투명·radius 0·10.5px) + 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px)',
+       r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && Math.abs(r1.railFlush[0] - 8) <= 0.5 && Math.abs(r1.railFlush[1]) <= 0.5,
        r1.stripBox + ' · inRail=' + r1.stripInRail + ' · flush=' + JSON.stringify(r1.railFlush));
     ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) 전부 원본/OFF·무점등(운영자 260724 노출 항목 축소 · 260728 프레임→고프레임 개명 = OFF/ON 토글)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 OFF \/ 배경음 OFF \/ 컷 편집 OFF$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
