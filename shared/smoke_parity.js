@@ -195,7 +195,7 @@ async function runOnce(pg) {
   //   260802 실측 = 박스는 4탭 전부 330.5로 같았는데 잉크는 편집만 330.5(pad 0) / 나머지 335.5(pad 5) →
   //   박스 기준 검사였다면 통과했을 어긋남이다. 그래서 판정 축 = Range 잉크 사각형(사람이 보는 것과 동일).
   //   기준선 = 카드 생성 탭(파리티 정본 · 위 C10~C14와 동일 기준). 낱말 칩만 대상(OPA ± 스테퍼는 자체 좁은 패딩이 정본).
-  const INK_BASE = { 편집: 2.6 };   // 알려진 미승인 드리프트(260802 롤백분 · 편집 탭 컬럼 시절 규칙 `.dockopt .rsz-opts .ropt{padding:2px 0}`가 레일 스킨을 소스 후행으로 이김) — 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문 · 해소 = `.cpprev .trail-v.dockopt .ropt{padding:0 5px;font-size:10.5px}` 한 줄 승인)
+  const INK_BASE = {};   // **비어 있음 = 4탭 전부 한 세로선이 현재 정본**(260802 3차 실측 9px). 구 `{편집:2.6}` 면책은 그 드리프트가 실제로 해소되며 회수 — 처방은 주석이 예고했던 그 한 줄(`.cpprev .trail-v.dockopt .rsz-opts .ropt{padding:0 5px;font-size:10.5px}` 특이도 0,5,0 승격 = 컬럼 시절 규칙 `.dockopt .rsz-opts .ropt{padding:2px 0}`의 소스 후행 승리 차단). ⚠ 면책을 남겨두면 같은 2.6px 회귀가 조용히 다시 통과한다 = 회수가 수리의 일부 · 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문)
   const ink = {};
   for (const [app, ko] of [['2', '카드생성'], ['7', '편집'], ['tr', '번역'], ['6', 'AI생성']]) {
     await pg.evaluate(a => { const t = document.querySelector('#toolTabs .tooltab[data-app="' + a + '"]'); if (t) t.click(); }, app);
