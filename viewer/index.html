@@ -2248,7 +2248,12 @@
      특정성 (1,1,0) > 위 모바일 미디어 (1,0,0) = 폰에서도 94vw/88dvh를 이긴다(미디어 안 재선언 불요). */
   #tooldlg.tool-full { width:100vw; max-width:100vw; height:100dvh; max-height:100dvh; margin:0; border-radius:0; border:none; }
   #tooldlg.tool-full .tool-h { padding-top:calc(11px + env(safe-area-inset-top)); }   /* raw-ok: 11 = .modal-head/.tool-h padding-top 정본 문자 계승(#dlg 풀스크린 노치 처방 `#dlg .dlg-h`와 동일 산식 — 전체창은 헤더가 화면 최상단 = 상태바·노치 밑으로 밀어야 함 · 헤더 radius 0 처방은 dialog overflow:hidden이 갈음 = 불요) */
-  #tooldlg.tool-full .genihost { max-width:600px; margin-left:auto; margin-right:auto; }   /* raw-ok: 600 = thumb `.wrap { max-width:600px; margin:0 auto }` 정본 문자 계승(창작 아님) — AI 생성 탭만 부모(index)가 그리는 판이라 셸을 넓히면 이 탭만 창폭까지 늘어나 형제 3탭(iframe 안 .wrap 600 고정)과 등가가 깨진다(실측: 전체창 1280에서 미리보기 박스 card 568 vs ai 980 = smoke_parity C1·C10 FAIL) → 형제와 같은 600 칼럼으로 묶어 4탭 등가 복구(리드 도크 = thumb .topdock 실폭 600 동일 · 본문 콘텐츠 568 동일) */
+  /* (구 260801 1차) `#tooldlg.tool-full .genihost { max-width:600px }` = 폐지 — 운영자 260802 "좌우공백을 아예 없애줘".
+     전체창 1차는 4탭 등가를 위해 AI 생성 판을 thumb .wrap과 같은 600 칼럼에 묶었는데, PC 1280에서 양옆 340씩이 빈 글래스로 남았다.
+     → 2차 = 칼럼 캡을 **양쪽 다 해제**(thumb·tr 는 `html.inmodal .wrap{max-width:none}`) = 4탭 전부 창 전폭 = 등가 유지 + 공백 0.
+     ⚠ 폭이 풀리면 1:1 미리보기가 창폭을 그대로 높이로 삼아 도크가 화면을 잠식(1280 → 1248 정사각) → 아래 박스 폭 캡이 짝. */
+  #tooldlg.tool-full .genihost { container-type:size; }   /* 아래 캡의 높이 기준(cqh) 제공 — thumb 쪽은 iframe 자체가 뷰포트라 58svh면 되지만, AI 생성 판은 부모(창 800) 안이라 같은 svh를 쓰면 프레임 높이(688)와 어긋나 4탭 등가가 깨진다(464 vs 399) → 이 컨테이너 높이 = 프레임 높이와 동일하므로 cqh가 정확한 등가 단위 · 크기는 이미 flex(=dialog)가 정함 = contain 부작용 0 · 절대배치 앵커는 기존 position:relative 그대로 */
+  #tooldlg.tool-full .geni-prev .cpprev-box { width:min(100%, 58cqh, 620px); margin-inline:auto; }   /* raw-ok: 58svh/620 = thumb 구 캡 문자 계승(단위만 등가 환산 = 창작 0) — 형제 3탭과 같은 폭 캡이라야 smoke_parity C1·C10(Δ≤1px) 성립 · margin-inline:auto = 캡분 좌우 대칭(thumb 동문) */
   /* ── 제작 도구 모달 최소화/복원 (운영자 260627) — 최소화 버튼(#toolMin)·복원 ▲·접힘 고스트. .tool-x 계승 + accent/danger 토큰. ── */
   /* 최소화 버튼 = .tool-x 클래스 계승 → 기존 .tool-x:active(아래 rotate(180) scale(var(--press-m,.92)) 공통 규칙)·:hover accent를 X와 동일하게 자동 상속(별도 :active 신설 안 함 = 드리프트 차단). */
   .tool-hbtns { display:flex; align-items:center; gap:8px; }   /* 최소화 + X 묶음(헤더 우측 그룹) */
@@ -3323,11 +3328,13 @@
   .cpprev-box .trailwrap { position:absolute; left:auto; top:0; right:0; transform:none; z-index:2 /* z2 = 구 .cpv-tool 동값(합성중 딤 z3 아래 = 진행 중 조작 차단) */; gap:8px; }
   .cpprev-box .trail { background:rgba(8,15,11,.54) /* raw-ok: thumb 코너 레일 동값(운영자 260801 선택값 = 정본 .34의 알파 변주) — 사진 위에 뜨는 코너라 한 단 더 불투명 */; }
   .cpprev-box .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착) */; flex:none; align-self:stretch; }
-  .cpprev-box .trail-g:not(:has(.cpv-tool:not([hidden]))) { display:none; }
-  .cpprev-box .trail-g:not(:has(.cpv-tool:not([hidden]))) + .trail-div { display:none; }
-  .cpprev-box .trail:not(:has(.cpv-tool:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }
+  .cpprev-box .trail-g:not(:has(button:not([hidden]))) { display:none; }
+  .cpprev-box .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }
+  .cpprev-box .trail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }
   .cpprev-box .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(6/42)·플레이트·그림자 해제 = thumb 정본 동일 처방 · id·핸들러·hidden 토글 불변 */
   .cpprev-box .cpv-tool svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값 */
+  .cpprev-box .trail .cpv-photobtn { width:100%; height:22px; }   /* 레일 안 진입 픽토(글 프롬프팅) = .cpv-tool과 같은 칩 등고 — 중앙 26px 픽토 규격은 무대 전용 */
+  .cpprev-box .trail .cpv-photobtn svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값 */
   .cpprev-box .trail-v { display:flex; flex-direction:column; gap:var(--sp-1); align-self:stretch; margin:0; padding:0; background:transparent; border:1px solid transparent /* 폭 1px 유지·색만 투명 = thumb #optStrip 동일 처방(파리티 = 크로스-파일 계산값 동일) */; border-radius:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값 */; line-height:1; text-align:center; }
   .cpprev-box .trail-v.none { display:none; }
   .cpprev-box .trail-v .gs-sep, .cpprev-box .trail-v .gs-lbl { display:none; }   /* 표기 = 값만(운영자 260801 확정) — DOM 존치 = 리드백 문법·게이트 카운트 무접촉 */
@@ -3930,12 +3937,13 @@ try {
           <img class="cpv-style" id="geniStyleEx" alt="" aria-hidden="true" hidden><!-- 화풍 예시(운영자 260719 "화풍 글로만 있으면 덜 직관적 — 화풍별 예시를 미리보기에") = 빈 상태 한정 · 화풍 선택 동기(geniApply) · 자산 = assets/geni-styles/{화풍}.webp · 없으면 조용히 숨김(onerror) -->
           <img class="cpv-ghost" id="geniRefGhost" alt="" aria-hidden="true" hidden><!-- 첨부 고스트(운영자 260719 승인 "그렇게 한번 해줘") = 참고 이미지가 선택 비율 프레임에 앉는 모습 — cover 반투명 언더레이 + 아래 contain 원본 겹침 -->
           <img class="cpv-bg" id="geniRefThumb" alt="" hidden>
-          <div class="cpv-empty"><button type="button" class="cpv-photobtn" id="geniTxtBtn" aria-label="글로 프롬프팅 — 탭=주문 입력" title="글로 프롬프팅 — 탭=주문 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><button type="button" class="cpv-photobtn" id="geniRefBtn" aria-label="참고 이미지 첨부 — 탭=파일 선택" title="참고 이미지 첨부 — 탭=파일 선택"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button></div><!-- 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") — 좌 = 글 프롬프팅 진입점(#geniTxtBtn · 픽토 = pastedlg 문서 정본 path · 탭 = 주문칸 #geniWishRow 노출·포커스 = 260719 "미리보기 위 새 입력" 예약 배선) · 우 = 사진(#geniRefBtn id·라우팅 불변) · 버튼 셸 = .cpv-photobtn 정본 공유 -->
+          <div class="cpv-empty"><button type="button" class="cpv-photobtn" id="geniRefBtn" aria-label="참고 이미지 첨부 — 탭=파일 선택" title="참고 이미지 첨부 — 탭=파일 선택"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button></div><!-- 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") — 좌 = 글 프롬프팅 진입점(#geniTxtBtn · 픽토 = pastedlg 문서 정본 path · 탭 = 주문칸 #geniWishRow 노출·포커스 = 260719 "미리보기 위 새 입력" 예약 배선) · 우 = 사진(#geniRefBtn id·라우팅 불변) · 버튼 셸 = .cpv-photobtn 정본 공유 -->
         </div>
         <!-- ── 코너 옵션 레일(운영자 260802 "우측 네비게이션바로 · 모든 페이지에 똑같이") = 이 문서 `.trail` 정본 재사용 —
              [교체·삭제 픽토 묶음] → 구분선 → [값 칩 = 선택요약 #geniSum] · id·핸들러·geniApply 리드백 전부 불변 ── -->
         <div class="trailwrap" id="geniRailWrapPv"><nav class="trail" id="geniRail" aria-label="미리보기 옵션">
           <span class="trail-g">
+          <button type="button" class="cpv-photobtn" id="geniTxtBtn" aria-label="글로 프롬프팅 — 탭=주문 입력" title="글로 프롬프팅 — 탭=주문 입력"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><!-- 글 프롬프팅 = 중앙 반갈에서 레일로 이주(운영자 260802 "중앙에는 사진 업로드 그것만 있고 텍스트 버튼은 우측 네비게이션으로") — id·핸들러(#geniWishRow 노출·포커스) 불변 · 픽토·라벨 그대로 -->
           <button type="button" class="cpv-tool" id="geniRefSwap" hidden aria-label="참고 이미지 교체 — 탭=파일 선택" title="참고 이미지 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button>
           <button type="button" class="cpv-tool" id="geniRefX" hidden aria-label="참고 이미지 삭제" title="참고 이미지 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
           </span>
@@ -8183,7 +8191,7 @@ function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이�
 // ── 배포 버전 도장(운영자 Q44 "도장 ㄱ") — .github/workflows/stamp-version.yml이 배포 시 커밋SHA·KST로 치환(로컬·미배포 = 'dev').
 //    화면 표시 = #linkpop(설정 메뉴) 하단 .lp-ver → 설정 열면 스샷에 찍혀 '지금 돌아가는 버전'이 자증됨.
 //    SW 셸(sw.js)에 통째로 구워지므로 캐시된 옛 셸은 '자기 옛 도장'을 그대로 보여줌 = "고쳤는데 그대로"의 진위(구버전 열람 vs 실미해결)를 스샷만으로 판별. ⚠️ 아래 /*BUILDSTAMP*/ 마커 = 워크플로 sed 앵커(삭제·이동 금지).
-const BUILD_STAMP = 'e306b88 · 260802_0912';  /*BUILDSTAMP*/
+const BUILD_STAMP = '5787a4d · 260802_0932';  /*BUILDSTAMP*/
 (function stampVer(){
   const el = document.getElementById('lpVer'); if (!el) return;
   const dev = (BUILD_STAMP === 'dev');

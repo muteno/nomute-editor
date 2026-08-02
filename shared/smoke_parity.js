@@ -11,7 +11,7 @@
 //
 // 원커맨드:  node shared/smoke_parity.js        (종료코드 0 = 코어 전부 PASS)
 //
-// 담당 표면(이 파일 헤더 선언 = 변경 시 커밋 전 실행 rc=0): viewer/index.html #geniPrev/#geniPrevBox/#geniSum/#geniStyleEx/#geniRefGhost·#geniWishRow(기본 숨김 · #geniTxtBtn 탭 = 노출 — 운영자 260721 반갈)·빈 상태 반갈 듀오(#geniTxtBtn|#geniRefBtn 4분할 정중앙)·.genihost .geni-lead(도크 mat·스커트) ↔ viewer/thumb.html #cpPrev .cpprev-box/#optStrip/#topDock(정본)
+// 담당 표면(이 파일 헤더 선언 = 변경 시 커밋 전 실행 rc=0): viewer/index.html #geniPrev/#geniPrevBox/#geniSum/#geniStyleEx/#geniRefGhost·#geniWishRow(기본 숨김 · #geniTxtBtn 탭 = 노출 — 운영자 260721 반갈)·빈 상태 중앙 업로드 픽토 단독(#geniRefBtn 무대 정중앙 · #geniTxtBtn = 코너 레일 · 260802)·.genihost .geni-lead(도크 mat·스커트) ↔ viewer/thumb.html #cpPrev .cpprev-box/#optStrip/#topDock(정본)
 // 어서션 축: 기하(박스 높이·폭 Δ) + computedStyle 문자열 동일(bg·border·radius·padding·활자·스커트 그라데) + 스트립 상태 점등 문법(라벨+값 쌍·기본 소등·상태 추종 C10~C13 · 운영자 260720) — 환경 간 스크린샷 diff 금지(smoke_preview 규율 계승)
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 = openTool·geniApply·geniRefPick) · 픽스처 = 페이지 내 canvas(외부 바이너리 0) · 서버 자체 종료 · 결정론 2런.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -118,18 +118,19 @@ async function runOnce(pg) {
   core('C5 텍스트칸 기본 숨김(#geniWishRow/Head hidden · DOM 생존 — 노출은 글 픽토 탭 C5c)', ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
 
   // ── C5b·C5c 미리보기 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") ──
+  //   계약 갱신(운영자 260802 "중앙에는 사진 업로드 그것만 있고 텍스트 버튼은 우측 네비게이션으로") —
+  //   구 계약 = 반갈 듀오(글|사진 각 반쪽 중앙) → 신 계약 = **중앙 = 업로드 픽토 단독·무대 4분할 정중앙** + 글 픽토는 코너 레일 안.
   const duo = await pg.evaluate(() => {
     const st = document.querySelector('#geniPrevStage'), em = st && st.querySelector('.cpv-empty');
     const btns = em ? [...em.querySelectorAll('.cpv-photobtn')] : [];
-    if (btns.length !== 2) return { n: btns.length };
+    const txt = document.querySelector('#geniTxtBtn'), rail = document.querySelector('#geniPrevBox .trail');
+    if (btns.length !== 1) return { n: btns.length };
     const sr = st.getBoundingClientRect();
-    const c = el => { const r = el.querySelector('svg').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
-    const L = c(btns[0]), R = c(btns[1]);
-    return { n: 2, txtFirst: btns[0].id === 'geniTxtBtn' && btns[1].id === 'geniRefBtn',
-      dLx: L.x - (sr.left + sr.width * 0.25), dRx: R.x - (sr.left + sr.width * 0.75),
-      dLy: L.y - (sr.top + sr.height / 2), dRy: R.y - (sr.top + sr.height / 2) };
+    const r = btns[0].querySelector('svg').getBoundingClientRect();
+    return { n: 1, isPhoto: btns[0].id === 'geniRefBtn', txtInRail: !!(rail && txt && rail.contains(txt)),
+      dx: (r.left + r.width / 2) - (sr.left + sr.width / 2), dy: (r.top + r.height / 2) - (sr.top + sr.height / 2) };
   });
-  core('C5b 반갈 듀오 = 글|사진 픽토 각 반쪽 4분할 정중앙(Δ≤0.5px)', duo.n === 2 && duo.txtFirst && [duo.dLx, duo.dRx, duo.dLy, duo.dRy].every(v => Math.abs(v) <= 0.5),
+  core('C5b 중앙 = 사진 픽토 단독·무대 정중앙(Δ≤0.5px) · 글 픽토는 코너 레일 흡수', duo.n === 1 && duo.isPhoto && duo.txtInRail && [duo.dx, duo.dy].every(v => Math.abs(v) <= 0.5),
     JSON.stringify(duo, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v));
   await pg.evaluate(() => { const b = document.querySelector('#geniTxtBtn'); if (b) b.click(); });
   await pg.waitForTimeout(250);   // geniWishShow 포커스 지연(60ms) 흡수
