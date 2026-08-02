@@ -1,31 +1,32 @@
-# ⚖️ 계엄 다음 날, 동맹국 책상에 놓인 문장이 법정에 섰다
+# 계엄 다음 날, 동맹국 책상에 놓인 문장이 법정에 섰다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 권력·법리·내란 수사의 무게를 선 굵은 명암으로 받아야 해서
-- 분위기: 총성 없는 내란의 뒷면. 종이 한 장이 무기가 되는 서늘한 관료적 긴장, 흐린 오후의 무채색
-- 연출 방향: 독자가 멈추는 곳은 '총 든 손'이 아니라 계엄을 "자유민주주의 수호"라고 적어 동맹국에 보낸 문장이다. 그래서 카메라는 사람의 얼굴만큼 종이·손·건네짐의 순간을 붙든다 — 밤의 국회 앞과 다음 날 아침의 책상을 같은 무게로 놓고, 그 문서가 어떻게 법정 서류가 되는지를 따라간다. 악센트 1색은 오직 그 문서 위에만 얹어, 덱 전체에서 시선이 '문장'을 놓치지 않게 한다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 다음 날 책상 위 문서 예고)+카드3 끝(예고형: 상급자와의 갈림) · 감정 피크=카드4 · 착지 = 그날 밤은 영상으로 남았고, 같은 시각 동맹국으로 간 문장은 1년 7개월 만에 법정에 올랐다
-- 연속성 앵커: Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark navy suit and a plain tie, lean build (카드 4·5 등장) / 반복 장소 = a government situation room with long desk and drawn blinds (카드 1·2)
+- 화풍: B 극화 — 권력·법리·구조를 겨눈 사안이라, 잉크선과 고대비가 종이 한 장의 무게를 견딘다
+- 분위기: 소리 없는 무게. 총성도 고함도 없이 문서 한 장이 국경을 넘던 밤의 냉기와, 1년 7개월 뒤 그 종이가 다시 놓인 자리의 정적
+- 연출 방향: 독자가 멈추는 자리는 병력이 아니라 문장이다 — 계엄은 그날 밤 끝났는데 다음 날 동맹국 책상으로 나간 종이가 이 사건의 물건이라는 낙차. 그래서 카메라는 격정보다 종이·손끝·시선이 모이는 한 점에 걸리고, 사람은 그 종이를 다루는 자세로만 말한다. 💡 시사점(어디까지가 정부의 대외 설명이고 어디부터가 내란의 실행인가)을 화면에 새기기 위해, 전체를 무채·저채도로 깔고 문서와 그 위 한 점에만 악센트를 남긴다. thumb_dispatch의 흐린 확산광 톤과 허탈한 정조는 비주얼 키노트로만 상속하고(앵글·샷은 카드마다 분산), 명도는 起(어둑)→承(더 낮게)→轉(최저·최고대비)→解(회복)→結(여운)으로 누적시킨다.
+- 독자 동선: **발단** 카드1→**전개** 카드2→**피크** 카드3→**해소** 카드4~6→**시사점** 카드7 · 훅=카드1 끝(단서형: 문서의 수신처를 던지고 카드2가 발신자·문구로 즉시 회수)+카드4 끝(단서형: "증거인멸의 염려"를 던지고 카드5가 적부심 기각·기소로 회수) · 질문형 0회 · 착지 한 줄 요지 = 그날 밤 국회 앞은 영상으로 남았지만 같은 시각 밖으로 나간 문장은 이제야 법정에 올랐고, 설명과 내란의 경계가 거기서 갈린다. ⚠️ 카드6은 계엄 직후로 돌아가는 회상 컷이라 명도가 한 번 내려갔다가 카드7에서 여운광으로 풀린다
+- 연속성 앵커: Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark charcoal suit and a plain dark tie (카드2·5·6·7 Scene에 동일 문자열 복사) / 반복 장소 = Recurring location — a Korean government office interior with pale gray walls and vertical blinds
 
 ### [카드 1]
 **텍스트**
 ```text
-2024년 12월 3일 밤,
-계엄은 몇 시간 만에 끝났다.
-그런데 다음 날 아침
-정부 안에서 문서 하나가 돌았다.
+2024년 12월 3일 밤 계엄이 선포됐다
+그리고 대통령실 국가안보실에서는
+*설명자료 한 장이 돌기 시작했다*
+받는 곳은 미국과 일본, 영국, EU였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a single stack of documents left under a desk lamp, untouched, while the room around it stands empty. A government situation room with a long desk and drawn blinds, chairs pushed back at odd angles, a wall clock reading past midnight. No people are present; only the paper holds the light, its edge catching the glow.
-Camera: wide shot, full body framing of the room, from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: overcast diffused daylight bleeding through the blinds mixed with a warm soft desk-lamp light, quiet wistful tone, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the edge of the document stack, muted low-light contrast
-Text handling: avoid rendering any readable script on the papers; keep the pages angled and cropped so no letters are legible. Korea default: Korean government office interior conventions.
+Scene: Emotional focal point: a hand hovering over a freshly printed stack of paper on a desk, fingertips stiff and not yet touching it. Two government staffers in dark suits work at that desk in a night office, one squaring the stack while the other carries a thin folder toward a doorway at the right side of the frame, gaze directed toward the right edge with nose room on the right. The paper stack is the single pale object on the long dark desk, and every figure is turned toward it. Recurring location — a Korean government office interior with pale gray walls and vertical blinds, drawn shut, late at night.
+Camera: wide shot, full body, surrounding environment, spatial context from high angle shot, looking down, small figures observed from above, shot on 24mm wide lens, cinematic wide shot, subtle depth
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean government office interior, Korean physical features for all figures, no institutional logos, no nameplates, no emblems.
+Text handling: the printed pages are seen at a steep oblique angle and partially cropped so the print reads only as gray texture, no legible characters anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long office desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +36,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-국가안보실 회의실 책상
+대통령실 국가안보실 사무실
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그 문서는 미국·일본·영국·EU로 갔다.
-계엄은 *"자유민주주의 수호를 위한 것"*,
-"헌법 테두리 내에서 한
-정치적 시위"라고 적혀 있었다.
+그 자료를 돌리라고 지시한 사람은
+김태효 전 국가안보실 1차장이었다
+문서는 계엄을 이렇게 적고 있었다
+*"자유민주주의 수호를 위한 것"*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two hands extending a sealed envelope across a desk while the receiving fingers hesitate a breath before closing. A civil servant in a dark suit hands the folder to another official at a government situation room with a long desk and drawn blinds, both faces cropped above frame so only torsos and hands are seen. Behind them, three more officials stand with folders held against their chests, waiting in line. The envelope is the only lit object between them.
-Camera: extreme close-up, single detail, hand, texture, from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) along the envelope seal, muted daylight contrast
-Text handling: keep the envelope and folder surfaces blank and angled away; no readable characters anywhere. Korea default: Korean government office interior conventions.
+Scene: Emotional focal point: a fingertip pressing down on one page and sliding it across the table toward the others, the knuckle white with pressure. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark charcoal suit and a plain dark tie, sits at the head of a long meeting table and pushes the document forward without looking up. Three younger officials in dark suits lean in from the far side of the same table, hands reaching for their copies, all eyelines converging on that single sheet. Recurring location — a Korean government office interior with pale gray walls and vertical blinds.
+Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean government meeting room, Korean physical features for all figures, no institutional logos, no nameplates, no emblems.
+Text handling: the document is tilted and foreshortened so its print reads only as faint gray lines, no legible characters anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long office desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the meeting table surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +68,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-외교부 문서 전달
+김태효 국가안보실 1차장
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-특검은 그 지시를 한 사람을 지목했다.
-김태효 전 국가안보실 1차장이다.
-법원은 "증거인멸의 염려"를 들어
-7월 10일 구속영장을 발부했다.
+"헌법 테두리 내에서 정치적 시위"
+*그러나 계엄은 그날 밤 끝났고*
+이 문장만 다음 날 동맹국으로 갔다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a judge's hand pressing a seal onto a warrant, the wrist locked and steady. Investigators carry out rows of brown cardboard evidence boxes and hard drives from a study, loading them onto a cart in the background of the same room, while in the foreground the sealed document lies on a courthouse desk. The gaze of the seated official is directed toward the right edge of the frame, following the boxes as they leave.
-Camera: medium close-up, chest-up framing, slight body context, from low angle shot, looking up, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the seal impression, film-noir low-key lighting, deep shadows
-Text handling: the warrant surface stays creased and turned away, no legible characters. Korea default: Korean courthouse and office conventions, nose room on the right, gaze directed toward the right edge.
+Scene: Emotional focal point: a single sheet of paper being slid into a waiting envelope, the paper's edge catching the only light in the frame. One pair of hands enters from the top of the frame and performs this action; no face is visible, and the wrists are the only part of the body shown. The desk around the envelope falls away into total blackness, so the sheet and the hands are the sole lit objects. manhwa emphasis lines radiating toward the subject, no panel border.
+Camera: extreme close-up, single detail, hand, texture from overhead shot, bird's-eye view, top-down angle, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: single pool of hard light isolating the subject in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean government office desk, Korean physical features for the hands, no institutional logos, no nameplates, no emblems.
+Text handling: the sheet is cropped by the envelope and by the frame edge so its print reads only as a blurred gray band, no legible characters anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the courthouse desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +99,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-서울중앙지법 구속영장 발부
+비상계엄 대외 설명자료
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-상급자였던 신원식 전 실장은
-가담 정도가 무겁지 않다며
-영장 청구를 피했다.
-*구속된 건 지시를 옮긴 손이었다.*
+특검은 그 문장을 내란으로 봤다
+올해 4월 자택과 연구실을 압수수색했다
+법원은 7월 10일 구속영장을 발부했다
+*증거인멸의 염려가 있다는 이유였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark navy suit and a plain tie, lean build, sits alone at the far end of a long table, hands folded flat on the wood. The chair beside him is empty, a folder left closed on its seat, and his eyes drift toward that empty chair rather than the camera.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure, from eye-level shot, neutral perspective, shot on 85mm portrait lens, soft background separation
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the closed folder in the empty chair, film-noir low-key lighting, deep shadows
-Text handling: the folder cover stays blank, no lettering anywhere in frame. Generic figure, not a likeness of any real person. Korea default: Korean interior conventions.
+Scene: Emotional focal point: two forearms braced under the weight of a sealed cardboard evidence box, the tendons taut across the wrists. Four investigators in plain dark jackets carry brown evidence boxes and hard drives in a single file down a corridor, all of them moving toward the right side of the frame with nose room on the right. On the lid of the frontmost box lies one stamped court document, the only object catching the accent color. Recurring location — a Korean government office corridor with pale gray walls and vertical blinds along one side.
+Camera: medium shot, waist-up framing, hands and gestures from high angle shot, looking down, subjects small and observed, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean government building corridor, Korean physical features for all figures, no institutional logos, no nameplates, no emblems.
+Text handling: the stamped document is seen edge-on and partly folded so only the stamp shape and gray line texture read, no legible characters anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long dark table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the corridor floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,25 +131,90 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-김태효 전 안보실 1차장
+내란 특검 압수수색 박스
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그날 밤 국회 앞은 영상으로 남았다.
-같은 시각 동맹국으로 간 문장들은
-1년 7개월이 지나서야 법정에 올랐다.
-*어디까지가 설명이고 어디부터 내란인가.*
+구속이 부당하다는 적부심도 기각됐다
+7월 29일 김 전 차장은 구속 기소됐다
+내란 중요임무 종사와 직권남용 혐의다
+*계엄 선포로부터 1년 7개월여 만이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the steady, unwavering eye contact of a man looking directly into the camera as the courtroom empties behind him. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark navy suit and a plain tie, lean build, stands at the center of a courtroom aisle facing forward, a thin document held down at his side. Behind him a wide bench and an empty witness stand recede into shadow, the room quiet and symmetrical around him.
-Camera: full shot, head-to-toe, clear silhouette, from eye-level shot, neutral perspective, front-on shot, direct gaze, symmetrical composition, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: cold blue pre-dawn tone bleeding through tall windows, desolate stillness, faint warm afterglow on the far wall
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the document held at his side, muted low-light contrast
-Text handling: the document face is turned inward, no readable characters in frame. Generic figure, not a likeness of any real person. Korea default: Korean courtroom conventions, no institutional emblems or logos.
+Scene: Emotional focal point: eyes cast downward at the pavement, a vacant unfocused stare that looks past everything in front of him. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark charcoal suit and a plain dark tie, walks toward a courthouse entrance between two escorting officers, his hands held low in front of him. A semicircle of reporters holding microphones and cameras presses in from both sides along a taped line, every eyeline converging on him. The setting is the front plaza of a Korean courthouse on an overcast afternoon.
+Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 85mm portrait lens, soft background separation
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean courthouse architecture and plaza, Korean physical features for all figures, no institutional logos, no nameplates, no emblems, no banners.
+Text handling: no signage or lettering in frame at all; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the courthouse plaza pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+김태효 서울중앙지법 출석
+```
+
+### [카드 6]
+**텍스트**
+```text
+특검은 출발점을 더 위로 보고 있다
+계엄 직후 윤석열 전 대통령이
+*설명을 지시했다고 보는 것이다*
+신원식 전 실장은 영장 청구를 피했다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a hand lifted just above shoulder height in a short downward instruction gesture, the fingers half closed. A tall figure in a dark suit stands highest and furthest forward with his back to the camera, giving that gesture; a second man in his 60s in a dark suit stands one step lower and to the side, listening with his chin down. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark charcoal suit and a plain dark tie, stands lowest and at the edge of the group, a folder pressed against his chest, looking up at the two ahead of him. The setting is a Korean presidential situation room at night, wall monitors glowing behind them.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from low angle shot, looking up, dominance, dramatic presence, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: cold blue screen under-glow lighting the faces from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean government situation room interior, Korean physical features for all figures, generic faces that do not resemble any real person, no institutional logos, no nameplates, no emblems.
+Text handling: the wall monitors show only abstract glowing shapes and map-like contours, no letters or numbers; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the situation room floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+윤석열 신원식 국가안보실
+```
+
+### [카드 7]
+**텍스트**
+```text
+그날 밤 국회 앞은 영상으로 남았다
+같은 시각 밖으로 나간 문장들은
+1년 7개월이 지나 법정에 올랐다
+*설명과 내란의 경계는 거기서 갈린다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: two hands resting flat on either side of one sheet of paper laid alone on a bare wooden desk, neither hand touching it. Recurring subject — a Korean man in his 60s with short graying hair and rimless glasses, wearing a dark charcoal suit and a plain dark tie, sits alone at that desk facing the camera straight on, shoulders squared, gaze level and unmoving. The rows of empty seats behind him recede into soft darkness, and the sheet in front of him is the brightest thing in the room. The setting is a Korean courtroom interior before proceedings begin.
+Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, shot on 35mm lens, natural documentary perspective, minimal distortion
+Lighting/mood: cold blue pre-dawn tone, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean courtroom interior, Korean physical features for all figures, no institutional logos, no nameplates, no emblems.
+Text handling: the sheet is seen at a shallow angle and slightly curled so its print reads only as a faint gray band, no legible characters anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the courtroom floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
@@ -159,5 +227,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-법정 피고인석 재판정
+서울중앙지법 형사 법정
 ```
