@@ -2844,11 +2844,10 @@ function renderEmph2(line) {
   push(); return segs;
 }
 const hasEmph2 = line => renderEmph2(line).some(s => s[0] === 'h');   // 강조(초록) 세그먼트 존재 여부(구 `/\*[^*]+\*/` 대체)
-// 입력칸 별표 판정(운영자 260720) — 유효 강조쌍 = 색 순환(STAR_CYC) · 3+연속 = 마스킹 제외('x') · **오타 = 빗금('s')**: 글자 사이 낀 단일 *(줄*·3*4) + 짝 안 맞은 단일 *(홀로 남음). 운영자 "혼자 떨어진 * = 90% 오탈자 · 문자열 * 거의 없음". 길이별 페어링(*↔* · **↔**) = 홀로 남은 *가 ** 쌍을 안 삼킴(260720 채널요약 과흡수 실측). 페어링은 줄바꿈 무관(줄 이어진 강조 = 정상). function 선언(호이스팅) = attachStarHL 초기 paint 사용.
+// 입력칸 별표 판정(운영자 260720 · 260802 개정) — 유효 강조쌍 = 색 순환(STAR_CYC) · 3+연속 = 마스킹 제외('x') · **오타 = 빗금('s')**: 짝 못 찾은 단일 *(줄*·3*4 = 열어도 짝 없어 잔류 → 오타). 운영자 "혼자 떨어진 * = 90% 오탈자 · 문자열 * 거의 없음". 글자 사이 낀 단일 *도 짝이 있으면 강조 열림(운영자 260802 "붙어있을때 강조" — 테스*테스트* = 테스트 강조 · 구 intra 열림금지는 짝 있는 붙은 강조까지 오타로 지웠다 · **는 종전부터 붙은 열림 가능 = 비대칭 해소). 길이별 페어링(*↔* · **↔**) = 홀로 남은 *가 ** 쌍을 안 삼킴(260720 채널요약 과흡수 실측). 페어링은 줄바꿈 무관(줄 이어진 강조 = 정상). function 선언(호이스팅) = attachStarHL 초기 paint 사용.
 const STAR_CYC = 4;   // 색 순환(--accent-2·--accent·--accent-6·--accent-4 = 라임·터콰·핑크·레몬)
 function classifyStars(text) {   // '*' 위치 분류 정본 → cls[]: 'x'(3+마스킹) | 's'(오타 빗금·전송 시 삭제) | 'd'(짝 없는 ** = 드롭·안 삭제) | 0..STAR_CYC-1(유효 쌍 색). strayStars·stripStrayStars가 여기서 파생(입력 빗금 == 전송 삭제 == 미리보기 정합).
   const cls = new Array(text.length).fill(null);
-  const aln = c => c != null && /[0-9A-Za-z가-힣]/.test(c);
   const ws = c => c == null || c === ' ' || c === '\t' || c === '\n' || c === '\r';   // 경계(공백·개행·문자열끝) = 강조 붙지 않음
   const rs = []; for (let i = 0; i < text.length;) { if (text[i] === '*') { let j = i; while (j < text.length && text[j] === '*') j++; rs.push({ i, end: j, len: j - i }); i = j; } else i++; }
   const mark = (r, v) => { for (let k = r.i; k < r.end; k++) cls[k] = v; };
@@ -2856,12 +2855,11 @@ function classifyStars(text) {   // '*' 위치 분류 정본 → cls[]: 'x'(3+�
   const pair = (a, b) => { mark(a, ci % STAR_CYC); mark(b, ci % STAR_CYC); ci++; };
   for (const r of rs) {
     if (r.len >= 3) { mark(r, 'x'); continue; }                                            // 3+ = 마스킹(강조 아님)
-    const intra = r.len === 1 && aln(text[r.i - 1]) && aln(text[r.end]);                    // 글자 사이 낀 단일 *(3*4·줄*) = 강조 시작점 아님
-    const canOpen = !ws(text[r.end]) && !intra, canClose = !ws(text[r.i - 1]);              // 플랭킹: 열림=뒤가 글자(단 글자사이는 못 엶) · 닫힘=앞이 글자(글자사이 닫힘은 허용 = 꼬리*거든)
+    const canOpen = !ws(text[r.end]), canClose = !ws(text[r.i - 1]);                        // 플랭킹: 열림=뒤가 글자 · 닫힘=앞이 글자 — 글자사이 개폐 허용(테스*테스트*·꼬리*거든 · 운영자 260802). 3*4·줄* 오타 축은 스택 잔류(짝 없음)가 그대로 잡는다
     const stk = r.len === 1 ? s1 : s2;                                                      // 길이별 스택(*↔* · **↔**) = 홀로 *가 ** 쌍 안 삼킴
     if (canClose && stk.length) pair(stk.pop(), r);                                         // 닫힘 = 가장 가까운(스택 top) 열림과 짝(줄바꿈 무관)
     else if (canOpen) stk.push(r);                                                          // 열림
-    else mark(r, r.len === 1 ? 's' : 'd');                                                  // 못 여닫음(공백 고립·글자사이 고아) = 오타 / ** = 드롭
+    else mark(r, r.len === 1 ? 's' : 'd');                                                  // 못 여닫음(공백 고립) = 오타 / ** = 드롭
   }
   for (const r of s1) mark(r, 's');                                                          // 남은 열린 단일 * = 오타(빗금·전송 시 삭제)
   for (const r of s2) mark(r, 'd');                                                          // 남은 열린 ** = 드롭(안 삭제 · 흐리게)
