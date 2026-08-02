@@ -5416,14 +5416,13 @@ function geniApply() {   // 선택 상태 → 화면 단일 반영점(칩 .on ·
     const gsV = (txt, on, tg, tip, pressed) => '<span class="gs-v' + (on ? ' on' : '') + (tg ? ' gs-tog' : '') + '"' + (tg ? ' data-tg="' + tg + '" role="button" tabindex="0" title="' + tip + '"' + (pressed ? ' aria-pressed="' + (on ? 'true' : 'false') + '"' : '') : '') + '>' + txt + '</span>';   // 값 1칸 = 소등(mut)/점등(accent) + 탭 전환(선택) — 토글 부품 문법 = #askStrip .gs-tog 정본 그대로(role=button·tabindex·title·press-m)
     const gsSelf = (nm, on, tg) => gsV(nm, on, tg, '탭=켜기/끄기', true);   // 자립 토글 항목 = 옵션 이름 자체가 값(운영자 260727 "ON/OFF 없애고 글자만 · 글자 토글로 대체" · 레퍼런스 = #askStrip 정본) · aria-pressed = ON/OFF 축이라 부여
     const gsPair = (lbl, val, on, tg, tip) => '<span class="gs-lbl">' + lbl + '</span> ' + gsV(val, on, tg, tip);   // 쌍 골격 = 편집 탭 editSpec 정본(콜론 없음 · 라벨 mut + 값 상태색) · 값만 탭 대상(라벨은 글자 그대로)
-    const gsEng = () => [['gpt', 'GPT'], ['gemini', 'GEMINI']].map(([v, nm]) => gsV(nm, _geniSel.engine === v, 'engine', '탭=' + nm + ' 모델로', true).replace('data-tg="engine"', 'data-tg="engine" data-eng="' + v + '"')).join('');   // 모델 = 두 이름 그대로 나열(운영자 260802 "그냥 글자로 GPT, GEMINI 이 두개 나오게") — 구 픽토 1칸(geniEngIco = G 레터마크·AI 스파클)은 지금 고른 모델이 무엇인지 그림으로만 말해 레일에서 판독이 안 됐다 · 부품 = 같은 gsV 칩(신규 CSS·값 0) · 선택값 = .on(accent) · 탭 = 그 모델로 직행(data-eng)
     sum.innerHTML = (cloneOn ? [   // 복제 모드 = 화풍·세부·웹툰화·문구가 서버에서 통째로 무시된다 → 요약도 2항으로(켜둔 화풍을 그대로 나열하면 '반영되는 척' = 은폐)
-      gsEng(),
+      gsPair('모델', geniEngIco(), true, 'engine', '탭=모델 바꾸기'),
       gsPair('비율', geniAspect() || 'N:N?', true, 'aspect', '탭=다음 비율'),
       gsPair('참고 이미지', '이미지와 동일하게', true),
       gsPair('색 보정', (_geniSel.colorAx.sat ? '채도 ' + (_geniSel.colorAx.sat > 0 ? '+' : '') + _geniSel.colorAx.sat + '%' : '') + (_geniSel.colorAx.sat && _geniSel.colorAx.bri ? ' · ' : '') + (_geniSel.colorAx.bri ? '명도 ' + (_geniSel.colorAx.bri > 0 ? '+' : '') + _geniSel.colorAx.bri + '%' : '') || '없음', !!(_geniSel.colorAx.sat || _geniSel.colorAx.bri))
     ] : [   // 나열 순서 = 본문 행 상대 순서 유지(개요{비율} → 표현{화풍·세부·한국웹툰화·문구}) — 카메라·해상도·개수·품질·무드 = 요약 비표기(운영자 260721 · 본문 행·발사 파라미터·카메라 배지 #geniCamN은 불변)
-      gsEng(),
+      gsPair('모델', geniEngIco(), true, 'engine', '탭=모델 바꾸기'),
       gsPair('비율', geniAspect() || 'N:N?', true, 'aspect', '탭=다음 비율'),
       gsPair('화풍', geniStyleKo(_geniSel.style), true, 'style', '탭=다음 화풍'),
       gsPair('세부 화풍', geniSubKo(_geniSel.sub), true, 'sub', '탭=다음 세부 화풍'),
@@ -5464,7 +5463,7 @@ function geniInit() {
   //   레퍼런스 = #askStrip .gs-tog 정본 그대로(클릭 + Enter/Space · role=button · press-m 눌림) · 값 축은 「다음 값으로 순환」, ON/OFF 축은 뒤집기 = 각 옵션 성격에 귀속.
   //   순환 순서 = 본문 나열 순서 계승(비율 = GENI_DICT.aspect · 화풍·세부 = 레일 표시 순서) → 요약바로 넘겨도 본문 레일이 같은 순서로 따라온다(반영은 geniApply 단일점).
   const GENI_SUM_TG = {
-    engine: (t) => { const v = t && t.dataset.eng; _geniSel.engine = (v === 'gpt' || v === 'gemini') ? v : (_geniSel.engine === 'gpt' ? 'gemini' : 'gpt'); _geniSel.engineTouched = true; },   // 두 이름 나열(260802) = 누른 그 모델로 직행 · data-eng 없는 구 1칸 마크업(캐시된 화면)이면 종전 교대 그대로 — 모델 = 두 모델 교대(본문 칩과 같은 손댐 도장 = 복제 자동 전환이 덮지 않는다)
+    engine: () => { _geniSel.engine = _geniSel.engine === 'gpt' ? 'gemini' : 'gpt'; _geniSel.engineTouched = true; },   // 모델 = 두 모델 교대(본문 칩과 같은 손댐 도장 = 복제 자동 전환이 덮지 않는다)
     aspect: () => { const ps = GENI_DICT.aspect.filter(([v]) => v !== 'custom').map(([v]) => v); _geniSel.aspect = ps[(ps.indexOf(_geniSel.aspect) + 1) % ps.length]; },   // 비율 = 프리셋만 순환('직접'은 N:N 입력이라 순환 대상 아님 · 직접 상태에서 탭하면 첫 프리셋으로 복귀 = indexOf -1)
     style: () => { const ls = geniFreqSort('style', GENI_ALL_STYLES).map(([v]) => v); geniPickStyle(ls[(ls.indexOf(_geniSel.style) + 1) % ls.length]); },   // 화풍 = 레일 순서 순환 + 부수효과 공유
     sub: () => { const ls = geniSubList().map(([v]) => v); _geniSel.sub = ls[(ls.indexOf(_geniSel.sub) + 1) % ls.length]; },   // 세부 화풍 = 현 화풍 목록 순환(자동 포함 · 세부 없는 화풍[레고]은 자동 1개라 제자리)
@@ -5478,7 +5477,7 @@ function geniInit() {
       const fn = GENI_SUM_TG[t.dataset.tg]; if (!fn) return;
       e.preventDefault();
       const k = t.dataset.tg;
-      fn(t); geniApply();   // t 전달 = 값 직행 항목(모델 GPT/GEMINI)이 어느 칩을 눌렀는지 안다 · 인자 안 쓰는 순환 항목은 무영향
+      fn(); geniApply();
       if (document.activeElement === document.body || !sumEl.contains(document.activeElement)) { const n = sumEl.querySelector('[data-tg="' + k + '"]'); if (n && e.type === 'keydown') n.focus(); }   // 매 반영마다 innerHTML 재작성 = 노드 교체 → 키보드 경로만 같은 항목으로 포커스 재착지(마우스는 원복 불필요)
     };
     sumEl.addEventListener('click', sumFire);

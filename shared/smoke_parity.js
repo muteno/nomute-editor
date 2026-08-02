@@ -171,7 +171,7 @@ async function runOnce(pg) {
   core('C10 미리보기 박스 폭 = 카드 생성 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'card=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
   core('C11 리드 = thumb 도크 파리티(mat 배경·경계선 0·페이드 스커트 h/그라데 동일)', ai.leadBg === ed.dockBg && ai.leadBb === ed.dockBb && ai.skirtH === ed.skirtH && ai.skirtBg === ed.skirtBg,
     JSON.stringify({ edit: { bg: ed.dockBg, bb: ed.dockBb, sh: ed.skirtH }, ai: { bg: ai.leadBg, bb: ai.leadBb, sh: ai.skirtH, sameGrad: ai.skirtBg === ed.skirtBg } }));
-  core('C12 스트립 문법 = 모델 2칩(GPT·GEMINI 이름 그대로 · 운영자 260802 "그냥 글자로 GPT, GEMINI 이 두개") + 라벨+값 3쌍(비율·화풍·세부) + 자립 토글 2(한국웹툰화·문구) = 값 7 · 라벨 3 · 기본 점등 5(고른 모델 1 + 값 축 3 + 웹툰화 ON · 문구 OFF·안 고른 모델만 소등)', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 3 && ai.sumGram.v === 7 && ai.sumGram.on === 5,
+  core('C12 스트립 문법 = 6항 나열(모델·비율·화풍·세부 = 라벨+값 4쌍 · 한국웹툰화·문구 = 자립 토글 2 · 운영자 260727 "ON/OFF 없애고 글자만") · 기본 상태 = 값 축 4 + 웹툰화 ON = 5점등(운영자 260728 "선택된 옵션은 모두 강조색" — 구 "한국웹툰화만 점등" 계약 갱신 · 문구 OFF만 소등)', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 4 && ai.sumGram.v === 6 && ai.sumGram.on === 5,
     JSON.stringify({ edit: ed.specGram, ai: ai.sumGram }));
   await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="9:16"]'); if (b) b.click(); });   // 상태 추종 실측 = 비율 9:16 선택(구 해상도 2K = 5항 축소로 요약 밖 → 잔존 5항 안 옵션으로 교체)
   const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has916: on.includes('9:16') }; });
