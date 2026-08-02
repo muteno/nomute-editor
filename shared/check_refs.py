@@ -1706,6 +1706,31 @@ def check_track_parity():
         print('❌ 자간 기준 게이트 — 파일 열기 실패: %s' % e); return 1
     if 'actualBoundingBoxLeft' not in js or 'actualBoundingBoxRight' not in js:
         print('❌ 자간 기준 게이트 — 뷰어가 잉크폭(actualBoundingBox*)을 안 쓴다 = advance 기준 회귀(서버 draw_t와 다른 자)'); rc = 1
+    # 축별 자(basis) 선언 = 서버 렌더러와 1:1 — 오버레이(draw_t 잉크) ink / 헤더(reels2 getlength) adv
+    BASIS = {'post': 'ink', 'reels': 'ink', 'jjpost': 'ink', 'jjreels': 'ink'}
+    for ax, want_b in BASIS.items():
+        m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
+        if not m or m.group(1) != want_b:
+            print("❌ 자간 기준 게이트 — TRK.%s basis=%s ≠ 서버 축(%s · 오버레이 = draw_t 잉크폭)" % (ax, m.group(1) if m else '없음', want_b)); rc = 1
+    for ax in ('sub', 'title', 'jinjja'):
+        m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
+        if not m or m.group(1) != 'adv':
+            print("❌ 자간 기준 게이트 — HDR.%s basis=%s ≠ 서버 축(adv · 헤더 = reels2 font.getlength)" % (ax, m.group(1) if m else '없음')); rc = 1
+    try:
+        r2 = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_reels2.py'), encoding='utf-8').read()
+        if 'getlength' not in r2:
+            print('❌ 자간 기준 게이트 — nomute_reels2가 getlength(advance) 축을 안 쓴다 = 헤더 basis 선언(adv)과 어긋남'); rc = 1
+    except Exception:
+        pass
+    jj = ''
+    try:
+        jj = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_jinjja.py'), encoding='utf-8').read()
+    except Exception:
+        pass
+    if jj and 'getbbox' not in jj:
+        print('❌ 자간 기준 게이트 — nomute_jinjja 오버레이 폭이 잉크(getbbox) 축이 아니다 = jj* basis(ink) 어긋남'); rc = 1
+    if re.search(r"880 초과|자간 -45로도 안 들어감", js):
+        print('❌ 자간 기준 게이트 — 힌트 문구에 한도·하한이 하드코딩됐다(규격 변경 시 표기만 옛말로 남는다) → spec 산출로 바꿔라'); rc = 1
     want = {'post': {'limit': 920, 'floor': -45, 'fs': 76, 'tr': 0},
             'reels': {'limit': 844, 'floor': -30, 'fs': 78, 'tr': -1}}
     for fmt, w in want.items():
@@ -1723,7 +1748,7 @@ def check_track_parity():
     if ('limit = 920 if fmt' not in yml) or ('floor = -45 if fmt' not in yml):
         print('❌ 자간 기준 게이트 — thumb-make.yml fit_tracking 한도(920/-45) 표기 이탈 = 3면 동기 깨짐'); rc = 1
     if rc == 0:
-        print('✅ 자간 기준 게이트 — 판정 = 잉크폭 단일 기준(뷰어 actualBoundingBox = 서버 draw_t getbbox 축) · 한도 3면(뷰어 TRK · SPECS · 워크플로) 동일.')
+        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(오버레이 4 = 잉크/draw_t · 헤더 3 = advance/getlength) = 서버 렌더러와 1:1 · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0.')
     return rc
 
 

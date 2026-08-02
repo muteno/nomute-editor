@@ -1712,7 +1712,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     if (lines.length) {
       const sp = cur.fmt === 'reels' ? { fs: 78, lh: 96, lm: 101, ty: 1119 } : { fs: 76, lh: 89, lm: 85, ty: 822 };
       const trO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post').tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
-      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
+      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'ink'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
@@ -4097,25 +4097,29 @@ function buildEmphText() {
 })();
 // ---- 실시간 자간(tracking) 추정 — 워크플로 measure+sweep의 브라우저판 ----
 // 글자폭 = 1순위 캔버스 measureText 실측(웹폰트 advance = PIL getbbox·getlength와 ±0.3px 일치 실측 260716 — 숫자45·라틴~50·공백17 혼합폭까지 정확) · 폰트 미로드 시 2순위 레거시 상수(H/S/N · 한글 위주 근사) 폴백.
+// ⚑ basis = **폭 재는 자**(운영자 260802 "잴 때 항상 한개의 기준" · 축마다 서버 렌더러가 다른 자를 쓴다 = 축 안에서 하나로 통일한다)
+//   'ink' = 서버가 글자 **잉크폭**만큼 전진(오버레이 = nomute_overlay.draw_t `bb[2]-bb[0] + tp`)
+//   'adv' = 서버가 **advance**만큼 전진(헤더 = nomute_reels2 `font.getlength(ch)` · _line_width)
+//   → 이 한 글자를 바꾸면 힌트·미리보기 보정·발사 게이트·입력 클램프가 **일괄로** 그 자를 쓴다(소비처 전부 spec만 읽는다).
 const TRK = {
-  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
-  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30 },
+  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
+  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30, basis: 'ink' },
   // 진짜예요 오버레이 축(운영자 260728 "노뮤트때 나오는거랑 똑같이") — limit·start·floor = 노뮤트 동값 계승
   // (구 260726 폭 780/floor -45 축 폐기 · 서버 자간은 원래부터 노뮤트 fit_tracking을 받고 있었다 = 클라 힌트가 어긋나 있던 것).
   // fs 76만 진짜예요 고유(플레이그라운드 선택값) · H/S/N 폴백 = post(fs76) 상수 동값(같은 fs라 재계산 불요)
-  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30 },
-  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
+  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30, basis: 'ink' },
+  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
 };
 // 진짜예요 오버레이 좌표(운영자 플레이그라운드 선택값) — nomute_jinjja.OV_SPEC과 1:1 미러 · lm = 노뮤트 SPECS lm 계승(260728 좌측정렬 개정)
 // ctr = 가운데 정렬(릴스만 · 운영자 260730) · rm = 우 마지노선(워크플로 fit_tracking "post lm85/rm75 · reels lm101/rm135" 미러) = nomute_jinjja.OV_CENTER/OV_RM와 1:1
 const JJ_OV = { reels: { ty: 1214, fs: 76, lh: 96, lm: 101, rm: 135, ctr: true }, post: { ty: 856, fs: 76, lh: 96, lm: 85, rm: 75, ctr: false } };
 const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlength의 글자별 진행폭 미러 · 실패 = null(상수 폴백)
   let cx = null; const cache = new Map();
-  return (ch, fs) => {
+  return (ch, fs, basis) => {
     try {
       if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;   // 실폰트 로드 전 = 대체폰트 폭 오염 차단
       if (!cx) cx = document.createElement('canvas').getContext('2d');
-      const key = fs + ch;
+      const key = basis + fs + ch;
       if (cache.has(key)) return cache.get(key);
       cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
       const m = cx.measureText(ch);
@@ -4123,9 +4127,9 @@ const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlengt
       //   실렌더 정본 = nomute_overlay.draw_t → `bb = f.getbbox(ch); cx += bb[2]-bb[0] + tp` = **글자 잉크폭 + 자간**(advance 아님).
       //   구 `measureText().width`(= advance)는 잉크보다 넓어 힌트가 서버보다 항상 한 단 더 조여 나왔다(기준 2개 = 표기와 산출 불일치원).
       //   actualBoundingBoxLeft+Right = 캔버스의 잉크폭 = PIL getbbox 폭과 같은 축 · 미지원 엔진은 advance 폴백(종전 동작).
-      const w = (typeof m.actualBoundingBoxLeft === 'number' && typeof m.actualBoundingBoxRight === 'number')
-        ? Math.max(0, m.actualBoundingBoxLeft + m.actualBoundingBoxRight)
-        : m.width;
+      const w = (basis === 'adv' || typeof m.actualBoundingBoxLeft !== 'number' || typeof m.actualBoundingBoxRight !== 'number')
+        ? m.width                                                   // adv 축(헤더 = reels2 font.getlength) · 잉크 메트릭 미지원 폴백
+        : Math.max(0, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);   // ink 축(오버레이 = draw_t getbbox)
       cache.set(key, w); return w;
     } catch (_) { return null; }
   };
@@ -4147,13 +4151,14 @@ const _trkAdvW = (() => {   // 글자 **advance**(브라우저 배치폭) 캐시
 // 미리보기 자간 = **서버 폭 재현값**(운영자 260802 "두개의 기준에 다 맞추던지") — 판정 기준은 잉크(서버 draw_t) 하나로 통일했지만,
 //   브라우저는 글자를 advance로 배치하므로 같은 tr을 그대로 쓰면 미리보기만 Σ(adv−ink)만큼 넓게 그려진다(실측 16자 한 줄 = 143px).
 //   → 줄마다 `(Σink − Σadv)/(n−1)`를 자간에 더해 **렌더 폭 = 서버 산출 폭**으로 맞춘다(1080 좌표계 px · 폰트 미로드면 null = 종전 tr 그대로).
-function prevLetterSpace(line, tr, fs) {
+function prevLetterSpace(line, tr, fs, basis) {
+  if (basis === 'adv') return tr / 1000 * fs;   // adv 축(헤더) = 브라우저 배치와 서버가 같은 자 → 보정 0(그대로 tr)
   const plain = String(line).replace(/\*/g, '');
   const n = plain.length - 1;
   if (n < 1) return null;
   let ink = 0, adv = 0;
   for (const ch of plain) {
-    const i = _trkChW(ch, fs), a = _trkAdvW(ch, fs);
+    const i = _trkChW(ch, fs, 'ink'), a = _trkAdvW(ch, fs);
     if (i == null || a == null) return null;
     ink += i; adv += a;
   }
@@ -4163,7 +4168,7 @@ function lineWidthPx(text, tr, cfg) {   // Σ글자폭 + tp*(len-1) + 5 (fit_tra
   const plain = text.replace(/\*/g, '');
   let s = 0;
   for (const ch of plain) {
-    const w = _trkChW(ch, cfg.fs);
+    const w = _trkChW(ch, cfg.fs, cfg.basis);
     s += (w != null) ? w : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N);
   }
   return s + (tr / 1000 * cfg.fs) * Math.max(plain.length - 1, 0) + 5;
@@ -4190,9 +4195,9 @@ $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', '
 
 // ---- 릴스 헤더(부제/제목) 실시간 자간 — reels2 _fit_tr 추정(getlength 기준 · AVAIL 960) ----
 const HDR = {
-  sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45 },
-  title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45 },
-  jinjja: { H: 64.40, S: 15.89, N: 41.30, fs: 70, avail: 880, floor: -45, start: -10, emph: true },  // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
+  sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45, basis: 'adv' },
+  title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45, basis: 'adv' },
+  jinjja: { H: 64.40, S: 15.89, N: 41.30, fs: 70, avail: 880, floor: -45, start: -10, emph: true, basis: 'adv' },  // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
 };
 function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자폭 = 캔버스 실측 1순위(getlength 미러 · 260716)·상수 폴백
   // 강조 칸(cfg.emph = 진짜예요 문구)은 **별표를 폭 0**으로 본다(운영자 260730 "**는 자간 카운트에 포함 안되야하고") —
@@ -4203,7 +4208,7 @@ function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자
   const w = tr => {
     let s = 0;
     for (const ch of text) {
-      const cw = _trkChW(ch, cfg.fs);
+      const cw = _trkChW(ch, cfg.fs, cfg.basis);
       s += (cw != null) ? cw : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N);
     }
     return s + (tr / 1000 * cfg.fs) * Math.max(text.length - 1, 0);
@@ -4218,9 +4223,9 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   // 진짜예요 = 문구 1줄(제목칸만·부제는 로고가 대신) → HDR.jinjja(880/-10~-45) 단일 힌트. 노뮤트 = 종전 부제·제목 2줄.
   if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') {
     const j = estHeaderTr($(titleSel).value.trim(), HDR.jinjja);
-    el.textContent = j.over ? '· 축약필요(880 초과 — 자간 -45로도 안 들어감)' : (j.tr < -10 ? `· 자간${j.tr} 적용` : '');
+    el.textContent = j.over ? `· 축약필요(${HDR.jinjja.avail} 초과 — 자간 ${HDR.jinjja.floor}로도 안 들어감)` : (j.tr < HDR.jinjja.start ? `· 자간${j.tr} 적용` : '');   /* 표기 = spec 산출(운영자 260802 "정확히 표현도 된거지" · 구 하드코딩 '880/-45/-10'은 규격을 바꾸면 표기만 옛말로 남는 거짓말원) */
     el.classList.remove('on', 'over');
-    if (j.over) el.classList.add('over'); else if (j.tr < -10) el.classList.add('on');
+    if (j.over) el.classList.add('over'); else if (j.tr < HDR.jinjja.start) el.classList.add('on');
     return;
   }
   const s = estHeaderTr($(subSel).value.trim(), HDR.sub), t = estHeaderTr($(titleSel).value.trim(), HDR.title);
