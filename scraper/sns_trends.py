@@ -1868,6 +1868,65 @@ def _km_flight_json(html, key):
     return [it for it in arr if isinstance(it, dict)]
 
 
+# ⑭-c 재난 중대도 사다리(운영자 260802 "중대한 순서 > 최신") — 정본 축 = 행안부 재난문자방송 기준 및 운영규정의
+#   3단계 발령등급(위급재난 > 긴급재난 > 안전안내)이 1순위, 그 안에서 재난 유형 위험도가 2순위, 특보 등급이 3순위.
+#   유형명 = 원천 disasterKind(행안부 재난종별) 그대로 — 여기 표는 '순서'만 정한다(미등재 유형 = 중간값 = 새 유형에도 안 깨짐).
+DIS_LEVEL_RANK = {"위급재난": 3, "긴급재난": 2, "안전안내": 1}
+DIS_KIND_RANK = {
+    "민방공": 99, "화생방": 98, "경계경보": 97, "공습": 97, "핵": 96, "테러": 95, "방사능": 94, "방사성물질": 94,
+    "지진해일": 90, "지진": 89, "해일": 88,
+    "폭발": 80, "붕괴": 79, "화재": 78, "산불": 77, "산사태": 76, "침수": 75, "홍수": 74,
+    "태풍": 70, "호우": 69, "폭우": 69, "대설": 66, "폭설": 66, "강풍": 63, "풍랑": 62, "너울": 61,
+    "한파": 55, "폭염": 54, "가뭄": 52, "황사": 50, "미세먼지": 49, "건조": 47, "안개": 46,
+    "감염병": 45, "가축전염병": 43, "교통": 40, "도로": 39, "항공": 38, "해양": 37, "철도": 36,
+    "정전": 33, "단수": 32, "수도": 32, "통신": 31, "가스": 30, "산업": 28, "환경오염": 27,
+    "실종": 20, "기타": 10,
+}
+# 특보 등급 — 같은 유형 안에서의 세기(중대경보 > 경보 > 주의보 > 예비특보 > 해제)
+DIS_GRADE = (("중대경보", 4), ("경보", 3), ("주의보", 2), ("예비특보", 1), ("해제", 0))
+# 유형 미상(disasterKind='기타'·공란) 보정 — 본문에서 유형어를 주워 라벨을 살린다(원천 무변형 · 표시축만)
+DIS_TEXT_KIND = ("지진해일", "지진", "산불", "산사태", "침수", "홍수", "태풍", "호우", "폭우", "대설", "폭설",
+                 "강풍", "풍랑", "한파", "폭염", "가뭄", "황사", "미세먼지", "건조", "감염병", "실종",
+                 "정전", "단수", "화재", "폭발", "붕괴", "가스", "통신")
+
+
+def _dis_ts(s):
+    """ISO8601(+09:00) → epoch초. 파싱 실패 = 0(정렬 맨 뒤 · fail-soft)."""
+    try:
+        return datetime.fromisoformat((s or "").strip()).timestamp()
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def disaster_label(kind, text):
+    """⑭-c 재난문자 요약 라벨 — 운영자 260802 "내용을 풀어쓰지 말고 «지진 (규모 0.0)» «폭염 (경보)» 식으로".
+    반환 = (라벨, 유형, 중대도점수 0~99, 등급점수 0~4)."""
+    t = text or ""
+    k = (kind or "").strip()
+    if k in ("", "기타"):
+        k = next((w for w in DIS_TEXT_KIND if w in t), k or "기타")
+    rank = DIS_KIND_RANK.get(k)
+    if rank is None:   # 미등재 유형 = 중간값(새 재난종별이 들어와도 순서만 중간 · 라벨은 원천 이름 그대로)
+        rank = next((v for kk, v in DIS_KIND_RANK.items() if kk in k), 35)
+    qual, gr = "", 0
+    m = re.search(r"규모\s*([0-9]+\.?[0-9]*)", t)
+    if m:                                   # 지진 = 규모(운영자 지정 형식)
+        qual = "규모 " + m.group(1)
+    else:
+        for g, gv in DIS_GRADE:             # 기상 특보 = 등급
+            if g in t:
+                qual, gr = g, gv
+                break
+    if not qual:
+        # 폴백은 '행동'만 — 넓게 잡으면 본문 부사어를 주워 라벨이 거짓말한다(실측 260802: "수상안전 사고예방" → 「폭염 (사고)」)
+        m2 = re.search(r"(대피|통제)", t)
+        if m2:
+            qual = m2.group(1)
+    if qual == k:   # 「실종 (실종)」 같은 동어반복 컷
+        qual = ""
+    return (k + (f" ({qual})" if qual else ""), k, rank, gr)
+
+
 def disaster_km(limit=10):
     """⑭-b 재난문자 폴백 — Korea Monitor(koreamonitor.nangman.cloud) SSR 페이지.
     왜 = safetydata.go.kr이 GitHub 러너 IP를 막아 ⑭ 본선이 러너에서 죽는다(실측 260713) →
@@ -1884,9 +1943,14 @@ def disaster_km(limit=10):
             # 지역 = 광역 발령이면 원문이 10개까지 콤마로 붙어온다 → 뷰어 우측 열이 본문 열을 0폭으로 밀어버린다(260802 실렌더 실측)
             rg = [x.strip() for x in (it.get("region") or "").split(",") if x.strip()]
             area = rg[0] + (f" 외 {len(rg) - 1}곳" if len(rg) > 1 else "") if rg else ""
-            out.append({"title": msg[:200], "area": area,
-                        "level": (it.get("level") or "").strip(), "time": it.get("sentAt") or "",
+            lv = (it.get("level") or "").strip()
+            label, kind, rank, gr = disaster_label(it.get("disasterKind"), msg)
+            out.append({"title": label, "text": msg[:300], "kind": kind, "area": area,
+                        "level": lv, "time": it.get("sentAt") or "",
+                        # 중대도 = 발령등급(위급>긴급>안전안내) 1순위 · 유형 위험도 2순위 · 특보 등급 3순위
+                        "sev": DIS_LEVEL_RANK.get(lv, 1) * 1000 + rank * 10 + gr,
                         "url": "https://koreamonitor.nangman.cloud/"})
+        out.sort(key=lambda x: (-x["sev"], -_dis_ts(x["time"])))   # 중대한 순서 → 그 안에서 최신순(운영자 260802)
         return out[:limit]
     except Exception as e:  # noqa: BLE001
         print(f"::warning::재난문자 KM 폴백 실패(스킵): {e}", file=sys.stderr)
