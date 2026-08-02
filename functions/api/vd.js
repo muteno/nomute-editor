@@ -50,6 +50,7 @@ export async function onRequestPost({ request, env }) {
     res: ['portrait', 'portrait-4k'].includes(o.res) ? o.res : 'portrait',
     fps: ['24', '30', '60'].includes(String(o.fps)) ? String(o.fps) : '30',
     quality: ['draft', 'standard', 'high'].includes(o.quality) ? o.quality : 'standard',
+    pack: o.pack === 'on' ? 'on' : 'off',   // 숏폼 팩 동봉 — 렌더 플래그가 아니라 별개 산출 스위치(러너가 apps/shorts/make_shorts_pack.py 를 같은 큐 파일로 돌려 .md 를 mp4 옆에 얹는다)
   };
 
   const rl = await rateGate(GH, env.GH_TOKEN, 'vd-make.yml');   // 발사 레이트리밋(conv/track 동형 · fail-open)

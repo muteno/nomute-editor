@@ -116,8 +116,7 @@ def seedance_shots(fm, fact_list, hook):
     return "\n\n".join(out), ""
 
 
-def main():
-    src = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] != "--latest" else pick_latest()
+def build(src, out_dir, stem_name=False):
     if not os.path.isfile(src):
         die(f"입력 파일 없음: {src}")
     fm, body = parse(src)
@@ -140,9 +139,13 @@ def main():
     subs = sub_lines(script)
 
     now = datetime.now(KST)
-    slug = re.sub(r"[^\w가-힣]+", "", title)[:14] or "무제"
-    os.makedirs(OUT_DIR, exist_ok=True)
-    dst = os.path.join(OUT_DIR, f"{now:%y%m%d_%H%M}_{slug}_숏폼팩.md")
+    os.makedirs(out_dir, exist_ok=True)
+    if stem_name:
+        # 러너 경로 — 파일명 = 큐 파일 stem(= video/build.mjs `name` 동일) → R2에서 같은 잡의 mp4와 짝을 이룬다.
+        dst = os.path.join(out_dir, os.path.basename(src).replace(".md", "") + ".md")
+    else:
+        slug = re.sub(r"[^\w가-힣]+", "", title)[:14] or "무제"
+        dst = os.path.join(out_dir, f"{now:%y%m%d_%H%M}_{slug}_숏폼팩.md")
 
     pack = [
         f"# 숏폼 팩 — {title}",
@@ -169,6 +172,43 @@ def main():
         f.write("\n".join(pack) + "\n")
     print(f"[shorts] 완료 → {os.path.relpath(dst, ROOT)} (대본 {len(script)}자 ≈ {est:.0f}초 · 자막 {len(subs)}줄)")
     return dst
+
+
+def main():
+    # 인자 = ① --latest(큐 최신 1건 · 로컬 기본) ② --files a,b,c(러너 = api/vd.js 검증분 stem 목록) ③ 경로 직접
+    # --out DIR = 산출 위치(기본 _산출/). 러너는 video/out 을 준다 = R2 업로드 루프가 mp4와 같이 걷어간다.
+    argv = sys.argv[1:]
+    out_dir, files, stem = OUT_DIR, [], False
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--out" and i + 1 < len(argv):
+            out_dir = argv[i + 1]; i += 2
+        elif a == "--files" and i + 1 < len(argv):
+            stem = True
+            for f in argv[i + 1].split(","):
+                f = f.strip()
+                if not f:
+                    continue
+                if "/" in f or "\\" in f or ".." in f:   # 경로 탈출 차단 = api/vd.js·워크플로와 동형 최후 방어선
+                    die(f"잘못된 기사 이름: {f}")
+                files.append(os.path.join(QUEUE, f if f.endswith(".md") else f + ".md"))
+            i += 2
+        elif a == "--latest":
+            i += 1
+        else:
+            files.append(a); i += 1
+    if not files:
+        files = [pick_latest()]
+    made = []
+    for src in files:
+        if stem and not os.path.isfile(src):
+            print(f"[shorts] 건너뜀(큐 파일 없음): {os.path.basename(src)}", file=sys.stderr)
+            continue   # 러너 = 부분 성공 허용(vd-make '만들어진 것만 내보낸다' 축 동형)
+        made.append(build(src, out_dir, stem_name=stem))
+    if not made:
+        die("만들어진 팩이 0건")
+    return made
 
 
 if __name__ == "__main__":
