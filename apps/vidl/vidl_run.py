@@ -223,7 +223,7 @@ def pretty_rename(outdir, uid, title):
             os.rename(src, os.path.join(outdir, cand + dot + suf))
 
 
-def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post):
+def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post, desc=False):
     """다운로드 1회 — 파일명 = {TS}_{PLAT}_{tag}_{계정}_{제목}(bat 동일). 남은 예산으로 타임아웃 산정. rc 반환."""
     to = int(max(60, budget_left()))
     tag = f"{name_tag}_" if name_tag else ""
@@ -232,6 +232,8 @@ def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post):
     args = ["--ffmpeg-location", os.environ.get("FFMPEG_DIR", "/usr/bin"),
             "--trim-filenames", "120", "--windows-filenames",
             "-P", outdir, "-o", out, "-f", fmt, "--merge-output-format", "mp4", "-N", "4"] + extra + pl
+    if desc:
+        args.append("--write-description")   # 게시물 본문 동봉 재료(①본만 · 운영자 260803 "텍스트 내용도 가져오게") — caption_txt가 사후 1파일 승격
     if subs:
         args += ["--write-subs", "--write-auto-subs", "--sub-langs", SUBLANG, "--convert-subs", "srt"]
     else:
@@ -305,6 +307,35 @@ def stt_fallback(outdir):
             os.remove(wav)
         except OSError:
             pass
+
+
+def caption_txt(outdir):
+    """게시물 본문(텍스트) 동봉(운영자 260803 "다운로드 하게 되면 기본적으로 텍스트 내용도 가져오게").
+
+    재료 = ①본이 --write-description으로 받은 yt-dlp description(= X 트윗 전문 · TH/IG 캡션 · YT 설명 —
+    추가 요청 0 · 전문 규칙 정본 = scraper/sns_trends.py X 상세 축과 동일 내용물). 캐러셀은 슬라이드마다
+    같은 캡션이 N개 나오므로 첫 비어있지 않은 1개만 {TS}_{PLAT}_본문.txt로 승격하고 원본은 걷는다.
+    전 구간 fail-soft: 본문 없는 게시물 = 파일 미생성(종전과 동일 납품)."""
+    text = ""
+    for fn in sorted(os.listdir(outdir)):
+        if not fn.endswith(".description"):
+            continue
+        p = os.path.join(outdir, fn)
+        try:
+            if not text:
+                with open(p, encoding="utf-8", errors="replace") as f:
+                    text = f.read().strip()
+        except OSError:
+            pass
+        try:
+            os.remove(p)   # 원본 .description은 항상 걷는다(잔존 = R2에 중복 N개 올라감)
+        except OSError:
+            pass
+    if text:
+        dst = os.path.join(outdir, f"{TS}_{PLAT}_본문.txt")
+        with open(dst + ".tmp", "w", encoding="utf-8") as f:
+            f.write(text + "\n")
+        os.replace(dst + ".tmp", dst)
 
 
 def srt_to_txt(outdir):
@@ -478,16 +509,16 @@ def main():
     want_sub = MODE in ("both", "subs")
     want_vid = MODE in ("both", "video")
     if want_vid:
-        rc = download(url, outdir, "", "bv*+ba/b/best", [], ck_use, pl, subs=want_sub, post=post)
+        rc = download(url, outdir, "", "bv*+ba/b/best", [], ck_use, pl, subs=want_sub, post=post, desc=True)
         if rc != 0 and PLAT == "YT" and cookies:
             print("[재시도] 쿠키 달아 1회 재시도(연령제한·멤버십 가능성)", flush=True)
-            rc = download(url, outdir, "", "bv*+ba/b/best", [], cookies, pl, subs=want_sub, post=post)
+            rc = download(url, outdir, "", "bv*+ba/b/best", [], cookies, pl, subs=want_sub, post=post, desc=True)
             if rc == 0:
                 ck_use = cookies
     else:   # 자막만 — 영상 트랙을 아예 받지 않는다(--skip-download) = 몇 초면 끝난다
-        rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], ck_use, pl, subs=True, post=post)
+        rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], ck_use, pl, subs=True, post=post, desc=True)
         if rc != 0 and PLAT == "YT" and cookies:
-            rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], cookies, pl, subs=True, post=post)
+            rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], cookies, pl, subs=True, post=post, desc=True)
     VID_EXT = (".mp4", ".mkv", ".webm", ".mov", ".m4v")
     IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")   # 스레드 사진 게시물 = 이미지도 성과(260802 실측 — jpg 100% 받고도 영상 게이트에 걸려 실패 처리되던 것 교정)
     got = out_files(outdir)
@@ -509,6 +540,7 @@ def main():
                  f"bv*[{dimk}<=1080]+ba/b[{dimk}<=1080]")
         download(url, outdir, "1080p", f1080, [], ck_use, pl, subs=False, post=post)
 
+    caption_txt(outdir)   # 게시물 본문 .description → {TS}_{PLAT}_본문.txt 승격(전 모드 기본 동봉 · 운영자 260803) — 업로드 루프 전에 걷어야 .description 원본이 R2에 안 샌다
     stt = stt_fallback(outdir) if want_sub else {"on": False, "why": ""}   # 자막 0개 → Whisper 받아쓰기 폴백(비치명 · srt_to_txt 앞 = .stt.txt까지 동일 후처리) — [다운로드](영상만) 선택 시엔 안 돈다(3택 계약 · 260802)
     if stt["why"]:
         print(f"[받아쓰기] on={stt['on']} · {stt['why']}", flush=True)
