@@ -41,7 +41,15 @@ if os.path.isdir(os.path.join(ROOT, '.githooks')) and not os.environ.get('GITHUB
         if not _sp.run(['git', 'config', 'core.hooksPath'], cwd=ROOT,
                        capture_output=True, text=True).stdout.strip():
             _sp.run(['git', 'config', 'core.hooksPath', '.githooks'], cwd=ROOT, capture_output=True)
-            print('🔧 core.hooksPath=.githooks 자동 설정(최초 1회 · pre-commit 게이트 활성화)')
+            print('🔧 core.hooksPath=.githooks 자동 설정(최초 1회 · pre-commit·pre-push 게이트 활성화)')
+        # 실행권한 자동 복구(260802) — git은 **실행 불가 훅을 조용히 건너뛴다**(에러도 안 낸다).
+        #   훅 파일이 있는데 +x가 빠진 상태 = 게이트가 "있는 줄 알았는데 한 번도 안 돈" 최악의 사각
+        #   (자동 활성화가 막으려던 「조용한 미실행」과 정확히 같은 사고 · 아카이브 전개·복사 시 흔히 벗겨진다).
+        for _h in ('pre-commit', 'pre-push'):
+            _hp = os.path.join(ROOT, '.githooks', _h)
+            if os.path.isfile(_hp) and not os.access(_hp, os.X_OK):
+                os.chmod(_hp, os.stat(_hp).st_mode | 0o111)
+                print('🔧 .githooks/%s 실행권한 복구(+x) — git은 실행 불가 훅을 조용히 건너뛴다' % _h)
     except Exception:
         pass
 
