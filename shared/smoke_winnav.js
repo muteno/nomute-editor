@@ -14,7 +14,7 @@
 //          타이틀 15/800/ls-.2 · X = 30px 글래스 r9 + SVG 글리프 15px(문자 × 금지 = check_refs와 이중 방어) ·
 //          원문 이동 = 새탭(target=_blank·rel noopener) · #src(뉴스요약 원문) = 픽토그램 온리+ic-src 액티브 배선 실존 ·
 //          C6~C9 = 260717 잔차 통일과 동시 대기→코어 승격(운영자 "ㄱㄱ"): X·유틸 stroke 1.8 통일 · X 세로중심 Δ≤0.5 ·
-//          X 우측 여백 균일(17) · 원문 이동 = 픽토그램 통일(#tvOpen·#trefOpen = #src 계승)
+//          X 우측 여백 균일(광학 16 = 보더 제외 · 260802 전체창 합류로 산식 정밀화) · 원문 이동 = 픽토그램 통일(#tvOpen·#trefOpen = #src 계승)
 //   [대기] 잔여 0 — 다음 드리프트 등재 시 W번호·XPASS 승격 규약 재사용(FAIL이어도 exit 0 · PASS 뒤집힘 = 승격 경고 자동 출력).
 //
 // 리스크 통제: 기하(rect)+computedStyle+DOM 계약만 — 환경 간 스크린샷 베이스라인 diff 금지 ·
@@ -99,7 +99,7 @@ async function measureAll(pg) {
         const r = el.getBoundingClientRect(); const c = getComputedStyle(el);
         const svg = el.querySelector('svg');
         return {
-          w: rnd(r.width), h: rnd(r.height), rightGap: rnd(dr.right - r.right),
+          w: rnd(r.width), h: rnd(r.height), rightGap: rnd(dr.right - parseFloat(getComputedStyle(dlg).borderRightWidth || '0') - r.right),   // 광학 여백 = 보더 제외(보더선은 가시 경계 그 자체 — 3-4-1 광학-잉크 판정 동축) · 260802 영상 셸 전체창(border:none) 합류로 표면화: 구 박스 산식(dr.right−r.right)은 팝업 17(패딩16+보더1)/전체창 16으로 갈라져 C8이 보더 유무를 여백 차로 오검출했다 — 팝업·전체창 모두 광학 16 등가
           centerYDelta: rnd((r.top + r.height / 2) - (hr.top + hr.height / 2)),
           radius: c.borderRadius, tag: el.tagName,
           text: (el.textContent || '').trim(), isPicto: !!svg && !(el.textContent || '').trim(),

@@ -11,6 +11,10 @@
 # 산출 = R2 vidl_res/<id>/<파일명>(뷰어가 api/dl 프록시로 저장 = 로컬 다운로드 폴더) + 드라이브 '내 드라이브/Shared' 업로드
 #   (= bat의 robocopy 축 · GDRIVE_SA_JSON 있을 때만 · 실패는 비치명 = 로컬 저장은 계속) → viewer/vidl_out/<id>/result.json.
 # 골격 = apps/conv/conv_run.py 미러(die/r2/커밋 문법) · 드라이브 인증 = .github/scripts/drive_shared_guard.py 정본 계승.
+# 받아쓰기 폴백(운영자 260802 · Handy 개념 이식) — 플랫폼 자막이 0개면 ①본에서 Whisper STT로 srt/txt를 만들어
+#   같이 납품한다(X·틱톡 클립 대부분이 자막 없음 → ly 자막기 돌릴 때 STT 단계가 이미 끝나 있게).
+#   실행체 = .github/scripts/ly_stt.py 재사용(faster-whisper large-v3 · ly·edit·nb 공용 정본 — 모델·정밀도 창작 0).
+#   전 구간 fail-soft: 스킵·실패 = 영상만 납품(종전과 동일) · 사유는 result.json "stt"로 정직 표기.
 # 평의회 260729 반영: 서버 플랫폼 화이트리스트·총예산 데드라인·부분성공(루프 내 die 금지)·URL quote·절대경로·원자적 write·
 #   쿠키 부가본 계승·구분자 파싱·캐러셀 인덱스·드라이브 토큰 재발급·http_code 검증·동명 덮어쓰기·n=0 정직표기.
 import json
@@ -27,6 +31,9 @@ from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
 SUBLANG = "en,ko"           # bat v4.9 기본
+VID_EXT = (".mp4", ".mkv", ".webm", ".mov", ".m4v")
+STT_MAX_DUR = 600           # 받아쓰기 폴백 대상 상한(초) — ly 번인 길이 게이트와 동일 축(10분 · large-v3 CPU ~2x실시간)
+STT_RESERVE = 300           # STT 후 업로드 몫으로 남겨둘 예산(초) — 부족하면 영상 납품 우선·받아쓰기 생략
 PROBE_TO = 120             # 사전조회 1회 타임아웃(초)
 TOTAL_BUDGET = 1500        # 총 다운로드 예산(25분 — 스텝 캡 30분 내 업로드 여유 · 평의회5 P1)
 DRIVE_API = "https://www.googleapis.com/drive/v3"
@@ -230,6 +237,70 @@ def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post):
         return 1
 
 
+def ffprobe_dur(path):
+    """영상 길이(초) — 실패 = 0.0(받아쓰기 게이트가 스킵으로 처리)."""
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                            "-of", "default=nw=1:nk=1", path], capture_output=True, text=True, timeout=60)
+        return _fnum((r.stdout or "").strip())
+    except Exception:
+        return 0.0
+
+
+def _srt_tc(x):
+    """초 → SRT 타임코드(00:00:00,000)."""
+    x = max(0.0, float(x))
+    return f"{int(x // 3600):02d}:{int(x % 3600 // 60):02d}:{x % 60:06.3f}".replace(".", ",")
+
+
+def stt_fallback(outdir):
+    """자막 0개 → ①본 Whisper 받아쓰기 폴백(Handy 개념 이식 · 운영자 260802) → {stem}.stt.srt.
+    실행체 = .github/scripts/ly_stt.py(large-v3 정본 공용) · 전 구간 fail-soft = {"on": bool, "why": 사유}."""
+    files = out_files(outdir)
+    if any(f.endswith(".srt") for f in files):
+        return {"on": False, "why": ""}   # 플랫폼 자막 확보 = 폴백 불요(정상·무사유)
+    vids = ([f for f in files if f.endswith(VID_EXT) and "maxfps_" not in f and "1080p_" not in f]
+            or [f for f in files if f.endswith(VID_EXT)])   # ①본 우선(부가본 = 동일 음성 중복)
+    if not vids:
+        return {"on": False, "why": "영상 없음"}
+    src = os.path.join(outdir, vids[0])
+    dur = ffprobe_dur(src)
+    if not dur:
+        return {"on": False, "why": "길이 판독 실패 — 받아쓰기 생략"}
+    if dur > STT_MAX_DUR:
+        return {"on": False, "why": f"영상 {int(dur // 60)}분 — 받아쓰기는 {STT_MAX_DUR // 60}분 이하만"}
+    need = dur * 2.5 + 180   # large-v3 CPU ~2x실시간(ly 실측) + 모델 로드·오디오 추출 여유
+    if budget_left() - STT_RESERVE < need:
+        return {"on": False, "why": "시간 예산 부족 — 영상 납품 우선(받아쓰기 생략)"}
+    wav = "/tmp/vidl_stt.wav"   # 16kHz 모노(ly STEP 0-1 정본 미러)
+    try:
+        subprocess.run(["ffmpeg", "-y", "-i", src, "-vn", "-ar", "16000", "-ac", "1", wav],
+                       capture_output=True, timeout=300)
+        if not os.path.exists(wav):
+            return {"on": False, "why": "오디오 추출 실패(음성 트랙 없음?)"}
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        r = subprocess.run([sys.executable, os.path.join(root, ".github", "scripts", "ly_stt.py"), wav],
+                           capture_output=True, text=True, timeout=int(need))
+        segs = re.findall(r"^\[(\d+\.?\d*)-(\d+\.?\d*)\]\s*(\S.*)$", r.stdout or "", re.M)
+        if r.returncode != 0 or not segs:   # rc 3 = 세그먼트 0(ly_stt 정본) 포함
+            return {"on": False, "why": "받아쓰기 실패(음성 인식 불가)"}
+        srt = os.path.join(outdir, vids[0].partition(".")[0] + ".stt.srt")   # 첫 점 앞 = 영상과 같은 stem → pretty_rename 동반 개명
+        with open(srt + ".tmp", "w", encoding="utf-8") as f:
+            for i, (s0, e0, t0) in enumerate(segs, 1):
+                f.write(f"{i}\n{_srt_tc(s0)} --> {_srt_tc(e0)}\n{t0.strip()}\n\n")
+        os.replace(srt + ".tmp", srt)
+        return {"on": True, "why": f"자막 0개 → Whisper large-v3 받아쓰기 {len(segs)}조각"}
+    except subprocess.TimeoutExpired:
+        return {"on": False, "why": "받아쓰기 시간 초과 — 영상만 납품"}
+    except Exception as e:
+        return {"on": False, "why": f"받아쓰기 실패({str(e)[:40]})"}
+    finally:
+        try:
+            os.remove(wav)
+        except OSError:
+            pass
+
+
 def srt_to_txt(outdir):
     """자막 후처리(bat v4.9 미러) — 번호·타임코드·태그 제거 + 연속 중복 접기 → 같은 이름 .txt."""
     for fn in os.listdir(outdir):
@@ -417,7 +488,7 @@ def main():
         fail_msg = "영상 다운로드 실패 — 주소·연령 제한·로그인 전용 여부를 확인해줘."
     else:
         ok = any(f.endswith((".srt", ".vtt")) for f in got)      # 자막만 모드 = 자막 존재가 성공 게이트(rc는 영상 스킵 탓에 흔들린다)
-        fail_msg = "이 영상엔 자막이 없어 — 자막 없이 영상만 받으려면 [다운로드]를 눌러줘."
+        fail_msg = "이 영상엔 플랫폼 자막이 없어 — [다운로드+자막]으로 받으면 영상과 함께 받아쓰기(STT) 자막을 만들어줘."
     if not ok:
         die(fail_msg, f"yt-dlp 실패(mode={MODE}): {url}")
 
@@ -430,6 +501,9 @@ def main():
                  f"bv*[{dimk}<=1080]+ba/b[{dimk}<=1080]")
         download(url, outdir, "1080p", f1080, [], ck_use, pl, subs=False, post=post)
 
+    stt = stt_fallback(outdir) if want_sub else {"on": False, "why": ""}   # 자막 0개 → Whisper 받아쓰기 폴백(비치명 · srt_to_txt 앞 = .stt.txt까지 동일 후처리) — [다운로드](영상만) 선택 시엔 안 돈다(3택 계약 · 260802)
+    if stt["why"]:
+        print(f"[받아쓰기] on={stt['on']} · {stt['why']}", flush=True)
     srt_to_txt(outdir)
     meta = best or fpsb or fhd or {}   # 예쁜 이름 재료 = 사전조회 부산물(추가 호출 0) · 전부 실패면 짧은 id 이름 그대로 유지
     pretty_rename(outdir, meta.get("uid", ""), meta.get("title", ""))
@@ -484,7 +558,8 @@ def main():
     odir = os.path.join(root, "viewer", "vidl_out", vid_id)
     os.makedirs(odir, exist_ok=True)
     doc = {"plat": PLAT, "ts": TS, "mode": MODE, "best": best, "fps": fpsb if get_fps else None,
-           "fhd": fhd if get_1080 else None, "files": files, "up_err": up_err, "drive": drive}
+           "fhd": fhd if get_1080 else None, "files": files, "up_err": up_err, "drive": drive,
+           "stt": stt}   # mode(3택 260802) + 받아쓰기 폴백 정직 표기(additive — 뷰어 파서는 미지 키 무시)
     dst = os.path.join(odir, "result.json")
     with open(dst + ".tmp", "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False)

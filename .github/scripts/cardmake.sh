@@ -41,7 +41,7 @@ CARD_FAIL_RETRY_MAX="${CARD_FAIL_RETRY_MAX:-0}"   # 운영자 260722: 3→0 = �
 cur_fails() { grep -o '"fails":[[:space:]]*[0-9]\+' "cards/$1/status.json" 2>/dev/null | grep -o '[0-9]\+$' | head -1; }   # 현재 실패 누적(없으면 빈 문자열 · \+ = 같은 파일 grep 관례 통일)
 GVER="$(guidelines_version card)"
 GBLOCK="$(guidelines_block card)"
-echo "지침 버전(card): ${GVER} / MODE=${MODE}"
+echo "지침 버전(card): ${GVER} / MODE=${MODE} / CARD_COV_GUARD=${CARD_COV_GUARD:-unset}"
 
 git config user.name  "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -449,7 +449,7 @@ $(cat "/tmp/${stem}.cards.tmp")
     cov_out="$(python3 .github/scripts/card_gate.py coverage "$q" "cards/$stem/cards.md" 2>&1)"; cov_rc=$?
     printf '%s\n' "$cov_out" > "cards/$stem/coverage.log"
     [ $cov_rc -eq 2 ] && echo "::warning::[$stem] 요약→카드 알맹이 누락 의심(고신호 ≥2) — 슛 전에 '텍스트만 수정'으로 복원 검토: $(printf '%s' "$cov_out" | grep -m1 'COV 플래그')"
-    # ── 커버리지 가드(기본 OFF · CARD_COV_GUARD='1' 카나리아 · 운영자 260705 "카드도 지침 잘 따르게 검증 스위치" · 평의회 10인 반영) ──
+    # ── 커버리지 가드(기본 ON · 승격 260802 카나리아 5건 실측 — 끄기 = repo 변수 CARD_COV_GUARD를 '1' 외 값(off 권장)으로 · 운영자 260705 "카드도 지침 잘 따르게 검증 스위치" · 평의회 10인 반영) ──
     #   고신호 알맹이(나이·형량·금액·인원·식별자) 증발 ≥2(cov_rc=2)일 때만, 누락 목록을 최종 지시로 붙여 1회 회수 재생성.
     #   프롬프트 = fp_base + 회수 지시 *서픽스*(지침 GBLOCK 프리픽스 캐시 보존 — LINT/STRICT의 프리픽스 방식과 다른 건 의도·평의회3).
     #   웹도구 = 차단(원료가 프롬프트 안에 전량 = 검색 효용 0·날조 벡터 차단 · 요약 가드와 정책 통일·평의회10).
@@ -501,6 +501,7 @@ PY
           if [ -z "$why" ]; then
             cp "/tmp/${stem}.cards.cov" "cards/$stem/cards.md"
             printf '%s\n' "$cov2_out" > "cards/$stem/coverage.log"
+            printf 'COV 회수본 채택 — 고신호 %s→%s·플래그 %s→%s (CARD_COV_GUARD)\n' "$hs1" "$hs2" "$tf1" "$tf2" >> "cards/$stem/coverage.log"
             echo "  ✓ 회수본 채택 — 고신호 ${hs1}→${hs2}건·플래그 ${tf1}→${tf2}건·카드 ${n0}장 유지·신규숫자 0·lint 통과"
           else
             echo "  🩹 회수본 검증 실패(${why%· }) — 원본 유지(fail-soft)"

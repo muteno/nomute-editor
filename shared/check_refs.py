@@ -41,7 +41,15 @@ if os.path.isdir(os.path.join(ROOT, '.githooks')) and not os.environ.get('GITHUB
         if not _sp.run(['git', 'config', 'core.hooksPath'], cwd=ROOT,
                        capture_output=True, text=True).stdout.strip():
             _sp.run(['git', 'config', 'core.hooksPath', '.githooks'], cwd=ROOT, capture_output=True)
-            print('🔧 core.hooksPath=.githooks 자동 설정(최초 1회 · pre-commit 게이트 활성화)')
+            print('🔧 core.hooksPath=.githooks 자동 설정(최초 1회 · pre-commit·pre-push 게이트 활성화)')
+        # 실행권한 자동 복구(260802) — git은 **실행 불가 훅을 조용히 건너뛴다**(에러도 안 낸다).
+        #   훅 파일이 있는데 +x가 빠진 상태 = 게이트가 "있는 줄 알았는데 한 번도 안 돈" 최악의 사각
+        #   (자동 활성화가 막으려던 「조용한 미실행」과 정확히 같은 사고 · 아카이브 전개·복사 시 흔히 벗겨진다).
+        for _h in ('pre-commit', 'pre-push'):
+            _hp = os.path.join(ROOT, '.githooks', _h)
+            if os.path.isfile(_hp) and not os.access(_hp, os.X_OK):
+                os.chmod(_hp, os.stat(_hp).st_mode | 0o111)
+                print('🔧 .githooks/%s 실행권한 복구(+x) — git은 실행 불가 훅을 조용히 건너뛴다' % _h)
     except Exception:
         pass
 
@@ -1700,17 +1708,45 @@ _TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[
 #   ⚠ 구 술어 `:not(:has(button:not([hidden])))`는 숨은 옵션 컬럼 안의 ‹›·체브론까지 세어 빈 유리조각이 상주했다(실측 260802).
 #   프리픽스(.cpprev / .geni-prev / .pvsec / .monwrap)·id(#cpRail / #geniRail)는 표면마다 달라 **술어 문자열만** 잰다.
 _TRAIL_EMPTY_PRED = ':not(:has(.trail-g>button:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'
-_TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
-                   'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
+#   thumb만 정밀 술어(be9856f 260802 — 사진 도구가 .trail-g 직계 button이 아니라 .cpv-tool이고, 숨은 옵션 컬럼의 ‹›까지
+#   세어 6px 껍데기가 상주[실측 rails[1].w=6] → 판정을 「보이는 도구·보이는 값 그룹」으로 좁힌 표면별 정본).
+#   게이트가 이 개정을 미추적해 main 적색이던 드리프트 봉합(260802) — 타 표면 = 직계 button 정본 유지.
+_TRAIL_EMPTY_PRED_BY = {'viewer/thumb.html': ':not(:has(.trail-g.cpv-tool:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'}
+_TRAIL_SURFACES_DECL = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
+                        'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')
+
+
+def _trail_surfaces():
+    """레일 보유 표면 = **자동 발견**(운영자 260802 "항상 이미지 스튜디오나 영상 스튜디오는 저 로직을 따르게 만드셈 죽는 한이 있더라도").
+    구조 = 손으로 관리하는 레지스트리는 **새 스튜디오 탭이 생기면 조용히 빠진다**(260802 실측: edit·k·song·vd가
+    「비슷하게 생긴」 상태로 몇 세대를 지났다). 그래서 등재 여부가 아니라 **마크업 사실**로 대상을 정한다 —
+    `viewer/*.html` 중 `class="trail`(레일 캡슐)을 가진 파일은 **전부** 이 게이트를 받는다.
+    선언 목록(_TRAIL_SURFACES_DECL)은 사라진 표면을 잡는 역방향 안전망으로만 남긴다."""
+    found = []
+    for path in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = 'viewer/' + os.path.basename(path)
+        try:
+            html = open(path, encoding='utf-8').read()
+        except Exception:
+            continue
+        if re.search(r'class="trail[ "]|class="trail\b', html):
+            found.append(rel)
+    return tuple(found)
+
+
+_TRAIL_SURFACES = _trail_surfaces()   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
 #   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
 
 
 # ── 자간(tracking) 측정 기준 단일화 게이트 (운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자") ──
-#   왜 = 힌트(뷰어)와 산출(서버)이 **다른 자로 재고 있었다**: 서버 draw_t는 글자 잉크폭(getbbox)만큼 전진하는데
-#   뷰어는 canvas advance(measureText().width)를 썼다 → 같은 문구에 뷰어만 −41을 요구(실측 16자 Σadv 960.7 vs Σink 818).
-#   계약 = ① 판정 기준 = **잉크폭 하나**(뷰어 = actualBoundingBoxLeft+Right) ② 한도 상수 = 서버 SPECS·limit·floor와 py↔js 동일.
+#   계약 = ① 판정 자 = **advance 하나**(뷰어 = measureText().width · 서버 오버레이 = draw_t `getbbox(ch)[2]-[0]` ≈ advance 반올림
+#   · 서버 헤더 = reels2 `font.getlength`) ② 한도 상수 = 서버 SPECS·limit·floor와 py↔js 동일.
+#   ⚠ 오진 교정(운영자 260802 3차 "자간이 무한정 줄어서") — 2차 게이트는 "서버 draw_t = 잉크폭 전진"을 전제로 뷰어에
+#   actualBoundingBox(진짜 잉크 · 공백 0)를 강제했으나 PIL 실측 반증: 단일 글자 getbbox 폭 = advance 반올림(공백 17.7→18 ·
+#   '가' 71.8→72)이고, 자간을 실제로 정하는 fit_tracking measure(렌더 알파 bbox)도 Σadv ±4px('신림 상가에서 화재' 611 vs 610).
+#   잉크 강제가 미리보기 공백 실종·자간 무한 압착의 진범이라 advance로 원복 — 이 게이트는 그 재발(잉크 축 회귀)을 막는다.
 def check_track_parity():
-    """자간 판정 = 잉크폭 단일 기준 + 한도 상수 py↔js 동일(운영자 260802). 이탈 = rc=1."""
+    """자간 판정 = advance 단일 기준 + 한도 상수 py↔js 동일(운영자 260802 3차). 이탈 = rc=1."""
     rc = 0
     try:
         js = open(os.path.join(ROOT, 'viewer', 'thumb.html'), encoding='utf-8').read()
@@ -1718,14 +1754,14 @@ def check_track_parity():
         ov = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_overlay.py'), encoding='utf-8').read()
     except Exception as e:
         print('❌ 자간 기준 게이트 — 파일 열기 실패: %s' % e); return 1
-    if 'actualBoundingBoxLeft' not in js or 'actualBoundingBoxRight' not in js:
-        print('❌ 자간 기준 게이트 — 뷰어가 잉크폭(actualBoundingBox*)을 안 쓴다 = advance 기준 회귀(서버 draw_t와 다른 자)'); rc = 1
-    # 축별 자(basis) 선언 = 서버 렌더러와 1:1 — 오버레이(draw_t 잉크) ink / 헤더(reels2 getlength) adv
-    BASIS = {'post': 'ink', 'reels': 'ink', 'jjpost': 'ink', 'jjreels': 'ink'}
+    if 'measureText' not in js:
+        print('❌ 자간 기준 게이트 — 뷰어가 measureText(advance)를 안 쓴다 = 서버 자(draw_t getbbox ≈ advance)와 다른 자'); rc = 1
+    # 축별 자(basis) 선언 = 서버 렌더러와 1:1 — 오버레이(draw_t getbbox ≈ advance)·헤더(reels2 getlength) 전부 adv
+    BASIS = {'post': 'adv', 'reels': 'adv', 'jjpost': 'adv', 'jjreels': 'adv'}
     for ax, want_b in BASIS.items():
         m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
         if not m or m.group(1) != want_b:
-            print("❌ 자간 기준 게이트 — TRK.%s basis=%s ≠ 서버 축(%s · 오버레이 = draw_t 잉크폭)" % (ax, m.group(1) if m else '없음', want_b)); rc = 1
+            print("❌ 자간 기준 게이트 — TRK.%s basis=%s ≠ 서버 축(%s · 오버레이 = draw_t getbbox ≈ advance · 잉크 축 회귀 = 공백 실종 미리보기 재발)" % (ax, m.group(1) if m else '없음', want_b)); rc = 1
     for ax in ('sub', 'title', 'jinjja'):
         m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
         if not m or m.group(1) != 'adv':
@@ -1742,7 +1778,7 @@ def check_track_parity():
     except Exception:
         pass
     if jj and 'getbbox' not in jj:
-        print('❌ 자간 기준 게이트 — nomute_jinjja 오버레이 폭이 잉크(getbbox) 축이 아니다 = jj* basis(ink) 어긋남'); rc = 1
+        print('❌ 자간 기준 게이트 — nomute_jinjja 오버레이 폭이 draw_t와 같은 자(getbbox ≈ advance)가 아니다 = jj* 축 어긋남'); rc = 1
     if re.search(r"880 초과|자간 -45로도 안 들어감", js):
         print('❌ 자간 기준 게이트 — 힌트 문구에 한도·하한이 하드코딩됐다(규격 변경 시 표기만 옛말로 남는다) → spec 산출로 바꿔라'); rc = 1
     want = {'post': {'limit': 920, 'floor': -45, 'fs': 76, 'tr': 0},
@@ -1762,7 +1798,7 @@ def check_track_parity():
     if ('limit = 920 if fmt' not in yml) or ('floor = -45 if fmt' not in yml):
         print('❌ 자간 기준 게이트 — thumb-make.yml fit_tracking 한도(920/-45) 표기 이탈 = 3면 동기 깨짐'); rc = 1
     if rc == 0:
-        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(오버레이 4 = 잉크/draw_t · 헤더 3 = advance/getlength) = 서버 렌더러와 1:1 · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0.')
+        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(오버레이 4 + 헤더 3 = 전부 advance = 서버 draw_t getbbox·getlength와 1:1) · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0.')
     return rc
 
 
@@ -1789,9 +1825,10 @@ def check_trail_spec():
             if miss:
                 print('❌ 코너 레일 사본 드리프트 — %s 「%s」 누락: %s → 정본(CII 「미리보기 코너 옵션 레일」) 값 그대로 계승하라'
                       % (rel, ax, ', '.join(miss))); rc = 1
-        if _TRAIL_EMPTY_PRED not in re.sub(r'\s+', '', css):   # 빈 캡슐 소거 술어(표면 공통 · 프리픽스·id는 자유)
+        pred = _TRAIL_EMPTY_PRED_BY.get(rel, _TRAIL_EMPTY_PRED)   # 빈 캡슐 소거 술어(표면별 정본 · 프리픽스·id는 자유)
+        if pred not in re.sub(r'\s+', '', css):
             print('❌ 코너 레일 게이트 — %s 빈 캡슐 소거 술어 미보유/이탈 → `…%s` 그대로 계승하라'
-                  % (rel, _TRAIL_EMPTY_PRED)); rc = 1
+                  % (rel, pred)); rc = 1
     if rc == 0:
         print('✅ 코너 레일 게이트 — %d표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).'
               % (len(_TRAIL_SURFACES), len(_TRAIL_AXES)))
@@ -2366,7 +2403,7 @@ def main():
     except Exception as e:
         print('⚠️ 이미지 스튜디오 도크 규격 게이트 스킵:', e)
     try:
-        if check_track_parity() != 0:   # 자간 판정 기준 단일화(운영자 260802 — 뷰어 잉크폭 = 서버 draw_t 축 · 한도 3면 동일)
+        if check_track_parity() != 0:   # 자간 판정 기준 단일화(운영자 260802 3차 — 뷰어 advance = 서버 draw_t 자 · 한도 3면 동일)
             rc = 1
     except Exception as e:
         print('⚠️ 자간 기준 게이트 스킵:', e)

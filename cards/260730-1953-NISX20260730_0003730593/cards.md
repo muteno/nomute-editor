@@ -1,31 +1,31 @@
-# 반 토막 앞에서 처음 눌린 매수 버튼
+# 📉 반 토막 난 하이닉스, 최태원이 처음 산 48억
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 자본·지배구조·시장 신호를 다루는 무게라 극화의 선명한 선과 명암이 맞다
-- 분위기: 늦은 저녁 실내의 무거운 정적. 환호도 분노도 없이, 숫자판 앞에서 결정이 내려지는 냉정함과 그 아래 깔린 초조함
-- 연출 방향: 독자훅 = 반 토막 계좌를 들고 버틴 개인 투자자의 억울함 섞인 초조함이 '총수가 이제서야 산다'에서 멈춘다. 전할 관점 = 신호의 크기와 실체의 크기가 벌어져 있다는 것. 그래서 강조점은 '숫자와 사람의 낙차' — 298만7000원과 132만2000원이 같은 화면에 걸린 전광판, 0주로 비어 있던 칸, 처음 눌린 매수 버튼 위의 손끝. 사람의 표정보다 사람과 숫자 사이의 거리를 잡는다. 카드 전체가 공유할 키노트 = 차가운 청색 실내광 + 붉게 꺾인 하강선 하나만 살아 있는 단색 화면
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 3620주라는 숫자만 던지고 그게 처음이라는 사실은 미공개)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 신호의 크기와 실체의 크기가 벌어진 자리를 다음 메모리 사이클이 답한다
-- 연속성 앵커: Recurring subject — a Korean man in his 60s with short neatly combed graying hair, heavy-set build, wearing a dark navy suit with a plain tie / Recurring place — a dim high-floor corporate office at night with a large stock display board on the wall
+- 화풍: B 극화 — 자본·지배구조·시장 신호를 냉정히 해부하는 사건이라, 온기 없는 선과 명암이 필요하다.
+- 분위기: 위로와 의심 사이에 멈춘 초조함. 환호도 규탄도 없는, 숫자만 남은 차가움.
+- 연출 방향: 독자(반 토막 계좌를 들고 버틴 개인 투자자)가 멈추는 지점은 '총수가 이제서야 산다'는 순서다 — 최고가 298만7000원이 아니라 132만2000원에서 처음 눌린 손끝, 그 값을 보는 눈에 강조점을 건다. 전하려는 것은 💡 신호의 크기와 실체의 크기가 벌어져 있다는 관점이라, 화면 어디에도 승패를 확정하는 표정을 두지 않는다. thumb_dispatch의 차가운 실내 저조도 톤과 무거운 거리감만 비주얼 키노트로 상속하고, 앵글은 카드마다 분산한다.
+- 독자 동선: **발단** 카드1(최고가에서 반 토막까지) → **전개** 카드2(7월 30일, 3620주·48억 첫 매수) → **피크** 카드3(그 값을 계좌로 버틴 사람) → **해소** 카드4(책임경영·저평가 판단과 발언) → **시사점** 카드5(48억이 못 바꾸는 것과 시장이 보는 것) · 훅=카드1 끝(단서형 — '첫 매수'의 주어를 유보)+카드2 끝(단서형 숫자 '0주') · 착지 한 줄 요지 = 48억은 지분율을 못 바꾸지만, 시장이 보는 건 그가 처음 자기 돈을 넣은 자리다.
+- 연속성 앵커: Recurring subject — a Korean man in his 60s with short salt-and-pepper hair, rimless glasses, wearing a dark navy suit and a plain tie / 반복 장소: a wide pavement in a Seoul financial district under a tall outdoor market-index board.
 
 ### [카드 1]
 **텍스트**
 ```text
-지난 6월 25일 298만7000원.
-사상 최고가였다.
-한 달여 뒤 종가는 132만2000원.
-그 자리에서 *3620주가 찍혔다*.
+지난 6월 25일 298만7000원,
+하이닉스는 사상 최고가를 썼다.
+*한 달여 만에 절반 아래로 내려앉았다.*
+그리고 그 자리에서 첫 매수가 나왔다.
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the long red line snapping downward across the board, and one small figure standing far below it. A dim high-floor corporate office at night with a large stock display board on the wall dominates the upper frame, its chart peaking at the top left then plunging down to the right. A single man in a dark suit stands small at the lower left edge of the room, seen from behind, looking up at the falling line. No other surface than this office wall fills the frame.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from high angle shot, looking down, vulnerable subject, small, observed, shot on 20mm wide lens, subject and environment, documentary realism
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (the story's symbolic red of the falling chart line), film-noir low-key lighting, deep shadows
-Text handling: avoid all incidental lettering; the chart is rendered as a pure line and grid with no numerals, no labels, no ticker text.
+Scene: Emotional focal point: a chin tilted up and lips slightly parted, the eyes tracking a line that drops off the top edge of the board. Three office workers stand still on a wide pavement in a Seoul financial district, seen from below so their upturned faces sit high in the frame, all looking the same direction with bags hanging low at their sides. Behind and above them a tall outdoor market-index board carries one steep descending curve that runs from its upper left corner down toward the right. Late afternoon under a heavy overcast sky, glass towers rising behind them, nose room on the right, gaze directed toward the right edge.
+Camera: wide shot from a low angle, shot on 24mm wide lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the descending curve on the board, muted daylight contrast
+Korean setting. Text handling: the index board shows only a graphic curve and no legible characters; all incidental signage is cropped out of frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office wall with the display board) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the overcast sky) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-SK하이닉스 주가 전광판 하락
+SK하이닉스 주가 전광판
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그 3620주를 산 사람은
-최태원 SK그룹 회장이다.
-개인 자격으로 하이닉스 주식을
-*산 것은 이번이 처음이다*.
+산 사람은 최태원 SK그룹 회장이었다.
+7월 30일 보통주 3620주를 사들였다.
+약 48억원, 그의 첫 개인 매수였다.
+*그전까지 그의 보유분은 0주였다.*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his steady unwavering eyes fixed straight ahead, jaw set. Recurring subject — a Korean man in his 60s with short neatly combed graying hair, heavy-set build, wearing a dark navy suit with a plain tie stands alone in the upper center of the frame, one hand adjusting his tie. Behind him the wall of the dim high-floor corporate office at night carries the faint glow of the display board, out of focus. His body faces the viewer and his gaze holds the camera without flinching.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, balanced emotion, three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (the story's symbolic red glow from the board behind him), film-noir low-key lighting, deep shadows
-Text handling: the blurred board behind carries only soft glowing shapes; avoid all lettering, numerals and signage.
+Scene: Emotional focal point: his jaw set and lips pressed in a tightly controlled face, one fingertip resting still on the edge of a monitor. Recurring subject — a Korean man in his 60s with short salt-and-pepper hair, rimless glasses, wearing a dark navy suit and a plain tie — sits alone at a broad desk in a quiet executive office, turned three-quarters away from the viewer, his eyes on a trading screen that shows a plain descending line. A single blank order sheet lies squared on the desk in front of him, untouched. Plain wall panelling behind him with the blinds drawn, nose room on the right, gaze directed toward the right edge.
+Camera: medium close-up from eye level, three-quarter angle, shot on 85mm portrait lens
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the line on the screen, muted daylight contrast
+Korean setting. Text handling: the screen shows only a graphic line and the order sheet is blank; no legible characters anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office wall panelling) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최태원 SK 회장
+최태원 회장 집무실 책상
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-그동안 SK는 중간지주사
-SK스퀘어를 통해 하이닉스를
-지배해 왔다. 최 회장 개인 칸은
-*0주로 비어 있었다*.
+*매수가 찍힌 값은 132만2000원이다.*
+그날도 5.64% 더 빠진 뒤였다.
+그 구간을 계좌로 버틴 사람들이 있다.
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: an empty ruled row on the paper, waiting, with one fingertip resting just beside it. A single document lies flat on a dark desk, its ownership table drawn as clean ruled rows and columns, every row filled with tone except one that stays blank. A man's hand in a dark navy suit cuff enters from the upper right and one finger points at that blank row, the rest of him out of frame. The desk surface fills the whole frame from edge to edge.
-Camera: extreme close-up, single detail, eye, lips, hand, texture from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: warm soft desk-lamp light, quiet wistful tone
-Accent: monochrome desaturated base with a single color accent (the story's symbolic red marking the empty row), film-noir low-key lighting, deep shadows
-Text handling: the document is shown as ruled lines and blank cells only, cropped so no readable words appear; no numerals, no letters, no stamps with script.
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything while the jaw hangs slack. A Korean man in his late thirties in a creased office shirt fills the frame from the chest up, sitting alone in a small dim room at night, his phone held low and forgotten in one loose hand so its cold glow catches only the underside of his knuckles. Behind him is the bare flat wall of a small apartment, nothing else in the room.
+Camera: tight close-up from a Dutch angle, shot on 135mm telephoto lens
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the phone glow on his knuckles, film-noir low-key lighting, deep shadows
+Korean setting. Text handling: the phone screen is turned away and shows no characters; no signage, no documents in frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the bare apartment wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +96,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-SK스퀘어 지배구조 지분
+개인투자자 주식 앱 하락
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-*"가만히 갖고 있는 게*
-*재산 보전에 좋은 방법"*
-그 말을 한 사람이 급락 앞에서
-처음 매수 버튼을 눌렀다.
+회사는 이 매수를 책임경영이라고 했다.
+지나친 저평가라는 판단이 깔렸다.
+*그는 "가만히 갖고 있으라"고 했다.*
+말과 행동의 방향이 같아졌다.
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the fingertip pressed down and held on the key, knuckle taut. Recurring subject — a Korean man in his 60s with short neatly combed graying hair, heavy-set build, wearing a dark navy suit with a plain tie is seen only from the chest down as he leans over the desk, his single extended finger pushing one key on a keyboard, eyes off frame. The dim high-floor corporate office at night surrounds him, the desk running unbroken across the frame.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (the story's symbolic red glowing on the pressed key), film-noir low-key lighting, deep shadows
-Text handling: the keyboard keys and any screen edge are shown blank or cropped out; no numerals, no letters, no interface text anywhere.
+Scene: Emotional focal point: the steady set of his mouth mid-sentence, chin level and unmoving. Recurring subject — a Korean man in his 60s with short salt-and-pepper hair, rimless glasses, wearing a dark navy suit and a plain tie — stands at a lectern in profile with one hand laid flat on its top, speaking toward a tight cluster of microphones. The darkened hall behind him holds rows of seats that recede into shadow, no audience faces readable.
+Camera: medium shot from a low angle, profile view, shot on 50mm standard lens
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the microphone heads, film-noir low-key lighting, deep shadows
+Korean setting. Text handling: the lectern front and the wall behind carry no lettering, no logos, no banner text of any kind.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark backdrop wall of the hall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-장내매수 주식 거래 단말기
+최태원 회장 발언 마이크
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-회사는 책임경영이라 했지만
-48억원은 지분율에서
-소수점 아래에 앉는 돈이다.
-*신호는 컸고 실체는 작았다*.
+48억원으로 주가는 돌아오지 않는다.
+그래도 시장이 이 매수를 들여다본다.
+그가 처음 자기 돈을 넣은 자리라서다.
+*그 판단이 맞았는지는 주가가 답한다.*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the vast dark distance between one small standing figure and the enormous board above him. Recurring subject — a Korean man in his 60s with short neatly combed graying hair, heavy-set build, wearing a dark navy suit with a plain tie stands tiny and alone at the center of the dim high-floor corporate office at night, facing the viewer straight on with a steady unwavering gaze. The huge display board fills the wall above and behind him, its single red line still bent downward, and one faint short upward tick sits near the bottom of that line.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Scene: Emotional focal point: his eyes meeting the viewer straight on, steady and unwavering, giving nothing away. Recurring subject — a Korean man in his 60s with short salt-and-pepper hair, rimless glasses, wearing a dark navy suit and a plain tie — stands alone and small at the center of a wide empty pavement in a Seoul financial district before dawn, facing the camera front-on with his hands at his sides. The tall outdoor market-index board above and behind him is dark and blank except for one thin lit line running across it. Wet asphalt holds the reflection of a lone streetlight.
+Camera: wide shot from eye level, front-on, shot on 35mm lens
 Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (the story's symbolic red of the chart line), film-noir low-key lighting, deep shadows
-Text handling: the board shows only a line and grid; avoid all numerals, labels, tickers and signage lettering.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the thin lit line on the dark board, muted daylight contrast
+Korean setting. Text handling: the board is blank apart from one graphic line; no legible characters, no shop signage in frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office wall with the display board) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the empty pre-dawn street) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -159,5 +158,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-메모리 반도체 시장 사이클
+여의도 증권가 새벽 거리
 ```

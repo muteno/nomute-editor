@@ -3,7 +3,8 @@ name: vidl-make
 # 영상 받기(설정 ▸ 다운로드 영상 플랫폼 경로 · /api/vidl 발사 · 운영자 260728 "배치파일 조건대로") — 단일 잡:
 #   URL → yt-dlp 3판{최고화질+자막(en,ko srt→txt) · 프레임별(maxfps_) · FHD별(1080p_)} → R2 vidl_res/<id>/
 #   → 드라이브 '내 드라이브/Shared' 업로드(GDRIVE_SA_JSON 있을 때 · 비치명) → viewer/vidl_out/<id>/result.json 커밋(폼이 폴링).
-# LLM 0콜 · 조건 정본 = apps/vidl/vidl_run.py(레퍼런스 = 운영자 Downloader.bat v7.0) · 골격 = conv-make 미러.
+# 자막 0개 = Whisper 받아쓰기 폴백(운영자 260802 · Handy 개념 이식) — ly_stt.py 정본 공용 · fail-soft · result.json "stt" 표기.
+# LLM 0콜(STT = 로컬 Whisper·키 불필요) · 조건 정본 = apps/vidl/vidl_run.py(레퍼런스 = 운영자 Downloader.bat v7.0) · 골격 = conv-make 미러.
 on:
   workflow_dispatch:
     inputs:
@@ -40,11 +41,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: 환경 (ffmpeg+yt-dlp)
-        timeout-minutes: 10
+      - name: 환경 (ffmpeg+yt-dlp+Whisper)
+        timeout-minutes: 20   # 콜드런 large-v3 3.1GB 다운 감안(ly-make STT 환경 동형) — 캐시 적중 시 즉시
         uses: ./.github/actions/runner-setup
         with:
-          setup: apps/conv/setup.sh   # yt-dlp 설치 스크립트 재사용(내용 동일 — 정본 중복 신설 금지)
+          setup: apps/ly/setup.sh   # ffmpeg+yt-dlp+faster-whisper+large-v3 prefetch(ly 정본 재사용 — 정본 중복 신설 금지) · 자막 0개 받아쓰기 폴백(vidl_run stt_fallback · 운영자 260802)용
+          whisper: 'true'
           apt: ffmpeg
 
       - name: 받기 (yt-dlp 3판 → R2·드라이브 → result.json)

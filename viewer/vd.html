@@ -226,9 +226,9 @@
   .ws { position:fixed; inset:0; display:flex; flex-direction:column; }
 
   /* ── 상단 도크 = thumb .topdock 정본 계승(sticky→고정 · mat·패딩·스커트 동값) ── */
-  .dock { flex:none; position:relative; background:var(--bg); padding:16px 16px var(--sp-2); }
-  .dock::after { content:''; position:absolute; top:100%; left:0; right:0; height:14px; pointer-events:none;
-    background:linear-gradient(180deg, rgba(18,18,18,.7), rgba(18,18,18,0)); z-index:2; }   /* raw-ok: .topdock::after 정본 동값(h14·18,18,18) */
+  .dock { flex:none; position:relative; background:rgba(18,18,18,.72) /* raw-ok: 이미지 스튜디오 카드 제작 도크 정본 동값(thumb .topdock[data-lay="edit"] — 18,18,18 = 구 매트 RGB 알파 변주 · 운영자 260802 3차 옵션바 블러·알파 계승) */; backdrop-filter:blur(var(--blur-l)) saturate(1.2); -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.2); border-bottom:1px solid var(--line2); --line:rgba(255,255,255,.15) /* raw-ok: thumb 편집 도크 정본 동값(운영자 260731 2차 선택값 알파 .15) · 도크 스코프 한정 */; padding:var(--sp-3) 16px var(--sp-4); }
+  .dock::after { content:''; position:absolute; top:100%; left:0; right:0; height:18px; pointer-events:none;
+    background:linear-gradient(180deg, rgba(18,18,18,.72), rgba(18,18,18,0)); z-index:2; }   /* raw-ok: .topdock::after 정본 동값(h14·18,18,18) */
   .mon { height:204px /* raw-ok: 운영자 260802 플레이그라운드 선택값 — .cpprev min(29svh,300px) 사다리 안 */;
     border:1px solid var(--line); border-radius:var(--r-s); background:#000 /* raw-ok: 플레이어 레터박스 순수 흑(§🎨 선례) */;
     display:grid; place-items:center; overflow:hidden; position:relative; }
@@ -281,8 +281,11 @@
      --modal-glass-anchor + blur(--blur-l) saturate(1.05) · --line2 테두리 · 그림자 0 18px 40px rgba(0,0,0,.45) ·
      radius --r-l · padding 11/11/11/16 · 등장 .26s cubic-bezier(.22,.61,.36,1)(msgUnfold 가족 커브). */
   .vnav { flex:none; position:relative; z-index:5; display:flex; gap:2px; padding:0 var(--sp-2) var(--sp-1);
-    border-bottom:1px solid var(--line2); }
-  .vnav > button { appearance:none; background:transparent; border:0; font:inherit; font-size:13px; font-weight:600;
+    border-bottom:1px solid var(--line2); flex-wrap:wrap; }
+  /* ⚠ overflow-x:auto 금지(실측 260802): 한 축이라도 visible이 아니면 나머지 축도 auto로 계산돼
+     이 컨테이너가 스크롤 박스가 되고, 아래로 펼쳐지는 .vpop(absolute)이 통째로 잘려 안 보였다.
+     좁은 폭 대응 = flex-wrap(줄바꿈) — 프리미어 원문 라벨(「그래픽 및 타이틀」) 축약 없이 안전. */
+  .vnav > button { flex:none; appearance:none; background:transparent; border:0; font:inherit; font-size:13px; font-weight:600;
     color:var(--mut); cursor:pointer; padding:7px 10px; border-radius:var(--r-s); white-space:nowrap;
     word-break:keep-all; -webkit-tap-highlight-color:transparent;
     transition:color var(--dur), background var(--dur); }
@@ -317,6 +320,13 @@
   .mrow:hover { border-color:rgba(var(--accent-rgb),.5); color:var(--accent); }
   .mrow:active { transform:scale(var(--press-l,.95)); }
   .mrow .k { margin-left:auto; color:var(--mut); font-size:var(--fs-xs); }
+  .mrow.st { cursor:default; }   /* 읽기 전용 행(그래픽 레이어 표시) */
+  .mrow.st:hover { border-color:var(--line); color:var(--fg); }
+  .mrow.st:active { transform:none; }
+  .msep { height:1px; background:var(--line2); margin:var(--sp-2) -11px var(--sp-2) -16px; }   /* 구분선 = 프리미어 메뉴 문법(컨테이너 패딩 상쇄 = full-bleed) */
+  .mgrp { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:0 0 var(--sp-1); }
+  .mgrp::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }
+  .mgrp .sp { margin-left:auto; color:var(--mut); font-weight:400; font-size:var(--fs-xs); }
 
   .src { flex:1 1 auto; min-height:0; overflow:auto; padding:0 16px 16px; }
   .src .phead .sp { margin-left:auto; color:var(--mut); font-weight:400; font-size:var(--fs-xs); }
@@ -415,40 +425,46 @@
 <body>
 <div class="ws">
 
-  <!-- 상단 메뉴바 = 프리미어/포토샵 문법(카테고리 · 호버 또는 탭하면 아래로 펼침) -->
+  <!-- 상단 메뉴바 = Premiere Pro v26.0 한국어 메뉴 이름·순서 그대로(운영자 첨부 화면 실측 260802) ──
+       파일(F) 편집(E) 클립(C) 시퀀스(S) 마커(M) 그래픽 및 타이틀(G) 보기(V) 창(W) 도움말(H) 중
+       **담을 게 있는 6개만** 노출(클립·마커·보기 = 지금 이 스택에 해당 기능 0 → 빈 메뉴 안 만든다 · 운영자 260802
+       "해당 카테고리에 어울리는것만 붙이면됨"). 이름·순서는 프리미어 원문 그대로. -->
   <nav class="vnav" id="vnav">
     <button type="button" data-m="file" aria-expanded="false" aria-haspopup="true">파일<span class="cnt" id="cntSel"></span></button>
     <button type="button" data-m="edit" aria-expanded="false" aria-haspopup="true">편집</button>
-    <button type="button" data-m="out" aria-expanded="false" aria-haspopup="true">내보내기</button>
     <button type="button" data-m="seq" aria-expanded="false" aria-haspopup="true">시퀀스</button>
-    <button type="button" data-m="q" aria-expanded="false" aria-haspopup="true">렌더 큐<span class="cnt" id="cntJob"></span></button>
+    <button type="button" data-m="gfx" aria-expanded="false" aria-haspopup="true">그래픽 및 타이틀</button>
+    <button type="button" data-m="win" aria-expanded="false" aria-haspopup="true">창<span class="cnt" id="cntJob"></span></button>
+    <button type="button" data-m="help" aria-expanded="false" aria-haspopup="true">도움말</button>
 
-    <!-- 파일 = 소스(기사) 고르기 -->
+    <!-- 파일 = 가져오기(기사) + 내보내기 설정 · 프리미어도 내보내기는 파일 아래 -->
     <div class="vpop" id="pop-file" role="menu" hidden>
-      <div class="mh">기사 고르기<span class="sp" id="sumProj"></span></div>
+      <div class="mh">파일(F)</div>
+      <div class="mgrp">가져오기(I)…<span class="sp" id="sumProj"></span></div>
       <div id="list"><div class="vdempty">불러오는 중…</div></div>
-    </div>
-
-    <!-- 편집 = 선택 조작(실제로 지금 되는 것만) -->
-    <div class="vpop" id="pop-edit" role="menu" hidden>
-      <div class="mh">선택 편집<span class="sp" id="editSum"></span></div>
-      <div class="mrow" data-act="pick1" role="menuitem" tabindex="0">최신 1건 선택<span class="k">덮어쓰기</span></div>
-      <div class="mrow" data-act="pick3" role="menuitem" tabindex="0">최신 3건 선택<span class="k">덮어쓰기</span></div>
-      <div class="mrow" data-act="pick12" role="menuitem" tabindex="0">최신 12건 선택<span class="k">상한까지</span></div>
-      <div class="mrow" data-act="clear" role="menuitem" tabindex="0">선택 모두 해제<span class="k"></span></div>
-      <div class="tlnote">되돌리기·잘라내기는 없다 — 컴포지션이 선언형이라 히스토리 스택이 없다(되돌리기 = 다시 고르기).</div>
-    </div>
-
-    <!-- 내보내기 = 실제로 렌더에 먹는 4축 -->
-    <div class="vpop" id="pop-out" role="menu" hidden>
-      <div class="mh">내보내기 설정<span class="sp" id="fxSum"></span></div>
+      <div class="msep"></div>
+      <div class="mgrp">내보내기(E)<span class="sp" id="fxSum"></span></div>
       <div id="axes"></div>
       <div class="tlnote" id="fxNote"></div>
+      <div class="msep"></div>
+      <div class="mrow" data-act="quit" role="menuitem" tabindex="0">종료(X)<span class="k">스튜디오 닫기</span></div>
     </div>
 
-    <!-- 시퀀스 = 컴포지션 구조(읽기 전용) -->
+    <!-- 편집 = 선택 조작 -->
+    <div class="vpop" id="pop-edit" role="menu" hidden>
+      <div class="mh">편집(E)<span class="sp" id="editSum"></span></div>
+      <div class="mrow" data-act="pick12" role="menuitem" tabindex="0">모두 선택(A)<span class="k">Ctrl+A · 상한 12건</span></div>
+      <div class="mrow" data-act="clear" role="menuitem" tabindex="0">모두 선택 해제(D)<span class="k">Ctrl+Shift+A</span></div>
+      <div class="tlnote">
+        프리미어 편집 메뉴의 나머지(실행 취소·잘라내기·붙여넣기·특성 붙여넣기·잔물결 삭제…)는 <b>대응이 없어 안 실었다</b> —
+        컴포지션이 선언형이라 히스토리 스택 자체가 없다(되돌리기 = 다시 고르기).
+      </div>
+    </div>
+
+    <!-- 시퀀스 = 시퀀스 설정 + 클립 구조 -->
     <div class="vpop" id="pop-seq" role="menu" hidden>
-      <div class="mh">큐영상 시퀀스<span class="sp">1080×1920 · 6.0s · 30fps</span></div>
+      <div class="mh">시퀀스(S)</div>
+      <div class="mgrp">시퀀스 설정(Q)…<span class="sp">1080×1920 · 6.0s · 30fps · 읽기 전용</span></div>
       <div class="tl">
         <div class="ruler"><span>0s</span><span>1s</span><span>2s</span><span>3s</span><span>4s</span><span>5s</span></div>
         <div class="trk"><div class="clip v" style="flex:6">V1 뉴스카드</div></div>
@@ -456,15 +472,43 @@
       </div>
       <div class="tlnote">
         읽기 전용이다 — 이 배치의 정본은 컴포지션(<code>video/index.html</code>)의 <code>data-start</code>/<code>data-duration</code>이라
-        여기서 끌어 옮기면 정본과 어긋난다. 클립 편집을 붙이려면 컴포지션을 변수로 여는 작업이 먼저다.<br>
-        A1(내레이션)·A2(BGM) 트랙은 <b>아직 없다</b>(미부착 · 자막·전환도 마찬가지).
+        여기서 끌어 옮기면 정본과 어긋난다. A1(내레이션)·A2(BGM) 트랙은 <b>아직 없다</b>.
+      </div>
+      <div class="msep"></div>
+      <div class="mrow" data-act="render" role="menuitem" tabindex="0">전체 작업 영역 렌더링<span class="k" id="seqRenderK"></span></div>
+      <div class="mrow" data-act="purge" role="menuitem" tabindex="0">렌더링 파일 삭제(D)<span class="k">작업 내역 비우기</span></div>
+    </div>
+
+    <!-- 그래픽 및 타이틀 = 컴포지션 텍스트 레이어(읽기 전용) -->
+    <div class="vpop" id="pop-gfx" role="menu" hidden>
+      <div class="mh">그래픽 및 타이틀(G)<span class="sp">레이어 4 · 읽기 전용</span></div>
+      <div class="mrow st"><span>훅(큰 문장)</span><span class="k">--fs-display · --fw-x</span></div>
+      <div class="mrow st"><span>기사 제목</span><span class="k">--fs-h3 · --mut</span></div>
+      <div class="mrow st"><span>매체 · 날짜</span><span class="k">--fs-sm · --mut</span></div>
+      <div class="mrow st"><span>편향 칩</span><span class="k">--bias-* 자동</span></div>
+      <div class="tlnote">
+        글자·색은 <b>기사 데이터와 <code>viewer/index.html</code> :root 토큰</b>이 정본이라 여기서 못 바꾼다 —
+        뷰어 토큰을 바꾸면 영상도 같이 바뀐다. 자막·로어서드·모션 그래픽 템플릿은 <b>아직 없다</b>.
       </div>
     </div>
 
-    <!-- 렌더 큐 -->
-    <div class="vpop" id="pop-q" role="menu" hidden>
-      <div class="mh">렌더 큐<span class="sp" id="qHint"></span></div>
+    <!-- 창 = 렌더 큐 -->
+    <div class="vpop" id="pop-win" role="menu" hidden>
+      <div class="mh">창(W) — 렌더 큐<span class="sp" id="qHint"></span></div>
       <div class="jobs" id="jobs"></div>
+    </div>
+
+    <!-- 도움말 -->
+    <div class="vpop" id="pop-help" role="menu" hidden>
+      <div class="mh">도움말(H)<span class="sp">260802</span></div>
+      <div class="tlnote">
+        <b>지금 되는 것</b> — 기사 고르기(최대 12) · 형식/해상도/프레임/화질 · 렌더 발사 · 결과 내려받기.<br><br>
+        <b>아직 없는 것</b> — 내레이션(TTS) · 배경음악 · 효과음 · 자막 · 전환 · 기사 이미지 · 클립 편집.<br><br>
+        <b>알려진 함정</b><br>
+        · 4K는 MP4에서만 된다(알파 경로 mov/webm/gif와 <code>--resolution</code> 결합 불가 · 실측 260802).<br>
+        · 러너는 워커 1개 고정이다(2 이상이면 청크 경계 프레임 1장이 깨진다 · 실측 260801).<br><br>
+        전체 기능 대응표 = <code>docs/reports/260802_영상기능맵_프리미어대응.html</code>
+      </div>
     </div>
   </nav>
   <div class="vscrim" id="vscrim"></div>
@@ -552,11 +596,13 @@ function applyPick(n) {
   });
   syncSpec(); paintMonitor();
 }
-document.querySelectorAll('#pop-edit .mrow').forEach(r => r.addEventListener('click', () => {
+document.querySelectorAll('.vpop .mrow[data-act]').forEach(r => r.addEventListener('click', () => {
   const a = r.dataset.act;
-  if (a === 'clear') applyPick(0);
-  else applyPick(Number(a.replace('pick', '')));
-  closeMenu();
+  if (a === 'clear') { applyPick(0); closeMenu(); }
+  else if (a && a.startsWith('pick')) { applyPick(Number(a.replace('pick', ''))); closeMenu(); }
+  else if (a === 'quit') { closeMenu(); try { parent.document.getElementById('tooldlg').close(); } catch (_) {} }
+  else if (a === 'render') { closeMenu(); fire(); }
+  else if (a === 'purge') { jsave([]); renderJobs(); closeMenu(); }
 }));
 
 /* ── 프로그램 모니터 = 완성본 있으면 재생, 없으면 선택 기사 카드 목업 ── */
@@ -724,7 +770,7 @@ async function fire() {
     picked = [];
     $('#list').querySelectorAll('.vdrow.on').forEach(el => { el.classList.remove('on'); el.setAttribute('aria-pressed','false'); });
     syncSpec(); paintMonitor();
-    openMenu('q');
+    openMenu('win');
   } catch (e) {
     $('#spec').textContent = '발사 실패 — ' + e.message;
   } finally { $('#go').disabled = false; }
