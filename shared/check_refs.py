@@ -1679,7 +1679,7 @@ def check_imgstudio_dock_spec():
 #     `border:0`으로 지우면 borderColor가 표면별 currentColor로 갈라져 파리티가 깨진다(그래서 1px transparent 동결).
 _TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[공백 제거 표기])
     ('캡슐(.trail)', ('.trail', '.cpprev-box .trail', '.monwrap .trail'),
-     ('border-radius:var(--r-pill)', 'border:1pxsolidrgba(255,255,255,.14)',
+     ('border-radius:var(--r-s)', 'border:1pxsolidrgba(255,255,255,.14)',
       'background:rgba(8,15,11,.54)', 'backdrop-filter:blur(var(--blur-s))', '-webkit-backdrop-filter:blur(var(--blur-s))')),
     ('값 칩 그룹(.trail-v)', ('.cpprev-box .trail-v', '.monwrap .trail-v'),
      ('background:transparent', 'border:1pxsolidtransparent', 'border-radius:0', 'font-size:10.5px', 'line-height:1')),
