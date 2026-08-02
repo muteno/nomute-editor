@@ -79,11 +79,11 @@ async function runOnce(pg) {
     const strip = d.querySelector('#optStrip'), spec = strip ? strip.querySelector('.gospec:not(.none)') : null;
     const dock = d.querySelector('#topDock'), dcs = w.getComputedStyle(dock), dca = w.getComputedStyle(dock, '::after');   // 도크 mat·페이드 스커트 = 리드 파리티 정본(운영자 260720 "그라데이션 닫힘 이식")
     const cs = el => { const c = w.getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
-    const rail = d.querySelector('#cpPrev .cpprev-box .trail'), rbb = box.getBoundingClientRect();
-    const rr = rail ? rail.getBoundingClientRect() : null;   // 코너 레일 = 창 우상단 밀착(운영자 260801 확정 「우상단·여백 0px」)
+    const rail = d.querySelector('#cpPrev #cpRail'), rbb = box.getBoundingClientRect();
+    const rr = rail ? d.querySelector('#cpRailWrap').getBoundingClientRect() : null;   // 레일 = **창 밖 우측**(운영자 260802 2차 "네비게이션바를 우측으로") — 구 계약(창 안 우상단 여백 0)의 갱신 · 간격 8 = .trailwrap 캡슐 gap 동값
     const bwT = parseFloat(w.getComputedStyle(box).borderTopWidth) || 0;
     return { boxH: box.getBoundingClientRect().height, boxW: box.getBoundingClientRect().width, boxCS: cs(box),
-      rail: rr ? { r: +(rbb.right - bwT - rr.right).toFixed(1), t: +(rr.top - (rbb.top + bwT)).toFixed(1) } : null,
+      rail: rr ? { gap: +(rr.left - rbb.right).toFixed(1), t: +(rr.top - rbb.top).toFixed(1) } : null,   // gap = 창 우변↔레일 좌변(8) · t = 상변 정렬(0)
       toolsInRail: !!(rail && d.querySelector('#cpImgSwap') && rail.contains(d.querySelector('#cpImgSwap')) && rail.contains(d.querySelector('#cpImgDel'))),
       stripInRail: !!(rail && strip && rail.contains(strip)),
       stripVis: !!(strip && !strip.classList.contains('none') && strip.getBoundingClientRect().height),
@@ -123,7 +123,7 @@ async function runOnce(pg) {
   const duo = await pg.evaluate(() => {
     const st = document.querySelector('#geniPrevStage'), em = st && st.querySelector('.cpv-empty');
     const btns = em ? [...em.querySelectorAll('.cpv-photobtn')] : [];
-    const txt = document.querySelector('#geniTxtBtn'), rail = document.querySelector('#geniPrevBox .trail');
+    const txt = document.querySelector('#geniTxtBtn'), rail = document.querySelector('#geniPrev #geniRail');   // 레일 = 창 밖 우측으로 이설(260802 2차) → 조회 기준도 창(#geniPrevBox)이 아닌 미리보기 블록(#geniPrev)
     if (btns.length !== 1) return { n: btns.length };
     const sr = st.getBoundingClientRect();
     const r = btns[0].querySelector('svg').getBoundingClientRect();
@@ -151,21 +151,21 @@ async function runOnce(pg) {
     const q = s => document.querySelector(s).getBoundingClientRect();
     const box = document.querySelector('#geniPrevBox'); const bw = parseFloat(getComputedStyle(box).borderTopWidth) || 0; const br = box.getBoundingClientRect();
     const xb = document.querySelector('#geniRefX'), sw = document.querySelector('#geniRefSwap');
-    const rail = document.querySelector('#geniPrevBox .trail'), rr = rail ? rail.getBoundingClientRect() : null;
+    const rail = document.querySelector('#geniPrev #geniRail'), rw = document.querySelector('#geniRailWrapPv'), rr = rw ? rw.getBoundingClientRect() : null;   // 레일 = 창 밖 우측(260802 2차)
     return { gVis: !g.hidden && g.getBoundingClientRect().height > 0, gFit: getComputedStyle(g).objectFit, gOp: getComputedStyle(g).opacity,
       tFit: getComputedStyle(t).objectFit, same: g.src === t.src && !!g.src,
-      railR: rr ? +(br.right - bw - rr.right).toFixed(1) : null, railT: rr ? +(rr.top - (br.top + bw)).toFixed(1) : null,
+      railGap: rr ? +(rr.left - br.right).toFixed(1) : null, railT: rr ? +(rr.top - br.top).toFixed(1) : null,
       toolsInRail: !!(rail && xb && sw && rail.contains(xb) && rail.contains(sw)),
       toolPos: xb ? getComputedStyle(xb).position : '', sumInRail: !!(rail && rail.contains(document.querySelector('#geniSum'))) };
   });
   core('C6 고스트 = cover·opacity .22·원본 contain·동일 src', gh.gVis && gh.gFit === 'cover' && gh.gOp === '0.22' && gh.tFit === 'contain' && gh.same, JSON.stringify({ fit: gh.gFit, op: gh.gOp, t: gh.tFit, same: gh.same }));
   // C7 계약 갱신(운영자 260802 "배경·축약·opa 이런거 우측 네비게이션바로 · 모든 페이지에 해당 미리보기 똑같이"):
-  //   구 계약 = 교체·삭제가 창 우상단 절대좌표(6/6/42) → 신 계약 = **코너 옵션 레일(.trail) 흡수** + 레일이 창 우상단 여백 0 밀착(운영자 260801 확정값).
+  //   구 계약(260801) = 레일이 창 **안** 우상단 여백 0 → 신 계약(운영자 260802 2차 "네비게이션바를 우측으로") = 레일이 창 **밖** 우측, 간격 8·상변 정렬.
   //   thumb(카드 생성)·AI 생성 양쪽에서 같은 계약을 재니 크로스-파일 파리티는 그대로 지켜진다(구 좌표 어서션의 역할 승계).
-  core('C7 교체·삭제 = 코너 레일 흡수(절대좌표 퇴역·position static) · 레일 = 창 우상단 여백 0(Δ≤0.5px) · 카드 생성 탭 동형',
-    gh.toolsInRail && gh.toolPos === 'static' && Math.abs(gh.railR) <= 0.5 && Math.abs(gh.railT) <= 0.5 &&
-    !!ed.rail && ed.toolsInRail && Math.abs(ed.rail.r) <= 0.5 && Math.abs(ed.rail.t) <= 0.5,
-    JSON.stringify({ ai: { inRail: gh.toolsInRail, pos: gh.toolPos, r: gh.railR, t: gh.railT }, card: { inRail: ed.toolsInRail, rail: ed.rail } }));
+  core('C7 교체·삭제 = 코너 레일 흡수(절대좌표 퇴역·position static) · 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px) · 카드 생성 탭 동형',
+    gh.toolsInRail && gh.toolPos === 'static' && Math.abs(gh.railGap - 8) <= 0.5 && Math.abs(gh.railT) <= 0.5 &&
+    !!ed.rail && ed.toolsInRail && Math.abs(ed.rail.gap - 8) <= 0.5 && Math.abs(ed.rail.t) <= 0.5,
+    JSON.stringify({ ai: { inRail: gh.toolsInRail, pos: gh.toolPos, gap: gh.railGap, t: gh.railT }, card: { inRail: ed.toolsInRail, rail: ed.rail } }));
   core('C7b 옵션 = 레일 값 칩 이주(하단 옵션바 퇴역 — 카드 생성 #optStrip · AI 생성 #geniSum 둘 다 레일 안)', ed.stripInRail && gh.sumInRail,
     JSON.stringify({ card: ed.stripInRail, ai: gh.sumInRail }));
   await pg.evaluate(() => { geniRefClear(); geniApply(); });

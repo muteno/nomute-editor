@@ -177,28 +177,28 @@ async function runOnce(pg, reqLog) {
   // C5 무접촉 실증 = 외부 호스트 0 · /api/ 발화 0(평의회⑤ — 주석 약속의 어서션 승격)
   core('C5 요청 감시 = 외부 0·API 0', reqLog.ext.length === 0 && reqLog.api.length === 0, JSON.stringify({ ext: reqLog.ext.slice(0, 2), api: reqLog.api.slice(0, 2) }));
 
-  // C10 도크 축소(.dockmin) 재굽기 = 활자/무대 비 유지 · 우측 넘침 0 (운영자 260802 "스크롤 내리면 미리보기가 깨진다" 회귀 잠금)
+  // C10 도크 축소(확대 해제) 재굽기 = 활자/무대 비 유지 · 우측 넘침 0 (운영자 260802 "스크롤 내리면 미리보기가 깨진다" 회귀 잠금)
   //   왜 기계화 = 산출 미리보기는 `const W = st.offsetWidth`로 활자·마진을 px 환산해 굽는 **1회성** 렌더라, 무대 폭이 줄어도
   //   다시 굽지 않으면 옛 폭 기준 활자가 그대로 남아 우측이 잘린다. 눈으로만 보면 "고쳤는데 그대로"(배포 지연)와 실미해결이 구분 안 돼
   //   운영자가 두 번 신고하게 된다(260802 실사례) → 기계가 판정한다. 실측 대조: 배선 전 비 0.0703→0.1359·잉크 +34.6px 넘침 / 배선 후 0.0703→0.0703·넘침 0.
   //   ⚠ 정직 신고 = 이 어서션의 대상은 **폭 변화 → 재굽기 배선** 하나뿐이다. 축소를 켜는 스크롤 문턱(y>120 && room-drop>240)은
-  //   픽스처 문서 높이에 좌우돼 결정론이 깨지므로 여기선 .dockmin을 직접 걸어 폭 변화만 유발한다(스크롤 판정 로직 = 이 스모크 밖).
+  //   픽스처 문서 높이에 좌우돼 결정론이 깨지므로 여기선 .dockzoom(확대)을 걸었다 풀어 폭 변화만 유발한다(구 스크롤 축소 배선은 260802 2차 폐지 = 돋보기 버튼 1개).
   const c10 = await pg.evaluate(async S => {
     const st = document.querySelector(S.stage), td = document.getElementById('topDock');
     if (!td) return { err: '#topDock 없음' };
-    if (typeof updateGoSpec === 'function') updateGoSpec();   // data-lay="edit" 세팅 = .dockmin 폭 규칙의 전제(라이브 경로 그대로 호출)
+    if (typeof updateGoSpec === 'function') updateGoSpec();   // data-lay="edit" 세팅 = 폭 규칙의 전제(라이브 경로 그대로 호출)
     const meas = () => {
       const r = st.getBoundingClientRect(), cpv = [...st.querySelectorAll('.cpv')];
       if (!r.width || !cpv.length) return null;
       const ovr = Math.max(...cpv.map(e => { const rg = document.createRange(); rg.selectNodeContents(e); return rg.getBoundingClientRect().right - r.right; }));
       return { w: r.width, ratio: parseFloat(getComputedStyle(cpv[0]).fontSize) / r.width, ovr };
     };
+    td.classList.add('dockzoom');   // 확대(돋보기 ON) 상태에서 출발 = 폭 큰 쪽 기준값(260802 2차 배선: 기본이 축소·확대가 버튼 · 구 .dockmin의 역)
+    await new Promise(r => setTimeout(r, 500));
     const a = meas(); if (!a) return { err: '.cpv 없음 또는 무대 폭 0' };
-    const had = td.classList.contains('dockmin');
-    td.classList.add('dockmin');
+    td.classList.remove('dockzoom');   // 원상복귀 = 폭 축소 유발(검사 대상 = 폭 변화 → 재굽기 배선)
     await new Promise(r => setTimeout(r, 500));   // width transition(--dur-acc 260) + rAF 재굽기 settle
     const b = meas();
-    if (!had) td.classList.remove('dockmin');
     await new Promise(r => setTimeout(r, 400));   // 원복 settle(후속 측정 없음 · 상태 청소만)
     return b ? { w0: +a.w.toFixed(1), w1: +b.w.toFixed(1), r0: +a.ratio.toFixed(4), r1: +b.ratio.toFixed(4), ovr1: +b.ovr.toFixed(1), drift: +Math.abs(b.ratio - a.ratio).toFixed(4) } : { err: '축소 후 측정 실패' };
   }, SEL);
