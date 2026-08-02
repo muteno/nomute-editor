@@ -1668,6 +1668,54 @@ def check_imgstudio_dock_spec():
     return rc
 
 
+# ── 코너 옵션 레일 사본 동일성 게이트 (운영자 260802 "아이디어대루" 승인 · 발사버튼 게이트 `_LAUNCH_BTNS` 문법 그대로) ──
+#   왜 = 미리보기 코너 옵션 레일(CII 「미리보기 코너 옵션 레일」)은 3표면(thumb·tr·index)에 걸쳐 있는데,
+#   thumb·tr은 **별도 문서**라 index 인라인 CSS를 상속받지 못하고 tokens.css는 구조토큰 거울 전용(컴포넌트 불가 · 아래 1541 동문)이라
+#   **CSS 값 사본**이 유일한 길이다. 사본은 한 표면만 고치고 나머지를 잊는 순간 조용히 갈라진다(= 라이브가 표면마다 다른 얼굴).
+#   클래스 승격으로는 못 막는다(뷰어별 <style> 자립 구조) → 발사버튼 게이트와 동일하게 **커밋에서 이탈을 차단**한다.
+#   범위 = 캡슐(.trail) · 값 칩 그룹(.trail-v) · 값 칩(.gs-v) 3축. 신규 표면 편입 = 아래 레지스트리에 1줄 추가.
+#   ⚠ .trail-v 축은 smoke_parity C3(카드 생성 #optStrip ↔ AI 생성 #geniSum 크로스-파일 등가)의 전제이기도 하다 —
+#     `border:0`으로 지우면 borderColor가 표면별 currentColor로 갈라져 파리티가 깨진다(그래서 1px transparent 동결).
+_TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[공백 제거 표기])
+    ('캡슐(.trail)', ('.trail', '.cpprev-box .trail'),
+     ('border-radius:var(--r-pill)', 'border:1pxsolidrgba(255,255,255,.14)',
+      'background:rgba(8,15,11,.54)', 'backdrop-filter:blur(var(--blur-s))', '-webkit-backdrop-filter:blur(var(--blur-s))')),
+    ('값 칩 그룹(.trail-v)', ('.cpprev-box .trail-v',),
+     ('background:transparent', 'border:1pxsolidtransparent', 'border-radius:0', 'font-size:10.5px', 'line-height:1')),
+    ('값 칩(.gs-v)', ('.cpprev-box .trail-v .gs-v',),
+     ('height:22px', 'border-radius:var(--r-l)', 'color:var(--mut)', 'font-size:10.5px', 'font-weight:var(--fw-x)')),
+)
+_TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html')   # 레일 보유 표면(신규 = 여기 1줄)
+
+
+def check_trail_spec():
+    """미리보기 코너 옵션 레일 사본 동일성 게이트(운영자 260802).
+    3표면의 레일 캡슐·값 칩 규격이 정본 값에서 이탈하면 rc=1. 등재 = CII 「미리보기 코너 옵션 레일」 행."""
+    rc = 0; n = 0
+    for rel in _TRAIL_SURFACES:
+        try:
+            css = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)   # 주석 제거(주석 속 셀렉터·값 오탐 차단 · check_launch_spec 동문)
+        for ax, sels, spec in _TRAIL_AXES:
+            body = ''
+            for m in _CSS_RULE.finditer(css):
+                if any(sel in [p.strip() for p in m.group(1).split(',')] for sel in sels):
+                    body += m.group(2)
+            if not body:
+                print('❌ 코너 레일 게이트 — %s에 「%s」 규칙 미발견(레일 미보유 표면이면 _TRAIL_SURFACES에서 빼라)' % (rel, ax)); rc = 1; continue
+            n += 1
+            body_ns = re.sub(r'\s+', '', body)
+            miss = [d for d in spec if d not in body_ns]
+            if miss:
+                print('❌ 코너 레일 사본 드리프트 — %s 「%s」 누락: %s → 정본(CII 「미리보기 코너 옵션 레일」) 값 그대로 계승하라'
+                      % (rel, ax, ', '.join(miss))); rc = 1
+    if rc == 0:
+        print('✅ 코너 레일 게이트 — 3표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).' % (n // max(1, len(_TRAIL_SURFACES))))
+    return rc
+
+
 def check_label_fill():
     """콘텐츠 라벨색(cat-*·bias-*) 솔리드 배경 필 금지 게이트(운영자 260721 Q345 · 평의회 Q329 채택 ④ = 감사 R5 절제축).
     취지 = 카테고리/편향색은 '라벨'(텍스트·도트·저알파 워시·게이지)이지 '기능 신호'(칩·버튼 솔리드 필)가 아니다 —
@@ -2141,6 +2189,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 이미지 스튜디오 도크 규격 게이트 스킵:', e)
+    try:
+        if check_trail_spec() != 0:   # 미리보기 코너 옵션 레일 사본 동일성(운영자 260802 — thumb·tr·index 3표면 값 사본이 갈라지는 조용한 드리프트 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 코너 레일 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
