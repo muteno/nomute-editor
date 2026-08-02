@@ -115,8 +115,9 @@ export async function onRequestPost({ request, env }) {
     if (p.raw) params = { fmt, raw: clip(p.raw, 200) };
     else {
       const year = clip(p.year, 8), name = clip(p.name, 60), platform = clip(p.platform, 60);
-      if (!year || !name || !platform) return json({ error: '연도/이름/플랫폼 또는 raw 문구가 필요해' }, 400);
-      if (!/^\d{1,8}$/.test(year)) return json({ error: '연도는 숫자만(예: 2026)' }, 400);   // --raw 등 플래그 혼동 차단
+      // 이름·플랫폼 미입력 허용(운영자 260713 "입력 안 하면 내용 없게" · 플랫폼 '없음' 260731) — 렌더러 nomute_copyright.py:60~66이 {이름(플랫폼) / 이름만 / 플랫폼만 / 귀속 통째 생략} 4갈래를 이미 전담하고, 뷰어 미리보기(thumb.html:1664 `_attr`)도 같은 4갈래다. 구 `!name || !platform` 필수 가드는 그 계약보다 좁아 **기본 상태(이름 빈값)에서 저작권 단독 발사가 400으로 죽었다**(운영자 260802 "저작권만 따로 제작하면 오류") — 합성 경로(아래)는 fail-soft라 안 죽는 대신 저작권이 조용히 사라져 증상이 단독 발사에만 보였다.
+      if (!year) return json({ error: '연도 또는 raw 문구가 필요해' }, 400);
+      if (!/^\d{1,8}$/.test(year)) return json({ error: '연도는 숫자만(예: 2026)' }, 400);   // --raw 등 플래그 혼동 차단 = 이 한 줄이 담당(이름·플랫폼은 위치인자 4·5라 플래그로 안 읽힌다)
       params = { fmt, year, name, platform };
     }
   }
@@ -124,7 +125,7 @@ export async function onRequestPost({ request, env }) {
   // 저작권(+안내문) 합성 동봉(운영자 260712 "어차피 합칠 내용이면 합쳐서") — /1·/2 산출물 위 2K 알파합성용 파라미터. 검증 = app3와 동일 규칙 · 미충족 = 조용히 드롭(발사 자체는 유지 = fail-soft · outs 경로/개수 불변 = 기존 무접촉).
   if ((app === '1' || app === '2') && p.copyright && typeof p.copyright === 'object') {
     const year = clip(p.copyright.year, 8), name = clip(p.copyright.name, 60), platform = clip(p.copyright.platform, 60);
-    if (year && name && platform && /^\d{1,8}$/.test(year)) {
+    if (year && /^\d{1,8}$/.test(year)) {   // 이름·플랫폼 미입력 허용 = app3 동일 규칙(위 사유) — 구 필수 조건은 이름 빈값이면 이 블록을 통째로 건너뛰어 **저작권이 산출물에서 조용히 사라졌다**(fail-soft가 은폐한 손실 · 워크플로 thumb-make.yml:242도 `_cr.get('name','')` 빈값 전제)
       params.copyright = { year, name, platform };
       const guide = cleanLines(p.guide).slice(0, 2);   // 안내문 동반 = 최대 2줄(경고문 UI 캡과 동기)
       if (guide.length) params.guide = guide;
