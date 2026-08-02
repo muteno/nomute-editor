@@ -1,193 +1,224 @@
-# 필요한 전기의 74%를 끊었다…쿠바의 계획된 암흑
+# 🔌 필요한 전기의 74%를 끊었다…쿠바의 계획된 암흑
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 수십 년 재투자를 미룬 국가 독점 운영의 누적 부실과 개방의 상한선을 고발하는 구조 비판 기사다
-- 분위기: 폭염 속 정지. 예고된 암흑을 관료적으로 관리하는 침착함과, 그 아래 마모되는 생활이 같은 화면에 있는 무거움
-- 연출 방향: 뉴스를 안 보는 독자도 '필요한 전기의 74%를 끊는다'는 산수 앞에서는 멈춘다 — 그래서 매 카드의 강조점은 '멈춰 있는 것'(돌지 않는 팬·식은 터빈 껍데기·잠긴 밸브·끊긴 케이블)에 두고, 마지막에 국가의 두 손(놓는 손 / 쥔 손)으로 시사점을 시각화한다. 전기가 사라진 자리에 남은 단 하나의 네온그린이 전 카드를 잇는 비주얼 키노트다(thumb_dispatch의 촛불 톤·허탈한 시선 정조를 조명과 표정으로만 계승, 앵글은 카드마다 분산)
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(단서형: 끊기로 한 74%라는 규모)+카드4 끝(단서형: 감당 못 할 금액) · 감정 피크=카드5 · 착지 한 줄 요지: 국가가 먼저 놓은 목록이 곧 국가의 한계였고, 쌓인 쓰레기는 이제 민간이 치운다
-- 연속성 앵커: Recurring subject - a Cuban woman in her 60s with short gray-streaked hair tied back, wearing a faded floral cotton blouse and rubber sandals / Recurring location - a narrow Havana street of weathered pastel colonial facades with tangled overhead wires
+- 화풍: B 극화 — 설비 붕괴와 국가 운영의 누적 부실을 다루는 구조 비판 기사라, 선이 살아 있는 극화가 사실성과 무게를 함께 준다
+- 분위기: 소란 없는 붕괴. 비명도 폭발도 없이 스위치가 내려가고 기계가 식는, 예고된 정적. 차가운 무채색 위에 남은 불빛 하나만 따뜻하다
+- 연출 방향: 독자가 멈추는 지점은 '74%'라는 숫자가 아니라 *그 숫자가 누구 집 불인가*다. 그래서 매 카드의 초점을 기계가 아니라 기계 앞에 선 사람의 손끝과 눈에 둔다 — 라디오를 쥔 손, 차단 레버 위의 장갑, 식은 터빈을 올려다보는 어깨, 촛불 하나. 전체가 desaturated 냉색으로 가라앉는 가운데 '아직 남은 빛'만 앰버로 살려, 꺼져가는 것과 겨우 켜져 있는 것의 낙차로 사건을 읽히게 한다. 마지막에 그 앰버가 아침빛으로 돌아오되 온기는 절반만 남긴다
+- 독자 동선: **제시** 카드1~2→**발단** 카드3→**전개** 카드4→**피크** 카드5→**해소** 카드6→**시사점** 카드7 · 훅=카드1 끝(단서형 "미리 계산이 끝난 어둠" → 카드2가 숫자로 즉시 회수)+카드4 끝(단서형 "4만 배럴뿐" → 카드5가 복구비로 회수) · 착지 한 줄 요지=국가가 먼저 손을 뗀 자리가 국가가 먼저 버티지 못한 자리였고, 아바나에 쌓인 쓰레기는 이제 민간이 치운다
+- 연속성 앵커: Recurring subject — a Cuban woman in her 60s with gray hair pinned back, wearing a faded floral cotton blouse (카드 1·5·7) / 반복 장소 = a weathered mid-rise apartment block on a narrow Havana street
 
 ### [카드 1]
 **텍스트**
 ```text
-쿠바는 7월 29일 정전을 예고했다
-그날 수요는 3천200MW로 잡혔다
-공급 가능한 전력은 850MW였다
-*전국 74%를 동시에 끊기로 했다*
+쿠바전력청이 정전을 예고했다
+사고가 아니라 예보에 가까웠다
+29일 저녁 어느 집 불이 먼저 꺼질지
+*미리 계산이 끝난 어둠이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject - a Cuban woman in her 60s with short gray-streaked hair tied back, wearing a faded floral cotton blouse and rubber sandals - stands in her open doorway and waves a small plastic hand fan slowly at her own face, looking down the street toward the right. Directly above her head a ceiling fan hangs stopped mid-turn, and she keeps glancing up at it. Behind her the narrow Havana street of weathered pastel colonial facades with tangled overhead wires recedes into the heat, every shutter open and not one light on.
-Camera: wide shot with full body and surrounding environment from an eye-level neutral perspective, shot on a 35mm lens with natural documentary perspective and minimal distortion, nose room on the right, gaze directed toward the right edge
-Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on her plastic hand fan), muted daylight contrast
-Do not render any readable text; keep all signage and paper out of frame or cropped away: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her thumb frozen on the dial of a small transistor radio, jaw set. Recurring subject — a Cuban woman in her 60s with gray hair pinned back, wearing a faded floral cotton blouse. She stands at a narrow balcony railing holding the radio against her chest, her gaze lifted toward the right edge of the frame with nose room on the right. Behind and around her the weathered facade of a Havana apartment block fills the frame from edge to edge, its windows going dark floor by floor while two squares still glow.
+Camera: wide shot with full body and surrounding environment from an eye-level neutral perspective, shot on a 20mm wide lens with documentary realism.
+Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth, the last daylight before the grid goes down.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — the two lit windows and the radio dial), muted daylight contrast.
+Text handling: no signage, no documents, no legible lettering anywhere; any incidental writing is cropped out of frame or turned away from the camera.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the weathered concrete pavement of the Havana street) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the apartment facade) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Havana blackout neighborhood
+Havana apartment blackout
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-끊어야 한 이유는 발전소에 있다
-전력의 40%는 화력발전소 몫이다
-그 16곳 중 9곳이 멈춰 있다
-*기테라스 발전소는 올해 20번쯤 섰다*
+필요한 전기는 3천200MW
+*줄 수 있는 전기는 850MW뿐이었다*
+전력망이 통째로 무너지지 않게
+2천380MW를 손으로 끊었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the maintenance worker's tightly controlled face, jaw set and lips pressed, fighting back a visible emotion. A lone Cuban plant worker in a grease-stained blue coverall stands at the foot of a towering steam turbine casing that fills the upper frame, one flat palm resting on its cold shell while he looks up along its length. Two more workers stand far behind him in the dim turbine hall, small and still, holding tools they are not using. A single indicator lamp on the control cabinet beside him is the only lit thing in the hall.
-Camera: medium shot, waist-up framing showing face and gesture, from a low angle looking up for dominance and dramatic presence of the machinery, shot on a 24mm wide lens with cinematic spatial context
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the one lit indicator lamp), film-noir low-key lighting, deep shadows
-Do not render any readable text; keep all gauges, labels and signage cropped or turned away: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a gloved fingertip resting on a row of breaker levers, one lever already pulled down. Two grid operators lean over a long control desk, eyes fixed downward on the panel beneath their hands, one reaching for the next lever. The control desk surface fills the frame from edge to edge, crowded with analog dials, a clipboard turned face down and a cold enamel cup at the far corner. A national grid control room in Cuba, late evening.
+Camera: medium close-up with chest-up framing from an overhead bird's-eye top-down angle, shot on a 70mm short telephoto with gentle background compression.
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — one amber warning lamp burning on the panel), muted interior contrast.
+Text handling: no signage, no documents, no legible lettering anywhere; the clipboard is turned face down and all dial markings are cropped or blurred beyond reading.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the oil-stained concrete floor of the turbine hall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the control desk surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Antonio Guiteras power plant turbine
+Cuba power grid control room
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-*또 다른 40%는 올해 1월부터 섰다*
-디젤·중유 설비를 미국 봉쇄가 세웠다
-남은 20%는 가스와 중국 태양광이다
-원유도 필요량의 40%만 나온다
+전기가 모자란 이유는 발전소에 있다
+전력의 40%를 맡는 화력발전소 16곳
+그중 9곳이 낡아서 멈춰 있다
+*핵심 발전소는 올해만 약 20번 멈췄다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his hand frozen on a padlocked valve wheel, knuckles taut, unable to turn it. A Cuban depot worker in his 40s in a canvas jacket is seen in profile at a chained fuel manifold, staring at the sealed valve rather than at the tanks. Behind him a row of empty storage tanks stands against the pre-dawn sky, and beyond the fence one unlit tanker truck sits parked and idle. A strip of paint on the valve wheel catches the only cold light in the yard.
-Camera: medium close-up, chest-up framing with facial emotion, from a profile side view with clear silhouette, shot on a 70mm short telephoto with gentle background compression and subject isolation
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the painted valve wheel), film-noir low-key lighting, deep shadows
-Do not render any readable text; keep all tank markings, placards and signage cropped or turned away: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the maintenance worker's shoulders slumped as he tilts his head back at the dead machine, a wrench hanging from a loose hand. He stands alone at the base of a colossal cold thermal turbine casing, rust bleeding down its flank, no steam and no motion anywhere around him. The turbine hall floor of a Cuban thermal power plant stretches unbroken from the near edge to the far wall, scattered with unopened tool crates.
+Camera: extreme long shot with a tiny subject in a vast environment from a ground-level worm's-eye view near the floor, shot on a 14mm ultra-wide lens for exaggerated scale and dramatic depth.
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — a lone service lamp clipped to the turbine housing), film-noir low-key lighting, deep shadows.
+Text handling: no signage, no documents, no legible lettering anywhere; machine plates and crate markings are cropped out of frame or lost in shadow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the cracked concrete apron of the fuel depot) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the turbine hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Cuba diesel generator fuel depot
+Antonio Guiteras power plant
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-멈춘 전력망을 되살리는 값이 나왔다
-복구에 80억~100억달러가 든다
-*우리 돈 11조5천억원이 넘는다*
-쿠바 재정으로는 감당 못 할 돈이다
+남은 40%를 맡던 디젤·중유 설비는
+미국의 봉쇄로 1월부터 서 있다
+원유도 하루 10만 배럴이 필요한데
+*캐낼 수 있는 건 4만 배럴뿐이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the tiny engineer's shoulders pulled in, his body shrinking beneath the structure above him. One Cuban grid engineer in a hard hat stands at the base of a collapsed high-voltage transmission tower whose twisted lattice fills the upper frame, looking up and toward the right along the fallen span. A second worker crouches beside a portable work lamp, the only source of light in the black yard, its beam pooling on the gravel around them. The severed cable coiled at their feet is wrapped in tape, the one colored thing in the frame.
-Camera: extreme long shot, tiny subject in a vast environment conveying scale and isolation, from a ground-level worm's-eye view with exaggerated scale, shot on a 14mm ultra-wide lens with dramatic depth, nose room on the right, sightline toward the right edge
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the tape around the severed cable), film-noir low-key lighting, deep shadows
-Do not render any readable text; keep all warning plates and stencils cropped or turned away: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the fuel handler's flat palm pressed against the cold empty side of a storage tank, his eyes cast down and toward the right edge at his own shadow, with nose room on the right. He stands on a bare concrete quay beside a coiled hose and a row of drained drums lying on their sides, the berth beyond him empty of any tanker. A fuel terminal outside Havana at the end of the night, the quay surface running unbroken across the whole frame.
+Camera: medium shot with waist-up framing from a high angle looking down at a small vulnerable subject, shot on a 70mm short telephoto with subject isolation.
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — a single sodium lamp on the quay), film-noir low-key lighting, deep shadows.
+Text handling: no signage, no documents, no legible lettering anywhere; drum labels and hull markings are cropped, turned away or dissolved into shadow.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the gravel yard of the substation) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the concrete quay) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Cuba electrical grid substation collapse
+Cuba crude oil terminal
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그래서 국가는 기름과 전기를 놓았다
-약과 아바나의 쓰레기까지 넘겼다
-*학교와 방송, 통신과 군대는 쥐었다*
+이 전력망을 되살리는 비용은
+*11조5천억에서 14조5천억 원*
+쿠바 재정으로는 닿지 않는다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the gap between one man's two hands, the left palm opening to let go while the right stays clenched into a fist, knuckles taut. Seen from directly above a dark polished desk, the opening left hand releases the handle of a jerry can, and a plain carton of medicine, a dead light bulb and a tied refuse sack are pushed to the edge of the desk beside it. The right fist grips a heavy ring of keys and does not move. Behind the hands, kept lower and softly out of focus so the hands stay the focus, the silhouetted shoulder of a uniformed soldier and the body of a shuttered broadcast studio camera stand in the dark. One key on the ring catches the overhead light.
-Camera: extreme close-up on a single detail, the two hands, from a high angle looking down, shot on a 100mm macro lens with fine detail and shallow depth of field
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the one lit key), film-noir low-key lighting, deep shadows
-Do not render any readable text; the medicine carton, the sack and the camera body are blank with no printing: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past the candle flame at nothing. Recurring subject — a Cuban woman in her 60s with gray hair pinned back, wearing a faded floral cotton blouse. She sits close to a single burning candle, one hand curled around a folded sheet of paper with its printed side turned away from the camera, the flame the only light left in the room. The dim interior wall behind her runs unbroken from edge to edge.
+Camera: tight close-up with the face filling the frame and intense emotion, from an eye-level neutral perspective, shot on an 85mm portrait lens with soft background separation.
+Lighting/mood: warm candlelight glow against soft dark background, solemn and tender.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — the candle flame and the skin it touches), film-noir low-key lighting, deep shadows.
+Text handling: no signage, no documents, no legible lettering anywhere; the folded paper is turned away so nothing printed is visible.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark polished desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the dim interior wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Cuba private sector reform Havana
+Havana blackout candle
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-모든 걸 국가가 맡는다던 나라였다
-먼저 놓은 목록이 국가의 한계였다
-기름과 약, 전기, 그리고 쓰레기다
+그래서 정부가 규제를 풀었다
+거리에 쌓인 쓰레기도 기름도 약도
+이제 민간이 치우고 팔고 만든다
+*교육과 미디어와 군대는 그대로 쥔다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a private collector's forearms straining as he swings a heavy sack onto the truck bed, chin lifted with effort. Two workers in plain clothes haul bagged refuse from a mound onto a small flatbed truck while a neighbor watches from a doorway. Above and behind them the shuttered windows of a government office building stay firmly closed, indifferent to the work below. A Havana side street in the morning, the asphalt surface filling the frame from edge to edge.
+Camera: full shot, head-to-toe with a clear silhouette, from a high angle looking down, shot on a 24mm wide lens with strong spatial context.
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — the truck's amber beacon turning), muted daylight contrast.
+Text handling: no signage, no documents, no legible lettering anywhere; the truck panel and building plates are left blank or cropped out of frame.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the asphalt street surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
+```
+**검색어**
+```text
+Havana garbage collection truck
+```
+
+### [카드 7]
+**텍스트**
+```text
+국가가 먼저 손을 뗀 자리가
+국가가 먼저 버티지 못한 자리다
+11조가 넘는 복구비를 댈 수 없었다
 *쌓인 쓰레기는 이제 민간이 치운다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her steady unwavering eye contact with the viewer, chin level, no smile. Recurring subject - a Cuban woman in her 60s with short gray-streaked hair tied back, wearing a faded floral cotton blouse and rubber sandals - stands in her doorway on the narrow Havana street of weathered pastel colonial facades with tangled overhead wires, facing the camera straight on. Behind her two private collectors in plain work gloves lift sacks from a shrinking pile of refuse onto a hand cart, working quietly. Morning light already reaches the far end of the alley where the piles have been cleared, and a sack tie on the cart is the single point of color.
-Camera: medium shot, waist-up framing from a front-on angle with direct gaze and symmetrical composition, shot on a 35mm lens with natural documentary perspective and minimal distortion
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the sack tie), muted daylight contrast
-Do not render any readable text; keep all shop signs, plates and printing out of frame or cropped away: no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her eyes meeting the viewer straight on, steady and unreadable, one hand still resting on the door frame. Recurring subject — a Cuban woman in her 60s with gray hair pinned back, wearing a faded floral cotton blouse. She stands centered in her doorway facing the camera while the loaded flatbed truck pulls away past her shoulder, the swept stretch of pavement bare for the first time in weeks. The weathered front wall of her building runs unbroken across the entire frame.
+Camera: medium shot with waist-up framing, front-on with a direct gaze and symmetrical composition, shot on a 40mm lens with a neutral natural perspective.
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy.
+Accent: monochrome desaturated base with a single color accent (the story's symbolic color, a warm amber glow — the first morning light on the doorway), muted daylight contrast.
+Text handling: no signage, no documents, no legible lettering anywhere; wall notices and vehicle panels are left blank or cropped out of frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the cobbled asphalt of the Havana alley) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the building's front wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image, no meaningless letters, no random characters
 ```
 **검색어**
 ```text
-Havana garbage collection private cart
+Havana street morning
 ```
