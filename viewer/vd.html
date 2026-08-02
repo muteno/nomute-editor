@@ -280,7 +280,11 @@
      드롭다운 = **앵커 팝업 정본**(ly .lypop = index .qpop 원문 계승) 바이트 계승:
      --modal-glass-anchor + blur(--blur-l) saturate(1.05) · --line2 테두리 · 그림자 0 18px 40px rgba(0,0,0,.45) ·
      radius --r-l · padding 11/11/11/16 · 등장 .26s cubic-bezier(.22,.61,.36,1)(msgUnfold 가족 커브). */
-  .vnav { flex:none; position:relative; z-index:5; display:flex; gap:2px; padding:0 var(--sp-2) var(--sp-1);
+  /* ⚠ z-index 7 = 스크림(6)보다 위여야 한다(실측 260802 수리): position:relative+z-index 가 .vnav 에 쌓임 맥락을
+     만들기 때문에 자식 .vpop 의 z-index:7 은 **맥락 안에서만** 유효 — 바깥에서 겨루는 건 .vnav 자신의 값이다.
+     구 5 에선 스크림(6)이 nav 통째를 덮어 드롭다운 안 클릭이 전부 스크림에 먹혔다(축 칩·기사 행·종료행 = 메뉴 여닫기 말곤 전멸 · elementFromPoint 전건 'vscrim' 실측).
+     바깥 탭 닫힘은 그대로 — 스크림이 나머지 화면을 덮는 건 변함없다. */
+  .vnav { flex:none; position:relative; z-index:7; display:flex; gap:2px /* raw-ok: 기존 값 무접촉 — 이 편집이 바꾼 건 z-index 5→7 하나뿐(메뉴바 칩 간격은 프리미어 원문 실측분 그대로) */; padding:0 var(--sp-2) var(--sp-1);
     border-bottom:1px solid var(--line2); flex-wrap:wrap; }
   /* ⚠ overflow-x:auto 금지(실측 260802): 한 축이라도 visible이 아니면 나머지 축도 auto로 계산돼
      이 컨테이너가 스크롤 박스가 되고, 아래로 펼쳐지는 .vpop(absolute)이 통째로 잘려 안 보였다.
@@ -550,6 +554,8 @@ const AXES = [
     vals:[['24','24'],['30','30'],['60','60']] },
   { k:'quality', nm:'화질', opt:'draft = 확인용 빠른 렌더', d:'standard',
     vals:[['draft','초안'],['standard','표준'],['high','고화질']] },
+  { k:'pack', nm:'숏폼 팩', opt:'대본·자막·샷 프롬프트 .md 동봉', d:'off',
+    vals:[['off','안 함'],['on','동봉']] },   /* 5축 = 영상과 별개 산출(운영자 260802 "뷰어에 안 만들면 의미 없음 · 기존 큐잉에 붙여라") — 러너가 apps/shorts/make_shorts_pack.py 를 같은 큐 파일로 돌려 mp4 옆에 .md 를 얹는다 = 렌더 플래그가 아니라 동봉 스위치(fxNote가 4축과 구분해 명시) */
 ];
 let opts = Object.fromEntries(AXES.map(a => [a.k, a.d]));
 let picked = [];
@@ -637,9 +643,12 @@ function paintAxes() {
           + ' aria-pressed="' + (opts[a.k] === v) + '">' + esc(lbl) + '</button>';
       }).join('')
     + '</div></div>').join('');
-  $('#fxSum').textContent = AXES.map(a => (a.vals.find(v => v[0] === opts[a.k]) || [])[1]).join(' · ');
-  $('#fxNote').innerHTML = '이 4축은 <b>실제로 렌더에 먹는다</b> — 러너가 <code>hyperframes render</code> 플래그로 그대로 넘긴다.<br>'
-    + '자막·내레이션·BGM·전환은 <b>아직 없다</b>(컴포지션에 미부착 · 기능 맵 문서의 「가능 38」 참고).';
+  // 요약줄 = 켜진 값 조인. 숏폼 팩만 예외 — 끈 상태의 '안 함'은 무슨 축인지 안 보여 줄에서 뺀다(켜면 축 이름으로 뜬다)
+  $('#fxSum').textContent = AXES.filter(a => !(a.k === 'pack' && opts.pack === 'off'))
+    .map(a => a.k === 'pack' ? a.nm : (a.vals.find(v => v[0] === opts[a.k]) || [])[1]).join(' · ');
+  $('#fxNote').innerHTML = '위 4축은 <b>실제로 렌더에 먹는다</b> — 러너가 <code>hyperframes render</code> 플래그로 그대로 넘긴다.<br>'
+    + '「숏폼 팩」은 렌더 플래그가 아니라 <b>동봉 스위치</b> — 켜면 고른 기사마다 나레이션 대본·자막 줄·Seedance 샷 프롬프트를 담은 <code>.md</code> 가 영상 옆에 같이 나온다(내려받기 칸에 함께 뜸).<br>'
+    + '자막·내레이션·BGM·전환은 영상 안엔 <b>아직 없다</b>(컴포지션에 미부착 · 기능 맵 문서의 「가능 38」 참고).';
 }
 $('#axes').addEventListener('click', e => {
   const b = e.target.closest('.axchip'); if (!b) return;
@@ -694,7 +703,8 @@ function syncSpec() {
     '<span class="gs-v' + (picked.length ? ' on' : '') + '">' + picked.length + '건</span>',
     '<span class="gs-v">' + esc(res) + '</span>', '<span class="gs-v">' + esc(fmt) + '</span>',
     '<span class="gs-v">' + esc(opts.fps) + 'fps</span>', '<span class="gs-v">6초</span>'
-  ].join('<span class="gs-sep">·</span>');
+  ].concat(opts.pack === 'on' ? ['<span class="gs-v on">팩</span>'] : [])   // 숏폼 팩 켜짐 = 레일에도 리드백(메뉴 안 열고 상태 확인 · 값 칩 `.gs-v` 정본 그대로 · 켠 상태라 `.on`)
+   .join('<span class="gs-sep">·</span>');
   $('#cntSel').textContent = picked.length ? ' ' + picked.length : '';
   $('#sumProj').textContent = picked.length ? picked.length + '건 선택' : '최대 ' + MAX + '건';
   const es = $('#editSum'); if (es) es.textContent = picked.length + '건 선택 중';
@@ -731,8 +741,12 @@ function renderJobs() {
   $('#jobs').innerHTML = a.length ? a.map(j => {
     const st = j.status === 'done' ? (DONE_SVG + '완료 ' + (j.n || 0) + '편')
       : j.status === 'err' ? '실패' : (SPIN_SVG + '만드는 중');
-    const dl = (j.status === 'done' && j.files || []).map(u =>
-      '<a class="dlbtn jdl" href="' + esc(u) + '" download aria-label="영상 내려받기" title="영상 내려받기">' + DL_SVG + '</a>').join('');
+    // 숏폼 팩 동봉(5축) = 같은 잡 산출이라 같은 줄에 뜬다 — 영상 먼저·팩 뒤, 사이 구분은 기존 `.jvar` 텍스트칩 계승(새 버튼 변형 금지 = nm-cards.css §다운로드 표준 "색·효과 재설계 금지")
+    const _all = (j.status === 'done' && j.files) || [];
+    const _vid = _all.filter(u => !/\.md$/i.test(u)), _pak = _all.filter(u => /\.md$/i.test(u));
+    const _dlb = (u, lb) => '<a class="dlbtn jdl" href="' + esc(u) + '" download aria-label="' + lb + '" title="' + lb + '">' + DL_SVG + '</a>';
+    const dl = _vid.map(u => _dlb(u, '영상 내려받기')).join('')
+      + (_pak.length ? '<span class="jvar">팩</span>' + _pak.map(u => _dlb(u, '숏폼 팩 내려받기')).join('') : '');
     return '<div class="job' + (j.status === 'err' ? ' err' : '') + '"><span class="jlab">' + esc(j.id) + '</span>'
       + '<span class="jvar">' + (j.n || 0) + '건</span>' + dl + '<span class="jst">' + st + '</span></div>';
   }).join('') : '<div class="vdempty">아직 만든 영상이 없다.</div>';
@@ -750,7 +764,7 @@ async function poll(outPath, jid) {
     } catch (e) { continue; }
     if (!d) continue;
     const a = jload(), j = a.find(x => x.id === jid); if (!j) return;
-    if (d.error) { j.status = 'err'; } else { j.status = 'done'; j.files = d.files || []; j.n = (d.files || []).length; }
+    if (d.error) { j.status = 'err'; } else { j.status = 'done'; j.files = d.files || []; j.n = (d.files || []).filter(u => !/\.md$/i.test(u)).length; }   // 편수 = 영상만(숏폼 팩 .md 동봉 시 files가 2배 = "완료 N편"이 부풀던 것 차단)
     jsave(a); renderJobs(); return;
   }
 }

@@ -15,7 +15,7 @@ on:
         type: string
         default: ''
       opts:
-        description: '효과 컨트롤 JSON {"format":"mp4|mov|webm|gif","res":"portrait|portrait-4k","fps":"24|30|60","quality":"draft|standard|high"} — api/vd.js 화이트리스트 통과분'
+        description: '효과 컨트롤 JSON {"format":"mp4|mov|webm|gif","res":"portrait|portrait-4k","fps":"24|30|60","quality":"draft|standard|high","pack":"off|on"} — api/vd.js 화이트리스트 통과분'
         type: string
         default: '{}'
 
@@ -94,6 +94,22 @@ jobs:
           [ "$MADE" -gt 0 ] || { echo "영상이 하나도 안 만들어졌어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::산출 0/${COUNT}"; exit 1; }
           [ "$MADE" -eq "$COUNT" ] || echo "::warning::부분 산출 ${MADE}/${COUNT} — 만들어진 것만 내보낸다"
 
+      - name: 숏폼 팩 동봉 (opts.pack=on)
+        timeout-minutes: 3
+        env:
+          IN_FILES: ${{ inputs.files }}
+          IN_OPTS: ${{ inputs.opts }}
+        run: |
+          set -e
+          # 5축 「숏폼 팩」 = 렌더 플래그가 아니라 별개 산출 — 같은 큐 파일로 대본·자막·Seedance 샷 프롬프트 .md 를 뽑아
+          # video/out 에 얹으면 아래 R2 루프가 mp4와 같이 걷어가 같은 다운로드 칸에 뜬다(LLM 0콜 = 결정론 조립).
+          PACK=$(node -e 'const o=JSON.parse(process.env.IN_OPTS||"{}");console.log(o.pack==="on"?"on":"off")')
+          [ "$PACK" = "on" ] || { echo "숏폼 팩 = 안 함(스킵)"; exit 0; }
+          # 전 구간 fail-soft — 팩이 안 나와도 영상 납품은 그대로(vd '만들어진 것만 내보낸다' 축 동형)
+          python3 apps/shorts/make_shorts_pack.py --files "$IN_FILES" --out video/out \
+            || echo "::warning::숏폼 팩 생성 실패 — 영상만 내보낸다"
+          ls -la video/out || true
+
       - name: R2 업로드 → video.json
         timeout-minutes: 8
         env:
@@ -114,7 +130,7 @@ jobs:
             [ -f "$f" ] || continue
             b=$(basename "$f")
             case "$b" in manifest.json) continue;; esac
-            case "${b##*.}" in mp4) CT=video/mp4;; mov) CT=video/quicktime;; webm) CT=video/webm;; gif) CT=image/gif;; *) CT=application/octet-stream;; esac
+            case "${b##*.}" in mp4) CT=video/mp4;; mov) CT=video/quicktime;; webm) CT=video/webm;; gif) CT=image/gif;; md) CT='text/markdown; charset=utf-8';; *) CT=application/octet-stream;; esac
             aws s3 cp "$f" "s3://$R2_BUCKET/vd_res/${IN_ID}/${b}" --content-type "$CT" \
               --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" --only-show-errors \
               || { echo "결과 업로드에 실패했어 — 다시 시도해줘." > /tmp/vd_err.txt; echo "::error::R2 업로드 실패: $b"; exit 1; }
