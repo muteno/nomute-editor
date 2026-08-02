@@ -186,20 +186,49 @@ def _pick_image(media):
     }]
 
 
+_CANON_RE = re.compile(r'threads\.(?:net|com)/@(?P<user>[^/"\'?#]+)/post/(?P<code>[\w-]+)')
+
+
+def find_canonical_post(webpage):
+    """공유 링크(/share/<코드>) 페이지에서 진짜 포스트 주소(@계정/post/<코드>)를 되찾는다.
+
+    공유 코드는 포스트 shortcode가 아니라서 그대로는 SSR JSON과 대조할 수 없다.
+    페이지는 canonical/og:url/딥링크 등 여러 자리에 정규 주소를 싣고 있으므로,
+    형태로 한 번에 훑어 첫 히트를 쓴다(고정 경로 의존 0). 못 찾으면 None.
+    """
+    m = _CANON_RE.search(webpage or '')
+    return (m.group('user'), m.group('code')) if m else None
+
+
 class NomuteThreadsIE(InfoExtractor):
     IE_NAME = 'threads'
     IE_DESC = 'Meta Threads (노뮤트 플러그인)'
+    # /post/(정규) · /t/(구 공유) · /share/(현 공유 시트) 세 형식 — 앞의 둘은 id가 곧 shortcode,
+    # /share/ 는 공유 코드라 아래에서 페이지를 열어 정규 주소로 한 번 갈아탄다(운영자 260802 "스레드 다운로드가 안되네").
     _VALID_URL = (r'https?://(?:www\.)?threads\.(?:net|com)/'
-                  r'(?:@(?P<user>[^/?#]+)/)?(?:post|t)/(?P<id>[\w-]+)')
+                  r'(?:@(?P<user>[^/?#]+)/)?(?P<kind>post|t|share)/(?P<id>[\w-]+)')
     _TESTS = []
 
     def _real_extract(self, url):
         shortcode = self._match_id(url)
-        user = self._match_valid_url(url).group('user')
+        mobj = self._match_valid_url(url)
+        user = mobj.group('user')
 
         webpage = self._download_webpage(
             url, shortcode, headers=_NAV_HEADERS,
             note='포스트 페이지 받는 중', errnote='포스트 페이지를 못 받았다')
+
+        if mobj.group('kind') == 'share':
+            hit = find_canonical_post(webpage)
+            if not hit:
+                raise ExtractorError(
+                    '공유 링크가 어느 글인지 못 찾았다 — 스레드 앱에서 「링크 복사」로 나오는 '
+                    'threads.com/@계정/post/… 주소를 넣어줘', expected=True)
+            user, shortcode = hit
+            url = f'https://www.threads.com/@{user}/post/{shortcode}'
+            webpage = self._download_webpage(
+                url, shortcode, headers=_NAV_HEADERS,
+                note='공유 링크 → 원글 페이지 받는 중', errnote='원글 페이지를 못 받았다')
 
         posts = extract_post_nodes(webpage, shortcode)
         self.write_debug(f'포스트 노드 {len(posts)}개 · data-sjs 블록 {len(_SJS_RE.findall(webpage))}개')
