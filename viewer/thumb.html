@@ -1712,7 +1712,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     if (lines.length) {
       const sp = cur.fmt === 'reels' ? { fs: 78, lh: 96, lm: 101, ty: 1119 } : { fs: 76, lh: 89, lm: 85, ty: 822 };
       const trO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post').tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
-      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(emph).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
+      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
@@ -4118,11 +4118,47 @@ const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlengt
       const key = fs + ch;
       if (cache.has(key)) return cache.get(key);
       cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
+      const m = cx.measureText(ch);
+      // 측정 기준 = **잉크폭 단일 기준**(운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자").
+      //   실렌더 정본 = nomute_overlay.draw_t → `bb = f.getbbox(ch); cx += bb[2]-bb[0] + tp` = **글자 잉크폭 + 자간**(advance 아님).
+      //   구 `measureText().width`(= advance)는 잉크보다 넓어 힌트가 서버보다 항상 한 단 더 조여 나왔다(기준 2개 = 표기와 산출 불일치원).
+      //   actualBoundingBoxLeft+Right = 캔버스의 잉크폭 = PIL getbbox 폭과 같은 축 · 미지원 엔진은 advance 폴백(종전 동작).
+      const w = (typeof m.actualBoundingBoxLeft === 'number' && typeof m.actualBoundingBoxRight === 'number')
+        ? Math.max(0, m.actualBoundingBoxLeft + m.actualBoundingBoxRight)
+        : m.width;
+      cache.set(key, w); return w;
+    } catch (_) { return null; }
+  };
+})();
+const _trkAdvW = (() => {   // 글자 **advance**(브라우저 배치폭) 캐시 — 미리보기 보정 전용(폭 판정은 위 잉크폭 단일 기준 유지)
+  let cx = null; const cache = new Map();
+  return (ch, fs) => {
+    try {
+      if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;
+      if (!cx) cx = document.createElement('canvas').getContext('2d');
+      const key = fs + ch;
+      if (cache.has(key)) return cache.get(key);
+      cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
       const w = cx.measureText(ch).width;
       cache.set(key, w); return w;
     } catch (_) { return null; }
   };
 })();
+// 미리보기 자간 = **서버 폭 재현값**(운영자 260802 "두개의 기준에 다 맞추던지") — 판정 기준은 잉크(서버 draw_t) 하나로 통일했지만,
+//   브라우저는 글자를 advance로 배치하므로 같은 tr을 그대로 쓰면 미리보기만 Σ(adv−ink)만큼 넓게 그려진다(실측 16자 한 줄 = 143px).
+//   → 줄마다 `(Σink − Σadv)/(n−1)`를 자간에 더해 **렌더 폭 = 서버 산출 폭**으로 맞춘다(1080 좌표계 px · 폰트 미로드면 null = 종전 tr 그대로).
+function prevLetterSpace(line, tr, fs) {
+  const plain = String(line).replace(/\*/g, '');
+  const n = plain.length - 1;
+  if (n < 1) return null;
+  let ink = 0, adv = 0;
+  for (const ch of plain) {
+    const i = _trkChW(ch, fs), a = _trkAdvW(ch, fs);
+    if (i == null || a == null) return null;
+    ink += i; adv += a;
+  }
+  return (ink - adv) / n + (tr / 1000 * fs);
+}
 function lineWidthPx(text, tr, cfg) {   // Σ글자폭 + tp*(len-1) + 5 (fit_tracking measure 미러 · +5 = 워크플로 동일 패드)
   const plain = text.replace(/\*/g, '');
   let s = 0;

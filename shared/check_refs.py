@@ -1691,6 +1691,42 @@ _TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
 #   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
 
 
+# ── 자간(tracking) 측정 기준 단일화 게이트 (운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자") ──
+#   왜 = 힌트(뷰어)와 산출(서버)이 **다른 자로 재고 있었다**: 서버 draw_t는 글자 잉크폭(getbbox)만큼 전진하는데
+#   뷰어는 canvas advance(measureText().width)를 썼다 → 같은 문구에 뷰어만 −41을 요구(실측 16자 Σadv 960.7 vs Σink 818).
+#   계약 = ① 판정 기준 = **잉크폭 하나**(뷰어 = actualBoundingBoxLeft+Right) ② 한도 상수 = 서버 SPECS·limit·floor와 py↔js 동일.
+def check_track_parity():
+    """자간 판정 = 잉크폭 단일 기준 + 한도 상수 py↔js 동일(운영자 260802). 이탈 = rc=1."""
+    rc = 0
+    try:
+        js = open(os.path.join(ROOT, 'viewer', 'thumb.html'), encoding='utf-8').read()
+        yml = open(os.path.join(ROOT, '.github', 'workflows', 'thumb-make.yml'), encoding='utf-8').read()
+        ov = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_overlay.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 자간 기준 게이트 — 파일 열기 실패: %s' % e); return 1
+    if 'actualBoundingBoxLeft' not in js or 'actualBoundingBoxRight' not in js:
+        print('❌ 자간 기준 게이트 — 뷰어가 잉크폭(actualBoundingBox*)을 안 쓴다 = advance 기준 회귀(서버 draw_t와 다른 자)'); rc = 1
+    want = {'post': {'limit': 920, 'floor': -45, 'fs': 76, 'tr': 0},
+            'reels': {'limit': 844, 'floor': -30, 'fs': 78, 'tr': -1}}
+    for fmt, w in want.items():
+        m = re.search(r'"%s":\s*\{[^}]*?"fs":(-?\d+)[^}]*?"tr":(-?\d+)' % fmt, ov, re.S)
+        if not m:
+            print('❌ 자간 기준 게이트 — nomute_overlay SPECS[%s] fs/tr 파싱 실패' % fmt); rc = 1; continue
+        if int(m.group(1)) != w['fs'] or int(m.group(2)) != w['tr']:
+            print('❌ 자간 기준 게이트 — SPECS[%s] fs/tr(%s/%s) ≠ 뷰어 TRK(%s/%s)' % (fmt, m.group(1), m.group(2), w['fs'], w['tr'])); rc = 1
+        j = re.search(r"%s:\s*\{[^}]*fs:\s*(-?\d+)[^}]*limit:\s*(-?\d+)[^}]*start:\s*(-?\d+)[^}]*floor:\s*(-?\d+)" % fmt, js)
+        if not j:
+            print('❌ 자간 기준 게이트 — 뷰어 TRK.%s 파싱 실패' % fmt); rc = 1; continue
+        if (int(j.group(1)), int(j.group(2)), int(j.group(3)), int(j.group(4))) != (w['fs'], w['limit'], w['tr'], w['floor']):
+            print('❌ 자간 기준 게이트 — 뷰어 TRK.%s(fs%s/limit%s/start%s/floor%s) ≠ 서버 정본(%s/%s/%s/%s)'
+                  % (fmt, j.group(1), j.group(2), j.group(3), j.group(4), w['fs'], w['limit'], w['tr'], w['floor'])); rc = 1
+    if ('limit = 920 if fmt' not in yml) or ('floor = -45 if fmt' not in yml):
+        print('❌ 자간 기준 게이트 — thumb-make.yml fit_tracking 한도(920/-45) 표기 이탈 = 3면 동기 깨짐'); rc = 1
+    if rc == 0:
+        print('✅ 자간 기준 게이트 — 판정 = 잉크폭 단일 기준(뷰어 actualBoundingBox = 서버 draw_t getbbox 축) · 한도 3면(뷰어 TRK · SPECS · 워크플로) 동일.')
+    return rc
+
+
 def check_trail_spec():
     """미리보기 코너 옵션 레일 사본 동일성 게이트(운영자 260802).
     3표면의 레일 캡슐·값 칩 규격이 정본 값에서 이탈하면 rc=1. 등재 = CII 「미리보기 코너 옵션 레일」 행."""
@@ -2287,6 +2323,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 이미지 스튜디오 도크 규격 게이트 스킵:', e)
+    try:
+        if check_track_parity() != 0:   # 자간 판정 기준 단일화(운영자 260802 — 뷰어 잉크폭 = 서버 draw_t 축 · 한도 3면 동일)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 자간 기준 게이트 스킵:', e)
     try:
         if check_trail_spec() != 0:   # 미리보기 코너 옵션 레일 사본 동일성(운영자 260802 — thumb·tr·index 3표면 값 사본이 갈라지는 조용한 드리프트 차단)
             rc = 1
