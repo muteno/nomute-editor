@@ -2047,18 +2047,25 @@ function edCur(c) { const on = document.querySelector(c.wrap + ' .ropt.on'); con
 function edPick(c, j) { const t = [...document.querySelectorAll(c.wrap + ' .ropt')].find(b => b.dataset.v === c.ord[j]); if (t) t.click(); edNavSync(); }
 function edStep(id, dir) { const c = ED_ORD[id]; if (!c) return; const i = edCur(c); const j = Math.min(Math.max(i + dir, 0), c.ord.length - 1); if (j !== i) edPick(c, j); }   // ‹› = 비순환(왼쪽 끝 = 기본값)
 function edCycleTap(id) { const c = ED_ORD[id]; if (!c) return; edPick(c, (edCur(c) + 1) % c.ord.length); }   // 값 탭 = 같은 순서 순환(모바일 종전 동작 유지)
+// 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — 표면 공용 키 1개 · localStorage 차단 환경(사파리 프라이빗)에서도 안 죽게 try 감싼다(무저장 = 종전 동작 = 상시 축소).
+const PVZOOM = { K: 'nm.pvzoom',
+  get() { try { return localStorage.getItem(this.K) === '1'; } catch (_) { return false; } },
+  set(on) { try { on ? localStorage.setItem(this.K, '1') : localStorage.removeItem(this.K); } catch (_) {} } };
 // ── 미리보기 확대(돋보기) — 구 「편집 도크 스크롤 축소(.dockmin)」 폐지분의 자리(운영자 260802 2차 "미리보기가 확대되는거 없애고 이정도를 항상 유지 · 맨 위에 돋보기 버튼") ──
 //   구 배선 = 스크롤 y 문턱(on 120 / off 8)으로 창을 100%↔52% 자동 전환 → 운영자 화면이 저 혼자 커졌다 작아졌다 = 이번 요청의 대상.
 //   신 배선 = 창은 상시 52%(CSS 기본값) · 확대는 **버튼 하나**로만(.dockzoom) = 자동 전환 0 · 스크롤 리스너·히스테리시스·재판정 잠금 전부 회수.
 //   확대 후 재렌더 = 구 배선과 동일(폭이 바뀌면 산출 미리보기를 다시 굽는다 — 폭 관측 rAF(1762행)도 그대로 살아 있어 이중 안전).
+//   상태 기억(운영자 260802 3차 "머지" = 직전 보고 6-4 승인분) = `nm.pvzoom` 1벌 — 탭을 바꾸거나 창을 다시 열어도 마지막에 둔 크기로 연다.
+//   ⚠ 키는 **표면 공용**(thumb·tr·index geni 동일 origin) = 4탭이 한 상태를 공유 = 탭 이동에 크기가 튀지 않는다(그게 이 기억의 목적).
+//   부팅 반영 = 클래스만 얹는다(재렌더는 폭 관측 rAF가 전담 · 여기서 rszPreview를 부르면 첫 렌더와 경합).
 (function () {
-  const btn = $('#cpZoom'); if (!btn) return;
+  const btn = $('#cpZoom'), td = $('#topDock'); if (!btn || !td) return;
+  const paint = on => { td.classList.toggle('dockzoom', on); btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); btn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+  paint(PVZOOM.get());   // 부팅 = 마지막 상태 복원
   btn.addEventListener('click', () => {
-    const td = $('#topDock'); if (!td) return;
-    const on = td.classList.toggle('dockzoom');
-    btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대');
-    btn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀';
+    const on = !td.classList.contains('dockzoom');
+    paint(on); PVZOOM.set(on);
     setTimeout(() => { if (typeof rszPreview === 'function') try { rszPreview(); } catch (_) {} }, 280);   // dur-acc(260ms) 후 실높이 기준 재렌더(구 축소 배선 동일 처방)
   });
 })();

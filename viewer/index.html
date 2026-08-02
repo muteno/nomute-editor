@@ -5280,6 +5280,10 @@ function bindImgPaste(el, onImg) {   // el(입력칸·슬롯·모달)에서 Ctrl
   if (!el || el._imgPasteBound) return; el._imgPasteBound = true;   // 이중 바인딩 가드(재호출·reparent 대비)
   el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
 }
+// 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — thumb·tr과 **같은 키**(동일 origin) = 이미지 스튜디오 4탭이 한 크기로 열린다 · 저장 차단 환경은 무저장 = 상시 축소(종전 동작)
+const PVZOOM = { K: 'nm.pvzoom',
+  get() { try { return localStorage.getItem(this.K) === '1'; } catch (_) { return false; } },
+  set(on) { try { on ? localStorage.setItem(this.K, '1') : localStorage.removeItem(this.K); } catch (_) {} } };
 function geniPrevSize() {   // 미리보기 박스 높이 = 편집 탭 렌더 등가(운영자 260719 "이 둘이 완전 다르다" 교정) — thumb 쉘 정본 min(29svh,300)의 svh가 iframe 뷰포트 기준이라, 부모 문서인 이 폼은 같은 슬롯(genihost=iframe 자리·팝업=다이얼로그) clientHeight×0.29 캡 300으로 등가 산출(edit pvSync .29/300 동미러 · CSS min(29svh,300)은 무JS 폴백)
   const box = $('#geniPrevBox'); if (!box) return;
   const h = $('#geniHost'), d = $('#genidlg');
@@ -5510,15 +5514,14 @@ function geniInit() {
   const tonbtn = $('#geniTextOn'); if (tonbtn) tonbtn.addEventListener('click', () => { _geniSel.textOn = !_geniSel.textOn; geniApply(); });   // 문구 살리기 = on/off 토글(260728 한국웹툰화와 한 쌍 회수) — 문구 자체는 Opus가 주문(장면 설명)에서 정해 자연스럽게 살림(운영자 260710)
   const rfBtn = $('#geniRefBtn'), rfFile = $('#geniRefFile'), rfBox = $('#geniPrevBox'), rfSwap = $('#geniRefSwap'), rfX = $('#geniRefX');   // 참고 이미지 첨부 = 미리보기 쉘 이주(운영자 260719 — 빈 상태 픽토그램 진입점 #geniRefBtn 승계 · 교체/삭제 = .cpv-tool · thumb 편집 미리보기 입구 문법 동일)
   // ── 미리보기 확대(돋보기) + 레일 생성 칩 = thumb 정본 동문(운영자 260802 2차) — 창은 상시 52%·확대는 버튼만 · 생성 칩은 정본 발사 버튼(#geniGo) 대리클릭(상태·비활성 1벌) ──
-  const zmBtn = $('#geniZoom');
-  if (zmBtn) zmBtn.addEventListener('click', () => {
-    const pv = $('#geniPrev'); if (!pv) return;
-    const on = pv.classList.toggle('dockzoom');
-    zmBtn.classList.toggle('on', on); zmBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    zmBtn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대');
-    zmBtn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀';
-    setTimeout(geniPrevSize, 280);   // 폭 전환 후 실폭 1:1 높이 재산출(쉘 높이 단일출처 = geniPrevSize)
-  });
+  //   확대 상태 = 표면 공용 키 1벌(운영자 260802 3차 승인 = 보고 6-4) — thumb·tr과 같은 `nm.pvzoom`이라 4탭이 한 크기로 열린다
+  const zmBtn = $('#geniZoom'), zmPv = $('#geniPrev');
+  if (zmBtn && zmPv) {
+    const paint = on => { zmPv.classList.toggle('dockzoom', on); zmBtn.classList.toggle('on', on); zmBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      zmBtn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); zmBtn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+    paint(PVZOOM.get());
+    zmBtn.addEventListener('click', () => { const on = !zmPv.classList.contains('dockzoom'); paint(on); PVZOOM.set(on); setTimeout(geniPrevSize, 280); });   // 폭 전환 후 실폭 1:1 높이 재산출(쉘 높이 단일출처 = geniPrevSize)
+  }
   const goPx = $('#geniGoProxy');
   if (goPx) goPx.addEventListener('click', () => { const g = $('#geniGo'); if (g) g.click(); });
   const txBtn = $('#geniTxtBtn'); if (txBtn) txBtn.addEventListener('click', () => geniWishShow(true, true));   // 좌 반쪽 = 글 픽토그램(운영자 260721 반갈) — 탭 = 주문칸 노출·포커스(재탭 = 재포커스 · 발사 = 주문이 프롬프트 반영 기존 배선 그대로)

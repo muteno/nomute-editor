@@ -330,13 +330,17 @@ $('srcFile').addEventListener('change', e => { setImage(e.target.files[0]); e.ta
 $('pvPhoto').addEventListener('click', () => $('srcFile').click());   // 빈 미리보기 사진 픽토 = 파일 입구 위임(thumb cpv-photobtn 문법)
 $('swapBtn').addEventListener('click', () => $('srcFile').click());   // 교체 = 파일 입구 위임(thumb cpImgSwap 문법)
 // ── 미리보기 확대(돋보기) + 레일 생성 칩 = thumb 정본 동문(운영자 260802 2차) — 창은 상시 52%·확대는 버튼만 · 생성 칩은 정본 발사 버튼(#go) 대리클릭(상태 1벌) ──
-$('cpZoom').addEventListener('click', () => {
-  const td = $('topDock'), b = $('cpZoom'); if (!td) return;
-  const on = td.classList.toggle('dockzoom');
-  b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  b.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대');
-  b.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀';
-});
+// 확대 상태 = 표면 공용 키 1벌(운영자 260802 3차 승인 = 보고 6-4 "탭·세션에 기억") · thumb PVZOOM 정본 동문 · 저장 차단 환경은 무저장 = 상시 축소(종전 동작)
+const PVZOOM = { K: 'nm.pvzoom',
+  get() { try { return localStorage.getItem(this.K) === '1'; } catch (_) { return false; } },
+  set(on) { try { on ? localStorage.setItem(this.K, '1') : localStorage.removeItem(this.K); } catch (_) {} } };
+(function () {
+  const td = $('topDock'), b = $('cpZoom'); if (!td || !b) return;
+  const paint = on => { td.classList.toggle('dockzoom', on); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); b.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+  paint(PVZOOM.get());
+  b.addEventListener('click', () => { const on = !td.classList.contains('dockzoom'); paint(on); PVZOOM.set(on); });
+})();
 $('cpGoProxy').addEventListener('click', () => $('go').click());
 $('delBtn').addEventListener('click', () => {   // 삭제 = 원점 리셋(thumb cpImgDel 문법 — 사진 제거 = 결과·사이클 동반 초기화)
   img = null; RESULT = null; ocrLines = null; ocrFor = null; fired = false;
