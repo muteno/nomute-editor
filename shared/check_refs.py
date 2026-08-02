@@ -1716,6 +1716,54 @@ def check_trail_spec():
     return rc
 
 
+# ── 미리보기 중앙 = 업로드 픽토 1개 게이트 (운영자 260802 "그 가운데는 무조건 사진첩만 있는거임 · 텍스트랑 같이 있는거 없어") ──
+#   왜 = 이 규칙은 **탭마다 재발하기 딱 좋은 종류**다. 260721 AI 생성에 「글|사진 반갈 듀오」가 들어갔고 tr이 그걸 통계승해
+#   두 표면이 같이 어긋났다(260802 원복). 표면이 늘 때마다 중앙에 버튼을 하나 더 붙이는 유혹은 계속 생기는데,
+#   스모크는 AI 생성 한 탭(smoke_parity C5b)만 잰다 → 나머지 표면은 무방비. 그래서 커밋 단계에서 전 뷰어를 센다.
+#   계약 = 빈 상태 무대(.cpv-empty) 안 진입 버튼(.cpv-photobtn)은 **최대 1개**(사진·영상·파일 업로드 그 하나).
+#   0개 = 정당(k·song = 중앙이 대기 문구라 버튼 없음). 텍스트·참고자료 등 나머지 진입점 = 코너 옵션 레일(CII 해당 행).
+#   ⚠ JS 문자열로 그리는 빈 상태(thumb `st.innerHTML = '<div class="cpv-empty">…'`)도 같은 정규식에 걸린다 = 사각 0.
+
+
+def check_prev_center():
+    """미리보기 빈 상태 중앙 = 업로드 픽토 단독 게이트(운영자 260802).
+    .cpv-empty 블록 안 .cpv-photobtn이 2개 이상이면 rc=1. 등재 = CII 「합성 미리보기 쉘」 행."""
+    import glob as _g
+    rc = 0; n = 0; surf = 0
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            html = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        hit = False
+        for m in re.finditer(r'<div class="cpv-empty"', html):   # 블록 = div 깊이 카운터로 정확히 닫는다(정규식 게으른 매칭은 중첩에서 샌다)
+            i = m.start(); d = 0; j = i; blk = ''
+            while j < len(html):
+                t = html.find('<', j)
+                if t < 0:
+                    break
+                if html.startswith('<div', t):
+                    d += 1
+                elif html.startswith('</div', t):
+                    d -= 1
+                    if d == 0:
+                        blk = html[i:t]; break
+                j = t + 4
+            if not blk:
+                continue
+            hit = True; n += 1
+            cnt = len(re.findall(r'class="[^"]*cpv-photobtn', blk))
+            if cnt > 1:
+                print('❌ 미리보기 중앙 게이트 — %s 빈 상태 무대에 진입 버튼 %d개 = 중앙은 업로드 하나뿐(운영자 260802). '
+                      '나머지 진입점은 코너 옵션 레일로 빼라(CII 「미리보기 코너 옵션 레일」)' % (rel, cnt)); rc = 1
+        if hit:
+            surf += 1
+    if rc == 0:
+        print('✅ 미리보기 중앙 게이트 — 빈 상태 무대 %d개(%d표면) 전부 진입 버튼 ≤1(중앙 = 업로드 단독 · 텍스트·참고 진입점은 코너 레일).' % (n, surf))
+    return rc
+
+
 def check_label_fill():
     """콘텐츠 라벨색(cat-*·bias-*) 솔리드 배경 필 금지 게이트(운영자 260721 Q345 · 평의회 Q329 채택 ④ = 감사 R5 절제축).
     취지 = 카테고리/편향색은 '라벨'(텍스트·도트·저알파 워시·게이지)이지 '기능 신호'(칩·버튼 솔리드 필)가 아니다 —
@@ -2194,6 +2242,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 코너 레일 게이트 스킵:', e)
+    try:
+        if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 미리보기 중앙 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
