@@ -61,7 +61,7 @@ _TOKENS_HEADER = (
 )
 # 구조 토큰 판정 — 색/의미색/팔레트와 접두사가 겹치지 않음(검증: --bg/--glass/--line/--accent/--fg/--mut/
 #   --danger/--warn/--amber/--info/--bias/--on-*/--hist/--arm/--thumb 중 아래 접두사로 시작하는 것 0).
-_STRUCT_EXACT = {"--r", "--font-status", "--ease"}
+_STRUCT_EXACT = {"--r", "--font-status", "--ease", "--trailw"}   # --trailw = 코너 레일 캡슐 폭(260802 8차 승격 · 접두 규칙 밖 단발 구조토큰 — 미등재면 iframe 뷰어 var() 무효 = 캡슐 붕괴)
 _STRUCT_PREFIX = ("--r-", "--sp-", "--blur-", "--btn", "--fs-", "--fw-", "--lh-", "--dur", "--z-", "--press-", "--gauge")
 
 
