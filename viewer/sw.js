@@ -39,7 +39,7 @@ async function selfDestructIfStale() {
   return true;
 }
 
-const SHELL_CACHE = 'nm-shell-v1';
+const SHELL_CACHE = 'nm-shell-v2';   // v1→v2(260802 2차 재발) — activate 청소가 구 v1(절단 오염 사본 포함)을 전 기기에서 원격 소각
 const SHELL_PATHS = ['/', '/index.html'];   // 캐시 화이트리스트 — 여기 없는 HTML은 SW가 손 안 댐
 
 self.addEventListener('fetch', event => {
@@ -50,8 +50,15 @@ self.addEventListener('fetch', event => {
   event.respondWith((async () => {
     const key = url.origin + url.pathname;   // 쿼리 제거 정규화 = 딥링크(?a=·?msg=) 변형이 캐시를 늘리지도 가르지도 않음
     const cache = await caches.open(SHELL_CACHE);
-    const cached = await cache.match(key);
-    const cachedClone = cached ? cached.clone() : null;   // 새버전 감지(본문 폴백)용 = 반환 전 클론(스트림 락 회피 · text()는 필요 시만)
+    const cachedRaw = await cache.match(key);
+    // ── 서빙 전 절단 검문(260802 2차 재발 봉합) — put 검문만으론 '이미 오염된 기기'를 못 구한다: 절단이 문서 초반부면
+    //    head 자가치유 가드조차 사본에 안 실려 페이지 JS 전멸 = 페이지측 탈출 전무. SW는 no-cache로 항상 자동 갱신되므로
+    //    「절단 사본은 서빙 자체가 안 된다」를 SW 불변식으로 승격 — 꼬리 </html> 아니면 즉시 소각 + 네트워크 직행.
+    //    비용 = 진입당 캐시 본문 1회 read(수십 ms급) — 콜드부트 즉시 페인트보다 무결성 우선(운영자 260802 재발 실측).
+    const cachedBody = cachedRaw ? await cachedRaw.clone().text().catch(() => null) : null;
+    const cachedOk = cachedBody != null && /<\/html>\s*$/i.test(cachedBody);
+    const cached = cachedOk ? cachedRaw : null;   // 이하 로직은 '검증된 사본'만 캐시로 취급
+    if (cachedRaw && !cachedOk) event.waitUntil(cache.delete(key).catch(() => {}));   // 오염 사본 소각(다음 진입 = 순수 네트워크)
     const netP = fetch(req).then(async res => {
       if (res.ok && !res.redirected && res.type === 'basic') {
         // ── 절단 검문(260802 '상단만 렌더' 사고) — 라이브 index 응답은 content-length 없는 청크 스트림이라(실측)
@@ -63,8 +70,7 @@ self.addEventListener('fetch', event => {
         let changed = false;   // 새 index 셸 배포 감지(옛≠새) → 열린 페이지에 nm-shell-updated 통지(운영자 260717 새버전 토스트)
         if (cached && intact) {
           const scrub = s => (s || '').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, m => (/cdn-cgi|cloudflareinsights/i.test(m) ? '' : m));   // 엣지 주입 노이즈 소거(운영자 260717 무한루프 실기록) — Cloudflare가 응답마다 다르게 심는 스크립트(RUM beacon rayId·챌린지 토큰)를 비교에서 제외. 같은 셸인데 주입 토큰만 달라 '다름' 오판 → 반영 탭 직후 또 "새 버전" 무한 재알림의 근원 차단(앱 자체 스크립트는 cdn-cgi·cloudflareinsights 문자열 0 = 소거 비대상)
-          const a = await cachedClone.text().catch(() => null);   // (구 ETag 동일 빠른 경로 = 절단 검문의 전문 read로 대체 — 비교 문법은 종전 그대로)
-          changed = a != null && scrub(a) !== scrub(body);
+          changed = scrub(cachedBody) !== scrub(body);   // 본문 = 서빙 전 검문에서 이미 읽음(재read 0 · 비교 문법은 종전 그대로)
         }
         if (intact) await cache.put(key, res.clone()).then(() => {}, () => {});   // put을 체인에 태움 = waitUntil 수명 안(쓰기 유실 차단·평의회 1) · 실패(quota 등)해도 진행 = 정상 응답 폐기 안 함 · 절단 사본 = put 자격 없음
         if (changed) self.clients.matchAll({ type: 'window' }).then(list => list.forEach(c => c.postMessage({ type: 'nm-shell-updated' })));   // 갱신 완료 후 통지 = 탭→reload가 새 셸 서빙 보장

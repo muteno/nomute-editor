@@ -5,10 +5,10 @@
 <script>
 /* 셸 절단 자가치유(260802 웹앱 '상단만 렌더·하단 nav 실종' 사고) — sw.js가 index 셸을 캐시-우선(SWR)으로 서빙하는데
    라이브 응답이 content-length 없는 청크 스트림이라(실측 260802) 전송 중 절단이 '정상 EOF'처럼 보여 잘린 셸이
-   nm-shell-v1에 박힐 수 있다 → 그 기기는 매 진입 상단만 렌더(§: 정적 #bnav조차 DOM에 없음 = 인라인 부팅 JS 전멸 =
+   nm-shell-v2에 박힐 수 있다 → 그 기기는 매 진입 상단만 렌더(§: 정적 #bnav조차 DOM에 없음 = 인라인 부팅 JS 전멸 =
    갱신 리스너도 없어 자가회복 불능). 이 가드는 head 최상단이라 절단 사본 안에서도 살아남는다:
    DCL 때 문서 끝 센티널 #nm-eod(</body> 직전 · 이 스크립트와 한 쌍 = 삭제·이동 금지)가 없으면 절단 셸로 판정 →
-   nm-shell-v1 퍼지 + ?nosw=1(sw.js ⓑ 캐시 전면 우회 탈출구) 1회 재진입 = 순수 네트워크 온전 셸.
+   nm-shell-v2 퍼지 + ?nosw=1(sw.js ⓑ 캐시 전면 우회 탈출구) 1회 재진입 = 순수 네트워크 온전 셸.
    루프 가드 3중: ①sessionStorage 세션당 1회 ②nosw 진입서 또 절단 = 회선 자체 문제 → 재발사 안 함 ③저장 불가(프라이빗) = 치유 포기.
    짝 = sw.js 절단 검문(put 전 </html> 꼬리 확인 = 오염 원천 차단) — 이쪽은 이미 오염된 기기의 탈출로. */
 (function () {
@@ -20,7 +20,7 @@
       try { if (sessionStorage.getItem('nmShellHeal')) return; sessionStorage.setItem('nmShellHeal', '1'); } catch (_) { return; }   // 루프 차단 ①·③
       var fired = false, go = function () { if (fired) return; fired = true; qs.set('nosw', '1'); location.replace(location.pathname + '?' + qs.toString() + location.hash); };
       var t = setTimeout(go, 1500);                                                   // caches API 무응답 대비 상한
-      try { caches.delete('nm-shell-v1').then(function () { clearTimeout(t); go(); }, function () { clearTimeout(t); go(); }); }
+      try { caches.delete('nm-shell-v2').then(function () { clearTimeout(t); go(); }, function () { clearTimeout(t); go(); }); }
       catch (_) { clearTimeout(t); go(); }                                            // caches 미지원(비보안 컨텍스트 등) = 캐시 퍼지 생략하고 재진입만
     } catch (_) {}
   }
@@ -8348,14 +8348,14 @@ async function applyShellUpdate(t) {
   const m = t && t.querySelector('.ft-msg'); if (m) m.innerHTML = '반영중…';   // 처리중 = gdots 점모션 정본 계승(§디자인 g · pushToggle '변경중' 문법 = 붙여쓰기 가족 표기 동일 · 평의회 260717-8) — 느린 망에서 탭이 먹통처럼 안 보이게
   try {
     const res = await fetch(location.pathname, { cache: 'no-store', signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined });   // 비내비게이션 fetch = SW fetch 핸들러 불간섭(mode≠navigate) = 순수 네트워크 최신 · 4s 상한 = 무한 대기 차단
-    if (res.ok && !res.redirected && res.type === 'basic') {   // 가드 = sw.js ⓐ 동일(Access 로그인 리다이렉트로 캐시 오염 차단) · 'nm-shell-v1' = sw.js SHELL_CACHE와 짝(check_refs 셸캐시 패리티 게이트가 기계 감시 · 260717)
+    if (res.ok && !res.redirected && res.type === 'basic') {   // 가드 = sw.js ⓐ 동일(Access 로그인 리다이렉트로 캐시 오염 차단) · 'nm-shell-v2' = sw.js SHELL_CACHE와 짝(check_refs 셸캐시 패리티 게이트가 기계 감시 · 260717)
       // 절단 검문(260802 '상단만 렌더' 재발 실사고 봉합) — sw.js put에만 검문을 달고 이 페이지측 put이 무검문이라,
       // '탭하면 반영' 중 전송 절단(청크 스트림 = content-length 없음 = res.ok 그대로)이 잘린 셸을 두 키에 동시에 꽂았다.
       // 꼬리 </html> 확인 후에만 캐시 자격(sw.js intact 술어와 동일 축 · check_refs check_shell_put_integrity가 기계 감시).
       // 절단이면 put 생략 = 기존 정상 사본 보존 → 아래 reload는 종전 셸 서빙 · 수렴은 다음 진입 SWR 재검증이 담당(fail-soft).
       const body = await res.text().catch(() => null);
       if (body != null && /<\/html>\s*$/i.test(body)) {
-        const c = await caches.open('nm-shell-v1');
+        const c = await caches.open('nm-shell-v2');
         await Promise.all(['/', '/index.html'].map(p => c.put(location.origin + p, new Response(body, { status: 200, statusText: 'OK', headers: res.headers }))));   // sw.js SHELL_PATHS 두 키 동시 갱신 — 현재 경로만 put하면 형제 키가 옛 세대로 남아 그 경로 진입 때 토스트 재발(평의회 260717-9) · 키 = 쿼리 제거 정규화 동일 · Response 재조립 = 검문서 본문을 이미 소비(헤더 원본 계승)
       }
     }
