@@ -1932,6 +1932,43 @@ def check_prev_center():
     return rc
 
 
+def check_twocol_breakpoint():
+    """스튜디오 결과 레일 2단 분기점 = 표면 간 한 값 게이트(운영자 260802 "일단 머지해주셈" 승인분).
+    왜 = thumb만 1100→900 하향(260802 2차)되고 영상 4탭 사본은 1100에 남아, 운영자 PC 실폭(900~1100 구간)에서
+    이미지 2단 · 영상 1단으로 갈라졌다(260802 이미지↔영상 전후비교 실측 = 1000px에서 thumb 475+475 vs edit/song grid none).
+    기존 실측기 전부의 사각 — smoke_studioshell은 1280(둘 다 2단인 폭)에서 재고 preview_shot은 430(둘 다 1단)이라
+    이 드리프트는 어느 게이트에도 안 걸리고 통과했다. 렌더 0 정적 검사로 커밋 시점에 차단한다.
+    대상 = 자동발견: viewer/*.html 중 2단 시그니처(`span 99` = 결과 칼럼 grid-row 문법)를 품은 @media(min-width) 블록 전부
+    (현재 thumb·tr·edit·sb·k·song 6표면 — vd 큐영상은 C안 패널 도킹 워크스페이스라 2단 자체가 없어 자연 비대상)."""
+    import glob as _g
+    vals = {}
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            html = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        for m in re.finditer(r'@media\s*\(min-width:(\d+)px\)\s*\{', html):
+            i = m.end(); d = 1; j = i   # 블록 = 중괄호 깊이 카운터(중첩 규칙 안전 · check_prev_center 깊이 카운터 동문)
+            while j < len(html) and d:
+                c = html[j]
+                if c == '{':
+                    d += 1
+                elif c == '}':
+                    d -= 1
+                j += 1
+            if 'span 99' in html[i:j]:
+                vals.setdefault(rel, set()).add(int(m.group(1)))
+    flat = sorted({v for s in vals.values() for v in s})
+    if len(flat) > 1:
+        print('❌ 2단 분기점 게이트 — 스튜디오 표면 간 분기점이 갈렸다: %s → 정본 = 한 값(thumb 기준 · 한 표면만 고치고 잊는 드리프트 = 260802 실사고)'
+              % (' · '.join('%s=%s' % (r, ','.join(map(str, sorted(s)))) for r, s in sorted(vals.items()))))
+        return 1
+    print('✅ 2단 분기점 게이트 — %d표면 전부 min-width:%spx 한 값(결과 레일 2단 시그니처 자동발견).'
+          % (len(vals), flat[0] if flat else '?'))
+    return 0
+
+
 # ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
 #   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
 #   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
@@ -2523,6 +2560,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 미리보기 중앙 게이트 스킵:', e)
+    try:
+        if check_twocol_breakpoint() != 0:   # 결과 레일 2단 분기점 표면 간 한 값(운영자 260802 — 이미지만 900 하향·영상 1100 잔류가 실측기 사각[스모크 1280·폰 430]을 그냥 통과한 사고 봉합 · 렌더 0 정적)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 2단 분기점 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
