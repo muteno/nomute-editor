@@ -13,6 +13,10 @@ on:
       url:
         description: '영상 게시물 URL(yt-dlp)'
         type: string
+      mode:
+        description: '받을 것 — both(영상+자막) · video(영상만) · subs(자막만)'
+        type: string
+        default: 'both'
 
 concurrency:
   group: vidl-make-${{ inputs.id }}
@@ -48,6 +52,7 @@ jobs:
         env:
           IN_ID: ${{ inputs.id }}
           IN_URL: ${{ inputs.url }}
+          IN_MODE: ${{ inputs.mode || 'both' }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
@@ -63,7 +68,8 @@ jobs:
           # R2 시크릿 프리플라이트 — 25분 다운로드 후 업로드에서 죽는 대신 즉시 정직 실패(평의회5 P2)
           [ -n "$R2_ACCOUNT_ID" ] && [ -n "$R2_BUCKET" ] && [ -n "$R2_PUBLIC_BASE" ] && [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] \
             || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/vidl_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
-          python3 apps/vidl/vidl_run.py "$IN_ID" "$IN_URL"
+          case "$IN_MODE" in both|video|subs) ;; *) IN_MODE=both ;; esac   # 화이트리스트(주입 차단 · py도 재검증)
+          python3 apps/vidl/vidl_run.py "$IN_ID" "$IN_URL" "$IN_MODE"
 
       - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
         if: failure()

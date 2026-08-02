@@ -8692,7 +8692,8 @@ function _dgMetaScan() {   // 용량 = head 지연 조회(동시 4 · 캡 80 = �
 function _dgYtConsentSet(v) {
   _dg.ytConsent = !!v;
   _dgEach((it, i) => { if (it.stream && !it.dl) { const b = $('#dgyb' + i); const y = _dg.yt[i]; if (b && !(y && y.st && y.st !== 'idle')) b.disabled = !v; } });
-  const vb = $('#dgVidGo'); if (vb) vb.disabled = !_dg.ytConsent || !(_dg.vid && _dg.vid.st === 'idle');   // 영상 플랫폼 경로(배치 조건) 발사 버튼도 같은 동의 게이트
+  const off = !_dg.ytConsent || !(_dg.vid && _dg.vid.st === 'idle');
+  document.querySelectorAll('#dgBody [data-act="vidgo"]').forEach(b => { b.disabled = off; });   // 영상 플랫폼 경로(배치 조건) 발사 버튼도 같은 동의 게이트 — 「다운로드+자막/다운로드/자막」 3택 전부(구 #dgVidGo 단건 셀렉터는 나머지 2개를 잠근 채 뒀다 · 260802)
 }
 async function _dgYtReq(i) {
   const it = ((_dg.res || {}).items || [])[i]; if (!it || !it.stream) return;
@@ -8795,13 +8796,13 @@ function _dgDoneSave(v) {
   if (!v || !v.res || !(v.res.files || []).length) return;
   try {
     const a = _dgDoneLoad().filter(x => x.id !== v.id);   // 같은 건 재요청 = 최신으로 승격
-    a.unshift({ id: v.id, url: v.url, plat: v.plat, t: Date.now(), res: v.res });
+    a.unshift({ id: v.id, url: v.url, plat: v.plat, mode: v.mode || (v.res && v.res.mode) || 'both', t: Date.now(), res: v.res });
     localStorage.setItem(DG_VDONE_KEY, JSON.stringify(a.slice(0, DG_VDONE_MAX)));
   } catch {}   // 용량 초과 = 조용히 포기(보관함은 편의 · 현재 결과 표시는 무영향)
 }
 function _dgDoneOpen(i) {   // 보관함 항목 → 그때 그 완료 패널 그대로 복원(파일 목록·받기·전부 받기)
   const e = _dgDoneLoad()[i]; if (!e) return;
-  _dg.vid = { url: e.url, plat: e.plat, id: e.id, t0: e.t, st: 'done', res: e.res };
+  _dg.vid = { url: e.url, plat: e.plat, id: e.id, mode: e.mode || 'both', t0: e.t, st: 'done', res: e.res };
   _dg.res = null; _dg.err = ''; _dg.vdOpen = false;
   _dgRenderBody();
 }
@@ -8821,7 +8822,7 @@ function _dgDoneHtml() {
   list.forEach((e, i) => {
     const fs = e.res.files || [];
     const vn = fs.filter(f => f.kind === 'video').length;
-    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' 영상 · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';
+    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' · ' + ({ both: '다운로드+자막', video: '다운로드', subs: '자막' }[e.mode] || '다운로드+자막') + ' · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';
   });
   return h + '</div></div></div>';
 }
@@ -8850,17 +8851,21 @@ function _dgVidHtml() {
   if (v.st === 'idle') {
     h += '<div class="geni-card dg-consent"><label class="dg-conrow"><input type="checkbox" id="dgConsent"' + (_dg.ytConsent ? ' checked' : '') + '><span>이 영상은 <b>내가 권리를 보유했거나 이용 허가를 받은 콘텐츠</b>(예: 기획사가 공유해 준 홍보 영상)임을 확인하고 저장 요청에 동의합니다</span></label></div>'
       + '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">' + esc(v.url) + '</div>'
-      + '<div class="dg-imeta">최고화질 1편(+프레임·1080p판은 다를 때만) + 자막 srt·txt — <b>동의 체크 후 3~8분</b> 걸려요. 받은 파일은 이 기기 다운로드 폴더로'
+      + '<div class="dg-imeta"><b>다운로드+자막</b> = 최고화질 1편(+프레임·1080p판은 다를 때만)과 자막 srt·txt · <b>다운로드</b> = 영상만 · <b>자막</b> = 자막만(몇 초). 고른 것만 나와요. 영상은 <b>3~8분</b> 걸려요 — 받은 파일은 이 기기 다운로드 폴더로'
       + (gd === 'off' ? ', 드라이브에도 올리려면 아래 [사진·파일로 스캔] 옆 설정에서 드라이브를 연결해요' : ' 저장되고, 드라이브 내 드라이브/Shared에도 올라가요') + '.</div></div>'
-      + '<button type="button" class="geni-opt" id="dgVidGo" data-act="vidgo"' + (_dg.ytConsent ? '' : ' disabled') + '>저장 요청</button></div>'
+      + '</div>'
+      + '<div class="dg-item"><div class="dg-imain"><div class="dg-imeta">받을 것을 고르세요</div></div>'
+      + '<button type="button" class="geni-opt" id="dgVidGo" data-act="vidgo" data-mode="both"' + (_dg.ytConsent ? '' : ' disabled') + '>다운로드+자막</button>'
+      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="video"' + (_dg.ytConsent ? '' : ' disabled') + '>다운로드</button>'
+      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="subs"' + (_dg.ytConsent ? '' : ' disabled') + '>자막</button></div>'
       + '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" data-act="vidscan">사진·파일로 스캔</button></div>';
   } else if (v.st === 'run') {
-    h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 — 보통 3~8분(긴 영상은 더 걸려요)</div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>'
+    h += '<div class="dg-item"><div class="dg-imain"><div class="dg-ittl">받는 중 — ' + (v.mode === 'subs' ? '자막만이라 금방 끝나요' : '보통 3~8분(긴 영상은 더 걸려요)') + '</div><div class="dg-imeta"><span class="dg-ytst" id="dgVidSt">' + esc(v.msg || '요청 중') + '</span></div></div></div>'
       + '<div class="dg-hint">창을 닫아도 받기는 계속돼요 — <b>다 되면 알림이 가요</b>(설정 ▸ 기본값 ▸ 알림 ON일 때). 알림을 누르면 이 화면이 바로 열려요.</div>';   // 3~8분을 창 보며 기다리게 두지 않는다(운영자 260802) — 발송 = vidl-make.yml 완료 푸시
   } else if (v.st === 'fail') {
     h += '<div class="dg-err">' + esc(v.msg || '받기 실패') + '</div>'
       + '<div class="dg-item"><div class="dg-imain"><div class="dg-imeta">다시 받으려면 아래 [다시 시도]를 눌러요</div></div>'
-      + '<button type="button" class="geni-opt" data-act="vidgo">다시 시도</button></div>'
+      + '<button type="button" class="geni-opt" data-act="vidgo" data-mode="' + esc(v.mode || 'both') + '">다시 시도</button></div>'
       + '<div class="dg-item"><div class="dg-imain"></div><button type="button" class="geni-opt" data-act="vidscan">사진·파일로 스캔</button></div>';
   } else if (v.st === 'done') {
     const r = v.res || {}, fs = r.files || [];
@@ -8881,11 +8886,12 @@ function _dgVidHtml() {
   }
   return h;
 }
-async function _dgVidFire() {
+async function _dgVidFire(mode) {
   const v = _dg.vid; if (!v || (v.st !== 'idle' && v.st !== 'fail') || !_dg.ytConsent) return;   // fail에서도 재시도(평의회8)
+  v.mode = ['both', 'video', 'subs'].indexOf(mode) >= 0 ? mode : 'both';   // 받을 것 3택(운영자 260802) — 서버·러너도 같은 화이트리스트로 재검증
   v.st = 'run'; v.msg = '요청 중'; v.t0 = Date.now(); v.res = null; _dgRenderBody();
   try {
-    const r = await fetch('/api/vidl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v.url }) });
+    const r = await fetch('/api/vidl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v.url, mode: v.mode }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error || !d.id) throw new Error(d.error || ('HTTP ' + r.status));
     if (_dg.vid !== v) return;   // 발사 대기 중 상태가 교체됐으면 고아 — 폴 시작 안 함(평의회2)
@@ -8981,7 +8987,7 @@ async function _dgDeepLink(id) {
     if (!r.ok) return;
     const tx = await r.text(); if (/^\s*</.test(tx)) return;   // 404 폴백 HTML = 무시(폴링 가드와 동일 문법)
     const d = JSON.parse(tx); if (!d || !d.files) return;
-    const v = { url: '', plat: d.plat || '', id, t0: Date.now(), st: 'done', res: d };
+    const v = { url: '', plat: d.plat || '', id, mode: d.mode || 'both', t0: Date.now(), st: 'done', res: d };
     _dg.vid = v; _dgDoneSave(v); _dgRenderBody();
   } catch {}
 }
@@ -8999,7 +9005,7 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'tg') _dgToggle(i);
   else if (act === 'ytreq') { e.stopPropagation(); _dgYtReq(i); }
   else if (act === 'ytget') { e.stopPropagation(); _dgYtGet(i); }
-  else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(); }
+  else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(el.dataset.mode || 'both'); }
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(); }
   else if (act === 'vidscan') { e.stopPropagation(); _dgVidToScan(); }

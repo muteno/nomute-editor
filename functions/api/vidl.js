@@ -55,9 +55,11 @@ export async function onRequestPost({ request, env }) {
 
   const id = new Date(Date.now() + 9 * 3600e3).toISOString().replace(/[^0-9]/g, '').slice(2, 14) + '-' + crypto.randomUUID().slice(0, 6);   // KST(+9h · pick.js 규칙)
 
+  // 받을 것(운영자 260802 3버튼) — both=영상+자막 · video=영상만 · subs=자막만. 화이트리스트 밖 = both(종전 동작).
+  const mode = ['both', 'video', 'subs'].includes(String(body.mode || '')) ? String(body.mode) : 'both';
   const r = await GH(env.GH_TOKEN, 'actions/workflows/vidl-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, url },
+    ref: REF, inputs: { id, url, mode },
   });
-  if (r.status === 204) return json({ ok: true, id, out: `vidl_out/${id}/result.json` });
+  if (r.status === 204) return json({ ok: true, id, mode, out: `vidl_out/${id}/result.json` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }

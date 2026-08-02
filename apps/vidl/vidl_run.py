@@ -82,9 +82,18 @@ def detect_plat(url):
     return ""
 
 
+PLUGIN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
+# 스레드(Threads) = yt-dlp 코어에 extractor가 없어 종전 TH 경로는 구조적 100% 실패였다(260802 러너 실측
+#   "ERROR: Unsupported URL"). 운영자 제공 플러그인(plugins/yt_dlp_plugins/extractor/nomute_threads.py)이
+#   SSR data-sjs JSON에서 서명 CDN 주소를 뽑는다 = 토큰·로그인·추가요청 0.
+#   ⚠ --plugin-dirs는 **절대경로만** 먹는다(상대경로 = "Plugin directories: none" 실측) · 로드 확인 =
+#   `-v` 출력의 "[debug] Extractor Plugins: NomuteThreadsIE".
+
+
 def ytd(args, timeout, cookies=None, capture=False):
     """python3 -m yt_dlp 공통 호출 — sys.executable(인터프리터 일치 · 평의회6 P1-2) · cookies=경로(없으면 미사용)."""
-    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30"]
+    cmd = [sys.executable, "-m", "yt_dlp", "--no-cache-dir", "--socket-timeout", "30",
+           "--plugin-dirs", PLUGIN_DIR]
     if cookies:
         cmd += ["--cookies", cookies]
     if JSRT:
@@ -348,11 +357,11 @@ def main():
     pl = plopt(url, PLAT)
     post = "--playlist-items" not in pl   # 게시물형(캐러셀 통짜) = 파일명 인덱스 부여
 
-    # ── 3축 사전조회(bat v6.8) ──
+    # ── 3축 사전조회(bat v6.8) — 자막만 모드는 화질 판단이 무의미하나 계정·제목(pretty_rename 재료)은 여기서 나온다 ──
     best = probe(url, "bv*/b/best", [], ck_use, pl)
-    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl)
+    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" else None
     fhd = None
-    if best:
+    if best and MODE != "subs":
         dimk = "width" if best["w"] < best["h"] else "height"   # 세로영상 = width 필터(bat v6.4)
         ffilt = f"bv*[{dimk}<=1080][ext=mp4]/b[{dimk}<=1080][ext=mp4]/bv*[{dimk}<=1080]/b[{dimk}<=1080]"
         fhd = probe(url, ffilt, [], ck_use, pl)
@@ -363,21 +372,35 @@ def main():
         get_1080 = False   # 중복 판(fps판·최고화질판과 동일 format) 차단(bat v6.8 + 평의회4 P2)
     print(f"[화질] best={best} / fps={fpsb} get_fps={get_fps} / fhd={fhd} get_1080={get_1080}", flush=True)
 
-    # ── ① 최고화질 + 자막(항상) — YT 실패 시 쿠키 1회 재시도, 성공 시 부가본도 쿠키 계승(평의회6 P2-1) ──
-    rc = download(url, outdir, "", "bv*+ba/b/best", [], ck_use, pl, subs=True, post=post)
-    if rc != 0 and PLAT == "YT" and cookies:
-        print("[재시도] 쿠키 달아 1회 재시도(연령제한·멤버십 가능성)", flush=True)
-        rc = download(url, outdir, "", "bv*+ba/b/best", [], cookies, pl, subs=True, post=post)
-        if rc == 0:
-            ck_use = cookies
+    # ── ① 본편 — MODE에 따라 {영상+자막 / 영상만 / 자막만}. YT 실패 시 쿠키 1회 재시도(성공 시 부가본도 쿠키 계승 · 평의회6 P2-1) ──
+    want_sub = MODE in ("both", "subs")
+    want_vid = MODE in ("both", "video")
+    if want_vid:
+        rc = download(url, outdir, "", "bv*+ba/b/best", [], ck_use, pl, subs=want_sub, post=post)
+        if rc != 0 and PLAT == "YT" and cookies:
+            print("[재시도] 쿠키 달아 1회 재시도(연령제한·멤버십 가능성)", flush=True)
+            rc = download(url, outdir, "", "bv*+ba/b/best", [], cookies, pl, subs=want_sub, post=post)
+            if rc == 0:
+                ck_use = cookies
+    else:   # 자막만 — 영상 트랙을 아예 받지 않는다(--skip-download) = 몇 초면 끝난다
+        rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], ck_use, pl, subs=True, post=post)
+        if rc != 0 and PLAT == "YT" and cookies:
+            rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], cookies, pl, subs=True, post=post)
     VID_EXT = (".mp4", ".mkv", ".webm", ".mov", ".m4v")
-    if rc != 0 or not any(f.endswith(VID_EXT) for f in out_files(outdir)):   # 성공 게이트 = 영상 존재(자막만=실패 · 평의회6 P3-3)
-        die("영상 다운로드 실패 — 주소·연령 제한·로그인 전용 여부를 확인해줘.", f"yt-dlp 실패: {url}")
+    got = out_files(outdir)
+    if want_vid:
+        ok = rc == 0 and any(f.endswith(VID_EXT) for f in got)   # 성공 게이트 = 영상 존재(자막만=실패 · 평의회6 P3-3)
+        fail_msg = "영상 다운로드 실패 — 주소·연령 제한·로그인 전용 여부를 확인해줘."
+    else:
+        ok = any(f.endswith((".srt", ".vtt")) for f in got)      # 자막만 모드 = 자막 존재가 성공 게이트(rc는 영상 스킵 탓에 흔들린다)
+        fail_msg = "이 영상엔 자막이 없어 — 자막 없이 영상만 받으려면 [다운로드]를 눌러줘."
+    if not ok:
+        die(fail_msg, f"yt-dlp 실패(mode={MODE}): {url}")
 
-    # ── ② 프레임별 · ③ FHD별(각 실패 = 비치명 · 예산 남을 때만) ──
-    if get_fps and budget_left() > 90:
+    # ── ② 프레임별 · ③ FHD별(각 실패 = 비치명 · 예산 남을 때만) — 자막만 모드는 건너뛴다 ──
+    if want_vid and get_fps and budget_left() > 90:
         download(url, outdir, "maxfps", "bv*+ba/b/best", ["-S", "fps,res,br"], ck_use, pl, subs=False, post=post)
-    if get_1080 and budget_left() > 90:
+    if want_vid and get_1080 and budget_left() > 90:
         dimk = "width" if best["w"] < best["h"] else "height"
         f1080 = (f"bv*[{dimk}<=1080][ext=mp4]+ba[ext=m4a]/b[{dimk}<=1080][ext=mp4]/"
                  f"bv*[{dimk}<=1080]+ba/b[{dimk}<=1080]")
@@ -435,7 +458,7 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     odir = os.path.join(root, "viewer", "vidl_out", vid_id)
     os.makedirs(odir, exist_ok=True)
-    doc = {"plat": PLAT, "ts": TS, "best": best, "fps": fpsb if get_fps else None,
+    doc = {"plat": PLAT, "ts": TS, "mode": MODE, "best": best, "fps": fpsb if get_fps else None,
            "fhd": fhd if get_1080 else None, "files": files, "up_err": up_err, "drive": drive}
     dst = os.path.join(odir, "result.json")
     with open(dst + ".tmp", "w", encoding="utf-8") as f:
@@ -444,8 +467,12 @@ def main():
     print("result.json:", json.dumps(doc, ensure_ascii=False), flush=True)
 
 
+MODE_OK = ("both", "video", "subs")
 if __name__ == "__main__":
     URL = sys.argv[2] if len(sys.argv) > 2 else ""
+    MODE = (sys.argv[3] if len(sys.argv) > 3 else "both").strip().lower()
+    if MODE not in MODE_OK:
+        MODE = "both"   # 미지정·오타 = 종전 동작(영상+자막) = 하위호환
     PLAT = detect_plat(URL)
     TS = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
     try:  # JS 런타임(node) 지원 여부 — SABR 대응 최고화질(bat v6.7) · 미지원 구버전이면 플래그 생략
