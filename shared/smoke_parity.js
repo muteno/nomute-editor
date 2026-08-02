@@ -190,6 +190,33 @@ async function runOnce(pg) {
   core('C14 요약바 글자 탭 = 옵션 전환(값 축 순환 + ON/OFF 뒤집기 · 본문 칩 동기)', tog.a0 === '9:16' && tog.a1 === '16:9' && tog.bodyAsp === '16:9' && tog.t0 === false && tog.t1 === true && tog.bodyTxt === '켜짐', JSON.stringify(tog));
   await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="4:5"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
 
+  // ── C15 레일 칩 **광학 잉크선** 4탭 정합(운영자 260802 "광학-잉크" · 이번 롤백 사고의 기계화) ──
+  //   왜 잉크인가: 박스 x가 같아도 padding-left가 갈리면 **눈에 보이는 글자 시작선**이 어긋난다.
+  //   260802 실측 = 박스는 4탭 전부 330.5로 같았는데 잉크는 편집만 330.5(pad 0) / 나머지 335.5(pad 5) →
+  //   박스 기준 검사였다면 통과했을 어긋남이다. 그래서 판정 축 = Range 잉크 사각형(사람이 보는 것과 동일).
+  //   기준선 = 카드 생성 탭(파리티 정본 · 위 C10~C14와 동일 기준). 낱말 칩만 대상(OPA ± 스테퍼는 자체 좁은 패딩이 정본).
+  const INK_BASE = { 편집: 2.6 };   // 알려진 미승인 드리프트(260802 롤백분 · 편집 탭 컬럼 시절 규칙 `.dockopt .rsz-opts .ropt{padding:2px 0}`가 레일 스킨을 소스 후행으로 이김) — 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문 · 해소 = `.cpprev .trail-v.dockopt .ropt{padding:0 5px;font-size:10.5px}` 한 줄 승인)
+  const ink = {};
+  for (const [app, ko] of [['2', '카드생성'], ['7', '편집'], ['tr', '번역'], ['6', 'AI생성']]) {
+    await pg.evaluate(a => { const t = document.querySelector('#toolTabs .tooltab[data-app="' + a + '"]'); if (t) t.click(); }, app);
+    await pg.waitForTimeout(1300);
+    ink[ko] = await pg.evaluate(() => {
+      const fr = document.querySelector('#tooldlg .toolfr.active');
+      const d = (fr && fr.contentDocument) ? fr.contentDocument : document;
+      const rail = d.querySelector('#cpRail') || document.querySelector('#geniRail');
+      const c = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])].filter(e => e.offsetParent !== null && !e.closest('.gs-og'))[0];
+      if (!c) return null;
+      const rg = d.createRange(); rg.selectNodeContents(c);
+      // 잉크선 = **캡슐 좌변 기준 상대값**(절대 x 금지 — 레일은 미리보기 창 우변에 붙어 탭마다 창 폭이 다르면 절대 x가 갈린다 = 정렬과 무관한 위양성)
+      return { t: c.textContent.trim().slice(0, 6), inkX: +(rg.getBoundingClientRect().x - rail.getBoundingClientRect().x).toFixed(1), padL: getComputedStyle(c).paddingLeft, fs: getComputedStyle(c).fontSize };
+    });
+  }
+  const ref = ink['카드생성'] ? ink['카드생성'].inkX : null;
+  const drift = Object.entries(ink).filter(([, v]) => v).map(([ko, v]) => ({ ko, d: +(v.inkX - ref).toFixed(1), over: Math.abs(v.inkX - ref) > (INK_BASE[ko] || 0) + 0.5 }));
+  core('C15 레일 칩 광학 잉크 시작선 = 4탭 한 세로선(기준 = 카드 생성 · 알려진 baseline 초과·신규 어긋남 = FAIL · 운영자 260802 "광학-잉크")',
+    ref !== null && drift.length === 4 && drift.every(x => !x.over),
+    JSON.stringify({ ref, drift: drift.map(x => x.ko + ':' + (x.d > 0 ? '+' : '') + x.d + (x.over ? '⚠' : '')), 상세: ink }));
+
   return out;
 }
 
