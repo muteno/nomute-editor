@@ -244,20 +244,31 @@
     background:rgba(0,0,0,.5); border-radius:var(--r-s); padding:1px 5px; }
   .mon .empty { color:var(--mut); font-size:var(--fs-sm); }
 
-  /* ── 패널 도킹 탭 = .tooltab 세그 계승(축소 티어) ── */
-  .ptabs { flex:none; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:0 16px var(--sp-2); }
-  .ptab { appearance:none; background:transparent; min-height:26px; display:grid; place-items:center;
-    font:inherit; font-size:var(--fs-sm); font-weight:600; color:var(--mut); cursor:pointer;
-    border:0; border-bottom:2px solid transparent; word-break:keep-all;
-    transition:color var(--dur), border-color var(--dur); }
-  .ptab.on { color:var(--accent); font-weight:800; border-bottom-color:var(--accent); text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
-  .ptab:active { transform:scale(var(--press-l,.95)); }
-  .ptab .cnt { color:var(--accent); font-weight:800; }
-
-  /* ── 패널 본문 = 활성 1개가 전 폭·전 높이 ── */
+  /* ── 패널 = 「누르면 내려오는 세부 메뉴」 아코디언 ──
+     정본 = index .pmenu-sns/.pm-chev/.pmenu-sub(설정 세부메뉴 · --dur-acc .26s 개폐 = 체브론 회전 동기) 바이트 계승.
+     체브론 = 디스클로저 정본 path M6 9l6 6 6-6(stroke 2.4) · 펼침 촤르륵 = cardIn 스태거(운영자 260707) 계승. */
   .panes { flex:1 1 auto; min-height:0; overflow:auto; padding:0 16px 16px; }
-  .pane { display:none; }
-  .pane.on { display:block; }
+  .acc + .acc { margin-top:var(--sp-1); }
+  .acc-h { appearance:none; width:100%; display:flex; align-items:center; gap:6px; height:var(--btn);
+    padding:0 0 0 var(--sp-1); background:transparent; border:0; border-radius:var(--r-m);
+    font:inherit; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); cursor:pointer;
+    -webkit-tap-highlight-color:transparent; transition:color var(--dur), background var(--dur); }
+  .acc-h::before { content:'• '; color:var(--accent); font-weight:var(--fw-b); }   /* 소머리 블릿 = §📐 정본(흰 글자·형광 블릿) */
+  .acc-h[aria-expanded="true"] { color:var(--accent); }
+  .acc-h:active { transform:scale(var(--press-l,.95)); }
+  .acc-h .sum { margin-left:auto; color:var(--mut); font-weight:400; font-size:var(--fs-xs);
+    max-width:52%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .acc-h .cnt { color:var(--accent); font-weight:800; font-size:var(--fs-xs); }
+  .pm-chev { flex:none; width:30px; display:grid; place-items:center; color:var(--mut); }   /* 박스 30 = .pmenu-sns .pm-chev 정본 동값 */
+  .pm-chev svg { display:block; width:15px; height:15px; transition:transform var(--dur-acc) var(--ease); }
+  .acc-h[aria-expanded="true"] .pm-chev svg { transform:rotate(180deg); }
+  .acc-b { overflow:hidden; max-height:0; transition:max-height var(--dur-acc) var(--ease); }   /* 아코디언 = .pmenu-sub 정본 */
+  .acc-b.open > * { animation:cardIn .3s cubic-bezier(.22,.61,.36,1) both; }   /* 펼침 촤르륵 = .pmenu-sub.open > * 계승 */
+  .acc-b.open > :nth-child(2) { animation-delay:.07s; }
+  .acc-b.open > :nth-child(3) { animation-delay:.11s; }
+  @keyframes cardIn { from { opacity:0; transform:translateY(12px) scale(.985); } to { opacity:1; transform:none; } }   /* index:523 정본 동문 */
+  @media (prefers-reduced-motion:reduce){ .acc-b { transition:none; } .acc-b.open > * { animation:none; } .pm-chev svg { transition:none; } }
+  .acc-in { padding:var(--sp-1) 0 var(--sp-2); }
   .phead { display:flex; align-items:center; gap:6px; height:30px; font-size:var(--fs-sm); color:var(--mut); font-weight:700; }
   .phead b { color:var(--accent); font-weight:800; }
   .phead .sp { margin-left:auto; }
@@ -350,52 +361,47 @@
     <div class="gospec" id="spec" aria-live="polite"></div>
   </div>
 
-  <!-- 패널 도킹 탭 -->
-  <div class="ptabs" id="ptabs" role="tablist">
-    <button class="ptab on" type="button" data-p="proj" role="tab" aria-selected="true">프로젝트<span class="cnt" id="cntSel"></span></button>
-    <button class="ptab" type="button" data-p="fx" role="tab" aria-selected="false">효과 컨트롤</button>
-    <button class="ptab" type="button" data-p="tl" role="tab" aria-selected="false">타임라인</button>
-    <button class="ptab" type="button" data-p="q" role="tab" aria-selected="false">렌더 큐<span class="cnt" id="cntJob"></span></button>
-  </div>
+  <!-- 패널 = 누르면 내려오는 세부 메뉴(아코디언 · 한 번에 하나) -->
+  <div class="panes" id="accs">
 
-  <div class="panes">
-    <!-- 프로젝트 -->
-    <section class="pane on" id="pane-proj" role="tabpanel">
-      <div class="phead">기사 고르기<span class="sp" id="projHint"></span></div>
-      <div id="list"><div class="vdempty">불러오는 중…</div></div>
+    <section class="acc" data-p="proj">
+      <button class="acc-h" type="button" aria-expanded="true" aria-controls="acc-proj">프로젝트<span class="cnt" id="cntSel"></span><span class="sum" id="sumProj"></span><span class="pm-chev" aria-hidden="true"></span></button>
+      <div class="acc-b open" id="acc-proj"><div class="acc-in">
+        <div id="list"><div class="vdempty">불러오는 중…</div></div>
+      </div></div>
     </section>
 
-    <!-- 효과 컨트롤 = 실제로 렌더에 먹는 축만(전부 CLI 플래그로 전달) -->
-    <section class="pane" id="pane-fx" role="tabpanel">
-      <div class="phead">효과 컨트롤<b id="fxSum"></b></div>
-      <div id="axes"></div>
-      <div class="tlnote" id="fxNote"></div>
+    <section class="acc" data-p="fx">
+      <button class="acc-h" type="button" aria-expanded="false" aria-controls="acc-fx">효과 컨트롤<span class="sum" id="fxSum"></span><span class="pm-chev" aria-hidden="true"></span></button>
+      <div class="acc-b" id="acc-fx"><div class="acc-in">
+        <div id="axes"></div>
+        <div class="tlnote" id="fxNote"></div>
+      </div></div>
     </section>
 
-    <!-- 타임라인(읽기 전용) -->
-    <section class="pane" id="pane-tl" role="tabpanel">
-      <div class="phead">타임라인<b>큐영상 시퀀스 · 1080×1920 · 6.0s</b></div>
-      <div class="tl">
-        <div class="ruler"><span>0s</span><span>1s</span><span>2s</span><span>3s</span><span>4s</span><span>5s</span></div>
-        <div class="trk">
-          <div class="clip v" style="flex:6">V1 뉴스카드</div>
+    <section class="acc" data-p="tl">
+      <button class="acc-h" type="button" aria-expanded="false" aria-controls="acc-tl">타임라인<span class="sum">1080×1920 · 6.0s</span><span class="pm-chev" aria-hidden="true"></span></button>
+      <div class="acc-b" id="acc-tl"><div class="acc-in">
+        <div class="tl">
+          <div class="ruler"><span>0s</span><span>1s</span><span>2s</span><span>3s</span><span>4s</span><span>5s</span></div>
+          <div class="trk"><div class="clip v" style="flex:6">V1 뉴스카드</div></div>
+          <div class="trk"><div class="clip gap" style="flex:.45"></div><div class="clip t" style="flex:5.55">V2 훅 · 제목</div></div>
         </div>
-        <div class="trk">
-          <div class="clip gap" style="flex:.45"></div><div class="clip t" style="flex:5.55">V2 훅 · 제목</div>
+        <div class="tlnote">
+          읽기 전용이다 — 이 배치는 컴포지션(<code>video/index.html</code>)의 <code>data-start</code>/<code>data-duration</code>이 정본이라
+          여기서 끌어 옮기면 정본과 어긋난다. 클립 편집을 붙이려면 컴포지션을 변수로 여는 작업이 먼저다.<br>
+          A1(내레이션)·A2(BGM) 트랙은 <b>아직 없다</b>(미부착).
         </div>
-      </div>
-      <div class="tlnote">
-        읽기 전용이다 — 이 배치는 컴포지션(<code>video/index.html</code>)의 <code>data-start</code>/<code>data-duration</code>이 정본이라
-        여기서 끌어 옮기면 정본과 어긋난다. 클립 편집을 붙이려면 컴포지션을 변수로 여는 작업이 먼저다.<br>
-        A1(내레이션)·A2(BGM) 트랙은 <b>아직 없다</b>(미부착).
-      </div>
+      </div></div>
     </section>
 
-    <!-- 렌더 큐 -->
-    <section class="pane" id="pane-q" role="tabpanel">
-      <div class="phead">렌더 큐<span class="sp" id="qHint"></span></div>
-      <div class="jobs" id="jobs"></div>
+    <section class="acc" data-p="q">
+      <button class="acc-h" type="button" aria-expanded="false" aria-controls="acc-q">렌더 큐<span class="cnt" id="cntJob"></span><span class="sum" id="qHint"></span><span class="pm-chev" aria-hidden="true"></span></button>
+      <div class="acc-b" id="acc-q"><div class="acc-in">
+        <div class="jobs" id="jobs"></div>
+      </div></div>
     </section>
+
   </div>
 
 </div>
@@ -425,12 +431,28 @@ let opts = Object.fromEntries(AXES.map(a => [a.k, a.d]));
 let picked = [];
 let ART = {};   // file → {title, media}
 
-/* ── 패널 전환 ── */
-$('#ptabs').addEventListener('click', e => {
-  const b = e.target.closest('.ptab'); if (!b) return;
-  document.querySelectorAll('.ptab').forEach(x => { const on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', String(on)); });
-  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.p));
-});
+/* ── 세부 메뉴 아코디언 = index .pmenu-sub 정본 동작(한 번에 하나 · --dur-acc 개폐 + 체브론 동기) ──
+   ⚠ 정본은 max-height 고정(220px)인데 여기 내용은 가변(기사 60행)이라 열 때 실측 scrollHeight를 넣는다
+      = 전이 토큰·곡선은 정본 그대로, 목표값만 실측(잘림 방지). 접힘은 정본과 동일하게 0. */
+const CHEV_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';   /* 디스클로저 체브론 = index 정본 path 동문 */
+document.querySelectorAll('.pm-chev').forEach(el => { el.innerHTML = CHEV_SVG; });
+
+function accSize(b) { if (b.classList.contains('open')) b.style.maxHeight = b.scrollHeight + 'px'; }
+function accOpen(sec) {
+  document.querySelectorAll('.acc').forEach(x => {
+    const h = x.querySelector('.acc-h'), b = x.querySelector('.acc-b'), on = x === sec;
+    h.setAttribute('aria-expanded', String(on));
+    b.classList.toggle('open', on);
+    b.style.maxHeight = on ? b.scrollHeight + 'px' : '0px';
+  });
+}
+document.querySelectorAll('.acc-h').forEach(h => h.addEventListener('click', () => {
+  const sec = h.closest('.acc'), open = h.getAttribute('aria-expanded') === 'true';
+  if (open) { h.setAttribute('aria-expanded','false'); const b = sec.querySelector('.acc-b'); b.classList.remove('open'); b.style.maxHeight = '0px'; }
+  else accOpen(sec);
+}));
+const accOf = p => document.querySelector('.acc[data-p="' + p + '"]');
+function accRefresh() { document.querySelectorAll('.acc-b').forEach(accSize); }
 
 /* ── 프로그램 모니터 = 완성본 있으면 재생, 없으면 선택 기사 카드 목업 ── */
 function paintMonitor() {
@@ -473,7 +495,7 @@ $('#axes').addEventListener('click', e => {
   opts[b.parentElement.dataset.k] = b.dataset.v;
   // ⚠ 실측 260802: --resolution 은 알파 경로(mov/webm/gif)와 결합 불가(CLI 컴파일 단계 거부) → MP4 아니면 4K 자동 해제.
   if (opts.format !== 'mp4' && opts.res === 'portrait-4k') opts.res = 'portrait';
-  paintAxes(); syncSpec();
+  paintAxes(); syncSpec(); accRefresh();
 });
 
 /* ── 기사 목록 ── */
@@ -499,7 +521,7 @@ function syncSpec() {
   $('#spec').innerHTML = '<span class="gs-v' + (picked.length ? ' on' : '') + '">' + picked.length + '건</span> · '
     + esc(res) + ' · ' + esc(fmt) + ' · ' + esc(opts.fps) + 'fps · 6초';
   $('#cntSel').textContent = picked.length ? ' ' + picked.length : '';
-  $('#projHint').textContent = '최대 ' + MAX + '건';
+  $('#sumProj').textContent = picked.length ? picked.length + '건 선택' : '최대 ' + MAX + '건';
 }
 async function loadList() {
   let arts = [];
@@ -518,7 +540,7 @@ async function loadList() {
     el.addEventListener('click', () => toggle(el));
     el.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(el); } });
   });
-  syncSpec();
+  syncSpec(); accRefresh();
 }
 
 /* ── 렌더 큐(작업 내역) = sb #jobs 문법 계승 ── */
@@ -537,7 +559,7 @@ function renderJobs() {
     return '<div class="job' + (j.status === 'err' ? ' err' : '') + '"><span class="jlab">' + esc(j.id) + '</span>'
       + '<span class="jvar">' + (j.n || 0) + '건</span>' + dl + '<span class="jst">' + st + '</span></div>';
   }).join('') : '<div class="vdempty">아직 만든 영상이 없다.</div>';
-  paintMonitor();
+  paintMonitor(); accRefresh();
 }
 async function poll(outPath, jid) {
   for (let i = 0; i < 240; i++) {
@@ -558,7 +580,7 @@ async function poll(outPath, jid) {
 async function fire() {
   if (!picked.length) {
     $('#go').classList.add('shake'); setTimeout(() => $('#go').classList.remove('shake'), 460);
-    document.querySelector('.ptab[data-p=proj]').click(); return;
+    accOpen(accOf('proj')); return;
   }
   $('#go').disabled = true;
   try {
@@ -571,7 +593,7 @@ async function fire() {
     picked = [];
     $('#list').querySelectorAll('.vdrow.on').forEach(el => { el.classList.remove('on'); el.setAttribute('aria-pressed','false'); });
     syncSpec(); paintMonitor();
-    document.querySelector('.ptab[data-p=q]').click();
+    accOpen(accOf('q'));
   } catch (e) {
     $('#spec').textContent = '발사 실패 — ' + e.message;
   } finally { $('#go').disabled = false; }
@@ -579,7 +601,8 @@ async function fire() {
 $('#go').addEventListener('click', fire);
 window.nmRefresh = renderJobs;   // 부모 셸 헤더 새로고침 훅(sb:568 계승)
 
-paintAxes(); loadList(); renderJobs(); syncSpec();
+paintAxes(); loadList(); renderJobs(); syncSpec(); accRefresh();
+window.addEventListener('resize', accRefresh);
 const _run = jload().find(j => j.status === 'run'); if (_run) poll(_run.out, _run.id);
 </script>
 </body>
