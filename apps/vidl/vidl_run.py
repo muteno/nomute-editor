@@ -341,7 +341,15 @@ def drive_upload(tok, sid, path, ctype):
 
 
 def ctype_of(fn):
-    return "video/mp4" if fn.endswith((".mp4", ".m4v", ".mov", ".webm", ".mkv")) else "application/octet-stream"
+    if fn.endswith((".mp4", ".m4v", ".mov", ".webm", ".mkv")):
+        return "video/mp4"
+    if fn.endswith((".jpg", ".jpeg")):
+        return "image/jpeg"   # 스레드 사진 게시물(260802 실측 — TH extractor는 이미지 포스트도 최고해상 1장으로 뽑는다)
+    if fn.endswith(".png"):
+        return "image/png"
+    if fn.endswith(".webp"):
+        return "image/webp"
+    return "application/octet-stream"
 
 
 def out_files(outdir):
@@ -402,9 +410,10 @@ def main():
         if rc != 0 and PLAT == "YT" and cookies:
             rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], cookies, pl, subs=True, post=post)
     VID_EXT = (".mp4", ".mkv", ".webm", ".mov", ".m4v")
+    IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")   # 스레드 사진 게시물 = 이미지도 성과(260802 실측 — jpg 100% 받고도 영상 게이트에 걸려 실패 처리되던 것 교정)
     got = out_files(outdir)
     if want_vid:
-        ok = rc == 0 and any(f.endswith(VID_EXT) for f in got)   # 성공 게이트 = 영상 존재(자막만=실패 · 평의회6 P3-3)
+        ok = rc == 0 and any(f.endswith(VID_EXT + IMG_EXT) for f in got)   # 성공 게이트 = 미디어 존재(자막만=실패 · 평의회6 P3-3)
         fail_msg = "영상 다운로드 실패 — 주소·연령 제한·로그인 전용 여부를 확인해줘."
     else:
         ok = any(f.endswith((".srt", ".vtt")) for f in got)      # 자막만 모드 = 자막 존재가 성공 게이트(rc는 영상 스킵 탓에 흔들린다)
@@ -432,7 +441,8 @@ def main():
         try:
             u = r2_upload(p, f"vidl_res/{vid_id}/{fn}", ctype_of(fn))
             files.append({"name": fn, "url": u, "size": os.path.getsize(p),
-                          "kind": "video" if ctype_of(fn).startswith("video/") else "sub"})
+                          "kind": ("video" if ctype_of(fn).startswith("video/")
+                                   else "img" if ctype_of(fn).startswith("image/") else "sub")})
         except SystemExit:
             raise   # R2 미설정(전제 붕괴)은 die 그대로
         except Exception as e:
