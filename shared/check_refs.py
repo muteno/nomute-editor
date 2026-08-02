@@ -1685,7 +1685,21 @@ _TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[
      ('background:transparent', 'border:1pxsolidtransparent', 'border-radius:0', 'font-size:10.5px', 'line-height:1')),
     ('값 칩(.gs-v)', ('.cpprev-box .trail-v .gs-v', '.monwrap .trail-v .gs-v'),
      ('height:22px', 'border-radius:var(--r-l)', 'color:var(--mut)', 'font-size:10.5px', 'font-weight:var(--fw-x)')),
+    # ⭐ 픽토 글리프 축(운영자 260802 "픽토그램이 네비게이션 안에 들어갔을 때의 기준 크기가 없는듯 · 설정해줘") —
+    #   구조: 레일 버튼은 어디나 22×22인데 **그 안 글리프 크기는 표면마다 제각각**이었다(thumb·tr·index만 12px 규칙 보유 /
+    #   edit·k·song·vd는 규칙 자체가 없어 SVG 고유·상속 크기로 렌더 · 게다가 버튼 클래스마다[.trail-i·.cpv-tool·.histbtn]
+    #   svg 규칙을 따로 심는 방식이라 새 픽토를 넣을 때마다 사각이 재생산됐다). 계약 = **레일 안 모든 svg = 12×12** 한 줄.
+    ('픽토 글리프(.trail svg)', ('.cpprev .trail svg', '.cpprev-box .trail svg', '.pvsec .trail svg',
+                                '.monwrap .trail svg', '.geni-prev .trail svg'),
+     ('width:12px', 'height:12px')),
+    ('픽토 버튼(.trail-i)', ('.trail-i', '.cpprev .trail-i', '.pvsec .trail-i', '.monwrap .trail-i', '.geni-prev .trail-i'),
+     ('width:22px', 'height:22px')),   # 버튼 박스 = 22×22 — 글리프 12와 짝(둘이 같이 있어야 「네비 레일 픽토 기준 크기」가 성립)
 )
+# ── 빈 캡슐 소거 술어(운영자 260802 "옵션으로 사용할 내용이 없으면 확대 아래에 아무것도 안 뜨게") ──
+#   도구 묶음(.trail-g) **직계** 버튼도 없고 값 칩(.trail-v)도 없으면 옵션 캡슐을 통째 은닉.
+#   ⚠ 구 술어 `:not(:has(button:not([hidden])))`는 숨은 옵션 컬럼 안의 ‹›·체브론까지 세어 빈 유리조각이 상주했다(실측 260802).
+#   프리픽스(.cpprev / .geni-prev / .pvsec / .monwrap)·id(#cpRail / #geniRail)는 표면마다 달라 **술어 문자열만** 잰다.
+_TRAIL_EMPTY_PRED = ':not(:has(.trail-g>button:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'
 _TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
                    'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
 #   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
@@ -1775,6 +1789,9 @@ def check_trail_spec():
             if miss:
                 print('❌ 코너 레일 사본 드리프트 — %s 「%s」 누락: %s → 정본(CII 「미리보기 코너 옵션 레일」) 값 그대로 계승하라'
                       % (rel, ax, ', '.join(miss))); rc = 1
+        if _TRAIL_EMPTY_PRED not in re.sub(r'\s+', '', css):   # 빈 캡슐 소거 술어(표면 공통 · 프리픽스·id는 자유)
+            print('❌ 코너 레일 게이트 — %s 빈 캡슐 소거 술어 미보유/이탈 → `…%s` 그대로 계승하라'
+                  % (rel, _TRAIL_EMPTY_PRED)); rc = 1
     if rc == 0:
         print('✅ 코너 레일 게이트 — %d표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).'
               % (len(_TRAIL_SURFACES), len(_TRAIL_AXES)))

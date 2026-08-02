@@ -425,6 +425,7 @@
   .cpprev .trail-i { position:relative; display:grid; place-items:center; width:22px; height:22px; padding:0; border:0; background:none; border-radius:50%; color:var(--mut); font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값(index:1203) */; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
   .cpprev .trail-i::after { content:''; position:absolute; inset:-6px -4px; }   /* 히트패드 = 정본 .trail-i::after(index:1204) 동값 — 시각 22px 유지·실효 34×30 */
   .cpprev .trail-i svg { width:12px; height:12px; display:block; }   /* 정본 .trail-i svg 동값 */
+  .cpprev .trail svg { width:12px; height:12px; display:block; }   /* ⭐ 네비 레일 픽토그램 **기준 크기**(운영자 260802 "픽토그램이 네비게이션 안에 들어갔을 때의 기준 크기가 없는듯 · 설정해줘") = 버튼 22×22 / 글리프 12×12 — 값 = index `.trail-i svg` 정본 동값(창작 0) · 스코프 = 레일 캡슐(.trail) 안 **모든** 픽토(트레일 글리프·도구 버튼·이력·체브론 공통)라, 버튼 클래스마다 svg 규칙을 따로 심던 구 방식의 사각(k·song·vd엔 규칙 자체가 없어 글리프가 제각각 렌더)이 사라진다 · 게이트 = check_refs `_TRAIL_AXES` 「픽토 글리프(.trail svg)」 축 */
   .cpprev .trail-i.on { color:var(--accent); }
   .cpprev .trail-i:active { transform:scale(var(--press-m)); }
   #cpZoom.on .cpz-v { display:none; }   /* 확대 중 = 돋보기 안 ＋의 세로획만 소거 → −(원상복귀) · 픽토 1벌·상태 1벌(운영자 260802 2차 "누른상태에서는 −") */
@@ -1974,7 +1975,7 @@ function updateGoSpec() {
     if (show2) {
       const hdrOn = headerActive(), bgOn = hdrOn && $('#cBg').checked;   // 배경(nobg) = 헤더 있을 때만 유효(추가할 흰칸이 있어야 배경본 의미) — 헤더 없으면 발사서 무시라 OFF 고정·잠금(운영자 260720 Q292 배경편 — 오버레이만과 동일 원칙)
       { const gb = $('#gsBg'); if (gb) { gb.classList.toggle('on', bgOn); gb.setAttribute('aria-pressed', bgOn ? 'true' : 'false'); gb.classList.toggle('gs-locked', !hdrOn); gb.setAttribute('aria-disabled', !hdrOn ? 'true' : 'false'); gb.title = hdrOn ? '탭=배경(흰칸 없는 버전) 추가' : '헤더(부제+제목) 입력 시 활성 — 추가할 흰칸이 있어야 배경본 의미'; } }
-      const ovo = $('#gsOvOnly'); if (ovo) { const lockMg = !CIMG.b64; const onMg = !lockMg && !ovOnly; ovo.classList.toggle('on', onMg); ovo.setAttribute('aria-pressed', onMg ? 'true' : 'false'); ovo.classList.toggle('gs-locked', lockMg); ovo.setAttribute('aria-disabled', lockMg ? 'true' : 'false'); ovo.title = lockMg ? '사진 미첨부 = 합성할 사진 없음 → 배경 합성 OFF 고정' : '탭=ON/OFF — ON=사진 위에 오버레이 레이어 합성 · OFF=사진이 있어도 오버레이 레이어만'; }   // 배경 합성(운영자 260725 의미 반전 = 구 '오버레이만'의 반대) — ON=합성 · OFF=오버레이 단독 · 사진 없으면 OFF 고정·잠금(구 'ON 고정+소등' = 켜졌는데 꺼진 느낌 사고를 값 자체로 해소 · 발사 로직은 CIMG.b64 없으면 이미 미합성이라 표시만 진실화)
+      const ovo = $('#gsOvOnly'); if (ovo) { const noImg = !CIMG.b64, noLayer = !noImg && !ovLayerActive(); const lockMg = noImg || noLayer; const onMg = !lockMg && !ovOnly; ovo.classList.toggle('on', onMg); ovo.setAttribute('aria-pressed', onMg ? 'true' : 'false'); ovo.classList.toggle('gs-locked', lockMg); ovo.setAttribute('aria-disabled', lockMg ? 'true' : 'false'); ovo.title = noImg ? '사진 미첨부 = 합성할 사진 없음 → 배경 합성 OFF 고정' : noLayer ? '자막(오버레이) 미입력 = 사진이 실릴 장이 없음 → 배경 합성 OFF 고정 (헤더·저작권·안내문 산출물엔 사진이 안 들어간다)' : '탭=ON/OFF — ON=사진 위에 오버레이 레이어 합성 · OFF=사진이 있어도 오버레이 레이어만'; }   // 배경 합성(운영자 260725 의미 반전 = 구 '오버레이만'의 반대) — ON=합성 · OFF=오버레이 단독 · 사진 없으면 OFF 고정·잠금(구 'ON 고정+소등' = 켜졌는데 꺼진 느낌 사고를 값 자체로 해소 · 발사 로직은 CIMG.b64 없으면 이미 미합성이라 표시만 진실화)
       const ops = $('#gsOpas'); if (ops) ops.innerHTML = cOpaSel.map((v, i) =>   // 값마다 −/값/+ 그룹(운영자 260718 복원 — 구 gsOpa2 조절 문법) · data-i = 슬롯 · 값탭=끄기 / 휠·드래그·방향키·±스테퍼=조절
         '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-i="' + i + '" data-d="-' + OPA_STEP + '" title="탭=−' + OPA_STEP + '">−</span>'
         + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-i="' + i + '" data-v="' + v + '" title="휠·상하드래그·방향키=값 조절(' + OPA_STEP + '단위) · 탭=이 OPA 끄기(최소 1개)">' + v + '</span>'
@@ -4237,6 +4238,16 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   if (s.over || t.over) el.classList.add('over'); else if (parts.length) el.classList.add('on');
 }
 function headerActive() { return !!(($('#cSub') && $('#cSub').value.trim()) || ($('#cTitle') && $('#cTitle').value.trim())); }
+// 사진이 실릴 '장'이 있나 = 오버레이(자막) 산출물 존재 여부(운영자 260802 "배경이 합성 안 되는 상황이 있는데 해결해줘").
+//   왜 = 첨부 사진은 **오버레이(자막) 산출물에만** 동봉된다(발사 매트릭스 `if (hasOverlay) { … ovp.imageB64 = CIMG.b64 }`).
+//   헤더(흰칸/nobg)·저작권·안내문 산출물엔 사진이 애초에 안 들어간다(백엔드 계약 = mode:'header'엔 image 인자 없음).
+//   그래서 **사진 첨부 + 자막 미입력**(헤더만·저작권만 발사)이면 '배경 합성' 칩이 ON으로 켜져 있는데도 어떤 산출물에도 사진이
+//   안 합성됐다 = 칩이 거짓말. 260720·260725가 봉합한 「사진 없음」 잠금과 **같은 축의 남은 사각**이라 같은 처방(값 자체로 진실화)으로 닫는다.
+//   카드뉴스 모드(A2M==='c')는 /api/compose가 CIMG를 항상 배경으로 합성하므로 장이 상시 있다 = true.
+function ovLayerActive() {
+  if (typeof A2M !== 'undefined' && A2M === 'c') return true;
+  const t = $('#cLines'); return !!(t && t.value.split('\n').some(s => s.trim()));   // 발사 게이트 hasOverlay(clines.length>0)와 동일 축
+}
 function effOvFmt() { return headerActive() ? 'reels' : ovFmt; }   // 헤더 입력 중 = 흰칸(9:16)과 짝 → 오버레이 릴스 강제
 function renderOvFmt() {   // • 오버레이 포맷 토글 표시(포스트=시안 / 릴스=레몬 · 헤더 중엔 릴스 고정·dim)
   const t = $('#ovFmtTog'); if (!t) return; const f = effOvFmt(), hl = headerActive();
