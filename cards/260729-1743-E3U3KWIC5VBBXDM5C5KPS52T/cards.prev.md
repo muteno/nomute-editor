@@ -1,31 +1,31 @@
 # 🎤 상을 못 받은 게 아니다, BTS가 그래미를 거절했다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 시상식 권위 배분이라는 구조를 다루는 기사라 사실성·긴장으로 밀어야 한다
-- 분위기: 무대의 화려함이 아니라 그 화려함을 등지는 순간의 서늘함. 트로피의 금빛은 멀고 흐리게, 사람의 눈빛만 또렷하게
-- 연출 방향: 독자(아미·K팝 팬)가 멈추는 지점은 '못 받았다'가 '안 받겠다'로 뒤집히는 낙차다. 그래서 카메라는 무대 위 인물이 아니라 무대를 떠나는 인물, 트로피가 아니라 트로피를 향하지 않는 시선에 붙는다. 💡 시사점의 '자리가 어디에 놓이는가'를 위해 매 카드에 물리적 자리(중앙/가장자리·본석/옆석)의 대비를 심는다. 배려의 이름이 붙은 칸막이는 벽이 아니라 바닥의 선·객석 구획으로 보이게
-- 독자 동선: **발단** 카드2→**전개** 카드3~4→**피크** 카드5→**해소** 카드6→**시사점** 카드7 · 제시 도입 = 카드1 · 훅=카드1 끝(단서형: 이유가 한 문장뿐이라는 예고)+카드3 끝(예고형) · 착지 한 줄 요지 = 아리랑으로 정상에 오른 팀이 '아시안 팝'이라는 라벨을 사양했다
-- 연속성 앵커: Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories / 반복 장소 — a large awards-ceremony hall with tiered red velvet seating and a distant lit stage
+- 화풍: B 극화 — 권위 배분과 제도 분류를 다루는 구조 축 기사라 명암 대비와 무게가 필요하다
+- 분위기: 환호가 걷힌 뒤의 서늘한 정적. 트로피가 빛나는 대신 '자리'가 어떻게 나뉘는지가 보이는 톤
+- 연출 방향: 이번 개정의 축은 전문성이다. 사건(거절)만 보여주고 끝내지 않고, 그래미라는 제도가 어떻게 작동해왔는지(시장이 커진 음악을 부문으로 흡수해 권위를 유지하는 방식)와 그 제도를 둘러싼 논쟁 구도(별도 칸=본선 배제라는 지적 vs 흑인·라틴 음악이 별도 부문에서 본선으로 걸어 들어온 전례)를 카드 4·5에 실었다. 그래서 이미지도 인물의 눈빛과 '자리'(빈 좌석·로프로 나뉜 구획·옆칸에서 무대로 이어진 길)를 두 축으로 잡고, 트로피는 언제나 뒤로 밀거나 작게 둔다. 조명은 起 무대 상황광에서 시작해 承에서 단계적으로 내려가고, 轉에서 단 하나의 하드 측광으로 최저 명도·최고 대비에 닿았다가 結에서 여운광으로 풀린다. 악센트 네온그린은 인물이 쥔 것·선을 긋는 도구·길의 가장자리에만 얹어 시선을 '자리'로 몰아준다
+- 독자 동선: 起 카드1→承 카드2~5→轉 카드6→結 카드7 · 훅=카드1 끝(반전 선언)+카드3 끝(단서형)+카드5 끝(반전 단서) · 감정 피크=카드6(3줄 침묵 비트) · 강조 위치 변주=1첫줄·2말줄·3말줄·4셋째줄·5둘째줄·6첫줄·7말줄 · 착지 한 줄 요지 = 정상에 오른 팀이 그 자리를 사양했다
+- 연속성 앵커: Recurring subject — a Korean man in his late 20s, short dark hair swept back, wearing a plain black stage jacket over a dark shirt, lean build, no jewelry. 반복 장소 = a large awards hall with rows of empty velvet seats.
 
 ### [카드 1]
 **텍스트**
 ```text
-객석은 그대로 있었다
-무대도 그대로였다
-자리에 앉을 사람이
-*스스로 오지 않겠다고 했다*
+*상을 못 받은 게 아니었다*
+방탄소년단이 29일 공식 SNS에
+내년 그래미에 음악을
+출품하지 않겠다고 밝혔다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: one empty seat in the middle of a filled row, its cushion still folded up. A large awards-ceremony hall with tiered red velvet seating and a distant lit stage stretches from top to bottom of the frame, seats occupied by dim seated figures whose faces are turned toward the stage. The single vacant seat sits at the center of the upper area, catching the only clean light. No performer stands on the distant stage.
-Camera: wide shot, full body, surrounding environment, spatial context from high angle shot, looking down, layout, geometry, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
-Lighting/mood: overcast diffused daylight spilling from high hall windows, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) picking out the edge of the one empty seat, muted daylight contrast
-Text handling: avoid incidental lettering entirely; no signage, no seat numbers, no printed programs in frame; convey meaning through the vacant seat and light only.
+Scene: Emotional focal point: his steady unwavering eyes, looking toward the right edge of the frame without blinking. Recurring subject — a Korean man in his late 20s, short dark hair swept back, wearing a plain black stage jacket over a dark shirt, lean build, no jewelry, stands alone at the front of a wide stage and holds a single microphone lowered at his side. Behind him a large awards hall with rows of empty velvet seats recedes into darkness on one continuous floor. The stage floor is the only surface, running edge to edge.
+Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, nose room on the right, gaze directed toward the right edge, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: overcast diffused stage wash, flat soft shadows, muted somber mood, mid-key ambience
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the microphone grille he holds, muted contrast
+Text handling: no readable signage, no banner lettering, keep all surfaces free of script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tiered auditorium seating floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the stage floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-그래미 어워즈 객석 빈자리
+그래미 어워즈 시상식 무대
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-방탄소년단이 지난 7월 29일
-공식 SNS에 글을 올렸다
-*내년 그래미에 음악을*
-*출품하지 않겠다고 했다*
+이유는 딱 한 문장이었다
+"음악이 지역이나 언어로
+구분되기보다 음악 그 자체로
+*들리고 사랑받기를 바란다*"
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his thumb hovering still above the phone screen, the message already sent. Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories, stands alone in a quiet backstage corridor and looks down at the phone held in both hands. His shoulders are level and his jaw is set, not tense but decided. A long empty corridor recedes behind him toward a doorway of stage light.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, three-quarter angle, natural face depth, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus, nose room on the right, gaze directed toward the right edge
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dim corridor, restless unease held in check
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) glowing off the phone screen edge onto his fingers, film-noir low-key lighting, deep shadows
-Text handling: the phone screen stays turned away and unreadable; no rendered letters on the screen, no signage in the corridor; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his fingertip resting still on the glass of a phone, not yet lifted after sending. Recurring subject — a Korean man in his late 20s, short dark hair swept back, wearing a plain black stage jacket over a dark shirt, lean build, no jewelry, sits at a plain desk in a dim backstage room and looks down at the phone in his palm. The desk top is the only surface, extending edge to edge, with nothing else on it. His shoulders are lowered and calm, his gaze cast downward at the screen.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from high angle shot, looking down, three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless quiet, low-key falloff
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) in the phone screen glow, film-noir low-key lighting, deep shadows
+Text handling: the phone screen is angled away and blurred so no characters are legible; no readable text anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the backstage corridor wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-방탄소년단 그래미 출품 발표
+방탄소년단 공식 SNS 입장문
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-이유는 한 문장이었다
-*"음악이 지역이나 언어로*
-*구분되기보다 음악 그 자체로"*
-들리고 사랑받기를 바란다고
+말한 시점이 말을 한다
+그래미를 주관하는 미국
+레코딩 아카데미가 아시아 부문
+*신설을 발표한 직후였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a single microphone standing alone at center stage, its head catching one hard beam. Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories, stands several steps behind the microphone with his hands at his sides, not reaching for it, his eyes level on it. The stage floor runs unbroken to the far dark edge of the hall.
-Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette from low angle shot, looking up, dramatic presence, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion, nose room on the right, gaze directed toward the right edge
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) rimming the microphone head, film-noir low-key lighting, deep shadows
-Text handling: no backdrop lettering, no logos, no banner text anywhere on stage; the bare microphone carries the meaning; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: an official's hand pressing a fresh printed page flat onto the table, fingers spread wide. Two board officials in dark suits stand over a long polished conference table in an American recording academy office and look down at the single sheet between them, their faces mostly out of frame above. The table top is the only surface, running edge to edge, bare except for that one page and a closed pen. Their posture is procedural, unhurried, businesslike.
+Camera: extreme close-up, single detail, hand, texture from overhead shot, bird's-eye view, top-down angle, layout, geometry, nose room on the right, leading lines toward the right edge, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional, dimmer than daylight
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the pen barrel resting beside the page, muted contrast
+Text handling: the page is shown at a steep angle and cropped so its surface reads as blank paper texture; no letters rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark stage floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the conference table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,118 +97,25 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-그래미 무대 마이크 스탠드
+레코딩 아카데미 그래미 본부
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-미국 레코딩 아카데미가
-아시아 음악을 따로 묶는
-*'베스트 아시안 팝'을 만든 직후였다*
-영향력을 반영했다고 설명했다
+아카데미는 커진 영향력을
+반영한 조치라고 설명했다
+*시장이 커진 음악을 부문으로*
+흡수해온 방식 그대로다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: an older executive's fingertips pressed together in a steeple above a seating chart. Two officials in dark suits lean over a wide table in a committee room, one drawing a fresh line across a hall floor plan while the other watches the drawn line, not the person. The table surface runs edge to edge and a scale model of a tiered auditorium sits at its far end.
-Camera: medium shot, waist-up framing, face and gestures, conversational from high angle shot, looking down, observed, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the freshly drawn dividing line across the plan, muted daylight contrast
-Text handling: the floor plan shows only lines and blocks, no labels, no numbers, no legends; keep every surface free of lettering; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the committee table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-레코딩 아카데미 그래미 트로피
-```
-
-### [카드 5]
-**텍스트**
-```text
-별도 칸에 넣는 순간
-*올해의 노래·앨범·레코드*
-본선에서는 빠지는 것 아니냐는
-우려가 음악계에서 나왔다
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: three golden gramophone trophies lined on the main stage, and the empty stretch of floor between them and the roped annex. Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories, stands at the near edge of that gap with his back to the camera, head level, looking across at the distant trophies. The stage floor and hall floor are one continuous plane between them.
-Camera: long shot, full body, surrounding environment, movement, spatial context from ground-level shot, worm's-eye view, near floor, exaggerated scale, back shot, rear view, subject from behind, solitude, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the floor line dividing the gap, film-noir low-key lighting, deep shadows
-Text handling: trophies carry no engraving, no plaques, no nameplates anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the hall and stage floor as one plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-그래미 축음기 트로피
-```
-
-### [카드 6]
-**텍스트**
-```text
-2021년부터 3년 연속 후보에
-올랐지만 트로피는 없었다
-지난 3월 *'아리랑'으로 빌보드*
-*싱글·앨범 1위*를 석권한 뒤였다
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his open palm turned upward and empty, held at chest height. Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories, sits in a nominee seat in the tiered red velvet rows, his eyes steady and dry, the applause of the surrounding rows blurred behind him. The seating floor runs unbroken from the near row to the far dark end of the hall.
-Camera: close-up shot, face centered, eyes, expression, emotional detail from eye-level shot, neutral perspective, realistic, profile shot, side view, clear silhouette, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: harsh single overhead light pooling on the seat row, deep surrounding black, oppressive weight of waiting
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) faint on the seat edge beside his empty hand, film-noir low-key lighting, deep shadows
-Text handling: no ticket, no program, no chart printout in frame; the empty open hand carries it; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tiered seating row) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-빌보드 차트 1위 아리랑
-```
-
-### [카드 7]
-**텍스트**
-```text
-새 부문이 생기면
-후보 자리는 분명 늘어난다
-남은 건 그 자리가 무대 한가운데인지
-*옆에 따로 놓인 자리인지다*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his level unwavering eyes meeting the viewer straight on. Recurring subject — a Korean man in his late 20s, short black hair, lean build, wearing a plain dark tailored jacket over a black shirt, no accessories, stands alone at the center of the empty hall floor and faces the camera directly, hands relaxed at his sides. Behind him the tiered red velvet rows and the distant stage sit equally lit, neither one closer than the other, the floor continuous beneath.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: warm soft light rising through the emptied hall, gentle and quiet, faint melancholy, tension released
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the aisle line running past him toward the stage, muted daylight contrast
-Text handling: no signage, no stage backdrop lettering, no seat markings anywhere; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a gloved hand clicking a velvet rope hook onto a brass stanchion, the motion precise and unhurried. Two academy staff in dark suits set a line of stanchions across one side of a large awards hall, roping off a separate seating block from the main floor, their eyes down on the rope and never on the seats. The hall floor is the only surface, running unbroken edge to edge, and the rows of velvet seats beyond the new rope line sit in dimness. Their posture is administrative, almost bored, as if this line has been drawn many times before.
+Camera: medium shot, waist-up framing, face and gestures, conversational from low angle shot, looking up, powerful subject, dominance, dramatic presence, three-quarter angle, natural face depth, nose room on the right, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension, one step darker than the previous scene
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) along the velvet rope being clipped into place, film-noir low-key lighting, deep shadows
+Text handling: no signage, no seat numbers, no placards, no lettering on the stanchion; all surfaces free of characters.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
@@ -221,5 +128,97 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-그래미 시상식 무대 전경
+시상식 객석 구획 로프
+```
+
+### [카드 5]
+**텍스트**
+```text
+지적은 정반대였다 별도 칸에 넣으면
+*올해의 노래·앨범·레코드에서 빠진다*
+흑인 음악도 라틴 음악도
+거기서 출발해 본선에 닿았다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the backs of two musicians rising from the roped-off side block and stepping onto the one lit path that runs toward the main stage. A large awards hall seen from above: a small separated seating block sits in shadow at the left, the wide main floor stretches ahead, and a single narrow lane of carpet connects them like a thread. A few more seated figures in the side block stay put, faces turned toward the walkers. The hall floor is the only surface, running unbroken edge to edge.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation from high angle shot, looking down, back shot, rear view, subjects from behind, nose room on the right, movement directed toward the right edge, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Lighting/mood: single pool of hard light isolating the connecting lane in surrounding blackness, the side block falling into shadow, claustrophobic separation
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) along the edge line of the lit lane only, film-noir low-key lighting, deep shadows
+Text handling: no seat numbers, no placards, no nameplates, no banner lettering; all surfaces free of characters.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+그래미 시상식 객석 통로
+```
+
+### [카드 6]
+**텍스트**
+```text
+*거절의 무게는 시점이 만든다*
+'아리랑'으로 빌보드 1위를 하고도
+3년 연속 후보로만 남았던 팀이다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: his jaw clenched tight, muscle flexing at the jawline, eyes lowered and unmoving. Recurring subject — a Korean man in his late 20s, short dark hair swept back, wearing a plain black stage jacket over a dark shirt, lean build, no jewelry, fills the frame in tight framing, standing motionless. Far behind him, small and blurred into the dark, a golden gramophone trophy sits on a stand he is not looking at. His face fills most of the frame and the dark stage wall behind is one continuous surface.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure from eye-level shot, neutral perspective, realistic, balanced emotion, three-quarter angle, natural face depth, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
+Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, the darkest and highest contrast moment of the sequence
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) as a thin rim along his jaw and shoulder, film-noir low-key lighting, deep shadows
+Text handling: the trophy plaque is unreadable and out of focus; no letters rendered anywhere.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the dark stage wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+방탄소년단 아리랑 빌보드 1위
+```
+
+### [카드 7]
+**텍스트**
+```text
+새 부문이 생기면 자리는 늘어난다
+다만 그 자리가 무대 한가운데인지
+옆에 따로 놓인 자리인지는 남는다
+*정상에 오른 팀이 그 자리를 사양했다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: his steady eyes looking directly into the camera, calm and unwavering. Recurring subject — a Korean man in his late 20s, short dark hair swept back, wearing a plain black stage jacket over a dark shirt, lean build, no jewelry, stands at the center of a large awards hall with rows of empty velvet seats behind him, facing the viewer straight on with both hands relaxed at his sides. The hall floor is the only surface, running edge to edge; far off to one side a roped-off seating block and a small unlit gramophone trophy stand remain, both left behind him.
+Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: warm soft afterglow light, long soft shadows releasing the earlier tension, quiet and open
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the floor line running past his feet toward the viewer, muted contrast
+Text handling: no signage, no banners, no seat numbers; all surfaces free of characters.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+방탄소년단 무대 정면
 ```
