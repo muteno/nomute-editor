@@ -57,6 +57,8 @@
 | **`design-tokens.lock`** | 토큰명 락(도장) — 하드게이트: `check_refs` 토큰 락 정합(**토큰 신설·삭제 = 집합 불일치 차단** · 락 함수 실체 `check_lock()` = `build_design_mirror.py`). 개수 정본. 갱신 = `build_design_mirror.py lock`. |
 | **`viewer/nm-svg.js`** | **공유 아이콘 도형 SSOT** — 뷰어 HTML들이 `<script>` 로드하는 아이콘/픽토그램 단일정본(CHECK·COPY·PASTE·DOWNLOAD·SHARE·CHEV 등 · 로더 전수 = grep 실측이 정본 = 개수 복붙 금지 자기규칙). 색·치수가 `:root`면 **도형은 여기** = 값 SSOT 동급 축. 하드게이트 = `check_refs` `check_icon_ssot()`(인라인 재선언 rc=1). |
 | **`viewer/nm-cards.css`** | **다운로드·결과 카드·이전 제작 카드 공용 CSS SSOT**(운영자 260731) — 색·플레이트·✓팝·전체 시퀀스·결과 카드 컨텍스트 단일정본. 라이브 뷰어 12개가 `<link>`로 참조(인라인 사본 금지 = 인라인이 뒤라 SSOT를 이김). 규칙 = §0-16-1. |
+| **`viewer/nm-hist.css`** | **이전 제작(공유 이력) 섹션 CSS SSOT**(운영자 260802 "결과·이전제작 일맥상통 공유") — 접이 헤더·그리드·카드·스태거 단일정본. thumb(이미지 스튜디오)·tr(번역)이 `<link>`로 참조. 규칙 = §0-16-1 동축(인라인 사본 금지). |
+| **`viewer/nm-job.css`** | **제작 잡 카드(대기열·진행·완료) CSS SSOT**(운영자 260802 "이미지 스튜디오를 거의 따라서 가져온다") — `.jobs/.job/.jlab/.jvars/.jvar-dl/.jst/.jgrid/.jsave-row/.jdel` 단일정본. thumb(이미지 스튜디오)·index(설정 ▸ 다운로드 `#dlgrab` 받기 잡)가 `<link>`로 참조 = 두 화면이 **같은 부품**. 색 계약은 `nm-cards.css` 몫(역할 분리) · 규칙 = §0-16-1 동축(인라인 사본 금지). |
 
 ## 2. 규칙 (Rules)
 | 파일 | 역할 |
