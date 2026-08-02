@@ -1,31 +1,31 @@
-# 1년 끈 '미성년 교제 의혹' 김수현, 경찰은 혐의 없다고 봤다
+# ⚖️ 1년 끈 '미성년 교제 의혹', 경찰의 답은 혐의 없음이었다
 
 **[프롬프트 설계]**
-- 화풍: A 한국웹툰 수채화 — 고인이 있는 사건이라 고발조 극화보다 상실·허탈의 결이 맞다
-- 분위기: 감정 없는 제도의 형광빛에서 시작해 늦은 여운광으로 풀리는, 차분하고 허탈한 정조. 목소리는 낮고 화면은 비어 있다
-- 연출 방향: 독자가 멈추는 이유는 "1년 넘게 사실처럼 소비한 의혹이 종이 한 장으로 정리됐다"는 낙차다. 전할 것은 여론의 판결과 수사의 시차가 남긴 회복 불가능한 손실. 그래서 사람의 얼굴보다 **사람 대신 남은 것들**(내려놓인 서류 한 장, 마이크 앞 녹음기, 닫히는 서류철, 아무도 앉지 않은 좌석)에 시선을 건다. 인물은 손끝·시선·뒷모습으로만 말하고, 판정하는 표정은 그리지 않는다
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5(+카드6 여진)→結 카드7 · 훅=카드1 끝(단서형 "시작은 영상 하나였다")+카드3 끝(단서형 "유족도 그를 맞고소했다") · 감정 피크=카드5 · 착지 한 줄 요지 = 여론의 판결이 수사보다 1년 앞섰고, 그 1년이 되돌릴 수 없는 것을 가져갔다
-- 연속성 앵커: (없음) — 실존 인물 재현 회피로 특정 인물을 반복 등장시키지 않는다. 대신 반복 장소 = `a plain Korean institutional interior with pale green-gray walls and worn linoleum floor`를 카드 1·5·6 Scene에 그대로 복사해 넣는다
+- 화풍: B극화 — 형사 절차·수사 결론·명예훼손 다툼이 축이라 사실성과 무게가 필요하다
+- 분위기: 승자 없이 닫힌 사건의 서늘한 공허 — 흥분이 지나간 뒤 남은 서류 한 장의 온도, 파스텔 없는 무채색에 초록 한 점
+- 연출 방향: 독자는 1년 넘게 이 의혹을 '사실처럼' 소비했고, 그 소비가 '혐의 없음' 한 줄과 부딪히는 낙차에서 멈춘다(독자훅). 전할 것은 폭로가 먼저 결론을 내고 수사가 1년 뒤 도착한 시차, 그리고 그사이 복구 불가능해진 것들이다. 그래서 강조점은 **사람의 얼굴이 아니라 사람이 사라진 자리** — 빈 단상, 꺼진 마이크, 놓인 통지서, 아무도 없는 회견장에 남은 명찰. 인물은 등을 보이거나 손만 등장시켜 여론재판의 익명성을 유지하고, 초록 악센트는 언제나 '문서·화면·불빛' 같은 차가운 물체 위에만 앉힌다.
+- 독자 동선: **발단** 카드2→**전개** 카드3~4→**피크** 카드5→**해소** 카드6→**시사점** 카드7 · 카드1은 제시(訴) · 훅=카드1 끝(단서형: '통지서 한 장')+카드3 끝(예고형) · 착지 한 줄 요지 = 수사 결과는 한 줄로 도착했지만 그 1년은 아무것도 되돌리지 못했다
+- 연속성 앵커: Recurring subject — a Korean man in his 30s, short black hair, clean-shaven, wearing a dark charcoal suit with no tie, shown from behind or with face obscured / Recurring place — a Korean police station corridor with pale institutional walls and fluorescent ceiling lights
 
 ### [카드 1]
 **텍스트**
 ```text
-서울 성동경찰서가 최근 결론을 냈다
-*혐의 없음, 딱 한 줄이었다*
-온 나라가 1년 넘게 다툰 의혹인데
-시작은 영상 하나였다
+1년 넘게 온 나라가 떠들었다
+사람 하나가 세상을 떠났고
+배우 하나는 활동을 멈췄다
+*끝에 남은 건 통지서 한 장이었다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a clerk's fingertips just releasing a single sheet of paper onto a wide counter. One adult office worker in a plain unmarked uniform stands behind the counter in a plain Korean institutional interior with pale green-gray walls and worn linoleum floor, head lowered, eyes following the sheet down. The lone sheet rests on the vast empty counter surface with a small green highlighter beside it, dwarfed by the emptiness around it. Nose room on the right, the worker's gaze angled toward the right edge of the frame.
-Camera: wide shot with full body and surrounding environment from a high angle looking down, shot on a 35mm lens with natural documentary perspective and minimal distortion
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a single sheet of official notice paper lying alone on an empty press-conference table. The long table is bare except for a cluster of dead microphones tilted at odd angles, and a row of chairs behind it stands completely empty. Scattered press badges lie on the floor near the table legs. The room is a Korean press briefing hall with a plain backdrop wall, emptied out after everyone has left.
+Camera: wide shot, full body of the table and chairs, from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: no readable text anywhere; the document is blank pale paper, no logos, no emblems, no insignia on the uniform or walls. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the edge of the paper sheet only, muted daylight contrast
+The paper and microphones are anchored in the upper-center area of the frame. No text is legible on the paper; it reads as blank official stationery. Text handling: avoid incidental lettering entirely, no signage, no rendered documents with body text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the counter top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the briefing hall floor and table plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-성동경찰서 청사
+기자회견장 빈 단상 마이크
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-발단은 2025년 3월 유튜브였다
-가로세로연구소가 방송에서 주장했다
-고 김새론이 *만 15세부터 6년간*
-김수현과 교제했다는 내용이었다
+시작은 지난해 3월이었다
+유튜브 채널 가로세로연구소가
+고 김새론이 만 15세부터
+*6년간 김수현과 사귀었다고 주장했다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: three adult faces lit from below by a phone screen, lips slightly parted, eyes fixed and unblinking. Three ordinary adults sit close together on a couch in a dark Korean apartment living room, all leaning toward one glowing phone held between them, none of them looking at each other. The phone is the only light source and the only object connecting them. The room behind is swallowed in darkness.
-Camera: medium shot with waist-up framing showing faces and gestures from an eye-level neutral perspective, shot on a 50mm standard lens with natural cinematic composition
-Lighting/mood: cold blue screen under-glow lighting the faces from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the phone screen shows only abstract blurred light and shape, no interface, no readable characters. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a hand hovering over a glowing phone screen in a dark room, the thumb frozen mid-scroll. Only the hand and forearm enter the frame from the lower right; the person's face is outside the composition entirely. The phone shows an abstract video-player shape with no readable characters, and its cold light spills across the bedsheet beneath. The setting is an ordinary Korean bedroom at night, the rest of the room swallowed in shadow.
+Camera: extreme close-up, single detail, hand and screen, from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: cold blue screen under-glow lighting from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the glow of the screen edge, film-noir low-key lighting, deep shadows
+The hand and screen sit in the upper-center of the frame. Text handling: the screen shows only abstract geometric interface shapes, no letters, no numbers, no captions.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark living-room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the bedsheet plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-가로세로연구소 유튜브 방송
+스마트폰 유튜브 화면 어두운 방
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-김수현은 교제 사실은 인정하면서도
-미성년 때는 아니라고 반박했고
-유족과 가세연 운영자를 고소했다
-두 달 뒤, *유족도 그를 맞고소했다*
+배우는 곧바로 반박했다
+교제한 건 맞지만
+미성년일 때는 아니었다고 했다
+*그리고 유족과 유튜버를 고소했다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: two pairs of adult hands pushing two paper envelopes across a table in exactly opposite directions, knuckles tense. Seen from directly above, one envelope slides toward the upper right and the other toward the lower left on the same wooden tabletop, the two sets of hands never touching. A tense empty gap of bare table separates them at the center. The right-hand envelope carries the motion outward toward the right edge of the frame.
-Camera: medium close-up with chest-up framing from an overhead bird's-eye top-down angle, shot on a 70mm short telephoto with gentle background compression and subject isolation
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: both envelopes are blank pale paper with no writing, no stamps, no seals. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the tense set of a man's shoulders as he stands with his back to us, facing a wall of camera lenses. Recurring subject — a Korean man in his 30s, short black hair, clean-shaven, wearing a dark charcoal suit with no tie, shown from behind so his face is never visible. He stands alone at a podium, both hands gripping its edge, while a dense bank of tripod-mounted cameras and microphones presses toward him from the far side. The location is a Korean press conference hall with a plain fabric backdrop.
+Camera: medium shot, waist-up framing, from low angle shot, looking up, back shot, rear view, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: harsh single overhead light pooling on the podium, deep surrounding black, oppressive interrogation
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a single blinking camera indicator light, film-noir low-key lighting, deep shadows
+His shoulders and the podium occupy the upper-center of the frame, with nose room on the right and his body angled toward the right edge. Text handling: the backdrop is a plain untextured fabric, no logos, no lettering, no institutional emblems.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wooden tabletop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the press hall floor and backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +97,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-김수현 명예훼손 고소장
+연예인 기자회견 포토라인 카메라
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-유족이 기자회견에서 내놓은 건
-고인이 생전에 남긴 녹취였다
-중학교 때부터 사귀었다는 대목에
-김수현 측은 *AI 위조라고 맞받았다*
+지난해 5월 유족도 맞고소했다
+기자회견에서 공개한 건
+고인의 생전 녹취였다
+*"중학교 때부터 사귀었다"는 대목이었다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a small voice recorder sitting alone in a single pool of light, with a cluster of microphones bent toward it like listeners. Seen from the side, one adult family member sits at a press conference table in profile, shoulders drawn in, eyes cast downward at the recorder rather than at the room. Behind, the seated press rows are soft and dim, all faces turned the same way. The recorder is the smallest object in the frame and everything points at it.
-Camera: medium shot with waist-up framing from an eye-level neutral perspective in profile side view, shot on an 85mm portrait lens with soft background separation
-Lighting/mood: single pool of hard light isolating the subject in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the backdrop banner, name cards and microphone flags are all blank, no writing anywhere. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a fingertip resting on the play button of a small audio recorder, unable to press down. Only the hand appears, entering from the right edge; no face is shown. The recorder sits on a bare conference table with a single microphone angled toward it, and an audio waveform is suggested as an abstract ridged shape on the device body. The location is a Korean press briefing room, its rows of seats blurred into darkness behind.
+Camera: tight close-up, the device fills much of the frame, from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: warm soft desk-lamp light falling on the device, quiet wistful tone, the surrounding room dim
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the recorder's tiny status light, film-noir low-key lighting, deep shadows
+The recorder and hand sit in the upper-center of the frame. Text handling: the device surface shows no letters, no numbers, no brand marks; the waveform is a purely abstract ridge pattern.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long press table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the conference table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,27 +128,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-김새론 유족 기자회견
+유족 기자회견 녹음기 테이블
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-*경찰은 어느 쪽도 인정하지 않았다*
-김수현의 아동복지법 위반 혐의도
-유족의 무고 혐의도 아니라고 봤다
+그런데 배우 측이 맞받았다
+*그 녹취는 AI로 위조된 것이라고 했다*
+싸움은 그때부터 진실이 아니라
+이 음성이 진짜냐를 다투게 됐다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a thumb and forefinger pressing a cardboard case file shut, the last sliver of paper disappearing between the covers. Extreme close-up of one adult hand closing the folder on a desk in a plain Korean institutional interior with pale green-gray walls and worn linoleum floor, the fingers steady and unhurried, no face in the frame. A green paper clip lies just outside the folder, left behind on the bare desk. The gesture is final and quiet.
-Camera: extreme close-up on a single detail of hand and texture from a high angle looking down, shot on a 100mm macro lens with fine detail and shallow depth of field
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the folder and papers are entirely blank, no labels, no stamps, no handwriting. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: an audio waveform on a dark monitor splitting into two identical mirrored halves, so neither can be told from the other. No person is present; the room is empty. The waveform is a purely abstract ridge of peaks running across the screen, doubling into a perfect reflection at its midline. The setting is a dim forensic analysis room in a Korean institution, a swivel chair pushed back and vacant.
+Camera: extreme close-up, single detail of the screen surface, from eye-level shot, neutral perspective, shot on 85mm portrait lens, soft background separation, elegant focus
+Lighting/mood: cold blue screen under-glow in a dark room, restless paranoid unease, the deepest shadow of the sequence
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the waveform ridge itself, film-noir low-key lighting, deep shadows
+The waveform occupies the upper-center of the frame. Text handling: the monitor shows only the abstract waveform, no interface labels, no letters, no numbers, no timestamps.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the monitor screen plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +159,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-경찰 불송치 결정
+음성 파형 분석 모니터
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-그렇다고 사건이 닫힌 것은 아니다
-유족이 이의를 신청하면
-사건은 검찰로 다시 넘어가고
-*김수현의 명예훼손 고소도 남아 있다*
+그리고 경찰의 답이 도착했다
+서울 성동경찰서는 아동복지법
+위반도 무고도 인정하지 않고
+*양쪽 사건을 모두 불송치했다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the tense shoulders of a person seen from behind, carrying a stacked box of files down a long corridor. One adult figure walks away from the camera along a plain Korean institutional interior with pale green-gray walls and worn linoleum floor, back turned, face never visible. A second identical door stands open further down the hall, waiting. The corridor stretches far past the figure and does not end within the frame.
-Camera: wide shot with full body and surrounding environment from an eye-level neutral perspective in back view, shot on a 24mm wide lens with cinematic spatial context and subtle depth
-Lighting/mood: cold blue pre-dawn tone, lone light reflection on the polished floor, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: door plates, wall signs and file boxes are all blank, no letters anywhere. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: two thick case files sitting side by side on a metal desk, both closed, neither opened again. No person is in the frame. The files rest squarely under a ceiling light, their edges worn from handling, with a single closed folder cover facing up on each. The place is a Korean police station corridor with pale institutional walls and fluorescent ceiling lights, the desk pushed against one wall.
+Camera: medium shot, waist-height framing of the desk, from overhead shot, bird's-eye view, top-down angle, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a thin band along one file edge, muted daylight contrast
+The two files are anchored in the upper-center area of the frame. Text handling: the file covers are blank; no labels, no case numbers, no lettering of any kind, no agency emblems.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the corridor floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the metal desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,28 +190,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-검찰 사건 송치
+경찰서 복도 사건 서류철
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-여론은 1년 전에 판결문을 썼고
-경찰의 답은 1년 뒤에 도착했다
-그사이 김새론은 세상을 떠났고
-*김수현의 활동은 멈춰 있었다*
+정리된 건 수사 결과 한 줄이고
+정리되지 않은 건 그 1년이다
+폭로는 1년 전에 결론을 냈는데
+*수사는 1년 뒤에야 도착했다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: two empty seats side by side in the middle of a vast auditorium, the only place the late light still touches. No people are present anywhere in the hall. Rows of identical folded seats spread outward in perfect symmetry around those two, and the stage beyond is dark and bare with its equipment already carried away. The composition is centered and still, holding the viewer straight on rather than pulling to either side.
-Camera: extreme long shot with a tiny subject in a vast environment from a high angle looking down, shot on a 20mm wide lens with documentary realism
-Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: seat numbers, signs and stage backdrop are all blank, no writing of any kind. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a wall calendar whose pages have been torn away month after month, only the thin torn stubs left behind on the ring. No person appears anywhere in the frame. Beneath the calendar a single sheet of official notice paper lies on a windowsill, and outside the window the light has gone to dusk. The place is a quiet Korean office interior, the desk below it cleared and unused.
+Camera: wide shot, full view of the wall and windowsill, from eye-level shot, neutral perspective, front-on shot, direct symmetrical composition, shot on 35mm lens, natural documentary perspective, minimal distortion
+Lighting/mood: cold blue pre-dawn tone giving way to faint dusk through the window, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the last remaining calendar stub, muted daylight contrast
+The calendar and torn stubs are anchored in the upper-center area of the frame. Text handling: the calendar pages are torn away so no dates are visible; the notice paper is blank stationery with no body text, no numbers, no lettering anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the rows of auditorium seating) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office wall plane extending to the windowsill) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -220,5 +221,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-김수현 활동 중단
+벽걸이 달력 뜯긴 낱장
 ```
