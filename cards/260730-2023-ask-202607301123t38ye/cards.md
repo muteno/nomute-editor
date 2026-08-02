@@ -1,33 +1,33 @@
-# 🏛 서울서 태어난 美대사, 첫 마디는 한국어였다
+# 🏛 서울서 태어난 美대사, 공항 첫 마디는 한국어였다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 외교·통상 협상이라는 무게와 환영과 시위가 같은 날 갈린 긴장을 사실적으로 담아야 해서
-- 분위기: 공항 브리핑룸의 차갑고 평평한 형광등 아래, 개인사의 온기 한 점이 제도의 냉기 속에서 잠깐 빛났다가 다시 현안의 무게로 눌리는 정조
-- 연출 방향: 독자훅 = '서울에서 태어난 사람이 미국을 대표해 돌아왔다'는 인연의 낙차 — 그래서 카메라는 말하는 입이 아니라 *잠시 멈춘 눈매*와 *마이크 앞에 놓인 손*을 잡는다. 그리고 시사점(인연은 분위기를 데우지만 청구서의 숫자는 못 바꾼다)을 위해 후반은 브리핑룸의 온기에서 공항 밖 유리문 너머의 냉기로 온도를 떨어뜨린다. 카드 전체의 비주얼 키노트 = *따뜻한 한 마디 / 차가운 제도광*의 대비, 상징색은 브랜드 네온그린 단일 악센트로 시선을 마이크·서류·팻말 한 점에만 묶는다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형 — 한국어로 꺼낸 첫 문장을 예고만)+카드3 끝(예고형 1곳) · 감정 피크=카드4 · 착지 한 줄 요지 = 같은 날 같은 공항에 '피로 견고해진 동맹'과 청구서 목록이 함께 놓였고, 앞으로 볼 것은 수사의 온도가 아니라 '새로운 장'에 실제로 적히는 내용이다
-- 연속성 앵커: Recurring subject — a Korean-American woman in her late 60s with short dark bobbed hair, wearing a navy blazer over a light blouse and a slim silver brooch · Recurring place — an airport arrival briefing room with a plain pale backdrop wall and a low podium
+- 화풍: B 극화 — 통상·안보 협상이 걸린 권력·구조 축이라 사실성과 무게가 필요
+- 분위기: 환대와 계산이 같은 공항에 놓인 정조 — 따뜻한 한국어 인사와 제도적인 흰 형광등의 낙차, 감정을 크게 쓰지 않고 온도차로 말한다
+- 연출 방향: 독자훅 = '서울에서 태어난 사람이 미국을 대표해 돌아왔다'는 인연의 서사에 눈이 멈추고, 곧 쿠팡·관세가 떠올라 기대가 계산으로 바뀐다 → 이 전환을 그림으로 옮긴다. 전할 것 = 수사의 온도와 협상의 숫자는 다르다는 시사점. 그래서 강조점은 셋으로 좁힌다 — 마이크 앞에서 멈춘 젖은 눈, 성명 원고의 한 줄을 짚는 손끝, 등 뒤에서 올라오는 빈 피켓. 인물을 크게 미화하지도 깎아내리지도 않는 눈높이 정조(thumb_dispatch AG-01 계승)에, 감정을 지운 제도 조명(LGT12 톤 계승)을 키노트로 깔고, 뒤로 갈수록 명도를 떨어뜨려 마지막에만 아침빛으로 풀어준다
+- 독자 동선: **발단** 카드1→**전개** 카드2~4→**피크** 카드5→**해소** 카드6 첫 줄(빈자리는 채워졌다)→**시사점** 카드6 · 훅=카드1 끝(단서형 "이렇게 소개했다")+카드4 끝(예고형 "말은 거기까지였다") · 착지 한 줄 요지 = 볼 것은 그 새로운 장에 실제로 적힐 내용이다
+- 연속성 앵커: Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer and a light silk scarf / 반복 장소 = an airport arrivals briefing room with pale institutional walls
 
 ### [카드 1]
 **텍스트**
 ```text
-1년 반 비어 있던 자리였다
-30일 인천공항 브리핑룸에
-신임 주한 미국대사가 섰다
-*첫 마디는 영어가 아니었다*
+7월 30일, 새 주한 미국대사가 왔다
+*1년 반 넘게 비어 있던 자리였다*
+브리핑룸에서 한국말로 먼저 인사했다
+그리고 자신을 이렇게 소개했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her lips parted just before the first word, breath held. Recurring subject — a Korean-American woman in her late 60s with short dark bobbed hair, wearing a navy blazer over a light blouse and a slim silver brooch, stands behind a low podium in an airport arrival briefing room with a plain pale backdrop wall. She faces a dense wall of tripod cameras and raised microphones, her gaze directed toward the right edge of the frame. A single slim microphone rises in front of her, the one object her hands hover near without touching.
-Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional, nose room on the right, gaze directed toward the right edge
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the microphone head, muted daylight contrast
-Keep the subject and her face anchored in the upper-center area, well above the lower third of the frame.
-Text handling: avoid incidental background lettering entirely; suggest signage and camera labels through shape and shadow only. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her lips paused just before the first word, chin dipped in a small bow toward the microphones. Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer and a light silk scarf, stands behind a podium of clustered microphones and inclines her head in greeting. A taped photo line of tripod cameras faces her, and two aides in dark suits wait a step behind. Her gaze is directed toward the right edge with nose room on the right, and the place is an airport arrivals briefing room with pale institutional walls.
+Camera: wide shot, full body, spatial context, from eye-level shot, neutral perspective, balanced emotion, shot on 35mm lens, natural documentary perspective, minimal distortion
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting: Korean people and a Korean airport interior.
+Text handling: incidental lettering is avoided entirely - signage and papers are cropped, angled away or thrown out of focus, no readable words anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pale briefing room backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the pale briefing room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -36,30 +36,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-인천공항 입국 브리핑룸 포토라인
+인천공항 브리핑룸 포토라인
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-"저는 서울에서 태어났지만
-미국을 대표해 이 자리에 섰다"
-미셸 스틸 대사는 한국말로
-*"만감이 교차한다"고 했다*
+미셸 스틸, 한국 이름은 박은주다
+서울에서 태어났지만 미국을 대표해
+이 자리에 섰다고 그는 말했다
+*"다시 서니 만감이 교차한다"*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her eyes glistening with welling tears, not yet falling, above a jaw held carefully still. Recurring subject — a Korean-American woman in her late 60s with short dark bobbed hair, wearing a navy blazer over a light blouse and a slim silver brooch, is seen from a three-quarter angle as she pauses mid-sentence at the podium. Her right hand rests flat on the podium edge, steadying herself, and her gaze drifts slightly past the microphone toward the right edge. Behind her the plain pale backdrop wall of the airport briefing room fills the frame.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional, softened slightly on her face, nose room on the right
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the microphone head, muted daylight contrast
-Keep her eyes and hand in the upper-center area, well above the lower third of the frame.
-Text handling: no lettering anywhere in the scene; the backdrop is plain and unmarked. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her eyes glistening with welling tears that have not yet fallen. Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer and a light silk scarf, holds her jaw steady as she speaks, one hand resting flat on the podium edge. She looks slightly past the lens, blinking once. Only the pale briefing room wall lies behind her, softened into darkness.
+Camera: close-up shot, face centered, eyes, emotional detail, from three-quarter angle, natural face depth, shot on 85mm portrait lens, soft background separation
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting: Korean people and a Korean airport interior.
+Text handling: incidental lettering is avoided entirely - signage and papers are cropped, angled away or thrown out of focus, no readable words anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pale briefing room backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the pale briefing room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -68,30 +68,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-미셸 스틸 주한미국대사 성명
+미셸 스틸 주한미국대사
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-그 다음은 동맹 이야기였다
-"철통같은 동맹이 역내 평화의
-핵심축으로 남게 하겠다"
-*"세계에서 가장 강력한 동맹"*
+*이어진 성명의 주어는 내내 동맹이었다*
+철통같은 동맹이 평화의 핵심축으로
+남도록 협력하겠다고 그는 밝혔다
+세계에서 가장 강력한 동맹이라고 했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her steady unwavering eye contact, chin level, no smile. Recurring subject — a Korean-American woman in her late 60s with short dark bobbed hair, wearing a navy blazer over a light blouse and a slim silver brooch, reads a short statement from the podium, both hands squared on its surface. Beside and slightly behind her stands a man in a dark suit, kept lower and softer in tone so she remains the focus, and in front of her a cluster of microphones angles up toward her mouth. The plain pale backdrop wall of the airport briefing room fills the space behind them.
-Camera: medium shot, waist-up framing, face and gestures, conversational from front-on shot, direct gaze, symmetrical composition, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: harsh single overhead light pooling on the podium, deep surrounding shadow at the edges, institutional pressure
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on one microphone flag, film-noir low-key lighting, deep shadows
-Keep her face, eyes and both hands in the upper-center area, well above the lower third of the frame.
-Text handling: the microphone flags and backdrop carry no readable lettering, only clean blank shapes. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her jaw set tight between sentences, brows level and unwavering. Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer and a light silk scarf, stands at the lectern with both hands pressed flat on it, speaking straight out toward the cameras. Two national flags stand blurred behind her on the same dark backdrop panel, rendered as plain color fields with no emblem and no lettering. The panel fills everything behind her.
+Camera: medium shot, waist-up framing, face and gestures, from low angle shot, looking up, dramatic presence, shot on 50mm standard lens, natural cinematic composition
+Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting: Korean people and a Korean airport interior.
+Text handling: incidental lettering is avoided entirely - the backdrop panel and flags carry no words, and any paper is cropped or out of focus, no readable words anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pale briefing room backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the dark backdrop panel behind the podium) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -100,29 +100,30 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-한미정상회담 경주 악수
+주한미국대사 성명 연단
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-질문은 받지 않았다
-그가 빠져나가는 길목에선
-*부임 반대 기습 시위가 열렸다*
+그가 특히 짚은 것은 경주였다
+지난해 10월 두 정상이 만난 그곳에서
+*동맹의 새로운 장이 열렸다고 했다*
+공항에서 그가 남긴 말은 거기까지였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the narrowing gap between a departing back and the raised placards behind it. Recurring subject — a Korean-American woman in her late 60s with short dark bobbed hair, wearing a navy blazer over a light blouse and a slim silver brooch, is seen from behind as she walks out through the airport arrival hall, her head turned slightly but not looking back. Beyond the glass partition a small cluster of civic-group protesters holds up blank placards, mouths open mid-chant, pressing toward her path while staff step between them. The polished terminal floor runs unbroken from her feet to the far wall.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from high angle shot, looking down, observed from above, shot on 20mm wide lens, subject and environment, documentary realism
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension, deepest shadow of the sequence, strongest contrast
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the placard edges, film-noir low-key lighting, deep shadows
-Keep the departing figure and the placards in the upper-center area, well above the lower third of the frame.
-Text handling: every placard surface stays completely blank, rendered as clean empty boards with no writing at all. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her fingertip pressing down hard on one line of the printed statement. Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer, enters the frame only as a hand and forearm reaching in from the upper edge. The single sheet of paper lies flat and fills the surface, its rows of type cropped at the edges and thrown softly out of focus so nothing is readable. A second sheet beneath it has been pushed aside.
+Camera: extreme close-up, single detail, hand, texture, from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field
+Lighting/mood: warm soft desk-lamp light, quiet wistful tone
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting: a Korean hand and a Korean office interior.
+Text handling: the document is handled by cropping and defocus only - lines of type read as texture, no readable words anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the polished terminal floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the sheet of printed paper on the desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -131,30 +132,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-인천공항 입국장 시민단체 시위
+경주 한미정상회담
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-"피로 견고해진 동맹"이라는 말과
-쿠팡 문제가 놓인 협상 목록이
-같은 날 같은 공항에 있었다
-*확인할 건 수사의 온도가 아니다*
+그런데 취재진 질문은 받지 않았다
+공항을 빠져나갈 무렵 시민단체가
+*부임 반대 기습 시위를 벌였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: an empty podium still lit, facing rows of folded-away camera tripods. The airport briefing room stands vacant minutes after the statement, the plain pale backdrop wall unchanged, a single microphone left angled where she spoke. On the podium shelf a thin stack of documents sits squared and untouched, the only object holding the light. No people remain in the room.
-Camera: full shot, head-to-toe scale of the room, clear silhouette of the podium from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: warm soft morning light through a high terminal window, gentle and quiet, faint melancholy, tension released into stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the microphone head, muted daylight contrast
-Keep the podium, microphone and document stack in the upper-center area, well above the lower third of the frame.
-Text handling: the document stack is shown edge-on and closed so no page content is visible; the backdrop carries no lettering. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her profile refusing to turn, eyes locked straight ahead while questions come at her from the side. Recurring subject - a Korean woman in her 60s with short dark bobbed hair, wearing a navy blazer and a light silk scarf, strides past a row of reporters who thrust recorders toward her cheek. Behind them a small group of protesters lifts blank placards above their heads and turns their faces toward her. The long glass wall of the airport corridor runs behind them all.
+Camera: medium close-up, chest-up framing, facial emotion, from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 70mm short telephoto, subject isolation
+Lighting/mood: harsh single overhead light pooling below, deep surrounding black, oppressive
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting: Korean people and a Korean airport corridor.
+Text handling: the placards are blank color fields and all signage is cropped or out of focus, no readable words anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pale briefing room backdrop wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the long glass wall of the airport corridor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -163,5 +163,37 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-쿠팡 로고 한미 통상 협상
+주한미국대사 부임 반대 시위
+```
+
+### [카드 6]
+**텍스트**
+```text
+빈자리는 채워졌고 인사는 따뜻했다
+그러나 쿠팡 문제처럼 이견이 굳은 건
+협상 테이블에서 숫자로 정리된다
+*볼 것은 그 새로운 장에 적힐 내용이다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the abandoned cluster of microphones on an empty podium, still angled toward a speaker who has gone. A small distant figure in a navy blazer walks out through the glass doors at the far end, seen from behind and centered in the frame. The taped photo line on the floor is empty, faint tripod scuffs left on it. Nobody else remains in the hall.
+Camera: extreme long shot, tiny subject, vast environment, isolation, from eye-level shot, neutral perspective, shot on 20mm wide lens, documentary realism
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting: a Korean airport terminal interior.
+Text handling: incidental lettering is avoided entirely - all signage is cropped, angled away or thrown out of focus, no readable words anywhere in the frame.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the terminal floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+기자회견장 빈 연단 마이크
 ```
