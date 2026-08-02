@@ -2349,6 +2349,54 @@ def check_tabs_headers():
     return 0
 
 
+def check_algo_ledger():
+    """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
+    집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
+    ① 작성기·집계기 금지 심볼 부재(urllib/requests/http.client/socket/subprocess/os.system/anthropic SDK)
+       = 「네트워크 0 · LLM 0콜 · 외부 프로세스 0 · 초 단위」의 기계 보증(브리프 잡 50분 예산 보호).
+    ② insta-fetch.yml 원장 스텝에 timeout-minutes · continue-on-error · `|| true` 3중 fail-soft 존재
+       = 원장이 어떤 죽음으로도 수집·브리프 커밋을 못 막는다.
+    ③ 원장 기록자 유일성 — `apps/insta/data`를 만지는 워크플로 = insta-fetch.yml 단독. 다중 기록자 =
+       git_land reset 재적층이 남의 append-only 줄을 무음 소실(git_land.sh §전제 · 260802 실측 재현)."""
+    fails = []
+    _BAN = ('import urllib', 'import requests', 'import socket', 'import subprocess',
+            'http.client', 'os.system(', 'import anthropic', 'from anthropic')
+    for rel in ('.github/scripts/algo_ledger.py', 'apps/insta/algo_insight.py'):
+        p = os.path.join(ROOT, rel)
+        if not os.path.exists(p):
+            continue   # 스캐폴드 이전 = 무대상(게이트가 도입을 강제하진 않음)
+        src = open(p, encoding='utf-8').read()
+        for b in _BAN:
+            if b in src:
+                fails.append('원장 금지 심볼: %s 에 `%s` — 네트워크·LLM·외부 프로세스 0 계약 위반' % (rel, b))
+    wf = os.path.join(ROOT, '.github/workflows/insta-fetch.yml')
+    if os.path.exists(os.path.join(ROOT, '.github/scripts/algo_ledger.py')) and os.path.exists(wf):
+        lines = open(wf, encoding='utf-8').read().splitlines()
+        idx = [i for i, ln in enumerate(lines) if 'algo_ledger.py' in ln]
+        if not idx:
+            fails.append('원장 스텝 부재: insta-fetch.yml 에 algo_ledger.py 호출이 없다(작성기만 있고 배선 0)')
+        else:
+            blk = '\n'.join(lines[max(0, idx[0] - 20):idx[0] + 2])
+            for need in ('timeout-minutes', 'continue-on-error: true', '|| true'):
+                if need not in blk:
+                    fails.append('원장 스텝 fail-soft 결손: insta-fetch.yml algo_ledger 스텝에 `%s` 없음(3중 가드 필수)' % need)
+        owners = []
+        for f in os.listdir(os.path.join(ROOT, '.github/workflows')):
+            if not f.endswith('.yml'):
+                continue
+            if 'apps/insta/data' in open(os.path.join(ROOT, '.github/workflows', f), encoding='utf-8').read():
+                owners.append(f)
+        if sorted(owners) != ['insta-fetch.yml']:
+            fails.append('원장 기록자 유일성 위반: apps/insta/data 를 만지는 워크플로 = %s (insta-fetch.yml 단독이어야 함)' % owners)
+    if fails:
+        print('❌ 회차 원장 게이트 %d건:' % len(fails))
+        for f in fails:
+            print('  -', f)
+        return 1
+    print('✅ 회차 원장 게이트 — 금지 심볼 0 · 스텝 3중 fail-soft · 기록자 단독.')
+    return 0
+
+
 def main():
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers() + check_workflow_yaml() + check_git_idiom()
     rc = 0
@@ -2416,6 +2464,11 @@ def main():
         check_component_lock()   # 병렬 세션 컴포넌트 락 겹침 알림(운영자 260802 · WARN·비차단 = rc 미반영)
     except Exception as e:
         print('⚠️ 컴포넌트 락 게이트 스킵:', e)
+    try:
+        if check_algo_ledger() != 0:   # 회차 원장 불변식(운영자 260802 — 네트워크·LLM 0 · 3중 fail-soft · 기록자 단독)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 회차 원장 게이트 스킵:', e)
     try:
         if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
             rc = 1

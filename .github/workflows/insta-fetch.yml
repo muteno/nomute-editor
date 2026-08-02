@@ -84,6 +84,23 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN_ALT2: ${{ (vars.ACTIVE_ACCOUNT || 'MUTENO') == 'MUTENO' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENO }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT3: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN_MUTENONA }}
         run: bash .github/scripts/fb_brief.sh   # 게이트·스킵·fail-soft 전부 스크립트 내(rc 항상 0 = 수집 커밋 비차단)
+      - name: 회차 원장 append(알고리즘 인사이트 · 운영자 260802 · 평의회 합의) — 요약 전문+쓴 데이터+그 시점 실검·커뮤니티 키워드를 apps/insta/data/algo_runs/에 1줄 누적. 배치 = fb_brief 뒤·맨끝 커밋 앞(중간 git_land의 reset --hard가 인자 밖 append를 되돌리는 자리 회피 · 맨끝 git_land의 apps/insta/data 디렉터리 인자가 자동 착지 = 인자 수정 0). stdlib·네트워크0·LLM 0콜·실측 수십 ms · 멱등(dk+run_id) · 롤백 = repo variable ALGO_LEDGER=0
+        if: ${{ github.event_name != 'push' && vars.ALGO_LEDGER != '0' }}   # 하트비트(push) 런 배제 = 40회/일 중복 스냅샷 차단 · 브리프 레인(schedule·dispatch)만
+        timeout-minutes: 2          # 행(hang)이 잡 50분 예산을 먹는 경로 봉쇄
+        continue-on-error: true     # 어떤 죽음도 뒤 커밋(브리프·수집 착지) 비차단
+        env:
+          GH_RUN: ${{ github.run_id }}
+          GH_ATT: ${{ github.run_attempt }}
+          GH_EV: ${{ github.event_name }}
+        run: |
+          git fetch -q origin main 2>/dev/null || true
+          git checkout -q origin/main -- apps/insta/data/algo_runs/ 2>/dev/null || true   # append 기준선 = origin/main 최신(스텝 순서·직전 reset 의존 제거)
+          python3 .github/scripts/algo_ledger.py || true
+      - name: 알고리즘 인사이트 주간 집계(결정론·LLM 0콜) — 원장 40줄+ 도달 후 KST ISO주 바뀔 때 1회 자동(운영자 절차 0) · 산출 = apps/insta/data/algo_insight.{json,md} · 미달·기집계 = 조용히 스킵
+        if: ${{ github.event_name != 'push' && vars.ALGO_LEDGER != '0' }}
+        timeout-minutes: 3
+        continue-on-error: true
+        run: python3 apps/insta/algo_insight.py || true
       - name: 커밋(브리프 포함 · 맨끝 2차)
         # 브리프분(chan_brief.json·아카이브 로그)까지 최신 main 재기점 재적층으로 착지. 종전 관용구는 같은 파일을 다른 봇이 먼저 밀면 꼬인 리베이스로 브리프가 증발(→ 화면 정지)하던 자리 = git_land가 원천 봉합. chan_brief_log.jsonl도 add 대상 편입(종전 누락).
         run: |
