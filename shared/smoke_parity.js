@@ -79,11 +79,11 @@ async function runOnce(pg) {
     const strip = d.querySelector('#optStrip'), spec = strip ? strip.querySelector('.gospec:not(.none)') : null;
     const dock = d.querySelector('#topDock'), dcs = w.getComputedStyle(dock), dca = w.getComputedStyle(dock, '::after');   // 도크 mat·페이드 스커트 = 리드 파리티 정본(운영자 260720 "그라데이션 닫힘 이식")
     const cs = el => { const c = w.getComputedStyle(el); return { bg: c.backgroundColor, bd: c.borderColor, bw: c.borderTopWidth, rad: c.borderRadius, pt: c.paddingTop, pl: c.paddingLeft, mb: c.marginBottom }; };
-    const rail = d.querySelector('#cpPrev .cpprev-box .trail'), rbb = box.getBoundingClientRect();
-    const rr = rail ? rail.getBoundingClientRect() : null;   // 코너 레일 = 창 우상단 밀착(운영자 260801 확정 「우상단·여백 0px」)
+    const rail = d.querySelector('#cpPrev #cpRail'), rbb = box.getBoundingClientRect();
+    const rr = rail ? d.querySelector('#cpRailWrap').getBoundingClientRect() : null;   // 레일 = **창 밖 우측**(운영자 260802 2차 "네비게이션바를 우측으로") — 구 계약(창 안 우상단 여백 0)의 갱신 · 간격 8 = .trailwrap 캡슐 gap 동값
     const bwT = parseFloat(w.getComputedStyle(box).borderTopWidth) || 0;
     return { boxH: box.getBoundingClientRect().height, boxW: box.getBoundingClientRect().width, boxCS: cs(box),
-      rail: rr ? { r: +(rbb.right - bwT - rr.right).toFixed(1), t: +(rr.top - (rbb.top + bwT)).toFixed(1) } : null,
+      rail: rr ? { gap: +(rr.left - rbb.right).toFixed(1), t: +(rr.top - rbb.top).toFixed(1) } : null,   // gap = 창 우변↔레일 좌변(8) · t = 상변 정렬(0)
       toolsInRail: !!(rail && d.querySelector('#cpImgSwap') && rail.contains(d.querySelector('#cpImgSwap')) && rail.contains(d.querySelector('#cpImgDel'))),
       stripInRail: !!(rail && strip && rail.contains(strip)),
       stripVis: !!(strip && !strip.classList.contains('none') && strip.getBoundingClientRect().height),
@@ -115,7 +115,7 @@ async function runOnce(pg) {
   core('C3 요약 스트립 박스 동일(bg·border·radius·padding — .optstrip 정본)', !!(ed.stripCS && ai.sumCS) && ai.sumCS.bg === ed.stripCS.bg && ai.sumCS.bd === ed.stripCS.bd && ai.sumCS.rad === ed.stripCS.rad && ai.sumCS.pt === ed.stripCS.pt && ai.sumCS.pl === ed.stripCS.pl,
     JSON.stringify({ edit: ed.stripCS, ai: ai.sumCS }));
   core('C4 스트립 활자 동일(fs·lh)', ai.sumFs === ed.specFs && ai.sumLh === ed.specLh, 'card=' + ed.specFs + '/' + ed.specLh + ' ai=' + ai.sumFs + '/' + ai.sumLh);
-  core('C5 텍스트칸 기본 숨김(#geniWishRow/Head hidden · DOM 생존 — 노출은 글 픽토 탭 C5c)', ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
+  core('C5 텍스트칸 상시 노출(#geniWishRow/Head 고정 — 운영자 260802 「아래에 입력창을 고정값으로」 · 구 픽토 관문 폐지)', !ai.wishHidden && ai.wishAlive, JSON.stringify({ hidden: ai.wishHidden, alive: ai.wishAlive }));
 
   // ── C5b·C5c 미리보기 빈 상태 반갈(운영자 260721 "좌측은 글 픽토그램, 우측은 사진 픽토그램으로 좌우세로 균형 마진") ──
   //   계약 갱신(운영자 260802 "중앙에는 사진 업로드 그것만 있고 텍스트 버튼은 우측 네비게이션으로") —
@@ -123,20 +123,17 @@ async function runOnce(pg) {
   const duo = await pg.evaluate(() => {
     const st = document.querySelector('#geniPrevStage'), em = st && st.querySelector('.cpv-empty');
     const btns = em ? [...em.querySelectorAll('.cpv-photobtn')] : [];
-    const txt = document.querySelector('#geniTxtBtn'), rail = document.querySelector('#geniPrevBox .trail');
+    const txt = document.querySelector('#geniTxtBtn'), rail = document.querySelector('#geniPrev #geniRail');   // 레일 = 창 밖 우측으로 이설(260802 2차) → 조회 기준도 창(#geniPrevBox)이 아닌 미리보기 블록(#geniPrev)
     if (btns.length !== 1) return { n: btns.length };
     const sr = st.getBoundingClientRect();
     const r = btns[0].querySelector('svg').getBoundingClientRect();
-    return { n: 1, isPhoto: btns[0].id === 'geniRefBtn', txtInRail: !!(rail && txt && rail.contains(txt)),
+    return { n: 1, isPhoto: btns[0].id === 'geniRefBtn', txtGone: !txt,   // 글 픽토 = 폐지(운영자 260802 — 주문칸이 아래 고정이라 진입점 불요)
       dx: (r.left + r.width / 2) - (sr.left + sr.width / 2), dy: (r.top + r.height / 2) - (sr.top + sr.height / 2) };
   });
-  core('C5b 중앙 = 사진 픽토 단독·무대 정중앙(Δ≤0.5px) · 글 픽토는 코너 레일 흡수', duo.n === 1 && duo.isPhoto && duo.txtInRail && [duo.dx, duo.dy].every(v => Math.abs(v) <= 0.5),
+  core('C5b 중앙 = 사진 픽토 단독·무대 정중앙(Δ≤0.5px) · 글 픽토 폐지(주문칸 아래 고정)', duo.n === 1 && duo.isPhoto && duo.txtGone && [duo.dx, duo.dy].every(v => Math.abs(v) <= 0.5),
     JSON.stringify(duo, (k, v) => typeof v === 'number' ? +v.toFixed(2) : v));
-  await pg.evaluate(() => { const b = document.querySelector('#geniTxtBtn'); if (b) b.click(); });
-  await pg.waitForTimeout(250);   // geniWishShow 포커스 지연(60ms) 흡수
-  const wsh = await pg.evaluate(() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return { rowVis: !!(r && !r.hidden), headVis: !!(h && !h.hidden), focused: document.activeElement === document.querySelector('#geniWish') }; });
-  core('C5c 글 픽토 탭 = 주문칸 노출(발사 = 기존 wish 배선 그대로)', wsh.rowVis && wsh.headVis, JSON.stringify(wsh));
-  await pg.evaluate(() => geniWishShow(false, false));   // 원복(후속 어서션 결정론 — 다음 geniPrep이 값 유무로 재판정하는 실경로와 동일)
+  const wsh = await pg.evaluate(() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return { rowVis: !!(r && !r.hidden), headVis: !!(h && !h.hidden) }; });
+  core('C5c 주문칸 = 관문 없이 바로 보임(글 픽토 폐지분 · 발사 = 기존 wish 배선 그대로)', wsh.rowVis && wsh.headVis, JSON.stringify(wsh));
 
   // ── C6 첨부 고스트(운영자 260719 승인) = 같은 이미지 cover .22 언더레이 + 원본 contain 겹침 ──
   await pg.evaluate(async () => {
@@ -151,21 +148,21 @@ async function runOnce(pg) {
     const q = s => document.querySelector(s).getBoundingClientRect();
     const box = document.querySelector('#geniPrevBox'); const bw = parseFloat(getComputedStyle(box).borderTopWidth) || 0; const br = box.getBoundingClientRect();
     const xb = document.querySelector('#geniRefX'), sw = document.querySelector('#geniRefSwap');
-    const rail = document.querySelector('#geniPrevBox .trail'), rr = rail ? rail.getBoundingClientRect() : null;
+    const rail = document.querySelector('#geniPrev #geniRail'), rw = document.querySelector('#geniRailWrapPv'), rr = rw ? rw.getBoundingClientRect() : null;   // 레일 = 창 밖 우측(260802 2차)
     return { gVis: !g.hidden && g.getBoundingClientRect().height > 0, gFit: getComputedStyle(g).objectFit, gOp: getComputedStyle(g).opacity,
       tFit: getComputedStyle(t).objectFit, same: g.src === t.src && !!g.src,
-      railR: rr ? +(br.right - bw - rr.right).toFixed(1) : null, railT: rr ? +(rr.top - (br.top + bw)).toFixed(1) : null,
+      railGap: rr ? +(rr.left - br.right).toFixed(1) : null, railT: rr ? +(rr.top - br.top).toFixed(1) : null,
       toolsInRail: !!(rail && xb && sw && rail.contains(xb) && rail.contains(sw)),
       toolPos: xb ? getComputedStyle(xb).position : '', sumInRail: !!(rail && rail.contains(document.querySelector('#geniSum'))) };
   });
   core('C6 고스트 = cover·opacity .22·원본 contain·동일 src', gh.gVis && gh.gFit === 'cover' && gh.gOp === '0.22' && gh.tFit === 'contain' && gh.same, JSON.stringify({ fit: gh.gFit, op: gh.gOp, t: gh.tFit, same: gh.same }));
   // C7 계약 갱신(운영자 260802 "배경·축약·opa 이런거 우측 네비게이션바로 · 모든 페이지에 해당 미리보기 똑같이"):
-  //   구 계약 = 교체·삭제가 창 우상단 절대좌표(6/6/42) → 신 계약 = **코너 옵션 레일(.trail) 흡수** + 레일이 창 우상단 여백 0 밀착(운영자 260801 확정값).
+  //   구 계약(260801) = 레일이 창 **안** 우상단 여백 0 → 신 계약(운영자 260802 2차 "네비게이션바를 우측으로") = 레일이 창 **밖** 우측, 간격 8·상변 정렬.
   //   thumb(카드 생성)·AI 생성 양쪽에서 같은 계약을 재니 크로스-파일 파리티는 그대로 지켜진다(구 좌표 어서션의 역할 승계).
-  core('C7 교체·삭제 = 코너 레일 흡수(절대좌표 퇴역·position static) · 레일 = 창 우상단 여백 0(Δ≤0.5px) · 카드 생성 탭 동형',
-    gh.toolsInRail && gh.toolPos === 'static' && Math.abs(gh.railR) <= 0.5 && Math.abs(gh.railT) <= 0.5 &&
-    !!ed.rail && ed.toolsInRail && Math.abs(ed.rail.r) <= 0.5 && Math.abs(ed.rail.t) <= 0.5,
-    JSON.stringify({ ai: { inRail: gh.toolsInRail, pos: gh.toolPos, r: gh.railR, t: gh.railT }, card: { inRail: ed.toolsInRail, rail: ed.rail } }));
+  core('C7 교체·삭제 = 코너 레일 흡수(절대좌표 퇴역·position static) · 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px) · 카드 생성 탭 동형',
+    gh.toolsInRail && gh.toolPos === 'static' && Math.abs(gh.railGap - 8) <= 0.5 && Math.abs(gh.railT) <= 0.5 &&
+    !!ed.rail && ed.toolsInRail && Math.abs(ed.rail.gap - 8) <= 0.5 && Math.abs(ed.rail.t) <= 0.5,
+    JSON.stringify({ ai: { inRail: gh.toolsInRail, pos: gh.toolPos, gap: gh.railGap, t: gh.railT }, card: { inRail: ed.toolsInRail, rail: ed.rail } }));
   core('C7b 옵션 = 레일 값 칩 이주(하단 옵션바 퇴역 — 카드 생성 #optStrip · AI 생성 #geniSum 둘 다 레일 안)', ed.stripInRail && gh.sumInRail,
     JSON.stringify({ card: ed.stripInRail, ai: gh.sumInRail }));
   await pg.evaluate(() => { geniRefClear(); geniApply(); });
@@ -192,6 +189,33 @@ async function runOnce(pg) {
   });
   core('C14 요약바 글자 탭 = 옵션 전환(값 축 순환 + ON/OFF 뒤집기 · 본문 칩 동기)', tog.a0 === '9:16' && tog.a1 === '16:9' && tog.bodyAsp === '16:9' && tog.t0 === false && tog.t1 === true && tog.bodyTxt === '켜짐', JSON.stringify(tog));
   await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="4:5"]'); if (b) b.click(); });   // 기본값 원복(결정론 2런)
+
+  // ── C15 레일 칩 **광학 잉크선** 4탭 정합(운영자 260802 "광학-잉크" · 이번 롤백 사고의 기계화) ──
+  //   왜 잉크인가: 박스 x가 같아도 padding-left가 갈리면 **눈에 보이는 글자 시작선**이 어긋난다.
+  //   260802 실측 = 박스는 4탭 전부 330.5로 같았는데 잉크는 편집만 330.5(pad 0) / 나머지 335.5(pad 5) →
+  //   박스 기준 검사였다면 통과했을 어긋남이다. 그래서 판정 축 = Range 잉크 사각형(사람이 보는 것과 동일).
+  //   기준선 = 카드 생성 탭(파리티 정본 · 위 C10~C14와 동일 기준). 낱말 칩만 대상(OPA ± 스테퍼는 자체 좁은 패딩이 정본).
+  const INK_BASE = { 편집: 2.6 };   // 알려진 미승인 드리프트(260802 롤백분 · 편집 탭 컬럼 시절 규칙 `.dockopt .rsz-opts .ropt{padding:2px 0}`가 레일 스킨을 소스 후행으로 이김) — 여기 적힌 값 **이하**면 통과, 커지거나 새 탭이 갈라지면 FAIL(= check_refs raw 값 baseline 문법 동문 · 해소 = `.cpprev .trail-v.dockopt .ropt{padding:0 5px;font-size:10.5px}` 한 줄 승인)
+  const ink = {};
+  for (const [app, ko] of [['2', '카드생성'], ['7', '편집'], ['tr', '번역'], ['6', 'AI생성']]) {
+    await pg.evaluate(a => { const t = document.querySelector('#toolTabs .tooltab[data-app="' + a + '"]'); if (t) t.click(); }, app);
+    await pg.waitForTimeout(1300);
+    ink[ko] = await pg.evaluate(() => {
+      const fr = document.querySelector('#tooldlg .toolfr.active');
+      const d = (fr && fr.contentDocument) ? fr.contentDocument : document;
+      const rail = d.querySelector('#cpRail') || document.querySelector('#geniRail');
+      const c = [...(rail ? rail.querySelectorAll('.gs-v, .ropt') : [])].filter(e => e.offsetParent !== null && !e.closest('.gs-og'))[0];
+      if (!c) return null;
+      const rg = d.createRange(); rg.selectNodeContents(c);
+      // 잉크선 = **캡슐 좌변 기준 상대값**(절대 x 금지 — 레일은 미리보기 창 우변에 붙어 탭마다 창 폭이 다르면 절대 x가 갈린다 = 정렬과 무관한 위양성)
+      return { t: c.textContent.trim().slice(0, 6), inkX: +(rg.getBoundingClientRect().x - rail.getBoundingClientRect().x).toFixed(1), padL: getComputedStyle(c).paddingLeft, fs: getComputedStyle(c).fontSize };
+    });
+  }
+  const ref = ink['카드생성'] ? ink['카드생성'].inkX : null;
+  const drift = Object.entries(ink).filter(([, v]) => v).map(([ko, v]) => ({ ko, d: +(v.inkX - ref).toFixed(1), over: Math.abs(v.inkX - ref) > (INK_BASE[ko] || 0) + 0.5 }));
+  core('C15 레일 칩 광학 잉크 시작선 = 4탭 한 세로선(기준 = 카드 생성 · 알려진 baseline 초과·신규 어긋남 = FAIL · 운영자 260802 "광학-잉크")',
+    ref !== null && drift.length === 4 && drift.every(x => !x.over),
+    JSON.stringify({ ref, drift: drift.map(x => x.ko + ':' + (x.d > 0 ? '+' : '') + x.d + (x.over ? '⚠' : '')), 상세: ink }));
 
   return out;
 }

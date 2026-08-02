@@ -47,7 +47,10 @@
 
 ## 이 레포 전용 (nomute-editor)
 - [7-2 라이브] 이 레포의 라이브 = `viewer/**` · `apps/**` · `functions/**` · `shared/**`(생성 코드) · `scraper/**`. 머지 diff가 `docs/**`에만 닿았으면 라이브 0 = 미완 — 보고 6-1·6-5에 그대로 쓴다.
+- [병렬 세션 락] 여러 세션이 같은 컴포넌트를 동시에 갈아엎으면 뒤에 온 쪽이 통째로 재작업한다(260802 코너 레일 3회 실측). 핫 컴포넌트 착수 = `python3 shared/lock.py take "<컴포넌트>" <파일…>`(완료 = `release` · TTL 90분 자동 만료) → `check_refs`의 `check_component_lock`이 **남의 살아있는 락과 겹친 변경**을 커밋 직전에 띄운다(WARN·비차단 = 락이 레포를 얼리지 않는다).
 - 커밋 전 `python3 shared/check_refs.py` 필수(`.githooks/pre-commit`이 강제). UI 표면(뷰어 html) 변경 커밋 전 = `bash shared/smoke_all.sh` rc=0.
+- [절대규칙 · 운영자 260802] UI를 만지면 **로컬 렌더로 눈과 숫자를 먼저 본다** — 손대기 전 `node shared/preview_shot.js base` → 고친 뒤 `node shared/preview_shot.js diff`(로컬 서버 자동 기동 → 5탭 스샷 + DOM 실측 + 기존 대비 변화표). 눈대중 "정렬됨" 선언 금지 · 보고 6-2 전/후 이미지도 여기서 나온 캡처를 쓴다.
+- [광학-잉크 판정 · 운영자 260802] 정렬 판정 축 = **박스가 아니라 글자 잉크**(Range 사각형), 그것도 **캡슐 좌변 기준 상대값**. 박스 x가 같아도 padding이 갈리면 눈에 보이는 시작선이 어긋난다(260802 사고 = 박스 4탭 동일·잉크 5px 어긋남 → 롤백). 기계 판정 = `smoke_parity` C15(레일 칩 4탭 한 세로선 · baseline 초과·신규 어긋남 = FAIL).
 - 기계산출물(거울·데이터)은 손편집 금지 — 생성 코드를 고쳐 재생성으로 반영한다.
 - [9-1 납품] 운영자 PC에서 돌 산출물 = 자기완결 1파일로 묶어 첨부한다. 번들러 정본 = `scripts/build_drive_move_bundle.py`(감시기 ps1 전체를 base64로 실어 더블클릭 .bat 1개로 뽑는 방식 · `--check`로 최신 여부 확인). 드리프트 차단 게이트 = `check_drive_move_bundle`(ps1만 고치고 재생성을 잊으면 운영자 PC에 옛 코드가 깔린다 = 조용한 라이브 낡음).
 - 디자인 계약 전문 = `AGENTS.md` §🎨.

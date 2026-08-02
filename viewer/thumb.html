@@ -49,8 +49,25 @@
   /* 전폭 짝 = 미리보기 폭 캡(운영자 260802) — 1:1 고정비는 폭이 높이를 정하므로 캡 없이 전폭이면 창 1280에서 박스 1248²·도크 1380 = 프레임(688) 초과 = 생성 버튼이 화면 밖(실측 260802).
      처방 = **구 높이 캡을 폭 캡으로 환산**(이 파일 260801 dockmin 선례 문법 그대로 · 폭을 줄이면 aspect-ratio가 높이를 따라 줄여 비율 불변) · 값 = 구 캡 문자 그대로(기본 58svh/620 · 축소 29svh/300 = 0.5배 짝) = 신규 값 0.
      폰은 100%(358)가 항상 min에서 이겨 무변(58svh=424) = 회귀 0 · 스코프 = 모달 안 전폭 컨텍스트 한정. */
-  html.inmodal .topdock[data-lay="edit"] .cpprev-box { width:min(100%, 58svh, 620px); margin-inline:auto; }   /* margin-inline:auto = 캡이 걸린 폭의 좌우 대칭(운영자 260802 "머지"로 들어온 .dockmin 중앙정렬 처방 그대로 계승 — 없으면 캡분이 좌측에 붙고 우측이 통째로 빈다 = 260801이 잡았던 좌측 쏠림 재발) */
-  html.inmodal .topdock[data-lay="edit"].dockmin .cpprev-box { width:min(52%, 29svh, 300px); margin-inline:auto; }   /* 스크롤 축소분도 같은 환산(52% ↔ 29svh = 기본 캡의 정확히 절반 = 260801 주석의 0.5 계약 그대로) */
+  html.inmodal .topdock[data-lay="edit"] { --pvw:min(52%, 29svh, 300px); }   /* 폭 단일출처(운영자 260802 2차) — 창 폭·레일 x좌표가 같은 식을 읽는다(둘이 갈라지면 레일이 창을 파고든다) */
+  html.inmodal .topdock[data-lay="edit"] .cpprev-box { width:var(--pvw); margin-inline:auto; }   /* 모달 안(= 운영자가 실제로 보는 화면) 상시 크기 = 구 **축소분** 캡 그대로(운영자 260802 2차 "이정도를 항상 유지") · 확대는 아래 .dockzoom 한 줄만 */   /* margin-inline:auto = 캡이 걸린 폭의 좌우 대칭(운영자 260802 "머지"로 들어온 .dockmin 중앙정렬 처방 그대로 계승 — 없으면 캡분이 좌측에 붙고 우측이 통째로 빈다 = 260801이 잡았던 좌측 쏠림 재발) */
+  html.inmodal .topdock[data-lay="edit"].dockzoom { --pvw:min(100%, 58svh, 620px); }
+  html.inmodal .topdock[data-lay="edit"].dockzoom .cpprev-box { width:var(--pvw); margin-inline:auto; }   /* 돋보기 ON = 구 기본(전폭) 캡 — 폭 캡 필수(1:1 고정비라 캡 없이 전폭이면 창 1280에서 도크가 프레임 초과 = 생성 버튼이 화면 밖 · 실측 260802) */   /* 스크롤 축소분도 같은 환산(52% ↔ 29svh = 기본 캡의 정확히 절반 = 260801 주석의 0.5 계약 그대로) */
+  /* ── 결과 레일 = 넓은 창 2단(운영자 260802 "아이디어까지 진행하고 머지해" · 분기점 900 = 260802 2차 하향분{구 1100은 운영자 PC 실폭(창 비최대화·OS 배율)에서 안 걸려 1단으로 보였다 — "이때 준 pc 좌우 그대로 지금 머지분에"}) ──
+     좌 = 제작(탭·도크·옵션) / 우 = `.out` 통째(결과 헤더·대기열·진행 타일·캐러셀·이전 제작) = **DOM 이동 0**(기존 블록을 그대로 2번 칼럼에 앉힘 = 배선·JS 무접촉 · 롤백 = 이 @media 블록 삭제 1커밋).
+     트랙 = `minmax(0,1fr)` 2벌 = 도크 dockgrid 정본 문법 그대로(새 폭 수치 0 · 반반) · gap = --sp-3 토큰.
+     `grid-row:1/span 99` = 레일이 좌측 행들과 나란히 서게(안 걸면 .out이 1행만 차지해 좌측 2행부터가 레일 높이 아래로 밀린다) · align-self:start = 늘어남 방지.
+     스코프 = 모달 안(html.inmodal) + 900px 이상 = 폰(390)·단독 열람 전부 종전 1단 그대로 = 회귀 0 · 900 근거 = 2단 최소 성립폭(칼럼 각 ≈430 > 폰 1단 실폭 390 = 이미 성립 검증된 폭). */
+  @media (min-width:900px) {
+    html.inmodal .wrap { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:var(--sp-3); align-items:start; }
+    html.inmodal .wrap > * { grid-column:1; }
+    html.inmodal .wrap > .out { grid-column:2; grid-row:1 / span 99; align-self:start;
+      position:sticky; top:var(--sp-3) /* 좌측 도크(.topdock top:0 + mat)와 같은 축 = 스크롤해도 결과가 항상 눈에 남는다(운영자 260802 "아이디어까지 가보자") · 값 = .wrap padding-top(18) 동값 토큰이라 정지↔고정 전환 시 튐 0(구 top:0은 처음 18px 위로 점프) */;
+      max-height:calc(100svh - var(--sp-3)); overflow-y:auto; overscroll-behavior:contain /* 레일이 길어지면 레일 안에서만 스크롤(끝에서 부모로 안 넘어감 = 좌측 폼이 딸려 튀는 것 차단) · svh = 주소창 리플로우 덜컹 차단(이 파일 쉘 정본 사유 계승) */; }
+    html.inmodal .topdock[data-lay="edit"] { --pvw:min(29svh, 300px); }   /* 2단에선 미리보기 폭 산식에서 **`52%` 항만 뺀다**(값 2개는 그대로 = 신규 값 0) — 52%는 '칼럼 폭'을 읽는데 2단은 칼럼이 반이라, AI 생성 판(부모가 그리는 1단 전폭)과 폭이 갈라진다(실측 1012폭: card 241.8 vs ai 300 = smoke_parity C1·C10 FAIL). 뷰포트 기준 2항만 남기면 부모(min(52%,29cqh,300px) — 52%는 전폭이라 항상 지고 29cqh=29svh 등가)와 정확히 같은 값 = 4탭 등가 복구 · 돋보기(.dockzoom)는 아래 자체 --pvw로 재승리 = 무접촉 */
+    html.inmodal .topdock[data-lay="edit"].dockzoom { --pvw:min(58svh, 620px); }   /* 돋보기도 동일 처방(`100%` 항만 제외 = 칼럼 폭 의존 제거) — 안 걸면 확대 상태에서만 4탭 폭이 다시 갈라진다(2단 칼럼 465 vs 부모 620) */
+    html.inmodal .topdock { margin-right:0; }   /* 도크 브레이크아웃(좌우 -16)은 1단 전제 = 2단에선 우변이 칼럼 간격을 침범 → 우측만 회수(좌변 -16 = .wrap 좌 패딩 상쇄라 그대로 유지) */
+  }
   html.inmodal .wrap { max-width:none; }   /* 이미지 스튜디오 전체창(운영자 260802 "좌우공백을 아예 없애줘") = 모달 안에서만 600 칼럼 캡 해제 → 도크·본문이 창 전폭 사용(구 캡은 창 1280에서 양옆 340씩을 빈 글래스로 남겼다) · 단독 열람(iframe 밖)은 종전 600 유지 = 읽기 폭 계약 무접촉 · 스위치 = 927행 inmodal 판정 그대로 계승 */
   h1 { font-size:18px; margin:6px 0 18px; }
   h1 b { color:var(--accent); }
@@ -352,10 +369,10 @@
   /* ── 합성 미리보기(운영자 260712) — 포스트(4:5) 가득 · 릴스(9:16) 필러박스. 스테이지 안 텍스트 색 = 콘텐츠 산출물 색 미러(PIL WHITE/GREEN · §핵심명령 1-3-b-1 콘텐츠 축 = UI 팔레트 아님·JS 상수) ── */
   @font-face{font-family:'Noto Sans KR';font-weight:400;font-style:normal;font-display:swap;src:local('Noto Sans KR'),url(assets/fonts/noto-sans-kr-400.woff2) format('woff2')}   /* 콘텐츠 산출물 폰트 미러(운영자 260714 Q03③·Q06 "저거도 노토 웹폰트 ㄱㄱ") — PIL NotoSansCJK KR 정본의 웹 등가 · 자체호스팅 = index pretendard 선례(fontsource korean 서브셋 · 저작권 줄 = 400) */
   @font-face{font-family:'Noto Sans KR';font-weight:700;font-style:normal;font-display:swap;src:local('Noto Sans KR'),url(assets/fonts/noto-sans-kr-700.woff2) format('woff2')}   /* 제목·자막 = Bold(PIL index=1 미러) · swap = 로드 전 시스템 폴백(미리보기 비차단) */
-  .cpprev { margin:0 0 var(--sp-2); }   /* 260718: 도크(#topDock) 승계 — 구 sticky top:0·좌우 브레이크아웃·#121212 mat·::after 페이드 = .topdock으로 이관(미리보기+버튼 한 블록 상단고정) · margin-bottom sp-2 = 발사버튼과 gap(아래 원주석은 구 단독 sticky 시절 이력) */   /* 하단 = var(--sp-2)(12 · 운영자 260716 플레이그라운드 선택값 padB) */   /* 상단 -18 = .wrap padding-top 상쇄 = 액자가 스크롤 0에서도 뷰포트 상단 밀착 → 고정↔해제 전환 시 18px 내려앉는 '덜컹' 원천 소멸(운영자 260716 "맨 위 올라가면 살짝 덜컹") */   /* raw-ok: #121212 = .cpprev-box 필러 동일값 계승(스포티파이 블랙 · 창작 아님) · 고정 액자 mat(운영자 260716 "좌우 남는 틈을 저 살짝 어두운 회색으로 가득 + 위아래도 채운만큼 확보 · 채운거까지 같이 고정") — 좌우 -16 = .wrap padding-x(16) 상쇄 브레이크아웃 = 기존 좌우 마진 자리를 채색 · padding 16 = 좌우 채운 두께만큼 상하 신규 공간(균등 액자 · 그 안에 기존 도형(.cpprev-box) 안착) · 구 2px 슬릿 봉합(260715)은 불투명 mat가 포괄 승계 · 상단 고정(운영자 260713) = edit .pvsec 패턴 계승(position:sticky;top:0) · z-index 6 = 컴포넌트 로컬(§디자인 예외 1~8) */
+  .cpprev { position:relative /* 레일 앵커(운영자 260802 2차 "네비게이션바를 우측으로") — 레일이 미리보기 창(.cpprev-box) 밖 우측 여백에 서려면 창이 아닌 그 부모가 기준이어야 한다(.cpprev-box는 overflow:hidden = 밖으로 나가면 잘림) */; margin:0 0 var(--sp-2); }   /* 260718: 도크(#topDock) 승계 — 구 sticky top:0·좌우 브레이크아웃·#121212 mat·::after 페이드 = .topdock으로 이관(미리보기+버튼 한 블록 상단고정) · margin-bottom sp-2 = 발사버튼과 gap(아래 원주석은 구 단독 sticky 시절 이력) */   /* 하단 = var(--sp-2)(12 · 운영자 260716 플레이그라운드 선택값 padB) */   /* 상단 -18 = .wrap padding-top 상쇄 = 액자가 스크롤 0에서도 뷰포트 상단 밀착 → 고정↔해제 전환 시 18px 내려앉는 '덜컹' 원천 소멸(운영자 260716 "맨 위 올라가면 살짝 덜컹") */   /* raw-ok: #121212 = .cpprev-box 필러 동일값 계승(스포티파이 블랙 · 창작 아님) · 고정 액자 mat(운영자 260716 "좌우 남는 틈을 저 살짝 어두운 회색으로 가득 + 위아래도 채운만큼 확보 · 채운거까지 같이 고정") — 좌우 -16 = .wrap padding-x(16) 상쇄 브레이크아웃 = 기존 좌우 마진 자리를 채색 · padding 16 = 좌우 채운 두께만큼 상하 신규 공간(균등 액자 · 그 안에 기존 도형(.cpprev-box) 안착) · 구 2px 슬릿 봉합(260715)은 불투명 mat가 포괄 승계 · 상단 고정(운영자 260713) = edit .pvsec 패턴 계승(position:sticky;top:0) · z-index 6 = 컴포넌트 로컬(§디자인 예외 1~8) */
   /* (구 .cpprev-opts 변형칩 마진 = 제거 · 운영자 260720 Q293 — 요소 삭제) */
   .cpprev-box { position:relative; height:min(29vh,300px); height:min(29svh,300px); width:100%; background:#121212; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; }   /* 필러박스 = 운영자 지정 '스포티파이 블랙'(18,18,18 · thumb 무토큰 표면 raw = baseline 사유 등재) · 높이 캡 = 29svh/300px = 쉘 정본(CII 「합성 미리보기 쉘」 · 운영자 260716 선택값 · edit pvSync .29/300 동미러 · 구 46/340 = 260713 "작게 보여도됨") · ⚠️ svh 필수 = 주소창 숨김에 고정(안 변함) → 첫 스크롤 리플로우 '덜컹' 차단(운영자 260713 실측 · 구 vh는 매 프레임 재계산 = 덜컹 · vh 선언은 svh 미지원 구형 폴백) · width:100% = 전면 꽉(운영자 260715 "미리보기 그냥 전면에 꽉" — 구 aspect 4:5 자기축소는 양옆에 페이지 배경 노출 = 필러가 안 보이던 구조 → 폭은 박스가·산출 비율은 스테이지가 소유 · 양옆 레터박스 = 이 필러가 채움) */
-  .cpprev-box.ie-full { height:min(50vh,520px); height:min(50svh,520px); }   /* raw-ok: 위 쉘 정본(min(29svh,300px))의 캡 문법·단위 그대로 계승, 배수만 모자이크용 — 모자이크 지정 단계 한정 도크 확대(운영자 260728 "상단 미리보기에 전면을 가득 원본을 채우는거로" · 박스를 탭해 지정하니 크게 봐야 확실) · 결과 나오면(IE.phase==='done') 즉시 원복 = 결과가 도크에 가리지 않게 */
+  /* (구 `.cpprev-box.ie-full { height:min(50svh,520px) }` = 모자이크 지정 단계 전용 확대 규칙 · 운영자 260802 4차 "머지"[보고 6-4 승인]로 폐지 — 확대는 이제 돋보기 축(.dockzoom) 한 벌이 전담하고, 모자이크 진입은 그 축을 자동으로 켠다(규칙 2벌 → 1벌) · 복원 = 이 줄 되돌리고 iePrevSync의 pvZoomAuto를 ie-full 토글로 교체) */
   .cpprev-box.dropping { border-color:rgba(var(--accent-rgb),.35); }   /* 드래그 오버 = 첨부 가능 힌트(운영자 260716 "드롭 ㄱ") — .35 = rsz-origtag 링 동일 알파 계승 */
   .cpprev::after { content:none; }   /* 260718: 도크 안 mid-block이라 미리보기 자체 페이드 불필요(도크 .topdock::after가 하단 페이드 전담) */   /* raw-ok: 페이드 스커트(운영자 260716 플레이그라운드 선택값 — edge=페이드·skirtH 14·fadeOp .70) = 콘텐츠가 액자 밑으로 '서서히 잠기며' 가려짐 · 18,18,18 = 액자 #121212 동일 RGB 알파 변주(자유 축) · 글래스(블러) 방식은 비채택(선택값 blurPx 28은 글래스 전용 축 = 페이드에선 미적용) · 미리보기 쉘 정본 = CII 「합성 미리보기 쉘」 행 */
   .cpprev-stage { position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); background:#000; overflow:hidden; }   /* 순수 흑 = 산출 배경 관례(트랙뷰어 레터박스 #000 선례) · -50% = 기하값 · 폰트 = 바로 아래 「콘텐츠 폰트 미러」 규칙이 전담(구 인라인 선언 이관 = 값 중복 0 · 스테이지 적용 결과 불변) */
@@ -385,47 +402,60 @@
   .cpprev-stage .cpv-photobtn svg { width:26px; height:26px; display:block; transition:transform var(--dur-fast) cubic-bezier(.2,.9,.3,1.25); }   /* raw-ok: 26px·.14s 탄성 커브 = .covimg-ic svg 정본값 그대로 계승(창작 아님) */
   .cpprev-stage .cpv-photobtn:active svg { transform:scale(var(--press-xs,.8)); }   /* 누름 = 픽토그램만 축소(.covimg:active 동일 · 박스 전체 scale 금지) */
   #cImgSlot { display:none; }   /* 오버레이 우측 사진 슬롯 = 화면 퇴역(운영자 260716 "미리보기 창에 업로드 있으니 [1] 없애고 텍스트칸은 다른 것과 동일 너비") — DOM·바인더(_set/_reset/_setRef·CIMG 상태·textarea 붙여넣기) = 도먼트 보존(이력 수정 복원·편집 결과 재첨부 체인 무접촉) · ID 특이도 = .covimg display:flex 재승리 방지(label.chk.none 좀비 선례 260706) · 입구 이주 = 미리보기(빈 상태 .cpv-photobtn + 상시 .cpv-tool 교체·삭제) · 텍스트칸(covta·칩) = 유일 flex 아이템 승격 = 자동 전폭(높이 104 불변) · 복원 = 이 행 삭제 */
-  .cpprev-box .cpv-tool { position:absolute; top:6px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--accent); background:var(--bg); border:0; border-radius:var(--r-s); cursor:pointer; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast); }   /* 교체·삭제 = 슬롯 퇴역분 기능의 미리보기 이주(운영자 260716 "지우거나 교체하는 버튼만 아래에서 가져오면") — 스펙 = .covimg-x 정본 통계승(이미지 위 불투명 var(--bg) 플레이트 · §디자인 n 260709) · z2 = 합성중 딤(.cpprev-wait z3) 아래 */
-  .cpprev-box .cpv-tool[hidden] { display:none; }   /* ⚠️ 숨김 재승리 필수 — display:grid가 UA [hidden]을 이김(label.chk.none 좀비 선례와 동축) */
-  .cpprev-box .cpv-tool:active { transform:scale(var(--press-xs,.82)); }
-  .cpprev-box .cpv-tool svg { width:15px; height:15px; display:block; }
+  .cpprev .cpv-tool { position:absolute; top:6px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--accent); background:var(--bg); border:0; border-radius:var(--r-s); cursor:pointer; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); -webkit-tap-highlight-color:transparent; transition:transform var(--dur-fast); }   /* 교체·삭제 = 슬롯 퇴역분 기능의 미리보기 이주(운영자 260716 "지우거나 교체하는 버튼만 아래에서 가져오면") — 스펙 = .covimg-x 정본 통계승(이미지 위 불투명 var(--bg) 플레이트 · §디자인 n 260709) · z2 = 합성중 딤(.cpprev-wait z3) 아래 */
+  .cpprev .cpv-tool[hidden] { display:none; }   /* ⚠️ 숨김 재승리 필수 — display:grid가 UA [hidden]을 이김(label.chk.none 좀비 선례와 동축) */
+  .cpprev .cpv-tool:active { transform:scale(var(--press-xs,.82)); }
+  .cpprev .cpv-tool svg { width:15px; height:15px; display:block; }
   /* ── 코너 옵션 레일 = index.html `.trail` 정본 값 사본(iframe 미상속 · 위 마크업 주석 참조) ── */
-  .cpprev-box .trailwrap { position:absolute; top:0; right:0; z-index:2 /* z2 = 구 .cpv-tool 동값 — z3 이상이면 합성중 딤(.cpprev-wait z3) 위로 떠 조작 사고(A감사 #8) */; display:flex; flex-direction:column; align-items:center; gap:8px; }
-  .cpprev-box .trail { display:flex; flex-direction:column; flex-wrap:nowrap; gap:var(--sp-1); padding:5px 2px; border-radius:var(--r-pill);
+  .cpprev .trailwrap { position:absolute; top:0; left:calc(50% + var(--pvw, 52%) / 2) /* 창 우변 = 중앙(50%) + 반폭 — 창이 margin-inline:auto 중앙정렬이라 이 한 식 · 폭은 --pvw 단일출처(모달 캡 포함)라 창이 어떤 캡에 걸려도 레일이 그 우변을 그대로 따라간다(운영자 260802 2차 "네비게이션바를 우측으로") */; margin-left:8px /* 창↔레일 간격 = .trailwrap 캡슐 사이 gap(8) 동값 계승 */; z-index:2 /* z2 = 구 .cpv-tool 동값 — z3 이상이면 합성중 딤(.cpprev-wait z3) 위로 떠 조작 사고(A감사 #8) */; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .topdock.dockzoom .cpprev .trailwrap { margin-left:0; transform:translateX(-100%); }   /* 확대(돋보기 ON) = 창이 전폭이라 바깥 여백이 0 → 같은 우변 식을 쓰되 안쪽으로 뒤집어 구 코너 오버레이 자리(260801 정본)로 복귀 */
+  .cpprev-box .trail, .cpprev .trail { display:flex; flex-direction:column; flex-wrap:nowrap; gap:var(--sp-1); padding:5px 2px /* raw-ok: 레일 캡슐 패딩 = index `.trail` 정본(1197) 동값 사본 — 값 변경 0(셀렉터에 `.cpprev .trail` 추가만) · 코너 레일 게이트(_TRAIL_AXES) 동결분 */; border-radius:var(--r-s);
     border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.54) /* raw-ok: 운영자 260801 선택값(정본 .34의 알파 변주 = 신규색 아님) */;
     backdrop-filter:blur(var(--blur-s)); -webkit-backdrop-filter:blur(var(--blur-s)); }
-  .cpprev-box .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착 — 「한국｜세계」 미니바 문법 차용) */; flex:none; align-self:stretch; }
-  .cpprev-box .trail-div { width:14px; height:1px; margin:1px 0; flex:none; background:rgba(255,255,255,.16); }
-  .cpprev-box .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(top6/right6·42)·플레이트·그림자 해제 · 폭 100% = 캡슐 폭에 맞춰 글리프 정중앙(운영자 260801) · id·핸들러·hidden 토글 불변 */
-  .cpprev-box .cpv-tool svg { width:12px; height:12px; }   /* 정본 .trail-i svg 동값(구 15 → 레일 규격) */
-  .cpprev-box .trail-g:not(:has(button:not([hidden]))) { display:none; }   /* 툴이 전부 hidden(사진 없음)이면 픽토 묶음만 은닉 — .scard:has(.none) 은닉 동문 · 구 「캡슐 통째 은닉」은 옵션 이주(260802)로 폐지: 값 칩은 사진 없어도 살아 있어야 한다 */
-  .cpprev-box .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }   /* 묶음이 숨으면 그 아래 구분선도 동반(홀로 뜬 헤어라인 방지) */
-  .cpprev-box .trail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }   /* 툴도 옵션도 없는 탭(빈 미리보기) = 빈 캡슐 잔존 방지 */
+  .cpprev .trail-g { display:flex; flex-direction:column; flex-wrap:nowrap; gap:2px /* raw-ok: .trail-rg 정본 gap 동값(그룹 밀착 — 「한국｜세계」 미니바 문법 차용) */; flex:none; align-self:stretch; }
+  .cpprev .trail-div { width:14px; height:1px; margin:1px 0 /* raw-ok: 헤어라인 미세 광학 = index `.trail-div` 정본(1202) 동값 사본 — 값 변경 0(셀렉터 스코프만 .cpprev-box → .cpprev) */; flex:none; background:rgba(255,255,255,.16); }
+  .cpprev .cpv-tool { position:static; width:100%; height:22px; background:none; border-radius:0; filter:none; }   /* 레일 흡수 = 구 절대좌표(top6/right6·42)·플레이트·그림자 해제 · 폭 100% = 캡슐 폭에 맞춰 글리프 정중앙(운영자 260801) · id·핸들러·hidden 토글 불변 */
+  .cpprev .cpv-tool svg { width:12px; height:12px; }
+  .cpprev .cpv-tool:disabled { opacity:.5; cursor:default; }   /* raw-ok: .5 = 이 파일 `.ropt.gs-locked` 잠금 딤 정본 동값 계승(신규 값 0) — 비활성 = 자리 유지·탭 무효 */   /* 정본 .trail-i svg 동값(구 15 → 레일 규격) */
+  .cpprev .trail-g:not(:has(button:not([hidden]))) { display:none; }   /* 툴이 전부 hidden(사진 없음)이면 픽토 묶음만 은닉 — .scard:has(.none) 은닉 동문 · 구 「캡슐 통째 은닉」은 옵션 이주(260802)로 폐지: 값 칩은 사진 없어도 살아 있어야 한다 */
+  .cpprev .trail-g:not(:has(button:not([hidden]))) + .trail-div { display:none; }   /* 묶음이 숨으면 그 아래 구분선도 동반(홀로 뜬 헤어라인 방지) */
+  .cpprev #cpRail:not(:has(button:not([hidden]))):not(:has(.trail-v:not(.none))) { display:none; }   /* 툴도 옵션도 없는 탭(빈 미리보기) = 빈 캡슐 잔존 방지 · 스코프 = 옵션 캡슐(#cpRail) 한정(260802 2차 3분할 — 돋보기·생성 캡슐은 내용물이 상시라 이 은닉 대상이 아니다) */
+  /* ── 레일 3분할(운영자 260802 2차 "2 공간으로 분리된 네비 · 생성까지 3공간") = [돋보기][옵션][생성] 캡슐 세로 스택 ·
+     캡슐 도형·간격 = 위 `.trail`/`.trailwrap gap:8` 정본 그대로(신규 도형 0) · 글리프 버튼 = index `.trail-i`(1203~1207) 값 사본. */
+  .cpprev .trail-i { position:relative; display:grid; place-items:center; width:22px; height:22px; padding:0; border:0; background:none; border-radius:50%; color:var(--mut); font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값(index:1203) */; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
+  .cpprev .trail-i::after { content:''; position:absolute; inset:-6px -4px; }   /* 히트패드 = 정본 .trail-i::after(index:1204) 동값 — 시각 22px 유지·실효 34×30 */
+  .cpprev .trail-i svg { width:12px; height:12px; display:block; }   /* 정본 .trail-i svg 동값 */
+  .cpprev .trail-i.on { color:var(--accent); }
+  .cpprev .trail-i:active { transform:scale(var(--press-m)); }
+  #cpZoom.on .cpz-v { display:none; }   /* 확대 중 = 돋보기 안 ＋의 세로획만 소거 → −(원상복귀) · 픽토 1벌·상태 1벌(운영자 260802 2차 "누른상태에서는 −") */
   /* ── 값 칩(옵션) 이주 = 하단 옵션바(#optStrip)·우측 옵션 컬럼(#editCol)의 레일 흡수(운영자 260802 "배경·축약·opa 이런거 우측 네비게이션바로 · 모든 페이지에 똑같이") ──
      ⚠ DOM·id·핸들러·상태 1벌 전부 불변 = **자리만 옮기고 CSS로 옷을 갈아입힌다**(updateGoSpec·OPA 조절·‹› 대리클릭·모자이크 접이 전부 무접촉).
      칩 = 정본 `.trail-i`(index:1200 실측 22px/10.5px/--mut/on=accent/press-m) 계승 · 폭만 글자 추종(원형 22 고정엔 「배경 합성」 같은 낱말 값이 안 들어간다) · 라운드 = --r-l(16) 사다리 이동(운영자 260801 선택값). */
-  .cpprev-box .trail-v { display:flex; flex-direction:column; gap:var(--sp-1); align-self:stretch; margin:0; padding:0; background:transparent; border:1px solid transparent /* 폭 1px 유지·색만 투명 = 크로스-파일 파리티(AI 생성 #geniSum 동일 처방 · border:0으로 지우면 borderColor가 표면별 currentColor로 갈라진다) */; border-radius:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값(index:1200) */; line-height:1; text-align:center; }
-  .cpprev-box .trail-v.none { display:none; }   /* 숨김 재승리(display:flex가 .none을 이기는 좀비 차단 — .cpv-tool[hidden] 선례 동축) */
-  .cpprev-box .trail-v .gs-sep, .cpprev-box .trail-v .gs-lbl, .cpprev-box .trail-v .cysep, .cpprev-box .trail-v .rsep { display:none; }   /* 구분자·라벨 = 레일에선 소거(운영자 260801 확정 「표기 = 값만」) — DOM은 보존(리드백 문법·게이트 카운트 무접촉) */
-  .cpprev-box .trail-v .gospec { display:flex; flex-direction:column; gap:var(--sp-1); margin:0; padding:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값 — 구 11.25/1.9(가로 스트립 활자)는 세로 칩에서 줄간 공백이 칩 사이 간격을 대신 만들어 버린다(우연 의존) */; line-height:1; text-align:center; }
+  .cpprev-box .trail-v, .cpprev .trail-v { display:flex; flex-direction:column; gap:var(--sp-1); align-self:stretch; margin:0; padding:0; background:transparent; border:1px solid transparent /* 폭 1px 유지·색만 투명 = 크로스-파일 파리티(AI 생성 #geniSum 동일 처방 · border:0으로 지우면 borderColor가 표면별 currentColor로 갈라진다) */; border-radius:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값(index:1200) */; line-height:1; text-align:center; }
+  .cpprev .trail-v.none { display:none; }   /* 숨김 재승리(display:flex가 .none을 이기는 좀비 차단 — .cpv-tool[hidden] 선례 동축) */
+  .cpprev .trail-v .gs-lbl, .cpprev .trail-v .cysep, .cpprev .trail-v .rsep { display:none; }   /* 구분자·라벨 = 레일에선 소거(운영자 260801 확정 「표기 = 값만」) — DOM은 보존(리드백 문법·게이트 카운트 무접촉) */
+  .cpprev .trail-v .gs-sep { display:block; width:14px; height:1px; margin:1px auto /* raw-ok: 14×1·1px = 이 파일 `.trail-div` 헤어라인 정본 동값 계승(가운데 정렬만 auto) */; flex:none; background:rgba(255,255,255,.16); font-size:0; line-height:0; color:transparent; }   /* 옵션별 구분선(운영자 260802 "옵션별로 구분선 있게") = 기존 `|` 구분자 부품(.gs-sep)을 레일에서만 헤어라인으로 렌더 = 신설 부품·신규 값 0 · 구 숨김(display:none)에서 승격 */
+  .cpprev .trail-v .gospec { display:flex; flex-direction:column; gap:var(--sp-1); margin:0; padding:0; font-size:10.5px /* raw-ok: 정본 .trail-i 활자 동값 — 구 11.25/1.9(가로 스트립 활자)는 세로 칩에서 줄간 공백이 칩 사이 간격을 대신 만들어 버린다(우연 의존) */; line-height:1; text-align:center; }
   /* ↑ 세로 플렉스 = 칩 사이 간격을 gap 하나가 소유(공백 텍스트 노드는 플렉스에서 렌더 0 = 구분자 공백이 빈 줄로 남지 않는다) */
-  .cpprev-box .trail-v .gs-v, .cpprev-box .trail-v .ropt { position:relative /* reuse-ok: 신설 부품 아님 — 기존 리드백 칩(.gs-v)·옵션 칩(.ropt) **그 노드 그대로**에 정본 `.trail-i`(index:1200) 외형만 입힌 스킨(계승원 = .trail-i · 새 셀렉터·새 핸들러 0) */; display:grid; place-items:center; min-width:22px; height:22px; padding:0 5px /* raw-ok: 낱말 값 좌우 여백 = .trail 캡슐 padding-x(2)와 짝지어 실효 히트 폭 확보 */; border:0; background:none; border-radius:var(--r-l); color:var(--mut); font-size:10.5px; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
-  .cpprev-box .trail-v .gs-v.on, .cpprev-box .trail-v .ropt.on { color:var(--accent); font-weight:var(--fw-x); }   /* 켜짐·선택값 = accent(정본 .trail-i.on 동문) */
-  .cpprev-box .trail-v .gs-v:active, .cpprev-box .trail-v .ropt:active { transform:scale(var(--press-m)); }   /* 눌림 = 정본 .trail-i:active 동값 */
-  .cpprev-box .trail-v .gs-v.gs-locked:active { transform:none; }
-  .cpprev-box .trail-v .gs-og { display:flex; align-items:center; justify-content:center; }   /* OPA 묶음(라벨+−/값/+) = 한 칩 행 — 세로 레일에서 ± 스테퍼가 줄줄이 갈라지지 않게 */
-  .cpprev-box .trail-v .gs-og #gsOpas { display:flex; align-items:center; justify-content:center; }   /* 슬롯 컨테이너도 가로 = −/값/+ 가 한 줄(구 인라인 span 안에서 grid 칩이 블록으로 쌓여 3줄로 갈라졌다 · 실렌더 실측 260802) */
-  .cpprev-box .trail-v .gs-og .gs-v { min-width:0; padding:0 3px /* raw-ok: 구 .gospec .gs-opa 좌우 여백(0 2)·스테퍼(0 7)의 중간 = 세로 레일 폭 수납 */; }
+  .cpprev-box .trail-v .gs-v, .cpprev .trail-v .gs-v, .cpprev .trail-v .ropt { position:relative /* reuse-ok: 신설 부품 아님 — 기존 리드백 칩(.gs-v)·옵션 칩(.ropt) **그 노드 그대로**에 정본 `.trail-i`(index:1200) 외형만 입힌 스킨(계승원 = .trail-i · 새 셀렉터·새 핸들러 0) */; display:grid; place-items:center; min-width:22px; height:22px; padding:0 5px /* raw-ok: 낱말 값 좌우 여백 = .trail 캡슐 padding-x(2)와 짝지어 실효 히트 폭 확보 */; border:0; background:none; border-radius:var(--r-l); color:var(--mut); font-size:10.5px; font-weight:var(--fw-x); font-family:inherit; letter-spacing:-.2px; line-height:1; white-space:nowrap; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; }
+  .cpprev-box .trail-v .gs-v, .cpprev .trail-v .gs-v, .cpprev-box .trail-v .ropt, .cpprev .trail-v .ropt { place-items:center start; text-align:left; }   /* 옵션 좌측정렬(운영자 260802 "네비게이션 바의 옵션 좌측정렬") — 칩 스킨은 정본 `.trail-i` 그대로 두고 **정렬 축만** 가운데 → 좌측(세로는 center 유지 = 사다리·높이 22 무접촉) · 낱말 길이가 제각각(배경/배경 합성/모자이크)이라 중앙정렬은 글자 시작선이 줄마다 흔들렸다 · 신규 값 0 */
+  .cpprev .trail-v .gs-v.on, .cpprev .trail-v .ropt.on { color:var(--accent); font-weight:var(--fw-x); }   /* 켜짐·선택값 = accent(정본 .trail-i.on 동문) */
+  .cpprev .trail-v .gs-v:active, .cpprev .trail-v .ropt:active { transform:scale(var(--press-m)); }   /* 눌림 = 정본 .trail-i:active 동값 */
+  .cpprev .trail-v .gs-v.gs-locked:active { transform:none; }
+  .cpprev .trail-v .gs-og { display:flex; align-items:center; justify-content:flex-start; }   /* OPA 묶음(라벨+−/값/+) = 한 칩 행 — 세로 레일에서 ± 스테퍼가 줄줄이 갈라지지 않게 */
+  .cpprev .trail-v .gs-og #gsOpas { display:flex; align-items:center; justify-content:flex-start; }   /* 슬롯 컨테이너도 가로 = −/값/+ 가 한 줄(구 인라인 span 안에서 grid 칩이 블록으로 쌓여 3줄로 갈라졌다 · 실렌더 실측 260802) */
+  .cpprev .trail-v .gs-og .gs-v { min-width:0; padding:0 3px /* raw-ok: 구 .gospec .gs-opa 좌우 여백(0 2)·스테퍼(0 7)의 중간 = 세로 레일 폭 수납 */; }
   /* 편집 옵션 컬럼(#editCol)의 레일 옷 — 카드(.scard) 도형·라벨(.nm)·소머리(.dopt-h)·‹›(.opt-navs)를 벗기고 값 칩만 남긴다(운영자 260801 확정 「표기 = 값만」) · DOM·핸들러 전부 그대로
      ⚠ 셀렉터에 `.trail-v` + `.scard >` 를 겹쳐 특이도를 올린다 — 컬럼 시절 규칙(`.dockopt .scard > .csec:has(> .nm) > .rsz-opts` 0,5,0 등)이 뒤에 선언돼 있어 낮은 특이도로는 좌측정렬·overflow가 되살아난다(실렌더 실측 260802) */
-  .cpprev-box .trail-v.dockopt { padding-top:0; overflow:visible; -webkit-mask-image:none; mask-image:none; }
-  .cpprev-box .trail-v.dockopt .dopt-h, .cpprev-box .trail-v.dockopt .nm, .cpprev-box .trail-v.dockopt .opt-navs { display:none; }
-  .cpprev-box .trail-v.dockopt .optcards { display:flex; flex-direction:column; gap:var(--sp-1); margin:0; }
-  .cpprev-box .trail-v.dockopt .scard { background:none; border:0; border-radius:0; }
-  .cpprev-box .trail-v.dockopt .scard > .csec { display:flex; justify-content:center; align-items:center; gap:0; margin:0; padding:0; }
-  .cpprev-box .trail-v.dockopt .scard > .csec > .rsz-opts { flex:none; justify-content:center; margin:0; overflow:visible; -webkit-mask-image:none; mask-image:none; }
-  .cpprev-box .trail-v.dockopt .cfold-chev { width:22px; height:22px; margin:0; color:var(--mut); }   /* 모자이크 세부(정밀·떼기) 접이 = 레일 안에 그대로 존치(체브론 정본 부품 · 위임 1핸들러 무접촉) — 폭만 칩 등고(22)로 */
-  .cpprev-box .trail-v.dockopt .docksub { display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-1); padding:var(--sp-1) 0 0; }
+  .cpprev .trail-v.dockopt { padding-top:0; overflow:visible; -webkit-mask-image:none; mask-image:none; }
+  .cpprev .trail-v.dockopt .dopt-h, .cpprev .trail-v.dockopt .nm, .cpprev .trail-v.dockopt .opt-navs { display:none; }
+  .cpprev .trail-v.dockopt .optcards { display:flex; flex-direction:column; gap:var(--sp-1); margin:0; }
+  .cpprev .trail-v.dockopt .optcards > .scard + .scard { border-top:1px solid rgba(255,255,255,.16) /* raw-ok: `.trail-div` 헤어라인 정본 동값(요소 대신 변 = 카드 사이엔 끼울 구분자 부품이 없다) */; padding-top:var(--sp-1); }   /* 편집 옵션(비율·해상도·모자이크) 카드 사이 구분선 = 위 .gs-sep 헤어라인과 같은 결(운영자 260802 "옵션별로 구분선") */
+  .cpprev .trail-v.dockopt .scard { background:none; border:0; border-radius:0; }
+  .cpprev .trail-v.dockopt .scard > .csec { display:flex; justify-content:center; align-items:center; gap:0; margin:0; padding:0; }
+  .cpprev .trail-v.dockopt .scard > .csec > .rsz-opts { flex:none; justify-content:center; margin:0; overflow:visible; -webkit-mask-image:none; mask-image:none; }
+  .cpprev .trail-v.dockopt .cfold-chev { width:22px; height:22px; margin:0; color:var(--mut); }   /* 모자이크 세부(정밀·떼기) 접이 = 레일 안에 그대로 존치(체브론 정본 부품 · 위임 1핸들러 무접촉) — 폭만 칩 등고(22)로 */
+  .cpprev .trail-v.dockopt .docksub { display:flex; flex-direction:column; align-items:stretch; gap:var(--sp-1); padding:var(--sp-1) 0 0; }
   .csec.gsec { position:relative; }   /* 안내문 팝업(.gpop) 기준 */
   /* 저작권 = 자연스러운 한 문장. 정적(.cph-st) + 탭 수정(연도·이름=.cph-ed) + 플랫폼(.cph-plat) · 'all rights…'는 편집화면만 줄바꿈 */
   .cphline { position:relative; display:flex; flex-wrap:wrap; align-items:baseline; margin-top:11px; font-size:14px; color:var(--fg); line-height:2; transition:opacity var(--dur); }
@@ -517,8 +547,12 @@
   /* 미리보기 틀 = 창 대비 고정(운영자 260731 "16대9에 세로를 채운다고 저 미리보기 화면이 세로로 길어지면 안됨 · 항상 저만큼이 유지 · 16:9가 9:16으로 바뀔 때는 저 틀 안에서 바뀌는 거지")
      — 구 height:auto = 캔버스 종속이라 원본 16:9(263) → 9:16 확장(468)에서 틀이 통째로 늘어났다(실측 260731).
      — 고정값 = 구 min-height(빈 상태 높이) 그대로 = 운영자가 도형으로 칠한 그 크기 · svh = 주소창 리플로우 덜컹 차단(쉘 정본 사유 계승) */
-  .topdock[data-lay="edit"].dockmin .cpprev-box { width:52%; }   /* 스크롤 축소(운영자 260731 14차 "한수 적용" — 내리면 미리보기만 축소·고정 유지) = **폭 축소로 전환**(운영자 260801 "비율 항상 고정") · 구 max-height 캡(29svh/300)은 높이만 눌러 1:1을 깨뜨린다 → 폭을 줄이면 aspect-ratio가 높이를 따라 줄여 비율 불변 · 52% = 구 캡(29svh)/기본 캡(58svh) 비 = 0.5의 폭 환산(구 '캡 절반' 계약 동값 유지 · 신규 사다리 아님) */
-  .topdock[data-lay="edit"].dockmin .dockgrid .cpprev-box { margin-inline:auto; }   /* 조건부(:has(> .dockopt.none)) → 무조건(운영자 260802 옵션 레일 이주 = 전 탭 1단이라 조건이 항상 참) */   /* 전폭 1단 탭(카드 생성·특수·AI = #editCol.none)에서 축소분 중앙 정렬(운영자 260802 "머지") — 위 52% 폭 축소는 **편집 2분할 전제**(줄어든 폭을 우 옵션 컬럼이 채운다)인데, `:1899` data-lay 전 탭 상시(260731 22차) + `:480` 전폭화(260801)가 겹치며 채울 컬럼이 없는 탭에도 그대로 걸렸다 → 스크롤 시 도크 우측이 빈 유리로 남고 본문이 관통해 비쳤다(실렌더 실측 260802 430×900: 창 370→192.4 좌측 정렬 · 우측 177.6px 공백). 축소 자체는 유지(260731 14차 "내리면 미리보기만 축소" 취지 보존)하고 좌우 대칭만 회복 = 신규 값 0(auto) · 스코프 = :480 전폭 조건과 동일 셀렉터(:has(> .dockopt.none)) 재사용이라 편집 탭(2분할) 무접촉 */
+  .topdock[data-lay="edit"] { --pvw:52%; }
+  .topdock[data-lay="edit"] .cpprev-box { width:var(--pvw); }   /* 미리보기 창 크기 = **상시 이 한 값**(운영자 260802 2차 "미리보기가 확대되는거 없애고 이정도를 항상 유지") — 구 배선은 스크롤 y로 100%↔52%를 오갔다(아래 폐지된 .dockmin 스크롤 축소). 이제 기본이 52%이고 확대는 돋보기 버튼(.dockzoom)만 연다 = 화면이 저 혼자 커지는 일 0 · 값 52% 자체는 구 축소분 그대로(신규 사다리 아님) */
+  .topdock[data-lay="edit"].dockzoom { --pvw:100%; }
+  .topdock[data-lay="edit"].dockzoom .cpprev-box { width:var(--pvw); }   /* 돋보기 ON = 구 스크롤-상단 상태(전폭)와 동일 크기 — 운영자 260802 2차 "지금 확대되는 상황인 것 처럼" */
+  /* (구 `.topdock[data-lay="edit"].dockmin .cpprev-box{width:52%}` = 스크롤 축소(운영자 260731 14차 "한수 적용" — 내리면 미리보기만 축소·고정 유지) = **폭 축소로 전환**(운영자 260801 "비율 항상 고정") · 구 max-height 캡(29svh/300)은 높이만 눌러 1:1을 깨뜨린다 → 폭을 줄이면 aspect-ratio가 높이를 따라 줄여 비율 불변 · 52% = 구 캡(29svh)/기본 캡(58svh) 비 = 0.5의 폭 환산(구 '캡 절반' 계약 동값 유지 · 신규 사다리 아님) */
+  .topdock[data-lay="edit"] .dockgrid .cpprev-box { margin-inline:auto; }   /* 축소 상시화(260802 2차)로 조건 소멸 = 항상 중앙(레일이 우측 여백에 서는 전제 = 창 우변이 `50%+26%` 한 식으로 나오는 근거) */   /* 조건부(:has(> .dockopt.none)) → 무조건(운영자 260802 옵션 레일 이주 = 전 탭 1단이라 조건이 항상 참) */   /* 전폭 1단 탭(카드 생성·특수·AI = #editCol.none)에서 축소분 중앙 정렬(운영자 260802 "머지") — 위 52% 폭 축소는 **편집 2분할 전제**(줄어든 폭을 우 옵션 컬럼이 채운다)인데, `:1899` data-lay 전 탭 상시(260731 22차) + `:480` 전폭화(260801)가 겹치며 채울 컬럼이 없는 탭에도 그대로 걸렸다 → 스크롤 시 도크 우측이 빈 유리로 남고 본문이 관통해 비쳤다(실렌더 실측 260802 430×900: 창 370→192.4 좌측 정렬 · 우측 177.6px 공백). 축소 자체는 유지(260731 14차 "내리면 미리보기만 축소" 취지 보존)하고 좌우 대칭만 회복 = 신규 값 0(auto) · 스코프 = :480 전폭 조건과 동일 셀렉터(:has(> .dockopt.none)) 재사용이라 편집 탭(2분할) 무접촉 */
   .topdock[data-lay="edit"] .cpprev-box { transition:width var(--dur-acc) var(--ease), border-radius var(--dur) var(--ease); height:auto; aspect-ratio:1/1 /* 창 = 폭 기준 1:1 고정비(운영자 260801 플레이그라운드 선택값 "폭 기준 고정비 · 1.0000 = 1:1 사다리 안 = 계승" · max-height 해제 명시) — 구 9/16은 우 옵션 컬럼이 있던 시절 428폭 기준이라 도크 전폭(566)에선 높이 1006px = 모달 초과로 성립 불가 · 폭 하나가 높이를 정하니 창 크기가 바뀌어도 비율 불변(구조는 260731 4차 "비율 선언으로 폭 추종" 그대로 계승, 값만 이동) */; contain:size /* 내용물 크기 무시 = 캔버스가 커져도 틀 불변(구 height:auto 틀 늘어남 사고(위 260731 실측)의 재발 차단 장치 — 내용 높이는 rszCapH 실측이 박스에 맞춰줌) */; min-height:0 /* ⚠ max-height 캡(구 58svh/620) 폐지 = 운영자 260801 "max-height 해제" — 캡이 살아 있으면 높이만 눌려 1:1이 깨진다(그게 구 9/16 선언이 사문이던 이유) · 트레이드 = 창 높이가 낮으면 도크가 화면을 잠식(선택값 회신 시 「창 조합의 35%」로 고지된 값 · 운영자 승인분) */; border-radius:var(--r-s) /* 운영자 260731 6차 선택값 = 사다리 이동(r-modal → r-s) · 편집 도크 한정 */; }
   .topdock[data-lay="edit"] .cpprev-box.ocfit { aspect-ratio:auto; height:auto; contain:none; }   /* 원본(무변환)+사진 = 콘텐츠 맞춤(운영자 260731 21차 "원본일 때 창을 가득 · 남는 공간은 비워서 아래 옵션들이 더 잘 보이게") — 9:16 틀 고정은 비율 변환 상태 전용 유지 · contain:size는 auto 높이와 상극이라 동반 해제 */
   .topdock[data-lay="edit"] .cpprev-box.ocfit #iePrev { height:auto; }
@@ -532,7 +566,7 @@
   .docksub .ropt { font-size:var(--fs-xs) /* 운영자 260731 6차 선택값 = 카드 칩과 동일 사다리 이동(fs-label → fs-xs) */; font-weight:var(--fw-b); color:var(--mut); cursor:pointer; transition:color var(--dur); -webkit-tap-highlight-color:transparent; }
   .docksub .ropt.on { color:var(--accent); font-weight:var(--fw-x); }   /* 켜짐 = 리드백형 토글 정본(.dockopt .ropt.tog.on 동값) */
   .topdock[data-lay="edit"] #go { border-radius:var(--r-modal) /* 운영자 260731 "생성버튼 창 둥글기에 맞게" — 구 --r-pill(캡슐)에서 모달 사다리 단으로 · 편집 도크 한정 = 다른 탭 발사버튼 무접촉 · 선택자 #go 승격 = 기본 `#go{--r-m}`(특이도 100)에 지던 계급 역전 봉합(점검 v2 ①) */; }
-  .topdock[data-lay="edit"] .cpprev-box.ie-full { max-height:none /* 모자이크 지정 단계 = 캡 무효(운영자 260801 1:1 고정비) — 구 60svh/620 캡은 높이만 눌러 비율을 깨뜨린다 · 확대는 .dockmin 폭 축소가 안 걸린 기본 폭(100%)이 이미 전담(구 '기본보다 크게'의 역전 봉합은 캡 폐지로 자동 성립) */; }
+  /* (구 `.topdock[data-lay="edit"] .cpprev-box.ie-full { max-height:none }` = 위 확대 규칙의 캡 무효화 짝 · 260802 4차 동반 폐지 — 확대 축엔 캡 무효가 필요 없다[폭 기준 1:1이라 높이 캡 자체가 없음]) */
   .topdock[data-lay="edit"] .cpprev-box #iePrev { position:static; height:100% /* 프레임 전고 점유(운영자 260731 21차 "16:9일 때 높이 기준 가운데 · 원본일 때 창을 가득") — 구 auto = 내용 높이만 잡혀 캔버스가 위로 쏠렸다 · 전고 + .rsz-stage flex:1(place-items:center 정본)이 세로 중앙·최대 활용을 전담 */; margin:0 /* 기본 #iePrev margin-top 12 상쇄 = 전고와 세로 중앙의 12px 하향 편심 봉합(실측 Δ24→0) */; }
   .topdock[data-lay="edit"] .cpprev-box #iePrev .rsz-stage { flex:1 1 auto; padding:4px; }
   /* 옵션 컬럼 */
@@ -983,12 +1017,21 @@
       <!-- (구 변형 선택칩 #cpPrevOpts = 흰칸/기본/자막 등 = 제거 · 운영자 260720 Q293 "로직으로 결정되니 수동 칩 불필요" — 미리보기는 우선순위 1개 변형(v[0]: 흰칸>자막>카드…)만 표시 · 발사 매트릭스는 채운 섹션 전부 발사로 불변) -->
       <div class="cpprev-box">
         <div class="cpprev-stage post" id="cpPrevStage"></div>
+
+        <div class="cpprev-wait" id="cpPrevWait" hidden><span class="nm-load" data-orb="solving" data-label="제작중…"></span><span class="cpw-sec nm-shim" id="cpPrevSec"></span></div><!-- orb 로더(Solving · 운영자 260723 Q460) = 선언형 자동수화 · 경과 cpw-sec 유지 -->
+        <!-- 편집(비율·모자이크·해상도) 미리보기 = 같은 쉘 안(운영자 260718 "미리보기 모든 PHASE 2에 반영") — rszPreview() 셀렉터(#rszStage·#rszMetric) 불변 · 카드 생성=#cpPrevStage / 편집+사진=#iePrev 스왑(renderCpPrev 전담) · 교체·삭제(.cpv-tool)는 양 모드 공유 -->
+        <div id="iePrev" class="none"><div class="rsz-stage" id="rszStage"></div><div class="rsz-metric" id="rszMetric"></div></div>
+      </div>
         <!-- 사진 교체·삭제 = 구 우측 슬롯(#cImgSlot) 기능 이주(운영자 260716) — 교체 = #cFile 위임(사진 입구 단일화 260713) · 삭제 = 슬롯 _reset 위임(store·게이트·재렌더 한 축) · 노출 = renderCpPrev(변형 렌더 시 교체 상시·삭제 = 사진 있을 때) -->
         <!-- 픽토 = 교체(양방향 화살표) 정본 계승 = index RT_SVG 그대로(운영자 260731 "저건 사진 픽토그램 아니노" — 구 인라인은 가운데 '사진 첨부'(.cpv-photobtn)와 완전 동값이라 첨부↔교체가 같은 그림이었다) · stroke 2 = 옆 휴지통 동값 -->
         <!-- ── 코너 옵션 레일(운영자 260801) — 레퍼런스 = viewer/index.html `.trailwrap`/`.trail`/`.trail-i`/`.trail-div`/`.trail-rg`(SNS·채널 세로 레일) 그대로.
              ⚠ thumb는 별도 iframe 문서라 index 인라인 CSS가 상속되지 않고, tokens.css는 구조토큰 전용(컴포넌트 거울 금지 · check_refs:1541)이라 아래 CSS는 **정본 값 사본**이다 → 드리프트 차단 게이트(_TRAIL_SPEC) 후속 신설 대상.
              1차 = 셸 + 교체·삭제 흡수만(id·핸들러·hidden 토글 전부 불변 = renderCpPrev 무접촉). 값 칩(비율·해상도·보존·모자이크) 이주는 도크 규격 게이트 개정 후 2차. -->
-        <div class="trailwrap" id="cpRailWrap"><nav class="trail" id="cpRail" aria-label="미리보기 옵션">
+        <div class="trailwrap" id="cpRailWrap"><!-- 레일 = 미리보기 창 **밖 우측**(운영자 260802 2차) · 캡슐 3분할 = [돋보기][옵션][생성] — DOM은 .cpprev 직계로 이주(창은 overflow:hidden이라 밖에 못 선다) · id·핸들러·hidden 토글 전부 불변 -->
+          <nav class="trail" id="cpZoomRail" aria-label="미리보기 확대"><!-- 캡슐① 돋보기 = 미리보기 확대/원상복귀(운영자 260802 2차) — 픽토 = index 검색 돋보기 정본(#sovClr `circle 11,11 r7` + `M21 21l-4.3-4.3`) 그대로 + 안쪽 ±(가로획 상시·세로획은 확대 중 소거 = 축약 체크 −/✓ 상태 1픽토 문법 계승) -->
+            <button type="button" class="trail-i" id="cpZoom" aria-pressed="false" aria-label="미리보기 확대" title="탭=미리보기 확대 · 다시 탭=원상복귀"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M8 11h6"/><path class="cpz-v" d="M11 8v6"/></svg></button>
+          </nav>
+          <nav class="trail trail-opts" id="cpRail" aria-label="미리보기 옵션">
           <span class="trail-g">
             <button type="button" class="cpv-tool" id="cpImgSwap" hidden aria-label="사진 교체 — 탭=파일 선택" title="사진 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
             <button type="button" class="cpv-tool" id="cpImgDel" hidden aria-label="사진 삭제" title="사진 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
@@ -1006,22 +1049,11 @@
               <div class="scard"><div class="csec"><span class="nm">해상도</span><span class="rsz-opts"><span class="ropt on gs-tog" id="esUps" role="button" tabindex="0" title="탭=다음 해상도(720p→FHD→2K→4K)"><span class="vv">FHD</span></span></span><span class="opt-navs" aria-hidden="true"><button type="button" class="opt-nav" data-nav="esUps" data-dir="-1" aria-label="이전 해상도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><button type="button" class="opt-nav" data-nav="esUps" data-dir="1" aria-label="다음 해상도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button></span></div></div>
               <div class="scard"><div class="csec"><span class="rsz-opts"><span class="ropt tog on gs-tog none" id="esLock" role="button" tabindex="0" aria-pressed="true" title="탭=원본 픽셀 보존(확장부만 AI 채움) 켜기/끄기">보존</span></span></div></div><!-- 불리언 = 단어 자체가 토글(켜짐 강조색·꺼짐 mut) · 상태 1벌 = #rszLock · 칩 숨김(.none) = 카드째 은닉(.dockopt .scard:has) · 소속 = 값 그룹(비율 종속 · 5차 기본그룹 계보) -->
               <p class="dopt-h">옵션</p><!-- 「옵션」 블릿 = 모자이크 바로 위(운영자 260731 12차) · 레일에선 CSS 소거(위 「기본」과 동축) -->
-              <div class="scard"><div class="csec"><span class="rsz-opts"><span class="ropt tog gs-tog" id="esIe" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=모자이크">모자이크</span></span><button type="button" class="cfold-chev" aria-expanded="false" aria-controls="esIeSub" aria-label="모자이크 세부 옵션 펼치기·접기 — 정밀·떼기"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button></div><!-- 우측 체브론 = 세부(정밀·떼기) 접이(운영자 260731 21차) · 접이 정본 .cfold-chev/.cfoldsub 계승 = 위임 1핸들러·회전·grid-rows 전부 정본 그대로(신규 배선 0) -->
-                <div class="cfoldsub" id="esIeSub" inert><div class="cfoldsub-in">
-                  <div class="docksub" id="editSub" role="group" aria-label="모자이크 세부 — 정밀·떼기"><!-- 「출력」 어휘 2분리(운영자 260731 22차) — 가리기 = 모자이크 기본 동작이라 칩 없음 · 떼기(누끼)만 명시 토글 · 정밀 = 기본 ON -->
-                    <span class="ropt tog gs-tog on" id="esPre" role="button" tabindex="0" aria-pressed="true" title="탭=윤곽에 딱 맞게(SAM2·느림)">정밀</span>
-                    <span class="ropt tog gs-tog" id="esOp" role="button" tabindex="0" aria-pressed="false" title="탭=떼기(누끼 — 피사체만 남긴 투명 PNG) 켜기/끄기 · 꺼짐=가리기(모자이크)">떼기</span>
-                  </div>
-                </div></div>
-              </div>
+              <div class="scard"><div class="csec"><span class="rsz-opts"><span class="ropt tog gs-tog" id="esIe" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=모자이크">모자이크</span></span></div><!-- 모자이크 = 낱말 자체가 온오프(운영자 260802 "토글로 만들지 말고 그냥 키워드 자체로 온오프") · 세부(정밀·떼기) 접이 폐지 = 정밀 상시 ON(IE.precise 기본값)·떼기 축 제거 -->
             </div>
           </div>
-        </nav></div>
-
-        <div class="cpprev-wait" id="cpPrevWait" hidden><span class="nm-load" data-orb="solving" data-label="제작중…"></span><span class="cpw-sec nm-shim" id="cpPrevSec"></span></div><!-- orb 로더(Solving · 운영자 260723 Q460) = 선언형 자동수화 · 경과 cpw-sec 유지 -->
-        <!-- 편집(비율·모자이크·해상도) 미리보기 = 같은 쉘 안(운영자 260718 "미리보기 모든 PHASE 2에 반영") — rszPreview() 셀렉터(#rszStage·#rszMetric) 불변 · 카드 생성=#cpPrevStage / 편집+사진=#iePrev 스왑(renderCpPrev 전담) · 교체·삭제(.cpv-tool)는 양 모드 공유 -->
-        <div id="iePrev" class="none"><div class="rsz-stage" id="rszStage"></div><div class="rsz-metric" id="rszMetric"></div></div>
-      </div>
+        </nav>
+        </div>
     </div>
     <!-- (구 도크 우측 옵션 컬럼 #editCol · 구 하단 선택 요약 스트립 #optStrip = 둘 다 미리보기 코너 레일(#cpRail)로 이주 · 운영자 260802 "배경·축약·opa 이런거 우측 네비게이션바로 · 모든 페이지에 해당 미리보기 똑같이" — DOM·id·핸들러는 레일 안에 원문 그대로 존치(상태 1벌 불변) · 여기엔 잔해를 남기지 않는다(중복 id = 좀비 셀렉터 사고원) -->
     </div><!-- /.dockgrid — 옵션 컬럼이 레일로 떠나 전 탭 1단(미리보기 전폭) 고정 -->
@@ -1139,8 +1171,6 @@
       <div class="gospec none" id="ieOpts">
         <span class="gs-lbl">굵기</span>: <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="6">굵게</span> <span class="gs-v gs-tog on ie-px" role="button" tabindex="0" data-px="9">보통</span> <span class="gs-v gs-tog ie-px" role="button" tabindex="0" data-px="14">곱게</span>
         <span style="color:var(--mut)"> | </span> <span class="gs-lbl">모양</span>: <span class="gs-v gs-tog on" id="ieShape" role="button" tabindex="0" title="탭=타원↔네모">타원</span>
-        <span style="color:var(--mut)"> | </span> <span class="gs-lbl">정밀</span>: <span class="gs-v gs-tog on" id="iePrecise" role="button" tabindex="0" title="탭=윤곽에 딱 맞게(SAM2·느림)">ON</span><!-- 정밀 기본 ON(운영자 260731 22차) — IE.precise 초기값과 한 몸 -->
-        <span style="color:var(--mut)"> | </span> <span class="gs-lbl">출력</span>: <span class="gs-v gs-tog" id="ieOp" role="button" tabindex="0" title="탭=가리기(모자이크)↔떼기(누끼 · 피사체만 남긴 투명 PNG · SAM2 실루엣 자동, 실패 시 박스 폴백)">가리기</span>
       </div>
       <div class="ie-result none" id="ieResult"></div>
     </div>
@@ -1597,6 +1627,9 @@ function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미
 }
 function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편집 탭 공용(운영자 260718 "미리보기 모든 PHASE 2 반영" — 같은 쉘 안 #cpPrevStage↔#iePrev 스왑) · 변형 선택칩 제거(Q293) = 우선순위 1개 변형(v[0])만 표시
   const pane = $('#cpPrev'); if (!pane) return;
+  pvZoomAuto(APP === '8' && !!CIMG.b64 && IE.phase !== 'done');   // 모자이크 지정 단계 = 확대 자동 ON, 빠져나오면 운영자가 두었던 크기로 원복(운영자 260802 4차 "머지"[보고 6-4] — 구 `.ie-full` 전용 규칙의 확대 축 흡수 · 박스를 탭해 찍는 단계라 확대가 곧 정확도 = 손이 제일 많이 가던 클릭 제거)
+  //   ⚠ 위치 = **함수 최상단**(조기 return 앞) — 아래 특수(SPX)·비편집 탭 분기는 return으로 빠져나가므로, 안쪽에 두면 모자이크에서 다른 탭으로 넘어갈 때 확대가 안 풀린다(실측 260802: 카드 생성 복귀 후에도 확대 잔존)
+  //   && 단락 = IE(하단 선언) TDZ 회피 = 부팅 시 APP!=='8'이라 평가 안 함
   if (SPX) {   // 특수(sp) = 틀만 유지·무대 상시 비움(운영자 260729 3차 "미리보기가 똑같은데?" — 카드 생성 변형 미러 금지) · 어느 호출 경로로 와도 여기서 차단 = 단일 소스 · 전용 발사 축 확정 시 이 가드가 렌더 분기점
     pane.classList.remove('none'); const _st = $('#cpPrevStage'); if (_st) { _st.innerHTML = ''; _st.classList.remove('none'); }
     const _ip = $('#iePrev'); if (_ip) _ip.classList.add('none');
@@ -1606,7 +1639,6 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
   if (isEditApp(APP)) {   // 편집 탭 = 사진 있으면 rsz 스테이지(비율 확장·원본 치수 리드백) / 없으면 빈 상태 픽토그램(카드 생성과 동일 입구)
     pane.classList.remove('none');
     const _bx = pane.querySelector('.cpprev-box');
-    if (_bx) _bx.classList.toggle('ie-full', APP === '8' && !!CIMG.b64 && IE.phase !== 'done');   // 모자이크 지정 단계만 도크 확대(운영자 260728) · && 단락 = IE(하단 선언) TDZ 회피 = 부팅 시 APP!=='8'이라 평가 안 함
     const st = $('#cpPrevStage');
     if (CIMG.b64) {
       if (ipv) ipv.classList.remove('none');
@@ -1680,7 +1712,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     if (lines.length) {
       const sp = cur.fmt === 'reels' ? { fs: 78, lh: 96, lm: 101, ty: 1119 } : { fs: 76, lh: 89, lm: 85, ty: 822 };
       const trO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post').tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
-      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(emph).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
+      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'ink'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
@@ -1710,7 +1742,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
 function cpToolSync(empty) {   // 미리보기 사진 도구(교체·삭제) 노출 게이트 — 구 슬롯(#cImgSlot) 이주분(운영자 260716)
   const sw = $('#cpImgSwap'), dl = $('#cpImgDel');
   if (sw) sw.hidden = !!empty;
-  if (dl) dl.hidden = !!empty || !CIMG.b64;
+  if (dl) { dl.hidden = !!empty; dl.disabled = !CIMG.b64; }   /* 휴지통 = 사진 없으면 **비활성**(운영자 260802 "휴지통 누르면 휴지통 버튼이 사라지는데 비활성화로 바껴야할듯") — 구 hidden은 누른 직후 픽토가 통째로 증발해 자리가 흔들렸다 · 딤 = .gs-locked 정본(opacity .5·cursor default) 동값 계승 */
   cpToolAnchor();
 }
 // 도구 앵커 = 「창(사진·캔버스) 안 우상단」(운영자 260731 "창 안으로 넣어, 다른 디자인 기틀 따라하셈")
@@ -2010,22 +2042,37 @@ function edCur(c) { const on = document.querySelector(c.wrap + ' .ropt.on'); con
 function edPick(c, j) { const t = [...document.querySelectorAll(c.wrap + ' .ropt')].find(b => b.dataset.v === c.ord[j]); if (t) t.click(); edNavSync(); }
 function edStep(id, dir) { const c = ED_ORD[id]; if (!c) return; const i = edCur(c); const j = Math.min(Math.max(i + dir, 0), c.ord.length - 1); if (j !== i) edPick(c, j); }   // ‹› = 비순환(왼쪽 끝 = 기본값)
 function edCycleTap(id) { const c = ED_ORD[id]; if (!c) return; edPick(c, (edCur(c) + 1) % c.ord.length); }   // 값 탭 = 같은 순서 순환(모바일 종전 동작 유지)
-// ── 편집 도크 스크롤 축소(운영자 260731 14차) — 내리면 미리보기 캡 절반(.dockmin) · 올라오면 원복 · 히스테리시스(on 120 / off 8) = 축소로 문서높이가 줄 때 문턱 왕복 떨림 차단 · 축소 후 스테이지 재렌더 = rszPreview(캡 단일출처 rszCapH가 실높이를 읽음) ──
+// 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — 표면 공용 키 1개 · localStorage 차단 환경(사파리 프라이빗)에서도 안 죽게 try 감싼다(무저장 = 종전 동작 = 상시 축소).
+const PVZOOM = { K: 'nm.pvzoom',
+  get() { try { return localStorage.getItem(this.K) === '1'; } catch (_) { return false; } },
+  set(on) { try { on ? localStorage.setItem(this.K, '1') : localStorage.removeItem(this.K); } catch (_) {} } };
+// ── 미리보기 확대(돋보기) — 구 「편집 도크 스크롤 축소(.dockmin)」 폐지분의 자리(운영자 260802 2차 "미리보기가 확대되는거 없애고 이정도를 항상 유지 · 맨 위에 돋보기 버튼") ──
+//   구 배선 = 스크롤 y 문턱(on 120 / off 8)으로 창을 100%↔52% 자동 전환 → 운영자 화면이 저 혼자 커졌다 작아졌다 = 이번 요청의 대상.
+//   신 배선 = 창은 상시 52%(CSS 기본값) · 확대는 **버튼 하나**로만(.dockzoom) = 자동 전환 0 · 스크롤 리스너·히스테리시스·재판정 잠금 전부 회수.
+//   확대 후 재렌더 = 구 배선과 동일(폭이 바뀌면 산출 미리보기를 다시 굽는다 — 폭 관측 rAF(1762행)도 그대로 살아 있어 이중 안전).
+//   상태 기억(운영자 260802 3차 "머지" = 직전 보고 6-4 승인분) = `nm.pvzoom` 1벌 — 탭을 바꾸거나 창을 다시 열어도 마지막에 둔 크기로 연다.
+//   ⚠ 키는 **표면 공용**(thumb·tr·index geni 동일 origin) = 4탭이 한 상태를 공유 = 탭 이동에 크기가 튀지 않는다(그게 이 기억의 목적).
+//   부팅 반영 = 클래스만 얹는다(재렌더는 폭 관측 rAF가 전담 · 여기서 rszPreview를 부르면 첫 렌더와 경합).
+var pvZoomPaint = null, pvZoomForced = false;   // var 선언 = 부팅 순서 무관(TDZ 0) — iePrevSync가 이 배선보다 먼저 돌아도 안전(paint 미장착 = 무동작)
+function pvZoomAuto(force) {   // 자동 확대(모자이크 지정) ↔ 운영자 선택 복귀 — 상태 저장(PVZOOM)은 **건드리지 않는다**(자동분이 운영자 취향을 덮어쓰면 안 됨)
+  if (!pvZoomPaint || force === pvZoomForced) return;   // 전이 순간만 반영 = 매 렌더 재적용으로 운영자의 수동 토글을 되돌리지 않는다
+  pvZoomForced = force;
+  pvZoomPaint(force || PVZOOM.get());
+}
 (function () {
-  let min = false, raf = 0, lock = 0;
-  const sync = () => { raf = 0;
-    const td = $('#topDock'); if (!td || td.dataset.lay !== 'edit') { if (min) { min = false; td && td.classList.remove('dockmin'); } return; }
-    if (performance.now() < lock) return;   // 전환 애니(dur-acc 260) 구간 = 재판정 동결 — 축소가 문서높이를 줄이면 브라우저가 scrollY를 클램프하고, 그 클램프가 스크롤 이벤트로 되돌아와 반대 문턱을 즉시 때린다(되먹임) · 애니가 끝나 높이가 안정될 때까지 판정을 막아 1왕복을 끊는다
-    const y = window.scrollY || document.documentElement.scrollTop;
-    const room = document.documentElement.scrollHeight - innerHeight;
-    // 축소량 = 미리보기 창 폭 감소분(폭 52% · aspect-ratio 1/1이라 높이 감소 = 폭 감소) — 축소 뒤 남는 여유(room - drop)가 켜짐 문턱(120)을 못 넘기면 켜자마자 클램프로 y가 꺼짐 문턱(8)까지 떨어져 무한 왕복("통통 튀는" 실측 260802: 840×820 0.4초에 4회 전환 · 430×900 y120→23 강제 이동)
-    const bx = $('#cpPrev .cpprev-box'), bw = (bx && !min) ? bx.getBoundingClientRect().width : 0;
-    const drop = bw * 0.48;   // 100% → 52%
-    const next = min ? y > 8 : (y > 120 && room - drop > 240);
-    if (next !== min) { min = next; td.classList.toggle('dockmin', min); lock = performance.now() + 420;
-      setTimeout(() => { if (typeof rszPreview === 'function') try { rszPreview(); } catch (_) {} }, 280); }   // dur-acc(260ms) 후 실높이 기준 재렌더
-  };
-  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(sync); }, { passive: true });
+  const btn = $('#cpZoom'), td = $('#topDock'); if (!btn || !td) return;
+  const paint = on => { td.classList.toggle('dockzoom', on); btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); btn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+  pvZoomPaint = paint;   // 자동 전환(모자이크)이 같은 페인터를 쓴다 = 확대 축 단일 진입점
+  paint(PVZOOM.get());   // 부팅 = 마지막 상태 복원
+  btn.addEventListener('click', () => {
+    const on = !td.classList.contains('dockzoom');
+    paint(on); PVZOOM.set(on);
+    setTimeout(() => { if (typeof rszPreview === 'function') try { rszPreview(); } catch (_) {} }, 280);   // dur-acc(260ms) 후 실높이 기준 재렌더(구 축소 배선 동일 처방)
+  });
+})();
+// ── 레일 생성 칩 = 정본 발사 버튼(#go) 대리클릭(운영자 260802 2차) — 상태·검증·게이지 전부 #go 1벌(사본 0) ──
+(function () {
 })();
 function edNavSync() {   // ‹› 끝단 disabled 동기 — 기본값(첫째)에선 ‹ 소등 · 마지막에선 › 소등 + 값칸 넘침 페이드(.ovfx = .ovf 동문 · 운영자 260731 10차 "길면 그라데이션으로 가려지게")
   Object.keys(ED_ORD).forEach(id => { const c = ED_ORD[id], i = edCur(c);
@@ -2300,7 +2347,7 @@ function bindSlotImg(slotSel, inputSel, store, onChange) {   // onChange(has) = 
     r.onload = () => { normalizeImg(r.result, f.name || '붙여넣기.png').then(({ url, name }) => { store.b64 = url; store.name = name; filled(url, Math.round((url.length * 0.75) / 1024)); }); };   // 정규화(HEIC·AVIF·GIF·초대형→JPEG) 후 저장 = 합성 서버가 읽는 포맷 보장(운영자 260717) · KB = base64 길이 환산(변환 후 실크기)
     r.readAsDataURL(f);
   };
-  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); };
+  inp.onchange = e => { const f = e.target.files[0]; if (f) read(f); e.target.value = ''; };   /* value 리셋 = **같은 파일 재선택도 change 발화**(운영자 260802 "교체 2~3회 하고 나면 사진 첨부·교체·없애기가 안 먹힘" — 브라우저는 값이 같으면 change를 안 쏜다 = 두 번째 같은 사진 선택이 무반응) · 정본 선례 = index `rfFile.value = ''`(같은 파일 재선택) 동문 · read()는 동기 호출 뒤라 파일 참조 유실 0 */
   bindImgPaste(slot, read);   // 붙여넣기(Ctrl+V) = 슬롯 포커스 상태 클립보드 이미지(운영자 260713 "모든 곳에 다")
   const _cr = slot.closest('.covrow'); const _ta = _cr && _cr.querySelector('textarea'); if (_ta) bindImgPaste(_ta, read);   // 짝 텍스트칸(covta·lines/cLines)에 붙여넣기 = askText 선례
   slot._reset = () => { store.b64 = ''; store.name = ''; inp.value = ''; empty(); };   // 수정 복원 시 슬롯 비우기(외부 호출용)
@@ -3414,6 +3461,7 @@ const doneReq = () => {   // 완료 알림 딥링크 = ?done=<id> 정본(Access 
   if (/\bdone\b/.test(location.hash)) return { on: true, id: (location.hash.match(/done=([\w-]+)/) || [])[1] || '' };
   return { on: false, id: '' };
 };
+const _twoCol = () => { try { return document.documentElement.classList.contains('inmodal') && matchMedia('(min-width:900px)').matches; } catch (_) { return false; } };   // 결과 레일 2단 티어 판정 = 레일 @media 조건과 같은 식(단일출처 · 값 900 = 그 미디어 쿼리와 한 몸)
 const scrollMid = el => { if (!el) return; requestAnimationFrame(() => { try { const y = el.getBoundingClientRect().top + window.pageYOffset - Math.round((window.innerHeight || 700) * 0.18); window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 중상단(상단서 18%) 랜딩 · rAF=레이아웃 정착 후 측정(이미지 리플로우 뒤 정확)
 const scrollQueue = () => { const h = $('#carH'), el = (h && !h.hidden) ? h : $('#jobs'); if (!el) return; requestAnimationFrame(() => { try { const dk = $('#topDock'); const off = ((dk && getComputedStyle(dk).position === 'sticky') ? dk.getBoundingClientRect().height : 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 0); const y = el.getBoundingClientRect().top + window.pageYOffset - off; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 발사 = 대기열(결과 보드)로 이징 착지(운영자 260727 "카드 생성 누르면 대기열 아래로 이징 스크롤") — 위 scrollMid 정본 계승(rAF 측정·smooth·구형 폴백) · 랜딩선만 교체: '뷰포트 18%'는 sticky 도크(#topDock 실측 379.7px @412×915)에 가려 무용 → 도크 높이 + var(--sp-2) 아래 = 결과 소머리와 새 잡 행이 도크 바로 밑에 노출(신설 값 0)
 const flashEl = el => { if (!el) return; el.classList.add('thfocus'); setTimeout(() => el.classList.remove('thfocus'), 2200); };   // 착지 항목 잠깐 강조 = '해당 작업' 식별
@@ -3663,7 +3711,7 @@ $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b
   $('#histH').setAttribute('aria-expanded', String(open)); $('#hist').classList.toggle('open', open);
   if (open) {   // 펼침 = hist-it 스태거 histIn(hidden 해제 시 재생)
     b.hidden = false;
-    requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   // 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
+    if (!_twoCol()) requestAnimationFrame(() => $('#hist').scrollIntoView({ behavior: 'smooth', block: 'start' }));   /* 2단(PC)에선 생략(운영자 260802 "pc버전에서는 이전 제작 토글 눌러서 펼쳐도 포커싱되서 결과가 밀릴 필요없을듯") — 레일이 이미 화면에 고정이라 스크롤 이동이 오히려 결과를 밀어낸다 · 1단(폰)은 종전 이징 유지 */   // 이전 제작을 상단 헤더 라인까지 자동 이징 스크롤 → 최근 항목 노출(운영자 260626)
   } else {   // 닫힘 = 촤르륵(histOut 역재생 후 hidden · 직전 제작 carToggle 미러 · 운영자 260707)
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) { b.hidden = true; }
     else { b.classList.add('closing'); _histCloseT = setTimeout(() => { b.hidden = true; b.classList.remove('closing'); }, 270); }   // .26s 애니 + 여유
@@ -3686,7 +3734,7 @@ $('#carH').addEventListener('click', () => {
   clearTimeout(_carCloseT); cw.classList.remove('closing'); cb.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
   if (open) {   // 펼침
     cw.hidden = false; cb.hidden = false; $('#carH').setAttribute('aria-expanded', 'true');
-    requestAnimationFrame(() => { carUpdate(); try { $('#carH').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} });   // 재펼침 = 높이 핏 재계산(접힘 중 리사이즈 대비 · QA3 260706)
+    requestAnimationFrame(() => { carUpdate(); if (_twoCol()) return; try { $('#carH').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} });   /* 결과 재펼침도 동축(2단 = 스크롤 생략 · 높이 재계산 carUpdate는 유지) */   // 재펼침 = 높이 핏 재계산(접힘 중 리사이즈 대비 · QA3 260706)
   } else {   // 접힘 = 촤르륵(histOut 역재생 후 hidden · 운영자 260706 "결과 닫힐 때 촤르륵")
     $('#carH').setAttribute('aria-expanded', 'false');
     if (matchMedia('(prefers-reduced-motion:reduce)').matches) { cw.hidden = true; cb.hidden = true; }
@@ -4049,23 +4097,48 @@ function buildEmphText() {
 })();
 // ---- 실시간 자간(tracking) 추정 — 워크플로 measure+sweep의 브라우저판 ----
 // 글자폭 = 1순위 캔버스 measureText 실측(웹폰트 advance = PIL getbbox·getlength와 ±0.3px 일치 실측 260716 — 숫자45·라틴~50·공백17 혼합폭까지 정확) · 폰트 미로드 시 2순위 레거시 상수(H/S/N · 한글 위주 근사) 폴백.
+// ⚑ basis = **폭 재는 자**(운영자 260802 "잴 때 항상 한개의 기준" · 축마다 서버 렌더러가 다른 자를 쓴다 = 축 안에서 하나로 통일한다)
+//   'ink' = 서버가 글자 **잉크폭**만큼 전진(오버레이 = nomute_overlay.draw_t `bb[2]-bb[0] + tp`)
+//   'adv' = 서버가 **advance**만큼 전진(헤더 = nomute_reels2 `font.getlength(ch)` · _line_width)
+//   → 이 한 글자를 바꾸면 힌트·미리보기 보정·발사 게이트·입력 클램프가 **일괄로** 그 자를 쓴다(소비처 전부 spec만 읽는다).
 const TRK = {
-  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
-  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30 },
+  post:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
+  reels: { H: 72, S: 18, N: 48, fs: 78, limit: 844, start: -1, floor: -30, basis: 'ink' },
   // 진짜예요 오버레이 축(운영자 260728 "노뮤트때 나오는거랑 똑같이") — limit·start·floor = 노뮤트 동값 계승
   // (구 260726 폭 780/floor -45 축 폐기 · 서버 자간은 원래부터 노뮤트 fit_tracking을 받고 있었다 = 클라 힌트가 어긋나 있던 것).
   // fs 76만 진짜예요 고유(플레이그라운드 선택값) · H/S/N 폴백 = post(fs76) 상수 동값(같은 fs라 재계산 불요)
-  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30 },
-  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45 },
+  jjreels: { H: 70, S: 17, N: 48, fs: 76, limit: 844, start: -1, floor: -30, basis: 'ink' },
+  jjpost:  { H: 70, S: 17, N: 48, fs: 76, limit: 920, start: 0,  floor: -45, basis: 'ink' },
 };
 // 진짜예요 오버레이 좌표(운영자 플레이그라운드 선택값) — nomute_jinjja.OV_SPEC과 1:1 미러 · lm = 노뮤트 SPECS lm 계승(260728 좌측정렬 개정)
 // ctr = 가운데 정렬(릴스만 · 운영자 260730) · rm = 우 마지노선(워크플로 fit_tracking "post lm85/rm75 · reels lm101/rm135" 미러) = nomute_jinjja.OV_CENTER/OV_RM와 1:1
 const JJ_OV = { reels: { ty: 1214, fs: 76, lh: 96, lm: 101, rm: 135, ctr: true }, post: { ty: 856, fs: 76, lh: 96, lm: 85, rm: 75, ctr: false } };
 const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlength의 글자별 진행폭 미러 · 실패 = null(상수 폴백)
   let cx = null; const cache = new Map();
-  return (ch, fs) => {
+  return (ch, fs, basis) => {
     try {
       if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;   // 실폰트 로드 전 = 대체폰트 폭 오염 차단
+      if (!cx) cx = document.createElement('canvas').getContext('2d');
+      const key = basis + fs + ch;
+      if (cache.has(key)) return cache.get(key);
+      cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
+      const m = cx.measureText(ch);
+      // 측정 기준 = **잉크폭 단일 기준**(운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자").
+      //   실렌더 정본 = nomute_overlay.draw_t → `bb = f.getbbox(ch); cx += bb[2]-bb[0] + tp` = **글자 잉크폭 + 자간**(advance 아님).
+      //   구 `measureText().width`(= advance)는 잉크보다 넓어 힌트가 서버보다 항상 한 단 더 조여 나왔다(기준 2개 = 표기와 산출 불일치원).
+      //   actualBoundingBoxLeft+Right = 캔버스의 잉크폭 = PIL getbbox 폭과 같은 축 · 미지원 엔진은 advance 폴백(종전 동작).
+      const w = (basis === 'adv' || typeof m.actualBoundingBoxLeft !== 'number' || typeof m.actualBoundingBoxRight !== 'number')
+        ? m.width                                                   // adv 축(헤더 = reels2 font.getlength) · 잉크 메트릭 미지원 폴백
+        : Math.max(0, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);   // ink 축(오버레이 = draw_t getbbox)
+      cache.set(key, w); return w;
+    } catch (_) { return null; }
+  };
+})();
+const _trkAdvW = (() => {   // 글자 **advance**(브라우저 배치폭) 캐시 — 미리보기 보정 전용(폭 판정은 위 잉크폭 단일 기준 유지)
+  let cx = null; const cache = new Map();
+  return (ch, fs) => {
+    try {
+      if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;
       if (!cx) cx = document.createElement('canvas').getContext('2d');
       const key = fs + ch;
       if (cache.has(key)) return cache.get(key);
@@ -4075,11 +4148,27 @@ const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlengt
     } catch (_) { return null; }
   };
 })();
+// 미리보기 자간 = **서버 폭 재현값**(운영자 260802 "두개의 기준에 다 맞추던지") — 판정 기준은 잉크(서버 draw_t) 하나로 통일했지만,
+//   브라우저는 글자를 advance로 배치하므로 같은 tr을 그대로 쓰면 미리보기만 Σ(adv−ink)만큼 넓게 그려진다(실측 16자 한 줄 = 143px).
+//   → 줄마다 `(Σink − Σadv)/(n−1)`를 자간에 더해 **렌더 폭 = 서버 산출 폭**으로 맞춘다(1080 좌표계 px · 폰트 미로드면 null = 종전 tr 그대로).
+function prevLetterSpace(line, tr, fs, basis) {
+  if (basis === 'adv') return tr / 1000 * fs;   // adv 축(헤더) = 브라우저 배치와 서버가 같은 자 → 보정 0(그대로 tr)
+  const plain = String(line).replace(/\*/g, '');
+  const n = plain.length - 1;
+  if (n < 1) return null;
+  let ink = 0, adv = 0;
+  for (const ch of plain) {
+    const i = _trkChW(ch, fs, 'ink'), a = _trkAdvW(ch, fs);
+    if (i == null || a == null) return null;
+    ink += i; adv += a;
+  }
+  return (ink - adv) / n + (tr / 1000 * fs);
+}
 function lineWidthPx(text, tr, cfg) {   // Σ글자폭 + tp*(len-1) + 5 (fit_tracking measure 미러 · +5 = 워크플로 동일 패드)
   const plain = text.replace(/\*/g, '');
   let s = 0;
   for (const ch of plain) {
-    const w = _trkChW(ch, cfg.fs);
+    const w = _trkChW(ch, cfg.fs, cfg.basis);
     s += (w != null) ? w : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N);
   }
   return s + (tr / 1000 * cfg.fs) * Math.max(plain.length - 1, 0) + 5;
@@ -4106,9 +4195,9 @@ $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', '
 
 // ---- 릴스 헤더(부제/제목) 실시간 자간 — reels2 _fit_tr 추정(getlength 기준 · AVAIL 960) ----
 const HDR = {
-  sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45 },
-  title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45 },
-  jinjja: { H: 64.40, S: 15.89, N: 41.30, fs: 70, avail: 880, floor: -45, start: -10, emph: true },  // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
+  sub:   { H: 60.72, S: 14.98, N: 38.94, fs: 66, avail: 960, floor: -45, basis: 'adv' },
+  title: { H: 82.80, S: 20.44, N: 53.09, fs: 90, avail: 960, floor: -45, basis: 'adv' },
+  jinjja: { H: 64.40, S: 15.89, N: 41.30, fs: 70, avail: 880, floor: -45, start: -10, emph: true, basis: 'adv' },  // 진짜예요 헤더형(운영자 260726 "1080px일때 좌우 100 100 해서 880안에" · "-10 기준으로 -45까지 땅겨서") — nomute_jinjja.py TXT_FS/AVAIL/TR_START/TR_MIN과 1:1 미러 · H·S·N 폴백 = sub(fs66) 상수의 fs 비례 환산(캔버스 실측이 1순위라 폴백 전용)
 };
 function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자폭 = 캔버스 실측 1순위(getlength 미러 · 260716)·상수 폴백
   // 강조 칸(cfg.emph = 진짜예요 문구)은 **별표를 폭 0**으로 본다(운영자 260730 "**는 자간 카운트에 포함 안되야하고") —
@@ -4119,7 +4208,7 @@ function estHeaderTr(text, cfg) {   // reels2 _fit_tr(0→-45) 추정 — 글자
   const w = tr => {
     let s = 0;
     for (const ch of text) {
-      const cw = _trkChW(ch, cfg.fs);
+      const cw = _trkChW(ch, cfg.fs, cfg.basis);
       s += (cw != null) ? cw : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N);
     }
     return s + (tr / 1000 * cfg.fs) * Math.max(text.length - 1, 0);
@@ -4134,9 +4223,9 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   // 진짜예요 = 문구 1줄(제목칸만·부제는 로고가 대신) → HDR.jinjja(880/-10~-45) 단일 힌트. 노뮤트 = 종전 부제·제목 2줄.
   if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') {
     const j = estHeaderTr($(titleSel).value.trim(), HDR.jinjja);
-    el.textContent = j.over ? '· 축약필요(880 초과 — 자간 -45로도 안 들어감)' : (j.tr < -10 ? `· 자간${j.tr} 적용` : '');
+    el.textContent = j.over ? `· 축약필요(${HDR.jinjja.avail} 초과 — 자간 ${HDR.jinjja.floor}로도 안 들어감)` : (j.tr < HDR.jinjja.start ? `· 자간${j.tr} 적용` : '');   /* 표기 = spec 산출(운영자 260802 "정확히 표현도 된거지" · 구 하드코딩 '880/-45/-10'은 규격을 바꾸면 표기만 옛말로 남는 거짓말원) */
     el.classList.remove('on', 'over');
-    if (j.over) el.classList.add('over'); else if (j.tr < -10) el.classList.add('on');
+    if (j.over) el.classList.add('over'); else if (j.tr < HDR.jinjja.start) el.classList.add('on');
     return;
   }
   const s = estHeaderTr($(subSel).value.trim(), HDR.sub), t = estHeaderTr($(titleSel).value.trim(), HDR.title);
@@ -4500,7 +4589,7 @@ function ieRender() {
   if (hint) hint.classList.toggle('none', !!(CIMG.b64 && IE.items.length));   // 힌트 줄 폐지(260712 §디자인 e) — null 가드 = 도먼트 복원 호환
   if (stage) { stage.classList.add('none'); stage.innerHTML = ''; }   // 하단 별도 검출 스테이지 = 폐지(도크 승격 · 운영자 260728 "상단 미리보기 그대로 살리면서 모자이크 미리보기를 별도로 분리 안 하는 방법") — DOM·CSS는 도먼트 보존
   opts.classList.toggle('none', !(CIMG.b64 && IE.items.length));
-  iePrevSync(); renderCpPrev();   // 도크 = 원본 전면(.ie-full) + 박스 오버레이 전담 — 발사 버튼도 같은 도크 안이라 스크롤과 무관하게 항상 짝(운영자 260728 "생성버튼이 옮겨와지게")
+  iePrevSync(); renderCpPrev();   // 도크 = 원본 전면(확대 축 자동 ON · 구 .ie-full) + 박스 오버레이 전담 — 발사 버튼도 같은 도크 안이라 스크롤과 무관하게 항상 짝(운영자 260728 "생성버튼이 옮겨와지게")
   ieSyncGo();
 }
 function ieBusy(on, phase) { IE.busy = on; if (phase) IE.phase = phase; ieSyncGo(); if (APP === '8') renderCpPrev(); }   // 단계 전환 = 도크 동기 1곳(지정 단계 확대 ↔ 결과(done) 원복 · 운영자 260728)

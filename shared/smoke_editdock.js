@@ -3,7 +3,7 @@
 // smoke_editdock.js — Video Studio 편집 탭(edit.html) '도크·선택 요약 스트립·생성 버튼' 상비 실측 스모크
 //   (운영자 260719 승인 = Q160 평의회7 "애드혹 12프로브의 상비 승격" — [4-1] 신설 표면 게이트 등재 · smoke_preview.js 문법 계승)
 //
-// 담당 표면: viewer/edit.html — .topdock(미리보기+스트립+발사바 sticky 도크) · .optstrip/#editSpec(선택 요약 리드백) ·
+// 담당 표면: viewer/edit.html — .topdock(미리보기+발사바 sticky 도크) · 코너 옵션 레일(.cpprev-box .trail) 안 .optstrip/#editSpec(선택 요약 리드백 · 260802 이주) ·
 //            #editGo(생성 버튼 = Image Studio 정본 합류분 r-m/sp-1/fs-label + 히트슬롭 45px) · body Pretendard 정본.
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약 · 훅·pre-commit 편입 금지 = 수동 실행 전용).
 //
@@ -69,7 +69,13 @@ async function runOnce(browser, port) {
       font: cs('body').fontFamily.includes('Pretendard Variable') && cs('body').letterSpacing === '-0.2px' && document.fonts.check("13px 'Pretendard Variable'"),
       dockKids, goTriple: [cs('#editGo').borderRadius, cs('#editGo').paddingTop, cs('#editGo').fontSize].join('/'), goLabel: go.textContent.trim(),
       stripBox: [cs('#optStrip').backgroundColor, cs('#optStrip').borderRadius, cs('#editSpec').fontSize].join('/'),
-      widthD: Math.abs(r('#optStrip').width - r('.firebar .inner').width),
+      stripInRail: (() => { const rail = document.querySelector('.pvsec .trail'); return !!(rail && strip && rail.contains(strip)); })(),
+      railFlush: (() => {   // 레일 = 창 **밖 우측**·간격 8·상변 정렬(운영자 260802 2차 규격 · 이미지 스튜디오 정본 동일)
+        const box = document.querySelector('.cpprev-box'), rail = document.querySelector('.pvsec .trail');
+        if (!box || !rail) return null;
+        const b = box.getBoundingClientRect(), q = rail.getBoundingClientRect();
+        return [+(q.left - b.right).toFixed(1), +(q.top - b.top).toFixed(1)];   // [창↔레일 간격, 상변 편차]
+      })(),
       readback: spec.textContent.replace(/\s+/g, ' ').trim(), onN: spec.querySelectorAll('.gs-v.on').length,
       onColor: spec.querySelector('.gs-v.on') ? getComputedStyle(spec.querySelector('.gs-v.on')).color : '',
       inkD: [Math.abs((tr.left + tr.width / 2) - (gr.left + gr.width / 2)), Math.abs((tr.top + tr.height / 2) - (gr.top + gr.height / 2))].map(v => +v.toFixed(2)),
@@ -143,8 +149,13 @@ async function runOnce(browser, port) {
     const r1 = await runOnce(browser, port);
     const r2 = await runOnce(browser, port);   // 결정론 2런
     ck('C1 부팅 pageerror 0', r1.errs === 0 && r2.errs === 0, r1.errs + '건');
-    ck('C2 도크 순서 pvsec→optstrip→firebar', /pvsec.*optstrip.*firebar/.test(r1.dockKids), r1.dockKids);
-    ck('C3 스트립 박스 = thumb 정본(#000·9px·11.25px) + 폭=발사바 Δ≤0.5', r1.stripBox === 'rgb(0, 0, 0)/9px/11.25px' && r1.widthD <= 0.5, r1.stripBox + ' · Δ=' + r1.widthD.toFixed(2));
+    // C2·C3 계약 갱신(운영자 260802 "영상도 동일하게해줘" — 이미지 스튜디오 260802 코너 옵션 레일 이주분의 영상 확장):
+    //   구 계약 = 도크 자식 [미리보기 → 하단 옵션 스트립 → 발사바] · 스트립 = 검정 박스(#000/9px)·폭 = 발사바 동일.
+    //   신 계약 = 스트립이 **미리보기 창 코너 레일 안**으로 들어갔다 → 도크 자식은 [미리보기 → 발사바] · 스트립 셸은 투명 값 칩 그룹.
+    ck('C2 도크 순서 pvsec→firebar(옵션 스트립 = 미리보기 코너 레일로 이주)', /pvsec.*firebar/.test(r1.dockKids) && !/optstrip/.test(r1.dockKids), r1.dockKids);
+    ck('C3 스트립 = 코너 레일 값 칩 그룹(투명·radius 0·10.5px) + 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px)',
+       r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && Math.abs(r1.railFlush[0] - 8) <= 0.5 && Math.abs(r1.railFlush[1]) <= 0.5,
+       r1.stripBox + ' · inRail=' + r1.stripInRail + ' · flush=' + JSON.stringify(r1.railFlush));
     ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) 전부 원본/OFF·무점등(운영자 260724 노출 항목 축소 · 260728 프레임→고프레임 개명 = OFF/ON 토글)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 OFF \/ 배경음 OFF \/ 컷 편집 OFF$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);

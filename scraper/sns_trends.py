@@ -1831,6 +1831,68 @@ def disaster(limit=10):
         return []
 
 
+def _km_flight_json(html, key):
+    """Korea Monitor(Next.js RSC) 페이지에 실려오는 self.__next_f 플라이트 페이로드에서
+    `\\"<key>\\":[ … ]` 배열 한 덩이를 문자열 인식 균형 파싱으로 떼어 dict 리스트로 돌려준다.
+    ⚠️ 단순 대괄호 카운트 금지 — 재난문자 본문에 `[곡성군]` 같은 대괄호가 들어있다(260802 실측).
+    문자열 내부(\\" … \\") 대괄호는 세지 않는다. 실패 = [] (fail-soft)."""
+    i = html.find('\\"' + key + '\\":[')
+    if i < 0:
+        return []
+    start = html.index('[', i)
+    depth, in_str, j = 0, False, start
+    while j < len(html):
+        c = html[j]
+        if in_str:
+            if c == '\\' and html[j:j + 2] == '\\"':   # 이스케이프된 따옴표 = 문자열 종료
+                in_str = False
+                j += 2
+                continue
+            if c == '\\':                              # \\n \\\\ 등 = 2글자 통과
+                j += 2
+                continue
+        elif c == '\\' and html[j:j + 2] == '\\"':
+            in_str = True
+            j += 2
+            continue
+        elif c == '[':
+            depth += 1
+        elif c == ']':
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    raw = html[start:j + 1]
+    # 플라이트 페이로드는 JS 문자열 리터럴 안에 있다 = 한 번 벗겨야 진짜 JSON
+    arr = json.loads(json.loads('"' + raw + '"'))
+    return [it for it in arr if isinstance(it, dict)]
+
+
+def disaster_km(limit=10):
+    """⑭-b 재난문자 폴백 — Korea Monitor(koreamonitor.nangman.cloud) SSR 페이지.
+    왜 = safetydata.go.kr이 GitHub 러너 IP를 막아 ⑭ 본선이 러너에서 죽는다(실측 260713) →
+    폰(scripts/phone_subs)이 켜져 있을 때만 들어오던 슬롯을 러너 단독으로 살린다(운영자 260802).
+    ⚠️ 경보·기상특보 축은 안 가져온다 — 운영자 지시 "재난문자 급만"(260802).
+    본문은 SSR 목록(…말줄임)이 아니라 플라이트 페이로드 cbsMessages의 '전문'을 쓴다. 실패 = [] (fail-soft)."""
+    try:
+        h = _get("https://koreamonitor.nangman.cloud/", timeout=25)
+        out = []
+        for it in _km_flight_json(h, "cbsMessages"):
+            msg = (it.get("text") or "").strip()
+            if not msg:
+                continue
+            # 지역 = 광역 발령이면 원문이 10개까지 콤마로 붙어온다 → 뷰어 우측 열이 본문 열을 0폭으로 밀어버린다(260802 실렌더 실측)
+            rg = [x.strip() for x in (it.get("region") or "").split(",") if x.strip()]
+            area = rg[0] + (f" 외 {len(rg) - 1}곳" if len(rg) > 1 else "") if rg else ""
+            out.append({"title": msg[:200], "area": area,
+                        "level": (it.get("level") or "").strip(), "time": it.get("sentAt") or "",
+                        "url": "https://koreamonitor.nangman.cloud/"})
+        return out[:limit]
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::재난문자 KM 폴백 실패(스킵): {e}", file=sys.stderr)
+        return []
+
+
 def kobis(limit=10):
     """⑮ KOBIS 일별 박스오피스 — 영화진흥위 공식 무료 API(env KOBIS_KEY 필수 · 없으면 [] no-op).
     문화 축 = 카드뉴스·릴스 소재(운영자 260713). 어제자 순위. 실패 = [] (fail-soft)."""
@@ -2175,6 +2237,14 @@ def main():
         # X 상세 보강(운영자 260726 "닉네임·정확한 글·대표 이미지·조회수") — 폰 채택 '뒤'에 두는 게 요점:
         # 채택된 폰 수집분도 같은 경로로 보강돼야 표시 4값이 공급원과 무관하게 동일(러너/폰 갈림 방지).
         subs_new["x"] = x_enrich(subs_new.get("x") or [], deadline=time.monotonic() + (_i(os.environ.get("SNS_X_ENRICH_BUDGET")) or 90))
+    # ⑭-b 재난문자 폴백 — 본선(safetydata 러너 차단) · 폰 신선분이 둘 다 0건일 때만 Korea Monitor SSR로 슬롯을 살린다.
+    #   순서 = 폰 채택 '뒤' = 폰/공식이 있으면 그게 이긴다(폴백은 빈칸 메우기 전용 · 운영자 260802 "재난문자 급만").
+    dis_src = "safetydata·폰" if dis else ""
+    if not dis:
+        dis = disaster_km()
+        if dis:
+            dis_src = "koreamonitor"
+            print(f"재난문자 KM 폴백 채택: {len(dis)}건")
     fin_any = bool(fin) and (bool(fin.get("rates")) or bool(fin.get("coins")))
     subs_any = bool(subs_new) and any(subs_new.values())
     if not yt_all and not gt and not tk and not sh and not ai and not subs_any and not rd and not bs and not hn and not fin_any and not dis and not kob and not exw:
@@ -2266,7 +2336,8 @@ def main():
               "reddit": _hh("reddit", rd, REDDIT_ON), "bsky": _hh("bsky", bs, BSKY_ON), "bsky_trends": _hh("bsky_trends", btr, BSKY_ON),
               "signal": _hh("signal", sig, SIG_ON), "xtrends": _hh("xtrends", xtr, XTR_ON),
               "hackernews": _hh("hackernews", hn, HN_ON), "finance": _hh("finance", (fin.get("rates") or []) + (fin.get("coins") or []) if fin else [], FIN_ON),
-              "disaster": _hh("disaster", dis, bool(SAFETY_KEY)), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
+              # ⑭ KM 폴백 상시 = 키 없어도 축은 살아있음(off 딱지 금지 · 260802)
+              "disaster": _hh("disaster", dis, True), "kobis": _hh("kobis", kob, bool(KOBIS_KEY)),
               "expressway": _hh("expressway", exw, bool(EX_KEY)),
               "subs": _hh("subs", (subs_new if (subs_new is not None and subs_any) else []), SUBS_ON)}
     if subs_new is not None and acc:
@@ -2364,7 +2435,7 @@ def main():
     tk_n = len((data["tiktok"] or {}).get("videos") or (data["tiktok"] or {}).get("hashtags") or [])
     sb = data["subs"] or {}
     sb_msg = " · ".join("%s %d" % (k, len(sb.get(k) or [])) for k in ("x", "tiktok", "insta", "youtube", "threads")) if sb else "OFF"
-    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 블스트렌드 {len(data['bsky_trends'])}{'' if BSKY_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'' if SAFETY_KEY else '(무키)'} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
+    print(f"✅ sns_trends: youtube {len(data['youtube'])}({data['youtube_src'] or '-'} · 뉴스 {len(data['youtube_news'])}) · gtrends {len(data['gtrends'])} · tiktok {tk_n}건 · 쇼츠 {len(data['shorts'])} · AI영상 {len(data['aivid'])} · 유튜브키 {'있음' if YT_KEY else '없음(InnerTube 폴백)'} · 구독[{sb_msg}]{'' if SUBS_ON else '(게이트 OFF)'} · 레딧 {len(data['reddit'])}{'' if REDDIT_ON else '(OFF)'} · 블스 {len(data['bsky'])}{'' if BSKY_ON else '(OFF)'} · 시그널 {len(data['signal'])}{'' if SIG_ON else '(OFF)'} · X트렌드 {len(data['xtrends'])}{'' if XTR_ON else '(OFF)'} · 블스트렌드 {len(data['bsky_trends'])}{'' if BSKY_ON else '(OFF)'} · HN {len(data['hackernews'])}{'' if HN_ON else '(OFF)'} · 금융 환{len((data['finance'] or {}).get('rates') or [])}·코{len((data['finance'] or {}).get('coins') or [])}{'' if FIN_ON else '(OFF)'} · 재난 {len(data['disaster'])}{'(' + dis_src + ')' if dis_src else ''} · 박스 {len(data['kobis'])}{'' if KOBIS_KEY else '(무키)'} · 도로 {len(data['expressway'])}{'' if EX_KEY else '(무키)'}")
     # 산출물 워치독(운영자 260730 "재발 안하려면?") — fail-soft 파이프의 '조용한 0'을 크론 로그에서 즉시 보이게.
     # fail-soft는 파이프가 '안 깨지게' 하는 장치지 '실패를 감추는' 장치가 아니다 → 게이트 OFF·무키가 아닌데 0건이면 경보.
     # 대상 = 항상 켜져 있고 0이면 화면이 실제로 비는 코어 레인만(옵션·키 게이트 레인은 정상 0이 있어 제외 = 거짓경보 0).

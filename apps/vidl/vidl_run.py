@@ -6,7 +6,8 @@
 #   ③ 1080p FHD 호환별 — 짧은 변>1080일 때만(가로=height≤1080 · 세로=width≤1080 · 1080p_ 표식)
 #   · 재생목록 방지 = 기본 --no-playlist --playlist-items 1 · 게시물형 URL(/p/·/reel/·/status/ 등)은 --no-playlist만(bat v6.6)
 #   · YT = 쿠키 미사용 선행 → 실패 시 쿠키 1회 재시도(bat v6.2) · 비YT = 쿠키 있으면 사용
-#   · 파일명 = {KST TS}_{플랫폼}_{계정}_{제목}(bat 동일 · --trim-filenames 120 --windows-filenames)
+#   · 파일명 = {KST TS}_{플랫폼}_{계정}_{제목}(bat 동일) — 단 **다운로드 중엔 ASCII 짧은 이름(%(id)s)으로 받고
+#     끝난 뒤 pretty_rename이 바이트 상한(255B) 안에서 계정·제목을 복원**한다(260802 [Errno 36] 실측 봉합 · 아래 주석)
 # 산출 = R2 vidl_res/<id>/<파일명>(뷰어가 api/dl 프록시로 저장 = 로컬 다운로드 폴더) + 드라이브 '내 드라이브/Shared' 업로드
 #   (= bat의 robocopy 축 · GDRIVE_SA_JSON 있을 때만 · 실패는 비치명 = 로컬 저장은 계속) → viewer/vidl_out/<id>/result.json.
 # 골격 = apps/conv/conv_run.py 미러(die/r2/커밋 문법) · 드라이브 인증 = .github/scripts/drive_shared_guard.py 정본 계승.
@@ -116,7 +117,8 @@ def probe(url, fmt, extra, cookies, pl):
     if budget_left() < 60:
         return None
     args = ["--no-warnings", "-f", fmt] + extra + pl + [
-        "--print", "%(width)s|%(height)s|%(fps)s|%(format_id)s", "--playlist-items", "1", url]
+        "--print", "%(width)s|%(height)s|%(fps)s|%(format_id)s|%(uploader_id)s|%(title)s",
+        "--playlist-items", "1", url]   # uid·title = 사후 예쁜이름 복원용(pretty_rename) — title은 마지막이라 내부 | 허용
     try:
         r = ytd(args, PROBE_TO, cookies=cookies, capture=True)
     except subprocess.TimeoutExpired:
@@ -126,11 +128,62 @@ def probe(url, fmt, extra, cookies, pl):
     ls = (r.stdout or "").strip().splitlines()
     if not ls:
         return None
-    p = ls[0].split("|", 3)
+    p = ls[0].split("|", 5)
     if len(p) < 4:
         return None
     w, h, fps = int(_fnum(p[0])), int(_fnum(p[1])), _fnum(p[2])
-    return {"w": w, "h": h, "fps": fps, "fid": p[3].strip()} if w and h else None
+    uid = p[4].strip() if len(p) > 4 else ""
+    title = p[5].strip() if len(p) > 5 else ""
+    return ({"w": w, "h": h, "fps": fps, "fid": p[3].strip(),
+             "uid": "" if uid == "NA" else uid, "title": "" if title == "NA" else title} if w and h else None)
+
+
+# ── 파일명 바이트 안전(260802 실측 봉합) ────────────────────────────────────────────
+# 사고: 리눅스 파일명 상한은 255 **바이트**인데 --trim-filenames는 **문자 수** 기준이라,
+#   한글·이모지(3~4B/자) 제목에서 trim 120이 발동조차 않고(실측 110자=215B) yt-dlp가 뒤에 붙이는
+#   ".fhls-audio-128000-Audio.mp4.part-Frag1.part"(44B)까지 더해 259B → [Errno 36] File name too long
+#   → 조각 전부 스킵 → "The downloaded file is empty" → 받기 전량 실패(운영자 260802 "무한로딩만 걸린다").
+# 처방: 다운로드 중 이름은 ASCII 짧은 이름(%(id)s)으로 고정하고, 끝난 뒤 바이트 상한으로 잘라 예쁜 이름 복원.
+FN_MAX = 255            # ext4/overlayfs 파일명 상한(바이트)
+FN_HEADROOM = 12        # 업로드·후처리가 덧댈 여유(.tmp 등)
+FN_STEM_CAP = 180       # 예쁜 이름 stem 자체 상한(드라이브·R2 키 부담 억제)
+
+
+def _fnsafe(s):
+    """경로·윈도 금지문자 및 제어문자 제거(yt-dlp --windows-filenames가 하던 몫을 rename 쪽에서 담당)."""
+    s = re.sub(r"[\\/:*?\"<>|\x00-\x1f\x7f]+", " ", str(s or ""))
+    return re.sub(r"\s+", " ", s).strip().strip(".")
+
+
+def _bytecap(s, cap):
+    """UTF-8 바이트 기준으로 자르되 문자 경계 보존(멀티바이트 중간 절단 = 깨진 이름 방지)."""
+    b = s.encode("utf-8")
+    if len(b) <= cap:
+        return s
+    return b[:cap].decode("utf-8", "ignore").rstrip()
+
+
+def pretty_rename(outdir, uid, title):
+    """{TS}_{PLAT}_{tag}{idx}{id} → …_{계정}_{제목}(bat 파일명 규약) · 바이트 상한 초과분만 제목이 잘린다."""
+    uid, title = _fnsafe(uid), _fnsafe(title)
+    if not (uid or title):
+        return
+    for fn in sorted(os.listdir(outdir)):
+        src = os.path.join(outdir, fn)
+        if not os.path.isfile(src):
+            continue
+        stem, dot, suf = fn.partition(".")   # 다운로드 이름엔 점이 없다(%(id)s) → 첫 점 뒤 전부가 확장자류
+        if not dot:
+            continue
+        room = FN_MAX - FN_HEADROOM - len(dot.encode()) - len(suf.encode())
+        want = "_".join(x for x in (stem, uid, title) if x)
+        new = _bytecap(want, max(len(stem.encode()), min(room, FN_STEM_CAP)))
+        n, cand = 1, new
+        while cand != stem and os.path.exists(os.path.join(outdir, cand + dot + suf)):
+            n += 1
+            cand = _bytecap(new, max(1, min(room, FN_STEM_CAP) - 3)) + f"_{n}"
+        if cand != stem:
+            os.rename(src, os.path.join(outdir, cand + dot + suf))
 
 
 def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post):
@@ -138,7 +191,7 @@ def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post):
     to = int(max(60, budget_left()))
     tag = f"{name_tag}_" if name_tag else ""
     idx = "%(playlist_index|1)s_" if post else ""   # 캐러셀 다중 항목 파일명 충돌 방지(평의회6 P2-4)
-    out = f"{TS}_{PLAT}_{tag}{idx}%(uploader_id)s_%(title)s.%(ext)s"
+    out = f"{TS}_{PLAT}_{tag}{idx}%(id).40s.%(ext)s"   # 다운로드 중엔 ASCII 짧은 이름(최악 ~114B) = [Errno 36] 원천 차단 · 계정·제목은 pretty_rename이 사후 복원
     args = ["--ffmpeg-location", os.environ.get("FFMPEG_DIR", "/usr/bin"),
             "--trim-filenames", "120", "--windows-filenames",
             "-P", outdir, "-o", out, "-f", fmt, "--merge-output-format", "mp4", "-N", "4"] + extra + pl
@@ -331,6 +384,8 @@ def main():
         download(url, outdir, "1080p", f1080, [], ck_use, pl, subs=False, post=post)
 
     srt_to_txt(outdir)
+    meta = best or fpsb or fhd or {}   # 예쁜 이름 재료 = 사전조회 부산물(추가 호출 0) · 전부 실패면 짧은 id 이름 그대로 유지
+    pretty_rename(outdir, meta.get("uid", ""), meta.get("title", ""))
 
     # ── R2 업로드(부분 성공 · 루프 내 die 금지 · 평의회6 P2-2) ──
     files, up_err = [], 0

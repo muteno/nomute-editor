@@ -17,6 +17,7 @@ v1.15.2류 사본 드리프트(파일 rename 후 참조 미갱신·파일명↔�
 
 import os
 import re
+import datetime
 import sys
 import glob
 import base64
@@ -1677,15 +1678,78 @@ def check_imgstudio_dock_spec():
 #   ⚠ .trail-v 축은 smoke_parity C3(카드 생성 #optStrip ↔ AI 생성 #geniSum 크로스-파일 등가)의 전제이기도 하다 —
 #     `border:0`으로 지우면 borderColor가 표면별 currentColor로 갈라져 파리티가 깨진다(그래서 1px transparent 동결).
 _TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[공백 제거 표기])
-    ('캡슐(.trail)', ('.trail', '.cpprev-box .trail'),
-     ('border-radius:var(--r-pill)', 'border:1pxsolidrgba(255,255,255,.14)',
+    ('캡슐(.trail)', ('.trail', '.cpprev-box .trail', '.monwrap .trail'),
+     ('border-radius:var(--r-s)', 'border:1pxsolidrgba(255,255,255,.14)',
       'background:rgba(8,15,11,.54)', 'backdrop-filter:blur(var(--blur-s))', '-webkit-backdrop-filter:blur(var(--blur-s))')),
-    ('값 칩 그룹(.trail-v)', ('.cpprev-box .trail-v',),
+    ('값 칩 그룹(.trail-v)', ('.cpprev-box .trail-v', '.monwrap .trail-v'),
      ('background:transparent', 'border:1pxsolidtransparent', 'border-radius:0', 'font-size:10.5px', 'line-height:1')),
-    ('값 칩(.gs-v)', ('.cpprev-box .trail-v .gs-v',),
+    ('값 칩(.gs-v)', ('.cpprev-box .trail-v .gs-v', '.monwrap .trail-v .gs-v'),
      ('height:22px', 'border-radius:var(--r-l)', 'color:var(--mut)', 'font-size:10.5px', 'font-weight:var(--fw-x)')),
 )
-_TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html')   # 레일 보유 표면(신규 = 여기 1줄)
+_TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
+                   'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
+#   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
+
+
+# ── 자간(tracking) 측정 기준 단일화 게이트 (운영자 260802 "잴 때 항상 한개의 기준에 따라서 짓던지, 두개의 기준에 다 맞추던지 하자") ──
+#   왜 = 힌트(뷰어)와 산출(서버)이 **다른 자로 재고 있었다**: 서버 draw_t는 글자 잉크폭(getbbox)만큼 전진하는데
+#   뷰어는 canvas advance(measureText().width)를 썼다 → 같은 문구에 뷰어만 −41을 요구(실측 16자 Σadv 960.7 vs Σink 818).
+#   계약 = ① 판정 기준 = **잉크폭 하나**(뷰어 = actualBoundingBoxLeft+Right) ② 한도 상수 = 서버 SPECS·limit·floor와 py↔js 동일.
+def check_track_parity():
+    """자간 판정 = 잉크폭 단일 기준 + 한도 상수 py↔js 동일(운영자 260802). 이탈 = rc=1."""
+    rc = 0
+    try:
+        js = open(os.path.join(ROOT, 'viewer', 'thumb.html'), encoding='utf-8').read()
+        yml = open(os.path.join(ROOT, '.github', 'workflows', 'thumb-make.yml'), encoding='utf-8').read()
+        ov = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_overlay.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 자간 기준 게이트 — 파일 열기 실패: %s' % e); return 1
+    if 'actualBoundingBoxLeft' not in js or 'actualBoundingBoxRight' not in js:
+        print('❌ 자간 기준 게이트 — 뷰어가 잉크폭(actualBoundingBox*)을 안 쓴다 = advance 기준 회귀(서버 draw_t와 다른 자)'); rc = 1
+    # 축별 자(basis) 선언 = 서버 렌더러와 1:1 — 오버레이(draw_t 잉크) ink / 헤더(reels2 getlength) adv
+    BASIS = {'post': 'ink', 'reels': 'ink', 'jjpost': 'ink', 'jjreels': 'ink'}
+    for ax, want_b in BASIS.items():
+        m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
+        if not m or m.group(1) != want_b:
+            print("❌ 자간 기준 게이트 — TRK.%s basis=%s ≠ 서버 축(%s · 오버레이 = draw_t 잉크폭)" % (ax, m.group(1) if m else '없음', want_b)); rc = 1
+    for ax in ('sub', 'title', 'jinjja'):
+        m = re.search(r"%s:\s*\{[^}]*basis:\s*'(\w+)'" % ax, js)
+        if not m or m.group(1) != 'adv':
+            print("❌ 자간 기준 게이트 — HDR.%s basis=%s ≠ 서버 축(adv · 헤더 = reels2 font.getlength)" % (ax, m.group(1) if m else '없음')); rc = 1
+    try:
+        r2 = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_reels2.py'), encoding='utf-8').read()
+        if 'getlength' not in r2:
+            print('❌ 자간 기준 게이트 — nomute_reels2가 getlength(advance) 축을 안 쓴다 = 헤더 basis 선언(adv)과 어긋남'); rc = 1
+    except Exception:
+        pass
+    jj = ''
+    try:
+        jj = open(os.path.join(ROOT, 'apps', 'thumbnail', 'nomute_jinjja.py'), encoding='utf-8').read()
+    except Exception:
+        pass
+    if jj and 'getbbox' not in jj:
+        print('❌ 자간 기준 게이트 — nomute_jinjja 오버레이 폭이 잉크(getbbox) 축이 아니다 = jj* basis(ink) 어긋남'); rc = 1
+    if re.search(r"880 초과|자간 -45로도 안 들어감", js):
+        print('❌ 자간 기준 게이트 — 힌트 문구에 한도·하한이 하드코딩됐다(규격 변경 시 표기만 옛말로 남는다) → spec 산출로 바꿔라'); rc = 1
+    want = {'post': {'limit': 920, 'floor': -45, 'fs': 76, 'tr': 0},
+            'reels': {'limit': 844, 'floor': -30, 'fs': 78, 'tr': -1}}
+    for fmt, w in want.items():
+        m = re.search(r'"%s":\s*\{[^}]*?"fs":(-?\d+)[^}]*?"tr":(-?\d+)' % fmt, ov, re.S)
+        if not m:
+            print('❌ 자간 기준 게이트 — nomute_overlay SPECS[%s] fs/tr 파싱 실패' % fmt); rc = 1; continue
+        if int(m.group(1)) != w['fs'] or int(m.group(2)) != w['tr']:
+            print('❌ 자간 기준 게이트 — SPECS[%s] fs/tr(%s/%s) ≠ 뷰어 TRK(%s/%s)' % (fmt, m.group(1), m.group(2), w['fs'], w['tr'])); rc = 1
+        j = re.search(r"%s:\s*\{[^}]*fs:\s*(-?\d+)[^}]*limit:\s*(-?\d+)[^}]*start:\s*(-?\d+)[^}]*floor:\s*(-?\d+)" % fmt, js)
+        if not j:
+            print('❌ 자간 기준 게이트 — 뷰어 TRK.%s 파싱 실패' % fmt); rc = 1; continue
+        if (int(j.group(1)), int(j.group(2)), int(j.group(3)), int(j.group(4))) != (w['fs'], w['limit'], w['tr'], w['floor']):
+            print('❌ 자간 기준 게이트 — 뷰어 TRK.%s(fs%s/limit%s/start%s/floor%s) ≠ 서버 정본(%s/%s/%s/%s)'
+                  % (fmt, j.group(1), j.group(2), j.group(3), j.group(4), w['fs'], w['limit'], w['tr'], w['floor'])); rc = 1
+    if ('limit = 920 if fmt' not in yml) or ('floor = -45 if fmt' not in yml):
+        print('❌ 자간 기준 게이트 — thumb-make.yml fit_tracking 한도(920/-45) 표기 이탈 = 3면 동기 깨짐'); rc = 1
+    if rc == 0:
+        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(오버레이 4 = 잉크/draw_t · 헤더 3 = advance/getlength) = 서버 렌더러와 1:1 · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0.')
+    return rc
 
 
 def check_trail_spec():
@@ -1712,8 +1776,103 @@ def check_trail_spec():
                 print('❌ 코너 레일 사본 드리프트 — %s 「%s」 누락: %s → 정본(CII 「미리보기 코너 옵션 레일」) 값 그대로 계승하라'
                       % (rel, ax, ', '.join(miss))); rc = 1
     if rc == 0:
-        print('✅ 코너 레일 게이트 — 3표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).' % (n // max(1, len(_TRAIL_SURFACES))))
+        print('✅ 코너 레일 게이트 — %d표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).'
+              % (len(_TRAIL_SURFACES), len(_TRAIL_AXES)))
     return rc
+
+
+# ── 미리보기 중앙 = 업로드 픽토 1개 게이트 (운영자 260802 "그 가운데는 무조건 사진첩만 있는거임 · 텍스트랑 같이 있는거 없어") ──
+#   왜 = 이 규칙은 **탭마다 재발하기 딱 좋은 종류**다. 260721 AI 생성에 「글|사진 반갈 듀오」가 들어갔고 tr이 그걸 통계승해
+#   두 표면이 같이 어긋났다(260802 원복). 표면이 늘 때마다 중앙에 버튼을 하나 더 붙이는 유혹은 계속 생기는데,
+#   스모크는 AI 생성 한 탭(smoke_parity C5b)만 잰다 → 나머지 표면은 무방비. 그래서 커밋 단계에서 전 뷰어를 센다.
+#   계약 = 빈 상태 무대(.cpv-empty) 안 진입 버튼(.cpv-photobtn)은 **최대 1개**(사진·영상·파일 업로드 그 하나).
+#   0개 = 정당(k·song = 중앙이 대기 문구라 버튼 없음). 텍스트·참고자료 등 나머지 진입점 = 코너 옵션 레일(CII 해당 행).
+#   ⚠ JS 문자열로 그리는 빈 상태(thumb `st.innerHTML = '<div class="cpv-empty">…'`)도 같은 정규식에 걸린다 = 사각 0.
+
+
+def check_prev_center():
+    """미리보기 빈 상태 중앙 = 업로드 픽토 단독 게이트(운영자 260802).
+    .cpv-empty 블록 안 .cpv-photobtn이 2개 이상이면 rc=1. 등재 = CII 「합성 미리보기 쉘」 행."""
+    import glob as _g
+    rc = 0; n = 0; surf = 0
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            html = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        hit = False
+        for m in re.finditer(r'<div class="cpv-empty"', html):   # 블록 = div 깊이 카운터로 정확히 닫는다(정규식 게으른 매칭은 중첩에서 샌다)
+            i = m.start(); d = 0; j = i; blk = ''
+            while j < len(html):
+                t = html.find('<', j)
+                if t < 0:
+                    break
+                if html.startswith('<div', t):
+                    d += 1
+                elif html.startswith('</div', t):
+                    d -= 1
+                    if d == 0:
+                        blk = html[i:t]; break
+                j = t + 4
+            if not blk:
+                continue
+            hit = True; n += 1
+            cnt = len(re.findall(r'class="[^"]*cpv-photobtn', blk))
+            if cnt > 1:
+                print('❌ 미리보기 중앙 게이트 — %s 빈 상태 무대에 진입 버튼 %d개 = 중앙은 업로드 하나뿐(운영자 260802). '
+                      '나머지 진입점은 코너 옵션 레일로 빼라(CII 「미리보기 코너 옵션 레일」)' % (rel, cnt)); rc = 1
+        if hit:
+            surf += 1
+    if rc == 0:
+        print('✅ 미리보기 중앙 게이트 — 빈 상태 무대 %d개(%d표면) 전부 진입 버튼 ≤1(중앙 = 업로드 단독 · 텍스트·참고 진입점은 코너 레일).' % (n, surf))
+    return rc
+
+
+# ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
+#   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
+#   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
+#   충돌 자체는 못 막지만(세션끼리 서로를 모른다) **착수 30초 만에 알아채는 것**은 막을 수 있다.
+#   계약 = `docs/locks/*.md`(shared/lock.py take/release)에 「누가·언제부터·어느 파일」을 남기고,
+#   내가 만진 파일이 **남의 살아있는 락**과 겹치면 커밋 직전에 눈앞에 띄운다.
+#   ⚠ 하드 차단 안 함 = 해제를 잊은 세션 하나가 레포를 얼리면 락 파일이 곧 사고원 → TTL(기본 90분) 자동 만료로 유령 락은 스스로 사라진다.
+
+
+def check_component_lock():
+    """컴포넌트 작업 락 겹침 알림(운영자 260802 · WARN·비차단). 등재 = CLAUDE.md 이 레포 전용 절."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, 'shared'))
+        import lock as _lock
+    except Exception as e:
+        print('⚠️ 컴포넌트 락 게이트 스킵(모듈):', e); return 0
+    locks = _lock.live()
+    if not locks:
+        print('✅ 컴포넌트 락 게이트 — 살아있는 락 0(병렬 세션 충돌 감시 대기 · 착수 선언 = python3 shared/lock.py take).')
+        return 0
+    changed = set()
+    for cmd in ('git diff --name-only origin/main...HEAD', 'git diff --name-only', 'git diff --name-only --cached'):
+        try:
+            changed |= {l.strip() for l in os.popen(cmd).read().splitlines() if l.strip()}
+        except Exception:
+            pass
+    me = _lock.session_id()
+    hits = []
+    for lk in locks:
+        if lk['session'] == me:
+            continue   # 내 락 = 조용(내가 잡은 걸 나한테 알릴 이유 없다)
+        import fnmatch
+        ov = sorted({c for c in changed for f in lk['files'] if c == f or fnmatch.fnmatch(c, f)})
+        if ov:
+            hits.append((lk, ov))
+    if not hits:
+        print('✅ 컴포넌트 락 게이트 — 살아있는 락 %d개 · 내 변경분과 겹침 0(병렬 재작업 위험 없음).' % len(locks))
+        return 0
+    print('⚠️ 컴포넌트 락 게이트(WARN·비차단) — 남이 잡고 있는 파일을 만졌다(병렬 재작업 사고 축 · 260802 3회):')
+    for lk, ov in hits:
+        age = int((datetime.datetime.now(_lock.KST) - lk['since']).total_seconds() / 60)
+        print('   🔒 「%s」 = %s가 %d분 전부터 · 겹친 파일: %s' % (lk['name'], lk['session'], age, ', '.join(ov)))
+    print('   → 착수 전 그 세션 결과를 먼저 확인하거나(리베이스 충돌·통째 재작업 예방), 내 작업도 락으로 선언하라: python3 shared/lock.py take "<컴포넌트>" <파일…>')
+    return 0
 
 
 def check_label_fill():
@@ -2190,10 +2349,24 @@ def main():
     except Exception as e:
         print('⚠️ 이미지 스튜디오 도크 규격 게이트 스킵:', e)
     try:
+        if check_track_parity() != 0:   # 자간 판정 기준 단일화(운영자 260802 — 뷰어 잉크폭 = 서버 draw_t 축 · 한도 3면 동일)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 자간 기준 게이트 스킵:', e)
+    try:
         if check_trail_spec() != 0:   # 미리보기 코너 옵션 레일 사본 동일성(운영자 260802 — thumb·tr·index 3표면 값 사본이 갈라지는 조용한 드리프트 차단)
             rc = 1
     except Exception as e:
         print('⚠️ 코너 레일 게이트 스킵:', e)
+    try:
+        check_component_lock()   # 병렬 세션 컴포넌트 락 겹침 알림(운영자 260802 · WARN·비차단 = rc 미반영)
+    except Exception as e:
+        print('⚠️ 컴포넌트 락 게이트 스킵:', e)
+    try:
+        if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 미리보기 중앙 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
