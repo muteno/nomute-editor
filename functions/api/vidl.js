@@ -47,7 +47,7 @@ export async function onRequestPost({ request, env }) {
   else if (hb('tiktok.com')) plat = (/\/(video|photo)\/\d/.test(path) || /^\/(t|v)\//.test(path) || hostIs('vm.tiktok.com') || hostIs('vt.tiktok.com')) ? 'TT' : '';
   else if (hb('fb.watch')) plat = path.length > 1 ? 'FB' : '';
   else if (hb('facebook.com')) plat = (/\/(videos|reel|watch)\//.test(path) || path === '/watch') ? 'FB' : '';
-  else if (hb('threads.net') || hb('threads.com')) plat = /\/post\//.test(path) ? 'TH' : '';
+  else if (hb('threads.net') || hb('threads.com')) plat = /\/(post|t|share)\//.test(path) ? 'TH' : '';   // 공유 시트 형식(/share/<코드>/ · /t/<코드>) 동반 수용 — 뷰어 _dgVidPlat·러너 detect_plat과 3면 동값(260802)
   if (!plat) return json({ error: '영상 게시물 주소가 아니야 — 유튜브·인스타·X·틱톡·페북·스레드의 영상 게시물 주소를 넣어줘.' }, 400);
 
   const rl = await rateGate(GH, env.GH_TOKEN, 'vidl-make.yml');   // 발사 레이트리밋(conv 관례 · fail-open)

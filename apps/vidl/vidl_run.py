@@ -85,7 +85,7 @@ def detect_plat(url):
     if host("facebook.com"):
         return "FB" if (re.search(r"/(videos|reel|watch)/", path) or path == "/watch") else ""
     if host("threads.net") or host("threads.com"):
-        return "TH" if "/post/" in path else ""
+        return "TH" if re.search(r"/(post|t|share)/", path) else ""   # 공유 시트 형식(/share/<코드>/ · /t/<코드>)도 수용 — 뷰어·엣지 게이트와 3면 동값(260802)
     return ""
 
 
