@@ -17,6 +17,7 @@ v1.15.2류 사본 드리프트(파일 rename 후 참조 미갱신·파일명↔�
 
 import os
 import re
+import datetime
 import sys
 import glob
 import base64
@@ -1767,6 +1768,52 @@ def check_prev_center():
     return rc
 
 
+# ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
+#   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
+#   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
+#   충돌 자체는 못 막지만(세션끼리 서로를 모른다) **착수 30초 만에 알아채는 것**은 막을 수 있다.
+#   계약 = `docs/locks/*.md`(shared/lock.py take/release)에 「누가·언제부터·어느 파일」을 남기고,
+#   내가 만진 파일이 **남의 살아있는 락**과 겹치면 커밋 직전에 눈앞에 띄운다.
+#   ⚠ 하드 차단 안 함 = 해제를 잊은 세션 하나가 레포를 얼리면 락 파일이 곧 사고원 → TTL(기본 90분) 자동 만료로 유령 락은 스스로 사라진다.
+
+
+def check_component_lock():
+    """컴포넌트 작업 락 겹침 알림(운영자 260802 · WARN·비차단). 등재 = CLAUDE.md 이 레포 전용 절."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, 'shared'))
+        import lock as _lock
+    except Exception as e:
+        print('⚠️ 컴포넌트 락 게이트 스킵(모듈):', e); return 0
+    locks = _lock.live()
+    if not locks:
+        print('✅ 컴포넌트 락 게이트 — 살아있는 락 0(병렬 세션 충돌 감시 대기 · 착수 선언 = python3 shared/lock.py take).')
+        return 0
+    changed = set()
+    for cmd in ('git diff --name-only origin/main...HEAD', 'git diff --name-only', 'git diff --name-only --cached'):
+        try:
+            changed |= {l.strip() for l in os.popen(cmd).read().splitlines() if l.strip()}
+        except Exception:
+            pass
+    me = _lock.session_id()
+    hits = []
+    for lk in locks:
+        if lk['session'] == me:
+            continue   # 내 락 = 조용(내가 잡은 걸 나한테 알릴 이유 없다)
+        import fnmatch
+        ov = sorted({c for c in changed for f in lk['files'] if c == f or fnmatch.fnmatch(c, f)})
+        if ov:
+            hits.append((lk, ov))
+    if not hits:
+        print('✅ 컴포넌트 락 게이트 — 살아있는 락 %d개 · 내 변경분과 겹침 0(병렬 재작업 위험 없음).' % len(locks))
+        return 0
+    print('⚠️ 컴포넌트 락 게이트(WARN·비차단) — 남이 잡고 있는 파일을 만졌다(병렬 재작업 사고 축 · 260802 3회):')
+    for lk, ov in hits:
+        age = int((datetime.datetime.now(_lock.KST) - lk['since']).total_seconds() / 60)
+        print('   🔒 「%s」 = %s가 %d분 전부터 · 겹친 파일: %s' % (lk['name'], lk['session'], age, ', '.join(ov)))
+    print('   → 착수 전 그 세션 결과를 먼저 확인하거나(리베이스 충돌·통째 재작업 예방), 내 작업도 락으로 선언하라: python3 shared/lock.py take "<컴포넌트>" <파일…>')
+    return 0
+
+
 def check_label_fill():
     """콘텐츠 라벨색(cat-*·bias-*) 솔리드 배경 필 금지 게이트(운영자 260721 Q345 · 평의회 Q329 채택 ④ = 감사 R5 절제축).
     취지 = 카테고리/편향색은 '라벨'(텍스트·도트·저알파 워시·게이지)이지 '기능 신호'(칩·버튼 솔리드 필)가 아니다 —
@@ -2245,6 +2292,10 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 코너 레일 게이트 스킵:', e)
+    try:
+        check_component_lock()   # 병렬 세션 컴포넌트 락 겹침 알림(운영자 260802 · WARN·비차단 = rc 미반영)
+    except Exception as e:
+        print('⚠️ 컴포넌트 락 게이트 스킵:', e)
     try:
         if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
             rc = 1
