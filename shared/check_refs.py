@@ -1700,6 +1700,10 @@ _TRAIL_AXES = (   # (축 이름, 셀렉터 후보[바디 합산], 동결 선언[
 #   ⚠ 구 술어 `:not(:has(button:not([hidden])))`는 숨은 옵션 컬럼 안의 ‹›·체브론까지 세어 빈 유리조각이 상주했다(실측 260802).
 #   프리픽스(.cpprev / .geni-prev / .pvsec / .monwrap)·id(#cpRail / #geniRail)는 표면마다 달라 **술어 문자열만** 잰다.
 _TRAIL_EMPTY_PRED = ':not(:has(.trail-g>button:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'
+#   thumb만 정밀 술어(be9856f 260802 — 사진 도구가 .trail-g 직계 button이 아니라 .cpv-tool이고, 숨은 옵션 컬럼의 ‹›까지
+#   세어 6px 껍데기가 상주[실측 rails[1].w=6] → 판정을 「보이는 도구·보이는 값 그룹」으로 좁힌 표면별 정본).
+#   게이트가 이 개정을 미추적해 main 적색이던 드리프트 봉합(260802) — 타 표면 = 직계 button 정본 유지.
+_TRAIL_EMPTY_PRED_BY = {'viewer/thumb.html': ':not(:has(.trail-g.cpv-tool:not([hidden]))):not(:has(.trail-v:not(.none))){display:none'}
 _TRAIL_SURFACES = ('viewer/thumb.html', 'viewer/tr.html', 'viewer/index.html',
                    'viewer/edit.html', 'viewer/k.html', 'viewer/song.html', 'viewer/vd.html')   # 레일 보유 표면(신규 = 여기 1줄) — 260802 영상 스튜디오 4탭 편입(운영자 "영상도 동일하게해줘" · 콘티 sb는 미리보기 액자 자체가 없어[Q1159 폐지] 비대상)
 #   ⚠ vd(큐영상)만 앵커가 `.monwrap`(프로그램 모니터 래퍼 — 모니터 안은 renderMon()의 `mon.innerHTML=`이 통째로 갈아치워 레일이 지워진다) — 셸 클래스가 다를 뿐 레일 규격은 동일하므로 위 축의 셀렉터 후보에 `.mon …`을 같이 넣어 한 게이트로 잰다.
@@ -1789,9 +1793,10 @@ def check_trail_spec():
             if miss:
                 print('❌ 코너 레일 사본 드리프트 — %s 「%s」 누락: %s → 정본(CII 「미리보기 코너 옵션 레일」) 값 그대로 계승하라'
                       % (rel, ax, ', '.join(miss))); rc = 1
-        if _TRAIL_EMPTY_PRED not in re.sub(r'\s+', '', css):   # 빈 캡슐 소거 술어(표면 공통 · 프리픽스·id는 자유)
+        pred = _TRAIL_EMPTY_PRED_BY.get(rel, _TRAIL_EMPTY_PRED)   # 빈 캡슐 소거 술어(표면별 정본 · 프리픽스·id는 자유)
+        if pred not in re.sub(r'\s+', '', css):
             print('❌ 코너 레일 게이트 — %s 빈 캡슐 소거 술어 미보유/이탈 → `…%s` 그대로 계승하라'
-                  % (rel, _TRAIL_EMPTY_PRED)); rc = 1
+                  % (rel, pred)); rc = 1
     if rc == 0:
         print('✅ 코너 레일 게이트 — %d표면 × %d축 사본 동일(캡슐·값 칩 그룹·값 칩 · 한 표면만 고치고 잊는 드리프트 차단 · 신규 편입 = _TRAIL_SURFACES).'
               % (len(_TRAIL_SURFACES), len(_TRAIL_AXES)))
