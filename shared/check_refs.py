@@ -2690,6 +2690,38 @@ def check_nm_sync():
     return 0
 
 
+def check_rubric_regress():
+    """루브릭 회귀 게이트(하드 · 운영자 260803 승인 — «대구 40.1도» 오발 봉합의 재발 방지 축).
+    breaking_judge RUBRIC(속보 YES/NO 판정 프롬프트)이 바뀌면 과거 실측 판정 케이스(rubric_regress_cases.json ·
+    실발송/실픽 이력 기반)를 드라이런 재판정해 정답 뒤집힘을 확인해야 커밋이 열린다 —
+    통과 도장 = rubric_regress_stamp.json(rubric_ver). 이 게이트 자체는 정적 해시 대조뿐(네트워크·LLM 0) ·
+    LLM 1콜은 `python3 .github/scripts/rubric_regress.py` 실행 시점에만. RUBRIC 무변경 커밋 = 도장 유효 = 무비용 통과."""
+    import importlib.util as _ilu
+    bj_p = os.path.join(ROOT, '.github', 'scripts', 'breaking_judge.py')
+    st_p = os.path.join(ROOT, '.github', 'scripts', 'rubric_regress_stamp.json')
+    cs_p = os.path.join(ROOT, '.github', 'scripts', 'rubric_regress_cases.json')
+    spec = _ilu.spec_from_file_location('breaking_judge_gate', bj_p)
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        cases = json.loads(open(cs_p, encoding='utf-8').read())['cases']
+        assert cases and all(c.get('t') and c.get('expect') in ('YES', 'NO') for c in cases)
+    except Exception as e:
+        print('❌ 루브릭 회귀 게이트 — 케이스 원장 파손/누락(%s): %s' % (os.path.basename(cs_p), e))
+        return 1
+    try:
+        st = json.loads(open(st_p, encoding='utf-8').read())
+    except Exception:
+        st = {}
+    if st.get('rubric_ver') != mod.RUBRIC_VER:
+        print('❌ 루브릭 회귀 게이트 — RUBRIC 변경 후 회귀 미실행(과거 정답 뒤집힘 미확인 = 커밋 차단).')
+        print('   → python3 .github/scripts/rubric_regress.py 실행(케이스 %d건 드라이런·전건 통과 시 도장) 후 스탬프 함께 커밋.' % len(cases))
+        print('   (stamp=%s · now=%s)' % (st.get('rubric_ver'), mod.RUBRIC_VER))
+        return 1
+    print('✅ 루브릭 회귀 게이트 — RUBRIC %s = 회귀 도장 일치(케이스 %d건 · 판정 뒤집힘 확인 완료분).' % (mod.RUBRIC_VER, len(cases)))
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -2892,6 +2924,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 회차 원장 게이트 스킵:', e)
+    try:
+        if check_rubric_regress() != 0:   # 루브릭 회귀 도장(운영자 260803 — breaking RUBRIC 개정 = 과거 실측 판정 드라이런 통과 도장 필수 · 게이트 자체는 정적 해시 대조 = LLM 0)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 루브릭 회귀 게이트 스킵:', e)
     try:
         if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
             rc = 1
