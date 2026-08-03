@@ -1,0 +1,37 @@
+/* ═══ nm-clip.css — 입력칸 클립(복사·붙여넣기·지우개/되돌리기) CSS 단일정본 ═══════════
+   운영자 260803 "모든 텍스트 입력창에는 (클립이) 붙어있어야돼 · 공식처럼가야함".
+   짝 = nm-clip.js(동작) · 상속 = 뷰어 head에 link+script 2줄(nm-job.css·nm-hist.css 하우스 패턴 동축).
+   내용 = index.html 인라인 정본의 **바이트 이관**(값 무변경) — 표면별 스코프 오버라이드
+   (예: `.revdlg .iobtn-edge` 하단 걸침)는 각 뷰어 인라인에 남는다(인라인이 뒤 = 재승리 유지).
+   ⚠ 인라인 사본 금지 — 여기서만 고친다(한 표면만 고치고 잊는 드리프트 차단). */
+/* ── 입력칸 복사/붙여넣기/지우개·되돌리기 버튼 = 이미지 제작(thumb.html attachCopyPaste) 이식 · #revText·#crevText 공용 (운영자 260627) ── */
+.iobtn { position:absolute; top:8px; right:8px; width:30px; height:30px; display:grid; place-items:center; padding:0; color:var(--mut); background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:9px; cursor:pointer; z-index:2; transition:transform .12s, background .15s, color .15s, border-color .15s; -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); -webkit-tap-highlight-color:transparent; }
+.iobtn:hover { background:rgba(255,255,255,.12); color:var(--fg); }
+.iobtn:active { transform:scale(var(--press-s,.85)); }
+.iobtn.ok { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+.iobtn svg { display:block; }
+/* 클립 버튼(입력칸용) = 입력칸 위 우측 테두리에 중앙정렬로 걸친 동그라미(2A) — 평소 중립 / 누름 형광 / 성공 ✓만 형광 */
+.iobtn-edge { top:0; right:14px; transform:translateY(-50%); width:26px; height:26px; border-radius:50%; opacity:.6;
+  background:rgba(26,28,26,.3); border-color:rgba(255,255,255,.17); color:var(--mut); box-shadow:inset 0 1px 0 rgba(255,255,255,.2); }   /* 오버레이 backdrop-filter 없음(규칙①) = 입력칸 위 떠 타이핑마다 재샘플 번쩍 방지 · editdlg/pastedlg/slide-fb 클립 전부 flicker 차단(옛 .revdlg 스코프만 끄던 것 base로 승격 = .askclip과 동형·감사8인 260704) */
+.iobtn-edge:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+.iobtn-edge:active { transform:translateY(-50%) scale(var(--press-s,.85)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+.iobtn-edge.ok { background:rgba(26,28,26,.3); color:var(--accent); border-color:rgba(255,255,255,.17); }
+.iobtn-edge svg { width:13px; height:13px; }
+.iobtn-pp { right:46px; }                          /* 붙여넣기 = 항상 노출 · 지우개 좌측 */
+.iobtn-erase { right:14px; }                       /* 지우개 = 최우측 · 누르면 입력 비움 */
+.iobtn-off { opacity:.3; pointer-events:none; }    /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
+.iobtn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
+.iobtn-copy { right:46px; }                        /* 지우개 없는 입력 = [복사 46 | 붙여넣기 14] */
+.iobtn-copy-e { right:78px; }                      /* 지우개 동반 = [복사 78 | 붙여넣기 46 | 지우개 14] */
+.iobtn-hide { display:none; }                      /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
+
+/* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 iframe·칩)에서 '길게 눌러 붙여넣기' (통일 기틀·운영자 260628) · dialog=top-layer(카드변경 모달 위) */
+.pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
+.pastefb::backdrop { background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(var(--blur-s)); backdrop-filter:blur(var(--blur-s)); }
+.pastefb-box { width:min(360px,90vw); background:linear-gradient(165deg,#14160f,#0c0f0c); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 48px rgba(0,0,0,.55); }
+.pastefb-msg { font-size:13px; color:var(--mut); line-height:1.5; } .pastefb-msg b { color:var(--accent); }
+.pastefb-ta { width:100%; box-sizing:border-box; min-height:90px; resize:none; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.05); color:var(--fg); font:inherit; font-size:14px; }
+.pastefb-ta:focus { border-color:rgba(var(--accent-rgb),.4); outline:none; }
+.pastefb-row { display:flex; gap:8px; justify-content:flex-end; }
+.pastefb-btn { padding:8px 16px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--mut); font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.pastefb-ok { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.1); }

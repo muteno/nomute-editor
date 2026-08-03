@@ -934,6 +934,83 @@ _URL_PH_EXEMPT = {
     ('viewer/edit.html', 'url'),   # .srcwrap 도먼트(운영자 260728 "Contents 하위 없애줘" · hidden) = 화면 미노출 + 「≤2GB」 상한 고지가 딴 데 없음
 }
 
+# ── 「모든 텍스트 입력창 = 클립」 공식 게이트(운영자 260803 "모든 텍스트 입력창에는 (복사·붙여넣기·지우개가)
+#   붙어있어야돼 · 공식처럼가야함") ─────────────────────────────────────────────────────────────
+#   부품 정본 = viewer/nm-clip.js(+nm-clip.css) — 상속 = 뷰어 head 2줄 · 신규 칸 = attachCopyPaste(el, true) 1줄.
+#   이 게이트가 없으면 새 입력칸이 조용히 클립 없이 태어난다(260803 실측 = 전수 감사 51칸 중 30칸 누락 · 음원
+#   탭은 6칸 전멸이었다). 표면·문법이 갈려도(attachCopyPaste / .scnclip / .urlclip 3문법 병존) 배선 흔적으로 본다.
+#   면제 = ⓐ 숫자칩(값 선택 UI · 생김새가 칩이라 클립 비대상) ⓑ PIN(잠금 입력) 뿐 — 늘리려면 사유와 함께 1줄.
+_CLIP_EXEMPT_CLS = ('geni-ar-in', 'rsz-ar-in', 'opa-in', 'pin-in-h')   # N:N 비율칩·OPA 값칩·PIN 칸
+_CLIP_EXEMPT_ID = {
+    ('viewer/index.html', 'pinInput'),   # 발행본 잠금 PIN 표시칸(readonly = 붙여넣기 대상 아님)
+    ('viewer/index.html', 'pubPin'),     # 발행본 PIN 입력(숫자 키패드 · 클립보드 경유 = 잠금 취지에 반함)
+}
+_CLIP_WIRE = ('attachCopyPaste', 'scnclip', 'urlclip', 'askclip', 'iobtn')
+_TA_RE = re.compile(r'<textarea\b[^>]*>', re.I)
+
+def _clip_wired(s, rel, tag, pos, ident, cls):
+    """이 입력칸에 클립이 배선돼 있나 — 3문법 공통 판정.
+       ① 선언 직후 400자 안 클립 버튼 마크업(.scnclip/.urlclip 형제 문법)
+       ② id가 클립 배선 줄에 등장(attachCopyPaste($('#id')) · 배열 forEach 리터럴)
+       ③ id가 없으면 부모 래퍼 class 토큰이 클립 배선 줄에 등장(k .dialwrap textarea 선택자 부착)"""
+    near = s[pos:pos + 400]
+    if any(w in near for w in ('scnclip', 'urlclip', 'askclip', 'iobtn')):
+        return True
+    for ln in s.split('\n'):
+        if not any(w in ln for w in _CLIP_WIRE):
+            continue
+        if ident and ("'" + ident + "'" in ln or '"' + ident + '"' in ln or '#' + ident in ln):
+            return True
+        if not ident:
+            head = s[max(0, pos - 300):pos]
+            for tok in re.findall(r'class="([^"]+)"', head):
+                for t in tok.split():
+                    if len(t) > 3 and t in ln:
+                        return True
+    return False
+
+def check_clip_coverage():
+    rc = 0
+    n_ok = n_ex = 0
+    for rel in VIEWERS_ALL + ('viewer/tr.html',):
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        decls = [(m.start(), m.group(0), 'input') for m in _INPUT_RE.finditer(s)]
+        decls += [(m.start(), m.group(0), 'textarea') for m in _TA_RE.finditer(s)]
+        for pos, tag, kind in decls:
+            # 정적 HTML 선언만 대상 — <script> 안 문자열(템플릿 리터럴로 그리는 동적 칸)은 제외한다.
+            #   ⚠ 안 빼면 클립 부품 자신의 폴백 입력칸(.pastefb-ta)까지 잡아 「클립에 클립을 붙여라」가 된다(260803 실측).
+            #   동적 생성 칸은 생성부에서 attachCopyPaste를 부르는 게 계약(정적 스캔 밖 = 별도 축).
+            if s.rfind('<script', 0, pos) > s.rfind('</script>', 0, pos):
+                continue
+            tl = tag.lower()
+            if kind == 'input':
+                tm = re.search(r'type\s*=\s*["\']?(\w+)', tl)
+                typ = tm.group(1) if tm else 'text'
+                if typ not in ('text', 'url', 'search'):
+                    continue
+            im = re.search(r'\bid\s*=\s*["\']([^"\']+)', tag)
+            ident = im.group(1) if im else ''
+            cm = re.search(r'\bclass\s*=\s*["\']([^"\']*)', tag)
+            cls = cm.group(1) if cm else ''
+            if any(c in cls for c in _CLIP_EXEMPT_CLS) or (rel, ident) in _CLIP_EXEMPT_ID:
+                n_ex += 1
+                continue
+            if _clip_wired(s, rel, tag, pos, ident, cls):
+                n_ok += 1
+                continue
+            ln = s[:pos].count('\n') + 1
+            print('❌ 텍스트 입력칸에 클립 없음 — %s:%d <%s%s> → attachCopyPaste(el, true) 부착'
+                  '(부품 = nm-clip.js/css 2줄 상속 · 운영자 260803 "모든 텍스트 입력창에 · 공식처럼")'
+                  % (rel, ln, kind, (' #' + ident) if ident else ''))
+            rc = 1
+    if rc == 0:
+        print('✅ 입력칸 클립 게이트 — 텍스트 입력칸 %d개 전부 클립 보유(면제 %d = 숫자칩·PIN · 부품 SSOT = nm-clip.js/css).' % (n_ok, n_ex))
+    return rc
+
+
 def check_url_placeholder():
     rc = 0
     for rel in VIEWERS_ALL:
@@ -2774,6 +2851,8 @@ def main():
         print('⚠️ check_k_models 스킵:', e)
     try:
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
+            rc = 1
+        if check_clip_coverage() != 0:   # 모든 텍스트 입력칸 = 클립(복사·붙여넣기·지우개) 보유(하드 게이트 · 운영자 260803 "공식처럼가야함" — 새 칸이 조용히 빠지는 것 차단)
             rc = 1
     except Exception as e:
         print('⚠️ check_autocomplete 스킵:', e)
