@@ -30,8 +30,8 @@ const LAYERS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" 
 //   문법 = LAYERS_SVG·EDIT_SVG 정본 그대로(14px · viewBox 24 · fill none · stroke currentColor · stroke-width 2 · round cap/join) = 다운로드 픽토와 나란히 놔도 같은 잉크 무게.
 const SUBS_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14.5h5M15 14.5h2"/></svg>';
 const G_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 10.96v2.32h3.84c-.16 1-1.15 2.9-3.84 2.9-2.31 0-4.2-1.91-4.2-4.27s1.89-4.27 4.2-4.27c1.32 0 2.2.56 2.7 1.05l1.84-1.77c-1.18-1.1-2.68-1.77-4.54-1.77-3.74 0-6.74 3-6.74 6.76s3 6.76 6.74 6.76c3.89 0 6.47-2.74 6.47-6.59 0-.44-.05-.78-.11-1.12l-6.36.04z"/></svg>';
-// 제미나이(모델) = 4점 별 = 제미나이 브랜드 스파크 1개(운영자 260803 "제미나이 로고 써야되는데 · 제미나이도 쌍별이 들어가있네" · 정본 = docs/reports/260802_제미나이픽토그램_플레이그라운드.html **후보 ②**「4점 별(제미나이 스파크)」 원문 그대로 = 이미 만들어둔 시안 자산 채택 · 새 도형 창작 0).
-//   ⚠ 구 값(260802 선택 ⑤ 쌍성 = 별 2개)은 회수 — **GPT 자리 AI_SVG가 큰 별+작은 별 2개**라 별 개수·배치가 겹쳐 두 모델이 화면에서 「쌍별」로 같이 읽혔다(구분이라는 원래 목적 실패 · 260803 실측 = 레일 네비 + 개요 모델 행 두 표면 동시 발현).
-//   판별 축 = **별 개수**(제미나이 1 · GPT 2) — 문법 = AI_SVG 정본 그대로(viewBox 24 · fill none · stroke currentColor · stroke-width 2 · round cap/join)라 잉크 무게는 한 세트로 유지.
-//   ⚠ 구글 G 레터마크(G_SVG)는 **구글 이미지 검색 버튼 전용으로 존치** — 제미나이 표기에서만 이 픽토로 갈아탄다(두 용도가 한 상수를 공유하던 것을 분리).
-const GEMINI_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c0 5.25 4.25 9.5 9.5 9.5-5.25 0-9.5 4.25-9.5 9.5 0-5.25-4.25-9.5-9.5-9.5 5.25 0 9.5-4.25 9.5-9.5z"/></svg>';
+// Gemini(모델) = 구글 G 레터마크 = 위 G_SVG 별칭(운영자 260727 "구글을 나타내는 G 그거 써서 표시" → 260803 재확인 「로고 써야되는데 · 기존에 이미 만들어놨음 · G라고 뉴스 요약한 부분에 보면 있음」 = 뉴스 카드 구글 이미지 검색 버튼(index gsrch)의 그 G).
+//   ⚠ 별(스파클) 계열 회수 이력 2건 — ⓐ 260802 후보 ⑤ 쌍성(큰 별+작은 별)은 **GPT 자리 AI_SVG와 별 개수·배치가 겹쳐** 두 모델이 「쌍별」로 같이 읽혔다 ⓑ 260803 후보 ② 4점 별도 스파클 결이라 GPT 쪽으로 읽힌다(운영자 "지피티 이거아님").
+//     → 판별 축 = **별이 아니라 레터마크**. 브랜드 자리에 별을 쓰면 어느 쪽이든 AI 스파클 관용구와 충돌한다.
+//   값 복제 0 = 별칭 참조(G_SVG 한 곳만 고치면 두 표면 동시) · 두 표면 공용(제미나이 표기 + 구글 이미지 검색 버튼)은 260727 정본 그대로 복귀.
+const GEMINI_SVG = G_SVG;
