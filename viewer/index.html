@@ -12314,9 +12314,10 @@ function renderSnsTrends() {
   const bySort = (arr, f) => arr.slice().sort((a, b2) => (b2[f] || 0) - (a[f] || 0));
   // (구 TSORT/sortOf/sortbar 정렬 전환 칩 = 운영자 260726 "저 선택지 없애도 될듯 둘 다" 폐지 — X는 RSS 미러 폴백 구간 likes·rts·cmts 전멸(전부 0 · _x_rss)이라 어느 축이든 동순서 = 무기능 실측, 스레드도 좋아요 고정 통일 · nm_trend_sort 키 고아 · 재도입 = git 이력)
   const met = pairs => pairs.filter(p => p[1] > 0).map(p => `<i>${p[0]}<span>${vfmt(p[1])}</span></i>`).join('');   // 0 지표 = 미표기(릴스 조회 비공개 등)
-  const covImg = (cov, nofb) => {   // 트렌드 카드 커버 img — 유튜브(ytimg)는 쇼츠 세로 정본 썸네일 oar2.jpg를 먼저 시도(쇼츠에만 존재 = 판별 겸용 · 실측 260803: 쇼츠 200[뉴스 쇼츠 포함]·일반 영상 404 · CDN 컷 405×720) → 404 = data-fb 원본 커버 폴백(종전 경로 그대로) → 재실패 = 종전 숨김. 효과 = 쇼츠 타일이 16:9 레터박스(mqdefault·hq720 sqp 흐림띠) 대신 내용부 중앙 크롭으로 가득 찬다(운영자 260803 "쇼츠에 내용 있는 부분만 확대해서 썸네일 가득" · 크롭 = 기존 .tcard-cov img object-fit:cover가 그대로 수행 = 신규 CSS 0 · 판별축 이유 = 수집 URL이 쇼츠도 watch?v= 정규화라 URL 판별 불가 실측)
+  const covImg = (cov, nofb) => {   // 트렌드 카드 커버 img — 유튜브(ytimg)는 세로 원본 썸네일 oar2.jpg를 먼저 시도해 **세로로 실재하는 영상만** 그 그림을 쓴다(운영자 260803 "쇼츠에 내용 있는 부분만 확대해서 썸네일 가득" · 크롭 = 기존 .tcard-cov img object-fit:cover가 수행 = 신규 CSS 0) → 없거나 가로면 data-fb 원본 커버로 강등(종전 경로 그대로) → 재실패 = 워드마크 폴백(tcCovFail).
+    // ⚠ 260803 도입 전제였던 "oar2 = 쇼츠에만 존재(쇼츠 200·일반 404)"는 **틀렸다**(260804 재실측 — 쇼츠 1·4위 bVjSZ8Z67mc·oJNEZIKbtck 둘 다 404. 채널이 16:9 썸네일을 단 쇼츠엔 oar 변형이 아예 없다 = oar2의 실제 축은 '쇼츠'가 아니라 **원본 종횡비가 16:9가 아닌 영상**). 그 전제 오류에 아래 onload 가드 부재가 겹쳐 유튜브 전 블록(인기·쇼츠·뉴스·AI·구독)이 회색판으로 덮였다.
     const m = String(cov).match(/^https:\/\/i\.ytimg\.com\/vi\/([\w-]{11})\//);
-    return m ? `<img loading="lazy" referrerpolicy="no-referrer" src="https://i.ytimg.com/vi/${m[1]}/oar2.jpg" data-fb="${escUrl(cov)}" data-nofb="${esc(nofb || '')}" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.removeAttribute('data-fb')}else{tcCovFail(this)}" alt="">`
+    return m ? `<img loading="lazy" referrerpolicy="no-referrer" src="https://i.ytimg.com/vi/${m[1]}/oar2.jpg" data-fb="${escUrl(cov)}" data-nofb="${esc(nofb || '')}" onerror="tcOarDown(this)" onload="if(this.dataset.fb&&this.naturalWidth>=this.naturalHeight)tcOarDown(this)" alt="">`
       : `<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(cov)}" data-nofb="${esc(nofb || '')}" onerror="tcCovFail(this)" alt="">`;
   };
   // 커버 로드 실패(핫링크 만료·CDN 교체·403) = 타일 **소멸이 아니라** 플랫폼 워드마크 폴백 커버로 강등
@@ -12330,6 +12331,15 @@ function renderSnsTrends() {
     if (!fb) { if (img) img.style.display = 'none'; return; }
     img.remove();
     cv.classList.add('noc', fb);
+  };
+  // oar2(세로 원본) → 원본 커버 강등 — 뉴스·구독 정본 사다리 down()(아래 12624)의 문법 계승(신규 판정축 0).
+  //   ⚠ 이 강등이 **onload에서도** 불려야 하는 이유 = ytimg의 oar 404는 본문이 1097B·120×90 회색 JPEG라
+  //   브라우저가 error가 아니라 **load로 그린다**(260727 봉합 기록과 같은 사고 클래스 · 정본 사다리가
+  //   naturalWidth 가드를 둔 이유가 정확히 이것). onerror만 걸면 폴백이 영원히 안 돌고 회색판이 박힌다.
+  //   판정 = `naturalWidth >= naturalHeight` = 정본 그대로(회색판 120×90도·가로 영상도 한 술어로 걸린다).
+  window.tcOarDown = function (img) {
+    if (img.dataset.fb) { img.src = img.dataset.fb; img.removeAttribute('data-fb'); }
+    else tcCovFail(img);
   };
   const card = (t, i, wd) =>   // 통일 카드(운영자 260712 #6 "쇼츠형 중구난방 해소") — 썸네일(쇼츠식 커버 크롭) + 아래에 [제목 → 조회수(vfmt 000만) · N일전] · 업로더 제거·오버레이 제목 폐지(제목/메타 항상 커버 아래 = 뉴스식 배치) · 제목 = textContent 후주입(XSS 안전) · 랭크 = 무채 필+top3 강조
     `<a class="tcard" href="${escUrl(t.url || '#')}" target="_blank" rel="noopener">` +
