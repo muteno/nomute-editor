@@ -105,6 +105,7 @@ async function runOnce(pg) {
       sumCS: sum ? cs(sum) : null, sumFs: sum ? getComputedStyle(sum).fontSize : '', sumLh: sum ? getComputedStyle(sum).lineHeight : '',
       leadBg: lcs ? lcs.backgroundColor : '', leadBb: lcs ? lcs.borderBottomWidth : '', skirtH: lca ? lca.height : '', skirtBg: lca ? lca.backgroundImage : '',
       sumGram: sum ? { lbl: sum.querySelectorAll('.gs-lbl').length, v: sum.querySelectorAll('.gs-v').length, on: sum.querySelectorAll('.gs-v.on').length } : null,
+      engGram: (er => er ? { v: er.querySelectorAll('.gs-v').length, on: er.querySelectorAll('.gs-v.on').length } : null)(document.querySelector('#geniEngRail')),   // 모델 칩 = 픽토 자리 승격(운영자 260803 "첨부1(편집)이 맞는내용" — 캡슐② 순서 [픽토→구분선→값] 합류) · 상시 1칩 점등
       wishHidden: (() => { const r = document.querySelector('#geniWishRow'), h = document.querySelector('#geniWishHead'); return !!(r && r.hidden && h && h.hidden); })(),
       wishAlive: !!document.querySelector('#geniWish') };
   });
@@ -171,11 +172,11 @@ async function runOnce(pg) {
   core('C10 미리보기 박스 폭 = 카드 생성 탭 등가(Δ≤1px — 리드 거터 16 정본)', Math.abs(ai.boxW - ed.boxW) <= 1, 'card=' + ed.boxW.toFixed(1) + ' ai=' + ai.boxW.toFixed(1) + ' Δ=' + (ai.boxW - ed.boxW).toFixed(2));
   core('C11 리드 = thumb 도크 파리티(mat 배경·경계선 0·페이드 스커트 h/그라데 동일)', ai.leadBg === ed.dockBg && ai.leadBb === ed.dockBb && ai.skirtH === ed.skirtH && ai.skirtBg === ed.skirtBg,
     JSON.stringify({ edit: { bg: ed.dockBg, bb: ed.dockBb, sh: ed.skirtH }, ai: { bg: ai.leadBg, bb: ai.leadBb, sh: ai.skirtH, sameGrad: ai.skirtBg === ed.skirtBg } }));
-  core('C12 스트립 문법 = 6항 나열(모델·비율·화풍·세부 = 라벨+값 4쌍 · 한국웹툰화·문구 = 자립 토글 2 · 운영자 260727 "ON/OFF 없애고 글자만") · 기본 상태 = 값 축 4 + 웹툰화 ON = 5점등(운영자 260728 "선택된 옵션은 모두 강조색" — 구 "한국웹툰화만 점등" 계약 갱신 · 문구 OFF만 소등)', !!(ai.sumGram && ed.specGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 4 && ai.sumGram.v === 6 && ai.sumGram.on === 5,
-    JSON.stringify({ edit: ed.specGram, ai: ai.sumGram }));
+  core('C12 스트립 문법 = 모델은 픽토 자리(#geniEngRail 1칩 상시 점등 · 운영자 260803 "첨부1(편집)이 맞는내용" — 구분선 위 승격) + #geniSum 5항(비율·화풍·세부 = 라벨+값 3쌍 · 한국웹툰화·문구 = 자립 토글 2 · 운영자 260727 "ON/OFF 없애고 글자만") · 기본 상태 = 값 축 3 + 웹툰화 ON = 4점등(운영자 260728 "선택된 옵션은 모두 강조색" · 문구 OFF만 소등)', !!(ai.sumGram && ed.specGram && ai.engGram) && ed.specGram.lbl > 0 && ai.sumGram.lbl === 3 && ai.sumGram.v === 5 && ai.sumGram.on === 4 && ai.engGram.v === 1 && ai.engGram.on === 1,
+    JSON.stringify({ edit: ed.specGram, ai: ai.sumGram, eng: ai.engGram }));
   await pg.evaluate(() => { const b = document.querySelector('#geniHost .geni-opts[data-k="aspect"] .geni-opt[data-v="9:16"]'); if (b) b.click(); });   // 상태 추종 실측 = 비율 9:16 선택(구 해상도 2K = 5항 축소로 요약 밖 → 잔존 5항 안 옵션으로 교체)
   const lit = await pg.evaluate(() => { const s = document.querySelector('#geniSum'); const on = [...s.querySelectorAll('.gs-v.on')].map(e => e.textContent); return { n: on.length, has916: on.includes('9:16') }; });
-  core('C13 점등 = 값 축 상시(비율 9:16 선택 → 값은 바뀌어도 점등 유지 = 5점등 · 기본값이든 아니든 고른 값은 선택이다)', lit.n === 5 && lit.has916, JSON.stringify(lit));
+  core('C13 점등 = 값 축 상시(비율 9:16 선택 → 값은 바뀌어도 점등 유지 = 4점등{모델 칩은 #geniEngRail 별도 · 260803} · 기본값이든 아니든 고른 값은 선택이다)', lit.n === 4 && lit.has916, JSON.stringify(lit));
   const tog = await pg.evaluate(() => {   // 요약바 글자 탭 = 그 옵션 전환(운영자 260728 "글자 클릭하면 옵션이 바뀌게 · 각 옵션에 따라 귀속") — 값 축 = 다음 값 순환 · ON/OFF 축 = 뒤집기 · 본문 칩 동기까지 실측
     const q = k => document.querySelector('#geniHost #geniSum [data-tg="' + k + '"]');
     const a0 = q('aspect').textContent.trim(); q('aspect').click();
