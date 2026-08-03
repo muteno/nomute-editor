@@ -526,6 +526,29 @@ messages.sort((a, b) => { const d = msgMs(b) - msgMs(a); return d !== 0 ? d : (b
 writeFileSync(MSG_OUT, JSON.stringify(messages, null, 2));
 console.log(`viewer/messages.json 생성 — ${messages.length}건`);
 
+// ── ⑭-i 화재·지진 추적 상태(viewer/fire_watch.json) — 운영자 260803 6차 "추적기가 지금 무엇을 보고 있는지 화면에".
+// 왜 = 원장(push/fire_watch.json)은 러너 내부 상태라 **Pages 출력 루트(viewer/) 밖**이다 → 뷰어가 fetch 못 한다.
+//   그래서 화면이 재난문자를 보여주면서도 "이 건을 기계가 추적 중인지 · 이미 큐로 넘겼는지 · 놓쳤는지"를 말해줄 수 없었다.
+// 방식 = messages(위) 선례 그대로: 레포 소스 → 빌드가 뷰어 서빙 경로로 굽는다(새 파이프·새 수집 0 · push마다 Pages 빌드가 갱신).
+// 노출 = **표시에 필요한 필드만**(내부 상태인 places·text·why·_cap·_seen 은 안 내보낸다 = 원장 스키마 변경 자유 유지).
+const FW_SRC = 'push/fire_watch.json', FW_OUT = 'viewer/fire_watch.json';
+try {
+  const raw = existsSync(FW_SRC) ? JSON.parse(readFileSync(FW_SRC, 'utf8')) : {};
+  const out = [];
+  for (const [k, v] of Object.entries(raw)) {
+    if (k.startsWith('_') || !v || typeof v !== 'object' || !v.t0) continue;   // _cap·_seen = 메타(표시 대상 아님)
+    out.push({ k, t0: v.t0, kind: v.kind || '', area: v.area || '', lm: v.lm || '',
+      grade: v.grade || 'HI', picked: v.picked ? 1 : 0, checks: v.checks || 0,
+      sig: (v.hit || {}).sig || '', title: ((v.hit || {}).title || '').slice(0, 120) });
+  }
+  out.sort((a, b) => (b.t0 || 0) - (a.t0 || 0));
+  writeFileSync(FW_OUT, JSON.stringify(out));
+  console.log(`viewer/fire_watch.json 생성 — 추적 ${out.length}건`);
+} catch (e) {
+  try { writeFileSync(FW_OUT, '[]'); } catch { /* 무시 */ }   // fail-soft — 상태 표시가 안 떠도 화면·추적 파이프는 그대로(빈 배열 = 칩 미표시)
+  console.log(`viewer/fire_watch.json 스킵(${e && e.message})`);
+}
+
 // ── 자막·편집 작업 내역 인덱스(viewer/ly_out/index.json) — 자막 생성기 '작업 내역' 게시판(운영자 260707) + 편집기 제작 라이브러리(운영자 260712 "이미지 생성기처럼") 공용 데이터.
 // 스캔 = ly_out/<id>/{subs.md·video.json·clips.json·error.log} → {id, t(subs.md 첫 # 타이틀 · 없으면 video.json edit_opts 레시피 요약 = 편집 잡 라벨), ts(완료 = video.json.ts · 없으면 id의 KST yymmddHHMMSS 접두 = 시작 시각), st(done 번인완성/subs 자막만/clip 클립 후보/fail 실패/gen 진행중), d(영상 길이 초 · 있을 때만)}.
 // 갱신 = push마다 Pages 빌드(ly-make·edit-make 산출 커밋이 곧 push) — 별도 워크플로 0. 소비 = ly.html·edit.html 게시판(추가 필드는 구 소비자에 무해).
