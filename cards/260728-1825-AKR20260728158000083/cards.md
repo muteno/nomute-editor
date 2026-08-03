@@ -1,31 +1,31 @@
-# 🌏 부산이 흔들린 순간, 상하이도 흔들렸다
+# 🌏 부산이 흔들린 건 당연했다…규슈 7.1이 그은 원
 
 **[프롬프트 설계]**
-- 화풍: A수채화 — #재난참사·피해 없는 체감형 사건이라 공포 증폭보다 '몸이 기억한 불안'을 따뜻한 결로 눌러 담는 쪽이 맞다
-- 분위기: 늦은 오후 햇살이 길게 든 일상 공간에 조용히 번지는 진동 — 재난 스펙터클이 아니라 평범한 거실·창가에서 감지된 미세한 이상
-- 연출 방향: 뉴스 안 보는 독자가 멈추는 지점은 '나도 그때 느꼈다'는 몸의 기억이다. 그래서 파괴된 현장이 아니라 흔들린 물컵·올려다본 천장·손에 쥔 폰을 잡는다. 시사점은 '진동이 그린 원이 국경을 묻지 않았다'는 것 — 거리(889㎞)와 체감(760건)을 같은 원 안에 놓는 것이 카드 전체의 비주얼 키노트다. thumb_dispatch의 골든아워 온기와 '충격 직전 정지' 정조만 상속하고 앵글은 카드마다 분산한다
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(단서형: 같은 시각 다른 나라 물컵)+카드3 끝(예고형: 숫자가 그린 원) · 감정 피크=카드5 · 착지 = 규모 7.1이 그은 원은 국경선을 묻지 않았다
-- 연속성 앵커: Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a light beige linen shirt. 반복 장소: a high-rise apartment living room in southern Korea with a wide window and late-afternoon light.
+- 화풍: B 극화 — 재난의 물리적 규모와 진동의 무게를 사실적으로 눌러 담아야 해서(수채화의 온기보다 지진동의 긴장이 우선)
+- 분위기: 늦은 오후 금빛 햇살 아래 아무 일도 없어 보이는 일상이 미세하게 어긋나는 정조. 파괴가 아니라 '감지'의 불안 — 무너진 게 없는데 몸만 기억하는 흔들림
+- 연출 방향: 이 사건의 핵심은 잔해가 아니라 **반경**이다. 독자(남부권 고층 거주자)가 멈추는 지점은 '내가 느낀 그 흔들림이 889㎞까지 갔다'는 스케일 감각 — 그래서 카메라는 부서진 곳이 아니라 *흔들림이 도달한 자리*(물컵의 파문, 올려다보는 눈, 유리창의 진동, 신고 전화를 든 손)를 잡는다. 진앙에서 멀어질수록 화면은 조용해지되 긴장은 유지되는 역방향 설계. thumb_dispatch에서 골든아워 톤(LGT06)과 '정지된 정점'의 정조를 키노트로 상속하되 앵글은 카드마다 분산
+- 독자 동선: **발단** 카드1(오후 4시 27분·규모 7.1 발생)→**전개** 카드2~3(진도 7강의 의미·쓰나미 주의보와 TSMC)→**피크** 카드4(760건·부산 291건이 올라온 순간)→**해소** 카드5(계기진도 3·피해 없음·월성원전 이상 없음)→**시사점** 카드6 · 훅=카드1 끝(단서형: '숫자 하나가 더 남았다')+카드3 끝(예고형) · 착지 한 줄 요지 = 진동이 그린 원은 국경선을 묻지 않았다
+- 연속성 앵커: Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a beige knit cardigan over a white tee / Recurring place — a high-rise apartment living room in Busan with a wide window facing the late afternoon sun
 
 ### [카드 1]
 **텍스트**
 ```text
 28일 오후 4시 27분이었다
-식탁 위 물컵이 먼저 알았다
-동심원이 소리 없이 번졌다
-*부산 거실에서 벌어진 일이다*
+규슈 구마모토 앞바다 23㎞
+*깊이 10㎞에서 규모 7.1*
+그리고 부산이 흔들렸다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the still fingertips resting beside a glass of water, frozen mid-motion. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a light beige linen shirt, sits at a dining table and looks down at the glass. Concentric ripples spread across the water surface while nothing else moves. The setting is a high-rise apartment living room in southern Korea with a wide window and late-afternoon light, nose room on the right, her gaze drifting toward the right edge.
-Camera: extreme close-up, single detail, hand, texture from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the still, widening rings spreading across the surface of a water glass on a dining table. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a beige knit cardigan over a white tee, stands frozen mid-step beside the table, her head lifted toward the ceiling light. The glass sits in the upper-center of the frame, close to her hand but untouched, its concentric ripples the only thing moving. The place is a high-rise apartment living room in Busan with a wide window facing the late afternoon sun, gaze directed toward the right edge, nose room on the right.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 85mm portrait lens, flattering face, soft background separation
 Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: no signage or documents in frame, keep all surfaces free of lettering.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the trembling ripples of the water), muted daylight contrast
+Text handling: avoid all incidental background lettering; no signage, no readable labels; use composition and objects instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dining table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the living room floor and wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-지진 물컵 파문
+아파트 거실 물컵 파문
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-진앙은 일본 규슈 구마모토였다
-구마모토시 남쪽 23㎞ 해역
-진원 깊이는 겨우 10㎞
-*규모 7.1, 얕아서 더 크게 흔들렸다*
+일본 기상청이 매긴 최대 진도는
+*등급의 꼭대기인 7강*이었다
+2024년 노토반도 이후 처음
+구마모토만 보면 10년 만이다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the widening distance between a tilting streetlamp and the tiny figures below it. Several residents stand scattered on a coastal road, looking back toward the sea as utility poles lean and dust lifts from a low hillside. One elderly man steadies himself against a guardrail with both hands. The location is a seaside town road in Kumamoto with low houses along the shoreline, gazes and body vectors angled toward the right edge.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 16mm wide lens, immersive scene, wide environmental context, dynamic look
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the tilted, half-collapsed roof beam of a low traditional building leaning against the sky. A wide street in a Kumamoto town shows tiled roofs shifted off their ridgelines and a stone wall broken into a slumped line, while two figures in the middle distance stand still and look up at the leaning structure, their backs to the viewer. Loose roof tiles lie scattered along the road in the upper half of the frame. No people are injured and no bodies are shown; the damage reads through the buildings alone.
+Camera: wide shot, full body, surrounding environment, movement, spatial context from low angle shot, looking up, dramatic presence, shot on 24mm wide lens, cinematic wide shot, spatial context
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: avoid all signage text, replace shop signs with blank awnings and simple pictograms.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a fallen roof tile in the foreground), muted daylight contrast
+Text handling: avoid all incidental background lettering; no signage, no readable labels; use composition and objects instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the coastal road ground plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the street ground plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-구마모토 해안 도로 지진
+구마모토 지진 기와 붕괴
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-최대 진도는 등급의 꼭대기 '7강'
-바다 두 곳엔 쓰나미 주의보가 났다
-2024년 노토반도 이후 처음이고
-*구마모토만 보면 10년 만이다*
+아리아케해와 야쓰시로해에는
+쓰나미 주의보가 내려졌다
+구마모토에 공장을 둔 TSMC는
+*설비를 확인하는 중*이라고 했다
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a mother's arm pulling her child close as they hurry up a slope. Three residents climb a concrete evacuation stairway away from the shore, glancing back over their shoulders at the flat gray sea behind them. A coastal siren tower rises at the edge of the frame with no lettering on it. The location is a seawall stairway in a Kyushu fishing town, movement carrying them toward the right edge.
-Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: siren tower and walls left completely blank, no warning boards or written notices.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the taut back of a coastal worker in a hard hat, one arm raised toward the sea wall as he waves people away from the shoreline. Two figures behind him walk quickly inland with their heads turned back toward the water, and the flat gray sea fills the upper third of the frame with a low swell pushing at the breakwater. The place is a small harbor edge with a concrete sea wall and moored fishing boats pulling at their ropes, gaze directed toward the right edge, nose room on the right.
+Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette from high angle shot, looking down, observed, shot on 35mm lens, natural documentary perspective, balanced subject and background
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension, applied here as a cold overcast coastal cast
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the worker's raised arm band), muted daylight contrast
+Text handling: avoid all incidental background lettering; no signage, no readable labels; use composition and objects instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the concrete stairway and seawall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the harbor concrete plane meeting the sea) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-규슈 쓰나미 주의보 대피
+아리아케해 쓰나미 주의보 방파제
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-그 원은 한국 남부까지 닿았다
-오후 4시 47분까지 신고 760건
-부산 291건, 울산 120건, 경남 106건
-*계기진도 3, 실내에서 뚜렷한 흔들림*
+오후 4시 47분까지 *760건*
+부산 291건 울산 120건
+경남 106건 창원 95건 경북 68건
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: her hand gripping a phone a little too tightly as her eyes lift to the ceiling. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a light beige linen shirt, stands and looks up at a gently swaying pendant lamp. Behind her, two neighbors have stepped into the corridor doorway and look up in the same direction. The setting is a high-rise apartment living room in southern Korea with a wide window and late-afternoon light.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: phone screen shown from behind or at an angle so no interface text is visible.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: her fingertips pressed hard against the phone at her ear, knuckles pale. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a beige knit cardigan over a white tee, stands close to the wide window and speaks into the phone while her other hand braces flat on the window glass. Beyond the glass, rows of identical high-rise apartment blocks stretch out under a low sun, and a hanging pendant lamp swings slightly above her in the upper part of the frame. The place is a high-rise apartment living room in Busan with a wide window facing the late afternoon sun.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 100mm macro lens, fine detail, shallow depth of field
+Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the phone screen glow against her cheek), film-noir low-key lighting, deep shadows
+Text handling: avoid all incidental background lettering; no signage, no readable labels, no digits on the phone screen; use composition and objects instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the living room wall and ceiling plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the window wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,26 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-부산 아파트 거실 조명
+부산 고층 아파트 지진 신고
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그리고 889㎞ 밖 상하이도 흔들렸다
-*그 원엔 국경선이 없었다*
+남부지방 계기진도는 3이었다
+실내에서 뚜렷이 느끼는 수준
+동해안도 진동을 감지했지만
+*월성원전도 피해도 이상 없었다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a lone office worker's wide, unmoving eyes as he watches the blinds sway against the glass. A single man in a white shirt stands still by a floor-to-ceiling window high above a dense skyline, one hand flat on the glass, the hanging blind cord swinging in a slow arc beside him. The location is an upper floor of a Shanghai high-rise office at dusk, the city stretching far below.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from high angle shot, looking down, vulnerable subject, small, observed, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: all window glass and skyline surfaces kept free of signage or lettering.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a long breath released, the woman's shoulders dropping as her eyes close briefly. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a beige knit cardigan over a white tee, sits on the edge of the sofa with the phone lowered into her lap, facing the wide window. The pendant lamp above her hangs perfectly still now, and the water glass on the table behind her is flat and calm in the upper-center of the frame. The place is a high-rise apartment living room in Busan with a wide window facing the late afternoon sun.
+Camera: medium shot, waist-up framing, face and gestures, conversational from three-quarter angle, natural face depth, dimensional portrait, shot on 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy, carried here as low late-afternoon warmth
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the now-still surface of the water glass), muted daylight contrast
+Text handling: avoid all incidental background lettering; no signage, no readable labels; use composition and objects instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the floor-to-ceiling window plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the living room wall and window plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -157,28 +158,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-상하이 고층빌딩 창가
+월성원전 전경
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-이번엔 계기진도 3에서 멈췄고
-국내 피해도 없었다. 그래서 더 남는다
-같은 땅이 10년 만에 다시 최고 등급으로
-*흔들렸고, 그 원은 국경선을 묻지 않았다*
+중국 매체는 진앙에서 889㎞ 떨어진
+상하이도 흔들렸다고 전했다
+그 반지름 안에 부산도 울산도 있었다
+*진동은 국경선을 묻지 않고 번졌다*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: her quiet, level gaze turned straight ahead as the evening settles. Recurring subject — a Korean woman in her 40s with shoulder-length dark hair tied back, wearing a light beige linen shirt, stands at the wide window and looks out over the sea toward the horizon, one hand resting on the sill beside the now-still glass of water. The setting is a high-rise apartment living room in southern Korea with a wide window and late-afternoon light, the room centered and quietly still.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: no signage, no documents, no lettering anywhere in the frame.
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the steady, level horizon line where three distant coastlines sit under one sky. A vast aerial view looks down across an open sea with the faint silhouettes of a Japanese island coast, a Korean southern port skyline, and a far Chinese high-rise shoreline all resting on the same water plane in the upper half of the frame. Faint concentric rings spread outward across the sea surface from one point near the Japanese coast, passing over all three shorelines without stopping. No people are visible; the sea and the three coasts carry the whole image.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 14mm ultra-wide lens, vast environment, dramatic depth
+Lighting/mood: cold blue pre-dawn tone, lone light reflection on wet surface, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the expanding concentric rings across the water), film-noir low-key lighting, deep shadows
+Text handling: avoid all incidental background lettering; no map labels, no place names, no readable letters; use composition and shapes instead of written words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the living room floor and window wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sea plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -188,5 +189,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-부산 고층 아파트 창가 노을
+상하이 고층 스카이라인 해안
 ```
