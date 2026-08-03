@@ -1833,6 +1833,7 @@ def disaster(limit=10):
                         "sev": DIS_LEVEL_RANK.get(lv, 1) * 1000 + rank * 10 + gr,
                         "crit": 1 if rank >= DIS_CRIT_MIN else 0,
                         "lm": disaster_landmark(msg),
+                        "intl": 1 if disaster_intl(msg, area) else 0,
                         "url": "https://www.safetykorea.kr/"})   # 원문 개별 링크 부재 = 안전포털 홈
         out.sort(key=lambda x: (-x["sev"], -_dis_ts(x["time"])))   # 중대한 순서 → 그 안에서 최신순(⑭-b와 동일 정렬 · 운영자 260802)
         return out[:limit]
@@ -1941,6 +1942,22 @@ def _dis_ts(s):
 DIS_GOV_RE = re.compile(r"[가-힣]{1,6}(?:시청|도청|군청|구청|교육청|소방서|경찰서|보건소|시의회|도의회|구의회|군의회|주민센터|행정복지센터)(?!역)")
 
 
+# ⑭-h 해외 지진 판정(운영자 260803 5차 "해외건, 국내건 차이가 많이 나야해 · 해외 규모 6↑ · 국내 3.5↑").
+#   왜 = 같은 규모라도 체감·피해가 완전히 다르다. 국내 3.5는 사람이 느끼고 보도가 뜨지만, 해외 3.5는 뉴스조차 안 된다.
+#   판정 = **본문 국가·해역명**(기상청 해외 지진 문자 관용구 «일본 혼슈 규모 7.1»·«대만 인근 해역»).
+#   ⚠ area(수신 지역)로는 못 가른다 — 해외 지진 문자도 국내 지역에 발령되므로 area 는 항상 국내다.
+#   ⚠ 미매치 = 국내 취급(낮은 문턱 = fail-open) — 안전 축은 '놓침'이 '헛알림'보다 훨씬 비싸다.
+DIS_INTL_RE = re.compile(
+    r"일본|중국|대만|필리핀|인도네시아|러시아|미국|캐나다|멕시코|칠레|페루|튀르키예|터키|그리스|이탈리아|"
+    r"네팔|인도|파키스탄|이란|뉴질랜드|파푸아|바누아투|통가|알래스카|캄차카|쿠릴|오키나와|규슈|혼슈|홋카이도|"
+    r"동해\s?먼바다|국외|해외|국경")
+
+
+def disaster_intl(text, area=""):
+    """해외 지진·재난이면 True. 판정 실패 = False(국내 취급 = 낮은 문턱 = 더 잘 울림)."""
+    return bool(DIS_INTL_RE.search(text or ""))
+
+
 def disaster_landmark(text):
     """⑭-e 재난문자 본문에서 즉시 긴급알림 대상(랜드마크·공공기관)을 찾아 그 이름을 돌려준다. 없으면 ''.
     목록 우선(고유명사) → 없으면 접미 결합형(지자체 대표 공공기관). 판정 실패 = '' = 종전 동작(fail-soft)."""
@@ -2005,6 +2022,7 @@ def disaster_km(limit=10):
                         "sev": DIS_LEVEL_RANK.get(lv, 1) * 1000 + rank * 10 + gr,
                         "crit": 1 if rank >= DIS_CRIT_MIN else 0,   # ⑭-d 지진·화재급(운영자 260803) = 뷰어 골드 표기 + 화재 추적기 등록 문턱 단일 원천
                         "lm": disaster_landmark(msg),               # ⑭-e 랜드마크·공공기관 매치명('' = 일반) — 즉시 긴급알림 판정용
+                        "intl": 1 if disaster_intl(msg, area) else 0,   # ⑭-h 해외 = 규모 문턱 분기(국내 3.5 / 해외 6.0 · 운영자 260803)
                         "url": "https://koreamonitor.nangman.cloud/"})
         out.sort(key=lambda x: (-x["sev"], -_dis_ts(x["time"])))   # 중대한 순서 → 그 안에서 최신순(운영자 260802)
         return out[:limit]

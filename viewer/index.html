@@ -8020,7 +8020,15 @@ function demoStaleMsgs() {
 //   발동 = kind '지진' 한정. 폭염·호우까지 기기 알림을 울리면 여름엔 매시간 울려 알림 자체가 무시된다(= "긴급 뉴스와 동급" 취지의 정반대).
 //   ✓(md dismiss)로 그 지진 1건만 묵음 — id에 발령시각을 물려 **다음 지진은 새 id**라 영구 묵음이 안 된다(demoStaleMsgs 규약 계승).
 const QUAKE_TTL_H = 12;   // 12시간 지난 지진 = 무발동(옛 스냅샷으로 부팅할 때 유령 경보 차단 · staleDataMsg와 같은 성격)
-const QUAKE_MIN_MAG = 3.0;   // 규모 3.0 미만 = 무발동(운영자 260802 "지진은 3.0 이상 만") — 국내 지진 대부분이 2점대라 그것까지 울리면 경보가 소음이 된다
+// 규모 문턱 = **국내·해외 분리**(운영자 260803 "해외건, 국내건 차이가 많이 나야해 · 해외 6 이상 · 국내 3.5 이상 · 3도 좀 애매해").
+//   왜 갈랐나 = 같은 규모라도 체감·보도가치가 완전히 다르다. 국내 3.5는 사람이 느끼고 기사가 뜨지만, 해외 3.5는 뉴스조차 안 된다.
+//   구 단일 3.0 = 국내 기준으로도 애매하고(운영자) 해외엔 터무니없이 낮아 알림이 소음이 되던 값.
+//   해외 판정 = 수집기 intl 플래그(sns_trends.DIS_INTL_RE = 본문 국가·해역명 · 정본 1곳) · 구 데이터 폴백 = 아래 QUAKE_INTL_RE.
+//   ⚠ 판정 실패 = 국내 취급 = **낮은 문턱** = 더 잘 울린다(안전 축은 놓침이 헛알림보다 비싸다 · fail-open 계승).
+const QUAKE_MIN_KR = 3.5;    // 국내 문턱(운영자 260803 · 구 3.0)
+const QUAKE_MIN_INTL = 6.0;  // 해외 문턱 — 이 아래는 국내에 아무 영향이 없어 '긴급 뉴스와 동급'이 성립하지 않는다
+const QUAKE_INTL_RE = /일본|중국|대만|필리핀|인도네시아|러시아|미국|캐나다|멕시코|칠레|페루|튀르키예|터키|그리스|이탈리아|네팔|인도|파키스탄|이란|뉴질랜드|파푸아|바누아투|통가|알래스카|캄차카|쿠릴|오키나와|규슈|혼슈|홋카이도|국외|해외/;
+const quakeMinMag = d => ((d && d.intl != null) ? !!d.intl : QUAKE_INTL_RE.test(String((d && d.text) || '') + ' ' + String((d && d.title) || ''))) ? QUAKE_MIN_INTL : QUAKE_MIN_KR;
 function quakeMsgs() {
   const dl = (TRENDS && TRENDS.disaster) || [], now = Date.now(), out = [];
   for (const d of (Array.isArray(dl) ? dl : [])) {
@@ -8028,7 +8036,7 @@ function quakeMsgs() {
     // 규모 = 라벨(「지진 (규모 3.4)」)·원문 어느 쪽에서든 첫 숫자. ⚠ 규모를 못 읽으면 **울린다**(fail-open) —
     //   안전 축은 헛알림보다 '놓침'이 훨씬 비싸다. 지진 재난문자는 관례상 규모를 싣지만 그걸 전제로 묵음하지 않는다.
     const mg = parseFloat((String(d.title || '') + ' ' + String(d.text || '')).match(/규모\s*([0-9]+\.?[0-9]*)/)?.[1]);
-    if (Number.isFinite(mg) && mg < QUAKE_MIN_MAG) continue;
+    if (Number.isFinite(mg) && mg < quakeMinMag(d)) continue;   // 국내 3.5 / 해외 6.0(운영자 260803) — 규모 미상은 종전대로 fail-open(울린다)
     const t = Date.parse(d.time || '') || 0;
     if (!t || now - t > QUAKE_TTL_H * 3600e3) continue;
     out.push({ id: 'sys:quake:' + (d.time || ''), _sys: true, level: 'warn', t, action: 'quake-go',
