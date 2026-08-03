@@ -1,31 +1,32 @@
-# ⚾ 이정후, 마지막 타석에 걸린 숫자 하나
+# ⚾ 이정후, 9회 마지막 타석서 지켜낸 타율 3할
 
 **[프롬프트 설계]**
-- 화풍: A수채화 — 부상 복귀 선수의 버팀과 안도를 다루는 휴먼 결이라 따뜻한 톤이 맞다
-- 분위기: 야간 구장의 긴 호흡 — 침묵과 압박이 쌓이다 마지막 한 순간에 풀리는 정조, 팀 패배의 여운은 차갑게
-- 연출 방향: 뉴스 안 보는 SNS 이용자도 '3할이 깨지기 직전 마지막 타석'이라는 단 하나의 긴장으로 멈춘다 — 야구 규칙을 몰라도 '한 번 남은 기회'는 안다. 사건의 강조점은 배트를 짧게 고쳐 쥔 손과 굳은 턱선, 그리고 팔꿈치 보호대 하나다. 이 셋이 '버텼다'를 말로 설명하지 않고 보여준다. 조명은 thumb_dispatch의 LGT15 정조를 이어받아 어둠 속 단일 광웅덩이의 고립감을 키노트로 삼되, 起는 상황광에서 열고 轉에서 가장 어둡게 조인 뒤 結에서 풀어준다. 악센트는 팀 상징 오렌지 대신 브랜드 네온그린 #0FFD02을 타율 숫자·보호대·조명 반사 한 점에만 얹어 '지켜낸 숫자'로 읽히게 한다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형 — 남은 타석 하나) + 카드3 끝(예고형 — 세 번의 침묵) · 감정 피크=카드4 · 착지 한 줄 요지 = 3할은 재능이 아니라 팔꿈치를 맞고도 타석에 다시 선 결과이며, 그 숫자가 62패 시즌에서 그가 혼자 지켜낸 전부다
-- 연속성 앵커: Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet, a beige elbow guard strapped over his left forearm. 반복 장소 — a large open-air night ballpark with blurred stands behind.
+- 화풍: A 한국웹툰 수채화 — 범죄·권력이 아니라 한 선수의 통증과 버팀이 축이라 따뜻하고 호소력 있는 결이 맞다
+- 분위기: 기록 뉴스의 건조함 대신, 소수점 셋째 자리에 사람의 몸이 걸려 있는 여름 경기장의 담담한 온기. 통증에서 안도로 아주 천천히 풀리는 톤
+- 연출 방향: 뉴스 대신 피드만 넘기는 독자도 '3할'이라는 숫자가 그냥 기록이 아니라 팔꿈치에 맞은 공과 삼진 두 개를 지나온 흔적임을 한눈에 보게 한다. 강조점은 세 곳으로만 몰아준다 — 팔꿈치를 감싼 손, 짧게 고쳐 쥔 배트 손잡이, 그리고 텅 빈 관중석. 다이제스트가 고른 연출 정조(단일 광웅덩이의 고립감·흔들림 없는 정면 응시)는 조명 톤과 마지막 착지의 눈빛으로만 이어받고, 앵글은 카드마다 흩는다. 명도는 밝게 시작해 피크에서 가장 어둡고 마지막에 아침빛으로 풀린다
+- 독자 동선: **발단** 카드1(7월 26일 사구)→**전개** 카드2~3(이틀 결장·복귀 후 세 타석 침묵)→**피크** 카드4(물러나면 3할 붕괴)→**해소** 카드5(유리베의 싱커를 받아친 우전 안타)→(대비 비트) 카드6(팀 완패·지구 4위)→**시사점** 카드7 · 훅=카드1 끝(예고형 "그날 이후 이틀을 뛰지 못했다")+카드3 끝(단서·예고형 "남은 건 마지막 한 타석이었다"·질문형 0) · 착지 한 줄 요지 = 그가 지킨 0.301 안에 팔꿈치에 맞은 공과 삼진 두 개가 들어 있다
+- 연속성 앵커: Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. / 반복 장소: Recurring location - a large open-air ballpark with tiered stands and tall floodlight towers.
 
 ### [카드 1]
 **텍스트**
 ```text
-9회, 그에게 남은 타석은
-하나였다. 이 타석에서 물러나면
-시즌 타율은 *0.298로 떨어진다*
-지켜온 3할이 무너지는 자리였다
+7월 26일 에인절스전, 3타수 2안타
+거기에 홈런과 3타점을 더한 날이었다
+*7회말 속구에 팔꿈치를 맞았고*
+그날 이후 이틀을 뛰지 못했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his hands choking up on the bat handle, knuckles tight. Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet, a beige elbow guard strapped over his left forearm. He stands alone in the batter's box, chin set, eyes fixed toward the right edge of the frame where the pitcher would be, nose room on the right. The bat is the only thing he holds and the whole body leans into it. A large open-air night ballpark with blurred stands behind, one continuous field surface under him.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: overcast diffused stadium floodlight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the elbow guard strap and a faint light glint on the bat), muted contrast
-Avoid background lettering by composition: no scoreboard numerals in view, no jersey nameplate legible, no signage. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his right hand clamped hard over his left elbow the instant after the ball struck it, fingers pressed pale. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. He has dropped his bat at his feet and twisted his upper body away from the mound, head bowed toward the elbow, his gaze falling toward the right edge of the frame. Far behind him on the same dirt a pitcher stands small and blurred, and the scuffed chalk of the batter's box runs under his cleats.
+Camera: wide shot, full body with surrounding environment and spatial context, from eye-level, neutral realistic and balanced perspective, shot on a 35mm lens, natural documentary perspective with minimal distortion, nose room on the right, gaze directed toward the right edge
+Lighting/mood: bright high-key light, clean white ambience, minimal shadow, hopeful and open, an open-air ballpark evenly lit
+Accent: muted pastel base with a single neon green #0FFD02 accent on the batting glove strap at his elbow, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters; the story is carried by gesture and posture only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the infield dirt and grass of the ballpark) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the open dirt-and-grass ballfield) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +36,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이정후 타석 오라클파크
+이정후 사구 팔꿈치
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-사흘 전 26일 에인절스전,
-그는 3타수 2안타 1홈런을 쳤다
-그러다 7회말 상대 투수의 속구가
-*팔꿈치에 그대로 꽂혔다*
+*27일에도, 28일에도 그는 없었다*
+사구 여파로 이틀 연속 결장이었다
+29일 밀워키전에 5번 우익수로 섰다
+3경기 만의 선발 복귀였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his right hand clamped over his left elbow, fingers pressed hard into the sleeve. Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet, a beige elbow guard strapped over his left forearm. He is doubled forward at the plate just after impact, jaw clenched tight with muscle flexing at the jawline, eyes squeezed shut, the bat already dropped near his feet. Behind him a catcher in gear half rises, kept lower and softer so the player stays the focus. The same open-air night ballpark, one continuous dirt surface underneath.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from a slightly high angle looking down, three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: harsh single overhead stadium light pooling on the plate, deep surrounding shadow, oppressive
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the elbow guard strap catching the overhead light), film-noir low-key lighting, deep shadows
-Avoid background lettering by composition: no jersey nameplate legible, no scoreboard in view, no advertising boards. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his two hands resting motionless on the dugout railing while the game goes on without him. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. He stands alone at the front of the dugout in a warm-up jacket over the uniform, elbow lightly wrapped, watching the field to the right of the frame while a spare bat leans against the wall beside him. Two teammates sit further back on the bench, low and out of focus.
+Camera: medium shot, waist-up framing showing face and gestures, from a high angle looking down so the subject reads small and observed, shot on a 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
+Accent: muted pastel base with a single neon green #0FFD02 accent on the wristband of his resting forearm, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no lineup card characters; the story is carried by gesture and posture only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the home plate dirt circle) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dugout floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +68,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이정후 사구 팔꿈치 에인절스
+이정후 자이언츠 더그아웃
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-그는 8회 수비를 앞두고 교체됐고
-27일과 28일 경기에 연달아 빠졌다
-29일 밀워키전 선발 복귀는
-*사구 이후 3경기 만이었다*
+1회말 150km대 속구에 파울팁 삼진,
+4회말에는 헛스윙 삼진을 당했다
+7회에는 유격수 앞 땅볼에 그쳤다
+*남은 건 마지막 한 타석이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: an empty spot on the dugout bench where a folded jacket and a single batting glove rest, still holding the shape of someone. No player sits there. Further down the same bench, two teammates in cream uniforms lean forward watching the field, kept small and out of focus so the empty spot reads first. The bench runs the full width of the frame inside the same open-air night ballpark.
-Camera: extreme close-up, single detail, texture from a high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: cold blue dim dugout light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the stitching of the batting glove), film-noir low-key lighting, deep shadows
-Avoid background lettering by composition: no team logos, no numbers on the jacket, no lineup card visible. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his jaw clenched tight with the muscle flexing at the jawline as the swing finishes on empty air. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. Seen from the side, he has just completed a full swing and is turning back toward the dugout, bat still hanging from one hand, eyes cast down to the dirt in front of him. The catcher's mitt is closing at the lower left behind him on the same infield ground.
+Camera: medium close-up, chest-up framing with facial emotion and slight body context, profile shot from the side with a clear directional silhouette, shot on a 70mm short telephoto, gentle background compression and subject isolation, nose room on the right
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: muted pastel base with a single neon green #0FFD02 accent on the grip tape of the bat handle, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters; the story is carried by gesture and posture only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wooden dugout bench) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the infield dirt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +100,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-메이저리그 더그아웃 벤치 배팅장갑
+이정후 헛스윙 삼진
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-복귀 첫 세 타석은 침묵이었다
-1회 파울팁 삼진, 4회 헛스윙 삼진,
-7회는 *유격수 앞 땅볼이었다*
+*여기서 물러나면 타율은 0.298,*
+3할이 무너지는 타석이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his eyes wide open in a vacant unfocused stare just after the swing, looking past everything. Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet, a beige elbow guard strapped over his left forearm. His body has already rotated through an empty swing, the bat trailing behind him, shoulders dropping. He faces the camera, alone in a single pool of light with everything around him falling into blackness. The same open-air night ballpark, one continuous dirt surface beneath his feet.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from a low angle shot, looking up, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
+Scene: Emotional focal point: his eyes narrowed and locked on the mound, a tightly controlled face with the jaw set and the lips pressed, holding back everything. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. He is turned three quarters toward the pitcher in the batter's box, and at the very bottom edge of the frame his hands are re-gripping the bat handle an inch shorter, knuckles taut. Behind him the crowd rows dissolve into one soft dark wall.
+Camera: tight close-up, face filling the frame with intense emotion and intimate pressure, from eye-level in a three-quarter angle giving natural face depth, shot on an 85mm portrait lens with soft background separation
 Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 as one sharp glint along the bat edge), film-noir low-key lighting, deep shadows
-Avoid background lettering by composition: no scoreboard, no helmet logo, no jersey nameplate legible. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: muted pastel base with a single neon green #0FFD02 accent on the bat grip tape in his hands, one point of color kept soft inside the watercolor palette, film-noir low-key lighting, deep shadows
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters; the story is carried by the eyes and the grip only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the batter's box dirt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the darkened blurred stand wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +130,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이정후 헛스윙 삼진 타석
+이정후 타석 배트 그립
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-9회, 그는 바뀐 투수의 2구째
-싱커를 우익수 앞에 떨어뜨렸다
-타율은 *0.301로 남았다* 이날의
-유일한 안타였다
+바뀐 투수 유리베의 2구째 싱커였다
+그 공을 받아쳐 우익수 앞에 떨궜다
+그날의 유일한 안타였고
+*시즌 타율은 0.301로 남았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the long held breath finally released, his shoulders dropping as he pulls up at first base. Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet, a beige elbow guard strapped over his left forearm. He has just reached the base, one foot on the bag, and turns his head back toward the infield he came from, hands resting on his knees. The ball is gone from the frame. The same open-air night ballpark stretches behind him with the blurred stands sparse and quiet.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, profile shot, side view, clear silhouette, shot on 70mm short telephoto, gentle background compression, subject isolation
-Lighting/mood: cold blue pre-dawn tone stadium light, desolate stillness with one warm patch of ground light
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the elbow guard strap and one thin line on the base edge), muted contrast
-Avoid background lettering by composition: no base numerals, no scoreboard, no jersey nameplate legible, no advertising boards. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the long held breath leaving his chest, shoulders dropping as he watches the ball fall into right field. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. He has just released the bat and taken his first stride out of the box toward first base, head turned to follow the ball toward the upper right of the frame, one arm still extended from the swing. The bat spins low on the dirt behind his heel.
+Camera: full shot, head-to-toe with the outfit visible and a clear silhouette, from a low angle looking up so the subject reads tall and released, shot on a 24mm wide lens, cinematic wide framing with spatial context and subtle depth, nose room on the right
+Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
+Accent: muted pastel base with a single neon green #0FFD02 accent on the wristband of his extended arm, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters; the story is carried by gesture and posture only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the infield dirt around first base) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the infield dirt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +162,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-이정후 1루 출루 자이언츠
+이정후 우전 안타 타격
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-같은 날 팀은 2-8로 완패했다
-45승 62패, 지구 4위다
-그가 지킨 3할은 순위를 못 바꿨다
-*팔꿈치를 맞고도 다시 선 97경기다*
+그 사이 팀은 2-8로 완패했다
+*시즌 45승 62패, 서부지구 4위다*
+그는 97경기에서 타율 0.301,
+6홈런 37타점을 쌓아 두고 있다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his steady eyes looking directly out at the viewer, unwavering, as the emptying ballpark falls quiet behind him. Recurring subject — a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a cream home uniform with black pinstripes and a black batting helmet held in one hand now, a beige elbow guard strapped over his left forearm. He stands still near the edge of the field after the game, facing the camera straight on, the other hand loose at his side. Behind him the blurred stands are mostly empty and the field lights are dimming over one continuous grass surface.
-Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette from eye-level shot, front-on shot, direct gaze, symmetrical composition, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: warm soft light after the floodlights dim, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the elbow guard strap), muted contrast
-Avoid background lettering by composition: no scoreboard numerals, no jersey nameplate legible, no signage, no advertising boards. No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the wide empty distance between a handful of small players walking off and the vast rows of vacant seats above them. Seen from far overhead, five or six Korean players in plain cream uniforms with no logos and no numbers cross the outfield toward the dugout, heads down, their shadows stretched thin on the grass. One of them has stopped a few steps apart from the group and stands alone, still facing the infield. The stands wrap the top of the frame, emptied and uniform.
+Camera: extreme long shot with tiny subjects in a vast environment conveying scale and isolation, from an overhead bird's-eye angle showing layout and geometry, shot on a 14mm ultra-wide lens, vast environment with dramatic depth and strong spatial presence
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: muted pastel base with a single neon green #0FFD02 accent on one strip of the outfield wall padding, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters, no advertising boards with letters; the story is carried by scale and emptiness only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the outfield grass of the ballpark) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the outfield grass) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,5 +194,37 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-샌프란시스코 자이언츠 오라클파크 경기 종료
+오라클파크 빈 관중석
+```
+
+### [카드 7]
+**텍스트**
+```text
+올 시즌 그는 97경기를 채웠고
+팀은 17경기를 밑진 채 4위에 있다
+그 사이에서 그가 지킨 0.301에는
+*팔꿈치에 맞은 공과 삼진 두 개가 있다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: his steady unwavering eye contact looking straight into the camera, calm and worn at the same time. Recurring subject - a Korean baseball player in his late twenties, short black hair, lean athletic build, wearing a plain cream home uniform with no logos and no numbers and a dark navy cap. He stands square to the viewer in the middle of the quiet infield after the game, a bat resting on his shoulder and one thumb hooked in his belt, the wrap still visible on his left elbow. Nothing else moves around him.
+Camera: medium shot, waist-up framing showing face and gestures, front-on with a direct gaze and symmetrical composition at eye-level, neutral realistic and balanced perspective, shot on a 50mm standard lens, minimal distortion, natural cinematic composition
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
+Accent: muted pastel base with a single neon green #0FFD02 accent on his wristband, one point of color kept soft inside the watercolor palette, muted daylight contrast
+Korean default: Korean facial features and proportions for every figure.
+Text handling: no readable lettering anywhere, no jersey numbers, no team logos, no scoreboard characters; the story is carried by the gaze and the stance only.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the infield dirt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+이정후 타율 3할
 ```
