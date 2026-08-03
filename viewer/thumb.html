@@ -448,7 +448,11 @@
   .cpprev .trail-v .gs-v:active, .cpprev .trail-v .ropt:active { transform:scale(var(--press-m)); }   /* 눌림 = 정본 .trail-i:active 동값 */
   .cpprev .trail-v .gs-v.gs-locked:active { transform:none; }
   .cpprev .trail-v .gs-og { display:flex; align-items:center; justify-content:center; }   /* OPA 묶음(라벨+−/값/+) = 한 칩 행 — 세로 레일에서 ± 스테퍼가 줄줄이 갈라지지 않게 · 행 자체도 캡슐 중앙(운영자 260802 7차 "opa만 중앙 정렬 시키면 될듯" — 6차 중앙정렬 합류) */
-  .cpprev .trail-v .gs-og #gsOpas { display:flex; align-items:center; justify-content:flex-start; }   /* 슬롯 컨테이너도 가로 = −/값/+ 가 한 줄(구 인라인 span 안에서 grid 칩이 블록으로 쌓여 3줄로 갈라졌다 · 실렌더 실측 260802) */
+  .cpprev .trail-v .gs-og #gsOpas { display:flex; flex-direction:column; align-items:center; gap:2px /* raw-ok: 행 사이 = .trail-g 묶음 안 gap 정본 동값 계승(신규 값 0) */; }   /* 슬롯 행 = 세로 쌓기 — 접힘(기본)은 1행이라 종전과 동일 렌더 · 펼침(peek)만 2행(운영자 260803 "그렇게 해주고" = 낮은 짝 peek 승인) · 가로 한 줄(−/값/+) 책임은 아래 .opa-slot로 이관 */
+  .cpprev .trail-v .gs-og .opa-slot { display:flex; align-items:center; justify-content:center; }   /* 한 슬롯 = −/값/+ 가로 한 줄(구 #gsOpas 직계 가로 규칙 계승 · 인라인 span 안에서 grid 칩이 블록으로 쌓여 3줄로 갈라지던 축 그대로 방어 · 실렌더 실측 260802) */
+  .cpprev .trail-v .gs-og.opa-peek .opa-slot + .opa-slot { opacity:0; transform:translateY(-6px); animation:opaPeekIn var(--dur) var(--ease) forwards; }   /* 펼쳐지는 낮은 짝 = 등장 모션 #cpBlock.cpshow 정본 문법 계승(opacity 0→1 · translateY(-6px)→none · --dur/--ease 토큰 · 신규 값 0) */
+  @keyframes opaPeekIn { to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { .cpprev .trail-v .gs-og.opa-peek .opa-slot + .opa-slot { animation:none; opacity:1; transform:none; } }
   .cpprev .trail-v .gs-og .gs-v { min-width:0; padding:0 3px /* raw-ok: 구 .gospec .gs-opa 좌우 여백(0 2)·스테퍼(0 7)의 중간 = 세로 레일 폭 수납 */; }
   /* 편집 옵션 컬럼(#editCol)의 레일 옷 — 카드(.scard) 도형·라벨(.nm)·소머리(.dopt-h)·‹›(.opt-navs)를 벗기고 값 칩만 남긴다(운영자 260801 확정 「표기 = 값만」) · DOM·핸들러 전부 그대로
      ⚠ 셀렉터에 `.trail-v` + `.scard >` 를 겹쳐 특이도를 올린다 — 컬럼 시절 규칙(`.dockopt .scard > .csec:has(> .nm) > .rsz-opts` 0,5,0 등)이 뒤에 선언돼 있어 낮은 특이도로는 좌측정렬·overflow가 되살아난다(실렌더 실측 260802) */
@@ -1907,10 +1911,18 @@ function updateGoSpec() {
       const hdrOn = headerActive(), bgOn = hdrOn && $('#cBg').checked;   // 배경(nobg) = 헤더 있을 때만 유효(추가할 흰칸이 있어야 배경본 의미) — 헤더 없으면 발사서 무시라 OFF 고정·잠금(운영자 260720 Q292 배경편 — 오버레이만과 동일 원칙)
       { const gb = $('#gsBg'); if (gb) { gb.classList.toggle('on', bgOn); gb.setAttribute('aria-pressed', bgOn ? 'true' : 'false'); gb.classList.toggle('gs-locked', !hdrOn); gb.setAttribute('aria-disabled', !hdrOn ? 'true' : 'false'); gb.title = hdrOn ? '탭=배경(흰칸 없는 버전) 추가' : '헤더(부제+제목) 입력 시 활성 — 추가할 흰칸이 있어야 배경본 의미'; } }
       const ovo = $('#gsOvOnly'); if (ovo) { const noImg = !CIMG.b64, noLayer = !noImg && !ovLayerActive(); const lockMg = noImg || noLayer; const onMg = !lockMg && !ovOnly; ovo.classList.toggle('on', onMg); ovo.setAttribute('aria-pressed', onMg ? 'true' : 'false'); ovo.classList.toggle('gs-locked', lockMg); ovo.setAttribute('aria-disabled', lockMg ? 'true' : 'false'); ovo.title = noImg ? '사진 미첨부 = 합성할 사진 없음 → 배경 합성 OFF 고정' : noLayer ? '자막(오버레이) 미입력 = 사진이 실릴 장이 없음 → 배경 합성 OFF 고정 (헤더·저작권·안내문 산출물엔 사진이 안 들어간다)' : '탭=ON/OFF — ON=사진 위에 오버레이 레이어 합성 · OFF=사진이 있어도 오버레이 레이어만'; }   // 배경 합성(운영자 260725 의미 반전 = 구 '오버레이만'의 반대) — ON=합성 · OFF=오버레이 단독 · 사진 없으면 OFF 고정·잠금(구 'ON 고정+소등' = 켜졌는데 꺼진 느낌 사고를 값 자체로 해소 · 발사 로직은 CIMG.b64 없으면 이미 미합성이라 표시만 진실화)
-      const ops = $('#gsOpas'); if (ops) { const hv = opaHi();   // 레일 = 최고 OPA 1벌만(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만 뜨고, 이를 선택하는 기능은 동일하게") — 구 슬롯 수만큼 −/값/+ 반복(2개 선택 시 세로 레일이 2행)을 1행으로 · 낮은 짝은 하단 OPA 레일(#opaChips) 점등이 전담 · 조절 대상 = 항상 현재 최고 슬롯(data-i 불요 = adj가 그때그때 찾는다)
-        ops.innerHTML = '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="-' + OPA_STEP + '" title="탭=−' + OPA_STEP + '">−</span>'
-        + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-v="' + hv + '" title="휠·상하드래그·방향키=최고 OPA 조절(' + OPA_STEP + '단위) · 낮은 짝과 겹치면 단일 · 더 낮추면 다시 2개 · 탭=이 OPA 끄기(최소 1개)">' + hv + '</span>'
-        + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="' + OPA_STEP + '" title="탭=+' + OPA_STEP + '">+</span>'; }
+      const ops = $('#gsOpas'), og = $('#gsOpaOg');   // 레일 = 최고 OPA 1벌만(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만 뜨고, 이를 선택하는 기능은 동일하게") — 구 슬롯 수만큼 −/값/+ 반복(2개 선택 시 세로 레일이 2행)을 1행으로 · 낮은 짝은 하단 OPA 레일(#opaChips) 점등 + 길게눌러 펼치기(peek)가 전담
+      if (ops) {
+        if (og && cOpaSel.length < 2) og.classList.remove('opa-peek');   // 짝이 없으면 펼칠 것도 없다 = peek 자동 해제(끄기·칩 조작으로 1개가 된 경우)
+        const peek = !!(og && og.classList.contains('opa-peek'));
+        const order = cOpaSel.map((v, i) => ({ v: v, i: i })).sort((a, b) => b.v - a.v || a.i - b.i);   // 높은 값이 위 = 「보일 땐 무조건 높은값」(운영자 260803) — 접힘은 이 첫 칸 하나만 그린다 · 동값이면 슬롯 순서로 안정 정렬(재렌더마다 두 행이 뒤바뀌지 않게)
+        ops.innerHTML = (peek ? order : order.slice(0, 1)).map(s =>   // data-i = 슬롯 = 조절 대상(접힘 행은 adj가 매번 최고 슬롯으로 다시 맞춘다)
+          '<span class="opa-slot" data-i="' + s.i + '">'
+          + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="-' + OPA_STEP + '" title="탭=−' + OPA_STEP + '">−</span>'
+          + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-v="' + s.v + '" title="휠·상하드래그·방향키=값 조절(' + OPA_STEP + '단위) · 낮은 짝과 겹치면 단일 · 더 낮추면 다시 2개 · 길게(0.55초)/우클릭=낮은 짝 ' + (peek ? '접기' : '펼치기') + ' · 탭=이 OPA 끄기(최소 1개)">' + s.v + '</span>'
+          + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="' + OPA_STEP + '" title="탭=+' + OPA_STEP + '">+</span>'
+          + '</span>').join('');
+      }
       syncAbbrSpec('#gsAbbr');
     }
   }
@@ -2039,36 +2051,57 @@ function edNavSync() {   // ‹› 끝단 disabled 동기 — 기본값(첫째)�
   // OPA 레일 = 최고 OPA 1벌 그 자리 조절(휠·상하드래그·방향키·±스테퍼 전부 OPA_STEP 단위) + 탭=끄기(최소 1개) — 구 gsOpa2 조절 문법 계승(260718 칩 재편으로 유실 → 운영자 260718 복원) · 260803 단일화 = 조절 대상이 「슬롯 고정(data-i)」에서 「그때의 최고 슬롯」으로(레일이 최고값 1개만 띄우므로 조작 대상도 그 값이어야 표시와 어긋나지 않는다)
   const ops = $('#gsOpas');
   if (ops) {
-    const valSpan = () => ops.querySelector('.gs-opav');
     const hiIdx = () => { let k = 0; for (let j = 1; j < cOpaSel.length; j++) if (cOpaSel[j] > cOpaSel[k]) k = j; return k; };   // 최고 슬롯(동률 = 앞선 슬롯) — 겹친 뒤 한 칸 더 내리면 이 자리가 반대 슬롯으로 넘어가며 두 값이 계단식으로 함께 내려간다(60·40 → 50·40 → 40·40[단일] → 30·40 → 30·30[단일] → …)
-    let _adjT = 0;
-    const flash = span => { if (!span) return; span.classList.add('opa-adjusting'); clearTimeout(_adjT); _adjT = setTimeout(() => span.classList.remove('opa-adjusting'), 420); };   // 조절 중 mut → 420ms 후 accent 복귀(구 setVal 계승)
-    const adj = d => {   // 최고 슬롯 값 ±d(0~70 클램프) — 그 자리 갱신(updateGoSpec 재빌드 회피 = 드래그·휠 제스처 유지 · renderCpPrev만 = 미리보기 스크림 실시간)
+    const isPeek = () => { const og = $('#gsOpaOg'); return !!(og && og.classList.contains('opa-peek')); };
+    const tgt = el => { if (!isPeek()) return hiIdx(); const w = el && el.closest('.opa-slot'), i = w ? +w.dataset.i : NaN; return Number.isFinite(i) ? i : hiIdx(); };   // 조절 대상 = 펼침이면 그 행의 슬롯 · 접힘이면 **언제나 최고 슬롯**(「보일 땐 무조건 높은값」 = 보이는 값과 조작 대상이 갈라지지 않는다)
+    const flash = span => { if (!span) return; span.classList.add('opa-adjusting'); clearTimeout(span._at); span._at = setTimeout(() => span.classList.remove('opa-adjusting'), 420); };   // 조절 중 mut → 420ms 후 accent 복귀(구 setVal 계승) · 타이머를 span에 = 펼침 2행이 서로의 복귀를 지우지 않게
+    const adj = (d, i) => {   // 슬롯 i 값 ±d(0~70 클램프 · i 무효 = 최고 슬롯) — 그 자리 갱신(updateGoSpec 재빌드 회피 = 드래그·휠 제스처 유지 · renderCpPrev만 = 미리보기 스크림 실시간)
       if (!cOpaSel.length) return false;
-      const i = hiIdx(), nv = Math.max(0, Math.min(70, cOpaSel[i] + d));
+      if (!Number.isFinite(i) || i < 0 || i >= cOpaSel.length) i = hiIdx();
+      const nv = Math.max(0, Math.min(70, cOpaSel[i] + d));
       if (nv === cOpaSel[i]) return false;                                     // 경계
       cOpaSel = cOpaSel.slice(); cOpaSel[i] = nv;                              // 낮은 짝과 겹쳐도 그대로 둔다 = 실효 단일(운영자 260803 "겹칠 경우 하단 옵션의 opa는 단일 · 거기서 더 낮추면 다시 2개") — 중복은 발사(getComboOpas)·칩 점등(opaPaint)이 접고, 슬롯 2벌은 남아 있어 한 칸 더 내리면 저절로 갈라진다 · 구 '같은 방향 한 칸 건너뛰기'(260727)는 겹침 자체를 금지하던 처방이라 폐지
-      const span = valSpan(), hv = opaHi(); if (span) { span.textContent = hv; span.dataset.v = hv; flash(span); }
+      if (isPeek()) { const s = ops.querySelector('.opa-slot[data-i="' + i + '"] .gs-opav'); if (s) { s.textContent = nv; s.dataset.v = nv; flash(s); } }   // 펼침 = 그 행만 갱신(행 순서는 그대로 = 조절 중 행이 뛰지 않는다 · 재정렬은 다음 재렌더에서)
+      else { const w = ops.querySelector('.opa-slot'), s = w && w.querySelector('.gs-opav'), hv = opaHi();   // 접힘 = 표시도 대상도 늘 최고값 → 최고 슬롯이 반대편으로 넘어갔으면 행의 data-i도 따라 옮긴다
+        if (w) w.dataset.i = hiIdx(); if (s) { s.textContent = hv; s.dataset.v = hv; flash(s); } }
       opaPaint(); renderCpPrev();                                             // 칩 점등 동기 + 미리보기(레일 innerHTML 재빌드는 생략 = 제스처 유지)
       return true;
     };
-    const off = () => { if (cOpaSel.length > 1) { const i = hiIdx(); cOpaSel = cOpaSel.filter((_, j) => j !== i); opaPaint(); updateGoSpec(); } };   // 탭=최고 OPA 끄기(최소 1개 · 남은 낮은 짝이 레일로 올라온다)
+    const off = i => { if (cOpaSel.length > 1) { const k = Number.isFinite(i) ? i : hiIdx(); cOpaSel = cOpaSel.filter((_, j) => j !== k); opaPaint(); updateGoSpec(); } };   // 탭=그 OPA 끄기(최소 1개 · 접힘이면 최고값 = 남은 낮은 짝이 레일로 올라온다)
+    const peekTog = () => { const og = $('#gsOpaOg'); if (!og || cOpaSel.length < 2) return; og.classList.toggle('opa-peek'); updateGoSpec(); };   // 길게/우클릭 = 낮은 짝 펼치기·접기(운영자 260803 승인 · 롱프레스 문법 = bindAbbr 정본 계승) · 짝이 없으면 무동작
+    let lpT = null, longed = false;
+    const clrLp = () => { clearTimeout(lpT); lpT = null; };
     ops.addEventListener('click', e => {
-      const st = e.target.closest('.gsop-step'); if (st) { e.stopPropagation(); adj(+st.dataset.d); return; }   // ±스테퍼(모바일 조절)
-      const v = e.target.closest('.gs-opav'); if (v) { if (v._moved) { v._moved = false; return; } off(); }     // 드래그로 움직였으면 끄기 억제
+      if (longed) { longed = false; return; }   // 길게눌러 펼친 직후의 click = 여기서 삼킨다(⚠ 칩 분기 안에서 걸면 안 된다 — peekTog의 재렌더로 눌렀던 span이 사라져 click 타깃이 상위로 올라가면 플래그가 안 풀리고, 그 다음 탭 1회가 통째로 먹힌다 · 실렌더 실측 260803)
+      const st = e.target.closest('.gsop-step'); if (st) { e.stopPropagation(); adj(+st.dataset.d, tgt(st)); return; }   // ±스테퍼(모바일 조절)
+      const v = e.target.closest('.gs-opav'); if (v) { if (v._moved) { v._moved = false; return; } off(tgt(v)); }   // 드래그로 움직인 직후 = 끄기 억제
     });
+    ops.addEventListener('contextmenu', e => { if (!e.target.closest('.gs-opav')) return; e.preventDefault(); peekTog(); });   // PC 우클릭 = 펼치기/접기(모바일 = 롱프레스 · bindAbbr 정본 동축)
     ops.addEventListener('keydown', e => {
-      const st = e.target.closest('.gsop-step'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); adj(+st.dataset.d); return; }
-      const v = e.target.closest('.gs-opav'); if (!v) return;
-      if (e.key === 'ArrowUp') { e.preventDefault(); adj(OPA_STEP); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); adj(-OPA_STEP); }
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(); }
+      const st = e.target.closest('.gsop-step'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); adj(+st.dataset.d, tgt(st)); return; }
+      const v = e.target.closest('.gs-opav'); if (!v) return; const i = tgt(v);
+      if (e.key === 'ArrowUp') { e.preventDefault(); adj(OPA_STEP, i); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); adj(-OPA_STEP, i); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(i); }
     });
-    ops.addEventListener('wheel', e => { const v = e.target.closest('.gs-opav'); if (!v) return; e.preventDefault(); adj(e.deltaY < 0 ? OPA_STEP : -OPA_STEP); }, { passive: false });   // 휠 = 한 칸(OPA_STEP)
-    let py = null, acc = 0;   // 마우스 상하 드래그(12px=한 칸) — 터치는 세로 스크롤 양보(값은 ±스테퍼 · 운영자 260704 '스크롤 안먹음' 교정 계승)
-    ops.addEventListener('pointerdown', e => { const v = e.target.closest('.gs-opav'); if (!v || e.pointerType !== 'mouse') return; py = e.clientY; acc = 0; v._moved = false; try { v.setPointerCapture(e.pointerId); } catch (_) {} });
-    ops.addEventListener('pointermove', e => { if (py === null) return; acc += (py - e.clientY); py = e.clientY; const v = valSpan(); while (acc >= 12) { if (adj(OPA_STEP) && v) v._moved = true; acc -= 12; } while (acc <= -12) { if (adj(-OPA_STEP) && v) v._moved = true; acc += 12; } });
-    const end = () => { py = null; }; ops.addEventListener('pointerup', end); ops.addEventListener('pointercancel', end);
+    ops.addEventListener('wheel', e => { const v = e.target.closest('.gs-opav'); if (!v) return; e.preventDefault(); adj(e.deltaY < 0 ? OPA_STEP : -OPA_STEP, tgt(v)); }, { passive: false });   // 휠 = 한 칸(OPA_STEP)
+    let py = null, acc = 0, di = NaN;   // 마우스 상하 드래그(12px=한 칸) — 터치는 세로 스크롤 양보(값은 ±스테퍼·롱프레스 · 운영자 260704 '스크롤 안먹음' 교정 계승)
+    ops.addEventListener('pointerdown', e => {
+      longed = false; clrLp();   // ⚠ 칩 판별보다 **먼저** = 새 누름이면 무조건 직전 롱프레스 흔적을 지운다(구판은 `.gs-opav`가 아니면 early return이라 ± 스테퍼를 누를 땐 리셋을 안 지났다 → 펼친 직후 첫 ± 탭이 통째로 삼켜짐 · 실렌더 실측 260803)
+      const v = e.target.closest('.gs-opav'); if (!v) return;
+      lpT = setTimeout(() => { longed = true; peekTog(); }, 550);   // 550ms = bindAbbr 롱프레스 정본 동값 · 터치·마우스 공통
+      if (e.pointerType !== 'mouse') return;
+      py = e.clientY; acc = 0; di = isPeek() ? tgt(v) : NaN; v._moved = false; try { v.setPointerCapture(e.pointerId); } catch (_) {}   // 접힘 드래그 = NaN → adj가 매 칸 최고 슬롯을 다시 찾는다(계단식 하강 유지)
+    });
+    ops.addEventListener('pointermove', e => {
+      if (py === null) return; acc += (py - e.clientY); py = e.clientY;
+      const v = ops.querySelector('.opa-slot[data-i="' + di + '"] .gs-opav') || ops.querySelector('.gs-opav');
+      while (acc >= 12) { clrLp(); if (adj(OPA_STEP, di) && v) v._moved = true; acc -= 12; }     // 움직였으면 롱프레스 취소 = 드래그와 펼치기가 겹치지 않는다
+      while (acc <= -12) { clrLp(); if (adj(-OPA_STEP, di) && v) v._moved = true; acc += 12; }
+    });
+    const end = () => { py = null; di = NaN; clrLp(); };
+    ops.addEventListener('pointerup', end); ops.addEventListener('pointercancel', end); ops.addEventListener('pointerleave', end);
+    document.addEventListener('click', e => { if (e.target.closest('#gsOpaOg')) return; const og = $('#gsOpaOg'); if (og && og.classList.contains('opa-peek')) { og.classList.remove('opa-peek'); updateGoSpec(); } });   // 바깥 탭 = 접기(펼침은 '잠깐' 보는 상태 = 자리 차지한 채 남지 않는다)
   }
 })();
 
