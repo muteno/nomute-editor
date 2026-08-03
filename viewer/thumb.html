@@ -163,6 +163,10 @@
   .trk.over { color:var(--danger); }
   /* ── 기본(통합) 모드 — 섹션머리(•) + 부제 흰색/제목 강조색 + 자막 2/3 + 이미지 슬롯 1/3 ── */
   .csec { display:flex; align-items:center; gap:6px; font-size:var(--fs-label); font-weight:var(--fw-x); color:var(--fg); margin:16px 0 9px; }   /* 소머리 텍스트 = 흰색(--fg)·800(--fw-x) = 뉴스 .cref-lbl 표준 형광통일(운영자 260629) · '• 헤더'↔배경 = align-items center 수직중앙 */
+  /* 컨트롤이 딱 1개인 행 = 행 전면이 탭 타깃(운영자 260803 · edit .hd.st 봉합의 이미지 셸 짝 · 히트존 확장은 아래 click 위임[3429]이 전담 · 여기선 어포던스만)
+     술어 = 「[role=button] 하나뿐 · 형제 컨트롤 0 · button 0(접기 V자가 있으면 2개 행)」 = 위임 술어와 같은 문장 · 값 = --press-m(.onoff 사다리 정본 동값 · 신규 값 0) */
+  .scard:has([role="button"]):not(:has([role="button"] ~ [role="button"])):not(:has(button)):not(:has(input,select,textarea)) { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .scard:has([role="button"]):not(:has([role="button"] ~ [role="button"])):not(:has(button)):not(:has(input,select,textarea)):active [role="button"] { transform:scale(var(--press-m)); }
   .csec::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광(--accent)·700(--fw-b) · 인라인 '• '→::before 분리(텍스트 흰색·블릿 형광) · flex라 gap:6px가 간격(블록 .fl은 content:'• ' 공백 = 뉴스 정본) */
   /* ── 섹션 접이(운영자 260728 "AI 생성 개요 톤을 카드 생성에 · 소머리를 접이로") = index #genidlg `.geni-fold`/`.geni-chev`/`.geni-camsub` 정본 미러(iframe 자기완결 사본 = .rsz-opts↔.geni-opts 선례) · 신규 값 0(체브론 15/2·회전 dur-acc·grid-rows 0fr↔1fr 전부 정본 동값) ──
      ⚠ 정본은 소머리 자체가 <button>(.geni-sechead)이지만 thumb `.csec`는 안에 값 토글(.ovfmt/.onoff role=button)을 품고 있어 button 중첩이 된다 → 클릭 타깃 = 체브론 버튼 단독, 인접 연결 = :has(392행 .scard 선례·크로미엄) */
@@ -3426,6 +3430,18 @@ function carJump(slideIdx) {   // 변형줄 클릭 → 해당 변형 슬라이�
   if (slide) { $('#carwrap').hidden = false; track.scrollTo({ left: slide.offsetLeft, behavior: 'smooth' }); }
 }
 // ── 섹션 접이 토글(운영자 260728 "AI 생성 개요처럼 소머리를 접이로") = index #genidlg .geni-fold 토글 정본 미러 · 위임 1핸들러(소머리 3개 = 헤더·오버레이·옵션 · 개별 배선 금지) ──
+/* ── 「캡슐로 보이면 캡슐 전체가 눌린다」 = 카드 행(.csec) 전면 히트존(운영자 260803 "기본 아냐 저건? 어이가없네") ──
+   260803 영상 편집 자막 사고(캡슐 127.3×37.2인데 히트존은 글자 24.7×19.2 = 면적 10%)의 **이미지 셸 쪽 같은 형태**.
+   실측(smoke_hitzone 430px): 저작권 5.0% · 안내문 3.6% · 프리셋1 8.1% · 프리셋2 8.6% — 캡슐 여백 탭이 통째로 죽어 있었다.
+   술어 = **그 행에 보이는 컨트롤이 정확히 1개일 때만**(= smoke_hitzone.js H1 판정 술어와 같은 문장 · 게이트와 봉합이 한 술어 = 드리프트 0).
+   컨트롤이 2개 이상인 행(오버레이 「릴스|카드뉴스|접기」 등)은 어느 걸 뜻하는지 모호하므로 미적중 = 종전 불변.
+   값 축·핸들러 무접촉 = 그 컨트롤의 .click()을 그대로 부른다(상태 계약은 각 토글 정본이 단일 소유). */
+document.addEventListener('click', e => {
+  if (e.target.closest('button,[role="button"],a,input,select,textarea,label,[data-p],[data-cyc]')) return;   // 컨트롤 직격 = 자기 핸들러가 이미 처리(중복 발화 차단)
+  const row = e.target.closest('.scard'); if (!row) return;   // 기준 = **카드**(구 .csec은 카드 padding 안쪽이라 45px 카드에서 27px만 먹었다 = 실측 59.5%·h27 · smoke_hitzone H2 잔류) — 게이트가 캡슐로 재는 단위와 같은 단위로 봉합한다
+  const ctrls = [...row.querySelectorAll('button,[role="button"]')].filter(el => el.offsetParent !== null && !el.hasAttribute('hidden'));
+  if (ctrls.length === 1) ctrls[0].click();
+});
 document.addEventListener('click', e => {
   const btn = e.target.closest('.cfold-chev'); if (!btn) return;
   const open = btn.getAttribute('aria-expanded') !== 'true';
