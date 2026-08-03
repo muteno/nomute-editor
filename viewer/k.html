@@ -582,7 +582,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
   function drawSpec() {   // 리드아웃(발사 전 전체 스펙 가시화 — esc = 고정 배열값이지만 innerHTML 싱크 방어 일관)
     const m = K_MODELS.find(x => x.id === kModel) || K_MODELS[0];
     const parts = ['<b>' + esc(m.nm) + '</b>', esc(kRatio()), esc(kSet['화질']), esc(kSet['프레임']), esc(kSet['길이'] === '직접' ? segTotal() + 's' : kSet['길이']), esc(kSet['표현1'])];
-    if (kSet['표현2'] !== '없음') parts.push(esc(kSet['표현2']) + (((K_SUB[kSet['표현2']] || []).includes(kSet['세부']) && kSet['세부'] !== '기본') ? '·' + esc(kSet['세부']) : '') + ((kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') ? '(웹툰 ' + (kWebtoon ? 'ON' : 'OFF') + ')' : ''));   // 리드아웃 = 극화·게키카(웹툰 ON) 꼴
+    if (kSet['표현2'] !== '없음') parts.push(esc(kSet['표현2']) + (((K_SUB[kSet['표현2']] || []).includes(kSet['세부']) && kSet['세부'] !== '기본') ? '·' + esc(kSet['세부']) : '') + (((kSet['표현2'] === '극화' || kSet['표현2'] === '수채화') && kWebtoon) ? '(웹툰)' : ''));   // 리드아웃 = 워딩 존재 자체가 켜짐(운영자 260803 — 구 '(웹툰 ON/OFF)' 폐지 · 꺼짐 = 미표기 · 발사 페이로드 축[웹툰 ON/OFF 문자열]은 서버 계약이라 무접촉)
     parts.push(esc(kSet['오디오']));
     if (kNeg.length) parts.push('네거 ' + kNeg.length + '종');
     if (kSegOn) parts.push('분막 ' + kSegs.length + '구간');
@@ -719,7 +719,7 @@ function kPayload() {   // go 핸들러 페이로드(서버 api/k.js가 화이�
         row.appendChild(ch2); }
       const wt = kSet['표현2'] === '극화' || kSet['표현2'] === '수채화';
       const tg = document.createElement('button'); tg.type = 'button'; tg.className = 'ktg' + (wt ? ' show' : '') + (kWebtoon ? ' on' : ''); tg.dataset.fk = 'ktg';
-      tg.textContent = '한국웹툰 스타일 ' + (kWebtoon ? 'ON' : 'OFF'); tg.setAttribute('aria-pressed', String(kWebtoon));
+      tg.textContent = '한국웹툰 스타일'; tg.setAttribute('aria-pressed', String(kWebtoon));   // 워드 토글 = 라벨 자체 점등(운영자 260803 — 구 'ON/OFF' 접미 폐지 · 점등 = .ktg.on 기존 축)
       tg.addEventListener('click', () => { kWebtoon = !kWebtoon; kFocusKey = 'ktg'; render(); });
       row.appendChild(tg); axes.appendChild(row);
     }

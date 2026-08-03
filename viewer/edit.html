@@ -877,7 +877,7 @@ const CYL={ ar:{off:'원본','9:16':'9:16','1:1':'1:1','4:5':'4:5','16:9':'16:9'
 const HALF=new Set(['bgm','anorm']);   // 반폭 페어 = 배경음|음량만(운영자 260728 재편 — 비율·해상도 = 칩 나열 전폭 · 컷 편집 = 게이지 전폭 · 자막|번역|고프레임 = hl3 3분할 별도 행)
 const AXNM={ ar:'비율', fit:'방식', res:'해상도', fps:'고프레임', cutlv:'컷 편집', trim:'구간', clip:'클리퍼', bgm:'배경음', anorm:'음량', sub:'자막', trn:'번역' };   // fps = 고프레임 개명·trn 합류(운영자 260728)   // 축 이름(a11y+스트립 어휘 — CARD 키와 별개: ar/fit/cutlv는 CARD에 없음 · trim = 스트립 라벨 정식 등재 = 무언 폴백 제거 · 평의회2 260718) · cutlv = '컷 편집'(운영자 260724 — 스트립 라벨을 CARD.cut.nm '컷 편집'과 일치시켜 구 '컷 세기' 불일치 교정)
 function curCyc(k){ if(k==='ar')return ON.screen?P.ar:'off'; if(k==='res')return ON.res?P.res:'off'; if(k==='fps')return ON.fps?P.fps:'off'; if(k==='cutlv')return ON.cut?P.cutlv:'off'; if(k==='clip')return ON.clip?'on':'off'; if(k==='bgm')return ON.bgm?'on':'off'; if(k==='anorm')return ON.anorm?'on':'off'; if(k==='trim')return ON.trim?'on':'off'; if(k==='sub')return ON.sub?'on':'off'; if(k==='trn')return ON.trn?'on':'off'; if(k==='fit')return P.fit; return P[k]; }
-function cyv(k){ const v=curCyc(k); return '<span class="cyv'+(v==='off'?' off':'')+'" data-cyc="'+k+'" role="button" tabindex="0" aria-label="'+(AXNM[k]||k)+'">'+esc(CYL[k][v]||v)+'</span>'; }
+function cyv(k,word){ const v=curCyc(k); const lab=CYL[k][v]||String(v); const bin=(lab==='OFF'||lab==='ON'); return '<span class="cyv'+(v==='off'?' off':'')+'" data-cyc="'+k+'" role="button" tabindex="0" aria-label="'+(AXNM[k]||k)+'"'+(bin?' aria-pressed="'+(v!=='off')+'"':'')+'>'+esc(bin?(word||AXNM[k]||k):lab)+'</span>'; }   // 이진 상태(라벨이 ON/OFF뿐) = 워드 토글(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" · thumb #cnTog 정본 계승 — ON/OFF 값 텍스트 폐지 · 칩 텍스트 = 기능 워딩 · 점등 = .off 소등/accent 점등 기존 축 그대로) · 실값 상태(살짝·목소리만·원본 등)는 종전 값 표기 유지 · data-cyc·핸들러 불변
 // ── 선택 요약 스트립 리드백(운영자 260718 "이미지 스튜디오 통일 규격 → 비디오 정합") — thumb #editSpec 문법 계승: Q128 모든 옵션 나열·OFF도 표기 + Q144 슬래시 구분자·활성값(적용 중) .on accent · 값 어휘 = CYL·curCyc(카드와 동일 SSOT = 이중정의 0) · 방식 = 비율 ON일 때만(카드 조건부 등장 문법 동조) · 구 #pvAttr 명세줄 대체(도먼트) ──
 function updateOptStrip(){
   const el=document.getElementById('editSpec'); if(!el) return;
@@ -885,8 +885,9 @@ function updateOptStrip(){
   const sig=axes.map(k=>k+':'+curCyc(k)).join('|')+(ON.screen?'|s':'');   // 서명 캐시 = 게이지 드래그(pvSync 연타 ~60/s) 중 동일 내용 innerHTML 재생성 낭비 제거(평의회7 260718 · 값 불변 = 조기 return)
   if(el._sig===sig) return; el._sig=sig;
   el.innerHTML=axes.filter(k=>k!=='fit'||ON.screen).map(k=>{
-    const v=curCyc(k);
-    return '<span class="gs-lbl">'+(AXNM[k]||'구간')+'</span> <span class="gs-v'+((k==='fit'||v!=='off')?' on':'')+'">'+esc(CYL[k][v]||String(v))+'</span>';
+    const v=curCyc(k); const lab=CYL[k][v]||String(v); const word=AXNM[k]||'구간';
+    if(lab==='OFF'||lab==='ON') return '<span class="gs-v'+(v!=='off'?' on':'')+'">'+word+'</span>';   // 이진 축 = 워드 단독(운영자 260803 — 'OFF도 표기'(Q128)를 워드 소등 표기로 개정: 기능 워딩이 점등/소등으로 onoff · thumb #cnTog 문법 · 값 어휘 축(원본·살짝 등)은 아래 종전 라벨|값 유지)
+    return '<span class="gs-lbl">'+word+'</span> <span class="gs-v'+((k==='fit'||v!=='off')?' on':'')+'">'+esc(lab)+'</span>';
   }).join(' <span class="gs-sep">/</span> ');
 }
 function setAxis(k,v){   // 축 상태 단일 정본(순환값·잔존 chip 공유 — buildOpts/etaCalc/레시피/클리퍼 배타 계약 불변)
@@ -930,22 +931,22 @@ function cutBody(){   // 강도 = 칩 4택1(운영자 260731 19차 "게이지 �
     +'</div>'+(ON.cut?'<div class="cnote">무음 구간은 STT 전사로 찾음 — 자막은 안 입힘'+(P.cutfill?' · 필러 세기도 위 강도를 따라감':'')+'</div>':'');
 }
 function hlRow(){   // 자막|번역|고프레임 3분할 토글 행(운영자 260728 Q04~Q06 "위에는 on off 토글 — 불 들어오면 ON") — 부품 = 이미지 스튜디오 모자이크 행 라벨|OFF 문법(cyv = thumb .onoff 계승 동형) · 자막 ON 파라미터 = 아래 전폭 카드(1/3폭 게이지 미달 = 기타 옵션 세부 카드 문법 동일)
-  const tg3=(ax,nm,ttl)=>'<div class="scard cyc'+(ON.clip?' dim':'')+'"><div class="hd st"'+(ttl?' title="'+ttl+'"':'')+'><span class="nm">'+nm+'</span><span class="cysep">|</span>'+cyv(ax)+'</div></div>';
+  const tg3=(ax,nm,ttl)=>'<div class="scard cyc'+(ON.clip?' dim':'')+'"><div class="hd st"'+(ttl?' title="'+ttl+'"':'')+'>'+cyv(ax,nm)+'</div></div>';   // 워드 토글 = 라벨 자체 점등(운영자 260803 · thumb #cnTog 정본 — 구 'nm | OFF' 이중 표기 폐지 · cyv가 워딩 흡수)
   return '<div class="cyrow tri">'+tg3('sub','자막')+tg3('trn','번역','ON = 원문이 50% 작게 위 · 한국어 자막이 아래(원문+한글 동시 표기)')+tg3('fps','고프레임','ON = 60fps 보간(부드러움)')+'</div>'
     +(ON.sub?'<div class="scard'+(ON.clip?' dim':'')+'"><div class="prm">'+prm('sub')+'</div></div>':'');
 }
-function cardHtml(k,half){   // 한 줄 헤더(라벨|값 or 라벨|칩 나열) + 잔여(게이지·구간 입력·노트)만 아래
-  let vals='';
+function cardHtml(k,half){   // 한 줄 헤더(라벨|값 or 라벨|칩 나열 or 이진=워드 토글 단독) + 잔여(게이지·구간 입력·노트)만 아래
+  let vals='',hdNm=true;   // hdNm=false = 이진 워드 토글이 라벨을 흡수(운영자 260803 · 아래 CARDAX 분기)
   if(k==='screen') vals=hdChips('ar',[['off','원본'],['9:16','9:16'],['1:1','1:1'],['4:5','4:5'],['16:9','16:9']],ON.screen?P.ar:'off');   // 비율 = 칩 상시 나열(운영자 260728 Q10 — 이미지 스튜디오 형식 · 값 축은 edit 기존 집합 유지)
   else if(k==='res') vals=hdChips('res',[['off','원본'],['src','4K'],['1080','1080p'],['720','720p']],ON.res?P.res:'off');
-  else if(CARDAX[k]) vals='<span class="cysep">|</span>'+cyv(CARDAX[k]);
+  else if(CARDAX[k]){ const ax=CARDAX[k], v0=curCyc(ax), lab0=CYL[ax][v0]||String(v0); if(lab0==='OFF'||lab0==='ON'){ hdNm=false; vals=cyv(ax,CARD[k].nm); } else vals='<span class="cysep">|</span>'+cyv(ax); }   // 이진 상태 = 카드 라벨 자체가 토글 칩(운영자 260803 · #cnTog 문법 — 'nm | OFF' 이중 표기 폐지 · 칩 워딩 = CARD.nm 그대로) · 실값 상태(컷 살짝·배경음 목소리만)는 종전 라벨|값
   let body='';
   if(k==='sub'&&ON.sub) body='<div class="prm">'+prm('sub')+'</div>';   // (hl3 밖 단독 배치 폴백용 보존)
   else if(k==='screen'&&ON.screen) body='<div class="prm"><div class="plbl plbl-nm" style="margin-top:0">방식</div><div class="prow">'+[['crop','자르기'],['pad','검정 여백'],['blur','블러 여백']].map(a=>pc('fit',a[0],P.fit===a[0],false,a[1])).join('')+pc('genfill','x',false,true,'생성형')+'</div>'+(P.fit==='crop'?gauge('vpos','위치',0,100,P.vpos,'%'):'')+'</div>';   // 방식 = 비율 ON일 때 아래 구획(운영자 260712 3차 동급 위계 유지 — 헤더는 칩 나열이 차지)
   else if(k==='cut') body=cutBody();   // 4구간 분할 게이지(운영자 260728 Q07) — OFF에서도 게이지 노출 = 게이지가 곧 스위치
   else if(k==='clip'&&ON.clip) body='<div class="cnote">하이라이트 후보 3~5개 · 단독 실행 — 다른 옵션은 잠시 꺼짐, 끄면 복원</div>';
   else if(k==='trim'&&ON.trim) body=trimBody();   // n구간+룰러+디졸브(운영자 260728 Q04)
-  return '<div class="scard cyc'+(half?' half':'')+(ON.clip&&k!=='clip'?' dim':'')+'"><div class="hd st"><span class="nm">'+CARD[k].nm+'</span>'+vals+'</div>'+body+'</div>';   // 클리퍼 배타 중 = 타 축 dim(운영자 260712 6차 승인 — 시각만·탭=배타 해제 그대로)
+  return '<div class="scard cyc'+(half?' half':'')+(ON.clip&&k!=='clip'?' dim':'')+'"><div class="hd st">'+(hdNm?'<span class="nm">'+CARD[k].nm+'</span>':'')+vals+'</div>'+body+'</div>';   // 클리퍼 배타 중 = 타 축 dim(운영자 260712 6차 승인 — 시각만·탭=배타 해제 그대로) · 이진 워드 토글 카드 = nm 생략(칩이 워딩 자체 · 260803)
 }
 function secCards(ks){ let out='',i=0; while(i<ks.length){ const k=ks[i]; if(k==='hl3'){ out+=hlRow(); i++; continue; } if(HALF.has(k)&&i+1<ks.length&&HALF.has(ks[i+1])){ out+='<div class="cyrow">'+cardHtml(k,true)+cardHtml(ks[i+1],true)+'</div>'; i+=2; } else { out+=cardHtml(k,false); i++; } } return out; }
 function render(){
@@ -1264,7 +1265,7 @@ const XTR={mosaic:false,pinset:false,keying:false, silh:false, chroma:false, tra
 function renderXtr(){   // 가로 3분할 + 라벨|OFF·ON 순환값 문법(운영자 260712 5차 "한줄 배치·끔 아니라 OFF>누르면 ON" — 이미지 모달 상태 인라인 틀 계승 · 구 끔/적용 2버튼 seg 폐지) · 세부 게이지 = 켠 것만 아래 전폭 카드(1/3폭엔 게이지 미달) · 2행 = 실루엣·크로마키 2분할(260712 2차 · tg 패턴 그대로)
   const el=$('#xtrsec'); if(!el) return;
   const any=XTR.mosaic||XTR.pinset||XTR.keying||XTR.silh||XTR.chroma;
-  const tg=(k,nm,ttl)=>'<div class="scard cyc"><div class="hd st"'+(ttl?' title="'+ttl+'"':'')+'><span class="nm">'+nm+'</span><span class="cysep">|</span><span class="cyv'+(XTR[k]?'':' off')+'" data-xo="'+k+'" role="button" tabindex="0" aria-pressed="'+(XTR[k]?'true':'false')+'" aria-label="'+nm+'">'+(XTR[k]?'ON':'OFF')+'</span></div></div>';
+  const tg=(k,nm,ttl)=>'<div class="scard cyc"><div class="hd st"'+(ttl?' title="'+ttl+'"':'')+'><span class="cyv'+(XTR[k]?'':' off')+'" data-xo="'+k+'" role="button" tabindex="0" aria-pressed="'+(XTR[k]?'true':'false')+'" aria-label="'+nm+'">'+nm+'</span></div></div>';   // 워드 토글 = 라벨 자체 점등(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" · thumb #cnTog 정본 — 구 'nm | ON/OFF' 이중 표기 폐지 · data-xo·핸들러·배타 로직 불변)
   const chips=(key,attr,list)=>'<div class="prow">'+list.map(([v,l])=>'<button class="pc'+(XTR[key]===v?' on':'')+'" type="button" data-'+attr+'="'+v+'">'+l+'</button>').join('')+'</div>';
   let det='';
   if(XTR.mosaic) det+='<div class="plbl" style="margin-top:0">가림 모양</div><div class="prow">'+[['rect','네모'],['ellipse','타원']].map(([v,l])=>'<button class="pc'+(XTR.shape===v?' on':'')+'" type="button" data-xs="'+v+'">'+l+'</button>').join('')+'</div>'

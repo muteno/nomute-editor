@@ -156,7 +156,7 @@ async function runOnce(browser, port) {
     ck('C3 스트립 = 코너 레일 값 칩 그룹(투명·radius 0·10.5px) + 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px)',
        r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && Math.abs(r1.railFlush[0] - 8) <= 0.5 && Math.abs(r1.railFlush[1]) <= 0.5,
        r1.stripBox + ' · inRail=' + r1.stripInRail + ' · flush=' + JSON.stringify(r1.railFlush));
-    ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) 전부 원본/OFF·무점등(운영자 260724 노출 항목 축소 · 260728 프레임→고프레임 개명 = OFF/ON 토글)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 OFF \/ 배경음 OFF \/ 컷 편집 OFF$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
+    ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) — 값 축 = 라벨+원본 · 이진 축 = 워드 단독·무점등(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — 구 260728 「고프레임 OFF」류 ON/OFF 값 표기 폐지 · thumb #cnTog 정본)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 \/ 배경음 \/ 컷 편집$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
     ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
     ck('C7 게이지 firing→✓(gck)→생성중 상주(busy)→goFireDone 원복', r1.fire && r1.gck && r1.busy && r1.back === '생성', r1.fire + '/' + r1.gck + '/busy' + r1.busy + '/' + r1.back);
