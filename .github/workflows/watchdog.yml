@@ -48,6 +48,12 @@ jobs:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: timeout 420 python3 scraper/watchdog.py
 
+      - name: 긴급 오발 신고 알림 갱신(TTL 상시)
+        # 알림 수명 축 — msg.py·뷰어 둘 다 24h 만료라, 재set 트리거가 rate.yml(운영자가 별점을 눌러야 도는 축)에만
+        # 걸려 있으면 주말·휴가처럼 **정확히 적체가 쌓이는 구간**에 알림이 조용히 사라진다(평의회2 260803 지적).
+        # 30분 타이머인 이 워크플로가 상시 갱신 = 운영자 행동과 무관하게 알림이 살아있다. 실패 = 무시(fail-open).
+        run: python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 스킵"
+
       - name: 쿨다운 원장 커밋(변동 시만)
         run: |
           git config user.name "nomute-bot"
@@ -55,6 +61,7 @@ jobs:
           git add scraper/obs/watchdog_state.json 2>/dev/null || true
           git add messages 2>/dev/null || true   # SNS stale 메시지함 점등/해제(wd-sns 단일 슬롯 · 260714) — 커밋돼야 빌드가 viewer/messages.json으로 합성
           git add scraper/obs/incidents.jsonl 2>/dev/null || true   # 사고 이력 원장(운영자 260727 한 수) — ⚠ 러너는 매 런 새 체크아웃이라 **커밋 안 하면 기록이 통째로 증발**한다(변화 있을 때만 몇 줄 증가 = 리포 부담 0)
+          git add scraper/brk_misfire.json 2>/dev/null || true   # 긴급 오발 신고 처리 원장(위 TTL 갱신 스텝 산출 · 260803)
           git diff --cached --quiet && { echo "원장 변동 없음 — 커밋 생략"; exit 0; }
           git commit -m "watchdog: 경보 쿨다운 도장"
           for i in 1 2 3 4; do

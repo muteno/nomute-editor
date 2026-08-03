@@ -75,9 +75,17 @@ jobs:
           R_REASON: ${{ inputs.reason }}
         run: |
           python3 .github/scripts/rate_record.py
+          # 긴급 오발 신고(reason=brkno) 폐루프 — 같은 축 2건(또는 총 3건·72h 아사창)이면 messages/ 에 개선안 알림.
+          # LLM·네트워크 0(결정적 축 매칭) · 신고가 없으면 원장만 갱신하고 조용히 끝난다(운영자 260803 4차).
+          # ⚠️ fail-open 필수 — 이 스텝은 `bash -e`라 rc≠0이면 **아래 커밋 전에 죽어** 방금 rate_record.py 가
+          #    적재한 별점·픽이 러너와 함께 증발한다(부속 기능이 본체를 인질로 잡는 구조 · 평의회2 260803 지적).
+          #    scrape.yml fire_watch·news-analyze messages add 와 같은 관용구.
+          python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 실패(스킵) — 평점 기록은 계속"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scraper/ratings.jsonl
+          git add -A messages 2>/dev/null || true
+          git add scraper/brk_misfire.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           # 제목은 셸 주입 위험 → 커밋 메시지엔 안전한 값(점수·픽)만.
           git commit -m "rate: ${R_SCORE}점 pick=${R_PICKED:-0} dismiss=${R_DISMISSED:-0}"

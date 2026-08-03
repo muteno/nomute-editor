@@ -593,7 +593,7 @@
   .cardtop .scrap.nw { color:var(--accent); font:900 9.5px/1 var(--font-status); letter-spacing:.12em; text-shadow:0 0 9px rgba(var(--accent-rgb),.55); }   /* NEW(<30분) = 라임 플랫(디자인안03) */
   /* 우상단 긴급/이슈 = catslot 대칭. 색글자(긴급 빨강·이슈 노랑). 테두리 점등과 같은 brkIssueKind(긴급 우선). */
   .cardtop .urg { align-self:center; font-size:11px; font-weight:800; letter-spacing:-.2px; white-space:nowrap; line-height:1; }
-  .cardtop .urg.brk { color:var(--danger); }
+  .cardtop .urg.brk { color:var(--danger); -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }   /* 롱프레스 = 「긴급 아님」 신고 → iOS 콜아웃·텍스트 선택 억제(수집함 .sc-item 1704행 방어 3종 사본 · 피드 .card 엔 그게 없어 배지에 직접 준다) */
   .cardtop .urg.iss { color:var(--accent-4); }
   .row1 { display:flex; align-items:center; gap:8px; }   /* 좌측 대분류 + 제목 */
   /* C 대분류 = 박스 없는 색글자, 타이틀 높이 가운데 정렬·작게 */
@@ -4380,6 +4380,8 @@ function render() {
     c.querySelector('.t').textContent = a.title;
     c.querySelector('.s').textContent = a.summary || '';
     c.onclick = () => open(a);
+    const _fb = c.querySelector('.urg.brk');   // 피드 긴급 배지 = 수집함 .sc-badge.brk 와 **같은 신고 배선**(한쪽만 달면 다른 화면에선 무반응)
+    if (_fb) brkClaimBadge(_fb, a);
     c.querySelector('.mlink')?.addEventListener('click', e => e.stopPropagation());   // 대표 매체 = 원문 링크(새 탭) — 카드 열기(open)와 충돌 방지
     // 진행바 세그먼트 = N/M/T 모달 점프(nav 통합·A5). 본문 클릭(open)과 충돌 방지 stopPropagation.
     c.querySelectorAll('.prog .seg[data-j]').forEach(seg => {
@@ -11571,9 +11573,57 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
     el.addEventListener('pointermove', e => { if (_mergeLpT && Math.abs(e.clientX - _mergeLpX) + Math.abs(e.clientY - _mergeLpY) > 10) { clearTimeout(_mergeLpT); _mergeLpT = null; } });   // 스와이프/스크롤 중 오발 취소(clientX = iOS movementX 0버그 회피)
     el.addEventListener('contextmenu', e => { if (MERGE_MODE) return; e.preventDefault(); enterMerge(c); });   // PC 우클릭 = 병합모드
   }
+  const _brkB = bt === 'brk' ? el.querySelector('.sc-badge.brk') : null;   // 🚨긴급 배지 롱프레스 = 「긴급 아님」 신고(brkClaimBadge 공용 문법 · 피드 .urg.brk 와 같은 배선)
+  if (_brkB) brkClaimBadge(_brkB, c);
   const _mtag = el.querySelector('.sc-cross.merged');   // 병합 앵커 = 주황 숫자 탭 → 위에 '병합 해제 실행' 확인 버튼(별도 '합' 라벨 폐지·오발 방지·운영자 260626)
   if (_mtag) _mtag.addEventListener('click', e => { e.stopPropagation(); if (!MERGE_MODE) openUnmergePop(_mtag, c); });
   return el;
+}
+// ── 🚨긴급 배지 롱프레스 = 「긴급 아님」 신고(운영자 260803 4차) ─────────────────────────────────────
+// 체인: 배지 롱프레스 → /api/rate(reason 예약키 'brkno') → ratings.jsonl → scraper/brk_misfire.py 가
+//       3건 적체(또는 72h 아사창)에서 알림메시지에 **개선안**을 굽는다 = 오발이 쌓이면 스스로 교정 제안하는 폐루프.
+// ⚠️ 전용 필드를 못 만드는 구조적 이유 = rate.yml workflow_dispatch inputs 가 이미 10개 = GitHub 상한.
+//    11번째를 추가하면 디스패치가 400으로 죽어 평점 레일 전체가 사망한다 → 기존 reason(40자)에 예약키로 태운다.
+//
+// claimLongPress = 카드 **자식** 요소가 자기 롱프레스를 가질 때의 표준 4종 방어(평의회3 260803 실측 지적).
+//   ① pointerdown stopPropagation + 부모 병합 타이머 강제 취소 — 안 하면 배지 신고와 병합모드가 **동시 발화**.
+//   ② 합성 click 350ms 시간창 소비 — 안 하면 손 뗄 때 카드 click 이 버블해 요약창/원문 새 탭이 열린다
+//      (배지는 span 이라 카드 click 가드 `closest('a,button,input,textarea,.sc-bot,.sc-memo')`에 안 걸린다).
+//      ⚠️ 불린 플래그 대신 **시간창** = 롱프레스 후 click 이 아예 안 오는 기기에서 다음 탭이 삼켜지는 것 차단.
+//   ③ 이동 10px 취소 = 부모 병합과 **같은 축**(clientX 절대거리 · iOS movementX 0버그 회피).
+//   ④ contextmenu 선점 = PC 우클릭·안드로이드 롱프레스가 부모 병합이나 브라우저 기본메뉴로 새는 것 차단.
+//   임계 480ms = openFailMenu 선례값(병합 600 보다 **먼저** 확정 발화 = 순서 경합 원천 제거 + iOS 콜아웃 前).
+function claimLongPress(el, ms, fn) {
+  let t = null, x = 0, y = 0, at = 0;
+  const cancel = () => { clearTimeout(t); t = null; };
+  el.addEventListener('pointerdown', e => {
+    if (e.button || MERGE_MODE) return;
+    e.stopPropagation();
+    if (_mergeLpT) { clearTimeout(_mergeLpT); _mergeLpT = null; }   // 부모 타이머가 이미 걸린 경로(캡처·타 바인딩) 이중 안전
+    x = e.clientX; y = e.clientY; cancel();
+    t = setTimeout(() => { at = Date.now(); fn(); }, ms);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, cancel));
+  el.addEventListener('pointermove', e => { if (t && Math.abs(e.clientX - x) + Math.abs(e.clientY - y) > 10) cancel(); });
+  el.addEventListener('click', e => { if (Date.now() - at < 350) { e.preventDefault(); e.stopPropagation(); } });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); at = Date.now(); fn(); });
+}
+// 배지 1개 배선 — 수집함(.sc-badge.brk)·피드(.urg.brk) **두 표면 공용**. 한쪽만 달면 똑같이 생긴 '긴급'을
+// 다른 화면에서 눌렀을 때 무반응 = 운영자가 신고했다고 믿는데 데이터가 0인 사고(배지 패리티 계약과 동축).
+function brkClaimBadge(badgeEl, obj) { claimLongPress(badgeEl, 480, () => brkNotUrgent(obj, badgeEl)); }
+// 신고 전송 — ratings.jsonl 은 append-only 라 이 행은 **신고 전용 스냅샷**(현 상태 동봉·reason만 예약키)이고
+// 카드의 기존 사유 행은 그대로 남는다. 피드백 = 배지 텍스트 1.2s 스왑(BUILD_STAMP '복사됨 ✓' 관용구 계승·신규 부품 0).
+function brkNotUrgent(obj, badgeEl) {
+  let id = '';
+  try { id = candId(obj) || ''; } catch { id = String(obj && obj.id || ''); }
+  const cur = (typeof scRT === 'object' && scRT[id]) || {};
+  postRate({ id, url: obj.url || '', title: obj.title || '', score: cur.score || 0, picked: !!cur.picked, dismissed: !!cur.dismissed, acked: !!cur.acked, action: cur.action || '', reason: 'brkno' });
+  if (badgeEl && !badgeEl._brkBusy) {
+    badgeEl._brkBusy = true;
+    const o = badgeEl.textContent;
+    badgeEl.textContent = '신고됨 ✓';
+    setTimeout(() => { badgeEl.textContent = o; badgeEl._brkBusy = false; }, 1200);
+  }
 }
 const _rateTimers = {};
 function rateCard(c, n) {

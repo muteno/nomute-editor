@@ -2801,6 +2801,57 @@ def check_nm_sync():
     return 0
 
 
+def check_brk_misfire_chain():
+    """긴급 오발 신고 폐루프 게이트(하드 · 운영자 260803 4차 "누적될 때 활용을 안 하면 소용이 없다").
+    체인 = 뷰어 배지 롱프레스 신고 → /api/rate(reason 예약키 brkno) → rate.yml 스텝 → brk_misfire.py → msg.py.
+    한 층만 빠져도 **신고가 조용히 사라지는**(적재는 되는데 아무도 안 읽는) 죽은 원장이 되므로 층별 심볼 생존을
+    정적으로 강제한다(네트워크·LLM 0). ⚠️ 예약키는 4곳이 같은 문자열이어야 한다 — 뷰어 송신·소비기 필터 상수.
+    ⚠️ rate.yml inputs 는 GitHub 상한 10개 = 신규 입력 추가 금지(11번째 = 디스패치 400 = 평점 레일 전체 사망)."""
+    v = os.path.join(ROOT, 'viewer', 'index.html')
+    s = os.path.join(ROOT, 'scraper', 'brk_misfire.py')
+    y = os.path.join(ROOT, '.github', 'workflows', 'rate.yml')
+    bad = []
+    try:
+        vt = open(v, encoding='utf-8').read()
+        st = open(s, encoding='utf-8').read()
+        yt = open(y, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 긴급 오발 신고 체인 게이트 — 파일 열기 실패: %s' % e)
+        return 1
+    if "function brkNotUrgent" not in vt or "reason: 'brkno'" not in vt:
+        bad.append('뷰어 송신 결손 — viewer/index.html brkNotUrgent()/reason:\'brkno\'')
+    if "'.sc-badge.brk'" not in vt or 'brkClaimBadge(' not in vt:
+        bad.append('뷰어 배지 롱프레스 배선 결손 — .sc-badge.brk 훅')
+    if "'.urg.brk'" not in vt:   # 피드 표면 — 한쪽만 달면 똑같이 생긴 '긴급'을 다른 화면에서 눌렀을 때 무반응(배지 패리티와 동축)
+        bad.append('피드 배지 배선 결손 — .urg.brk(수집함만 달면 운영자가 신고했다고 믿는데 데이터 0)')
+    if 'REASON_KEY = "brkno"' not in st:
+        bad.append('소비기 예약키 불일치 — scraper/brk_misfire.py REASON_KEY')
+    if 'MSG_PY' not in st or 'shared' not in st:
+        bad.append('소비기 알림 경로 결손 — msg.py 호출')
+    if "'brkno'" not in open(os.path.join(ROOT, 'build-viewer.mjs'), encoding='utf-8').read():
+        bad.append('트리아지 제외 결손 — build-viewer.mjs 가 brkno 행을 최신행 승리에서 안 뺀다(확인✓ 소실→긴급 재토스트)')
+    # ⚠️ 실행줄만 인정 — 평문 substring 이면 `# python3 scraper/brk_misfire.py` 처럼 **주석 처리해도 통과**한다
+    #    (check_refs 자신이 1585행에서 "평문 needle = self-match 함정"이라 명시한 패턴).
+    if not re.search(r'^[ \t]*(?!#)[^\n]*python3 scraper/brk_misfire\.py', yt, re.M):
+        bad.append('워크플로 소비 스텝 결손 — .github/workflows/rate.yml 실행줄')
+    if 'git add -A messages' not in yt or 'git add scraper/brk_misfire.json' not in yt:
+        bad.append('워크플로 커밋 결손 — messages/·원장이 커밋 안 되면 알림이 배포에 안 실린다')
+    if 'brk_misfire.py' not in open(os.path.join(ROOT, '.github', 'workflows', 'watchdog.yml'), encoding='utf-8').read():
+        bad.append('TTL 상시 갱신 결손 — watchdog.yml(운영자가 별점을 안 누르면 알림이 24h 뒤 조용히 소멸)')
+    # inputs 상한(10) 초과 방지 — 초과 시 dispatch 자체가 400(평점·신고 레일 동시 사망)
+    m = re.search(r'workflow_dispatch:\s*\n\s*inputs:\s*\n((?:\s{6,}\S.*\n|\s*\n)+?)\s{0,4}concurrency:', yt)
+    n_in = len(re.findall(r'^\s{6}(\w+):\s*$', m.group(1), re.M)) if m else -1
+    if n_in > 10:
+        bad.append('rate.yml workflow_dispatch inputs %d개 > GitHub 상한 10 — 디스패치 400 확정' % n_in)
+    if bad:
+        print('❌ 긴급 오발 신고 체인 게이트 — 층 결손 %d건(신고가 조용히 죽는다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        return 1
+    print('✅ 긴급 오발 신고 체인 게이트 — 뷰어 신고·예약키·워크플로 스텝·소비기·알림 5층 생존(rate.yml inputs %d/10).' % n_in)
+    return 0
+
+
 def check_rubric_regress():
     """루브릭 회귀 게이트(하드 · 운영자 260803 승인 — «대구 40.1도» 오발 봉합의 재발 방지 축).
     breaking_judge RUBRIC(속보 YES/NO 판정 프롬프트)이 바뀌면 과거 실측 판정 케이스(rubric_regress_cases.json ·
@@ -2824,8 +2875,11 @@ def check_rubric_regress():
         st = json.loads(open(st_p, encoding='utf-8').read())
     except Exception:
         st = {}
-    if st.get('rubric_ver') != mod.RUBRIC_VER:
-        print('❌ 루브릭 회귀 게이트 — RUBRIC 변경 후 회귀 미실행(과거 정답 뒤집힘 미확인 = 커밋 차단).')
+    # ⚠️ 케이스 **개수**도 함께 본다(평의회2 260803 실측 지적) — rubric_ver 만 보면 「케이스만 추가하고 회귀는
+    # 안 돌린 커밋」이 조용히 통과했다가, 나중에 RUBRIC 을 한 글자 건드린 **다른 세션**이 그 미검증 케이스의
+    # 뒤집힘으로 스탬프를 못 찍어 영구 rc=1 에 갇힌다(자기가 안 심은 지뢰를 밟는 구조). 스탬프는 이미 cases 를 굽는다.
+    if st.get('rubric_ver') != mod.RUBRIC_VER or st.get('cases') != len(cases):
+        print('❌ 루브릭 회귀 게이트 — RUBRIC/케이스 변경 후 회귀 미실행(과거 정답 뒤집힘 미확인 = 커밋 차단).')
         print('   → python3 .github/scripts/rubric_regress.py 실행(케이스 %d건 드라이런·전건 통과 시 도장) 후 스탬프 함께 커밋.' % len(cases))
         print('   (stamp=%s · now=%s)' % (st.get('rubric_ver'), mod.RUBRIC_VER))
         return 1
@@ -3040,6 +3094,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 루브릭 회귀 게이트 스킵:', e)
+    try:
+        if check_brk_misfire_chain() != 0:   # 긴급 오발 신고 폐루프(운영자 260803 4차 — 신고가 쌓이기만 하고 안 읽히는 죽은 원장 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 긴급 오발 신고 체인 게이트 스킵:', e)
     try:
         if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
             rc = 1

@@ -343,6 +343,12 @@ try {
   for (const line of readFileSync('scraper/ratings.jsonl', 'utf8').split('\n')) {
     if (!line.trim()) continue;
     let r; try { r = JSON.parse(line); } catch { continue; }
+    // 🚨긴급 오발 신고(reason 예약키 brkno)는 **트리아지 상태가 아니다** → 최신행 승리에서 제외.
+    // ⚠️ 안 빼면: 신고 행이 보내는 acked/dismissed 는 *그 기기 localStorage* 스냅샷이라 타 기기에서 누른
+    // 확인✓이 acked:false 로 덮이고, 아래 필터(`!dismissed && !acked && …`)가 항목을 통째로 drop →
+    // triage-state 에서 그 URL 소멸 = 전 기기에서 미확인 부활 → **오발이라 신고한 그 건이 긴급 토스트로 재등장**
+    // (breakingNow 가 !r.acked 를 본다). 평의회1 260803 실측 지적.
+    if (String(r.reason || '') === 'brkno') continue;
     const u = normUrl(r.url || r.id || '');
     if (u) triLatest.set(u, r);
   }
