@@ -89,7 +89,7 @@ for f in "${files[@]}"; do
   workdir="$(mktemp -d)"
   text="$(python3 -c "import json; print(json.load(open('$f')).get('text',''))" 2>/dev/null || true)"
   nothumb="$(python3 -c "import json; print('1' if json.load(open('$f')).get('nothumb') in (1,'1',True) else '')" 2>/dev/null || true)"   # 뷰어 '이미지' 토글 OFF → 제미나이 썸네일 생성 skip(검색 og:image는 항상·운영자 260702)
-  # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 우선 · mj=주요 언론 기반 · og=원본 한정[260727·기본 소등]) → 프롬프트 조건 블록.
+  # 수집 프리셋(운영자 260723 — 뷰어 요약요청 스트립: h24=24시간 이내 · fp=외신 기반[260803 외신⇄국내 단일 토글 = 뷰어 mj 상시 1 전송·fp가 축만 선택] · mj=주요 언론 기반[다매체 종합 · 뷰어 칩은 260803 철거·값은 상시 도착] · og=원본 한정[260727·기본 소등]) → 프롬프트 조건 블록.
   #   ⚠ 같은 스트립의 noai(AI 미제작·260727)는 여기 목록에 일부러 없다 = 수집 조건이 아니라 산출 조건 → 위 nothumb(frontmatter no_thumb) 축으로 흐른다(프롬프트 무접촉).
   #   미지정·전OFF(구 asks 포함) = 빈 블록 = 종전 동작 그대로. 블록 위치 = 고정부([★] 모드) 뒤·가변부(요청) 앞 = 캐시 prefix 불변.
   pres="$(python3 -c "
@@ -105,7 +105,7 @@ print(''.join(k for k in ('h24','fp','mj','og') if p.get(k) in (1,'1',True)))
 ";; esac
     case "$pres" in *h24*) PRESET_BLOCK="${PRESET_BLOCK} - ⏱ 24시간 이내: 검색 수집·인용 후보 = 게시 24시간 이내 기사만(위 '18시간 우선' 규칙을 이 24시간 하드 창으로 대체 — 24시간 밖 기사는 소스로 쓰지 마라). 24시간 내 보도가 전무할 때만 가장 최근 보도로 best-effort(억지 최신화·날짜 조작 금지 · 실패 금지 원칙 유지). 운영자가 직접 준 URL은 오래됐어도 존중(종전 규칙).
 ";; esac
-    case "$pres" in *fp*) PRESET_BLOCK="${PRESET_BLOCK} - 🌐 외신 기사: '외신만'이 아니라 **외신을 먼저·주로 탐색하라** — 주제 핵심을 영문 키워드로 옮겨 영어 WebSearch부터 시작한다(Reuters·AP·AFP·BBC·CNN·NYT·Bloomberg·Guardian 등 국제 통신사·주요 외신 우선). 외신에서 사실이 충분히 확보되면 그걸 축으로 삼고, 국내 보도는 교차확인·국내 맥락 보조로만 쓴다.
+    case "$pres" in *fp*) PRESET_BLOCK="${PRESET_BLOCK} - 🌐 외신 기사: '외신만'이 아니라 **외신을 먼저·주로 탐색하라** — 주제 핵심을 영문 키워드로 옮겨 영어 WebSearch부터 시작한다(Reuters·AP·AFP·BBC·CNN·NYT·Bloomberg·Guardian 등 국제 통신사·주요 외신 우선). 외신에서 사실이 충분히 확보되면 그걸 축으로 삼고, 국내 보도는 교차확인·국내 맥락 보조로만 쓴다. 아래 「주요 언론 기반」이 함께 켜져 있으면 그 종합의 매체 풀도 이 외신 축을 따른다(외신 주요 매체 2~4곳이 축 · 국내는 교차확인 보조 — 종합의 구조·분량·frontmatter url 규칙은 그대로).
 ";; esac
     case "$pres" in *mj*) PRESET_BLOCK="${PRESET_BLOCK} - 📰 주요 언론 기반: 단일 기사 요약이 아니라 **주요 언론 2~4곳의 보도를 수집·교차 검증해**, 먼저 2,000자 가까운 보도형 종합 자료를 내부적으로 구성하라 — 기·승 = 사실을 기반으로 한 사건의 발단·전개 / 전 = 사건의 결말(현재 상태) / 결 = 시사점이 확실한 구조. 그 종합 자료를 이 요약의 원문 소스로 삼아 위 출력 포맷 그대로 큐레이션한다(출력 포맷·분량 규칙 불변 — 종합 자료 자체를 그대로 출력하지 마라 · frontmatter url = 수집 매체 중 실제 확인한 가장 메이저한 기사 URL). 운영자가 URL을 준 요청이면 그 기사가 축(url 그대로)이고 타 매체는 교차확인용.
 ";; esac
