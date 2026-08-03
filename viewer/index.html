@@ -10514,6 +10514,57 @@ function nmClickShield(e) {
   }
 }
 ['pointerdown', 'mousedown', 'click'].forEach(ev => document.addEventListener(ev, nmClickShield, true));
+
+// ── 스크롤 오탭 방패(운영자 260803 3차 "그 아이디어도 적용 · 버그가 많을 수 있는 부분") ──
+//   같은 축의 마지막 조각 = 「보이는 것 ≠ 눌리는 것」의 **시간축 변종**. 위 방패가 *부양 표면이 사라지는 중*을 덮었다면
+//   이건 *본문이 흐르는 중*을 덮는다. 260803 실측(폰 430 · 수집함 184카드):
+//     · 정지     = 겨눈 카드1 → 실제 카드1 (일치)    · 스크롤 속도 0.000 px/ms
+//     · 스크롤 중 = 겨눈 카드5 → **실제는 딴 요소**   · 누름~클릭 69ms 동안 화면이 231px 흘렀다
+//   즉 리스트가 흐르는 동안엔 눈으로 겨눈 자리와 손가락이 닿는 자리가 갈린다(모바일 오탭 1순위 원인).
+//
+//   판정 = **누름(pointerdown) 시점에 본문이 흐르고 있었나** 하나뿐. 사람의 시각→운동 지연은 못 재지만
+//     「겨눈 대상이 이동 중」은 정확히 잴 수 있고, 그게 오탭의 필요조건이다.
+//   ⚠ 이 게이트는 **정상 탭을 잡아먹으면 즉시 실패**다. 그래서 전부 보수적으로 잠갔다:
+//     ⓐ 삼키는 건 **click 하나뿐** — pointerdown·mousedown 무접촉 = 스크롤·스와이프·드래그·롱프레스 100% 그대로.
+//        삼켜도 그 탭은 관성 스크롤을 멈추는 일을 계속 한다 → 화면이 그 자리에 서는 것 자체가 피드백(무표시 정당).
+//     ⓑ 대상 = **문서 스크롤만**(capture 미사용) — 가로 레일·내부 컨테이너 스크롤은 무관 = 레일 드래그 후 버튼 탭 무손상.
+//     ⓒ **fixed·sticky 표면은 전량 면제** — 하단 네비·리모컨(＋)·토스트는 스크롤해도 겨눈 자리가 안 움직인다
+//        = 애초에 오탭이 성립 안 하는 자리다. 여기까지 먹으면 그게 진짜 퇴행이라 술어로 못박는다.
+//     ⓓ 임계 = 실측 사이를 넉넉히 가른 값(정지 0.000 ↔ 흐름 4.3~6.2) · 마지막 이동 후 90ms 지나면 무조건 통과.
+//     ⓔ 롤백 = localStorage `nmNoScrollGuard='1'` 한 줄이면 이 방패만 꺼진다(위 클릭 방패·나머지 무접촉).
+const NM_SCROLL_V = 0.6;    // px/ms — 「흐르는 중」 문턱(=600px/s). 정지 실측 0.000 · 스크롤 실측 4.3~6.2 → 7배 여유로 가른다
+const NM_SCROLL_MS = 120;   // 마지막 스크롤 이동 후 이 시간이 지나면 정지 취급.
+//   값 근거 = **scroll 이벤트가 실제로 오는 간격보다 확실히 커야** 「흐르는 중」을 놓치지 않는다(놓치면 방패가 무의미).
+//   실측 = 프레임 16ms 기기에선 여유롭고, 부하 걸린 엔진(헤드리스 실측 49~85ms)에서도 안 놓친다.
+//   반대편 위험(정지인데 삼킴)은 구조적으로 없다 — 관성이 끝나면 scroll 이벤트가 **아예 안 와서** dt가 즉시 이 값을 넘는다.
+let _nmScT = 0, _nmScY = 0, _nmScV = 0, _nmMisT = 0;
+document.addEventListener('scroll', () => {   // capture 미사용 = 문서 스크롤 전용(ⓑ)
+  const t = performance.now(), y = window.scrollY, dt = t - _nmScT;
+  if (_nmScT && dt > 0) _nmScV = Math.abs(y - _nmScY) / dt;
+  _nmScT = t; _nmScY = y;
+}, { passive: true });
+const nmFixedHost = el => {   // ⓒ 면제 판정 = 조상 중 fixed/sticky가 있으면 「겨눈 자리가 안 움직이는」 표면
+  for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+    const p = getComputedStyle(n).position;
+    if (p === 'fixed' || p === 'sticky') return true;
+  }
+  return false;
+};
+document.addEventListener('pointerdown', e => {
+  _nmMisT = 0;
+  try { if (localStorage.getItem('nmNoScrollGuard') === '1') return; } catch {}   // ⓔ 롤백 스위치
+  if (!e.isTrusted || (!e.clientX && !e.clientY)) return;                          // 합성·좌표 없는 발동 무접촉
+  if (performance.now() - _nmScT >= NM_SCROLL_MS || _nmScV < NM_SCROLL_V) return;  // 정지 상태 = 통과(ⓓ)
+  if (nmFixedHost(e.target)) return;                                               // 고정 표면 = 면제(ⓒ)
+  _nmMisT = performance.now();                                                     // 「이 누름은 흐르는 중이었다」 표식
+}, true);
+document.addEventListener('click', e => {
+  if (!_nmMisT) return;
+  const stale = performance.now() - _nmMisT > 700;   // 짝 잃은 표식(스크롤 제스처로 끝나 click이 안 온 경우) 자연 소멸
+  _nmMisT = 0;
+  if (stale) return;
+  e.stopPropagation(); e.preventDefault();           // 흐르는 중에 겨눈 탭 = 삼킴(그 탭은 스크롤을 멈추는 일만 한다)
+}, true);
 // ── 🚨 신규 레인 계기판 경보(운영자 260716 "신규 뉴스가 안 들어오고 있어요 — 긴급 경고랑 같은 레벨·디자인 · 처리 완료 체크까지 ✓/✗") ──
 //    260714~16 아사 사고(수집은 도는데 발행<4h 사건이 수집함서 증발 · 이틀 무감지)를 화면이 직접 알림. 판정 = 뷰어가 이미 든 CANDS로 셈(추가 fetch 0).
 //    셸 = .nm-toast 긴급 정본 그대로(빨강 --danger·위치·모션·ft-act 픽토버튼) · 픽토만 WARN(고장 의미 — 가족 2종[BELL·WARN] 내 선택·신규 도형 창작 0).
