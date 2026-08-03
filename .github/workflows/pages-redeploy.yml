@@ -1,0 +1,63 @@
+# pages-redeploy.yml — 라이브 배포 강제 재발사(운영자 260803 "머지 배포 ㄱㄱ")
+#
+# 왜 = Cloudflare Pages는 git 연결 자동빌드인데 **큐가 막히면 main이 앞서가도 라이브가 옛 빌드에 멈춘다**
+#   (260803 실측 사고: main 도장 1909 vs 라이브 도장 1452 = 4시간 17분 정체 · 엣지 캐시 아님[cf-cache-status DYNAMIC]
+#    = 오리진이 진짜 옛 파일 서빙 → 운영자가 새로고침해도 안 바뀐다 = 그날 머지된 전 세션 작업이 통째 라이브 0).
+#   그때까지 재발사 수단이 **LLM 과금 워크플로(news-analyze·news-ask·thumb-redo)에 편승한 훅 호출뿐**이라
+#   "배포만 다시" 하려면 돈 드는 런을 돌려야 했다 → 과금 0짜리 전용 버튼으로 분리.
+#
+# 무엇 = secrets.CF_DEPLOY_HOOK(기존 시크릿 재사용 · 신규 자격증명 0) POST 1발 = 프로덕션 재빌드 트리거.
+#   그 뒤 라이브 도장(BUILD_STAMP)이 실제로 전진하는지 최대 12분 관측해 결과를 로그로 못박는다
+#   (관측 창 12분 = live-smoke.yml 동값 계승 — 코드 빌드→도장 빌드 2연속이 CF 큐에서 직렬 처리되는 실측 근거).
+#
+# 안전 = 쓰기 권한 0(contents: read) · 레포 파일 무접촉 · 실패해도 fail-soft(훅 미설정 = 안내 후 정상 종료).
+# 끄는 법 = 이 파일 삭제(다른 워크플로 무영향) · 로그 = Actions → 이 워크플로 런.
+name: pages-redeploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '재발사 사유(로그 기록용 · 비워도 됨)'
+        required: false
+        default: '수동 재발사'
+
+permissions:
+  contents: read               # 읽기만 — 이 워크플로는 레포에 아무것도 안 쓴다
+
+concurrency:
+  group: pages-redeploy
+  cancel-in-progress: false    # 큐 직렬화(동시 발사로 CF 큐를 더 막지 않는다)
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 배포 훅 발사
+        env:
+          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          echo "사유: ${REASON:-(없음)}"
+          if [ -z "${CF_DEPLOY_HOOK}" ]; then
+            echo "::warning::CF_DEPLOY_HOOK 미설정 — 재발사 불가(레포 Secrets에 등록 필요)"; exit 0
+          fi
+          if curl -fsS -X POST "${CF_DEPLOY_HOOK}" -o /dev/null; then
+            echo "✅ Cloudflare 재빌드 트리거 완료 — 아래서 라이브 도장 전진을 관측한다"
+          else
+            echo "::warning::훅 호출 실패 — CF 대시보드에서 수동 Retry 필요"; exit 0
+          fi
+
+      - name: 라이브 도장 수렴 관측(최대 12분)
+        run: |
+          stamp() { curl -fsSL -m 20 "https://nomute-editor.pages.dev/?p=$RANDOM" 2>/dev/null | grep -o "BUILD_STAMP = '[^']*'" | head -1 | sed "s/BUILD_STAMP = '//;s/'$//"; }
+          BEFORE="$(stamp)"; echo "발사 직전 라이브 도장 = ${BEFORE:-?}"
+          for i in $(seq 1 72); do    # 10s×72 = 12분(live-smoke 동값)
+            sleep 10
+            NOW="$(stamp)"
+            if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then
+              echo "✅ 라이브 도장 전진: ${BEFORE:-?} → ${NOW} ($((i*10))초)"; exit 0
+            fi
+          done
+          echo "::warning::12분 내 도장 전진 없음(${BEFORE:-?} 그대로) — CF 큐 정체 지속 = 대시보드에서 멈춘 빌드 Cancel 후 Retry"
