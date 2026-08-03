@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>영상 스튜디오 제작 과정 통일 — 플레이그라운드(260803)</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  노뮤트 플레이그라운드 템플릿 v1 (운영자 260713 정본 · §플레이그라운드 0-1)
+  ─ 사용법: 이 파일을 docs/reports/{yymmdd}_{라벨}_플레이그라운드.html로 복사한 뒤
+    맨 아래 "CONFIG(세션이 채우는 전부)" 블록만 교체한다.
+  ─ 동결 엔진(수정 금지): 컨트롤 빌더 · near() 계승판정 · 프리셋 양방향 동기 ·
+    선택값 복사 모달(역제안) · 재렌더 스크롤 보존 · 한글 열맞춤.
+    골격을 손으로 다시 쓰면 위반 = check_refs.check_playground() 게이트(rc=1).
+  ─ 철학(운영자): 완제품을 부품으로 쪼개 미세조정 = 무의미.
+    부품 1개당 "방식 N가지"를 실물로 나란히(변형 갤러리 = 발산) → 선택 → 7축 미세조정(수렴).
+    핵심 7축 = 자간 · 폰트 크기 · 위치 · 불투명도 · 블러 · 라인 · 액티브 효과.
+  ─ 색·값: 아래 --pg-*는 viewer/index.html :root 실측값의 복사(자기완결 스냅샷 · §핵심명령 3-c).
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{color-scheme:dark;
+  /* viewer :root 실측 사본(값 복사 = 계승 · 임의 창작 금지) */
+  --pg-bg:#0b0d0e; --pg-fg:#eef7f0; --pg-mut:#9aa39d; --pg-accent:#00EED2; --pg-accent-rgb:0,238,210;
+  --pg-warn:#FFE13D; --pg-danger:#e23b2a; --pg-r-s:9px; --pg-r-m:11px; --pg-r-l:16px; --pg-r-modal:22px;
+}
+*{box-sizing:border-box;margin:0} button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+body{background:var(--pg-bg);color:var(--pg-fg);font:14px/1.5 "Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;padding:14px}
+h1{font-size:17px}.sub{color:var(--pg-mut);font-size:11.5px;margin:3px 0 12px}
+.wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stagewrap{position:sticky;top:10px;flex:0 0 300px;align-self:flex-start;max-height:calc(100dvh - 20px);overflow:auto;scrollbar-width:none}
+.stagewrap::-webkit-scrollbar{width:0;height:0;display:none}
+/* ⑥ 미리보기 고정 = 폰 티어(세로형) — 상단 sticky · 아래 콘솔만 스크롤(운영자 260801 · 포터블 §3-1 ⑥).
+   PC sticky만 있으면 폭이 좁아질 때 flex-wrap으로 미리보기가 위로 빠지고 그대로 스크롤 밖으로 나간다. */
+@media (max-width:900px){
+  .wrap{padding-top:0}
+  .stagewrap{flex:1 1 100%;position:sticky;top:0;z-index:20;max-height:62dvh;background:var(--bg,#0b0d0c);padding:8px 0;box-shadow:0 10px 18px -12px rgba(0,0,0,.9)}
+  .console{flex:1 1 100%;max-width:none}
+}
+.frame{width:300px;height:560px;border:1px solid rgba(255,255,255,.14);border-radius:26px;overflow-y:auto;overflow-x:hidden;background:#0d1012;position:relative}
+.frame .app,.frame .baseline{min-height:100%}
+.frame .baseline{display:none}
+.frame.showcur .app{display:none}.frame.showcur .baseline{display:block}
+.stagebar{display:flex;gap:6px;margin-top:8px;align-items:center}
+.vseg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font-size:11.5px}
+.vseg button{padding:5px 12px;color:var(--pg-mut)}
+.vseg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.finfo{color:var(--pg-mut);font-size:10.5px;font-variant-numeric:tabular-nums}
+.console{flex:1;min-width:320px;max-width:560px}
+.csec{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.csec>h2{font-size:12.5px;font-weight:800;margin-bottom:9px}
+.csec>h2 .b{color:var(--pg-accent)}
+.pill{display:inline-block;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 12px;font-size:11.5px;color:var(--pg-mut);margin:0 6px 6px 0}
+.pill.on{border-color:rgba(var(--pg-accent-rgb),.55);color:var(--pg-accent);background:rgba(var(--pg-accent-rgb),.08)}
+.pill .st{color:var(--pg-warn)}
+/* 변형 갤러리 = 부품 1개당 방식 N개를 실물로 나란히 */
+.gal{margin-bottom:10px}
+.gal-t{font-size:11.5px;color:var(--pg-mut);margin-bottom:7px}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gcard{border:1px solid rgba(255,255,255,.11);border-radius:var(--pg-r-m);padding:10px 8px 8px;text-align:center;cursor:pointer;position:relative;background:rgba(255,255,255,.02)}
+.gcard.on{border-color:rgba(var(--pg-accent-rgb),.6);background:rgba(var(--pg-accent-rgb),.06)}
+.gcard .gnm{font-size:11px;margin-top:8px}
+.gcard .gtag{font-size:9.5px;color:var(--pg-mut);margin-top:2px}
+.gcard.on .gnm{color:var(--pg-accent)}
+.gcard .demo{min-height:44px;display:flex;align-items:center;justify-content:center}
+/* 축 컨트롤 */
+.grp-t{font-size:10.5px;color:var(--pg-mut);letter-spacing:.06em;margin:12px 0 6px;text-transform:uppercase}
+.axis{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;flex-wrap:wrap}
+.axis .nm{flex:0 0 96px}
+.axis input[type=range]{flex:1;min-width:110px;accent-color:var(--pg-accent)}
+.axis .v{font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--pg-accent)}
+.axis .v.warn{color:var(--pg-warn)}
+.axis .tok{flex-basis:100%;font-size:10px;color:var(--pg-mut);padding-left:96px}
+.axis .seg{display:flex;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.axis .seg button{padding:4px 10px;font-size:11px;color:var(--pg-mut)}
+.axis .seg button.on{background:rgba(var(--pg-accent-rgb),.12);color:var(--pg-accent)}
+.axis select{background:#14171a;color:var(--pg-fg);border:1px solid rgba(255,255,255,.16);border-radius:8px;padding:4px 8px;font-size:11.5px}
+/* 출력·복사 */
+#outtxt{white-space:pre-wrap;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;background:#0d1012;border:1px solid rgba(255,255,255,.1);border-radius:var(--pg-r-m);padding:10px;max-height:260px;overflow:auto}
+.copybtn{margin-top:8px;border:1px solid rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent);border-radius:999px;padding:7px 16px;font-size:12px}
+.copybtn.done{border-color:rgba(255,255,255,.2);color:var(--pg-mut)}
+.note{font-size:11px;color:var(--pg-mut);line-height:1.6}
+/* 복사 경고 모달(역제안) */
+#cmodal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:50}
+#cmodal.on{display:flex}
+#cmodal .box{background:#14171a;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-modal);padding:16px;max-width:340px;font-size:12.5px}
+#cmodal .box h3{font-size:13px;margin-bottom:8px}
+#cmodal .box .ls{color:var(--pg-warn);font-size:11.5px;margin-bottom:10px;white-space:pre-wrap}
+#cmodal .box .row{display:flex;gap:8px;flex-wrap:wrap}
+#cmodal .box button{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:11.5px}
+#cmodal .box button.pri{border-color:rgba(var(--pg-accent-rgb),.5);color:var(--pg-accent)}
+/* ── 미리보기 전용(제미나이 픽토 시안) ── */
+.mock{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.015)}
+.mock .mh{display:flex;justify-content:space-between;color:var(--pg-mut);font-size:10.5px;margin-bottom:10px}
+.mock .row2{display:flex;gap:8px;align-items:center;justify-content:center;margin:6px 0}
+.mock .row2.big{gap:22px;margin-top:8px;color:var(--pg-accent)}
+.mock .cap{color:var(--pg-mut);font-size:10.5px;text-align:center;margin-top:6px}
+.mock .cap2{color:var(--pg-mut);font-size:10px;text-align:center;margin-top:5px}
+.mock .railbox{margin-top:12px}
+.mock .rail{width:26px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 2px;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:rgba(8,15,11,.54);color:var(--pg-accent)}
+.mock .rail .hr{width:14px;height:1px;background:rgba(255,255,255,.16)}
+.pgico{display:inline-grid;place-items:center;width:22px;height:22px;color:var(--pg-accent)}
+.pgico svg{width:14px;height:14px;display:block}
+
+/* (구 샘플 스타일 이하 보존 — 동결 골격 영역 아님) */
+.mock{padding:14px;font-size:13px}
+.mock .mh{display:flex;justify-content:space-between;align-items:center;color:var(--pg-mut);font-size:11px;margin-bottom:12px}
+.mock .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:var(--pg-r-l);padding:12px;margin-bottom:12px}
+.mock .inrow{display:flex;gap:8px;align-items:flex-end}
+.mock .fakein{flex:1;border:1px solid rgba(255,255,255,.14);border-radius:var(--pg-r-m);padding:9px 10px;color:var(--pg-mut);font-size:12px;min-height:38px}
+.sendbtn{position:relative;overflow:hidden;border-radius:var(--pg-r-m);padding:9px 14px;min-width:64px;
+  font-size:var(--t-fs,13px);letter-spacing:var(--t-ls,0em);opacity:var(--t-op,1);
+  transform:translateY(var(--t-posY,0px));
+  border:1px solid rgba(var(--pg-accent-rgb),var(--t-line,.35));color:var(--pg-accent);
+  background:rgba(var(--pg-accent-rgb),.10);transition:transform .12s ease}
+.sendbtn:active{transform:translateY(var(--t-posY,0px)) scale(var(--t-fx,.94))}
+.sendbtn.v-gauge::after{content:'';position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--pg-accent)}
+.sendbtn.v-gauge.go::after{animation:pgGauge .72s ease forwards}
+@keyframes pgGauge{to{width:100%}}
+.sendbtn.v-pop.go{animation:pgPop .3s ease}
+@keyframes pgPop{40%{transform:translateY(var(--t-posY,0px)) scale(.85)}}
+.sendbtn.v-ring.go::before{content:'';position:absolute;inset:-2px;border-radius:inherit;border:2px solid rgba(var(--pg-accent-rgb),.7);animation:pgRing .5s ease forwards}
+@keyframes pgRing{to{inset:-10px;opacity:0}}
+.sendbtn.v-check.go .lb{visibility:hidden}
+.sendbtn.v-check.go::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;animation:pgCheck .4s ease}
+@keyframes pgCheck{from{transform:scale(.4);opacity:0}}
+.sendbtn.v-glow.go{animation:pgGlow .6s ease}
+@keyframes pgGlow{40%{box-shadow:0 0 18px rgba(var(--pg-accent-rgb),.55)}}
+.mock .blurpanel{margin-top:12px;border-radius:var(--pg-r-m);padding:10px;font-size:11px;color:var(--pg-mut);
+  background:rgba(255,255,255,.05);backdrop-filter:blur(var(--t-blur,14px));-webkit-backdrop-filter:blur(var(--t-blur,14px));border:1px solid rgba(255,255,255,var(--t-line,.12))}
+</style>
+</head>
+<body data-pg-template="v1">
+<h1>영상 스튜디오 <span style="color:var(--pg-accent)">제작 과정 통일</span></h1>
+<p class="sub">제작 흐름 = 이미지 스튜디오(카드 생성) 정본 그대로: <b>발사 게이지 → 생성 중 알약 → •결과 잡 행 → 완료 카드</b>. 현행 실측 = k·vd 잡 행 이미 정본 · <b>edit만 버튼 로더 단독</b> · song 자체 상태줄. 갤러리에서 방식·단계·길이 배지를 고르고 → <b>[제안] 복사값만 회신하면</b> 그 턴에 edit·song 배선까지 간다. 영상 고유 정보(%·남은 시간·길이)는 기존 슬롯(잡 행 상태·캡션 알약)에만 싣는다 = 부품 신설 0 · 미리보기 좌상단 배지 신설 없음.</p>
+<div class="wrap">
+  <section class="stagewrap">
+    <div class="frame" data-pg-scrollhost id="frame">
+      <div class="app" data-pg-preview id="pv"></div>
+      <div class="baseline" data-pg-baseline id="bl"></div>
+    </div>
+    <div class="stagebar">
+      <div class="vseg" id="vseg"><button data-v="prop" class="on">제안</button><button data-v="cur">현행(비교)</button></div>
+      <span class="finfo" id="finfo"></span>
+    </div>
+  </section>
+  <aside class="console">
+    <section class="csec" id="psec"><h2><span class="b">•</span> 프리셋</h2><div id="presets" data-pg-presets></div></section>
+    <section class="csec"><h2><span class="b">•</span> 변형 갤러리 — 부품별 방식 선택</h2><div id="gallery"></div></section>
+    <section class="csec"><h2><span class="b">•</span> 미세조정 (7축)</h2><div id="axes" data-pg-controls></div></section>
+    <section class="csec" data-pg-copy><h2><span class="b">•</span> 선택값 <span id="warnN" style="color:var(--pg-warn);font-size:10.5px"></span></h2>
+      <pre id="outtxt"></pre><button class="copybtn" id="copy">선택값 복사</button></section>
+    <section class="csec" data-pg-note><h2><span class="b">•</span> 재현 한계 각주</h2><div class="note" id="notes"></div></section>
+  </aside>
+</div>
+<div id="cmodal" data-pg-warnmodal><div class="box">
+  <h3>⚠ 확립 사다리 밖 값 포함</h3><div class="ls" id="cmLs"></div>
+  <div class="row"><button class="pri" id="cInc">역제안 포함 복사</button><button id="cOnly">계승분만 복사</button><button id="cNo">취소</button></div>
+</div></div>
+
+<script>
+/* ═══════════ 동결 엔진 v1 — 여기부터 CONFIG 전까지 수정 금지 ═══════════ */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const near=(a,b,eps)=>Math.abs((+a)-(+b))<=((eps==null)?.26:eps);          // 계승판정(축별 eps)
+const kw=s=>[...String(s)].reduce((n,c)=>n+(c.charCodeAt(0)>127?2:1),0);   // 한글 2칸 폭
+const padK=(s,w)=>String(s)+' '.repeat(Math.max(0,w-kw(s)));
+const state={v:{},a:{}};
+function scrollGuard(fn){const h=$('#frame');const y=h?h.scrollTop:0;fn();if(h)h.scrollTop=y;} // 재렌더 스크롤 보존(§7-1-6)
+function initState(){CONFIG.AXES.forEach(ax=>state.a[ax.k]=CONFIG.DEFAULTS[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=CONFIG.DEFAULTS['v_'+g.comp]);}
+function fmt(ax,v){return (ax.step&&ax.step<1)?(+v).toFixed(ax.step<.01?3:2):String(v)}
+function applyAll(structural){
+  const pv=$('#pv');
+  CONFIG.AXES.forEach(ax=>pv.style.setProperty('--t-'+ax.k, state.a[ax.k]+(ax.u||'')));
+  if(structural){scrollGuard(()=>{pv.innerHTML=CONFIG.renderPreview(state);});}
+  syncPresets(); warnAxes(); buildOut();
+}
+function buildGallery(){
+  $('#gallery').innerHTML=CONFIG.GALLERY.map(g=>
+    '<div class="gal"><div class="gal-t">'+g.nm+(g.desc?' — '+g.desc:'')+'</div><div class="gal-grid">'+
+    g.variants.map(v=>'<div class="gcard'+(state.v[g.comp]===v.id?' on':'')+'" data-comp="'+g.comp+'" data-id="'+v.id+'">'+
+      '<div class="demo">'+v.r(state)+'</div><div class="gnm">'+v.nm+(v.id===(CONFIG.DEFAULTS['v_'+g.comp])?' <span style="color:var(--pg-mut)">(현행)</span>':'')+'</div>'+
+      (v.tag?'<div class="gtag">'+v.tag+'</div>':'')+'</div>').join('')+'</div></div>').join('');
+}
+function buildControls(){
+  let html='',grp='';
+  CONFIG.AXES.forEach(ax=>{
+    if(ax.grp!==grp){grp=ax.grp;html+='<div class="grp-t">'+grp+'</div>';}
+    html+='<div class="axis" data-k="'+ax.k+'"><span class="nm">'+ax.nm+'</span>';
+    if(ax.type==='seg'){html+='<div class="seg">'+ax.sg.map(o=>'<button data-val="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' class="on"':'')+'>'+o[1]+'</button>').join('')+'</div>';}
+    else if(ax.type==='select'){html+='<select>'+ (ax.pal||[]).map(o=>'<option value="'+o[0]+'"'+(String(state.a[ax.k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';}
+    else{const lid=ax.lad?('lad-'+ax.k):'';
+      html+='<input type="range" min="'+ax.min+'" max="'+ax.max+'" step="'+(ax.step||1)+'" value="'+state.a[ax.k]+'"'+(lid?' list="'+lid+'"':'')+'>'
+        +(lid?'<datalist id="'+lid+'">'+ax.lad.map(v=>'<option value="'+v+'">').join('')+'</datalist>':'')
+        +'<span class="v">'+fmt(ax,state.a[ax.k])+(ax.u||'')+'</span>';}
+    if(ax.tok)html+='<span class="tok">'+ax.tok+'</span>';
+    html+='</div>';});
+  $('#axes').innerHTML=html;
+}
+function buildPresets(){
+  $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
+}
+function presetMatch(p){
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
+  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+    && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
+}
+function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
+function offLadder(ax,v){return ax.lad&&!ax.lad.some(l=>near(l,v,ax.eps));}
+function warnAxes(){
+  const ws=[];
+  CONFIG.AXES.forEach(ax=>{const v=state.a[ax.k];
+    const el=$('#axes .axis[data-k="'+ax.k+'"] .v');
+    const off=offLadder(ax,v);
+    if(el){el.classList.toggle('warn',!!off);el.textContent=fmt(ax,v)+(ax.u||'');}
+    if(off)ws.push({ax,v});});
+  $('#warnN').textContent=ws.length?('⚠ 사다리 밖 '+ws.length+'축'):'';
+  return ws;
+}
+function lineOut(ax){
+  const v=state.a[ax.k], cur=CONFIG.DEFAULTS[ax.k];
+  let judge;
+  if(ax.tokv!=null&&near(v,ax.tokv,ax.eps)) judge='계승 var('+ax.tokn+')';
+  else if(ax.lad&&!offLadder(ax,v)) judge='계승(확립 사다리)';
+  else if(ax.free) judge='자유(알파 변주)';
+  else judge='갱신 후보 ⚠';
+  return padK(ax.k,10)+': '+fmt(ax,v)+(ax.u||'')+'  [현행 '+fmt(ax,cur)+(ax.u||'')+'] · '+judge;
+}
+function buildOut(){
+  const L=['# '+CONFIG.META.label+' — 선택값 ('+new Date().toISOString().slice(0,10)+')','## 방식(변형 갤러리)'];
+  CONFIG.GALLERY.forEach(g=>{const v=g.variants.find(x=>x.id===state.v[g.comp]);
+    L.push(padK(g.comp,10)+': '+(v?v.nm:'-')+(state.v[g.comp]===CONFIG.DEFAULTS['v_'+g.comp]?'  [현행 유지]':'  [변경]'));});
+  L.push('## 미세조정(7축)');
+  CONFIG.AXES.forEach(ax=>L.push(lineOut(ax)));
+  $('#outtxt').textContent=L.join('\n');
+}
+function counterBlock(ws){
+  return '\n## ⚠ 기틀 갱신 역제안(사다리 밖 값 — 회신 = (갱신) 승인 정문)\n'+
+    ws.map(w=>'- '+w.ax.nm+'('+w.ax.k+') = '+fmt(w.ax,w.v)+(w.ax.u||'')+' — 근접: '+(w.ax.lad?w.ax.lad.join('/'):'-')+(w.ax.u||'')).join('\n');
+}
+function doCopy(txt,btn){
+  const done=()=>{btn.classList.add('done');btn.textContent='복사됨 ✓';setTimeout(()=>{btn.classList.remove('done');btn.textContent='선택값 복사';},1400);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done));}
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();done();}
+/* 이벤트 위임(동결) */
+$('#gallery').addEventListener('click',e=>{const c=e.target.closest('.gcard');if(!c)return;
+  state.v[c.dataset.comp]=c.dataset.id;buildGallery();applyAll(true);});
+$('#gallery').addEventListener('pointerdown',e=>{const d=e.target.closest('.gcard .demo>*');if(d){d.classList.remove('go');void d.offsetWidth;d.classList.add('go');}});
+$('#axes').addEventListener('input',e=>{const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis')?.dataset.k);if(!ax)return;
+  state.a[ax.k]=e.target.value;applyAll(false);});
+$('#axes').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+  const ax=CONFIG.AXES.find(a=>a.k===b.closest('.axis').dataset.k);state.a[ax.k]=b.dataset.val;buildControls();applyAll(true);});
+$('#axes').addEventListener('change',e=>{if(e.target.tagName!=='SELECT')return;
+  const ax=CONFIG.AXES.find(a=>a.k===e.target.closest('.axis').dataset.k);state.a[ax.k]=e.target.value;applyAll(true);});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.pill');if(!b)return;
+  const p=CONFIG.PRESETS[+b.dataset.p];Object.assign(state.a,{},CONFIG.DEFAULTS,p.st||{});
+  const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});CONFIG.AXES.forEach(ax=>state.a[ax.k]=st[ax.k]);
+  CONFIG.GALLERY.forEach(g=>state.v[g.comp]=st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]);
+  buildGallery();buildControls();applyAll(true);});
+$('#vseg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $$('#vseg button').forEach(x=>x.classList.toggle('on',x===b));
+  $('#frame').classList.toggle('showcur',b.dataset.v==='cur');});
+$('#copy').addEventListener('click',()=>{
+  const ws=warnAxes(), base=$('#outtxt').textContent;
+  if(!ws.length){doCopy(base,$('#copy'));return;}
+  $('#cmLs').textContent=ws.map(w=>w.ax.nm+' = '+fmt(w.ax,w.v)+(w.ax.u||'')+' (사다리: '+(w.ax.lad||[]).join('/')+')').join('\n');
+  $('#cmodal').classList.add('on');
+  $('#cInc').onclick=()=>{doCopy(base+counterBlock(ws),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cOnly').onclick=()=>{doCopy(base.split('\n').filter(l=>!l.includes('갱신 후보')).join('\n'),$('#copy'));$('#cmodal').classList.remove('on');};
+  $('#cNo').onclick=()=>$('#cmodal').classList.remove('on');
+});
+function boot(){initState();buildPresets();buildGallery();buildControls();
+  $('#bl').innerHTML=CONFIG.renderBaseline?CONFIG.renderBaseline():CONFIG.renderPreview(Object.assign({},{v:Object.fromEntries(CONFIG.GALLERY.map(g=>[g.comp,CONFIG.DEFAULTS['v_'+g.comp]])),a:Object.assign({},CONFIG.DEFAULTS)}));
+  $('#notes').innerHTML=(CONFIG.META.notes||[]).map(n=>'· '+n).join('<br>');
+  $('#finfo').textContent=CONFIG.META.frame.w+'×'+CONFIG.META.frame.h+' · SSOT='+CONFIG.META.ssot;
+  applyAll(true);}
+/* ═══════════ CONFIG — 세션이 채우는 전부 ═══════════ */
+/* 영상 스튜디오 「제작하는 과정」 = 이미지 스튜디오(카드 생성) 정본 흐름으로 통일(운영자 260803 "이미지 스튜디오랑 동일하면 되는데 · html로 한번 보여주고").
+   현행 실측: k(프롬프팅)·vd(큐영상) = 잡 행(.jobs/.job/.jst) 이미 thumb 동일값 계승 / edit(영상 편집) = 잡 행 없음(발사 버튼 orb 로더가 유일 진행 신호 · 주석 명시) / song(음원) = 자체 상태줄.
+   → 통일 대상 = edit·song의 잡 행 합류 + 4탭 공통 「생성 중 알약」. 모든 부품 = 정본 값 사본(창작 0). */
+const GO_SVG='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const DL_SVG='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M6 11l6 6 6-6"/><path d="M4 21h16"/></svg>';
+const SPIN='<svg class="pgv-spin" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 1-9 9"/></svg>';
+const PGV_CSS=`<style>
+@keyframes pgvPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,238,210,.0)}50%{box-shadow:0 0 0 3px rgba(0,238,210,.10)}}
+@keyframes pgvSpin{to{transform:rotate(360deg)}}
+@keyframes pgvDots{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.pgv-spin{animation:pgvSpin .9s linear infinite;display:block}
+.pgv-wrap{padding:12px 12px 20px;font-size:13px}
+.pgv-dock{background:#121212;margin:-12px -12px 0;padding:14px 12px 16px;border-bottom:1px solid rgba(0,238,210,.35)}
+.pgv-mon{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid transparent;border-radius:9px;overflow:hidden}
+.pgv-dim{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--pg-accent);font-size:13px}
+.pgv-badge{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.6);color:#eef7f0;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px}
+.pgv-rail{position:absolute;right:-999px}
+.pgv-go{width:100%;margin-top:12px;height:30px;display:grid;place-items:center;background:rgba(255,255,255,.02);color:var(--pg-accent);border:1px solid rgba(255,255,255,.2);border-radius:22px;font-weight:800;font-size:13px;position:relative;overflow:hidden}
+.pgv-go .fill{position:absolute;inset:0;background:linear-gradient(var(--pg-accent),var(--pg-accent));opacity:.9;width:62%;border-radius:22px 0 0 22px}
+.pgv-go .lb{position:relative;z-index:1}.pgv-go.firing .lb{color:#032322}
+.pgv-pill{margin:14px 0 4px;display:flex;align-items:center;justify-content:center;gap:6px;min-height:var(--pgv-pillh,46px);padding:0 15px;border:1px solid rgba(0,238,210,.3);border-radius:16px;color:var(--pg-accent);font-size:var(--pgv-fs,13px);background:rgba(255,255,255,.04);animation:pgvPulse 1.6s ease-in-out infinite}
+.pgv-pill i{width:5px;height:5px;border-radius:50%;background:var(--pg-accent);animation:pgvDots 1.2s infinite}
+.pgv-pill i:nth-child(2){animation-delay:.2s}.pgv-pill i:nth-child(3){animation-delay:.4s}
+.pgv-sec{margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px;font-weight:700}
+.pgv-sec .bul{color:var(--pg-accent);margin-right:6px}.pgv-sec .cnt{color:var(--pg-mut);font-weight:600;font-size:12px}
+.pgv-sec .ar{float:right;color:var(--pg-warn)}
+.pgv-job{display:flex;align-items:center;gap:8px;margin-top:var(--pgv-gap,6px);padding:9px 11px;border:1px solid rgba(255,255,255,.09);border-radius:11px;font-size:12.5px}
+.pgv-job .st{margin-left:auto;color:var(--pg-mut);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.pgv-job.err .st{color:var(--pg-danger)}
+.pgv-card{position:relative;margin-top:10px;width:62%;}
+.pgv-card .th{position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,#1a2b28,#0d1418);border:1px solid rgba(255,255,255,.1);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--pg-accent)}
+.pgv-card .dur{position:absolute;background:rgba(0,0,0,.6);color:#eef7f0;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px}
+.pgv-card .dur.br{right:6px;bottom:6px}.pgv-card .dur.tl{left:6px;top:6px}
+.pgv-card .dl{position:absolute;top:6px;right:6px;width:28px;height:28px;display:grid;place-items:center;color:var(--pg-accent)}
+.pgv-hd{color:#eef7f0;font-size:11.5px;font-weight:600;margin:8px 0 6px 2px}
+.pgv-note{color:var(--pg-mut);font-size:10.5px;margin-top:10px;line-height:1.6}
+</style>`;
+const CONFIG={
+  META:{label:'영상 스튜디오 제작 과정 통일', frame:{w:300,h:560}, ssot:'thumb.html(.genstat.live·#jobs·.go.firing) · nm-hist.css · viewer :root',
+    notes:['현행 실측 = k·vd 잡 행 **이미 정본**(thumb 동일값 주석) · **edit만 잡 행 없음**(버튼 orb가 유일 신호) · song 자체 상태줄 → 통일 = edit·song 잡 행 합류 + 알약 공통.',
+      '「좌측 상단」 답 = **미리보기 위에 새 배지 안 띄운다** — 이미지 정본이 쓰는 진행 표기는 {발사 게이지·알약·잡 행·대기 딤(정중앙)}뿐이라, 영상 고유 정보(진행률·남은 시간)는 **잡 행 우측 상태 텍스트(.jst)에 싣는다**(부품 신설 0). 좌상단 배지 변형은 비교용으로 넣었고 비추천(정본에 없는 창작 축).',
+      '완료 카드 = 이전 제작 카드(.hist-it/.hist-cap) 문법 그대로 · 영상만 16:9 썸네일 + 길이 배지(캡션 알약 재사용).',
+      '재현 한계 = 근사 목업(활자·색·라운드·펄스 = 정본 값 사본이나 실물 캐러셀·게이지 타이밍은 라이브가 최종) · 실배선 시 각 탭 폴링 API 무접촉(표시층만).'],},
+  GALLERY:[
+    {comp:'flow', nm:'제작 중 표시 방식', desc:'탭해서 선택 — 단계 갤러리와 조합', variants:[
+      {id:'cur', nm:'현행 edit(비교 기준)', tag:'버튼 로더만 · 잡 행 없음', r:()=>'<span style="font-size:10px;color:var(--pg-mut)">생성 버튼 orb</span>'},
+      {id:'canon', nm:'정본 통일 ★', tag:'게이지→알약→잡 행→완료 카드', r:()=>'<span style="font-size:10px;color:var(--pg-accent)">카드 생성 그대로</span>'},
+      {id:'pct', nm:'정본 + 진행률', tag:'잡 행에 % · 남은 시간', r:()=>'<span style="font-size:10px">38% · 1:24</span>'},
+      {id:'badge', nm:'좌상단 배지(비추천)', tag:'정본에 없는 창작 축', r:()=>'<span style="font-size:10px;color:var(--pg-warn)">모니터 위 배지</span>'},
+    ]},
+    {comp:'ph', nm:'단계 보기', desc:'제작 과정의 세 순간을 넘겨보기', variants:[
+      {id:'fire', nm:'① 발사 직후', tag:'버튼 게이지 · 요청 전송', r:()=>'<span style="font-size:10px">게이지</span>'},
+      {id:'busy', nm:'② 생성 중', tag:'알약 + 잡 행 스피너', r:()=>'<span style="font-size:10px">알약·잡 행</span>'},
+      {id:'done', nm:'③ 완료', tag:'결과 카드 합류', r:()=>'<span style="font-size:10px">카드</span>'},
+    ]},
+    {comp:'durb', nm:'완료 카드 길이 배지', desc:'영상 고유 정보의 자리', variants:[
+      {id:'br', nm:'우하단 ★', tag:'유튜브 관례 · 캡션 알약 재사용', r:()=>'<span style="font-size:10px">0:15 ↘</span>'},
+      {id:'tl', nm:'좌상단', tag:'이력 캡션(.hist-cap) 자리', r:()=>'<span style="font-size:10px">0:15 ↖</span>'},
+      {id:'no', nm:'없음', tag:'이미지와 완전 동일', r:()=>'<span style="font-size:10px">—</span>'},
+    ]},
+  ],
+  AXES:[
+    {k:'pillH', nm:'알약 높이', grp:'생성 중 알약', type:'range', min:40, max:52, step:1, u:'px', lad:[46], tokn:'--btn-lg', tokv:46, tok:'genstat 정본 = --btn-lg(46)', eps:0.6},
+    {k:'fs', nm:'알약 활자', grp:'생성 중 알약', type:'range', min:12, max:14.5, step:0.5, u:'px', lad:[13,13.5], tokn:'--fs-label', tokv:13, tok:'genstat 붙은 글자 13.5 · 라벨 13 사다리', eps:0.26},
+    {k:'gap', nm:'잡 행 간격', grp:'잡 행', type:'range', min:4, max:12, step:1, u:'px', lad:[6,12], tokn:'--sp-1', tokv:6, tok:'.jobs gap = sp-1(6) 정본', eps:0.6},
+    {k:'dim', nm:'대기 딤 알파', grp:'미리보기', type:'range', min:0, max:0.5, step:0.02, u:'', lad:[0.26], tokn:'대기 딤', tokv:0.26, tok:'.cpprev-wait rgba(0,0,0,.26) 정본', eps:0.011},
+    {k:'cardW', nm:'완료 카드 폭', grp:'완료 카드', type:'range', min:40, max:100, step:2, u:'%', free:true, tok:'이미지 그리드 = 3열(≈33%) · 영상 16:9는 폭이 커야 읽힌다', eps:1.1},
+  ],
+  DEFAULTS:{v_flow:'canon', v_ph:'busy', v_durb:'br', pillH:46, fs:13, gap:6, dim:0.26, cardW:62},
+  PRESETS:[
+    {nm:'현행 edit(비교 기준)', st:{v:{flow:'cur', ph:'busy'}}},
+    {nm:'정본 통일(카드 생성 그대로)', star:1, st:{v:{flow:'canon', ph:'busy', durb:'br'}}},
+    {nm:'정본 + 진행률 병기', st:{v:{flow:'pct', ph:'busy', durb:'br'}}},
+    {nm:'완료 화면', st:{v:{flow:'canon', ph:'done', durb:'br'}}},
+  ],
+  renderPreview(s){
+    const v=(s&&s.v)?s.v:state.v, a=(s&&s.a)?s.a:state.a;
+    const flow=v.flow||'canon', ph=v.ph||'busy', durb=v.durb||'br';
+    const css=PGV_CSS.replace('--pgv-pillh,46px','--pgv-pillh:'+a.pillH+'px').replace('--pgv-fs,13px','--pgv-fs:'+a.fs+'px').replace('--pgv-gap,6px','--pgv-gap:'+a.gap+'px');
+    let mon='<div class="pgv-mon">'
+      +(ph!=='done'&&flow!=='cur'?'<div class="pgv-dim" style="background:rgba(0,0,0,'+a.dim+')">'+(ph==='fire'?'':'렌더링 중')+'</div>':'')
+      +(flow==='badge'&&ph==='busy'?'<div class="pgv-badge">렌더링 38%</div>':'')
+      +'</div>';
+    let go = ph==='fire'
+      ? '<button class="pgv-go firing"><span class="fill"></span><span class="lb">요청 전송</span></button>'
+      : '<button class="pgv-go"'+(flow==='cur'&&ph==='busy'?' style="opacity:.85"':'')+'><span class="lb">'+(flow==='cur'&&ph==='busy'?SPIN.replace('14"','13"')+' Solving':'생성')+'</span></button>';
+    let pill = (flow!=='cur'&&ph==='busy') ? '<div class="pgv-pill"><i></i><i></i><i></i>생성 중 · <b>24초</b></div>' : '';
+    let jobs='';
+    if(flow!=='cur'){
+      const st = ph==='done' ? '완료 ✓'
+        : (flow==='pct' ? SPIN+' 렌더링 38% · 1:24 남음' : (flow==='badge'? SPIN+' 렌더링' : SPIN+' 렌더링 중'));
+      const job = ph==='fire' ? '' : '<div class="pgv-job">큐영상_0803.mp4<span class="st">'+st+'</span></div>';
+      const card = ph==='done' ? '<div class="pgv-hd">오전 11:02</div><div class="pgv-card" style="width:'+a.cardW+'%"><div class="th">▶</div>'
+        +(durb!=='no'?'<div class="dur '+(durb==='tl'?'tl':'br')+'">0:15</div>':'')
+        +'<span class="dl">'+DL_SVG+'</span></div>' : '';
+      jobs='<div class="pgv-sec"><span class="bul">•</span>결과 <span class="cnt">('+(ph==='fire'?0:1)+')</span><span class="ar">'+GO_SVG+'</span></div>'+job+card;
+    } else if(ph==='done'){
+      jobs='<div class="pgv-sec"><span class="bul">•</span>결과 <span class="cnt">(1)</span><span class="ar">'+GO_SVG+'</span></div><div class="pgv-hd">오전 11:02</div><div class="pgv-card" style="width:'+a.cardW+'%"><div class="th">▶</div><span class="dl">'+DL_SVG+'</span></div>';
+    }
+    return css+'<div class="pgv-wrap"><div class="pgv-dock">'+mon+go+'</div>'+pill+jobs
+      +'<div class="pgv-note">부품 전부 정본 값 사본 — 게이지(.go.firing)·알약(.genstat.live 46/13.5/펄스)·잡 행(.jobs/.jst sp-1)·결과 소머리(.car-h)·완료 카드(.hist-it/.hist-cap). 영상 고유 정보(%·남은 시간·길이)는 기존 슬롯 안에만 싣는다 = 부품 신설 0.</div></div>';
+  },
+};
+boot();
+</script>
