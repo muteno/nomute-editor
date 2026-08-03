@@ -3410,7 +3410,7 @@ async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(
     _histSig = sig;
     if (hist) SRV_HIST = hist;
     if (clr > SRV_CLEAR) { SRV_CLEAR = clr; try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} }
-    if (!reconcileRestoredBatch()) renderHist();   // 새 이력에 형제가 실려오면 묶음 재복원(doRestore가 renderHist까지 수행 = 이중 렌더 0)
+    if (!reconcileRestoredBatch() && !followNewestRestored()) renderHist();   // 새 이력에 형제가 실려오면 묶음 재복원 · 타 기기 신작이면 결과 최신 추종(doRestore가 renderHist까지 수행 = 이중 렌더 0)
   } finally { _histPolling = false; }
 }
 // 제작완료 푸시 탭 → /thumb.html?done=<id>(구 #done 호환) 진입 시 그 결과를 맨 위로 복원·랜딩(완성 결과가 바로 보이게).
@@ -3455,7 +3455,7 @@ async function pollR2Recent() {
       if (ts && ts <= cut) { _r2Known.add(id); continue; }
       if (await fetchMetaById(id)) { added = true; _r2Known.add(id); }   // 실패(pending·일시 오류) = known 미등재 → 다음 폴 재시도
     }
-    if (added) renderHist();
+    if (added && !reconcileRestoredBatch() && !followNewestRestored()) renderHist();   // R2 즉시 주입분도 형제 합류·결과 최신 추종 동일 적용(부팅 레이스 = 복원이 R2 주입보다 먼저 끝나도 여기서 즉시 수렴)
   } catch (_) { /* API 미가용 = 종전 Pages 폴 사다리 유지(조용한 폴백) */ } finally { _r2Polling = false; }
 }
 let _histRetry = false, _histTimer = 0;   // 단일 재시도 사다리 가드 — 진입점 다중(init·loadServerHist·hashchange)이라도 중복 fetch 0(평의회 FIX-1)
@@ -3617,6 +3617,32 @@ function reconcileRestoredBatch() {
   CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) { tr.innerHTML = ''; tr.style.height = ''; }   // 캐러셀 비우고 묶음 전체로 재구성(restoreById 교체 블록 미러)
   const ok = doRestore(pick, collapsed);
   console.log('[thumb] 묶음 재수렴 — bid=' + (pick.src && pick.src.bid || '?') + ' · 합류 ' + pick.items.length + '장');   // 계측(CLAUDE.md [관측]) — 조용한 재구성 금지
+  return ok;
+}
+// ── 결과(복원 블록) 최신 추종(운영자 260803 "결과 부분 모든 기기에서 언제든 동기화") — 부팅 1회 복원 뒤 10s 폴(pollServerHist·pollR2Recent)이
+// 타 기기 신작을 '이전 제작'에만 넣던 갭 봉합: 상시 탭(모바일 PWA)의 '결과'가 부팅 시점 것으로 굳어 발사 기기(PC)와 갈렸다(= "pc에서는 나오고 모바일 웹앱은 안 나옴").
+// 문법 = reconcileRestoredBatch 미러(접힘·펼침 유지 재구성 · 운영자 260731 승인 선례) · 라이브 흐름 무접촉 가드 = 부팅 복원(loadServerHist) 동축.
+function followNewestRestored() {
+  if (doneReq().on) return false;                                                       // 딥링크(?done=) 사다리 중 = restoreById가 주인(그 id 핀포인트 우선)
+  if (JOBS.some(j => j && j.status !== 'done' && j.status !== 'err')) return false;     // 진행 중 잡 = 발사 기기 라이브 흐름 우선(부팅 복원 가드 동축)
+  if (!RESTORED && CARSLIDES.length) return false;                                      // fresh(이 기기 방금 제작) 결과 표시 중 = 무접촉(교체는 복원 블록만)
+  const cutMin = Math.max(histClearedCut(), SRV_CLEAR, RESTORED ? RESTORED_TS : 0);     // 지운 시점 + 현재 복원분보다 '엄격히 최신'만(다운그레이드·자기재구성 루프 0)
+  let newest = null;
+  (SRV_HIST || []).forEach(e => { if (e && e.url && (e.ts || 0) > cutMin && thIdOf(e.url) && (!newest || (e.ts || 0) > (newest.ts || 0))) newest = e; });
+  if (!newest) return false;
+  const pick = findResultById(thIdOf(newest.url));                                      // 묶음(bid) 통째 구성 = 1/2·2/2 한 캐러셀(정본 재사용)
+  if (!pick || !Array.isArray(pick.items) || !pick.items.length) return false;
+  const pbid = (pick.src && typeof pick.src.bid === 'string') ? pick.src.bid : '';
+  if (RESTORED && pbid && pbid === RESTORED_BID) return false;                          // 같은 묶음 형제 합류 = reconcileRestoredBatch 전담(이중 재구성 0)
+  if (RESTORED && !pick.items.some(it => !RESTORED_URLS.has(histKey(it.url)))) return false;   // url 전부 기보유 = 같은 결과의 서버 수렴 에코(발사 기기 로컬 복원분 등) = 무동작
+  const collapsed = !!($('#carwrap') && $('#carwrap').hidden);                          // 보고 있는 접힘·펼침 상태 유지(재구성이 화면을 열거나 닫지 않음 · reconcile 정본)
+  if (RESTORED) {                                                                       // 교체 = restoreById 교체 블록 미러
+    RESTORED = false; RESTORED_BID = ''; RESTORED_URLS.clear();
+    const r = document.getElementById('job-R'); if (r) r.remove();
+    CARSLIDES.length = 0; const tr = $('#cartrack'); if (tr) { tr.innerHTML = ''; tr.style.height = ''; }
+  }
+  const ok = doRestore(pick, collapsed);
+  if (ok) console.log('[thumb] 결과 최신 추종 — ' + (pick.label || '제작') + ' · ' + pick.items.length + '장');   // 계측(CLAUDE.md [관측]) — 조용한 재구성 금지
   return ok;
 }
 let _histCloseT = null;   // 이전 제작 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(직전 제작 _carCloseT 미러·운영자 260707)
