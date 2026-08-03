@@ -675,6 +675,22 @@ def check_thumb_chain():
         miss.append('index.html: chThFail 공개 커버 경로 1회 재시도(만료 URL 화면 회수 · 260803)')
     if 'len(near) == 1' not in s:
         miss.append('insta_signals.py: FB 시각 ±3분 유일후보 매칭(캡션 재작성 크로스포스트 회수 · 260803)')
+    # 회수 출처 카운터 + 결손 연속회차 알림(운영자 260803 "아이디어 ㄱ") — 화면은 캡션 타일이라 멀쩡해 보여서
+    # '조용히 나빠지는 것'이 이 구조의 마지막 사각이었다. 집계·스트릭·알림 3점이 다 살아있어야 그 사각이 닫힌다.
+    for tok, why in (("'thumb_src': vdoc_thumb_src", '출처 집계를 뷰어 데이터에 굽기'),
+                     ("meta['none_streak']", '결손 연속회차 누적(1회성 딸꾹질과 구분)'),
+                     ("'insta-thumb-miss'", '2회 연속 결손 = 운영자 알림(해소 시 clear)')):
+        if tok not in s:
+            miss.append('insta_signals.py: %s (%s)' % (tok, why))
+    if "mm['thumb_src'] = 'pub'" not in f:
+        miss.append("insta_fetch.py: 공개경로 회수분 출처 표식(편입 뒤엔 thumbnail_url과 구분 불가)")
+    try:
+        wf = open(os.path.join(ROOT, '.github', 'workflows', 'insta-fetch.yml'), encoding='utf-8').read()
+    except Exception:
+        wf = ''
+    for line in [l for l in wf.splitlines() if 'git_land.sh "insta: 계정 인사이트' in l]:
+        if ' messages' not in line:
+            miss.append('insta-fetch.yml: git_land 인자에 messages 누락 — 알림 파일이 커밋 안 돼 화면에 못 뜬다')
     # 스코프 = .ch-th 타일 템플릿 줄만(다른 컴포넌트의 display:none 은닉은 정당 — 예: X 카드 대표 이미지 .xcard-cv는
     # 카드 **안** 부속이라 숨겨도 그리드에 구멍이 안 난다. 여기서 금지하는 건 그리드 셀 자신이 사라지는 축 하나).
     tile = [l for l in v.splitlines() if 'class="ch-th"' in l]
@@ -690,7 +706,7 @@ def check_thumb_chain():
         for m in miss:
             print('   · ' + m)
         return 1
-    print('✅ 커버 회수 체인 게이트 — 수집 2층(Graph 재조회·공개 커버 경로) + 산출 3층(API·FB 크로스포스트[캡션∨시각유일]·성공 원장+만료 인지) + 뷰어 2층(공개경로 재시도·캡션 강등) 생존.')
+    print('✅ 커버 회수 체인 게이트 — 수집 2층(Graph 재조회·공개 커버 경로) + 산출 3층(API·FB 크로스포스트[캡션∨시각유일]·성공 원장+만료 인지) + 뷰어 2층(공개경로 재시도·캡션 강등) + 출처 카운터·결손 알림 생존.')
     return 0
 
 

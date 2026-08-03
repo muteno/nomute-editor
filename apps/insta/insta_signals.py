@@ -16,6 +16,7 @@ import json
 import os
 import re
 import statistics
+import subprocess
 import sys
 from zoneinfo import ZoneInfo
 
@@ -784,27 +785,33 @@ def main():
             커버 재조회(대개 복구) = insta_fetch."""
             tu = m.get('thumbnail_url')
             if tu:
-                return tu
+                return tu, (m.get('thumb_src') or 'ig')   # 'pub' = 인스타 공개 커버 경로 회수분(insta_fetch 표식)
             mu = m.get('media_url') or ''
             if not (m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS'
                     or '/o1/v/' in mu or '/v/t2/' in mu):
                 if mu:
-                    return mu
+                    return mu, 'mu'
             fb = _fb_cover_for(m)
             if fb:
-                return fb
+                return fb, 'fb'
             old = (cache.get(str(m.get('id'))) or {}).get('u') or ''
-            return old if old and _url_alive(old) else ''
+            return (old, 'cache') if old and _url_alive(old) else ('', 'none')
         # 최신 12개 원순서 유지 — 커버 없는 릴스도 제자리 보존(th='' → 뷰어가 캡션 텍스트 타일 · t 동봉). 영상URL 폴백·앞자름 결손 = 종식.
         # r = 릴스 플래그(뷰어가 릴스 커버에 ▶ 표식 · 피드 무표식 = 포맷 판별 · 운영자 260718)
-        thumbs = [{'th': _thumb_src(m), 'u': m.get('permalink'),
-                   't': first_line(m.get('caption'))[:40],
-                   'r': 1 if (m.get('media_product_type') == 'REELS' or m.get('media_type') == 'VIDEO') else 0}
-                  for m in (med.get('media') or [])[:12]]
+        _srcs = []
+        thumbs = []
+        for m in (med.get('media') or [])[:12]:
+            _u, _s = _thumb_src(m)
+            _srcs.append(_s)
+            thumbs.append({'th': _u, 'u': m.get('permalink'),
+                           't': first_line(m.get('caption'))[:40],
+                           'r': 1 if (m.get('media_product_type') == 'REELS' or m.get('media_type') == 'VIDEO') else 0,
+                           's': _s})   # s = 이 커버를 어느 층이 채웠나(운영자 260803 카운터 · 뷰어 미사용 = 진단축)
         # 원장 갱신 — 이번 회차에 실제로 화면에 나간 커버만 기록(살아있는 URL 확정분). 다음 회차에 API가 빠뜨려도
         # 이 값이 3층에서 받아낸다. 만료분·결손분은 안 덮어써 **마지막 살아있던 값**이 남는다(정보 손실 0).
         # 프루닝 = 최신 회차 표본 25개 안에 있는 id 우선 보존 → 나머지는 최근순 CACHE_KEEP개(무한 비대 방지).
         try:
+            meta = cache.pop('_meta', None) or {}   # 프루닝 대상 밖으로 먼저 분리(id 사전과 섞이면 200개 컷에 밀려 증발)
             live_ids = [str(m.get('id')) for m in (med.get('media') or []) if m.get('id')]
             stamp_now = datetime.datetime.now(KST).isoformat(timespec='seconds')
             for m, t in zip((med.get('media') or [])[:12], thumbs):
@@ -814,12 +821,37 @@ def main():
             rest = sorted((k for k in cache if k not in set(live_ids)),
                           key=lambda k: (cache[k] or {}).get('t') or '', reverse=True)
             cache = {k: cache[k] for k in (keep + rest)[:CACHE_KEEP]}
+            # ── 회수 출처 카운터 + 결손 연속회차(운영자 260803 "아이디어 ㄱ") ──
+            # 왜: 여섯 층 중 **어느 길로 채워졌는지**를 아무도 몰랐다. 화면은 캡션 타일이라 멀쩡해 보여서
+            #     '조용히 나빠지는 것'이 이 구조의 마지막 사각이었다. 집계는 ⓐ 결손(none)이 이어지는지
+            #     ⓑ 어느 층이 실제로 일하는지(안 쓰는 층은 훗날 덜어낼 근거)를 동시에 준다.
+            # 스트릭 = 원장 `_meta`에 누적(회차 = insta_signals 실행 1회). 2회 연속 결손 = 운영자 알림.
+            tally = {}
+            for s in _srcs:
+                tally[s] = tally.get(s, 0) + 1
+            none_n = tally.get('none', 0)
+            meta['none_streak'] = (meta.get('none_streak', 0) + 1) if none_n else 0
+            meta['last'] = {'kst': stamp_now, 'n': len(_srcs), 'tally': tally}
+            cache['_meta'] = meta
             with open(CACHE_P, 'w', encoding='utf-8') as f:
                 json.dump(cache, f, ensure_ascii=False, indent=1)
+            vdoc_thumb_src = {'tally': tally, 'none': none_n, 'none_streak': meta['none_streak']}
+            # 알림 = 2회 연속 결손일 때만(1회성 API 딸꾹질로 운영자를 부르지 않는다) · 해소되면 즉시 clear.
+            # 채널 = shared/msg.py 정본(messages/<id>.json 입력 파일 → 빌드가 viewer/messages.json 합성).
+            msg_py = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'shared', 'msg.py'))
+            if meta['none_streak'] >= 2:
+                subprocess.run(['python3', msg_py, 'set', 'insta-thumb-miss',
+                                f"최근 게시물 커버 {none_n}칸이 {meta['none_streak']}회차 연속 비었어요 — "
+                                f"인스타 API·공개 경로·페이스북·저장 원장이 모두 빈손입니다(회차 출처: "
+                                + ' · '.join(f'{k} {v}' for k, v in sorted(tally.items())) + ').',
+                                'warn'], check=False)
+            else:
+                subprocess.run(['python3', msg_py, 'clear', 'insta-thumb-miss'], check=False)
         except Exception as e3:
+            vdoc_thumb_src = None
             print(f'커버 원장 갱신 실패(비치명 · 이번 회차 커버는 그대로 나감): {e3}')
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
-                'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
+                'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs, 'thumb_src': vdoc_thumb_src,
                 **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용
         # 일일 추이 배선(운영자 260713) — 과거 CSV 시드 ∪ 봇 수집 일별값을 뷰어까지 전달(차트는 후속·플레이그라운드)
         series_daily, daily_meta = _daily_timeseries(daily)

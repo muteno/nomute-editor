@@ -176,6 +176,8 @@ def main():
                 pub = _public_cover(m.get('permalink'))
                 if pub:
                     mm['thumbnail_url'] = pub
+                    mm['thumb_src'] = 'pub'   # 출처 표식(운영자 260803 카운터) — 편입 뒤엔 thumbnail_url과 구분이 안 되므로
+                    #                           여기서만 남길 수 있다. 어느 층이 실제로 일하는지 = insta_signals가 집계.
         base = ['views', 'reach', 'likes', 'comments', 'saved', 'shares', 'total_interactions']
         if m.get('media_product_type') == 'REELS':
             base += ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
