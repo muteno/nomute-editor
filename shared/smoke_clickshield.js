@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════════════════════
-// smoke_toastshield.js — 포그라운드 알림(.nm-toast 가족) 「보이면 뒤가 안 눌린다」 상비 스모크
-//   (운영자 260803 "긴급이나 새 버전이 있어요, 경고 등 포그라운드 알림 — 이 영역은 아무데나 클릭해도 뒤에 배경이 클릭 안되도록")
+// smoke_clickshield.js — 「보이면 뒤가 안 눌린다」 상비 스모크 (포그라운드 알림 + 닫힘 팝업 전 표면)
+//   (운영자 260803 "긴급이나 새 버전이 있어요, 경고 등 포그라운드 알림 — 이 영역은 아무데나 클릭해도 뒤에
+//    배경이 클릭 안되도록" → 260803 2차 "아이디어 ㄱㄱ" = 닫힘 팝업 확장 · 구 파일명 smoke_toastshield.js)
 //
-// ▷ 왜 신설: smoke_hitzone과 **같은 사고 유형**(보이는 것 ≠ 눌리는 것)이 토스트 축에서 재발했다.
-//   260803 실측(430px 실클릭 재현) = 닫힘 t=0ms에 opacity "1"(완전 불투명)인데 pointer-events "none" →
-//   전 영역 관통(2227/2227 프로브) → 뒤 `.scrap-col`이 클릭을 먹는다. 8s 자동닫힘 만료·✓/✗ 직후가 그 순간이라
-//   「알림 누르려다 엉뚱한 기사가 열린다」로 나타난다. 원인 = hideToast류는 .show만 떼는데
-//   `.nm-toast:not(.show){pointer-events:none}`이 즉시 걸리고 opacity는 .3s에 걸쳐 내려간다.
+// ▷ 왜 신설: smoke_hitzone과 **같은 사고 유형**(보이는 것 ≠ 눌리는 것)이 부양 표면 축에서 재발했다.
+//   ⓐ 토스트 — 260803 실측(430px 실클릭 재현) = 닫힘 t=0ms에 opacity "1"(완전 불투명)인데 pointer-events "none" →
+//     전 영역 관통(2227/2227 프로브 · 실클릭 15/15) → 뒤 `.scrap-col`이 클릭을 먹는다. 8s 자동닫힘 만료·✓/✗ 직후가
+//     그 순간이라 「알림 누르려다 엉뚱한 기사가 열린다」로 나타난다. 원인 = hideToast류는 .show만 떼는데
+//     `.nm-toast:not(.show){pointer-events:none}`이 즉시 걸리고 opacity는 .3s에 걸쳐 내려간다.
+//   ⓑ 닫힘 팝업 — 같은 구조가 `.closing` 관용구에 그대로 있었다(popOut 애니 중 pointer-events:none).
+//     260803 실측 = 설정 메뉴(.pmenu)·메시지함(#msgpop)·잠금 설정(#lockpop) 셋 다 opacity 1.00인데 관통
+//     → 뒤 티커(.tkrhost)·수집함(body.tab-scrap) 피격. 토스트만 고치면 나머지가 남는 구조였다.
 //   기존 게이트가 전부 통과시켰다 — check_refs=정적 문자열 · hitzone=스튜디오 2셸 · fresh=경보 생명주기(클릭 관통 축 없음).
 //
-// 원커맨드:  node shared/smoke_toastshield.js       (종료코드 0 = 전부 PASS)
+// 원커맨드:  node shared/smoke_clickshield.js       (종료코드 0 = 전부 PASS)
 //
-// 담당 표면: viewer/index.html — .nm-toast 셸 CSS(pointer-events 규칙) + nmToastShield() 캡처 방패.
+// 담당 표면: viewer/index.html — .nm-toast 셸 CSS·`.closing` 관용구(pointer-events 규칙) + nmClickShield() 캡처 방패.
 //
 // 판정 축:
 //   C1 표시 중 = 토스트가 자기 클릭을 받는다(본체·✓·↗ 동작 무손상)
@@ -22,6 +26,8 @@
 //   C5 라디얼(＋) 열림 중 = 관통 유지(CSS `body:has(.radmenu.open) .nm-toast{pointer-events:none}` 의도 보존)
 //   C6 토스트보다 위 표면(top-layer dialog) = 방패 비켜섬(상위 표면 클릭을 안 먹는다)
 //   C7 부팅 JS 예외 0
+//   C8 **닫힘 팝업(.closing) 3종 = 배경 무반응** ← 확장 축(설정 메뉴·메시지함·잠금 설정)
+//   C9 방패 셀렉터 = 자동발견(`.nm-toast, .closing`) 유지 — 손 레지스트리로 퇴화하면 새 팝업이 조용히 빠진다
 //
 // 시험 노브(정직): 페이드 구간을 시간에 안 맡기려고 **transition-duration만** 6s로 늘려 잰다(헤드리스 rAF는
 //   프레임 간격이 들쭉날쭉해 120ms 같은 실시간 창은 비결정적). 검사 축(=클래스 제거 즉시 pointer-events가
@@ -106,7 +112,7 @@ const FAMILY = [
     window.__bg = [];
     document.body.addEventListener('click', e => {
       const t = e.target;
-      window.__bg.push({ tn: t.tagName + '.' + String(t.className || '').split(' ')[0], inT: !!(t.closest && t.closest('.nm-toast')) });
+      window.__bg.push({ tn: t.tagName + '.' + String(t.className || '').split(' ')[0], inT: !!(t.closest && t.closest('.nm-toast, .closing')) });   // 「배경」 = 방패 대상 표면 **밖** 타깃(표면 자기 클릭은 정상)
     }, true);
     const st = document.createElement('style');
     st.id = 'smokeKnob';
@@ -218,6 +224,34 @@ const FAMILY = [
   await page.mouse.click(Math.round(sD.x + sD.w / 2), Math.round(sD.y + sD.h / 2));
   const dlgHit = await page.evaluate(() => { const n = window.__dlgHit || 0; const d = document.getElementById('smokeDlg'); if (d) { d.close(); d.remove(); } return n; });
   ok('C6 상위 top-layer 표면 = 방패 비켜섬', dlgHit === 1, 'dialog 피격 ' + dlgHit + '회' + (r6 ? '' : ''));
+
+  // ── C8 닫힘 팝업(.closing) = 배경 무반응 ← 확장 축(260803 2차) ──
+  //    닫힘 애니를 60s로 늘려 「눈에 보이는 구간」에서 잰다(검사 축 = 클래스 붙는 즉시 pointer-events가 꺼지는가 · 지속시간 무관).
+  await page.evaluate(() => {
+    document.querySelectorAll('.nm-toast').forEach(t => t.remove());   // 토스트 축 격리(같은 방패를 두 번 세지 않는다)
+    const st = document.createElement('style'); st.id = 'popKnob';
+    st.textContent = '.closing{animation-duration:60s !important;animation-fill-mode:both !important}';
+    document.head.appendChild(st);
+  });
+  for (const p of [{ id: 'pmenu', ko: '설정 메뉴' }, { id: 'msgpop', ko: '메시지함' }, { id: 'lockpop', ko: '잠금 설정' }]) {
+    const m = await page.evaluate(id => {
+      document.querySelectorAll('.closing').forEach(n => { n.classList.remove('closing'); n.hidden = true; });
+      const el = document.getElementById(id);
+      if (!el) return { miss: true };
+      el.hidden = false; el.classList.add('closing');
+      const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+      return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), w: Math.round(r.width), h: Math.round(r.height), op: +cs.opacity, pe: cs.pointerEvents };
+    }, p.id);
+    if (m.miss || m.w < 8 || m.h < 8) { ok('C8 ' + p.ko + ' 닫힘 중 = 배경 무반응', false, m.miss ? '요소 없음(마크업 개편? 게이트 갱신 필요)' : '기하 0'); continue; }
+    await page.waitForTimeout(140);
+    const r8 = await clickAt(m.x, m.y);
+    ok('C8 ' + p.ko + ' 닫힘 중 = 배경 무반응', m.op > 0.5 && r8.bg.length === 0,
+      'opacity=' + m.op.toFixed(2) + ' pe=' + m.pe + ' ' + m.w + '×' + m.h + ' 배경=' + JSON.stringify(r8.bg));
+  }
+
+  // ── C9 방패 셀렉터 = 자동발견 유지(손 레지스트리 퇴화 차단) ──
+  const sel = await page.evaluate(() => (typeof NM_SHIELD_SEL === 'string' ? NM_SHIELD_SEL : ''));
+  ok('C9 방패 셀렉터 = 자동발견(.nm-toast, .closing)', /\.nm-toast/.test(sel) && /\.closing/.test(sel), 'NM_SHIELD_SEL = ' + JSON.stringify(sel));
 
   console.log('\n' + (fail === 0 ? '✅ 전부 PASS' : '❌ FAIL ' + fail + '건') + ' (' + R.length + '축)');
   await browser.close();
