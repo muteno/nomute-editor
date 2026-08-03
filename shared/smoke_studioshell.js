@@ -114,7 +114,7 @@ const PROBE = () => {
       svg: s ? [+s.getBoundingClientRect().width.toFixed(1), +s.getBoundingClientRect().height.toFixed(1)] : null };
   });
   // C7 재료 = 미리보기 모듈 3부품(창·발사 버튼·돋보기 캡슐) — 좌표는 창 기준 상대값(절대 x·y = 탭마다 폼 높이가 달라 위양성)
-  const boxEl = [...d.querySelectorAll('.cpprev-box')].filter(seen)[0]
+  const boxEl = [...d.querySelectorAll('.cpprev-box, .mon')].filter(seen)[0]   // .mon 합류 = 큐영상 프로그램 모니터(260803 통일로 --pvw 52% 캡 1:1 동일 규격 — 종전 셀렉터 밖이라 '부품 없음'으로 빠져 C7·C8 사각이던 것 편입)
     || (d !== document ? null : [...document.querySelectorAll('.geni-prev .cpprev-box')].filter(seen)[0]) || null;
   const goBtn = [...d.querySelectorAll('#go, #editGo, #optGo')].filter(seen)[0]   // 영상 셸 발사 id 합류(edit #editGo · song #optGo — _LAUNCH_BTNS 레지스트리 · C7 영상 확장 260802 7차)
     || (d !== document ? null : [...document.querySelectorAll('#geniGo')].filter(seen)[0]) || null;
@@ -142,6 +142,8 @@ const PROBE = () => {
     dlgW: dlg ? +dlg.getBoundingClientRect().width.toFixed(0) : null,
     vpW: window.innerWidth,
     prevMod,
+    zoomOn: !!d.querySelector('.dockzoom'),   // 부팅 확대 잔류 검출(운영자 260803 "기본을 작게" — dockzoom이 초기 렌더에 붙어 있으면 확대가 기본값이 된 것)
+    prevVis: !!boxEl,   // 미리보기 창 가시(운영자 260803 "아예 미리보기가 안보이는 화면은 아예 잘못" — .cpprev-box/.mon/AI판 폴백 중 하나는 보여야 한다)
     dock: dcs ? [dcs.backgroundColor, dcs.backdropFilter || dcs.webkitBackdropFilter, dcs.borderBottomWidth + ' ' + dcs.borderBottomColor].join(' / ') : null,
     inkC: worst ? worst.d : null,   // 최악 칩의 잉크 중심 − 캡슐 중심(중앙정렬 정본 = 0 근방)
     chipT: worst ? worst.t : null,
@@ -228,6 +230,13 @@ async function runOnce(pg) {
   core('C7 미리보기 모듈 등가(셸 안) = 창 w/h · 발사 h/r/fs · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
     Object.keys(pmRefs).some(k => k.startsWith('이미지_')) && pmBad.length === 0,
     pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(pmRefs) : JSON.stringify(pmRefs));
+
+  // ── C8 미리보기 = 전 탭 가시 + 부팅 비확대(운영자 260803 "아예 미리보기가 안보이는 화면은 아예 잘못된거고 · 기본을 작게보이냐로") ──
+  //   가시 = .cpprev-box/.mon(큐영상 모니터)/AI판 폴백 중 1개 실렌더 · 비확대 = 초기 렌더에 .dockzoom 0(작게 = --pvw 캡이 기본 · 확대 = 돋보기 수동만 · PVZOOM 비영속 260803과 한 쌍)
+  const noPrev = E.filter(([, v]) => !v.prevVis).map(([k]) => k);
+  const zoomed = E.filter(([, v]) => v.zoomOn).map(([k]) => k);
+  core('C8 미리보기 = 10탭 전부 가시 + 부팅 비확대(작게 기본 · 돋보기 = 수동 확대만)', noPrev.length === 0 && zoomed.length === 0,
+    (noPrev.length ? '미리보기 없음 ' + noPrev.join(' ') : E.length + '탭 가시') + (zoomed.length ? ' · 부팅 확대 잔류 ' + zoomed.join(' ') : ' · 부팅 확대 0'));
 
   return out;
 }
