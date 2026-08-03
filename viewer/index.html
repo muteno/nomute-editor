@@ -1314,25 +1314,13 @@
   .soc-burst.hot10 { color:var(--hist-accent); }   /* 상위 ~10%(burst≥24·7일치 p90) = 이력색 라임(--hist 계승 · 260705) */
   .soc-src { color:var(--accent); }   /* SNS 연시안 폐지 = 강조색(운영자 260705) */
   .soc-posts { color:var(--mut); font-weight:700; min-width:26px; }   /* raw-ok: 26 = "글 99" 실측 25.41 올림 — 글 열 상시 예약(값 없어도 빈 스팬이 자리 유지 = 운영자 260803 2차 "있다고 가정했을 때의 기준") · 3자리 글수는 그 카드만 늘어나되 시간·체크는 우측 앵커라 무영향(fail-soft) */
-  .soc-age { color:var(--mut); margin-left:auto; font-weight:700; }
-  /* ── 테두리 없는 표 열구획(운영자 260803 2차 "글 저부분도 고유한 영역 · 있다고 가정했을 때 기준 · 체크 눌러도 밀리면 안 됨 = 공백이 줄어야") — 각 메타가 고유 열을 상시 점유해 값 유무·상태 변화가 이웃 열을 못 민다. 1차분(.soc-age+.soc-send margin 0)은 arm 팽창 시 시간이 -32.6px 밀리는 결함이라 존 방식으로 대체 ── */
+  .soc-age { color:var(--mut); font-weight:700; }   /* margin-left:auto → 독립 시간 열(.soc-agez)로 이관(운영자 260803 3차 "별도의 독립 div · 항상 우측정렬 고정") */
+  /* ── 테두리 없는 표 열구획(운영자 260803 2차 "글 저부분도 고유한 영역 · 있다고 가정했을 때 기준" + 3차 "시간 = 독립 div·전송버튼이나 글에 위치 영향 0") — 각 메타가 고유 열을 상시 점유해 값 유무·상태 변화가 이웃 열을 못 민다 ── */
   .soc-burst { min-width:40px; }   /* raw-ok: 40 = 🔥13px+공백+"99.9"(11px/800 tabular) 실측 39.73 올림 — 화력 자릿수(9.5↔14.8)가 갈라도 소스·글 열 시작 세로선 통일 */
-  .soc-sendz { flex:none; margin-left:auto; display:inline-flex; align-items:center; justify-content:flex-end; width:57px; }   /* raw-ok: 57 = arm '전송' 실폭 56.63 올림 — 체크 열 = 팽창분 사전 예약(버튼은 열 안 우측 정렬 · arm 확대 = 열 내부 공백만 축소 = 시간·글 0px 불변) · margin-left:auto = 시간 없는 카드 우측 앵커 폴백 */
-  .soc-age + .soc-sendz { margin-left:0; }   /* 시간이 있으면 auto 마진 = 시간 하나(양쪽 auto = flex 반반 분배로 시간이 중간에 떠돌던 260803 1차 원인) → 시간 우측끝 = 체크 열 좌변 한 세로선 · 간격 = 행 gap 한 값 */
-  /* 카드 우상단 '뉴스 요약으로 보내기' 체크(운영자 260729) — soc-top 행 맨 오른쪽(age 다음) flex = 다른 요소 무침범.
-     상태머신 = 뉴스 요약 재확인 토글(.revsend.confirm) 계승: 기본 체크 → 1탭 arm '전송'(맑은노랑 --arm) → 2탭 전송 → ✓팝 → 원복.
-     arm 값 = .revsend.confirm 그대로(rgba(--arm-rgb,.2)·--arm·rgba(--arm-rgb,.5)) · 성공 = 공유 accent(계승) */
-  .soc-send { flex:none; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-1);   /* margin-left:auto → 부모 열(.soc-sendz)로 이관(260803 2차 열구획) */
-    height:24px; min-width:24px; padding:0; border:1px solid var(--line); border-radius:var(--r-pill); background:transparent; color:var(--mut);
-    cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease); }   /* reuse-ok: 신설 = 카드용 재확인 토글(정본 .revsend는 팝업 하단 큰 버튼 = 카드 우상단 미소버튼과 크기축 달라 계승 불가 · 상태·색은 .revsend.confirm 계승) */
-  .soc-send svg { width:14px; height:14px; }
-  .soc-send .soc-send-lb { display:none; font-size:var(--fs-xs); font-weight:800; letter-spacing:-.2px; padding:0 var(--sp-1); }
-  .soc-send:hover { color:var(--fg); border-color:rgba(var(--accent-rgb),.5); }
-  .soc-send.arm { padding:0 var(--sp-2); color:var(--arm); background:rgba(var(--arm-rgb),.2); border-color:rgba(var(--arm-rgb),.5); }   /* 재확인 = .revsend.confirm 값 계승 */
-  .soc-send.arm svg { display:none; }
-  .soc-send.arm .soc-send-lb { display:inline; }
-  .soc-send.sent { color:var(--accent); background:rgba(var(--accent-rgb),.15); border-color:rgba(var(--accent-rgb),.5); }   /* 전송 성공 ✓팝(공유 accent 계승) */
-  .soc-send.sending { pointer-events:none; opacity:.7; }
+  .soc-agez { flex:1 1 auto; min-width:0; display:inline-flex; align-items:center; justify-content:flex-end; }   /* 시간 독립 열 = 남는 폭 전부 점유·내용 우측 끝 정렬(테두리 없음) → 시간 우변 = 전송버튼 좌변 한 세로선 고정 — 글 유무·버튼 상태와 무관(운영자 260803 3차) · 빈 카드(시간 없음)도 열이 남아 버튼 우측 앵커 유지 */
+  /* 카드 전송 버튼 = 요약 요청 모달 전송(#askSend .asksend) 정본 통째 계승(운영자 260803 3차 "요약에 있는 전송버튼으로 일괄 통일 · 체크 없애 · 애니메이션도 통일") — 필·글꼴·hover·게이지·✓팝·실패 흔들림 전부 .asksend 값 그대로(카드 전용 신규 값 0) · 구 체크→arm 2탭 상태머신(.arm/.sent/.sending) 폐지 = 모달과 동일 1탭 발사 */
+  /* letter-spacing = 무선언(모달 #askSend 실측 -0.2px = .soc-top 상속 -0.2px와 동값 · 260803 computed 실측 — 중화 불요) */
+  .soc-send.asksend.firing { pointer-events:auto; }   /* ⚠ 정본 .asksend.firing{pointer-events:none}은 카드(앵커 내부)에선 전송 중 재탭이 버튼을 '통과'해 카드 앵커 새창으로 새는 구멍(구판 .sending 동일 사고 실측 260803 — elementFromPoint=.soc-sendz·defaultPrevented:false) → 클릭을 버튼이 계속 받되 위임 핸들러 firing 가드가 preventDefault로 흡수(운영자 "새창으로 열리지 않고 그냥 전송만") */
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
   .soc-title { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }   /* 제목 = 모바일 1줄 클램프(운영자 260729 "모바일에서는 1줄") — .tcard-t 정본 계승(넘치면 … 자동) · 원 라인 무접촉 = 값 유지 */
   @media (min-width:560px) { .soc-title { -webkit-line-clamp:2; } }   /* PC = 완화(운영자 "pc에서는 상관없겠고") · 560 = .rt2col 2단 브레이크 계승 */
@@ -12732,40 +12720,35 @@ function socClampChips(box) {
     if (!rem) break; rem.remove();
   }
 }
-function socDisarm(sb) { clearTimeout(sb._t); sb.classList.remove('arm'); }
 function socBindSend(list) {
   list._sendBound = true;
   list.addEventListener('click', async e => {
     const sb = e.target.closest('.soc-send'); if (!sb) return;
-    e.preventDefault(); e.stopPropagation();   // 카드(앵커) 새 탭 전파 차단
-    if (sb.classList.contains('sending')) return;
-    if (!sb.classList.contains('arm')) {   // 1탭 = 재확인(다른 카드 arm은 단일화 해제)
-      list.querySelectorAll('.soc-send.arm').forEach(o => { if (o !== sb) socDisarm(o); });
-      sb.classList.add('arm'); clearTimeout(sb._t); sb._t = setTimeout(() => socDisarm(sb), 4000);
-      return;
-    }
-    clearTimeout(sb._t); sb.classList.remove('arm'); sb.classList.add('sending');   // 2탭 = 전송
+    e.preventDefault(); e.stopPropagation();   // 카드(앵커) 새 탭 전파 차단 — firing 중 재탭도 여기 도달해 흡수(.soc-send.asksend.firing pointer-events:auto와 짝 · 구판 .sending pointer-events:none 통과 = '전송하면 새창' 사고 봉합 · 운영자 260803 3차)
+    if (sb.classList.contains('firing')) return;   // 전송 중 재탭 = 중복 발사 가드(preventDefault 뒤라 앵커로 안 샌다)
     const card = sb.closest('.soc-item');
     const title = ((card && card.querySelector('.soc-title')) || {}).textContent || '';
     const url = (card && card.getAttribute('href')) || '';
     const sum = (card && card.dataset.sum) || '';
     const text = [title, url, sum].filter(Boolean).join('\n').slice(0, 12000);
-    if (!text) { qFlash('보낼 내용이 없어'); sb.classList.remove('sending'); return; }
+    if (!text) { qFlash('보낼 내용이 없어'); return; }
+    askHideCheck(sb); gaugeStart(sb);   // 요약 요청(#askSend) 상태머신 그대로 계승 = 1탭 발사·게이지 응답까지 점근(운영자 260803 3차 "전송버튼·애니메이션 일괄 통일" — 구 체크→arm 2탭 폐지)
     try {
       const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, preset: { h24: 1, fp: 0, mj: 1, og: 0, noai: 1 } }) });   // preset = openAsk 기본 수집 프리셋 계승
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ok) {
-        sb.classList.add('sent'); sb.title = '요약 요청 보냄';
+        sb.classList.remove('done'); void sb.offsetWidth; sb.classList.add('done'); gaugeDone(sb);   // 성공 = settle 펄스 + 게이지 현위치→100% 급속 마무리(askSend 성공 경로 그대로)
+        setTimeout(() => askShowCheck(sb), 300);   // 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·askSend 동일 리듬)
         setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 대기열 배지 즉시 갱신(askSend 계승)
-        setTimeout(() => { sb.classList.remove('sent', 'sending'); sb.title = '뉴스 요약으로 보내기'; }, 1600);
-      } else { qFlash(d.error || `서버 ${r.status}`); sb.classList.remove('sending'); }
-    } catch { qFlash('전송 실패 (백엔드 배선 전이면 예상된 동작)'); sb.classList.remove('sending'); }
+        setTimeout(() => { gaugeClear(sb); askHideCheck(sb); sb.classList.remove('done'); }, 1600);   // 원복(카드는 닫을 폼이 없어 버튼만 리셋 — 모달의 close+리셋 1.6s 리듬 동일)
+      } else { gaugeClear(sb); qFlash(d.error || `서버 ${r.status}`); sb.classList.add('shake'); setTimeout(() => sb.classList.remove('shake'), 420); }   // 실패 = 게이지 원복 + 흔들림(askSend 실패 경로 그대로)
+    } catch { gaugeClear(sb); qFlash('전송 실패 (백엔드 배선 전이면 예상된 동작)'); sb.classList.add('shake'); setTimeout(() => sb.classList.remove('shake'), 420); }
   });
   list.addEventListener('keydown', e => { const sb = e.target.closest('.soc-send'); if (sb && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sb.click(); } });   // role=button 키보드 활성
 }
 function renderSns() {
   const list = $('#snsList'); if (!list) return;
-  if (!list._sendBound) socBindSend(list);   // 카드 우상단 체크 = 뉴스 요약 전송(위임 1핸들러 · list 유지라 1회 바인딩)
+  if (!list._sendBound) socBindSend(list);   // 카드 우상단 전송 버튼(.asksend 계승) = 뉴스 요약 전송(위임 1핸들러 · list 유지라 1회 바인딩)
   let _ss = '';   // 이번 렌더 구성 시그니처(행 ID·순서+검색어 · 아래서 선계산 = 커밋 스킵 판정용)
   if (!SOCIAL_LOADED) { list.innerHTML = `<div class="empty">${window.nmLoader?nmLoader('loading','Now loading…'):'Now loading…'}</div>`; _snsSig = ''; return; }
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
@@ -12780,7 +12763,7 @@ function renderSns() {
     const el = document.createElement('a');
     el.className = 'soc-item';
     el.href = r.url || '#'; el.target = '_blank'; el.rel = 'noopener';
-    if (r.desc) el.dataset.sum = r.desc;   // 수집 스니펫 = 체크→전송 시 요약 재료(본문 못 긁는 커뮤니티 폴백 · 운영자 260729)
+    if (r.desc) el.dataset.sum = r.desc;   // 수집 스니펫 = 전송 시 요약 재료(본문 못 긁는 커뮤니티 폴백 · 운영자 260729)
     el.style.animationDelay = Math.min(i, 14) * 32 + 'ms';
     const ago = relAge((+r.age_h || 0) + _socEl);
     const _b = +r.burst || 0, _bt = _b >= SOC_HOT10 ? ' hot10' : _b >= SOC_HOT30 ? ' hot30' : '';   // 🔥 색 티어(상위~10% 보라 / ~30% 강조 · 표시 전용)
@@ -12791,7 +12774,7 @@ function renderSns() {
     const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
     const _zone = _mid == null ? '' : (_mid <= 2 ? '강진보' : _mid <= 4 ? '약진보' : _mid <= 6 ? '중립' : _mid <= 8 ? '약보수' : '강보수');
     const _gauge = _mid == null ? '' : `<div class="soc-gauge" role="img" aria-label="출처성향 ${_zone}" title="출처성향: ${_zone} (커뮤 통념근사)"><span class="soc-dot" style="left:${((_mid - 1) / 8 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 위치=(_mid-1)/8[성향값 1~9축, 옛 /9는 강보수 우끝 미달·중립 좌편향 버그·검토6인 260704] · title/aria=툴팁·a11y(시각 라벨은 요구'라벨없이' 존중) */
-    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span><span class="soc-posts">${(r.posts > r.source_count) ? `글 ${r.posts}` : ''}</span>${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}<span class="soc-sendz"><span class="soc-send" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg><i class="soc-send-lb">전송</i></span></span></div>
+    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span><span class="soc-posts">${(r.posts > r.source_count) ? `글 ${r.posts}` : ''}</span><span class="soc-agez">${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</span><span class="soc-send asksend" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><span>전송</span></span></div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
       ${_gauge}`;
