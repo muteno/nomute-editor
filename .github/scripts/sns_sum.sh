@@ -12,6 +12,7 @@ set -u
 [ "${SNS_SUM:-0}" = "1" ] || { echo "sns-sum: OFF(SNS_SUM!=1) — 스킵"; exit 0; }
 cd "$(git rev-parse --show-toplevel)"
 . shared/claude_transient.sh
+. shared/claude_meter.sh        # claude_meter() SSOT — 토큰 계측(analyze.sh:72 동형 · 260803 계측 사각 봉합)
 MODEL="${SNS_SUM_MODEL:-claude-sonnet-5}"
 JSON="viewer/sns_trends.json"
 TGT="/tmp/sns_sum_targets.txt"
@@ -87,7 +88,7 @@ ${POSTS}"
 claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
-  out="$(printf '%s' "$PROMPT" | timeout 300 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 1 \
+  out="$(printf '%s' "$PROMPT" | METER_SRC=sns-sum METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 300 --model "$MODEL" --effort high --safe-mode --max-turns 1 \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite,WebFetch,WebSearch" 2>/tmp/snssum.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
     if claude_failover "$out$(cat /tmp/snssum.err 2>/dev/null)"; then continue; fi   # 쿼터 = 4계정 체인 1단씩(§📰-f)

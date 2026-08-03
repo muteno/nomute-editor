@@ -12,6 +12,7 @@ cd "$(git rev-parse --show-toplevel)"
 [ -s viewer/insta_data.json ] || { echo "chan-brief: insta_data.json 없음 — 스킵(no-op 스캐폴드)"; exit 0; }
 . shared/model_env.sh
 . shared/claude_transient.sh
+. shared/claude_meter.sh        # claude_meter() SSOT — 토큰 계측(analyze.sh:72 동형 · 260803 계측 사각 봉합)
 MODEL="${CHAN_BRIEF_MODEL:-$PIPE_MODEL}"
 OUT_JSON="viewer/chan_brief.json"
 
@@ -271,7 +272,7 @@ for _try in 1 2 3 4; do
   # 종전 시도당 600s = 무여유 → v9 프롬프트 비대 후 시도1 타임아웃 → 재시도 중 잡 20분 하드킬 3연속(cancelled · run 29455365666 실측) = 브리프 이틀 정지 사고.
   # 재산정 = 시도당 900s · 캡 960s(풀타임아웃 후 재시도 1회 보장: 시도1 종료 ~905s < 960) · 최악 959+900=31분 < 잡 timeout 35분 = fail-soft·커밋 스텝 생존. 평상시 무영향(쿼터 실패 = 초 단위 반환).
   [ "$SECONDS" -gt 960 ] && { echo "::warning::chan-brief 시간 예산 소진(${SECONDS}s>960s) — 직전 brief 유지(fail-soft)"; exit 0; }
-  out="$(printf '%s' "$PROMPT" | timeout 900 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 8 \
+  out="$(printf '%s' "$PROMPT" | METER_SRC=chan-brief METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 --model "$MODEL" --effort high --safe-mode --max-turns 8 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/chanbrief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then

@@ -15,6 +15,7 @@ set -u
 cd "$(git rev-parse --show-toplevel)"
 . shared/model_env.sh
 . shared/claude_transient.sh
+. shared/claude_meter.sh        # claude_meter() SSOT — 토큰 계측(analyze.sh:72 동형 · 260803 계측 사각 봉합)
 MODEL="${LUCY_MODEL:-$PIPE_MODEL}"
 CARD="persona/lucy_threads.md"
 API=".github/scripts/threads_api.py"
@@ -34,11 +35,11 @@ gen() {
   claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717)
   for _try in 1 2 3 4; do
     if [ -n "$_tools" ]; then
-      out="$(printf '%s' "$_p" | timeout 600 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 8 \
+      out="$(printf '%s' "$_p" | METER_SRC=lucy-gen METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 600 --model "$MODEL" --effort high --safe-mode --max-turns 8 \
         --allowedTools "$_tools" \
         --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>"$TMP/gen.err")"; rc=$?
     else
-      out="$(printf '%s' "$_p" | timeout 600 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 1 \
+      out="$(printf '%s' "$_p" | METER_SRC=lucy-reply METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 600 --model "$MODEL" --effort high --safe-mode --max-turns 1 \
         --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite,WebFetch,WebSearch" 2>"$TMP/gen.err")"; rc=$?
     fi
     if [ $rc -ne 0 ] || [ -z "$out" ]; then

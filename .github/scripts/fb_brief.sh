@@ -11,6 +11,7 @@ cd "$(git rev-parse --show-toplevel)"
 [ -s viewer/fb_data.json ] || { echo "fb-brief: fb_data.json 없음 — 스킵(no-op 스캐폴드)"; exit 0; }
 . shared/model_env.sh
 . shared/claude_transient.sh
+. shared/claude_meter.sh        # claude_meter() SSOT — 토큰 계측(analyze.sh:72 동형 · 260803 계측 사각 봉합)
 MODEL="${CHAN_BRIEF_MODEL:-$PIPE_MODEL}"
 OUT_JSON="viewer/chan_brief_fb.json"
 
@@ -202,7 +203,7 @@ claude_preflight "$MODEL" || true
 out=""; _to_tried=0
 for _try in 1 2 3 4; do
   [ "$SECONDS" -gt 960 ] && { echo "::warning::fb-brief 시간 예산 소진(${SECONDS}s>960s) — 직전 유지(fail-soft)"; exit 0; }
-  out="$(printf '%s' "$PROMPT" | timeout 900 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 8 \
+  out="$(printf '%s' "$PROMPT" | METER_SRC=fb-brief METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 900 --model "$MODEL" --effort high --safe-mode --max-turns 8 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/fbbrief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then

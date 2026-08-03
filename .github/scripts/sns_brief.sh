@@ -10,6 +10,7 @@ set -u
 cd "$(git rev-parse --show-toplevel)"
 . shared/model_env.sh
 . shared/claude_transient.sh
+. shared/claude_meter.sh        # claude_meter() SSOT — 토큰 계측(analyze.sh:72 동형 · 260803 계측 사각 봉합)
 MODEL="${SNS_BRIEF_MODEL:-$PIPE_MODEL}"
 OUT_JSON="viewer/sns_brief.json"
 
@@ -182,7 +183,7 @@ $BODY"
 claude_preflight "$MODEL" || true   # 죽은 활성계정 침묵 행 공회전 소거(운영자 260717 — 실측: 침묵 행은 본선 600s를 통째로 태움 · 산 계정 = 수초 · 전멸 = 본선 강행 fail-soft)
 out=""
 for _try in 1 2 3 4; do
-  out="$(printf '%s' "$PROMPT" | timeout 780 claude -p --model "$MODEL" --effort high --safe-mode --max-turns 12 \
+  out="$(printf '%s' "$PROMPT" | METER_SRC=sns-brief METER_MODEL="$MODEL" METER_EFFORT=high claude_meter 780 --model "$MODEL" --effort high --safe-mode --max-turns 12 \
     --allowedTools "WebFetch,WebSearch" \
     --disallowedTools "Bash,Edit,Write,Read,Glob,Grep,Task,NotebookEdit,TodoWrite" 2>/tmp/brief.err)"; rc=$?
   if [ $rc -ne 0 ] || [ -z "$out" ]; then
