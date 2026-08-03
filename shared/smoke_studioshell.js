@@ -27,6 +27,10 @@
 //      ← 운영자 260803 "간격도 제각각, 어느 부분엔 구분선이 있고 — 카드 제작 나오는 부분간 간격으로 통일".
 //        C1~C8이 전부 **가로·부품 단위** 축이라(레일 중앙축·미리보기 모듈·픽토 치수) 「도크 아래로 본문이 어디서 시작하나」는
 //        게이트가 하나도 없었다 → 그 사각에서 8탭이 조용히 갈라져 있었다(실측 260803: 2·2·9·13·18·27·33·44px · 정본 18 대비 최대 26px).
+//   C10 **스크롤 드리프트** = 스크롤 140px 후 미리보기 박스 이동량 = 0(폰 430 sweep 동승 · 스크롤 없는 탭 = N/A)
+//      ← 운영자 260803 "도입 ㄱㄱ"(같은 날 "스크롤이 들어가면 이게 계속 틀어져" 사고의 게이트화). C7은 창 **크기**만, C9는 **정지** 세로축만
+//        재서 「스크롤 **중** 위치」는 사각이었다 — 도크 정지 y2·sticky y0 잔여 2px가 스크롤 순간 -2px 덜컹(iframe 7표면)인데
+//        AI 생성 판(부모 그림·리드 고정)만 0이라 스크롤 중 2px 어긋남이 조용히 통과했다. 정본 = 도크 마진 -18(패딩 전액 상쇄) = 정지·고정 동일점 = Δ0.
 // 왜 잉크인가: 박스 x가 같아도 padding이 갈리면 눈에 보이는 글자 위치가 어긋난다(260802 롤백 사고) —
 //   판정은 **잉크 중심 vs 캡슐 중심 Δ**(절대 x = 탭마다 창 폭이 달라 위양성).
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 openTool만) · 서버 자체 종료 · 외부 네트워크 0 · 결정론 2런.
@@ -174,8 +178,26 @@ const GAPPROBE = () => {
   const d = inFr ? fr.contentDocument : document;
   const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(); return el.offsetParent !== null && r.height > 0 && r.width > 0; };
   const gHost = inFr ? null : document.querySelector('#geniHost:not([hidden])');   // AI 생성 = 부모가 그리는 판(프레임 비활성) → 도크 = .geni-lead · 스코프 = 그 호스트(뒤 뉴스 페이지 글자 오측정 차단)
+  // ── C10 재료 = 스크롤 드리프트(운영자 260803 "도입 ㄱㄱ") — 스크롤러(iframe = 문서 · 폴백 = 첫 overflow 컨테이너 · AI판 = .geni-body) 140px 내림
+  //    → 미리보기 박스(.cpprev-box/.mon/AI판) 뷰포트 이동량 → 즉시 원위치(0). 정본 = Δ0(도크 정지 = sticky 동일점 · -18 전액 상쇄).
+  //    스크롤 불가(내용이 짧은 탭 = 이미지 편집·특수·큐영상 실측) = null = N/A — 게이트 쪽 최소 측정수 가드가 프로브 전사(全死)를 잡는다.
+  let drift = null;
+  const box = [...d.querySelectorAll('.cpprev-box, .mon')].filter(vis)[0]
+    || (inFr ? null : (gHost ? [...gHost.querySelectorAll('.geni-prev .cpprev-box')].filter(vis)[0] : null)) || null;
+  const de = d.documentElement;
+  const scroller = inFr
+    ? (de.scrollHeight > de.clientHeight + 2 ? de
+      : [...d.querySelectorAll('*')].filter(el => { const c = d.defaultView.getComputedStyle(el); return (c.overflowY === 'auto' || c.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 2 && vis(el); })[0])
+    : (gHost ? [...gHost.querySelectorAll('.geni-body')].filter(el => el.scrollHeight > el.clientHeight + 2)[0] : null);
+  if (box && scroller) {
+    const b0 = box.getBoundingClientRect();
+    scroller.scrollTop = 140;   // 클램프 허용(번역 실측 116) — 도크 sticky 물림(≥2px)에는 충분
+    const b1 = box.getBoundingClientRect();
+    drift = { dx: +(b1.x - b0.x).toFixed(1), dy: +(b1.y - b0.y).toFixed(1), sc: scroller === de ? 'doc' : (scroller.id ? '#' + scroller.id : '.' + String(scroller.className).split(' ')[0]) };
+    scroller.scrollTop = 0;   // 원위치(동기 리플로우 = 아래 C9 잉크 측정은 정지 상태 그대로)
+  }
   const dock = inFr ? (d.querySelector('.topdock') || d.querySelector('.dock')) : (gHost ? gHost.querySelector('.geni-lead') : null);
-  if (!dock || !vis(dock)) return { gapInk: null, gapTxt: null };
+  if (!dock || !vis(dock)) return { gapInk: null, gapTxt: null, drift };
   const dd = dock.ownerDocument;
   const scope = gHost || dd.body || dd.documentElement;
   const db = dock.getBoundingClientRect().bottom;
@@ -189,7 +211,7 @@ const GAPPROBE = () => {
     if (!r.height || r.top < db - 0.5) continue;                 // 도크 위 = 대상 아님
     if (r.top < best) { best = r.top; txt = t.slice(0, 10); }
   }
-  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt };
+  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt, drift };
 };
 
 async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고정 sleep = 병렬 풀에서 가짜 빨강의 원천)
@@ -329,6 +351,18 @@ async function runOnce(pg, gap) {
     gBad.length || gMiss.length
       ? '이탈 ' + gBad.join(' · ') + (gMiss.length ? ' · 측정불가 ' + gMiss.join(' ') : '')
       : G.length + '탭 정합(' + G.map(([k, v]) => k.split('_')[1] + ':' + v.gapInk).join(' ') + ')');
+
+  // ── C10 스크롤 드리프트 = 스크롤 중 미리보기 부동(운영자 260803 "도입 ㄱㄱ" — 같은 날 "스크롤이 들어가면 이게 계속 틀어져" 사고의 게이트화) ──
+  //   C7(크기)·C9(정지 세로축)가 못 보던 「스크롤 **중** 위치」 축 — 도크 정지 y2·sticky y0 잔여 2px 덜컹(-16 시절)이 조용히 통과하던 사각.
+  //   판정 = 폰 430 sweep에서 스크롤 140px 후 미리보기 박스 |Δx|·|Δy| ≤ 0.5(정본 = 도크 마진 -18 전액 상쇄 = 정지·고정 동일점 = 0).
+  //   스크롤 없는 탭(이미지 편집·특수·큐영상 실측) = N/A · 최소 측정수 3 = 프로브 전사(全死)를 침묵-통과로 못 바꾸게 하는 가드(현행 실측 7탭).
+  const D = G.filter(([, v]) => v && v.drift);
+  const dBad = D.filter(([, v]) => Math.abs(v.drift.dx) > 0.5 || Math.abs(v.drift.dy) > 0.5)
+    .map(([k, v]) => k + '=(' + v.drift.dx + ',' + v.drift.dy + ')@' + v.drift.sc);
+  core('C10 스크롤 드리프트 = 스크롤 140px 후 미리보기 박스 Δ≤0.5(측정 ' + D.length + '탭 · 무스크롤 = N/A)',
+    D.length >= 3 && dBad.length === 0,
+    dBad.length ? '이탈 ' + dBad.join(' · ')
+      : (D.length ? D.map(([k, v]) => k.split('_')[1] + ':(' + v.drift.dx + ',' + v.drift.dy + ')').join(' ') : '측정 0(전 탭 무스크롤 = 프로브 점검)'));
 
   return out;
 }
