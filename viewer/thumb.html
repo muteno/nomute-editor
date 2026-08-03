@@ -3380,10 +3380,27 @@ const scrollMid = el => { if (!el) return; requestAnimationFrame(() => { try { c
 const scrollQueue = () => { const h = $('#carH'), el = (h && !h.hidden) ? h : $('#jobs'); if (!el) return; requestAnimationFrame(() => { try { const dk = $('#topDock'); const off = ((dk && getComputedStyle(dk).position === 'sticky') ? dk.getBoundingClientRect().height : 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sp-2')) || 0); const y = el.getBoundingClientRect().top + window.pageYOffset - off; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); } catch (_) { try { el.scrollIntoView(); } catch (_) {} } }); };   // 발사 = 대기열(결과 보드)로 이징 착지(운영자 260727 "카드 생성 누르면 대기열 아래로 이징 스크롤") — 위 scrollMid 정본 계승(rAF 측정·smooth·구형 폴백) · 랜딩선만 교체: '뷰포트 18%'는 sticky 도크(#topDock 실측 379.7px @412×915)에 가려 무용 → 도크 높이 + var(--sp-2) 아래 = 결과 소머리와 새 잡 행이 도크 바로 밑에 노출(신설 값 0)
 const flashEl = el => { if (!el) return; el.classList.add('thfocus'); setTimeout(() => el.classList.remove('thfocus'), 2200); };   // 착지 항목 잠깐 강조 = '해당 작업' 식별
 let SRV_HIST = [], SRV_CLEAR = 0;   // SRV_CLEAR = 서버 공용 기록지우기 시점(thumb-clear.json · 전 기기 공통 · epoch ms)
+// ── 동기화 생명선(운영자 260803 2차 "아직 여전해") — 서버 fetch 실패가 전부 catch{} 무음이라, 모바일 PWA의 Access 만료·회선 차단이
+//    「그냥 아무것도 안 뜸」으로만 보였다(원인 식별 불가). 연속 실패를 세서 #status(기존 안내줄 정본 · maybeOpenHist '결과 준비 중' 선례)에
+//    상태를 띄우고, 성공 복귀 시 자동 소거 — 잡 메시지가 떠 있으면 안 덮는다(발사 상태가 우선).
+let _syncOkTs = 0, _syncFails = 0, _syncWarned = false;
+function _syncOk() { _syncOkTs = Date.now(); _syncFails = 0;
+  if (_syncWarned) { _syncWarned = false; const s = $('#status'); if (s && s.textContent.indexOf('동기화 끊김') >= 0) { s.textContent = ''; s.classList.remove('err'); } console.log('[thumb] 서버 동기화 복구'); } }
+function _syncBad() { _syncFails++; }
+function _syncCheck() {   // 10s 인터벌 편승 — 보임 상태에서 연속 3실패 + 마지막 성공 45s↑(부팅부터 전멸 포함)면 경고
+  if (document.hidden || _syncFails < 3 || (_syncOkTs && Date.now() - _syncOkTs < 45e3)) return;
+  const s = $('#status'); if (!s) return;
+  const cur = s.textContent || '';
+  if (cur && cur.indexOf('동기화 끊김') < 0) return;   // 잡 상태 메시지 표시 중 = 안 덮음
+  const m = _syncOkTs ? Math.max(1, Math.round((Date.now() - _syncOkTs) / 60e3)) + '분' : '';
+  s.classList.add('err'); s.textContent = '⚠ 서버 동기화 끊김' + (m ? ' · ' + m : '') + ' — 새로고침, 지속되면 브라우저에서 재로그인';
+  if (!_syncWarned) console.log('[thumb] 서버 동기화 끊김 — 연속 실패 ' + _syncFails + '회');   // 계측(CLAUDE.md [관측])
+  _syncWarned = true;
+}
 try { SRV_CLEAR = +localStorage.getItem('nomute_thumb_srvclr') || 0; } catch {}   // 영속 시드 = 배포랙(30~90s) 중 새로고침해도 지운 상태 유지(총괄: SRV_CLEAR 비영속이라 지운 이력 되살아나던 최대결함 봉합)
 async function loadServerHist() {
-  try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch { /* 없으면 로컬만 */ }
-  try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) { SRV_CLEAR = Math.max(SRV_CLEAR, +j.ts); try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} } } } catch { /* 없으면 0 = 안 지움 */ }   // 서버 공용 기록지우기 시점(전 기기 · 낙관값·영속값과 max · 영속 갱신)
+  try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; _syncOk(); } else _syncBad(); } catch { _syncBad(); /* 없으면 로컬만 */ }
+  try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) { SRV_CLEAR = Math.max(SRV_CLEAR, +j.ts); try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} } } } catch { /* 없으면 0 = 안 지움 */ }   // 서버 공용 기록지우기 시점(전 기기 · 낙관값·영속값과 max · 영속 갱신) — clear는 404 정상이라 생명선 미계수
   renderHist();
   if (!CARSLIDES.length && !RESTORED && !doneReq().on && !JOBS.some(j => j && j.status !== 'done' && j.status !== 'err')) {   // 부팅 자동 복원 = 접힌 '결과'(운영자 260710) · 딥링크·진행중 잡 있으면 스킵 — JOBS 미검사 시 서버fetch가 in-flight 잡보다 늦게 도착하면 고스트 주입+RESTORED 오염→다음 clearRestored가 진짜 결과 삭제("안 보임" 버그2 봉합)
     const loc = localLastResult();   // 로컬 마지막(이 기기 · src 보유=수정 가능)
@@ -3403,7 +3420,7 @@ async function pollServerHist() {   // 재폴링(원인2 봉합) — 상시 탭(
   _histPolling = true;
   try {
     let hist = null, clr = SRV_CLEAR;
-    try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) hist = d; } } catch {}
+    try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) hist = d; _syncOk(); } else _syncBad(); } catch { _syncBad(); }
     try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) clr = Math.max(clr, +j.ts); } } catch {}
     const sig = (hist ? hist.length + ':' + ((hist[0] || {}).url || '') + ':' + ((hist[hist.length - 1] || {}).url || '') : 'x') + '|' + clr;   // 목록 길이+첫/끝 url+clr = append/prepend/절단/지우기 감지
     if (sig === _histSig) return;   // 무변경 = 재빌드 skip(깜빡임·죽은 404 항목 재생성/자삭 반복 스팸 차단 · 회귀 봉합)
@@ -3444,7 +3461,7 @@ let _r2Polling = false; const _r2Known = new Set();   // in-flight 가드 + 처�
 async function pollR2Recent() {
   if (document.hidden || _r2Polling) return; _r2Polling = true;
   try {
-    const r = await fetch('/api/thumb?recent=24'); if (!r.ok) return;
+    const r = await fetch('/api/thumb?recent=24'); if (!r.ok) { _syncBad(); return; } _syncOk();   // 즉시 축 성공 = 생명선 갱신(ids 0건도 서버 도달 = 정상)
     const d = await r.json(); const ids = (d && Array.isArray(d.ids)) ? d.ids : []; if (!ids.length) return;
     const have = new Set(); (SRV_HIST || []).forEach(e => { const i = e && thIdOf(e.url); if (i) have.add(i); });   // 이미 보유(서버 이력·선주입분) = 스킵
     const cut = Math.max(histClearedCut(), SRV_CLEAR);   // 기록 지우기 컷(로컬·서버 공용) — 지운 제작 부활 차단
@@ -4801,9 +4818,10 @@ renderHist();        // 로컬(이 기기) 즉시 표시
 idbPrune(Date.now() - THUMB_HMS);   // 보관 이미지(IDB) 12h 경과분 정리(이력 보관과 동기 · 운영자 260624)
 maybeOpenHist();     // #done=<id>(제작완료 알림) 진입이면 그 결과를 맨 위 큰 결과로 복원·랜딩(서버 병합 후 loadServerHist서 재확인)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
-document.addEventListener('visibilitychange', pollServerHist);   // 포그라운드 복귀 시 재fetch(원인2 — 상시 탭 desync 봉합 = 7개 기기 제각각 최대원인)
-window.addEventListener('focus', pollServerHist);
-setInterval(() => { pollServerHist(); pollR2Recent(); }, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 주기 재폴링(visible일 때만 · 구 90s → 운영자 260731 "동기화가 십초 단위로" 승격) — Pages 이력 + R2 즉시 발견 2축(즉시 축 = 배포 랙 없이 10~20s 수신 · 운영자 260731 "즉시 경로 얹기") · 무변경 = sig·known 게이트가 재렌더 억제(깜빡임 0)
+document.addEventListener('visibilitychange', () => { pollServerHist(); pollR2Recent(); });   // 포그라운드 복귀 시 두 축 즉시 재fetch(원인2 — 상시 탭 desync 봉합 · R2 즉시 축 동반 = 구판은 10s 첫 틱 대기라 폰 복귀 직후 공백 · 운영자 260803 2차)
+window.addEventListener('focus', () => { pollServerHist(); pollR2Recent(); });
+window.addEventListener('pageshow', e => { if (e.persisted) { pollServerHist(); pollR2Recent(); } });   // iOS PWA bfcache 복귀 = visibilitychange 미발화 경로 보강(운영자 260803 2차)
+setInterval(() => { pollServerHist(); pollR2Recent(); _syncCheck(); }, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 주기 재폴링(visible일 때만 · 구 90s → 운영자 260731 "동기화가 십초 단위로" 승격) — Pages 이력 + R2 즉시 발견 2축(즉시 축 = 배포 랙 없이 10~20s 수신 · 운영자 260731 "즉시 경로 얹기") · 무변경 = sig·known 게이트가 재렌더 억제(깜빡임 0) · _syncCheck = 동기화 생명선 경고(260803 2차)
 pollR2Recent();   // 부팅 1회 = 열자마자 최근 창 즉시 수신(10s 첫 틱 대기 없이)
 window.nmRefresh = () => { pollR2Recent(); return pollServerHist(); };   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시(R2)·정식(Pages) 두 축 동시 재fetch
 </script>
