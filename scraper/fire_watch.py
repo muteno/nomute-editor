@@ -68,6 +68,125 @@ NEG = re.compile(r"인명\s?피해[는은]?\s?(없|미발생)|사상자[는은]?
 #   1단계 제외 = 웬만한 건물 화재가 다 1단계라 그것까지 큐잉하면 과금이 소음이 된다(2단계부터 = 인접 소방서 동원 규모).
 ESCALATION = re.compile(r"대응\s?[23]\s?단계|대응단계\s?[23]|[23]단계\s?발령|광역\s?[12]호\s?발령|국가\s?소방\s?동원령")
 
+# ── ⑭-g 위험 등급 학습(운영자 260803 4차 "아이디어 배선 ㄱ") ──────────────────────────────
+#   목적 = 보도를 기다리지 않고 **발령 시점**에 「이 불이 사상 사고로 갈 확률」을 매긴다.
+#   쓰임 2가지 = ⓐ 알림·원장에 등급 표기(운영자가 발령 즉시 무게를 안다) ⓑ 낮은 등급의 추적 창 단축(러너 부하↓).
+#   ⚠ 안전 설계 — 이 축은 **놓치면 최악**인 안전 기능이라, 학습이 창을 좁히는 건 근거가 쌓인 뒤로 미룬다:
+#     · 아카이브 표본이 LEARN_MIN 미만 = **전건 종전 3시간**(현 동작 100% 불변 · 학습은 관측만)
+#     · 표본이 차도 창은 **HI 3h / LO 1h** 두 칸뿐(0으로 못 간다 = 추적 자체를 끄는 경우 없음)
+#     · 랜드마크(lm)·규모 특징이 있으면 무조건 HI(점수 무관 하드 승격 — 숭례문급을 통계가 깎지 못하게)
+#   특징 = 재난문자 본문에서 읽히는 것만(추가 수집 0). seed 가중치 = 콜드스타트용 상식값이고,
+#     표본이 쌓이면 그 특징의 **실측 적중률**로 대체된다(seed 는 점점 영향력을 잃는다 = 자기교정).
+OUTCOMES = ROOT / "push" / "fire_outcomes.jsonl"   # 정답지 아카이브 — 추적이 끝난 사건 1건 = 1줄(특징 + 결과)
+LEARN_MIN = int(os.environ.get("FIRE_LEARN_MIN", "20"))   # 이 표본 수 전에는 창 단축 미발동(관측만)
+RISK_HI = 25                       # HI 문턱 — 이 위는 무조건 3시간. 25 = 창고14·공장16·공사장18 단독은 아래, 주택24·아파트22는 사실상 경계(seed 사다리 실측 기준)
+FEAT_MIN = 3                       # 특징 1개가 '학습됐다'고 볼 최소 표본 — 이 미만인 특징이 하나라도 있으면 LO 강등 금지(모르는 건 HI)
+SHORT_TTL_H = 1                    # LO 사건의 단축 창
+# 시설 특징 → seed 점수. 주거·다중이용·요양 = 인명피해 비율이 압도적으로 높다(화재 통계 상식 · 실측이 이걸 덮어쓴다).
+RISK_FEAT = (
+    ("요양원", 34), ("요양병원", 34), ("병원", 30), ("고시원", 32), ("원룸", 28), ("빌라", 24), ("아파트", 22),
+    ("주택", 24), ("숙박", 26), ("모텔", 26), ("펜션", 24), ("기숙사", 26), ("어린이집", 32), ("학교", 22),
+    ("전통시장", 26), ("시장", 22), ("상가", 20), ("주점", 26), ("노래", 24), ("찜질방", 26), ("지하", 22),
+    ("공장", 16), ("창고", 14), ("물류", 14), ("공사장", 18), ("차량", 10), ("야산", 6), ("들불", 4), ("쓰레기", 4),
+)
+RISK_NIGHT = 18                    # 심야(00~06) 발령 — 취침 중이라 대피가 늦다
+RISK_LM = 30                       # 랜드마크·공공기관(수집기 lm) — 보도가치 자체가 확정적
+
+
+def risk_feats(ev):
+    """이 발령의 특징 태그 — 학습 키이자 채점 입력(재난문자 본문·시각·lm 에서만 뽑는다 = 추가 수집 0)."""
+    t = str(ev.get("text") or "")
+    out = [f"시설:{w}" for w, _ in RISK_FEAT if w in t]
+    hh = datetime.fromtimestamp(ev.get("t0") or 0, KST).hour
+    if 0 <= hh < 6:
+        out.append("시각:심야")
+    if ev.get("lm"):
+        out.append("랜드마크")
+    return out or ["시설:미상"]
+
+
+def learn_table():
+    """아카이브 → 특징별 실측 적중률 {특징: (사상건수, 전체건수)}. 파일 없으면 {} (콜드스타트 = seed 단독)."""
+    tab, n = {}, 0
+    try:
+        for line in OUTCOMES.read_text(encoding="utf-8").splitlines():
+            try:
+                r = json.loads(line)
+            except Exception:  # noqa: BLE001
+                continue
+            n += 1
+            hit = 1 if r.get("sig") == "casualty" else 0
+            for f in (r.get("feats") or []):
+                a, b = tab.get(f, (0, 0))
+                tab[f] = (a + hit, b + 1)
+    except OSError:
+        return {}, 0
+    return tab, n
+
+
+def risk_score(ev, tab=None, n=0):
+    """0~100 위험 점수 + 근거. 표본이 있는 특징은 **실측 적중률**이 seed를 대체(자기교정)."""
+    tab = tab or {}
+    sc, why = 0, []
+    for f in risk_feats(ev):
+        seed = RISK_LM if f == "랜드마크" else RISK_NIGHT if f == "시각:심야" else \
+            next((v for w, v in RISK_FEAT if f == "시설:" + w), 8)
+        a, b = tab.get(f, (0, 0))
+        if b >= FEAT_MIN:                # 표본 충족 = 실측 채택(그 미만은 우연이라 seed 유지)
+            val = int(round(100 * a / b * 0.6)) + seed // 3   # 실측 비율 주도 + seed 잔향(급변 완충)
+            why.append(f"{f}={val}(실측 {a}/{b})")
+        else:
+            val = seed
+            why.append(f"{f}={val}")
+        sc += val
+    return min(100, sc), why
+
+
+def risk_grade(ev, tab, n):
+    """등급 = HI ∥ LO — **「모르는 건 HI」**가 이 함수의 제1 원칙(안전 기본값).
+    LO(창 단축)로 내리는 조건은 전부 충족돼야 한다:
+      ① 전체 표본 ≥ LEARN_MIN  ② 랜드마크 아님  ③ 점수 < RISK_HI
+      ④ **이 사건의 특징이 하나도 빠짐없이 실측으로 뒷받침**(각 특징 표본 ≥ FEAT_MIN)
+    ④가 없으면 이런 사고가 난다(260803 실측): 아카이브 20건이 전부 「야산 들불」인 상태에서
+      한 번도 학습된 적 없는 「심야 요양원」(52점)까지 LO로 떨어져 창이 1시간으로 줄었다 —
+      통계가 말한 적도 없는 사건을 통계를 근거로 깎은 셈. 안전 축에서 이건 놓침 직행이다."""
+    sc, why = risk_score(ev, tab, n)
+    feats = risk_feats(ev)
+    known = all(tab.get(f, (0, 0))[1] >= FEAT_MIN for f in feats)
+    if n < LEARN_MIN or ev.get("lm") or sc >= RISK_HI or not known:
+        if n >= LEARN_MIN and not known and not ev.get("lm") and sc < RISK_HI:
+            why.append("미학습특징→HI유지")   # 왜 안 줄였는지가 원장에 남는다(다음 튜닝 근거)
+        return "HI", sc, why
+    return "LO", sc, why
+
+
+def _sig_of(ev):
+    """hit 은 있는데 sig 가 없는 구 기록의 결과 복원 — 제목을 판정기에 다시 태운다."""
+    h = ev.get("hit") or {}
+    t = str(h.get("title") or "")
+    if not t:
+        return "none"
+    return "casualty" if (CASUALTY.search(t) and not NEG.search(t)) else "scale" if ESCALATION.search(t) else "casualty"
+
+
+def archive(ev, key):
+    """추적 종료분을 정답지로 굳힌다 — {특징 + 결과 + 몇 분 만에}. 이 파일이 다음 채점의 근거가 된다.
+    ⚠ 원장(TTL 3h)에서 지워지기 **직전**에만 부른다 = 사건당 정확히 1줄."""
+    rec = {"t0": datetime.fromtimestamp(ev.get("t0") or 0, KST).isoformat(timespec="seconds"),
+           "key": key, "kind": ev.get("kind") or "", "area": ev.get("area") or "", "lm": ev.get("lm") or "",
+           "feats": risk_feats(ev), "grade": ev.get("grade") or "", "score": ev.get("score"),
+           # sig 역판정 = 구 원장 호환(sig 필드가 생기기 전 기록엔 hit.title 만 있다 · 260803 실측 1호가 'none'으로 굳을 뻔).
+           #   정답지가 결과를 틀리게 적으면 학습 전체가 오염되므로 제목으로 되읽는다.
+           "sig": (ev.get("hit") or {}).get("sig") or _sig_of(ev),
+           "at_min": (ev.get("hit") or {}).get("at_min"), "checks": ev.get("checks") or 0,
+           "title": ((ev.get("hit") or {}).get("title") or "")[:120]}
+    try:
+        OUTCOMES.parent.mkdir(parents=True, exist_ok=True)
+        with OUTCOMES.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"::warning::정답지 기록 실패(무시): {e}", file=sys.stderr)
+
 
 def jload(p, dflt):
     try:
@@ -119,7 +238,7 @@ def event_key(d, led):
     kind, t = (d.get("kind") or "화재"), ts(d.get("time"))
     head = wide_of(d)
     for k, v in led.items():
-        if not isinstance(v, dict) or v.get("wide") != head or v.get("kind") != kind:
+        if k in ("_cap", "_seen") or not isinstance(v, dict) or v.get("wide") != head or v.get("kind") != kind:
             continue
         if abs((v.get("t0") or 0) - t) <= EVENT_GAP_MIN * 60:
             return k
@@ -241,6 +360,7 @@ def main():
         led = {}
     trends = jload(TRENDS, {})
     dis = [d for d in (trends.get("disaster") or []) if isinstance(d, dict)]
+    tab, samples = learn_table()   # ⑭-g 정답지 → 특징별 실측 적중률(표본 0 = seed 단독 · 창 단축은 LEARN_MIN 전까지 미발동)
 
     # ① 등록 — 화재 계열 중대재난만. 사건 단위(인접 구 다중 발령 = 1건)로 최초 발령 시각을 t0로 고정.
     added = 0
@@ -251,19 +371,25 @@ def main():
         if not t0 or now - t0 > WATCH_TTL_H * 3600:   # 옛 스냅샷으로 부팅해도 지난 사건을 새로 추적하지 않는다
             continue
         k = event_key(d, led)
+        if k in (led.get("_seen") or []):   # 이미 추적을 마치고 정답지로 굳힌 사건 = 재등록 금지(중복 학습·중복 픽 차단)
+            continue
         cur = led.get(k)
         if cur is None:
-            led[k] = {"t0": t0, "kind": d.get("kind") or "화재", "wide": wide_of(d), "area": d.get("area") or "",
-                      "lm": d.get("lm") or "", "text": (d.get("text") or "")[:200],
-                      "places": sorted(places(d)), "done": [], "picked": 0,
-                      "reg": datetime.fromtimestamp(now, KST).isoformat(timespec="seconds")}
+            ev = {"t0": t0, "kind": d.get("kind") or "화재", "wide": wide_of(d), "area": d.get("area") or "",
+                  "lm": d.get("lm") or "", "text": (d.get("text") or "")[:200],
+                  "places": sorted(places(d)), "done": [], "picked": 0,
+                  "reg": datetime.fromtimestamp(now, KST).isoformat(timespec="seconds")}
+            g, sc, why = risk_grade(ev, tab, samples)   # ⑭-g 발령 시점 채점 = 창 길이·표기의 근거(추가 수집 0)
+            ev["grade"], ev["score"], ev["why"] = g, sc, why
+            led[k] = ev
             added += 1
-            print(f"🔥 추적 등록: {k} · {d.get('area')} · {(d.get('text') or '')[:40]}", file=sys.stderr)
+            print(f"🔥 추적 등록: {k} · {d.get('area')} · [{g} {sc}점 · {' '.join(why)}] · {(d.get('text') or '')[:40]}", file=sys.stderr)
         else:
             cur["t0"] = min(cur.get("t0") or t0, t0)                       # 최초 발령 기준(되짚기 시계는 첫 문자부터)
             cur["places"] = sorted(set(cur.get("places") or []) | places(d))   # 인접 구 발령이 지역어를 넓혀준다
             if d.get("lm") and not cur.get("lm"):
                 cur["lm"] = d["lm"]
+                cur["grade"], cur["score"], cur["why"] = risk_grade(cur, tab, samples)   # 랜드마크가 뒤늦게 붙으면 HI 재승격(하드)
 
     # ② 되짚기 — 추적 창(WATCH_TTL_H) 안이면 **매 런** 사상자 검색. 러너가 15분 정본 타이머라 곧 15분 해상도.
     #   회차(15·30) 개념을 버린 이유 = 위 상수 주석의 08:20→10:00 사례. 창이 열려 있는 동안은 계속 본다.
@@ -271,7 +397,7 @@ def main():
     cap = led.get("_cap") if isinstance(led.get("_cap"), dict) else {}
     cap_used = int(cap.get(today) or 0)   # 일 상한 카운터 = 원장 본문과 분리(TTL 정리에 쓸려나가면 상한이 매시간 초기화된다)
     for k, ev in sorted(led.items(), key=lambda kv: (kv[1] or {}).get("t0") or 0 if isinstance(kv[1], dict) else 0):
-        if k == "_cap" or not isinstance(ev, dict) or ev.get("picked") or not ev.get("t0"):
+        if k in ("_cap", "_seen") or not isinstance(ev, dict) or ev.get("picked") or not ev.get("t0"):
             continue
         el = (now - ev["t0"]) / 60.0
         if el < FIRST_CHECK_MIN:
@@ -296,14 +422,28 @@ def main():
             ev["picked"] = 1   # 중복(이미 처리중·완료)도 이 사건은 종결 — 같은 사건으로 두 번 두드리지 않는다
             ev["picked_at"] = datetime.fromtimestamp(now, KST).isoformat(timespec="seconds")
 
-    # ③ 정리 — TTL 지난 항목 제거(파일 무한 성장 차단 · 지난 사건 재등록은 ①의 TTL 게이트가 막는다)
+    # ③ 정리 — 창이 끝난 항목을 **정답지로 굳혀** 내보낸다(⑭-g). 지우기 전에 archive = 사건당 정확히 1줄.
+    #   창 길이 = 등급별(HI 3h · LO 1h) — 단, 표본 미달이면 risk_grade 가 전건 HI를 주므로 종전 3시간 그대로.
     cap[today] = cap_used
-    led = {k: v for k, v in led.items()
-           if k != "_cap" and isinstance(v, dict) and now - (v.get("t0") or 0) <= WATCH_TTL_H * 3600}
-    led["_cap"] = {d: c for d, c in cap.items() if d >= (datetime.fromtimestamp(now, KST) - timedelta(days=2)).strftime("%Y-%m-%d")}   # 최근 2일치만
+    keep, done_n = {}, 0
+    seen = [x for x in (led.get("_seen") or []) if isinstance(x, str)]
+    for k, v in led.items():
+        if k in ("_cap", "_seen") or not isinstance(v, dict):
+            continue
+        ttl = (WATCH_TTL_H if (v.get("grade") or "HI") == "HI" else SHORT_TTL_H) * 3600
+        if now - (v.get("t0") or 0) <= ttl and not v.get("picked"):
+            keep[k] = v
+        else:
+            archive(v, k)   # 사상자를 찾았든(picked) 못 찾았든 둘 다 정답지 = '안 난 사건'도 학습 재료
+            seen.append(k)
+            done_n += 1
+    keep["_seen"] = seen[-60:]   # 최근 60건만(재난문자 목록 10건 · 3h 창 대비 넉넉 · 파일 무한 성장 차단)
+    keep["_cap"] = {d: c for d, c in cap.items() if d >= (datetime.fromtimestamp(now, KST) - timedelta(days=2)).strftime("%Y-%m-%d")}   # 최근 2일치만
+    led = keep
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
     LEDGER.write_text(json.dumps(led, ensure_ascii=False, indent=0) + "\n", encoding="utf-8")
-    print(f"fire-watch: 추적 {len(led) - 1}건(신규 {added}) · 큐잉 {picked}건 · 오늘 픽 {cap_used}/{FIRE_DAY_CAP}", file=sys.stderr)
+    print(f"fire-watch: 추적 {len([k for k in led if not k.startswith(chr(95))])}건(신규 {added}) · 큐잉 {picked}건 · 오늘 픽 {cap_used}/{FIRE_DAY_CAP}"
+          f" · 정답지 +{done_n}(누적 {samples + done_n}/{LEARN_MIN} · 창단축 {'가동' if samples >= LEARN_MIN else '대기'})", file=sys.stderr)
     print(f"PICKED={picked}")
     return 0
 
