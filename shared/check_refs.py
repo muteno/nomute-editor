@@ -2420,6 +2420,85 @@ def check_onoff_literal():
     return rc
 
 
+# ── 정본 규칙 상속 대조 게이트 (운영자 260803 "아이디어 진행" — 오늘 두 사고의 **공통 뿌리** 봉합) ──────────
+# 왜: 260803에 같은 뿌리로 사고가 두 번 났고, 방향만 반대였다.
+#   ⓐ `.gs-v` = 정본 버튼 스킨을 입으면서 **cursor(어포던스)까지 따라와** 「눌러도 아무 일 없는 자리」 6건
+#   ⓑ `.trail-i` = 정본 히트패드 `::after{inset:-6px -4px}`가 **안 따라와** 영상 셸 히트존이 이미지의 2.4배 좁음
+#   둘 다 「정본 컴포넌트를 다른 표면에 옮길 때 **규칙 세트의 일부만 따라온 것**」이다.
+#   기존 `check_trail_spec`은 5축(캡슐 색·radius·글리프 12·버튼 22 …) **값**을 대조하는데,
+#   히트패드 `::after`는 그 축 목록에 없어서 오늘까지 아무도 못 잡았다 — 축을 사람이 하나씩 추가하는 방식의 구조적 사각.
+#   → **선언 이름 집합 자체를 자동 대조**한다. 정본에 있는 선언이 표면에 없으면 FAIL = 축 관리가 필요 없다.
+# 대조에서 빼는 것 = **어포던스 선언**(cursor·tap-highlight). CII 「스킨은 계승, 어포던스는 비계승」 계약 그대로 —
+#   같은 부품이라도 표면에 따라 진짜 토글일 수도 리드백일 수도 있어 cursor는 **일괄 상속 대상이 아니다**(260803 ⓐ의 교훈).
+#   그 축은 check_affordance_inherit(정적) + smoke_hitzone H3(런타임)가 이미 전담한다.
+# 값이 아니라 **존재 여부**만 본다 = 스코프별 색·크기 정당 차이에 위양성 0.
+_DECL_PARTS = ('.trail-i', '.trail-v', '.trail-g', '.trail-div', '.gs-v')   # 레일 부품 = §3-5 「무조건 상속」 대상
+_DECL_SKIP = {'cursor', '-webkit-tap-highlight-color'}                      # 어포던스 = 비계승(위 계약)
+_DECL_BASE = {}   # 면책 = '파일::부품::의사요소' → 그 시점 누락 선언 집합(정당 사유는 주석으로)
+
+
+def _decl_rules(src, tail):
+    """<style> 안에서 `<스코프> <부품><의사요소?>`로 끝나는 규칙의 선언 **이름** 집합."""
+    css = '\n'.join(re.findall(r'<style[^>]*>(.*?)</style>', src, re.S))
+    out = {}
+    for sels, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
+        for sel in sels.split(','):
+            sel = sel.strip()
+            m = re.search(re.escape(tail) + r'(::[a-z-]+|:[a-z-]+)?\s*$', sel)
+            if not m:
+                continue
+            props = {p.split(':')[0].strip() for p in body.split(';') if ':' in p}
+            out.setdefault(m.group(1) or '', set()).update(props - _DECL_SKIP)
+    return out
+
+
+def check_trail_decl_parity():
+    """레일 부품의 **정본 선언 집합**이 전 표면에 상속됐는지 대조(값 아님·존재 여부).
+    정본 = viewer/index.html · 표면 = `class="trail` 보유 파일 자동 발견(check_trail_spec 동축 = 새 탭이 조용히 못 빠진다)."""
+    import glob as _g
+    try:
+        base_src = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+    except Exception:
+        print('⚠️ 정본 규칙 상속 대조 — index.html 미독출(스킵)')
+        return 0
+    surf = []
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        if fp.endswith('index.html'):
+            continue
+        try:
+            s = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        if 'class="trail' in s:
+            surf.append((os.path.relpath(fp, ROOT), s))
+    rc = 0
+    checked = 0
+    for part in _DECL_PARTS:
+        base = _decl_rules(base_src, part)
+        if not base:
+            continue
+        for rel, s in surf:
+            got = _decl_rules(s, part)
+            if not got:
+                continue          # 그 표면이 이 부품을 안 쓴다 = 대상 아님
+            checked += 1
+            for pseudo, props in base.items():
+                miss = props - got.get(pseudo, set())
+                exempt = _DECL_BASE.get('%s::%s::%s' % (rel, part, pseudo or '-'), set())
+                miss -= set(exempt)
+                if not miss:
+                    continue
+                tag = part + (pseudo or '')
+                print('❌ 정본 규칙 상속 대조 — %s의 `%s`에 정본 선언 누락: %s. '
+                      '정본(viewer/index.html)에는 있고 이 표면에는 없다 = 스킨만 옮기고 규칙 일부가 안 따라온 것'
+                      '(260803 실사고 = `.trail-i::after` 히트패드 누락으로 영상 셸 히트존이 이미지의 2.4배 좁았다). '
+                      '정당한 차이면 _DECL_BASE에 사유와 함께 등재하라' % (rel, tag, sorted(miss)))
+                rc = 1
+    if rc == 0:
+        print('✅ 정본 규칙 상속 대조 — 레일 부품 %d조합 전건 정본 선언 상속(어포던스 선언은 비계승 계약이라 대조 제외).' % checked)
+    return rc
+
+
 # ── 어포던스 비계승 게이트 (운영자 260803 "응 붙여줘" — 「스킨은 계승, 어포던스는 비계승」의 정적 몫) ──────────────
 # 왜: 260803 실사고 6건의 뿌리 = 리드백 칩 `.gs-v`가 정본 `.trail-i`(진짜 버튼) **외형을 스킨으로 입으면서
 #   `cursor:pointer`까지 통째로 딸려온 것**. 외형 계승은 이 레포의 정본 방식이고 맞다 — 그런데 「이건 눌린다」는
@@ -3500,6 +3579,8 @@ def main():
         print('⚠️ 2단 분기점 게이트 스킵:', e)
     try:
         if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
+            rc = 1
+        if check_trail_decl_parity() != 0:   # 정본 규칙 상속 대조(운영자 260803 — 축을 사람이 추가하는 방식의 사각 제거 · 히트패드 `::after` 누락이 그 사각에서 2.4배 드리프트를 만들었다)
             rc = 1
         if check_affordance_inherit() != 0:   # 스킨 계승 시 어포던스(cursor·press) 비계승(운영자 260803 — 리드백 칩이 버튼 스킨과 함께 손가락 커서까지 물려받아 「눌러도 아무 일 없는 자리」가 6건 실재했다 · 런타임 짝 = smoke_hitzone H3)
             rc = 1
