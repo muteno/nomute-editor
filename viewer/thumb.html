@@ -1364,16 +1364,30 @@ function iePrevSync() {   // 도크 미리보기 스왑 동기(운영자 260718 
   const p = $('#iePrev'); if (!p) return;
   p.classList.toggle('none', !(isEditApp(APP) && CIMG.b64));
 }
+let IEPEND = 0;   // 「사진 넣고 나면 모자이크 켜줘」 예약 타임스탬프(운영자 260803 "경고 다음에 자동으로 이미지 삽입창") — 사진 없이 모자이크를 탭한 순간 세우고, 첨부되는 순간 아래 ieSrcSync가 소비해 ON까지 이어붙인다(운영자가 토글을 두 번 누르지 않게) · 유효기간 IEPEND_TTL
+const IEPEND_TTL = 120000;   // 예약 만료 = 2분(파일 창에서 폴더를 뒤지는 시간 여유 + 취소 후 한참 뒤 다른 경로 첨부가 엉뚱하게 모자이크를 켜는 일 차단)
+function editResetDefaults() {   // 편집 소스 삭제 = 복귀 기본값 **한 뭉치**(운영자 260803 "아이디어까지 합쳐서 ㄱㄱ" [보고 6-4 승인])
+  // 왜 함수로 뺐나: 옵션이 늘 때마다 아래 ieSrcSync 삭제 분기의 **같은 한 줄**에 값이 덧붙는 구조라, 봇·병렬 세션 커밋이 초당급인 이 레포에서 그 줄이 리베이스 충돌 상습 진원지였다
+  //   (실측 260803 = main의 `fillApply('auto')` 추가 ↔ 이 브랜치의 `IEPEND = 0` 추가가 같은 줄에서 충돌 → [7-4] 머지 정지). 이제 옵션 추가 = 이 함수 안 **새 줄 1개** = 세션끼리 다른 줄을 고치므로 자동병합이 그냥 성공한다.
+  RSZ.w = RSZ.h = 0;   // 실측 치수 파기(재첨부 전까지 미리보기·발사 게이트 잠금)
+  IEPEND = 0;          // 모자이크 예약 파기(사진을 지운 뜻은 모자이크를 켜달라는 뜻이 아니다)
+  rszApply('orig');    // 비율 = 원본(무변환)
+  upsApply('FHD');     // 해상도 = 기본
+  fillApply('auto');   // 채움 = 자동
+}
 function ieSrcSync(has) {   // 편집(비율·모자이크·해상도) 소스 = 공유 첨부 사진(CIMG) 첨부/삭제 훅(#cImgSlot 바인더) — 첨부 = 치수 실측→게이트 해제 / 삭제 = 기본값 복귀(비율 원본·모자이크 OFF)
-  if (has && CIMG.b64) rszMeasure(CIMG.b64);
-  else { RSZ.w = RSZ.h = 0; rszApply('orig'); upsApply('FHD'); fillApply('auto'); if (isEditApp(APP)) { selApp('7'); return; }   // 편집 탭 중 삭제 = 편집 기본 축(7) 유지·해상도 기본(FHD)·채움 기본(자동) 복귀·게이트 재잠금(selApp이 미리보기 재동기 전담)
+  if (has && CIMG.b64) { rszMeasure(CIMG.b64);
+    if (IEPEND && Date.now() - IEPEND < IEPEND_TTL && isEditApp(APP)) { IEPEND = 0; rszApply('orig'); if (APP !== '8') selApp('8'); }   // 예약 소비 = 첨부 즉시 모자이크 점등(비율 원본 강제 = flip ON 경로와 같은 2줄) · 편집 탭 안에서만(이력 복원·카드 생성 첨부가 예약을 주워가지 않게)
+  }
+  else { editResetDefaults(); if (isEditApp(APP)) { selApp('7'); return; }   // 편집 탭 중 삭제 = 위 기본값 뭉치 복귀 + 편집 기본 축(7) 유지·게이트 재잠금(selApp이 미리보기 재동기 전담)
   }
   iePrevSync();
   if (APP === '8' && typeof ieRender === 'function') ieRender();
   if (typeof renderCpPrev === 'function') renderCpPrev();   // 도크 미리보기 즉시 스왑(편집 탭 첨부 직후 rsz 스테이지 등장)
 }
 
-// ── 모자이크 옵션 토글(운영자 260712 3차 → 260718 편집 탭 1행) — ON = 비율 원본 강제 + selApp('8')(app8 발사·검출 로직 그대로 · 발사 버튼 = 피사체 찾기 문맥) · OFF = 편집 기본 축(7) 복귀 · 사진 게이트 = 탭=첨부 진입 ──
+// ── 모자이크 옵션 토글(운영자 260712 3차 → 260718 편집 탭 1행) — ON = 비율 원본 강제 + selApp('8')(app8 발사·검출 로직 그대로 · 발사 버튼 = 피사체 찾기 문맥) · OFF = 편집 기본 축(7) 복귀
+//    사진 게이트(운영자 260803 개정) = 사진 없이 ON 탭 → {경고(errStatus) → 사진 입구(#cFile) 자동 개방 → 예약(IEPEND)} 3연 · **모자이크는 안 켜진다**(구판 = selApp('8') 선행이라 경고 무시 = 사진 없는 유령 ON) · 첨부되는 순간 ieSrcSync가 예약을 소비해 ON까지 이어붙인다 ──
 function syncIeTog() { const t = $('#ieTog'); if (!t) return; const on = APP === '8'; t.classList.toggle('on', on); t.setAttribute('aria-pressed', on); }   // 텍스트 = '모자이크' 고정(워드 토글 · 운영자 260803 — 도먼트 복원 대비 신문법 선반영)
 function rszOrigSync() {   // 원본(무변환) = 보존 토글·라벨·구분자 무의미 → 숨김(조건부 토글 등장/소멸 = cnTog 문법)
   const orig = rszAspect() === 'orig';
@@ -1386,11 +1400,15 @@ function rszOrigSync() {   // 원본(무변환) = 보존 토글·라벨·구분�
 (function () {
   const t = $('#ieTog'); if (!t) return;
   const flip = () => {
-    // (구 사진 게이트 = 탭→#cFile 첨부 진입 · 폐지 260725) — 사진 전에도 ON/OFF 선택 가능 · 사진 필수는 발사 버튼 문맥(ieSyncGo '이미지를 넣어줘')+ieGo errStatus가 전담
     if (APP === '8') { selApp('7'); return; }   // OFF = 편집 기본 축(7) 유지(3탭 재편 — 구 제작(2) 복귀 폐지)
+    if (!CIMG.b64) {   // ⚠ 사진 없이 ON = **켜지 않는다**(운영자 260803 "경고를 무시하면 모자이크가 활성화가 이미 되어있거든? 이부분도 잡아주셈") — 구 코드는 selApp('8')을 먼저 하고 경고만 띄워, 경고를 무시하면 사진도 없이 모자이크가 켜진 채였다(비율 행 숨김·발사 문맥까지 모자이크 축으로 전환된 유령 ON) · 260725 "사진 전에도 ON/OFF 선택 가능"은 이 지시로 개정 = ON만 사진 종속, OFF는 종전대로 무조건
+      errStatus('이미지를 삽입해주세요');   // ① 막힘 피드백(운영자 260728) — 발사 버튼이 빨강 테두리(.go.err = --danger 팔레트)로 흔들리며(edshake .42s) 멘트, 1.7s 뒤 '생성' 복귀 · APP 7 라벨도 '생성'(selApp 1328행)이라 복귀 라벨 정합 = selApp 선행 없이도 안전
+      IEPEND = Date.now();   // ③ 첨부되면 그 자리에서 모자이크 ON(ieSrcSync 예약 소비) — 창을 띄운 뜻 = 모자이크를 켜려던 것이라 운영자가 토글을 다시 누를 일이 없다
+      const f = $('#cFile'); if (f) f.click();   // ② 사진 입구 자동 개방(운영자 260803 "그 경고가 뜬 다음에 자동으로 이미지 삽입창이 뜨게") — 위임 대상 = 사진 입구 단일화(260713) 정본 #cFile(.cpv-photobtn·#cpImgSwap과 같은 한 입구) · ⚠ **동기 호출 필수** — setTimeout으로 미루면 사용자 제스처가 끊겨 iOS/Safari가 파일 창을 차단한다(경고는 이 줄 앞에서 이미 그려진다)
+      return;
+    }
     rszApply('orig');   // ON = 비율 원본 강제(발사 축 단일화 — 운영자 "원본 유지를 하면 기능들이 옵션")
     selApp('8');
-    if (!CIMG.b64) errStatus('이미지를 삽입해주세요');   // 사진 없이 ON = 카드 생성 메뉴와 동일한 막힘 피드백(운영자 260728) — 발사 버튼이 빨강 테두리(.go.err = --danger 팔레트)로 흔들리며(edshake .42s) 멘트, 1.7s 뒤 '생성' 복귀 · ⚠ selApp 뒤에 호출 = ieSyncGo가 dataset.label을 '생성'으로 먼저 세팅해야 복귀 라벨이 맞는다 · 토글 자체는 막지 않는다(260725 "사진 전에도 ON/OFF 선택 가능" 유지)
   };
   t.addEventListener('click', flip); t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
 })();
