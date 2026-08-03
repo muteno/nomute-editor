@@ -1,31 +1,31 @@
 # 미국이 겨눈 건 규제가 아니라 공무원의 여권이었다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 통상 압박·규제 주권이 부딪히는 권력·구조 축이라 사실성과 무게가 필요하다
-- 분위기: 감정을 지운 관료 공간의 서늘함. 서류 한 장과 여권 한 권이 무기가 되는 건조한 긴장, 소리보다 정적이 큰 톤
-- 연출 방향: 뉴스를 안 보는 독자도 "남의 나라 공무원 여권을 왜 미국이 쥐나"에서 손가락이 멈춘다 — 그래서 이 덱은 정책 논쟁이 아니라 *사람의 손*을 본다. 다이제스트가 고른 멸균 형광 정조(감정 없는 제도광)를 전 카드 키노트로 깔고, 강조점은 딱 둘: 법안 표지를 누르는 미국 의원의 손가락과, 심사대 위에서 받아지지 않은 채 멈춘 여권. 두 손 사이의 몇 센티 공백이 이 사건의 크기다. 그 공백을 향해 명도를 낮춰 가다가(起 중간 형광 → 承 하강 → 轉 최암·최고대비) 마지막에 새벽빛으로만 풀어준다
-- 독자 동선: **발단** 카드1 → **전개** 카드2~3 → **피크** 카드4 → **해소** 카드5~6 → **시사점** 카드7 · 훅=카드1 끝(단서형: 지목된 나라가 한국) + 카드3 끝(예고형: 서한→보고서 축적) · 착지 한 줄 요지 = 압박이 실무자 책상에 얹힌 뒤, 같은 잣대였는지는 다음 제재가 말한다
-- 연속성 앵커: Recurring subject A — a Korean man in his 50s with short salt-and-pepper hair and thin rimless glasses, wearing a dark navy suit and a plain lanyard ID (카드4·7) / Recurring subject B — a white American man in his late 40s with close-cropped hair, wearing a charcoal pinstripe suit and a plain lapel pin (카드1·2·3) / 반복 장소 = a tiered semicircular legislative chamber in Washington
+- 화풍: B 극화 — 권력·통상 압박·제도 충돌을 다루는 구조 비판 사안이라 무거운 사실성이 필요하다
+- 분위기: 창백한 관공서 형광등의 무정함 위에 개인이 홀로 멈춰 서는 냉랭한 긴장. 분노를 소리로 터뜨리지 않고 서류와 심사대의 정적으로 누른다
+- 연출 방향: 뉴스 안 보는 독자도 '내 여권이 막히면?'이라는 몸의 감각으로 사건에 들어오게 한다 — 규제라는 추상 대신 손에 쥔 여권·결재란·심사대 유리창처럼 만질 수 있는 사물에 압박을 얹고, 국가 대 국가의 큰 그림에서 한 사람의 손끝으로 카메라를 좁혀 간다. 태평양 양쪽에서 같은 사실이 정반대로 적히는 두 장부의 낙차가 후반의 시각 키노트다
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 대표 사례로 지목된 대상을 유보)+카드3 끝(예고형: 처음이 아니라는 시간축 단서) · 감정 피크=카드4 · 착지 한 줄 요지 = 다음 플랫폼 제재의 수위가 국내 기업과 같은 자리인지가 이 논쟁의 답을 대신 쓴다
+- 연속성 앵커: Recurring subject — a Korean man in his 50s with short greying hair and rimless glasses, wearing a dark navy suit and a plain government lanyard / Recurring place — a cold institutional corridor of a Korean government office with pale fluorescent ceiling panels
 
 ### [카드 1]
 **텍스트**
 ```text
-바움가트너 미 하원의원이 법안을 냈다
-미국 기업을 차별 규제하면
-그 나라 공무원은 미국에 못 들어온다
-*대표 사례로 지목된 나라가 한국이다*
+미국 하원의원이 낸 법안 하나가
+한국 공무원의 여권을 겨눴다
+미국 기업을 규제한 외국 관료를
+*입국 금지하고 추방하자는 내용이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his index finger pressing down hard on the cover sheet of a freshly filed bill, the knuckle blanched white. Recurring subject B — a white American man in his late 40s with close-cropped hair, wearing a charcoal pinstripe suit and a plain lapel pin. He stands alone at the speaking rostrum of a tiered semicircular legislative chamber, chest squared in an expansive stance, and his gaze is thrown past the empty seats toward the right edge of the frame with generous nose room on the right. The single sheet under his hand is the only object he touches, and rows of vacant seats curve away behind him. This is a United States legislative setting, not a Korean one.
-Camera: establishing wide shot from a low angle, shot on 14mm ultra-wide lens
+Scene: Emotional focal point: a hand holding out a passport that no one reaches to take. Recurring subject — a Korean man in his 50s with short greying hair and rimless glasses, wearing a dark navy suit and a plain government lanyard, stands at an airport immigration counter and extends the passport halfway across the desk. The officer behind the glass keeps one palm raised without looking down at it. The waiting line behind him has stopped moving, and his gaze is turned toward the right edge of the frame.
+Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion, nose room on the right, gaze directed toward the right edge
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) glowing only along the edge of the sheet beneath his finger, muted daylight contrast
-Text handling: avoid all incidental lettering. The document cover, seat plates and wall panels are rendered blank, cropped or turned away so that nothing readable appears anywhere in the frame.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: keep incidental lettering out of frame by cropping signage and documents; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tiered semicircular chamber wall rising behind the rostrum) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the immigration counter desktop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-US House of Representatives chamber rostrum
+미국 공항 입국심사대 여권
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그가 문제 삼은 건 공정거래위원회다
-쿠팡 임직원 652명이 조사를 받았고
-*과징금은 4억 1,000만 달러가 넘는다*
-운동장을 기울였다는 게 그의 주장이다
+그가 대표 사례로 지목한 건
+한국 공정거래위원회의 쿠팡 규제였다
+*법안이 겨냥한 건 정책이 아니라*
+그 정책에 결재한 사람이다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his flattened palm slapping down on a thick stack of tabulated figures, the top sheets buckling under the impact. Recurring subject B — a white American man in his late 40s with close-cropped hair, wearing a charcoal pinstripe suit and a plain lapel pin. He speaks from a press platform with a cluster of microphones angled up at him, his other hand raised waist-high with two fingers extended as if counting off charges, his eyes fixed on the reporters gathered off to the right. A single tripod camera stands at the taped photo line in the near foreground, its operator hunched behind it. This is a United States press briefing, not a Korean one.
-Camera: medium shot from a high angle, shot on 50mm standard lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the topmost sheet of the stack under his palm, muted daylight contrast
-Text handling: avoid all incidental lettering. The stacked pages are shown edge-on or motion-buckled so no characters resolve, the backdrop banner is blank fabric, and the microphone flags are plain unmarked plates.
+Scene: Emotional focal point: a fingertip resting on the signature box of a document, pressing just hard enough to dent the paper. In the foreground a hand grips a pen over a signed approval sheet on a desk, and far behind on the same sightline a warehouse loading bay of a delivery company stands in deep focus. The signer's face is out of frame above, only the shoulders and forearms of a dark navy suit are visible, and the pen tip points toward the right edge.
+Camera: extreme close-up, single detail, hand, texture from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture, foreground cause and background consequence on one sightline, leading line connecting near action to far result
+Lighting/mood: warm soft desk-lamp light, quiet wistful tone, surrounded by cold office dimness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: the document is shown at a steep angle so its body copy reads as texture only; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the press platform floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office desktop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-Michael Baumgartner congressman press briefing
+공정거래위원회 쿠팡 제재 발표
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-이번이 갑자기 튀어나온 일도 아니다
-지난 4월 공화당 의원 53명이
-주미대사에게 항의 서한을 보냈고
-*7월 1일엔 법사위 보고서까지 나왔다*
+그가 든 근거는 숫자였다
+정부기관 10곳 이상 동원
+자료 요구 4,000건 이상
+*임직원 조사 652명, 과징금 4억 달러*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a staffer's hand laying one more bound report onto an already leaning stack, fingertips hesitating a beat before letting go. Recurring subject B — a white American man in his late 40s with close-cropped hair, wearing a charcoal pinstripe suit and a plain lapel pin. He sits at the head of a long committee table with four other lawmakers ranged down one side, pens still in their hands after signing, all of them looking toward the growing pile rather than at each other, the movement of the stack drawing the eye to the right edge of the frame. The table surface fills the frame beneath them, its dark wood grain running unbroken from top to bottom. This is a United States committee room, not a Korean one.
-Camera: wide shot from a bird's-eye overhead angle, shot on 20mm wide lens
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the ribbon marker of the topmost report, film-noir low-key lighting, deep shadows
-Text handling: avoid all incidental lettering. Every letter, report cover and signature block is shown blank, blurred by shallow focus or angled away so that no writing is legible anywhere.
+Scene: Emotional focal point: the tilted chin of a lawmaker reading figures aloud without looking up. An American congressman in his 50s stands at a hearing room lectern holding a thin sheet of paper, his eyes fixed on the page while three seated colleagues behind him face the same direction. A stack of brown document boxes is piled beside the lectern, and his shoulder is angled toward the right edge of the frame.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 50mm standard lens, minimal distortion, natural cinematic composition, nose room on the right
+Lighting/mood: harsh single overhead light pooling on the lectern, deep surrounding black, oppressive
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: the held sheet is seen edge-on and folded so no lettering is legible; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long committee table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the hearing room back wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-House Judiciary Committee report hearing table
+미국 하원 법사위원회 청문회 연단
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-*이번 법안이 겨눈 건 정책이 아니다*
-그 정책에 결재한 사람이다
-공무원 개인의 여권을 쥐겠다는 뜻이다
+이번이 처음도 아니었다
+지난 4월엔 공화당 의원 53명이
+*주미대사에게 항의 서한을 보냈다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the few centimetres of empty air between a passport held out half-offered and the inspector's hand that has stopped short of taking it. Recurring subject A — a Korean man in his 50s with short salt-and-pepper hair and thin rimless glasses, wearing a dark navy suit and a plain lanyard ID. He stands at an immigration inspection counter with his arm extended and his jaw set, the controlled face micro-cracking at one lip corner, eyes locked on the unmoving hand rather than on the officer's face. The uniformed officer's forearm enters from the side, palm turned down and still, and the pale institutional wall of the inspection hall rises behind them both. This is a United States port of entry, not a Korean one.
-Camera: tight close-up from eye-level, shot on 85mm portrait lens
-Lighting/mood: harsh single overhead light pooling on the counter, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the emblem embossed on the passport cover, film-noir low-key lighting, deep shadows
-Text handling: avoid all incidental lettering. The passport cover carries only an abstract embossed emblem with no words, the counter placards are blank, and no signage is visible.
+Scene: Emotional focal point: a jaw clenched tight, muscle flexing at the jawline, as the man reads a letter in an empty corridor. Recurring subject — a Korean man in his 50s with short greying hair and rimless glasses, wearing a dark navy suit and a plain government lanyard, stands alone holding a single sheet at chest height, his eyes cast downward. Recurring place — a cold institutional corridor of a Korean government office with pale fluorescent ceiling panels, its walls pressing in from both sides behind him.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure from eye-level shot, neutral perspective, realistic, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus, subject backed into a corner against a wall, no escape space, telephoto compression
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: the letter is held tilted away from the viewer so its surface reads as blank paper; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the pale institutional wall of the inspection hall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the corridor wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-US immigration inspection booth passport control
+주미한국대사관 서한 전달
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-한국 정부는 그 주장을 곧바로 맞받았다
-주병기 공정거래위원장은 국회에 나와
-배달의민족도 네이버도 같은 잣대로
-*똑같이 제재해왔다고 못 박았다*
+공정위는 물러서지 않았다
+주병기 위원장은 28일 국회에서
+쿠팡뿐 아니라 배달의민족과 네이버도
+*똑같은 잣대로 제재한다고 답했다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his jaw clenched tight with the muscle flexing at the jawline as he answers, one fist resting closed on the lectern. A Korean man in his 60s in a gray suit stands alone at the witness lectern of a National Assembly committee room, chin level, his gaze directed steadily across at the questioning members seated off to the left. Two aides sit low and small behind him, heads down over their notes, kept dim so he stays the focus. The tall wood-panelled wall of the committee chamber rises behind him and fills the frame. This is a Korean National Assembly setting.
-Camera: medium shot from a low angle, shot on 70mm short telephoto lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the microphone ring at the lectern, muted daylight contrast
-Text handling: avoid all incidental lettering. Name plates, wall crests and paper are rendered blank or cropped out so that nothing readable appears in the frame.
+Scene: Emotional focal point: looking directly into the camera, steady unwavering eye contact from a witness who does not blink. A Korean man in his 60s in a dark suit sits alone at a witness desk with a single microphone, both hands flat on the table, answering a row of seated lawmakers whose backs frame the foreground. Behind him a semicircular tiered hearing room recedes into shadow.
+Camera: over-the-shoulder shot, shoulder foreground, focus on other character from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 70mm short telephoto, gentle background compression, subject isolation, two figures facing off, eyelines locked
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: nameplates and papers are angled away or cropped out of frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the tall wood-panelled committee chamber wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the hearing chamber floor and desks) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +158,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-주병기 공정거래위원장 국회 정무위원회
+국회 정무위원회 공정거래위원장 답변
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-그런데 쿠팡의 장부는 하나가 아니다
-이용자 3,370만 명의 정보가 샜고
-*개인정보보호위는 620억 원을 물렸다*
-그 쿠팡은 미 의회를 상대로 로비해왔다
+쿠팡은 이용자 3,370만 명의 정보가 새
+620억 원을 물린 기업이자
+미 의회를 상대로 로비해온 기업이다
+*같은 사실이 정반대 장부에 적힌다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his eyes averted to the side, avoiding the drift of loose printouts he is stepping over without breaking stride. A man in a dark suit carries a slim briefcase across the polished floor of a vast server hall, walking briskly toward the right edge of the frame, while scattered sheets of leaked customer records lie fanned across the same floor behind and around his shoes. Two technicians crouch far back between the server racks, small and unnoticed, gathering the fallen pages. The polished floor runs unbroken from the top of the frame to the bottom.
-Camera: medium close-up from a bird's-eye overhead angle, shot on 24mm wide lens
-Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the row of server status lights reflected in the floor, muted daylight contrast
-Text handling: avoid all incidental lettering. The scattered printouts show only abstract ruled grids and redaction bars with no readable characters, and the racks carry no labels.
+Scene: Emotional focal point: two ledgers lying open side by side, each recording the same event in an opposite column. On the left half a Korean regulator's hand stamps a penalty document on a plain desk, while on the right half a lobbyist's hand slides a bound report across the very same desktop toward a waiting palm. Neither face is visible above the wrists, and the desk runs unbroken between them.
+Camera: full shot, head-to-toe framing of the hands and desk, clear silhouette from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 40mm lens, neutral perspective, natural human-vision feel
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: both documents are shot from directly above at a scale where their body copy reads as grey texture only; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the polished server hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the single wooden desktop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,28 +189,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-쿠팡 개인정보 유출 개인정보보호위원회
+쿠팡 개인정보 유출 과징금
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-법안이 통과될 확률은 높지 않다
-그래도 규제를 검토하는 책상 위에는
-미국 입국심사대가 하나 더 얹혔다
-*같은 잣대였는지는 다음 제재가 말한다*
+법안이 통과될 확률은 낮다
+그런데도 무거운 건 압박의 과녁이
+정부가 아니라 결재한 개인으로
+*내려왔기 때문이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his pen halted upright above the approval box of a document, the nib not yet touching the paper. Recurring subject A — a Korean man in his 50s with short salt-and-pepper hair and thin rimless glasses, wearing a dark navy suit and a plain lanyard ID. He sits alone at his desk before dawn in an empty government office, body squared to the viewer and looking straight into the camera with steady unwavering eye contact, a dark passport resting closed at the far corner of the desk within his reach. The plain office wall behind him fills the frame from top to bottom, and the desk edge crosses only the very bottom of the composition. This is a Korean government office.
-Camera: medium shot from eye-level, front-on and symmetrical, shot on 35mm lens
-Lighting/mood: cold blue pre-dawn tone, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the pen barrel held above the page, film-noir low-key lighting, deep shadows
-Text handling: avoid all incidental lettering. The document shows only an empty ruled approval box, the passport cover carries an abstract emblem with no words, and the wall is bare.
+Scene: Emotional focal point: a pen held above an unsigned line, stopped in mid-air a moment too long. Recurring subject — a Korean man in his 50s with short greying hair and rimless glasses, wearing a dark navy suit and a plain government lanyard, sits at his desk facing the viewer with the pen raised over a fresh document, his eyes looking directly into the camera. Recurring place — a cold institutional corridor of a Korean government office with pale fluorescent ceiling panels stretches away behind his shoulder, and a passport lies closed near his elbow.
+Camera: medium shot, waist-up framing, face and gestures from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 50mm standard lens, minimal distortion, natural cinematic composition, front-on shot, direct gaze, symmetrical composition, facing camera
+Lighting/mood: cold blue pre-dawn tone through a window, desolate stillness, a faint warm lamp on the desk
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Text handling: the document and the passport cover are angled so no lettering is legible; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the plain office wall behind the desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office desktop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -220,5 +220,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-공정거래위원회 세종청사 사무실
+공정거래위원회 사무실 책상
 ```
