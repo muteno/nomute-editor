@@ -2129,6 +2129,89 @@ def check_onoff_literal():
     return rc
 
 
+# ── 모델 표시명 SSOT 게이트 (운영자 260803 5차 "아이디어도 배선해줘" — 표기 드리프트 8종 실사고[Q1285]의 구조 봉합) ──
+# 사전 = viewer/nm-models.js(window.NM_MODELS · 정식 표기 단일정본 · sb/k는 런타임 참조). 두 축:
+#   ⓐ 음차·변형 래칫 — viewer/*.html·functions/api/*.js에서 음차(클링·시댄스·페이블·오퍼스·제미나이·수노)와
+#      변형 표기(Kling 3.0[비Omni]·GPT 5.6[비Sol]·Seedance 2.5[운영자 260803 "2.0이 맞고"]·Gemini 3.1 flash 소문자/Flash image)를
+#      세어 파일별 베이스라인 **초과만** FAIL(주석의 운영자 원문 인용·역사 서술 = 선존 면책 · raw baseline 문법 동문 · 줄었으면 그만큼 낮춰라).
+#   ⓑ 리터럴 표면 동기(하드) — 서버는 뷰어 자산을 import 못 하므로(api/sb.js DIRECTOR_NM) + 정적 HTML 라벨(k .eng)·
+#      index GENI_ENG_ICO가 사전 값과 문자 단위 동일해야 통과 · sb/k엔 <script src="nm-models.js"> 로드 줄 실존.
+_MODEL_NM_RE = re.compile(r'클링|시댄스|페이블|오퍼스|제미나이|수노|Kling 3\.0(?! Omni)|GPT 5\.6(?! Sol)|Seedance 2\.5|Gemini 3\.1 [Ff]lash [Ii]mage|Gemini 3\.1 flash')
+_MODEL_NM_KEYS = ('fable', 'opus', 'gpt', 'kling', 'veo', 'seedance', 'motion', 'gemini', 'gpt_image', 'suno', 'lyria')
+_MODEL_NM_BASE = {   # 파일별 선존 표기 스냅샷(260803 실측 — 전부 주석·운영자 원문 인용 · 가시 문자열은 Q1285에서 소거 완료) · 줄면 그만큼 낮춰라(래칫)
+    'functions/api/k.js': 2,        # 클링(지침 파일명·주석)
+    'functions/api/moreimg.js': 1,  # 제미나이(주석)
+    'functions/api/revise-cards.js': 1,  # 제미나이(주석)
+    'functions/api/sb.js': 2,       # 시댄스·클링(주석)
+    'functions/api/song.js': 1,     # 수노(주석)
+    'functions/api/submit.js': 1,   # 제미나이(주석)
+    'viewer/edit.html': 1,          # 페이블(검증 크레딧 주석)
+    'viewer/index.html': 35,        # 제미나이·페이블 등(주석 다수) + Gemini 3.1 Flash image 1 = 발행 산출물 원표기(운영자 260622 승인 · 15247)
+    'viewer/k.html': 2,             # 클링(운영자 원문 인용 주석)
+    'viewer/sb.html': 25,           # 페이블·오퍼스·클링·시댄스·GPT 5.6(역사 서술 주석)
+    'viewer/song.html': 5,          # 수노(주석)
+    'viewer/thumb.html': 4,         # 제미나이·페이블(주석)
+    'viewer/vd.html': 2,            # 페이블·GPT 5.6(주석)
+}
+
+
+def check_model_names():
+    """모델 표시명 SSOT 게이트(운영자 260803 5차) — 위 주석 참조. rc=1 = 커밋 차단."""
+    import glob as _g
+    rc = 0
+    # 0) 사전 파싱(fail-closed — 사전이 깨지면 뷰어 모델 라벨이 통째로 undefined)
+    try:
+        nm_src = open(os.path.join(ROOT, 'viewer', 'nm-models.js'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 모델 표시명 SSOT — viewer/nm-models.js 못 엶(부재/리네임 = sb·k 모델 라벨 전면 사망):', e); return 1
+    nm = dict(re.findall(r"^\s*([a-z_0-9]+): '([^']*)'", nm_src, re.M))
+    miss = [k for k in _MODEL_NM_KEYS if not nm.get(k)]
+    if miss:
+        print('❌ 모델 표시명 SSOT — 사전 필수 키 누락/빈 값:', miss); return 1
+    # ⓐ 음차·변형 래칫
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'functions', 'api', '*.js'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            txt = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        n = len(_MODEL_NM_RE.findall(txt))
+        base = _MODEL_NM_BASE.get(rel, 0)
+        if n > base:
+            hits = sorted(set(_MODEL_NM_RE.findall(txt)))
+            print('❌ 모델 표시명 SSOT — %s에 음차·변형 표기 %d건(> 면책 %d) · 검출 = %s → 정식 표기(NM_MODELS 사전 값)로 쓰라. '
+                  '주석 인용 등 정당 사유면 _MODEL_NM_BASE[%r] 상향 + 사유(운영자 260803 "모델명 항상 통일")' % (rel, n, base, hits, rel)); rc = 1
+    # ⓑ 리터럴 표면 동기(하드)
+    try:
+        sbj = open(os.path.join(ROOT, 'functions', 'api', 'sb.js'), encoding='utf-8').read()
+        m = re.search(r"const DIRECTOR_NM = \{ fable: '([^']+)', opus: '([^']+)', gpt: '([^']+)' \}", sbj)
+        if not m:
+            print('❌ 모델 표시명 SSOT — api/sb.js DIRECTOR_NM 리터럴 못 찾음(구조 재포맷 시 이 게이트 정규식 동반 갱신)'); rc = 1
+        elif (m.group(1), m.group(2), m.group(3)) != (nm['fable'], nm['opus'], nm['gpt']):
+            print('❌ 모델 표시명 SSOT — api/sb.js DIRECTOR_NM ≠ 사전: %s vs %s(서버는 사전 import 불가 = 손 동기 · 사전 값으로 맞춰라)'
+                  % (m.groups(), (nm['fable'], nm['opus'], nm['gpt']))); rc = 1
+        idx = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        m2 = re.search(r"const GENI_ENG_ICO = \{ gemini: \['([^']+)'[^\]]*\], gpt: \['([^']+)'", idx)
+        if not m2:
+            print('❌ 모델 표시명 SSOT — index GENI_ENG_ICO 리터럴 못 찾음(재포맷 시 정규식 동반 갱신)'); rc = 1
+        elif (m2.group(1), m2.group(2)) != (nm['gemini'], nm['gpt_image']):
+            print('❌ 모델 표시명 SSOT — index GENI_ENG_ICO ≠ 사전: %s vs %s' % (m2.groups(), (nm['gemini'], nm['gpt_image']))); rc = 1
+        for rel, pat, what in (('viewer/sb.html', r'src="nm-models\.js"', '사전 로드 줄'),
+                               ('viewer/k.html', r'src="nm-models\.js"', '사전 로드 줄')):
+            t = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+            if not re.search(pat, t):
+                print('❌ 모델 표시명 SSOT — %s에 %s 없음(NM_MODELS 참조가 미로드 = 라벨 undefined)' % (rel, what)); rc = 1
+        kh = open(os.path.join(ROOT, 'viewer', 'k.html'), encoding='utf-8').read()
+        m3 = re.search(r'<span class="eng">([^<]+)</span>', kh)
+        if m3 and m3.group(1) != nm['gemini']:
+            print('❌ 모델 표시명 SSOT — k 참조 라벨(.eng) %r ≠ 사전 %r' % (m3.group(1), nm['gemini'])); rc = 1
+    except Exception as e:
+        print('❌ 모델 표시명 SSOT — 동기 대조 실패(필수 파일 부재?):', e); rc = 1
+    if rc == 0:
+        print('✅ 모델 표시명 SSOT — 사전 %d키 · 음차·변형 = 전부 면책분(주석 인용) · 서버/index/k 리터럴 동기 · sb/k 사전 로드 ✓.' % len(nm))
+    return rc
+
+
 def check_twocol_breakpoint():
     """스튜디오 결과 레일 2단 분기점 = 표면 간 한 값 게이트(운영자 260802 "일단 머지해주셈" 승인분).
     왜 = thumb만 1100→900 하향(260802 2차)되고 영상 4탭 사본은 1100에 남아, 운영자 PC 실폭(900~1100 구간)에서
@@ -2753,6 +2836,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ check_icon_ssot 스킵:', e)
+    try:
+        if check_model_names() != 0:   # 모델 표시명 SSOT(하드 — 음차·변형 래칫 + 사전↔리터럴 표면 동기 · 운영자 260803 5차)
+            rc = 1
+    except Exception as e:
+        print('⚠️ check_model_names 스킵:', e)
     try:
         import build_design_mirror   # 디자인 거울 정합: 디자인기틀/구성도/base.css = viewer :root (하드 게이트·§🎨 ⓐ)
         if build_design_mirror.check() != 0:

@@ -305,6 +305,7 @@
 </div>
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1) — 인라인 복제 폐지·단일정본 -->
+<script src="nm-models.js"></script><!-- 모델 표시명 SSOT(운영자 260803 5차 "아이디어도 배선") — 아래 SB_DIRECTORS/SB_SHOOTS/DNM/SNM이 참조 · 강제 = check_model_names -->
 <script src="nm-sync.js"></script><!-- 동기화 생명선 SSOT(운영자 260803 4차 "전 스튜디오 상속") — 복귀 시 자동 재동기(nmRefresh)·로그인 만료 자가치유·새 배포 자동 탑재 -->
 <script src="nm-loader.js"></script><!-- 로더 팩토리 SSOT(yeulmaru-promo mkLoader 이식) — .nmld 도트 · 강조색 --accent -->
 <script src="draft.js"></script><!-- 입력 드래프트 30분 만료 SSOT(운영자 260801) -->
@@ -356,15 +357,15 @@ const esc = s => s.replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;'
 // 감독×촬영 2축 + 설정(운영자 260714 확정 — 감독 = 연출 LLM · 촬영 = 생성 엔진 · 항상 스토리보드 경유)
 // 값 2면 동기: 이 표 = functions/api/sb.js SB_DIRECTORS/SB_SHOOTS/SB_SET.
 // 감독 3인 체제(운영자 260714 3차 — AI_Director_Audition 6라운드 근거): 페이블 = 감성·서사 마감 / GPT 5.6 = 완급·액션(OpenAI API 종량 · sbmake.sh 분기 배선 260714) / 오퍼스 = 잔잔·광고(구독 무료).
-const SB_DIRECTORS = [   // 표시명 = 정식 모델명 단일화(운영자 260803 4차 "모델명 항상 통일 — 어디는 클링 어디는 Kling 금지" · GPT 풀네임 = 설계확정 260714 문서·api DIRECTOR_NM 정본)
-  { id: 'fable', nm: 'Fable 5', hint: '감성·서사 마감' },
-  { id: 'opus', nm: 'Opus 5', hint: '잔잔·광고' },
-  { id: 'gpt', nm: 'GPT 5.6 Sol', hint: '완급·액션 — API 종량' }
+const SB_DIRECTORS = [   // 표시명 = NM_MODELS 사전 참조(운영자 260803 5차 "아이디어도 배선" — 문자열 N벌 관리 폐지 · 사전 = viewer/nm-models.js 단일정본)
+  { id: 'fable', nm: NM_MODELS.fable, hint: '감성·서사 마감' },
+  { id: 'opus', nm: NM_MODELS.opus, hint: '잔잔·광고' },
+  { id: 'gpt', nm: NM_MODELS.gpt, hint: '완급·액션 — API 종량' }
 ];
 const SB_SHOOTS = [
-  { id: 'kling', nm: 'Kling 3.0 Omni', hint: '수동 복붙 · 무료' },   // 풀네임 = k.html K_MODELS 정본 동일 문자열(운영자 260803 4차 통일)
-  { id: 'seedance', nm: 'Seedance 2.0', hint: 'MCP 자동 · 준비 중' },
-  { id: 'motion', nm: '모션그래픽', hint: '플랫 모션 · 사내 렌더 → mp4 즉시 · 0원' }   // 실사 생성 AI가 아닌 3번째 레인(정보전달형 플랫 모션 — 콘티 🎞 모션 스펙 → mg_render.py가 같은 잡에서 mp4까지 뽑음 · 외부 API 0 = 레퍼런스 이미지도 불요)
+  { id: 'kling', nm: NM_MODELS.kling, hint: '수동 복붙 · 무료' },
+  { id: 'seedance', nm: NM_MODELS.seedance, hint: 'MCP 자동 · 준비 중' },
+  { id: 'motion', nm: NM_MODELS.motion, hint: '플랫 모션 · 사내 렌더 → mp4 즉시 · 0원' }   // 실사 생성 AI가 아닌 3번째 레인(정보전달형 플랫 모션 — 콘티 🎞 모션 스펙 → mg_render.py가 같은 잡에서 mp4까지 뽑음 · 외부 API 0 = 레퍼런스 이미지도 불요)
 ];
 // 축 = 프롬프팅(k) 이관분 흡수(운영자 Q1145 "프레임까지 콘티로 이동" · Q1147 "따로 노는걸 합치되 품질·기능성 유지").
 // 값 3면 동기: 이 표 = functions/api/sb.js SB_SET · 화질·프레임 값 집합 = viewer/k.html K_VALS 동일(드리프트 0).
@@ -593,7 +594,7 @@ const jload = () => { try { const a = JSON.parse(localStorage.getItem(JKEY) || '
 const jsave = a => { try { localStorage.setItem(JKEY, JSON.stringify(a.slice(0, 30))); } catch (e) {} };
 function jupd(id, patch) { const a = jload(); const j = a.find(x => x.id === id); if (j) { Object.assign(j, patch); jsave(a); } renderJobs(); }
 let sbBase = null;   // 변형 모드: {out, label} — 발사 시 base로 전달·발사 후 해제
-const DNM = { fable: 'Fable 5', opus: 'Opus 5', gpt: 'GPT 5.6 Sol' }, SNM = { kling: 'Kling 3.0 Omni', seedance: 'Seedance 2.0', motion: '모션그래픽' };   // 잡 캡션 표시명 = SB_DIRECTORS/SB_SHOOTS nm 동일 문자열(운영자 260803 4차 "모델명 항상 통일" — 구 축약 Kling/Seedance 회수)
+const DNM = { fable: NM_MODELS.fable, opus: NM_MODELS.opus, gpt: NM_MODELS.gpt }, SNM = { kling: NM_MODELS.kling, seedance: NM_MODELS.seedance, motion: NM_MODELS.motion };   // 잡 캡션 표시명 = NM_MODELS 사전 참조(운영자 260803 5차 배선 — 구 축약 Kling/Seedance 회수분의 사전 합류)
 const JOB_SPIN = (window.nmOrbHTML?nmOrbHTML('prompting',14):'…');   // 로딩 = orb(Prompting · 콘티 · Q463)   // 로딩 스피너 → 도트 픽토그램(nm-loader.js · beui dots 계승 · 강조색 --accent · 컴팩트 6px)
 const JOB_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>';   // 닫기/삭제 X = SVG 정본(문자 × 금지 게이트)
 async function loadJob(j) {   // 아카이브 재열람 — SPA 폴백 가드는 poll과 동일
