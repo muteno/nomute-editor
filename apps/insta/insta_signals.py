@@ -691,17 +691,68 @@ def main():
         last = daily[-1] if daily else {}
         posts = [{k: p.get(k) for k in ('date_kst', 'iso', 'format', 'style', 'cat', 'era', 'name', 'views', 'score', 'share_pm', 'save_pm', 'fp', 'exp', 'permalink')} for p in sig['posts'][:100]]   # 100개+cat·era·iso = 심층 모달(게시물 탐색 — 정렬·포맷/주제 필터) 재료(운영자 260713 "앱 내에서 볼 경로")
         med = json.load(open(os.path.join(DATA, 'media_latest.json'), encoding='utf-8'))
+        # ── 릴스 커버 결손 = 페이스북 크로스포스트 커버로 회수(운영자 260803 "썸네일 못받아오는 버그") ──
+        # 실측 260803: 최근 12개 중 릴스 2개(Dbh_vQ-R1Al·DbhiiVmRCv1)가 Graph /media·미디어노드 재조회
+        # (insta_fetch 260718 회수 루틴) 모두 thumbnail_url 무응답 + media_url도 빈손 + 인스타 공개 커버 경로
+        # (/p/<code>/media/?size=l)까지 null.jpg 리다이렉트 = **IG 계열 어디에도 커버 자산이 없다**(다른 릴스 10개는
+        # 같은 경로가 정상 CDN 이미지 반환 = 우리 요청·IP 문제가 아니라 그 2건의 IG측 결손). 종전엔 이 상태가
+        # 곧 th='' → 캡션 텍스트 타일이라 최근 게시물 그리드에 그림이 빠진 칸이 남았다.
+        # 회수원 = 같은 릴스의 **페이스북 크로스포스트 full_picture**(같은 워크플로 fb_fetch가 바로 앞 스텝에서 이미
+        # 수집 → viewer/fb_data.json). 실측 = 결손 2건 모두 FB엔 1080×1920 커버 정상 존재 · IG/FB가 같은 자산번호를
+        # 공유(예 761336960_1435857305256644 = cdninstagram·fbcdn 동일)라 같은 그림이다. 추가 API 콜 0·네트워크 0·LLM 0.
+        # 매칭 = ① 첫 줄 캡션 정규화 프리픽스(IG 캡션 40자 컷 vs FB name 전문 → 짧은 쪽 길이로 비교 · 최소 12자)
+        #        ② 게시 시각 ±10분(크로스포스트 실측 간격 15~21초) — **둘 다** 만족해야 채택 = 오매칭 차단.
+        # fail-soft = fb_data.json 부재·스키마 변화·파싱 실패 = 빈 색인 → 종전 동작(텍스트 타일) 그대로.
+        def _cap_key(s):
+            return re.sub(r'[^0-9A-Za-z가-힣]', '', s or '')
+
+        def _iso_epoch(s):
+            try:
+                return datetime.datetime.fromisoformat(str(s).replace('+0000', '+00:00')).timestamp()
+            except Exception:
+                return None
+
+        def _fb_covers():
+            """FB 크로스포스트 커버 색인 [(캡션키, epoch, url)] — posts/thumbs는 fb_fetch가 같은 루프에서 append = 인덱스 정렬."""
+            try:
+                fp = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'viewer', 'fb_data.json'))
+                with open(fp, encoding='utf-8') as f:
+                    fd = json.load(f)
+            except Exception:
+                return []
+            out = []
+            for p, t in zip(fd.get('posts') or [], fd.get('thumbs') or []):
+                url = (t or {}).get('th') or ''
+                key = _cap_key((t or {}).get('t') or (p or {}).get('name'))
+                if url and key:
+                    out.append((key, _iso_epoch((p or {}).get('iso')), url))
+            return out
+
+        fb_cov = _fb_covers()
+
+        def _fb_cover_for(m):
+            """이 IG 미디어와 동일 게시물인 FB 크로스포스트 커버 URL('' = 없음)."""
+            key, ep = _cap_key(first_line(m.get('caption'))), _iso_epoch(m.get('timestamp'))
+            if len(key) < 12 or ep is None:
+                return ''
+            for fkey, fep, url in fb_cov:
+                n = min(len(key), len(fkey))
+                if n >= 12 and key[:n] == fkey[:n] and fep is not None and abs(fep - ep) <= 600:
+                    return url
+            return ''
+
         def _thumb_src(m):
             """썸네일 이미지 URL — 커버(thumbnail_url) 우선. 영상(릴스) media_url은 mp4 스트림이라
-            <img>로 못 그림 → 커버 없는 릴스는 '' 반환(뷰어가 캡션 텍스트 타일로 대체 · 운영자 260718 승인).
+            <img>로 못 그림 → 커버 없는 릴스는 FB 크로스포스트 커버로 회수(위 260803), 그래도 없으면 ''
+            (뷰어가 캡션 텍스트 타일로 대체 · 운영자 260718 승인).
             이미지·캐러셀만 media_url 폴백(그건 실제 이미지). 커버 재조회(대개 복구) = insta_fetch."""
             tu = m.get('thumbnail_url')
             if tu:
                 return tu
             mu = m.get('media_url') or ''
             if m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS' or '/o1/v/' in mu or '/v/t2/' in mu:
-                return ''
-            return mu
+                return _fb_cover_for(m)
+            return mu or _fb_cover_for(m)
         # 최신 12개 원순서 유지 — 커버 없는 릴스도 제자리 보존(th='' → 뷰어가 캡션 텍스트 타일 · t 동봉). 영상URL 폴백·앞자름 결손 = 종식.
         # r = 릴스 플래그(뷰어가 릴스 커버에 ▶ 표식 · 피드 무표식 = 포맷 판별 · 운영자 260718)
         thumbs = [{'th': _thumb_src(m), 'u': m.get('permalink'),
