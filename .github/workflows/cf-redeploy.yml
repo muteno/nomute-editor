@@ -9,7 +9,15 @@ name: cf-redeploy
 # ⚠ 3인 검수 260803 반영: ⓐ 자유텍스트 입력은 run 본문 보간 금지 → env 배선(thumb-redo.yml:55 WISH 정본 · 주입 실증 후 봉합)
 #   ⓑ 기준 도장 측정 실패 = 즉시 중단(빈 BEFORE면 첫 폴이 "수렴 ✓"로 거짓 초록 — 이 파일이 닫겠다는 사고의 재생산이라 하드 실패)
 #   ⓒ 폴링 = 벽시계 데드라인 15분(회수×sleep 산식은 curl 지연이 붙으면 job timeout을 넘겨 fail-soft에 도달 전 강제취소된다)
-#   ⓓ checkout 없음 = 레포 파일 무접촉(전 스텝 curl 단독) → permissions {} · GITHUB_SHA는 러너 환경변수라 그대로 쓴다.
+#   ⓓ 수렴 판정 = 「도장이 **바뀌었나**」가 아니라 「도장이 **레포 정본과 같아졌나**」 — BUILD_STAMP는 빌드 시각이 아니라
+#      stamp-version.yml:45가 커밋에 구워 넣은 문자열이라, 코드 무변경 재배포는 도장이 바이트 동일하다(변화 판정 = 성공을 실패로 오보).
+#      역으로 큐 적체 중엔 옛 빌드가 먼저 도달해 도장이 바뀌기도 한다(변화 판정 = 최신 아닌데 성공으로 오보). 양방향 오보를 목표값 대조로 닫는다.
+#      정본 = main의 viewer/index.html BUILD_STAMP(= live-smoke.yml:57 EXPECT와 같은 축 · ref: main 고정 = dispatch가 딴 ref를 골라도 기준은 언제나 main).
+#   ⓔ ⚠ 미확인(레포 안에 근거 0 · 추측 금지) = CF_DEPLOY_HOOK이 빌드하는 브랜치와, 훅이 SHA를 POST 시점에 고정하는지 빌드 시작 시점에
+#      해석하는지. 정황증거뿐 = news-ask.yml:238·news-analyze.yml:266·thumb-redo.yml:88이 main 푸시 직후 같은 훅으로 피드를 반영한다.
+#      그래서 이 워크플로는 「성공했다」를 스스로 단정하지 않고 **라이브 실물 대조 결과만** 보고한다.
+#   ⓕ 비용 정직 고지 = 빌드 슬롯을 1개 쓴다. 병렬 세션이 코드를 미는 시간대엔 남의 배포 도착이 그만큼 밀릴 수 있고(live-smoke 12분 창 초과 시
+#      DEPLOYMISS 오경보), 월 빌드 한도도 그만큼 준다. 상시 발사용이 아니라 **라이브가 실제로 뒤처졌을 때** 쓰는 버튼이다.
 on:
   workflow_dispatch:
     inputs:
@@ -18,7 +26,8 @@ on:
         default: ''
         required: false
         type: string
-permissions: {}
+permissions:
+  contents: read              # main의 viewer/index.html 1파일만 읽는다(수렴 목표값 = 레포 정본 도장) · 그 외 쓰기 0
 concurrency:
   group: cf-redeploy
   cancel-in-progress: false
@@ -27,18 +36,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25        # 폴링 예산 15분 + curl 지연·발사 여유(live-smoke = 대기 12분에 28분 = 같은 결 배수)
     steps:
-      - name: 발사 전 라이브 도장 기록(측정 실패 = 중단)
+      - uses: actions/checkout@v4
+        with:
+          ref: main                                  # dispatch가 딴 ref로 발사돼도 기준 도장은 언제나 main(위험 = 거짓 SHA 로그)
+          sparse-checkout: viewer/index.html         # 목표 도장 1줄만 필요 = 전체 클론 안 함
+          sparse-checkout-cone-mode: false
+      - name: 기준 도장 확정(라이브 = 지금 / 목표 = main 정본 · 측정 실패 = 중단)
         env:
           NOTE: ${{ inputs.note }}   # run 본문 직접 보간 금지 — 자유 산문이라 셸 파싱을 갈라 임의 명령이 실행된다(검수 재현)
         run: |
           set +e
-          BEFORE=$(curl -sS --max-time 20 "https://apps.nomute.kr/?nosw=1" | grep -o "BUILD_STAMP = '[^']*'" | head -1)
           echo "사유: ${NOTE}"
+          BEFORE=$(curl -sS --max-time 20 "https://apps.nomute.kr/?nosw=1" | grep -o "BUILD_STAMP = '[^']*'" | head -1)
+          EXPECT=$(grep -o "BUILD_STAMP = '[^']*'" viewer/index.html | head -1)
           if [ -z "$BEFORE" ]; then
             echo "::error::발사 전 라이브 도장 측정 실패 — 기준이 없으면 수렴 판정이 첫 폴에서 거짓 초록이 된다(재실행)"; exit 1
           fi
-          echo "발사 전 라이브 = ${BEFORE}"
-          echo "BEFORE=${BEFORE}" >> "$GITHUB_ENV"
+          if [ -z "$EXPECT" ]; then
+            echo "::error::main 정본 도장(viewer/index.html BUILD_STAMP) 판독 실패 — 목표값 없이는 수렴을 판정할 수 없다"; exit 1
+          fi
+          echo "라이브(현재) = ${BEFORE}"
+          echo "main 정본(목표) = ${EXPECT}"
+          { echo "BEFORE=${BEFORE}"; echo "EXPECT=${EXPECT}"; } >> "$GITHUB_ENV"
       - name: Cloudflare Pages 재배포 트리거(main HEAD 그대로)
         env:
           CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
@@ -51,18 +70,20 @@ jobs:
           else
             echo "::error::재배포 트리거 실패(훅 URL·Cloudflare 상태 확인)"; exit 1
           fi
-      - name: 수렴 확인(벽시계 15분 — 라이브 도장이 바뀌는지)
+      - name: 수렴 확인(벽시계 15분 — 라이브 도장이 main 정본과 같아지는지)
         run: |
           set +e
           DEADLINE=$(( $(date +%s) + 900 ))
+          LAST="$BEFORE"
           while [ "$(date +%s)" -lt "$DEADLINE" ]; do
             NOW=$(curl -sS --max-time 10 "https://apps.nomute.kr/?nosw=1" | grep -o "BUILD_STAMP = '[^']*'" | head -1)
-            if [ -n "$NOW" ] && [ "$NOW" != "$BEFORE" ]; then
-              echo "라이브 도장 전진 ✓ — ${BEFORE} → ${NOW}"
-              echo "⚠ 도장이 바뀐 것 = 빌드가 1건 반영됐다는 뜻이지 '최신 수렴'의 증명은 아니다(큐 적체 시 옛 빌드가 먼저 도달한다) — 최신 여부는 main 최신 도장과 대조해 판단"
-              exit 0
+            if [ -n "$NOW" ] && [ "$NOW" = "$EXPECT" ]; then
+              echo "수렴 ✓ — 라이브 = main 정본 ${EXPECT}"; exit 0
+            fi
+            if [ -n "$NOW" ] && [ "$NOW" != "$LAST" ]; then
+              echo "· 라이브 전진(중간): ${LAST} → ${NOW} (목표 ${EXPECT} 아직 아님 = 큐가 옛 빌드부터 소화 중)"; LAST="$NOW"
             fi
             sleep 10
           done
-          echo "::warning::15분 내 라이브 도장 무변화(${BEFORE}) — Cloudflare 빌드 큐 적체·실패 의심(대시보드 확인)"
+          echo "::warning::15분 내 미수렴 — 라이브 ${LAST} ≠ main 정본 ${EXPECT}(Cloudflare 빌드 큐 적체·실패 의심 · 대시보드 확인)"
           exit 0
