@@ -15,6 +15,9 @@
 const FILES = {
   trends: 'viewer/sns_trends.json',   // 기본 = SNS 다이제스트 본체(수집 1차 커밋 산출)
   brief: 'viewer/sns_brief.json',     // AI 브리프(2차 커밋 산출 · 없을 수 있음 = 빈 객체 폴백)
+  lucy: 'viewer/threads_state.json',  // 루시 스레드 운영 상태(viewer/lucy.html 전원·최근 게시 표시) — 260803 4차 편입:
+                                      //   `check_coalesce_pair` 게이트 첫 실행이 **선제 검출**(lucy-threads도 코얼레싱 대상인데 짝이 없었다).
+                                      //   아직 파일 미생성이라 사고는 안 났지만, 러너가 처음 커밋하는 순간 lucy 화면이 빌드에 묶인다 = 사고 전 봉합.
   tbs: 'viewer/tbs_data.json',        // 국내 커뮤니티 베스트글(21개 커뮤 · **키워드 알림 국내 감시축**) — 260803 3차 편입:
                                       //   Q1331 [CF-Pages-Skip] 코얼레싱이 sns-trends 커밋의 Pages 빌드를 건너뛰게 하면서, api 서빙이 없던 이 파일은
                                       //   **화면에서 조용히 얼어붙는 상태**가 됐다(코얼레싱 자체는 옳고, 짝인 라이브 서빙이 이 축만 비어 있던 것).

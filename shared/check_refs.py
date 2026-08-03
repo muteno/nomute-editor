@@ -872,6 +872,87 @@ def check_pages_skip():
     return 0
 
 
+def check_coalesce_pair():
+    """[CF-Pages-Skip] **짝** 게이트(운영자 260803 6-4 승인 · Q1343 실사고의 기계화) — 코얼레싱의 반대 방향을 본다.
+    check_pages_skip이 「접두를 어디에 달아도 되나(배선 방향)」를 지킨다면, 이 게이트는 「접두를 단 워크플로가
+    착지시키는 **화면 데이터**에 라이브 서빙(빌드 우회 api)이 있나(짝 방향)」를 지킨다.
+    ── 왜(실사고 260803) ── 코얼레싱은 옳은 조치지만, 스킵된 커밋의 산출물이 **정적 파일로만 서빙되면** 그 화면은
+    무관한 다른 커밋이 빌드를 물 때까지 갱신이 멈춘다 = **조용한 정지**. 실측 = `viewer/tbs_data.json`(국내 커뮤니티
+    21개 = 키워드 알림 국내 감시축)이 정확히 그 상태였다 — 같은 파일이 260720~26 폰 크론 사망으로 "6일간 빈 채 감시"를
+    이미 겪은 재발 축(sns-trends.yml 헤더 박제)이라 눈으로 못 잡으면 또 조용히 죽는다.
+    ── 판정(전부 자동 발견 = 손 목록 0) ──
+    ① 코얼레싱 워크플로(_PAGES_SKIP_ALLOW ∩ workflows)의 `git_land.sh` 호출줄에서 `viewer/*.json` 인자를 뽑고
+    ② 그중 **뷰어가 실제로 fetch하는 것**만 화면 표면으로 채택(내부 상태 파일은 자연 제외 = 위양성 0)
+    ③ 그 표면이 `functions/api/*.js` 어딘가에서 `viewer/<이름>.json`으로 서빙되는지 대조 → 없으면 rc=1.
+    확장할 때 이 게이트가 저절로 따라온다(코얼레싱 대상 1개 추가 = 짝 배선 강제)."""
+    wdir = os.path.join(ROOT, '.github', 'workflows')
+    vdir = os.path.join(ROOT, 'viewer')
+    fdir = os.path.join(ROOT, 'functions', 'api')
+    for d in (wdir, vdir, fdir):
+        if not os.path.isdir(d):
+            print('❌ check_coalesce_pair 경로 없음(fail-closed):', d); return 1
+    # ① 코얼레싱 워크플로가 git_land로 착지시키는 viewer/*.json
+    landed = {}
+    for rel in sorted(_PAGES_SKIP_ALLOW):
+        if not rel.startswith(os.path.join('.github', 'workflows')):
+            continue
+        p = os.path.join(ROOT, rel)
+        try:
+            txt = open(p, encoding='utf-8').read()
+        except Exception:
+            continue   # 파일 부재 = check_pages_skip 관할(중복 실패 안 냄)
+        for line in txt.splitlines():
+            if 'git_land.sh' not in line or line.lstrip().startswith('#'):
+                continue
+            for m in re.finditer(r'viewer/([A-Za-z0-9_\-]+)\.json', line):
+                landed.setdefault(m.group(1) + '.json', set()).add(os.path.basename(rel))
+    if not landed:
+        print('✅ [CF-Pages-Skip] 짝 게이트 — 코얼레싱 워크플로의 viewer JSON 착지 0건(대상 없음).'); return 0
+    # ② 뷰어가 실제로 fetch하는 표면만 채택(내부 상태 파일 제외 = 자동)
+    vtxt = ''
+    for n in sorted(os.listdir(vdir)):
+        if n.endswith('.html'):
+            try:
+                vtxt += open(os.path.join(vdir, n), encoding='utf-8').read()
+            except Exception:
+                pass
+    if not vtxt:
+        print('❌ check_coalesce_pair 뷰어 HTML 읽기 실패(fail-closed)'); return 1
+    # ③ functions/api 서빙 대조
+    # ⚠ 주석은 걷어낸다 — 안 그러면 **서빙을 지워도 주석에 남은 경로**가 게이트를 통과시킨다(260803 신설 당일 자기시험 실측:
+    #   FILES 1행을 주석 처리했는데 rc=0으로 새어나감 = 게이트가 있으나 마나였던 상태). `(?<!:)//` = `https://` 보호.
+    atxt = ''
+    for n in sorted(os.listdir(fdir)):
+        if n.endswith('.js'):
+            try:
+                raw = open(os.path.join(fdir, n), encoding='utf-8').read()
+            except Exception:
+                continue
+            atxt += '\n'.join(re.sub(r'(?<!:)//.*$', '', l) for l in raw.splitlines())
+    surf, bad = [], []
+    for name, wfs in sorted(landed.items()):
+        # 표면 판정 = **인용 리터럴**(`'<파일>'` / `'<파일>?…'`)이 뷰어에 있는가.
+        #   ⚠ `fetch(` 직전 매칭으로 하면 **자기무력화**한다 — 이 게이트가 시킨 처방(api 우선 → 정적 폴백 루프)을 적용하는 순간
+        #   URL이 배열 원소가 되어 `fetch(u)` 형태로 바뀌고, 그러면 그 표면이 감시망에서 사라져 **나중에 서빙을 지워도 통과**한다
+        #   (260803 신설 당일 실측: 처방 적용 후 탐지 3종 → 1종으로 붕괴). 인용 리터럴 기준은 루프·배열·템플릿 전부 커버하고,
+        #   산문 주석의 맨 파일명(앞이 공백·`/`)은 인용부호가 없어 자연 제외 = 위양성 억제.
+        if not re.search(r'''['"`]''' + re.escape(name) + r'''[?'"`&]''', vtxt):
+            continue   # 화면이 안 읽는 내부 산출물 = 비대상(자동 제외)
+        surf.append(name)
+        if not re.search(r'''['"`]viewer/''' + re.escape(name) + r'''['"`]''', atxt):   # 인용 리터럴만 인정(FILES 등재 형태 · 산문 언급 불인정)
+            bad.append('%s (착지: %s) → 라이브 서빙 없음 = 코얼레싱 스킵 시 화면 갱신 정지'
+                       % (name, ','.join(sorted(wfs))))
+    if bad:
+        print('❌ [CF-Pages-Skip] 짝 부재(260803 실사고 = tbs_data 국내 감시축 조용한 정지) — 코얼레싱 대상은 라이브 서빙이 필수:')
+        for b in bad:
+            print('   -', b)
+        print('   처방 = functions/api/<축>.js FILES 화이트리스트에 1행 + 뷰어 로더를 api 우선 → 정적 폴백으로(정본 = functions/api/candidates.js·trends.js)')
+        return 1
+    print('✅ [CF-Pages-Skip] 짝 게이트 — 코얼레싱 착지 화면 표면 %d종(%s) 전부 라이브 서빙 보유.'
+          % (len(surf), ', '.join(surf)))
+    return 0
+
+
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
 
 
@@ -3451,6 +3532,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_pages_skip 예외(fail-closed):', e); rc = 1
+    try:
+        if check_coalesce_pair() != 0:   # [CF-Pages-Skip] **짝** 강제(하드 게이트 — 260803 실사고: 코얼레싱 스킵 + 라이브 서빙 부재 = tbs_data 국내 감시축 조용한 정지)
+            rc = 1
+    except Exception as e:
+        print('❌ check_coalesce_pair 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1

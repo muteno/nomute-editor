@@ -396,10 +396,26 @@
   }
 
   // ── 상태 파일(러너 산출 · 커밋 영속) ────────────────────────────────
-  fetch('threads_state.json', { cache:'no-store' }).then(function(r){
-    if (!r.ok) throw new Error('no state');
-    return r.json();
-  }).then(function(d){
+  // 소스 순서 = api/trends?f=lucy(GitHub 직독·빌드 우회) → 정적 폴백(loadTrends 문법 동축 · 260803 `check_coalesce_pair` 선제 검출분).
+  //   필수 사유 = lucy-threads가 [CF-Pages-Skip] 코얼레싱 대상이라, 정적 threads_state.json은 무관한 커밋이 빌드를 물 때까지 안 바뀐다
+  //   → 이 화면의 '전원/최근 게시'가 실제보다 낡은 나이를 보여 "며칠째 조용"으로 **오판**하게 된다(판정식이 d.updated 나이 기반).
+  (function(){
+    var srcs = ['api/trends?f=lucy', 'threads_state.json'];
+    var i = 0;
+    var next = function(){
+      if (i >= srcs.length) return Promise.reject(new Error('no state'));
+      return fetch(srcs[i++], { cache:'no-store' }).then(function(r){
+        if (!r.ok) return next();
+        return r.text().then(function(t){
+          if (/^\s*</.test(t)) return next();          // SPA 폴백(HTML 200) 가드
+          var j; try { j = JSON.parse(t); } catch (e) { return next(); }
+          if (!j || !j.updated) return next();          // updated 부재 = 서빙 실패 신호 → 다음 소스
+          return j;
+        });
+      }, function(){ return next(); });
+    };
+    return next();
+  })().then(function(d){
     var posted = (d && d.posted) || [], replied = (d && d.replied) || [];
     var last = posted.length ? posted[posted.length - 1] : null;
 
