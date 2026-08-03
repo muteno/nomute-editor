@@ -5323,14 +5323,22 @@ function bindImgPaste(el, onImg) {   // el(입력칸·슬롯·모달)에서 Ctrl
   el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
 }
 // 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — thumb·tr과 **같은 키**(동일 origin) = 이미지 스튜디오 4탭이 한 크기로 열린다 · 저장 차단 환경은 무저장 = 상시 축소(종전 동작)
-const PVZOOM = { v: false,   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
-  get() { return this.v; },
-  set(on) { this.v = !!on; } };
+const PVZOOM = {   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
+  h() { try { return (window.top && window.top.document) ? window.top : window; } catch (_) { return window; } },   // 슬롯 = 동일 origin 최상위 창 1벌(thumb·tr 동문) — 이 창이 곧 최상위라 자기 슬롯이지만, 산식을 3표면 한 벌로 두는 게 사본 드리프트 0
+  get() { return !!this.h().__nmPvZoom; },
+  set(on) { this.h().__nmPvZoom = !!on; } };
+var geniZoomPaint = null;   // AI 생성 판 확대 페인터 핸들(아래 배선에서 장착) — 탭 진입 재도색(pvZoomSyncActive)이 iframe 표면과 같은 문법으로 부른다
+function pvZoomSyncActive() {   // 탭 전환 = 확대 상태 1벌 재도색(운영자 260802 3차 "4탭이 한 상태를 공유 = 탭 이동에 크기가 튀지 않는다" 정본 복구 · 260803 인메모리 전환으로 끊겼던 축)
+  const on = PVZOOM.get();
+  try { if (geniZoomPaint) geniZoomPaint(on); } catch (_) {}
+  try { const f = document.querySelector('#tooldlg .toolfr.active'); const w = f && f.contentWindow; if (w && w.nmPvZoomSync) w.nmPvZoomSync(on); } catch (_) {}   // 미장착 표면 = 무동작(fail-soft)
+}
 function geniPrevSize() {   // 미리보기 박스 높이 = 편집 탭 렌더 등가(운영자 260719 "이 둘이 완전 다르다" 교정) — thumb 쉘 정본 min(29svh,300)의 svh가 iframe 뷰포트 기준이라, 부모 문서인 이 폼은 같은 슬롯(genihost=iframe 자리·팝업=다이얼로그) clientHeight×0.29 캡 300으로 등가 산출(edit pvSync .29/300 동미러 · CSS min(29svh,300)은 무JS 폴백)
   const box = $('#geniPrevBox'); if (!box) return;
   const h = $('#geniHost'), d = $('#genidlg');
   const ref = (h && !h.hidden) ? h.clientHeight : ((d && d.open) ? d.clientHeight : 0);
-  if (ref > 0) { const w = box.offsetWidth || 0; box.style.height = w + 'px'; geniPrevSize._miss = 0; }   // ⚠ offsetWidth(테두리 포함 = border-box) — clientWidth는 좌우 1px 테두리를 뺀 값이라 thumb의 `aspect-ratio:1/1`(border-box 기준)보다 2px 낮아져 파리티 C1이 Δ-2로 깨졌다(실측 260801) · 통일 프레임 등가(운영자 260731 22차 · 260801 비율 갱신) = **폭 그대로(1:1)** — thumb `.cpprev-box{aspect-ratio:1/1}` 정본 미러 · 캡(구 ref*.58·620)은 운영자 260801 "max-height 해제"로 폐지(캡이 살면 높이만 눌려 1:1이 깨진다 = 파리티도 갈라짐) · 성공 측정 = 미스 카운터 리셋
+  // 폭 측정 = rect(소수 유지 · 260803) — 구 offsetWidth는 **정수 반올림**이라 형제 4탭(CSS aspect-ratio = 소수 그대로)과 상시 최대 0.5px 갈라졌다(실측: 창 257.5 vs AI 258 · C7 허용 0.6px 밑이라 게이트를 그냥 통과하던 잔여 드리프트) · 폴백 = 구 offsetWidth(rect 0 환경)
+  if (ref > 0) { const w = box.getBoundingClientRect().width || box.offsetWidth || 0; box.style.height = w + 'px'; geniPrevSize._miss = 0; }   // ⚠ offsetWidth(테두리 포함 = border-box) — clientWidth는 좌우 1px 테두리를 뺀 값이라 thumb의 `aspect-ratio:1/1`(border-box 기준)보다 2px 낮아져 파리티 C1이 Δ-2로 깨졌다(실측 260801) · 통일 프레임 등가(운영자 260731 22차 · 260801 비율 갱신) = **폭 그대로(1:1)** — thumb `.cpprev-box{aspect-ratio:1/1}` 정본 미러 · 캡(구 ref*.58·620)은 운영자 260801 "max-height 해제"로 폐지(캡이 살면 높이만 눌려 1:1이 깨진다 = 파리티도 갈라짐) · 성공 측정 = 미스 카운터 리셋
   else if ((geniPrevSize._miss = (geniPrevSize._miss || 0) + 1) <= 30 && !geniPrevSize._raf) { geniPrevSize._raf = requestAnimationFrame(() => { geniPrevSize._raf = 0; geniPrevSize(); }); }   // 마운트 직후 host 미표시(clientHeight 0) = 다음 프레임 재측정(실측 260719 타이밍 덫) — 단 연속 미측정 30프레임(~0.5s) 상한으로 폼이 닫혀 영구 0일 때의 무한 rAF 루프·CPU/배터리 누수 차단(실측 260720)
 }
 function geniWishShow(on, focus) {   // 글 프롬프팅 행 표시 단일점(운영자 260721 미리보기 반갈 — 260719 "미리보기 위 새 입력 = 다음 지시 배선"의 그 배선) · DOM = 기존 #geniWishHead/#geniWishRow hidden 해제(예고된 복원 경로 · 신설 0) · 재숨김 = 다음 geniPrep이 값 유무로 재판정
@@ -5563,6 +5571,7 @@ function geniInit() {
   if (zmBtn && zmPv) {
     const paint = on => { zmPv.classList.toggle('dockzoom', on); zmBtn.classList.toggle('on', on); zmBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       zmBtn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); zmBtn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+    geniZoomPaint = on => { paint(on); geniPrevSize(); };   // 탭 진입 재도색 = 폭 전환 후 실폭 1:1 높이 재산출 동반(아래 클릭 배선과 같은 짝 · 쉘 높이 단일출처 = geniPrevSize)
     paint(PVZOOM.get());
     zmBtn.addEventListener('click', () => { const on = !zmPv.classList.contains('dockzoom'); paint(on); PVZOOM.set(on); setTimeout(geniPrevSize, 280); });   // 폭 전환 후 실폭 1:1 높이 재산출(쉘 높이 단일출처 = geniPrevSize)
   }
@@ -14140,6 +14149,7 @@ $('#toolTabs').addEventListener('click', e => { const b = e.target.closest('.too
   if (curToolKey === 'thumb') {   // 이미지 묶음(thumb 3탭 · 260712 8차 — 합성 comp 분기 재폐지) — 탭 = 동일 문서 내부 전환 selApp(same-origin·리로드0·폼/이미지슬롯 DOM·IDB초안 보존)
     const app = b.dataset.app;
     if (toolMeta.thumb) toolMeta.thumb.app = app; else toolMeta.thumb = { title: 'Image Studio', tabs: THUMB_TABS, src: '/thumb.html', app: app };   // 방어 — thumb 메타 소실 시 재구성
+    setTimeout(pvZoomSyncActive, 0);   // 새 탭에 확대 상태 1벌 재도색(운영자 260802 3차 "4탭이 한 상태를 공유 = 탭 이동에 크기가 튀지 않는다") — 이 핸들러가 전부 동기라 0ms면 아래 selApp·trMount·geniMount가 DOM을 앉힌 **뒤**에 돈다 = 분기마다 사본 놓는 것보다 진입점 1개(early return 3갈래 전부 커버)
     if (app === 'tr') { geniLeave(); trMount(); return; }   // 번역 탭(tr.html) = 전용 보존 프레임 표시(운영자 260721 — thumb 문서 무접촉 = 리로드 0 계약 유지 · selApp 미격발 · 프롬프팅 이식 중이면 먼저 원복)
     try { const w = activeToolFrame().contentWindow; if (w && w.selApp) w.selApp(app); else loadToolFrame('/thumb.html'); } catch (_) {}       // 방어 — thumb 프레임이 빈 신생 클론이면 로드(bridge sync가 하이라이트 재정합)
     if (app === '6') geniMount();   // 프롬프팅 탭 = genidlg 폼을 탭 콘텐츠로 이식(운영자 260713 B "B로 간다" — 구 팝업 즉시(같은날 1차)를 ask 가상 탭 문법으로 재정렬 = 3도구 폼 거처 통일 · 발사 = 원복+작업내역 노출 · 기사 카러셀 + = 팝업 유지(이중 홈) · selApp 역동기·복원은 클릭 아님 = 미격발)

@@ -48,6 +48,8 @@
     html.inmodal .wrap > * { grid-column:1; }
     html.inmodal .wrap > .out { grid-column:2; grid-row:1 / span 99; align-self:start; }   /* 컨테이너 = .out(thumb 정본 셀렉터 그대로 · 260803 결과 섹션 합류로 래퍼 승격) */   /* 이전 제작(공유) = 우측 2번 칼럼 = thumb `.wrap > .out` 정본 동값 사본(운영자 260802 일맥상통 — 형제 4탭과 같은 골격: 좌 제작 / 우 이력) */
     html.inmodal .topdock { margin-right:0; }
+    html.inmodal .cpprev { --pvw:min(29svh, 300px); }   /* 2단에선 폭 산식에서 **`52%` 항만 뺀다** = thumb 정본 동문 사본(:69 `html.inmodal .topdock[data-lay="edit"]` · index geni :2301과도 동값 · 신규 값 0) — 52%는 '칼럼 폭'을 읽는데 2단은 칼럼이 반이라 이 사본이 없으면 번역 창만 형제 4탭보다 좁아진다(실측 260803 940×1000: 형제 257.5 vs 번역 223.1 = 폭 −34.4·좌변 +17.3px) · 이 미러 누락이 900~1000폭대에서만 터져 1280·430 두 티어만 재던 구 게이트를 그냥 통과했다 */
+    html.inmodal .topdock.dockzoom .cpprev { --pvw:min(58svh, 620px); }   /* 돋보기도 동일 처방(`100%` 항만 제외 = 칼럼 폭 의존 제거 · thumb :70 동문) — 안 걸면 확대 상태에서만 번역 폭이 다시 갈라진다 */
   }
   label { display:block; font-size:var(--fs-label); color:var(--fg); margin:14px 0 var(--sp-1); }   /* raw-ok: k.html label 동일값 계승 */
   label.fl { display:flex; align-items:center; gap:6px; font-weight:var(--fw-x); color:var(--fg); }   /* 소머리 = 흰색·800 · **flex 블릿 문법**(운영자 260729 "내용 블릿이 옵션 블릿처럼 좌측 정렬이 되어야함") — 구 블록 문법(`content:'• '` 공백 포함)은 공백 글자폭이 곧 들여쓰기라 형제 `.csec`(flex+gap 6)와 첫 글자 x가 갈렸다 → CII 소머리 규칙의 flex 갈래로 통일 = 같은 화면 두 소머리가 한 세로선 */
@@ -395,13 +397,15 @@ $('pvPhoto').addEventListener('click', () => $('srcFile').click());   // 빈 미
 $('swapBtn').addEventListener('click', () => $('srcFile').click());   // 교체 = 파일 입구 위임(thumb cpImgSwap 문법)
 // ── 미리보기 확대(돋보기) + 레일 생성 칩 = thumb 정본 동문(운영자 260802 2차) — 창은 상시 52%·확대는 버튼만 · 생성 칩은 정본 발사 버튼(#go) 대리클릭(상태 1벌) ──
 // 확대 상태 = 표면 공용 키 1벌(운영자 260802 3차 승인 = 보고 6-4 "탭·세션에 기억") · thumb PVZOOM 정본 동문 · 저장 차단 환경은 무저장 = 상시 축소(종전 동작)
-const PVZOOM = { v: false,   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
-  get() { return this.v; },
-  set(on) { this.v = !!on; } };
+const PVZOOM = {   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
+  h() { try { return (window.top && window.top.document) ? window.top : window; } catch (_) { return window; } },   // 슬롯 = 동일 origin 최상위 창 1벌(thumb 정본 동문 사본 · 표면 공용 = 운영자 260802 3차 "탭 이동에 크기가 튀지 않는다")
+  get() { return !!this.h().__nmPvZoom; },
+  set(on) { this.h().__nmPvZoom = !!on; } };
 (function () {
   const td = $('topDock'), b = $('cpZoom'); if (!td || !b) return;
   const paint = on => { td.classList.toggle('dockzoom', on); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
     b.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); b.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
+  window.nmPvZoomSync = () => paint(PVZOOM.get());   // 탭 진입 재도색 = 부모(#toolTabs 클릭) 호출 · thumb 정본 동문(그쪽은 모자이크 자동확대 가드 동반)
   paint(PVZOOM.get());
   b.addEventListener('click', () => { const on = !td.classList.contains('dockzoom'); paint(on); PVZOOM.set(on); });
 })();

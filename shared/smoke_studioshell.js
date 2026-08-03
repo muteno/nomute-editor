@@ -66,7 +66,7 @@ const DOCK_EXEMPT = new Set();   // 도크 유리에서 면책할 탭(없음 —
 //   이 세 탭은 대신 **박스 축(도크↔첫 블록 = 16)** 으로 정본을 맞춰 뒀다(260803 머지분) · 값 = 그 상태의 실측 잉크.
 //   ⚠ 해소(= 그 부품이 도크 안으로 들어가거나 순서가 바뀌어 소머리가 첫 자리가 되면) 되는 즉시 이 행을 **비운다** — 남겨두면 같은 회귀가 조용히 재통과한다(§3-4-1 INK_BASE 동문).
 const GAP_BASE = {
-  '영상_콘티': 28,     // 요약 스트립(.optstrip · 테두리 1 + 패딩 8)이 도크 밖 첫 블록 = 260803 2차 골격("도크 안 = 미리보기+생성뿐")
+  '영상_콘티': 28,     // 요약 스트립(.optstrip · 테두리 1 + 패딩 8)이 도크 밖 첫 블록 = 260803 2차 골격("도크 안 = 미리보기+생성뿐")   // 값 유지(260803 4차) = 한때 29로 읽힌 건 **활자 스왑 전 측정**이었다(폰트 로드 대기 편입 후 28 고정 · 박스 축 16도 실측 정합)
   '영상_프롬프팅': 28, // 모델·표현 명세 스트립(#exprStrip · 운영자 260803 3차 "클링 3.0 옴니, 표현 1,2,3을 생성 아래 내용칸에")이 도크 밖 첫 블록 = 콘티 스트립 동문 그릇(테두리 1 + 패딩 8 · 박스 축 16 정합)
   '영상_큐영상': 23.4, // 소스 헤더(.src .phead 30px 세로중앙)가 첫 블록 — 메뉴바(nav.vnav)는 도크 **위**로 이주(운영자 260803 3차 "미리보기 상단에 그 한줄만 위에 배치 · 메뉴처럼") · .src 박스 16 정합 + phead 중앙정렬 오프셋 = 잉크 23.4(폰 430 실측 260803)
 };
@@ -221,8 +221,16 @@ async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고
     const d = fr.contentDocument;
     return !!(d && d.readyState === 'complete' && d.querySelector('.wrap, .ws'));
   }, { timeout: 12000 }).catch(() => {});
+  await fontsReady(pg);
   await pg.waitForTimeout(500);   // 레이아웃 안정(레일 폭·잉크 확정)
 }
+// 활자 로드 완료 대기 — 잉크 축(C9)은 **폰트 메트릭**을 그대로 읽는다: Pretendard가 늦게 스왑되면 같은 화면이 런마다 1px 갈린다
+//   (260803 실측 = 영상 콘티·프롬프팅 잉크가 28↔29로 진동 → 면책값을 뭘로 박아도 가짜 빨강. 값을 고칠 문제가 아니라 **측정 시점**의 문제였다)
+const fontsReady = pg => pg.waitForFunction(() => {
+  const fr = document.querySelector('#tooldlg .toolfr.active');
+  const d = (fr && fr.contentDocument) ? fr.contentDocument : document;
+  return (!document.fonts || document.fonts.status === 'loaded') && (!d.fonts || d.fonts.status === 'loaded');
+}, { timeout: 8000 }).catch(() => {});
 
 // C9 sweep = **폰 티어(430) 전용 페이지** 1회(위 코어 페이지는 1280 = 2단 그리드라 결과 레일(.out)이 옆 칼럼 맨 위로 올라가
 //   "도크 아래 첫 글자"가 본문이 아니라 옆 칼럼 글자가 된다 = 위양성). 뷰포트만 낮추는 방식은 셸 재오픈 시 탭바 클릭이
@@ -234,6 +242,7 @@ const settleFast = async pg => {   // 정적 측정용 경량 settle — 프레�
     const d = fr.contentDocument;
     return !!(d && d.readyState === 'complete' && d.querySelector('.wrap, .ws'));
   }, { timeout: 12000 }).catch(() => {});
+  await fontsReady(pg);   // 활자 스왑 전 측정 = C9 잉크 1px 진동의 원천(위 주석)
   await pg.waitForTimeout(250);
 };
 async function gapSweep(browser, port) {
@@ -258,8 +267,62 @@ async function gapSweep(browser, port) {
   return gap;
 }
 
-async function runOnce(pg, gap) {
-  const out = { core: [], m: {}, gap: gap || {} };
+// ── C11 재료 = 「미리보기 창 5탭 클론」 스윕(운영자 260803 "각 5개 메뉴를 클릭하면 미리보기 시작점이 조금씩 어긋나 · 아예 동일하게 복제본 마냥") ──
+//   왜 C7로 안 걸렸나: C7은 **창 크기(w/h)** 만 1280 한 티어에서 잰다 → ⓐ 창의 **시작점(x·y)** ⓑ 2단 경계 티어 ⓒ 탭을 오가며 남는 **상태**가 전부 사각이었다.
+//   실측 사고 2종(260803):
+//     ⓐ 편집 전용 상태 `.ocfit`(원본+사진 = 콘텐츠 맞춤)이 **탭을 떠나도 남아** 카드 생성·특수 창이 207→**2px**로 붕괴(도크 292→87 = 본문 205px 점프).
+//        미리보기 쉘(.cpprev-box)은 thumb 3탭이 공유하는 **한 노드**라 한 탭의 상태가 곧 남의 화면이다.
+//     ⓑ 번역 탭에 2단 `--pvw` 미러가 빠져 940×1000에서 폭 −34.4·좌변 +17.3px(1280·430 두 티어만 재던 구 게이트를 그대로 통과).
+//   판정 = 티어별로 5탭의 **프레임 절대 [x,y,w,h]** 가 카드 생성과 동일(±0.6 = C7·C9 동값 허용) · 오염 패스는 편집 전용 클래스를 손으로 얹은 뒤 순회해도 같아야 한다.
+const CLONE_TIERS = [[430, 900], [940, 1000]];   // 폰 430(ⓐ가 사는 티어) + 2단 경계 940×1000(ⓑ가 사는 티어 · 1280은 코어 C7이 이미 커버) — 티어 2개 = 커버리지/소요 최적점
+const BOXPROBE = () => {   // 미리보기 창 = 프레임 절대 좌표(iframe 오프셋 합산 = 탭이 iframe/부모 판으로 갈려도 같은 자에 놓고 잰다)
+  const fr = document.querySelector('#tooldlg .toolfr.active');
+  const inFr = !!(fr && fr.contentDocument);
+  const d = inFr ? fr.contentDocument : document;
+  const gHost = inFr ? null : document.querySelector('#geniHost:not([hidden])');
+  const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(); return el.offsetParent !== null && r.height > 0 && r.width > 0; };
+  const off = inFr ? (r => ({ x: r.x, y: r.y }))(fr.getBoundingClientRect()) : { x: 0, y: 0 };
+  const box = [...d.querySelectorAll('.cpprev-box')].filter(vis)[0]
+    || (gHost ? [...gHost.querySelectorAll('.geni-prev .cpprev-box')].filter(vis)[0] : null);
+  if (!box) return null;
+  const r = box.getBoundingClientRect();
+  return [+(r.x + off.x).toFixed(1), +(r.y + off.y).toFixed(1), +r.width.toFixed(1), +r.height.toFixed(1)];
+};
+const POLLUTE = () => {   // 편집 전용 상태를 **손으로** 얹는다 = 「원본+사진」의 결정론 대역(파일 첨부 없이 같은 클래스 = 스모크에 바이너리·업로드 경로 0)
+  const fr = document.querySelector('#tooldlg .toolfr.active');
+  const d = fr && fr.contentDocument; if (!d) return false;
+  const b = d.querySelector('#cpPrev .cpprev-box'); if (!b) return false;
+  b.classList.add('ocfit'); return true;
+};
+async function cloneSweep(browser, port) {
+  const IMG = SHELLS[0];   // 이미지 셸 5탭(영상 셸은 탭마다 산출 비율이 다른 자기 계약 = C7 주석과 동일 스코프)
+  const out = { tiers: {}, polluted: null, injected: false };
+  for (const [W, H] of CLONE_TIERS) {
+    const pg = await browser.newPage({ viewport: { width: W, height: H } });
+    try {
+      await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
+      await pg.waitForTimeout(900);
+      await pg.evaluate(sh => { openTool(sh.src, sh.title, sh.tabs.map(t => ({ src: t.src, app: t.app, label: t.ko })), sh.key); },
+        { src: IMG.src, title: IMG.title, key: IMG.key, tabs: IMG.tabs });
+      await settle(pg);
+      const tier = {};
+      for (const t of IMG.tabs) { await pg.click(IMG.pick(t)); await settleFast(pg); tier[t.ko] = await pg.evaluate(BOXPROBE); }
+      out.tiers[W + 'x' + H] = tier;
+      if (W === 430) {   // 상태 오염 패스 = 폰 티어 1회(오염 축은 티어 무관 = 공유 노드 문제)
+        await pg.click(IMG.pick(IMG.tabs[1]));   // 편집 탭
+        await settleFast(pg);
+        out.injected = await pg.evaluate(POLLUTE);
+        const pol = {};
+        for (const t of IMG.tabs) { await pg.click(IMG.pick(t)); await settleFast(pg); pol[t.ko] = await pg.evaluate(BOXPROBE); }
+        out.polluted = pol;
+      }
+    } finally { await pg.close().catch(() => {}); }
+  }
+  return out;
+}
+
+async function runOnce(pg, gap, clone) {
+  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} } };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -364,6 +427,25 @@ async function runOnce(pg, gap) {
     dBad.length ? '이탈 ' + dBad.join(' · ')
       : (D.length ? D.map(([k, v]) => k.split('_')[1] + ':(' + v.drift.dx + ',' + v.drift.dy + ')').join(' ') : '측정 0(전 탭 무스크롤 = 프로브 점검)'));
 
+  // ── C11 미리보기 창 5탭 클론 = 시작점(x·y)까지 한 값 · 티어 2종 + 상태 오염 순회(운영자 260803 "복제본 마냥") ──
+  const C = out.clone || { tiers: {} };
+  const cBad = [];
+  const cmp = (tag, m) => {
+    if (!m) return;
+    const ref = m['카드생성']; if (!ref) { cBad.push(tag + ':기준측정불가'); return; }
+    for (const [k, v] of Object.entries(m)) {
+      if (!v) { cBad.push(tag + '/' + k + '=창없음'); continue; }
+      if (v.some((x, i) => Math.abs(x - ref[i]) > 0.6)) cBad.push(tag + '/' + k + '=' + JSON.stringify(v) + '≠' + JSON.stringify(ref));
+    }
+  };
+  for (const [tier, m] of Object.entries(C.tiers)) cmp(tier, m);
+  cmp('오염순회', C.polluted);
+  const cN = Object.values(C.tiers).reduce((a, m) => a + Object.keys(m).length, 0) + (C.polluted ? Object.keys(C.polluted).length : 0);
+  core('C11 미리보기 창 5탭 클론 = 프레임 절대 [x,y,w,h] 한 값(티어 ' + Object.keys(C.tiers).join('·') + ' + 편집상태 오염 순회 · 허용 0.6px)',
+    Object.keys(C.tiers).length === CLONE_TIERS.length && !!C.polluted && C.injected && cBad.length === 0,
+    cBad.length ? '이탈 ' + cBad.slice(0, 4).join(' · ')
+      : (!C.injected ? '오염 주입 실패(프로브 점검)' : cN + '측정 전부 동일(' + Object.entries(C.tiers).map(([t, m]) => t + ':' + JSON.stringify(m['카드생성'])).join(' ') + ')'));
+
   return out;
 }
 
@@ -377,6 +459,7 @@ async function runOnce(pg, gap) {
     //   2회 결정론 가드의 목적은 동적 거동(프레임 로드 경합) 검출이다. 매 런 반복하면 이 파일 소요가 72s→119s로 뛰어
     //   smoke_all 병렬 풀에서 가짜 빨강(재시도 소모)을 늘린다 — 측정 1회 + 두 런 공유가 비용/신뢰 최적점(실측 260803).
     const gap = await gapSweep(browser, st.port);
+    const clone = await cloneSweep(browser, st.port);   // C11 = 미리보기 창 클론 스윕(gap과 같은 이유로 런 1회 공유 = 순수 레이아웃 측정)
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
       const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -385,7 +468,7 @@ async function runOnce(pg, gap) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg, gap);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · 코어 페이지(1280)와 티어 분리
+      const o = await runOnce(pg, gap, clone);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · 코어 페이지(1280)와 티어 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);

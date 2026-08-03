@@ -1974,9 +1974,6 @@ function updateGoSpec() {
       const up = $('#esUps'); if (up) { setv(up, upsLabel(upsV)); up.classList.add('on'); }   // 해상도 = N택1 선택값 상시 점등
       const fl = $('#esFill'); if (fl) { setv(fl, fillLabel(fillV)); fl.classList.add('on'); }   // 채움 = N택1 선택값 상시 점등(260803 · 카드 은닉은 rszOrigSync 전담)
       if (typeof edNavSync === 'function') edNavSync();   // ‹› 끝단 disabled 동기(모자이크 원본 강제 등 외부 경로 포함 · 운영자 260731 9차)
-      { const bx = document.querySelector('#cpPrev .cpprev-box');   // 원본+사진 = 프레임 콘텐츠 맞춤(운영자 260731 21차) — 상태 바뀔 때만 재렌더 1회(스테이지 크기 재계산)
-        if (bx) { const want = rszAspect() === 'orig' && !!(CIMG && CIMG.b64);
-          if (bx.classList.contains('ocfit') !== want) { bx.classList.toggle('ocfit', want); if (typeof rszPreview === 'function') setTimeout(rszPreview, 0); } } }
       const lk = $('#esLock'), lk0 = $('#rszLock'); if (lk && lk0) { const on = lk0.classList.contains('on'); lk.classList.toggle('on', on); lk.setAttribute('aria-pressed', on ? 'true' : 'false'); }   // 보존 = #rszLock 상태 1벌 미러
       // 정밀·떼기 = 모자이크 축 종속 — 노출 = 카드 우측 체브론 접이(260731 21차), 모자이크 OFF면 .gs-locked(정본 잠금 = dim + 탭 무효) · 「출력」 어휘 2분리(260731 22차) = 가리기(기본·칩 없음 = 모자이크 자체)/떼기(명시 토글)
       const pr = $('#esPre'), pr0 = $('#iePrecise');
@@ -1991,6 +1988,14 @@ function updateGoSpec() {
       ['#upsRow', '#ieTogRow', '#rszBox', '#fillRow'].forEach(sel => { const el = $(sel); if (el) el.classList.add('none'); });   // 아래 옵션 카드 전원 숨김 = 옵션 컬럼 전담(운영자 260731 2차 "비율도 옵션 컬럼") · DOM·상태·핸들러 무접촉(표시만) · ⚠ 직접(N:M) 비율 진입로는 이 배치에서 사라진다(복원 = 이 행에서 '#rszBox' 제거)
     }
   }
+  // 콘텐츠 맞춤(.ocfit) = **편집 탭 전용 상태**(운영자 260731 21차 "원본일 때 창을 가득") — 판정을 showE로 감싸 탭을 떠나면 그 자리에서 벗긴다.
+  //   ⚠ 신설 아님 = 위 `if (showE)` 안에 있던 정본 3줄을 블록 **밖**으로 옮기고 술어에 showE만 더한 것(값·동작 변경 0).
+  //   왜: 미리보기 쉘(.cpprev-box)은 카드 생성·편집·특수가 **공유하는 한 노드**라, 편집에서 켜진 ocfit(aspect-ratio:auto)이
+  //   탭을 떠나도 남아 다른 탭의 창이 내용 높이(=0)로 무너졌다 — 실측 260803(폰 430): 카드 생성·특수 창 207→**2px** · 도크 292→87
+  //   = 본문 전체가 205px 위로 점프(운영자 "각 메뉴를 클릭하면 미리보기 시작점이 어긋난다"의 정체) · 게이트 = smoke_studioshell C11.
+  { const bx = document.querySelector('#cpPrev .cpprev-box');   // 원본+사진 = 프레임 콘텐츠 맞춤(운영자 260731 21차) — 상태 바뀔 때만 재렌더 1회(스테이지 크기 재계산)
+    if (bx) { const want = showE && rszAspect() === 'orig' && !!(CIMG && CIMG.b64);
+      if (bx.classList.contains('ocfit') !== want) { bx.classList.toggle('ocfit', want); if (typeof rszPreview === 'function') setTimeout(rszPreview, 0); } } }
   // 포스트(/1) 명세 — 축약만(OPA 세그·이미지·텍스트는 유지). postSpec은 linesBox 안이라 show는 linesBox 종속.
   if (APP === '1') syncAbbrSpec('#psAbbr');
 }
@@ -2025,9 +2030,10 @@ function edPick(c, j) { const t = [...document.querySelectorAll(c.wrap + ' .ropt
 function edStep(id, dir) { const c = ED_ORD[id]; if (!c) return; const i = edCur(c); const j = Math.min(Math.max(i + dir, 0), c.ord.length - 1); if (j !== i) edPick(c, j); }   // ‹› = 비순환(왼쪽 끝 = 기본값)
 function edCycleTap(id) { const c = ED_ORD[id]; if (!c) return; edPick(c, (edCur(c) + 1) % c.ord.length); }   // 값 탭 = 같은 순서 순환(모바일 종전 동작 유지)
 // 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — 표면 공용 키 1개 · localStorage 차단 환경(사파리 프라이빗)에서도 안 죽게 try 감싼다(무저장 = 종전 동작 = 상시 축소).
-const PVZOOM = { v: false,   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
-  get() { return this.v; },
-  set(on) { this.v = !!on; } };
+const PVZOOM = {   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
+  h() { try { return (window.top && window.top.document) ? window.top : window; } catch (_) { return window; } },   // 슬롯 = 동일 origin **최상위 창 1벌**(운영자 260802 3차 "탭 이동에 크기가 튀지 않는다" = 표면 공용 계약) — 260803 영속 해제가 저장소를 문서별 인메모리로 바꾸면서 이 '공용' 축이 조용히 끊겼다(실측 260803: 카드 생성서 확대 후 번역 탭 = 축소 상태 = 5탭 갈라짐) · 교차 origin·차단 = 자기 창 폴백(종전 문서별 동작 = fail-soft)
+  get() { return !!this.h().__nmPvZoom; },
+  set(on) { this.h().__nmPvZoom = !!on; } };
 // ── 미리보기 확대(돋보기) — 구 「편집 도크 스크롤 축소(.dockmin)」 폐지분의 자리(운영자 260802 2차 "미리보기가 확대되는거 없애고 이정도를 항상 유지 · 맨 위에 돋보기 버튼") ──
 //   구 배선 = 스크롤 y 문턱(on 120 / off 8)으로 창을 100%↔52% 자동 전환 → 운영자 화면이 저 혼자 커졌다 작아졌다 = 이번 요청의 대상.
 //   신 배선 = 창은 상시 52%(CSS 기본값) · 확대는 **버튼 하나**로만(.dockzoom) = 자동 전환 0 · 스크롤 리스너·히스테리시스·재판정 잠금 전부 회수.
@@ -2046,6 +2052,7 @@ function pvZoomAuto(force) {   // 자동 확대(모자이크 지정) ↔ 운영�
   const paint = on => { td.classList.toggle('dockzoom', on); btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false');
     btn.setAttribute('aria-label', on ? '미리보기 원상복귀' : '미리보기 확대'); btn.title = on ? '탭=원상복귀' : '탭=미리보기 확대 · 다시 탭=원상복귀'; };
   pvZoomPaint = paint;   // 자동 전환(모자이크)이 같은 페인터를 쓴다 = 확대 축 단일 진입점
+  window.nmPvZoomSync = () => { if (!pvZoomForced) paint(PVZOOM.get()); };   // 탭 진입 재도색 = 부모(#toolTabs 클릭)가 호출 = 5탭 한 크기(표면 공용 슬롯 복구의 짝) · 모자이크 자동 확대 중(pvZoomForced)이면 무동작 = 자동분이 수동값에 안 밀린다
   paint(PVZOOM.get());   // 부팅 = 항상 비확대(PVZOOM 인메모리 기본 false · 운영자 260803 — 구 「마지막 상태 복원」 개정)
   btn.addEventListener('click', () => {
     const on = !td.classList.contains('dockzoom');
