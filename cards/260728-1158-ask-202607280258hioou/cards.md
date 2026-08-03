@@ -1,31 +1,32 @@
-# 🎰 별풍선으로 번 돈, 별풍선 준 사람에게 빌렸다
+# 🎰 일주일에 10억씩 잃었다…철구, 오늘 아침 자수한다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 도박·불법 사채·형사 처벌이 축인 사건이라 사실성·고발 톤이 맞다
-- 분위기: 새벽 방송 화면빛만 남은 저조도에서 시작해, 숫자가 쌓일수록 어두워지고 마지막에 아침빛으로 한 번 풀리는 정조. 화려함이 아니라 잔고가 마르는 무게
-- 연출 방향: 독자를 멈추게 하는 건 '별풍선 쏘던 손'과 '주 10% 이자를 받는 손'이 같은 손이라는 낙차다. 후원→사채→동료 빚으로 돈의 방향이 뒤집히는 순환을 사물(마이크·모니터·봉투·정산표)과 사람의 거리로 잡는다. 43억이라는 금액보다, 그 돈의 상대가 오늘도 방송을 켜는 사람들이라는 사실이 최종 강조점
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(단서형: 그 돈을 빌린 상대) + 카드3 끝(예고형: 무너진 지점) · 감정 피크=카드5 · 착지 = 갚겠다는 43억의 상대가 오늘도 같은 플랫폼에서 방송을 켜는 사람들이다
-- 연속성 앵커: Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed / Recurring place — a small dim personal broadcasting room with a desk mic, dual monitors and sound-absorbing foam panels on the wall
+- 화풍: B 극화 — 도박·불법 사채·형사 자수가 뼈대인 범죄·구조 고발 사안이라 극화의 하드 잉크와 명암이 사건 무게를 견딘다
+- 분위기: 새벽 방송 화면 불빛만 남은 저조도 고백. 소란이 아니라 소리가 잦아든 뒤의 정산 — 숫자가 하나씩 얹히며 무거워지는 톤
+- 연출 방향: 독자가 멈추는 자리는 '내가 쏜 후원이 저 판돈이었나'다. 그래서 카메라는 판돈이 아니라 **돈이 돌아온 방향**을 잡는다 — 후원받던 화면(마이크·모니터·채팅)과 빌려준 사람들의 손이 같은 프레임 문법 안에 놓이게. thumb_dispatch에서 조명 톤(모니터 언더글로의 차가운 청색·불안)과 정조(가림막이 걷히는 폭로)만 키노트로 상속하고, 앵글·샷은 카드마다 분산. 악센트는 방송 화면빛이 유일한 색으로 남게 써서 '이 판을 밝힌 건 화면이었다'가 시각으로 읽히게 한다
+- 독자 동선: **발단** 카드2(필리핀 원정도박·주 10억)→**전개** 카드3~4(후원자 주 10% 사채 돌려막기 → 부가세 60억에 무너져 동료 43억)→**피크** 카드5(정산금 밀림·계약금 불발, 최저 명도·짧은 줄)→**해소** 카드6(아침 8시 자수 예고)→**시사점** 카드7 · 도입 카드1은 제시(새벽 방송에서 스스로 꺼낸 숫자) · 훅=카드1 끝(단서형 — 숫자만 던지고 정체 유보)+카드4 끝(예고형 — 다음 손이 누구였는지) · 착지 = 무대는 하나였는데 청구서는 여러 사람 앞으로 갔다
+- 연속성 앵커: Recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt, seated at a broadcasting desk. 반복 장소 = a cramped dark home studio room with a boom microphone and one glowing monitor.
 
 ### [카드 1]
 **텍스트**
 ```text
-새벽에 켠 방송에서
-그가 먼저 숫자를 꺼냈다
-*일주일에 10억원씩 걸었다*
-필리핀에서, 재작년부터
+새벽 세 시, 방송이 켜졌다
+그가 먼저 꺼낸 건 변명이 아니라
+*숫자 하나였다*
+일주일에, 10억
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his bloodshot eyes fixed on the lens, refusing to blink. Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed, sits alone facing the desk microphone in a small dim personal broadcasting room with dual monitors and sound-absorbing foam panels on the wall. He leans slightly toward the mic, hands flat on the desk, while the chat column on the right monitor scrolls in a blur beside him. The screen glow is the only light source in the room, and there is nose room on the right with his gaze drifting toward the right edge.
-Camera: MCU from Eye-level, shot on 50mm standard lens
+Scene: Emotional focal point: the hard swallow in his throat just before he speaks, jaw clenched tight. Recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt, seated at a broadcasting desk. He leans toward a boom microphone in a cramped dark home studio room, hands flat on the desk, eyes fixed slightly right of the lens where one glowing monitor stands. The monitor is the only light source in the room and it faces him, not the viewer, so its screen stays turned away. Nose room on the right, gaze directed toward the right edge.
+Camera: MS from Eye-level, shot on 50mm standard lens
 Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the scrolling chat glow), film-noir low-key lighting, deep shadows
-Text handling: avoid incidental lettering; the monitor text is reduced to abstract blurred streaks of light, no readable characters. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (the cold screen glow carried as neon green #0FFD02 on the rim of his jaw and the microphone grille), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean man, Korean interior details.
+Text handling: avoid incidental lettering by composition; keep the monitor turned away and any surface text out of frame. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the broadcasting room wall with foam panels) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk and the dark room wall behind it) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +36,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-철구 SOOP 생방송
+SOOP 인터넷방송 스튜디오 마이크
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-돈이 마르자 손을 벌린 곳은
-*그를 후원하던 '큰손'이었다*
-이자는 주 10%, 연 500%가 넘는다
-법정 최고금리의 스물다섯 배다
+재작년부터 필리핀을 오갔다
+카지노 테이블에 앉아
+일주일에 10억원 넘게 걸었다고
+*그는 스스로 말했다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two hands meeting over a thick envelope, one palm turned down on top of the other. In the shadows under a low table, an unseen lender's hand pushes a bulging envelope forward while a second hand reaches to receive it, fingers tense. Only the envelope and the two hands are lit; both faces stay outside the light, cropped away above the wrists. The room is a dim back office with a single hanging bulb, and the receiving hand pulls toward the right edge of the frame.
-Camera: ECU from High angle, shot on 100mm macro lens
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past the table. Recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt, now seated alone at a wide casino gaming table. Stacks of chips sit pushed forward past the betting line while his hands rest open and empty on the felt. Two dealers and other players stand blurred at the far edge of the table, turned away from him. The room stretches out around the table, vast and repeating.
+Camera: WS from Bird's eye, shot on 24mm wide lens
 Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 rim on the envelope edge), film-noir low-key lighting, deep shadows
-Text handling: no writing on the envelope; the surface is blank and creased. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the felt table surface alone), film-noir low-key lighting, deep shadows
+Text handling: avoid incidental lettering by composition; chips and signage rendered without any numbers or characters. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the gaming table felt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +67,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-불법 사채 고금리 대출
+필리핀 카지노 바카라 테이블
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-다음 주에 이자만 갚고
-원금은 또 미루며 버텼다
-그 돌려막기가 무너진 건
-*세금 고지서 한 장 때문이었다*
+돈이 마르자 손을 벌린 상대는
+방송을 보던 '큰손' 후원자였다
+이자는 주 10%, 연 500%가 넘는다
+*법정 최고금리의 스물다섯 배다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his jaw clenched tight, muscle flexing at the jawline as he stares down at a single sheet of paper. Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed, stands beside the desk in the small dim broadcasting room, one hand gripping the edge of the printed notice, the other hanging loose at his side. The paper is held slightly folded and seen from the side so its surface catches the light at an angle, and his gaze runs down and toward the right edge of the frame.
-Camera: MS from Low angle, shot on 35mm lens
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the paper's lit edge), muted daylight contrast
-Text handling: the notice is turned at an angle so no wording is legible; only the paper texture and fold read. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: two hands meeting over a thick envelope, one reaching to receive it while the other will not let go. One or both hands extend the envelope across a low table and the receiving hand grips its far edge, fingers taut. Both faces stay outside the frame in darkness above; only forearms, sleeves and the envelope are lit. A wristwatch on the lender's arm catches the light. The table surface runs unbroken across the whole frame.
+Camera: ECU from High angle, shot on 100mm macro lens
+Lighting/mood: single pool of hard light isolating the exchange in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 glinting on the watch face and the envelope edge), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean hands, Korean interior details.
+Text handling: the envelope is blank and unmarked; avoid incidental lettering entirely. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the foam-panelled room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +99,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-부가가치세 고지서 세무서
+불법 사채 고금리 차용증
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-부가세 60억원이 고지됐다
-계좌가 묶일까 봐 이번엔
-*동료 방송인들에게 손을 벌렸다*
-케이 23억원, 짭구 20억원
+버티던 구조는 세금에서 무너졌다
+부가가치세 60억원이 고지되자
+계좌가 묶일 것을 걱정했고
+*그는 또 다른 곳에 손을 내밀었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the widening gap between him and the two colleagues who no longer look his way. Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed, stands at the left of a shared studio lounge with his shoulders pulled in, one hand half-raised as if asking. Two other Korean broadcasters in their thirties sit further back on a couch, one turning his face aside, the other looking down at the floor, the empty floor between them left deliberately wide. Their eyelines cross without meeting, and the composition opens toward the right edge.
-Camera: WS from Bird's eye, shot on 24mm wide lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a studio light strip along the wall), muted daylight contrast
-Text handling: no signage or lettering anywhere in the room; wall surfaces are plain. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: shoulders slumped, head hung low, posture collapsed in defeat. Recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt, stands alone in the middle of a cramped dark home studio room holding a single unfolded sheet of official paper at waist height. He is not reading it; his eyes are cast downward past it to the floor. The boom microphone hangs unused beside him and one glowing monitor sits dark behind his shoulder. His body is pushed toward the corner where two walls meet, the room closing around him. Nose room on the right.
+Camera: S04 full shot from Low angle, shot on 35mm lens
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the paper edge he holds), muted daylight contrast
+Korean setting by default: Korean man, Korean interior details.
+Text handling: the sheet is turned so its face is not legible to the viewer; render no characters on it. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the studio lounge floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the studio room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,27 +131,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-BJ 케이 짭구 방송
+부가가치세 고지서 국세청 납부
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-*지인 빚 43억 중 갚은 건 5~6억*
-크루원 정산금도 밀렸고
-20억 계약금은 24일 끝내 안 들어왔다
+케이에게 23억, 짭구에게 20억
+같은 화면에서 웃던 동료들이었다
+지인 빚만 43억인데 갚은 건 5~6억
+*크루원 정산금도 밀려 있었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his vacant thousand-yard stare, unfocused eyes looking past the dead monitor in front of him. Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed, sits collapsed in the chair of the small dim broadcasting room, shoulders slumped, one hand still resting on the desk mic he has switched off. The chair beside him is empty and pushed back, and the surrounding darkness closes in so tightly that only his face and the desk edge remain visible.
-Camera: CU from Eye-level, shot on 85mm portrait lens
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (a lone neon green #0FFD02 standby dot on the dark monitor), film-noir low-key lighting, deep shadows
-Text handling: the monitor is switched off and shows no characters at all. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the widening distance between two men who are still sitting side by side. Two Korean broadcasters in their thirties sit at a shared streaming desk in casual hoodies, one of them the recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt. The other has turned his torso and head away, arms crossed, gaze cut off. Behind them a few crew members stand at the back wall, waiting and unpaid, kept lower and softer so the two at the desk stay the focus. The recurring subject looks straight down at the desk between them.
+Camera: R03 two-shot from Dutch angle, shot on 70mm short telephoto
+Lighting/mood: cold blue screen under-glow lighting the faces from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 spilling from the screens onto the empty desk between the two men), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean men, Korean interior details.
+Text handling: all screens face away or sit out of frame; avoid incidental lettering by composition. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the broadcasting desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the shared streaming desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +163,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-빈 방송 스튜디오 책상
+인터넷방송 합동방송 크루 스튜디오
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-그는 아침 8시 자수를 예고했다
-징역을 살더라도 갚겠다고 했다
-그런데 그 43억원의 상대는
-*오늘도 같은 화면에서 방송을 켠다*
+마지막 퇴로였던 20억 계약금은
+24일이 지나도 들어오지 않았다
+*"징역을 살더라도 갚겠다"*
+아침 8시, 경찰서로 가겠다고 했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his eyes cast downward at the ground, shoulders collapsing inward as the morning light finally reaches him. Recurring subject — a Korean man in his mid-30s with short cropped black hair, slightly heavy build, wearing a plain dark hoodie, unshaven and hollow-eyed, walks alone up the front steps of a police station in the early morning, hands empty at his sides, his back to the street behind him. Behind and far below, the ordinary morning city street continues without him, small figures passing on their way. He faces the camera at the top of the steps, centered and still.
-Camera: FS from Eye-level, shot on 35mm lens
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a small illuminated sign glow far behind him), muted daylight contrast
-Text handling: no signage lettering, no building name plates; all surfaces are plain. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a tightly controlled face, jaw set, lips pressed, fighting back a visible emotion. Recurring subject — a Korean man in his mid-30s, buzz-cut short hair, thick neck, wearing a plain black hooded sweatshirt, walks alone up the front steps of a Korean police station in the early morning, seen from behind and slightly to the side so only his jawline is visible. His hands hang empty at his sides and his eyes are fixed on the entrance ahead. The wide stone facade of the building fills the frame behind him.
+Camera: S03 wide shot from Worm's-eye view, shot on 20mm wide lens
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 in the single lit lamp above the station entrance), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean man, Korean street and building details, Korean police station architecture without any emblem or logo.
+Text handling: no signage rendered on the building; keep all surfaces blank. no garbled or fake script, no meaningless letters, no random characters, no dense text
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the stone entrance steps) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the station facade and its steps) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,5 +195,37 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-경찰서 자진출석 새벽
+경찰서 출석 새벽 계단
+```
+
+### [카드 7]
+**텍스트**
+```text
+그를 정상에 올린 건 시청자 후원이었다
+그 돈은 주 10% 사채가 되어 돌아왔고
+다음엔 동료들의 43억이 그 자리를 메웠다
+*무대는 하나, 청구서는 여럿 앞으로 갔다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: an empty broadcasting chair still turned toward the camera, waiting. A cramped dark home studio room stands without anyone in it — a boom microphone lowered toward a vacant seat, a desk, and one monitor whose glow has faded to a faint residual light. Around the walls, several coats and headsets belonging to other people hang untouched, evidence of the crew who worked here. Nothing moves; the room is composed as a single quiet space.
+Camera: S06 medium shot from Eye-level, front-on shot, shot on 40mm lens
+Lighting/mood: cold blue pre-dawn tone seeping in, faint residual glow, desolate stillness
+Accent: monochrome desaturated base with a single color accent (a last thread of neon green #0FFD02 fading on the dark monitor), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean interior details.
+Text handling: all screens dark and blank; avoid incidental lettering entirely. no garbled or fake script, no meaningless letters, no random characters, no dense text
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the studio room wall and desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+빈 방송 스튜디오 의자 마이크
 ```
