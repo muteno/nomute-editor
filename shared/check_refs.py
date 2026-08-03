@@ -650,12 +650,19 @@ def check_thumb_chain():
     구 문법(parentNode.style.display='none')이 되살아나면 12칸 그리드에 구멍이 남으므로 그 리터럴 자체를 금지한다."""
     sp = os.path.join(ROOT, 'apps', 'insta', 'insta_signals.py')
     vp = os.path.join(ROOT, 'viewer', 'index.html')
+    fp = os.path.join(ROOT, '.github', 'scripts', 'insta_fetch.py')
     try:
         s = open(sp, encoding='utf-8').read()
         v = open(vp, encoding='utf-8').read()
+        f = open(fp, encoding='utf-8').read()
     except Exception as e:
         print('❌ check_thumb_chain 읽기 실패(fail-closed):', e); return 1
     miss = []
+    for tok, why in (('def _public_cover(', '②-a 인스타 공개 커버 경로 프로브(수집기 · 260803)'),
+                     ("mm['thumbnail_url'] = pub", '②-a 프로브 결과 편입'),
+                     ('null.jpg', '②-a 플레이스홀더 판별(오탐 커버 차단)')):
+        if tok not in f:
+            miss.append('insta_fetch.py: %s (%s)' % (tok, why))
     for tok, why in (('_fb_cover_for(m)', '② FB 크로스포스트 폴백 호출'),
                      ('thumb_cache.json', '③ 마지막 성공 커버 원장 경로'),
                      ('_url_alive(', '③ 만료 인지(깨진 이미지 송출 차단)'),
@@ -664,6 +671,10 @@ def check_thumb_chain():
             miss.append('insta_signals.py: %s (%s)' % (tok, why))
     if 'function chThFail(' not in v:
         miss.append('index.html: chThFail (커버 실패 = 캡션 타일 강등)')
+    if "'/media/?size=l'" not in v:
+        miss.append('index.html: chThFail 공개 커버 경로 1회 재시도(만료 URL 화면 회수 · 260803)')
+    if 'len(near) == 1' not in s:
+        miss.append('insta_signals.py: FB 시각 ±3분 유일후보 매칭(캡션 재작성 크로스포스트 회수 · 260803)')
     # 스코프 = .ch-th 타일 템플릿 줄만(다른 컴포넌트의 display:none 은닉은 정당 — 예: X 카드 대표 이미지 .xcard-cv는
     # 카드 **안** 부속이라 숨겨도 그리드에 구멍이 안 난다. 여기서 금지하는 건 그리드 셀 자신이 사라지는 축 하나).
     tile = [l for l in v.splitlines() if 'class="ch-th"' in l]
@@ -679,7 +690,7 @@ def check_thumb_chain():
         for m in miss:
             print('   · ' + m)
         return 1
-    print('✅ 커버 회수 체인 게이트 — 서버 3층(API·FB 크로스포스트·성공 원장+만료 인지) + 뷰어 강등 1층 생존(빈 칸 재발 차단).')
+    print('✅ 커버 회수 체인 게이트 — 수집 2층(Graph 재조회·공개 커버 경로) + 산출 3층(API·FB 크로스포스트[캡션∨시각유일]·성공 원장+만료 인지) + 뷰어 2층(공개경로 재시도·캡션 강등) 생존.')
     return 0
 
 

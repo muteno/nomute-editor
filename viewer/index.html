@@ -13257,6 +13257,14 @@ async function loadChan() {
 // 부품 = .ch-th.txt 정본 100% 재사용(신규 컴포넌트·값 0) · 캡션은 data-cap(esc 통과분)을 textContent로만 주입 = XSS 0.
 function chThFail(img) {
   const a = img && img.parentNode; if (!a) return;
+  // 1회 재시도 = 인스타 **공개** 커버 경로(운영자 260803 "빈칸을 최대한 없애는 방향") — 서버가 구운 CDN URL은
+  // oe= 만료·CDN 교체로 죽지만 permalink는 안 죽는다 → 화면에서 그 자리에 살아있는 커버를 다시 집어온다.
+  // 커버 자산이 없으면 IG가 null.jpg로 302 → 그건 400 응답이라 onerror가 재발동하고, 그땐 dataset.rt가
+  // 막아 아래 캡션 강등으로 떨어진다(무한 루프 0 · 서버측 동일 소스 = insta_fetch._public_cover).
+  if (!a.dataset.rt) {
+    const mo = /instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/.exec(a.getAttribute('href') || '');
+    if (mo) { a.dataset.rt = '1'; img.src = 'https://www.instagram.com/p/' + mo[1] + '/media/?size=l'; return; }
+  }
   img.remove();
   a.classList.add('txt');
   const s = document.createElement('span'); s.className = 'cap'; s.textContent = a.dataset.cap || '';

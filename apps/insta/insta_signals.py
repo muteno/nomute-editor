@@ -731,15 +731,23 @@ def main():
         fb_cov = _fb_covers()
 
         def _fb_cover_for(m):
-            """이 IG 미디어와 동일 게시물인 FB 크로스포스트 커버 URL('' = 없음)."""
-            key, ep = _cap_key(first_line(m.get('caption'))), _iso_epoch(m.get('timestamp'))
-            if len(key) < 12 or ep is None:
+            """이 IG 미디어와 동일 게시물인 FB 크로스포스트 커버 URL('' = 없음).
+            1차 = 캡션 프리픽스 ∧ ±10분(엄격). 2차 = **시각 ±3분 유일 후보**(운영자 260803 "빈칸을 최대한
+            없애는 방향") — 노뮤트는 IG 캡션과 FB 문구를 각각 다시 쓰기 때문에(실측: IG "🔥 원룸촌 한복판
+            페인트 공장" ↔ FB "불은 38분 만에 잡혔는데" = **같은 릴스**, 커버 자산번호 761336960 공유) 캡션
+            매칭만으론 크로스포스트를 놓친다. 크로스포스트 실측 간격은 15~48초라 ±3분 창에 후보가 **정확히
+            1건**이면 동일 게시물로 확정 — 유일성 조건이 오매칭을 봉인한다(2건 이상 = 판단 불가 = 포기)."""
+            ep = _iso_epoch(m.get('timestamp'))
+            if ep is None:
                 return ''
-            for fkey, fep, url in fb_cov:
-                n = min(len(key), len(fkey))
-                if n >= 12 and key[:n] == fkey[:n] and fep is not None and abs(fep - ep) <= 600:
-                    return url
-            return ''
+            key = _cap_key(first_line(m.get('caption')))
+            if len(key) >= 12:
+                for fkey, fep, url in fb_cov:
+                    n = min(len(key), len(fkey))
+                    if n >= 12 and key[:n] == fkey[:n] and fep is not None and abs(fep - ep) <= 600:
+                        return url
+            near = [url for _k, fep, url in fb_cov if fep is not None and abs(fep - ep) <= 180]
+            return near[0] if len(near) == 1 else ''
 
         # ── 3단 회수 체인 3층 = 마지막 성공 커버 원장(운영자 260803 "이번 문제 안일어나게 하면 더 좋을듯") ──
         # 구조적 뿌리 = 매 수집이 API 응답을 **그대로 덮어써서** 한 번만 빠져도 그 칸이 즉시 빈다(260718 주석의

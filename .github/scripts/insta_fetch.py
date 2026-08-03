@@ -14,6 +14,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -29,6 +30,31 @@ KST = ZoneInfo('Asia/Seoul')
 
 def now_kst():
     return datetime.datetime.now(KST).isoformat(timespec='seconds')
+
+
+_SHORTCODE_RE = re.compile(r'instagram\.com/(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)')
+
+
+def _public_cover(permalink):
+    """인스타 **공개** 커버 경로로 커버 회수(운영자 260803 "빈칸을 최대한 없애는 방향") — '' = 못 얻음.
+    `/p/<shortcode>/media/?size=l`은 로그인 없이 커버 CDN URL로 302 리다이렉트한다(실측 260803: 정상 릴스
+    10건 전부 실제 이미지 · 커버 자산이 없는 2건만 `static.cdninstagram.com/rsrc.php/null.jpg` 플레이스홀더).
+    Graph가 thumbnail_url을 무성 생략해도 이 경로엔 남아있는 회차가 있어 **독립 소스**로서 값이 있다.
+    비인증·토큰 무관 · 결손 릴스에만 1콜 · 타임아웃 10s · 어떤 실패도 '' (fail-soft = 종전 동작)."""
+    mo = _SHORTCODE_RE.search(permalink or '')
+    if not mo:
+        return ''
+    url = f'https://www.instagram.com/p/{mo.group(1)}/media/?size=l'
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (compatible; nomute-editor/1.0)'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            final = r.geturl()
+            ctype = (r.headers.get('Content-Type') or '')
+        if 'null.jpg' in final or not ctype.startswith('image/'):
+            return ''   # 플레이스홀더·비이미지 = 자산 부재
+        return final
+    except Exception:
+        return ''
 
 
 def api(path, **params):
@@ -142,6 +168,14 @@ def main():
             tj, _terr = api(m['id'], fields='thumbnail_url')
             if tj and tj.get('thumbnail_url'):
                 mm['thumbnail_url'] = tj['thumbnail_url']
+            else:
+                # 2차 = **인스타 공개 커버 경로**(운영자 260803 "빈칸을 최대한 없애는 방향") — Graph가 둘 다 빈손인
+                # 릴스도 공개 permalink 경로엔 커버가 살아있는 경우가 있다(260803 실측 = 결손 아닌 릴스 10건 전부
+                # 이 경로로 정상 CDN 이미지 · 자산 자체가 없는 2건만 null.jpg). 토큰 불요·결손건만 1콜(평시 0~2).
+                # 채택 조건 = 리다이렉트 종착이 **CDN 이미지**(null.jpg 플레이스홀더 = 자산 부재 = 버림).
+                pub = _public_cover(m.get('permalink'))
+                if pub:
+                    mm['thumbnail_url'] = pub
         base = ['views', 'reach', 'likes', 'comments', 'saved', 'shares', 'total_interactions']
         if m.get('media_product_type') == 'REELS':
             base += ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
