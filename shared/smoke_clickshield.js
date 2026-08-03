@@ -251,105 +251,136 @@ const FAMILY = [
   }
 
   // ── C9 방패 셀렉터 = 자동발견 유지(손 레지스트리 퇴화 차단) ──
-  const sel = await page.evaluate(() => (typeof NM_SHIELD_SEL === 'string' ? NM_SHIELD_SEL : ''));
-  ok('C9 방패 셀렉터 = 자동발견(.nm-toast, .closing)', /\.nm-toast/.test(sel) && /\.closing/.test(sel), 'NM_SHIELD_SEL = ' + JSON.stringify(sel));
+  const sel = await page.evaluate(() => (typeof NM_SHIELD_CLASSES !== 'undefined' ? NM_SHIELD_CLASSES : []));
+  ok('C9 방패 대상 = 자동발견 2축(nm-toast·closing)', Array.isArray(sel) && sel.indexOf('nm-toast') >= 0 && sel.indexOf('closing') >= 0,
+    'NM_SHIELD_CLASSES = ' + JSON.stringify(sel));
 
-  // ── C10~C13 스크롤 오탭 방패 ← 확장 축(260803 3차) ──
-  //    ⚠ 이 묶음의 1순위는 **위양성 0**이다(정상 탭을 먹으면 앱이 "안 눌리는" 물건이 된다) →
-  //      C10(정지 탭 통과)·C12(고정 표면 면제)·C13(멈춘 뒤 통과)이 C11(오탭 차단)보다 먼저 지켜야 할 계약.
-  await page.evaluate(() => {
-    document.querySelectorAll('.nm-toast, #popKnob, #smokeKnob').forEach(n => n.remove());   // 앞 축 잔여 제거(방패 두 겹 방지)
-    [...document.querySelectorAll('.sc-item')].forEach((el, i) => { el.dataset.nmi = String(i); });
-    window.__tap = null;
-    document.addEventListener('pointerdown', e => {
-      const el = e.target.closest && e.target.closest('[data-nmi], #bnav, .radmenu, .bnav-i');
-      window.__aim = el ? (el.dataset && el.dataset.nmi !== undefined ? 'card' + el.dataset.nmi : 'fixed') : null;
-      // 진단: 방패가 왜 안 걸렸는지 FAIL 줄에 그대로 찍는다(추측 금지 · 이 스모크는 오탐이 제일 위험한 축)
-      try { window.__gd = { dt: +(performance.now() - _nmScT).toFixed(0), v: +_nmScV.toFixed(2), fixed: nmFixedHost(e.target), armed: !!_nmMisT }; } catch (_) { window.__gd = { err: 1 }; }
-    }, true);
-    document.addEventListener('click', e => {   // 방패보다 뒤(캡처 등록 순서상 나중) = 삼켜지면 안 불린다
-      const el = e.target.closest && e.target.closest('[data-nmi], #bnav, .radmenu, .bnav-i');
-      window.__tap = el ? (el.dataset && el.dataset.nmi !== undefined ? 'card' + el.dataset.nmi : 'fixed') : 'other';
-    }, false);
-    window.__pick = (lo, hi) => {
-      const it = [...document.querySelectorAll('[data-nmi]')].map(e => ({ i: e.dataset.nmi, r: e.getBoundingClientRect() }))
-        .filter(o => o.r.top > lo && o.r.bottom < hi && o.r.height > 30);
-      if (!it.length) return null;
-      const o = it[0]; return [Math.round(o.r.x + o.r.width / 2), Math.round(o.r.y + o.r.height / 2), 'card' + o.i];
-    };
+  // ═══ 260803 4인 적대검증 반영 ═══
+  //  · 스크롤 오탭 5축(구 C10~C14) 삭제 = 방패 자체를 철회했다(라이브 주석에 사유 전문).
+  //  · 아래 C15~C19 = **뮤테이션 테스트에서 살아남은 결함**을 잡는 축이다. 28축 PASS인데 심은 결함 27종 중
+  //    11종이 그대로 통과했고, 그중 5종은 실피해까지 증명됐다. 「PASS인데 안 지켜지던」 구멍을 막는다.
+  await page.evaluate(() => { document.querySelectorAll('.nm-toast, #popKnob, #smokeKnob').forEach(n => n.remove());
+    const st = document.createElement('style'); st.id = 'fadeKnob';
+    st.textContent = '.nm-toast{transition-duration:6s !important}';   // 페이드 구간을 결정적으로(라이브 .3s면 80ms 뒤 opacity가 경계로 떨어져 판정이 흔들린다)
+    document.head.appendChild(st); });
+
+  // ── C15 토스트 겹침 = **위에 보이는 표면이 이긴다** (D1·치명) ──
+  //    .nm-toast 가족은 좌표가 같게 설계됐고(z60 긴급 / z59 새버전·키워드) DOM 순서상 하위가 먼저다.
+  //    구판은 첫 술어가 `return`이라 78% 불투명하게 보이는 긴급 토스트를 탭하면 밑의 새버전이 먹어 리로드가 돌았다.
+  //    ⚠ 구 게이트가 못 잡은 이유 = __only()가 매 시나리오마다 다른 토스트를 전부 지워 **겹침 상태가 존재한 적이 없다**.
+  const c15 = await page.evaluate(async () => {
+    document.querySelectorAll('.nm-toast').forEach(n => n.remove());
+    const mk = (id, cls) => { const t = document.createElement('div'); t.id = id; t.className = cls;
+      t.innerHTML = '<span class="ft-msg">x</span>'; document.body.appendChild(t); return t; };
+    const upd = mk('nmUpdateToast', 'nm-toast upd show');   // 하위(z59)가 DOM 먼저 = 라이브 순서
+    upd.onclick = () => { window.__updFired = (window.__updFired || 0) + 1; };
+    const brk = mk('nmToast', 'nm-toast');                   // 상위(z60) 닫힘 페이드 = 보이지만 pe:none
+    brk.classList.add('show'); await new Promise(r => setTimeout(r, 60)); brk.classList.remove('show');
+    await new Promise(r => setTimeout(r, 80));
+    const rb = brk.getBoundingClientRect(), ru = upd.getBoundingClientRect();
+    return { x: Math.round(rb.x + rb.width / 2), y: Math.round(rb.y + rb.height / 2),
+      // 겹침 = 같은 자리 설계 여부. .show 유무로 transform:translateY(18px)가 갈리므로 세로 허용치는 그 값 + 여유
+      op: +getComputedStyle(brk).opacity, overlap: Math.abs(rb.x - ru.x) < 1 && Math.abs(rb.width - ru.width) < 1 && Math.abs(rb.y - ru.y) <= 20 };
   });
-  // ⚠ 리셋은 **스크롤을 걸기 전에** 따로 한다 — 탭 직전에 evaluate를 끼우면 그 왕복(수십 ms) 동안
-  //   스무스 스크롤이 끝나버려 「스크롤 중」 시나리오가 「정지」로 둔갑한다(260803 실측 위음성 사고).
-  const reset = () => page.evaluate(() => { window.__tap = null; window.__aim = null; });
-  // 연속 스크롤 = 「확실히 흐르는 중」을 결정적으로 만든다. behavior:'smooth'는 헤드리스에서 언제 끝날지 모르고,
-  //   evaluate 왕복(수십 ms)이 끼면 「스크롤 중」 시나리오가 조용히 「정지」로 둔갑한다(260803 실측 위음성).
-  //   rAF마다 20px = 약 1.2 px/ms(실제 관성은 2~6) → 문턱 0.6을 확실히 넘긴 채 탭 전 구간 유지.
-  //   ⚠ 페이지 안에서 흐름을 만들면 안 된다 — 이 헤드리스는 입력이 없으면 프레임을 거의 안 만들어 rAF가 굶고
-  //     (120px/frame이 0.35 px/ms로 주저앉음), setInterval은 렌더러 타이머 스로틀로 1.7s까지 늘어진다(둘 다 260803 실측 위음성).
-  //     → 흐름을 **실입력(휠)**으로 만든다. 실기기 관성과 같은 경로(진짜 scroll 이벤트·진짜 프레임)라 시험 인공물이 가장 적다.
-  const flow = async (n) => { for (let i = 0; i < (n || 3); i++) await page.mouse.wheel(0, 700); };
-  //   ⚠ 휠 왕복이 느린 회차가 있다 — 탭 시점엔 스크롤이 이미 끝나(실측 dt=1080) 시나리오가 「정지」로 둔갑한다.
-  //     그래서 **전제가 설 때까지 셋업만 재시도**한다(판정은 무접촉 = 결과를 만들어내지 않는다).
-  //     `gd`(=누름 시점 실측)로 사후 검증까지 해서, 전제가 끝내 안 서면 그 사실을 FAIL 사유로 찍는다.
-  const tapWhileFlowing = async (x, y) => {
-    for (let i = 0; i < 5; i++) {
-      await reset();
-      await page.mouse.move(x, y); await flow(2);
-      const r = await tap(x, y);
-      const gd = r.gd || {};
-      if (gd.err) return { tap: 'GUARD-MISSING', gd: { note: '가드 변수(_nmScV/_nmScT) 부재 = 방패가 통째로 빠졌다' } };   // 사유를 「환경」으로 오도하지 않는다
-      if (gd.dt !== undefined && gd.dt < 120 && gd.v >= 0.6) return r;   // 전제 성립 = 이 회차로 판정
-      r.weak = gd;
+  await page.evaluate(() => { window.__updFired = 0; });
+  await page.mouse.click(c15.x, c15.y);
+  const updFired = await page.evaluate(() => window.__updFired || 0);
+  ok('C15 토스트 겹침 = 위에 보이는 쪽이 이긴다(하위 오발 0)', c15.overlap && c15.op > 0.5 && updFired === 0,
+    '겹침=' + c15.overlap + ' 긴급opacity=' + c15.op.toFixed(2) + ' 하위(새버전) 발동=' + updFired + '회');
+
+  // ── C16 삼킴은 **기본동작(앵커 이동)까지** 막는다 (S1·치명 · preventDefault 제거가 구판 게이트를 그냥 통과했다) ──
+  //    body 캡처 프록시로는 네이티브 기본동작을 원리적으로 못 본다 → 실앵커를 심어 **실제 이동**을 판정한다.
+  const c16 = await page.evaluate(async () => {
+    document.querySelectorAll('.nm-toast').forEach(n => n.remove());
+    location.hash = '';
+    let a = document.getElementById('smokeAnchor');
+    if (!a) { a = document.createElement('a'); a.id = 'smokeAnchor'; document.body.appendChild(a); }
+    a.href = '#NMSHIELD'; a.textContent = '.'; a.style.cssText = 'position:fixed;left:0;right:0;bottom:86px;margin-inline:auto;width:400px;height:52px;z-index:1';
+    const t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
+    t.innerHTML = '<span class="ft-msg">x</span>'; document.body.appendChild(t);
+    t.classList.add('show'); await new Promise(r => setTimeout(r, 60)); t.classList.remove('show');
+    await new Promise(r => setTimeout(r, 80));
+    const r = t.getBoundingClientRect();
+    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), op: +getComputedStyle(t).opacity };
+  });
+  await page.mouse.click(c16.x, c16.y);
+  const hash = await page.evaluate(() => location.hash);
+  ok('C16 삼킴 = 앵커 기본이동까지 차단(preventDefault)', c16.op > 0.5 && hash !== '#NMSHIELD', 'opacity=' + c16.op.toFixed(2) + ' location.hash=' + JSON.stringify(hash));
+
+  // ── C17 pointerdown·mousedown도 관통 안 한다 (S3 · 등록을 click만으로 줄여도 구판은 전축 PASS였다) ──
+  const c17 = await page.evaluate(async () => {
+    const a = document.getElementById('smokeAnchor');
+    window.__pd = 0; window.__md = 0;
+    a.addEventListener('pointerdown', () => { window.__pd++; });
+    a.addEventListener('mousedown', () => { window.__md++; });
+    return true;
+  });
+  await page.mouse.click(c16.x, c16.y);
+  const c17r = await page.evaluate(() => ({ pd: window.__pd, md: window.__md }));
+  ok('C17 pointerdown·mousedown 관통 0', c17 && c17r.pd === 0 && c17r.md === 0, 'pointerdown=' + c17r.pd + ' mousedown=' + c17r.md);
+
+  // ── C18 히트 소유권 실측이 **인라인 스타일을 남기지 않는다** (S4 · 복원 삭제 시 pointer-events:auto 영구 각인 → 260705 유령 봉합 붕괴) ──
+  const c18 = await page.evaluate(() => {
+    const t = document.getElementById('nmToast');
+    return { inline: t.style.pointerEvents, computed: getComputedStyle(t).pointerEvents };
+  });
+  ok('C18 히트 실측 후 인라인 pointer-events 잔류 0', c18.inline === '' && c18.computed === 'none',
+    'inline=' + JSON.stringify(c18.inline) + ' computed=' + c18.computed);
+
+  // ── C19 **라이브 생성 경로**의 클래스가 방패 대상과 실제로 맞물린다 (S11 · 스모크가 목업만 재고 제품을 안 쟀다) ──
+  //    생성처가 className을 바꾸면(드리프트) 진짜 토스트가 방패 밖으로 나가는데 구판은 전축 그린이었다.
+  const c19 = await page.evaluate(() => {
+    const src = [...document.querySelectorAll('script')].map(s => s.textContent).join('\n');
+    const cls = (typeof NM_SHIELD_CLASSES !== 'undefined') ? NM_SHIELD_CLASSES : [];
+    // 라이브 생성처가 실제로 쓰는 className 리터럴을 원문에서 긁어 방패 클래스와 대조
+    const lits = [...src.matchAll(/\.className\s*=\s*'([^']*)'/g)].map(m => m[1]).filter(v => /nm-toast|closing/.test(v));
+    const bad = lits.filter(v => !v.split(/\s+/).some(c => cls.indexOf(c) >= 0));
+    return { cls, n: lits.length, bad: bad.slice(0, 3) };
+  });
+  ok('C19 라이브 생성 클래스 = 방패 대상 정합(드리프트 0)', c19.cls.length === 2 && c19.n >= 5 && c19.bad.length === 0,
+    '방패=' + JSON.stringify(c19.cls) + ' 생성처 리터럴 ' + c19.n + '건 · 미매칭 ' + JSON.stringify(c19.bad));
+
+  // ── C20 전역 「바깥 탭 = 닫기」가 삼킴 뒤에도 산다 (D3 · 캡처 stopPropagation이 document 버블 10곳을 죽였다) ──
+  const c20 = await page.evaluate(async () => {
+    document.querySelectorAll('#smokeAnchor').forEach(n => n.remove());
+    window.__docBubble = 0;
+    document.addEventListener('click', () => { window.__docBubble++; }, false);
+    const t = document.getElementById('nmToast');
+    t.classList.add('show'); await new Promise(r => setTimeout(r, 60)); t.classList.remove('show');
+    await new Promise(r => setTimeout(r, 80));
+    const r = t.getBoundingClientRect();
+    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2), op: +getComputedStyle(t).opacity };
+  });
+  await page.mouse.click(c20.x, c20.y);
+  const bub = await page.evaluate(() => window.__docBubble || 0);
+  ok('C20 삼킴 뒤에도 전역 닫기(document 버블) 생존', c20.op > 0.5 && bub >= 1, 'document 버블 수신 ' + bub + '회');
+
+  // ── C21 **페이드 중간값**에서도 삼킨다 (S10 · 커버리지 구멍) ──
+  //    구판은 opacity가 사실상 1.00인 한 점에서만 쟀다(헤드리스는 입력이 없으면 프레임을 안 만들어 페이드가 정지).
+  //    그래서 문턱을 0.02 → 0.9로 올려도 전축 그린이었다 = 방어 대상 사고창(0.02~0.9)이 통째로 미검증.
+  //    → 마우스 이동으로 프레임을 돌려 페이드를 실제로 진행시키고, opacity가 중간 구간에 들어왔을 때 판정한다.
+  const c21 = await (async () => {
+    await page.evaluate(async () => {
+      document.querySelectorAll('.nm-toast').forEach(n => n.remove());
+      document.getElementById('fadeKnob').textContent = '.nm-toast{transition-duration:1.4s !important}';
+      const t = document.createElement('div'); t.id = 'nmToast'; t.className = 'nm-toast';
+      t.innerHTML = '<span class="ft-msg">x</span>'; document.body.appendChild(t);
+      t.classList.add('show'); await new Promise(r => setTimeout(r, 80)); t.classList.remove('show');
+      window.__bg = [];
+    });
+    for (let i = 0; i < 40; i++) {           // 프레임 구동 = 마우스 이동(헤드리스 프레임 기아 회피)
+      await page.mouse.move(200 + (i % 3), 300 + (i % 3));
+      const st = await page.evaluate(() => { const t = document.getElementById('nmToast'), r = t.getBoundingClientRect();
+        return { op: +getComputedStyle(t).opacity, x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) }; });
+      if (st.op <= 0.7 && st.op >= 0.25) return st;
     }
-    return { tap: 'PRECOND-FAIL', gd: { note: '5회 시도에도 「흐르는 중」 상태를 못 만듦(환경)' } };
-  };
-  const flowV = () => page.evaluate(() => { try { return { v: +_nmScV.toFixed(2), dt: +(performance.now() - _nmScT).toFixed(0) }; } catch (e) { return { v: -1, dt: -1 }; } });
-
-  const tap = async (x, y) => {
-    await page.mouse.move(x, y); await page.mouse.down(); await page.waitForTimeout(50); await page.mouse.up();
-    await page.waitForTimeout(160); return page.evaluate(() => ({ tap: window.__tap, aim: window.__aim, gd: window.__gd })); };
-
-  // C10 정지 상태 탭 = 그대로 통과(위양성 0 · 이 묶음의 최우선 계약)
-  await page.evaluate(() => window.scrollTo(0, 900)); await page.waitForTimeout(500);
-  const p10 = await page.evaluate(() => window.__pick(360, 760));
-  if (!p10) ok('C10 정지 탭 = 통과(위양성 0)', false, '카드 좌표 없음(수집함 렌더 실패?)');
-  else { await reset(); const r10 = await tap(p10[0], p10[1]);
-    ok('C10 정지 탭 = 통과(위양성 0)', r10.tap === p10[2] && r10.aim === p10[2], '겨눔=' + r10.aim + ' 눌림=' + r10.tap); }
-
-  // C11 스크롤 중 탭 = 삼킴(오탭 0)
-  const r11 = await (async () => {
-    const p = await page.evaluate(() => { window.scrollTo(0, 200); return null; }); void p;
-    await page.waitForTimeout(400);
-    const pt = await page.evaluate(() => window.__pick(360, 760));
-    if (!pt) return null;
-    return tapWhileFlowing(pt[0], pt[1]);
+    return null;
   })();
-  ok('C11 스크롤 중 탭 = 삼킴(오탭 0)', !!r11 && r11.tap === null,
-    r11 ? '눌림=' + r11.tap + ' · 누름시점 ' + JSON.stringify(r11.gd) : '카드 좌표 없음');
-
-  // C12 고정 표면(하단 네비) = 스크롤 중에도 통과(면제 계약 · 여기까지 먹으면 진짜 퇴행)
-  const p12 = await page.evaluate(() => { const b = document.querySelector('#bnav .bnav-i, #bnav'); if (!b) return null;
-    const r = b.getBoundingClientRect(); return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)]; });
-  if (!p12) ok('C12 고정 표면 = 스크롤 중에도 통과', false, '#bnav 없음(마크업 개편? 게이트 갱신 필요)');
-  else { const r12 = await tapWhileFlowing(p12[0], p12[1]);
-    ok('C12 고정 표면 = 스크롤 중에도 통과', r12.tap !== null, '눌림=' + r12.tap); }
-
-  // C13 스크롤이 멈춘 뒤 탭 = 통과(문턱 시간 만료 = 잔여 표식이 다음 탭을 안 먹는다)
-  await page.mouse.move(215, 500); await flow(3);
-  await page.waitForTimeout(900);   // 멈춘 뒤 충분히 지난 시점(문턱 90ms의 10배) = 잔여 표식이 다음 탭을 안 먹어야 한다
-  const p13 = await page.evaluate(() => window.__pick(360, 760));
-  if (!p13) ok('C13 멈춘 뒤 탭 = 통과', false, '카드 좌표 없음');
-  else { await reset(); const r13 = await tap(p13[0], p13[1]);
-    ok('C13 멈춘 뒤 탭 = 통과', r13.tap === p13[2], '겨눔=' + r13.aim + ' 눌림=' + r13.tap); }
-
-  // C14 롤백 스위치 = 끄면 종전 동작(스크롤 중 탭 통과) — 운영자 탈출구 실존 검증
-  await page.evaluate(() => { try { localStorage.setItem('nmNoScrollGuard', '1'); } catch (e) {} window.scrollTo(0, 200); });
-  await page.waitForTimeout(400);
-  const p14 = await page.evaluate(() => window.__pick(360, 760));
-  if (!p14) ok('C14 롤백 스위치 = 종전 동작 복귀', false, '카드 좌표 없음');
-  else { const r14 = await tapWhileFlowing(p14[0], p14[1]);
-    ok('C14 롤백 스위치 = 종전 동작 복귀', r14.tap !== null, '눌림=' + r14.tap); }
-  await page.evaluate(() => { try { localStorage.removeItem('nmNoScrollGuard'); } catch (e) {} });
+  if (!c21) ok('C21 페이드 중간값(opacity 0.25~0.7)에서도 삼킴', false, '중간 구간을 못 만듦(프레임 구동 실패)');
+  else { await page.evaluate(() => { window.__bg = []; });
+    await page.mouse.click(c21.x, c21.y);
+    const bg21 = await page.evaluate(() => window.__bgOnly());
+    ok('C21 페이드 중간값(opacity 0.25~0.7)에서도 삼킴', bg21.length === 0, 'opacity=' + c21.op.toFixed(2) + ' 배경=' + JSON.stringify(bg21)); }
 
   console.log('\n' + (fail === 0 ? '✅ 전부 PASS' : '❌ FAIL ' + fail + '건') + ' (' + R.length + '축)');
   await browser.close();
