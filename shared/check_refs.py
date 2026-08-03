@@ -679,9 +679,22 @@ def check_thumb_chain():
     # '조용히 나빠지는 것'이 이 구조의 마지막 사각이었다. 집계·스트릭·알림 3점이 다 살아있어야 그 사각이 닫힌다.
     for tok, why in (("'thumb_src': vdoc_thumb_src", '출처 집계를 뷰어 데이터에 굽기'),
                      ("meta['none_streak']", '결손 연속회차 누적(1회성 딸꾹질과 구분)'),
-                     ("'insta-thumb-miss'", '2회 연속 결손 = 운영자 알림(해소 시 clear)')):
+                     ("'insta-thumb-miss'", '2회 연속 결손 = 운영자 알림(해소 시 clear)'),
+                     ('[다음 확인 순서]', '알림 = 인수인계 진단서(다른 세션이 받아 바로 고치게 · 260803)'),
+                     ('[막힌 게시물] ', '알림에 막힌 permalink 동봉(재현 진입점)'),
+                     ('[재현] python3 apps/insta/insta_signals.py', '알림에 재현 명령 동봉')):
         if tok not in s:
             miss.append('insta_signals.py: %s (%s)' % (tok, why))
+    # SNS 카드 커버 폴백(운영자 260803 "sns 모두 적용") — 커버 로드 실패가 img를 숨겨 카드에 빈 구멍을 내던 축.
+    # 정본 = 레딧 폴백(.tcard-cov.noc.rdfb) 무채 워드마크 · 강등 = tcCovFail. 구 숨김 문법 부활 = 차단.
+    if 'window.tcCovFail' not in v:
+        miss.append('index.html: tcCovFail (SNS 카드 커버 실패 = 워드마크 폴백 강등)')
+    for cls in ('ytfb', 'tkfb', 'igfb', 'thfb', 'xfb', 'rdfb'):
+        if ('.noc.%s' % cls) not in v or ("nocls: '%s'" % cls) not in v:
+            miss.append('index.html: %s 폴백 커버 정의·배선(플랫폼 하나가 조용히 빠짐)' % cls)
+    for l in v.splitlines():
+        if ('covImg' in l or 'xcard-cv' in l) and "onerror=" in l and "style.display='none'" in l:
+            miss.append('index.html: SNS 카드 커버 onerror 구 숨김 문법 부활 — 카드 빈 구멍 축')
     if "mm['thumb_src'] = 'pub'" not in f:
         miss.append("insta_fetch.py: 공개경로 회수분 출처 표식(편입 뒤엔 thumbnail_url과 구분 불가)")
     try:
@@ -706,7 +719,7 @@ def check_thumb_chain():
         for m in miss:
             print('   · ' + m)
         return 1
-    print('✅ 커버 회수 체인 게이트 — 수집 2층(Graph 재조회·공개 커버 경로) + 산출 3층(API·FB 크로스포스트[캡션∨시각유일]·성공 원장+만료 인지) + 뷰어 2층(공개경로 재시도·캡션 강등) + 출처 카운터·결손 알림 생존.')
+    print('✅ 커버 회수 체인 게이트 — 수집 2층(Graph 재조회·공개 커버 경로) + 산출 3층(API·FB 크로스포스트[캡션∨시각유일]·성공 원장+만료 인지) + 뷰어 2층(공개경로 재시도·캡션 강등) + 출처 카운터·진단서 알림 + SNS 6플랫폼 워드마크 폴백 생존.')
     return 0
 
 

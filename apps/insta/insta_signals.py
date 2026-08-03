@@ -840,11 +840,33 @@ def main():
             # 채널 = shared/msg.py 정본(messages/<id>.json 입력 파일 → 빌드가 viewer/messages.json 합성).
             msg_py = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'shared', 'msg.py'))
             if meta['none_streak'] >= 2:
-                subprocess.run(['python3', msg_py, 'set', 'insta-thumb-miss',
-                                f"최근 게시물 커버 {none_n}칸이 {meta['none_streak']}회차 연속 비었어요 — "
-                                f"인스타 API·공개 경로·페이스북·저장 원장이 모두 빈손입니다(회차 출처: "
-                                + ' · '.join(f'{k} {v}' for k, v in sorted(tally.items())) + ').',
-                                'warn'], check=False)
+                # 본문 = **다른 세션이 이 알림만 받아 바로 고칠 수 있는 진단서**(운영자 260803 "알림에 요약시켜놔
+                # 다른 세션에서 이 경고 다운받아도 해결 쉽게"). 뷰어 메시지함 [↓] = 문제만 모아 HTML로 내보내므로
+                # 여기 적은 내용이 그대로 인수인계 문서가 된다 → 증상·범위·이미 시도한 층·다음 확인 순서·재현 명령까지 동봉.
+                miss_list = [t['u'] for t, sc in zip(thumbs, _srcs) if sc == 'none']
+                lines = [
+                    f"최근 게시물 커버 {none_n}칸이 {meta['none_streak']}회차 연속 비었습니다(캡션 타일로 대체 중 = 화면은 안 깨짐).",
+                    '',
+                    '[회차 출처] ' + (' · '.join(f'{k} {v}' for k, v in sorted(tally.items())) or '없음')
+                    + f" (총 {len(_srcs)}칸 · 집계 정본 = viewer/insta_data.json thumb_src)",
+                    '[막힌 게시물] ' + (' / '.join(miss_list[:4]) or '(permalink 없음)'),
+                    '',
+                    '[이미 시도한 6층 · 전부 빈손]',
+                    ' ① Graph /media thumbnail_url  ② 미디어노드 재조회  ③ 인스타 공개 커버 경로(/p/<code>/media/?size=l)',
+                    ' ④ 페이스북 크로스포스트(캡션 프리픽스 ∨ 시각 ±3분 유일후보)  ⑤ 마지막 성공 커버 원장  ⑥ 뷰어 재시도',
+                    '',
+                    '[다음 확인 순서]',
+                    ' 1) 위 permalink를 브라우저에서 열어 커버가 실제로 보이는지 — 안 보이면 IG측 자산 부재 = 정상 동작(조치 불요).',
+                    " 2) 보이는데 여기만 빈손이면 토큰·권한 의심 → apps/insta/data/media_latest.json 에서 그 id의",
+                    '    thumbnail_url·media_url 유무 확인 · docs/인스타_직결_세팅.md §6 토큰 재발급.',
+                    ' 3) 페이스북 크로스포스트가 있는데 못 붙었으면 viewer/fb_data.json 의 게시 시각을 비교',
+                    '    (매칭 창 = 캡션 프리픽스 12자 ∧ ±10분, 또는 ±3분 유일후보).',
+                    '',
+                    '[재현] python3 apps/insta/insta_signals.py  → viewer/insta_data.json thumb_src 확인',
+                    '[코드] apps/insta/insta_signals.py `_thumb_src` · .github/scripts/insta_fetch.py `_public_cover`'
+                    ' · viewer/index.html `chThFail` · 게이트 = shared/check_refs.py `check_thumb_chain`',
+                ]
+                subprocess.run(['python3', msg_py, 'set', 'insta-thumb-miss', '\n'.join(lines), 'warn'], check=False)
             else:
                 subprocess.run(['python3', msg_py, 'clear', 'insta-thumb-miss'], check=False)
         except Exception as e3:
