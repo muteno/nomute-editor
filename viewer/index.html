@@ -5320,9 +5320,9 @@ function bindImgPaste(el, onImg) {   // el(입력칸·슬롯·모달)에서 Ctrl
   el.addEventListener('paste', e => { const f = _imgFromClipboard(e); if (f) { e.preventDefault(); onImg(f); } });
 }
 // 미리보기 확대 상태 저장소(운영자 260802 3차 승인 = 보고 6-4) — thumb·tr과 **같은 키**(동일 origin) = 이미지 스튜디오 4탭이 한 크기로 열린다 · 저장 차단 환경은 무저장 = 상시 축소(종전 동작)
-const PVZOOM = { K: 'nm.pvzoom',
-  get() { try { return localStorage.getItem(this.K) === '1'; } catch (_) { return false; } },
-  set(on) { try { on ? localStorage.setItem(this.K, '1') : localStorage.removeItem(this.K); } catch (_) {} } };
+const PVZOOM = { v: false,   // 확대 = 비영속 인메모리(운영자 260803 "확대가 아닌 상황을 기본값으로" — 구 localStorage nm.pvzoom 영속[260802 3차 '마지막 상태 기억']이 확대를 사실상 기본값으로 만들던 축 개정 · 부팅 = 항상 비확대 · 세션 내 수동/자동 토글만 · 3표면 동문{thumb·tr·index})
+  get() { return this.v; },
+  set(on) { this.v = !!on; } };
 function geniPrevSize() {   // 미리보기 박스 높이 = 편집 탭 렌더 등가(운영자 260719 "이 둘이 완전 다르다" 교정) — thumb 쉘 정본 min(29svh,300)의 svh가 iframe 뷰포트 기준이라, 부모 문서인 이 폼은 같은 슬롯(genihost=iframe 자리·팝업=다이얼로그) clientHeight×0.29 캡 300으로 등가 산출(edit pvSync .29/300 동미러 · CSS min(29svh,300)은 무JS 폴백)
   const box = $('#geniPrevBox'); if (!box) return;
   const h = $('#geniHost'), d = $('#genidlg');
@@ -12551,6 +12551,7 @@ $('#tvSrc').addEventListener('click', () => { const u = _tvUrl; trviewdlg.close(
 function openVideoSrc(url) {   // 영상 스튜디오 열고 활성 프레임 #url에 주입 — 부모가 same-origin iframe DOM 직접 배선(thumbTabBridge 선례 · edit/ly 무접촉) · 로드 타이밍 무관 폴 주입
   if (!url) return;
   openTool(null, 'Video Studio', CAP_TABS, 'cap');
+  capWarm();   // 나머지 탭 선로드(운영자 260803 탭 전환 로딩 0 — 라디얼 진입로와 동문)
   let n = 0;
   const iv = setInterval(() => {
     let ok = false;
@@ -13815,8 +13816,8 @@ function trLeave() { const f = toolFrames.thumbtr; if (f && f.classList.contains
 // 처방: 번역 탭(trEnsureFrame/trMount) 정본 그대로 이 셸에 일반화 — 탭별 iframe 숨김-보존 + 재방문 리로드 0(폼·업로드 그대로) +
 //   동기 재레이아웃 후 '스냅' 노출(빈-유리 프레임 0장). 캐시버스트 폐지 = `_headers`의 edit/ly/sb/k/song no-cache가 신선도 담당(tr 선례).
 const SUBSEP = '\u0001';   // 세부탭 레지스트리 합성키 구분자(도구키+SUBSEP+src) — src에 못 들어가는 제어문자 = 실키 충돌 0
-function subMount(src) {   // 세부 탭 활성 = 그 src 전용 보존 프레임 표시(최초 1회만 로드)
-  const key = curToolKey || 'tool', sk = key + SUBSEP + src;
+function subWarm(src, key) {   // 세부 탭 보존 프레임 생성·선로드(활성화 X · subMount 생성부 분리 — capWarm 예열이 공유 · 운영자 260803 "모든 화면이 바뀔때마다 로딩")
+  key = key || curToolKey || 'tool'; const sk = key + SUBSEP + src;
   let f = toolFrames[sk];
   if (!f) {
     const orig = document.getElementById('toolframe');
@@ -13826,6 +13827,19 @@ function subMount(src) {   // 세부 탭 활성 = 그 src 전용 보존 프레�
     frWatch(f, src);   // 무한로딩 탈출구(운영자 260725)
     frEarly(f);        // 틀 먼저 = DOM 파싱 완료 즉시 리빌
   }
+  return f;
+}
+function capWarm() {   // 영상 셸 예열(운영자 260803 "모든 화면이 바뀔때마다 로딩이 뜨는데" — 원인 = 탭 첫 방문마다 iframe 최초 로드 = orb · 처방 = trWarm(번역 예열 260723) 선례를 영상 4탭으로: 셸 열 때 나머지 탭을 백그라운드 선로드 → 탭 클릭 = 보존 프레임 즉시 표시 = 로딩 0) — 스태거 450ms = 동시 로드 폭주로 활성 첫 탭이 느려지는 역효과 방지 · 첫 탭 로드 완료 후 시작(trWarm 순서 보장 동문)
+  if (curToolKey !== 'cap') return;
+  const go = () => CAP_TABS.slice(1).forEach((t, i) => setTimeout(() => {
+    if (curToolKey === 'cap' && !toolFrames['cap' + SUBSEP + t.src]) subWarm(t.src, 'cap');
+  }, 450 * (i + 1)));   // slice(1) = 첫 탭(편집)은 openTool이 이미 활성 로드 중
+  if (tooldlg.classList.contains('frame-ready')) go();
+  else { const tf = toolFrames.cap; if (tf) tf.addEventListener('load', go, { once: true }); else setTimeout(go, 1200); }   // 폴백 = 활성 프레임 미확보 시 1.2s 뒤(예열은 최선노력 — 실패해도 종전 첫클릭 로드로 동작)
+}
+function subMount(src) {   // 세부 탭 활성 = 그 src 전용 보존 프레임 표시(최초 1회만 로드 · 생성 = subWarm 공유)
+  const key = curToolKey || 'tool';
+  const f = subWarm(src, key);
   toolFrames[key] = f;   // 활성 참조 승계 = activeToolFrame()·최소화 복원(activateToolFrame(key))이 이 세부 프레임을 가리킨다(탭 기억 = 복원도 같은 탭)
   const loaded = f.classList.contains('ready');
   tooldlg.classList.toggle('frame-ready', loaded);   // 전역 보조 신호(재클릭 가드) = 이 프레임 로드 기준(trMount 미러)
@@ -13900,7 +13914,7 @@ $('#bpop').addEventListener('click', e => { const b = e.target.closest('.raditem
   const a = b.dataset.act;
   if (a === 'ask') openAsk();
   else if (a === 'thumb') { openTool('/thumb.html', 'Image Studio', THUMB_TABS, 'thumb'); trWarm(); }   // 타이틀 = AI 픽토 + Image Studio(운영자 260712 8차 · comp 최소화 분기 = 합성 재폐지로 제거) · trWarm = 번역 탭 예열(운영자 260723 — 셸 열 때 tr 프레임 선로드 → 번역 클릭 즉시 = 타 탭 동일 체감)
-  else if (a === 'cap') openTool(null, 'Video Studio', CAP_TABS, 'cap'); });   // 타이틀 = 운영자 260711 선택값(headTit)
+  else if (a === 'cap') { openTool(null, 'Video Studio', CAP_TABS, 'cap'); capWarm(); } });   // 타이틀 = 운영자 260711 선택값(headTit) · capWarm = 나머지 탭 선로드(운영자 260803 탭 전환 로딩 0 · trWarm 동문)
 window.addEventListener('message', e => {   // 편집 탭 기타 기능 → 트래킹 핸드오프(운영자 260711 3분류 — 설정 프리로드 후 전환 · same-origin만)
   const d = e.data; if (!d || d.nm !== 'nmToolTab' || typeof d.src !== 'string' || e.origin !== location.origin) return;
   if (!/^\/[a-z0-9_-]+\.html$/.test(d.src)) return;   // 셀렉터 주입 가드(닫힌 형태만 · 배선평의회5 ⑤)

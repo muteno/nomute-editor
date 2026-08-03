@@ -1932,6 +1932,38 @@ def check_prev_center():
     return rc
 
 
+_ONOFF_BASE = {   # 파일별 기존 정당 사용 스냅샷(260803) — 증가 = FAIL · 축소 지향(해소되면 그 자리에서 줄여라)
+    'viewer/thumb.html': 1,   # 안내문 값 순환(#guideTog = OFF/모드 라벨 다값 — 이진 아님 · 운영자 260803 비대상 유보)
+    'viewer/index.html': 4,   # 설정 행 토글 4종(원격 ·잠금 lockOnBtn · 이미지생성 genImgOnBtn · 키워드알림 kwAlertBtn) — 스튜디오 밖 · 후속 전환 TODO
+    'viewer/k.html': 1,       # 발사 페이로드 set['웹툰']='ON/OFF' = 서버 계약(표시 아님 · 무접촉)
+}
+
+
+def check_onoff_literal():
+    """이진 토글 ON/OFF 리터럴 금지 게이트(운영자 260803 "off 이런거는 on off로 하는게 아니라 기능 워딩이 점등하냐 안하냐로 onoff").
+    정본 = thumb #cnTog(260718 '라벨 자체 점등') — 260803에 전 스튜디오 확산 완료. 이 게이트는 재발(새 탭·새 옵션이 구 문법 부활)을 커밋 시점에 차단한다.
+    축 = ⓐ 마크업: aria-pressed 요소의 표시 텍스트가 정확히 ON/OFF ⓑ JS: `? 'ON' : 'OFF'`류 이진 텍스트 세팅(값 순환 다값 맵·비 ON/OFF 라벨은 자연 비대상).
+    면책 = _ONOFF_BASE(파일별 스냅샷 · 초과분만 FAIL = raw baseline 문법 동문)."""
+    import glob as _g
+    rc = 0; total = 0
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            html = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        n = len(re.findall(r'<[^>]*aria-pressed[^>]*>\s*(?:ON|OFF)\s*<', html)) \
+            + len(re.findall(r"\?\s*'(?:ON|OFF)'\s*:\s*'(?:ON|OFF)'", html))
+        total += n
+        base = _ONOFF_BASE.get(rel, 0)
+        if n > base:
+            print('❌ ON/OFF 리터럴 게이트 — %s에 이진 ON/OFF 표기 %d건(> 면책 %d) = 워드 토글 정본 위반(기능 워딩 자체 점등 · thumb #cnTog · 운영자 260803). '
+                  '정당 사유(페이로드·다값 순환)면 _ONOFF_BASE에 사유와 함께 등재하라' % (rel, n, base)); rc = 1
+    if rc == 0:
+        print('✅ ON/OFF 리터럴 게이트 — 이진 토글 표기 잔존 %d건 전부 면책분(페이로드·다값 순환·설정 TODO) · 신규 0(워드 점등 정본 유지).' % total)
+    return rc
+
+
 def check_twocol_breakpoint():
     """스튜디오 결과 레일 2단 분기점 = 표면 간 한 값 게이트(운영자 260802 "일단 머지해주셈" 승인분).
     왜 = thumb만 1100→900 하향(260802 2차)되고 영상 4탭 사본은 1100에 남아, 운영자 PC 실폭(900~1100 구간)에서
@@ -2565,6 +2597,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 2단 분기점 게이트 스킵:', e)
+    try:
+        if check_onoff_literal() != 0:   # 이진 토글 ON/OFF 리터럴 금지(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — cnTog 워드 점등 정본의 재발 차단 · 면책 = _ONOFF_BASE 스냅샷)
+            rc = 1
+    except Exception as e:
+        print('⚠️ ON/OFF 리터럴 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1
