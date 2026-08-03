@@ -13,10 +13,11 @@
 #          (check_refs · 리베이스 자동병합 되돌림 검문 = 260802 사고 재발방지 · Q번호 경합은
 #          --fix-qnum 자동 + amend + 커밋 메시지 Q 동기) → ④ 브랜치 --force-with-lease 푸시
 #          → ④-b 안내 출력(표식 PR 비-draft = MCP 축이라 세션이 연다 · [7-6])
-#   land : 라운드 루프 — ②→(main 이동 시 ③·③-b)→ ④+⑤를 **--atomic 한 푸시**(브랜치 refspec을
-#          main보다 앞에 = [7-5] ④→⑤ 순서 의미 보존 · 동시 도착이라 PR head가 낡을 수 없다 =
-#          merged 점등 보장 · 훅 게이트 1회 = 경합 창 최소) → 사후 대조 성공 판정.
-#          atomic 미지원 서버면 순차 ④→⑤ 폴백(순서는 항상 ④ 먼저).
+#   land : 라운드 루프 — ②→(main 이동 시 ③·③-b)→ **④ 브랜치 선착 → ⑤ main 후착 순차 2발**
+#          → 사후 대조 성공 판정. (260803 2차 개정 · #3538 실측 = 구 --atomic 동시 도착이 PR head·
+#          base를 같은 SHA로 동시 기록 → GitHub이 "변경 0"으로 closed 처리 = 점등 실패 변종.
+#          점등은 head 먼저·base 나중 순서에서만 성립[260802 #3474~#3495 실측] · ⑤ = --no-verify로
+#          경합 창 압축 = push_pair 주석 · main plain push 불변.)
 #   go   : prep + land 연속.
 #
 # ▷ 안전 레일: main에 force 계열 절대 없음(⑤ = plain push 고정) · 리베이스 충돌 = 즉시 abort·rc=2
@@ -89,14 +90,16 @@ push_branch() {   # ④ 단독(prep용) — 리베이스로 SHA 갈리므로 lea
 
 landed() { fetch_main; [ "$(git rev-parse origin/main)" = "$(git rev-parse HEAD)" ]; }   # 성공 판정 정본 = 사후 대조(출력 파싱 금지)
 
-push_pair() {   # ④+⑤ atomic 한 푸시(브랜치 먼저 = [7-5] 순서 의미) · 폴백 = 순차 ④→⑤ · 판정은 항상 landed()
-  local out; out="$(git push --atomic --force-with-lease="refs/heads/$BR" origin \
-      "refs/heads/$BR:refs/heads/$BR" "HEAD:refs/heads/main" 2>&1)"; local rc=$?
-  if [ $rc -ne 0 ] && echo "$out" | grep -qiE "atomic.*(unsupport|not support|denied)"; then
-    say "④⑤ atomic 미지원 서버 → 순차 폴백(④ 브랜치 → ⑤ main)"
-    push_branch
-    git push origin "HEAD:refs/heads/main" >/dev/null 2>&1
-  fi
+push_pair() {   # ④ 선착 → ⑤ 후착 순차 2발(260803 2차 개정 · #3538 실측) · 판정은 항상 landed()
+  # ⚠ 구 --atomic 동시 도착 = 리베이스 라운드에서 PR head·base가 **같은 SHA로 동시 기록** → GitHub이
+  #   "변경 0"으로 closed 처리(#3538 = merged 점등 실패 변종 · #3498의 반대쪽 구멍). 점등이 성립하는 유일한
+  #   순서 = 260802 실측 축(#3474~#3495) 그대로 — head가 새 SHA로 먼저 서 있고, base가 나중에 따라와야
+  #   GitHub이 「head가 base에 흡수됨 = merged」로 판정한다. 그래서 atomic을 버리고 ④→⑤ 순서를 강제한다.
+  # ⚠ ⑤ --no-verify = 같은 SHA가 이번 라운드 ③-b(check_refs) + ④의 pre-push 훅으로 **이중 기통과**한
+  #   직후라 3번째 동일 게이트만 생략(④→⑤ 경합 창을 RTT급으로 압축 = 구 atomic의 「훅 1회」 취지 계승).
+  #   main에 force 계열 없음은 불변(⑤ = plain push 고정) · ⑤ 패배 = landed() false → 다음 라운드 재시도.
+  push_branch
+  git push --no-verify origin "HEAD:refs/heads/main" >/dev/null 2>&1
   landed
 }
 
@@ -113,7 +116,7 @@ land)
   landed && { say "✅ 이미 main == HEAD($(git rev-parse --short HEAD)) — 머지 완료 상태"; exit 0; }
   for r in $(seq 1 "$ROUNDS"); do
     fetch_main; rebase_main; gate
-    say "라운드 $r/$ROUNDS — ④⑤ atomic 푸시(HEAD=$(git rev-parse --short HEAD))"
+    say "라운드 $r/$ROUNDS — ④ 브랜치 선착 → ⑤ main 후착(HEAD=$(git rev-parse --short HEAD))"
     if push_pair; then
       say "✅ main 머지 완료 · SHA=$(git rev-parse HEAD) — 보고 6-1·6-5에 이 해시로 못박아라([7-5])"
       exit 0
