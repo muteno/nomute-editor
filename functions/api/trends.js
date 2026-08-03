@@ -26,8 +26,15 @@ const FILES = {
 
 export async function onRequestGet({ env, request }) {
   const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' };
-  const key = new URL(request.url).searchParams.get('f') === 'brief' ? 'brief' : 'trends';
-  const path = FILES[key];
+  // ⚠️ 라우팅은 **FILES 실조회**로 한다 — 구판은 `get('f') === 'brief' ? 'brief' : 'trends'` 삼항이라 FILES에 키를 늘려도
+  //   그 키가 도달 불가 사문이 됐다(260803 평의회 8인 중 6인이 독립 지목한 P0). 조용한 오작동이라 더 나빴다:
+  //   `?f=tbs`가 sns_trends.json을 200으로 돌려주는데 그 파일도 `updated`를 가져 뷰어 유효성 검사를 **통과** →
+  //   국내 커뮤니티 로더가 `d.communities` 부재로 빈 배열을 집어 **키워드 알림 국내축이 조용히 0건**이 된다(봉합하려던 그 사고 그대로).
+  //   hasOwnProperty = 프로토타입 키(`?f=constructor`·`__proto__`)가 truthy로 새는 축까지 동시 차단.
+  const q = new URL(request.url).searchParams.get('f') || 'trends';
+  if (!Object.prototype.hasOwnProperty.call(FILES, q))   // 미지 키 = **404**(기본값 폴백 금지) — 폴백하면 그게 곧 오배송이고, 오배송이 P0의 본체였다(엉뚱한 파일이 유효성 검사를 통과해 정적 폴백까지 차단)
+    return new Response('{"error":"unknown f"}', { status: 404, headers: H });
+  const path = FILES[q], key = q;
   const tries = [];
   if (env.GH_TOKEN) tries.push([
     `https://api.github.com/repos/muteno/nomute-editor/contents/${path}?ref=main`,

@@ -18,8 +18,12 @@ const FILES = {
 
 export async function onRequestGet({ env, request }) {
   const H = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' };
-  const key = new URL(request.url).searchParams.get('f') || 'ig';
-  const ent = FILES[key] || FILES.ig;
+  // hasOwnProperty 실조회 = 프로토타입 키(`?f=constructor`·`__proto__`·`toString`)가 truthy로 새어 ent.path=undefined로 흐르는 축 차단
+  //   (260803 평의회 지적 · 자매 trends.js는 삼항 라우팅이 키를 사문화한 P0까지 있었다 = 같은 축 동시 봉합).
+  const q = new URL(request.url).searchParams.get('f') || 'ig';
+  if (!Object.prototype.hasOwnProperty.call(FILES, q))   // 미지 키 = 404(기본값 폴백 금지 · 자매 trends.js 동축 — 오배송이 P0 본체였다)
+    return new Response('{"error":"unknown f"}', { status: 404, headers: H });
+  const ent = FILES[q];
   const tries = [];
   if (env.GH_TOKEN) tries.push([
     `https://api.github.com/repos/muteno/nomute-editor/contents/${ent.path}?ref=main`,

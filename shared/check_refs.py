@@ -929,7 +929,31 @@ def check_coalesce_pair():
             except Exception:
                 continue
             atxt += '\n'.join(re.sub(r'(?<!:)//.*$', '', l) for l in raw.splitlines())
-    surf, bad = [], []
+    # ③-0 **라우터 도달성**(260803 평의회 8인 중 6인 독립 지목 P0의 기계화) — FILES 화이트리스트에 키를 늘려도
+    #   key 산출식이 하드코딩 삼항(`get('f') === 'brief' ? 'brief' : 'trends'`)이면 새 키가 **도달 불가 사문**이 되고,
+    #   요청은 조용히 기본 파일을 200으로 받는다 → 엉뚱한 파일이 소비자 유효성 검사를 통과해 **정적 폴백까지 차단**(빈 코퍼스 확정).
+    #   구 게이트는 문자열 등재만 봐서 그 죽은 라우트를 '서빙 보유'로 인증했다 = 게이트가 사고를 승인한 축.
+    #   계약 = FILES류 맵을 가진 api 파일은 **실조회**(`hasOwnProperty` 또는 `FILES[` 인덱싱)로 라우팅해야 한다.
+    _dead_route = False
+    bad = []
+    for n in sorted(os.listdir(fdir)):
+        if not n.endswith('.js'):
+            continue
+        try:
+            raw = open(os.path.join(fdir, n), encoding='utf-8').read()
+        except Exception:
+            continue
+        code = '\n'.join(re.sub(r'(?<!:)//.*$', '', l) for l in raw.splitlines())
+        m = re.search(r'const\s+FILES\s*=\s*\{(.*?)\n\}', code, re.S)
+        if not m:
+            continue
+        keys = set(re.findall(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:', m.group(1), re.M))
+        if len(keys) <= 1:
+            continue
+        if not re.search(r'hasOwnProperty\.call\(\s*FILES|FILES\s*\[', code):
+            bad.append('%s → FILES 키 %d개인데 라우터가 실조회가 아님(하드코딩 분기 = 새 키 도달 불가 사문 · 260803 P0)' % (n, len(keys)))
+            _dead_route = True
+    surf = []
     for name, wfs in sorted(landed.items()):
         # 표면 판정 = **인용 리터럴**(`'<파일>'` / `'<파일>?…'`)이 뷰어에 있는가.
         #   ⚠ `fetch(` 직전 매칭으로 하면 **자기무력화**한다 — 이 게이트가 시킨 처방(api 우선 → 정적 폴백 루프)을 적용하는 순간
@@ -939,6 +963,8 @@ def check_coalesce_pair():
         if not re.search(r'''['"`]''' + re.escape(name) + r'''[?'"`&]''', vtxt):
             continue   # 화면이 안 읽는 내부 산출물 = 비대상(자동 제외)
         surf.append(name)
+        if _dead_route:
+            continue   # 라우터가 죽어 있으면 아래 등재 검사는 무의미(위에서 이미 실패 처리)
         if not re.search(r'''['"`]viewer/''' + re.escape(name) + r'''['"`]''', atxt):   # 인용 리터럴만 인정(FILES 등재 형태 · 산문 언급 불인정)
             bad.append('%s (착지: %s) → 라이브 서빙 없음 = 코얼레싱 스킵 시 화면 갱신 정지'
                        % (name, ','.join(sorted(wfs))))

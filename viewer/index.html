@@ -12100,7 +12100,10 @@ function mkFresh(cfg) {   // cfg = { ls, btn, noun, post(ctx)→url, ctx()→문
   let S = { st: 'idle', t0: 0, base: '', ctx: '', doneAt: 0 }, timer = null, hold = null;
   try { const s = JSON.parse(localStorage.getItem(cfg.ls) || 'null'); if (s && s.st) S = s; } catch {}
   const save = () => { try { localStorage.setItem(cfg.ls, JSON.stringify(S)); } catch {} };
-  const paint = () => { const b = document.getElementById(cfg.btn); if (b) { b.classList.toggle('pend', S.st === 'pend'); b.classList.toggle('done', S.st === 'done'); } };
+  // ⚠️ 점등은 **문맥이 일치할 때만** — 채널은 IG/FB 두 소스가 버튼 1개를 공유해서, ctx 무시하고 칠하면 IG 재수집 중에 FB로 토글했을 때
+  //   FB 화면 위에서 골드레몬이 돌고 완료 시 FB 시각 옆에 강조색이 켜진다 = **가짜 'FB 갱신 완료'**(260803 평의회 지적).
+  const ctxOk = () => !cfg.ctx || !S.ctx || S.ctx === cfg.ctx();
+  const paint = () => { const b = document.getElementById(cfg.btn); if (b) { const on = ctxOk(); b.classList.toggle('pend', on && S.st === 'pend'); b.classList.toggle('done', on && S.st === 'done'); } };
   const idle = () => { S = { st: 'idle', t0: 0, base: '', ctx: '', doneAt: 0 }; save(); paint(); if (timer) { clearInterval(timer); timer = null; } };
   const done = () => {
     if (timer) { clearInterval(timer); timer = null; }
@@ -12122,7 +12125,7 @@ function mkFresh(cfg) {   // cfg = { ls, btn, noun, post(ctx)→url, ctx()→문
     else if (S.st === 'done') { const left = S.doneAt + FRESH_HOLD - Date.now(); if (left <= 0) return idle(); paint(); if (hold) clearTimeout(hold); hold = setTimeout(() => { if (S.st === 'done') idle(); }, left); }
   };
   const click = async () => {
-    if (S.st === 'pend') return;   // 연타 무시(발사 중복 = 서버 rateGate 2중 방어)
+    if (S.st === 'pend') { if (!ctxOk()) freshToast('다른 소스 재수집이 진행 중이야 — 끝나면 눌러줘'); return; }   // 연타 무시(발사 중복 = 서버 rateGate 2중 방어) · 문맥 불일치(IG 도는 중 FB 클릭) = 무반응 대신 정직 고지(상태머신 1개는 두 소스를 동시에 못 추적)
     const cx = cfg.ctx ? cfg.ctx() : '';
     S = { st: 'pend', t0: Date.now(), base: String(cfg.upd(cx) || ''), ctx: cx, doneAt: 0 }; save(); paint();   // 즉시 점등(체감 반응 0ms) — base는 발사 뒤 실시각으로 재앵커
     if (!timer) timer = setInterval(tick, FRESH_IV);
@@ -13613,7 +13616,8 @@ function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일
 async function chanGet(k, file, ok, force) {   // ok = 유효 응답 판별 키(부재 = 서빙 실패 → 다음 소스) · force = api 캐시버스터(수동 감시 폴 전용)
   for (const u of ['api/chan?f=' + k + (force ? '&_=' + Date.now() : ''), file + '?ts=' + Date.now()]) {
     try {
-      const r = await fetch(u); if (!r.ok) continue;
+      const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : null;   // ⚠️ 시도마다 새 시그널 = loadCandidates·loadTrends 관용구(260803 평의회 지적: 여기만 빠져 있었다). 없으면 **매달린 소켓이 CHAN_LOADING을 영구 점유** → 채널 탭이 통째로 정지(자매 로더 주석이 명시한 그 사고 경로)
+      const r = await fetch(u, sig ? { signal: sig } : undefined); if (!r.ok) continue;
       const t = await r.text(); if (/^\s*</.test(t)) continue;   // SPA 폴백(HTML 200) 가드
       const j = JSON.parse(t); if (!j || !j[ok]) continue;
       return j;
@@ -13621,18 +13625,29 @@ async function chanGet(k, file, ok, force) {   // ok = 유효 응답 판별 키(
   }
   return null;
 }
+let CHAN_INFLIGHT = null;   // 진행 중 로드 프로미스 — force(수동 재수집)가 그 착지를 기다렸다 반드시 한 번 더 돌게(아래 ⚠)
 async function loadChan(force) {
-  if (CHAN_LOADING) return;
+  // ⚠️ 재진입 가드가 force보다 앞이면 **수동 재수집의 강제 재fetch가 진행 중 로드에 삼켜져 조용히 무효**가 된다(260803 평의회 지적) —
+  //   그러면 클릭 직후 base 재앵커가 화면의 묵은 generated_kst를 집어 첫 틱이 '완료'로 오판정한다(가짜 완료). force는 대기 후 재실행.
+  if (CHAN_LOADING) { if (!force) return; try { await CHAN_INFLIGHT; } catch {} if (CHAN_LOADING) return; }
   if (!force && CHAN && Date.now() - CHAN_AT < 300e3) { renderChan(); return; }   // force = 수동 재수집 감시(TTL 우회)
   CHAN_LOADING = true;
+  const _prevG = (CHAN && CHAN.generated_kst) || '';   // 변화 판정용 스냅(아래 재조립 억제)
   try {
-    const [d, b, f, bf] = await Promise.all([chanGet('ig', 'insta_data.json', 'generated_kst', force), chanGet('brief', 'chan_brief.json', 'updated', force), chanGet('fb', 'fb_data.json', 'generated_kst', force), chanGet('brieffb', 'chan_brief_fb.json', 'updated', force)]);   // 브리프·페이스북(1-2 · Q155)·FB브리프(운영자 260724) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
+    CHAN_INFLIGHT = Promise.all([chanGet('ig', 'insta_data.json', 'generated_kst', force), chanGet('brief', 'chan_brief.json', 'updated', force), chanGet('fb', 'fb_data.json', 'generated_kst', force), chanGet('brieffb', 'chan_brief_fb.json', 'updated', force)]);   // 브리프·페이스북(1-2 · Q155)·FB브리프(운영자 260724) = 병행 fetch·실패 무해(파일 없음 = 유닛/소스 미표시 = 조용한 공백)
+    const [d, b, f, bf] = await CHAN_INFLIGHT;
     if (d) { CHAN = d; CHAN_AT = Date.now(); }
     if (b) CHANB = b;
     if (f) CHAN_FB = f;
     if (bf) CHANB_FB = bf;
   } catch {}
-  finally { CHAN_LOADING = false; if (CURTAB === 'chan') renderChan(); try { renderMsgBadge(); } catch {} }   // 채널 데이터 도착 = 인구통계 기준일 판정 재계산(demoStaleMsgs) → 배지·기어 상태 동기(운영자 260726 · 데이터 없을 땐 조용 = 오탐 0)
+  finally {
+    CHAN_LOADING = false; CHAN_INFLIGHT = null;
+    // force 폴(수동 재수집 감시 = 30초 주기)은 **변화가 있을 때만** 재조립 — 무가드면 폴마다 채널 화면 전체가 innerHTML로 재부양해
+    //   스크롤·접힘·토글이 튄다(renderSnsTrends가 _trSig 시그니처 가드로 막아둔 바로 그 축 · 260803 평의회 지적).
+    if (CURTAB === 'chan' && (!force || ((CHAN && CHAN.generated_kst) || '') !== _prevG)) renderChan();
+    try { renderMsgBadge(); } catch {}
+  }   // 채널 데이터 도착 = 인구통계 기준일 판정 재계산(demoStaleMsgs) → 배지·기어 상태 동기(운영자 260726 · 데이터 없을 땐 조용 = 오탐 0)
 }
 // 커버 로드 실패(CDN URL 만료·404) = 타일 **소멸**이 아니라 캡션 텍스트 타일로 강등(운영자 260803 "이번 문제 안일어나게") —
 // 구 onerror는 this.parentNode.style.display='none' 이라 12칸 그리드에 **구멍**이 남았다(260718이 없애려던 그 공백을
@@ -13659,7 +13674,7 @@ function renderChan() {
   { const tgl = document.getElementById('chanSrcTgl'); if (tgl) { const isFb = CHAN_SRC === 'fb'; tgl.dataset.cs = CHAN_SRC; tgl.classList.add('on'); tgl.setAttribute('aria-label', '채널 소스: 현재 ' + (isFb ? '페이스북 — 탭하면 인스타' : '인스타 — 탭하면 페이스북')); } }   // 단일 IG⇄FB 아이콘 토글 활성 동기(운영자 260720 · data-cs = .cs-rail 촤르륵 슬라이드 구동[아이콘은 마크업 고정·JS는 상태만] · 항상 on = 활성 소스만 · 구 텍스트뮤테이션[Q273] 대체)
   const d = CHAN_SRC === 'fb' ? CHAN_FB : CHAN;
   const CB = CHAN_SRC === 'fb' ? CHANB_FB : CHANB;   // 활성 소스 AI 브리프(운영자 260724 "페이스북도 요약 동일 조건") — IG=chan_brief.json · FB=chan_brief_fb.json · 결측 = 블록 미표시(조용한 공백)
-  { const vt = document.getElementById('vhTimeTxt') || document.getElementById('vhTime'); if (vt) vt.textContent = (d && d.generated_kst) ? (fmtK12(d.generated_kst) || '') : ''; const rb = document.getElementById('chanFreshBtn'); if (rb) rb.hidden = !(d && d.generated_kst); }   // 시각 있을 때만 재수집 픽토 점등(빈 헤더에 글리프 단독 방지 · SNS 축 동문법) · 수집 시각 = 최상단 채널 헤더 좌상단 1회(운영자 260720 Q290 "받아오는 시간 같으니 대칭 정반대에 1회 · 라임 강조") — 구 대분류별 반복(prof·_ctm) 폐지 대체 · vh-acts(우) 대칭 좌측 · 라임 = --accent-2 · 260803 픽토 동거 = #vhTimeTxt 이관(재수집 픽토는 trend 전용이라 chan에선 CSS 소등)
+  { const vt = document.getElementById('vhTimeTxt') || document.getElementById('vhTime'); if (vt) vt.textContent = (d && d.generated_kst) ? (fmtK12(d.generated_kst) || '') : ''; const rb = document.getElementById('chanFreshBtn'); if (rb) rb.hidden = !(d && d.generated_kst); try { CHANF.paint(); } catch (_) {} }   // 시각 있을 때만 재수집 픽토 점등 · paint 재호출 = IG/FB 토글 시 문맥 불일치 점등 즉시 소등(평의회 260803)(빈 헤더에 글리프 단독 방지 · SNS 축 동문법) · 수집 시각 = 최상단 채널 헤더 좌상단 1회(운영자 260720 Q290 "받아오는 시간 같으니 대칭 정반대에 1회 · 라임 강조") — 구 대분류별 반복(prof·_ctm) 폐지 대체 · vh-acts(우) 대칭 좌측 · 라임 = --accent-2 · 260803 픽토 동거 = #vhTimeTxt 이관(재수집 픽토는 trend 전용이라 chan에선 CSS 소등)
   if (!d || !d.profile) { box.innerHTML = ''; return; }   // 빈 상태 = 조용한 공백(§디자인 e-가 · 전환 복귀 경로 = 헤더 세그 상시)
   const q = ($('#q') ? $('#q').value : '').trim().toLowerCase();
   const vf = chVf;
@@ -15002,7 +15017,7 @@ async function loadTbsKw() {
     try {
       const r = await fetch(u); if (!r.ok) continue;
       const tx = await r.text(); if (/^\s*</.test(tx)) continue;   // SPA 폴백(HTML 200) 가드
-      const d = JSON.parse(tx); if (!d || !d.updated) continue;    // updated 부재 = 서빙 실패 신호 → 다음 소스
+      const d = JSON.parse(tx); if (!d || !d.updated || !Array.isArray(d.communities)) continue;   // **형상까지** 검사(260803 평의회 심층방어) — updated만 보면 엉뚱한 파일(sns_trends.json도 updated 보유)이 통과해 빈 코퍼스를 확정하고 정적 폴백까지 건너뛴다(candidates.js `&& d.length` 교훈의 정확한 미러)
       const out = []; (d.communities || []).forEach(c => (c.posts || []).forEach(p => { if (p && p.title) out.push({ t: p.title, u: p.url || '' }); }));
       KW_TBS = out; _kwTbsAt = Date.now(); break;
     } catch { /* 다음 소스 */ }
@@ -15840,7 +15855,7 @@ $('#pdfBtn').addEventListener('click', () => {   // '공유' = 공개 발행(다
 // 픽토그램 누름 = 시맨틱 아이콘 모션(전 아이콘 버튼 통일 · 위임 1핸들러 · 운영자 260621). 다운로드/저장=바운스, 그 외=회전. 기존 svg 애니(bnav·rev-fab 등)는 셀렉터서 제외. ts-rf(상단 강제새로고침)도 ic-spin으로 편입 = .pmenu-rf와 동일 픽토그램 액티브(운영자 260629).
 document.addEventListener('click', e => {
   if (e.defaultPrevented) return;   // 드래그/취소된 클릭(캐러셀 스와이프 등)엔 헛모션 방지
-  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,#profile,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf');   // .pub-share·.dlg-pdf = 요약 헤더 '공유'도 별자리 훑기(ic-share) 편입(260703) · #src(원문·외부이동)는 click 발화가 새 탭 전환에 삼켜져 여기서 제외 → 전용 pointerdown 선발화(8355 · 운영자 260705)
+  const b = e.target.closest('.sbtn,.tool-x,.dlg-x,.mx,.ed-x,.askx,.qh-x,.pmenu-rf,.ts-rf,.vh-rf,#profile,.fb-x,.sc-rsn-x,.askimg-x,.copy,.titlecopy,.gsrch,.dlgtop,.bnav-fab,.fi-saveall,.pub-share,.dlg-pdf');   /* .vh-rf = 헤더 수동 재수집 픽토(260803 평의회 지적 — CSS 주석은 'ic-spin 위임'이라 적었는데 이 목록에 없어 누름 피드백이 0이었다 = 주석과 사실 불일치) */   // .pub-share·.dlg-pdf = 요약 헤더 '공유'도 별자리 훑기(ic-share) 편입(260703) · #src(원문·외부이동)는 click 발화가 새 탭 전환에 삼켜져 여기서 제외 → 전용 pointerdown 선발화(8355 · 운영자 260705)
   if (!b) return;
   const svg = b.querySelector('svg'); if (!svg) return;
   const m = b.dataset.motion ? ('ic-' + b.dataset.motion) : (b.matches('.save,.fi-saveall,[aria-label*="저장"],[aria-label*="다운로드"],[title*="다운로드"]') ? 'ic-bounce' : 'ic-spin');   // data-motion=rise(↗이동)/check(✓확인)/share(별자리 훑기) 명시 우선(운영자 260702·260703) · 없으면 다운로드=바운스/그외=회전
