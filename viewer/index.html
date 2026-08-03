@@ -10374,6 +10374,40 @@ function showToast(c, total) {
 }
 function hideToast() { const t = document.getElementById('nmToast'); if (t) t.classList.remove('show'); _toastC = null; clearTimeout(_brkToastT); }
 // (PICK 게이지 함수 toastPickGo 폐지 — 게이지 없이 누르면 :active 후 바로 pickCard 발동으로 변경·운영자 260702)
+// ── 포그라운드 알림 클릭 방패(운영자 260803 "긴급이나 새 버전이 있어요, 경고 등 포그라운드 알림 — 이 영역은 아무데나 클릭해도 뒤에 배경이 클릭 안되도록") ──
+//   실측 사고(430px 실클릭 재현): 토스트가 **눈에 100% 보이는데** 클릭이 전부 뒤로 샌다.
+//     닫힘 t=0ms 실측 = opacity "1"(완전 불투명) · pointer-events "none"(전 영역 관통) → 뒤 .scrap-col 피격.
+//     원인 = hideToast류는 .show만 떼는데 `.nm-toast:not(.show){pointer-events:none}`(CSS 1536)이 **즉시** 걸리고
+//     opacity는 .3s에 걸쳐 내려간다 = 그 300ms 동안 「보이는 알림」과 「눌리는 것」이 갈린다(smoke_hitzone과 같은 사고 유형).
+//     8s 자동닫힘 만료·✓/✗ 직후가 정확히 그 순간이라 「알림 누르려다 엉뚱한 기사가 열린다」로 나타난다.
+//   봉합 = 캡처단계에서 「보이는 토스트 영역 안 클릭인데 타깃이 토스트 밖」이면 삼킨다(뒤 화면 무반응).
+//     · 표시 중 정상 클릭(타깃이 토스트 안) = 무접촉 — 본체 탭·✓·↗·✗ 동작 100% 그대로.
+//     · 히트 소유권은 추정하지 않고 **실측**한다(관통 원인인 pointer-events만 잠깐 걷고 elementFromPoint) →
+//       모달(top-layer)·잠금(z300)·최소화 ▲(z200) 등 토스트(z60)보다 위 표면의 클릭은 그쪽 몫으로 그대로 통과.
+//     · 라디얼(＋) 열림 중 = CSS 1537의 **의도적** 관통(별버튼 z36을 토스트가 가리는 구조·분신술10 260705)이라 방패도 비켜선다.
+//     · 대상 = .nm-toast 가족 전량 자동(긴급·경보·새버전·실패·SNS실패·키워드 + 앞으로 생길 토스트) — 손 레지스트리 없음.
+//     · .qflash(2.5s 무동작 안내)는 대상 아님 — pointer-events:none이 그 셸의 정본 성격(탭을 안 먹는 안내).
+function nmToastShield(e) {
+  if (document.querySelector('.radmenu.open')) return;   // 라디얼 열림 = CSS 1537 의도적 관통 보존
+  const x = e.clientX, y = e.clientY;
+  if (!x && !y) return;                                  // 좌표 없는 발동(키보드 click 등) = 무접촉
+  for (const t of document.querySelectorAll('.nm-toast')) {
+    if (t.contains(e.target)) return;                    // 토스트가 이미 받았다 = 정상 경로(가장 흔한 길 · 즉시 이탈)
+    const r = t.getBoundingClientRect();                 // 싼 것부터 = 영역 밖 클릭(대부분)은 여기서 탈락
+    if (x < r.left || x > r.right || y < r.top || y > r.bottom) continue;
+    const cs = getComputedStyle(t);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.02) continue;   // 안 보이면 방패 아님(유령 토스트 무접촉 = 260705 봉합 존중)
+    const pe = t.style.pointerEvents;                    // 히트 소유권 실측 — 관통 원인만 잠깐 걷고 즉시 되돌림
+    t.style.pointerEvents = 'auto';
+    const top = document.elementFromPoint(x, y);
+    t.style.pointerEvents = pe;
+    if (!top || !t.contains(top)) continue;              // 더 위 표면이 주인(또는 라운드 코너 바깥 = 눈에도 뒤가 보이는 자리) = 통과
+    e.stopPropagation();                                 // 뒤 화면 핸들러 차단
+    if (e.type === 'click') e.preventDefault();          // 앵커 기본 이동까지 차단(pointerdown은 preventDefault 안 함 = 스크롤·제스처 보존)
+    return;
+  }
+}
+['pointerdown', 'mousedown', 'click'].forEach(ev => document.addEventListener(ev, nmToastShield, true));
 // ── 🚨 신규 레인 계기판 경보(운영자 260716 "신규 뉴스가 안 들어오고 있어요 — 긴급 경고랑 같은 레벨·디자인 · 처리 완료 체크까지 ✓/✗") ──
 //    260714~16 아사 사고(수집은 도는데 발행<4h 사건이 수집함서 증발 · 이틀 무감지)를 화면이 직접 알림. 판정 = 뷰어가 이미 든 CANDS로 셈(추가 fetch 0).
 //    셸 = .nm-toast 긴급 정본 그대로(빨강 --danger·위치·모션·ft-act 픽토버튼) · 픽토만 WARN(고장 의미 — 가족 2종[BELL·WARN] 내 선택·신규 도형 창작 0).
