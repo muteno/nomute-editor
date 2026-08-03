@@ -11824,20 +11824,43 @@ let _snsSig = '';   // 직전 SNS 렌더 시그니처(동일 구성 재렌더 = 
 const SOC_HOT10 = 24, SOC_HOT30 = 12;
 // ── 트렌드 레인(메뉴2 상단) — sns_trends.json 렌더(수집 = sns-trends.yml 30분 주기 · 운영자 260710 "ㄱㄱ" 배치 승인). 있는 소스만 그림·전무 = 조용한 공백(§디자인 e-가). ──
 let TRENDS = null, BRIEF = null, _trFetched = 0;
-async function loadTrends() {
+// ⚠️ 소스 순서 = **api/trends(GitHub main 직독 · 빌드 우회) → 정적 sns_trends.json**(loadCandidates 정본 문법 그대로 계승 · 운영자 260803).
+//    정적 파일 = Cloudflare Pages **빌드 시점 스냅샷**인데 main 커밋이 3시간에 192건(봇·세션)이라 빌드(500/월 한도)가 구조적으로 못 따라온다
+//    → 실측 260803 19:29: 레포 updated 18:40(49분 전) vs 라이브 정적 15:18(**4h11m 전**) = "SNS가 3시간씩 밀린다"의 진범(수집 워크플로는 무결).
+//    수동 재수집 픽토(#snsFreshBtn)도 이 줄이 없으면 반쪽 = 수집은 도는데 화면 JSON이 안 바뀌어 완료 판정(updated 변화)이 영영 안 온다.
+//    정적 폴백은 그대로 보존 = 로컬 렌더·스모크(python http.server = Functions 없음)와 Functions 장애 시 종전 동작 유지(품질 손실 0).
+// force = 수동 재수집 감시 폴 전용 캐시버스터(api는 max-age 60s·엣지 30s 캐시라 무버스터면 완료 감지가 최대 1분 늦는다 · 평시 폴은 무버스터 = 엣지 캐시 이득 보존)
+async function loadTrends(force) {
   if (Date.now() - _trFetched < 5 * 60e3) return;   // 5분 TTL(수집 30분 주기 = 충분·탭 재진입 남발 방지)
   try {
-    const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : null;
-    const r = await fetch('sns_trends.json?t=' + Date.now(), sig ? { signal: sig } : undefined);
-    if (!r.ok) return;
-    const tx = await r.text();
-    if (/^\s*</.test(tx)) return;   // SPA 폴백(HTML 200) 가드 = rszLoad·freeLoad 동일
-    TRENDS = JSON.parse(tx);
+    let tx = null;
+    for (const u of ['api/trends' + (force ? '?_=' + Date.now() : ''), 'sns_trends.json?t=' + Date.now()]) {
+      try {
+        const sig = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(12000) : null;   // 시도마다 새 시그널 = loadCandidates 관용구(하나를 재사용하면 1차 타임아웃이 2차 폴백까지 즉사시킨다)
+        const r = await fetch(u, sig ? { signal: sig } : undefined);
+        if (!r.ok) continue;
+        const t0 = await r.text();
+        if (/^\s*</.test(t0)) continue;   // SPA 폴백(HTML 200) 가드 = rszLoad·freeLoad 동일
+        const j = JSON.parse(t0);
+        if (!j || !j.updated) continue;   // updated 없는 응답 = 서빙 실패 신호 → 다음 소스(candidates 빈배열 SPOF 교훈 미러 · 260714)
+        tx = t0; TRENDS = j; break;
+      } catch { /* 다음 소스 */ }
+    }
+    if (tx === null) return;   // 전 소스 실패 = last-good 유지(종전 동작 그대로)
     _trFetched = Date.now();   // TTL 스탬프 = 성공 시에만(선-set이면 첫 로드 blip 한 번에 트렌드 레인 5분 공백 · 평의회 260713 ⑤)
   } catch (e) { return; }
-  try {   // AI 브리프(비서 페르소나 · 운영자 260712) — 없거나 실패 = 블록 미표시(조용한 공백)
-    const rb = await fetch('sns_brief.json?t=' + Date.now());
-    if (rb.ok) { const tb = await rb.text(); if (!/^\s*</.test(tb)) BRIEF = JSON.parse(tb); }
+  try {   // AI 브리프(비서 페르소나 · 운영자 260712) — 없거나 실패 = 블록 미표시(조용한 공백) · 소스 순서 = 본체와 동축(api 우선 → 정적 폴백)
+    for (const ub of ['api/trends?f=brief' + (force ? '&_=' + Date.now() : ''), 'sns_brief.json?t=' + Date.now()]) {
+      try {
+        const rb = await fetch(ub);
+        if (!rb.ok) continue;
+        const tb = await rb.text();
+        if (/^\s*</.test(tb)) continue;
+        const jb = JSON.parse(tb);
+        if (!jb || !jb.updated) continue;
+        BRIEF = jb; break;
+      } catch { /* 다음 소스 */ }
+    }
   } catch (e2) {}
   try {   // ⑭-i 화재·지진 추적 상태(운영자 260803 "기계가 이 건을 놓쳤나를 화면에서") — 없거나 실패 = 칩 미표시(조용한 공백 · 문법 = 위 브리프 그대로)
     const rf = await fetch('fire_watch.json?t=' + Date.now());
@@ -11868,14 +11891,14 @@ function snsfToast(msg) {   // 실패·지연 정직 보고 = .nm-toast fail 계
 function snsfDone() {
   if (_snsfTimer) { clearInterval(_snsfTimer); _snsfTimer = null; }
   SNSF = { st: 'done', t0: 0, base: '', doneAt: Date.now() }; snsfSave(); snsfPaint();
-  setTimeout(() => { _trFetched = 0; loadTrends(); }, 90e3); setTimeout(() => { _trFetched = 0; loadTrends(); }, 180e3);   // 브리프·번역 2차 커밋 따라잡기(수집 1차 커밋 뒤 LLM 스텝 분리 착지)
+  setTimeout(() => { _trFetched = 0; loadTrends(true); }, 90e3); setTimeout(() => { _trFetched = 0; loadTrends(true); }, 180e3);   // 브리프·번역 2차 커밋 따라잡기(수집 1차 커밋 뒤 LLM 스텝 분리 착지) · force = api 캐시 우회
   if (_snsfHold) clearTimeout(_snsfHold);
   _snsfHold = setTimeout(() => { if (SNSF.st === 'done') snsfIdle(); }, SNSF_HOLD);
 }
 async function snsfTick() {
   if (SNSF.st !== 'pend' || document.visibilityState !== 'visible') return;   // 백그라운드 = 폴 쉼(livePoll 문법) — 복귀 다음 틱이 따라잡음
   if (Date.now() - SNSF.t0 > SNSF_CAP) { snsfIdle(); snsfToast('SNS 재수집이 아직 안 끝났어 — 러너 지연. 다음 자동 주기가 이어받아'); return; }
-  _trFetched = 0; await loadTrends();   // TTL 우회 강제 재fetch(성공 = _trFetched 재앵커 · renderSnsTrends 시그니처 가드가 무변동 재조립 차단)
+  _trFetched = 0; await loadTrends(true);   // TTL 우회 강제 재fetch(force = api/trends 캐시버스터 = 완료 감지 지연 0 · 성공 = _trFetched 재앵커 · renderSnsTrends 시그니처 가드가 무변동 재조립 차단)
   const up = String((TRENDS && TRENDS.updated) || '');
   if (up && up !== SNSF.base) snsfDone();
 }
@@ -11887,14 +11910,16 @@ function snsfResume() {   // 부팅 복원 — pend 만료면 idle · done 잔�
   const b = document.getElementById('snsFreshBtn'); if (!b) return;
   b.addEventListener('click', async () => {
     if (SNSF.st === 'pend') return;   // 연타 무시(발사 중복 = 서버 rateGate 2중 방어)
-    SNSF = { st: 'pend', t0: Date.now(), base: String((TRENDS && TRENDS.updated) || ''), doneAt: 0 }; snsfSave(); snsfPaint();
+    SNSF = { st: 'pend', t0: Date.now(), base: String((TRENDS && TRENDS.updated) || ''), doneAt: 0 }; snsfSave(); snsfPaint();   // 즉시 점등(체감 반응 0ms) — base는 발사 뒤 실시각으로 재앵커
     if (!_snsfTimer) _snsfTimer = setInterval(snsfTick, SNSF_IV);
     try {
-      const r = await fetch('/api/snsretry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });   // snsRecollect 발사 문법 그대로
+      const r = await fetch('/api/snsretry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });   // snsRecollect 발사 문법 그대로 · **발사가 1순위**(러너 스핀업이 전체 소요를 지배 = 재앵커를 앞세우면 그만큼 늦게 출발)
       const j = await r.json().catch(() => ({}));
       if (r.status === 429) snsfToast(j.error || '이미 수집이 돌고 있어 — 끝나면 자동 반영돼');   // 진행 중 런 존재 = pend 유지(그 착지를 감시가 줍는다)
       else if (!r.ok || !j.ok) { snsfIdle(); snsfToast(j.error || ('재수집 발사 실패 — 잠시 뒤 다시 (' + r.status + ')')); }
     } catch { snsfIdle(); snsfToast('재수집 발사 실패 — 네트워크'); }
+    if (SNSF.st !== 'pend') return;   // 발사 실패로 idle 복귀 = 재앵커 금지(꺼진 상태를 되살려 유령 pend가 되는 것 차단)
+    try { _trFetched = 0; await loadTrends(true); if (SNSF.st === 'pend') { SNSF.base = String((TRENDS && TRENDS.updated) || SNSF.base); snsfSave(); } } catch (_) {}   // ⚠️ base = **클릭 시점 서버 실제값**으로 재앵커(첫 틱 30s 전 여유): 화면 TRENDS는 최대 5분 묵을 수 있고(TTL), 그 사이 정기 런이 이미 갱신했다면 첫 틱이 "내 클릭으로 완료"라고 오판정한다(가짜 완료 차단 · 260803)
   });
   snsfResume();
 })();
