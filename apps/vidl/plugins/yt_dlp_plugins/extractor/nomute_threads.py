@@ -26,7 +26,10 @@ import re
 from yt_dlp.extractor.common import InfoExtractor
 from yt_dlp.utils import ExtractorError, int_or_none, traverse_obj
 
-__version__ = '1.0.0'
+# ⚠ 버전은 반드시 올린다 — 260803 실사고: /share/ 지원이 들어간 뒤에도 1.0.0 그대로라
+#   운영자 PC(OneDrive) 사본과 레포 정본이 **눈으로 구분이 안 됐다**(둘 다 1.0.0인데 한쪽만 공유 링크를 못 받는다).
+#   PC 다운로더가 이 파일을 OneDrive 경로에서 읽으므로, 여기서 고친 건 그 사본을 갱신해야 라이브가 된다.
+__version__ = '1.1.0'   # 1.1.0 = /share/ 공유 링크 지원(302 정규주소 해소 + 메타 폴백)
 
 # 페이지가 "봇이 아니라 사람의 항해"로 보이게 하는 최소 세트.
 # 이게 없으면 로그인 월/챌린지가 200 text/html로 조용히 돌아온다.
