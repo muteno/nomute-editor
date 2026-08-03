@@ -173,6 +173,25 @@ async function measureOnce(pg) {
     }
     const hOK = m1[0].h === 18 && m1[2].h === 15 && m1[8].h === 16;
     ok('외형 계약 = tcard 18 · tpc 15 · qbadge 16', hOK, `${m1[0].h}/${m1[2].h}/${m1[8].h}`);
+    // C-VW 카드 지표 픽토+숫자 광학-잉크 수평(§🔒 3-4-1 · 운영자 260803 "차트모양이랑은 광학-잉크 기준으로 수평에")
+    //   합성 스테이지가 아니라 **라이브 DOM**을 잰다 — 이 축의 사고는 요소 하나가 아니라 `.tcard-m i` 짝(픽토 박스 ↔ 숫자 잉크)에서 갈리고,
+    //   짝은 실제 카드 안에서만 성립한다(스테이지 재현 = 문맥 CSS 사본 = 드리프트 원천). 판정 = |숫자 잉크 세로중심 − 픽토 박스 세로중심|.
+    //   ⚠ Range는 형제 SVG까지 물면 '잉크'가 아니라 합집합 박스가 된다(260803 실측 오판) → 반드시 숫자 <span>만 선택.
+    //   데이터 0(섹션 접힘·수집 공백) = 대상 0건 → PASS + 로그 명시(수집 변동 플레이크 차단 · 하네스 관용구).
+    const vwd = await pg.evaluate(() => {
+      const inkCy = el => { const r = document.createRange(); r.selectNodeContents(el); const b = r.getBoundingClientRect(); return b.height ? b.top + b.height / 2 : null; };
+      const out = [];
+      document.querySelectorAll('.tcard-m i').forEach(it => {
+        const svg = it.querySelector('svg'), sp = it.querySelector('span');
+        if (!svg || !sp) return;
+        const b = svg.getBoundingClientRect(); if (!b.height) return;
+        const cy = inkCy(sp); if (cy == null) return;
+        out.push(+(cy - (b.top + b.height / 2)).toFixed(2));
+      });
+      return out;
+    });
+    const vwMax = vwd.length ? Math.max(...vwd.map(Math.abs)) : 0;
+    ok(`C-VW 지표 픽토+숫자 광학-잉크 수평 |Δy|≤${BAR}`, vwMax <= BAR, vwd.length ? `n=${vwd.length} max|Δy|=${vwMax.toFixed(2)}` : '대상 0건(수집 공백·섹션 접힘)');
     const same = m1.every((a, k) => a.ink && m2[k].ink && Math.abs(a.ink.dx - m2[k].ink.dx) < 0.01 && Math.abs(a.ink.dy - m2[k].ink.dy) < 0.01);
     ok('결정론 = 동일 런 2회 측정 동일', same, same ? m1.length + '/' + m1.length + ' 일치' : JSON.stringify(m2.map(b => b.ink)));
     ok('페이지 에러 0', errs.length === 0, errs.join(' / ') || '0건');
