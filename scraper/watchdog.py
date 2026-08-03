@@ -57,6 +57,8 @@ PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "90"))   # 90분 = **러너 채
 KWSRC_MIN = float(os.environ.get("WD_KWSRC_MIN", "360"))   # 6h = tbs 30분 주기(sns-trends 편승) 12연속 실패 — 커뮤 베스트글은 심야에도 갱신되나 백스톱 드롭(schedule best-effort 1~4h) 오탐 마진 확보
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
 LIVE_FEED = os.environ.get("WD_LIVE_FEED", "https://apps.nomute.kr/articles.json")   # ⑦ 배포 지연 관측 대상 = 라이브 피드(빌드 산출물 · 도메인 이전 시 이 변수만 교체)
+DEPLOY_OBS = os.path.join(ROOT, "scraper", "obs", "deploy_obs.jsonl")   # ⑦-b 배포 관측 원장(회차 1줄 · 기계산출물 = 손편집 금지)
+OBS_KEEP = int(os.environ.get("WD_OBS_KEEP", "600"))   # 30분 주기 × 600 = 약 12일치(원인 축 판별엔 수일이면 충분 · 무한 증식 차단)
 DEPLOY_MIN = float(os.environ.get("WD_DEPLOY_MIN", "90"))   # 90분 = ①수집 신선도(FRESH_MIN 120) 아래 사다리 · 파일명 시각이 분석 소요를 포함해 실지연보다 크게 나오는 만큼의 마진(정상 배포 랙 5~15분 + 분석 10~30분 ≪ 90) · 260803 실사고는 4시간이라 여유 있게 걸린다
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
 SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
@@ -223,6 +225,53 @@ def check_smoke():
     return None
 
 
+def _deploy_obs(live, miss, worst):
+    """⑦-b 배포 관측 원장(운영자 260803 "원인 해결까지 머지 ㄱㄱ") — 회차마다 라이브 실측 1줄 누적 →
+    ⓐ **배포 주기(=CF 처리율 μ)** 와 ⓑ **미반영 추세**를 레포가 스스로 시계열로 갖는다.
+
+    ⚠ 신설 사유 = 260803 평의회 5인이 남긴 **유일한 미결**: 그날 4시간 적체가 「커밋 유입 과다(λ)」인지
+      「CF 측 처리 감속(μ 붕괴)」인지 판정하려면 빌드별 소요가 필요한데 그건 **CF 대시보드에서만 보여서**
+      원인이 '미확인'으로 남았다(→ 해결책도 보수적으로만 잡을 수밖에 없었다). 라이브 articles.json의
+      `generated`(빌드 산출 시각)를 회차마다 찍어 두면 그 간격이 곧 **배포 주기의 하한 관측치**가 되고,
+      미반영 건수 추세와 함께 보면 원인 축이 갈린다 — 추가 네트워크 0(check_deploy가 이미 받은 응답 재사용).
+    형식 = append-only JSONL {t, gen, commit, count, miss, worst_min} · 최근 OBS_KEEP줄만 유지(무한 증식 차단).
+    반환 = 직전 회차 대비 추세 한 줄(경보 문구 꼬리) · 전면 fail-soft(원장 실패가 지표를 못 죽인다)."""
+    now = datetime.now(KST)
+    rec = {"t": now.isoformat(timespec="seconds"), "gen": str(live.get("generated") or ""),
+           "commit": str(live.get("commit") or "")[:9], "count": int(live.get("count") or 0),
+           "miss": int(miss), "worst_min": (round(worst) if worst is not None else None)}
+    prev = None
+    try:
+        old = []
+        if os.path.exists(DEPLOY_OBS):
+            with open(DEPLOY_OBS, encoding="utf-8") as f:
+                old = [l for l in f.read().splitlines() if l.strip()]
+        if old:
+            try:
+                prev = json.loads(old[-1])
+            except Exception:  # noqa: BLE001
+                prev = None
+        os.makedirs(os.path.dirname(DEPLOY_OBS), exist_ok=True)
+        keep = old[-(OBS_KEEP - 1):] + [json.dumps(rec, ensure_ascii=False)]
+        with open(DEPLOY_OBS, "w", encoding="utf-8") as f:
+            f.write("\n".join(keep) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
+    if not prev:
+        return ""
+    try:
+        dt = (now - datetime.fromisoformat(prev["t"])).total_seconds() / 60
+        if dt <= 0:
+            return ""
+        d_miss = rec["miss"] - int(prev.get("miss") or 0)
+        moved = rec["commit"] != (prev.get("commit") or "")   # 배포본 커밋이 전진했나 = 큐가 실제로 도는가
+        arrow = "회복 중" if d_miss < 0 else ("악화" if d_miss > 0 else "정체")
+        return (f"{_dur_ko(dt)} 전 대비 미반영 {prev.get('miss')}→{rec['miss']}건({arrow})"
+                f" · 배포본 {'전진' if moved else '제자리'}")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def check_deploy():
     """⑦ 배포 지연 — 분석이 끝난 기사(queue/*.md)가 **라이브 피드에 안 실린 채** 오래 방치되는 사각.
 
@@ -261,12 +310,17 @@ def check_deploy():
         age = _age_min(f"20{yy}-{mo}-{dd}T{hh}:{mi}:00+09:00")
         if age is not None and (worst is None or age > worst):
             worst, worst_f = age, f
+    trend = _deploy_obs(live, len(pend), worst)   # 회차 원장 적재 + 직전 대비 추세 한 줄(원인 축 판별 재료)
     if worst is None or worst <= DEPLOY_MIN:
         return None
     gen = _age_min(live.get("generated"))
+    # 원인 축 판별(260803 평의회 미결 = "λ 과다인가 CF 감속인가"를 사람이 대시보드 열어야만 알던 것):
+    #   빌드가 **자주 도는데**(배포본 신선) 내용이 안 나간다 = 큐 적체(유입 과다) / 배포본 자체가 낡았다 = 빌드가 아예 안 돎(CF·연동 사망).
+    cause = ("빌드는 도는데 큐 적체(유입 과다·CF 처리 감속)" if (gen is not None and gen <= DEPLOY_MIN)
+             else "빌드 자체가 정체(CF 연동·플랜 한도 의심)" if gen is not None else "배포본 시각 불명")
     return (f"배포 지연 — 분석 끝난 기사 {len(pend)}건이 라이브 피드 미반영(최고령 {_dur_ko(worst)}: {worst_f}"
             f" · 임계 {DEPLOY_MIN:.0f}분 · 라이브 배포본 {(_dur_ko(gen) + ' 전') if gen is not None else '시각 불명'} 산출) — "
-            f"Cloudflare Pages 빌드 큐 적체 의심(대기열이 그동안 '처리 중'으로 보인다)")
+            f"{cause}{(' · ' + trend) if trend else ''}")
 
 
 def check_ledgers():
