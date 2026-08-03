@@ -2263,8 +2263,13 @@ def main():
                 yt_gl.append(v)
         yt_gl = sorted(yt_gl, key=lambda v: v["views"], reverse=True)[:20]
     # ⑤ 쇼츠·AI 영상(운영자 260711 "원본으로 이어붙이되") — InnerTube 검색 파생(무키·기존 인프라 재사용·개별 쿼리 fail-soft)
-    sh = youtube_innertube(limit=12, shorts=True, queries=_sh_q)          # 쇼츠 = config 키워드(기본 IT_QUERIES) + <4분 필터
-    ai = youtube_innertube(limit=12, queries=_ai_q)   # AI 영상 = config 키워드(기본 AI_QUERIES)
+    # limit 12→50(260803) — 주제별(yt_cats)·인기(yt_all)와 **같은 병**: 후보를 12건으로 끊어와 뷰어 신선도 로직이
+    # 쓸 재료가 없었다(실측 260803 11:10 = 쇼츠 12건 중 24h 이내 0건·72h 이내 2건 · AI영상 12건 중 24h 0건·72h 3건).
+    # InnerTube는 쿼리당 1콜 · limit은 머지 후 잘라내기라 **콜 수·비용 불변**(무키 = 쿼터 무관) = 순수 후보 풀 확대.
+    # 뷰어 무접촉 — shL/aiL은 fill10 10개 보장(운영자 260721 "무조건 10개")이라 24h 컷이 없다 → 컷 신설 금지(섹션
+    # 통째 공백 = 그 지시 정면충돌). 후보가 늘면 freshFirst 1순위가 신선분으로 더 채워지는 게 이 축의 개선 경로.
+    sh = youtube_innertube(limit=50, shorts=True, queries=_sh_q)          # 쇼츠 = config 키워드(기본 IT_QUERIES) + <4분 필터
+    ai = youtube_innertube(limit=50, queries=_ai_q)   # AI 영상 = config 키워드(기본 AI_QUERIES)
     # 인기 댓글 주입(운영자 260714 — 브리프 이상치 딥다이브 재료 "누가 올렸나·댓글 반응") — 쇼츠·인기·뉴스 상위 3건씩 · 키 게이트 no-op
     for _lane in (sh, yt_all, yt_news):
         yt_comments(_lane)
