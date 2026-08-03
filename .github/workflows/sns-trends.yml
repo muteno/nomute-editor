@@ -5,7 +5,7 @@
 name: sns-trends
 on:
   schedule:
-    - cron: '17,47 * * * *'   # 백스톱 전용 — GitHub schedule = best-effort(피크시 1~4h 드롭·실측 260713: run 간격 09:13→13:04=3h51m·13:04→16:42=3h38m = "지연" 배지 근본원인). 주 하트비트는 아래 push(폰). :30 봇 혼잡 회피 오프셋 유지.
+    - cron: '2,17,32,47 * * * *'   # 백스톱 전용 — GitHub schedule = best-effort(피크시 1~4h 드롭·실측 260713: run 간격 09:13→13:04=3h51m·13:04→16:42=3h38m = "지연" 배지 근본원인). 주 하트비트는 아래 push(폰). 260803 슬롯 2배(17,47→+2,32 · 운영자 "더 자주 받아오게") = 한 슬롯 드롭 시 다음 기회가 30분→15분 = 드롭 페널티 절반 · 유효 주기·비용은 불변(아래 28분 신선도 게이트가 계속 지배 — 인접 슬롯은 신선하면 30초 체크아웃 후 스킵 = LLM·수집 0). :30 봇 혼잡 회피 오프셋 유지.
   push:
     branches: [main]
     paths:
@@ -60,6 +60,10 @@ on:
         description: '구글 급상승 꼬리 카드 이미지 백필(Q126 · Sonnet WebSearch 1콜 → og:image → R2 · 운영자 260718) — 기본 ON 승격(카나리아 run 29634967139 실측: 폴오버로 백업계정 전환·R2 10개 채움 · 운영자 "30분마다 실검 반영·소넷으로") · schedule=inputs 없음→ON · dispatch gt_img=0=일시 OFF · 롤백=step || 1 제거'
         default: '0'
         required: false
+      force:
+        description: '신선도 게이트(28분) 우회 — 1=최근 갱신이어도 재수집. 뷰어 헤더 수동 재수집 픽토(#snsFreshBtn → /api/snsretry)가 1로 발사(운영자 260803 · 수동 클릭을 게이트가 침묵 스킵하면 픽토가 영원히 회전) · schedule=inputs 없음→0 = 정기 런 불변'
+        default: '0'
+        required: false
 
 permissions:
   contents: write
@@ -93,9 +97,9 @@ jobs:
           EX_KEY: ${{ secrets.KOFIC_NOMUTE_EX }}    # ⑯ 도로공사 돌발·사고 — 운영자 시크릿명 = KOFIC_NOMUTE_EX(260713 등록 실측 · EX_URL env로 엔드포인트 교체 가능)
           # REDDIT_SUBS: 'popular,korea,worldnews'  # 서브레딧 노브(코드 기본과 동일 — 바꿀 때만 주석 해제)
         run: |
-          # 신선도 게이트 — sns_trends 최근 28분 내 갱신이면 이번 트리거 수집 스킵(push·schedule 근접 발사 중복·과금·IP차단 위험 차단). exit 0(성공) → 후속 브리프/번역/커밋이 '입력 동일·무변동' 스킵으로 캐스케이드(추가 손질 0). 파일 없음·파싱 실패·미래시각(음수 el) = 수집 진행(fail-safe = 백스톱 절대 불차단). 1680s=28분 < schedule 30분 = 백스톱 발사는 항상 통과.
+          # 신선도 게이트 — sns_trends 최근 28분 내 갱신이면 이번 트리거 수집 스킵(push·schedule 근접 발사 중복·과금·IP차단 위험 차단). exit 0(성공) → 후속 브리프/번역/커밋이 '입력 동일·무변동' 스킵으로 캐스케이드(추가 손질 0). 파일 없음·파싱 실패·미래시각(음수 el) = 수집 진행(fail-safe = 백스톱 절대 불차단). 1680s=28분 → 260803 cron 15분 슬롯화 이후 인접 슬롯은 설계상 스킵(비용 동결 축) · 드롭 뒤 첫 슬롯만 통과. force=1(수동 재수집 픽토 · workflow_dispatch 전용) = 게이트 우회(운영자 클릭 의도 존중 — 우회해도 concurrency 직렬화·rateGate 연타 캡은 그대로).
           FRESH=$(python3 -c "import json,datetime as dt; u=json.load(open('viewer/sns_trends.json'))['updated']; t=dt.datetime.fromisoformat(u); el=(dt.datetime.now(t.tzinfo)-t).total_seconds(); print(1 if 0<=el<1680 else 0)" 2>/dev/null || echo 0)
-          if [ "$FRESH" = "1" ]; then echo "::notice::sns_trends 최근 28분 내 갱신 — 이번 트리거 수집 스킵(중복 방지)"; exit 0; fi
+          if [ "$FRESH" = "1" ] && [ "${{ inputs.force || '0' }}" != "1" ]; then echo "::notice::sns_trends 최근 28분 내 갱신 — 이번 트리거 수집 스킵(중복 방지 · 수동 강제 = force=1)"; exit 0; fi
           timeout 840 python3 scraper/sns_trends.py   # 840 = 레거시 최악(무키 innertube ~170s) + 구독 예산 SNS_SUBS_BUDGET 480s + 여유. 구독 축은 스크립트 내부 wall-clock 예산이 상한(초과 = 잔여 계정 스킵·레거시 보존 — 평의회2·9 회계)
 
       # ── 국내 커뮤니티 베스트글(tbs · 21개 커뮤 630제목) — 폰 크론 전용이던 축을 러너로 이관(운영자 260726 "작동하게").
