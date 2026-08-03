@@ -42,6 +42,20 @@ cur_fails() { grep -o '"fails":[[:space:]]*[0-9]\+' "cards/$1/status.json" 2>/de
 GVER="$(guidelines_version card)"
 GBLOCK="$(guidelines_block card)"
 echo "지침 버전(card): ${GVER} / MODE=${MODE} / CARD_COV_GUARD=${CARD_COV_GUARD:-unset}"
+# ── 캐시 봉합: 고정부(프롬프트+지침)를 시스템 프롬프트로 (기본 ON · 평의회 8인 260803 · 롤백 = repo 변수 CARD_SYS_PROMPT를 '1' 외 값으로) ──
+#   왜: 고정부 ~192KB가 유저 메시지에 있으면 캐시 키에 가변 다이제스트가 섞여 콜마다 전량 재기록(원장 실측 = 콜당
+#   cw ~111K·외부 재사용 0/318 = 카드 비용의 83%). 시스템 엔트리는 동일 플래그 콜 간 공유 = 1h TTL 내 0.1× 읽기.
+#   실물 192KB 프로브(260803) = 2회차 cache_read 138,564 전량 히트. --exclude-dynamic-system-prompt-sections =
+#   git 상태 등 동적 섹션 제외(카드마다 commit_push로 프리픽스 갈리는 것 차단). 인자 상한(MAX_ARG_STRLEN 128KiB) → -file 필수.
+#   회수(cov) 콜은 웹도구 차단으로 tools 프리픽스가 갈려 편입 무익(평의회7) → 아래서 구경로 프롬프트(바이트 동일) 재구성.
+CARD_SYS_PROMPT="${CARD_SYS_PROMPT:-1}"
+SYS_ARGS=()
+if [ "$CARD_SYS_PROMPT" = "1" ]; then
+  CARD_SYSF="$(mktemp /tmp/card_sys.XXXXXX)"
+  { cat "$PROMPT_FILE"; printf '\n\n%s\n' "$GBLOCK"; } > "$CARD_SYSF"
+  trap 'rm -f "$CARD_SYSF"' EXIT
+  SYS_ARGS=(--append-system-prompt-file "$CARD_SYSF" --exclude-dynamic-system-prompt-sections)
+fi
 
 git config user.name  "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -279,12 +293,18 @@ PY
 [참고: thumb_dispatch 코드 해설 — analyze가 이 사건을 보고 고른 연출 코드의 라이브러리 정의다. §라이브러리 계승 규칙대로 조명 톤·정조만 비주얼 키노트로 상속하고, 앵글·샷 코드를 카드 N장에 복제하지 마라(카드 앵글은 카드마다 분산).]
 ${disp_note}"
     fi
-    fp="$(cat "$PROMPT_FILE")
+    if [ "$CARD_SYS_PROMPT" = "1" ]; then
+      # 고정부는 시스템 프롬프트(위 SYS_ARGS)로 — stdin은 가변부(다이제스트)만 = 캐시 키에서 가변부 분리
+      fp="[큐레이션 다이제스트 — 이 기사로 카드뉴스 MD를 만든다]
+$(cat "$q")${disp_note}"
+    else
+      fp="$(cat "$PROMPT_FILE")
 
 ${GBLOCK}
 
 [큐레이션 다이제스트 — 이 기사로 카드뉴스 MD를 만든다]
 $(cat "$q")${disp_note}"
+    fi
     # 인라인 재시도 — API 일시 과부하(529 Overloaded/5xx)면 짧은 백오프로 즉시 재시도(analyze·ask와 동일·260622).
     #   성공(필수 헤더 존재)·CARDS_FAILED(막다른길)는 즉시 탈출. 과부하 신호일 때만 재시도(is_transient).
     # ── 폭주(runaway) 교정 재시도 (운영자 260630 · 원인 대응) ──
@@ -321,6 +341,7 @@ $(cat "$q")${disp_note}"
             --allowedTools "WebFetch,WebSearch" \
             --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
             --max-turns 40 \
+            "${SYS_ARGS[@]}" \
             2> "/tmp/${stem}.err")"
       rc=$?
       if { [ $rc -eq 0 ] && [ -n "${out// }" ] && grep -qm1 '^### \[카드 1\]' <<<"$out"; } || grep -qm1 '^CARDS_FAILED' <<<"$out"; then
@@ -417,7 +438,7 @@ $(cat "/tmp/${stem}.cards.tmp")
             --model "$MODEL" --effort "$CARD_EFFORT" \
             --allowedTools "WebFetch,WebSearch" \
             --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep" \
-            --max-turns 40 2>/dev/null)"
+            --max-turns 40 "${SYS_ARGS[@]}" 2>/dev/null)"
       if [ -n "${out2// }" ] && grep -qm1 '^### \[카드 1\]' <<<"$out2"; then
         printf '%s\n' "$out2" | sed -n '/^#/,$p' > "/tmp/${stem}.cards.retry"
         lint2_out="$(python3 .github/scripts/card_gate.py lint "/tmp/${stem}.cards.retry" 2>&1)"; lint2_rc=$?
@@ -471,7 +492,16 @@ $(cat "/tmp/${stem}.cards.tmp")
 [누락 수치 목록]
 ${cov_out}
 "
-        out3="$(printf '%s' "${fp_base}${COV_SUFFIX}" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter 900 \
+        _cov_fp="${fp_base}${COV_SUFFIX}"
+        if [ "$CARD_SYS_PROMPT" = "1" ]; then
+          # cov는 SYS_ARGS 미부착(툴셋 상이 = 캐시 무익·평의회7) — 지침 인라인 구경로를 바이트 동일 재구성
+          _cov_fp="$(cat "$PROMPT_FILE")
+
+${GBLOCK}
+
+${fp_base}${COV_SUFFIX}"
+        fi
+        out3="$(printf '%s' "$_cov_fp" | METER_SRC=card-cov METER_REF="$stem" METER_MODEL="$MODEL" METER_EFFORT="$CARD_EFFORT" claude_meter 900 \
               --model "$MODEL" --effort "$CARD_EFFORT" \
               --disallowedTools "Write,Edit,NotebookEdit,Bash,Task,Read,Glob,Grep,WebFetch,WebSearch" \
               --max-turns 40 2>/dev/null)" || true
