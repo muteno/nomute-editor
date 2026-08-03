@@ -1241,7 +1241,7 @@ function upsApply(v) { upsV = UPS_ORDER.indexOf(v) >= 0 ? v : 'FHD'; document.qu
   const wrap = $('#upsOpts'); if (!wrap) return;
   const pick = v => {
     const editing = isEditApp(APP);
-    // (구 사진 게이트 = 편집+사진없음 → #cFile 첨부 진입 · 폐지 260725 운영자 "사진 없는 상태에서 클릭하면 사진 첨부로 바뀌는데 그러지 않게 — 카드 생성 따라") — 옵션은 사진 전에도 그냥 골라둔다(카드 생성 문법) · 사진 필수는 발사 시점 검증(APP 9 errStatus '이미지를 선택해주세요')이 전담
+    if (editing && armAfterAttach(() => pick(v))) return;   // 사진 게이트(운영자 260803 개정 = 구 260725 "사진 전에도 그냥 골라둔다" 폐지) — 경고 + 사진 입구 자동 개방 + 이 선택 예약(첨부되면 같은 값으로 재실행) · 카드 생성 탭은 이 행 자체가 숨김이라 무영향
     upsApply(v);
     if (editing) { rszApply('orig'); if (APP !== '9') selApp('9'); }   // 편집: 해상도 맞춤 축(app9 · 비율 원본 강제 = 발사 축 단일화 · 모자이크는 selApp이 자동 OFF) — 카드 생성에선 이 행 자체가 숨김이라 도달 불가
   };
@@ -1256,8 +1256,9 @@ function fillLabel(v) { return FILL_KO[v] || '자동'; }
 function fillApply(v) { fillV = FILL_ORDER.indexOf(v) >= 0 ? v : 'auto'; document.querySelectorAll('#fillOpts .ropt').forEach(b => b.classList.toggle('on', b.dataset.v === fillV)); if (typeof updateGoSpec === 'function') updateGoSpec(); }   // 칩 점등·리드백 동기 = upsApply 원문 그대로
 (function () {   // 채움 칩 — 탭=값 선택(위 해상도 IIFE 원문 · 축 전환 분기만 제외)
   const wrap = $('#fillOpts'); if (!wrap) return;
-  wrap.addEventListener('click', e => { const b = e.target.closest('.ropt'); if (!b) return; e.stopPropagation(); fillApply(b.dataset.v); });
-  wrap.addEventListener('keydown', e => { const b = e.target.closest('.ropt'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fillApply(b.dataset.v); } });
+  const pick = v => { if (armAfterAttach(() => pick(v))) return; fillApply(v); };   // 사진 게이트 = 해상도·비율 칩과 한 문법(운영자 260803) — 경고 + 사진 입구 + 이 값 예약
+  wrap.addEventListener('click', e => { const b = e.target.closest('.ropt'); if (!b) return; e.stopPropagation(); pick(b.dataset.v); });
+  wrap.addEventListener('keydown', e => { const b = e.target.closest('.ropt'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(b.dataset.v); } });
 })();
 async function upsLoad() {   // upscale.json 로드(잡 완료 신호 전용 · rszLoad 계승) — 항목 = {url,id,ts,scale,engine,…}
   try {
@@ -1365,20 +1366,29 @@ function iePrevSync() {   // 도크 미리보기 스왑 동기(운영자 260718 
   const p = $('#iePrev'); if (!p) return;
   p.classList.toggle('none', !(isEditApp(APP) && CIMG.b64));
 }
-let IEPEND = 0;   // 「사진 넣고 나면 모자이크 켜줘」 예약 타임스탬프(운영자 260803 "경고 다음에 자동으로 이미지 삽입창") — 사진 없이 모자이크를 탭한 순간 세우고, 첨부되는 순간 아래 ieSrcSync가 소비해 ON까지 이어붙인다(운영자가 토글을 두 번 누르지 않게) · 유효기간 IEPEND_TTL
-const IEPEND_TTL = 120000;   // 예약 만료 = 2분(파일 창에서 폴더를 뒤지는 시간 여유 + 취소 후 한참 뒤 다른 경로 첨부가 엉뚱하게 모자이크를 켜는 일 차단)
+let PENDACT = null;   // 「사진부터 넣고, 하려던 걸 이어서」 예약 = {at, run}(운영자 260803 "그 부분도 다 동일하게 … 버튼 종료와 동시에 파일 첨부 뜨게") — 사진 없이 편집 옵션을 건드린 순간 세우고, 첨부되는 순간 ieSrcSync가 소비해 그 조작을 재실행한다(운영자가 같은 걸 두 번 누르지 않게)
+const PEND_TTL = 120000;   // 예약 만료 = 2분(파일 창에서 폴더를 뒤지는 시간 여유 + 취소 후 한참 뒤 다른 경로 첨부가 엉뚱한 조작을 되살리는 일 차단)
+function armAfterAttach(run) {   // 편집 옵션 공용 소스 게이트(운영자 260803 개정 · 구 260725 "사진 전에도 옵션은 그냥 고른다" 폐지) — 사진 없으면 {① 발사 버튼 경고 ② 사진 입구 자동 개방 ③ 하려던 조작 예약} 3연
+  //   호출부 문법 = `if (armAfterAttach(() => 하려던것)) return;` 한 줄(true = 무장했으니 여기서 멈춰라 · false = 사진 있음 = 그냥 진행)
+  //   ⚠ #cFile.click()은 **동기 호출** — setTimeout으로 미루면 사용자 제스처가 끊겨 iOS/Safari가 파일 창을 차단한다(경고는 이 줄 앞에서 이미 그려진다)
+  if (CIMG.b64) return false;
+  errStatus('이미지를 삽입해주세요');   // 막힘 피드백 = 카드 생성 메뉴와 동일 문법(빨강 테두리 + edshake .42s + 멘트 · 1.7s 뒤 '생성' 복귀)
+  PENDACT = { at: Date.now(), run: typeof run === 'function' ? run : null };
+  const f = $('#cFile'); if (f) f.click();   // 사진 입구 단일화(260713) 정본 위임 = .cpv-photobtn·#cpImgSwap과 같은 한 입구
+  return true;
+}
 function editResetDefaults() {   // 편집 소스 삭제 = 복귀 기본값 **한 뭉치**(운영자 260803 "아이디어까지 합쳐서 ㄱㄱ" [보고 6-4 승인])
   // 왜 함수로 뺐나: 옵션이 늘 때마다 아래 ieSrcSync 삭제 분기의 **같은 한 줄**에 값이 덧붙는 구조라, 봇·병렬 세션 커밋이 초당급인 이 레포에서 그 줄이 리베이스 충돌 상습 진원지였다
   //   (실측 260803 = main의 `fillApply('auto')` 추가 ↔ 이 브랜치의 `IEPEND = 0` 추가가 같은 줄에서 충돌 → [7-4] 머지 정지). 이제 옵션 추가 = 이 함수 안 **새 줄 1개** = 세션끼리 다른 줄을 고치므로 자동병합이 그냥 성공한다.
   RSZ.w = RSZ.h = 0;   // 실측 치수 파기(재첨부 전까지 미리보기·발사 게이트 잠금)
-  IEPEND = 0;          // 모자이크 예약 파기(사진을 지운 뜻은 모자이크를 켜달라는 뜻이 아니다)
+  PENDACT = null;      // 예약 파기(사진을 지운 뜻은 하려던 조작을 이어달라는 뜻이 아니다)
   rszApply('orig');    // 비율 = 원본(무변환)
   upsApply('FHD');     // 해상도 = 기본
   fillApply('auto');   // 채움 = 자동
 }
 function ieSrcSync(has) {   // 편집(비율·모자이크·해상도) 소스 = 공유 첨부 사진(CIMG) 첨부/삭제 훅(#cImgSlot 바인더) — 첨부 = 치수 실측→게이트 해제 / 삭제 = 기본값 복귀(비율 원본·모자이크 OFF)
   if (has && CIMG.b64) { rszMeasure(CIMG.b64);
-    if (IEPEND && Date.now() - IEPEND < IEPEND_TTL && isEditApp(APP)) { IEPEND = 0; rszApply('orig'); if (APP !== '8') selApp('8'); }   // 예약 소비 = 첨부 즉시 모자이크 점등(비율 원본 강제 = flip ON 경로와 같은 2줄) · 편집 탭 안에서만(이력 복원·카드 생성 첨부가 예약을 주워가지 않게)
+    if (PENDACT && Date.now() - PENDACT.at < PEND_TTL && isEditApp(APP)) { const run = PENDACT.run; PENDACT = null; if (run) run(); }   // 예약 소비 = 첨부 즉시 「하려던 조작」 재실행(모자이크 ON·비율·해상도·채움·보존 전부 같은 축) · 편집 탭 안에서만(이력 복원·카드 생성 첨부가 예약을 주워가지 않게)
   }
   else { editResetDefaults(); if (isEditApp(APP)) { selApp('7'); return; }   // 편집 탭 중 삭제 = 위 기본값 뭉치 복귀 + 편집 기본 축(7) 유지·게이트 재잠금(selApp이 미리보기 재동기 전담)
   }
@@ -1402,12 +1412,9 @@ function rszOrigSync() {   // 원본(무변환) = 보존 토글·라벨·구분�
   const t = $('#ieTog'); if (!t) return;
   const flip = () => {
     if (APP === '8') { selApp('7'); return; }   // OFF = 편집 기본 축(7) 유지(3탭 재편 — 구 제작(2) 복귀 폐지)
-    if (!CIMG.b64) {   // ⚠ 사진 없이 ON = **켜지 않는다**(운영자 260803 "경고를 무시하면 모자이크가 활성화가 이미 되어있거든? 이부분도 잡아주셈") — 구 코드는 selApp('8')을 먼저 하고 경고만 띄워, 경고를 무시하면 사진도 없이 모자이크가 켜진 채였다(비율 행 숨김·발사 문맥까지 모자이크 축으로 전환된 유령 ON) · 260725 "사진 전에도 ON/OFF 선택 가능"은 이 지시로 개정 = ON만 사진 종속, OFF는 종전대로 무조건
-      errStatus('이미지를 삽입해주세요');   // ① 막힘 피드백(운영자 260728) — 발사 버튼이 빨강 테두리(.go.err = --danger 팔레트)로 흔들리며(edshake .42s) 멘트, 1.7s 뒤 '생성' 복귀 · APP 7 라벨도 '생성'(selApp 1328행)이라 복귀 라벨 정합 = selApp 선행 없이도 안전
-      IEPEND = Date.now();   // ③ 첨부되면 그 자리에서 모자이크 ON(ieSrcSync 예약 소비) — 창을 띄운 뜻 = 모자이크를 켜려던 것이라 운영자가 토글을 다시 누를 일이 없다
-      const f = $('#cFile'); if (f) f.click();   // ② 사진 입구 자동 개방(운영자 260803 "그 경고가 뜬 다음에 자동으로 이미지 삽입창이 뜨게") — 위임 대상 = 사진 입구 단일화(260713) 정본 #cFile(.cpv-photobtn·#cpImgSwap과 같은 한 입구) · ⚠ **동기 호출 필수** — setTimeout으로 미루면 사용자 제스처가 끊겨 iOS/Safari가 파일 창을 차단한다(경고는 이 줄 앞에서 이미 그려진다)
-      return;
-    }
+    // ⚠ 사진 없이 ON = **켜지 않는다**(운영자 260803 "경고를 무시하면 모자이크가 활성화가 이미 되어있거든? 이부분도 잡아주셈") — 구 코드는 selApp('8')을 먼저 하고 경고만 띄워, 경고를 무시하면 사진도 없이 모자이크가 켜진 채였다(비율 행 숨김·발사 문맥까지 모자이크 축으로 전환된 유령 ON)
+    //   260725 "사진 전에도 ON/OFF 선택 가능"은 이 지시로 개정 = ON만 사진 종속, OFF는 종전대로 무조건(위 APP==='8' 분기가 먼저 빠져나간다)
+    if (armAfterAttach(() => { rszApply('orig'); selApp('8'); })) return;   // 경고 + 사진 입구 + 예약(첨부되면 아래 2줄이 그대로 재실행)
     rszApply('orig');   // ON = 비율 원본 강제(발사 축 단일화 — 운영자 "원본 유지를 하면 기능들이 옵션")
     selApp('8');
   };
@@ -2587,7 +2594,7 @@ function rszN(n) { return Math.round(n).toLocaleString('en-US'); }   // 치수 �
     if (APP !== '7') selApp('7');
   };
   const pick = v => {
-    // (구 사진 게이트 = 탭→#cFile 첨부 진입 · 폐지 260725 운영자 "그러지 않게 · 카드 생성 부분 따라") — 사진 전에도 비율 선택 가능 · 사진 필수는 발사 검증(APP 7 errStatus)이 전담
+    if (armAfterAttach(() => pick(v))) return;   // 사진 게이트(운영자 260803 개정 = 구 260725 폐지분 부활 · 이번엔 「첨부 진입으로 바뀜」이 아니라 **경고 + 입구 자동 개방 + 예약** 3연이라 260725가 싫어했던 "누른 게 딴 게 됨"이 아니다) — 첨부되면 고르던 비율이 그대로 적용
     rszApply(v);
     if (v === 'custom') { ['#rszArW', '#rszArH'].forEach(sel => { const el = $(sel); if (el && !el.value) { el.value = '1'; } rszArFit(el); });   // 값이 앉아 있는 상태로 진입 = 「1 : 1」(index·tr 동문법 · 빈 placeholder 아님)
       const w = $('#rszArW'); if (w) { w.focus(); w.select(); } if (rszArVal()) arm(); }   // 직접 = 입력 포커스 · 유효값 이미 있으면 즉시 무장
@@ -2607,7 +2614,8 @@ function rszN(n) { return Math.round(n).toLocaleString('en-US'); }   // 치수 �
     el.addEventListener('mouseup', e => e.preventDefault());   // 클릭의 캐럿 배치가 위 select를 지우는 것 차단(이 화면만 필요 = 「직접」 진입에서 이미 포커스를 잡아둬 재탭 경로가 생긴다 · 2자리 숫자칸이라 드래그 선택 상실은 무해)
     el.addEventListener('blur', () => { if (!el.value) { el.value = '1'; rszArFit(el); upd(); } }); } });   // 비운 채 떠나면 1 복귀 = 값이 앉아 있는 상태 유지
 })();
-$('#rszLock').onclick = () => { const b = $('#rszLock'); const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); rszPreview(); if (typeof updateGoSpec === 'function') updateGoSpec(); };   // 보존 = 워드 토글(텍스트 '보존' 고정 · 운영자 260803 — 구 ON/OFF 텍스트 동기 폐지) + 도크 옵션 컬럼 '보존' 칩 점등 미러(260730)(#cnTog 문법 · 발사 payload는 .on 클래스 그대로)
+$('#rszLock').onclick = () => { if (isEditApp(APP) && armAfterAttach(() => { const t = $('#rszLock'); if (t) t.click(); })) return;   // 사진 게이트 = 편집 옵션 한 문법(운영자 260803 · 보존은 비율≠원본에서만 보여 도달이 드물지만 축을 비워두지 않는다)
+  const b = $('#rszLock'); const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); rszPreview(); if (typeof updateGoSpec === 'function') updateGoSpec(); };   // 보존 = 워드 토글(텍스트 '보존' 고정 · 운영자 260803 — 구 ON/OFF 텍스트 동기 폐지) + 도크 옵션 컬럼 '보존' 칩 점등 미러(260730)(#cnTog 문법 · 발사 payload는 .on 클래스 그대로)
 window.addEventListener('resize', () => { if (isEditApp(APP)) rszPreview(); });   // 뷰폭 변경 = 스케일 재계산(도크 미리보기 = 편집 탭 공용 · 260718)
 async function rszLoad() {   // resize.json 로드(잡 완료 신호 전용 — 클라 직병합·그리드 렌더는 폐지 유지 · 기기 간 공유는 build-viewer가 thumb-hist.json에 병합 = 운영자 260710 저녁, 낮 축6 '세션만' 번복) — 항목 = {url,id,ts,aspect,…}
   try {

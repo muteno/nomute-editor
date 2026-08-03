@@ -1000,7 +1000,20 @@ function dockSync(){
   const tog=()=>{ const d=document.getElementById('topDock'); if(!d) return; _dockHold=d.classList.contains('fold')?'open':'fold'; dockSync(); pvSync(); };
   s.addEventListener('click',()=>{ if(_mv){ _mv=false; return; } tog(); });
   s.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); tog(); } }); })();   // 재펼침 경로 = 요약 스트립(접힌 미리보기 위 유일 상시 행)
+/* ── 소스 게이트(운영자 260803 "그 부분도 다 동일하게 버튼에 알람뜨게 하고 > 버튼 종료와 동시에 파일(사진) 첨부 뜨게 해주셈 · 영상인지 사진인지 는 헷갈리네")
+   = 이미지 스튜디오 thumb.html armAfterAttach 정본 문법 그대로, **입구만 이 표면의 소스 유형(영상 #file · accept=video/*)으로** 계승.
+   소스 없이 옵션을 건드리면 {① 발사 버튼 경고 ② 영상 입구 자동 개방 ③ 하려던 조작 예약} → 소스가 붙는 순간 pvSync가 예약을 소비해 그 조작을 재실행. ── */
+let PENDACT=null; const PEND_TTL=120000;   // 예약 = {at, run} · 만료 2분(파일 창에서 폴더 뒤지는 여유 + 취소 후 한참 뒤 엉뚱한 되살아남 차단) — 값·의미 전부 thumb 정본 동값
+function hasSrc(){ const u=$('#url'); return !!((u&&u.value.trim())||FILE_B64||FILE_R2||_lastFile); }   // 소스 술어 = 발사 검증(1582행 '영상 URL이나 파일을 넣어줘')과 **같은 4항** — 판정 2벌 드리프트 0
+function armAfterAttach(run){   // true = 무장했으니 호출부는 그 자리에서 return · false = 소스 있음 = 그냥 진행
+  if(hasSrc()) return false;
+  errStatus('영상 URL이나 파일을 넣어줘');   // 문구 = 발사 시점 정본 그대로(막힘 사유가 두 시점에서 같은 말 · URL 축도 있음을 같이 알린다)
+  PENDACT={at:Date.now(), run:typeof run==='function'?run:null};
+  const i=$('#file'); if(i) i.click();   // ⚠ **동기 호출** — setTimeout으로 미루면 사용자 제스처가 끊겨 iOS/Safari가 파일 창을 차단한다 · 파일 대신 URL을 쓸 거면 창을 닫으면 그만(URL 칸·붙여넣기 진입로는 그대로)
+  return true;
+}
 function pvSync(){
+  if(PENDACT && hasSrc() && Date.now()-PENDACT.at<PEND_TTL){ const run=PENDACT.run; PENDACT=null; if(run) run(); }   // 예약 소비 = 소스가 붙는 순간(파일·URL 어느 쪽이든 pvSync를 지난다) 하려던 옵션 조작 재실행 · null 선행 = 재귀 차단
   updateOptStrip();   // 스트립 = 상태 리드백(설정 변경 전 경로가 pvSync 통과 — 무파일 조기 return과 무관하게 선갱신)
   dockSync();   // 완성본 가시 축 → 도크 접힘 동기(운영자 260728)
   const pv=$('#pv'); if(!pv) return;
@@ -1216,7 +1229,10 @@ document.addEventListener('contextmenu',e=>{ const s=e.target.closest&&e.target.
 document.addEventListener('pointerdown',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s||(e.button&&e.button!==0)) return; clearTimeout(_swLPt); _swLPt=setTimeout(()=>{ _swLPt=null; _swLP=true; setTimeout(()=>{ _swLP=false; },700); swSet(s,'fg'); },550); });   // 700ms 자동 해제 = 뒤따르는 click이 **아예 오지 않는** 경로(pointercancel·스크롤 이탈 등)에서도 플래그가 남지 않게 하는 백스톱(위 click 핸들러 해제와 이중 방어 · 값 = 롱프레스 550 + 여유)
 ['pointerup','pointercancel','pointermove'].forEach(t=>document.addEventListener(t,()=>{ if(_swLPt){ clearTimeout(_swLPt); _swLPt=null; } },true));   // 뗌·이탈·스크롤 = 롱프레스 취소(종전 롱프레스 문법 동일)
 /* 순환값 탭 = 다음 값으로 한 바퀴(운영자 260712 5문법) — setAxis 공유(기능 100% 보존) · 수동 = 프리셋 '종합' 복귀 */
-function doCyc(el){ const k=el.dataset.cyc, list=CYC[k]; if(!list) return; const cur=curCyc(k); const i=(list.indexOf(cur)+1)%list.length; if(typeof _preManual==='function') _preManual(); setAxis(k,list[i]); render(); }
+function doCyc(el){ const k=el.dataset.cyc, list=CYC[k]; if(!list) return; const cur=curCyc(k); const i=(list.indexOf(cur)+1)%list.length; const nv=list[i];
+  const apply=()=>{ if(typeof _preManual==='function') _preManual(); setAxis(k,nv); render(); };
+  if(armAfterAttach(apply)) return;   // 소스 게이트(운영자 260803) — 경고 + 영상 입구 자동 개방 + 이 값 예약(첨부·URL 주입되면 같은 값으로 재실행) · ⚠ 예약은 **값(nv)** 을 잡는다: el은 render()로 갈려 사라지므로 요소 참조를 잡으면 stale
+  apply(); }
 document.addEventListener('click',e=>{ const c=e.target.closest('[data-cyc]'); if(c) doCyc(c); });
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ const c=e.target.closest&&e.target.closest('[data-cyc]'); if(c){ e.preventDefault(); doCyc(c); return; }
   const b=e.target.closest&&e.target.closest('#tlBar'); if(b){ e.preventDefault(); const vv=$('#pvVid'); if(vv&&FILE_URL){ _segHold=Date.now(); try{ if(vv.paused) vv.play().catch(()=>{}); else vv.pause(); }catch(_){} } } } });   // 룰러 키보드 = 재생/정지(마우스 없이도 조작 가능 · 평의회⑥ 260728)
