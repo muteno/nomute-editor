@@ -157,8 +157,8 @@ async function runOnce(browser, port) {
        r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && Math.abs(r1.railFlush[0] - 8) <= 0.5 && Math.abs(r1.railFlush[1]) <= 0.5,
        r1.stripBox + ' · inRail=' + r1.stripInRail + ' · flush=' + JSON.stringify(r1.railFlush));
     ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) — 값 축 = 라벨+원본 · 이진 축 = 워드 단독·무점등(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — 구 260728 「고프레임 OFF」류 ON/OFF 값 표기 폐지 · thumb #cnTog 정본)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 \/ 배경음 \/ 컷 편집$/.test(r1.readback) && r1.onN === 0, 'rb=[' + r1.readback + '] on=' + r1.onN);
-    ck('C5 #editGo = r-m/sp-1/fs-label + 라벨 생성', r1.goTriple === '11px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);
-    ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH < 30, 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
+    ck('C5 #editGo = **카드 제작 도크 정본**(r-modal/sp-1/fs-label) + 라벨 생성', r1.goTriple === '22px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);   /* 기대값 11px(--r-m) → 22px(--r-modal) = 운영자 260803 2차 "비디오 스튜디오를 아예 이미지 스튜디오랑 동일하게" — 이미지 스튜디오 도크 정본이 `.topdock[data-lay="edit"] #go{border-radius:var(--r-modal)}`(운영자 260731 "생성버튼 창 둥글기에 맞게")인데 영상 셸만 --r-m으로 남아 있었다(실측 11 vs 22) · 등록 셀렉터의 _LAUNCH_SPEC 3속성(check_refs)은 무접촉 */
+    ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH <= 30,   /* 상한 <30 → ≤30 = 카드 제작 발사 버튼 **실측 정본 높이 30**에 합류(운영자 260803 2차 통일 · thumb는 `.makerow{align-items:stretch}` 행 늘어남으로 30 · 영상 셸은 그 행이 없어 27이었다 → min-height로 결과값 계승) */ 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
     ck('C7 게이지 firing→✓(gck)→생성중 상주(busy)→goFireDone 원복', r1.fire && r1.gck && r1.busy && r1.back === '생성', r1.fire + '/' + r1.gck + '/busy' + r1.busy + '/' + r1.back);
     ck('C8 라벨 잉크 중심 = 4분할 중심 Δ≤0.5', r1.inkD[0] <= 0.5 && r1.inkD[1] <= 0.5, JSON.stringify(r1.inkD));
     ck('C9 sticky 도크 = 스크롤 후 top 0 + 스트립 가시(따라다님)', r1.stick && r2.stick, String(r1.stick));
