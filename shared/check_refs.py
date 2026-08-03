@@ -2251,6 +2251,131 @@ def check_affordance_inherit():
     return rc
 
 
+# ── 부채 래칫 게이트 (운영자 260803 "ㄱㄱ" — 「면책표가 조용히 비대해지는」 축의 기계화) ───────────────
+# 왜: 이 레포의 게이트는 전부 면책표(baseline)를 안고 산다 — 그래야 신규 회귀만 잡고 레포가 안 얼기 때문이다.
+#   그런데 면책표는 **한 방향으로만 자란다**: 새 위반을 등재하는 건 1줄이고, 해소분을 지우는 건 아무도 안 한다.
+#   시간이 지나면 「알고 동결한 부채」가 「원래 그런 것」으로 굳는다(260802 INK_BASE `{편집:2.6}` 회수 사례 = 사람이 우연히 발견).
+#   → 표별 항목 수를 원장에 굽고 **늘면 커밋 차단 · 줄면 낮추라고 알린다**. 줄이는 건 자유, 늘리는 건 사유 필수.
+# 발견 = 자동(shared/check_refs.py · shared/smoke_*.js에서 `*_BASE`/`*_EXEMPT` 리터럴을 훑는다) — 새 면책표가 조용히 안 낀다.
+# 원장 = shared/debt_ledger.json(기계산출물 · 손편집 금지 · 갱신 = `python3 shared/check_refs.py --debt-sync`).
+_DEBT_LEDGER = os.path.join(ROOT, 'shared', 'debt_ledger.json')
+_DEBT_SYM = re.compile(r'^(?:const\s+)?(_?[A-Z][A-Z0-9_]*(?:BASE|EXEMPT)[A-Z0-9_]*)\s*=\s*(new Set\(|set\(|[\[{])', re.M)
+
+
+def _debt_scan():
+    """면책표별 항목 수를 센다. 반환 = {'파일::심볼': 개수}."""
+    import glob as _g
+    out = {}
+    files = [os.path.join(ROOT, 'shared', 'check_refs.py')] + sorted(_g.glob(os.path.join(ROOT, 'shared', 'smoke_*.js')))
+    for fp in files:
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        for m in _DEBT_SYM.finditer(src):
+            sym, opener = m.group(1), m.group(2)
+            i = m.end() - 1
+            if opener in ('new Set(', 'set('):
+                nxt = src[m.end():m.end() + 40].lstrip()
+                if nxt[:1] == ')':
+                    out['%s::%s' % (rel, sym)] = 0   # `new Set()` = 빈 면책표(구 코드는 '[' 를 파일 뒤쪽에서 찾아 남의 리터럴을 셌다 · 260803 실측 DOCK_EXEMPT 0→2 오측)
+                    continue
+                i = src.find('[', m.end() - 1)
+                if i < 0:
+                    continue
+            op = src[i]
+            cl = {'{': '}', '[': ']'}[op]
+            depth, j, instr, q = 0, i, False, ''
+            while j < len(src):
+                c = src[j]
+                if instr:
+                    if c == '\\':
+                        j += 2; continue
+                    if c == q:
+                        instr = False
+                elif c in '"\'`':
+                    instr, q = True, c
+                elif c == op:
+                    depth += 1
+                elif c == cl:
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            body = src[i + 1:j]
+            # 항목 수 = **최상위 depth 콤마 기준**(dict·set·list·튜플키 전부 동일 규칙 · 문자열/주석 안 콤마 제외).
+            #   ⚠ 260803 실측 = 구 「'키':」 패턴 카운트는 set(_CLIP_EXEMPT_ID 튜플 2건)·정수키 dict(_QDUP_BASE 100+건)를
+            #     전부 0으로 셌다 = 래칫이 「부채 없음」이라 거짓말할 뻔했다. 부정확한 게이트는 게이트가 아니다.
+            n, dep, k, instr, q, py = 0, 0, 0, False, '', fp.endswith('.py')
+            while k < len(body):
+                c = body[k]
+                if instr:
+                    if c == '\\':
+                        k += 2; continue
+                    if c == q:
+                        instr = False
+                elif c in ('"', "'", '`'):
+                    instr, q = True, c
+                elif py and c == '#':
+                    k2 = body.find('\n', k); k = len(body) if k2 < 0 else k2; continue
+                elif (not py) and c == '/' and k + 1 < len(body) and body[k + 1] == '/':
+                    k2 = body.find('\n', k); k = len(body) if k2 < 0 else k2; continue
+                elif (not py) and c == '/' and k + 1 < len(body) and body[k + 1] == '*':
+                    k2 = body.find('*/', k); k = len(body) if k2 < 0 else k2 + 2; continue
+                elif c in '{[(':
+                    dep += 1
+                elif c in '}])':
+                    dep -= 1
+                elif c == ',' and dep == 0:
+                    n += 1
+                k += 1
+            stripped = re.sub(r'(?m)(#|//).*$', '', body).strip()
+            if not stripped:
+                n = 0                       # 주석·공백만 = 빈 리터럴
+            elif not stripped.endswith(','):
+                n += 1                      # 트레일링 콤마 없음 = 마지막 항목 미계수분 보정
+            out['%s::%s' % (rel, sym)] = n
+    return out
+
+
+def check_debt_ratchet(sync=False):
+    """부채 래칫 — 면책표 총량이 원장보다 **늘면 FAIL**(줄면 낮추라고 알린다).
+    미해결 부채(원인 미규명·판단 대기)는 원장 open_items에 사람 말로 남긴다 = 잊히지 않게."""
+    cur = _debt_scan()
+    tot = sum(cur.values())
+    try:
+        led = json.load(open(_DEBT_LEDGER, encoding='utf-8'))
+    except Exception:
+        led = {'tables': {}, 'open_items': []}
+    old = led.get('tables', {})
+    if sync:
+        led['tables'] = cur
+        led['total'] = tot
+        with open(_DEBT_LEDGER, 'w', encoding='utf-8') as f:
+            json.dump(led, f, ensure_ascii=False, indent=2)
+            f.write('\n')
+        print('· 부채 원장 동기 — 총 %d건(%d표)' % (tot, len(cur)))
+        return 0
+    up = [(k, old.get(k, 0), v) for k, v in sorted(cur.items()) if v > old.get(k, 0)]
+    dn = [(k, old[k], cur.get(k, 0)) for k in sorted(old) if cur.get(k, 0) < old[k]]
+    if up:
+        print('❌ 부채 래칫 — 면책표가 늘었다(%d표 · 총 %d → %d). 늘리는 건 사유 필수:' % (len(up), sum(old.values()), tot))
+        for k, a, b in up:
+            print('   · %s  %d → %d' % (k, a, b))
+        print('   정당한 등재면 커밋 메시지에 사유를 쓰고 `python3 shared/check_refs.py --debt-sync`로 원장을 올려라(그 diff가 곧 승인 기록).')
+        return 1
+    if dn:
+        print('✅ 부채 래칫 — 총 %d건(원장 %d · **%d건 해소**). `--debt-sync`로 원장을 낮춰라: %s'
+              % (tot, sum(old.values()), sum(old.values()) - tot, ', '.join('%s %d→%d' % (k, a, b) for k, a, b in dn)))
+        return 0
+    items = led.get('open_items', [])
+    print('✅ 부채 래칫 — 면책 총 %d건(%d표) 원장과 동일 · 증가 0 · 미해결 부채 %d건 추적 중(원장 open_items).' % (tot, len(cur), len(items)))
+    for it in items:
+        print('   ◦ %s' % it)
+    return 0
+
+
 # ── 모델 표시명 SSOT 게이트 (운영자 260803 5차 "아이디어도 배선해줘" — 표기 드리프트 8종 실사고[Q1285]의 구조 봉합) ──
 # 사전 = viewer/nm-models.js(window.NM_MODELS · 정식 표기 단일정본 · sb/k는 런타임 참조). 두 축:
 #   ⓐ 음차·변형 래칫 — viewer/*.html·functions/api/*.js에서 음차(클링·시댄스·페이블·오퍼스·제미나이·수노)와
@@ -3110,6 +3235,8 @@ def main():
     except Exception as e:
         print('⚠️ 2단 분기점 게이트 스킵:', e)
     try:
+        if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
+            rc = 1
         if check_affordance_inherit() != 0:   # 스킨 계승 시 어포던스(cursor·press) 비계승(운영자 260803 — 리드백 칩이 버튼 스킨과 함께 손가락 커서까지 물려받아 「눌러도 아무 일 없는 자리」가 6건 실재했다 · 런타임 짝 = smoke_hitzone H3)
             rc = 1
         if check_onoff_literal() != 0:   # 이진 토글 ON/OFF 리터럴 금지(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — cnTog 워드 점등 정본의 재발 차단 · 면책 = _ONOFF_BASE 스냅샷)
@@ -3310,6 +3437,8 @@ def main():
 
 
 if __name__ == '__main__':
+    if '--debt-sync' in sys.argv:
+        sys.exit(check_debt_ratchet(sync=True))
     if '--fix-qnum' in sys.argv:   # 원장 번호 경합 자동 재부여(이 브랜치 신규 행만) — 게이트 본체는 안 돌린다
         sys.exit(fix_qnum_reassign())
     sys.exit(main())
