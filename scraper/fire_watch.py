@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# ⑭-f 화재 재난문자 후속 추적 — 운영자 260803 "화재 알림이 나면, 15분, 그리고 30분 뒤에 각각 이를 검색해서
-#   사상자가 있는지 확인하게끔. 있다면 긴급보도 큐로 바로 조사해서 큐잉".
+# ⑭-f 화재 재난문자 후속 추적 — 운영자 260803 "화재 알림이 나면 검색해서 사상자가 있는지 확인하게끔.
+#   있다면 긴급보도 큐로 바로 조사해서 큐잉" + 2·3차 개정(추적 창 3시간 상시 · 규모 신호 병렬).
 #
 # 왜 필요한가 = 재난문자는 **속보보다 빠르지만 사상자를 안 싣는다**(발령 시점엔 아무도 모른다). 사상자 확정은
-#   15~30분 뒤 기사로 온다. 그 창을 사람이 지키고 있을 수 없어서, 발령을 원장에 걸어두고 시간이 차면 자동으로 되짚는다.
+#   1~3시간 뒤 기사로 온다(운영자 실측: 08:20 사건 → 10:00 사망 보도). 그 창을 사람이 지키고 있을 수 없어서,
+#   발령을 원장에 걸어두고 창이 열려 있는 동안 자동으로 되짚는다.
 #
-# 파이프라인 = 재난문자(viewer/sns_trends.json disaster[]) → 원장 등록 → +15분·+30분 되짚기 →
-#              사상자 기사 발견 → pick_pending(수동픽과 동일 입구) → pending/ → news-analyze(요약·카드).
+# 파이프라인 = 재난문자(viewer/sns_trends.json disaster[]) → 원장 등록 → 3시간 동안 매 런 되짚기 →
+#              보도가치 기사 발견 → 즉시 알림(웹푸시·메시지함) + pick_pending(수동픽과 동일 입구) → pending/ → news-analyze.
 #
 # ⚠️ 자동 과금 경로 — 픽 1건 = Opus 분석 1콜(구독 쿼터) + 썸네일($). auto_pick_breaking.py 의 가드를 그대로 계승:
 #   ① 중대재난 문턱 = sns_trends.DIS_CRIT_MIN(77) 단일 원천 + 화재 계열 kind 한정(폭염·호우는 등록조차 안 됨)
 #   ② 사건 단위 dedup — 같은 불이 인접 3개 구에 각각 발령되는 게 관례다(260803 실측: 울산 남구·중구·북구 = 삼산동 페인트공장 1건)
 #   ③ 사건당 **1픽 영구**(원장 picked) + 일 상한(FIRE_DAY_CAP)
-#   ④ 3축 동시 히트만 픽(지역 ∧ 화재어 ∧ 사상자어) — 하나라도 빠지면 무픽(오탐 = 헛 과금)
+#   ④ 3축 동시 히트만 픽(지역 ∧ 화재어 ∧ [사상자어 ∨ 규모신호]) — 지역·화재어가 빠지면 무픽(오탐 = 헛 과금)
 #   ⑤ 기사 발행시각 > 재난문자 발령시각 − 유예 = 발령 이전 기사(다른 사건)를 사상자 근거로 못 씀
 #   ⑥ pick_pending 의 load_active dedup(이미 처리중/완료면 스킵 = 수동픽·자동픽과 충돌 0)
 # 검색 = 1순위 viewer/candidates.json(레포가 15분마다 갱신 · 네트워크 0·과금 0) · 2순위 네이버 뉴스 검색
@@ -41,9 +42,10 @@ KST = timezone(timedelta(hours=9))
 #     운영자 실측 사례 = 08:20 사건(사망) → **10:00 보도** → 그때야 사람이 스크랩을 보고 안다.
 #     구판은 08:50에 문을 닫아 그 10:00 보도를 **영영 못 잡는다**(놓침 = 이 기능의 존재 이유 상실).
 #   화재·지진은 피해가 클 확률이 높아 보도성이 강하다(운영자) → 창을 넓히고, 대신 픽 가드로 과금을 막는다.
-#   비용 = 수집함 스캔 로컬 0 · 네이버는 사건당 최대 24콜(6h/15분 · 일 25,000 한도 대비 무시 가능).
+#   비용 = **LLM 0콜**(정규식 매칭뿐) · 수집함 스캔 로컬 0 · 네이버 사건당 최대 12콜(3h/15분 · 일 25,000 한도 대비 무시 가능).
+#   실과금은 '픽'이 났을 때만(Opus 1콜+썸네일) = 되짚기 횟수와 무관 — 사건당 1픽 영구 + 일 상한이 그 축을 막는다.
 FIRST_CHECK_MIN = 5               # 발령 직후 5분은 스킵(그 시점 기사 = 사건 인지 자체가 없다 · 검색 낭비)
-WATCH_TTL_H = int(os.environ.get("FIRE_WATCH_H", "6"))   # 추적 창 — 화재 사망 확정 보도는 통상 1~4시간(6h면 덮는다). 조정 = env 1줄
+WATCH_TTL_H = int(os.environ.get("FIRE_WATCH_H", "3"))   # 추적 창(운영자 260803 3차 "3시간이면 될듯 · 그정도면 무조건 보도가 뜸") — 조정 = env 1줄
 EVENT_GAP_MIN = 45                # 같은 사건 판정 창 — 같은 불의 인접 구 발령이 이 안에 들어온다(실측 08:41~09:04 = 23분)
 FIRE_DAY_CAP = int(os.environ.get("FIRE_DAY_CAP", "6"))   # 일 픽 상한(과금 가드 · auto_pick_breaking 정신 계승)
 ART_GRACE_MIN = 30                # 기사 발행이 발령보다 이만큼 앞서는 것까지는 같은 사건으로 인정(최초 인지 보도가 문자보다 빠른 경우)
@@ -58,6 +60,13 @@ FIRE_WORD = re.compile(r"화재|불길|산불|폭발|붕괴|화염|연소|진화
 #   ⚠ '피해 없음'·'인명피해는 없'은 아래 NEG로 컷(그 문장이 바로 사상자어를 포함한다).
 CASUALTY = re.compile(r"사망|숨져|숨진|숨졌|사상자|부상|중상|경상|인명\s?피해|심정지|매몰|고립|실종|참변|화상|질식|대피\s?중\s?부상|중태")
 NEG = re.compile(r"인명\s?피해[는은]?\s?(없|미발생)|사상자[는은]?\s?(없|미발생)|다친\s?사람[은는]?\s?없|부상자[는은]?\s?없")
+# 규모 신호(운영자 260803 3차 승인) — 소방 대응 2단계↑·광역 발령·국가소방동원령 = 인접서 총동원 = 대형화재 확정.
+#   왜 = 사망 확정은 확인에 시간이 걸리지만 대응단계는 사고 직후 30분 안에 보도된다 → 사상자 보도를 기다리기 전에 먼저 잡힌다.
+#   ⚠⚠ **사상자어의 대체재가 아니라 병렬 신호다**(운영자 260803 "꼭 대응단계가 낮아도 사상자는 발생할수있음 · 변수적 특수성이 많음").
+#      → 판정은 OR: 사상자어 히트는 대응단계와 **무관하게** 종전 그대로 잡는다(1단계·단계 미표기 사망도 100% 종전 경로로 통과).
+#      이 줄을 지워도 사상자 축은 손상되지 않는다 = 안전 축의 회귀 위험 0.
+#   1단계 제외 = 웬만한 건물 화재가 다 1단계라 그것까지 큐잉하면 과금이 소음이 된다(2단계부터 = 인접 소방서 동원 규모).
+ESCALATION = re.compile(r"대응\s?[23]\s?단계|대응단계\s?[23]|[23]단계\s?발령|광역\s?[12]호\s?발령|국가\s?소방\s?동원령")
 
 
 def jload(p, dflt):
@@ -118,20 +127,23 @@ def event_key(d, led):
 
 
 def hit_article(a, ev):
-    """기사 1건이 이 사건의 '사상자 확인'인가 — 3축(지역 ∧ 화재어 ∧ 사상자어) 동시 + 발행시각 정합."""
+    """기사 1건이 이 사건의 보도가치 신호인가 — 3축(지역 ∧ 화재어 ∧ [사상자어 ∨ 규모신호]) + 발행시각 정합.
+    반환 = 'casualty'(사상자 확인) ∥ 'scale'(대형화재 확인) ∥ ''(무히트) — 알림 문구가 이 값으로 갈린다."""
     title = " ".join(str(a.get("title") or "").split())
-    if not title:
-        return False
-    if NEG.search(title):          # "인명피해 없어" = 확인됐으나 사상자 0 → 긴급큐 대상 아님
-        return False
-    if not (FIRE_WORD.search(title) and CASUALTY.search(title)):
-        return False
+    if not title or not FIRE_WORD.search(title):
+        return ""
     if not any(p in title for p in ev.get("places") or []):
-        return False
+        return ""
     pt = ts(a.get("published")) or ts(a.get("first_seen"))
     if pt and pt < ev["t0"] - ART_GRACE_MIN * 60:   # 발령보다 한참 앞선 기사 = 다른 사건
-        return False
-    return True
+        return ""
+    # ⓐ 사상자 축 = 정본(종전 그대로 · 대응단계 유무와 무관하게 판정) · NEG 는 이 축에만("인명피해 없어" = 확인됐으나 0명)
+    if CASUALTY.search(title) and not NEG.search(title):
+        return "casualty"
+    # ⓑ 규모 축 = 병렬 신호. NEG 무관 = "대응 2단계 · 인명피해 없어"도 대형화재 자체가 보도가치(운영자 "보도성이 강해지거든")
+    if ESCALATION.search(title):
+        return "scale"
+    return ""
 
 
 def naver_news(q, limit=20):
@@ -159,15 +171,28 @@ def naver_news(q, limit=20):
 
 
 def search(ev):
-    """사상자 기사 찾기 — 1순위 레포 수집함(무과금) → 없으면 2순위 네이버(키 있을 때). 첫 히트 1건 반환(없으면 None)."""
+    """보도가치 기사 찾기 — 1순위 레포 수집함(무과금) → 없으면 2순위 네이버(키 있을 때).
+    ⚠ 사상자 축 우선 — 수집함을 전량 훑어 casualty 를 먼저 찾고, 없을 때만 scale(대형화재)을 채택한다
+      (같은 런에 둘 다 있으면 사상자 기사가 큐에 들어가야 한다 = 보도 본체)."""
+    fallback = None
     for a in jload(CAND, []):
-        if isinstance(a, dict) and hit_article(a, ev):
-            return {"url": a.get("url") or a.get("id") or "", "title": a.get("title") or "",
-                    "src": "수집함", "alt": " ".join((a.get("cluster_members") or [])[:6])}
+        if not isinstance(a, dict):
+            continue
+        sig = hit_article(a, ev)
+        if not sig:
+            continue
+        got = {"url": a.get("url") or a.get("id") or "", "title": a.get("title") or "",
+               "src": "수집함", "sig": sig, "alt": " ".join((a.get("cluster_members") or [])[:6])}
+        if sig == "casualty":
+            return got
+        fallback = fallback or got
+    if fallback:
+        return fallback
     q = (sorted(ev.get("places") or [], key=len, reverse=True)[:1] or ["화재"])[0] + " " + (ev.get("kind") or "화재")
     for a in naver_news(q):
-        if hit_article(a, ev):
-            return {"url": a["url"], "title": a["title"], "src": "네이버", "alt": ""}
+        sig = hit_article(a, ev)
+        if sig:
+            return {"url": a["url"], "title": a["title"], "src": "네이버", "sig": sig, "alt": ""}
     return None
 
 
@@ -178,7 +203,8 @@ def notify(ev, art):
       ⓐ 웹푸시(push_send · 폰 알림) — 앱을 안 켜고 있어도 온다. tag 'nomute-fire' = 재난 축 전용 자리.
       ⓑ 메시지함 점등(msg.py · 단일 슬롯 fire-<사건키>) — 푸시를 놓쳐도 앱에 남는다 + 프로필 경고 점등.
     둘 다 fail-soft — 알림 실패가 큐잉·원장을 죽이지 않는다(watchdog 관용구 계승)."""
-    head = f"🔥 {ev.get('kind') or '화재'} 사상자 확인" + (f" · {ev['lm']}" if ev.get("lm") else "")
+    what = "사상자 확인" if art.get("sig") != "scale" else "대형화재 확인"   # 규모 신호로 잡힌 건을 '사상자'라 부르면 알림이 거짓말이 된다
+    head = f"🔥 {ev.get('kind') or '화재'} {what}" + (f" · {ev['lm']}" if ev.get("lm") else "")
     body = f"{ev.get('area') or ''} — {art['title'][:80]}"
     try:
         subprocess.run([sys.executable, str(ROOT / "shared" / "msg.py"), "set",
@@ -256,7 +282,7 @@ def main():
         if not art or not art.get("url"):
             print("  · 사상자 기사 없음", file=sys.stderr)
             continue
-        ev["hit"] = {"url": art["url"], "title": art["title"], "src": art["src"], "at_min": int(el)}
+        ev["hit"] = {"url": art["url"], "title": art["title"], "src": art["src"], "sig": art.get("sig") or "", "at_min": int(el)}
         notify(ev, art)   # ⚠ 큐잉보다 **먼저** 알린다 — 운영자가 알아야 하는 건 '사상자 확인' 그 자체(과금 가드에 막혀도 알림은 간다)
         if cap_used >= FIRE_DAY_CAP:
             print(f"::warning::일 픽 상한({FIRE_DAY_CAP}) 도달 — 큐잉 보류(원장에 근거는 남김): {art['title'][:50]}", file=sys.stderr)
