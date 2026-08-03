@@ -1,33 +1,32 @@
-# 고지용, 2년 전 이혼했다…아들 위해 미룬 고백
+# 아빠가 고른 시간
 
 **[프롬프트 설계]**
-- 화풍: A 수채화 — 파경 폭로가 아니라 아이를 기다린 아빠의 시간을 다루는 이야기라, 고발보다 온기·공감 축이 맞다
-- 분위기: 늦은 오후에서 아침으로 건너가는 조용한 집안의 정조. 목소리를 높이지 않고 담담하게 털어놓는 절제된 고백의 톤
-- 연출 방향: 독자(뉴스 대신 SNS를 보는 30~40대)가 멈추는 지점은 '슈퍼맨이 돌아왔다 속 승재 아빠'로 기억하는 얼굴이 2년을 감췄다는 낙차다. 전하려는 관점은 공개 시점의 기준을 여론이 아니라 아이의 속도에 뒀다는 것. 그래서 카메라는 사건의 폭로 대신 *기다림이 놓인 자리*(멈춘 손끝, 반쯤 열린 문틈, 나란히 놓인 두 켤레의 신발)를 잡는다. 밝은 온기에서 시작해 카드가 넘어갈수록 빛을 거두고, 아들이 등장하는 피크에서 가장 어둡게 조인 뒤 마지막에만 아침빛으로 푼다
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(예고형: "그런데 알린 건 오늘이었다")+카드4 끝(단서형: '아빠'로 다시 본 얼굴) · 감정 피크=카드5 · 착지 한 줄 요지=그 2년은 아이가 준비되는 데 쓰인 시간이었다
-- 연속성 앵커: Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater. / Recurring child - a small Korean boy of primary-school age, always seen from behind or with his face out of view, in a soft light hoodie. / Recurring place - a modest Korean apartment in low late-afternoon light.
+- 화풍: A수채화 — 파경 뉴스지만 축은 고발이 아니라 한 아버지가 지킨 시간이라 따뜻한 결이 맞다
+- 분위기: 늦은 오후 햇살 같은 잔잔한 온기 위에 옅은 쓸쓸함 한 겹 — 소란 대신 정적, 판정 대신 여백
+- 연출 방향: 독자가 멈추는 지점은 파경이 아니라 '2년'이라는 침묵의 길이다. 뉴스 안 보는 SNS 이용자도 '아이 앞에서 말할 타이밍을 재본 적' 있는 감각으로 즉시 붙는다. 그래서 카메라는 사건이 아니라 **기다림의 흔적**(놓인 휴대폰 화면, 자라난 아이의 키, 두 사람 사이의 거리, 열린 현관 빛)을 잡는다. 얼굴을 크게 파헤치기보다 손·시선·빈자리로 감정을 흘리고, 마지막에만 정면으로 착지시킨다.
+- 독자 동선: **제시** 카드1(오늘의 글 한 장) → **발단** 카드2(2년 전 결정) → **전개** 카드3(그 2년 동안 아이가 자란 시간) → **피크** 카드4(같은 날 건강 이상설까지, 혼자 감당한 무게) → **해소** 카드5(그가 내세운 단 하나의 기준) → **시사점** 카드6 · 훅=카드1 끝(단서형: 날짜가 어긋난다는 단서)+카드3 끝(예고형) · 착지 = 어른들의 결정은 2년 전 끝났고, 고백은 아이가 감당할 수 있게 된 뒤에야 나왔다
+- 연속성 앵커: Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes / Recurring place — a modest Korean apartment living room in late afternoon light.
 
 ### [카드 1]
 **텍스트**
 ```text
-7월 29일 그가 짧은 글 하나를 올렸다
-젝스키스 고지용, 올해 마흔여섯이다
-*아내와 헤어진 건 2년 전 일이라고 했다*
-그런데 알린 건 오늘이었다
+29일 그가 짧은 글을 올렸다
+아내와 헤어졌다는 이야기였다
+그런데 날짜가 이상했다
+*헤어진 건 2년 전이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his thumb resting motionless on the phone he has just put down. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, sits alone at the far end of a low sofa. Recurring place - a modest Korean apartment in low late-afternoon light; a small green toy of a child lies forgotten on the floor near his feet. He holds the phone loosely in both hands and looks past it toward the window, with nose room on the right and his gaze drifting toward the right edge of the frame.
-Camera: wide shot from eye-level, shot on 35mm lens
+Scene: Emotional focal point: his thumb resting still on the phone screen, not yet pressing. Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes, sits at a low table in a modest Korean apartment living room in late afternoon light. He holds a phone in both hands and looks down at it, his gaze fixed on the small bright rectangle. A child's crayon drawing is taped to the wall behind him, slightly faded. Nose room on the right, his body angled toward the right edge of the frame.
+Camera: medium shot, waist-up framing, face and gestures, conversational, from three-quarter angle, natural face depth, dimensional portrait, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) carried only by the child's small toy on the floor, muted daylight contrast
-Korean default: Korean apartment interior, Korean domestic furniture and window frames.
-Text handling: the phone screen is angled away and rendered as a soft glow only, no readable interface. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
+Text handling: the phone screen glows blank and featureless, no readable characters anywhere; background surfaces kept plain.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the living room floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the living room wall and floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -36,30 +35,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-고지용 인스타그램
+고지용 인스타그램 게시글
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그는 인스타그램에 이렇게 적었다
-서로의 길을 존중하기 위한 결정이었고
-어른의 책임을 다하려는 선택이었다
-*부부로선 헤어졌지만 서로를 응원한다*
+2년 전 두 사람은 갈라섰다
+"서로의 길을 존중하고
+각자 어른으로서 책임을
+다하기 위한 결정"이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the calm, unhurried set of his mouth as he chooses each word. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, stands in profile close to a plain interior wall. Recurring place - a modest Korean apartment in low late-afternoon light; two coffee cups sit far apart on a shelf behind him, one turned upside down. His eyes are cast slightly downward in quiet composure, one hand flat against the wall as if steadying himself before speaking.
-Camera: medium shot from a profile side angle, shot on 85mm portrait lens
+Scene: Emotional focal point: the quiet arm's-length gap between two adults who no longer touch. Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes, stands near the entrance of a modest Korean apartment living room. A Korean woman in her forties in a soft beige coat stands facing the door, a bag in her hand, her eyes cast downward. Neither looks at the other; the empty space between them holds the center of the frame. A single pair of small child's shoes sits by the doorway.
+Camera: full shot, head-to-toe, full body, outfit visible, clear silhouette, from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 50mm standard lens, minimal distortion, natural cinematic composition
 Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) held by a single small potted plant on the shelf, muted daylight contrast
-Korean default: Korean apartment interior, Korean domestic shelving and window frames.
-Text handling: no writing appears on the wall, shelf or cups; all surfaces are plain. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
+Text handling: no signage, no labels, no lettering on any surface; the door and walls stay plain.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the plain interior wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the entrance hallway wall and floor) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -68,30 +66,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-고지용 허양임 결혼
+아파트 현관 이혼 부부
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-*같은 날 건강 이야기도 함께 꺼냈다*
-간 기능에 이상이 왔지만 회복 중이라고
-소속사를 통해 짧게 덧붙였다
-번지던 추측을 하루에 함께 매듭지었다
+그 2년 동안 아들은 자랐다
+2016년 '슈퍼맨이 돌아왔다'에서
+아빠 손을 잡던 그 아이가
+*이제 열두 살이 됐다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his fingers curled around a half-empty glass of water, gripping a little tighter than needed. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, sits alone at a wooden dining table late in the evening. Recurring place - a modest Korean apartment, now lit only by the lamp above the table. A small unlabeled medicine bottle stands beside the glass and he looks at neither of them, his eyes fixed somewhere past the edge of the table.
-Camera: medium close-up from a slightly high angle, shot on 50mm standard lens
-Lighting/mood: warm soft desk-lamp light, quiet wistful tone
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the cap of the small bottle, film-noir low-key lighting, deep shadows
-Korean default: Korean apartment interior, Korean domestic table and tableware.
-Text handling: the medicine bottle and every object are completely unlabeled and blank. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the pencil marks climbing a doorframe, the highest one still fresh. A modest Korean apartment living room in late afternoon light, the doorframe edge covered with small horizontal growth marks rising from low to high. A Korean boy around twelve, in a plain school tracksuit, stands with his back to us against that frame, shoulders already reaching the upper marks, looking out toward the window. His father is not in the room; only an adult's folded jacket rests on the sofa arm behind him. Nose room on the right, the boy's gaze directed toward the right edge.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context, from profile shot, side view, clear silhouette, directional movement, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
+Text handling: the growth marks are plain pencil dashes only, no dates, no numbers, no letters rendered anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wooden dining table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the living room wall with the doorframe) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -100,30 +97,28 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-고지용 건강 이상설
+아이 키 재는 문틀 자국
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-그는 원래 무대 위의 사람이었다
-1997년 데뷔해 3년 만에 팀이 해체됐다
-그 뒤로는 연예계를 떠나 살았다
-*그를 다시 본 건 '슈퍼맨이 돌아왔다'였다*
+같은 날 건강 이상설도 정리했다
+*간 기능 이상이 왔고 회복 중이다*
+그 2년을 그는 혼자 안고 있었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the small hand folded inside his larger one as they walk away together. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, seen from behind, walking up the aisle of an emptied concert hall. Recurring child - a small Korean boy of primary-school age, seen only from behind in a soft light hoodie, holding the man's hand and half a step ahead of him. The stage lights behind them are switched off and the rows of seats are bare, while both figures move toward the bright exit at the right edge of the frame.
-Camera: full shot from eye-level, back view, shot on 24mm wide lens
-Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful, dim and dusk-like
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) glowing on the small exit lamp ahead of them, film-noir low-key lighting, deep shadows
-Korean default: Korean concert hall interior, Korean seat rows and aisle signage shapes without letters.
-Text handling: the exit lamp and all signage are rendered as pure glowing shapes and pictograms only, never as letters. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his vacant unfocused stare looking past everything in the dim room. Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes, sits alone on the floor of a modest Korean apartment living room after dark, his back against the sofa. One hand rests open on his knee, the other lies still beside a cooled cup. The room is unlit except for a single lamp behind him, and the child's room door across the hall is closed.
+Camera: tight close-up, face fills frame, intense emotion, intimate pressure, from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: no medical documents, no charts, no labels, no lettering visible anywhere in the room.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the empty auditorium floor and aisle) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the darkened living room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -132,29 +127,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-슈퍼맨이 돌아왔다 고지용
+어두운 거실 혼자 앉은 남자
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-*그가 2년을 기다린 이유는 아들이었다*
-아이가 이 상황을 충분히 받아들이고
-안정적으로 클 때까지 지켜주고 싶었다
+왜 이제야 말했느냐는 물음에
+그는 여론도 회사도 아닌
+아들을 먼저 꺼냈다
+*"충분히 받아들일 때까지"*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his hand stopped on the doorframe, close enough to push the door but not moving. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, stands in the dark hallway at a half-open bedroom door, his eyes lowered and glistening, jaw set. Recurring child - a small Korean boy of primary-school age in a soft light hoodie, asleep on the bed beyond the door with his back turned so his face is never visible. A single narrow band of lamplight from the room falls across the man while everything around him stays in deep shadow.
-Camera: close-up from eye-level, shot on 135mm telephoto lens
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a small star sticker at the edge of the bedroom door, film-noir low-key lighting, deep shadows
-Korean default: Korean apartment hallway and bedroom door, Korean domestic interior details.
-Text handling: no writing on the door, sticker or walls; the sticker is a plain shape only. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the father's hand hovering just short of his son's shoulder, waiting rather than pulling. Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes, crouches down to the height of a twelve-year-old boy in a modest Korean apartment living room. The boy stands facing him, chin slightly lowered, listening. The father looks straight into the boy's eyes and speaks, his other hand open on his own knee. Late afternoon light falls between them from the window.
+Camera: two-shot, two characters in frame, relationship distance, emotional dynamic, from ground-level shot, worm's-eye view, near floor, exaggerated scale, shot on 40mm lens, neutral perspective, natural human-vision feel
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
+Text handling: plain walls and furniture only, no lettering, no signage, no printed material in frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the hallway wall and floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the living room floor and wall) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -163,30 +158,29 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-고지용 아들 승재
+아빠 아들 눈높이 대화
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-파경 소식에서 먼저 묻게 되는 건
-언제, 왜, 누구 탓이냐 세 가지다
-그는 셋 대신 아들의 시간을 먼저 셌다
-*그 2년은 아이가 준비되는 시간이었다*
+어른들의 결정은 2년 전 끝났다
+그런데 그걸 세상에 알리는 시점만은
+아이의 속도에 맞춰져 있었다
+*고백은 아들이 준비된 뒤에 나왔다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: his steady, tired eyes looking straight ahead without flinching. Recurring subject - a Korean man in his mid-40s with short neatly cropped black hair, a lean build, wearing a plain charcoal knit sweater, stands centered in the entryway of his home facing the viewer. Recurring place - a modest Korean apartment, now filled with early morning light from the open door behind him. One pair of adult shoes and one pair of small child's sneakers are set side by side on the entry floor near his feet, both neatly turned outward.
-Camera: medium shot from eye-level, front-on, shot on 50mm standard lens
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the laces of the small child's sneakers, muted daylight contrast
-Korean default: Korean apartment entryway with a sunken floor, Korean domestic door and interior details.
-Text handling: no writing on the shoes, door or walls; every surface is plain. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: his steady unwavering eyes looking directly forward, no longer avoiding. Recurring subject — a Korean man in his mid-40s, short neat black hair, clean-shaven, wearing a plain charcoal knit sweater, calm heavy-lidded eyes, stands in the doorway of a modest Korean apartment living room, facing us straight on with his hands loose at his sides. Behind him the room is quiet and lived-in, a child's small sneakers placed neatly by the entrance. Late afternoon light spreads across the floor toward the viewer.
+Camera: wide shot, full body, surrounding environment, movement, spatial context, from front-on shot, direct gaze, symmetrical composition, facing camera, shot on 28mm lens, natural street perspective, mild wide angle
+Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
+Text handling: no signage, no labels, no printed text on any surface in the room.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the entryway floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
+Composition: ONE continuous surface (the living room floor and doorway wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -195,5 +189,5 @@ NEGATIVE - strictly avoid:
 ```
 **검색어**
 ```text
-젝스키스 고지용 사업가
+아파트 현관 서 있는 아버지
 ```
