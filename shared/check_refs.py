@@ -2156,6 +2156,101 @@ def check_onoff_literal():
     return rc
 
 
+# ── 어포던스 비계승 게이트 (운영자 260803 "응 붙여줘" — 「스킨은 계승, 어포던스는 비계승」의 정적 몫) ──────────────
+# 왜: 260803 실사고 6건의 뿌리 = 리드백 칩 `.gs-v`가 정본 `.trail-i`(진짜 버튼) **외형을 스킨으로 입으면서
+#   `cursor:pointer`까지 통째로 딸려온 것**. 외형 계승은 이 레포의 정본 방식이고 맞다 — 그런데 「이건 눌린다」는
+#   **신호**까지 복사되면 손가락 커서가 뜨는데 아무 일도 안 일어난다(tr 「40」·콘티 「2K」·큐영상 「0건」 …
+#   sb·k·song·vd는 .gs-tog가 0개 = 스트립 전체가 거짓말이었다).
+# 런타임 짝 = smoke_hitzone.js H3. 이 정적 게이트는 그 **앞단**이다 — 커밋에서 막으면 브라우저까지 안 간다.
+# 판정: 뷰어 <style> 안에서 `cursor:pointer`를 선언하는 규칙의 **마지막 컴파운드 클래스**를 뽑아,
+#   그 클래스를 실제로 달고 있는 HTML 요소가 하나라도 「컨트롤 마커 0」이면 위반.
+#   컨트롤 마커 = button/a/label/summary/input/select 태그 · role="button" · onclick · tabindex · data-*(위임 훅).
+#   → 셀렉터가 태그 컨트롤이거나(button:hover 등) role을 이미 포함하면 애초에 대상 아님 = 위양성 차단.
+_AFFORD_MARK = re.compile(r'\brole\s*=\s*"button"|\bonclick=|\btabindex=|\bdata-[a-z-]+\s*=')
+_AFFORD_CTRL_TAG = ('button', 'a', 'label', 'summary', 'input', 'select', 'textarea')
+_AFFORD_BASE = {   # 파일별 선존 스냅샷 = **260803 실측값**(추측 금지 — 코드로 세서 박았다) · 초과만 FAIL · 축소 지향
+    # ⚠ 이 숫자는 「전부 버그」가 아니다. 이 게이트는 정적 근사라 **위임으로 실제 반응하는 노드**도 함께 센다
+    #   (예 edit `.hd`·`.clip`·`.lytab` = document 클릭 위임이 처리 · index `.card`·`.chip`·`.seg` 동축).
+    #   정적으로는 위임 대상 셀렉터를 알 수 없으므로 그 판별은 런타임 짝(smoke_hitzone H3)이 맡고,
+    #   여기서는 **새로 늘어나는 것만** 막는다 = 「스킨 복사할 때 cursor까지 딸려오는」 재발 차단이 이 게이트의 몫.
+    #   줄이는 법 = 위임 노드에 role/data-* 마커를 달아 의도를 표면화하거나, 장식이면 cursor를 걷는다.
+    'viewer/edit.html': 5,
+    'viewer/index.html': 11,
+    'viewer/k.html': 1,
+    'viewer/ly.html': 2,
+    'viewer/thumb.html': 1,
+    'viewer/tr.html': 1,
+    'viewer/vd.html': 2,
+}
+
+
+def check_affordance_inherit():
+    """어포던스 비계승 게이트 — cursor:pointer가 「누를 수 없는 노드」에 걸려 있는지 정적 검출.
+    스킨 계승(외형)은 정본이고 권장이다. 다만 cursor·press 같은 **어포던스 신호**는 role/핸들러가 있는 노드에만 붙어야 한다.
+    면책 = _AFFORD_BASE(파일별 스냅샷 · 초과분만 FAIL = raw baseline 문법 동문). 런타임 짝 = smoke_hitzone.js H3."""
+    import glob as _g
+    rc = 0
+    tot = 0
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        # <style> 블록만(인라인 style 속성·JS 문자열 제외)
+        css = '\n'.join(re.findall(r'<style[^>]*>(.*?)</style>', src, re.S))
+        if not css:
+            continue
+        bad = set()
+        for sels, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
+            if not re.search(r'cursor\s*:\s*pointer', body):
+                continue
+            for sel in sels.split(','):
+                sel = sel.strip()
+                if not sel or sel.startswith('@') or sel.startswith('%'):
+                    continue
+                if 'role="button"' in sel or 'role=button' in sel:
+                    continue
+                last = re.split(r'[ >+~]', sel.strip())[-1]        # 마지막 컴파운드 = 규칙이 실제로 칠하는 노드
+                last = last.split(':')[0]                          # :hover/:active 등 상태 제거
+                if not last or last.startswith('['):
+                    continue
+                tag = re.match(r'^[a-zA-Z]+', last)
+                if tag and tag.group(0).lower() in _AFFORD_CTRL_TAG:
+                    continue                                        # 태그 자체가 컨트롤 = 대상 아님
+                cls = re.findall(r'\.([A-Za-z0-9_-]+)', last)
+                if not cls:
+                    continue
+                key = cls[-1]
+                # 그 클래스를 단 요소를 HTML에서 전수 확인 — 하나라도 마커가 없으면 「거짓 어포던스」 후보
+                hits = re.findall(r'<([a-zA-Z]+)([^>]*\bclass\s*=\s*"[^"]*\b%s\b[^"]*"[^>]*)>' % re.escape(key), src)
+                if not hits:
+                    continue                                        # 동적 생성 = 정적으로 못 본다(런타임 H3 몫)
+                # JS가 그 클래스를 **선택자로 잡고 있으면** 배선된 것으로 본다(위임·동적 생성 = 정적으로 마커가 안 보이는 정상 경로).
+                #   실측 260803 = vd `.monseek`(진행선 시크바)은 JS가 만들고 그 자리에서 핸들러를 붙인다 = 진짜 눌린다 → 위양성이었다.
+                #   반증은 유지된다 — JS가 아예 안 잡는 순수 장식 클래스는 그대로 FAIL(주입 테스트로 확인).
+                if re.search(r"""['"`]\.%s['"` ,)\]]""" % re.escape(key), src):
+                    continue
+                for t, attrs in hits:
+                    if t.lower() in _AFFORD_CTRL_TAG:
+                        continue
+                    if _AFFORD_MARK.search(attrs):
+                        continue
+                    bad.add(key)
+                    break
+        tot += len(bad)
+        base = _AFFORD_BASE.get(rel, 0)
+        if len(bad) > base:
+            print('❌ 어포던스 비계승 게이트 — %s에서 cursor:pointer가 「누를 수 없는 노드」에 걸린 클래스 %d종(> 면책 %d): %s. '
+                  '스킨 계승 시 cursor·press는 비계승 = role/핸들러 있는 노드에만(CII 「미리보기 코너 옵션 레일」 · 운영자 260803). '
+                  '위임으로 실제 반응한다면 그 노드에 data-* 마커나 role을 달아 의도를 표면화하라'
+                  % (rel, len(bad), base, ', '.join('.' + b for b in sorted(bad))))
+            rc = 1
+    if rc == 0:
+        print('✅ 어포던스 비계승 게이트 — cursor:pointer가 마커 없는 노드에 걸린 클래스 %d종 전부 면책분 · 신규 0(스킨은 계승·어포던스는 비계승).' % tot)
+    return rc
+
+
 # ── 모델 표시명 SSOT 게이트 (운영자 260803 5차 "아이디어도 배선해줘" — 표기 드리프트 8종 실사고[Q1285]의 구조 봉합) ──
 # 사전 = viewer/nm-models.js(window.NM_MODELS · 정식 표기 단일정본 · sb/k는 런타임 참조). 두 축:
 #   ⓐ 음차·변형 래칫 — viewer/*.html·functions/api/*.js에서 음차(클링·시댄스·페이블·오퍼스·제미나이·수노)와
@@ -2956,6 +3051,8 @@ def main():
     except Exception as e:
         print('⚠️ 2단 분기점 게이트 스킵:', e)
     try:
+        if check_affordance_inherit() != 0:   # 스킨 계승 시 어포던스(cursor·press) 비계승(운영자 260803 — 리드백 칩이 버튼 스킨과 함께 손가락 커서까지 물려받아 「눌러도 아무 일 없는 자리」가 6건 실재했다 · 런타임 짝 = smoke_hitzone H3)
+            rc = 1
         if check_onoff_literal() != 0:   # 이진 토글 ON/OFF 리터럴 금지(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — cnTog 워드 점등 정본의 재발 차단 · 면책 = _ONOFF_BASE 스냅샷)
             rc = 1
     except Exception as e:
