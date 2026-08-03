@@ -9001,7 +9001,7 @@ function _dgSecTxt(s) { s = Math.max(0, Math.round(Number(s) || 0)); return wind
 // 예상시간 학습·표시 키 = **모드 × 플랫폼**(운영자 260802-2) — 유튜브 20분짜리와 X 40초 클립을 한 평균에 담으면 둘 다 틀린다.
 //   시드는 전 플랫폼 동일(nm-loader.js SEED) = 차이를 지어내지 않고 실측이 갈라놓게 둔다 · 플랫폼 미상(딥링크 복원) = 폴백 'vidl'/'vidl-subs'.
 const DG_PLATS = ['YT', 'IG', 'X', 'TT', 'FB', 'TH'];
-function _dgEtaKey(v) { const b = (v && v.mode === 'subs') ? 'vidl-subs' : 'vidl'; const p = v && v.plat; return (p && DG_PLATS.indexOf(p) >= 0) ? b + '-' + p : b; }
+function _dgEtaKey(v) { const b = (v && v.mode === 'subs') ? 'vidl-subs' : (v && v.mode === 'video') ? 'vidl-video' : 'vidl'; const p = v && v.plat; return (p && DG_PLATS.indexOf(p) >= 0) ? b + '-' + p : b; }
 // (구 `_dgVidStat` = `.genstat.live` 알약 진행표기 폐지 — 진행은 이제 **제작 잡 카드**(.job > .jst)가 전담 =
 //  이미지 스튜디오와 같은 부품(운영자 260802 "이미지 스튜디오를 거의 따라서"). orb·예상·경과 세 축은 _dgJobHtml로 이관.)
 // 「이전 받기」 접이 = 이미지 스튜디오 **이전 제작** 접이 100% 모방(.prev 이력색·맨 아래·전 기기 아닌 이 기기 표기만 다름).
@@ -9118,7 +9118,7 @@ function _dgPaintPic() {
   //   "이미 한번 링크 입력하면 다음거를 입력을 못해 … 재차, 또는 큐잉 시킬수가 없음"의 **직접 원인**. 이미지 스튜디오는
   //   제작 중에도 다음 발사가 열려 있고 잡이 쌓인다(JOBS 배열) — 같은 모델로 통일했으니 잠글 이유가 사라졌다.
   dl.title = !u ? '주소를 붙여넣으면 받을 수 있어'
-    : plat ? _dgVidPlatName(plat) + ' 영상 받기 — 최고화질 + 프레임별·FHD판 + 자막' + (_dgSubs === false ? '(플랫폼 자막이 없어 받아쓰기 자막으로 대체돼)' : '')
+    : plat ? _dgVidPlatName(plat) + ' 영상 받기 — 최고화질 + 프레임별·FHD판(자막까지 받으려면 「받을 내용」의 [영상+자막])'
     : '이 페이지의 사진·파일 받기';
 }
 // ── 받기 전 「무엇인지」 미리보기(운영자 260803 "링크를 입력해서 … 어떤 내용 인지가 떠야돼 · 다운로더들 다 그렇더라고") ──
@@ -9142,13 +9142,19 @@ async function _dgPeek() {
 }
 // 미리보기 행 = 스캔 결과 행(.dg-item · _dgRowHtml) 마크업 **사본** — 다른 건 버튼이 없다는 것뿐(여긴 아직 받는 게 아니다).
 function _dgPeekHtml() {
-  const p = _dg.peek; if (!p || !p.title) return '';
-  const sub = _dgSubs === false ? '영상 + 받아쓰기 자막' : '영상 + 자막';   // 자막 유무 = 이미 도는 linkprobe 리드백 재사용(새 조회 0)
+  const u = _dgUrlNorm(), plat = _dgVidPlat(u);
+  if (!plat) return '';   // 영상 게시물이 아니면 이 행 자체가 없다(페이지 스캔 갈래는 종전대로 [다운로드]가 목록을 만든다)
+  const p = (_dg.peek && _dg.peek.title) ? _dg.peek : null;
+  // 제목을 못 얻었어도(og 차단·형식 변경) 행은 남긴다 — **자막 버튼이 여기 살기 때문**. 그 경우 제목 자리엔
+  // 지어낸 문구 대신 **주소 자신**을 쓴다(추측 표시 금지 · 「무엇인지」는 못 알아냈다는 사실이 그대로 보인다).
+  const ttl = p ? p.title : u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80);
+  const subLbl = _dgSubs === false ? '영상+받아쓰기 자막' : '영상+자막';   // 자막 유무 = 이미 도는 linkprobe 리드백 재사용(새 조회 0)
   return '<div class="geni-sechead"><span class="cref-lbl">받을 내용</span></div>'
     + '<div class="dg-item">'
-    + (p.thumb ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
-    + '<div class="dg-imain"><div class="dg-ittl">' + esc(p.title) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(p.plat)) + (p.author ? ' · ' + esc(p.author) : '') + ' · ' + sub + '</div></div>'
+    + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
+    + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피")
+    + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
 }
 async function _dgProbeSubs() {   // 자막 유무 사전판별 = api/linkprobe(정본 = 요약창 probeAskLink) · 화면 표시 전용(실제 판정은 러너)
@@ -9167,7 +9173,7 @@ function _dgFire() {   // 다운로드 버튼 = 갈래 판단 1곳(영상 게시
   if (_dg.busy) return;   // 페이지 스캔만 직렬(결과 판이 하나) — 영상 받기는 큐잉 = 막지 않는다
   const u = _dgUrlNorm();
   if (!u) { _dg.err = '주소를 먼저 붙여넣어 주세요'; _dgRenderBody(); return; }
-  if (_dgVidPlat(u)) _dgVidStart('both'); else _dgGo();
+  if (_dgVidPlat(u)) _dgVidStart('video'); else _dgGo();   // 기본 = **영상만**(운영자 260803 "주로 필요한건 영상임 어짜피") · 자막까지 = 「받을 내용」 행의 [영상+자막] 워드칩(data-act=vidsubs)
 }
 function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **추가**(교체 아님 · 큐잉 260802) · 입력칸은 비워 다음 주소를 바로 받는다
   const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
@@ -9251,6 +9257,7 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'ytreq') { e.stopPropagation(); _dgYtReq(i); }
   else if (act === 'ytget') { e.stopPropagation(); _dgYtGet(i); }
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(_dg.jobs[i], (_dg.jobs[i] || {}).mode || 'both'); }
+  else if (act === 'vidsubs') { e.stopPropagation(); _dgVidStart('both'); }   // 「받을 내용」 행 [영상+자막] = 그 자리에서 자막까지 포함해 발사(기본 [다운로드]는 영상만)
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(ji, i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(el, ji); }
   else if (act === 'secall') { e.stopPropagation(); _dgDlSec(el, el.dataset.k); }
