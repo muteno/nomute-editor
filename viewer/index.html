@@ -10895,12 +10895,14 @@ function failRetry(c, opts) {   // ↻ 재시도 — ① 재분석 재발사(대
 function wireFailChip(fb, c) {   // Failed 칩 = 재시도: 탭 = 다시 대기열 재분석(failRetry→Picking…) · 길게(480ms)/우클릭 = 메뉴(실패 사유·내용 입력) · 제목 <a> = 원문.
   if (!fb) return;
   // 컨텍스트 메뉴 진입점(전수감사 260713) — #failmenu = "길게 누르거나(480ms) 우클릭". 실패 사유(진단 MD)·내용 입력(403 매체 전문 붙여넣기 재분석).
-  //   패턴 = qFeedBtn 롱프레스 계승(pointerdown 타이머·이동 8px 취소·contextmenu = PC 우클릭).
-  let _lpT = null, _lpFired = false;
-  fb.addEventListener('pointerdown', () => { _lpFired = false; clearTimeout(_lpT); _lpT = setTimeout(() => { _lpFired = true; openFailMenu(c, fb); }, 480); });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => fb.addEventListener(ev, () => clearTimeout(_lpT)));
-  fb.addEventListener('pointermove', e => { if (Math.abs(e.movementX) + Math.abs(e.movementY) > 8) clearTimeout(_lpT); });
-  fb.addEventListener('contextmenu', e => { e.preventDefault(); openFailMenu(c, fb); });
+  // ⚠️ 260803 수리 — 구판은 pointerdown 핸들러가 이벤트 인자조차 안 받아 `stopPropagation` 이 0이었다.
+  //   그래서 누름이 부모 카드(.sc-item)로 버블 → **480ms 실패메뉴 + 600ms 병합모드 동시 발화**(우클릭도 동일:
+  //   구 contextmenu 는 preventDefault 만 있고 전파 차단이 없어 카드 우클릭=enterMerge 로 샜다). openFailMenu 의
+  //   closeOverlays 로도 못 막는다 — 480ms 시점엔 MERGE_MODE 가 아직 false 라 닫을 게 없고 병합은 그 뒤에 켜진다.
+  //   → 긴급 배지와 **같은 문법**(claimLongPress 4종 방어)으로 재배선. 이동 취소도 movementX 8px →
+  //   부모와 같은 clientX 절대거리 10px 로 통일(iOS movementX 0버그 회피 · 스크롤 중 칩만 살아남던 축 제거).
+  let _lpFired = false;
+  claimLongPress(fb, 480, () => { _lpFired = true; openFailMenu(c, fb); }, () => openFailMenu(c, fb));   // ctxFn = 우클릭은 _lpFired 미설정(click 이 안 오는 경로라 다음 진짜 탭이 삼켜지는 것 차단)
   fb.onclick = e => {
     e.stopPropagation();
     if (_lpFired || Date.now() - _failMenuAt < 350) { _lpFired = false; return; }   // 롱프레스 직후 합성 click = 재시도 오발 차단(_failMenuAt 타임스탬프 가드)
@@ -11644,7 +11646,9 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
 //   ③ 이동 10px 취소 = 부모 병합과 **같은 축**(clientX 절대거리 · iOS movementX 0버그 회피).
 //   ④ contextmenu 선점 = PC 우클릭·안드로이드 롱프레스가 부모 병합이나 브라우저 기본메뉴로 새는 것 차단.
 //   임계 480ms = openFailMenu 선례값(병합 600 보다 **먼저** 확정 발화 = 순서 경합 원천 제거 + iOS 콜아웃 前).
-function claimLongPress(el, ms, fn) {
+// ctxFn = 우클릭 전용 콜백(생략 시 fn 공용). 호출자가 '롱프레스로 발화했다' 플래그를 들고 있을 때,
+// 우클릭까지 그 플래그를 세우면 **다음 진짜 탭 1회가 삼켜지므로** 두 경로를 가를 수 있게 뚫어둔다(Failed 칩).
+function claimLongPress(el, ms, fn, ctxFn) {
   let t = null, x = 0, y = 0, at = 0;
   const cancel = () => { clearTimeout(t); t = null; };
   el.addEventListener('pointerdown', e => {
@@ -11657,7 +11661,7 @@ function claimLongPress(el, ms, fn) {
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => el.addEventListener(ev, cancel));
   el.addEventListener('pointermove', e => { if (t && Math.abs(e.clientX - x) + Math.abs(e.clientY - y) > 10) cancel(); });
   el.addEventListener('click', e => { if (Date.now() - at < 350) { e.preventDefault(); e.stopPropagation(); } });
-  el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); at = Date.now(); fn(); });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); at = Date.now(); (ctxFn || fn)(); });
 }
 // 배지 1개 배선 — 수집함(.sc-badge.brk)·피드(.urg.brk) **두 표면 공용**. 한쪽만 달면 똑같이 생긴 '긴급'을
 // 다른 화면에서 눌렀을 때 무반응 = 운영자가 신고했다고 믿는데 데이터가 0인 사고(배지 패리티 계약과 동축).
