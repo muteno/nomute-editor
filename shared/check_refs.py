@@ -670,6 +670,40 @@ def check_shell_put_integrity():
     return 0
 
 
+def check_workflow_amend():
+    """워크플로 결과 커밋 `--amend` 금지 게이트(운영자 260803 6-4 승인 — filltest 동시 3발사 실사고의 구조 봉합).
+    사고 구조 = 러너 결과 커밋 재시도 루프에서 `pull --rebase -X ours`가 자기 커밋을 'already upstream'으로
+    드랍하면 `git commit --amend`가 직전 커밋(= **남의 푸시된 커밋**)을 개서 → non-ff 영구 거절 4연패 = 산출 유실
+    (런 30779914067 실측 · 원조 imggen은 새-커밋 방식으로 안전했는데 사본 계보(resize→upscale)가 --amend로
+    개악된 복제 사고 = 셸캐시 put 1차 봉합이 사본을 놓쳐 재발한 축과 동형). 러너 커밋은 전부 push 재시도 루프와
+    함께 살므로 워크플로 안 `git commit --amend`는 **전면 금지**(현행 0건 = 베이스라인 청정 · 재병합 = 새 커밋
+    `git diff --cached --quiet || git commit -m …`). 합법 예외가 생기면 사유와 함께 면책 목록을 신설하라(_BASE 관례)."""
+    wdir = os.path.join(ROOT, '.github', 'workflows')
+    try:
+        files = sorted(f for f in os.listdir(wdir) if f.endswith(('.yml', '.yaml')))
+    except Exception as e:
+        print('❌ check_workflow_amend 디렉터리 읽기 실패(fail-closed):', e); return 1
+    if not files:
+        print('❌ check_workflow_amend 워크플로 0건 — 경로 확인(fail-closed)'); return 1
+    rx = re.compile(r'git\s+commit\b[^\n]*--amend')
+    bad = []
+    for f in files:
+        try:
+            lines = open(os.path.join(wdir, f), encoding='utf-8').read().splitlines()
+        except Exception as e:
+            print('❌ check_workflow_amend 읽기 실패(fail-closed): %s — %s' % (f, e)); return 1
+        for i, l in enumerate(lines, 1):
+            if rx.search(l) and not l.lstrip().startswith('#'):   # 주석(사고 각주) = 비대상 · 실행줄만
+                bad.append('%s:%d' % (f, i))
+    if bad:
+        print('❌ 워크플로 --amend 금지(260803 실측 = 자기 커밋 드랍 시 남의 푸시 커밋 개서 → non-ff 영구거절 = 산출 유실):')
+        for b in bad:
+            print('   -', b, '→ 재병합은 새 커밋으로(`git diff --cached --quiet || git commit -m …` · imggen 원조 패턴)')
+        return 1
+    print('✅ 워크플로 --amend 금지 게이트 — %d개 워크플로에 실행줄 --amend 0건(재병합 = 새 커밋 계약 유지).' % len(files))
+    return 0
+
+
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
 
 
@@ -2702,6 +2736,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_shell_put_integrity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_workflow_amend() != 0:   # 워크플로 결과 커밋 --amend 금지(하드 게이트 — 260803 실측: 자기 커밋 드랍 시 남의 푸시 커밋 개서 = non-ff 영구거절·산출 유실)
+            rc = 1
+    except Exception as e:
+        print('❌ check_workflow_amend 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1
