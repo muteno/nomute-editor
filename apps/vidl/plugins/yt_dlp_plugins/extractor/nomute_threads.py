@@ -43,6 +43,17 @@ _NAV_HEADERS = {
     'Upgrade-Insecure-Requests': '1',
 }
 
+# 공유 링크(/share/<코드>) **전용** 헤더 — 브라우저 UA를 일부러 안 쓴다(운영자 260803 "스레드 다운로드 잘 안되더라고").
+#   왜: 같은 공유 URL이 요청자에 따라 전혀 다른 응답을 준다(실측 260803).
+#     · 브라우저 UA(_NAV_HEADERS) → **200 + 클라이언트 라우팅 셸**(og:url·al:ios:url 0건 · data-sjs 0건)
+#       = 아래 find_shared_post가 읽을 정답 신호가 **페이지에 아예 없다** → 「어느 글인지 못 찾았다」로 전량 실패.
+#     · 비-브라우저 UA(yt-dlp 기본·curl·requests 전부) → **302 Location = 정규 주소**
+#       (`/@user/post/<shortcode>`) → 따라가면 SSR JSON까지 실린 원글 페이지(실측 560KB·data-sjs 29블록).
+#   즉 지금은 **서버가 직접 알려주는 쪽**(리다이렉트)이 HTML 파싱보다 정확하고 싸다(요청 1회 그대로).
+#   ⚠ 스코프 = share 첫 요청만. /post/·/t/(id가 곧 shortcode)와 그 뒤 모든 요청은 종전 _NAV_HEADERS 그대로 —
+#     원글 페이지 자체는 브라우저 UA라야 로그인 월을 안 맞는다(위 주석의 사유는 여전히 유효).
+_SHARE_HEADERS = {'Accept-Language': _NAV_HEADERS['Accept-Language']}
+
 _SJS_RE = re.compile(
     r'<script[^>]+type="application/json"[^>]*\bdata-sjs\b[^>]*>(.*?)</script>', re.S)
 
@@ -238,13 +249,17 @@ class NomuteThreadsIE(InfoExtractor):
         shortcode = self._match_id(url)
         mobj = self._match_valid_url(url)
         user = mobj.group('user')
+        is_share = mobj.group('kind') == 'share'
 
-        webpage = self._download_webpage(
-            url, shortcode, headers=_NAV_HEADERS,
+        webpage, urlh = self._download_webpage_handle(
+            url, shortcode, headers=(_SHARE_HEADERS if is_share else _NAV_HEADERS),
             note='포스트 페이지 받는 중', errnote='포스트 페이지를 못 받았다')
 
-        if mobj.group('kind') == 'share':
-            hit = find_shared_post(webpage)
+        if is_share:
+            # ① 1순위 = **최종 URL**(302를 따라간 결과 = 서버가 지정한 정규 주소 · 260803 개정)
+            #    본문 파싱보다 앞에 둔다 — 추천글 코드가 섞일 여지 자체가 없고, 셸 응답이 와도 여기서 갈린다.
+            fin = _POST_PATH_RE.search(getattr(urlh, 'url', '') or '')
+            hit = (fin.group('user'), fin.group('code')) if fin else find_shared_post(webpage)   # ② 폴백 = 종전 메타(og:url·al:*) 경로 그대로
             if not hit:
                 raise ExtractorError(
                     '공유 링크가 어느 글인지 못 찾았다 — 스레드 앱에서 「링크 복사」로 나오는 '

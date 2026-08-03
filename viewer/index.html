@@ -3473,7 +3473,7 @@
      계승 = 소머리(.geni-sechead/.cref-lbl) · 클립(attachCopyPaste = .iowrap + .iobtn-edge 상단걸침) 두 축뿐.
      ⚠ 미계승 = ⓐ 입력칸 **1개**(운영자 "따라서 2개 만들라는 뜻 아님" — 부제/제목 2칸은 카드 산출물 구조 몫)
               ⓑ 노뮤트·진짜예요 템플릿 토글(운영자 "이 이미지 스튜디오 특성에 국한한거야"). */
-  #dlgrab .geni-lead { padding-bottom:calc(9px - 2px) /* raw-ok: 9 = 이미지 스튜디오 「소머리↔첫 박스 단일값」 정본 동값(thumb `#rCombo .iowrap{margin-top:9px}`) · −2 = 리드 border-bottom 두께 상쇄 → **눈에 보이는 여백** 9 = 위와 동값 */; }   /* 링크 입력 행 위·아래 여백 **동일**(운영자 260802 "위에마진, 아래마진 동일하게 유지 · 지금은 아래가 압도적으로 간격이 큼") — 실측 위 9.0 / 아래 9.0(구 9.0 / 53.0). 구 53의 정체 = 리드 pad 22 + 리드 border 2 + 바디 pad 15 + 첫 접이 margin 14 **네 겹 누적**이라 아래 4줄이 한 벌로 움직인다 */
+  #dlgrab .geni-lead { padding-bottom:calc(var(--sp-4) - 2px) /* raw-ok: −2 = 리드 border-bottom 두께 상쇄(종전 문법 그대로) → **눈에 보이는 여백** = sp-4(24) */; }   /* 링크 행 ↔ 구분선 간격 확보(운영자 260803 "링크 아래에 구분선까지의 간격을 좀 더") — 값 = 이미지 스튜디오 리드(도크) 하단 정본 `--sp-4` 계승(`.genihost .geni-lead{padding:var(--sp-3) 16px var(--sp-4)}`) = 이 창이 셸을 통째로 계승한 축과 같은 출처 · 신규 값 0 */   /* (구 260802) 아래 여백 = 위와 동일 9 — 상단 여백 대칭이 목적이었고, 전체창 전환 뒤엔 리드가 화면 폭을 전부 쓰면서 구분선이 링크 행에 붙어 보였다 */   /* 링크 입력 행 위·아래 여백 **동일**(운영자 260802 "위에마진, 아래마진 동일하게 유지 · 지금은 아래가 압도적으로 간격이 큼") — 실측 위 9.0 / 아래 9.0(구 9.0 / 53.0). 구 53의 정체 = 리드 pad 22 + 리드 border 2 + 바디 pad 15 + 첫 접이 margin 14 **네 겹 누적**이라 아래 4줄이 한 벌로 움직인다 */
   #dlgrab .geni-body { padding-top:0; }
   #dgBody > .geni-histwrap:first-child { margin-top:0; }
   #dlgrab .geni-lead .geni-sechead { padding:0; }   /* 소머리 = 리드 첫 요소 → 위 여백은 리드 padding-top 8 단일소스 · 아래 여백은 입력 행 margin-top 9 단일소스(= thumb `#rCombo .csec{margin-bottom:0}` 정본 동문 · 이중 여백 차단) */
@@ -8707,6 +8707,11 @@ function openDlGrab() {
   _dg.jobs.forEach(v => { if (v.st === 'run') _dgVidPoll(v); });   // 복원 폴 재개(모달 open 후)
 }
 function _dgKey(it) { return String(it.dl || it.url || ''); }
+// 「받기 폴이 살아 있어야 하는 상태」 = 창이 열려 있거나 **최소화돼 ▲에 걸려 있을 때**(운영자 260803 아이디어 승인 "그거는 진행 ㄱ").
+//   왜: 최소화는 '접어둔 채 기다린다'는 뜻인데 구 가드(`.open`)는 접는 순간 폴을 끊어, ▲에 진행을 띄워도 숫자가 얼어붙는다.
+//   백그라운드 상주는 여전히 아니다 — 창을 **완전히 닫으면**(X·ESC) MIN_REG에도 없으니 종전대로 멈춘다(재열람 시 localStorage 복원).
+function _dgAlive() { const d = $('#dlgrab'); return !!(d && d.open) || MIN_REG.has('dlgrab'); }
+function _dgRunN() { return (_dg.jobs || []).filter(v => v.st === 'run').length; }   // 진행 중 받기 건수(▲ 배지·picker 라벨 공용)
 function _dgFmt(b) { b = Number(b) || 0; if (!b) return ''; if (b < 1024) return b + 'B'; if (b < 1048576) return (b / 1024).toFixed(b < 10240 ? 1 : 0) + 'KB'; if (b < 1073741824) return (b / 1048576).toFixed(1) + 'MB'; return (b / 1073741824).toFixed(2) + 'GB'; }
 // ── 본문 = 이미지 스튜디오 결과 판 **그대로**(운영자 260802 "이미지 스튜디오를 거의 따라서 가져온다고 생각하고") ──
 //   위 = 「• 결과 (N)」 접이(강조색·기본 펼침) 안에 **제작 중 잡 카드**(.jobs > .job) → 완료 카드 → 페이지 스캔 결과
@@ -8714,6 +8719,7 @@ function _dgFmt(b) { b = Number(b) || 0; if (!b) return ''; if (b < 1024) return
 //   ⚠ 순서 = 운영자 260802 "영상 받는중 이게 받은 기록보다는 위에 가있어야함(제작중 뜨는거)" — 구 배치는
 //     [기록][받은 영상][받는 중] 이라 **진행 중이 맨 밑**이었다(정확히 반대). 이미지 스튜디오는 결과·진행이 위, 이전 제작이 아래.
 function _dgRenderBody() {
+  try { if (MIN_REG.has('dlgrab')) minRegRefresh(); } catch (_) {}   // 접어둔 상태에서 받기가 늘거나 끝나면 ▲ 배지도 같이 움직인다(발사·완료·실패가 전부 이 렌더를 지난다 = 갱신 지점 단일)
   const body = $('#dgBody'); if (!body) return;
   const jobs = _dg.jobs, r = _dg.res;
   const n = jobs.length + (r ? 1 : 0);
@@ -9035,13 +9041,13 @@ async function _dgVidFire(v, mode) {
 }
 function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의회2) — **잡 목록에 살아 있을 때만** 진행(큐잉 편입 260802)
   if (!v || _dg.jobs.indexOf(v) < 0 || v.st !== 'run') return;
-  if (!$('#dlgrab').open) return;   // 창 닫으면 폴 멈춤 · job은 localStorage에 남아 재열람 시 복원(백그라운드 상주 아님)
+  if (!_dgAlive()) return;   // 창 닫으면 폴 멈춤 · job은 localStorage에 남아 재열람 시 복원(백그라운드 상주 아님) · **최소화 중은 살아 있다**(▲ 진행 표시가 얼지 않게 · 260803)
   if (Date.now() - v.t0 > 40 * 60e3) { v.st = 'fail'; v.msg = '시간이 너무 오래 걸려요 — 잠시 후 다시 시도해줘'; _dgVidSaveJobs(); _dgPaintPic(); _dgRenderBody(); return; }
   const ji = _dg.jobs.indexOf(v), row = $('#dgjob' + ji), st = row && row.querySelector('.jst .jsec');
   if (st) st.textContent = _dgSecTxt((Date.now() - v.t0) / 1000);   // 경과 = 잡 카드 상태줄 흰색 숫자만 제자리 갱신(전체 재렌더 0 = 접이·스크롤 안 튐 · thumb .jsec 문법)
   if (v.tm) clearTimeout(v.tm);
   v.tm = setTimeout(async () => {
-    if (_dg.jobs.indexOf(v) < 0 || v.st !== 'run' || !$('#dlgrab').open) return;   // 콜백도 identity 재검사(스테일 방지)
+    if (_dg.jobs.indexOf(v) < 0 || v.st !== 'run' || !_dgAlive()) return;   // 콜백도 identity 재검사(스테일 방지)
     let done = false, fail = '';
     try {
       const er = await fetch('vidl_out/' + v.id + '/error.log?t=' + Date.now());
@@ -14245,10 +14251,14 @@ function restoreTool(key) {
 // ── 다중 최소화 레지스트리 + 뉴스요약 최소화 + 선택 picker (운영자 260627) ──────────────────
 // ▲ 복원 버튼은 공유. 최소화된 게 1개면 ▲ 탭=바로 복원 / 2개+면 ▲ 탭=어느 걸 펼칠지 선택 picker.
 const MIN_REG = new Map();   // id → { label, restore } · 최소화된 모달 추적
-function minRegRefresh() {    // ▲ 위 개수 배지(2개+ 일 때만)
+function minRegRefresh() {    // ▲ 위 배지 = ⓐ 최소화 2개+ 개수(종전) · ⓑ 접어둔 다운로드의 「받는 중」 건수(운영자 260803 "그거는 진행 ㄱ")
   const b = $('#toolRestore'); if (!b) return;
+  const run = MIN_REG.has('dlgrab') ? _dgRunN() : 0;                              // 접어둔 다운로드 창이 지금 몇 건 받고 있나
+  const e = MIN_REG.get('dlgrab');
+  if (e) e.label = run ? '다운로드 · 받는 중 ' + run : '다운로드';                 // picker 라벨도 같은 사실을 문자로 — 최소화 2개+라 배지 자리를 창 개수에 내준 경우엔 여기가 건수를 전담
+  const n = MIN_REG.size > 1 ? MIN_REG.size : run;                                // 창이 여럿이면 창 개수가 1순위(배지의 원 의미 = 어느 걸 펼칠지) · 1개뿐이면 그 자리에 진행 건수
   let badge = b.querySelector('.tr-count');
-  if (MIN_REG.size > 1) { if (!badge) { badge = document.createElement('span'); badge.className = 'tr-count'; b.appendChild(badge); } badge.textContent = String(MIN_REG.size); }
+  if (n > 0) { if (!badge) { badge = document.createElement('span'); badge.className = 'tr-count'; b.appendChild(badge); } badge.textContent = String(n); }
   else if (badge) badge.remove();
 }
 function restoreDispatch() {  // ▲ 탭 = picker 떠있으면 닫기(토글) / 1개면 바로 복원 / 2개+면 선택 picker
