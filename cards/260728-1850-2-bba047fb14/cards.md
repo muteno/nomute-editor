@@ -1,31 +1,31 @@
-# 🌊 대낮 해상다리 끊겼다…전망대 17명 어선이 실어냈다
+# 🌊 대낮에 끊긴 바다 위 170m, 17명은 어선을 타고 나왔다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 구조물이 대낮에 주저앉은 안전 사고이자 '점검하는 손'의 속도를 묻는 구조 비판이라, 사실성과 무게를 함께 실어야 한다.
-- 분위기: 한여름 정오의 흰 직사광 아래 아무 일 없어 보이는 바다, 그 위에서만 끊긴 선 하나 — 소란보다 정적이 서늘한 톤.
-- 연출 방향: 독자는 해상 데크·출렁다리를 가족과 걸어본 사람이다. 그래서 이 덱은 '피해'가 아니라 '내가 저 위에 있었을 자리'를 보여준다 — 카메라는 끊긴 자리와 사람 사이의 거리, 붙잡은 난간, 그리고 아무 발자국도 없는 널판에 의도를 모은다. 인명 피해 0이 관리의 성과가 아니라 시간의 우연이었다는 것을, 텅 빈 상판 한 컷이 말하게 한다.
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 다리 끝에 사람이 있었다)+카드2 끝(단서형: 먼저 도착한 건 구조 함정이 아니었다) · 감정 피크=카드4 · 착지 한 줄 요지=길을 내는 속도는 빨랐는데 그 길이 끊길 때 올 배는 정해두지 않았다.
-- 연속성 앵커: Recurring subject — a Korean woman in her 50s in a wide-brimmed beige sun hat, a light gray windbreaker, and a small shoulder bag. Recurring place — a narrow wooden pedestrian walkway on stone piers over a Korean coastal sea.
+- 화풍: B 극화 — 관광 구조물의 관리 공백을 짚는 구조 비판축이라, 사실성과 무게가 필요한 극화로 고정.
+- 분위기: 한여름 정오의 흰 직사광 아래 벌어진 무채색 사고. 비명도 유혈도 없이 조용히 끊긴 자리, 그 위에 남은 서늘함.
+- 연출 방향: 독자훅 = "나도 저런 데크 걸어봤다"는 기시감. 전하려는 것 = 인명 피해 0을 만든 게 관리가 아니라 텅 빈 순간이었다는 사실. 그래서 강조점은 ⓐ 끊긴 자리의 '빈 다리 위'(사람이 없었다는 그 틈 자체) ⓑ 전망대에 갇힌 사람들과 다가붙는 낡은 목선의 거리다. 사람을 다치게 한 장면이 없으므로 긴장은 '없음'과 '거리'로 만든다 — 부서진 파괴 스펙터클이 아니라 끊긴 구간의 공백, 돌아갈 길이 사라진 폭을 화면의 주인공으로 둔다. thumb_dispatch 계승 = 정오 직사광(LGT07)의 흰 노출과 '갇힘'의 정조만 키노트로 상속.
+- 독자 동선: **발단** 카드1(제시=붕괴 순간)→**전개** 카드2~3(무슨 다리였고 왜 갇혔나)→**피크** 카드4(전망대에 남겨진 46분)→**해소** 카드5(민간 어선이 실어냄)→**시사점** 카드6 · 훅=카드1 끝(단서형: 다리 위가 비어 있었다는 사실을 아직 안 밝힘)+카드3 끝(예고형: 돌아올 길) · 착지 = 다리를 놓을 때 끊길 경우를 함께 설계했다면 그 자리에 있었어야 할 배는 무엇이었나.
+- 연속성 앵커: Recurring subject — a Korean woman in her 50s with short permed hair, wearing a wide-brimmed sun hat and a light beige windbreaker. 반복 장소 = a narrow steel-and-timber sea walkway over open coastal water near a rocky islet.
 
 ### [카드 1]
 **텍스트**
 ```text
-7월 28일 낮 1시 15분, 포항 구룡포
-바다 위로 170m 뻗어 있던 보행교가
-*한여름 대낮에 그대로 주저앉았다*
-그런데 다리 끝에는 사람이 있었다
+28일 낮 1시 15분, 경북 포항
+바다 위로 뻗은 관광 보행교가
+소리도 없이 *가운데서 끊겼다*
+그런데 그 위엔 아무도 없었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the raw broken gap where the walkway simply drops into the water, its splintered edge still pointing forward. A narrow wooden pedestrian walkway on stone piers stretches from the rocky shore across a calm summer sea, and one middle section has collapsed and sunk, leaving the deck severed in two. At the far end, on the surviving observation platform, a small cluster of six or seven tourists stands close together and looks back toward the shore. The sea around the break is flat and bright, with no boat anywhere yet, and the whole structure reads small against the open water.
-Camera: wide shot from a high overhead angle, shot on 20mm wide lens
+Scene: Emotional focal point: the empty gap where the walkway ends in mid-air, no one on it. A narrow steel-and-timber sea walkway over open coastal water near a rocky islet runs from the lower left and simply stops, its broken deck plates tilted down into the sea. Not a single person stands on the remaining span, and the handrail cables hang loose over the water. The bright noon sea stretches flat and empty beyond the break.
+Camera: wide shot, full body scale of the structure from high angle shot, looking down, shot on 24mm wide lens
 Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Setting is Korean by default: a Korean coastal fishing village shoreline with low breakwater rocks. Composition note: nose room on the right, the broken walkway leading toward the right edge. Keep the main subject and the break in the upper-center area, away from the bottom of the frame. Avoid incidental writing: no signage text, no printed characters anywhere in the scene; suggest meaning through shape and composition instead of letters. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the safety railing cables), muted daylight contrast
+Text handling: avoid incidental signage; no readable lettering anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sea surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the open sea water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-포항 구룡포 보릿돌교
+포항 구룡포 보릿돌교 붕괴
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-다리가 끊기자 돌아올 길이 사라졌다
-관광객이 즐겨 찾던 전망대의 17명이
-*바다 한가운데 그대로 갇혔다*
-먼저 도착한 건 구조 함정이 아니었다
+보릿돌교는 앞바다 바위섬과
+육지를 잇는 170m 보행 다리다
+끝자락 전망대에서 바다를 보려고
+사람들이 걸어 나가던 길이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her knuckles whitening on the handrail, jaw set, eyes fixed on the shore she cannot reach. Recurring subject — a Korean woman in her 50s in a wide-brimmed beige sun hat, a light gray windbreaker, and a small shoulder bag stands at the edge of the observation platform gripping the metal rail with both hands. Around her about a dozen other tourists of mixed ages wait in a tight group on the small wooden deck, some shading their eyes toward the land, one older man crouching low, nobody wearing a life vest. The severed walkway ends a short distance away in open water, and there is no vessel in sight in front of them.
-Camera: medium shot from eye level, shot on 35mm lens
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Setting is Korean by default: a Korean coastal sea with low rocky islets on the horizon. Composition note: nose room on the right, her gaze directed toward the right edge. Keep the faces, hands and the rail in the upper-center area, away from the bottom of the frame. Avoid incidental writing: no signage text, no printed characters on clothing or the platform. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the relaxed backs of tourists walking out toward the sea, unaware. Recurring subject — a Korean woman in her 50s with short permed hair, wearing a wide-brimmed sun hat and a light beige windbreaker, walks along the deck with two other visitors ahead of her. They face away from the viewer toward the small viewing platform at the far end, one raising a hand against the glare. The narrow steel-and-timber sea walkway over open coastal water near a rocky islet stretches straight into the distance.
+Camera: full shot, head-to-toe figures on the deck from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective
+Lighting/mood: overcast-free bright coastal daylight, harsh overexposed midday sunlight, hard shadows
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the railing cables), muted daylight contrast
+Text handling: no signage lettering; the guide board is shown edge-on and blank.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the weathered wooden deck of the observation platform) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the timber walkway deck) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-장길리 보릿돌교 전망대
+구룡포 장길리 해상 보행교 전망대
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-*먼저 온 건 인근의 조업 어선이었다*
-소방과 해경이 수중을 뒤지는 사이
-그 배가 다리 끝 전망대로 다가붙었다
-17명은 46분 만에 모두 무사히 나왔다
+다리가 끊긴 건 육지 쪽 구간이었다
+전망대에 나가 있던 17명은
+그대로 바다 한가운데 남았다
+돌아올 길이 사라진 것이다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the narrow gap of water between a weathered fishing boat's gunwale and the platform edge, and the two hands reaching across it. A small old wooden fishing boat noses up against the observation platform while its skipper braces the hull with one arm and extends the other. Recurring subject — a Korean woman in her 50s in a wide-brimmed beige sun hat, a light gray windbreaker, and a small shoulder bag steps down toward the boat, taking his hand, with other tourists lined up behind her waiting their turn. Farther out on the water two rescue divers in dark wetsuits work near the collapsed section, their heads small against the surface, so the fishing boat clearly stays the center of the action.
-Camera: wide shot from a low ground-level angle, shot on 35mm lens
-Lighting/mood: bright high-key light, clean white ambience, minimal shadow, hopeful and open
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Setting is Korean by default: a Korean coastal fishing village boat with an old tire fender on its hull. Keep the hands, the boat's edge and the faces in the upper-center area, away from the bottom of the frame. Avoid incidental writing: no boat name lettering, no signage text, no printed characters anywhere. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the widening stretch of water between the broken deck and the platform, the distance itself. A small cluster of visitors stands on the far viewing platform looking back toward the land side, while the collapsed section of the narrow steel-and-timber sea walkway sags into the water in the near foreground. No one can cross the gap, and the sea moves calmly through it. The rocky islet sits behind the stranded platform.
+Camera: extreme long shot, tiny subjects in vast environment from bird's-eye view, overhead angle, shot on 20mm wide lens, documentary realism
+Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the broken railing cables), muted daylight contrast
+Text handling: no lettering of any kind in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sea surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the open sea water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-구룡포 어선 해상 구조
+보릿돌교 끊긴 구간 고립
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-구조가 끝난 뒤 당국은 CCTV를 돌렸다
-무너지던 그 순간 170m 다리 위에
-*걷고 있던 사람은 한 명도 없었다*
+소방과 해경이 잠수장비로
+바닷속을 훑는 동안
+*17명은 그 끝에서 46분을 서 있었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the sun-bleached planks holding not a single footprint, ending abruptly at a torn edge. The surviving stretch of the wooden walkway runs toward the viewer and stops at a jagged break where the boards splinter downward, one bent handrail bar hanging loose over the water. Nothing occupies the deck at all, and the emptiness itself is the subject. Far back near the shoreline and very small, a single official in a hard hat stands still and studies the deck from a distance, kept low-contrast and secondary so the empty planks stay the focus.
-Camera: tight close-up from a high angle, shot on 100mm macro lens
-Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Setting is Korean by default: a Korean coastal pedestrian walkway with galvanized steel railing. Keep the broken edge and the loose rail in the upper-center area, away from the bottom of the frame. Avoid incidental writing: no warning sign text, no printed characters on the deck or rail. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: her jaw clenched tight, muscle flexing at the jawline, eyes fixed on the far shore. Recurring subject — a Korean woman in her 50s with short permed hair, wearing a wide-brimmed sun hat and a light beige windbreaker, grips the platform railing with both hands and stares toward the land. Behind her a few other stranded visitors stand close together in silence, kept lower and softer so she stays the focus. The sea surrounds the small platform on every side.
+Camera: medium close-up, chest-up framing from eye-level shot, neutral perspective, three-quarter angle, shot on 85mm portrait lens
+Lighting/mood: single hard side-light cutting across the subject under blazing noon sun, deep chiaroscuro shadows, tense atmosphere
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the railing cable she grips), muted daylight contrast
+Text handling: no lettering; clothing bears no printed words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sun-bleached wooden planks of the walkway) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sea horizon behind the platform) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-보릿돌교 붕괴 현장
+해양경찰 잠수 수중수색 포항
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-17명을 살린 건 안전 관리가 아니라
-그 위를 아무도 걷지 않던 우연이었다
-바다 위에 길을 내는 속도는 빨랐는데
-*끊길 때 올 배는 정해두지 않았다*
+그들을 실어낸 건 구조 함정이 아니라
+근처에서 조업하던 민간 어선이었다
+오후 2시 1분, 17명 전원이 뭍을 밟았고
+*다친 사람은 한 명도 없었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: her eyes lowered and quiet as she looks back at the line that no longer reaches the rock. Recurring subject — a Korean woman in her 50s in a wide-brimmed beige sun hat, a light gray windbreaker, and a small shoulder bag stands on the shore rocks with her back to the sea path, turned toward the viewer, arms hanging still. Behind her the severed walkway reaches partway across the water and stops, the stone piers continuing on alone toward the distant rock, and one small fishing boat drifts far off near the horizon. The composition is centered and static, the water almost motionless.
-Camera: wide shot from eye level, front-on and centered, shot on 35mm lens
-Lighting/mood: warm golden-hour sunlight, long soft shadows, nostalgic warmth
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Setting is Korean by default: a Korean coastal fishing village shoreline with breakwater rocks. Keep her face and the broken walkway line in the upper-center area, away from the bottom of the frame. Avoid incidental writing: no signage text, no printed characters anywhere in the scene. no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a weathered fisherman's hand reaching up to take hers as she steps down. Recurring subject — a Korean woman in her 50s with short permed hair, wearing a wide-brimmed sun hat and a light beige windbreaker, lowers herself from the platform edge toward a small old wooden fishing boat pressed against it. The fisherman steadies the gunwale with one arm and holds his other hand out to her, looking up. Other visitors wait in a short line behind her on the platform.
+Camera: medium shot, waist-up framing of both figures from low angle shot, looking up from the boat, shot on 50mm standard lens, minimal distortion
+Lighting/mood: harsh overexposed midday sunlight bouncing off the water, hard shadows, glare on the hull
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a coiled mooring rope in the boat), muted daylight contrast
+Text handling: the boat hull is shown with no visible registration lettering; keep all surfaces blank.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the sea surface) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sea water around the boat) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,5 +158,36 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-해상 보행교 출렁다리 안전점검
+구룡포 어선 구조 해상
+```
+
+### [카드 6]
+**텍스트**
+```text
+CCTV가 확인해 준 건 다리가 튼튼했다는
+사실이 아니라, 무너지던 그 순간에
+마침 아무도 그 위를 걷지 않았다는 것이다
+*끊길 때를 설계했다면, 그 배는 뭐였을까*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: the vacant severed end of the walkway, with nothing where a rescue vessel should be moored. The narrow steel-and-timber sea walkway over open coastal water near a rocky islet ends abruptly at the break, its deck edge hanging above the water. The emptied viewing platform stands beyond it, and the small wooden fishing boat is already far away near the horizon, heading back to shore. No people remain in the scene.
+Camera: long shot, the full structure in its setting from eye-level shot, neutral perspective, front-on view, shot on 35mm lens, natural documentary perspective
+Lighting/mood: late afternoon light softening over the coast, faded warm light, gently wistful release after the glare
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the severed railing cable), muted daylight contrast
+Text handling: no lettering, no signboards with readable characters.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the open sea water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+해상 데크 안전점검 노후 교량
 ```
