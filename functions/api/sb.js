@@ -37,7 +37,7 @@ export async function onRequestPost({ request, env }) {
     '프레임': ['60fps', '30fps'],              // 동상
     '길이': ['8s', '10s', '15s', '30s'],       // 단일값 축(구 구간칩 상한 초 승계 · 컷수 하드룰 = 뷰어 SB_CUTS)
   };
-  const DIRECTOR_NM = { fable: '페이블 5', opus: '오퍼스 5', gpt: 'GPT 5.6 Sol' };
+  const DIRECTOR_NM = { fable: 'Fable 5', opus: 'Opus 5', gpt: 'GPT 5.6 Sol' };   // 표시명 = 정식 모델명 단일화(운영자 260803 4차 · 뷰어 SB_DIRECTORS nm 2면 동기)
   const director = SB_DIRECTORS.includes(body.director) ? body.director : 'fable';
   const shoot = SB_SHOOTS.includes(body.shoot) ? body.shoot : 'kling';
   story += '\n\n[감독: ' + DIRECTOR_NM[director] + ']';   // 에코용 마커(모델 스위치는 워크플로 director 입력이 전담)
