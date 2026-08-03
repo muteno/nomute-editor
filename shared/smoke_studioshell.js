@@ -158,7 +158,30 @@ const PROBE = () => {
       !!([...d.querySelectorAll('#histH')].filter(seen)[0] || (d !== document ? null : [...document.querySelectorAll('#geniPrevH')].filter(seen)[0])),
     ],
   };
+  // ── C13 재료 = 결과 레일 **시작선**(2단 PC 티어 · 운영자 260803 7차 "편집 부분만 제작 결과물 위치(우측의 시작 라인)가 조금 달라") ──
+  //   좌표 = **창(#tooldlg) 기준 상대값**(절대 x·y = 창이 움직이면 5탭 공통 오프셋이 끼어 위양성) · iframe 탭은 프레임 offset 합산.
+  //   두 값을 같이 잰다 = ⓐ 레일 상자 좌상단(칼럼 시작선) ⓑ 레일 **첫 잉크**(결과 소머리 '•') — ⓐ만 재면 상자는 제자리인데
+  //   머리 구분줄(.car-h margin/border/padding 29px)만 소등돼 **글자만** 위로 뜨는 이번 사고를 그대로 통과시킨다(운영자가 본 건 ⓑ다).
+  const frR2 = fr ? fr.getBoundingClientRect() : { x: 0, y: 0 };
+  const dR = dlg ? dlg.getBoundingClientRect() : { x: 0, y: 0 };
+  const outEl = (d !== document) ? d.querySelector('.wrap > .out') : document.querySelector('#geniOut');
+  const oR = outEl ? outEl.getBoundingClientRect() : null;
+  const firstInk = el => {   // 레일 안에서 **가장 위**에 실렌더된 글자 잉크(Range 사각형 = 광학 기준 · §3-4-1)
+    const wk = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT); let b = null, n;
+    while ((n = wk.nextNode())) {
+      const t = (n.nodeValue || '').trim(); if (!t) continue;
+      const p = n.parentElement; if (!p || p.offsetParent === null) continue;
+      const rg = el.ownerDocument.createRange(); rg.selectNodeContents(n);
+      const r = rg.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      if (!b || r.y < b.y - 2 || (Math.abs(r.y - b.y) <= 2 && r.x < b.x)) b = r;
+    }
+    return b;
+  };
+  const hi = outEl ? firstInk(outEl) : null;
+  const rel = r => [+(r.x + (fr ? frR2.x : 0) - dR.x).toFixed(1), +(r.y + (fr ? frR2.y : 0) - dR.y).toFixed(1)];
   return {
+    railStart: oR ? rel(oR) : null,
+    railInk: hi ? rel(hi) : null,
     full: !!(dlg && dlg.classList.contains('tool-full')),
     dlgW: dlg ? +dlg.getBoundingClientRect().width.toFixed(0) : null,
     vpW: window.innerWidth,
@@ -479,6 +502,24 @@ async function runOnce(pg, gap, clone) {
   core('C12 결과 레일 = 이미지 5탭 전부 폰 430 실존·가시(거처 = 자기 프레임 / 살아있는 #geniHost)',
     RT.length === 5 && rBad.length === 0,
     rBad.length ? '이탈 ' + rBad.join(' · ') : RT.map(([k, v]) => k.split('_')[1] + ':' + v.rail.host + '·w' + v.rail.w).join(' '));
+
+  // ── C13 결과 레일 **시작선** = 이미지 5탭 2단(PC)에서 한 값(운영자 260803 7차 "편집 부분만 제작 결과물 위치(우측의 시작 라인)가 조금 달라") ──
+  //   실사고 = 1단용 「좌측 판이 비면 결과 머리 구분줄 소등」 규칙(.car-h margin14+border1+padding14)이 **2단에도 걸려**,
+  //   PC에서 편집 탭만 레일 y −2 · 결과 잉크 y −31px로 떠 있었다(라이브 실측 260803).
+  //   왜 기존 축이 못 잡았나 = C7 `res`는 **존재 여부(boolean)** 만 · C9·C10·C12는 전부 **폰 430 1단** 티어 · C11은 미리보기 창 전용.
+  //   「2단에서 레일이 **어디서 시작하나**」는 게이트가 하나도 없었다 = 이번 사고가 산 그 사각.
+  //   판정 = 창 기준 상대 [x,y]·첫 잉크 [x,y]가 카드 제작과 한 값(허용 0.6px = C7·C9·C11 동값) · 스코프 = 이미지 5탭(영상 셸은 레일 계약 별개 = C12와 동축).
+  const SREF = (out.m || {})['이미지_카드생성'];
+  const SE = E.filter(([k]) => k.indexOf('이미지_') === 0);
+  const sBad = SE.filter(([, v]) => {
+    if (!SREF || !SREF.railStart || !v.railStart) return true;
+    const p = [...v.railStart, ...(v.railInk || [NaN, NaN])], r = [...SREF.railStart, ...(SREF.railInk || [NaN, NaN])];
+    return p.some((x, i) => !(Math.abs(x - r[i]) <= 0.6));
+  }).map(([k, v]) => k.split('_')[1] + '=상자' + JSON.stringify(v.railStart) + '·잉크' + JSON.stringify(v.railInk));
+  core('C13 결과 레일 시작선 = 이미지 5탭 2단(1280) 한 값(상자 [x,y] + 첫 잉크 [x,y] · 창 기준 상대 · 허용 0.6px)',
+    SE.length === 5 && !!(SREF && SREF.railStart && SREF.railInk) && sBad.length === 0,
+    sBad.length ? '이탈 ' + sBad.slice(0, 4).join(' · ') + ' vs 카드생성 상자' + JSON.stringify(SREF && SREF.railStart) + '·잉크' + JSON.stringify(SREF && SREF.railInk)
+      : SE.length + '탭 정합(상자' + JSON.stringify(SREF && SREF.railStart) + ' 잉크' + JSON.stringify(SREF && SREF.railInk) + ')');
 
   return out;
 }
