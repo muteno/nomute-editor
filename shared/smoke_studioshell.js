@@ -31,6 +31,10 @@
 //      ← 운영자 260803 "도입 ㄱㄱ"(같은 날 "스크롤이 들어가면 이게 계속 틀어져" 사고의 게이트화). C7은 창 **크기**만, C9는 **정지** 세로축만
 //        재서 「스크롤 **중** 위치」는 사각이었다 — 도크 정지 y2·sticky y0 잔여 2px가 스크롤 순간 -2px 덜컹(iframe 7표면)인데
 //        AI 생성 판(부모 그림·리드 고정)만 0이라 스크롤 중 2px 어긋남이 조용히 통과했다. 정본 = 도크 마진 -18(패딩 전액 상쇄) = 정지·고정 동일점 = Δ0.
+//   C12 **결과 레일 실존** = 이미지 5탭 전부 폰 430에서 `.out`/`#geniOut`이 화면에 있고 **제 거처**에 있다
+//      ← 운영자 260803 6차 "ai생성은 우측에 편집처럼 결과가 안 붙거든". 그 작업에서 난 실사고 = AI 판 레일이 1단에서
+//        **다운로드 창(#dlgrab) 안으로 이사**해 통째로 사라진 것(rect 0×0 · 콘솔 에러 0 = 무증상)인데, C7 `res` 축은
+//        1280 2단에서만 돌고 폰 sweep의 C9·C10은 잉크·미리보기만 재서 「레일이 화면에 있는가」가 사각이었다.
 // 왜 잉크인가: 박스 x가 같아도 padding이 갈리면 눈에 보이는 글자 위치가 어긋난다(260802 롤백 사고) —
 //   판정은 **잉크 중심 vs 캡슐 중심 Δ**(절대 x = 탭마다 창 폭이 달라 위양성).
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 openTool만) · 서버 자체 종료 · 외부 네트워크 0 · 결정론 2런.
@@ -181,6 +185,21 @@ const GAPPROBE = () => {
   // ── C10 재료 = 스크롤 드리프트(운영자 260803 "도입 ㄱㄱ") — 스크롤러(iframe = 문서 · 폴백 = 첫 overflow 컨테이너 · AI판 = .geni-body) 140px 내림
   //    → 미리보기 박스(.cpprev-box/.mon/AI판) 뷰포트 이동량 → 즉시 원위치(0). 정본 = Δ0(도크 정지 = sticky 동일점 · -18 전액 상쇄).
   //    스크롤 불가(내용이 짧은 탭 = 이미지 편집·특수·큐영상 실측) = null = N/A — 게이트 쪽 최소 측정수 가드가 프로브 전사(全死)를 잡는다.
+  // ── C11 재료 = 결과 레일(.out) 실존·가시(폰 1단) ──────────────────────────────────────────────
+  //   ⚠ 신설 사유 = 260803 6차 실사고: AI 생성 판 결과 레일이 **1단에서 남의 창(#dlgrab) 안으로 이사**해
+  //   화면에서 통째로 사라졌는데(rect 0×0 · offsetParent null · 그 창을 열면 거기 그려짐 · 콘솔 에러 0 = 무증상),
+  //   기존 축이 하나도 못 봤다 — C7 `res`(미리보기 모듈 등가)는 **1280 2단에서만** 돌고, 이 폰 sweep의
+  //   C9·C10은 각각 도크↔첫 블릿 잉크·미리보기 스크롤 위치만 재서 「레일이 화면에 있는가」가 통째로 사각이었다.
+  //   판정 = 이미지 셸 5탭 전부 레일 실존 + 가시 + **올바른 거처**(프레임 탭 = 자기 문서 `.wrap > .out` /
+  //   AI 판 = 살아있는 `#geniHost` 안 `#geniOut`). 거처를 같이 보는 이유 = 소멸의 정체가 "없어짐"이 아니라
+  //   "남의 컨테이너로 이사"라서, 존재 여부만 세면 다음 변종을 또 놓친다.
+  const railOf = () => {
+    const el = inFr ? d.querySelector('.wrap > .out') : document.querySelector('#geniOut');
+    if (!el) return null;
+    const host = inFr ? 'frame' : (gHost && gHost.contains(el) ? 'geniHost'
+      : ('OUTSIDE:' + (el.closest('dialog') ? '#' + (el.closest('dialog').id || '?') : (el.parentElement ? el.parentElement.className || el.parentElement.tagName : '?'))));
+    return { ok: vis(el) && host !== 'frame:none' && host.indexOf('OUTSIDE') !== 0, w: +el.getBoundingClientRect().width.toFixed(1), host };
+  };
   let drift = null;
   const box = [...d.querySelectorAll('.cpprev-box, .mon')].filter(vis)[0]
     || (inFr ? null : (gHost ? [...gHost.querySelectorAll('.geni-prev .cpprev-box')].filter(vis)[0] : null)) || null;
@@ -197,7 +216,7 @@ const GAPPROBE = () => {
     scroller.scrollTop = 0;   // 원위치(동기 리플로우 = 아래 C9 잉크 측정은 정지 상태 그대로)
   }
   const dock = inFr ? (d.querySelector('.topdock') || d.querySelector('.dock')) : (gHost ? gHost.querySelector('.geni-lead') : null);
-  if (!dock || !vis(dock)) return { gapInk: null, gapTxt: null, drift };
+  if (!dock || !vis(dock)) return { gapInk: null, gapTxt: null, drift, rail: railOf() };
   const dd = dock.ownerDocument;
   const scope = gHost || dd.body || dd.documentElement;
   const db = dock.getBoundingClientRect().bottom;
@@ -211,7 +230,7 @@ const GAPPROBE = () => {
     if (!r.height || r.top < db - 0.5) continue;                 // 도크 위 = 대상 아님
     if (r.top < best) { best = r.top; txt = t.slice(0, 10); }
   }
-  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt, drift };
+  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt, drift, rail: railOf() };
 };
 
 async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고정 sleep = 병렬 풀에서 가짜 빨강의 원천)
@@ -445,6 +464,16 @@ async function runOnce(pg, gap, clone) {
     Object.keys(C.tiers).length === CLONE_TIERS.length && !!C.polluted && C.injected && cBad.length === 0,
     cBad.length ? '이탈 ' + cBad.slice(0, 4).join(' · ')
       : (!C.injected ? '오염 주입 실패(프로브 점검)' : cN + '측정 전부 동일(' + Object.entries(C.tiers).map(([t, m]) => t + ':' + JSON.stringify(m['카드생성'])).join(' ') + ')'));
+
+  // ── C12 결과 레일 = 이미지 5탭 전부 폰 1단에서도 실존·가시·제 거처(운영자 260803 6차 "편집처럼 우측에 결과") ──
+  //   위 GAPPROBE railOf() 주석의 게이트 몫 — 「AI 생성 판 레일이 1단에서 다운로드 창 안으로 이사해 소멸」 재발 차단.
+  //   스코프 = 이미지 셸 5탭(영상 셸은 song 큐가 결과 전까지 hidden 등 레일 노출 계약이 탭마다 달라 별개 축 = 넓히려면 사유와 함께).
+  const RT = G.filter(([k]) => k.indexOf('이미지_') === 0);
+  const rBad = RT.filter(([, v]) => !v || !v.rail || !v.rail.ok || !(v.rail.w > 0))
+    .map(([k, v]) => k.split('_')[1] + '(' + (v && v.rail ? v.rail.host + '·w' + v.rail.w : '레일 없음') + ')');
+  core('C12 결과 레일 = 이미지 5탭 전부 폰 430 실존·가시(거처 = 자기 프레임 / 살아있는 #geniHost)',
+    RT.length === 5 && rBad.length === 0,
+    rBad.length ? '이탈 ' + rBad.join(' · ') : RT.map(([k, v]) => k.split('_')[1] + ':' + v.rail.host + '·w' + v.rail.w).join(' '));
 
   return out;
 }
