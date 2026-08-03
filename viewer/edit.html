@@ -137,7 +137,7 @@
   /* ── 옵션 카드 스택(운영자 260729 "이미지 스튜디오 디자인을 비디오 스튜디오 편집에 녹여") = thumb .optcards 정본 계승 —
        이미지 스튜디오는 **행 하나가 곧 카드 하나**(.scard > .csec)이고 편집 탭은 한 카드 안에 행이 나열돼 있었다.
        행 문법(.geni-row 라벨·칩·파이프)은 이미 양쪽이 같은 정본 이식이라, 감싸는 껍데기와 간격만 맞추면 결이 붙는다. ── */
-  .optcards { display:flex; flex-direction:column; gap:8px /* raw-ok: 카드 스택 8 = thumb .optcards 정본 동값(.cyrow gap과 같은 리듬) */; }
+  .optcards { display:flex; flex-direction:column; gap:8px /* raw-ok: 카드 스택 8 = thumb .optcards 정본 동값(.cyrow gap과 같은 리듬) */; margin-top:9px /* raw-ok: **정본 미계승분 회수** = thumb `.optcards{gap:8px; margin-top:9px}`(513행)의 두 번째 값 — 사본에 gap만 따라오고 상단 리듬 9가 빠져 있었다(운영자 260803 8차 "자막 하고 번역 사이에 간격이 좀 어색"). 실측: 자막 헤더 밑변→첫 카드 3px(border1+padTop2)인데 그 아래 카드끼리는 8px = 첫 장만 헤더에 눌러붙음 → 계승 후 12px = 바깥 카드끼리 간격(❸ 12) 동값 리듬 */; }
   .optcards > .scard > .srow, .optcards > .scard > .grow, .optcards > .scard > .swrow { margin:0; padding:8px 13px /* raw-ok: 세로8·좌우13 = thumb .scard > .csec 정본 동값(= edit .scard .hd 계승 사다리) */; }
   .optcards > .scard > .grow { display:grid; }   /* 게이지 행도 같은 카드 패딩 안에서 3열 그리드 유지 */
   .optcards > .scard > .swrow { justify-content:space-between; }   /* 색 줄 = 카드 안쪽 폭을 그대로 사용(마진 상쇄는 아래 규칙이 담당) */
@@ -760,7 +760,7 @@ let CUT_REF=null;      // 승인 컷 참조 {id, off:[뺀 인덱스]} — 발사
 let CLIP_SAVE=null;   // 클리퍼 진입 직전 ON 스냅샷(운영자 260722 "도중에 누르면 다른 옵션값이 날아가 — 방지") — P값은 원래 보존이라 ON 플래그만 저장·복원
 function clipSnap(){ if(!ON.clip) CLIP_SAVE={...ON}; for(const kk in ON) ON[kk]=false; ON.clip=true; }   // 배타 진입 = 스냅샷 후 전축 off(발사 계약 불변 — buildOpts는 여전히 {clip:true} 단독)
 function clipRelease(){ if(!ON.clip) return; ON.clip=false; if(CLIP_SAVE){ for(const kk in CLIP_SAVE){ if(kk!=='clip') ON[kk]=CLIP_SAVE[kk]; } CLIP_SAVE=null; } }   // 배타 해제 = 스냅샷 복원(직후 탭한 축이 이겨야 하므로 호출측은 복원 뒤 자기 축 세팅)   // 음량 통일 = 기본 ON(운영자 260712 "음향 기본값 = 보정") — 나머지 축은 '원본/그대로/끔' 기본 유지 · 발사 게이트도 이 기본으로 통과(맨 발사 = 보정만 적용)
-let P={lang:'dual',tone:'plain',   /* 언어·톤 기본 = 원문 포함·직역(운영자 260731 19차 "각 옵션 기본값 및 기본값을 가장 좌측으로" — 나열 첫째 = 기본값 계약 · 구 260729 '한글만'·'감성 의역' 번복) · P는 영속 저장 안 함 = 매 진입 이 값 */filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
+let P={lang:'dual',tone:'sns',   /* 언어·톤 = **고정값**(운영자 260803 8차 "톤 > 의역 고정 · 언어 > 원문 포함 고정") — 선택 UI(자막 세부 언어·톤 행)는 삭제하고 이 두 값이 상시 발사된다(buildOpts o.lang/o.tone·lyOptsNow 경로 무접촉) · 톤 = 'plain'(직역) → 'sns'(의역) 변경분 · 언어 = 'dual'(원문 포함) 종전 유지 · 구 260731 19차 「기본값 최좌측」 나열 계약은 두 축에 한해 종료(칩 자체가 없어짐) · P는 영속 저장 안 함 = 매 진입 이 값 */filler:true,style:'clean',karaoke:false,pop:false,keyword:true,clipmdl:'fable',pos:57,size:35,bg:100,
   shtype:'box',   // 음영 종류(운영자 260729 "지금은 무조건 네모인데, 획·그림자 등 다른것도 · 기본값은 음영인데 기본도 있어야") — none 기본(효과 없음) | box 음영(네모 = 종전 동작·디폴트) | stroke 획(글자 외곽선) | shadow 그림자
   lgap:18,     // 한국어↔외국어 줄간격 %(한국어 글자 높이 기준 · 운영자 260729 게이지 승격 · 18 = 구 하드코딩 fs×0.18 동값 = 기본 렌더 불변) · 러너 dual_gap 짝
   srcsz:-50,   // 원문(외국어) 줄 크기 = 한국어 줄 대비 상대 %(운영자 260729 "한글 자막 기준해서 -50% 크기를 기준으로, -75%~00%까지") · 0 = 한글과 동일 · -75 = 한글의 25% · 러너 dual_small = (100+srcsz)/100
@@ -843,8 +843,7 @@ function prm(k){
     +'<div class="optcards">'
     /* 프리셋 행 = 폐지(운영자 260731 19차 "자막 on 시 세부 기능 정리 — 프리셋 > 삭제") · SUBPRE·spre 핸들러는 도먼트 보존(복원 = 이 자리 srow 한 줄) */
     +'<div class="scard cyc"><div class="hd st" title="ON = 원문이 50% 작게 위 · 한국어 자막이 아래(원문+한글 동시 표기)">'+cyv('trn','번역')+'</div></div>'   // 번역 = 자막 **안** 첫 카드로 이주(운영자 260803 7차 "어짜피 자막에 포함되어 있는거니까 없애고 자막 안으로 삽입") — 부품·워딩·핸들러 = 구 hl3 3분할 행 tg3 그대로(생김새 창작 0 · 워드 점등 정본) · 축 계약 불변(setAxis trn: ON = 자막 자동 ON · 자막 OFF = 번역 동반 OFF)
-    +C(ON.trn?'':srow('언어', [['dual','원문 포함'],['ko','한글'],['src','원문']].map(a=>pc('lang',a[0],P.lang===a[0],false,a[1]))))   // 운영자 260731 19차 — 기본값(원문 포함)이 최좌측 · 'auto' 폐지(도먼트 = CYC/러너 값 그대로)   // 번역 ON = 언어 행 숨김(260728 Q06 — dual 강제라 선택이 무의미)
-    +C(srow('톤', [['plain','직역'],['sns','의역']].map(a=>pc('tone',a[0],P.tone===a[0],false,a[1]))))   // 운영자 260731 19차 — 기본값(직역) 최좌측 · 군더더기 빼기 칩 = 도먼트(filler 상태·발사 경로 불변)
+    /* 언어·톤 행 = 폐지(운영자 260803 8차 "톤 > 의역 고정 · 언어 > 원문 포함 고정") — 값은 P 기본값(lang:'dual' · tone:'sns')으로 상시 고정 · setAxis('lang'/'tone') 핸들러·발사 경로는 도먼트 보존(복원 = 이 자리 srow 두 줄) */
     +C(srow('글자 형태', ['gothic','serif','pen'].map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))   // 운영자 260731 19차 — 라벨 '폰트'→'글자 형태' · 고딕(본고딕)·명조(본명조)·손글씨 3종 · 나눔고딕 = 도먼트(러너 화이트리스트 불변)
     /* 모양·강조 행 = 폐지(운영자 260731 19차 "모양-강조 없애자 · 모양 = 깔끔(기본)으로 가고 나머진 다 숨김") — style 기본값이 'clean'으로 고정(아래 P 기본값) · karaoke·pop·keyword 축은 도먼트 보존 */
     +C(gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰'))   // 위치·크기 3형제 = 한 카드(같은 축 묶음)
