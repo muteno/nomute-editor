@@ -837,7 +837,8 @@ go.addEventListener('click', async () => {
     fired = true;   // 내용칸은 처음부터 떠 있다(운영자 260727) = 여기서 열 것 없음 · fired는 버튼 라벨(생성→재생성)·payload.redo 분기 전담
     gaugeDone(go);
     await ensureCardFonts(); compose();   // 카드 폰트 지연 로드 완료 후 합성(캔버스 정본 서체 보장 · 구 document.fonts.ready = 미요청 폰트 누락으로 폴백 렌더되던 것 교정)
-    trPersist();   // 공유 '이전 제작' 편입(운영자 260802 일맥상통) — fire-and-forget(실패 = 조용히 · 미리보기·저장 무손상)
+    await trResLocal();   // 결과 섹션 즉시 합류 = **클라 캔버스 단독**(서버 왕복 무관 · 운영자 260803 "이전 제작은 달라붙었는데 결과는 안 달라붙었어") — 구판은 결과 진입로가 trPersist 성공(`j.url`) 하나뿐이라 R2·GitHub·네트워크 중 하나만 삐끗해도 미리보기엔 카드가 떠 있는데 「결과 (0)」이었다(실측 260803: 라이브 thumb-hist 400건 중 번역 trout/ **0건** = 도입 이래 서버 왕복 성공 0 = 결과도 0)
+    trPersist();   // 공유 '이전 제작' 편입(운영자 260802 일맥상통) — fire-and-forget(실패 = 조용히 · 미리보기·저장·결과 무손상) · 성공하면 위 로컬 항목을 서버 URL로 승격(중복 추가 아님)
     aStat('✓ 완성 — 미리보기 확인 · 우상단 버튼 = PNG 저장');
   } catch (e) { aStat('✗ ' + e.message); }
   goBusy(false);
@@ -920,6 +921,19 @@ async function loadServerHist() {   // thumb loadServerHist 축약 동문(복원
 // ── 결과(이번 세션 완료분) = thumb #carH 축 계승(운영자 260803 Q1228) — 항목 = renderTrHist 빌더 사본(읽기 전용) · 세션 메모리(과거분 = 이전 제작 전담) ──
 const TR_RES = [];
 function trResAdd(e) { TR_RES.unshift(e); renderTrRes(); }
+/* 결과 즉시 합류 = **클라 캔버스 단독**(운영자 260803) — 결과는 「방금 만든 것」이고 그 실체는 이미 pv 캔버스에 있다.
+   서버 이력(이전 제작)은 별개 축이므로 그 왕복 성공을 결과 표시의 전제로 걸면 「미리보기엔 카드가 떠 있는데 결과 (0)」이
+   정상 동작이 되어버린다(구 진입로 = trPersist의 `if (j && j.url)` 단 하나). 그래서 표시(여기)와 영속(trPersist)을 분리한다. */
+async function trResLocal() {
+  if (!RESULT || RESULT._resEntry) return;   // 결과 1건 = 1회(옵션 미세조정 재합성은 재기록 안 함 = trPersist 계약 동축)
+  let bl = null;
+  try { bl = await new Promise(res => pv.toBlob(res, 'image/jpeg', 0.92)); } catch (_) { /* 캔버스 인코딩 실패 = 결과만 스킵(미리보기·PNG 저장 무손상) */ }
+  if (!bl) return;
+  RESULT._blob = bl;   // 같은 바이트를 서버에도 올린다(trPersist 재인코딩 0 = 화면과 이력이 동일 산출 보장)
+  const k = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });   // 파일명 = dlBtn KST 규칙 계승(naive 로컬시각 금지 · CLAUDE.md [12])
+  const e = { url: URL.createObjectURL(bl), dlname: k.slice(0, 10).replace(/-/g, '') + '_' + k.slice(11, 19).replace(/:/g, '') + '_번역카드_v1.jpg', cap: '번역', varStr: '', ts: Date.now(), _local: 1 };
+  RESULT._resEntry = e; trResAdd(e);
+}
 function renderTrRes() {
   const grid = $('resGrid'); if (!grid) return;
   $('resCnt').textContent = '(' + TR_RES.length + ')';
@@ -962,11 +976,17 @@ window.nmRefresh = loadServerHist;   // 부모 셸 헤더 새로고침 훅 + nm-
 async function trPersist() {
   if (!RESULT || RESULT._persisted) return; RESULT._persisted = 1;   // 결과 1건 = 1회(생성 직후 정본 스냅 · 옵션 미세조정 재합성은 재기록 안 함)
   try {
-    const bl = await new Promise(res => pv.toBlob(res, 'image/jpeg', 0.92)); if (!bl) return;
+    const bl = RESULT._blob || await new Promise(res => pv.toBlob(res, 'image/jpeg', 0.92)); if (!bl) return;   // trResLocal이 이미 구운 바이트 재사용(재인코딩 0 · 화면 결과 = 서버 이력 동일 산출)
     const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(bl); });
     const r = await fetch('/api/trhist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ b64 }), signal: AbortSignal.timeout(30000) });
     const j = await r.json().catch(() => ({}));
-    if (j && j.url) { const _e = { url: j.url, dlname: '번역_' + (j.id || 'tr') + '.jpg', cap: '번역', varStr: '', ts: Date.now() }; histAdd(_e); trResAdd(_e); }   // 스키마 = thumb histAdd 동일(src 없음 = 연필 미노출) · trResAdd = 결과 섹션 합류(운영자 260803 Q1228 — 같은 완료점 한 번에)
+    if (j && j.url) {
+      const cur = RESULT._resEntry;   // trResLocal이 이미 띄운 결과 항목(있으면 승격 · 없으면 신규)
+      const _e = { url: j.url, dlname: '번역_' + (j.id || 'tr') + '.jpg', cap: '번역', varStr: '', ts: (cur && cur.ts) || Date.now() };
+      histAdd(_e);   // 이전 제작(공유) 합류 — 스키마 = thumb histAdd 동일(src 없음 = 연필 미노출)
+      if (cur) { const old = cur.url; cur.url = j.url; cur.dlname = _e.dlname; delete cur._local; renderTrRes(); if (old.startsWith('blob:')) URL.revokeObjectURL(old); }   // 로컬 항목 **승격**(중복 추가 0) = R2 URL 교체 → 다운로드가 api/dl 프록시 경유로 안정화 · 재렌더 뒤 revoke라 깨진 이미지 창 0
+      else trResAdd(_e);   // 로컬 합류가 실패했을 때만 신규(진입로 이중화 = 어느 한쪽이 죽어도 결과는 뜬다)
+    }
   } catch (e) { /* 영속 실패 = 조용히(R2/GH 미설정·네트워크 — 다운로드·미리보기 무손상 fail-soft) */ }
 }
 </script>
