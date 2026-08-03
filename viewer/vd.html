@@ -312,12 +312,13 @@
     border-bottom:1px solid var(--line2); }
   /* ⚠ overflow-x:auto 금지(실측 260802): 한 축이라도 visible이 아니면 나머지 축도 auto로 계산돼
      이 컨테이너가 스크롤 박스가 되고, 아래로 펼쳐지는 .vpop(absolute)이 통째로 잘려 안 보였다.
-     좁은 폭 대응 = **칸 안 keep-all 단어 줄바꿈**(n등분 칸은 고정 · 「그래픽 및 타이틀」 축약 없이 안전 —
-     구 flex-wrap 줄바꿈은 n등분과 양립 불가라 소거 · 운영자 260803 3차). */
+     좁은 폭 대응 = **칸 안 keep-all 단어 줄바꿈**(n등분 칸은 고정 · 260803 4차 「그래픽」 개명 후 전 라벨 1줄 = 메뉴 행 슬림
+     · keep-all은 방어로 유지 — 구 flex-wrap 줄바꿈은 n등분과 양립 불가라 소거 · 운영자 260803 3차). */
   .vnav > button { flex:1 1 0; min-width:0 /* n등분 = 운영자 260803 3차 "가로 면적을 다 쓰고 n분할해서 메뉴를 나타내줘" — 6칸 균등(1fr 등가) · min-width:0 = 긴 라벨이 칸을 못 벌린다 */; appearance:none; background:transparent; border:0; font:inherit; font-size:var(--fs-label); font-weight:600;
-    color:var(--mut); cursor:pointer; padding:7px 10px /* raw-ok: 기존 값 무접촉(줄 재작성으로 diff에 재등장 — 메뉴 칩 패딩 = 프리미어 원문 실측분 그대로 · 260802) */; border-radius:var(--r-s);
+    color:var(--mut); cursor:pointer; padding:3px 10px /* raw-ok: 세로 3 = 운영자 260803 4차 "높낮이 지금의 60%" 실측 역산(구 2줄 행 55.6 → 개명 1줄+패딩 7→3 = 행 33.8px = 60.8% · 잔여 축 = 글줄 20.8+행 하단 sp-1·헤어라인이라 더 못 줄임) · 가로 10 = 프리미어 원문 실측분 그대로(260802) */; border-radius:var(--r-s);
     word-break:keep-all; -webkit-tap-highlight-color:transparent;
     transition:color var(--dur), background var(--dur); }
+  .vnav > button + button { border-left:1px solid var(--mut); }   /* 메뉴별 구분선 = mut(운영자 260803 4차 "메뉴별로 구분선 mut으로") — n등분 칸 사이 5줄 · box-sizing:border-box라 균등폭 불변 */
   .vnav > button[aria-expanded="true"] { color:var(--accent); font-weight:800; background:rgba(var(--accent-rgb),.10);
     text-shadow:0 0 11px rgba(var(--accent-rgb),.55); }
   .vnav > button:active { transform:scale(var(--press-l,.95)); }
@@ -332,8 +333,10 @@
     background:var(--modal-glass-anchor); backdrop-filter:blur(var(--blur-l)) saturate(1.05);
     -webkit-backdrop-filter:blur(var(--blur-l)) saturate(1.05); border:1px solid var(--line2);
     box-shadow:0 18px 40px rgba(0,0,0,.45); text-align:left;
-    animation:vpopIn .26s cubic-bezier(.22,.61,.36,1) both; }   /* raw-ok: .lypop 정본 원문 계승(패딩·그림자·커브) */
-  @keyframes vpopIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }   /* .lypop lypopIn 동문 */
+    transform-origin:top left; animation:vpopDrop .22s cubic-bezier(.26,1.2,.5,1); }   /* raw-ok: 등장 모션 = 예울마루 프로모 상단 메뉴 정본 원문 사본(운영자 260803 4차 "누르면 촤르르 아래에 메뉴 · 프로모 상단 메뉴 참고(모션만)" — yeulmaru-promo index.html acctDrop/ddFold·transform-origin 그대로 · 유리·패딩·그림자는 종전 .lypop 계승 불변) */
+  @keyframes vpopDrop { from { opacity:0; transform:translateY(-10px) scale(.95); } to { opacity:1; transform:translateY(0) scale(1); } }   /* 프로모 acctDrop 원문(데스크탑) */
+  @keyframes vpopFold { from { opacity:0; clip-path:inset(0 0 100% 0); } to { opacity:1; clip-path:inset(0 0 0 0); } }   /* 프로모 ddFold 원문 = 위→아래 말림 촤르르(모바일 · 햄버거 패널 동문) */
+  @media (max-width:768px){ .vpop { animation:vpopFold .55s cubic-bezier(.215,.61,.355,1); } }   /* raw-ok: 분기점·시간·커브 = 프로모 원문 그대로(window.innerWidth<=768 → ddFold .55s) */
   @media (prefers-reduced-motion:reduce){ .vpop { animation:none; } }
   .vpop[hidden] { display:none; }
   .vpop .mh { display:flex; align-items:center; gap:6px; margin:-11px -11px 11px -16px; padding:12px 14px 12px 18px;
@@ -464,7 +467,7 @@
     <button type="button" data-m="file" aria-expanded="false" aria-haspopup="true">파일<span class="cnt" id="cntSel"></span></button>
     <button type="button" data-m="edit" aria-expanded="false" aria-haspopup="true">편집</button>
     <button type="button" data-m="seq" aria-expanded="false" aria-haspopup="true">시퀀스</button>
-    <button type="button" data-m="gfx" aria-expanded="false" aria-haspopup="true">그래픽 및 타이틀</button>
+    <button type="button" data-m="gfx" aria-expanded="false" aria-haspopup="true">그래픽</button><!-- 개명 = 운영자 260803 4차 "저거 그래픽 이라고 바꿔주고" — 프리미어 원문 라벨 계약(260802)의 이 라벨 한정 명시 개정(2줄 줄바꿈 소거 = 메뉴 행 1줄 슬림화와 한 축) -->
     <button type="button" data-m="win" aria-expanded="false" aria-haspopup="true">창<span class="cnt" id="cntJob"></span></button>
     <button type="button" data-m="help" aria-expanded="false" aria-haspopup="true">도움말</button>
 
@@ -512,7 +515,7 @@
 
     <!-- 그래픽 및 타이틀 = 컴포지션 텍스트 레이어(읽기 전용) -->
     <div class="vpop" id="pop-gfx" role="menu" hidden>
-      <div class="mh">그래픽 및 타이틀(G)<span class="sp">레이어 4 · 읽기 전용</span></div>
+      <div class="mh">그래픽(G)<span class="sp">레이어 4 · 읽기 전용</span></div>
       <div class="mrow st"><span>훅(큰 문장)</span><span class="k">--fs-display · --fw-x</span></div>
       <div class="mrow st"><span>기사 제목</span><span class="k">--fs-h3 · --mut</span></div>
       <div class="mrow st"><span>매체 · 날짜</span><span class="k">--fs-sm · --mut</span></div>
