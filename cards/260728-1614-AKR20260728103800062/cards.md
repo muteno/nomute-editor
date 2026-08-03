@@ -1,32 +1,32 @@
-# 🚦 57명이 탄 넉 대, 터널 앞에서 줄줄이 받혔다
+# 57명이 탄 넉 대가 터널 앞에서 얽혔다
 
 **[프롬프트 설계]**
-- 화풍: A수채화 — 사상자 고발이 아니라 "크게 안 다쳤다"는 안도가 1순위 감정이라, 따뜻한 파스텔 톤이 사건의 결을 그대로 옮긴다
-- 분위기: 한여름 정오의 하얀 직사광 아래, 놀란 심장이 아직 뛰는데 다행이라는 숨이 먼저 나오는 도로변 — 긴박보다 '멈춰 선 시간'의 정조
-- 연출 방향: 뉴스를 안 보는 SNS 이용자도 휴가철 고속도로에 자기를 대입한다 — 그래서 사고의 파손보다 *사람의 수*와 *멈춘 도로*를 보여준다. 57이라는 숫자가 좌석에 앉은 몸으로, 19라는 숫자가 부축받는 팔로, 1시간이라는 숫자가 뒤로 끝없이 이어진 차 지붕으로 읽히게. 강조점은 '찌그러진 범퍼'가 아니라 '갓길에 나란히 선 사람들' — 터널 입구의 어둠 한 조각만 화면 끝에 물려 원인을 조용히 가리킨다. thumb_dispatch 계승 = 정오 직사광 톤 + 충돌 직전에서 멈춘 정조
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 넉 대 안에 몇 명이 있었나)+카드3 끝(예고형: 사고가 남긴 게 부상자만이 아니었다) · 감정 피크=카드4 · 착지 한 줄 요지 = 감속 구간이 사고를 못 막았지만 사고의 크기는 바꿨고, 셈에 안 잡힌 정체까지가 이날의 사고였다
-- 연속성 앵커: Recurring subject — a Korean man in his 50s with short greying hair and a sun-tanned face, wearing a short-sleeved light blue collared shirt and dark slacks / Recurring place — a two-lane expressway shoulder in a green summer valley just before a tunnel portal
+- 화풍: A 한국웹툰 수채화 — 사망·중상 없이 끝난 사고라 고발 톤의 극화보다, 놀람이 안도로 풀리는 온기를 담는 수채화가 맞다
+- 분위기: 여름 한낮의 과노출된 빛과 터널 입구의 어둠이 맞붙은 자리, 놀람이 천천히 안도로 풀리는 정조
+- 연출 방향: 뉴스를 안 보는 독자도 "57명이 탔는데 아무도 크게 안 다쳤다"에서 멈춘다 — 그래서 이 덱은 숫자를 글자로 세지 않고 **몸으로 보이게** 한다. 강조점은 셋뿐이다: ① 터널 입구의 어둠 앞에 코를 맞대고 멈춰 선 넉 대 ② 갓길에 줄지어 내려선 사람들의 어깨 수 ③ 숨을 놓는 순간의 손과 표정. 사고의 참혹함이 아니라 '이 정도로 끝난 이유'를 그리는 게 목적이라 파괴 묘사는 범퍼 한 겹까지만 두고, 시선은 계속 사람 쪽에 둔다. thumb_dispatch에서는 한낮 직사광의 더운 톤과 안도·긴장이 섞인 정조만 키노트로 상속한다(앵글·샷은 카드마다 분산)
+- 독자 동선: **발단** 카드1→**전개** 카드2→**피크** 카드3→**해소** 카드4→(후일담) 카드5→**시사점** 카드6 · 훅=카드1 끝(단서형 — 버스 두 대 안에 몇 명인지를 유보)+카드2 끝(자연 절단 — 57명 다음의 결과) · 착지 한 줄 요지 = 부딪친 건 넉 대인데 멈춘 건 그 길 전체였다
+- 연속성 앵커: Recurring subject - a Korean woman in her 50s with short permed hair, wearing a light beige short-sleeve blouse and a small cross-body bag (카드2·3·4 등장) / 반복 장소 = the mouth of a highway tunnel on a Korean expressway, guardrail-lined hard shoulder
 
 ### [카드 1]
 **텍스트**
 ```text
-28일 오전 11시 18분,
-서울양양고속도로 양양 방향
-서면6터널 앞에서
-차 넉 대가 *줄줄이 받혔다*
+7월 28일 오전, 동해안 가는 길이었다
+양양 방향 서면6터널 앞이었다
+*거기서 차 넉 대가 줄줄이 부딪쳤다*
+버스 두 대가 그 안에 있었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the stunned stillness in the eyes of a middle-aged passenger standing on the shoulder, still holding the strap of his bag. Recurring subject — a Korean man in his 50s with short greying hair and a sun-tanned face, wearing a short-sleeved light blue collared shirt and dark slacks stands at the roadside and looks back at the line of stopped vehicles. Behind him two large coaches and two passenger cars sit nose to tail on the expressway, the last one angled slightly across the lane. The dark mouth of a tunnel portal is visible at the far right edge of the frame, and the scene is a two-lane expressway shoulder in a green summer valley just before a tunnel portal.
-Camera: wide shot, full body, surrounding environment, movement, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: overcast diffused daylight softened by high summer haze, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: avoid incidental lettering by cropping and angling all signage away from view; no readable characters on vehicles or road signs.
+Scene: Emotional focal point: the sudden stillness of four vehicles halted nose to tail, hazard lamps pulsing in the glare. Two large intercity coaches and two sedans stand bumper to bumper across the lane, each angled slightly out of line, stopped just short of a dark tunnel mouth that swallows the road ahead. A few small figures step down from the front coach door and stand at the roadside, heads turned back along the line of stopped vehicles. Korean expressway in midsummer, left-hand drive vehicles, Korean-style lane markings and steel guardrails.
+Camera: wide shot with full body and surrounding environment from eye-level neutral perspective, shot on 35mm lens with natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by hazard lamps and roadside warning triangles), muted daylight contrast
+Text handling: no signage lettering, no destination displays, no license plate characters, no road sign words; keep every surface free of readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the expressway asphalt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the asphalt highway roadway) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -35,29 +35,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-서울양양고속도로 터널 입구 추돌
+서면6터널 서울양양고속도로
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-받힌 차는 버스 두 대와
-승용차 두 대였다
-버스에 24명과 27명,
-승용차에 2명과 4명이 앉아 있었다
+버스 한 대에 24명이 타고 있었다
+다른 한 대에는 27명이 있었다
+승용차 두 대에는 2명과 4명이 탔다
+*넉 대에 탄 사람은 모두 57명이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: rows of shoulders and heads pressed close together behind the coach windows, every face turned the same way. A large intercity coach is seen from outside in profile, its long window band filled with seated passengers, and a second coach waits directly behind it. Two small passenger cars are stopped further back with only one or two people visible inside each, making the difference in numbers plain at a glance. The vehicles rest on a two-lane expressway shoulder in a green summer valley just before a tunnel portal.
-Camera: full shot, head-to-toe, full body, clear silhouette from high angle shot, looking down, observed, profile shot, side view, clear silhouette, directional movement, shot on 70mm short telephoto, gentle background compression, subject isolation
-Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: no destination signs or route numbers rendered on the coaches; keep all vehicle lettering out of frame or blurred by angle.
+Scene: Emotional focal point: the sheer number of shoulders lined up along the shoulder lane, far more people than the road expected. Recurring subject - a Korean woman in her 50s with short permed hair, wearing a light beige short-sleeve blouse and a small cross-body bag stands among them, arms pulled in, shoulders drawn small, a vacant unfocused look aimed back at the coaches. Dozens of passengers of mixed ages stand in a loose row along the guardrail, some steadying each other, all facing the same direction toward the stopped vehicles behind them, while two sedan occupants wait apart at the end of the row. The wide flank of a coach fills the background in the shade cast by the tunnel structure.
+Camera: group shot with multiple subjects, clear arrangement and collective mood from eye-level neutral perspective, shot on 20mm wide lens with subject and environment together, documentary realism
+Lighting/mood: overcast diffused daylight in deep structural shade, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by a roadside warning triangle and a marshalling vest), muted daylight contrast
+Text handling: no coach livery lettering, no route numbers, no bag logos, no signage words; keep every surface free of readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the expressway asphalt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the asphalt hard shoulder) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -66,29 +66,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-고속도로 대형버스 승객 좌석
+고속도로 갓길 버스 승객 대피
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-넉 대에 모두 57명이었다
-그중 19명이 병원으로 옮겨졌다
-세 명 중 한 명꼴로 다쳤지만
-*모두 경상, 중상자는 없었다*
+이 가운데 19명이 병원으로 갔다
+*세 명 중 한 명꼴이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a long held breath released, shoulders dropping as a paramedic's steady hand supports an injured passenger's elbow. Two rescue workers help several passengers step down from the coach door one at a time while the others sit and wait along the guardrail, some pressing a hand to a shoulder or neck. Recurring subject — a Korean man in his 50s with short greying hair and a sun-tanned face, wearing a short-sleeved light blue collared shirt and dark slacks stands among them and counts the seated people with his eyes, his gaze directed toward the right edge. The group is gathered on a two-lane expressway shoulder in a green summer valley just before a tunnel portal.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, nose room on the right, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: flat sterile clinical daylight on the roadside, cold even brightness, emotionless procedural calm
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: keep ambulance and uniform markings out of frame or cropped at the edge; no readable insignia or lettering.
+Scene: Emotional focal point: a jaw clenched tight with the muscle flexing at the jawline, a tightly controlled face fighting back a visible emotion. Recurring subject - a Korean woman in her 50s with short permed hair, wearing a light beige short-sleeve blouse and a small cross-body bag fills the frame, walking slowly with one arm braced across her ribs. A paramedic's gloved hand supports her elbow from the edge of the frame and her eyes stay fixed low and forward, away from the camera. Behind her the dark mouth of the tunnel opens as a wall of shadow, and the blurred shapes of other passengers being helped along follow in the same direction.
+Camera: tight close-up with the face filling the frame and intimate pressure from eye-level neutral perspective, shot on 85mm portrait lens with soft background separation
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by the paramedic's reflective sleeve band), film-noir low-key lighting, deep shadows
+Text handling: no uniform lettering, no equipment labels, no badge words; keep every surface free of readable script. No blood, no wounds, no injury detail shown.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the expressway shoulder pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the shaded asphalt pavement at the tunnel mouth) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -97,29 +95,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-고속도로 사고 부상자 구급대원 이송
+고속도로 사고 구급대원 부축
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-터널 앞은 원래 조심스러운 자리다
-밝은 밖에서 어두운 안으로
-들어가는 그 짧은 간격이 어긋나면
-*한 대의 감속이 넉 대의 충돌이 된다*
+*그런데 19명 모두 경상이었다*
+크게 다친 사람은 없었다
+넉 대는 터널 앞에서 얽혔다
+차들이 속도를 줄이는 자리였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a driver's knuckles tightening on the steering wheel in the instant his eyes lose the road to the sudden dark. A single driver is seen from just behind his shoulder as his car approaches the black opening of a tunnel, the brake lights of the vehicle ahead flaring directly in his sightline. His head is tilted slightly forward and his eyes are wide as the bright valley light cuts off at the tunnel edge. The road is a two-lane expressway just before a tunnel portal in a green summer valley.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from Dutch angle, tilted horizon, canted frame, unstable mood, over-the-shoulder shot, shoulder foreground, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: single pool of hard light isolating the figure against the surrounding blackness of the tunnel mouth, claustrophobic loneliness, deepest contrast of the sequence
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the dashboard glow), film-noir low-key lighting, deep shadows
-Text handling: no dashboard numerals, no speedometer digits, no tunnel signage rendered; convey speed through motion blur only.
+Scene: Emotional focal point: a long held breath finally released, shoulders dropping, eyes closing briefly as tension melts into a faint smile. Recurring subject - a Korean woman in her 50s with short permed hair, wearing a light beige short-sleeve blouse and a small cross-body bag sits on the guardrail edge, both hands wrapped around a water bottle a paramedic is still extending toward her. The paramedic leans in beside her, watching her face rather than the road, and further back other passengers stand loosely apart with their arms lowered. The tunnel mouth sits small in the distance behind them, the roadway narrowing toward it.
+Camera: medium close-up with chest-up framing, facial emotion and slight body context from eye-level neutral perspective, shot on 50mm standard lens with minimal distortion and natural cinematic composition
+Lighting/mood: soft wraparound key light, gentle falloff, tender warm intimacy
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by the paramedic's vest), muted daylight contrast
+Text handling: no vest lettering, no bottle label, no agency wording; keep every surface free of readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the car interior and windshield view) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the asphalt hard shoulder beside the guardrail) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -128,29 +126,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-터널 진입 구간 명암 시야
+119구급대 갓길 응급처치
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-감속 구간은 사고를 막지 못했지만
-사고의 크기는 바꿔 놓았다
-그리고 한 시간, 뒤에 묶인 차들은
-*부상자 명단에 없는 이날의 사고였다*
+사고가 남긴 건 부상자만이 아니었다
+*넉 대를 치우는 동안 뒤차들이 멈췄다*
+정체는 한 시간가량 이어졌다
+동해안으로 가려던 사람들이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the quiet resignation on the faces of drivers who have stepped out beside their doors, looking ahead at a road that will not move. A long line of stopped cars stretches from the foreground to the far horizon of the valley expressway, and a few people stand in the gaps between their open doors, one shading his eyes with a hand. Recurring subject — a Korean man in his 50s with short greying hair and a sun-tanned face, wearing a short-sleeved light blue collared shirt and dark slacks stands nearest the camera facing forward, looking straight down the length of the queue. The scene is a two-lane expressway in a green summer valley just before a tunnel portal.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from bird's-eye view, overhead shot, top-down angle, layout, geometry, front-on shot, direct gaze, symmetrical composition, shot on 200mm telephoto lens, distant subject, strong compression, candid observation
-Lighting/mood: warm golden-hour sunlight beginning to lengthen across the stalled lanes, long soft shadows, nostalgic warmth releasing the tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: no license plates, no highway sign text, no route numbers rendered anywhere in the frame.
+Scene: Emotional focal point: the dead stillness of a river of cars that has stopped moving, every roof aligned and none of them advancing. Seen from high above, a Korean expressway fills the frame with lanes of halted vehicles stacked back toward the horizon, while at the far upper edge a small cluster of tow crew and marshals works around the four damaged vehicles near the tunnel mouth. Tiny figures have stepped out of driver doors along the queue and stand beside their cars looking forward at the stalled line. Left-hand drive vehicles, Korean-style lane markings and central barrier.
+Camera: extreme long shot with tiny subjects and vast environment conveying scale from overhead bird's-eye view showing layout and geometry, shot on 200mm telephoto lens with strong compression and candid observation
+Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by traffic cones and the recovery crew), muted daylight contrast
+Text handling: no lane markings shaped as words, no overhead sign text, no license plate characters; keep every surface free of readable script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the expressway asphalt) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
+Composition: ONE continuous surface (the asphalt highway roadway seen from above) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
@@ -159,5 +157,36 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-고속도로 정체 차량 행렬 여름
+서울양양고속도로 양양 방향 정체
+```
+
+### [카드 6]
+**텍스트**
+```text
+숫자로 남은 사람은 19명뿐이었다
+그 길에 갇힌 사람은 셈에 없었다
+넉 대가 부딪쳤고 길이 함께 멈췄다
+*사고는 넉 대 안에서 끝나지 않았다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: a vacant thousand-yard stare through a windscreen, unfocused eyes looking past everything ahead. A middle-aged Korean driver sits behind the wheel of a stopped car with one wrist resting on the top of the steering wheel, facing straight toward the camera, waiting. Through the glass in front of him the queue of halted vehicles stretches away toward the distant tunnel mouth, and in the neighbouring lane other drivers sit in the same posture, none of them moving. Left-hand drive vehicle, Korean expressway lanes and guardrail beyond.
+Camera: medium close-up with chest-up framing and slight body context from front-on direct gaze with symmetrical composition, shot on 50mm standard lens with minimal distortion and natural cinematic composition
+Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
+Accent: monochrome desaturated base with a single color accent (safety orange, the story's symbolic color carried by the distant hazard lamps reflected on the glass), muted daylight contrast
+Text handling: no dashboard lettering, no display numerals, no sign words visible through the glass; keep every surface free of readable script.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the asphalt highway roadway carrying the line of stopped cars) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+고속도로 터널 진입 차량 행렬
 ```
