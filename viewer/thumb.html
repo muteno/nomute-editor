@@ -188,6 +188,7 @@
      · 옵션=.gospec{margin-top:16}. 셋이 별개라 한쪽 고쳐도 안 따라오고 마진상쇄(flex vs block)까지 겹쳐 계속 틀어짐.
      해결: .csec 아래마진=0 + 첫 박스 margin-top=9 단일소스 → 위 0 + 9 = 정확히 9px(상쇄 무관) · 입력칸이 wrap에 밀착돼 클립버튼 라인 정렬. */
   #rCombo .csec, #rOptHead { margin-bottom:0; }
+  #rOptHead.none + #cOptSub .optcards { margin-top:0; }   /* 소머리가 숨으면 짝인 카드 스택 상단 리듬(9)도 같이 죽는다(운영자 260803 "미리보기랑 첫 블릿 간격이 제각각") — 편집·특수 탭은 옵션 카드가 전부 코너 레일로 이주해 `#cOptSub`가 **내용 0인데 9px만 차지하는 유령 블록**으로 남았다(실측 260803: 도크 바로 아래 h=9 · `.cfoldsub-in{overflow:hidden}`이라 마진이 밖으로 상쇄되지도 않는다) → 특수 첫 블릿 잉크가 정본 18 대신 27로 밀리고, 편집은 결과 섹션이 9px 내려앉았다. 9는 소머리↔첫 카드 간격이므로 소머리가 없으면 존재 이유도 없음 = 값 창작 0(0으로 소등) · 스코프 = 숨은 소머리 바로 다음 접이만이라 카드 생성 탭 무접촉 */
   #rCombo .iowrap, #rCombo .covrow { margin-top:9px; }   /* #goSpec은 박스화돼 아래 #goSpec 규칙에서 margin 직접(9px) — 같은 단일값 */   /* 260728 접이 편입: 직계(`>`) → 후손 완화 = 소머리↔첫 박스 9px 단일소스가 접이 래퍼(.cfoldsub-in) 한 겹을 건너서도 살아남게(#rCombo 안 중첩 .covrow·.iowrap 없음 = 부작용 0) */
   #rCombo .cf-sub { color:var(--fg); }        /* 부제 입력 = 흰색(결과물 흰색 미러) */
   #rCombo .cf-title { color:var(--accent); }   /* 제목 입력 = 강조색(결과물 초록 미러) */
@@ -698,6 +699,13 @@
   .kwchip.copied { animation:kwcopy .42s ease; }
   @media (prefers-reduced-motion:reduce) { .kwchip.copied { animation:none; } }
   .out { margin-top:18px; }
+  /* ── 본문 블릿이 하나도 없는 탭(= 편집: 옵션이 전부 코너 레일로 이주) = 결과 소머리가 **첫 블릿** → 미리보기↔첫 블릿 구간을 카드 제작과 한 값으로
+       (운영자 260803 "간격도 제각각, 어느 부분엔 구분선이 있고 — 카드 제작 나오는 부분간 간격으로 통일"). 구분선·상단 패딩(14/14+border)은 '앞 섹션과 갈라주는' 장치인데
+       바로 위가 도크면 가를 대상이 없다 = 소등하고, 간격은 정본 16 단일소스로 돌린다(실측 260803: 잉크 35 → 18 = 카드 제작 동값 · 신규 값 0).
+       술어 = 상태 기반(탭 전용 셀렉터 금지 · CII 4-2): 본문 소머리 3종이 전부 숨었고 + 옵션 카드도 전부 숨었을 때만.
+       ⚠ 마지막 절이 app8(모자이크 ON = #imgeditBox 노출)을 걸러낸다 — 그땐 위에 실제 콘텐츠가 있으니 구분선이 정상 ── */
+  .panel:has(#reelsBox.none):has(#rOptHead.none):has(#spHead.none):not(:has(#optCards > .scard:not(.none))):not(:has(#imgeditBox:not(.none))) + .out { margin-top:16px; }   /* raw-ok: 16 = 카드 제작 정본 동값(.csec margin-top) */
+  .panel:has(#reelsBox.none):has(#rOptHead.none):has(#spHead.none):not(:has(#optCards > .scard:not(.none))):not(:has(#imgeditBox:not(.none))) + .out .car-h { margin-top:0; border-top:0; padding-top:0; }
   .status { font-size:13px; color:var(--mut); white-space:pre-wrap; }
   .status.err { color:var(--danger); }
   .status.ok { color:var(--accent); }   /* 맞춤법 자동교정 알림(비-에러·잠깐) */
@@ -905,7 +913,7 @@
 <div class="wrap">
 
   <div class="tabs" id="tabs">
-    <div class="tab" data-app="2">카드 생성</div><!-- 라벨 '카드 생성'(운영자 260718 3탭 재편 · 구 '편집' 260713 · app='2' id 불변) — 내부 #tabs는 thumbTabBridge가 display:none 처리(화면 미표시)라 textContent만 최소화 칩(toolMinLabel)이 소비 → 부모 THUMB_TABS 라벨과 동반 개명 필수(평의회4) -->
+    <div class="tab" data-app="2">카드 제작</div><!-- 라벨 '카드 제작'(운영자 260803 개명 · 구 '카드 생성' 260718 3탭 재편 · 구 '편집' 260713 · app='2' id 불변) — 내부 #tabs는 thumbTabBridge가 display:none 처리(화면 미표시)라 textContent만 최소화 칩(toolMinLabel)이 소비 → 부모 THUMB_TABS 라벨과 동반 개명 필수(평의회4) -->
     <div class="tab" data-app="7">편집</div><!-- 편집 탭 부활(운영자 260718 "비율·화질·모자이크 별도로 빼기 — 그 사이에 편집") · app7 = 대표(비율) · 모자이크=8·해상도(구 화질)=9는 내부 모드(하이라이트 = 이 탭) · 260713 옵션 이식의 역재편 = 도먼트 복원 하우스 패턴 -->
     <!-- (구 /3 저작권 탭 = 운영자 260712 메뉴 삭제 — 썸네일 저작권 통합(260711 cpThumb 3단·#cpBlock 공유)이 전담. app3 폼(#copyBox = #cpBlock 홈)·발사·복원 로직은 도먼트 보존 = 재추가 시 이 자리 탭 1행 + index THUMB_TABS 1행만 복원) -->
     <!-- (구 편집 탭 = 제작·합성 옵션 이식으로 폐지 · 운영자 260713 "첨부2(편집)를 첨부1(제작·합성) 옵션쪽으로" — 비율(#rszBox)·모자이크(#ieTogRow) 행이 app2 옵션 구역으로 이동·사진(CIMG) 게이트. app7(리사이즈)·app8(모자이크)의 발사·잡·이력 로직은 불변 = 내부 모드로만 진입{비율 선택=selApp('7')·모자이크 ON=selApp('8')} · api/resize→img-resize.yml(3층 라우팅: 단색패드→Gemini 아웃페인팅 채움+픽셀락→블러 폴백) · 복원 = 이 자리 탭 1행 <div class="tab" data-app="7">편집</div> + index THUMB_TABS 1행) -->
