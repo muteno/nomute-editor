@@ -20,7 +20,10 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -u
 cd "$(dirname "$0")/.."
-MAXJOBS="${SMOKE_MAXJOBS:-5}"
+# 동시 상한 = min(5, 코어 수) — 4코어 박스에서 5잡은 **과구독**이라 잡 하나가 조금만 길어져도 남의 클릭이 30s 타임아웃으로 죽는다
+#   (실측 260803: 4코어·5잡에서 smoke_fire가 1차·재시도 연속 FAIL → 단독 rc=0 = 순수 경합 · MAXJOBS=4로 낮추면 전 종목 PASS).
+#   재시도(아래)는 경합을 사후 흡수하는 장치고, 이 줄은 애초에 경합을 덜 만드는 장치다 — 큰 박스에선 종전 5 그대로.
+MAXJOBS="${SMOKE_MAXJOBS:-$( n=$(nproc 2>/dev/null || echo 5); [ "$n" -lt 5 ] && echo "$n" || echo 5 )}"
 LOGDIR="$(mktemp -d)"
 DEP="${TMPDIR:-/tmp}/nomute-smoke-deps/node_modules/playwright-core"
 trap 'rm -rf "$LOGDIR"' EXIT

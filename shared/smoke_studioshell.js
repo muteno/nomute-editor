@@ -22,6 +22,11 @@
 //   C5 페이지 에러 0 · C6 외부 호스트 유출 0
 //   C7 미리보기 모듈 등가(이미지 셸 5탭) = 창 w/h · 발사 버튼 h/radius/fs · 돋보기 캡슐 상대좌표/크기
 //      ← 운영자 260802 6차 "미리보기 창이 미세하게 크기가 달라" — 구 게이트가 안 재던 축(번역 발사 27px·돋보기 x 표류가 조용히 통과했다)의 편입
+//   C8 미리보기 = 10탭 전부 가시 + 부팅 비확대(운영자 260803 "미리보기가 안보이는 화면은 아예 잘못 · 기본을 작게")
+//   C9 **세로축** = 도크 하단 ↔ 첫 블릿 잉크가 카드 제작 정본 한 값(폰 430 전용 sweep)
+//      ← 운영자 260803 "간격도 제각각, 어느 부분엔 구분선이 있고 — 카드 제작 나오는 부분간 간격으로 통일".
+//        C1~C8이 전부 **가로·부품 단위** 축이라(레일 중앙축·미리보기 모듈·픽토 치수) 「도크 아래로 본문이 어디서 시작하나」는
+//        게이트가 하나도 없었다 → 그 사각에서 8탭이 조용히 갈라져 있었다(실측 260803: 2·2·9·13·18·27·33·44px · 정본 18 대비 최대 26px).
 // 왜 잉크인가: 박스 x가 같아도 padding이 갈리면 눈에 보이는 글자 위치가 어긋난다(260802 롤백 사고) —
 //   판정은 **잉크 중심 vs 캡슐 중심 Δ**(절대 x = 탭마다 창 폭이 달라 위양성).
 // 리스크 통제: 라이브 코드 무접촉(페이지 전역 실호출 openTool만) · 서버 자체 종료 · 외부 네트워크 0 · 결정론 2런.
@@ -53,6 +58,13 @@ const KEY = (s, t) => s.ko + '_' + t.ko;
 // 알려진 미승인 드리프트 면책표(값 **이하**면 통과 · 커지거나 새 탭이 갈라지면 FAIL = check_refs raw baseline 문법 동문)
 const INK_BASE = {};        // 비어 있음 = 2셸 10탭 전부 캡슐 중앙축 정합이 현재 정본(260802 6차 중앙정렬 개정 · 실측 |Δ|≤0.05)
 const DOCK_EXEMPT = new Set();   // 도크 유리에서 면책할 탭(없음 — 면책을 늘리려면 사유를 여기 주석에 남긴다)
+// C9 세로축 면책표 = 「도크 아래 첫 자리가 **소머리 블릿이 아닌**」 탭만(부품 자체 패딩·테두리가 잉크를 밀어낸다 = 잉크축으로는 못 맞추는 구조).
+//   이 두 탭은 대신 **박스 축(도크↔첫 블록 = 16)** 으로 정본을 맞춰 뒀다(260803 머지분) · 값 = 그 상태의 실측 잉크.
+//   ⚠ 해소(= 그 부품이 도크 안으로 들어가거나 순서가 바뀌어 소머리가 첫 자리가 되면) 되는 즉시 이 행을 **비운다** — 남겨두면 같은 회귀가 조용히 재통과한다(§3-4-1 INK_BASE 동문).
+const GAP_BASE = {
+  '영상_콘티': 28,     // 요약 스트립(.optstrip · 테두리 1 + 패딩 8)이 도크 밖 첫 블록 = 260803 2차 골격("도크 안 = 미리보기+생성뿐")
+  '영상_큐영상': 25,   // 메뉴바(nav.vnav · 버튼 자체 패딩)가 첫 블록 = 프리미어형 고정 레이아웃(.ws)
+};
 
 function loadPlaywright() {
   try { return require('playwright-core'); } catch (_) {}
@@ -151,6 +163,34 @@ const PROBE = () => {
   };
 };
 
+// C9 실측기 — 도크 하단변 ↔ 그 아래 **첫 글자 잉크**(운영자 260803 "미리보기 영역이랑 첫 블릿 간 간격이 유지되어야 되는데 세부 메뉴가 다 제각각")
+//   왜 별도 함수인가: 이 축은 **폰 티어(430)** 에서만 의미가 있다 — 위 코어가 도는 1280은 2단 그리드라 결과 레일(.out)이
+//   2번 칼럼 맨 위로 올라가고, 그러면 "도크 아래 첫 글자"가 본문이 아니라 옆 칼럼 글자가 된다(위양성). → 아래 sweep이 뷰포트를 430으로 낮춰 재측정한다.
+//   왜 잉크인가: 부품마다 자체 패딩이 달라(.csec 0 vs .geni-sechead 12) 박스 x·y가 같아도 **눈에 보이는 글자 위치**가 갈린다(§3-4-1 광학-잉크 판정).
+const GAPPROBE = () => {
+  const fr = document.querySelector('#tooldlg .toolfr.active');
+  const inFr = !!(fr && fr.contentDocument);
+  const d = inFr ? fr.contentDocument : document;
+  const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(); return el.offsetParent !== null && r.height > 0 && r.width > 0; };
+  const gHost = inFr ? null : document.querySelector('#geniHost:not([hidden])');   // AI 생성 = 부모가 그리는 판(프레임 비활성) → 도크 = .geni-lead · 스코프 = 그 호스트(뒤 뉴스 페이지 글자 오측정 차단)
+  const dock = inFr ? (d.querySelector('.topdock') || d.querySelector('.dock')) : (gHost ? gHost.querySelector('.geni-lead') : null);
+  if (!dock || !vis(dock)) return { gapInk: null, gapTxt: null };
+  const dd = dock.ownerDocument;
+  const scope = gHost || dd.body || dd.documentElement;
+  const db = dock.getBoundingClientRect().bottom;
+  const wk = dd.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+  let best = Infinity, txt = null;
+  for (let n = wk.nextNode(); n; n = wk.nextNode()) {
+    const t = (n.nodeValue || '').trim(); if (!t) continue;
+    const p = n.parentElement; if (!p || dock.contains(p) || !vis(p)) continue;
+    const rg = dd.createRange(); rg.selectNode(n);
+    const r = rg.getBoundingClientRect();
+    if (!r.height || r.top < db - 0.5) continue;                 // 도크 위 = 대상 아님
+    if (r.top < best) { best = r.top; txt = t.slice(0, 10); }
+  }
+  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt };
+};
+
 async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고정 sleep = 병렬 풀에서 가짜 빨강의 원천)
   await pg.waitForFunction(() => {
     const fr = document.querySelector('#tooldlg .toolfr.active');
@@ -161,8 +201,42 @@ async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고
   await pg.waitForTimeout(500);   // 레이아웃 안정(레일 폭·잉크 확정)
 }
 
-async function runOnce(pg) {
-  const out = { core: [], m: {} };
+// C9 sweep = **폰 티어(430) 전용 페이지** 1회(위 코어 페이지는 1280 = 2단 그리드라 결과 레일(.out)이 옆 칼럼 맨 위로 올라가
+//   "도크 아래 첫 글자"가 본문이 아니라 옆 칼럼 글자가 된다 = 위양성). 뷰포트만 낮추는 방식은 셸 재오픈 시 탭바 클릭이
+//   불안정해 폐기(실측 260803: 영상 셸 첫 탭 클릭 30s 타임아웃) → 깨끗한 새 페이지가 결정론적이다.
+const settleFast = async pg => {   // 정적 측정용 경량 settle — 프레임 로드만 기다리고 여유분(코어 500ms)은 절반(레이아웃은 로드 완료 시점에 이미 확정)
+  await pg.waitForFunction(() => {
+    const fr = document.querySelector('#tooldlg .toolfr.active');
+    if (!fr) return !!document.querySelector('#geniHost:not([hidden])');
+    const d = fr.contentDocument;
+    return !!(d && d.readyState === 'complete' && d.querySelector('.wrap, .ws'));
+  }, { timeout: 12000 }).catch(() => {});
+  await pg.waitForTimeout(250);
+};
+async function gapSweep(browser, port) {
+  const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });
+  const gap = {};
+  try {
+    await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await pg.waitForTimeout(900);   // 코어(1600)보다 짧게 = 이 sweep은 정적 레이아웃만 읽는다(부팅 애니·잡 복원 대기 불필요) · 병렬 풀 부하 절감
+    for (const s of SHELLS) {
+      await pg.evaluate(() => { try { if (tooldlg.open) tooldlg.close(); } catch (_) {} });
+      await pg.waitForTimeout(250);
+      await pg.evaluate(sh => { openTool(sh.src, sh.title, sh.tabs.map(t => ({ src: t.src, app: t.app, label: t.ko })), sh.key); },
+        { src: s.src, title: s.title, key: s.key, tabs: s.tabs });
+      await settle(pg);
+      for (const t of s.tabs) {
+        await pg.click(s.pick(t));
+        await settleFast(pg);
+        gap[KEY(s, t)] = await pg.evaluate(GAPPROBE);
+      }
+    }
+  } finally { await pg.close().catch(() => {}); }
+  return gap;
+}
+
+async function runOnce(pg, gap) {
+  const out = { core: [], m: {}, gap: gap || {} };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -238,6 +312,23 @@ async function runOnce(pg) {
   core('C8 미리보기 = 10탭 전부 가시 + 부팅 비확대(작게 기본 · 돋보기 = 수동 확대만)', noPrev.length === 0 && zoomed.length === 0,
     (noPrev.length ? '미리보기 없음 ' + noPrev.join(' ') : E.length + '탭 가시') + (zoomed.length ? ' · 부팅 확대 잔류 ' + zoomed.join(' ') : ' · 부팅 확대 0'));
 
+  // ── C9 세로축 = 도크 하단 ↔ 첫 블릿 잉크 = **카드 제작 정본 한 값**(운영자 260803 "간격도 제각각, 어느 부분엔 구분선이 있고 — 카드 제작 나오는 부분간 간격으로 통일") ──
+  //   이 게이트가 없어서 260803에 8탭이 조용히 갈라져 있었다(실측 2·2·9·13·18·27·33·44px = 정본 18 대비 최대 26px 편차).
+  //   기존 축은 전부 **가로·부품 단위**였다 — C3 레일 중앙축 · C7 미리보기 모듈 · check_refs 레일 5축 · smoke_parity C15.
+  //   「도크 아래로 본문이 어디서 시작하나」라는 **세로축**은 게이트가 하나도 없었고, 그 사각이 곧 이 사고다.
+  //   기준 = 이미지_카드생성(정본 `.csec{margin-top:16px}` → 잉크 18) · 허용 0.6px(활자 렌더 반올림 · C7 동값) · 면책 = GAP_BASE 2탭(위 주석).
+  const G = Object.entries(out.gap || {});
+  const gRef = (out.gap || {})['이미지_카드생성'];
+  const gBad = G.filter(([k, v]) => v && v.gapInk !== null)
+    .filter(([k, v]) => Math.abs(v.gapInk - (GAP_BASE[k] !== undefined ? GAP_BASE[k] : (gRef ? gRef.gapInk : NaN))) > 0.6)
+    .map(([k, v]) => k + '=' + v.gapInk + 'px«' + v.gapTxt + '»');
+  const gMiss = G.filter(([, v]) => !v || v.gapInk === null).map(([k]) => k);
+  core('C9 도크↔첫 블릿 잉크 = 카드 제작 정본 한 값(폰 430 · 기준 ' + (gRef && gRef.gapInk !== null ? gRef.gapInk + 'px' : 'N/A') + ' · 면책 ' + Object.keys(GAP_BASE).length + '탭)',
+    !!(gRef && gRef.gapInk !== null) && gBad.length === 0 && gMiss.length === 0,
+    gBad.length || gMiss.length
+      ? '이탈 ' + gBad.join(' · ') + (gMiss.length ? ' · 측정불가 ' + gMiss.join(' ') : '')
+      : G.length + '탭 정합(' + G.map(([k, v]) => k.split('_')[1] + ':' + v.gapInk).join(' ') + ')');
+
   return out;
 }
 
@@ -247,6 +338,10 @@ async function runOnce(pg) {
     const { chromium } = loadPlaywright();
     const st = await startServer(); srv = st.srv;
     browser = await chromium.launch({ executablePath: chromiumPath(), args: ['--no-sandbox'] });
+    // C9 폰 티어 sweep = **런 1회만**(2회 반복 대상 아님) — 순수 CSS 레이아웃 측정이라 런 간 변동 축이 없고,
+    //   2회 결정론 가드의 목적은 동적 거동(프레임 로드 경합) 검출이다. 매 런 반복하면 이 파일 소요가 72s→119s로 뛰어
+    //   smoke_all 병렬 풀에서 가짜 빨강(재시도 소모)을 늘린다 — 측정 1회 + 두 런 공유가 비용/신뢰 최적점(실측 260803).
+    const gap = await gapSweep(browser, st.port);
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
       const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -255,7 +350,7 @@ async function runOnce(pg) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg);
+      const o = await runOnce(pg, gap);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · 코어 페이지(1280)와 티어 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);
