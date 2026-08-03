@@ -1605,7 +1605,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     }
   } else if (cur.k === 'ov') {                                      // 자막 = nomute_overlay SPECS 미러(reels ty1119/fs78 · post ty822/fs76) — 그라데·로고 = generate() 무조건 합성이라 변형 표시 = 항상 동반(운영자 260716) · 오버레이만 ON = 사진 미표시(산출 미러 · 운영자 260718)
     if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;
-    h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(getComboOpas()[0])) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 첫 OPA 변형 · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)   /* 260727 되돌림(운영자 "한 수로 지시한 거 다 되돌려") = OPA 2장 좌/우 분할 비교(Q684) 철거 → 첫 값 1장 단일 스크림 원형 복귀 */
+    h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(opaHi())) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 최고 OPA 변형(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만" — 레일이 최고값 1개만 띄우고 그걸 조절하니 미리보기도 같은 값이어야 조절 피드백이 맞다 · 구 '첫 값'은 선택 순서 종속이라 레일 조절 중 미리보기가 안 변하는 구간이 생겼다) · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)   /* 260727 되돌림(운영자 "한 수로 지시한 거 다 되돌려") = OPA 2장 좌/우 분할 비교(Q684) 철거 → 첫 값 1장 단일 스크림 원형 복귀 */
     // 진짜예요 = CI가 베이스에 구워져 있어 전면 레이어로 깔린다(운영자 "로고만 교체하면 되니까") · 노뮤트는 logo_rect 조각 로고 그대로
     if (cTpl === 'jinjja') {
       const jsp = JJ_OV[cur.fmt === 'reels' ? 'reels' : 'post'];
@@ -1891,11 +1891,10 @@ function updateGoSpec() {
       const hdrOn = headerActive(), bgOn = hdrOn && $('#cBg').checked;   // 배경(nobg) = 헤더 있을 때만 유효(추가할 흰칸이 있어야 배경본 의미) — 헤더 없으면 발사서 무시라 OFF 고정·잠금(운영자 260720 Q292 배경편 — 오버레이만과 동일 원칙)
       { const gb = $('#gsBg'); if (gb) { gb.classList.toggle('on', bgOn); gb.setAttribute('aria-pressed', bgOn ? 'true' : 'false'); gb.classList.toggle('gs-locked', !hdrOn); gb.setAttribute('aria-disabled', !hdrOn ? 'true' : 'false'); gb.title = hdrOn ? '탭=배경(흰칸 없는 버전) 추가' : '헤더(부제+제목) 입력 시 활성 — 추가할 흰칸이 있어야 배경본 의미'; } }
       const ovo = $('#gsOvOnly'); if (ovo) { const noImg = !CIMG.b64, noLayer = !noImg && !ovLayerActive(); const lockMg = noImg || noLayer; const onMg = !lockMg && !ovOnly; ovo.classList.toggle('on', onMg); ovo.setAttribute('aria-pressed', onMg ? 'true' : 'false'); ovo.classList.toggle('gs-locked', lockMg); ovo.setAttribute('aria-disabled', lockMg ? 'true' : 'false'); ovo.title = noImg ? '사진 미첨부 = 합성할 사진 없음 → 배경 합성 OFF 고정' : noLayer ? '자막(오버레이) 미입력 = 사진이 실릴 장이 없음 → 배경 합성 OFF 고정 (헤더·저작권·안내문 산출물엔 사진이 안 들어간다)' : '탭=ON/OFF — ON=사진 위에 오버레이 레이어 합성 · OFF=사진이 있어도 오버레이 레이어만'; }   // 배경 합성(운영자 260725 의미 반전 = 구 '오버레이만'의 반대) — ON=합성 · OFF=오버레이 단독 · 사진 없으면 OFF 고정·잠금(구 'ON 고정+소등' = 켜졌는데 꺼진 느낌 사고를 값 자체로 해소 · 발사 로직은 CIMG.b64 없으면 이미 미합성이라 표시만 진실화)
-      const ops = $('#gsOpas'); if (ops) ops.innerHTML = cOpaSel.map((v, i) =>   // 값마다 −/값/+ 그룹(운영자 260718 복원 — 구 gsOpa2 조절 문법) · data-i = 슬롯 · 값탭=끄기 / 휠·드래그·방향키·±스테퍼=조절
-        '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-i="' + i + '" data-d="-' + OPA_STEP + '" title="탭=−' + OPA_STEP + '">−</span>'
-        + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-i="' + i + '" data-v="' + v + '" title="휠·상하드래그·방향키=값 조절(' + OPA_STEP + '단위) · 탭=이 OPA 끄기(최소 1개)">' + v + '</span>'
-        + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-i="' + i + '" data-d="' + OPA_STEP + '" title="탭=+' + OPA_STEP + '">+</span>'
-      ).join(' <span class="gs-sep">|</span> ');
+      const ops = $('#gsOpas'); if (ops) { const hv = opaHi();   // 레일 = 최고 OPA 1벌만(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만 뜨고, 이를 선택하는 기능은 동일하게") — 구 슬롯 수만큼 −/값/+ 반복(2개 선택 시 세로 레일이 2행)을 1행으로 · 낮은 짝은 하단 OPA 레일(#opaChips) 점등이 전담 · 조절 대상 = 항상 현재 최고 슬롯(data-i 불요 = adj가 그때그때 찾는다)
+        ops.innerHTML = '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="-' + OPA_STEP + '" title="탭=−' + OPA_STEP + '">−</span>'
+        + '<span class="gs-v on gs-tog gs-opav" role="button" tabindex="0" data-v="' + hv + '" title="휠·상하드래그·방향키=최고 OPA 조절(' + OPA_STEP + '단위) · 낮은 짝과 겹치면 단일 · 더 낮추면 다시 2개 · 탭=이 OPA 끄기(최소 1개)">' + hv + '</span>'
+        + '<span class="gs-v gs-tog gsop-step" role="button" tabindex="0" data-d="' + OPA_STEP + '" title="탭=+' + OPA_STEP + '">+</span>'; }
       syncAbbrSpec('#gsAbbr');
     }
   }
@@ -2020,40 +2019,39 @@ function edNavSync() {   // ‹› 끝단 disabled 동기 — 기본값(첫째)�
   bindAbbr('#psAbbr');   // 포스트 축약(짧게토글·길게등록)
   const ovo = $('#gsOvOnly');   // 배경 합성(운영자 260725 의미 반전 · 구 '오버레이만' 260718) — ON=합성 · OFF=오버레이 단독(상태 1벌 ovOnly = 반전값 그대로 유지 = 발사 payload 무접촉)
   if (ovo) { const f = () => { if (!CIMG.b64) return; ovOnly = !ovOnly; updateGoSpec(); }; ovo.addEventListener('click', f); ovo.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); }   // 사진 미첨부 = 토글 무효(ON 고정 · 운영자 260720 Q292)
-  // OPA 스트립 = 값 그 자리 조절(휠·상하드래그·방향키·±스테퍼 전부 OPA_STEP 단위) + 탭=끄기(최소 1개) — 구 gsOpa2 조절 문법 계승(260718 칩 재편으로 유실 → 운영자 260718 복원)
+  // OPA 레일 = 최고 OPA 1벌 그 자리 조절(휠·상하드래그·방향키·±스테퍼 전부 OPA_STEP 단위) + 탭=끄기(최소 1개) — 구 gsOpa2 조절 문법 계승(260718 칩 재편으로 유실 → 운영자 260718 복원) · 260803 단일화 = 조절 대상이 「슬롯 고정(data-i)」에서 「그때의 최고 슬롯」으로(레일이 최고값 1개만 띄우므로 조작 대상도 그 값이어야 표시와 어긋나지 않는다)
   const ops = $('#gsOpas');
   if (ops) {
-    const valSpan = i => ops.querySelector('.gs-opav[data-i="' + i + '"]');
-    const _adjT = {};
-    const flash = span => { if (!span) return; span.classList.add('opa-adjusting'); clearTimeout(_adjT[span.dataset.i]); _adjT[span.dataset.i] = setTimeout(() => span.classList.remove('opa-adjusting'), 420); };   // 조절 중 mut → 420ms 후 accent 복귀(구 setVal 계승)
-    const adj = (i, d) => {   // 슬롯 i 값 ±d(0~70 클램프 · 중복 금지=값마다 오버레이 1장) — 그 자리 갱신(updateGoSpec 재빌드 회피 = 드래그·휠 제스처 유지 · renderCpPrev만 = 미리보기 스크림 실시간)
-      if (i < 0 || i >= cOpaSel.length) return false;
-      let nv = Math.max(0, Math.min(70, cOpaSel[i] + d));
-      if (cOpaSel.some((x, j) => j !== i && x === nv)) nv = Math.max(0, Math.min(70, nv + d));   // 10단위(운영자 260727) = 슬롯 2개면 다른 값과 정면충돌이 잦다(60·50에서 60을 −10 = 50) → 같은 방향 한 칸 건너뛰기. 구 5단위는 55 같은 사이값으로 저절로 피했다 = 그 시절 체감 유지
+    const valSpan = () => ops.querySelector('.gs-opav');
+    const hiIdx = () => { let k = 0; for (let j = 1; j < cOpaSel.length; j++) if (cOpaSel[j] > cOpaSel[k]) k = j; return k; };   // 최고 슬롯(동률 = 앞선 슬롯) — 겹친 뒤 한 칸 더 내리면 이 자리가 반대 슬롯으로 넘어가며 두 값이 계단식으로 함께 내려간다(60·40 → 50·40 → 40·40[단일] → 30·40 → 30·30[단일] → …)
+    let _adjT = 0;
+    const flash = span => { if (!span) return; span.classList.add('opa-adjusting'); clearTimeout(_adjT); _adjT = setTimeout(() => span.classList.remove('opa-adjusting'), 420); };   // 조절 중 mut → 420ms 후 accent 복귀(구 setVal 계승)
+    const adj = d => {   // 최고 슬롯 값 ±d(0~70 클램프) — 그 자리 갱신(updateGoSpec 재빌드 회피 = 드래그·휠 제스처 유지 · renderCpPrev만 = 미리보기 스크림 실시간)
+      if (!cOpaSel.length) return false;
+      const i = hiIdx(), nv = Math.max(0, Math.min(70, cOpaSel[i] + d));
       if (nv === cOpaSel[i]) return false;                                     // 경계
-      if (cOpaSel.some((x, j) => j !== i && x === nv)) return false;           // 건너뛴 자리도 중복이면 포기(값마다 오버레이 1장)
-      cOpaSel = cOpaSel.slice(); cOpaSel[i] = nv;
-      const span = valSpan(i); if (span) { span.textContent = nv; span.dataset.v = nv; flash(span); }
-      opaPaint(); renderCpPrev();                                             // 칩 점등 동기 + 미리보기(스트립 innerHTML 재빌드는 생략 = 제스처 유지)
+      cOpaSel = cOpaSel.slice(); cOpaSel[i] = nv;                              // 낮은 짝과 겹쳐도 그대로 둔다 = 실효 단일(운영자 260803 "겹칠 경우 하단 옵션의 opa는 단일 · 거기서 더 낮추면 다시 2개") — 중복은 발사(getComboOpas)·칩 점등(opaPaint)이 접고, 슬롯 2벌은 남아 있어 한 칸 더 내리면 저절로 갈라진다 · 구 '같은 방향 한 칸 건너뛰기'(260727)는 겹침 자체를 금지하던 처방이라 폐지
+      const span = valSpan(), hv = opaHi(); if (span) { span.textContent = hv; span.dataset.v = hv; flash(span); }
+      opaPaint(); renderCpPrev();                                             // 칩 점등 동기 + 미리보기(레일 innerHTML 재빌드는 생략 = 제스처 유지)
       return true;
     };
-    const off = i => { if (cOpaSel.length > 1) { cOpaSel = cOpaSel.filter((_, j) => j !== i); opaPaint(); updateGoSpec(); } };   // 탭=끄기(최소 1개)
+    const off = () => { if (cOpaSel.length > 1) { const i = hiIdx(); cOpaSel = cOpaSel.filter((_, j) => j !== i); opaPaint(); updateGoSpec(); } };   // 탭=최고 OPA 끄기(최소 1개 · 남은 낮은 짝이 레일로 올라온다)
     ops.addEventListener('click', e => {
-      const st = e.target.closest('.gsop-step'); if (st) { e.stopPropagation(); adj(+st.dataset.i, +st.dataset.d); return; }   // ±스테퍼(모바일 조절)
-      const v = e.target.closest('.gs-opav'); if (v) { if (v._moved) { v._moved = false; return; } off(+v.dataset.i); }        // 드래그로 움직였으면 끄기 억제
+      const st = e.target.closest('.gsop-step'); if (st) { e.stopPropagation(); adj(+st.dataset.d); return; }   // ±스테퍼(모바일 조절)
+      const v = e.target.closest('.gs-opav'); if (v) { if (v._moved) { v._moved = false; return; } off(); }     // 드래그로 움직였으면 끄기 억제
     });
     ops.addEventListener('keydown', e => {
-      const st = e.target.closest('.gsop-step'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); adj(+st.dataset.i, +st.dataset.d); return; }
-      const v = e.target.closest('.gs-opav'); if (!v) return; const i = +v.dataset.i;
-      if (e.key === 'ArrowUp') { e.preventDefault(); adj(i, OPA_STEP); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); adj(i, -OPA_STEP); }
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(i); }
+      const st = e.target.closest('.gsop-step'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); adj(+st.dataset.d); return; }
+      const v = e.target.closest('.gs-opav'); if (!v) return;
+      if (e.key === 'ArrowUp') { e.preventDefault(); adj(OPA_STEP); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); adj(-OPA_STEP); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); off(); }
     });
-    ops.addEventListener('wheel', e => { const v = e.target.closest('.gs-opav'); if (!v) return; e.preventDefault(); adj(+v.dataset.i, e.deltaY < 0 ? OPA_STEP : -OPA_STEP); }, { passive: false });   // 휠 = 한 칸(OPA_STEP)
-    let py = null, acc = 0, di = -1;   // 마우스 상하 드래그(12px=한 칸) — 터치는 세로 스크롤 양보(값은 ±스테퍼 · 운영자 260704 '스크롤 안먹음' 교정 계승)
-    ops.addEventListener('pointerdown', e => { const v = e.target.closest('.gs-opav'); if (!v || e.pointerType !== 'mouse') return; py = e.clientY; acc = 0; di = +v.dataset.i; v._moved = false; try { v.setPointerCapture(e.pointerId); } catch (_) {} });
-    ops.addEventListener('pointermove', e => { if (py === null) return; acc += (py - e.clientY); py = e.clientY; const v = valSpan(di); while (acc >= 12) { if (adj(di, OPA_STEP) && v) v._moved = true; acc -= 12; } while (acc <= -12) { if (adj(di, -OPA_STEP) && v) v._moved = true; acc += 12; } });
-    const end = () => { py = null; di = -1; }; ops.addEventListener('pointerup', end); ops.addEventListener('pointercancel', end);
+    ops.addEventListener('wheel', e => { const v = e.target.closest('.gs-opav'); if (!v) return; e.preventDefault(); adj(e.deltaY < 0 ? OPA_STEP : -OPA_STEP); }, { passive: false });   // 휠 = 한 칸(OPA_STEP)
+    let py = null, acc = 0;   // 마우스 상하 드래그(12px=한 칸) — 터치는 세로 스크롤 양보(값은 ±스테퍼 · 운영자 260704 '스크롤 안먹음' 교정 계승)
+    ops.addEventListener('pointerdown', e => { const v = e.target.closest('.gs-opav'); if (!v || e.pointerType !== 'mouse') return; py = e.clientY; acc = 0; v._moved = false; try { v.setPointerCapture(e.pointerId); } catch (_) {} });
+    ops.addEventListener('pointermove', e => { if (py === null) return; acc += (py - e.clientY); py = e.clientY; const v = valSpan(); while (acc >= 12) { if (adj(OPA_STEP) && v) v._moved = true; acc -= 12; } while (acc <= -12) { if (adj(-OPA_STEP) && v) v._moved = true; acc += 12; } });
+    const end = () => { py = null; }; ops.addEventListener('pointerup', end); ops.addEventListener('pointercancel', end);
   }
 })();
 
@@ -2126,7 +2124,7 @@ function opaSet(vals) { cOpaSel = [...new Set((vals || []).map(v => parseInt(v, 
   const wrap = $('#opaChips'); if (!wrap) return;
   const pick = v => {
     v = parseInt(v, 10); if (!OPA_CHIPS.includes(v)) return;
-    if (cOpaSel.includes(v)) { if (cOpaSel.length > 1) cOpaSel = cOpaSel.filter(x => x !== v); }   // 끄기(마지막 1개는 못 끔 = 0개 방지)
+    if (cOpaSel.includes(v)) { const rest = cOpaSel.filter(x => x !== v); if (rest.length) cOpaSel = rest; }   // 끄기(마지막 1개는 못 끔 = 0개 방지) · 겹침 상태([40,40])는 length 2라도 그 값을 걷어내면 0개 → 구 `length > 1` 가드로는 못 막는다(260803 단일화 동반 봉합)
     else { cOpaSel = cOpaSel.length >= 2 ? [...cOpaSel.slice(1), v] : [...cOpaSel, v]; }           // 켜기(2개 초과 = 먼저 켠 것 교체)
     opaPaint(); updateGoSpec();
   };
@@ -2155,7 +2153,8 @@ function opaSet(vals) { cOpaSel = [...new Set((vals || []).map(v => parseInt(v, 
 })();
 
 // ---- 자막 OPA → 선택 칩값 배열, 최소 [60] ----
-function getComboOpas() { return cOpaSel.length ? [...cOpaSel] : [60]; }
+function opaHi() { return cOpaSel.length ? Math.max(...cOpaSel) : 60; }   // 레일 표시·미리보기 스크림 대표값 = 최고 OPA(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만")
+function getComboOpas() { const u = [...new Set(cOpaSel)]; return u.length ? u : [60]; }   // 발사 장수 = 중복 접은 실효 선택 — 두 슬롯이 겹치면 오버레이 1장(운영자 260803 "겹칠 경우 하단 옵션의 opa는 단일") · 갈라지면 다시 2장
 
 // ---- 붙여넣기(Ctrl+V) 이미지 공통 헬퍼 = 전 이미지 첨부 슬롯 공통(운영자 260713 "붙여넣기 핸들러가 모든 곳에 다 들어가야함") ----
 function _imgFromClipboard(e) {   // paste 이벤트 → 첫 이미지 File(없으면 null)
