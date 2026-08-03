@@ -61,18 +61,19 @@ const STEP = 3;           // 격자 간격(px) — 2px는 10탭×수백 캡슐�
 const HIT_BASE = {
   // ── ⓐ 레일 캡슐(nav.trail) = **정본 규격 그 자체** — 70×34 캡슐 안 픽토 버튼 22×22(§3-5 「무조건 상속」)라 면적비가 구조적으로 낮다.
   //    캡슐이 곧 버튼이 아니라 **버튼을 담는 그룹 캡슐**이므로 이 게이트의 대상이 아니다(H1 술어가 그룹 캡슐을 못 가르는 한계).
-  //    ⚠ 다만 이미지 0.435 vs 영상 0.178 = **2.4배 차이**가 실재한다 — 같은 정본을 상속한다면 같은 값이어야 한다.
-  //       셸 간 레일 드리프트 후보이므로 원인 규명 전까지 각 셸 현재값으로 동결(합의되면 한 값으로 좁힌다).
+  //    ✅ 260803 해소 — 구 「이미지 0.435 vs 영상 0.178 = 2.4배」는 **정본 히트패드 1줄 누락**이었다:
+  //       `.trail-i::after { inset:-6px -4px }`(index:1237 · 시각 22px 유지·실효 34×30)가 이미지 셸 3표면에만 있고
+  //       영상 셸 5표면엔 없었다 = 외형 스킨만 복사되고 히트패드가 안 따라온 것. 5표면에 정본 1줄 상속 → **두 셸 0.435 한 값**.
   '이미지_카드생성::nav.trail > button.trail-i': 0.435,
   '이미지_편집::nav.trail > button.trail-i': 0.435,
   '이미지_번역::nav.trail > button.trail-i': 0.435,
   '이미지_AI생성::nav.trail > button.trail-i': 0.435,
   '이미지_특수::nav.trail > button.trail-i': 0.435,
-  '영상_편집::nav.trail > button.trail-i': 0.178,
-  '영상_콘티::nav.trail > button.trail-i': 0.178,
-  '영상_프롬프팅::nav.trail > button.trail-i': 0.178,
-  '영상_음원::nav.trail > button.trail-i': 0.178,
-  '영상_큐영상::nav.trail > button.trail-i': 0.178,
+  '영상_편집::nav.trail > button.trail-i': 0.435,
+  '영상_콘티::nav.trail > button.trail-i': 0.435,
+  '영상_프롬프팅::nav.trail > button.trail-i': 0.435,
+  '영상_음원::nav.trail > button.trail-i': 0.435,
+  '영상_큐영상::nav.trail > button.trail-i': 0.435,
   // ── ⓑ 빈 미리보기 스테이지(207×207)의 중앙 진입 픽토 — 박스 전체가 눌리면 파일 선택이 열리는 게 드롭존 관례지만,
   //    그건 **동작 신설**(빈 박스 클릭 = 첨부)이라 §3-2 사후 확인 축이다. 운영자 판단 전까지 현행 동결.
   '이미지_카드생성::div.cpprev-box > button.cpv-photobtn': 0.025,
