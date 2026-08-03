@@ -12,6 +12,8 @@
   **정방향(날조) 전용** — coverage 방향엔 적용 금지: 카드는 지침이 인용을 서술로 풀게
   하므로 자구 부재가 설계상 정상(실측 260801: 434쌍 인용 2,674개 중 91% 부재 = 오탐
   지배 · 3인 평의회 반증 0표로 확정).
+- 대리 집행 술어(agency): 원문이 「A가 B를 대신해 X했다」인데 출력이 「A가 X했다」로 줄면 ⚠️
+  (수치·인용은 다 맞는데 *행위의 주인*만 바뀌는 축 — 260803 실측 근거는 agency_check 참조).
 - `⚡`/`ⓔ` 출처 줄·면책 줄(`⚠️ 본문 내용은`)·`###` 헤더 줄은 검사 제외.
 - 오탐 가능: 원문이 한글 숫자('두 명')인데 출력이 '2명'이면 플래그됨. 인용도 요약이
   직접 지은 헤드 문구가 따옴표를 쓰면 플래그됨 — 그래서 소프트(플래그 = 원문 대조 신호).
@@ -102,6 +104,93 @@ def quote_check(src_text, out_text):
     return flags
 
 
+# ── 대리 집행 술어(agency) ──────────────────────────────────────────────
+# 「A가 B를 대신해 X했다」에서 '대신해 B'가 요약·카드에서 탈락하면 「A가 제 돈·제 권한으로 X했다」는
+# **다른 뉴스**가 된다. 수치·인용은 전부 맞는데 행위의 주인만 바뀌므로 check()·quote_check()가 못 본다.
+# 실측 260803(엔화 개입): 원문 "뉴욕 연방준비은행이 재무부를 대신해 유로를 매도하고 엔화를 매입" →
+#   '대신해 재무부'가 빠지면 "연준이 엔화를 샀다" = 연준 자체 계정 매입이라는 오보(실제는 재무부 ESF 자금).
+# 같은 구조가 국채 매입·제재 집행·소송 대리·위탁 판매 기사에서 반복돼 재사용률이 높다.
+AGENCY = re.compile(
+    r'(?:을|를)\s*(?:대신|대리|대행)(?:해|하여|한|하는)|대행(?:해|하여|한)'
+    r'|(?:위탁|위임)\s*(?:받아|받은)|on behalf of', re.I)
+_PRINCIPAL = re.compile(r'([가-힣A-Za-z0-9·]{2,12})(?:을|를)\s*(?:대신|대리|대행)(?:해|하여|한|하는)')
+_SUBJ = re.compile(r'(?:^|\s)([가-힣A-Za-z0-9·]{2,20}?)(?:이|가|은|는)(?=\s)')
+_OBJ = re.compile(r'([가-힣A-Za-z0-9·]{2,12}?)(?:을|를)(?=\s|$)')
+# 목적어 잡음(행위 대상이 아니라 문장 포장어) — 이게 섞이면 매칭이 아무 문장에나 걸린다
+_OBJ_STOP = {'조치', '방침', '계획', '내용', '규모', '전액', '일부', '대상', '결정', '절차', '업무'}
+_SENT = re.compile(r'(?<=[.!?…])\s+|\n+')
+# 약칭 별칭 — 원문이 정식 명칭, 출력이 약칭인 경우(연방준비은행→연준)를 놓치지 않기 위함
+_ALIAS_GROUPS = [
+    {'연방준비은행', '연방준비제도', '연준', 'Fed'},
+    {'기획재정부', '기재부'}, {'한국은행', '한은'}, {'금융감독원', '금감원'},
+    {'국민연금공단', '국민연금'}, {'국토교통부', '국토부'}, {'공정거래위원회', '공정위'},
+]
+
+
+def _sents(text):
+    return [s.strip() for s in _SENT.split(_clean(text)) if s.strip()]
+
+
+def _ga(word):
+    """받침 판정 조사 — '연방준비은행이' / '재무부가' (로그 문장 자연스럽게)."""
+    ch = word.strip()[-1:] or ' '
+    has_jong = 0xAC00 <= ord(ch) <= 0xD7A3 and (ord(ch) - 0xAC00) % 28
+    return word + ('이' if has_jong else '가')
+
+
+def _keys(name):
+    """기관명 → 매칭 키 집합(전체 표기 + 조사 뗀 머리 명사 + 약칭 별칭).
+    공백 토큰을 통째로 풀지 않는다 — '뉴욕' 같은 2자 수식어가 키가 되면 아무 문장에나 걸린다."""
+    name = name.strip()
+    out = {name}
+    for g in _ALIAS_GROUPS:
+        if any(t in name for t in g):
+            out |= g
+    return {k for k in out if len(k) >= 2}
+
+
+def _agent_of(prefix):
+    """대리 표지 앞부분에서 주어(집행 주체)를 뽑는다 — '📍 뉴욕 연방준비은행이 이날' → '연방준비은행'."""
+    m = _SUBJ.search(re.sub(r'^[^가-힣A-Za-z0-9]+', '', prefix))
+    return m.group(1) if m else ''
+
+
+def agency_check(src_text, out_text):
+    """원문의 대리 집행 구조가 출력에서 무너진 문장 = [(집행주체, 위임자, 출력문장, 원문문장)].
+
+    플래그 조건(넷 다 만족해야 함 — 소프트지만 오탐은 최소화):
+      ① 출력 문장에 대리 표지(대신해/대행/on behalf of)가 **없다**
+      ② 위임자(재무부…)도 그 문장에 **없다**       ← 다른 말로 살아 있으면 통과
+      ③ 집행 주체(연준·연방준비은행…)는 **있다**
+      ④ 원문에서 대리 표지 **뒤에** 오던 목적어(엔화·유로…)가 하나 이상 있다
+    ⚠️ 소프트 — 한 문장에서 주체, 다음 문장에서 "재무부를 대신한 것"으로 풀어 쓴 정상 서술도 잡힌다."""
+    cases = []
+    for s in _sents(src_text):
+        m = AGENCY.search(s)
+        if not m:
+            continue
+        pm = _PRINCIPAL.search(s)
+        agent = _agent_of(s[:m.start()])
+        if not pm or not agent:
+            continue
+        objs = {o for o in _OBJ.findall(s[m.end():]) if o not in _OBJ_STOP}
+        if objs:
+            cases.append((agent, pm.group(1), objs, s))
+    flags, seen = [], set()
+    for agent, principal, objs, src_sent in cases:
+        akeys, pkeys = _keys(agent), _keys(principal)
+        for o in _sents(out_text):
+            if o in seen or AGENCY.search(o):
+                continue
+            if any(k in o for k in pkeys) or not any(k in o for k in akeys):
+                continue
+            if not any(ob in o for ob in objs):
+                continue
+            seen.add(o)
+            flags.append((agent, principal, o, src_sent))
+    return flags
+
+
 def coverage(summary_text, cards_text):
     """요약에 있는데 카드에 빠진 수치·날짜 = 카드 누락(WHY/사실 증발 기계 보조).
     check(src=카드, out=요약) = 요약에만 있는 토큰 = 카드가 놓친 것. tokens()·check() 재사용·방향만 반대.
@@ -143,6 +232,15 @@ def main():
                 print('  - “%s”' % f)
         else:
             print('✅ 인용 대조 통과 — 출력 인용 전부 원문 자구 있음.')
+    aflags = agency_check(a_text, b_text)
+    if aflags:
+        print('⚠️ 대리 집행 술어 이탈 %d건 — 「…를 대신해」가 빠져 행위 주체가 바뀌었는지 대조:' % len(aflags))
+        for agent, principal, out_sent, src_sent in aflags:
+            print('  - 출력: %s' % out_sent)
+            print('    원문: %s' % src_sent)
+            print('    → 원문은 %s %s를 대신해 한 일이다.' % (_ga(agent), principal))
+    else:
+        print('✅ 대리 집행 술어 통과 — 대리 구조 이탈 없음(또는 해당 없음).')
     return 0
 
 

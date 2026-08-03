@@ -35,6 +35,7 @@ PROMPT_RE = re.compile(r'\*\*이미지\s*프롬프트\*\*\s*\n+```[a-zA-Z]*\n([\
 SEARCH_RE = re.compile(r'\*\*검색어\*\*\s*\n+```[a-zA-Z]*\n([\s\S]*?)```')
 FREE_RE = re.compile(r'###\s*\[자유요약[^\]]*\]\s*\n+```text\n([\s\S]*?)```')
 FACT_RE = re.compile(r'##\s*📰\s*Fact[^\n]*\n([\s\S]*?)(?=\n##\s|\Z)')
+DRAFT_RE = re.compile(r'##\s*📦\s*콘텐츠\s*초안[^\n]*\n([\s\S]*)')   # 자유요약+IG+Thread 통째 = 대리 술어 검사 대상
 
 
 def _w(ch):
@@ -166,6 +167,20 @@ def _high_signal(flag, summary):
     return bool(re.search(r'[억조만]\s*$', flag))
 
 
+def _agency_log(src, out, tag):
+    """대리 집행 술어 이탈 로그(비차단 · 260803) — 「A가 B를 대신해 X했다」에서 위임 구조가 탈락하면
+    수치·인용이 다 맞아도 행위 주체가 바뀐 오보가 된다. 수치 게이트가 못 보는 축이라 별도 출력."""
+    try:
+        flags = fact_guard.agency_check(src, out)
+    except Exception:
+        return                     # fail-soft — 게이트가 파이프라인을 죽이지 않는다
+    if not flags:
+        return
+    print("%s ⚠️ 대리 집행 술어 이탈 %d건 — 「…를 대신해」 탈락 = 주체 바뀜 점검:" % (tag, len(flags)))
+    for agent, principal, out_sent, _src_sent in flags[:5]:
+        print("  - [%s→%s] %s" % (principal, agent, out_sent[:90]))
+
+
 def coverage_cmd(queue_path, cards_path):
     qmd = open(queue_path, encoding="utf-8").read()
     cmd_ = open(cards_path, encoding="utf-8").read()
@@ -178,6 +193,7 @@ def coverage_cmd(queue_path, cards_path):
     if not card_text.strip():
         print("COV — 카드 텍스트 블록 없음 → 커버리지 생략")
         return 0
+    _agency_log(summary, card_text, "COV")
     flags = fact_guard.coverage(summary, card_text)
     if not flags:
         print("COV ✓ 요약 수치가 카드에 전부 반영(또는 무수치)")
@@ -202,6 +218,8 @@ def factcov_cmd(queue_path):
     if not fa or not fa.group(1).strip():
         print("FACTCOV — 📰 Fact 섹션 없음")
         return 0
+    dm = DRAFT_RE.search(qmd)      # 대리 술어는 자유요약만이 아니라 IG·Thread까지 다 본다
+    _agency_log(fa.group(1), dm.group(1) if dm else fm.group(1), "FACTCOV")
     flags = fact_guard.coverage(fa.group(1), fm.group(1))
     if flags:
         print("FACTCOV 참고 %d건 — Fact에 있는데 자유요약에 없는 수치: %s" % (len(flags), " · ".join(flags[:10])))
