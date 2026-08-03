@@ -55,7 +55,10 @@ DAN = re.compile(r"\[\s*단독\s*\]")
 #   ① 재채점도 *같은* RUBRIC(해시 불변 = 전면 재채점 폭풍 0) · 모델은 cross 를 모른다 — "13개 매체가 썼다"는
 #      정보가 프롬프트에 없어서 다매체라는 이유로 홍보가 승급될 편향 원천 부재(RUBRIC ⚠️핵심 "여러 매체가
 #      동시에 받아쓴 홍보성 발표여도 0" 그대로). 선정에만 cross 사용 = 판정과 분리.
-#   ② 보도자료 정형구(REGRADE_PR_RE)는 큐 진입 자체 차단 — 콜 절약 + 구제 0(현행 grade 유지·강등 아님).
+#   ② 보도자료 정형구·실적·시황·수주(REGRADE_PR/HEAD/BIZ/MKT_RE)는 큐 진입 자체 차단 — 콜 절약 + 구제 0(현행 유지·강등 아님).
+#      ⚠️ 실측 정정(평의회 2차 260803 큐측정관): 초판 마커(PR+HEAD)의 실효는 2.8%(9/327)뿐 — 주 방어는 어디까지나
+#      ①(cross 비노출 룰북)이고, 블라인드 재채점 275건 실측이 그걸 실증(보도자료형 g2 플립 0.9% = 1건·그마저 top10 진입 실패).
+#      BIZ/MKT/수주 확장은 그 1건(실적류)의 표면적까지 컷하는 보강. 플립률 재악화 시 1차 레버 = REGRADE_MIN_CROSS 10(큐 −38%·홍보류 39% 컷·경산·양산·폭염 3대 오채점 전부 보존).
 #   ③ 새 grade 를 그대로 채택(상향 전용 아님 — g1→g0 하향도 허용 = 일방 펌프 불가) + rubric 세대당 1회
 #      (regraded 도장) + 런당 GATE_REGRADE_QUOTA 캡 + 24h 창(REGRADE_MAX_H — 이후는 timeAcc·ageMul 바닥이라 이득 0).
 # 롤백 = env GATE_REGRADE=0 (도장·데이터 무접촉·큐만 소등).
@@ -65,6 +68,12 @@ GATE_REGRADE_QUOTA = int(os.environ.get("GATE_REGRADE_QUOTA", "12"))     # 런�
 REGRADE_MAX_H = float(os.environ.get("GATE_REGRADE_MAX_H", "24"))        # first_seen 나이 창 — 24h+(배지 소멸선)는 랭킹 이득 0
 REGRADE_PR_RE = re.compile(r"업무협약|MOU|리브랜딩|품목허가|인증\s*획득|론칭|파트너십|특허\s*취득|신제품|출시|공모전|캠페인|프로모션|무순위\s*청약|줍줍")   # 보도자료 정형구 = 큐 하드 제외(viewer FB_HOLBO 계열 확장 · 오탐 비용 = 재채점 안 함 뿐 = 현행 유지라 안전)
 REGRADE_HEAD_RE = re.compile(r"^\s*[\[\(](표|포토|사진|그래픽|알림|공고|부고|부음|동정|인사|프로필|단신|게시판)")   # 정형 머리표 = 뷰어 JUNK_HEAD가 양 칼럼서 숨기는 부류 → 재채점 이득 0(첫 드라이런 실측: [표] 경선투표 cr17·[포토] 삭발식 cr9가 큐 진입 = 콜 낭비)
+# 평의회 2차(260803) 실측 보강 — 큐 홍보류 최대 버킷(실적·시황·수주 = 88건 중 84건)이 위 마커 0어휘로 통과 → 어휘 확장.
+# 오탐 비용 = '재채점 안 함 = 현행 유지'뿐이라 안전 방향. 시황·수주는 사건어·방산 면제 동반(대폭락·방산 대형계약 구제 사각 방지).
+REGRADE_BIZ_RE = re.compile(r"영업이익|영업익|영업손실|매출\s*\d|순이익|순손실|흑자\s*전환|적자\s*전환|판매\s*실적|자사주")   # 실적 정형구(블라인드 재채점 275건 실측: 실적류가 유일한 보도자료형 g2 플립 1건[삼성 89조]의 출처 = 표면적 자체를 컷)
+REGRADE_MKT_RE = re.compile(r"(뉴욕증시|상하이지수|코스피|코스닥|증시).{0,20}(마감|상승|하락|반등)")   # 시황 정형구
+REGRADE_CRASH_RE = re.compile(r"서킷브레이커|사이드카|폭락|급락|폭등|급등|패닉|디폴트|금융위기|뱅크런|외환위기|파산")   # 시황 면제 = 구조적 사건어(breaking_judge 📈 게이트 축과 동일 철학)
+REGRADE_DEF_EX_RE = re.compile(r"대통령|방사청|국방부|방산|잠수함|전투기|호위함|군함")   # 수주 면제 = 방산·국가급(단순 기업 수주 홍보만 컷)
 
 # ── 외신 제목 번역 편승 (260703 · 운영자 "번역은 기존 검증 세션에 같이") ──────────────────
 # 한글 없는 제목(BBC·가디언·알자지라 등 영문 피드)을 *이 게이트 콜에 편승*시켜 한국어 헤드라인으로 번역
@@ -206,7 +215,11 @@ def regrade_due(c):
     if c.get("grade_rubric") != RUBRIC_VER or c.get("regraded") == RUBRIC_VER:   # 구 rubric 분은 일반 재채점 경로가 전담 · 세대당 1회
         return False
     t = c.get("title") or ""
-    if REGRADE_PR_RE.search(t) or REGRADE_HEAD_RE.search(t):
+    if REGRADE_PR_RE.search(t) or REGRADE_HEAD_RE.search(t) or REGRADE_BIZ_RE.search(t):
+        return False
+    if REGRADE_MKT_RE.search(t) and not REGRADE_CRASH_RE.search(t):
+        return False
+    if "수주" in t and not REGRADE_DEF_EX_RE.search(t):
         return False
     a = _fs_age_h(c)
     return a is not None and a < REGRADE_MAX_H
@@ -335,6 +348,7 @@ def main():
     n_reg = min(len(sregr), GATE_REGRADE_QUOTA)
     pending = surf[:max(0, MAX_PER_RUN - n_cat - n_reg)] + sregr[:n_reg] + catr[:n_cat]   # 우선순위 = 신규 미채점(커버리지) → 재채점 큐(캡) → cat구제(캡)
     regr_ids = {id(c) for c in sregr[:n_reg]}   # 도장용 멤버십(응답 후 grade 가 2/3 로 바뀌면 술어 재평가로는 식별 불가)
+    regr_old = {id(c): c.get("grade") for c in sregr[:n_reg]}   # 재채점 전 등급 스냅 — 변경 관측 로그용(평의회 2차: 라이브 플립률 계측기)
     print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 재채점 큐 {len(sregr)}→{n_reg} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK} · 번역편승 {'ON' if TRANS_ON else 'OFF'})")
     grades, cats, trans = {}, {}, {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
@@ -374,6 +388,9 @@ def main():
             c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
             if id(c) in regr_ids:
                 c["regraded"] = RUBRIC_VER    # 재채점 소진 도장(rubric 세대당 1회 · 응답 온 줄만 = 실패분은 다음 런 재시도)
+                og = regr_old.get(id(c))
+                if og is not None and g != og:   # 재채점 변경 관측 로그(상·하향 모두) — 운영자 우려(홍보 구제 역류)의 라이브 계측기(평의회 2차)
+                    print(f"  재채점 {og}→{g} cr{c.get('cross')} | {(c.get('title') or '')[:50]}")
             if fc:
                 c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선 · 이차검증)
             elif ct:
