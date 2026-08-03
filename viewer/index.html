@@ -1308,17 +1308,21 @@
   #snsList.no-anim .soc-item { animation:none; }   /* 동일 구성 재렌더(탭 재진입·재fetch) = 스태거 생략 = 깜빡임 0 (renderScrap/피드 패턴·운영자 260622) */
   .soc-item:hover { border-color:rgba(var(--accent-rgb),.5); box-shadow:0 10px 26px rgba(0,0,0,.4), 0 0 14px rgba(var(--accent-rgb),.2); }   /* SNS 시안 정체성 폐지 = 강조색 통일(운영자 260705) */
   .soc-top { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:800; letter-spacing:-.2px; margin-bottom:6px; }
+  .soc-top { font-variant-numeric:tabular-nums; }   /* 자릿수 동일폭 = 테두리 없는 표 열 리듬(폴리시 tabular numbers 축 · 운영자 260803 2차 열구획) — 원 선언줄 무접촉 추가 선언 */
   .soc-burst { color:rgba(var(--accent-rgb),.62); }   /* burst 기본 = 흐린 강조색(티어 보존: 기본<hot30 풀강조<hot10 라임 · 시안 정체성 폐지·운영자 260705) */
   .soc-burst.hot30 { color:var(--accent); }       /* 상위 ~30%(burst≥12·7일치 p70) = 강조색(운영자 260629) */
   .soc-burst.hot10 { color:var(--hist-accent); }   /* 상위 ~10%(burst≥24·7일치 p90) = 이력색 라임(--hist 계승 · 260705) */
   .soc-src { color:var(--accent); }   /* SNS 연시안 폐지 = 강조색(운영자 260705) */
-  .soc-posts { color:var(--mut); font-weight:700; }
+  .soc-posts { color:var(--mut); font-weight:700; min-width:26px; }   /* raw-ok: 26 = "글 99" 실측 25.41 올림 — 글 열 상시 예약(값 없어도 빈 스팬이 자리 유지 = 운영자 260803 2차 "있다고 가정했을 때의 기준") · 3자리 글수는 그 카드만 늘어나되 시간·체크는 우측 앵커라 무영향(fail-soft) */
   .soc-age { color:var(--mut); margin-left:auto; font-weight:700; }
-  .soc-age + .soc-send { margin-left:0; }   /* 시간 구획 우측정렬(운영자 260803 "날짜 항상 우측 정렬·체크 좌측 일정 간격") — age·send 양쪽 auto 마진이면 flex가 남는 공간을 반반 분배해 시간이 카드마다 중간에 떠돈다(실측 우측끝 편차 17.7px·체크 간격 94~111px) → 시간이 있으면 send의 auto를 꺼서 auto 마진을 age 하나로 = 시간 우측끝이 체크 좌측 한 세로선에 고정·간격 = .soc-top gap 10px 한 값 · 시간 없는 카드는 send 자체 auto 폴백 그대로 */
+  /* ── 테두리 없는 표 열구획(운영자 260803 2차 "글 저부분도 고유한 영역 · 있다고 가정했을 때 기준 · 체크 눌러도 밀리면 안 됨 = 공백이 줄어야") — 각 메타가 고유 열을 상시 점유해 값 유무·상태 변화가 이웃 열을 못 민다. 1차분(.soc-age+.soc-send margin 0)은 arm 팽창 시 시간이 -32.6px 밀리는 결함이라 존 방식으로 대체 ── */
+  .soc-burst { min-width:40px; }   /* raw-ok: 40 = 🔥13px+공백+"99.9"(11px/800 tabular) 실측 39.73 올림 — 화력 자릿수(9.5↔14.8)가 갈라도 소스·글 열 시작 세로선 통일 */
+  .soc-sendz { flex:none; margin-left:auto; display:inline-flex; align-items:center; justify-content:flex-end; width:57px; }   /* raw-ok: 57 = arm '전송' 실폭 56.63 올림 — 체크 열 = 팽창분 사전 예약(버튼은 열 안 우측 정렬 · arm 확대 = 열 내부 공백만 축소 = 시간·글 0px 불변) · margin-left:auto = 시간 없는 카드 우측 앵커 폴백 */
+  .soc-age + .soc-sendz { margin-left:0; }   /* 시간이 있으면 auto 마진 = 시간 하나(양쪽 auto = flex 반반 분배로 시간이 중간에 떠돌던 260803 1차 원인) → 시간 우측끝 = 체크 열 좌변 한 세로선 · 간격 = 행 gap 한 값 */
   /* 카드 우상단 '뉴스 요약으로 보내기' 체크(운영자 260729) — soc-top 행 맨 오른쪽(age 다음) flex = 다른 요소 무침범.
      상태머신 = 뉴스 요약 재확인 토글(.revsend.confirm) 계승: 기본 체크 → 1탭 arm '전송'(맑은노랑 --arm) → 2탭 전송 → ✓팝 → 원복.
      arm 값 = .revsend.confirm 그대로(rgba(--arm-rgb,.2)·--arm·rgba(--arm-rgb,.5)) · 성공 = 공유 accent(계승) */
-  .soc-send { flex:none; margin-left:auto; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-1);
+  .soc-send { flex:none; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-1);   /* margin-left:auto → 부모 열(.soc-sendz)로 이관(260803 2차 열구획) */
     height:24px; min-width:24px; padding:0; border:1px solid var(--line); border-radius:var(--r-pill); background:transparent; color:var(--mut);
     cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease); }   /* reuse-ok: 신설 = 카드용 재확인 토글(정본 .revsend는 팝업 하단 큰 버튼 = 카드 우상단 미소버튼과 크기축 달라 계승 불가 · 상태·색은 .revsend.confirm 계승) */
   .soc-send svg { width:14px; height:14px; }
@@ -12781,7 +12785,7 @@ function renderSns() {
     const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
     const _zone = _mid == null ? '' : (_mid <= 2 ? '강진보' : _mid <= 4 ? '약진보' : _mid <= 6 ? '중립' : _mid <= 8 ? '약보수' : '강보수');
     const _gauge = _mid == null ? '' : `<div class="soc-gauge" role="img" aria-label="출처성향 ${_zone}" title="출처성향: ${_zone} (커뮤 통념근사)"><span class="soc-dot" style="left:${((_mid - 1) / 8 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 위치=(_mid-1)/8[성향값 1~9축, 옛 /9는 강보수 우끝 미달·중립 좌편향 버그·검토6인 260704] · title/aria=툴팁·a11y(시각 라벨은 요구'라벨없이' 존중) */
-    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span>${(r.posts > r.source_count) ? `<span class="soc-posts">글 ${r.posts}</span>` : ''}${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}<span class="soc-send" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg><i class="soc-send-lb">전송</i></span></div>
+    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span><span class="soc-posts">${(r.posts > r.source_count) ? `글 ${r.posts}` : ''}</span>${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}<span class="soc-sendz"><span class="soc-send" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg><i class="soc-send-lb">전송</i></span></span></div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
       ${_gauge}`;
