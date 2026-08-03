@@ -1915,7 +1915,7 @@
   .qgo.go-arm { color:var(--arm); border-color:rgba(var(--arm-rgb),.55); background:rgba(var(--arm-rgb),.10); }   /* 재시도(✨요약요청 실패 = 붙여넣은 전문 복원) = 재시도 표준색 arm(레몬) 계승(운영자 260701 재시도=arm 정본) · viewer :root 에서 amber 와 동색(accent-4)이라 구분은 아이콘 ↻/↗으로 */
   .qgo.go-gray { color:var(--mut); border-color:var(--line); background:rgba(255,255,255,.04); }   /* 회색(갈 곳 없음) = 색만 무채 · cursor:default 폐지 = 이제 탭하면 취소 무장(정본 .jcancel 대기상태 = cursor pointer) · 운영자 260728 "액티브 모션 그대로" */
   .qgo.qcx-ok { color:var(--on-accent); border-color:var(--accent); background:var(--accent); }   /* 취소 확정 ✓ = 이미지 스튜디오 제작 대기열 취소(.jdel.ok) 정본 계승 — accent 채움+on-accent 획(운영자 260728) */
-  .qb-cxl { color:var(--mut); font-size:12.5px; font-weight:800; }   /* raw-ok: 12.5px = 형제 상태셀(qb-done·qb-failt) 동값 계승(같은 셀 문법·크기 이탈 금지) — 취소 = 무채 한글(색만 mut) */
+  .qb-cxl, .qb-lag { color:var(--mut); font-size:12.5px; font-weight:800; }   /* raw-ok: 12.5px = 형제 상태셀(qb-done·qb-failt) 동값 계승(같은 셀 문법·크기 이탈 금지) — 취소·배포대기 = 무채 한글(색만 mut · 값 사본 0 = 같은 규칙 공유) */
   .qgo:active { transform:scale(var(--press-m,.9)); }   /* 누름 = 전 상태 공통(회색 제외 폐지 — 회색도 탭=취소 무장이라 액티브 모션이 있어야 한다 · 정본 .jdel:active 계승 · 확정 ✓는 disabled라 :active 미발동)  */
   @media (prefers-reduced-motion:reduce){ .qgo svg.ic-arrow .qsrc-shaft, .qgo svg.ic-arrow .qsrc-tip { animation:none; } }   /* 대기열 이동버튼 화살표 모션 = ic-arrow(공용 reduced-motion 블록서 정지) · 옛 qfly 폐지(운영자 260705) */
   .qpage { flex:none; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:10px; flex-wrap:wrap; min-height:30px; }   /* min-height = 페이저 비어도(단일페이지·빈상태) 높이 예약 → 팝업 크기 항상 동일(1·다·빈 상태 모두 같은 높이) · 운영자 260622 */
@@ -4235,6 +4235,7 @@ try {
 <script>
 const $ = s => document.querySelector(s);
 let DATA = [], DATA_LOADED = false;   // DATA_LOADED = 피드 1회 로드 완료 — 새로고침 시 DATA 전 picked가 Picking…으로 깜빡 방지
+let FEED_GEN = '';   // 이 피드(articles.json)가 구워진 배포본 시각 — 대기열 lag 행 툴팁이 '어느 배포본까지 반영됐나'를 말한다(선언 위치 = DATA 옆 = load() 보다 위 · TDZ 차단 · 260803)
 let CUR = '';
 let CUR_A = null;     // 현재 모달에 연 기사 객체(요약 PDF 다운로드에서 제목·출처 참조)
 let CUR_STATE = '';   // 모달에 마지막 렌더한 카드 state — 안 바뀌면 재렌더 생략(펼친 프롬프트 보존)
@@ -4267,6 +4268,7 @@ async function load() {
     const j = await r.json();
     if (_g !== LOAD_SEQ) return;   // stale 응답 폐기 — 더 새 load가 떠 있음(그쪽이 렌더)
     DATA = j.articles || [];
+    FEED_GEN = j.generated || '';   // 이 피드가 만들어진 배포본 시각 — 대기열 lag 행이 '어디까지 반영됐나'를 그 자리서 말한다(배포 적체 진단 · 260803)
     dateHead(j.count || DATA.length);
   } catch(e) { if (_g !== LOAD_SEQ) return; if (!DATA_LOADED) DATA = []; const d = $('#dhCnt'); if (d) d.textContent = 'articles.json 없음'; }   // last-good 유지(분신8 260706): 60s 폴 중 네트워크 blip 1회에 피드 전체가 '결과 없음'으로 비워지던 것 차단 — 첫 로드 실패만 빈 상태
   const _firstLoad = !DATA_LOADED; DATA_LOADED = true;   // 첫 로드 완료 표시
@@ -10039,11 +10041,26 @@ function qRetryBtn(title) {   // ✨요약요청 실패 재시도 = arm(레몬) 
 function qPickRetryBtn(title) {   // URL 픽/분석 실패 재시도 = arm(레몬) ↻ · 클릭 = api/pick 재발사(qPickRetry) — askget 복원(요약요청)과 별개 = pending URL 항목용 · 운영자 260713
   return '<button class="qgo go-arm qpretry" type="button" title="' + title + '">' + Q_REFR + '</button>';
 }
+// 대기열 실효 상태 = API status + '피드 미반영 succ' 보정 **단일 출처**(qRowHtml·정렬·취소가 같은 함수를 쓴다 — 세 군데 같은 식이 흩어져 있어 한쪽만 고치면 갈렸다).
+//  ⓐ 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면 사실상 미준비 → 조기 '완료/초록 뉴스요약 이동' 금지(운영자 260622).
+//  ⓑ 다만 그 미반영이 Q_LAG_MIN 을 넘으면 '배포 랙'이 아니라 **배포 적체 확정** → 스피너를 멈추고 'lag'(대기)로 못박는다.
+//     ⚠ 신설 사유 = 260803 실측: Cloudflare Pages 빌드 큐가 ~4시간 밀려(19:01 배포본이 15:03 커밋) 분석 끝난 7건이
+//     피드에 없는 채 **영구 회전**. 구판은 상한이 없어 "언제 끝나는지 모르는 스피너"가 무한정 돌았다(운영자 260803 지목).
+const Q_LAG_MIN = 20;   // api/pending STUCK_MIN(20) 동값 계승 — "이 이상 안 끝나면 정상 대기가 아니다"의 레포 단일 사다리(신설 값 0)
+function qEff(it) {
+  if (!it) return '';
+  if (it.status !== 'succ' || qMatch(it.id)) return it.status;
+  const age = it.t ? (Date.now() - it.t) / 60000 : 0;
+  return age >= Q_LAG_MIN ? 'lag' : 'processing';
+}
+function qGenAgo() {   // 배포본 기준시 → 'HH:MM 배포본' (없으면 '') · 시각 표기는 대기열 공용 로케일(ko-KR 24h)
+  if (!FEED_GEN) return '';
+  const d = new Date(FEED_GEN); if (isNaN(d)) return '';
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' 배포본';
+}
 function qRowHtml(it) {
   const url = /^https?:\/\//i.test(String(it.alt1 || it.key || ''));   // 활성 게이트 = 목적지(alt1‖key)와 동일 소스(게이트-목적지 갈림 차단 · 평의회7 V-1)
-  // 백엔드 succ(분석완료)여도 뷰어 피드(DATA)에 아직 안 떴으면(Pages 빌드 랙) 사실상 미준비 →
-  // 조기 '완료/초록 뉴스요약 이동' 금지, 준비될 때까지 처리중처럼 주황 ↗(원문) 유지(운영자 260622).
-  const eff = (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;
+  const eff = qEff(it);
   let status, action;
   if (eff === 'succ') {
     status = '<span class="qb-done">완료</span>';
@@ -10054,6 +10071,11 @@ function qRowHtml(it) {
     action = isAsk ? qRetryBtn('재시도 — 요청 내용을 복원해 다시 요약')
            : url ? qPickRetryBtn('재시도 — 다시 분석(대기열 재투입)')   // URL 실패 = 재분석 재발사(api/pick) — 요약요청과 대칭 재시도 제공(운영자 260713 · 구 amber 원문 대체 = 재시도 우선 · 수집함 Failed→✓ 재시도와 일관)
            : qGoBtn('gray', '원문 링크 없음');   // 전문(paste) 실패 = key='' (url無)라 재발사 복원 경로 없음 → 재시도 불가(현행 유지). 실패 보고서는 깃에 자동저장.
+  } else if (eff === 'lag') {   // 분석은 끝났고 '피드 배포 반영'만 남음 = 회전 정지 + 무채 '대기'(운영자 260803 무한 스피너 종식) — 실패가 아니라서 빨강 금지·아직 못 여니 초록도 금지 = 취소 라벨과 같은 무채 셀
+    const _g = qGenAgo();
+    status = '<span class="qb-lag" title="분석 완료 · 피드 배포 반영 대기' + (_g ? ' (현재 피드 = ' + _g + ')' : '') + '">대기</span>';
+    action = url ? qGoBtn('amber', '원문 새 탭 — 요약은 배포 반영 후 열림')
+                 : qGoBtn('gray', '분석 완료 · 피드 배포 반영 대기' + (_g ? ' (현재 피드 = ' + _g + ')' : ''));   // 회색 = 갈 곳 없음 그대로(탭 = 이 요청 추적 취소 · qCancelTap 정본)
   } else if (eff === 'retry') {   // API 일시 과부하 자동 재시도 — ↻ 회전 + 횟수(FAIL 아님)
     status = '<span class="qico s-retry spin" title="API 일시 과부하 — 자동 재시도 중' + (it.tries ? ' (' + it.tries + '회)' : '') + '">' + Q_REFR + '</span>' + (it.tries ? '<span class="qcnt">' + it.tries + '</span>' : '');
     action = url ? qGoBtn('amber', '원문 새 탭') : qGoBtn('gray', '전문 — 원문 링크 없음');
@@ -10131,7 +10153,7 @@ function qCancelTap(it, row, btn) {   // 상태머신 = jobCancelTap 100% 계승
   }
   clearTimeout(it._cxT); it._cxArm = 0;
   try { const s = qCxlSet(); s.add(qCxlId(it)); localStorage.setItem(QCXL_KEY, JSON.stringify([...s])); } catch {}
-  const eff = (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;   // qRowHtml eff 동일 기준(빌드랙 succ=스피너)
+  const eff = qEff(it);   // qRowHtml 과 같은 단일 출처(배포 미반영 succ = processing/lag)
   if (eff === 'processing' || eff === 'retry') { PEND_PROC = Math.max(0, PEND_PROC - 1); updateQBadge(); }   // 배지 즉시 동기(이후 폴은 qCxlFilter가 유지)
   btn.classList.remove('go-arm'); btn.classList.add('qcx-ok'); btn.innerHTML = CHECK_SVG; btn.title = '취소됨'; btn.setAttribute('aria-label', '취소됨'); btn.disabled = true;
   const st = row.querySelector('.qst'); if (st) st.innerHTML = '<span class="qb-cxl">취소</span>';   // 상태셀 = 이 함 2자 문법(완료·실패) 계승
@@ -10157,8 +10179,7 @@ async function loadQueue() {
   // 화면상 '진행중'(스피너로 그려지는 것) 최상단 고정 → 리스트 1페이지가 배지·진행상태와 일치.
   //   _qProg를 eff 기준(succ인데 피드 미반영=빌드랙도 qRowHtml서 스피너로 그려짐 → 상단)으로 잡아 '스피너인데 하단' 모순 차단(260701).
   //   시각 파싱 실패로 t=null이어도 진행중이면 status로 상단 → API 최신순 정렬 맨뒤로 밀려 안 뜨던 불일치 방어. 완료(succ/fail)는 API 최신순 유지(JS 안정정렬). '내역 지우기' 컷오프 이후만.
-  const _qEff = it => (it.status === 'succ' && !qMatch(it.id)) ? 'processing' : it.status;   // qRowHtml eff와 동일 기준(빌드랙 succ=스피너)
-  const _qProg = it => { const e = _qEff(it); return (e === 'processing' || e === 'retry') ? 0 : 1; };
+  const _qProg = it => { const e = qEff(it); return (e === 'processing' || e === 'retry') ? 0 : 1; };   // 상단 고정 = '진짜 도는 것'만 — lag(배포 대기 확정)는 완료 계열로 시간순(스피너 아닌 행이 1페이지를 점거하던 것 해소)
   QITEMS = items.filter(it => !it.t || it.t > cut).sort((a, b) => _qProg(a) - _qProg(b) || (b.t || 0) - (a.t || 0));
   QPAGE = 0;
   renderQueuePage();
