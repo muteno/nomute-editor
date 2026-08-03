@@ -2089,13 +2089,18 @@ def main():
     #   기본값 = 뷰어 YT_CATS 14종 - {26 노하우·스타일 · 27 교육 · 15 반려동물} = 11종(운영자 제외 지시) · 순서 = 뷰어 YT_CATS 정렬 그대로.
     #   설정(news_cats 배열)이 오면 그쪽이 정본 = 하드코딩 해체 축(news_cat 단일 축과 동거 · 구 설정만 있는 기기 = 기본 11종).
     #   쿼터 = 카테고리당 1unit(part 기준·maxResults 무관) → 11unit/런 × 48런 ≈ 528unit/일(무료 1만의 ~5%) = §1 보수성 내.
-    #   limit 10 = 뷰어가 24h 컷 뒤 상위 5개를 뽑는 후보 풀(컷 통과분이 5 미만이면 조용한 공백 = ytGrid 선례).
+    #   limit 50 = 뷰어가 24h 컷 뒤 상위 5개를 뽑는 후보 풀. 10→50(260803 실측) — yt_all이 260728에 이미 겪은
+    #   같은 병이 주제 축에만 남아 있었다: mostPopular는 며칠 묵은 영상이 상위를 점유해 앞 10건 중 24h 이내가
+    #   0~1건뿐 → 5칸이 원천적으로 안 찼다(실측 260803 09:28 = 수집 93건 중 24h 통과 11건 = 11.8% ·
+    #   뉴스25·엔터24·스포츠17 각 10건 중 1건 · 음악10/과학28/영화1/코미디23/자동차2 = 0건이라 소분류가 통째로 소멸).
+    #   50 = videos.list maxResults 상한 · 쿼터는 part 기준이라 런당 비용 불변(maxResults 무관 = §1 보수성 유지).
+    #   뷰어 컷/정렬 무접촉(24h 컷 취지 그대로 · 후보 풀만 확대) = yt_all 2109 선례 문법 그대로 계승.
     _CAT_DEF = [25, 24, 10, 17, 28, 20, 22, 1, 23, 19, 2]
     _news_cats = [c for c in (_ytc.get("news_cats") or []) if isinstance(c, int) and 0 < c < 100] or _CAT_DEF
     yt_cats, _cat_empty = {}, []
     if YT_KEY:
         for _cid in _news_cats:
-            _r = youtube(category_id=_cid, limit=10)
+            _r = youtube(category_id=_cid, limit=50)
             if _r:
                 yt_cats[str(_cid)] = _r
             else:
