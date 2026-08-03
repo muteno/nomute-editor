@@ -15,6 +15,10 @@
 const FILES = {
   trends: 'viewer/sns_trends.json',   // 기본 = SNS 다이제스트 본체(수집 1차 커밋 산출)
   brief: 'viewer/sns_brief.json',     // AI 브리프(2차 커밋 산출 · 없을 수 있음 = 빈 객체 폴백)
+  tbs: 'viewer/tbs_data.json',        // 국내 커뮤니티 베스트글(21개 커뮤 · **키워드 알림 국내 감시축**) — 260803 3차 편입:
+                                      //   Q1331 [CF-Pages-Skip] 코얼레싱이 sns-trends 커밋의 Pages 빌드를 건너뛰게 하면서, api 서빙이 없던 이 파일은
+                                      //   **화면에서 조용히 얼어붙는 상태**가 됐다(코얼레싱 자체는 옳고, 짝인 라이브 서빙이 이 축만 비어 있던 것).
+                                      //   같은 파일이 260720~26 폰 크론 사망으로 "6일간 빈 채 감시"를 이미 겪었다(sns-trends.yml 헤더 박제) = 조용한 정지 재발 축이라 즉시 봉합.
 };
 
 export async function onRequestGet({ env, request }) {
