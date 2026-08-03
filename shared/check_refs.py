@@ -2390,6 +2390,47 @@ def check_branch_freshness():
     return 0
 
 
+def check_nm_sync():
+    """동기화 생명선 상속 게이트(운영자 260803 4차 "다른 스튜디오 탭에도 전부 상속") — `viewer/nm-sync.js` SSOT(복귀 자동 재동기 ·
+    로그인 만료 자가치유 · 새 배포 자동 리로드)를 스튜디오 전 탭이 `<script src="nm-sync.js">`로 상속하는지 정적 강제.
+    표면 = 고정 7(thumb·tr·edit·sb·k·song·vd) + 자동 발견(`window.nmRefresh` 훅 보유 = 동기화 생태계 참여 선언 → 상속 의무 —
+    새 탭이 조용히 빠질 수 없다 · check_trail_spec 자동발견 동축). 모듈 자체도 3축 골격(manifest 프로브 · /?nosw=1 재진입 ·
+    HEAD ETag 대조)을 잃으면 FAIL = 속을 비우는 조용한 무력화 차단."""
+    core = ['thumb.html', 'tr.html', 'edit.html', 'sb.html', 'k.html', 'song.html', 'vd.html']
+    vdir = os.path.join(ROOT, 'viewer')
+    bad = []
+    try:
+        msrc = open(os.path.join(vdir, 'nm-sync.js'), encoding='utf-8').read()
+    except Exception:
+        print('❌ 동기화 생명선 게이트 — viewer/nm-sync.js 부재(SSOT 소실)')
+        return 1
+    for lit in ('/manifest.json', '/?nosw=1', "method: 'HEAD'"):
+        if lit not in msrc:
+            bad.append('nm-sync.js 골격 소실: ' + lit)
+    surf = set(core)
+    for f in os.listdir(vdir):
+        if f.endswith('.html'):
+            try:
+                if 'window.nmRefresh' in open(os.path.join(vdir, f), encoding='utf-8').read():
+                    surf.add(f)
+            except Exception:
+                continue
+    for f in sorted(surf):
+        p = os.path.join(vdir, f)
+        if not os.path.exists(p):
+            bad.append(f + ' 부재(고정 표면)')
+            continue
+        if 'src="nm-sync.js"' not in open(p, encoding='utf-8').read():
+            bad.append(f + ' — nm-sync.js 미상속')
+    if bad:
+        print('❌ 동기화 생명선 게이트 — 상속 누락/골격 소실:')
+        for b in bad:
+            print('   -', b)
+        return 1
+    print('✅ 동기화 생명선 게이트 — %d표면 전부 nm-sync.js 상속(고정 7 + nmRefresh 자동발견) · 모듈 3축 골격 intact.' % len(surf))
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -2602,6 +2643,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ ON/OFF 리터럴 게이트 스킵:', e)
+    try:
+        if check_nm_sync() != 0:   # 동기화 생명선 상속(운영자 260803 4차 — 스튜디오 전 탭 nm-sync.js 상속 + 모듈 3축 골격 · nmRefresh 자동발견)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 동기화 생명선 게이트 스킵:', e)
     try:
         if check_label_fill() != 0:   # 콘텐츠 라벨색(cat/bias) 솔리드 필 금지(평의회 Q329 ④ — 기능색 오독 차단 · 저알파 워시 허용)
             rc = 1

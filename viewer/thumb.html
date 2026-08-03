@@ -1188,6 +1188,7 @@
 <!-- OPA 조절 = 섹션 헤더 '• 오버레이 (OPA 60)'의 60에 인라인 휠/드래그(별도 팝업 없음) -->
 
 <script src="nm-svg.js"></script><!-- 공유 아이콘 SSOT(§🎨 CII P1·운영자 260628) — 인라인 복제 폐지·단일정본 -->
+<script src="nm-sync.js"></script><!-- 동기화 생명선 SSOT(운영자 260803 4차 "전 스튜디오 상속") — 복귀 시 자동 재동기(nmRefresh)·로그인 만료 자가치유·새 배포 자동 탑재 -->
 <script src="nm-loader.js"></script><!-- 로더 팩토리 SSOT(yeulmaru-promo mkLoader 이식) — .nmld 도트 · 강조색 --accent -->
 <script src="draft.js"></script><!-- 입력 드래프트 30분 만료 SSOT(운영자 260801) — 이 페이지 DRAFT_MS의 값 출처 -->
 <script>
@@ -3462,26 +3463,7 @@ let SRV_HIST = [], SRV_CLEAR = 0;   // SRV_CLEAR = 서버 공용 기록지우기
 let _syncOkTs = 0, _syncFails = 0, _syncWarned = false;
 function _syncOk() { _syncOkTs = Date.now(); _syncFails = 0;
   if (_syncWarned) { _syncWarned = false; const s = $('#status'); if (s && s.textContent.indexOf('동기화 끊김') >= 0) { s.textContent = ''; s.classList.remove('err'); } console.log('[thumb] 서버 동기화 복구'); } }
-function _syncBad() { _syncFails++; if (_syncFails === 2) _syncProbe(); }   // 2연속 실패 = 즉시 원인 판별(부팅 이중 축 실패면 열자마자 ~1s 내 발동)
-// ── 열림·복귀 자가치유(운영자 260803 3차 "경고 말고 자동으로 — 창 열릴 때 그거부터 확인") — 실패 원인을 redirect:'manual' 프로브로 판별:
-//    Access 로그인 만료(opaqueredirect·401·403) = 최상위 ?nosw=1 재진입(SW 우회 → 로그인 화면 자동 노출 · sw.js nm-auth-stale 자가치유와 같은 착지 · iframe 내 로그인은 frame-ancestors로 백지라 반드시 top).
-//    네트워크 사망(fetch reject) = 재진입 무익 → 경고줄 폴백 유지. 발동 창 = 열림·복귀 15s 안(입력 중 강제 이탈 방지) + 3분 재발동 가드(sessionStorage = 재진입 루프 차단).
-let _visTs = Date.now(), _probing = false;
-async function _syncProbe() {
-  if (_probing) return; _probing = true;
-  try {
-    const r = await fetch('/api/thumb?recent=1', { redirect: 'manual', cache: 'no-store' });
-    if (r.type === 'opaqueredirect' || r.status === 401 || r.status === 403) {   // 로그인 만료 확정
-      let last = 0; try { last = +sessionStorage.getItem('nm_sync_heal') || 0; } catch (_) {}
-      if (Date.now() - _visTs < 15e3 && Date.now() - last > 180e3) {
-        try { sessionStorage.setItem('nm_sync_heal', String(Date.now())); } catch (_) {}
-        console.log('[thumb] 동기화 자가치유 — 로그인 만료 감지 · 최상위 재진입(?nosw=1)');   // 계측(CLAUDE.md [관측])
-        try { window.top.location.href = '/?nosw=1'; } catch (_) { location.reload(); }
-        return;
-      }   // 가드에 걸림(입력 중·연속 재발) = 경고줄(_syncCheck)로 폴백
-    } else if (r.ok) { _syncOk(); }   // 프로브 성공 = 일시 오탐 해제
-  } catch (_) { /* 네트워크 사망 = 경고줄 유지 */ } finally { _probing = false; }
-}
+function _syncBad() { _syncFails++; if (_syncFails === 2 && window.nmSync) nmSync.probeNow(); }   // 2연속 실패 = 원인 판별 위임(3차 인라인 → nm-sync.js SSOT 승격 · 운영자 260803 4차 "전 스튜디오 상속") — 로그인 만료 = 최상위 자동 재진입 / 회선 사망 = 아래 _syncCheck 경고줄 폴백
 function _syncCheck() {   // 10s 인터벌 편승 — 보임 상태에서 연속 3실패 + 마지막 성공 45s↑(부팅부터 전멸 포함)면 경고
   if (document.hidden || _syncFails < 3 || (_syncOkTs && Date.now() - _syncOkTs < 45e3)) return;
   const s = $('#status'); if (!s) return;
@@ -4913,12 +4895,13 @@ renderHist();        // 로컬(이 기기) 즉시 표시
 idbPrune(Date.now() - THUMB_HMS);   // 보관 이미지(IDB) 12h 경과분 정리(이력 보관과 동기 · 운영자 260624)
 maybeOpenHist();     // #done=<id>(제작완료 알림) 진입이면 그 결과를 맨 위 큰 결과로 복원·랜딩(서버 병합 후 loadServerHist서 재확인)
 loadServerHist();    // 전 기기 제작분(thumb-hist.json) 병합 — 기기간 공유
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { _visTs = Date.now(); _syncFails = 0; } pollServerHist(); pollR2Recent(); });   // 포그라운드 복귀 시 두 축 즉시 재fetch(원인2 — 상시 탭 desync 봉합 · R2 즉시 축 동반 = 구판은 10s 첫 틱 대기라 폰 복귀 직후 공백 · 운영자 260803 2차) · _visTs 갱신+실패 리셋 = 복귀 직후 15s 자가치유 창 재무장(3차)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) _syncFails = 0; pollServerHist(); pollR2Recent(); });   // 포그라운드 복귀 시 두 축 즉시 재fetch(원인2 — 상시 탭 desync 봉합 · R2 즉시 축 동반 = 구판은 10s 첫 틱 대기라 폰 복귀 직후 공백 · 운영자 260803 2차) · 실패 리셋 = 복귀 시 원인 재판별 준비(자가치유 창·재진입은 nm-sync.js 전담 = 4차 SSOT 승격)
 window.addEventListener('focus', () => { pollServerHist(); pollR2Recent(); });
-window.addEventListener('pageshow', e => { if (e.persisted) { _visTs = Date.now(); _syncFails = 0; pollServerHist(); pollR2Recent(); } });   // iOS PWA bfcache 복귀 = visibilitychange 미발화 경로 보강(운영자 260803 2차) · 자가치유 창 동반 재무장(3차)
+window.addEventListener('pageshow', e => { if (e.persisted) { _syncFails = 0; pollServerHist(); pollR2Recent(); } });   // iOS PWA bfcache 복귀 = visibilitychange 미발화 경로 보강(운영자 260803 2차) · 자가치유는 nm-sync.js pageshow 리스너가 동반 처리(4차)
 setInterval(() => { pollServerHist(); pollR2Recent(); _syncCheck(); }, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 주기 재폴링(visible일 때만 · 구 90s → 운영자 260731 "동기화가 십초 단위로" 승격) — Pages 이력 + R2 즉시 발견 2축(즉시 축 = 배포 랙 없이 10~20s 수신 · 운영자 260731 "즉시 경로 얹기") · 무변경 = sig·known 게이트가 재렌더 억제(깜빡임 0) · _syncCheck = 동기화 생명선 경고(260803 2차)
 pollR2Recent();   // 부팅 1회 = 열자마자 최근 창 즉시 수신(10s 첫 틱 대기 없이)
-window.nmRefresh = () => { pollR2Recent(); return pollServerHist(); };   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시(R2)·정식(Pages) 두 축 동시 재fetch
+window.nmRefresh = () => { pollR2Recent(); return pollServerHist(); };   // 부모 셸 헤더 새로고침(#toolRf · 운영자 260731) 훅 — 즉시(R2)·정식(Pages) 두 축 동시 재fetch · nm-sync.js 복귀 자동 재동기도 이 훅을 호출(4차)
+window.nmSyncBusy = () => JOBS.some(j => j && j.status !== 'done' && j.status !== 'err');   // nm-sync 새 배포 자동 리로드의 한가 판정 — 진행 중 잡 있으면 리로드 이월(4차)
 </script>
 <script src="cscroll.js"></script>
 
