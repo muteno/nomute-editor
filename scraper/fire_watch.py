@@ -36,9 +36,14 @@ LEDGER = ROOT / "push" / "fire_watch.json"   # 추적 원장 {사건키: {t0, ki
 PICK = ROOT / "scraper" / "pick_pending.py"
 KST = timezone(timedelta(hours=9))
 
-CHECKS = (15, 30)                 # 되짚기 시점(분) — 운영자 지정
-GRACE_MIN = 10                    # 되짚기 유예 = 러너 간격(15분 cron)이 흔들려도 '지난 회차'는 반드시 한 번 한다(창을 놓치지 않음)
-WATCH_TTL_H = 6                   # 원장 보존 — 마지막 되짚기(30분) + 여유. 지나면 정리(파일 무한 성장 차단)
+# 되짚기 = **발령 후 WATCH_TTL_H 동안 매 런(15분)** — 운영자 260803 2차 개정.
+#   ⚠ 구판 = 15·30분 두 회차로 끝(운영자 1차 지시 문면). 실제 보도 리듬을 못 따라간다:
+#     운영자 실측 사례 = 08:20 사건(사망) → **10:00 보도** → 그때야 사람이 스크랩을 보고 안다.
+#     구판은 08:50에 문을 닫아 그 10:00 보도를 **영영 못 잡는다**(놓침 = 이 기능의 존재 이유 상실).
+#   화재·지진은 피해가 클 확률이 높아 보도성이 강하다(운영자) → 창을 넓히고, 대신 픽 가드로 과금을 막는다.
+#   비용 = 수집함 스캔 로컬 0 · 네이버는 사건당 최대 24콜(6h/15분 · 일 25,000 한도 대비 무시 가능).
+FIRST_CHECK_MIN = 5               # 발령 직후 5분은 스킵(그 시점 기사 = 사건 인지 자체가 없다 · 검색 낭비)
+WATCH_TTL_H = int(os.environ.get("FIRE_WATCH_H", "6"))   # 추적 창 — 화재 사망 확정 보도는 통상 1~4시간(6h면 덮는다). 조정 = env 1줄
 EVENT_GAP_MIN = 45                # 같은 사건 판정 창 — 같은 불의 인접 구 발령이 이 안에 들어온다(실측 08:41~09:04 = 23분)
 FIRE_DAY_CAP = int(os.environ.get("FIRE_DAY_CAP", "6"))   # 일 픽 상한(과금 가드 · auto_pick_breaking 정신 계승)
 ART_GRACE_MIN = 30                # 기사 발행이 발령보다 이만큼 앞서는 것까지는 같은 사건으로 인정(최초 인지 보도가 문자보다 빠른 경우)
@@ -166,6 +171,32 @@ def search(ev):
     return None
 
 
+def notify(ev, art):
+    """사상자 확인 = **그 자리에서 알린다**(운영자 260803 "이 같은 상황을 더 빨리 알려고 하는거지").
+    구판은 큐잉만 했다 = 운영자가 큐를 열어봐야 안다. 08:20 사건의 10:00 사망 보도를 기계가 10:15에 잡아도,
+    사람이 큐를 안 보면 '더 빨리'가 실현되지 않는다 → 채널 2개로 즉시 밀어낸다:
+      ⓐ 웹푸시(push_send · 폰 알림) — 앱을 안 켜고 있어도 온다. tag 'nomute-fire' = 재난 축 전용 자리.
+      ⓑ 메시지함 점등(msg.py · 단일 슬롯 fire-<사건키>) — 푸시를 놓쳐도 앱에 남는다 + 프로필 경고 점등.
+    둘 다 fail-soft — 알림 실패가 큐잉·원장을 죽이지 않는다(watchdog 관용구 계승)."""
+    head = f"🔥 {ev.get('kind') or '화재'} 사상자 확인" + (f" · {ev['lm']}" if ev.get("lm") else "")
+    body = f"{ev.get('area') or ''} — {art['title'][:80]}"
+    try:
+        subprocess.run([sys.executable, str(ROOT / "shared" / "msg.py"), "set",
+                        "fire-" + re.sub(r"[^A-Za-z0-9._-]", "_", str(ev.get("wide") or "") + str(int(ev.get("t0") or 0))),
+                        f"{head}\n{body}\n\n발령 +{int((datetime.now(KST).timestamp() - (ev.get('t0') or 0)) / 60)}분 만에 확인 — 긴급보도 큐로 넘겼어요.",
+                        "warn"], timeout=30)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::메시지함 점등 실패(무시): {e}", file=sys.stderr)
+    try:
+        out = subprocess.run([sys.executable, str(ROOT / ".github" / "scripts" / "push_send.py"),
+                              "--notify", head, body[:110], "--tag", "nomute-fire", "--url", "/?dis=1"],
+                             capture_output=True, text=True, timeout=180)
+        m = re.search(r"발송: \d+/\d+", out.stdout or "")   # push_send 최종 요약 줄 = 실발송 계약(watchdog 판정 미러)
+        print("  📣 " + (m.group(0) if m else "발송 생략(구독자·VAPID 없음)"), file=sys.stderr)
+    except Exception as e:  # noqa: BLE001
+        print(f"::warning::웹푸시 실패(무시): {e}", file=sys.stderr)
+
+
 def do_pick(ev, art):
     """긴급보도 큐 적재 — 수동픽·자동픽과 **같은 입구**(pick_pending.py · PICK_URL 키 동일 = dedup 정합)."""
     env = dict(os.environ, PICK_URL=art["url"], PICK_TITLE=" ".join(str(art["title"]).split())[:300],
@@ -208,9 +239,8 @@ def main():
             if d.get("lm") and not cur.get("lm"):
                 cur["lm"] = d["lm"]
 
-    # ② 되짚기 — 15·30분이 지난 회차는 (러너 간격이 흔들려도) 반드시 한 번 실행. 사상자 확인 시 큐잉.
-    #   상한을 안 두는 이유 = 러너가 40분 만에 돌면 15·30 회차가 한꺼번에 due 가 되는데, 그건 '놓친 회차 만회'가
-    #   맞는 동작이다(검색은 due 를 묶어 1회만 = 낭비 0). 자연 상한 = 사건 TTL(WATCH_TTL_H).
+    # ② 되짚기 — 추적 창(WATCH_TTL_H) 안이면 **매 런** 사상자 검색. 러너가 15분 정본 타이머라 곧 15분 해상도.
+    #   회차(15·30) 개념을 버린 이유 = 위 상수 주석의 08:20→10:00 사례. 창이 열려 있는 동안은 계속 본다.
     picked, today = 0, datetime.fromtimestamp(now, KST).strftime("%Y-%m-%d")
     cap = led.get("_cap") if isinstance(led.get("_cap"), dict) else {}
     cap_used = int(cap.get(today) or 0)   # 일 상한 카운터 = 원장 본문과 분리(TTL 정리에 쓸려나가면 상한이 매시간 초기화된다)
@@ -218,16 +248,16 @@ def main():
         if k == "_cap" or not isinstance(ev, dict) or ev.get("picked") or not ev.get("t0"):
             continue
         el = (now - ev["t0"]) / 60.0
-        due = [c for c in CHECKS if c not in (ev.get("done") or []) and el >= c]
-        if not due:
+        if el < FIRST_CHECK_MIN:
             continue
-        ev.setdefault("done", []).extend(due)
-        print(f"🔎 되짚기 {k} (+{int(el)}분 · 회차 {due}) — 사상자 검색", file=sys.stderr)
+        ev["checks"] = int(ev.get("checks") or 0) + 1   # 되짚기 횟수(원장 로그 — 몇 번 만에 잡혔나 = 다음 튜닝 근거)
+        print(f"🔎 되짚기 {k} (+{int(el)}분 · {ev['checks']}회차) — 사상자 검색", file=sys.stderr)
         art = search(ev)
         if not art or not art.get("url"):
             print("  · 사상자 기사 없음", file=sys.stderr)
             continue
-        ev["hit"] = {"url": art["url"], "title": art["title"], "src": art["src"]}
+        ev["hit"] = {"url": art["url"], "title": art["title"], "src": art["src"], "at_min": int(el)}
+        notify(ev, art)   # ⚠ 큐잉보다 **먼저** 알린다 — 운영자가 알아야 하는 건 '사상자 확인' 그 자체(과금 가드에 막혀도 알림은 간다)
         if cap_used >= FIRE_DAY_CAP:
             print(f"::warning::일 픽 상한({FIRE_DAY_CAP}) 도달 — 큐잉 보류(원장에 근거는 남김): {art['title'][:50]}", file=sys.stderr)
             continue

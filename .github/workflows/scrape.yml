@@ -96,6 +96,8 @@ jobs:
         env:
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}          # 2순위 검색(미등록 = 빈값 → 수집함 1순위만 · 동작 불변)
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}      # 사상자 확인 즉시 웹푸시(watchdog.yml 동일 배선 · 없으면 push_send 가 '생략' rc=0)
+          VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: |
           set -o pipefail
           python3 scraper/fire_watch.py | tee /tmp/firewatch.out || echo "::warning::fire_watch 실패(스킵 — 다음 런 재평가)"
@@ -105,12 +107,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$(git status --porcelain push/fire_watch.json pending scraper/seen_urls.txt)" ]; then
+          if [ -z "$(git status --porcelain push/fire_watch.json pending scraper/seen_urls.txt messages)" ]; then
             echo "화재 추적 변동 없음 — 커밋 생략"; exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add push/fire_watch.json pending scraper/seen_urls.txt
+          git add push/fire_watch.json pending scraper/seen_urls.txt messages   # messages = 사상자 확인 알림함 점등(msg.py 산출 · 빌드 입력이라 커밋돼야 뷰어에 뜬다)
           if git diff --cached --quiet; then echo "스테이지 변화 없음 — 커밋 생략"; exit 0; fi
           git commit -m "fire-watch: 화재 후속 추적 원장 (큐잉 ${{ steps.firewatch.outputs.picked }}건)"
           pushed=0
