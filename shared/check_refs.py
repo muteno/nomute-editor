@@ -2219,6 +2219,50 @@ _ONOFF_BASE = {   # 파일별 기존 정당 사용 스냅샷(260803) — 증가 
 }
 
 
+_GENI_SCOPE_RE = re.compile(r"""(?:document\.querySelector(?:All)?|\$\$?)\(\s*(['"])\s*(\.geni-[^'"]*)\1""")
+_GENI_SCOPE_BASE = frozenset()   # 면책 스냅샷 = 비어 있음(260803 6차 전수 정리 완료) — 늘리려면 사유를 여기 주석에 남긴다
+
+
+def check_geni_scope():
+    """geni 어휘 전역 질의 금지 게이트(운영자 260803 6차 "게이트 ㄱㄱ").
+
+    ⚠ 신설 사유 = **같은 함정에 하루 세 번** 걸렸다. 설정▸다운로드 창(`#dlgrab`)이 AI 생성 폼(`#genidlg`)의
+    문법을 통째 계승해서 `.geni-body`·`.geni-histfold` 같은 클래스를 **공유**한다. 게다가 AI 생성 폼은 홈이 둘이다
+    (팝업 `#genidlg` ↔ 스튜디오 이식 `#geniHost` · geniMount가 노드를 통째 옮긴다). 그래서 `document.querySelector('.geni-…')`는
+    **문서순 첫 매치 = 남의 창**을 물 수 있고, 이식 중에는 구조적으로 그렇게 된다(#geniHost가 #dlgrab보다 뒤).
+      · 실사고1 = `geniOutPlace`의 전역 `.geni-body` → 폰 1단에서 결과 레일이 다운로드 창 안으로 이사 →
+        화면에서 소멸(rect 0×0 · offsetParent null · **콘솔 에러 0 = 완전 무증상**) · 그 창이 본문을 재구축하면 노드 영구 소멸.
+      · 실사고2 = `geniInit`의 전역 `.geni-histfold` → 남의 창 폴드 버튼에 geni 접이 핸들러 덧바인딩(CDP 리스너 0→1 · 증상 잠복).
+      · 잠복3 = 문서 말미 `cscrollAttach(document.querySelector('.geni-body'))` — 지금은 #genidlg가 앞이라 우연히 맞지만
+        마크업 순서가 한 번 바뀌면 즉시 같은 버그(260803 6차에 id 앵커로 선봉합).
+    판정 = viewer/*.html 안 `document.querySelector(All)` / `$` / `$$` 호출의 셀렉터가 **`.geni-`로 시작**하면 FAIL.
+    통과 문법 2가지 = ⓐ **id 앵커**(`#genidlg .geni-body` · `#dlgrab .geni-body`) ⓑ **스코프 호출**(`geniRoot().querySelector(…)` ·
+    `h.querySelector(…)` — 이 정규식은 `document.`/`$` 진입만 보므로 자연 통과).
+    비용 = 정적 문자열 검사(렌더 0 · LLM 0 · 네트워크 0). 롤백 = 이 함수 + 러너 1줄.
+    """
+    import glob as _g
+    bad = []
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        for m in _GENI_SCOPE_RE.finditer(src):
+            sel = m.group(2).strip()
+            key = rel + '::' + sel
+            if key in _GENI_SCOPE_BASE:
+                continue
+            bad.append('%s:%d  %s' % (rel, src.count('\n', 0, m.start()) + 1, sel))
+    if bad:
+        print('❌ geni 전역 질의 게이트 — geni 어휘는 #genidlg·#geniHost·#dlgrab이 공유한다(전역 질의 = 남의 창을 문다 · 260803 6차 실사고 2건 + 잠복 1건):')
+        for b in bad:
+            print('   -', b, '→ id 앵커(`#genidlg .geni-…`) 또는 스코프 호출(`geniRoot().querySelector`·`h.querySelector`)로 고쳐라.')
+        return 1
+    print('✅ geni 전역 질의 게이트 — viewer 전 표면 0건(폼 두 홈 ↔ 다운로드 창 어휘 공유 사고 재발 차단).')
+    return 0
+
+
 def check_onoff_literal():
     """이진 토글 ON/OFF 리터럴 금지 게이트(운영자 260803 "off 이런거는 on off로 하는게 아니라 기능 워딩이 점등하냐 안하냐로 onoff").
     정본 = thumb #cnTog(260718 '라벨 자체 점등') — 260803에 전 스튜디오 확산 완료. 이 게이트는 재발(새 탭·새 옵션이 구 문법 부활)을 커밋 시점에 차단한다.
@@ -3326,6 +3370,8 @@ def main():
         if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
             rc = 1
         if check_affordance_inherit() != 0:   # 스킨 계승 시 어포던스(cursor·press) 비계승(운영자 260803 — 리드백 칩이 버튼 스킨과 함께 손가락 커서까지 물려받아 「눌러도 아무 일 없는 자리」가 6건 실재했다 · 런타임 짝 = smoke_hitzone H3)
+            rc = 1
+        if check_geni_scope() != 0:   # geni 어휘 전역 질의 금지(운영자 260803 6차 "게이트 ㄱㄱ" — 폼 두 홈(#genidlg↔#geniHost) ↔ 다운로드 창(#dlgrab)이 클래스를 공유해 전역 질의가 남의 창을 문다 · 실사고 2건{폰 레일 소멸·핸들러 덧바인딩} + 잠복 1건)
             rc = 1
         if check_onoff_literal() != 0:   # 이진 토글 ON/OFF 리터럴 금지(운영자 260803 "기능 워딩이 점등하냐 안하냐로 onoff" — cnTog 워드 점등 정본의 재발 차단 · 면책 = _ONOFF_BASE 스냅샷)
             rc = 1
