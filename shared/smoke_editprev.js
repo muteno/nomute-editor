@@ -84,7 +84,7 @@ function chk(name, pass, detail) { R.push({ name, pass, detail }); console.log((
     const stuck = await pg.evaluate(() => ({ top: +document.querySelector('.topdock').getBoundingClientRect().top.toFixed(2), y: window.scrollY }));
     await pg.evaluate(() => window.scrollTo(0, 0)); await pg.waitForTimeout(150);
     chk('C2 도크 스티키(미리보기+스트립+생성 한 몸 · 스크롤 고정)',
-      !!dock && dock.pos === 'sticky' && dock.top === '0px' && dock.pv && dock.go && dock.strip && Math.abs(stuck.top) <= 0.5 && stuck.y > 200,   /* 하한 300 → 200(260803): 미리보기 창이 카드 제작 정본(1:1 · --pvw 52%)으로 통일되며 도크가 ~157px 낮아져 **페이지 자체가 짧아졌다**(실측 스크롤 여유 445 → 288). 판정 취지 = 「실제로 스크롤이 일어났는데도 도크가 top 0에 붙어 있나」라 여유값이 아니라 top 0이 본질 — 하한만 실측 여유 아래로 내린다 */
+      !!dock && dock.pos === 'sticky' && dock.top === '0px' && dock.pv && dock.go && dock.strip && Math.abs(stuck.top) <= 0.5 && stuck.y > 100,   /* 하한 200 → 100(260803 7차): 옵션 카드가 줄어 페이지가 또 짧아졌다(번역·고프레임·배경음·음량 4장 → 레일/자막 안으로 이주 · 실측 스크롤 여유 288 → 135). 판정 취지는 아래 260803 주석 그대로 = **top 0**이 본질이고 여유값은 「스크롤이 실제로 일어났나」의 하한일 뿐 */   /* 하한 300 → 200(260803): 미리보기 창이 카드 제작 정본(1:1 · --pvw 52%)으로 통일되며 도크가 ~157px 낮아져 **페이지 자체가 짧아졌다**(실측 스크롤 여유 445 → 288). 판정 취지 = 「실제로 스크롤이 일어났는데도 도크가 top 0에 붙어 있나」라 여유값이 아니라 top 0이 본질 — 하한만 실측 여유 아래로 내린다 */
       dock ? ('pos ' + dock.pos + '/' + dock.top + ' · scrollY ' + stuck.y + ' → top ' + stuck.top) : '도크 없음');
 
     // C3 빈 상태 계약(상시 박스 · **카드 제작 사진 픽토 정본** · 4분할 중앙 · 260803 통일)
