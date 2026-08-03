@@ -2303,17 +2303,23 @@
   /* ── AI 생성 판 결과 레일 2단(운영자 260803 6차 "ai생성은 우측에 편집처럼 결과가 안 붙거든 · 편집과 다 동일하게") ──
      구판 = `> * { max-width:calc(50% - sp-3/2) }` = 리드·바디를 **좌 절반에 묶기만** 하고 우 절반은 빈 화면이었다(형제 4탭은 그 자리에 결과·이전 제작 레일이 선다).
      지금 = thumb `html.inmodal .wrap` 정본 문법 그대로 **진짜 2단 그리드** — 좌 = 리드(도크)+바디(폼) / 우 = `.out`(결과·이전 제작) · 트랙 = minmax(0,1fr) 2벌 · gap = --sp-3 · `grid-row:1/span 99` = 레일이 도크 상단선부터 나란히(안 걸면 바디 아래로 밀린다) · align-self:start = 늘어남 방지.
-     ⚠ thumb과 다른 축 2개(구조 차이라 값 창작 아님): ⓐ 이 판은 flex column 셸(리드 고정 + 바디 자체 스크롤)이라 행 사다리 `auto minmax(0,1fr)`가 필요하다(thumb은 문서 스크롤) ⓑ 레일 스크롤 = thumb의 `sticky top:sp-3 + max-height:calc(100svh - sp-3)` 대신 `#dlgrab .dg-wrap` 정본 동문(`max-height:100%` + 칼럼 자체 스크롤) — 창 높이 고정 셸에서 같은 결과(레일이 항상 눈에 남음).
+     ⚠ thumb과 다른 축 2개(구조 차이라 값 창작 아님): ⓐ 이 판은 flex column 셸(리드 고정 + 바디 자체 스크롤)이라 행 사다리 `auto minmax(0,1fr)`가 필요하다(thumb은 문서 스크롤) ⓑ 레일 스크롤 = thumb의 `sticky top:sp-3 + max-height:calc(100svh - sp-3)` 대신 같은 파일 다운로드 창 2단의 **우 칼럼과 동축**(`#dlgrab .geni-body { max-height:100%; overscroll-behavior:contain }` — `.dg-wrap`은 그리드 컨테이너라 max-height가 없다 = 평의회8 지적 셀렉터 오귀속 교정) · 값은 문자 계승이 **아니라** `calc(100% - var(--sp-3)*2)`(위 margin-top 36 차감 = 창 밖 넘침 0). ⚠ **정지 상태만 동값이다** — 스크롤 중엔 형제 sticky 레일이 y130으로 붙고 이 레일은 y148 고정 = **18px 벌어진다**(평의회1·8 실측 · 셸이 스크롤 컨테이너가 아니라 본문이 스크롤하는 구조라 CSS로는 못 맞춘다 · 게이트 없음) — 창 높이 고정 셸에서 같은 결과(레일이 항상 눈에 남음).
      좌 칼럼 **트랙 폭** = 구 max-width 캡과 정확히 동값((W−18)/2 = 1280에서 631) → 리드(도크)·발사 버튼 기하 무변(실측 631 · #geniGo 599@x16 동일).
      ⚠ 단 **폼 카드는 16px 넓어진다**(599→615 · 우변 x615→x631) — 아래 `> .geni-body { padding-right:0 }`이 2단에서 우측 거터를 칼럼 간격에 넘기기 때문이고, 그게 곧 thumb 좌 칼럼 우변과 한 선이 되는 지점이다(검증관5 실측 · 「기하 무변」이라고 쓰면 거짓말).
      롤백 = 이 블록 + 마크업 .out 래퍼 + geniOutPlace 3함수. */
+  #geniOut::-webkit-scrollbar { width:0; height:0; display:none; }   /* raw-ok: thumb `html::-webkit-scrollbar, body::-webkit-scrollbar` 정본 문자 그대로 — 위 scrollbar-width:none의 웹킷 짝(이 파일 전역 ::-webkit-scrollbar 5px를 이 레일에서만 소거 = 형제 레일과 한 값) */
+  #tooldlg.tool-full .genihost .out { margin-top:var(--sp-3); }   /* 폰 1단(= 본문 말미 거처) 레일 머리 여백 = 형제 4탭 `.out{margin-top:18px}` 정본 동값(thumb.html · --sp-3 = 18) —
+     ⚠ 평의회2 실측: 아래 2단 규칙을 미디어쿼리 안에만 둬서 **폰에서 AI 생성만 0**이었다(형제 18) = 같은 작업에서 tr.html 몫으로 고친 결함을 주인공 탭에 남긴 꼴.
+     자손 셀렉터 = 1단 거처(.geni-body 안)·2단 거처(.genihost 직계) 양쪽 · 2단은 아래 `> .out`(동 특이도·뒤 소스)이 calc(--sp-3*2)로 재승리. */
   @media (min-width:900px) {
     #tooldlg.tool-full .genihost { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); column-gap:var(--sp-3); }
+    #tooldlg.tool-full .genihost > * { grid-column:1; }   /* 좌 칼럼 못 = 형제 2단 표면 문자 그대로 계승(tr.html `html.inmodal .wrap > *` · 같은 파일 `#dlgrab .dg-wrap > *`) — 평의회1 킬테스트: 이 못이 없으면 레이아웃이 `#geniOut`의 **물리적 존재**에 매달린다(레일을 지우면 자동배치가 폼을 우칼럼으로 보내고 도크가 그 위에 겹침 = 실측 .geni-body x0→x649) · 신설 C12는 폰 1단 전용이라 이 축을 원리적으로 못 본다 */
     /* (구 `> * { max-width:calc(50% - sp-3/2) }` = 폐지 — 레일이 없던 시절 「좌 절반에 묶기」 대역이었고, 진짜 2단 트랙이 생긴 지금은 **칼럼 안에서 다시 반으로** 잘랐다(실측 1280: 631 → 306.5). 폭 계약은 이제 트랙이 전담) */
     #tooldlg.tool-full .genihost > .geni-body { padding-right:0; }   /* 2단에선 바디 우측 거터를 칼럼 간격이 전담 → 폼 카드 우변 = thumb 좌 칼럼 우변(16..W/2−9)과 한 선(thumb `html.inmodal .topdock{margin-right:0}` 도크 브레이크아웃 우변 회수와 같은 축) */
     #tooldlg.tool-full .genihost > .out { grid-column:2; grid-row:1 / span 99; align-self:start;
       margin-top:calc(var(--sp-3) * 2) /* 레일 머리 화면선 = 형제 4탭 동값(프레임 상단 +36) — 합성분 그대로: thumb `.wrap` 상단 거터 18 + thumb `.out{margin-top:18}` 리듬 18(신규 값 0 · 이 셸엔 .wrap이 없어 둘을 한 마진으로 합산) */;
       max-height:calc(100% - var(--sp-3) * 2); overflow-y:auto; overscroll-behavior:contain;
+      scrollbar-width:none; -ms-overflow-style:none /* 스튜디오 전면 소거와 한 값(thumb.html `* { scrollbar-width:none }` 260803 5차 "스크롤 없애줘" 정본) — 이 레일은 index 안에 **새로** 생긴 스크롤 컨테이너라 그 7표면 일괄 조치에 안 들어갔고, 형제 4탭 레일(none)과 AI만 갈렸다(평의회1 실측 thin vs none) · 웹킷 몫은 아래 `#geniOut::-webkit-scrollbar` */;
       margin-right:16px /* raw-ok: thumb `.wrap` 우측 거터 정본 exact(이 파일 `.genihost .geni-body` 16 계승) — 레일 **박스**까지 형제 4탭 동값(615 · 실측: 이걸 padding으로 두면 잉크는 맞아도 박스만 631로 갈린다) */; }
   }
   #tooldlg.tool-full .geni-prev { --pvw:min(52%, 29cqh, 300px); }   /* 모달 안 상시 크기 = 형제 3탭(thumb 도크) 동값(운영자 260802 2차 "이정도를 항상 유지") — 구 기본 캡(58cqh/620)의 정확히 절반 = 260801 0.5 계약 그대로 · 확대만 아래 .dockzoom */
@@ -3456,17 +3462,12 @@
   .geni-alt[hidden] { display:none; }   /* display:block이 hidden UA 스타일을 이겨 자유 모드에 노출되던 잠복 버그 수리(260710 실측) — 실사진 재검색 = 기사 모드 전용 */
   .geni-alt:active { transform:scale(var(--press-m)); }
   /* ── AI 생성 결과·이전 제작(운영자 260718 "동일한 형태로 · 0으로" → 260803 실데이터 배선) = 편집(thumb) .car-h/.hist-h 형태 계승 · 데이터 = 공유 이력 합류(geniHist* 블록 — tr.html 문법 이식 · 구 '정적 빈 상태' 해소) · 접이 = 카메라 폴드(.geni-fold) 패턴 계승 ── */
-  .geni-histwrap { margin-top:14px /* raw-ok: thumb .hist margin-top 14 계승 */; }
+  .geni-histwrap { margin-top:14px /* raw-ok: nm-hist `.car-h, #geniResH { margin-top:14px }` 계승 — ⚠ 구 주석 「thumb .hist margin-top 14」는 오귀속(정본 `.hist`는 **20**이다 · 평의회8 M3) */; }
   .geni-histfold[aria-expanded="true"] .geni-histttl { color:var(--accent); }
-  /* (.geni-histfold/-ttl/-bul/-cnt/-note/-empty/-chev 색 · #geniResH 스킨 = nm-hist.css 별칭 흡수 · 운영자 260803 Q1243 "AI 생성 이력 사본 소멸" — 여기 남은 것 = geni 고유 축뿐{wrap 여백·prev 라임 점등·chev 배치·grid-rows 접이 애니} · 인라인 사본 금지) */
-  .geni-histfold.prev[aria-expanded="true"] .geni-histttl { color:var(--accent); text-shadow:0 0 10px rgba(var(--accent-rgb),.45); }   /* 이전 제작 펼침 = **형광 점등** = nm-hist `.hist.open .hist-ttl` 정본 값 exact(운영자 260803 6차 "편집과 다 동일하게" · 검증관2 실측: 구값 --hist-accent 골드는 주석엔 "thumb .hist.open 계승"이라 적혀 있었지만 정본은 --accent였다 = 주석·코드 불일치분 회수) */
-  .geni-histfold.prev[aria-expanded="true"] .geni-histbul { color:var(--accent); }   /* 펼침 블릿도 형광 = nm-hist `.hist.open .hist-bul` 정본 동문(접힘 = 아래 이력색 유지) */
+  /* (.geni-histfold/-ttl/-bul/-cnt/-note/-empty/-chev 색 · #geniResH 스킨 = nm-hist.css 별칭 흡수 · 운영자 260803 Q1243 "AI 생성 이력 사본 소멸" — 여기 남은 것 = geni 고유 축뿐{wrap 여백·chev 래퍼 배치} — ⚠ 「prev 라임 점등」은 260803 6차에 형광(--accent)으로 회수됐고 「grid-rows 접이 애니」는 nm-hist `#geniResBody{display:block}`가 id 특이도로 이겨 이 판에선 사문(다운로드 창 폴드 전용) = 평의회8 M4 열거 갱신 · 인라인 사본 금지) */
+  /* (AI 생성 판 이력 레일 값 7줄 = nm-hist.css로 이관 · 운영자 260803 6차 평의회2 지적 "인라인 사본 금지"[SSOT §0-16-1 · nm-hist.css:3 · 바로 위 Q1243 주석의 역주행이었다] — 구분줄 3값·본문 여백·결과 본문 10·펼침 형광·체브론 폭/속도 전부 그쪽 별칭 행에서 소비 · 인라인 사본 금지) */
+  /* ⚠ 이 사본들이 소스 **뒤**라 nm-hist.css의 전정계(reduced-motion) 가드까지 이기고 있었다(평의회5 실측: reduce에서도 0.18s로 회전) — 이관이 곧 그 봉합 */
   .geni-histfold.prev .geni-histbul { color:var(--hist-accent); }   /* 이전 제작 = 이력색 블릿(thumb .hist-bul) */
-  #geniOut .geni-histwrap:has(.geni-histfold.prev) { margin-top:20px; padding-top:14px; border-top:1px solid var(--line2); }   /* 결과↔이전 제작 구분줄 = nm-hist `.hist` 정본 3값 exact 계승(운영자 260803 6차 · 검증관2·4 실측: AI 판만 그 부품이 통째 결손이라 헤어라인 0줄·간격 21px 부족 = 형제 4탭 45px vs AI 24px) */
-  #geniOut .geni-histchev svg { transition:transform var(--dur); }   /* 회전 속도 = nm-hist `.hist-ar` 정본 동값(--dur 0.18s) — geni만 --dur-acc(0.26s)라 같은 손짓에 44% 느리게 돌았다(검증관3 실측 5탭: 0.18·0.18·0.18·**0.26**·0.18) */
-  #geniOut .geni-histchev { width:auto; }   /* 체브론 우변 = 형제 4탭 한 선(운영자 260803 6차 · 검증관2·4 실측 Δ7.00px: geni만 30px 래퍼 안 중앙정렬이라 글리프가 안쪽으로 밀렸다 — 정본은 svg가 헤더 직계 + margin-left:auto{nm-hist .hist-ar} · 폭 캡만 풀면 span이 글리프를 쉬링크랩해 같은 자리) */
-  #geniOut .geni-histbody { margin-top:6px; }   /* 소머리↔본문 = nm-hist `.hist-body` 정본 동값(구 0 = 본문이 소머리에 붙어 있었다) */
-  #geniOut #geniResBody { margin-top:10px; }   /* raw-ok: 결과 본문만 10 = 편집 정본 동값(그쪽 첫 형제 `.jobs { margin:10px 0 0 }` nm-job.css) — 검증관4 실측 「결과 잉크→빈문구 잉크」 카드/편집/특수 59 · 번역 55 · AI 49를 한 값 59로 수렴 */
   .geni-histchev { flex:none; width:30px; display:grid; place-items:center; }   /* 배치만(geni 고유 · span 래퍼 구조 · 스코프 밖 소비처 = 다운로드 창 폴드) — 색·ml auto·회전 전이 = nm-hist .hist-ar 별칭 전담(구 mut → 정본 라임 = 공개 변경 260803) */
   .geni-histchev svg { display:block; transition:transform var(--dur-acc) var(--ease); }
   .geni-histfold[aria-expanded="true"] .geni-histchev svg { transform:rotate(180deg); }
@@ -5807,7 +5808,11 @@ function geniOutPlace() {
   const h = $('#geniHost');
   const body = (h && h.querySelector('.geni-body')) || document.querySelector('#genidlg .geni-body');   // ⚠ 전역 `.geni-body` 질의 금지 — 이식 중 문서순 첫 `.geni-body`는 **다운로드 창(#dlgrab #dgBody)** 것이라(그 창이 geni 문법을 계승했다) 1단에서 레일이 남의 창 안으로 이사해 화면에서 소멸했다(검증관 실측 430: rect 0,0,0,0 · offsetParent null · 다운로드 창을 열면 거기 그려짐). 스코프 = geniUnmount(아래)가 이미 쓰는 호스트 기준 문법과 동축
   const dest = (h && !h.hidden && _geniTwoCol.matches) ? h : body;
-  if (dest && o.parentNode !== dest) dest.appendChild(o);   // 접이 상태·카운트·리스너 전부 노드에 붙어 있어 이동만으로 보존(geniMount 통째 이식 문법 동축)
+  if (dest && o.parentNode !== dest) {
+    const a = document.activeElement, keep = o.contains(a);   // reparent = 포커스가 body로 날아간다(평의회5 실측: 폭 왕복 후 :focus-visible 1→0 · 직후 Enter 무반응 · Tab 재개가 모달 처음부터) — 형제 4탭은 CSS 그리드라 이 축 자체가 없다 = 이 판만의 회귀
+    dest.appendChild(o);
+    if (keep && a && a.isConnected) { try { a.focus({ preventScroll: true }); } catch (_) {} }   // preventScroll = 포커스 복원이 레일을 튀게 하지 않는다(스크롤 드리프트 축 무접촉)
+  }   // 접이 상태·카운트·리스너 전부 노드에 붙어 있어 이동만으로 보존(geniMount 통째 이식 문법 동축)
 }
 _geniTwoCol.addEventListener('change', geniOutPlace);   // 창 폭 왕복(PC 창 리사이즈·폰 회전) = 거처 재판정
 function geniMount() {   // 프롬프팅 탭 = genidlg 폼을 탭 콘텐츠로 이식(운영자 260713 B "B로 간다" — askMount 선례 미러 · 팝업 한 겹 없이 폼이 바로 화면 · 발사·이탈·닫힘 = 원복)

@@ -185,7 +185,7 @@ const GAPPROBE = () => {
   // ── C10 재료 = 스크롤 드리프트(운영자 260803 "도입 ㄱㄱ") — 스크롤러(iframe = 문서 · 폴백 = 첫 overflow 컨테이너 · AI판 = .geni-body) 140px 내림
   //    → 미리보기 박스(.cpprev-box/.mon/AI판) 뷰포트 이동량 → 즉시 원위치(0). 정본 = Δ0(도크 정지 = sticky 동일점 · -18 전액 상쇄).
   //    스크롤 불가(내용이 짧은 탭 = 이미지 편집·특수·큐영상 실측) = null = N/A — 게이트 쪽 최소 측정수 가드가 프로브 전사(全死)를 잡는다.
-  // ── C11 재료 = 결과 레일(.out) 실존·가시(폰 1단) ──────────────────────────────────────────────
+  // ── C12 재료 = 결과 레일(.out) 실존·가시(폰 1단) ──────────────────────────────────────────────
   //   ⚠ 신설 사유 = 260803 6차 실사고: AI 생성 판 결과 레일이 **1단에서 남의 창(#dlgrab) 안으로 이사**해
   //   화면에서 통째로 사라졌는데(rect 0×0 · offsetParent null · 그 창을 열면 거기 그려짐 · 콘솔 에러 0 = 무증상),
   //   기존 축이 하나도 못 봤다 — C7 `res`(미리보기 모듈 등가)는 **1280 2단에서만** 돌고, 이 폰 sweep의
@@ -198,7 +198,12 @@ const GAPPROBE = () => {
     if (!el) return null;
     const host = inFr ? 'frame' : (gHost && gHost.contains(el) ? 'geniHost'
       : ('OUTSIDE:' + (el.closest('dialog') ? '#' + (el.closest('dialog').id || '?') : (el.parentElement ? el.parentElement.className || el.parentElement.tagName : '?'))));
-    return { ok: vis(el) && host !== 'frame:none' && host.indexOf('OUTSIDE') !== 0, w: +el.getBoundingClientRect().width.toFixed(1), host };
+    // 가시 판정 = offsetParent만으로는 부족(평의회3 실측: visibility:hidden·opacity:0·화면 밖 이동이 전부 빠져나갔다) → 실제로 눈에 닿는 조건을 AND
+    const r = el.getBoundingClientRect(), c = (el.ownerDocument.defaultView || window).getComputedStyle(el);
+    // ⚠ 뷰포트 교차는 **판정에 안 쓴다** — 폰 1단에선 레일이 본문 아래(실측 y≈1347 > 창 900)에 정상적으로 있고 스크롤해서 본다.
+    //   평의회3 처방 중 이 항만 기각: 넣었더니 카드생성이 `offscreen`으로 FAIL(위양성 실증). 남는 사각 = transform으로 화면 밖에 밀어둔 경우(정직 각주).
+    const seenReally = vis(el) && c.visibility !== 'hidden' && parseFloat(c.opacity) > 0;
+    return { ok: seenReally && host.indexOf('OUTSIDE') !== 0, w: +r.width.toFixed(1), host, why: seenReally ? '' : (!vis(el) ? 'offsetParent' : c.visibility === 'hidden' ? 'visibility' : 'opacity') };
   };
   let drift = null;
   const box = [...d.querySelectorAll('.cpprev-box, .mon')].filter(vis)[0]
@@ -470,7 +475,7 @@ async function runOnce(pg, gap, clone) {
   //   스코프 = 이미지 셸 5탭(영상 셸은 song 큐가 결과 전까지 hidden 등 레일 노출 계약이 탭마다 달라 별개 축 = 넓히려면 사유와 함께).
   const RT = G.filter(([k]) => k.indexOf('이미지_') === 0);
   const rBad = RT.filter(([, v]) => !v || !v.rail || !v.rail.ok || !(v.rail.w > 0))
-    .map(([k, v]) => k.split('_')[1] + '(' + (v && v.rail ? v.rail.host + '·w' + v.rail.w : '레일 없음') + ')');
+    .map(([k, v]) => k.split('_')[1] + '(' + (v && v.rail ? v.rail.host + '·w' + v.rail.w + (v.rail.why ? '·' + v.rail.why : '') : '레일 없음') + ')');
   core('C12 결과 레일 = 이미지 5탭 전부 폰 430 실존·가시(거처 = 자기 프레임 / 살아있는 #geniHost)',
     RT.length === 5 && rBad.length === 0,
     rBad.length ? '이탈 ' + rBad.join(' · ') : RT.map(([k, v]) => k.split('_')[1] + ':' + v.rail.host + '·w' + v.rail.w).join(' '));

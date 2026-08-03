@@ -2300,47 +2300,72 @@ _ONOFF_BASE = {   # 파일별 기존 정당 사용 스냅샷(260803) — 증가 
 }
 
 
-_GENI_SCOPE_RE = re.compile(r"""(?:document\.querySelector(?:All)?|\$\$?)\(\s*(['"])\s*(\.geni-[^'"]*)\1""")
+# 진입 어휘 = document(+속성 체인) 계열 · $ / $$ — 평의회3 실측 우회 18수법 중 14건이 이 확장으로 닫힌다
+_GENI_ENTRY_RE = re.compile(
+    r"""(?:(?:window\s*\.\s*)?document(?:\s*\.\s*\w+)*\s*\.\s*(?:querySelector(?:All)?|getElementsByClassName|evaluate)|\$\$?)\s*\(\s*(['"`])(.*?)\1""",
+    re.S)
 _GENI_SCOPE_BASE = frozenset()   # 면책 스냅샷 = 비어 있음(260803 6차 전수 정리 완료) — 늘리려면 사유를 여기 주석에 남긴다
 
 
 def check_geni_scope():
-    """geni 어휘 전역 질의 금지 게이트(운영자 260803 6차 "게이트 ㄱㄱ").
+    """geni 어휘 전역 질의 금지 게이트(운영자 260803 6차 "게이트 ㄱㄱ" · 평의회3 지적 반영 2차).
 
     ⚠ 신설 사유 = **같은 함정에 하루 세 번** 걸렸다. 설정▸다운로드 창(`#dlgrab`)이 AI 생성 폼(`#genidlg`)의
-    문법을 통째 계승해서 `.geni-body`·`.geni-histfold` 같은 클래스를 **공유**한다. 게다가 AI 생성 폼은 홈이 둘이다
-    (팝업 `#genidlg` ↔ 스튜디오 이식 `#geniHost` · geniMount가 노드를 통째 옮긴다). 그래서 `document.querySelector('.geni-…')`는
+    문법을 통째 계승해서 `.geni-body`·`.geni-histfold` 같은 클래스를 **공유**한다. 게다가 그 폼은 홈이 둘이다
+    (팝업 `#genidlg` ↔ 스튜디오 이식 `#geniHost` · geniMount가 노드를 통째 옮긴다). 그래서 전역 질의는
     **문서순 첫 매치 = 남의 창**을 물 수 있고, 이식 중에는 구조적으로 그렇게 된다(#geniHost가 #dlgrab보다 뒤).
-      · 실사고1 = `geniOutPlace`의 전역 `.geni-body` → 폰 1단에서 결과 레일이 다운로드 창 안으로 이사 →
-        화면에서 소멸(rect 0×0 · offsetParent null · **콘솔 에러 0 = 완전 무증상**) · 그 창이 본문을 재구축하면 노드 영구 소멸.
-      · 실사고2 = `geniInit`의 전역 `.geni-histfold` → 남의 창 폴드 버튼에 geni 접이 핸들러 덧바인딩(CDP 리스너 0→1 · 증상 잠복).
-      · 잠복3 = 문서 말미 `cscrollAttach(document.querySelector('.geni-body'))` — 지금은 #genidlg가 앞이라 우연히 맞지만
-        마크업 순서가 한 번 바뀌면 즉시 같은 버그(260803 6차에 id 앵커로 선봉합).
-    판정 = viewer/*.html 안 `document.querySelector(All)` / `$` / `$$` 호출의 셀렉터가 **`.geni-`로 시작**하면 FAIL.
-    통과 문법 2가지 = ⓐ **id 앵커**(`#genidlg .geni-body` · `#dlgrab .geni-body`) ⓑ **스코프 호출**(`geniRoot().querySelector(…)` ·
-    `h.querySelector(…)` — 이 정규식은 `document.`/`$` 진입만 보므로 자연 통과).
-    비용 = 정적 문자열 검사(렌더 0 · LLM 0 · 네트워크 0). 롤백 = 이 함수 + 러너 1줄.
+      · 실사고1 = `geniOutPlace` 전역 `.geni-body` → 폰 1단에서 결과 레일이 다운로드 창 안으로 이사해 화면 소멸
+        (rect 0×0 · offsetParent null · **콘솔 에러 0 = 완전 무증상** · 그 창이 본문 재구축하면 노드 영구 소멸).
+      · 실사고2 = `geniInit` 전역 `.geni-histfold` → 남의 창 폴드에 핸들러 덧바인딩(CDP 리스너 0→1 · 증상 잠복).
+      · 잠복3 = 문서 말미 `cscrollAttach(document.querySelector('.geni-body'))`(260803 6차 id 앵커로 선봉합).
+    사후 실증 = 사고 시점 커밋 3개에 이 게이트를 돌리면 rc=1로 **3건 전부 지목**된다(평의회3 D축 · 사후 장식 아님).
+
+    판정(평의회3 A축 반영 = 「호출자 매칭」 → **「셀렉터 기준 + 앵커 화이트리스트」로 역전**):
+      대상 = viewer/*.html + viewer/*.js 안, document(속성 체인 포함)·$·$$ 계열 호출의 셀렉터 리터럴(작은·큰·백틱).
+      셀렉터를 콤마로 쪼갠 **각 항**이 `geni-` 어휘를 담고 있으면, 그 항은 **`#`(id 앵커)로 시작**해야 한다. 아니면 FAIL.
+      (id는 문서 유일이라 「어느 창의 것인가」 애매성이 소멸 = 사고의 정체를 정확히 겨눈다. id 화이트리스트로 더 좁히면
+      정당한 고유 id[`#geniGauges .geni-gg`·`#geniColorGauges .geni-gg`]까지 막힌다 = 실측 위양성 2건이라 폐기.) (구판은 「`.geni-`로 시작만 안 하면 통과」라 `dialog .geni-body`·
+      `div.geni-body`·`#x, .geni-body`·`[class*=geni-]`·`document.body.querySelector`·백틱·getElementsByClassName이
+      전부 빠져나갔다 — 특히 `dialog .geni-body`는 #genidlg·#dlgrab **둘 다 <dialog>**라 사고와 100% 동일하다.)
+      스코프 호출(`geniRoot().querySelector`·`h.querySelector`)은 진입 어휘가 아니라 자연 통과 = 권장 문법.
+      주석 줄(`//`·`*` 시작)은 제외 = 문서·금지예시가 자기 자신을 잡는 위양성 차단(평의회3 B1).
+    남은 한계(정직) = **변수 경유**(`const s='.geni-body'; qs(s)`)는 정적으로 못 잡는다(평의회3 A축 잔여 1건).
+    비용 = 정적 문자열 검사 76ms(평의회3 실측 = check_refs 전체의 0.4~0.6%) · 렌더·LLM·네트워크 0.
     """
     import glob as _g
     bad = []
-    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+    files = sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'viewer', '*.js')))
+    for fp in files:
         rel = os.path.relpath(fp, ROOT)
         try:
             src = open(fp, encoding='utf-8').read()
         except Exception:
             continue
-        for m in _GENI_SCOPE_RE.finditer(src):
-            sel = m.group(2).strip()
-            key = rel + '::' + sel
-            if key in _GENI_SCOPE_BASE:
+        for m in _GENI_ENTRY_RE.finditer(src):
+            sel = m.group(2)
+            if 'geni-' not in sel:
                 continue
-            bad.append('%s:%d  %s' % (rel, src.count('\n', 0, m.start()) + 1, sel))
+            ln = src.count('\n', 0, m.start()) + 1
+            line = src.split('\n')[ln - 1].strip()
+            if line.startswith('//') or line.startswith('*') or line.startswith('/*'):
+                continue          # 주석 안 예시 = 위양성(평의회3 B1)
+            for part in sel.split(','):
+                part = part.strip()
+                if 'geni-' not in part:
+                    continue
+                if part.startswith('#'):
+                    continue          # **id 앵커면 통과** — id는 문서 유일이라 「어느 창의 것인가」 애매성이 사라진다(사고의 정체 = 문서순 첫 매치).
+                                      # ⚠ 화이트리스트(#genidlg·#geniHost·#geniOut·#dlgrab)로 좁히면 정당한 고유 id(#geniGauges .geni-gg 등)까지 막는다 = 실측 위양성 2건 → 규칙은 「#로 시작」.
+                key = rel + '::' + part
+                if key in _GENI_SCOPE_BASE:
+                    continue
+                bad.append('%s:%d  %s' % (rel, ln, part))
     if bad:
         print('❌ geni 전역 질의 게이트 — geni 어휘는 #genidlg·#geniHost·#dlgrab이 공유한다(전역 질의 = 남의 창을 문다 · 260803 6차 실사고 2건 + 잠복 1건):')
-        for b in bad:
-            print('   -', b, '→ id 앵커(`#genidlg .geni-…`) 또는 스코프 호출(`geniRoot().querySelector`·`h.querySelector`)로 고쳐라.')
+        for b in sorted(set(bad)):
+            print('   -', b, '→ id 앵커(`#genidlg .geni-…` 처럼 `#`로 시작) 또는 스코프 호출(`geniRoot().querySelector`·`h.querySelector`)로 고쳐라.')
         return 1
-    print('✅ geni 전역 질의 게이트 — viewer 전 표면 0건(폼 두 홈 ↔ 다운로드 창 어휘 공유 사고 재발 차단).')
+    print('✅ geni 전역 질의 게이트 — viewer html·js 전 표면 0건(폼 두 홈 ↔ 다운로드 창 어휘 공유 사고 재발 차단).')
     return 0
 
 
