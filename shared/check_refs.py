@@ -500,12 +500,22 @@ def check_curation_constants():
             bad.append('FRESH_KEEP_H: 추출실패(code=%s·doc=%s)' % (bool(code_f), bool(doc_f)))
     except Exception as e:
         print('⚠️ FRESH_KEEP_H 대조 스킵(파일):', e)
+    # FRESH_CROSS_W(viewer fastScore 신규 칼럼 cross 항 · 260803 평의회 8인) ↔ §4 신규 정렬 문서 정합 —
+    # 신설 상수가 기계 대조 사각이 되지 않게 같은 게이트에 편입(FRESH_KEEP_H 선례 · 문서 리터럴은 §4
+    # 「FRESH_CROSS_W(값)」 한 곳으로 수렴[★ 랭킹 요약줄은 탈리터럴 = 이중 리터럴 드리프트 원천 차단]).
+    code_c = re.search(r'const FRESH_CROSS_W\s*=\s*([\d.]+)', v)
+    doc_c = re.search(r'FRESH_CROSS_W\(([\d.]+)\)', d)
+    if code_c and doc_c:
+        if float(code_c.group(1)) != float(doc_c.group(1)):
+            bad.append('FRESH_CROSS_W: viewer=%s ≠ §4문서=%s (코드↔문서 드리프트/자기-revert 의심)' % (code_c.group(1), doc_c.group(1)))
+    else:
+        bad.append('FRESH_CROSS_W: 추출실패(code=%s·doc=%s)' % (bool(code_c), bool(doc_c)))
     if bad:
         print('❌ 큐레이션 상수↔문서 정합 실패(C8 게이트):')
         for b in bad: print('  -', b)
         rc = 1
     else:
-        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·ACC_T·GRADE_W 전체 = §★ 일치.')
+        print('✅ 큐레이션 상수↔문서 정합 — CROSS_POW·FOLLOW_W·BOOST·ACC_T·GRADE_W·FRESH_CROSS_W 전체 = 문서 일치.')
     return rc
 
 
