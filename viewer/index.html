@@ -4053,11 +4053,11 @@ try {
     <!-- AI 생성 결과·이전 제작(운영자 260718 "동일한 형태로 · 0으로") = 편집 탭 형태 계승 · 정적 빈 상태(실데이터 미배선) · 접이 = 카메라 폴드(.geni-fold) 패턴 계승 -->
     <div class="geni-histwrap">
       <button class="geni-histfold" id="geniResH" type="button" aria-expanded="true" aria-controls="geniResBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>결과 <span class="geni-histcnt">(0)</span></span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
-      <div class="geni-histbody open" id="geniResBody"><!-- 결과 = 기본 펼침(thumb #carH 정본 동문 · 운영자 260803 Q1228 결과 표시 통일 — 구 접힘·inert) --><div class="geni-histbody-in"><div class="geni-histempty">아직 제작한 게 없습니다</div></div></div>
+      <div class="geni-histbody" id="geniResBody"><!-- 결과 = 기본 펼침 · 접이 = hidden+closing 정본 문법(운영자 260803 Q1249 "접이 애니메이션도 적용" — 구 grid-rows 슬라이드·inert · dg 다운로드 창 폴드는 종전 문법 잔존 = 별도 축) --><div class="geni-histbody-in"><div class="geni-histempty">아직 제작한 게 없습니다</div></div></div>
     </div>
     <div class="geni-histwrap">
       <button class="geni-histfold prev" id="geniPrevH" type="button" aria-expanded="false" aria-controls="geniPrevBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>이전 제작 <span class="geni-histcnt">(0)</span></span><span class="geni-histnote">전 기기 제작 내역</span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
-      <div class="geni-histbody" id="geniPrevBody" inert><div class="geni-histbody-in"><div class="geni-histempty">아직 제작한 게 없습니다</div></div></div>
+      <div class="geni-histbody" id="geniPrevBody" hidden><div class="geni-histbody-in"><div class="geni-histempty">아직 제작한 게 없습니다</div></div></div>
     </div>
   </div>
 </dialog>
@@ -5579,12 +5579,15 @@ function geniInit() {
     fold.setAttribute('aria-expanded', open ? 'true' : 'false');
     const sub = document.getElementById(fold.getAttribute('aria-controls')); if (sub) { if (open) { sub.removeAttribute('inert'); setTimeout(() => { try { fold.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch {} }, 60); } else sub.setAttribute('inert', ''); }   // inert = 접힘 시 tab-order·SR 제거(적대검증B P1: 구 max-height:0만 = 안 보이는 37칩이 tab-order 잔류 = 거짓 계승 · 원본 .pmenu-sub[hidden] 핵심 복원)
   }));
-  document.querySelectorAll('.geni-histfold').forEach(btn => btn.addEventListener('click', () => {   // AI 생성 결과·이전 제작 접이 = geniCamHead 폴드 패턴 계승(운영자 260718 · grid-rows .open + inert 한 쌍)
-    const open = btn.getAttribute('aria-expanded') !== 'true';
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    const sub = document.getElementById(btn.getAttribute('aria-controls'));
-    if (sub) { sub.classList.toggle('open', open); if (open) sub.removeAttribute('inert'); else sub.setAttribute('inert', ''); }
-  }));
+  document.querySelectorAll('.geni-histfold').forEach(btn => { let _cT = null; btn.addEventListener('click', () => {   // AI 생성 결과·이전 제작 접이 = thumb/tr #histH 정본 동문(hidden+closing 촤르륵 · 운영자 260803 Q1249 "접이 애니메이션도 적용" — 구 grid-rows 슬라이드+inert 폐지 · dg 다운로드 창 폴드는 자기 재렌더 문법 = 무접촉)
+    const sub = document.getElementById(btn.getAttribute('aria-controls')); if (!sub) return;
+    const open = sub.hidden;
+    clearTimeout(_cT); sub.classList.remove('closing');
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { sub.hidden = false; }
+    else if (matchMedia('(prefers-reduced-motion:reduce)').matches) { sub.hidden = true; }
+    else { sub.classList.add('closing'); _cT = setTimeout(() => { sub.hidden = true; sub.classList.remove('closing'); }, 270); }
+  }); });
   const sx0 = $('#geniStyleEx');   // 화풍 예시 = load/error가 가시성 전담(자산 없는 화풍 = 숨김 유지 · 260719)
   if (sx0) { sx0.addEventListener('load', () => { sx0.hidden = false; }); sx0.addEventListener('error', () => { sx0.hidden = true; }); }
   window.addEventListener('resize', geniPrevSize);   // 박스 높이 = 뷰포트 변화 추적(편집 iframe svh 등가 · 260719)
