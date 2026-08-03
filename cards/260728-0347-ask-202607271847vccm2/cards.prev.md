@@ -1,31 +1,31 @@
 # 💸 건보료 천장 612만원, 진짜 급소는 바닥이었다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 제도 개편의 무게와 숫자의 낙차를 고발하는 구조 비판 기사라 극화의 명암·선 굵기가 맞다
-- 분위기: 사무실 형광등 아래의 건조한 압박 — 흥분 없이 서류와 숫자가 조용히 사람을 누르는 톤
-- 연출 방향: 뉴스 안 보는 직장인이 멈추는 지점은 '내 명세서'다 — 612만원이라는 큰 숫자가 아니라 1만80원이 2만2260원이 되는 자리에서 시선이 붙는다. 그래서 카메라는 계속 종이와 손끝, 그리고 그 종이를 든 사람의 눈에 머문다. 천장 쪽은 넓고 비어 있게(닿는 사람이 7060명), 바닥 쪽은 좁고 빽빽하게(수백만 명) 잡아 같은 문서 안의 대상 규모 낙차를 화면 밀도로 보여준다. 시사점 관점 = 확정 전에 확인해야 할 숫자는 큰 쪽이 아니라 작은 쪽이라는 것.
-- 독자 동선: **발단** 카드1(개편안 보고·천장 인상)→**전개** 카드2~3(천장에 닿는 7060명 / 26년 묶인 바닥이 풀림)→**피크** 카드4(1만80원→2만2260원, 두 배)→**해소** 카드5(월급 외 소득 기준 절반·178만명, 그리고 아직 확정 아님)→**시사점** 카드6 · 훅=카드1 끝(단서형: 같은 문서에 있던 다른 숫자)+카드3 끝(예고형) · 착지 = 확정 전에 확인할 숫자는 612만원이 아니라 1만80원과 2만2260원이다
-- 연속성 앵커: Recurring subject — a Korean office worker in his 30s, short neatly parted black hair, wearing a pale gray dress shirt with the sleeves rolled to the forearm, no tie / Recurring place — an open-plan Korean office late in the afternoon, rows of low partitioned desks under flat ceiling fluorescents
+- 화풍: B극화 — 제도·재정 구조를 뜯어보는 축이라 정밀한 선과 명암 대비가 숫자의 낙차를 말하게 한다
+- 분위기: 형광등 아래 서류의 냉정함. 화내지 않고 숫자만 나란히 놓는데 그게 더 무겁게 남는 톤
+- 연출 방향: 독자는 "초고소득자 잡는다"는 제목에 안심했다가, 같은 문서 반대편에서 자기 월급명세서가 움직인 걸 발견하는 순간 멈춘다(독자훅). 전할 것은 판정이 아니라 낙차 그 자체 — 천장에 닿는 7060명과 바닥이 움직이는 수백만 명이 같은 종이 위에 있다는 사실이다. 그래서 카메라는 사람의 분노가 아니라 문서·명세서·손끝에 붙는다. 관료적 냉광(무표정한 제도)과 개인의 굳은 손끝(체감)을 번갈아 잡되, 숫자가 바뀌는 지점에만 악센트 1색이 켜지게 해 시선이 '어디가 움직였나'를 자동으로 따라가게 한다
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 천장 숫자만 던지고 반대편은 감춤)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 확정 전에 확인해 둘 숫자는 612만원이 아니라 1만80원과 2만2260원이다
+- 연속성 앵커: Recurring subject — a Korean office worker in his 30s, short neat black hair, no glasses, wearing a light gray dress shirt with the sleeves rolled to the forearm / Recurring place — a dim late-afternoon Korean open-plan office with rows of identical desks
 
 ### [카드 1]
 **텍스트**
 ```text
-지난 23일 복지부가 건정심 소위에
-건강보험료 개편안을 보고했다
-월급에 매기는 보험료 *상한이*
-*459만원에서 612만원으로* 오른다
+건강보험료 월 상한이
+459만원에서 612만원으로
+한 번에 33% 올라간다
+*그런데 이건 7060명 얘기다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the flat institutional stare of a bureaucrat sliding a thick report across a long table. A government official in a dark suit places a stapled policy document on the polished conference table, both hands still resting on its edge, eyes cast downward at the page. Around the table a semicircle of committee members leans in toward the paper, faces turned away from the viewer. The room is a plain government meeting hall with a long unbroken table surface running edge to edge.
-Camera: wide shot, full body, surrounding environment, spatial context from high angle shot, looking down, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Scene: Emotional focal point: the vacant thousand-yard stare of a man whose eyes look past the paper in his hands. Recurring subject — a Korean office worker in his 30s, short neat black hair, no glasses, wearing a light gray dress shirt with the sleeves rolled to the forearm, stands holding a payslip with both hands at chest height, his gaze drifting past it toward the right edge of the frame. Behind him stretches a dim late-afternoon Korean open-plan office with rows of identical empty desks receding into shade. The payslip is the only brightly lit object in the room, held slightly away from his body like something that no longer belongs to him.
+Camera: medium shot, waist-up framing, face and gestures from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 50mm standard lens, minimal distortion, natural cinematic composition, nose room on the right, gaze directed toward the right edge
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: no readable writing on the document; the page is seen at a skimming angle so its surface reads as texture only. nose room on the right, gaze directed toward the right edge.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast, the accent falling only on the payslip surface
+Text handling: avoid rendering any readable characters; the payslip is angled so its lines read as texture only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long conference table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office floor and desk rows) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-건강보험정책심의위원회 회의
+건강보험료 급여명세서 공제
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-그 천장에 실제로 닿는 사람은
-직장가입자 상위 0.04%,
-*7060명이다*
-정부가 잡은 추가 수입은 연 1751억원
+복지부가 지난 7월 23일
+건정심 소위에 올린 개편안이다
+상한 기준을 평균보험료의
+*30배에서 40배로 넓혔다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the vast emptiness around one small distant figure. A single executive in a dark coat stands alone near the far end of an enormous marble lobby floor, walking away from the viewer with a briefcase in one hand. The floor stretches unbroken in every direction and dwarfs him completely. Nothing else occupies the space around him.
-Camera: extreme long shot, tiny subject, vast environment, scale, isolation from bird's eye view, overhead shot, top-down angle, layout, geometry, shot on 20mm wide lens, subject and environment, documentary realism
-Lighting/mood: bright high-key light, clean white ambience, minimal shadow, hopeful and open
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: no signage, no lettering anywhere; the lobby surface is bare polished stone.
+Scene: Emotional focal point: a hand sliding a stapled report across the long table, fingertips still resting on its corner as if unwilling to let go. Around a wide government committee table, six officials in dark suits sit reviewing identical bound documents, their faces lowered and unreadable, none looking at each other. One raised hand at the far end gestures toward the document being passed. The room is a plain institutional meeting hall with a bare wall and a lowered projection screen behind them.
+Camera: wide shot, full body, surrounding environment, spatial context from high angle shot, looking down, observed layout, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast, the accent falling only on the single passed document
+Text handling: all documents are seen at a shallow angle so their contents read as grain and ruled lines only, never as letters.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the marble lobby floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the committee table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-여의도 오피스빌딩 로비
+건강보험정책심의위원회 보건복지부 회의
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-같은 문서의 반대편에는 바닥이 있다
-최저 보수월액 기준은 2000년부터
-*26년째 월 28만원에 묶여 있었다*
-이번에 최저임금과 연계된다
+그 천장에 닿는 사람은
+직장가입자 상위 0.04%,
+지역가입자 1891세대다
+*여기서 연 1751억원이 나온다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a fingertip pressing down on the last line at the bottom of a page. Recurring subject — a Korean office worker in his 30s, short neatly parted black hair, wearing a pale gray dress shirt with the sleeves rolled to the forearm, no tie, leans over his desk and traces the lowest row of a payroll sheet with one finger. His eyes follow the finger downward, his other hand flat on the same sheet. He sits at a desk in an open-plan Korean office late in the afternoon, rows of low partitioned desks under flat ceiling fluorescents.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: the payroll sheet is seen at a steep skimming angle and cropped, so only ruled lines and column edges are visible as texture, never readable characters. nose room on the right, gaze directed toward the right edge.
+Scene: Emotional focal point: the narrow gap of empty air between one lit chair and the dense mass of people behind it. In a vast institutional hall, a single unoccupied executive chair stands alone in the foreground while far behind it hundreds of identical small figures stand shoulder to shoulder in uniform rows, faces indistinct, all facing forward. Nobody occupies the front chair and nobody in the crowd moves toward it. The polished floor stretches unbroken between them.
+Camera: extreme long shot, tiny subjects, vast environment, scale and isolation from low angle shot, looking up, dramatic presence, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth, nose room on the right
+Lighting/mood: single pool of hard light isolating the chair in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 lighting only the empty chair), film-noir low-key lighting, deep shadows
+Text handling: no signage, no nameplates, no lettering anywhere in the hall.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desktop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the polished hall floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,26 +97,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-급여명세서 건강보험료 공제
+국민건강보험공단 고액 납부자
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-최저 보험료는 월 1만80원에서
-*2만2260원으로 두 배 넘게 오른다*
+*26년간 월 28만원에 묶여 있던*
+*최저 기준이 이번에 풀렸다*
+최저 보험료 1만80원 → 2만2260원
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject — a Korean office worker in his 30s, short neatly parted black hair, wearing a pale gray dress shirt with the sleeves rolled to the forearm, no tie, holds a single folded slip of paper in both hands and has stopped moving. His gaze passes over the top edge of the paper into nothing, jaw set. He stands alone in an open-plan Korean office late in the afternoon, the rows of low partitioned desks behind him swallowed by darkness.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: the folded slip is turned edge-on to the viewer, its face hidden, so no writing is visible at all.
+Scene: Emotional focal point: two work-worn hands gripping a thin payment notice so tightly the paper buckles between the thumbs. The hands belong to a woman in her fifties in a faded work vest, shown only from the collarbone down, standing in a narrow break room after a shift. She holds the notice low and close to her body, angled away from the light. A cold locker door and a folded apron fill the shallow background.
+Camera: tight close-up, hands and paper fill the frame, intense pressure from eye-level shot, neutral perspective, realistic, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: harsh single overhead light pooling on the paper, deep surrounding black, oppressive
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on one crumpled edge of the notice), film-noir low-key lighting, deep shadows
+Text handling: the notice is creased and tilted so its printed lines dissolve into texture; no readable characters anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the darkened office interior wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the paper and the hands holding it) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -126,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-최저임금 노동자 사무실
+최저임금 근로자 건강보험료 고지서
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-정부는 2029년까지 나눠 올리기로 했고
-여기서 나오는 돈은 연 1417억원이다
-월급 외 이자·배당·임대소득 기준도
-*연 2000만원에서 1000만원으로* 검토 중
+바닥에서 나오는 돈은 연 1417억원,
+천장을 올려 얻는 1751억원과
+거의 같다. 여기에 이자·배당·임대
+기준까지 내려가면 178만명이 더 낸다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the tightly packed shoulders of people who all fit inside one narrowing space. A dense crowd of ordinary Korean commuters in work clothes stands shoulder to shoulder on a subway platform floor, all facing the same direction toward the right, none of them looking at each other. The mass of them fills the frame from side to side, thinning slightly toward the far end of the platform. The platform floor runs unbroken beneath every figure.
-Camera: group shot, multiple subjects, clear arrangement, hierarchy, collective mood from high angle shot, looking down, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
+Scene: Emotional focal point: a single seated figure at the near end of a long counter where the far end holds a dense line of waiting people. In a public service hall, a Korean man in his 30s in a light gray dress shirt sits at the counter with his forearms resting on it, head turned to look down the length of the counter toward the crowd. The counter surface runs unbroken from his elbows to the distant queue, one continuous plane linking the one and the many.
+Camera: full shot, head-to-toe framing, clear silhouette from three-quarter angle, natural face depth, dimensional composition, shot on 35mm lens, natural documentary perspective, balanced subject and background
 Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: no station signage, no boards, no lettering; direction is conveyed by body orientation only. nose room on the right, gaze directed toward the right edge.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 running as a thin line along the counter edge), muted daylight contrast
+Text handling: the counter and walls carry no signage; any panels are blank surfaces.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the subway platform floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the long counter top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -157,28 +158,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-서울 지하철 출근길 승강장
+국민건강보험공단 지사 민원 창구
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
 복지부는 확정된 건 없다고 했다
-천장이 움직이는 대상은 7060명,
-바닥이 움직이는 대상은 수백만 명이다
-*확인해 둘 숫자는 612만원이 아니다*
+확정되기 전에 확인해 둘 숫자는
+612만원이 아니라
+*1만80원과 2만2260원이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: steady unwavering eye contact held straight into the camera. Recurring subject — a Korean office worker in his 30s, short neatly parted black hair, wearing a pale gray dress shirt with the sleeves rolled to the forearm, no tie, stands facing the viewer with a payslip lowered in one hand at his side. He is not angry and not defeated, only looking back. Behind him the open-plan Korean office late in the afternoon, rows of low partitioned desks under flat ceiling fluorescents, sits quiet and empty.
-Camera: medium shot, waist-up framing, face and gestures, conversational from front-on shot, direct gaze, symmetrical composition, facing camera, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Text handling: the payslip hangs face-away at his side, its printed side turned from the viewer, so no characters are legible.
+Scene: Emotional focal point: the steady unwavering eyes of a man looking straight out of the frame, holding the reader's gaze without blinking. Recurring subject — a Korean office worker in his 30s, short neat black hair, no glasses, wearing a light gray dress shirt with the sleeves rolled to the forearm, stands facing the viewer with a folded payslip held down at his side in one hand, no longer reading it. Behind him the dim late-afternoon Korean open-plan office with rows of identical desks has emptied out, evening light bleeding across the far windows.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 85mm portrait lens, soft background separation
+Lighting/mood: warm soft evening light, gentle and quiet, faint melancholy
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the folded edge of the payslip at his side), muted daylight contrast
+Text handling: the payslip is folded closed; no characters are visible on it or anywhere in the room.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office floor and desk rows behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office floor and desk rows) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -188,5 +189,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-직장인 급여명세서 사무실
+보건복지부 브리핑 기자회견
 ```
