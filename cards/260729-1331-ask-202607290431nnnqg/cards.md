@@ -1,37 +1,37 @@
 # 관 앞에서 돌린 틱택, 31년 동지의 장례식이었다
 
 **[프롬프트 설계]**
-- 화풍: A 한국웹툰 수채화 — 고인을 배웅하는 자리라 고발형 극화보다 절제된 붓결이 맞다(#추모 톤 절제)
-- 분위기: 성당 빛이 무겁게 내려앉은 엄숙함, 그 안에서 신도석 한 줄만 결이 어긋나는 어색함
-- 연출 방향: 독자가 멈추는 지점은 '관 앞'이라는 자리와 손바닥 위 사탕 한 알의 낙차다(독자훅 = 같은 영상을 정반대로 보는 두 무리). 전하려는 관점은 카메라가 담아간 장면과 성당이 실제로 정리한 공백이 다르다는 것이므로, 조롱이 아니라 '자리의 무게'로 찍는다 — 관·흰 국화·성당 빛을 계속 프레임 안에 두고 사탕은 작게, 어긋남은 손의 각도와 시선의 방향으로만 드러낸다. 성당 창으로 든 빛과 그 빛이 닿지 않는 신도석 그늘이 덱 전체의 비주얼 키노트다(thumb_dispatch의 성당 광선 톤·미세표정 정조만 계승, 앵글은 카드마다 분산)
-- 독자 동선: 起 카드1→承 카드2~5→轉 카드6→結 카드7 · 훅=카드1 끝(단서형: 꺼낸 물건의 정체 유보)+카드3 끝(예고형: 연단에 선 대통령) · 감정 피크=카드6 · 착지 = 사탕은 하루면 사라지고 빈자리의 크기는 다음 제재 표결이 잰다
-- 연속성 앵커: Recurring subject - an American man in his late seventies, heavy build, silver-blond hair swept back, dark navy suit with a long red necktie, drawn as a generic stylized figure and not a photographic likeness. / Recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass.
+- 화풍: A 수채화 — #추모 사안이라 극화의 고발 선(線)이 조롱으로 미끄러진다. 실소는 사실 배치로만 내고 톤은 절제한다.
+- 분위기: 스테인드글라스 빛이 내려앉은 엄숙한 예식 한복판에, 손톱만 한 사물 하나가 만든 결의 균열. 파스텔 위 추모 앰버 1포인트.
+- 연출 방향: 독자가 멈추는 지점은 '관 앞'과 '사탕 한 알'의 크기 차이다 — 거대한 성당·국가급 조문객단을 넓게 세워두고, 피크에서만 손끝만큼 좁혀 그 낙차를 눈으로 보게 한다. 전하려는 것은 화제가 된 장면과 성당이 실제로 정리한 빈자리 사이의 거리(💡 시사점 관점). 그래서 명도는 起(성당 광선)→承(단계 하강)→轉(신도석 저조도 최암)→結(바랜 여운광)으로 누적하고, 조임은 설정 와이드에서 시작해 轉 한 장에만 타이트 클로즈업을 쓴 뒤 마지막에 가장 넓게 벌린다. thumb_dispatch의 성당 볼류메트릭 광선 톤과 '정제된 표정에 스치는 미세표정'의 정조만 이어받되 앵글·샷은 카드마다 분산한다.
+- 독자 동선: **발단** 카드1→**전개** 카드2~3→**피크** 카드4→**해소** 카드5~6→**시사점** 카드7 · 훅=카드1 끝(예고형: 세계가 함께 자리했다 → 카드2가 즉시 회수)+카드3 끝(예고형: 예식이 두 시간 더 남았다 → 카드4가 즉시 회수) · 착지 한 줄 요지 = 사탕 한 알은 하루면 잊히지만 31년이 쥐고 있던 자리는 다음 표결대에서 실물로 드러난다.
+- 연속성 앵커: Recurring subject — an American man in his 70s, heavy-set, silver-gray hair combed back, wearing a dark navy suit with a dark tie (카드3·4·5) / Recurring location — a vast neo-Gothic cathedral nave with pale limestone piers and tall stained-glass windows (카드1·2·3·4·5·7)
 
 ### [카드 1]
 **텍스트**
 ```text
 7월 28일 워싱턴 내셔널 대성당이었다
-흰 국화로 덮인 관 앞 신도석에서
-미국 대통령이 정장 주머니를 뒤졌다
-*꺼낸 건 손톱만 한 플라스틱 통이었다*
+*상원 31년의 린지 그레이엄을 배웅했다*
+7월 11일 대동맥박리로 떠난 그였다
+그 배웅에 세계가 함께 자리했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the thick fingers of an elderly man sliding into an inner suit pocket while his face stays turned forward. Recurring subject - an American man in his late seventies, heavy build, silver-blond hair swept back, dark navy suit with a long red necktie, drawn as a generic stylized figure and not a photographic likeness. He sits at the end of the front pew in the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass. A closed casket blanketed in white chrysanthemums rests on a low bier a few steps ahead of him, and rows of mourners in dark coats fill the pews behind. Nose room on the right, gaze directed toward the right edge, the hand and the pocket kept in the upper-center area.
-Camera: wide shot from eye-level, shot on 35mm lens
+Scene: Emotional focal point: the lowered gaze of an elderly mourner in the front row, eyes cast downward and shoulders held still. Recurring location — a vast neo-Gothic cathedral nave with pale limestone piers and tall stained-glass windows. Two dozen mourners in dark coats fill the front pews and face forward toward a low bier where one casket blanketed with white chrysanthemums rests. Every gaze in the nave runs along the center aisle to that casket, hands folded on laps.
+Camera: establishing wide shot from a low angle, shot on 20mm wide lens
 Lighting/mood: divine volumetric god-rays through haze, luminous descending shafts, reverent awe
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), muted daylight contrast
-Text handling: no signage, no hymn book text, no program text anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), muted daylight contrast
+Text handling: keep all incidental lettering out of frame, no signage, no hymn boards, no printed programs shown legibly, no institutional emblems or logos anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the stone floor of the cathedral nave) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the cathedral stone floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
@@ -41,183 +41,184 @@ Washington National Cathedral funeral casket
 ### [카드 2]
 **텍스트**
 ```text
-틱택이었다. 트럼프 대통령이 꺼냈다
-옆자리 밴스 부통령이 하나를 받았고
-베센트 재무장관도 하나를 받았다
-*예식 도중 찍힌 장면이 곧바로 퍼졌다*
+젤렌스키 우크라이나 대통령이 앉았고
+네타냐후 이스라엘 총리도 나왔다
+상원의원 절반 이상이 성당을 채웠다
+*조문객 명단이 그의 자리를 말해줬다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a tiny plastic candy box passing from one palm to another over the wood of a pew, both pairs of hands low and half hidden. Recurring subject - an American man in his late seventies, heavy build, silver-blond hair swept back, dark navy suit with a long red necktie, drawn as a generic stylized figure and not a photographic likeness. Beside him a man in his forties in a charcoal suit takes the small box with two fingers and presses his lips flat to hold back a smile, while a grey-haired man in his sixties on the far side leans in slightly with an open hand. All three keep their heads facing forward toward the service, and behind them the pews of the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass - stay filled with still mourners. A phone held low in a back row catches the exchange.
-Camera: medium close-up from a high angle, shot on 70mm short telephoto
-Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), muted daylight contrast
-Text handling: no phone screen text, no signage, no program text anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the narrow gap between two heads of state seated shoulder to shoulder, neither one turning toward the other. Recurring location — a vast neo-Gothic cathedral nave with pale limestone piers and tall stained-glass windows. Seen from directly above, long rows of packed pews run in parallel bands, and in the third row a European head of state in his forties and an older head of state in his seventies sit side by side in dark suits, both facing forward. Around them dozens of lawmakers fill every remaining seat in the same rows, all oriented toward the flower-covered casket at the top of the frame.
+Camera: wide shot from an overhead bird's-eye angle, shot on 35mm lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), muted daylight contrast
+Text handling: no name cards, no seating placards, no order-of-service booklets shown legibly, no national emblems or party logos anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long polished wooden pew bench) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the rows of wooden pews) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
+```
+**검색어**
+```text
+Zelensky Netanyahu Washington National Cathedral funeral
+```
+
+### [카드 3]
+**텍스트**
+```text
+그 앞에서 트럼프 대통령이 단상에 섰다
+세계 최고 입법 기구를 다루는 조종사
+고인을 그렇게 부르며 사랑한다고 했다
+*그리고 예식은 두 시간 더 남아 있었다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: eyes glistening with welling tears, not yet falling. Recurring subject — an American man in his 70s, heavy-set, silver-gray hair combed back, wearing a dark navy suit with a dark tie. He stands behind a carved stone pulpit inside the neo-Gothic cathedral nave, both hands gripping the edges of the reading desk, a single blank sheet of paper resting under his palm. He speaks with his chin slightly lowered, nose room on the right, gaze directed toward the right edge of the frame.
+Camera: medium close-up from eye level, shot on 85mm portrait lens
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), film-noir low-key lighting, deep shadows
+Text handling: the sheet of paper stays blank and angled away, no readable writing, no crest, no seal, no lectern lettering.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the carved stone pulpit and the limestone wall behind it) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
+```
+**검색어**
+```text
+Trump eulogy National Cathedral pulpit
+```
+
+### [카드 4]
+**텍스트**
+```text
+*예식 도중 그가 주머니를 뒤졌다*
+손에 잡힌 건 손톱만 한 틱택 통이었다
+밴스 부통령과 베센트 장관이 받았다
+```
+**이미지 프롬프트**
+```text
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: fingertips pressing a tiny plastic candy box into the open palm of the man beside him, while the receiver's lip corner tightens against a rising smile. Recurring subject — an American man in his 70s, heavy-set, silver-gray hair combed back, wearing a dark navy suit with a dark tie, seated at the aisle end of a pew. Beside him a man in his forties leans in to take the small box with cupped fingers, and past him a man in his sixties waits with his hand half open. Behind their shoulders the flower-covered casket sits blurred at the top of the frame inside the cathedral nave.
+Camera: tight close-up from a high angle, shot on 100mm macro lens
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), film-noir low-key lighting, deep shadows
+Text handling: the small plastic box carries no label, no brand mark, no lettering of any kind, and no other writing appears in the frame.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the polished wooden pew bench) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE - strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
 Trump Vance Bessent funeral pew
 ```
 
-### [카드 3]
-**텍스트**
-```text
-그 관 속의 사람은 린지 그레이엄이다
-*공화당 상원의원, 재직 31년이었다*
-7월 11일 대동맥박리로 떠났다
-그가 닿아 있던 자리들이 그날 모였다
-```
-**이미지 프롬프트**
-```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: an elderly woman's hands clasped tight over a folded order of service, knuckles pale, seen from the side. She stands in the front row facing the closed casket blanketed in white chrysanthemums, her eyes cast downward and her chin held level. Two more mourners in dark coats stand a step behind her, heads bowed at the same angle, and a folded flag and a single laurel wreath rest at the head of the bier. The setting is the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass. Nose room on the right, her gaze and the line of the casket both directed toward the right edge, the hands kept in the upper-center area.
-Camera: medium shot from a profile side view at eye-level, shot on 85mm portrait lens
-Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), muted daylight contrast
-Text handling: no text on the order of service, no nameplate lettering, no signage anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the white chrysanthemum blanket covering the casket) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-Lindsey Graham senator memorial portrait
-```
-
-### [카드 4]
-**텍스트**
-```text
-세계 최고의 입법 기구를 다루는 조종사
-대통령은 그레이엄을 그렇게 불렀다
-*그를 사랑한다고, 늘 함께하겠다고 했다*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a tightly controlled face at the lectern, jaw set and lips pressed as the man pauses mid-sentence. Recurring subject - an American man in his late seventies, heavy build, silver-blond hair swept back, dark navy suit with a long red necktie, drawn as a generic stylized figure and not a photographic likeness. He grips both edges of a carved stone lectern with his eyes lowered to a single sheet of paper, then lifts them toward the casket off to his left. Behind and above him rises the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass - and the blurred first rows of mourners sit below the lectern out of focus.
-Camera: medium close-up from a low angle, shot on 50mm standard lens
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: the sheet of paper on the lectern is shown blank and angled away, no readable writing; no signage, no engraved lettering anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the carved stone wall of the sanctuary behind the lectern) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE - strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-Trump eulogy National Cathedral lectern
-```
-
 ### [카드 5]
 **텍스트**
 ```text
-그 말을 들은 상원의원이 절반을 넘었다
-젤렌스키 우크라이나 대통령도 왔고
-네타냐후 이스라엘 총리도 앉아 있었다
-*러시아·이란 제재 법안이 주인을 잃었다*
+그 장면은 곧바로 촬영돼 퍼져 나갔다
+조는 듯 고개를 떨군 모습도 찍혔다
+*예식 말미엔 관을 가볍게 두드렸다*
+한 영상에서 사람들은 다른 걸 봤다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: the narrow gap between two foreign heads of state seated shoulder to shoulder in the same row, neither turning toward the other. One is a lean man in his forties in a dark collarless jacket, the other a heavy-set man in his seventies in a black suit, both generic stylized figures and not photographic likenesses. Around and behind them dozens of American lawmakers in dark suits fill row after row of pews, every head angled the same way toward the casket at the far end. The setting is the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass - and one pew seat in the middle of the block is left conspicuously empty.
-Camera: group shot from a bird's-eye view, shot on 24mm wide lens
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: no signage, no seat nameplates, no program text anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a broad hand laid flat on the flower-covered casket lid, fingers slightly curled as if about to tap once. Recurring subject — an American man in his 70s, heavy-set, silver-gray hair combed back, wearing a dark navy suit with a dark tie, seen in strict side profile as he pauses beside the bier. His head is tilted down toward his own hand, eyes half closed, mouth closed. White chrysanthemums spread across the lid beneath his palm inside the darkened cathedral nave.
+Camera: medium shot from a profile side angle, shot on 70mm short telephoto
+Lighting/mood: warm candlelight glow against soft dark background, solemn and tender
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), film-noir low-key lighting, deep shadows
+Text handling: no ribbons with writing, no memorial plaque, no flag lettering, no readable script anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the continuous field of wooden pew rows) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the flower-covered casket lid) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-Zelensky Netanyahu Graham funeral mourners
+Trump casket National Cathedral
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-*조사를 읽던 그 입이었다*
-사탕을 돌린 것도, 조는 듯 떨군 고개도
-관을 두드린 손도 같은 두 시간 안이었다
+그 사이 상원은 다음 칸으로 넘어갔다
+누이 달린 그레이엄이 의석을 이어받는다
+러시아·이란 제재 법안이 표결대에 있다
+*고인이 밀던 그 법안엔 주인이 없다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: eyes cast fully downward and the chin dropped toward the chest, the mouth slack and still, seen from the side. Recurring subject - an American man in his late seventies, heavy build, silver-blond hair swept back, dark navy suit with a long red necktie, drawn as a generic stylized figure and not a photographic likeness. He sits alone in the pew with both hands loose on his knees, his head sunk forward while the service continues around him, and only the blurred amber edge of the flower-covered casket enters the far side of the frame. The setting is the recurring location - the vast stone nave of an American national cathedral, tall gothic arches and stained glass.
-Camera: tight close-up from a profile side view, shot on 135mm telephoto lens
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), film-noir low-key lighting, deep shadows
-Text handling: no signage, no program text, no engraved lettering anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: one empty leather chair pushed back from a curved desk, and the sideways glance of the lawmaker seated next to that gap. A semicircular tiered legislative chamber curves away in wooden rows, every seat filled with lawmakers facing the front except this single vacant place. On the abandoned desk a thin stack of papers lies squared and untouched. The neighboring lawmaker turns his eyes toward the empty chair without moving his body.
+Camera: wide shot from a slightly high angle, shot on 35mm lens
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), muted daylight contrast
+Text handling: the stack of papers stays blank and angled away, no readable writing, no nameplate lettering, no chamber seal, no institutional emblem or logo anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the shadowed stone wall of the side aisle behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the curved wooden desk tier) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-Trump funeral service seated pew
+US Senate chamber empty desk
 ```
 
 ### [카드 7]
 **텍스트**
 ```text
-사탕 한 알은 하루면 사라진다
-그가 쥐고 있던 외교의 빈자리가 남는다
-다음 제재 표결이 그 크기를 재게 된다
-*어느 쪽을 기억할지는 그 표결이 답한다*
+관 앞의 사탕 한 알은 하루면 잊힌다
+31년이 쥐고 있던 자리는 그렇지 않다
+빈자리는 곧 표결대 위에서 드러난다
+*어느 쪽을 기억할지는 그때 갈린다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: one empty desk in the middle of the tiered rows, its chair pushed neatly in and its surface bare while every desk around it is occupied. Legislators in dark suits sit at the curved tiers of an American senate chamber, some leaning together in low conversation, others facing the rostrum at the front, and an usher walks the center aisle carrying a folder. The chamber is rendered symmetrically with the empty desk on the central axis, and no figure occupies the lower third of the frame.
-Camera: extreme long shot from a high angle, shot on 24mm wide lens
-Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
-Accent: monochrome desaturated base with a single color accent (memorial amber, the story's symbolic color), muted daylight contrast
-Text handling: no vote board digits, no nameplates, no document text anywhere in frame; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a lone figure standing far down the center aisle, facing straight ahead at the low empty bier where the casket had rested. Recurring location — a vast neo-Gothic cathedral nave with pale limestone piers and tall stained-glass windows, now completely emptied of mourners. The pews stand bare in perfect symmetry on both sides of the aisle, and a few white chrysanthemum petals lie scattered on the stone near the bier. The small figure faces the camera axis head-on, arms at their sides, motionless.
+Camera: extreme long shot from eye level, front-on symmetrical composition, shot on 24mm wide lens
+Lighting/mood: faded warm light, soft golden haze, gently nostalgic and wistful
+Accent: monochrome desaturated base with a single warm amber accent (the story's memorial symbolic color), muted daylight contrast
+Text handling: no signage, no memorial inscriptions, no engraved lettering on the stone, no readable script anywhere in the frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the continuous carpeted floor of the senate chamber) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the cathedral stone floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE - strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
 - no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
 - no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image
 ```
 **검색어**
 ```text
-US Senate chamber floor vote
+Washington National Cathedral empty nave
 ```
