@@ -2439,7 +2439,8 @@ function rszPreview() {   // 오버레이만 재그림(원본 img는 dataURL = �
   const W = RSZ.w, H = RSZ.h, ar = rszAspect();
   if (ar === 'orig') {   // 원본(무변환 기본 · 운영자 260712 3차) = 확장 캔버스 없이 원본 그대로 + 리드백 1줄(기존 noop 문구 결 계승)
     const mos = APP === '8' && IE.phase !== 'done';   // 모자이크 지정 단계 = 도크가 검출 스테이지 겸함(운영자 260728 "상단 미리보기에 전면을 가득 원본" — 하단 별도 스테이지 폐지로 이중 노출·스크롤 이탈 소멸 · 결과 나온 뒤엔 원래 크기로 원복)
-    const cap = mos ? 'min(42vh,430px);max-height:min(42svh,430px)' : (rszCapH() - 10) + 'px';   // 원본 경로도 쉘 캡까지 = 폭맞춤 전면(운영자 260731) · 구 190 하드코딩 폐지   // 확대 캡 = .cpprev-box.ie-full(50svh/520) 안에 리드백 1줄까지 들어가는 값 · svh 필수(주소창 리플로우 덜컹 차단 = 쉘 정본 사유 계승)
+    const zoomed = !!document.querySelector('#topDock.dockzoom');   // 원본 경로 이미지 캡 = **돋보기 상태 1벌**(운영자 260803 "돋보기랑 연결되서 움직이게") — 구 선택자는 mos 고정이라 세로 사진에서 −를 눌러도 그림이 그대로였다(실측 260803: 박스 398→207 폭만 줄고 이미지 186×331 불변 = "눌러도 안작아짐"의 정체 · ocfit 축은 rszCapH 198 폴백 고정이라 + 눌러도 안 커지는 반쪽 사고 동축) · 모자이크 지정 단계는 pvZoomAuto(1533행)가 확대를 자동 ON하므로 종전 크기 그대로
+    const cap = zoomed ? 'min(42vh,430px);max-height:min(42svh,430px)' : (rszCapH() - 10) + 'px';   // 값 2벌 전부 기존분 계승(신규 값 0) — 확대 = 구 모자이크 확대 캡 · 축소 = 구 원본 캡 · svh 필수(주소창 리플로우 덜컹 차단 = 쉘 정본 사유 계승)
     const img = '<img class="rsz-orig" src="' + CIMG.b64 + '" style="position:static;display:block;width:100%;max-width:100%;height:auto;object-fit:contain;max-height:' + cap + ';margin:0 auto;outline:1px solid rgba(var(--accent-rgb),.4)">';
     stage.innerHTML = mos ? '<div class="ie-wrap">' + img + ieBoxesHTML() + '</div>' : img;
     if (mos) ieBindBoxes(stage);   // 박스 탭 = 지정 토글(구 하단 스테이지 핸들러 계승)
