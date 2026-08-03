@@ -1,31 +1,31 @@
 # ⚽ 뺨 때린 감독 1년 정지, 그 사실을 알린 건 인도네시아였다
 
 **[프롬프트 설계]**
-- 화풍: B 극화 — 폭행 논란·징계 절차·공표 부재를 다루는 구조 비판 사안이라 사실성과 무게가 필요하다
-- 분위기: 감정을 터뜨리지 않고 눌러 담은 무거움. 형광등 아래 관료적 냉기와, 국경 너머 조명 밝은 구장의 온도차가 한 덱 안에서 갈라진다
-- 연출 방향: 독자가 멈추는 자리는 "뺨을 맞는 장면이 영상으로 남았는데, 그 처벌을 남의 나라 구단이 알려줬다"는 뒤바뀐 순서다. 그래서 카메라는 사건 자체보다 **말이 나온 자리와 나오지 않은 자리**를 번갈아 잡는다 — 비어 있는 협회 단상의 마이크, 화면에 뜬 자카르타발 성명, 그리고 국경선처럼 갈리는 두 공간. 시사점은 관할권 원칙을 부정하는 게 아니라, 그 원칙과 사람들이 본 장면 사이의 간격을 보여주는 데 있으므로 마지막은 판정 대신 두 값을 나란히 세운다
-- 독자 동선: **발단** 카드2→**전개** 카드3→**피크** 카드4→**해소** 카드5→**시사점** 카드6 · 제시용 도입 = 카드1 · 훅=카드1 끝(단서형: '그 소식이 온 곳')+카드3 끝(예고형) · 착지 한 줄 요지 = 관할권 원칙과 뺨을 본 사람들이 기대한 1년의 무게 사이 간격
-- 연속성 앵커: Recurring subject — a Korean man in his 50s, short salt-and-pepper hair swept back, heavy-set build, wearing a dark team training jacket zipped to the collar / Recurring place — a bare institutional meeting room with a low podium and fluorescent ceiling panels
+- 화풍: B극화 — 폭행 논란과 협회 절차·공표라는 구조 비판 축이라 무거운 사실성 쪽이 맞다
+- 분위기: 형광등 아래 감정 없는 행정의 서늘함 위에, 뺨을 맞은 장면의 잔상이 겹치는 대비. 분노를 소리치지 않고 서류·침묵·거리로 눌러 담는 톤
+- 연출 방향: 독자가 멈추는 지점은 '영상이 남았는데도 처벌 소식을 남의 나라 구단이 알려줬다'는 뒤집힘이다. 그래서 사람의 얼굴보다 **비어 있는 자리**(발표되지 않은 단상·닫힌 문)와 **말이 건너온 거리**(한국의 침묵 → 자카르타의 성명)를 축으로 잡는다. 폭행의 순간은 직접 그리지 않고 직전·직후의 정지된 공기로만 남기고, 마지막엔 국경선처럼 갈라진 두 지면을 한 화면에 놓아 '경계에서 멈춘 처분'을 눈으로 보게 한다. 악센트 초록은 오직 '드러난 정보'가 있는 곳에만 켠다
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(질문형)+카드3 끝(단서형) · 감정 피크=카드4 · 착지 한 줄 요지 = 처분은 내려졌는데 그 무게가 국경 앞에서 멈춰 섰고, 그 사실조차 남의 나라 구단이 알려줬다
+- 연속성 앵커: Recurring subject — a Korean man in his mid-50s, short cropped graying hair, broad square jaw, wearing a dark navy team training jacket zipped to the chest / Recurring place — a cold institutional corridor and briefing room with pale grey walls and a low ceiling
 
 ### [카드 1]
 **텍스트**
 ```text
-징계는 이미 내려져 있었다
-자격정지 *1년이라는 처분이었다*
-그런데 그걸 알린 곳은
-대한축구협회가 아니었다
+뺨을 때린 장면은 영상으로 남았다
+그리고 1년 만에 징계가 나왔다
+그 사실을 알려준 건
+*한국이 아니라 인도네시아였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the dead-empty gap where a speaker should be standing. A low podium holds a cluster of unused microphones, their heads angled toward no one, in a bare institutional meeting room with fluorescent ceiling panels. Rows of empty chairs face the podium and nobody occupies them. A single sheet of paper lies face-down on the podium surface, untouched, its edge lifted slightly.
-Camera: wide shot, full body framing of the empty podium area, from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+Scene: Emotional focal point: the empty space where a speaker should be standing. A briefing podium with a cluster of microphones stands alone in the upper-center of an institutional room, no person behind it, chairs facing it unoccupied. Recurring place — a cold institutional corridor and briefing room with pale grey walls and a low ceiling. A single sheet of paper lies face down on the podium surface, untouched, and the room's stillness suggests an announcement that was never made.
+Camera: wide shot, full body scale of the room, from eye-level shot, neutral perspective, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: no signage text, no readable documents, the paper stays face-down and blank, keep all lettering out of frame.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the small indicator light of the microphone cluster, muted daylight contrast
+Text handling: avoid incidental lettering entirely, keep the paper face down and blank, no signage in frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the meeting room floor and back wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the briefing room floor and wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-대한축구협회 기자회견 단상 마이크
+대한축구협회 브리핑룸 단상
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
 시작은 지난해 8월이었다
-울산 HD 지휘봉을 잡은 신태용 감독은
-선수들과의 상견례 자리에서
+울산 지휘봉을 잡은 신태용 감독은
+선수와의 상견례 자리에서
 *선수의 뺨을 손바닥으로 쳤다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a young athlete's face turned aside and held still, eyes cast downward, refusing to look up. Recurring subject — a Korean man in his 50s, short salt-and-pepper hair swept back, heavy-set build, wearing a dark team training jacket zipped to the collar, stands facing him with one arm just lowered back to his side. Behind them a row of young players in matching training kit stands frozen in a line, none of them moving. They are in a bare institutional meeting room with a low podium and fluorescent ceiling panels.
-Camera: medium shot, waist-up framing, face and gestures, conversational, from high angle shot, looking down, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: no team names, no jersey lettering, no signage; render no readable characters anywhere.
+Scene: Emotional focal point: the frozen half-second right before contact, a raised open palm held still in mid-air. Recurring subject — a Korean man in his mid-50s, short cropped graying hair, broad square jaw, wearing a dark navy team training jacket zipped to the chest, stands with his arm raised and his jaw clenched tight, muscle flexing at the jawline. A younger player in training kit stands facing him with his head slightly turned aside and eyes cast downward, shoulders pulled in, body shrinking. Behind them, a few other players in the same kit stand frozen in a loose row, kept lower and softer in the background so the two men stay the focus, inside an indoor team meeting room.
+Camera: medium shot, waist-up framing, face and gestures, conversational, from profile shot, side view, clear silhouette, directional movement, shot on 70mm short telephoto, gentle background compression, subject isolation
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a team logo patch stripe at the shoulder, film-noir low-key lighting, deep shadows
+Text handling: no lettering on kits or walls, keep all surfaces plain, avoid incidental script.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the meeting room floor and back wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the meeting room wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-울산 HD 신태용 감독 선수단 상견례
+울산 HD 신태용 감독 선수단
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-영상이 공개되자 논란이 커졌고
-그는 부임 두 달여 만에 팀을 떠났다
+그는 부임 2개월여 만에 팀을 떠났고
 협회는 지난해 12월 조사에 나섰다
-그리고 이달 초, 결론이 나왔다
+그리고 이달 초 공정위원회를 열어
+*자격정지 1년을 결정했다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a hand pressing a stamp down onto a stack of documents, knuckles taut, the wrist locked. A second official hand slides a folder across the desk toward the right edge of the frame, and neither face is visible above the wrists. The desk sits in a bare institutional meeting room with fluorescent ceiling panels, a closed filing cabinet behind it.
-Camera: extreme close-up, single detail, hand, texture, from overhead shot, bird's-eye view, top-down angle, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: the documents are shown blurred and at an angle so no characters resolve, no readable text, no stamp lettering, keep all writing illegible by framing and focus.
+Scene: Emotional focal point: a row of anonymous hands resting flat on a long table, none of them moving. Five committee members in dark suits sit along one side of a long meeting table seen from above, their faces cropped out of frame by the high angle, heads bowed toward a closed folder placed at the center. Recurring place — a cold institutional corridor and briefing room with pale grey walls and a low ceiling. One hand rests on the closed folder without opening it, and the table surface stretches empty toward the far edge.
+Camera: full shot, head-to-toe scale of the table row, from high angle shot, looking down, observed, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive institutional decision
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a thin marker tab clipped to the closed folder, film-noir low-key lighting, deep shadows
+Text handling: keep the folder closed and blank, no document body text, no nameplates on the table.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the meeting table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +97,26 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-대한축구협회 공정위원회 징계 서류
+대한축구협회 공정위원회 회의
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-*그런데 협회는 그 내역을 공개하지 않았다*
-자격정지 1년을 처음 알린 건
-인도네시아 페르시자 자카르타였다
+협회는 그 내역을 공개하지 않았다
+침묵을 깬 건 자카르타의 구단이었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a single lit phone screen held up in the dark, its cold glow washing the face of the person holding it from below. The figure stares at the screen without blinking, shoulders drawn in, while the room behind them falls away into blackness. The phone is tilted toward the viewer but its display shows only a blank white glow.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure, from eye-level shot, neutral perspective, shot on 85mm portrait lens, flattering face, soft background separation
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the phone display is a blank luminous rectangle, no interface elements, no letters, no numbers, no logos anywhere in frame.
+Scene: Emotional focal point: a single beam of light leaking through a door left barely ajar. A heavy office door stands almost closed in the upper-center of the frame, a narrow slit of light escaping from the dark room behind it into the dim corridor. Recurring place — a cold institutional corridor and briefing room with pale grey walls and a low ceiling. No person is visible anywhere, and the corridor floor stretches away into deep shadow on both sides.
+Camera: tight close-up, the door gap fills the frame, from low angle shot, looking up, dramatic presence, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
+Lighting/mood: single pool of hard light isolating the gap in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) in the escaping sliver of light, film-noir low-key lighting, deep shadows
+Text handling: no door plates, no signage, no lettering anywhere in frame.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the darkened room wall behind the figure) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the door and corridor wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -133,22 +132,22 @@ NEGATIVE — strictly avoid:
 ### [카드 5]
 **텍스트**
 ```text
-구단은 한 문장을 덧붙였다
-이 징계는 한국 관할권에서만 유효하다고
-신 감독은 6월 자카르타 지휘봉을 잡았고
-*최근 권창훈을 영입하며 시즌을 준비한다*
+구단은 이 징계가 한국 안에서만
+유효하다고 못 박았다
+국내에선 1년간 설 수 없게 된 사람이
+*자카르타에선 영입을 지휘하고 있다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the man's steady unwavering gaze fixed on the pitch, chin level, hands loose at his sides. Recurring subject — a Korean man in his 50s, short salt-and-pepper hair swept back, heavy-set build, wearing a dark team training jacket zipped to the collar, stands alone at the edge of a floodlit tropical training ground, his back three-quarters to us. Beyond him players run drills in the distance under tall floodlight towers, and palm-lined stands rise behind the far touchline.
-Camera: full shot, head-to-toe, clear silhouette, from low angle shot, looking up, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
-Lighting/mood: harsh single overhead light pooling on the ground below, deep surrounding black, oppressive isolation under stadium floodlights
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: no sponsor boards, no jersey names, no scoreboard, no banners with lettering; keep every surface free of characters.
+Scene: Emotional focal point: his steady unwavering gaze fixed on the pitch ahead, unbothered. Recurring subject — a Korean man in his mid-50s, short cropped graying hair, broad square jaw, wearing a dark navy team training jacket zipped to the chest, stands at the edge of a floodlit tropical training ground with one hand raised to signal players, looking directly ahead toward the field. Two players in training bibs jog past him in the mid-ground following his signal, and rows of empty stadium seats rise behind the far touchline under a humid evening sky.
+Camera: medium close-up, chest-up framing, facial emotion, slight body context, from three-quarter angle, natural face depth, dimensional portrait, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Lighting/mood: warm golden-hour sunlight fading into stadium floodlight, long soft shadows, humid evening air
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the pitch marking line running behind him, muted daylight contrast
+Text handling: no sponsor lettering, no scoreboard text, keep all banners blank and out of focus.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the training pitch turf) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the training ground turf plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,28 +157,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-페르시자 자카르타 훈련장 야간 조명
+페르시자 자카르타 훈련장 감독
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-징계가 국경에서 멈추는 건 이상하지 않다
-축구에서 관할권은 원래 그렇게 나뉜다
-다만 뺨을 맞는 장면을 본 사람들이 떠올린
-*1년의 무게는 그 원칙과 크기가 달랐다*
+영상은 1년 가까이 공개돼 있었다
+새로 드러난 건 폭행이 아니라
+처분을 다루는 방식이었다
+*뺨 맞은 쪽 팬들은 남의 나라*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two empty coach's benches sitting at opposite ends of one long stretch of ground, the space between them wide and unbroken. One bench is cold and grey under overcast daylight, the other warm and lit; the ground runs continuously between them with a single painted line crossing the middle. No people are present anywhere in the frame.
-Camera: extreme long shot, tiny subjects, vast environment, scale, isolation, from ground-level shot, worm's-eye view, near floor, shot on 20mm wide lens, subject and environment, documentary realism
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood, warming gradually toward the far end
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the painted line, muted daylight contrast
-Text handling: no signage, no markings other than the plain painted line, no letters or numbers anywhere.
+Scene: Emotional focal point: a supporter's still hands holding a phone, the screen light striking his face from below. A single Korean football supporter in his 30s wearing a plain team scarf sits alone high in an empty stadium stand, looking down at the phone in his hands, shoulders slumped. Around him the rows of seats are entirely vacant, and the pitch far below lies dark and unlit beyond the railing.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation, from eye-level shot, neutral perspective, shot on 20mm wide lens, subject and environment, documentary realism
+Lighting/mood: cold blue pre-dawn tone over the empty stand, desolate stillness, faint screen glow on the face
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) in the phone screen glow, film-noir low-key lighting, deep shadows
+Text handling: keep the phone screen as pure glow with no readable content, no stadium signage, no lettering on the scarf.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the ground) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the stadium seating tier) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -189,5 +188,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-축구장 코치 벤치 빈자리
+K리그 경기장 빈 관중석 팬
 ```
