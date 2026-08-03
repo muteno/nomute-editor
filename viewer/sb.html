@@ -110,6 +110,11 @@
   .gospec .gs-lbl { color:var(--mut); font-weight:var(--fw-b); }
   .gospec .gs-v { color:var(--mut); }
   .gospec .gs-v.on { color:var(--accent); font-weight:var(--fw-b); }   /* 활성값(적용 중) = accent 점등(edit 정본) */
+  /* ── 「그 자리」 선택 변경(운영자 260803 5차 "지금 옵션칸에 있는 것들 누르면 다른 선택자로 변경가능하게") = thumb `.gospec .gs-tog` 정본 **값 사본**(신규 값·신규 부품 0) ── */
+  .gospec .gs-tog { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color var(--dur) ease; padding:0 1px /* raw-ok: thumb .gs-tog 정본 동값 — 레일 칩은 `.pvsec .trail-v .gs-v`(특이도 우위)의 padding 0 5가 그대로 이겨 잉크 중심 무변동 */; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  .gospec .gs-tog:active { transform:scale(var(--press-m)); }   /* 눌림 문법 = 동종 텍스트 토글 정본(press-m) */
+  .gospec .gs-v.gs-locked { opacity:.5 /* raw-ok: thumb `.gospec .gs-v.gs-locked` 정본 동값 */; cursor:default; }   /* 잠금 = 강제 축(Seedance ON·모션그래픽 OFF)이라 탭이 무효인 값 — 딤 + 핸들러 가드 병행(정본 동문) */
+  .gospec .gs-v.gs-locked:active { transform:none; }   /* 잠금 = 눌림 피드백 제거(비상호작용 명시) */
   .optstrip .gs-sep { color:var(--mut); opacity:.45; font-weight:400; margin:0 5px /* raw-ok: 구분자 좌우 5 = edit .gs-sep 정본 동값 */; }
   .firebar { position:static; padding:0; background:none; }   /* 도크 안 = 미리보기 바로 아래 발사바(edit .firebar 정본) */
   .firebar .inner { max-width:600px; margin:0 auto; }
@@ -410,6 +415,14 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
   let sbFocusKey = null;   // 재렌더 포커스 복원(k 계승)
   const refocus = () => { if (!sbFocusKey) return; const el = document.querySelector('[data-fk="' + sbFocusKey + '"]'); sbFocusKey = null; if (el) try { el.focus({ preventScroll: true }); } catch (e) {} };
   const optBtn = (txt, on, fn, num) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'geni-opt' + (on ? ' on' : ''); if (num) b.dataset.num = '1'; b.textContent = txt; b.setAttribute('aria-pressed', String(!!on)); b.dataset.fk = 'opt|' + txt; b.addEventListener('click', () => { sbFocusKey = b.dataset.fk; fn(); }); return b; };   // 워드칩 = index .geni-opt 문법 계승(밝기·색 on/off · aria-pressed 하우스 패턴)
+  // 「그 자리」 선택 변경 칩(운영자 260803 5차) = thumb `#goSpec .gs-v.gs-tog` 정본 문법 그대로(role=button·tabindex·aria-disabled·title「탭=…」)
+  //   ⚠ 정적 `.on` 하드코딩이 아니라 **상태에서 계산**해 그린다 = check_imgstudio_dock_spec(기본 mut·변경만 accent) 정본 유지.
+  const tapChip = (txt, key, tip, o) => {
+    const st = o || {};
+    return '<span class="gs-v' + (st.on ? ' on' : '') + (st.lock ? ' gs-locked' : ' gs-tog') + '"'
+      + (st.lock ? ' aria-disabled="true"' : ' data-tap="' + key + '" data-fk="tap|' + key + '" role="button" tabindex="0"')
+      + ' title="' + tip + '">' + txt + '</span>';
+  };
   function drawSpec() {   // 우측 선택요약 = index #geniSum 리드백 문법('/' 구분·b 값 강조 — 예: 극화·한국웹툰화 / 4:5 · FHD · 1개)
     const d = SB_DIRECTORS.find(x => x.id === sbDirector) || SB_DIRECTORS[0];
     const sh = SB_SHOOTS.find(x => x.id === sbShoot) || SB_SHOOTS[0];
@@ -430,28 +443,32 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
     // 엔진 표기 = 정본 모델명 텍스트만 `Gemini 3.1 Flash`(index GENI_ENG_ICO 동일 문자열 — 줄임말·창작 라벨 금지) · 구 브랜드 픽토(G_SVG 조합)는 260803 3차 폐지(운영자 "제미나이 로고까지 붙을 필요는 없고 그냥 바로 모델명 써지면 됨").
     // 콘티 엔진 값. **시댄스 = 무조건 생성 / 클링 = 옵션**(운영자 Q1161 정정본 — 시댄스는 md만 산출해 이미지가 발사 필수 재료 · 클링은 프롬프트가 본체라 @참조 이미지는 옵션).
     const gemOn = sbShoot === 'seedance' ? true : (sbShoot === 'motion' ? false : sbRef);
-    const gemV = '<span class="gs-v' + (gemOn ? ' on' : '') + '" title="'
-      + (sbShoot === 'seedance'
-          ? 'Seedance = 레퍼런스 이미지 무조건 생성(끌 수 없음 · sb_out/&lt;id&gt;/ref.json = 1-way 주입 필수 재료) · Gemini 종량제 과금'
-          : (sbShoot === 'motion'
-              ? '모션그래픽 = 실사 레퍼런스를 쓸 곳이 없다(플랫 도형·숫자·글자만) → 강제 OFF · Gemini 미과금'
-              : (sbRef ? 'Kling = 레퍼런스 이미지 생성 ON(옵션 · @참조용) · Gemini 종량제 과금' : 'Kling = 레퍼런스 이미지 OFF(옵션 해제) · Gemini 미과금')))
-      + '">' + (gemOn ? 'Gemini 3.1 Flash' : 'Gemini OFF') + '</span>';
+    const gemLock = (sbShoot === 'seedance' || sbShoot === 'motion');   // 강제 축(Seedance = 무조건 ON · 모션그래픽 = 무조건 OFF) = 탭 무효 잠금(정본 `.gs-locked` = 딤 + 핸들러 가드 한 몸)
+    const gemV = tapChip(gemOn ? 'Gemini 3.1 Flash' : 'Gemini OFF', 'ref',
+      sbShoot === 'seedance'
+        ? 'Seedance = 레퍼런스 이미지 무조건 생성(끌 수 없음 · sb_out/&lt;id&gt;/ref.json = 1-way 주입 필수 재료) · Gemini 종량제 과금 — 탭 무효'
+        : (sbShoot === 'motion'
+            ? '모션그래픽 = 실사 레퍼런스를 쓸 곳이 없다(플랫 도형·숫자·글자만) → 강제 OFF · Gemini 미과금 — 탭 무효'
+            : (sbRef ? 'Kling = 레퍼런스 이미지 생성 ON(옵션 · @참조용) · Gemini 종량제 과금 · 탭=끄기' : 'Kling = 레퍼런스 이미지 OFF(옵션 해제) · Gemini 미과금 · 탭=켜기')),
+      { on: gemOn, lock: gemLock });
     // 리드백 2분할(운영자 260803 3차 "옵션에 해당하는 부분만 저기로[네비게이션]" — Q1160 2줄 리모트바 개정):
     //   스트립(도크 아래 예외 칸 = 콘티만) = 1줄 감독│촬영│콘티(엔진) + 2줄 비용 / 옵션(규격 4축)은 코너 레일 값 칩 이주(k·edit·song 정본 문법 합류).
     //   **라벨 = mut · 값 = 강조색**(Q1152·Q1156·Q1157 · 점등 문법 = .gs-v.on 정본).
-    const V = t => '<span class="gs-v on">' + t + '</span>';   // 켜진 값 = 강조색(정본 셀렉터 재사용 · 신규 클래스 0)
     const L = t => '<span class="gs-lbl">' + t + '</span>';    // 라벨 = mut(정본)
     const line1 = [
-      L('감독') + ' : ' + V(esc(d.nm)),
-      L('촬영') + ' : ' + V(esc(sh.nm)),
+      L('감독') + ' : ' + tapChip(esc(d.nm), 'dir', '탭=다음 감독으로 변경(순환) — 감독 = 연출 LLM · 아래 「설계」 감독 행과 같은 상태 1벌', { on: true }),
+      L('촬영') + ' : ' + tapChip(esc(sh.nm), 'shoot', '탭=다음 촬영 엔진으로 변경(순환) — 촬영 = 생성 엔진', { on: true }),
       L('콘티') + ' : ' + gemV
     ].map(r => '<span class="gs-row">' + r + '</span>').join('');
-    // 코너 레일 값 칩 = 옵션 규격 4축(+광고 막컷) — k drawSpec 정본 문법 사본(값 = .gs-v[mut] · 구분 = .gs-sep 헤어라인 렌더 · 표기 = 값만)
+    // 코너 레일 값 칩 = 옵션 규격 4축(+광고 막컷) — k drawSpec 정본 문법 사본(값 = .gs-v[mut] · 구분 = .gs-sep 헤어라인 렌더 · 표기 = 값만) · 탭 = 그 자리 선택 변경(운영자 260803 5차)
     const rail = $('#railSpec');
-    if (rail) rail.innerHTML = [esc(sbSet['화질']), esc(sbSet['프레임']), esc(sbRatio()), esc(sbSet['길이']) + ' · ' + esc(SB_CUTS[sbSet['길이']] || '')]
-      .concat(sbAd ? ['광고 막컷'] : [])
-      .map(t => '<span class="gs-v">' + t + '</span>').join('<span class="gs-sep">·</span>');
+    const railItems = [
+      [esc(sbSet['화질']), 'q', '탭=화질 변경(720p → 1080p → 2K → 4K 순환)'],
+      [esc(sbSet['프레임']), 'fps', '탭=프레임 변경(60fps ↔ 30fps)'],
+      [esc(sbRatio()), 'ar', '탭=비율 변경(9:16 → 16:9 → 1:1 순환) · 직접 N:M 입력은 아래 「설계」 비율 행'],
+      [esc(sbSet['길이']) + ' · ' + esc(SB_CUTS[sbSet['길이']] || ''), 'len', '탭=길이 변경(8s → 10s → 15s → 30s 순환) · 컷수는 길이 종속(storyboard-v1 하드룰)']
+    ].concat(sbAd ? [['광고 막컷', 'ad', '탭=광고 모드 끄기 — 켜짐 = 마지막 컷이 제품·슬로건 키비주얼']] : []);
+    if (rail) rail.innerHTML = railItems.map(it => tapChip(it[0], it[1], it[2], {})).join('<span class="gs-sep">·</span>');
     // 비용·월체감 = 2줄(운영자 260714 5·7·8·9차 요구분 삭제 금지 — 옵션 이주 후에도 스트립 잔류 = 정보 무손실)
     const cost = '<span class="gs-row">' + L('비용') + ' : ' + '<span class="gs-v">' + dcost + ' · ' + scost + '</span></span>';
     spec.innerHTML = '<span class="gs-l1" title="감독 = 연출 LLM · 촬영 = 생성 엔진 · 콘티 = 레퍼런스 이미지 엔진(Gemini)">' + line1 + '</span>'
@@ -495,6 +512,35 @@ function sbPayload() {   // go 핸들러 페이로드(서버 api/sb.js가 화이
   });
   ad.addEventListener('click', () => { sbAd = !sbAd; render(); });
   rf.addEventListener('click', () => { if (sbShoot === 'seedance' || sbShoot === 'motion') return; sbRef = !sbRef; render(); });   // 시댄스(강제 ON)·모션(강제 OFF)이면 무시 — disabled와 이중 가드
+  // ── 요약칸·코너 레일 값 = 「그 자리」 선택 변경(운영자 260803 5차 "지금 옵션칸에 있는 것들 누르면 다른 선택자로 변경가능하게") ──
+  //   정본 = thumb 「편집 요약 스트립 그 자리 토글」(#goSpec `.gs-v.gs-tog` · 운영자 260725 "이거 다 토글 가능하게").
+  //   값 변경 로직은 **새로 짜지 않는다** — 아래 「설계」 칸의 정본 칩(`.geni-opt`)·워드 토글(#refTg·#adTg)을 **대신 눌러** 위임 =
+  //   상태·영속(save)·리드백(drawSpec)·발사 페이로드(sbPayload)가 전부 기존 경로 1벌(드리프트 0 · thumb edCycleTap 동문법).
+  const SB_TAP = {
+    dir: { wrap: '#dgrid' }, shoot: { wrap: '#sgrid' },
+    q: { wrap: '#axQ' }, fps: { wrap: '#axFps' },
+    ar: { wrap: '#axRatio', skip: ['직접'] },   // 「직접」 = 값 입력이 필요한 칩 → 순환 밖(thumb cycle skip 문법 동일 · N:M 편집은 「설계」 비율 행 전담)
+    len: { wrap: '#axLen' },
+    ref: { btn: '#refTg' }, ad: { btn: '#adTg' }   // 이진 축 = 정본 워드 토글 대리 클릭(강제 disabled = 무동작 = `.gs-locked` 표시와 한 몸)
+  };
+  const sbTap = key => {
+    const c = SB_TAP[key]; if (!c) return;
+    if (c.btn) { const b = $(c.btn); if (b && !b.disabled) b.click(); return; }
+    const list = [...document.querySelectorAll(c.wrap + ' .geni-opt')].filter(b => !b.disabled && !(c.skip || []).includes(b.textContent));
+    if (!list.length) return;
+    const cur = list.findIndex(b => b.classList.contains('on'));
+    list[(cur + 1) % list.length].click();   // 현재값 다음 칩(양끝 = 순환 · 미선택[비율 직접 상태] = 첫 칩) — 정본 핸들러 경유
+  };
+  ['#gospec', '#railSpec'].forEach(sel => {   // 위임 = drawSpec의 innerHTML 재생성에도 핸들러 생존(칩 노드는 매 렌더 교체된다)
+    const host = $(sel); if (!host) return;
+    host.addEventListener('click', e => { const t = e.target.closest('.gs-tog[data-tap]'); if (!t) return; e.stopPropagation(); sbTap(t.dataset.tap); });
+    host.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const t = e.target.closest('.gs-tog[data-tap]'); if (!t) return;
+      e.preventDefault(); e.stopPropagation(); const k = t.dataset.tap; sbTap(k);
+      const n = host.querySelector('[data-fk="tap|' + k + '"]'); if (n) try { n.focus({ preventScroll: true }); } catch (_) {}   // 키보드만 포커스 복원(칩이 재생성돼 사라진 자리 = thumb refocus 문법 · 탭/마우스는 포커스링 미발생이 정상)
+    });
+  });
   render();
 })();
 // 최소 마크다운 렌더 — k.html renderMd 바이트 계승(펜스 코드블록·헤딩·표/굵게 누출 폴백)
