@@ -41,7 +41,10 @@ jobs:
         run: |
           echo "사유: ${REASON:-(없음)}"
           if [ -z "${CF_DEPLOY_HOOK}" ]; then
-            echo "::warning::CF_DEPLOY_HOOK 미설정 — 재발사 불가(레포 Secrets에 등록 필요)"; exit 0
+            # ⚠ 260803 4차 실측: 이 자리가 warning+exit 0(fail-soft)이라 **훅을 한 발도 안 쐈는데 런 4회가 전부 초록**이었다
+            #   → 세션도 운영자도 "재발사했다"고 오판(라이브는 4시간 넘게 옛 빌드) · 시크릿 부재 = 사람이 등록해야 풀리는 **하드 블로커**지
+            #   런타임 흔들림이 아니다 → 실패로 못박아 빨간 런으로 보이게 한다(훅 **호출** 실패는 종전 fail-soft 유지 = 아래 else)
+            echo "::error::CF_DEPLOY_HOOK 미설정 — 재발사 0발(레포 Settings → Secrets and variables → Actions → New repository secret · 이름 CF_DEPLOY_HOOK · 값 = Cloudflare Pages > 프로젝트 > Settings > Builds & deployments > Deploy hooks URL)"; exit 1
           fi
           if curl -fsS -X POST "${CF_DEPLOY_HOOK}" -o /dev/null; then
             echo "✅ Cloudflare 재빌드 트리거 완료 — 아래서 라이브 도장 전진을 관측한다"
