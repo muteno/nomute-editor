@@ -86,6 +86,13 @@
   .sech { display:flex; align-items:center; gap:6px; margin:16px 0 9px; font-weight:var(--fw-x); font-size:var(--fs-label); color:var(--fg); }   /* raw-ok: gap6·margin 16/0/9 = thumb .csec 정본 동문 바이트(교체 전 원값 그대로 · §0-6 100% 모방 — 토큰 치환 시 정본과 선언 이격) */   /* 섹션 헤더 = 이미지 모달 소머리 문법 계승(thumb .csec 정본 동문: • 블릿+흰 라벨·마진 16/0/9·gap 6) · 구분선+상단패딩 = 제거(운영자 260722 "기본적인 인터페이스를 공유해야함" — thumb .csec 무구분선 실측 정합 · 구 260712 5차 '구분선 존치' 지시의 반전 = 최신 우선 · 복원 = padding-top:var(--sp-2); border-top:1px solid var(--line)) */
   .sech::before { content:'•'; color:var(--accent); font-weight:var(--fw-b); }   /* 블릿 = 형광·700(thumb .csec::before 그대로 · §표기표준 가) */
   .scard .hd.st { cursor:default; }   /* 상시형 = 접기 클릭 폐지 */
+  /* ── 워드 토글 카드(헤더의 유일한 자식 = 워드 칩) = 카드 헤더 전면이 탭 타깃 ──
+     ⚠ 260803 실사고(운영자 "자막 선택이 안됨"): 260803 워드 점등 개정으로 라벨 자체가 토글이 되면서 카드 = 통짜 버튼처럼 읽히는데,
+     실제 히트존은 글자 span뿐이었다(430px 실측 = 카드 127.3×37.2 vs 칩 24.7×19.2 = **면적 10%**). 캡슐 여백을 누르면 무반응 = "안 눌린다".
+     세로 19.2px는 44px 탭 타깃에도 미달. 히트존 확장은 아래 click 위임[1237]이 전담(패딩 13px까지 포함) · 여기선 어포던스만:
+     구 `cursor:default`(= 못 누른다는 신호)를 pointer로 되돌리고, 헤더 어디를 눌러도 칩이 눌린 것으로 보이게 press를 중계한다. 값 = --press-m(.cyv:active 정본 동값 · 신규 값 0). */
+  .scard .hd.st:has(> .cyv:only-child) { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .scard .hd.st:has(> .cyv:only-child):active .cyv { transform:scale(var(--press-m)); }
   .addbtn { margin-top:var(--sp-2); width:100%; height:42px; border-radius:var(--r-l); border:1px dashed var(--line); background:transparent; color:var(--accent); font:inherit; font-weight:var(--fw-x); font-size:var(--fs-label); cursor:pointer; transition:transform var(--dur-fast); }
   .addbtn:active { transform:scale(var(--press-l)); }
 
@@ -1235,7 +1242,8 @@ function doCyc(el){ const k=el.dataset.cyc, list=CYC[k]; if(!list) return; const
   const apply=()=>{ if(typeof _preManual==='function') _preManual(); setAxis(k,nv); render(); };
   if(armAfterAttach(apply)) return;   // 소스 게이트(운영자 260803) — 경고 + 영상 입구 자동 개방 + 이 값 예약(첨부·URL 주입되면 같은 값으로 재실행) · ⚠ 예약은 **값(nv)** 을 잡는다: el은 render()로 갈려 사라지므로 요소 참조를 잡으면 stale
   apply(); }
-document.addEventListener('click',e=>{ const c=e.target.closest('[data-cyc]'); if(c) doCyc(c); });
+document.addEventListener('click',e=>{ const c=e.target.closest('[data-cyc]'); if(c){ doCyc(c); return; }
+  const h=e.target.closest('.hd.st'); if(!h) return; const w=h.querySelector(':scope > .cyv:only-child'); if(w) doCyc(w); });   // 워드 토글 카드 = 헤더 전면이 히트존(운영자 260803 "자막 선택이 안됨" — 실측 히트존 24.7×19.2 = 카드 면적 10%, 캡슐 여백 탭이 통째로 죽어 있었다) · 술어 = **헤더의 유일한 자식이 워드 칩일 때만**(자막·번역·고프레임·구간·배경음·음량 통일·클리퍼) → 라벨|값·칩 나열 헤더(비율·해상도·프리셋·컷 편집)는 자식이 2개 이상이라 미적중 = 종전 100% 불변(어느 칩을 뜻하는지 모호한 카드는 확장 안 함) · 값 축·핸들러는 doCyc 단일 정본 그대로 = 상태 계약 무변
 document.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ const c=e.target.closest&&e.target.closest('[data-cyc]'); if(c){ e.preventDefault(); doCyc(c); return; }
   const b=e.target.closest&&e.target.closest('#tlBar'); if(b){ e.preventDefault(); const vv=$('#pvVid'); if(vv&&FILE_URL){ _segHold=Date.now(); try{ if(vv.paused) vv.play().catch(()=>{}); else vv.pause(); }catch(_){} } } } });   // 룰러 키보드 = 재생/정지(마우스 없이도 조작 가능 · 평의회⑥ 260728)
 function openSheet(){ renderSheet(); $('#sheet').hidden=false; $('#sheetdim').hidden=false; }   // 열 때마다 재렌더 = 초기 미렌더·상태 불일치 방어(260712 빈 시트 회귀 봉합)
