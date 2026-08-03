@@ -130,6 +130,16 @@ async function runOnce(pg, hits, fcs) {
     await pg.evaluate(sh => { openTool(sh.src, sh.title, sh.tabs.map(t => ({ src: t.src, app: t.app, label: t.ko })), sh.key); },
       { src: s.src, title: s.title, key: s.key, tabs: s.tabs.map(t => ({ src: t.src, app: t.app, ko: t.ko })) });
     await settle(pg);
+    // 셸 전환 플레이키 봉합(260803 실측 — 같은 트리에서 PASS↔FAIL 교차 · 부하 시 셸 재-open 직후 첫 탭 로케이터가 30s 클릭 대기를 넘김):
+    //   첫 탭 가시화를 명시 대기하고, 못 만나면 close→openTool **1회 재시도**(표면 무죄·계측기 타이밍 축 = smoke_fire 거짓 빨강 2회 자체 교정 선례 동문)
+    try { await pg.waitForSelector(s.pick(s.tabs[0]), { timeout: 8000 }); }
+    catch (_) {
+      await pg.evaluate(() => { try { if (tooldlg.open) tooldlg.close(); } catch (_) {} });
+      await pg.waitForTimeout(400);
+      await pg.evaluate(sh => { openTool(sh.src, sh.title, sh.tabs.map(t => ({ src: t.src, app: t.app, label: t.ko })), sh.key); },
+        { src: s.src, title: s.title, key: s.key, tabs: s.tabs.map(t => ({ src: t.src, app: t.app, ko: t.ko })) });
+      await settle(pg);
+    }
     for (const t of s.tabs) {
       const k = KEY(s, t);
       await pg.click(s.pick(t));
