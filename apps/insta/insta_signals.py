@@ -741,24 +741,75 @@ def main():
                     return url
             return ''
 
+        # ── 3단 회수 체인 3층 = 마지막 성공 커버 원장(운영자 260803 "이번 문제 안일어나게 하면 더 좋을듯") ──
+        # 구조적 뿌리 = 매 수집이 API 응답을 **그대로 덮어써서** 한 번만 빠져도 그 칸이 즉시 빈다(260718 주석의
+        # '무성 생략 2/25' → 260803 재발 2/12 = 우연이 아니라 상시 반복). 원장은 미디어 id별 마지막 성공 커버를
+        # 남겨 IG·FB가 **동시에** 빈손인 회차에도 화면을 유지한다. 손편집 금지 = 이 코드가 매 실행 재생성.
+        # ⚠ 만료 인지 필수: IG/FB CDN URL은 `oe=<hex epoch>` 만료를 달고 온다. 만료분을 그냥 내보내면 캡션
+        #   타일 대신 **깨진 이미지**가 되므로(더 나쁨), 만료(+여유 1h)면 원장에서도 안 쓰고 ''로 떨어뜨린다.
+        #   만료 파싱 실패 = 사용(fail-open) — 뷰어 onerror가 캡션 타일로 강등하는 2중 방어가 받는다.
+        CACHE_P = os.path.join(DATA, 'thumb_cache.json')
+        CACHE_KEEP = 200   # 최근 게시물 12칸 + 여유(무한 비대 방지)
+
+        def _url_expiry(u):
+            mo = re.search(r'[?&]oe=([0-9A-Fa-f]{6,10})', u or '')
+            try:
+                return int(mo.group(1), 16) if mo else None
+            except Exception:
+                return None
+
+        def _url_alive(u):
+            exp = _url_expiry(u)
+            return True if exp is None else exp > (datetime.datetime.now(KST).timestamp() + 3600)
+
+        try:
+            with open(CACHE_P, encoding='utf-8') as f:
+                cache = json.load(f)
+            assert isinstance(cache, dict)
+        except Exception:
+            cache = {}
+
         def _thumb_src(m):
-            """썸네일 이미지 URL — 커버(thumbnail_url) 우선. 영상(릴스) media_url은 mp4 스트림이라
-            <img>로 못 그림 → 커버 없는 릴스는 FB 크로스포스트 커버로 회수(위 260803), 그래도 없으면 ''
-            (뷰어가 캡션 텍스트 타일로 대체 · 운영자 260718 승인).
-            이미지·캐러셀만 media_url 폴백(그건 실제 이미지). 커버 재조회(대개 복구) = insta_fetch."""
+            """썸네일 이미지 URL — 3단 회수 체인. ① 커버(thumbnail_url) ② FB 크로스포스트 커버(260803)
+            ③ 마지막 성공 커버 원장(260803 재발방지 · 만료분 제외). 셋 다 없으면 ''(뷰어가 캡션 텍스트 타일).
+            영상(릴스) media_url은 mp4 스트림이라 <img>로 못 그림 = 폴백 대상 아님(이미지·캐러셀만 실제 이미지).
+            커버 재조회(대개 복구) = insta_fetch."""
             tu = m.get('thumbnail_url')
             if tu:
                 return tu
             mu = m.get('media_url') or ''
-            if m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS' or '/o1/v/' in mu or '/v/t2/' in mu:
-                return _fb_cover_for(m)
-            return mu or _fb_cover_for(m)
+            if not (m.get('media_type') == 'VIDEO' or m.get('media_product_type') == 'REELS'
+                    or '/o1/v/' in mu or '/v/t2/' in mu):
+                if mu:
+                    return mu
+            fb = _fb_cover_for(m)
+            if fb:
+                return fb
+            old = (cache.get(str(m.get('id'))) or {}).get('u') or ''
+            return old if old and _url_alive(old) else ''
         # 최신 12개 원순서 유지 — 커버 없는 릴스도 제자리 보존(th='' → 뷰어가 캡션 텍스트 타일 · t 동봉). 영상URL 폴백·앞자름 결손 = 종식.
         # r = 릴스 플래그(뷰어가 릴스 커버에 ▶ 표식 · 피드 무표식 = 포맷 판별 · 운영자 260718)
         thumbs = [{'th': _thumb_src(m), 'u': m.get('permalink'),
                    't': first_line(m.get('caption'))[:40],
                    'r': 1 if (m.get('media_product_type') == 'REELS' or m.get('media_type') == 'VIDEO') else 0}
                   for m in (med.get('media') or [])[:12]]
+        # 원장 갱신 — 이번 회차에 실제로 화면에 나간 커버만 기록(살아있는 URL 확정분). 다음 회차에 API가 빠뜨려도
+        # 이 값이 3층에서 받아낸다. 만료분·결손분은 안 덮어써 **마지막 살아있던 값**이 남는다(정보 손실 0).
+        # 프루닝 = 최신 회차 표본 25개 안에 있는 id 우선 보존 → 나머지는 최근순 CACHE_KEEP개(무한 비대 방지).
+        try:
+            live_ids = [str(m.get('id')) for m in (med.get('media') or []) if m.get('id')]
+            stamp_now = datetime.datetime.now(KST).isoformat(timespec='seconds')
+            for m, t in zip((med.get('media') or [])[:12], thumbs):
+                if t['th'] and _url_alive(t['th']) and m.get('id'):
+                    cache[str(m['id'])] = {'u': t['th'], 't': stamp_now}
+            keep = [i for i in live_ids if i in cache]
+            rest = sorted((k for k in cache if k not in set(live_ids)),
+                          key=lambda k: (cache[k] or {}).get('t') or '', reverse=True)
+            cache = {k: cache[k] for k in (keep + rest)[:CACHE_KEEP]}
+            with open(CACHE_P, 'w', encoding='utf-8') as f:
+                json.dump(cache, f, ensure_ascii=False, indent=1)
+        except Exception as e3:
+            print(f'커버 원장 갱신 실패(비치명 · 이번 회차 커버는 그대로 나감): {e3}')
         vdoc = {'generated_kst': sig['generated_kst'], 'profile': last.get('profile'), 'account_day': last.get('account_day'),
                 'signals': {'axes': sig['axes'], 'n_posts': sig['n_posts']}, 'posts': posts, 'thumbs': thumbs,
                 **sig['audience_overlay']}   # online_peak_kst(+수기 폴백 시 online_src·online_hours_kst·online_note) — 뷰어 예약 필·chan_brief 다이제스트 공용

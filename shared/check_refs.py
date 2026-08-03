@@ -630,6 +630,49 @@ def check_shell_cache_parity():
     return 0
 
 
+def check_thumb_chain():
+    """최근 게시물 커버 회수 체인 게이트(운영자 260803 "이번 문제 안일어나게 하면 더 좋을듯" — 260718 '무성 생략 2/25'가
+    260803 '2/12'로 **재발**한 축의 구조 봉합). 결손이 조용한 이유 = 커버가 없어도 캡션 타일이 그럴듯해 보여
+    아무도 회귀를 못 본다 → 정적 하드게이트로 못박는다.
+    서버 3층(apps/insta/insta_signals.py `_thumb_src`) = ① thumbnail_url ② FB 크로스포스트(`_fb_cover_for`)
+    ③ 마지막 성공 커버 원장(`thumb_cache.json` · 만료 인지 `_url_alive`) 전부 생존 + 원장 write-back 존재.
+    뷰어 1층(viewer/index.html) = 커버 로드 실패가 **타일 소멸(display:none)이 아니라** 캡션 타일 강등(`chThFail`).
+    구 문법(parentNode.style.display='none')이 되살아나면 12칸 그리드에 구멍이 남으므로 그 리터럴 자체를 금지한다."""
+    sp = os.path.join(ROOT, 'apps', 'insta', 'insta_signals.py')
+    vp = os.path.join(ROOT, 'viewer', 'index.html')
+    try:
+        s = open(sp, encoding='utf-8').read()
+        v = open(vp, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_thumb_chain 읽기 실패(fail-closed):', e); return 1
+    miss = []
+    for tok, why in (('_fb_cover_for(m)', '② FB 크로스포스트 폴백 호출'),
+                     ('thumb_cache.json', '③ 마지막 성공 커버 원장 경로'),
+                     ('_url_alive(', '③ 만료 인지(깨진 이미지 송출 차단)'),
+                     ("cache[str(m['id'])]", '③ 원장 write-back(다음 회차 방어선)')):
+        if tok not in s:
+            miss.append('insta_signals.py: %s (%s)' % (tok, why))
+    if 'function chThFail(' not in v:
+        miss.append('index.html: chThFail (커버 실패 = 캡션 타일 강등)')
+    # 스코프 = .ch-th 타일 템플릿 줄만(다른 컴포넌트의 display:none 은닉은 정당 — 예: X 카드 대표 이미지 .xcard-cv는
+    # 카드 **안** 부속이라 숨겨도 그리드에 구멍이 안 난다. 여기서 금지하는 건 그리드 셀 자신이 사라지는 축 하나).
+    tile = [l for l in v.splitlines() if 'class="ch-th"' in l]
+    if not tile:
+        miss.append('index.html: .ch-th 타일 템플릿 0줄 추출(선언 형태 변경 = 게이트 갱신 필요 · fail-closed)')
+    for l in tile:
+        if 'chThFail(this)' not in l:
+            miss.append('index.html: .ch-th 타일 onerror가 chThFail(this)가 아님 — 구멍 축')
+        if "style.display='none'" in l:
+            miss.append("index.html: .ch-th 타일에 구 onerror(display:none) 부활 — 그리드 구멍 축")
+    if miss:
+        print('❌ 커버 회수 체인 게이트 — 다음이 끊겼다(최근 게시물 빈 칸 재발 축):')
+        for m in miss:
+            print('   · ' + m)
+        return 1
+    print('✅ 커버 회수 체인 게이트 — 서버 3층(API·FB 크로스포스트·성공 원장+만료 인지) + 뷰어 강등 1층 생존(빈 칸 재발 차단).')
+    return 0
+
+
 def check_shell_put_integrity():
     """셸캐시 put 절단 검문 의무 게이트(260802 '상단만 렌더' **재발** 실사고 — 1차 봉합이 sw.js put에만 </html>
     꼬리 검문을 달고, index.html applyShellUpdate의 페이지측 put은 무검문으로 남아 '탭하면 반영' 중 전송 절단이
@@ -2809,6 +2852,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_shell_cache_parity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_thumb_chain() != 0:   # 최근 게시물 커버 회수 체인(하드 게이트 — 260718 '무성 생략 2/25'가 260803 '2/12'로 재발한 축 · 서버 3층 + 뷰어 강등 1층)
+            rc = 1
+    except Exception as e:
+        print('❌ check_thumb_chain 예외(fail-closed):', e); rc = 1
     try:
         if check_shell_put_integrity() != 0:   # 셸캐시 put = 절단 검문(</html> 꼬리) 의무(하드 게이트 — 260802 재발: sw.js만 검문·페이지측 put 무검문 = 절단 셸 재주입)
             rc = 1
