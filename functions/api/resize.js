@@ -9,6 +9,7 @@ const ASPECTS = ['16:9', '9:16', '4:5', '1:1', '21:9'];   // 프리셋(21:9 = 26
 // 직접 비율(운영자 260718 "AI 생성 비율 따라가기" — genidlg 직접 N:N 계약 미러): W:H 각 1~99 정수 + 비율 1:4~4:1(극단값 후처리 병리 차단 · genimg.js 동일 계약) — 러너 pad_canvas는 W:H 문자열 일반 파싱이라 값 전달만 완화
 function customAspectOk(a) { const m = /^([1-9][0-9]?):([1-9][0-9]?)$/.exec(String(a || '')); if (!m) return false; const r = (+m[1]) / (+m[2]); return r >= 0.25 && r <= 4; }
 const SIZES = ['1K', '2K'];
+const FILLS = ['auto', 'solid', 'blur', 'ai'];   // 채움 오버라이드(운영자 260803 "편집탭까지 하자") — 러너 resize_image.py FILLS와 한 쌍 · auto = 종전 자동 라우팅
 const GH = (token, path, method, body) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   method,
   headers: {
@@ -30,6 +31,7 @@ export async function onRequestPost({ request, env }) {
   const aspect = ASPECTS.includes(body.aspect) ? body.aspect : (customAspectOk(body.aspect) ? body.aspect : '16:9');   // 프리셋 우선 · 직접 N:N(260718) 검증 통과분 허용 · 그 외 = 16:9 폴백(종전)
   const size = SIZES.includes(body.size) ? body.size : '1K';
   const lock = body.lock !== false;   // 기본 ON(원본 보존)
+  const fill = FILLS.includes(body.fill) ? body.fill : 'auto';   // 화이트리스트 이중 검증(러너 동행 · genimg 계승) — 미지정 = auto(종전 무변)
 
   // 이미지 base64(dataURL 허용) — ≤9MB + 매직바이트(JPG/PNG/WEBP · make-cards.js 계승 = 저장형 비이미지 차단)
   let b64 = String(body.imageB64 || '');
@@ -62,7 +64,7 @@ export async function onRequestPost({ request, env }) {
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/img-resize.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify({ aspect, size, lock }) },
+    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify({ aspect, size, lock, fill }) },
   });
   if (r.status === 204) return json({ ok: true, id });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);

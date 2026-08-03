@@ -8,7 +8,9 @@
                    + 픽셀락(원본 재부착·기본 ON — 문구·얼굴 100% 보장)
   폴백 blur_pad  = 렌더 실패·검증 미달 → 원본 블러 확대 배경(과금 0·항상 성공)
 
-입력(env): RESIZE_ID · RESIZE_SRC(uploads/<id>/src.ext) · RESIZE_OPTS(JSON {aspect,size,lock})
+입력(env): RESIZE_ID · RESIZE_SRC(uploads/<id>/src.ext) · RESIZE_OPTS(JSON {aspect,size,lock,fill})
+  fill(운영자 260803 "편집탭까지 하자" — 3층을 사용자 선택지로): auto=종전 edge_std 라우팅(기본·무변) ·
+  solid=단색 패드 강제 · blur=블러 확대 강제 · ai=Gemini 아웃페인팅 강제(실패 시 blur 폴백 종전 그대로)
 산출: R2 resize/<id>/… (미설정 시 git viewer/gen_out/) → viewer/gen_out/resize.json prepend(캡 24)
       + /tmp/resize_new.json(race-heal · imggen 계승)
 불변: workflow_dispatch 전용 = 유료 Gemini 수동 발사만(§📰) · 자동 파이프라인 무접촉 · KST(§📐).
@@ -40,6 +42,7 @@ def custom_aspect_ok(a):   # 직접 비율 N:N(운영자 260718 "AI 생성 비�
     r = int(m.group(1)) / int(m.group(2))
     return 0.25 <= r <= 4
 SIZES = ("1K", "2K")
+FILLS = ("auto", "solid", "blur", "ai")   # 채움 오버라이드(운영자 260803) — api/resize FILLS와 한 쌍 · auto = 종전 자동 라우팅
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 
 P_PADFILL = (
@@ -178,6 +181,7 @@ def main():
     aspect = opts.get("aspect") if opts.get("aspect") in ASPECTS else (opts.get("aspect") if custom_aspect_ok(opts.get("aspect")) else "16:9")   # 직접 N:N(운영자 260718 · api/resize customAspectOk와 한 쌍) 허용 · 그 외 16:9 폴백(종전)
     size = opts.get("size") if opts.get("size") in SIZES else "1K"
     lock = bool(opts.get("lock", True))
+    fill = opts.get("fill") if opts.get("fill") in FILLS else "auto"   # 채움 오버라이드(운영자 260803) — 미지정·구 이력 재발사 = auto(종전)
 
     src_path = os.path.join(ROOT, src)
     if not rid or not os.path.isfile(src_path):
@@ -188,14 +192,18 @@ def main():
         print("이미 목표 비율({}) — no-op".format(aspect))
         return
 
-    # ── 라우팅 ──
+    # ── 라우팅 ── (auto = 종전 edge_std 자동 · solid/blur/ai = 운영자 지정 강제 — 260803 채움 선택지)
     std, mean_color = edge_stats(img)
     route = "solid_pad" if std < EDGE_SOLID_STD else "gemini"
-    print("라우팅: edge_std={:.1f} → {} (aspect={} size={} lock={})".format(std, route, aspect, size, lock), flush=True)
+    if fill != "auto":
+        route = {"solid": "solid_pad", "blur": "blur_pad", "ai": "gemini"}[fill]
+    print("라우팅: edge_std={:.1f} fill={} → {} (aspect={} size={} lock={})".format(std, fill, route, aspect, size, lock), flush=True)
 
     out_img = None
     if route == "solid_pad":
         out_img = solid_pad(img, aspect, mean_color)
+    elif route == "blur_pad":   # 명시 블러(fill=blur) — 종전엔 폴백 전용 경로였다(결정론·과금 0)
+        out_img = blur_pad(img, aspect)
     else:
         if not tg.KEY:
             print("::warning::GEMINI_API_KEY 없음 — blur-pad 폴백")
@@ -258,7 +266,7 @@ def main():
         url = "gen_out/" + fname
         print("  ⚠️ R2 불가 — git 폴백 저장: " + url, flush=True)
 
-    item = {"url": url, "srcUrl": src, "aspect": aspect, "size": size, "lock": lock, "route": route,
+    item = {"url": url, "srcUrl": src, "aspect": aspect, "size": size, "lock": lock, "route": route, "fill": fill,
             "id": rid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
     sjson = os.path.join(tdir, "resize.json")
     cur = []
