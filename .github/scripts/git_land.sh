@@ -15,6 +15,15 @@
 # rc: 항상 0(fail-soft — 커밋 스텝/후속 스텝 비차단) · 미착지 시 ::warning만.
 set -u
 MSG="${1:-chore: bot commit}"; shift || true
+# ── [CF-Pages-Skip] 코얼레싱(운영자 260803 평의회 5인 · Q1331) — 이 헬퍼를 쓰는 봇 산출물(sns-trends·insta·fb·lucy)은
+#    「화면에 수 분 늦게 떠도 되는 데이터 churn」이라 CF Pages 빌드를 커밋마다 돌리지 않는다. [CF-Pages-Skip]은
+#    CF **전용** 스킵 접두(GitHub Actions 스킵 토큰 5종[skip ci 등]에 미포함 = push 발화 무손상)이고, 다음 비스킵
+#    빌드(scrape 15분 메트로놈·코드·제작 산출)가 브랜치 tip을 통째로 배포하므로 스킵분은 누적 반영된다(유실 0).
+#    킬스위치 = repo variable PAGES_COALESCE=0(부재·공백 = ON · LIVE_ROLLBACK 관례 동형) → 접두 생략 = 즉시 원복.
+#    ⚠ 스킵 금지 축(stamp·제작 산출·pending·asks·조기 반영·scrape)은 이 헬퍼를 안 쓴다 — 명문 = CLAUDE.md · 게이트 = check_refs check_pages_skip.
+if [ "${PAGES_COALESCE:-1}" != "0" ]; then
+  case "$MSG" in "[CF-Pages-Skip]"*) ;; *) MSG="[CF-Pages-Skip] $MSG";; esac
+fi
 PATHS=("$@")
 [ "${#PATHS[@]}" -gt 0 ] || { echo "git_land: 대상 경로 없음 — no-op"; exit 0; }
 # 실존 경로만 남김(페이블 검증단 260718 격리 실증) — git add는 결측 pathspec이 1개라도 있으면 전체를

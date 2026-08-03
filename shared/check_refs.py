@@ -784,6 +784,81 @@ def check_workflow_amend():
     return 0
 
 
+# [CF-Pages-Skip] 코얼레싱 허용 표면(운영자 260803 페이블 5인 평의회 · Q1331) — 여기 등재된 파일만 접두를 배선할 수 있다.
+#   원리 = 「화면에 수 분 늦게 떠도 되는 데이터 churn」 커밋만 CF 빌드를 스킵(다음 비스킵 빌드가 tip 통째 배포 = 누적·유실 0).
+#   ⚠ 금지 축(여기 없는 파일 = 전부): stamp-version(:14 skip 금지 명문 = BUILD_STAMP·live-smoke 수렴 축) ·
+#     제작 산출(cards·thumb·edit·conv·voice·song·track = 'Cloudflare Pages' 체크런 완료 게이트 5종이 붙는다) ·
+#     news-analyze·news-ask(queue/asks = notify_summary 240s 배포 대기 축) · scrape(15분 메트로놈 = 스킵분 신선도 바닥) ·
+#     auto-pick·조기 반영(운영자 체감 즉시축). 확장 = 사유와 함께 이 목록에 1줄(평의회② 260803: 토큰은
+#     [CF-Pages-Skip]만 — [CI Skip]류는 GitHub [ci skip]과 충돌 위험 = push 발화 사망).
+_PAGES_SKIP_ALLOW = {
+    os.path.join('.github', 'scripts', 'git_land.sh'),        # 공용 헬퍼(sns-trends·insta·fb·lucy 4워크플로) — 접두 로직 정본
+    os.path.join('.github', 'workflows', 'sns-trends.yml'),   # ↓ 4개 = git_land 호출자: 접두 실배선은 헬퍼 안 · 이 파일들엔 킬스위치 env 주석 리터럴만
+    os.path.join('.github', 'workflows', 'insta-fetch.yml'),
+    os.path.join('.github', 'workflows', 'fb-fetch.yml'),
+    os.path.join('.github', 'workflows', 'lucy-threads.yml'),
+    os.path.join('.github', 'workflows', 'social-scan.yml'),
+    os.path.join('.github', 'workflows', 'breaking-judge.yml'),  # 경중 grade 갱신 커밋만(조기 반영·auto-pick 줄 금지 = 아래 부정 검사)
+    os.path.join('.github', 'workflows', 'metrics-rollup.yml'),
+    os.path.join('.github', 'workflows', 'watchdog.yml'),
+    os.path.join('.github', 'workflows', 'rate.yml'),
+}
+
+
+def check_pages_skip():
+    """[CF-Pages-Skip] 오배선 차단 게이트(운영자 260803 평의회 · Q1331) — 접두가 금지 축(도장·제작 산출·뉴스 큐·메트로놈)에
+    번지면 배포 보증(체크런 게이트 5종)·BUILD_STAMP 수렴·요약 알림 240s 대기가 조용히 죽는다. 판정 3축:
+    ① 접두 리터럴은 _PAGES_SKIP_ALLOW 등재 파일에만 ② git_land.sh엔 킬스위치 가드(PAGES_COALESCE)가 실존
+    ③ breaking-judge 안에서 접두 변수(PFX)가 금지 커밋 줄(조기 반영·auto-pick·발송 원장)에 안 붙음."""
+    lit = '[CF-Pages-Skip'
+    bad = []
+    scan_dirs = [os.path.join(ROOT, '.github', 'workflows'), os.path.join(ROOT, '.github', 'scripts')]
+    seen_allow = set()
+    for d in scan_dirs:
+        try:
+            names = sorted(os.listdir(d))
+        except Exception as e:
+            print('❌ check_pages_skip 디렉터리 읽기 실패(fail-closed):', e); return 1
+        for n in names:
+            p = os.path.join(d, n)
+            if not os.path.isfile(p):
+                continue
+            try:
+                txt = open(p, encoding='utf-8').read()
+            except Exception:
+                continue
+            rel = os.path.relpath(p, ROOT)
+            if lit in txt:
+                if rel in _PAGES_SKIP_ALLOW:
+                    seen_allow.add(rel)
+                else:
+                    bad.append(rel + ' → 접두 금지 표면(허용 = _PAGES_SKIP_ALLOW 등재 + 사유)')
+    # ② 헬퍼 가드 실존 — 접두는 항상 킬스위치(PAGES_COALESCE=0) 뒤에 있어야 한다(무조건 접두 = 롤백 1줄 계약 파기)
+    gl = os.path.join(ROOT, '.github', 'scripts', 'git_land.sh')
+    try:
+        gtxt = open(gl, encoding='utf-8').read()
+        if lit in gtxt and 'PAGES_COALESCE' not in gtxt:
+            bad.append('git_land.sh → 접두에 킬스위치(PAGES_COALESCE) 가드 부재')
+    except Exception as e:
+        print('❌ check_pages_skip git_land.sh 읽기 실패(fail-closed):', e); return 1
+    # ③ breaking-judge 금지 줄 부정 검사 — PFX 변수가 즉시축 커밋에 번지면 조용한 지연(운영자 체감 직격)
+    bj = os.path.join(ROOT, '.github', 'workflows', 'breaking-judge.yml')
+    try:
+        for i, l in enumerate(open(bj, encoding='utf-8').read().splitlines(), 1):
+            if 'git commit' in l and '${PFX}' in l and ('조기 반영' in l or 'auto-pick' in l or '발송 원장' in l):
+                bad.append('breaking-judge.yml:%d → 즉시축 커밋에 접두 금지(경중 grade 갱신만 허용)' % i)
+    except Exception as e:
+        print('❌ check_pages_skip breaking-judge 읽기 실패(fail-closed):', e); return 1
+    if bad:
+        print('❌ [CF-Pages-Skip] 오배선(평의회 260803 — 도장·제작·뉴스 큐에 번지면 배포 보증·수렴·알림이 조용히 죽는다):')
+        for b in bad:
+            print('   -', b)
+        return 1
+    print('✅ [CF-Pages-Skip] 코얼레싱 게이트 — 허용 표면 %d/%d 배선 · 금지 표면 잔존 0 · 킬스위치 가드 실존.'
+          % (len(seen_allow), len(_PAGES_SKIP_ALLOW)))
+    return 0
+
+
 _CATKW_BUCKETS = ('국제', '경제', '문화', '테크', '정치', '사회')
 
 
@@ -3312,6 +3387,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_workflow_amend 예외(fail-closed):', e); rc = 1
+    try:
+        if check_pages_skip() != 0:   # [CF-Pages-Skip] 오배선 차단(하드 게이트 — 260803 평의회: 도장·제작·뉴스 큐에 번지면 배포 보증·수렴·알림 조용히 사망)
+            rc = 1
+    except Exception as e:
+        print('❌ check_pages_skip 예외(fail-closed):', e); rc = 1
     try:
         if check_curation_constants() != 0:   # 큐레이션 랭킹 상수↔§★ 문서 정합(하드 게이트 — #1135식 자기-revert·드리프트 차단·260628 감사 C8)
             rc = 1

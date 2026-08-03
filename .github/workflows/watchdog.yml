@@ -22,6 +22,8 @@ concurrency:
   group: watchdog
   cancel-in-progress: false
 
+env:
+  PAGES_COALESCE: ${{ vars.PAGES_COALESCE }}   # [CF-Pages-Skip] 코얼레싱 킬스위치(0=off · 부재=ON) — 정본 = git_land.sh 헤더 · Q1331
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -63,7 +65,8 @@ jobs:
           git add scraper/obs/incidents.jsonl 2>/dev/null || true   # 사고 이력 원장(운영자 260727 한 수) — ⚠ 러너는 매 런 새 체크아웃이라 **커밋 안 하면 기록이 통째로 증발**한다(변화 있을 때만 몇 줄 증가 = 리포 부담 0)
           git add scraper/brk_misfire.json 2>/dev/null || true   # 긴급 오발 신고 처리 원장(위 TTL 갱신 스텝 산출 · 260803)
           git diff --cached --quiet && { echo "원장 변동 없음 — 커밋 생략"; exit 0; }
-          git commit -m "watchdog: 경보 쿨다운 도장"
+          PFX=""; [ "${PAGES_COALESCE:-1}" != "0" ] && PFX="[CF-Pages-Skip] "   # CF 빌드만 스킵(코얼레싱 · 정본 = git_land.sh 헤더 · Q1331 — GitHub 발화 무손상 토큰)
+          git commit -m "${PFX}watchdog: 경보 쿨다운 도장"
           for i in 1 2 3 4; do
             git pull --rebase --autostash origin main || echo "::warning::pull--rebase 실패(사유 = 위 로그) — 재시도 계속"
             git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
