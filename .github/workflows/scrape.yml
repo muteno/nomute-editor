@@ -86,6 +86,49 @@ jobs:
           done
           echo "::error::candidates push 실패"; exit 1
 
+      # ── ⑭-f 화재 재난문자 후속 추적(운영자 260803 "15분, 30분 뒤에 각각 검색해서 사상자가 있는지 확인 · 있다면 긴급보도 큐로") ──
+      #   왜 여기인가 = 이 워크플로가 15분 정본 타이머(외부 cron-job.org)로 돌고, 바로 위에서 candidates.json(검색 대상)을
+      #   갓 갱신했다 = 되짚기가 항상 '가장 신선한 수집함'을 본다. 새 워크플로·새 타이머 0.
+      #   ⚠️ 자동 과금 경로(픽 1건 = Opus 1콜 + 썸네일$) — 가드는 scraper/fire_watch.py 안(중대재난 문턱·사건 dedup·
+      #   3축 동시 히트·사건당 1픽 영구·일 상한 FIRE_DAY_CAP). 여기선 픽이 실제로 났을 때만 커밋+분석 발동.
+      - name: 화재 후속 추적(+15·30분 사상자 확인)
+        id: firewatch
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}          # 2순위 검색(미등록 = 빈값 → 수집함 1순위만 · 동작 불변)
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          set -o pipefail
+          python3 scraper/fire_watch.py | tee /tmp/firewatch.out || echo "::warning::fire_watch 실패(스킵 — 다음 런 재평가)"
+          echo "picked=$(sed -n 's/^PICKED=//p' /tmp/firewatch.out | tail -1)" >> "$GITHUB_OUTPUT"
+
+      - name: 화재 추적 원장 커밋 & 분석 발동
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain push/fire_watch.json pending scraper/seen_urls.txt)" ]; then
+            echo "화재 추적 변동 없음 — 커밋 생략"; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add push/fire_watch.json pending scraper/seen_urls.txt
+          if git diff --cached --quiet; then echo "스테이지 변화 없음 — 커밋 생략"; exit 0; fi
+          git commit -m "fire-watch: 화재 후속 추적 원장 (큐잉 ${{ steps.firewatch.outputs.picked }}건)"
+          pushed=0
+          for i in 0 1 2 3; do
+            [ "$i" -gt 0 ] && sleep $((2**i))
+            git pull --rebase --autostash -X ours origin main && git push origin HEAD:main && { pushed=1; break; }
+            git rebase --abort 2>/dev/null || true
+          done
+          # ⚠️ 원장·pending·seen = 한 커밋(원자) → push 실패면 news-analyze 가 pending 을 못 본다 = 발동 무의미(무과금 회피)
+          if [ "$pushed" != 1 ]; then echo "::error::화재 추적 커밋 push 실패 — 분석 미발동(다음 런 재평가)"; exit 1; fi
+          if [ "${{ steps.firewatch.outputs.picked }}" != "0" ] && [ -n "${{ steps.firewatch.outputs.picked }}" ]; then
+            ok=0; for i in 1 2 3; do
+              gh workflow run news-analyze.yml && { ok=1; break; }
+              echo "::warning::news-analyze 디스패치 실패 — 재시도 $i"; sleep $((i*3))
+            done
+            [ "$ok" = 1 ] || { echo "::error::news-analyze 디스패치 3회 실패 — 큐 적재됐으나 분석 미발동(수동 실행 필요)"; exit 1; }
+          fi
+
       # ── 속보 판정 디스패치 (새 속보후보 뜰 때만 — 토큰 절약, news-analyze 와 동일 패턴) ──
       # candidates.json 에 미판정 속보후보(breaking_candidate & 'breaking' 없음)가 있으면
       # breaking-judge 를 깨워 Claude 급발 판정 → breaking 확정. 없으면 디스패치 생략.
