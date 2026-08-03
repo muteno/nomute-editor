@@ -137,6 +137,86 @@ const PROBE = () => {
   return out;
 };
 
+// ── 인라인 텍스트↔픽토 잉크쌍 관측(운영자 260803 "저거는 1강조색 터쿼이즈를 기준으로 하면 됨. 저대로 아예 심자") ──
+//   기준선 = **터쿼이즈(1강조색 실색) = 텍스트 잉크 중심선** · 빨강 = 글리프 잉크 중심선 — 두 선을 크롭에 구워 저장(inkpair_*.png).
+//   ⚠ 관측 전용·게이트 아님(§디자인 4-1 Q472 = 텍스트 잉크중심 하드게이트 금지 · 260803 vh 판례 = 잉크 등화(Δ0)가 오히려 오답이고
+//     박스축(Δ+1.03)이 정답인 쌍이 실재) — 숫자는 후보 스크리닝까지, 진위 판정은 항상 운영자 육안(두-선 크롭이 그 판정 재료).
+//   ⚠ 자연 상태만 측정한다(260803 실사고 = 측정하려고 #failmenu에 display:block 강제 → flex 행이 깨져 '아이콘 -5.56px' 허깨비
+//     → 운영자가 오염 캡처로 오판정까지 감). 강제는 위치(top/left)만 허용 · display·flex 등 레이아웃 속성 무개입.
+//   텍스트 잉크 = canvas actualBoundingBox(+fontBoundingBoxAscent로 baseline 역산 · check_track_parity 잉크 문법 동축)
+//   글리프 잉크 = svg 계산스타일을 속성으로 구워 직렬화 → 8배율 래스터 → alpha bbox(경로·도형 불문 실제 칠해진 픽셀).
+const INK_HELPER = `window.__inkpair = {
+  text(tn, fontEl) {
+    const cs = getComputedStyle(fontEl);
+    const rg = document.createRange(); rg.selectNodeContents(tn);
+    const rb = rg.getBoundingClientRect();
+    const cv = document.createElement('canvas'), c2 = cv.getContext('2d');
+    c2.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    const mt = c2.measureText(tn.textContent);
+    const baseY = rb.top + mt.fontBoundingBoxAscent;
+    const top = baseY - mt.actualBoundingBoxAscent, bot = baseY + mt.actualBoundingBoxDescent;
+    return { top, bot, cy: (top + bot) / 2, rb };
+  },
+  async glyph(svg) {
+    const r = svg.getBoundingClientRect();
+    const cl = svg.cloneNode(true);
+    const sA = [svg, ...svg.querySelectorAll('*')], dA = [cl, ...cl.querySelectorAll('*')];
+    for (let i = 0; i < sA.length; i++) { const g = getComputedStyle(sA[i]);
+      for (const p of ['stroke','stroke-width','stroke-linecap','stroke-linejoin','fill','opacity']) { const v = g.getPropertyValue(p); if (v) dA[i].setAttribute(p, v); } }
+    const K = 8; cl.setAttribute('width', r.width * K); cl.setAttribute('height', r.height * K); cl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(cl)); });
+    const cv = document.createElement('canvas'); cv.width = Math.round(r.width * K); cv.height = Math.round(r.height * K);
+    const c2 = cv.getContext('2d'); c2.drawImage(img, 0, 0);
+    const d = c2.getImageData(0, 0, cv.width, cv.height).data;
+    let y0 = 1e9, y1 = -1;
+    for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 40) { if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (y1 < 0) return null;
+    return { top: r.top + y0 / K, bot: r.top + (y1 + 1) / K, cy: r.top + (y0 + y1 + 1) / 2 / K, r };
+  },
+  async pack(svg, tn, fontEl) {
+    const g = await this.glyph(svg), t = this.text(tn, fontEl);
+    if (!g || !t) return null;
+    const l = Math.min(g.r.left, t.rb.left), ri = Math.max(g.r.right, t.rb.right), tp = Math.min(g.top, t.top), bt = Math.max(g.bot, t.bot);
+    return { tCy: +t.cy.toFixed(2), gCy: +g.cy.toFixed(2), dInk: +(g.cy - t.cy).toFixed(2),
+      clip: { x: Math.max(0, l - 8), y: Math.max(0, tp - 10), width: Math.min(innerWidth, ri - l + 16), height: (bt - tp) + 20 } };
+  },
+  async run(key) {   // 쌍별 자연 상태 진입 → 측정(상태는 캡처를 위해 열어 둔다 · cleanup(key)이 닫는다)
+    if (key === 'vh') {   // SNS 탭 수집시각 + 수동 재수집 픽토(260803 판례 쌍 = 박스축 정답)
+      try { showTab('trend'); } catch (_) {}
+      for (let i = 0; i < 40; i++) { const el = document.getElementById('vhTimeTxt'); if (el && el.textContent.trim().length > 3) break; await new Promise(r => setTimeout(r, 200)); }
+      const tn = (document.getElementById('vhTimeTxt') || {}).firstChild, b = document.getElementById('snsFreshBtn');
+      if (!tn || !b || b.hidden) return null;
+      return await this.pack(b.querySelector('svg'), tn, document.getElementById('vhTimeTxt'));
+    }
+    if (key === 'toast') {   // 새 버전 토스트(.tg svg ↔ .ft-msg) — 실제 빌더 호출 = 자연 상태
+      try { _shellUpdShown = false; } catch (_) {}
+      try { showUpdateToast(); } catch (_) { return null; }
+      await new Promise(r => setTimeout(r, 400));
+      const t = document.getElementById('nmUpdateToast'); if (!t || !t.classList.contains('show')) return null;
+      const svg = t.querySelector('.tg svg'), msg = t.querySelector('.ft-msg');
+      if (!svg || !msg || !msg.firstChild) return null;
+      return await this.pack(svg, msg.firstChild, msg);
+    }
+    if (key === 'failmenu') {   // 실패 컨텍스트 메뉴 행 — hidden 해제 + top/left만(display 무개입 · 위 ⚠ 교훈)
+      const m = document.getElementById('failmenu'); if (!m) return null;
+      m.hidden = false; m.style.top = '300px'; m.style.left = '30px';
+      await new Promise(r => setTimeout(r, 200));
+      const it = m.querySelector('.failmenu-it'); if (!it) return null;
+      const svg = it.querySelector('svg'), tn = [...it.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+      if (!svg || !tn) return null;
+      return await this.pack(svg, tn, it);
+    }
+    return null;
+  },
+  cleanup(key) {
+    document.querySelectorAll('.__inkline').forEach(e => e.remove());
+    if (key === 'toast') { const t = document.getElementById('nmUpdateToast'); if (t) t.classList.remove('show'); try { _shellUpdShown = false; } catch (_) {} }
+    if (key === 'failmenu') { const m = document.getElementById('failmenu'); if (m) { m.hidden = true; m.style.top = ''; m.style.left = ''; } }
+  }
+};`;
+const INK_PAIR_KEYS = ['vh', 'toast', 'failmenu'];   // 등재 쌍 — 새 인라인 쌍이 생기면 run()에 케이스 추가 + 여기 키 추가
+
 (async () => {
   fs.mkdirSync(path.join(OUTDIR, SLOT), { recursive: true });
   let srv = null, browser = null;
@@ -166,6 +246,27 @@ const PROBE = () => {
         rep.tabs[tabKey(s, t)] = await pg.evaluate(PROBE);
       }
     }
+
+    // ── 잉크쌍 관측(터쿼이즈 = 텍스트 잉크 기준선 · 운영자 260803 "저대로 아예 심자") — 관측 전용·판정 = 육안 ──
+    await pg.evaluate(() => { try { if (tooldlg.open) tooldlg.close(); } catch (_) {} });
+    await sleep(300);
+    await pg.evaluate(INK_HELPER);
+    rep.inkpairs = {};
+    console.log('── 인라인 텍스트↔픽토 잉크쌍(Δ = 글리프 잉크중심 − 텍스트 잉크중심 · 관측 전용 — 판정은 두-선 크롭 육안)');
+    for (const key of INK_PAIR_KEYS) {
+      let row = null;
+      try { row = await pg.evaluate(k => window.__inkpair.run(k), key); } catch (_) {}
+      if (!row) { console.log('   · ' + key.padEnd(8) + ' (측정 불가 — 상태 진입 실패 or 구조 변경)'); await pg.evaluate(k => window.__inkpair.cleanup(k), key).catch(() => {}); continue; }
+      rep.inkpairs[key] = { dInk: row.dInk, tCy: row.tCy, gCy: row.gCy };
+      await pg.evaluate(r => {   // 두-선 오버레이(터쿼이즈 = 텍스트 기준선 · 빨강 = 글리프) → 크롭에 구움
+        const mk = (y, c) => { const d = document.createElement('div'); d.className = '__inkline'; d.style.cssText = 'position:fixed;left:0;right:0;height:1px;z-index:2147483647;pointer-events:none;background:' + c + ';top:' + y + 'px'; document.body.appendChild(d); };
+        mk(r.tCy, 'rgb(0,238,210)'); mk(r.gCy, 'rgb(255,80,80)');
+      }, row);
+      await pg.screenshot({ path: path.join(OUTDIR, SLOT, 'inkpair_' + key + '.png'), clip: row.clip });
+      await pg.evaluate(k => window.__inkpair.cleanup(k), key);
+      console.log('   · ' + key.padEnd(8) + ' Δ' + row.dInk + 'px → ' + path.relative(ROOT, path.join(OUTDIR, SLOT, 'inkpair_' + key + '.png')));
+    }
+
     fs.writeFileSync(path.join(OUTDIR, SLOT + '.json'), JSON.stringify(rep, null, 1));
     await ctx.close();
 
@@ -228,6 +329,10 @@ const PROBE = () => {
         if (JSON.stringify(B.shell) !== JSON.stringify(H.shell)) console.log('      셸 ' + JSON.stringify(B.shell) + '\n         → ' + JSON.stringify(H.shell));
       }
       if (!n) console.log('   (변화 0 = 기존 디자인 그대로)');
+      if (b.inkpairs) for (const k of Object.keys(rep.inkpairs || {})) {   // 잉크쌍 전/후 대조(관측 — 변하면 두-선 크롭을 눈으로)
+        const X = b.inkpairs[k], Y = rep.inkpairs[k];
+        if (X && Y && X.dInk !== Y.dInk) console.log('   · 잉크쌍 ' + k + ' Δ ' + X.dInk + '→' + Y.dInk + 'px — inkpair_' + k + '.png 육안 대조');
+      }
       console.log('── 캡처: ' + path.relative(ROOT, path.join(OUTDIR, 'base')) + '/  ↔  ' + path.relative(ROOT, path.join(OUTDIR, 'head')) + '/');
     } else if (MODE === 'base') {
       console.log('── 기준 저장 완료(' + PICKED.map(s => s.ko).join('+') + ' · ' + PICKED.reduce((a, s) => a + s.tabs.length, 0) + '탭) → 고친 뒤 `node shared/preview_shot.js diff`');
