@@ -47,6 +47,25 @@ MAX_PER_RUN = int(os.environ.get("GATE_MAX_PER_RUN", "80"))   # 한 런당 채�
 GATE_CAT_QUOTA = int(os.environ.get("GATE_CAT_QUOTA", "40"))   # 한 런당 cat구제(비노출 cross-2) 최소 보장 슬롯 — 노출권 백로그가 MAX 초과여도 cat 기아 방지(감사5 실측: 노출권 1109>80이 cat 651을 0처리 → 347건 사회 오표시·운영자 260628). 260629 20→40 상향(분신술10 검증5·10: 오분류 71%가 AI 미채점 백로그 → cat 소화 가속·노출권 grade와 80캡 내 균형[surf 40+cat 40]·운영자 "AI 전수 재분류")
 DAN = re.compile(r"\[\s*단독\s*\]")
 
+# ── 다매체 저등급 재채점 큐(운영자 260803 "아이디어도 배선" · Q1259 후속) ─────────────────
+# 왜: grade 는 cross≥3 되는 순간 제목만 보고 1회 채점 후 박제 — 클러스터가 커져도(cr13) 초기 오채점(g1)이
+#     안 고쳐진다(실측 = 경산 방화 수사경찰 사망 cr13·g1 → 랭킹 ×0.7 눌림 · g2였으면 신규 2위). 평의회 260803
+#     판정 "남은 묻힘의 절반 = grade 오채점 축" → cross≥8(누적 진입선 동값)로 자란 g0/g1 만 1회 재채점.
+# ⚠️ 운영자 우려(일괄 배포 홍보자료가 재채점으로 구제→상단 역류) 3중 차단:
+#   ① 재채점도 *같은* RUBRIC(해시 불변 = 전면 재채점 폭풍 0) · 모델은 cross 를 모른다 — "13개 매체가 썼다"는
+#      정보가 프롬프트에 없어서 다매체라는 이유로 홍보가 승급될 편향 원천 부재(RUBRIC ⚠️핵심 "여러 매체가
+#      동시에 받아쓴 홍보성 발표여도 0" 그대로). 선정에만 cross 사용 = 판정과 분리.
+#   ② 보도자료 정형구(REGRADE_PR_RE)는 큐 진입 자체 차단 — 콜 절약 + 구제 0(현행 grade 유지·강등 아님).
+#   ③ 새 grade 를 그대로 채택(상향 전용 아님 — g1→g0 하향도 허용 = 일방 펌프 불가) + rubric 세대당 1회
+#      (regraded 도장) + 런당 GATE_REGRADE_QUOTA 캡 + 24h 창(REGRADE_MAX_H — 이후는 timeAcc·ageMul 바닥이라 이득 0).
+# 롤백 = env GATE_REGRADE=0 (도장·데이터 무접촉·큐만 소등).
+REGRADE_ON = os.environ.get("GATE_REGRADE", "1").strip().lower() not in ("0", "false", "no", "")
+REGRADE_MIN_CROSS = int(os.environ.get("GATE_REGRADE_MIN_CROSS", "8"))   # 누적 진입선(viewer CROSS_MIN)과 동값 — "세상이 대형으로 취급 중인데 등급은 경미"만
+GATE_REGRADE_QUOTA = int(os.environ.get("GATE_REGRADE_QUOTA", "12"))     # 런당 재채점 상한(신규 미채점 커버리지 우선 · 백로그는 다음 런)
+REGRADE_MAX_H = float(os.environ.get("GATE_REGRADE_MAX_H", "24"))        # first_seen 나이 창 — 24h+(배지 소멸선)는 랭킹 이득 0
+REGRADE_PR_RE = re.compile(r"업무협약|MOU|리브랜딩|품목허가|인증\s*획득|론칭|파트너십|특허\s*취득|신제품|출시|공모전|캠페인|프로모션|무순위\s*청약|줍줍")   # 보도자료 정형구 = 큐 하드 제외(viewer FB_HOLBO 계열 확장 · 오탐 비용 = 재채점 안 함 뿐 = 현행 유지라 안전)
+REGRADE_HEAD_RE = re.compile(r"^\s*[\[\(](표|포토|사진|그래픽|알림|공고|부고|부음|동정|인사|프로필|단신|게시판)")   # 정형 머리표 = 뷰어 JUNK_HEAD가 양 칼럼서 숨기는 부류 → 재채점 이득 0(첫 드라이런 실측: [표] 경선투표 cr17·[포토] 삭발식 cr9가 큐 진입 = 콜 낭비)
+
 # ── 외신 제목 번역 편승 (260703 · 운영자 "번역은 기존 검증 세션에 같이") ──────────────────
 # 한글 없는 제목(BBC·가디언·알자지라 등 영문 피드)을 *이 게이트 콜에 편승*시켜 한국어 헤드라인으로 번역
 # → title_ko 도장(표시 전용 · 원문 title 불변 = 클러스터·dedup·JUNK_HEAD·랭킹 0 영향).
@@ -149,13 +168,8 @@ def cat_rescue(c):
 REJUDGE_MAX_H = float(os.environ.get("GATE_REJUDGE_MAX_H", "48"))   # rubric 변경 재채점 창(h) — 72→48 축소(운영자 260713 승인 · 룰북 잦은 편집×72h = 재판정 폭풍이 쿼터 최대 낭비원[평의회7] · 48h+는 timeAcc ~.02 = 재채점 이득 0 · 롤백 = env 72)
 
 
-def _fresh_for_rejudge(c, stamp_key):
-    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 48h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
-    재채점 폭탄(§7 260704 실측: 39→3,000 부활 서지)이 되던 것을 '최근 3일치만'으로 제한. 3일+ 기사는 timeAcc가
-    이미 바닥(48h=.02)이라 재채점 이득 0 = 구버전 도장 유지. 미채점(도장 없음) = 나이 무관 True(첫 채점 커버리지
-    불변) · first_seen 없음/파싱 실패 = True(보수 = 채점 쪽)."""
-    if not c.get(stamp_key):
-        return True
+def _fs_age_h(c):
+    """first_seen 나이(h) — 파싱 실패·부재 = None(호출자가 보수 방향 선택)."""
     s = c.get("first_seen") or ""
     try:
         try:
@@ -164,16 +178,46 @@ def _fresh_for_rejudge(c, stamp_key):
             t = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
         if t.tzinfo is None:
             t = t.replace(tzinfo=timezone(timedelta(hours=9)))
-        return (time.time() - t.timestamp()) / 3600 < REJUDGE_MAX_H
+        return (time.time() - t.timestamp()) / 3600
     except Exception:
+        return None
+
+
+def _fresh_for_rejudge(c, stamp_key):
+    """rubric 변경 *재*채점은 최근 REJUDGE_MAX_H(기본 48h·first_seen)만 — 룰북 한 줄 수정이 노출권 전량(수천 건)
+    재채점 폭탄(§7 260704 실측: 39→3,000 부활 서지)이 되던 것을 '최근 3일치만'으로 제한. 3일+ 기사는 timeAcc가
+    이미 바닥(48h=.02)이라 재채점 이득 0 = 구버전 도장 유지. 미채점(도장 없음) = 나이 무관 True(첫 채점 커버리지
+    불변) · first_seen 없음/파싱 실패 = True(보수 = 채점 쪽)."""
+    if not c.get(stamp_key):
         return True
+    a = _fs_age_h(c)
+    return a is None or a < REJUDGE_MAX_H
+
+
+def regrade_due(c):
+    """다매체 저등급 재채점 큐(260803) — 현행 rubric 으로 정상 채점된 g0/g1 이 cross≥8 로 자랐으면 1회 더 채점.
+    보도자료 정형구는 진입 차단(운영자 우려 = 일괄 배포 홍보 구제 역류 · 상단 주석 3중 차단 참조).
+    나이 None = 재채점 안 함(비용·리스크 보수 — _fresh_for_rejudge 의 '채점 쪽 보수'와 반대 방향인 건 의도:
+    첫 채점은 커버리지가 우선이고, 재채점은 절약이 우선)."""
+    if not REGRADE_ON:
+        return False
+    if (c.get("cross") or 0) < REGRADE_MIN_CROSS or c.get("grade") not in (0, 1):
+        return False
+    if c.get("grade_rubric") != RUBRIC_VER or c.get("regraded") == RUBRIC_VER:   # 구 rubric 분은 일반 재채점 경로가 전담 · 세대당 1회
+        return False
+    t = c.get("title") or ""
+    if REGRADE_PR_RE.search(t) or REGRADE_HEAD_RE.search(t):
+        return False
+    a = _fs_age_h(c)
+    return a is not None and a < REGRADE_MAX_H
 
 
 def needs_grading(c):
-    """노출권(grade+cat) 미채점이거나, cross-2 cat구제(cat만) 미채점이거나, 외신 미번역(편승)이면 True.
-    rubric 변경 시 되살아남 — 단 재채점은 최근 72h만(_fresh_for_rejudge · 첫 채점은 나이 무관)."""
+    """노출권(grade+cat) 미채점이거나, 재채점 큐(다매체 저등급 260803)거나, cross-2 cat구제(cat만) 미채점이거나,
+    외신 미번역(편승)이면 True. rubric 변경 시 되살아남 — 단 재채점은 최근 48h만(_fresh_for_rejudge · 첫 채점은 나이 무관)."""
     if surfaced(c):
-        return (c.get("grade_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "grade_rubric")) or needs_translate(c)
+        return ((c.get("grade_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "grade_rubric"))
+                or regrade_due(c) or needs_translate(c))
     if cat_rescue(c):
         return (c.get("cat_rubric") != RUBRIC_VER and _fresh_for_rejudge(c, "cat_rubric")) or needs_translate(c)
     return False
@@ -282,11 +326,16 @@ def main():
         return
     pending.sort(key=lambda c: c.get("first_seen") or "", reverse=True)   # 최신(최근 등장) 먼저 채점 → 신속에 갓 뜬 보도자료가 빨리 grade 0→침몰(클러터 즉시 청소)
     # 노출권(grade) 우선 + cat구제 최소쿼터 보장(GATE_CAT_QUOTA) — 노출권 백로그가 MAX 초과여도 cat구제가 *기아*되지 않게(감사5·260628: 노출권 1109>80이 cat 651을 영구 0처리 → 347건 사회 오표시였음). cat구제는 grade 미기록·cat만이라 가볍다.
-    surf = [c for c in pending if surfaced(c)]
+    surf_all = [c for c in pending if surfaced(c)]
+    sregr = [c for c in surf_all if regrade_due(c)]   # 재채점 큐(260803) — 술어가 grade_rubric==RUBRIC_VER 요구라 미채점·구rubric 재채점과 자연 배타
+    _sregr_ids = {id(x) for x in sregr}
+    surf = [c for c in surf_all if id(c) not in _sregr_ids]
     catr = [c for c in pending if not surfaced(c)]   # cross-2 cat구제(needs_grading 이미 통과·최신순 보존)
     n_cat = min(len(catr), GATE_CAT_QUOTA)
-    pending = surf[:max(0, MAX_PER_RUN - n_cat)] + catr[:n_cat]   # 노출권 다수 차지하되 cat에 최소 n_cat 슬롯 확보
-    print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK} · 번역편승 {'ON' if TRANS_ON else 'OFF'})")
+    n_reg = min(len(sregr), GATE_REGRADE_QUOTA)
+    pending = surf[:max(0, MAX_PER_RUN - n_cat - n_reg)] + sregr[:n_reg] + catr[:n_cat]   # 우선순위 = 신규 미채점(커버리지) → 재채점 큐(캡) → cat구제(캡)
+    regr_ids = {id(c) for c in sregr[:n_reg]}   # 도장용 멤버십(응답 후 grade 가 2/3 로 바뀌면 술어 재평가로는 식별 불가)
+    print(f"채점 대상 {len(pending)}건 (전체 미채점 {total} · 재채점 큐 {len(sregr)}→{n_reg} · 모델 {MODEL} · rubric {RUBRIC_VER} · 청크 {CHUNK} · 번역편승 {'ON' if TRANS_ON else 'OFF'})")
     grades, cats, trans = {}, {}, {}
     for start in range(0, len(pending), CHUNK):       # 청크별 독립 콜 — 일부 실패해도 나머지 도장
         chunk = pending[start:start + CHUNK]
@@ -323,6 +372,8 @@ def main():
         if surfaced(c):                   # 노출권 = grade+cat 둘 다 반영(기존 동작)
             c["grade"] = g                # pending 은 cands 원소 참조 → 직접 반영
             c["grade_rubric"] = RUBRIC_VER    # 채점 도장(이 rubric 버전으로 채점됨)
+            if id(c) in regr_ids:
+                c["regraded"] = RUBRIC_VER    # 재채점 소진 도장(rubric 세대당 1회 · 응답 온 줄만 = 실패분은 다음 런 재시도)
             if fc:
                 c["cat"] = fc             # 키워드 강제(바이오/노벨 강마커 = AI보다 우선 · 이차검증)
             elif ct:
