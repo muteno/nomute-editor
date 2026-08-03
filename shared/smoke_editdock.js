@@ -69,7 +69,7 @@ async function runOnce(browser, port) {
       font: cs('body').fontFamily.includes('Pretendard Variable') && cs('body').letterSpacing === '-0.2px' && document.fonts.check("13px 'Pretendard Variable'"),
       dockKids, goTriple: [cs('#editGo').borderRadius, cs('#editGo').paddingTop, cs('#editGo').fontSize].join('/'), goLabel: go.textContent.trim(),
       stripBox: [cs('#optStrip').backgroundColor, cs('#optStrip').borderRadius, cs('#editSpec').fontSize].join('/'),
-      stripInRail: (() => { const rail = document.querySelector('.pvsec .trail'); return !!(rail && strip && rail.contains(strip)); })(),
+      stripInRail: (() => { const rail = document.querySelector('.pvsec #cpRail'); return !!(rail && strip && rail.contains(strip)); })(),   /* 앵커 = **옵션 캡슐(#cpRail)** — 260803 통일로 레일이 카드 제작 정본과 같은 2캡슐 구조[돋보기 #cpZoomRail → 옵션 #cpRail]가 되면서 `.pvsec .trail` 첫 매치가 돋보기 캡슐로 바뀌었다(값 칩은 옵션 캡슐 소속) */
       railFlush: (() => {   // 레일 = 창 **밖 우측**·간격 8·상변 정렬(운영자 260802 2차 규격 · 이미지 스튜디오 정본 동일)
         const box = document.querySelector('.cpprev-box'), rail = document.querySelector('.pvsec .trail');
         if (!box || !rail) return null;

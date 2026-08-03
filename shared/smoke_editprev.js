@@ -84,10 +84,10 @@ function chk(name, pass, detail) { R.push({ name, pass, detail }); console.log((
     const stuck = await pg.evaluate(() => ({ top: +document.querySelector('.topdock').getBoundingClientRect().top.toFixed(2), y: window.scrollY }));
     await pg.evaluate(() => window.scrollTo(0, 0)); await pg.waitForTimeout(150);
     chk('C2 도크 스티키(미리보기+스트립+생성 한 몸 · 스크롤 고정)',
-      !!dock && dock.pos === 'sticky' && dock.top === '0px' && dock.pv && dock.go && dock.strip && Math.abs(stuck.top) <= 0.5 && stuck.y > 300,
+      !!dock && dock.pos === 'sticky' && dock.top === '0px' && dock.pv && dock.go && dock.strip && Math.abs(stuck.top) <= 0.5 && stuck.y > 200,   /* 하한 300 → 200(260803): 미리보기 창이 카드 제작 정본(1:1 · --pvw 52%)으로 통일되며 도크가 ~157px 낮아져 **페이지 자체가 짧아졌다**(실측 스크롤 여유 445 → 288). 판정 취지 = 「실제로 스크롤이 일어났는데도 도크가 top 0에 붙어 있나」라 여유값이 아니라 top 0이 본질 — 하한만 실측 여유 아래로 내린다 */
       dock ? ('pos ' + dock.pos + '/' + dock.top + ' · scrollY ' + stuck.y + ' → top ' + stuck.top) : '도크 없음');
 
-    // C3 빈 상태 계약(상시 박스 · 파일 픽토 정본 · 4분할 중앙)
+    // C3 빈 상태 계약(상시 박스 · **카드 제작 사진 픽토 정본** · 4분할 중앙 · 260803 통일)
     const empty = await pg.evaluate(() => {
       const c = el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
       const box = document.querySelector('.cpprev-box'), pe = document.getElementById('pvEmpty'), pk = document.getElementById('pvPick');
@@ -97,8 +97,8 @@ function chk(name, pass, detail) { R.push({ name, pass, detail }); console.log((
       return { h: +box.getBoundingClientRect().height.toFixed(1), shown: !pe.hidden, picto: d.slice(0, 8),
         icDx: +(s.x - a.x).toFixed(2), icDy: +(s.y - a.y).toFixed(2), qDx: +(a.x - b.x).toFixed(2), qDy: +(a.y - b.y).toFixed(2) };
     });
-    chk('C3 빈 상태(박스 상시·파일 픽토 정본·4분할 중앙 Δ≤0.5)',
-      !!empty && empty.h > 100 && empty.shown && empty.picto === 'M14 2H6a' &&
+    chk('C3 빈 상태(박스 상시·카드 제작 사진 픽토 정본·4분할 중앙 Δ≤0.5)',
+      !!empty && empty.h > 100 && empty.shown && empty.picto === 'M21 16l-' &&   /* 빈 상태 픽토 = **카드 제작 정본 사진 픽토**(운영자 260803 "모든 메뉴의 미리보기를 카드 제작 부분과 동일하게 · 그냥 카드 제작 부분의 이미지") — 구 기대값 'M14 2H6a'(문서+위화살표 = 260731 영상 전용 분기)는 5탭 얼굴이 갈리던 축이라 폐지 */
       Math.abs(empty.icDx) <= 0.5 && Math.abs(empty.icDy) <= 0.5 && Math.abs(empty.qDx) <= 0.5 && Math.abs(empty.qDy) <= 0.5,
       empty ? ('h' + empty.h + ' · picto ' + empty.picto + ' · ic Δ' + empty.icDx + '/' + empty.icDy + ' · 4분할 Δ' + empty.qDx + '/' + empty.qDy) : '유닛 없음');
 
@@ -155,11 +155,11 @@ function chk(name, pass, detail) { R.push({ name, pass, detail }); console.log((
     const del = await pg.evaluate(() => {
       const pv = document.getElementById('pv'), pe = document.getElementById('pvEmpty');
       const dl = document.getElementById('pvDel'), g = document.getElementById('editGo'), ft = document.getElementById('fileTxt');
-      return { pv: !!(pv && pv.hidden), pe: !!(pe && !pe.hidden), dl: !!(dl && dl.hidden), go: !g.disabled, slot: !!ft.querySelector('svg') && !ft.querySelector('.fname') };
+      return { pv: !!(pv && pv.hidden), pe: !!(pe && !pe.hidden), dl: !!(dl && !dl.hidden && dl.disabled), go: !g.disabled, slot: !!ft.querySelector('svg') && !ft.querySelector('.fname') };   /* 휴지통 = **자리 유지 + 비활성**(운영자 260802 "휴지통 누르면 휴지통 버튼이 사라지는데 비활성화로 바껴야할듯" = thumb cpToolSync 정본 · 260803 영상 5탭 통일로 이 표면도 합류) — 구 기대값(hidden=true)은 삭제 직후 픽토가 통째로 증발해 레일 높이가 흔들리던 구판 계약 */
     });
     chk('C8 삭제 = 빈 상태 복귀(미리보기 해제·발사 활성·슬롯 리셋)',
       del.pv && del.pe && del.dl && del.go && del.slot,
-      'pvHidden ' + del.pv + ' · emptyBack ' + del.pe + ' · goEnabled ' + del.go + ' · slotReset ' + del.slot);
+      'pvHidden ' + del.pv + ' · emptyBack ' + del.pe + ' · delDimmed ' + del.dl + ' · goEnabled ' + del.go + ' · slotReset ' + del.slot);
 
     // C9 생성버튼 ✓ 단계 높이 동결(게이지 튐 0 · Q402)
     const go = await pg.evaluate(() => {
