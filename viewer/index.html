@@ -8697,7 +8697,7 @@ const DG_GOT_KEY = 'dg_got_v1';   // 받음(URL 키 · 최대 500)
 //    + "이미지 스튜디오에 있는 제작 중인거랑 이전 제작물을 그대로 따라하게" — 이미지 스튜디오에 없는 축이라 접이 2개 중 하나가 통째로 잉여였다.
 //    주소 되찾기는 「이전 받기」 행이 이미 URL을 들고 있으므로 기능 손실 0. 남은 키는 창 열 때 1회 청소.
 const DG_SECTIONS = [['img', '사진'], ['video', '영상'], ['doc', '문서'], ['audio', '음성'], ['zip', '압축'], ['link', '기타 링크']];
-let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, jobs: [], resOpen: true, vdOpen: false, yt: {} };
+let _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: {}, jobs: [], resOpen: true, vdOpen: false, yt: {}, peek: null };
 //  jobs = 받기 잡 **배열**(최신이 앞) = 이미지 스튜디오 JOBS 모델 계승(운영자 260802 "한번 링크 입력하면 다음거를 입력을 못해 …
 //    큐잉 시킬수가 없음"). 구 설계는 슬롯 1개(_dg.vid)라 ⓐ 받는 중엔 다운로드 버튼이 하드 잠기고 ⓑ 새 주소를 넣으면
 //    앞 건이 통째로 교체될 판이라, 두 번째 주소를 넣을 길이 아예 없었다. 이제 잡마다 독립 폴 = 동시 N건.
@@ -8705,7 +8705,7 @@ let _dgJobSeq = 0;   // 잡 표시 번호(#1, #2…) = thumb job.n 계승 · 창
 let _dgPop = false;   // 폰 뒤로가기로 닫혔는지(§🎨 pushState/popstate · tooldlg toolPopHandled 패턴 계승)
 function _dgLoadGot() { try { return JSON.parse(localStorage.getItem(DG_GOT_KEY) || '{}') || {}; } catch { return {}; } }
 function openDlGrab() {
-  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), jobs: [], resOpen: true, vdOpen: false, yt: {} };   // 스캔 결과는 매번 새로(공용 PC 원칙) · 받음/보관함만 기기 보존
+  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), jobs: [], resOpen: true, vdOpen: false, yt: {}, peek: null };   // 스캔 결과는 매번 새로(공용 PC 원칙) · 받음/보관함만 기기 보존
   try { localStorage.removeItem('dg_hist_v1'); } catch {}   // 폐지된 '기록' 축 잔여 청소(1회성)
   const d = $('#dlgrab'); const inp = $('#dgUrl'); if (inp) inp.value = '';
   _dgSubs = null; _dgProbeSeq++;   // 창을 새로 열면 자막 리드백도 초기화(옛 프로브 응답 폐기)
@@ -8734,6 +8734,7 @@ function _dgRenderBody() {
   const n = jobs.length + (r ? 1 : 0);
   let inner = '';   // 상단 안내 산문 폐지(운영자 260802) — 리드백은 링크 행 버튼 점등/디밍 한 축이 전담
   if (_dg.err) inner += '<div class="dg-err">' + esc(_dg.err) + '</div>';
+  inner += _dgPeekHtml();   // 「받을 내용」 = 판 맨 위(= 지금 손에 든 주소가 무엇인지) · 그 아래가 받는 중·받은 것
   if (jobs.length) inner += '<div class="jobs">' + jobs.map((v, i) => _dgJobHtml(v, i)).join('') + '</div>';   // 제작 중·완료 잡 카드 = nm-job.css 공동 정본(이미지 스튜디오와 같은 부품)
   if (r) {
     const items = r.items || [];
@@ -8754,7 +8755,7 @@ function _dgRenderBody() {
       }
     });
   }
-  if (!n && !_dg.err) inner += '<div class="geni-histempty">아직 받은 게 없습니다</div>';   // 빈 상태 문구 = 이미지 스튜디오 결과 빈 상태(#carEmpty '아직 제작한 게 없습니다') 미러
+  if (!n && !_dg.err && !_dg.peek) inner += '<div class="geni-histempty">아직 받은 게 없습니다</div>';   // 미리보기가 떠 있으면 생략 — 받을 게 눈앞에 있는데 「없습니다」는 서로 어긋난다(빈 상태 = 정말 빈 판일 때만)   // 빈 상태 문구 = 이미지 스튜디오 결과 빈 상태(#carEmpty '아직 제작한 게 없습니다') 미러
   let h = '<div class="geni-histwrap"><button class="geni-histfold" type="button" data-act="resfold" aria-expanded="' + (_dg.resOpen ? 'true' : 'false') + '" aria-controls="dgResBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>결과 <span class="geni-histcnt">(' + n + ')</span></span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>'
     + '<div class="geni-histbody' + (_dg.resOpen ? ' open' : '') + '" id="dgResBody"' + (_dg.resOpen ? '' : ' inert') + '><div class="geni-histbody-in">' + inner + '</div></div></div>';
   h += _dgDoneHtml();   // 「이전 받기」 = 맨 아래(이미지 스튜디오 '이전 제작'과 같은 자리 · 운영자 260802)
@@ -9112,6 +9113,36 @@ function _dgPaintPic() {
     : plat ? _dgVidPlatName(plat) + ' 영상 받기 — 최고화질 + 프레임별·FHD판 + 자막' + (_dgSubs === false ? '(플랫폼 자막이 없어 받아쓰기 자막으로 대체돼)' : '')
     : '이 페이지의 사진·파일 받기';
 }
+// ── 받기 전 「무엇인지」 미리보기(운영자 260803 "링크를 입력해서 … 어떤 내용 인지가 떠야돼 · 다운로더들 다 그렇더라고") ──
+//   왜 이 자리인가: 운영자가 그린 그림은 「① 내용 확인 → ② 받기」 2단계다. 그런데 **버튼을 2개로 쪼갤 필요가 없다** —
+//   주소를 넣는 순간(=이미 도는 자막 프로브와 같은 디바운스에 편승) 내용이 뜨면, 확인은 ①에서 끝나고 [다운로드]는
+//   종전 그대로 한 번이다(클릭 수 +0 · 라벨 개명 0). 페이지 스캔 갈래는 원래 「스캔 → 목록 → 개별/전체」였으니,
+//   이걸로 두 갈래가 같은 계약(내용 먼저 · 받기 나중)으로 합류한다.
+//   ⚠ 여기 뜨는 건 **게시물이 공개한 og 메타**(제목·작성자·대표 이미지)다 — 받을 파일 목록(캐러셀 장수·해상도)은
+//     yt-dlp가 있어야 알고 그건 러너 몫이라, 미리보기용으로 러너를 왕복시키지 않는다(부팅만 40~60초 = 확인이 더 느려진다).
+let _dgPeekSeq = 0;
+async function _dgPeek() {
+  const u = _dgUrlNorm(), seq = ++_dgPeekSeq;
+  if (!u || !_dgVidPlat(u)) { if (_dg.peek) { _dg.peek = null; _dgRenderBody(); } return; }   // 주소 없음·영상 게시물 아님 = 미리보기 없음(페이지 스캔 갈래는 종전대로 [다운로드]가 목록을 만든다)
+  try {
+    const r = await fetch('api/vidpeek?u=' + encodeURIComponent(u));
+    const d = await r.json().catch(() => ({}));
+    if (seq !== _dgPeekSeq) return;   // 늦게 온 옛 응답 폐기(타이핑 중 순서 뒤집힘 차단 · _dgProbeSubs 관례 동문)
+    _dg.peek = (d && d.title) ? d : null;   // 제목을 못 얻었으면 미리보기 생략(빈 카드 금지 = 추측 표시 안 함)
+  } catch { if (seq !== _dgPeekSeq) return; _dg.peek = null; }
+  _dgRenderBody();
+}
+// 미리보기 행 = 스캔 결과 행(.dg-item · _dgRowHtml) 마크업 **사본** — 다른 건 버튼이 없다는 것뿐(여긴 아직 받는 게 아니다).
+function _dgPeekHtml() {
+  const p = _dg.peek; if (!p || !p.title) return '';
+  const sub = _dgSubs === false ? '영상 + 받아쓰기 자막' : '영상 + 자막';   // 자막 유무 = 이미 도는 linkprobe 리드백 재사용(새 조회 0)
+  return '<div class="geni-sechead"><span class="cref-lbl">받을 내용</span></div>'
+    + '<div class="dg-item">'
+    + (p.thumb ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
+    + '<div class="dg-imain"><div class="dg-ittl">' + esc(p.title) + '</div>'
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(p.plat)) + (p.author ? ' · ' + esc(p.author) : '') + ' · ' + sub + '</div></div>'
+    + '</div>';
+}
 async function _dgProbeSubs() {   // 자막 유무 사전판별 = api/linkprobe(정본 = 요약창 probeAskLink) · 화면 표시 전용(실제 판정은 러너)
   const u = _dgUrlNorm(), seq = ++_dgProbeSeq;
   _dgSubs = null; _dgPaintPic();
@@ -9202,7 +9233,7 @@ function restoreDlGrab() {
 // 링크 행 다운로드 픽토 = nm-svg 정본 주입(인라인 SVG 복제 0 · .pin-eye 주입 관례) + 발사 배선
 $('#dgVidDl').innerHTML = DOWNLOAD_SVG;
 $('#dgVidDl').addEventListener('click', _dgFire);   // 영상 게시물 = 영상+자막 · 그 외 = 페이지 자료 수집(갈래는 _dgFire가 판단)
-$('#dgUrl').addEventListener('input', () => { _dgPaintPic(); if (_dgProbeTm) clearTimeout(_dgProbeTm); _dgProbeTm = setTimeout(_dgProbeSubs, 600); });   // 600ms 디바운스 = 타이핑 중 과호출 차단(probeAskLink 동값 계승)
+$('#dgUrl').addEventListener('input', () => { _dgPaintPic(); if (_dgProbeTm) clearTimeout(_dgProbeTm); _dgProbeTm = setTimeout(() => { _dgProbeSubs(); _dgPeek(); }, 600); });   // 600ms 디바운스 = 타이핑 중 과호출 차단(probeAskLink 동값 계승)
 $('#dgUrl').addEventListener('keydown', e => { if (e.key === 'Enter') _dgFire(); });   // Enter = 다운로드 버튼과 동일 갈래
 $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아이콘 위임 관례) — 카드/행/워드칩/기록 전 액션
   const el = e.target.closest('[data-act]'); if (!el) return;
