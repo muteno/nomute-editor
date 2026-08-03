@@ -64,10 +64,13 @@ jobs:
           for i in 1 2 3 4; do
             git pull --rebase --autostash -X ours origin main || echo "::warning::pull--rebase 실패(사유 = 위 로그) — 재시도 계속"
             # resize.json 유실 봉합 — rebase -X ours(원격 승) 시 신규 항목 드랍 → /tmp 임시본 재병합(imggen.yml 계승)
+            #   ⚠ --amend 금지(260803 실측 = filltest 동시 3발사 중 후발 2런 전패 · 런 30779914067): 자기 커밋이 rebase에서
+            #   'already upstream'으로 드랍되면 --amend가 **남의 푸시된 커밋**을 고쳐 non-ff 영구 거절 = 산출 유실.
+            #   봉합 = imggen 원조처럼 재병합분을 **새 커밋**으로만 싣는다(스테이징 diff 있을 때만 — 자기 커밋 생존 시 diff 0 = no-op).
             if [ -f /tmp/resize_new.json ]; then
               python3 -c 'import json,os;p="viewer/gen_out/resize.json";new=json.load(open("/tmp/resize_new.json"));cur=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else [];urls=set(i.get("url") for i in cur);json.dump(([i for i in new if i.get("url") not in urls]+cur)[:24],open(p,"w",encoding="utf-8"),ensure_ascii=False,indent=2)'
               git add viewer/gen_out/ 2>/dev/null || true
-              git commit --amend --no-edit 2>/dev/null || true
+              git diff --cached --quiet || git commit -m "resize: 비율 재구성 산출 재병합 (${{ inputs.id }})"
             fi
             git push origin HEAD:main && exit 0 || { echo "push 재시도 $i"; sleep $((2**i)); }
           done
