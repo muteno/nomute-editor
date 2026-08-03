@@ -18,6 +18,10 @@
 #          base를 같은 SHA로 동시 기록 → GitHub이 "변경 0"으로 closed 처리 = 점등 실패 변종.
 #          점등은 head 먼저·base 나중 순서에서만 성립[260802 #3474~#3495 실측] · ⑤ = --no-verify로
 #          경합 창 압축 = push_pair 주석 · main plain push 불변.)
+#          → ⑥ 점등 사후 대조(운영자 260803 승인 · 3차): 표식 PR merged를 API 실측(GITHUB_TOKEN/GH_TOKEN)
+#            — CLOSED 확정만 **rc=7**(머지 자체는 성공 · 보고에 「main 머지 완료 · 점등 실패」 강제),
+#            토큰 없음·API 불가·PR 미발견·open 지연 = fail-soft rc=0 + MCP pull_request_read 재대조 지시
+#            (성공을 실패로 오판해 헛도는 ⓑ축 재발 금지 · [7-6ⓒ] 표시보다 머지 우선).
 #   go   : prep + land 연속.
 #
 # ▷ 안전 레일: main에 force 계열 절대 없음(⑤ = plain push 고정) · 리베이스 충돌 = 즉시 abort·rc=2
@@ -90,6 +94,41 @@ push_branch() {   # ④ 단독(prep용) — 리베이스로 SHA 갈리므로 lea
 
 landed() { fetch_main; [ "$(git rev-parse origin/main)" = "$(git rev-parse HEAD)" ]; }   # 성공 판정 정본 = 사후 대조(출력 파싱 금지)
 
+verify_light() {   # ⑥ 점등 원시 대조(운영자 260803 "그렇게 해줘" 승인) — 표식 PR merged 실측 · 출력 = 판정 토큰 한 줄
+  local tok="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+  [ -z "$tok" ] && { echo NOTOK; return 0; }
+  local slug; slug="$(git remote get-url origin | sed -E 's#\.git$##; s#.*[:/]([^/]+/[^/]+)$#\1#')"
+  GH_SLUG="$slug" GH_BR="$BR" GH_TOK="$tok" python3 - <<'PY' 2>/dev/null || echo ERR
+import json, os, urllib.request
+slug, br, tok = os.environ['GH_SLUG'], os.environ['GH_BR'], os.environ['GH_TOK']
+def api(p):
+    r = urllib.request.Request('https://api.github.com' + p, headers={'Authorization': 'Bearer ' + tok, 'Accept': 'application/vnd.github+json', 'User-Agent': 'merge-main-light'})
+    with urllib.request.urlopen(r, timeout=10) as f: return json.load(f)
+try:
+    prs = api('/repos/%s/pulls?head=%s:%s&state=all&sort=updated&direction=desc&per_page=3' % (slug, slug.split('/')[0], br))
+    if not prs: print('NOPR')
+    else:
+        p = prs[0]
+        print(('MERGED' if p.get('merged_at') else ('OPEN' if p.get('state') == 'open' else 'CLOSED')), p.get('number'))
+except Exception:
+    print('ERR')
+PY
+}
+
+light_check() {   # ⑥ 점등 사후 대조 — 머지 성공 «뒤»에만 호출. CLOSED 확정만 rc=7(머지 자체는 성공 = 보고 문구 강제),
+  #   나머지(토큰 없음·API 불가·PR 미발견·open 지연)는 fail-soft rc=0([7-6ⓒ] 표시보다 머지 우선 ·
+  #   성공을 실패로 오판해 헛도는 축 재발 금지 = ⓑ 교훈 · MCP 세션은 pull_request_read로 재대조).
+  local L; L="$(verify_light)"
+  case "$L" in
+    MERGED*) say "⑥ 점등 확인 ✓ — 표식 PR #${L#* } merged";;
+    CLOSED*) say "⚠️ ⑥ 점등 실패 실측 — 표식 PR #${L#* } closed(비머지 · #3538 축 신변종?). 머지는 성공 — 보고 6-1에 「main 머지 완료 · 점등 실패」로 못박고 변종 기록"; return 7;;
+    OPEN*)   say "⚠️ ⑥ 표식 PR #${L#* } 아직 open(GitHub 전파 지연 가능) — 세션이 MCP pull_request_read로 재대조하라";;
+    NOPR)    say "⑥ 표식 PR 미발견 — [7-6ⓔ] 표시 없음 = PR 생성 실패 축(머지는 성공) · 세션이 PR 유무 확인";;
+    *)       say "⑥ 점등 자동 대조 불가(${L:-무응답} = 토큰 없음/API 불가) → 세션 몫 = MCP pull_request_read로 merged=true 확인(false면 보고에 점등 실패 못박기)";;
+  esac
+  return 0
+}
+
 push_pair() {   # ④ 선착 → ⑤ 후착 순차 2발(260803 2차 개정 · #3538 실측) · 판정은 항상 landed()
   # ⚠ 구 --atomic 동시 도착 = 리베이스 라운드에서 PR head·base가 **같은 SHA로 동시 기록** → GitHub이
   #   "변경 0"으로 closed 처리(#3538 = merged 점등 실패 변종 · #3498의 반대쪽 구멍). 점등이 성립하는 유일한
@@ -113,13 +152,13 @@ prep|go)
   [ "$MODE" = "prep" ] && { say "다음 = 표식 PR 확인/생성 후 \`bash shared/merge_main.sh land\`"; exit 0; }
   ;&   # go = land로 계속
 land)
-  landed && { say "✅ 이미 main == HEAD($(git rev-parse --short HEAD)) — 머지 완료 상태"; exit 0; }
+  landed && { say "✅ 이미 main == HEAD($(git rev-parse --short HEAD)) — 머지 완료 상태"; light_check; exit $?; }
   for r in $(seq 1 "$ROUNDS"); do
     fetch_main; rebase_main; gate
     say "라운드 $r/$ROUNDS — ④ 브랜치 선착 → ⑤ main 후착(HEAD=$(git rev-parse --short HEAD))"
     if push_pair; then
       say "✅ main 머지 완료 · SHA=$(git rev-parse HEAD) — 보고 6-1·6-5에 이 해시로 못박아라([7-5])"
-      exit 0
+      light_check; exit $?
     fi
     say "라운드 $r 경합 패배(origin/main=$(git rev-parse --short origin/main)) → 재시도"
   done
