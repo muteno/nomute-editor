@@ -74,6 +74,8 @@ REGRADE_BIZ_RE = re.compile(r"영업이익|영업익|영업손실|매출\s*\d|�
 REGRADE_MKT_RE = re.compile(r"(뉴욕증시|상하이지수|코스피|코스닥|증시).{0,20}(마감|상승|하락|반등)")   # 시황 정형구
 REGRADE_CRASH_RE = re.compile(r"서킷브레이커|사이드카|폭락|급락|폭등|급등|패닉|디폴트|금융위기|뱅크런|외환위기|파산")   # 시황 면제 = 구조적 사건어(breaking_judge 📈 게이트 축과 동일 철학)
 REGRADE_DEF_EX_RE = re.compile(r"대통령|방사청|국방부|방산|잠수함|전투기|호위함|군함")   # 수주 면제 = 방산·국가급(단순 기업 수주 홍보만 컷)
+REGRADE_WX_RE = re.compile(r"폭염|열대야|한파|불볕|찜통|무더위|폭설")   # 일상 기상 이슈 = 큐 제외(운영자 260803 "사람 떼거지로 죽는 거 아니면 뉴스거리로 강조 안 돼도 돼 — 안 그러면 여름 내내 봐야 된다" · 룹릭도 일상 기상특보=[1] 명문 = 재채점해도 g1이 정답이라 콜 낭비 + 자기합치 90.5% 실측상 노이즈 g2 상향이 여름 내내 반복 노출될 표면적만 남음 → 시도 자체 차단)
+REGRADE_WX_EX_RE = re.compile(r"사망|숨져|숨진|사상자|심정지|참사|의식불명")   # 인명 사상 동반 = 면제 — 대량 피해 오채점(예: 폭염 사망 다수가 g1로 박제)의 구제망은 보존(운영자 방침의 단서 "떼거지로 죽는 거"가 이 축)
 
 # ── 외신 제목 번역 편승 (260703 · 운영자 "번역은 기존 검증 세션에 같이") ──────────────────
 # 한글 없는 제목(BBC·가디언·알자지라 등 영문 피드)을 *이 게이트 콜에 편승*시켜 한국어 헤드라인으로 번역
@@ -220,6 +222,8 @@ def regrade_due(c):
     if REGRADE_MKT_RE.search(t) and not REGRADE_CRASH_RE.search(t):
         return False
     if "수주" in t and not REGRADE_DEF_EX_RE.search(t):
+        return False
+    if REGRADE_WX_RE.search(t) and not REGRADE_WX_EX_RE.search(t):
         return False
     a = _fs_age_h(c)
     return a is not None and a < REGRADE_MAX_H
