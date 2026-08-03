@@ -21,6 +21,10 @@
      (운영자 260717 Q07 "ㄱㄱ" — 상비 스모크 4종은 세션이 손으로 돌릴 때만 살아있던 사각의 봉합.
       브리프 ⑤와 동일 정공법 = 산출물 나이·결과 감지)
 
+  ⑦ 배포 지연 — 분석 끝난 queue/*.md 가 라이브 피드(articles.json)에 없는 채 WD_DEPLOY_MIN(기본 90분)
+     초과 방치(운영자 260803 실사고 = Pages 빌드 큐 4시간 적체 → 대기열 무한 스피너인데 **감지 0**.
+     live-smoke는 코드 표면 push 한정이고 이 워치독엔 라이브를 보는 코드가 없어, 발견자가 사람이었다).
+
 알림: WATCHDOG_NOTIFY=1 일 때만 push_send.py --notify 재사용(중복 구현 0 · §📰-e 카나리아 —
   워크플로 schedule 기본 '0' = 관측/로그만 · dispatch 실측 후 승격). 지표별 쿨다운
   WD_COOLDOWN_MIN(기본 360분) = scraper/obs/watchdog_state.json 원장(원자 쓰기)으로 스팸 억제.
@@ -52,6 +56,8 @@ SNS_MIN = float(os.environ.get("WD_SNS_MIN", "90"))
 PHONE_MIN = float(os.environ.get("WD_PHONE_MIN", "90"))   # 90분 = **러너 채택 게이트와 동일**(sns_trends.py `PHONE_FRESH_MIN` 기본 90 · 1623행) — 이 선을 넘는 순간 러너가 폰분을 안 받아 스레드·인스타·레딧·재난이 실제로 굶는다. 구 180분은 그 사이 **90~180분을 데이터는 굶는데 경보는 침묵**하는 공백으로 남겼다(260727 실측 판례: 폰 111분 정지 → 스레드·인스타 stale만 뜨고 진범인 폰 정지는 무경보). 구 사유였던 "야간 소강 마진"은 이 지표엔 부적합 = 폰 크론은 뉴스 유입량과 무관하게 30분 고정 주기라 소강 개념이 없다(scripts/phone_subs.sh `*/30`). 전송 지연 마진은 워치독 주기(30분)가 이미 흡수. ⚠ 채택 게이트를 옮기면 이 값도 같이 옮길 것.
 KWSRC_MIN = float(os.environ.get("WD_KWSRC_MIN", "360"))   # 6h = tbs 30분 주기(sns-trends 편승) 12연속 실패 — 커뮤 베스트글은 심야에도 갱신되나 백스톱 드롭(schedule best-effort 1~4h) 오탐 마진 확보
 BRIEF_MIN = float(os.environ.get("WD_BRIEF_MIN", "2160"))   # 36h = 일 1회(06:25 크론) 1회 결번 + 12h 여유 — 일 주기 지표라 분 단위 민감도 불요
+LIVE_FEED = os.environ.get("WD_LIVE_FEED", "https://apps.nomute.kr/articles.json")   # ⑦ 배포 지연 관측 대상 = 라이브 피드(빌드 산출물 · 도메인 이전 시 이 변수만 교체)
+DEPLOY_MIN = float(os.environ.get("WD_DEPLOY_MIN", "90"))   # 90분 = ①수집 신선도(FRESH_MIN 120) 아래 사다리 · 파일명 시각이 분석 소요를 포함해 실지연보다 크게 나오는 만큼의 마진(정상 배포 랙 5~15분 + 분석 10~30분 ≪ 90) · 260803 실사고는 4시간이라 여유 있게 걸린다
 SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
 SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
 COOLDOWN_MIN = float(os.environ.get("WD_COOLDOWN_MIN", "360"))
@@ -217,6 +223,52 @@ def check_smoke():
     return None
 
 
+def check_deploy():
+    """⑦ 배포 지연 — 분석이 끝난 기사(queue/*.md)가 **라이브 피드에 안 실린 채** 오래 방치되는 사각.
+
+    ⚠ 신설 사유(260803 실사고): Cloudflare Pages 빌드가 커밋당 1회 FIFO로 도는데 이 레포 커밋 유입이
+      처리율에 육박해(실측 λ≈72/h vs μ≈78/h) 큐가 4시간 밀렸다 — 19:01 배포본이 15:03 커밋 기준.
+      그 결과 분석 완료 기사 7건이 피드에 없어 대기열이 무한 스피너였는데 **감지한 시스템이 0개**였다
+      (live-smoke = 코드 표면 push 한정 · 이 워치독엔 라이브를 보는 코드가 한 줄도 없었다 =
+      shared/live_smoke.py 167행이 신선도를 '워치독 축'에 위임해 놓고 그 축이 비어 있던 공백).
+    판정 = 라이브 articles.json(빌드 산출)에 없는 queue/*.md 중 **가장 오래된 것의 나이**(파일명 시각
+      YYMMDD-HHMM = KST) > DEPLOY_MIN. 파일명 시각은 분석 소요를 포함해 실지연보다 크게 나오므로
+      임계는 넉넉히(기본 90분 = ①수집 신선도와 같은 사다리). 러너 체크아웃이 shallow(depth 1)라
+      커밋 시각 조회는 못 쓴다 = 파일명 시각이 유일하게 안정적인 원천.
+    전면 fail-soft — 네트워크·파싱·경로 어느 실패든 None(경보 아님) = 이 지표가 다른 지표를 못 죽인다."""
+    try:
+        import urllib.request
+        req = urllib.request.Request(LIVE_FEED + ("&" if "?" in LIVE_FEED else "?") + "_wd=1",
+                                     headers={"user-agent": "nomute-watchdog", "cache-control": "no-cache"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            live = json.loads(r.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 — 라이브 조회 불가 = 판단불가(보수) · 회선/배포 사망은 다른 축이 본다
+        return None
+    shipped = {str(a.get("file") or "") for a in (live.get("articles") or [])}
+    if not shipped:
+        return None   # 빈 피드 = 빌드 산출 이상(이 지표 관할 아님 · live-smoke 축)
+    qdir = os.path.join(ROOT, "queue")
+    try:
+        pend = [f for f in os.listdir(qdir) if f.endswith(".md") and f not in shipped]
+    except Exception:  # noqa: BLE001
+        return None
+    worst, worst_f = None, ""
+    for f in pend:
+        m = re.match(r"^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})", f)
+        if not m:
+            continue
+        yy, mo, dd, hh, mi = m.groups()
+        age = _age_min(f"20{yy}-{mo}-{dd}T{hh}:{mi}:00+09:00")
+        if age is not None and (worst is None or age > worst):
+            worst, worst_f = age, f
+    if worst is None or worst <= DEPLOY_MIN:
+        return None
+    gen = _age_min(live.get("generated"))
+    return (f"배포 지연 — 분석 끝난 기사 {len(pend)}건이 라이브 피드 미반영(최고령 {_dur_ko(worst)}: {worst_f}"
+            f" · 임계 {DEPLOY_MIN:.0f}분 · 라이브 배포본 {(_dur_ko(gen) + ' 전') if gen is not None else '시각 불명'} 산출) — "
+            f"Cloudflare Pages 빌드 큐 적체 의심(대기열이 그동안 '처리 중'으로 보인다)")
+
+
 def check_ledgers():
     """④ 원장 파손 — 존재하는데 JSON 깨짐 = 무음 리셋(dedup 전멸·예산 재개방) 위험 신호."""
     bad = []
@@ -249,7 +301,7 @@ def _save_state(st):
 
 def main():
     checks = {"collect": check_collect, "backlog": check_backlog, "sns": check_sns, "phone": check_phone, "kwsrc": check_kwsrc,
-              "ledger": check_ledgers, "brief": check_brief, "smoke": check_smoke}
+              "ledger": check_ledgers, "brief": check_brief, "smoke": check_smoke, "deploy": check_deploy}
     alerts = {}
     for key, fn in checks.items():
         try:
