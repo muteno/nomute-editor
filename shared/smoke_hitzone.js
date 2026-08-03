@@ -92,6 +92,9 @@ const HIT_BASE = {
   '이미지_AI생성::div.geni-card > button.geni-opt.on': 0.063,
 };
 
+// H3 면책표 — 「거짓 어포던스가 아니다」가 확인된 자리만. 값은 자리표시(1) · 사유는 주석이 전부다.
+const LIAR_BASE = {};
+
 function loadPlaywright() {
   try { return require('playwright-core'); } catch (_) {}
   const cache = path.join(os.tmpdir(), 'nomute-smoke-deps');
@@ -216,12 +219,59 @@ const PROBE = (cfg) => {
       hitH: maxY < 0 ? 0 : +(maxY - minY + cfg.STEP).toFixed(1),
     });
   }
-  return { skip: '', rows };
+
+  // ── H3 「어포던스 거짓말」 = 눌릴 것처럼 보이는데 누를 게 없는 요소(운영자 260803 "응 ㄱㄱ") ──────
+  //    H1·H2가 「눌리는데 안 눌릴 것처럼 보이는」 축을 막았다면, 이건 그 **반대 축**이다.
+  //    ⚠ 판정에 합성 클릭을 쓰지 않는다 — 「생성」 발사·휴지통 삭제가 실제로 눌린다(게이트가 라이브를 건드리면 게이트가 아니다).
+  //      대신 **부작용 0의 정적 3축**으로 좁힌다: cursor:pointer인데
+  //        ⓐ 자신·조상에 시맨틱 컨트롤 0 (button·a[href]·input·label·summary·[role=button] …)
+  //        ⓑ 자신·조상에 click 리스너 직접 등록 0 (addInitScript의 addEventListener 훅이 __nmClick으로 표식)
+  //        ⓒ **자손에도** 컨트롤 0 — 자손 컨트롤이 있으면 그건 「캡슐이 자식 버튼을 대신 눌러주는 위임」(H1 봉합이 만든 정상 패턴)
+  //      셋 다 해당 = 아무도 반응할 수 없는데 손가락 커서만 뜨는 자리 = 거짓 어포던스.
+  //    onclick 속성·data-* 마커(위임 훅일 수 있다)는 통과시킨다 = 보수적으로 = 잘못 울리느니 놓친다.
+  const liars = [];
+  const seenL = new Set();
+  for (const el of scope.querySelectorAll('*')) {
+    if (!vis(el)) continue;
+    if (w.getComputedStyle(el).cursor !== 'pointer') continue;
+    let ok = false;
+    for (let x = el; x && x !== d.documentElement; x = x.parentElement) {
+      if (x.matches(CTRL) || x.matches('label,[onclick],[tabindex]')) { ok = true; break; }
+      if (x.__nmClick) { ok = true; break; }
+      if ([...x.attributes].some(a => a.name.startsWith('data-'))) { ok = true; break; }
+    }
+    if (ok) continue;
+    // ⓒ 자손 컨트롤 검사 = **cursor:pointer가 이어지는 조상 체인 전체**에 대해 본다.
+    //   요소 자신만 보면 위양성이 난다 — 카드에 위임을 걸면 그 안 라벨 span도 pointer를 상속받는데,
+    //   라벨은 leaf라 자손이 없다(실측 260803 = 「저작권」 라벨이 거짓말로 잡혔다. 실제로는 카드 위임이 처리한다).
+    //   pointer가 끊기는 지점 = 그 어포던스를 선언한 주체의 경계 = 거기까지가 「이 손가락 커서의 소유자」다.
+    let deleg = false;
+    for (let x = el; x && x !== d.documentElement && w.getComputedStyle(x).cursor === 'pointer'; x = x.parentElement) {
+      if (x.querySelector(CTRL + ',label,[onclick]')) { deleg = true; break; }
+    }
+    if (deleg) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width * r.height < 100) continue;                      // 1px 장식·구분선 = 노이즈
+    const s = sig(el);
+    if (seenL.has(s)) continue; seenL.add(s);
+    liars.push({ sig: s, txt: (el.textContent || '').trim().slice(0, 14), w: +r.width.toFixed(1), h: +r.height.toFixed(1) });
+  }
+  return { skip: '', rows, liars };
 };
 
 async function sweep(browser, port) {
   const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });   // 폰 티어 = 탭이 가장 아픈 폭
   const out = {};
+  // H3 ⓑ축 = click 리스너 등록을 관측한다(부모·프레임 전부 · 라이브 코드 무접촉 = 프로토타입 래핑만).
+  //   ⚠ 위임(document·body·window에 붙는 것)은 어느 셀렉터에 걸리는지 알 수 없으므로 요소 표식을 안 남긴다
+  //     → 위임에만 의존하는 요소는 ⓒ(자손 컨트롤) 또는 data-* 마커로 통과시킨다 = 보수적 판정.
+  await pg.addInitScript(() => {
+    const orig = EventTarget.prototype.addEventListener;
+    EventTarget.prototype.addEventListener = function (t, f, o) {
+      if (t === 'click' || t === 'pointerdown' || t === 'mousedown') { try { this.__nmClick = true; } catch (_) {} }
+      return orig.call(this, t, f, o);
+    };
+  });
   try {
     await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
     await pg.waitForTimeout(1200);
@@ -263,7 +313,26 @@ async function sweep(browser, port) {
         bad.push({ tab, ...r, why: [ratioBad ? '면적 ' + (r.ratio * 100).toFixed(1) + '%<' + (MIN_RATIO * 100).toFixed(0) + '%' : '', hBad ? '높이 ' + r.hitH + 'px<' + MIN_H + '(캡슐 ' + r.capH + ')' : ''].filter(Boolean).join(' · ') });
       }
     }
+    // ── H3 집계 ──
+    const liars = [];
+    for (const [tab, v] of Object.entries(m)) for (const l of (v.liars || [])) {
+      const key = tab + '::' + l.sig;
+      if (LIAR_BASE[key] !== undefined) continue;
+      liars.push({ tab, ...l });
+    }
     console.log('── 스캔 ' + scanned + '탭 · 「캡슐 안 단독 컨트롤」 후보 ' + cands + '개 (격자 ' + STEP + 'px · 폰 430)');
+    if (process.argv.includes('--seed')) {
+      console.log('── LIAR_BASE 시드 ──');
+      for (const l of liars) console.log("  '" + l.tab + '::' + l.sig + "': 1,   // " + (l.txt || '') + ' ' + l.w + '×' + l.h);
+    }
+    if (liars.length) {
+      fail = 1;
+      console.log('\n❌ H3 어포던스 거짓말 — 손가락 커서가 뜨는데 누를 게 없다(' + liars.length + '건):');
+      for (const l of liars) console.log('   · [' + l.tab + '] ' + l.sig + (l.txt ? ' 「' + l.txt + '」' : '') + ' ' + l.w + '×' + l.h);
+      console.log('   봉합 = 핸들러를 붙이거나(진짜 버튼이면) cursor를 걷어라(장식이면). 승인된 예외 = LIAR_BASE에 사유와 함께 1줄.');
+    } else {
+      console.log('✅ H3 어포던스 거짓말 0건 — 손가락 커서가 뜨는 자리는 전부 실제로 반응한다');
+    }
     if (AUDIT) {
       for (const [tab, v] of Object.entries(m)) for (const r of (v.rows || []))
         console.log('   [' + tab + '] ' + (r.ratio * 100).toFixed(1).padStart(5) + '% h' + String(r.hitH).padStart(5) + '/' + r.capH + '  ' + r.sig + (r.txt ? '  「' + r.txt + '」' : ''));
