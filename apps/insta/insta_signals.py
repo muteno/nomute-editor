@@ -200,8 +200,10 @@ def bucket_lifts(posts, key_fn, g_med):
 
 
 def online_peak_kst(audience):
-    """online_followers(UTC 시간대 히스토그램) → KST 피크 상위 3시간. 형식 방어적 파싱.
-    API는 일 버킷 리스트로 회신 — 첫 버킷만 읽던 구버그를 전 버킷 합산으로 수리(빈 value 버킷 = 자연 무시)."""
+    """online_followers(시간대 히스토그램) → KST 피크 상위 3시간. 형식 방어적 파싱.
+    API는 일 버킷 리스트로 회신 — 첫 버킷만 읽던 구버그를 전 버킷 합산으로 수리(빈 value 버킷 = 자연 무시).
+    ⚠260803: 여기 +9(UTC 가정)는 오변환 실측 판정(_pt_kst_shift 참조 — 정답 = PT+16/17). 有데이터면 항상
+    online_curve_kst 경로가 피크를 대체 산출(overlay가 곡선 우선)해 이 함수는 실질 도달 불가 — 사각 방지로 골격만 유지."""
     try:
         raw = audience.get('online_followers')
         if isinstance(raw, list):
@@ -223,9 +225,61 @@ def online_peak_kst(audience):
         return None
 
 
+def _pt_kst_shift(date_str):
+    """online_followers 히스토그램 시각 = 태평양(PT) 로컬시 판정(260803 실측 2증거: ① 일버킷 경계 = 07:00Z = PT 자정
+    ② 운영자 앱 수기 KST 앵커 8점(audience_manual) 상관 = PDT+16 **+0.940** / PST+17 +0.799 / 현행 UTC+9 **−0.224**(음) /
+    KST+0 −0.519 — Meta 문서 'UTC' 표기와 달리 데이터가 PT를 가리킴). KST 시프트 = 9 − PT오프(−7/−8) = 여름 16 · 겨울 17
+    (DST 자동 · zoneinfo) · 실패 = 16 폴백."""
+    try:
+        d = datetime.date.fromisoformat(date_str)
+        off = datetime.datetime(d.year, d.month, d.day, 12, tzinfo=ZoneInfo('America/Los_Angeles')).utcoffset()
+        return (9 - int(off.total_seconds() // 3600)) % 24
+    except Exception:
+        return 16
+
+
+def online_curve_kst(audience):
+    """시간별 팔로워 접속 실측 곡선(KST 24슬롯 · 피크=100 · 운영자 260803 "내 팔로워 접속 실측 붙이면 매우 좋을듯").
+    원천 = online_ledger.json(insta_fetch 260803 신설 · 일버킷 PT 로컬시 원문 누적) 최근 60일 합산 우선 · 없으면
+    audience.json 스냅샷(최신 ~2일) 폴백. PT→KST = _pt_kst_shift(일자별 DST 자동 · 시각 프로필 집계라 일 경계 랩 무해 ·
+    요일 귀속은 원장 축적 후 별도 축). 빈/무효 = (None, 0) → 뷰어 SIG_GEN 벤치 폴백(fail-soft · 창작 0)."""
+    merged = {}
+    def add(v, sh):
+        for h, c in (v or {}).items():
+            try:
+                merged[(int(h) + sh) % 24] = merged.get((int(h) + sh) % 24, 0) + (c or 0)
+            except (TypeError, ValueError):
+                pass
+    led = jload('online_ledger.json')
+    days = 0
+    if isinstance(led, dict):
+        for d in sorted(led)[-60:]:   # 최근 60일창 — 계정 성장으로 옛 절대값이 형상을 누르는 왜곡 방지
+            if isinstance(led[d], dict) and led[d]:
+                add(led[d], _pt_kst_shift(d))
+                days += 1
+    if not merged:
+        raw = (audience or {}).get('online_followers')
+        for b in (raw if isinstance(raw, list) else []):
+            v = (b or {}).get('value')
+            if isinstance(v, dict):
+                add(v, _pt_kst_shift(((b or {}).get('end_time') or '')[:10]))
+    pk = max(merged.values()) if merged else 0
+    if not pk:
+        return None, 0
+    return {str(h): round(merged.get(h, 0) / pk * 100, 1) for h in range(24)}, days
+
+
 def audience_overlay(audience):
     """접속 시간대 오버레이 — API(online_followers) 우선 · 공회신(260713~ 빈 value 실측)이면
-    운영자 수기 실측(audience_manual.json = 인사이트 '팔로워 활동 시간' 스크린샷) 폴백. 출처 딱지 동봉 = 브리프가 근거를 밝힘."""
+    운영자 수기 실측(audience_manual.json = 인사이트 '팔로워 활동 시간' 스크린샷) 폴백. 출처 딱지 동봉 = 브리프가 근거를 밝힘.
+    260803 확장(운영자 "실측 붙이고 보라 강조점도 맞춰"): 실측 24슬롯 곡선(online_curve_kst) 동봉 + 곡선 채택 시
+    피크 밴드도 같은 곡선 상위 3시각 = 노란선·핵심구간·접속피크 한 원천(스냅샷↔누적 어긋남 구조 소멸) · 곡선 없으면 종전 경로 그대로."""
+    curve, led_days = online_curve_kst(audience or {})
+    if curve:
+        top = sorted(curve.items(), key=lambda x: -x[1])[:3]
+        return {'online_peak_kst': [f'{h}시(KST)' for h, _ in top],
+                'online_src': f'api-ledger({led_days}일)' if led_days else 'api',
+                'online_curve_kst': curve}
     peak = online_peak_kst(audience or {})
     if peak:
         return {'online_peak_kst': peak, 'online_src': 'api'}

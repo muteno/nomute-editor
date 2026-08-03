@@ -164,6 +164,29 @@ def main():
         json.dump({'fetched_kst': stamp, 'follower_demographics': demo,
                    'online_followers': onl.get('online_followers')}, f, ensure_ascii=False, indent=1)
 
+    # 접속 실측 원장(운영자 260803 "내 팔로워 접속 실측 붙이면 매우 좋을듯" — 뷰어 실측 곡선·요일 축적의 원천) —
+    # online_followers 일버킷(시각 = PT 로컬 · 판정 260803 insta_signals._pt_kst_shift — 원문 그대로 보존, KST 변환 = 분석기 몫)을 날짜 키로 병합 누적. audience.json은 매 런 덮어써 최신 ~2일뿐이라
+    # 누적 없인 요일별 실측이 영영 불가. 원문 보존(KST 변환 = 분석기 몫) · 같은 날 재수집 = 최신 덮음 · 400일 컷(비대 방지) · 실패 = 종전 산출 무피해.
+    try:
+        led_p = f'{OUT}/online_ledger.json'
+        try:
+            led = json.load(open(led_p, encoding='utf-8'))
+            assert isinstance(led, dict)
+        except Exception:
+            led = {}
+        raw_onl = onl.get('online_followers')
+        for b in (raw_onl if isinstance(raw_onl, list) else []):
+            v, et = (b or {}).get('value'), ((b or {}).get('end_time') or '')[:10]
+            if isinstance(v, dict) and v and len(et) == 10:
+                led[et] = v
+        if led:
+            for k in sorted(led)[:-400]:
+                led.pop(k, None)
+            with open(led_p, 'w', encoding='utf-8') as f:
+                json.dump(led, f, ensure_ascii=False)
+    except Exception as e:
+        print(f'online_ledger 적재 실패(비치명 · 곡선은 audience 스냅샷 폴백): {e}')
+
     # 토큰 나이 경보 — 장수명 토큰 60일 만료 · 50일부터 warning (원문 대신 sha256 꼬리만 저장)
     meta_p = f'{OUT}/token_meta.json'
     tid = hashlib.sha256(TOK.encode()).hexdigest()[:12]
