@@ -3392,8 +3392,19 @@ def check_ask_srcimg_chain():
     #    실어야 기존 뉴스 요약 로직에 연결된다. 이 층이 빠지면 조용히 1차 동작(첨부만)으로 퇴행한다.
     if not re.search(r'^[^\n#]*python3 \.github/scripts/ask_srcocr\.py', at, re.M):
         bad.append('ask.sh OCR 실행줄 결손 — ask_srcocr.py 호출(주석 처리 포함)')
-    if '추출문:' not in at or '이 추출문이 곧 원문이다' not in at:
+    if '추출문:' not in at or '곧 원문이다' not in at:
         bad.append("ask.sh OCR 전문 주입 결손 — 추출문이 '원문' 지위로 안 실리면 보강 모드에 안 물린다")
+    # ⑥-b 일괄 축(운영자 260804 3차 "sns 안에 있는 내용이 **일괄로** 뉴스 요약에 들어가는 소스로") —
+    #    2차 배선은 OCR 이 수확분(src-*) 안쪽 if 에 갇혀 **뷰어 직접 첨부 캡처(img-*)가 빠져** 있었다
+    #    = 같은 그림이 어느 입구로 들어왔느냐에 따라 동작이 갈리던 구멍. 두 접두를 한 배열에 모으는 줄이
+    #    이 계약의 실체라 여기서 못박는다(한쪽이 빠지면 그 입구만 조용히 구 동작으로 퇴행 = 무증상).
+    m = re.search(r'^\s*ocrimgs=\(\)\s*\n\s*for im in ([^;\n]+); do', at, re.M)
+    globs = m.group(1) if m else ''
+    if 'img-' not in globs or 'src-' not in globs:
+        bad.append('ask.sh OCR 일괄 축 결손 — 첨부 캡처(img-*)와 수확분(src-*)이 한 배열(ocrimgs)에 안 모인다'
+                   '(입구별 동작 분기 = 한쪽만 조용히 구 동작)')
+    if not re.search(r'^\s*(?!#)[^\n]*ask_srcocr\.py "\$\{ocrimgs\[@\]\}"', at, re.M):
+        bad.append('ask.sh OCR 입력 결손 — 일괄 배열(ocrimgs)이 아니라 부분 집합만 OCR 에 넘긴다')
     if 'from claude_py import run_claude' not in ot:
         bad.append('ask_srcocr.py 폴오버 SSOT 미경유 — claude_py.run_claude(자체 쿼터처리 금지 계약)')
     if "'--allowedTools', 'Read'" not in ot:
