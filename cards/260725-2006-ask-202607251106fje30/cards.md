@@ -1,31 +1,31 @@
-# 머스크의 세 번째 '전부 공개'
+# 머스크 "코드 전부 공개"…이번엔 감사관까지 부른다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 플랫폼 권력·규제·이행 검증을 다루는 구조 비판 축이라 사실성과 무게가 필요하다
-- 분위기: 선언은 밝게 울리는데 그 밑에 놓인 기록은 차갑다. 말과 대조표 사이의 온도차를 계속 유지하는 톤
-- 연출 방향: 독자는 '또 공개한대'라는 피로감으로 멈춘다 — 그래서 이 덱은 머스크의 말을 보여주는 게 아니라 **그 말을 받아 적는 사람들의 화면**을 보여준다. 화려한 발표 무대 대신 심야 모니터·정지된 커밋 로그·검토자의 눈이 강조점이다. thumb_dispatch의 멸균 형광(LGT12)과 앞뒤가 다른 얼굴(SG-16)의 정조만 이어받아, 발표의 온기와 기록의 냉기를 한 덱 안에서 맞세운다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 날짜가 붙었다는 사실만 던지고 무엇이 달라졌는지는 유보)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 8월에 열리는 것이 코드인지 문서인지가 이 약속의 값을 정한다
-- 연속성 앵커: Recurring subject — a Korean developer in his 30s with short cropped hair and thin dark-rimmed glasses, wearing a plain charcoal hoodie / Recurring place — a dim late-night office desk with two stacked monitors
+- 화풍: B 극화 — 플랫폼 권력의 약속을 검증하는 구조 비판 축이라 사실성·긴장이 필요하다
+- 분위기: 발표는 뜨겁고 검증하는 자리는 차갑다 — 멸균 형광 아래 남는 의심, 감정을 올리지 않고 온도를 내리는 정조
+- 연출 방향: 독자훅은 '전부 공개'라는 말이 아니라 *날짜가 붙었다*는 대목이다 — 그래서 화면 속 선언은 늘 작게 걸고, 카메라는 그 선언을 읽는 쪽(개발자의 턱·눈·멈춘 손)에 붙는다. 강조점은 두 개의 사물 — 끝까지 찬 업로드 막대와, 먼지 앉은 채 멈춘 화면. 말하는 자리가 아니라 검증하는 자리에 빛을 남기는 것이 이 덱의 비주얼 키노트다(thumb_dispatch의 냉담 제도광·이중성 정조만 계승, 앵글은 카드마다 분산)
+- 독자 동선: **제시** 카드1→**발단** 카드2→**전개** 카드3~4→**피크** 카드5→**해소·시사점** 카드6 · 훅=카드1 끝(예고형: 말이 나온 자리가 공교롭다)+카드4 끝(단서형: 6개월 시한) · 착지 한 줄 요지 = 8월에 올라오는 게 코드인지 문서인지가 이 약속의 값을 정한다
+- 연속성 앵커: Recurring subject — a Korean man in his 30s with short cropped hair and rimless glasses, wearing a plain charcoal hoodie / 반복 장소 = a late-night open-plan office with rows of dark monitors
 
 ### [카드 1]
 **텍스트**
 ```text
-머스크가 또 코드를 다
-공개하겠다고 했다
-세 번째 약속이다
-이번엔 *날짜가 붙었다*
+일론 머스크가 또 말했다
+다음 달 X의 코드를 전부 열고
+*제3자 감사까지 받겠다고 했다*
+말이 나온 자리가 공교롭다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a fleeting micro-expression flashing across an otherwise composed face as he reads. Recurring subject — a Korean developer in his 30s with short cropped hair and thin dark-rimmed glasses, wearing a plain charcoal hoodie, sits at a dim late-night office desk with two stacked monitors and leans back from a short social-media post glowing on the upper screen. His eyes are fixed on that single glowing post, one hand resting still on the mouse without clicking. The desk is cluttered with a cold mug and a notebook, and the office behind him is empty and unlit.
-Camera: medium shot, waist-up framing, face and gestures, conversational, from three-quarter angle, natural face depth, dimensional portrait, shot on 50mm standard lens, minimal distortion, natural cinematic composition, nose room on the right, gaze directed toward the right edge
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: no readable words on the monitors, the post is suggested only by a blurred bright rectangle and abstract shapes, no garbled or fake script, no meaningless letters, no random characters, no dense text
+Scene: Emotional focal point: the tightening jaw of a lone developer looking up at a wall-mounted screen. Recurring subject — a Korean man in his 30s with short cropped hair and rimless glasses, wearing a plain charcoal hoodie, stands at the far end of a long shared desk and tilts his head up toward the display, which shows only a short glowing block of shapes with no legible characters. Two colleagues seated along the same desk have turned their chairs toward the same screen. The place is a late-night open-plan office. Nose room on the right, his gaze directed toward the right edge.
+Camera: wide shot from a high overhead angle, shot on 35mm lens
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: avoid incidental writing entirely; the wall display and every monitor show abstract glowing line patterns only, never words.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim office interior wall and desk plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the long shared office desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-개발자 야근 모니터 코드
+Elon Musk X post
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-다음 달 X 시스템에 닿는
-모든 코드를 공개하고
-제3자 감사를 받는다
-그가 7월 24일에 적었다
+7월 14일, 그록 빌드가 사고를 냈다
+이용자 사설 코드 저장소가
+동의 없이 구글 클라우드로 갔다
+*192KB면 될 일에 5.1GB였다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two hands extending a thick bound document toward a pair of waiting hands that have not yet closed around it. Three auditors in plain dark suits stand around a bare conference table in a glass-walled meeting room, one of them holding out the document while the others watch the exchange without speaking. A single closed laptop sits at the far end of the table, and beyond the glass wall the corridor stretches empty. Nobody looks at the camera.
-Camera: medium close-up, chest-up framing, slight body context, from high angle shot, looking down, observed, shot on 70mm short telephoto, gentle background compression, subject isolation
-Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: the document surface is seen at a steep angle and folded so no writing is legible, no garbled or fake script, no meaningless letters, no random characters, no dense text
+Scene: Emotional focal point: a hand frozen in mid-air above a keyboard, fingers curled and not touching the keys. On the desk below, a laptop screen shows a single upload progress bar stretched nearly to its end beside an abstract cluster of glowing code-like lines with no legible characters. A small external drive sits next to the laptop with its cable running off the edge of the desk. The place is the same night office desk, seen from directly above.
+Camera: extreme close-up from a high angle, shot on 100mm macro lens
+Lighting/mood: cold blue screen under-glow lighting the hand from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the progress bar only), film-noir low-key lighting, deep shadows
+Text handling: the progress bar and code lines are pure abstract shapes; render no readable characters anywhere on the screen.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the conference table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +66,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-제3자 감사 회의실 서류
+Grok coding tool screen
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-약속이 나온 자리가 공교롭다
-그록 빌드가 동의 없이
-사설 코드 저장소를 퍼갔고
-*192KB 자리에 5.1GB가 흘렀다*
+거기에 안전장치까지 뚫렸다
+7월 15일 머스크가 나섰다
+예외 없이 다 공개하겠다고 했고
+*7월 24일엔 시점을 못 박았다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his jaw clenched tight, muscle flexing at the jawline as the transfer bar keeps climbing. Recurring subject — a Korean developer in his 30s with short cropped hair and thin dark-rimmed glasses, wearing a plain charcoal hoodie, half rises from his chair at the dim late-night office desk with two stacked monitors and stares at a swelling progress bar on the upper screen. His right hand hovers over the keyboard without pressing anything while the left grips the desk edge. Thin cables run off the desk toward a server closet whose door stands open behind him.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure, from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 85mm portrait lens, soft background separation, nose room on the right, gaze directed toward the right edge
-Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the progress bar is a plain glowing green stripe with no numbers or labels, screens carry only abstract shapes, no garbled or fake script, no meaningless letters, no random characters, no dense text
+Scene: Emotional focal point: a fleeting micro-expression flashing across an otherwise composed executive's face. In the foreground a young security researcher holds a phone at chest height and looks past it, the phone screen a blur of glowing shapes with no legible characters. Behind him, inside a glass-walled meeting room on the same office floor, a generic executive in a dark suit stands mid-sentence with one hand raised. Both are lit by the same ceiling fixtures.
+Camera: medium close-up from eye level, three-quarter angle, shot on 85mm portrait lens
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Text handling: the phone screen and the glass wall carry no writing; use shape and glow only.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim office interior wall behind the desk) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the glass office wall behind the figures) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,27 +97,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-데이터 유출 서버 전송
+xAI Grok jailbreak
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-검증하는 눈은 전례를 안다
-*2023년에 올라간 저장소는*
-*그대로 멈춰 있다*
+같은 날, 규제 시계도 돌았다
+*EU가 X의 이행 계획을 승인했다*
+디지털서비스법 위반 과징금이
+1억2000만 유로, 시한은 6개월이다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past the frozen screen. Recurring subject — a Korean developer in his 30s with short cropped hair and thin dark-rimmed glasses, wearing a plain charcoal hoodie, sits alone and motionless at the dim late-night office desk with two stacked monitors, both hands fallen from the keyboard into his lap. On the upper monitor a single unchanging list of entries stops dead partway down the screen, the empty space below it stretching to the bottom edge of the display. Everything else in the room is swallowed by darkness.
-Camera: extreme close-up, single detail, eye, texture, from eye-level shot, neutral perspective, realistic, shot on 135mm telephoto lens, strong compression, elegant portrait separation, cinematic depth
-Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Scene: Emotional focal point: the steady unblinking eyes of a regulator looking down at the document under her hand. Three officials in dark suits sit in a row along one side of a long conference table; the one at the center slides a thick bound document toward the empty chair opposite. An abstract ring of small lights glows on the wall behind them, no emblem and no lettering. The place is an institutional meeting room. Nose room on the right, the document pushed toward the right edge.
+Camera: medium shot from a low angle, shot on 50mm standard lens
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Text handling: the list is rendered as evenly spaced blank rows and small dots with no readable characters, no garbled or fake script, no meaningless letters, no random characters, no dense text
+Text handling: the document is shown closed or edge-on so no body text is visible; no institutional logo, no nameplate lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dark office interior air and wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the long conference table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -127,28 +128,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-깃허브 저장소 커밋 기록
+European Commission Digital Services Act
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-EU는 1억2000만 유로를 물렸고
-X에 남은 시간은 6개월이다
-*8월에 올라오는 것이 코드인지*
-*문서인지가 약속의 값을 정한다*
+*지켜보는 쪽은 전례를 기억한다*
+2023년 공개한 알고리즘 저장소는
+그 뒤로 갱신이 멈췄다
+로드스터 때는 PDF와 진단 도구였다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: steady unwavering eye contact looking directly out of the frame. Recurring subject — a Korean developer in his 30s with short cropped hair and thin dark-rimmed glasses, wearing a plain charcoal hoodie, stands squarely facing the viewer in the dim late-night office, arms lowered at his sides. Behind him the two stacked monitors on the desk are dark and switched off, and a single window at the back of the room shows the first grey light of morning. His posture is calm and still, with no motion anywhere in the room.
-Camera: wide shot, full body, surrounding environment, spatial context, from front-on shot, direct gaze, symmetrical composition, facing camera, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: cold blue pre-dawn tone, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Text handling: all screens are dark and blank, no signage anywhere, no garbled or fake script, no meaningless letters, no random characters, no dense text
+Scene: Emotional focal point: hollow unblinking eyes reflecting a screen that has not changed. Recurring subject — a Korean man in his 30s with short cropped hair and rimless glasses, wearing a plain charcoal hoodie, fills most of the frame as he stares at a monitor just off camera, one hand still resting on the mouse without moving it. Over his shoulder, a thin printed manual and a stack of binders sit under a film of dust on the same office wall shelf. manhwa emphasis lines radiating toward the subject, no panel border.
+Camera: tight close-up from a high angle, shot on 135mm telephoto lens
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 in the screen reflection on his glasses), film-noir low-key lighting, deep shadows
+Text handling: the manual cover and binder spines are turned away or cropped so no writing is visible.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the office floor and back wall plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the office wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -158,5 +159,36 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-유럽연합 집행위원회 본부
+Twitter algorithm GitHub repository
+```
+
+### [카드 6]
+**텍스트**
+```text
+그래서 8월이 이 약속의 시험대다
+"전부 공개"는 세 번 다 나온 말이다
+이번엔 감사관 절차가 붙어 있다
+*거기 올라오는 게 코드인지 문서인지다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: a steady direct gaze held toward the viewer. Recurring subject — a Korean man in his 30s with short cropped hair and rimless glasses, wearing a plain charcoal hoodie, stands alone at the center of an empty office floor at dawn and faces the camera, holding a closed laptop flat against his side. Rows of dark monitors stretch away behind him on the same floor, every screen switched off. A plain round wall clock hangs high above the far end.
+Camera: wide shot from eye level, front-on, shot on 35mm lens
+Lighting/mood: cold blue pre-dawn tone, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the clock rim), film-noir low-key lighting, deep shadows
+Text handling: the clock face carries tick marks only, no numerals; no signage anywhere in the room.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the office floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+open source code audit
 ```
