@@ -18,6 +18,10 @@ on:
         description: '받을 것 — both(영상+자막) · video(영상만) · subs(자막만)'
         type: string
         default: 'both'
+      q:
+        description: '화질 상한 — best(최고화질+부가본) · 1080 · 720 · 480(각 1편)'
+        type: string
+        default: 'best'
 
 concurrency:
   group: vidl-make-${{ inputs.id }}
@@ -66,6 +70,7 @@ jobs:
           IN_ID: ${{ inputs.id }}
           IN_URL: ${{ inputs.url }}
           IN_MODE: ${{ inputs.mode || 'both' }}
+          IN_Q: ${{ inputs.q || 'best' }}
           # ⚠ 다운로더 전용 시크릿 = YT_T_COOKIES(운영자 260804). 구 YT_COOKIES는 손대지 않는다 —
           #   2주 전부터 있던 배선이고 값도 다르며 다른 용도로 쓰인다(ly·track·framethumb·news-ask는 그대로).
           #   폴백도 일부러 안 건다 — 비었을 때 남의 용도 쿠키를 조용히 끌어쓰면 계정이 섞인다.
@@ -86,7 +91,8 @@ jobs:
           [ -n "$R2_ACCOUNT_ID" ] && [ -n "$R2_BUCKET" ] && [ -n "$R2_PUBLIC_BASE" ] && [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] \
             || { echo "저장소(R2)가 설정 안 돼 있어 — 관리자 설정 후 다시." > /tmp/vidl_err.txt; echo "::error::R2 시크릿 미설정"; exit 1; }
           case "$IN_MODE" in both|video|subs) ;; *) IN_MODE=both ;; esac   # 화이트리스트(주입 차단 · py도 재검증)
-          python3 apps/vidl/vidl_run.py "$IN_ID" "$IN_URL" "$IN_MODE"
+          case "$IN_Q" in best|1080|720|480) ;; *) IN_Q=best ;; esac       # 화질 상한도 같은 문법(운영자 260804)
+          python3 apps/vidl/vidl_run.py "$IN_ID" "$IN_URL" "$IN_MODE" "$IN_Q"
 
       - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
         if: failure()

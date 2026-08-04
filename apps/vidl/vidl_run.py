@@ -254,6 +254,18 @@ def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post, desc=Fa
         return 1
 
 
+def qual_fmt(best, cap):
+    """화질 상한판 포맷 선택자 — ③FHD판 정본(`bv*[{dimk}<=1080]…`) **값만 바꾼 사본**(신규 문법 0).
+    가로/세로 축도 bat v6.4 그대로: 가로영상 = height 필터 · 세로영상 = width 필터
+    (세로 1080x1920에 height 필터를 걸면 1920이 상한을 넘어 아예 안 잡힌다 — bat v6.1의 실패 원인).
+    ⚠ 꼬리 `wv*+ba/w`(가장 낮은 것) = 상한 밑에 아무것도 없을 때의 마지막 수단.
+      「작게 받기」가 운영자 의도이므로, 못 맞추면 **더 큰 것으로 올려주는 대신 가장 작은 것**을 준다
+      (구 발상대로 best로 폴백하면 720p를 골랐는데 4K 367MB가 오는 배신이 된다)."""
+    dimk = "width" if (best and best.get("w") and best.get("h") and best["w"] < best["h"]) else "height"
+    return (f"bv*[{dimk}<={cap}][ext=mp4]+ba[ext=m4a]/b[{dimk}<={cap}][ext=mp4]/"
+            f"bv*[{dimk}<={cap}]+ba/b[{dimk}<={cap}]/wv*+ba/w")
+
+
 def ffprobe_dur(path):
     """영상 길이(초) — 실패 = 0.0(받아쓰기 게이트가 스킵으로 처리)."""
     try:
@@ -511,10 +523,13 @@ def main():
             print("[사전조회] YT 무쿠키 실패 → 쿠키로 승격(이후 전 구간 계승)", flush=True)
     # 스레드 = video_versions에 fps가 아예 없다(플러그인 실측 · 전부 0) → 프레임별 판정이 구조적으로 항상 False
     #   = fps 사전조회는 페이지 fetch 1회를 그냥 버리는 것 → 생략(260802 · 사전조회 1회당 수 초).
-    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" and PLAT != "TH" else None
+    # 화질 상한판(QUAL≠best)은 ②프레임별·③FHD판이 **개념상 성립하지 않는다** — 「작게 1편」이 주문이니
+    #   부가본 2판은 주문 위반이자 시간·용량 낭비다. 사전조회도 그만큼 건너뛴다(1회당 수 초 · 260802 절약 축 동일).
+    capped = QUAL != "best"
+    fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" and PLAT != "TH" and not capped else None
     short_side = (best["w"] if best["w"] < best["h"] else best["h"]) if best else 0
     fhd = None
-    if best and MODE != "subs" and short_side > 1080:   # 짧은 변 ≤1080 = ③FHD판 자체가 불성립(get_1080 항상 False) → 사전조회도 생략(구판은 전 플랫폼서 무조건 1회 낭비 · 260802)
+    if best and MODE != "subs" and short_side > 1080 and not capped:   # 짧은 변 ≤1080 = ③FHD판 자체가 불성립(get_1080 항상 False) → 사전조회도 생략(구판은 전 플랫폼서 무조건 1회 낭비 · 260802)
         dimk = "width" if best["w"] < best["h"] else "height"   # 세로영상 = width 필터(bat v6.4)
         ffilt = f"bv*[{dimk}<=1080][ext=mp4]/b[{dimk}<=1080][ext=mp4]/bv*[{dimk}<=1080]/b[{dimk}<=1080]"
         fhd = probe(url, ffilt, [], ck_use, pl)
@@ -527,11 +542,12 @@ def main():
     # ── ① 본편 — MODE에 따라 {영상+자막 / 영상만 / 자막만}. YT 실패 시 쿠키 1회 재시도(성공 시 부가본도 쿠키 계승 · 평의회6 P2-1) ──
     want_sub = MODE in ("both", "subs")
     want_vid = MODE in ("both", "video")
+    mainfmt = qual_fmt(best, QUAL) if capped else "bv*+ba/b/best"   # 화질 상한판 = ①본 자체를 상한으로 받는다(부가본 없음 = 1편)
     if want_vid:
-        rc = download(url, outdir, "", "bv*+ba/b/best", [], ck_use, pl, subs=want_sub, post=post, desc=True)
+        rc = download(url, outdir, "", mainfmt, [], ck_use, pl, subs=want_sub, post=post, desc=True)
         if rc != 0 and PLAT == "YT" and cookies:
             print("[재시도] 쿠키 달아 1회 재시도(연령제한·멤버십 가능성)", flush=True)
-            rc = download(url, outdir, "", "bv*+ba/b/best", [], cookies, pl, subs=want_sub, post=post, desc=True)
+            rc = download(url, outdir, "", mainfmt, [], cookies, pl, subs=want_sub, post=post, desc=True)
             if rc == 0:
                 ck_use = cookies
     else:   # 자막만 — 영상 트랙을 아예 받지 않는다(--skip-download) = 몇 초면 끝난다
@@ -616,7 +632,7 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     odir = os.path.join(root, "viewer", "vidl_out", vid_id)
     os.makedirs(odir, exist_ok=True)
-    doc = {"plat": PLAT, "ts": TS, "mode": MODE, "best": best, "fps": fpsb if get_fps else None,
+    doc = {"plat": PLAT, "ts": TS, "mode": MODE, "qual": QUAL, "best": best, "fps": fpsb if get_fps else None,
            "fhd": fhd if get_1080 else None, "files": files, "up_err": up_err, "drive": drive,
            "stt": stt}   # mode(3택 260802) + 받아쓰기 폴백 정직 표기(additive — 뷰어 파서는 미지 키 무시)
     dst = os.path.join(odir, "result.json")
@@ -627,9 +643,13 @@ def main():
 
 
 MODE_OK = ("both", "video", "subs")
+QUAL_OK = ("best", "1080", "720", "480")   # 화질 상한(운영자 260804 "화질 조정해서 받을 수 있게") — best = 종전 동작(최고화질 + 프레임별·FHD 부가본)
 if __name__ == "__main__":
     URL = sys.argv[2] if len(sys.argv) > 2 else ""
     MODE = (sys.argv[3] if len(sys.argv) > 3 else "both").strip().lower()
+    QUAL = (sys.argv[4] if len(sys.argv) > 4 else "best").strip().lower()
+    if QUAL not in QUAL_OK:
+        QUAL = "best"   # 미지정·오타 = 종전 동작 = 하위호환(MODE 축과 같은 문법)
     install_plugins()   # yt-dlp 첫 호출(사전조회) 전에 깔아야 스레드가 [threads]로 잡힌다
     if MODE not in MODE_OK:
         MODE = "both"   # 미지정·오타 = 종전 동작(영상+자막) = 하위호환

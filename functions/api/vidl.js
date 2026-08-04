@@ -57,9 +57,12 @@ export async function onRequestPost({ request, env }) {
 
   // 받을 것(운영자 260802 3버튼) — both=영상+자막 · video=영상만 · subs=자막만. 화이트리스트 밖 = both(종전 동작).
   const mode = ['both', 'video', 'subs'].includes(String(body.mode || '')) ? String(body.mode) : 'both';
+  // 화질 상한(운영자 260804 "화질 조정해서 받을 수 있게") — mode 축과 **같은 화이트리스트 문법**(신규 문법 0).
+  //   best = 종전 동작(최고화질 + 프레임별·FHD 부가본) · 그 외 = 그 상한 1편만. 러너·워크플로도 재검증(3면 이중).
+  const q = ['best', '1080', '720', '480'].includes(String(body.q || '')) ? String(body.q) : 'best';
   const r = await GH(env.GH_TOKEN, 'actions/workflows/vidl-make.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, url, mode },
+    ref: REF, inputs: { id, url, mode, q },
   });
-  if (r.status === 204) return json({ ok: true, id, mode, out: `vidl_out/${id}/result.json` });
+  if (r.status === 204) return json({ ok: true, id, mode, q, out: `vidl_out/${id}/result.json` });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
 }

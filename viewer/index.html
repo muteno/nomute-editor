@@ -8807,11 +8807,11 @@ let _dgJobSeq = 0;   // 잡 표시 번호(#1, #2…) = thumb job.n 계승 · 창
 let _dgPop = false;   // 폰 뒤로가기로 닫혔는지(§🎨 pushState/popstate · tooldlg toolPopHandled 패턴 계승)
 function _dgLoadGot() { try { return JSON.parse(localStorage.getItem(DG_GOT_KEY) || '{}') || {}; } catch { return {}; } }
 function openDlGrab() {
-  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), jobs: [], resOpen: true, vdOpen: false, yt: {}, peek: null };   // 스캔 결과는 매번 새로(공용 PC 원칙) · 받음/보관함만 기기 보존
+  _dg = { busy: false, res: null, err: '', lastUrl: '', sel: {}, meta: {}, got: _dgLoadGot(), jobs: [], resOpen: true, vdOpen: false, yt: {}, peek: null, q: _dgQLoad() };   // q = 화질 상한(운영자 260804) — 기기 보존(매번 다시 고르지 않게 · got·보관함과 같은 축)   // 스캔 결과는 매번 새로(공용 PC 원칙) · 받음/보관함만 기기 보존
   try { localStorage.removeItem('dg_hist_v1'); } catch {}   // 폐지된 '기록' 축 잔여 청소(1회성)
   const d = $('#dlgrab'); const inp = $('#dgUrl'); if (inp) inp.value = '';
   _dgSubs = null; _dgProbeSeq++;   // 창을 새로 열면 자막 리드백도 초기화(옛 프로브 응답 폐기)
-  _dgVidLoadJob().forEach(j => { _dg.jobs.push({ url: j.url, plat: j.plat, id: j.id, mode: j.mode, t0: j.t0, n: ++_dgJobSeq, st: 'run', msg: '받는 중' }); });   // 진행 중 받기 = 창 닫았다 다시 열어도 전건 복원(평의회2·8 · 이제 복수)
+  _dgVidLoadJob().forEach(j => { _dg.jobs.push({ url: j.url, plat: j.plat, id: j.id, mode: j.mode, q: j.q, t0: j.t0, n: ++_dgJobSeq, st: 'run', msg: '받는 중' }); });   // 진행 중 받기 = 창 닫았다 다시 열어도 전건 복원(평의회2·8 · 이제 복수)
   _dgPaintPic();
   _dgRenderBody();
   if (!d.open) { d.showModal(); try { history.pushState({ dlgrab: true }, ''); } catch {} }
@@ -8894,7 +8894,7 @@ function _dgJobHtml(v, i) {
   else if (v.st === 'done') { ic = CHECK_SVG; tx = '완료 · ' + fs.length + '건' + (v.sec ? ' (' + _dgSecTxt(v.sec) + ')' : ''); }   // 「✓ 완료 · N장 (32s)」 정본 문법 · 단위만 이 화면 것(장→건)
   else { ic = window.nmOrbHTML ? nmOrbHTML('solving', 14) : ''; tx = '받는 중 <b class="jsec">' + _dgSecTxt(sec) + '</b>' + (window.nmEta ? ' · ' + nmEta.label(_dgEtaKey(v)).trim() : ''); }   // 경과 = 흰색 .jsec(운영자 260728 정본) · 예상 = nmEta
   let h = '<div class="job' + (v.st === 'done' ? ' done' : '') + (v.st === 'fail' ? ' err' : '') + '" id="dgjob' + i + '">'
-    + '<span class="jlab">' + esc(_dgVidPlatName(v.plat) || '링크') + ' · ' + modeLbl + ' #' + (v.n || (i + 1)) + '</span>'
+    + '<span class="jlab">' + esc(_dgVidPlatName(v.plat) || '링크') + ' · ' + modeLbl + ((v.q && v.q !== 'best') ? ' · ' + esc(_dgQName(v.q)) : '') + ' #' + (v.n || (i + 1)) + '</span>'
     + '<span class="jst">' + ic + '<span>' + tx + '</span></span>';
   // (받는 중 취소 X = 운영자 260802 미채택 — 러너를 실제로 멈추는 API가 없어 「이 화면의 추적만 끊는」 반쪽 취소였다.
   //  버튼이 없어도 40분 폴 상한이 스스로 실패로 닫고, 창을 닫으면 폴은 멈춘 채 잡만 보존된다 = 갇히는 상태 없음.)
@@ -9078,6 +9078,16 @@ function _dgVidPlat(u) {
   if (host('threads.net') || host('threads.com')) return /\/(post|t|share)\//.test(path) ? 'TH' : '';   // 공유 시트가 주는 두 형식(/share/<코드>/ · /t/<코드>)도 수용(운영자 260802 "스레드 다운로드가 안되네") — 구 정규식은 `/post/`만 맞아 공유 링크는 잠긴 채 무반응이었다(레포 큐에도 https://www.threads.com/share/… 형식이 실제로 들어와 있다) · 러너 플러그인이 share→post 정규 주소를 페이지에서 되찾는다
   return '';
 }
+const DG_QUALS = [['best', '최고화질'], ['1080', '1080p'], ['720', '720p'], ['480', '480p']];   // 값 = api/vidl.js·vidl-make.yml·vidl_run.QUAL_OK 3면 동일 문자
+const DG_Q_KEY = 'dg_q_v1';
+function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return DG_QUALS.some(x => x[0] === v) ? v : 'best'; } catch { return 'best'; } }
+function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1] : '최고화질'; }
+function _dgQNext() {   // 다값 순환 = 워드칩 정본 동작(이진 토글이 아니라 4값이라 순환 · 라벨 자체가 현재값 = 리드백 별도 부품 0)
+  const i = DG_QUALS.findIndex(x => x[0] === _dg.q);
+  _dg.q = DG_QUALS[(i + 1) % DG_QUALS.length][0];
+  try { localStorage.setItem(DG_Q_KEY, _dg.q); } catch {}
+  _dgRenderBody();
+}
 function _dgVidPlatName(p) { return ({ YT: '유튜브', IG: '인스타그램', X: 'X(트위터)', TT: '틱톡', FB: '페이스북', TH: '스레드' })[p] || p; }
 // 진행 중 작업 계정축 보존(평의회2·8) — run 중 창 닫아도 job id를 기기에 남겨 재열람 시 폴 재개(백그라운드 상주 아님 = 창 열 때만 폴).
 const DG_VID_KEY = 'dg_vid_job_v1';
@@ -9121,7 +9131,7 @@ function _dgSecTxt(s) { s = Math.max(0, Math.round(Number(s) || 0)); return wind
 // 예상시간 학습·표시 키 = **모드 × 플랫폼**(운영자 260802-2) — 유튜브 20분짜리와 X 40초 클립을 한 평균에 담으면 둘 다 틀린다.
 //   시드는 전 플랫폼 동일(nm-loader.js SEED) = 차이를 지어내지 않고 실측이 갈라놓게 둔다 · 플랫폼 미상(딥링크 복원) = 폴백 'vidl'/'vidl-subs'.
 const DG_PLATS = ['YT', 'IG', 'X', 'TT', 'FB', 'TH'];
-function _dgEtaKey(v) { const b = (v && v.mode === 'subs') ? 'vidl-subs' : (v && v.mode === 'video') ? 'vidl-video' : 'vidl'; const p = v && v.plat; return (p && DG_PLATS.indexOf(p) >= 0) ? b + '-' + p : b; }
+function _dgEtaKey(v) { const b = (v && v.mode === 'subs') ? 'vidl-subs' : (v && v.mode === 'video') ? 'vidl-video' : 'vidl'; const p = v && v.plat; const q = (v && v.q && v.q !== 'best') ? '-q' + v.q : ''; return ((p && DG_PLATS.indexOf(p) >= 0) ? b + '-' + p : b) + q; }   // 화질도 키 축(720p는 4K보다 압도적으로 빠르다 = 예상시간이 갈려야 한다 · 260804)
 // (구 `_dgVidStat` = `.genstat.live` 알약 진행표기 폐지 — 진행은 이제 **제작 잡 카드**(.job > .jst)가 전담 =
 //  이미지 스튜디오와 같은 부품(운영자 260802 "이미지 스튜디오를 거의 따라서"). orb·예상·경과 세 축은 _dgJobHtml로 이관.)
 // 「이전 받기」 접이 = 이미지 스튜디오 **이전 제작** 접이 100% 모방(.prev 이력색·맨 아래·전 기기 아닌 이 기기 표기만 다름).
@@ -9141,7 +9151,7 @@ function _dgDoneHtml() {
 // 진행 중 잡 보존 = **배열**(큐잉 편입 260802) — 구 단일 객체 저장분도 읽어서 1건 배열로 승격(back-compat).
 function _dgVidSaveJobs() {   // 현재 run 잡 전량을 한 번에 기록(개별 저장은 경합 · 목록이 정본)
   try {
-    const a = _dg.jobs.filter(v => v.st === 'run' && v.id).map(v => ({ url: v.url, plat: v.plat, id: v.id, mode: v.mode, t0: v.t0 }));
+    const a = _dg.jobs.filter(v => v.st === 'run' && v.id).map(v => ({ url: v.url, plat: v.plat, id: v.id, mode: v.mode, q: v.q, t0: v.t0 }));
     if (a.length) localStorage.setItem(DG_VID_KEY, JSON.stringify(a)); else localStorage.removeItem(DG_VID_KEY);
   } catch {}   // mode 동반 저장 = 창 닫았다 열어도 예상시간·머리 라벨이 그 모드 것으로 복원
 }
@@ -9168,7 +9178,7 @@ async function _dgVidFire(v, mode) {
   v.mode = ['both', 'video', 'subs'].indexOf(mode || v.mode) >= 0 ? (mode || v.mode) : 'both';   // 받을 것 = 다운로드 1버튼 = both(영상+자막) 고정 · video/subs는 서버·러너 화이트리스트에 존치(구 3택 호환)
   v.st = 'run'; v.msg = '요청 중'; v.t0 = Date.now(); v.sec = 0; v.res = null; _dgPaintPic(); _dgRenderBody();
   try {
-    const r = await fetch('/api/vidl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v.url, mode: v.mode }) });
+    const r = await fetch('/api/vidl', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v.url, mode: v.mode, q: v.q || 'best' }) });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error || !d.id) throw new Error(d.error || ('HTTP ' + r.status));
     if (_dg.jobs.indexOf(v) < 0) return;   // 발사 대기 중 취소됐으면 고아 — 폴 시작 안 함(평의회2 · identity 축을 배열 소속으로 승격)
@@ -9290,7 +9300,8 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피")
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + esc(_dgQName(_dg.q)) + '</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804)
+    + '<button type="button" class="geni-opt" data-act="vidq" title="화질 상한 — 누르면 최고화질 → 1080p → 720p → 480p 순환" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 변경">' + esc(_dgQName(_dg.q)) + '</button>'   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
 }
@@ -9316,7 +9327,7 @@ function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **�
   const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
   if (_dg.jobs.some(v => v.st === 'run' && v.url === u)) { _dg.err = '이미 받는 중인 주소야'; _dgRenderBody(); return; }   // 같은 주소 이중 발사만 막는다(다른 주소는 얼마든지)
   _dg.err = ''; _dg.lastUrl = u; _dg.resOpen = true;
-  const v = { url: u, plat, mode: mode || 'both', n: ++_dgJobSeq, st: 'idle' };
+  const v = { url: u, plat, mode: mode || 'both', q: _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다)
   _dg.jobs.unshift(v);   // 최신이 위 = 이미지 스튜디오 잡 보드(#jobs prepend) 계승
   const inp = $('#dgUrl'); if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }   // 발사 = 칸 비움(다음 주소 즉시 입력 · 클립 버튼 상태도 input 이벤트로 동기)
   _dgVidFire(v, v.mode);
@@ -9404,7 +9415,8 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'ytreq') { e.stopPropagation(); _dgYtReq(i); }
   else if (act === 'ytget') { e.stopPropagation(); _dgYtGet(i); }
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(_dg.jobs[i], (_dg.jobs[i] || {}).mode || 'both'); }
-  else if (act === 'vidsubs') { e.stopPropagation(); _dgVidStart('both'); }   // 「받을 내용」 행 [영상+자막] = 그 자리에서 자막까지 포함해 발사(기본 [다운로드]는 영상만)
+  else if (act === 'vidsubs') { e.stopPropagation(); _dgVidStart('both'); }
+  else if (act === 'vidq') { e.stopPropagation(); _dgQNext(); }   // 화질 상한 순환(다음 발사부터 적용 · 진행 중 잡은 자기 값을 유지)   // 「받을 내용」 행 [영상+자막] = 그 자리에서 자막까지 포함해 발사(기본 [다운로드]는 영상만)
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(ji, i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(el, ji); }
   else if (act === 'secall') { e.stopPropagation(); _dgDlSec(el, el.dataset.k); }
