@@ -1,0 +1,37 @@
+name: yt-cookie-health
+
+# 유튜브 쿠키 생사 정기 감시(운영자 260804 승인 "응 원장도 해주고") — 죽으면 **미리** 알린다.
+#   구 축 = 운영자가 유튜브를 받아보다 실패해야 비로소 쿠키 사망을 알았다(= 필요한 순간에 못 쓴다).
+#   12시간 주기 × 2회 연속 사망 = 하루 안에 알림메시지 점등 · 살아나면 자동 해소.
+# 판정 정본 = yt_cookie_whoami.py(로직 복제 0 · 여기선 정기 실행 + 원장 + 알림만).
+# 문법 정본 = 봇 산출 착지 = git_land.sh(공용 헬퍼) · 시크릿 축 = vidl-make.yml 동일(YT_T_COOKIES).
+on:
+  schedule:
+    - cron: '0 0,12 * * *'   # UTC 00·12시 = KST 09·21시(하루 2회 · 2연속 = 12시간 내 감지)
+  workflow_dispatch:
+
+concurrency:
+  group: yt-cookie-health
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # 원장·알림 커밋(git_land)
+
+env:
+  PAGES_COALESCE: ${{ vars.PAGES_COALESCE }}   # [CF-Pages-Skip] 코얼레싱 킬스위치(0=off · 부재=ON) — 정본 = git_land.sh 헤더
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 쿠키 생사 점검 → 원장 → 알림
+        env:
+          YT_COOKIES: ${{ secrets.YT_T_COOKIES }}   # vidl-make와 같은 시크릿(구 YT_COOKIES 무접촉)
+        run: python3 .github/scripts/yt_cookie_health.py   # 전 구간 fail-soft(rc 항상 0)
+
+      - name: 착지(원장 + 알림)
+        run: |
+          bash .github/scripts/git_land.sh "yt-cookie: 쿠키 생사 원장 갱신 (bot)" push/yt_cookie_health.json messages

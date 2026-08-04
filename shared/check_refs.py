@@ -815,6 +815,10 @@ _PAGES_SKIP_ALLOW = {
     os.path.join('.github', 'workflows', 'metrics-rollup.yml'),
     os.path.join('.github', 'workflows', 'watchdog.yml'),
     os.path.join('.github', 'workflows', 'rate.yml'),
+    # 쿠키 생사 감시(260804) — 착지물 = push/ 원장 + messages/ 알림. insta-fetch와 **같은 모양**(하루 2회 봇 churn +
+    #   알림)이라 같은 판정: 화면에 수 분 늦게 떠도 되는 축이다(쿠키는 ~2주 주기로 죽고 운영자는 알림함을 안 놓친다).
+    #   ⚠ viewer/*.json 착지 0 = 짝 게이트(check_coalesce_pair) 대상 아님 — 라이브 서빙 짝이 필요한 화면 표면을 안 만든다.
+    os.path.join('.github', 'workflows', 'yt-cookie-health.yml'),
 }
 
 
