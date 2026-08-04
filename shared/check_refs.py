@@ -3335,6 +3335,46 @@ def check_brk_misfire_chain():
     return 0
 
 
+def check_subs_author_scope():
+    """구독 수집 = 작성자 검문 의무(하드 · 운영자 260804 "내가 구독한 애들이 아닌데").
+    260804 실사고 = '스레드 - 구독' 20건이 **등록한 적 없는 계정**으로 통째 채워짐(등록 5계정 0건).
+    구조 = threads_subs()의 walk()가 응답 안 **모든** 포스트 노드를 걷는데, 게스트 응답은 프로필 주인 글만
+    담지만(260804 실측 = 등록 5계정 37건 전건 본인) 로그인 상태(THREADS_COOKIE)·로그인월 리다이렉트
+    응답에는 **추천(For you) 피드**가 같이 실린다 → 무검문 채집 = 남의 알고리즘 피드가 '구독'을 차지.
+    X·인스타·틱톡은 항목의 account 를 요청 계정으로 못박아 구조적으로 불가능했고, 스레드만 노드의
+    username 을 신뢰해서 갈렸다. 정적만으로 잡히는 이유 = 검문 유무가 코드 한 줄의 존재 문제(렌더·LLM 0).
+    ⚠ 도장 축도 같이 지킨다 — 구판은 `posts` 유무로 _sok 을 찍어 추천 피드만 걷힌 회차를 got 5/5
+      '전건 성공'으로 보고했다(화면은 남의 글, 게이트는 무경보 = 가장 조용한 실패)."""
+    p = os.path.join(ROOT, 'scraper', 'sns_trends.py')
+    try:
+        t = open(p, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 구독 작성자 검문 게이트 — 읽기 실패(fail-closed):', e)
+        return 1
+    m = re.search(r'\ndef threads_subs\(.*?\n(?=\n[A-Za-z_]|\ndef )', t, re.S)
+    body = m.group(0) if m else ''
+    bad = []
+    if not body:
+        bad.append('threads_subs() 함수를 못 찾음 — 게이트가 검사할 대상 소실(개명했으면 이 게이트도 같이 고쳐라)')
+    else:
+        if not re.search(r'username[^\n]*\)\s*\.strip\(\)', body) or '!= _me' not in body:
+            bad.append('작성자 검문 결손 — threads_subs()가 요청 계정과 작성자를 대조하지 않는다(추천 피드가 구독을 차지)')
+        if re.search(r'get\("username"\)\)?\s*or\s+acc', body):
+            bad.append('구판 폴백 부활 — username 결측 노드를 요청 계정 글로 단정(`or acc`) = 검문 우회')
+        if 'if _mine:' not in body or '_sok("threads"' not in body:
+            bad.append('성공 도장 축 결손 — _sok 은 **본인 글 확보**가 기준(posts 유무 기준 구판 = got 5/5 거짓 보고)')
+    # 2차 방어 = 러너 채택 지점 화이트리스트(폰이 구 파서로 돌아도 러너가 거른다)
+    if not re.search(r'k2 == "threads"', t) or 'acc.get("threads")' not in t:
+        bad.append('폰 채택 화이트리스트 결손 — 폰 구버전 파서 산출이 무검문 채택된다(sns_trends.py main 채택 루프)')
+    if bad:
+        print('❌ 구독 작성자 검문 게이트 — 결손 %d건(구독 칸에 남의 알고리즘 피드가 들어온다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        return 1
+    print('✅ 구독 작성자 검문 게이트 — 스레드 작성자 대조·본인글 기준 도장·폰 채택 화이트리스트 3층 생존.')
+    return 0
+
+
 def check_rubric_regress():
     """루브릭 회귀 게이트(하드 · 운영자 260803 승인 — «대구 40.1도» 오발 봉합의 재발 방지 축).
     breaking_judge RUBRIC(속보 YES/NO 판정 프롬프트)이 바뀌면 과거 실측 판정 케이스(rubric_regress_cases.json ·
@@ -3664,6 +3704,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_thumb_chain 예외(fail-closed):', e); rc = 1
+    try:
+        if check_subs_author_scope() != 0:   # 구독 = 작성자 검문 의무(하드 게이트 — 260804 실사고: 스레드 구독 20건이 등록 0계정 = 추천 피드 강탈)
+            rc = 1
+    except Exception as e:
+        print('❌ check_subs_author_scope 예외(fail-closed):', e); rc = 1
     try:
         if check_shell_put_integrity() != 0:   # 셸캐시 put = 절단 검문(</html> 꼬리) 의무(하드 게이트 — 260802 재발: sw.js만 검문·페이지측 put 무검문 = 절단 셸 재주입)
             rc = 1

@@ -1392,25 +1392,40 @@ def threads_subs(accounts, limit=10, deadline=None):
                     walk(json.loads(m.group(1)))
                 except Exception:  # noqa: BLE001
                     continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
-            if not posts:
-                _sjs = len(re.findall(r'data-sjs', h))   # 임베드 JSON 블록 수(0 = 챌린지·스켈레톤 = 실브라우저 필요 신호 · N개인데 포스트 0 = 파서 갱신 필요)
-                _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
-                print(f"::warning::threads @{acc} 포스트 노드 0(HTML {len(h)//1000}KB·data-sjs {_sjs}개·{'로그인월' if _wall else '레이아웃?'}·쿠키{'유' if ck else '무'} — 스킵)", file=sys.stderr)
-                _sfail("threads", acc, "wall" if _wall else "empty")
-            else:
-                _sok("threads", acc)   # 포스트 노드 확보 = 계정 살아있음(24h 필터·spread 절단 = 사고 아님)
+            _me, _mine, _alien = acc.lower().lstrip("@"), 0, 0   # 주인 판정 축(260804) — _mine = 이 계정 본인 글 · _alien = 추천 피드 폐기분
             for p in posts:
                 code = p.get("code") or ""
                 txt = ((p.get("caption") or {}).get("text") or "").strip()
                 if not code or not txt or code in seen:
                     continue
+                # ⛔ 작성자 검문(운영자 260804 "내가 구독한 애들이 아닌데") — walk()는 응답 안의 **모든** 포스트 노드를 걷는다.
+                #   게스트 응답은 프로필 주인 글만 담지만(260804 실측 = 등록 5계정 37건 전건 본인), 로그인
+                #   상태(THREADS_COOKIE)·로그인월 리다이렉트 응답에는 **추천(For you) 피드**가 같이 실린다 →
+                #   무검문 채집 = 구독한 적 없는 계정 20건이 '스레드 - 구독'을 통째로 차지(260804 실사고 · 등록 5계정 0건).
+                #   X는 `"account": acc` 고정이라 구조적으로 불가능했고, 스레드만 노드의 username을 신뢰해서 갈렸다.
+                #   → 요청한 계정과 작성자가 다르면 버린다(username 결측 = 주인 확인 불가 = 동일 폐기).
+                user = ((p.get("user") or {}).get("username") or "").strip()
+                if user.lower().lstrip("@") != _me:
+                    _alien += 1
+                    continue
                 seen.add(code)
-                user = ((p.get("user") or {}).get("username")) or acc
+                _mine += 1
                 tpa = p.get("text_post_app_info") if isinstance(p.get("text_post_app_info"), dict) else {}
                 out.append({"account": user, "text": txt[:500], "likes": _i(p.get("like_count")),
                             "cmts": _i(tpa.get("direct_reply_count")), "time": p.get("taken_at") or 0,
                             "thumb": _th_img(p),   # 대표 이미지(운영자 260728 — 뷰어 xcard-cv 틀은 이미 있는데 공급이 0이던 사각 봉합)
                             "url": "https://www.threads.com/@%s/post/%s" % (user, code)})   # text 280→500(운영자 260728 — 표시가 4줄 클램프 원문이 되며 280이면 넓은 카드에서 클램프 도달 전에 원료가 끊겨 … 없이 뚝 끊긴다 · 시각 절단 = CSS 클램프 담당)
+            # 성공 도장 = **본인 글 확보**가 기준(260804 개정) — 구판은 `posts` 유무만 보고 찍어서, 추천 피드만
+            #   걷힌 회차도 got 5/5 = "전건 성공"으로 보고했다(실사고 = 화면은 남의 글 20건인데 게이트 무경보).
+            if _mine:
+                _sok("threads", acc)   # 본인 글 확보 = 계정 살아있음(24h 필터·spread 절단 = 사고 아님)
+            else:
+                _sjs = len(re.findall(r'data-sjs', h))   # 임베드 JSON 블록 수(0 = 챌린지·스켈레톤 = 실브라우저 필요 신호 · N개인데 포스트 0 = 파서 갱신 필요)
+                _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
+                _why = ("추천 피드 %d건만(프로필 미도달 = 리다이렉트·쿠키 오염)" % _alien) if _alien else \
+                       ("포스트 노드 0(HTML %dKB·data-sjs %d개·%s)" % (len(h) // 1000, _sjs, "로그인월" if _wall else "레이아웃?"))
+                print(f"::warning::threads @{acc} 본인 글 0 — {_why}·쿠키{'유' if ck else '무'}(스킵)", file=sys.stderr)
+                _sfail("threads", acc, "wall" if (_wall and not _alien) else "empty")
         except Exception as e:  # noqa: BLE001
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("threads", acc, _hcode(e))
@@ -2362,6 +2377,14 @@ def main():
                 _padopt = set()
                 for k2 in ("x", "insta", "threads", "tiktok"):   # 틱톡 = 러너 데센 IP가 tikwm /user/posts에 통째 HTTP 403(WAF IP블록 · run 29800229859 실측 260721: KR13+GL17 30콜 전멸 → 구독 tiktok = 스테일 carry) → 폰 가정 IP 채택(insta/threads 동류 편입) · 스레드 = 폰/맥 가정 IP 전용 축(운영자 260712 "맥 크롬 접근 가능")
                     _pl = [it for it in (_ph.get(k2) or []) if isinstance(it, dict)]
+                    if k2 == "threads":   # ⛔ 등록 명단 화이트리스트 2차 방어(260804) — 폰이 구 코드(작성자 무검문)로 돌거나
+                        #   git pull이 실패해 옛 파서가 남아 있으면 추천 피드가 그대로 올라온다. 러너 채택 지점에서 한 번 더 거른다.
+                        #   스레드 전용인 이유 = X·인스타·틱톡은 항목의 account를 요청 계정으로 못박아 구조적으로 오염 불가.
+                        _reg = {str(a).lower().lstrip("@") for a in (acc.get("threads") or ())}
+                        _kept = [it for it in _pl if str(it.get("account") or "").lower().lstrip("@") in _reg]
+                        if len(_kept) != len(_pl):
+                            print(f"::warning::phone-subs threads: 미등록 계정 {len(_pl) - len(_kept)}건 폐기(추천 피드 오염 — 폰 파서 구버전 의심)", file=sys.stderr)
+                        _pl = _kept
                     if _pl:
                         subs_new[k2] = _pl
                         _padopt.add(k2)
