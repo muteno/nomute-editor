@@ -53,7 +53,8 @@ export async function onRequestPost({ request, env }) {
   if (typeof o.oc === 'string' && ['black', 'white', 'green', 'mint', 'sky', 'blue', 'pink', 'yellow', 'red'].includes(o.oc)) opts.oc = o.oc;           // 자막 음영 색(닫힌 집합 = ly_burn OC_BGR 짝 · 260711)
   if (typeof o.font === 'string' && ['gothic', 'serif', 'nanum', 'pen'].includes(o.font)) opts.font = o.font;                            // 자막 폰트(닫힌 집합 = ly_burn FONT_FAMILY 짝 — 러너 설치 폰트만 · 260711)
   if (typeof o.fg === 'string' && ['black', 'white', 'green', 'mint', 'sky', 'blue', 'pink', 'yellow', 'red'].includes(o.fg)) opts.fg = o.fg;                   // 자막 글자색(ly.js 미러 · 기본 white = 종전 · 260721 자막 카드 복원) — (260729) 9색 통일 동행
-  const glow = num(o.glow, 0, 100); if (glow !== null && glow > 0) opts.glow = Math.round(glow);                                          // 글로우 %(ly.js 미러 — ASS \blur · 0/결측 = 미송신 = 종전 렌더 바이트 동일 · 260721)
+  if (typeof o.kwc === 'string' && ['black', 'white', 'green', 'mint', 'sky', 'blue', 'pink', 'yellow', 'red'].includes(o.kwc)) opts.kwc = o.kwc;                  // 키워드 강조색(운영자 260804 "강조색도 있어야겠다") — 러너 ly_burn KW 슬롯은 260711부터 이 키를 읽는데 **편집 발사 화이트리스트에만 없어** 뷰어가 뭘 보내든 전부 탈락 → 늘 기본 그린이었다 · 집합 = oc/fg와 동일 9색(뷰어 색 줄이 한 벌이라 갈리면 미리보기≠결과 · ly_burn OC_BGR 9색 전건 지원 실측)
+  const glow = num(o.glow, 0, 100); if (glow !== null && glow > 0) opts.glow = Math.round(glow);                                        // 글로우 %(ly.js 미러 — ASS \blur · 0/결측 = 미송신 = 종전 렌더 바이트 동일 · 260721)
   const vpos = num(o.vid_pos, 0, 1); if (vpos !== null) opts.vid_pos = Math.round(vpos * 1000) / 1000;  // 크롭 팬
   const t0 = num(o.vid_t0, 0, 3600), t1 = num(o.vid_t1, 0, 3600);
   if (t0 !== null && t0 > 0) opts.vid_t0 = Math.round(t0 * 100) / 100;

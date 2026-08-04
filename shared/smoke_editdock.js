@@ -93,8 +93,8 @@ async function runOnce(browser, port) {
   await pg.evaluate(() => { const g = document.querySelector('#editGo'); g._fireT0 = Date.now() - 2000; goFireOk(g); });
   await pg.waitForTimeout(300);
   m.gck = await pg.evaluate(() => !!document.querySelector('#editGo .gck'));
-  await pg.waitForTimeout(500);   // ✓ 여운(560ms) 경과 → 생성중 상주(운영자 260723 Q454)
-  m.busy = await pg.evaluate(() => { const g = document.querySelector('#editGo'); return g.classList.contains('busy') && !!g.querySelector('.nm-orb[data-orb="solving"]'); });   // 생성중 = orb 로더(Solving) 상주(운영자 260723 Q460 · 구 점3 텍스트 폐지)
+  await pg.waitForTimeout(500);   // ✓ 여운(560ms) 경과 → (260804 계약 개정) '생성중' 상주가 아니라 **라벨 원복**(운영자 "버튼이 제작중 뜰 필요는 없고 · 추가로 계속 제작할 수 있어야 해")
+  m.ready = await pg.evaluate(() => { const g = document.querySelector('#editGo'); return { busy: g.classList.contains('busy'), lbl: g.textContent.trim(), pe: getComputedStyle(g).pointerEvents }; });   // 구 계약(260723 Q454 orb 상주)은 잡이 끝날 때까지 `pointer-events:none`으로 버튼을 잠가 다음 제작을 막았다 → 새 판정축 = 「접수 직후 다시 눌리는가」(busy 없음 · 라벨 '생성' · pointer-events 살아 있음)
   await pg.evaluate(() => goFireDone(document.querySelector('#editGo')));   // 잡 완료 원복
   await pg.waitForTimeout(60);
   m.back = await pg.evaluate(() => document.querySelector('#editGo').textContent.trim());
@@ -129,9 +129,9 @@ async function runOnce(browser, port) {
   m.d2 = await dockState();
   await attach();                       // ③ **결과가 떠 있는 상태에서 재첨부** = 펼침(사고 축 · 구 코드는 여기서 h 0)
   m.d3 = await dockState();
-  await pg.evaluate(() => { _pollLive = true; dockSync(); });
-  await pg.waitForTimeout(500);         // ④ 새 발사 대기 진입 = 다시 접힘(접힘 계약 회귀 확인)
-  m.d4 = await dockState();
+  await pg.evaluate(() => { _dockHold = null; const vw = document.getElementById('vwrap'); vw.innerHTML = '<div class="scanline"></div>'; vw.hidden = false; _pollLive = true; dockSync(); });   // 실발사 동형 = 홀드 리셋(발사 핸들러가 하는 일) + vwrap을 **대기 스테이지**(.scanline)로 교체
+  await pg.waitForTimeout(500);         // ④ (260804 개정) 새 발사 대기 진입 = **펼침 유지**(운영자 "계속 그 전 미리보기 화면처럼 유지되게") — 접힘 트리거는 260728 원문대로 '완성본이 보이는 타이밍'(②)만 남는다
+  m.d4 = await dockState();             // ⚠ 구 ④는 vwrap에 **완성본이 그대로 남아 있는 채로** _pollLive만 세워서, 접힘의 실제 원인이 res(완성본)인지 대기인지 못 가렸다(대기 축은 사실상 미검증) — 대기 스테이지로 갈아끼워 그 축을 정면으로 잰다
   await pg.evaluate(() => { _pollLive = false; const vw = document.getElementById('vwrap'); vw.hidden = true; vw.innerHTML = ''; dockSync(); });   // 상태 원복(2런 결정론 보호)
 
   m.errs = errs.length;
@@ -160,12 +160,14 @@ async function runOnce(browser, port) {
     ck('C4 초기 리드백 = 5축(비율·해상도·고프레임·배경음·컷편집) — 값 축 = 라벨+원본 · 이진 축 = 워드 단독 · 초기 점등 = **배경음 단 하나**(운영자 260803 7차 "배경음 > 활성화가 기본값, 비활성화 하면 > 배경음 제거" — 표시가 뒤집힌 유일 축이라 「기본 상태에서 배경음이 켜져 보이나」가 곧 그 계약의 회귀 검문 · 나머지 4축은 종전대로 무점등 · 워드 점등 문법 자체는 thumb #cnTog 정본 불변)', /^비율 원본 \/ 해상도 원본 \/ 고프레임 \/ 배경음 \/ 컷 편집$/.test(r1.readback) && r1.onN === 1 && r1.onWords === '배경음', 'rb=[' + r1.readback + '] on=' + r1.onN + '(' + r1.onWords + ')');
     ck('C5 #editGo = **카드 제작 도크 정본**(r-modal/sp-1/fs-label) + 라벨 생성', r1.goTriple === '22px/6px/13px' && r1.goLabel.startsWith('생성'), r1.goTriple + ' · ' + r1.goLabel);   /* 기대값 11px(--r-m) → 22px(--r-modal) = 운영자 260803 2차 "비디오 스튜디오를 아예 이미지 스튜디오랑 동일하게" — 이미지 스튜디오 도크 정본이 `.topdock[data-lay="edit"] #go{border-radius:var(--r-modal)}`(운영자 260731 "생성버튼 창 둥글기에 맞게")인데 영상 셸만 --r-m으로 남아 있었다(실측 11 vs 22) · 등록 셀렉터의 _LAUNCH_SPEC 3속성(check_refs)은 무접촉 */
     ck('C6 히트슬롭 = 상하 ±5px 버튼 귀속·가로챔 0(시각 ' + r1.goH + 'px 불변)', r1.hitUp === 'self' && r1.hitDn === 'self' && r1.goH <= 30,   /* 상한 <30 → ≤30 = 카드 제작 발사 버튼 **실측 정본 높이 30**에 합류(운영자 260803 2차 통일 · thumb는 `.makerow{align-items:stretch}` 행 늘어남으로 30 · 영상 셸은 그 행이 없어 27이었다 → min-height로 결과값 계승) */ 'up=' + r1.hitUp + ' dn=' + r1.hitDn);
-    ck('C7 게이지 firing→✓(gck)→생성중 상주(busy)→goFireDone 원복', r1.fire && r1.gck && r1.busy && r1.back === '생성', r1.fire + '/' + r1.gck + '/busy' + r1.busy + '/' + r1.back);
+    ck('C7 게이지 firing→✓(gck)→**라벨 원복·재발사 가능**(260804 개정 · 구 생성중 상주 폐지)',
+       r1.fire && r1.gck && !r1.ready.busy && r1.ready.lbl === '생성' && r1.ready.pe !== 'none' && r1.back === '생성',
+       r1.fire + '/' + r1.gck + '/busy' + r1.ready.busy + '/' + r1.ready.lbl + '/pe:' + r1.ready.pe);
     ck('C8 라벨 잉크 중심 = 4분할 중심 Δ≤0.5', r1.inkD[0] <= 0.5 && r1.inkD[1] <= 0.5, JSON.stringify(r1.inkD));
     ck('C9 sticky 도크 = 스크롤 후 top 0 + 스트립 가시(따라다님)', r1.stick && r2.stick, String(r1.stick));
     ck('C10 폰트 = Pretendard 로드+자간 정본', r1.font && r2.font, String(r1.font));
-    const dOK = x => x.d1.fold === false && x.d1.h > 0 && x.d2.fold === true && x.d2.h === 0 && x.d3.fold === false && x.d3.h > 0 && x.d4.fold === true && x.d4.h === 0;
-    ck('C12 도크 홀드 = 첨부 펼침→결과 접힘→**재첨부 펼침**→새 발사 접힘(사고 260731 "영상 넣으면 사라짐" 회귀 · 재첨부 h>0이 판정선)',
+    const dOK = x => x.d1.fold === false && x.d1.h > 0 && x.d2.fold === true && x.d2.h === 0 && x.d3.fold === false && x.d3.h > 0 && x.d4.fold === false && x.d4.h > 0;   // d4 = 접힘→펼침(260804 개정)
+    ck('C12 도크 홀드 = 첨부 펼침→결과 접힘→**재첨부 펼침**→새 발사 **펼침 유지**(사고 260731 "영상 넣으면 사라짐" 회귀 + 260804 "제작 후에도 미리보기 유지")',
       dOK(r1) && dOK(r2), ['첨부', '결과', '재첨부', '발사'].map((n, i) => n + ' ' + (r1['d' + (i + 1)].fold ? '접힘' : '펼침') + '(' + r1['d' + (i + 1)].h + 'px)').join(' → '));
     const det = JSON.stringify({ a: r1.goTriple, b: r1.stripBox, c: r1.readback, d: r1.inkD }) === JSON.stringify({ a: r2.goTriple, b: r2.stripBox, c: r2.readback, d: r2.inkD });
     ck('C11 결정론 = 2런 측정 동일', det, det ? '일치' : 'run1≠run2');
