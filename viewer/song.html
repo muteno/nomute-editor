@@ -184,15 +184,12 @@
   .selpop:not(.none) { transform-origin:top left; animation:selpop-in .2s var(--ease); }
   @keyframes selpop-in { from { opacity:0; transform:translateY(-5px) scale(.9); } to { opacity:1; transform:none; } }
   .selpop:not(.none) .spbtn { animation:spbtn-in .26s both cubic-bezier(.2,.8,.3,1); }
-  .selpop:not(.none) .spbtn:nth-child(1) { animation-delay:.02s; } .selpop:not(.none) .spbtn:nth-child(2) { animation-delay:.05s; }
-  .selpop:not(.none) .spbtn:nth-child(3) { animation-delay:.08s; } .selpop:not(.none) .spbtn:nth-child(4) { animation-delay:.11s; }
-  .selpop:not(.none) .spbtn:nth-child(5) { animation-delay:.14s; } .selpop:not(.none) .spbtn:nth-child(6) { animation-delay:.17s; }
-  .selpop:not(.none) .spbtn:nth-child(7) { animation-delay:.2s; } .selpop:not(.none) .spbtn:nth-child(8) { animation-delay:.23s; }
-  .selpop:not(.none) .spbtn:nth-child(9) { animation-delay:.26s; } .selpop:not(.none) .spbtn:nth-child(10) { animation-delay:.29s; }
-  .selpop:not(.none) .spbtn:nth-child(11) { animation-delay:.32s; } .selpop:not(.none) .spbtn:nth-child(12) { animation-delay:.35s; }
-  .selpop:not(.none) .spbtn:nth-child(13) { animation-delay:.38s; } .selpop:not(.none) .spbtn:nth-child(14) { animation-delay:.41s; }
-  .selpop:not(.none) .spbtn:nth-child(15) { animation-delay:.44s; } .selpop:not(.none) .spbtn:nth-child(16) { animation-delay:.47s; }
-  .selpop:not(.none) .spbtn:nth-child(17) { animation-delay:.5s; } .selpop:not(.none) .spbtn:nth-child(18) { animation-delay:.53s; }
+  /* 촤르륵 = --i 선형(index `#geniSub .geni-subit` 정본 문법 계승) · 값 3개 전부 구 열거 리터럴 그대로 = 신규 값 0
+     · 리드인 .02s = 구 nth-child(1)(컨테이너 selpop-in .2s 대기분) · 등차 .03s = 구 열거 간격 · 상한 .53s = 구 nth-child(18) 마지막 열거값
+     ⚠ 구판 실버그 수정(평의회 260804 1번) — #vcPop은 「없음」 + VOICES(voice_out/index.json = 무한 목록)를 찍는데 CSS는 18개까지만 열거했다
+       → 19번째부터 규칙이 없어 animation-delay 초기값 **0s** = 1번(.02s)보다 **먼저** 튀어나오는 순서 역전. 하드코딩 18줄이 상한 노릇을 못 했다.
+     ⚠ min() 상한 필수 = --i는 nth-child(n+K)가 갖던 「천장 계약」이 없다(무상한 이식 시 항목이 늘수록 지연 폭주) */
+  .selpop:not(.none) .spbtn { animation-delay:min(calc(.02s + var(--i,0)*.03s), .53s); }
   @keyframes spbtn-in { from { opacity:0; transform:translateX(-9px) scale(.78); } to { opacity:1; transform:none; } }
   @media (prefers-reduced-motion:reduce) { .selpop:not(.none), .selpop:not(.none) .spbtn { animation:none; } }
   .spbtn { min-width:auto; height:32px; padding:0 13px; display:grid; place-items:center; background:linear-gradient(165deg, rgba(44,46,50,.42), rgba(16,17,19,.52));
@@ -1083,8 +1080,9 @@ function vcRender(){
   const v=$('#vcV');
   v.textContent=cur?(cur.name||'보이스'):'없음';
   v.classList.toggle('on',!!cur);
-  $('#vcPop').innerHTML='<button type="button" class="spbtn'+(VSEL?'':' on')+'" aria-pressed="'+(VSEL?'false':'true')+'" data-v="">없음</button>'
-    +VOICES.map(x=>'<button type="button" class="spbtn'+(x.id===VSEL?' on':'')+'" aria-pressed="'+(x.id===VSEL?'true':'false')+'" data-v="'+esc(x.id)+'">'+esc(x.name||'보이스')+'</button>').join('');
+  // --i 주입 = 스태거 생명선(미주입 = 전건 delay 0s = 촤르륵 사멸 · 무증상[콘솔 에러 0·레이아웃 무변]이라 눈으로만 발견된다) · 「없음」이 nth-child(1)을 점유하므로 목록은 i+1
+  $('#vcPop').innerHTML='<button type="button" class="spbtn'+(VSEL?'':' on')+'" style="--i:0" aria-pressed="'+(VSEL?'false':'true')+'" data-v="">없음</button>'
+    +VOICES.map((x,i)=>'<button type="button" class="spbtn'+(x.id===VSEL?' on':'')+'" style="--i:'+(i+1)+'" aria-pressed="'+(x.id===VSEL?'true':'false')+'" data-v="'+esc(x.id)+'">'+esc(x.name||'보이스')+'</button>').join('');
   $('#vApply').hidden=!(VSEL&&RES&&RES.url);   // 보이스 선택 + 오디오 있는 결과에서만
 }
 async function vcLoad(){
@@ -1094,7 +1092,7 @@ async function vcLoad(){
     if(r.ok){ const ct=(r.headers.get('content-type')||'').toLowerCase(); const tx=await r.text();
       if(tx&&!ct.includes('text/html')&&!/^\s*</.test(tx)){ const j=JSON.parse(tx); if(Array.isArray(j)){ VOICES=j; vcRender(); ok=true; } } }
   }catch(e){ /* 미배포·오프라인·빌드실패 = 아래 실패 신호 */ }
-  if(!ok && !VOICES.length) $('#vcPop').innerHTML='<button type="button" class="spbtn" data-retry="1">목록을 못 불러왔어 · 다시 시도</button>';   // 로드 실패만 구분(빈 목록 = 침묵) · 운영자 260723 한수
+  if(!ok && !VOICES.length) $('#vcPop').innerHTML='<button type="button" class="spbtn" style="--i:0" data-retry="1">목록을 못 불러왔어 · 다시 시도</button>';   // 로드 실패만 구분(빈 목록 = 침묵) · 운영자 260723 한수
 }
 $('#vcV').addEventListener('click',()=>{ const pop=$('#vcPop'); const opening=pop.classList.contains('none'); closeSelPops(pop); pop.classList.toggle('none',!opening); if(opening) vcLoad(); });
 $('#vcPop').addEventListener('click',e=>{ const b=e.target.closest('.spbtn'); if(!b) return; if(b.dataset.retry){ vcLoad(); return; } VSEL=b.dataset.v||null; vcRender(); $('#vcPop').classList.add('none'); });

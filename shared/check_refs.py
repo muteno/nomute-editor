@@ -3243,6 +3243,82 @@ def check_layout_transition():
     return 0
 
 
+# ── @keyframes 중복 정의 게이트 (평의회 260804 4·5·8번 · 하드 0) ──────────────
+#   왜 = CSS Animations L1 §2 = **같은 이름이 두 번 선언되면 뒤엣것이 앞엣것을 통째로 대체**한다(병합 아님·부분 오버라이드 아님).
+#   즉 중복은 「무해한 사본」이 아니라 **앞 선언을 조용히 삭제하는 문장**이다.
+#   실사고 = viewer/index.html `popOut` 2벌 — 414행(살아있는 .pmenu·#lockpop·.qpop 퇴장 정본) vs 1418행(**260710에 폐지된
+#   .filterpop 잔해** · 요소 0건·closeFilterPop = no-op 스텁). 캐스케이드 승자가 **1418** = 죽은 컴포넌트의 사본이 살아있는
+#   팝업 3종의 모션을 지배했다. 값이 동값이라 6주간 무증상 → 정본(414)을 고쳐도 화면 무변, 죽은 사본을 건드리면 무관해 보이는
+#   팝업 3개가 동시에 갈리는 최악의 추적난도. 기존 게이트 사각 = check_design(토큰 **값**)·check_layout_transition(전이 **속성**)
+#   ·smoke_*(애니가 **끝난 그림**)는 전부 다른 축이라 「같은 이름이 두 번 선언됐는가」는 축 자체가 없었다.
+#   판정 = 정적(렌더·LLM 0) · 표면 자동발견(viewer/*.html + viewer/*.css = 새 뷰어가 조용히 못 빠진다) · 면책표 없이 **하드 0**.
+#   ⚠ 스코프 = HTML은 <style> 블록 안만(화이트리스트). @keyframes의 유효한 거처가 <style>/.css뿐이라 블랙리스트보다 좁고 안전하다.
+#     단 <script> 안에서 문자열로 조립하는 리포트 HTML('<style>'+…+'</style>')이 실재하므로(index 알림 리포트) script 구간에
+#     걸친 <style>은 배제한다 — check_clip_coverage가 <script> 템플릿 문자열을 배제한 그 원칙의 계승.
+#   ⚠ .js 비대상 = nm-loader.js처럼 **런타임 주입이 곧 SSOT**인 부품이 있다(@keyframes nmldBounce). 그건 중복 선언이 아니라
+#     단일정본 배포다 — 섞으면 SSOT를 벌주는 오답이 된다.
+#   ⚠ 파일 간 동명(goFill×10·gdots×8 등 17종)은 **대상 아님** — 뷰어는 각각 독립 문서고 tokens.css는 구조토큰 거울 전용이라
+#     @keyframes를 공유할 물리적 수단이 없다. 크로스파일로 세면 60건+ 위양성으로 레포가 언다.
+_KF_STYLE = re.compile(r'<style\b[^>]*>(.*?)</style\s*>', re.S | re.I)
+_KF_SCRIPT = re.compile(r'<script\b.*?</script\s*>', re.S | re.I)
+_KF_DECL = re.compile(r'@(?:-webkit-|-moz-|-o-)?keyframes\s+("[^"]+"|\'[^\']+\'|[A-Za-z_-][\w-]*)')
+_KEYFRAMES_DUP_BASE = {}   # 표면별 **초과** 선언 수 = 비어 있음(전수 청정 = 하드 0). 늘리려면 운영자 승인 + 사유 주석 + --debt-sync
+
+
+def _kf_regions(rel, src):
+    """@keyframes가 살 수 있는 구간만 (시작줄offset, 텍스트)로 잘라 준다.
+    .css = 파일 전체 · .html = <script> 밖 <style> 블록만.
+    ⚠ HTML 주석(<!--…-->)을 파일 전역에 먼저 지우면 안 된다 — 실측(260804) = CSS 주석 제거가 HTML 주석의 닫는 `-->`를
+      지워 `<!--`가 3,600줄 뒤 엉뚱한 `-->`와 짝지어 index.html 45~3692행이 통째로 blank 처리됐고, popOut 2건이 **둘 다
+      사라져 「중복 0」으로 거짓 통과**했다. 구간을 먼저 자르면 이 교차오염이 구조적으로 불가능하다."""
+    if rel.endswith('.css'):
+        return [(0, src)]
+    spans = [(m.start(), m.end()) for m in _KF_SCRIPT.finditer(src)]
+    out = []
+    for m in _KF_STYLE.finditer(src):
+        if any(a <= m.start(1) < b for a, b in spans):
+            continue   # <script> 안에서 문자열로 조립되는 리포트 HTML = 정적 스타일 아님
+        out.append((src.count('\n', 0, m.start(1)), m.group(1)))
+    return out
+
+
+def check_keyframes_dup():
+    """@keyframes 중복 정의 하드 0(위 주석 참조). rc=1 = 커밋 차단."""
+    import glob as _g
+    cur, det = {}, {}
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'viewer', '*.css'))):
+        rel = os.path.relpath(fp, ROOT).replace(os.sep, '/')
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        seen = {}
+        for off, region in _kf_regions(rel, src):
+            # 주석은 **줄 수를 보존하며** 공백화 = 보고 줄번호가 안 밀린다(_debt_scan 관례 동문)
+            clean = re.sub(r'/\*.*?\*/', lambda m: re.sub(r'[^\n]', ' ', m.group(0)), region, flags=re.S)
+            for m in _KF_DECL.finditer(clean):
+                seen.setdefault(m.group(1).strip('"\''), []).append(off + clean.count('\n', 0, m.start()) + 1)
+        for name, lns in seen.items():
+            if len(lns) > 1:
+                cur[rel] = cur.get(rel, 0) + len(lns) - 1
+                det.setdefault(rel, []).append('%s×%d(줄 %s)' % (name, len(lns), ','.join(map(str, lns))))
+    up = [(k, _KEYFRAMES_DUP_BASE.get(k, 0), v) for k, v in sorted(cur.items()) if v > _KEYFRAMES_DUP_BASE.get(k, 0)]
+    if up:
+        print('❌ @keyframes 중복 정의 — 같은 이름 재선언 = 앞 선언이 **통째로 죽는다**(CSS Animations L1 §2 · 병합 아님):')
+        for k, a, b in up:
+            print('   · %s  %d → %d  %s' % (k, a, b, ' / '.join(det.get(k, []))))
+        print('   고쳐라 = 이름 하나에 선언 하나로 합쳐라(값이 같으면 뒤엣것 삭제 · 다르면 이름을 갈라라).')
+        print('   정본상 불가피하면 운영자 승인 후 _KEYFRAMES_DUP_BASE 갱신 + 사유 주석 + `--debt-sync`(raw baseline 문법 동문).')
+        return 1
+    dn = [(k, _KEYFRAMES_DUP_BASE[k], cur.get(k, 0)) for k in sorted(_KEYFRAMES_DUP_BASE) if cur.get(k, 0) < _KEYFRAMES_DUP_BASE[k]]
+    if dn:
+        print('✅ @keyframes 중복 래칫 — **%d건 청산**. _KEYFRAMES_DUP_BASE를 낮춰라: %s'
+              % (sum(a - b for _, a, b in dn), ', '.join('%s %d→%d' % (k, a, b) for k, a, b in dn)))
+        return 0
+    print('✅ @keyframes 중복 정의 0 — viewer 전 표면(html <style> + css) 자동발견 · 이름당 선언 1개.')
+    return 0
+
+
 # ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
 #   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
 #   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
@@ -4154,6 +4230,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 잰크 전이 게이트 스킵:', e)
+    try:
+        if check_keyframes_dup() != 0:   # @keyframes 중복 정의 0(평의회 260804 4·5·8번 — 재선언은 앞 선언을 통째로 대체한다[CSS Animations L1 §2] · 실사고 = 260710에 폐지된 .filterpop 잔해 popOut 사본이 살아있는 팝업 3종의 퇴장 모션을 지배 · 동값이라 6주 무증상)
+            rc = 1
+    except Exception as e:
+        print('⚠️ @keyframes 중복 게이트 스킵:', e)
     try:
         if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
             rc = 1
