@@ -76,6 +76,41 @@ try {
   }
 } catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ candidates.json 파싱 실패 — 이번 빌드의 issue/긴급 전부 false로 강등:', e.message); }   // 파일 없음(ENOENT)=정상 / 깨진 JSON=경고(운영자 가시성: 배지 일괄 소멸 원인 추적)
 
+// ── 발행시각 원장 조인(260805) — frontmatter `time` 빈칸(지면에 시각 표기가 없어 LLM이 못 채운 건) 구제 ──
+// 수집기는 RSS pubDate 를 실측으로 갖고 있는데(knews_scraper parse_time → obs 원장 `p`) 분석 프롬프트가 그 값을
+// 안 받는다 → 지면에 시각이 없으면 time:"" 로 굳는다(실측 큐 551건 중 190건 = 34%). 뷰어는 빈 time 을 그 날짜
+// **자정**으로 폴백하므로 자정을 넘기는 순간 어제 기사가 통째로 "1일 전"이 된다(과대계상 중앙값 +16.9h · 67%가 +12h↑).
+// → 원장의 실값을 빌드에서 되살린다. 문법 = 위 KOTITLE·CAT 승계와 동일(후보 데이터로 LLM 누락분을 구제하는 확립 패턴).
+// ⚠ 소스가 candidates.json 이 아니라 obs 원장인 이유 = 후보는 800건 롤링이라 하루만 지나도 밀려난다(소급 2.6%).
+//   게다가 빌드마다 재조인이라 밀려나는 순간 표기가 빈칸으로 되돌아가는 **휘발성** — obs 는 append-only 영구 원장(소급 60%).
+const PUB = new Map();
+try {
+  for (const fn of readdirSync('scraper/obs').filter(f => f.endsWith('.jsonl'))) {
+    for (const line of readFileSync(join('scraper/obs', fn), 'utf8').split('\n')) {
+      if (!line) continue;
+      let o; try { o = JSON.parse(line); } catch { continue; }   // 깨진 줄은 건너뜀(원장 1줄 손상이 빌드를 죽이지 않게)
+      const k = _normEk(o.id);   // 조인 키 = url(끝슬래시 정규화 · EKEY와 동일 술어)
+      if (k && o.p && !PUB.has(k)) PUB.set(k, o.p);   // 첫 등장 우선 = 최초 관측값(재발행으로 pubDate 가 갱신되기 전 원값)
+    }
+  }
+} catch (e) { if (e.code !== 'ENOENT') console.warn('⚠️ obs 원장 읽기 실패 — time 빈칸 구제 생략(표기는 종전 폴백):', e.message); }   // 원장 없음=정상(구제만 생략·빌드 무손상)
+// ISO(UTC) → KST "HH:MM" 변환 + 가드 2겹. 통과 못 하면 '' = 무주입 = 종전 동작(빈칸 유지) — 의심스러우면 안 쓴다.
+//   ① **KST 날짜 == frontmatter date** 일 때만. 안 걸면 date(LLM 산출)와 time(원장)이 서로 다른 기준이 되어 나이가
+//      통째로 24h 어긋난다(실측 800건 중 12.8%가 UTC일자≠KST일자 · 이 밴드에서 −24h → 배지 동시 소멸).
+//      부수효과 = tz 표기 없는 피드를 UTC로 오라벨하는 매체(+9h 오차)도 상당수 여기서 걸린다.
+//   ② **발행 ≤ 수집(파일명)** 일 때만. 발행이 수집보다 미래 = 원천 오기록(실측 6.9%).
+// 실측 = 빈칸 190건 중 112건 주입 · 가드 탈락 2건(과한 가드 아님).
+function pubHHMM(iso, date, file) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const k = new Date(d.getTime() + 9 * 3600000);   // UTC instant → KST 벽시계(getUTC* 로 읽으면 그대로 KST 표기)
+  const p2 = n => String(n).padStart(2, '0');
+  if (`${k.getUTCFullYear()}-${p2(k.getUTCMonth() + 1)}-${p2(k.getUTCDate())}` !== String(date || '')) return '';   // 가드①
+  const fm = /^(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(String(file || ''));
+  if (fm && d.getTime() > Date.UTC(2000 + +fm[1], +fm[2] - 1, +fm[3], +fm[4] - 9, +fm[5])) return '';   // 가드②
+  return `${p2(k.getUTCHours())}:${p2(k.getUTCMinutes())}`;
+}
+
 // ── ⚡이슈 배지 판정 (260702 옵션2 · 정본 = viewer/index.html scBadgeType 블록과 **규칙 동일** 유지 — 한쪽만 고치면 수집함↔피드 배지 드리프트) ──
 // 이슈 = cross≥10 AND grade(null‖≥2) AND !badgeJunk. 배지 강조 전용 — 칼럼 진입(CROSS_MIN 8)·랭킹·fbJunk veto와 무관.
 const ISS_CROSS_MIN = 10;   // 8→10(260702): 수집확대(6/26 분야+7/2 경제지) cross 인플레 2.5배 보정 — "오늘 cr10=확대 전 cr8" 실측 환산.
@@ -127,7 +162,7 @@ for (const f of files) {
       title_orig: tko ? (stripLeadEmoji(meta.title) || '') : '',   // 번역 적용 시 원문 제목 보존(모달 하단 MUT 줄·검색 보조 · 260703)
       url: meta.url || '',
       date: meta.date || '',
-      time: meta.time || '',   // 보도 시각(HH:MM·KST) — 파이프라인 frontmatter time: 패스스루. 없으면 빈 문자열.
+      time: meta.time || pubHHMM(PUB.get(_normEk(meta.url || '')) || '', meta.date || '', f),   // 보도 시각(HH:MM·KST) — 1순위 frontmatter time: 패스스루 → 2순위 obs 원장 실측 발행시각(빈칸 구제 · 가드 2겹 통과분만) → 둘 다 없으면 빈 문자열(종전).
       time_est: meta.time_est || '',   // 시각이 추정값이면 "true"(메타 확정 아님) — 뷰어가 "(추정)" 꼬리표(운영자 260621).
       media: meta.media || '',
       reporter: meta.reporter || '',   // 기자명(요약 frontmatter reporter) — 미상이면 빈칸. 요약 PDF·개요 표시용(바이라인 보존의 출구).
