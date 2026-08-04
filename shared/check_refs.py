@@ -2424,6 +2424,75 @@ def check_onoff_literal():
     return rc
 
 
+# ── 값축 거처 게이트 (운영자 260804 "idea go" — 그날 컷 편집 지적의 기계화) ──────────────────────
+# 왜: 컷 편집 「강도」(4택1)가 비율·해상도와 **같은 성격의 축인데 다른 문법**으로 그려지고 있었다 —
+#   비율·해상도는 헤더 우측 칩 나열(hdChips), 컷만 헤더 **아래** 별도 행(segs) = 한 스택 안 두 문법.
+#   기존 게이트가 하나도 못 잡은 이유 = 전부 「값이 정본과 같은가」를 보는데 이건 **같은 축을 어디에 그리는가**라
+#   축 자체가 레포에 없었다. 260728 Q10에서 비율·해상도를 헤더 칩으로 통일할 때 컷만 빠진 채 6일 잠복했고,
+#   결국 운영자가 눈으로 찾아 지적해야 발견됐다 — 사람이 짚어야 아는 구조를 없앤다(smoke_hitzone 신설 동기와 같은 축).
+# 계약 = 「카드 헤더가 담당하는 **다값** 축은 헤더 우측 칩(hdChips)으로만 그린다」.
+# 위양성 통제 3겹(이 게이트의 전부 — 잘못 울면 아무도 안 본다):
+#   ⓐ 스코프 = **살아있는 카드 렌더 경로만** 자동 발견(cardHtml 본문 + 그 안에서 `body=XXX()`로 불리는 함수).
+#      도먼트 시트(prm())에 남은 구 문법 사본 7건은 스코프 밖 = 도먼트 보존 관례와 충돌 0.
+#   ⓑ 대상 = **다값 축만**(CYC 길이 ≥3). 이진 OFF/ON은 워드 점등이 정본이라 애초에 칩 나열 대상이 아니고,
+#      그 축은 check_onoff_literal이 전담한다 — 섞으면 「hdChips로 고쳐라」가 오답이 된다.
+#   ⓒ 대상 축 = CARDAX 값 ∪ 스코프 내 hdChips 축(= 카드 **헤더**가 그리는 축)에 한정. fit(방식)처럼
+#      「헤더는 이미 비율 칩이 차지 → 방식은 아래 구획」이 정본인 축은 자연히 빠진다(260712 3차 동급 위계 계약 보존).
+# 자동 발견 = 이 문법을 쓰는 뷰어(cardHtml ∧ hdChips 보유) 전부 · 새 body 함수도 스코프에 자동 편입 = 손 목록 0.
+# 면책표 없음 = 현재 위반 0. 정당 예외가 실증되면 그때 _AXHOME_BASE를 신설하고 사유를 남긴다(부채는 안 만들고 시작한다).
+def _js_fnbody(src, name):
+    """`function <name>(...) { … }` 본문을 중괄호 균형으로 잘라낸다(정규식 한 방으로는 중첩을 못 센다)."""
+    m = re.search(r'(?m)^\s*function\s+' + re.escape(name) + r'\s*\([^)]*\)\s*\{', src)
+    if not m:
+        return ''
+    i = m.end() - 1
+    depth = 0
+    for j in range(i, len(src)):
+        if src[j] == '{':
+            depth += 1
+        elif src[j] == '}':
+            depth -= 1
+            if depth == 0:
+                return src[i:j + 1]
+    return src[i:]
+
+
+def check_axis_chip_home():
+    """다값 카드 헤더 축은 헤더 우측 칩(hdChips) 단일 문법 — 본문 행(segs) 혼용이면 rc=1."""
+    import glob as _g
+    rc = 0; n_surf = 0; axes_all = []
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(fp, ROOT)
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        if 'function cardHtml(' not in src or 'hdChips' not in src:
+            continue   # 이 문법을 쓰는 표면만(자동 발견 — 새 스튜디오 탭이 같은 골격을 쓰면 자동 편입)
+        n_surf += 1
+        scope = _js_fnbody(src, 'cardHtml')
+        for callee in sorted(set(re.findall(r'body\s*=\s*([A-Za-z_$][\w$]*)\s*\(', scope))):
+            scope += '\n' + _js_fnbody(src, callee)   # 카드 본문 렌더 함수(cutBody·trimBody …) = 같은 렌더 경로
+        scope = re.sub(r'/\*.*?\*/', '', scope, flags=re.S)
+        scope = re.sub(r'(?m)^\s*//.*$', '', scope)   # 주석 속 예시 코드 오탐 차단
+        mc = re.search(r'const\s+CYC\s*=\s*\{(.*?)\};', src, re.S)
+        multi = {ax for ax, vals in re.findall(r"(\w+)\s*:\s*\[([^\]]*)\]", mc.group(1) if mc else '')
+                 if len(re.findall(r"'[^']*'", vals)) >= 3}   # 다값 축(3값 이상) — 이진 OFF/ON = 워드 점등 축이라 대상 아님(check_onoff_literal 전담)
+        cardax = set()
+        m = re.search(r'const\s+CARDAX\s*=\s*\{([^}]*)\}', src)
+        if m:
+            cardax = set(re.findall(r":\s*'([^']+)'", m.group(1)))
+        head = (set(re.findall(r"hdChips\(\s*'([^']+)'", scope)) | cardax) & multi
+        axes_all += sorted(head)
+        for ax in sorted(set(re.findall(r"segs\(\s*'([^']+)'", scope)) & head):
+            print('❌ 값축 거처 게이트 — %s: 카드 헤더 축 「%s」를 본문 행(segs)으로 그린다 = 비율·해상도(hdChips)와 두 문법 혼용. '
+                  '헤더 우측 칩으로 통일하라(정본 = cardHtml의 hdChips 호출 · 값·순서·data-p 배선은 그대로 옮기면 된다 — 둘 다 같은 pc()라 핸들러 무접촉)' % (rel, ax)); rc = 1
+    if rc == 0:
+        print('✅ 값축 거처 게이트 — 다값 카드 헤더 축 %d개(%s · %d표면) 전부 헤더 우측 칩 단일 문법(본문 행 혼용 0 · 도먼트 시트는 스코프 밖).'
+              % (len(axes_all), '·'.join(axes_all) or '없음', n_surf))
+    return rc
+
+
 # ── 정본 규칙 상속 대조 게이트 (운영자 260803 "아이디어 진행" — 오늘 두 사고의 **공통 뿌리** 봉합) ──────────
 # 왜: 260803에 같은 뿌리로 사고가 두 번 났고, 방향만 반대였다.
 #   ⓐ `.gs-v` = 정본 버튼 스킨을 입으면서 **cursor(어포던스)까지 따라와** 「눌러도 아무 일 없는 자리」 6건
@@ -3742,6 +3811,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ ON/OFF 리터럴 게이트 스킵:', e)
+    try:
+        if check_axis_chip_home() != 0:   # 값축 거처(운영자 260804 "idea go" — 다값 카드 헤더 축은 헤더 우측 칩 단일 문법 · 컷 편집이 6일 잠복했던 「한 스택 두 문법」 재발 차단)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 값축 거처 게이트 스킵:', e)
     try:
         if check_nm_sync() != 0:   # 동기화 생명선 상속(운영자 260803 4차 — 스튜디오 전 탭 nm-sync.js 상속 + 모듈 3축 골격 · nmRefresh 자동발견)
             rc = 1
