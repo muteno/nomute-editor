@@ -3366,6 +3366,9 @@ def check_subs_author_scope():
     # 2차 방어 = 러너 채택 지점 화이트리스트(폰이 구 파서로 돌아도 러너가 거른다)
     if not re.search(r'k2 == "threads"', t) or 'acc.get("threads")' not in t:
         bad.append('폰 채택 화이트리스트 결손 — 폰 구버전 파서 산출이 무검문 채택된다(sns_trends.py main 채택 루프)')
+    # 3차 = 이월(carry) 화이트리스트 — 스레드는 러너 미수집이라 채택분이 전건 폐기되면 carry 가 직전 오염분을 되살린다
+    if not re.search(r'def carry\(k\):', t) or not re.search(r'if k == "threads"', t):
+        bad.append('이월 화이트리스트 결손 — carry(k)가 직전 오염분을 되살린다(추천 피드가 화면에 영구 잔류)')
     if bad:
         print('❌ 구독 작성자 검문 게이트 — 결손 %d건(구독 칸에 남의 알고리즘 피드가 들어온다):' % len(bad))
         for b in bad:

@@ -2467,8 +2467,15 @@ def main():
     if subs_new is not None:   # SUBS_ON 런 전부(수집 전멸 포함) — 계정 목록이 진실원본이라 병합·해제 판정은 subs_any와 무관(재검증1: 전 플랫폼 동시 해제가 subs_any=False로 clear 분기 미도달하던 구멍)
         def carry(k):
             # 직전분 유지 시 순위 배지(delta/isNew) 스트립 — 이전 런의 델타를 현재처럼 표시 금지(평의회1 정직성 · 전멸 경로 포함)
-            return [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
-                    for it in (psubs.get(k) or []) if isinstance(it, dict)]
+            _cy = [{f: v for f, v in it.items() if f not in ("delta", "isNew")}
+                   for it in (psubs.get(k) or []) if isinstance(it, dict)]
+            if k == "threads":   # ⛔ 이월분 작성자 화이트리스트 3차 방어(260804) — 스레드는 **러너 미수집**이라
+                #   폰 오염분이 위 채택 화이트리스트에서 전건 폐기되면 subs_new["threads"]가 비고, 그러면 여기 carry가
+                #   **직전 오염분을 그대로 되살린다**(추천 피드 20건이 화면에 영구 잔류 = 봉합이 화면까지 못 감).
+                #   → 이월 시점에도 같은 명단으로 거른다. 0건이 되면 subEmptySec 가 사유를 고지(260727 축 · 조용한 공백 아님).
+                _rg = {str(a).lower().lstrip("@") for a in ((acc or {}).get("threads") or ())}
+                _cy = [it for it in _cy if str(it.get("account") or "").lower().lstrip("@") in _rg]
+            return _cy
         if subs_any:
             for k in ("x", "tiktok", "insta", "youtube", "threads"):
                 _annotate_rank(subs_new[k], psubs.get(k),
