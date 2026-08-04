@@ -960,6 +960,52 @@ def main():
     except Exception as e2:
         print(f'뷰어 소비본 실패(비치명 · 세션/뷰어는 구본 유지): {e2}')
 
+    # ── 접속 원장 적재 정체 감시(운영자 260804 "ㄱ" · 요일 실측 승격의 짝) ──
+    # 왜: 요일 노란선 실측 승격(online_dow_kst)은 원장이 7요일×24시를 덮어야 점등되는데, Meta
+    #     online_followers가 공회신(빈 value)으로 돌아서면(260713~ 전례 · 260803 8/3~ 재발 실측) 원장이
+    #     조용히 멈춘다 — 화면은 벤치 폴백이라 멀쩡해 보여서 '영원 대기'가 되어도 아무도 모르는 사각.
+    #     썸네일 none_streak(위 · 운영자 260803 "조용히 나빠지는 것" 봉합)와 같은 축의 원장판.
+    # 판정 = KST 오늘 − 원장 최신 키(end_time 날짜) ≥ _STALL_DAYS. 1~2일 = Meta 자연 지연·딸꾹질 = 무경보.
+    # id = 에피소드 회전 `insta-online-stall-<마지막적재일>` — 고정 id는 뷰어 unread가 id축이라 한 번 열면
+    #     재점등 불가(brk-misfire 교훈 · CLAUDE.md 회전 관례) · 에피소드 안에서는 같은 id 덮어쓰기 = 자연
+    #     dedupe(본문 일수만 갱신). 해소 = 원장 전진 → 최근 키 4개 id 일괄 clear(알림 시점의 최신 키는 반드시
+    #     그 안 = 무상태 청소) + 묵은 파일은 msg.py TTL 24h가 마저 소거. 전 경로 fail-soft(감시 실패 ≠ 산출 피해).
+    try:
+        _STALL_DAYS = 3
+        _led = jload('online_ledger.json')
+        _mdays = sorted(k for k in (_led if isinstance(_led, dict) else {})
+                        if isinstance(_led.get(k), dict) and _led[k])
+        _msg_py = os.path.abspath(os.path.join(DATA, '..', '..', '..', 'shared', 'msg.py'))
+        if _mdays:
+            _last = _mdays[-1]
+            _stall = (datetime.datetime.now(KST).date() - datetime.date.fromisoformat(_last)).days
+            if _stall >= _STALL_DAYS:
+                _lines = [
+                    f"Meta online_followers(팔로워 접속 실측)가 {_stall}일째 빈 회신 — 접속 원장이 {_last}에서 멈췄습니다"
+                    "(화면은 안 깨짐 = 시간대 노란선은 축적분 유지 · 요일 노란선은 벤치 폴백).",
+                    '',
+                    f"[영향] 요일 실측 승격(online_dow_kst)이 원장 7요일×24시 커버까지 대기(현재 {len(_mdays)}일 축적)"
+                    ' — 정체가 풀려야 진행. 시간대 곡선도 새 표본이 안 쌓임(형상은 60일창 축적분으로 유지).',
+                    '[전례] 260713~ 동일 공회신(운영자 스크린샷 수기 대체 = audience_manual.json) · 260801~02 이틀 회신 후 재발(260804 실측).',
+                    '',
+                    '[다음 확인 순서]',
+                    ' 1) apps/insta/data/audience.json online_followers의 value가 빈 dict인지 — 빈 값이면 Meta측 공회신',
+                    '    = 코드 조치 불요(회복 시 원장 자동 재개 · 이 알림도 자동 해소).',
+                    ' 2) 토큰 나이 = apps/insta/data/token_meta.json(50일↑ = 재발급 · docs/인스타_직결_세팅.md §6) ·',
+                    '    insights_daily.jsonl dropped에 online_followers 오류가 찍히는지(찍히면 권한·지표 폐지 축 의심).',
+                    " 3) 인스타 앱 인사이트 '팔로워 활동 시간'이 앱에서는 보이면 = API만 막힘 → audience_manual.json",
+                    '    수기 갱신(260713 문법)으로 피크 표기는 임시 대체 가능(곡선·요일 승격은 원장 회복 필요).',
+                    '',
+                    '[재현] python3 apps/insta/insta_signals.py → 이 메시지 갱신 · 원장 = apps/insta/data/online_ledger.json',
+                    '[코드] .github/scripts/insta_fetch.py 원장 적재 · apps/insta/insta_signals.py online_curve_kst/online_dow_kst/정체 감시',
+                ]
+                subprocess.run(['python3', _msg_py, 'set', f'insta-online-stall-{_last}', '\n'.join(_lines), 'warn'], check=False)
+            else:
+                for _k in _mdays[-4:]:
+                    subprocess.run(['python3', _msg_py, 'clear', f'insta-online-stall-{_k}'], check=False)
+    except Exception as e5:
+        print(f'접속 원장 정체 감시 실패(비치명 · 수집·산출 무피해): {e5}')
+
     print(f"■ 인스타 신호 요약 — n={sig['n_posts']} · {sig['span'][0]}~{sig['span'][1]} · 기준 = 전체 중앙값 대비 상대 lift")
     label = {'format': '포맷', 'naming_style': '네이밍 스타일', 'naming_feature': '네이밍 특징(중복 허용)',
              'category_kw': '카테고리(kw)', 'hour_band': '업로드 시간대', 'dow': '요일', 'caption_len': '네이밍 길이'}
