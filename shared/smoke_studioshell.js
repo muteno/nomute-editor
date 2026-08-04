@@ -69,10 +69,16 @@ const DOCK_EXEMPT = new Set();   // 도크 유리에서 면책할 탭(없음 —
 // C9 세로축 면책표 = 「도크 아래 첫 자리가 **소머리 블릿이 아닌**」 탭만(부품 자체 패딩·테두리가 잉크를 밀어낸다 = 잉크축으로는 못 맞추는 구조).
 //   이 세 탭은 대신 **박스 축(도크↔첫 블록 = 16)** 으로 정본을 맞춰 뒀다(260803 머지분) · 값 = 그 상태의 실측 잉크.
 //   ⚠ 해소(= 그 부품이 도크 안으로 들어가거나 순서가 바뀌어 소머리가 첫 자리가 되면) 되는 즉시 이 행을 **비운다** — 남겨두면 같은 회귀가 조용히 재통과한다(§3-4-1 INK_BASE 동문).
+//   ⚠ 판정 축 = **박스**(도크↔첫 블록 상자 = 16 · 260804 개정): 구판은 「그 상태의 실측 잉크」 고정값(28·28·23.4)이었는데, 잉크 고정값은
+//   **폰트 로드 상태에 종속**이다 — Pretendard woff2가 `viewer/assets/`(.gitignore = 빌드 산출물)라 신선 클론엔 파일 자체가 없고,
+//   그 환경에선 폴백 활자 메트릭으로 잉크가 +1px 읽혀 영구 가짜 빨강(실측 260804 = 콘티·프롬프팅 29 · fonts status=error — 260803
+//   "활자 스왑 전 측정" 진단은 폰트가 **있는** 환경의 절반만 맞았다). 비면책 탭은 기준탭과의 **상대** 비교라 폰트 축이 상쇄되지만
+//   면책 고정값만 홀로 흔들린다 → 이 3탭의 계약 명문 그대로 「박스 축 16」(폰트 무관·결정론)으로 판정 이전. 잉크 축 회귀는
+//   비면책 전환 시(소머리가 첫 자리가 되면) 그대로 복원된다.
 const GAP_BASE = {
-  '영상_콘티': 28,     // 요약 스트립(.optstrip · 테두리 1 + 패딩 8)이 도크 밖 첫 블록 = 260803 2차 골격("도크 안 = 미리보기+생성뿐")   // 값 유지(260803 4차) = 한때 29로 읽힌 건 **활자 스왑 전 측정**이었다(폰트 로드 대기 편입 후 28 고정 · 박스 축 16도 실측 정합)
-  '영상_프롬프팅': 28, // 모델·표현 명세 스트립(#exprStrip · 운영자 260803 3차 "클링 3.0 옴니, 표현 1,2,3을 생성 아래 내용칸에")이 도크 밖 첫 블록 = 콘티 스트립 동문 그릇(테두리 1 + 패딩 8 · 박스 축 16 정합)
-  '영상_큐영상': 23.4, // 소스 헤더(.src .phead 30px 세로중앙)가 첫 블록 — 메뉴바(nav.vnav)는 도크 **위**로 이주(운영자 260803 3차 "미리보기 상단에 그 한줄만 위에 배치 · 메뉴처럼") · .src 박스 16 정합 + phead 중앙정렬 오프셋 = 잉크 23.4(폰 430 실측 260803)
+  '영상_콘티': 16,     // 요약 스트립(.optstrip · 테두리 1 + 패딩 8)이 도크 밖 첫 블록 = 260803 2차 골격("도크 안 = 미리보기+생성뿐") · 박스 16 정합(실측 260804 = 정확 16.0)
+  '영상_프롬프팅': 16, // 모델·표현 명세 스트립(운영자 260803 3차 "클링 3.0 옴니, 표현 1,2,3을 생성 아래 내용칸에")이 도크 밖 첫 블록 = 콘티 스트립 동문 그릇(테두리 1 + 패딩 8)
+  '영상_큐영상': 16,   // 소스 헤더 블록(.src)이 첫 블록 — 메뉴바(nav.vnav)는 도크 **위**로 이주(운영자 260803 3차) · .src 박스 16 정합(phead 30px 세로중앙 오프셋은 잉크 축에서만 보이던 값 = 박스 축 무관)
 };
 
 function loadPlaywright() {
@@ -249,16 +255,30 @@ const GAPPROBE = () => {
   const scope = gHost || dd.body || dd.documentElement;
   const db = dock.getBoundingClientRect().bottom;
   const wk = dd.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
-  let best = Infinity, txt = null;
+  let best = Infinity, txt = null, bestEl = null;
   for (let n = wk.nextNode(); n; n = wk.nextNode()) {
     const t = (n.nodeValue || '').trim(); if (!t) continue;
     const p = n.parentElement; if (!p || dock.contains(p) || !vis(p)) continue;
     const rg = dd.createRange(); rg.selectNode(n);
     const r = rg.getBoundingClientRect();
     if (!r.height || r.top < db - 0.5) continue;                 // 도크 위 = 대상 아님
-    if (r.top < best) { best = r.top; txt = t.slice(0, 10); }
+    if (r.top < best) { best = r.top; txt = t.slice(0, 10); bestEl = p; }
   }
-  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapTxt: txt, drift, rail: railOf() };
+  let gapBox = null;   // 박스 축(GAP_BASE 면책 탭 전용 · 260804) = 첫 잉크의 조상 층계에서 **도크 아래 첫 '내용' 블록**의 상자 top − 도크 하단 — 폰트 메트릭 무관(잉크 고정값이 폰트 부재 환경에서 +1px 흔들리던 축의 결정론 대체)
+  if (bestEl) {
+    const tops = [];
+    for (let e = bestEl; e && e !== scope; e = e.parentElement) {   // 위로 오르다 도크 위에서 시작하는(=도크를 품은) 조상 직전에서 멈춘다
+      const rt = e.getBoundingClientRect();
+      if (!rt.height || rt.top < db - 0.5) break;
+      tops.push(rt.top);
+    }
+    // 도크에 딱 붙은(간격 <0.5) 전폭 **층계 래퍼**는 제외하고 층계 중 가장 바깥(최소 top) 블록을 취한다 —
+    // 큐영상 실측 260804: .src(+16) 위에 top=도크 하단 그대로인 래퍼가 있어 무제외 climb은 0을 읽었다(내용 블록 아님).
+    // 블록이 진짜 0으로 무너진 회귀는 그 안쪽 상자(패딩 오프셋)가 16 아닌 값으로 그대로 FAIL에 잡힌다.
+    const below = tops.filter(t => t >= db + 0.5);
+    if (tops.length) gapBox = +((below.length ? Math.min(...below) : Math.min(...tops)) - db).toFixed(1);
+  }
+  return { gapInk: best < Infinity ? +(best - db).toFixed(1) : null, gapBox, gapTxt: txt, drift, rail: railOf() };
 };
 
 async function settle(pg) {   // 활성 프레임 로드 완료까지 대기(고정 sleep = 병렬 풀에서 가짜 빨강의 원천)
@@ -452,10 +472,12 @@ async function runOnce(pg, gap, clone) {
   //   기준 = 이미지_카드생성(정본 `.csec{margin-top:16px}` → 잉크 18) · 허용 0.6px(활자 렌더 반올림 · C7 동값) · 면책 = GAP_BASE 2탭(위 주석).
   const G = Object.entries(out.gap || {});
   const gRef = (out.gap || {})['이미지_카드생성'];
-  const gBad = G.filter(([k, v]) => v && v.gapInk !== null)
-    .filter(([k, v]) => Math.abs(v.gapInk - (GAP_BASE[k] !== undefined ? GAP_BASE[k] : (gRef ? gRef.gapInk : NaN))) > 0.6)
-    .map(([k, v]) => k + '=' + v.gapInk + 'px«' + v.gapTxt + '»');
-  const gMiss = G.filter(([, v]) => !v || v.gapInk === null).map(([k]) => k);
+  //   면책 탭 = **박스 축**(gapBox vs 16 · 260804 개정 — GAP_BASE 주석 참조: 잉크 고정값은 폰트 로드 상태 종속이라 신선 클론에서 영구 가짜 빨강) · 비면책 = 종전 잉크 상대축 그대로
+  const gVal = (k, v) => GAP_BASE[k] !== undefined ? v.gapBox : v.gapInk;
+  const gBad = G.filter(([k, v]) => v && gVal(k, v) !== null && gVal(k, v) !== undefined)
+    .filter(([k, v]) => Math.abs(gVal(k, v) - (GAP_BASE[k] !== undefined ? GAP_BASE[k] : (gRef ? gRef.gapInk : NaN))) > 0.6)
+    .map(([k, v]) => k + '=' + gVal(k, v) + 'px' + (GAP_BASE[k] !== undefined ? '(box)' : '') + '«' + v.gapTxt + '»');
+  const gMiss = G.filter(([k, v]) => !v || gVal(k, v) === null || gVal(k, v) === undefined).map(([k]) => k);
   core('C9 도크↔첫 블릿 잉크 = 카드 제작 정본 한 값(폰 430 · 기준 ' + (gRef && gRef.gapInk !== null ? gRef.gapInk + 'px' : 'N/A') + ' · 면책 ' + Object.keys(GAP_BASE).length + '탭)',
     !!(gRef && gRef.gapInk !== null) && gBad.length === 0 && gMiss.length === 0,
     gBad.length || gMiss.length

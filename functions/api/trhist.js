@@ -7,6 +7,33 @@ const REPO = 'muteno/nomute-editor', FILE = 'viewer/gen_out/trhist.json', CAP = 
 const R2_BASE = 'https://pub-83f8cf3892ae44c38bebf1805c954508.r2.dev';   // = functions/api/thumb.js R2_BASE(시크릿 R2_PUBLIC_BASE). ⚠️ 베이스 변경 시 thumb.js·dl.js와 함께 갱신.
 const MAX_B64 = 8 * 1024 * 1024;   // 합성 JPEG(1080급 ≈ 0.3~0.8MB → b64 ≈ 0.4~1.1MB) 여유 상한 — 폭주 바디 차단
 
+// GET /api/trhist?recent=<시간> → 최근 번역 카드 목록(운영자 260804 "번역·AI생성만 결과랑 이전제작 동기화를 안 물어 — 다른 메뉴들과 싱크" —
+//   thumb.js·edit.js ?recent= 정본 미러). 형제 탭(카드생성·편집)은 R2 즉시 축이 있어 타 기기 제작이 10~20s에 붙는데, 번역만
+//   Pages 인덱스(thumb-hist.json) 단축이라 빌드·배포 랙(수 분~코얼레싱 17분)만큼 이전 제작이 늦게 붙던 비대칭의 서버 절반.
+//   trout/ 키 = 12자리 KST 선두(위 POST 발급 규칙)라 thumb_out과 동일하게 startAfter 컷오프 = 전체 스캔 없이 최근 창만.
+//   메타 파일이 없는 단일 jpg 키라 발견 = 곧 항목(url 동봉 · 클라는 dedup·지운기록 컷만 = 별도 meta 왕복 0).
+export async function onRequestGet({ request, env }) {
+  const j = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+  const q = new URL(request.url).searchParams;
+  if (q.get('recent') == null) return j({ error: 'recent 파라미터 필요' }, 400);
+  if (!env.R2) return j({ items: [], reason: 'r2-unbound' });
+  const hrs = Math.max(1, Math.min(48, +q.get('recent') || 24));
+  const d = new Date(Date.now() - hrs * 3600e3 + 9 * 3600e3);   // KST 벽시계 = UTC+9(id 도장과 동일 축 · thumb.js 동문)
+  const p2 = n => String(n).padStart(2, '0');
+  const cut = String(d.getUTCFullYear()).slice(2) + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + p2(d.getUTCSeconds());
+  let base = R2_BASE;
+  if (env.R2_PUBLIC_BASE) { try { base = new URL(env.R2_PUBLIC_BASE).origin; } catch { /* 잘못된 env → 하드코딩(POST 동문) */ } }
+  const items = []; let cursor;
+  try {
+    for (let i = 0; i < 3; i++) {   // 상한 3페이지(thumb.js 동문 · 24h 창 실사용량 대비 여유)
+      const l = await env.R2.list(cursor ? { prefix: 'trout/', limit: 1000, cursor } : { prefix: 'trout/', startAfter: 'trout/' + cut, limit: 1000 });
+      for (const o of (l.objects || [])) { const m = o.key.match(/^trout\/(\d{12}-[A-Za-z0-9_-]{1,12})\.jpg$/); if (m) items.push({ id: m[1], url: `${base}/${o.key}` }); }   // 12자리 숫자 선두 강제 = id 계약 밖 수기 키 혼입 차단(260801 수리 동문)
+      if (!l.truncated) break; cursor = l.cursor;
+    }
+  } catch (e) { return j({ items: [], reason: 'r2-error' }); }   // R2 장애 = 빈 목록(클라는 종전 Pages 폴 사다리 유지)
+  return j({ items: items.sort((a, b) => (a.id < b.id ? 1 : -1)).slice(0, 60) });   // 최신 먼저 · 캡 60(thumb.js 동문)
+}
+
 export async function onRequestPost({ request, env }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
   if (!env.R2) return json({ error: '대용량 저장 미설정 — Pages에 R2 바인딩(변수명 R2) 필요' }, 501);
