@@ -5,10 +5,11 @@
 // 원커맨드:  node shared/smoke_trend.js        (레포 루트 어디서든 · 종료코드 0=전부 PASS · 1=실패/중단)
 //
 // 담당 표면: viewer/index.html 트렌드 그룹 'gg'(실시간 검색어) — renderSnsTrends의 gt·sig 섹션
-//   (.rt2col 2열 그리드 · brow 순위+검색어 행 · 소분류 기준 시각 캡션 제거[운영자 260720]) + .trend-row 행 문법 회귀 가드.
+//   (.rt2col 2열 그리드 · brow 순위+검색어 행 · 소분류 기준 시각 캡션 제거[운영자 260720]) + .trend-row 행 문법 회귀 가드
+//   + TOP 스택 슬라이더 `.tstk-g` 넘김 화살표·우측 컨트롤 열 기하(T11·T12 · 260804 편입).
 //   이 표면 변경 시 커밋 전 실행 rc=0 필수(CLAUDE.md [15] 상비 규약).
 //
-// 무엇을 검증하나 — 8시나리오(유래 = 260718 Q162 페이블 병렬 7호 하네스 승격):
+// 무엇을 검증하나 — 10시나리오(유래 = 260718 Q162 페이블 병렬 7호 하네스 승격 · 260804 T11·T12 증축):
 //   T2 진입(trend 탭 주입·gt/sig 렌더·행수=데이터 동치·검색어 전행 채움[fillT])
 //   → T3 실검 문법(변동배지·시각 0 · 시그널=순위만 rank+q · 구글=검색량 크기숫자 · 운영자 260723 Q483)
 //   → T10 교차합의 골드레몬 표기(평의회 260723 #9 = signal∩gtrends 2소스 동시 = 핫 · .trend-q.cnhot 색 · 실검 gt/sig 전용·타 섹션 유출 0)
@@ -16,6 +17,8 @@
 //   → T5 소분류 기준 캡션 제거(gt·sig 무캡션 = 수집시각 좌상단 #vhTime 1회 집약 · 운영자 260720)
 //   → T6 PC 2열 기하(1280 — 좌우 나란·열폭 동일·gap --sp-3=18[fin-split 동값 · Q388 분할선 단일선] · 한쪽 결측 = 그리드 없이 단독 폴백)
 //   → T7 모바일 스택(390 — 1열·가로 오버플로 0·구분선 671 정본값 원복)
+//   → T11 TOP스택 슬라이더@1280 가로 밴토(◀↔▶ 좌우 대칭 Δ≤0.5 · ▶·카운터·↻ 우측 열 축 Δ≤0.5 · ▶ = 리스트 우측 끝[미니 열 위] = 히어로 겹침 0)
+//   → T12 TOP스택 슬라이더@390 협폭 세로 스택(같은 2축 · 260729 cqw 세로 교정 보존 확인)
 //   → T8 접힘 토글(nm_trend_fold 기록·복원) → T1 페이지 에러 0
 //   어서션 = DOM 카운트·기하(getBoundingClientRect)·computedStyle·라이브 데이터 동치만(스크린샷 diff 금지 · [15]).
 //
@@ -82,6 +85,9 @@ const SEL = {
   wrap: '.rt2col', row: 'a.trend-row', rank: '.trend-rank', q: '.trend-q',
   chg: '.trend-chg', traffic: '.trend-traffic', tm: '.trend-tm', cnhot: '.trend-q.cnhot',
   base: 'summary .trend-unit .fin-base', foldKey: 'nm_trend_fold',
+  // TOP 스택 슬라이더(T11·T12) — 넘김 화살표·우측 컨트롤 열
+  tstk: '.tstk-g', tsMini: '.tstk-mini', tsHero: '.tsk.mag',
+  navP: '.feednav.prev', navN: '.feednav.next', tsCnt: '.tstk-cnt', tsRst: '.feednav.tstk-rst-sm',
 };
 
 (async () => {
@@ -182,6 +188,54 @@ const SEL = {
     };
     await alignAt('T9 세로정렬@1280(소주제 블릿↔순위·제목↔쿼리 Δ≤0.5)', false);
 
+    // ── TOP 스택 슬라이더 좌우 대칭·우측 열 축(운영자 260804 "우측 버튼을 리스트 우측에 있는거 끝으로" 기계화) ──
+    //   왜 = 260729 앵커 교정이 ▶·↻·카운터를 히어로 우변 `calc(56% + …)`로 당겨, ◀는 리스트 좌변 8px인데 ▶만 우변에서
+    //   455px 안쪽(히어로 카드 위)에 박히는 비대칭이 났다(1280 실측). 그런데 `.tstk-g` 기하를 재는 스모크가 **하나도 없어서**
+    //   운영자가 스샷을 찍어 지적할 때까지 아무도 못 봤다 — 이 축이 게이트 사각이었다(260804 실측: 전 스모크에 tstk/feednav 어서션 0).
+    //   판정 = ⓐ 대칭 |◀ 좌변거리 − ▶ 우변거리| ≤ 0.5 ⓑ 우측 열 축(▶·카운터·↻ 픽토 중심 x) 편차 ≤ 0.5(260716 "↻와 > 사이 열 축")
+    //          ⓒ 2단(≥640) 한정 — ▶ 좌변 ≥ 미니 열 좌변 = "리스트 우측 끝"(히어로 위 겹침 0 · 260804 계약).
+    //   상태 = 히어로 10위로 고정(= ↻ home5 + 카운터 동시 노출 유일 구간). 데이터가 10위에 못 미치면 ↻·카운터가 안 떠서
+    //          그 축만 N/A로 빠지고 대칭·겹침은 그대로 판정한다(수집 변동 플레이크 0 · 은폐 아님 = 로그에 N/A 명시).
+    //   ⚠ 폰(pointer:coarse)은 화살표 자체가 비노출(스와이프 전담)이라 판정 대상 아님 = na로 스킵. 헤드리스는 hover:fine이라
+    //     390 = 「협폭 PC 세로 스택」 티어를 실제로 커버한다(1280 = 가로 밴토 2단 티어와 짝).
+    const TSTK10 = () => {   // 결정론: 1위 리셋 → 9칸 전진 = 히어로 10위 · 6s 자동 순환은 프로덕션 홀드(_tsLast 12s)로 정지
+      let b = document.querySelector('#tstk');
+      while (b && !b._tsAdv) b = b.parentElement;
+      if (!b || !b._tsAdv) return false;
+      b._tsO = 0; b._tsMore = false; if (b._tsDraw) b._tsDraw();
+      for (let i = 0; i < 9; i++) b._tsAdv(1);
+      b._tsLast = Date.now();
+      return true;
+    };
+    const tstkAxis = async (label, wide) => {
+      await pg.evaluate(TSTK10); await pg.waitForTimeout(300);
+      const a = await pg.evaluate(([S, wide]) => {
+        const g = document.querySelector(S.tstk);
+        if (!g) return { na: '.tstk-g 없음(스택 미렌더)' };
+        const shown = sel => { const e = g.querySelector(sel); if (!e) return null; const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return null; const r = e.getBoundingClientRect(); return r.width ? r : null; };
+        const gr = g.getBoundingClientRect();
+        const pv = shown(S.navP), nx = shown(S.navN), cnt = shown(S.tsCnt), rst = shown(S.tsRst);
+        if (!nx) return { na: '▶ 비노출(폰 coarse 티어 = 스와이프 전담)' };
+        const cx = r => r ? +(r.left + r.width / 2).toFixed(2) : null;
+        const axis = [cx(nx), cx(cnt), cx(rst)].filter(v => v != null);
+        const mini = wide ? shown(S.tsMini) : null;
+        return {
+          leftGap: pv ? +(pv.left - gr.left).toFixed(2) : null,
+          rightGap: +(gr.right - nx.right).toFixed(2),
+          axisSpread: axis.length > 1 ? +(Math.max(...axis) - Math.min(...axis)).toFixed(2) : 0,
+          axisN: axis.length, hasCnt: !!cnt, hasRst: !!rst,
+          onMini: mini ? nx.left >= mini.left - 0.5 : null,
+          rk: cnt ? (g.querySelector(S.tsCnt).textContent || '').trim() : '',   // shown()은 rect 반환 = 텍스트는 원소에서 직독
+        };
+      }, [SEL, wide]);
+      if (a.na) { ok(label, true, 'N/A — ' + a.na); return; }
+      const sym = a.leftGap == null || Math.abs(a.leftGap - a.rightGap) <= 0.5;   // ◀ 없음(1위) = 대칭 판정 불가 → 통과(상태상 TSTK10이 10위 고정이라 정상 경로엔 항상 있다)
+      const col = a.axisSpread <= 0.5;
+      const end = !wide || a.onMini !== false;   // 2단만 — ▶가 미니 열(리스트 우측) 위 = 히어로 겹침 0
+      ok(label, sym && col && end, JSON.stringify(a) + (a.axisN < 3 ? ' · 열 축 일부 N/A(데이터 10위 미만 = ↻·카운터 미노출)' : ''));
+    };
+    await tstkAxis('T11 TOP스택 슬라이더@1280(◀↔▶ 대칭 Δ≤0.5 · ▶·카운터·↻ 열 축 Δ≤0.5 · ▶ = 리스트 우측 끝[미니 열 위])', true);
+
     await pg.setViewportSize({ width: 390, height: 844 }); await pg.waitForTimeout(400);
     const t7 = await pg.evaluate(S => {
       const g = document.querySelector(S.gt), s = document.querySelector(S.sig);
@@ -194,6 +248,8 @@ const SEL = {
       t7.fallback ? t7.noX : (t7.noX && t7.stack && t7.bt === '1px' && t7.mt === '22px' && t7.pt === '20px'), JSON.stringify(t7));
 
     await alignAt('T9m 세로정렬@390 모바일(중분류 배지=블릿=순위 세로선·제목=쿼리·중분류 체브론=소주제 체브론 + 중분류간 배지 정렬 Δ≤0.5)', true);
+
+    await tstkAxis('T12 TOP스택 슬라이더@390 협폭(세로 스택 티어 — ◀↔▶ 대칭 · 우측 열 축 Δ≤0.5 · 260729 cqw 교정 보존)', false);
 
     let t8 = { skip: true };
     if (gtN) {
