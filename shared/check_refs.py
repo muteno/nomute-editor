@@ -3056,6 +3056,65 @@ def check_twocol_breakpoint():
     return 0
 
 
+# ── 레이아웃 유발 transition 래칫 (운영자 260804 impeccable 평의회 8/8 · 선별이식 ①) ──
+#   왜 = `transition:width|height|padding|margin`은 프레임마다 리플로를 강제한다(= 잰크). 이 레포는 「덜컹」을
+#   여러 번 겪었고(260716 도크 마진 -18 "덜컹 원천 소멸" · 260803 스크롤 중 -2px = smoke_studioshell C10)
+#   그때마다 **정지·스크롤 위치**만 재는 축을 늘렸다 — 「transition이 재생되는 **중간 프레임**」은 어느 게이트도 안 본다.
+#   C10은 스크롤 후 정착 위치를, C7은 창 크기를, C9는 정지 세로축을 잰다. 셋 다 애니메이션 **끝난 뒤**의 그림이다.
+#   외부 대조 = pbakaus/impeccable `cli/engine/rules/checks.mjs` `layout-transition`(warn) 룰의 속성 집합을
+#   그대로 채택(width·height·padding·margin + min/max 변종) — 임계값 창작 0 · 그쪽 디텍터·훅·커맨드는 미도입
+#   (평의회 실측 = 59룰 통째 적용 시 경고 690건 중 574건[83.2%]이 글래스·글로우 등 **이 레포 정본**이라 위양성).
+#   ⚠ 하드 0 금지 = 래칫 — 현행 7건은 전부 아코디언(max-height)·모프(width) 정본이라 제거 = [4] 창작금지 충돌.
+#   면책 `_LAYOUT_TRANS_BASE` = 파일별 스냅샷(초과만 FAIL · 줄면 낮추라고 알린다 = raw baseline 문법 동문).
+#   표면 자동 발견(`viewer/*.html`+`viewer/*.css`) = 새 뷰어가 조용히 빠질 수 없다.
+_LT_DECL = re.compile(r'transition(?:-property)?\s*:\s*([^;{}"\'<>]+)')
+_LT_PROP = re.compile(r'\b(?:max-|min-)?(?:width|height|padding|margin)\b')
+_LAYOUT_TRANS_BASE = {   # 260804 실측 스냅샷 — 전부 선존 아코디언·모프(신규 반입 0). 청산하면 그만큼 낮춰라(래칫).
+    'viewer/edit.html': 1,    # .pvsec 레일 앵커 --pvw 폭 모프
+    'viewer/index.html': 4,   # .pmenu-sub 아코디언 · .tgroup-h 하단 간격 · 큐 행 height/margin/padding · .qrow-out 퇴장
+    'viewer/thumb.html': 2,   # .cpprev-box 편집 레이 폭 모프 · .cartrack 트랙
+}
+
+
+def check_layout_transition():
+    """레이아웃 유발 transition 래칫(위 주석 참조). rc=1 = 커밋 차단."""
+    import glob as _g
+    cur, det = {}, {}
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'viewer', '*.css'))):
+        rel = os.path.relpath(fp, ROOT).replace(os.sep, '/')
+        try:
+            txt = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        lines = txt.splitlines()
+        for m in _LT_DECL.finditer(txt):
+            if not _LT_PROP.search(m.group(1)):
+                continue
+            ln = txt.count('\n', 0, m.start()) + 1
+            head = lines[ln - 1].lstrip() if ln <= len(lines) else ''
+            if head.startswith(('//', '*', '/*')):   # 주석 줄 = 서술 · 비대상
+                continue
+            cur[rel] = cur.get(rel, 0) + 1
+            det.setdefault(rel, []).append(ln)
+    up = [(k, _LAYOUT_TRANS_BASE.get(k, 0), v) for k, v in sorted(cur.items()) if v > _LAYOUT_TRANS_BASE.get(k, 0)]
+    if up:
+        print('❌ 레이아웃 유발 transition 래칫 — 새 잰크 선언(width/height/padding/margin 전이 = 프레임마다 리플로):')
+        for k, a, b in up:
+            print('   · %s  %d → %d  (줄 %s)' % (k, a, b, ','.join(map(str, det.get(k, [])))))
+        print('   고쳐라 = transform/opacity 전이로 바꾸거나(합성 전용 = 리플로 0), 정본상 불가피하면')
+        print('   운영자 승인 후 _LAYOUT_TRANS_BASE 갱신 + 사유 주석(raw baseline 문법 동문).')
+        return 1
+    dn = [(k, _LAYOUT_TRANS_BASE[k], cur.get(k, 0)) for k in sorted(_LAYOUT_TRANS_BASE) if cur.get(k, 0) < _LAYOUT_TRANS_BASE[k]]
+    if dn:
+        print('✅ 레이아웃 유발 transition 래칫 — 총 %d건 · **%d건 청산**. _LAYOUT_TRANS_BASE를 낮춰라: %s'
+              % (sum(cur.values()), sum(a - b for _, a, b in dn),
+                 ', '.join('%s %d→%d' % (k, a, b) for k, a, b in dn)))
+        return 0
+    print('✅ 레이아웃 유발 transition 래칫 — %d표면 총 %d건 = 면책 스냅샷과 동일(신규 잰크 0 · 자동발견).'
+          % (len(cur), sum(cur.values())))
+    return 0
+
+
 # ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
 #   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
 #   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
@@ -3962,6 +4021,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 2단 분기점 게이트 스킵:', e)
+    try:
+        if check_layout_transition() != 0:   # 레이아웃 유발 transition 래칫(운영자 260804 impeccable 평의회 선별이식 ① — 기존 축은 전부 애니메이션 '끝난 뒤'만 재서 재생 중 리플로가 사각 · 임계 = impeccable layout-transition 속성 집합 채택 = 값 창작 0)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 잰크 전이 게이트 스킵:', e)
     try:
         if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
             rc = 1
