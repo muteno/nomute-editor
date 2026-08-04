@@ -1,32 +1,31 @@
-# 📉 엔이 안 돌아온다
+# 📉 엔화 40년 만에 최저… 일본은행, 10월 인상설 90%
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 금리·재정·환율이 얽힌 구조 비판이라 무게와 사실성이 필요하다
-- 분위기: 새벽 트레이딩 룸의 마른 긴장. 숫자는 붉게 오르는데 사람은 굳어 있는, 대책이 듣지 않는 정적
-- 연출 방향: 뉴스 안 보는 독자도 '금리를 올렸는데 돈값이 더 떨어졌다'는 역설 하나로 멈춘다. 그래서 카드마다 *숫자가 사람을 내려다보는 구도*를 축으로 잡는다 — 시세판·유가 화면·국채 호가창은 크고 밝게, 그 앞의 사람은 작고 굳게. 시사점은 '정책 하나로 통화를 되돌릴 수 있다'는 전제가 흔들린다는 것이므로, 마지막엔 화면을 등지고 선 사람의 정면을 준다. thumb_dispatch에서 조명 톤(차갑고 균질한 형광·무표정한 제도의 빛)과 허탈한 정조만 이어받고 앵글은 카드마다 분산한다
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(질문형 1회)+카드3 끝(단서형) · 감정 피크=카드5 · 착지 한 줄 요지=금리 인상 한 장으로 통화를 되돌릴 수 있다는 전제가 시험대에 올랐다
-- 연속성 앵커: Recurring subject — a Korean man in his 40s, short neatly parted black hair, rimless glasses, white dress shirt with sleeves rolled up and a loosened navy tie. 반복 장소 — a dim pre-dawn trading room with tall market screens.
+- 화풍: B 극화 — 정책·시장 구조를 고발하는 기사라 선이 굵고 명암이 단단한 극화가 맞다
+- 분위기: 기관 형광등처럼 감정이 지워진 냉랭한 표면 위에, 떨어지는 시세의 붉은 빛 하나만 살아 있는 정조(thumb_dispatch LGT12 계승)
+- 연출 방향: 뉴스를 안 보는 독자도 "약을 썼는데 안 듣는다"는 불안에는 멈춘다 — 그래서 매 카드의 강조점은 숫자 자체가 아니라 *숫자를 마주한 신체*다(화면을 올려다보는 눈, 고지서를 쥔 손끝, 연단 위 표정 없는 얼굴). 금리가 오르는 방향과 엔이 가는 방향이 어긋나는 낙차를 명도와 시선으로 보여, 마지막에 "이건 도쿄 혼자 정하는 일이 아니다"까지 데려간다
+- 독자 동선: **발단** 카드1→**전개** 카드2~4→**피크** 카드5→**해소** 카드6→**시사점** 카드7 · 훅=카드1 끝(단서형: 연도 하나만 던지고 멈춤)+카드2 끝(예고형: 원인이 하나가 아님) · 착지 한 줄 요지 = 엔의 방향은 도쿄 혼자 정하지 못한다
+- 연속성 앵커: Recurring subject — a Japanese man in his 40s with short cropped black hair and rimless glasses, wearing a slate-gray suit with a loosened navy tie (카드 2·6·7) / Recurring place — a dim Tokyo trading room with rows of desks and a dark monitor wall (카드 2·6·7)
 
 ### [카드 1]
 **텍스트**
 ```text
-30여 년 만의 최고 금리였다
-지난달 일본은행이 연 1%로 올렸다
-그런데 엔은 더 빠졌다
-*약이 왜 안 들었을까*
+지난달 일본은행은 금리를 올렸다
+연 1%, 30여 년 만의 최고였다
+*그런데 엔은 반대로 갔다*
+1986년이 다시 불려 나왔다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject — a Korean man in his 40s, short neatly parted black hair, rimless glasses, white dress shirt with sleeves rolled up and a loosened navy tie, stands small in the lower-left of a dim pre-dawn trading room with tall market screens, looking up and toward the right edge at a towering wall of currency quote boards that fills the upper frame. The screens glow above him and dwarf his figure, and his right hand hangs open at his side as if he has just let go of something. Nose room on the right, gaze directed toward the right edge.
-Camera: wide shot, full body, surrounding environment, spatial context from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Scene: Emotional focal point: the flat unreadable eyes of the official at the lectern, giving nothing away. A Japanese central-bank official in his sixties in a dark suit stands behind a plain lectern in an institutional briefing room, both palms resting flat on it, his gaze aimed past the viewer toward the right edge of the frame. Two seated reporters in the near foreground are turned away from us toward him with notebooks open. Nose room on the right, gaze directed toward the right edge. No emblems, no logos, no readable signage anywhere.
+Camera: wide shot, full body with surrounding environment and spatial context, from eye-level, neutral perspective, realistic and balanced, shot on 35mm lens, natural documentary perspective, minimal distortion
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Korean setting by default: Korean physical features, East Asian office interior.
-Text handling: avoid incidental signage; render no readable numerals or words on the screens, only abstract glowing bars and blocks of light.
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), muted institutional contrast
+Text handling: avoid all incidental lettering by framing and composition; no signage, no name plates, no documents with visible body text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the trading room floor and screen wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the plain paneled briefing-room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -36,29 +35,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-일본은행 금융정책결정회의
+Bank of Japan policy meeting
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-지난주 엔은 달러당 163.99엔
-1986년 11월 이후 최저였다
-*40년 만의 바닥을 다시 찍었다*
-금리 카드가 통하지 않은 것이다
+*엔은 달러당 163.99엔까지 밀렸다*
+1986년 11월 이후 처음 보는 값이다
+올린 금리가 힘을 못 썼다
+빠진 이유는 하나가 아니었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a hand pressed flat against cold glass, fingers spread and going still. Recurring subject — a Korean man in his 40s, short neatly parted black hair, rimless glasses, white dress shirt with sleeves rolled up and a loosened navy tie, is seen from behind at chest height as he places one palm on a large glass quote panel in a dim pre-dawn trading room with tall market screens. A long descending line of light runs down the panel under his palm and continues off toward the right edge, and his head tilts to follow it downward. Nose room on the right, gaze directed toward the right edge.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, balanced emotion, back shot, rear view, subject from behind, solitude, mystery, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
-Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Korean setting by default: Korean physical features, East Asian office interior.
-Text handling: the descending line on the glass is a plain graphic stroke; render no readable numerals or words anywhere.
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything, the screen glow crawling up from below his jaw. Recurring subject — a Japanese man in his 40s with short cropped black hair and rimless glasses, wearing a slate-gray suit with a loosened navy tie — fills the frame, half risen from his chair in a dim Tokyo trading room with rows of desks and a dark monitor wall, one hand still clamped on the mouse, eyes tilted up toward the right edge. Behind his shoulder a single falling line slides down an out-of-focus monitor; no digits or characters are legible anywhere.
+Camera: tight close-up, face fills frame, intense emotion and intimate pressure, from a high angle looking down, subject small and observed, shot on 85mm portrait lens, flattering face with soft background separation
+Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: keep every screen and document out of focus or cropped so no lettering forms; the falling quote reads as a shape, not as numbers.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the glass quote panel wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark monitor wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -68,29 +66,27 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-엔화 환율 시세판 도쿄
+Tokyo trading room dealer
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-밖에서 온 힘이 먼저 컸다
-중동 긴장에 달러로 돈이 몰렸고
-24일 브렌트유는 100달러를 넘었다
-*값이 오른 건 기름만이 아니었다*
+엔을 민 힘은 밖에서 먼저 왔다
+중동 긴장에 안전자산 달러가 몰렸다
+*브렌트유는 배럴당 100달러를 넘었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two men's shoulders almost touching as neither turns to look at the other. In a dim pre-dawn trading room with tall market screens, two Korean energy traders in their 30s and 50s stand side by side at a standing desk and both stare up at a huge crude-oil price board that dominates the upper frame, its climbing line sweeping toward the right edge. One of them grips a desk phone receiver without raising it to his ear, and behind them a row of empty chairs faces the same board. Nose room on the right, gazes directed toward the right edge.
-Camera: two-shot, two characters in frame, relationship distance, emotional dynamic from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Korean setting by default: East Asian office interior, East Asian physical features.
-Text handling: the oil board shows only an abstract rising stroke and blocks of light; render no readable numerals or words.
+Scene: Emotional focal point: the upturned faces of two tiny dock workers craning at a hull that swallows the sky. A vast crude-oil tanker looms over an unloading berth, its bow cutting diagonally across the upper frame, while the two helmeted workers stand at its base far below, one arm raised in a halted signal. Pipelines run from the ship toward the far right of the frame, pulling the eye that way. No hull lettering, no company marks, no port signage.
+Camera: extreme long shot, tiny subject in a vast environment conveying scale and isolation, from a low angle looking up, powerful subject and dramatic presence, shot on 14mm ultra-wide lens, vast environment with dramatic depth
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), muted daylight contrast
+Text handling: all hull markings, pipe labels and port signs are cropped, turned away or dissolved into texture so no lettering forms.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the trading floor and its screen wall) extending edge to edge from top to bottom of the frame. The main subjects are anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the overcast sky) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -100,29 +96,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-브렌트유 국제유가 원유 시추설비
+Brent crude oil tanker terminal
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-그 값은 결국 고지서로 내려온다
-일본은 원유 대부분을 사 온다
-엔이 약할수록 더 많은 엔을 치른다
-*전기와 가스 요금이 먼저 움직인다*
+*오른 유가는 일본에서 두 번 오른다*
+원유 값도 오르고 엔도 약해서다
+같은 기름에 더 많은 엔을 치른다
+그 값은 전기·가스 요금으로 내려온다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a woman's thumb stalled halfway down a utility bill she has not turned over. A Japanese woman in her 60s in a plain cardigan sits at a small kitchen table in a modest apartment before dawn and holds a single sheet of paper up toward the window light, her eyes narrowing behind the page. On the counter behind her a gas burner ring stays unlit and a kettle sits cold, and the window beyond shows the blue-grey outline of low apartment blocks. Her gaze angles up and toward the right edge.
-Camera: close-up shot, face centered, eyes, expression, emotional detail from high angle shot, looking down, vulnerable subject, small, observed, shot on 100mm macro lens, fine detail, shallow depth of field, precise texture
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Korean setting by default overridden: this scene is explicitly Japanese domestic interior, East Asian physical features.
-Text handling: the paper is seen edge-on and folded so its surface is not legible; render no readable numerals or words on it.
+Scene: Emotional focal point: the tightened fingertips of a woman holding a utility statement, the paper slightly buckling where she grips it. A Japanese woman in her forties in a plain cardigan stands chest-up in a small kitchen, holding the folded statement at chest height and reading it with her chin lowered, while her husband stands a step behind her in the mid-ground, one hand on the counter, looking at the same paper. A kettle and a gas hob sit at the lower left, unlit. The statement is seen edge-on and folded so no printed lines are legible.
+Camera: medium close-up, chest-up framing showing facial emotion with slight body context, from eye-level, neutral perspective and balanced emotion, shot on 85mm portrait lens, soft background separation
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: the statement is folded and angled away, its printed rows reduced to grey texture; no readable characters, no numerals rendered anywhere.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the kitchen table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the plain kitchen wall behind them) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -132,28 +127,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-일본 가정 전기 가스 요금 고지서
+Japan household utility bill
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-안에서는 다카이치 정부가 지갑을 열었다
-흑자 목표를 접자 국채가 팔렸고
-*문구를 고쳐도 엔은 돌아오지 않았다*
+안에서는 다카이치 정부가 나섰다
+흑자 목표를 접고 지출을 늘렸다
+금리 인상을 견제할 문구까지 담기자
+*국채가 팔리고 장기 금리가 뛰었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a fountain pen lifted a centimetre off the page, held there and not coming down. A Japanese official in his 50s in a dark suit sits alone at the head of a long empty government conference table, one hand flat on a printed policy draft and the other holding the pen suspended above a crossed-out line. Behind him a wide window shows the first grey light over Tokyo, and a bond dealer's screen left on at the far end of the table throws a single cold streak across the table surface toward him. His eyes stay down on the page.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from low angle shot, looking up, powerful subject, dominance, dramatic presence, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
-Korean setting by default overridden: this scene is explicitly a Japanese government meeting room, East Asian physical features.
-Text handling: the draft page is shown at a steep angle with its surface catching glare; render no readable numerals or words on it.
+Scene: Emotional focal point: a jaw clenched tight, muscle flexing at the jawline, as a senior government figure keeps speaking while the room turns against the message. A Japanese official in a dark suit is seen close-up from below at a podium in a government hall, one hand slicing the air, eyes fixed forward and slightly right. Behind and above the shoulder, a single steep line climbs across a dim wall display, reading as pure shape. At the frame edge two aides stand lower and softer, heads bowed toward their folders, kept subordinate so the speaker holds the focus. Manhwa emphasis lines radiating toward the subject, no panel border.
+Camera: close-up shot, face centered with eyes and emotional detail, from a low angle looking up, dominance and dramatic presence, shot on 50mm standard lens, minimal distortion and natural cinematic composition
+Lighting/mood: harsh single overhead light pooling on the podium, deep surrounding black, oppressive interrogation
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: the wall display carries only a rising curve with no axis labels, no digits, no captions; folders are closed and edge-on.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the long conference table) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark hall wall rising behind the podium) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -163,29 +158,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-다카이치 사나에 총리 관저
+Takaichi fiscal policy Japan
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
-시장은 10월 인상 확률을 90%로 본다
-한 달 전엔 60%였다
-그런데 미국도 같이 올리면 격차는 남는다
-*금리로 엔을 되돌린다는 전제가 흔들린다*
+정부는 문구를 고쳐 넣었지만
+*엔은 그 자리에 주저앉아 있었다*
+대신 10월 인상 확률이 뛰었다
+한 달 새 60%가 90%가 됐다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: looking directly into the camera, steady unwavering eye contact. Recurring subject — a Korean man in his 40s, short neatly parted black hair, rimless glasses, white dress shirt with sleeves rolled up and a loosened navy tie, stands centred and turned away from the screen wall, facing the viewer with his arms at his sides in a dim pre-dawn trading room with tall market screens. Two faint glowing lines run in parallel high on the wall behind him without meeting, and a rolled newspaper lies forgotten on the desk beside him. He holds still and does not look back at the screens.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, symmetrical composition, facing camera, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
-Korean setting by default: Korean physical features, East Asian office interior.
-Text handling: the parallel lines behind him are plain graphic strokes; render no readable numerals or words anywhere.
+Scene: Emotional focal point: a hard swallow and a flickering blink as he lifts the handset again, the controlled face micro-cracking under pressure. Recurring subject — a Japanese man in his 40s with short cropped black hair and rimless glasses, wearing a slate-gray suit with a loosened navy tie — is framed waist-up at his desk in the dim Tokyo trading room with rows of desks and a dark monitor wall, phone against his ear, the other hand pressed flat on the desk as he pushes himself upright. Three colleagues at the desks behind him are already standing, all of them turned the same way toward the far end of the room.
+Camera: medium shot, waist-up framing showing face and gestures, from a high angle looking down over the room, shot on 50mm standard lens, minimal distortion and natural cinematic composition
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), muted institutional contrast
+Text handling: all monitors are angled away or defocused into glow; no digits, no tickers, no calendar or clock lettering rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the screen wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the trading room floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -195,5 +189,36 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-연방준비제도 일본은행 금리 결정
+Japan government bond dealers
+```
+
+### [카드 7]
+**텍스트**
+```text
+다만 10월에 0.25%포인트가 올라도
+엔이 돌아온다는 보장은 없다
+미국이 같이 올리면 격차가 남아서다
+*엔의 방향은 도쿄 혼자 못 정한다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: eyes looking directly into the camera, steady and unwavering, after a night that settled nothing. Recurring subject — a Japanese man in his 40s with short cropped black hair and rimless glasses, wearing a slate-gray suit with a loosened navy tie — stands full-figure and centered at the tall window of the emptied Tokyo trading room with rows of desks and a dark monitor wall behind him, jacket over one arm, facing the viewer head-on. The desks around him are vacant, chairs pushed out, the city outside still dark before sunrise.
+Camera: wide shot, full body with surrounding environment and spatial context, from eye-level, front-on with direct gaze and symmetrical composition, shot on 35mm lens, natural documentary perspective, minimal distortion
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground far below, desolate stillness
+Accent: monochrome desaturated base with a single color accent (crimson ticker red #D92B1E, the story's symbolic color), film-noir low-key lighting, deep shadows
+Text handling: the cityscape beyond the glass is reduced to light and silhouette; no signage, no screen text, no numerals anywhere.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the tall window wall of the trading floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+Tokyo financial district dawn
 ```
