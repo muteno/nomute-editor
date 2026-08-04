@@ -1,31 +1,32 @@
-# 🏠 월세 200만원 시대, 돌려받는 건 45만원
+# 🏠 서울 월세 6건 중 1건 200만원…정부, 공제 한도 늘린다
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 정책과 시장 구조를 파고드는 사안이라 사실성·무게가 필요하고, 세입자가 밀려나는 낙차를 명암으로 드러내야 한다
-- 분위기: 관공서 형광등처럼 차갑고 감정 없는 제도의 표면 위에, 계산기를 두드리다 멈춘 개인의 체온이 겹치는 정조. 분노가 아니라 허탈
-- 연출 방향: 독자는 '월세 200만원'과 '환급 45만원'이라는 두 숫자 사이의 낙차에서 멈춘다 — 뉴스를 안 보는 사람도 자기 통장으로 즉시 환산되는 수치다. 그래서 카메라는 정책 발표장이 아니라 세입자의 손끝·서류·매물 전단에 붙는다. 제도가 커지는 장면(서류·회의실)과 개인이 받는 몫(접힌 정산지 한 장)을 시퀀스 안에서 맞세워, '확대'라는 말과 체감의 거리를 눈으로 보게 한다. 악센트는 서류·숫자 위에만 얹어 시선을 돈에 고정
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 돌려받는 액수를 유보)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 8월에 오르는 건 한도 숫자일 뿐, 87만 명 바깥의 연말정산은 그대로다
-- 연속성 앵커: Recurring subject — a Korean man in his 30s with short neat hair and rimless glasses, wearing a plain gray shirt with sleeves rolled up · 반복 장소: a small rented studio apartment interior at night with a low table
+- 화풍: B 극화 — 세제라는 행정의 냉기와 세입자 체감 사이의 낙차를 명암으로 갈라야 해서
+- 분위기: 관료적 형광의 무표정한 냉기가 넓게 깔리고, 그 안에서 한 사람의 허탈만 저조도로 남는 톤
+- 연출 방향: 뉴스를 안 보는 SNS 이용자도 자기 계약서를 떠올리게 만드는 지점은 '내 월세는 200만원인데 1년에 돌아온 건 45만원'이라는 계산이 멈추는 순간이다(독자훅). 전하려는 관점은 정부가 만지는 대상이 월세가 아니라 월세를 낸 *뒤의 정산*이라는 것 — 그래서 강조점은 숫자를 확인하는 눈과 반으로 접힌 정산 서류 한 장에 쏠린다. 제도의 표면(균질한 형광·회의 테이블·연단)은 넓고 차갑게, 사람의 체감(얼굴·손)은 좁고 어둡게 잡아 같은 사건의 두 온도를 카드마다 맞세운다. thumb_dispatch의 임상 형광 톤과 전/후 대비 정조를 비주얼 키노트로 상속.
+- 독자 동선: **발단** 카드1→**전개** 카드2~3→**피크** 카드4→**해소** 카드5→**시사점** 카드6 · 훅=카드1 끝(예고형: 정부가 꺼낸 카드가 세금이라는 예고)+카드3 끝(예고형: 실제로 쥔 돈은 따로 있었다) · 착지 = 한도 숫자는 오르지만 87만 명 바깥의 연말정산은 그대로다
+- 연속성 앵커: Recurring subject — a Korean man in his 30s with short black hair and rimless glasses, wearing a plain navy zip-up jacket over a gray shirt (카드 1·3·4·6에 동일 문자열 삽입)
 
 ### [카드 1]
 **텍스트**
 ```text
-서울 아파트 새 임대차 계약
-*여섯 건 중 한 건이 월세 200만원*
-전세를 못 구한 사람들이
-그 계약서에 이름을 적는다
+지난해 서울 전월세의 64.4%가 월세다
+2026년 서울 아파트 새 임대차 계약은
+*6건 중 1건이 월세 200만원을 넘는다*
+정부가 여기에 꺼낸 카드는 세금이다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his jaw set tight, lips pressed, fighting back a visible emotion as he looks up. Recurring subject — a Korean man in his 30s with short neat hair and rimless glasses, wearing a plain gray shirt with sleeves rolled up, stands on the pavement facing a real estate agency window densely covered with rows of small listing slips, his gaze directed toward the right edge of the frame where the newest slips are pinned. One hand holds a folded document at his side. Behind the glass, the blurred back of an agent sits under a ceiling light. Korean street-level shopfront at dusk.
-Camera: WS from Eye-level, shot on 35mm lens
-Lighting/mood: overcast diffused daylight fading into evening, flat soft shadows, muted somber mood, cold even greenish-white light spilling from the shop interior
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the listing slips behind the glass, muted daylight contrast
-Text handling: avoid rendering readable characters on the listing slips; keep them as small pale rectangles cropped by the window frame and softened by depth of field, nose room on the right.
+Scene: Emotional focal point: his jaw set tight, eyes scanning row after row of listing slips without blinking. Recurring subject — a Korean man in his 30s with short black hair and rimless glasses, wearing a plain navy zip-up jacket over a gray shirt. He stands on the pavement facing a small Korean real estate agency storefront whose glass is covered edge to edge with paper listing slips, his gaze directed toward the right edge of the frame, one hand holding a folded document down at his side. The agency glass shopfront fills the background as one continuous surface.
+Camera: establishing wide shot, location first, full body with surrounding environment, from eye-level neutral perspective, shot on 35mm lens, natural documentary perspective, minimal distortion, nose room on the right
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean street signage shapes, Korean building forms, Korean pedestrians.
+Text handling: the paper listing slips are rendered as blank or abstract printed blocks with no legible characters; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the shopfront glass wall and pavement) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the agency glass shopfront facade) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -35,28 +36,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-서울 부동산 중개업소 월세 매물 전단
+부동산 중개업소 월세 매물
 ```
 
 ### [카드 2]
 **텍스트**
 ```text
-정부가 손을 댄 건 월세가 아니라
-월세를 낸 뒤의 *연말정산*이다
-8월 초 세법개정안에
-세액공제를 넓히는 안을 담는다
+재정경제부가 8월 초 세법개정안에
+*월세 세액공제 확대안을 담는다*
+연말정산 때 낸 월세의 일부만큼
+세금을 깎아주는 제도다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a bureaucrat's pen tip pausing on a single line of a thick bound document, the hand steady and unhurried. Two government officials in dark suits sit at a long conference table, one sliding the document toward the other, both gazes lowered to the paper, faces cropped above the eyebrows so no likeness is readable. A stack of identical bound reports sits at the table edge, closest to the viewer. A wide institutional meeting room with vertical blinds.
-Camera: MCU from High angle, shot on 50mm standard lens
+Scene: Emotional focal point: two pairs of hands squared over a thick bound document, fingertips pressed together in a steeple, no faces shown. Three government officials in dark suits are seated around one long meeting table, one sliding the bound policy document toward another while every gaze stays down on the paper. The table surface extends across the whole frame as one continuous plane in a plain government meeting room.
+Camera: medium shot, waist-up framing, from an overhead bird's-eye view looking straight down, top-down angle, shot on 50mm standard lens, natural cinematic composition
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the pen and the marked line of the document, muted daylight contrast
-Text handling: the document pages are shown at a steep angle and partly folded so no body text is legible; render no readable characters anywhere.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean office interior proportions, Korean formal suit styling.
+Text handling: the document is shown at a steep angle so its printed side is foreshortened and unreadable; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the conference tabletop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the meeting table top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -66,28 +68,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-재정경제부 세법개정안 브리핑
+재정경제부 세법개정안
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-지금은 총급여 8000만원 이하
-무주택 근로자가 연 1000만원 한도로
-15~17%를 돌려받는다
-*유력한 건 그 한도를 올리는 방식*
+총급여 8000만원 아래 무주택자면
+연 1000만원까지 15~17%를 뺀다
+*정부가 올리려는 건 이 한도다*
+그런데 실제로 쥔 돈은 따로 있었다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a fingertip pressing down on a calculator key, the knuckle white with pressure. Recurring subject — a Korean man in his 30s with short neat hair and rimless glasses, wearing a plain gray shirt with sleeves rolled up, sits hunched at a low table, his eyes cast downward at the calculator and a folded lease contract beside it, his other hand resting flat on the paper. A small rented studio apartment interior at night with a low table.
-Camera: MS from Eye-level, shot on 40mm lens
-Lighting/mood: cold blue screen under-glow lighting the face from below in a dark room, restless paranoid unease
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the calculator display glow, film-noir low-key lighting, deep shadows
-Text handling: the calculator display shows only an indistinct glowing blur, the contract is folded so its body text is hidden; render no readable characters.
+Scene: Emotional focal point: his eyes cast downward at the paper, lips pressed into a thin controlled line. Recurring subject — a Korean man in his 30s with short black hair and rimless glasses, wearing a plain navy zip-up jacket over a gray shirt. He sits at a desk, one hand resting on a small calculator while the other holds a folded settlement form turned edge-on so its printed side faces away from the lens, his gaze angled toward the right edge of the frame. The plain desk surface runs behind and beneath him as one continuous plane.
+Camera: medium close-up, chest-up framing, from a high angle looking down, shot on 70mm short telephoto, gentle background compression, subject isolation, nose room on the right
+Lighting/mood: flat cold even surveillance light, no shadow no warmth, detached and watchful
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean apartment interior proportions, Korean everyday desk objects.
+Text handling: the settlement form is held edge-on and cropped so no characters are readable; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the low tabletop) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -97,28 +100,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-연말정산 월세 세액공제 서류
+연말정산 서류 계산기
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-12년간 네 번 넓혔다
-*2024년 87만 명이 받은 돈은 45만원*
-월세 200만원짜리 계약이면
-한 달치의 4분의 1도 안 된다
+*12년간 네 번 넓힌 제도였다*
+2024년 이 공제를 받은 사람은
+87만여 명, 1인 평균 45만원이었다
+월세 한 달치의 4분의 1도 안 된다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past the paper he is holding. Recurring subject — a Korean man in his 30s with short neat hair and rimless glasses, wearing a plain gray shirt with sleeves rolled up, holds a single thin settlement slip pinched between two fingers at chest height, his grip loose as if the paper weighs nothing. His face fills the upper frame. A small rented studio apartment interior at night with a low table behind him.
-Camera: Tight CU from Eye-level, shot on 85mm portrait lens
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere, the darkest and highest-contrast frame of the sequence
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on the edge of the thin slip, film-noir low-key lighting, deep shadows
-Text handling: the slip is seen edge-on and cropped so no printed characters are visible; render no readable characters.
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything while one fleeting micro-expression crosses an otherwise composed face. Recurring subject — a Korean man in his 30s with short black hair and rimless glasses, wearing a plain navy zip-up jacket over a gray shirt. His face fills the frame with the chin slightly lowered, a folded paper held just at the bottom edge and thrown out of focus, manhwa emphasis lines radiating toward the subject, no panel border. One dark undivided wall of a small room stretches behind him as the single continuous surface.
+Camera: tight close-up, face fills frame, intense emotion, from eye-level neutral perspective, shot on 85mm portrait lens, soft background separation
+Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean small apartment room proportions.
+Text handling: the folded paper is out of focus and cropped so no characters are readable; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the dim room wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the dark room wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -128,28 +132,29 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-국세통계연보 연말정산 환급 명세서
+원룸 월세 세입자
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-지난해 서울 전월세의 64.4%가 월세였다
-8월에 오르는 건 한도 숫자 하나다
-늘어난 몫은 세금 낼 만큼 벌고
-계약서를 신고한 87만 명 안에서 나뉜다
+공제는 이미 낸 세금 안에서만 나온다
+*최대치라도 150만~170만원이다*
+정부도 "과세 형평성을 고려하면서"
+확대를 검토 중이라고 했다
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: two hands resting still on the lease contract, no longer holding a pen. Recurring subject — a Korean man in his 30s with short neat hair and rimless glasses, wearing a plain gray shirt with sleeves rolled up, sits back from the low table looking directly toward the viewer with steady unwavering eye contact, the contract and calculator laid out in front of him. Beyond the window behind him, rows of identical high-rise apartment blocks stand against the night sky, most windows lit.
-Camera: MS from Eye-level, shot on 50mm standard lens
-Lighting/mood: cold blue pre-dawn tone easing into the room, desolate stillness, soft release of contrast after the peak
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02) on a few distant apartment windows, muted daylight contrast
-Text handling: the contract is angled away from the camera so its text is not legible; render no readable characters.
+Scene: Emotional focal point: a hand raised mid-gesture above the lectern while the speaker's face stays turned partly away from the lens. A government official in a dark suit stands behind a plain unmarked podium with a cluster of microphones, speaking toward a row of seated reporters whose backs form the dark foreground, his gaze angled off to the left of the frame. A blank briefing room wall rises behind him as one continuous surface.
+Camera: medium shot, waist-up framing, from a low angle looking up, powerful subject, shot on 50mm standard lens, minimal distortion
+Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), muted daylight contrast
+Korean setting by default: Korean government briefing room proportions, Korean formal suit styling.
+Text handling: the podium and backdrop are completely blank with no emblem, no logo and no signage; no garbled or fake script, no meaningless letters, no random characters, no dense text.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the room interior wall and window plane) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the briefing room back wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -159,5 +164,37 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-서울 아파트 단지 야경 전월세
+재정경제부 브리핑 연단
+```
+
+### [카드 6]
+**텍스트**
+```text
+세액공제는 이미 낸 세금을 돌려준다
+그래서 낸 만큼만 되돌아온다
+8월 개정안엔 한도 숫자가 오르겠지만
+*87만 명 바깥의 연말정산은 그대로다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: his steady gaze held directly on the viewer, shoulders squared, expression unreadable. Recurring subject — a Korean man in his 30s with short black hair and rimless glasses, wearing a plain navy zip-up jacket over a gray shirt. He stands alone on a walkway before rows of identical high-rise apartment blocks, a folded document in one hand at his side, facing the camera straight on and centered. The apartment facade rises behind him as one continuous surface filling the frame.
+Camera: wide shot, full body with surrounding environment, from eye-level neutral perspective, front-on shot with direct gaze and symmetrical composition, shot on 35mm lens, natural documentary perspective
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02), film-noir low-key lighting, deep shadows
+Korean setting by default: Korean high-rise apartment complex forms, Korean walkway and railing shapes.
+Text handling: the building walls and the folded document carry no lettering or numbering at all; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the apartment building facade) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+서울 아파트 단지 새벽
 ```
