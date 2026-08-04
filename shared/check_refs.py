@@ -3335,6 +3335,65 @@ def check_brk_misfire_chain():
     return 0
 
 
+def check_ask_srcimg_chain():
+    """출처 글 본문 이미지 수확 체인 게이트(하드 · 운영자 260804 "확인해줘" → 사고 fail-2026-08-04-0239-297it).
+
+    사고 실측 = SNS 카드 「전송」으로 보낸 보배드림 글이 ANALYSIS_FAILED. 원인은 '사이트를 못 읽어서'도
+    '내용을 긁고도 뜻을 몰라서'도 아니었다 — **본문이 이미지 2장뿐이라 읽을 글이 0자**였고(페이지는 정상
+    취득), 제목("이런걸 재능이라고 하는구나")은 고유명사가 0이라 기사 유추 폴백도 공회전했다.
+    봉합 = 파이프에 **이미 있던 멀티모달 레일**(asks images[] → workdir/img-*.jpg → 프롬프트 '첨부 캡처')에
+    출처 글의 본문 그림을 태우는 수확 층 1개 추가(신규 분석 로직 0).
+
+    체인 = ask.sh 출처 URL 선정 → ask_srcimg.py 수확 → 프롬프트 🖼 블록 → 1-3 폴백 지시.
+    한 층만 빠져도 **그림이 조용히 안 실린 채 요약이 돌아** 같은 실패가 그대로 재발한다(로그엔 아무 흔적도
+    안 남는다 = 가장 조용한 실패) → 층별 심볼 생존을 정적으로 강제(네트워크·LLM·렌더 0).
+    ⚠️ UA 2단은 장식이 아니다 — 실측상 모바일 UA 단독이면 그 사이트가 http 200 에 3,566B 껍데기를 준다
+    (본문 0 = 수확 0 = 사고 재현). 데스크톱 1순위 + 껍데기 시 교대가 이 체인의 실효 조건이라 함께 지킨다."""
+    a = os.path.join(ROOT, '.github', 'scripts', 'ask.sh')
+    p = os.path.join(ROOT, '.github', 'scripts', 'ask_srcimg.py')
+    bad = []
+    try:
+        at = open(a, encoding='utf-8').read()
+        pt = open(p, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 출처 본문 이미지 수확 체인 게이트 — 파일 열기 실패: %s' % e)
+        return 1
+    # ① ask.sh — 출처 URL 선정(srcUrl 우선 → 요청문 첫 URL 폴백)
+    if "get('srcUrl')" not in at:
+        bad.append("ask.sh 출처 URL 결손 — srcUrl 필드를 안 읽는다(SNS 카드 전송이 보내는 유일한 글 주소)")
+    if 'https?://' not in at or 'NM_T' not in at:
+        bad.append('ask.sh 요청문 URL 폴백 결손 — srcUrl 없는 구 클라·직접 붙여넣기 요청이 수확에서 빠진다')
+    # ② 실행줄(주석 처리로 통과하는 평문 substring 함정 차단 = brk_misfire 게이트와 동축).
+    #    ⚠️ 줄 **선두**만 `(?!#)`로 보는 관용구는 여기서 뚫린다 — 이 호출은 `_sj="$(timeout … python3 …)"`
+    #    처럼 줄 중간에 있어서, 호출 바로 앞에만 `#`를 붙여도 줄 선두는 여전히 `_sj=`라 통과한다
+    #    (킬테스트 실측: 주석 처리했는데 게이트가 ✅). → 호출 **앞쪽 전체**에 `#`가 없을 것으로 강화.
+    if not re.search(r'^[^\n#]*python3 \.github/scripts/ask_srcimg\.py', at, re.M):
+        bad.append('ask.sh 수확 실행줄 결손 — ask_srcimg.py 호출(주석 처리 포함)')
+    # ③ 프롬프트 주입 — 수확만 하고 프롬프트에 안 실으면 파일만 굴러다니고 모델은 못 본다(무증상 사각)
+    if '${SRCIMG_BLOCK}' not in at or 'SRCIMG_BLOCK="[' not in at:
+        bad.append('ask.sh 프롬프트 주입 결손 — SRCIMG_BLOCK 미조립·미삽입(그림을 받아놓고 안 보여준다)')
+    if 'workdir"/src-*' not in at:
+        bad.append('ask.sh 수확물 수집 결손 — src-* 글롭(수확기 산출 접두와 불일치면 항상 0장)')
+    # ④ 수확기 골격
+    for sym, why in (('def harvest(', '수확 진입점'), ('def px_size(', '실측 픽셀 필터'),
+                     ('UA_DESK', '데스크톱 UA 1순위'), ('def _get_page(', 'UA 교대 재시도'),
+                     ('PX_MIN', '썸네일 컷 하한'), ('def _blocked_host(', 'SSRF 호스트 가드')):
+        if sym not in pt:
+            bad.append('ask_srcimg.py %s 결손(%s)' % (why, sym))
+    if 'UA_MOB' not in pt or 'SHELL_BYTES' not in pt:
+        bad.append('ask_srcimg.py UA 2단 결손 — 봇차단 껍데기(실측 3,566B) 검출·교대가 없으면 수확 0')
+    # ⑤ 프롬프트 지시 — 그림을 줘도 '기사 못 찾으면 실패'로 끝나면 사고가 그대로 재발한다
+    if '1-3)' not in at:
+        bad.append("ask.sh 프롬프트 1-3 폴백 결손 — '본문이 그림뿐일 때' 순서 지시(제목 검색 공회전 차단)")
+    if bad:
+        print('❌ 출처 본문 이미지 수확 체인 게이트 — 층 결손 %d건(그림이 조용히 안 실린다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        return 1
+    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·프롬프트 주입·1-3 폴백 5층 생존.')
+    return 0
+
+
 def check_subs_author_scope():
     """구독 수집 = 작성자 검문 의무(하드 · 운영자 260804 "내가 구독한 애들이 아닌데").
     260804 실사고 = '스레드 - 구독' 20건이 **등록한 적 없는 계정**으로 통째 채워짐(등록 5계정 0건).
@@ -3625,6 +3684,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 긴급 오발 신고 체인 게이트 스킵:', e)
+    try:
+        if check_ask_srcimg_chain() != 0:   # 출처 글 본문 이미지 수확(운영자 260804 — 본문이 그림뿐인 커뮤니티 글이 '읽을 글 0'으로 ANALYSIS_FAILED 되던 축 봉합 · 층 빠지면 무증상 재발)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 출처 본문 이미지 수확 체인 게이트 스킵:', e)
     try:
         if check_prev_center() != 0:   # 미리보기 빈 상태 중앙 = 업로드 픽토 단독(운영자 260802 — 표면마다 재발하는 '중앙에 버튼 하나 더' 차단)
             rc = 1
