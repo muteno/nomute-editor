@@ -1294,6 +1294,146 @@ def check_clip_coverage():
     return rc
 
 
+# ── 스튜디오 텍스트 입력칸 정본 게이트(운영자 260804 "게이트 ㄱㄱ") ─────────────────────────────
+#   ⚠ 신설 사유 = 같은 칸이 **하루에 세 번** 갈렸다(활자 → 박스 → 창 크기). 셋 다 정적 게이트를 그냥 통과했고
+#   운영자 눈이 유일한 검출기였다 — 기존 게이트는 「클립이 붙었나」(check_clip_coverage)·「자동완성을 껐나」
+#   (check_autocomplete)만 보고 **「그 칸이 정본 활자·박스·창 크기로 태어났나」는 축 자체가 없었다**.
+#   계약 3축:
+#     ⓐ 값 동일성  — 정본 원천(thumb.html 입력칸 블록) ↔ SSOT(nm-input.css `.nmin`) 가 축별로 같은 값.
+#                     ⚠ min-height만 예외 = SSOT는 **3줄 정본**(thumb `.covrow textarea` 104)을 쓴다(운영자 260804
+#                       "1줄 아니면 3줄임") — 그래서 thumb 전역 96이 아니라 covrow 104와 대조한다.
+#     ⓑ 배선       — 스튜디오 텍스트칸이 `.nmin` 보유(tr = 문서 전체가 스튜디오 폼 = 전수 · 셸(index)은 계약 id만).
+#                     + 여러 줄 칸에 구 칩 문법(`.geni-in`) 부활 금지 = 260804 드리프트의 그 모양.
+#     ⓒ 높이 재선언 0 — `.nmin` 셀렉터에 height/min-height 재선언 금지 + `.nmin` textarea의 rows는 3(1줄 아니면 3줄).
+#   면제 = check_clip_coverage와 같은 경계(_CLIP_EXEMPT_CLS 숫자칩·PIN) 재사용 = 손 목록 이중화 0.
+_INCANON_SSOT = 'viewer/nm-input.css'
+_INCANON_SRC = 'viewer/thumb.html'
+_INCANON_WIRED = ('viewer/tr.html', 'viewer/index.html')
+_INCANON_IDS = {   # 셸 문서(뉴스 앱 동거)라 전수 스캔이 부적격한 표면의 계약 칸 — 늘리려면 사유와 함께 1줄
+    ('viewer/index.html', 'geniWish'),   # AI 생성 「내용」 = 260804 활자·박스·창 3연속 드리프트의 그 칸
+}
+_INCANON_KEYS = ('width', 'padding', 'background', 'border', 'border-radius', 'color', 'font', 'font-size')
+
+
+def _css_decls(block):
+    """CSS 블록 본문 → {속성: 값} — 주석 제거 후 최상위 세미콜론 분해(값 안 rgba(…) 콤마 무해)."""
+    body = re.sub(r'/\*.*?\*/', '', block, flags=re.S)
+    out = {}
+    for d in body.split(';'):
+        if ':' not in d:
+            continue
+        k, v = d.split(':', 1)
+        out[k.strip().lower()] = ' '.join(v.split())
+    return out
+
+
+def _rule_body(css, selector):
+    """선언 순서상 **첫** 매치 규칙의 본문(정본 블록은 파일당 1개 = 첫 매치로 충분).
+    ⚠ 주석을 **먼저** 걷는다 — 이 레포 주석은 `.covrow textarea{min-height:104px}` 처럼 중괄호를 인용해서
+      안 걷으면 규칙 경계가 통째로 어긋난다(260804 실측 = 첫 구현이 정본 블록을 못 찾았다)."""
+    flat = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    for m in re.finditer(r'([^{}]+)\{([^{}]*)\}', flat):
+        if selector in [x.strip() for x in m.group(1).split(',')]:
+            return m.group(2)
+    return None
+
+
+def check_input_canon():
+    rc = 0
+    try:
+        ssot = open(os.path.join(ROOT, _INCANON_SSOT), encoding='utf-8').read()
+        src = open(os.path.join(ROOT, _INCANON_SRC), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 스튜디오 입력칸 정본 게이트 — 정본/SSOT 파일 열기 실패:', e)
+        return 1
+
+    # ⓐ 값 동일성 — 정본 원천 블록 ↔ SSOT `.nmin`
+    # 앵커 = `input[type=number]` — 같은 파일의 활자 상속 강제 블록(`button, input, textarea, select {…}`)이
+    # 문서 앞쪽에 있어 `select`로 잡으면 그 빈 블록이 첫 매치로 걸린다(260804 실측). 이 앵커는 정본 블록에만 있다.
+    src_box = _rule_body(src, 'input[type=number]')
+    ssot_box = _rule_body(ssot, '.nmin')
+    if src_box is None or ssot_box is None:
+        print('❌ 스튜디오 입력칸 정본 게이트 — 정본 블록(thumb `…, select {`) 또는 SSOT `.nmin {` 규칙을 못 찾음(셀렉터가 바뀌었으면 이 게이트도 같이 고쳐라).')
+        return 1
+    a, b = _css_decls(src_box), _css_decls(ssot_box)
+    for k in _INCANON_KEYS:
+        av, bv = a.get(k), b.get(k)
+        if k == 'padding' and av and bv and bv.startswith('var(--sp-2)') and av == '12px':
+            continue   # 동값 토큰 치환(디자인 게이트가 raw 12px를 금지 = var(--sp-2) 강제) — 값 동일
+        if av != bv:
+            print('❌ 스튜디오 입력칸 정본 게이트 ⓐ 값 드리프트 — `%s`: 정본(%s) `%s` ≠ SSOT(%s) `%s`'
+                  % (k, _INCANON_SRC, av, _INCANON_SSOT, bv))
+            rc = 1
+    # 3줄 창 크기 = thumb `.covrow textarea` 정본과 대조(전역 96 아님 = 1줄/3줄 계약)
+    h3_src = _css_decls(_rule_body(src, '.covrow textarea') or '').get('min-height')
+    h3_ssot = _css_decls(_rule_body(ssot, 'textarea.nmin') or '').get('min-height')
+    if not h3_src or h3_src != h3_ssot:
+        print('❌ 스튜디오 입력칸 정본 게이트 ⓐ 3줄 창 크기 드리프트 — 정본 `.covrow textarea` min-height=%s ≠ SSOT `textarea.nmin` min-height=%s'
+              % (h3_src, h3_ssot))
+        rc = 1
+
+    # ⓑ 배선 + ⓒ 높이 재선언 0
+    n_ok = n_ex = 0
+    for rel in _INCANON_WIRED:
+        try:
+            s = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            continue
+        if not re.search(r'<link[^>]+href="nm-input\.css"', s):   # 문자열 언급이 아니라 **실제 link 태그** — 주석에 파일명만 적혀도 통과하던 구멍(260804 킬테스트 검출)
+            print('❌ 스튜디오 입력칸 정본 게이트 ⓑ — %s 가 SSOT를 상속 안 함 → head에 <link rel="stylesheet" href="nm-input.css">' % rel)
+            rc = 1
+        full = rel == 'viewer/tr.html'   # 도구 문서 = 문서 전체가 스튜디오 폼 = 전수 · 셸(index) = 계약 id만
+        decls = [(m.start(), m.group(0), 'input') for m in _INPUT_RE.finditer(s)]
+        decls += [(m.start(), m.group(0), 'textarea') for m in _TA_RE.finditer(s)]
+        for pos, tag, kind in decls:
+            if s.rfind('<script', 0, pos) > s.rfind('</script>', 0, pos):
+                continue   # <script> 안 템플릿 문자열 = 정적 칸 아님(clip 게이트 동축)
+            tl = tag.lower()
+            if kind == 'input':
+                tm = re.search(r'type\s*=\s*["\']?(\w+)', tl)
+                if (tm.group(1) if tm else 'text') not in ('text', 'url', 'search'):
+                    continue
+            im = re.search(r'\bid\s*=\s*["\']([^"\']+)', tag)
+            ident = im.group(1) if im else ''
+            cm = re.search(r'\bclass\s*=\s*["\']([^"\']*)', tag)
+            cls = (cm.group(1) if cm else '').split()
+            ln = s[:pos].count('\n') + 1
+            if kind == 'textarea' and 'geni-in' in cls:
+                print('❌ 스튜디오 입력칸 정본 게이트 ⓑ 구 칩 문법 부활 — %s:%d <textarea%s> 가 `.geni-in`(13px/700 칩 축)을 씀 → `.nmin`으로'
+                      % (rel, ln, (' #' + ident) if ident else ''))
+                rc = 1
+                continue
+            if not (full or (rel, ident) in _INCANON_IDS):
+                continue
+            if any(c in ' '.join(cls) for c in _CLIP_EXEMPT_CLS) or (rel, ident) in _CLIP_EXEMPT_ID:
+                n_ex += 1
+                continue
+            if 'nmin' not in cls:
+                print('❌ 스튜디오 입력칸 정본 게이트 ⓑ — %s:%d <%s%s> 에 class="nmin" 없음(정본 활자·박스·창 크기 미상속 · SSOT = %s)'
+                      % (rel, ln, kind, (' #' + ident) if ident else '', _INCANON_SSOT))
+                rc = 1
+                continue
+            rm = re.search(r'\brows\s*=\s*["\']?(\d+)', tag)
+            if kind == 'textarea' and rm and rm.group(1) != '3':
+                print('❌ 스튜디오 입력칸 정본 게이트 ⓒ — %s:%d <textarea%s rows=%s> = 계약 위반(1줄 아니면 3줄 · 운영자 260804) → rows="3"'
+                      % (rel, ln, (' #' + ident) if ident else '', rm.group(1)))
+                rc = 1
+                continue
+            n_ok += 1
+        # ⓒ `.nmin` 스코프 높이 재선언 0(표면 인라인이 SSOT 창 크기를 되돌리는 것 차단)
+        for m in re.finditer(r'([^{}\n]*\.nmin[^{}]*)\{([^{}]*)\}', s):
+            d = _css_decls(m.group(2))
+            hit = [k for k in ('height', 'min-height', 'max-height') if k in d]
+            if hit:
+                print('❌ 스튜디오 입력칸 정본 게이트 ⓒ 높이 재선언 — %s:%d `%s` 에 %s(창 크기는 SSOT 전담 = 1줄/3줄 고정)'
+                      % (rel, s[:m.start()].count('\n') + 1, m.group(1).strip(), '·'.join(hit)))
+                rc = 1
+    if rc == 0:
+        print('✅ 스튜디오 입력칸 정본 게이트 — 정본↔SSOT 값 %d축 + 3줄 창(%s) 동일 · 배선 칸 %d개 `.nmin` 보유(면제 %d) · 높이 재선언 0 · 구 칩 문법 0.'
+              % (len(_INCANON_KEYS), h3_ssot, n_ok, n_ex))
+    return rc
+
+
 def check_url_placeholder():
     rc = 0
     for rel in VIEWERS_ALL:
@@ -3938,6 +4078,8 @@ def main():
         if check_autocomplete() != 0:   # 평문 텍스트칸 OS 자동완성 끔 4종(하드 게이트 — 자동완성 바 재발 차단·STAGE1b·260628)
             rc = 1
         if check_clip_coverage() != 0:   # 모든 텍스트 입력칸 = 클립(복사·붙여넣기·지우개) 보유(하드 게이트 · 운영자 260803 "공식처럼가야함" — 새 칸이 조용히 빠지는 것 차단)
+            rc = 1
+        if check_input_canon() != 0:   # 스튜디오 입력칸 = 정본 활자·박스·창 크기(하드 게이트 · 운영자 260804 "게이트 ㄱㄱ" — 활자→박스→창 크기 3연속 드리프트의 기계화)
             rc = 1
     except Exception as e:
         print('⚠️ check_autocomplete 스킵:', e)
