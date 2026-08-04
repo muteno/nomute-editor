@@ -254,16 +254,28 @@ def download(url, outdir, name_tag, fmt, extra, cookies, pl, subs, post, desc=Fa
         return 1
 
 
-def qual_fmt(best, cap):
+def qual_parse(q):
+    """'2160-30' → (2160, 30) · '1080-60' → (1080, 0). 둘째 값 = fps **상한**(0 = 제한 없음).
+    60 선택 = 「고프레임 허용」이라 상한을 안 건다(있으면 60을 그냥 집는다) · 30 선택 = fps<=30 강제
+    (= 운영자 260804 "60fps 있으면 30fps 고를수도 있어야 함" — 진짜 주문은 **60을 피하는 수단**이다)."""
+    m = re.fullmatch(r"(\d+)-(\d+)", q or "")
+    if not m:
+        return 0, 0
+    return int(m.group(1)), (30 if int(m.group(2)) <= 30 else 0)
+
+
+def qual_fmt(best, q):
     """화질 상한판 포맷 선택자 — ③FHD판 정본(`bv*[{dimk}<=1080]…`) **값만 바꾼 사본**(신규 문법 0).
     가로/세로 축도 bat v6.4 그대로: 가로영상 = height 필터 · 세로영상 = width 필터
     (세로 1080x1920에 height 필터를 걸면 1920이 상한을 넘어 아예 안 잡힌다 — bat v6.1의 실패 원인).
-    ⚠ 꼬리 `wv*+ba/w`(가장 낮은 것) = 상한 밑에 아무것도 없을 때의 마지막 수단.
-      「작게 받기」가 운영자 의도이므로, 못 맞추면 **더 큰 것으로 올려주는 대신 가장 작은 것**을 준다
-      (구 발상대로 best로 폴백하면 720p를 골랐는데 4K 367MB가 오는 배신이 된다)."""
+    ⚠ 꼬리 `bv*+ba/b/best`(최대화질) = 상한 밑에 아무것도 없을 때의 마지막 수단 —
+      **운영자 260804 3차 지정**("1080p가 안될 경우에는 무조건 최대 화질인 거로").
+      구판은 반대로 `wv*+ba/w`(가장 낮은 것)였다 = 「작게」 우선 해석 → 운영자 판단으로 뒤집었다."""
+    cap, fcap = qual_parse(q)
     dimk = "width" if (best and best.get("w") and best.get("h") and best["w"] < best["h"]) else "height"
-    return (f"bv*[{dimk}<={cap}][ext=mp4]+ba[ext=m4a]/b[{dimk}<={cap}][ext=mp4]/"
-            f"bv*[{dimk}<={cap}]+ba/b[{dimk}<={cap}]/wv*+ba/w")
+    f = f"[fps<={fcap}]" if fcap else ""
+    return (f"bv*[{dimk}<={cap}]{f}[ext=mp4]+ba[ext=m4a]/b[{dimk}<={cap}]{f}[ext=mp4]/"
+            f"bv*[{dimk}<={cap}]{f}+ba/b[{dimk}<={cap}]{f}/bv*+ba/b/best")
 
 
 def ffprobe_dur(path):
@@ -643,7 +655,10 @@ def main():
 
 
 MODE_OK = ("both", "video", "subs")
-QUAL_OK = ("best", "1080", "720", "480")   # 화질 상한(운영자 260804 "화질 조정해서 받을 수 있게") — best = 종전 동작(최고화질 + 프레임별·FHD 부가본)
+# 화질 = **해상도×프레임 한 축**(운영자 260804 3차 "묶어서 6개 선택자중 하나로 하는게 맞다 · 소스 안에 다양한 영상이 있는경우가 별로 없음").
+#   2칸으로 쪼개면 조합 6가지를 두 번 조작해야 하는데, 실제로 한 게시물 안에 화질이 뒤섞인 경우가 드물다는 게 운영자 판단.
+#   ⚠ "best"는 **UI에 없다** — 인자 미지정·옛 클라이언트용 하위호환 값으로만 존치(종전 3판 동작 = 무회귀).
+QUAL_OK = ("best", "2160-60", "2160-30", "1440-60", "1440-30", "1080-60", "1080-30")
 if __name__ == "__main__":
     URL = sys.argv[2] if len(sys.argv) > 2 else ""
     MODE = (sys.argv[3] if len(sys.argv) > 3 else "both").strip().lower()
