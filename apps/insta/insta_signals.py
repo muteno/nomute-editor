@@ -326,6 +326,13 @@ def audience_overlay(audience):
         if dow:
             out['online_dow_kst'] = dow
             out['online_dow_days'] = dow_days
+        try:   # 마지막 적재일(운영자 260805 "항시 받아온다는 느낌" 수신 상태 도트) — 뷰어가 KST 경과일 계산 · 실패 = 키 부재 = 도트 문구만(fail-soft)
+            _l = jload('online_ledger.json')
+            _ks = sorted(k for k in (_l if isinstance(_l, dict) else {}) if isinstance(_l.get(k), dict) and _l[k])
+            if _ks:
+                out['online_led_last'] = _ks[-1]
+        except Exception:
+            pass
         return out
     peak = online_peak_kst(audience or {})
     if peak:
@@ -987,6 +994,7 @@ def main():
                     f"[영향] 요일 실측 승격(online_dow_kst)이 원장 7요일×24시 커버까지 대기(현재 {len(_mdays)}일 축적)"
                     ' — 정체가 풀려야 진행. 시간대 곡선도 새 표본이 안 쌓임(형상은 60일창 축적분으로 유지).',
                     '[전례] 260713~ 동일 공회신(운영자 스크린샷 수기 대체 = audience_manual.json) · 260801~02 이틀 회신 후 재발(260804 실측).',
+                    '[가설] 매월 말~초 = Meta 월별 정산기라 업데이트가 늦는 경향(운영자 260805 관측 · 미확인) — 월초 정체는 며칠 더 기다려볼 것.',
                     '',
                     '[다음 확인 순서]',
                     ' 1) apps/insta/data/audience.json online_followers의 value가 빈 dict인지 — 빈 값이면 Meta측 공회신',

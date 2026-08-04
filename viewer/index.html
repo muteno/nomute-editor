@@ -1043,6 +1043,9 @@
   .sig-lgd .lg-gen::before { width:11px; height:0; border-radius:0; background:none; border-top:2px solid var(--accent-4); }   /* raw-ok: 일반 평균 = 노랑 실선 스와치(운영자 260723 "노란색·실선" · 차트 실선 미러 · 공유 도트[터콰이즈]와 형태 분리) · 색 = --accent-4 노랑 팔레트 정본 · 11px/2px = 도트 6px 대비 선 시인 광학(.lg-pk 2px 동축) */
   .sig-lgd .lg-pk::before { background:var(--mut); border-radius:2px; }   /* raw-ok: 6px 스와치의 밴드(둥근 사각) 표기 광학 보정 — 시리즈 도트(원)와 형태 구분 · 근접 토큰 r-s 9px = 박스(6px)보다 커 부적합 · 무채(운영자 260723 한 수) = 차트 밴드 무채 워시 동일 톤(일반 평균 노랑과 분리) */
   .sig-lgd .lg-core::before { background:linear-gradient(var(--cat-tech), var(--cat-tech)); }   /* 핵심 구간 스와치 = 팔로워(.lg-sh) 도트와 동형 6px 원(운영자 260723 "터콰이즈 범례처럼 동그라미로" — 구 그라데이션 바 폐지) · 색 = 코어존 음영 동색 네온바이올렛 --cat-tech(팔레트 정본) · 동색 2-stop 그라데 표기 = check_label_fill 도트 허용 취지와 cat-* 필 직참조 차단 규칙의 합치 문법(구 스와치 그라데 문법 계승 · 렌더 = 솔리드 원 동일) */
+  .sig-lgd .lg-fix::before { background:linear-gradient(var(--danger), var(--danger)); }   /* 보완 필요 스와치 = .lg-core 문법 100% 미러(동형 6px 원 · 동색 2-stop 그라데 표기) · 색 = 보완존 음영 동색 --danger(팔레트 정본 · 운영자 260805 "빨간색으로 보완 필요") */
+  .sig-cap .sig-live { display:inline-flex; align-items:center; gap:4px; color:var(--mut); font-size:var(--fs-xs); font-style:normal; }   /* raw-ok: gap 4px = .sig-lgd i 도트↔라벨 광학 간격 정본 사본(.ch-lgd 4px 계승 축) — 실측 수신 상태(운영자 260805 "항시 받아온다는 느낌 · 동그라미 디밍 + mut 설명") · 부품 = .sig-lgd i 칩 문법 사본 · 범례 span 밖 독립 항목 = 협폭 단독 줄바꿈 허용(범례 행 오버플로 차단) */
+  .sig-cap .sig-live::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); opacity:.45; }   /* raw-ok: 도트 = .sig-lgd i::before 6px 원 정본 사본 · 디밍 .45 = 운영자 260805 "동그라미로 디밍" — 시리즈 도트(불투명)와 상태 표시(저알파) 위계 분리 광학 */
   .sig-chartwrap { margin-bottom:var(--sp-2); }
   .sig-chartwrap:last-child { margin-bottom:0; }
   /* 게시일 탭 팝오버(운영자 260718 "각 부분에 어떤 게시물 올렸는지 링킹") — 셸 = 모달 글래스 계승(--modal-glass·blur)·z-float(차트 위·페이지 나비 아래)·촤르륵 등장(cardIn 결) · 행 = .chp-row 문법 계승 · draw order 안전(글래스라 뒤 데이터 가림 최소·탭 밖 클릭 = 닫힘) */
@@ -13797,6 +13800,8 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   //   전후(현 데이터 실렌더 실측): 시간대 08:30~17:54 → 14:08~20:57(좌 −5.6h·우 +3.1h · 접속 피크 1·2위 15·18시 포섭 — 구식은 18시를 17:54로 잘랐다 · 3위 21시는 경계 3분 밖 = 저녁 밴드 대표값이 20시라 곱이 21시부터 꺾임 = 데이터 그대로) · 요일 목 → 금22시~일12시(주말 = 260724 "주말이 이용 훨 높은데" 판정과 동방향). 시안·전후 = docs/reports/260801_핵심구간_산출식_플레이그라운드.html
   const coreLabs = [];   // 코어 라벨 앵커(밴드마다 1개 · 복수 밴드 = 운영자 260801 "빨간색 덧칠한 부분도 핵심 구간이야 · 동일하게 표기")
   let coreXRs = [];      // 코어 x범위 목록(눈금 보라 틴트 판정 = 어느 밴드에든 들면 틴트)
+  const fixLabs = [];    // 보완 필요 라벨 앵커(운영자 260805 첨부 판정 "이용자 핫한 시간대를 내가 못 따라감 = 보완 필요")
+  let fixXRs = [];       // 보완 필요 x범위 목록(범례 칩 노출 판정)
   if (gpts && gpts.length === bs.length && spts.length === bs.length && sline) {
     const sc = spts.map((p, i) => val(bs[i], 'share_pm') * (gpts[i][2] / 100));   // 도달 기대값 = 공유 lift × 앱 사용자 지수/100(둘 다 이 차트가 이미 그리는 정본 — 새 데이터·새 상수 0)
     let pk = 0; sc.forEach((v, i) => { if (v > sc[pk]) pk = i; });   // 임계 기준점 = 도달 기대값 최대(구식 '팔로워 y 최소' = lift 최대와 다름 — 볼 사람 수를 곱한 뒤의 최대)
@@ -13816,6 +13821,28 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
         const cx = (e0.x + e1.x) / 2;
         if (e1.x - e0.x >= 46) coreLabs.push({ x: cx, y: (yWave(cx) + aB) / 2 });   // 라벨 = 음영 중앙 각인(운영자 260730) · 폭 46 미만 밴드는 라벨 생략(글리프가 음영 밖으로 삐져나가는 오표기 차단 — 라벨 실측 폭 41 + 여유 · 밴드 자체는 그대로 표기)
       });
+      // 보완 필요 존(운영자 260805 첨부 판정 "내가 안 올리든 무슨 사용자 원인으로 이용자 핫한 시간대를 내가 못 따라가는 거니까 — 보완 필요라고 적어줘야") —
+      //   판정 = 이용 강도 핫존(gen ≥ 피크 85 · CORE_TH 동값 재사용 = 새 상수 0) ∧ 도달 기대값 핵심 탈락(score < T = 낙폭 원인이 내 공유 쪽).
+      //   핵심 구간과 정의상 상호 배타(같은 자리에 '제일 좋다'+'보완해라' 동시 표기 불가) · 두 곡선 픽셀 교차 비교는 단위 불일치로 금지(위 폐기 사유 ① 동축)라 score 축으로 기계화.
+      //   경계 = 이웃이 핵심(sc≥T)이면 같은 sc↔T 교차점(핵심 커튼과 한 자 = 빈틈·겹침 0) · 이웃이 비핫(gen<85)이면 gen↔85 교차 · 문법 = 핵심 커튼 100% 미러(색만 --danger).
+      const fruns = [];
+      for (let i = 0; i < sc.length; i++) { if (gpts[i][2] >= 85 && sc[i] < T) { const r = fruns[fruns.length - 1]; if (r && r[1] === i - 1) r[1] = i; else fruns.push([i, i]); } }
+      if (fruns.length) {
+        const fedge = (a, b) => {   // a = 존 안 · b = 존 밖
+          if (sc[b] >= T) { const t = (sc[a] - T) / (sc[a] - sc[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
+          if (gpts[b][2] < 85 && gpts[a][2] !== gpts[b][2]) { const t = (gpts[a][2] - 85) / (gpts[a][2] - gpts[b][2]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
+          return at(a);
+        };
+        s += `<defs><linearGradient id="sigFix-${ax}" gradientUnits="userSpaceOnUse" x1="0" y1="${mT}" x2="0" y2="${aB.toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".34"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".06"/></linearGradient>${fruns.map(([i0, i1], k) => { const a = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), b = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1); return `<clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 그라데 스톱 .34/.06 = 핵심 커튼 정본값 사본(위계 동급 = 같은 산출식의 반대편)
+        fruns.forEach(([i0, i1], k) => {
+          const e0 = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), e1 = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1);
+          s += `<path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigFix-${ax})" stroke="none" clip-path="url(#sigFixClip-${ax}-${k})"/>`;
+          [[e0.x, e0.y], [e1.x, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--danger)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });
+          fixXRs.push([e0.x, e1.x]);
+          const fcx = (e0.x + e1.x) / 2;
+          if (e1.x - e0.x >= 46) fixLabs.push({ x: fcx, y: (yWave(fcx) + aB) / 2 });   // 라벨 폭 게이트 = 핵심 46 정본 사본('보완 필요' 4자 = 동폭)
+        });
+      }
     }
   }
   if (gl) s += `<path d="${gl}" fill="none" stroke="var(--accent-4)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
@@ -13845,6 +13872,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
     spts.forEach(p => { s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="${p[2] ? 'var(--bg)' : 'var(--accent)'}" stroke="${p[2] ? 'var(--accent)' : 'var(--bg)'}" stroke-width="1.6"/>`; });   // low_sample = 속빈 점
   }
   const hs = SIG_HIT[ax].filter(p => p.share != null), topLabs = [];   // topLabs = 상단 선반 라벨 점유 기록(소프트 충돌 회피)
+  let trLab = null;   // 최저 콜아웃 잉크 앵커 — 보완 라벨 충돌 회피 재료(보완 존은 정의상 공유 저점과 자주 겹친다 · 260805 실렌더 실측 = 화·밤 트로프 정면 충돌)
   if (hs.length >= 3) {   // 피크·최저 콜아웃(공유 기준 · chChart 극값 문법 계승)
     let pk = hs[0], tr = hs[0];
     hs.forEach(p => { if (p.share > pk.share) pk = p; if (p.share < tr.share) tr = p; });
@@ -13855,7 +13883,8 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       s += `<text x="${lx(pk.x).toFixed(1)}" y="${pky.toFixed(1)}" text-anchor="middle" font-size="8.5" fill="var(--accent-bright)" font-weight="700">피크 ×${pk.share}</text>`;
       topLabs.push({ x: lx(pk.x), y: pky });
       s += `<circle cx="${tr.x.toFixed(1)}" cy="${tr.y.toFixed(1)}" r="4.5" fill="none" stroke="var(--mut)" stroke-width="1.5"/>`;   // 최저 = 속빈 무채 링(점 위 겹침 시인 위해 r 확대 · chChart 트로프 문법)
-      s += `<text x="${lx(tr.x).toFixed(1)}" y="${Math.min(H - mB - 4, tr.y + 13).toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--mut)">최저 ×${tr.share}</text>`;
+      trLab = { x: lx(tr.x), y: Math.min(H - mB - 4, tr.y + 13) };
+      s += `<text x="${trLab.x.toFixed(1)}" y="${trLab.y.toFixed(1)}" text-anchor="middle" font-size="8" fill="var(--mut)">최저 ×${tr.share}</text>`;
     }
   }
   const putTop = (x, txt, fill) => {   // 상단 선반 라벨 배치(가로 70·세로 10px 근접 = 한 칸 아래 · 엣지 클램프) — 접속 피크·지금·오늘 공용
@@ -13866,6 +13895,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
     s += `<text x="${cx.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="8" fill="${fill}" font-weight="700">${txt}</text>`;
   };
   coreLabs.forEach(l => { s += `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="8" fill="var(--cat-tech)" font-weight="700" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">${ax === 'hour_band' ? '핵심 시간대' : '핵심 요일'}</text>`; });   // 핵심 구간 라벨 = 상단 선반(putTop) 이탈 → 음영 블록 정중앙 각인(운영자 260730 "양옆 중앙·위아래 중앙") · 색 = 음영 동색 네온바이올렛(260723 계승) · 그림자 = 레포 텍스트 가독 정본값 drop-shadow(0 1px 2px rgba(0,0,0,.45)) 계승(.ch-th .rl·.dlbtn) = 파도·볼륨바 위 판독
+  fixLabs.forEach(l => { if (trLab && Math.abs(trLab.x - l.x) < 60 && Math.abs(trLab.y - l.y) < 16) { putTop(l.x, '보완 필요', 'var(--danger)'); return; } s += `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="8" fill="var(--danger)" font-weight="700" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))">보완 필요</text>`; });   // 보완 필요 라벨 = 핵심 라벨 문법 100% 미러(중앙 각인·8px·그림자 동값) · 색 = 존 동색 --danger(운영자 260805 "빨간색으로 보완 필요 적어줘야"). 최저 콜아웃 충돌 = 상단 선반 putTop 이관 — 보완 존은 정의상 공유 저점과 상습 동거인데 트로프 커튼(파도~축 ~17px)엔 '한 칸 아래'가 물리적으로 없다(260805 실렌더 실측 = 화·밤 정면 충돌 · 바닥 클램프 무효). 창 60×16 = 라벨 실폭 41+여유·잉크 8px 스택 감안(10px 창은 화 케이스가 0.3px 차로 빠져나가는 걸 실측)
   bandLabs.forEach(l => putTop(l.x, esc(l.txt), 'var(--mut)'));   // 접속 피크 라벨 = 무채(운영자 260723 한 수 · 밴드 무채 워시와 동색 · 일반 평균 노랑과 분리)
   if (mkX != null) putTop(mkX, mkTxt, 'var(--mut)');
   const inCore = x => coreXRs.some(r => x >= r[0] - 1 && x <= r[1] + 1);   // 핵심 구간에 드는 눈금/라벨 = 음영 동색 보라 틴트(운영자 260723 "해당하는 숫자를 보라색 음영" · ±1px = 경계 부동소수 여유) — 구 경계시각 별도 라벨("9시/18시" 행) 대체
@@ -13892,7 +13922,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span></div>` +
+  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${fixXRs.length ? '<i class="lg-fix" title="보완 필요 = 이용 강도가 피크의 85% 이상인 핫 시간인데 도달 기대값(공유×이용강도)이 핵심 문턱에 못 미치는 구간 — 안 올리거나 반응이 약해 이용자 흐름을 못 따라가는 자리(운영자 260805) · 게시 실험 우선 후보">보완 필요</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span>${GEN_MEAS && x2.led ? `<span class="sig-live" title="팔로워 접속 실측(Meta online_followers)을 워크플로가 상시 자동 수집 — 원장 ${x2.led.days || '?'}일 축적${x2.led.last ? ' · 마지막 적재 ' + esc(x2.led.last) : ''} · 3일 이상 끊기면 메시지함 경보(매월 말~초 지연 경향 = 운영자 260805 관측)">${x2.led.stall != null && x2.led.stall >= 3 ? '실측 수신 지연 ' + x2.led.stall + '일' : '접속 실측 수집 중' + (x2.led.days ? ' · ' + x2.led.days + '일' : '')}</span>` : ''}</div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
@@ -14157,8 +14187,10 @@ function renderChan() {
   const axes = (d.signals || {}).axes || {};
   const nowK3 = new Date(Date.now() + (540 + new Date().getTimezoneOffset()) * 60000);   // KST 벽시계(기기 TZ 무관 · [12] · 예약 필 idiom 계승)
   const sigPk = (d.online_peak_kst || []).map(p => parseInt(p, 10)).filter(n2 => Number.isInteger(n2) && n2 >= 0 && n2 <= 23);   // "21시(KST)" → 21 · 결측 = 밴드 자동 생략(창작 0)
-  const sg = chLiftChart(axes.hour_band, 'hour_band', { peaks: sigPk, now: nowK3.getHours() + nowK3.getMinutes() / 60, curve: d.online_curve_kst || null }) +   // curve = 팔로워 접속 실측(insta_signals online_curve_kst · 260803) — 부재 = 벤치 폴백(fail-soft)
-    chLiftChart(axes.dow, 'dow', { today: ['일', '월', '화', '수', '목', '금', '토'][nowK3.getDay()], curve: d.online_dow_kst || null });   // curve = 요일별 팔로워 접속 실측(insta_signals online_dow_kst · 260804) — 원장 7요일×24시 커버 전 = 필드 부재 = 벤치 폴백(fail-soft)
+  // 실측 수신 상태(운영자 260805 "항시 받아온다는 느낌 · 동그라미 디밍 + mut 설명") — days = online_src 'api-ledger(N일)' 파싱 · stall = 마지막 적재일(online_led_last · insta_signals 동봉) 대비 KST 경과일(필드 미도착 구본 데이터 = null = 수집 중 문구만 = fail-soft) · 실측 채택(GEN_MEAS) 차트에만 노출
+  const _ledSt = d.online_src ? { days: +((String(d.online_src).match(/(\d+)일/) || [])[1] || 0) || null, last: d.online_led_last || null, stall: d.online_led_last ? Math.max(0, Math.round((nowK3 - new Date(d.online_led_last + 'T00:00:00Z')) / 864e5)) : null } : null;
+  const sg = chLiftChart(axes.hour_band, 'hour_band', { peaks: sigPk, now: nowK3.getHours() + nowK3.getMinutes() / 60, curve: d.online_curve_kst || null, led: _ledSt }) +   // curve = 팔로워 접속 실측(insta_signals online_curve_kst · 260803) — 부재 = 벤치 폴백(fail-soft)
+    chLiftChart(axes.dow, 'dow', { today: ['일', '월', '화', '수', '목', '금', '토'][nowK3.getDay()], curve: d.online_dow_kst || null, led: _ledSt });   // curve = 요일별 팔로워 접속 실측(insta_signals online_dow_kst · 260804) — 원장 7요일×24시 커버 전 = 필드 부재 = 벤치 폴백(fail-soft)
   if (sg) h += gsec('sig', `시간대별 반응`, sg);   // 편향 각주(.sig-note) = 운영자 260722 제거
   // TOP 게시물(운영자 260719 재설계 · 병합 = main 시간대별 반응 + 내 새 행 결합) — 순위·포스트/릴스·제목·조회수·포맷별 편차. 정렬 = ×배수 내림차순(운영자 260723 "xn.m 순서로 배치 — 기준선이 릴스냐 포스터냐, 공평하게 x로 순위" · 구 순수 조회수순 대체 · 동률 = 조회수) · 포맷색 = thumb.html .ovfmt 계승(릴스 레몬/포스트 시안) · 제목 이모지 제거는 아래 .ch-pt 채움에서(기존 관용구)
   // 편차 기준 = 포맷별 중앙값(운영자 260720 "포스트는 포스트 기준 · 릴스는 릴스끼리") — 고조회 릴스·저조회 포스트를 한 평균(posts_view_avg)에 섞으면 포스트가 늘 ×0.x로 눌려 왜곡 → 릴스는 릴스끼리·포스트는 포스트끼리 그 포맷 중앙값 대비 ×배수(같은 종류끼리 성과 비교). 중앙값 = 앱 공통 "×1.0 = 채널 중앙값 기준선"(sig ×배율·차트 bY·모달 views_med) 관례 계승 + 릴스 mega-hit 꼬리에 강건(평균은 꼬리 오염 · 강건성 철학 §OUT) · 표본 = 표시 창(_pf 아래) · 포맷 표본 0 = 혼합평균(_avgV) 폴백
