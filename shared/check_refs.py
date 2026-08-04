@@ -3351,10 +3351,12 @@ def check_ask_srcimg_chain():
     (본문 0 = 수확 0 = 사고 재현). 데스크톱 1순위 + 껍데기 시 교대가 이 체인의 실효 조건이라 함께 지킨다."""
     a = os.path.join(ROOT, '.github', 'scripts', 'ask.sh')
     p = os.path.join(ROOT, '.github', 'scripts', 'ask_srcimg.py')
+    o = os.path.join(ROOT, '.github', 'scripts', 'ask_srcocr.py')
     bad = []
     try:
         at = open(a, encoding='utf-8').read()
         pt = open(p, encoding='utf-8').read()
+        ot = open(o, encoding='utf-8').read()
     except Exception as e:
         print('❌ 출처 본문 이미지 수확 체인 게이트 — 파일 열기 실패: %s' % e)
         return 1
@@ -3385,12 +3387,25 @@ def check_ask_srcimg_chain():
     # ⑤ 프롬프트 지시 — 그림을 줘도 '기사 못 찾으면 실패'로 끝나면 사고가 그대로 재발한다
     if '1-3)' not in at:
         bad.append("ask.sh 프롬프트 1-3 폴백 결손 — '본문이 그림뿐일 때' 순서 지시(제목 검색 공회전 차단)")
+    # ⑥ OCR 층(운영자 260804 2차) — 그림 '첨부'만으론 본선이 여는지가 확률 축이고, 열어도 프롬프트 1)의
+    #    보강 모드(「요청문에 전문이 있으면」)에 안 물린다 → 문자열을 확정적으로 뽑아 전사문과 같은 지위로
+    #    실어야 기존 뉴스 요약 로직에 연결된다. 이 층이 빠지면 조용히 1차 동작(첨부만)으로 퇴행한다.
+    if not re.search(r'^[^\n#]*python3 \.github/scripts/ask_srcocr\.py', at, re.M):
+        bad.append('ask.sh OCR 실행줄 결손 — ask_srcocr.py 호출(주석 처리 포함)')
+    if '추출문:' not in at or '이 추출문이 곧 원문이다' not in at:
+        bad.append("ask.sh OCR 전문 주입 결손 — 추출문이 '원문' 지위로 안 실리면 보강 모드에 안 물린다")
+    if 'from claude_py import run_claude' not in ot:
+        bad.append('ask_srcocr.py 폴오버 SSOT 미경유 — claude_py.run_claude(자체 쿼터처리 금지 계약)')
+    if "'--allowedTools', 'Read'" not in ot:
+        bad.append('ask_srcocr.py Read 권한 결손 — 이미지를 못 연다(추출 항상 0)')
+    if 'def ocr(' not in ot:
+        bad.append('ask_srcocr.py 추출 진입점 결손(def ocr)')
     if bad:
         print('❌ 출처 본문 이미지 수확 체인 게이트 — 층 결손 %d건(그림이 조용히 안 실린다):' % len(bad))
         for b in bad:
             print('   ·', b)
         return 1
-    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·프롬프트 주입·1-3 폴백 5층 생존.')
+    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·OCR 추출·전문 주입·1-3 폴백 6층 생존.')
     return 0
 
 
