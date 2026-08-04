@@ -3017,6 +3017,7 @@
     padding:9px 16px; cursor:pointer; white-space:nowrap; text-align:left; -webkit-tap-highlight-color:transparent; transition:transform .1s, background .15s, color .15s, border-color .15s; }
   .min-pick-it:hover { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }
   .min-pick-it:active { transform:scale(var(--press-l,.96)); }
+  .min-pick-it[aria-current="true"] { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); background:rgba(var(--accent-rgb),.08); }   /* 현재 선택값 점등 = 바로 위 :hover 선언 **값 사본**(신규 색·값 창작 0) — 목록에서 「지금 뭐가 골라져 있나」가 안 보이면 고르기 자체가 성립 안 한다 */
   .askta { display:block; width:100%; box-sizing:border-box; min-height:96px; resize:none; border-radius:14px; padding:12px 14px;
     background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fg); font:inherit; font-size:14px; line-height:1.6; outline:none; }
   .askta:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.18); }   /* 포커스 = 강조색 테두리+글로우(타이핑 활성 신호 · .ed-wish:focus 등 전 입력칸 정본 통일 · 흰색 이탈 교정 260627) */
@@ -8830,6 +8831,7 @@ function _dgFmt(b) { b = Number(b) || 0; if (!b) return ''; if (b < 1024) return
 //   ⚠ 순서 = 운영자 260802 "영상 받는중 이게 받은 기록보다는 위에 가있어야함(제작중 뜨는거)" — 구 배치는
 //     [기록][받은 영상][받는 중] 이라 **진행 중이 맨 밑**이었다(정확히 반대). 이미지 스튜디오는 결과·진행이 위, 이전 제작이 아래.
 function _dgRenderBody() {
+  try { _dgQClose(); } catch (_) {}   // 재렌더 = 화질 목록의 앵커(칩)가 교체되므로 먼저 걷는다(고아 팝업 차단)
   try { if (MIN_REG.has('dlgrab')) minRegRefresh(); } catch (_) {}   // 접어둔 상태에서 받기가 늘거나 끝나면 ▲ 배지도 같이 움직인다(발사·완료·실패가 전부 이 렌더를 지난다 = 갱신 지점 단일)
   const body = $('#dgBody'); if (!body) return;
   const jobs = _dg.jobs, r = _dg.res;
@@ -9086,12 +9088,39 @@ const DG_QUALS = [['2160-60', '2160p 60fps'], ['2160-30', '2160p 30fps'], ['1440
 const DG_Q_KEY = 'dg_q_v1';
 function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return DG_QUALS.some(x => x[0] === v) ? v : DG_QUALS[0][0]; } catch { return DG_QUALS[0][0]; } }   // 기본 = 최고 티어(2160p 60fps)
 function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1] : DG_QUALS[0][1]; }
-function _dgQNext() {   // 다값 순환 = 워드칩 정본 동작(이진 토글이 아니라 4값이라 순환 · 라벨 자체가 현재값 = 리드백 별도 부품 0)
-  const i = DG_QUALS.findIndex(x => x[0] === _dg.q);   // 미매칭(-1) → 다음 = 0 = 최고 티어
-  _dg.q = DG_QUALS[(i + 1) % DG_QUALS.length][0];
-  try { localStorage.setItem(DG_Q_KEY, _dg.q); } catch {}
-  _dgRenderBody();
+// 화질 고르기 = **눌러서 아래로 펼치는 목록**(운영자 260804 4차 "이런식으로 아래에 나오게 할건가?").
+//   구 6값 순환은 최고↔최저 이동에 최대 5탭이었다 = 6값이 되는 순간 순환이 부품으로 안 맞는다.
+//   부품·동작 = `.min-pick`/`.min-pick-it` **정본 100% 사본**(최소화 복원 picker · 글래스 셸 SSOT·
+//   바깥 탭 닫기 가드·좌변 클램프까지 그대로). 새 부품·새 값 0 — 운영자가 든 외부 앱 스샷은 참조하지 않았다.
+//   ⚠ 앵커 방향만 다르다: 정본은 ▲(화면 하단) 위로 펴고, 여긴 칩이 화면 위쪽이라 **아래로** 편다(자리 없으면 위로 뒤집음).
+function _dgQOpen(btn) {
+  _dgQClose();
+  const d = $('#dlgrab'); if (!d || !btn) return;
+  const pop = document.createElement('div'); pop.className = 'min-pick'; pop.id = 'dgQPick';
+  pop.setAttribute('role', 'listbox'); pop.setAttribute('aria-label', '화질 선택');
+  DG_QUALS.forEach(([v, lab]) => {
+    const it = document.createElement('button'); it.type = 'button'; it.className = 'min-pick-it'; it.textContent = lab;
+    it.setAttribute('role', 'option'); it.setAttribute('aria-selected', v === _dg.q ? 'true' : 'false');
+    if (v === _dg.q) it.setAttribute('aria-current', 'true');   // 현재값 점등 = :hover 선언 **값 사본**(아래 CSS · 신규 값 0)
+    it.addEventListener('click', ev => { ev.stopPropagation(); _dg.q = v; try { localStorage.setItem(DG_Q_KEY, v); } catch {} _dgQClose(); _dgRenderBody(); });
+    pop.appendChild(it);
+  });
+  d.appendChild(pop);   // ⚠ body가 아니라 **다이얼로그 안**(showModal = top layer라 body 자식은 모달 뒤로 깔린다)
+  const r = btn.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight, M = 8;
+  let left = r.left + r.width / 2 - pw / 2;                    // 칩 중심에 목록 가운데(정본 산식 그대로)
+  left = Math.min(left, window.innerWidth - M - pw);
+  left = Math.max(left, M);
+  pop.style.left = left + 'px';
+  const below = r.bottom + 6;
+  pop.style.top = (below + ph > window.innerHeight - M ? Math.max(M, r.top - 6 - ph) : below) + 'px';   // 아래로 · 자리 없으면 위로 뒤집기
+  setTimeout(() => document.addEventListener('pointerdown', _dgQOutside, { capture: true }), 0);
 }
+function _dgQOutside(e) {   // 바깥 탭만 닫기 — 내부·칩 자체는 각자 click이 처리(정본 onMinPickOutside 가드 동문)
+  const t = e.target;
+  if (t && t.closest && (t.closest('#dgQPick') || t.closest('[data-act="vidq"]'))) return;
+  _dgQClose();
+}
+function _dgQClose() { const p = $('#dgQPick'); if (p) p.remove(); document.removeEventListener('pointerdown', _dgQOutside, { capture: true }); }
 function _dgVidPlatName(p) { return ({ YT: '유튜브', IG: '인스타그램', X: 'X(트위터)', TT: '틱톡', FB: '페이스북', TH: '스레드' })[p] || p; }
 // 진행 중 작업 계정축 보존(평의회2·8) — run 중 창 닫아도 job id를 기기에 남겨 재열람 시 폴 재개(백그라운드 상주 아님 = 창 열 때만 폴).
 const DG_VID_KEY = 'dg_vid_job_v1';
@@ -9305,7 +9334,7 @@ function _dgPeekHtml() {
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
     + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + esc(_dgQName(_dg.q)) + '</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804)
-    + '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 누르면 2160p 60fps → 30fps → 1440p… → 1080p 30fps 순환(해상도·프레임 한 축)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 변경">' + esc(_dgQName(_dg.q)) + '</button>'   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값
+    + '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(해상도·프레임 한 축 6값)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQName(_dg.q)) + '</button>'   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
 }
@@ -9420,7 +9449,7 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   else if (act === 'ytget') { e.stopPropagation(); _dgYtGet(i); }
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(_dg.jobs[i], (_dg.jobs[i] || {}).mode || 'both'); }
   else if (act === 'vidsubs') { e.stopPropagation(); _dgVidStart('both'); }
-  else if (act === 'vidq') { e.stopPropagation(); _dgQNext(); }   // 화질 상한 순환(다음 발사부터 적용 · 진행 중 잡은 자기 값을 유지)   // 「받을 내용」 행 [영상+자막] = 그 자리에서 자막까지 포함해 발사(기본 [다운로드]는 영상만)
+  else if (act === 'vidq') { e.stopPropagation(); _dgQOpen(el); }   // 화질 = 아래로 펼치는 목록(다음 발사부터 적용 · 진행 중 잡은 자기 값을 유지)   // 「받을 내용」 행 [영상+자막] = 그 자리에서 자막까지 포함해 발사(기본 [다운로드]는 영상만)
   else if (act === 'vidget') { e.stopPropagation(); _dgVidGet(ji, i); }
   else if (act === 'vidall') { e.stopPropagation(); _dgVidGetAll(el, ji); }
   else if (act === 'secall') { e.stopPropagation(); _dgDlSec(el, el.dataset.k); }

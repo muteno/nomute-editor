@@ -819,6 +819,10 @@ _PAGES_SKIP_ALLOW = {
     #   알림)이라 같은 판정: 화면에 수 분 늦게 떠도 되는 축이다(쿠키는 ~2주 주기로 죽고 운영자는 알림함을 안 놓친다).
     #   ⚠ viewer/*.json 착지 0 = 짝 게이트(check_coalesce_pair) 대상 아님 — 라이브 서빙 짝이 필요한 화면 표면을 안 만든다.
     os.path.join('.github', 'workflows', 'yt-cookie-health.yml'),
+    # 받기 결과(260804) — 뷰어가 api/vidlout(빌드 우회 라이브 서빙)로 직접 읽으므로 빌드 불요 = 짝 조건 충족.
+    #   받기 1건 = 최대 3판 = 커밋 3개가 CF 풀빌드 큐를 먹어 **코드 배포를 밀어내던** 축을 제거(같은 날 실측 20~40분 지연).
+    #   ⚠ viewer/*.json 최상위 착지 0(중첩 vidl_out/<id>/) = check_coalesce_pair 자동발견 대상 아님 — 짝은 api/vidlout.js가 이미 담당.
+    os.path.join('.github', 'workflows', 'vidl-make.yml'),
 }
 
 
