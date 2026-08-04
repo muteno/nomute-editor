@@ -1327,6 +1327,18 @@
   /* 카드 전송 버튼 = 요약 요청 모달 전송(#askSend .asksend) 정본 통째 계승(운영자 260803 3차 "요약에 있는 전송버튼으로 일괄 통일 · 체크 없애 · 애니메이션도 통일") — 필·글꼴·hover·게이지·✓팝·실패 흔들림 전부 .asksend 값 그대로(카드 전용 신규 값 0) · 구 체크→arm 2탭 상태머신(.arm/.sent/.sending) 폐지 = 모달과 동일 1탭 발사 */
   /* letter-spacing = 무선언(모달 #askSend 실측 -0.2px = .soc-top 상속 -0.2px와 동값 · 260803 computed 실측 — 중화 불요) */
   .soc-send.asksend.firing { pointer-events:auto; }   /* ⚠ 정본 .asksend.firing{pointer-events:none}은 카드(앵커 내부)에선 전송 중 재탭이 버튼을 '통과'해 카드 앵커 새창으로 새는 구멍(구판 .sending 동일 사고 실측 260803 — elementFromPoint=.soc-sendz·defaultPrevented:false) → 클릭을 버튼이 계속 받되 위임 핸들러 firing 가드가 preventDefault로 흡수(운영자 "새창으로 열리지 않고 그냥 전송만") */
+  /* ── 전송 종단 = 'Pk-ng'(분석 중 · 운영자 260804 "다시 전송으로 돌아오는데 picking으로 · 칸이 좁으니까 Pk-ng") ──
+     효과 = 뉴스 큐레이션(메뉴1) Picking… 정본 `.sc-got.picking` 값 100% 사본(바탕 accent .10 + 훑는 shine 45%/1.2s linear infinite/translateX(-120%)) = 카드 전용 신규 값 0.
+     ⚠ 라벨을 흐름에 넣으면 버튼이 커진다(실측 260804: '전송' 잉크 25.56→박스 63.48 / 'Pk-ng' 잉크 35.05→박스 72.98 = +9.5px) → 운영자 "전송 버튼의 크기가 변화하게는 안하고 싶어서 줄임말"과 충돌.
+     → 라벨 = ✓팝(.asksend .ack) 오버레이 문법 그대로 absolute inset:0 · 폭 앵커로 '전송' 글자를 opacity:0으로 흐름에 잔류(.asksend.checked > span:not(.ack) 문법 계승) = 박스 63.48×26.95 불변. */
+  .soc-send.asksend.picking { background:rgba(var(--accent-rgb),.10); border-color:rgba(var(--accent-rgb),.4); cursor:default; }   /* 3클래스 = .asksend:hover(2클래스)를 덮음 — hover가 이기면 분석 중 틴트가 마우스 올릴 때마다 꺼진다 */
+  .soc-send.asksend.picking:active { transform:none; }   /* 눌러도 할 일 없는 상태 = 눌림 스케일 소거(어포던스 거짓말 차단 · pointer-events:none은 카드 앵커 새창 누수라 못 씀 = firing과 동축) */
+  .soc-send.picking > span:not(.pkg) { opacity:0; }   /* '전송' 글자만 숨김 = 폭 앵커로 잔류 */
+  .soc-send .pkg { position:absolute; inset:0; z-index:2; display:grid; place-items:center; color:var(--accent); }   /* Pk-ng 라벨 = .ack 오버레이 사본(폭 무영향) */
+  .soc-send.picking::after { content:''; position:absolute; top:0; bottom:0; left:0; width:45%;
+    background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.5),transparent); transform:translateX(-120%);
+    animation:shine 1.2s linear infinite; pointer-events:none; z-index:1; }   /* 훑는 shine = .sc-got.picking::after 값 사본 */
+  @media (prefers-reduced-motion:reduce) { .soc-send.picking::after { animation:none; } }
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
   .soc-title { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }   /* 제목 = 모바일 1줄 클램프(운영자 260729 "모바일에서는 1줄") — .tcard-t 정본 계승(넘치면 … 자동) · 원 라인 무접촉 = 값 유지 */
   @media (min-width:560px) { .soc-title { -webkit-line-clamp:2; } }   /* PC = 완화(운영자 "pc에서는 상관없겠고") · 560 = .rt2col 2단 브레이크 계승 */
@@ -10341,6 +10353,14 @@ const CAND_STALE_MS = 20 * 60000;   // 20분 = 폴 20회(60s·15336행) 연속 �
 const candFresh = () => CAND_LIVE && Date.now() - CAND_TS < CAND_STALE_MS;
 const candStale = () => !candFresh() && CANDS.length > 0;   // "지금 화면이 옛 사본" 상태 = 붉은 경보의 자격미달분 + 260725 정적 폴백분. **기어 점등·노란 메시지가 이 한 축을 공유**한다(syncStaleMsg 7515행 = 기어 토글 9843행) — 갈라두면 "기어는 빨간데 메시지함은 비어 있음" 같은 드리프트가 난다. len>0 = 부팅 전패(빈 화면)는 이 축 밖(기존 구멍 · 별건)
 let SOCIAL = [], SOCIAL_LOADED = false, SOCIAL_LOADING = false, SOC_LM = 0;   // 소셜 버스트(커뮤니티 공론화) 레인 = SNS 탭(메뉴2). social_candidates.json(scraper/social_burst.py 출력 · 설계 docs/social-burst.md). SOC_LM = 파일 Last-Modified(ms) — age_h 스냅샷 경과 보정 앵커(Q359 ㉠)
+// ── 전송한 카드 = 'Pk-ng'(분석 중) 잔류 원장(운영자 260804 "전송 누르고 나면 다시 전송으로 돌아오는데 picking으로") ──
+//   왜 저장하나: renderSns는 행 구성이 바뀌면 리스트를 통째 재빌드한다 → 메모리에만 두면 다음 스캔 갱신 때 Pk-ng가 '전송'으로 되돌아가 운영자가 지적한 그 증상이 그대로 재발한다. 새로고침도 동축.
+//   ⚠ 종단(PICKED 상당)은 없다 — 커뮤니티 제목은 뉴스 제목과 달라 feedMatch 계열로 완료를 신뢰성 있게 못 짚는다(메뉴1 픽과 다른 점). 확실한 완료 신호를 못 만들 바엔 추측 표시를 안 한다 = 보낸 카드는 Pk-ng로 잔류.
+const SOC_SENT_KEY = 'nm_soc_sent', SOC_PKLABEL = 'Pk-ng';   // 라벨 = 한 곳(운영자 260804 "칸이 좁으니까 그냥 Pk-ng" — 렌더·런타임 전환 공용)
+const SOC_SENT_CAP = 200;   // 원장 상한 = 최근 200건(커뮤니티 행은 빠르게 회전 → 무한 누적 방지 · 넘치면 오래된 것부터 탈락)
+let SOC_SENT = (() => { try { const a = JSON.parse(localStorage.getItem(SOC_SENT_KEY) || '[]'); return new Set(Array.isArray(a) ? a : []); } catch { return new Set(); } })();
+const socKey = r => (r && (r.url || r.title)) || '';   // 카드 동일성 = url 우선(제목은 폴백 · renderSns 시그니처 축과 동일 문법)
+const socSentAdd = k => { if (!k) return; SOC_SENT.delete(k); SOC_SENT.add(k); try { localStorage.setItem(SOC_SENT_KEY, JSON.stringify([...SOC_SENT].slice(-SOC_SENT_CAP))); } catch {} };   // delete→add = 삽입순 갱신(상한 컷에서 최근 것이 살아남음)
 const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
 const saveRating = (id, patch) => { const r = ratingsAll(); r[id] = { ...(r[id] || {}), ...patch }; localStorage.setItem(RKEY, JSON.stringify(r)); };
@@ -13158,12 +13178,25 @@ function socClampChips(box) {
     if (!rem) break; rem.remove();
   }
 }
+// 전송 버튼 마크업 — 미전송 = '전송'(1탭 발사) / 전송분 = Pk-ng(분석 중 · 비활성).
+//   비활성 문법 = 메뉴1 Picking… 칩 정본 계승: 접근명 `aria-label="분석 중"`(.sc-got.picking) + `tabindex="-1"`(.sc-fail.picking = 버튼이되 탭 도달 제외).
+//   role은 남기고 aria-disabled로 못박는다 — 이건 '버튼이 아닌 것'이 아니라 '그 전송 버튼이 지금 못 눌리는 상태'라서(cursor:default·눌림 스케일 소거와 같은 말).
+const socSendHtml = r => SOC_SENT.has(socKey(r))
+  ? `<span class="soc-send asksend picking" role="button" aria-disabled="true" tabindex="-1" aria-label="분석 중" title="뉴스 요약 대기열에 올라감 — 분석 중"><span aria-hidden="true">전송</span><span class="pkg">${SOC_PKLABEL}</span></span>`
+  : `<span class="soc-send asksend" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><span>전송</span></span>`;
+function socPick(sb) {   // 전송 성공 종단 → Pk-ng 전환(제자리 · 재렌더 없이). 폭 앵커 '전송' 스팬은 그대로 두고 라벨만 오버레이로 얹는다 = 박스 크기 변화 0.
+  if (!sb || sb.classList.contains('picking')) return;
+  if (!sb.querySelector('.pkg')) { const d = document.createElement('span'); d.className = 'pkg'; d.textContent = SOC_PKLABEL; sb.appendChild(d); }
+  const t = sb.querySelector(':scope > span:not(.pkg)'); if (t) t.setAttribute('aria-hidden', 'true');
+  sb.classList.add('picking'); sb.setAttribute('aria-disabled', 'true'); sb.setAttribute('tabindex', '-1');
+  sb.setAttribute('aria-label', '분석 중'); sb.title = '뉴스 요약 대기열에 올라감 — 분석 중';
+}
 function socBindSend(list) {
   list._sendBound = true;
   list.addEventListener('click', async e => {
     const sb = e.target.closest('.soc-send'); if (!sb) return;
     e.preventDefault(); e.stopPropagation();   // 카드(앵커) 새 탭 전파 차단 — firing 중 재탭도 여기 도달해 흡수(.soc-send.asksend.firing pointer-events:auto와 짝 · 구판 .sending pointer-events:none 통과 = '전송하면 새창' 사고 봉합 · 운영자 260803 3차)
-    if (sb.classList.contains('firing')) return;   // 전송 중 재탭 = 중복 발사 가드(preventDefault 뒤라 앵커로 안 샌다)
+    if (sb.classList.contains('firing') || sb.classList.contains('picking')) return;   // 전송 중·분석 중(Pk-ng) 재탭 = 중복 발사 가드(preventDefault 뒤라 앵커로 안 샌다 · picking은 pointer-events:none을 못 써서 여기가 유일한 차단선 = firing과 동축)
     const card = sb.closest('.soc-item');
     const title = ((card && card.querySelector('.soc-title')) || {}).textContent || '';
     const url = (card && card.getAttribute('href')) || '';
@@ -13175,10 +13208,11 @@ function socBindSend(list) {
       const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, preset: { h24: 1, fp: 0, mj: 1, og: 0, noai: 1 } }) });   // preset = openAsk 기본 수집 프리셋 계승
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ok) {
+        socSentAdd(socKey({ url, title }));   // 원장 적재 = 성공 즉시(1.6s 종단 전에 재렌더가 끼어도 Pk-ng로 다시 그려진다)
         sb.classList.remove('done'); void sb.offsetWidth; sb.classList.add('done'); gaugeDone(sb);   // 성공 = settle 펄스 + 게이지 현위치→100% 급속 마무리(askSend 성공 경로 그대로)
         setTimeout(() => askShowCheck(sb), 300);   // 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·askSend 동일 리듬)
         setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 대기열 배지 즉시 갱신(askSend 계승)
-        setTimeout(() => { gaugeClear(sb); askHideCheck(sb); sb.classList.remove('done'); }, 1600);   // 원복(카드는 닫을 폼이 없어 버튼만 리셋 — 모달의 close+리셋 1.6s 리듬 동일)
+        setTimeout(() => { gaugeClear(sb); askHideCheck(sb); sb.classList.remove('done'); socPick(sb); }, 1600);   // 종단 = '전송' 원복이 아니라 Pk-ng(분석 중) 잔류(운영자 260804) — 리듬 1.6s·앞 단계는 종전 그대로
       } else { gaugeClear(sb); qFlash(d.error || `서버 ${r.status}`); sb.classList.add('shake'); setTimeout(() => sb.classList.remove('shake'), 420); }   // 실패 = 게이지 원복 + 흔들림(askSend 실패 경로 그대로)
     } catch { gaugeClear(sb); qFlash('전송 실패 (백엔드 배선 전이면 예상된 동작)'); sb.classList.add('shake'); setTimeout(() => sb.classList.remove('shake'), 420); }
   });
@@ -13212,7 +13246,7 @@ function renderSns() {
     const _mid = _pv.length ? _pv.reduce((a, b) => a + b, 0) / _pv.length : null;
     const _zone = _mid == null ? '' : (_mid <= 2 ? '강진보' : _mid <= 4 ? '약진보' : _mid <= 6 ? '중립' : _mid <= 8 ? '약보수' : '강보수');
     const _gauge = _mid == null ? '' : `<div class="soc-gauge" role="img" aria-label="출처성향 ${_zone}" title="출처성향: ${_zone} (커뮤 통념근사)"><span class="soc-dot" style="left:${((_mid - 1) / 8 * 100).toFixed(1)}%"></span></div>`;   /* 동그라미=흰색 단일(편향은 위치로) · 위치=(_mid-1)/8[성향값 1~9축, 옛 /9는 강보수 우끝 미달·중립 좌편향 버그·검토6인 260704] · title/aria=툴팁·a11y(시각 라벨은 요구'라벨없이' 존중) */
-    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span><span class="soc-posts">${(r.posts > r.source_count) ? `글 ${r.posts}` : ''}</span><span class="soc-agez">${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</span><span class="soc-send asksend" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><span>전송</span></span></div>
+    el.innerHTML = `<div class="soc-top"><span class="soc-burst${_bt}">${FIRE_SVG} ${_b.toFixed(1)}</span><span class="soc-src">${LINK_SVG} ${r.source_count || 0}소스</span><span class="soc-posts">${(r.posts > r.source_count) ? `글 ${r.posts}` : ''}</span><span class="soc-agez">${ago ? `<span class="soc-age">${esc(ago)}</span>` : ''}</span>${socSendHtml(r)}</div>
       <div class="soc-title"></div>
       <div class="soc-srcs">${(r.sources || []).map(s => '<span class="soc-chip ' + socLean(s) + ' ' + socSrc(s) + '"></span>').join('')}</div>
       ${_gauge}`;
