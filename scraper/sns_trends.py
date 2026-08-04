@@ -1354,7 +1354,13 @@ def threads_subs(accounts, limit=10, deadline=None):
     {code·caption·like_count} 포스트 노드 채집(innertube walk 관용구 — 레이아웃 이동 내성).
     계정별 fail-soft·콜 간 4s(x_subs 실측 계승 — Meta 연타 = 전멸 유발). 정렬 = 좋아요.
     ⚠️ env THREADS_COOKIE(운영자 260713 "부계 세션쿠키") = 있으면 로그인 상태로 요청(비공개/더 많은
-    포스트 노출 가능) · 없으면 게스트 그대로. 부계 전용 권장(자동화 감지 밴 리스크 = 본계 금지)."""
+    포스트 노출 가능) · 없으면 게스트 그대로. 부계 전용 권장(자동화 감지 밴 리스크 = 본계 금지).
+    ⚠️ **쿠키 경로 무소득 = 게스트 자동 회수(260804 2차)** — 쿠키는 260726엔 구원이었지만 260804엔 독이
+    됐다(로그인 상태 응답이 프로필 대신 추천 피드를 실어 작성자 검문이 전건 폐기 = 등록 5계정 0건 ·
+    같은 시각 게스트 요청은 데이터센터 IP에서도 본인 글 9건 정상 = 실측). 어느 쪽이 통할지는 Meta가
+    회차마다 바꾸므로 **본인 글 0이면 반대 모드(게스트)로 1회 더 두드린다** = 사람 조치(쿠키 교체) 없이
+    회수. 사유 코드도 갈라 실어 보낸다(alien = 추천 피드만 · wall = 로그인월 · empty = 노드 0) —
+    뭉치면 화면이 원인을 못 갈라 "쿠키를 갈아라"는 헛 조치가 나간다(260730·260804 판례)."""
     ck = (os.environ.get("THREADS_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
     out, seen = [], set()
     for i, acc in enumerate(accounts):
@@ -1369,6 +1375,46 @@ def threads_subs(accounts, limit=10, deadline=None):
                     "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none",
                     "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1"}   # 실브라우저 헤더 근접(운영자 260723 · 봇 챌린지 완화 시도 · 게스트·쿠키 공통 경로)
             _u = "https://www.threads.com/@" + urllib.parse.quote(acc)
+            _me = acc.lower().lstrip("@")   # 주인 판정 축(260804)
+
+            def _scan(_h):
+                """응답 HTML → (본인 글 노드, 남의 글 수) — **분류만** 하고 채집은 안 한다(쿠키·게스트 2경로가
+                같은 자로 재야 어느 쪽이 통했는지 비교되고, 실패한 1차가 seen 을 오염시키지 않는다)."""
+                posts = []
+
+                def walk(n):
+                    if isinstance(n, dict):
+                        if n.get("code") and isinstance(n.get("caption"), dict) and "like_count" in n:
+                            posts.append(n)
+                        for v in n.values():
+                            walk(v)
+                    elif isinstance(n, list):
+                        for v in n:
+                            walk(v)
+                for m in re.finditer(r'<script type="application/json"[^>]*data-sjs[^>]*>(.*?)</script>', _h, re.S):
+                    try:
+                        walk(json.loads(m.group(1)))
+                    except Exception:  # noqa: BLE001
+                        continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
+                _my, _al = [], 0   # _my = 이 계정 본인 글 · _al = 추천 피드 폐기분
+                for p in posts:
+                    code = p.get("code") or ""
+                    txt = ((p.get("caption") or {}).get("text") or "").strip()
+                    if not code or not txt:
+                        continue
+                    # ⛔ 작성자 검문(운영자 260804 "내가 구독한 애들이 아닌데") — walk()는 응답 안의 **모든** 포스트 노드를 걷는다.
+                    #   게스트 응답은 프로필 주인 글만 담지만(260804 실측 = 등록 5계정 37건 전건 본인), 로그인
+                    #   상태(THREADS_COOKIE)·로그인월 리다이렉트 응답에는 **추천(For you) 피드**가 같이 실린다 →
+                    #   무검문 채집 = 구독한 적 없는 계정 20건이 '스레드 - 구독'을 통째로 차지(260804 실사고 · 등록 5계정 0건).
+                    #   X는 `"account": acc` 고정이라 구조적으로 불가능했고, 스레드만 노드의 username을 신뢰해서 갈렸다.
+                    #   → 요청한 계정과 작성자가 다르면 버린다(username 결측 = 주인 확인 불가 = 동일 폐기).
+                    user = ((p.get("user") or {}).get("username") or "").strip()
+                    if user.lower().lstrip("@") != _me:
+                        _al += 1
+                        continue
+                    _my.append((code, txt, user, p))
+                return _my, _al
+
             try:
                 h = _th_fetch(_u, _hdr, ck)   # 쿠키 = Jar 경유(302 챌린지 추적 · 260729) — 구 고정 Cookie 헤더 = 무한루프
             except urllib.error.HTTPError as _e:
@@ -1376,37 +1422,27 @@ def threads_subs(accounts, limit=10, deadline=None):
                     h = _th_fetch(_u, _hdr, "")   # 쿠키가 루프를 부르면 게스트 1회 폴백(260713 이전 기본 경로 · fail-soft)
                 else:
                     raise
-            posts = []
-
-            def walk(n):
-                if isinstance(n, dict):
-                    if n.get("code") and isinstance(n.get("caption"), dict) and "like_count" in n:
-                        posts.append(n)
-                    for v in n.values():
-                        walk(v)
-                elif isinstance(n, list):
-                    for v in n:
-                        walk(v)
-            for m in re.finditer(r'<script type="application/json"[^>]*data-sjs[^>]*>(.*?)</script>', h, re.S):
+            mine, _alien = _scan(h)
+            _via = "쿠키" if ck else "게스트"
+            # ⛔ 쿠키 오염 자동 회수(260804 2차 · 운영자 "이 같은 알림이 안 뜨게") — 260804 실사고에서 폰은
+            #   200을 정상 수신하고도(로그인월 시그널 0) 본인 글 0건이었다: 로그인 상태 응답이 프로필 대신
+            #   **추천 피드**를 실은 것. 종전엔 이게 사람 조치(쿠키 교체) 없이는 안 풀려 알림이 날마다 재발했다.
+            #   그런데 같은 시각 **게스트 요청은 정상**이었다(260804 실측 = 데이터센터 IP에서도 본인 글 9건).
+            #   → 쿠키가 무소득이면 게스트로 1회 더 두드린다(302 폴백 문법 계승 · 성공하면 그걸 채택).
+            #   반대(게스트 무소득 → 쿠키)는 안 한다: 쿠키가 이미 1차이므로 시도할 반대 모드가 없다.
+            if ck and not mine:
+                time.sleep(2)   # Meta 연타 회피(콜 간 4s 정본의 절반 = 같은 계정 재요청 1회분)
                 try:
-                    walk(json.loads(m.group(1)))
-                except Exception:  # noqa: BLE001
-                    continue   # 비JSON·파셜 블롭 = 개별 스킵(다른 블롭 계속)
-            _me, _mine, _alien = acc.lower().lstrip("@"), 0, 0   # 주인 판정 축(260804) — _mine = 이 계정 본인 글 · _alien = 추천 피드 폐기분
-            for p in posts:
-                code = p.get("code") or ""
-                txt = ((p.get("caption") or {}).get("text") or "").strip()
-                if not code or not txt or code in seen:
-                    continue
-                # ⛔ 작성자 검문(운영자 260804 "내가 구독한 애들이 아닌데") — walk()는 응답 안의 **모든** 포스트 노드를 걷는다.
-                #   게스트 응답은 프로필 주인 글만 담지만(260804 실측 = 등록 5계정 37건 전건 본인), 로그인
-                #   상태(THREADS_COOKIE)·로그인월 리다이렉트 응답에는 **추천(For you) 피드**가 같이 실린다 →
-                #   무검문 채집 = 구독한 적 없는 계정 20건이 '스레드 - 구독'을 통째로 차지(260804 실사고 · 등록 5계정 0건).
-                #   X는 `"account": acc` 고정이라 구조적으로 불가능했고, 스레드만 노드의 username을 신뢰해서 갈렸다.
-                #   → 요청한 계정과 작성자가 다르면 버린다(username 결측 = 주인 확인 불가 = 동일 폐기).
-                user = ((p.get("user") or {}).get("username") or "").strip()
-                if user.lower().lstrip("@") != _me:
-                    _alien += 1
+                    _h2 = _th_fetch(_u, _hdr, "")
+                    _m2, _a2 = _scan(_h2)
+                    if _m2:
+                        h, mine, _alien, _via = _h2, _m2, _a2, "게스트폴백"
+                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건(쿠키 오염 의심 — 갱신 권장)", file=sys.stderr)
+                except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
+                    print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
+            _mine = 0
+            for code, txt, user, p in mine:
+                if code in seen:
                     continue
                 seen.add(code)
                 _mine += 1
@@ -1424,8 +1460,10 @@ def threads_subs(accounts, limit=10, deadline=None):
                 _wall = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
                 _why = ("추천 피드 %d건만(프로필 미도달 = 리다이렉트·쿠키 오염)" % _alien) if _alien else \
                        ("포스트 노드 0(HTML %dKB·data-sjs %d개·%s)" % (len(h) // 1000, _sjs, "로그인월" if _wall else "레이아웃?"))
-                print(f"::warning::threads @{acc} 본인 글 0 — {_why}·쿠키{'유' if ck else '무'}(스킵)", file=sys.stderr)
-                _sfail("threads", acc, "wall" if (_wall and not _alien) else "empty")
+                print(f"::warning::threads @{acc} 본인 글 0 — {_why}·경로{_via}(스킵)", file=sys.stderr)
+                # 사유 3분화(260804 2차) — 종전 2분화는 alien 을 'empty' 로 뭉쳐 보내, 뷰어가 폰 축이면
+                #   무조건 "메타 로그인월 = 쿠키 갈아라"로 단정하던 헛 조치를 못 막았다(실사고 = why 전건 empty).
+                _sfail("threads", acc, "alien" if _alien else ("wall" if _wall else "empty"))
         except Exception as e:  # noqa: BLE001
             print(f"::warning::threads @{acc} 실패(스킵): {e}", file=sys.stderr)
             _sfail("threads", acc, _hcode(e))
