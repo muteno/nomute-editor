@@ -98,10 +98,12 @@ code{font-size:11.5px;background:rgba(255,255,255,.06);border-radius:5px;padding
       <tr><td>연타(3연속 탭) = 앞 디졸브 취소하고 마지막 메뉴 한 번만</td><td class="ok">잔여 투명 0</td></tr>
       <tr><td>프로그램 호출(<code>showTab</code> 직행)이 종전대로 동기인가</td><td class="ok">동기 유지(회귀 0)</td></tr>
       <tr><td>신규 색·px·커브</td><td class="ok">0 (토큰 계승만)</td></tr>
+      <tr><td><code>node shared/smoke_tabdz.js</code> — 이 결의 <b>상비 게이트</b>(Q1356 승격)</td><td class="ok">rc=0 · 코어 9종 전부 PASS</td></tr>
+      <tr><td>킬테스트 ⓐ 디졸브 통째 제거 / ⓑ 뷰헤드 지연 해제 한 줄만 제거</td><td class="ok">ⓐ D1·D2·D3 FAIL · ⓑ D3 단독 FAIL(Δ0.055&gt;0.02) = 게이트가 실제로 잡는다</td></tr>
     </tbody>
   </table>
   <div class="note"><b>전정계(prefers-reduced-motion) · 부팅 전 · 토큰 부재</b>는 전부 종전 즉시 교체로 안전 낙하한다 — 디졸브가 못 도는 상황에서 화면이 멈추는 일이 없다.
-  검증 도구 = <code>shared/probe_tabswitch.js</code>(매 프레임 opacity) · <code>shared/probe_tabshots.js</code>(20배 슬로모션) · <code>shared/probe_tabdz_reg.js</code>(회귀 순회).</div>
+  상비 게이트 = <code>shared/smoke_tabdz.js</code>(코어 9종 · <code>smoke_all</code> 자동 편입 · 킬테스트 2종 실증) · 슬로모션 캡처 = <code>shared/probe_tabshots.js</code>.</div>
 </section>
 
 </body></html>`;
