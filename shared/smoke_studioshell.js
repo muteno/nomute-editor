@@ -20,7 +20,7 @@
 //   C3 레일 칩 광학 잉크 = **2셸 교차 한 중앙축**            ← smoke_parity C15(이미지 4탭)의 크로스-셸 확장 · 260802 6차 중앙정렬 개정
 //   C4 레일 픽토 = 버튼 22×22 / 글리프 12×12 실측            ← check_refs 정적 5축의 런타임 대조
 //   C5 페이지 에러 0 · C6 외부 호스트 유출 0
-//   C7 미리보기 모듈 등가(이미지 셸 5탭) = 창 w/h · 발사 버튼 h/radius/fs · 돋보기 캡슐 상대좌표/크기
+//   C7 미리보기 모듈 등가(이미지 셸 5탭) = 창 w/h · 발사 버튼 h/radius/fs+스킨(테두리색·배경·블러 · 260804 편입) · 돋보기 캡슐 상대좌표/크기
 //      ← 운영자 260802 6차 "미리보기 창이 미세하게 크기가 달라" — 구 게이트가 안 재던 축(번역 발사 27px·돋보기 x 표류가 조용히 통과했다)의 편입
 //   C8 미리보기 = 10탭 전부 가시 + 부팅 비확대(운영자 260803 "미리보기가 안보이는 화면은 아예 잘못 · 기본을 작게")
 //   C9 **세로축** = 도크 하단 ↔ 첫 블릿 잉크가 카드 제작 정본 한 값(폰 430 전용 sweep)
@@ -155,7 +155,7 @@ const PROBE = () => {
   const pbEl = boxEl ? [...boxEl.querySelectorAll('.cpv-photobtn')].filter(seen)[0] : null;
   const prevMod = {
     box: bb ? [+bb.width.toFixed(1), +bb.height.toFixed(1)] : null,
-    fire: gb2 ? [+gb2.height.toFixed(1), w.getComputedStyle(goBtn).borderRadius, w.getComputedStyle(goBtn).fontSize] : null,
+    fire: gb2 ? (cs => [+gb2.height.toFixed(1), cs.borderRadius, cs.fontSize, cs.borderTopColor, cs.backgroundColor, cs.backdropFilter || cs.webkitBackdropFilter || 'none'])(w.getComputedStyle(goBtn)) : null,   // 스킨 3축(테두리색·배경·블러) 편입 = 운영자 260804 승인 — 구판은 h/r/fs(기하)만 재서 AI생성 발사만 테두리 .2로 갈라진 사고(«혼자 별도의 버튼»)가 C7을 그대로 통과했다(눈이 유일한 검출기이던 축의 기계화)
     zoom: (zb && bb) ? [+(zb.x - (bb.x + bb.width)).toFixed(1), +(zb.y - bb.y).toFixed(1), +zb.width.toFixed(1), +zb.height.toFixed(1)] : null,
     stage: stEl ? [w.getComputedStyle(stEl).backgroundColor] : null,   // 무대 필러색(운영자 260802 9차 "검정창" — 번역만 순흑 노출 사고의 편입)
     pb: [!!pbEl],   // 빈 상태 사진 픽토 존재(운영자 260802 9차 "특수에는 사진이 없다던지")
@@ -454,7 +454,7 @@ async function runOnce(pg, gap, clone) {
       return axes.some(ax => p[ax] && r[ax] && pmDiff(p[ax], r[ax]));
     }).map(([k, v]) => k + '=' + JSON.stringify(v.prevMod)));
   }
-  core('C7 미리보기 모듈 등가(셸 안) = 창 w/h · 발사 h/r/fs · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
+  core('C7 미리보기 모듈 등가(셸 안) = 창 w/h · 발사 h/r/fs+스킨(테두리·배경·블러) · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
     Object.keys(pmRefs).some(k => k.startsWith('이미지_')) && pmBad.length === 0,
     pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(pmRefs) : JSON.stringify(pmRefs));
 
