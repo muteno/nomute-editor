@@ -1,0 +1,32 @@
+name: yt-cookie-whoami
+
+# YT_T_COOKIES(설정 ▸ 다운로드 유튜브 쿠키)가 **어느 계정으로 로그인돼 있는지** 실측하는 수동 진단.
+# Actions 탭 → yt-cookie-whoami → Run workflow 로 실행(운영자 버튼 1번).
+# ⚠ 쿠키 값·이메일은 절대 로그에 안 찍는다 — 찍는 것 = {줄수 · 로그인 쿠키 이름/만료 ·
+#   LOGGED_IN 실측 · 채널명/핸들(기본 앞2자 마스킹)}뿐. 퍼블릭 레포 = Actions 로그 공개라
+#   기본이 마스킹이고, 전체 표시가 필요할 때만 reveal 에 full 을 넣는다.
+# 문법 정본 = account-selftest.yml(workflow_dispatch · contents:read · python 셀프테스트 1스텝) 계승.
+# 시크릿은 vidl-make.yml 동일 축(YT_T_COOKIES → env YT_COOKIES) — 구 YT_COOKIES 시크릿은 안 건드림.
+on:
+  workflow_dispatch:
+    inputs:
+      reveal:
+        description: '채널명·핸들 표시 — masked(기본·앞2자) / full(전체)'
+        type: string
+        default: 'masked'
+
+permissions:
+  contents: read
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 쿠키 계정 실측(비민감 식별자만)
+        env:
+          YT_COOKIES: ${{ secrets.YT_T_COOKIES }}
+          REVEAL: ${{ inputs.reveal }}   # env 경유 = 셸 주입 차단(vidl-make IN_MODE 화이트리스트와 같은 축)
+        run: python3 .github/scripts/yt_cookie_whoami.py
