@@ -176,6 +176,7 @@ const PROBE = (cfg) => {
 
   const rows = [];
   const seen = new Set();
+  let clipped = 0;   // 뷰포트 변에 **걸친** 캡슐 = 측정 불가라 후보에서 뺀 수(아래 사유 · 침묵 금지 = 실패 출력에 같이 찍는다)
   for (const cap of scope.querySelectorAll('*')) {
     if (!vis(cap) || !isCapsule(cap)) continue;
     if (cap.matches(CTRL)) continue;                       // 캡슐 자체가 컨트롤 = 이미 전체가 버튼 = 대상 아님
@@ -187,6 +188,14 @@ const PROBE = (cfg) => {
     if ([...cap.querySelectorAll('*')].some(x => x !== inner && x !== cap && vis(x) && isCapsule(x) && x.contains(inner))) continue;
     const r = cap.getBoundingClientRect();
     if (r.width < 24 || r.height < 24) continue;           // 픽토 레일(22×22 정본) = 대상 아님 — 캡슐이 작으면 히트존도 작은 게 정상
+    // ⚠ 뷰포트 변에 **걸친**(일부만 보이는) 캡슐 = 측정 불가 → 후보 제외(260804 위양성 봉합).
+    //   `vis()`는 **완전히** 밖인 것만 걸러서, 아래쪽 변에 10px 물린 캡슐이 그대로 후보가 됐다.
+    //   그러면 창 밖 격자점의 elementFromPoint가 전부 null → 히트가 잘린 만큼 덜 세어져 **멀쩡한 부품이 FAIL**로 뜬다
+    //   (실측 260804 = 추가 옵션 「모자이크·키잉」 카드 37.2px 중 10.1px가 창 밖 → 845점 중 260점 null → hitH 27<30.
+    //    같은 카드가 창 안에 다 들어오면 hitH 36·면적 91.6%로 통과 = 부품은 처음부터 정상이었다).
+    //   ⓐ 왜 「창 안 격자점만 세기」가 아니라 제외인가 = 잘린 부분의 히트는 **알 수 없는** 것이지 없는 게 아니다 → 모르는 걸 나쁘다고 세면 그게 위양성이다.
+    //   ⓑ 커버리지 손실은 침묵시키지 않는다 = 아래 clipped 카운터가 실패 출력에 같이 뜬다(레포 관례 「no silent caps」).
+    if (r.top < 0 || r.left < 0 || r.bottom > w.innerHeight || r.right > w.innerWidth) { clipped++; continue; }
     const k = Math.round(r.x) + ',' + Math.round(r.y) + ',' + Math.round(r.width) + ',' + Math.round(r.height);
     if (seen.has(k)) continue; seen.add(k);
 
@@ -257,7 +266,7 @@ const PROBE = (cfg) => {
     if (seenL.has(s)) continue; seenL.add(s);
     liars.push({ sig: s, txt: (el.textContent || '').trim().slice(0, 14), w: +r.width.toFixed(1), h: +r.height.toFixed(1) });
   }
-  return { skip: '', rows, liars };
+  return { skip: '', rows, liars, clipped };
 };
 
 async function sweep(browser, port) {
@@ -321,7 +330,9 @@ async function sweep(browser, port) {
       if (LIAR_BASE[key] !== undefined) continue;
       liars.push({ tab, ...l });
     }
-    console.log('── 스캔 ' + scanned + '탭 · 「캡슐 안 단독 컨트롤」 후보 ' + cands + '개 (격자 ' + STEP + 'px · 폰 430)');
+    const clipTot = Object.values(m).reduce((n, v) => n + (v.clipped || 0), 0);   // 창 변에 걸려 측정에서 뺀 캡슐 = 커버리지 손실(침묵 금지)
+    console.log('── 스캔 ' + scanned + '탭 · 「캡슐 안 단독 컨트롤」 후보 ' + cands + '개 (격자 ' + STEP + 'px · 폰 430)'
+      + (clipTot ? ' · 창 변 걸침 제외 ' + clipTot + '개(측정 불가 — 스크롤 밖 부품은 이 게이트 사각)' : ''));
     if (process.argv.includes('--seed')) {
       console.log('── LIAR_BASE 시드 ──');
       for (const l of liars) console.log("  '" + l.tab + '::' + l.sig + "': 1,   // " + (l.txt || '') + ' ' + l.w + '×' + l.h);
