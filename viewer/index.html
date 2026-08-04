@@ -3541,11 +3541,11 @@
   .dg-urlrow { display:flex; align-items:center; gap:var(--sp-1); }
   .dg-urlrow .iowrap { flex:1 1 auto; min-width:0; }   /* attachCopyPaste가 입력칸에 씌우는 래퍼(클립 버튼 앵커) = 이제 이 행의 flex 아이템 → 폭 담당을 래퍼로 이관(입력칸은 래퍼 100%) */
   .dg-urlrow .geni-in { width:100%; height:var(--btn); }   /* 입력칸 높이 = 옆 버튼(.sbtn 34 = --btn)과 **동일 티어** — 구 링크 행은 입력 29 / 픽토 34 / [가져오기] 27 세 높이가 한 줄에 섞여 눈에 삐뚤빼뚤했다(운영자 260802 "삐뚤삐둘" · 실측 Δ5·Δ7px) · 값 = 등재 토큰 티어 교체(신규 값 0) */
-  /* 받은 파일 행 = 잡 카드 변형 행(.jvars .jvar) 정본 그대로 쓰되, **파일명이 길다**는 이 화면 사정만 흡수:
-     한 줄 고정 + 말줄임 → 개별 ⬇가 한 세로선에 선다(구: 이름이 2줄로 접히며 ⬇가 행마다 들쭉날쭉 · 실렌더 실측 260802).
-     이미지 스튜디오는 변형 라벨이 「OPA60」처럼 짧아 이 사정이 없다 = 값·색·부품 무접촉, 줄바꿈 축만 이 화면 몫. */
-  #dgBody .job .jvars .jvar { display:flex; width:100%; }
-  #dgBody .job .jvars .jvar-tx { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* 받은 파일 행 = 잡 카드 변형 행(.jvars .jvar) 정본 **100% 그대로**(운영자 260804 "양식을 첨부2처럼").
+     구 오버라이드(한 줄 고정 + 말줄임 + width:100%)는 **라벨이 풀 파일명이라** 필요했던 것인데,
+     라벨을 이미지 스튜디오와 같은 짧은 말(영상·자막·본문·사진 N)로 바꾼 순간 사정 자체가 사라졌다
+     → 오버라이드 삭제 = 정본 `display:inline-flex` 칩 형태로 복귀(구 폐해 = X 게시물처럼 접두가 같고
+     확장자만 다른 3파일이 [1][2][3] **전부 똑같이 보였다** · 260804 실측 스샷). 풀 파일명·크기는 title로 보존. */
   .dg-urlrow .sbtn { flex:none; }   /* 링크 행 다운로드 버튼 = .sbtn 부품 + .dlbtn 전 앱 다운로드 색 정본(뉴스 요약 다운로드 버튼과 같은 계약 · 색 재설계 0 — 골드레몬 #FFE13D = nm-cards.css `.dlbtn` SSOT 실렌더 확인 260802) */
   .dg-hint { color:var(--mut); font-size:var(--fs-sm); font-weight:var(--fw-b); line-height:var(--lh-base); padding:var(--sp-1) 0 0; }
   .dg-hint b { color:var(--fg); }
@@ -8848,6 +8848,25 @@ function _dgRenderBody() {
 }
 // 받기 잡 카드 = 이미지 스튜디오 제작 잡 행(thumb renderJob) 마크업 100% 미러 — 부품·클래스·자리 전부 nm-job.css 공동 정본.
 //   [jlab 「플랫폼 · 받을 것 #N」] [jst 우측 상태(orb/✓/⚠ + 경과·소요)] / [jgrid: jvars 파일 [i] 이름 ⬇ | jsave-row ⬇전체] / 진행 중 = .jdel 취소 X
+// 받은 파일 라벨 = 이미지 스튜디오 변형 라벨(「흰칸」·「기본」)과 같은 **짧은 말**(운영자 260804 "양식을 첨부2처럼").
+//   왜 파일명을 안 쓰나: X 게시물은 {영상.mp4 · 자막.srt · 자막.txt}가 접두 100자를 공유하고 **확장자만** 다르다
+//   → 행에 파일명을 깔면 [1][2][3]이 눈으로 구분이 안 된다(260804 실측 스샷 = 세 줄이 같은 글자로 보임).
+//   구분이 필요한 축은 「이게 무엇인가」지 「파일명이 무엇인가」가 아니다 — 파일명·크기는 title로 간다.
+function _dgFileLabel(f, imgN) {
+  const n = String((f && f.name) || ''), low = n.toLowerCase();
+  const ext = (low.match(/\.([a-z0-9]+)$/) || ['', ''])[1];
+  const stt = low.indexOf('.stt.') >= 0;   // 받아쓰기 폴백 산출(vidl_run stt_fallback) = 플랫폼 자막과 구분해 말한다
+  if (f && f.kind === 'img') return '사진' + (imgN > 0 ? ' ' + imgN : '');
+  if (/_본문[_.]/.test(n)) return '본문';
+  if (ext === 'srt' || ext === 'vtt') return stt ? '받아쓰기 자막' : '자막';
+  if (ext === 'txt') return (stt ? '받아쓰기 자막' : '자막') + ' (txt)';
+  if (f && f.kind === 'video') {
+    if (n.indexOf('_maxfps_') >= 0) return '영상 · 프레임별';   // ②판 표식(vidl_run name_tag) — 어느 판인지가 이 화면의 구분점
+    if (n.indexOf('_1080p_') >= 0) return '영상 · FHD판';      // ③판 표식
+    return '영상';
+  }
+  return ext ? ext.toUpperCase() : '파일';
+}
 function _dgJobHtml(v, i) {
   const fs = (v.res && v.res.files) || [];
   const sec = Math.max(0, Math.round((Date.now() - (v.t0 || Date.now())) / 1000));
@@ -8863,11 +8882,18 @@ function _dgJobHtml(v, i) {
   //  버튼이 없어도 40분 폴 상한이 스스로 실패로 닫고, 창을 닫으면 폴은 멈춘 채 잡만 보존된다 = 갇히는 상태 없음.)
   if (v.st === 'fail') h += '<button type="button" class="geni-opt" data-act="vidgo" data-i="' + i + '">다시 시도</button>';
   if (v.st === 'done' && fs.length) {
+    let _imgN = 0;
     h += '<div class="jgrid"><div class="jvars">'
       + fs.map((f, k) => {
         const got = !!_dg.got[f.url];
-        return '<span class="jvar"><span class="jvar-tx">[' + (k + 1) + '] ' + esc(f.name) + (f.size ? ' · ' + _dgFmt(f.size) : '') + '</span>'
-          + '<button type="button" class="jvar-dl dlbtn' + (got ? ' dl-done' : '') + '" data-act="vidget" data-j="' + i + '" data-i="' + k + '" title="다운로드" aria-label="다운로드">' + DOWNLOAD_SVG + '</button></span>';   // 개별 다운로드 = 이미지 스튜디오 변형 행 ⬇(.jvar-dl.dlbtn 픽토온리·골드레몬) 그대로
+        if (f.kind === 'img') _imgN++;
+        const lab = _dgFileLabel(f, _imgN);
+        const tip = f.name + (f.size ? ' · ' + _dgFmt(f.size) : '');   // 풀 파일명·크기 = 툴팁으로 보존(행에서 뺀 정보를 버리지 않는다)
+        // 변형 행 = 이미지 스튜디오 정본 100% 사본: `.jvar.on` + 점선 밑줄 라벨(클릭) + 픽토온리 ⬇.
+        // ⚠ `.on`은 **어포던스**다(cursor:pointer + 점선 = "눌리는 자리") → 라벨에도 같은 다운로드를 물린다
+        //   = 거짓 어포던스 0(정본은 라벨 클릭 = 그 변형으로 점프 · 여기선 그 파일 받기 = 이 화면의 유일한 동작).
+        return '<span class="jvar on"><span class="jvar-tx" data-act="vidget" data-j="' + i + '" data-i="' + k + '" title="' + esc(tip) + '">[' + (k + 1) + '] ' + esc(lab) + '</span>'
+          + '<button type="button" class="jvar-dl dlbtn' + (got ? ' dl-done' : '') + '" data-act="vidget" data-j="' + i + '" data-i="' + k + '" title="' + esc(tip) + '" aria-label="' + esc(lab) + ' 다운로드">' + DOWNLOAD_SVG + '</button></span>';   // 개별 다운로드 = 이미지 스튜디오 변형 행 ⬇(.jvar-dl.dlbtn 픽토온리·골드레몬) 그대로
       }).join('')
       + '</div>' + (fs.length > 1 ? '<div class="jsave-row">' + _dgAllBtnHtml('vidall', ' data-j="' + i + '"', '받은 파일 ' + fs.length + '건 전체 다운로드') + '</div>' : '') + '</div>';   // 전체 다운로드 = 같은 카드 우측 .jsave-row(정본 자리)
     const dr0 = (v.res && v.res.drive) || {};

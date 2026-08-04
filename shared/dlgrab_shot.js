@@ -160,10 +160,15 @@ const SEED = () => {
 
     // ③ done = 완료 파일 목록
     await pg.evaluate(() => {
+      // 260804 실측 산출 그대로(운영자 스샷의 X 카드 4건) — **접두 100자가 같고 확장자만 다른** 최악 케이스.
+      //   구판은 행 라벨이 풀 파일명이라 [1][2][3]이 눈으로 구분이 안 됐다 = 이 픽스처가 그 사고를 재현한다.
+      //   kind 값도 러너 정본(vidl_run ctype_of → video/img/sub) 그대로 — 구 'subs'는 실제로 안 나오는 값이었다.
+      const STEM = '20260804_153820_X_1_2084263402139230208_captinkang38_캡틴강 ᴋʀᴜᴍ - 정우성씨 이 영상을 정우성씨에게 바칩니다';
       const files = [
-        { name: '260802_X_corea_eeuu_영상.mp4', url: 'https://x.invalid/a.mp4', size: 18400000, kind: 'video' },
-        { name: '260802_X_corea_eeuu_1080p.mp4', url: 'https://x.invalid/b.mp4', size: 9200000, kind: 'video' },
-        { name: '260802_X_corea_eeuu.ko.srt', url: 'https://x.invalid/c.srt', size: 4100, kind: 'subs' },
+        { name: STEM + '.mp4', url: 'https://x.invalid/a.mp4', size: 18400000, kind: 'video' },
+        { name: STEM + '.ko.srt', url: 'https://x.invalid/b.srt', size: 4100, kind: 'sub' },
+        { name: STEM + '.ko.txt', url: 'https://x.invalid/c.txt', size: 2200, kind: 'sub' },
+        { name: '20260804_153820_X_본문_captinkang38_캡틴강 ᴋʀᴜᴍ - 정우성씨 이 영상을 정우성씨에게 바칩니다.txt', url: 'https://x.invalid/d.txt', size: 88, kind: 'sub' },
       ];
       const v = { url: 'https://x.com/corea_eeuu/status/2083829997207538', plat: 'X', id: 'run1', mode: 'both', t0: Date.now() - 214e3, sec: 214, n: 1, st: 'done', res: { files, mode: 'both', best: { w: 1280, h: 720, fps: 30 }, drive: { on: true, n: 3 } } };
       if (typeof _dg !== 'undefined' && Array.isArray(_dg.jobs)) { _dg.jobs.length = 0; _dg.jobs.push(v); }
