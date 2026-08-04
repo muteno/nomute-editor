@@ -923,10 +923,21 @@ function renderTrHist() {
     th.append(dl, img, cap); it.append(hd, th); grid.appendChild(it);
   });
 }
-async function loadServerHist() {   // thumb loadServerHist 축약 동문(복원·딥링크 없는 읽기 전용 갈래)
-  try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) SRV_HIST = d; } } catch { /* 없으면 로컬만 */ }
-  try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) { SRV_CLEAR = Math.max(SRV_CLEAR, +j.ts); try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} } } } catch { /* 없으면 0 = 안 지움 */ }
-  renderTrHist();
+let _trHistPolling = false, _trHistSig = '';   // in-flight 가드 + 변경감지 시그니처 = thumb pollServerHist 문법 미러(무변경 재빌드 0 = 깜빡임·죽은항목 404 재스팸 차단)
+async function loadServerHist() {   // thumb pollServerHist 축약 동문(복원·딥링크 없는 읽기 전용 갈래) — 부팅 1회 + 10s 자동 폴 + 복귀 3축 공용 진입점
+  if (_trHistPolling) return;   // in-flight 가드 = visibilitychange+focus+nm-sync nmRefresh 동시 발동 코얼레싱(중복 fetch 0 — 구판은 복귀마다 2중 fetch였다)
+  _trHistPolling = true;
+  try {
+    let hist = null, clr = SRV_CLEAR;
+    try { const r = await fetch('thumb-hist.json?_=' + Date.now()); if (r.ok) { const d = await r.json(); if (Array.isArray(d)) hist = d; } } catch { /* 없으면 로컬만 */ }
+    try { const c = await fetch('thumb-clear.json?_=' + Date.now()); if (c.ok) { const j = await c.json(); if (j && +j.ts) clr = Math.max(clr, +j.ts); } } catch { /* 없으면 0 = 안 지움 */ }
+    const sig = (hist ? hist.length + ':' + ((hist[0] || {}).url || '') + ':' + ((hist[hist.length - 1] || {}).url || '') : 'x') + '|' + clr;   // 목록 길이+첫/끝 url+clr = append/prepend/절단/지우기 감지(thumb 동문)
+    if (sig === _trHistSig) return;   // 무변경 = 재빌드 skip(10s 폴이 그리드를 매번 갈아엎어 이미지가 재로드되는 것 차단)
+    _trHistSig = sig;
+    if (hist) SRV_HIST = hist;
+    if (clr > SRV_CLEAR) { SRV_CLEAR = clr; try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} }
+    renderTrHist();
+  } finally { _trHistPolling = false; }
 }
 // ── 결과(이번 세션 완료분) = thumb #carH 축 계승(운영자 260803 Q1228) — 항목 = renderTrHist 빌더 사본(읽기 전용) · 세션 메모리(과거분 = 이전 제작 전담) ──
 const TR_RES = [];
@@ -977,9 +988,15 @@ $('histH').addEventListener('click', () => { const b = $('histBody'), open = b.h
   else if (matchMedia('(prefers-reduced-motion:reduce)').matches) { b.hidden = true; }
   else { b.classList.add('closing'); _histCloseT = setTimeout(() => { b.hidden = true; b.classList.remove('closing'); }, 270); }
 });
+/* ── 이전 제작 동기화 4축 = 형제 탭(thumb:4938~4943 · edit:2808) 정본 계승(운영자 260804 "번역하고 AI생성만 싱크를 맞춰줘 · 갱신만 같이 되게") ──
+   구판 = 부팅 1회 + 탭 복귀뿐이라, **탭을 켜둔 채 다른 기기·형제 탭에서 만든 것이 화면에 안 붙었다**(형제 4탭은 10s마다 수렴하는데 번역만 정지 = 운영자가 본 「싱크 안 맞음」).
+   여기서 늘어나는 비용 = 무변경 시 정적 JSON 2콜(sig 게이트가 재렌더 0) · visible 게이트로 백그라운드 탭은 0콜. */
 loadServerHist();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) loadServerHist(); });   // 탭 복귀 재동기 = thumb pollServerHist 축약(형제 탭·타 기기 제작 반영)
-window.nmRefresh = loadServerHist;   // 부모 셸 헤더 새로고침 훅 + nm-sync.js 복귀 자동 재동기(운영자 260803 4차 — 구 "번역 = 훅 미보유 무동작"을 상속으로 전환)
+window.addEventListener('focus', () => loadServerHist());   // 창 포커스 복귀 = thumb:4939 동문(visibilitychange 미발화 경로 · in-flight 가드가 중복 흡수)
+window.addEventListener('pageshow', e => { if (e.persisted) loadServerHist(); });   // iOS PWA bfcache 복귀 = visibilitychange 미발화 경로 보강(thumb:4940 동문)
+setInterval(() => { if (!document.hidden) loadServerHist(); }, 10000);   // raw-ok: 폴 주기(ms — 지속시간 토큰 아님) · 10s 자동 폴(운영자 260731 "동기화가 십초 단위로") — 상시 탭이 타 기기 제작을 새로고침 없이 수신 · visible 게이트 + sig 게이트(무변경 재렌더 0) + in-flight 가드 = thumb pollServerHist 문법 미러
+window.nmRefresh = () => loadServerHist();   // 부모 셸 헤더 새로고침 훅 + nm-sync.js 복귀 자동 재동기(운영자 260803 4차 — 구 "번역 = 훅 미보유 무동작"을 상속으로 전환) · 화살표 래핑 = 이벤트 인자 유입 차단
 
 /* ── 번역 결과 영속 — 공유 편입의 발원(합성 캔버스는 클라에만 존재했다 = 5탭 중 유일하게 이력 0이던 구멍) ──
    흐름: pv 캔버스 → JPEG → api/trhist(R2 put + gen_out/trhist.json 커밋) → 로컬 브리지 기록(형제 4탭 즉시 공유) → build-viewer가 thumb-hist.json 병합(전 기기 영속). */
