@@ -12834,49 +12834,12 @@ function renderSnsTrends() {
         return sAt(O + off);   // 무확장(≤N) = 종전 N위 루프 미리보기(랩)
       };
       const mRk = off => (!box._tsMore && hasX) ? (i0 + off) : sIdx(O + off);   // 미니 순위·data-si = 콘텐츠 정합(연속 = 절대 인덱스 · 그 외 = 종전 wrap) — 클릭 핸들러 _tsSeqX 절대참조와 짝
-      // ① 커버 노드 보관(운영자 260804 "넘길 때마다 번쩍번쩍") — innerHTML 통째 재구축은 **같은 그림도 새 img 노드**로 만들고,
-      //    새 노드는 메모리 캐시 히트여도 complete=false 상태를 1~2프레임 거친다. 스택 넘김은 2·3·4위가 히어로·미니로
-      //    **자리만 옮기는** 동작이라 그 3장은 이미 디코드가 끝났는데도 같이 깜빡였다(실측 260804 · 1280 티어 8회차 전건 =
-      //    넘김마다 3~4장/4가 2프레임 빈칸 → 사용자가 본 "한번~두번 번쩍"). → 디코드 완료분을 src로 들고 있다가 ②에서 되돌린다.
-      const keep = new Map();
-      stkEl.querySelectorAll('.tsk-cov img').forEach(im => { if (im.complete && im.naturalWidth > 0) keep.set(im.src, im); });
       stkEl.innerHTML =
         `<div class="tstk-g roll">${skCard(sAt(O), i0, 'hero')}<div class="tstk-mini">${skCard(mAt(1), mRk(1), 'mini')}${skCard(mAt(2), mRk(2), 'mini')}${skCard(mAt(3), mRk(3), 'mini')}</div>` +
         (i0 > 0 ? `<button class="feednav prev" type="button" data-nav="-1" aria-label="이전">${CHEV_L_SVG}</button>` : '') +   // 1위 = ◀ 숨김(뒤 없음 · 운영자 260717) · 2위+ = 종전 ◀
         (rk >= 10 ? `<span class="tstk-cnt">${rk}/${box._tsSeqX.length}</span>` : '') +   // 10위+ = 현재 순위/전체 초미니 카운터(운영자 260716 "카운터 ㄱ") — 숫자 = 문자 렌더 허용 축(3-1) · 꼬리 끝에도 유지(30/30) · 하한 11→10·분모 sN()→_tsSeqX.length(260729): 첫 ↻(히어로 10위)가 정규 모드라 카운터 미출력 → 화면 최대 숫자가 미니 13이라 "↻가 13에서 뜬다"로 읽히던 것(운영자 260729 지적) 봉합 · ↻ 노출 순위(home5)는 무접촉 = 10·15·20·25·30 불변
         (home5 ? `<button class="feednav tstk-rst tstk-rst-sm" type="button" data-go="0" aria-label="처음으로" title="처음으로">${Q_REFR}</button>` : '') +   // 10·15·20·25위 = > 위 '처음으로' ↻(운영자 260717) · ↻ = 새로고침 픽토 차용일 뿐 뜻 = 1위 복귀 · 같은 열 축·픽토 중심 CSS right 정합
         `<button class="feednav next" type="button" data-nav="1" aria-label="다음">${CHEV_R_SVG}</button>` + `</div>`;   // > = 항상 노출 · 꼬리 끝 = 전진 로직이 처음 랩(_tsAdv · 운영자 260717) · .feednav 정본 계승(운영자 260713)
-      // ② 승계 = 같은 그림이면 보관 노드를 그 자리에 되돌린다(디코드 상태 그대로 승계 = 빈칸 0 · 첫 페인트 전 동기 교체).
-      //    img 속성 조합은 skCard·③ 단일 산출이라 새 노드와 동일 = 겉모습·핸들러 차이 0 · 크기는 CSS(.tsk-cov)가 잡아 히어로↔미니 이동 무해.
-      //    조회 순서 = 화면 보관분(keep) → 미리 받아둔 창고(bank). 승계한 노드는 창고에서 빼 같은 노드를 두 자리에 붙이는 경합을 막는다.
-      const bank = box._tsBank || (box._tsBank = new Map());
-      stkEl.querySelectorAll('.tsk-cov img').forEach(im => { const o = keep.get(im.src) || bank.get(im.src); if (o && o !== im) { bank.delete(im.src); im.replaceWith(o); } });
-      // ③ look-ahead 프리로드 = 다음 넘김에 **처음 등장할** 커버를 미리 받아 **디코드까지 끝낸 노드**로 창고에 넣는다.
-      //    ②만으로는 신규 그림이 여전히 새 노드 = 1프레임 빈칸이었다(실측 260804 = 4장→1장까지만 줄었다). 노드째 승계해야 0이 된다.
-      //    ⚠ 발화는 **스택이 화면에 들어온 뒤**로 묶는다(아래 IO). 무조건 받으면 트렌드 탭을 안 여는 세션에서도 외부 호스트로
-      //      요청이 나가 「외부 호스트 유출 0」 계약을 깬다(실측 260804 = smoke_fire C5·smoke_parity C9·smoke_studioshell 동반 FAIL).
-      //      화면에 없는 스택은 넘길 수도 없으니 기능 손실 0이고, 안 보는 사람은 커버를 1건도 안 받는다.
-      box._tsPrefetch = () => {
-        if (!stkEl._tsSeen) return;
-        const pf = box._tsPf || (box._tsPf = new Set());
-        for (let k = 1; k <= 4; k++) {
-          const nx = mAt(3 + k), u = nx && nx.th;
-          if (!u || pf.has(u)) continue;
-          pf.add(u);
-          //    ⚠ loading='lazy' 금지 — DOM 밖 노드는 뷰포트 교차 판정 대상이 아니라 lazy를 주면 decode()가 **영영 pending**이다
-          //       (실측 260804: 창고가 0건에서 안 늘어 신규 1장 빈칸이 그대로 남았다). 프리로드는 지금 받는 게 목적이라 eager가 정합.
-          const pi = new Image(); pi.referrerPolicy = 'no-referrer'; pi.alt = '';
-          pi.onerror = function () { this.style.display = 'none'; };   // skCard 인라인 onerror 동값 승계(승계 뒤 재실패해도 종전과 같은 처리)
-          pi.src = u;
-          const stash = () => { bank.set(pi.src, pi); if (bank.size > 48) { const it = bank.keys(); for (let n = bank.size - 48; n > 0; n--) bank.delete(it.next().value); } };
-          pi.onload = () => { (pi.decode ? pi.decode() : Promise.resolve()).then(stash).catch(stash); };   // decode까지 끝낸 뒤 등재(반쯤 받은 그림 승계 0) · decode 미지원·거부는 onload 시점으로 폴백
-        }
-      };
-      box._tsPrefetch();   // 이미 본 적 있는 스택(넘김 중)이면 즉시 다음 것 준비 · 첫 렌더는 _tsSeen 미설정이라 무발화
-      if (!stkEl._tsIO && 'IntersectionObserver' in window) {   // 첫 노출 감지 = 여기서부터 프리로드 개방(레일 스크롤스파이 IO 관례 계승 · 노드와 수명 동일)
-        stkEl._tsIO = new IntersectionObserver(es => { if (es.some(e2 => e2.isIntersecting)) { stkEl._tsSeen = 1; if (box._tsPrefetch) box._tsPrefetch(); } });
-        stkEl._tsIO.observe(stkEl);
-      }
       const ts2 = [sAt(O), mAt(1), mAt(2), mAt(3)].filter(Boolean);
       stkEl.querySelectorAll('.tsk-t').forEach((el2, k2) => { el2.innerHTML = ts2[k2] ? dimTags(ts2[k2].t) : ''; });   // dimTags = 끝쪽 영문 해시태그 mut 회색(esc 경유 XSS 안전 · 운영자 260719)
     };   // 촤르르 = .tstk-g에 roll 직접 부여(신규 노드라 부착 즉시 재생 · 구 rAF classList.add 폐지 = opacity 0 안 거침 = 번쩍 0 · 운영자 260717)
