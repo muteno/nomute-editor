@@ -1339,6 +1339,11 @@
     background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.5),transparent); transform:translateX(-120%);
     animation:shine 1.2s linear infinite; pointer-events:none; z-index:1; }   /* 훑는 shine = .sc-got.picking::after 값 사본 */
   @media (prefers-reduced-motion:reduce) { .soc-send.picking::after { animation:none; } }
+  /* 종료 = 'Pk-ed'(요약 완료 · 운영자 260804 "완료되면 Pk-ed로 · 계승되는 느낌은 똑같고") — 메뉴1 PICKED 칩 `.sc-got` 값 100% 사본(초록 빗금 = '득템+잠김')
+     · shine 정지(끝났으니 안 움직인다 = 메뉴1 `.sc-got:not(.picking)` 동문) · 탭 가능 = 그 요약 열기(메뉴1 PICKED 탭 = 피드 이동 계승) */
+  .soc-send.asksend.picked { color:var(--accent); border-color:rgba(var(--accent-rgb),.4); cursor:pointer;
+    background:repeating-linear-gradient(45deg, rgba(var(--accent-rgb),.20) 0 5px, rgba(var(--accent-rgb),.05) 5px 10px); }
+  .soc-send.picked > span:not(.pkg) { opacity:0; }   /* 폭 앵커 '전송' 유지 = picking과 동일(크기 불변 축 그대로) */
   .soc-title { font-size:14.5px; font-weight:700; line-height:1.42; letter-spacing:-.2px; }
   .soc-title { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }   /* 제목 = 모바일 1줄 클램프(운영자 260729 "모바일에서는 1줄") — .tcard-t 정본 계승(넘치면 … 자동) · 원 라인 무접촉 = 값 유지 */
   @media (min-width:560px) { .soc-title { -webkit-line-clamp:2; } }   /* PC = 완화(운영자 "pc에서는 상관없겠고") · 560 = .rt2col 2단 브레이크 계승 */
@@ -10383,11 +10388,21 @@ let SOCIAL = [], SOCIAL_LOADED = false, SOCIAL_LOADING = false, SOC_LM = 0;   //
 // ── 전송한 카드 = 'Pk-ng'(분석 중) 잔류 원장(운영자 260804 "전송 누르고 나면 다시 전송으로 돌아오는데 picking으로") ──
 //   왜 저장하나: renderSns는 행 구성이 바뀌면 리스트를 통째 재빌드한다 → 메모리에만 두면 다음 스캔 갱신 때 Pk-ng가 '전송'으로 되돌아가 운영자가 지적한 그 증상이 그대로 재발한다. 새로고침도 동축.
 //   ⚠ 종단(PICKED 상당)은 없다 — 커뮤니티 제목은 뉴스 제목과 달라 feedMatch 계열로 완료를 신뢰성 있게 못 짚는다(메뉴1 픽과 다른 점). 확실한 완료 신호를 못 만들 바엔 추측 표시를 안 한다 = 보낸 카드는 Pk-ng로 잔류.
-const SOC_SENT_KEY = 'nm_soc_sent', SOC_PKLABEL = 'Pk-ng';   // 라벨 = 한 곳(운영자 260804 "칸이 좁으니까 그냥 Pk-ng" — 렌더·런타임 전환 공용)
+const SOC_SENT_KEY = 'nm_soc_sent', SOC_PKLABEL = 'Pk-ng', SOC_PKDONE = 'Pk-ed';   // 라벨 = 한 곳(운영자 260804 "칸이 좁으니까 그냥 Pk-ng" · 완료 = "Pk-ed" — 렌더·런타임 전환 공용)
 const SOC_SENT_CAP = 200;   // 원장 상한 = 최근 200건(커뮤니티 행은 빠르게 회전 → 무한 누적 방지 · 넘치면 오래된 것부터 탈락)
-let SOC_SENT = (() => { try { const a = JSON.parse(localStorage.getItem(SOC_SENT_KEY) || '[]'); return new Set(Array.isArray(a) ? a : []); } catch { return new Set(); } })();
+// 원장 = Map(카드키 → {ask, q}) · ask = asks/<id>.json 베이스(submit 응답) · q = 완료된 queue 파일 id(있으면 Pk-ed = 그 요약으로 이동 가능).
+//   ⚠ 구판(260804 1차)은 키 배열이었다 → 배열이면 {ask:'',q:''}로 승격해 읽는다(그 회차 전송분은 ask id를 모르니 Pk-ng에 머문다 = 정보 없는 걸 완료로 꾸미지 않는다).
+let SOC_SENT = (() => {
+  try {
+    const a = JSON.parse(localStorage.getItem(SOC_SENT_KEY) || '[]');
+    if (Array.isArray(a)) return new Map(a.map(x => (x && typeof x === 'object') ? [String(x.k || ''), { ask: String(x.ask || ''), q: String(x.q || '') }] : [String(x || ''), { ask: '', q: '' }]).filter(([k]) => k));
+  } catch {}
+  return new Map();
+})();
 const socKey = r => (r && (r.url || r.title)) || '';   // 카드 동일성 = url 우선(제목은 폴백 · renderSns 시그니처 축과 동일 문법)
-const socSentAdd = k => { if (!k) return; SOC_SENT.delete(k); SOC_SENT.add(k); try { localStorage.setItem(SOC_SENT_KEY, JSON.stringify([...SOC_SENT].slice(-SOC_SENT_CAP))); } catch {} };   // delete→add = 삽입순 갱신(상한 컷에서 최근 것이 살아남음)
+const socSentSave = () => { try { localStorage.setItem(SOC_SENT_KEY, JSON.stringify([...SOC_SENT].slice(-SOC_SENT_CAP).map(([k, v]) => ({ k, ask: v.ask || '', q: v.q || '' })))); } catch {} };
+const socSentAdd = (k, ask) => { if (!k) return; SOC_SENT.delete(k); SOC_SENT.set(k, { ask: String(ask || ''), q: '' }); socSentSave(); };   // delete→set = 삽입순 갱신(상한 컷에서 최근 것이 살아남음)
+const socAskNorm = s => String(s || '').replace(/-/g, '');   // asks/2026-08-04-0112-xbo3n → 202608040112xbo3n = queue/260804-1012-ask-**202608040112xbo3n**.md 안에 그대로 박히는 형태(ask.sh 명명 규칙)
 const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
 const saveRating = (id, patch) => { const r = ratingsAll(); r[id] = { ...(r[id] || {}), ...patch }; localStorage.setItem(RKEY, JSON.stringify(r)); };
@@ -10819,6 +10834,7 @@ async function loadPending(render) {
       changed = m.size !== PEND.size || [...m].some(([k, v]) => PEND.get(k) !== v);   // 키 추가/삭제·상태 변화 모두 감지(전이 드묾 = 재렌더 비용 미미)
       PEND = m;
       PEND_PROC = its.filter(it => it && (it.status === 'processing' || it.status === 'retry')).length;   // 발견성 배지 = 처리중 + 재시도 대기(둘 다 진행 중 · 운영자 260622)
+      if (socSyncSent(its) && CURTAB === 'trend') { _snsSig = ''; renderSns(); }   // SNS 카드 Pk-ng→Pk-ed(또는 실패 = 전송 복귀) — 이 폴이 유일한 전이 관측점(운영자 260804) · 시그니처 리셋 = 행 구성이 같아도 버튼 상태가 바뀌었으니 재빌드 강제
       updateQBadge(); setQFail(its); }   // setQFail = 요약 막힘(실패) 기어 레몬 점등 축(대기열 안 열어도 전 탭서 알림 · 운영자 260727)
   } catch { /* GH_TOKEN 미설정·네트워크 실패 = 로컬 폴백(현행 유지) */ }
   finally { PEND_LOADING = false; }   // 리셋 필수 = 안 하면 플래그 영구 true로 이후 폴링 전면 차단
@@ -13219,9 +13235,12 @@ function socClampChips(box) {
 // 전송 버튼 마크업 — 미전송 = '전송'(1탭 발사) / 전송분 = Pk-ng(분석 중 · 비활성).
 //   비활성 문법 = 메뉴1 Picking… 칩 정본 계승: 접근명 `aria-label="분석 중"`(.sc-got.picking) + `tabindex="-1"`(.sc-fail.picking = 버튼이되 탭 도달 제외).
 //   role은 남기고 aria-disabled로 못박는다 — 이건 '버튼이 아닌 것'이 아니라 '그 전송 버튼이 지금 못 눌리는 상태'라서(cursor:default·눌림 스케일 소거와 같은 말).
-const socSendHtml = r => SOC_SENT.has(socKey(r))
-  ? `<span class="soc-send asksend picking" role="button" aria-disabled="true" tabindex="-1" aria-label="분석 중" title="뉴스 요약 대기열에 올라감 — 분석 중"><span aria-hidden="true">전송</span><span class="pkg">${SOC_PKLABEL}</span></span>`
-  : `<span class="soc-send asksend" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><span>전송</span></span>`;
+const socSendHtml = r => {
+  const v = SOC_SENT.get(socKey(r));
+  if (!v) return `<span class="soc-send asksend" role="button" tabindex="0" aria-label="이 화제를 뉴스 요약으로 보내기" title="뉴스 요약으로 보내기"><span>전송</span></span>`;
+  if (v.q) return `<span class="soc-send asksend picked" role="button" tabindex="0" data-q="${esc(v.q)}" aria-label="요약 완료 — 열기" title="뉴스 요약 완료 — 탭하면 열림"><span aria-hidden="true">전송</span><span class="pkg">${SOC_PKDONE}</span></span>`;
+  return `<span class="soc-send asksend picking" role="button" aria-disabled="true" tabindex="-1" aria-label="분석 중" title="뉴스 요약 대기열에 올라감 — 분석 중"><span aria-hidden="true">전송</span><span class="pkg">${SOC_PKLABEL}</span></span>`;
+};
 function socPick(sb) {   // 전송 성공 종단 → Pk-ng 전환(제자리 · 재렌더 없이). 폭 앵커 '전송' 스팬은 그대로 두고 라벨만 오버레이로 얹는다 = 박스 크기 변화 0.
   if (!sb || sb.classList.contains('picking')) return;
   if (!sb.querySelector('.pkg')) { const d = document.createElement('span'); d.className = 'pkg'; d.textContent = SOC_PKLABEL; sb.appendChild(d); }
@@ -13229,11 +13248,36 @@ function socPick(sb) {   // 전송 성공 종단 → Pk-ng 전환(제자리 · �
   sb.classList.add('picking'); sb.setAttribute('aria-disabled', 'true'); sb.setAttribute('tabindex', '-1');
   sb.setAttribute('aria-label', '분석 중'); sb.title = '뉴스 요약 대기열에 올라감 — 분석 중';
 }
+// ── Pk-ng → Pk-ed 전이(운영자 260804 "뉴스요약이 되면 자동으로 그렇게 뜨도록 연계") ──
+//   판정 = 대기열 API 항목. **qEff(it)==='succ'** 를 쓴다(단순 it.status 아님) — qEff 는 「queue 파일이 있다」가 아니라
+//   「그 요약이 지금 피드에 실제로 떠 있다(qMatch)」까지 확인한다. 배포 랙 구간(status:succ·피드 미반영)에 Pk-ed 를 켜면
+//   눌러도 안 열리는 거짓 완료가 된다 = 대기열 초록버튼이 lag 를 초록으로 안 켜는 것과 같은 축.
+//   매칭 = queue id 안에 ask id 무하이픈형이 박힌다(asks/2026-08-04-0112-xbo3n → queue/260804-1012-ask-202608040112xbo3n).
+//   실패 = 원장에서 뺀다 → 버튼이 '전송'으로 돌아와 **다시 보낼 수 있다**(Pk-ng 영구 잔류 = 거짓말이라 금지).
+function socSyncSent(items) {
+  if (!(SOC_SENT.size && Array.isArray(items) && items.length)) return false;
+  const asks = [...SOC_SENT].filter(([, v]) => v && v.ask && !v.q);
+  if (!asks.length) return false;
+  let changed = false;
+  for (const [k, v] of asks) {
+    const n = socAskNorm(v.ask);
+    if (items.some(it => it && it.id === v.ask && it.status === 'fail')) { SOC_SENT.delete(k); changed = true; continue; }   // 요약 실패 = 전송 상태로 복귀(재전송 가능)
+    const done = items.find(it => it && it.status === 'succ' && String(it.id).includes(n) && qEff(it) === 'succ');
+    if (done) { SOC_SENT.set(k, { ask: v.ask, q: String(done.id) }); changed = true; }
+  }
+  if (changed) socSentSave();
+  return changed;
+}
 function socBindSend(list) {
   list._sendBound = true;
   list.addEventListener('click', async e => {
     const sb = e.target.closest('.soc-send'); if (!sb) return;
     e.preventDefault(); e.stopPropagation();   // 카드(앵커) 새 탭 전파 차단 — firing 중 재탭도 여기 도달해 흡수(.soc-send.asksend.firing pointer-events:auto와 짝 · 구판 .sending pointer-events:none 통과 = '전송하면 새창' 사고 봉합 · 운영자 260803 3차)
+    if (sb.classList.contains('picked')) {   // Pk-ed = 그 요약 열기(메뉴1 PICKED 탭 = 피드 이동 계승) — 피드에서 빠졌으면 조용히 알림(qGo는 매칭 보장 전제라 직접 못 부른다)
+      const q = sb.dataset.q || '';
+      if (q && qMatch(q)) qGo(q); else qFlash('그 요약이 지금 피드에 없어');
+      return;
+    }
     if (sb.classList.contains('firing') || sb.classList.contains('picking')) return;   // 전송 중·분석 중(Pk-ng) 재탭 = 중복 발사 가드(preventDefault 뒤라 앵커로 안 샌다 · picking은 pointer-events:none을 못 써서 여기가 유일한 차단선 = firing과 동축)
     const card = sb.closest('.soc-item');
     const title = ((card && card.querySelector('.soc-title')) || {}).textContent || '';
@@ -13243,10 +13287,10 @@ function socBindSend(list) {
     if (!text) { qFlash('보낼 내용이 없어'); return; }
     askHideCheck(sb); gaugeStart(sb);   // 요약 요청(#askSend) 상태머신 그대로 계승 = 1탭 발사·게이지 응답까지 점근(운영자 260803 3차 "전송버튼·애니메이션 일괄 통일" — 구 체크→arm 2탭 폐지)
     try {
-      const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, preset: { h24: 1, fp: 0, mj: 1, og: 0, noai: 1 } }) });   // preset = openAsk 기본 수집 프리셋 계승
+      const r = await fetch('api/submit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, srcUrl: url, preset: { h24: 1, fp: 0, mj: 1, og: 0, noai: 1 } }) });   // preset = openAsk 기본 수집 프리셋 계승 · srcUrl = 이 카드의 커뮤니티 글 주소(대기열 행 ↗ 목적지 · 운영자 260804) — ⚠ link 가 아니다(link 는 ask.sh 가 '원문'으로 삼아 커뮤니티 글타래를 기사로 요약해버린다)
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ok) {
-        socSentAdd(socKey({ url, title }));   // 원장 적재 = 성공 즉시(1.6s 종단 전에 재렌더가 끼어도 Pk-ng로 다시 그려진다)
+        socSentAdd(socKey({ url, title }), d.id);   // 원장 적재 = 성공 즉시(1.6s 종단 전에 재렌더가 끼어도 Pk-ng로 다시 그려진다) · d.id = asks 베이스 = Pk-ed 전이 추적키(구 서버 응답이면 '' → Pk-ng 유지 = fail-soft)
         sb.classList.remove('done'); void sb.offsetWidth; sb.classList.add('done'); gaugeDone(sb);   // 성공 = settle 펄스 + 게이지 현위치→100% 급속 마무리(askSend 성공 경로 그대로)
         setTimeout(() => askShowCheck(sb), 300);   // 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·askSend 동일 리듬)
         setTimeout(loadPending, 1200); setTimeout(loadPending, 4000);   // 대기열 배지 즉시 갱신(askSend 계승)

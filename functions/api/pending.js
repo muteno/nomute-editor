@@ -193,14 +193,14 @@ export async function onRequestGet({ env }) {
   const oldAsk = askPend.some(x => !!x.t && (now - x.t) / 60000 >= STUCK_MIN);
   const askActiveP = oldAsk ? wfActive('news-ask.yml') : Promise.resolve(null);
   await Promise.all(askPend.map(async ({ f, t }) => {
-    let reqText = '', preset = null;
-    try { const j = JSON.parse(await raw('asks/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); preset = askPreset(j); } catch {}
+    let reqText = '', preset = null, srcUrl = '';
+    try { const j = JSON.parse(await raw('asks/' + encodeURIComponent(f.name)) || '{}'); reqText = String(j.text || '').replace(/\s+/g, ' ').trim(); preset = askPreset(j); srcUrl = askSrc(j); } catch {}
     const ageMin = t ? (now - t) / 60000 : 0;
     const askActive = await askActiveP;
     const stuck = !!t && ageMin >= (askActive === true ? ASK_ACTIVE_STUCK_MIN : STUCK_MIN);   // 런 활성 = 처리중 유예(ask 전용 75분 — 병렬 스코프 체제 과대유예 축소) · 비활성 20분+ = 미처리(stuck) FAIL
     items.push({
       id: f.name.replace(/\.json$/i, ''), t, status: stuck ? 'fail' : 'processing',
-      via: '요약요청', src: '',
+      via: '요약요청', src: srcUrl, ...(srcUrl ? { key: srcUrl } : {}),   // key = 출처 링크(운영자 260804) — 요약 전이라 갈 기사가 없으니 ↗ 목적지는 「보낸 그 글」. 없으면 종전대로 회색 '링크 없음'.
       title: (reqText || '✨ 요약 요청').slice(0, 90),
       ...(preset ? { preset } : {}),   // 수집 프리셋(켜진 것 있을 때만) — 뷰어 행 표기(Q495)
       diag: stuck ? { kind: 'ask-stuck', mins: Math.round(ageMin), reqText: reqText.slice(0, 400) } : null,
@@ -237,6 +237,9 @@ export async function onRequestGet({ env }) {
 }
 
 // 수집 프리셋(Q491 스트립 · h24=24시간 이내/fp=외신 우선/mj=주요 언론 기반/og=원본 한정) — 켜진 키만 1로 정규화 · 전부 꺼짐/무필드(구 asks) = null(뷰어 미표기 · Q495 "프리셋 적용된 것에만 표기").
+// 출처 링크(표시 전용 · 운영자 260804) — submit.js 가 SNS 카드 「전송」에서만 실어 보내는 필드(분석 경로 무접촉).
+//   ⚠ j.link 를 폴백으로 쓰지 않는다 — link 는 ask.sh 가 '이 링크가 원문이다'로 해석하는 **분석 입력**이라 성격이 다르다.
+function askSrc(j) { const s = String((j && j.srcUrl) || '').trim(); return /^https?:\/\/\S+$/i.test(s) ? s : ''; }
 function askPreset(j) {
   const p = (j && typeof j.preset === 'object' && j.preset) || null;
   if (!p) return null;

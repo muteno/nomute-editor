@@ -19,6 +19,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   //   판별·전사는 파이프(ask.sh 링크 레일)가 담당 = 여기선 http(s) 형식·길이만 검증해 그대로 실어 보낸다(빈 문자열 = 링크 없음).
   const link = (() => { const s = String(body.link || '').trim().slice(0, 500); return /^https?:\/\/\S+$/i.test(s) ? s : ''; })();
   const linkForce = (link && (body.linkForce === 1 || body.linkForce === '1' || body.linkForce === true)) ? 1 : 0;   // '전사 강행'(운영자 260731) — 자막 없는 긴 영상의 길이 상한을 FORCE 값까지 올린다(ask.sh) · 링크 없으면 무의미 = 0
+  // 출처 링크(표시 전용 · 운영자 260804) — SNS 카드 「전송」이 보낸 커뮤니티 글 주소. 대기열 행 ↗의 목적지로만 쓴다(api/pending 이 key 로 노출).
+  //   ⚠ link 로 실으면 **안 된다** — ask.sh 링크 레일이 "이 링크가 원문이다 → WebFetch 로 그 본문으로 큐레이션하라"로 읽어(ask.sh 149행)
+  //   커뮤니티 글타래 자체를 기사 원문으로 삼는다. 국내 커뮤니티 레인의 의도는 정반대(화제를 보고 **뉴스**를 찾아 요약) → 분석 경로 무접촉인 별도 필드로 분리.
+  const srcUrl = (() => { const s = String(body.srcUrl || '').trim().slice(0, 500); return /^https?:\/\/\S+$/i.test(s) ? s : ''; })();
   if (!text && !images.length && !link) return json({ error: '빈 요청 — 내용이나 캡처, 링크를 넣어줘' }, 400);
   const _p = (body.preset && typeof body.preset === 'object') ? body.preset : {};
   const preset = { h24: _p.h24 ? 1 : 0, fp: _p.fp ? 1 : 0, mj: _p.mj ? 1 : 0, og: _p.og ? 1 : 0, noai: _p.noai ? 1 : 0 };   // 요약요청 스트립 토글(24시간 이내·외신 우선·주요 언론 기반·원본 한정 → ask.sh 프롬프트 · AI 미제작 noai → 바로 아래 nothumb) · 운영자 260723 · og·noai 260727 · 미전송 구클라 = 전부 0 = 종전 동작
@@ -27,7 +31,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const ts = new Date().toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);   // YYYY-MM-DD-HHMM (날짜 대시는 [:.]에 안 걸려 잔존·초 없음·UTC) — pending.js askTime·ask.sh 파서가 이 형식 기대
   const rnd = Math.random().toString(36).slice(2, 7);
   const path = `asks/${ts}-${rnd}.json`;
-  const payload = JSON.stringify({ ts, text, link, linkForce, images, nothumb, preset });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 요약요청 스트립(h24·fp·mj·og·noai) · link = 원문/미디어 링크(ask.sh 가 판별 — 미디어면 large-v3 전사) · linkForce = 전사 길이 상한 강행
+  const payload = JSON.stringify({ ts, text, link, linkForce, images, nothumb, preset, srcUrl });   // images = data URL 배열 · nothumb = 썸네일 생성 skip 플래그 · preset = 요약요청 스트립(h24·fp·mj·og·noai) · link = 원문/미디어 링크(ask.sh 가 판별 — 미디어면 large-v3 전사) · linkForce = 전사 길이 상한 강행 · srcUrl = 출처 링크(표시 전용 · 분석 무접촉)
 
   // UTF-8 안전 base64(Workers에 unescape 없음 → TextEncoder)
   const bytes = new TextEncoder().encode(payload);
@@ -63,7 +67,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       })();
       try { if (waitUntil) waitUntil(cleanup); else await cleanup; } catch {}   // waitUntil = 응답 후 백그라운드(Pages Functions) · try = unbound 호출이 throw 해도 클라 응답(201) 보호(평의회 260704)
     }
-    return json({ ok: true });
+    return json({ ok: true, id: `${ts}-${rnd}` });   // id = asks/<id>.json 베이스 = 이 요청의 추적키(운영자 260804 — SNS 카드가 Pk-ng→Pk-ed 전이를 이 id로 판정 · 구 클라는 안 읽으니 무해)
   }
   return json({ error: `GitHub ${r.status}: ${(await r.text()).slice(0, 300)}` }, 502);
 }
