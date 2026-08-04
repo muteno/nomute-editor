@@ -1082,6 +1082,23 @@ function fmtClock(s) { s = Math.max(0, Math.round(s || 0)); const h = (s / 3600)
 function srtTime(s) { const ms = Math.max(0, Math.round((s || 0) * 1000)); const p = (n, l) => String(n).padStart(l, '0'); return p((ms / 3600000) | 0, 2) + ':' + p(((ms % 3600000) / 60000) | 0, 2) + ':' + p(((ms % 60000) / 1000) | 0, 2) + ',' + p(ms % 1000, 3); }
 const lyJoin = () => /^(ja|zh|yue|th|lo|my|km)$/.test(LY_LANG) ? '' : ' ';   // 무공백 문자권(일·중 등) = 붙여 재조립(단어 join 시 엉뚱한 공백 방지)
 const lySegText = sg => sg.w.filter(w => w.on).map(w => w.t).join(lyJoin());
+/* 리드인 침묵 제거(운영자 260804 "13초에 음성이 나오는데 10초에 자막이 먼저") = `.github/scripts/ly_burn.py` lead_trim 동치 로직·동값 상수.
+   Whisper 세그 시작 ≠ 발화 시작(ly_stt.py vad_filter=False = 이 환경 VAD 오작동 회피) → 앞 무음·숨소리·짧은 오인식이 세그에 딸려 온다.
+   ⚠ 번인만 고치고 여기를 두면 **같은 잡의 SRT 내보내기(CapCut·프리미어)만 옛 선행 타이밍**으로 갈린다 = 표면 간 갈라짐 → 짝으로 간다.
+   켜진 어절(on)만 보는 게 번인보다 정확 — 조각 편집기에서 앞 어절을 끈 경우 그 침묵까지 리드인으로 잡힌다. */
+const LY_LEAD_GAP = 0.80, LY_LEAD_KEEP = 0.15, LY_LEAD_MIN_DUR = 0.40, LY_LEAD_MAX_FRAC = 0.50;
+function lyLeadS(sg) {
+  const s = +sg.s, e = +sg.e;
+  if (!Number.isFinite(s) || !Number.isFinite(e)) return sg.s;
+  const ws = (sg.w || []).filter(w => w.on && Number.isFinite(+w.s) && Number.isFinite(+w.e) && +w.e > +w.s);
+  if (!ws.length) return s;   // 어절 근거 0 = 종전 동작(구 잡·수동 입력 조각)
+  const n = ws.length; let cut = 0, ns = s;
+  if (+ws[0].s - s >= LY_LEAD_GAP) ns = +ws[0].s;                                        // ① 세그 시작이 첫 어절보다 앞섬
+  for (let i = 0; i < n - 1; i++) { if (+ws[i + 1].s - +ws[i].e < LY_LEAD_GAP) break; cut = i + 1; ns = +ws[i + 1].s; }   // ② 앞 어절 뒤 큰 침묵 = 리드인 파편
+  if (ns <= s || cut > Math.floor(n * LY_LEAD_MAX_FRAC)) return s;                       // 앞부분 과반 유실 = 포기(오컷보다 선행이 낫다)
+  ns = Math.max(s, ns - LY_LEAD_KEEP);
+  return (e - ns < LY_LEAD_MIN_DUR) ? s : ns;                                            // 남는 표시 구간이 너무 짧다 = 번쩍임 → 포기
+}
 function parseCues(txt) {   // SRT/VTT → 조각(s·e·텍스트) — SRT 업로드 경로는 서버 STT가 없어 클라에서 타이밍 확보
   if (!txt || txt.indexOf('-->') < 0) return null;
   const t = String(txt).replace(/\r/g, '');

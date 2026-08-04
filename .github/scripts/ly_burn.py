@@ -91,6 +91,17 @@ FILLER_HARD = {"어", "어어", "엄", "음", "음음", "으음", "으", "에", 
                "uh", "uhh", "um", "umm", "er", "erm", "ah", "hmm", "mmm"}
 FILLER_SOFT = {"그", "이제", "인제", "뭐", "좀", "막", "약간", "뭐지", "뭐랄까", "그니까", "그러니까", "저기",
                "like", "yaknow", "youknow"}
+# ── 자막 리드인 보정(운영자 260804 "13초에 음성이 나오는데 10초에 자막이 먼저 나오는 상황") ────────────────
+#   Whisper 세그먼트 시작 ≠ 발화 시작이다. ly_stt.py가 vad_filter=False로 돌기 때문에(이 환경 VAD 오작동 =
+#   전 구간 과필터→0개 실측 → 의도적으로 끔) 발화 앞 무음·숨소리·짧은 오인식 한 조각이 세그에 딸려 들어오고,
+#   세그 s가 본 발화보다 몇 초 앞선다. 구본은 그 s를 그대로 ASS Start로 썼다 → 자막이 소리보다 먼저 뜬다.
+#   ⚠ 정답 데이터는 이미 파일에 있었다 — 어절 타임스탬프(sg["w"])를 줄 **안쪽** 배분(카라오케·팝)에만 쓰고
+#     이벤트 **시작 시각** 보정엔 한 번도 안 썼다(=본 파일의 사각). 그 w로 리드인 침묵만 잘라낸다.
+#   실측(260804 · viewer/ly_out 42잡 673세그 전수) = 0.8초 이상 선행 15세그(2.2%) · 중앙값 3.04s · 최대 10.26s.
+LEAD_GAP = 0.80                  # 어절 사이 이 이상 침묵 = 리드인 경계(발화가 아직 안 시작)
+LEAD_KEEP = 0.15                 # 당긴 뒤 발화 앞에 남기는 여유 — 자막이 소리와 정확히 동시에 튀어나오면 늦게 느껴진다
+LEAD_MIN_DUR = 0.40              # 당긴 뒤 표시 구간이 이보다 짧아지면 보정 포기(순간 번쩍임 방지)
+LEAD_MAX_FRAC = 0.50             # 잘려나가는 어절이 세그 어절의 이 비율을 넘으면 포기(문장 앞부분 통째 유실 방어)
 FILLER_MAXDUR = 1.5              # 이보다 긴 어절 = 필러 아님(늘어진 발화·오인식) — 안 자른다
 FILLER_HES = 0.18                # SOFT 필러 판정에 필요한 앞·뒤 무음 갭(초) = 주저 신호(기본 강도)
 FILLER_TAILGAP = 0.50            # 필러 직후 이 이하의 짧은 침묵은 같이 제거(끊김을 자연스럽게)
@@ -795,6 +806,31 @@ def bg_pct(opts, style):
     return max(0, min(100, b))
 
 
+def lead_trim(s, e, words):
+    """세그 앞쪽 리드인 침묵을 잘라 자막 시작을 실제 발화에 붙인다(운영자 260804).
+    반환 = (새 시작초, 새 어절목록). 보정 불가·불필요 = (s, words) 그대로 = 종전 산출 바이트 동일.
+    ⚠ 어절 목록도 같이 자른다 — 안 자르면 _sync_cs의 발화 곡선이 잘려나간 침묵까지 품어
+      줄 안쪽 카라오케·팝 배분이 앞쪽 글자에 시간을 과할당한다(시작만 고치면 반쪽)."""
+    ws = [w for w in (words or [])
+          if isinstance(w, dict) and isinstance(w.get("s"), (int, float)) and isinstance(w.get("e"), (int, float))
+          and math.isfinite(w["s"]) and math.isfinite(w["e"]) and w["e"] > w["s"]]
+    if not ws:
+        return s, words                       # 어절 없음(구 잡·STT 미요청) = 판단 근거 0 → 종전 동작
+    n, cut, new_s = len(ws), 0, s
+    if ws[0]["s"] - s >= LEAD_GAP:            # ① 세그 시작 자체가 첫 어절보다 앞선 경우
+        new_s = ws[0]["s"]
+    for i in range(n - 1):                    # ② 앞쪽 어절 뒤에 큰 침묵 = 그 어절은 리드인 파편(잡음·환청·감탄)
+        if ws[i + 1]["s"] - ws[i]["e"] < LEAD_GAP:
+            break                             # 발화가 이어짐 = 여기부터가 본문 → 중단(문장 중간 침묵은 안 건드린다)
+        cut, new_s = i + 1, ws[i + 1]["s"]
+    if new_s <= s or cut > int(n * LEAD_MAX_FRAC):
+        return s, words                       # 앞부분 과반을 버려야 하면 포기 = 오컷보다 선행이 낫다
+    new_s = max(s, new_s - LEAD_KEEP)
+    if e - new_s < LEAD_MIN_DUR:
+        return s, words                       # 남는 표시 구간이 너무 짧다 = 번쩍임 → 포기
+    return new_s, (ws[cut:] if cut else words)
+
+
 def build_ass(segs, w, h, opts):
     size_f = size_frac(opts)
     fs = max(18, int(h * size_f))
@@ -891,6 +927,7 @@ def build_ass(segs, w, h, opts):
         src = sanitize(sg.get("src") or "")
         frames = None
         sw_ts = sg.get("w")   # STT word 타임스탬프(실싱크 · 없으면 None → 글자수 비례 폴백)
+        s, sw_ts = lead_trim(s, e, sw_ts)   # 리드인 침묵 제거 = 자막을 소리에 붙인다(운영자 260804 · 구본은 세그 s 직결이라 최대 10.26초 선행)
         if pop and ko:
             frames, n_main, m_fs = build_pop_frames(ko, e - s, keyword, fs, avail, sw_ts)
             main = frames[0][2] if frames else ""
