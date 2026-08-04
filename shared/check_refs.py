@@ -3911,12 +3911,29 @@ def check_ask_srcimg_chain():
         fat = ''
     if 'mainFrame' not in fat or 'location(?:' not in fat:
         bad.append('fetch_article.sh 프레임 셸 해제 결손 — 분석기 텍스트 축이 iframe 셸을 본문으로 오인(한글 0자 = 빈 출력)')
+    # ⑧ 실패 자동진단서(운영자 260805 "자동진단서 ㄱ") — 실패 알림이 「입력이 비었거나 불충분」 한 줄로만
+    #    나가면 다음 세션이 매번 원인 실측부터 다시 한다(260804 사고 2건 실측). 실패 순간 URL 재실측 동봉 +
+    #    같은 도메인 14일 2회 재발 = 인수인계 진단서 승격. 이 층이 빠지면 알림이 조용히 구판(한 줄)으로 퇴행.
+    fp_ = os.path.join(ROOT, '.github', 'scripts', 'ask_fail_probe.py')
+    try:
+        fpt = open(fp_, encoding='utf-8').read()
+    except Exception:
+        fpt = ''
+    for sym, why in (('import ask_srcimg', '취득·해제 정본 재사용(별도 fetch 창작 금지)'),
+                     ('def probe(', '실측 진입점'), ('def handover(', '인수인계 진단서'),
+                     ('fail_ledger.jsonl', '재발 원장'), ('LEDGER_MAX', '원장 롤링 상한')):
+        if sym not in fpt:
+            bad.append('ask_fail_probe.py 결손(%s — %s)' % (sym, why))
+    if not re.search(r'^[^\n#]*python3 \.github/scripts/ask_fail_probe\.py', at, re.M):
+        bad.append('ask.sh 자동진단 실행줄 결손 — ask_fail_probe.py 호출(주석 처리 포함)')
+    if '_diag' not in at:
+        bad.append('ask.sh 진단 동봉 결손 — 진단을 뽑아놓고 실패 알림 본문(_fbody)에 안 싣는다')
     if bad:
         print('❌ 출처 본문 이미지 수확 체인 게이트 — 층 결손 %d건(그림이 조용히 안 실린다):' % len(bad))
         for b in bad:
             print('   ·', b)
         return 1
-    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·OCR 추출·전문 주입·1-3 폴백·프레임 해제 7층 생존.')
+    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·OCR 추출·전문 주입·1-3 폴백·프레임 해제·실패 자동진단 8층 생존.')
     return 0
 
 

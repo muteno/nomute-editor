@@ -345,6 +345,17 @@ else:
     print("https://news.google.com/search?q=" + urllib.parse.quote(q) + "&hl=ko&gl=KR&ceid=KR:ko" if q else "")
 ' 2>/dev/null || true)"
     [ -n "${_ref// }" ] && _fbody="${_fbody}"$'\n\n'"[관련 기사 — 어떤 기사인지 확인]"$'\n'"${_ref}"
+    # ── 자동진단서(운영자 260805 "자동진단서 ㄱ") ── 실패 순간 그 URL 을 기계로 재실측(바이트·한글 자수·
+    #   껍데기/프레임 판정 · 층 발동 기록)해 알림에 동봉 + 같은 도메인 14일 2회 재발 = 인수인계 진단서 승격.
+    #   260804 사고 2건 다 「입력이 비었거나 불충분」 한 줄뿐이라 세션이 매번 원인 실측부터 다시 했던 축의 기계화.
+    #   원장 = asks/fail_ledger.jsonl(Commit results 의 `git add queue asks` 동반 커밋) · 킬스위치 ASK_FAIL_DIAG=0 ·
+    #   전 경로 fail-soft(진단 실패가 실패 알림 자체를 못 죽인다). 진단 URL = 링크칸 > 출처(srcUrl) > 요청문 첫 URL.
+    if [ "${ASK_FAIL_DIAG:-1}" != "0" ]; then
+      _pu="$link"; [ -z "${_pu// }" ] && _pu="$_su"
+      [ -z "${_pu// }" ] && _pu="$(NM_T="${text}" python3 -c 'import os,re; m=re.search(r"https?://\S{8,}",(os.environ.get("NM_T") or "")); print(m.group(0)[:400] if m else "")' 2>/dev/null || true)"
+      _diag="$(timeout "${ASK_FAIL_DIAG_TIMEOUT:-150}" python3 .github/scripts/ask_fail_probe.py --base "$base" --kind "$_fk" --rc "$rc" --url "$_pu" --imgs "${#srcimgs[@]}" --ocr "${#_ocr}" 2>/dev/null || true)"
+      [ -n "${_diag// }" ] && _fbody="${_fbody}"$'\n\n'"${_diag}"
+    fi
     python3 shared/msg.py set "fail-${base}" "$_fbody" warn 2>/dev/null || true
     printf '%s\n' "$base" >> /tmp/analyzed_fail_msgs.txt
     echo "실패 → asks/failed/${base}"; echo "::endgroup::"; continue
