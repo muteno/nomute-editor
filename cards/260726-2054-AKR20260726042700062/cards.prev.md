@@ -1,32 +1,31 @@
-# 🌊 형제는 살아 나왔고, 뛰어든 군인 둘은 심정지
+# 🌊 형제는 나왔고, 뛰어든 두 사람은 못 나왔다
 
 **[프롬프트 설계]**
-- 화풍: A 수채화 — 인명 피해와 의로운 희생을 다루는 사안이라 고발보다 공감·비애의 결이 맞다
-- 분위기: 한여름 한낮의 눈부신 빛과 그 아래 벌어진 먹먹함의 낙차 — 밝은데 무겁다
-- 연출 방향: 뉴스 안 보는 SNS 독자도 '나도 저 상황이면 뛰어들었겠다'로 즉시 자기 얘기가 되는 사건이다. 그래서 재난 스펙터클(파도·구조선)이 아니라 **물 밖으로 나온 사람과 나오지 못한 사람의 자리 차이**에 시선을 건다. 젖은 모래에 남는 발자국, 뻗은 손, 비어 있는 물가 한 지점 — 사건의 무게를 사람의 몸짓과 빈자리로만 말한다. 한낮 직사광의 과노출을 전 카드가 공유하되 국면이 무거워질수록 명도를 내리고, 마지막에 여운광으로 푼다
-- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 셋과 둘의 수 차이 제시)+카드3 끝(예고형) · 감정 피크=카드4 · 착지 한 줄 요지 = 뛰어들지 말라는 수칙과 몇 초 사이에 이 사고가 있다
-- 연속성 앵커: Recurring subject — a Korean man in his 50s with a short buzz cut, sturdy build, wearing a soaked plain dark T-shirt and shorts / Recurring place — a wide sunlit East Coast sand beach with a low breakwater and distant pine ridge
+- 화풍: A수채화 — 인명 사고·추모 결이라 고발보다 공감과 여운이 먼저다
+- 분위기: 한여름 직사광의 눈부신 밝음과 그 안에 고인 먹먹함, 물빛과 젖은 모래의 대비
+- 연출 방향: 독자가 멈추는 자리는 "아이는 걸어 나왔는데 구하러 간 어른이 실려 갔다"는 역전이다. 그래서 카드는 사람 수의 낙차(셋과 둘)와 시간의 낙차(7분과 몇 초)를 눈으로 보게 만든다. 물·모래·손 같은 사건 고유의 사물에 시선을 묶고, 폭염의 하얀 빛을 여운광으로 서서히 내려 마지막에 바다만 남긴다. 얼굴 클로즈업으로 슬픔을 강요하지 않고 뒷모습·손·빈 자리로 무게를 옮긴다.
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 나온 사람과 못 나온 사람의 수 차이 예고)+카드3 끝(예고형: 구조는 빨랐다는 사실을 던지고 결과를 미룸) · 감정 피크=카드4 · 착지 한 줄 요지 = 원칙이 말하는 시간과 어른이 실제로 쓴 몇 초 사이 어딘가에 이 사고가 있다
+- 연속성 앵커: Recurring subject — Korean men in their 50s with short cropped hair and sturdy builds, wearing plain dark swim shorts and wet T-shirts. Recurring place — a wide east-coast sand beach with low summer waves and a distant condo building.
 
 ### [카드 1]
 **텍스트**
 ```text
-26일 낮 강원 고성 화진포에서
-열일곱, 열넷 형제가 파도에
-떠밀렸다. 그 바다에서 그날
-*셋은 걸어 나왔고 둘은 실려 갔다*
+26일 오후 2시 10분,
+고성 화진포 앞바다였다.
+열일곱과 열넷 형제가
+파도에 떠밀려 갔다.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: two sets of wet footprints in the sand that stop at the water's edge and never come back. A wide sunlit East Coast sand beach with a low breakwater and distant pine ridge stretches across the frame, crowded with summer parasols in the far background. Near the shoreline two teenage boys in soaked swim shirts stand with their backs half turned, looking toward the open sea on the right. The abandoned footprints lead away from them into the shallow water, the only thing connecting the beach to the sea.
-Camera: wide shot, full body, surrounding environment, spatial context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: two small heads drifting further from shore, seen small against the wide water. Two teenage boys are carried outward by low summer waves, their arms lifted toward the beach behind them. The shoreline with a distant condo building sits at the top edge, and the gap of empty water between the boys and the sand is the largest shape in the frame. A crowded summer beach lies far behind them.
+Camera: extreme long shot from high angle, bird's-eye view, shot on 20mm wide lens
 Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Composition note: nose room on the right, gaze directed toward the right edge.
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Render no readable signage. Keep the main subjects anchored in the upper-center area, nothing important in the lower third.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wet sand beach) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sea water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -42,23 +41,22 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-아이들이 떠밀리는 걸 본
-아버지가 먼저 뛰어들었고
-근처에 있던 *50대 군인 두 명이*
-*맨몸으로 뒤따라 들어갔다*
+아버지가 먼저 뛰어들었다.
+근처에 있던 50대 군인 둘도
+*곧바로 뒤따라 들어갔다.*
+장비는 아무것도 없었다.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a bare hand reaching forward into the water, fingers already stretched toward someone still out of reach. Recurring subject — a Korean man in his 50s with a short buzz cut, sturdy build, wearing a soaked plain dark T-shirt and shorts wades chest-deep into the sea, pushing forward with his gaze fixed on the open water to the right. Another man of similar age moves just behind him in the same direction, both without any flotation gear, only their clothes. The shore with its parasols is small and far behind them.
-Camera: medium shot, waist-up framing, face and gestures, conversational from low angle shot, looking up, dramatic presence, shot on 50mm standard lens, minimal distortion, natural cinematic composition
-Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood, sunlight dulled by sea spray
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: bare hands cutting into the water, empty of any equipment. Recurring subject — Korean men in their 50s with short cropped hair and sturdy builds, wearing plain dark swim shorts and wet T-shirts, wade and push forward into the surf with their gaze fixed straight ahead toward the open sea on the right. Ahead of them another man is already chest-deep in the water. Behind them a plain sand beach with a distant condo building recedes, and no rescue tube or float is anywhere near their hands.
+Camera: full shot from eye-level, three-quarter angle, shot on 35mm lens, nose room on the right, gaze directed toward the right edge
+Lighting/mood: harsh overexposed midday sunlight, hard shadows, oppressive heat
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Composition note: nose room on the right, gaze directed toward the right edge.
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Keep hands and faces in the upper half of the frame, nothing important in the lower third. Render no readable signage or lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the open sea water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the shallow surf water) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -67,62 +65,26 @@ NEGATIVE — strictly avoid:
 - no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
 ```
 **검색어**
-```term
-```
-**검색어**
 ```text
-해수욕장 이안류 구조
+해수욕장 구조 입수
 ```
 
 ### [카드 3]
 **텍스트**
 ```text
-형제와 아버지는 해변으로
-빠져나왔다. 정작 이들을 뭍으로
-밀어 올린 두 사람은
-*스스로 걸어 나오지 못했다*
+형제와 아버지는 걸어 나왔다.
+그런데 두 사람을 뭍으로
+밀어 올린 군인 둘은
+*스스로 나오지 못했다.*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a father's arms locked around his two sons on the sand, his face turned away from them and back toward the sea. A Korean man in his 40s kneels soaked on a wide sunlit East Coast sand beach with a low breakwater and distant pine ridge, holding a 17-year-old and a 14-year-old boy who are coughing and shivering in wet clothes. All three face the shore while the man alone looks back over his shoulder at the empty water behind them. The sea beyond them is bright and blank, with no one in it.
-Camera: full shot, head-to-toe, full body, clear silhouette from high angle shot, looking down, vulnerable subject, shot on 85mm portrait lens, soft background separation
-Lighting/mood: cold blue dim interior light quality cast over the shore as clouds pass, heavy and suffocating, faint trembling tension
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: a boy looking back over his shoulder at the water he just left. Two soaked teenage boys and a soaked middle-aged man stand on the wet sand near the top of the frame, catching their breath while one of the boys turns his head back toward the sea. The sea behind them holds no one, only broken foam where someone was. A distant condo building marks the same beach.
+Camera: medium shot from eye-level, back shot with the group seen from behind, shot on 85mm portrait lens
+Lighting/mood: overcast diffused daylight, flat soft shadows, muted somber mood
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-Composition note: nose room on the right, gaze directed toward the right edge.
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wet sand shore) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-해수욕장 구조 후 해변
-```
-
-### [카드 4]
-**텍스트**
-```text
-소방·해경 45명이 신고 7분 만에
-닿아 2분 만에 전원 구조를 끝냈다
-그런데 한 명은 구조 직후,
-*다른 한 명은 실종자로 분류됐다가*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a rescue worker's jaw clenched tight, muscle flexing at the jawline as he kneels on the wet sand. Uniformed coast guard and fire rescue members crowd the shoreline in a tight ring, some kneeling with both hands pressed together, others standing and scanning the sea to the right. A rescue boat sits far out on the water behind them, small in the distance. No injured body is visible, only the ring of people and the empty space they surround.
-Camera: medium close-up, chest-up framing, facial emotion from Dutch angle, tilted horizon, canted frame, unstable mood, shot on 70mm short telephoto, gentle background compression, subject isolation
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere, harsh sun low through haze
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
-Composition note: nose room on the right, gaze directed toward the right edge.
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Keep the turned head and the empty water in the upper half, nothing important in the lower third. Render no readable signage or lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the wet sand shoreline) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
@@ -135,28 +97,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-속초해양경찰서 해상 구조
+해수욕장 백사장 젖은 피서객
 ```
 
-### [카드 5]
+### [카드 4]
 **텍스트**
 ```text
-*오후 3시 15분 심정지로 발견됐다*
-같은 날 오후 4시께 죽왕면
-가진항에서도 26살 한 명이
-스노클링 중 심정지로 실려 갔다
+소방과 해경 45명이 달려왔다.
+신고 7분 만에 도착해
+*2분 만에 전원 구조를 마쳤다.*
+그래도 늦은 사람이 있었다.
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: a snorkel mask left face-down on the concrete edge of a small fishing harbor, its strap still wet. A quiet East Coast port with moored small boats and a low seawall stretches into the late afternoon light, empty of people except two distant figures walking away along the pier toward the right. The water beside the harbor wall is flat and still, holding no trace of what happened. The mask lies alone in the upper-center of the frame, the only object the light touches directly.
-Camera: extreme close-up, single detail, texture from overhead shot, bird's-eye view, top-down angle, shot on 100mm macro lens, fine detail, shallow depth of field
-Lighting/mood: cold blue pre-dawn tone quality in late afternoon shade, desolate stillness, the day's heat draining out
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: the tight jaw of a kneeling rescuer whose hands are pressed together over wet sand. A uniformed coast guard member kneels at the center with head bowed and jaw clenched, while several other uniformed rescuers and a rubber boat crew move around him toward the water on the right. The rescue stretcher beside him is the one object every hand reaches toward, and the beach is the same stretch of sand with a distant condo building.
+Camera: medium close-up from low angle, three-quarter angle, shot on 50mm standard lens
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
+Keep the face, hands and stretcher in the upper half, nothing important in the lower third. Render no readable signage, no agency emblem, no logo, no lettering on uniforms.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the concrete harbor edge) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the wet sand) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -166,28 +128,59 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-고성 가진항 어항
+해양경찰 해변 구조 활동
+```
+
+### [카드 5]
+**텍스트**
+```text
+두 사람은 심정지로 실려 갔다.
+같은 날 가진항에서도
+스노클링하던 26세가 실려 갔다.
+*하루 만에 고성에서만 셋이다.*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: three empty patches of sand where three people had been lying, marked only by pressed hollows. An ambulance crew in the mid ground pushes a covered stretcher away from the shore toward the right edge while two remaining rescuers stand still and watch them go. A small fishing harbor breakwater is visible far behind the same beach, tying the two places into one afternoon.
+Camera: wide shot from bird's-eye view, high angle looking down, shot on 24mm wide lens
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), film-noir low-key lighting, deep shadows
+Keep the stretcher and the empty hollows in the upper half, nothing important in the lower third. Render no readable signage, no logo, no lettering.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the beach sand) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+고성 가진항 방파제
 ```
 
 ### [카드 6]
 **텍스트**
 ```text
 수난 구조 수칙은 맨몸으로
-들어가지 말라고 말한다. 구조대가
-화진포에 닿는 데 7분이 걸렸고,
-*어른들이 들어가는 덴 몇 초였다*
+들어가지 말라고 말한다.
+소방이 닿는 데 7분이 걸렸고,
+*두 사람이 쓴 건 몇 초였다.*
 ```
 **이미지 프롬프트**
 ```text
-korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn line work with loose ink contours, emotive character expressions, warm ambient lighting
-Scene: Emotional focal point: two pairs of adult footprints in the wet sand heading toward the water, with no returning prints beside them. A wide sunlit East Coast sand beach with a low breakwater and distant pine ridge is emptying out at dusk, parasols folded in the far background. A single lifebuoy on its post stands untouched near the center of the frame, its rope still coiled, facing the viewer straight on. The tide has begun to reach the edge of the footprints.
-Camera: full shot, head-to-toe framing, clear silhouette from eye-level shot, front-on shot, direct gaze, symmetrical composition, shot on 40mm lens, neutral perspective, natural human-vision feel
-Lighting/mood: warm soft morning light quality returning at sunset, gentle and quiet, faint melancholy
+korean manhwa style watercolor illustration, soft watercolor wash with visible brush texture, warm pastel palette (peach, cream, dusty blue), hand-drawn loose ink contours, emotive character expressions, warm ambient lighting
+Scene: Emotional focal point: two sets of footprints running into the water and none coming back out. The empty evening shore holds only the pressed sand trail leading from the dry beach into the shallows, with the low waves already softening the last prints. No person stands in the frame, and the same distant condo building sits small at the horizon. A single rescue tube lies unused on the dry sand well away from the trail.
+Camera: long shot from eye-level, front-on shot facing the sea, shot on 35mm lens
+Lighting/mood: warm soft morning light, gentle and quiet, faint melancholy
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 or the story's symbolic color), muted daylight contrast
-No garbled or fake script, no meaningless letters, no random characters, no dense text.
+Keep the footprint trail and the waterline in the upper half, nothing important in the lower third. Render no readable signage, no logo, no lettering.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the wet sand beach) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the sand and shallow waterline) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -197,5 +190,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-해수욕장 구명튜브 안전요원
+해변 모래 발자국 파도
 ```
