@@ -797,6 +797,134 @@ def check_workflow_amend():
     return 0
 
 
+def _shell_literal_leak(src):
+    """다중라인 큰따옴표 리터럴이 **중간에서 조기 종료**되는 지점을 bash 인용 문맥 그대로 훑어 찾는다.
+    반환 = [(변수명, 행번호, 문맥)] · 최상위 dq 안에서만 판정하고 `$(…)`·heredoc·작은따옴표는 통째 스킵
+    (그 안은 셸 문법이 아니거나 자체 인용 규칙이라 세면 위양성이 터진다 — 실측: 치환 내부 괄호 불균형을
+    깊이로만 세던 1차 스캐너가 awk `'…'`·`python3 -c "…"` 7건을 오검출)."""
+    def skip_sq(s, i):                      # ' … '  (bash 작은따옴표 = 이스케이프 없음)
+        j = s.find("'", i + 1)
+        return len(s) if j < 0 else j + 1
+
+    def skip_dq(s, i):                      # " … "  (중첩 $(…) 가능)
+        i += 1
+        while i < len(s):
+            c = s[i]
+            if c == '\\': i += 2; continue
+            if c == '"': return i + 1
+            if c == '$' and s[i+1:i+2] == '(': i = skip_sub(s, i + 1); continue
+            i += 1
+        return len(s)
+
+    def skip_sub(s, i):                     # $( … )  — 내부 인용·heredoc 인식(괄호 오세기 차단)
+        i += 1; depth = 1
+        while i < len(s) and depth:
+            c = s[i]
+            if c == '\\': i += 2; continue
+            if c == "'": i = skip_sq(s, i); continue
+            if c == '"': i = skip_dq(s, i); continue
+            hd = re.match(r"<<-?\s*'?([A-Za-z_][A-Za-z0-9_]*)'?", s[i:])
+            if hd:
+                end = re.search(r'^\s*%s\s*$' % re.escape(hd.group(1)), s[i:], re.M)
+                if end: i += end.end(); continue
+            if c == '(': depth += 1
+            elif c == ')': depth -= 1
+            i += 1
+        return i
+
+    def skip_brace(s, i):                   # ${ … }  — 중첩 따옴표·중괄호 포함(파라미터 확장 트림 관용구)
+        i += 2; depth = 1
+        while i < len(s) and depth:
+            c = s[i]
+            if c == '\\': i += 2; continue
+            if c == '"': i = skip_dq(s, i); continue
+            if c == "'": i = skip_sq(s, i); continue
+            if c == '{': depth += 1
+            elif c == '}': depth -= 1
+            i += 1
+        return i
+
+    hits = []
+    # ⚠ 줄 **선두** 할당만 보면 뚫린다 — `case "$p" in *h24*) BLOCK="…` 처럼 줄 중간에서 시작하는
+    #   다중라인 리터럴도 같은 사고를 낸다(킬테스트 실측: 프리셋 블록에 심은 위반을 선두 한정판이 놓쳤다).
+    for m in re.finditer(r'(?:^|[\s;&|)])([A-Za-z_][A-Za-z0-9_]*)\+?="', src, re.M):
+        i, dq, leak, start_ln = m.end(), True, None, src.count('\n', 0, m.end()) + 1
+        nl_seen = False
+        while i < len(src):
+            c = src[i]
+            if c == '\\': i += 2; continue
+            if c == '\n':
+                if not dq: break            # 문자열 밖에서 줄이 끝났다 = 할당 종료
+                nl_seen = True; i += 1; continue
+            if dq and c == '$' and src[i+1:i+2] == '(': i = skip_sub(src, i + 1); continue
+            if dq and c == '$' and src[i+1:i+2] == '{': i = skip_brace(src, i); continue
+            if c == '"':
+                dq = not dq; i += 1
+                if not dq:                  # 문자열이 닫혔다 — 뒤에 뭐가 오는지가 정상/사고를 가른다
+                    j = i
+                    while j < len(src) and src[j] in ' \t': j += 1
+                    tail = src[j:j + 64]
+                    # 정상 관용구 = ⓐ 구분자·개행으로 끝 ⓑ 줄연속 `\` ⓒ **다음 할당**
+                    #   (`METER_SRC=ask METER_REF="$base" METER_MODEL="$MODEL" …` env-프리픽스 체인 ·
+                    #    실측 70건 전부 이 형태 = 여기서 안 갈라내면 게이트가 레포를 통째로 얼린다).
+                    #   사고는 닫힌 뒤가 **맨 텍스트**다(`…제목 = "이런걸` → `재능이라고 …`).
+                    if (j >= len(src) or src[j] in '\n;|&)\\'
+                            or re.match(r'[A-Za-z_][A-Za-z0-9_]*\+?=', tail)):
+                        break               # 정상 종료 = 이 할당 끝
+                    # ⓓ 한 줄 안에서 열고 닫힌 뒤 ASCII 명령어가 오는 것 = env-프리픽스 체인의 **종점**
+                    #   (`… METER_EFFORT="$_eff" claude_meter 600 \`) = 정상. 리터럴이 **여러 줄에 걸친 뒤**
+                    #   중간에서 닫히는 것만이 프롬프트 본문이 샌 사고다(실측 10건이 전부 이 종점 형태).
+                    if not nl_seen and re.match(r'[A-Za-z_][A-Za-z0-9_./-]*(\s|$)', tail):
+                        break
+                    if leak is None:
+                        leak = (src.count('\n', 0, i) + 1,
+                                src[max(0, i - 45):i + 45].replace('\n', '⏎'))
+                continue
+            if not dq and c in ';|&': break  # 문자열 밖 구분자 = 할당 끝
+            i += 1
+        # 다중라인 리터럴일 때만 위반 — 한 줄 할당의 문자열 이어붙이기(`a="x"y`)는 정상 관용구다.
+        if leak and (src.count('\n', 0, i) + 1) > start_ln:
+            hits.append((m.group(1), leak[0], leak[1]))
+    return hits
+
+
+def check_prompt_literal_quoting():
+    """다중라인 프롬프트 리터럴 = 인용 무결성 의무(하드 · 260805 실사고 `fail-2026-08-04-{1528,2211}` 봉합).
+    사고 = ask.sh 프롬프트 1-3) 블록에 **이스케이프 안 된 큰따옴표**가 들어갔다(`제목 = "이런걸 …"`).
+    첫 `"` 가 `prompt="` 를 닫아 뒤 텍스트가 셸 토큰이 되고(`재능이라고: command not found`), `prompt=…` 는
+    그 명령의 **환경변수 프리픽스**로 흡수돼 변수 자체가 안 잡힌다 → `set -u` unbound → claude -p 에 **빈
+    stdin** → "Input must be provided…" = 요약 요청 **전건 100% 실패**(요청 내용과 무관한 고정 리터럴이라
+    입력을 뭘 넣어도 죽는다). ⚠ 이 사고가 조용한 이유 = **문법적으로 완전히 유효**하다 — `bash -n` 통과,
+    커밋 게이트 전건 통과, 화면엔 「내용 분석 결함(입력이 비었거나 불충분)」이라 **입력 탓으로 보인다**.
+    실제로 260804 세션은 이 문구를 믿고 엉뚱한 축(네이버 프레임 셸)을 봉합했고 진범은 6시간 더 살았다.
+    같은 줄에서 백틱은 `\\``로 이스케이프돼 있었다 = 사람 눈이 따옴표만 놓치는 축(기계 검사가 유일한 해).
+    판정 = `_shell_literal_leak`(bash 인용 문맥 정적 훑기 · 렌더·LLM·네트워크 0) · 스코프 = 파이프라인
+    셸 전수 자동 발견(새 스크립트가 조용히 빠질 수 없다) · 면책 없음 = 현재 위반 0."""
+    import glob as _g
+    files = sorted(_g.glob(os.path.join(ROOT, '.github', 'scripts', '*.sh'))
+                   + _g.glob(os.path.join(ROOT, 'shared', '*.sh')))
+    if not files:
+        print('❌ check_prompt_literal_quoting 대상 셸 0건 — 경로 확인(fail-closed)'); return 1
+    bad = []
+    for f in files:
+        try:
+            src = open(f, encoding='utf-8').read()
+        except Exception as e:
+            print('❌ check_prompt_literal_quoting 읽기 실패(fail-closed): %s — %s' % (f, e)); return 1
+        for var, ln, ctx in _shell_literal_leak(src):
+            bad.append((os.path.relpath(f, ROOT), ln, var, ctx))
+    if bad:
+        print('❌ 프롬프트 리터럴 인용 무결성 — 다중라인 문자열이 중간에서 닫혀 본문이 셸 토큰으로 샌다 %d건'
+              '(= 변수 미할당 → claude 빈 stdin → 그 경로 요청 전건 실패):' % len(bad))
+        for f, ln, var, ctx in bad:
+            print('   · %s:%d  변수 %s' % (f, ln, var))
+            print('     …%s…' % ctx)
+            print('     → 본문 속 큰따옴표는 \\" 로 이스케이프(같은 블록의 백틱 \\` 관례와 동축)')
+        return 1
+    print('✅ 프롬프트 리터럴 인용 무결성 — 셸 %d개 다중라인 리터럴 조기 종료 0건(빈 stdin 사고 봉인).' % len(files))
+    return 0
+
+
 # [CF-Pages-Skip] 코얼레싱 허용 표면(운영자 260803 페이블 5인 평의회 · Q1331) — 여기 등재된 파일만 접두를 배선할 수 있다.
 #   원리 = 「화면에 수 분 늦게 떠도 되는 데이터 churn」 커밋만 CF 빌드를 스킵(다음 비스킵 빌드가 tip 통째 배포 = 누적·유실 0).
 #   ⚠ 금지 축(여기 없는 파일 = 전부): stamp-version(:14 skip 금지 명문 = BUILD_STAMP·live-smoke 수렴 축) ·
@@ -4118,6 +4246,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_workflow_amend 예외(fail-closed):', e); rc = 1
+    try:
+        if check_prompt_literal_quoting() != 0:   # 다중라인 프롬프트 리터럴 인용 무결성(하드 게이트 — 260805 실측: 미이스케이프 " 하나가 prompt 변수를 통째로 삼켜 요약 요청 전건 실패·문법은 유효라 bash -n 무통과)
+            rc = 1
+    except Exception as e:
+        print('❌ check_prompt_literal_quoting 예외(fail-closed):', e); rc = 1
     try:
         if check_pages_skip() != 0:   # [CF-Pages-Skip] 오배선 차단(하드 게이트 — 260803 평의회: 도장·제작·뉴스 큐에 번지면 배포 보증·수렴·알림 조용히 사망)
             rc = 1
