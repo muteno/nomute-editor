@@ -12,7 +12,7 @@
 #   한글 자동 줄바꿈 없음 → WrapStyle 2 + 수동 \N(줄당 폭/폰트 비례) ·
 #   위치 = pos 게이지 %(0=하단 100=상단 · 구 bottom/middle/top 하위호환) → align 2 고정 + MarginV 연속(24% ≈ 구 하단 세이프존 22%) ·
 #   배경 = bg 게이지 %(BackColour 알파 · 0=박스 없음 · 구 클라 박스 = 44 승계) ·
-#   폰트 = opts.font 닫힌 집합{gothic(기본)=Noto Sans CJK KR·serif=Noto Serif CJK KR·nanum=NanumGothic·pen=Nanum Pen Script}(fontconfig 자동 탐색 = fontsdir 불요 · 미설치 = 기본 폴백+note) ·
+#   폰트 = opts.font 닫힌 집합{gothic(기본)=Noto Sans CJK KR·serif=Noto Serif CJK KR·nanum=NanumGothic·pen=Nanum Pen Script·paper=Paperlogy(레포 동봉 assets/fonts/subs — apt 아님)}(apt 축 = fontconfig 자동 탐색 · 레포 축 = register_repo_fonts()가 사용자 폰트로 등록 · 미설치 = 기본 폴백+note) ·
 #   음영 색 = opts.oc 닫힌 집합(OC_BGR · 외곽선/그림자/줄박스 단일 축 · 결측 = 검정 종전) · 회전 메타 = autorotate 기본 유지 + PlayRes 스왑.
 # 연속 축 3종(운영자 260707 플레이그라운드 선택값 배선): size = 높이비 소수(0.035 등 · 구 s/m/l 문자열 하위호환) ·
 #   outline = 외곽선 두께 배율(×0.5 등 · bg=0 글리프 스트로크에만 의미) · pad = 박스 패딩 계수(fs×pad · bg>0 줄박스 패딩).
@@ -27,6 +27,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -47,8 +48,12 @@ OC_BGR = {"black": "000000", "white": "FFFFFF", "green": "02FD0F", "mint": "D2EE
 #   mint = --accent #00EED2 · sky = --bias-l1 #38C6FF (신규 색 창작 아님 = 기존 UI 토큰 계승).
 # 자막 폰트 — 닫힌 집합(260711 운영자 "폰트 조정"). 러너 설치 = edit-make·ly-make 자막 경로 apt{fonts-noto-cjk + fonts-nanum + fonts-nanum-extra}.
 #   패밀리명 = fc-scan 실측(NanumPen.ttf = "Nanum Pen Script" — 구글 웹폰트와 동명이라 뷰어 미리보기 정합). 미설치 = run()이 기본 폴백+note.
+#   paper = 페이퍼로지 5 Medium(운영자 260805 "깃에 넣을테니 선택가능하게") — apt가 아니라 **레포 동봉**(assets/fonts/subs) · 패밀리 = TTF name표 실측 nid16 "Paperlogy"
+#   (한글 별칭 "페이퍼로지" 동일 파일) · 등록 = REPO_FONT_KEYS 요청 시 register_repo_fonts()가 체크아웃의 폰트를 사용자 fontconfig에 편입(fc-cache).
 FONT_FAMILY = {"gothic": "Noto Sans CJK KR", "serif": "Noto Serif CJK KR",
-               "nanum": "NanumGothic", "pen": "Nanum Pen Script"}
+               "nanum": "NanumGothic", "pen": "Nanum Pen Script",
+               "paper": "Paperlogy"}
+REPO_FONT_KEYS = {"paper"}   # 레포 동봉 축(assets/fonts/subs) — 새 깃 폰트 추가 절차는 assets/fonts/subs/README.md
 GIT_FALLBACK_MAX = 30 * 1024 * 1024   # R2 미설정 시 git 커밋 상한(레포 비대 방지)
 MAX_DUR = 600                    # 릴스/쇼츠 도구 — 10분 초과 영상은 번인 거절(러너 시간 보호)
 OVL_MAX_SEC = 600                # 자막 오버레이(투명 WebM) 산출 상한 — VP9 알파 인코딩 예산 보호(운영자 260731 · 릴스/쇼츠 주사용 ≤ 수 분이라 실사용 전량 커버)
@@ -630,6 +635,35 @@ def size_frac(opts):
     return {"s": 0.032, "m": 0.038, "l": 0.045}.get(s or "l", 0.045)
 
 
+_REPO_FONTS_DONE = {"v": False}
+
+
+def register_repo_fonts():
+    # 레포 동봉 자막 폰트(정본 = assets/fonts/subs · 운영자가 깃에 넣는 폰트 — 260805 페이퍼로지) → 사용자 fontconfig 등록.
+    #   레포 루트 직하 .ttf/.otf도 관용 수용(운영자 웹 업로드가 최상위에 떨어지는 관례 — 정리 전 커밋에서도 번인 생존).
+    #   fail-soft: 실패·폰트 0개 = False → 호출측 font_avail 재판정이 기본 고딕 폴백(+note). 1회 가드 = fc-cache 중복 방지.
+    if _REPO_FONTS_DONE["v"]:
+        return True
+    _REPO_FONTS_DONE["v"] = True
+    try:
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        cand = []
+        for d in (os.path.join(repo, "assets", "fonts", "subs"), repo):
+            if os.path.isdir(d):
+                cand += [os.path.join(d, f) for f in os.listdir(d)
+                         if f.lower().endswith((".ttf", ".otf", ".ttc")) and os.path.isfile(os.path.join(d, f))]
+        if not cand:
+            return False
+        dst = os.path.expanduser("~/.local/share/fonts/nm-subs")
+        os.makedirs(dst, exist_ok=True)
+        for p in cand:
+            shutil.copy2(p, dst)
+        subprocess.run(["fc-cache", "-f", dst], capture_output=True, timeout=60)
+        return True
+    except Exception:
+        return False
+
+
 def font_avail(family):
     # 폰트 설치 실측(fc-list) — 판별 실패 = True(fail-soft: 워크플로가 설치 · libass 폴백도 있어 잡을 안 죽임 · 오탐 시 대가 = 기본 고딕 합성+note뿐)
     try:
@@ -1096,6 +1130,8 @@ def run(vid_id, video, outdir):
     _EK_LBL = {"vid_ar": "비율", "vid_fit": "채움", "vid_pos": "위치", "vid_res": "해상도", "vid_fps": "프레임", "vid_t0": "구간", "vid_t1": "구간", "vid_segs": "구간", "vid_xfade": "디졸브", "aud_norm": "음량"}
     edit_notes = (["이전 편집 설정 승계(" + "·".join(dict.fromkeys(_EK_LBL[k] for k in inherited)) + ")"] if inherited else [])   # 실승계 축만 표기(침묵 금지·과대 표기 금지 · 검증3)
     f_key = opts.get("font")
+    if segs and not no_burn and f_key in REPO_FONT_KEYS:
+        register_repo_fonts()   # 레포 동봉 축(paper) = 무조건 선등록 — fc 판별 불가 환경(font_avail fail-soft True)에서도 libass가 실파일을 찾게(260805)
     if segs and not no_burn and f_key and f_key in FONT_FAMILY and f_key != "gothic" and not font_avail(FONT_FAMILY[f_key]):
         opts["font"] = "gothic"   # 폰트 미설치 = 기본 폴백(fail-soft · 260711) — 이후 전 build_ass 호출(컷 실패 폴백 포함)이 이 opts를 봄 · 게이트 = 번인 실행 경로(segs·not no_burn)에만(컷 단독·전사 없음 = fc-list 불요·오해 note 차단 · v2평의회1 F2)
         edit_notes.append("선택 폰트 미설치 — 기본 고딕으로 합성")

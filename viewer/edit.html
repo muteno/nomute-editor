@@ -795,7 +795,7 @@ const OC_LBL={black:'검정',white:'흰',green:'그린',mint:'민트',sky:'스�
 const FONT_PV={   // 폰트 = 러너 설치 패밀리(fc-scan 실측)와 동명 구글 웹폰트 지연 로드 = 미리보기 실체 정합 · 기본 고딕만 = 시스템 폰트 근사(안드로이드 = Noto 계열 실질 동일 · 평상시 외부요청 0)
   gothic:{lbl:'고딕',ff:'"Noto Sans KR","Noto Sans CJK KR",sans-serif',gf:'Noto+Sans+KR:wght@700;800'},   // 본고딕 명시(운영자 260731 19차 "본고딕·본명조만") — 구 시스템 근사(ff:'')는 기기마다 달라 러너(Noto 계열)와 미리보기가 갈렸다
   serif:{lbl:'명조',ff:'"Noto Serif KR","Noto Serif CJK KR",serif',gf:'Noto+Serif+KR:wght@700'},
-  nanum:{lbl:'나눔고딕',ff:'"Nanum Gothic","NanumGothic",sans-serif',gf:'Nanum+Gothic:wght@700;800'},
+  paper:{lbl:'페이퍼',fam:'Paperlogy',ff:'"Paperlogy","페이퍼로지",sans-serif',lf:'assets/fonts/subs/Paperlogy-5Medium.ttf',lw:'500'},   // 페이퍼로지 5 Medium(운영자 260805 "깃에 넣을테니 선택가능하게 · 줄임말") — 레포 동봉 자기 서빙(정본 = 루트 assets/fonts/subs → build-viewer cpSync가 viewer/assets로 복사 = pretendard 동축 · 외부요청 0) · 패밀리 = TTF name표 실측(nid16 "Paperlogy" · 한글 별칭 "페이퍼로지") · 러너 짝 = ly_burn REPO_FONT_KEYS 등록(fc-cache)
   pen:{lbl:'손글씨',ff:'"Nanum Pen Script",cursive',gf:'Nanum+Pen+Script'},
 };
 const _ocRGB={};
@@ -807,8 +807,9 @@ function ocRGB(k){   // 음영 색 키 → 'r,g,b'(계산 스타일 실측 = var
   }catch(e){ return '0,0,0'; }
 }
 let _gfPre=false;
-function loadPvFont(k){   // 구글 웹폰트 지연 로드(기본 고딕 = 로드 0 · 선택 시 1회) — 실패/오프라인 = 폴백 스택 표시(근사 · 번인은 러너 실폰트라 무해)
-  const f=FONT_PV[k]; if(!f||!f.gf||f._l) return; f._l=true;
+function loadPvFont(k){   // 미리보기 폰트 지연 로드(기본 고딕 = 로드 0 · 선택 시 1회) — 구글 웹폰트(gf) 또는 레포 동봉 파일(lf) · 실패/오프라인 = 폴백 스택 표시(근사 · 번인은 러너 실폰트라 무해)
+  const f=FONT_PV[k]; if(!f||!(f.gf||f.lf)||f._l) return; f._l=true;
+  if(f.lf){ try{ const face=new FontFace(f.fam,'url('+f.lf+')',{weight:f.lw||'400',display:'swap'}); face.load().then(x=>document.fonts.add(x)).catch(()=>{}); }catch(e){} return; }   // 레포 동봉 축(페이퍼로지) = FontFace 직로드(외부요청 0 · 실패 fail-soft = 구글 축과 동일 계약 · 260805)
   if(!_gfPre){ _gfPre=true; [['https://fonts.googleapis.com',''],['https://fonts.gstatic.com','anonymous']].forEach(([h,co])=>{   // 첫 선택 시 preconnect = DNS+TLS 선행
     const p=document.createElement('link'); p.rel='preconnect'; p.href=h; if(co)p.crossOrigin=co; document.head.appendChild(p); }); }
   const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family='+f.gf+'&display=swap'; document.head.appendChild(l);
@@ -861,7 +862,7 @@ function prm(k){
     /* 프리셋 행 = 폐지(운영자 260731 19차 "자막 on 시 세부 기능 정리 — 프리셋 > 삭제") · SUBPRE·spre 핸들러는 도먼트 보존(복원 = 이 자리 srow 한 줄) */
     +'<div class="scard cyc"><div class="hd st" title="ON = 원문이 50% 작게 위 · 한국어 자막이 아래(원문+한글 동시 표기)">'+cyv('trn','번역')+'</div></div>'   // 번역 = 자막 **안** 첫 카드로 이주(운영자 260803 7차 "어짜피 자막에 포함되어 있는거니까 없애고 자막 안으로 삽입") — 부품·워딩·핸들러 = 구 hl3 3분할 행 tg3 그대로(생김새 창작 0 · 워드 점등 정본) · 축 계약 불변(setAxis trn: ON = 자막 자동 ON · 자막 OFF = 번역 동반 OFF)
     /* 언어·톤 행 = 폐지(운영자 260803 8차 "톤 > 의역 고정 · 언어 > 원문 포함 고정") — 값은 P 기본값(lang:'dual' · tone:'sns')으로 상시 고정 · setAxis('lang'/'tone') 핸들러·발사 경로는 도먼트 보존(복원 = 이 자리 srow 두 줄) */
-    +C(srow('글자 형태', ['gothic','serif','pen'].map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))   // 운영자 260731 19차 — 라벨 '폰트'→'글자 형태' · 고딕(본고딕)·명조(본명조)·손글씨 3종 · 나눔고딕 = 도먼트(러너 화이트리스트 불변)
+    +C(srow('글자 형태', ['gothic','serif','paper'].map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))   // 운영자 260805 "기본은 본고딕 · 명조랑 페이퍼 줄임말로 고를수있게" — 고딕(본고딕·기본)·명조(본명조)·페이퍼(페이퍼로지 5 Medium · 레포 동봉) 3종 · 나눔고딕(260731 19차)·손글씨(260805) = 도먼트(러너 화이트리스트 불변 · 복원 = 배열에 키 한 줄)
     /* 모양·강조 행 = 폐지(운영자 260731 19차 "모양-강조 없애자 · 모양 = 깔끔(기본)으로 가고 나머진 다 숨김") — style 기본값이 'clean'으로 고정(아래 P 기본값) · karaoke·pop·keyword 축은 도먼트 보존 */
     +C(gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰'))   // 위치·크기 3형제 = 한 카드(같은 축 묶음)
     +C(srow('음영', [['none','기본'],['box','음영'],['stroke','획'],['shadow','그림자']].map(a=>pc('shtype',a[0],P.shtype===a[0],false,a[1])))
