@@ -1,29 +1,28 @@
-# 혼자, 늙어서, 생계급여 — 294만명의 자화상
+# 국가가 생계를 받쳐주는 사람이 300만명
 
 **[프롬프트 설계]**
-- 화풍: B극화 — 성장 지표와 생계급여 창구가 어긋난 **구조 비판** 기사라, 무게와 사실성을 실어야 한다(수채화의 온기는 이 어긋남을 흐린다).
-- 분위기: 조용한 억울함. 소리치는 분노가 아니라, 계산이 끝난 얼굴의 체념 — 한 평 방의 저조도 대비와 창밖 고층 아파트의 밝음이 같은 프레임에서 부딪친다.
-- 연출 방향: 뉴스 안 보는 SNS 이용자가 멈추는 지점은 '294만'이 아니라 **그 숫자가 앉아 있는 자리**다. 연금 70만원으로 버티는 60~70대 1인 가구, 수급 경계선을 오가는 50대가 "내 얘기네"로 들어오게, 통계를 **혼자 사는 방 한 칸의 온도**로 번역한다. 사물은 늘 사람과의 관계 속에서만 — 우편봉투는 손에, 통장은 무릎에, 문턱은 발 앞에. 시사점은 '누가 잘못했나'가 아니라 **성장 그래프와 수급 그래프가 왜 같은 방향으로 올라가나**이므로, 마지막까지 판정을 짓지 않고 두 값을 나란히 세운다. 악센트 #0FFD02는 서류·창구·숫자 표면에만 얹어 시선이 '제도의 접점'을 따라가게 한다.
-- 독자 동선: 起 카드1→承 카드2~4→轉 카드5→結 카드6 · 훅=카드1 끝(단서형 — 액수만 던지고 정체는 유보)+카드3 끝(예고형 — 문턱 이야기로 넘김) · 감정 피크=카드5 · 착지 한 줄 요지 = 경기가 좋다던 해에도 그래프는 한 방향으로만 움직였다(성장과 수급 증가의 병치, 판정은 독자 몫).
-- 연속성 앵커: Recurring subject — a Korean man in his early 70s, thin build, close-cropped gray hair, deep facial lines, wearing a faded beige short-sleeve collared shirt and dark trousers. 반복 장소 = a cramped one-room flat with peeling wallpaper, a single bare bulb, and one small window.
+- 화풍: B극화 — 통계 뒤에 있는 노년 1인 가구의 무게와 구조 문제를 다루는 기사라, 명암 낙차로 사실감을 세우는 극화가 맞다
+- 분위기: 요란한 절망이 아니라 조용한 뒷걸음질 — 성장 지표와 살림 사이의 온도 차를 낮은 채도와 한 줄기 빛으로
+- 연출 방향: 뉴스를 안 보는 독자가 멈추는 지점은 '294만'이라는 숫자가 아니라 그 숫자 한 칸이 된 사람의 저녁이다. 그래서 통계를 그리지 않고 통계가 가리키는 방 한 칸·창구 한 자리를 그린다 — 우편봉투를 든 손, 혼자 남은 밥상, 창구 앞 줄. 마지막엔 5년치 곡선이 한 방향으로만 움직였다는 사실을 방 밖 풍경으로 되돌려, 개인의 사정이 아니라 구조라는 걸 보게 한다. 악센트 1색은 서류·창구 표식에만 걸어 시선을 '제도'로 모은다
+- 독자 동선: 起 카드1→承 카드2~3→轉 카드4→結 카드5 · 훅=카드1 끝(단서형: 수치 미공개 예고)+카드3 끝(단서형: '문턱' 단어 던지고 다음 장 회수) · 감정 피크=카드4 · 착지 한 줄 요지 = 경기가 좋다던 해에도 이 그래프는 한 방향으로만 움직였다
+- 연속성 앵커: Recurring subject — a Korean man in his late 70s, thin build, short grey hair, deep-lined face, wearing a faded beige short-sleeved shirt and dark trousers. 반복 장소 = a small one-room dwelling with peeling wallpaper and a single bare bulb.
 
 ### [카드 1]
 **텍스트**
 ```text
-한 평 방에 앉아
-그가 받아 든 봉투에는
-매달 들어오는 액수가
-*70만원으로 적혀 있었다*
+저녁 여섯 시 한 평 남짓한 방
+노인이 우편봉투를 무릎에 올린다
+매달 같은 날 오는 그 봉투다
+*이런 봉투를 받는 사람이 294만명*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his weathered fingertips pinching the edge of a thin envelope resting on his knee. Recurring subject — a Korean man in his early 70s, thin build, close-cropped gray hair, deep facial lines, wearing a faded beige short-sleeve collared shirt and dark trousers, sits alone on the floor of a cramped one-room flat with peeling wallpaper, a single bare bulb, and one small window. He looks down at the envelope with a vacant unfocused stare, eyes looking past it, shoulders settled in long habit. Through the small window behind him, distant high-rise apartment towers glow in the evening haze, bright and far away, while only the center of his room is lit.
-Camera: medium close-up, chest-up framing, facial emotion, slight body context from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 85mm portrait lens, soft background separation, nose room on the right, gaze directed toward the right edge
+Scene: Emotional focal point: a vacant thousand-yard stare, unfocused eyes looking past everything. Recurring subject — a Korean man in his late 70s, thin build, short grey hair, deep-lined face, wearing a faded beige short-sleeved shirt and dark trousers, sits alone on the floor of a small one-room dwelling with peeling wallpaper and a single bare bulb, holding a plain envelope flat on his knees with both hands. His gaze drifts past the envelope toward the small open window on the right, where distant high-rise apartment towers stand in the evening haze. The envelope is the one object connecting his hands to the world outside the room.
+Camera: medium shot, waist-up framing, face and gestures, conversational, from eye-level shot, neutral perspective, realistic, balanced emotion, shot on 50mm standard lens, minimal distortion, natural cinematic composition, nose room on the right, gaze directed toward the right edge
 Lighting/mood: single pool of hard light isolating the figure in surrounding blackness, claustrophobic loneliness
 Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the envelope edge only), film-noir low-key lighting, deep shadows
-Keep the man's eyes, face and the envelope in his hands in the upper-center area of the frame, well above the bottom third.
-Text handling: no readable writing on the envelope, the paper surface is folded and seen at an angle so no script is legible; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Text handling: no readable writing on the envelope, the paper surface is angled away and cropped so no lettering is needed.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the room floor and wall) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
@@ -42,52 +41,19 @@ NEGATIVE — strictly avoid:
 ### [카드 2]
 **텍스트**
 ```text
-그 70만원은 국민연금
-평균 수급액이다. 그것으로
-노후가 안 받쳐지는 사람들이
-*생계급여 창구로 온다*
+올해 6월 기초생활보장 수급자
+294만4938명으로 집계됐다
+반년 만에 10만8232명이 늘었다
+*이 속도면 하반기에 300만명이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the narrowing gap between an applicant's hesitating hand and the counter's edge. In a public welfare service office, an elderly woman in her late sixties stands at a low service counter and slides a document across it, while a seated civil servant in a plain shirt reaches out to receive it, both hands almost touching over the countertop. Behind her, two or three other applicants wait in a short line on plastic chairs, kept lower and softer so the exchange stays the focus. The room is a plain government office interior with numbered counter partitions and no readable signage.
-Camera: extreme close-up, single detail, hands and the document, texture from high angle shot, looking down, shot on 100mm macro lens, fine detail, shallow depth of field
+Scene: Emotional focal point: the weary patience in the downturned eyes of the people waiting, gaze cast downward at the ground. A long queue of ordinary Korean citizens of many ages waits along the corridor of a district welfare office, standing quietly with folded documents in their hands. A staff member behind a low counter on the left reaches out to receive a form from the person at the front. The counter and the line of waiting people run diagonally deep into the frame, showing how far back the queue extends. The corridor is an ordinary Korean public office interior with plain walls and a numbered ticket display board kept blank.
+Camera: wide shot, full body, surrounding environment, movement, spatial context, from high angle shot, looking down, observed, shot on 35mm lens, natural documentary perspective, balanced subject and background, minimal distortion
 Lighting/mood: flat sterile clinical fluorescent light, cold even greenish-white, emotionless institutional
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the document's edge and the counter number strip), muted daylight contrast
-Keep the two pairs of hands and the document in the upper-center area of the frame, well above the bottom third.
-Text handling: the document is seen at a steep angle and partly folded so no writing is legible; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the counter top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-주민센터 복지 상담 창구
-```
-
-### [카드 3]
-**텍스트**
-```text
-그렇게 모인 사람이 올해 6월
-294만4938명이다. 5년 전보다
-28.3% 늘어, 하반기 안에
-*300만명을 넘어선다*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the small stooped silhouette of one waiting figure at the very front, head bowed. A long queue of ordinary people of many ages winds through a wide public office corridor, seen from high above, each person standing apart from the next with a visible gap. Most faces are turned away or downward and no one speaks to anyone. The corridor floor stretches unbroken across the whole frame, its tiles repeating into the distance, and the line disappears past the far end.
-Camera: extreme long shot, tiny subjects, vast environment, scale, isolation from overhead shot, bird's-eye view, top-down angle, shot on 20mm wide lens, documentary realism, gaze and queue directed toward the right edge
-Lighting/mood: overcast diffused daylight through high windows, flat soft shadows, muted somber mood
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the floor guide line running along the queue), muted daylight contrast
-Keep the head of the queue and the front figures in the upper-center area of the frame, well above the bottom third.
-Text handling: no signage or floor markings with letters anywhere; the guide line is a plain painted stripe; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the counter signage strip only), muted daylight contrast
+Text handling: the ticket display board and all signage are left blank or shown as pure color blocks with no lettering, angled away from the camera.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
 Composition: ONE continuous surface (the corridor floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
@@ -100,29 +66,59 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-행정복지센터 대기 줄
+주민센터 복지 창구 대기
+```
+
+### [카드 3]
+**텍스트**
+```text
+이 줄에 선 사람들의 얼굴은 좁다
+65세 이상이 45.9%로 절반 가깝고
+혼자 사는 가구가 56.8%다
+*늙고 혼자인 사람들의 통계다*
+```
+**이미지 프롬프트**
+```text
+korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
+Scene: Emotional focal point: shoulders pulled in, the body making itself small at the table. Recurring subject — a Korean man in his late 70s, thin build, short grey hair, deep-lined face, wearing a faded beige short-sleeved shirt and dark trousers, eats alone at a low table in a small one-room dwelling with peeling wallpaper and a single bare bulb, one hand holding a spoon above a single bowl, the other resting flat on the floor. Beside him one empty cushion sits where another person would be, and the second pair of chopsticks on the table has never been moved. He looks down into the bowl, not at the empty seat.
+Camera: full shot, head-to-toe, full body, clear silhouette, from overhead shot, bird's-eye view, top-down angle, layout, geometry, shot on 24mm wide lens, cinematic wide shot, spatial context, subtle depth
+Lighting/mood: cold blue dim interior light, heavy and suffocating, faint trembling tension
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 as a faint rim on the single bowl), film-noir low-key lighting, deep shadows
+Text handling: no writing anywhere in the room, all surfaces are plain.
+Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
+MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
+Composition: ONE continuous surface (the room floor seen from above) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+NEGATIVE — strictly avoid:
+- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
+- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
+- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
+- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
+- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
+```
+**검색어**
+```text
+독거노인 혼밥 밥상
 ```
 
 ### [카드 4]
 **텍스트**
 ```text
-그 숫자가 는 데는 제도를
-넓힌 몫도 있다. 2024년부터
-생계급여 문턱을 중위소득
-*30%에서 32%로 낮췄다*
+문턱을 낮춘 몫도 분명히 있다
+2024년 생계급여 대상을 넓혔고
+재산 기준과 소득 공제도 풀었다
+*그런데 국민연금은 평균 70만원이다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the worn shoe of the recurring man lifting over a lowered threshold at the office entrance. Recurring subject — a Korean man in his early 70s, thin build, close-cropped gray hair, deep facial lines, wearing a faded beige short-sleeve collared shirt and dark trousers, steps through a wide glass doorway of a public office, one hand on the door frame for balance, his gaze fixed on the floor just ahead of his foot. Two other people, a woman in her fifties and a young man, follow a few steps behind him through the same doorway, kept lower and softer so his step stays the focus.
-Camera: cowboy shot, mid-thigh framing, body language, hands visible from ground-level shot, worm's-eye view, near floor, exaggerated scale, shot on 35mm lens, natural documentary perspective, minimal distortion
-Lighting/mood: cold blue dim interior light at the entrance, heavy and suffocating, faint trembling tension
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the lowered threshold strip under his foot), film-noir low-key lighting, deep shadows
-Keep his stepping foot, his hand on the frame and the threshold strip in the upper-center area of the frame, well above the bottom third.
-Text handling: the glass door carries no lettering or notices; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: a hand pausing mid-air just above the paper, fingers stiff, unable to set the pen down. Recurring subject — a Korean man in his late 70s, thin build, short grey hair, deep-lined face, wearing a faded beige short-sleeved shirt and dark trousers, sits at a bare desk under a single hanging lamp, gripping a pen over an application form, head bent in focus. The form is the only lit object on the desk and his whole body leans into it. Everything beyond the lamp's reach falls into total darkness.
+Camera: close-up shot, face and hands centered, emotional detail, from low angle shot, looking up, dramatic presence, shot on 85mm portrait lens, flattering face, soft background separation, elegant focus
+Lighting/mood: harsh single overhead light pooling on the table, deep surrounding black, oppressive interrogation
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on a single printed line of the form), film-noir low-key lighting, deep shadows
+Text handling: the form is seen at a steep angle and cropped by the frame edge, its ruled lines readable as texture only, with no words rendered.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the entrance floor) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the desk top) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -132,28 +128,28 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-기초생활보장 생계급여 신청
+기초생활수급 신청서 작성
 ```
 
 ### [카드 5]
 **텍스트**
 ```text
-그런데 문턱만으로는
-설명되지 않는다. 수급자
-*절반이 혼자 사는 사람이다*
+연금이 노후를 못 받치면 그 사람은
+결국 생계급여 창구로 온다
+어느 칸에서 쓰느냐만 달라진다
+*경기 좋다던 해에도 한 방향이었다*
 ```
 **이미지 프롬프트**
 ```text
 korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: his eyes, glistening but dry, held wide open in the dark as he stares at nothing. Recurring subject — a Korean man in his early 70s, thin build, close-cropped gray hair, deep facial lines, wearing a faded beige short-sleeve collared shirt and dark trousers, sits upright and motionless on the floor of the same cramped one-room flat with peeling wallpaper, a single bare bulb, and one small window. His hands rest open and empty on his knees, palms up, and he faces slightly away from the window. The bare bulb above has gone dark and only a thin blade of light from the window edge crosses his face.
-Camera: tight close-up, face fills frame, intense emotion, intimate pressure from profile shot, side view, clear silhouette, shot on 135mm telephoto lens, strong compression, cinematic depth
-Lighting/mood: single hard side-light cutting across the subject, deep chiaroscuro shadows, tense atmosphere, the darkest and highest-contrast moment of the sequence
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 at its strongest, a thin cold glow along the window edge behind him), film-noir low-key lighting, deep shadows
-Keep his eyes and the lit side of his face in the upper-center area of the frame, well above the bottom third.
-Text handling: no writing anywhere in the room; no garbled or fake script, no meaningless letters, no random characters, no dense text.
+Scene: Emotional focal point: the quiet steadiness of a lone figure standing still while the city glitters past him. Recurring subject — a Korean man in his late 70s, thin build, short grey hair, deep-lined face, wearing a faded beige short-sleeved shirt and dark trousers, stands small at the near end of a night footbridge, facing the camera, hands empty at his sides. Behind and above him a dense wall of brightly lit high-rise apartment towers and office buildings fills the upper frame, their windows glowing while the bridge he stands on stays dark. The gap between his lit face and the distant blazing skyline is the subject of the image.
+Camera: extreme long shot, tiny subject, vast environment, scale, isolation, from ground-level shot, worm's-eye view, near floor, exaggerated scale, shot on 20mm wide lens, subject and environment, documentary realism, front-on shot, direct gaze, facing camera
+Lighting/mood: cold blue pre-dawn tone, lone streetlight reflection on wet ground, desolate stillness
+Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on one strip of distant building light), film-noir low-key lighting, deep shadows
+Text handling: all distant signage is reduced to abstract glowing color blocks with no letterforms.
 Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
 MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the room wall behind him) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
+Composition: ONE continuous surface (the footbridge deck) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
 NEGATIVE — strictly avoid:
 - no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
 - no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
@@ -163,37 +159,5 @@ NEGATIVE — strictly avoid:
 ```
 **검색어**
 ```text
-독거노인 1인 가구 고립
-```
-
-### [카드 6]
-**텍스트**
-```text
-확대를 반기는 쪽은 뒤늦게
-잡힌 사각지대로 읽고, 재정을
-걱정하는 쪽은 10년 뒤 청구서로
-*읽는다. 둘 다 비켜가는 건*
-```
-**이미지 프롬프트**
-```text
-korean manhwa style serious drama illustration, sharp black ink outlines with varying line weight, precise anatomical rendering, screentone shading, cel-shaded color with defined edges, high contrast chiaroscuro, muted desaturated palette with selective color accents, heavy atmosphere
-Scene: Emotional focal point: the recurring man's steady gaze turned straight out of the frame toward the viewer. Recurring subject — a Korean man in his early 70s, thin build, close-cropped gray hair, deep facial lines, wearing a faded beige short-sleeve collared shirt and dark trousers, sits at the open window of the same cramped one-room flat with peeling wallpaper and a single bare bulb, one hand still holding the thin envelope against his chest. Behind and above him through the window, the distant high-rise apartment towers are lit up bright against the dusk sky, while his room stays dim. He does not look at the towers; he looks out at the viewer without expression.
-Camera: medium shot, waist-up framing, face and gestures, conversational from eye-level shot, neutral perspective, realistic, balanced emotion, front-on shot, direct gaze, facing camera, shot on 50mm standard lens, minimal distortion, natural cinematic composition, centered and static
-Lighting/mood: warm soft evening afterglow through the window releasing the earlier tension, long soft shadows, quiet unresolved calm
-Accent: monochrome desaturated base with a single color accent (neon green #0FFD02 on the envelope edge at his chest), muted daylight contrast
-Keep his eyes, face and the envelope at his chest in the upper-center area of the frame, well above the bottom third.
-Text handling: no readable writing on the envelope or in the room; no garbled or fake script, no meaningless letters, no random characters, no dense text.
-Aspect ratio: 4:5 vertical portrait, full bleed single image filling the entire frame edge to edge with no inner border, no outer frame, no rectangular outline, no white margin around the image.
-MANDATORY: This is ONE single seamless illustration on ONE continuous surface. The entire canvas shows ONE continuous scene without any horizontal division, without any line cutting the image, without any frame inside the frame. The whole image is one unified visual flowing edge to edge.
-Composition: ONE continuous surface (the room wall with the window opening) extending edge to edge from top to bottom of the frame. The main subject is anchored in the upper-center area on this same surface. No other surface, no transition between two distinct surfaces anywhere in the frame.
-NEGATIVE — strictly avoid:
-- no comic panel layout, no split panel, no panel division, no horizontal divider line cutting the image, no upper and lower separate scenes, no two stacked frames, no boxed sections, no inset, no second view of the same subject, no duplicate elements
-- no letterbox, no black bands at top or bottom, no padding, no empty black areas, no UI overlay, no caption space rendered as a solid color block
-- no border, no frame, no panel border, no inner outline, no outer rectangular outline, no white margin around the image, no thick black outline framing the scene, no comic page border, no painted picture frame, no canvas border, no matted edge
-- no main subject in the lower portion, no key figure in the bottom area, no face placed in the bottom of the frame, no central focal point in the bottom third
-- no long sentences rendered, no paragraphs of text, no full newspaper headlines, no document body text, no long signage text, no English text, no garbled letters, no fake script, no dense text covering the image; minimal Korean text only if essential (a few characters max)
-```
-**검색어**
-```text
-고층 아파트 야경 쪽방 대비
+야간 육교 아파트 야경
 ```
