@@ -53,8 +53,12 @@ export async function onRequestPost({ request, env }) {
     }
     const v = line(body.opts.v, 8).toLowerCase();
     if (v === 'male' || v === 'female') o.v = v;
-    // 중립(40~60)뿐이고 보컬 지정도 없으면 = 종전과 동일 = 아예 안 싣는다(하위호환)
-    const live = (o.w != null && (o.w < 40 || o.w > 60)) || (o.s != null && (o.s < 40 || o.s > 60)) || o.v;
+    const vg = Number(body.opts.vg);   // 성별 게이지(-100 남성 ~ 0 중성 ~ 100 여성 · 운영자 260804) — 부호는 v와 중복이라 **강도(0~100 절대값)만** 싣는다
+    if (Number.isFinite(vg) && o.v) o.vg = Math.max(0, Math.min(100, Math.abs(Math.round(vg))));
+    const t = Number(body.opts.t);     // 목표 길이(초 · 10~60 · 운영자 260804 자(ruler) 선택자) — 60 = 종전 하드코딩 「60초 미만」 동값이라 안 싣는다
+    if (Number.isFinite(t)) { const tt = Math.max(10, Math.min(60, Math.round(t))); if (tt !== 60) o.t = tt; }
+    // 중립(40~60)뿐이고 보컬 지정·길이 변경도 없으면 = 종전과 동일 = 아예 안 싣는다(하위호환)
+    const live = (o.w != null && (o.w < 40 || o.w > 60)) || (o.s != null && (o.s < 40 || o.s > 60)) || o.v || o.t;
     if (live) opts = JSON.stringify(o).slice(0, 200);
   }
 
