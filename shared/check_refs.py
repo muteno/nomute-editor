@@ -3120,43 +3120,58 @@ def _strip_css_comments(t):
 _DRIVE_BAT_LINE = re.compile(r'^>> "%B64%" echo (\S+)\s*$', re.M)
 
 
+# 운영자 PC 배포 번들 = (라벨, ps1 정본, 산출 .bat, 재생성기) — 새 번들을 만들면 여기 1줄만 추가한다.
+#   260804 편입 = 스레드 플러그인 갱신기(같은 사고를 그대로 반복했다 — 한글을 .bat에 직접 실어 cp949에서
+#   파싱이 무너졌고 운영자 화면에 "'fined'은(는) 내부 또는 외부 명령이 아닙니다"가 줄줄이 떴다).
+_PC_BUNDLES = (
+    ('드라이브 이동', 'drive_move_watch.ps1', '노뮤트_구글드라이브_자동이동_설치.bat', 'build_drive_move_bundle.py'),
+    ('스레드 플러그인', 'threads_plugin_update.ps1', '노뮤트_스레드플러그인_갱신.bat', 'build_threads_plugin_bundle.py'),
+)
+
+
 def check_drive_move_bundle():
-    """운영자 PC 배포 번들(단일 설치 .bat) ↔ 감시기 ps1 드리프트 차단(운영자 260801 · CLAUDE.md [9-1 납품]).
-    `scripts/노뮤트_구글드라이브_자동이동_설치.bat` = 감시기 ps1 전체를 base64로 실은 기계산출물이자
-    **운영자가 실제로 더블클릭하는 라이브 표면**. ps1만 고치고 재생성을 잊으면 머지는 초록인데
-    운영자 PC에는 옛 코드가 깔린다(조용한 라이브 낡음 = 이 레포가 반복해 맞은 사고 유형).
-    base64로 싣는 이유 = cmd는 .bat을 OEM 코드페이지(949)로 읽어 한글 경로가 깨진다 → 페이로드는 ASCII여야 한다.
-    재생성 정본 = `python3 scripts/build_drive_move_bundle.py`(`--check`로 최신 여부만 확인 가능)."""
-    ps1 = os.path.join(ROOT, 'scripts', 'drive_move_watch.ps1')
-    bat = os.path.join(ROOT, 'scripts', '노뮤트_구글드라이브_자동이동_설치.bat')
-    if not os.path.exists(ps1) and not os.path.exists(bat):
-        print('✅ 드라이브 이동 번들 게이트 — 대상 없음(스킵).')
-        return 0
-    if not (os.path.exists(ps1) and os.path.exists(bat)):
-        print('❌ 드라이브 이동 번들 게이트 — 짝이 안 맞는다(ps1 존재=%s · bat 존재=%s · 둘은 한 세트다).'
-              % (os.path.exists(ps1), os.path.exists(bat)))
-        return 1
-    try:
-        txt = open(bat, 'rb').read().decode('ascii')
-    except UnicodeDecodeError:
-        print('❌ 드라이브 이동 번들 게이트 — 설치 .bat에 비ASCII 바이트(cmd OEM 949에서 깨진다) → 재생성하라.')
-        return 1
-    try:
-        payload = base64.b64decode(''.join(_DRIVE_BAT_LINE.findall(txt)), validate=True)
-    except Exception as e:
-        print('❌ 드라이브 이동 번들 게이트 — base64 페이로드 복원 실패(%s) → 재생성하라.' % e)
-        return 1
-    want = open(ps1, 'rb').read()
-    if payload != want:
-        print('❌ 드라이브 이동 번들 게이트 — 설치 .bat 안 페이로드 ≠ scripts/drive_move_watch.ps1'
-              ' (운영자 PC에 옛 코드가 깔린다) → `python3 scripts/build_drive_move_bundle.py` 로 재생성하라.')
-        return 1
-    if not want.startswith(b'\xef\xbb\xbf'):
-        print('❌ 드라이브 이동 번들 게이트 — ps1에 UTF-8 BOM 없음 → 한글 경로가 깨진다.')
-        return 1
-    print('✅ 드라이브 이동 번들 게이트 — 설치 .bat 페이로드 = drive_move_watch.ps1 바이트 동일'
-          '(%d B · .bat 전량 ASCII · UTF-8 BOM 보존).' % len(want))
-    return 0
+    """운영자 PC 배포 번들(더블클릭 .bat) ↔ ps1 정본 드리프트 차단(운영자 260801 · CLAUDE.md [9-1 납품]).
+    각 .bat = ps1 전체를 base64로 실은 기계산출물이자 **운영자가 실제로 더블클릭하는 라이브 표면**.
+    ps1만 고치고 재생성을 잊으면 머지는 초록인데 운영자 PC에는 옛 코드가 깔린다(조용한 라이브 낡음).
+    base64로 싣는 이유 = cmd는 .bat을 OEM 코드페이지(949)로 읽어 한글이 깨진다 → 페이로드는 ASCII여야 한다.
+    대상 = _PC_BUNDLES(새 번들 = 1줄 추가 · 손 목록이지만 짝이 안 맞으면 곧바로 rc=1이라 조용히 못 빠진다)."""
+    rc = 0
+    for label, ps1n, batn, gen in _PC_BUNDLES:
+        ps1 = os.path.join(ROOT, 'scripts', ps1n)
+        bat = os.path.join(ROOT, 'scripts', batn)
+        if not os.path.exists(ps1) and not os.path.exists(bat):
+            print('✅ %s 번들 게이트 — 대상 없음(스킵).' % label)
+            continue
+        if not (os.path.exists(ps1) and os.path.exists(bat)):
+            print('❌ %s 번들 게이트 — 짝이 안 맞는다(ps1 존재=%s · bat 존재=%s · 둘은 한 세트다).'
+                  % (label, os.path.exists(ps1), os.path.exists(bat)))
+            rc = 1
+            continue
+        try:
+            txt = open(bat, 'rb').read().decode('ascii')
+        except UnicodeDecodeError:
+            print('❌ %s 번들 게이트 — .bat에 비ASCII 바이트(cmd OEM 949에서 깨진다) → 재생성하라.' % label)
+            rc = 1
+            continue
+        try:
+            payload = base64.b64decode(''.join(_DRIVE_BAT_LINE.findall(txt)), validate=True)
+        except Exception as e:
+            print('❌ %s 번들 게이트 — base64 페이로드 복원 실패(%s) → 재생성하라.' % (label, e))
+            rc = 1
+            continue
+        want = open(ps1, 'rb').read()
+        if payload != want:
+            print('❌ %s 번들 게이트 — .bat 안 페이로드 ≠ scripts/%s (운영자 PC에 옛 코드가 깔린다)'
+                  ' → `python3 scripts/%s` 로 재생성하라.' % (label, ps1n, gen))
+            rc = 1
+            continue
+        if not want.startswith(b'\xef\xbb\xbf'):
+            print('❌ %s 번들 게이트 — ps1에 UTF-8 BOM 없음 → 한글이 깨진다.' % label)
+            rc = 1
+            continue
+        print('✅ %s 번들 게이트 — .bat 페이로드 = %s 바이트 동일(%d B · .bat 전량 ASCII · UTF-8 BOM 보존).'
+              % (label, ps1n, len(want)))
+    return rc
 
 
 def check_font_shorthand():
