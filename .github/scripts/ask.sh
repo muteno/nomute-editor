@@ -146,7 +146,15 @@ $(head -c 60000 "$trfile")
 "
       fi
     elif [ "$lkind" = "article" ]; then
-      LINK_BLOCK="[🔗 운영자가 준 원문 링크: ${link} — **이 링크가 원문이다**. WebFetch 로 열어 그 기사 본문으로 큐레이션하라(다른 기사 탐색은 이 원문이 안 열릴 때만 · frontmatter url = 이 링크 · 매체·기자·게시일시는 이 원문에서 추출). 요청문 텍스트는 이 원문을 어떻게 다룰지에 대한 운영자 지시로 읽어라.]
+      # 프레임 셸 해제(260805 · fail-2026-08-04-1528-idagw): 네이버 블로그류는 링크칸으로 들어와도 같은
+      # 껍데기 함정 — 수확기의 해제기를 --resolve 공용 모드로 불러 실제 본문 주소를 병기한다(fail-soft).
+      _lfin="$(timeout 45 python3 .github/scripts/ask_srcimg.py --resolve "$link" 2>/dev/null || true)"
+      _lnote=""
+      if [ -n "${_lfin// }" ] && [ "$_lfin" != "$link" ]; then
+        echo "· 프레임 해제(링크 레일): ${link} → ${_lfin}"
+        _lnote=" ⚠️ 이 링크는 본문을 프레임/스크립트 뒤에 숨긴다(네이버 블로그류) — **열 때는 이 실제 본문 주소를 써라**: ${_lfin} (frontmatter url 은 원래 링크 그대로)."
+      fi
+      LINK_BLOCK="[🔗 운영자가 준 원문 링크: ${link} — **이 링크가 원문이다**. WebFetch 로 열어 그 기사 본문으로 큐레이션하라(다른 기사 탐색은 이 원문이 안 열릴 때만 · frontmatter url = 이 링크 · 매체·기자·게시일시는 이 원문에서 추출). 요청문 텍스트는 이 원문을 어떻게 다룰지에 대한 운영자 지시로 읽어라.${_lnote}]
 "
     fi
   fi
@@ -174,7 +182,7 @@ PY
   #   스코프 = 출처 URL 축 전용(srcUrl 우선 → 없으면 요청문 첫 URL) · link 레일이 잡은 요청은 무접촉
   #   (그쪽은 이미 원문·전사문을 확보한다) · 실패는 전부 fail-soft(수확이 요약을 죽이지 않는다).
   srcurl="$(python3 -c "import json; print((json.load(open('$f')).get('srcUrl') or '').strip())" 2>/dev/null || true)"
-  SRCIMG_BLOCK=""; srcimglist=""; srcimgs=(); _su=""   # ⚠ if 밖 선언 필수 — 아래 OCR 블록이 수확 성공 여부와 무관하게 참조한다(`set -u` = 미선언 참조 시 즉사)
+  SRCIMG_BLOCK=""; srcimglist=""; srcimgs=(); _su=""; FRAMEURL_BLOCK=""   # ⚠ if 밖 선언 필수 — 아래 OCR 블록·프롬프트 조립이 수확 성공 여부와 무관하게 참조한다(`set -u` = 미선언 참조 시 즉사)
   if [ -z "$LINK_BLOCK" ] && [ "${ASK_SRCIMG:-1}" != "0" ]; then   # ASK_SRCIMG=0 = 롤백 킬스위치
     _su="${srcurl}"
     [ -z "${_su// }" ] && _su="$(NM_T="${text}" python3 -c '
@@ -187,6 +195,18 @@ print(m.group(0)[:400] if m else "")
       [ -n "${_sj// }" ] || _sj='{}'   # ⚠ 기본값을 ${_sj:-{}} 로 쓰면 안 된다 — 브레이스가 먼저 닫혀 파싱이 깨진다(실측: 수확 성공인데 로그만 '판독 실패')
       echo "· 출처 본문 이미지 수확: $(printf '%s' "$_sj" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("why") or "산출 없음")' 2>/dev/null || echo '판독 실패(fail-soft)')"
       for im in "$workdir"/src-*; do [ -e "$im" ] && { srcimglist="${srcimglist}- ${im}\n"; srcimgs+=("$im"); }; done
+      # ── 프레임 해제 주소 전달(260805 · 사고 fail-2026-08-04-1528-idagw = 네이버 블로그) ──
+      #   blog.naver.com 류는 본문을 iframe(mainFrame→PostView)·JS 리다이렉트 뒤에 숨긴다 → 원래 주소를
+      #   WebFetch 하면 본선도 빈 껍데기만 보고(실측 2,859B·한글 0자), 제목에 고유명사가 없으면 1-2 폴백도
+      #   공회전 = ANALYSIS_FAILED. 수확기가 해제한 실제 본문 주소(실측 257,516B·한글 5,495자)를 본선에
+      #   그대로 준다. 이미지 유무와 무관(텍스트 본문 블로그도 이 축으로 살아난다) · frontmatter url 은
+      #   원래 출처 주소 유지 = 뷰어 '원문' 링크 불변.
+      _sfin="$(printf '%s' "$_sj" | python3 -c 'import json,sys; print((json.load(sys.stdin).get("final") or "").strip())' 2>/dev/null || true)"
+      if [ -n "${_sfin// }" ] && [ "$_sfin" != "$_su" ]; then
+        echo "· 프레임 해제: ${_su} → ${_sfin}"
+        FRAMEURL_BLOCK="[🔓 출처 글의 실제 본문 주소 — 출처 주소(${_su})는 본문을 프레임/스크립트 뒤에 숨겨 그대로 WebFetch 하면 빈 껍데기만 온다(네이버 블로그류 · 실측 확인됨). **본문을 열 때는 반드시 이 주소를 써라**: ${_sfin} — 여기서 제목·본문·매체·게시일시를 읽어 위 규칙대로 큐레이션하라. ⚠️ frontmatter url 은 원래 출처 주소(${_su}) 그대로 둔다(뷰어 '원문' 링크 축).]
+"
+      fi
     fi
   fi
 
@@ -259,6 +279,7 @@ ${GBLOCK}
 
 ${PRESET_BLOCK}
 ${LINK_BLOCK}
+${FRAMEURL_BLOCK}
 ${SRCIMG_BLOCK}
 사용자 요청(자연어):
 ${text:-(없음 — 캡처만)}

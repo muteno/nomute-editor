@@ -19,6 +19,36 @@ trap 'rm -f "$tmp" "$raw_u" "$hdr"' EXIT
 curl -sL -A "$ua" --max-time 30 -D "$hdr" "$url" -o "$tmp" 2>/dev/null || exit 0
 [ -s "$tmp" ] || exit 0
 
+# 프레임 셸 해제(260805 · 사고 fail-2026-08-04-1528-idagw = 네이버 블로그): blog.naver.com 류는 본문을
+#   iframe(mainFrame → PostView.naver)·JS 리다이렉트(top.location.replace) 뒤에 숨겨 curl -L 로도
+#   껍데기(2,859B/184B)만 온다(-L 은 HTTP 30x 만 따라가고 프레임·JS 는 못 따라간다) → 껍데기(8KB 미만
+#   = ask_srcimg.py SHELL_BYTES 동값)면 안의 진짜 주소를 동일 사이트 한정 최대 2홉 추적.
+#   실측 = 같은 글이 해제 후 257,516B·한글 5,495자. 셸이 아니면(목적지 없음) 즉시 탈출 = 일반 기사 무접촉.
+for _hop in 1 2; do
+  [ "$(wc -c < "$tmp")" -ge 8000 ] && break
+  nxt="$(python3 - "$tmp" "$url" <<'PY'
+import sys, re, html, urllib.parse
+try:
+    raw = open(sys.argv[1], 'rb').read(65536).decode('utf-8', 'ignore').replace('\\/', '/')
+    base = sys.argv[2]
+    m = (re.search(r'<i?frame[^>]+(?:id|name)=["\']mainFrame["\'][^>]*\ssrc=["\']([^"\']+)', raw, re.I)
+         or re.search(r'<i?frame[^>]+src=["\']([^"\']+)["\'][^>]*(?:id|name)=["\']mainFrame["\']', raw, re.I)
+         or re.search(r'location(?:\.href\s*=|\.replace\()\s*["\']([^"\']{8,})', raw, re.I))
+    u = urllib.parse.urljoin(base, html.unescape(m.group(1)).strip()) if m else ''
+    hu = (urllib.parse.urlparse(u).hostname or '').lower()
+    hb = (urllib.parse.urlparse(base).hostname or '').lower()
+    ok = u.startswith('http') and hu and hb and hu.split('.')[-2:] == hb.split('.')[-2:]
+    print(u if ok and u != base else '')
+except Exception:
+    print('')
+PY
+)"
+  [ -z "$nxt" ] && break
+  curl -sL -A "$ua" --max-time 30 -D "$hdr" "$nxt" -o "$tmp" 2>/dev/null || break
+  [ -s "$tmp" ] || break
+  url="$nxt"
+done
+
 # charset: HTTP 헤더(GET -D 덤프) 우선 → 없으면 본문 <meta charset>
 ct="$(tr -d '\r' < "$hdr" 2>/dev/null | grep -i '^content-type:' | tail -1)"
 charset="$(printf '%s' "$ct" | grep -io 'charset=[a-z0-9_-]*' | tail -1 | cut -d= -f2)"

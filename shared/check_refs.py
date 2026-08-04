@@ -3628,12 +3628,32 @@ def check_ask_srcimg_chain():
         bad.append('ask_srcocr.py Read 권한 결손 — 이미지를 못 연다(추출 항상 0)')
     if 'def ocr(' not in ot:
         bad.append('ask_srcocr.py 추출 진입점 결손(def ocr)')
+    # ⑦ 프레임 셸 해제(260805 · 사고 fail-2026-08-04-1528-idagw = 네이버 블로그) — blog.naver.com 류는
+    #    본문을 iframe(mainFrame→PostView)·JS 리다이렉트 뒤에 숨겨 **UA 2단으로도 껍데기만 온다**
+    #    (실측 2,859B/184B → 해제 후 257,516B·한글 5,495자·본문 이미지 5장). 이 층이 빠지면 프레임 매체
+    #    전체(네이버 블로그가 대표)가 '페이지는 열리는데 읽을 게 0자' → ANALYSIS_FAILED 로 그대로 회귀.
+    #    축 3개 전부 지켜야 한다: 수확기 해제(이미지·OCR), 본선 주소 전달(텍스트 본문), 분석기 텍스트 추출.
+    for sym, why in (('def _frame_target(', '프레임 해제기'), ("res['final']", '해제 주소 보고(final)'),
+                     ("== '--resolve'", '링크 레일 공용 해제 모드')):
+        if sym not in pt:
+            bad.append('ask_srcimg.py 프레임 셸 해제 결손(%s — %s)' % (why, sym))
+    if 'FRAMEURL_BLOCK="[' not in at or '${FRAMEURL_BLOCK}' not in at:
+        bad.append('ask.sh 해제 주소 주입 결손 — FRAMEURL_BLOCK 미조립·미삽입(해제해 놓고 본선은 여전히 껍데기를 연다)')
+    if '--resolve' not in at:
+        bad.append('ask.sh 링크 레일 해제 결손 — 같은 URL 이 링크칸으로 들어오면 그 입구만 사고 재발(입구별 분기 금지)')
+    fa = os.path.join(ROOT, '.github', 'scripts', 'fetch_article.sh')
+    try:
+        fat = open(fa, encoding='utf-8').read()
+    except Exception:
+        fat = ''
+    if 'mainFrame' not in fat or 'location(?:' not in fat:
+        bad.append('fetch_article.sh 프레임 셸 해제 결손 — 분석기 텍스트 축이 iframe 셸을 본문으로 오인(한글 0자 = 빈 출력)')
     if bad:
         print('❌ 출처 본문 이미지 수확 체인 게이트 — 층 결손 %d건(그림이 조용히 안 실린다):' % len(bad))
         for b in bad:
             print('   ·', b)
         return 1
-    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·OCR 추출·전문 주입·1-3 폴백 6층 생존.')
+    print('✅ 출처 본문 이미지 수확 체인 — URL 선정·수확기·UA 2단·OCR 추출·전문 주입·1-3 폴백·프레임 해제 7층 생존.')
     return 0
 
 

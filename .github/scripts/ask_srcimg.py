@@ -47,6 +47,7 @@ UA_DESK = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 UA_MOB = ("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) "
           "Chrome/124 Mobile Safari/537.36")   # fetch_article.sh 동값
 SHELL_BYTES = 8_000     # 이보다 작은 HTML = 봇차단 껍데기 의심 → UA 교대 재시도(실측 차단본 = 3,566B)
+FRAME_HOP_MAX = 2       # 프레임 셸 해제 추적 상한(네이버 블로그 = 1홉 · JS→프레임 이중 셸 대비 2)
 TRY_MAX = 14            # 이미지 다운로드 시도 상한 — 커뮤니티 페이지는 사이드바 썸네일이 수십 장(실측 79장)
 
 # ⚠️ 텍스트 길이로 '그림이 본문인가'를 가르려던 1차 설계는 **실측에서 폐기**했다(260804):
@@ -187,14 +188,58 @@ def _get(url, referer='', limit=PAGE_MAX_BYTES, ua=UA_DESK):
         return b'', ''
 
 
-def _get_page(url):
-    """페이지 취득 — 봇차단 껍데기(SHELL_BYTES 미만)면 UA 를 갈아 1회 재시도(260804 실측 봉합)."""
-    raw, ct = _get(url, ua=UA_DESK)
+def _ua_swap_get(url, referer=''):
+    """데스크톱 1순위 + 껍데기(SHELL_BYTES 미만)면 모바일 UA 1회 교대(260804 실측 봉합)."""
+    raw, ct = _get(url, referer=referer, ua=UA_DESK)
     if len(raw) < SHELL_BYTES:
-        raw2, ct2 = _get(url, ua=UA_MOB)
+        raw2, ct2 = _get(url, referer=referer, ua=UA_MOB)
         if len(raw2) > len(raw):
             return raw2, ct2
     return raw, ct
+
+
+def _frame_target(raw, base):
+    """껍데기 HTML 안의 진짜 본문 주소(260805 실측 사고 fail-2026-08-04-1528-idagw 봉합).
+
+    네이버 블로그류는 본문을 **프레임 뒤에 숨긴다** — blog.naver.com/<id>/<no> 가 데스크톱 UA 엔
+    2,859B iframe 셸(mainFrame → PostView.naver), 모바일 UA 엔 184B JS 리다이렉트
+    (top.location.replace)만 준다 = UA 교대(SHELL_BYTES)로는 못 뚫는 축.
+    → 셸(SHELL_BYTES 미만)일 때만 mainFrame iframe·JS 리다이렉트·meta refresh 의 목적지를 꺼낸다.
+    가드 = 동일 사이트(마지막 2라벨 동일 · 광고 iframe 의 제3자 추적 차단) + 기존 _guard(SSRF)."""
+    if len(raw) >= SHELL_BYTES:
+        return ''
+    t = raw.decode('utf-8', 'ignore').replace('\\/', '/')   # JS 문자열 이스케이프(https:\/\/…) 해제
+    m = (re.search(r'<i?frame[^>]+(?:id|name)=["\']mainFrame["\'][^>]*\ssrc=["\']([^"\']+)', t, re.I)
+         or re.search(r'<i?frame[^>]+src=["\']([^"\']+)["\'][^>]*(?:id|name)=["\']mainFrame["\']', t, re.I)
+         or re.search(r'location(?:\.href\s*=|\.replace\()\s*["\']([^"\']{8,})', t, re.I)
+         or re.search(r'<meta[^>]+http-equiv=["\']refresh["\'][^>]+url=([^"\'>;\s]+)', t, re.I))
+    if not m:
+        return ''
+    u = urllib.parse.urljoin(base, html.unescape(next(g for g in m.groups() if g)).strip())
+    try:
+        hu = (urllib.parse.urlparse(u).hostname or '').lower()
+        hb = (urllib.parse.urlparse(base).hostname or '').lower()
+        if not hu or not hb or hu.split('.')[-2:] != hb.split('.')[-2:]:
+            return ''
+    except Exception:
+        return ''
+    return u if _guard(u) else ''
+
+
+def _get_page(url):
+    """페이지 취득 — ① UA 교대(260804) ② 그래도 껍데기면 프레임 셸 해제 추적(260805 · 최대 2홉).
+    반환 = (raw, ct, final_url) — final 은 실제 본문을 준 주소(프레임 해제 결과 · 미해제면 입력 그대로)."""
+    raw, ct = _ua_swap_get(url)
+    final = url
+    for _ in range(FRAME_HOP_MAX):
+        nxt = _frame_target(raw, final)
+        if not nxt or nxt == final:
+            break
+        raw2, ct2 = _ua_swap_get(nxt, referer=final)
+        if len(raw2) <= len(raw):
+            break             # 해제해도 안 커지면 셸이 아니었던 것 — 원본 유지(오탐 0 지향)
+        raw, ct, final = raw2, ct2, nxt
+    return raw, ct, final
 
 
 def _decode(raw, ct):
@@ -263,11 +308,12 @@ def candidates(page, base):
 
 
 def harvest(url, outdir, max_n=MAX_DEFAULT, thin=THIN_DEFAULT, prefix='src'):
-    res = {'ok': False, 'text_len': -1, 'saved': [], 'why': ''}
+    res = {'ok': False, 'text_len': -1, 'saved': [], 'why': '', 'final': ''}
     if not _guard(url):
         res['why'] = '차단·비정상 URL'
         return res
-    raw, ct = _get_page(url)
+    raw, ct, final = _get_page(url)
+    res['final'] = final   # 프레임 해제 결과 주소 — ask.sh 가 본선 프롬프트에 '실제 본문 주소'로 전달
     if not raw:
         res['why'] = '페이지 취득 실패(차단·타임아웃)'
         return res
@@ -284,7 +330,7 @@ def harvest(url, outdir, max_n=MAX_DEFAULT, thin=THIN_DEFAULT, prefix='src'):
 
     os.makedirs(outdir, exist_ok=True)
     n = tried = 0
-    for u in candidates(page, url):
+    for u in candidates(page, final):   # 상대경로 기준 = 실제 본문을 준 주소(프레임 해제 결과)
         if n >= max_n or tried >= TRY_MAX:
             break
         tried += 1
@@ -312,6 +358,17 @@ def harvest(url, outdir, max_n=MAX_DEFAULT, thin=THIN_DEFAULT, prefix='src'):
 
 if __name__ == '__main__':
     a = sys.argv[1:]
+    if a and a[0] == '--resolve':
+        # 프레임 해제 주소만 출력(이미지 수확 0) — ask.sh 링크 레일(article)이 같은 셸 함정을 밟지 않게
+        # 해제기를 공용화(260805). 실패·미해제 = 빈 출력(호출부 fail-soft).
+        try:
+            if len(a) > 1 and _guard(a[1]):
+                _, _, _fin = _get_page(a[1])
+                if _fin and _fin != a[1]:
+                    print(_fin)
+        except Exception:
+            pass
+        raise SystemExit(0)
     if len(a) < 2:
         print(json.dumps({'ok': False, 'text_len': -1, 'saved': [], 'why': 'usage'}, ensure_ascii=False))
         raise SystemExit(0)
