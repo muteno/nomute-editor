@@ -12351,6 +12351,16 @@ function renderSnsTrends() {
   // data-nofb = 이 카드의 플랫폼 폴백 클래스(card()가 주입) · 없으면 종전 숨김(무회귀).
   window.tcCovFail = function (img) {
     const cv = img && img.closest('.tcard-cov, .xcard-cv');
+    // 인스타 커버 1회 재시도 = **공개** 커버 경로(chThFail 13693 정본의 값 사본 — 신규 판정축 0).
+    // 수집이 구운 scontent CDN URL은 서명 `oe=`(수집 +약 2일)가 지나거나 CDN이 교체되면 죽지만
+    // permalink는 안 죽는다 → 그 자리에서 살아있는 커버를 다시 집어온다. 이 축이 없으면 인스타 구독은
+    // 회수층이 **한 겹뿐**이라(채널요약 최근 게시물의 6중 회수와 달리) 만료 즉시 전 타일이 워드마크로 떨어진다.
+    // 커버 자산이 없으면 IG가 null.jpg로 302 → 400이라 onerror 재발동 → dataset.rt가 막아 워드마크로 강등(무한 루프 0).
+    const _a = img && img.closest('a');
+    if (_a && !_a.dataset.rt) {
+      const _mo = /instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/.exec(_a.getAttribute('href') || '');
+      if (_mo) { _a.dataset.rt = '1'; img.src = 'https://www.instagram.com/p/' + _mo[1] + '/media/?size=l'; return; }
+    }
     const fb = cv && img.dataset.nofb;
     if (!fb) { if (img) img.style.display = 'none'; return; }
     img.remove();
@@ -12401,7 +12411,7 @@ function renderSnsTrends() {
   const all10 = (cutA, rawA, sf) => fill10(bySort(cutA, sf), bySort(rawA, sf));   // 큐레이션(영상 카드) 지역 무관 통합 top10(운영자 260724 — 국내/세계 구분 폐지 · 구 reg10 군분리 = 구독엔 부적절[내가 고른 계정 = 지역 무관 다 보기] · 컷분 우선 → raw 채움 = 10개 보장 계승)
   const stkAll = all10(stk, stkRaw, 'views');   // 틱톡 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
   const sreAll = all10(sre, sreRaw, 'views');   // 인스타 구독 = 지역 무관 통합 top10(운영자 260724) · 조회수 정렬 · 10개 보장
-  const _sytCov = v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault') });   // 구독 커버 = 세로원본(oar) 선요청(운영자 260720 "썸네일 다 16:9로" — 구 mqdefault는 쇼츠 세로 썸네일 양옆에 유튜브가 잡음 패딩 박은 320px라 16:9 프레임이 지저분 · ytn 승급 사다리(운영자 260717 Q03) 미러 · 가로 영상 = 폴백 hq720 = 16:9 원본)
+  const _sytCov = v => ({ ...v, cover: String(v.thumb || '') });   // ⚠ 260804 = 구 `.replace('mqdefault','oardefault')` 제거. 세로원본 선요청은 260803부터 **covImg가 oar2로** 수행한다(v.cover는 그 강등 대상 data-fb 자리) → 여기서 미리 oardefault로 바꾸면 유일하게 살아있는 폴백 자산(mqdefault 320×180)이 **파괴**돼 「oar2 404 → oardefault 404」 2연속 회색판(1097B·120×90)으로 끝났다(260804 실측 = 구독 10칸 중 7칸). 구 사다리가 oardefault→mq로 되돌리는 유일한 코드였고 문자열이 oar2로 갈리며 그 회수가 죽은 것 = 같은 사고의 짝. (원래 취지 = 운영자 260720 "썸네일 다 16:9로" — 구 mqdefault는 쇼츠 세로 썸네일 양옆에 유튜브가 잡음 패딩 박은 320px라 16:9 프레임이 지저분 · ytn 승급 사다리(운영자 260717 Q03) 미러 · 가로 영상 = 폴백 hq720 = 16:9 원본)
   const sytAll = all10(syt, sytRaw, 'views').map(_sytCov);   // 유튜브 구독 = 지역 무관 통합 top10(운영자 260724) · cover=oar 세로원본 매핑 계승 · 조회수 정렬 · 10개 보장(매핑은 채움 뒤 = fill10 dedup 보존)
   const shL = fill10(freshFirst(shv), shvRaw).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // 쇼츠 상한 10(운영자 260717 "1~10위만") · freshFirst = 신선 먼저(운영자 260718) · 부족분 = 3일 컷 밖 후순위 채움(운영자 260721 "무조건 10개" — 컷이 12건 중 2건만 남기던 굶김 봉합)
   const aiL = fill10(freshFirst(aiv), aivRaw).map(t => ({ ...t, cover: t.thumb, account: t.channel }));   // AI영상 상한 10(운영자 260717 "10위까지만") · freshFirst + 후순위 채움(260721)
@@ -12443,7 +12453,7 @@ function renderSnsTrends() {
   const gTraf = t => { const n = parseInt(String(t || '').replace(/[^0-9]/g, ''), 10); return n > 0 ? mag(n) + '+' : ''; };   // 구글 검색량 버킷 문자열 → "500+"·"5,000+"·"2만+"(플랫폼 내부 크기 · 크로스플랫폼 비교 아님)
   const gtSec = gt.length ? sec('gt', '구글 실시간 검색어', rtBase, Math.min(gt.length, 10), gtR.map(z => brow(z[1], ggUrl(z[0]), gTraf(z[0].traffic), _cnHotGt(z[0].query) ? 'cnhot' : undefined)).join('')) : '';   // 검색량 재표시(운영자 260723 — 260718 미표기 되돌림 · 우측 = gTraf 만단위∥콤마 · 시그널·X는 원천 볼륨 없어 순위만)
   // (구 mkyt·ytZ·mktk·tkZ = tpg 레일 매핑/인터리브 잔재(호출 0) → 260720 평의회 zig·tpc와 동반 삭제 · ytnL만 생존)
-  const ytnL = fill10(freshFirst(ytn), ytnRaw).map(v => ({ ...v, cover: String(v.thumb || '').replace('mqdefault', 'oardefault'), account: v.channel }));   // 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
+  const ytnL = fill10(freshFirst(ytn), ytnRaw).map(v => ({ ...v, cover: String(v.thumb || ''), account: v.channel }));   // ⚠ 260804 = 구 `.replace('mqdefault','oardefault')` 제거(_sytCov 12414와 같은 사고·같은 봉합 — 세로원본 선요청은 covImg의 oar2가 수행 · 여기 cover는 그 **강등 대상**이라 유효 자산 mqdefault로 둬야 회수가 산다). (원래 취지 = 뉴스 = 쇼츠 매핑(shL 9501) 미러 · 커버 = 세로원본(oardefault 720~1080급) 선요청(운영자 260717 Q03 승인 — mq 320은 3/4 크롭 시 중앙 134px 2.3배 업스케일로 흐릿·양옆 블러 잔재) · 가로 영상(oar 404) 폴백 = fillT 뒤 승급 패스
   const ytGrid = bySort(cutH(ytRaw, 24), 'views').slice(0, 10).map(v => ({ ...v, cover: v.thumb }));   // 유튜브 인기 = 24h 이내만 + 조회수 내림차순(운영자 260726 "24시간 지난 것은 안나오게 · 조회수가 기준이면 동물이 1위여야" — 구 표시순 = mostPopular 차트 순서 그대로[상승속도·최신성 가중]라 58만이 352만 위에 서던 것 교정) · 컷 경계 = TOP 입장컷 TOP_MAX_H(24h · 260721) 동축 · 미상(NaN) = fail-soft 통과(cutH 공통) · 구 freshFirst(12h 부양)·fill10(24h 밖 스테일 채움 10개 보장 260721) = 조회수 순서 왜곡·24h 컷 위반이라 이 섹션 한정 폐지 → 부족분 = 조용한 공백(kobL "10개 안 나와도 괜찮아" 선례)
   if (ytGrid.length) gYT += sec('yt', '유튜브', rtBase, ytGrid.length, '<div class="trend-grid wd">' + ytGrid.map((t, i) => card({ ...t, nocls: 'ytfb' }, i, 1)).join('') + '</div>');   // 출력형식 통일(운영자 260717) — 구 tpg 1:1 레일 → AI영상식 16:9 큰 2열 그리드(유튜브 가로영상 = wd) · ytimg 핫링크 자유(평의회5)
   // 뉴스·쇼츠·AI 영상 = 큐레이션(검색·카테고리 파생 = 유튜브 mostPopular 전체 인기 차트 아님) → 큐레이션 게시물(gCUR)로 이관(운영자 260724 "유튜브 기본 인기 게시물 말고 큐레이션된 부분[뉴스·쇼츠·AI] 모두 큐레이션 영역으로"). 뉴스 = mostPopular category25 뉴스·정치 필터(온-미션 카테고리 선정) · 쇼츠·AI = InnerTube 키워드 검색 파생. 인기(mostPopular 전체)만 유튜브 대분류(gYT) 잔존. gCUR 순서 = 뉴스·쇼츠·AI(키워드/카테고리) → 유튜브·틱톡·인스타·X·스레드(구독)
@@ -12653,15 +12663,16 @@ function renderSnsTrends() {
   fillT('yt', '.tcard-t', ytGrid.map(v => v.title || ''));   // 유튜브 인기 그리드 제목 = ytGrid 동일 원본(260721 채움 리스트와 1:1 — 별도 slice면 채움분 제목 밀림)
   fillT('ytn', '.tcard-t', ytnL.map(v => v.title || ''));   // 뉴스 = 쇼츠 카드 통일 동승(운영자 260717 — zig 폐지·자연 순서) · 260731부터 youtube_cats 폴백 경로 전용(정상 국면은 아래 주제 루프가 담당)
   ytcL.forEach(z => fillT('ytc-' + z[0], '.tcard-t', z[2].map(v => v.title || '')));   // 주제별 인기 제목(운영자 260731) — 섹션 키 = ytc-<videoCategoryId> · textContent 주입 = XSS 안전(형제 fillT 관용구)
-  document.querySelectorAll('[data-sec=ytn] .tcard-cov img, [data-sec^="syt"] .tcard-cov img').forEach(im => {   // ⚠ 접두 = "syt"(하이픈 없음) — 구독 블록이 지역 2군(syt-kr·syt-gl)에서 지역 무관 단일 sec('syt')로 합쳐질 때(260724) 이 셀렉터만 구 하이픈 접두로 남아 사다리가 통째로 미부착 = 가로 영상 oardefault 404(120×90 회색 플레이스홀더 · 200 아닌 404도 이미지 본문이라 브라우저가 그려버림)가 그대로 노출되던 회귀(260727 실측 봉합) · 구독(syt)도 동일 사다리 합류(운영자 260720 "썸네일 다 16:9" — oar 세로원본 → 16:9 cover 중앙 크롭 = Q04 "크롭되어도 되니까 동일하게" 판례 동축)   // 뉴스 세로원본 승급 폴백(운영자 260717 Q03·Q04) — 카드 틀 = 전부 3/4 동일(Q04 "크롭되어도 되니까 다른 거랑 동일하게" = 구 wd 16:9 분기 폐지) · 가로 영상 = hq720(1280×720 · 3/4 크롭도 선명) → mq → 은닉 순 강등 사다리 · innerHTML 직후 동기 부착 = 이벤트 선발화 레이스 없음
-    const steps = [im.src.replace('oardefault', 'hq720'), im.src.replace('oardefault', 'mqdefault')];
-    const down = () => { const nx = steps.shift(); if (nx) im.src = nx; else { im.onerror = null; im.style.display = 'none'; } };
-    im.onerror = down;
-    im.onload = () => {
-      if (im.src.includes('oardefault') && im.naturalWidth >= im.naturalHeight) return down();   // oar가 가로/플레이스홀더 200 = 가로 영상 판정
-      if (im.src.includes('hq720') && im.naturalWidth < 640) return down();   // hq720 회색 플레이스홀더(120×90) 방어
-    };
-  });
+  // (구 ytn·syt 전용 oardefault 사다리 = 260804 제거 — **정본을 덮어써서 죽이던 코드**였다.
+  //  경위 = 260803에 covImg가 커버 1순위를 oardefault→**oar2**로 바꾸면서 정본 사다리(tcOarDown +
+  //  inline onload naturalWidth 가드)를 새로 세웠는데, 이 구 블록만 그대로 남아
+  //  ⓐ `im.src.replace('oardefault',…)` 가 **한 글자도 안 맞아** steps 두 칸이 전부 oar2 자기 자신(무동작)
+  //  ⓑ `im.onerror = down` · `im.onload = …` 재대입이 covImg가 심어둔 **인라인 tcOarDown 핸들러를 클로버**
+  //  → 두 섹션(유튜브-뉴스 ytn · 유튜브-구독 syt)만 강등이 통째로 죽어 oar2 404의
+  //  1097B·120×90 회색 「···」 판이 카드에 그대로 박혔다(260804 실측 = 구독 10칸 중 7칸 회색).
+  //  ⚠ 404인데 본문이 정상 JPEG라 브라우저는 error가 아니라 **load로 그린다** = onerror만으론 영원히 못 잡는다.
+  //  현재 경로 = covImg 인라인(oar2 → data-fb 수집 커버 → tcCovFail 워드마크)이 전 유튜브 블록 공통 =
+  //  인기·쇼츠·AI·주제별과 **같은 사다리**로 통일(구 블록의 hq720 단은 oardefault 시절 축 = 승계 대상 아님).
   if (tkv.length && !tkCov) fillT('tk', '.trend-q', tkv.slice(0, 8).map(t => t.ko || t.title || ('@' + (t.account || ''))));   // 행 폴백일 때만(그리드는 아래 fillT) · ko = 한글 번역 우선
   fillT('syt', '.tcard-t', sytAll.map(v => v.title || ''));   // 구독 유튜브 그리드 제목(운영자 260719 카드화 · 260724 지역 무관 단일 리스트)
   if (tkL.length) { fillH('tk', '.tcard-t', tkL.map(t => dimTags(t.ko || t.title || ('@' + (t.account || ''))))); }   // 틱톡 인기 그리드 제목 = ko 한글 우선 + dimTags(끝쪽 영문 해시태그 회색 · esc 경유 XSS 안전 · 운영자 260719)
