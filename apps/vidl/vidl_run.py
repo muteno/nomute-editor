@@ -121,6 +121,15 @@ def ytd(args, timeout, cookies=None, capture=False):
         cmd += ["--cookies", cookies]
     if JSRT:
         cmd += ["--js-runtimes", "node"]
+    if EJS:
+        # 유튜브 n챌린지 해결기(EJS) 원격 컴포넌트 — **yt-dlp가 로그로 직접 지시한 처방**(260804 실측 run 30874184405):
+        #   "[jsc] Remote component challenge solver script (node) was skipped. It may be required to solve JS
+        #    challenges. You can enable the download with --remote-components ejs:github (recommended)."
+        #   그 다음 줄이 "n challenge solving failed" → "Only images are available" → "Requested format is not
+        #   available" = **쿠키로 인증까지 통과한 뒤 포맷이 통째로 증발**해 유튜브가 100% 실패했다.
+        #   (node 런타임 자체는 러너에 있고 잡히기까지 한다 — 빠진 건 해결기 스크립트 하나뿐이다.)
+        # 스코프 = 전 플랫폼 공통 플래그지만 실제 fetch는 yt-dlp가 **필요할 때만**(= 유튜브 챌린지) 한다 = 비YT 무영향.
+        cmd += ["--remote-components", "ejs:github"]
     cmd += args
     return subprocess.run(cmd, capture_output=capture, text=True, timeout=timeout)
 
@@ -490,6 +499,16 @@ def main():
 
     # ── 3축 사전조회(bat v6.8) — 자막만 모드는 화질 판단이 무의미하나 계정·제목(pretty_rename 재료)은 여기서 나온다 ──
     best = probe(url, "bv*/b/best", [], ck_use, pl)
+    if best is None and PLAT == "YT" and cookies:
+        # YT 무쿠키 선행(bat v6.2 = 쿠키를 붙이면 android_vr이 배제돼 화질이 떨어진다)은 **러너 IP에선 100% 봇검문**에
+        #   막힌다(260804 실측 "Sign in to confirm you're not a bot"). 구판은 다운로드만 쿠키로 1회 재시도하고
+        #   **사전조회는 안 했다** = best/fps/fhd 전건 None → ⓐ pretty_rename 재료가 없어 파일명이 짧은 id로 남고
+        #   ⓑ ②프레임별·③FHD판 판정이 구조적으로 항상 False = 유튜브만 부가본이 영영 안 나온다.
+        #   여기서 쿠키로 한 번 승격시키면 그 뒤 전 구간이 쿠키를 계승 = 다운로드 헛발 1회도 같이 사라진다.
+        b2 = probe(url, "bv*/b/best", [], cookies, pl)
+        if b2:
+            best, ck_use = b2, cookies
+            print("[사전조회] YT 무쿠키 실패 → 쿠키로 승격(이후 전 구간 계승)", flush=True)
     # 스레드 = video_versions에 fps가 아예 없다(플러그인 실측 · 전부 0) → 프레임별 판정이 구조적으로 항상 False
     #   = fps 사전조회는 페이지 fetch 1회를 그냥 버리는 것 → 생략(260802 · 사전조회 1회당 수 초).
     fpsb = probe(url, "bv*/b/best", ["-S", "fps,res,br"], ck_use, pl) if MODE != "subs" and PLAT != "TH" else None
@@ -621,4 +640,10 @@ if __name__ == "__main__":
                               capture_output=True, timeout=60).returncode == 0
     except Exception:
         JSRT = False
+    try:  # EJS 원격 컴포넌트 지원 여부 — 구버전 yt-dlp면 플래그 자체가 없어 rc≠0(그땐 생략 = 종전 동작)
+        EJS = subprocess.run([sys.executable, "-m", "yt_dlp", "--remote-components", "ejs:github", "--version"],
+                             capture_output=True, timeout=60).returncode == 0
+    except Exception:
+        EJS = False
+    print(f"[런타임] node={JSRT} · ejs={EJS}", flush=True)   # 유튜브 실패 재발 시 「무엇이 빠졌나」를 로그 첫 줄에서 본다
     main()

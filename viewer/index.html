@@ -9108,16 +9108,33 @@ function _dgVidPoll(v) {   // v = 발사 시점 객체(identity 고정 · 평의
   if (v.tm) clearTimeout(v.tm);
   v.tm = setTimeout(async () => {
     if (_dg.jobs.indexOf(v) < 0 || v.st !== 'run' || !_dgAlive()) return;   // 콜백도 identity 재검사(스테일 방지)
-    let done = false, fail = '';
+    let done = false, fail = '', live = false;   // live = 라이브 API가 판정을 냈다(정적 폴백 불요)
+    // ⚠ 1순위 = 빌드 우회 라이브 서빙(api/vidlout · 260804 실사고 봉합). 구판은 아래 **정적 경로만** 봤는데
+    //   그 경로는 CF Pages 빌드가 끝나야 존재한다 = 빌드 큐가 밀리면(같은 날 실측 1h45m) 러너가 1~3분에
+    //   커밋한 결과가 화면에 영영 안 온다 → 40분 타임아웃까지 「받는 중」 = 운영자 "모든 플랫폼에서 제대로
+    //   작동 안하는데"의 실체(X·스레드는 러너가 이미 성공해 파일까지 R2에 있었다). 이제 레포를 직접 읽는다.
     try {
-      const er = await fetch('vidl_out/' + v.id + '/error.log?t=' + Date.now());
-      if (er.ok) { const em = await er.text(); if (em && em.trim() && !/^\s*</.test(em)) fail = em.trim().slice(0, 140); }
-    } catch (e3) {}
-    if (!fail) {
+      const lr = await fetch('api/vidlout?id=' + encodeURIComponent(v.id) + '&t=' + Date.now());
+      if (lr.ok) {
+        const ld = await lr.json();
+        if (ld && ld.state) {
+          live = true;   // run 판정도 판정이다 — 정적 2회 왕복을 아낀다(빌드 큐 상태에선 어차피 폴백 HTML만 온다)
+          if (ld.state === 'fail' && ld.msg) fail = String(ld.msg).trim().slice(0, 140);
+          else if (ld.state === 'done' && ld.res && ld.res.files) { v.res = ld.res; done = true; }
+        }
+      }
+    } catch (e5) {}
+    if (!live) {   // 폴백 = 종전 정적 경로(함수 미배포·5xx 시에도 빌드가 끝나면 종전대로 뜬다 = 퇴행 0)
       try {
-        const r2 = await fetch('vidl_out/' + v.id + '/result.json?t=' + Date.now());
-        if (r2.ok) { const tx = await r2.text(); if (!/^\s*</.test(tx)) { const d2 = JSON.parse(tx); if (d2 && d2.files) { v.res = d2; done = true; } } }
-      } catch (e4) {}
+        const er = await fetch('vidl_out/' + v.id + '/error.log?t=' + Date.now());
+        if (er.ok) { const em = await er.text(); if (em && em.trim() && !/^\s*</.test(em)) fail = em.trim().slice(0, 140); }
+      } catch (e3) {}
+      if (!fail) {
+        try {
+          const r2 = await fetch('vidl_out/' + v.id + '/result.json?t=' + Date.now());
+          if (r2.ok) { const tx = await r2.text(); if (!/^\s*</.test(tx)) { const d2 = JSON.parse(tx); if (d2 && d2.files) { v.res = d2; done = true; } } }
+        } catch (e4) {}
+      }
     }
     if (_dg.jobs.indexOf(v) < 0) return;   // 콜백 await 중 취소됐으면 폐기(고아에 done 쓰지 않음)
     if (fail) { v.st = 'fail'; v.msg = '실패 — ' + fail; _dgVidSaveJobs(); _dgPaintPic(); _dgRenderBody(); return; }
@@ -9251,10 +9268,20 @@ async function _dgDeepLink(id) {
   const hit = _dgDoneLoad().findIndex(x => x.id === id);
   if (hit >= 0) { _dgDoneOpen(hit); return; }
   try {
-    const r = await fetch('vidl_out/' + id + '/result.json?t=' + Date.now());
-    if (!r.ok) return;
-    const tx = await r.text(); if (/^\s*</.test(tx)) return;   // 404 폴백 HTML = 무시(폴링 가드와 동일 문법)
-    const d = JSON.parse(tx); if (!d || !d.files) return;
+    // 1순위 = 빌드 우회(api/vidlout) — 완료 푸시는 러너가 커밋한 **직후** 오므로 딥링크야말로 빌드 큐에
+    //   가장 먼저 걸린다(폴링과 같은 축 · 260804 봉합). 실패 시에만 종전 정적 경로.
+    let d = null;
+    try {
+      const lr = await fetch('api/vidlout?id=' + encodeURIComponent(id) + '&t=' + Date.now());
+      if (lr.ok) { const ld = await lr.json(); if (ld && ld.state === 'done' && ld.res && ld.res.files) d = ld.res; }
+    } catch {}
+    if (!d) {
+      const r = await fetch('vidl_out/' + id + '/result.json?t=' + Date.now());
+      if (!r.ok) return;
+      const tx = await r.text(); if (/^\s*</.test(tx)) return;   // 404 폴백 HTML = 무시(폴링 가드와 동일 문법)
+      d = JSON.parse(tx);
+    }
+    if (!d || !d.files) return;
     const v = { url: '', plat: d.plat || '', id, mode: d.mode || 'both', t0: Date.now(), n: ++_dgJobSeq, st: 'done', res: d };
     _dg.jobs.unshift(v); _dgDoneSave(v); _dg.resOpen = true; _dgRenderBody();
   } catch {}
