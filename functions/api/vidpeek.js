@@ -73,6 +73,12 @@ function* _walkJson(n) {
   if (Array.isArray(n)) { for (const v of n) yield* _walkJson(v); }
   else if (n && typeof n === 'object') { yield n; for (const v of Object.values(n)) yield* _walkJson(v); }
 }
+// 재생용 미디어 주소 — **메타 CDN만** 통과시킨다(thembed.js IMG_HOST_RE 문자 계승 · SSR이 준 값이라도 호스트는 검문).
+//   ⚠ 서명(oe=) 만료가 있어 캐싱 금지 = 미리보기 그 순간에만 쓰는 값(플러그인 독스트링 「주소 캐싱 금지」와 같은 축).
+const _MEDIA_HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.(cdninstagram\.com|fbcdn\.net)$/;
+function _mediaUrl(s) {
+  try { const u = new URL(String(s || '')); return (u.protocol === 'https:' && _MEDIA_HOST_RE.test(u.hostname)) ? u.toString() : ''; } catch { return ''; }
+}
 function _thCollectMedia(post) {   // 플러그인 collect_media 미러 — 캐러셀 컨테이너는 자식에게 양보 · 미디어 노드에서 정지
   const out = [];
   const hasMedia = (x) => !x.carousel_media && !!(x.video_versions
@@ -119,14 +125,15 @@ function thSsrItems(html, code, truncated) {
       const vv = Array.isArray(md.video_versions) ? md.video_versions : (md.video_versions ? [md.video_versions] : []);
       if (vv.length) {   // ⚠ 길이로 판정 — `video_versions: []`는 파이썬(플러그인)에선 거짓이라 사진인데 JS에선 참이라 영상으로 둔갑한다(평의회4 D4)
         const v0 = vv.find(v => v && (+v.width || +v.height)) || {};   // 버전 자체 w/h **먼저**, 없으면 부모 원본치수(플러그인 _pick_video 172행 순서 계승 · 평의회4 D5)
-        return { kind: 'video', w: +v0.width || +md.original_width || 0, h: +v0.height || +md.original_height || 0 };
+        const src = vv.find(v => v && v.url) || {};   // 재생용 주소 = 등장 순서 첫 항목(SSR은 101>102>103 = 좋은 것부터 · 플러그인 quality 정렬과 같은 순서)
+        return { kind: 'video', w: +v0.width || +md.original_width || 0, h: +v0.height || +md.original_height || 0, u: _mediaUrl(src.url) };
       }
-      let bw = 0, bh = 0, px = -1;
+      let bw = 0, bh = 0, px = -1, bu = '';
       for (const c of md.image_versions2.candidates) {
         const p2 = (+c.width || 0) * (+c.height || 0);
-        if (c.url && p2 > px) { px = p2; bw = +c.width || 0; bh = +c.height || 0; }
+        if (c.url && p2 > px) { px = p2; bw = +c.width || 0; bh = +c.height || 0; bu = c.url; }
       }
-      return { kind: 'img', w: bw, h: bh };
+      return { kind: 'img', w: bw, h: bh, u: _mediaUrl(bu) };
     });
     return { items, trust: !bad && !truncated };
   } catch { return { items: [], trust: false }; }   // fail-soft — 구성 표시만 생략
