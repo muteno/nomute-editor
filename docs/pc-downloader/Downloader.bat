@@ -419,14 +419,14 @@ if "!GET1080!"=="1" echo [화질] 1080p축 = !TW!x!TH! @!TFPS!fps / !TCOD! / format
 if "!GET1080!"=="0" if defined VH echo [화질] 1080p축이 위 축과 겹침 또는 1080p 없음 - 호환본 생략
 
 REM --- 최고화질 본편 + 자막(항상 실행) ---
-"%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+"%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
 set "YT_RC=!errorlevel!"
 
 REM --- YT 쿠키 폴백(v6.2): 쿠키 없이 실패한 경우에만 쿠키를 붙여 1회 재시도(연령제한·멤버십·비공개) ---
 if !YT_RC! neq 0 if "!PLAT!"=="YT" if "!HAS_COOKIES!"=="1" (
     echo [재시도] 쿠키 없이 실패 - 연령제한/멤버십 가능성. 쿠키 붙여 1회 재시도...
     echo          ^(이 경로는 화질이 낮게 잡힐 수 있다. deno 설치 시 개선^)
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CK! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CK! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_%%(uploader_id)s_%%(title)s.%%(ext)s" -o "subtitle:%%(title)s/!TS!_!PLAT!_%%(uploader_id)s.%%(ext)s" --write-subs --write-auto-subs --sub-langs "!SUBLANG!" --convert-subs srt -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
     set "YT_RC=!errorlevel!"
 )
 if !YT_RC! neq 0 echo [yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성.
@@ -436,7 +436,7 @@ REM     표식 maxfps_ 는 앞쪽 = --trim-filenames 120이 뒤(제목)를 자르므로 안 잘�
 if "!GETFPS!"=="1" (
     echo.
     echo [프레임] 최고프레임본 !FW!x!FH! @!FFPS!fps 다운로드...
-    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_maxfps_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -S "fps,res,br" -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
+    "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_maxfps_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -S "fps,res,br" -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "!URL!"
     if errorlevel 1 echo [프레임] 최고프레임본 다운로드 실패 ^(해상도본은 정상^)
 )
 
@@ -446,8 +446,8 @@ REM     포맷 = 1080 이하 mp4 우선(h264 mp4 = 어디서나 재생) -^> 없으면 1080 이하
 if "!GET1080!"=="1" (
     echo.
     echo [1080p] 호환용 1080p mp4 동반본 다운로드... 기준=!DIMK!
-    if "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[width<=1080][ext=mp4]+ba[ext=m4a]/b[width<=1080][ext=mp4]/bv*[width<=1080]+ba/b[width<=1080]" --merge-output-format mp4 -N 4 "!URL!"
-    if not "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format mp4 -N 4 "!URL!"
+    if "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[width<=1080][ext=mp4]+ba[ext=m4a]/b[width<=1080][ext=mp4]/bv*[width<=1080]+ba[ext=m4a]/bv*[width<=1080]+ba/b[width<=1080]" --merge-output-format mp4 -N 4 "!URL!"
+    if not "!DIMK!"=="width" "%YTDLP%\yt-dlp.exe" --no-cache-dir --ffmpeg-location "%YTDLP%" !CKV! !JSRT! !PLOPT! --trim-filenames 120 --windows-filenames -P "%LOCAL%" -P "temp:%TEMP%" -o "!TS!_!PLAT!_1080p_%%(uploader_id)s_%%(title)s.%%(ext)s" --no-write-subs --no-write-auto-subs -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]" --merge-output-format mp4 -N 4 "!URL!"
     if errorlevel 1 echo [1080p] 동반본 다운로드 실패 ^(본편은 정상^)
 )
 

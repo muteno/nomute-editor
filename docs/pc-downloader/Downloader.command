@@ -426,7 +426,7 @@ while true; do
     SEL1080D=""   # 다운로드용(오디오 병합)
     if [ -n "$DIMK" ]; then
         SEL1080V="bv*[$DIMK<=1080][ext=mp4]/b[$DIMK<=1080][ext=mp4]/bv*[$DIMK<=1080]/b[$DIMK<=1080]"
-        SEL1080D="bv*[$DIMK<=1080][ext=mp4]+ba[ext=m4a]/b[$DIMK<=1080][ext=mp4]/bv*[$DIMK<=1080]+ba/b[$DIMK<=1080]"
+        SEL1080D="bv*[$DIMK<=1080][ext=mp4]+ba[ext=m4a]/b[$DIMK<=1080][ext=mp4]/bv*[$DIMK<=1080]+ba[ext=m4a]/bv*[$DIMK<=1080]+ba/b[$DIMK<=1080]"
     fi
     TW=""; TH=""; TFPS=""; TFID=""; TCOD=""
     if [ -n "$SEL1080V" ]; then
@@ -453,7 +453,7 @@ while true; do
         -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
         -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
         --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
-        -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
+        -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
     YT_RC=$?
 
     # --- YT 쿠키 폴백(v6.2): 쿠키 없이 실패한 경우에만 쿠키 붙여 1회 재시도 ---
@@ -466,7 +466,7 @@ while true; do
             -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
             -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
             --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
-            -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
+            -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL"
         YT_RC=$?
     fi
     [ "$YT_RC" -ne 0 ] && echo "[yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성."
@@ -480,7 +480,7 @@ while true; do
             -P "$LOCAL" -P "temp:${TMPDIR:-/tmp}" \
             -o "${TS}_${PLAT}_maxfps_%(uploader_id)s_%(title)s.%(ext)s" \
             --no-write-subs --no-write-auto-subs \
-            -S "fps,res,br" -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL" \
+            -S "fps,res,br" -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL" \
             || echo "[프레임] 최고프레임본 다운로드 실패 (해상도본은 정상)"
     fi
 

@@ -145,7 +145,7 @@ while :; do
         -o "${TS}_${PLAT}_%(uploader_id)s_%(title)s.%(ext)s" \
         -o "subtitle:%(title)s/${TS}_${PLAT}_%(uploader_id)s.%(ext)s" \
         --write-subs --write-auto-subs --sub-langs "$SUBLANG" --convert-subs srt \
-        -f "bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL" \
+        -f "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best" --merge-output-format mp4 -N 4 "$URL" \
         || echo "[yt-dlp] 비디오 못 받음. 이미지 게시물일 가능성."
 
     # === [2/3] 자막 없으면 Whisper large-v3 자동 추출 ===

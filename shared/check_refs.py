@@ -15,6 +15,7 @@ v1.15.2류 사본 드리프트(파일 rename 후 참조 미갱신·파일명↔�
 사용: python3 shared/check_refs.py   (레포 어디서 실행해도 됨)
 """
 
+import ast
 import os
 import re
 import datetime
@@ -4346,6 +4347,122 @@ def check_tabs_headers():
     return 0
 
 
+_AAC_SEL_RE = re.compile(r'bv\*[^\s"\'`]*')   # 리터럴 `bv*` 앵커 = O(매치수) · 여는-괄호-앞 와일드카드 금지 규율 준수
+_AAC_SKIP_MARK = ('--skip-download', '--print')   # 미디어를 0바이트도 안 받는 호출 = 병합 없음 = 축 비대상
+_AAC_EXT = ('.yml', '.yaml', '.py', '.sh', '.bat', '.command', '.js', '.mjs', '.ps1')
+_AAC_SKIP_DIR = ('_versions/', 'docs/reports/', 'published/', 'node_modules/')
+
+
+def _aac_strip_py_docstrings(src):
+    """파이썬 독스트링을 줄 단위로 비운다(ast = 구조적 판정 = 손 면책표 0).
+    사고 설명이 코드처럼 읽히는 것을 막는다(예: nomute_threads.py 정렬 관례 설명이 `-f "bv*+ba/b/best"`를 인용)."""
+    lines = src.split('\n')
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return lines   # 파싱 불가 = 독스트링 비우기만 생략(판정 자체는 계속 = fail-closed 방향)
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        b = getattr(node, 'body', None)
+        if not b or not isinstance(b[0], ast.Expr) or not isinstance(b[0].value, ast.Constant):
+            continue
+        if not isinstance(b[0].value.value, str):
+            continue
+        for i in range(b[0].lineno - 1, min(b[0].end_lineno, len(lines))):
+            lines[i] = ''
+    return lines
+
+
+def _aac_units(rel, src):
+    """(첫줄번호, 판정텍스트) 목록 — 주석 제거 + 파이썬 암묵 문자열 연결(줄바꿈으로 쪼갠 셀렉터) 병합.
+    병합이 없으면 `f"bv*+ba[ext=m4a]/"` / `f"bv*+ba/b/best"` 2줄 분할이 둘째 줄만 보고 위양성이 된다."""
+    py = rel.endswith('.py')
+    lines = _aac_strip_py_docstrings(src) if py else src.split('\n')
+    out = []
+    for i, ln in enumerate(lines):
+        s = ln.strip()
+        su = s.upper()
+        if s.startswith('#') or s.startswith('//') or s.startswith('*') or su.startswith('REM ') or su.startswith('::'):
+            continue   # 주석 줄 = 비대상(구조적 면책 · 손 목록 0)
+        if py and out and out[-1][0] - 1 + out[-1][1] == i and re.match(r'^[rbfRBF]{0,2}["\']', s) \
+                and re.search(r'["\']\s*$', lines[i - 1].rstrip()):
+            out[-1] = (out[-1][0], out[-1][1] + 1, out[-1][2].rstrip()[:-1] + s[s.index(s.lstrip('rbfRBF')[0]) + 1:])
+            continue   # 암묵 연결 = 앞 리터럴의 닫는 따옴표와 이 줄의 여는 따옴표를 지워 한 문자열로 잇는다
+        out.append((i + 1, 1, ln))
+    return [(n, t) for n, _c, t in out]
+
+
+def check_ytdlp_aac():
+    """yt-dlp 오디오 코덱 = AAC 강제(하드 · 운영자 260805 "유튜브를 편집가능한 자료까지 받아오게").
+    계약 = **병합 셀렉터의 알몸 `ba` 앞에는 반드시 `ba[ext=m4a]` 사본이 선다.**
+    ⚠ 신설 사유 = 전형적인 조용한 실패 — 2단이 겹쳐야 터진다.
+      ⓐ yt-dlp 기본 acodec 우선순위가 opus > aac 라 `ba`가 유튜브 251(Opus)을 140(AAC)보다 먼저 집는다.
+      ⓑ `--merge-output-format mp4`를 주면 `_utils.get_compatible_ext()`가 allow_mkv=False가 되어
+         mp4가 Opus와 비호환인 걸 알면서도 mp4를 반환한다(옵션이 없으면 mkv로 떨어져 즉시 눈치챈다).
+      → 어도비 지원 오디오 목록에 Opus가 없어 **임포트는 되는데 오디오 트랙만 조용히 무시**된다.
+         팟플·VLC·인스타 업로드는 멀쩡하고 에러도 안 뜬다 = 운영자 눈이 유일한 검출기였다.
+    기존 게이트가 못 잡는 이유 = 전부 다른 축이다(check_workflow_yaml = 문법 · check_paths = 경로 실존 ·
+      smoke_* = 화면 렌더) → 「받은 파일이 편집 툴에 물리는가」는 축 자체가 없었다.
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동 발견(git ls-files 중 `bv*`∧`+ba` 보유 = 새 호출부가
+      조용히 못 빠진다) · **면책표 없이 하드 0** — 예외 2종은 구조적이다(주석·독스트링 / `--skip-download`·`--print`
+      = 미디어를 0바이트도 안 받는 호출). ⚠ 처방으로 `-S "acodec:aac"`를 쓰지 마라(실측 = acodec 정렬이 res를
+      앞질러 format 18[640x360] 통합포맷이 이겨 화질이 통째로 망가진다) · `--postprocessor-args "Merger:-c:a aac"`도
+      금지(이미 AAC인 것까지 매번 재인코딩)."""
+    bad = []
+    try:
+        tracked = subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True,
+                                 text=True, timeout=60).stdout.split('\n')
+    except Exception as e:
+        print('⚠️ yt-dlp AAC 게이트 — git ls-files 실패:', e)
+        return 0
+    for rel in tracked:
+        if rel == 'shared/check_refs.py':
+            continue   # 자기참조 차단 — 위 처방문의 「수정 전」 예시가 곧 위반 문자열이다(check_clip_coverage 템플릿 배제 선례). 판정자는 yt-dlp를 호출하지 않는다 = 호출부 아님
+        if not rel.endswith(_AAC_EXT) or any(rel.startswith(d) or ('/' + d) in rel for d in _AAC_SKIP_DIR):
+            continue
+        p = os.path.join(ROOT, rel)
+        try:
+            src = open(p, encoding='utf-8', errors='replace').read()   # .bat = CP949 · 셀렉터는 전부 ASCII라 무손실
+        except OSError:
+            continue
+        if 'bv*' not in src or '+ba' not in src:
+            continue
+        for lineno, text in _aac_units(rel, src):
+            if '+ba' not in text or any(m in text for m in _AAC_SKIP_MARK):
+                continue
+            for m in _AAC_SEL_RE.finditer(text):
+                sel = m.group(0)
+                if '+ba' not in sel:
+                    continue
+                # 판정 = **가지 단위**. `/`로 쪼갠 각 가지 중 알몸 `+ba`를 쓰는 가지는, 자기와 글자가 같고
+                # `+ba`만 `+ba[ext=m4a]`인 쌍둥이 가지가 **앞에** 서 있어야 한다.
+                # ⚠ 「어딘가 앞에 m4a가 있으면 통과」로 두면 안 된다 — 실측 킬테스트에서
+                #   `bv*[h<=1080][ext=mp4]+ba[ext=m4a]/b[…]/bv*[h<=1080]+ba/b[h<=1080]` 같은
+                #   **다른 가지**의 m4a가 3번 가지의 알몸 ba를 가려 미검출이 났다(위 가지는 mp4 비디오가
+                #   없으면 통째로 실패하고 3번 가지가 실제 착지점이 된다 = 그 자리가 Opus).
+                br = sel.split('/')
+                for k, b in enumerate(br):
+                    i = b.find('+ba')
+                    if i < 0 or b[i + 3:i + 4] == '[':
+                        continue   # 알몸 아님(= `+ba[ext=…]`) 또는 오디오 병합 없는 가지
+                    twin = b[:i] + '+ba[ext=m4a]' + b[i + 3:]
+                    if twin not in br[:k]:
+                        bad.append((rel, lineno, sel, b, twin))
+                        break
+    if bad:
+        print('❌ yt-dlp 오디오 코덱 게이트 — 알몸 `ba`(=Opus 확정) 병합 가지 %d건:' % len(bad))
+        for rel, lineno, sel, b, twin in bad:
+            print('   - %s:%d' % (rel, lineno))
+            print('       셀렉터 = %s' % sel[:200])
+            print('       알몸 가지 = %s   →   그 앞에 `%s` 를 세워라' % (b, twin))
+        print('   ⚠ -S "acodec:aac" 금지(acodec 정렬이 res를 앞질러 저화질 통합포맷이 이긴다) ·')
+        print('     --postprocessor-args "Merger:-c:a aac" 금지(이미 AAC인 것까지 매번 재인코딩).')
+        return 1
+    print('✅ yt-dlp 오디오 코덱 게이트 — 병합 셀렉터 전건 AAC 우선(알몸 ba 0 · 면책표 없음).')
+    return 0
+
+
 def check_algo_ledger():
     """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
     집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
@@ -4471,6 +4588,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 회차 원장 게이트 스킵:', e)
+    try:
+        if check_ytdlp_aac() != 0:   # 다운로드 오디오 코덱 = AAC 강제(운영자 260805 — 알몸 ba = Opus가 mp4에 들어가 프리미어가 오디오 트랙을 조용히 무시하던 축 봉합)
+            rc = 1
+    except Exception as e:
+        print('⚠️ yt-dlp AAC 게이트 스킵:', e)
     try:
         if check_rubric_regress() != 0:   # 루브릭 회귀 도장(운영자 260803 — breaking RUBRIC 개정 = 과거 실측 판정 드라이런 통과 도장 필수 · 게이트 자체는 정적 해시 대조 = LLM 0)
             rc = 1

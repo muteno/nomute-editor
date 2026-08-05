@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # 영상 받기(vidl) — 설정 ▸ 다운로드의 영상 플랫폼 경로. 레퍼런스 = 운영자 로컬 Downloader.bat v7.0 조건 그대로(운영자 260728 요청):
-#   ① 최고화질 1편(bv*+ba/b/best · 해상도 최우선) + 자막(en,ko srt→txt)
+#   ① 최고화질 1편(FMT_BEST · 해상도 최우선 · 오디오는 AAC 우선 = AAC_NOTE) + 자막(en,ko srt→txt)
 #   ② 최고프레임별 — 프레임 정렬(-S fps,res,br)의 fps가 ①보다 높을 때만(maxfps_ 표식)
 #   ③ 1080p FHD 호환별 — 짧은 변>1080일 때만(가로=height≤1080 · 세로=width≤1080 · 1080p_ 표식)
 #   · 재생목록 방지 = 기본 --no-playlist --playlist-items 1 · 게시물형 URL(/p/·/reel/·/status/ 등)은 --no-playlist만(bat v6.6)
@@ -38,6 +38,19 @@ PROBE_TO = 120             # 사전조회 1회 타임아웃(초)
 TOTAL_BUDGET = 1500        # 총 다운로드 예산(25분 — 스텝 캡 30분 내 업로드 여유 · 평의회5 P1)
 DRIVE_API = "https://www.googleapis.com/drive/v3"
 DRIVE_UP = "https://www.googleapis.com/upload/drive/v3"
+# ── 오디오 코덱 = AAC 강제(운영자 260805 "편집가능한 자료까지") ────────────────────────────────
+AAC_NOTE = """알몸 `ba`(best audio) = Opus 확정 → 프리미어에서 오디오 트랙이 조용히 사라진다.
+2단 사고: ⓐ yt-dlp 기본 acodec 우선순위가 opus > aac 라 유튜브 251(Opus)이 140(AAC)을 이긴다
+  ⓑ `--merge-output-format mp4`를 주면 get_compatible_ext(_utils.py)가 allow_mkv=False가 되어
+     mp4가 Opus와 비호환인 걸 **알면서도** mp4를 반환한다(옵션 없으면 mkv로 떨어져 바로 눈치챈다).
+  → 컨테이너가 mp4라 임포트는 되는데 어도비 지원 목록에 Opus가 없어 오디오 스트림만 무시된다.
+     플레이어·인스타 업로드는 멀쩡해서 눈치채기 어려운 = 전형적인 조용한 실패.
+처방 = 셀렉터에서 `ba` 앞에 `ba[ext=m4a]`(=AAC) 사본을 세운다. 비디오 선택자(bv*)는 무접촉 = 화질 무변.
+⚠ 금지 2종(운영자 실측): `-S "acodec:aac"` = acodec 정렬이 res를 앞질러 format 18(640x360) 통합포맷이
+  이겨 화질이 통째로 망가진다 · `--postprocessor-args "Merger:-c:a aac"` = 이미 AAC인 것까지 매번 재인코딩.
+⚠ 남는 한계 = 소스에 AAC 자체가 없는 사이트(Opus/Vorbis만 제공)는 폴백으로 종전대로 Opus.
+검증 = `ffprobe -hide_banner -i <파일>.mp4 2>&1 | grep Audio` → `Audio: aac` = 정상."""
+FMT_BEST = "bv*+ba[ext=m4a]/bv*+ba[ext=mp4]/bv*+ba/b/best"   # 최고화질 정본 셀렉터(AAC 우선 · 위 AAC_NOTE)
 # 플랫폼 감지 = 서버측 정본(뷰어 _dgVidPlat과 이중 · 미매칭 = 거부 · 평의회1 P1). host 정확일치/서브도메인 + 경로 화이트리스트.
 PLATS = (("youtube.com", "YT"), ("youtu.be", "YT"), ("instagram.com", "IG"), ("x.com", "X"),
          ("twitter.com", "X"), ("tiktok.com", "TT"), ("facebook.com", "FB"), ("fb.watch", "FB"),
@@ -270,12 +283,14 @@ def qual_fmt(best, q):
     (세로 1080x1920에 height 필터를 걸면 1920이 상한을 넘어 아예 안 잡힌다 — bat v6.1의 실패 원인).
     ⚠ 꼬리 `bv*+ba/b/best`(최대화질) = 상한 밑에 아무것도 없을 때의 마지막 수단 —
       **운영자 260804 3차 지정**("1080p가 안될 경우에는 무조건 최대 화질인 거로").
-      구판은 반대로 `wv*+ba/w`(가장 낮은 것)였다 = 「작게」 우선 해석 → 운영자 판단으로 뒤집었다."""
+      구판은 반대로 `wv*+ba/w`(가장 낮은 것)였다 = 「작게」 우선 해석 → 운영자 판단으로 뒤집었다.
+    ⚠ 알몸 `ba` 앞에는 반드시 `ba[ext=m4a]` 사본을 세운다(AAC 강제 · 260805) — 상세 = AAC_NOTE."""
     cap, fcap = qual_parse(q)
     dimk = "width" if (best and best.get("w") and best.get("h") and best["w"] < best["h"]) else "height"
     f = f"[fps<={fcap}]" if fcap else ""
     return (f"bv*[{dimk}<={cap}]{f}[ext=mp4]+ba[ext=m4a]/b[{dimk}<={cap}]{f}[ext=mp4]/"
-            f"bv*[{dimk}<={cap}]{f}+ba/b[{dimk}<={cap}]{f}/bv*+ba/b/best")
+            f"bv*[{dimk}<={cap}]{f}+ba[ext=m4a]/bv*[{dimk}<={cap}]{f}+ba/b[{dimk}<={cap}]{f}/"
+            f"{FMT_BEST}")
 
 
 def ffprobe_dur(path):
@@ -554,7 +569,7 @@ def main():
     # ── ① 본편 — MODE에 따라 {영상+자막 / 영상만 / 자막만}. YT 실패 시 쿠키 1회 재시도(성공 시 부가본도 쿠키 계승 · 평의회6 P2-1) ──
     want_sub = MODE in ("both", "subs")
     want_vid = MODE in ("both", "video")
-    mainfmt = qual_fmt(best, QUAL) if capped else "bv*+ba/b/best"   # 화질 상한판 = ①본 자체를 상한으로 받는다(부가본 없음 = 1편)
+    mainfmt = qual_fmt(best, QUAL) if capped else FMT_BEST   # 화질 상한판 = ①본 자체를 상한으로 받는다(부가본 없음 = 1편)
     if want_vid:
         rc = download(url, outdir, "", mainfmt, [], ck_use, pl, subs=want_sub, post=post, desc=True)
         if rc != 0 and PLAT == "YT" and cookies:
@@ -563,6 +578,7 @@ def main():
             if rc == 0:
                 ck_use = cookies
     else:   # 자막만 — 영상 트랙을 아예 받지 않는다(--skip-download) = 몇 초면 끝난다
+        # ⚠ --skip-download = 미디어를 0바이트도 안 받는다 → 셀렉터는 자막 부착용 껍데기 = AAC 축 비대상(AAC_NOTE)
         rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], ck_use, pl, subs=True, post=post, desc=True)
         if rc != 0 and PLAT == "YT" and cookies:
             rc = download(url, outdir, "", "bv*+ba/b/best", ["--skip-download"], cookies, pl, subs=True, post=post, desc=True)
@@ -580,11 +596,11 @@ def main():
 
     # ── ② 프레임별 · ③ FHD별(각 실패 = 비치명 · 예산 남을 때만) — 자막만 모드는 건너뛴다 ──
     if want_vid and get_fps and budget_left() > 90:
-        download(url, outdir, "maxfps", "bv*+ba/b/best", ["-S", "fps,res,br"], ck_use, pl, subs=False, post=post)
+        download(url, outdir, "maxfps", FMT_BEST, ["-S", "fps,res,br"], ck_use, pl, subs=False, post=post)   # -S는 fps·res·br만 = 코덱 정렬 미개입(AAC는 셀렉터로만 · AAC_NOTE 금지 2종)
     if want_vid and get_1080 and budget_left() > 90:
         dimk = "width" if best["w"] < best["h"] else "height"
         f1080 = (f"bv*[{dimk}<=1080][ext=mp4]+ba[ext=m4a]/b[{dimk}<=1080][ext=mp4]/"
-                 f"bv*[{dimk}<=1080]+ba/b[{dimk}<=1080]")
+                 f"bv*[{dimk}<=1080]+ba[ext=m4a]/bv*[{dimk}<=1080]+ba/b[{dimk}<=1080]")
         download(url, outdir, "1080p", f1080, [], ck_use, pl, subs=False, post=post)
 
     caption_txt(outdir)   # 게시물 본문 .description → {TS}_{PLAT}_본문.txt 승격(전 모드 기본 동봉 · 운영자 260803) — 업로드 루프 전에 걷어야 .description 원본이 R2에 안 샌다
