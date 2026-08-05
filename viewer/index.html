@@ -9300,13 +9300,42 @@ function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1]
 //   러너(vidl_run ffprobe_dims)가 받은 파일을 실측해 files[]에 실어주는 {w,h,fps}만 여기서 말로 바꾼다 —
 //   실측 없음(구 결과·자막만) = '' = 지어내지 않고 「최대 …」 요청 표기로 남긴다.
 //   말 = DG_QUALS 통칭 그대로(짧은 변 2160=4K · 1440=2K · 1080=K · 그 외 Np — 세로 영상은 짧은 변이 곧 통칭 축) · 새 어휘 창작 0.
+function _dgTierName(s) { return s === 2160 ? '4K' : s === 1440 ? '2K' : s === 1080 ? 'K' : s + 'p'; }   // 통칭 = DG_QUALS 값 사본 · 그 외는 짧은 변 그대로(새 어휘 0)
+// 화질 목록 = **그 영상에 실제로 있는 것만**(운영자 260805 4차 "그 가능한 포맷만 리스트업에 띄워달라는거임").
+//   재료 = 서버 vidpeek이 실은 `fmts`([[height,fps],…] · 유튜브 innertube 실측). 없으면 종전 정적 6값 그대로(fail-soft).
+//   규칙 = ⓐ 그 높이가 **실재하는 티어만** 행을 만든다(720p뿐인 영상에 4K 행을 만들지 않는다)
+//         ⓑ 60fps가 있는 티어만 30/60 두 줄로 가른다 — 24fps 영상은 상한을 어느 쪽으로 걸어도 같은 파일이라
+//            두 줄이 곧 거짓 어포던스다(운영자 1차 지적의 후반부 = 「영상에 맞게끔 지정 가능하게」)
+//         ⓒ 라벨의 fps = **그 티어의 실제 최대 fps**(4K 24fps처럼 진짜 값) · 값(2160-60…)은 4면 배선 문자라 불변.
+function _dgQOpts() {
+  const fm = (_dg.peek && Array.isArray(_dg.peek.fmts)) ? _dg.peek.fmts : null;
+  if (!fm || !fm.length) return DG_QUALS;
+  const out = [];
+  [2160, 1440, 1080].forEach(T => {
+    const at = fm.filter(x => +x[0] === T);
+    if (!at.length) return;
+    const mx = Math.max(...at.map(x => +x[1] || 0));
+    if (mx > 30) {
+      out.push([T + '-60', _dgTierName(T) + ' ' + mx + 'fps']);
+      if (at.some(x => (+x[1] || 0) <= 30)) out.push([T + '-30', _dgTierName(T) + ' 30fps']);
+    } else out.push([T + '-60', _dgTierName(T) + (mx ? ' ' + mx + 'fps' : '')]);
+  });
+  if (out.length) return out;
+  const top = fm.reduce((a, b) => (+b[0] > +a[0] ? b : a));   // 티어 미만(720p 등)뿐 = 최고 1줄만(상한 K = 그 아래를 그대로 집는다)
+  return [['1080-60', _dgTierName(+top[0]) + ((+top[1]) ? ' ' + Math.round(+top[1]) + 'fps' : '')]];
+}
+function _dgQCap(v) { const m = /^(\d+)-/.exec(v || ''); return m ? +m[1] : 0; }
+function _dgQEff() {   // 지금 고른 상한이 이 영상에서 실제로 내주는 행(목록에 없는 값이면 그 아래 최고로 내려앉는다)
+  const o = _dgQOpts();
+  return o.find(x => x[0] === _dg.q) || o.find(x => _dgQCap(x[0]) <= _dgQCap(_dg.q)) || o[o.length - 1] || DG_QUALS[0];
+}
 function _dgActualLbl(f) {
   if (!f || !f.w || !f.h) return '';
   const s = Math.min(f.w, f.h);
   // ⚠ 티어는 **정확일치**만 통칭으로 부른다(평의회2 260805 실측) — 구판 하한 매칭(`s>=2160`)은
   //   7680×4320(8K)을 「4K」, 1920×1200을 「K」라고 말했다 = 이번 라운드가 없애려던 그 거짓말의 변종.
   //   통칭에 없는 크기는 짧은 변 그대로(1200p·4320p) = 새 어휘 창작 0 · 지어내기 0.
-  const tier = s === 2160 ? '4K' : s === 1440 ? '2K' : s === 1080 ? 'K' : s + 'p';
+  const tier = _dgTierName(s);
   const fps = Math.round(Number(f.fps) || 0);
   return tier + (fps ? ' ' + fps + 'fps' : '');
 }
@@ -9331,8 +9360,8 @@ function _dgQOpen(btn) {
   const d = $('#dlgrab'); if (!d || !btn) return;
   const pop = document.createElement('div'); pop.className = 'min-pick'; pop.id = 'dgQPick';
   pop.setAttribute('role', 'listbox'); pop.setAttribute('aria-label', '화질 선택');
-  // 항목 순서 = DG_QUALS 선언 순서 그대로(4K 60 → 4K 30 → 2K 60 → … → K 30 = 위에서 아래로 화질 내림차순).
-  DG_QUALS.forEach(([v, lab]) => {
+  // 항목 순서 = 화질 내림차순(4K → 2K → K). 목록 자체는 _dgQOpts가 **그 영상에 실재하는 것만** 추린다(260805 4차).
+  _dgQOpts().forEach(([v, lab]) => {
     const it = document.createElement('button'); it.type = 'button'; it.className = 'min-pick-it'; it.textContent = lab;
     it.setAttribute('role', 'option'); it.setAttribute('aria-selected', v === _dg.q ? 'true' : 'false');
     if (v === _dg.q) it.setAttribute('aria-current', 'true');   // 현재값 점등 = :hover 선언 **값 사본**(아래 CSS · 신규 값 0)
@@ -9599,8 +9628,8 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQName(_dg.q))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
-    + (plat === 'TH' ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p × 60/30fps)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQName(_dg.q)) + '</button>')   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1])) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + (plat === 'TH' ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')   // 칩 라벨 = **이 영상에서 실제로 내주는 값**(_dgQEff) — 고른 상한이 이 영상에 없으면 그 아래 최고로 내려앉은 값을 말한다(260805 4차)   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
 }

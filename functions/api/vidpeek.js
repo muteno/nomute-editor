@@ -143,6 +143,36 @@ function thEmbedItems(eh) {
   } catch { return []; }
 }
 
+// ── 유튜브 실제 포맷 목록(운영자 260805 4차 "그 가능한 포맷만 리스트업에 띄워달라는거임") ──
+//   왜 필요한가: 화질 목록은 정적 6값이라 30fps가 한계인 영상에도 「4K 60fps」를 **고를 수 있게** 제시했다
+//   (= 운영자 1차 지적 「가능하지도 않은데 4k 60fps가 나오거든」의 후반부 = 「영상에 맞게끔 지정 가능하게」).
+//   수단 = innertube player 1콜(키·로그인·토큰 0 · 러너 왕복 0). ⚠ 클라이언트 선택이 전부다 —
+//   실측 260805: ANDROID_VR·MWEB·TVHTML5 = LOGIN_REQUIRED/UNPLAYABLE, **IOS만 OK**(그 영상 8종·최대 2160@24
+//   = 같은 영상을 실제로 받아 ffprobe로 잰 「4K 24fps」와 정확히 일치 = 값이 진짜라는 교차 증명).
+//   반환 = [[height, fps], …] 중복 제거분. 실패·빈 값 = 키 자체를 안 실어 종전 6값 목록 유지(fail-soft).
+const YT_ID_RE = /(?:v=|\/shorts\/|\/live\/|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{11})/;
+async function ytFormats(u) {
+  try {
+    const m = YT_ID_RE.exec(u); if (!m) return [];
+    const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'user-agent': 'com.google.ios.youtube/20.03.02 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X)' },
+      body: JSON.stringify({ context: { client: { clientName: 'IOS', clientVersion: '20.03.02', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.2.1.22C161' } }, videoId: m[1] }),
+    });
+    if (!r.ok) return [];
+    const d = await r.json().catch(() => null);
+    const fs = (d && d.streamingData && d.streamingData.adaptiveFormats) || [];
+    const seen = new Set(), out = [];
+    for (const f of fs) {
+      const h = +f.height || 0; if (!h) continue;
+      const fp = Math.round(+f.fps || 0);
+      const k = h + 'x' + fp;
+      if (!seen.has(k)) { seen.add(k); out.push([h, fp]); }
+    }
+    return out.slice(0, 40);
+  } catch { return []; }   // fail-soft — 목록만 종전(정적 6값)으로 남는다
+}
+
 export async function onRequestGet({ request }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), {
     status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -171,13 +201,17 @@ export async function onRequestGet({ request }) {
   };
   if (OEMBED[plat]) {
     try {
-      const r = await fetch(OEMBED[plat](t.toString()), { headers: { 'user-agent': UA, accept: 'application/json' } });
+      const [r, fmts] = await Promise.all([   // 포맷 조회는 oEmbed와 **동시** 발사 = 미리보기 지연 +0(둘 다 수백 ms)
+        fetch(OEMBED[plat](t.toString()), { headers: { 'user-agent': UA, accept: 'application/json' } }),
+        plat === 'YT' ? ytFormats(t.toString()) : Promise.resolve([]),
+      ]);
       if (r.ok) {
         const d = await r.json().catch(() => null);
         if (d && d.title) {
           let th = '';
           try { const iu = new URL(String(d.thumbnail_url || '')); if (iu.protocol === 'https:') th = iu.toString(); } catch { th = ''; }
-          return json({ plat, title: String(d.title).slice(0, 200), desc: '', thumb: th, author: String(d.author_name || '').slice(0, 60) });
+          const base = { plat, title: String(d.title).slice(0, 200), desc: '', thumb: th, author: String(d.author_name || '').slice(0, 60) };
+          return json(fmts.length ? { ...base, fmts } : base);   // fmts 없음 = 키 자체 생략 = 뷰어가 종전 6값 목록 유지
         }
       }
     } catch { /* fail-soft = 아래 og 경로로 계속 */ }
