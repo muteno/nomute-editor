@@ -1,0 +1,99 @@
+<meta charset="utf-8">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;padding:26px;background:#f4f5f9;font-family:"Noto Sans CJK KR",sans-serif;color:#1b1c22}
+  h1{font-size:19px;margin:0 0 4px}
+  .lead{font-size:13px;color:#6b6f7d;margin:0 0 18px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:#fff;border-radius:16px;padding:14px 14px 10px;box-shadow:0 2px 10px rgba(20,22,40,.06)}
+  .hd{display:flex;align-items:baseline;gap:7px;margin:0 0 2px}
+  .no{font-size:12px;font-weight:700;color:#fff;background:#1b1c22;border-radius:999px;width:19px;height:19px;
+      display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .nm{font-size:13.5px;font-weight:700}
+  .desc{font-size:11.5px;color:#7c8090;margin:2px 0 4px;min-height:30px;line-height:1.45}
+  svg{display:block;width:100%;height:auto}
+  .src{font-size:10px;color:#a7abb8;margin:0 0 5px;line-height:1.4;min-height:26px;border-left:2px solid #e6e7ee;padding-left:6px}
+</style>
+<h1>예정 게이지 — 실사례 기반 9안 <span style="font-size:13px;font-weight:400;color:#7c8090">(국제표준·업계 관용 문법에서 역수입)</span></h1>
+<p class="lead">내가 정한 규칙이 아니라 <b>실제로 쓰이는 표기법</b>에서 가져왔어. 카드마다 출처를 달았고, 공통 = 팔린 만큼만 실선 · 예상분만 다른 표기 · 네모 테두리 없음.</p>
+<div class="grid" id="g"></div>
+
+<script>
+const COL = ['#4340e0','#14683a','#d5136d','#e08a1e','#6b46c1'];
+const BARS = [
+  {c:0, sold:.62, exp:0  },
+  {c:1, sold:.88, exp:0  },
+  {c:2, sold:.20, exp:.72},
+  {c:3, sold:.34, exp:.55},
+  {c:4, sold:.11, exp:.46}
+];
+const W=250,H=152,PT=13,PB=20,PL=10,PR=10,BW=7;
+
+/* draw(x, ySold, yExp, color, i, n) → 예상 구간 그리기 */
+const V = [
+ {nm:'빗금 (IBCS·ISO 표준)', src:'IBCS/ISO 20707 — 실적=solid · 계획=outline · 예상=hatched', de:'국제 비즈니스 보고 표준이 «예상»에 지정한 바로 그 표기. 45° 빗금 성기게',
+  f:(x,ys,ye,c,i,n)=>{const id=`h${i}${n}`;
+    return `<defs><pattern id="${id}" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="${c}" stroke-width="3.2"/></pattern></defs>`+
+      `<rect x="${x-BW/2}" y="${ye}" width="${BW}" height="${(ys-ye).toFixed(1)}" fill="url(#${id})"/>`}},
+
+ {nm:'페이드 (Evergreen 1순위)', src:'Stephanie Evergreen «Fade it» · statcan — 패턴필보다 «옅은 같은 색»', de:'점·빗금 없이 같은 색 35%로만. 가장 조용하고 어떤 굵기에서도 안 깨짐',
+  f:(x,ys,ye,c)=>`<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="${c}" stroke-width="${BW}" opacity=".55"/>`},
+
+ {nm:'페이드 그라데이션', src:'Evergreen «Fade» + 불확실성 그라데이션 관용', de:'위로 갈수록 사라짐 — 예상의 «불확실성»이 높이에 비례',
+  f:(x,ys,ye,c,i,n)=>{const id=`g${i}${n}`;
+    return `<defs><linearGradient id="${id}" x1="0" y1="${ye}" x2="0" y2="${ys}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${c}" stop-opacity=".08"/><stop offset="1" stop-color="${c}" stop-opacity=".85"/></linearGradient></defs>`+
+      `<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="url(#${id})" stroke-width="${BW}"/>`}},
+
+ {nm:'아웃라인 (IBCS «계획»)', src:'IBCS — 계획/미확정 = 속 빈 테두리', de:'네모 박스가 아니라 «게이지 폭 그대로» 속만 빔. 원래 쓰던 표기의 정석판',
+  f:(x,ys,ye,c)=>`<rect x="${(x-BW/2+.6).toFixed(1)}" y="${(ye+.6).toFixed(1)}" width="${BW-1.2}" height="${(ys-ye-1.2).toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.2" rx="1"/>`},
+
+ {nm:'세로 도트 · 성김 50%', src:'Evergreen «Dash it» · Peltier Tech — 실선=실적, 점선=예상', de:'2차에서 고른 축. 점선의 «미완» 은유가 가장 직관적',
+  f:(x,ys,ye,c)=>`<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="${c}" stroke-width="${BW}" stroke-dasharray="0 10.2" stroke-linecap="round" opacity=".5"/>`},
+
+ {nm:'줄무늬 (progress bar 관용)', src:'Bootstrap/Chakra striped progress — 잔여·진행중 표기', de:'웹 진행바가 «아직 안 찬 만큼»에 쓰는 굵은 45° 줄무늬',
+  f:(x,ys,ye,c,i,n)=>{const id=`s${i}${n}`;
+    return `<defs><pattern id="${id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="3.5" height="7" fill="${c}" opacity=".55"/><rect x="3.5" width="3.5" height="7" fill="${c}" opacity=".16"/></pattern></defs>`+
+      `<rect x="${x-BW/2}" y="${ye}" width="${BW}" height="${(ys-ye).toFixed(1)}" fill="url(#${id})"/>`}},
+
+ {nm:'목표 캡만 (bullet chart)', src:'Few «bullet graph» · Excel actual-vs-target — 목표는 마커 1개', de:'예상 구간을 안 칠하고 목표 높이에 가로 캡 하나. 가장 가벼움',
+  f:(x,ys,ye,c)=>`<line x1="${x-8}" y1="${ye}" x2="${x+8}" y2="${ye}" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`},
+
+ {nm:'옅은 면 + 목표 캡', src:'IBCS 아웃라인 + bullet 마커 합성', de:'«여기까지 갈 예정»을 면으로 깔고 목표만 선명하게 — 값·범위 둘 다 읽힘',
+  f:(x,ys,ye,c)=>`<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="${c}" stroke-width="${BW}" opacity=".18"/>`+
+    `<line x1="${x-8}" y1="${ye}" x2="${x+8}" y2="${ye}" stroke="${c}" stroke-width="2.4" stroke-linecap="round" opacity=".75"/>`},
+
+ {nm:'무채 오버레이 (Gray it)', src:'Evergreen «Gray it» — 예상분은 색을 뺀다', de:'색을 버리고 회색으로 — «아직 확정 아님»이 가장 세게 읽히지만 계열색은 잃음',
+  f:(x,ys,ye,c)=>`<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="#9aa0ad" stroke-width="${BW}" opacity=".85"/>`}
+];
+
+function chart(v,i){
+  const y0 = H-PB, top = PT, span = y0-top;
+  const inner = W-PL-PR, step = inner/BARS.length;
+  let g = '';
+  const sx = PL + step*2;
+  g += `<rect x="${sx}" y="${top-6}" width="${W-PR-sx}" height="${y0-top+6}" fill="#fdf0e6"/>`;
+  g += `<rect x="${PL}" y="${top-6}" width="${sx-PL}" height="${y0-top+6}" fill="#f8f8fa"/>`;
+  for(let k=1;k<=3;k++){const y=y0-span*k/3; g+=`<line x1="${PL}" x2="${W-PR}" y1="${y}" y2="${y}" stroke="#e8e9ee" stroke-width="1"/>`;}
+  g += `<line x1="${PL}" x2="${W-PR}" y1="${y0}" y2="${y0}" stroke="#c9cbd4" stroke-width="1"/>`;
+  g += `<text x="${PL+4}" y="${top+3}" font-size="7.5" fill="#9aa0ad">진행 완료</text>`;
+  g += `<text x="${sx+4}" y="${top+3}" font-size="7.5" fill="#d4823a" font-weight="700">진행·예정</text>`;
+  BARS.forEach((b,n)=>{
+    const x = PL + step*n + step/2, c = COL[b.c];
+    const ys = +(y0 - span*b.sold).toFixed(1);
+    g += `<line x1="${x}" y1="${y0}" x2="${x}" y2="${ys}" stroke="${c}" stroke-width="${BW}" stroke-linecap="butt"/>`;
+    if(!b.exp) return;
+    g += `<g>` + v.f(x, ys, +(y0 - span*b.exp).toFixed(1), c, i, n) + `</g>`;
+  });
+  ['5월','6월','9월','10월','11월'].forEach((m,n)=>{
+    const x = PL + step*n + step/2;
+    g += `<text x="${x}" y="${y0+12}" font-size="8" fill="#8d92a0" text-anchor="middle">${m}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+document.getElementById('g').innerHTML = V.map((v,i)=>
+ `<div class="card"><div class="hd"><span class="no">${i+1}</span><span class="nm">${v.nm}</span></div>
+  <div class="desc">${v.de}</div><div class="src">${v.src}</div>${chart(v,i)}</div>`).join('');
+</script>

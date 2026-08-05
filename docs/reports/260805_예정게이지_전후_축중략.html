@@ -1,0 +1,96 @@
+<meta charset="utf-8">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:#f4f5f9;font-family:"Noto Sans CJK KR",sans-serif;color:#1b1c22}
+  h1{font-size:19px;margin:0 0 14px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:#fff;border-radius:18px;padding:16px 16px 12px;box-shadow:0 2px 10px rgba(20,22,40,.06)}
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;margin:0 0 8px}
+  .before .tag{background:#f1f2f6;color:#7c8090}
+  .after  .tag{background:#e9e7fb;color:#4340e0}
+  h3{font-size:14px;margin:0 0 8px}
+  svg{display:block;width:100%;height:auto}
+</style>
+<h1>예정 공연 게이지 — 페이드 그라데이션 + 축 중략(물결) (전 / 후)</h1>
+<div class="row">
+  <div class="card before"><span class="tag">전 — 점선 네모 · 축 중략 없음(거인/난쟁이)</span><h3>기획 공연</h3><div id="b"></div></div>
+  <div class="card after"><span class="tag">후 — 페이드 + 물결 중략</span><h3>기획 공연</h3><div id="a"></div></div>
+</div>
+
+<script>
+const COL=['#4340e0','#14683a','#d5136d','#e08a1e','#6b46c1','#4340e0','#14683a','#d5136d'];
+const D=[{c:0,s:.28,e:0},{c:1,s:.99,e:0},{c:0,s:.08,e:0},{c:3,s:.15,e:0},{c:2,s:.96,e:0},
+         {c:0,s:.05,e:0},{c:3,s:.08,e:0},{c:1,s:.09,e:0},{c:0,s:.19,e:0},
+         {c:4,s:.03,e:.11},{c:0,s:.05,e:.14},{c:1,s:.02,e:.09},{c:2,s:.04,e:.13},
+         {c:3,s:.03,e:.10},{c:4,s:.05,e:.15},{c:0,s:.02,e:.08},{c:1,s:.04,e:.12}];
+
+/* ── 축 중략(axis break) ─────────────────────────────────
+   거인(3000+) 두 개가 축을 다 먹어 난쟁이(≤950)들이 바닥에 눌리는 문제.
+   BRK_LO~BRK_HI 구간을 잘라내고 물결(~)로 «중략»을 표기한다.        */
+const BRK_LO=1000, BRK_HI=3000, MAXV=3400;
+const SH_LO=.66, SH_GAP=.07;           /* 아래 구간 66% · 물결 갭 7% · 위 27% */
+function yv(v, y0, span){
+  if(v<=BRK_LO) return y0 - span*SH_LO*(v/BRK_LO);
+  if(v< BRK_HI) return y0 - span*SH_LO;                       /* 갭 안 = 잘림 */
+  return y0 - span*(SH_LO+SH_GAP) - span*(1-SH_LO-SH_GAP)*((v-BRK_HI)/(MAXV-BRK_HI));
+}
+/* 물결 1줄 — x0~x1 구간을 진폭 amp로 훑는다 */
+function wave(x0,x1,y,amp,stroke,w){
+  let d=`M${x0} ${y}`, step=7;
+  for(let x=x0;x<x1;x+=step) d+=` q ${step/4} ${-amp} ${step/2} 0 q ${step/4} ${amp} ${step/2} 0`;
+  return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+
+const W=560,H=250,PT=18,PB=24,PL=34,PR=12,BW=6;
+
+function draw(mode, brk){
+  const y0=H-PB, top=PT, span=y0-top, inner=W-PL-PR, step=inner/D.length;
+  let g='';
+  const sx=PL+step*9;
+  g+=`<rect x="${PL}" y="${top}" width="${sx-PL}" height="${span}" fill="#f8f8fa"/>`;
+  g+=`<rect x="${sx}" y="${top}" width="${W-PR-sx}" height="${span}" fill="#fdf0e6"/>`;
+  const TICKS = brk ? [250,500,750,1000,3000,3400] : [1000,2000,3000,4000];
+  TICKS.forEach(t=>{const y=brk?yv(t,y0,span):y0-span*t/4000;
+    g+=`<line x1="${PL}" x2="${W-PR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e8e9ee" stroke-width="1"/>`;
+    g+=`<text x="${PL-6}" y="${(y+3).toFixed(1)}" font-size="9" fill="#9aa0ad" text-anchor="end">${t}</text>`;});
+  g+=`<line x1="${PL}" x2="${W-PR}" y1="${y0}" y2="${y0}" stroke="#c9cbd4" stroke-width="1"/>`;
+  g+=`<text x="${PL+(sx-PL)/2}" y="${top+9}" font-size="9.5" fill="#9aa0ad" text-anchor="middle">진행 완료</text>`;
+  g+=`<text x="${sx+(W-PR-sx)/2}" y="${top+9}" font-size="9.5" fill="#d4823a" font-weight="700" text-anchor="middle">진행·예정</text>`;
+  D.forEach((b,n)=>{
+    const x=PL+step*n+step/2, c=COL[b.c];
+    const V=v=>brk?yv(v*4000,y0,span):y0-span*v;
+    const ys=+V(b.s).toFixed(1);
+    if(b.s>0) g+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${ys}" stroke="${c}" stroke-width="${BW}" stroke-linecap="butt"/>`;
+    if(!b.e) return;
+    const ye=+V(b.e).toFixed(1);
+    if(mode==='before'){
+      g+=`<rect x="${(x-5).toFixed(1)}" y="${ye}" width="10" height="${(y0-ye).toFixed(1)}" fill="none" stroke="${c}" stroke-width="1.2" stroke-dasharray="2 2"/>`;
+    }else{
+      const id='fg'+n;
+      g+=`<defs><linearGradient id="${id}" x1="0" y1="${ye}" x2="0" y2="${ys}" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="${c}" stop-opacity=".08"/><stop offset="1" stop-color="${c}" stop-opacity=".85"/></linearGradient></defs>`;
+      g+=`<line x1="${x}" y1="${ys}" x2="${x}" y2="${ye}" stroke="url(#${id})" stroke-width="${BW}"/>`;
+    }
+  });
+  if(brk){
+    const yb = y0-span*SH_LO, gap = span*SH_GAP;
+    /* 갭 = 배경색으로 지워 «잘린 구간»을 만든다 (좌 완료/우 예정 음영 각각) */
+    const sx2=PL+step*9;
+    g+=`<rect x="${PL}" y="${(yb-gap).toFixed(1)}" width="${sx2-PL}" height="${gap.toFixed(1)}" fill="#f8f8fa"/>`;
+    g+=`<rect x="${sx2}" y="${(yb-gap).toFixed(1)}" width="${W-PR-sx2}" height="${gap.toFixed(1)}" fill="#fdf0e6"/>`;
+    /* 물결 2줄 = 축 중략 표기 */
+    g+=wave(PL, W-PR, yb,        2.2, '#c9cbd4', 1.1);
+    g+=wave(PL, W-PR, yb-gap,    2.2, '#c9cbd4', 1.1);
+    /* y축 위에도 같은 물결 (눈금이 끊겼음을 축에서 먼저 알린다) */
+    g+=wave(PL-9, PL-1, yb-gap/2, 2.0, '#9aa0ad', 1.2);
+  }
+  ['9월','10월','11월','12월'].forEach((m,k)=>{
+    const x=PL+step*(9+k*2)+step/2;
+    g+=`<text x="${x}" y="${y0+13}" font-size="9.5" fill="#8d92a0" text-anchor="middle">${m}</text>`;});
+  ['1월','3월','5월','7월'].forEach((m,k)=>{
+    const x=PL+step*(k*2)+step/2;
+    g+=`<text x="${x}" y="${y0+13}" font-size="9.5" fill="#8d92a0" text-anchor="middle">${m}</text>`;});
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+b.innerHTML=draw('before',false); a.innerHTML=draw('after',true);
+</script>
