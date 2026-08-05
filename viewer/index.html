@@ -3646,6 +3646,7 @@
      정본 `.dg-meta`(불투명 --bg 플레이트·fs-xs·mut·tabular-nums) 값 그대로, 자리와 줄바꿈만 바꾼다(새 값 0). */
   .dg-g2 .dg-meta { left:4px; right:auto; top:auto; bottom:4px; text-align:left; }
   .dg-g2 .dg-meta span { display:inline; }   /* 정본은 2줄(block) — 여기선 한 줄로 눕혀 덜 투박하게 */
+  .dg-g2 .dg-meta.dg-idx { top:4px; bottom:auto; }   /* 번호표 「1/6」 = **좌상단**(운영자 260805 8차) — 같은 .dg-meta 플레이트 값 그대로, 모서리만 위(새 값 0 · 우상단 ⬇와 겹침 0) */
   .dg-card { position:relative; aspect-ratio:1/1; border-radius:var(--r-s); overflow:hidden; background:rgba(255,255,255,.04); border:2px solid transparent; -webkit-tap-highlight-color:transparent; }   /* reuse-ok: 신설 — 1:1 썸네일 카드(CII 계승원 없음 · 셸·워드칩·소머리·접이는 geni 정본 계승, 카드만 이식 신설) · 바탕 알파 = .geni-in 관용구 계승 · 선택 토글 폐지(운영자 260802 "다운로드 버튼만 살려주면 돼") = 카드 자체는 더 이상 버튼이 아니라 액자 */
   .dg-card > img, .dg-card > video { width:100%; height:100%; object-fit:cover; display:block; }   /* video = 받기 전 실물 미리보기(운영자 260805) — img와 **같은 값 한 규칙**(새 값 0 · 액자 규격은 .dg-card 그대로) */
   /* 일시정지 표시(중앙 ▶) = vd.html `.mon .monplay` **값 100% 사본**(운영자 260803 "네이티브 컨트롤 = 점 세 개(⋮) 소멸" 정본 계승 · 새 값 0) */
@@ -9226,6 +9227,7 @@ function _dgRenderBody() {
     v.onclick = () => { if (v.paused) v.play(); else v.pause(); };
     if (pb) { v.onplay = () => { pb.hidden = true; }; v.onpause = () => { pb.hidden = false; }; }
   });
+  _dgPeekMeasure(body);   // 치수 미상 항목 = **화면에 뜬 실물에서 재서** 채운다(전 플랫폼 통일 · 운영자 260805 8차)
   if (r) _dgMetaScan();
 }
 // 받기 잡 카드 = 이미지 스튜디오 제작 잡 행(thumb renderJob) 마크업 100% 미러 — 부품·클래스·자리 전부 nm-job.css 공동 정본.
@@ -9337,7 +9339,35 @@ function _dgDl(i) {
 }
 // 받을 내용 액자 저장(운영자 260805 7차) — 저장 수단 = 이 창 스캔 결과와 **같은 프록시**(/api/linkgrab/file = 같은 오리진
 //   attachment라 즉시 저장 · 서명 CDN 주소를 그대로 열면 브라우저가 재생만 하고 저장이 안 된다) · 이름 = 제목_번호.
+// 사진 표시 주소 — 메타 CDN(cdninstagram·fbcdn)은 **같은 오리진 프록시** 경유(정본 = api/thembed?img= · 스레드 임베드
+//   사진에 260727부터 쓰던 그 경로 · 화이트리스트도 그쪽이 검문). 직접 로드는 핫링크 차단으로 검은 칸이 된다(인스타 실측 260805).
+//   X(pbs.twimg.com)는 직접 로드가 정상이라 무접촉 = 종전 그대로.
+function _dgImgSrc(u) {
+  try { const h = new URL(u).hostname; return /(cdninstagram\.com|fbcdn\.net)$/.test(h) ? 'api/thembed?img=' + encodeURIComponent(u) : u; } catch { return u; }
+}
 function _dgPeekItems() { return ((_dg.peek && Array.isArray(_dg.peek.items)) ? _dg.peek.items : []).filter(it => it && it.u).slice(0, 12); }
+// 치수 통일(운영자 260805 8차 "사진의 경우 픽셀이 없는 경우가 있네 · 통일해줘") — 서버가 못 주는 플랫폼이 있다
+//   (인스타 임베드 = srcset 폭만 · X 사진은 원본 w/h 완비 · 스레드는 노드 값). 그래서 **이미 화면에 뜬 실물**을
+//   재서(img.naturalWidth · video.videoWidth) 빈 자리만 채운다 — 추가 요청 0 · 전 플랫폼 한 문법 · 지어내기 0.
+//   채운 뒤 한 번만 재렌더해 헤더 「항목 N — …」까지 같은 값으로 맞춘다(재귀 = 채울 게 없으면 멈춘다).
+function _dgPeekMeasure(root) {
+  const its = _dgPeekItems(); if (!its.length) return;
+  let pend = 0, filled = false;
+  const done = () => { if (--pend <= 0 && filled) _dgRenderBody(); };
+  its.forEach((it, k) => {
+    if (it.w && it.h) return;
+    const c = root.querySelector('#dgpc' + k); if (!c) return;
+    const el = c.querySelector('video, img'); if (!el) return;
+    const take = () => {
+      const w = el.naturalWidth || el.videoWidth || 0, h = el.naturalHeight || el.videoHeight || 0;
+      if (w && h) { it.w = w; it.h = h; filled = true; }
+      done();
+    };
+    pend++;
+    if (el.tagName === 'IMG') { if (el.complete) { take(); return; } el.addEventListener('load', take, { once: true }); el.addEventListener('error', done, { once: true }); }
+    else { if (el.videoWidth) { take(); return; } el.addEventListener('loadedmetadata', take, { once: true }); el.addEventListener('error', done, { once: true }); }
+  });
+}
 function _dgPeekGet(k) {
   const it = _dgPeekItems()[k]; if (!it) return;
   const base = String((_dg.peek && _dg.peek.title) || '받은자료').replace(/[\\/:*?"<>|\n]+/g, ' ').trim().slice(0, 60) || '받은자료';
@@ -9815,13 +9845,17 @@ function _dgPeekHtml() {
   //   ⚠ 서명 만료가 있는 주소라 저장하지 않고 그 순간만 쓴다(플러그인 「주소 캐싱 금지」와 같은 축).
   let mediaGrid = '';
   if (p && Array.isArray(p.items) && p.items.some(it => it && it.u)) {
-    mediaGrid = '<div class="dg-grid dg-g2">' + p.items.filter(it => it && it.u).slice(0, 12).map((it, k) => '<div class="dg-card" id="dgpc' + k + '">'
+    const _shown = p.items.filter(it => it && it.u).slice(0, 12), _n = _shown.length;
+    mediaGrid = '<div class="dg-grid dg-g2">' + _shown.map((it, k) => '<div class="dg-card" id="dgpc' + k + '">'
       + (it.kind === 'video'
         ? '<video src="' + escUrl(it.u) + '" playsinline loop preload="metadata" referrerpolicy="no-referrer"></video>'
           + '<button type="button" class="monplay" aria-label="재생 — 탭=재생/일시정지"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>'   // 무컨트롤 + 탭 재생 = vd.html 정본 문법 그대로(네이티브 컨트롤 ⋮ 소멸 · 운영자 260803)
-        : '<img src="' + escUrl(it.u) + '" alt="" loading="lazy" referrerpolicy="no-referrer">')
+        : '<img src="' + escUrl(_dgImgSrc(it.u)) + '" alt="" loading="lazy" referrerpolicy="no-referrer">')   // 메타 CDN 사진은 프록시 경유(_dgImgSrc) — 직접 로드는 핫링크 차단으로 검은 칸이 된다(운영자 260805 8차 인스타 실측)
       // 종류를 **글자로** 못박는다(운영자 260805 7차 "썸네일로 나오면 사진인지 영상인지 판별이 어려울거야 · 섞여있을 경우") —
       //   부품 = 스캔 카드 치수 플레이트(.dg-meta) 그대로, 정본이 원래 2줄(span{display:block})이라 [종류]/[치수] 한 벌로 들어간다.
+      + '<span class="dg-meta dg-idx" aria-hidden="true"><span>' + (k + 1) + '/' + _n + '</span></span>'   // 번호표(운영자 260805 8차 "좌상단에 1/6 이런식으로")
+      // 치수는 **화면에 뜬 실물에서 재서** 채운다(아래 배선) — 서버가 못 주는 플랫폼(인스타 임베드 = 폭만)도
+      //   같은 문법으로 통일된다(운영자 260805 8차 "사진의 경우 픽셀이 없는 경우가 있네 · 통일해줘").
       + '<span class="dg-meta" aria-hidden="true"><span>' + (it.kind === 'video' ? '영상' : '사진') + ((it.w && it.h) ? ' | ' + it.w.toLocaleString('ko-KR') + '×' + it.h.toLocaleString('ko-KR') : '') + '</span></span>'
       + _dgDlBtnHtml('pkget', k, 'dg-dl')   // 카드 위 개별 ⬇ = **같은 창 스캔 사진 카드와 동일 부품**(.dg-card .dg-dl) · 자리만 우상단(CII 정본) = 새 부품 0(운영자 260805 7차 "각각의 다운로드 버튼")
       + '</div>').join('') + '</div>';
