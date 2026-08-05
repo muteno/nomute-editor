@@ -4028,6 +4028,18 @@ def check_ask_srcimg_chain():
         bad.append('ask.sh 자동진단 실행줄 결손 — ask_fail_probe.py 호출(주석 처리 포함)')
     if '_diag' not in at:
         bad.append('ask.sh 진단 동봉 결손 — 진단을 뽑아놓고 실패 알림 본문(_fbody)에 안 싣는다')
+    # ⑧-b 코드 결함 축(운영자 260805 "아이디어 ㄱㄱ") — 진단서가 붙어도 **분류가 source 로 남으면** 알림이
+    #    여전히 「입력이 비었거나 불충분」이라 사람을 입력·소스 축으로 몰고, 진단서도 그 축으로 읽힌다
+    #    (260805 실사고 = URL 은 멀쩡한데 prompt 변수가 안 잡혀 죽은 건인데 다음 세션이 6시간 오진).
+    #    술어 = rc≠0 ∧ 출력 0 = 모델이 답한 적이 없다. 두 경로(ask·analyze) 동시 보유가 계약 — 한쪽만
+    #    고치면 나머지 경로가 조용히 구 문구로 남는다(가장 흔한 미러 드리프트).
+    try:
+        _ant = open(os.path.join(ROOT, '.github', 'scripts', 'analyze.sh'), encoding='utf-8').read()
+    except Exception:
+        _ant = ''
+    for _p, _t in (('ask.sh', at), ('analyze.sh', _ant)):
+        if not re.search(r'_fk=\"?code\"?', _t):
+            bad.append('%s 코드 결함 축 결손 — 파이프라인 사고가 「내용/소스 결함」으로 오표기된다' % _p)
     if bad:
         print('❌ 출처 본문 이미지 수확 체인 게이트 — 층 결손 %d건(그림이 조용히 안 실린다):' % len(bad))
         for b in bad:

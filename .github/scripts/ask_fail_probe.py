@@ -17,7 +17,9 @@
   Commit results 의 `git add queue asks` 가 동반 커밋한다. ⚠ 소비 글롭(asks/*.json)·뷰어 대기열
   (asks/failed/)과 확장자·경로가 안 겹치는 것 실측 확인(.jsonl).
 
-사용: python3 ask_fail_probe.py --base <id> --kind <source|timeout|congest> --rc N --url <url|''>
+사용: python3 ask_fail_probe.py --base <id> --kind <source|timeout|congest|code> --rc N --url <url|''>
+      (code = 모델이 답한 적 없는 파이프라인 사고 · 260805 — 이때 URL 실측은 「소스는 멀쩡하다」를
+       보여 코드 축을 확정하는 근거로 쓰인다)
       --imgs N --ocr N [--ledger PATH] [--window-days 14]
 출력: stdout = 알림 본문에 덧붙일 진단 블록(빈 출력 = 동봉 없음) · 항상 rc=0(fail-soft —
       진단기가 실패 알림 자체를 죽이면 재발 방지의 역효과).

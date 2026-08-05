@@ -408,8 +408,23 @@ ${extracted}"
     #   ① 모델 혼잡(일시 과부하 — 재시도 소진) → 재시도 안내
     #   ② 소스 결함(원문 차단·빈 본문 = ANALYSIS_FAILED·기타) → 대체기사 링크(있으면)+전문 붙여넣기 안내
     #      SUGGEST_URL = 모델이 ANALYSIS_FAILED 시 함께 출력하는 '같은 사건 내용충실 기사'(보수메이저→진보메이저→통신사·속보/빈기사 제외).
-    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"; elif [ $rc -eq 124 ]; then _fk="timeout"; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"; else _fk="source"; fi
-    if [ "$_fk" = "timeout" ]; then
+    #   ③ 코드 결함(운영자 260805 "아이디어 ㄱㄱ") = 모델이 답한 적이 없다(rc≠0 ∧ 출력 0 ∧ ANALYSIS_FAILED 없음)
+    #      → 소스·입력 탓으로 오표기하면 사람이 엉뚱한 축을 판다(260805 실사고 = ask 경로 프롬프트 리터럴
+    #      미이스케이프 따옴표로 claude 에 빈 stdin · 알림은 「입력이 비었거나 불충분」 → 다음 세션이 6시간 오진).
+    #      ask.sh 와 같은 술어 = 두 경로 문구 일관(한쪽만 고치면 나머지 경로가 조용히 구 문구로 남는다).
+    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk="source"
+    elif [ $rc -eq 124 ]; then _fk="timeout"
+    elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk="congest"
+    elif [ $rc -ne 0 ] && [ -z "${out// }" ]; then _fk="code"
+    else _fk="source"; fi
+    if [ "$_fk" = "code" ]; then
+      _cerr="$(grep -m1 -v '^[[:space:]]*$' "/tmp/${base}.err" 2>/dev/null | tr -d '\r' \
+              | python3 -c 'import sys
+w = " ".join(sys.stdin.buffer.read().decode("utf-8", "ignore").split())
+print(w[:200] + ("…" if len(w) > 200 else ""))' 2>/dev/null)"
+      [ -z "${_cerr// }" ] && _cerr="(stderr 비어 있음 — 로그 참조)"
+      fail_body="$(printf '⚠️ 대기열 등록 후 **코드 결함**으로 실패했어 — 기사·입력 문제가 아니야.\n사유: 분석기가 실행되지 못했다(모델이 응답한 적 없음 · exit %s · 출력 0).\n첫 오류: %s\n\n→ 재시도해도 같은 자리에서 죽어. 이 알림을 클로드에게 그대로 주면 돼(로그 = pending/failed/%s.log).\n\n[내가 보낸 내용]\n%s' "$rc" "$_cerr" "$base" "$input_echo")"
+    elif [ "$_fk" = "timeout" ]; then
       fail_body="$(printf '⚠️ 대기열 등록 후 처리 시간 초과로 실패했어.\n사유: 원문 분석·요약이 제한 시간을 넘겨 중단됨(과부하 또는 지연)\n\n→ 그 기사를 다시 보내면 재시도돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"
     elif [ "$_fk" = "congest" ]; then
       fail_body="$(printf '⚠️ 대기열 등록 후 분석 과정에서 실패했어.\n사유: 모델 혼잡(분석 도구 일시 과부하)\n\n→ 잠시 후 자동 재시도되거나, 그 기사를 다시 보내면 돼.\n\n[내가 보낸 내용]\n%s' "$input_echo")"

@@ -326,8 +326,27 @@ $(printf '%b' "${imglist:-- (없음)\n}")"
     echo "$base" >> "$ASK_FAIL_RUN"   # 이번 런 실패 기록(stale-red 차단)
     # 실패 메시지함 + 웹푸시 트리거(analyze.sh emit_fail_msg 미러 · 운영자 260629 ask 경로 푸시 통일) — fail-<base> = notify_fail.sh 딥링크(/?msg=fail-<base>)
     # 사유 분류(analyze.sh 패턴 미러 · 평의회 260629): 일시 과부하=혼잡(재시도 소진) / ANALYSIS_FAILED·기타=내용 결함 — "자동 복구" 단정 금지(콘텐츠 실패엔 거짓).
-    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk=source; elif [ $rc -eq 124 ]; then _fk=timeout; elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk=congest; else _fk=source; fi
-    if [ "$_fk" = timeout ]; then
+    # ⚠️ code 축(운영자 260805 "아이디어 ㄱㄱ") — 구판은 else 가 전부 source(내용 결함)라 **모델이 입도 뻥긋
+    #   못한 파이프라인 사고**까지 「입력이 비었거나 불충분」이라고 말했다. 260805 실사고 = 프롬프트 리터럴의
+    #   미이스케이프 따옴표로 prompt 변수가 통째로 안 잡혀 claude 에 빈 stdin 이 갔는데(요청 내용과 무관한
+    #   고정 리터럴 = 전건 실패), 알림이 입력 탓으로 읽혀 다음 세션이 엉뚱한 축(네이버 프레임 셸)을 6시간 팠다.
+    #   판정 = rc≠0 ∧ stdout 비었음 ∧ ANALYSIS_FAILED 없음(= 모델이 답한 적이 없다) — 앞 3분기를 다 통과한
+    #   뒤라 timeout·congest 와 겹치지 않는다. 비용 0(문자열 검사) · 오분류 시에도 손해 = 문구뿐.
+    if grep -qm1 '^ANALYSIS_FAILED' <<<"$out"; then _fk=source
+    elif [ $rc -eq 124 ]; then _fk=timeout
+    elif is_transient "$out$(cat "/tmp/${base}.err" 2>/dev/null)"; then _fk=congest
+    elif [ $rc -ne 0 ] && [ -z "${out// }" ]; then _fk=code
+    else _fk=source; fi
+    if [ "$_fk" = code ]; then
+      # 첫 오류 줄 = 원인을 바로 가리키는 단서(실측 = "Error: Input must be provided…"가 진범을 가리켰다).
+      #   자르기는 *문자* 단위(analyze.sh _why 관용구 계승 — head -c 는 한글을 쪼개 U+FFFD 를 박는다).
+      _cerr="$(grep -m1 -v '^[[:space:]]*$' "/tmp/${base}.err" 2>/dev/null | tr -d '\r' \
+              | python3 -c 'import sys
+w = " ".join(sys.stdin.buffer.read().decode("utf-8", "ignore").split())
+print(w[:200] + ("…" if len(w) > 200 else ""))' 2>/dev/null)"
+      [ -z "${_cerr// }" ] && _cerr="(stderr 비어 있음 — 로그 참조)"
+      _fbody="$(printf '⚠️ 요약 요청이 **코드 결함**으로 실패했어 — 네 입력 문제가 아니야.\n사유: 분석기가 실행되지 못했다(모델이 응답한 적 없음 · exit %s · 출력 0).\n첫 오류: %s\n\n→ 재시도해도 같은 자리에서 죽어. 이 알림을 클로드에게 그대로 주면 돼(로그 = asks/failed/%s.log).' "$rc" "$_cerr" "$base")"
+    elif [ "$_fk" = timeout ]; then
       _fbody="$(printf '⚠️ 요약 요청이 시간 초과로 실패했어.\n사유: 원문 검색·요약이 제한 시간을 넘겨 중단됨(과부하 또는 검색 지연).\n\n→ 대기열에서 “재시도”를 누르면 그 내용이 채워져 다시 요청할 수 있어(캡처는 재첨부).')"
     elif [ "$_fk" = congest ]; then
       _fbody="$(printf '⚠️ 요약 요청이 분석 과정에서 실패했어.\n사유: 분석 도구 혼잡(일시 과부하 — 재시도 소진).\n\n→ 대기열에서 “재시도”를 누르면 그 내용이 채워져 다시 요청할 수 있어.')"
