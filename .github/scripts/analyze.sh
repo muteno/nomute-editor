@@ -249,6 +249,11 @@ for f in "${files[@]}"; do
       [ "$best_url" != "$url" ] && echo "원매체 본문 빈약(${cur_len}B<${THIN_BYTES}) → 더 완전한 대체매체 채택: $best_url (${best_len}B)"
     fi
   fi
+  # 발행시각 실측값 회수(260805) — fetch_article 이 페이지 메타(article:published_time·JSON-LD datePublished 등)에서
+  #   뽑아 맨 앞 줄에 실은 값. 지면에 시각 표기가 없는 기사는 LLM 이 time 을 못 채워 빈칸으로 굳고, 뷰어가 그걸
+  #   '그 날짜 자정'으로 폴백해 자정 넘기면 통째로 "1일 전"이 된다(실측 오차 +21.8h) → 아래 ⑤에서 결정론 도장.
+  pub_meta="$(printf '%s\n' "$extracted" | grep -m1 '^발행시각(페이지 메타): ' | sed 's/^발행시각(페이지 메타): //' | tr -d '\r\n')"
+  [ -n "${pub_meta// }" ] && echo "  발행시각 메타 확보: $pub_meta"   # 가시성(Actions 로그)
   # 고정부(프롬프트 + 강제 주입 지침 + image_sources 오버라이드) → 가변부(기사) 순서 = 캐시 prefix 안정화.
   #   오버라이드 = analyze 경로 한정(운영자 260728 병렬 분리) — 프롬프트 정본(news-analysis.md)은 ask.sh 와
   #   공유라 무접촉(ask 의 og 프리셋 "image_sources 2~3개" 규칙과 충돌 0). 이 경로만 소넷 사진로봇이 대체.
@@ -471,6 +476,42 @@ else:
     out="$(printf '%s\n' "$out" | awk -v ek="$ekey_val" \
           '!ek_d && /^---[[:space:]]*$/{print; print "event_key: \"" ek "\""; ek_d=1; next} {print}')"
     echo "  event_key 도장 주입 — 피드 사건매칭 티어 활성용"   # 가시성(Actions 로그)
+  fi
+
+  # 발행시각 도장(260805) — LLM 산출 time 이 **빈칸일 때만** 페이지 메타 실측값으로 채운다(alt_urls·event_key 도장과 동일 awk 문법).
+  #   왜 = 발행시각은 결정론적 데이터인데 프롬프트가 LLM 에게 지면·WebSearch 로 재탐색을 시킨다 → 지면에 시각 표기가
+  #   없는 기사는 빈칸으로 굳고(실측 큐의 34%), 뷰어가 그걸 자정으로 폴백해 자정 넘기면 통째로 "1일 전"(오차 +21.8h).
+  #   LLM 이 이미 쓴 값은 안 건드린다(지면 표기가 1순위 = 프롬프트 규격 불변 · 이건 빈칸 구제 전용).
+  #   ⚠️ 가드 3겹 = ① 메타 KST 날짜 == frontmatter date(안 걸면 date[LLM]와 time[메타] 기준이 갈려 나이가 통째로
+  #      24h 어긋난다 = 실측 12.8%가 UTC일자≠KST일자) ② 미래 시각 무주입(원천 오기록) ③ 파싱 실패 무주입.
+  #      전부 무주입 = 종전 동작(빈칸 유지 → 뷰어 articleAgeDispH 가 수집시각 근사로 받는다) = 악화 경로 0.
+  if [ -n "${pub_meta// }" ] && grep -qE '^time:[[:space:]]*("")?[[:space:]]*$' <<<"$out"; then
+    cur_date="$(grep -m1 '^date:' <<<"$out" | sed -E 's/^date:[[:space:]]*"?([^"]*)"?.*/\1/' | tr -d '\r')"
+    hhmm="$(python3 - "$pub_meta" "$cur_date" <<'PY'
+import sys, re
+from datetime import datetime, timedelta, timezone
+KST = timezone(timedelta(hours=9))
+raw, want = sys.argv[1].strip(), sys.argv[2].strip()
+s = re.sub(r'([+-]\d{2})(\d{2})$', r'\1:\2', raw.replace('Z', '+00:00'))   # +0900 → +09:00 (fromisoformat 관용)
+try:
+    d = datetime.fromisoformat(s)
+except ValueError:
+    print(''); raise SystemExit
+if d.tzinfo is None:
+    d = d.replace(tzinfo=KST)          # tz 무표기 = 지면 현지시각(국내 매체 = KST) 간주 — 오라벨 위험은 아래 날짜 가드가 이중 방어
+k = d.astimezone(KST)
+if k > datetime.now(KST):              # 가드② 미래 발행 = 원천 오기록
+    print(''); raise SystemExit
+if want and k.strftime('%Y-%m-%d') != want:   # 가드① date 와 기준이 갈리면 무주입
+    print(''); raise SystemExit
+print(k.strftime('%H:%M'))
+PY
+)"
+    if [ -n "${hhmm// }" ]; then
+      out="$(printf '%s\n' "$out" | awk -v tv="$hhmm" \
+            '!td && /^time:[[:space:]]*("")?[[:space:]]*$/{print "time: \"" tv "\""; td=1; next} {print}')"
+      echo "  발행시각 도장 주입 — time: \"$hhmm\"(페이지 메타 실측 · LLM 빈칸 구제)"   # 가시성(Actions 로그)
+    fi
   fi
 
   # AI 썸네일 전역 OFF(설정 genImgOn=false) → no_thumb 도장(ask.sh 건별 주입과 동일 awk) — thumb_gen 이 제미나이 생성만

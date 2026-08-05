@@ -84,6 +84,20 @@ if not title:
     title = html.unescape(m.group(1)).strip() if m else ''
 desc = meta('og:description')
 
+# 발행시각(260805) — 지면에 시각 표기가 없는 기사는 frontmatter time 이 빈칸으로 굳고, 뷰어가 그걸 '그 날짜
+#   자정'으로 폴백해 자정 넘기면 통째로 "1일 전"이 된다(실측 오차 +21.8h). 근본 = 페이지 메타에 확정 발행시각이
+#   실재하는데 아무도 안 읽고 LLM 에게 재탐색을 시킨 것 → 여기서 결정론적으로 뽑아 analyze 가 도장한다.
+# ⚠️ modified/updated 계열은 **안 쓴다** — 최종수정시각이라 발행과 몇 시간씩 어긋난다(실측 동아 pub 14:07 vs mod 17:38).
+def jsonld(key):
+    m = re.search(r'["\']%s["\']\s*:\s*["\']([^"\']+)' % re.escape(key), t)
+    return html.unescape(m.group(1)).strip() if m else ''
+pub = (meta('article:published_time') or meta('og:published_time') or meta('article:published')
+       or meta('datePublished') or meta('sailthru.date') or jsonld('datePublished'))
+if not pub:                                                  # <time datetime="…"> (pubdate/published 힌트 있는 것만)
+    m = re.search(r'<time[^>]+datetime=["\']([^"\']+)["\'][^>]*(?:pubdate|published|entry-date)', t, re.I) \
+        or re.search(r'<time[^>]+(?:pubdate|itemprop=["\']datePublished["\'])[^>]*datetime=["\']([^"\']+)', t, re.I)
+    pub = html.unescape(m.group(1)).strip() if m else ''
+
 body = re.sub(r'(?is)<(script|style|noscript)[^>]*>.*?</\1>', ' ', t)
 body = re.sub(r'(?is)<br\s*/?>', '\n', body)
 body = re.sub(r'(?is)</(p|div|li|h\d)>', '\n', body)
@@ -106,6 +120,7 @@ for l in body.split('\n'):
 body_txt = '\n'.join(keep[:40])
 
 out = []
+if pub: out.append('발행시각(페이지 메타): ' + pub)          # 맨 앞 = 6000자 절단 안전 · analyze 가 이 줄을 앵커로 파싱해 frontmatter time 에 도장
 if title: out.append('제목: ' + title)
 if desc:  out.append('요약: ' + desc)
 if byline: out.append('기자/이메일: ' + byline)          # 말미 바이라인 명시 → 분석기가 기자명 추출(절단 영향 없이 상단 배치)
