@@ -4248,7 +4248,7 @@ try {
     <div class="out" id="geniOut"><!-- 결과+이전 제작 = thumb/tr `.out` 정본 셀렉터 그대로(운영자 260803 6차 "편집처럼 우측에") — 2단(PC ≥900)에선 geniOutPlace가 셸 우칼럼(.genihost 직계)으로 승격 · 1단(폰)·팝업 홈은 여기 본문 말미 그대로 = 회귀 0 -->
     <div class="geni-histwrap">
       <button class="geni-histfold" id="geniResH" type="button" aria-expanded="true" aria-controls="geniResBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>결과 <span class="geni-histcnt" id="geniResCnt">(0)</span></span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
-      <div class="geni-histbody" id="geniResBody"><!-- 결과 = 기본 펼침 · 접이 = hidden+closing 정본 문법(운영자 260803 Q1249 "접이 애니메이션도 적용" — 구 grid-rows 슬라이드·inert · dg 다운로드 창 폴드는 종전 문법 잔존 = 별도 축) --><div class="geni-histbody-in"><div class="geni-histempty" id="geniResEmpty">아직 제작한 게 없습니다</div><div class="hist-grid" id="geniResGrid"></div></div></div>
+      <div class="geni-histbody" id="geniResBody"><!-- 결과 = 기본 펼침 · 접이 = hidden+closing 정본 문법(운영자 260803 Q1249 "접이 애니메이션도 적용" — 구 grid-rows 슬라이드·inert · dg 다운로드 창 폴드는 종전 문법 잔존 = 별도 축) --><div class="geni-histbody-in"><div class="geni-histempty" id="geniResEmpty">아직 제작한 게 없습니다</div><div class="jobs" id="geniResJobs"></div><!-- 결과 요약 줄 = thumb 잡 행(.job.done) 마크업 계승(운영자 260806) — 부품·클래스 = nm-job.css 공동 정본 · 자리 = 개별 썸네일 **위**(thumb #jobs → #carGrid 순서 동일) --><div class="hist-grid" id="geniResGrid"></div></div></div>
     </div>
     <div class="geni-histwrap">
       <button class="geni-histfold prev" id="geniPrevH" type="button" aria-expanded="false" aria-controls="geniPrevBody"><span class="geni-histttl"><span class="geni-histbul" aria-hidden="true">•</span>이전 제작 <span class="geni-histcnt" id="geniPrevCnt">(0)</span></span><span class="geni-histnote">전 기기 제작 내역</span><span class="geni-histchev" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
@@ -6199,6 +6199,32 @@ function geniFollowNewest() {   // 스튜디오 전체 최신 1묶음을 결과�
   renderGeniRes(); renderGeniPrev();   // 결과 합류 + 이전 제작 제외 동시 반영(파티션 한 값)
   return true;
 }
+/* 결과 요약 줄 = 「완료 · N장 · 시각」 + [수정][전체 다운로드](운영자 260806 "이 두부분에도 적용하셈 · 왜 저게 계속 따로노는지 모르겟으유") ──
+   정본 = thumb `renderJob` 완료 행(.job.done > .jlab + .jst + .jsave-row) 마크업 그대로 · 부품 CSS = nm-job.css 공동 정본(index는 이미 링크 보유) · 신규 클래스·값 0.
+   재료 = 결과 배열 그 자체 = 새 상태 신설 0(tr resJobRow 동문 — 두 판 같은 문법). */
+function geniResJobRow(a) {
+  const host = $('#geniResJobs'); if (!host) return;
+  host.innerHTML = '';
+  if (!a.length) return;
+  const row = document.createElement('div'); row.className = 'job done';
+  const lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = a[0].cap || '결과';
+  const st = document.createElement('span'); st.className = 'jst';
+  st.innerHTML = CHECK_SVG + '<span>완료 · ' + a.length + '장 · ' + geniHistTime(a[0].ts) + '</span>';   // 문구 = thumb 복원 잡 행 동문('완료 · N장 · <제작시각>')
+  row.append(lab, st);
+  const sv = document.createElement('div'); sv.className = 'jsave-row';
+  if (a[0].src && a[0].src.app) {   // 수정(연필) = 타일과 같은 게이트·같은 라우터(중복 문법 0)
+    const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
+    ed.innerHTML = EDIT_SVG;
+    ed.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); studioEditOpen(a[0].src, a[0].url); });
+    sv.appendChild(ed);
+  }
+  const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'sbtn cref-dlall dlbtn'; dl.title = '전체 다운로드'; dl.setAttribute('aria-label', '전체 다운로드');
+  dl.innerHTML = (window.DLSEQ_IC || DOWNLOAD_SVG) + '<span class="cref-dllbl">전체</span>';
+  dl.addEventListener('click', () => a.forEach((e, i) => setTimeout(() => geniDlBlob(e.url, e.dlname || 'gen.png'), i * 220)));   // 순차 저장 = thumb 전체 다운로드 문법(브라우저 다중저장 차단 회피 간격)
+  sv.appendChild(dl);
+  row.appendChild(sv);
+  host.appendChild(row);
+}
 function renderGeniRes() {   // 결과 = 세션분(T0 이후) + 최신 추종 1묶음(운영자 260805 5탭 동기화) — tr renderTrRes 동문
   const grid = $('#geniResGrid'); if (!grid) return;
   const sess = geniResSess();
@@ -6206,6 +6232,7 @@ function renderGeniRes() {   // 결과 = 세션분(T0 이후) + 최신 추종 1�
   const a = sess.concat(GENI_NEWEST.filter(e => !sk.has(geniHistKey(e.url)))).sort((x, y) => (y.ts || 0) - (x.ts || 0));
   const cc = $('#geniResCnt'); if (cc) cc.textContent = '(' + a.length + ')';
   const em = $('#geniResEmpty'); if (em) em.hidden = !!a.length;
+  geniResJobRow(a);   // 요약 줄 = 타일과 같은 배열에서 산출(두 표현이 어긋날 여지 0)
   grid.innerHTML = '';
   a.forEach(e => grid.appendChild(geniHistItem(e, grid, '#geniResCnt')));
 }

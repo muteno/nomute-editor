@@ -2615,6 +2615,66 @@ def check_track_parity():
     return rc
 
 
+def check_result_rail_parity():
+    """결과 레일 = 5탭 한 세트(운영자 260806 "왜 저게 계속 따로노는지 모르겟으유" · "정본에 정립해봣자 나중에 또 저렇게 따로노는거 아님?").
+
+    ⚠ 신설 사유 = 260806 하루에 이 레일이 **세 번** 갈라졌고 **전부 운영자 눈이 유일한 검출기**였다:
+      ⓐ 「결과」가 결론형 줄(thumb 3탭) vs 썸네일형 타일(tr·index 2탭)로 갈림
+      ⓑ AI 생성 판만 타일 배경 투명(`var(--pan)` 미정의 = 선언 통무효)
+      ⓒ 번역·AI 생성엔 요약 줄 자체가 없음(nm-job.css 링크 부재) + 연필이 absolute로 떠 상태줄에 겹침
+    기존 게이트가 전부 다른 축이다 — `check_trail_spec` = **코너 레일** · `check_design` = 토큰 raw **개수** ·
+    `smoke_studioshell` = 도크·잉크·픽토 **부품** → 「결과 레일이 같은 부품 세트를 갖는가」는 축 자체가 없었다.
+
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 **자동 발견**(결과 레일 시그니처 보유 뷰어 = 새 탭이 조용히 못 빠진다) ·
+    **면책표 없이 하드 0**(현행 위반 0). 4부품 = ① nm-hist.css 링크(타일 정본) ② nm-job.css 링크(요약 줄 정본)
+    ③ `class="jobs"` 요약 줄 컨테이너 ④ `class="hist-grid"` 타일 그리드.
+    """
+    import glob as _g, os as _os, re as _re
+    rc = 0
+    # ⚠ 판정은 「문서 어딘가에 토큰이 있나」가 아니라 **결과 레일 그 자리에 세트가 있나**를 본다 —
+    #   1차 구현이 전역 토큰 존재로 판정했더니 킬테스트 2종(tr nm-job 링크 제거 · index 요약 줄 컨테이너 제거)이 **전건 미검출**이었다
+    #   (index엔 다운로드 창의 `class="jobs"`가 따로 있어 그걸 보고 통과 = 죽은 게이트). 계약 = 「요약 줄이 타일 **바로 위**에 있다」이므로 그대로 검사한다.
+    WIN = 1600   # 요약 줄 ↔ 타일 그리드 사이 허용 거리(문자) — 그 사이엔 빈 상태 안내 한 줄뿐인 게 3표면 공통 실측
+    surfaces = []
+    for f in sorted(_g.glob(_os.path.join(ROOT, 'viewer', '*.html'))):
+        try:
+            txt = open(f, encoding='utf-8').read()
+        except Exception:
+            continue
+        m = _re.search(r'class="hist-h car-h"|id="geniResH"', txt)
+        if not m or 'hist-grid' not in txt:
+            continue
+        surfaces.append((_os.path.basename(f), txt, m.start()))
+    if not surfaces:
+        print('❌ 결과 레일 세트 게이트 — 대상 표면 0(시그니처 소실 = fail-closed · 헤더 클래스·id 개명 시 이 게이트를 같이 고쳐라)')
+        return 1
+    bad = []
+    for name, txt, hpos in surfaces:
+        miss = []
+        for tok, lbl in (('nm-hist.css', 'nm-hist.css 링크(타일 정본)'), ('nm-job.css', 'nm-job.css 링크(요약 줄 정본)')):
+            if not _re.search(r'<link[^>]+href="' + tok + r'"', txt):
+                miss.append(lbl)
+        gpos = txt.find('class="hist-grid"', hpos)   # 결과 헤더 **이후** 첫 타일 그리드 = 결과 본문의 그리드
+        if gpos < 0:
+            miss.append('결과 본문에 타일 그리드 .hist-grid 없음')
+        else:
+            jpos = txt.rfind('class="jobs"', hpos, gpos)   # 그 그리드 **바로 위**의 요약 줄 컨테이너
+            if jpos < 0:
+                miss.append('타일 위에 요약 줄 컨테이너 .jobs 없음(결과 = 줄+타일 한 세트)')
+            elif gpos - jpos > WIN:
+                miss.append('요약 줄↔타일 거리 %d자 > %d(세트가 갈라짐)' % (gpos - jpos, WIN))
+        if miss:
+            bad.append(name + ': ' + ' · '.join(miss))
+    if bad:
+        print('❌ 결과 레일 세트 게이트 — 부품 누락(결과 = 요약 줄 + 개별 썸네일 한 세트 · 260806):')
+        for b in bad:
+            print('   · ' + b)
+        rc = 1
+    else:
+        print('✅ 결과 레일 세트 게이트 — %d표면 전부 세트 보유(nm-hist·nm-job 링크 + 타일 바로 위 요약 줄 · 면책표 없음).' % len(surfaces))
+    return rc
+
+
 def check_trail_spec():
     """미리보기 코너 옵션 레일 사본 동일성 게이트(운영자 260802).
     3표면의 레일 캡슐·값 칩 규격이 정본 값에서 이탈하면 rc=1. 등재 = CII 「미리보기 코너 옵션 레일」 행."""
@@ -5335,6 +5395,8 @@ def main():
     except Exception as e:
         print('⚠️ 자간 기준 게이트 스킵:', e)
     try:
+        if check_result_rail_parity() != 0:   # 결과 레일 = 5탭 한 세트(운영자 260806 — 요약 줄+썸네일 부품 세트가 표면마다 갈라지던 축)
+            rc = 1
         if check_trail_spec() != 0:   # 미리보기 코너 옵션 레일 사본 동일성(운영자 260802 — thumb·tr·index 3표면 값 사본이 갈라지는 조용한 드리프트 차단)
             rc = 1
     except Exception as e:
