@@ -116,7 +116,15 @@
   .swc[data-sw="black"] .swd { border-color:rgba(255,255,255,.5); }   /* 검정 = 테두리 한 단 또렷(운영자 260729 "검정은 테두리를 얇게 넣어줘 안보이니까" — 두께는 1px 유지, 알파만 .25→.5) */
   .swc { position:relative; }   /* 라벨 앵커(아래 absolute 짝) */
   .swc .swl { position:absolute; top:50%; left:100%; margin-left:3px /* raw-ok: 점↔라벨 3 = 종전 gap 정본 동값(흐름에서 빠져도 눈에 보이는 간격은 불변) */; transform:translateY(-50%); font-size:11px /* raw-ok: 11 = 선택 표기 전용 소자(fs-xs 12보다 한 단 아래) */; font-weight:var(--fw-x); line-height:1; color:var(--fg); white-space:nowrap; text-align:left; pointer-events:auto; }   /* (260804 4차) 흐름 → **절대 배치**(운영자 "동그라미랑 광학 잉크 단위로 수평 다시 맞춰줘") — 구 인라인 라벨은 자기 칸의 폭을 늘려 `space-between`이 나머지를 다시 나눠 담게 만들었고, 그래서 **라벨이 붙은 칸 주변만 동그라미 간격이 벌어졌다**(실측 크롭: 음영 뒤 큰 공백 · 자막·강조는 붙음 · 세로 잉크중심은 이미 Δ≤0.5로 정합이었다 = 눈에 보이던 어긋남의 정체는 가로 간격). 흐름에서 빼면 칸 폭 = 점 하나로 균일 → 7색이 등간격으로 선다 */
-  .swc.lend .swl { left:auto; right:100%; margin-left:0; margin-right:3px /* raw-ok: 좌측 배치 시 같은 3px 간격 거울 */; text-align:right; }   /* 우측 끝 두 칸 = 라벨을 왼쪽으로(오른쪽에 두면 줄 밖으로 넘친다 · space-between이 마지막 점을 우변에 붙이므로) */
+  /* ── 축 라벨 = 작은 글래스 박스(운영자 260805 "강조 라는거를 네모난 투명 창으로 넣어줘 아주 작게 세로수평 중앙 정렬") ──
+     레퍼런스 = `.sc-tg` 글래스 필 **값 그대로**(CII 등재 정본 · 트렌드 계정 버튼·구독 칩이 쓰는 그 값) — 신규 색·블러·라운드 창작 0.
+     `.sc-tg` 원본 = r 9px · border 1px rgba(255,255,255,.14) · bg rgba(8,15,11,.34) · blur(8px) · place-items:center.
+     「아주 작게」 = 높이·패딩만 이 줄 소자 크기로 낮춘다(활자 11px 기준) · 중앙 정렬 = grid place-items:center(정본 문법 그대로).
+     ⚠ 우측 배치 단일화 = 라벨은 **언제나 동그라미 오른쪽**(운영자 "그냥 동그라미 우측에 두면") — 구 `.lend` 좌측 반전은 폐지.
+        반전이 있으면 「자기 우측에 붙은 라벨」이라는 드롭 규칙이 마지막 두 칸에서만 거꾸로 서서 판정과 눈이 어긋난다. */
+  .swc .swl { display:grid; place-items:center; padding:2px 5px /* raw-ok: 이 줄 소자 전용 축소분 — `.sc-tg` 0 8·높이 24는 12px 활자 기준이라 11px 라벨엔 과대(세로는 padding으로만 = 높이 고정 없이 활자에 붙는다) */;
+    border-radius:var(--r-s); border:1px solid rgba(255,255,255,.14); background:rgba(8,15,11,.34);
+    backdrop-filter:var(--blur-s); -webkit-backdrop-filter:var(--blur-s); }   /* 값 = .sc-tg 사본(색·테두리·라운드 동일 · 블러는 그 8px과 동값인 --blur-s 토큰 참조 = 복붙 대신 계승) */
   @media (max-width:430px) { .swc .swl { font-size:10px /* raw-ok: 폰 티어 축소 실측치 */; } }   /* 폰 = 라벨만 한 단 축소(칸 폭은 라벨과 무관해졌다 = 구 `min-width`·`padding:5px 0` 회수 · 260804 4차) */
   /* ── 색 라벨 = 끌어서 배정(운영자 260804 3차 "이 안에서만 동작하는거고, 옆에 위치하면 자동으로 그게 배정되었다는 의미 · 별도의 알약에 넣을 필요 없음") ──
      구 글래스 배지 3개(.swax 행)는 **폐지**: 색 줄이 이미 「어느 색 옆에 무슨 축이 붙어 있나」로 배정을 말하고 있는데, 같은 정보를 위에 한 벌 더 두면 읽을 자리가 둘로 갈린다.
@@ -854,7 +862,7 @@ const swaxOf={shc:'shc',fg:'fg',kwc:'kwc'};
 const SWDEF={shc:'black',fg:'white',kwc:'green'};   // 색 3축 기본값 = P 초기값과 1:1(검정 음영·흰 자막·노뮤트 형광그린 강조)
 let SWSNAP=null;   // 「기본」 누르기 직전 3색(토글 복귀용 · CLIP_SAVE 동문)
 const swIsDef=()=>P.shc===SWDEF.shc&&(P.fg||'white')===SWDEF.fg&&(P.kwc||'green')===SWDEF.kwc;
-const swdefrow=()=>srow('', [pc('swdef','1',swIsDef(),false,'기본')]);   // 라벨 없는 행 = 칩만 우측 정렬(`.sopts` justify-content:flex-end 정본) — 운영자 "단어만"       // 도먼트: 축 키 화이트리스트(드롭 대상 검증용)
+const swdefrow=()=>srow('', [pc('swdef','1',swIsDef(),false,'기본')]);   /* ⚠ 도먼트(260805) — 「기본」 칩은 색 줄 마지막 항목으로 합류(swrow 안). 이 전용 행은 호출처 0(복원 = 아래 카드 조립에 다시 더하면 된다) */   // 라벨 없는 행 = 칩만 우측 정렬(`.sopts` justify-content:flex-end 정본) — 운영자 "단어만"       // 도먼트: 축 키 화이트리스트(드롭 대상 검증용)
 function swrow(){
   return '<div class="swrow" role="group" aria-label="자막 색 — 축 이름을 끌어 다른 색 옆에 놓으면 그 색이 된다 · 탭은 음영 색, 우클릭이나 길게 누르기는 글자 색">'
     +Object.keys(OC_DEF).map((c,i,ar)=>{
@@ -865,6 +873,10 @@ function swrow(){
         +' title="'+OC_LBL[c]+' — 탭 = 음영 색 · 우클릭(폰은 길게 누르기) = 글자 색 · 축 이름을 끌어다 놓으면 그 축이 이 색"'
         +'><span class="swd" style="--sw:'+OC_DEF[c]+'"></span><span class="swl">'+lbl+'</span></button>';
     }).join('')
+    /* 「기본」 = 색 줄 **마지막 항목으로 합류**(운영자 260805 "기본 이라고 표기된거는 그 아래 동그라미들 다 간격 줄여서
+       동일한 간격으로 설정해서 기본 넣어주면됨") — 구 `swdefrow()` 전용 행 폐지. 칩 부품·상태(swIsDef)·id는 그대로 계승(신규 부품 0).
+       `.swrow`가 space-between이라 항목이 7→8로 늘면 **남는 폭이 다시 균등 분배** = 동그라미 간격이 그만큼 좁아지고 전부 동일 간격으로 선다. */
+    +pc('swdef','1',swIsDef(),false,'기본')
     +'</div>';
 }
 const srcRatio=()=>Math.max(.25, Math.min(1, (100+(+P.srcsz||0))/100));   // 원문 줄 상대 크기 계수(운영자 260729 게이지 srcsz −75~0 → 0.25~1.0) — 미리보기 tfs·러너 dual_small 공용 단일 산식(두 곳이 갈리면 미리보기≠결과)
@@ -885,7 +897,7 @@ function prm(k){
        +(P.shtype==='none'?'':gauge('sh', P.shtype==='box'?'여백':P.shtype==='stroke'?'획 굵기':'그림자',0,300,P.sh,'%','선택한 음영 종류의 세기 — 100% = 기본')))   // 종류 + 세기 = 한 카드(무엇을/얼마나가 붙어 있어야 읽힌다)
     +C((ON.trn||P.lang==='dual')?(gauge('srcsz','외국어',-75,0,P.srcsz,'%','한국어 줄 대비 크기 — 0% = 같은 크기 · -50% = 절반(기본) · 줄간격과 한국어 줄 위치는 고정, 외국어만 아래로 펼쳐짐')
        +gauge('lgap','줄간격',0,60,P.lgap,'%','한국어 줄과 외국어 줄 사이 간격 — 한국어 글자 높이 기준 % · 18% = 기본')):'')   // 외국어 2형제 = 원문이 붙는 모드에서만
-    +C(swdefrow()+swrow())   // ⚠배치(3-2) 색 카드 = 「기본」 워드칩(우측 끝) + 색 줄 — 칩이 색 줄 **위**(카드 안 `.srow`가 값 줄보다 위에 서는 형제 카드 리듬 = 음영 카드 동일)   // 색 카드 = 색 줄 한 벌(운영자 260804 3차 — 구 축 배지 행 폐지 · 배정은 줄 안 라벨 위치가 말한다)
+    +C(swrow())   // ⚠배치(3-2) 색 카드 = **색 줄 한 줄**(동그라미들 + 「기본」 칩이 같은 줄 균등 간격 · 운영자 260805) — 구 「기본」 전용 행은 폐지(swdefrow 도먼트)   // 색 카드 = 색 줄 한 벌(운영자 260804 3차 — 구 축 배지 행 폐지 · 배정은 줄 안 라벨 위치가 말한다)
     +'</div>';
   }
   if(k==='cut') return segs('cutlv',[['off','OFF'],['std','기본'],['soft','살짝'],['hard','많이']],ON.cut?P.cutlv:'off')   // 운영자 260731 19차 — ON = 3옵션 분리(기본·살짝·많이) · 기본값(std)이 OFF 다음 최좌측
@@ -1299,10 +1311,14 @@ const swHit=(x,y)=>{
   const row=document.querySelector('.swrow'); if(!row) return null;
   const R=row.getBoundingClientRect(); if(!R.height) return null;
   if(y<R.top-R.height||y>R.bottom+R.height) return null;           // 밴드 = 행 높이만큼 위아래(색 줄을 겨눈 게 명백한 범위)
-  let best=null,bd=Infinity;
+  /* 귀속 = **자기 우측 기준 최근접**(운영자 260805 "제 동그라미가 자기 우측 기준해서 가장 가까운 것만 가져오도록") —
+     라벨은 언제나 동그라미 오른쪽에 붙으므로, 놓은 지점에서 **왼쪽으로 가장 가까운** 동그라미가 가져간다.
+     중심 기준(구본)이면 두 동그라미 사이에 놓았을 때 오른쪽 것이 가져가 「라벨은 왼쪽 동그라미 옆에 서는데 색은 오른쪽 것」이 된다 = 눈과 결과 불일치. */
+  let best=null,bd=Infinity,first=null;
   row.querySelectorAll('[data-sw]').forEach(n=>{ const r=n.getBoundingClientRect(); if(!r.width) return;
-    const d=Math.abs((r.left+r.right)/2-x); if(d<bd){ bd=d; best=n; } });
-  return best;                                                     // 가로는 무제한 = 줄 좌우 끝을 넘겨 놓아도 양끝 색으로 붙는다
+    if(!first) first=n;
+    const d=x-r.right; if(d>=0&&d<bd){ bd=d; best=n; } });
+  return best||first;                                              // 첫 동그라미보다 왼쪽에 놓음 = 첫 칸 귀속(줄 좌우 끝을 넘겨도 안 흘린다)
 };
 document.addEventListener('pointerdown',e=>{
   const a=e.target.closest&&e.target.closest('[data-swax]'); if(!a||(e.button&&e.button!==0)) return;
