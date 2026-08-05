@@ -214,9 +214,9 @@ function assess(r) {
   //   ⚠ 기대값 개정 이력(같은 축이 하루에 세 번 갈렸다): 260805 1차 불투명 .94 복원 → 2차 코너 레일 .54/blur8 → 260806 창 분류로 대기열 계열 확정.
   //   saturate(0)(무채색 기틀 260630)은 색 정책 축이라 계열과 무관하게 존치 = 계속 검사한다.
   const scr = (r.rsn || []).find(([s]) => s === '.sc-rsn');
-  const rsnOk = !!scr && /rgba\(17,\s*18,\s*20,\s*0?\.64\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.08\)/.test(scr[1].bcol)
+  const rsnOk = !!scr && /rgba\(17,\s*18,\s*20,\s*0?\.53\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.08\)/.test(scr[1].bcol)
     && /blur\(24px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
-  C('C2b .sc-rsn = 대기열 계열 유리 {bg --modal-glass(.64) · 테두리 --line(.08) · blur24 sat0}(운영자 260806 창 분류)', rsnOk,
+  C('C2b .sc-rsn = 대기열 계열 유리 {bg rgba(17,18,20,.53) = glass(.64)↔anchor(.42) 중간 · 테두리 --line(.08) · blur24 sat0}(운영자 260806 "설정 감성 50%")', rsnOk,
     scr ? scr[1].bg + ' · ' + scr[1].bcol + ' · ' + scr[1].blur : '없음');
   // C3 = 화이트리스트 밖 불투명 글래스(신규 고아 팝업) 0
   C('C3 불투명 글래스 로그 화이트리스트 밖 0(신규 고아 없음)', r.rogue.length === 0, r.rogue.length ? r.rogue.join(' · ').slice(0, 260) : '없음(WL=' + OPAQUE_WL.join(',') + ')');
