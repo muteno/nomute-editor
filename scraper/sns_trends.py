@@ -1332,6 +1332,23 @@ def _th_img(p):
     return ""
 
 
+def _GUEST_HDR(hdr):
+    """게스트 요청용 헤더 = UA만 모듈 정본으로 되돌린 사본(260805 평의회2 검출 결함 봉합).
+
+    ⚠ 왜 필요한가 = threads의 `_hdr`은 주석이 스스로 「게스트·쿠키 **공통 경로**」라고 명시한 **공유 객체**다.
+      THREADS_UA 봉합이 그 공유 객체를 제자리 변형(`_hdr["User-Agent"] = _ua`)하는 바람에, 쿠키가 무소득일 때
+      타는 **게스트 폴백 2곳**(302 폴백 · 무소득 폴백)이 게스트 요청인데도 **쿠키용 UA로 나간다**.
+      인스타는 쿠키를 헤더 안(`_hdr["Cookie"]`)에 실어 `_hdr` 자체가 쿠키 전용이고 게스트 폴백이 아예 없어
+      같은 가드가 안전했다 — 문법만 베끼고 이 구조 차이를 못 본 것이 결함의 정체(= 「100% 사본」은 텍스트만 참).
+    ⚠ 왜 위험한가 = 260805 실측상 **지금 스레드를 실제로 걷고 있는 유일한 경로가 그 게스트 폴백**이다
+      (5계정 전건 · 회수 8·8·7·8·5 = 36건 · 쿠키 산출 0건). 운영자가 안내대로 폰 크롬 UA(모바일)를 넣는 순간
+      그 36건이 모바일 셸 HTML을 받아 `_scan()` 노드 술어에 안 물려 **0건으로 조용히 죽는다**(200 정상·에러 0
+      = 레포 선례 `ask_srcimg` 「모바일 UA 봇 차단 → 200에 본문 없는 껍데기」와 동형의 무증상 실패).
+    ⚠ `{**hdr, **UA}`는 금지 — UA dict의 다른 키가 threads 전용 Accept/Sec-Fetch를 덮는다. User-Agent 한 키만 되돌린다.
+    """
+    return {**hdr, "User-Agent": UA["User-Agent"]}
+
+
 def _th_fetch(url, hdr, ck):
     """스레드 요청 = CookieJar 경유(260729 폰 실측 봉합 — 부계 쿠키를 고정 Cookie 헤더로 달자 4계정 전원
     「HTTP Error 302 … infinite loop」). Meta의 302 + Set-Cookie 챌린지 패턴: 체인 중간에 서버가 얹는
@@ -1429,7 +1446,7 @@ def threads_subs(accounts, limit=10, deadline=None):
                 h = _th_fetch(_u, _hdr, ck)   # 쿠키 = Jar 경유(302 챌린지 추적 · 260729) — 구 고정 Cookie 헤더 = 무한루프
             except urllib.error.HTTPError as _e:
                 if ck and _e.code in (301, 302, 303, 307, 308):
-                    h = _th_fetch(_u, _hdr, "")   # 쿠키가 루프를 부르면 게스트 1회 폴백(260713 이전 기본 경로 · fail-soft)
+                    h = _th_fetch(_u, _GUEST_HDR(_hdr), "")   # 쿠키가 루프를 부르면 게스트 1회 폴백(260713 이전 기본 경로 · fail-soft) · UA는 모듈 정본으로 복원(아래 _GUEST_HDR 사유)
                 else:
                     raise
             mine, _alien = _scan(h)
@@ -1443,7 +1460,7 @@ def threads_subs(accounts, limit=10, deadline=None):
             if ck and not mine:
                 time.sleep(2)   # Meta 연타 회피(콜 간 4s 정본의 절반 = 같은 계정 재요청 1회분)
                 try:
-                    _h2 = _th_fetch(_u, _hdr, "")
+                    _h2 = _th_fetch(_u, _GUEST_HDR(_hdr), "")   # UA 모듈 정본 복원(_GUEST_HDR 사유) — 지금 유일하게 걷고 있는 경로라 오염되면 수집이 통째로 죽는다
                     _m2, _a2 = _scan(_h2)
                     if _m2:
                         h, mine, _alien, _via = _h2, _m2, _a2, "게스트폴백"
@@ -1452,9 +1469,14 @@ def threads_subs(accounts, limit=10, deadline=None):
                         #   ⚠ 종전 두 문구는 전부 오답이었다 — "갱신 권장"은 UA가 없으면 몇 번을 갈아도 같은 자리에서
                         #   죽고("그럼 쓰레드 또 고치고 또 알림오고"), "빼라"는 로그인 수집 기능 자체를 포기하는 것이다.
                         #   진짜 원인은 **세션-UA 짝의 부재**(위 _ua 주석) → 그 값이 없으면 그것부터 지목해야 조치가 끝난다.
-                        _fix = ("THREADS_UA 미설정 = 이게 원인이다 — 쿠키를 발급한 그 브라우저의 UA를 "
-                                "~/.nomute_phone_env 에 THREADS_UA로 넣어라(메타가 세션을 발급 UA에 묶는다 · "
-                                "인스타 INSTA_UA와 같은 축 · 갈아끼우기·빼기 둘 다 오답)") if not _ua else \
+                        # ⚠ 단정 금지(260805 평의회1 반증) — 인스타 실측 증상은 「유효 쿠키도 400 거절」(세션 **무효화**)인데
+                        #   여기 증상은 「200 정상 수신 + 추천 피드」(세션 **수락**)라 시그니처가 다르다. UA가 원인이면
+                        #   거절돼 게스트 렌더로 떨어져야 하므로 이 사고 자체가 안 난다 → UA는 유력 후보지 **확정 원인이 아니다**
+                        #   (실효 추정 20~30%). 확정 판별은 아래 wall 실측 1줄뿐이라, 문구는 「해보라」까지만 말한다.
+                        _fix = ("THREADS_UA 미설정 = 1순위 후보(확정 아님) — 쿠키를 발급한 그 브라우저의 UA를 "
+                                "~/.nomute_phone_env 에 THREADS_UA로 넣고 다시 재보라(메타가 세션을 발급 UA에 묶는다 · "
+                                "인스타 INSTA_UA와 같은 축). ⚠ 넣어도 그대로면 원인은 UA가 아니라 **추천 피드 응답**이다 "
+                                "— 그때는 세션이 거절된 게 아니라 수락된 채 프로필 대신 홈피드를 받는 것이라 별개 봉합이 필요하다") if not _ua else \
                                ("THREADS_UA는 있는데 무소득 = 쿠키 쪽 만료 — 같은 브라우저에서 쿠키·UA를 **한 쌍으로** 다시 뽑아라"
                                 "(둘 중 하나만 갈면 또 어긋난다)")
                         print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · {_fix}", file=sys.stderr)
