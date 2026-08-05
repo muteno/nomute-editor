@@ -231,6 +231,40 @@ async function xMedia(u) {
   } catch { return null; }   // fail-soft — 종전 og 경로로 계속
 }
 
+// ── 인스타그램 항목(운영자 260805 7차 링크 실측) ──
+//   게시물 페이지는 로그인월이지만 **임베드**(/embed/captioned/)는 제3자 삽입용이라 열려 있다(스레드 임베드와 같은 축).
+//   실측 260805: 103KB · 본문 이미지가 `srcset`으로 240~1440w 사다리를 그대로 준다 → 최대폭 1장을 항목으로 싣는다.
+//   ⚠ 한계(정직) = 임베드는 **대표 1장**만 준다 — 캐러셀 2번째 이후·영상 실주소는 로그인 없이 안 나온다.
+//     그래서 여기서 만드는 항목은 「받기 전 눈확인」용이고, 실제 받기는 종전대로 러너(쿠키 보유)가 전량 처리한다.
+const IG_CODE_RE = /\/(?:p|reel|reels|tv)\/([\w-]{5,30})/;
+async function igMedia(u) {
+  try {
+    const m = IG_CODE_RE.exec(u); if (!m) return null;
+    const r = await fetch('https://www.instagram.com/p/' + m[1] + '/embed/captioned/', {
+      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1', accept: 'text/html' },
+      redirect: 'follow',
+    });
+    if (!r.ok) return null;
+    const b = await r.arrayBuffer();
+    const eh = new TextDecoder('utf-8').decode(b.byteLength > HTML_MAX ? b.slice(0, HTML_MAX) : b);
+    if (!/EmbeddedMedia/.test(eh)) return null;   // 로그인월·형식 변경 = 포기(깨진 값 안 만든다)
+    let best = '', bw = 0;
+    const SRCSET_RE = /srcset="([^"]+)"/gi;
+    let s;
+    while ((s = SRCSET_RE.exec(eh))) {
+      for (const part of unent(s[1]).split(',')) {
+        const mm = /(\S+)\s+(\d+)w/.exec(part.trim());
+        if (mm && +mm[2] > bw && /scontent[^/]*\.cdninstagram\.com/.test(mm[1])) { bw = +mm[2]; best = mm[1]; }
+      }
+    }
+    const uu = _mediaUrl(best);
+    const cm = /class="Caption"[^>]*>([\s\S]*?)<\/div>/i.exec(eh);
+    const cap = cm ? unent(cm[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
+    const au = /class="UsernameText"[^>]*>([^<]+)</i.exec(eh);
+    return { items: uu ? [{ kind: 'img', w: bw, h: 0, u: uu }] : [], title: cap.slice(0, 200), desc: cap.slice(0, 300), thumb: uu, author: au ? '@' + au[1].trim().slice(0, 40) : '' };
+  } catch { return null; }   // fail-soft — 종전 og 경로로 계속
+}
+
 export async function onRequestGet({ request }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), {
     status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -273,6 +307,16 @@ export async function onRequestGet({ request }) {
         }
       }
     } catch { /* fail-soft = 아래 og 경로로 계속 */ }
+  }
+
+  // ── ①-c 인스타 = 임베드 한 경로(게시물 페이지는 로그인월 · 260805 7차) ──
+  if (plat === 'IG') {
+    const im = await igMedia(t.toString());
+    if (im && (im.items.length || im.title)) {
+      const base = { plat, title: im.title, desc: im.desc, thumb: im.thumb, author: im.author };
+      if (im.items.length) base.items = im.items;
+      return json(base);
+    }   // 실패 = 아래 og 경로로 계속(악화 0)
   }
 
   // ── ①-b X = 신디케이션 한 경로로 제목·작성자·항목·화질이 전부 나온다(og보다 정확 · 260805 6차) ──
