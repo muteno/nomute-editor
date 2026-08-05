@@ -3652,7 +3652,7 @@
   #dlgrab .geni-lead .geni-sechead { padding:0; }   /* 소머리 = 리드 첫 요소 → 위 여백은 리드 padding-top 8 단일소스 · 아래 여백은 입력 행 margin-top 9 단일소스(= thumb `#rCombo .csec{margin-bottom:0}` 정본 동문 · 이중 여백 차단) */
   #dlgrab .dg-urlrow { margin-top:9px /* raw-ok: 위와 같은 정본 동값 */; }
   .dg-urlrow { display:flex; align-items:center; gap:var(--sp-1); }
-  .dg-qrow { display:flex; justify-content:flex-end; margin-top:var(--sp-1); }   /* 화질 줄 = 링크 행 바로 아래·우측 끝(보내기 버튼과 같은 축) · 간격 = 행 gap 토큰 동값(새 값 0) */
+  .dg-qrow { flex:none; display:flex; }   /* 화질 선택자 = 링크 행 안, 저장 버튼 좌측(운영자 260805 11차) · 간격은 행 gap 토큰이 담당(새 값 0) */
   .dg-qrow[hidden] { display:none; }
   .dg-urlrow .iowrap { flex:1 1 auto; min-width:0; }   /* attachCopyPaste가 입력칸에 씌우는 래퍼(클립 버튼 앵커) = 이제 이 행의 flex 아이템 → 폭 담당을 래퍼로 이관(입력칸은 래퍼 100%) */
   .dg-urlrow .geni-in { width:100%; height:var(--btn); }   /* 입력칸 높이 = 옆 버튼(.sbtn 34 = --btn)과 **동일 티어** — 구 링크 행은 입력 29 / 픽토 34 / [가져오기] 27 세 높이가 한 줄에 섞여 눈에 삐뚤빼뚤했다(운영자 260802 "삐뚤삐둘" · 실측 Δ5·Δ7px) · 값 = 등재 토큰 티어 교체(신규 값 0) */
@@ -4265,9 +4265,9 @@ try {
     <div class="geni-sechead"><span class="cref-lbl">링크</span></div><!-- ⚠배치(§3-2) — 이미지 스튜디오 입력부 정본(thumb #rCombo `• 헤더` + 입력칸) 미러: 소머리가 있어야 입력칸 상단 걸침 클립(붙여넣기·지우개)이 헤더에 안 잘린다. 라벨은 이 화면의 대상(링크) 1단어 · 토글류(노뮤트/진짜예요)는 이미지 스튜디오 전용이라 미계승(운영자 260802) -->
     <div class="dg-urlrow">
       <input id="dgUrl" class="geni-in" type="url" aria-label="주소" title="주소" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"><!-- placeholder 예시 제거(운영자 260802 "링크 안에 예시조차 다 없애") · 안내 산문 0 = check_url_placeholder 면제축(placeholder 없음) · 클립(붙여넣기·복사·지우개) = attachCopyPaste 정본이 .iowrap으로 감싸 상단 걸침 부착(이미지 스튜디오 부제·제목 칸과 동일 부품 · 운영자 260802 "여기는 입력하는 곳 스타일") -->
+      <span class="dg-qrow" id="dgQRow" hidden></span><!-- 화질 = 저장 버튼 **좌측**(운영자 260805 11차 "저장 버튼 좌측에 선택자를 위치") — 같은 행에서 고르고 바로 누른다 -->
       <button id="dgVidDl" class="sbtn dlbtn" type="button" disabled aria-label="다운로드" title="다운로드"></button><!-- 링크 행 = [주소칸][다운로드] 한 쌍만(운영자 260802 "링크 입력란 옆에 다운로드 버튼만 남기고 … 우측에 다운로드 버튼만 있으면됨") — 구 [받기][자막][가져오기] 3개 폐지 · 부품 = .sbtn 34px 정본 + .dlbtn 전 앱 다운로드 색 정본(뉴스 요약 다운로드 버튼과 동일 계약 · 재설계 0) · 픽토 = nm-svg DOWNLOAD_SVG(JS 주입 = .pin-eye 관례) · 행위 = 영상 게시물이면 영상+자막 받기, 아니면 그 페이지 자료 수집(한 버튼이 갈래를 판단 = 운영자가 고를 게 없음) -->
     </div>
-      <div class="dg-qrow" id="dgQRow" hidden></div><!-- 화질 = [보내기] **바로 아래**(운영자 260805 10차 "화질 선택을 하는거 랑 다운로드 버튼이 바로 아래에") — 고르는 것과 누르는 것을 한 자리에 모은다 -->
   </div>
   <div class="geni-body" id="dgBody"></div>
   </div>
@@ -9559,8 +9559,8 @@ function _dgVidPlat(u) {
 //   값 = api/vidl.js·vidl-make.yml·vidl_run.QUAL_OK 3면 동일 문자 · 'best'(하위호환)는 여기 없다 = UI 비노출.
 //   라벨 = 짧은 통칭(운영자 260805 "2160p > 4K 1440p > 2K 1080p > K 이런식으로 줄여줄래?") — 칩·목록 폭이 줄어
 //   제목 자리를 덜 먹는다. ⚠ **값(2160-60…)은 그대로** = 4면 배선의 전선 문자라 표시만 갈아끼운다.
-const DG_QUALS = [['2160-60', '4K 60fps'], ['2160-30', '4K 30fps'], ['1440-60', '2K 60fps'],
-                  ['1440-30', '2K 30fps'], ['1080-60', 'K 60fps'], ['1080-30', 'K 30fps']];
+const DG_QUALS = [['2160-60', '4K 60F'], ['2160-30', '4K 30F'], ['1440-60', '2K 60F'],
+                  ['1440-30', '2K 30F'], ['1080-60', 'K 60F'], ['1080-30', 'K 30F']];   // 라벨 = 최단 통칭(운영자 260805 11차 "말을 더 줄임 4K 30F 이런식으로") · 값(2160-60…)은 4면 배선 문자라 불변
 const DG_Q_KEY = 'dg_q_v1';
 function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return DG_QUALS.some(x => x[0] === v) ? v : DG_QUALS[0][0]; } catch { return DG_QUALS[0][0]; } }   // 기본 = 최고 티어(2160p 60fps)
 function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1] : DG_QUALS[0][1]; }
@@ -9585,13 +9585,13 @@ function _dgQOpts() {
     if (!at.length) return;
     const mx = Math.max(...at.map(x => +x[1] || 0));
     if (mx > 30) {
-      out.push([T + '-60', _dgTierName(T) + ' ' + mx + 'fps']);
-      if (at.some(x => (+x[1] || 0) <= 30)) out.push([T + '-30', _dgTierName(T) + ' 30fps']);
-    } else out.push([T + '-60', _dgTierName(T) + (mx ? ' ' + mx + 'fps' : '')]);
+      out.push([T + '-60', _dgTierName(T) + ' ' + mx + 'F']);
+      if (at.some(x => (+x[1] || 0) <= 30)) out.push([T + '-30', _dgTierName(T) + ' 30F']);
+    } else out.push([T + '-60', _dgTierName(T) + (mx ? ' ' + mx + 'F' : '')]);
   });
   if (out.length) return out;
   const top = fm.reduce((a, b) => (+b[0] > +a[0] ? b : a));   // 티어 미만(720p 등)뿐 = 최고 1줄만(상한 K = 그 아래를 그대로 집는다)
-  return [['1080-60', _dgTierName(+top[0]) + ((+top[1]) ? ' ' + Math.round(+top[1]) + 'fps' : '')]];
+  return [['1080-60', _dgTierName(+top[0]) + ((+top[1]) ? ' ' + Math.round(+top[1]) + 'F' : '')]];
 }
 function _dgQCap(v) { const m = /^(\d+)-/.exec(v || ''); return m ? +m[1] : 0; }
 function _dgQEff() {   // 지금 고른 상한이 이 영상에서 실제로 내주는 행(목록에 없는 값이면 그 아래 최고로 내려앉는다)
@@ -9606,7 +9606,7 @@ function _dgActualLbl(f) {
   //   통칭에 없는 크기는 짧은 변 그대로(1200p·4320p) = 새 어휘 창작 0 · 지어내기 0.
   const tier = _dgTierName(s);
   const fps = Math.round(Number(f.fps) || 0);
-  return tier + (fps ? ' ' + fps + 'fps' : '');
+  return tier + (fps ? ' ' + fps + 'F' : '');   // 'fps' → 'F' 축약(운영자 260805 11차) — 화질 어휘를 화면 전체에서 한 문법으로
 }
 const _DG_VAR_RE = /^\d{8}_\d{6}_(?:YT|IG|X|TT|FB|TH)_(?:maxfps|1080p)_/;   // 부가본 표식 = {TS}_{PLAT}_ **바로 뒤**(러너 download() out 템플릿) — 제목·계정에 같은 글자가 섞여도 ①본을 오배제하지 않는다(평의회2 실측) · ⚠ 플랫폼은 **코드 교대로 못박는다**(X는 1글자라 `[A-Z]{2}`가 못 잡아 X만 부가본이 본편으로 계수됐다 = 평의회3 D2 커밋 전 검출)
 function _dgResActual(res) {   // 받은 영상들의 실측 라벨 — 완료 잡 카드·이전 받기 공용
