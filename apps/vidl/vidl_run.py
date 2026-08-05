@@ -311,10 +311,18 @@ def ffprobe_dims(path):
     (AAC_NOTE의 ffprobe 검증과 같은 축). 실패 = {}(비치명 — 뷰어는 실측 없으면 「최대 …」 요청 표기로 남긴다)."""
     try:
         r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
-                            "-show_entries", "stream=width,height,avg_frame_rate",
+                            "-show_entries", "stream=width,height,avg_frame_rate:stream_side_data=rotation",
                             "-of", "json", path], capture_output=True, text=True, timeout=60)
         st = (json.loads(r.stdout or "{}").get("streams") or [{}])[0]
         w, h = int(_fnum(st.get("width"))), int(_fnum(st.get("height")))
+        # ⚠ stream=width,height는 **coded 치수**라 회전 메타를 안 본다(평의회3 D1 실측 = 세로폰 4K가
+        #   3840×2160으로 저장되고 실제 디코드 프레임은 2160×3840) → 화면 기준으로 되돌린다.
+        #   라벨은 짧은 변(min)이라 회전 불변이었지만, w×h를 **글자로 그리는 자리**에 흘러가면 세로가 가로로 뒤집힌다.
+        rot = 0
+        for sd in (st.get("side_data_list") or []):
+            rot = int(_fnum(sd.get("rotation"))) or rot
+        if abs(rot) % 180 == 90:
+            w, h = h, w
         num, _, den = str(st.get("avg_frame_rate") or "").partition("/")
         fps = _fnum(num) / (_fnum(den) or 1.0)
         return {"w": w, "h": h, "fps": round(fps, 2)} if w and h else {}

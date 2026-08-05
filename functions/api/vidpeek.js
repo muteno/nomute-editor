@@ -86,9 +86,10 @@ function _thCollectMedia(post) {   // 플러그인 collect_media 미러 — 캐�
   })(post);
   return out;
 }
-function thSsrItems(html, code) {
+function thSsrItems(html, code, truncated) {
+  let bad = 0;   // JSON.parse 실패 블록 수 — 하나라도 있으면 「완본이 빠지고 축약본만 잡힌」 상태일 수 있다(평의회4 D3)
   try {
-    if (!html || !code) return [];
+    if (!html || !code) return { items: [], trust: false };
     let pk = 0n;   // shortcode → pk = 위치기반 base64(플러그인 shortcode_to_pk 미러 · 64^11 > 2^53이라 BigInt)
     const AB = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     for (const ch of code) { const i = AB.indexOf(ch); if (i < 0) { pk = null; break; } pk = pk * 64n + BigInt(i); }
@@ -99,15 +100,19 @@ function thSsrItems(html, code) {
     while ((m = _SJS_RE.exec(html))) {
       const raw = m[1];
       if (raw.indexOf(code) < 0 && !(pkS && raw.indexOf(pkS) >= 0)) continue;   // 이 포스트가 안 든 블록은 건너뛴다
-      let d; try { d = JSON.parse(raw); } catch { continue; }
+      let d; try { d = JSON.parse(raw); } catch { bad++; continue; }
       for (const nd of _walkJson(d)) {
         if (nd.code === code || (nd.code == null && pkS && String(nd.pk) === pkS)) posts.push(nd);
       }
     }
     let best = [];   // 노드가 여럿이면 미디어를 가장 많이 문 것(플러그인 289행 미러 — 축약본·완본 공존 대응)
     for (const p of posts) { const g = _thCollectMedia(p); if (g.length > best.length) best = g; }
-    return best.slice(0, 20).map((md) => {
-      if (md.video_versions) return { kind: 'video', w: +md.original_width || 0, h: +md.original_height || 0 };
+    const items = best.slice(0, 20).map((md) => {
+      const vv = Array.isArray(md.video_versions) ? md.video_versions : (md.video_versions ? [md.video_versions] : []);
+      if (vv.length) {   // ⚠ 길이로 판정 — `video_versions: []`는 파이썬(플러그인)에선 거짓이라 사진인데 JS에선 참이라 영상으로 둔갑한다(평의회4 D4)
+        const v0 = vv.find(v => v && (+v.width || +v.height)) || {};   // 버전 자체 w/h **먼저**, 없으면 부모 원본치수(플러그인 _pick_video 172행 순서 계승 · 평의회4 D5)
+        return { kind: 'video', w: +v0.width || +md.original_width || 0, h: +v0.height || +md.original_height || 0 };
+      }
       let bw = 0, bh = 0, px = -1;
       for (const c of md.image_versions2.candidates) {
         const p2 = (+c.width || 0) * (+c.height || 0);
@@ -115,19 +120,22 @@ function thSsrItems(html, code) {
       }
       return { kind: 'img', w: bw, h: bh };
     });
-  } catch { return []; }   // fail-soft — 구성 표시만 생략
+    return { items, trust: !bad && !truncated };
+  } catch { return { items: [], trust: false }; }   // fail-soft — 구성 표시만 생략
 }
 function thEmbedItems(eh) {
   try {
     const s = eh.search(/SoloMediaContainer|MediaScrollImageContainer/);
     if (s < 0) return [];   // 미디어 컨테이너 없음 = 글만 있는 게시물(항목 표기 생략 — 실측 emb3·4)
-    let e = eh.length;
+    let e = -1;
     for (const stop of ['PostDateContainer', 'ActionBarContainer', 'QuoteContainer']) {
-      const j = eh.indexOf(stop, s + 1); if (j >= 0 && j < e) e = j;
+      const j = eh.indexOf(stop, s + 1); if (j >= 0 && (e < 0 || j < e)) e = j;
     }
-    const seg = eh.slice(s, e);
-    const nv = (seg.match(/<video\b/gi) || []).length;
-    const ni = (seg.match(/<img\b[^>]*class="img"/gi) || []).length;   // 창 안 img.img = 사진 항목(포스터는 <video> 안 = 이중계수 0 · 실측 emb1)
+    if (e < 0) return [];   // ⚠ 창의 **끝**을 못 찾으면 포기한다(평의회5 D2) — 구판은 문서 끝까지를 미디어 창으로 세어
+    //   아바타·인용·파비콘까지 사진에 합류시켰다(실측 = 항목 2가 항목 20으로 날조). 날조보다 침묵이 낫다.
+    const seg = eh.slice(s, e).replace(/<video\b[\s\S]*?<\/video>/gi, m => ' '.repeat(1));   // 영상 블록은 통째로 치환 = 그 안 포스터 img가 사진으로 이중계수되는 길을 원천 차단(평의회4 D7)
+    const nv = (eh.slice(s, e).match(/<video\b/gi) || []).length;
+    const ni = (seg.match(/<img\b[^>]*class="[^"]*\bimg\b[^"]*"/gi) || []).length;   // 클래스 판정 = 같은 파일 썸네일 축(:234)과 **한 문법**(정확일치는 `class="img "`·`class="img Photo"`에서 조용히 0이 됐다 = 평의회4 D1·평의회5 D3)
     const out = [];
     for (let k = 0; k < nv && out.length < 20; k++) out.push({ kind: 'video' });
     for (let k = 0; k < ni && out.length < 20; k++) out.push({ kind: 'img' });
@@ -175,7 +183,7 @@ export async function onRequestGet({ request }) {
     } catch { /* fail-soft = 아래 og 경로로 계속 */ }
   }
 
-  let html = '', finalUrl = '';
+  let html = '', finalUrl = '', truncated = false;
   try {
     const r = await fetch(t.toString(), {
       headers: { 'user-agent': UA, accept: 'text/html,*/*;q=0.8', 'accept-language': 'ko-KR,ko;q=0.9' },
@@ -184,7 +192,8 @@ export async function onRequestGet({ request }) {
     finalUrl = r.url || '';   // 리다이렉트 종착(정규 @계정/post/코드) — 아래 스레드 임베드 폴백의 재료(og가 비어도 주소는 건진다)
     if (r.ok) {
       const buf = await r.arrayBuffer();
-      html = new TextDecoder('utf-8').decode(buf.byteLength > HTML_MAX ? buf.slice(0, HTML_MAX) : buf);
+      truncated = buf.byteLength > HTML_MAX;   // 절단분에서 나온 항목 구성은 「완본이 빠진 축약본」일 수 있다 = 신뢰 불가(평의회4 D3)
+      html = new TextDecoder('utf-8').decode(truncated ? buf.slice(0, HTML_MAX) : buf);
     }
   } catch { /* fail-soft — 스레드는 아래 임베드 폴백이 한 번 더 시도(비스레드는 html='' = 미리보기 생략) */ }
   if (!html && plat !== 'TH') return json({ plat, title: '' });
@@ -209,9 +218,21 @@ export async function onRequestGet({ request }) {
   //    항목 구성 = SSR(치수까지) 우선 → 임베드(개수·종류만) 폴백 · 실패는 전부 fail-soft(미리보기·구성만 생략).
   let items = [];
   if (plat === 'TH') {
-    const cm = /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(finalUrl) || /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(raw);
-    items = thSsrItems(html, cm && cm[2]);
-    if (cm && (!title || !items.length)) {   // 제목이 og로 이미 잡혔고 항목도 SSR로 얻었으면 임베드 요청 자체를 안 한다
+    // ⚠ 좌표(계정·코드)는 **주소의 경로에서만·앞부터 앵커링해** 읽는다(평의회5 D1) — 구판은 앵커 없는 정규식을
+    //   `raw`(운영자 입력 원문) 전체에 돌려서 `…/share/@남의계정/post/XXXX` 같은 문자열이 오면 **엉뚱한 글**의
+    //   제목·썸네일·항목을 「받을 내용」에 그렸다(실발사는 원 주소로 간다 = 화면과 실물 불일치).
+    //   러너 정본이 같은 이유로 이미 금지한 축이다(nomute_threads.py:230 「본문 아무 데서나 줍는 폴백은 두지 않는다」).
+    const _path = (s) => { try { return new URL(s).pathname; } catch { return ''; } };
+    const _POST = /^\/@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})\/?$/;
+    const cm = _POST.exec(_path(finalUrl)) || _POST.exec(_path(raw)) || _POST.exec(_path(t.toString()));
+    const ssr = thSsrItems(html, cm && cm[2], truncated);
+    items = ssr.items;
+    // ⚠ og가 **비는** 게 아니라 **로그인월 제목으로 차는** 경우가 실재한다(평의회1 실측 = 라이브 18건 중 2건 「Threads • 로그인」).
+    //   그 상태로 두면 아래 폴백 조건(`!title`)이 안 걸려 임베드가 본문을 정상 파싱하고도 제목을 못 덮는다
+    //   → 게시물 내용이 아닌 로그인 안내가 「받을 내용」에 제목으로 뜬다 = 1차 사고(거짓 표기)와 같은 죄.
+    const _t = title.trim();
+    if (/^threads(\s*[•·|-]\s*(로그인|가입|log\s?in|sign\s?up).*)?$/i.test(_t)) { title = ''; if (/로그인|log\s?in/i.test(desc)) desc = ''; }
+    if (cm && (!title || !items.length || !ssr.trust)) {   // 제목이 og로 잡혔고 **믿을 수 있는** 항목까지 얻었으면 임베드 요청 자체를 안 한다
       try {
         const EMBED_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';   // thembed.js UA 동값
         const r2 = await fetch(`https://www.threads.com/@${cm[1]}/post/${cm[2]}/embed`, {
@@ -230,7 +251,10 @@ export async function onRequestGet({ request }) {
               if (im) { try { const iu2 = new URL(unent(im[1])); if (iu2.protocol === 'https:') thumb = iu2.toString(); } catch { /* 썸네일만 생략 */ } }
             }
             if (!author) author = '@' + cm[1];
-            if (!items.length) items = thEmbedItems(eh);
+            // 신뢰 불가 SSR(파싱 실패 블록·절단)은 **틀린 개수를 확신 있게 말하는 쪽**이라 빈 값보다 위험하다(평의회4 D3)
+            //   → 임베드가 개수를 주면 그쪽을 채택한다(치수는 없지만 개수·종류가 맞는 게 먼저).
+            const emb = (!items.length || !ssr.trust) ? thEmbedItems(eh) : [];
+            if (emb.length && (!items.length || !ssr.trust)) items = emb;
           }
         }
       } catch { /* fail-soft — 미리보기만 생략(발사 경로 무영향) */ }

@@ -9060,7 +9060,9 @@ function _dgJobHtml(v, i) {
   const modeLbl = ({ subs: '자막', video: '영상', both: '영상+자막' })[v.mode] || '영상+자막';
   // 화질 자리 = 완료면 **실측**(러너 ffprobe · 예 「4K 24fps」) · 아니면 「최대 <선택값>」 — 선택값은 상한이라
   //   그대로 말하면 거짓이 된다(운영자 260805 "가능하지도 않은데 4k 60fps가 나오거든"). 실측 없는 구 완료분은 요청 표기 유지.
-  const qLbl = (v.st === 'done' && _dgResActual(v.res)) || (v.q === 'best' ? '최고 화질' : v.q ? '최대 ' + _dgQName(v.q) : '');   // best(스레드) = 「최고 화질」 — _dgQName의 4K 60fps 폴백을 타면 그게 또 거짓 표기가 된다
+  //   ⚠ 완료면 **실측만**(없으면 빈칸) — 구판은 실측이 없을 때 요청 표기로 되돌아갔고, 그 경로엔 구 결과뿐 아니라
+  //     **영상 0건 완료**(인스타·X·틱톡 사진 게시물 = 러너가 img를 성공으로 인정)가 들어와 「최대 4K 60fps」라고 말했다(평의회2 실측).
+  const qLbl = v.st === 'done' ? _dgResActual(v.res) : (v.q === 'best' ? '최고 화질' : v.q ? '최대 ' + _dgQName(v.q) : '');   // best(스레드) = 「최고 화질」 — _dgQName의 4K 60fps 폴백을 타면 그게 또 거짓 표기가 된다
   let ic, tx;
   if (v.st === 'fail') { ic = WARN_SVG; tx = '실패' + (v.msg ? ' · ' + esc(String(v.msg).slice(0, 60)) : ''); }
   else if (v.st === 'done') { ic = CHECK_SVG; tx = '완료 · ' + fs.length + '건' + (v.sec ? ' (' + _dgSecTxt(v.sec) + ')' : ''); }   // 「✓ 완료 · N장 (32s)」 정본 문법 · 단위만 이 화면 것(장→건)
@@ -9268,14 +9270,23 @@ function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1]
 function _dgActualLbl(f) {
   if (!f || !f.w || !f.h) return '';
   const s = Math.min(f.w, f.h);
-  const tier = s >= 2160 ? '4K' : s >= 1440 ? '2K' : s >= 1080 ? 'K' : s + 'p';
+  // ⚠ 티어는 **정확일치**만 통칭으로 부른다(평의회2 260805 실측) — 구판 하한 매칭(`s>=2160`)은
+  //   7680×4320(8K)을 「4K」, 1920×1200을 「K」라고 말했다 = 이번 라운드가 없애려던 그 거짓말의 변종.
+  //   통칭에 없는 크기는 짧은 변 그대로(1200p·4320p) = 새 어휘 창작 0 · 지어내기 0.
+  const tier = s === 2160 ? '4K' : s === 1440 ? '2K' : s === 1080 ? 'K' : s + 'p';
   const fps = Math.round(Number(f.fps) || 0);
   return tier + (fps ? ' ' + fps + 'fps' : '');
 }
-function _dgResActual(res) {   // 결과의 ①본(부가판 표식 없는 첫 영상) 실측 라벨 — 완료 잡 카드·이전 받기 공용
-  const fs = (res && res.files) || [];
-  const main = fs.find(f => f.kind === 'video' && String(f.name).indexOf('_maxfps_') < 0 && String(f.name).indexOf('_1080p_') < 0) || fs.find(f => f.kind === 'video');
-  return main ? _dgActualLbl(main) : '';
+const _DG_VAR_RE = /^\d{8}_\d{6}_(?:YT|IG|X|TT|FB|TH)_(?:maxfps|1080p)_/;   // 부가본 표식 = {TS}_{PLAT}_ **바로 뒤**(러너 download() out 템플릿) — 제목·계정에 같은 글자가 섞여도 ①본을 오배제하지 않는다(평의회2 실측) · ⚠ 플랫폼은 **코드 교대로 못박는다**(X는 1글자라 `[A-Z]{2}`가 못 잡아 X만 부가본이 본편으로 계수됐다 = 평의회3 D2 커밋 전 검출)
+function _dgResActual(res) {   // 받은 영상들의 실측 라벨 — 완료 잡 카드·이전 받기 공용
+  const vids = ((res && res.files) || []).filter(f => f && f.kind === 'video' && f.w && f.h);
+  if (!vids.length) return '';   // 영상 0건(사진 게시물·자막만·구 결과) = 화질을 말할 자격 자체가 없다 = 빈 문자
+  const main = vids.filter(f => !_DG_VAR_RE.test(String(f.name || '')));
+  const pool = main.length ? main : vids;
+  // 캐러셀(스레드·IG)은 한 번에 여러 영상을 받는다 → 첫 항목만 재면 「1080이 있는데 720p」라고 단언하게 된다
+  //   (평의회2 실측) → 짧은 변 최대치를 대표로 말하고, 나머지가 있다는 사실을 「외 N건」으로 같이 밝힌다.
+  const best = pool.reduce((a, b) => (Math.min(b.w, b.h) > Math.min(a.w, a.h) ? b : a));
+  return _dgActualLbl(best) + (pool.length > 1 ? ' 외 ' + (pool.length - 1) + '건' : '');
 }
 // 화질 고르기 = **눌러서 아래로 펼치는 목록**(운영자 260804 4차 "이런식으로 아래에 나오게 할건가?").
 //   구 6값 순환은 최고↔최저 이동에 최대 5탭이었다 = 6값이 되는 순간 순환이 부품으로 안 맞는다.
@@ -9507,7 +9518,7 @@ async function _dgPeek() {
     const r = await fetch('api/vidpeek?u=' + encodeURIComponent(u));
     const d = await r.json().catch(() => ({}));
     if (seq !== _dgPeekSeq) return;   // 늦게 온 옛 응답 폐기(타이핑 중 순서 뒤집힘 차단 · _dgProbeSubs 관례 동문)
-    _dg.peek = (d && d.title) ? d : null;   // 제목을 못 얻었으면 미리보기 생략(빈 카드 금지 = 추측 표시 안 함)
+    _dg.peek = (d && (d.title || (Array.isArray(d.items) && d.items.length))) ? d : null;   // 제목을 못 얻었으면 미리보기 생략(빈 카드 금지 = 추측 표시 안 함) · 단 **항목 구성만 얻은 경우는 살린다**(캡션 없는 스레드 미디어 글 = 제목이 원래 없다 · 구판은 그 글의 항목·썸네일까지 통째로 버렸다 = 평의회2 실측)
   } catch { if (seq !== _dgPeekSeq) return; _dg.peek = null; }
   _dgRenderBody();
 }
@@ -9515,10 +9526,10 @@ async function _dgPeek() {
 function _dgPeekHtml() {
   const u = _dgUrlNorm(), plat = _dgVidPlat(u);
   if (!plat) return '';   // 영상 게시물이 아니면 이 행 자체가 없다(페이지 스캔 갈래는 종전대로 [다운로드]가 목록을 만든다)
-  const p = (_dg.peek && _dg.peek.title) ? _dg.peek : null;
+  const p = (_dg.peek && (_dg.peek.title || (Array.isArray(_dg.peek.items) && _dg.peek.items.length))) ? _dg.peek : null;   // 제목 없이 항목 구성만 얻은 글도 미리보기 대상(캡션 없는 스레드 미디어 글)
   // 제목을 못 얻었어도(og 차단·형식 변경) 행은 남긴다 — **자막 버튼이 여기 살기 때문**. 그 경우 제목 자리엔
   // 지어낸 문구 대신 **주소 자신**을 쓴다(추측 표시 금지 · 「무엇인지」는 못 알아냈다는 사실이 그대로 보인다).
-  const ttl = p ? p.title : u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80);
+  const ttl = (p && p.title) ? p.title : u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80);
   const subLbl = _dgSubs === false ? '영상+받아쓰기 자막' : '영상+자막';   // 자막 유무 = 이미 도는 linkprobe 리드백 재사용(새 조회 0)
   // 항목 구성 줄(운영자 260805 3차 "링크만 입력해도 몇개가 엮여있는지 + 각각 최대화질") — 스레드류 게시물의
   //   묶음(영상 n·사진 m)을 받기 전에 보여준다. 부품 = 같은 행 .dg-imeta 둘째 줄(신규 디자인 0).
@@ -9526,12 +9537,25 @@ function _dgPeekHtml() {
   let itemsLine = '';
   if (p && Array.isArray(p.items) && p.items.length) {
     const its = p.items;
+    const knd = it => (it.kind === 'video' ? '영상' : it.kind === 'img' ? '사진' : '항목');   // 미지 kind를 '사진'으로 둔갑시키지 않는다(평의회2 ⑨)
     if (its.some(it => it.w && it.h)) {
-      const parts = its.slice(0, 6).map(it => (it.kind === 'video' ? '영상' : '사진') + (it.w && it.h ? ' ' + it.w + '×' + it.h : ''));
-      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc(parts.join(' · ') + (its.length > 6 ? ' 외 ' + (its.length - 6) : '')) + '</div>';
+      // ⚠ **같은 종류·같은 치수는 묶는다**(평의회6 F1 실측 봉합) — 구판은 항목을 하나씩 나열해 폰 430에서
+      //   101~264px가 `.dg-imeta`(nowrap·ellipsis) 밖으로 잘렸다 = 「각각 최대화질」이 주 사용 기기에서 안 보였다.
+      //   캐러셀은 사진 치수가 대개 같아 묶으면 줄이 짧아진다(사진 1440×1810 3장) = **정보 손실 0 · 신규 CSS 0**.
+      const g = [];
+      its.forEach(it => {
+        const key = knd(it) + '|' + (it.w && it.h ? it.w + '×' + it.h : '');
+        const hit = g.find(x => x.key === key);
+        if (hit) hit.n++; else g.push({ key, lab: knd(it) + (it.w && it.h ? ' ' + it.w + '×' + it.h : ''), n: 1 });
+      });
+      const parts = g.slice(0, 2).map(x => x.lab + (x.n > 1 ? ' ' + x.n + '장' : ''));   // 상한 2종 = 폰 430 `.dg-imeta`(264px·nowrap) 실측(4종 78px·3종 13px 초과 · 2종 = 0) — 같은 치수는 위에서 이미 묶이므로 캐러셀 정상 케이스는 상한에 안 닿는다
+      // 「원본」 = 이 치수의 성격을 밝히는 한정어(평의회1 G5) — 서버가 주는 값은 **업로더 원본 치수**지
+      //   받은 파일 실측이 아니다(스레드 video_versions는 w/h가 전부 없어 부모 original_w/h를 계승한다).
+      //   윗줄 화질엔 「최대」를 붙여놓고 이 줄만 사실처럼 말하면 같은 행 안에서 정직 문법이 갈린다.
+      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — 원본 ' + esc(parts.join(' · ') + (g.length > 2 ? ' 외 ' + (g.length - 2) + '종' : '')) + '</div>';
     } else {
-      const nv = its.filter(it => it.kind === 'video').length, ni = its.length - nv;
-      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc([nv ? '영상 ' + nv : '', ni ? '사진 ' + ni : ''].filter(Boolean).join(' · ')) + '</div>';
+      const nv = its.filter(it => it.kind === 'video').length, ni = its.filter(it => it.kind === 'img').length, no = its.length - nv - ni;
+      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc([nv ? '영상 ' + nv : '', ni ? '사진 ' + ni : '', no ? '기타 ' + no : ''].filter(Boolean).join(' · ')) + '</div>';
     }
   }
   return '<div class="geni-sechead"><span class="cref-lbl">받을 내용</span></div>'
