@@ -1485,7 +1485,22 @@ def threads_subs(accounts, limit=10, deadline=None):
                                ("THREADS_UA도 있는데 무소득 = 원인이 둘 중 하나로 좁혀졌다(쿠키 만료 / 세션은 수락됐는데 "
                                 "프로필 대신 추천 피드) — 쿠키를 또 뽑기 전에 `bash scripts/phone_check.sh --no-run` ⑦번 줄로 "
                                 "먼저 확정하라. wall이면 쿠키 재발급이 답이고, NO-WALL이면 재발급은 헛수고다")
-                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · {_fix}", file=sys.stderr)
+                        # ⛔ 원인 실측을 **여기서 굽는다**(260806 봉합 · 이 세션이 4연속 오진한 근본 원인).
+                        #   구조적 결함이었다: 쿠키가 실패해도 게스트 폴백이 성공하면 mine이 채워져 아래 `if _mine:`
+                        #   분기로 빠지고 `_sok`이 찍힌다 → **1차 쿠키 응답이 왜 실패했는지(wall / alien / empty)를
+                        #   판정하는 코드에 영영 도달하지 못한다**(그 판정은 `else:` 가지에만 있다).
+                        #   결과 = 로그에 「쿠키 무소득」이라는 **증상만** 남고 원인은 매번 소실 → 사람이 추측으로
+                        #   처방할 수밖에 없고(260805~06에 갱신·제거·UA 세 처방이 전부 빗나갔다) 그때마다 운영자가
+                        #   폰에서 명령을 쳐서 실측을 대신 해야 했다(운영자 260806 "뭘 맨날 폰에 쳐보래 · 니가 코드를 뽀개봐").
+                        #   → 이미 손에 든 1차 응답 h를 그 자리에서 재서 경고에 싣는다 = **추가 요청 0 · 새 콜 0**.
+                        #     다음 회차 로그 한 줄이 스스로 원인을 말한다(운영자 조치 0 = 30분마다 도는 크론이 알아서 남긴다).
+                        _w1 = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
+                        _sjs1 = len(re.findall(r'data-sjs', h))
+                        _dx = ("로그인월(세션 거절 = 쿠키·UA 축)" if _w1 else
+                               ("추천피드 %d건(세션 수락인데 프로필 미도달 = 쿠키 재발급 무효 축)" % _alien if _alien else
+                                "포스트 노드 0(data-sjs %d개 = %s)" % (_sjs1, "파서 노후" if _sjs1 else "챌린지·스켈레톤")))
+                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · "
+                              f"[1차 실측] {_dx} · 쿠키응답 {len(h)//1000}KB · {_fix}", file=sys.stderr)
                 except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
                     print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
             _mine = 0
