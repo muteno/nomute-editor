@@ -76,7 +76,7 @@ const SHELL = ['.bpop.qpop', '.qpop.msgpop'];   // 대기열 함(실물 = class=
 const RSN = ['.sc-rsn'];   // 사유 메뉴 = 불투명 정본 전용 축(C2b) — 그룹 parity 밖·값 감시는 유지
 // ── 의도적 불투명 글래스 화이트리스트(로그 스캔 예외 · 신설 시 사유와 함께 등재) ──
 //   .nm-toast/.qflash = 토스트(danger·status 강조 = 프로스트 메뉴 가족 아님) · .dlgtop = 스크롤 맨위 버튼(팝업 아님)
-const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop', '.sc-rsn'];   // .sc-rsn = 불투명 정본 복원(운영자 260805 · C2b가 값 전담 감시)
+const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop', '.sc-rsn'];   // .sc-rsn = 그룹 밖 전용 축(260805 1차 불투명 복원 → 2차 코너 레일 유리로 개정 · 값 감시는 C2b 전담 · 반투명이 된 지금도 WL 잔류는 무해 = C3는 「불투명 고아」만 잡는다)
 
 async function runOnce(br, port) {
   const pg = await br.newPage({ viewport: { width: 1280, height: 900 } });
@@ -208,11 +208,14 @@ function assess(r) {
   // C2 = 프로스트 blur 동일(그룹 멤버 전원 · .sc-rsn은 260805 이탈 → C2b 전용 축)
   const bp = parity(r.members, ['blur']);
   C('C2 프로스트 blur 동일(그룹 멤버)', bp.ok, JSON.stringify(bp.det).slice(0, 200));
-  // C2b = .sc-rsn 불투명 정본(운영자 260805 복원 · 값 = 260708 이전 f16f70ca 실측) — 그룹 밖이어도 값 감시 유지(msgpop C1b 선례)
+  // C2b = .sc-rsn 유리 = **코너 옵션 레일(nav.trail) 값**(운영자 260805 2차 "여기 아직도 그대로임" = 헤더 메뉴와 같은 결로 통일)
+  //   ⚠ 기대값 개정 이력: 같은 날 1차 "메뉴 토글 메뉴 색 이거 아니였는데 · 이전으로"로 불투명 .94를 복원했다가,
+  //   2차에 「글래스모피즘 정도를 옆에 네비게이션 만큼」이 PASS 창까지 확장 → 채택값이 앵커 글래스(.42)도 구 불투명(.94)도 아닌
+  //   **레일 .54 + blur-s(8)** 로 확정. saturate(0)(무채색 기틀 260630)은 색 정책 축이라 존치 = 여기서도 계속 검사한다.
   const scr = (r.rsn || []).find(([s]) => s === '.sc-rsn');
-  const rsnOk = !!scr && /rgba\(20,\s*20,\s*20,\s*0?\.94\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.18\)/.test(scr[1].bcol)
-    && /blur\(18px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
-  C('C2b .sc-rsn = 불투명 정본 {bg .94 · 테두리 .18 · blur18 sat0}(운영자 260805 복원)', rsnOk,
+  const rsnOk = !!scr && /rgba\(8,\s*15,\s*11,\s*0?\.54\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.14\)/.test(scr[1].bcol)
+    && /blur\(8px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
+  C('C2b .sc-rsn = 코너 레일 유리 {bg rgba(8,15,11,.54) · 테두리 .14 · blur8 sat0}(운영자 260805 2차)', rsnOk,
     scr ? scr[1].bg + ' · ' + scr[1].bcol + ' · ' + scr[1].blur : '없음');
   // C3 = 화이트리스트 밖 불투명 글래스(신규 고아 팝업) 0
   C('C3 불투명 글래스 로그 화이트리스트 밖 0(신규 고아 없음)', r.rogue.length === 0, r.rogue.length ? r.rogue.join(' · ').slice(0, 260) : '없음(WL=' + OPAQUE_WL.join(',') + ')');
