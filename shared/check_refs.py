@@ -3982,6 +3982,73 @@ def check_brk_misfire_chain():
     return 0
 
 
+_VOTE_ICONS = ('THUMBUP_SVG', 'THUMBDOWN_SVG')
+# 👍/👎 투표 = 한 벌(운영자 260805 "고정으로 박아줘 다른데서 만들면 참조하도록"). 계약 전문 = CII 「👍/👎 선호 투표」 행.
+# CONTRACT: check_vote_btn_canon
+
+
+def check_vote_btn_canon():
+    """👍/👎 선호 투표 부품 = 한 벌 계승(하드 · 운영자 260805 "고정으로 박아줘 다른데서 만들면 참조하도록").
+
+    계약 = **새 투표 버튼은 정본을 입고 상태 클래스만 얹는다** — 클래스 `.fbup`/`.fbdown` · 아이콘 상수
+    `THUMBUP_SVG`/`THUMBDOWN_SVG` · 점등 `.sbtn.voted` · 취소 arm `.thumb-arm`/`disarmThumb`.
+    ⚠ 신설 사유 = 이 부품은 260629 카드뉴스에서 확립돼 260805 썸네일 슬롯이 **사본 0으로 계승**했는데,
+      그 계승이 성립한 건 순전히 세션이 정본을 찾아본 덕이었다 — 기존 게이트 중 어느 것도 「투표 버튼이
+      정본을 입었는가」를 안 본다(`check_launch_spec`=발사 버튼 · `check_trail_spec`=레일 · `check_icon_ssot`
+      =공유 아이콘 파일). 다음 표면이 `<button class="likebtn">👍</button>` 로 만들어도 무경보였다.
+      운영자가 「모조품 만들지 마」를 발사 버튼에서 게이트로 봉쇄한 것과 같은 축(클래스는 붙이길 잊으면
+      부활하지만 게이트는 우회 불가).
+    판정 3축(정적 · 렌더·LLM·네트워크 0 · **면책표 없이 하드 0**) =
+      ① 정본 생존 — 아이콘 상수 정의 · `.sbtn.voted` · `.thumb-arm` · `disarmThumb` 가 index 에 실재.
+      ② 이모지 금지 — 투표 버튼 안에 `👍`/`👎` 문자 렌더 0(§🔒3-1 표지판성 도형 = SVG · 문자 글리프는
+         폰트 의존 편심이라 원/박스 정중앙에서 어긋난다).
+      ③ 모조 클래스 금지 — 투표를 뜻하는 새 클래스(`like`/`upvote`/`thumbsup` 류)가 버튼에 붙으면 FAIL
+         (정본은 `.fbup`/`.fbdown` 두 이름뿐).
+    ⚠ 스코프 = `viewer/*.html` 자동 발견(새 뷰어가 조용히 못 빠진다) · 주석 줄·`<script>` 안 정규식 리터럴은
+      비대상(`check_clip_coverage` 템플릿 배제 선례)."""
+    idx = os.path.join(ROOT, 'viewer', 'index.html')
+    try:
+        it = open(idx, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 투표 부품 게이트 — viewer/index.html 열기 실패(fail-closed): %s' % e)
+        return 1
+    bad = []
+    # ① 정본 생존 — 하나라도 사라지면 계승할 원본이 없어진다(그 순간 다음 표면은 재설계로 간다).
+    for sym in _VOTE_ICONS:
+        if ('const %s' % sym) not in it:
+            bad.append('아이콘 정본 결손 — index %s 상수(계승할 원본 소실)' % sym)
+    if '.sbtn.voted' not in it:
+        bad.append('점등 정본 결손 — .sbtn.voted(투표 상태색이 표면마다 재창작된다)')
+    if '.thumb-arm' not in it or 'function disarmThumb' not in it:
+        bad.append('취소 arm 정본 결손 — .thumb-arm/disarmThumb(2탭 취소 문법 · 팝업 확인창 부활 위험)')
+    # ②③ 표면 자동 발견 — 투표 버튼 마크업이 정본 문법을 벗어났는가.
+    vote_cls = re.compile(r'class="[^"]*\b(like|likebtn|upvote|downvote|thumbsup|thumbsdown|vote-?up|vote-?down)\b')
+    for path in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        name = os.path.basename(path)
+        try:
+            t = open(path, encoding='utf-8').read()
+        except Exception:
+            continue
+        for i, ln in enumerate(t.split('\n'), 1):
+            st = ln.strip()
+            if st.startswith('//') or st.startswith('/*') or st.startswith('*') or st.startswith('<!--'):
+                continue
+            if ('fbup' in ln or 'fbdown' in ln) and ('👍' in ln or '👎' in ln):
+                bad.append('%s:%d 이모지 렌더 — 투표 픽토는 SVG 상수만(§🔒3-1)' % (name, i))
+            m = vote_cls.search(ln)
+            if m and '<button' in ln:
+                bad.append('%s:%d 모조 투표 클래스 「%s」 — 정본 = .fbup/.fbdown 계승(CII 「👍/👎 선호 투표」)'
+                           % (name, i, m.group(1)))
+    if bad:
+        print('❌ 투표 부품 게이트 — 정본 이탈 %d건:' % len(bad))
+        for b in bad[:10]:
+            print('   ·', b)
+        print('   → 계약 전문 = 디자인기틀/CII_컴포넌트계승인덱스.md 「👍/👎 선호 투표」 행(재설계 금지·계승).')
+        return 1
+    print('✅ 투표 부품 게이트 — 정본 4심볼 생존 · 이모지 렌더 0 · 모조 클래스 0(전 뷰어 자동발견).')
+    return 0
+
+
 def _has_exec_line(text, needle):
     """`needle` 이 **주석이 아닌 실행줄**에 있는가. 평문 substring 은 `# python3 x.py` 처럼 주석 처리해도
     통과한다(check_refs 자신이 명시한 self-match 함정).
@@ -5304,6 +5371,8 @@ def main():
     except Exception as e:
         print('⚠️ 긴급 오발 신고 체인 게이트 스킵:', e)
     try:
+        if check_vote_btn_canon() != 0:   # 👍/👎 투표 부품 = 한 벌 계승(운영자 260805 "고정으로 박아줘 다른데서 만들면 참조하도록" · 계약 전문 = CII 「👍/👎 선호 투표」 행)
+            rc = 1
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1
         if check_ask_srcimg_chain() != 0:   # 출처 글 본문 이미지 수확(운영자 260804 — 본문이 그림뿐인 커뮤니티 글이 '읽을 글 0'으로 ANALYSIS_FAILED 되던 축 봉합 · 층 빠지면 무증상 재발)
