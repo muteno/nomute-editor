@@ -188,9 +188,13 @@ function buildControls(){
 function buildPresets(){
   $('#presets').innerHTML=CONFIG.PRESETS.map((p,i)=>'<button class="pill" data-p="'+i+'">'+(p.star?'<span class="st">★</span> ':'')+p.nm+'</button>').join('');
 }
+/* 타입별 비교(포터블 §4 ⚠ "프리셋 비교 함수의 함정") — 세그/셀렉트 축은 값이 문자열이라
+   near()의 +'post' = NaN → NaN<=eps = false → **전 프리셋이 영원히 안 켜진다**(260805 실측 검출).
+   숫자면 near(오차 허용) · 아니면 문자열 동일성. near()는 그대로 살아 있다(계승판정·사다리 판정 공용). */
+const eqv=(a,b,eps)=>{const na=+a,nb=+b;return (Number.isFinite(na)&&Number.isFinite(nb)&&String(a).trim()!==''&&String(b).trim()!=='')?near(na,nb,eps):String(a)===String(b);};
 function presetMatch(p){
   const st=Object.assign({},CONFIG.DEFAULTS,p.st||{});
-  return CONFIG.AXES.every(ax=>near(state.a[ax.k],st[ax.k],ax.eps))
+  return CONFIG.AXES.every(ax=>eqv(state.a[ax.k],st[ax.k],ax.eps))
     && CONFIG.GALLERY.every(g=>state.v[g.comp]===(st['v_'+g.comp]!==undefined?st['v_'+g.comp]:CONFIG.DEFAULTS['v_'+g.comp]));
 }
 function syncPresets(){$$('#presets .pill').forEach((el,i)=>el.classList.toggle('on',presetMatch(CONFIG.PRESETS[i])));}
