@@ -3980,6 +3980,65 @@ def check_subs_author_scope():
     return 0
 
 
+# ⑭-e 랜드마크 즉시 긴급알림 = 발신 기관 서명 오탐 차단(하드 · 260805 실사고 봉합).
+#   실사고 = 「석남동 쿠팡물류센터 화재 관련 … 도로차단은 **유지**되오니 우회하시기 바랍니다. [서해구청]」이
+#   기기 긴급알림으로 발사(07:03). 신규 발생도 아닌 **교통 후속 안내**였고, 랜드마크로 판정된 「서해구청」은
+#   본문의 건물이 아니라 **문자 말미 발신 기관 서명**이었다. 한국 재난문자는 관례상 전건이 «[○○구청]»으로
+#   닫히므로 무검문 판정 = 지자체 발신 화재 문자 **전건** 긴급알림 = ⑭-e 취지("작아도 전국 뉴스가 되는 곳")의 정반대.
+#   ⚠ 신설 사유 = 기존 게이트가 이 축을 하나도 안 봤다 — check_refs 계열은 전부 **정적 문자열·심볼 존재**를 보고,
+#     smoke_* 는 **화면 렌더**를 본다. 「판정 함수가 실제로 무엇을 잡는가」는 축 자체가 없었다. 그래서 오탐이
+#     ⓐ 기기 긴급알림 ⓑ fire_watch 「랜드마크=30」 하드 HI 승격(3시간 추적) ⓒ 자동 픽 후보까지 연쇄하는 동안
+#     **어떤 게이트도 울리지 않았고**, 운영자 눈이 유일한 검출기였다(insta-thumb-miss·brk_misfire와 같은 축).
+#   판정 = 정본 함수를 그대로 import 해 케이스 재판정(사전 복제 0 = 드리프트 0 · 네트워크·LLM·렌더 0).
+#   면책표 없음 = 전건 하드(현행 위반 0 = 부채 원장 증가 0).
+_DIS_LM_CASES = (
+    # (본문, 기대 lm, 축 이름) — 기대 ''  = 미발동(오탐이면 안 되는 것) · 기대 값 = 반드시 잡혀야 하는 정본
+    ('석남동 쿠팡물류센터 화재 관련 안전문제로 봉수대로 양방향 도로차단은 유지되오니 우회하시기 바랍니다. [서해구청]', '', '실사고 원본(말미 서명)'),
+    ('현재 폭염 경보 발효 중, 정전으로 일시대피 중인 주민들께서는 안전한 장소로 이동하세요.[계양구청]', '', '공백 없는 서명'),
+    ('오늘 21:35 충남(아산) 호우경보. 위험지역 출입 금지, 대피권고를 받으면 즉시 대피하세요. [행정안전부]', '', '목록어(DIS_LANDMARK)도 서명 안이면 미발동'),
+    ('정전 복구 완료. 전력 사용 자제 바랍니다. [한국전력] [행정안전부]', '', '연속 서명 반복 제거'),
+    ('시청역 3번 출구 인근 화재 발생. [중구청]', '', '`(?!역)` 오탐컷 보존'),
+    ('숭례문 화재 발생, 인근 주민은 즉시 대피하세요. [서울시청]', '숭례문', '본문 랜드마크 = 서명이 있어도 잡힌다(놓침 0)'),
+    ('강남구청 청사에서 화재가 발생했습니다. 우회하세요. [강남구청]', '강남구청', '본문 공공기관 청사 사고 = 잡힌다'),
+    ('롯데월드타워 화재 신고 접수, 대피 중입니다.', '롯데월드타워', '서명 없는 문자 = 종전 동작 불변'),
+)
+
+
+def check_disaster_landmark_sign():
+    p = os.path.join(ROOT, 'scraper', 'sns_trends.py')
+    if not os.path.exists(p):
+        print('❌ 랜드마크 서명 게이트 — scraper/sns_trends.py 없음(fail-closed).')
+        return 1
+    src = open(p, encoding='utf-8').read()
+    bad = []
+    # ① 서명 컷 심볼 실존 — 지워지면 오탐이 통째로 부활한다(주석만 남고 코드가 사라지는 회귀 차단).
+    for sym in ('DIS_SIGN_RE', '_dis_body'):
+        if src.count(sym) < 2:   # 정의 1 + 사용 1 이상
+            bad.append('%s 정의·사용 결손(서명 컷이 배선에서 빠짐)' % sym)
+    if not re.search(r'def disaster_landmark\([^)]*\):(?:\s*"""(?:.|\n)*?""")?\s*\n\s*t = _dis_body\(', src):
+        bad.append('disaster_landmark()가 _dis_body()를 통과하지 않음(원문 그대로 판정 = 서명 오탐 부활)')
+    # ② 정본 함수 실측 재판정 — 심볼이 살아 있어도 '무엇을 잡는가'가 갈리면 소용없다.
+    try:
+        import importlib.util as _ilu   # check_rubric_regress 관용구 계승(지연 import = 게이트 밖 부담 0)
+        spec = _ilu.spec_from_file_location('sns_trends_lm_gate', p)
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        for text, exp, why in _DIS_LM_CASES:
+            got = mod.disaster_landmark(text)
+            if got != exp:
+                bad.append('판정 어긋남[%s] 기대=%r 실제=%r' % (why, exp, got))
+    except Exception as e:  # noqa: BLE001
+        bad.append('정본 함수 로드/판정 실패(%s: %s)' % (type(e).__name__, e))
+    if bad:
+        print('❌ 랜드마크 서명 게이트 — 결손 %d건(재난문자 발신 서명이 즉시 긴급알림을 오발한다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        print('   → 정본 = scraper/sns_trends.py DIS_SIGN_RE·_dis_body (말미 «[○○구청]» 서명은 판정 대상 아님).')
+        return 1
+    print('✅ 랜드마크 서명 게이트 — 발신 서명 컷 생존 · 정본 재판정 %d케이스 전건 일치.' % len(_DIS_LM_CASES))
+    return 0
+
+
 def check_rubric_regress():
     """루브릭 회귀 게이트(하드 · 운영자 260803 승인 — «대구 40.1도» 오발 봉합의 재발 방지 축).
     breaking_judge RUBRIC(속보 YES/NO 판정 프롬프트)이 바뀌면 과거 실측 판정 케이스(rubric_regress_cases.json ·
@@ -4334,6 +4393,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_subs_author_scope 예외(fail-closed):', e); rc = 1
+    try:
+        if check_disaster_landmark_sign() != 0:   # ⑭-e 랜드마크 = 발신 서명 오탐 차단(하드 게이트 — 260805 실사고: 「[서해구청]」 서명이 교통 후속 안내를 기기 긴급알림으로 발사)
+            rc = 1
+    except Exception as e:
+        print('❌ check_disaster_landmark_sign 예외(fail-closed):', e); rc = 1
     try:
         if check_shell_put_integrity() != 0:   # 셸캐시 put = 절단 검문(</html> 꼬리) 의무(하드 게이트 — 260802 재발: sw.js만 검문·페이지측 put 무검문 = 절단 셸 재주입)
             rc = 1

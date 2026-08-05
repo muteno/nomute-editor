@@ -147,8 +147,13 @@ def check_phone():
         d = json.load(open(PHONE, encoding="utf-8"))
         age = _age_min(d.get("updated"))
         if age is None or age > PHONE_MIN:
+            # ⚠ 굶는 축을 정확히 적는다(260805 실측 봉합) — 구 문구는 "…레딧·재난 = 폰 전용 공급원"이라 재난까지
+            #   끊긴 것처럼 읽혔다. 실측(폰 17:35 정지 · 14h40m 경과 시점)에서 재난문자는 08:05까지 계속 들어왔다 =
+            #   sns_trends 의 `disaster_km()`(Korea Monitor SSR) 폴백이 폰 없이도 슬롯을 살린다(2453행 · 운영자 260802).
+            #   실제로 굶는 건 폰 가정 IP 전용 축(스레드·인스타·틱톡·X·레딧)뿐 — 같은 회차 진단의 「구독정체」와 일치.
             return (f"폰 수집 정체 {_dur_ko(age) if age is not None else '나이 불명'}"
-                    f"(임계 {_dur_ko(PHONE_MIN)}) — termux/맥 phone_subs 크론 확인(스레드·인스타·레딧·재난 = 폰 전용 공급원)")
+                    f"(임계 {_dur_ko(PHONE_MIN)}) — termux/맥 phone_subs 크론 확인"
+                    f"(스레드·인스타·틱톡·X·레딧 = 폰 전용 공급원 · 재난은 KM 폴백 생존)")
     except FileNotFoundError:
         return None   # 파일 없음 = 폰 미도입 초기(경보 아님 · check_sns 관용구)
     except Exception as e:  # noqa: BLE001
