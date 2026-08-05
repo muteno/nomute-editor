@@ -73,24 +73,29 @@ def _width_report(lines):
     return {o["idx"]: (o["total"], o["max"], o["overflow"]) for o in overflows}
 
 
-FILL_LOW = float(os.environ.get("CARD_FILL_LOW", "0.55"))    # 줄 단위 저충전 경고 임계(상한 대비) — 이 아래면 "자리가 남았다"고 지목
-FILL_TARGET = float(os.environ.get("CARD_FILL_TARGET", "0.80"))  # 덱 평균 목표(260805 실측 현행 72.2% → 80%면 덱당 한글 282→~350자)
-
-
 def _fill_report(lines):
-    """줄별 충전율(폭/상한) — 하한 방향 계측. 반환 = (rows, avg, idle_px) · 계측 불가면 None.
+    """줄별 렌더 폭 계측 — 하한 방향. 반환 = [(폭px, 상한px, 비율)] · 계측 불가면 None.
 
-    rows = [(idx1base, 폭px, 상한px, 비율, 줄전문)] (빈 줄 제외).
-    ⚠️ 왜 신설했나(260805 실측 499덱) = 평균 활용 **72.2%** · 43.1%의 줄이 70% 미만 = 한 줄 937px 중
-    260px가 상시 유휴이고 그만큼 나이·금액 같은 보존 6종이 다음 카드로 밀리거나 통째로 증발했다.
-    원인은 모델 태만이 아니라 **자를 안 쥐여준 것**이다 — card-make.md가 마진을 3겹(18.5 하드 → 17
-    실전 → 15~16 목표)으로 깔고 같은 문서에서 "너는 이 잡에서 bash·계산 도구를 못 쓴다 · 애매하면
-    짧은 쪽을 택하라"고 못박아, 계산 못 하는 모델이 항상 최하단으로 수렴했다(구조적 과소 충전).
-    게이트는 이미 렌더 폭을 정확히 재고 있었고(_width_report) 그 자를 **초과 방향으로만** 썼다 —
-    이 함수가 같은 자의 반대쪽이다. ⚠️ 비차단(rc 불변) = 저충전은 합성기가 멈추는 물리 위반이
-    아니고, 43%의 줄이 걸리는 축을 rc=1로 올리면 전 덱이 재생성 루프에 들어가 25분 하드캡·과금이
-    터진다. 실효는 ⓐ 본 생성 프롬프트의 목표치 교정 ⓑ **이미 도는** lint 교정·cov 회수 콜에 이
-    지목을 얹는 것(추가 콜 0)으로 낸다.
+    ⚠️ **계측 전용이다. 판정도 지시도 하지 않는다**(260805 8인 평의회 실측 봉합). 초판은 여기에
+    「상한의 55% 미만 = 덜 썼다」 지목과 「덱 평균 80% 목표」를 달았다가 전량 철회했다 — 근거:
+
+    ⓐ **인과가 없다.** 저충전이 알맹이(보존 6종) 증발을 낳는다는 게 이 축의 전제였는데,
+       FILL ↔ card_gate coverage 고신호 상관 = **r=+0.079(95%CI 0 포함)** · 원문 수치개수를
+       통제한 편상관 **≈0.034**. 오히려 꽉 찬 덱의 경보율이 높다(Q4 22.2% vs Q1 10.0% · p=0.983).
+       진짜 설명변수는 **원문 수치 밀도**(r=+0.76)였다 = 채우기가 아니라 선별이 병목.
+    ⓑ **지목의 위양성이 높다.** 55% 미만 지목 2,944줄을 사람이 판정하니 오지목 66%(표본 50) ·
+       기계적 하한만 세도 47.3%(덱 착지줄·카드 전 줄 지목·인용 접촉). 轉 피크 카드의 침묵 비트,
+       훅, 착지 펀치라인이 정확히 지목 대상이 된다 = 정본이 «짧아야 한다»고 규정한 자리들이다.
+    ⓒ **제시했던 구제책이 산술적으로 무효.** 「인접 줄과 재배분」은 줄 수가 같으면 총 폭이 보존돼
+       FILL이 소수점까지 불변이다(실측 906px→906px·48.35%→48.35%).
+    ⓓ **지표 자체가 Goodhart에 열려 있다.** 글자를 한 자도 안 늘리고 어절만 재포장하면 64.7%→
+       78.7%가 된다(내용 +0.31%) — 그 재포장이 만드는 줄이 정본이 금지한 「구 찢기·목적어 분리」다.
+       즉 이 비율은 **정본 준수판보다 정본 위반판에 더 높은 점수**를 준다.
+
+    → 남긴 것은 **관측값 3종**뿐이다(비율 · 잉크 총량 · 줄 수). 비율 단독은 줄을 지우면 오르므로
+    (실측 = 최단 줄 7개 삭제 시 71.0%→73.7%인데 잉크는 −23%) 잉크·줄수와 **함께** 읽어야 한다.
+    ⚠️ 자가 둘이다 — 폰트 실측 vs 폴백표는 덱당 평균 0.62%p 계통 편차(카드 워크플로는 폰트 설치,
+    card_plan 경로는 미설치)라 출력에 어느 자인지 표기한다. 같은 자끼리만 비교할 것.
     """
     if card_news is None:
         return None
@@ -100,20 +105,16 @@ def _fill_report(lines):
         cap = card_news.MAX_WIDTH
     except Exception:
         return None
-    rows = [(i + 1, w, cap, w / float(cap), lines[i].strip().replace("*", ""))
-            for i, w in enumerate(widths) if w]
-    if not rows:
-        return None
-    avg = sum(r[3] for r in rows) / len(rows)
-    idle = sum(cap - r[1] for r in rows)
-    return rows, avg, idle
+    # 비율은 1.0 클램프 — 초과 줄(렌더가 멈추는 줄)이 평균을 밀어 올려 "잘 찼다"로 보이는 역전 차단
+    rows = [(w, cap, min(1.0, w / float(cap))) for w in widths if w]
+    return (rows, font is not None) if rows else None
 
 
 def lint(md_path):
     md = open(md_path, encoding="utf-8").read()
     viol = []
-    low = []          # 저충전 지목(비차단) — 교정·회수 콜 서픽스에 실려 같은 콜에서 회수된다
-    fill_rows = []    # 덱 전체 줄 충전율(계측)
+    fill_rows = []    # 덱 전체 줄 렌더 폭(계측 · 판정 없음)
+    fill_font = False # 폰트 실측 자인지(False = 폴백표 = 다른 자 · 섞어 비교 금지)
     cards = CARD_RE.findall(md)
     if not cards:
         print("카드 블록 0 — 린트 불가(파싱 실패)")
@@ -138,16 +139,10 @@ def lint(md_path):
             if not (1 <= len(lines) <= 4):
                 viol.append("카드%s: %d줄 (허용 1~4)" % (n, len(lines)))
             wide = _width_report(lines)   # 렌더 폭 실측(정본) · None = 합성기 모듈 부재 → 구 프록시
-            fr = _fill_report(lines)      # 하한 방향(충전율) — 같은 자의 반대쪽 · 비차단
+            fr = _fill_report(lines)      # 하한 방향 계측(관측값만 · 판정·지시 없음)
             if fr:
                 fill_rows.extend(fr[0])
-                for idx, wpx, cap, ratio, core in fr[0]:
-                    # 초과로 이미 지목된 줄은 하한 대상이 아니다(같은 줄에 늘려라·줄여라 동시 지시 금지)
-                    if wide and (idx - 1) in wide:
-                        continue
-                    if ratio < FILL_LOW:
-                        low.append("카드%s 줄%d: 폭 %dpx = 상한의 %d%% — 한글 %d자쯤 더 실을 수 있다: %s"
-                                   % (n, idx, wpx, round(ratio * 100), int((cap - wpx) / 50), core))
+                fill_font = fr[1]
             for i, l in enumerate(lines, 1):
                 core = l.strip().replace("*", "")
                 h = _hangul(core)
@@ -179,14 +174,15 @@ def lint(md_path):
                 viol.append("카드%s: 이미지 프롬프트 비ASCII 혼입(렌더에 글자로 샘): %s" % (n, " ".join(bad[:8])))
         if not SEARCH_RE.search(body):
             viol.append("카드%s: **검색어** 블록 없음" % n)
-    # ── 충전율 계측(항상 출력 · rc 불변) — 저충전은 물리 위반이 아니라 '자리가 남았다'는 신호다 ──
+    # ── 충전 계측(항상 출력 · rc 불변 · 목표선 없음) ──
+    #   3값을 함께 낸다 — 비율만 보면 줄을 지울수록 좋아 보인다(실측 = 최단 줄 삭제로 71.0%→73.7%,
+    #   같은 조작에서 잉크는 −23%). 얇아짐은 잉크·줄수가, 조판 밀도는 비율이 말한다.
+    #   ⚠️ 이 숫자는 **관측값이지 목표가 아니다** — 근거는 _fill_report docstring(8인 평의회 실측).
     if fill_rows:
-        avg = sum(r[3] for r in fill_rows) / len(fill_rows)
-        idle = sum(r[2] - r[1] for r in fill_rows)
-        print("FILL %.1f%% (목표 %d%%) · 유휴 %dpx = 한글 %d자분 · %d줄"
-              % (avg * 100, round(FILL_TARGET * 100), idle, idle // 50, len(fill_rows)))
-        for l in low:
-            print("LINT ~ " + l)
+        avg = sum(r[2] for r in fill_rows) / len(fill_rows)
+        ink = sum(r[0] for r in fill_rows)
+        print("FILL %.1f%% · 잉크 %dpx · %d줄 · 자=%s"
+              % (avg * 100, ink, len(fill_rows), "폰트실측" if fill_font else "폴백표"))
     if viol:
         for v in viol:
             print("LINT ✗ " + v)
