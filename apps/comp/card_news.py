@@ -292,6 +292,23 @@ def compute_line_offsets(text_lines, font=None):
     return offsets
 
 
+def measure_line_widths(text_lines, font=None):
+    """각 줄의 (들여쓰기 + 텍스트) 총 폭 px — **초과 여부와 무관하게 전 줄**.
+
+    check_line_widths(초과만 반환 = 상한 방향)의 **하한 방향 짝**. 카드 한 줄이 상한 937px 중
+    몇 px를 실제로 쓰는지 재려면 통과 줄의 폭도 필요한데 구 API는 그걸 버렸다(260805 실측 =
+    499덱 평균 활용 72.2% · 43.1%의 줄이 70% 미만 = 줄마다 260px가 상시 유휴).
+    빈 줄(강조 별표만 등) = None. 오프셋·폭 계산은 compute_line_offsets/text_width 재사용 =
+    렌더러와 **같은 자**(게이트가 별도 산식을 복제하면 드리프트한다).
+    """
+    offsets = compute_line_offsets(text_lines, font)
+    widths = []
+    for i, line in enumerate(text_lines):
+        clean = _strip_emphasis(line)
+        widths.append(None if not clean else offsets[i] + text_width(clean, font))
+    return widths
+
+
 def check_line_widths(text_lines, font=None, max_width=MAX_WIDTH):
     """각 줄의 (들여쓰기 + 텍스트) 폭 측정. 초과 항목 리스트 반환.
 

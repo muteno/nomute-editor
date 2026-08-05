@@ -90,7 +90,11 @@ status_json() {  # $1=dir $2=state [$3=버전 오버라이드(shoot=기존 버�
   # gen_cards가 남긴 .r2_images.json(R2 공개URL 배열) 있으면 "images"로 합쳐 박는다(뷰어가 R2 직접서빙).
   local sjstem; sjstem="$(basename "$1")"
   local sjrev; sjrev="$(grep -m1 '^rev:' "queue/$sjstem.md" 2>/dev/null | grep -o '[0-9]\+' | head -1)"
-  SJ_DIR="$1" SJ_STATE="$2" SJ_GVER="${3:-$GVER}" SJ_REV="${sjrev:-0}" SJ_RETRY="${SJ_RETRY:-0}" SJ_FAILS="${SJ_FAILS:-0}" python3 - <<'PY'
+  # fill = 카드 텍스트가 렌더 상한(937px)을 실제로 몇 % 쓰는지(260805 신설). 계측기인 이유 =
+  #   덱이 조용히 얇아져도 알아채는 축이 없었다(운영자 눈이 유일한 검출기 · insta-thumb-miss 동축).
+  #   이미 lint가 계산하는 값을 버리지 않고 굽는 것뿐 = 추가 비용 0(정적 · cards.md 없으면 필드 소멸).
+  local sjfill; sjfill="$(python3 .github/scripts/card_gate.py lint "$1/cards.md" 2>/dev/null | grep -m1 '^FILL' | grep -oE '[0-9]+\.[0-9]+' | head -1)"
+  SJ_DIR="$1" SJ_STATE="$2" SJ_GVER="${3:-$GVER}" SJ_REV="${sjrev:-0}" SJ_RETRY="${SJ_RETRY:-0}" SJ_FAILS="${SJ_FAILS:-0}" SJ_FILL="${sjfill:-}" python3 - <<'PY'
 import os, json, datetime
 d = os.environ["SJ_DIR"]
 st = {"state": os.environ["SJ_STATE"],
@@ -103,6 +107,12 @@ if _retry > 0:
 _fails = int(os.environ.get("SJ_FAILS", "0") or 0)   # 실패 누적(런간 자동 재시도 게이트 · 운영자 260711 3회) — >0만 기록 · 성공 기록은 미전달 = 필드 소멸(자연 리셋)
 if _fails > 0:
     st["fails"] = _fails
+_fill = os.environ.get("SJ_FILL", "")                # 카드 텍스트 충전율(%) — 회차별 추이 계측(260805)
+if _fill:
+    try:
+        st["fill"] = float(_fill)
+    except ValueError:
+        pass
 side = os.path.join(d, ".r2_images.json")
 if os.path.isfile(side):
     try:
@@ -429,7 +439,8 @@ $(cat "$q")${disp_note}"
 
 ⚠️⚠️ [규격 교정 — 강제·최종 지시]: 위 지침·다이제스트로 **직전에 생성한 카드 MD**(아래 전문)가 합성기 물리 규격을 어겼다. 아래 원본을 기준으로 **지적된 줄만 짧게 다시 써서** 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라 — 카드 수·구성·서사·이미지 프롬프트·검색어는 **그대로 유지**하고, 위반 줄의 문구만 규격 안으로 줄인다(응답 첫 글자부터 \`# {제목}\`).
 ⚠️ 줄이는 순서 = ①수식어·중복어 삭제 ②인용은 핵심 어절만 남기고 나머지는 서술로 풀기 ③그래도 넘치면 **의미 단위(구·절) 경계에서** 다음 줄로 넘기기(줄 ≤4 안에서). ⛔ 보존 6종(나이·형량·금액·인원·사건 식별 수치·서사 앵커 날짜)은 깎지 마라 — 깎을 건 분위기 카피다. ⛔ 새 사실·수치 추가 금지.
-[위반 목록 — 각 줄 끝 '한글 N자 이상 덜어내'가 그 줄에서 실제로 줄여야 하는 양이다]
+⚠️ 같은 목록에 \`LINT ~\`(저충전) 줄이 함께 있으면 **그 줄은 반대로 채워라** — 밀려난 보존 6종·경위(발단·전개)를 그 자리로 회수해 지목된 만큼 늘린다(자유요약에 있는 사실만 · 새 사실 날조 금지). 초과 줄에서 덜어낸 알맹이를 버리지 말고 이 빈자리로 옮기는 게 1순위다. \`FILL\` 줄은 덱 전체 충전율이다.
+[위반 목록 — 각 줄 끝 '한글 N자 이상 덜어내'가 그 줄에서 실제로 줄여야 하는 양이다 · \`LINT ~\`는 반대로 '더 실을 수 있다'는 자리 지목이다]
 ${lint_out}
 [직전 산출물 전문 — 이걸 고쳐서 다시 낸다]
 $(cat "/tmp/${stem}.cards.tmp")
@@ -486,11 +497,17 @@ $(cat "/tmp/${stem}.cards.tmp")
       else
         echo "  🩹 커버리지 가드: 고신호 ${hs1}건 증발 — 1회 회수 재생성(무도구·900s)"
         n0="$(grep -c '^### \[카드' "cards/$stem/cards.md" || true)"
+        # 빈자리 지목 동봉(260805) — 회수 콜은 "무엇을 되돌릴지"만 알고 "어디에 넣을지"는 몰랐다.
+        #   lint의 하한 축(FILL/LINT ~)이 상한 대비 55% 미만 줄을 px·자수로 지목하므로 그대로 실어준다
+        #   = 추가 콜 0·과금 0(정적 재계산). 지목이 없으면(꽉 찬 덱) 빈 문자열 = 종전 동작 그대로.
+        _cov_fill="$(python3 .github/scripts/card_gate.py lint "cards/$stem/cards.md" 2>/dev/null | grep -E '^(FILL|LINT ~)' || true)"
         COV_SUFFIX="
 
 ⚠️⚠️ [알맹이 회수 — 강제·최종 지시]: 위 지침·다이제스트로 직전에 생성된 카드가 자유요약의 핵심 수치를 누락했다. 아래 누락 목록의 수치(특히 ⚠️HS 표시)를 서사가 맞는 카드 텍스트에 자연스럽게 회수해, 같은 카드뉴스 MD 전체를 처음부터 다시 출력하라(⚠️HS 외 목록은 서사상 자연스러울 때만 · **카드 수 동일 유지**·구성·이미지 프롬프트는 유지 우선 · 합성기 규격 준수 · 응답 첫 글자부터 \`# {제목}\`). ⛔ 자유요약에 없는 새 사실·수치 추가 금지 — 추가하는 모든 문장은 자유요약 문장으로 소급 가능해야 한다.
 [누락 수치 목록]
 ${cov_out}
+[빈자리 지목 — 아래 줄들은 렌더 상한의 55% 미만만 쓰고 있다. 회수할 수치를 **여기부터** 넣어라(줄 수·카드 수를 늘리지 않고 회수가 끝난다). 지목이 비어 있으면 기존 줄을 다시 써서 회수하라]
+${_cov_fill}
 "
         _cov_fp="${fp_base}${COV_SUFFIX}"
         if [ "$CARD_SYS_PROMPT" = "1" ]; then
