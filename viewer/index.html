@@ -3639,6 +3639,12 @@
   .dg-cnt { color:var(--mut); font-weight:var(--fw-b); font-variant-numeric:tabular-nums; }
   .geni-sechead .dg-dlall { margin-left:auto; }   /* 섹션 우측 [전체] = 카드피드 전체 다운로드(.cref-dlall) 정본 그대로 · 우측 정렬만 이 화면 몫 */
   .dg-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:var(--sp-1); padding:var(--sp-1) 0; }
+  .dg-grid.dg-g2 { grid-template-columns:repeat(2,1fr); }   /* 받을 내용 액자 = **항상 2열**(운영자 260805 7차 "한 화면에 2*n으로 좌,우 이렇게까지만") — 칸이 커져 그림이 최대로 보인다 · 값 = 열 수만 고정(카드·간격 규격은 정본 그대로) */
+  .dg-g2 .dg-card .dg-dl { top:4px; bottom:auto; }   /* ⬇ = **우상단**(CII 다운로드 행 「abs 우상단행」 정본 자리 · 운영자 260805 7차 지목) — 값은 정본 4px 그대로, 축만 top */
+  /* 종류·치수 = **좌하단 한 줄**(운영자 260805 7차 "사진 | 1,026 × 1,026 이런식으로 · 안 투박하게") —
+     정본 `.dg-meta`(불투명 --bg 플레이트·fs-xs·mut·tabular-nums) 값 그대로, 자리와 줄바꿈만 바꾼다(새 값 0). */
+  .dg-g2 .dg-meta { left:4px; right:auto; top:auto; bottom:4px; text-align:left; }
+  .dg-g2 .dg-meta span { display:inline; }   /* 정본은 2줄(block) — 여기선 한 줄로 눕혀 덜 투박하게 */
   .dg-card { position:relative; aspect-ratio:1/1; border-radius:var(--r-s); overflow:hidden; background:rgba(255,255,255,.04); border:2px solid transparent; -webkit-tap-highlight-color:transparent; }   /* reuse-ok: 신설 — 1:1 썸네일 카드(CII 계승원 없음 · 셸·워드칩·소머리·접이는 geni 정본 계승, 카드만 이식 신설) · 바탕 알파 = .geni-in 관용구 계승 · 선택 토글 폐지(운영자 260802 "다운로드 버튼만 살려주면 돼") = 카드 자체는 더 이상 버튼이 아니라 액자 */
   .dg-card > img, .dg-card > video { width:100%; height:100%; object-fit:cover; display:block; }   /* video = 받기 전 실물 미리보기(운영자 260805) — img와 **같은 값 한 규칙**(새 값 0 · 액자 규격은 .dg-card 그대로) */
   /* 일시정지 표시(중앙 ▶) = vd.html `.mon .monplay` **값 100% 사본**(운영자 260803 "네이티브 컨트롤 = 점 세 개(⋮) 소멸" 정본 계승 · 새 값 0) */
@@ -9318,6 +9324,24 @@ function _dgDl(i) {
   setTimeout(() => { try { a.remove(); } catch {} }, 1500);
   _dgGotMark(i);
 }
+// 받을 내용 액자 저장(운영자 260805 7차) — 저장 수단 = 이 창 스캔 결과와 **같은 프록시**(/api/linkgrab/file = 같은 오리진
+//   attachment라 즉시 저장 · 서명 CDN 주소를 그대로 열면 브라우저가 재생만 하고 저장이 안 된다) · 이름 = 제목_번호.
+function _dgPeekItems() { return ((_dg.peek && Array.isArray(_dg.peek.items)) ? _dg.peek.items : []).filter(it => it && it.u).slice(0, 12); }
+function _dgPeekGet(k) {
+  const it = _dgPeekItems()[k]; if (!it) return;
+  const base = String((_dg.peek && _dg.peek.title) || '받은자료').replace(/[\\/:*?"<>|\n]+/g, ' ').trim().slice(0, 60) || '받은자료';
+  const nm = base + '_' + (k + 1);
+  const a = document.createElement('a');
+  a.href = '/api/linkgrab/file?url=' + encodeURIComponent(it.u) + '&name=' + encodeURIComponent(nm);
+  a.rel = 'noopener';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { try { a.remove(); } catch {} }, 1500);
+  const b = $('#dgpc' + k); const db = b && b.querySelector('.dg-dl'); if (db) db.classList.add('dl-done');   // 받음 = mut(.dl-done 전 앱 표준)
+}
+function _dgPeekGetAll(btn) {   // [전체] = 순차 저장 · 진행표기·✓팝은 dlAllSeq 정본이 담당(스캔 [전체]와 같은 함수)
+  const n = _dgPeekItems().length; if (!n) return;
+  dlAllSeq(btn, Array.from({ length: n }, (_, k) => k), () => '', k => _dgPeekGet(k));
+}
 function _dgGotMark(i) {   // 받음 마킹 — 기기 로컬 보존(최대 500 롤링) + 배지 즉시 갱신(전체 재렌더 없이)
   const it = ((_dg.res || {}).items || [])[i]; if (!it) return;
   _dg.got[_dgKey(it)] = Date.now();
@@ -9780,12 +9804,15 @@ function _dgPeekHtml() {
   //   ⚠ 서명 만료가 있는 주소라 저장하지 않고 그 순간만 쓴다(플러그인 「주소 캐싱 금지」와 같은 축).
   let mediaGrid = '';
   if (p && Array.isArray(p.items) && p.items.some(it => it && it.u)) {
-    mediaGrid = '<div class="dg-grid">' + p.items.filter(it => it && it.u).slice(0, 12).map(it => '<div class="dg-card">'
+    mediaGrid = '<div class="dg-grid dg-g2">' + p.items.filter(it => it && it.u).slice(0, 12).map((it, k) => '<div class="dg-card" id="dgpc' + k + '">'
       + (it.kind === 'video'
         ? '<video src="' + escUrl(it.u) + '" playsinline loop preload="metadata" referrerpolicy="no-referrer"></video>'
           + '<button type="button" class="monplay" aria-label="재생 — 탭=재생/일시정지"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>'   // 무컨트롤 + 탭 재생 = vd.html 정본 문법 그대로(네이티브 컨트롤 ⋮ 소멸 · 운영자 260803)
         : '<img src="' + escUrl(it.u) + '" alt="" loading="lazy" referrerpolicy="no-referrer">')
-      + ((it.w && it.h) ? '<span class="dg-meta" aria-hidden="true"><span>' + it.w + '×' + it.h + '</span></span>' : '')
+      // 종류를 **글자로** 못박는다(운영자 260805 7차 "썸네일로 나오면 사진인지 영상인지 판별이 어려울거야 · 섞여있을 경우") —
+      //   부품 = 스캔 카드 치수 플레이트(.dg-meta) 그대로, 정본이 원래 2줄(span{display:block})이라 [종류]/[치수] 한 벌로 들어간다.
+      + '<span class="dg-meta" aria-hidden="true"><span>' + (it.kind === 'video' ? '영상' : '사진') + ((it.w && it.h) ? ' | ' + it.w.toLocaleString('ko-KR') + '×' + it.h.toLocaleString('ko-KR') : '') + '</span></span>'
+      + _dgDlBtnHtml('pkget', k, 'dg-dl')   // 카드 위 개별 ⬇ = **같은 창 스캔 사진 카드와 동일 부품**(.dg-card .dg-dl) · 자리만 우상단(CII 정본) = 새 부품 0(운영자 260805 7차 "각각의 다운로드 버튼")
       + '</div>').join('') + '</div>';
   }
   return '<div class="geni-sechead"><span class="cref-lbl">받을 내용</span></div>'
@@ -9794,7 +9821,10 @@ function _dgPeekHtml() {
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
     + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1]))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
     + ((plat === 'TH' || noVid) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')   // 칩 라벨 = **이 영상에서 실제로 내주는 값**(_dgQEff) — 고른 상한이 이 영상에 없으면 그 아래 최고로 내려앉은 값을 말한다(260805 4차)   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
-    + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
+    // 이 자리 = 구 [영상+자막] 워드칩 → **전체 다운로드**(운영자 260805 7차 "영상+자막 있는 곳에 전체 다운로드 버튼(모두 다운)" ·
+    //   "자막은 앞으로 안 받을게"). 부품 = 이미지 스튜디오 전체저장 정본 그대로(.sbtn.cref-dlall.dlbtn 골드레몬 + DLSEQ_IC + '전체')
+    //   = 이 창 잡 카드 [전체]와 **같은 함수**(_dgAllBtnHtml) · 새 부품·새 색 0. 미리보기 항목이 없으면 안 그린다(빈 어포던스 0).
+    + ((p && Array.isArray(p.items) && p.items.some(it => it && it.u)) ? _dgAllBtnHtml('pkall', '', '이 게시물 전체 다운로드') : '')
     + '</div>' + mediaGrid;   // 미리보기 액자 = 행 **바로 아래**(스캔 결과에서도 헤드 → 그리드 순서 = 같은 배치 문법)
 }
 async function _dgProbeSubs() {   // 자막 유무 사전판별 = api/linkprobe(정본 = 요약창 probeAskLink) · 화면 표시 전용(실제 판정은 러너)
@@ -9903,7 +9933,9 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, i = +(el.dataset.i || -1);
   const ji = +(el.dataset.j || -1);
-  if (act === 'dl') { e.stopPropagation(); _dgDl(i); }
+  if (act === 'pkget') { e.stopPropagation(); _dgPeekGet(i); }   // 받을 내용 액자 개별 ⬇(운영자 260805 7차)
+  else if (act === 'pkall') { e.stopPropagation(); _dgPeekGetAll(el); }   // 같은 행 [전체] = 그 게시물 미디어 전량 순차 저장
+  else if (act === 'dl') { e.stopPropagation(); _dgDl(i); }
   else if (act === 'ytreq') { e.stopPropagation(); _dgYtReq(i); }
   else if (act === 'ytget') { e.stopPropagation(); _dgYtGet(i); }
   else if (act === 'vidgo') { e.stopPropagation(); _dgVidFire(_dg.jobs[i], (_dg.jobs[i] || {}).mode || 'both'); }
