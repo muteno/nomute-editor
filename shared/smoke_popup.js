@@ -208,14 +208,15 @@ function assess(r) {
   // C2 = 프로스트 blur 동일(그룹 멤버 전원 · .sc-rsn은 260805 이탈 → C2b 전용 축)
   const bp = parity(r.members, ['blur']);
   C('C2 프로스트 blur 동일(그룹 멤버)', bp.ok, JSON.stringify(bp.det).slice(0, 200));
-  // C2b = .sc-rsn 유리 = **코너 옵션 레일(nav.trail) 값**(운영자 260805 2차 "여기 아직도 그대로임" = 헤더 메뉴와 같은 결로 통일)
-  //   ⚠ 기대값 개정 이력: 같은 날 1차 "메뉴 토글 메뉴 색 이거 아니였는데 · 이전으로"로 불투명 .94를 복원했다가,
-  //   2차에 「글래스모피즘 정도를 옆에 네비게이션 만큼」이 PASS 창까지 확장 → 채택값이 앵커 글래스(.42)도 구 불투명(.94)도 아닌
-  //   **레일 .54 + blur-s(8)** 로 확정. saturate(0)(무채색 기틀 260630)은 색 정책 축이라 존치 = 여기서도 계속 검사한다.
+  // C2b = .sc-rsn 유리 = **「결과·선택지를 주는 창」 계열 = 대기열(.qpop) 문법**(운영자 260806 창 분류 확정)
+  //   계열 = ⓐ 결과·선택지 창{대기열 · PASS 사유} ⓑ 메뉴 선택 토글{설정 #linkpop · 이미지 스튜디오 메뉴 .tool-menupop}.
+  //   이 창은 ⓐ → 셸·띠·행 전부 대기열 정본 사본 · 배경만 --modal-glass(.64) 한 티어(뒤가 수집함 카드라 .42면 글자가 겹친다).
+  //   ⚠ 기대값 개정 이력(같은 축이 하루에 세 번 갈렸다): 260805 1차 불투명 .94 복원 → 2차 코너 레일 .54/blur8 → 260806 창 분류로 대기열 계열 확정.
+  //   saturate(0)(무채색 기틀 260630)은 색 정책 축이라 계열과 무관하게 존치 = 계속 검사한다.
   const scr = (r.rsn || []).find(([s]) => s === '.sc-rsn');
-  const rsnOk = !!scr && /rgba\(8,\s*15,\s*11,\s*0?\.54\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.14\)/.test(scr[1].bcol)
-    && /blur\(8px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
-  C('C2b .sc-rsn = 코너 레일 유리 {bg rgba(8,15,11,.54) · 테두리 .14 · blur8 sat0}(운영자 260805 2차)', rsnOk,
+  const rsnOk = !!scr && /rgba\(17,\s*18,\s*20,\s*0?\.64\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.08\)/.test(scr[1].bcol)
+    && /blur\(24px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
+  C('C2b .sc-rsn = 대기열 계열 유리 {bg --modal-glass(.64) · 테두리 --line(.08) · blur24 sat0}(운영자 260806 창 분류)', rsnOk,
     scr ? scr[1].bg + ' · ' + scr[1].bcol + ' · ' + scr[1].blur : '없음');
   // C3 = 화이트리스트 밖 불투명 글래스(신규 고아 팝업) 0
   C('C3 불투명 글래스 로그 화이트리스트 밖 0(신규 고아 없음)', r.rogue.length === 0, r.rogue.length ? r.rogue.join(' · ').slice(0, 260) : '없음(WL=' + OPAQUE_WL.join(',') + ')');

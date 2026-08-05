@@ -3432,8 +3432,8 @@ def check_keyframes_dup():
 #   ⚠ 스코프 = 멤버의 **정확한 단독 규칙**(`sel {`)만 — `:hover`·`.up`·`.inp` 같은 변형과 미디어쿼리 안 오버라이드는 대상 밖
 #     (위치·상태·색 오버라이드는 각 표면 고유 권한 = 이 게이트가 얼리면 안 되는 축).
 #   ⚠ 정규식 = 리터럴 find 선행(1.85MB index.html에서 여는-괄호-앞 와일드카드 금지 = CLAUDE.md 성능 계약).
-_ANCHOR_MENU_SHELL_SEL = '#linkpop, .tool-menupop, .sc-rsn'
-_ANCHOR_MENU_ITEM_SEL = '#linkpop .lp-btn, .tool-menupop button, .sc-rsn-c'
+_ANCHOR_MENU_SHELL_SEL = '#linkpop, .tool-menupop'   # ⚠ `.sc-rsn` 이탈(운영자 260806 창 분류) = 이 그룹은 「메뉴 선택 토글」 계열 전용{설정 · 이미지 스튜디오 메뉴} · PASS 사유 창은 「결과·선택지를 주는 창」 계열(대기열 문법)로 이관
+_ANCHOR_MENU_ITEM_SEL = '#linkpop .lp-btn, .tool-menupop button'   # 동상
 _ANCHOR_MENU_SHELL_AXES = ('width', 'min-width', 'max-width', 'padding', 'gap', 'border-radius')
 _ANCHOR_MENU_ITEM_AXES = ('font-size', 'font-weight', 'padding', 'border-radius', 'background', 'border')
 
