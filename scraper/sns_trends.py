@@ -1332,6 +1332,36 @@ def _th_img(p):
     return ""
 
 
+_CK_LEDGER = os.path.join(ROOT, "push", "threads_ck.jsonl")
+_CK_KEEP = 400   # 롤링 상한(회차 5계정 × 48회/일 = 240줄/일 → 약 1.7일 표본 · 판정 창 20회차보다 충분히 크다)
+
+
+def _ck_ledger(acc, code, kb, sjs, alien):
+    """스레드 쿠키 1차 실패 사유를 회차·계정별 1줄로 적재(260806 평의회A · 정본 문법 = push/fire_outcomes.jsonl).
+
+    ▷ 왜 로그가 아니라 원장인가 = 러너 로그는 **흘러가서 소실**된다. 260805~06에 세션이 다섯 번 연속
+      오진한 근본이 그것이다 — 매 회차 원인이 로그에 잠깐 뜨고 사라지니 사람이 추측으로 채웠고, 그 추측을
+      검증하려고 **운영자에게 폰 명령을 시켰다**(운영자 48시간 무수면의 직접 원인).
+      원장에 쌓이면 회차 분포가 곧 판별기가 된다 — 20회차가 한 코드로 수렴하면 그게 확정 원인이고,
+      흔들리면 아직 모르는 것이다. 사람이 아무것도 안 해도 시간이 답을 만든다.
+    ▷ 비용 0 = 값은 이미 손에 든 1차 응답에서 나온 것(추가 요청·새 콜 0) · 실패는 전부 삼킨다(fail-soft
+      = 원장 사고가 수집을 못 죽인다 · 레포 관례).
+    ⚠ 기계산출물 = 손편집 금지.
+    """
+    try:
+        os.makedirs(os.path.dirname(_CK_LEDGER), exist_ok=True)
+        rows = []
+        if os.path.exists(_CK_LEDGER):
+            with open(_CK_LEDGER, encoding="utf-8") as f:
+                rows = [ln for ln in f.read().splitlines() if ln.strip()]
+        rows.append(json.dumps({"t": datetime.now(KST).isoformat(timespec="seconds"), "acc": acc,
+                                "code": code, "kb": kb // 1000, "sjs": sjs, "alien": alien}, ensure_ascii=False))
+        with open(_CK_LEDGER, "w", encoding="utf-8") as f:
+            f.write("\n".join(rows[-_CK_KEEP:]) + "\n")
+    except Exception:  # noqa: BLE001 — 원장 실패가 수집을 못 죽인다
+        pass
+
+
 def _GUEST_HDR(hdr):
     """게스트 요청용 헤더 = UA만 모듈 정본으로 되돌린 사본(260805 평의회2 검출 결함 봉합).
 
@@ -1505,8 +1535,21 @@ def threads_subs(accounts, limit=10, deadline=None):
                         _dx = ("로그인월(세션 거절 = 쿠키·UA 축)" if _w1 else
                                ("추천피드 %d건(세션 수락인데 프로필 미도달 = 쿠키 재발급 무효 축)" % _al1 if _al1 else
                                 "포스트 노드 0(data-sjs %d개 = %s)" % (_sjs1, "파서 노후" if _sjs1 else "챌린지·스켈레톤")))
-                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · "
-                              f"[1차 실측] {_dx} · 쿠키응답 {len(_h1)//1000}KB · {_fix}", file=sys.stderr)
+                        # ── 발화 강등 + 원장 이관(260806 평의회A · 운영자 "이딴 sns 수집으로 더이상 스트레스 안받게") ──
+                        #   ⚠ 핵심 실측 = **이 줄은 화면 알림을 안 띄운다**. 게스트 폴백분이 mine에 합류해 아래 `_sok`이
+                        #     찍히고 → health.subs.cover.got>0 → 뷰어 sysErrMsgs()는 이미 침묵한다(L8077 게이트).
+                        #     그러니 이 경고가 실제로 가는 곳은 **러너 로그 240줄/일**뿐이고, 그 줄이 세션을 불러
+                        #     세션이 운영자에게 폰 명령을 시켰다 = 5연속 오진의 실제 전달 경로가 여기였다.
+                        #   ⚠ 그리고 이 회차는 **결과가 성공**이다(게스트가 걷어서 화면 정상 · 260729 판례
+                        #     「가져올게 없는 거면 알림 안 오게 · 시스템 구조 문제가 아니니까」와 같은 자리).
+                        #     쿠키는 부가 경로고 게스트가 정본 경로로 걷고 있다 = 구조 고장이 아니다.
+                        #   → ⓐ warning→notice 강등 ⓑ **처방 문구(_fix) 삭제** — 조치가 미확정인 처방을 매 회차
+                        #     뿌리는 것이 헛 조치의 발원지다(UA는 260806 실측으로 반증됨 · 남은 갈래 2개는 아직 미확정).
+                        #   ⓒ 대신 원인 코드를 **원장에 적재**해 표본을 쌓는다 = 은폐가 아니라 이관.
+                        #     나빠지면(게스트마저 0건) 종전 `_sfail` 경로가 즉시 운다 = 실손상 감지는 무손상.
+                        _ck_ledger(acc, "wall" if _w1 else ("alien" if _al1 else "empty"), len(_h1), _sjs1, _al1)
+                        print(f"::notice::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건(화면 정상) · "
+                              f"[1차 실측] {_dx} · 쿠키응답 {len(_h1)//1000}KB", file=sys.stderr)
                 except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
                     print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
             _mine = 0
