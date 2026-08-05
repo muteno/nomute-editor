@@ -3523,8 +3523,10 @@ async function loadServerHist() {
     const loc = localLastResult();   // 로컬 마지막(이 기기 · src 보유=수정 가능)
     const cut = Math.max(histClearedCut(), SRV_CLEAR);   // 지운 시점(로컬·서버 공용 중 큰 것)
     let pick = (loc && (loc.ts || 0) > cut) ? loc : null;   // 로컬 최근이 지운 시점 이후일 때만(전 기기 공용 삭제 존중)
-    const s = (SRV_HIST || []).find(e => e && e.url && (e.ts || 0) > SRV_CLEAR && thIdOf(e.url));   // 서버 최신(전 기기 · 서버 지운 시점 이후 · SRV는 최신순 정렬)
-    if (s && (!pick || (s.ts || 0) > (pick.ts || 0))) { const sp = findResultById(thIdOf(s.url)); if (sp && sp.items && sp.items.length) pick = sp; }   // 타 기기 제작이 더 최신이면 그걸로 = '최근꺼 미리보기' 기기 간 공유(운영자 260710 — RESTORED_TS 주석의 cross-device 최신비교 실배선 · 동률은 로컬 승=src 보존)
+    let s = null; (SRV_HIST || []).filter(e => e && e.url && (e.ts || 0) > SRV_CLEAR)
+      .concat(histPrune(histLoad()).filter(e => e && e.url && (e.ts || 0) > cut))   // 로컬 브리지 동승 = 형제 탭(번역 등) 같은 기기 제작도 부팅 복원 후보(운영자 260805 5탭 동기화 · 지우기 컷 각자 존중)
+      .forEach(e => { if (!s || (e.ts || 0) > (s.ts || 0)) s = e; });   // 서버 최신(전 기기) — 구 thIdOf 게이트 폐지 = 번역(trout)·AI생성(gen_out 평면)도 최신 추종 대상(운영자 260805 "편집·번역이 다른 세부 메뉴하고 동기화가 안 됨")
+    if (s && (!pick || (s.ts || 0) > (pick.ts || 0))) { const sp = thIdOf(s.url) ? findResultById(thIdOf(s.url)) : directPick(s); if (sp && sp.items && sp.items.length) pick = sp; }   // 타 기기 제작이 더 최신이면 그걸로 = '최근꺼 미리보기' 기기 간 공유(운영자 260710 — RESTORED_TS 주석의 cross-device 최신비교 실배선 · 동률은 로컬 승=src 보존)
     if (pick) doRestore(pick, true);
   }
   maybeOpenHist();   // 제작완료 알림(?done=<id> · 구 #done)로 들어왔으면 서버 병합 후 그 결과를 맨 위로(restoreById)
@@ -3756,15 +3758,16 @@ function reconcileRestoredBatch() {
 // ── 결과(복원 블록) 최신 추종(운영자 260803 "결과 부분 모든 기기에서 언제든 동기화") — 부팅 1회 복원 뒤 10s 폴(pollServerHist·pollR2Recent)이
 // 타 기기 신작을 '이전 제작'에만 넣던 갭 봉합: 상시 탭(모바일 PWA)의 '결과'가 부팅 시점 것으로 굳어 발사 기기(PC)와 갈렸다(= "pc에서는 나오고 모바일 웹앱은 안 나옴").
 // 문법 = reconcileRestoredBatch 미러(접힘·펼침 유지 재구성 · 운영자 260731 승인 선례) · 라이브 흐름 무접촉 가드 = 부팅 복원(loadServerHist) 동축.
+const directPick = e => ({ ts: e.ts || 0, label: e.cap || '제작', src: e.src, items: [{ url: e.url, dlname: e.dlname, cap: e.cap || '', varStr: e.varStr || '' }] });   // id 미추출 이력(번역 trout·AI생성 gen_out 평면) = 낱장 직결 복원(findResultById 그룹 축 밖 · 운영자 260805 5탭 동기화)
 function followNewestRestored() {
   if (doneReq().on) return false;                                                       // 딥링크(?done=) 사다리 중 = restoreById가 주인(그 id 핀포인트 우선)
   if (JOBS.some(j => j && j.status !== 'done' && j.status !== 'err')) return false;     // 진행 중 잡 = 발사 기기 라이브 흐름 우선(부팅 복원 가드 동축)
   if (!RESTORED && CARSLIDES.length) return false;                                      // fresh(이 기기 방금 제작) 결과 표시 중 = 무접촉(교체는 복원 블록만)
   const cutMin = Math.max(histClearedCut(), SRV_CLEAR, RESTORED ? RESTORED_TS : 0);     // 지운 시점 + 현재 복원분보다 '엄격히 최신'만(다운그레이드·자기재구성 루프 0)
   let newest = null;
-  (SRV_HIST || []).forEach(e => { if (e && e.url && (e.ts || 0) > cutMin && thIdOf(e.url) && (!newest || (e.ts || 0) > (newest.ts || 0))) newest = e; });
+  (SRV_HIST || []).concat(histPrune(histLoad())).forEach(e => { if (e && e.url && (e.ts || 0) > cutMin && (!newest || (e.ts || 0) > (newest.ts || 0))) newest = e; });   // 브리지 동승 + 구 thIdOf 게이트 폐지 = 번역·AI생성 제작도 결과 최신 추종(운영자 260805 "편집·번역이 다른 세부 메뉴하고 동기화가 안 됨" · 형제 탭 histAdd = storage 수신이 이 함수 재발동)
   if (!newest) return false;
-  const pick = findResultById(thIdOf(newest.url));                                      // 묶음(bid) 통째 구성 = 1/2·2/2 한 캐러셀(정본 재사용)
+  const pick = thIdOf(newest.url) ? findResultById(thIdOf(newest.url)) : directPick(newest);   // 묶음(bid) 통째 구성 = 1/2·2/2 한 캐러셀(정본 재사용) · id 미추출 = 낱장 직결
   if (!pick || !Array.isArray(pick.items) || !pick.items.length) return false;
   const pbid = (pick.src && typeof pick.src.bid === 'string') ? pick.src.bid : '';
   if (RESTORED && pbid && pbid === RESTORED_BID) return false;                          // 같은 묶음 형제 합류 = reconcileRestoredBatch 전담(이중 재구성 0)
@@ -3779,6 +3782,7 @@ function followNewestRestored() {
   if (ok) console.log('[thumb] 결과 최신 추종 — ' + (pick.label || '제작') + ' · ' + pick.items.length + '장');   // 계측(CLAUDE.md [관측]) — 조용한 재구성 금지
   return ok;
 }
+window.addEventListener('storage', e => { if (e && (e.key === THUMB_HKEY || e.key === THUMB_HCLEAR_KEY)) { if (!reconcileRestoredBatch() && !followNewestRestored()) renderHist(); } });   // 형제 탭(번역 tr.html 등) histAdd(완료)·기록 지우기 → 이 문서 즉시 반영(geni 판 storage 수신 정본 동문 · 폴 sig 게이트는 서버 축뿐이라 브리지 변화가 안 들리던 구멍 봉합 · 운영자 260805 5탭 동기화)
 let _histCloseT = null;   // 이전 제작 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(직전 제작 _carCloseT 미러·운영자 260707)
 $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b.hidden;   // hidden이면 지금 펼치는 동작
   clearTimeout(_histCloseT); b.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)

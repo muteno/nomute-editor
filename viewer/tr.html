@@ -893,6 +893,7 @@ const THUMB_HKEY = 'nomute_thumb_hist', THUMB_HMS = 12 * 3600e3, THUMB_HMAX = 24
 const THUMB_HCLEAR_KEY = 'nomute_thumb_hist_cleared';
 const baseUrl = u => String(u || '').split('?')[0];
 const histKey = u => baseUrl(u).replace(/^https?:\/\/[^/]+\//, '');   // 중복판정 키 = thumb 정본 동문(호스트 제거 = R2 절대·상대 통일)
+const bidOf = e => { const s = e && e.src; return (s && typeof s === 'object' && typeof s.bid === 'string') ? s.bid : ''; };   // 묶음 키 = thumb 정본 동문(구 이력 = '' = 낱장)
 function histLoad() { try { const a = JSON.parse(localStorage.getItem(THUMB_HKEY) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
 function histSave(a) { try { localStorage.setItem(THUMB_HKEY, JSON.stringify(a)); } catch {} }
 function histPrune(a) { const cut = Date.now() - THUMB_HMS; return a.filter(e => e && e.ts && e.ts >= cut); }
@@ -921,7 +922,8 @@ function renderTrHist() {
   const srv = (SRV_HIST || []).filter(e => e && e.url && !seen.has(histKey(e.url)) && (e.ts || 0) > SRV_CLEAR);
   srv.forEach(e => seen.add(histKey(e.url)));
   const r2 = TR_R2.filter(e => e && e.url && !seen.has(histKey(e.url)) && (e.ts || 0) > cut);   // R2 즉시 발견분 = 셋째 소스(로컬·정식 인덱스가 이미 가진 건 스킵 = 정식 도착 시 자연 교체 · 지우기 컷 동일 존중)
-  const a = localF.concat(srv, r2).sort((x, y) => (y.ts || 0) - (x.ts || 0)).filter(e => !_deadUrls.has(histKey(e.url)));
+  const resK = new Set(TR_RES.concat(TR_NEWEST).map(e => histKey(e.url)));   // '결과'(세션분+최신 추종)에 뜬 항목 = 이전 제작서 제외(thumb renderHist CARSLIDES 제외 동문 · 결과+그리드 이중노출 차단 = 5탭 카운트 한 값)
+  const a = localF.concat(srv, r2).sort((x, y) => (y.ts || 0) - (x.ts || 0)).filter(e => !_deadUrls.has(histKey(e.url)) && !resK.has(histKey(e.url)));
   $('histCnt').textContent = '(' + a.length + ')';
   grid.innerHTML = ''; $('histEmpty').hidden = !!a.length;
   a.forEach(e => {   // 항목 마크업 = thumb renderHist 정본 그대로(수정 연필만 제외 = 읽기 전용)
@@ -952,7 +954,7 @@ async function loadServerHist() {   // thumb pollServerHist 축약 동문(복원
     if (hist) SRV_HIST = hist;
     if (clr > SRV_CLEAR) { SRV_CLEAR = clr; try { localStorage.setItem('nomute_thumb_srvclr', String(SRV_CLEAR)); } catch {} }
     renderTrHist();
-  } finally { _trHistPolling = false; }
+  } finally { _trHistPolling = false; trFollowNewest(); }   // 최신 추종 = sig 무변경(early return)이어도 판정(로컬 브리지는 서버 sig 밖 — 형제 탭 histAdd 직후 폴 틱에서도 결과가 붙게)
 }
 /* ── R2 즉시 발견 = thumb pollR2Recent 축약 동문(운영자 260804 "번역, 그리고 ai생성만 결과랑 이전제작이 … 동기화를 안 물어 — 다른 메뉴들과 싱크") ──
    형제 탭은 즉시 축이 있어(카드생성 /api/thumb?recent= · 편집 /api/edit?recent=) 타 기기 제작이 10~20s에 붙는데, 번역만
@@ -981,11 +983,30 @@ async function pollR2RecentTr() {
       added = true;
     }
     if (added) renderTrHist();   // 신규 발견 때만 재렌더(무변경 = 깜빡임 0 · renderTrHist가 dedup·지우기 컷 전담)
-  } catch (_) { /* API 미가용 = 종전 Pages 인덱스 사다리 유지(조용한 폴백) */ } finally { _trR2Polling = false; }
+  } catch (_) { /* API 미가용 = 종전 Pages 인덱스 사다리 유지(조용한 폴백) */ } finally { _trR2Polling = false; trFollowNewest(); }   // R2 즉시 발견분도 최신 추종 동일 적용(loadServerHist 동축)
 }
+window.addEventListener('storage', e => { if (e && (e.key === THUMB_HKEY || e.key === THUMB_HCLEAR_KEY)) { renderTrHist(); trFollowNewest(); } });   // 형제 탭(thumb iframe) histAdd(완료)·기록 지우기 → 이 문서 즉시 반영(geni 판 storage 수신 정본 동문 · 폴 10s 대기 없이)
 // ── 결과(이번 세션 완료분) = thumb #carH 축 계승(운영자 260803 Q1228) — 항목 = renderTrHist 빌더 사본(읽기 전용) · 세션 메모리(과거분 = 이전 제작 전담) ──
 const TR_RES = [];
-function trResAdd(e) { TR_RES.unshift(e); renderTrRes(); }
+let TR_NEWEST = [], _trNewestSig = '';   // 최신 추종 = 스튜디오 전체 최신 제작 1묶음(thumb followNewestRestored 동문 · 운영자 260805 "편집·번역이 다른 세부 메뉴하고 동기화가 안 됨" — 구판 결과 축은 번역 제작만이라 형제 탭 제작이 결과에 안 떴다)
+function trFollowNewest() {   // 로컬 브리지+정식 인덱스+R2 즉시 3소스에서 최신 1묶음을 결과로(부팅 전 제작 포함 = thumb 부팅 복원 동문 · 세션분(TR_RES)이 이미 최신이면 무동작)
+  let clr = 0; try { clr = +localStorage.getItem(THUMB_HCLEAR_KEY) || 0; } catch {}
+  const cut = Math.max(clr, SRV_CLEAR);   // 기록 지우기 존중(로컬·서버 공용 중 큰 것) = renderTrHist 동문
+  const pool = histPrune(histLoad()).concat(SRV_HIST || [], TR_R2).filter(e => e && e.url && (e.ts || 0) > cut && !_deadUrls.has(histKey(e.url)));
+  let newest = null; pool.forEach(e => { if (!newest || (e.ts || 0) > (newest.ts || 0)) newest = e; });
+  const resK = new Set(TR_RES.map(x => histKey(x.url)));
+  let grp = [];
+  if (newest && !resK.has(histKey(newest.url))) {
+    const bid = bidOf(newest); grp = bid ? pool.filter(e => bidOf(e) === bid) : [newest];   // 묶음(bid) 통째 = 1/2·2/2 한 결과(thumb findResultById 동문 · 구 이력 = 낱장)
+    const seen = new Set(); grp = grp.filter(e => { const k = histKey(e.url); if (seen.has(k) || resK.has(k)) return false; seen.add(k); return true; });
+  }
+  const sig = grp.map(e => histKey(e.url)).join('|');
+  if (sig === _trNewestSig) return false;   // 무변경 = 재렌더 0(깜빡임 차단 = sig 게이트 관례)
+  _trNewestSig = sig; TR_NEWEST = grp;
+  renderTrRes(); renderTrHist();   // 결과 합류 + 이전 제작 제외 동시 반영(파티션 한 값)
+  return true;
+}
+function trResAdd(e) { TR_RES.unshift(e); trFollowNewest(); renderTrRes(); renderTrHist(); }   // 세션분 합류 = 최신 추종 재판정(방금 것이 최신이면 추종분 자연 소거) + 이전 제작 제외 동기
 /* 결과 즉시 합류 = **클라 캔버스 단독**(운영자 260803) — 결과는 「방금 만든 것」이고 그 실체는 이미 pv 캔버스에 있다.
    서버 이력(이전 제작)은 별개 축이므로 그 왕복 성공을 결과 표시의 전제로 걸면 「미리보기엔 카드가 떠 있는데 결과 (0)」이
    정상 동작이 되어버린다(구 진입로 = trPersist의 `if (j && j.url)` 단 하나). 그래서 표시(여기)와 영속(trPersist)을 분리한다. */
@@ -1001,10 +1022,12 @@ async function trResLocal() {
 }
 function renderTrRes() {
   const grid = $('resGrid'); if (!grid) return;
-  $('resCnt').textContent = '(' + TR_RES.length + ')';
-  $('resEmpty').hidden = !!TR_RES.length;
+  const sk = new Set(TR_RES.map(e => histKey(e.url)));
+  const a = TR_RES.concat(TR_NEWEST.filter(e => !sk.has(histKey(e.url)))).sort((x, y) => (y.ts || 0) - (x.ts || 0));   // 결과 = 세션분 + 최신 추종 1묶음(dedup · 최신순) — 5탭 결과 한 값(운영자 260805 동기화)
+  $('resCnt').textContent = '(' + a.length + ')';
+  $('resEmpty').hidden = !!a.length;
   grid.innerHTML = '';
-  TR_RES.forEach(e => {
+  a.forEach(e => {
     const it = document.createElement('div'); it.className = 'hist-it';
     const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);
     const th = document.createElement('div'); th.className = 'hist-thumb';
