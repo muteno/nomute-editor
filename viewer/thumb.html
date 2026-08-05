@@ -754,8 +754,8 @@
   .carbar { display:flex; align-items:center; gap:10px; margin-top:8px; }
   #carbar:not([hidden]) { animation:histIn .32s var(--gauge-ease) both; }   /* 결과 펼침 = 촤르륵(이전 제작 histIn 계승 · hidden 토글마다 재생 · 운영자 260706 "결과도 이전 제작처럼") */
   #carwrap:not([hidden]) { animation:histIn .32s var(--gauge-ease) .05s both; }   /* 캐러셀 = 바 다음 반박자(.05s) 스태거 = 촤르륵 낙차 */
-  #carbar.closing, #carwrap.closing { animation:histOut .26s cubic-bezier(.4,0,.7,.3) both; }   /* 결과 닫힘 = 촤르륵(histIn 역방향·index popOut 커브 계승 · 운영자 260706 "결과 닫힐 때 촤르륵 없음, 다른 건 다 있고") · closing 특이도 = :not([hidden])과 동일이라 소스순(여기 뒤)으로 이김 */
-  @media (prefers-reduced-motion:reduce){ #carbar:not([hidden]), #carwrap:not([hidden]), #carbar.closing, #carwrap.closing, .hist-grid > .hist-it { animation:none; } }   /* 전정계 = 즉시 표시(이전 제작 스태거의 기존 reduced-motion 공백도 동봉 수리) · 닫힘 촤르륵도 무효(260706) */
+  #carbar.closing, #carwrap.closing, #carGrid.closing { animation:histOut .26s cubic-bezier(.4,0,.7,.3) both; }   /* raw-ok: 위 정본 줄에 결과 타일(#carGrid) 셀렉터 1개 추가 — 값 창작 0(같은 선언 공유 · 260806 결과 타일화) */   /* 결과 닫힘 = 촤르륵(histIn 역방향·index popOut 커브 계승 · 운영자 260706 "결과 닫힐 때 촤르륵 없음, 다른 건 다 있고") · closing 특이도 = :not([hidden])과 동일이라 소스순(여기 뒤)으로 이김 */
+  @media (prefers-reduced-motion:reduce){ #carbar:not([hidden]), #carwrap:not([hidden]), #carbar.closing, #carwrap.closing, #carGrid.closing, .hist-grid > .hist-it { animation:none; } }   /* 전정계 = 즉시 표시(이전 제작 스태거의 기존 reduced-motion 공백도 동봉 수리) · 닫힘 촤르륵도 무효(260706) */
   .carcount { font-size:11.5px; color:var(--mut); }
   .carsave { display:none; }   /* (구) 캐러셀 아래 배치 폐지 — 전체 다운로드은 캐러셀 우상단 오버레이로 이동(아래 .saveall) */
   /* 전체(전체 다운로드) = 잡(결과) 행 우측 인라인(위치 = 운영자 260619 · 아래 .jsave-row/.jgrid). 버튼 자체 = 뉴스요약 카드뉴스 '전체'(.sbtn.cref-dlall.dlbtn) **통이식** — 셀렉터·CSS·JS(dlAllSeq) 전부 index 정본 그대로 사본, 옛 .jsave 자체 구현(스펙 맞추기 반복 실패)은 폐기(운영자 260705 "통으로 이식"). 스펙 여기서 창작 금지 = index 바뀌면 같이 바꾼다. */
@@ -1145,6 +1145,10 @@
     </button>
     <!-- N/N장 카운터 = 대기열 위(요약 · 운영자) -->
     <div class="carbar" id="carbar" hidden><span class="carcount" id="carcount"></span></div>
+    <!-- 결과 = 썸네일 타일 그리드(운영자 260806 "하나는 썸네일형이고 하나는 결론형이야" — 5탭 한 화면 대조에서 카드제작·편집·특수만 결론형 줄이었고 번역·AI생성은 타일이었다) ──
+         정본 = AI 생성 판 `#geniResGrid`(= nm-hist.css `.hist-grid`/`.hist-it` · 시각 라벨 + 타일 + 캡션칩 + [연필][↓]) 100% 사본 · 부품·값 창작 0.
+         캐러셀(#carwrap)은 확대 열람 축으로 존치(전체 다운로드·소스 재첨부·변형 점프가 거기 산다) — 타일은 그 위에 '결과가 무엇인지'를 형제 4탭과 같은 모양으로 보여주는 층. -->
+    <div class="hist-grid" id="carGrid"></div>
     <!-- 대기열/로그 — 제작 버튼 누른 게 다 여기 쌓이고 각자 상태 표시(동시 가능) -->
     <div class="jobs" id="jobs"></div>
     <!-- 진행중 제작 타일 스택(.wip · Q469) — 결과가 나올 자리 선점(최신 위 · 동시 2~3개 쌓임 → 완료 시 캐러셀 합류) · 운영자 260723 "결과물이 출력될 장소에 진행 표시 · 이전 제작 쪽으로 밀림" -->
@@ -3361,6 +3365,9 @@ function renderJob(job) {   // 잡 로그 행 갱신(없으면 생성, 최신이
   if (!row) { row = document.createElement('div'); row.id = 'job-' + job.n; row.className = 'job'; $('#jobs').prepend(row); }
   if (job.thid) row.dataset.thid = job.thid;   // 알림 #done=<id> → 이 잡 행으로 핀포인트 랜딩(세션 내 미리로드 시)
   row.className = 'job' + (job.status === 'done' ? ' done' : '') + (job.status === 'err' ? ' err' : '');
+  /* 완료 낱장 잡 행 = 숨김(운영자 260806 "하나는 썸네일형이고 하나는 결론형이야") — 그 행이 말하던 것(무엇이·언제·수정·다운로드)을 결과 타일이 그대로 말한다 = 같은 결과를 줄+타일로 두 번 그리던 중복 해소 = 5탭 한 모양.
+     ⚠ 남기는 3경우 = ⓐ 진행/실패(대기열의 존재 이유 = 상태·사유·재시도) ⓑ 2장 이상(「전체 다운로드」·변형 점프가 타일엔 없다) ⓒ 부분 실패(partErr 사유) — 회귀 0으로 좁힌 경계. */
+  row.hidden = job.status === 'done' && !job.partErr && (job.saves || []).length <= 1;
   if (job.status === 'done' && !job._restored && !job._durSaved) { job._durSaved = true; jobDurPush(job); }   // 소요 이력 누적 1회(운영자 260727 한 수 · 복원 잡 제외 = t0가 발사 시각이 아님)
   if (job.status === 'done' && !job._restored && !job._saved && (job.saves || []).length) { job._saved = true; saveLastResult(job); }   // 완료 = 최근 제작 스냅샷 저장(다음에 열면 맨 위 복원·운영자 260622)
   const sec = Math.round((Date.now() - job.t0) / 1000);
@@ -3536,7 +3543,7 @@ function carAppend(url, dlname, cap, job, varStr, o, restore, histCap, noExpand)
   if (window.nmEta && _cpwT0) nmEta.done('thumb-copy', (Date.now() - _cpwT0) / 1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
   cpPrevWait(false);   // 합성 미리보기 '합성 중' 해제 = 첫 완성 도착(운영자 260712 · 미대기 시 no-op)
   const slideIdx = CARSLIDES.length;   // push 전 = 이 슬라이드의 전역 인덱스(변형줄 클릭 점프용)
-  CARSLIDES.push({ url, dlname, src: job && job.src, reuse: !!(job && job.rid) });   // src=제작 조건(수정 버튼 = 이 설정으로 작성기 복원 · 운영자 260702) · reuse=리사이즈 잡 결과만 소스 재첨부 노출(운영자 260713 "그 한수" · 복원 rjob=rid 없음=비노출)
+  CARSLIDES.push({ url, dlname, src: job && job.src, reuse: !!(job && job.rid), cap: histCap || cap, varStr: varStr || '', ts: Date.now() });   // cap·varStr·ts = 결과 타일(#carGrid) 재료 = 이전 제작 항목 스키마 동값(histAdd가 쓰는 그 값 그대로 · 캐러셀 축 필드는 무접촉)   // src=제작 조건(수정 버튼 = 이 설정으로 작성기 복원 · 운영자 260702) · reuse=리사이즈 잡 결과만 소스 재첨부 노출(운영자 260713 "그 한수" · 복원 rjob=rid 없음=비노출)
   if (!restore) histAdd({ url, dlname, cap: histCap || cap, varStr: varStr || '', ts: Date.now(), src: job && job.src });   // 12h 보관(창 닫아도 '이전 제작'서 다시 보기 · 운영자 260621) · src=제작 조건(수정 복원) · 복원 시엔 재기록 X(중복 방지)
   if (o) { o._slide = slideIdx; o._url = url; o._dlname = dlname; }   // 변형 i ↔ 슬라이드·다운로드 매핑(로드 순서 무관 = o 객체에 직접 박음 · 운영자 260620)
   if (job) (job.saves || (job.saves = [])).push({ url, dlname, cap, varStr: varStr || '' });   // 잡별 '전체 다운로드'용 + 최근제작 복원용(cap/varStr 포함)
@@ -3798,24 +3805,36 @@ function renderHist() {
   const _histEm = $('#histEmpty'), _histTools = $('#histTools');
   if (!a.length) { if (_histEm) _histEm.hidden = false; if (_histTools) _histTools.hidden = true; return; }   // 빈 상태 = 안내 노출·지우기 숨김(펼침 시 표시 · 그리드 비움 유지)
   if (_histEm) _histEm.hidden = true; if (_histTools) _histTools.hidden = false;
-  a.forEach(e => {   // 최신 먼저(이미 정렬됨)
-    const it = document.createElement('div'); it.className = 'hist-it'; it.dataset.thid = thIdOf(e.url);   // 작업 id 태그 = 알림 done=<id> → 이 이력 항목으로 핀포인트(콜드스타트 주경로)
-    const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
-    const th = document.createElement('div'); th.className = 'hist-thumb';
-    const dl = document.createElement('a'); dl.className = 'imgdl dlbtn'; dl.href = e.url;
-    dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG; if (dlSeen(e.url)) dl.classList.add('dl-done'); dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'thumb.jpg'); dlMark(e.url, dl); });
-    const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url; img.onerror = () => { it.remove(); _deadUrls.add(histKey(e.url)); const cc = $('#histCnt'); if (cc) cc.textContent = '(' + grid.children.length + ')'; };   // 사라진 이미지 슬롯 제거 + 세션 dead 기록(다음 렌더 제외) + 카운트 즉시 정정(허수 방지)
-    const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
-    if (e.varStr) { const v = document.createElement('span'); v.className = 'hist-cap-v'; v.textContent = e.varStr; cap.appendChild(v); }
-    th.append(dl, img, cap);
-    if (canEditSrc(e.src)) {   // 수정(편집) = 이 설정으로 작성기 복원. 이제 서버 이력(타 기기 제작분)도 _src.json→src 동봉 → 기기 달라도 버튼 표시(운영자 260624). 이미지 원본 없으면 합성본 빗금 참고본으로 대체.
-      const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
-      ed.innerHTML = EDIT_SVG;
-      ed.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); editOpenSrc(e.src, e.url); });
-      th.appendChild(ed);
-    }
-    it.append(hd, th); grid.appendChild(it);
-  });
+  a.forEach(e => grid.appendChild(histTileEl(e, grid, '#histCnt')));   // 항목 빌더 = histTileEl 단일정본(결과 타일 #carGrid와 공용 · 260806 5탭 「결과」 모양 통일)
+}
+/* 이력·결과 공용 타일 빌더(운영자 260806 "하나는 썸네일형이고 하나는 결론형이야") — 구 renderHist 인라인 블록을 원문 그대로 승격(값·문법 변경 0).
+   같은 함수를 `#histGrid`(이전 제작)·`#carGrid`(결과)가 함께 쓴다 = 형제 4탭(번역 renderTrHist/renderTrRes · AI 생성 geniHistItem)이
+   이미 「한 빌더로 두 레일」인 구조와 같은 축 — thumb만 결과를 잡 카드 줄로 그려 5탭 중 3탭이 결론형으로 갈려 있었다. */
+function histTileEl(e, grid, cntSel) {
+  const it = document.createElement('div'); it.className = 'hist-it'; it.dataset.thid = thIdOf(e.url);   // 작업 id 태그 = 알림 done=<id> → 이 이력 항목으로 핀포인트(콜드스타트 주경로)
+  const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
+  const th = document.createElement('div'); th.className = 'hist-thumb';
+  const dl = document.createElement('a'); dl.className = 'imgdl dlbtn'; dl.href = e.url;
+  dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG; if (dlSeen(e.url)) dl.classList.add('dl-done'); dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'thumb.jpg'); dlMark(e.url, dl); });
+  const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url; img.onerror = () => { it.remove(); _deadUrls.add(histKey(e.url)); const cc = $(cntSel); if (cc) cc.textContent = '(' + grid.children.length + ')'; };   // 사라진 이미지 슬롯 제거 + 세션 dead 기록(다음 렌더 제외) + 카운트 즉시 정정(허수 방지)
+  const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
+  if (e.varStr) { const v = document.createElement('span'); v.className = 'hist-cap-v'; v.textContent = e.varStr; cap.appendChild(v); }
+  th.append(dl, img, cap);
+  if (canEditSrc(e.src)) {   // 수정(편집) = 이 설정으로 작성기 복원. 이제 서버 이력(타 기기 제작분)도 _src.json→src 동봉 → 기기 달라도 버튼 표시(운영자 260624). 이미지 원본 없으면 합성본 빗금 참고본으로 대체.
+    const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
+    ed.innerHTML = EDIT_SVG;
+    ed.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); editOpenSrc(e.src, e.url); });
+    th.appendChild(ed);
+  }
+  it.append(hd, th);
+  return it;
+}
+function renderCarGrid() {   // 결과 타일 = 지금 결과에 있는 것(CARSLIDES) 최신 먼저 — 데이터는 캐러셀과 같은 배열(별도 소스 신설 0 = 두 표현이 어긋날 여지 0)
+  const grid = $('#carGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  const a = CARSLIDES.slice().reverse();   // carAppend는 나온 순서로 push → 타일은 최신 먼저(이전 제작·번역·AI 생성 정렬 동문)
+  a.forEach(e => grid.appendChild(histTileEl(e, grid, '#carHCnt')));
+  grid.hidden = !a.length;
 }
 // ── 가장 최근 제작 1건 = 창 닫아도 맨 위 '결과'로 복원 (전체 다운+캐러셀 · 이 기기 · 운영자 260622) ──
 let RESTORED = false, RESTORED_TS = 0, RESTORED_BID = ''; const RESTORED_URLS = new Set();   // 맨 위에 복원된 최근 제작 url·ts·묶음키(이전 제작서 제외·cross-device 최신비교·묶음 재수렴용)
@@ -3940,24 +3959,30 @@ $('#histH').addEventListener('click', () => { const b = $('#histBody'), open = b
 window.addEventListener('hashchange', () => maybeOpenHist());   // 이미 열린 탭을 알림이 #done 으로 이동시켜도(해시만 바뀜) 펼치게 · ()=래핑 = Event가 tries 인자로 새 안 들어가게(재시도 무력화 차단)
 // 결과(미리보기) 접기 — 이전 제작(histH) 로직 미러 · 부팅 자동복원=접힘/딥링크·새제작=펼침(운영자 260710 · 구 260706 기본 펼침)
 function carHSync(open) { const h = $('#carH'); if (!h) return; h.hidden = false; const c = $('#carHCnt'); if (c) c.textContent = '(' + CARSLIDES.length + ')'; const em = $('#carEmpty');   // 결과 헤더 상시 노출·카운트 0 포함(운영자 260718 "결과 기본으로 있게 · 없으면 안내")
+  renderCarGrid();   // 결과 타일 = 이 함수가 CARSLIDES 변화의 단일 동기점(추가·복원·404 철거·지우기 전부 여기를 지난다) → 타일 소스 하나로 수렴(260806)
+  const cg = $('#carGrid');
   if (!CARSLIDES.length) { if (em) em.hidden = h.getAttribute('aria-expanded') === 'false' || !!(($('#wips') || {}).childElementCount); return; }   // 빈 상태 = 캐러셀 없음·안내만(펼침 시 노출 · 진행중 .wip 타일 떠 있으면 숨김 = Q469)
   if (em) em.hidden = true;
-  if (open) { h.setAttribute('aria-expanded', 'true'); $('#carwrap').hidden = false; $('#carbar').hidden = false; } else { h.setAttribute('aria-expanded', 'false'); } }   // 접힌 채 복원(부팅 자동복원) = 헤더는 노출·내용은 접힘 → aria 동기(내용 hidden은 초기 HTML 상태 유지 · 운영자 260710)
+  /* 결과 = 「타일이 곧 결과」(운영자 260806 5탭 대조) — 부팅 자동복원이어도 **타일은 편다**(형제 2탭 번역·AI 생성이 늘 펼침이라 thumb 3탭만 헤더 한 줄로 접혀 결과가 딴판이었다).
+     ⚠ 260710 「결과 기본 접힘」 계약은 **캐러셀(확대 열람 = 큰 이미지)** 축으로 보존 = 아래 carwrap/carbar는 종전 그대로 접힌 채. 접이 클릭은 타일·캐러셀을 함께 여닫는다. */
+  if (cg) cg.hidden = false;
+  h.setAttribute('aria-expanded', 'true');
+  if (open) { $('#carwrap').hidden = false; $('#carbar').hidden = false; } }   // 접힌 채 복원(부팅 자동복원) = 헤더는 노출·내용은 접힘 → aria 동기(내용 hidden은 초기 HTML 상태 유지 · 운영자 260710)
 let _carCloseT = null;   // 결과 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(index popOut 패턴 계승)
 $('#carH').addEventListener('click', () => {
   if (!CARSLIDES.length) {   // 빈 상태 = 안내만 접기(운영자 260718 · 접을 캐러셀 없음)
     const em = $('#carEmpty'), willOpen = $('#carH').getAttribute('aria-expanded') !== 'true';
     $('#carH').setAttribute('aria-expanded', willOpen ? 'true' : 'false'); if (em) em.hidden = !willOpen; return;
   }
-  const cw = $('#carwrap'), cb = $('#carbar'), open = cw.hidden;   // hidden이면 지금 펼치는 동작
-  clearTimeout(_carCloseT); cw.classList.remove('closing'); cb.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
+  const cw = $('#carwrap'), cb = $('#carbar'), cg = $('#carGrid'), open = cw.hidden;   // hidden이면 지금 펼치는 동작
+  clearTimeout(_carCloseT); cw.classList.remove('closing'); cb.classList.remove('closing'); if (cg) cg.classList.remove('closing');   // 닫힘 중 재클릭 = 취소(다시 펼침)
   if (open) {   // 펼침
-    cw.hidden = false; cb.hidden = false; $('#carH').setAttribute('aria-expanded', 'true');
+    cw.hidden = false; cb.hidden = false; if (cg && CARSLIDES.length) cg.hidden = false; $('#carH').setAttribute('aria-expanded', 'true');
     requestAnimationFrame(() => { carUpdate(); if (_twoCol()) return; try { $('#carH').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {} });   /* 결과 재펼침도 동축(2단 = 스크롤 생략 · 높이 재계산 carUpdate는 유지) */   // 재펼침 = 높이 핏 재계산(접힘 중 리사이즈 대비 · QA3 260706)
   } else {   // 접힘 = 촤르륵(histOut 역재생 후 hidden · 운영자 260706 "결과 닫힐 때 촤르륵")
     $('#carH').setAttribute('aria-expanded', 'false');
-    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { cw.hidden = true; cb.hidden = true; }
-    else { cb.classList.add('closing'); cw.classList.add('closing'); _carCloseT = setTimeout(() => { cw.hidden = true; cb.hidden = true; cw.classList.remove('closing'); cb.classList.remove('closing'); }, 270); }   // .26s 애니 + 여유
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) { cw.hidden = true; cb.hidden = true; if (cg) cg.hidden = true; }
+    else { cb.classList.add('closing'); cw.classList.add('closing'); if (cg) cg.classList.add('closing'); _carCloseT = setTimeout(() => { cw.hidden = true; cb.hidden = true; if (cg) { cg.hidden = true; cg.classList.remove('closing'); } cw.classList.remove('closing'); cb.classList.remove('closing'); }, 270); }   // .26s 애니 + 여유
     window.scrollTo({ top: 0, behavior: 'smooth' });   // 접음 = 입력폼 최상단 복귀(이전 제작 접음과 동일 로직)
   }
 });
