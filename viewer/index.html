@@ -14591,6 +14591,17 @@ function thumbTabBridge(d) {   // 이미지(thumb) 탭 부모 승격(260704) = �
 // 처방: same-origin 문서의 readyState가 'loading'을 벗어나는 순간(=DOMContentLoaded = 인라인 스크립트까지
 //   실행 완료 = 틀 완성) 즉시 리빌. 남은 리소스는 보이는 화면 뒤에서 계속 채워진다(체감 = 즉시 표시).
 //   cross-origin(폴링 불가) = 종전대로 load/워치독에 위임.
+// ── 노출 직전 부모 주입(운영자 260805 「첨부1 화면이 나왔다가 지연된 다음 정상 출력」) ───────────────
+// 왜: thumbTabBridge(내부 #tabs 숨김 + .panel −18)는 **iframe load**에만 걸려 있었는데, 리빌(.ready)은
+//   frEarly·워치독이 그보다 **먼저** 붙인다 → 그 사이 구간엔 thumb 내부 탭바가 부모 탭바 밑에 겹쳐 그려진다
+//   (실측 260805 폰 4G·CPU4x: 리빌 515ms → 주입 3,779ms = **3,264ms 동안 탭바 2줄 + 첫 소머리 −18 미적용**).
+//   운영자 첨부1이 정확히 이 구간의 사진이다(둘째 줄 탭 4개 = 번역이 빠진 thumb **자체** 탭바 = 부모 승격 전 원본).
+// 처방: 리빌을 붙이는 **모든** 경로(frEarly·워치독 fail-safe)가 이 함수를 먼저 통과 = 주입이 페인트보다 항상 앞선다.
+//   idempotent(_thumbTabHide id 가드·tabsEl._parentSynced 가드)라 load 때 재호출돼도 무해 = 기존 load 경로는 무접촉 존치(폴백).
+function frPreReveal(fr, d) {
+  try { if (d && fr === toolFrames.thumb) thumbTabBridge(d); } catch (_) {}
+}
+const FR_DCL_TICKS = 30;   // raw-ok: 폴링 틱 수(개수 — 지속시간 토큰 아님) · 100ms×30 = 3s 유예(아래 사유) · 워치독 11s보다 짧아 폴백 순서 보존
 function frEarly(fr) {
   if (!fr) return;
   clearInterval(fr._er);
@@ -14600,10 +14611,18 @@ function frEarly(fr) {
     let d = null;
     try { d = fr.contentDocument; if (!d || d.location.href === 'about:blank') return; } catch (_) { clearInterval(fr._er); return; }   // cross-origin = 위임
     if (!d.body || !d.body.firstElementChild) return;   // 뼈대 0 = 빈/흰 프레임 노출 차단
-    if (d.readyState === 'loading' && !d.body.getBoundingClientRect().height) return;   // 파싱 중이어도 '그려진 것'이 있으면 통과 = 틀 먼저(파서를 막는 스크립트 뒤에서 기다리지 않음 · CSS는 head에서 이미 적용 = 민낯 노출 아님)
+    // 「파싱 중이어도 그려진 게 있으면 통과」는 **3s 유예 뒤**로 미룬다(운영자 260805) — 위 260725 주석이 선언한 정본은
+    //   「readyState가 'loading'을 벗어나는 순간(= DOMContentLoaded = 인라인 스크립트까지 실행 완료 = **틀 완성**)」인데
+    //   실제 조건은 그보다 앞선 '뭐라도 그려졌으면 통과'라, thumb처럼 **틀을 인라인 스크립트가 만드는** 문서에선 반쪽 화면이 나갔다
+    //   (thumb.html 실측 260805 = 마크업 27.8~35.1% · 나머지 65%가 인라인 <script> 430KB → 마크업만 파싱된 순간 리빌 =
+    //    도크·폼 없이 내부 탭바 + 결과/이전제작 뼈대만 뜬 화면 = 운영자 첨부1의 나머지 절반).
+    //   유예 안에 DCL이 오면 완성 틀이 나가고, 안 오면 구 동작 그대로 통과 = 「파서를 막는 스크립트 뒤에서 무한정 기다리지 않는다」는
+    //   260725 취지 보존(최종 폴백 = 워치독 FR_WD_MS).
+    if (d.readyState === 'loading' && (n <= FR_DCL_TICKS || !d.body.getBoundingClientRect().height)) return;
     clearInterval(fr._er);
     clearTimeout(fr._wd);                                                   // 틀 도착 = 워치독 해제(재로드 금지 — 화면 날림 방지)
     if ((d.location.href || '').indexOf('/tr.html') >= 0) fr._trLoaded = true;   // 번역 프레임 판정도 조기 확정(trMount 재토글이 되벗기지 않게)
+    frPreReveal(fr, d);   // 부모 주입 먼저(내부 탭바 숨김) → 그 다음 노출 = 중복 탭바가 한 프레임도 안 그려진다
     fr.classList.add('ready');
     if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');
   }, 100);   // raw-ok: 폴링 간격(ms — 지속시간 토큰 아님) · 100ms = 체감 즉시 + 부하 무시가능
@@ -14620,6 +14639,7 @@ function frWatch(fr, src) {   // src 있으면 1회 재로드 대상(없으면 �
       try { fr.contentWindow.location.replace(_b); } catch (_) { fr.src = _b; }
       frWatch(fr, null); return;
     }
+    try { frPreReveal(fr, fr.contentDocument); } catch (_) {}          // 리빌 전 부모 주입(frEarly와 같은 계약 — fail-safe 경로만 중복 탭바로 새던 구멍 봉합)
     fr.classList.add('ready');                                        // ② fail-safe 리빌 = 무한 orb 차단
     if (fr.classList.contains('active')) tooldlg.classList.add('frame-ready');   // 재클릭 가드 신호도 동반 복구(탭 재클릭 = 정상 재로드 경로)
   }, FR_WD_MS);
