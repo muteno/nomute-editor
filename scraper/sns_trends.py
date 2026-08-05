@@ -1463,6 +1463,12 @@ def threads_subs(accounts, limit=10, deadline=None):
                     _h2 = _th_fetch(_u, _GUEST_HDR(_hdr), "")   # UA 모듈 정본 복원(_GUEST_HDR 사유) — 지금 유일하게 걷고 있는 경로라 오염되면 수집이 통째로 죽는다
                     _m2, _a2 = _scan(_h2)
                     if _m2:
+                        # ⚠ 1차 원본 **먼저 보존**(260806 평의회1 검출) — 아래 재할당이 h·_alien을 게스트 값으로 덮으므로,
+                        #   그 뒤에서 진단을 계산하면 **게스트 응답을 재는 것**이 된다. 게스트 응답은 정의상
+                        #   로그인월 없음·추천피드 0이라 진단이 매 회차 "포스트 노드 0(파서 노후)"라는 **고정 오진**을
+                        #   찍는다(= 그 분기에 도달한 조건 자체가 「포스트 노드가 있었다」라서 자기모순 문구이기도 하다).
+                        #   4연속 오진의 원인을 고치겠다는 봉합이 5번째 오진을 코드로 박을 뻔한 자리 = 보존이 실효 조건.
+                        _h1, _al1 = h, _alien
                         h, mine, _alien, _via = _h2, _m2, _a2, "게스트폴백"
                         # 조치 문구 = **원인을 실제로 가리키는 값**으로 갈라 낸다(운영자 260805 "알림을 안뜨게할거면
                         #   애초에 앱을 삭제해버리지 · 기능을 유지하면서 알림이 안오고 이를 예방할수있게").
@@ -1494,13 +1500,13 @@ def threads_subs(accounts, limit=10, deadline=None):
                         #   폰에서 명령을 쳐서 실측을 대신 해야 했다(운영자 260806 "뭘 맨날 폰에 쳐보래 · 니가 코드를 뽀개봐").
                         #   → 이미 손에 든 1차 응답 h를 그 자리에서 재서 경고에 싣는다 = **추가 요청 0 · 새 콜 0**.
                         #     다음 회차 로그 한 줄이 스스로 원인을 말한다(운영자 조치 0 = 30분마다 도는 크론이 알아서 남긴다).
-                        _w1 = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', h))
-                        _sjs1 = len(re.findall(r'data-sjs', h))
+                        _w1 = bool(re.search(r'/accounts/login|barcelona_login|"login_page"|Log in', _h1))
+                        _sjs1 = len(re.findall(r'data-sjs', _h1))
                         _dx = ("로그인월(세션 거절 = 쿠키·UA 축)" if _w1 else
-                               ("추천피드 %d건(세션 수락인데 프로필 미도달 = 쿠키 재발급 무효 축)" % _alien if _alien else
+                               ("추천피드 %d건(세션 수락인데 프로필 미도달 = 쿠키 재발급 무효 축)" % _al1 if _al1 else
                                 "포스트 노드 0(data-sjs %d개 = %s)" % (_sjs1, "파서 노후" if _sjs1 else "챌린지·스켈레톤")))
                         print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · "
-                              f"[1차 실측] {_dx} · 쿠키응답 {len(h)//1000}KB · {_fix}", file=sys.stderr)
+                              f"[1차 실측] {_dx} · 쿠키응답 {len(_h1)//1000}KB · {_fix}", file=sys.stderr)
                 except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
                     print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
             _mine = 0
