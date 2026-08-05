@@ -1437,7 +1437,15 @@ def threads_subs(accounts, limit=10, deadline=None):
                     _m2, _a2 = _scan(_h2)
                     if _m2:
                         h, mine, _alien, _via = _h2, _m2, _a2, "게스트폴백"
-                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건(쿠키 오염 의심 — 갱신 권장)", file=sys.stderr)
+                        # ⚠ 조치 문구 = 뷰어 alien 분기(viewer/index.html sysErrMsgs)와 **같은 말**이라야 한다(260805 실사고 봉합).
+                        #   구 문구 "갱신 권장"은 260804 2차 봉합의 결론과 **정반대**였다 — 그 봉합이 확정한 조치는
+                        #   「THREADS_COOKIE를 **빼라**(쿠키 없이 걷는 게 정상 경로)」이고, 바로 이 줄이 그 근거다:
+                        #   쿠키로는 0건인데 게스트로는 회수됐다 = 쿠키가 무용지물이라는 실측 그 자체.
+                        #   그런데 운영자가 실제로 읽는 표면은 폰 터미널(phone_check.sh 출력)이라, 여기서 "갱신 권장"이라고
+                        #   말하면 쿠키를 새로 뽑아 갈아넣는 헛수고를 하고 → 또 오염되고 → 같은 경고가 다시 뜬다.
+                        #   두 표면이 같은 사고에 반대 조치를 말하던 드리프트를 문구 동기로 봉합(260805 실측 = 5계정 전건 이 경로).
+                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건"
+                              f"(쿠키 오염 — THREADS_COOKIE를 **빼는 게 정답**: 게스트가 정상 경로다. 갈아끼우지 마)", file=sys.stderr)
                 except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
                     print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
             _mine = 0
