@@ -8232,10 +8232,24 @@ function disCrit(d) {
 //   발동 = 지진·화재급(disCrit) ∧ 수집기 랜드마크 매치(lm). lm은 서버 판정(DIS_LANDMARK·DIS_GOV_RE) — 뷰어는 사전을 복제하지 않는다(정본 1곳).
 //   ⚠ 구 데이터(lm 없음) = 미발동 = 종전 동작 그대로(경보를 '추정'으로 울리지 않는다 · 다음 수집이 채운다).
 const FIRE_TTL_H = 12;   // quakeMsgs QUAKE_TTL_H 동값 — 옛 스냅샷 부팅 시 유령 경보 차단
+// ⚠ 2층 검문 = 서버가 준 lm 이 **말미 발신 서명을 걷어낸 본문에 실제로 있는가**(260805 유령 경보 봉합).
+//   왜 필요한가 = lm 은 **수집 시점에 항목에 박제**된다(sns_trends.py `"lm": disaster_landmark(msg)` · 생산자 2곳 = disaster()·disaster_km()).
+//   그래서 서버 판정을 고쳐도 **이미 구워진 데이터**는 옛 판정을 그대로 들고 남고, fireMsgs 는 매 렌더 그 값을 다시 읽으므로
+//   TTL 12h 동안 유령 경보가 계속 재점등된다 — 실측 260805 = 서명 오탐 봉합(10363a4)이 09:37 KST 에 main 에 착지했는데도
+//   07:03 발사분이 sns_trends.json 에 lm="서해구청" 으로 살아남아 10:20 리포트에 그대로 재등장했다(코드 봉합 ≠ 라이브 봉합 = [7-2] 와 같은 축).
+//   데이터를 손으로 씻는 건 기계산출물 손편집 금지라 불가 → **소비 지점에서 한 번 더 본다**가 유일한 즉시 해.
+//   ⚠ 사전 복제 0 = 정본 1곳 계약 유지 — 랜드마크 목록·공공기관 정규식을 뷰어가 들지 않는다. 서버가 준 문자열이 본문에
+//   실존하는지만 보는 **형태 규칙 1줄**(서버 DIS_SIGN_RE 동문법)이라 서버 사전이 자라도 뷰어는 무접촉.
+//   ⚠ fail-open 2종 = text 결손(구 데이터·폰 구스키마 = title 이 본문) · 300자 컷 도달(`text: msg[:300]` 이라 서명이 잘렸을 수 있다)
+//   → 검문 생략 = 종전 동작. 놓침을 늘리지 않는다(실측 라이브 재난 10건 본문 75~90자 = 컷과 무관).
+const DIS_SIGN_TAIL = /\[[^\[\]]{1,30}\]\s*$/;
+function disBody(s) { let t = String(s || '').trim(); for (let i = 0; i < 3; i++) { const n = t.replace(DIS_SIGN_TAIL, '').trim(); if (n === t) break; t = n; } return t; }
 function fireMsgs() {
   const dl = (TRENDS && TRENDS.disaster) || [], now = Date.now(), out = [];
   for (const d of (Array.isArray(dl) ? dl : [])) {
     if (!d || d.kind === '지진' || !d.lm || !disCrit(d)) continue;   // 지진 = quakeMsgs 담당(같은 건이 두 번 울리지 않게)
+    const tx = String(d.text || '');
+    if (tx && tx.length < 300 && !disBody(tx).includes(d.lm)) continue;   // 2층 검문 = lm 이 서명 밖 본문에 없다 = 구판 판정 잔류 = 미발동
     const t = Date.parse(d.time || '') || 0;
     if (!t || now - t > FIRE_TTL_H * 3600e3) continue;
     out.push({ id: 'sys:fire:' + (d.time || '') + ':' + d.lm, _sys: true, level: 'warn', t, action: 'quake-go',

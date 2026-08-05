@@ -4140,6 +4140,71 @@ def check_disaster_landmark_sign():
     return 0
 
 
+def check_disaster_lm_stale():
+    """⑭-e 랜드마크 판정 = **박제 필드** → 코드 봉합만으론 화면이 안 낫는다(260805 2차 실사고 봉합).
+    실측 = 서명 오탐 봉합(10363a4)이 09:37 KST 에 main 에 착지했는데도, 07:03 에 이미 구워진 항목이
+    `viewer/sns_trends.json` 에 lm="서해구청" 으로 살아남아 **10:20 알림 리포트에 그대로 재등장**했다.
+    구조 = lm 은 수집 시점 1회 계산해 항목에 박는다(`"lm": disaster_landmark(msg)` · 생산자 2곳) →
+    fireMsgs() 는 매 렌더 그 **저장값**을 다시 읽는다 → 판정 코드를 고쳐도 이미 구워진 데이터는 옛 판정을
+    들고 남고 TTL 12h 동안 유령 경보가 재점등된다. 즉 **코드 봉합 ≠ 라이브 봉합**([7-2] 와 같은 축).
+    ⚠ 신설 사유 = 짝 게이트 check_disaster_landmark_sign 은 정본 함수를 케이스로 재판정해 「코드가 옳은가」만
+      본다. 「라이브 데이터에 구판 판정이 남아 있는가」는 축 자체가 없었고, 그래서 봉합 세션이 코드만 고치고
+      완료로 닫아도 아무 게이트가 안 울렸다(운영자가 리포트를 열어야만 발견 = insta-thumb-miss 와 같은 축).
+    판정 2축 =
+      ① 뷰어 2층 검문 실존 = **하드**. 서버가 준 lm 이 «말미 발신 서명을 걷어낸 본문»에 실제로 있는지 소비
+         지점에서 한 번 더 본다(사전 복제 0 = 형태 규칙 1줄). 지워지면 박제 유령이 통째로 부활한다.
+      ② 라이브 데이터 재판정 불일치 = **WARN(비차단)**. 왜 하드가 아닌가 = ⓐ 판정 코드를 고치는 **바로 그 커밋**에서
+         반드시 불일치가 뜬다(데이터는 아직 옛 판정) → 하드면 게이트가 봉합 자체를 막는 자기모순 ⓑ 데이터는 봇
+         소유라 세션이 커밋으로 못 씻는다(기계산출물 손편집 금지) ⓒ ①이 살아 있으면 불일치는 화면에 안 뜬다
+         = 무해. 그래서 「씻길 때까지 보이게」가 정확한 역할(check_component_lock WARN 선례 계승).
+    정적 · 렌더·LLM·네트워크 0 · 면책표 없음."""
+    bad = []
+    v = os.path.join(ROOT, 'viewer', 'index.html')
+    if not os.path.exists(v):
+        print('❌ 랜드마크 박제 게이트 — viewer/index.html 없음(fail-closed).')
+        return 1
+    src = open(v, encoding='utf-8').read()
+    # ① 뷰어 2층 검문 실존(하드) — 심볼 + fireMsgs 본문 배선 둘 다. 심볼만 남고 배선이 빠지면 무력화된다.
+    for sym in ('DIS_SIGN_TAIL', 'function disBody('):
+        if sym not in src:
+            bad.append('뷰어 2층 검문 심볼 결손(%s) — 박제된 구판 lm 이 그대로 기기 긴급알림이 된다' % sym)
+    m = re.search(r'function fireMsgs\(\)\s*\{', src)
+    if not m:
+        bad.append('fireMsgs() 탐지 실패(fail-closed = 게이트 무력화 방지)')
+    elif 'disBody(' not in src[m.end():m.end() + 1200]:
+        bad.append('fireMsgs() 가 disBody() 검문을 통과하지 않음(2층 방어 미배선 = 데이터가 더러우면 화면이 운다)')
+    if bad:
+        print('❌ 랜드마크 박제 게이트 — 결손 %d건(구판 판정이 박힌 데이터가 그대로 경보가 된다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        print('   → 정본 = viewer/index.html fireMsgs() 의 disBody(tx).includes(d.lm) 검문 1줄.')
+        return 1
+    # ② 라이브 데이터 재판정(WARN) — 저장된 lm 과 현행 정본 판정이 갈린 항목을 세어 보여준다.
+    stale = []
+    try:
+        import importlib.util as _ilu
+        p = os.path.join(ROOT, 'scraper', 'sns_trends.py')
+        jp = os.path.join(ROOT, 'viewer', 'sns_trends.json')
+        if os.path.exists(p) and os.path.exists(jp):
+            spec = _ilu.spec_from_file_location('sns_trends_lm_stale', p)
+            mod = _ilu.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            with open(jp, encoding='utf-8') as f:
+                for it in (json.load(f).get('disaster') or []):
+                    got = mod.disaster_landmark(it.get('text') or '')
+                    if (it.get('lm') or '') != got:
+                        stale.append((it.get('lm') or '', got, (it.get('time') or '')[:16]))
+    except Exception as e:  # noqa: BLE001
+        print('   · (참고) 라이브 재판정 스킵(%s: %s)' % (type(e).__name__, e))
+    if stale:
+        print('⚠ 랜드마크 박제 잔류 %d건 — 저장 lm ≠ 현행 판정(다음 수집 회차가 씻는다 · 그때까지 ①이 화면을 막는다):' % len(stale))
+        for old, new, t in stale[:5]:
+            print('   · %s 저장=%r → 현행=%r' % (t, old, new))
+        print('   → 손편집 금지(기계산출물). 씻김 = 다음 sns-trends 회차 · 화면 = 뷰어 2층 검문이 이미 차단.')
+    print('✅ 랜드마크 박제 게이트 — 뷰어 2층 검문 생존(심볼+fireMsgs 배선) · 라이브 잔류 %d건.' % len(stale))
+    return 0
+
+
 def check_rubric_regress():
     """루브릭 회귀 게이트(하드 · 운영자 260803 승인 — «대구 40.1도» 오발 봉합의 재발 방지 축).
     breaking_judge RUBRIC(속보 YES/NO 판정 프롬프트)이 바뀌면 과거 실측 판정 케이스(rubric_regress_cases.json ·
@@ -4499,6 +4564,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_disaster_landmark_sign 예외(fail-closed):', e); rc = 1
+    try:
+        if check_disaster_lm_stale() != 0:   # ⑭-e 랜드마크 = 박제 필드 2층 방어(하드 게이트 — 260805 2차: 코드 봉합 09:37 착지 후에도 07:03 구운 lm이 데이터에 살아남아 10:20 리포트 재등장)
+            rc = 1
+    except Exception as e:
+        print('❌ check_disaster_lm_stale 예외(fail-closed):', e); rc = 1
     try:
         if check_rpt_origin_coverage() != 0:   # 알림 리포트 출처표 = 뷰어 생산 알림 전건 커버(하드 게이트 — 260805 실사고: sys:fire: 분기 누락으로 리포트가 없는 파일 messages/sys:fire:….json을 지목)
             rc = 1
