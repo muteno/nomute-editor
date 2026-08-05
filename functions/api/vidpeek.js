@@ -62,6 +62,79 @@ function unent(s) {   // og content는 HTML 엔티티로 인코딩돼 온다(실
     .replace(/&([a-z]+|#x?[0-9a-f]+);/gi, (m, k) => (k.toLowerCase() in ENT ? ENT[k.toLowerCase()] : m));
 }
 
+// ── 스레드 항목 구성 파서(운영자 260805 3차 "몇개가 엮여있는지 미리 + 각각 최대화질") ──
+//    ① SSR = 러너 플러그인(nomute_threads.py extract_post_nodes·collect_media) 문법 **포팅**(정본 계승 · 신규 기법 0)
+//       — 종류 + 원본 치수(original_width/height · 이미지 후보 최대 픽셀)까지 나온다.
+//       ⚠ 실측 260805: 로그아웃 응답이 본글 media를 감출 때가 있다(candidates:[] — 추천글 media는 멀쩡) → 그땐 ②로.
+//    ② 임베드 = 종류·개수만(치수 없음 = 지어내지 않음) — 미디어 창(Solo/Scroll 컨테이너 ~ PostDate/ActionBar) 안에서만 센다
+//       (실측: 영상 = <video> 태그 · 사진 = 창 안 img.img · 아바타 img.img는 창 밖이라 오염 0).
+const _SJS_RE = /<script[^>]+type="application\/json"[^>]*\bdata-sjs\b[^>]*>([\s\S]*?)<\/script>/g;
+function* _walkJson(n) {
+  if (Array.isArray(n)) { for (const v of n) yield* _walkJson(v); }
+  else if (n && typeof n === 'object') { yield n; for (const v of Object.values(n)) yield* _walkJson(v); }
+}
+function _thCollectMedia(post) {   // 플러그인 collect_media 미러 — 캐러셀 컨테이너는 자식에게 양보 · 미디어 노드에서 정지
+  const out = [];
+  const hasMedia = (x) => !x.carousel_media && !!(x.video_versions
+    || (x.image_versions2 && Array.isArray(x.image_versions2.candidates) && x.image_versions2.candidates[0] && x.image_versions2.candidates[0].url));
+  (function rec(x) {
+    if (Array.isArray(x)) { for (const v of x) rec(v); return; }
+    if (x && typeof x === 'object') {
+      if (hasMedia(x)) { if (!out.includes(x)) out.push(x); return; }
+      for (const v of Object.values(x)) rec(v);
+    }
+  })(post);
+  return out;
+}
+function thSsrItems(html, code) {
+  try {
+    if (!html || !code) return [];
+    let pk = 0n;   // shortcode → pk = 위치기반 base64(플러그인 shortcode_to_pk 미러 · 64^11 > 2^53이라 BigInt)
+    const AB = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    for (const ch of code) { const i = AB.indexOf(ch); if (i < 0) { pk = null; break; } pk = pk * 64n + BigInt(i); }
+    const pkS = pk === null ? '' : String(pk);
+    const posts = [];
+    _SJS_RE.lastIndex = 0;
+    let m;
+    while ((m = _SJS_RE.exec(html))) {
+      const raw = m[1];
+      if (raw.indexOf(code) < 0 && !(pkS && raw.indexOf(pkS) >= 0)) continue;   // 이 포스트가 안 든 블록은 건너뛴다
+      let d; try { d = JSON.parse(raw); } catch { continue; }
+      for (const nd of _walkJson(d)) {
+        if (nd.code === code || (nd.code == null && pkS && String(nd.pk) === pkS)) posts.push(nd);
+      }
+    }
+    let best = [];   // 노드가 여럿이면 미디어를 가장 많이 문 것(플러그인 289행 미러 — 축약본·완본 공존 대응)
+    for (const p of posts) { const g = _thCollectMedia(p); if (g.length > best.length) best = g; }
+    return best.slice(0, 20).map((md) => {
+      if (md.video_versions) return { kind: 'video', w: +md.original_width || 0, h: +md.original_height || 0 };
+      let bw = 0, bh = 0, px = -1;
+      for (const c of md.image_versions2.candidates) {
+        const p2 = (+c.width || 0) * (+c.height || 0);
+        if (c.url && p2 > px) { px = p2; bw = +c.width || 0; bh = +c.height || 0; }
+      }
+      return { kind: 'img', w: bw, h: bh };
+    });
+  } catch { return []; }   // fail-soft — 구성 표시만 생략
+}
+function thEmbedItems(eh) {
+  try {
+    const s = eh.search(/SoloMediaContainer|MediaScrollImageContainer/);
+    if (s < 0) return [];   // 미디어 컨테이너 없음 = 글만 있는 게시물(항목 표기 생략 — 실측 emb3·4)
+    let e = eh.length;
+    for (const stop of ['PostDateContainer', 'ActionBarContainer', 'QuoteContainer']) {
+      const j = eh.indexOf(stop, s + 1); if (j >= 0 && j < e) e = j;
+    }
+    const seg = eh.slice(s, e);
+    const nv = (seg.match(/<video\b/gi) || []).length;
+    const ni = (seg.match(/<img\b[^>]*class="img"/gi) || []).length;   // 창 안 img.img = 사진 항목(포스터는 <video> 안 = 이중계수 0 · 실측 emb1)
+    const out = [];
+    for (let k = 0; k < nv && out.length < 20; k++) out.push({ kind: 'video' });
+    for (let k = 0; k < ni && out.length < 20; k++) out.push({ kind: 'img' });
+    return out;
+  } catch { return []; }
+}
+
 export async function onRequestGet({ request }) {
   const json = (o, s = 200) => new Response(JSON.stringify(o), {
     status: s, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
@@ -130,13 +203,15 @@ export async function onRequestGet({ request }) {
   const am = /@([A-Za-z0-9._-]{2,40})/.exec(title) || /@([A-Za-z0-9._-]{2,40})/.exec(unent(m['og:url'] || ''));
   let author = am ? '@' + am[1] : '';
 
-  // ── ③ 스레드 임베드 폴백(운영자 260805 2차 "입력하자마자 얘는 내용에 대한 미리 출력이 안됨") ──
+  // ── ③ 스레드 = 항목 구성(260805 3차) + 임베드 폴백(260805 2차 "입력하자마자 얘는 내용에 대한 미리 출력이 안됨") ──
   //    게시물 페이지 og는 엣지(데이터센터) IP에서 로그인월로 비기 일쑤인데 /embed는 제3자 삽입용이라 열려 있다
   //    — thembed.js가 260727부터 프로덕션에서 매일 실증하는 경로·UA를 **문자 계승**(신규 기법 창작 0).
-  //    제목이 og로 이미 잡혔으면 발동 안 함 = 종전 경로 무접촉 · 실패는 전부 fail-soft(미리보기만 생략).
-  if (plat === 'TH' && !title) {
+  //    항목 구성 = SSR(치수까지) 우선 → 임베드(개수·종류만) 폴백 · 실패는 전부 fail-soft(미리보기·구성만 생략).
+  let items = [];
+  if (plat === 'TH') {
     const cm = /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(finalUrl) || /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(raw);
-    if (cm) {
+    items = thSsrItems(html, cm && cm[2]);
+    if (cm && (!title || !items.length)) {   // 제목이 og로 이미 잡혔고 항목도 SSR로 얻었으면 임베드 요청 자체를 안 한다
       try {
         const EMBED_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';   // thembed.js UA 동값
         const r2 = await fetch(`https://www.threads.com/@${cm[1]}/post/${cm[2]}/embed`, {
@@ -149,16 +224,17 @@ export async function onRequestGet({ request }) {
             // 본문 = <span class="BodyTextContainer"><span>텍스트</span></span>(실측 260805 — div 아님 · 첫 매치 = 원 게시물, 뒤 매치 = 인용/슬라이드)
             const bm = /class="BodyTextContainer"\s*>([\s\S]*?)<\/span>\s*<\/span>/i.exec(eh);
             const btxt = bm ? unent(bm[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
-            if (btxt) { title = btxt.slice(0, 200); if (!desc) desc = btxt.slice(0, 300); }
+            if (btxt && !title) { title = btxt.slice(0, 200); if (!desc) desc = btxt.slice(0, 300); }
             if (!thumb) {
               const im = /<img\b[^>]*class="[^"]*\bimg\b[^"]*"[^>]*\bsrc="([^"]+)"/i.exec(eh);
               if (im) { try { const iu2 = new URL(unent(im[1])); if (iu2.protocol === 'https:') thumb = iu2.toString(); } catch { /* 썸네일만 생략 */ } }
             }
             if (!author) author = '@' + cm[1];
+            if (!items.length) items = thEmbedItems(eh);
           }
         }
       } catch { /* fail-soft — 미리보기만 생략(발사 경로 무영향) */ }
     }
   }
-  return json({ plat, title, desc, thumb, author });
+  return json(items.length ? { plat, title, desc, thumb, author, items } : { plat, title, desc, thumb, author });
 }

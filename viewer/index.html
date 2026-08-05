@@ -9483,11 +9483,25 @@ function _dgPeekHtml() {
   // 지어낸 문구 대신 **주소 자신**을 쓴다(추측 표시 금지 · 「무엇인지」는 못 알아냈다는 사실이 그대로 보인다).
   const ttl = p ? p.title : u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80);
   const subLbl = _dgSubs === false ? '영상+받아쓰기 자막' : '영상+자막';   // 자막 유무 = 이미 도는 linkprobe 리드백 재사용(새 조회 0)
+  // 항목 구성 줄(운영자 260805 3차 "링크만 입력해도 몇개가 엮여있는지 + 각각 최대화질") — 스레드류 게시물의
+  //   묶음(영상 n·사진 m)을 받기 전에 보여준다. 부품 = 같은 행 .dg-imeta 둘째 줄(신규 디자인 0).
+  //   치수 = 서버가 SSR에서 실측한 값만(w×h · 로그아웃 응답이 감춘 게시물 = 종류·개수만 = 지어내지 않음).
+  let itemsLine = '';
+  if (p && Array.isArray(p.items) && p.items.length) {
+    const its = p.items;
+    if (its.some(it => it.w && it.h)) {
+      const parts = its.slice(0, 6).map(it => (it.kind === 'video' ? '영상' : '사진') + (it.w && it.h ? ' ' + it.w + '×' + it.h : ''));
+      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc(parts.join(' · ') + (its.length > 6 ? ' 외 ' + (its.length - 6) : '')) + '</div>';
+    } else {
+      const nv = its.filter(it => it.kind === 'video').length, ni = its.length - nv;
+      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc([nv ? '영상 ' + nv : '', ni ? '사진 ' + ni : ''].filter(Boolean).join(' · ')) + '</div>';
+    }
+  }
   return '<div class="geni-sechead"><span class="cref-lbl">받을 내용</span></div>'
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQName(_dg.q))) + '</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQName(_dg.q))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
     + (plat === 'TH' ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p × 60/30fps)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQName(_dg.q)) + '</button>')   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
