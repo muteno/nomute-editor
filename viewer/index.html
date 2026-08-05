@@ -9769,8 +9769,8 @@ function _dgPaintPic() {
   const dl = $('#dgVidDl'); if (!dl) return;
   const u = _dgUrlNorm(), plat = _dgVidPlat(u);
   dl.disabled = !u || _dg.busy;   // 잠금 = '주소 없음'과 '페이지 스캔 중' 둘뿐. ⚠ 구판은 「받는 중」에도 잠갔다 = 운영자 260802
-  dl.classList.toggle('dlbtn', dl.disabled);   // 잠김 = 다운로드 색 정본(골드) 그대로 · 활성 = 강조색1로 교체(운영자 260805 6차)
-  dl.classList.toggle('dl-on', !dl.disabled);
+  dl.classList.remove('dlbtn');   // 이 버튼은 더 이상 **다운로드가 아니다**(보내기) → 다운로드 색 정본(.dlbtn 골드) 계승 해제(운영자 260805 9차)
+  dl.classList.toggle('dl-on', !dl.disabled);   // 활성 = 강조색1(운영자 260805 6차) · 잠김 = .sbtn 기본 크롬
   //   "이미 한번 링크 입력하면 다음거를 입력을 못해 … 재차, 또는 큐잉 시킬수가 없음"의 **직접 원인**. 이미지 스튜디오는
   //   제작 중에도 다음 발사가 열려 있고 잡이 쌓인다(JOBS 배열) — 같은 모델로 통일했으니 잠글 이유가 사라졌다.
   dl.title = !u ? '주소를 붙여넣으면 받을 수 있어'
@@ -9869,7 +9869,11 @@ function _dgPeekHtml() {
     // 이 자리 = 구 [영상+자막] 워드칩 → **전체 다운로드**(운영자 260805 7차 "영상+자막 있는 곳에 전체 다운로드 버튼(모두 다운)" ·
     //   "자막은 앞으로 안 받을게"). 부품 = 이미지 스튜디오 전체저장 정본 그대로(.sbtn.cref-dlall.dlbtn 골드레몬 + DLSEQ_IC + '전체')
     //   = 이 창 잡 카드 [전체]와 **같은 함수**(_dgAllBtnHtml) · 새 부품·새 색 0. 미리보기 항목이 없으면 안 그린다(빈 어포던스 0).
-    + ((p && Array.isArray(p.items) && p.items.some(it => it && it.u)) ? _dgAllBtnHtml('pkall', '', '이 게시물 전체 다운로드') : '')
+    // 받기는 **전부 이 판에서**(운영자 260805 9차) — 항목 묶음이 있으면 [전체], 없으면(유튜브 등) 화질 칩 **바로 옆** ⬇.
+    //   부품 = 전 앱 다운로드 표준(.sbtn.dlbtn 픽토온리) · 화질 고르고 그 자리에서 받는다(운영자 "화질 선택과 다운로드가 바로 아래").
+    + ((p && Array.isArray(p.items) && p.items.some(it => it && it.u))
+        ? _dgAllBtnHtml('pkall', '', '이 게시물 전체 다운로드')
+        : _dgDlBtnHtml('pkdl', 0, 'dg-pkdl'))
     + '</div>' + mediaGrid;   // 미리보기 액자 = 행 **바로 아래**(스캔 결과에서도 헤드 → 그리드 순서 = 같은 배치 문법)
 }
 async function _dgProbeSubs() {   // 자막 유무 사전판별 = api/linkprobe(정본 = 요약창 probeAskLink) · 화면 표시 전용(실제 판정은 러너)
@@ -9970,7 +9974,12 @@ function restoreDlGrab() {
   }, n);
 }
 // 링크 행 다운로드 픽토 = nm-svg 정본 주입(인라인 SVG 복제 0 · .pin-eye 주입 관례) + 발사 배선
-$('#dgVidDl').innerHTML = DOWNLOAD_SVG;
+// 링크 행 버튼 = **보내기**(운영자 260805 9차 "픽토그램 다운로드 말고 메세지 전송 느낌 · 다운로드는 저기서(우측 결과) 다 하는 걸로").
+//   픽토 = 정본 ARROW_R_SVG(→) — 「주소를 우측 결과 판으로 보낸다」를 그대로 그린다(새 아이콘 창작 0 · nm-svg SSOT 계승).
+//   실제 받기는 전부 우측: 유튜브 = 화질 칩 옆 ⬇ · 사진·영상 묶음 = 액자별 ⬇ + [전체].
+$('#dgVidDl').innerHTML = ARROW_R_SVG;
+$('#dgVidDl').setAttribute('aria-label', '보내기 — 우측 결과에서 받기');
+$('#dgVidDl').title = '보내기 — 우측 「받을 내용」에서 받는다';
 $('#dgVidDl').addEventListener('click', _dgFire);   // 영상 게시물 = 영상+자막 · 그 외 = 페이지 자료 수집(갈래는 _dgFire가 판단)
 $('#dgUrl').addEventListener('input', () => { _dgPaintPic(); if (_dgProbeTm) clearTimeout(_dgProbeTm); _dgProbeTm = setTimeout(() => { _dgProbeSubs(); _dgPeek(); }, 600); });   // 600ms 디바운스 = 타이핑 중 과호출 차단(probeAskLink 동값 계승)
 $('#dgUrl').addEventListener('keydown', e => { if (e.key === 'Enter') _dgFire(); });   // Enter = 다운로드 버튼과 동일 갈래
@@ -9978,7 +9987,8 @@ $('#dgBody').addEventListener('click', e => {   // 위임 1핸들러(§🎨 아�
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, i = +(el.dataset.i || -1);
   const ji = +(el.dataset.j || -1);
-  if (act === 'pkget') { e.stopPropagation(); _dgPeekGet(i); }   // 받을 내용 액자 개별 ⬇(운영자 260805 7차)
+  if (act === 'pkdl') { e.stopPropagation(); _dgFire(); }   // 화질 칩 옆 ⬇ = 그 자리에서 받기(유튜브 등 단건 · 운영자 260805 9차)
+  else if (act === 'pkget') { e.stopPropagation(); _dgPeekGet(i); }   // 받을 내용 액자 개별 ⬇(운영자 260805 7차)
   else if (act === 'pkall') { e.stopPropagation(); _dgPeekGetAll(el); }   // 같은 행 [전체] = 그 게시물 미디어 전량 순차 저장
   else if (act === 'dl') { e.stopPropagation(); _dgDl(i); }
   else if (act === 'ytreq') { e.stopPropagation(); _dgYtReq(i); }
