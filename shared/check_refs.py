@@ -3962,7 +3962,7 @@ def check_brk_misfire_chain():
         bad.append('트리아지 제외 결손 — build-viewer.mjs 가 brkno 행을 최신행 승리에서 안 뺀다(확인✓ 소실→긴급 재토스트)')
     # ⚠️ 실행줄만 인정 — 평문 substring 이면 `# python3 scraper/brk_misfire.py` 처럼 **주석 처리해도 통과**한다
     #    (check_refs 자신이 1585행에서 "평문 needle = self-match 함정"이라 명시한 패턴).
-    if not re.search(r'^[ \t]*(?!#)[^\n]*python3 scraper/brk_misfire\.py', yt, re.M):
+    if not _has_exec_line(yt, 'python3 scraper/brk_misfire.py'):
         bad.append('워크플로 소비 스텝 결손 — .github/workflows/rate.yml 실행줄')
     if 'git add -A messages' not in yt or 'git add scraper/brk_misfire.json' not in yt:
         bad.append('워크플로 커밋 결손 — messages/·원장이 커밋 안 되면 알림이 배포에 안 실린다')
@@ -3979,6 +3979,77 @@ def check_brk_misfire_chain():
             print('   ·', b)
         return 1
     print('✅ 긴급 오발 신고 체인 게이트 — 뷰어 신고·예약키·워크플로 스텝·소비기·알림 5층 생존(rate.yml inputs %d/10).' % n_in)
+    return 0
+
+
+def _has_exec_line(text, needle):
+    """`needle` 이 **주석이 아닌 실행줄**에 있는가. 평문 substring 은 `# python3 x.py` 처럼 주석 처리해도
+    통과한다(check_refs 자신이 명시한 self-match 함정).
+    ⚠️ `^[ \\t]*(?!#)[^\\n]*needle` 정규식도 **못 막는다** — `[ \\t]*` 가 들여쓰기를 한 칸 덜 먹고 백트래킹하면
+       `(?!#)` 가 공백에서 통과하고 `[^\\n]*` 가 `# ` 를 삼켜 그대로 매치된다(260805 킬테스트 K1 실측 —
+       기존 brk_misfire·srcimg 게이트가 전부 이 구멍을 갖고 있었다). 줄 단위 판정만이 확실하다."""
+    for ln in text.split('\n'):
+        st = ln.strip()
+        if st and not st.startswith('#') and needle in st.split('#')[0]:
+            return True
+    return False
+
+
+def check_thumb_vote_chain():
+    """AI 썸네일 화풍 투표 폐루프 게이트(하드 · 운영자 260805 "그게 남게끔 해서 나중에 한번 보자" → "ㄱㄱ").
+
+    체인 = 뷰어 슬롯 👍/👎 → /api/rate(action='thumb' · reason 예약키 '<up|down|clear>:<sid>') → rate.yml 스텝
+           → rate_record.py 분기(별도 원장) → thumb_vote_report.py → msg.py → 뷰어 알림메시지.
+    ⚠️ 한 층만 빠져도 **투표가 조용히 죽는다** — 그것도 두 가지 서로 다른 방식으로:
+      ⓐ 적재는 되는데 커밋이 안 됨(= 다음 체크아웃에서 증발) — 260805 첫 판이 실제로 이 상태였다.
+      ⓑ 쌓이는데 아무도 안 읽음(= 죽은 원장) — brk_misfire 가 정확히 그 사고를 막으려고 생긴 축이다.
+    화면은 둘 다 멀쩡해 보인다(버튼이 눌리고 초록이 켜진다) → 정적 층별 생존 강제가 유일한 검출기.
+
+    ⚠️ rate.yml inputs 는 GitHub 상한 10개 = 신규 입력 추가 금지(11번째 = 디스패치 400 = 평점 레일 전체
+       사망) → 그래서 전용 필드 없이 action/reason 예약키로 태운다. 그 계약도 여기서 함께 지킨다."""
+    v = os.path.join(ROOT, 'viewer', 'index.html')
+    rr = os.path.join(ROOT, '.github', 'scripts', 'rate_record.py')
+    rp = os.path.join(ROOT, 'scraper', 'thumb_vote_report.py')
+    y = os.path.join(ROOT, '.github', 'workflows', 'rate.yml')
+    bad = []
+    try:
+        vt = open(v, encoding='utf-8').read()
+        rt = open(rr, encoding='utf-8').read()
+        pt = open(rp, encoding='utf-8').read()
+        yt = open(y, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 썸네일 투표 체인 게이트 — 파일 열기 실패(fail-closed): %s' % e)
+        return 1
+    # ① 뷰어 송신 — 버튼·상태·전송 3점. 버튼만 있고 전송이 없으면 눌러도 아무 데도 안 간다(초록만 켜진다).
+    if 'thVoteWire(' not in vt or 'function thVoteSend' not in vt:
+        bad.append('뷰어 투표 배선 결손 — viewer/index.html thVoteWire()/thVoteSend()')
+    if "action: 'thumb'" not in vt:
+        bad.append("뷰어 송신 예약키 결손 — postRate action:'thumb'(없으면 기사 평점으로 잘못 적재)")
+    if "class=\"sbtn fbup\"" not in vt or "class=\"sbtn fbdown\"" not in vt:
+        bad.append('투표 버튼 결손 — 슬롯 액션행 .fbup/.fbdown(카드뉴스 투표 정본 계승분)')
+    # ② 러너 분기 — 여기가 없으면 썸네일 표가 기사 취향 원장(ratings.jsonl)에 섞여 자동픽 학습을 오염시킨다.
+    if 'THUMB_LEDGER' not in rt or 'thumb_votes.jsonl' not in rt:
+        bad.append('러너 분기 결손 — rate_record.py THUMB_LEDGER(썸네일 표가 기사 취향 원장에 섞인다)')
+    if 'up|down|clear' not in rt:
+        bad.append('러너 예약키 파싱 결손 — reason 형식 검증(형식불량이 그대로 적재된다)')
+    # ③ 소비기 — 쌓이기만 하고 아무도 안 읽는 죽은 원장 차단(brk_misfire 와 같은 축).
+    if 'MSG_ID_BASE' not in pt or 'MSG_PY' not in pt:
+        bad.append('소비기 알림 경로 결손 — thumb_vote_report.py msg.py 호출')
+    if 'fresh = [v for v in votes if' not in pt or '"seen": sorted(seen)' not in pt:
+        bad.append('라운드 소비 결손 — 누적형이면 같은 결론이 매 라운드 재발화(스팸) + 최근 경향이 묻힌다')
+    # ④ 워크플로 — 실행줄만 인정(평문 substring 이면 주석 처리해도 통과 = check_refs 자신이 명시한 함정).
+    if not _has_exec_line(yt, 'python3 scraper/thumb_vote_report.py'):
+        bad.append('워크플로 소비 스텝 결손 — rate.yml 실행줄(투표가 쌓이기만 하고 리포트가 안 뜬다)')
+    # ⑤ 커밋 — 260805 실사고 축. 적재는 되는데 add 가 없어 다음 체크아웃에서 조용히 증발한다.
+    for path, why in (('scraper/thumb_votes.jsonl', '투표 원장'), ('scraper/thumb_vote_report.json', '처리 원장')):
+        if not _has_exec_line(yt, 'git add ' + path):
+            bad.append('워크플로 커밋 결손 — %s(%s)가 커밋 안 되면 다음 체크아웃에서 증발' % (path, why))
+    if bad:
+        print('❌ 썸네일 투표 체인 게이트 — 층 결손 %d건(투표가 조용히 죽는다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        return 1
+    print('✅ 썸네일 투표 체인 게이트 — 뷰어 송신·러너 분기·소비기·워크플로 스텝·원장 커밋 5층 생존.')
     return 0
 
 
@@ -5233,6 +5304,8 @@ def main():
     except Exception as e:
         print('⚠️ 긴급 오발 신고 체인 게이트 스킵:', e)
     try:
+        if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
+            rc = 1
         if check_ask_srcimg_chain() != 0:   # 출처 글 본문 이미지 수확(운영자 260804 — 본문이 그림뿐인 커뮤니티 글이 '읽을 글 0'으로 ANALYSIS_FAILED 되던 축 봉합 · 층 빠지면 무증상 재발)
             rc = 1
     except Exception as e:

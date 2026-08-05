@@ -83,6 +83,8 @@ jobs:
           #    적재한 별점·픽이 러너와 함께 증발한다(부속 기능이 본체를 인질로 잡는 구조 · 평의회2 260803 지적).
           #    scrape.yml fire_watch·news-analyze messages add 와 같은 관용구.
           python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 실패(스킵) — 평점 기록은 계속"
+          # 썸네일 투표 리포트도 같은 fail-open 관용구 — 부속 기능이 본체(별점 적재)를 인질로 잡지 않는다.
+          python3 scraper/thumb_vote_report.py || echo "::warning::thumb_vote_report 실패(스킵) — 평점 기록은 계속"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scraper/ratings.jsonl
@@ -91,6 +93,7 @@ jobs:
           git add scraper/thumb_votes.jsonl 2>/dev/null || true
           git add -A messages 2>/dev/null || true
           git add scraper/brk_misfire.json 2>/dev/null || true
+          git add scraper/thumb_vote_report.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
           # 제목은 셸 주입 위험 → 커밋 메시지엔 안전한 값(점수·픽)만.
           PFX=""; [ "${PAGES_COALESCE:-1}" != "0" ] && PFX="[CF-Pages-Skip] "   # CF 빌드만 스킵(코얼레싱 · 정본 = git_land.sh 헤더 · Q1331 — GitHub 발화 무손상 토큰)
