@@ -233,6 +233,19 @@ for k in ("x", "insta", "threads", "tiktok"):   # 지역 도장 = 러너 수집�
 #   miss와 why의 주체가 어긋나 있었다(러너 429/403 기록이 폰 결과 위에 얹혀 엉뚱한 계정을 지목). 같이 실어
 #   보내면 sns_trends main()이 PHONE_COVER로 갈아 끼운다. set = JSON 불가라 정렬 리스트로.
 out["_cover"] = {"ok": {k: sorted(v) for k, v in st.SUB_OK.items()}, "why": st.SUB_FAIL}
+# 착지 원장 동봉(운영자 260806 "매번 고치는데 왜 재발하냐" · 8인 평의회) — 직전 회차가 **어디서 막혔는지**.
+#   ⚠ 신설 사유 = 폰의 실패 서사가 전부 `~/phone_subs.log`(폰 로컬)에 갇혀 레포엔 **파일 나이 1비트**만
+#   도착했다(평의회6 판정 BLIND 92) → watchdog 이 5개 원인{폰 죽음·수집 실패·git 착지·인증 만료·회선}을
+#   구분 못 해 매번 "termux/맥 크론 확인해"만 단정했고, 운영자는 크론이 멀쩡한 걸 확인한 뒤 **남은 4축을
+#   조사할 증거가 아무 데도 없는 상태**로 원점 복귀했다 = 260727·260806 재발의 구조적 뿌리.
+#   ▷ 원장이 git 밖(`$HOME`)이라 **착지가 막혀도 쓰인다** — 이번 회차에 못 실리면 복구된 다음 회차에
+#     「직전에 이래서 막혔다」가 실린다(= "git 으로 git 실패를 보고한다"는 모순의 유일한 해 · 1주기 지연 감수).
+try:
+    _ld = open(os.path.expanduser("~/.nomute_phone_land"), encoding="utf-8").read().strip().split("|")
+    if len(_ld) >= 2 and _ld[1]:
+        out["_cover"]["landing"] = {"at": _ld[0], "state": _ld[1], "why": (_ld[2] if len(_ld) > 2 else "")}
+except Exception:  # noqa: BLE001 — 원장 부재(최초 실행)·파손 = 종전 동작 그대로(fail-open)
+    pass
 out["updated"] = st.datetime.now(st.KST).isoformat()   # KST(§📐 — 소비측 신선도 판정 기준)
 json.dump(out, open(P, "w", encoding="utf-8", errors="replace"), ensure_ascii=False, indent=1)
 print(f"phone-subs 수집: x {len(out['x'])}건 · insta {len(out['insta'])}건 · threads {len(out['threads'])}건 · tiktok {len(out['tiktok'])}건 · reddit {len(out['reddit'])}건 · 재난 {len(out['disaster'])}건")

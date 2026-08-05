@@ -139,6 +139,12 @@ def check_sns():
     return None
 
 
+# 착지 상태 한글 사전(운영자 260806) — 값 원천 = scripts/phone_subs.sh `_land` 호출 인자(창작 0 · 새 상태 = 양쪽 동시 추가).
+#   각 상태가 곧 **어디를 봐야 하는지**다: 수집 실패 = 쿠키·429 축 / 착지 3종 = git 축 / 네트워크 = 회선·토큰 축.
+_LAND_KO = {"collect-fail": "수집기 실패", "add-fail": "git add 실패", "commit-fail": "git commit 실패",
+            "push-fail": "push 실패", "fetch-fail": "원격 접속 실패"}
+
+
 def check_phone():
     """④-b 폰 하트비트 정체 — sns_subs_phone.json(threads/insta/reddit/재난 = termux/맥 홈IP 크론 유일 공급원)
     나이로 폰 죽음 감지(평의회 260723 #5c). B1 판례: 폰 크론 2일 정지 시 러너 sns_trends.updated는 신선 유지라
@@ -151,8 +157,21 @@ def check_phone():
             #   끊긴 것처럼 읽혔다. 실측(폰 17:35 정지 · 14h40m 경과 시점)에서 재난문자는 08:05까지 계속 들어왔다 =
             #   sns_trends 의 `disaster_km()`(Korea Monitor SSR) 폴백이 폰 없이도 슬롯을 살린다(2453행 · 운영자 260802).
             #   실제로 굶는 건 폰 가정 IP 전용 축(스레드·인스타·틱톡·X·레딧)뿐 — 같은 회차 진단의 「구독정체」와 일치.
+            # 착지 원장 = 폰이 실어보낸 **직전 회차가 막힌 자리**(scripts/phone_subs.sh `_land` · 운영자 260806 8인 평의회).
+            #   ⚠ 신설 사유 = 구판은 원인 5축{폰 죽음·수집 실패·git 착지·인증 만료·회선 사망}을 **파일 나이 1비트**로
+            #   뭉갠 채 그중 1축(크론)만 단정 지목했다 → 260806 실사고에서 운영자가 지목받은 크론을 열어보니 ✅(pid
+            #   28097 생존)·손수집도 ✅였고, **남은 4축을 조사할 증거가 레포 어디에도 없어** 원점 복귀했다(31시간 ·
+            #   62회 헛발 · 평의회6 판정 BLIND 92). 실패 서사가 폰 로컬 `~/phone_subs.log`에 갇힌 게 재발의 뿌리.
+            #   ▷ 원장은 git 밖이라 착지가 막혀도 쓰이고, 복구된 다음 회차에 실려 온다 = 1주기 지연 대신 원인 확보.
+            _ld = (d.get("_cover") or {}).get("landing") or {}
+            _st = _ld.get("state") or ""
+            _dx = ""
+            if _st and _st != "ok":
+                _at = (_ld.get("at") or "")[5:16].replace("T", " ")
+                _dx = (f" · ⓘ 직전 착지 = **{_LAND_KO.get(_st, _st)}**"
+                       f"({_ld.get('why') or ''}{' · ' + _at if _at else ''})")
             return (f"폰 수집 정체 {_dur_ko(age) if age is not None else '나이 불명'}"
-                    f"(임계 {_dur_ko(PHONE_MIN)}) — termux/맥 phone_subs 크론 확인"
+                    f"(임계 {_dur_ko(PHONE_MIN)}){_dx} — termux/맥 phone_subs 크론 확인"
                     f"(스레드·인스타·틱톡·X·레딧 = 폰 전용 공급원 · 재난은 KM 폴백 생존)")
     except FileNotFoundError:
         return None   # 파일 없음 = 폰 미도입 초기(경보 아님 · check_sns 관용구)
