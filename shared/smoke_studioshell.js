@@ -411,11 +411,14 @@ async function runOnce(pg, gap, clone) {
   core('C1 전체창 = 스튜디오 2셸 10탭 전부(tool-full · 창 폭 = 뷰포트 폭)', notFull.length === 0,
     notFull.length ? '이탈 ' + notFull.join(' ') : E.length + '탭 전부 전체창');
 
-  // ── C2 도크 유리 = 한 종류(도크 부품이 있는 탭만 · AI 생성은 부모 판이라 도크 없음 = 대상 아님) ──
+  // ── C2 도크 유리 = **고정 정본 1벌**(도크 부품이 있는 탭만 · AI 생성은 부모 판이라 도크 없음 = 대상 아님) ──
+  //   운영자 260804 "항상 고정된 정본을 사용하도록"(발사 FIRE_CANON 동문 확장) — 구판 「전부 1종」은 서로 같기만 하면
+  //   도크가 통째로 표류해도 초록이던 사각. 값 = 9탭 실측 박제(면 rgb 18 · blur none · 하단선 1px accent .35).
+  const DOCK_CANON = 'rgb(18, 18, 18) / none / 1px rgba(0, 238, 210, 0.35)';
   const docks = E.filter(([k, v]) => v.dock && !DOCK_EXEMPT.has(k));
-  const dset = [...new Set(docks.map(([, v]) => v.dock))];
-  core('C2 도크 유리(bg·blur·하단선) = 도크 보유 탭 전부 1종', dset.length <= 1,
-    dset.length <= 1 ? docks.length + '탭 = ' + (dset[0] || 'N/A') : JSON.stringify(docks.map(([k, v]) => k + ' = ' + v.dock)));
+  const dkBad = docks.filter(([, v]) => v.dock !== DOCK_CANON);
+  core('C2 도크 유리 = 고정 정본(면 rgb18 · blur none · 하단선 1px accent.35 · 전 탭 공통)', dkBad.length === 0,
+    dkBad.length === 0 ? docks.length + '탭 = 정본 일치' : '이탈 ' + JSON.stringify(dkBad.map(([k, v]) => k + ' = ' + v.dock)) + ' vs 정본 ' + DOCK_CANON);
 
   // ── C3 레일 칩 광학 잉크 = 2셸 교차 한 중앙축(운영자 260802 6차 중앙정렬 개정 — 전 칩 잉크 중심 = 캡슐 중심 · smoke_parity C15의 크로스-셸 확장) ──
   const inks = E.filter(([, v]) => v.inkC !== null);
