@@ -4938,6 +4938,152 @@ def check_contract_anchors():
           % (anchors, len(defined)))
     return 0
 
+# ── 게이트 실효성 원장(운영자 260805 "돌리고 머지 ㄱㄱ" · check_contract_anchors의 짝) ──────────
+# 계약 = 게이트가 rc≠0을 낸 순간은 반드시 원장에 1줄 적재된다(계측 없는 게이트 금지 = _gate_hits_install이 자동 보장).
+# ⚠ 여기에 `CONTRACT:` 앵커를 안 다는 이유 = check_refs.py 자신은 앵커 스코프 밖(자기참조 배제)이라 달아도 안 세어진다 = 죽은 장식.
+_GATE_HITS_PATH = 'shared/gate_hits.jsonl'
+_GATE_HITS_CAP = 2000        # 롤링 상한(초과분 = 오래된 줄부터 버림 · fail_ledger 400줄 관례 계승·게이트는 표본이 성기다)
+_GATE_HITS_MIN_DAYS = 90     # 관측 기간이 이보다 짧으면 「미발화」를 보고하지 않는다(원장 신설 직후 전건 미발화 = 잡음)
+
+
+def _gate_hits_on():
+    return os.environ.get('GATE_HITS', '').strip() != '0'   # 킬스위치 = GATE_HITS=0
+
+
+def _gate_hits_append(rec):
+    """원장 1줄 적재(전 경로 fail-soft — 계측이 게이트를 절대 못 죽인다)."""
+    try:
+        p = os.path.join(ROOT, _GATE_HITS_PATH)
+        rows = []
+        if os.path.exists(p):
+            with open(p, encoding='utf-8') as f:
+                rows = [ln for ln in f.read().split('\n') if ln.strip()]
+        if not rows:
+            rows = [json.dumps({'_meta': {
+                'since': datetime.datetime.now().astimezone().isoformat(timespec='seconds'),
+                'note': '기계산출물 — 손편집 금지(생성 = shared/check_refs.py _gate_hits_append)'}},
+                ensure_ascii=False)]
+        rows.append(json.dumps(rec, ensure_ascii=False))
+        if len(rows) > _GATE_HITS_CAP:                      # 롤링 — _meta(첫 줄)는 항상 보존
+            rows = rows[:1] + rows[-(_GATE_HITS_CAP - 1):]
+        with open(p, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(rows) + '\n')
+    except Exception:
+        pass
+
+
+def _gate_hits_read():
+    """원장 → (since datetime|None, {게이트명: 발화횟수}) · 손상 줄은 건너뛴다(fail-soft)."""
+    since, hits = None, {}
+    try:
+        p = os.path.join(ROOT, _GATE_HITS_PATH)
+        if not os.path.exists(p):
+            return None, {}
+        for ln in open(p, encoding='utf-8'):
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                o = json.loads(ln)
+            except Exception:
+                continue
+            if '_meta' in o:
+                try:
+                    since = datetime.datetime.fromisoformat(o['_meta'].get('since', ''))
+                except Exception:
+                    since = None
+            elif o.get('gate'):
+                hits[o['gate']] = hits.get(o['gate'], 0) + 1
+    except Exception:
+        return None, {}
+    return since, hits
+
+
+def _gate_hits_probe(name, fn):
+    """게이트 1개를 계측 래퍼로 감싼다 — rc≠0이면 원장에 1줄."""
+    import functools
+
+    @functools.wraps(fn)
+    def _w(*a, **kw):
+        rc = fn(*a, **kw)
+        try:
+            if rc and _gate_hits_on():
+                _gate_hits_append({'gate': name, 'rc': int(rc),
+                                   'ts': datetime.datetime.now().astimezone().isoformat(timespec='seconds')})
+        except Exception:
+            pass
+        return rc
+    return _w
+
+
+def _gate_hits_install():
+    """전 `check_*` 함수를 계측 래퍼로 치환.
+
+    ⚠ **호출부를 한 줄도 안 고친다**는 게 이 방식의 요점 — 러너의 `if check_x() != 0: rc = 1` 이 85번
+    반복되는 구조라 손으로 감싸면 diff가 85곳이고, 새 게이트가 계측을 빼먹는 게 기본값이 된다
+    (= 「계측 안 붙은 게이트」가 조용히 생기는 축 = 이 원장이 막으려는 것과 같은 병).
+    globals() 치환이라 **새로 추가되는 게이트도 자동으로 계측에 편입**된다.
+    ⚠ 소스 텍스트를 읽는 게이트(`check_gate_docs`·`check_contract_anchors`)는 `def` 선언을 정규식으로
+       보므로 래핑과 무관(functools.wraps로 __name__도 보존)."""
+    g = globals()
+    for n in [k for k in list(g) if k.startswith('check_') and callable(g[k])]:
+        if not getattr(g[n], '_gh_wrapped', False):
+            w = _gate_hits_probe(n, g[n])
+            w._gh_wrapped = True
+            g[n] = w
+
+
+def check_gate_hits():
+    """게이트 실효성 원장(WARN·비차단 · 운영자 260805 "돌리고 머지 ㄱㄱ" · `check_contract_anchors`의 짝).
+
+    ⚠ 신설 사유 = **85개 게이트가 도는데 「어느 게이트가 실제로 무언가를 잡은 적이 있는지」를 아무도 모른다.**
+      260805 하루만 봐도 `check_image_format`은 켜자마자 track q82 2건을, `check_contract_anchors`는 자기
+      설계 오류 2건을 잡았다 — 반면 **한 번도 아무것도 못 잡은 게이트**가 몇 개인지는 미확인이었다.
+      그런 게이트는 ⓐ 진짜 청정한 축이거나 ⓑ **판정이 헐거워 아무것도 안 걸리는 죽은 게이트**인데,
+      계측이 없으면 둘을 구분할 방법이 없다 = 게이트 수가 늘수록 pre-commit만 느려지고 안심은 가짜가 된다
+      (`check_gate_docs` = 문서에 적혔나 · `check_contract_anchors` = 배선됐나 · 이 게이트 = **일을 하나**).
+
+    동작 = 전 게이트를 자동 래핑해 rc≠0 순간을 `shared/gate_hits.jsonl`에 1줄 적재 → 관측 90일이 넘으면
+           그동안 **0회 발화한 게이트 목록**을 커밋 출력에 띄운다(줄이는 근거 = 부채 래칫 "줄이는 건 자유" 동축).
+    ⚠ **WARN·비차단**이 정확한 역할 — 미발화가 곧 결함은 아니다(청정한 축일 수 있다). 하드로 두면
+       레포가 언다(`check_component_lock`·`check_disaster_lm_stale` ② 선례).
+    ⚠ 관측 90일(_GATE_HITS_MIN_DAYS) 미만이면 미발화를 **보고하지 않는다** — 원장 신설 직후엔 전건이 미발화라 그대로 띄우면
+       「85개 전부 죽었다」는 거짓 신호가 된다(정직한 유예).
+    킬스위치 = `GATE_HITS=0` · 전 경로 fail-soft(계측 실패가 게이트를 못 죽인다) ·
+    원장 = **기계산출물 손편집 금지**(값 변경 = 이 코드를 고쳐 다음 실행이 재생성)."""
+    if not _gate_hits_on():
+        print('⏸️ 게이트 실효성 원장 — 킬스위치(GATE_HITS=0)로 비활성.')
+        return 0
+    gsrc = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
+    gates = set(re.findall(r'^def (check_[a-z_0-9]+)\(', gsrc, re.M))
+    since, hits = _gate_hits_read()
+    fired = sum(hits.values())
+    if since is None:
+        # ⚠ **여기서 원장을 실제로 만든다** — 안 만들면 `since`가 영영 안 박혀 관측이 시작조차 안 된다
+        #    (발화가 있어야만 파일이 생기는 구판 = 매 실행 "관측 시작"만 찍고 90일 카운트가 0에서 멈춘다 · 260805 실측 봉합).
+        _gate_hits_append({'gate': '_bootstrap', 'rc': 0,
+                           'ts': datetime.datetime.now().astimezone().isoformat(timespec='seconds')})
+        print('⏳ 게이트 실효성 원장 — 관측 시작(원장 신설 · 발화 0건) · %d일 후부터 미발화 게이트를 보고한다.'
+              % _GATE_HITS_MIN_DAYS)
+        return 0
+    days = (datetime.datetime.now().astimezone() - since).days
+    if days < _GATE_HITS_MIN_DAYS:
+        print('⏳ 게이트 실효성 원장 — 관측 %d일차 · 발화 %d건(게이트 %d종) · %d일차부터 미발화 목록 보고.'
+              % (days, fired, len(hits), _GATE_HITS_MIN_DAYS))
+        return 0
+    idle = sorted(g for g in gates if g not in hits)
+    if idle:
+        print('⚠️ 게이트 실효성 원장(WARN·비차단) — 관측 %d일간 **0회 발화** 게이트 %d개/%d:'
+              % (days, len(idle), len(gates)))
+        for g in idle:
+            print('   ·', g)
+        print('   → 각각 ⓐ 진짜 청정한 축인가 ⓑ 판정이 헐거워 아무것도 안 걸리는가 를 킬테스트로 재검증하라.')
+        print('     ⓑ면 판정을 조이거나 접는다 = pre-commit 시간의 근거 있는 감량(부채 래칫 "줄이는 건 자유" 동축).')
+        return 0
+    print('✅ 게이트 실효성 원장 — 관측 %d일간 %d게이트 전부 최소 1회 발화(발화 %d건 · 죽은 게이트 0).'
+          % (days, len(gates), fired))
+    return 0
+
 def check_algo_ledger():
     """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
     집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
@@ -4987,6 +5133,7 @@ def check_algo_ledger():
 
 
 def main():
+    _gate_hits_install()   # 전 check_* 자동 계측(호출부 0줄 수정 · 새 게이트도 자동 편입 — check_gate_hits 참조)
     fails = check_paths() + check_versions() + check_inject_dividers() + check_inject_markers() + check_conflict_markers() + check_workflow_yaml() + check_git_idiom()
     rc = 0
     if fails:
@@ -5066,6 +5213,7 @@ def main():
     try:
         if check_thumb_prompt_sanity() != 0:   # 뉴스 픽 AI 썸네일 = 발사 프롬프트 자기모순 0(운영자 260805 — 「지시 vs 금지」가 한 줄에 공존해 그림이 평균으로 도망가던 축 · 정본 함수 재판정)
             rc = 1
+        check_gate_hits()   # 게이트 실효성 원장(WARN·비차단 · rc 미반영 = component_lock 관례) — 「어느 게이트가 실제로 일을 하나」 축(운영자 260805 "돌리고 머지 ㄱㄱ" · 짝 check_gate_docs=문서 등재 · check_contract_anchors=배선 · 이건 발화)
         if check_contract_anchors() != 0:   # 계약 앵커 = 「강제 없는 선언」 차단(운영자 260805 — gen_image가 260710에 "전 JPEG 저장 경로 통일"을 주석으로 선언해 놓고 5파일이 6주간 안 따라온 실사고의 구조적 봉합 · 짝 check_gate_docs는 문서 등재만 보고 「실제로 도는가」는 축 자체가 없었다)
             rc = 1
         if check_image_format() != 0:   # 이미지 산출 포맷 = 투명(PNG)/그 외(JPG q90) 2갈래(운영자 260805 "아이디어 ㄱ" — thumb_gen이 키를 .png로 굽는데 실물은 JPEG였던 거짓 확장자 6주 무증상 + 품질 4갈래 드리프트를 사람 눈이 유일한 검출기로 두던 축의 기계화 · 첫 실행이 track_analyze q82 2건을 즉시 검출)
