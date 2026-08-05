@@ -9563,7 +9563,7 @@ function _dgVidPlat(u) {
 const DG_QUALS = [['2160-60', '4K 60F'], ['2160-30', '4K 30F'], ['1440-60', '2K 60F'],
                   ['1440-30', '2K 30F'], ['1080-60', 'K 60F'], ['1080-30', 'K 30F']];   // 라벨 = 최단 통칭(운영자 260805 11차 "말을 더 줄임 4K 30F 이런식으로") · 값(2160-60…)은 4면 배선 문자라 불변
 const DG_Q_KEY = 'dg_q_v1';
-function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return DG_QUALS.some(x => x[0] === v) ? v : DG_QUALS[0][0]; } catch { return DG_QUALS[0][0]; } }   // 기본 = 최고 티어(2160p 60fps)
+function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return (v === 'best' || DG_QUALS.some(x => x[0] === v)) ? v : DG_QUALS[0][0]; } catch { return DG_QUALS[0][0]; } }   // 'best' = 사다리 미상 2택에서 고른 값(운영자 260805 14차) — 화이트리스트 밖 값은 종전대로 최고 티어로 폴백   // 기본 = 최고 티어(2160p 60fps)
 function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1] : DG_QUALS[0][1]; }
 // 실측 화질 라벨(운영자 260805 "가능하지도 않은데 4k 60fps가 나오거든? 30프레임이 한계로 알고있는데") —
 //   선택값(_dg.q)은 **상한**이라 영상이 그보다 낮으면 그대로 뿌리는 표기가 거짓이 된다(4K 60fps 요청 · 실물 30fps).
@@ -9579,7 +9579,10 @@ function _dgTierName(s) { return s === 2160 ? '4K' : s === 1440 ? '2K' : s === 1
 //         ⓒ 라벨의 fps = **그 티어의 실제 최대 fps**(4K 24fps처럼 진짜 값) · 값(2160-60…)은 4면 배선 문자라 불변.
 function _dgQOpts() {
   const fm = (_dg.peek && Array.isArray(_dg.peek.fmts)) ? _dg.peek.fmts : null;
-  if (!fm || !fm.length) return DG_QUALS;
+  // 사다리를 못 얻었으면(유튜브 봇검문 등) **정적 6값을 띄우지 않는다** — 그 영상에 없는 화질이 섞인다.
+  //   대신 어느 영상에서나 참인 2택만 낸다(운영자 260805 14차 "조회가 안될때는 그냥 '최고 화질'로 고정 · 저화질 하나 넣어주고").
+  //   best = 러너가 그 영상의 최대를 집는다 · 1080-30 = 짧은 변 ≤1080·30fps 상한 = 우리가 표현 가능한 가장 낮은 단(값은 4면 배선 문자 그대로).
+  if (!fm || !fm.length) return [['best', '최고 화질'], ['1080-30', '저화질']];
   const out = [];
   [2160, 1440, 1080].forEach(T => {
     const at = fm.filter(x => +x[0] === T);
@@ -9871,10 +9874,6 @@ function _dgPeekHtml() {
   // 항목을 알아냈는데 **영상이 하나도 없으면** 화질 축이 성립하지 않는다(운영자 260805 6차 — 사진 2장 트윗에
   //   「영상만 · 최대 4K 60fps」가 뜨던 자리). 그 경우 화질 칩·「최대 …」를 통째로 빼고 「사진만」이라고 말한다.
   const noVid = !!(p && Array.isArray(p.items) && p.items.length && !p.items.some(it => it && it.kind === 'video'));
-  // 화질 사다리를 **못 알아낸 경우**(유튜브 봇검문 등)엔 선택자를 아예 안 그린다 — 정적 6값을 띄우면
-  //   그 영상에 없는 화질이 목록에 뜬다(운영자 260805 13차 "실제로 다운 가능한것만 있어야함").
-  //   그때 받기는 **최고 화질 고정**(러너가 그 영상의 최대를 집는다) = 능력 손실 0 · 거짓 선택지 0.
-  const noFmts = !(p && Array.isArray(p.fmts) && p.fmts.length);
   let itemsLine = '';
   // 미리보기를 못 받은 스레드 글 = **조용히 빈 채로 두지 않는다**(실측 260805 = 표본 11건 중 1건 · 그 글은 og·임베드
   //   양쪽이 로그인월이라 우리가 뚫을 수단이 없다). 구판은 제목 자리에 주소만 남아 「왜 안 뜨지」가 됐다 —
@@ -9928,10 +9927,10 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + ((plat === 'TH' || noFmts) ? '최고 화질' : '최대 ' + esc(_dgQEff()[1]))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : (_dgQEff()[0] === 'best' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1])))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
     // 화질 선택자 = **이 행 다운로드 버튼 바로 왼쪽**(운영자 260805 12차 캡처 지목 — 링크 행은 주소 받는 자리라 무관).
     //   부품·동작·라벨 = 종전 워드칩 그대로 · 표시 조건 = 영상 축이 있을 때만(스레드 고정·사진만 글은 미노출).
-    + ((plat === 'TH' || noVid || noFmts) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')
+    + ((plat === 'TH' || noVid) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')
     // 이 자리 = 구 [영상+자막] 워드칩 → **전체 다운로드**(운영자 260805 7차 "영상+자막 있는 곳에 전체 다운로드 버튼(모두 다운)" ·
     //   "자막은 앞으로 안 받을게"). 부품 = 이미지 스튜디오 전체저장 정본 그대로(.sbtn.cref-dlall.dlbtn 골드레몬 + DLSEQ_IC + '전체')
     //   = 이 창 잡 카드 [전체]와 **같은 함수**(_dgAllBtnHtml) · 새 부품·새 색 0. 미리보기 항목이 없으면 안 그린다(빈 어포던스 0).
@@ -9964,7 +9963,7 @@ function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **�
   const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
   if (_dg.jobs.some(v => v.st === 'run' && v.url === u)) { _dg.err = '이미 받는 중인 주소야'; _dgRenderBody(); return; }   // 같은 주소 이중 발사만 막는다(다른 주소는 얼마든지)
   _dg.err = ''; _dg.lastUrl = u; _dg.resOpen = true;
-  const v = { url: u, plat, mode: mode || 'both', q: (plat === 'TH' || !((_dg.peek || {}).fmts || []).length) ? 'best' : _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다) · 스레드 = 항상 최고 화질(운영자 260805 2차 "화질을 정하기보다는 가장 좋은 화질" — 스레드는 화질 사다리 자체가 없어 상한 지정이 무의미 · 러너 'best' = 종전 최고화질 경로)
+  const v = { url: u, plat, mode: mode || 'both', q: plat === 'TH' ? 'best' : _dgQEff()[0], n: ++_dgJobSeq, st: 'idle' };   // q = **칩에 뜬 그 값**(목록 밖 구 선택은 _dgQEff가 내려앉힌다 · 260805 14차)   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다) · 스레드 = 항상 최고 화질(운영자 260805 2차 "화질을 정하기보다는 가장 좋은 화질" — 스레드는 화질 사다리 자체가 없어 상한 지정이 무의미 · 러너 'best' = 종전 최고화질 경로)
   _dg.jobs.unshift(v);   // 최신이 위 = 이미지 스튜디오 잡 보드(#jobs prepend) 계승
   const inp = $('#dgUrl'); if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }   // 발사 = 칸 비움(다음 주소 즉시 입력 · 클립 버튼 상태도 input 이벤트로 동기)
   _dgVidFire(v, v.mode);
