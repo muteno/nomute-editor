@@ -167,28 +167,44 @@ function thEmbedItems(eh) {
 //   반환 = [[height, fps], …] 중복 제거분. 실패·빈 값 = 키 자체를 안 실어 종전 6값 목록 유지(fail-soft).
 const YT_ID_RE = /(?:v=|\/shorts\/|\/live\/|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{11})/;
 async function ytFormats(u) {
-  try {
-    const m = YT_ID_RE.exec(u); if (!m) return [];
-    const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'user-agent': 'com.google.ios.youtube/20.03.02 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X)' },
-      body: JSON.stringify({ context: { client: { clientName: 'IOS', clientVersion: '20.03.02', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.2.1.22C161' } }, videoId: m[1] }),
-    });
-    if (!r.ok) return [];
-    const d = await r.json().catch(() => null);
-    const fs = (d && d.streamingData && d.streamingData.adaptiveFormats) || [];
-    const seen = new Set(), out = [];
-    for (const f of fs) {
-      // ⚠ 축 = **짧은 변**(운영자 260805 6차) — 러너 qual_fmt가 상한을 거는 축이 짧은 변이고(세로=width·가로=height),
-      //   화면 라벨(_dgActualLbl)도 min(w,h)다. 구판은 height만 실어 세로 영상(1080×1920)이 티어 매칭에서 통째로 빠졌다.
-      const h = +f.height || 0, w = +f.width || 0; if (!h && !w) continue;
-      const s = Math.min(w || h, h || w);
-      const fp = Math.round(+f.fps || 0);
-      const k = s + 'x' + fp;
-      if (!seen.has(k)) { seen.add(k); out.push([s, fp]); }
-    }
-    return out.slice(0, 40);
-  } catch { return []; }   // fail-soft — 목록만 종전(정적 6값)으로 남는다
+  const m = YT_ID_RE.exec(u); if (!m) return [];
+  // ⚠ 클라이언트 하나로는 못 미친다(실측 260805) — 같은 IOS 경로가 영상·시점에 따라 LOGIN_REQUIRED("Sign in to
+  //   confirm you're not a bot")로 막힌다. 막히면 **정적 6값으로 떨어져 못 받는 화질이 목록에 뜨는 것**이 문제라
+  //   (운영자 "실제로 다운 가능한것만 있어야함") 경로를 순차로 더 두드린다. 성공하면 그 자리에서 끝 = 평시 1콜.
+  const CLIENTS = [
+    ['com.google.ios.youtube/20.03.02 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X)',
+     { client: { clientName: 'IOS', clientVersion: '20.03.02', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.2.1.22C161' } }],
+    ['com.google.ios.youtubemusic/7.31.2 (iPhone16,2; U; CPU iOS 18_2_1 like Mac OS X)',
+     { client: { clientName: 'IOS_MUSIC', clientVersion: '7.31.2', deviceMake: 'Apple', deviceModel: 'iPhone16,2', osName: 'iPhone', osVersion: '18.2.1.22C161' } }],
+    ['com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12; GB; Quest 3)',
+     { client: { clientName: 'ANDROID_VR', clientVersion: '1.60.19', deviceMake: 'Oculus', deviceModel: 'Quest 3', androidSdkVersion: 32, osName: 'Android', osVersion: '12' } }],
+    ['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+     { client: { clientName: 'WEB_EMBEDDED_PLAYER', clientVersion: '1.20240101.00.00', clientScreen: 'EMBED' }, thirdParty: { embedUrl: 'https://www.youtube.com/' } }],
+  ];
+  for (const [ua, ctx] of CLIENTS) {
+    try {
+      const r = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'user-agent': ua },
+        body: JSON.stringify({ context: ctx, videoId: m[1] }),
+      });
+      if (!r.ok) continue;
+      const d = await r.json().catch(() => null);
+      const fs = (d && d.streamingData && d.streamingData.adaptiveFormats) || [];
+      const seen = new Set(), out = [];
+      for (const f of fs) {
+        // ⚠ 축 = **짧은 변**(운영자 260805 6차) — 러너 qual_fmt가 상한을 거는 축이 짧은 변이고(세로=width·가로=height),
+        //   화면 라벨(_dgActualLbl)도 min(w,h)다. 구판은 height만 실어 세로 영상이 티어 매칭에서 통째로 빠졌다.
+        const h = +f.height || 0, w = +f.width || 0; if (!h && !w) continue;
+        const s2 = Math.min(w || h, h || w);
+        const fp = Math.round(+f.fps || 0);
+        const k = s2 + 'x' + fp;
+        if (!seen.has(k)) { seen.add(k); out.push([s2, fp]); }
+      }
+      if (out.length) return out.slice(0, 40);   // 얻었으면 그 자리에서 끝
+    } catch { /* 다음 경로 */ }
+  }
+  return [];   // 전 경로 실패 = 빈 값 → 뷰어가 **선택자를 숨기고 최고 화질 고정**(못 받는 화질을 제시하지 않는다)
 }
 
 // ── X(트위터) 항목·화질(운영자 260805 6차 "최대화질이 이게 아닌데 이렇게 뜸 · 이미지 2개인데 영상처럼 하나만") ──

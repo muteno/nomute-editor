@@ -9866,6 +9866,10 @@ function _dgPeekHtml() {
   // 항목을 알아냈는데 **영상이 하나도 없으면** 화질 축이 성립하지 않는다(운영자 260805 6차 — 사진 2장 트윗에
   //   「영상만 · 최대 4K 60fps」가 뜨던 자리). 그 경우 화질 칩·「최대 …」를 통째로 빼고 「사진만」이라고 말한다.
   const noVid = !!(p && Array.isArray(p.items) && p.items.length && !p.items.some(it => it && it.kind === 'video'));
+  // 화질 사다리를 **못 알아낸 경우**(유튜브 봇검문 등)엔 선택자를 아예 안 그린다 — 정적 6값을 띄우면
+  //   그 영상에 없는 화질이 목록에 뜬다(운영자 260805 13차 "실제로 다운 가능한것만 있어야함").
+  //   그때 받기는 **최고 화질 고정**(러너가 그 영상의 최대를 집는다) = 능력 손실 0 · 거짓 선택지 0.
+  const noFmts = !(p && Array.isArray(p.fmts) && p.fmts.length);
   let itemsLine = '';
   // 미리보기를 못 받은 스레드 글 = **조용히 빈 채로 두지 않는다**(실측 260805 = 표본 11건 중 1건 · 그 글은 og·임베드
   //   양쪽이 로그인월이라 우리가 뚫을 수단이 없다). 구판은 제목 자리에 주소만 남아 「왜 안 뜨지」가 됐다 —
@@ -9919,10 +9923,10 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1]))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + ((plat === 'TH' || noFmts) ? '최고 화질' : '최대 ' + esc(_dgQEff()[1]))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
     // 화질 선택자 = **이 행 다운로드 버튼 바로 왼쪽**(운영자 260805 12차 캡처 지목 — 링크 행은 주소 받는 자리라 무관).
     //   부품·동작·라벨 = 종전 워드칩 그대로 · 표시 조건 = 영상 축이 있을 때만(스레드 고정·사진만 글은 미노출).
-    + ((plat === 'TH' || noVid) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')
+    + ((plat === 'TH' || noVid || noFmts) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')
     // 이 자리 = 구 [영상+자막] 워드칩 → **전체 다운로드**(운영자 260805 7차 "영상+자막 있는 곳에 전체 다운로드 버튼(모두 다운)" ·
     //   "자막은 앞으로 안 받을게"). 부품 = 이미지 스튜디오 전체저장 정본 그대로(.sbtn.cref-dlall.dlbtn 골드레몬 + DLSEQ_IC + '전체')
     //   = 이 창 잡 카드 [전체]와 **같은 함수**(_dgAllBtnHtml) · 새 부품·새 색 0. 미리보기 항목이 없으면 안 그린다(빈 어포던스 0).
@@ -9955,7 +9959,7 @@ function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **�
   const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
   if (_dg.jobs.some(v => v.st === 'run' && v.url === u)) { _dg.err = '이미 받는 중인 주소야'; _dgRenderBody(); return; }   // 같은 주소 이중 발사만 막는다(다른 주소는 얼마든지)
   _dg.err = ''; _dg.lastUrl = u; _dg.resOpen = true;
-  const v = { url: u, plat, mode: mode || 'both', q: plat === 'TH' ? 'best' : _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다) · 스레드 = 항상 최고 화질(운영자 260805 2차 "화질을 정하기보다는 가장 좋은 화질" — 스레드는 화질 사다리 자체가 없어 상한 지정이 무의미 · 러너 'best' = 종전 최고화질 경로)
+  const v = { url: u, plat, mode: mode || 'both', q: (plat === 'TH' || !((_dg.peek || {}).fmts || []).length) ? 'best' : _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다) · 스레드 = 항상 최고 화질(운영자 260805 2차 "화질을 정하기보다는 가장 좋은 화질" — 스레드는 화질 사다리 자체가 없어 상한 지정이 무의미 · 러너 'best' = 종전 최고화질 경로)
   _dg.jobs.unshift(v);   // 최신이 위 = 이미지 스튜디오 잡 보드(#jobs prepend) 계승
   const inp = $('#dgUrl'); if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }   // 발사 = 칸 비움(다음 주소 즉시 입력 · 클립 버튼 상태도 input 이벤트로 동기)
   _dgVidFire(v, v.mode);
