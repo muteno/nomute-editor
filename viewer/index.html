@@ -2528,6 +2528,11 @@
   /* 상단 기사 제목(요약) = 평범한 제목 — 복사 버튼 없음(#3) */
   #mdbody h1 { position:relative; font-size:var(--fs-h1); font-weight:var(--fw-x); line-height:1.4; letter-spacing:-.4px; margin:6px 0 14px; display:block; width:100%; padding-right:44px; text-wrap:wrap; }   /* T1 제목 = 19(--fs-h1·토큰) · block+full-width+greedy = 제목이 우측 공간 채워 줄바꿈(운영자 260621). padding-right=복사버튼(37px) 우측고정 자리 */
   #mdbody h1 .titlecopy { font-size:inherit; top:0.7em; right:0; margin:0; }   /* 타이틀 복사 = 통일 .copy 디자인. 제목은 박스 아닌 텍스트 → 첫 줄 세로중앙(top 0.7em = ½ line-height·base translateY(-50%) 유지) · font-size:inherit = em이 제목 19px 기준(button 기본폰트 13px 버그 차단) · 운영자 260625 */
+  /* 기사 원래 타이틀(기자가 뽑은 헤드) = 보도·스크랩 줄 아래 · 요약 타이틀 바로 위(운영자 260805 "기사 타이틀이 요약 타이틀 만큼 좋을 때가 많다") —
+     표현 = 바로 위 #mdbody h1 값 100% 사본(활자·복사자리 동일 = "표현 방식 등은 동일") · 아래 여백만 16 = .ovmeta margin-bottom 사본
+     → 개요메타↔기사타이틀↔요약타이틀 세로 등간격(실측 16/16 · h1의 14는 마진상쇄로 위 16에 묻혀 등간격이 안 나온다) */
+  #mdbody .md-srct { position:relative; font-size:var(--fs-h1); font-weight:var(--fw-x); line-height:1.4; letter-spacing:-.4px; margin:6px 0 16px; display:block; width:100%; padding-right:44px; text-wrap:wrap; }   /* raw-ok: 6/44 = 위 #mdbody h1 정본 수치 그대로 복사 · 16 = .ovmeta margin-bottom(2581행) 그대로 복사(레퍼런스 100% 모방 — --sp-1/6·--sp-3/18·--sp-4/24로 갈면 요약 타이틀과 복사자리·간격이 어긋난다 = 「표현 방식 동일」 파괴) */
+  #mdbody .md-srct .titlecopy { font-size:inherit; top:0.7em; right:0; margin:0; }   /* 복사버튼 = 바로 위 #mdbody h1 .titlecopy 값 사본(첫 줄 세로중앙·우측고정) */
   #mdbody .md-orig { font-size:var(--fs-xs); color:var(--mut); line-height:1.45; margin:-8px 0 14px; word-break:break-word; }   /* 외신 원문 기사 타이틀 — 번역 제목(H1) 바로 아래 MUT 1줄, 그 다음이 구분선(운영자 260703 · h1 margin-bottom 14px를 -8px로 당겨 제목에 붙임) */
   /* 카드뉴스 제목 = 드래프트 박스처럼 테두리·배경 있는 복사 블록(한눈에 '복사 영역') */
   #cardsec h1 { position:relative; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.4px;
@@ -4786,7 +4791,18 @@ async function open(a) {
   addCopyButtons(md);
   md.insertAdjacentHTML('afterbegin', overviewMeta(a));   // Z: 요약 헤더 아래 기본 개요(지침칩 대체)
   const _h1c = md.querySelector('h1');   // 타이틀 우상단 복사버튼(.copy 계승·우측·높이중앙) — 화면에 보이는 그 제목(AI 헤드라인) 그대로 복사 (운영자 260620·260627 표시값 우선 정정)
-  if (_h1c) { const _ttl = _h1c.textContent.trim() || a.title || ''; if (_ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); } }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합 · _ttl은 버튼 append 前 계산이라 버튼텍스트 미포함)
+  const _ttl = _h1c ? (_h1c.textContent.trim() || a.title || '') : '';   // ⚠️ 버튼 append 前 계산(버튼텍스트 미포함) — 복사값 + 아래 기사 타이틀 중복대조 공용
+  if (_h1c && _ttl) { const tc = copyBtn(() => _ttl, '타이틀 복사'); tc.classList.add('titlecopy'); _h1c.appendChild(tc); }   // ⚠️ 표시값(h1=AI 헤드) 우선 — a.title(원본 스크랩 제목)이 아니라 화면에 보이는 제목을 복사(불일치 버그 봉합)
+  // 기사 원래 타이틀(기자가 뽑은 헤드 = frontmatter title) = 개요메타 아래·요약 타이틀 위(운영자 260805 "기자들이 뽑은 것이라 퀄리티가 제법 있어") — 표현·간격 = 위 CSS .md-srct(h1 100% 사본).
+  // ⚠️ div로 그린다(h1 태그 금지) — md.querySelector('h1')이 썸네일 후보 박스·외신 원문제목·타이틀 복사·다운로드 헤더의 공용 앵커라, 두 번째 h1이 생기면 그 넷이 전부 이 줄을 물어 오작동한다.
+  { const _st = (a.title || '').trim();
+    const _tkey = s => String(s).replace(/^\s*\p{Extended_Pictographic}️?\s*/u, '').replace(/\s+/g, '');   // 선두 토픽 이모지·공백 무시 비교(피드 목록 이모지 앞자름 관용구 계승)
+    if (_st && _tkey(_st) !== _tkey(_ttl)) {   // 옛 분석분(H1 = 원본 제목 그대로 · 260805 실측 = 표시분 559건 중 117건)은 같은 제목이 2줄 = 잡음 → 생략
+      const _sd = document.createElement('div'); _sd.className = 'md-srct'; _sd.textContent = _st;   // textContent = XSS 안전(.md-orig 문법 계승)
+      const _sc = copyBtn(() => _st, '기사 타이틀 복사'); _sc.classList.add('titlecopy'); _sd.appendChild(_sc);   // 복사 = h1 .titlecopy 문법 그대로(기사 제목을 그대로 쓰려는 게 이 줄의 목적)
+      if (_h1c) _h1c.insertAdjacentElement('beforebegin', _sd);
+      else { const _om = md.querySelector('.ovmeta'); if (_om) _om.insertAdjacentElement('afterend', _sd); }   // H1 없는 본문(요약 유실·빈 상태) 폴백 = 개요메타 바로 아래
+    } }
   const tsec = thumbSec(a);   // 썸네일 후보(검색 + AI생성 2화풍) — 기사 제목 바로 아래
   if (tsec) { const h1 = md.querySelector('h1'); (h1 ? h1.insertAdjacentElement('afterend', tsec) : md.insertAdjacentElement('afterbegin', tsec)); }
   if (a.title_orig && _h1c) { const _od = document.createElement('div'); _od.className = 'md-orig'; _od.textContent = a.title_orig; _h1c.insertAdjacentElement('afterend', _od); }   // 외신 = 번역 제목(H1) *바로 아래* 원문 기사 타이틀 MUT 1줄 → 그 다음이 구분선(다음 섹션 border-top) — 운영자 260703 확정 배치("제목 아래 mut·그 다음 구분선" · 옛 하단 배치 폐지의 재배치). ⚠️ tsec 삽입 *뒤*에 넣어야 h1↔썸네일 사이(제목 직하)에 선다 · textContent = XSS 안전.
@@ -16105,6 +16121,7 @@ async function buildSummaryHtml(full, opts) {   // full=true('전체'): IG·스�
   src.querySelectorAll('pre.clip').forEach(p => p.classList.remove('clip'));   // 클립 해제(전문 표시)
   src.querySelectorAll('.thumbsec').forEach(el => el.remove());                // 썸네일 후보 박스(검색·AI생성) 제거 — 다운로드 요약엔 잡음(운영자 260621)
   src.querySelectorAll('.md-orig').forEach(el => el.remove());                 // 원문 영문 제목 = 본문 박스 아님 → 헤더 제목 바로 아래로 이관(%ORIG% · 운영자 요청)
+  src.querySelectorAll('.md-srct').forEach(el => el.remove());                 // 기사 원래 타이틀(뷰어 화면 전용 · 260805) = 다운로드·발행 HTML은 종전 그대로(제목은 아래 h1 제거와 짝으로 헤더가 담당) — 본문 맨 위 제목 2줄 방지
   src.querySelectorAll('pre').forEach(p => { p.textContent = p.textContent.replace(/ /g, ' '); });   // nbsp→일반공백 = 자유요약 줄바꿈 막던 비분리공백 제거(가로 잘림 방지 · 운영자 260621)
   src.querySelectorAll('img').forEach(el => el.remove());                      // 본문 이미지 제거(텍스트 요약)
   src.querySelectorAll('h1').forEach(el => el.remove());                       // 제목 h1은 헤더로 따로
