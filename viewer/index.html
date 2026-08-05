@@ -249,7 +249,7 @@
   /* ── 메시지 팝업(프로필 근처) ── */
   /* 메시지함 = 발행본(qpop) 표 계승(운영자 260704): qpop 클래스로 qh/qrow/qlist·glass 상속 + 이 규칙은 msgpop 고유(위치앵커·radius·shadow) · 폭/정렬/구분색 오버라이드는 발행본 CSS 뒤(qpop보다 뒤 선언 = 소스순 이김) · 행=renderMsgList가 .qrow 렌더 */
   /* ── 앵커 팝업 셸 글래스 = 필터 창(.filterpop) 기준 단일 SSOT (운영자 260706 "필터 창을 메인으로 · 설정·메세지함·발행본·앞으로 만들 내부 팝업 다 동일") — 배경·블러·테두리·그림자만 여기(위치·radius·padding·애니는 각 팝업 개별). 새 앵커 팝업 = 이 셀렉터에 클래스 추가하면 자동 통일. 값 바꿀 땐 여기 한 곳. · saturate = var(--anchor-sat) 기본 1.05 → 무채색 팝업(.sc-rsn 사유 메뉴)만 --anchor-sat:0 오버라이드(뒤 색 비침 차단·§🎨 무채색 글래스 기틀). .sc-rsn 편입(운영자 260708) = 옛 불투명 톤(rgba(20,20,20,.94)) 폐지·설정 팝업과 톤 통일. ── */
-  .pmenu, .filterpop, .pubpop, #linkpop, .sc-rsn, .min-pick, .failmenu {   /* .msgpop 이탈(운영자 260725 "메세지함이 더 불투명해야 돼 · 대기열에 있는 함 그대로 가져와서 써") — 알림메세지 셸 = 대기열(.bpop.qpop) 값 계승으로 이관(아래 .msgpop 규칙) */
+  .pmenu, .filterpop, .pubpop, #linkpop, .min-pick, .failmenu {   /* .msgpop 이탈(운영자 260725 "메세지함이 더 불투명해야 돼 · 대기열에 있는 함 그대로 가져와서 써") — 알림메세지 셸 = 대기열(.bpop.qpop) 값 계승으로 이관(아래 .msgpop 규칙) · .sc-rsn 이탈(운영자 260805 "메뉴 토글 메뉴 색 이전으로" — 글래스 .42는 뒤 밝은 카드 위에서 회색으로 떠서 260708 이전 불투명 정본 rgba(20,20,20,.94) 복원 · 아래 .sc-rsn 규칙) */
     background:var(--modal-glass-anchor);
     backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05)); -webkit-backdrop-filter:blur(24px) saturate(var(--anchor-sat,1.05));
     border:1px solid rgba(255,255,255,.14);
@@ -1633,10 +1633,12 @@
   .sc-memo-in::placeholder { color:var(--mut); }
   .sc-memo-in:focus { outline:none; border-color:var(--accent); background:rgba(var(--accent-rgb),.04); }
   /* 👎/PASS/PICK 사유 = 버튼 위치 기준 위/아래로 뜨는 플로팅 메뉴(보기 메뉴 계승 · 카드 안 늘림 · 운영자 260626) */
-  .sc-rsn { --anchor-sat:0; position:fixed; z-index:var(--z-reason); min-width:172px; max-width:min(280px,86vw); display:flex; flex-direction:column; gap:7px;
-    padding:9px; border-radius:12px;   /* 배경·blur·테두리·그림자 = 앵커 팝업 셸 글래스 그룹 SSOT 계승(설정·메시지함·필터창과 톤 통일 · 옛 rgba(20,20,20,.94) 불투명 톤 폐지 · 운영자 260708) */
+  .sc-rsn { position:fixed; z-index:var(--z-reason); min-width:172px; max-width:min(280px,86vw); display:flex; flex-direction:column; gap:7px;   /* raw-ok: 260708 이전 정본 복원 — 기존 줄 재작성분(값 무변) */
+    padding:9px; border-radius:12px; background:rgba(20,20,20,.94); border:1px solid rgba(255,255,255,.18);   /* raw-ok: 260708 이전 불투명 정본 복원(운영자 260805 "메뉴 토글 메뉴 색 이거 아니였는데 · 이전으로") — 앵커 글래스 그룹(.42)은 뒤 밝은 카드 위에서 회색으로 떠서 이탈 · 값 = f16f70ca 실측 사본(창작 0) */
+    box-shadow:0 14px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);   /* raw-ok: 동 정본 사본 */
+    backdrop-filter:blur(18px) saturate(0); -webkit-backdrop-filter:blur(18px) saturate(0);   /* raw-ok: 동 정본 사본(blur 18 = 옛 실측값 · .94 뒤라 시각 기여 미미) · 무채색 글래스 = 채도0 → 뒤(초록 PICK/PICKED·녹색 컬럼)가 회색으로만 비침 = 색 0 보장 · 운영자 260630 */
     animation:rsnIn .16s var(--gauge-ease); }
-  /* PASS·PICK 사유 메뉴 = 무채색 글래스(운영자 260630 · pass빨강/pick초록 색 분기 제거) — 앵커 그룹 편입 후 --anchor-sat:0으로 무채색 보장(뒤 초록 PICK/녹색 컬럼이 회색으로만 비침 = 색 0). §🎨 "무채색 글래스 팝업" 기틀 */
+  /* PASS·PICK 사유 메뉴 = 무채색(운영자 260630 · pass빨강/pick초록 색 분기 제거) — 자체 saturate(0)로 무채색 보장. §🎨 "무채색 글래스 팝업" 기틀 */
   .sc-rsn.up { transform-origin:bottom left; }   /* 버튼이 화면 아래쪽 = 위로 뜸 */
   .sc-rsn.down { transform-origin:top left; }     /* 버튼이 화면 위쪽 = 아래로 뜸 */
   @keyframes rsnIn { from { opacity:0; transform:translateY(var(--rsn-dy,4px)) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }

@@ -6,7 +6,7 @@
 //   → 이 스모크가 커밋 전 자동 판정 = 스크린샷·수동 스윕 불요화. smoke_dlclip 합성 프로브 parity 문법 계승.
 //
 // 담당 표면: viewer/index.html 앵커 팝업 셸 SSOT(index.html :root 위 .pmenu 그룹 · 정본 = 그 셀렉터 규칙)
-//   = {.pmenu · .filterpop · .pubpop · #linkpop · .sc-rsn · .min-pick · .failmenu}
+//   = {.pmenu · .filterpop · .pubpop · #linkpop · .min-pick · .failmenu} (.sc-rsn 이탈 260805 → C2b 불투명 정본 전용 축)
 //   셸 글래스 = 배경(--modal-glass-anchor) · 프로스트 blur · 테두리 · 그림자(SSOT 관장 4속성 · radius·padding·
 //   위치·애니는 각 팝업 개별이라 parity 밖). + index 전역 불투명 글래스 로그 스캔(화이트리스트 밖 = 신규 고아 경보).
 // 원커맨드:  node shared/smoke_popup.js            (종료코드 0 = 코어 전부 PASS)
@@ -15,8 +15,8 @@
 //   멤버 간 동일성(parity) 판정. 값 하드코딩 없음(전 멤버 동시 변경은 통과 = 드리프트만 잡음). 자체 규칙이 SSOT를
 //   덮으면(옛 .min-pick·.failmenu식 불투명 오버라이드) 프로브가 최종 캐스케이드를 읽어 즉시 FAIL. 로그 스캔은
 //   document.styleSheets(동일출처 인라인 <style>) 순회 = 화이트리스트(의도적 불투명 = 토스트·버튼) 밖 신규만 경보.
-// 코어: 부팅 에러 0 · 셸 글래스 {배경·테두리색·테두리굵기·그림자} 8멤버 동일 · 프로스트 blur 동일(.sc-rsn 무채
-//   saturate(0) = §🎨 무채색 글래스 기틀 의도 예외) · 불투명 글래스 로그 화이트리스트 밖 0 · 2런 결정론.
+// 코어: 부팅 에러 0 · 셸 글래스 {배경·테두리색·테두리굵기·그림자} 멤버 동일 · 프로스트 blur 동일 · .sc-rsn =
+//   불투명 정본(rgba(20,20,20,.94)+blur18 sat0 · 운영자 260805 복원) 전용 축 · 불투명 글래스 로그 화이트리스트 밖 0 · 2런 결정론.
 // 리스크 통제: computedStyle+CSSOM만(스크린샷 베이스라인 diff 금지 · [15]) · 라이브 코드 무접촉(프로브 측정 후
 //   즉시 제거) · 서버 자체 종료 · 훅·pre-commit 편입 금지(수동 실행 전용 · CLAUDE.md [15]) · 포트 8816~8820
 //   (geni 8791~/preview 8796~/winnav 8801~/dlclip 8806~/rank 8811~ 와 분리).
@@ -67,13 +67,16 @@ async function startServer() {
 }
 
 // ── 앵커 팝업 셸 SSOT 그룹(index.html :root 위 셀렉터와 1:1 · 팝업 추가 시 함께 갱신) ──
-const GROUP = ['.pmenu', '.filterpop', '.pubpop', '#linkpop', '.sc-rsn', '.min-pick', '.failmenu'];
+const GROUP = ['.pmenu', '.filterpop', '.pubpop', '#linkpop', '.min-pick', '.failmenu'];
 // .msgpop 이탈(운영자 260725 "메세지함이 더 불투명해야 돼 · 대기열에 있는 함 그대로 가져와서 써") — 알림메세지는 앵커 메뉴가 아니라
 //   **헤더형 함(대기열·발행본) 가족**으로 재소속. 감시는 사라지지 않고 아래 SHELL(C1b)로 이관 = 계약 축만 갈아탄 것.
+// .sc-rsn 이탈(운영자 260805 "메뉴 토글 메뉴 색 이거 아니였는데 · 이전으로") — 글래스 .42는 뒤 밝은 카드 위에서 회색으로 떠서
+//   260708 이전 불투명 정본(rgba(20,20,20,.94)) 복원. 감시는 사라지지 않고 아래 RSN(C2b)로 이관 = msgpop 선례 동문.
 const SHELL = ['.bpop.qpop', '.qpop.msgpop'];   // 대기열 함(실물 = class="bpop qpop") ↔ 알림메세지 함 셸 대조축
+const RSN = ['.sc-rsn'];   // 사유 메뉴 = 불투명 정본 전용 축(C2b) — 그룹 parity 밖·값 감시는 유지
 // ── 의도적 불투명 글래스 화이트리스트(로그 스캔 예외 · 신설 시 사유와 함께 등재) ──
 //   .nm-toast/.qflash = 토스트(danger·status 강조 = 프로스트 메뉴 가족 아님) · .dlgtop = 스크롤 맨위 버튼(팝업 아님)
-const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop'];
+const OPAQUE_WL = ['.nm-toast', '.qflash', '.dlgtop', '.sc-rsn'];   // .sc-rsn = 불투명 정본 복원(운영자 260805 · C2b가 값 전담 감시)
 
 async function runOnce(br, port) {
   const pg = await br.newPage({ viewport: { width: 1280, height: 900 } });
@@ -81,7 +84,7 @@ async function runOnce(br, port) {
   pg.on('pageerror', e => errs.push(String(e).slice(0, 80)));
   await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded' });
   await pg.waitForTimeout(900);
-  const out = await pg.evaluate(({ GROUP, OPAQUE_WL, SHELL }) => {
+  const out = await pg.evaluate(({ GROUP, OPAQUE_WL, SHELL, RSN }) => {
     const snap = sel => {
       const el = document.createElement('div');
       if (sel[0] === '#') el.id = sel.slice(1); else el.className = sel.split('.').filter(Boolean).join(' ');   // 다중 클래스(.qpop.msgpop) 지원 = 헤더형 함 셸 계약 검증용(260725)
@@ -94,6 +97,7 @@ async function runOnce(br, port) {
     };
     const members = GROUP.map(sel => [sel, snap(sel)]);
     const shell = SHELL.map(sel => [sel, snap(sel)]);
+    const rsn = RSN.map(sel => [sel, snap(sel)]);
     // 전역 불투명 글래스 로그 스캔 — 글래스 규칙(backdrop blur)인데 배경 alpha≥.85 & 화이트리스트 밖 = 신규 고아 경보
     const rogue = [];
     for (const ss of document.styleSheets) {
@@ -112,11 +116,11 @@ async function runOnce(br, port) {
         rogue.push(sel.slice(0, 44) + ' {bg:' + bg.slice(0, 34) + '}');
       }
     }
-    return { members, rogue, shell };
-  }, { GROUP, OPAQUE_WL, SHELL });
+    return { members, rogue, shell, rsn };
+  }, { GROUP, OPAQUE_WL, SHELL, RSN });
   const geo = await rowGeo(pg);
   await pg.close();
-  return { members: out.members, rogue: out.rogue, shell: out.shell, geo, errs };
+  return { members: out.members, rogue: out.rogue, shell: out.shell, rsn: out.rsn, geo, errs };
 }
 
 // ── 행 기하 패리티(운영자 260726 "대기열 기존 제약들을 그대로 적용 · 버튼 2개까지 · 낱낱히") ─────────────
@@ -201,12 +205,15 @@ function assess(r) {
     && /rgba\(17,\s*18,\s*20,\s*0?\.64\)/.test(_m[1].bg);
   C('C1b 알림메세지 셸 = 대기열 함 {테두리·그림자·blur} 동일 + 배경 --modal-glass(.64)', shellOk,
     _q && _m ? '대기열 ' + _q[1].bg + ' / 알림 ' + _m[1].bg + ' · 테두리 ' + _m[1].bcol + ' ' + _m[1].bw + ' · blur ' + _m[1].blur : '미수집');
-  // C2 = 프로스트 blur 동일(.sc-rsn = --anchor-sat:0 무채색 글래스 기틀 의도 예외 · §🎨)
-  const nonSat = r.members.filter(([s]) => s !== '.sc-rsn');
-  const bp = parity(nonSat, ['blur']);
-  C('C2 프로스트 blur 동일(.sc-rsn 무채 saturate(0) 의도 예외)', bp.ok, JSON.stringify(bp.det).slice(0, 200));
-  const scr = r.members.find(([s]) => s === '.sc-rsn');
-  C('C2b .sc-rsn = blur 공유 + saturate(0) 무채(의도 예외 확인)', !!scr && /blur\(/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur), scr ? scr[1].blur : '없음');
+  // C2 = 프로스트 blur 동일(그룹 멤버 전원 · .sc-rsn은 260805 이탈 → C2b 전용 축)
+  const bp = parity(r.members, ['blur']);
+  C('C2 프로스트 blur 동일(그룹 멤버)', bp.ok, JSON.stringify(bp.det).slice(0, 200));
+  // C2b = .sc-rsn 불투명 정본(운영자 260805 복원 · 값 = 260708 이전 f16f70ca 실측) — 그룹 밖이어도 값 감시 유지(msgpop C1b 선례)
+  const scr = (r.rsn || []).find(([s]) => s === '.sc-rsn');
+  const rsnOk = !!scr && /rgba\(20,\s*20,\s*20,\s*0?\.94\)/.test(scr[1].bg) && /rgba\(255,\s*255,\s*255,\s*0?\.18\)/.test(scr[1].bcol)
+    && /blur\(18px\)/.test(scr[1].blur) && /saturate\(0\)/.test(scr[1].blur);
+  C('C2b .sc-rsn = 불투명 정본 {bg .94 · 테두리 .18 · blur18 sat0}(운영자 260805 복원)', rsnOk,
+    scr ? scr[1].bg + ' · ' + scr[1].bcol + ' · ' + scr[1].blur : '없음');
   // C3 = 화이트리스트 밖 불투명 글래스(신규 고아 팝업) 0
   C('C3 불투명 글래스 로그 화이트리스트 밖 0(신규 고아 없음)', r.rogue.length === 0, r.rogue.length ? r.rogue.join(' · ').slice(0, 260) : '없음(WL=' + OPAQUE_WL.join(',') + ')');
   // ── C4~C7 = 함 가족 행 기하 계약(운영자 260726) · 수집 실패한 함은 그 함만 스킵(정직 표기) ──
