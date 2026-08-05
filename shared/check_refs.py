@@ -16,6 +16,7 @@ v1.15.2류 사본 드리프트(파일 rename 후 참조 미갱신·파일명↔�
 """
 
 import ast
+import bisect
 import os
 import re
 import datetime
@@ -4607,6 +4608,175 @@ def check_ytdlp_aac():
     return 0
 
 
+# ── 이미지 산출 포맷 게이트(운영자 260805 "아이디어 ㄱ" · 260805 JPG q90 통일의 짝) ───────────────
+# 투명/무손실이 정당 사유인 축 = PNG 허용. 그 외 산출은 JPEG q90 단일.
+_IMGFMT_SKIP_DIR = ('_versions/', 'docs/', '.claude/', 'node_modules/', 'cards/', 'queue/', 'asks/')
+_IMGFMT_SKIP_FILE = ('shared/check_refs.py',)   # 자기참조(처방문 예시 문자열이 곧 위반) — check_ytdlp_aac 선례
+# PNG가 정당한 사유 어휘(호출 줄 + 상행 8줄 안 어디든) — 「왜 투명·무손실이어야 하나」의 코드 근접 명문화.
+_IMGFMT_PNG_OK = ('rgba', 'alpha', '투명', 'overlay', '오버레이', 'cutout', '누끼',
+                  'mask', '마스크', 'clipboard', '클립보드', 'clipboarditem',
+                  'icon', '아이콘', 'favicon', '무손실', 'lossless', '도먼트', 'dormant')
+_IMGFMT_QOK = 'q-ok:'   # 산출물이 아닌 인코딩(화면 장식·LLM 첨부 압축 등) 면제 마커 — CSS raw-ok/reuse-ok 관례 계승
+# ⚠ 부정문 무효화 — 「투명 영역이 **없다**」처럼 같은 어휘가 반대 뜻으로 쓰인 줄은 사유로 안 친다.
+#    (킬테스트 K4 실측 = tr.html JPG 전환 주석 "번역 카드는 투명 영역이 없다"가 PNG 사유로 통과하던 구멍)
+_IMGFMT_NEG = ('없다', '없음', '없어', '아니', '아님', '불필요', '금지', '대신', 'not ', 'no alpha')
+
+
+def _imgfmt_args(src, open_paren):
+    """여는 괄호 위치 → 균형 닫힘까지의 인자 텍스트(상한 400자 · 멀티라인 호출 대응).
+    ⚠ 정규식 `[^)]*` 류를 쓰지 않는 이유 = viewer/index.html 1.85MB에서 매 위치 되짚기가
+    게이트 전체 시간을 먹는다(260804 실측 = 그런 규칙 한 줄이 17.9s)."""
+    depth, out = 0, []
+    for i in range(open_paren, min(len(src), open_paren + 400)):
+        c = src[i]
+        if c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+            if depth == 0:
+                break
+        out.append(c)
+    return ''.join(out[1:])
+
+
+def _imgfmt_has_reason(lines, lineno):
+    """호출 줄 + 상행 5줄 안에 PNG 정당 사유가 **긍정문으로** 있는가.
+    ⚠ 줄 단위로 본다 — 마커 어휘가 있어도 그 줄에 부정어가 함께 있으면 무효(킬테스트 K4 봉합)."""
+    for ln in lines[max(0, lineno - 5):lineno + 1]:
+        low = ln.lower()
+        if any(m in low for m in _IMGFMT_PNG_OK) and not any(n in low for n in _IMGFMT_NEG):
+            return True
+    return False
+
+
+def _imgfmt_is_comment(line, col):
+    """호출 키워드가 주석 안인가(py `#` · js `//` · 블록 주석 이어지는 ` * `).
+    ⚠ 킬테스트 K7 봉합 = 주석 속 예시 코드(`cv2.imencode('.png', x)`)를 위반으로 세던 구멍.
+       `//` 판정은 앞에 `:`가 붙은 `https://`를 배제한다."""
+    head = line[:col]
+    if '#' in head:
+        return True
+    if re.search(r'(?<!:)//', head):
+        return True
+    return line.lstrip().startswith(('*', '/*'))
+
+
+def _imgfmt_qval(txt, fname, src):
+    """인자 텍스트에서 JPEG 품질값 추출 → (값, 원문) · 못 찾으면 (None, 원문).
+    변수 경유(`quality=q` · `TR_JPGQ`)는 같은 파일에서 기본값/할당을 1회 추적한다(정적 한계 = 못 찾으면 fail-open)."""
+    m = re.search(r'quality\s*=\s*(\d+)', txt) or re.search(r'IMWRITE_JPEG_QUALITY\s*,\s*(\d+)', txt)
+    if m:
+        return int(m.group(1)), m.group(0)
+    m = re.search(r"image/jpeg'\s*,\s*([0-9.]+)", txt) or re.search(r'image/jpeg"\s*,\s*([0-9.]+)', txt)
+    if m:
+        return round(float(m.group(1)) * 100), m.group(0)
+    # 변수 경유 — 이름을 뽑아 같은 파일의 기본값/할당에서 실값을 찾는다
+    v = (re.search(r'quality\s*=\s*([A-Za-z_][\w.]*)', txt)
+         or re.search(r'IMWRITE_JPEG_QUALITY\s*,\s*([A-Za-z_][\w.]*)', txt)
+         or re.search(r"image/jpeg['\"]\s*,\s*([A-Za-z_][\w.]*)", txt))
+    if v:
+        name = re.escape(v.group(1).split('.')[-1])
+        d = (re.search(r'\b%s\s*=\s*([0-9.]+)' % name, src)          # def f(..., q=90) / const X = 0.9
+             or re.search(r'\b%s\s*=\s*([0-9.]+)\s*[,;)]' % name, src))
+        if d:
+            n = float(d.group(1))
+            return (round(n * 100) if n <= 1 else int(n)), '%s=%s' % (v.group(1), d.group(1))
+    return None, txt[:60]
+
+
+def check_image_format():
+    """이미지 산출 포맷 게이트(하드 · 운영자 260805 "아이디어 ㄱ" — 같은 날 JPG q90 통일의 짝).
+
+    계약 2축:
+      ⓐ **PNG로 굽는 곳은 왜 그래야 하는지가 코드 옆에 있어야 한다.** 투명(알파)·무손실(바이너리 마스크)·
+         API 제약(ClipboardItem은 image/png만 안정)·아이콘 같은 정당 사유 어휘가 호출 줄 상행 5줄 안에 없으면 FAIL.
+         ⚠ 어휘가 **부정문**으로 쓰인 줄은 사유로 안 친다(「투명 영역이 없다」 = JPG 쪽 설명 · 킬테스트 K4 실측 봉합).
+      ⓑ **JPEG 인코딩 품질은 90 단일.** 산출이 아닌 인코딩(화면 장식 블러·LLM 첨부 압축)은 줄에 `q-ok: 사유`를 단다.
+
+    ⚠ 신설 사유 = **「산출 포맷」이라는 축을 보는 게이트가 하나도 없었다.** 260805 전수 실측:
+      · `thumb_gen.py`가 R2 키를 항상 `.png`로 굽는데 실물은 Gemini가 준 JPEG = **거짓 확장자가 6주 넘게 무증상**
+        (Content-Type은 매직바이트로 맞게 나가서 화면이 멀쩡했다 = 운영자 눈에도 안 보였다).
+      · JPEG 품질이 90·92·94·95 **4갈래**로 갈렸다 — `gen_image.py` 주석이 260710에 이미 "전 JPEG 저장 경로
+        통일"을 선언해 놓고 다른 파일들이 안 따라온 것.
+      · 이 게이트의 **첫 실행이 곧바로 `apps/track/track_analyze.py` q82 2건을 잡았다** — 260805 손 전수감사가
+        `quality=`·`jpg_bytes` 어휘만 훑어 `cv2.IMWRITE_JPEG_QUALITY, 82`를 통째로 놓친 자리다(사람 눈의 한계 실증).
+    기존 게이트가 전부 다른 축이다 — `check_refs` 계열 = 정적 **문자열·경로 실존**, `smoke_*` = **화면 렌더**,
+    `check_ytdlp_aac` = **받는 쪽** 코덱. 「우리가 굽는 바이트가 무슨 포맷·무슨 품질인가」는 축 자체가 없었다.
+
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동 발견(`git ls-files` — 새 생성기가 조용히 못 빠진다) ·
+           **면책표 없이 하드 0**(현행 위반 0 = 부채 원장 증가 0).
+    ⚠ 스코프 밖(구조적) = `_versions/`(과거 스냅샷 보존) · `docs/`·`cards/`(산출·보고 자산) · `.claude/` ·
+       `shared/smoke_*`·`*shot*`(테스트 하네스가 굽는 프로브 이미지는 산출물이 아니다) · `shared/check_refs.py` 자신.
+    ⚠ 남는 한계 = 변수 경유 품질값은 같은 파일 1회 추적까지만(다른 모듈에서 import한 상수는 못 따라간다) =
+       **fail-open**(못 찾으면 통과) — 위양성으로 레포를 얼리는 것보다 놓치는 쪽이 싸다(insta-thumb-miss 동축)."""
+    import subprocess as _sp
+    try:
+        files = _sp.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, timeout=60).stdout.split('\n')
+    except Exception:
+        print('⚠️ 이미지 산출 포맷 게이트 — git ls-files 실패(스킵)')
+        return 0
+    png_bad, jpg_bad, seen = [], [], 0
+    for rel in files:
+        if not rel or rel.startswith(_IMGFMT_SKIP_DIR) or rel in _IMGFMT_SKIP_FILE:
+            continue
+        base = os.path.basename(rel)
+        if rel.startswith('shared/') and (base.startswith('smoke_') or 'shot' in base):
+            continue
+        if not rel.endswith(('.py', '.js', '.mjs', '.html')):
+            continue
+        p = os.path.join(ROOT, rel)
+        try:
+            src = open(p, encoding='utf-8').read()
+        except Exception:
+            continue
+        if not any(k in src for k in ('toBlob(', 'toDataURL(', '.save(', 'imencode(', 'imwrite(')):
+            continue   # 리터럴 선행 컷 = 1.85MB 파일도 O(매치수)로만 돈다
+        lines = src.split('\n')
+        # 줄 시작 오프셋 → 오프셋에서 줄번호 역산(bisect)
+        offs, acc = [], 0
+        for ln in lines:
+            offs.append(acc); acc += len(ln) + 1
+        for kw in ('toBlob(', 'toDataURL(', '.save(', 'imencode(', 'imwrite('):
+            i = src.find(kw)
+            while i != -1:
+                op = i + len(kw) - 1
+                args = _imgfmt_args(src, op)
+                lo = bisect.bisect_right(offs, i) - 1
+                line = lines[lo]
+                if _imgfmt_is_comment(line, i - offs[lo]):
+                    i = src.find(kw, i + 1); continue   # 주석 속 예시 코드 = 무대상(K7)
+                low = args.lower()
+                is_png = ("'image/png'" in low or '"image/png"' in low
+                          or re.search(r'["\']png["\']', low) or re.search(r'\.png["\']', low))
+                is_jpg = ("image/jpeg" in low or re.search(r'["\']jpe?g["\']', low)
+                          or re.search(r'\.jpe?g["\']', low) or 'imwrite_jpeg_quality' in low)
+                if is_png and not is_jpg:
+                    seen += 1
+                    if not _imgfmt_has_reason(lines, lo):
+                        png_bad.append((rel, lo + 1, line.strip()[:150]))
+                elif is_jpg:
+                    seen += 1
+                    if _IMGFMT_QOK not in line:
+                        q, raw = _imgfmt_qval(args, rel, src)
+                        if q is not None and q != 90:
+                            jpg_bad.append((rel, lo + 1, q, raw[:60], line.strip()[:130]))
+                i = src.find(kw, i + 1)
+    if png_bad or jpg_bad:
+        print('❌ 이미지 산출 포맷 게이트 — 위반 %d건(PNG 사유 없음 %d · JPEG 비-q90 %d):'
+              % (len(png_bad) + len(jpg_bad), len(png_bad), len(jpg_bad)))
+        for rel, lineno, line in png_bad:
+            print('   - [PNG 사유 없음] %s:%d' % (rel, lineno))
+            print('       %s' % line)
+            print('       → 투명·무손실이 필요하면 그 사유를 호출 상행 8줄 안에 쓴다(어휘: 투명·RGBA·마스크·오버레이·누끼·클립보드·아이콘·무손실).')
+            print('         필요 없으면 JPEG q90으로 굽는다(운영자 260805 계약).')
+        for rel, lineno, q, raw, line in jpg_bad:
+            print('   - [JPEG 비-q90] %s:%d — 실측 q%s (%s)' % (rel, lineno, q, raw))
+            print('       %s' % line)
+            print('       → q90으로 맞추거나, 산출물이 아니면 그 줄에 `q-ok: 사유` 마커를 단다.')
+        return 1
+    print('✅ 이미지 산출 포맷 게이트 — 인코딩 호출 %d건 전건 정합(PNG = 투명·무손실 사유 명문 · JPEG = q90 단일 · 면책표 없음).' % seen)
+    return 0
+
 def check_algo_ledger():
     """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
     집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
@@ -4734,6 +4904,8 @@ def main():
         print('⚠️ 회차 원장 게이트 스킵:', e)
     try:
         if check_thumb_prompt_sanity() != 0:   # 뉴스 픽 AI 썸네일 = 발사 프롬프트 자기모순 0(운영자 260805 — 「지시 vs 금지」가 한 줄에 공존해 그림이 평균으로 도망가던 축 · 정본 함수 재판정)
+            rc = 1
+        if check_image_format() != 0:   # 이미지 산출 포맷 = 투명(PNG)/그 외(JPG q90) 2갈래(운영자 260805 "아이디어 ㄱ" — thumb_gen이 키를 .png로 굽는데 실물은 JPEG였던 거짓 확장자 6주 무증상 + 품질 4갈래 드리프트를 사람 눈이 유일한 검출기로 두던 축의 기계화 · 첫 실행이 track_analyze q82 2건을 즉시 검출)
             rc = 1
         if check_ytdlp_aac() != 0:   # 다운로드 오디오 코덱 = AAC 강제(운영자 260805 — 알몸 ba = Opus가 mp4에 들어가 프리미어가 오디오 트랙을 조용히 무시하던 축 봉합)
             rc = 1

@@ -607,7 +607,7 @@ def main():
         crop_rel = ""
         if best_crop is not None:   # 캡처 시점에 이미 ≤256px(위 축소) — 그대로 저장
             crop_rel = f"crops/p{idx}.jpg"
-            cv2.imwrite(os.path.join(outdir, crop_rel), best_crop, [cv2.IMWRITE_JPEG_QUALITY, 82])
+            cv2.imwrite(os.path.join(outdir, crop_rel), best_crop, [cv2.IMWRITE_JPEG_QUALITY, 90])   # q90 = 전 산출 통일값(운영자 260805 · 구 82) — 이 크롭은 화면 피사체 카드 썸네일 = 산출물
             crop_by_pid[idx] = crop_rel
         segs = []
         for t in sorted(p["tracks"], key=lambda t: t["kf"][0][0]):
@@ -672,7 +672,7 @@ def main():
         crop_rel = crop_by_pid.get(s["pid"], "")   # 얼굴 연결 = 얼굴 크롭 재사용(알아보기 최우선)
         if not crop_rel and s["crop_img"] is not None:
             crop_rel = f"crops/s{sid}.jpg"
-            cv2.imwrite(os.path.join(outdir, crop_rel), s["crop_img"], [cv2.IMWRITE_JPEG_QUALITY, 82])
+            cv2.imwrite(os.path.join(outdir, crop_rel), s["crop_img"], [cv2.IMWRITE_JPEG_QUALITY, 90])   # q90 = 전 산출 통일값(운영자 260805 · 구 82 · 위 얼굴 크롭과 한 값)
         out_subjects.append({"sid": sid, "kind": "person" if s["cls"] == 0 else "object",
                              "label": SUBJ_CLS.get(s["cls"], "피사체"), "pid": s["pid"], "crop": crop_rel,
                              "dur": round(s["dur"], 2), "first": round(s["first"], 2), "last": round(s["last"], 2),

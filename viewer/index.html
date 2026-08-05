@@ -5519,8 +5519,8 @@ function geniRefDownscale(file) {   // ≤512px 최장변 JPEG · base64 ≤4800
       const c = document.createElement('canvas'); c.width = w; c.height = h;
       try { c.getContext('2d').drawImage(img, 0, 0, w, h); } catch { URL.revokeObjectURL(url); res(null); return; }
       URL.revokeObjectURL(url);
-      let q = 0.72, out = c.toDataURL('image/jpeg', q);
-      while (out.length - 23 > 48000 && q > 0.3) { q = Math.round((q - 0.1) * 100) / 100; out = c.toDataURL('image/jpeg', q); }
+      let q = 0.72, out = c.toDataURL('image/jpeg', q);   // q-ok: 산출물 아님 = 모델 첨부용 적응형 압축(48KB 상한에 맞춰 q를 낮춰가는 루프라 q90 고정이 불가 · 화면·다운로드에 안 나간다)
+      while (out.length - 23 > 48000 && q > 0.3) { q = Math.round((q - 0.1) * 100) / 100; out = c.toDataURL('image/jpeg', q); }   // q-ok: 위 루프의 재인코딩 — 같은 축
       res(out.length - 23 <= 48000 ? out : null);
     };
     img.onerror = () => { URL.revokeObjectURL(url); res(null); };
@@ -7625,6 +7625,8 @@ async function exportOverlay(card, idx, slug) {
       let x = OVL.SX + offs[i]; const y = OVL.SY + i * OVL.LH;
       ovlSegs(line).forEach(seg => { ctx.fillStyle = seg.h ? OVL.HL : OVL.DEF; ctx.fillText(seg.text, x, y); x += ctx.measureText(seg.text).width; });
     });
+    // PNG 고정 = **투명 RGBA 오버레이**(자막판을 영상·사진 위에 얹는 레이어 = 알파가 산출의 본질).
+    // ⚠ 260805 「투명 아닌 건 전부 JPG q90」 통일의 **운영자 지정 예외축** — JPG로 바꾸면 알파가 죽어 검은 판이 화면을 덮는다.
     cv.toBlob(blob => {
       if (!blob) { alert('PNG 생성 실패'); return; }
       const url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -15932,7 +15934,7 @@ async function compressImg(file, max = 1280, q = 0.6) {   // 토큰 절약: 긴 
   if (s > max) { w = Math.round(w * max / s); h = Math.round(h * max / s); }
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; cv.getContext('2d').drawImage(img, 0, 0, w, h);
   URL.revokeObjectURL(url);
-  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', q));
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', q));   // q-ok: 산출물 아님 = 요약요청 첨부 압축(기본 q0.6·긴변 1280 — 고품질 해석이 불필요한 입력이라 토큰을 아낀다 · 파일로 안 나간다)
   const dataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
   return { dataUrl, kb: Math.round(blob.size / 1024) };
 }

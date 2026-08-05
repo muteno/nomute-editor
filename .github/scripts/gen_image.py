@@ -360,7 +360,7 @@ def post_process(png, o, ref_png=None):
         if o["fmt"] == "jpg":
             im.convert("RGB").save(buf, "JPEG", quality=90, optimize=True, subsampling=0)   # 4:4:4 — 문구 번인(textOn) 크로마 번짐 방지(전 JPEG 저장 경로 통일 · 260710)
             return buf.getvalue(), "jpg"
-        im.save(buf, "PNG", optimize=True)
+        im.save(buf, "PNG", optimize=True)   # PNG = 도먼트 분기(dormant · 260805 이후 뷰어는 이 값을 안 보낸다) — 투명 산출 요구가 되살아날 때의 재입구로만 존치
         return buf.getvalue(), "png"
     except Exception as e:  # noqa: BLE001
         ext0 = "jpg" if png[:3] == b"\xff\xd8\xff" else ("png" if png[:8] == b"\x89PNG\r\n\x1a\n" else "jpg")   # 실바이트로 선언(거짓 확장자 = R2 Content-Type 어긋남)

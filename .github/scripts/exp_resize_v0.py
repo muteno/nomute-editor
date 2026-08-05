@@ -201,7 +201,7 @@ def pixel_lock(gen_png, canvas_size, src_img, box, feather=24):
     return out
 
 
-def jpg_bytes(img, q=92):
+def jpg_bytes(img, q=90):   # q90 = 전 산출 통일값(운영자 260805 · 구 92) — 정본 = gen_image.post_process
     b = io.BytesIO()
     img.convert("RGB").save(b, "JPEG", quality=q)
     return b.getvalue()

@@ -146,11 +146,11 @@ def main():
                     continue
                 import io
                 buf = io.BytesIO()
-                im.save(buf, "PNG", optimize=True)
+                im.save(buf, "PNG", optimize=True)   # 아이콘 = 투명 PNG 고정(알파 필수 · 260805 JPG 통일의 명시 예외축) · 바이트 대조라 무손실이어야 드리프트 판정이 성립
                 if buf.getvalue() != dst.read_bytes():
                     drift.append(f"{dst.name} 바이트 상이(손편집 의심 또는 소스 변경)")
             else:
-                im.save(dst, "PNG", optimize=True)
+                im.save(dst, "PNG", optimize=True)   # 아이콘 = 투명 PNG 고정(알파 필수 · 위 대조와 같은 인코딩이어야 바이트 동일)
                 made += 1
         print(f"· {kind:5s} {spec['token']:9s} {spec['label']} — hue {th:5.1f}°{' · 채도 억제' if spec.get('desaturate') else ''}")
     if check:
