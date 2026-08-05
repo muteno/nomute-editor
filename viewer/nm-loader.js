@@ -256,113 +256,102 @@
   window.nmEta = { sec: sec, fmt: fmt, label: label, done: done, dump: dump, seed: seed, SEED: SEED };
 })();
 
-/* ── nmFavBusy — 작업 중에만 브라우저 탭 파비콘(지구본)이 돈다 ─────────────────────────
-   운영자 260727 "뉴스 요약·이미지 제작 등 작업중에는 저 로고가 돌아가고, 작업중인게 없으면 그냥 일반 로고".
-   · 그림 = 기존 favicon-globe-260724.svg **그대로** 캔버스에 얹어 회전만(새 그림·새 색 창작 0 = B1).
-     SVG 안의 prefers-color-scheme 스왑(라이트 파랑 / 다크 시그니처)도 <img> 렌더가 그대로 따라온다.
-   · 작업중 판정 = index `lkProdBusy()`(index.html §유휴감시) 셀렉터 문법 계승 + 부모 문서 진행 신호(.firing/.picking) 합본.
-     iframe 관통도 그 함수와 같은 방식(도구 탭이 자식 문서라 부모가 대신 칠한다 = 도구 6탭 파일 무접촉).
-   · 끝나면 href를 원본 문자열로 되돌린다 = 평소엔 손 안 댄 상태와 동일.
-   · 검증 = `node shared/smoke_favtab.js --url /?qa=1`(탭바 픽셀 재도색 실측 · href 변경은 증거 아님 = 인수인계서 §7-3-1).
-   · 한계 = 비활성 탭은 크롬이 타이머를 1fps로 조여 '회전'이 '깜빡임'으로 읽힌다(활성 탭은 정상). */
+/* ── nmFavBusy — 탭 파비콘(지구본) = 상태 색 표시(회전 폐지) ──────────────────────────
+   운영자 260805 "로고 돌아가는거 있지? 그냥 없애주셈 · 현재 작업중일때는 로고가 여러 형태가 있는데
+   그 중에 파란색 계열로 · 알림메세지에 알림이 있거나 안읽은 경고가 있을때는 빨간색 계열 로고로 변해 있게만".
+   · 구판(260727~260729) = 세로축 자전 애니(60fps · 145장 프리렌더 캐시 · setInterval 재도색).
+     회전이 폐지되면서 캐시·FPS·SPIN·이징 축이 통째로 사문 → 삭제. 남은 건 **정적 1장 교체**라
+     60fps 인터벌이 사라진다(상태 폴링 350ms만 잔존 = 구판에도 있던 축).
+   · 그림 = 새 창작 0. 파랑 = 기존 favicon-globe-260724.svg 안의 **라이트(.l) 파랑 지구본 바이트 그대로**를
+     단독 파일로 뽑은 favicon-globe-blue-260805.svg(운영자 "여러 형태 중 파란색 계열" = 그 형태 지목).
+     빨강 = 그 파랑 지구본을 캔버스에서 --danger(#e23b2a = accent-3 "빨강 = danger · 강보수") 한 값으로 틴트
+     (회색조 → multiply → destination-in 알파 복원 = 지구본 결·투명 배경 보존).
+     ⚠ CSS가 아니라 캔버스인 이유 = 파비콘은 독립 문서라 var() 도달 0 → 토큰 **값 복사 계승**
+     (레포 self-contained 관례 = SUMMARY_TPL·meta theme-color와 같은 축).
+   · 우선순위 = 알림(빨강) > 작업중(파랑) > 평소(원본 태그 복귀).
+     "변해 있게만" = 알림은 작업 유무와 무관하게 상주 = 구판처럼 작업이 끝나면 꺼지는 축이 아니다.
+   · 알림 판정 = 기어 픽토가 이미 쓰는 **DOM 클래스 재사용**(renderMsgBadge hasmsg/haswarn ·
+     body has-sysbad/has-freshbad) = 신규 판정 로직·신규 상태 원천 0 → 기어와 파비콘이 갈릴 수 없다.
+   · 작업중 판정 = 구판 SEL 그대로(aria-busy·.firing·.picking·미완 잡) + iframe 관통도 그대로.
+   · 검증 = `node shared/smoke_favtab.js --url /?qa=1`(탭바 픽셀 재도색 실측 · href 변경은 증거 아님).
+   · 한계 = 크롬은 type="image/svg+xml" 링크에 PNG를 넣으면 무시하고 앞의 .ico를 쓴다(실측 260727)
+     → 표시 중에는 icon 링크를 통째로 떼고 전용 링크 하나만 세우는 구판 문법을 그대로 계승한다. */
 (function () {
-  if (window.nmFavBusy || window.top !== window.self) return;   // 최상위 문서만(도구 iframe이 자기 파비콘을 돌려봐야 탭에 안 보임)
+  if (window.nmFavBusy || window.top !== window.self) return;   // 최상위 문서만(도구 iframe이 자기 파비콘을 바꿔봐야 탭에 안 보인다)
 
-  var SEL = '[aria-busy="true"], .firing, .picking, #jobs .job:not(.done):not(.err)';
-  var SRC = 'favicon-globe-260724.svg';
-  /* 값·모션 = 플레이그라운드 `docs/reports/260727_파비콘애니_플레이그라운드.html` 계승(운영자 선택분).
-     mode=spin(§305 = 세로축 자전 · 평면 rotate 아님) · period 980 · fps 60 · res 64 · size 78% · amp 100 · ease=--ease 계승. */
-  /* 【260729 2차 = 5fps 회귀 원복 · 운영자 "높은 프레임으로 원이 회전해야함 · 지금은 6개 사진이 반복 움직이는 느낌"】
-     ⚠ 1차(5fps)는 **틀린 전제**로 낮췄다 — 「크로미엄이 탭 파비콘을 초당 3~4.5회로 조인다」는 실측이
-     **리눅스 Xvfb 크로미엄 한정**이었고, 운영자 환경(윈도 Brave)에는 그 상한이 없다. 그 증거가 운영자 관찰이다:
-     5fps × 2420ms = **12장**, 자전은 |cos| 좌우대칭이라 고유 모양은 절반 = **6개** → "6개 사진이 반복"과 정확히 일치.
-     넣은 fps가 그대로 보이는 환경이라는 뜻이므로 fps = 부드러움이 성립한다. ∴ 30fps 복귀.
-     비용은 프리렌더 캐시가 감당한다 — 30fps여도 매 프레임 굽기(toDataURL)가 0이라
-     64px·30fps·라이브(구본) 대비 **여전히 20% 가볍다**(순증 700→560ms · Xvfb headful 실측).
-     운영자 판정 = "화질이 중요한 게 아니라 높은 프레임" → PX는 32 유지(굽고 버리던 픽셀), FPS만 되돌린다. */
-  var PX = 32;             // res — 탭 렌더 16~20px의 2x(레티나)까지 커버 · 64는 굽고 버리는 픽셀이었다
-  var SIZE = .78;          // size 78% — 캔버스 대비 로고 크기(플레이그라운드 DEFAULTS)
-  var FPS = 60, POLL = 350;   // 60fps × 2420ms = 145장 캐시(32px ~310KB) = 고유 72모양(운영자 260729 "60fps 한번 가보자")
-  var MAXF = 180;             // 캐시 장수 상한 — reduced-motion(SPIN 4800)에서 288장까지 불어나는 것만 막는 방어선(정상 경로 145장은 무영향)
-  var slow = false;
-  try { slow = matchMedia('(prefers-reduced-motion:reduce)').matches; } catch (_) {}
-  var SPIN = slow ? 4800 : 2420;   // 1회전 ms · reduced-motion = 저속(정지시키면 '작업중 알림'이라는 목적 자체가 사라진다)
-  /* 2420ms·30fps = 운영자 260727 첫 선택값 복귀. 980ms·60fps는 플랫폼 비교판 맥락의 수치였고
-     실제 탭에서 "너무 빠르게 동작한다"는 판정을 받았다(운영자 260728). */
-  /* 【260729 이징 폐지 = 등속 회전 · 운영자 "도는거 끝날때 처음으로 돌아가면서 팡 튀는 부분이 있다"】
-     원인은 **주기 불일치**였다 — 그림은 `|cos|`라 **반 바퀴**마다 한 사이클(정면→옆면→정면)인데
-     이징(등속 × easeInOutCubic 반반 블렌드)은 **한 바퀴** 주기라, 첫 사이클은 느리게 시작하고
-     둘째 사이클은 최고속으로 통과한다. 같은 정면 모양을 매번 다른 속도로 지나가니 '팡'으로 읽힌다.
-     ⚠ 루프 이음매(마지막 프레임→첫 프레임)는 무죄였다 — 폭 변화량 0.0002로 사실상 연속(실측).
-     등속 전환 실측(60fps·145프레임·scaleX 기준) = 급변(최대/평균) 2.18배 → **1.66배** ·
-     불균일도(편차/평균) 0.72 → **0.53**. 남은 1.66배는 `|cos|` 자체의 곡률(옆면 근처가 빠름)이고
-     그건 실제 3D 자전의 원근 효과라 **없애면 안 되는 자연스러움**이다.
-     구 이징의 도입 사유(260728 "안 움직이다 가끔 깜빡")는 easeInOutCubic을 통째로 먹였을 때의
-     정면 붙박임 문제였고, 등속은 그 반대 극단이라 그 결함이 원천적으로 없다. */
+  var BUSY_SEL = '[aria-busy="true"], .firing, .picking, #jobs .job:not(.done):not(.err)';   // 구판 계승
+  var ALERT_SEL = '.profile.hasmsg, .profile.haswarn';        // 안 읽은 메시지·경고(renderMsgBadge가 칠한다)
+  var ALERT_BODY = ['has-sysbad', 'has-freshbad'];            // 미확인 시스템 알림 · 수집 고장(기어 빨강과 동축)
+  var BLUE = 'favicon-globe-blue-260805.svg';
+  var DANGER = '#e23b2a';   // = index :root --danger(accent-3) 값 복사 — 파비콘은 독립 문서라 var() 불가
+  var PX = 64, POLL = 350;
 
-  var spin = null, kept = [], img = null, ready = false;
-  var cv = null, cx = null, tick = null, t0 = 0, on = false, cache = null;
-  function busy() {
+  var img = null, ready = false, redPNG = null, kept = [], cur = '', link = null;
+
+  function hit(sel) {
     try {
-      if (document.querySelector(SEL)) return true;
+      if (document.querySelector(sel)) return true;
       var fr = document.getElementsByTagName('iframe'), i, d;
-      for (i = 0; i < fr.length; i++) {
-        d = null; try { d = fr[i].contentDocument; } catch (_) {}
-        if (d && d.querySelector(SEL)) return true;
-      }
+      for (i = 0; i < fr.length; i++) { d = null; try { d = fr[i].contentDocument; } catch (_) {} if (d && d.querySelector(sel)) return true; }
     } catch (_) {}
     return false;
   }
-  function paint(ph) {   // ph = 한 바퀴 안 위상(0~1) — 그림만 그린다(굽기는 buildCache가 한 번만)
-    var ang = ph * Math.PI * 2;   // 등속 = 각속도 일정 → 정면 통과 속도가 매 사이클 같다(팡 소멸)
-    var s = Math.cos(ang), S = PX * SIZE;
-    cx.clearRect(0, 0, PX, PX);
-    cx.save(); cx.translate(PX / 2, PX / 2);
-    cx.scale(Math.max(.06, Math.abs(s)), 1);   // ★ 세로축 자전 — 가로만 줄었다 펴진다(플레이그라운드 spin §305 · rotate = 팽이라 오답)
-    cx.globalAlpha = .55 + .45 * Math.abs(s);  // 옆면일수록 어둡게 = 앞뒤 입체감(같은 줄 a 계승)
-    cx.drawImage(img, -S / 2, -S / 2, S, S);
-    cx.restore();
+  function alerting() {
+    try { for (var i = 0; i < ALERT_BODY.length; i++) if (document.body && document.body.classList.contains(ALERT_BODY[i])) return true; } catch (_) {}
+    return hit(ALERT_SEL);
   }
-  /* 프리렌더 캐시(260729) — 한 바퀴치 프레임을 **처음 한 번만** 굽고 이후엔 문자열만 갈아끼운다.
-     구 방식은 매 프레임 toDataURL(= PNG 인코딩)을 다시 돌렸다(30fps × 8초 = 90~140ms 순수 인코딩).
-     12장 × 32px ≈ 25KB · 굽는 시간 3ms(실측) = 시작 지연 체감 0. */
-  function buildCache() {
-    var n = Math.min(MAXF, Math.max(2, Math.round(SPIN / (1000 / FPS)))), a = [], i;
-    for (i = 0; i < n; i++) { paint(i / n); a.push(cv.toDataURL('image/png')); }
-    return a;
+  function state() { return alerting() ? 'alert' : hit(BUSY_SEL) ? 'busy' : ''; }
+
+  /* 빨강판 = 파랑 지구본 한 장을 --danger 로 틴트해 **한 번만** 굽는다(구판 145장 캐시 → 1장) */
+  function red() {
+    if (redPNG !== null) return redPNG;
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = PX; var x = c.getContext('2d');
+      /* brightness 1.9 = 실측으로 잡은 값(창작 아님). 1.18로 굽자 평균 RGB (107,28,21) = 목표 --danger
+         (226,59,42)와 **색조 비율은 정확히 일치하는데 밝기만 절반**이었다(원본 지구본 평균 명도 ≈47%
+         → multiply가 그만큼 어둡게 깎는다). 배율 226/107 ≈ 2.1을 그대로 되돌리되, 밝은 쪽이 클리핑되면
+         그 픽셀은 danger 원색이 되므로 "빨간색 계열"이라는 지시에 오히려 맞는다(탭 16px = 결보다 색 인지). */
+      x.filter = 'grayscale(1) brightness(1.9)';         // 원본 파랑을 먼저 지운다(안 지우면 곱할 때 보라로 섞인다)
+      x.drawImage(img, 0, 0, PX, PX); x.filter = 'none';
+      x.globalCompositeOperation = 'multiply';           // 회색 명암 × danger = 지구본 결(대륙·격자) 보존
+      x.fillStyle = DANGER; x.fillRect(0, 0, PX, PX);
+      x.globalCompositeOperation = 'destination-in';     // 원본 알파 복원 = 둥근 실루엣·투명 배경 유지
+      x.drawImage(img, 0, 0, PX, PX);
+      redPNG = c.toDataURL('image/png');
+    } catch (_) { redPNG = ''; }                         // 캔버스 오염 등 = 조용히 포기(깨진 아이콘보다 원본이 낫다)
+    return redPNG;
   }
-  function draw() {
-    if (!cache) { try { cache = buildCache(); } catch (_) { stop(); return; } }   // toDataURL 실패(오염 등) = 조용히 원복
-    var i = Math.floor(((Date.now() - t0) % SPIN) / SPIN * cache.length) % cache.length;   // 위상 기준 = setInterval 지터가 회전 속도를 안 흔든다
-    try { spin.setAttribute('href', cache[i]); } catch (_) { stop(); }
-  }
-  /* 기존 <link rel=icon>의 href만 갈아끼우면 크롬이 안 그린다(실측 260727: type="image/svg+xml" 태그에 PNG를
-     넣으면 무시하고 앞의 .ico를 계속 씀). ∴ 도는 동안은 icon 링크를 통째로 떼고 PNG 전용 링크 하나만 세운다. */
-  function start() {
-    if (on || !ready) return;
-    if (!cv) { cv = document.createElement('canvas'); cv.width = cv.height = PX; cx = cv.getContext('2d'); }
-    kept = [].slice.call(document.querySelectorAll('link[rel~="icon"]'));   // apple-touch-icon은 rel 단어가 달라 미매치 = 무접촉
-    spin = document.createElement('link');
-    spin.setAttribute('rel', 'icon'); spin.setAttribute('type', 'image/png'); spin.setAttribute('sizes', PX + 'x' + PX);
-    on = true; t0 = Date.now(); draw();
-    kept.forEach(function (l) { if (l.parentNode) l.parentNode.removeChild(l); });
-    document.head.appendChild(spin);
-    tick = setInterval(draw, Math.round(1000 / FPS));
-  }
-  function stop() {
-    if (!on) return;
-    on = false; clearInterval(tick); tick = null;
-    if (spin && spin.parentNode) spin.parentNode.removeChild(spin);
-    kept.forEach(function (l) { document.head.appendChild(l); });   // 원본 태그 그대로 복귀 = 평소 지구본
-    spin = null; kept = [];
+  function show(st) {
+    if (st === cur) return;
+    var href = st === 'alert' ? red() : st === 'busy' ? BLUE : '';
+    if (st && !href) st = '';                            // 틴트 실패 = 표시 안 함
+    if (!st) {                                           // 평소 = 원본 태그 그대로 복귀
+      if (link && link.parentNode) link.parentNode.removeChild(link);
+      kept.forEach(function (l) { document.head.appendChild(l); });
+      link = null; kept = []; cur = ''; return;
+    }
+    if (!link) {
+      kept = [].slice.call(document.querySelectorAll('link[rel~="icon"]'));   // apple-touch-icon은 rel 단어가 달라 미매치 = 무접촉
+      link = document.createElement('link'); link.setAttribute('rel', 'icon');
+      kept.forEach(function (l) { if (l.parentNode) l.parentNode.removeChild(l); });
+      document.head.appendChild(link);
+    }
+    link.setAttribute('type', st === 'alert' ? 'image/png' : 'image/svg+xml');
+    if (st === 'alert') link.setAttribute('sizes', PX + 'x' + PX); else link.removeAttribute('sizes');
+    link.setAttribute('href', href);
+    cur = st;
   }
 
   img = new Image();
   img.onload = function () { ready = true; };
-  img.src = SRC;
+  img.src = BLUE;
 
-  setInterval(function () { var b = busy(); if (b) start(); else stop(); }, POLL);
-  window.addEventListener('pagehide', stop);
+  setInterval(function () { if (ready) show(state()); }, POLL);
+  window.addEventListener('pagehide', function () { show(''); });
 
-  window.nmFavBusy = { start: start, stop: stop, busy: busy, on: function () { return on; } };   // 진단용
+  // 진단용 — 구판 API(start/stop/busy/on) 이름 보존 = 호출처·스모크 계약 무손상
+  window.nmFavBusy = {
+    state: state, cur: function () { return cur; }, busy: function () { return hit(BUSY_SEL); }, alerting: alerting,
+    start: function () { show(state() || 'busy'); }, stop: function () { show(''); }, on: function () { return !!cur; }
+  };
 })();

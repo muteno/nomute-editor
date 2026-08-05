@@ -723,6 +723,47 @@ def check_thumb_chain():
     return 0
 
 
+def check_boot_bg_parity():
+    """OS 스플래시→앱 배경 연속 3값 정합 게이트(운영자 260805 승인 "아이디어도 진행하구").
+
+    계약 = ⓐ `#bootveil`(첫 페인트가 이어받는 단색 베일) 배경 == manifest `background_color`
+           ⓑ index `meta[name=theme-color]` == manifest `theme_color`
+    ⓐ의 근거는 그 선언 자신의 주석이다 — "manifest background_color 단색을 첫 페인트가 그대로 이어받고".
+
+    ⚠ 신설 사유 = **CSS·meta가 manifest를 못 읽어 var() 도달이 0**이라, 같은 색이 세 파일에 손으로 복사돼
+    있다(viewer/manifest.json · index `#bootveil` · index `meta[theme-color]`). 한쪽만 고치면 나머지가
+    조용히 낡는데, 증상이 「스플래시에서 앱으로 넘어올 때 색이 한 번 튄다」뿐이라 눈으로 잡기 어렵다.
+    기존 게이트는 전부 다른 축을 본다 — check_design은 토큰 raw **개수**, 팔레트 핀은 **뷰어 간** 동값,
+    거울 정합은 :root ↔ base.css → 「OS가 그리는 색과 우리가 그리는 색이 같은가」는 축 자체가 없었다.
+
+    ⚠ ⓐ는 하드 0 금지 = 260805 실측이 **이미 어긋나 있다**(manifest #000000 vs bootveil #070a12).
+    해소는 둘 중 어느 값으로 통일하느냐 = 색 결정 = [4-3] 운영자 승인 대기 사항이라 WARN으로 띄워
+    잊히는 것만 막는다(승인 후 값 통일 → 하드 승격 후보). ⓑ는 현행 일치라 하드."""
+    import json as _json
+    try:
+        mf = _json.load(open(os.path.join(ROOT, 'viewer', 'manifest.json'), encoding='utf-8'))
+        idx = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_boot_bg_parity 추출 실패(fail-closed):', e); return 1
+    m_bg = (mf.get('background_color') or '').strip().lower()
+    m_th = (mf.get('theme_color') or '').strip().lower()
+    veil = re.search(r'#bootveil\s*\{[^}]*?background:\s*(#[0-9a-fA-F]{3,8})', idx)
+    meta = re.search(r'<meta\s+name="theme-color"\s+content="(#[0-9a-fA-F]{3,8})"', idx)
+    if not veil or not meta:
+        print('❌ 부팅 배경 정합 게이트 — 앵커 소실(#bootveil 배경 %s · meta theme-color %s) = 선언 형태가 바뀌었다. 게이트를 현행화하라(fail-closed).'
+              % ('발견' if veil else '실종', '발견' if meta else '실종')); return 1
+    v_bg, v_th = veil.group(1).lower(), meta.group(1).lower()
+    if v_th != m_th:
+        print('❌ 부팅 배경 정합 — meta[theme-color] %s ≠ manifest theme_color %s. 상태바 색이 갈렸다(같은 값 손복사 = 한쪽만 고친 흔적).' % (v_th, m_th)); return 1
+    if v_bg != m_bg:
+        print('⚠️ 부팅 배경 정합(WARN·비차단) — #bootveil %s ≠ manifest background_color %s.' % (v_bg, m_bg))
+        print('   · 계약(주석 자신의 선언) = 베일은 OS 스플래시 단색을 그대로 이어받는다 → 지금은 스플래시→앱 전환에 색 점프가 있다.')
+        print('   · 해소 = 둘 중 어느 값으로 통일할지 = 색 결정 = 운영자 승인 사항([4-3]). 승인 시 값 통일 후 이 축을 하드로 올린다.')
+        return 0
+    print('✅ 부팅 배경 정합 게이트 — 스플래시→앱 3값 동일(background %s · theme %s · 베일 %s).' % (m_bg, m_th, v_bg))
+    return 0
+
+
 def check_shell_put_integrity():
     """셸캐시 put 절단 검문 의무 게이트(260802 '상단만 렌더' **재발** 실사고 — 1차 봉합이 sw.js put에만 </html>
     꼬리 검문을 달고, index.html applyShellUpdate의 페이지측 put은 무검문으로 남아 '탭하면 반영' 중 전송 절단이
@@ -4468,6 +4509,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_shell_put_integrity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_boot_bg_parity() != 0:   # 스플래시→앱 배경 3값 정합(theme는 하드·background는 WARN — CSS가 manifest를 못 읽어 손복사인 축 · 260805 실측 불일치)
+            rc = 1
+    except Exception as e:
+        print('❌ check_boot_bg_parity 예외(fail-closed):', e); rc = 1
     try:
         if check_workflow_amend() != 0:   # 워크플로 결과 커밋 --amend 금지(하드 게이트 — 260803 실측: 자기 커밋 드랍 시 남의 푸시 커밋 개서 = non-ff 영구거절·산출 유실)
             rc = 1
