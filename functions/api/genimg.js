@@ -42,7 +42,7 @@ export async function onRequestPost({ request, env }) {
     aspect: (a => { const m = /^(\d{1,2}):(\d{1,2})$/.exec(String(a || '')); if (!m) return '4:5'; const w = +m[1], h = +m[2]; return (w >= 1 && h >= 1 && w / h >= 0.25 && w / h <= 4) ? w + ':' + h : '4:5'; })(o.aspect),   // 자유 N:N(각 1~99 · 비율 1:4~4:1 상한 = 극단값 후처리 병리 차단 · 평의회3) — python _parse_aspect와 동일 계약
     size: SIZES.includes(sizeIn) ? sizeIn : 'FHD',
     count: Math.max(1, Math.min(4, parseInt(o.count, 10) || 1)),
-    fmt: o.fmt === 'jpg' ? 'jpg' : 'png',   // 품질 = PNG(기본)/JPG q90(운영자 260710)
+    fmt: o.fmt === 'png' ? 'png' : 'jpg',   // 산출 = JPG q90 기본(운영자 260805 "투명일 필요 없는 건 모두 jpg 90" · 구 기본 png 반전) — 뷰어는 fmt를 안 보내거나 'jpg'만 보낸다(화면 「품질」 행 폐지) · png = 도먼트 재입구
     mood: o.mood === 'axes' ? 'axes' : (MOODS.includes(o.mood) ? o.mood : 'auto'),
     moodAx: ['ct', 'sh', 'ew', 'rr'].reduce((r, k) => { const v = parseInt(moodAxIn[k], 10); r[k] = Number.isFinite(v) ? Math.max(-2, Math.min(2, v)) : 0; return r; }, {}),   // 무드 게이지 4축(-2..2)
     textOn: o.textOn === true,   // 문구 살리기 토글(운영자 260710) — 문구 자체는 Opus가 주문에서 정함

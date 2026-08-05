@@ -42,7 +42,7 @@ def snap_short(img, target):   # 짧은변 = target으로 등비 스냅(비율 �
     return img.resize((max(1, round(w * r)), max(1, round(h * r))), Image.LANCZOS)
 
 
-def jpg_bytes(img, q=94):
+def jpg_bytes(img, q=90):   # q90 = 전 산출 통일값(운영자 260805 · 구 94) — 정본 = gen_image.post_process(quality=90, subsampling=0, optimize=True)
     b = io.BytesIO()
     # subsampling=0(4:4:4) — 업스케일 디테일 재압축 열화 최소화(resize_image 계승)
     img.convert("RGB").save(b, "JPEG", quality=q, subsampling=0, optimize=True)

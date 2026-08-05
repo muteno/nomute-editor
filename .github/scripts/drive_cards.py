@@ -109,7 +109,7 @@ def main():
                                  params={'alt': 'media', 'supportsAllDrives': 'true'})
                 r.raise_for_status()
                 dst = os.path.join(a.scenes_out, f'장면{nn:02d}.jpg')
-                Image.open(io.BytesIO(r.content)).convert('RGB').save(dst, 'JPEG', quality=95)
+                Image.open(io.BytesIO(r.content)).convert('RGB').save(dst, 'JPEG', quality=90, subsampling=0, optimize=True)   # q90·4:4:4 = 전 산출 통일값(운영자 260805 · 구 95 기본 서브샘플)
                 print(f"장면 보존: 장면{nn:02d}.jpg ({os.path.getsize(dst)//1024}KB ← {len(r.content)//1024}KB png)")
 
     if done and finals:

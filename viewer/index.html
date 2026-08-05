@@ -4145,7 +4145,7 @@ try {
     <div class="geni-card"><div class="geni-row"><span class="pub-l">해상도</span><span class="geni-opts" data-k="size"></span></div></div>
     <div class="geni-card"><div class="geni-row"><span class="pub-l">비율</span><span class="geni-opts" data-k="aspect"></span><span class="geni-ar" id="geniArWrap" inert><input id="geniArW" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 가로값"><b class="geni-ar-c" aria-hidden="true">:</b><input id="geniArH" class="geni-ar-in" type="text" inputmode="numeric" maxlength="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="비율 세로값"><span class="geni-ar-out" id="geniArOut"></span></span></div></div><!-- ⚠배치 비율 직접 = 「직접」 칩 **그 자리**에서 N:N으로 전환(운영자 260727 "직접누르면 비율 n : n 으로 순간 바껴서 넣을수있게하면되고 공간확보하려고그럼") — 구 = 칩 행 아래 아코디언(.geni-arwrap)이 따로 열려 카드가 두 줄로 커졌다(실측 257→298px = 공간확보의 반대). 지금 = 같은 .geni-row 안 .geni-opts 뒤 인라인 슬롯이라 카드 높이 불변 · 열림 판정은 종전 geniAccordion(.open+inert) 그대로 = 배선·상태 신설 0 · 되돌아가기 = 프리셋 칩 탭 -->
     <div class="geni-card"><div class="geni-row"><span class="pub-l">개수</span><span class="geni-opts" data-k="count"></span></div></div><!-- 라벨 '개수'(운영자 260713 · 구 '장수') -->
-    <div class="geni-card"><div class="geni-row"><span class="pub-l">품질</span><span class="geni-opts" data-k="fmt"></span></div></div>
+    <!-- (구 '품질' 행 = PNG 단일 칩 = 폐지 · 운영자 260805 "투명일 필요 없는 건 모두 jpg 90") — 산출 포맷이 JPG q90 고정이라 고를 값이 0개 = 행 자체가 잉여(구 260713 'PNG만' 축소의 종점) · 백엔드 fmt 파라미터는 도먼트 보존(genimg.js·gen_image.py — 발사는 상시 jpg) -->
     </div></div></div><!-- .geni-cards → .geni-camsub-in → .geni-camsub(#geniOvSub) 순 폐합 -->
     <button class="geni-sechead geni-fold" id="geniExHead" type="button" aria-expanded="true" aria-controls="geniExSub"><span class="cref-lbl">표현</span><span class="geni-chev" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span></button><!-- 개요와 동일 폴드(소머리 3개 = 카메라·구도/개요/표현 대칭 완성 · 운영자 260727) -->
     <div class="geni-camsub" id="geniExSub"><div class="geni-camsub-in">
@@ -5304,12 +5304,13 @@ function moreImgGo(file, wrap, btn) { return imgFetchGo(file, wrap, btn, { url: 
 function genImgGo(file, wrap, btn, opts) { geniFreqBump('style', _geniSel.style); geniFreqBump('sub', _geniSel.sub); return imgFetchGo(file, wrap, btn, { url: 'api/genimg', body: { file, opts }, ld: '생성 중…', ticks: 14, field: 'thumb_gen' }); }   // 제미나이 생성(Opus 프롬프트 1~2분 + 렌더 → 여유 폴) · field:thumb_gen = 생성물 카러셀 폴링(완료 감지 정합·운영자 260713) · 발사 = 화풍·세부 제작빈도 +1(다음 열림 좌측 정렬)
 
 // ── 이미지 생성 팝업(#genidlg) — 버튼이 곧 프롬프팅 · 3부 재편(운영자 260710: 개요{해상도·비율·장수·품질} → 표현{화풍·세부·웹툰화·무드} → 내용{주문·문구}) ──
-// 라벨 = 평문 한국어 · 값 = 백엔드 화이트리스트 키(genimg.js·gen_image.py와 동일 집합 · '품질' = PNG/JPG 포맷 행 = 운영자 명명 260710).
+// 라벨 = 평문 한국어 · 값 = 백엔드 화이트리스트 키(genimg.js·gen_image.py와 동일 집합).
+const GENI_FMT = 'jpg';   // 산출 포맷 = JPG q90 고정(운영자 260805 "오버레이용 png(투명) 말고는 모두 jpg 90") — 화면 선택지 0개라 사전이 아니라 상수 1곳이 소유(발사 opts.fmt 단일 원천) · 투명이 필요한 산출(오버레이 exportOverlay·누끼 cutout)만 PNG 잔류 = 별개 경로
 const GENI_DICT = {
   size: [['720p', '720p'], ['FHD', 'FHD'], ['2K', '2K'], ['4K', '4K']],   // 픽셀 라벨(기본 FHD · 운영자 260710) — 서버가 렌더 크기·짧은변 px 환산(gen_image SIZE_RENDER/SIZE_SHORT · FHD = 1K 렌더 보간 = 과금 현행 동일)
   aspect: [['4:5', '4:5'], ['9:16', '9:16'], ['16:9', '16:9'], ['custom', '직접']],   // ⚠배치 1:1 프리셋 제거(운영자 260727 "1:1 말고 직접 · 공간확보") — 정사각은 '직접' N:N에 1:1 입력 = 기능 손실 0 · 두 탭(번역·AI 생성) 동시 적용 = 비율 목록 대칭 유지 · 옛 스냅샷 1:1 = GENI_DICT 미포함이라 기본값 강하(21:9·fmt jpg→png 선례 그대로)   // 순서·집합 = 4:5·9:16·16:9·1:1·직접(운영자 260718 "21:9 대신 직접" — 21:9 프리셋 제거, 커스텀 N:N이 초광폭 겸함 · 한 줄 밀집 정리 · 구 260713 21:9 포함) · 1:1 = gen_image NATIVE_ASPECTS·genimg.js N:N(0.25~4) 계약 내 · 직접 = N:N 입력(각 1~99 · 아래 아코디언 행 · 환산 표시) · 구 21:9 스냅샷 = GENI_DICT 미포함이라 복원 시 기본값 강하(fmt jpg→png 선례)
   count: [['1', '1개'], ['2', '2개'], ['3', '3개'], ['4', '4개']],   // 라벨 '개수'·표기 'N개'(운영자 260713 "장수 → 텍스트 개수로 변경") — 값(1~4)·서버 계약 불변
-  fmt: [['png', 'PNG']],   // 품질 = PNG 단일(운영자 260713 "PNG/JPG 렌더 토큰비 동일 → PNG만") — JPG(q90)는 Gemini 렌더 후 post_process 재인코딩이라 API 비용 동일 = 선택지 폐지 · gen_image jpg 경로는 도먼트 보존(구 GENI_OPTS2 stale jpg = GENI_DICT 미포함이라 복원 시 png로 자동 강하)
+  // (구 fmt 축 = 폐지 · 운영자 260805 "투명일 필요 없는 건 모두 jpg 90") — 산출은 JPG q90 고정이라 고를 값이 0개 = 사전 항목·'품질' 행 동시 제거 · 발사 파라미터는 GENI_FMT 상수 1곳(아래) · 옛 스냅샷의 fmt 키 = 사전 미포함이라 복원 대상에서 자연 탈락(구 21:9·1:1 선례 동문)
   place: [['auto', '자동'], ['top23', '썸네일'], ['center', '중앙'], ['full', '전신']],   // 썸네일(구 라벨 상단⅔) = 카드뉴스·썸네일 정본(주요 피사체 상단 2/3 앵커·하단 캡션존 비움 — 운영자 260707 "조건에 썸네일" 명칭 확정 · 값 top23 불변)
   shot: [['auto', '자동'], ['S10', '표정 클로즈'], ['S08', '클로즈업'], ['S06', '상반신'], ['S04', '전신'], ['S03', '와이드']],   // 카메라 거리 = 01b 샷 크기 실코드(운영자 260707 "얼마나 가까이")
   expr: [['auto', '자동'], ['EM-03', '슬픔'], ['EM-05', '분노'], ['EM-16', '눈물'], ['EM-17', '결연'], ['EM-09', '억눌림'], ['EM-12', '직시']],   // 표정 = 22 FACS 실코드(운영자 260707 "표정 묘사")
@@ -5333,7 +5334,7 @@ const GENI_ALL_STYLES = [...GENI_STYLE_MAIN, ...GENI_STYLE_ETC];
 const GENI_MOOD_AX = [['ct', '긴장도', '차분', '긴장'], ['sh', '정서', '침통', '희망'], ['ew', '온도', '스산', '온기'], ['rr', '격앙', '냉정', '격앙']];   // 무드 게이지 4축(각 -2..+2 · 0=중립) — 서버 gen_image MOOD_AX 동일 키 · 양끝 = 축별 기준 라벨(운영자 260710 "종류별 분리·기준 달기")
 const GENI_CAM_KEYS = ['shot', 'expr', 'angle', 'point', 'light', 'place'];   // 접힘 카메라·구도군 — 배지 = non-auto 개수(숨은 활성 은폐 방지)
 let _geniCtx = null;   // {file, wrap, btn, free}
-let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '1', arH: '1' /* 직접 기본 = 1:1(운영자 260727 "누르면 1:1이였다가 자릿수가 비는 느낌") — 빈 칸이 아니라 값이 앉아 있고 탭하면 그 자리가 비며 바로 타이핑 · ⚠ 한 줄 객체 리터럴이라 // 주석 금지(뒤 필드가 통째로 먹힌다 = 260727 부팅 크래시 실측) */, count: '1', fmt: 'png', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', engineTouched: false, colorAx: { sat: 0, bri: 0 }, colorTouched: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
+let _geniSel = { style: 'webtoon', sub: 'auto', size: 'FHD', aspect: '4:5', arW: '1', arH: '1' /* 직접 기본 = 1:1(운영자 260727 "누르면 1:1이였다가 자릿수가 비는 느낌") — 빈 칸이 아니라 값이 앉아 있고 탭하면 그 자리가 비며 바로 타이핑 · ⚠ 한 줄 객체 리터럴이라 // 주석 금지(뒤 필드가 통째로 먹힌다 = 260727 부팅 크래시 실측) */, count: '1', mood: 'auto', moodAx: { ct: 0, sh: 0, ew: 0, rr: 0 }, kweb: true, textOn: false, engine: 'gemini', engineTouched: false, colorAx: { sat: 0, bri: 0 }, colorTouched: false, place: 'auto', shot: 'auto', expr: 'auto', angle: 'auto', point: 'auto', light: 'auto', refMode: 'ref' };   // 기본 = 극화·4:5·FHD·PNG·웹툰화 ON·무드 자동(운영자 260710) · 참고 이미지 기본 참고(refMode 첨부 시만 의미)
 let _geniInited = false;
 let _geniDD = null;   // 열려 있는 선택박스(도먼트 — 260713 화풍 전량 나열로 열기 호출처 0 · 항상 null·닫기 경로만 잔존)
 function geniEngIco() { const [ko, ico] = GENI_ENG_ICO[_geniSel.engine] || GENI_ENG_ICO.gemini; return '<i class="eng-ico" title="' + ko + '" aria-label="' + ko + '">' + ico() + '</i>'; }   // 아이콘만 남는 자리 = title·aria-label로 모델명 보존(스크린리더·호버)
@@ -5776,7 +5777,7 @@ function geniInit() {
     const aspect = geniAspect();
     if (!aspect) { try { $('#geniArW').focus(); } catch {} return; }   // 직접 비율 미완성 = 발사 불가(게이트와 이중 방어)
     const anyAx = GENI_MOOD_AX.some(([k]) => _geniSel.moodAx[k]);
-    const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, fmt: _geniSel.fmt,
+    const opts = { style: _geniSel.style, sub: _geniSel.sub, aspect, size: _geniSel.size, count: parseInt(_geniSel.count, 10) || 1, fmt: GENI_FMT,
       mood: (_geniSel.mood === 'axes' && anyAx) ? 'axes' : 'auto', moodAx: { ..._geniSel.moodAx },
       kweb: !!_geniSel.kweb, textOn: !!_geniSel.textOn, engine: _geniSel.engine === 'gpt' ? 'gpt' : 'gemini', satAdj: _geniSel.colorAx.sat | 0, briAdj: _geniSel.colorAx.bri | 0,
       place: _geniSel.place, shot: _geniSel.shot, expr: _geniSel.expr, angle: _geniSel.angle, point: _geniSel.point, light: _geniSel.light, wish };
@@ -5880,7 +5881,7 @@ function geniPrep(file, wrap, btn) {   // 상태 준비 공통부(팝업 openGen
     if (s) {
       if (GENI_ALL_STYLES.some(([v]) => v === s.style)) _geniSel.style = s.style;
       _geniSel.sub = (GENI_SUB[_geniSel.style] || []).some(([v]) => v === s.sub) ? s.sub : 'auto';
-      ['size', 'count', 'fmt', 'aspect'].forEach(k => { if (GENI_DICT[k].some(([v]) => v === s[k])) _geniSel[k] = s[k]; });
+      ['size', 'count', 'aspect'].forEach(k => { if (GENI_DICT[k].some(([v]) => v === s[k])) _geniSel[k] = s[k]; });   // ⚠ 'fmt' 제거(260805 포맷 고정) — 사전에서 지운 축을 여기 남겨두면 GENI_DICT.fmt가 undefined라 `.some`에서 TypeError = 옵션 복원 전체가 죽는다(구 21:9·1:1은 사전엔 없어도 축은 살아 있어 조용히 강하했지만, 축 자체를 지울 땐 이 목록이 짝)
       _geniSel.arW = /^\d{1,2}$/.test(String(s.arW || '')) ? String(s.arW) : '';
       _geniSel.arH = /^\d{1,2}$/.test(String(s.arH || '')) ? String(s.arH) : '';
       if (_geniSel.aspect === 'custom' && !geniArVal()) _geniSel.aspect = '4:5';   // 미완성 직접값 복원 = 안전 강하

@@ -2466,7 +2466,7 @@ function genJob(count, opts, fireErr) {   // 발사 1건 = 표준 잡 카드. ap
           job.status = 'done';
           mine.forEach((m, i) => {
             const o2 = job.outs[i]; o2.path = m.url;
-            carAppend(m.url + (m.url.indexOf('?') < 0 ? '?t=' + Date.now() : ''), dlStamp(job.t0) + '_생성_' + pad3(job.n) + '_' + (i + 1) + '.png', '생성 #' + job.n, job, '', o2);   // 캐러셀+이전 제작+전체 다운로드 = 정본 경로
+            carAppend(m.url + (m.url.indexOf('?') < 0 ? '?t=' + Date.now() : ''), dlStamp(job.t0) + '_생성_' + pad3(job.n) + '_' + (i + 1) + '.jpg', '생성 #' + job.n, job, '', o2);   // 캐러셀+이전 제작+전체 다운로드 = 정본 경로 · 확장자 jpg = 산출 실바이트(운영자 260805 — gen_image가 JPG q90 고정 산출)
           });
           renderJob(job);
           return;
@@ -3344,7 +3344,7 @@ function pollJob(job) {   // 각 잡 독립 폴링 — 완성 슬롯은 캐러�
         if (job.status !== 'run') return;   // 취소된 잡 = 뒤늦게 도착한 이미지 유입 차단(캐러셀·이전 제작 오염 방지 · 260727)
         if (job.done[i]) return; job.done[i] = true;
         // 변형 순서(0,1,2…)대로만 캐러셀에 추가 = 로드 완료 순서 무관 '1번부터' 노출. 먼저 로드된 뒷 변형은 앞 변형 도착까지 버퍼 대기.
-        (job._ready || (job._ready = {}))[i] = [url, dlStamp(job.t0) + '_' + dlSlug(job.label) + '_' + pad3(job.n) + (o.label ? '_' + o.label : '') + '.' + (o.path.split('.').pop() || 'png'), job.label + ' #' + job.n, job, o.label ? ' · ' + o.label : '', o];
+        (job._ready || (job._ready = {}))[i] = [url, dlStamp(job.t0) + '_' + dlSlug(job.label) + '_' + pad3(job.n) + (o.label ? '_' + o.label : '') + '.' + (o.path.split('.').pop() || 'jpg'), job.label + ' #' + job.n, job, o.label ? ' · ' + o.label : '', o];
         if (job._next == null) job._next = 0;
         while (job._ready[job._next]) { carAppend(...job._ready[job._next]); delete job._ready[job._next]; job._next++; }
         if (job.done.every(Boolean)) job.status = 'done';   // 마지막 장 로드 즉시 완료 표시(5s tick 안 기다림)
@@ -3370,8 +3370,8 @@ const pad3 = n => String(n).padStart(3, '0');   // 잡번호 3자리(005) — �
 const dlSlug = s => String(s || '').replace(/#/g, '').replace(/[·()/\\:*?"<>|]/g, ' ').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 function dlBlob(url, name) {   // 다운로드 — R2(교차출처)는 같은-출처 프록시(api/dl)가 Content-Disposition: attachment로 강제 저장(전 플랫폼·CORS 무관·iOS 인라인 회피·?t= 캐시버스트 보존). 비R2(같은출처)는 download 속성으로 직접.
   const a = document.createElement('a');
-  a.href = /\/\/pub-[0-9a-fA-F]+\.r2\.dev\//.test(url) ? ('api/dl?u=' + encodeURIComponent(url) + '&n=' + encodeURIComponent(name || 'thumb.png')) : url;
-  a.download = name || 'thumb.png';
+  a.href = /\/\/pub-[0-9a-fA-F]+\.r2\.dev\//.test(url) ? ('api/dl?u=' + encodeURIComponent(url) + '&n=' + encodeURIComponent(name || 'thumb.jpg')) : url;
+  a.download = name || 'thumb.jpg';
   document.body.appendChild(a); a.click(); a.remove();
 }
 async function reattachSrc(url, name, btn) {   // 편집(리사이즈·모자이크) 결과 → 소스 원탭 재첨부 체인(운영자 260713 "그 한수" — 다운로드→재첨부 수동 왕복 제거). R2 = 같은-출처 프록시(api/dl · dlBlob 정본 재사용 = CORS 무관) → blob → dataURL → CIMG 슬롯 주입(filled→ieSrcSync가 측정·게이트 해제 전담) → 기본값(원본·모자이크 OFF)·제작 축 준비 완료.
@@ -3662,7 +3662,7 @@ function renderHist() {
     const hd = document.createElement('div'); hd.className = 'hist-hd'; hd.textContent = histTime(e.ts);   // 제작 시각(오전/오후 H:MM·흰색·이미지 위)
     const th = document.createElement('div'); th.className = 'hist-thumb';
     const dl = document.createElement('a'); dl.className = 'imgdl dlbtn'; dl.href = e.url;
-    dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG; if (dlSeen(e.url)) dl.classList.add('dl-done'); dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'thumb.png'); dlMark(e.url, dl); });
+    dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DOWNLOAD_SVG; if (dlSeen(e.url)) dl.classList.add('dl-done'); dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'thumb.jpg'); dlMark(e.url, dl); });
     const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url; img.onerror = () => { it.remove(); _deadUrls.add(histKey(e.url)); const cc = $('#histCnt'); if (cc) cc.textContent = '(' + grid.children.length + ')'; };   // 사라진 이미지 슬롯 제거 + 세션 dead 기록(다음 렌더 제외) + 카운트 즉시 정정(허수 방지)
     const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
     if (e.varStr) { const v = document.createElement('span'); v.className = 'hist-cap-v'; v.textContent = e.varStr; cap.appendChild(v); }

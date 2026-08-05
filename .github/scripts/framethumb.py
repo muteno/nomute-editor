@@ -41,12 +41,13 @@ def main():
                 kind = "expand"
             except Exception as e:  # 확장 실패 = 업스케일본으로 폴백(정직 표기 · 체인 전체는 살림)
                 print(f"::warning::ft expand 실패(프레임{i}) — 업스케일본 폴백: {e}")
-        key = f"ft_out/{ID}/best{i}_{kind}.png"
-        url = tg.r2_upload(out_bytes, key) if getattr(tg, "R2_ON", False) else None
+        out_bytes, ext, ctype = tg.to_jpg90(out_bytes)   # 산출 = JPG q90 고정(운영자 260805 "투명일 필요 없는 건 모두 jpg 90") — 베스트컷은 영상 프레임이라 투명 영역이 없다 · 이미 JPEG면 무재인코딩
+        key = f"ft_out/{ID}/best{i}_{kind}.{ext}"
+        url = tg.r2_upload(out_bytes, key, ctype) if getattr(tg, "R2_ON", False) else None
         if not url:  # git 폴백 — viewer/ 커밋 = Pages 서빙
-            with open(os.path.join(OUT, f"best{i}_{kind}.png"), "wb") as f:
+            with open(os.path.join(OUT, f"best{i}_{kind}.{ext}"), "wb") as f:
                 f.write(out_bytes)
-            url = f"ft_out/{ID}/best{i}_{kind}.png"
+            url = f"ft_out/{ID}/best{i}_{kind}.{ext}"
         frames.append({"t": fr["t"], "url": url, "kind": kind,
                        "up_engine": fr["engine"], "size": fr["size"]})
     doc = {"state": "done", "id": ID, "ar": AR if gem_on else "off",

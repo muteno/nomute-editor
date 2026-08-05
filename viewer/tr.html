@@ -288,7 +288,7 @@
           <button class="cpv-photobtn" id="pvRef" type="button" aria-label="참고 자료 — 탭=기사 선택" title="참고 자료 — 탭=기사 선택"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><!-- 참고 자료(빈 상태 진입) = 중앙 반갈에서 레일로 이주(운영자 260802 "중앙에는 사진 업로드 그것만") — id·핸들러 불변 -->
           <button type="button" class="cpv-tool" id="swapBtn" hidden aria-label="사진 첨부·교체 — 탭=파일 선택" title="사진 첨부·교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg></button>
           <button type="button" class="cpv-tool" id="delBtn" hidden aria-label="사진 삭제" title="사진 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
-          <button class="cpv-tool" id="dlBtn" type="button" aria-label="PNG 저장" title="PNG 저장" hidden></button>
+          <button class="cpv-tool" id="dlBtn" type="button" aria-label="JPG 저장" title="JPG 저장" hidden></button>
           <button type="button" class="cpv-tool" id="refBtn" hidden aria-label="참고 자료 변경 — 탭=기사 선택" title="참고 자료 변경"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></button><!-- 빈 상태 소등 후 참조 기사 변경(운영자 260725 "두번째 눌렀을 땐 참조 기사를 변경") = thumb .cpv-tool 문법 계승 -->
           </span>
           <span class="trail-div"></span>
@@ -371,6 +371,7 @@
 const TR_BLACK = '#000';            /* 순수 흑(§🎨 순수 흑/백 정당 raw) */
 const TR_WHITE = '#fff';
 const TR_GREEN = '#2ee65c';         /* 디스패치풍 형광 초록(발행 콘텐츠 색 — UI 재유입 금지) */
+const TR_JPGQ = 0.9;                /* 산출 JPEG 품질 = q90 단일(운영자 260805 "투명일 필요 없는 건 모두 jpg 90") — 저장 버튼·결과 합류·서버 이력이 한 값을 쓴다(구 저장 PNG + 결과 0.92 = 같은 캔버스인데 화면과 파일이 다른 바이트) · 백엔드 정본 = gen_image.post_process q90 */
 const TR_W = 1080;                  /* 발행 기준 폭 */
 const CARD_RATIO = 5 / 4;           /* 발행 카드 = 4:5 세로(1080×1350) 기본 — 운영자 260721 확정("특별한 말 없으면 항상 4:5") */
 const PADX = 64;                    /* 밴드 좌우 여백(1080 기준) */
@@ -860,7 +861,7 @@ go.addEventListener('click', async () => {
     await ensureCardFonts(); compose();   // 카드 폰트 지연 로드 완료 후 합성(캔버스 정본 서체 보장 · 구 document.fonts.ready = 미요청 폰트 누락으로 폴백 렌더되던 것 교정)
     await trResLocal();   // 결과 섹션 즉시 합류 = **클라 캔버스 단독**(서버 왕복 무관 · 운영자 260803 "이전 제작은 달라붙었는데 결과는 안 달라붙었어") — 구판은 결과 진입로가 trPersist 성공(`j.url`) 하나뿐이라 R2·GitHub·네트워크 중 하나만 삐끗해도 미리보기엔 카드가 떠 있는데 「결과 (0)」이었다(실측 260803: 라이브 thumb-hist 400건 중 번역 trout/ **0건** = 도입 이래 서버 왕복 성공 0 = 결과도 0)
     trPersist();   // 공유 '이전 제작' 편입(운영자 260802 일맥상통) — fire-and-forget(실패 = 조용히 · 미리보기·저장·결과 무손상) · 성공하면 위 로컬 항목을 서버 URL로 승격(중복 추가 아님)
-    aStat('✓ 완성 — 미리보기 확인 · 우상단 버튼 = PNG 저장');
+    aStat('✓ 완성 — 미리보기 확인 · 우상단 버튼 = JPG 저장');
   } catch (e) { aStat('✗ ' + e.message); }
   goBusy(false);
 });
@@ -870,12 +871,12 @@ const dlBtn = $('dlBtn'); dlBtn.innerHTML = DOWNLOAD_SVG;
 dlBtn.addEventListener('click', () => {
   if (!RESULT) return;
   const k = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });   /* KST 강제 포맷 */
-  const name = k.slice(0, 10).replace(/-/g, '') + '_' + k.slice(11, 19).replace(/:/g, '') + '_번역카드_v1.png';
+  const name = k.slice(0, 10).replace(/-/g, '') + '_' + k.slice(11, 19).replace(/:/g, '') + '_번역카드_v1.jpg';   // 확장자 = 실제 바이트와 일치(운영자 260805 JPG q90 통일 — 번역 카드는 투명 영역이 없다: 캔버스 전면이 배경사진∥단색으로 덮인다)
   pv.toBlob(bl => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(bl); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-  }, 'image/png');
+  }, 'image/jpeg', TR_JPGQ);
 });
 
 /* ── 갱신 ── */
@@ -1013,7 +1014,7 @@ function trResAdd(e) { TR_RES.unshift(e); trFollowNewest(); renderTrRes(); rende
 async function trResLocal() {
   if (!RESULT || RESULT._resEntry) return;   // 결과 1건 = 1회(옵션 미세조정 재합성은 재기록 안 함 = trPersist 계약 동축)
   let bl = null;
-  try { bl = await new Promise(res => pv.toBlob(res, 'image/jpeg', 0.92)); } catch (_) { /* 캔버스 인코딩 실패 = 결과만 스킵(미리보기·PNG 저장 무손상) */ }
+  try { bl = await new Promise(res => pv.toBlob(res, 'image/jpeg', TR_JPGQ)); } catch (_) { /* 캔버스 인코딩 실패 = 결과만 스킵(미리보기·저장 버튼 무손상) */ }
   if (!bl) return;
   RESULT._blob = bl;   // 같은 바이트를 서버에도 올린다(trPersist 재인코딩 0 = 화면과 이력이 동일 산출 보장)
   const k = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });   // 파일명 = dlBtn KST 규칙 계승(naive 로컬시각 금지 · CLAUDE.md [12])
@@ -1070,7 +1071,7 @@ window.nmRefresh = () => { pollR2RecentTr(); return loadServerHist(); };   // �
 async function trPersist() {
   if (!RESULT || RESULT._persisted) return; RESULT._persisted = 1;   // 결과 1건 = 1회(생성 직후 정본 스냅 · 옵션 미세조정 재합성은 재기록 안 함)
   try {
-    const bl = RESULT._blob || await new Promise(res => pv.toBlob(res, 'image/jpeg', 0.92)); if (!bl) return;   // trResLocal이 이미 구운 바이트 재사용(재인코딩 0 · 화면 결과 = 서버 이력 동일 산출)
+    const bl = RESULT._blob || await new Promise(res => pv.toBlob(res, 'image/jpeg', TR_JPGQ)); if (!bl) return;   // trResLocal이 이미 구운 바이트 재사용(재인코딩 0 · 화면 결과 = 서버 이력 동일 산출)
     const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(bl); });
     const r = await fetch('/api/trhist', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ b64 }), signal: AbortSignal.timeout(30000) });
     const j = await r.json().catch(() => ({}));

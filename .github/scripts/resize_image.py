@@ -159,7 +159,7 @@ def blur_pad(img, ar):
     return canvas
 
 
-def jpg_bytes(img, q=92):
+def jpg_bytes(img, q=90):   # q90 = 전 산출 통일값(운영자 260805 · 구 92) — 정본 = gen_image.post_process(quality=90, subsampling=0, optimize=True)
     b = io.BytesIO()
     # subsampling=0(4:4:4) — 기본 4:2:0 크로마 번짐 방지(솔리드/블러 무과금 경로 재압축 열화 최소화 · 분신11 260709)
     img.convert("RGB").save(b, "JPEG", quality=q, subsampling=0, optimize=True)

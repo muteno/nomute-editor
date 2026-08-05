@@ -231,9 +231,9 @@ for (const a of articles) {
       });
     }
   }
-  // 썸네일 후보: cards/<stem>/thumbs/{search.json, gen.json + gen-*.png}
+  // 썸네일 후보: cards/<stem>/thumbs/{search.json, gen.json + gen-*.<ext>}   ← 260805 JPG q90 통일 이후 실제 확장자는 .jpg(구 생성분 .png도 그대로 읽힌다 = 값은 gen.json의 file 필드가 소유)
   //  search.json = [{url, link, label}] (url=R2 재호스팅 or 외부 hotlink · label=''(대표)/'유사' = 기사 og:image 추출)
-  //  gen.json    = [{file, label}] (gen-*.png 로컬 생성물 → viewer/cards/<stem>/thumbs/ 복사)
+  //  gen.json    = [{file, label}] (gen-*.jpg 로컬 생성물 → viewer/cards/<stem>/thumbs/ 복사)
   let thumbSearch = [], thumbGen = [], thumbUsage = null;
   const tdir = join(dir, 'thumbs');
   if (existsSync(tdir)) {

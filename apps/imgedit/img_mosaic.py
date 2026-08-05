@@ -194,7 +194,7 @@ def main():
                 done = mosaic_by_mask(img, masks[idx], pxw, pxh, feather)
             if not done:   # 기본 티어 또는 SAM2 폴백 — 박스/타원 픽셀레이트(코어-강제 커버)
                 tr.mosaic_region(img, x, y, w, h, W, H, pxw=pxw, pxh=pxh, size=size, feather=feather, shape=shape)
-        ok, buf = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+        ok, buf = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 90])   # q90 = 전 산출 통일값(운영자 260805 · 구 92) — 누끼(cutout)만 투명 PNG 잔류(위 분기)
         ext_out, ctype = ".jpg", "image/jpeg"
     if not ok:
         fail(iid, "이미지 저장 실패 — 다시 시도해줘.", "imencode fail")

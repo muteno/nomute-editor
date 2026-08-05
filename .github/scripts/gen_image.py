@@ -10,7 +10,7 @@ cards/<stem>/thumbs/search.json **앞쪽** prepend(label '생성') → 뷰어 �
   그래도 실패면 결정형 폴백(Claude 0콜) — 모델당 1콜 상한·재시도 루프 없음(쿼터 폴오버는 run_claude SSOT 그대로).
 - Claude가 완전 실패해도 결정형 폴백 프롬프트로 렌더 강행(fail-soft — '생성' 버튼은 항상 결과를 내려 노력).
 - 카드 제미나이 0 불변과 무관: 이 경로는 뷰어 수동 발사(슛과 동일 정책·자동 파이프라인 아님).
-입력: env GENIMG_STEM(기사 file 베이스) · GENIMG_OPTS(JSON: style/sub/aspect[N:N 자유]/size[720p·FHD·2K·4K]/count/fmt[png·jpg90]/
+입력: env GENIMG_STEM(기사 file 베이스) · GENIMG_OPTS(JSON: style/sub/aspect[N:N 자유]/size[720p·FHD·2K·4K]/count/fmt[jpg90 기본·png 도먼트]/
       mood[auto·axes+moodAx 게이지]/kweb/textOn[문구 살리기 토글]/wish · 레거시 text·font·1K도 수용 — 260710 개요 개편).
 자유 생성(GENIMG_FREE=1 · 운영자 260707 "이미지 제작 세부메뉴 4번"): 기사 없음 — 운영자 주문(wish)/문구(text)/참고 이미지(refB64 ·
   운영자 260721 미리보기 반갈 "사진 픽토그램 누르면 사진을 가져와서 재생성")가 장면의 전부.
@@ -64,7 +64,8 @@ def notify_fail(reason):
 
 
 # ── 옵션 화이트리스트(genimg.js와 동일 집합 — 이중 검증) ──────────────────────────
-# 260710 개요 개편(운영자): 해상도 = 픽셀 라벨(720p/FHD/2K/4K · 기본 FHD) · 비율 = 자유 N:N(각 1~99) · 품질 = PNG/JPG90.
+# 260710 개요 개편(운영자): 해상도 = 픽셀 라벨(720p/FHD/2K/4K · 기본 FHD) · 비율 = 자유 N:N(각 1~99).
+# 260805 개정(운영자 "투명일 필요 없는 건 모두 jpg 90"): 산출 = JPG q90 고정(화면 「품질」 행 폐지) · PNG는 도먼트 파라미터로만 잔류.
 NATIVE_ASPECTS = ("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")   # Gemini imageConfig.aspectRatio 실지원 집합 — 커스텀 비율은 근접 네이티브로 렌더 → post_process가 정확 크롭
 SIZE_RENDER = {"720p": "1K", "FHD": "1K", "2K": "2K", "4K": "4K"}   # 렌더 호출 크기 — FHD도 1K 렌더 후 보간(기본 과금 = 현행 1K 동일 · 문구 살리기 ON이면 main()이 2K 플로어)
 from img_sizes import SIZE_SHORT    # 짧은변 목표 px 정본(운영자 260718 "한 상수파일" · gen_image·upscale·thumb-make·comp-make 공통 SSOT · 같은 디렉토리)
@@ -240,7 +241,7 @@ def load_opts():
     size = {"1K": "FHD"}.get(o.get("size"), o.get("size"))                  # 레거시 '1K'(구 클라이언트) = FHD로 수렴
     if size not in SIZE_RENDER:
         size = "FHD"                                                        # 기본 = FHD(운영자 260710)
-    fmt = "jpg" if o.get("fmt") == "jpg" else "png"                         # 품질 = PNG(기본) / JPG q90
+    fmt = "png" if o.get("fmt") == "png" else "jpg"                         # 산출 = JPG q90 기본(운영자 260805 "투명일 필요 없는 건 모두 jpg 90" · 구 기본 png 반전) — png는 도먼트 잔류(뷰어 발사엔 없는 값 · 투명 산출 요구가 생기면 이 한 줄이 재입구)
     mood = o.get("mood")
     mood_ax = {k: 0 for k in MOOD_AX}
     if mood == "axes":                                                      # 무드 게이지(운영자 260710) — 레거시 프리셋 문자열도 계속 수용
@@ -332,8 +333,9 @@ def _color_adj(im, sat_adj, bri_adj):
 
 
 def post_process(png, o, ref_png=None):
-    """렌더 후처리(운영자 260710 개요 개편) — 커스텀 비율 정확 크롭(중앙) + 목표 짧은변 스냅(SIZE_SHORT) + 포맷 인코딩(PNG/JPG q90).
-    PIL 부재·오류 = 원본 PNG 그대로(fail-soft — 기능이 절대 안 죽게 · imggen.yml pillow 스텝도 continue-on-error)."""
+    """렌더 후처리(운영자 260710 개요 개편) — 커스텀 비율 정확 크롭(중앙) + 목표 짧은변 스냅(SIZE_SHORT) + 포맷 인코딩(JPG q90 기본 · PNG 도먼트).
+    PIL 부재·오류 = 렌더 원본 바이트 그대로(fail-soft — 기능이 절대 안 죽게 · imggen.yml pillow 스텝도 continue-on-error).
+    ⚠ fail-soft 반환 ext = 매직바이트 실측(구판은 무조건 "png"라고 선언했는데 Gemini는 실측상 JPEG를 준다 = 키·Content-Type이 거짓 = 260805 봉합)."""
     try:
         import io
         from PIL import Image
@@ -361,8 +363,9 @@ def post_process(png, o, ref_png=None):
         im.save(buf, "PNG", optimize=True)
         return buf.getvalue(), "png"
     except Exception as e:  # noqa: BLE001
-        print("::warning::후처리 실패(원본 PNG 유지): {}: {}".format(type(e).__name__, e), flush=True)
-        return png, "png"
+        ext0 = "jpg" if png[:3] == b"\xff\xd8\xff" else ("png" if png[:8] == b"\x89PNG\r\n\x1a\n" else "jpg")   # 실바이트로 선언(거짓 확장자 = R2 Content-Type 어긋남)
+        print("::warning::후처리 실패(렌더 원본 유지 · ext={}): {}: {}".format(ext0, type(e).__name__, e), flush=True)
+        return png, ext0
 
 
 # ── 「이미지와 동일하게」(ref_mode=clone) 프롬프트 = 260726 실측 노하우 문서 §3 성공본 그대로 이식 ──

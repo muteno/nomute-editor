@@ -5,7 +5,7 @@
 #   - GitHub Actions가 Gemini(gemini-3.1-flash-image-preview = Nanobanana 2 Pro·4:5)를 직접 호출
 #   - 기사 타이틀(헤드라인) 문구는 이미지에 안 박음 = 글자 없는 장면만(현장 간판 등 자연 글자는 무관). 1K(토큰 절감).
 #   - 산출 → Cloudflare R2 업로드(공개 URL) + gen.json([{sid,img,label}]) → build-viewer가 뷰어로 투영
-#     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.png 로컬 커밋·아무것도 안 깨짐)
+#     (R2 미설정 시 git 폴백 = cards/<stem>/thumbs/gen-<style>.jpg 로컬 커밋·아무것도 안 깨짐 · 260805 JPG q90 통일)
 #
 # 안전: GEMINI_API_KEY 없으면 즉시 no-op(스캐폴드). 어떤 기사/화풍 실패도 fail-soft(파이프라인 안 깸).
 # 비용: 픽한 기사당 이미지 4장(유료·4화풍 — 운영자 260703). MAX_BATCH로 1런당 상한(최신 우선·이미 생성된 기사 skip).
@@ -780,6 +780,30 @@ def _img_type(b):
             return ct, ext
     return None, None
 
+def to_jpg90(b):
+    """비-JPEG 이미지 바이트 → JPEG q90(4:4:4)으로 정규화. (bytes, ext, content_type) 반환.
+    운영자 260805 "오버레이용 png(투명) 말고는 모두 jpg 90" — 카드 썸네일은 투명이 필요 없다.
+    ⚠ 이미 JPEG면 손대지 않는다(JPEG→JPEG 재인코딩 = 순손실 · 실측상 Gemini는 대개 JPEG를 준다).
+    PIL 부재·디코드 실패 = 원본 바이트 + 매직바이트 실측 ext(fail-soft — 생성이 절대 안 죽게 · post_process 관례)."""
+    ct, ext = _img_type(b or b"")
+    if ext == "jpg":
+        return b, "jpg", "image/jpeg"
+    try:
+        import io as _io
+        from PIL import Image
+        im = Image.open(_io.BytesIO(b)); im.load()
+        if im.mode in ("RGBA", "LA", "P"):            # 알파 = 흰 배경에 합성(JPEG는 알파를 못 담는다 · 검정 배경 기본값 방지)
+            im = im.convert("RGBA")
+            bg = Image.new("RGB", im.size, (255, 255, 255))
+            bg.paste(im, mask=im.split()[-1])
+            im = bg
+        buf = _io.BytesIO()
+        im.convert("RGB").save(buf, "JPEG", quality=90, optimize=True, subsampling=0)   # q90·4:4:4 = gen_image.post_process 정본 동값
+        return buf.getvalue(), "jpg", "image/jpeg"
+    except Exception as e:  # noqa: BLE001
+        print("  ⚠️ JPG 정규화 실패(원본 유지): {}: {}".format(type(e).__name__, e), flush=True)
+        return b, (ext or "jpg"), (ct or "image/jpeg")
+
 def _fetch_html(u):
     """기사 URL → 디코드 HTML 또는 None(실패·비허용 url). 대표·관련기사 fetch 공용(SSRF·리다이렉트 게이트)."""
     if not (u and _url_ok(u)):
@@ -1078,15 +1102,16 @@ def process_one(md, stem):
                     png = png2
             if not png:
                 print("  ✗ {} 실패".format(label)); continue
-            if R2_ON:                                # R2 = 공개 URL(레포 미저장) · Content-Type = 매직바이트 실측(키 .png는 URL 하위호환 유지 — 서빙은 헤더가 결정)
-                url = r2_upload(png, "thumbs/{}/gen-{}.png".format(stem, sid), _img_type(png)[0] or "image/png")
+            png, _gext, _gct = to_jpg90(png)     # 산출 = JPG q90 고정(운영자 260805) — 이미 JPEG면 무재인코딩
+            if R2_ON:                                # R2 = 공개 URL(레포 미저장) · 키 확장자·Content-Type 모두 실바이트 기준(구판은 키가 항상 .png = 실물과 불일치)
+                url = r2_upload(png, "thumbs/{}/gen-{}.{}".format(stem, sid, _gext), _gct)
                 if url:
                     gen.append({"sid": sid, "img": url + "?v=" + str(int(time.time())), "label": label}); changed = True   # ?v=캐시버스트(재생성 시 같은 R2 키 덮어써도 새 이미지 반영)
                     print("  ✓ {} → R2".format(label)); continue
                 # R2 업로드 실패 → 로컬 폴백(아래로 떨어짐)
-            fp = os.path.join(tdir, "gen-{}.png".format(sid))   # git 폴백 = 로컬 PNG
+            fp = os.path.join(tdir, "gen-{}.{}".format(sid, _gext))   # git 폴백 = 로컬 파일(확장자 = 실바이트)
             open(fp, "wb").write(png)
-            gen.append({"sid": sid, "file": "gen-{}.png".format(sid), "label": label}); changed = True
+            gen.append({"sid": sid, "file": "gen-{}.{}".format(sid, _gext), "label": label}); changed = True
             print("  ✓ {} ({:.0f}KB, 로컬)".format(label, len(png) / 1024))
         if changed:
             json.dump(gen, open(os.path.join(tdir, "gen.json"), "w", encoding="utf-8"),
@@ -1158,9 +1183,10 @@ def main():
                     print("  ↻ gen.json '{}' 화풍만 제거 → 재생성: {}".format(redo_sid, only))
                 else:
                     print("  ℹ️ '{}' 화풍이 gen.json에 없음 — 미존재분 보완으로 진행".format(redo_sid))
-                fp = os.path.join(tdir, "gen-{}.png".format(redo_sid))   # 로컬 폴백 PNG도 제거(있으면)
-                if os.path.exists(fp):
-                    os.remove(fp)
+                for _ext in ("jpg", "png", "webp"):   # 로컬 폴백 파일도 제거(있으면) — 260805 확장자 전환 전 잔재 .png까지 같이 청소
+                    fp = os.path.join(tdir, "gen-{}.{}".format(redo_sid, _ext))
+                    if os.path.exists(fp):
+                        os.remove(fp)
             except Exception as e:
                 print("  ⚠️ 단일 화풍 제거 실패: {}".format(e))
         else:
