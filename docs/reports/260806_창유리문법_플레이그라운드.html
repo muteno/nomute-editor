@@ -84,6 +84,13 @@ body{margin:0;background:#0a0c0e;color:var(--fg);
 .win .wrow:hover{color:var(--accent);background:rgba(255,255,255,var(--t-rowHov))}
 .win .wrow.dim{color:var(--mut)}
 .win .wrow .meta{color:var(--mut);font-weight:700;font-size:12px;margin-right:8px}
+/* 직접입력 모드 = 항목 줄이 입력칸+전송 픽토로 변신(라이브 .sc-rsn-chips.inp-mode 정본 재현) */
+.win .winp{display:flex;align-items:center;gap:6px}
+.win .winp input{flex:1 1 auto;min-width:0;box-sizing:border-box;background:rgba(0,0,0,.32);
+  border:1px solid var(--line2);border-radius:8px;padding:7px 9px;color:var(--fg);font-size:12.5px;font-family:inherit}
+.win .winp input::placeholder{color:var(--mut)}
+.win .winp .snd{flex:none;width:30px;height:30px;display:grid;place-items:center;border-radius:8px;padding:0;
+  background:rgba(255,255,255,.08);color:var(--fg);border:1px solid var(--line2);cursor:pointer}
 
 /* ═══ 콘솔 ═══ */
 .console{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:12px}
@@ -150,7 +157,9 @@ pre#out{margin:0;white-space:pre-wrap;word-break:break-all;font-size:11.5px;line
         <button class="tab on" data-t="rsn" type="button">첨부1 · PASS 사유 창</button>
         <button class="tab" data-t="menu" type="button">첨부3 · 헤더 메뉴</button>
       </div>
-      <div class="note" id="tgtNote"></div>
+      <h3 style="margin-top:12px">상태 (같은 창의 다음 화면 — 여기도 같이 봐야 결정이 선다)</h3>
+      <div class="pills" id="states"></div>
+      <div class="note" id="tgtNote" style="margin-top:10px"></div>
     </div>
 
     <div class="csec">
@@ -268,10 +277,27 @@ const SLIDERS = [
   {k:'rowHov', nm:'hover 유리', min:0, max:.2, step:.01},
 ];
 
+/* ═══ 상태 = 같은 창의 다음 화면(라이브 TRIAGE 정본 사본) ═══
+   ⚠ 초판 누락분 = 운영자 260806 "이유는 저거 아래에 고르는 창은 적용 안 되었음" —
+     PASS 창은 한 화면이 아니라 {PASS 사유 4 · PICK 사유 5 · 직접입력 입력칸} 3상태를 같은 .sc-rsn 셸이 돌려 쓴다.
+     항목 수가 늘면 창 높이·행 구분선 인상이 달라지므로 상태를 못 보면 결정이 반쪽이 된다. */
 const ITEMS = {
-  rsn: {title:'이유는?', rows:[['스팸',0],['홍보성',0],['가치없음',0],['직접입력',1]]},
-  menu:{title:'카드 제작', rows:[['편집',0],['번역',0],['AI 생성',0],['특수',0]]},
+  rsn: {
+    title:'이유는?',
+    states:[
+      {id:'pass', nm:'PASS 사유(4)', rows:[['스팸',0],['홍보성',0],['가치없음',0],['직접입력',1]]},
+      {id:'pick', nm:'PICK 사유(5)', rows:[['속보/사건',0],['토픽/논란',0],['대세픽',0],['지식',0],['직접입력',1]]},
+      {id:'inp',  nm:'직접입력(입력칸)', input:true, rows:[['스팸',0],['홍보성',0],['가치없음',0]]},
+    ]},
+  menu:{
+    title:'카드 제작',
+    states:[
+      {id:'img', nm:'이미지 셸(4)', rows:[['편집',0],['번역',0],['AI 생성',0],['특수',0]]},
+      {id:'cap', nm:'영상 셸(4·계승 예정)', rows:[['콘티',0],['프롬프팅',0],['음원',0],['큐영상',0]]},
+    ]},
 };
+let stateId = 'pass';
+function curState(){ const d = ITEMS[target]; return d.states.find(s => s.id === stateId) || d.states[0]; }
 const NOTE = {
   rsn:'수집함 카드에서 <b>PASS</b>를 누르면 뜨는 창. 뒤에 카드·PASS/PICK 버튼이 깔린다 — 유리가 옅으면 뒤 글자와 겹쳐 읽기 어려워진다.',
   menu:'이미지 스튜디오 헤더의 <b>활성 탭 라벨</b>을 눌렀을 때 뜨는 메뉴. 뒤는 스튜디오 본문(미리보기·코너 레일)이라 배경이 단순하다.'
@@ -286,12 +312,26 @@ const out = document.getElementById('out');
 function curBase(){ return target === 'rsn' ? {...CUR_RSN} : {...CUR_MENU}; }
 
 function renderWin(){
-  const d = ITEMS[target];
+  const d = ITEMS[target], st = curState();
+  const rows = st.rows.map(r => '<button class="wrow' + (r[1] ? ' dim' : '') + '" type="button">' + r[0] + '</button>').join('');
+  const inp = st.input   // 직접입력 = 마지막 줄이 입력칸+전송 픽토로 변신(라이브 inp-mode 정본)
+    ? '<div class="winp"><input type="text" placeholder="이유 한 줄" aria-label="이유 직접 입력">' +
+      '<button class="snd" type="button" aria-label="전송"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button></div>'
+    : '';
   win.innerHTML =
     '<div class="wh"><b>' + d.title + '</b>' +
     '<button class="wx" type="button" aria-label="닫기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>' +
-    '<div class="wlist">' + d.rows.map(r =>
-      '<button class="wrow' + (r[1] ? ' dim' : '') + '" type="button">' + r[0] + '</button>').join('') + '</div>';
+    '<div class="wlist">' + rows + inp + '</div>';
+}
+function buildStates(){
+  const box = document.getElementById('states'); box.innerHTML = '';
+  ITEMS[target].states.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'pill' + (s.id === stateId ? ' on' : '');
+    b.type = 'button'; b.textContent = s.nm;
+    b.onclick = () => { stateId = s.id; renderWin(); buildStates(); apply(); };
+    box.appendChild(b);
+  });
 }
 
 function apply(){
@@ -404,10 +444,11 @@ document.getElementById('tabs').addEventListener('click', e => {
   const b = e.target.closest('.tab'); if (!b) return;
   document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('on', x === b));
   target = b.dataset.t;
+  stateId = ITEMS[target].states[0].id;   // 대상 바뀌면 첫 상태로(없는 상태 id 참조 방지)
   frame.classList.toggle('mode-studio', target === 'menu');
   const p = PRESETS.find(x => x.id === curPreset) || PRESETS[0];
   state = p.st(curBase());
-  renderWin(); buildPresets(); buildSliders(); apply();
+  renderWin(); buildStates(); buildPresets(); buildSliders(); apply();
 });
 
 document.getElementById('copy').addEventListener('click', () => {
@@ -423,6 +464,6 @@ document.getElementById('copy').addEventListener('click', () => {
     });
 });
 
-renderWin(); buildPresets(); buildSliders(); apply();
+renderWin(); buildStates(); buildPresets(); buildSliders(); apply();
 </script>
 </body></html>
