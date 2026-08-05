@@ -105,8 +105,16 @@ function thSsrItems(html, code, truncated) {
         if (nd.code === code || (nd.code == null && pkS && String(nd.pk) === pkS)) posts.push(nd);
       }
     }
-    let best = [];   // 노드가 여럿이면 미디어를 가장 많이 문 것(플러그인 289행 미러 — 축약본·완본 공존 대응)
-    for (const p of posts) { const g = _thCollectMedia(p); if (g.length > best.length) best = g; }
+    // 노드가 여럿이면 ① 미디어를 가장 많이 문 것 → ② **같으면 치수가 큰 쪽**(운영자 260805 5차 실측 봉합).
+    //   ⚠ 실측: 같은 글이 축약본(original 720×760)과 완본(1080×1140) 두 노드로 실린다. 개수가 1:1이라
+    //   구판(개수만 비교 = 플러그인 289행 미러)은 **문서순 첫 노드 = 축약본**을 집어 720×760이라고 말했다 —
+    //   외부 다운로더가 같은 글에 1080×1140을 보여준 것과 갈린 지점이 정확히 여기다.
+    let best = [], bestPx = -1;
+    for (const p of posts) {
+      const g = _thCollectMedia(p);
+      const px = g.reduce((a, md) => a + (+md.original_width || 0) * (+md.original_height || 0), 0);
+      if (g.length > best.length || (g.length === best.length && px > bestPx)) { best = g; bestPx = px; }
+    }
     const items = best.slice(0, 20).map((md) => {
       const vv = Array.isArray(md.video_versions) ? md.video_versions : (md.video_versions ? [md.video_versions] : []);
       if (vv.length) {   // ⚠ 길이로 판정 — `video_versions: []`는 파이썬(플러그인)에선 거짓이라 사진인데 JS에선 참이라 영상으로 둔갑한다(평의회4 D4)
@@ -258,7 +266,10 @@ export async function onRequestGet({ request }) {
     //   러너 정본이 같은 이유로 이미 금지한 축이다(nomute_threads.py:230 「본문 아무 데서나 줍는 폴백은 두지 않는다」).
     const _path = (s) => { try { return new URL(s).pathname; } catch { return ''; } };
     const _POST = /^\/@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})\/?$/;
-    const cm = _POST.exec(_path(finalUrl)) || _POST.exec(_path(raw)) || _POST.exec(_path(t.toString()));
+    //   ③ og:url = **메타사가 스스로 밝힌 정답**(플러그인 find_shared_post와 같은 원천) — 리다이렉트가 안 일어난
+    //      /share/·/t/ 응답에서 좌표를 얻는 유일한 정공법이다(share 코드로는 임베드가 404 = 실측).
+    const cm = _POST.exec(_path(finalUrl)) || _POST.exec(_path(raw)) || _POST.exec(_path(t.toString()))
+      || _POST.exec(_path(unent(m['og:url'] || '')));
     const ssr = thSsrItems(html, cm && cm[2], truncated);
     items = ssr.items;
     // ⚠ og가 **비는** 게 아니라 **로그인월 제목으로 차는** 경우가 실재한다(평의회1 실측 = 라이브 18건 중 2건 「Threads • 로그인」).
