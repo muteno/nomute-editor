@@ -13877,26 +13877,33 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       //   [금 골짜기] 정합 · 핵심과는 구조상 거의 배타[핵심 = 고공유 = ×1.0 위]). 드문 동시 성립 시 렌더 순서상 빨강이 뒤 = 우위 레이어(2차 지시 유지).
       //   경계 = 공유↔×1.0 교차(= 터콰이즈가 점선을 뚫는 그 점 · y = 기준선) 또는 gen↔85 교차 선형 보간(버킷 스냅 금지) · 색·그라데 스톱 = 핵심 커튼 정본값.
       //   음영 기하 4차(운영자 260805 4차 "파란색 선 위 > 공간 < 노란색 선 아래 · 파란 아래에 이미 확보되는 점유율은 필요 없음") —
-      //   칠하는 곳 = 존 안에서 **터콰이즈 위 ~ 노랑 아래 밴드**(= 끌어올려야 할 여백) · 구현 = 마스크(노랑 아래 흰 − 터콰이즈 아래 검)
+      //   칠하는 곳 = **터콰이즈 위 ~ 노랑 아래 밴드**(= 끌어올려야 할 여백) · 구현 = 마스크(노랑 아래 흰 − 터콰이즈 아래 검)
       //   = 화면에 실제 그려진 두 베지어 그대로의 사이 공간(다각형 근사 0) · 터콰이즈가 노랑 위로 솟은 곳은 마스크가 자연 소거.
+      //   범위·톤 5차(운영자 260805 5차) = 기둥 클립·세로변 폐지 → 갭 주머니 전체 렌즈(아래 fruns 확장) + 불투명도 감쇠(.26/.05).
       const shv = bs.map(b => val(b, 'share_pm'));
-      const fruns = [];
-      for (let i = 0; i < shv.length; i++) { if (gpts[i][2] >= 85 && shv[i] != null && shv[i] < 1) { const r = fruns[fruns.length - 1]; if (r && r[1] === i - 1) r[1] = i; else fruns.push([i, i]); } }
+      const dfs = spts.map((p, i) => p[1] - gpts[i][1]);   // 파란y − 노랑y(>0 = 파란이 노랑 아래 = 갭 열림) — 렌즈 범위·경계 축
+      // 범위 5차(운영자 260805 5차 "이 부분 전체에 음영 · 꼭 기둥 모양일 필요 없음") — 트리거(위 3차 판정)가 든 **갭 주머니 전체**로
+      // 확장: 트리거 런에서 양옆으로 dfs>0인 동안 넓혀 파란·노랑이 실제로 만나는 교차점(또는 안 닫히면 플롯 가장자리)까지.
+      // 한 주머니에 트리거 2개 = 병합 1렌즈 · 트리거 없는 주머니(예: 오전~점심 = 이용 강도 낮음)는 종전대로 무음영.
+      const trig = [];
+      for (let i = 0; i < shv.length; i++) { if (gpts[i][2] >= 85 && shv[i] != null && shv[i] < 1 && dfs[i] > 0) { const r = trig[trig.length - 1]; if (r && r[1] === i - 1) r[1] = i; else trig.push([i, i]); } }
+      let fruns = [];
+      trig.forEach(([a, b]) => { while (a > 0 && dfs[a - 1] > 0) a--; while (b < dfs.length - 1 && dfs[b + 1] > 0) b++; const m = fruns[fruns.length - 1]; if (m && a <= m[1] + 1) m[1] = Math.max(m[1], b); else fruns.push([a, b]); });
       if (fruns.length) {
-        const fedge = (a, b) => {   // a = 존 안 · b = 존 밖 — 밖 사유가 공유 회복(≥1)이면 ×1.0 교차 · 비핫(gen<85)이면 gen 교차 · 둘 다 극단이면 그 버킷 중심
-          if (shv[b] != null && shv[b] >= 1 && shv[a] !== shv[b]) { const t = (shv[a] - 1) / (shv[a] - shv[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
-          if (gpts[b][2] < 85 && gpts[a][2] !== gpts[b][2]) { const t = (gpts[a][2] - 85) / (gpts[a][2] - gpts[b][2]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
-          return at(a);
+        const fedge = (a, b) => {   // a = 렌즈 안(dfs>0) · b = 밖(dfs≤0) = 두 선 교차점 보간 · b가 차트 밖 = 렌즈가 안 닫힘 = 숄더 끝(플롯 가장자리)까지 = "전체"
+          if (b < 0) return { x: sx0, y: spts[a][1] };
+          if (b >= dfs.length) return { x: sx1, y: spts[a][1] };
+          const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t };
         };
         const yGen = xq => { const q = Math.max(gpts[0][0], Math.min(gpts[gpts.length - 1][0], xq)); for (let i = 1; i < gpts.length; i++) { if (gpts[i][0] >= q) { const [xa, ya] = gpts[i - 1], [xb, yb] = gpts[i]; return xb === xa ? ya : ya + (yb - ya) * (q - xa) / (xb - xa); } } return gpts[gpts.length - 1][1]; };   // 노랑 선 y 보간 = yWave 문법 미러(gpts 축) — 밴드 상단·세로변·라벨 배치용
-        s += `<defs><mask id="sigFixM-${ax}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#fff"/><path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#000"/></mask>${fruns.map(([i0, i1], k) => { const a = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), b = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1); const g1 = Math.min(...gpts.slice(i0, i1 + 1).map(p => p[1])), g2 = Math.max(a.y, b.y, ...spts.slice(i0, i1 + 1).map(p => p[1])); return `<linearGradient id="sigFixG-${ax}-${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${g1.toFixed(1)}" x2="0" y2="${(g2 > g1 ? g2 : aB).toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".34"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".06"/></linearGradient><clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 마스크 = 축당 1개(노랑 아래 − 터콰이즈 아래 = 두 선 사이) · 그라데 스톱 .34/.06 = 핵심 커튼 정본값 사본 · y축 = 존별 밴드 실범위(상단 = 노랑 최고점 .34 → 하단 = 터콰이즈 최저점 .06 = 「위 진하고 아래 잔광」 정본 의도를 밴드에 적용)
+        s += `<defs><mask id="sigFixM-${ax}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#fff"/><path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#000"/></mask>${fruns.map(([i0, i1], k) => { const a = fedge(i0, i0 - 1), b = fedge(i1, i1 + 1); const g1 = Math.min(...gpts.slice(i0, i1 + 1).map(p => p[1])), g2 = Math.max(a.y, b.y, ...spts.slice(i0, i1 + 1).map(p => p[1])); return `<linearGradient id="sigFixG-${ax}-${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${g1.toFixed(1)}" x2="0" y2="${(g2 > g1 ? g2 : aB).toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".26"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".05"/></linearGradient><clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 마스크 = 축당 1개(노랑 아래 − 터콰이즈 아래 = 두 선 사이 렌즈) · 그라데 y축 = 렌즈 실범위(상단 노랑 최고점 → 하단 터콰이즈 최저점 = 「위 진하고 아래 잔광」 정본 의도) · raw-ok: 스톱 .26/.05 = 핵심 정본 .34/.06의 감쇠 사본(운영자 260805 5차 "빨간색 불투명도 좀만 낮춰줘" — 색상 자체는 --danger 토큰 유지)
         fruns.forEach(([i0, i1], k) => {
-          const e0 = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), e1 = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1);
-          s += `<path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigFixG-${ax}-${k})" stroke="none" mask="url(#sigFixM-${ax})" clip-path="url(#sigFixClip-${ax}-${k})"/>`;   // 노랑 아래 area를 마스크로 깎아 = 터콰이즈 위~노랑 아래 밴드만 잔존(운영자 260805 4차 "파란 아래 확보 점유율은 필요 없음")
-          [[e0.x, e0.y], [e1.x, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${yGen(xe).toFixed(1)}" stroke="var(--danger)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 세로변 = 축 +4 관통 → 밴드 상단(노랑 선)까지(핵심 세로변의 파도 종점을 밴드 종점으로 치환 · ye = 터콰이즈 교차점은 선이 지나며 자연 표기)
+          const e0 = fedge(i0, i0 - 1), e1 = fedge(i1, i1 + 1);
+          s += `<path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigFixG-${ax}-${k})" stroke="none" mask="url(#sigFixM-${ax})" clip-path="url(#sigFixClip-${ax}-${k})"/>`;   // 노랑 아래 area를 마스크로 깎아 = 터콰이즈 위~노랑 아래 렌즈만 잔존 · 세로변 없음(운영자 260805 5차 "꼭 기둥 모양일 필요 없음" — 렌즈 양끝 = 두 선의 실제 교차점이라 형상이 스스로 닫힌다 · 핵심 커튼 세로변 문법은 코어 전용 잔류)
           fixXRs.push([e0.x, e1.x]);
-          const fcx = (e0.x + e1.x) / 2;
-          if (e1.x - e0.x >= 46) fixLabs.push({ x: fcx, y: (yGen(fcx) + yWave(fcx)) / 2 });   // 라벨 = 밴드(노랑~터콰이즈 사이) 정중앙 각인 · 폭 게이트 46 = 핵심 정본 사본
+          let li = i0; for (let i2 = i0; i2 <= i1; i2++) { if (dfs[i2] > dfs[li]) li = i2; }   // 라벨 앵커 = 렌즈에서 갭이 가장 깊은 버킷(확장된 얇은 꼬리가 아니라 주머니 배에 각인)
+          const fcx = Math.max(mL + 24, Math.min(W - mR - 24, X(li)));
+          if (e1.x - e0.x >= 46) fixLabs.push({ x: fcx, y: (yGen(fcx) + yWave(fcx)) / 2 });   // 라벨 = 그 지점 밴드(노랑~터콰이즈) 정중앙 · 폭 게이트 46 = 핵심 정본 사본 · x 클램프 = 피크 콜아웃 lx 문법 사본
         });
       }
     }
@@ -13978,7 +13985,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${fixXRs.length ? '<i class="lg-fix" title="보완 필요 = 이용 강도(노랑)는 피크의 85% 이상으로 높은데 내 공유가 채널 중앙(×1.0 점선) 아래인 구간 — 그때 안 올리거나 활용을 못 해 이용자 흐름을 놓치는 자리(운영자 260805 3차) · 핵심 구간과 사실상 반대 개념 · 게시 실험 우선 후보">보완 필요</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span>${GEN_MEAS && x2.led ? `<span class="sig-live" title="팔로워 접속 실측(Meta online_followers)을 워크플로가 상시 자동 수집 — 원장 ${x2.led.days || '?'}일 축적${x2.led.last ? ' · 마지막 적재 ' + esc(x2.led.last) : ''} · 3일 이상 끊기면 메시지함 경보(매월 말~초 지연 경향 = 운영자 260805 관측)">${x2.led.stall != null && x2.led.stall >= 3 ? '실측 수신 지연 ' + x2.led.stall + '일' : '접속 실측 수집 중' + (x2.led.days ? ' · ' + x2.led.days + '일' : '')}</span>` : ''}</div>` +
+  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${fixXRs.length ? '<i class="lg-fix" title="보완 필요 = 이용 강도(노랑)는 피크의 85% 이상으로 높은데 내 공유가 채널 중앙(×1.0 점선) 아래로 처진 자리 — 그때 안 올리거나 활용을 못 해 이용자 흐름을 놓치는 것(운영자 260805). 음영 = 그 자리가 든 갭 주머니 전체(내 곡선 위~이용자 선 아래 = 끌어올릴 여백 · 파란 아래 확보 점유율 제외) · 핵심 구간과 반대 개념 · 게시 실험 우선 후보">보완 필요</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span>${GEN_MEAS && x2.led ? `<span class="sig-live" title="팔로워 접속 실측(Meta online_followers)을 워크플로가 상시 자동 수집 — 원장 ${x2.led.days || '?'}일 축적${x2.led.last ? ' · 마지막 적재 ' + esc(x2.led.last) : ''} · 3일 이상 끊기면 메시지함 경보(매월 말~초 지연 경향 = 운영자 260805 관측)">${x2.led.stall != null && x2.led.stall >= 3 ? '실측 수신 지연 ' + x2.led.stall + '일' : '접속 실측 수집 중' + (x2.led.days ? ' · ' + x2.led.days + '일' : '')}</span>` : ''}</div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
