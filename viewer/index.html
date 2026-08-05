@@ -13875,7 +13875,10 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
       //   ×1.0 점선 아래 = "평소보다 약함"). 2차(파란선<노란선 픽셀 비교)는 벤치 노랑이 평평·상단이라 주중 대부분+핵심(토·일)까지
       //   물들어 폐기 — 운영자 재판정으로 "이용률 높은데 못 쓰는 자리"만 남김(실측 = 요일 화·금 / 시간대 밤22-24 = 운영자 동그라미
       //   [금 골짜기] 정합 · 핵심과는 구조상 거의 배타[핵심 = 고공유 = ×1.0 위]). 드문 동시 성립 시 렌더 순서상 빨강이 뒤 = 우위 레이어(2차 지시 유지).
-      //   경계 = 공유↔×1.0 교차(= 터콰이즈가 점선을 뚫는 그 점 · y = 기준선) 또는 gen↔85 교차 선형 보간(버킷 스냅 금지) · 문법 = 핵심 커튼 100% 미러(색만 --danger).
+      //   경계 = 공유↔×1.0 교차(= 터콰이즈가 점선을 뚫는 그 점 · y = 기준선) 또는 gen↔85 교차 선형 보간(버킷 스냅 금지) · 색·그라데 스톱 = 핵심 커튼 정본값.
+      //   음영 기하 4차(운영자 260805 4차 "파란색 선 위 > 공간 < 노란색 선 아래 · 파란 아래에 이미 확보되는 점유율은 필요 없음") —
+      //   칠하는 곳 = 존 안에서 **터콰이즈 위 ~ 노랑 아래 밴드**(= 끌어올려야 할 여백) · 구현 = 마스크(노랑 아래 흰 − 터콰이즈 아래 검)
+      //   = 화면에 실제 그려진 두 베지어 그대로의 사이 공간(다각형 근사 0) · 터콰이즈가 노랑 위로 솟은 곳은 마스크가 자연 소거.
       const shv = bs.map(b => val(b, 'share_pm'));
       const fruns = [];
       for (let i = 0; i < shv.length; i++) { if (gpts[i][2] >= 85 && shv[i] != null && shv[i] < 1) { const r = fruns[fruns.length - 1]; if (r && r[1] === i - 1) r[1] = i; else fruns.push([i, i]); } }
@@ -13885,14 +13888,15 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
           if (gpts[b][2] < 85 && gpts[a][2] !== gpts[b][2]) { const t = (gpts[a][2] - 85) / (gpts[a][2] - gpts[b][2]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
           return at(a);
         };
-        s += `<defs>${fruns.map(([i0, i1], k) => { const a = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), b = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1); const gy = Math.min(a.y, b.y, ...spts.slice(i0, i1 + 1).map(p => p[1])); return `<linearGradient id="sigFixG-${ax}-${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${gy.toFixed(1)}" x2="0" y2="${aB.toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".34"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".06"/></linearGradient><clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 그라데 스톱 .34/.06 = 핵심 커튼 정본값 사본 · ⚠ y축만 존별(y1 = 그 존 파도 상단) — 정본 의도 = 「위 파도 .34 → 바닥 .06 잔광」인데 mT 고정축이면 보완 존(정의상 파도가 낮은 자리)은 옅은 하단부만 걸려 음영이 실종된다(260805 실렌더 실측 = 요일 월~수 커튼 비가시 → 존별 y로 의도 실현 · 코어는 파도가 높아 종전 그대로)
+        const yGen = xq => { const q = Math.max(gpts[0][0], Math.min(gpts[gpts.length - 1][0], xq)); for (let i = 1; i < gpts.length; i++) { if (gpts[i][0] >= q) { const [xa, ya] = gpts[i - 1], [xb, yb] = gpts[i]; return xb === xa ? ya : ya + (yb - ya) * (q - xa) / (xb - xa); } } return gpts[gpts.length - 1][1]; };   // 노랑 선 y 보간 = yWave 문법 미러(gpts 축) — 밴드 상단·세로변·라벨 배치용
+        s += `<defs><mask id="sigFixM-${ax}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#fff"/><path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="#000"/></mask>${fruns.map(([i0, i1], k) => { const a = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), b = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1); const g1 = Math.min(...gpts.slice(i0, i1 + 1).map(p => p[1])), g2 = Math.max(a.y, b.y, ...spts.slice(i0, i1 + 1).map(p => p[1])); return `<linearGradient id="sigFixG-${ax}-${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${g1.toFixed(1)}" x2="0" y2="${(g2 > g1 ? g2 : aB).toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".34"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".06"/></linearGradient><clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 마스크 = 축당 1개(노랑 아래 − 터콰이즈 아래 = 두 선 사이) · 그라데 스톱 .34/.06 = 핵심 커튼 정본값 사본 · y축 = 존별 밴드 실범위(상단 = 노랑 최고점 .34 → 하단 = 터콰이즈 최저점 .06 = 「위 진하고 아래 잔광」 정본 의도를 밴드에 적용)
         fruns.forEach(([i0, i1], k) => {
           const e0 = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), e1 = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1);
-          s += `<path d="${sline} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigFixG-${ax}-${k})" stroke="none" clip-path="url(#sigFixClip-${ax}-${k})"/>`;
-          [[e0.x, e0.y], [e1.x, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${ye.toFixed(1)}" stroke="var(--danger)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });
+          s += `<path d="${gl} L${sx1.toFixed(1)} ${aB.toFixed(1)} L${sx0.toFixed(1)} ${aB.toFixed(1)} Z" fill="url(#sigFixG-${ax}-${k})" stroke="none" mask="url(#sigFixM-${ax})" clip-path="url(#sigFixClip-${ax}-${k})"/>`;   // 노랑 아래 area를 마스크로 깎아 = 터콰이즈 위~노랑 아래 밴드만 잔존(운영자 260805 4차 "파란 아래 확보 점유율은 필요 없음")
+          [[e0.x, e0.y], [e1.x, e1.y]].forEach(([xe, ye]) => { s += `<line x1="${xe.toFixed(1)}" y1="${(aB + 4).toFixed(1)}" x2="${xe.toFixed(1)}" y2="${yGen(xe).toFixed(1)}" stroke="var(--danger)" stroke-width="1.2" opacity=".72" vector-effect="non-scaling-stroke"/>`; });   // 세로변 = 축 +4 관통 → 밴드 상단(노랑 선)까지(핵심 세로변의 파도 종점을 밴드 종점으로 치환 · ye = 터콰이즈 교차점은 선이 지나며 자연 표기)
           fixXRs.push([e0.x, e1.x]);
           const fcx = (e0.x + e1.x) / 2;
-          if (e1.x - e0.x >= 46) fixLabs.push({ x: fcx, y: (yWave(fcx) + aB) / 2 });   // 라벨 폭 게이트 = 핵심 46 정본 사본('보완 필요' 4자 = 동폭)
+          if (e1.x - e0.x >= 46) fixLabs.push({ x: fcx, y: (yGen(fcx) + yWave(fcx)) / 2 });   // 라벨 = 밴드(노랑~터콰이즈 사이) 정중앙 각인 · 폭 게이트 46 = 핵심 정본 사본
         });
       }
     }
