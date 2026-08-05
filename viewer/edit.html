@@ -114,13 +114,16 @@
   .swc:active { transform:scale(var(--press-s)); }   /* 눌림 = 토큰 사다리(칩 형제와 동축) */
   .swc .swd { display:inline-block; width:10px; height:10px; flex:none; border-radius:50%; background:var(--sw,rgba(0,0,0,1)); border:1px solid rgba(255,255,255,.25); }   /* 견본 점 = .pc .swd 정본 값 그대로(margin만 gap으로 대체) */
   .swc[data-sw="black"] .swd { border-color:rgba(255,255,255,.5); }   /* 검정 = 테두리 한 단 또렷(운영자 260729 "검정은 테두리를 얇게 넣어줘 안보이니까" — 두께는 1px 유지, 알파만 .25→.5) */
-  .swc .swl { min-width:20px; font-size:11px /* raw-ok: 11 = 선택 표기 전용 소자(fs-xs 12보다 한 단 아래 = 9색 한 줄 수용 실측치) */; font-weight:var(--fw-x); line-height:1; color:var(--fg); white-space:nowrap; text-align:left; }
-  @media (max-width:430px) { .swc .swl { min-width:17px; font-size:10px /* raw-ok: 폰 티어 축소 실측치 — fs-xs 11이면 9색이 두 줄로 랩 */; } .swc { padding:5px 0 /* raw-ok: 좌우 0 = 폰 한 줄 수용(세로 5는 PC와 동값 = 행 등고) */; } }   /* 폰 = 한 줄 유지 축소(9색 실측) */
+  .swc { position:relative; }   /* 라벨 앵커(아래 absolute 짝) */
+  .swc .swl { position:absolute; top:50%; left:100%; margin-left:3px /* raw-ok: 점↔라벨 3 = 종전 gap 정본 동값(흐름에서 빠져도 눈에 보이는 간격은 불변) */; transform:translateY(-50%); font-size:11px /* raw-ok: 11 = 선택 표기 전용 소자(fs-xs 12보다 한 단 아래) */; font-weight:var(--fw-x); line-height:1; color:var(--fg); white-space:nowrap; text-align:left; pointer-events:auto; }   /* (260804 4차) 흐름 → **절대 배치**(운영자 "동그라미랑 광학 잉크 단위로 수평 다시 맞춰줘") — 구 인라인 라벨은 자기 칸의 폭을 늘려 `space-between`이 나머지를 다시 나눠 담게 만들었고, 그래서 **라벨이 붙은 칸 주변만 동그라미 간격이 벌어졌다**(실측 크롭: 음영 뒤 큰 공백 · 자막·강조는 붙음 · 세로 잉크중심은 이미 Δ≤0.5로 정합이었다 = 눈에 보이던 어긋남의 정체는 가로 간격). 흐름에서 빼면 칸 폭 = 점 하나로 균일 → 7색이 등간격으로 선다 */
+  .swc.lend .swl { left:auto; right:100%; margin-left:0; margin-right:3px /* raw-ok: 좌측 배치 시 같은 3px 간격 거울 */; text-align:right; }   /* 우측 끝 두 칸 = 라벨을 왼쪽으로(오른쪽에 두면 줄 밖으로 넘친다 · space-between이 마지막 점을 우변에 붙이므로) */
+  @media (max-width:430px) { .swc .swl { font-size:10px /* raw-ok: 폰 티어 축소 실측치 */; } }   /* 폰 = 라벨만 한 단 축소(칸 폭은 라벨과 무관해졌다 = 구 `min-width`·`padding:5px 0` 회수 · 260804 4차) */
   /* ── 색 라벨 = 끌어서 배정(운영자 260804 3차 "이 안에서만 동작하는거고, 옆에 위치하면 자동으로 그게 배정되었다는 의미 · 별도의 알약에 넣을 필요 없음") ──
      구 글래스 배지 3개(.swax 행)는 **폐지**: 색 줄이 이미 「어느 색 옆에 무슨 축이 붙어 있나」로 배정을 말하고 있는데, 같은 정보를 위에 한 벌 더 두면 읽을 자리가 둘로 갈린다.
      → 배정 수단도 그 자리 그대로 = 라벨('음영'·'자막'·'강조')을 집어 다른 색 옆에 놓으면 그 색으로 옮겨간다(라벨의 **위치가 곧 배정** · 새 부품 0).
      끌기 = 같은 파일 `.cropfr` 드래그 정본 문법(pointerdown+setPointerCapture+pointermove · touch-action:none = 폰에서 스크롤에 안 먹힘). */
-  .swl i { font-style:normal; cursor:grab; touch-action:none; -webkit-user-select:none; user-select:none; transition:transform .1s, opacity .14s; }   /* 축 라벨 조각 = 드래그 손잡이(3축이 한 색에 겹쳐도 각각 따로 집힌다) */
+  .swl i { position:relative; font-style:normal; cursor:grab; touch-action:none; -webkit-user-select:none; user-select:none; transition:transform .1s, opacity .14s; }
+  .swl i::before { content:''; position:absolute; inset:-9px -2px /* raw-ok: 세로 ±9 = `.rm::before` 히트슬롭 정본 동값(11px 글자 → 잡을 자리 29px) · 가로 ±2 = 가운뎃점으로 이어붙은 형제 조각과 슬롭 겹침 0 */; }   /* 축 라벨 조각 = 드래그 손잡이(3축이 한 색에 겹쳐도 각각 따로 집힌다) */
   .swl i:active { cursor:grabbing; }
   .swl i.drag { opacity:.55; }   /* raw-ok: 집어 든 조각 = 원래 자리를 흐리게(그 자리를 떠났음 · 색 견본 위라 이동 고스트 대신 원본 딤이 덜 시끄럽다) */
   .swc.dropok { transform:scale(1.18); }   /* raw-ok: 드롭 후보 = 그 동그라미만 커짐(색 위에 색을 얹지 않는다 = 견본이 거짓말하지 않게) */
@@ -790,8 +793,8 @@ const SUBPRE={   // 자막 스타일 프리셋(운영자 260711 배치 승인 �
 };
 const preOn=k=>Object.entries(SUBPRE[k]).every(([p,v])=>p==='nm'||P[p]===v);
 /* ── 자막 음영 색·폰트 축 상수(운영자 260711 · 러너 ly_burn OC_BGR·FONT_FAMILY와 1:1 짝) ── */
-const OC_DEF={black:'#000',white:'#fff',green:'var(--accent-5)',mint:'var(--accent)',sky:'var(--bias-l1)',blue:'var(--bias-l2)',pink:'var(--accent-6)',yellow:'var(--warn)',red:'var(--danger)'};   // 콘텐츠 산출물 색(§핵심명령 3-b-1) — 순수 흑/백만 리터럴·나머지 var 계승 · (260729) 민트·스카이 2색 증설(운영자 "색 토글 더 여러개로") = 기존 토큰 계승만(신규 hex 0) · 9색 = 폰 390 한 줄 상한 실측치(슬롯 = 점11+라벨칸 → 10색부터 랩)
-const OC_LBL={black:'검정',white:'흰',green:'그린',mint:'민트',sky:'스카이',blue:'블루',pink:'핑크',yellow:'레몬',red:'레드'};
+const OC_DEF={black:'#000',white:'#fff',green:'var(--accent-5)',mint:'var(--accent)',sky:'var(--bias-l1)',pink:'var(--accent-6)',yellow:'var(--warn)'};   // (260804 4차) 블루(--bias-l2)·레드(--danger) 이탈 — 운영자 "짙은 파랑이랑 짙은 빨강 동그라미는 없애도될듯 잘 안쓸거같아" · 화면 선택지에서만 뺀다(러너 ly_burn OC_BGR·api 화이트리스트는 무접촉 = 과거 산출물 재현·구 값으로 저장된 재입히기 호환 유지)   // 콘텐츠 산출물 색(§핵심명령 3-b-1) — 순수 흑/백만 리터럴·나머지 var 계승 · (260729) 민트·스카이 2색 증설(운영자 "색 토글 더 여러개로") = 기존 토큰 계승만(신규 hex 0) · 7색 = 폰 390 한 줄 여유(구 9색 상한 실측치에서 2칸 회수 = 라벨 자리 확보)
+const OC_LBL={black:'검정',white:'흰',green:'그린',mint:'민트',sky:'스카이',pink:'핑크',yellow:'레몬'};   // OC_DEF와 1:1(블루·레드 동반 이탈 · 260804 4차)
 const FONT_PV={   // 폰트 = 러너 설치 패밀리(fc-scan 실측)와 동명 구글 웹폰트 지연 로드 = 미리보기 실체 정합 · 기본 고딕만 = 시스템 폰트 근사(안드로이드 = Noto 계열 실질 동일 · 평상시 외부요청 0)
   gothic:{lbl:'고딕',ff:'"Noto Sans KR","Noto Sans CJK KR",sans-serif',gf:'Noto+Sans+KR:wght@700;800'},   // 본고딕 명시(운영자 260731 19차 "본고딕·본명조만") — 구 시스템 근사(ff:'')는 기기마다 달라 러너(Noto 계열)와 미리보기가 갈렸다
   serif:{lbl:'명조',ff:'"Noto Serif KR","Noto Serif CJK KR",serif',gf:'Noto+Serif+KR:wght@700'},
@@ -841,10 +844,10 @@ const SWAX_L={shc:'음영',fg:'자막',kwc:'강조'};   // 색이 칠해지는 3
 const swaxOf={shc:'shc',fg:'fg',kwc:'kwc'};       // 도먼트: 축 키 화이트리스트(드롭 대상 검증용)
 function swrow(){
   return '<div class="swrow" role="group" aria-label="자막 색 — 축 이름을 끌어 다른 색 옆에 놓으면 그 색이 된다 · 탭은 음영 색, 우클릭이나 길게 누르기는 글자 색">'
-    +Object.keys(OC_DEF).map(c=>{
+    +Object.keys(OC_DEF).map((c,i,ar)=>{
       const on=[['shc',P.shc,'음영'],['fg',P.fg||'white','자막'],['kwc',P.kwc||'green','강조']].filter(a=>a[1]===c);
       const lbl=on.map(a=>'<i data-swax="'+a[0]+'" title="'+a[2]+' 색 = '+OC_LBL[c]+' — 집어서 다른 색 옆에 놓으면 그 색이 된다">'+a[2]+'</i>').join('·');   // 축별 조각 = 3축이 한 색에 겹쳐도 각각 따로 집힌다(구 문자열 join은 통째라 하나만 옮길 수 없었다)
-      return '<button class="swc'+on.map(a=>' '+a[0]).join('')+'" type="button" data-sw="'+c+'"'
+      return '<button class="swc'+(i>=ar.length-2?' lend':'')+on.map(a=>' '+a[0]).join('')+'" type="button" data-sw="'+c+'"'
         +' aria-label="'+OC_LBL[c]+(on.length?(' · 지금 '+on.map(a=>a[2]).join('·')+' 색'):'')+'"'
         +' title="'+OC_LBL[c]+' — 탭 = 음영 색 · 우클릭(폰은 길게 누르기) = 글자 색 · 축 이름을 끌어다 놓으면 그 축이 이 색"'
         +'><span class="swd" style="--sw:'+OC_DEF[c]+'"></span><span class="swl">'+lbl+'</span></button>';
