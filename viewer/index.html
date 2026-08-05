@@ -13858,18 +13858,22 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
         const cx = (e0.x + e1.x) / 2;
         if (e1.x - e0.x >= 46) coreLabs.push({ x: cx, y: (yWave(cx) + aB) / 2 });   // 라벨 = 음영 중앙 각인(운영자 260730) · 폭 46 미만 밴드는 라벨 생략(글리프가 음영 밖으로 삐져나가는 오표기 차단 — 라벨 실측 폭 41 + 여유 · 밴드 자체는 그대로 표기)
       });
-      // 보완 필요 존 2차 개정(운영자 260805 2차 "파란색 선이 노란색 선보다 낮은 구간 · 보라보다 우위 레이어 · 음영은 보라와 동일 방식") —
-      //   판정 = **시각 축**: 팔로워(터콰이즈) 파도가 이용자(노랑) 선보다 화면상 아래인 연속 런(dfs = 팔로워y − 노랑y > 0).
-      //   ⚠ 이 픽셀 비교는 260801 폐기 사유 ①(단위 불일치)이 '핵심(최적지) 선정'에 못 쓴다고 판정한 축 — 여기 용도는 최적지 선정이
-      //   아니라 "화면에서 노랑 아래로 처지는 자리" 표기라 운영자가 이 축을 명시 지정(1차 score 축[핵심 탈락∧핫존]은 겹침 0이 장점이나
-      //   운영자 동그라미[토~일]를 못 담아 260805 2차로 교체 · 실측 = 요일 월~수·금~일 / 시간대 오전~점심·저녁~밤).
-      //   핵심(보라)과 겹칠 수 있고 렌더 순서상 빨강이 뒤 = 우위 레이어(운영자 "침범 거의 없을 것" — 벤치 노랑이 평평·상단이라 실측은 토·일·저녁 겹침 실재).
-      //   경계 = 두 선의 실제 교차점 선형 보간(구식 edge() 문법 계승 · 버킷 스냅 금지) · 문법 = 핵심 커튼 100% 미러(색만 --danger).
-      const dfs = spts.map((p, i) => p[1] - gpts[i][1]);
+      // 보완 필요 존 3차 확정(운영자 260805 3차 "앱 사용자의 이용 선은 높은데 팔로워의 이용선이 낮을 때 — 그때 게시물을 안 올리거나
+      //   해서 제대로 활용을 못 하고 있다는 뜻 · 핵심 보라와는 거의 겹칠 일 없을 것[핵심 = 이미 공략 중 = 보완의 60~70% 반대 개념]") —
+      //   판정 = 이용 강도 핫존(gen ≥ 피크 85 · CORE_TH 동값 재사용 = 새 상수 0) ∧ 내 공유 lift < 1.0(채널 중앙 기준선 = 화면의
+      //   ×1.0 점선 아래 = "평소보다 약함"). 2차(파란선<노란선 픽셀 비교)는 벤치 노랑이 평평·상단이라 주중 대부분+핵심(토·일)까지
+      //   물들어 폐기 — 운영자 재판정으로 "이용률 높은데 못 쓰는 자리"만 남김(실측 = 요일 화·금 / 시간대 밤22-24 = 운영자 동그라미
+      //   [금 골짜기] 정합 · 핵심과는 구조상 거의 배타[핵심 = 고공유 = ×1.0 위]). 드문 동시 성립 시 렌더 순서상 빨강이 뒤 = 우위 레이어(2차 지시 유지).
+      //   경계 = 공유↔×1.0 교차(= 터콰이즈가 점선을 뚫는 그 점 · y = 기준선) 또는 gen↔85 교차 선형 보간(버킷 스냅 금지) · 문법 = 핵심 커튼 100% 미러(색만 --danger).
+      const shv = bs.map(b => val(b, 'share_pm'));
       const fruns = [];
-      for (let i = 0; i < dfs.length; i++) { if (dfs[i] > 0) { const r = fruns[fruns.length - 1]; if (r && r[1] === i - 1) r[1] = i; else fruns.push([i, i]); } }
+      for (let i = 0; i < shv.length; i++) { if (gpts[i][2] >= 85 && shv[i] != null && shv[i] < 1) { const r = fruns[fruns.length - 1]; if (r && r[1] === i - 1) r[1] = i; else fruns.push([i, i]); } }
       if (fruns.length) {
-        const fedge = (a, b) => { const t = dfs[a] / (dfs[a] - dfs[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; };   // a = 존 안(dfs>0) · b = 존 밖(dfs≤0) = 교차 보장 t∈(0,1] · y = 교차점(두 선이 만나는 그 점)
+        const fedge = (a, b) => {   // a = 존 안 · b = 존 밖 — 밖 사유가 공유 회복(≥1)이면 ×1.0 교차 · 비핫(gen<85)이면 gen 교차 · 둘 다 극단이면 그 버킷 중심
+          if (shv[b] != null && shv[b] >= 1 && shv[a] !== shv[b]) { const t = (shv[a] - 1) / (shv[a] - shv[b]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
+          if (gpts[b][2] < 85 && gpts[a][2] !== gpts[b][2]) { const t = (gpts[a][2] - 85) / (gpts[a][2] - gpts[b][2]); return { x: X(a) + (X(b) - X(a)) * t, y: spts[a][1] + (spts[b][1] - spts[a][1]) * t }; }
+          return at(a);
+        };
         s += `<defs>${fruns.map(([i0, i1], k) => { const a = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), b = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1); const gy = Math.min(a.y, b.y, ...spts.slice(i0, i1 + 1).map(p => p[1])); return `<linearGradient id="sigFixG-${ax}-${k}" gradientUnits="userSpaceOnUse" x1="0" y1="${gy.toFixed(1)}" x2="0" y2="${aB.toFixed(1)}"><stop offset="0" stop-color="var(--danger)" stop-opacity=".34"/><stop offset="1" stop-color="var(--danger)" stop-opacity=".06"/></linearGradient><clipPath id="sigFixClip-${ax}-${k}"><rect x="${a.x.toFixed(1)}" y="${mT}" width="${(b.x - a.x).toFixed(1)}" height="${ph}"/></clipPath>`; }).join('')}</defs>`;   // 그라데 스톱 .34/.06 = 핵심 커튼 정본값 사본 · ⚠ y축만 존별(y1 = 그 존 파도 상단) — 정본 의도 = 「위 파도 .34 → 바닥 .06 잔광」인데 mT 고정축이면 보완 존(정의상 파도가 낮은 자리)은 옅은 하단부만 걸려 음영이 실종된다(260805 실렌더 실측 = 요일 월~수 커튼 비가시 → 존별 y로 의도 실현 · 코어는 파도가 높아 종전 그대로)
         fruns.forEach(([i0, i1], k) => {
           const e0 = i0 > 0 ? fedge(i0, i0 - 1) : at(i0), e1 = i1 < sc.length - 1 ? fedge(i1, i1 + 1) : at(i1);
@@ -13959,7 +13963,7 @@ function chLiftChart(buckets, ax, x2) {   // x2 = 오버레이 재료(운영자 
   });
   s += '</svg>';
   let pk2 = null; hs.forEach(p => { if (!pk2 || p.share > pk2.share) pk2 = p; });   // 캡션 우측 피크 요약(헤더 .ct-v 대값 문법의 축약 계승)
-  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${fixXRs.length ? '<i class="lg-fix" title="보완 필요 = 팔로워 곡선이 이용자(노랑) 선 아래로 처지는 구간 — 안 올리거나 반응이 약해 이용자 흐름을 못 따라가는 자리(운영자 260805 2차 · 핵심과 겹치면 빨강이 위 레이어) · 게시 실험 우선 후보">보완 필요</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span>${GEN_MEAS && x2.led ? `<span class="sig-live" title="팔로워 접속 실측(Meta online_followers)을 워크플로가 상시 자동 수집 — 원장 ${x2.led.days || '?'}일 축적${x2.led.last ? ' · 마지막 적재 ' + esc(x2.led.last) : ''} · 3일 이상 끊기면 메시지함 경보(매월 말~초 지연 경향 = 운영자 260805 관측)">${x2.led.stall != null && x2.led.stall >= 3 ? '실측 수신 지연 ' + x2.led.stall + '일' : '접속 실측 수집 중' + (x2.led.days ? ' · ' + x2.led.days + '일' : '')}</span>` : ''}</div>` +
+  return `<div class="sig-cap"><span class="sig-t">${(CHAN_SRC === 'fb' ? SIG_CAP_FB : SIG_CAP)[ax] || esc(ax)}</span>${pk2 ? `<span class="sig-pk">피크 ${esc(pk2.bucket)} · ${CHAN_SRC === 'fb' ? '반응' : '공유'} ×${pk2.share}</span>` : ''}<span class="sig-lgd"><i class="lg-sh">팔로워</i>${GEN_MEAS ? `<i class="lg-gen" title="팔로워 접속 = 내 팔로워의 ${ax === 'dow' ? '요일별' : '시간대별'} 접속 강도(Meta online_followers API 실측 · 피크=100 상대 · 시간대 260803·요일 260804 실측 편입 — 구 벤치 실루엣 대체)">팔로워 접속</i>` :(CHAN_SRC !== 'fb' && SIG_GEN[ax]) ? '<i class="lg-gen" title="앱 사용자 = 전체 인스타 이용자 평균 이용 강도(상대 · 측정치 아님) — 시간대: 국내 이용시간(오픈애즈·소셜비즈 2025 3Q) · 요일: 이용시간 종합(와이즈앱·App Ape·글로벌 스크린타임 2025~26 — 주말 확산·소폭↑)">앱 사용자</i>' : ''}${coreXRs.length ? '<i class="lg-core" title="핵심 구간 = 도달 기대값(공유 lift × 앱 사용자 이용 강도)이 피크의 85% 이상인 구간 전부(복수 가능) — 반응률만이 아니라 볼 사람 수까지 곱한 값(운영자 260801)">핵심 구간</i>' : ''}${fixXRs.length ? '<i class="lg-fix" title="보완 필요 = 이용 강도(노랑)는 피크의 85% 이상으로 높은데 내 공유가 채널 중앙(×1.0 점선) 아래인 구간 — 그때 안 올리거나 활용을 못 해 이용자 흐름을 놓치는 자리(운영자 260805 3차) · 핵심 구간과 사실상 반대 개념 · 게시 실험 우선 후보">보완 필요</i>' : ''}${bandLabs.length ? '<i class="lg-pk">접속 피크</i>' : ''}</span>${GEN_MEAS && x2.led ? `<span class="sig-live" title="팔로워 접속 실측(Meta online_followers)을 워크플로가 상시 자동 수집 — 원장 ${x2.led.days || '?'}일 축적${x2.led.last ? ' · 마지막 적재 ' + esc(x2.led.last) : ''} · 3일 이상 끊기면 메시지함 경보(매월 말~초 지연 경향 = 운영자 260805 관측)">${x2.led.stall != null && x2.led.stall >= 3 ? '실측 수신 지연 ' + x2.led.stall + '일' : '접속 실측 수집 중' + (x2.led.days ? ' · ' + x2.led.days + '일' : '')}</span>` : ''}</div>` +
     `<div class="ch-chartwrap sig-chartwrap" data-ax="${esc(ax)}">${s}<div class="ch-tip"></div><div class="ch-dot"></div></div>`;
 }
 function wireSigCharts(box) {   // 최근접 포인트 툴팁+호버점 = 일일 추이 크로스헤어 배선 대칭(호버·탭 공용 · 재렌더마다 새 노드라 중복 배선 없음)
