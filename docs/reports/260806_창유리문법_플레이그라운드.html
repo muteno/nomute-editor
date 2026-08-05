@@ -1,0 +1,428 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>대기열 문법 → PASS 사유 창 · 스튜디오 헤더 메뉴 (시안 20)</title>
+<style>
+/* ═══ 값 원천 = viewer/index.html :root 실측 사본(창작 0) ═══ */
+:root{
+  --bg:#121212; --fg:#eef7f0; --mut:#8fa697;
+  --accent:#00EED2; --accent-rgb:0,238,210;
+  --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.06);
+  --modal-glass:rgba(17,18,20,.64); --modal-glass-anchor:rgba(17,18,20,.42);
+  --modal-head-bg:rgba(24,25,28,.85);
+  --blur-s:8px; --blur-l:22px;
+  --fs-h2:15px; --fs-label:13px; --fw-x:800;
+  --r-s:9px; --r-l:16px; --btn-sm:30px; --sp-1:6px; --sp-4:24px;
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#0a0c0e;color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Pretendard Variable",Pretendard,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  font-size:13px;line-height:1.6;-webkit-text-size-adjust:100%}
+.hd{padding:14px 16px;border-bottom:1px solid var(--line2);display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.hd h1{margin:0;font-size:15px;font-weight:800;letter-spacing:-.2px}
+.hd .sub{color:var(--mut);font-size:12px}
+.wrap{display:flex;flex-wrap:wrap;gap:16px;padding:16px;align-items:flex-start}
+.stagewrap{flex:1 1 420px;min-width:320px;position:sticky;top:8px}
+.frame{position:relative;height:520px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  background:#0e1b26 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='6' cy='9' r='.8' fill='%2327506b'/%3E%3Ccircle cx='27' cy='24' r='.6' fill='%232d5c78'/%3E%3Ccircle cx='15' cy='33' r='.5' fill='%23244a63'/%3E%3C/svg%3E")}
+.stagecap{margin-top:8px;color:var(--mut);font-size:12px}
+/* ── 배경 = 실물 재현: 수집함 카드(PASS/PICK) · 스튜디오 본문 ── */
+.bgcards{position:absolute;inset:0;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.bgcard{border:1px solid rgba(0,238,210,.16);border-radius:12px;padding:10px 12px;background:rgba(10,22,30,.6)}
+.bgcard .t{font-size:13px;font-weight:700;margin-bottom:8px;color:#dbe9e2}
+.bgrow{display:flex;gap:8px}
+.bgbtn{flex:1;text-align:center;border:1px solid rgba(255,255,255,.13);border-radius:10px;padding:7px 0;font-size:12px;font-weight:800;color:var(--mut)}
+.bgbtn.pass{color:#e8c37a;border-color:rgba(232,195,122,.5)}
+.bgbtn.pick{color:var(--accent);border-color:rgba(0,238,210,.35)}
+.bgstudio{position:absolute;inset:0;padding:0;display:none;flex-direction:column}
+.bgstudio .sh{height:52px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:10px;padding:0 16px;background:rgba(24,25,28,.85)}
+.bgstudio .sh b{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.bgstudio .sh .lb{font-size:13px;font-weight:800;letter-spacing:-.2px;color:var(--accent);text-shadow:0 0 11px rgba(var(--accent-rgb),.55)}
+.bgstudio .sbody{flex:1;display:flex;gap:14px;padding:16px;background:#0d0f10}
+.bgstudio .prev{width:150px;height:150px;border:1px solid rgba(255,255,255,.06);border-radius:9px;background:#121212;display:grid;place-items:center;color:#2c6}
+.bgstudio .rail{width:70px;border:1px solid rgba(255,255,255,.14);border-radius:9px;background:rgba(8,15,11,.54);backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 2px;height:170px;color:var(--mut);font-size:10.5px;font-weight:800}
+.bgstudio .rail .on{color:var(--accent)}
+.mode-studio .bgcards{display:none}
+.mode-studio .bgstudio{display:flex}
+
+/* ═══ 시안 대상 = 창 1개(.win) — 튜닝 변수 --t-* 로 전 축 노출 ═══ */
+.win{position:absolute;left:var(--t-x);top:var(--t-y);
+  width:var(--t-w);display:flex;flex-direction:column;gap:calc(var(--t-gap)*1px);
+  padding:calc(var(--t-padT)*1px) calc(var(--t-padR)*1px) calc(var(--t-padB)*1px) calc(var(--t-padL)*1px);
+  background:rgba(var(--t-bgrgb),var(--t-bga));
+  border:1px solid rgba(255,255,255,var(--t-bda));
+  border-radius:calc(var(--t-rad)*1px);
+  box-shadow:0 calc(var(--t-shy)*1px) calc(var(--t-shb)*1px) rgba(0,0,0,var(--t-sha)), inset 0 1px 0 rgba(255,255,255,var(--t-insa));
+  backdrop-filter:blur(calc(var(--t-blur)*1px)) saturate(var(--t-sat));
+  -webkit-backdrop-filter:blur(calc(var(--t-blur)*1px)) saturate(var(--t-sat));
+  animation:winIn .16s var(--ease)}
+@keyframes winIn{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
+/* 헤더 = 두 문법: full-bleed 띠(대기열 .qh) ⇄ 평문 제목행(현행) */
+.win .wh{display:flex;align-items:center;gap:6px;
+  min-height:var(--btn-sm);
+  margin:calc(var(--t-hdBleed) * (0px - var(--t-padT)*1px)) calc(var(--t-hdBleed) * (0px - var(--t-padR)*1px)) 0 calc(var(--t-hdBleed) * (0px - var(--t-padL)*1px));
+  padding:calc(var(--t-hdPadV)*1px) calc(var(--t-hdPadR)*1px) calc(var(--t-hdPadV)*1px) calc(var(--t-hdPadL)*1px);
+  background:rgba(24,25,28,calc(var(--t-hdBand) * .85));
+  border-bottom:calc(var(--t-hdLine)*1px) solid var(--line2);
+  backdrop-filter:blur(calc(var(--t-hdBand) * var(--blur-l))) saturate(calc(1 + var(--t-hdBand)*.2));
+  -webkit-backdrop-filter:blur(calc(var(--t-hdBand) * var(--blur-l))) saturate(calc(1 + var(--t-hdBand)*.2));
+  margin-bottom:calc(var(--t-hdGap)*1px)}
+.win .wh b{font-size:calc(var(--t-titleFs)*1px);font-weight:var(--fw-x);letter-spacing:-.2px;padding:0;flex:1}
+.win .wx{flex:none;width:calc(var(--t-xBox)*1px);height:calc(var(--t-xBox)*1px);display:grid;place-items:center;padding:0;
+  background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:calc(var(--t-xRad)*1px);
+  color:var(--fg);cursor:pointer;transition:color .18s var(--ease),transform .3s var(--ease)}
+.win .wx:hover{color:var(--accent);border-color:rgba(var(--accent-rgb),.4)}
+.win .wx:active{transform:rotate(180deg) scale(.92);color:var(--accent)}
+.win .wlist{display:flex;flex-direction:column;gap:calc(var(--t-rowGap)*1px)}
+.win .wrow{display:block;width:100%;text-align:left;background:none;cursor:pointer;font-family:inherit;
+  color:var(--fg);font-size:calc(var(--t-itemFs)*1px);font-weight:var(--t-itemFw);
+  padding:calc(var(--t-rowPadV)*1px) calc(var(--t-rowPadR)*1px) calc(var(--t-rowPadV)*1px) calc(var(--t-rowPadL)*1px);
+  border:none;border-top:calc(var(--t-rowLine)*1px) solid var(--line2);
+  border-radius:calc(var(--t-rowRad)*1px);transition:color .15s,background .15s}
+.win .wrow:first-child{border-top:none}
+.win .wrow:hover{color:var(--accent);background:rgba(255,255,255,var(--t-rowHov))}
+.win .wrow.dim{color:var(--mut)}
+.win .wrow .meta{color:var(--mut);font-weight:700;font-size:12px;margin-right:8px}
+
+/* ═══ 콘솔 ═══ */
+.console{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:12px}
+.csec{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(255,255,255,.02)}
+.csec h3{margin:0 0 8px;font-size:12px;font-weight:800;color:var(--mut);letter-spacing:.3px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--mut);
+  background:none;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s,background .15s}
+.pill:hover{color:var(--fg)}
+.pill.on{color:var(--accent);border-color:rgba(var(--accent-rgb),.45);background:rgba(var(--accent-rgb),.1)}
+.tabs{display:flex;gap:0;margin-bottom:10px}
+.tab{flex:1;padding:9px 4px;text-align:center;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;
+  background:none;border:1px solid var(--line);font-family:inherit}
+.tab:first-child{border-radius:var(--r-s) 0 0 var(--r-s)}
+.tab:last-child{border-radius:0 var(--r-s) var(--r-s) 0;border-left:none}
+.tab.on{color:var(--accent);font-weight:800;text-shadow:0 0 11px rgba(var(--accent-rgb),.55)}
+.srow{display:grid;grid-template-columns:126px 1fr 62px;gap:8px;align-items:center;margin-bottom:7px}
+.srow label{font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .val{font-size:12px;font-variant-numeric:tabular-nums;text-align:right;color:var(--fg)}
+.srow input[type=range]{width:100%;accent-color:var(--accent)}
+.grp{margin:10px 0 5px;font-size:11px;font-weight:800;color:var(--accent);opacity:.85}
+.warn{color:#e8c37a}
+pre#out{margin:0;white-space:pre-wrap;word-break:break-all;font-size:11.5px;line-height:1.65;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe6dc;max-height:290px;overflow:auto}
+#copy{margin-top:8px;width:100%;padding:9px;border-radius:var(--r-s);border:1px solid rgba(var(--accent-rgb),.35);
+  background:rgba(var(--accent-rgb),.1);color:var(--accent);font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.note{color:var(--mut);font-size:11.5px;line-height:1.7}
+.note b{color:#cfe6dc}
+.badge{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:999px;margin-left:6px;
+  border:1px solid var(--line);color:var(--mut)}
+.badge.q{color:var(--accent);border-color:rgba(var(--accent-rgb),.4)}
+</style></head><body>
+
+<div class="hd">
+  <h1>대기열 문법 → PASS 사유 창 · 스튜디오 헤더 메뉴</h1>
+  <span class="sub">시안 20 = 대상 2 × 안 10 · 값 원천 = viewer/index.html 실측(창작 0) · 운영자 260806</span>
+</div>
+
+<div class="wrap">
+  <div class="stagewrap">
+    <div class="frame" id="frame">
+      <div class="bgcards">
+        <div class="bgcard"><div class="t">'유퀴즈' 음문석, 父 임종 떠올리며 오열</div><div class="bgrow"><span class="bgbtn pass">PASS</span><span class="bgbtn pick">PICK</span></div></div>
+        <div class="bgcard"><div class="t">보고 세 차례 위반 '중징계 위기'</div><div class="bgrow"><span class="bgbtn pass">PASS</span><span class="bgbtn pick">PICK</span></div></div>
+        <div class="bgcard"><div class="t">시장은 냉담… 환율 뚝</div><div class="bgrow"><span class="bgbtn pass">PASS</span><span class="bgbtn pick">PICK</span></div></div>
+        <div class="bgcard"><div class="t">베선트 "원화 과도한 변동성" 한마디</div><div class="bgrow"><span class="bgbtn pass">PASS</span><span class="bgbtn pick">PICK</span></div></div>
+      </div>
+      <div class="bgstudio">
+        <div class="sh"><b>Image Studio</b><span class="lb">카드 제작 ⌃</span></div>
+        <div class="sbody">
+          <div class="prev">▣</div>
+          <div class="rail"><span>⊕</span><span>🗑</span><span>배경</span><span class="on">축약</span><span>배경 합성</span><span class="on">60</span></div>
+        </div>
+      </div>
+      <div class="win" id="win"></div>
+    </div>
+    <div class="stagecap">창을 실제로 눌러보고(항목 hover·X 회전) 프리셋 10개를 오가며 비교해라. 대상 탭 = 배경도 실물로 바뀐다.</div>
+  </div>
+
+  <aside class="console">
+    <div class="csec">
+      <h3>대상 (배경·창 내용이 함께 바뀜)</h3>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="rsn" type="button">첨부1 · PASS 사유 창</button>
+        <button class="tab" data-t="menu" type="button">첨부3 · 헤더 메뉴</button>
+      </div>
+      <div class="note" id="tgtNote"></div>
+    </div>
+
+    <div class="csec">
+      <h3>시안 10 — 대기열 문법을 어디까지 적용하나</h3>
+      <div class="pills" id="presets"></div>
+    </div>
+
+    <div class="csec">
+      <h3>미세 조정 (프리셋 위에서 더 만져도 됨)</h3>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="csec">
+      <h3>선택값</h3>
+      <pre id="out"></pre>
+      <button id="copy" type="button">선택값 복사</button>
+    </div>
+
+    <div class="csec note">
+      <b>⑤ 재현 한계</b><br>
+      · 뒤 배경은 실물 캡처가 아니라 <b>같은 토큰으로 그린 재현</b>이다 — 유리 너머 비침의 <i>느낌</i>은 맞지만 실제 피드 사진/글자 밀도는 라이브가 더 복잡하다.<br>
+      · 폰트는 기기 설치본 대체(라이브 = Pretendard Variable). 자간·굵기 인상이 미세하게 다를 수 있다.<br>
+      · backdrop-filter 저사양 기기 미지원 시 blur가 빠져 보인다(라이브 동일 조건).<br>
+      · 값은 전부 <b>viewer/index.html 실측 사본</b>이고 이 시안이 새로 만든 색·px는 없다.
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ═══ 현행 실측값(= 기본값 · 전/후 비교 기준) ═══
+   PASS 사유 창(.sc-rsn) / 스튜디오 헤더 메뉴(.tool-menupop) = 260805 시점 실측
+   대기열(.qpop) = 문법 원천 실측 */
+const CUR_RSN = {   // 첨부1 현행
+  bgrgb:'8,15,11', bga:.54, blur:8, sat:1, bda:.14, rad:16,
+  shy:14, shb:40, sha:.5, insa:.05,
+  padT:11, padR:15, padB:11, padL:15, gap:3,
+  hdBleed:0, hdBand:0, hdLine:0, hdPadV:0, hdPadR:0, hdPadL:0, hdGap:4,
+  titleFs:15, xBox:30, xRad:9,
+  itemFs:13, itemFw:600, rowPadV:8, rowPadR:4, rowPadL:24, rowRad:7, rowLine:0, rowGap:3, rowHov:.06,
+  x:'52px', y:'96px', w:'230px'
+};
+const CUR_MENU = {...CUR_RSN, x:'34px', y:'62px', w:'230px'};   // 첨부3 현행(= 같은 SSOT 그룹이라 값 동일 · 위치만 헤더 아래)
+const QPOP = {   // 첨부2 = 대기열 문법 원천(실측)
+  bgrgb:'17,18,20', bga:.42, blur:24, sat:1.05, bda:.08, rad:15,
+  shy:18, shb:46, sha:.6, insa:0,
+  padT:11, padR:11, padB:11, padL:16, gap:0,
+  hdBleed:1, hdBand:1, hdLine:1, hdPadV:12, hdPadR:14, hdPadL:18, hdGap:0,
+  titleFs:15, xBox:30, xRad:9,
+  itemFs:13, itemFw:600, rowPadV:8, rowPadR:3, rowPadL:3, rowRad:0, rowLine:1, rowGap:0, rowHov:.06
+};
+const P = (o) => ({...o});
+
+/* ═══ 시안 10 = 「대기열 문법을 어디까지 가져오나」 사다리 ═══ */
+const PRESETS = [
+  {id:1, nm:'1. 현행(기준)', desc:'지금 라이브 그대로 — 레일 유리 .54/blur8 · 무테 항목',
+   st:c=>P(c)},
+  {id:2, nm:'2. 유리만 대기열', desc:'셸 유리·테두리·radius·그림자만 대기열 값. 항목·헤더는 현행',
+   st:c=>({...c, bgrgb:QPOP.bgrgb,bga:QPOP.bga,blur:QPOP.blur,sat:QPOP.sat,bda:QPOP.bda,rad:QPOP.rad,shy:QPOP.shy,shb:QPOP.shb,sha:QPOP.sha,insa:QPOP.insa})},
+  {id:3, nm:'3. 유리+헤더 띠', desc:'2 + 제목줄을 대기열 full-bleed 헤더 띠로(전폭·짙은 띠·아래 헤어라인)',
+   st:c=>({...c, ...PRESETS[1].st(c), hdBleed:1,hdBand:1,hdLine:1,hdPadV:QPOP.hdPadV,hdPadR:QPOP.hdPadR,hdPadL:QPOP.hdPadL,hdGap:0})},
+  {id:4, nm:'4. 유리+헤더+행선', desc:'3 + 항목 사이 구분선(대기열 .qrow border-top) · 항목 라운드 제거',
+   st:c=>({...c, ...PRESETS[2].st(c), rowLine:1,rowRad:0,rowGap:0,rowPadR:QPOP.rowPadR})},
+  {id:5, nm:'5. 대기열 전면', desc:'셸 패딩(11/11/11/16)·행 좌여백까지 대기열 그대로 = 사실상 대기열 창',
+   st:c=>({...c, ...QPOP, x:c.x,y:c.y,w:c.w})},
+  {id:6, nm:'6. 대기열 − 좌여백', desc:'5에서 항목 좌여백만 현행 24 유지(메뉴는 들여쓰기가 읽기 편함)',
+   st:c=>({...c, ...QPOP, rowPadL:24, x:c.x,y:c.y,w:c.w})},
+  {id:7, nm:'7. 헤더 띠만', desc:'유리는 현행(레일 결) 유지 + 헤더 띠만 대기열 문법',
+   st:c=>({...c, hdBleed:1,hdBand:1,hdLine:1,hdPadV:QPOP.hdPadV,hdPadR:QPOP.hdPadR,hdPadL:QPOP.hdPadL,hdGap:0})},
+  {id:8, nm:'8. 행 문법만', desc:'유리·헤더는 현행 + 항목만 대기열 행(구분선·무라운드)',
+   st:c=>({...c, rowLine:1,rowRad:0,rowGap:0,rowPadR:QPOP.rowPadR})},
+  {id:9, nm:'9. 대기열 유리 + 현행 항목', desc:'유리·헤더 띠는 대기열, 항목은 현행 무테·라운드 7 유지(혼합형)',
+   st:c=>({...c, ...PRESETS[2].st(c), rowLine:0,rowRad:7,rowGap:3,rowPadL:24})},
+  {id:10, nm:'10. 대기열 전면 + 진한 판', desc:'5 + 배경만 --modal-glass(.64) 한 티어(알림메세지 계약 값) = 가장 잘 읽힘',
+   st:c=>({...c, ...QPOP, bga:.64, x:c.x,y:c.y,w:c.w})},
+];
+
+const SLIDERS = [
+  {grp:'셸 유리'},
+  {k:'bga', nm:'배경 알파', min:0, max:1, step:.01},
+  {k:'blur', nm:'blur(px)', min:0, max:34, step:1},
+  {k:'sat', nm:'saturate', min:0, max:1.6, step:.05},
+  {k:'bda', nm:'테두리 알파', min:0, max:.3, step:.01},
+  {k:'rad', nm:'radius(px)', min:0, max:24, step:1},
+  {grp:'그림자'},
+  {k:'shy', nm:'그림자 y', min:0, max:30, step:1},
+  {k:'shb', nm:'그림자 흐림', min:0, max:70, step:1},
+  {k:'sha', nm:'그림자 알파', min:0, max:.9, step:.05},
+  {k:'insa', nm:'윗선(inset)', min:0, max:.12, step:.01},
+  {grp:'셸 여백'},
+  {k:'padT', nm:'패딩 상', min:0, max:24, step:1},
+  {k:'padR', nm:'패딩 우', min:0, max:24, step:1},
+  {k:'padB', nm:'패딩 하', min:0, max:24, step:1},
+  {k:'padL', nm:'패딩 좌', min:0, max:24, step:1},
+  {grp:'헤더'},
+  {k:'hdBleed', nm:'전폭 띠(0/1)', min:0, max:1, step:1},
+  {k:'hdBand', nm:'띠 진하기', min:0, max:1, step:.05},
+  {k:'hdLine', nm:'띠 아래 선', min:0, max:1, step:1},
+  {k:'hdPadV', nm:'띠 상하 패딩', min:0, max:18, step:1},
+  {k:'hdPadL', nm:'띠 좌패딩', min:0, max:24, step:1},
+  {k:'hdPadR', nm:'띠 우패딩', min:0, max:24, step:1},
+  {k:'hdGap', nm:'제목↔항목 간격', min:0, max:16, step:1},
+  {k:'titleFs', nm:'제목 크기', min:12, max:18, step:.5, warn:1},
+  {grp:'닫기 X'},
+  {k:'xBox', nm:'X 박스', min:20, max:36, step:1, warn:1},
+  {k:'xRad', nm:'X radius', min:0, max:18, step:1},
+  {grp:'항목 행'},
+  {k:'itemFs', nm:'항목 활자', min:11, max:16, step:.5, warn:1},
+  {k:'itemFw', nm:'항목 굵기', min:400, max:800, step:100, warn:1},
+  {k:'rowPadV', nm:'행 상하 패딩', min:2, max:16, step:1},
+  {k:'rowPadL', nm:'행 좌패딩', min:0, max:32, step:1},
+  {k:'rowPadR', nm:'행 우패딩', min:0, max:24, step:1},
+  {k:'rowRad', nm:'행 radius', min:0, max:14, step:1},
+  {k:'rowLine', nm:'행 구분선', min:0, max:1, step:1},
+  {k:'rowGap', nm:'행 간격', min:0, max:10, step:1},
+  {k:'rowHov', nm:'hover 유리', min:0, max:.2, step:.01},
+];
+
+const ITEMS = {
+  rsn: {title:'이유는?', rows:[['스팸',0],['홍보성',0],['가치없음',0],['직접입력',1]]},
+  menu:{title:'카드 제작', rows:[['편집',0],['번역',0],['AI 생성',0],['특수',0]]},
+};
+const NOTE = {
+  rsn:'수집함 카드에서 <b>PASS</b>를 누르면 뜨는 창. 뒤에 카드·PASS/PICK 버튼이 깔린다 — 유리가 옅으면 뒤 글자와 겹쳐 읽기 어려워진다.',
+  menu:'이미지 스튜디오 헤더의 <b>활성 탭 라벨</b>을 눌렀을 때 뜨는 메뉴. 뒤는 스튜디오 본문(미리보기·코너 레일)이라 배경이 단순하다.'
+};
+
+let target = 'rsn';
+let state = {...CUR_RSN};
+let curPreset = 1;
+const win = document.getElementById('win'), frame = document.getElementById('frame');
+const out = document.getElementById('out');
+
+function curBase(){ return target === 'rsn' ? {...CUR_RSN} : {...CUR_MENU}; }
+
+function renderWin(){
+  const d = ITEMS[target];
+  win.innerHTML =
+    '<div class="wh"><b>' + d.title + '</b>' +
+    '<button class="wx" type="button" aria-label="닫기"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>' +
+    '<div class="wlist">' + d.rows.map(r =>
+      '<button class="wrow' + (r[1] ? ' dim' : '') + '" type="button">' + r[0] + '</button>').join('') + '</div>';
+}
+
+function apply(){
+  for (const k in state){
+    if (k === 'x' || k === 'y' || k === 'w') win.style.setProperty('--t-' + k, state[k]);
+    else win.style.setProperty('--t-' + k, state[k]);
+  }
+  document.querySelectorAll('#sliders input[type=range]').forEach(el => {
+    const k = el.dataset.k; if (!(k in state)) return;
+    el.value = state[k];
+    const v = el.parentElement.parentElement.querySelector('.val');
+    if (v) v.textContent = (Math.round(state[k] * 100) / 100);
+  });
+  buildOut();
+}
+
+function buildPresets(){
+  const box = document.getElementById('presets'); box.innerHTML = '';
+  PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'pill' + (p.id === curPreset ? ' on' : '');
+    b.type = 'button'; b.textContent = p.nm; b.title = p.desc;
+    b.onclick = () => { curPreset = p.id; state = p.st(curBase()); buildPresets(); apply(); };
+    box.appendChild(b);
+  });
+  const d = PRESETS.find(p => p.id === curPreset);   // curPreset 0 = 슬라이더 직접 조정(프리셋 해제) → 가드 필수
+  document.getElementById('tgtNote').innerHTML = NOTE[target] +
+    (d ? '<br><br><b>' + d.nm + '</b> — ' + d.desc
+       : '<br><br><b>직접 조정 중</b> — 프리셋에서 벗어났다. 아래 [선택값]에 이탈 축이 표시된다.');
+}
+
+function buildSliders(){
+  const box = document.getElementById('sliders'); box.innerHTML = '';
+  SLIDERS.forEach(s => {
+    if (s.grp){ const h = document.createElement('div'); h.className = 'grp'; h.textContent = s.grp; box.appendChild(h); return; }
+    const row = document.createElement('div'); row.className = 'srow';
+    const lb = document.createElement('label'); lb.textContent = s.nm + (s.warn ? ' ⚠' : '');
+    if (s.warn) lb.classList.add('warn');
+    const mid = document.createElement('div');
+    const inp = document.createElement('input');
+    inp.type = 'range'; inp.min = s.min; inp.max = s.max; inp.step = s.step; inp.dataset.k = s.k; inp.value = state[s.k];
+    inp.oninput = () => { state[s.k] = parseFloat(inp.value); curPreset = 0; buildPresets(); apply(); };
+    mid.appendChild(inp);
+    const val = document.createElement('div'); val.className = 'val'; val.textContent = state[s.k];
+    row.appendChild(lb); row.appendChild(mid); row.appendChild(val); box.appendChild(row);
+  });
+}
+
+const near = (a,b,eps=.005) => Math.abs(a-b) < eps;
+function buildOut(){
+  const c = curBase();
+  const q = QPOP;
+  const line = (nm, k, unit) => {
+    const v = state[k], cv = c[k], qv = q[k];
+    let tag = '';
+    if (near(v, qv) && !near(cv, qv)) tag = '  ← 대기열 문법 채택';
+    else if (near(v, cv)) tag = '  (현행 유지)';
+    else if (!near(v, cv) && !near(v, qv)) tag = '  ⚠ 둘 다 아님 = 신규값(기틀 갱신 역제안 대상)';
+    return '  ' + nm.padEnd(14) + ': ' + v + (unit||'') + tag;
+  };
+  const dev = ['bga','blur','sat','bda','rad','titleFs','xBox','itemFs','itemFw']
+    .filter(k => !near(state[k], c[k]) && !near(state[k], QPOP[k]));
+  const p = PRESETS.find(x => x.id === curPreset);
+  out.textContent =
+`[대기열 문법 적용 — 선택값]
+대상 : ${target === 'rsn' ? '첨부1 · PASS 사유 창(.sc-rsn)' : '첨부3 · 스튜디오 헤더 메뉴(.tool-menupop)'}
+시안 : ${p ? p.nm : '(직접 조정)'}
+
+■ 셸 유리
+${line('배경 알파','bga')}
+${line('blur','blur','px')}
+${line('saturate','sat')}
+${line('테두리 알파','bda')}
+${line('radius','rad','px')}
+  배경 RGB      : rgba(${state.bgrgb}) ${state.bgrgb === QPOP.bgrgb ? '← 대기열(17,18,20)' : '(현행 8,15,11 = 코너 레일)'}
+
+■ 그림자
+${line('y','shy','px')}
+${line('흐림','shb','px')}
+${line('알파','sha')}
+
+■ 셸 여백
+${line('상','padT','px')}
+${line('우','padR','px')}
+${line('하','padB','px')}
+${line('좌','padL','px')}
+
+■ 헤더
+${line('전폭 띠','hdBleed')}
+${line('띠 진하기','hdBand')}
+${line('띠 아래 선','hdLine')}
+${line('제목 크기','titleFs','px')}
+${line('X 박스','xBox','px')}
+
+■ 항목 행
+${line('활자','itemFs','px')}
+${line('굵기','itemFw')}
+${line('상하 패딩','rowPadV','px')}
+${line('좌패딩','rowPadL','px')}
+${line('구분선','rowLine')}
+${line('행 radius','rowRad','px')}
+${line('행 간격','rowGap','px')}
+
+${dev.length ? '⚠ 기틀 이탈 ' + dev.length + '축 = ' + dev.join(', ') + '\\n   → 이대로 회신하면 「기틀 갱신 역제안」으로 처리(전 앱 동축 일괄 변경 승인 경로)' : '✅ 기틀 이탈 0축 — 전 축이 현행 또는 대기열 정본 값(신규 창작 0)'}
+
+[회신 형식] 대상별 번호 1개씩 = 예) "PASS 5번, 메뉴 3번"`;
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  document.querySelectorAll('#tabs .tab').forEach(x => x.classList.toggle('on', x === b));
+  target = b.dataset.t;
+  frame.classList.toggle('mode-studio', target === 'menu');
+  const p = PRESETS.find(x => x.id === curPreset) || PRESETS[0];
+  state = p.st(curBase());
+  renderWin(); buildPresets(); buildSliders(); apply();
+});
+
+document.getElementById('copy').addEventListener('click', () => {
+  const t = out.textContent;
+  const dev = t.includes('⚠ 기틀 이탈');
+  if (dev && !confirm('기틀 이탈 축이 있다. 이대로 복사하면 「기틀 갱신 역제안」으로 회신된다(전 앱 동축 일괄 변경 승인 경로). 계속할까?')) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+    .then(() => { const b = document.getElementById('copy'); b.textContent = '복사됨 ✓'; setTimeout(() => b.textContent = '선택값 복사', 1400); })
+    .catch(() => {
+      const r = document.createRange(); r.selectNodeContents(out);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { document.execCommand('copy'); } catch (_) {}
+    });
+});
+
+renderWin(); buildPresets(); buildSliders(); apply();
+</script>
+</body></html>
