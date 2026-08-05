@@ -3639,6 +3639,12 @@
     -webkit-backdrop-filter:blur(var(--blur-m)) saturate(1.3); backdrop-filter:blur(var(--blur-m)) saturate(1.3); pointer-events:none; }
   .dg-card .monplay svg { width:16px; height:16px; transform:translateX(1px); }   /* 재생 삼각 = 좌측 무게중심 +1px 광학 보정(정본 동값) */
   .dg-card .monplay[hidden] { display:none; }
+  /* 링크가 들어오면 [다운로드]가 강조색1로 갈아탄다(운영자 260805 6차 "저 노란색 이였다가 강조색1로").
+     ⚠ 방식 = **클래스 교체**(활성 = .dlbtn 떼고 .dl-on) — `.dlbtn` 정본을 셀렉터로 이기려는 시도는 실측에서
+     전부 졌다(#id + !important + 문서 말미 주입까지 3종 전건 무효 · 원인 미확인). 정본 규칙을 건드리지 않고
+     클래스를 갈아끼우면 싸울 상대 자체가 없어진다. 값 = .dlbtn 정본 **구조·알파 100% 사본**, 색 토큰만 accent-4 → accent. */
+  .sbtn.dl-on { color:var(--accent); background:rgba(var(--accent-rgb),.10); border-color:rgba(var(--accent-rgb),.22); filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  @media (hover:hover){ .sbtn.dl-on:hover { background:rgba(var(--accent-rgb),.16); } }
   .dg-meta { position:absolute; top:4px; right:4px; text-align:right; font-size:var(--fs-xs); line-height:1.5; color:var(--mut); background:var(--bg); border-radius:var(--r-s); padding:0 var(--sp-1); pointer-events:none; font-variant-numeric:tabular-nums; }   /* 이미지 위 표시물 = 불투명 var(--bg) 플레이트(CII 오버레이 규칙 계승) */
   .dg-meta span { display:block; }
   .dg-card .dg-dl { position:absolute; right:4px; bottom:4px; }   /* 카드 위 개별 다운로드 = 카드피드 이미지 위 ⬇(.sbtn.dlbtn) 정본 배치 계승 — 불투명 플레이트·색은 nm-cards.css .dlbtn SSOT가 전담(여기서 색 재선언 0) */
@@ -9653,6 +9659,8 @@ function _dgPaintPic() {
   const dl = $('#dgVidDl'); if (!dl) return;
   const u = _dgUrlNorm(), plat = _dgVidPlat(u);
   dl.disabled = !u || _dg.busy;   // 잠금 = '주소 없음'과 '페이지 스캔 중' 둘뿐. ⚠ 구판은 「받는 중」에도 잠갔다 = 운영자 260802
+  dl.classList.toggle('dlbtn', dl.disabled);   // 잠김 = 다운로드 색 정본(골드) 그대로 · 활성 = 강조색1로 교체(운영자 260805 6차)
+  dl.classList.toggle('dl-on', !dl.disabled);
   //   "이미 한번 링크 입력하면 다음거를 입력을 못해 … 재차, 또는 큐잉 시킬수가 없음"의 **직접 원인**. 이미지 스튜디오는
   //   제작 중에도 다음 발사가 열려 있고 잡이 쌓인다(JOBS 배열) — 같은 모델로 통일했으니 잠글 이유가 사라졌다.
   dl.title = !u ? '주소를 붙여넣으면 받을 수 있어'
@@ -9690,6 +9698,9 @@ function _dgPeekHtml() {
   // 항목 구성 줄(운영자 260805 3차 "링크만 입력해도 몇개가 엮여있는지 + 각각 최대화질") — 스레드류 게시물의
   //   묶음(영상 n·사진 m)을 받기 전에 보여준다. 부품 = 같은 행 .dg-imeta 둘째 줄(신규 디자인 0).
   //   치수 = 서버가 SSR에서 실측한 값만(w×h · 로그아웃 응답이 감춘 게시물 = 종류·개수만 = 지어내지 않음).
+  // 항목을 알아냈는데 **영상이 하나도 없으면** 화질 축이 성립하지 않는다(운영자 260805 6차 — 사진 2장 트윗에
+  //   「영상만 · 최대 4K 60fps」가 뜨던 자리). 그 경우 화질 칩·「최대 …」를 통째로 빼고 「사진만」이라고 말한다.
+  const noVid = !!(p && Array.isArray(p.items) && p.items.length && !p.items.some(it => it && it.kind === 'video'));
   let itemsLine = '';
   // 미리보기를 못 받은 스레드 글 = **조용히 빈 채로 두지 않는다**(실측 260805 = 표본 11건 중 1건 · 그 글은 og·임베드
   //   양쪽이 로그인월이라 우리가 뚫을 수단이 없다). 구판은 제목 자리에 주소만 남아 「왜 안 뜨지」가 됐다 —
@@ -9736,8 +9747,8 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1])) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
-    + (plat === 'TH' ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')   // 칩 라벨 = **이 영상에서 실제로 내주는 값**(_dgQEff) — 고른 상한이 이 영상에 없으면 그 아래 최고로 내려앉은 값을 말한다(260805 4차)   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + (noVid ? ' · 사진만' : ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQEff()[1]))) + '</div>' + itemsLine + '</div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + ((plat === 'TH' || noVid) ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p · 이 영상에 있는 것만 나와)" aria-label="화질 ' + esc(_dgQEff()[1]) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQEff()[1]) + '</button>')   // 칩 라벨 = **이 영상에서 실제로 내주는 값**(_dgQEff) — 고른 상한이 이 영상에 없으면 그 아래 최고로 내려앉은 값을 말한다(260805 4차)   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>' + mediaGrid;   // 미리보기 액자 = 행 **바로 아래**(스캔 결과에서도 헤드 → 그리드 순서 = 같은 배치 문법)
 }

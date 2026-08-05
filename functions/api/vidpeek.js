@@ -75,7 +75,7 @@ function* _walkJson(n) {
 }
 // 재생용 미디어 주소 — **메타 CDN만** 통과시킨다(thembed.js IMG_HOST_RE 문자 계승 · SSR이 준 값이라도 호스트는 검문).
 //   ⚠ 서명(oe=) 만료가 있어 캐싱 금지 = 미리보기 그 순간에만 쓰는 값(플러그인 독스트링 「주소 캐싱 금지」와 같은 축).
-const _MEDIA_HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.(cdninstagram\.com|fbcdn\.net)$/;
+const _MEDIA_HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.(cdninstagram\.com|fbcdn\.net|twimg\.com)$/;   // twimg = X 사진(pbs)·영상(video) CDN(260805 6차 X 편입)
 function _mediaUrl(s) {
   try { const u = new URL(String(s || '')); return (u.protocol === 'https:' && _MEDIA_HOST_RE.test(u.hostname)) ? u.toString() : ''; } catch { return ''; }
 }
@@ -179,13 +179,56 @@ async function ytFormats(u) {
     const fs = (d && d.streamingData && d.streamingData.adaptiveFormats) || [];
     const seen = new Set(), out = [];
     for (const f of fs) {
-      const h = +f.height || 0; if (!h) continue;
+      // ⚠ 축 = **짧은 변**(운영자 260805 6차) — 러너 qual_fmt가 상한을 거는 축이 짧은 변이고(세로=width·가로=height),
+      //   화면 라벨(_dgActualLbl)도 min(w,h)다. 구판은 height만 실어 세로 영상(1080×1920)이 티어 매칭에서 통째로 빠졌다.
+      const h = +f.height || 0, w = +f.width || 0; if (!h && !w) continue;
+      const s = Math.min(w || h, h || w);
       const fp = Math.round(+f.fps || 0);
-      const k = h + 'x' + fp;
-      if (!seen.has(k)) { seen.add(k); out.push([h, fp]); }
+      const k = s + 'x' + fp;
+      if (!seen.has(k)) { seen.add(k); out.push([s, fp]); }
     }
     return out.slice(0, 40);
   } catch { return []; }   // fail-soft — 목록만 종전(정적 6값)으로 남는다
+}
+
+// ── X(트위터) 항목·화질(운영자 260805 6차 "최대화질이 이게 아닌데 이렇게 뜸 · 이미지 2개인데 영상처럼 하나만") ──
+//   구판은 items·fmts가 **스레드/유튜브 전용**이라 X는 정적 6값으로 떨어져 「최대 4K 60fps」를 말했고(X 최대는 보통 1080),
+//   사진 2장짜리 트윗도 「영상만」 한 줄로 뭉갰다. 재료 = X **공개 신디케이션**(키·로그인 0 · 임베드가 쓰는 그 경로).
+//   실측 260805: mediaDetails[]가 photo면 media_url_https + original_info(1206×2010 등),
+//   video면 video_info.variants[](mp4 · URL 경로에 320x568…1080x1920 = 실제 사다리)를 그대로 준다.
+const X_ID_RE = /\/status\/(\d+)/;
+const X_DIM_RE = /\/(\d+)x(\d+)\//;
+async function xMedia(u) {
+  try {
+    const m = X_ID_RE.exec(u); if (!m) return null;
+    const r = await fetch('https://cdn.syndication.twimg.com/tweet-result?id=' + m[1] + '&lang=ko&token=a',
+      { headers: { 'user-agent': UA, accept: 'application/json' } });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => null); if (!d) return null;
+    const items = [], fmts = [], seen = new Set();
+    for (const md of (d.mediaDetails || []).slice(0, 20)) {
+      const oi = md.original_info || {};
+      const w = +oi.width || 0, h = +oi.height || 0;
+      if (md.type === 'photo') {
+        const uu = _mediaUrl(md.media_url_https);
+        if (uu) items.push({ kind: 'img', w, h, u: uu });
+        continue;
+      }
+      const vs = ((md.video_info || {}).variants || []).filter(v => v && v.content_type === 'video/mp4' && v.url);
+      let best = null;
+      for (const v of vs) {
+        if (!best || (+v.bitrate || 0) > (+best.bitrate || 0)) best = v;
+        const dm = X_DIM_RE.exec(v.url);
+        if (dm) { const s = Math.min(+dm[1], +dm[2]); if (!seen.has(s)) { seen.add(s); fmts.push([s, 0]); } }   // fps = X가 안 준다 = 0 = 라벨에서 생략(지어내지 않음)
+      }
+      const bu = best ? _mediaUrl(best.url) : '';
+      if (bu) items.push({ kind: 'video', w, h, u: bu });
+    }
+    const first = _mediaUrl((d.mediaDetails || [])[0] && (d.mediaDetails || [])[0].media_url_https);
+    const txt = String(d.text || '').replace(/https:\/\/t\.co\/\w+/g, '').trim();   // 꼬리 t.co 단축주소 = 내용이 아니다
+    const au = (d.user && d.user.screen_name) ? '@' + String(d.user.screen_name).slice(0, 40) : '';
+    return { items, fmts, title: txt.slice(0, 200), desc: txt.slice(0, 300), thumb: first, author: au };
+  } catch { return null; }   // fail-soft — 종전 og 경로로 계속
 }
 
 export async function onRequestGet({ request }) {
@@ -230,6 +273,17 @@ export async function onRequestGet({ request }) {
         }
       }
     } catch { /* fail-soft = 아래 og 경로로 계속 */ }
+  }
+
+  // ── ①-b X = 신디케이션 한 경로로 제목·작성자·항목·화질이 전부 나온다(og보다 정확 · 260805 6차) ──
+  if (plat === 'X') {
+    const xm = await xMedia(t.toString());
+    if (xm && (xm.items.length || xm.title)) {
+      const base = { plat, title: xm.title, desc: xm.desc, thumb: xm.thumb, author: xm.author };
+      if (xm.items.length) base.items = xm.items;
+      if (xm.fmts.length) base.fmts = xm.fmts;
+      return json(base);
+    }   // 실패 = 아래 og 경로로 계속(악화 0)
   }
 
   let html = '', finalUrl = '', truncated = false;
