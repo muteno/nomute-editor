@@ -1466,6 +1466,35 @@ def _rule_body(css, selector):
     return None
 
 
+def _nmin_rules(s):
+    """`.nmin`을 품은 CSS 규칙 → [(선택자, 본문, 시작offset)] · 구 정규식의 **동치 치환**.
+
+    ⚠ 왜 정규식을 걷어냈나(운영자 260804 「아이디어 ㄱㄱ」 = 게이트 시간 최적화):
+      구판 `([^{}\\n]*\\.nmin[^{}]*)\\{([^{}]*)\\}` 는 1.85MB `viewer/index.html`에서 **17.9초**를 썼다
+      (게이트 77개 총 37.5초 중 **48.9%가 이 한 줄**). 원인 = `[^{}\\n]*`가 매 위치에서 줄 끝까지 먹고
+      `.nmin`을 찾아 되짚는 백트래킹 — 파일이 커질수록 제곱으로 는다.
+      치환 = `.nmin` **리터럴 스캔을 먼저** 돌려 후보를 O(매치수)로 줄이고 각 후보에서만 규칙 경계를 판정한다.
+      의미는 구판과 동일하게 맞췄다 = ⓐ `.nmin`↔`{` 사이에 `}` 없음(첫 `{`라 `{`도 없음)
+      ⓑ 본문에 `{` 없음 ⓒ 선택자 시작 = `.nmin`에서 뒤로 `{`·`}`·개행 만날 때까지 ⓓ 같은 `{`는 1회(비중첩).
+      실증 = 10파일(index·tr·thumb·edit·sb·k·song·vd·ly·nm-input.css) 구↔신 결과 **튜플 단위 전건 동일**,
+      17.927s → 0.002s.
+    """
+    out, seen = [], set()
+    i = s.find('.nmin')
+    while i != -1:
+        j = s.find('{', i)
+        if j != -1 and j not in seen and '}' not in s[i + 5:j]:
+            k = s.find('}', j + 1)
+            if k != -1 and '{' not in s[j + 1:k]:
+                p = i
+                while p > 0 and s[p - 1] not in '{}\n':
+                    p -= 1
+                seen.add(j)
+                out.append((s[p:j], s[j + 1:k], p))
+        i = s.find('.nmin', i + 5)
+    return out
+
+
 def check_input_canon():
     rc = 0
     try:
@@ -1549,12 +1578,12 @@ def check_input_canon():
                 continue
             n_ok += 1
         # ⓒ `.nmin` 스코프 높이 재선언 0(표면 인라인이 SSOT 창 크기를 되돌리는 것 차단)
-        for m in re.finditer(r'([^{}\n]*\.nmin[^{}]*)\{([^{}]*)\}', s):
-            d = _css_decls(m.group(2))
+        for sel, body, off in _nmin_rules(s):   # 구 정규식 동치 치환(17.9s → 0.002s · _nmin_rules 주석 참조)
+            d = _css_decls(body)
             hit = [k for k in ('height', 'min-height', 'max-height') if k in d]
             if hit:
                 print('❌ 스튜디오 입력칸 정본 게이트 ⓒ 높이 재선언 — %s:%d `%s` 에 %s(창 크기는 SSOT 전담 = 1줄/3줄 고정)'
-                      % (rel, s[:m.start()].count('\n') + 1, m.group(1).strip(), '·'.join(hit)))
+                      % (rel, s.count('\n', 0, off) + 1, sel.strip(), '·'.join(hit)))
                 rc = 1
     if rc == 0:
         print('✅ 스튜디오 입력칸 정본 게이트 — 정본↔SSOT 값 %d축 + 3줄 창(%s) 동일 · 배선 칸 %d개 `.nmin` 보유(면제 %d) · 높이 재선언 0 · 구 칩 문법 0.'
