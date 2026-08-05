@@ -4405,6 +4405,138 @@ def _aac_units(rel, src):
     return [(n, t) for n, _c, t in out]
 
 
+def check_thumb_prompt_sanity():
+    """뉴스 픽 AI 썸네일 = **발사 프롬프트 자기모순 0**(하드 · 운영자 260805 "아이디어 ㄱㄱ").
+
+    ⚠ 신설 사유 = 이 레포 게이트는 **정적 문자열**(check_refs 계열)이거나 **화면 렌더**(smoke_*)뿐이라
+      「러너가 실제로 조립해 발사하는 프롬프트가 스스로 모순인가」는 축 자체가 없었다. 그 사각에서
+      260805 실측 5축이 잠복했다(표본 = cards/*/thumbs/prompts.json 236건 = 실제 발사분 재판독):
+        ① CAMERA 자기모순 6%  — 한 줄 안에서 "front-on … symmetrical" ∧ "not a flat head-on"
+        ② EXPRESSION 시선 중복 10% — CAMERA가 이미 말한 응시를 EM 코드가 재지시 → 표정 축이 밀림
+        ③ MOOD 메타어 59%     — emotion frontmatter의 집필 지시어('N순위'·'포지셔닝')가 값에 그대로
+        ④ SUBJECT 문장 통째 98% — 「얼굴을 그려라」 자리에 한줄요약 전문 = 제2의 장면이 SCENE과 경합
+        ⑤ SCENE 위계 부재     — 연출 줄 6~8개가 각자 장면을 암시하면 모델이 '평균'을 그린다
+      운영자에게는 「이미지가 별로다」로만 보여서 원인 판별이 사람 눈에만 의존했다(insta-thumb-miss·
+      brk_misfire 와 같은 축 = 조용히 나빠지는 것을 숫자로 드러낸다).
+
+    판정 = **정본 함수 재판정**(check_disaster_landmark_sign 문법 계승) — thumb_gen.build_prompt 를
+    import 해 대표 케이스로 실제 조립하고 모순 술어를 센다. 사전·정규식 사본 0(정본 1곳 계약 유지) ·
+    네트워크·LLM·렌더 0 · **면책표 없이 하드 0**(현행 위반 0 = 부채 원장 증가 0).
+    ⚠ 케이스는 **라이브러리 실코드(AG/LGT/SG/EM TSV)** 를 그대로 태운다 — 새 연출 코드가 들어와도
+      같은 술어로 재판정되므로, 「메뉴만 늘리고 조립을 안 본」 회귀가 커밋 시점에 걸린다.
+    ⚠ 짝 축(WARN) = 이미 구워진 prompts.json 재판독. 그건 **기계산출물·과거 발사분**이라 세션이 커밋으로
+      못 씻는다 → 하드로 두면 봉합 커밋 자신이 막히는 자기모순(check_disaster_lm_stale ② 선례) →
+      「씻길 때까지 보이게」가 정확한 역할. 새 픽이 돌면 자연 감소한다.
+    """
+    tg_dir = os.path.join(ROOT, '.github', 'scripts')
+    tg_path = os.path.join(tg_dir, 'thumb_gen.py')
+    if not os.path.exists(tg_path):
+        print('❌ 썸네일 프롬프트 게이트 — .github/scripts/thumb_gen.py 없음(fail-closed).')
+        return 1
+    os.environ.setdefault('GEMINI_API_KEY', 'gate-noop')   # 모듈 상단 no-op 분기 회피(호출 0 = 과금 0)
+    sys.path.insert(0, tg_dir)
+    try:
+        import importlib
+        tg = importlib.import_module('thumb_gen')
+        importlib.reload(tg)
+    except Exception as e:
+        print('❌ 썸네일 프롬프트 게이트 — thumb_gen import 실패(fail-closed): %s' % e)
+        return 1
+    finally:
+        if sys.path and sys.path[0] == tg_dir:
+            sys.path.pop(0)
+
+    # 대표 케이스 = 실측 사고를 그대로 재현하는 축들(정면 AG · 응시 EM · 메타어 emotion · 문장 lead).
+    SCENE = '굳은 눈으로 단상에서 발언하는 50대 남성, 그 앞줄에 고개를 숙인 제복 차림 간부들, 흰 형광등 아래 오전.'
+    LEAD = ('이재명 대통령이 8월 5일 청와대 영빈관에서 외교·국방·통일·보훈부 업무보고를 받으며 '
+            '외교·안보의 정쟁화를 지적하고, 정부와 여당을 향해 결과로 책임지라고 주문했다.')
+    # ⚠️ 케이스는 **실측 사용 빈도 상위 코드**로 짠다 — 첫 판에서 임의 AG 코드를 골랐더니 그 코드들이
+    #    애초에 정면 어휘를 안 실어 ①② 술어가 한 번도 발동하지 않았고, 킬테스트 K1(조건부 제거 = 사고 원복)이
+    #    **그대로 통과**했다(게이트가 있으나 안 잡는 상태). 정면축 정본 = AG-08(큐 실측 3위·35건)·EM-12(응시).
+    CASES = [   # (dispatch, emotion)
+        ('AG-08 LGT05 SG-07 EM-12', '미묘한 냉소 1순위'),          # 정면 AG + 응시 EM + 메타어(실사고 재현)
+        ('AG-08 LGT02 EM-08', '분노와 허탈감이 1순위 — 스크롤이 멎는 지점'),
+        ('AG-01 LGT02 SG-09', '비통함 1순위'),                      # 최다 사용(눈높이) — 위양성 대조축
+        ('AG-18 LGT08 DF-07 GST-03', '억울함'),                     # 부감·거리 지정 = 병기 억제 경로
+        ('', ''),                                                   # dispatch 무지정(화풍 기본 폴백)
+    ]
+    # 모순 술어 — 전부 「같은 프롬프트 안에서 서로를 무효화하는 두 문장」만 잡는다(문체 취향 판정 0).
+    FRONT = re.compile(r'front[- ]?on|head[- ]?on|straight[- ]?on|symmetr|frontal', re.I)
+    GAZE = re.compile(r'(?:in)?to the camera|eye contact', re.I)
+    META = re.compile(r'순위|포지셔닝|독자|스크롤')
+    bad = []
+    for disp, emo in CASES:
+        for sid, _label, look, cam_default in tg.STYLES:
+            like = sid in ('webtoon', 'watercolor')
+            p = tg.build_prompt(look, cam_default, SCENE, disp, '', hook='화두 한 마디', emotion=emo,
+                                foreign=False, cam_lock=(sid == 'watercolor'),
+                                light_mod=tg._LIGHT_MOD.get(sid, ''), likeness=like,
+                                subject=(tg._subject_name(LEAD) if like else ''))
+            L = p.split('\n')
+            tag = '%s/[%s]' % (sid, disp or '무지정')
+            cam = next((x for x in L if x.startswith('CAMERA:')), '')
+            # ① 정면을 지시하면서 같은 줄에서 정면을 금지 = 모델이 둘을 평균내 어중간한 각도로 도망간다
+            if 'not a flat head-on' in cam and FRONT.search(cam.split(', a frozen split-second')[0]):
+                bad.append('%s CAMERA 자기모순(정면 지시 ∧ 정면 금지 동시)' % tag)
+            exp = next((x for x in L if x.startswith('EXPRESSION')), '')
+            # ② CAMERA가 이미 응시를 지시했는데 EXPRESSION이 또 응시 = 같은 지시 2회 → 표정 축이 밀린다
+            if exp and GAZE.search(exp) and FRONT.search(cam):
+                bad.append('%s EXPRESSION 시선 중복(CAMERA와 같은 지시 2회)' % tag)
+            mood = next((x for x in L if x.startswith('MOOD')), '')
+            # ③ 감정 자리에 집필 메타어 = 이미지 모델엔 순수 노이즈(라벨이 'emotion'이라 더 헷갈린다)
+            if mood and META.search(mood):
+                bad.append('%s MOOD 메타어 누출(%s)' % (tag, mood.split('): ', 1)[-1][:30]))
+            subj = next((x for x in L if x.startswith('SUBJECT')), '')
+            # ④ 얼굴 지시 자리에 문장 = 그 문장의 장소·시각이 제2의 장면으로 SCENE과 싸운다
+            if subj and len(subj.split('): ', 1)[-1]) > 35:
+                bad.append('%s SUBJECT가 인명 아닌 문장(%d자)' % (tag, len(subj.split('): ', 1)[-1])))
+            # ⑤ SCENE 위계 = 아래 연출 줄이 전부 '어떻게'만 말한다는 못박음. 빠지면 장면 경합이 부활한다
+            if tg.SCENE_PRIME not in p:
+                bad.append('%s SCENE 위계줄(SCENE_PRIME) 누락' % tag)
+    if bad:
+        print('❌ 썸네일 프롬프트 자기모순 게이트 — %d건:' % len(bad))
+        for b in bad[:14]:
+            print('   ·', b)
+        print('   → 정본 = .github/scripts/thumb_gen.py build_prompt(모순은 «지시 vs 금지» 두 문장 중 하나를 조건부로).')
+        return 1
+    print('✅ 썸네일 프롬프트 자기모순 게이트 — 케이스 %d × 화풍 %d 전건 5술어 청정(정본 함수 재판정 · LLM 0).'
+          % (len(CASES), len(tg.STYLES)))
+
+    # ── 짝 축(WARN·비차단) — 이미 구워진 발사분에 구판 모순이 남아 있는가(데이터는 세션이 못 씻는다) ──
+    stale, seen = {}, 0
+    for pf in sorted(glob.glob(os.path.join(ROOT, 'cards', '*', 'thumbs', 'prompts.json')))[-120:]:
+        try:
+            recs = json.load(open(pf, encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(recs, dict):
+            continue
+        seen += 1
+        for _sid, p in recs.items():
+            if not isinstance(p, str):
+                continue
+            L = p.split('\n')
+            cam = next((x for x in L if x.startswith('CAMERA:')), '')
+            mood = next((x for x in L if x.startswith('MOOD')), '')
+            subj = next((x for x in L if x.startswith('SUBJECT')), '')
+            exp = next((x for x in L if x.startswith('EXPRESSION')), '')
+            if 'not a flat head-on' in cam and FRONT.search(cam.split(', a frozen split-second')[0]):
+                stale['CAMERA 자기모순'] = stale.get('CAMERA 자기모순', 0) + 1
+            if exp and GAZE.search(exp) and FRONT.search(cam):
+                stale['EXPRESSION 시선 중복'] = stale.get('EXPRESSION 시선 중복', 0) + 1
+            if mood and META.search(mood):
+                stale['MOOD 메타어'] = stale.get('MOOD 메타어', 0) + 1
+            if subj and len(subj.split('): ', 1)[-1]) > 35:
+                stale['SUBJECT 문장 통째'] = stale.get('SUBJECT 문장 통째', 0) + 1
+    if stale:
+        print('⚠️ 구 발사분 잔류(WARN·비차단) — 최근 %d기사에 구판 모순이 남아 있다: %s'
+              % (seen, ' · '.join('%s %d' % kv for kv in sorted(stale.items()))))
+        print('   · 데이터는 기계산출물이라 커밋으로 못 씻는다 — 새 픽이 돌면 자연 감소 · 옛 기사는 뷰어 「다시 만들기」.')
+    elif seen:
+        print('✅ 구 발사분 잔류 0 — 최근 %d기사 전건 청정.' % seen)
+    return 0
+
+
 def check_ytdlp_aac():
     """yt-dlp 오디오 코덱 = AAC 강제(하드 · 운영자 260805 "유튜브를 편집가능한 자료까지 받아오게").
     계약 = **병합 셀렉터의 알몸 `ba` 앞에는 반드시 `ba[ext=m4a]` 사본이 선다.**
@@ -4601,6 +4733,8 @@ def main():
     except Exception as e:
         print('⚠️ 회차 원장 게이트 스킵:', e)
     try:
+        if check_thumb_prompt_sanity() != 0:   # 뉴스 픽 AI 썸네일 = 발사 프롬프트 자기모순 0(운영자 260805 — 「지시 vs 금지」가 한 줄에 공존해 그림이 평균으로 도망가던 축 · 정본 함수 재판정)
+            rc = 1
         if check_ytdlp_aac() != 0:   # 다운로드 오디오 코덱 = AAC 강제(운영자 260805 — 알몸 ba = Opus가 mp4에 들어가 프리미어가 오디오 트랙을 조용히 무시하던 축 봉합)
             rc = 1
     except Exception as e:
