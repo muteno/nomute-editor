@@ -116,13 +116,72 @@ else
 fi
 
 echo
+# ⑦ 스레드 세션 판별(260805 신설 · 8인 평의회1 반증 기계화) — 「쿠키 무소득」의 진짜 원인을 **두 갈래로 확정**한다.
+#   ⚠ 왜 필요한가 = 260805에 세션이 「UA mismatch(로그인월에 막힘)」로 진단됐는데, 평의회 반증이 시그니처 불일치를
+#     지적했다: 인스타 실측 증상은 「유효 쿠키도 400 **거절**」(세션 무효화)인데 스레드 증상은 「200 정상 수신 +
+#     추천 피드」(세션 **수락**)다. 원인이 UA면 거절돼 게스트 렌더로 떨어지므로 그 사고 자체가 안 난다
+#     → UA는 후보일 뿐이고, 둘을 가르는 유일한 축이 **로그인월 시그널의 유무**다.
+#   ⚠ 왜 여기 넣나 = 그 판별을 운영자에게 긴 python -c 한 줄로 떠넘기면 폰 키보드로 못 친다([9] 「눌러서 되는 것」).
+#     이미 매번 돌리는 이 진단기가 스스로 재고 **사람 말로 결론까지 내면** 새로 칠 명령이 0이 된다.
+#   판정 = wall 있음 → UA/쿠키 축(THREADS_UA 짝 맞추기) · wall 없음 → 추천 피드 축(별개 봉합 · UA 넣어도 무효).
+echo "⑦ 스레드 세션 판별(쿠키가 왜 무소득인지 두 갈래로 확정)"
+if [ -z "${THREADS_COOKIE:-}" ]; then
+  hm "THREADS_COOKIE 미설정 = 게스트 경로(정상 동작 · 판별 대상 아님)"
+else
+  [ -n "${THREADS_UA:-}" ] && ok "THREADS_UA 설정됨(쿠키와 짝)" || hm "THREADS_UA 미설정(짝 없음 — 아래 판별 결과에 따라 조치가 갈린다)"
+  _thacc="$(python3 -c "
+import json,sys
+# ⚠ threads 값은 지역 dict{kr:[…], gl:[…]} (실측 260805) — 리스트로 가정하면 전건 빈값이 된다.
+try:
+    d=json.load(open('viewer/sns_accounts.json',encoding='utf-8'))
+    v=d.get('threads') or []
+    if isinstance(v,dict): v=[x for grp in v.values() if isinstance(grp,list) for x in grp]
+    a=v[0] if isinstance(v,list) and v else ''
+    print((a.get('id') or a.get('account') or '') if isinstance(a,dict) else str(a))
+except Exception: print('')
+" 2>/dev/null | tr -d ' ')"
+  if [ -z "$_thacc" ]; then
+    hm "등록 스레드 계정을 못 읽음 — 판별 생략(viewer/sns_accounts.json 확인)"
+  else
+    python3 - "$_thacc" <<'PYEOF' || hm "판별 실패(네트워크·모듈 오류) — 잠시 뒤 다시"
+import os, re, sys
+sys.path.insert(0, "scraper")
+try:
+    import sns_trends as s
+except Exception as e:
+    print("  ⚠  모듈 로드 실패: %s" % e); raise SystemExit(0)
+acc = sys.argv[1].lstrip("@")
+ck = (os.environ.get("THREADS_COOKIE") or "").strip()
+try:
+    h = s._th_fetch("https://www.threads.com/@" + acc, {**s.UA}, ck)
+except Exception as e:
+    print("  ⚠  요청 실패(@%s): %s" % (acc, e)); raise SystemExit(0)
+wall = bool(re.search(r"/accounts/login|barcelona_login|\"login_page\"|Log in", h))
+_users = re.findall(r'"username":"([^"]+)"', h)
+mine = sum(1 for u in _users if u.lower() == acc.lower())
+alien = len(_users) - mine
+print("  · 응답 %dKB · 본인 글 노드 %d · 남의 글 노드 %d" % (len(h) // 1000, mine, alien))
+if wall:
+    print("  ❌ 로그인월에 막힘(wall) = 세션이 **거절**됐다 → 원인은 쿠키/UA 축이 맞다.")
+    print("     조치: 쿠키를 뽑은 그 브라우저 콘솔에 copy(navigator.userAgent) → 그 값을")
+    print("           echo 'export THREADS_UA=\"붙여넣기\"' >> ~/.nomute_phone_env")
+elif mine:
+    print("  ✅ 세션 정상 — 본인 글이 실려 있다(이 회차 무소득은 24h 신선도 필터 때문일 수 있다)")
+else:
+    print("  ❌ 로그인월 없음(NO-WALL)인데 본인 글 0 = 세션은 **수락**됐는데 프로필 대신 추천 피드를 받는 중.")
+    print("     → UA를 넣어도 안 고쳐진다(별개 봉합 필요). 이 줄을 그대로 클로드에게 넘겨라.")
+PYEOF
+  fi
+fi
+
+echo
 if [ "$RUN" = "1" ]; then
-  echo "⑦ 지금 1회 수집 실행(= 복구 · 성공하면 30분 안에 화면이 채워진다)"
+  echo "⑧ 지금 1회 수집 실행(= 복구 · 성공하면 30분 안에 화면이 채워진다)"
   echo "   ↓ 아래 출력이 곧 원인 진단이다(쿠키 만료·429·네트워크 등)"
   bash scripts/phone_subs.sh 2>&1 | tee -a "$HOME/phone_subs.log" | sed 's/^/      /'
   echo "   실행 종료(rc=$?) — 다시 ① 을 보려면:  bash scripts/phone_check.sh --no-run"
 else
-  echo "⑦ 수집 실행 건너뜀(--no-run) — 돌리려면 인자 없이 다시:  bash scripts/phone_check.sh"
+  echo "⑧ 수집 실행 건너뜀(--no-run) — 돌리려면 인자 없이 다시:  bash scripts/phone_check.sh"
 fi
 echo
 echo "▶ 끝 · 로그 = ~/phone_subs.log · 끄기 = crontab -e 에서 phone_subs 줄 앞에 #"
