@@ -5138,6 +5138,53 @@ function thumbSec(a) {
   }
   return wrap;
 }
+// ── AI 썸네일 화풍 선호 투표(운영자 260805 "좋으면 thumb up · 별로면 thumb down · 그게 남게끔 해서 나중에 한번 보자") ──
+// 왜 = 지금 시스템엔 **운영자가 어느 썸네일을 좋다고 봤나**가 어디에도 안 남는다. 그래서 260805 프롬프트
+//   개선을 실제 발사분 236건 손 재판독으로 역추정해야 했다(정답지 부재). 이 원장이 그 정답지가 된다 —
+//   화풍(photo/webtoon)·연출코드(thumb_dispatch)·SUBJECT 유무별 선호를 나중에 숫자로 볼 수 있다.
+// 부품 = 카드뉴스 투표 정본 100% 계승(.fbup/.fbdown · .voted · 2탭 취소 armCancelThumb 문법) — 새 창작 0.
+// 레일 = 기존 postRate(api/rate) 재사용 = **워크플로·inputs 신설 0**(rate.yml inputs는 이미 10/10 = GitHub 상한이라
+//   11번째를 늘리면 디스패치 400 = 평점 레일 전체 사망 · brkno 예약키 선례와 같은 축). action='thumb' +
+//   reason='<up|down>:<sid>' 로 실어 러너(rate_record.py)가 **별도 원장** scraper/thumb_votes.jsonl 로 분기한다
+//   (기사 취향 원장 ratings.jsonl 오염 0 = 자동픽 학습 무영향).
+const THV_KEY = 'nm_thvote';   // ⚠️ 카드 투표(nomute_fb)와 **다른 키** — 같은 키를 쓰면 카드 n번과 화풍 sid가 충돌한다
+function thVoteGet(file, sid) { try { return (JSON.parse(localStorage.getItem(THV_KEY) || '{}'))[file + '#' + sid] || null; } catch { return null; } }
+function thVoteSet(file, sid, v) {
+  let m = {}; try { m = JSON.parse(localStorage.getItem(THV_KEY) || '{}'); } catch { /* noop */ }
+  if (v) m[file + '#' + sid] = v; else delete m[file + '#' + sid];
+  try { localStorage.setItem(THV_KEY, JSON.stringify(m)); } catch { /* noop */ }
+}
+function thVoteApply(slot, file, sid) {
+  const v = thVoteGet(file, sid), up = slot.querySelector('.fbup'), dn = slot.querySelector('.fbdown');
+  if (!up || !dn) return;
+  up.classList.toggle('voted', v === 'up'); dn.classList.toggle('voted', v === 'down');
+  up.disabled = v === 'down'; dn.disabled = v === 'up';   // 한쪽 기록되면 반대쪽 잠금(카드 정본 applyVoteState 동일)
+}
+function thVoteWire(slot, a, sid) {
+  const file = a.file || '';
+  thVoteApply(slot, file, sid);
+  slot.querySelectorAll('.fbup, .fbdown').forEach(btn => {
+    const vote = btn.classList.contains('fbup') ? 'up' : 'down';
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const cur = thVoteGet(file, sid);
+      if (cur === vote) {                                   // 같은 쪽 재탭 = 인라인 arm → 한 번 더 탭하면 취소(카드 정본 문법·팝업 0)
+        if (btn.classList.contains('thumb-arm')) { disarmThumb(btn); thVoteSend(a, sid, ''); thVoteSet(file, sid, null); thVoteApply(slot, file, sid); return; }
+        slot.querySelectorAll('.sbtn.thumb-arm').forEach(disarmThumb);
+        btn._iconHTML = btn.innerHTML; btn.classList.add('thumb-arm'); btn.textContent = '취소';   // 픽토→텍스트 단독 교체(§📐 공존금지)
+        clearTimeout(btn._armT); btn._armT = setTimeout(() => disarmThumb(btn), 2600);
+        return;
+      }
+      if (cur) return;                                      // 반대쪽 이미 투표 = 잠김(disabled와 이중)
+      thVoteSet(file, sid, vote); thVoteApply(slot, file, sid);   // 로컬 먼저 = 즉시 반응(전송은 fire-and-forget · 실패해도 화면 안 죽는다)
+      thVoteSend(a, sid, vote);
+    });
+  });
+}
+function thVoteSend(a, sid, vote) {
+  postRate({ id: a.file || '', url: a.url || '', title: (a.title || '').slice(0, 300),
+             action: 'thumb', reason: (vote ? vote : 'clear') + ':' + sid });
+}
 // 제미나이 추정$ 표기(plain 텍스트 · 버튼 아님) — 라벨(AI 생성·검색 이미지) 우측. 형식 "$ 0.0"(토큰 T는 hover 툴팁 title에만 · 운영자 260630, 카드 3498과 통일).
 // bucket={calls,total,cumulative}. 토큰=정확(API) · $=추정(이미지 토큰 단가). 운영자 260620: 돈아이콘·볼드·pill 제거.
 const GEM_RATE = 0.00003;   // 이미지 토큰 추정단가(≈$30/1M·$0.039/장 기준). $=추정·T=정확. ⚠️ 실측 usage.json 들어오면 1콜 totalTokenCount로 재캘리브레이션(이미지 과금은 장당 고정이라 토큰선형은 근사)
@@ -5189,10 +5236,17 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
         const dname = thumbDlName(label, it, i);
         const sidAttr = (kind === 'gen' && it.sid) ? ' data-sid="' + esc(it.sid) + '"' : '';   // 생성 슬롯 = 화풍 sid(재생성 진행바 타깃·복원용)
         // 저장 = 진짜 <a download href=api/dl 프록시>(같은-출처 attachment) = 모바일/인앱 브라우저 네이티브 다운로드(합성 a.click()보다 안정 · 운영자 260622).
+        // AI 생성 슬롯만 = 화풍 선호 투표(운영자 260805 "좋으면 thumb up · 별로면 thumb down · 남게끔") —
+        // 부품은 카드뉴스 투표 정본 100% 계승(.fbup/.fbdown · THUMBUP/THUMBDOWN_SVG · .voted · 2탭 취소).
+        // 검색 이미지는 우리가 만든 게 아니라 프롬프트 개선의 정답지가 못 된다 → gen 한정.
+        const voteH = (kind === 'gen' && it.sid)
+          ? '<button type="button" class="sbtn fbup" aria-label="좋은 썸네일" title="좋음">' + THUMBUP_SVG + '</button>'
+            + '<button type="button" class="sbtn fbdown" aria-label="아쉬운 썸네일" title="아쉬움">' + THUMBDOWN_SVG + '</button>'
+          : '';
         return '<div class="cref-slot ' + kind + '" data-i="' + i + '"' + sidAttr + ' role="button" tabindex="0" aria-label="확대">'
           + '<img loading="lazy" referrerpolicy="no-referrer" src="' + escUrl(it.img) + '" alt=""'
           + ' onerror="this.closest(\'.cref-slot\').style.display=\'none\'">' + no + cap
-          + '<div class="timg-acts">'
+          + '<div class="timg-acts">' + voteH
           +   '<a class="sbtn timg-dl dlbtn" href="' + escUrl(dlSrc(it.img, dname)) + '" download="' + esc(dname) + '" aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
           + '</div></div>';
       }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
@@ -5202,6 +5256,7 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
     if (kind === 'gen') { slot.classList.add('chin'); slot.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; }   // 생성물 등장 촤르륵 = cardIn + i×32ms 스태거(4223 산식 그대로 · 운영자 260801 "추가되는 거 촤르륵으로") — 검색 슬롯은 무접촉(재검색 5장 누적이라 매번 전체 재생 = 과함)
     if (kind === 'gen' && it.sid) acts.insertBefore(thumbRedoSbtn(it.sid), acts.firstChild);   // 생성 슬롯마다 수정 .sbtn(저장 앞)
     if (kind === 'gen' && it.sid && CUR_A && thumbRedoPending(CUR_A.file, it.sid)) markSlotReshooting(slot);   // 재생성 대기 중 화풍이면 진행바 오버레이 복원(재렌더 후에도 유지)
+    if (kind === 'gen' && it.sid && CUR_A) thVoteWire(slot, CUR_A, it.sid);   // 화풍 선호 투표(👍/👎) — 상태 복원 + 1탭 기록 + 2탭 취소
     const _tdl = slot.querySelector('.timg-dl'); if (dlSeen(it.img)) _tdl.classList.add('dl-done');   // 재렌더 시 '받음' mut 복원
     _tdl.addEventListener('click', e => { e.stopPropagation(); dlMark(it.img, _tdl); });   // 저장 앵커 탭 = 네이티브 다운로드(확대 라이트박스로 안 번지게만) + '받음' mut
     slot.addEventListener('click', e => { if (!e.target.closest('.timg-acts')) openLightbox(list, i, label); });   // 탭=확대(복사는 확대뷰에서)
