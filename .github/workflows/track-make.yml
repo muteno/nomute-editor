@@ -105,6 +105,7 @@ jobs:
           set -e
           COOKIES=""
           if [ -n "$YT_COOKIES" ]; then printf '%s\n' "$YT_COOKIES" > /tmp/ck.txt; COOKIES="--cookies /tmp/ck.txt"; fi
+          # CONTRACT: check_ytdlp_aac — 알몸 `+ba` 앞에는 반드시 `+ba[ext=m4a]`(AAC) 쌍둥이 가지가 선다(빼면 Opus가 mp4에 들어가 프리미어가 오디오 트랙을 조용히 무시한다)
           python3 -m yt_dlp -f "bv*[height<=1920]+ba[ext=m4a]/bv*[height<=1920]+ba/b" --merge-output-format mp4 --no-playlist --socket-timeout 30 $COOKIES -o "/tmp/src.%(ext)s" "$URL" \
             || { echo "영상 다운로드 실패 — 사이트가 봇을 막았을 수 있어. 파일 업로드로 해줘." > /tmp/track_err.txt; echo "::error::yt-dlp 실패: $URL"; exit 1; }
           SRC="$(ls /tmp/src.* 2>/dev/null | head -1 || true)"

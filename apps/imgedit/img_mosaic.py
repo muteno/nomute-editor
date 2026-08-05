@@ -184,7 +184,7 @@ def main():
             fail(iid, "누끼 영역이 비었어 — 다른 피사체를 골라줘.", "empty alpha")
         rgba = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
         rgba[:, :, 3] = np.clip(np.rint(alpha * 255), 0, 255).astype(np.uint8)
-        ok, buf = cv2.imencode(".png", rgba)   # 투명 산출 = .png만(FX8 계약 동수)
+        ok, buf = cv2.imencode(".png", rgba)   # CONTRACT: check_image_format · 투명 산출 = .png만(FX8 계약 동수 · 알파 RGBA)
         ext_out, ctype = ".png", "image/png"
     else:
         for idx, t in enumerate(targets):

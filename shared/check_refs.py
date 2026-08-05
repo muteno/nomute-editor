@@ -4777,6 +4777,101 @@ def check_image_format():
     print('✅ 이미지 산출 포맷 게이트 — 인코딩 호출 %d건 전건 정합(PNG = 투명·무손실 사유 명문 · JPEG = q90 단일 · 면책표 없음).' % seen)
     return 0
 
+# ── 계약 앵커 게이트(운영자 260805 "머지 ㄱ" · check_image_format의 짝) ────────────────────────
+# 문법 = 주석에 `CONTRACT: <게이트명>` → 그 계약을 강제하는 게이트가 실존하고 러너에 배선돼 있어야 한다.
+# ⚠ 다중 이름 구분자는 `,` **하나뿐**이다 — `·`를 허용했더니 이 레포의 일반 구분자(`CONTRACT: check_x · q90 = …`)를
+#    먹어 뒤 낱말까지 게이트 이름으로 읽었다(첫 실행 실측 = `q90`을 고아 앵커로 오검출). 앵커 뒤 산문은 `·`·`—`로 잇는다.
+_CONTRACT_RE = re.compile(r'CONTRACT:\s*(check_[A-Za-z_0-9]+(?:\s*,\s*check_[A-Za-z_0-9]+)*)')
+_CONTRACT_SKIP_DIR = ('_versions/', 'docs/', '.claude/', 'node_modules/', 'cards/', 'queue/', 'asks/')
+_CONTRACT_SKIP_FILE = ('shared/check_refs.py',)   # 자기참조 = 처방문·정규식 자신이 곧 앵커로 읽힌다(check_ytdlp_aac 선례)
+
+
+def check_contract_anchors():
+    """계약 앵커 게이트(하드 · 운영자 260805 "머지 ㄱ" — `check_image_format`의 짝).
+
+    ⚠ 신설 사유 = **이 레포의 계약은 주석으로 선언되는데, 주석엔 강제력이 0이라 조용히 낡는다.**
+      실사고(260805 실측) = `gen_image.py`가 260710에 「전 JPEG 저장 경로 통일」이라고 **주석으로 선언**해
+      놓고 `resize_image`(92)·`upscale_image`(94)·`recompose_card`(95)·`card_news`(95)·`img_mosaic`(92)가
+      **6주 동안 아무도 안 따라왔다**. 선언은 있었고 위반도 있었는데 **그 사이를 잇는 것이 없었다** —
+      운영자가 "모두 jpg 90으로" 라고 말해줄 때까지 아무도 안 울렸다.
+      이 레포엔 그런 선언형 주석이 수백 개다(260710·260716·260802…) — **지금 어느 게 살아있고 어느 게
+      죽었는지 기계로 아는 방법이 없다.** 이 게이트가 그 다리다.
+
+    계약 2축:
+      ① **앵커 → 게이트 실존·배선.** 어디든 주석에 `CONTRACT: <이름>`을 달면 그 이름의 게이트가
+         `shared/check_refs.py`에 정의돼 있고 **러너에 배선**돼 있어야 한다. 없으면 FAIL
+         = 「강제 장치 없는 계약 선언」을 구조적으로 못 만든다. 게이트를 지우면 그 앵커들이 고아로 뜬다.
+      ② **게이트 → 배선.** 정의만 되고 한 번도 호출 안 되는 게이트 = 「만들어놓고 안 돎」 → FAIL.
+         ⚠ 짝 게이트 `check_gate_docs`는 **문서 등재**만 본다(이름이 CLAUDE.md에 적혔나) — 「그래서
+         실제로 도는가」는 축 자체가 없었다. 문서에만 있고 안 도는 게이트 = 가장 비싼 거짓 안심.
+
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동 발견(`git ls-files`) · **면책표 없이 하드 0**
+           (260805 실측 = 앵커 6건 전건 유효 · 미배선 게이트 0건 · 부채 원장 증가 0).
+    ⚠ 스코프 밖(구조적) = `_versions/`·`docs/`·`cards/`·`.claude/`(스냅샷·보고 자산) ·
+       `shared/check_refs.py` 자신(처방문·정규식 리터럴이 곧 앵커로 읽힌다 = `check_ytdlp_aac` 선례) ·
+       **`.md` 전량**(문서의 처방문 예시가 곧 앵커 — 첫 실행이 CLAUDE.md의 `CONTRACT: check_x · …`
+       설명문을 고아 앵커로 검출했다 · 앵커의 거처는 강제할 코드 옆이고 문서 축은 `check_gate_docs` 전담).
+    ⚠ 남는 한계 = 앵커를 **안 다는 것**은 못 막는다(주석 문법 채택은 자발) — 이 게이트가 막는 건
+       「달아놓고 강제가 없는 것」과 「강제가 사라졌는데 선언만 남은 것」이다. 씨앗 = 6주 드리프트가
+       실제로 났던 그 줄들부터(gen_image·thumb_gen·tr·card_news·img_mosaic·yt-dlp)."""
+    import subprocess as _sp
+    gsrc = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
+    defined = set(re.findall(r'^def (check_[a-z_0-9]+)\(', gsrc, re.M))
+    wired = {g for g in defined if re.search(r'(?<!def )\b%s\s*\(' % re.escape(g), gsrc)}
+
+    # ② 게이트 → 배선(정의만 되고 안 도는 게이트 = 거짓 안심)
+    fails = []
+    for g in sorted(defined - wired):
+        fails.append(('미배선 게이트', 'shared/check_refs.py', 0, g,
+                      '정의만 있고 호출 0건 — 러너(main)에 `if %s() != 0: rc = 1` 로 배선하라(문서에만 있고 안 도는 게이트 = 거짓 안심).' % g))
+
+    # ① 앵커 → 게이트 실존·배선
+    try:
+        files = _sp.run(['git', 'ls-files'], cwd=ROOT, capture_output=True, text=True, timeout=60).stdout.split('\n')
+    except Exception:
+        print('⚠️ 계약 앵커 게이트 — git ls-files 실패(스킵)')
+        return 0
+    anchors = 0
+    for rel in files:
+        if not rel or rel.startswith(_CONTRACT_SKIP_DIR) or rel in _CONTRACT_SKIP_FILE:
+            continue
+        if not rel.endswith(('.py', '.js', '.mjs', '.html', '.sh', '.yml')):
+            continue   # ⚠ `.md` 비대상(구조적) = 문서의 **처방문 예시**가 곧 앵커로 읽힌다(첫 실행 실측 =
+            #    CLAUDE.md에 쓴 `CONTRACT: check_x · …` 설명문을 고아 앵커로 검출) · 앵커의 거처는
+            #    **강제할 코드 옆**이고 문서 축은 짝 게이트 `check_gate_docs`가 전담한다(check_refs.py
+            #    자기참조 배제와 동축 · check_ytdlp_aac 선례).
+        if False:
+            continue
+        p = os.path.join(ROOT, rel)
+        try:
+            src = open(p, encoding='utf-8').read()
+        except Exception:
+            continue
+        if 'CONTRACT:' not in src:
+            continue   # 리터럴 선행 컷 = 1.85MB 파일도 O(매치수)
+        lines = src.split('\n')
+        for lineno, ln in enumerate(lines, 1):
+            m = _CONTRACT_RE.search(ln)
+            if not m:
+                continue
+            for name in re.split(r'\s*,\s*', m.group(1)):
+                anchors += 1
+                if name not in defined:
+                    fails.append(('고아 앵커', rel, lineno, name,
+                                  '이 이름의 게이트가 shared/check_refs.py 에 없다 — 게이트를 만들거나(계약을 실제로 강제) 앵커를 지워라(계약 폐기).'))
+                elif name not in wired:
+                    fails.append(('죽은 앵커', rel, lineno, name,
+                                  '게이트는 있는데 러너에 배선이 없다 = 선언만 있고 안 돈다 — main에 배선하라.'))
+    if fails:
+        print('❌ 계약 앵커 게이트 — 위반 %d건(강제 없는 계약 선언 차단):' % len(fails))
+        for kind, rel, lineno, name, why in fails:
+            print('   - [%s] %s%s — `%s`' % (kind, rel, (':%d' % lineno) if lineno else '', name))
+            print('       %s' % why)
+        return 1
+    print('✅ 계약 앵커 게이트 — CONTRACT 앵커 %d건 전건 유효(게이트 실존 ∧ 러너 배선) · 미배선 게이트 0 · 정의 %d개 전부 가동(면책표 없음).'
+          % (anchors, len(defined)))
+    return 0
+
 def check_algo_ledger():
     """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
     집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
@@ -4904,6 +4999,8 @@ def main():
         print('⚠️ 회차 원장 게이트 스킵:', e)
     try:
         if check_thumb_prompt_sanity() != 0:   # 뉴스 픽 AI 썸네일 = 발사 프롬프트 자기모순 0(운영자 260805 — 「지시 vs 금지」가 한 줄에 공존해 그림이 평균으로 도망가던 축 · 정본 함수 재판정)
+            rc = 1
+        if check_contract_anchors() != 0:   # 계약 앵커 = 「강제 없는 선언」 차단(운영자 260805 — gen_image가 260710에 "전 JPEG 저장 경로 통일"을 주석으로 선언해 놓고 5파일이 6주간 안 따라온 실사고의 구조적 봉합 · 짝 check_gate_docs는 문서 등재만 보고 「실제로 도는가」는 축 자체가 없었다)
             rc = 1
         if check_image_format() != 0:   # 이미지 산출 포맷 = 투명(PNG)/그 외(JPG q90) 2갈래(운영자 260805 "아이디어 ㄱ" — thumb_gen이 키를 .png로 굽는데 실물은 JPEG였던 거짓 확장자 6주 무증상 + 품질 4갈래 드리프트를 사람 눈이 유일한 검출기로 두던 축의 기계화 · 첫 실행이 track_analyze q82 2건을 즉시 검출)
             rc = 1

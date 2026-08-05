@@ -428,7 +428,7 @@ def generate(image_path, text_lines, output_path):
     final = composited.convert('RGB')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     # subsampling=0(4:4:4) — 기본 4:2:0은 형광그린(#0FFD02) 강조 텍스트 가장자리 크로마 번짐(분신11 감사 260709)
-    final.save(output_path, format='JPEG', quality=90, subsampling=0, optimize=True)   # q90 = 전 산출 통일값(운영자 260805 "투명일 필요 없는 건 모두 jpg 90" · 구 95) · 4:4:4 유지 = 강조색 크로마 번짐 방지
+    final.save(output_path, format='JPEG', quality=90, subsampling=0, optimize=True)   # CONTRACT: check_image_format · q90 = 전 산출 통일값(운영자 260805 "투명일 필요 없는 건 모두 jpg 90" · 구 95) · 4:4:4 유지 = 강조색 크로마 번짐 방지
     print(f"OK: {output_path} ({final.size})")
     return True
 

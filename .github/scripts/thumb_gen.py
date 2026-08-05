@@ -799,7 +799,7 @@ def to_jpg90(b):
             im = bg
         buf = _io.BytesIO()
         im.convert("RGB").save(buf, "JPEG", quality=90, optimize=True, subsampling=0)   # q90·4:4:4 = gen_image.post_process 정본 동값
-        return buf.getvalue(), "jpg", "image/jpeg"
+        return buf.getvalue(), "jpg", "image/jpeg"   # CONTRACT: check_image_format
     except Exception as e:  # noqa: BLE001
         print("  ⚠️ JPG 정규화 실패(원본 유지): {}: {}".format(type(e).__name__, e), flush=True)
         return b, (ext or "jpg"), (ct or "image/jpeg")
