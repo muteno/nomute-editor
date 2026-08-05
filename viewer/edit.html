@@ -841,7 +841,15 @@ const srow=(lbl,chips)=>'<div class="srow"><span class="plbl">'+lbl+'</span><spa
    배정 수단 = 그 이름을 집어 다른 색 옆에 놓기(아래 끌어놓기 배선) — 별도 선택기·알약 없이 이 줄 안에서 끝난다.
    구 제스처(탭 = 음영 · 우클릭/길게누르기 = 자막)는 260729 정본 그대로 살아 있다(끌기 못 하는 상황의 폴백). */
 const SWAX_L={shc:'음영',fg:'자막',kwc:'강조'};   // 색이 칠해지는 3축 = 화면 라벨 그대로
-const swaxOf={shc:'shc',fg:'fg',kwc:'kwc'};       // 도먼트: 축 키 화이트리스트(드롭 대상 검증용)
+const swaxOf={shc:'shc',fg:'fg',kwc:'kwc'};
+/* (260804 5차) 「기본」 토글(운영자 "그냥 기본 이라고 단어만 있고 그게 토글기능 · 토글 시 기본으로") —
+   부품 = 바로 위 '음영' 행과 **같은 `pc()` 워드칩**(index `.geni-opt` 사다리 · 소등 mut / 점등 accent = 워드 점등 정본 · 생김새 창작 0).
+   토글인 이유 = 되돌린 뒤 「역시 아까 그 색」이 자연스럽게 나온다 → 한 번 더 누르면 직전 3색이 통째로 돌아온다
+   (스냅샷·복원 문법 = 같은 파일 `clipSnap`/`clipRelease` 정본 계승 · 색을 손으로 다시 만지면 스냅샷은 그 자리에서 버린다 = 낡은 복원 차단). */
+const SWDEF={shc:'black',fg:'white',kwc:'green'};   // 색 3축 기본값 = P 초기값과 1:1(검정 음영·흰 자막·노뮤트 형광그린 강조)
+let SWSNAP=null;   // 「기본」 누르기 직전 3색(토글 복귀용 · CLIP_SAVE 동문)
+const swIsDef=()=>P.shc===SWDEF.shc&&(P.fg||'white')===SWDEF.fg&&(P.kwc||'green')===SWDEF.kwc;
+const swdefrow=()=>srow('', [pc('swdef','1',swIsDef(),false,'기본')]);   // 라벨 없는 행 = 칩만 우측 정렬(`.sopts` justify-content:flex-end 정본) — 운영자 "단어만"       // 도먼트: 축 키 화이트리스트(드롭 대상 검증용)
 function swrow(){
   return '<div class="swrow" role="group" aria-label="자막 색 — 축 이름을 끌어 다른 색 옆에 놓으면 그 색이 된다 · 탭은 음영 색, 우클릭이나 길게 누르기는 글자 색">'
     +Object.keys(OC_DEF).map((c,i,ar)=>{
@@ -872,7 +880,7 @@ function prm(k){
        +(P.shtype==='none'?'':gauge('sh', P.shtype==='box'?'여백':P.shtype==='stroke'?'획 굵기':'그림자',0,300,P.sh,'%','선택한 음영 종류의 세기 — 100% = 기본')))   // 종류 + 세기 = 한 카드(무엇을/얼마나가 붙어 있어야 읽힌다)
     +C((ON.trn||P.lang==='dual')?(gauge('srcsz','외국어',-75,0,P.srcsz,'%','한국어 줄 대비 크기 — 0% = 같은 크기 · -50% = 절반(기본) · 줄간격과 한국어 줄 위치는 고정, 외국어만 아래로 펼쳐짐')
        +gauge('lgap','줄간격',0,60,P.lgap,'%','한국어 줄과 외국어 줄 사이 간격 — 한국어 글자 높이 기준 % · 18% = 기본')):'')   // 외국어 2형제 = 원문이 붙는 모드에서만
-    +C(swrow())   // 색 카드 = 9색 줄 한 벌(운영자 260804 3차 — 구 축 배지 행 폐지 · 배정은 줄 안 라벨 위치가 말한다)
+    +C(swdefrow()+swrow())   // ⚠배치(3-2) 색 카드 = 「기본」 워드칩(우측 끝) + 색 줄 — 칩이 색 줄 **위**(카드 안 `.srow`가 값 줄보다 위에 서는 형제 카드 리듬 = 음영 카드 동일)   // 색 카드 = 색 줄 한 벌(운영자 260804 3차 — 구 축 배지 행 폐지 · 배정은 줄 안 라벨 위치가 말한다)
     +'</div>';
   }
   if(k==='cut') return segs('cutlv',[['off','OFF'],['std','기본'],['soft','살짝'],['hard','많이']],ON.cut?P.cutlv:'off')   // 운영자 260731 19차 — ON = 3옵션 분리(기본·살짝·많이) · 기본값(std)이 OFF 다음 최좌측
@@ -939,6 +947,10 @@ function setAxis(k,v){   // 축 상태 단일 정본(순환값·잔존 chip 공�
   if(k==='trn'){ if(v==='on'){clipRelease();ON.trn=true;ON.sub=true;} else ON.trn=false; return; }   // 번역 ON = 자막 자동 ON(운영자 260728 Q06 "사실상 자막의 옵션" — 번역 줄만 단독 번인 불가)
   if(k==='trim'){ if(v==='on'){clipRelease();ON.trim=true;} else ON.trim=false; return; }   // 구간 = OFF/ON 토글(운영자 260713 · ON시 구간 입력 펼침 · 클리퍼 배타)
   if(k==='spre'){ const pr=SUBPRE[v]; if(pr){ for(const kk in pr){ if(kk!=='nm') P[kk]=pr[kk]; } if(!('fg' in pr)) P.fg='white'; } return; }   // 글자색 미동봉 프리셋 = 흰 복귀(fg = 색 UI 없는 프리셋 전용 축 — 감성 네온 이탈 시 노랑 잔존 차단 · ly 260720 동일 문법 · 음영색/폰트/글로우는 UI 실존 = 직교 유지)
+  if(k==='swdef'){
+    if(swIsDef()){ if(SWSNAP){ P.shc=SWSNAP.shc; P.fg=SWSNAP.fg; P.kwc=SWSNAP.kwc; SWSNAP=null; } return; }   // 이미 기본 = 직전 3색 복귀(토글) · 스냅샷 없으면 무변경(기본이 곧 원상)
+    SWSNAP={shc:P.shc,fg:P.fg,kwc:P.kwc}; P.shc=SWDEF.shc; P.fg=SWDEF.fg; P.kwc=SWDEF.kwc; return;   // 기본으로 되돌리며 직전 3색을 통째로 보관
+  }
   if(['cutfill','take'].includes(k)){ P[k]=v==='1'; return; }   // 컷 카드 서브 토글(260727) — ON.cut 종속이라 축 상태(ON) 무접촉
   if(['filler','karaoke','pop','keyword'].includes(k)){ P[k]=v==='1'; if(k==='karaoke'&&P.karaoke)P.pop=false; if(k==='pop'&&P.pop)P.karaoke=false; return; }
   P[k]=v; if(k==='fit'&&v!=='crop') scrubClose();
@@ -1259,7 +1271,7 @@ document.addEventListener('click',e=>{
 /* ── 색 한 줄 이원 배선(운영자 260729) — 한 동그라미가 두 축을 겸한다: 탭/좌클릭 = 음영(shc) · 우클릭 = 글자(fg) · 폰은 우클릭이 없으니 길게 누르기(550ms)가 우클릭 몫(레포 롱프레스 정본 = index 대기열 550ms 계승).
    롱프레스로 확정한 뒤 손을 떼면 click이 뒤따라 와 음영까지 덮어쓰므로 _swLP 플래그로 그 1회를 삼킨다. ── */
 let _swLPt=null, _swLP=false;
-function swSet(el, axis){ const c=el&&el.dataset&&el.dataset.sw; if(!c||!OC_DEF[c]) return; if(typeof _preManual==='function') _preManual(); P[axis]=c; render(); }
+function swSet(el, axis){ const c=el&&el.dataset&&el.dataset.sw; if(!c||!OC_DEF[c]) return; if(typeof _preManual==='function') _preManual(); P[axis]=c; SWSNAP=null; render(); }   // SWSNAP 폐기 = 색을 손으로 만진 뒤의 「기본」은 **되돌리기 전용**(낡은 스냅샷으로 엉뚱한 옛 색이 되살아나는 통로 차단 · 260804 5차)
 document.addEventListener('click',e=>{ if(_swLP){ _swLP=false; return; } const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s) return; swSet(s,'shc'); });   // 탭 = 음영(260729 정본 · 260804 3차에 축 칩이 폐지되며 복귀 — 자막은 우클릭/롱프레스, 강조는 라벨 끌어놓기)   // ⚠ 플래그 해제를 **타깃 검사보다 먼저**(구 코드는 `if(!s) return`이 앞) — 롱프레스 콜백이 swSet→render()로 `#stack`을 통째로 다시 그려 **누른 그 버튼이 DOM에서 사라지므로**, 뒤따르는 click은 살아남은 조상으로 리타깃돼 closest('[data-sw]')가 null이 되고 `_swLP`가 안 꺼진 채 고착 → **다음 색 탭 1회가 통째로 삼켜졌다**(사용자 눈엔 "가끔 색이 안 눌린다" · 평의회1 260731)
 document.addEventListener('contextmenu',e=>{ const s=e.target.closest&&e.target.closest('[data-sw]'); if(!s) return; e.preventDefault(); swSet(s,'fg'); });   // 우클릭 = 글자색(브라우저 기본 메뉴는 이 칩 위에서만 억제)
 document.addEventListener('pointerdown',e=>{ if(e.target.closest&&e.target.closest('[data-swax]')) return;   // 라벨 위에서 시작 = 끌기 손잡이 → 롱프레스(자막 지정) 안 건다(집으려고 잠깐 누르고 있는 것이 자막 색 변경으로 새는 통로 차단)
