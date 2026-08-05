@@ -93,6 +93,61 @@ def gemini_judge(png_bytes):
         return None
 
 
+MAX_CANVAS = 4096   # 캔버스 장변 상한 — 축소 배치(box.w가 작다)는 캔버스를 원본보다 크게 만든다(cw = W/box.w) → 메모리·Gemini 첨부 폭주 차단
+
+
+def parse_box(opts):
+    """운영자 지정 배치(운영자 260805 "축소하면 빈 공간이 생길 수 있는데 … 빈 공간을 채우는 기능") — 캔버스 대비 원본 자리 {x,y,w,h} 0~1.
+    미지정·불량 = None = 종전 중앙 배치(pad_canvas) 그대로 = 편집 탭·구 이력 재발사 무접촉. api/resize.js 검증과 한 쌍(이중 검증)."""
+    b = opts.get("box")
+    if not isinstance(b, dict):
+        return None
+    try:
+        x, y, w, h = (float(b[k]) for k in ("x", "y", "w", "h"))
+    except Exception:  # noqa: BLE001
+        return None
+    if not (0.05 <= w <= 1.0 and 0.05 <= h <= 1.0):
+        return None
+    if x < -0.001 or y < -0.001 or x + w > 1.001 or y + h > 1.001:
+        return None   # 캔버스 밖으로 새는 배치 = 원본이 잘린다 = 픽셀락(원본 100% 보존) 계약 위반
+    return (max(0.0, x), max(0.0, y), w, h)
+
+
+def place_canvas(img, ar, box, fill=(127, 127, 127)):
+    """지정 배치로 캔버스에 앉힌다 — pad_canvas('중앙·한 변 꽉')의 일반형. (canvas, box_px, placed_src)
+    캔버스 크기 = 원본이 box.w를 차지하도록 역산(원본 해상도 보존) · 치수 8배수 · 장변 MAX_CANVAS 캡."""
+    W, H = img.size
+    x, y, w, h = box
+    aw, ah = (int(v) for v in ar.split(":"))
+    cw = int(round(W / w / 8) * 8)
+    ch = int(round(cw * ah / aw / 8) * 8)
+    if max(cw, ch) > MAX_CANVAS:   # 캡 = 비율 유지 축소(배치 비율은 정규화값이라 불변)
+        k = MAX_CANVAS / max(cw, ch)
+        cw = max(8, int(round(cw * k / 8) * 8))
+        ch = max(8, int(round(ch * k / 8) * 8))
+    pw, ph = max(8, int(round(w * cw))), max(8, int(round(h * ch)))
+    px, py = int(round(x * cw)), int(round(y * ch))
+    px, py = max(0, min(px, cw - pw)), max(0, min(py, ch - ph))
+    src = img if (pw, ph) == (W, H) else img.resize((pw, ph), Image.LANCZOS)
+    canvas = Image.new("RGB", (cw, ch), fill)
+    canvas.paste(src, (px, py))
+    return canvas, (px, py, px + pw, py + ph), src
+
+
+def box_dirs(box_px, canvas_size):
+    """여백이 실제로 생긴 방향 → Gemini 프롬프트 문구(P_PADFILL {where}/{dirhint}) — 상하만/좌우만/사방 3형."""
+    x0, y0, x1, y1 = box_px
+    cw, ch = canvas_size
+    vert, horz = (y0 > 1 or ch - y1 > 1), (x0 > 1 or cw - x1 > 1)
+    if vert and horz:
+        return ("on all sides around it", "outward in every direction (for example, extend a ceiling or sky "
+                                          "upward, a floor or ground downward, and the scene sideways)")
+    if vert:
+        return ("above and below it", "upward and downward (for example, extend a ceiling or sky upward "
+                                      "and a floor or ground downward)")
+    return ("to its left and right", "to the left and to the right")
+
+
 def pad_canvas(img, ar, fill=(127, 127, 127)):
     """타겟 비율 캔버스에 원본 중앙 배치. (canvas, box) · 치수 8배수. (v0 검증 함수)"""
     W, H = img.size
@@ -136,13 +191,24 @@ def edge_stats(img):
     return float(e.std(axis=0).mean()), tuple(int(v) for v in e.mean(axis=0))
 
 
-def solid_pad(img, ar, color):
+def solid_pad(img, ar, color, box=None):
+    if box:
+        return place_canvas(img, ar, box, fill=color)[0]
     canvas, _ = pad_canvas(img, ar, fill=color)
     return canvas
 
 
-def blur_pad(img, ar):
-    """원본 블러 확대 배경 + 중앙 원본(유튜브 세로영상식) — 항상 성공하는 결정론 폴백."""
+def blur_pad(img, ar, box=None):
+    """원본 블러 확대 배경 + 원본(유튜브 세로영상식) — 항상 성공하는 결정론 폴백. box 지정 시 그 자리에 앉힌다."""
+    if box:   # 배치형 = 캔버스·원본 자리를 place_canvas가 정하고, 배경만 블러 확대본으로 갈아끼운다(값·필터 동일)
+        canvas, bpx, src = place_canvas(img, ar, box)
+        cw, ch = canvas.size
+        W, H = img.size
+        scale = max(cw / W, ch / H)
+        bg = img.resize((int(W * scale) + 2, int(H * scale) + 2), Image.LANCZOS).filter(ImageFilter.GaussianBlur(24))
+        canvas.paste(bg, ((cw - bg.size[0]) // 2, (ch - bg.size[1]) // 2))
+        canvas.paste(src, (bpx[0], bpx[1]))
+        return canvas
     W, H = img.size
     aw, ah = (int(x) for x in ar.split(":"))
     if aw / ah >= W / H:
@@ -182,40 +248,43 @@ def main():
     size = opts.get("size") if opts.get("size") in SIZES else "1K"
     lock = bool(opts.get("lock", True))
     fill = opts.get("fill") if opts.get("fill") in FILLS else "auto"   # 채움 오버라이드(운영자 260803) — 미지정·구 이력 재발사 = auto(종전)
+    box = parse_box(opts)   # 운영자 지정 배치(운영자 260805 · 카드 생성 미리보기의 이동·축소 그대로) — None = 종전 중앙 배치
 
     src_path = os.path.join(ROOT, src)
     if not rid or not os.path.isfile(src_path):
         print("::error::입력 없음 — id={} src={}".format(rid, src))
         sys.exit(1)
     img = ImageOps.exif_transpose(Image.open(src_path)).convert("RGB")   # 폰 세로사진 EXIF 회전 적용(눕은 채 패딩 방지)
-    if ratio_ok(img.size, aspect):
+    if box is None and ratio_ok(img.size, aspect):
         print("이미 목표 비율({}) — no-op".format(aspect))
-        return
+        return   # ⚠ 배치 지정본은 no-op 금지 — 비율이 이미 맞아도 축소 배치면 채울 여백이 실재한다(운영자 260805)
 
     # ── 라우팅 ── (auto = 종전 edge_std 자동 · solid/blur/ai = 운영자 지정 강제 — 260803 채움 선택지)
     std, mean_color = edge_stats(img)
     route = "solid_pad" if std < EDGE_SOLID_STD else "gemini"
     if fill != "auto":
         route = {"solid": "solid_pad", "blur": "blur_pad", "ai": "gemini"}[fill]
+    if box:
+        print("배치 지정: x={:.4f} y={:.4f} w={:.4f} h={:.4f}".format(*box), flush=True)
     print("라우팅: edge_std={:.1f} fill={} → {} (aspect={} size={} lock={})".format(std, fill, route, aspect, size, lock), flush=True)
 
     out_img = None
     if route == "solid_pad":
-        out_img = solid_pad(img, aspect, mean_color)
+        out_img = solid_pad(img, aspect, mean_color, box)
     elif route == "blur_pad":   # 명시 블러(fill=blur) — 종전엔 폴백 전용 경로였다(결정론·과금 0)
-        out_img = blur_pad(img, aspect)
+        out_img = blur_pad(img, aspect, box)
     else:
         if not tg.KEY:
             print("::warning::GEMINI_API_KEY 없음 — blur-pad 폴백")
             route = "blur_pad"
-            out_img = blur_pad(img, aspect)
+            out_img = blur_pad(img, aspect, box)
         else:
-            canvas, box = pad_canvas(img, aspect)
-            if box[1] > 0:
-                where, dirhint = "above and below it", ("upward and downward (for example, extend a "
-                                                        "ceiling or sky upward and a floor or ground downward)")
+            if box:
+                canvas, bpx, src_img = place_canvas(img, aspect, box)
             else:
-                where, dirhint = "to its left and right", "to the left and to the right"
+                canvas, bpx = pad_canvas(img, aspect)
+                src_img = img
+            where, dirhint = box_dirs(bpx, canvas.size)
             base_prompt = P_PADFILL.format(where=where, dirhint=dirhint)
             png, fb, qa_fail = None, "", False
             for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
@@ -240,17 +309,17 @@ def main():
                 print("::warning::QA 최종 FAIL({}) — blur-pad 폴백".format(fb[:80]))
                 png = None
             if png:
-                out_img = pixel_lock(png, canvas.size, img, box) if lock else \
+                out_img = pixel_lock(png, canvas.size, src_img, bpx) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
                 print("::warning::Gemini 렌더/QA 실패 — blur-pad 폴백(항상 결과)")
                 route = "blur_pad"
-                out_img = blur_pad(img, aspect)
+                out_img = blur_pad(img, aspect, box)
 
     if not ratio_ok(out_img.size, aspect):   # 결정론 최종 검증(비율 ±2%)
         print("::warning::비율 불일치 {} — blur-pad 재폴백".format(out_img.size))
         route = "blur_pad"
-        out_img = blur_pad(img, aspect)
+        out_img = blur_pad(img, aspect, box)
 
     # ── 저장(R2 → git 폴백 · gen_image 패턴) + resize.json prepend ──
     out_bytes = jpg_bytes(out_img)
@@ -267,6 +336,7 @@ def main():
         print("  ⚠️ R2 불가 — git 폴백 저장: " + url, flush=True)
 
     item = {"url": url, "srcUrl": src, "aspect": aspect, "size": size, "lock": lock, "route": route, "fill": fill,
+            "box": list(box) if box else None,
             "id": rid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
     sjson = os.path.join(tdir, "resize.json")
     cur = []

@@ -397,6 +397,13 @@
   .cpprev-stage.reels { aspect-ratio:9/16; height:100%; width:auto; }
   .cpprev-stage .cpv { position:absolute; white-space:pre-wrap; word-break:keep-all; }
   .cpprev-stage img.cpv-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  /* 첨부 사진 배치(이동·확대축소 · 운영자 260805 "좌우상하 이동 및 축소확대 · 잘라서 들어가는 부분을 사용자가 고를 수 있게") —
+     object-fit을 cover→contain으로 바꾸고 `--pnf`(cover 환산 배수)를 곱한다 = 기본값(--pns 1)에서 **종전 cover와 픽셀 동일**(전면 꽉·중앙 크롭 무변).
+     그래야 축소(--pns<1)가 「잘려나간 부분이 다시 보이는」 방향으로 간다(cover 유지 시엔 이미 잘린 그림만 작아져 축소의 뜻이 사라진다 = 실측 근거).
+     좌표 단위 = **스테이지 대비 %**(요소 박스 = 스테이지 박스 inset:0이라 translate %의 기준이 곧 스테이지) → 창 크기가 변해도 배치 불변 = 재계산 0. */
+  .cpprev-stage img.cpv-bg.cpv-pan { object-fit:contain; transform:translate(var(--pnx,0%), var(--pny,0%)) scale(calc(var(--pns,1) * var(--pnf,1))); transform-origin:50% 50%; }
+  .cpprev-stage.cpv-grab { cursor:grab; touch-action:none; }   /* 사진이 실린 동안만 잡기 커서·제스처 점유(빈 상태·텍스트 변형에선 종전 그대로 = 페이지 스크롤 무손상) */
+  .cpprev-stage.cpv-grab.cpv-drag { cursor:grabbing; }
   /* 산출 그라데 정본 미러(운영자 260716 "덜 정확하게 구현되어 있는데 더 제대로") — 구 '하단 62% 선형 0→OPA' 근사 폐지 → 합성기 곡선 실측 스탑(전높이 · 콘텐츠 축 raw = UI 팔레트 아님).
      g-reels/g-post = nomute_overlay.py SPECS.grad 점을 최대α(149/164) 정규화한 스탑 — generate()의 'op% × 곡선/최대α' 스케일 수식을 {정규화 스탑 × element opacity(op/100)}로 등가 재현(CSS 스탑 사이 선형보간 = mk_grad 보간과 동일).
      g-card = card_news.py create_gradient_overlay(상단 38.6% 투명 → t^1.268/(t^1.268+(1-t)^3.217)×α236 S커브)를 t 0.05 간격 샘플 절대 스탑으로(카드는 OPA 조절 없음 = opacity 불사용). 스탑 산출 스크립트 수식 = 합성기 원본 그대로. */
@@ -968,7 +975,7 @@
           <span class="trail-div"></span><!-- 묶음↔값 경계 = 정본 .trail-div(SNS 레일 「한국↔세계」 헤어라인) 동일 부품 -->
           <!-- 카드 생성 값 칩 = 구 하단 옵션바(#optStrip > #goSpec)의 레일 이주(운영자 260802) — DOM·id·클래스·핸들러 전부 원문 그대로 옮겼다(updateGoSpec·OPA 조절·축약 롱프레스 무접촉) · 세로 칩 외형은 위 `.trail-v` CSS 전담 -->
           <div class="optstrip trail-v none" id="optStrip">
-            <div class="gospec none" id="goSpec"><span class="gs-v gs-tog" id="gsBg" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=배경(흰칸 없는 버전) 추가">배경</span> <span class="gs-sep">|</span> <span class="gs-v on gs-tog" id="gsAbbr" role="button" tabindex="0" aria-pressed="true" title="탭=켜기/끄기 · 길게=축약 등록">축약</span> <span class="gs-sep">|</span> <span class="gs-v gs-tog" id="gsOvOnly" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=사진 위에 오버레이 레이어 합성 · 꺼짐=사진이 있어도 오버레이 레이어만">배경 합성</span><!-- 구 '오버레이만' = 배경 합성 OFF로 의미 통일(운영자 260725 "오버레이만을 배경 합성 off의 개념으로 통일 · on=사진과 오버레이 합성 / off=사진 있어도 오버레이만") — 표시만 반전, 상태 1벌(ovOnly)·발사 payload 로직 불변 · id gsOvOnly = 불변(핸들러·참조 정본) --><span id="gsMergeWrap" hidden> <span class="gs-sep">|</span> <span class="gs-v gs-tog" id="gsMerge" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=저작권(·안내문)을 산출물에 합쳐 렌더 · 꺼짐=따로 한 장">삽입구 합성</span></span> <span class="gs-sep">|</span> <span class="gs-og" id="gsOpaOg"><span class="gs-lbl">OPA:</span> <span id="gsOpas"></span></span><!-- OPA 묶음(라벨+−/값/+) = 한 칩 행으로 결속(운영자 260802 레일 이주) — 구 라벨↔값 사이 맨 텍스트 ':'가 세로 플렉스에서 홀로 한 줄이 되던 것 봉합 · id·핸들러(#gsOpas 위임 · .gsop-step)·상태 전부 불변 --></div>
+            <div class="gospec none" id="goSpec"><span class="gs-v gs-tog" id="gsBg" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=배경(흰칸 없는 버전) 추가">배경</span> <span class="gs-sep">|</span> <span class="gs-v on gs-tog" id="gsAbbr" role="button" tabindex="0" aria-pressed="true" title="탭=켜기/끄기 · 길게=축약 등록">축약</span> <span class="gs-sep">|</span> <span class="gs-v gs-tog" id="gsOvOnly" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=사진 위에 오버레이 레이어 합성 · 꺼짐=사진이 있어도 오버레이 레이어만">배경 합성</span><!-- 구 '오버레이만' = 배경 합성 OFF로 의미 통일(운영자 260725 "오버레이만을 배경 합성 off의 개념으로 통일 · on=사진과 오버레이 합성 / off=사진 있어도 오버레이만") — 표시만 반전, 상태 1벌(ovOnly)·발사 payload 로직 불변 · id gsOvOnly = 불변(핸들러·참조 정본) --><span id="gsPanWrap" hidden> <span class="gs-sep">|</span> <span class="gs-og" id="gsPanOg"><span class="gs-lbl">SIZE:</span> <span class="opa-slot"><span class="gs-v gs-tog gsop-step" id="gsPanDn" role="button" tabindex="0" data-d="-1" title="탭=축소(여백이 생기면 AI 채움 가능)">−</span><span class="gs-v on gs-tog" id="gsPanV" role="button" tabindex="0" title="사진 배치 = 드래그로 이동 · 휠(PC)·두 손가락(모바일)로 확대축소 · 더블탭=원상복귀 · 탭=원상복귀">100</span><span class="gs-v gs-tog gsop-step" id="gsPanUp" role="button" tabindex="0" data-d="1" title="탭=확대">+</span></span></span></span><!-- 사진 배치(운영자 260805 Q01·Q02) = OPA 묶음(#gsOpaOg) 문법 100% 사본(라벨+−/값/+ 한 칩 행 · .gs-og/.opa-slot/.gsop-step 정본 클래스 그대로 = 신설 부품·신규 값 0) — 사진이 실렸을 때만 노출(빈 상태 = 조절 대상 없음) · 값 = cover 대비 % --><span id="gsFillWrap" hidden> <span class="gs-sep">|</span> <span class="gs-v gs-tog" id="gsPanFill" role="button" tabindex="0" title="탭=축소로 생긴 빈 여백을 AI(Gemini 3.1 Flash)로 이어 그려 채운 사진으로 교체 — 원본 픽셀은 보존">AI 채움</span></span><!-- Q03 = 여백이 있을 때만 등장하는 실행 칩(값 토글 아님) · 파이프 = 편집 탭 「채움 AI」와 같은 /api/resize 정본 --><span id="gsMergeWrap" hidden> <span class="gs-sep">|</span> <span class="gs-v gs-tog" id="gsMerge" role="button" tabindex="0" aria-pressed="false" title="탭=켜기/끄기 — 켜짐=저작권(·안내문)을 산출물에 합쳐 렌더 · 꺼짐=따로 한 장">삽입구 합성</span></span> <span class="gs-sep">|</span> <span class="gs-og" id="gsOpaOg"><span class="gs-lbl">OPA:</span> <span id="gsOpas"></span></span><!-- OPA 묶음(라벨+−/값/+) = 한 칩 행으로 결속(운영자 260802 레일 이주) — 구 라벨↔값 사이 맨 텍스트 ':'가 세로 플렉스에서 홀로 한 줄이 되던 것 봉합 · id·핸들러(#gsOpas 위임 · .gsop-step)·상태 전부 불변 --></div>
           </div>
           <!-- 편집 값 칩 = 구 도크 우측 옵션 컬럼(#editCol)의 레일 이주(운영자 260802 "모든 페이지에 해당 미리보기 똑같이 · 옵션 선택지만 다른 것") — 카드 = 원문 그대로 · #editSpec id = 도크 규격 게이트 앵커 유지 -->
           <div class="dockopt trail-v none" id="editCol">
@@ -1400,7 +1407,11 @@ function editResetDefaults() {   // 편집 소스 삭제 = 복귀 기본값 **�
   upsApply('FHD');     // 해상도 = 기본
   fillApply('auto');   // 채움 = 자동
 }
-function ieSrcSync(has) {   // 편집(비율·모자이크·해상도) 소스 = 공유 첨부 사진(CIMG) 첨부/삭제 훅(#cImgSlot 바인더) — 첨부 = 치수 실측→게이트 해제 / 삭제 = 기본값 복귀(비율 원본·모자이크 OFF)
+function ieSrcSync(has) {   // 첨부/삭제 = 사진 배치(CPAN) 원상복귀 동반(운영자 260805) — 새 사진에 옛 이동·배율이 들러붙으면 첫 화면부터 어긋난다
+  CPAN.s = 1; CPAN.x = 0; CPAN.y = 0;
+  return ieSrcSync0(has);
+}
+function ieSrcSync0(has) {   // 편집(비율·모자이크·해상도) 소스 = 공유 첨부 사진(CIMG) 첨부/삭제 훅(#cImgSlot 바인더) — 첨부 = 치수 실측→게이트 해제 / 삭제 = 기본값 복귀(비율 원본·모자이크 OFF)
   if (has && CIMG.b64) { rszMeasure(CIMG.b64);
     if (PENDACT && Date.now() - PENDACT.at < PEND_TTL && isEditApp(APP)) { const run = PENDACT.run; PENDACT = null; if (run) run(); }   // 예약 소비 = 첨부 즉시 「하려던 조작」 재실행(모자이크 ON·비율·해상도·채움·보존 전부 같은 축) · 편집 탭 안에서만(이력 복원·카드 생성 첨부가 예약을 주워가지 않게)
   }
@@ -1596,6 +1607,120 @@ function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미
   else if (gpvOn && (!cpMerge || !v.some(x => x.fmt === gpvFmt))) v.push({ k: 'cr', lbl: '안내문', fmt: gpvFmt });   // 저작권 OFF·안내문만 = 안내문 단독 장 미리보기(독립)
   return { v, csub, ctitle, lines };
 }
+// ── 첨부 사진 배치 = 이동·확대축소·크롭 선택(운영자 260805 Q01·Q02 "사진 첨부하면 딱 맞는 사이즈가 아니면 좌우상하 이동 및 축소확대 · 잘라서 들어가는 부분을 사용자가 고를 수 있게") ──
+//   상태 1벌 = CPAN. s = **cover 대비 배율**(1 = 종전 중앙 크롭 그대로 = 무조작 시 산출물 100% 무변) · x·y = 스테이지 폭·높이 대비 이동 비율.
+//   조작 = 모바일{한 손가락 드래그=이동 · 두 손가락 핀치=확대축소 · 더블탭=원상복귀} / PC{드래그=이동 · **휠=확대축소** · 더블클릭=원상복귀} + 레일 −/값/+ 스테퍼(휠 없는 환경·정밀 조절).
+//   산출 반영 = cpBake()가 발사 직전 목표 캔버스에 그대로 구움(미리보기만 바뀌고 결과가 그대로면 미완 · [7-2] 라이브 축).
+const CPAN = { s: 1, x: 0, y: 0 };
+const CPAN_MIN = 0.3, CPAN_MAX = 4, CPAN_STEP = 0.1;   // 하한 .3 = 축소 여백(AI 채움 대상)까지 허용 · 상한 4 = 확대 크롭 · 한 칸 .1 = OPA_STEP(10단위) 결 계승
+let cpPanFmt = 'post';   // 지금 미리보기가 그리는 산출 포맷(post 4:5 / reels 9:16) — 렌더가 기록, 기하 계산이 읽는다
+function cpPanOn() { return CPAN.s !== 1 || CPAN.x !== 0 || CPAN.y !== 0; }   // 무조작 = 종전 경로 그대로(굽지 않는다 = 회귀 0)
+function cpPanGeo(fmt) {   // 스테이지 대비 기하 — f = contain→cover 환산 배수 · wp·hp = 실제 그려지는 그림의 폭·높이(1 = 스테이지 꽉)
+  const w = RSZ.w, h = RSZ.h; if (!w || !h) return null;
+  const r = w / h, R = (fmt === 'reels' ? 1080 / 1920 : 1080 / 1350);   // 산출 캔버스 비 = 합성기 정본 치수(nomute_overlay SPECS · card_news 1080×1350) 그대로
+  const f = Math.max(r / R, R / r);
+  const cw = r >= R ? 1 : r / R, ch = r >= R ? R / r : 1;   // contain 분수 → ×f = cover(한 변이 정확히 1)
+  return { r, R, f, wp: cw * f * CPAN.s, hp: ch * f * CPAN.s };
+}
+function cpPanGap() { return !!(CIMG.b64 && RSZ.w && CPAN.s < 0.999); }   // 여백 = 축소했을 때만 생긴다(clamp가 확대 상태의 이탈을 막으므로 min(wp,hp)=s가 판정 전부)
+function cpPanClamp() {   // 확대 = 크롭 안에서만 이동(빈 변 0) · 축소 = 그림이 틀 밖으로 못 나간다(여백은 늘 프레임 안)
+  const g = cpPanGeo(cpPanFmt); if (!g) return;
+  const lx = Math.abs(g.wp - 1) / 2, ly = Math.abs(g.hp - 1) / 2;
+  CPAN.x = Math.max(-lx, Math.min(lx, CPAN.x)); CPAN.y = Math.max(-ly, Math.min(ly, CPAN.y));
+}
+function cpPanApply() {   // 변수(--pnf/--pns/--pnx/--pny) + 레일 값만 갱신 = 드래그·휠 프레임마다 불려도 안전(스테이지 재조립 0)
+  const st = $('#cpPrevStage'); if (!st) return;
+  cpPanClamp();
+  const g = cpPanGeo(cpPanFmt);
+  st.style.setProperty('--pnf', g ? g.f.toFixed(4) : '1');
+  st.style.setProperty('--pns', CPAN.s.toFixed(4));
+  st.style.setProperty('--pnx', (CPAN.x * 100).toFixed(3) + '%');
+  st.style.setProperty('--pny', (CPAN.y * 100).toFixed(3) + '%');
+  st.classList.toggle('cpv-grab', !!st.querySelector('.cpv-pan'));
+  cpPanRailSync();
+}
+function cpPanRailSync() {   // 레일 동기 = **여기 한 곳**(updateGoSpec 전체 재렌더를 안 부른다 — 드래그·휠마다 스테이지 innerHTML을 다시 조립하면 조작이 끊긴다)
+  const st = $('#cpPrevStage');
+  const onPhoto = !!(CIMG.b64 && st && st.querySelector('.cpv-pan'));
+  const pw = $('#gsPanWrap'), fw = $('#gsFillWrap'), pv = $('#gsPanV');
+  if (pw) pw.hidden = !onPhoto;
+  if (fw) fw.hidden = !(onPhoto && cpPanGap());   // AI 채움 = 여백이 실제로 있을 때만(할 일 없는 칩 상시노출 금지)
+  if (pv) pv.textContent = Math.round(CPAN.s * 100);
+}
+function cpPanReset() { CPAN.s = 1; CPAN.x = 0; CPAN.y = 0; cpPanApply(); }
+function cpPanZoom(mul, cx, cy) {   // cx·cy = 확대 기준점(스테이지 비율 −0.5~+0.5 · 생략 = 중앙) — 손가락·커서 아래가 제자리에 머문다
+  const s0 = CPAN.s, s1 = Math.max(CPAN_MIN, Math.min(CPAN_MAX, s0 * mul));
+  if (s1 === s0) return;
+  if (Number.isFinite(cx)) { CPAN.x = cx - (cx - CPAN.x) * (s1 / s0); CPAN.y = cy - (cy - CPAN.y) * (s1 / s0); }
+  CPAN.s = s1; cpPanApply();
+}
+function cpPanStep(d) { cpPanZoom(d > 0 ? 1 + CPAN_STEP : 1 / (1 + CPAN_STEP)); }
+(function cpPanBind() {   // 제스처 = 스테이지 1곳 위임(사진이 실린 동안만 활성 · 부품·핸들러 신설 최소)
+  const st = $('#cpPrevStage'); if (!st) return;
+  const live = () => !!(CIMG.b64 && st.querySelector('.cpv-pan'));
+  const pts = new Map(); let last = null, pinch = 0;
+  const rect = () => st.getBoundingClientRect();
+  const mid = () => { const a = [...pts.values()]; return { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) }; };
+  st.addEventListener('pointerdown', e => {
+    if (!live() || e.button > 0) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { st.setPointerCapture(e.pointerId); } catch {}
+    if (pts.size === 2) { pinch = mid().d; last = null; } else { last = { x: e.clientX, y: e.clientY }; }
+    st.classList.add('cpv-drag');
+  });
+  st.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const rc = rect(); if (!rc.width) return;
+    if (pts.size >= 2) {   // 핀치 = 배율(두 손가락 거리 비) + 중심 이동
+      const m = mid(); if (pinch > 0 && m.d > 0) { const c = { x: (m.x - rc.left) / rc.width - .5, y: (m.y - rc.top) / rc.height - .5 }; cpPanZoom(m.d / pinch, c.x, c.y); }
+      pinch = m.d; e.preventDefault(); return;
+    }
+    if (!last) return;
+    CPAN.x += (e.clientX - last.x) / rc.width; CPAN.y += (e.clientY - last.y) / rc.height;
+    last = { x: e.clientX, y: e.clientY }; cpPanApply(); e.preventDefault();
+  }, { passive: false });
+  const up = e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId); if (pts.size < 2) pinch = 0;
+    if (!pts.size) { last = null; st.classList.remove('cpv-drag'); cpPanApply(); }
+    else { const a = [...pts.values()][0]; last = { x: a.x, y: a.y }; }
+  };
+  st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up);
+  st.addEventListener('wheel', e => { if (!live()) return; e.preventDefault(); const rc = rect();   // PC 확대축소 = 휠(운영자 260805 "PC에서는 축소확대를 어찌할지모르겠네" — 지도·이미지 편집기 관례 · 레일 −/+ 스테퍼가 짝)
+    cpPanZoom(e.deltaY < 0 ? 1.1 : 1 / 1.1, (e.clientX - rc.left) / rc.width - .5, (e.clientY - rc.top) / rc.height - .5); }, { passive: false });
+  st.addEventListener('dblclick', e => { if (!live()) return; e.preventDefault(); cpPanReset(); });
+})();
+async function cpBake(fmt) {   // 배치를 **산출 좌표에 굽는다** — 목표 비율 캔버스에 그린 JPG(q90 · 투명 불요 = 260805 포맷 정본) · 무조작이면 null(종전 원본 그대로 발사)
+  if (!CIMG.b64 || !cpPanOn()) return null;
+  const g = cpPanGeo(fmt); if (!g) return null;
+  try {
+    const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('load')); i.src = CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64; });
+    const bh = fmt === 'reels' ? 1920 : 1350;
+    const m = (im.naturalWidth > g.wp * 1080 * 1.5) ? 2 : 1;   // 원본이 넉넉하면 2배 캔버스(합성기가 어차피 1080으로 내려받지만 다운샘플이 업샘플보다 정직) · 상한 2 = 업로드 9MB 한도 여유
+    const TW = 1080 * m, TH = bh * m;
+    const c = document.createElement('canvas'); c.width = TW; c.height = TH;
+    const cx = c.getContext('2d'); cx.imageSmoothingQuality = 'high';
+    cx.fillStyle = '#000'; cx.fillRect(0, 0, TW, TH);   /* raw-ok: 순흑 = .cpprev-stage 산출 배경 관례 동일값(여백 기본 = 검정 · AI 채움은 아래 별도 축) */
+    cx.drawImage(im, (0.5 + CPAN.x - g.wp / 2) * TW, (0.5 + CPAN.y - g.hp / 2) * TH, g.wp * TW, g.hp * TH);
+    return c.toDataURL('image/jpeg', 0.9);
+  } catch { return null; }   // fail-soft = 굽기 실패면 원본 발사(종전 동작) — 배치 때문에 제작이 죽지 않는다
+}
+async function cpFillGap() {   // Q03 = 축소로 생긴 빈 여백을 AI(Gemini 3.1 Flash)로 채운다 — 정본 파이프 재사용(/api/resize → img-resize.yml → resize_image.py 3층 라우팅·픽셀락) · 신규 렌더 로직 0
+  if (!CIMG.b64) return errStatus('사진을 먼저 넣어줘');
+  if (!cpPanGap()) return errStatus('빈 여백이 없어 — 축소(휠·핀치·−)해서 여백을 만들면 채울 수 있어', 'warn');
+  const g = cpPanGeo(cpPanFmt); if (!g) return;
+  const r5 = n => Math.round(n * 1e5) / 1e5;
+  const payload = { imageB64: CIMG.b64, name: CIMG.name, aspect: cpPanFmt === 'reels' ? '9:16' : '4:5', size: '1K', lock: true, fill: 'ai',
+    box: { x: r5(0.5 + CPAN.x - g.wp / 2), y: r5(0.5 + CPAN.y - g.hp / 2), w: r5(g.wp), h: r5(g.hp) } };   // box = 캔버스 대비 원본 자리(미리보기와 같은 수식) · lock=원본 픽셀 보존(확장부만 AI)
+  goFire();
+  try {
+    const rq = await fetch('/api/resize', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await rq.json().catch(() => ({}));
+    if (!rq.ok || j.error) return errStatus(j.error || '발사 실패 — 잠시 후 다시');
+    rszWait(true); rszJob(j.id, payload, true);   // true = 완료 시 자동 재첨부(운영자 손 1회 절약 · 결과는 작업내역에도 그대로 남는다)
+  } catch { return errStatus('네트워크 오류 — 다시 눌러줘'); }
+}
 function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편집 탭 공용(운영자 260718 "미리보기 모든 PHASE 2 반영" — 같은 쉘 안 #cpPrevStage↔#iePrev 스왑) · 변형 선택칩 제거(Q293) = 우선순위 1개 변형(v[0])만 표시
   const pane = $('#cpPrev'); if (!pane) return;
   pvZoomAuto(APP === '8' && !!CIMG.b64 && IE.phase !== 'done');   // 모자이크 지정 단계 = 확대 자동 ON, 빠져나오면 운영자가 두었던 크기로 원복(운영자 260802 4차 "머지"[보고 6-4] — 구 `.ie-full` 전용 규칙의 확대 축 흡수 · 박스를 탭해 찍는 단계라 확대가 곧 정확도 = 손이 제일 많이 가던 클릭 제거)
@@ -1672,7 +1797,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     h += `<div class="cpv" style="left:0;right:0;top:${py(385)};margin-top:${px(15)};text-align:center;color:${CPV_GREEN};font-size:${px(90)};font-weight:800;line-height:1.15;white-space:pre;letter-spacing:${(trT / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top = 세로 잉크탑 보정(PIL 'la' 앵커 vs CSS 라인박스 실측 Δ 부제+9·제목+15@1080 — 골든 픽셀 대조 260716)
     }
   } else if (cur.k === 'ov') {                                      // 자막 = nomute_overlay SPECS 미러(reels ty1119/fs78 · post ty822/fs76) — 그라데·로고 = generate() 무조건 합성이라 변형 표시 = 항상 동반(운영자 260716) · 오버레이만 ON = 사진 미표시(산출 미러 · 운영자 260718)
-    if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;
+    if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg cpv-pan" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;   // .cpv-pan = 배치(이동·확대축소) 대상 표식(운영자 260805) — 로고·베이스(data-logo)는 산출 고정물이라 비대상
     h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(opaHi())) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 최고 OPA 변형(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만" — 레일이 최고값 1개만 띄우고 그걸 조절하니 미리보기도 같은 값이어야 조절 피드백이 맞다 · 구 '첫 값'은 선택 순서 종속이라 레일 조절 중 미리보기가 안 변하는 구간이 생겼다) · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)   /* 260727 되돌림(운영자 "한 수로 지시한 거 다 되돌려") = OPA 2장 좌/우 분할 비교(Q684) 철거 → 첫 값 1장 단일 스크림 원형 복귀 */
     // 진짜예요 = CI가 베이스에 구워져 있어 전면 레이어로 깔린다(운영자 "로고만 교체하면 되니까") · 노뮤트는 logo_rect 조각 로고 그대로
     if (cTpl === 'jinjja') {
@@ -1692,7 +1817,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
-    if (CIMG.b64) h += `<img class="cpv-bg" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;
+    if (CIMG.b64) h += `<img class="cpv-bg cpv-pan" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;   // 카드뉴스 배경도 같은 배치 축(운영자 260805)
     h += `<div class="cpv-scrim g-card"></div>`;
     const cl = cur.cl || [];
     if (cl.length) h += `<div class="cpv" style="left:${px(87)};right:${px(56)};top:${py(888)};color:${CPV_WHITE};font-size:${px(54)};font-weight:700;line-height:${(88 / 54).toFixed(3)};white-space:pre">${cl.map(emph).join('<br>')}</div>`;   // 자간 없음 = card_news.py 그대로(통줄 렌더·tracking 미적용) · white-space:pre = 무줄바꿈 미러
@@ -1713,6 +1838,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     });
   }
   st.innerHTML = h;
+  cpPanFmt = cur.fmt === 'reels' ? 'reels' : 'post'; cpPanApply();   // 배치 기하 = 지금 그린 산출 포맷 기준 재계산(포맷이 바뀌면 cover 환산 배수도 바뀐다) + 레일 재동기(방금 만든 .cpv-pan을 보고 판정 = 순서 의존 0)
   cpToolSync(false);   // 변형 렌더 = 교체 상시(텍스트 변형 중에도 사진 넣을 입구 유지) · 삭제 = 사진 있을 때만
 }
 // 첨부↔교체 픽토 한 쌍(운영자 260802 "첫 첨부 전에는 교체가 아니라 이미지 첨부 픽토그램") — 첨부 = .cpv-photobtn/PHOTO 정본 동일 SVG(stroke 1.5) · 교체 = index RT_SVG 정본(stroke 2 = 옆 휴지통 동값)
@@ -1959,6 +2085,7 @@ function updateGoSpec() {
       const hdrOn = headerActive(), bgOn = hdrOn && $('#cBg').checked;   // 배경(nobg) = 헤더 있을 때만 유효(추가할 흰칸이 있어야 배경본 의미) — 헤더 없으면 발사서 무시라 OFF 고정·잠금(운영자 260720 Q292 배경편 — 오버레이만과 동일 원칙)
       { const gb = $('#gsBg'); if (gb) { gb.classList.toggle('on', bgOn); gb.setAttribute('aria-pressed', bgOn ? 'true' : 'false'); gb.classList.toggle('gs-locked', !hdrOn); gb.setAttribute('aria-disabled', !hdrOn ? 'true' : 'false'); gb.title = hdrOn ? '탭=배경(흰칸 없는 버전) 추가' : '헤더(부제+제목) 입력 시 활성 — 추가할 흰칸이 있어야 배경본 의미'; } }
       const ovo = $('#gsOvOnly'); if (ovo) { const noImg = !CIMG.b64, noLayer = !noImg && !ovLayerActive(); const lockMg = noImg || noLayer; const onMg = !lockMg && !ovOnly; ovo.classList.toggle('on', onMg); ovo.setAttribute('aria-pressed', onMg ? 'true' : 'false'); ovo.classList.toggle('gs-locked', lockMg); ovo.setAttribute('aria-disabled', lockMg ? 'true' : 'false'); ovo.title = noImg ? '사진 미첨부 = 합성할 사진 없음 → 배경 합성 OFF 고정' : noLayer ? '자막(오버레이) 미입력 = 사진이 실릴 장이 없음 → 배경 합성 OFF 고정 (헤더·저작권·안내문 산출물엔 사진이 안 들어간다)' : '탭=ON/OFF — ON=사진 위에 오버레이 레이어 합성 · OFF=사진이 있어도 오버레이 레이어만'; }   // 배경 합성(운영자 260725 의미 반전 = 구 '오버레이만'의 반대) — ON=합성 · OFF=오버레이 단독 · 사진 없으면 OFF 고정·잠금(구 'ON 고정+소등' = 켜졌는데 꺼진 느낌 사고를 값 자체로 해소 · 발사 로직은 CIMG.b64 없으면 이미 미합성이라 표시만 진실화)
+      cpPanRailSync();   // 사진 배치 칩(SIZE·AI 채움 · 운영자 260805) = 사진이 실렸을 때만·여백이 있을 때만 노출
       const ops = $('#gsOpas'), og = $('#gsOpaOg');   // 레일 = 최고 OPA 1벌만(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만 뜨고, 이를 선택하는 기능은 동일하게") — 구 슬롯 수만큼 −/값/+ 반복(2개 선택 시 세로 레일이 2행)을 1행으로 · 낮은 짝은 하단 OPA 레일(#opaChips) 점등 + 길게눌러 펼치기(peek)가 전담
       if (ops) {
         if (og && cOpaSel.length < 2) og.classList.remove('opa-peek');   // 짝이 없으면 펼칠 것도 없다 = peek 자동 해제(끄기·칩 조작으로 1개가 된 경우)
@@ -2101,6 +2228,9 @@ function edNavSync() {   // ‹› 끝단 disabled 동기 — 기본값(첫째)�
   bindAbbr('#psAbbr');   // 포스트 축약(짧게토글·길게등록)
   const ovo = $('#gsOvOnly');   // 배경 합성(운영자 260725 의미 반전 · 구 '오버레이만' 260718) — ON=합성 · OFF=오버레이 단독(상태 1벌 ovOnly = 반전값 그대로 유지 = 발사 payload 무접촉)
   if (ovo) { const f = () => { if (!CIMG.b64) return; ovOnly = !ovOnly; updateGoSpec(); }; ovo.addEventListener('click', f); ovo.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); }   // 사진 미첨부 = 토글 무효(ON 고정 · 운영자 260720 Q292)
+  // 사진 배치 칩(운영자 260805) — −/+ = 한 칸 확대축소 · 값 = 탭하면 원상복귀(제스처와 같은 상태 1벌 CPAN) · AI 채움 = 여백 채우기 발사. 조작 문법 = OPA 스테퍼(위) 그대로.
+  { const tap = (id, f) => { const e = $(id); if (!e) return; e.addEventListener('click', ev => { ev.stopPropagation(); f(); }); e.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); f(); } }); };
+    tap('#gsPanDn', () => cpPanStep(-1)); tap('#gsPanUp', () => cpPanStep(1)); tap('#gsPanV', () => cpPanReset()); tap('#gsPanFill', () => cpFillGap()); }
   // OPA 레일 = 최고 OPA 1벌 그 자리 조절(휠·상하드래그·방향키·±스테퍼 전부 OPA_STEP 단위) + 탭=끄기(최소 1개) — 구 gsOpa2 조절 문법 계승(260718 칩 재편으로 유실 → 운영자 260718 복원) · 260803 단일화 = 조절 대상이 「슬롯 고정(data-i)」에서 「그때의 최고 슬롯」으로(레일이 최고값 1개만 띄우므로 조작 대상도 그 값이어야 표시와 어긋나지 않는다)
   const ops = $('#gsOpas');
   if (ops) {
@@ -2531,7 +2661,7 @@ function rszApply(v) {   // 값 명시 세팅 + 칩 점등·직접 입력행·�
 }
 // ── /7 확장 미리보기 — resize_image.py pad_canvas 복제: 원본 정중앙 100% 보존 + 한 축 대칭 확장을 발사 전 점선으로(과금 0·실시간 · 운영자 260710 "b" = 스크림 딤 확정) ──
 const RSZ = { w: 0, h: 0 };   // 첨부 원본 자연 크기(미리보기 계산 전용 · 발사 payload IMG와 분리)
-function rszMeasure(b64) { const im = new Image(); im.onload = () => { RSZ.w = im.naturalWidth; RSZ.h = im.naturalHeight; rszPreview(); }; im.src = b64; }
+function rszMeasure(b64) { const im = new Image(); im.onload = () => { RSZ.w = im.naturalWidth; RSZ.h = im.naturalHeight; rszPreview(); if (typeof cpPanApply === 'function') cpPanApply(); }; im.src = b64; }   // 실측 도착 = 사진 배치 기하(cover 환산 배수 --pnf) 재계산 — 첨부 직후 첫 렌더는 아직 원본 치수를 모른다(운영자 260805)
 function rszPad(W, H, ar) { const [aw, ah] = ar.split(':').map(Number); let cw, ch;   // 러너 pad_canvas 동일(8배수 반올림) → 확장 방향·크기 픽셀 일치
   if (aw / ah >= W / H) { ch = H; cw = Math.round(H * aw / ah / 8) * 8; } else { cw = W; ch = Math.round(W * ah / aw / 8) * 8; }
   return { cw, ch, x: Math.floor((cw - W) / 2), y: Math.floor((ch - H) / 2) }; }
@@ -2648,7 +2778,7 @@ async function rszLoad() {   // resize.json 로드(잡 완료 신호 전용 — 
   } catch (e) { return []; }
 }
 const rszRunning = () => JOBS.some(jb => jb && jb.rid && jb.status === 'run');   // 진행 중 리사이즈 잡 존재 여부 = 점등 유지 판정(동시 다발 발사 대응)
-function rszJob(rid, payload) {   // 발사 1건 = 표준 잡 카드(renderJob·JOBS 그대로). 출력 URL은 해시(h8)라 예측 불가 → pollJob(Image 폴링) 대신 resize.json id 매칭 tick — 표면(카드·캐러셀·이전 제작·다운로드·복원)은 전부 정본 재사용. payload 보관 = 실패 재시도(같은 설정 · compose 선례 · 운영자 260710 축10).
+function rszJob(rid, payload, autoAttach) {   // autoAttach = 완료 시 결과를 소스로 자동 재첨부(AI 채움 전용 · 운영자 260805 — 채움의 목적이 '이 사진으로 계속 만들기'라 손 왕복 1회 제거) · 발사 1건 = 표준 잡 카드(renderJob·JOBS 그대로). 출력 URL은 해시(h8)라 예측 불가 → pollJob(Image 폴링) 대신 resize.json id 매칭 tick — 표면(카드·캐러셀·이전 제작·다운로드·복원)은 전부 정본 재사용. payload 보관 = 실패 재시도(같은 설정 · compose 선례 · 운영자 260710 축10).
   const o = { path: '', label: payload.aspect + ' · ' + payload.size + (payload.lock ? ' · 보존' : ' · 확장') + (payload.fill && payload.fill !== 'auto' ? ' · ' + fillLabel(payload.fill) : '') };   // 변형 라벨 = 비율 · 해상도 · 보존/확장 항상 표기(운영자 260710 축3·4) + 채움(자동 아닐 때만 · 260803)
   const job = { n: ++JOBSEQ, label: '리사이즈 (' + payload.aspect + ')', t0: Date.now(), outs: [o], done: [false], status: 'run', msg: '', rid, payload, endpoint: '/api/resize' };   // 잡 라벨 = 리사이즈 (비율)(축1)
   JOBS.unshift(job); renderJob(job); jobUiPulse(job);
@@ -2670,6 +2800,7 @@ function rszJob(rid, payload) {   // 발사 1건 = 표준 잡 카드(renderJob·
         carAppend(hit.url + (hit.url.indexOf('?') < 0 ? '?t=' + Date.now() : ''), dlStamp(job.t0) + '_리사이즈_' + pad3(job.n) + '_' + payload.aspect.replace(':', 'x') + '.jpg', '리사이즈 #' + job.n, job, ' · ' + payload.aspect, o, false, payload.name || ('리사이즈 #' + job.n));   // 파일명·캐러셀 캡션 = 현행 고정(축8·12 — 잡 라벨과 분리) · 이전 제작 캡션 = 원본 파일명(축5 · histCap)
         renderJob(job);
         if (!rszRunning()) rszWait(false);
+        if (autoAttach) reattachSrc(hit.url, payload.name, null);   // 결과 = 목표 비율 그대로 → 재첨부 즉시 배치 원상복귀(여백 0) · 실패해도 잡 카드·다운로드는 그대로(fail-soft)
         return;
       }
       job._timer = setTimeout(tick, 25000);   // 폴 주기 25s 유지(변환 1~3분 + 커밋·배포 랙 → 충분)
@@ -4857,7 +4988,7 @@ $('#go').onclick = async () => {
         : f === 'post'
         ? { app: '1', params: { fmt: 'post', lines: clines, opas: getComboOpas() } }
         : { app: '2', params: { mode: 'overlay', lines: clines, opas: getComboOpas() } };
-      if (CIMG.b64 && !ovOnly) { ovp.imageB64 = CIMG.b64; ovp.name = CIMG.name; }   // 오버레이만 ON = 사진 미동봉(합성 안 함 · 오버레이 단독 산출) — 운영자 260718 "오버레이만 켜져 있으면 합성 안 되게 오버레이만"
+      if (CIMG.b64 && !ovOnly) { ovp.imageB64 = (await cpBake(f)) || CIMG.b64; ovp.name = CIMG.name; }   // 사진 배치(이동·확대축소)가 있으면 **목표 캔버스에 구운 사진**을 보낸다(운영자 260805 Q02 "잘라서 들어가는 부분을 사용자가 고를 수 있게" — 미리보기와 산출물이 같은 크롭) · 무조작·굽기 실패 = 원본 그대로(종전 경로) · 오버레이만 ON = 사진 미동봉(합성 안 함 · 오버레이 단독 산출) — 운영자 260718 "오버레이만 켜져 있으면 합성 안 되게 오버레이만"
       items.push({ endpoint: '/api/thumb', payload: ovp, label: f === 'post' ? '포스트' : '릴스 자막', tag: '자막' });
     }
     // 저작권·안내문 = 각자 독립 발사(운영자 260712 "서로의 온오프 관계없이") · 합성 ON이면 같은 포맷 헤더/자막 산출물에 알파합성(별도 장 없음) / 합성 OFF·매칭 없음 = 별도 장(app3·app4). 합성 기본 OFF = 별도 장이 디폴트.
@@ -4879,7 +5010,7 @@ $('#go').onclick = async () => {
     }
     if (hasCard) {   // 카드뉴스 = /api/compose 별도 디스패치(app5 동일 파이프 · 배경 = 우측 슬롯 CIMG · 라벨 '카드뉴스' = 결과 좌상단 캡 구분 · 운영자 15)
       const cl = buildEmphText().split('\n').map(s => s.trim()).filter(Boolean);
-      dispatchJob('/api/compose', { imageB64: CIMG.b64, name: CIMG.name, lines: cl }, '카드뉴스', SRC);   // size 미동봉(운영자 260728 선택자 폐지) — 카드뉴스는 렌더 원본이 1080×1350 정밀 폰트 합성이라 2K 스냅 = 순수 업샘플(가짜 화질) = 종전 FHD 유지가 정직
+      dispatchJob('/api/compose', { imageB64: (await cpBake('post')) || CIMG.b64, name: CIMG.name, lines: cl }, '카드뉴스', SRC);   // 카드뉴스(4:5)도 같은 배치 굽기(운영자 260805 Q02) — 무조작이면 원본 그대로   // size 미동봉(운영자 260728 선택자 폐지) — 카드뉴스는 렌더 원본이 1080×1350 정밀 폰트 합성이라 2K 스냅 = 순수 업샘플(가짜 화질) = 종전 FHD 유지가 정직
     }
     if (!items.length) { if (!hasCard) return errStatus('헤더·자막 또는 저작권·안내문을 넣어주세요'); return; }   // 안전망(저작권 이름만 빠진 경우 위에서 return) · 카드 단독 = compose만 · 진행 표시 = 결과 자리 .wip 타일 전담(Q469 — 미리보기 딤 이주)
     // 해상도 = 발사 시 미동봉(운영자 260728 "각각 2K로 · 선택자 그냥 없애줘") — 전 변형(헤더·자막·저작권·안내문) 산출 짧은변은 러너(thumb-make) RES-SNAP이 1440(2K) 고정으로 결정. 구 `params.size = upsScale()`는 FHD 기본이었고 러너가 FHD를 스킵해 렌더 원본(2160·릴스 3840)이 그대로 나가던 표기 불일치의 클라 절반.

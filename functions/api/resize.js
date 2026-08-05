@@ -32,6 +32,13 @@ export async function onRequestPost({ request, env }) {
   const size = SIZES.includes(body.size) ? body.size : '1K';
   const lock = body.lock !== false;   // 기본 ON(원본 보존)
   const fill = FILLS.includes(body.fill) ? body.fill : 'auto';   // 화이트리스트 이중 검증(러너 동행 · genimg 계승) — 미지정 = auto(종전 무변)
+  // 배치 box(운영자 260805 "축소하면 빈 공간이 생길 수 있는데 빈 공간을 채우는 기능") = 캔버스 대비 원본이 앉는 자리(0~1 정규화 {x,y,w,h}).
+  // 미지정 = 종전 그대로(러너 pad_canvas 중앙 배치) = 구 이력 재발사·편집 탭 무접촉. 값 검증 = 러너(resize_image.parse_box)와 한 쌍(이중 검증 관례).
+  const _b = body.box && typeof body.box === 'object' ? body.box : null;
+  const _bn = _b ? ['x', 'y', 'w', 'h'].map(k => Number(_b[k])) : null;
+  const box = (_bn && _bn.every(Number.isFinite) && _bn[2] >= 0.05 && _bn[2] <= 1 && _bn[3] >= 0.05 && _bn[3] <= 1
+    && _bn[0] >= -0.001 && _bn[1] >= -0.001 && _bn[0] + _bn[2] <= 1.001 && _bn[1] + _bn[3] <= 1.001)
+    ? { x: _bn[0], y: _bn[1], w: _bn[2], h: _bn[3] } : null;   // 캔버스 밖으로 새는 배치 = 거절(원본 잘림 = 픽셀락 계약 위반) → 종전 중앙 배치로 폴백
 
   // 이미지 base64(dataURL 허용) — ≤9MB + 매직바이트(JPG/PNG/WEBP · make-cards.js 계승 = 저장형 비이미지 차단)
   let b64 = String(body.imageB64 || '');
@@ -64,7 +71,7 @@ export async function onRequestPost({ request, env }) {
 
   // ② 워크플로 발사
   const r = await GH(env.GH_TOKEN, 'actions/workflows/img-resize.yml/dispatches', 'POST', {
-    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify({ aspect, size, lock, fill }) },
+    ref: REF, inputs: { id, src: imgPath, src_sha: srcSha, opts: JSON.stringify(box ? { aspect, size, lock, fill, box } : { aspect, size, lock, fill }) },   // box 없으면 **키 자체를 안 싣는다** = opts 문자열이 종전과 바이트 동일(구 이력 재발사 회귀 0)
   });
   if (r.status === 204) return json({ ok: true, id });
   return json({ error: `발사 실패 GitHub ${r.status}: ${(await r.text()).slice(0, 200)}` }, 502);
