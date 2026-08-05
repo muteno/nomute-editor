@@ -1289,7 +1289,21 @@ document.addEventListener('pointerdown',e=>{ if(e.target.closest&&e.target.close
    ⚠ 끝난 뒤 `_swLP=true` = 뒤따라오는 click 1회를 위 핸들러가 삼키게 한다 — 라벨은 **색 버튼 안에** 살기 때문에, 삼키지 않으면 집었다 놓거나 그냥 탭한 것이 곧바로 그 버튼의 '탭 = 음영' 경로로 새어 나가 **끌지도 않은 축(음영)이 함께 칠해진다**(700ms 백스톱은 롱프레스와 공용). */
 let _swDrag=null;
 const swDropClear=()=>document.querySelectorAll('.swc.dropok').forEach(n=>n.classList.remove('dropok'));
-const swHit=(x,y)=>{ const t=document.elementFromPoint(x,y); return (t&&t.closest&&t.closest('[data-sw]'))||null; };
+/* 드롭 지점 판정(운영자 260805 실사용 서술: "자유롭게 화면 아무데나 드롭할 수 있다 · 근데 유의미하게 먹히는 곳은
+   오로지 그 색 선택하는 그 라인에만, 나머지 부분은 그냥 유실임") — 손잡이는 잡히고 색 동그라미도 커지는데(배선 전 구간 정상),
+   **놓는 순간 몇 px 빗나가면 통째로 유실**되던 축. 원인 = elementFromPoint 정확 명중 단일 판정.
+   → 색 줄 밴드(행 ±행높이) 안이면 x로 **가장 가까운 색에 스냅**한다. 밖이면 종전대로 null(= 유실 = 취소 의미 보존). */
+const swHit=(x,y)=>{
+  const t=document.elementFromPoint(x,y), direct=(t&&t.closest&&t.closest('[data-sw]'))||null;
+  if(direct) return direct;                                        // 정확 명중 = 종전 경로 그대로(회귀 0)
+  const row=document.querySelector('.swrow'); if(!row) return null;
+  const R=row.getBoundingClientRect(); if(!R.height) return null;
+  if(y<R.top-R.height||y>R.bottom+R.height) return null;           // 밴드 = 행 높이만큼 위아래(색 줄을 겨눈 게 명백한 범위)
+  let best=null,bd=Infinity;
+  row.querySelectorAll('[data-sw]').forEach(n=>{ const r=n.getBoundingClientRect(); if(!r.width) return;
+    const d=Math.abs((r.left+r.right)/2-x); if(d<bd){ bd=d; best=n; } });
+  return best;                                                     // 가로는 무제한 = 줄 좌우 끝을 넘겨 놓아도 양끝 색으로 붙는다
+};
 document.addEventListener('pointerdown',e=>{
   const a=e.target.closest&&e.target.closest('[data-swax]'); if(!a||(e.button&&e.button!==0)) return;
   _swDrag={ax:a.dataset.swax, x:e.clientX, y:e.clientY, moved:false, el:a};
