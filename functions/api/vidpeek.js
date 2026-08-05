@@ -102,20 +102,23 @@ export async function onRequestGet({ request }) {
     } catch { /* fail-soft = 아래 og 경로로 계속 */ }
   }
 
-  let html = '';
+  let html = '', finalUrl = '';
   try {
     const r = await fetch(t.toString(), {
       headers: { 'user-agent': UA, accept: 'text/html,*/*;q=0.8', 'accept-language': 'ko-KR,ko;q=0.9' },
       redirect: 'follow',   // 스레드 공유 링크(/share/) = 302로 정규 주소를 알려준다 → 따라가야 og 메타가 있는 페이지에 닿는다
     });
-    if (!r.ok) return json({ plat, title: '' });
-    const buf = await r.arrayBuffer();
-    html = new TextDecoder('utf-8').decode(buf.byteLength > HTML_MAX ? buf.slice(0, HTML_MAX) : buf);
-  } catch { return json({ plat, title: '' }); }
+    finalUrl = r.url || '';   // 리다이렉트 종착(정규 @계정/post/코드) — 아래 스레드 임베드 폴백의 재료(og가 비어도 주소는 건진다)
+    if (r.ok) {
+      const buf = await r.arrayBuffer();
+      html = new TextDecoder('utf-8').decode(buf.byteLength > HTML_MAX ? buf.slice(0, HTML_MAX) : buf);
+    }
+  } catch { /* fail-soft — 스레드는 아래 임베드 폴백이 한 번 더 시도(비스레드는 html='' = 미리보기 생략) */ }
+  if (!html && plat !== 'TH') return json({ plat, title: '' });
 
   const m = ogMetas(html);
   let title = unent(m['og:title'] || m['twitter:title'] || '').slice(0, 200);
-  const desc = unent(m['og:description'] || m['twitter:description'] || '').slice(0, 300);
+  let desc = unent(m['og:description'] || m['twitter:description'] || '').slice(0, 300);
   // ② 「Threads의 _(@계정)님」류 = **계정 껍데기라 내용이 0**이다(실측 260803) — 그 글의 내용은 og:description(본문)에 있다.
   //    운영자가 보려는 건 "어떤 내용인지"이므로, 제목이 껍데기면 본문을 제목 자리로 올린다(둘 다 없으면 미리보기 자체를 생략).
   if (desc && (!title || /\(@[^)]+\)/.test(title))) title = desc.slice(0, 200);
@@ -125,5 +128,37 @@ export async function onRequestGet({ request }) {
 
   // 작성자 = og:title의 「_ (@계정) on Threads」류에서 계정만(실측 스레드 형식) · 없으면 빈칸(추측 금지)
   const am = /@([A-Za-z0-9._-]{2,40})/.exec(title) || /@([A-Za-z0-9._-]{2,40})/.exec(unent(m['og:url'] || ''));
-  return json({ plat, title, desc, thumb, author: am ? '@' + am[1] : '' });
+  let author = am ? '@' + am[1] : '';
+
+  // ── ③ 스레드 임베드 폴백(운영자 260805 2차 "입력하자마자 얘는 내용에 대한 미리 출력이 안됨") ──
+  //    게시물 페이지 og는 엣지(데이터센터) IP에서 로그인월로 비기 일쑤인데 /embed는 제3자 삽입용이라 열려 있다
+  //    — thembed.js가 260727부터 프로덕션에서 매일 실증하는 경로·UA를 **문자 계승**(신규 기법 창작 0).
+  //    제목이 og로 이미 잡혔으면 발동 안 함 = 종전 경로 무접촉 · 실패는 전부 fail-soft(미리보기만 생략).
+  if (plat === 'TH' && !title) {
+    const cm = /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(finalUrl) || /@([A-Za-z0-9._]{1,60})\/post\/([\w-]{5,30})/.exec(raw);
+    if (cm) {
+      try {
+        const EMBED_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';   // thembed.js UA 동값
+        const r2 = await fetch(`https://www.threads.com/@${cm[1]}/post/${cm[2]}/embed`, {
+          headers: { 'user-agent': EMBED_UA, accept: 'text/html', 'accept-language': 'ko-KR,ko;q=0.9' }, redirect: 'follow',
+        });
+        if (r2.ok) {
+          const b2 = await r2.arrayBuffer();
+          const eh = new TextDecoder('utf-8').decode(b2.byteLength > HTML_MAX ? b2.slice(0, HTML_MAX) : b2);
+          if (/EmbedContainer/.test(eh)) {   // 로그인월·형식 변경 = 폴백도 포기(깨진 값 안 만든다 · thembed 게이트 동문)
+            // 본문 = <span class="BodyTextContainer"><span>텍스트</span></span>(실측 260805 — div 아님 · 첫 매치 = 원 게시물, 뒤 매치 = 인용/슬라이드)
+            const bm = /class="BodyTextContainer"\s*>([\s\S]*?)<\/span>\s*<\/span>/i.exec(eh);
+            const btxt = bm ? unent(bm[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
+            if (btxt) { title = btxt.slice(0, 200); if (!desc) desc = btxt.slice(0, 300); }
+            if (!thumb) {
+              const im = /<img\b[^>]*class="[^"]*\bimg\b[^"]*"[^>]*\bsrc="([^"]+)"/i.exec(eh);
+              if (im) { try { const iu2 = new URL(unent(im[1])); if (iu2.protocol === 'https:') thumb = iu2.toString(); } catch { /* 썸네일만 생략 */ } }
+            }
+            if (!author) author = '@' + cm[1];
+          }
+        }
+      } catch { /* fail-soft — 미리보기만 생략(발사 경로 무영향) */ }
+    }
+  }
+  return json({ plat, title, desc, thumb, author });
 }

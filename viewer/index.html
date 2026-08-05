@@ -9006,12 +9006,15 @@ function _dgJobHtml(v, i) {
   const fs = (v.res && v.res.files) || [];
   const sec = Math.max(0, Math.round((Date.now() - (v.t0 || Date.now())) / 1000));
   const modeLbl = ({ subs: '자막', video: '영상', both: '영상+자막' })[v.mode] || '영상+자막';
+  // 화질 자리 = 완료면 **실측**(러너 ffprobe · 예 「4K 24fps」) · 아니면 「최대 <선택값>」 — 선택값은 상한이라
+  //   그대로 말하면 거짓이 된다(운영자 260805 "가능하지도 않은데 4k 60fps가 나오거든"). 실측 없는 구 완료분은 요청 표기 유지.
+  const qLbl = (v.st === 'done' && _dgResActual(v.res)) || (v.q === 'best' ? '최고 화질' : v.q ? '최대 ' + _dgQName(v.q) : '');   // best(스레드) = 「최고 화질」 — _dgQName의 4K 60fps 폴백을 타면 그게 또 거짓 표기가 된다
   let ic, tx;
   if (v.st === 'fail') { ic = WARN_SVG; tx = '실패' + (v.msg ? ' · ' + esc(String(v.msg).slice(0, 60)) : ''); }
   else if (v.st === 'done') { ic = CHECK_SVG; tx = '완료 · ' + fs.length + '건' + (v.sec ? ' (' + _dgSecTxt(v.sec) + ')' : ''); }   // 「✓ 완료 · N장 (32s)」 정본 문법 · 단위만 이 화면 것(장→건)
   else { ic = window.nmOrbHTML ? nmOrbHTML('solving', 14) : ''; tx = '받는 중 <b class="jsec">' + _dgSecTxt(sec) + '</b>' + (window.nmEta ? ' · ' + nmEta.label(_dgEtaKey(v)).trim() : ''); }   // 경과 = 흰색 .jsec(운영자 260728 정본) · 예상 = nmEta
   let h = '<div class="job' + (v.st === 'done' ? ' done' : '') + (v.st === 'fail' ? ' err' : '') + '" id="dgjob' + i + '">'
-    + '<span class="jlab">' + esc(_dgVidPlatName(v.plat) || '링크') + ' · ' + modeLbl + (v.q ? ' · ' + esc(_dgQName(v.q)) : '') + ' #' + (v.n || (i + 1)) + '</span>'
+    + '<span class="jlab">' + esc(_dgVidPlatName(v.plat) || '링크') + ' · ' + modeLbl + (qLbl ? ' · ' + esc(qLbl) : '') + ' #' + (v.n || (i + 1)) + '</span>'
     + '<span class="jst">' + ic + '<span>' + tx + '</span></span>';
   // (받는 중 취소 X = 운영자 260802 미채택 — 러너를 실제로 멈추는 API가 없어 「이 화면의 추적만 끊는」 반쪽 취소였다.
   //  버튼이 없어도 40분 폴 상한이 스스로 실패로 닫고, 창을 닫으면 폴은 멈춘 채 잡만 보존된다 = 갇히는 상태 없음.)
@@ -9205,6 +9208,23 @@ const DG_QUALS = [['2160-60', '4K 60fps'], ['2160-30', '4K 30fps'], ['1440-60', 
 const DG_Q_KEY = 'dg_q_v1';
 function _dgQLoad() { try { const v = localStorage.getItem(DG_Q_KEY); return DG_QUALS.some(x => x[0] === v) ? v : DG_QUALS[0][0]; } catch { return DG_QUALS[0][0]; } }   // 기본 = 최고 티어(2160p 60fps)
 function _dgQName(q) { const h = DG_QUALS.find(x => x[0] === q); return h ? h[1] : DG_QUALS[0][1]; }
+// 실측 화질 라벨(운영자 260805 "가능하지도 않은데 4k 60fps가 나오거든? 30프레임이 한계로 알고있는데") —
+//   선택값(_dg.q)은 **상한**이라 영상이 그보다 낮으면 그대로 뿌리는 표기가 거짓이 된다(4K 60fps 요청 · 실물 30fps).
+//   러너(vidl_run ffprobe_dims)가 받은 파일을 실측해 files[]에 실어주는 {w,h,fps}만 여기서 말로 바꾼다 —
+//   실측 없음(구 결과·자막만) = '' = 지어내지 않고 「최대 …」 요청 표기로 남긴다.
+//   말 = DG_QUALS 통칭 그대로(짧은 변 2160=4K · 1440=2K · 1080=K · 그 외 Np — 세로 영상은 짧은 변이 곧 통칭 축) · 새 어휘 창작 0.
+function _dgActualLbl(f) {
+  if (!f || !f.w || !f.h) return '';
+  const s = Math.min(f.w, f.h);
+  const tier = s >= 2160 ? '4K' : s >= 1440 ? '2K' : s >= 1080 ? 'K' : s + 'p';
+  const fps = Math.round(Number(f.fps) || 0);
+  return tier + (fps ? ' ' + fps + 'fps' : '');
+}
+function _dgResActual(res) {   // 결과의 ①본(부가판 표식 없는 첫 영상) 실측 라벨 — 완료 잡 카드·이전 받기 공용
+  const fs = (res && res.files) || [];
+  const main = fs.find(f => f.kind === 'video' && String(f.name).indexOf('_maxfps_') < 0 && String(f.name).indexOf('_1080p_') < 0) || fs.find(f => f.kind === 'video');
+  return main ? _dgActualLbl(main) : '';
+}
 // 화질 고르기 = **눌러서 아래로 펼치는 목록**(운영자 260804 4차 "이런식으로 아래에 나오게 할건가?").
 //   구 6값 순환은 최고↔최저 이동에 최대 5탭이었다 = 6값이 되는 순간 순환이 부품으로 안 맞는다.
 //   부품·동작 = `.min-pick`/`.min-pick-it` **정본 100% 사본**(최소화 복원 picker · 글래스 셸 SSOT·
@@ -9295,7 +9315,8 @@ function _dgDoneHtml() {
   list.forEach((e, i) => {
     const fs = e.res.files || [];
     const vn = fs.filter(f => f.kind === 'video' || f.kind === 'img').length;   // 스레드 사진 게시물(img)도 본편 취급 = '(자막만)' 오표기 방지
-    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' · ' + ({ both: '영상+자막', video: '영상', subs: '자막' }[e.mode] || '영상+자막') + ' · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + (e.sec ? ' · ' + _dgSecTxt(e.sec) + ' 걸림' : '') + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';   // 필요 시간(운영자 260802) = 상대시각 옆 · 옛 항목(sec 없음)은 생략 = 없는 값 지어내지 않음
+    const aq = _dgResActual(e.res);   // 실측 화질(있을 때만 · 운영자 260805) — 구 저장분은 실측 키가 없어 생략 = 지어내지 않음
+    h += '<div class="dg-histrow"><div class="dg-hmain" data-act="vdopen" data-i="' + i + '" role="button" tabindex="0"><div class="dg-ittl">' + esc(_dgVidPlatName(e.plat)) + ' · ' + ({ both: '영상+자막', video: '영상', subs: '자막' }[e.mode] || '영상+자막') + ' · 파일 ' + fs.length + '건' + (vn ? '' : ' (자막만)') + (aq ? ' · ' + esc(aq) : '') + '</div><div class="dg-hurl">' + _dgAgo(e.t) + (e.sec ? ' · ' + _dgSecTxt(e.sec) + ' 걸림' : '') + ' · ' + esc(e.url) + '</div></div><button type="button" class="geni-opt" data-act="vddel" data-i="' + i + '">지움</button></div>';   // 필요 시간(운영자 260802) = 상대시각 옆 · 옛 항목(sec 없음)은 생략 = 없는 값 지어내지 않음
   });
   return h + '</div></div></div>';
 }
@@ -9451,8 +9472,8 @@ function _dgPeekHtml() {
     + '<div class="dg-item">'
     + ((p && p.thumb) ? '<span class="dg-ithumb"><img src="' + escUrl(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer"></span>' : '')
     + '<div class="dg-imain"><div class="dg-ittl">' + esc(ttl) + '</div>'
-    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + esc(_dgQName(_dg.q)) + '</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804)
-    + '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p × 60/30fps)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQName(_dg.q)) + '</button>'   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값
+    + '<div class="dg-imeta">' + esc(_dgVidPlatName(plat)) + ((p && p.author) ? ' · ' + esc(p.author) : '') + ' · 영상만 · ' + (plat === 'TH' ? '최고 화질' : '최대 ' + esc(_dgQName(_dg.q))) + '</div></div>'   // 기본이 무엇인지 말로 못박는다(운영자 260803 "주로 필요한건 영상임 어짜피") + 화질 리드백 동반(260804) — 「최대」 = 선택값은 상한이지 영상 사양이 아니다(운영자 260805 · 실물 화질은 받기 완료 시 실측으로 표기) · 스레드 = 「최고 화질」(260805 2차 — 상한 축 자체가 비적용)
+    + (plat === 'TH' ? '' : '<button type="button" class="geni-opt" data-act="vidq" title="화질 — 눌러서 고르기(4K=2160p · 2K=1440p · K=1080p × 60/30fps)" aria-label="화질 ' + esc(_dgQName(_dg.q)) + ' — 눌러서 고르기" aria-haspopup="listbox">' + esc(_dgQName(_dg.q)) + '</button>')   // 화질 칩 = 같은 행 [영상+자막]과 **같은 부품**(.geni-opt 워드칩) · 라벨이 곧 현재값 · 스레드 = 칩 자체를 안 그린다(눌러도 안 먹는 선택지 = 거짓 어포던스 · 260805 2차 최고 화질 고정)
     + '<button type="button" class="geni-opt" data-act="vidsubs" title="' + subLbl + '으로 받기" aria-label="' + subLbl + '으로 받기">' + subLbl + '</button>'   // 자막은 **따로 버튼**(운영자 260803) — 부품 = 행 안 액션 워드칩(.geni-opt = 스캔 행 [저장 요청] 자리·정본) · 누르면 그 자리에서 영상+자막으로 발사
     + '</div>';
 }
@@ -9478,7 +9499,7 @@ function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **�
   const u = _dgUrlNorm(), plat = _dgVidPlat(u); if (!plat) return;
   if (_dg.jobs.some(v => v.st === 'run' && v.url === u)) { _dg.err = '이미 받는 중인 주소야'; _dgRenderBody(); return; }   // 같은 주소 이중 발사만 막는다(다른 주소는 얼마든지)
   _dg.err = ''; _dg.lastUrl = u; _dg.resOpen = true;
-  const v = { url: u, plat, mode: mode || 'both', q: _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다)
+  const v = { url: u, plat, mode: mode || 'both', q: plat === 'TH' ? 'best' : _dg.q, n: ++_dgJobSeq, st: 'idle' };   // 화질 = 발사 시점 박제(이후 칩을 돌려도 이 잡은 안 바뀐다) · 스레드 = 항상 최고 화질(운영자 260805 2차 "화질을 정하기보다는 가장 좋은 화질" — 스레드는 화질 사다리 자체가 없어 상한 지정이 무의미 · 러너 'best' = 종전 최고화질 경로)
   _dg.jobs.unshift(v);   // 최신이 위 = 이미지 스튜디오 잡 보드(#jobs prepend) 계승
   const inp = $('#dgUrl'); if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }   // 발사 = 칸 비움(다음 주소 즉시 입력 · 클립 버튼 상태도 input 이벤트로 동기)
   _dgVidFire(v, v.mode);

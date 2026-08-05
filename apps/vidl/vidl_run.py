@@ -303,6 +303,25 @@ def ffprobe_dur(path):
         return 0.0
 
 
+def ffprobe_dims(path):
+    """받은 영상 파일 실측 {w,h,fps}(운영자 260805 "가능하지도 않은데 4k 60fps가 나오거든" — 표기 진실 축).
+    요청 화질(QUAL)은 **상한**이라 실물과 다를 수 있다(60 상한 요청이어도 30fps 영상이면 30fps로 받힘) →
+    화면 라벨은 이 실측만 쓴다. 사전조회 best로는 안 되는 이유 = 상한판(capped)·프레임별판은 best와 다른
+    포맷을 받고, 스레드는 API에 fps가 아예 없다(전부 0) — 받은 파일을 재는 것만이 전 경로 공통 진실
+    (AAC_NOTE의 ffprobe 검증과 같은 축). 실패 = {}(비치명 — 뷰어는 실측 없으면 「최대 …」 요청 표기로 남긴다)."""
+    try:
+        r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                            "-show_entries", "stream=width,height,avg_frame_rate",
+                            "-of", "json", path], capture_output=True, text=True, timeout=60)
+        st = (json.loads(r.stdout or "{}").get("streams") or [{}])[0]
+        w, h = int(_fnum(st.get("width"))), int(_fnum(st.get("height")))
+        num, _, den = str(st.get("avg_frame_rate") or "").partition("/")
+        fps = _fnum(num) / (_fnum(den) or 1.0)
+        return {"w": w, "h": h, "fps": round(fps, 2)} if w and h else {}
+    except Exception:
+        return {}
+
+
 def _srt_tc(x):
     """초 → SRT 타임코드(00:00:00,000)."""
     x = max(0.0, float(x))
@@ -615,11 +634,12 @@ def main():
     files, up_err = [], 0
     for fn in out_files(outdir):
         p = os.path.join(outdir, fn)
+        kind = ("video" if ctype_of(fn).startswith("video/")
+                else "img" if ctype_of(fn).startswith("image/") else "sub")
+        dims = ffprobe_dims(p) if kind == "video" else {}   # 실측 화질 동봉(additive 키 — 뷰어 구 파서는 미지 키 무시)
         try:
             u = r2_upload(p, f"vidl_res/{vid_id}/{fn}", ctype_of(fn))
-            files.append({"name": fn, "url": u, "size": os.path.getsize(p),
-                          "kind": ("video" if ctype_of(fn).startswith("video/")
-                                   else "img" if ctype_of(fn).startswith("image/") else "sub")})
+            files.append({"name": fn, "url": u, "size": os.path.getsize(p), "kind": kind, **dims})
         except SystemExit:
             raise   # R2 미설정(전제 붕괴)은 die 그대로
         except Exception as e:
