@@ -8188,6 +8188,8 @@ function quakeMsgs() {
     const t = Date.parse(d.time || '') || 0;
     if (!t || now - t > QUAKE_TTL_H * 3600e3) continue;
     out.push({ id: 'sys:quake:' + (d.time || ''), _sys: true, level: 'warn', t, action: 'quake-go',
+      // why = **발화를 가른 값**(리포트 «발화 근거» 행 · 260805 신설) — 세션이 코드를 거슬러 올라가지 않고 판정을 바로 읽게 한다.
+      why: '규모 ' + (Number.isFinite(mg) ? mg : '미상(fail-open)') + ' ≥ 문턱 ' + quakeMinMag(d) + (d.intl ? '(해외)' : '(국내)'),
       text: (d.title || '지진') + ' — ' + (d.area || '') + (d.text ? '\n' + d.text : '') });
   }
   return out;
@@ -8236,6 +8238,9 @@ function fireMsgs() {
     const t = Date.parse(d.time || '') || 0;
     if (!t || now - t > FIRE_TTL_H * 3600e3) continue;
     out.push({ id: 'sys:fire:' + (d.time || '') + ':' + d.lm, _sys: true, level: 'warn', t, action: 'quake-go',
+      // why = **발화를 가른 값**(리포트 «발화 근거» 행 · 260805 신설 — 서명 오탐 진단에 세션이 20분 쓴 축의 기계화).
+      //   lm 원문을 그대로 실어야 「본문의 건물인가 / 말미 발신 서명인가」를 리포트만 보고 가를 수 있다.
+      why: 'lm="' + d.lm + '" ∧ crit(' + (d.kind || '') + ') — 둘 다 참이어야 발동(∧ 12h 이내)',
       text: (d.title || '화재') + ' · ' + d.lm + ' — ' + (d.area || '') + (d.text ? '\n' + d.text : '') });
   }
   return out;
@@ -8428,6 +8433,13 @@ function _rptSrc(m) {
   if (id.startsWith('sys:acct:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.health.subs.cover[플랫폼].why[계정]', up: 'scraper/sns_trends.py _sfail()' };
   if (id.startsWith('sys:src:reddit:')) return { fn: 'viewer/index.html sysErrMsgs()', src: 'TRENDS.reddit 길이 0 + health.phone.ok', up: 'scraper/sns_trends.py reddit_hot()/_reddit_rss()' };
   if (id.startsWith('sys:demo:')) return { fn: 'viewer/index.html demoStaleMsgs()', src: 'CHAN/CHAN_FB.audience_sample.as_of vs generated_kst', up: 'scraper 인구통계 수집' };
+  // ⚠ 재난 2축(fire·quake)은 **뷰어가 만든다** — 분기가 없으면 아래 폴백으로 떨어져 「서버 발행 메시지 · messages/<id>.json」이라는
+  //   **거짓 경로**를 준다(실측 260805: 그 파일은 존재조차 안 하는데 세션이 그걸 믿고 messages/를 뒤졌다 = 오정보가 진단을 늦춘 실사고).
+  //   리포트의 계약은 "세션이 파일을 바로 열게 하는 값"이라, 없는 값보다 **틀린 값**이 더 비싸다.
+  if (id.startsWith('sys:fire:')) return { fn: 'viewer/index.html fireMsgs()', src: 'TRENDS.disaster[].lm ∧ disCrit(d) (⑭-e 랜드마크 즉시 긴급알림 · 12h TTL)', up: 'scraper/sns_trends.py disaster_landmark() → lm 필드 · 추적 = scraper/fire_watch.py · 게이트 = check_disaster_landmark_sign',
+    cmd: 'python3 -c "import json;[print(x[\'kind\'],x[\'time\'],repr(x.get(\'lm\')),x[\'text\'][:40]) for x in json.load(open(\'viewer/sns_trends.json\'))[\'disaster\']]"' };
+  if (id.startsWith('sys:quake:')) return { fn: 'viewer/index.html quakeMsgs()', src: 'TRENDS.disaster[] 규모 ≥ quakeMinMag(d) (국내 QUAKE_MIN_KR / 해외 QUAKE_MIN_INTL · 규모 미상 = fail-open)', up: 'scraper/sns_trends.py disaster_label()/disaster_intl() → intl 필드',
+    cmd: 'python3 -c "import json;[print(x[\'kind\'],x[\'time\'],x.get(\'intl\'),x[\'title\']) for x in json.load(open(\'viewer/sns_trends.json\'))[\'disaster\'] if x[\'kind\']==\'지진\']"' };
   // _health 계열은 3종(새버전·갱신실패·맞춤법)이 같은 플래그를 공유 → 플래그별로 갈라야 한다. 뭉치면 "새 버전" 알림에 CAND_LIVE가 찍혀
   //   세션이 없는 고장(진단 스냅샷 후보라이브=true인데 적재 실패라고 지목)을 쫓는다(실증 260730 리포트 1번 항목).
   if (m._shellupd) return { fn: 'viewer/index.html shellUpdMsg()', src: '_shellUpdPending(SW nm-shell-updated → flagShellUpdate)', up: 'sw.js 셸 SWR 재검증 + viewer/index.html 배포' };
@@ -8472,9 +8484,14 @@ function msgRptHtml() {
       + '<div class="tx">' + qEsc(m.text || '') + '</div>'
       + (todo ? '<div class="todo"><b>' + qEsc(RPT_WHO[who]) + '</b> ' + qEsc(todo) + '</div>' : '<div class="todo"><b>' + qEsc(RPT_WHO[who]) + '</b> 조치문 규약(👉) 밖 — 코드로 원인 판단 필요.</div>')
       + '<table class="meta"><tr><th>알림 id</th><td><code>' + qEsc(String(m.id || '(id없음)')) + '</code></td></tr>'
+      // 발화 근거 = **조건을 통과시킨 값 자체**(260805 신설) — 판정 소스는 "어느 필드를 보나"까지만 말해서, 그 필드가
+      //   *무엇이었길래* 울렸는지는 세션이 라이브 데이터를 따로 떠서 맞춰봐야 했다(실측: 서명 오탐 진단 20분의 대부분).
+      //   why 없는 알림은 행을 안 그린다(빈 행 = 잡음 · 생산자가 실어준 것만 표시).
+      + (m.why ? '<tr><th>발화 근거</th><td><code>' + qEsc(String(m.why)) + '</code></td></tr>' : '')
       + '<tr><th>만든 곳</th><td><code>' + qEsc(s.fn) + '</code></td></tr>'
       + '<tr><th>판정 소스</th><td><code>' + qEsc(s.src) + '</code></td></tr>'
-      + '<tr><th>상류</th><td><code>' + qEsc(s.up) + '</code></td></tr></table>'
+      + '<tr><th>상류</th><td><code>' + qEsc(s.up) + '</code></td></tr>'
+      + (s.cmd ? '<tr><th>재현</th><td><code>' + qEsc(s.cmd) + '</code></td></tr>' : '') + '</table>'
       + '</li>';
   };
   // 그룹 = 조치 주체 순서 = **사람이 할 일 먼저**(운영자 → 앱 버튼 → 클로드 → 자동 대기) — 위에서부터 읽으면 곧 실행 순서
@@ -8517,7 +8534,7 @@ function msgRptHtml() {
     + (grp || '<ol><li class="it">지금 해결할 문제 없음</li></ol>')
     + '<h2>환경(이 화면이 뭘 돌리고 있었나)</h2><table>' + ev + '</table>'
     + '<h2>진단 스냅샷(판정 소스 원값)</h2><table>' + dl + '</table>'
-    + '<script type="application/json" id="nomute-report">' + JSON.stringify({ env, diag, items: rows.map(m => ({ id: m.id || null, kind: msgKind(m).t, who: _rptWho(m), who_ko: RPT_WHO[_rptWho(m)], at_kst: _rptAbs(m), ago: msgAgo(m), text: m.text || '', todo: _rptTodo(m.text) || _rptAct(m), action: m.action || null, origin: _rptSrc(m) })) }).replace(/</g, '\\u003c') + '<\/script>'   // ⚠ script 안은 **원문 JSON**(qEsc 금지 — HTML 파서가 script 내용을 디코딩 안 해 &quot;가 그대로 남아 JSON.parse가 죽는다 · 260727 실측) · 닫는 태그 조기 종료만 `<`→<로 봉쇄
+    + '<script type="application/json" id="nomute-report">' + JSON.stringify({ env, diag, items: rows.map(m => ({ id: m.id || null, kind: msgKind(m).t, who: _rptWho(m), who_ko: RPT_WHO[_rptWho(m)], at_kst: _rptAbs(m), ago: msgAgo(m), text: m.text || '', todo: _rptTodo(m.text) || _rptAct(m), action: m.action || null, why: m.why || null, origin: _rptSrc(m) })) }).replace(/</g, '\\u003c') + '<\/script>'   // ⚠ script 안은 **원문 JSON**(qEsc 금지 — HTML 파서가 script 내용을 디코딩 안 해 &quot;가 그대로 남아 JSON.parse가 죽는다 · 260727 실측) · 닫는 태그 조기 종료만 `<`→<로 봉쇄
     + '</div></body></html>';
 }
 function msgRptDl(btn) {   // 저장 = Blob a[download](같은-출처라 네이티브 저장 · downloadImg의 프록시 경유는 외부 URL 축이라 여기선 불필요) · 받은 표식 = .dl-done(다운로드 표준 mut)

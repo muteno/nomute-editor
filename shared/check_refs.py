@@ -4033,6 +4033,37 @@ _DIS_LM_CASES = (
 )
 
 
+def check_rpt_origin_coverage():
+    """알림 리포트 출처표 = 뷰어 생산 알림 전건 커버(하드 · 260805 실사고 봉합).
+    실사고 = 화재 알림(`sys:fire:`) 진단에서 리포트가 「만든 곳 = 서버 발행 메시지 · 판정 소스 =
+    messages/sys:fire:….json · 상류 = scraper/msg.py」를 줬는데 **셋 다 틀렸다** — 그 알림은 뷰어
+    fireMsgs()가 만들고, 지목된 파일은 **존재조차 하지 않는다**. 원인 = `_rptSrc()`에 그 접두 분기가
+    없어 마지막 폴백(서버 발행 메시지)으로 떨어진 것. 리포트의 계약이 "세션이 파일을 바로 열게 하는 값"이라
+    **없는 값보다 틀린 값이 더 비싸다** — 세션이 messages/ 를 뒤지다 진단이 늦었다(실측).
+    구조적 원인 = 알림 생산자는 늘어나는데 출처표 분기는 손으로 따라가야 한다 = 조용히 갈라진다.
+    판정 = 생산자 id 리터럴(`id: 'sys:…'`) 자동 발견 ↔ `_rptSrc` 분기(`startsWith('sys:…')`) 접두 대조.
+    정적 · 렌더·LLM 0 · 면책표 없이 하드 0(현행 위반 0)."""
+    p = os.path.join(ROOT, 'viewer', 'index.html')
+    if not os.path.exists(p):
+        print('❌ 리포트 출처표 게이트 — viewer/index.html 없음(fail-closed).')
+        return 1
+    src = open(p, encoding='utf-8').read()
+    prods = sorted(set(re.findall(r"id:\s*'(sys:[^']*)'", src)))
+    branches = sorted(set(re.findall(r"startsWith\('(sys:[^']*)'\)", src)))
+    if not prods:
+        print('❌ 리포트 출처표 게이트 — sys: 알림 생산자 0건(탐지 실패 = 게이트 무력화 · fail-closed).')
+        return 1
+    # 커버 = 분기가 생산자의 접두이거나 그 반대(생산자 'sys:src:reddit:' ↔ 분기 'sys:src:reddit:' 같은 세분화 허용)
+    bad = [x for x in prods if not any(x.startswith(b) or b.startswith(x) for b in branches)]
+    if bad:
+        print('❌ 리포트 출처표 게이트 — 출처 분기 없는 알림 %d종(리포트가 세션에게 거짓 경로를 준다):' % len(bad))
+        for b in bad:
+            print('   ·', b, '→ _rptSrc() 에 분기 추가(만든 곳·판정 소스·상류 · 가능하면 cmd 재현 1줄)')
+        return 1
+    print('✅ 리포트 출처표 게이트 — 뷰어 생산 알림 %d종 전건 _rptSrc 분기 보유(폴백 오귀속 0).' % len(prods))
+    return 0
+
+
 def check_disaster_landmark_sign():
     p = os.path.join(ROOT, 'scraper', 'sns_trends.py')
     if not os.path.exists(p):
@@ -4427,6 +4458,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_disaster_landmark_sign 예외(fail-closed):', e); rc = 1
+    try:
+        if check_rpt_origin_coverage() != 0:   # 알림 리포트 출처표 = 뷰어 생산 알림 전건 커버(하드 게이트 — 260805 실사고: sys:fire: 분기 누락으로 리포트가 없는 파일 messages/sys:fire:….json을 지목)
+            rc = 1
+    except Exception as e:
+        print('❌ check_rpt_origin_coverage 예외(fail-closed):', e); rc = 1
     try:
         if check_shell_put_integrity() != 0:   # 셸캐시 put = 절단 검문(</html> 꼬리) 의무(하드 게이트 — 260802 재발: sw.js만 검문·페이지측 put 무검문 = 절단 셸 재주입)
             rc = 1
