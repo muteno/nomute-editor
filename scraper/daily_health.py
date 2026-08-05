@@ -76,6 +76,89 @@ def _get_tokenizer():
         return tokenize, same_topic
 
 
+def _cum_enter(x):
+    """누적 칼럼 진입 자격 미러 — viewer/index.html 누적 술어(cross≥8 OR isBreaking OR followEnters)의
+    파이썬 사본(파이썬이 viewer를 못 읽어서 · 값만 기계 대조 = check_follow_enters_parity 하드게이트).
+    ⚠️ 근사 1: fpScore 강지문 완화 갈래(rc≥3 + 지문≥2.0)는 fp_dict 의존이라 미러 제외 = 과소계상(보수
+       방향 · 구판 3벌과 동일한 근사라 계기판 기저값 연속성 유지).
+    ⚠️ 근사 2: viewer 는 applyAutoGroups/mergeDecorate 로 group_id 형제를 **접고 cross 를 단순 합산**한 뒤
+       이 술어를 돌린다(주석 정본 = "union 아닌 합"). 여기 입력은 병합 전 원자료라 합산분만큼 과소계상이다
+       — 260805 실측 사고: 「평택 미군기지 무단침입」이 원자료 cross 6 이라 '묻힘'으로 세어졌으나 화면에선
+       조선판 6 + 뉴시스판 2 = **8 로 CROSS_MIN 단독 통과해 이미 노출 중**이었다(누적 30위 · 렌더 캡처 실증).
+       계기판을 보고 진입선을 손대기 전에 반드시 실물 렌더로 대조하라(원자료 재현만으로 판단 = 오진).
+    ⚠️ 손복사 금지 — 이 함수 하나만 쓴다. 구판은 같은 술어가 3벌(_dominance·긴급부스트 신선창·묻힘 계측)
+       손복사돼 있어 뷰어만 고치면 조용히 갈렸다(260805 8인 평의회 실측 = 패리티 게이트 0이던 사각)."""
+    g = x.get("grade")
+    brk = bool(x.get("breaking")) and (g is None or (g or 0) >= 2)
+    rc = x.get("report_count") or 0
+    fol = (x.get("cross") or 0) >= 4 and rc >= 6
+    return (x.get("cross") or 0) >= 8 or brk or fol
+
+
+def buried_counts(cands, now, intl_only=False):
+    """묻힘(4h+ 인데 누적 칼럼 미진입) 집계 — (grade3 목록, grade2 건수).
+    §1 "중요한 게 묻히면 안 됨"의 자동감시 실체. intl_only=True 면 260703 기지값과 이어지는 국제 스코프,
+    False 면 전 카테고리(국내 포함 = 260805에 봉합한 계측 사각). 나이 = 발행 우선·수집 폴백(_dominance 동일)."""
+    buried, b2 = [], 0
+    for x in cands:
+        if intl_only and not ((x.get("cat") == "국제") or bool(x.get("title_ko"))):
+            continue
+        a = age_h(x.get("published"), now)
+        if a is None or a < 0:
+            a = age_h(x.get("first_seen"), now)
+        if a is None or a < 4 or _cum_enter(x):
+            continue
+        if x.get("grade") == 3:
+            buried.append(x)
+        elif x.get("grade") == 2:
+            b2 += 1
+    return buried, b2
+
+
+def buried_alert():
+    """묻힘 자동감시(운영자 260805 승인 "계측 자동화까지") — watchdog.yml 30분 주기가 호출.
+    발단 = 이 파일이 §1 유일 자동감시를 자처하면서 ⓐ 워크플로 미등재 = **수동 전용**(호출 0건 실측)
+    ⓑ 국제 스코프 필터 = 국내 사건 계측 밖. 둘 다 사람 눈이 유일한 검출기라는 뜻이었다.
+    발화 = 전 카테고리 grade3(대형) 묻힘이 BURIED_G3_WARN 이상 — grade2(기저 76)는 상시라 알림 소음이
+    되므로 본문 참고치로만 싣는다. 해소 = 자동 clear. 킬스위치 = BURIED_ALERT=0.
+    ⚠️ 알림 id는 **건수 접미 회전**(buried-g3-N) — 고정 id면 뷰어 unread가 id축이라 메시지함을 한 번
+    열면 영영 재점등이 안 된다(레포 관례 = brk-misfire-N·sys:quake:+time)."""
+    import os
+    import sys
+    if os.environ.get("BURIED_ALERT") == "0":
+        print("· 묻힘 감시 스킵(BURIED_ALERT=0)"); return 0
+    warn_at = int(os.environ.get("BURIED_G3_WARN", "5"))
+    try:
+        cands = json.loads(CAND.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"::warning::묻힘 감시 스킵(candidates 읽기 실패): {e}"); return 0   # fail-soft
+    now = dt.datetime.now(KST)
+    g3, g2 = buried_counts(cands, now, intl_only=False)
+    print(f"· 묻힘(전 카테고리 4h+ 누적 미진입): grade3 {len(g3)}건 · grade2 {g2}건 (발화선 g3≥{warn_at})")
+    ids = [f"buried-g3-{n}" for n in range(0, 60)]                     # 회전 id 후보 = 이전 회차분 청소용
+    for i in ids:                                                      # 구 건수 알림 제거(중복 점등 방지)
+        if i != f"buried-g3-{len(g3)}":
+            subprocess.run([sys.executable, str(ROOT / "shared" / "msg.py"), "clear", i],
+                           capture_output=True)
+    if len(g3) < warn_at:
+        return 0
+    lines = [f"묻힌 대형(grade3) {len(g3)}건 — 4시간이 지났는데 누적 칼럼에 못 들어간 사건입니다."
+             f" (같은 시점 grade2 묻힘 {g2}건 · 260805 기저 = g3 3·g2 78)", "",
+             "⚠️ 이 집계는 병합 전 원자료 기준입니다 — 화면은 같은 사건의 갈라진 클러스터를 합쳐"
+             " cross 를 합산하므로, 여기 뜬 건이 실제로는 이미 노출 중일 수 있습니다(260805 실측)."
+             " 진입선을 손대기 전에 반드시 실물 렌더로 대조하세요.", ""]
+    for x in g3[:8]:
+        lines.append(f"· {(x.get('title') or '')[:52]}"
+                     f" (cr{x.get('cross') or 0}·rc{x.get('report_count') or 0}·{x.get('cat') or '?'})")
+    lines += ["", "진입 자격 = cross≥8 OR 긴급 OR followEnters(cross≥4 ∧ [rc≥6 OR rc≥5+grade≥2 OR rc≥3+강지문]).",
+              "위 건들은 셋 다 미달이라 화면에서 사라진 상태입니다.",
+              "확인 = python3 scraper/daily_health.py · 임계 정본 = docs/curation-algorithm.md §★"]
+    subprocess.run([sys.executable, str(ROOT / "shared" / "msg.py"), "set",
+                    f"buried-g3-{len(g3)}", "\n".join(lines), "warn"], capture_output=True)
+    print(f"::warning::묻힌 grade3 {len(g3)}건(발화선 {warn_at}) — 알림 점등")
+    return 0
+
+
 def _dominance(cands, now):
     """독점률 = 누적칼럼 근사 상위30 중 최대 단일사건 점유%(도배 재발 감지 · 260702 fable패널 수정안).
     풀 = 누적자격 미러(나이≥4h AND [cross≥8 OR 긴급 OR followEnters]) · 정렬 = cross^1.3×timeAcc(13·3.0).
@@ -88,10 +171,7 @@ def _dominance(cands, now):
             a = age_h(c.get("first_seen"), now)
         if a is None or a < 4:
             continue
-        g = c.get("grade")
-        brk = bool(c.get("breaking")) and (g is None or (g or 0) >= 2)
-        fol = (c.get("cross") or 0) >= 4 and (c.get("report_count") or 0) >= 6
-        if (c.get("cross") or 0) >= 8 or brk or fol:
+        if _cum_enter(c):                           # 진입 자격 = 단일 정본(260805 · 손복사 3벌 → 1벌)
             pool.append((c, a))
     if len(pool) < 15:
         return None
@@ -320,8 +400,7 @@ def main():
                     bb = 1 + 2 * (s(12 * (.5 - t)) - s(-6)) / (s(6) - s(-6))
             am = 0.12 + 0.88 / (1 + math.exp((rk - 13) / 3.8))
             return cr ** 1.3 * ta * fol * gw * bb * am
-        cum = [x for x in c if (_ba(x) or 0) >= 4 and ((x.get("cross") or 0) >= 8 or _brk_ok(x)
-               or ((x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6))]
+        cum = [x for x in c if (_ba(x) or 0) >= 4 and _cum_enter(x)]   # 진입 자격 = 단일 정본(260805)
         brks = [x for x in cum if _brk_ok(x)]
         fresh = [x for x in brks if (_iss_age(x) or 99) < 6]
         top5 = sorted(cum, key=_scr, reverse=True)[:5]
@@ -350,30 +429,21 @@ def main():
     #  followEnters) 전부 미충족 = 두 칼럼 미노출. §1 "중요한 게 묻히면 안 됨" 유일 자동감시 — breaking 문체
     #  가드 등 개선의 before/after 토대(임계·자동조치 없음 = 순수 계측 · 정본 §8 260703). 나이 = 발행 우선·수집 폴백(_dominance 동일).
     try:
-        def _intl(x):
-            return (x.get("cat") == "국제") or bool(x.get("title_ko"))
-        def _cum_ok(x):
-            g = x.get("grade")
-            brk = bool(x.get("breaking")) and (g is None or (g or 0) >= 2)
-            fol = (x.get("cross") or 0) >= 4 and (x.get("report_count") or 0) >= 6
-            return (x.get("cross") or 0) >= 8 or brk or fol
-        buried, b2 = [], 0
-        for x in c:
-            if not _intl(x):
-                continue
-            a = age_h(x.get("published"), now)
-            if a is None or a < 0:
-                a = age_h(x.get("first_seen"), now)
-            if a is None or a < 4 or _cum_ok(x):
-                continue
-            if x.get("grade") == 3:
-                buried.append(x)
-            elif x.get("grade") == 2:
-                b2 += 1
+        buried, b2 = buried_counts(c, now, intl_only=True)
         print(f"  · 묻힘(외신·국제 4h+ 누적 미진입): grade3 {len(buried)}건 · grade2 {b2}건"
               + "  (기준 260703 g3=19 — 개선 효과·급증 감시용 게이지)")
         for x in buried[:3]:
             print(f"      ◦ {(x.get('title_ko') or x.get('title') or '')[:38]} (cr{x.get('cross') or 0}·rc{x.get('report_count') or 0})")
+        # 전 카테고리 줄(260805 8인 평의회 통합관 발견) — 위 줄은 _intl(cat=='국제' or title_ko) 스코프라
+        #   국내 사건이 **계측 자체의 사각**이었다. 실측 대조: 국제만 보면 grade2 15건인데 전 카테고리는 78건
+        #   = 63건이 지금까지 안 세어졌고, 발단이 된 「평택 미군기지 무단침입」(cat='사회'·title_ko=None)이
+        #   바로 그 사각에 살았다 = "§1 유일 자동감시"를 자처하면서 국내를 못 보던 축. 국제 줄은 260703
+        #   기지값(g3=19) 연속성 때문에 유지하고, 전 카테고리를 아래 한 줄로 병기한다.
+        ab, a2 = buried_counts(c, now, intl_only=False)
+        print(f"  · 묻힘(전 카테고리 4h+ 누적 미진입): grade3 {len(ab)}건 · grade2 {a2}건"
+              + "  (260805 기저 = g3 3·g2 78 · ⚠️ 병합 전 원자료 기준이라 과소계상[_cum_enter 근사2] — 이 숫자만 보고 진입선을 손대지 말 것 · 자동감시 = watchdog 30분)")
+        for x in ab[:3]:
+            print(f"      ◦ {(x.get('title') or '')[:38]} (cr{x.get('cross') or 0}·rc{x.get('report_count') or 0}·{x.get('cat') or '?'})")
     except Exception as e:
         print(f"  · 묻힘 계측 실패(비치명): {e}")
     print(f"  → 심층 비교: python3 scraper/compare_collected.py  (어제↔오늘 낮 승격·긴급 분포)")
@@ -398,4 +468,7 @@ def main():
 
 
 if __name__ == "__main__":
+    import sys as _sys
+    if "--buried-alert" in _sys.argv[1:]:   # watchdog 30분 편승(무인 · 계측만 · 260805)
+        raise SystemExit(buried_alert())
     main()

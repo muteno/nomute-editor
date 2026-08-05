@@ -539,6 +539,35 @@ def check_fast_max_h_parity():
     return 0
 
 
+def check_follow_enters_parity():
+    """followEnters(누적 보조진입) 크로스랭귀지 패리티(260805 8인 평의회 · FAST_MAX_H 패리티와 동형) —
+    viewer 술어의 파이썬 사본이 scraper/daily_health.py `_cum_enter` 에 있다(파이썬이 viewer 를 못 읽어서).
+    값이 갈리면 "화면엔 떴는데 묻힘 계기판은 여전히 묻혔다고 보고"하는 **무증상 드리프트**가 된다 — 계기판이
+    거짓말을 시작하는 순간 §1 자동감시가 죽는데 화면은 멀쩡해서 아무도 모른다. ⚠️ 구판은 같은 술어가
+    daily_health 안에만 손복사 3벌(_dominance·긴급부스트 신선창·묻힘 계측)이었고 패리티 게이트가 없었다 =
+    뷰어만 고치면 조용히 갈라지던 사각(260805 실측 발견). 추출 실패 = fail-closed."""
+    try:
+        v = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        dh = open(os.path.join(ROOT, 'scraper', 'daily_health.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_follow_enters_parity 파일 읽기 실패(fail-closed):', e); return 1
+    m_cr = re.search(r'FOLLOW_CROSS_MIN\s*=\s*(\d+)', v)
+    m_rc = re.search(r'FOLLOW_RC_MIN\s*=\s*(\d+)', v)
+    m_fn = re.search(r'def _cum_enter\(x\):.*?\n\n', dh, re.S)
+    if not (m_cr and m_rc and m_fn):
+        print('❌ followEnters 상수/미러 추출 실패(cross=%s·rc=%s·_cum_enter=%s) — 선언 형태 변경 시 이 게이트도 갱신'
+              % (bool(m_cr), bool(m_rc), bool(m_fn))); return 1
+    p_cr = re.search(r'\(x\.get\("cross"\) or 0\) >= (\d+) and rc >= (\d+)', m_fn.group(0))
+    if not p_cr:
+        print('❌ _cum_enter 술어 추출 실패(daily_health.py) — followEnters 미러 형태가 바뀌었다'); return 1
+    want, got = (m_cr.group(1), m_rc.group(1)), (p_cr.group(1), p_cr.group(2))
+    if want != got:
+        print('❌ followEnters 크로스랭귀지 드리프트: viewer(cross≥%s·rc≥%s) ≠ daily_health _cum_enter(cross≥%s·rc≥%s)'
+              % (want + got)); return 1
+    print('✅ followEnters 패리티 — viewer(cross≥%s ∧ rc≥%s) = daily_health _cum_enter 동일.' % want)
+    return 0
+
+
 # ── 시간축 계약 픽스처(고정·상대시각) — 케이스별 (라벨, published 오프셋h, first_seen 오프셋h, report_count, 기대 채택원) ──
 # 라이브 candidates.json 미사용 = 판정 결정성 확보(스크래퍼 자동커밋 데이터로 코드 게이트가 오발하면 안 됨).
 _SCTS_CASES = [
@@ -4539,6 +4568,11 @@ def main():
             rc = 1
     except Exception as e:
         print('❌ check_fast_max_h_parity 예외(fail-closed):', e); rc = 1
+    try:
+        if check_follow_enters_parity() != 0:   # followEnters viewer↔daily_health 크로스랭귀지 패리티(하드 게이트·fail-closed·260805) — 갈리면 묻힘 계기판이 조용히 거짓 보고
+            rc = 1
+    except Exception as e:
+        print('❌ check_follow_enters_parity 예외(fail-closed):', e); rc = 1
     try:
         if check_sc_ts_contract() != 0:   # scTs 시간축 계약 실행 대조(하드 게이트·fail-closed — 나이 판정 뒤집힘 = 신규↔누적 분배·랭킹 붕괴·260725 Q522 회귀발)
             rc = 1

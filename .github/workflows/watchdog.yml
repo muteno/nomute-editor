@@ -56,6 +56,17 @@ jobs:
         # 30분 타이머인 이 워크플로가 상시 갱신 = 운영자 행동과 무관하게 알림이 살아있다. 실패 = 무시(fail-open).
         run: python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 스킵"
 
+      - name: 묻힘 감시(중요한 게 화면에서 사라졌나 · 260805)
+        # §1 "중요한 게 묻히면 안 됨"의 자동감시. 발단(260805 8인 평의회 통합관) = 이 계측을 담은
+        # scraper/daily_health.py 가 ⓐ 워크플로 어디에도 등재되지 않은 **수동 전용**(전수 grep 호출 0건)
+        # ⓑ 그나마 국제·외신 스코프 필터라 국내 사건은 계측 밖 — 즉 「4h+ 인데 누적 칼럼에서 사라진 대형」을
+        # 운영자 눈이 유일하게 검출하고 있었다(실측: 국제만 g2 13건 vs 전 카테고리 76건 = 63건 사각).
+        # 30분 타이머 편승 = 새 판정 로직 0·LLM 0콜·candidates 읽기만. 킬스위치 = BURIED_ALERT=0.
+        # fail-open(|| echo) — rc≠0 이 아래 원장 커밋 스텝을 죽여 방금 찍은 도장이 증발하는 사고 차단.
+        env:
+          BURIED_ALERT: ${{ vars.BURIED_ALERT }}
+        run: python3 scraper/daily_health.py --buried-alert || echo "::warning::묻힘 감시 스킵"
+
       - name: 쿨다운 원장 커밋(변동 시만)
         run: |
           git config user.name "nomute-bot"
