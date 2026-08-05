@@ -293,6 +293,13 @@
   #go::before { content:''; position:absolute; left:0; right:0; top:-9px; bottom:-9px; }   /* 탭존 45px(시각 27 불변) = 44px 관례 복원(평의회3 260718 "27px = 관례 61%") · raw-ok: ±9 = .rm 히트슬롭 정본 동값 */
   /* 축약 = 제작 버튼 안 좌측 오버레이(별도 행 제거·행 절약 · /1·/2만 표시) — 버튼 형제라 클릭 충돌 0·textContent 상태머신 무영향 */
   .gowrap { position:relative; }
+  /* ── 발사 = 미리보기 창 **안** 세로 85% 오버레이(운영자 260806 "생성버튼 항상 사진 미리보기 부분 85%에 위치 · 사진 위에 오버레이 중첩") ──
+     앵커 = 미리보기 창 자신(.cpprev-box · 이미 position:relative) = 창의 폭·좌표를 **자동 추종**한다 → 표면별 계산값 0(창이 커지든 2단이든 85%는 언제나 그 창의 85%) = 2셸 10탭 드리프트 0.
+     세로 = 창 높이의 85%가 버튼 **중심**(translateY −50% · 구 「창 아래 12px」 흐름 배치 폐지) · 좌우 여백 = --sp-2(구 미리보기↔버튼 gap 동값 계승 = 신규 값 0)
+     · z4 = 창 안 레이어 다음 단(#iePrev z1 · .cpv-tool z2 · 합성중 딤 z3) = 발사가 항상 맨 위.
+     ⚠ 버튼 자신의 기하·스킨(h30 · r22 · fs13 · 테두리 .08 · 면 .02 · blur8 = FIRE_CANON 6축)은 **무접촉** = smoke_studioshell C7 고정정본 유지 · 창은 overflow:hidden이라 히트슬롭(#go::before ±9)만 클립(시각·히트 30px 불변). */
+  .cpprev-box > .pvfire, .mon > .pvfire { position:absolute; left:var(--sp-2); right:var(--sp-2); top:85%; width:auto /* left+right가 폭을 정한다 — 발사행이 **버튼 자신**인 판(index #geniGo·vd #go)은 `.go{width:100%}`가 right를 무시해 창 안쪽 전폭이 되던 것 봉합(실측 205 vs 형제 181) */; transform:translateY(-50%); z-index:4; margin:0; }
+  .cpprev-box > .pvfire .go, .mon > .pvfire .go, .cpprev-box > .pvfire.go, .mon > .pvfire.go { margin:0; }   /* 흐름 시절 상단 마진(.go{margin-top:16}·영상 2) 상쇄 = absolute top에 더해지던 오프셋 소거 */
   label.chk.go-abbr { position:absolute; left:calc(100% / 5); top:50%; transform:translate(-50%, -50%); z-index:2; margin:0; gap:6px; font-size:14px; font-weight:600; line-height:1; color:var(--accent); -webkit-tap-highlight-color:transparent; }   /* 배경 없음·버튼 가로 1/5·수직 중앙·글자크기=버튼 텍스트(14px) · ⚠️ 특이도 = label.chk(0,1,1) 스코프 승격과 짝 필수 — 260706 .chk→label.chk 승격 때 이 오버라이드(0,1,0)가 전부 패배해 축약이 24px 흰 박스로 커지고 중앙서 14px 흘러내림("날라다님" 진범) → label.chk.go-abbr(0,2,1)로 재승리 */
   label.chk.go-abbr .cbox, label.chk.go-abbr .ackm { flex:none; }   /* 체크박스 찌그러짐 방지 */
   label.chk.go-abbr .cbox { width:14px; height:14px; border-radius:5px; }   /* 축약 글자(14px) 높이와 동일·수직중앙 */
@@ -954,6 +961,11 @@
         <div class="cpprev-wait" id="cpPrevWait" hidden><span class="nm-load" data-orb="solving" data-label="제작중…"></span><span class="cpw-sec nm-shim" id="cpPrevSec"></span></div><!-- orb 로더(Solving · 운영자 260723 Q460) = 선언형 자동수화 · 경과 cpw-sec 유지 -->
         <!-- 편집(비율·모자이크·해상도) 미리보기 = 같은 쉘 안(운영자 260718 "미리보기 모든 PHASE 2에 반영") — rszPreview() 셀렉터(#rszStage·#rszMetric) 불변 · 카드 생성=#cpPrevStage / 편집+사진=#iePrev 스왑(renderCpPrev 전담) · 교체·삭제(.cpv-tool)는 양 모드 공유 -->
         <div id="iePrev" class="none"><div class="rsz-stage" id="rszStage"></div><div class="rsz-metric" id="rszMetric"></div></div>
+        <!-- 발사 = 미리보기 창 **안** 85% 오버레이(운영자 260806) — 구 거처 = 도크 하단 발사행(#makeRow) · DOM·id·클래스·핸들러 전부 원문 그대로 옮겼다(레일 이주 260802 선례 문법) = 발사 로직·게이지·상태머신 무접촉 · 위치·폭은 위 `.cpprev-box > .pvfire` 한 규칙이 전담 -->
+        <div class="gowrap pvfire">
+          <button class="go" id="go">생성</button>
+          <label class="chk go-abbr" id="abbrBox" title="이 → 李 · 윤 → 尹 · ... → ⋯"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약</label>
+        </div>
       </div>
         <!-- 사진 교체·삭제 = 구 우측 슬롯(#cImgSlot) 기능 이주(운영자 260716) — 교체 = #cFile 위임(사진 입구 단일화 260713) · 삭제 = 슬롯 _reset 위임(store·게이트·재렌더 한 축) · 노출 = renderCpPrev(변형 렌더 시 교체 상시·삭제 = 사진 있을 때) -->
         <!-- 픽토 = **상태 분기**(운영자 260802 "첫 첨부 전에는 교체가 아니라 이미지 첨부 픽토그램") — 사진 없음 = 사진 첨부(.cpv-photobtn/PHOTO 정본 동일 SVG·stroke 1.5) / 사진 있음 = 교체 양방향 화살표(index RT_SVG 정본·stroke 2 = 옆 휴지통 동값) · 전환 = cpToolSync(CIMG.b64 기준 · data-mode) · 아래 마크업 = 초기(빈) 상태 = 첨부 픽토 -->
@@ -999,10 +1011,7 @@
           <input type="file" accept="image/*" id="file" style="display:none">
         </label>
       </div>
-      <div class="gowrap">
-        <button class="go" id="go">생성</button>
-        <label class="chk go-abbr" id="abbrBox" title="이 → 李 · 윤 → 尹 · ... → ⋯"><input type="checkbox" id="abbr" checked><span class="cbox" aria-hidden="true"><svg class="ackm" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="sc-dash" d="M6 12h12"/><path class="sc-chk" d="M5 13l4 4L19 7"/></svg></span> 축약</label>
-      </div>
+      <!-- (구 발사 슬롯 .gowrap = 미리보기 창 안 85% 오버레이로 이주 · 운영자 260806 — 잔해를 남기지 않는다(중복 id = 좀비 셀렉터 사고원 · 레일 이주 260802 주석 동문) · 이 행엔 앱5 배경 이미지 슬롯만 남는다) -->
     </div>
     <div class="spellchips" id="spellChips" hidden></div>
     </div><!-- /.topdock -->

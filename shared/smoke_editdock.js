@@ -67,7 +67,8 @@ async function runOnce(browser, port) {
     const probe = y => { const el = document.elementFromPoint(gr.left + gr.width / 2, y); return el ? (el === go ? 'self' : (el.closest && el.closest('button,a,input,textarea,select,[role=button]') ? 'steal:' + (el.id || el.className) : 'inert')) : 'none'; };
     return {
       font: cs('body').fontFamily.includes('Pretendard Variable') && cs('body').letterSpacing === '-0.2px' && document.fonts.check("13px 'Pretendard Variable'"),
-      dockKids, goTriple: [cs('#editGo').borderRadius, cs('#editGo').paddingTop, cs('#editGo').fontSize].join('/'), goLabel: go.textContent.trim(),
+      dockKids, fireInBox: !!go.closest('.cpprev-box'),   /* 발사 거처 = 미리보기 **창 안**(운영자 260806 85% 오버레이 이주) — 구 「도크 직계 형제」 축의 후신 */
+      goTriple: [cs('#editGo').borderRadius, cs('#editGo').paddingTop, cs('#editGo').fontSize].join('/'), goLabel: go.textContent.trim(),
       stripBox: [cs('#optStrip').backgroundColor, cs('#optStrip').borderRadius, cs('#editSpec').fontSize].join('/'),
       stripInRail: (() => { const rail = document.querySelector('.pvsec #cpRail'); return !!(rail && strip && rail.contains(strip)); })(),   /* 앵커 = **옵션 캡슐(#cpRail)** — 260803 통일로 레일이 카드 제작 정본과 같은 2캡슐 구조[돋보기 #cpZoomRail → 옵션 #cpRail]가 되면서 `.pvsec .trail` 첫 매치가 돋보기 캡슐로 바뀌었다(값 칩은 옵션 캡슐 소속) */
       railFlush: (() => {   // 레일 = 창 **밖 우측**·간격 8·상변 정렬(운영자 260802 2차 규격 · 이미지 스튜디오 정본 동일)
@@ -153,7 +154,12 @@ async function runOnce(browser, port) {
     // C2·C3 계약 갱신(운영자 260802 "영상도 동일하게해줘" — 이미지 스튜디오 260802 코너 옵션 레일 이주분의 영상 확장):
     //   구 계약 = 도크 자식 [미리보기 → 하단 옵션 스트립 → 발사바] · 스트립 = 검정 박스(#000/9px)·폭 = 발사바 동일.
     //   신 계약 = 스트립이 **미리보기 창 코너 레일 안**으로 들어갔다 → 도크 자식은 [미리보기 → 발사바] · 스트립 셸은 투명 값 칩 그룹.
-    ck('C2 도크 순서 pvsec→firebar(옵션 스트립 = 미리보기 코너 레일로 이주)', /pvsec.*firebar/.test(r1.dockKids) && !/optstrip/.test(r1.dockKids), r1.dockKids);
+    //   260806 재개정(운영자 "생성버튼 항상 사진 미리보기 부분 85%에 위치 · 사진 위에 오버레이 중첩"):
+    //   발사바가 한 걸음 더 들어가 **미리보기 창(.cpprev-box) 안 85% 오버레이**가 됐다 → 도크 직계에서 firebar가 사라지는 게 정본.
+    //   구 판정(/pvsec.*firebar/)을 그대로 두면 이 이주가 곧 FAIL이라 축을 「창 안에 있는가」로 옮긴다(스트립 이주 때와 같은 문법 = 거처 검문).
+    ck('C2 발사 거처 = 미리보기 창 안 85% 오버레이(도크 직계 = pvsec 선두 · 스트립·발사바 둘 다 창 안으로 이주)',
+      r1.fireInBox && r2.fireInBox && /^>?pvsec/.test(r1.dockKids) && !/optstrip/.test(r1.dockKids) && !/firebar/.test(r1.dockKids),
+      'inBox=' + r1.fireInBox + ' · dock=' + r1.dockKids);
     ck('C3 스트립 = 코너 레일 값 칩 그룹(투명·radius 0·10.5px) + 레일 = 창 밖 우측 간격 8·상변 정렬(Δ≤0.5px)',
        r1.stripInRail && r1.stripBox === 'rgba(0, 0, 0, 0)/0px/10.5px' && !!r1.railFlush && Math.abs(r1.railFlush[0] - 8) <= 0.5 && Math.abs(r1.railFlush[1]) <= 0.5,
        r1.stripBox + ' · inRail=' + r1.stripInRail + ' · flush=' + JSON.stringify(r1.railFlush));
