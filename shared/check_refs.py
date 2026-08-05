@@ -2645,6 +2645,22 @@ def check_result_rail_parity():
         if not m or 'hist-grid' not in txt:
             continue
         surfaces.append((_os.path.basename(f), txt, m.start()))
+    # 영상 스튜디오 = 마크업 사본 대신 **부품 상속**(nm-rail.js) — 정적 마크업이 없으므로 상속 3줄로 판정한다(운영자 260806 "영상끼리도 저렇게 공유")
+    CAP_SURFACES = ['edit.html', 'sb.html', 'k.html', 'song.html', 'vd.html']
+    cap_bad = []
+    for name in CAP_SURFACES:
+        fp = _os.path.join(ROOT, 'viewer', name)
+        try:
+            txt = open(fp, encoding='utf-8').read()
+        except Exception:
+            cap_bad.append(name + ': 파일 없음'); continue
+        miss = []
+        if not _re.search(r'<link[^>]+href="nm-hist\.css"', txt): miss.append('nm-hist.css 링크')
+        if not _re.search(r'<link[^>]+href="nm-job\.css"', txt): miss.append('nm-job.css 링크')
+        if not _re.search(r'<script[^>]+src="nm-rail\.js"', txt): miss.append('nm-rail.js 상속(레일 부품 SSOT)')
+        if 'data-scope="cap"' not in txt: miss.append('data-scope="cap"(사진↔영상 결과 격리 선언)')
+        if miss:
+            cap_bad.append(name + ': ' + ' · '.join(miss))
     if not surfaces:
         print('❌ 결과 레일 세트 게이트 — 대상 표면 0(시그니처 소실 = fail-closed · 헤더 클래스·id 개명 시 이 게이트를 같이 고쳐라)')
         return 1
@@ -2665,13 +2681,15 @@ def check_result_rail_parity():
                 miss.append('요약 줄↔타일 거리 %d자 > %d(세트가 갈라짐)' % (gpos - jpos, WIN))
         if miss:
             bad.append(name + ': ' + ' · '.join(miss))
-    if bad:
+    if bad or cap_bad:
         print('❌ 결과 레일 세트 게이트 — 부품 누락(결과 = 요약 줄 + 개별 썸네일 한 세트 · 260806):')
-        for b in bad:
-            print('   · ' + b)
+        for x in bad:
+            print('   · [이미지·정적] ' + x)
+        for x in cap_bad:
+            print('   · [영상·상속] ' + x)
         rc = 1
     else:
-        print('✅ 결과 레일 세트 게이트 — %d표면 전부 세트 보유(nm-hist·nm-job 링크 + 타일 바로 위 요약 줄 · 면책표 없음).' % len(surfaces))
+        print('✅ 결과 레일 세트 게이트 — 이미지 %d표면(정적 세트) + 영상 %d표면(nm-rail.js 상속·cap 스코프) 전건 보유 · 면책표 없음.' % (len(surfaces), len(CAP_SURFACES)))
     return rc
 
 
