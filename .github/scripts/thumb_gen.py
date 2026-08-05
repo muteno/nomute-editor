@@ -199,6 +199,76 @@ def lib_buckets(dispatch):
 _SHOT_RE = re.compile(r"\b(wide|close[- ]?up|medium|long shot|full[- ]?shot|extreme|macro|tight|choker|"
                       r"bird'?s[- ]?eye|top[- ]?down|overhead|god'?s[- ]?eye|aerial|high[- ]?angle|cowboy)\b", re.I)
 
+# 정면 어휘 검출(260805) — 「평면 탈피」 꼬리절이 **무조건** 붙어 AG 정면 코드와 같은 줄에서 자기모순을 만들던 축.
+# 실측(cards/*/thumbs/prompts.json 236건) = 15건(6%)이 "front-on … symmetrical and unflinching, …,
+# not a flat head-on composition" = 한 줄 안에서 정면을 지시하고 정면을 금지한다 → 모델이 둘을 평균내
+# 어중간한 각도로 도망간다. 처방 = 거리 병기(_SHOT_RE)와 **같은 조건부 문법**으로 이관(검증3 "무조건 병기 금물" 계승).
+_FRONTAL_RE = re.compile(r"front[- ]?on|head[- ]?on|straight[- ]?on|symmetr|frontal|dead[- ]?cent|"
+                         r"(?:directly |direct gaze )?into the camera", re.I)
+# 정면이 아닌 경우(기본) = 평면 고착을 푸는 종전 문구 / 정면인 경우 = 그 정면을 확신 있게 유지시키는 긍정문(부정 0).
+_CAM_TAIL_FREE = (", a frozen split-second; choose an expressive viewpoint — three-quarter, profile, "
+                  "over-the-shoulder or a subtle height shift as the emotion demands, not a flat "
+                  "head-on composition (eye-level dignity does not mean flatness)")
+_CAM_TAIL_FRONT = (", a frozen split-second; commit fully to this direct frontal framing — hold the gaze "
+                   "steady and unflinching, at eye level, with the subject filling the frame")
+
+# SCENE 우선 위계(260805) — GOVERNING·STYLE 뒤에 연출 버킷이 6~8줄 붙는데(실측 STAGING 보유 89%),
+# 각 줄이 자기 장면·소품·동작을 암시해 SCENE과 경합하면 모델은 '평균'을 그린다(= 어느 사건도 아닌 그림).
+# 라이브러리 버킷은 이미 'adapt this motif' 래핑이 있지만 CAMERA·LIGHT·EXPRESSION엔 그 래핑이 없었다 →
+# 「아래 줄은 전부 '어떻게'만 말한다」를 SCENE 직후에 한 줄로 못박아 위계를 세운다(프롬프트 위계 = 나열보다 준수율↑).
+SCENE_PRIME = ("SCENE IS THE GROUND TRUTH — every line below only tells you HOW to shoot or draw this exact "
+               "moment. Where a line below implies a different subject, place, prop or action, keep SCENE and "
+               "take only the tone, angle, light or framing from that line.")
+
+# 감정 메타어 세척(260805) — frontmatter emotion은 "1순위 감정 + 왜 거기서 멈추는지"라는 **작성 지시**를 받아서
+# 값에 'N순위'·'포지셔닝'·'독자'·'스크롤' 같은 **집필 메타어**가 그대로 붙어 온다. 실측 = MOOD 보유 236건 중
+# 140건(59%)이 "기대·호기심이 1순위"·"의구심·냉소 1순위" 꼴 → 이미지 모델에 "1순위"는 감정이 아니라 순위표 어휘 =
+# 순수 노이즈(라벨이 "the reader's dominant emotion"이라 더 헷갈린다). 감정어만 남기고 전부 절삭.
+_MOOD_META = re.compile(r"\s*(?:제?\s*\d+\s*)?순위\s*|\s*포지셔닝\s*|\s*독자(?:가|는|의)?\s*|\s*스크롤(?:이|은)?\s*")
+def _mood_clean(emo):
+    """emotion frontmatter → 감정어만(집필 메타어·설명절 제거). 남는 게 없으면 빈 문자열 = MOOD 줄 생략."""
+    v = re.split(r"\s*[—–-]\s", emo or "")[0].strip()      # 첫 절만(종전 동작 보존 — 뒤 설명 산문은 단일 프레임에 노이즈)
+    v = _MOOD_META.sub(" ", v)
+    v = re.sub(r"\s+", " ", v).strip(" ,·+")
+    v = re.sub(r"(?:이|가|은|는|을|를|과|와)$", "", v).strip()   # 메타어를 걷어내며 남은 조사 꼬리
+    return v
+
+# 주체(인물) 추출(260805) — likeness 화풍(극화)의 SUBJECT 줄에 **한줄요약 문장 통째**가 실리던 축.
+# 실측 = webtoon 237건 중 233건(98%)이 35자 초과 = "이재명 대통령이 8월 5일 청와대 영빈관에서 … 주문했다." 꼴.
+# 라벨은 "draw this public figure's REAL face"인데 값은 **날짜·장소·발언이 든 제2의 장면 서술** →
+# ⓐ 그릴 얼굴의 이름이 안 잡히고 ⓑ 그 문장의 장소(청와대 영빈관)가 SCENE의 장소(창 없는 대형 홀)와 경합한다.
+# 처방 = 「이름 + 직함」만 뽑아 넘기고, 못 찾으면 **줄 자체를 생략**(문장 통째 주입 금지 = 회귀 0).
+# ⚠️ 직함은 **공인 얼굴 지시가 실제로 성립하는 것만** — '기자·작가·가수·배우·선수·교수·군수·씨' 류 일반명사
+#    충돌 직함을 넣으면 "추리소설 작가"·"오전 미국 군수" 같은 명사구가 인명으로 잡힌다(260805 실측 오탐).
+_TITLES = ("국무총리", "부총리", "총리", "대통령", "장관", "차관", "청장", "처장",
+           "도지사", "교육감", "시장", "지사", "원내대표", "위원장", "대표", "의원",
+           "회장", "사장", "감독", "검사", "판사", "대변인")
+# 성씨 사전(빈도 상위) — 인명 후보의 첫 글자 게이트. 없으면 일반명사구가 그대로 인명으로 통과한다
+# (실측 '연례 시장'·'단체 … 대표'·'추리소설 작가'). ⚠️ 희귀 성씨는 놓친다 = SUBJECT 줄 생략(안전측 실패).
+_SURNAME = set("김이박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노하곽성차주우구원")
+# 접미가 조직·직위 자체인 첫 토큰(정당·부처·기관명)은 인명이 아님 = 배제(얼굴 지시에 기관명이 실리는 오염 차단).
+_ORG_TAIL = re.compile(r"(당|힘|부|처|청|원|회|사|실|국|과|팀|단|시|도|군|구|교|소|점)$")
+# 조사가 붙은 토큰 = 일반명사구(‘개표에서’·‘책임을’·‘선관위가’) = 인명 아님. ⚠️ 한계 = ‘김지은’처럼 조사 글자로
+# 끝나는 실제 인명은 놓친다 → 그때는 SUBJECT 줄이 생략될 뿐(문장 통째 주입보다 나쁘지 않다 · 참조얼굴 첨부는 불변).
+_JOSA_TAIL = re.compile(r"(이|가|은|는|을|를|에|의|로|서|도|와|과|만|라|며|고|들|한|된|해)$")
+_REGION = {"서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원",
+           "충북", "충남", "전북", "전남", "경북", "경남", "제주", "수도권", "지방"}
+# ⓐ 앞 경계 lookbehind = ‘경기·전북 교육감’의 ‘전북’ 같은 어중 절단 차단 · ⓑ 중간 토큰 non-greedy = 직함을
+#    최단으로 물어 ‘…장관을 국무총리’ 식 과다 포획 차단 · ⓒ 뒤 경계 = 직함에 조사가 붙어 흘러넘치는 것 차단.
+_SUBJ_RE = re.compile(r"(?<![가-힣·])([가-힣]{2,4})\s+((?:([가-힣A-Za-z0-9·]{1,10})\s+)?(?:"
+                      + "|".join(sorted(_TITLES, key=len, reverse=True)) + r"))(?![가-힣]{2})")
+def _subject_name(lead):
+    """한줄요약 → "이재명 대통령"·"허영 더불어민주당 의원" 같은 **인명+직함**만. 못 찾으면 ""(= SUBJECT 줄 생략).
+    게이트 4겹 = 성씨 사전 · 조사꼬리 · 조직접미/지역명 · 소속 토큰의 조사꼬리(‘장관을 국무총리’ 식 과다 포획 차단)."""
+    for m in _SUBJ_RE.finditer(lead or ""):
+        name, org = m.group(1), (m.group(3) or "")
+        if name[0] not in _SURNAME or _ORG_TAIL.search(name) or _JOSA_TAIL.search(name) or name in _REGION:
+            continue
+        if org and _JOSA_TAIL.search(org):
+            continue
+        return re.sub(r"\s+", " ", (name + " " + m.group(2)).strip())[:24]
+    return ""
+
 # 만평 전용 지배조건(운영자 260703 — "만평은 사건이 아니라 시사점 위주"): 사건 재현 금지·시사점을 한 컷 은유로.
 GOVERNING_SATIRE = (
     "EDITORIAL CARTOON — one single-panel metaphorical scene that makes the INSIGHT below land in a single "
@@ -304,13 +374,17 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
     lines = [GOVERNING, "STYLE: " + look + ((", " + b["style"]) if b.get("style") else "")]
     if scene:
         lines.append("SCENE: " + scene)
+        lines.append(SCENE_PRIME)   # 아래 연출 줄은 전부 '어떻게'만 — 장면 경합 시 SCENE 승(260805 위계 봉합)
     if hook:
         # 가드(검증3): hook이 SCENE 밖 개체·제2 장면을 주입하거나 글자로 렌더되지 않게 라벨에 못박음.
         lines.append("HOOK (the idea this one image must convey — do not add elements beyond SCENE, "
                      "never render these words as text): " + hook)
     if emotion:
-        # 첫 절만(— 뒤 "스크롤이 멎고…" 류 독자심리 메타·감정 시퀀스 산문 = 단일 프레임에 노이즈 · 검증3).
-        lines.append("MOOD (the reader's dominant emotion): " + re.split(r"\s*[—–-]\s", emotion)[0].strip())
+        # 첫 절만(— 뒤 "스크롤이 멎고…" 류 독자심리 메타·감정 시퀀스 산문 = 단일 프레임에 노이즈 · 검증3)
+        # + 집필 메타어('N순위'·'포지셔닝') 절삭(260805 실측 59% 오염 · _mood_clean). 남는 게 없으면 줄 생략.
+        _mood = _mood_clean(emotion)
+        if _mood:
+            lines.append("MOOD (the reader's dominant emotion): " + _mood)
     cam = b.get("camera")
     if cam_lock or not cam:
         # cam_lock = 화풍이 카메라를 잠금(수채화 = 항상 초근접 · 운영자 260703 — dispatch 각도보다 화풍 정체성 우선).
@@ -321,9 +395,9 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         cam = cam + ", " + cam_default.split(",")[0].strip()
     # 평면 탈피(운영자 260703 "전부 카메라가 평면") — 눈높이(윤리)는 존엄이지 정면 평면이 아님을 명시:
     # 감정에 맞는 시점(3/4·측면·어깨너머·살짝 높낮이)을 고르게 해 밋밋한 정면 구도 고착을 푼다.
-    lines.append("CAMERA: " + cam + ", a frozen split-second; choose an expressive viewpoint — three-quarter, "
-                 "profile, over-the-shoulder or a subtle height shift as the emotion demands, not a flat "
-                 "head-on composition (eye-level dignity does not mean flatness)")
+    # ⚠️ 260805 봉합 = dispatch가 **정면을 명시**했으면(AG 정면 코드) 이 꼬리절이 같은 줄에서 정면을 금지해
+    #    자기모순이 된다(실측 6%) → 거리 병기와 동일한 조건부로 이관, 정면 건은 그 정면을 굳히는 긍정문으로 교체.
+    lines.append("CAMERA: " + cam + (_CAM_TAIL_FRONT if _FRONTAL_RE.search(cam) else _CAM_TAIL_FREE))
     if b.get("focus") and not cam_lock:
         lines.append("FOCUS (distance & crop of the key subject, adapt this to the scene above, "
                      "do not copy its literal props): " + b["focus"])
@@ -332,7 +406,16 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
     if b.get("staging"):
         lines.append("STAGING (adapt this motif to the scene above, do not copy its literal props): " + b["staging"])
     if b.get("expression"):
-        lines.append("EXPRESSION & ACTION: " + b["expression"])
+        # 카메라 응시 중복 절삭(260805 실측 10%) — EM 코드가 "looking directly into the camera, steady
+        # unwavering eye contact"처럼 **CAMERA 줄이 이미 말한 시선**을 다시 지시하면, 같은 지시가 두 번
+        # 실려 표정 축(분노·비통·굳은 입술)이 밀려난다. CAMERA가 정면일 때만 시선 절만 빼고 표정은 보존.
+        _exp = b["expression"]
+        if _FRONTAL_RE.search(cam):
+            _keep = [p.strip() for p in _exp.split(",")
+                     if p.strip() and not re.search(r"(?:in)?to the camera|eye contact", p, re.I)]
+            _exp = ", ".join(_keep)
+        if _exp:
+            lines.append("EXPRESSION & ACTION: " + _exp)
     # 해부학·개연성 락(260727) — 연출 버킷(카메라·초점·조명·연출·표정) *뒤*, 운영자 wish·FRAME *앞*.
     # 버킷들이 서로 다른 동작·소품을 요구해 사지가 충돌하는 지점이 바로 여기라 마지막 정리 절로 놓는다.
     # illustration 미지정이면 likeness가 곧 일러스트 계열 신호(webtoon·watercolor=True / photo=False).
@@ -341,8 +424,11 @@ def build_prompt(look, cam_default, scene, dispatch="", wish="", hook="", emotio
         lines.append("EXTRA DIRECTION (operator request, apply where possible): " + wish)
     if likeness and subject:
         # 닮음은 이름이 있어야 성립(장면 텍스트는 "40대 남성 정치인" 식 익명 — 한줄요약으로 주체 명시 · 운영자 260703).
-        lines.append("SUBJECT (who this scene is about — draw this public figure's REAL face, "
-                     "a faithful portrait of the actual person): " + subject)
+        # ⚠️ 260805 봉합 = 여기 들어오는 값은 **인명+직함**만(호출부 _subject_name) — 한줄요약 문장 통째는
+        #    제2의 장면(날짜·장소·발언)을 주입해 SCENE과 경합했다(실측 98%). 이름을 못 뽑으면 줄 자체가 없다.
+        lines.append("SUBJECT (the public figure this scene is about — draw the protagonist as a faithful "
+                     "portrait of this real person's face; everything about the moment still comes from "
+                     "SCENE): " + subject)
     lines.append(_frame(foreign, likeness))
     lines.append(_avoid(likeness))
     if wish:
@@ -965,7 +1051,7 @@ def process_one(md, stem):
                                       hook=extras.get("hook", ""), emotion=extras.get("emotion", ""),
                                       foreign=extras.get("foreign", False),
                                       cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""),
-                                      likeness=like, subject=(lead if like else ""))
+                                      likeness=like, subject=(_subject_name(lead) if like else ""))
             # 참조 체이닝(THUMB_REF · 극화·수채만) — 대표 실사진을 첨부하고 "이 얼굴로 그려라" 프리픽스(앞=최우선).
             #   ⚠️ 안전 하한: 사인·피해자·미성년이면 익명 유지(모델 판단 지시) — photo는 애초 REF 대상 아님·cartoon은 이번 제외.
             use_ref = ref_face if (REF_ON and sid in ("webtoon", "watercolor")) else None
