@@ -1,0 +1,133 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>260805 이미지 스튜디오 리빌 레이스 전/후 + 셸 부팅 지연 진단</title>
+<style>
+:root{--bg:#0b0f12;--card:rgba(255,255,255,.045);--line:rgba(255,255,255,.10);--tx:#e8eef0;--mut:#8fa0a6;--ac:#00EED2;--warn:#ffcf5c}
+*{box-sizing:border-box}
+body{margin:0;padding:30px 22px 64px;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif}
+h1{font-size:21px;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--mut);font-size:13px;line-height:1.75;margin-bottom:24px}
+section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 22px;margin-bottom:18px}
+h2{font-size:15px;margin:0 0 10px;color:var(--ac);letter-spacing:-.01em}
+h3{font-size:13px;margin:18px 0 8px}
+p{font-size:12.5px;line-height:1.8;margin:0 0 10px;color:#cfdadd}
+b{color:#fff}
+.tag{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px;margin-right:7px}
+.tag.b{background:rgba(255,255,255,.09);color:#b9c6ca}
+.tag.a{background:rgba(0,238,210,.16);color:var(--ac)}
+figure{margin:0}
+figcaption{font-size:11px;color:var(--mut);text-align:center;margin-bottom:6px;line-height:1.6}
+img{width:100%;display:block;border:1px solid var(--line);border-radius:10px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+@media(max-width:860px){.two,.three{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0 2px;font-variant-numeric:tabular-nums}
+td,th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-weight:700}
+tbody tr:last-child td{border-bottom:none}
+code{font-size:11.5px;background:rgba(255,255,255,.06);border-radius:5px;padding:1px 5px;color:#d8e6e9}
+.ok{color:var(--ac);font-weight:800}.bad{color:#ff8080;font-weight:800}
+.note{border-left:3px solid var(--warn);background:rgba(255,207,92,.07);border-radius:0 10px 10px 0;padding:10px 13px;font-size:12px;line-height:1.75;margin-top:12px}
+</style></head><body>
+
+<h1>260805 이미지 스튜디오 「깨진 화면 3.2초」 전/후 + 셸 부팅 지연 진단</h1>
+<div class="sub">
+운영자 지시 — 「지금 일단 화면을 열때, 굉장히 로딩이 느려졌어. 문제 확실히 잡아주고, 이미지 스튜디오 열때, 첨부1의 화면이 나왔다가 지연된 다음 정상 출력이되는데 코드 뜯어서 확인 좀 해줘.」<br>
+계측 = 헤드리스 크로미엄 CDP 스크린캐스트 · 폰 실조건(430×932 · 4G 1.6Mbps/90ms RTT · CPU 4배 스로틀) · 라이브 코드 무접촉(페이지 전역 <code>openTool</code>만 호출).
+</div>
+
+<section>
+  <h2>① 이미지 스튜디오 — 무엇이 문제였나 (실측)</h2>
+  <p>운영자 첨부1은 <b>버그 화면이 아니라 「아직 완성되지 않은 화면을 부모가 먼저 보여준 것」</b>이다. 원인은 <b>두 타이밍이 어긋난 레이스</b> 하나다.</p>
+  <table>
+    <thead><tr><th>축</th><th>거는 곳</th><th>실측 시각(클릭=0)</th></tr></thead>
+    <tbody>
+      <tr><td>프레임 노출(<code>.ready</code> = opacity 0→1)</td><td><code>frEarly</code> — 자식 문서에 <b>뭐라도 그려지면</b> 즉시</td><td>527ms</td></tr>
+      <tr><td>부모 주입(<code>thumbTabBridge</code> = 내부 <code>#tabs</code> 숨김 + <code>.panel</code> −18)</td><td><code>bindToolFrameLoad</code> — iframe <b><code>load</code></b>(마지막 하위 리소스까지)</td><td>3,774ms</td></tr>
+      <tr><td colspan="2"><b>그 사이 = 반쪽 화면이 그대로 노출된 구간</b></td><td class="bad">3,247ms</td></tr>
+    </tbody>
+  </table>
+  <p>그래서 첨부1엔 <b>탭바가 두 줄</b>이다. 둘째 줄(카드 제작·편집·AI 생성·특수 = <b>번역이 빠진 4개</b>)이 <code>thumb.html</code> <b>자체</b> 탭바 — 부모로 승격되기 전 원본이라 번역 탭이 없다. 이게 곧 「부모 주입이 아직 안 왔다」는 지문이다.</p>
+  <p>나머지 절반은 <b>어디까지 파싱됐느냐</b>다. <code>thumb.html</code>(663KB)은 마크업이 27.8~35.1% 구간이고 <b>나머지 65%가 인라인 <code>&lt;script&gt;</code> 430KB</b> — 도크·폼을 그 스크립트가 만든다. 마크업만 파싱된 순간 노출되니 도크·입력폼 없이 <b>결과(0)·이전 제작(0) 뼈대만</b> 뜬다.</p>
+  <div class="note"><b>왜 지금 터졌나</b> — <code>frEarly</code>(260725 「일단 틀 띄워놓고」)의 주석은 정본을 「<code>readyState</code>가 <code>loading</code>을 벗어나는 순간 = DOMContentLoaded = <b>인라인 스크립트까지 실행 완료</b> = 틀 완성」이라 선언해 놓았는데, 실제 조건은 그보다 앞선 「뭐라도 그려졌으면 통과」였다. 선언과 구현이 갈라진 자리에 <code>thumb.html</code>처럼 <b>틀을 스크립트가 만드는</b> 문서가 들어오면서 드러난 것.</p></div>
+</section>
+
+<section>
+  <h2>② 처방 — 노출 전에 주입한다 + 틀이 완성될 때까지 3초 기다린다</h2>
+  <table>
+    <thead><tr><th>변경</th><th>내용</th></tr></thead>
+    <tbody>
+      <tr><td><code>frPreReveal()</code> 신설</td><td><b><code>.ready</code>를 붙이는 모든 경로</b>(<code>frEarly</code> · 워치독 fail-safe)가 노출 <b>직전</b> <code>thumbTabBridge</code>를 통과 → 중복 탭바가 한 프레임도 안 그려진다. idempotent(기존 <code>load</code> 경로는 폴백으로 무접촉 존치).</td></tr>
+      <tr><td><code>FR_DCL_TICKS = 30</code></td><td>「파싱 중이어도 그려졌으면 통과」를 <b>3초 유예 뒤</b>로 미룸 = 그 안에 DCL이 오면 <b>완성된 틀</b>이 나간다. 안 오면 구 동작 그대로 통과 → 260725의 「파서를 막는 스크립트 뒤에서 무한정 기다리지 않는다」 취지 보존(최종 폴백 = 워치독 <code>FR_WD_MS</code> 11s).</td></tr>
+    </tbody>
+  </table>
+  <p>대상 파일 = <code>viewer/index.html</code> 1개 · 순 추가 21줄 · <b>CSS·토큰·컴포넌트 변경 0</b>(디자인 축 무접촉).</p>
+</section>
+
+<section>
+  <h2>③ 전 / 후 — 창을 열었을 때 <b>처음 보이는 화면</b></h2>
+  <div class="two">
+    <figure>
+      <figcaption><span class="tag b">전</span>클릭 +527ms · 이 화면이 <b class="bad">3,247ms</b> 유지<br>탭바 2줄 · 도크·폼 없음</figcaption>
+      <img src="260805_이미지스튜디오_리빌레이스_전.png" alt="전 — 내부 탭바가 중복 노출된 반쪽 화면">
+    </figure>
+    <figure>
+      <figcaption><span class="tag a">후</span>클릭 +1,018ms · 첫 프레임부터 <b class="ok">완성 화면</b><br>탭바 1줄 · 도크·폼 정위치</figcaption>
+      <img src="260805_이미지스튜디오_리빌레이스_후.png" alt="후 — 첫 노출부터 완성된 이미지 스튜디오">
+    </figure>
+  </div>
+  <table>
+    <thead><tr><th>축</th><th>전</th><th>후</th><th>차이</th></tr></thead>
+    <tbody>
+      <tr><td>깨진 화면(탭바 2줄) 지속</td><td class="bad">3,247ms</td><td class="ok">0ms</td><td>−3,247ms</td></tr>
+      <tr><td><b>정상 화면까지</b> 걸린 시간</td><td>3,774ms</td><td class="ok">1,018ms</td><td>−2,756ms (−73%)</td></tr>
+      <tr><td>첫 노출 시각</td><td>527ms</td><td>1,018ms</td><td>+491ms (반쪽 대신 완성본)</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:14px">참고 — 「전」이 3.2초 뒤 도달하던 안착 화면(= 「후」의 첫 프레임과 동일 상태):</p>
+  <div class="three"><figure><figcaption>전 · +3,774ms 안착</figcaption><img src="260805_이미지스튜디오_리빌레이스_안착.png" alt="전의 안착 화면"></figure></div>
+  <p style="margin-top:12px">게이트 = <code>check_refs.py</code> rc=0 · <code>smoke_all.sh</code> <b>24종 전부 PASS</b>(<code>smoke_toolframe</code> 8/8 · <code>smoke_studioshell</code> 코어 전부 — 리빌 게이트·번역 첫 노출 재레이아웃 은폐 계약 포함).</p>
+</section>
+
+<section>
+  <h2>④ 「화면 열 때 굉장히 느려졌다」 — 진범은 <b>셸 문서 크기</b>다 (진단만 · 미수정)</h2>
+  <p>운영 근사(gzip 서빙) · 폰 4G · CPU 4배에서 <code>viewer/index.html</code> 부팅을 분해했다.</p>
+  <table>
+    <thead><tr><th>구간</th><th>실측</th><th>비중</th></tr></thead>
+    <tbody>
+      <tr><td>TTFB</td><td>83ms</td><td>1%</td></tr>
+      <tr><td><b>문서 전송(index.html 850KB gzip / 원본 2.31MB)</b></td><td class="bad">8,157ms</td><td class="bad">85%</td></tr>
+      <tr><td>파싱 + 실행</td><td>1,410ms</td><td>15%</td></tr>
+      <tr><td>DOMContentLoaded</td><td>9,650ms</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <h3>왜 「느려졌」나 — 26일 만에 셸이 86% 커졌다</h3>
+  <table>
+    <thead><tr><th>날짜</th><th>viewer/index.html</th><th>thumb.html</th><th>sns_trends.json</th></tr></thead>
+    <tbody>
+      <tr><td>7/10</td><td>1.30MB</td><td>—</td><td>—</td></tr>
+      <tr><td>7/17</td><td>1.63MB</td><td>412KB</td><td>132KB</td></tr>
+      <tr><td>7/25</td><td>1.93MB</td><td>483KB</td><td>223KB</td></tr>
+      <tr><td>8/01</td><td>2.22MB</td><td>610KB</td><td>393KB</td></tr>
+      <tr><td><b>8/05</b></td><td><b class="bad">2.42MB (+86%)</b></td><td><b>664KB (+61%)</b></td><td><b class="bad">607KB (+360%)</b></td></tr>
+    </tbody>
+  </table>
+  <p>거기에 <code>_headers</code>가 <code>/index.html: Cache-Control: no-cache</code>이고 도장 커밋이 하루 여러 번 도니, <b>이 850KB는 거의 매 세션 새로 받는다</b>.</p>
+  <h3>가장 큰 한 방 — 셸의 <b>60.7%가 주석</b>이다</h3>
+  <table>
+    <thead><tr><th>index.html 구성</th><th>바이트</th><th>비중</th></tr></thead>
+    <tbody>
+      <tr><td>JS <code>//</code> 줄주석(근사)</td><td>746,487</td><td>30.8%</td></tr>
+      <tr><td>JS·CSS <code>/* */</code></td><td>671,658</td><td>27.7%</td></tr>
+      <tr><td>HTML <code>&lt;!-- --&gt;</code></td><td>51,753</td><td>2.1%</td></tr>
+      <tr><td><b>주석 합계</b></td><td><b>1,469,898</b></td><td><b>60.7%</b></td></tr>
+      <tr><td>주석 제거 시 전송량(gzip)</td><td class="ok">862KB → 280KB</td><td class="ok">−68%</td></tr>
+    </tbody>
+  </table>
+  <p>즉 <b>소스는 지금 그대로 두고</b>(주석 = 이 레포의 문서 SSOT · 손대지 않는다) <b>배포 산출물에서만</b> 주석을 벗기면 4G 문서 전송이 <b>8.2초 → 약 2.7초</b>가 된다. 배선 자리 = <code>build-viewer.mjs</code>(Pages 빌드 명령).</p>
+  <div class="note"><b>⚠ 이번 커밋에는 넣지 않았다</b> — 순진한 주석 제거는 문자열 안의 <code>//</code>·<code>/*</code>를 잘라 조용히 앱을 부순다. 즉 <b>빌드 파이프라인 변경 + 산출물 회귀 검증</b>이 한 세트라 운영자 승인 사안(CLAUDE 7-4). 승인하면 ⓐ HTML/JS 인식 미니파이어 도입 ⓑ 산출물 대상 <code>smoke_all</code> 재실행 ⓒ 실패 시 원본 서빙 폴백, 이 3단으로 간다.</div>
+  <h3>가지 않은 길 — 킬테스트로 기각한 가설(정직 기록)</h3>
+  <p>부팅 CPU 프로파일 1위가 <code>cscroll.js</code> <code>update</code>(608ms·문서 전체 subtree <code>MutationObserver</code> → 매 변이마다 <code>scrollHeight</code> 강제 레이아웃)라 <b>레이아웃 스래싱으로 의심</b>했다. rAF 합류로 고쳐 콜백 시간을 467ms→0ms로 만들었지만, <b>관찰자를 통째로 제거한 킬테스트에서도 DCL·load가 그대로였다</b>(DCL 2,821 / 3,000 / 2,919ms · load 5,220 / 5,580 / 5,298ms = 전·후·제거 순, 전부 오차 범위). 프로파일러가 <b>브라우저가 어차피 치를 레이아웃 비용을 호출자에게 청구</b>한 것 = 가산 비용 아님 → <b>그 수정은 되돌렸다.</b> 남은 건 이 문단의 기록뿐이다.</p>
+</section>
+
+</body></html>
