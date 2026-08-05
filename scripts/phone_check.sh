@@ -19,6 +19,13 @@ ok(){ printf '  ✅ %s\n' "$*"; }
 no(){ printf '  ❌ %s\n' "$*"; }
 hm(){ printf '  ⚠  %s\n' "$*"; }
 
+# 폰 로컬 시크릿 로드(260806 실사고 봉합) — ⚠ 이게 없으면 ⑦ 세션 판별이 **항상 「THREADS_COOKIE 미설정」으로
+#   오답**을 낸다. 실측: 같은 화면에서 ⑧ 수집 로그는 "쿠키 무소득 → 게스트 폴백"(= 쿠키가 실재)이라 말하는데
+#   ⑦은 "미설정 = 판별 대상 아님"이라며 통째로 건너뛰었다 — ⑧은 phone_subs.sh를 부르고 그 스크립트가 env를
+#   source하는데, 이 진단기 자신은 안 읽어서 자기 셸에만 값이 없었던 것(같은 자리에서 두 축이 반대 사실을 말함).
+#   문법·권한 가드 = phone_subs.sh 정본 그대로(600 강제 후 source · 사본 아님을 명시).
+[ -f "$HOME/.nomute_phone_env" ] && { [ "$(stat -c %a "$HOME/.nomute_phone_env" 2>/dev/null || stat -f %A "$HOME/.nomute_phone_env" 2>/dev/null)" = 600 ] || chmod 600 "$HOME/.nomute_phone_env"; . "$HOME/.nomute_phone_env"; }
+
 echo "▶ 폰 수집 진단 — $(date '+%Y-%m-%d %H:%M:%S')"
 echo
 echo "① 산출 파일 나이(= 워치독이 보는 그 값 · 임계 90분)"
