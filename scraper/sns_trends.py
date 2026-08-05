@@ -1362,6 +1362,14 @@ def threads_subs(accounts, limit=10, deadline=None):
     회수. 사유 코드도 갈라 실어 보낸다(alien = 추천 피드만 · wall = 로그인월 · empty = 노드 0) —
     뭉치면 화면이 원인을 못 갈라 "쿠키를 갈아라"는 헛 조치가 나간다(260730·260804 판례)."""
     ck = (os.environ.get("THREADS_COOKIE") or "").strip()   # 부계 세션쿠키(선택 · 폰 crontab env로 주입 = 레포 커밋 0)
+    # 세션-UA 짝(260805 봉합 · insta_subs L1128 문법 100% 계승 = 창작 0) — 메타는 세션을 **발급 브라우저 UA에 묶는다**.
+    #   260729에 인스타에서 실측으로 확인하고(「useragent mismatch」 = 유효 쿠키인데 모듈 고정 UA(가짜 Chrome/126.0)로는
+    #   400 거절) INSTA_UA를 도입했는데, **같은 메타 서비스인 스레드에는 그 봉합이 이식되지 않았다**.
+    #   결과 = 쿠키를 아무리 새로 뽑아 갈아끼워도 UA가 안 맞아 매번 무소득 → 게스트 폴백으로 연명 →
+    #   「쿠키 오염」 경고가 영원히 반복(260805 실측 = 등록 5계정 전건 이 경로).
+    #   ⚠ 이게 「쿠키를 빼라」가 오답인 이유다 — 쿠키를 넣은 목적(로그인 상태로 더 정확히·더 많이 걷기)은 유효한데
+    #     고장난 건 쿠키가 아니라 **UA 짝의 부재**였다. 빼면 그 기능을 영구 포기하는 것이고, 갈아끼우면 헛수고다.
+    _ua = (os.environ.get("THREADS_UA") or "").strip()   # 쿠키 발급 브라우저의 실제 UA · 쿠키와 짝으로만 적용(게스트 = 종전 UA 불변) · 주입 = ~/.nomute_phone_env(레포 커밋 0)
     out, seen = [], set()
     for i, acc in enumerate(accounts):
         if _over(deadline):
@@ -1374,6 +1382,8 @@ def threads_subs(accounts, limit=10, deadline=None):
             _hdr = {**UA, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none",
                     "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1"}   # 실브라우저 헤더 근접(운영자 260723 · 봇 챌린지 완화 시도 · 게스트·쿠키 공통 경로)
+            if ck and _ua:
+                _hdr["User-Agent"] = _ua   # 세션-UA 짝 맞춤(260729 useragent mismatch · insta L1144 사본) — 쿠키 있을 때만 = 게스트 경로 종전 불변
             _u = "https://www.threads.com/@" + urllib.parse.quote(acc)
             _me = acc.lower().lstrip("@")   # 주인 판정 축(260804)
 
@@ -1437,15 +1447,17 @@ def threads_subs(accounts, limit=10, deadline=None):
                     _m2, _a2 = _scan(_h2)
                     if _m2:
                         h, mine, _alien, _via = _h2, _m2, _a2, "게스트폴백"
-                        # ⚠ 조치 문구 = 뷰어 alien 분기(viewer/index.html sysErrMsgs)와 **같은 말**이라야 한다(260805 실사고 봉합).
-                        #   구 문구 "갱신 권장"은 260804 2차 봉합의 결론과 **정반대**였다 — 그 봉합이 확정한 조치는
-                        #   「THREADS_COOKIE를 **빼라**(쿠키 없이 걷는 게 정상 경로)」이고, 바로 이 줄이 그 근거다:
-                        #   쿠키로는 0건인데 게스트로는 회수됐다 = 쿠키가 무용지물이라는 실측 그 자체.
-                        #   그런데 운영자가 실제로 읽는 표면은 폰 터미널(phone_check.sh 출력)이라, 여기서 "갱신 권장"이라고
-                        #   말하면 쿠키를 새로 뽑아 갈아넣는 헛수고를 하고 → 또 오염되고 → 같은 경고가 다시 뜬다.
-                        #   두 표면이 같은 사고에 반대 조치를 말하던 드리프트를 문구 동기로 봉합(260805 실측 = 5계정 전건 이 경로).
-                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건"
-                              f"(쿠키 오염 — THREADS_COOKIE를 **빼는 게 정답**: 게스트가 정상 경로다. 갈아끼우지 마)", file=sys.stderr)
+                        # 조치 문구 = **원인을 실제로 가리키는 값**으로 갈라 낸다(운영자 260805 "알림을 안뜨게할거면
+                        #   애초에 앱을 삭제해버리지 · 기능을 유지하면서 알림이 안오고 이를 예방할수있게").
+                        #   ⚠ 종전 두 문구는 전부 오답이었다 — "갱신 권장"은 UA가 없으면 몇 번을 갈아도 같은 자리에서
+                        #   죽고("그럼 쓰레드 또 고치고 또 알림오고"), "빼라"는 로그인 수집 기능 자체를 포기하는 것이다.
+                        #   진짜 원인은 **세션-UA 짝의 부재**(위 _ua 주석) → 그 값이 없으면 그것부터 지목해야 조치가 끝난다.
+                        _fix = ("THREADS_UA 미설정 = 이게 원인이다 — 쿠키를 발급한 그 브라우저의 UA를 "
+                                "~/.nomute_phone_env 에 THREADS_UA로 넣어라(메타가 세션을 발급 UA에 묶는다 · "
+                                "인스타 INSTA_UA와 같은 축 · 갈아끼우기·빼기 둘 다 오답)") if not _ua else \
+                               ("THREADS_UA는 있는데 무소득 = 쿠키 쪽 만료 — 같은 브라우저에서 쿠키·UA를 **한 쌍으로** 다시 뽑아라"
+                                "(둘 중 하나만 갈면 또 어긋난다)")
+                        print(f"::warning::threads @{acc} 쿠키 무소득 → 게스트 폴백 회수 {len(_m2)}건 · {_fix}", file=sys.stderr)
                 except Exception as _e2:  # noqa: BLE001 — 폴백 실패가 계정 루프를 못 죽인다
                     print(f"::warning::threads @{acc} 게스트 폴백 실패: {_e2}", file=sys.stderr)
             _mine = 0
