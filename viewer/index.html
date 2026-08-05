@@ -4418,7 +4418,7 @@ function render() {
   const list = $('#list');
   if (!rows.length) { list.innerHTML = (q || cardonly || FILTERS.cats.size || FILTERS.issue) ? '<div class="empty">결과 없음</div>' : '<div class="ghost-card" aria-hidden="true"></div><div class="ghost-card" aria-hidden="true"></div>'; _feedSig = ''; return; }   // 빈 기본 탭 = 고스트 카드 실루엣 2장(운영자 260712 Q2-ⓐ 승인 — 평의회⑩ 1순위 '기본 착지 백지' · 산문 0 = §디자인 e 정신 유지 · 검색·필터 걸렸을 때만 '결과 없음' 피드백)
   // 깜빡임 방지: 행 구성·상태·필터가 직전 렌더와 동일하면 스태거(cardIn) 애니 생략 — 탭 전환·60초 폴의 *동일 데이터* 재렌더가 카드 페이드를 매번 재생해 미세 깜빡임. DOM은 항상 재구성(데이터 최신 보장), 애니만 게이트.
-  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '') + (isCardRetrying(a) ? 'k' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
+  const sig = rows.map(a => a.file + ':' + (Number(a.rev) || 0) + ':' + ((a.cards && a.cards.state) || '') + ':' + (brkIssueKind(a) || '') + ':' + (isRevising(a.file) ? 'r' : '') + (isCardRetrying(a) ? 'k' : '') + (cardFirePending(a.file) ? 'f' : '')).join(',') + '|' + q + '|' + cardonly + '|' + [...FILTERS.cats].sort().join('+') + '|' + (FILTERS.issue ? 'i' : '');
   if (sig === _feedSig && list.childElementCount) return;   // 구성·상태·필터 완전 동일 = DOM 무접촉 스킵(renderScrap 커밋 스킵 미러 · 평의회6 260707 — 탭 전환 즉시렌더 직후 fetch 재렌더가 통재빌드로 스태거를 절단·이중 비용 내던 것 차단 · sig에 rev/cards.state/긴급/수정중 전부 탑승이라 실변경은 항상 통과). ⚠️ 정직: dlReport/dlScrap의 relAge 상대시간 라벨·progGauge stuck 판정은 sig 밖 = 유휴 동일탭 폴에선 동결·다음 실변경/탭 전환 때 갱신(자가치유) — scrap 7309 커밋 스킵과 동일한 의도적 트레이드오프(신선도 한정·데이터 무영향). sig 밖 동적 요소 추가 시 여기 재검토.
   const _anim = sig !== _feedSig && !_searchRender;   // 내용·필터 바뀐 렌더만 촤르륵, 동일 재렌더·검색 타이핑은 즉시(깜빡임 0) — sig 커밋은 루프 성공 후(아래)
   list.innerHTML = '';
@@ -4532,6 +4532,11 @@ function progGauge(a) {
   else if (st === 'generating') { if (genStuckG) fail = true; else busy = true; }   // 카드 프롬프팅 중(26분 = CARD_TIMEOUT 정합)
   else if (st === 'failed') { fail = true; if (hasMd) done = 2; }   // 텍스트 있으면 카드 단계 실패(seg 카드)
   if (isCardRetrying(a)) { done = 1; busy = true; fail = false; }   // 라벨 탭 재시도 발사 직후(클라 임시) = 서버 state 반영 전까지 프롬프트 세그를 진행 중으로(빗금 → 펄스 · 운영자 260727)
+  // 모달 버튼 발사(CARD_FIRE) = 같은 공백 구간을 이 게이지에도 반영(운영자 260805 "프롬프트 제작중 들어갔는데 진행중인게 안뜬다").
+  //   구조 = #cardsec 은 cardFirePending 으로 '제작중…' 로더를 띄우는데(6189·6200) 이 게이지는 서버 st 만 봐서 요약 1칸에 멈춰 있었다
+  //   — **같은 발사인데 두 화면이 서로 다른 말**을 했고, 그 공백이 러너 큐·Pages 배포까지라 수 분(실측 260805: dispatch 후 3분 23초 만에 pending 취소 = 끝내 안 옴).
+  //   범위 = cardSec 가드와 동일하게 ''·failed 뿐 — 완성분(done/text_done/fired_partial)의 stale 재생성은 3칸 완료를 1칸으로 후퇴시키지 않는다.
+  if ((!st || st === 'failed') && cardFirePending(a.file)) { done = 1; busy = true; fail = false; }
   // 실패 이력(error.log 잔존) = 한 번이라도 깨진 흔적 → 해당 단계에 영속 흉터(scar). 재시도·성공해도 유지.
   const scarSeg = (a.cards && a.cards.failedOnce) ? (hasMd ? 2 : 1) : -1;
   const aria = { n:'인스타 요약으로 이동', m:'카드 프롬프트로 이동', t:'카드 이미지로 이동' };
@@ -6208,7 +6213,7 @@ function cardSec(a) {
       // generating이어도 cards.md가 이미 있으면 = 이미지 생성(슛) 중 / 없으면 = 프롬프팅(텍스트) 중 — 백엔드는 슛·텍스트 둘 다 'generating'이라(cardmake.sh:173) has_md로 구분(운영자 260630)
       const phase = c.has_md ? '카드 이미지 생성 중' : '카드뉴스 프롬프팅 중';
       const rtag = (Number(c.retry) || 0) > 0 ? ` <span class="gen-rn nm-shim">(${Number(c.retry)}회)</span>` : '';   // 로더에 붙은 글자 = 빛 스윕 동참(운영자 260731)   // 자동 재시도 회차 = 기존 배너 '중' 뒤 띄어쓰기 하나 + '(N회)'(MUT·크기 동일) · 운영자 260701
-      sec.innerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(c.has_md ? 'solving' : 'prompting', '제작중…') + (window.nmEta?'<span class="nm-shim">'+nmEta.label(c.has_md?'cards-img':'cards-prompt')+'</span>':'') + rtag : phase + rtag + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(이미지=Solving·프롬프팅=Prompting · 운영자 260723 Q461) · 재시도 회차 rtag 유지 · 폴백 = 구 점3
+      sec.innerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(c.has_md ? 'solving' : 'prompting', '제작중…') + rtag : phase + rtag + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(이미지=Solving·프롬프팅=Prompting · 운영자 260723 Q461) · 재시도 회차 rtag 유지 · 폴백 = 구 점3   // 「예상 : N분」 제거(운영자 260805) = 아래 cardFireStat 주석 참조
     }
     return;
   }
@@ -7035,7 +7040,7 @@ function loadCardFire() {   // 부팅 복원 — 20분 내 발사만 되살려 �
   } catch {}
   if (CARD_FIRE.size) startCardFirePoll();
 }
-function startCardFire(file) { if (!file) return; CARD_FIRE.set(file, { req: cardSig(file), ts: Date.now() }); saveCardFire(); startCardFirePoll(); }
+function startCardFire(file) { if (!file) return; CARD_FIRE.set(file, { req: cardSig(file), ts: Date.now() }); saveCardFire(); render(); startCardFirePoll(); }   // render() = 피드 진행바 프롬프트 세그 즉시 점등(모달 로더와 동시 · 260805) — 없으면 다음 폴(20s)까지 게이지만 침묵
 let _cfPoll = null;
 function startCardFirePoll() {
   if (_cfPoll) return;
@@ -7052,12 +7057,18 @@ function startCardFirePoll() {
         if ($('#dlg').open && CUR === file && ra) { cardSec(ra); feedSec(ra); }
       }
     }
-    if (changed) saveCardFire();
+    if (changed) { saveCardFire(); render(); }   // render() = 임시상태 해제(접수·20분 폴백)를 피드 진행바에도 반영 — 20분 폴백은 서버 데이터가 안 바뀌어 load()의 sig 가 동일 = 그 경로가 없으면 게이지가 영원히 펄스로 남는다(260805)
     if (!CARD_FIRE.size) { clearInterval(_cfPoll); _cfPoll = null; }
   }, 20000);
 }
 const cardFirePending = file => CARD_FIRE.has(file);
-const cardFireStat = () => `<div class="genstat live">${window.nmLoader ? nmLoader('prompting', '제작중…') + (window.nmEta?'<span class="nm-shim">'+nmEta.label('cards-prompt')+'</span>':'') : '카드뉴스 프롬프팅 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // makeCards 성공 직후 로더와 동일 마크업(계승)
+// ⚠️ 「예상 : N분 NN초」 미표기(운영자 260805 "정확하게 할 수 있는 방법은? 거의 불가능하면 가짜이느니 없앤다") — 카드뉴스 축만 해당(다른 탭은 nmEta 유지).
+//   근거 = ⓐ 이 축은 nmEta.done() 배선이 **한 곳도 없다**(sb·k·tr·conv·track·thumb·vidl 은 있다) → 시드 300/600초가 영원히 고정 = 실측으로 수렴할 길이 원천 차단.
+//   ⓑ 시드 자체가 근거 없음(nm-loader.js 주석 "임시 시드"). ⓒ 실측 분포가 초 단위 표기를 허용하지 않는다 — card_plan 잡 순수 실행 최근 10건 =
+//   233·570·604·740·797·804·1474·1695·1717·1718초(3분53초~28분38초 · 편차 7.4배), 여기에 concurrency 대기(같은 group 을 5개 워크플로가 공유 ·
+//   실측 2초~653초)와 Pages 배포([CF-Pages-Skip] 코얼레싱 최대 17분)가 더 붙고, 최악은 pending 취소라 완료가 **영영 안 온다**(260805 실측).
+//   ∴ 정직한 값을 만들 수단이 없다 → 표기 삭제. 되살리려면 서버가 실소요를 굽는 축(cards.updated 시작·종료 스탬프)이 먼저다.
+const cardFireStat = () => `<div class="genstat live">${window.nmLoader ? nmLoader('prompting', '제작중…') : '카드뉴스 프롬프팅 중<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // makeCards 성공 직후 로더와 동일 마크업(계승)
 
 // 연필 FAB 표기 = 제거(운영자 260623) — 진행/완료 회차색·물결·빗금 안 표시. 잔류 클래스만 방어적으로 정리.
 // 연필 FAB — 진행 중: 현재→다음 색 왕복 물결+빗금+'수정 중' / 완료(a.rev>0): 회차색 고정(물결 X) / 원본: 평소. (복원 260623)
@@ -7424,7 +7435,7 @@ async function makeCards(target, btn, mode) {
         btn.innerHTML = '<svg class="gck" viewBox="0 0 24 24" role="img" aria-label="전송됨"><path d="M5 13l4 4L19 7"/></svg>';
         await new Promise(res => setTimeout(res, 520));
       }
-      if (btn) btn.outerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(isText ? 'prompting' : 'solving', '제작중…') + (window.nmEta?'<span class="nm-shim">'+nmEta.label(isText?'cards-prompt':'cards-img')+'</span>':'') : (isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(카드뉴스=Prompting·이미지=Solving · 운영자 260723 Q461) · 폴백 = 구 점3
+      if (btn) btn.outerHTML = `<div class="genstat live">${window.nmLoader ? nmLoader(isText ? 'prompting' : 'solving', '제작중…') : (isText ? '카드뉴스 프롬프팅 중' : '카드 이미지 생성 중') + '<span class="gdots"><i>.</i><i>.</i><i>.</i></span>'}</div>`;   // orb 로더(카드뉴스=Prompting·이미지=Solving · 운영자 260723 Q461) · 폴백 = 구 점3   // 「예상 : N분」 제거(운영자 260805) = cardFireStat 주석 참조
       return true;   // 발사 성공 — 버튼 없는 호출부(피드 게이지 라벨 재시도)가 성패로 임시상태를 켜고 끈다
     }
     if (btn) { gaugeClear(btn); btn.classList.remove('okdone', 'checking'); btn.style.pointerEvents = ''; }
