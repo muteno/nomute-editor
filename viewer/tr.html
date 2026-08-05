@@ -913,6 +913,18 @@ let SRV_HIST = [], SRV_CLEAR = 0; const _deadUrls = new Set();   // thumb 동축
 let TR_R2 = [];   // R2 즉시 발견분(운영자 260804 "다른 메뉴들과 싱크" — 타 기기 번역 제작을 Pages 빌드·배포 랙 없이 10~20s 수신 · thumb pollR2Recent 축 동문) — 정식 인덱스(thumb-hist) 도착 시 renderTrHist url dedup이 자연 교체
 const TR_T0 = Date.now();   // 이 문서 부팅(= '이번 세션' 경계 · geni GENI_T0 동문) — 부팅 이후 타 기기 제작만 결과 합류(과거분 = 이전 제작 전담)
 try { SRV_CLEAR = +localStorage.getItem('nomute_thumb_srvclr') || 0; } catch {}
+/* ── 수정(연필) = 이 제작을 만든 세부 메뉴로(운영자 260806 "수정버튼이 있게 하고 누르면 수정할 수 있게 세부메뉴 단위까지 바뀌어야함") ──
+   번역 탭 자신은 복원 경로가 없다(읽기 전용 규약 = 종전 그대로) — 여기 뜨는 연필은 **형제 탭(카드 제작·편집·특수·AI 생성)이 만든 항목**의 것이고,
+   그 복원은 스튜디오 탭바를 소유한 부모(index)의 `studioEditOpen`이 전담한다(라우팅 사본 0 · 부모 부재 = /tr 단독 열람 = 갈 곳이 없으므로 애초에 안 그린다). */
+function trEditRouter() { try { return (window.parent !== window && window.parent.studioEditOpen) ? window.parent.studioEditOpen : null; } catch (_) { return null; } }
+function trCanEdit(src) { return !!(src && src.app && src.app !== 'tr') && !!trEditRouter(); }   // 'tr' 자신 = 복원 불가(없는 기능을 있는 척하지 않는다)
+function trEditBtn(e, th) {   // 부품 = thumb renderHist 연필 정본 그대로(.imgedit + EDIT_SVG + '이 설정으로 수정') · 결과·이전 제작 두 빌더 공용
+  if (!trCanEdit(e.src)) return;
+  const ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
+  ed.innerHTML = EDIT_SVG;
+  ed.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); const r = trEditRouter(); if (r) r(e.src, e.url); });
+  th.appendChild(ed);
+}
 function renderTrHist() {
   const grid = $('histGrid'); if (!grid) return;
   const local = histPrune(histLoad());
@@ -938,7 +950,7 @@ function renderTrHist() {
     img.onerror = () => { it.remove(); _deadUrls.add(histKey(e.url)); const cc = $('histCnt'); if (cc) cc.textContent = '(' + grid.children.length + ')'; };   // 죽은 슬롯 제거+카운트 정정 = thumb 동문
     const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
     if (e.varStr) { const v = document.createElement('span'); v.className = 'hist-cap-v'; v.textContent = e.varStr; cap.appendChild(v); }
-    th.append(dl, img, cap); it.append(hd, th); grid.appendChild(it);
+    th.append(dl, img, cap); trEditBtn(e, th); it.append(hd, th); grid.appendChild(it);
   });
 }
 let _trHistPolling = false, _trHistSig = '';   // in-flight 가드 + 변경감지 시그니처 = thumb pollServerHist 문법 미러(무변경 재빌드 0 = 깜빡임·죽은항목 404 재스팸 차단)
@@ -1037,7 +1049,7 @@ function renderTrRes() {
     dl.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || 'tr.jpg'); });
     const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.url;
     const cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = e.cap || '';
-    th.append(dl, img, cap); it.append(hd, th); grid.appendChild(it);
+    th.append(dl, img, cap); trEditBtn(e, th); it.append(hd, th); grid.appendChild(it);
   });
 }
 let _resCloseT = null;   // 결과 접이 토글 = #histH 정본 동문(점등 = .car-h[aria-expanded] CSS 전담)
