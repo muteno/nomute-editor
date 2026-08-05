@@ -3420,6 +3420,72 @@ def check_keyframes_dup():
     return 0
 
 
+# ── 앵커 메뉴 문법 = 한 벌 게이트 (운영자 260805 승인 "아이디어 ㄱ") ──
+#   왜 = 같은 결의 메뉴 3종(설정 #linkpop · 스튜디오 헤더 메뉴 .tool-menupop · PASS 사유 .sc-rsn)이 값을 **각자 베껴 쓰고** 있었다.
+#     정본이 바뀌면 나머지가 조용히 낡는데 증상이 「어느 창 하나만 좀 달라 보임」뿐이라 눈으로만 잡혔다 — 실제로 260805 실측 시점의
+#     PASS 사유 창은 혼자 다른 문법(테두리 칩 12/700 · 닫기 X 20px 원형 · radius 12 · 폭 가변)으로 갈라진 채 살아 있었고,
+#     기존 게이트는 전부 다른 축이다(check_design = raw **개수** 래칫 · 팔레트 핀 = 뷰어 **간** 동값 · smoke_winnav = 모달 헤더 기하)
+#     → 「같은 결의 메뉴가 한 벌인가」는 축 자체가 없었다.
+#   판정 = 정적(렌더·LLM·네트워크 0) · **면책표 없이 하드 0**(현행 위반 0):
+#     ① 두 SSOT 그룹 셀렉터가 실존 — 앵커 소실(그룹 해체·이름 변경) = fail-closed
+#     ② 각 멤버가 **자기 단독 규칙**에서 SSOT 축을 재선언 0(재선언 = 갈라지는 첫걸음이자 유일한 기계 검출점)
+#   ⚠ 스코프 = 멤버의 **정확한 단독 규칙**(`sel {`)만 — `:hover`·`.up`·`.inp` 같은 변형과 미디어쿼리 안 오버라이드는 대상 밖
+#     (위치·상태·색 오버라이드는 각 표면 고유 권한 = 이 게이트가 얼리면 안 되는 축).
+#   ⚠ 정규식 = 리터럴 find 선행(1.85MB index.html에서 여는-괄호-앞 와일드카드 금지 = CLAUDE.md 성능 계약).
+_ANCHOR_MENU_SHELL_SEL = '#linkpop, .tool-menupop, .sc-rsn'
+_ANCHOR_MENU_ITEM_SEL = '#linkpop .lp-btn, .tool-menupop button, .sc-rsn-c'
+_ANCHOR_MENU_SHELL_AXES = ('width', 'min-width', 'max-width', 'padding', 'gap', 'border-radius')
+_ANCHOR_MENU_ITEM_AXES = ('font-size', 'font-weight', 'padding', 'border-radius', 'background', 'border')
+
+
+def _anchor_menu_block(src, sel):
+    """`sel {` 단독 규칙 본문을 리터럴로 찾아 반환(없으면 None) — 그룹 규칙(앞에 `, `)은 제외."""
+    needle = sel + ' {'
+    at = 0
+    while True:
+        i = src.find(needle, at)
+        if i < 0:
+            return None
+        # 단독 규칙 = 그 줄에서 셀렉터 앞이 **들여쓰기 공백뿐**일 때만.
+        # ⚠ 들여쓰기를 안 보고 직전 1글자만 검사하면(`prev in '\n{}'`) 이 레포의 2칸 인덴트 CSS에서 **전건 미검출**이 된다
+        #   (킬테스트 K1·K2 실측 = 재선언을 심었는데 rc=0 통과) · 그룹 멤버(`…, .sc-rsn {`)·복합(`.x .sc-rsn {`)은 앞에 글자가 남아 자동 제외.
+        ls = src.rfind('\n', 0, i) + 1
+        if src[ls:i].strip():
+            at = i + 1
+            continue
+        j = src.find('}', i)
+        return src[i + len(needle):j] if j > 0 else ''
+
+
+def check_anchor_menu_canon():
+    """앵커 메뉴 문법 = 한 벌(위 주석). rc=1 = 커밋 차단."""
+    rel = 'viewer/index.html'
+    src = open(os.path.join(ROOT, rel), encoding='utf-8').read()
+    bad = []
+    for sel, label in ((_ANCHOR_MENU_SHELL_SEL, '셸 기하'), (_ANCHOR_MENU_ITEM_SEL, '항목 행')):
+        if sel + ' {' not in src and sel + ' {\n' not in src and (sel + ' {') not in src.replace('\n  ', ' '):
+            bad.append('SSOT 그룹 소실 — `%s`(%s) 셀렉터가 없다(그룹 해체·이름 변경 = 세 표면이 다시 갈라진다)' % (sel, label))
+    members = [(s.strip(), _ANCHOR_MENU_SHELL_AXES, '셸') for s in _ANCHOR_MENU_SHELL_SEL.split(',')] + \
+              [(s.strip(), _ANCHOR_MENU_ITEM_AXES, '항목') for s in _ANCHOR_MENU_ITEM_SEL.split(',')]
+    for sel, axes, kind in members:
+        body = _anchor_menu_block(src, sel)
+        if body is None:
+            continue   # 단독 규칙이 없는 게 정상(전량 그룹 위임) = 가장 깨끗한 상태
+        clean = re.sub(r'/\*.*?\*/', ' ', body, flags=re.S)
+        hit = [a for a in axes if re.search(r'(?:^|;)\s*' + re.escape(a) + r'\s*:', clean)]
+        if hit:
+            bad.append('`%s` 단독 규칙이 SSOT 축 재선언 — %s (%s 그룹이 유일 원천이어야 한다)' % (sel, ', '.join(hit), kind))
+    if bad:
+        print('❌ 앵커 메뉴 문법 갈라짐 — 설정 메뉴·스튜디오 헤더 메뉴·PASS 사유 창은 **한 벌**이다(운영자 260805):')
+        for b in bad:
+            print('   · ' + b)
+        print('   고쳐라 = 값은 `%s` / `%s` 그룹에만 두고, 각 표면엔 위치·모션·상태 오버라이드만 남겨라.' % (_ANCHOR_MENU_SHELL_SEL, _ANCHOR_MENU_ITEM_SEL))
+        print('   새 앵커 메뉴 = 두 그룹에 셀렉터 1개씩 추가(유리는 252행 「앵커 팝업 셸 글래스」 그룹 동반).')
+        return 1
+    print('✅ 앵커 메뉴 문법 게이트 — 3표면(설정·스튜디오 헤더 메뉴·PASS 사유) 셸 기하·항목 행 단일 원천 · 멤버 개별 재선언 0.')
+    return 0
+
+
 # ── 컴포넌트 작업 락 게이트 (운영자 260802 "머지하셈" 승인분 · WARN·비차단) ──
 #   왜 = 260802 하루에 **같은 컴포넌트를 두 세션이 동시에 갈아엎는 사고가 3번**(코너 레일: 창 안 우상단 → 창 밖 우측 → 2단).
 #   뒤에 온 쪽은 매번 리베이스 충돌을 만나 통째로 재작업했다 — 낭비된 시간이 이 게이트 만드는 시간보다 길었다.
@@ -5043,6 +5109,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ @keyframes 중복 게이트 스킵:', e)
+    try:
+        if check_anchor_menu_canon() != 0:   # 앵커 메뉴 문법 = 한 벌(운영자 260805 "아이디어 ㄱ" — 설정·스튜디오 헤더 메뉴·PASS 사유 3표면이 값을 각자 베껴 쓰다 PASS 창만 혼자 다른 문법으로 갈라진 실사고의 기계화 · 기존 게이트는 raw 개수·뷰어 간 동값·모달 헤더 기하 축이라 「같은 결의 메뉴가 한 벌인가」가 사각)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 앵커 메뉴 문법 게이트 스킵:', e)
     try:
         if check_debt_ratchet() != 0:   # 면책표 총량 래칫(운영자 260803 — 「알고 동결한 부채」가 「원래 그런 것」으로 굳는 축 차단 · 줄이면 자유·늘리면 사유+--debt-sync)
             rc = 1
