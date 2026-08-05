@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 폰 수집 크론 진단·복구 1발(운영자 260805 "폰에서 어떻게 확인하는지 명령어 주셈").
 #
-# 왜 따로 만드나 = wd-phone 경보가 뜨면 운영자가 확인해야 할 게 6곳으로 흩어져 있다
-#   (crond 서비스 · crontab 등록 · 로그 · 산출 파일 나이 · Termux:API 웨이크락 · 실제 1회 실행).
+# 왜 따로 만드나 = wd-phone 경보가 뜨면 운영자가 확인해야 할 게 7곳으로 흩어져 있다
+#   (crond 서비스 · crontab 등록 · 로그 · 산출 파일 나이 · Termux:API 웨이크락 · git 착지 · 실제 1회 실행).
 #   각각을 손으로 치면 명령 6줄 + 결과 해석까지 운영자 몫 → [9] 「눌러서 되는 것」 위반.
 #   이 파일 = 그 6축을 한 번에 재고, 마지막에 **수집을 실제로 1회 돌려 복구까지 끝낸다**.
 #
@@ -89,13 +89,40 @@ else
 fi
 
 echo
+echo "⑥ git 착지(= 걷은 걸 main에 올리는 축 · 260806 실사고 봉합)"
+# ⚠ 신설 사유 — 260806 폰 실측: crond ✅(pid 생존) · 손으로 돌리니 수집도 ✅(insta 23·threads 18·tiktok 24)
+#   인데 산출 파일은 **31시간 정지**였다. 즉 고장 지점이 크론도 수집도 아닌 **그 사이의 git 착지**인데,
+#   ①~⑤ 어디에도 그 축이 없어서 진단서가 "크론 살아있음 + 수집 됨"만 보여주고 원인 자리를 비워 뒀다.
+#   phone_subs.sh는 `set -e` + `git pull --rebase` 라 리베이스가 충돌로 중단되면 그 자리에 상태가 눌어붙고,
+#   이후 매 회차가 같은 자리에서 죽는다(로그도 안 남는 조용한 정지) · push 인증 만료도 같은 증상을 낸다.
+if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+  no "리베이스가 중단된 채 멈춰 있다 = 매 회차가 여기서 죽는다 → 풀기:  git rebase --abort"
+elif [ -f .git/MERGE_HEAD ]; then
+  no "머지가 중단된 채 멈춰 있다 → 풀기:  git merge --abort"
+else
+  ok "리베이스·머지 중단 없음"
+fi
+_un="$(git log --oneline origin/main..HEAD 2>/dev/null | wc -l | tr -d ' ')"
+if [ "${_un:-0}" -gt 0 ]; then
+  no "안 올라간 커밋 ${_un}개 = 걷어놓고 못 부친 상태 → 올리기:  git push origin HEAD:main"
+  git log --oneline origin/main..HEAD 2>/dev/null | head -3 | sed 's/^/        /'
+else
+  ok "미푸시 커밋 0"
+fi
+if timeout 20 git ls-remote origin -h refs/heads/main >/dev/null 2>&1; then
+  ok "원격 접속·인증 정상"
+else
+  no "원격 접속·인증 실패 = 토큰 만료·네트워크 → 확인:  git ls-remote origin"
+fi
+
+echo
 if [ "$RUN" = "1" ]; then
-  echo "⑥ 지금 1회 수집 실행(= 복구 · 성공하면 30분 안에 화면이 채워진다)"
+  echo "⑦ 지금 1회 수집 실행(= 복구 · 성공하면 30분 안에 화면이 채워진다)"
   echo "   ↓ 아래 출력이 곧 원인 진단이다(쿠키 만료·429·네트워크 등)"
   bash scripts/phone_subs.sh 2>&1 | tee -a "$HOME/phone_subs.log" | sed 's/^/      /'
   echo "   실행 종료(rc=$?) — 다시 ① 을 보려면:  bash scripts/phone_check.sh --no-run"
 else
-  echo "⑥ 수집 실행 건너뜀(--no-run) — 돌리려면 인자 없이 다시:  bash scripts/phone_check.sh"
+  echo "⑦ 수집 실행 건너뜀(--no-run) — 돌리려면 인자 없이 다시:  bash scripts/phone_check.sh"
 fi
 echo
 echo "▶ 끝 · 로그 = ~/phone_subs.log · 끄기 = crontab -e 에서 phone_subs 줄 앞에 #"
