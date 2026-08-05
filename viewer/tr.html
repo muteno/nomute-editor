@@ -796,9 +796,13 @@ function drawChips(ctx, plan, regionH, exData){   /* 칩 = 발췌 리프트 아�
   });
   ctx.letterSpacing = '0px';
 }
-async function pollPlan(id){   /* k_out 폴링 문법 계승 — 커밋→Pages 배포 지연 포함 6분 캡 */
+async function pollPlan(id){   /* 1순위 = api/trplan(main 직독 = 빌드 큐 절연 · 운영자 260805 "그간 다 씹혔다" 봉합) · 2순위 = Pages 정적(구판 그대로 = 악화 경로 0) · 6분 캡 */
   for (let k = 0; k < 60; k++) {
     await new Promise(r => setTimeout(r, 6000));
+    try { const r = await fetch(`/api/trplan?id=${id}&t=${Date.now()}`, { cache: 'no-store' });   /* 구판은 tr_out 정적만 폴링 = 커밋돼도 Pages 빌드 큐(봇 커밋 유입 시 시간 단위)가 풀릴 때까지 안 보여 6분 캡 초과 = 번역 전건 「대기 시간 초과」였다 — 스튜디오 제작 레일 중 유일한 배포 인질 축(형제 = R2 직접·api/genihist) */
+      if (r.ok) { const p = await r.json();
+        if (p && p.fail) throw new Error('AI 생성 실패 — 잠시 후 다시 시도해줘');
+        if (p && Array.isArray(p.hl) && Array.isArray(p.chips)) return p; } } catch (er) { if (String(er.message).startsWith('AI')) throw er; }
     try { const r = await fetch(`tr_out/${id}/plan.json?t=${Date.now()}`, { cache: 'no-store' });
       if (r.ok) return await r.json(); } catch (_) {}
     try { const e = await fetch(`tr_out/${id}/error.log?t=${Date.now()}`, { cache: 'no-store' });
