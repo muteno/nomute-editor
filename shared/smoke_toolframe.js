@@ -158,7 +158,7 @@ async function probeTr(browser, url) {
       if (performance.now() - t0 < 700) requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   });
-  await page.click('#toolTabs .tooltab[data-app="tr"]');
+  await page.evaluate(() => { const _b = document.querySelector('#toolTabs .tooltab[data-app="tr"]'); if (_b) _b.click(); });   // JS 클릭 = smoke_parity 정본 문법(가시성 무관) — 이미지 셸 탭 도크는 헤더 메뉴 모드(hdr-tabs)로 소등(운영자 260805) · 라우팅 DOM(#toolTabs)은 보존이라 클릭 경로 동일
   await sleep(850);
   const tl = await page.evaluate(() => window.__tl || []);
   await ctx.close();

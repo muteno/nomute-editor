@@ -325,7 +325,7 @@ async function gapSweep(browser, port) {
         { src: s.src, title: s.title, key: s.key, tabs: s.tabs });
       await settle(pg);
       for (const t of s.tabs) {
-        await pg.click(s.pick(t));
+        await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, s.pick(t));   // JS 클릭 = smoke_parity 정본 문법(가시성 무관) — 이미지 셸 탭 도크는 헤더 메뉴 모드(hdr-tabs)로 소등(운영자 260805) · 라우팅 DOM(#toolTabs)은 보존이라 클릭 경로 동일
         await settleFast(pg);
         gap[KEY(s, t)] = await pg.evaluate(GAPPROBE);
       }
@@ -373,14 +373,14 @@ async function cloneSweep(browser, port) {
         { src: IMG.src, title: IMG.title, key: IMG.key, tabs: IMG.tabs });
       await settle(pg);
       const tier = {};
-      for (const t of IMG.tabs) { await pg.click(IMG.pick(t)); await settleFast(pg); tier[t.ko] = await pg.evaluate(BOXPROBE); }
+      for (const t of IMG.tabs) { await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, IMG.pick(t)); await settleFast(pg); tier[t.ko] = await pg.evaluate(BOXPROBE); }
       out.tiers[W + 'x' + H] = tier;
       if (W === 430) {   // 상태 오염 패스 = 폰 티어 1회(오염 축은 티어 무관 = 공유 노드 문제)
-        await pg.click(IMG.pick(IMG.tabs[1]));   // 편집 탭
+        await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, IMG.pick(IMG.tabs[1]));   // 편집 탭
         await settleFast(pg);
         out.injected = await pg.evaluate(POLLUTE);
         const pol = {};
-        for (const t of IMG.tabs) { await pg.click(IMG.pick(t)); await settleFast(pg); pol[t.ko] = await pg.evaluate(BOXPROBE); }
+        for (const t of IMG.tabs) { await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, IMG.pick(t)); await settleFast(pg); pol[t.ko] = await pg.evaluate(BOXPROBE); }
         out.polluted = pol;
       }
     } finally { await pg.close().catch(() => {}); }
@@ -399,7 +399,7 @@ async function runOnce(pg, gap, clone) {
       { src: s.src, title: s.title, key: s.key, tabs: s.tabs });
     await settle(pg);
     for (const t of s.tabs) {
-      await pg.click(s.pick(t));
+      await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, s.pick(t));
       await settle(pg);
       out.m[KEY(s, t)] = await pg.evaluate(PROBE);
     }

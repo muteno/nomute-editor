@@ -142,7 +142,7 @@ async function runOnce(pg, hits, fcs) {
     }
     for (const t of s.tabs) {
       const k = KEY(s, t);
-      await pg.click(s.pick(t));
+      await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, s.pick(t));   // JS 클릭 = smoke_parity 정본 문법(가시성 무관) — 이미지 셸 탭 도크는 헤더 메뉴 모드(hdr-tabs)로 소등(운영자 260805) · 라우팅 DOM(#toolTabs)은 보존이라 클릭 경로 동일
       await settle(pg);
       // 최소 시드 = **보이는 빈 textarea에 한 줄**(본문 입력형 탭의 게이트 해제 · 로컬 서버 origin 한정 = 운영 무접촉).
       //   왜: 시드가 없으면 10탭 전부 「입력 미충족 거부」에서 멈춰 C3·C4(목적지·payload)가 **무장만 되고 한 번도 안 돈다**.

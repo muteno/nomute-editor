@@ -239,7 +239,7 @@ const INK_PAIR_KEYS = ['vh', 'toast', 'failmenu'];   // 등재 쌍 — 새 인�
         { src: s.src, title: s.title, key: s.key, tabs: s.tabs });
       await sleep(2400);
       for (const t of s.tabs) {
-        await pg.click(s.pick(t));
+        await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, s.pick(t));   // JS 클릭 = smoke_parity 정본 문법(가시성 무관) — 이미지 셸 탭 도크는 헤더 메뉴 모드(hdr-tabs)로 소등(운영자 260805) · 라우팅 DOM(#toolTabs)은 보존이라 클릭 경로 동일
         await sleep(1600);
         const dlg = await pg.$('#tooldlg');
         if (dlg) await dlg.screenshot({ path: path.join(OUTDIR, SLOT, tabKey(s, t) + '.png') });

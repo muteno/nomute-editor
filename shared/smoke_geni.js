@@ -104,7 +104,7 @@ const STUB_FN = `(on) => {
     await pg.click(SEL.radThumb); await pg.waitForTimeout(700);
     ok('S2 Image Studio 열림', await pg.$eval(SEL.tooldlg, d => d.open));
 
-    await pg.click(SEL.tab6); await pg.waitForTimeout(450);
+    await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, SEL.tab6); await pg.waitForTimeout(450);
     const s3 = await pg.evaluate(S => ({
       hostShown: !document.querySelector(S.host).hidden,
       leadInHost: !!document.querySelector(S.host + ' ' + S.lead),
@@ -125,7 +125,7 @@ const STUB_FN = `(on) => {
     ok('S6 이식 모드 폼 상호작용(칩→요약 리드백)', s6.found && s6.on === 'watercolor' && s6.sum.includes(SEL.styleAltKo), JSON.stringify(s6));
 
     await pg.evaluate(S => { const w = document.querySelector(S.wish); w.value = 'QA스모크 장면'; w.dispatchEvent(new Event('input', { bubbles: true })); }, SEL);   // 텍스트칸 260719 hidden 이주(운영자 "프리뷰 위에 텍스트 보낼테니 일단 빼봐") → fill(visible 요구)이 hidden에 타임아웃 → value 직접 주입(close 스냅샷 보존 로직은 살아있음 = DOM 생존·복원 시 재노출이라 S5 재진입 보존 계약 유효)
-    await pg.click(SEL.tab2); await pg.waitForTimeout(350);
+    await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, SEL.tab2); await pg.waitForTimeout(350);
     const s4 = await pg.evaluate(S => ({
       hostHidden: document.querySelector(S.host).hidden,
       dlgBack: document.querySelector(S.dlg).childElementCount >= 3,
@@ -133,7 +133,7 @@ const STUB_FN = `(on) => {
     }), SEL);
     ok('S4 이탈 원복 3항(호스트 숨김·다이얼로그 복귀·iframe 재활성)', Object.values(s4).every(Boolean), JSON.stringify(s4));
 
-    await pg.click(SEL.tab6); await pg.waitForTimeout(450);
+    await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, SEL.tab6); await pg.waitForTimeout(450);
     const s5 = await pg.evaluate(S => {
       const on = document.querySelector(S.host + ' ' + S.style + ' .geni-opt.on');
       return { shown: !document.querySelector(S.host).hidden, wish: document.querySelector(S.wish).value, style: on ? on.dataset.v : '' };
