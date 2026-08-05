@@ -989,6 +989,9 @@
   .ch-thm > * { display:inline-flex; align-items:center; gap:3px; padding:1px 5px; border-radius:var(--r-pill); background:rgba(0,0,0,.55); color:var(--fg); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; white-space:nowrap; }   /* raw-ok: 플레이트(padding 1px 5px·rgba(0,0,0,.55)) = `.tcard-cov .trend-chg` 커버 배지 정본 사본 · gap 3 = `.tcard-m i`(지표 픽토+숫자) 정본 미러 · 글자 = --fg(어두운 플레이트 위 가독 = .rl 흰 글리프 축) */
   .ch-thm svg { width:11px; height:11px; display:block; opacity:.85; transform:translateY(-.8px); }   /* raw-ok: `.tcard-m svg` 정본 사본(11px·opacity .85·광학-잉크 -0.8 보정 포함 = 지표 픽토 전수 동일값) */
   .ch-thm .fresh { color:var(--accent-4); }   /* 24h 이내 = 골드레몬 = `.tcard-ago.fresh24` 신선 색 계승(음영은 커버 플레이트가 이미 담당 = 이중 배경 안 씀) */
+  .ch-thm .dev { font-weight:var(--fw-b); }   /* ×배수 = 평소(같은 포맷 중앙값) 대비 — TOP 게시물 `.ch-dev` 축의 커버 판 */
+  .ch-thm .dev.reels { color:var(--accent-2); }   /* 릴스 = 레몬 (`.ch-dev.reels` 색 계승) */
+  .ch-thm .dev.post { color:var(--bias-l1); }     /* 포스트 = 시안 (`.ch-dev.post` 색 계승) */
   .ch-th.txt .ch-thm { display:none; }   /* 캡션 폴백 타일 = 바닥을 캡션이 쓴다(겹침 회피 · 커버 있는 타일 전용 오버레이) */
   @media (hover:hover) and (pointer:fine) { .ch-th:hover .ch-thm { opacity:1; transition:opacity .3s ease; } }   /* raw-ok: .3s = 위 .ch-th:hover 진입 전이 동행(리프트와 같은 속도로 뜬다) */
   .chanview { max-width:860px; margin:0 auto; padding:10px 16px 64px; }   /* raw-ok: .trendview(메뉴3) 원문 계승 복사 — 좌우 여백·폭 일맥상통(운영자 260713) */
@@ -14616,12 +14619,14 @@ function renderChan() {
     const t = new Date(/T/.test(s) ? s : s.slice(0, 10) + 'T' + String(hh == null ? 12 : hh).padStart(2, '0') + ':00:00+09:00').getTime();   // 시각 결측 = 정오 앵커(오차 ±12h 대칭 = 한쪽으로 안 쏠린다)
     return isFinite(t) ? (Date.now() - t) / 3600e3 : NaN;
   };
-  const thMeta = x => {   // 조회수(EYE_SVG+vfmt 지표 정본 짝) + 경과(relAge 공통 사다리 · 24h 이내 = fresh 골드)
+  const thMeta = x => {   // ×배수(_devR 정본 재사용) + 조회수(EYE_SVG+vfmt 지표 정본 짝) + 경과(relAge 공통 사다리 · 24h 이내 = fresh 골드)
     const p = _thP.get(String(x.u || '')); if (!p) return '';
+    const _r = _devR(p);   // 같은 포맷 중앙값 대비 ×배수 = TOP 게시물과 **동일 함수·동일 기준선**(대조 가능 · 0 = 결측)
+    const dv = _r ? `<span class="dev ${p.format === '릴스' ? 'reels' : 'post'}">×${_r.toFixed(1)}</span>` : '';   // 순서 = ×배수 먼저(운영자 260723 "x11이 먼저" 열 순서 계승) · 색 = 포맷색(.ch-dev.reels/.post 토큰 동일)
     const v = p.views > 0 ? `<i>${EYE_SVG}<span>${vfmt(p.views)}</span></i>` : '';   // 0·결측 = 미표기(met() 0지표 규약 계승)
     const ah = _thAgeH(p), ag = relAge(ah);
-    const a = ag ? `<span class="${isFinite(ah) && ah < 24 ? 'fresh' : ''}">${ag}</span>` : '';
-    return (v || a) ? `<span class="ch-thm">${v}${a}</span>` : '';
+    const a = ag ? `<span class="${isFinite(ah) && ah < 24 ? 'fresh' : ''}">${ag}</span>` : '';   // 시간 = 항상 끝(.tcard-ago ml:auto 관례)
+    return (dv || v || a) ? `<span class="ch-thm">${dv}${v}${a}</span>` : '';
   };
   if (th.length) h += gsec('recent', `최근 게시물`, '<div class="ch-grid">' + th.map(x => x.th
     ? `<a class="ch-th" href="${escUrl(x.u || '#')}" target="_blank" rel="noopener" data-cap="${esc(x.t || '')}">${x.r ? REELGLYPH : POSTGLYPH}<img loading="lazy" referrerpolicy="no-referrer" src="${escUrl(x.th)}" onerror="chThFail(this)" alt="">${thMeta(x)}</a>`
