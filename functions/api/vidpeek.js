@@ -79,6 +79,28 @@ const _MEDIA_HOST_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.(cdninstagram\.com|fbcdn\.ne
 function _mediaUrl(s) {
   try { const u = new URL(String(s || '')); return (u.protocol === 'https:' && _MEDIA_HOST_RE.test(u.hostname)) ? u.toString() : ''; } catch { return ''; }
 }
+// 메타 CDN이 **실제로 서빙하는** 영상 치수(운영자 260806 실다운로드 봉합) — 추가 요청 0.
+//   ⚠ 노드의 `original_width/height`는 **업로더가 올린 원본**이라 받는 파일과 다르다(실측: original 1080×1140 · 받은 파일 720×760).
+//   그런데 재생 주소 자신이 답을 들고 있다 — 쿼리 `efg`(base64 JSON)의 `vencode_tag`가
+//   `xpv_progressive.INSTAGRAM.FEED.C3.720.dash_baseline_1_v1` 꼴이고 그 `720`이 **서빙 짧은 변**이다.
+//   원본 종횡비를 곱하면 720×760 = 실다운로드 실측과 정확히 일치(260806 검증).
+//   못 읽으면 0을 돌려 **뷰어가 재생 중인 실물에서 재게** 한다(_dgPeekMeasure) = 지어내지 않음.
+function _metaServedDims(u, ow, oh) {
+  if (!ow || !oh) return [0, 0];   // 종횡비 원천이 없으면 짧은 변만으론 나머지 변을 모른다 = 추측 금지
+  try {
+    const efg = new URL(String(u || '')).searchParams.get('efg');
+    if (!efg) return [0, 0];
+    const b = efg.replace(/-/g, '+').replace(/_/g, '/');
+    const j = JSON.parse(atob(b + '='.repeat((4 - (b.length % 4)) % 4)));
+    let s = 0;
+    for (const seg of String((j && j.vencode_tag) || '').split('.')) {   // 순수 숫자 마디만 = `C3`·`dash_baseline_1_v1` 오독 0
+      if (/^\d{3,4}$/.test(seg)) { const n = +seg; if (n >= 120 && n <= 4320 && n > s) s = n; }
+    }
+    if (!s) return [0, 0];
+    if (s >= Math.min(ow, oh)) return [ow, oh];   // 서빙본은 원본보다 커지지 않는다 = 같거나 이상이면 원본 그대로
+    return ow <= oh ? [s, Math.round(s * oh / ow)] : [Math.round(s * ow / oh), s];   // s = **짧은 변**
+  } catch { return [0, 0]; }
+}
 function _thCollectMedia(post) {   // 플러그인 collect_media 미러 — 캐러셀 컨테이너는 자식에게 양보 · 미디어 노드에서 정지
   const out = [];
   const hasMedia = (x) => !x.carousel_media && !!(x.video_versions
@@ -124,9 +146,14 @@ function thSsrItems(html, code, truncated) {
     const items = best.slice(0, 20).map((md) => {
       const vv = Array.isArray(md.video_versions) ? md.video_versions : (md.video_versions ? [md.video_versions] : []);
       if (vv.length) {   // ⚠ 길이로 판정 — `video_versions: []`는 파이썬(플러그인)에선 거짓이라 사진인데 JS에선 참이라 영상으로 둔갑한다(평의회4 D4)
-        const v0 = vv.find(v => v && (+v.width || +v.height)) || {};   // 버전 자체 w/h **먼저**, 없으면 부모 원본치수(플러그인 _pick_video 172행 순서 계승 · 평의회4 D5)
+        const v0 = vv.find(v => v && (+v.width || +v.height)) || {};   // 버전 자체 w/h(플러그인 _pick_video 172행 순서 계승)
         const src = vv.find(v => v && v.url) || {};   // 재생용 주소 = 등장 순서 첫 항목(SSR은 101>102>103 = 좋은 것부터 · 플러그인 quality 정렬과 같은 순서)
-        return { kind: 'video', w: +v0.width || +md.original_width || 0, h: +v0.height || +md.original_height || 0, u: _mediaUrl(src.url) };
+        // ⚠ `original_width/height` **직접 폴백을 뺀다**(운영자 260806 실다운로드 실측) — 그 값은 **업로더가 올린 원본**이고
+        //   실제로 서빙·다운로드되는 스트림은 더 작다(실측: original 1080×1140인데 받은 파일은 **720×760**).
+        //   화면이 1080이라 말하고 파일은 720이면 그게 이 라운드가 없애려던 바로 그 거짓 표기다.
+        //   대신 재생 주소의 efg가 말하는 **서빙 해상도**를 원본 종횡비로 환산한다(요청 0회) → 못 읽으면 0 = 뷰어 실측.
+        const sd = (+v0.width && +v0.height) ? [+v0.width, +v0.height] : _metaServedDims(src.url, +md.original_width || 0, +md.original_height || 0);
+        return { kind: 'video', w: sd[0] || 0, h: sd[1] || 0, u: _mediaUrl(src.url) };
       }
       let bw = 0, bh = 0, px = -1, bu = '';
       for (const c of md.image_versions2.candidates) {
@@ -214,6 +241,16 @@ async function ytFormats(u) {
 //   video면 video_info.variants[](mp4 · URL 경로에 320x568…1080x1920 = 실제 사다리)를 그대로 준다.
 const X_ID_RE = /\/status\/(\d+)/;
 const X_DIM_RE = /\/(\d+)x(\d+)\//;
+// X 사진 원본 주소(운영자 260806 실측) — pbs.twimg.com은 `name=` 없으면 medium(긴 변 1200)을 준다.
+//   `name=orig` = 업로더 원본(= original_info가 말하는 그 치수) · 이미 name이 붙어 있으면 orig로 덮어쓴다.
+function _xOrig(s) {
+  try {
+    const u = new URL(String(s || ''));
+    if (!/(^|\.)pbs\.twimg\.com$/.test(u.hostname)) return u.toString();
+    u.searchParams.set('name', 'orig');
+    return u.toString();
+  } catch { return String(s || ''); }
+}
 async function xMedia(u) {
   try {
     const m = X_ID_RE.exec(u); if (!m) return null;
@@ -226,19 +263,25 @@ async function xMedia(u) {
       const oi = md.original_info || {};
       const w = +oi.width || 0, h = +oi.height || 0;
       if (md.type === 'photo') {
-        const uu = _mediaUrl(md.media_url_https);
+        // ⚠ `media_url_https`를 **그대로 받으면 원본이 안 온다**(운영자 260806 실측) — X는 이름 파라미터가 없으면
+        //   `name=medium`(긴 변 1200 상한)을 준다: original_info 1206×1722인데 실제로 받아진 파일은 **840×1199 · 149KB**.
+        //   화면이 1206이라 말하고 파일은 840이면 그게 이 라운드가 없애려던 그 거짓 표기고, 동시에 **화질 손해**다.
+        //   `?name=orig`를 붙이면 같은 주소가 1206×1722 · 235KB를 준다(실측) → 라벨과 파일이 같아지고 원본을 받는다.
+        const uu = _mediaUrl(_xOrig(md.media_url_https));
         if (uu) items.push({ kind: 'img', w, h, u: uu });
         continue;
       }
       const vs = ((md.video_info || {}).variants || []).filter(v => v && v.content_type === 'video/mp4' && v.url);
-      let best = null;
+      let best = null, bw = 0, bh = 0;
       for (const v of vs) {
-        if (!best || (+v.bitrate || 0) > (+best.bitrate || 0)) best = v;
         const dm = X_DIM_RE.exec(v.url);
+        if (!best || (+v.bitrate || 0) > (+best.bitrate || 0)) { best = v; bw = dm ? +dm[1] : 0; bh = dm ? +dm[2] : 0; }
         if (dm) { const s = Math.min(+dm[1], +dm[2]); if (!seen.has(s)) { seen.add(s); fmts.push([s, 0]); } }   // fps = X가 안 준다 = 0 = 라벨에서 생략(지어내지 않음)
       }
       const bu = best ? _mediaUrl(best.url) : '';
-      if (bu) items.push({ kind: 'video', w, h, u: bu });
+      // 치수 = **실제로 고른 그 변형의 주소에 박힌 값**(…/1920x1080/…) 우선 · 없을 때만 original_info.
+      //   original_info는 **업로더 원본**이라 사다리 최고값과 다를 수 있다(사진 축에서 실제로 갈렸다) — 받을 파일 축으로 못박는다.
+      if (bu) items.push({ kind: 'video', w: bw || w, h: bh || h, u: bu });
     }
     const first = _mediaUrl((d.mediaDetails || [])[0] && (d.mediaDetails || [])[0].media_url_https);
     const txt = String(d.text || '').replace(/https:\/\/t\.co\/\w+/g, '').trim();   // 꼬리 t.co 단축주소 = 내용이 아니다

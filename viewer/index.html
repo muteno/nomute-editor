@@ -9415,12 +9415,15 @@ function _dgPeekMeasure(root) {
   let pend = 0, filled = false;
   const done = () => { if (--pend <= 0 && filled) _dgRenderBody(); };
   its.forEach((it, k) => {
-    if (it.w && it.h) return;
+    // ⚠ 영상은 **값이 있어도 다시 잰다**(운영자 260806) — 서버 값은 주소(efg)에서 유도한 값이라 인코더 반올림만큼 어긋날 수 있고,
+    //   여기서 재는 건 지금 재생 중인 **그 스트림 자신** = 액자 ⬇가 저장하는 바로 그 파일이다. 진실이 유도값을 이긴다.
+    //   사진은 종전대로 빈 자리만(로드된 실물과 후보 치수가 같으므로 재렌더 낭비 0).
+    if (it.w && it.h && it.kind !== 'video') return;
     const c = root.querySelector('#dgpc' + k); if (!c) return;
     const el = c.querySelector('video, img'); if (!el) return;
     const take = () => {
       const w = el.naturalWidth || el.videoWidth || 0, h = el.naturalHeight || el.videoHeight || 0;
-      if (w && h) { it.w = w; it.h = h; filled = true; }
+      if (w && h && (w !== it.w || h !== it.h)) { it.w = w; it.h = h; filled = true; }   // 값이 **달라졌을 때만** 재렌더 = 무한 재렌더 0
       done();
     };
     pend++;
@@ -9837,6 +9840,7 @@ function _dgPaintPic() {
   //   "이미 한번 링크 입력하면 다음거를 입력을 못해 … 재차, 또는 큐잉 시킬수가 없음"의 **직접 원인**. 이미지 스튜디오는
   //   제작 중에도 다음 발사가 열려 있고 잡이 쌓인다(JOBS 배열) — 같은 모델로 통일했으니 잠글 이유가 사라졌다.
   dl.title = !u ? '주소를 붙여넣으면 받을 수 있어'
+    : (plat && _dgPeekFor === u && _dgNoVid(_dg.peek)) ? _dgVidPlatName(plat) + ' 사진 전부 받기 — 이 글엔 영상이 없어(러너 대신 바로 저장)'   // 갈래 리드백 = _dgFire의 사진만 분기와 같은 술어
     : plat ? _dgVidPlatName(plat) + ' 영상 받기 — 최고화질 + 프레임별·FHD판(자막까지 받으려면 「받을 내용」의 [영상+자막])'
     : '이 페이지의 사진·파일 받기';
 }
@@ -9847,18 +9851,22 @@ function _dgPaintPic() {
 //   이걸로 두 갈래가 같은 계약(내용 먼저 · 받기 나중)으로 합류한다.
 //   ⚠ 여기 뜨는 건 **게시물이 공개한 og 메타**(제목·작성자·대표 이미지)다 — 받을 파일 목록(캐러셀 장수·해상도)은
 //     yt-dlp가 있어야 알고 그건 러너 몫이라, 미리보기용으로 러너를 왕복시키지 않는다(부팅만 40~60초 = 확인이 더 느려진다).
-let _dgPeekSeq = 0;
+let _dgPeekSeq = 0, _dgPeekFor = '';   // _dgPeekFor = 지금 _dg.peek이 **어느 주소의** 것인지(발사 갈래 판단이 옛 미리보기를 물지 않게)
 async function _dgPeek() {
   const u = _dgUrlNorm(), seq = ++_dgPeekSeq;
-  if (!u || !_dgVidPlat(u)) { if (_dg.peek) { _dg.peek = null; _dgRenderBody(); } return; }   // 주소 없음·영상 게시물 아님 = 미리보기 없음(페이지 스캔 갈래는 종전대로 [다운로드]가 목록을 만든다)
+  if (!u || !_dgVidPlat(u)) { if (_dg.peek) { _dg.peek = null; _dgPeekFor = ''; _dgRenderBody(); } return; }   // 주소 없음·영상 게시물 아님 = 미리보기 없음(페이지 스캔 갈래는 종전대로 [다운로드]가 목록을 만든다)
   try {
     const r = await fetch('api/vidpeek?u=' + encodeURIComponent(u));
     const d = await r.json().catch(() => ({}));
     if (seq !== _dgPeekSeq) return;   // 늦게 온 옛 응답 폐기(타이핑 중 순서 뒤집힘 차단 · _dgProbeSubs 관례 동문)
     _dg.peek = (d && (d.title || (Array.isArray(d.items) && d.items.length))) ? d : null;   // 제목을 못 얻었으면 미리보기 생략(빈 카드 금지 = 추측 표시 안 함) · 단 **항목 구성만 얻은 경우는 살린다**(캡션 없는 스레드 미디어 글 = 제목이 원래 없다 · 구판은 그 글의 항목·썸네일까지 통째로 버렸다 = 평의회2 실측)
-  } catch { if (seq !== _dgPeekSeq) return; _dg.peek = null; }
+    _dgPeekFor = _dg.peek ? u : '';
+  } catch { if (seq !== _dgPeekSeq) return; _dg.peek = null; _dgPeekFor = ''; }
+  _dgPaintPic();   // 미리보기가 갈래를 바꾼다(사진만 = 프록시 저장) → 보내기 버튼 툴팁도 같은 순간에 갱신
   _dgRenderBody();
 }
+// 「사진만인 게시물」 술어 — 미리보기 행(화질 칩 소거)과 발사 갈래(러너 vs 프록시)가 **같은 한 판정**을 쓴다(드리프트 0).
+function _dgNoVid(p) { return !!(p && Array.isArray(p.items) && p.items.length && !p.items.some(it => it && it.kind === 'video')); }
 // 미리보기 행 = 스캔 결과 행(.dg-item · _dgRowHtml) 마크업 **사본** — 다른 건 버튼이 없다는 것뿐(여긴 아직 받는 게 아니다).
 function _dgPeekHtml() {
   const u = _dgUrlNorm(), plat = _dgVidPlat(u);
@@ -9873,7 +9881,7 @@ function _dgPeekHtml() {
   //   치수 = 서버가 SSR에서 실측한 값만(w×h · 로그아웃 응답이 감춘 게시물 = 종류·개수만 = 지어내지 않음).
   // 항목을 알아냈는데 **영상이 하나도 없으면** 화질 축이 성립하지 않는다(운영자 260805 6차 — 사진 2장 트윗에
   //   「영상만 · 최대 4K 60fps」가 뜨던 자리). 그 경우 화질 칩·「최대 …」를 통째로 빼고 「사진만」이라고 말한다.
-  const noVid = !!(p && Array.isArray(p.items) && p.items.length && !p.items.some(it => it && it.kind === 'video'));
+  const noVid = _dgNoVid(p);
   let itemsLine = '';
   // 미리보기를 못 받은 스레드 글 = **조용히 빈 채로 두지 않는다**(실측 260805 = 표본 11건 중 1건 · 그 글은 og·임베드
   //   양쪽이 로그인월이라 우리가 뚫을 수단이 없다). 구판은 제목 자리에 주소만 남아 「왜 안 뜨지」가 됐다 —
@@ -9893,10 +9901,12 @@ function _dgPeekHtml() {
         if (hit) hit.n++; else g.push({ key, lab: knd(it) + (it.w && it.h ? ' ' + it.w + '×' + it.h : ''), n: 1 });
       });
       const parts = g.slice(0, 2).map(x => x.lab + (x.n > 1 ? ' ' + x.n + '장' : ''));   // 상한 2종 = 폰 430 `.dg-imeta`(264px·nowrap) 실측(4종 78px·3종 13px 초과 · 2종 = 0) — 같은 치수는 위에서 이미 묶이므로 캐러셀 정상 케이스는 상한에 안 닿는다
-      // 「원본」 = 이 치수의 성격을 밝히는 한정어(평의회1 G5) — 서버가 주는 값은 **업로더 원본 치수**지
-      //   받은 파일 실측이 아니다(스레드 video_versions는 w/h가 전부 없어 부모 original_w/h를 계승한다).
-      //   윗줄 화질엔 「최대」를 붙여놓고 이 줄만 사실처럼 말하면 같은 행 안에서 정직 문법이 갈린다.
-      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — 원본 ' + esc(parts.join(' · ') + (g.length > 2 ? ' 외 ' + (g.length - 2) + '종' : '')) + '</div>';
+      // 구판은 여기에 한정어 「원본」을 달았다(평의회1 G5) — 서버가 준 값이 **업로더 원본 치수**지 받을 파일이
+      //   아니었기 때문이다. 260806 실다운로드가 그 간극을 숫자로 잡았다(스레드 original 1080×1140 → 받은 파일 720×760 ·
+      //   X 사진 original_info 1206×1722 → 받은 파일 840×1199). 그래서 **원천을 받을 파일 축으로 옮겼다**
+      //   (스레드 = 실물 재생 스트림 실측 · X 사진 = ?name=orig로 원본을 실제로 받게 · X 영상 = 고른 변형 주소의 치수) →
+      //   이제 이 값은 액자 ⬇/전체 다운로드가 저장하는 **그 파일의 치수**다 = 한정어가 필요 없다(붙이면 도리어 거짓).
+      itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc(parts.join(' · ') + (g.length > 2 ? ' 외 ' + (g.length - 2) + '종' : '')) + '</div>';
     } else {
       const nv = its.filter(it => it.kind === 'video').length, ni = its.filter(it => it.kind === 'img').length, no = its.length - nv - ni;
       itemsLine = '<div class="dg-imeta">항목 ' + its.length + ' — ' + esc([nv ? '영상 ' + nv : '', ni ? '사진 ' + ni : '', no ? '기타 ' + no : ''].filter(Boolean).join(' · ')) + '</div>';
@@ -9957,6 +9967,12 @@ function _dgFire() {   // 다운로드 버튼 = 갈래 판단 1곳(영상 게시
   if (_dg.busy) return;   // 페이지 스캔만 직렬(결과 판이 하나) — 영상 받기는 큐잉 = 막지 않는다
   const u = _dgUrlNorm();
   if (!u) { _dg.err = '주소를 먼저 붙여넣어 주세요'; _dgRenderBody(); return; }
+  // ⚠ **사진만인 게시물은 러너로 보내지 않는다**(운영자 260806 실다운로드 실측) — vidl 러너는 yt-dlp 축이라
+  //   영상이 없으면 그 자리에서 죽는다(실측 rc=1 · X 사진 트윗 "No video could be found in this tweet" ·
+  //   인스타 사진 글 "There is no video in this post"). 운영자 화면엔 40~60초 뒤 실패 잡만 남았다 = 최악의 헛걸음.
+  //   그런데 그 사진들은 **이미 「받을 내용」 액자에 떠 있고** 같은 창의 프록시 저장(api/linkgrab/file)으로 바로 받아진다 →
+  //   [보내기]를 그 전체 다운로드에 그대로 잇는다(새 경로 0 · 버튼 추가 0 · 운영자 동작 종전과 동일).
+  if (_dgVidPlat(u) && _dgPeekFor === u && _dgNoVid(_dg.peek)) { _dgPeekGetAll($('#dgVidDl')); return; }
   if (_dgVidPlat(u)) _dgVidStart('video'); else _dgGo();   // 기본 = **영상만**(운영자 260803 "주로 필요한건 영상임 어짜피") · 자막까지 = 「받을 내용」 행의 [영상+자막] 워드칩(data-act=vidsubs)
 }
 function _dgVidStart(mode) {   // 영상 받기 발사 = 주소 → vidl 잡 **추가**(교체 아님 · 큐잉 260802) · 입력칸은 비워 다음 주소를 바로 받는다
