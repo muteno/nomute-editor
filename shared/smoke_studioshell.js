@@ -518,8 +518,12 @@ async function runOnce(pg, gap, clone, railRow) {
     typeof x === 'number' && typeof b[i] === 'number' ? Math.abs(x - b[i]) > 0.6 : x !== b[i]);   // 수치 = 0.6px 허용(AI 생성 창 높이 = JS 산출 반올림 vs CSS 소수 = 0.5px 실측 · 문자열(radius·fs) = 엄격)
   // 발사 버튼 = **고정 정본 1벌**(운영자 260804 "항상 고정된 정본을 사용하도록") — 유동 기준탭(카드생성·첫 보유 탭) 비교는
   //   기준탭 자체가 표류하면 전 탭이 같이 밀려도 초록이던 사각. 값 = .asksend→thumb #go 정본 사다리 실측
-  //   (btn-sm 30 · r-modal 22 · fs-label 13 · 테두리 흰알파 .08 · 면 흰알파 .02 · blur 8 = --blur-s) · 2셸 공통(260803 2차 "아예 동일하게"의 완성 — 값사본 때 blur만 빠져 있었다).
-  const FIRE_CANON = [30, '22px', '13px', 'rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.02)', 'blur(8px)'];
+  //   (btn-sm 30 · r-modal 22 · fs-label 13 · 테두리 흰알파 **.2** · 면 흰알파 .02 · blur 8 = --blur-s) · 2셸 공통(260803 2차 "아예 동일하게"의 완성 — 값사본 때 blur만 빠져 있었다).
+  //   ⚠ 테두리 .08 → **.2 개정(260806)** — 이 정본은 **죽어 있던 값을 기준으로 쓰여 있었다**: 운영자 260731 12차 「너무 옅음」 지시로 넣은 도크 .2가
+  //     `#go{border-color:.08}`(id 1,0,0)에 눌려 6일간 발효되지 않았고(check_css_dead_state 첫 실행이 검출 · CDP 캐스케이드로 확정),
+  //     이 스모크는 그 **패배한 화면**을 실측해 canon으로 굳혔다. id 선언을 걷어내 지시가 발효되자 5스튜디오 전부 .2로 수렴 → canon을 지시값으로 되돌린다.
+  //     교훈 = 실측 canon은 「지금 이렇게 보인다」를 굳히므로, 그 화면 자체가 버그면 canon이 버그를 보호한다(그래서 죽은 오버라이드 축이 따로 필요했다).
+  const FIRE_CANON = [30, '22px', '13px', 'rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.02)', 'blur(8px)'];
   // 셸 **안** 등가 + 발사만 고정 정본(운영자 260802 7차 영상 확장 · 260804 고정 정본) — 창·돋보기는 도크 계약이 셸별(이미지 1:1 vs 영상 산출비)이라 셸 안 상대축 유지.
   //   이미지 기준 = 카드생성(정본) · 영상 기준 = 부품 보유 첫 탭(편집) · 부품이 없는 탭(콘티 = 액자 폐지)은 그 축만 비대상.
   const pmBad = []; const pmRefs = {};
@@ -536,7 +540,7 @@ async function runOnce(pg, gap, clone, railRow) {
       return axes.some(ax => { const want = ax === 'fire' ? FIRE_CANON : r[ax]; return p[ax] && want && pmDiff(p[ax], want); });   // 발사 = 고정 정본(기준탭 자신의 표류도 잡힌다) · 나머지 = 셸 안 상대축
     }).map(([k, v]) => k + '=' + JSON.stringify(v.prevMod)));
   }
-  core('C7 미리보기 모듈 등가 = 창 w/h · 발사 고정정본 6축(30·r22·fs13·테두리.08·면.02·blur8 = 2셸 공통) · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
+  core('C7 미리보기 모듈 등가 = 창 w/h · 발사 고정정본 6축(30·r22·fs13·테두리.2·면.02·blur8 = 2셸 공통) · 돋보기 dx/dy/w/h(이미지 기준=카드생성 · 영상 기준=첫 보유 탭)',
     Object.keys(pmRefs).some(k => k.startsWith('이미지_')) && pmBad.length === 0,
     pmBad.length ? '이탈 ' + pmBad.slice(0, 3).join(' · ') + ' vs 기준 ' + JSON.stringify(pmRefs) : JSON.stringify(pmRefs));
 

@@ -3511,6 +3511,228 @@ def check_keyframes_dup():
     return 0
 
 
+# ── 죽은 상태 오버라이드 = 특이도 패배 게이트 (운영자 260806 승인 "아이디어 해결 ㄱ") ──────────────────
+#   왜 = 이 레포는 오버라이드의 의도를 **주석으로** 설명하는 관례인데, 주석엔 강제력이 0이라 「이긴다고 적힌 쪽이
+#     실제로는 특이도로 지는」 상태가 조용히 생긴다. 실사고 2건(260806 실측 · CDP 캐스케이드 순서로 확정):
+#       ⓐ `viewer/thumb.html` 260731 주석 = 「.dropping 강조 링은 border-color 오버라이드라 **그대로 살아 있음**」
+#          → 거짓. `.cpprev-box.dropping`(0,2,0) < `.topdock[data-lay="edit"] .cpprev-box`(0,3,0)라
+#            도크 안 첨부 드래그오버 링이 **한 번도 안 보였다**(실측 computed = rgba(0,0,0,0)).
+#       ⓑ 같은 파일 `#go { border-color:.08 }`(1,0,0)이 발사 버튼의 **모든** 클래스 오버라이드를 눌러 죽였다 —
+#          `.go.err`(빨강)·`.okdone`(초록)·`.rszbusy`·`.spell-arm` 4상태 + **운영자 260731 12차 「너무 옅음」
+#          지시로 넣은 도크 `.2`**까지 전멸(HEAD CDP 캐스케이드 최강 = #go .08 = 6일간 지시 미발효).
+#   ⚠ 신설 사유 = 기존 게이트가 전부 다른 축이다 — `check_design` = raw **개수** · 팔레트 핀 = 뷰어 **간** 동값 ·
+#     `check_keyframes_dup` = **이름** 중복 · `smoke_*` = **애니 끝난 그림** → 「같은 속성을 두 규칙이 다투는데
+#     상태 쪽이 지는가」는 축 자체가 없었다. 증상도 안 보인다(그냥 상태가 안 뜰 뿐) = 운영자 눈이 유일한 검출기.
+#   판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동발견(`viewer/*.html` <style> + `viewer/*.css`).
+#     술어 = 「기저+상태」 단일 복합선택자 B가, **B와 같은 요소를 잡는** 더 센 규칙 C에게 같은 속성을 빼앗긴다.
+#   위양성 4겹(실측으로 31 → 21 → 11 → 7까지 좁힌 경계):
+#     ⓐ **상태는 JS 토글분만** — `classList.add/remove/toggle('x')`로 실제 켜지는 클래스만 상태로 본다(정적 변종 제외).
+#     ⓑ **구조자(rescue) 인식** — 상태를 되살리는 더 센 규칙이 있으면 살아 있다(이게 없으면 위 ⓐ의 **수리 자체**가
+#        위반으로 잡힌다 = 게이트가 봉합을 막는 자기모순 · 실측 10건이 이 겹에서 걸러졌다).
+#     ⓒ **상태-대-상태 면제** — 경쟁자가 자기도 JS 토글 상태면(오류 상태가 모든 상태를 덮는 `.pin-slots.bad` 등)
+#        의도적 우선순위다(실측 10건). 잡는 건 **구조·문맥이 상태를 덮는** 경우뿐.
+#     ⓓ **at-블록 밖만** — `@media` 안 오버라이드는 정당한 거처라 스코프 밖 · 의사요소 상자 vs 요소 상자 비교 제외 ·
+#        경쟁자 최우측에 id·속성·의사가 붙으면 매칭 집합이 갈리므로 제외(보수적).
+#   ⚠ **하드 0 금지** = 현행 7건(index 4 · k 3)은 전건 **미검증**이다 — 실제 사망인지 의도된 문맥 우선인지 케이스별
+#     판독이 필요하고, 그 판독 없이 baseline에 박으면 「알고 동결한 부채」가 「원래 그런 것」으로 굳는다(부채 래칫이
+#     막으려는 바로 그 병). → 래칫 = **늘면 차단 · 줄면 낮추라고 알린다** + 원장 open_items에 사람 말로 남긴다.
+_CSS_DEAD_STATE_BASE = {'viewer/index.html': 3, 'viewer/k.html': 3}   # 260806 실측 스냅샷(미검증 = 판독 후 축소 대상 · 늘리려면 사유 + --debt-sync)
+#   index 3 = `.fin-chg.up`[color] · `.nm-toast:not(.show)`[pointer-events] · `.qrow.qrow-out`[animation]
+#   k 3     = `.axrow.kax`[margin-top] ×3(경쟁자 = `#go + .axrow` 형제결합 2벌 + `.ogrid > #axes > .axrow`)
+#   ⚠ thumb 4건(`.go.err`·`.okdone`·`.rszbusy`·`.spell-arm`)은 260806에 **실제로 수리**해서 표에 없다 = 하드 0 유지분.
+
+_CSS_COMBI = re.compile(r'\s*[>+~]\s*|\s+')
+_CSS_TOK = re.compile(r'(::?[a-zA-Z-]+(?:\([^)]*\))?)|(\[[^\]]*\])|(\.[-\w]+)|(#[-\w]+)|([-\w]+)|(\*)')
+_CSS_DECL_P = re.compile(r'(?:^|;)\s*([-a-zA-Z]+)\s*:', re.M)
+_CSS_TOGGLE = re.compile(r"""classList\s*\.\s*(?:add|remove|toggle)\s*\(\s*['"]([-\w]+)['"]""")
+
+
+def _css_spec(sel):
+    """(a,b,c) 특이도 — `:where()`는 0 기여(실측 확인: 크로미엄 141 정상 준수)."""
+    a = b = c = 0
+    for m in _CSS_TOK.finditer(sel):
+        ps, at, cl, idd, tag, _st = m.groups()
+        if ps:
+            if ps.startswith('::'):
+                c += 1
+            elif ps.startswith(':where('):
+                pass
+            elif ps.startswith((':not(', ':is(', ':has(')):
+                inner = ps[ps.index('(') + 1:-1]
+                best = max((_css_spec(s) for s in inner.split(',') if s.strip()), default=(0, 0, 0))
+                a, b, c = a + best[0], b + best[1], c + best[2]
+            else:
+                b += 1
+        elif at:
+            b += 1
+        elif cl:
+            b += 1
+        elif idd:
+            a += 1
+        elif tag:
+            c += 1
+    return (a, b, c)
+
+
+def _css_compounds(sel):
+    """복합선택자 리스트 — 각 원소 = {'cls':set,'id':bool,'attr':bool,'pseudo':bool}"""
+    out = []
+    for p in [x for x in _CSS_COMBI.split(sel.strip()) if x]:
+        cur = {'cls': set(), 'id': False, 'ids': set(), 'attr': False, 'pseudo': False}
+        for m in _CSS_TOK.finditer(p):
+            ps, at, cl, idd, _tag, _st = m.groups()
+            if ps:
+                if ps.startswith('::'):
+                    continue
+                if ps.startswith((':not(', ':is(', ':where(')):
+                    for s in ps[ps.index('(') + 1:-1].split(','):
+                        cur['cls'] |= {'.' + x for x in re.findall(r'\.([-\w]+)', s)}
+                else:
+                    cur['pseudo'] = True
+            elif at:
+                cur['attr'] = True
+            elif cl:
+                cur['cls'].add(cl)
+            elif idd:
+                cur['id'] = True
+                cur['ids'].add(idd[1:])
+        out.append(cur)
+    return out
+
+
+def _css_top_rules(text):
+    """depth 0 규칙만 (selector, decls, line0) — at-블록 내부는 스코프 밖([4]ⓓ)."""
+    out, i, n, depth, buf = [], 0, len(text), 0, ''
+    while i < n:
+        ch = text[i]
+        if ch == '{':
+            sel = buf.strip()
+            if depth == 0 and sel.startswith('@'):
+                depth, buf = 1, ''
+                i += 1
+                continue
+            if depth == 0:
+                j, d = i + 1, 1
+                while j < n and d:
+                    if text[j] == '{':
+                        d += 1
+                    elif text[j] == '}':
+                        d -= 1
+                    j += 1
+                out.append((sel, text[i + 1:j - 1], text.count('\n', 0, i)))
+                buf, i = '', j
+                continue
+            depth += 1
+        elif ch == '}':
+            depth = max(0, depth - 1)
+            buf = ''
+        else:
+            buf += ch
+        i += 1
+    return out
+
+
+def check_css_dead_state():
+    """죽은 상태 오버라이드 래칫(위 주석 참조). 늘면 rc=1 = 커밋 차단."""
+    import glob as _g
+    cur, det = {}, {}
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'viewer', '*.css'))):
+        rel = os.path.relpath(fp, ROOT).replace(os.sep, '/')
+        try:
+            src = open(fp, encoding='utf-8').read()
+        except Exception:
+            continue
+        toggled = set(_CSS_TOGGLE.findall(src))
+        idcls = {}   # id → 그 요소가 실제로 든 클래스 집합(정적 마크업 실측) — `#go`처럼 **id 기저가 클래스 상태를
+        #              눌러 죽이는** 축을 잡기 위한 유일한 수단(CSS만 봐선 `#go`와 `.go.err`가 같은 요소인지 알 수 없다).
+        #              ⚠ 실사고의 절반이 이 형태였고(운영자 260731 「너무 옅음」 .2 + 발사 4상태를 #go .08이 전멸),
+        #                킬테스트 K1이 「id 경쟁자 보수적 제외」로는 그 진범을 못 잡는다는 걸 실측으로 드러냈다.
+        for tm in re.finditer(r'<[a-zA-Z][^>]*>', src):
+            tag = tm.group(0)
+            im = re.search(r'\sid\s*=\s*["\']([-\w]+)["\']', tag)
+            cm = re.search(r'\sclass\s*=\s*["\']([^"\']*)["\']', tag)
+            if im and cm:
+                idcls.setdefault(im.group(1), set()).update('.' + x for x in cm.group(1).split() if x)
+        rules = []
+        for off, region in _kf_regions(rel, src):   # 구간 선분리 = HTML/CSS 주석 교차오염 구조 차단(_kf_regions 계약 계승)
+            clean = re.sub(r'/\*.*?\*/', lambda m: re.sub(r'[^\n]', ' ', m.group(0)), region, flags=re.S)
+            for sel, decls, ln in _css_top_rules(clean):
+                if not sel or sel.startswith('@'):
+                    continue
+                P = {m.group(1).lower() for m in _CSS_DECL_P.finditer(decls)}
+                if not P:
+                    continue
+                for one in sel.split(','):
+                    one = one.strip()
+                    if one:
+                        rules.append({'sel': one, 'spec': _css_spec(one), 'cp': _css_compounds(one),
+                                      'p': P, 'ln': off + ln + 1})
+        seen = set()
+        for b in rules:
+            if len(b['cp']) != 1:
+                continue                       # 「기저+상태」 단일 복합선택자만
+            bc = b['cp'][0]
+            if len(bc['cls']) < 2:
+                continue
+            for c in rules:
+                if c is b or c['sel'] == b['sel'] or c['spec'] <= b['spec']:
+                    continue
+                rc_ = c['cp'][-1]
+                rcls, rid_ok = rc_['cls'], rc_['id']
+                idsub = False
+                if rc_['id'] and len(rc_['ids']) == 1 and not rc_['cls'] and not rc_['attr'] and not rc_['pseudo']:
+                    rcls = idcls.get(next(iter(rc_['ids'])), set())   # `#go` → 그 요소가 실제로 든 클래스({.go,.pvfire}…)
+                    rid_ok, idsub = False, True
+                # ⚠ 부분집합 **방향** = id 치환일 땐 뒤집힌다(260806 실측 구멍) — `#go` 요소가 `.pvfire` 같은 **여분 클래스**를
+                #   들면 `rcls ⊆ B` 는 거짓이 돼 진짜 경쟁자를 놓친다(vd 큐영상이 그렇게 빠져나갔다).
+                #   맞는 술어 = 「B의 **기저**(상태 클래스를 뺀 나머지)가 그 요소에 실제로 붙어 있는가」.
+                ok = ((bc['cls'] - {'.' + t for t in toggled}) <= rcls) if idsub else (rcls <= bc['cls'])
+                if not rcls or not ok or rid_ok or rc_['attr'] or rc_['pseudo']:
+                    continue                   # 같은 요소를 잡아야 · 최우측 속성·의사 = 매칭 집합 갈림(제외)
+                if ('::' in c['sel']) != ('::' in b['sel']):
+                    continue                   # 의사요소 상자 vs 요소 상자
+                shared = b['p'] & c['p']
+                if not shared:
+                    continue
+                bstate = ({x.lstrip('.') for x in bc['cls']} & toggled) if idsub else {x.lstrip('.') for x in (bc['cls'] - rcls)}
+                if not (bstate & toggled):
+                    continue                   # 상태 = JS 토글분만
+                cstate = set()
+                for cc in c['cp']:
+                    cstate |= {x.lstrip('.') for x in cc['cls']}
+                if (cstate - {x.lstrip('.') for x in bc['cls']}) & toggled:
+                    continue                   # 상태-대-상태 = 의도적 우선순위(면제)
+                if any(r is not b and r is not c and (r['p'] & shared) and bc['cls'] <= r['cp'][-1]['cls']
+                       and r['spec'] > c['spec'] for r in rules):
+                    continue                   # 구조자(rescue) = 상태를 되살리는 더 센 규칙이 있다
+                k = (b['sel'], c['sel'], tuple(sorted(shared)))
+                if k in seen:
+                    continue
+                seen.add(k)
+                cur[rel] = cur.get(rel, 0) + 1
+                det.setdefault(rel, []).append('%s(%d행 %s) ←패배← %s(%d행 %s) [%s]'
+                                               % (b['sel'], b['ln'], b['spec'], c['sel'], c['ln'], c['spec'],
+                                                  ','.join(sorted(shared))))
+    up = [(k, _CSS_DEAD_STATE_BASE.get(k, 0), v) for k, v in sorted(cur.items()) if v > _CSS_DEAD_STATE_BASE.get(k, 0)]
+    if up:
+        print('❌ 죽은 상태 오버라이드 — 상태 규칙이 더 센 규칙에 눌려 **화면에 절대 안 나타난다**(증상 = 상태가 안 뜰 뿐 = 눈으로 못 잡는다):')
+        for k, a, b_ in up:
+            print('   · %s  %d → %d' % (k, a, b_))
+            for d in det.get(k, []):
+                print('       %s' % d)
+        print('   고쳐라 = ⓐ 이긴 쪽의 그 속성 선언을 없애라(값이 동값이면 순손실 0) ⓑ 문맥 규칙이면 `:where()`로 특이도를 낮춰 상태가 이기게 하라')
+        print('           ⓒ 그 상태만 되살릴 더 센 규칙을 추가하라(구조자 = 게이트가 인식한다).')
+        return 1
+    dn = [(k, _CSS_DEAD_STATE_BASE[k], cur.get(k, 0)) for k in sorted(_CSS_DEAD_STATE_BASE) if cur.get(k, 0) < _CSS_DEAD_STATE_BASE[k]]
+    if dn:
+        print('✅ 죽은 상태 오버라이드 래칫 — **%d건 청산**. _CSS_DEAD_STATE_BASE를 낮춰라: %s'
+              % (sum(a - b_ for _, a, b_ in dn), ', '.join('%s %d→%d' % (k, a, b_) for k, a, b_ in dn)))
+        return 0
+    print('✅ 죽은 상태 오버라이드 래칫 — 총 %d건 = 면책 스냅샷과 동일(신규 사망 0 · 상태-대-상태·구조자·@블록 제외 · 미검증 %d건은 원장 추적)'
+          % (sum(cur.values()), sum(_CSS_DEAD_STATE_BASE.values())))
+    return 0
+
+
 # ── 앵커 메뉴 문법 = 한 벌 게이트 (운영자 260805 승인 "아이디어 ㄱ") ──
 #   왜 = 같은 결의 메뉴 3종(설정 #linkpop · 스튜디오 헤더 메뉴 .tool-menupop · PASS 사유 .sc-rsn)이 값을 **각자 베껴 쓰고** 있었다.
 #     정본이 바뀌면 나머지가 조용히 낡는데 증상이 「어느 창 하나만 좀 달라 보임」뿐이라 눈으로만 잡혔다 — 실제로 260805 실측 시점의
@@ -5492,6 +5714,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ @keyframes 중복 게이트 스킵:', e)
+    try:
+        if check_css_dead_state() != 0:   # 죽은 상태 오버라이드(운영자 260806 "아이디어 해결 ㄱ" — 주석은 「살아 있다」는데 특이도로 지는 상태 · 실사고 = .dropping 링 6일 실명 + #go .08이 발사 4상태 + 운영자 260731 「너무 옅음」 .2 지시까지 눌러 죽임 · 기존 게이트는 raw 개수·이름 중복·애니 끝난 그림 축이라 「상태가 캐스케이드에서 지는가」가 사각)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 죽은 상태 오버라이드 게이트 스킵:', e)
     try:
         if check_anchor_menu_canon() != 0:   # 앵커 메뉴 문법 = 한 벌(운영자 260805 "아이디어 ㄱ" — 설정·스튜디오 헤더 메뉴·PASS 사유 3표면이 값을 각자 베껴 쓰다 PASS 창만 혼자 다른 문법으로 갈라진 실사고의 기계화 · 기존 게이트는 raw 개수·뷰어 간 동값·모달 헤더 기하 축이라 「같은 결의 메뉴가 한 벌인가」가 사각)
             rc = 1
