@@ -984,12 +984,22 @@ def tiktok_subs(accounts, limit=10, deadline=None):
             break
         time.sleep(2)
         got = 0
+        # [1차 실측] ①이 왜 실패했는지 = 이 변수(None = 실패 안 함/미판정). ⚠ 260806 봉합 —
+        #   종전엔 ①이 예외를 안 던지면(HTTP 200) 아무 기록도 안 남기고 ②(tikwm)로 흘렀고, ②는 260714부터
+        #   **전 계정 상시 403**이라 화면 사유가 계정 불문 403으로 덮였다 → 알림이 "틱톡이 이 계정을 차단했다 ·
+        #   기다리면 풀린다"고 3일째 말했는데 실측은 정반대였다(260806 실측: @g_i_dle·@formula1 = 임베드 HTTP
+        #   200 · userInfo id 확보 = 계정 살아있음 · videoList만 0건 / @kleague = statusCode 10221
+        #   "Couldn't find this account" = 계정 자체가 없음 = 지워야 하는 건데 "지우지 마"라고 안내했다).
+        #   = 스레드 쿠키 무소득(CLAUDE.md)과 **같은 구조** — 폴백이 1차 사유를 지워 사람이 추측으로 메우게 된다.
+        _e1 = None
         try:   # ① 임베드 위젯(서드파티 사이트용이라 봇월 밖 — 프로필 본페이지 itemList는 빈 배열 실측 = 부적격)
-            m = re.search(r'<script id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>',
-                          _get("https://www.tiktok.com/embed/@" + urllib.parse.quote(acc), timeout=20), re.S)
+            _html = _get("https://www.tiktok.com/embed/@" + urllib.parse.quote(acc), timeout=20)
+            m = re.search(r'<script id="__FRONTITY_CONNECT_STATE__"[^>]*>(.*?)</script>', _html, re.S)
+            _alive = False
             for pg in ((((json.loads(m.group(1)) if m else {}).get("source") or {}).get("data") or {}).values()):
                 if not (isinstance(pg, dict) and isinstance(pg.get("videoList"), list)):
                     continue
+                _alive = _alive or bool((pg.get("userInfo") or {}).get("id"))   # 프로필이 실려 있으면 계정은 살아있다
                 for v in pg["videoList"]:
                     if v.get("id") and str(v.get("privateItem")).lower() != "true":
                         _push(v["id"], v.get("authorUniqueId") or acc, v.get("desc"), v.get("playCount"),
@@ -997,17 +1007,25 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                         got += 1
                 if got:
                     break
+            if not got:
+                # 계정 실존 판정 = 프로필(userInfo.id) 유무 · statusCode 10221 = 틱톡의 "없는 계정" 코드(260806 실측)
+                _e1 = "nolist" if (_alive and '"statusCode":10221' not in _html) else "gone"
+                print(f"::warning::tiktok @{acc} 임베드 [1차 실측] {_e1}"
+                      f"({'계정은 살아있는데 영상 목록만 0건' if _e1 == 'nolist' else '계정 없음 — 삭제·개명'})", file=sys.stderr)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 임베드 실패: {e}", file=sys.stderr)
-            _sfail("tiktok", acc, _hcode(e))
+            _e1 = _hcode(e)
         if got:
             _sok("tiktok", acc)
             continue
+        if _e1 is not None:
+            _sfail("tiktok", acc, _e1)   # ②의 상시 403이 이 값을 덮지 못하게 **먼저** 박는다(아래 ②는 _e1 없을 때만 기록)
         try:   # ② tikwm 구 창구 폴백(260714~ 403 — 복구 시 자동 재사용) · count 10→30(운영자 260720 "국내 큐레이션 10위까지")
             j = json.loads(_get("https://www.tikwm.com/api/user/posts?unique_id=%s&count=30" % urllib.parse.quote(acc)))
             if j.get("code") != 0:
                 print(f"::warning::tiktok @{acc} 응답 코드 {j.get('code')}(스킵)", file=sys.stderr)
-                _sfail("tiktok", acc, "empty")
+                if _e1 is None:
+                    _sfail("tiktok", acc, "empty")   # ①이 이미 말한 사유가 있으면 덮지 않는다(260806 관측 소실 봉합)
                 continue
             _sok("tiktok", acc)
             for v in ((j.get("data") or {}).get("videos") or []):
@@ -1017,7 +1035,8 @@ def tiktok_subs(accounts, limit=10, deadline=None):
                           v.get("cover"), v.get("create_time"))
         except Exception as e:  # noqa: BLE001
             print(f"::warning::tiktok @{acc} 실패(스킵): {e}", file=sys.stderr)
-            _sfail("tiktok", acc, _hcode(e))
+            if _e1 is None:
+                _sfail("tiktok", acc, _hcode(e))   # ②(tikwm)는 260714~ 상시 403 = 계정 불문 같은 값 → ① 실측 우선
     return sorted(out, key=lambda t: t["views"], reverse=True)[:limit]
 
 
