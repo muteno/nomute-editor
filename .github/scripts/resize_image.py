@@ -46,20 +46,34 @@ FILLS = ("auto", "solid", "blur", "ai")   # 채움 오버라이드(운영자 260
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 
 P_PADFILL = (
+    "This is a mechanical uncrop / continuation task, NOT a creative one — you are revealing more "
+    "of the SAME picture, not imagining a new one. Behave like a clone-and-heal tool. "
     "First, carefully analyze the attached image: identify the subject, their exact pose and "
     "orientation, the scene, the lighting direction, and the textures. Base everything you draw "
     "on what is actually visible in this specific image — not on generic assumptions. "
     "This canvas contains an original photo {place}, with flat neutral gray areas "
     "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
-    "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
+    "never leave any gray visible. Source everything ONLY from what already touches the gray "
+    "boundary: continue each line, edge, surface and texture outward at its existing angle, "
+    "scale and rhythm, so every stroke in the fill is the continuation of a stroke that already "
+    "exists. If the pixels adjacent to a gray area are plain or empty background (a solid color, "
+    "a soft gradient, plain darkness), fill that gap with that same plain background and NOTHING "
+    "else — do not invent stars, sparkles, light effects, body parts, limbs, reflections, or any "
+    "object that does not already cross the boundary. "
+    "Continue the background's lighting, perspective, textures, and "
     "grain across the boundary, and match the exact brightness and tone of the photo at the "
     "boundary so no edge or band is visible. Match the depth of field: if the pixels adjacent to "
     "a gray area are out of focus or blurred, the new content there must be equally out of focus — "
     "do not introduce new sharp objects, buildings, crowds, stands, or scenery that are not "
     "already visible in the photo. Keep every existing pixel of the original photo "
     "exactly unchanged. Do not add any new text, watermarks, logos, or people. The result must "
-    "look like one single continuous photograph."
-)   # v0 확정본(exp r5+r7) — 룰 삭제 금지: 선분석(r7)·방향 동적(r2)·심도 유지(r4)·톤 일치가 각각 실측 실패를 막는다
+    "look like one single continuous photograph — as if the camera had simply captured a wider "
+    "view of the exact same scene."
+)   # v0 확정본(exp r5+r7 · 룰 삭제 금지: 선분석 r7·방향 동적 r2·심도 유지 r4·톤 일치) + 260806 「선 잇기」 절 증축(운영자
+#   "뭘 만드는게 아니라 최대한 기존에 있던 선을 이어서 자연스러운 이미지 처럼만드는거" — 실측 대조: 폐허 일러스트 확장은
+#   경계의 잔해·건물 선을 그대로 이어 성공[운영자 제출 성공례] · 마네킹 확장은 경계가 빈 배경인데 별·성운·팔을 **발명**해 실패
+#   → ⓐ 과업 재정의 = uncrop(창작 아님·클론힐) ⓑ 소스 제한 = 경계에 닿은 것만 ⓒ 빈 배경 = 그 배경 그대로 + 발명 금지
+#   목록{별·빛효과·신체}을 실패 모드 그대로 명문화 · 구 룰은 전문 보존 = 성공례 경로 회귀 0)
 
 
 def gemini_judge(png_bytes):
@@ -70,8 +84,10 @@ def gemini_judge(png_bytes):
     prompt = ("You are a strict photo QA judge. Answer in EXACTLY this format:\n"
               "VERDICT: PASS or FAIL\nREASON: <one short sentence>\n"
               "FAIL if any of these are visible: anatomically wrong human body, unnatural body proportions, "
-              "duplicated objects or duplicated text, watermarks, leftover flat gray areas, or an obvious "
-              "visible seam or brightness band. Otherwise PASS.")
+              "duplicated objects or duplicated text, watermarks, leftover flat gray areas, an obvious "
+              "visible seam or brightness band, or brand-new elements in the filled margins (stars, "
+              "light effects, body parts, objects) that do not continue anything present in the "
+              "original photo. Otherwise PASS.")
     parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
              {"text": prompt}]
     payload = {"contents": [{"parts": parts}], "generationConfig": {"responseModalities": ["TEXT"]}}
