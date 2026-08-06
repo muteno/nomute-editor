@@ -49,7 +49,7 @@ P_PADFILL = (
     "First, carefully analyze the attached image: identify the subject, their exact pose and "
     "orientation, the scene, the lighting direction, and the textures. Base everything you draw "
     "on what is actually visible in this specific image — not on generic assumptions. "
-    "This canvas contains an original photo placed in the center, with flat neutral gray areas "
+    "This canvas contains an original photo {place}, with flat neutral gray areas "
     "{where}. Fill ONLY the gray areas by seamlessly extending the existing scene {dirhint} — "
     "never leave any gray visible. Continue the background's lighting, perspective, textures, and "
     "grain across the boundary, and match the exact brightness and tone of the photo at the "
@@ -134,18 +134,55 @@ def place_canvas(img, ar, box, fill=(127, 127, 127)):
     return canvas, (px, py, px + pw, py + ph), src
 
 
+P_CENTER = "placed in the center"   # v0 확정 문구(대칭 배치 전용 · 아래 대칭 분기에서만 쓴다)
+_EDGE_WHERE = {"top": "above it", "bottom": "below it", "left": "to its left", "right": "to its right"}
+_EDGE_HINT = {"top": "upward (for example, extend a ceiling or sky upward)",
+              "bottom": "downward (for example, extend a floor or ground downward)",
+              "left": "to the left", "right": "to the right"}
+
+
+def _join_en(parts):
+    """영어 열거 — 'A' / 'A and B' / 'A, B and C'."""
+    if len(parts) <= 1:
+        return parts[0] if parts else ""
+    return ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
 def box_dirs(box_px, canvas_size):
-    """여백이 실제로 생긴 방향 → Gemini 프롬프트 문구(P_PADFILL {where}/{dirhint}) — 상하만/좌우만/사방 3형."""
+    """여백이 실제로 생긴 **변**을 그대로 문구화 → (place, where, dirhint) = P_PADFILL 3슬롯.
+
+    ⚠ 260806 봉합(운영자 "막 왜곡하거나 그러지않고 그냥 원래 변경된 크기였떤것 처럼 자연스럽게") — 구판은 프롬프트에
+      「placed in the center」가 **고정 문자열**이고 방향도 상하만/좌우만/사방 **대칭 3형**뿐이었다. 그런데
+      `place_canvas`는 운영자가 미리보기에서 끌어놓은 자리(box)에 사진을 앉히므로 **중앙이 아닐 수 있다** →
+      사진을 위로 붙인 배치는 여백이 아래에만 있는데도 모델에게 「사진은 중앙에 있다 · 위와 아래로 확장하라」고
+      말하게 된다(실측: box y=0 → `vert=True` 분기 = "above and below it"). 없는 여백을 채우라는 지시가
+      곧 「원본을 밀어내고 새 장면을 그리는」 왜곡의 입구다 = 운영자가 물은 바로 그 축.
+      → 4변을 각각 재서 **실제로 빈 변만** 말한다. 대칭(= 중앙 배치·pad_canvas 경로)일 때는 v0 확정 문구를
+        **바이트 그대로** 반환하므로 검증된 경로의 프롬프트는 1글자도 안 바뀐다(회귀 0).
+    """
     x0, y0, x1, y1 = box_px
     cw, ch = canvas_size
-    vert, horz = (y0 > 1 or ch - y1 > 1), (x0 > 1 or cw - x1 > 1)
-    if vert and horz:
-        return ("on all sides around it", "outward in every direction (for example, extend a ceiling or sky "
-                                          "upward, a floor or ground downward, and the scene sideways)")
-    if vert:
-        return ("above and below it", "upward and downward (for example, extend a ceiling or sky upward "
-                                      "and a floor or ground downward)")
-    return ("to its left and right", "to the left and to the right")
+    top, bot = y0 > 1, ch - y1 > 1
+    lft, rgt = x0 > 1, cw - x1 > 1
+    sym_v, sym_h = (top and bot), (lft and rgt)
+    if (sym_v and sym_h) or not (top or bot or lft or rgt):   # 사방 대칭 · 여백 0(도달 불가 방어) = 구판 문구 그대로
+        return (P_CENTER, "on all sides around it",
+                "outward in every direction (for example, extend a ceiling or sky "
+                "upward, a floor or ground downward, and the scene sideways)")
+    if sym_v and not (lft or rgt):
+        return (P_CENTER, "above and below it",
+                "upward and downward (for example, extend a ceiling or sky upward "
+                "and a floor or ground downward)")
+    if sym_h and not (top or bot):
+        return (P_CENTER, "to its left and right", "to the left and to the right")
+    # ── 비대칭 = 운영자가 사진을 한쪽으로 붙여 놓은 배치 ──
+    gap = [e for e, on in (("top", top), ("bottom", bot), ("left", lft), ("right", rgt)) if on]
+    flush = [e for e, on in (("top", top), ("bottom", bot), ("left", lft), ("right", rgt)) if not on]
+    place = ("placed off-center, flush against the {} edge{} of the canvas"
+             .format(_join_en(flush), "" if len(flush) == 1 else "s")) if flush else P_CENTER
+    return (place, "only " + _join_en([_EDGE_WHERE[e] for e in gap]),
+            _join_en([_EDGE_HINT[e] for e in gap]) + " ONLY — the other edges already reach the canvas border, "
+            "so nothing there may be redrawn, shifted, or cropped")
 
 
 def pad_canvas(img, ar, fill=(127, 127, 127)):
@@ -284,8 +321,9 @@ def main():
             else:
                 canvas, bpx = pad_canvas(img, aspect)
                 src_img = img
-            where, dirhint = box_dirs(bpx, canvas.size)
-            base_prompt = P_PADFILL.format(where=where, dirhint=dirhint)
+            place, where, dirhint = box_dirs(bpx, canvas.size)
+            base_prompt = P_PADFILL.format(place=place, where=where, dirhint=dirhint)
+            print("배치 문구: {} / 여백 {}".format(place, where), flush=True)   # 프롬프트가 캔버스를 정확히 묘사하는지 런 로그로 사후 대조(운영자 260806 "프롬프팅이 어떻게 고정되어있는지")
             png, fb, qa_fail = None, "", False
             for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
                 p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
