@@ -219,13 +219,34 @@ def pixel_lock(gen_png, canvas_size, src_img, box, feather=32):
     return out
 
 
-def edge_stats(img):
-    """가장자리 8px 밴드의 픽셀 표준편차·평균색 — 단색 배경 판정(제안서 §2 라우팅)."""
+def edge_stats(img, sides=None):
+    """가장자리 8px 밴드의 픽셀 표준편차·평균색 — 단색 배경 판정(제안서 §2 라우팅).
+
+    sides = 잴 변만 지정({top,bottom,left,right} 부분집합) · None = 4변 전부(구 동작).
+    ⚠ 260806 실사고 봉합(운영자 "원래 하나의 이미지인것처럼 · 새로 어떤 특이점을 창조하면안됨") —
+      구판은 **항상 4변 평균**이라, 확장과 무관한 변에 피사체가 닿기만 해도 표준편차가 올라
+      「복잡한 배경」으로 오판하고 유료 창조 모델로 갔다. 실측(운영자 제출 케이스 재현):
+        4변 평균 std 30.68 → gemini(유료·창조) / **좌우 변만 std 0.00 → solid_pad(0원)**
+        범인 = 하단 변 std 41.02(파란 어깨가 거기 닿는다) — 좌우 확장에는 아무 상관이 없는 값이다.
+      → 「채울 자리에 맞닿은 변」만 재면 순흑 확장은 애초에 생성 문제가 아니게 된다(= 창조 여지 0)."""
     a = np.asarray(img.convert("RGB"), dtype=np.float32)
     b = 8
-    strips = [a[:b].reshape(-1, 3), a[-b:].reshape(-1, 3), a[:, :b].reshape(-1, 3), a[:, -b:].reshape(-1, 3)]
-    e = np.concatenate(strips)
+    pick = {"top": a[:b], "bottom": a[-b:], "left": a[:, :b], "right": a[:, -b:]}
+    use = [v for k, v in pick.items() if not sides or k in sides] or list(pick.values())
+    e = np.concatenate([v.reshape(-1, 3) for v in use])
     return float(e.std(axis=0).mean()), tuple(int(v) for v in e.mean(axis=0))
+
+
+def gap_sides(img, ar, box):
+    """채울 여백이 실제로 생기는 변 집합 — 라우팅·채움색을 **그 변만** 보고 정하기 위한 축(위 주석)."""
+    if box:
+        x, y, w, h = box
+        eps = 0.002
+        return {s for s, on in (("left", x > eps), ("right", x + w < 1 - eps),
+                                ("top", y > eps), ("bottom", y + h < 1 - eps)) if on} or {"top", "bottom", "left", "right"}
+    W, H = img.size            # 중앙 배치(pad_canvas) = 한 축만 늘어난다
+    aw, ah = (int(v) for v in ar.split(":"))
+    return {"left", "right"} if aw / ah >= W / H else {"top", "bottom"}
 
 
 def solid_pad(img, ar, color, box=None):
@@ -297,13 +318,20 @@ def main():
         return   # ⚠ 배치 지정본은 no-op 금지 — 비율이 이미 맞아도 축소 배치면 채울 여백이 실재한다(운영자 260805)
 
     # ── 라우팅 ── (auto = 종전 edge_std 자동 · solid/blur/ai = 운영자 지정 강제 — 260803 채움 선택지)
-    std, mean_color = edge_stats(img)
+    gs = gap_sides(img, aspect, box)
+    std, mean_color = edge_stats(img, gs)   # ⚠ 채울 변만 잰다(위 edge_stats 주석 = 260806 실사고)
     route = "solid_pad" if std < EDGE_SOLID_STD else "gemini"
     if fill != "auto":
         route = {"solid": "solid_pad", "blur": "blur_pad", "ai": "gemini"}[fill]
+        # ⚠ 「AI」 강제여도 **맞닿은 변이 단색이면** 유료 창조 콜을 쓰지 않는다(운영자 260806
+        #   "이거는 창조가 아니라서 저비용일 수록 더 좋음") — 단색 확장은 PIL 패딩이 화질·자연스러움에서
+        #   모델을 못 이길 수가 없는 축이고(값이 그냥 같다), 모델을 부르면 오히려 없던 것을 그린다(별·성운·팔 실사고).
+        if route == "gemini" and std < EDGE_SOLID_STD:
+            print("::notice::맞닿은 변 단색(std={:.1f}) — AI 지정이지만 무과금 단색 패딩으로 처리(창조 여지 0)".format(std), flush=True)
+            route = "solid_pad"
     if box:
         print("배치 지정: x={:.4f} y={:.4f} w={:.4f} h={:.4f}".format(*box), flush=True)
-    print("라우팅: edge_std={:.1f} fill={} → {} (aspect={} size={} lock={})".format(std, fill, route, aspect, size, lock), flush=True)
+    print("라우팅: edge_std={:.1f}(변 {}) fill={} → {} (aspect={} size={} lock={})".format(std, ",".join(sorted(gs)), fill, route, aspect, size, lock), flush=True)
 
     out_img = None
     if route == "solid_pad":
