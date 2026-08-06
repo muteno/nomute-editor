@@ -388,8 +388,83 @@ async function cloneSweep(browser, port) {
   return out;
 }
 
-async function runOnce(pg, gap, clone) {
-  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} } };
+// ── C14 재료 = 「결과 **내용이 들어갔을 때** 요약 줄이 5탭 한 선인가」 스윕(운영자 260806 캡처 · +10.00px 실측) ──
+//   실사고 = 이미지 5탭 결과 레일에서 **AI생성만 요약 줄 잉크가 +10.00px 아래**·번역만 행 높이 74.19(형제 83.19)로 갈렸다.
+//     진범 = ⓐ sb·k·vd 인라인 `.job` 사본이 nm-job.css 정본 12px를 13px로 이김 ⓑ `.nm-rail` 마진 상쇄 부재(260806 봉합 edfb50a2).
+//   ⚠ 왜 기존 축이 하나도 못 잡았나 — 전부 **다른 자를 대고 있었다**:
+//     · C13(결과 레일 **시작선**)은 이력이 **빈 상태**로 돈다 → 레일 상자·첫 잉크는 5탭 동일한데 그 **아래 첫 줄**이 갈린 걸 구조적으로 못 본다.
+//     · C7 `res`는 섹션 **존재 여부(boolean)** · C9·C10·C12는 전부 **폰 430 1단** 티어 · C11은 미리보기 창 전용.
+//     · 정적 `check_result_rail_parity`는 **부품 실존**만 본다(CLAUDE.md 명문 «있는데 값이 갈린다는 짝 축이 별도로 필요 · 미신설»).
+//     → 「같은 부품을 갖고 있는데 **값이 갈렸는가**」는 축 자체가 없었고, 운영자 눈이 유일한 검출기였다(260806 캡처가 그 증거).
+//   판정 = 이력 4건을 **같이** 시드한 뒤 요약 줄(.job.done > .jlab) **광학 잉크 4분할 중심**이 카드생성과 한 값(허용 0.6 = C7·C9·C11·C13 동값).
+//     기준이 상자가 아니라 잉크인 이유 = §3-4-1(박스 x·y가 같아도 padding이 갈리면 눈에 보이는 위치가 어긋난다).
+//   ⚠ **전용 페이지**에서 잰다 = 코어 페이지(1280)는 이력이 비어 있어야 C7·C13 등 기존 축의 기준이 유지된다(시드가 그 판을 바꾸면 위양성 공장).
+//   ⚠ 시드는 **뷰어 자신의 저장 키**에 넣고 렌더는 뷰어 자신의 경로가 한다 = 가짜 DOM 0(픽스처 계약 §상태 의존 화면 동축).
+const RAIL_SEED = () => {   // 이력 4건 = 5탭 공통 로컬 브리지 키(thumb·tr·geni가 이미 읽는 그 키) · 이미지는 data: SVG = 네트워크 0
+  const now = Date.now();
+  const U = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzIyMyIvPjwvc3ZnPg==';
+  try {
+    localStorage.setItem('nomute_thumb_hist', JSON.stringify([0, 1, 2, 3].map(i => ({
+      url: U + '#' + i, cap: '포스트 · 기본', ts: now - 60000 * (i + 1), src: { kind: 'post', bid: 'nmsmoke', bi: i },
+    }))));
+  } catch (_) {}
+};
+// ⚠ 자를 **줄바꿈 무관 축**으로 둔다(첫 실행 실측 봉합) — 요약 줄은 `flex-wrap:wrap`이고 「완료 · **N장** · 시각」의
+//   N이 탭마다 다르다(thumb 계열은 마지막 배치만·tr/geni는 전건 = 1장 vs 4장). 문구 폭이 다르면 줄바꿈이 경계에서
+//   흔들려 **행 높이**와 **잉크 중심**이 같이 튄다(실측 176.80/177.44/178.34 = 같은 코드에서 3값 = 가짜 빨강 공장).
+//   그래서 재는 건 ⓐ `.jlab` 잉크 **윗변**(첫 줄 글자 윗선 = 운영자가 노란 선을 그은 그 높이 · 뒤 항목이 몇 줄로 접히든 불변)
+//   ⓑ 행 **상자 상단**(레일이 어디서 시작하나) 둘 — 260806 사고는 두 축 모두 +10.00으로 떴으니 검출력은 그대로다.
+//   높이 축은 뺀다(줄바꿈 종속 = 이 게이트가 판정할 축이 아니다 · 부품 값 동일성은 `check_result_rail_parity` 짝 축 몫).
+const ROWPROBE = () => {   // 요약 줄 = 운영자가 캡처에 선을 그은 그 행 · 잉크 = Range 사각형(§3-4-1)
+  const fr = document.querySelector('#tooldlg .toolfr.active');
+  const inFr = !!(fr && fr.contentDocument);
+  const d = inFr ? fr.contentDocument : document;
+  const off = inFr ? (r => ({ x: r.x, y: r.y }))(fr.getBoundingClientRect()) : { x: 0, y: 0 };
+  const vis = el => { if (!el) return false; const r = el.getBoundingClientRect(); return el.offsetParent !== null && r.height > 0 && r.width > 0; };
+  const gHost = inFr ? null : document.querySelector('#geniHost:not([hidden])');
+  const row = [...d.querySelectorAll('.jobs .job')].filter(vis)[0]
+    || (gHost ? [...gHost.querySelectorAll('#geniResJobs .job')].filter(vis)[0] : null)
+    || (inFr ? null : [...document.querySelectorAll('#geniResJobs .job')].filter(vis)[0]);
+  if (!row) return null;
+  const lab = row.querySelector('.jlab') || row;
+  const rg = lab.ownerDocument.createRange(); rg.selectNodeContents(lab);
+  const ir = rg.getBoundingClientRect(); const br = row.getBoundingClientRect();
+  if (!(ir.height > 0 && br.height > 0)) return null;
+  return [+(ir.y + off.y).toFixed(2), +(br.y + off.y).toFixed(2)];   // [잉크 윗변 y · 행 상자 상단 y]
+};
+// 정지할 때까지 재기 — AI 생성 판은 부모 문서가 그리고 아이콘(nm-svg)·타일이 뒤늦게 붙어 고정 대기(250ms)로는
+//   렌더 중간을 찍을 수 있다. 연속 2회 같은 값이 나올 때까지 폴링(상한 3s) = 결정론을 시간이 아니라 **정지**로 얻는다.
+const stableRow = async (pg) => {
+  let prev = null;
+  for (let i = 0; i < 12; i++) {
+    const v = await pg.evaluate(ROWPROBE);
+    if (v && prev && v[0] === prev[0] && v[1] === prev[1]) return v;
+    prev = v; await pg.waitForTimeout(250);
+  }
+  return prev;
+};
+async function railRowSweep(browser, port) {
+  const IMG = SHELLS[0];   // 이미지 셸 5탭(영상 셸 결과 레일은 nm-rail.js 상속 = 자기 계약 · C12와 동축 스코프)
+  const out = {};
+  const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });   // 1280 = 2단 티어(운영자가 캡처한 그 폭 · 사고가 사는 자리)
+  try {
+    await pg.addInitScript(RAIL_SEED);   // 로드 **전** 시드 = 뷰어가 부팅하며 자기 경로로 읽어 그린다(렌더 후 주입 = 경합)
+    await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await pg.waitForTimeout(900);
+    await pg.evaluate(sh => { openTool(sh.src, sh.title, sh.tabs.map(t => ({ src: t.src, app: t.app, label: t.ko })), sh.key); },
+      { src: IMG.src, title: IMG.title, key: IMG.key, tabs: IMG.tabs });
+    await settle(pg);
+    for (const t of IMG.tabs) {
+      await pg.evaluate(_q => { const _b = document.querySelector(_q); if (_b) _b.click(); }, IMG.pick(t));
+      await settleFast(pg);
+      out[t.ko] = await stableRow(pg);   // 정지 대기 = 진행 중 렌더를 안 찍는다(가짜 빨강 0)
+    }
+  } finally { await pg.close().catch(() => {}); }
+  return out;
+}
+
+async function runOnce(pg, gap, clone, railRow) {
+  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {} };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -550,6 +625,20 @@ async function runOnce(pg, gap, clone) {
     sBad.length ? '이탈 ' + sBad.slice(0, 4).join(' · ') + ' vs 카드생성 상자' + JSON.stringify(SREF && SREF.railStart) + '·잉크' + JSON.stringify(SREF && SREF.railInk)
       : SE.length + '탭 정합(상자' + JSON.stringify(SREF && SREF.railStart) + ' 잉크' + JSON.stringify(SREF && SREF.railInk) + ')');
 
+  // ── C14 결과 요약 줄 = 이미지 5탭 **한 선**(내용이 들어간 상태 · 1280 2단 · 운영자 260806 캡처 실측 +10.00px) ──
+  //   위 재료 주석 참조 — C13이 **빈 레일**만 재서 「머리 아래 첫 줄」이 사각이던 자리. 면책표 없이 하드 0.
+  const RR = out.railRow || {}, RTABS = SHELLS[0].tabs.map(t => t.ko);
+  const rRef = RR[RTABS[0]];
+  const rMiss = RTABS.filter(k => !Array.isArray(RR[k]) || RR[k].length !== 2);
+  const rowBad = rRef ? RTABS.filter(k => Array.isArray(RR[k]) && RR[k].length === 2
+    && !(Math.abs(RR[k][0] - rRef[0]) <= 0.6 && Math.abs(RR[k][1] - rRef[1]) <= 0.6))   // 잉크 윗변 + 행 상자 상단(260806 사고는 둘 다 +10.00)
+    .map(k => k + '=잉크' + RR[k][0] + '·상자' + RR[k][1]) : [];
+  core('C14 결과 요약 줄 = 이미지 5탭 한 선(이력 4건 시드 · 잉크 윗변 + 행 상자 상단 · 1280 2단 · 허용 0.6px)',
+    rMiss.length === 0 && !!rRef && rowBad.length === 0,
+    rMiss.length ? '요약 줄 미검출 ' + rMiss.join(' ') + '(시드·렌더 경로 확인)'
+      : rowBad.length ? '이탈 ' + rowBad.join(' · ') + ' vs 카드생성 잉크' + rRef[0] + '·상자' + rRef[1]
+        : RTABS.length + '탭 정합(잉크 윗변 ' + rRef[0] + ' · 행 상자 ' + rRef[1] + ')');
+
   return out;
 }
 
@@ -564,6 +653,7 @@ async function runOnce(pg, gap, clone) {
     //   smoke_all 병렬 풀에서 가짜 빨강(재시도 소모)을 늘린다 — 측정 1회 + 두 런 공유가 비용/신뢰 최적점(실측 260803).
     const gap = await gapSweep(browser, st.port);
     const clone = await cloneSweep(browser, st.port);   // C11 = 미리보기 창 클론 스윕(gap과 같은 이유로 런 1회 공유 = 순수 레이아웃 측정)
+    const railRow = await railRowSweep(browser, st.port);   // C14 = 결과 요약 줄 스윕(전용 페이지 = 이력 시드가 코어 판을 안 건드린다 · gap·clone과 같은 이유로 런 1회 공유)
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
       const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -572,7 +662,7 @@ async function runOnce(pg, gap, clone) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg, gap, clone);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · 코어 페이지(1280)와 티어 분리
+      const o = await runOnce(pg, gap, clone, railRow);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);
