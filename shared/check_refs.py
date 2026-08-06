@@ -2631,65 +2631,78 @@ def check_result_rail_parity():
     """
     import glob as _g, os as _os, re as _re
     rc = 0
-    # ⚠ 판정은 「문서 어딘가에 토큰이 있나」가 아니라 **결과 레일 그 자리에 세트가 있나**를 본다 —
-    #   1차 구현이 전역 토큰 존재로 판정했더니 킬테스트 2종(tr nm-job 링크 제거 · index 요약 줄 컨테이너 제거)이 **전건 미검출**이었다
-    #   (index엔 다운로드 창의 `class="jobs"`가 따로 있어 그걸 보고 통과 = 죽은 게이트). 계약 = 「요약 줄이 타일 **바로 위**에 있다」이므로 그대로 검사한다.
-    WIN = 1600   # 요약 줄 ↔ 타일 그리드 사이 허용 거리(문자) — 그 사이엔 빈 상태 안내 한 줄뿐인 게 3표면 공통 실측
-    surfaces = []
+    """판정 = 표면마다 (정적 세트) ∨ (nm-rail.js 부품 상속) — 운영자 260806 평의회4가 우회 8종을 실증해 재작성한 3차 구현.
+    1차 = 전역 토큰 존재 → 킬테스트 전건 미검출(죽은 게이트). 2차 = 문자 거리(WIN) → 여전히 8종 우회:
+      A 시그니처 1글자 드리프트(클래스 순서·공백·추가)로 표면이 조용히 스코프 밖 B `data-scope="cap"`이 주석·문자열에만 있어도 통과
+      C HTML 주석으로 감싸면 전 축 통과(형제 게이트는 전부 주석을 턴다 = 이 게이트만 관례 이탈) D 무관한 패널의 `class="jobs"`가 미끼
+      E 영상 표면 손 목록이라 새 탭이 조용히 빠짐 F link href 실존 미검사 G `<template>` 격리 H **정적↔상속 이관이 위양성으로 막힘**(이 레포가 실제로 한 일)
+    3차 = ⓐ 주석·template 제거 후 판정 ⓑ 클래스 토큰 집합 ⓒ script 태그 **안**에서 src∧data-scope 동시 ⓓ 문자 거리 폐기 → **형제 인접**(사이에 여는 태그 0)
+      ⓔ 표면 자동발견 + **하한 고정**(이미지 3·영상 5 = 1개씩 빠지는 드리프트에 fail-closed) ⓕ link href 파일 실존."""
+    IMG_MIN, CAP_MIN = 3, 5   # 하한 = 현행 표면 수(1개씩 조용히 빠지는 드리프트 차단 · 신설 표면은 이 값을 올린다)
+    def _strip(t):   # 주석·template = 런타임 미도달 = 판정 전 제거(형제 게이트 관례 계승)
+        t = _re.sub(r'<!--.*?-->', '', t, flags=_re.S)
+        return _re.sub(r'<template[^>]*>.*?</template>', '', t, flags=_re.S)
+    def _links(t):
+        return set(_re.findall(r'<link[^>]+href="([^"]+)"', t))
+    def _rail_tag(t):   # nm-rail.js script 태그 **자신** 안에서 src·data-scope 동시 판정(bare substring 우회 차단)
+        for tag in _re.findall(r'<script[^>]*>', t):
+            if _re.search(r'src="nm-rail\.js"', tag):
+                m = _re.search(r'data-scope="([a-z]+)"', tag)
+                return m.group(1) if m else ''
+        return None
+    def _has_static_set(t):
+        """결과 헤더 → 요약 줄 → 타일이 **형제로 인접**한가(문자 거리 아님)."""
+        head = None
+        for m in _re.finditer(r'<button[^>]*class="([^"]*)"[^>]*>', t):
+            cls = set(m.group(1).split())
+            if {'hist-h', 'car-h'} <= cls: head = m.end(); break
+        if head is None:
+            m = _re.search(r'<button[^>]*id="geniResH"[^>]*>', t)
+            if m: head = m.end()
+        if head is None: return None   # 결과 헤더 없음 = 이 표면은 정적 세트가 아니다
+        g = _re.search(r'<div[^>]*class="hist-grid"', t[head:])
+        if not g: return '결과 본문에 타일 그리드 .hist-grid 없음'
+        gpos = head + g.start()
+        js = list(_re.finditer(r'<div[^>]*class="jobs"', t[head:gpos]))
+        if not js: return '타일 위에 요약 줄 컨테이너 .jobs 없음(결과 = 줄+타일 한 세트)'
+        between = t[head + js[-1].end():gpos]
+        if _re.search(r'<(?!/)[a-zA-Z]', _re.sub(r'<div[^>]*class="hist-empty"[^>]*>.*?</div>', '', between, flags=_re.S)):
+            return '요약 줄과 타일 사이에 다른 블록이 끼어 세트가 갈라짐'
+        return ''
+    surfaces, bad = [], []
     for f in sorted(_g.glob(_os.path.join(ROOT, 'viewer', '*.html'))):
+        name = _os.path.basename(f)
         try:
-            txt = open(f, encoding='utf-8').read()
+            raw = open(f, encoding='utf-8').read()
         except Exception:
             continue
-        m = _re.search(r'class="hist-h car-h"|id="geniResH"', txt)
-        if not m or 'hist-grid' not in txt:
-            continue
-        surfaces.append((_os.path.basename(f), txt, m.start()))
-    # 영상 스튜디오 = 마크업 사본 대신 **부품 상속**(nm-rail.js) — 정적 마크업이 없으므로 상속 3줄로 판정한다(운영자 260806 "영상끼리도 저렇게 공유")
-    CAP_SURFACES = ['edit.html', 'sb.html', 'k.html', 'song.html', 'vd.html']
-    cap_bad = []
-    for name in CAP_SURFACES:
-        fp = _os.path.join(ROOT, 'viewer', name)
-        try:
-            txt = open(fp, encoding='utf-8').read()
-        except Exception:
-            cap_bad.append(name + ': 파일 없음'); continue
+        t = _strip(raw)
+        scope = _rail_tag(t)
+        static = _has_static_set(t)
+        if scope is None and static is None:
+            continue   # 결과 레일과 무관한 표면
+        surfaces.append((name, 'cap' if scope == 'cap' else ('img-static' if static is not None and scope is None else (scope or 'img'))))
         miss = []
-        if not _re.search(r'<link[^>]+href="nm-hist\.css"', txt): miss.append('nm-hist.css 링크')
-        if not _re.search(r'<link[^>]+href="nm-job\.css"', txt): miss.append('nm-job.css 링크')
-        if not _re.search(r'<script[^>]+src="nm-rail\.js"', txt): miss.append('nm-rail.js 상속(레일 부품 SSOT)')
-        if 'data-scope="cap"' not in txt: miss.append('data-scope="cap"(사진↔영상 결과 격리 선언)')
-        if miss:
-            cap_bad.append(name + ': ' + ' · '.join(miss))
-    if not surfaces:
-        print('❌ 결과 레일 세트 게이트 — 대상 표면 0(시그니처 소실 = fail-closed · 헤더 클래스·id 개명 시 이 게이트를 같이 고쳐라)')
-        return 1
-    bad = []
-    for name, txt, hpos in surfaces:
-        miss = []
-        for tok, lbl in (('nm-hist.css', 'nm-hist.css 링크(타일 정본)'), ('nm-job.css', 'nm-job.css 링크(요약 줄 정본)')):
-            if not _re.search(r'<link[^>]+href="' + tok + r'"', txt):
-                miss.append(lbl)
-        gpos = txt.find('class="hist-grid"', hpos)   # 결과 헤더 **이후** 첫 타일 그리드 = 결과 본문의 그리드
-        if gpos < 0:
-            miss.append('결과 본문에 타일 그리드 .hist-grid 없음')
-        else:
-            jpos = txt.rfind('class="jobs"', hpos, gpos)   # 그 그리드 **바로 위**의 요약 줄 컨테이너
-            if jpos < 0:
-                miss.append('타일 위에 요약 줄 컨테이너 .jobs 없음(결과 = 줄+타일 한 세트)')
-            elif gpos - jpos > WIN:
-                miss.append('요약 줄↔타일 거리 %d자 > %d(세트가 갈라짐)' % (gpos - jpos, WIN))
-        if miss:
-            bad.append(name + ': ' + ' · '.join(miss))
-    if bad or cap_bad:
+        need = ['nm-hist.css'] + (['nm-job.css'] if True else [])
+        lk = _links(t)
+        for href in need:
+            if href not in lk: miss.append(href + ' 링크')
+            elif not _os.path.exists(_os.path.join(ROOT, 'viewer', href)): miss.append(href + ' 파일 실존 0')
+        if scope is not None:
+            if scope not in ('img', 'cap'): miss.append('data-scope 미지정/미인식(사진↔영상 격리 선언 = script 태그 안 data-scope="img|cap")')
+        elif static:
+            miss.append(static)
+        if miss: bad.append(name + ': ' + ' · '.join(miss))
+    n_img = sum(1 for _, k in surfaces if k != 'cap')
+    n_cap = sum(1 for _, k in surfaces if k == 'cap')
+    if n_img < IMG_MIN: bad.append('이미지 결과 레일 표면 %d < 하한 %d(시그니처 드리프트로 조용히 빠진 표면 = fail-closed)' % (n_img, IMG_MIN))
+    if n_cap < CAP_MIN: bad.append('영상 결과 레일 표면 %d < 하한 %d(상속 누락 = fail-closed)' % (n_cap, CAP_MIN))
+    if bad:
         print('❌ 결과 레일 세트 게이트 — 부품 누락(결과 = 요약 줄 + 개별 썸네일 한 세트 · 260806):')
-        for x in bad:
-            print('   · [이미지·정적] ' + x)
-        for x in cap_bad:
-            print('   · [영상·상속] ' + x)
+        for x in bad: print('   · ' + x)
         rc = 1
     else:
-        print('✅ 결과 레일 세트 게이트 — 이미지 %d표면(정적 세트) + 영상 %d표면(nm-rail.js 상속·cap 스코프) 전건 보유 · 면책표 없음.' % (len(surfaces), len(CAP_SURFACES)))
+        print('✅ 결과 레일 세트 게이트 — 이미지 %d표면(정적 세트) + 영상 %d표면(nm-rail.js 상속) 전건 보유 · 주석·template 제외 · 형제 인접 판정 · 하한 고정.' % (n_img, n_cap))
     return rc
 
 

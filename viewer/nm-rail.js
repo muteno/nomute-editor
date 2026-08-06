@@ -26,10 +26,11 @@
   var T0 = Date.now();        // 이 문서 부팅 = '이번 세션' 경계(이미지 GENI_T0·TR_T0 동문)
   var mounts = [];            // 이 문서에 마운트된 레일들(보통 1개)
 
-  function esc(s) { return String(s == null ? '' : s); }
+  function toText(s) { return String(s == null ? '' : s); }   // ⚠ 이스케이프 아님 = **textContent 전용 캐스팅**(운영자 260806 평의회7 ③ — 구 이름 `esc`는 함정이었다: 두 줄 아래 innerHTML에 그 이름을 믿고 쓰면 즉시 XSS). innerHTML에는 절대 넣지 마라.
   function keyOf(u) { return String(u || '').split('?')[0].replace(/^https?:\/\/[^/]+\//, ''); }   // 중복판정 키 = 이미지 정본 동문(호스트 제거)
   function load(scope) { try { var a = JSON.parse(localStorage.getItem(KEYS[scope]) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function save(scope, a) { try { localStorage.setItem(KEYS[scope], JSON.stringify(a)); } catch (e) {} }
+  function save(scope, a) { try { localStorage.setItem(KEYS[scope], JSON.stringify(a)); return true; } catch (e) { return false; } }   // 성패 반환 = 쿼터 초과·프라이빗 모드에서 「성공한 척」 하지 않는다(운영자 260806 평의회1 ⑤)
+  var SAFE_URL = /^(https?:|blob:|data:image\/)/i;   // 적재 허용 스킴 = 이미지·영상 산출이 실제로 오는 3종(javascript: 등 차단 · 평의회7 ④)
   function prune(a) { var cut = Date.now() - HMS; return a.filter(function (e) { return e && e.ts && e.ts >= cut; }); }
 
   function histTime(ts) {   // 표기 = 이미지 정본 동문(오늘/어제 · M/D 접두 · 오전/오후 H:MM)
@@ -46,20 +47,20 @@
     a.download = name || 'out';
     document.body.appendChild(a); a.click(); a.remove();
   }
-  var DL_SVG = function () { return window.DOWNLOAD_SVG || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M4 21h16"/></svg>'; };
+  var DL_SVG = function () { return window.DOWNLOAD_SVG || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/></svg>'   /* 폴백도 nm-svg.js DOWNLOAD_SVG 정본 바이트 그대로(구 폴백은 밑변 `M4 21h16` = 정본 `M5 21h14`와 **다른 그림**이었다 · 운영자 260806 평의회5 실측) */; };
   var CK_SVG = function () { return window.CHECK_SVG || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>'; };
   var CHEV = '<svg class="hist-ar" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
   /* 레일 셸 = thumb `.out` 정본 마크업 그대로(결과 헤더 → 요약 줄 → 타일 → 빈 상태 → 이전 제작 접이).
      ⚠ 순서가 계약이다 — 요약 줄이 **타일 위**(운영자 260806 "이게 저 개별 썸네일형 위에 있어야됨 · 원래 저게 세트였는데 갈라진거네"). */
   function shellHTML(id) {
-    return '<button class="hist-h car-h" id="' + id + 'ResH" type="button" aria-expanded="true">'
+    return '<button class="hist-h car-h" id="' + id + 'ResH" type="button" aria-expanded="true" aria-controls="' + id + 'ResJobs ' + id + 'ResGrid">'   /* aria-controls = thumb 접이 정본 계약(무엇이 열리는지 SR 연결 · 운영자 260806 평의회7 ⑥) */
       + '<span class="hist-ttl"><span class="car-bul" aria-hidden="true">•</span>결과 <span class="hist-cnt" id="' + id + 'ResCnt">(0)</span></span>' + CHEV + '</button>'
       + '<div class="jobs" id="' + id + 'ResJobs"></div>'
       + '<div class="hist-grid" id="' + id + 'ResGrid"></div>'
       + '<div class="hist-empty" id="' + id + 'ResEmpty">아직 제작한 게 없습니다</div>'
       + '<div class="hist" id="' + id + 'Hist">'
-      + '<button class="hist-h" id="' + id + 'PrevH" type="button" aria-expanded="false">'
+      + '<button class="hist-h" id="' + id + 'PrevH" type="button" aria-expanded="false" aria-controls="' + id + 'PrevBody">'
       + '<span class="hist-ttl"><span class="hist-bul" aria-hidden="true">•</span>이전 제작 <span class="hist-cnt" id="' + id + 'PrevCnt">(0)</span></span>'
       + '<span class="hist-note">전 기기 제작 내역</span>' + CHEV + '</button>'
       + '<div class="hist-body" id="' + id + 'PrevBody" hidden>'
@@ -75,15 +76,21 @@
     dl.setAttribute('aria-label', '다운로드'); dl.innerHTML = DL_SVG();
     dl.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); dlBlob(e.url, e.dlname || m.opt.dlname); });
     var img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = e.poster || e.url;
-    img.onerror = function () { it.remove(); m.dead[keyOf(e.url)] = 1; var cc = document.getElementById(cntSel); var g = document.getElementById(gridSel); if (cc && g) cc.textContent = '(' + g.children.length + ')'; };   // 죽은 슬롯 제거 + 카운트 정정 = 이미지 정본 동문
-    var cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = esc(e.cap);
+    img.onerror = function () {   // ⚠ 포스터 실패 ≠ 원본 실패(운영자 260806 평의회1 ② — 구판은 포스터 404 하나로 멀쩡한 영상 항목을 영구 삭제했고 같은 url 재적재도 중복차단에 막혀 리로드 전엔 복구 불가였다)
+      if (e.poster && img.src !== e.url && !img.dataset.rt) { img.dataset.rt = '1'; img.src = e.url; return; }   // 1회 원본 재시도 = index `chThFail` dataset.rt 문법 계승(무한루프 0)
+      it.remove(); m.dead[keyOf(e.url)] = 1;
+      var cc = document.getElementById(cntSel); var g = document.getElementById(gridSel); if (cc && g) cc.textContent = '(' + g.children.length + ')';
+    };   // 죽은 슬롯 제거 + 카운트 정정 = 이미지 정본 동문
+    var cap = document.createElement('span'); cap.className = 'hist-cap'; cap.textContent = toText(e.cap);
     if (e.varStr) { var v = document.createElement('span'); v.className = 'hist-cap-v'; v.textContent = e.varStr; cap.appendChild(v); }
     th.append(dl, img, cap);
     if (e.src && e.src.app && typeof m.opt.onEdit === 'function') {   // 수정(연필) = 복원 경로를 **가진 표면만** 그린다(갈 곳 없는 버튼 금지 = 이미지 정본 canEditSrc 계약 동문)
       var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
-      ed.innerHTML = window.EDIT_SVG || '';
-      ed.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); m.opt.onEdit(e.src, e.url); });
-      th.appendChild(ed);
+      if (window.EDIT_SVG) {   // 아이콘 SSOT 미도달 = 버튼을 **안 그린다**(구판 `|| ''`는 내용 0인 포커스 가능 버튼을 만들어 「갈 곳 없는 버튼 금지」 계약과 자기모순 · 운영자 260806 평의회7 ⑤)
+        ed.innerHTML = window.EDIT_SVG;
+        ed.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); m.opt.onEdit(e.src, e.url); });
+        th.appendChild(ed);
+      }
     }
     it.append(hd, th);
     return it;
@@ -94,16 +101,18 @@
     host.innerHTML = '';
     if (!a.length) return;
     var row = document.createElement('div'); row.className = 'job done';
-    var lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = esc(a[0].cap) || '결과';
+    var lab = document.createElement('span'); lab.className = 'jlab'; lab.textContent = toText(a[0].cap) || '결과';
     var st = document.createElement('span'); st.className = 'jst';
     st.innerHTML = CK_SVG() + '<span>완료 · ' + a.length + '장 · ' + histTime(a[0].ts) + '</span>';
     row.append(lab, st);
     var sv = document.createElement('div'); sv.className = 'jsave-row';
     if (a[0].src && a[0].src.app && typeof m.opt.onEdit === 'function') {
       var ed = document.createElement('button'); ed.type = 'button'; ed.className = 'imgedit'; ed.title = '이 설정으로 수정'; ed.setAttribute('aria-label', '수정');
-      ed.innerHTML = window.EDIT_SVG || '';
-      ed.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); m.opt.onEdit(a[0].src, a[0].url); });
-      sv.appendChild(ed);
+      if (window.EDIT_SVG) {   // 위 tileEl과 같은 계약(아이콘 없으면 미노출)
+        ed.innerHTML = window.EDIT_SVG;
+        ed.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); m.opt.onEdit(a[0].src, a[0].url); });
+        sv.appendChild(ed);
+      }
     }
     var dl = document.createElement('button'); dl.type = 'button'; dl.className = 'sbtn cref-dlall dlbtn'; dl.title = '전체 다운로드'; dl.setAttribute('aria-label', '전체 다운로드');
     dl.innerHTML = (window.DLSEQ_IC || DL_SVG()) + '<span class="cref-dllbl">전체</span>';
@@ -113,16 +122,26 @@
     host.appendChild(row);
   }
 
+  function applyFold(m) {   // 접힘 상태 단일 원천 = 헤더 aria-expanded(운영자 260806 평의회1 ④·평의회7 ⑧) — 구판은 render가 접힘을 무시하고 빈 상태 안내를 접힌 섹션에 되살렸고, 다시 펼쳐도 안내가 안 돌아왔다
+    var rh = document.getElementById(m.id + 'ResH'); if (!rh) return;
+    var open = rh.getAttribute('aria-expanded') !== 'false';
+    [m.id + 'ResJobs', m.id + 'ResGrid'].forEach(function (i) { var e = document.getElementById(i); if (e) e.hidden = !open; });
+    var re = document.getElementById(m.id + 'ResEmpty');
+    if (re) re.hidden = !open || re.dataset.has === '1';
+  }
   function render(m) {
     var all = prune(load(m.opt.scope)).filter(function (e) { return e && e.url && !m.dead[keyOf(e.url)]; });
     all.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+    var sig = all.length + ':' + ((all[0] || {}).url || '') + ':' + ((all[all.length - 1] || {}).url || '');   // 무변경 지문 = 이미지 정본 `_histSig` 문법(길이 + 첫/끝 url) — 사진 완료 1건마다 영상 5탭이 **안 바뀐 데이터를 통째로 재빌드**하며 img 1,200개를 재생성하던 축 봉합(운영자 260806 평의회6 ① 실측 CPU 104ms·깜빡임 창 실재)
+    if (m.sig === sig) { applyFold(m); return; }
+    m.sig = sig;
     var res = all.filter(function (e) { return (e.ts || 0) >= T0; });          // 결과 = 이번 세션 완료분
     if (!res.length && all.length) res = [all[0]];                             // 세션분 0이면 최신 1건 추종 = 이미지 정본(followNewest) 동축 — 창을 다시 열어도 결과가 비지 않는다
     var resK = {}; res.forEach(function (e) { resK[keyOf(e.url)] = 1; });
     var prev = all.filter(function (e) { return !resK[keyOf(e.url)]; });       // 이전 제작 = 결과에 뜬 것 제외(이중노출 차단 = 이미지 정본 동문)
 
     var rc = document.getElementById(m.id + 'ResCnt'); if (rc) rc.textContent = '(' + res.length + ')';
-    var re = document.getElementById(m.id + 'ResEmpty'); if (re) re.hidden = !!res.length;
+    var re = document.getElementById(m.id + 'ResEmpty');
     var rg = document.getElementById(m.id + 'ResGrid');
     if (rg) { rg.innerHTML = ''; res.forEach(function (e) { rg.appendChild(tileEl(m, e, m.id + 'ResGrid', m.id + 'ResCnt')); }); }
     jobRow(m, res);
@@ -131,6 +150,8 @@
     var pe = document.getElementById(m.id + 'PrevEmpty'); if (pe) pe.hidden = !!prev.length;
     var pg = document.getElementById(m.id + 'PrevGrid');
     if (pg) { pg.innerHTML = ''; prev.forEach(function (e) { pg.appendChild(tileEl(m, e, m.id + 'PrevGrid', m.id + 'PrevCnt')); }); }
+    if (re) re.dataset.has = res.length ? '1' : '0';   // 「결과가 있는가」를 DOM에 박아 접힘 재적용이 데이터와 접힘을 함께 본다
+    applyFold(m);
   }
 
   function bindFold(m) {   // 접이 = 이미지 정본 동문(hidden + closing 촤르륵 · reduced-motion 즉시)
@@ -153,10 +174,8 @@
     if (rh) {
       var els = [m.id + 'ResJobs', m.id + 'ResGrid'];
       rh.addEventListener('click', function () {
-        var open = rh.getAttribute('aria-expanded') !== 'true';
-        rh.setAttribute('aria-expanded', String(open));
-        els.forEach(function (i) { var e = document.getElementById(i); if (e) e.hidden = !open; });
-        var re = document.getElementById(m.id + 'ResEmpty'); if (re && !open) re.hidden = true;
+        rh.setAttribute('aria-expanded', String(rh.getAttribute('aria-expanded') !== 'true'));
+        applyFold(m);   // 여닫기 = 단일 진입(구판은 접을 때 빈 상태를 숨기기만 하고 펼칠 때 복원을 안 했다 · 평의회7 ⑧-A)
       });
     }
   }
@@ -165,8 +184,9 @@
     mount: function (anchor, opt) {   // anchor = 이 요소 **뒤**에 레일을 붙인다(기존 산출 블록 무접촉 = 회귀 0)
       if (!anchor || !anchor.parentNode) return null;
       opt = opt || {};
-      var scope = KEYS[opt.scope] ? opt.scope : 'cap';
-      var m = { id: 'nmr', opt: { scope: scope, dlname: opt.dlname || 'out', onEdit: opt.onEdit }, dead: {} };
+      if (!Object.prototype.hasOwnProperty.call(KEYS, opt.scope)) return null;   // 미인식 스코프 = **마운트 거부**(운영자 260806 평의회2 ② — 구판 `|| 'cap'` 기본값은 오타 한 글자에 사진↔영상 격리가 깨지는 fail-open이었고, `data-scope="constructor"` 같은 프로토타입 키까지 통과해 쓰레기 localStorage 키를 만들었다)
+      var scope = opt.scope;
+      var m = { id: 'nmr' + (mounts.length ? mounts.length + 1 : ''), opt: { scope: scope, dlname: opt.dlname || 'out', onEdit: opt.onEdit }, dead: {}, sig: null };   // id 유일화 = 이중 마운트 시 둘째 레일이 **첫 레일 DOM을 조작**하던 축 봉합(운영자 260806 평의회1·2·6·7 공통 · 구 고정 'nmr'은 getElementById가 항상 첫 것을 물어 둘째는 영구 빈칸 + PrevH에 리스너 2개 = 이전 제작이 열리자마자 닫혔다)
       var wrap = document.createElement('div'); wrap.className = 'out nm-rail'; wrap.innerHTML = shellHTML(m.id);
       anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
       m.el = wrap;
@@ -176,16 +196,22 @@
       return m;
     },
     add: function (e) {   // 완료 1건 적재 = 이 문서 + 형제 탭(같은 스코프) 즉시 반영
-      if (!e || !e.url) return;
-      mounts.forEach(function (m) {
-        var a = prune(load(m.opt.scope));
+      if (!e || !e.url || !SAFE_URL.test(String(e.url))) return false;   // 스킴 화이트리스트 = 신뢰경계 1지점(운영자 260806 평의회7 ④ — localStorage는 타 탭·확장·수동 조작으로 오염 가능하고 이 값이 곧 href·img.src가 된다)
+      /* ⚠ 저장은 **스코프 단위 1회**, 렌더는 전 마운트(운영자 260806 평의회1 ⑥·평의회2 ⑦) —
+         구판은 마운트마다 각자 스토어에 push해 ⓐ 한 문서에 img·cap 마운트가 공존하면 같은 결과가 **양쪽에 실려 격리가 깨지고**
+         ⓑ 같은 스코프 마운트 2개면 중복차단 `return`이 둘째의 render까지 건너뛰어 그 레일만 stale이었다. */
+      var scopes = {}, ok = false;
+      mounts.forEach(function (m) { scopes[m.opt.scope] = m; });
+      Object.keys(scopes).forEach(function (sc) {
+        var a = prune(load(sc));
         var k = keyOf(e.url);
-        if (a.some(function (x) { return keyOf(x.url) === k; })) return;   // 중복 적재 차단
-        a.push({ url: e.url, poster: e.poster || '', dlname: e.dlname || m.opt.dlname, cap: e.cap || '', varStr: e.varStr || '', ts: e.ts || Date.now(), src: e.src || null });
+        if (a.some(function (x) { return keyOf(x.url) === k; })) { ok = true; return; }   // 중복 적재 차단
+        a.push({ url: e.url, poster: e.poster || '', dlname: e.dlname || scopes[sc].opt.dlname, cap: e.cap || '', varStr: e.varStr || '', ts: e.ts || Date.now(), src: e.src || null });
         while (a.length > HMAX) a.shift();
-        save(m.opt.scope, a);
-        render(m);
+        ok = save(sc, a) || ok;   // save 실패(쿼터·프라이빗 모드)를 삼키지 않고 호출자에게 알린다(평의회1 ⑤)
       });
+      mounts.forEach(function (m) { m.sig = null; render(m); });   // sig 무효화 후 렌더 = 방금 적재분 반영 보장
+      return ok;
     },
     refresh: function () { mounts.forEach(render); }
   };
@@ -218,11 +244,15 @@
 
   /* 형제 탭 동기 = 같은 스코프 키를 쓰는 다른 탭의 적재를 즉시 수신(이미지 정본 storage 수신 동문) + 복귀 3축.
      ⚠ 영상 5탭은 각자 iframe 문서라 같은 키를 공유하면 이 리스너만으로 전부 수렴한다(폴링 불요 = 부하 0). */
+  /* 수렴 3축 = **내 스코프만** + 코얼레싱(운영자 260806 평의회6 ①② 실측 봉합) —
+     구판은 ⓐ 사진 키 변경에도 반응해 영상 5탭이 헛렌더하고 ⓑ 탭 복귀 1회에 visibilitychange+focus가 연달아 터져 문서당 2회 재빌드였다(합 10회·img 2,400개·CPU 215ms). */
+  var _kickT = null;
+  function kick() { clearTimeout(_kickT); _kickT = setTimeout(api.refresh, 60); }   // raw-ok: 병합 간격(ms — 지속시간 토큰 아님) · rAF 1틱 등가로 vis+focus 동시 발화를 1회로
   window.addEventListener('storage', function (ev) {
-    if (!ev) return;
-    var hit = Object.keys(KEYS).some(function (s) { return KEYS[s] === ev.key; });
-    if (hit) api.refresh();
+    if (!ev || !ev.key) return;
+    var mine = mounts.some(function (m) { return KEYS[m.opt.scope] === ev.key; });   // 남의 스코프 = 무동작(격리 계약을 성능 축에서도 지킨다)
+    if (mine) kick();
   });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) api.refresh(); });
-  window.addEventListener('focus', function () { api.refresh(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
+  window.addEventListener('focus', kick);
 })();

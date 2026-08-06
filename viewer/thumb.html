@@ -3552,7 +3552,7 @@ function carAppend(url, dlname, cap, job, varStr, o, restore, histCap, noExpand)
   if (window.nmEta && _cpwT0) nmEta.done('thumb-copy', (Date.now() - _cpwT0) / 1000);   // 예상 학습 = 성공 완료만(sb·k 배선 그대로 · 실패·초과 경로엔 안 넣는다 = 평균 오염 차단)
   cpPrevWait(false);   // 합성 미리보기 '합성 중' 해제 = 첫 완성 도착(운영자 260712 · 미대기 시 no-op)
   const slideIdx = CARSLIDES.length;   // push 전 = 이 슬라이드의 전역 인덱스(변형줄 클릭 점프용)
-  CARSLIDES.push({ url, dlname, src: job && job.src, reuse: !!(job && job.rid), cap: histCap || cap, varStr: varStr || '', ts: Date.now() });   // cap·varStr·ts = 결과 타일(#carGrid) 재료 = 이전 제작 항목 스키마 동값(histAdd가 쓰는 그 값 그대로 · 캐러셀 축 필드는 무접촉)   // src=제작 조건(수정 버튼 = 이 설정으로 작성기 복원 · 운영자 260702) · reuse=리사이즈 잡 결과만 소스 재첨부 노출(운영자 260713 "그 한수" · 복원 rjob=rid 없음=비노출)
+  CARSLIDES.push({ url, dlname, src: job && job.src, reuse: !!(job && job.rid), cap: histCap || cap, varStr: varStr || '', ts: (job && job._restored && job.t0) || Date.now() });   // cap·varStr·ts = 결과 타일(#carGrid) 재료 = 이전 제작 항목 스키마 동값(histAdd가 쓰는 그 값 그대로 · 캐러셀 축 필드는 무접촉) · ⚠ ts = **복원 잡이면 원 제작시각**(운영자 260806 평의회3 F4 — 구판 `Date.now()`는 부팅 시각이라 요약 줄 「완료·1장·오후 4:08」 바로 아래 타일이 「오후 11:47」로 찍혀 같은 세트 안에서 두 시각이 어긋났다 · renderJob이 쓰는 `histTime(job.t0)`와 한 원천)   // src=제작 조건(수정 버튼 = 이 설정으로 작성기 복원 · 운영자 260702) · reuse=리사이즈 잡 결과만 소스 재첨부 노출(운영자 260713 "그 한수" · 복원 rjob=rid 없음=비노출)
   if (!restore) histAdd({ url, dlname, cap: histCap || cap, varStr: varStr || '', ts: Date.now(), src: job && job.src });   // 12h 보관(창 닫아도 '이전 제작'서 다시 보기 · 운영자 260621) · src=제작 조건(수정 복원) · 복원 시엔 재기록 X(중복 방지)
   if (o) { o._slide = slideIdx; o._url = url; o._dlname = dlname; }   // 변형 i ↔ 슬라이드·다운로드 매핑(로드 순서 무관 = o 객체에 직접 박음 · 운영자 260620)
   if (job) (job.saves || (job.saves = [])).push({ url, dlname, cap, varStr: varStr || '' });   // 잡별 '전체 다운로드'용 + 최근제작 복원용(cap/varStr 포함)
@@ -3841,7 +3841,7 @@ function histTileEl(e, grid, cntSel) {
 function renderCarGrid() {   // 결과 타일 = 지금 결과에 있는 것(CARSLIDES) 최신 먼저 — 데이터는 캐러셀과 같은 배열(별도 소스 신설 0 = 두 표현이 어긋날 여지 0)
   const grid = $('#carGrid'); if (!grid) return;
   grid.innerHTML = '';
-  const a = CARSLIDES.slice().reverse();   // carAppend는 나온 순서로 push → 타일은 최신 먼저(이전 제작·번역·AI 생성 정렬 동문)
+  const a = CARSLIDES.filter(e => !e.dead && !_deadUrls.has(histKey(e.url))).reverse();   // carAppend는 나온 순서로 push → 타일은 최신 먼저(이전 제작·번역·AI 생성 정렬 동문) · ⚠ dead 2축 필터 = 404 부활 루프 봉합(운영자 260806 평의회3 F2 — 구판은 `renderHist`의 `_deadUrls`(사라진 이미지 세션 기록)도 `carAppend` 404 핸들러가 찍는 `s.dead`도 안 봐서, 자삭된 타일이 다음 carHSync마다 되살아나 또 404를 때리고 카운트가 두 값 사이를 왕복했다)
   a.forEach(e => grid.appendChild(histTileEl(e, grid, '#carHCnt')));
   grid.hidden = !a.length;
 }
@@ -3974,8 +3974,11 @@ function carHSync(open) { const h = $('#carH'); if (!h) return; h.hidden = false
   if (em) em.hidden = true;
   /* 결과 = 「타일이 곧 결과」(운영자 260806 5탭 대조) — 부팅 자동복원이어도 **타일은 편다**(형제 2탭 번역·AI 생성이 늘 펼침이라 thumb 3탭만 헤더 한 줄로 접혀 결과가 딴판이었다).
      ⚠ 260710 「결과 기본 접힘」 계약은 **캐러셀(확대 열람 = 큰 이미지)** 축으로 보존 = 아래 carwrap/carbar는 종전 그대로 접힌 채. 접이 클릭은 타일·캐러셀을 함께 여닫는다. */
-  if (cg) cg.hidden = false;
-  h.setAttribute('aria-expanded', 'true');
+  /* ⚠ 접힘 존중(운영자 260806 평의회3 F3) — 구판은 `cg.hidden=false`와 aria 'true'를 **무조건** 실행해
+     ⓐ 배치 2번째 장이 도착할 때 사용자가 접어둔 타일을 도로 펼치고(QA2 260706 회귀) ⓑ 부팅 복원 시 헤더는 '펼침'인데 캐러셀은 접힘 = 눌러도 반대로 열리는 2클릭 상태를 만들었다.
+     지금 = 이미 접혀 있으면 그대로 둔다(open 인자 = 명시적 펼침 요청일 때만 편다). */
+  const _wasCollapsed = h.getAttribute('aria-expanded') === 'false';
+  if (open || !_wasCollapsed) { if (cg) cg.hidden = false; h.setAttribute('aria-expanded', 'true'); }
   if (open) { $('#carwrap').hidden = false; $('#carbar').hidden = false; } }   // 접힌 채 복원(부팅 자동복원) = 헤더는 노출·내용은 접힘 → aria 동기(내용 hidden은 초기 HTML 상태 유지 · 운영자 260710)
 let _carCloseT = null;   // 결과 닫힘 촤르륵(histOut) 후 hidden 지연 타이머(index popOut 패턴 계승)
 $('#carH').addEventListener('click', () => {

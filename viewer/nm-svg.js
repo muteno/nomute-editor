@@ -38,3 +38,12 @@ const G_SVG = '<svg viewBox="2 2 20 20" fill="currentColor"><path d="M12.04 10.9
 //     → 판별 축 = **별이 아니라 레터마크**. 브랜드 자리에 별을 쓰면 어느 쪽이든 AI 스파클 관용구와 충돌한다.
 //   값 복제 0 = 별칭 참조(G_SVG 한 곳만 고치면 두 표면 동시) · 두 표면 공용(제미나이 표기 + 구글 이미지 검색 버튼)은 260727 정본 그대로 복귀.
 const GEMINI_SVG = G_SVG;
+
+/* window 노출(운영자 260806 평의회7 실측 봉합) — classic script의 top-level `const`는 **window 프로퍼티가 되지 않는다**.
+   같은 문서 인라인 스크립트는 bare 식별자로 잘 참조하지만, **분리 파일 모듈**(nm-rail.js 등)이 `window.X`로 찾으면 상시 undefined라
+   폴백 인라인 SVG로 그려진다 = 아이콘 SSOT가 죽고 픽토가 갈린다(실측 = DOWNLOAD 밑변 `M5 21h14` 정본 vs 폴백 `M4 21h16`).
+   ⚠ 값 복제 0 = 위 정본 상수를 그대로 내보내기만 한다(새 정의 금지) · 기존 bare 참조는 무영향. */
+(function (g) {
+  var EXPORTS = { CHECK_SVG: CHECK_SVG, COPY_SVG: COPY_SVG, PASTE_SVG: PASTE_SVG, ERASE_SVG: ERASE_SVG, DOWNLOAD_SVG: DOWNLOAD_SVG, EDIT_SVG: EDIT_SVG };
+  Object.keys(EXPORTS).forEach(function (k) { if (g[k] === undefined) g[k] = EXPORTS[k]; });
+})(typeof window !== 'undefined' ? window : this);
