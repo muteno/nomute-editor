@@ -79,14 +79,18 @@ P_PADFILL = (
 
 P_SEEDFILL = (
     "This image has already been mechanically extended {where} — those margins were filled by "
-    "mirroring the neighbouring pixels, so the content there is roughly right but shows visible "
-    "seams, mirrored repetitions and abrupt joins. Your ONLY job is to repair those artifacts so "
-    "the whole frame reads as one single continuous photograph. "
+    "stretching the last row/column of pixels outward, so the colours and layout there are already "
+    "correct but the texture is smeared into obvious streaks. Your ONLY job is to replace those "
+    "streaks with the proper texture so the whole frame reads as one single continuous photograph. "
     "Do NOT reimagine or replace the scene. Do NOT add any object, person, body part, star, light "
-    "effect, text or watermark that is not already present. Keep the composition exactly as it is. "
-    "Work only on the extended margins {where}: remove the mirror-symmetry and any duplicated or "
-    "ghosted copies of the subject or background, straighten lines and horizons so they run "
-    "continuously across the joins, and even out brightness and colour so no seam or band remains. "
+    "effect, furniture, wall, panel, text or watermark that is not already present. Keep the "
+    "composition and every colour region exactly where it is. "
+    "Work only on the extended margins {where}: keep each streak's colour and position, but rebuild "
+    "its detail by continuing the neighbouring texture — if the adjacent area is a city skyline at "
+    "night, the streaks become more of that same skyline at the same scale and density; if it is "
+    "fabric, more of that same fabric. Never leave a smooth flat area where the neighbouring "
+    "pixels have texture. Straighten lines and horizons so they run continuously across the joins, "
+    "and even out brightness so no seam or band remains. "
     "Preserve the existing lighting direction, perspective, grain and depth of field — if the "
     "neighbouring pixels are out of focus, the repaired margins must be equally out of focus. "
     "Keep every pixel of the central original area exactly unchanged. "
@@ -95,6 +99,10 @@ P_SEEDFILL = (
 #   ⚠ P_PADFILL(회색 빈칸 → 채워라)과 **과업이 다르다**: 여기선 seed_pad가 이미 메꿔 놓았고 모델은 **결함 제거만** 한다.
 #   실호출 근거(260806 앵커 3비율) = 회색 빈칸 방식의 실패 사유가 「seam + severe ghosting/duplication」(4:5 QA 2회 FAIL)이라
 #   그 결함 이름을 그대로 과업으로 준다 = 모델이 「무엇을 그릴까」를 결정할 여지 자체를 없앤다.
+#   ⚠ 260806 2차 개정 = 씨앗을 거울반사 → **clamp(가장자리 연장)** 로 바꾼 데 맞춰 문구 동기화(구 "mirroring"·"mirror-symmetry"는
+#     거짓 서술 = 모델에게 없는 결함을 찾게 시킨다) + **「매끈한 면 금지」 절 추가**: 1차 실측에서 확장부가 「밋밋한 파란 면」으로
+#     남는 실패가 났다(모델이 흐린 씨앗을 「원래 흐린 배경」으로 읽음) → 이웃에 텍스처가 있으면 확장부에도 같은 밀도의 텍스처를
+#     요구하고, 「가구·벽·패널」을 발명 금지 목록에 명시(16:9 실측 = 없던 스튜디오 기둥·조명 발명).
 
 
 def gemini_judge(png_bytes):
@@ -314,13 +322,12 @@ def seed_pad(canvas, box_px):
     if reg.size == 0:
         return canvas
     pad = ((y0, max(0, ch - y1)), (x0, max(0, cw - x1)), (0, 0))
-    out = Image.fromarray(np.pad(reg, pad, mode="edge"))
-    grow = max(pad[0][0], pad[0][1], pad[1][0], pad[1][1])
-    if grow > 0:   # 여백만 블러 — 원본 자리는 그대로 되붙인다(중심 픽셀 불변)
-        soft = out.filter(ImageFilter.GaussianBlur(max(2.0, grow * 0.06)))
-        soft.paste(Image.fromarray(reg), (x0, y0))
-        out = soft
-    return out
+    return Image.fromarray(np.pad(reg, pad, mode="edge"))
+    # ⚠ 블러 **비채택**(260806 2차 실측) — 1차에 여백에 GaussianBlur를 걸었더니 **씨앗이 정보를 지웠다**:
+    #   야경 도시 텍스처가 뭉개져 「밋밋한 파란 면」이 되고, 모델은 그 흐린 면을 「원래 흐린 배경」으로 읽어 **그대로 뒀다**
+    #   (실측: 4:5 상 확장 = 텍스처 소실 · 4:5 하 확장 = 정체불명 얼룩 · 9:16 상 확장도 동일 증상).
+    #   씨앗의 목적은 「고칠 자국을 명확히 보여주는 것」이지 「미리 예쁘게 하는 것」이 아니다 — clamp 줄무늬는
+    #   선명할수록 모델에게 「여기가 늘어난 자리」라는 신호가 강해진다.
 
 
 def blur_pad(img, ar, box=None):
