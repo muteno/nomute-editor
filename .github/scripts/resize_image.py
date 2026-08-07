@@ -43,6 +43,7 @@ def custom_aspect_ok(a):   # 직접 비율 N:N(운영자 260718 "AI 생성 비�
     return 0.25 <= r <= 4
 SIZES = ("1K", "2K")
 FILLS = ("auto", "solid", "blur", "ai")   # 채움 오버라이드(운영자 260803) — api/resize FILLS와 한 쌍 · auto = 종전 자동 라우팅
+SEED_ON = os.environ.get("RESIZE_SEED", "1") != "0"   # 씨앗 다듬기 모드(260806 기본 ON · RESIZE_SEED=0 = 구 회색 빈칸 방식으로 즉시 원복)
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
 
 P_PADFILL = (
@@ -74,6 +75,26 @@ P_PADFILL = (
 #   경계의 잔해·건물 선을 그대로 이어 성공[운영자 제출 성공례] · 마네킹 확장은 경계가 빈 배경인데 별·성운·팔을 **발명**해 실패
 #   → ⓐ 과업 재정의 = uncrop(창작 아님·클론힐) ⓑ 소스 제한 = 경계에 닿은 것만 ⓒ 빈 배경 = 그 배경 그대로 + 발명 금지
 #   목록{별·빛효과·신체}을 실패 모드 그대로 명문화 · 구 룰은 전문 보존 = 성공례 경로 회귀 0)
+
+
+P_SEEDFILL = (
+    "This image has already been mechanically extended {where} — those margins were filled by "
+    "mirroring the neighbouring pixels, so the content there is roughly right but shows visible "
+    "seams, mirrored repetitions and abrupt joins. Your ONLY job is to repair those artifacts so "
+    "the whole frame reads as one single continuous photograph. "
+    "Do NOT reimagine or replace the scene. Do NOT add any object, person, body part, star, light "
+    "effect, text or watermark that is not already present. Keep the composition exactly as it is. "
+    "Work only on the extended margins {where}: remove the mirror-symmetry and any duplicated or "
+    "ghosted copies of the subject or background, straighten lines and horizons so they run "
+    "continuously across the joins, and even out brightness and colour so no seam or band remains. "
+    "Preserve the existing lighting direction, perspective, grain and depth of field — if the "
+    "neighbouring pixels are out of focus, the repaired margins must be equally out of focus. "
+    "Keep every pixel of the central original area exactly unchanged. "
+    "The result must look like the camera simply captured a wider view of the exact same scene."
+)   # 씨앗 다듬기 프롬프트(260806 · 운영자 "firefly로 만들때 명령어 아예 입력안해도 자연스럽게 채우기는 잘하던데")
+#   ⚠ P_PADFILL(회색 빈칸 → 채워라)과 **과업이 다르다**: 여기선 seed_pad가 이미 메꿔 놓았고 모델은 **결함 제거만** 한다.
+#   실호출 근거(260806 앵커 3비율) = 회색 빈칸 방식의 실패 사유가 「seam + severe ghosting/duplication」(4:5 QA 2회 FAIL)이라
+#   그 결함 이름을 그대로 과업으로 준다 = 모델이 「무엇을 그릴까」를 결정할 여지 자체를 없앤다.
 
 
 def gemini_judge(png_bytes):
@@ -272,6 +293,36 @@ def solid_pad(img, ar, color, box=None):
     return canvas
 
 
+def seed_pad(canvas, box_px):
+    """빈칸을 **주변 픽셀로 미리 메꾼다**(거울반사) — 모델에 「빈칸」을 주지 않기 위한 씨앗.
+
+    ⚠ 260806 실호출이 드러낸 축(운영자 "firefly로 만들때 명령어 아예 입력안해도 자연스럽게 채우기는 잘하던데"):
+      구판은 여백을 **평평한 회색**으로 주고 「채워라」고 했다 → 모델에겐 그게 **빈 캔버스**라 매번 「여기 뭘 넣지」를
+      새로 결정한다. 그 결정이 갈리는 게 실패의 정체였다:
+        · 경계가 빈 배경 → **발명**(마네킹 케이스: 별·성운·팔 · 260806 1차)
+        · 경계에 무늬 → **복제/이음선**(앵커 4:5: QA 2회 FAIL "seam + severe ghosting" · 260806 실호출)
+      Firefly 생성형 채우기가 무프롬프트로 자연스러운 이유가 이것 — 빈칸을 상상시키지 않고 **주변에서 끌어와** 메꾼 뒤
+      다듬는다. 같은 구조를 우리도 쓴다: 여기서 씨앗을 깔고(과금 0), 모델에겐 「다듬어라」만 시킨다(P_SEEDFILL).
+    방식 = **가장자리 연장(edge clamp) + 여백만 약한 블러**. 있는 픽셀만 늘리므로 없던 것을 만들 수 없다(창조 여지 구조적 0).
+    ⚠ 거울반사(symmetric)는 **비채택** — 260806 실측에서 앵커 얼굴이 위쪽에 **거꾸로 복제**됐다(인물이 경계에 걸치면
+      「두 번째 얼굴」이 생긴다). 그건 바로 이 파이프가 이미 실패한 사유(QA "severe ghosting/duplication")를 씨앗이
+      **더 키우는** 짓이다. clamp는 같은 상황에서 세로 줄무늬로만 늘어나 복제 형상이 안 생긴다.
+    블러 = 줄무늬를 눌러 모델이 「여기는 흐린 배경」으로 읽게 하는 힌트(원본 영역은 무접촉 = 픽셀락과 무충돌)."""
+    x0, y0, x1, y1 = box_px
+    cw, ch = canvas.size
+    reg = np.asarray(canvas.convert("RGB"))[y0:y1, x0:x1]
+    if reg.size == 0:
+        return canvas
+    pad = ((y0, max(0, ch - y1)), (x0, max(0, cw - x1)), (0, 0))
+    out = Image.fromarray(np.pad(reg, pad, mode="edge"))
+    grow = max(pad[0][0], pad[0][1], pad[1][0], pad[1][1])
+    if grow > 0:   # 여백만 블러 — 원본 자리는 그대로 되붙인다(중심 픽셀 불변)
+        soft = out.filter(ImageFilter.GaussianBlur(max(2.0, grow * 0.06)))
+        soft.paste(Image.fromarray(reg), (x0, y0))
+        out = soft
+    return out
+
+
 def blur_pad(img, ar, box=None):
     """원본 블러 확대 배경 + 원본(유튜브 세로영상식) — 항상 성공하는 결정론 폴백. box 지정 시 그 자리에 앉힌다."""
     if box:   # 배치형 = 캔버스·원본 자리를 place_canvas가 정하고, 배경만 블러 확대본으로 갈아끼운다(값·필터 동일)
@@ -366,14 +417,16 @@ def main():
                 canvas, bpx = pad_canvas(img, aspect)
                 src_img = img
             place, where, dirhint = box_dirs(bpx, canvas.size)
-            base_prompt = P_PADFILL.format(place=place, where=where, dirhint=dirhint)
+            seed = seed_pad(canvas, bpx)   # 빈칸을 먼저 메꾼다(과금 0) → 모델은 「채우기」가 아니라 「다듬기」만 한다
+            base_prompt = P_SEEDFILL.format(where=where) if SEED_ON else P_PADFILL.format(place=place, where=where, dirhint=dirhint)
+            feed = seed if SEED_ON else canvas
             print("배치 문구: {} / 여백 {}".format(place, where), flush=True)   # 프롬프트가 캔버스를 정확히 묘사하는지 런 로그로 사후 대조(운영자 260806 "프롬프팅이 어떻게 고정되어있는지")
             png, fb, qa_fail = None, "", False
             for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
                 p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
                                     "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
                 cand = tg.gemini_image(p, image_size=size, tag="resize:t{}".format(attempt),
-                                       aspect=aspect, ref_png=jpg_bytes(canvas))
+                                       aspect=aspect, ref_png=jpg_bytes(feed))
                 if not cand:
                     continue
                 try:
@@ -394,9 +447,14 @@ def main():
                 out_img = pixel_lock(png, canvas.size, src_img, bpx) if lock else \
                     Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
             else:
-                print("::warning::Gemini 렌더/QA 실패 — blur-pad 폴백(항상 결과)")
-                route = "blur_pad"
-                out_img = blur_pad(img, aspect, box)
+                if SEED_ON:   # 씨앗은 「있는 픽셀만 재배치」라 블러 유령보다 언제나 선이 살아 있다(과금 0 · 260806 실호출 4:5 폴백 품질 봉합)
+                    print("::warning::Gemini 렌더/QA 실패 — seed-pad 폴백(거울반사 이어붙임)")
+                    route = "seed_pad"
+                    out_img = seed
+                else:
+                    print("::warning::Gemini 렌더/QA 실패 — blur-pad 폴백(항상 결과)")
+                    route = "blur_pad"
+                    out_img = blur_pad(img, aspect, box)
 
     if not ratio_ok(out_img.size, aspect):   # 결정론 최종 검증(비율 ±2%)
         print("::warning::비율 불일치 {} — blur-pad 재폴백".format(out_img.size))
