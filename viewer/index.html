@@ -1530,6 +1530,8 @@
   .unmerge-go .gck path { fill:none; stroke:var(--on-accent); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:24; animation:goTick .38s .04s ease forwards; }
   @media (prefers-reduced-motion:reduce) { .unmerge-pop { animation:none; } .unmerge-go.firing { animation-duration:.2s; } .unmerge-go .gck path { animation:none; stroke-dashoffset:0; } }
   .sc-badge { font-weight:700; }
+  .sc-grade { background:none; border:0; font:inherit; font-weight:700; color:var(--mut); padding:8px 5px; margin:-8px -3px; cursor:pointer; }   /* raw-ok: 히트존 확장 전용 패딩(상하 8 = 활자 ~10px→히트 26px+·좌우 5 — --sp-1(6)은 상하 히트 목적 미달·시각 크기는 네거티브 마진으로 상쇄라 광학 무영향) */ /* reuse-ok: .sc-badge 메타라인 텍스트 문법 계승(N택1 칩 아님 = 표시+팝 진입 단추 · 선택지는 .sc-rsn 정본이 담당) — AI 경중 표시+교정 진입(운영자 260807 "grade가 나오게 · 번호 토글 = 선택지") */
+  .sc-grade.fx { color:var(--accent); }   /* 운영자 교정분 = 코어 초록 점등(교정됨 식별) */
   .sc-badge.iss { color:var(--warn); }      /* 이슈 = 노랑 */
   .sc-badge.brk { color:var(--danger); }    /* 긴급 = 빨강 */
   .sc-more { display:inline-flex; align-items:center; font-size:10px; font-weight:800; padding:1px 6px; border-radius:7px; letter-spacing:-.2px;
@@ -11189,6 +11191,12 @@ const RKEY = 'nm_ratings';
 const ratingsAll = () => { try { return JSON.parse(localStorage.getItem(RKEY) || '{}'); } catch { return {}; } };
 const saveRating = (id, patch) => { const r = ratingsAll(); r[id] = { ...(r[id] || {}), ...patch }; localStorage.setItem(RKEY, JSON.stringify(r)); };
 const candId = c => c.id || c.url || c.title;
+// ── grade 수기 교정(운영자 260807 "grade가 나오게, 어긋났을 때 고칠 수 있게") — 로컬 즉시 반영(랭킹·표시) + postRate로 원장 적재(scraper/grade_votes.jsonl · 12h 소비 = grade_fix_report) ──
+//    ⚠️ 배지·긴급(isBreaking·issGrade)은 raw c.grade 유지 = build-viewer 미러와 규칙 동일 계약 보존(피드↔수집함 배지 드리프트 게이트 축) — 교정은 랭킹(gradeW)·표시 칩만.
+const GFIX_KEY = 'nomute_grade_fix';
+const gfixAll = () => { try { return JSON.parse(localStorage.getItem(GFIX_KEY) || '{}'); } catch { return {}; } };
+const gfixOf = c => { const f = gfixAll()[candId(c)]; return (f && f.g != null) ? f : null; };
+const gEff = c => { const f = gfixOf(c); return f ? f.g : c.grade; };   // 실효 등급 = 교정 우선
 const scRelTime = iso => {   // published(ISO) → 상대시각(렌더 시점 계산 = 안 틀어짐)
   if (!iso) return '';
   const t = new Date(iso); if (isNaN(t)) return '';
@@ -12333,7 +12341,7 @@ const _buzzSet = () => {   // 실검 키워드 집합(5분 캐시) — TRENDS는
   _buzzKw = s; _buzzTs = Date.now(); return s;
 };
 const snsBuzz = c => { const t = c.title || ''; for (const k of _buzzSet()) { if (t.includes(k)) return true; } return false; };
-const gradeW = c => { const g = fbJunk(c) ? 0.5 : (c.grade == null ? 1 : (GRADE_W[c.grade] ?? 1)); return (g === 0.5 && c.grade === 0 && c.cat === '문화' && snsBuzz(c)) ? g * BUZZ_W : g; };   // 피드백 잡음 = grade0 floor(0.5) 취급(우선순위 감점 — 누적서 하강) · 문화 grade0 + 실검 매칭만 ×BUZZ_W(0.5→0.6 — grade1 미만 유지 = 대세라도 경미 이하)
+const gradeW = c => { const ge = gEff(c); const g = (gfixOf(c) ? (ge == null ? 1 : (GRADE_W[ge] ?? 1)) : (fbJunk(c) ? 0.5 : (ge == null ? 1 : (GRADE_W[ge] ?? 1)))); return (g === 0.5 && ge === 0 && c.cat === '문화' && snsBuzz(c)) ? g * BUZZ_W : g; };   // 피드백 잡음 = grade0 floor(0.5) 취급(우선순위 감점 — 누적서 하강) · 문화 grade0 + 실검 매칭만 ×BUZZ_W(0.5→0.6 — grade1 미만 유지 = 대세라도 경미 이하)
 // 최신 정렬 = (긴급도[burst+breaking] + 보도량[cross]) × 시간 반감 decay × 연속보도 가점 × AI 경중. 옛·후속끊긴·비뉴스 자연 하강.
 const FRESH_CROSS_W = 0.4;   // 신규 칼럼 보도량 가중 = base에 +W×cross(운영자 260803 "보도 지표 13인데 너무 아래 — 묻히면 신뢰도 하락으로 사용을 안 하게 됨"): 종전 base=burst+breaking뿐이라 cross(매체 수)가 신규(0~4h) 랭킹에 0% 반영 → cr13·25건 대형(경산 방화 수사경찰 사망)이 cr2 보도자료 밑 9/173위 실측. cross축 = 누적 crossConvex와 동일 _rankCross(병합 댐핑 반영) · 진입 게이트(scFast)·검증대기 접기·핀·시간반감 전부 무접촉 = 순수 정렬항 추가. 평의회 260803 W 검증. 조정 가능.
 const fastScore = c => ((c.burst || 0) + (c.breaking ? 5 : 0) + FRESH_CROSS_W * (c._rankCross ?? (c.cross || 0))) * Math.pow(0.5, Math.max(0, (Date.now() - scTs(c)) / 3600000) / FAST_HALF_H) * scFollow(c) * gradeW(c) * fpW(c);
@@ -12461,7 +12469,7 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
   const showMemo = !triage && (st.score === 1 || st.score === 5);   // 극단 평점(1·5) = 이유 입력칸(누적만)
   const moreN = (st.picked && st.pickCross != null) ? Math.max(0, (c.cross || 0) - st.pickCross) : 0;   // 픽 후 추가 보도 매체 수
   el.innerHTML =
-    `<div class="sc-top"><span class="sc-metal">${[c.gossip ? catChip('문화') : (catB ? catChip(catB) : ''), `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
+    `<div class="sc-top"><span class="sc-metal">${[c.gossip ? catChip('문화') : (catB ? catChip(catB) : ''), `<span class="sc-cross${lo}${c._mergeCount ? ' merged' : ''}"${c._mergeCount ? ` title="병합된 기사 ${c._mergeCount}건 — 탭 = 해제"` : ''}><span class="cn">${c.cross || 0}</span></span>`, `<button type="button" class="sc-grade${gfixOf(c) ? ' fx' : ''}" title="AI 경중 ${c.grade == null ? '미채점' : 'G' + c.grade}${gfixOf(c) ? ' → 교정 G' + gEff(c) : ''} — 탭 = 교정" aria-label="경중 등급 교정">G${gEff(c) == null ? '–' : gEff(c)}</button>`, badge].filter(Boolean).join('<span class="sc-sep">·</span>')}${moreN ? `<span class="sc-more" title="픽 후 추가 보도 매체">＋${moreN} 더</span>` : ''}</span><span class="sc-media">${tm ? esc(tm) : ''}</span></div>
      <div class="sc-title"><a href="${escUrl(scLinkUrl(c) || '#')}" target="_blank" rel="noopener"></a></div>
      <div class="sc-bot${triage ? ' triage' : ''}">${triage
        ? (pstate
@@ -12477,7 +12485,8 @@ function makeScItem(c, st, col) {       // 카드 1장 생성(반환). col='cros
      ${showMemo ? `<div class="sc-memo"><input class="sc-memo-in" data-id="${esc(candId(c))}" type="text" maxlength="200" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="왜 ${st.score}점? 한 줄 (안 쓰면 주요도서 숨김·엔터 저장)"></div>` : ''}`;
   el.querySelector('.sc-title a').textContent = scKoTitle(c) || c.title || '(제목 없음)';   // 외신 = 번역 제목 단독 표시(원문 보조줄 없음 — 운영자 260703 "원문으로 표시 안되게" · 원문 확인 = 제목 링크가 어차피 원기사)
   // 타이틀 링크 라우팅: 요약돼 피드에 있으면 → 뉴스 요약(가로채기) / 아니면 → 기사 전문(원래 a href 그대로).
-  { const ta = el.querySelector('.sc-title a'); if (ta) ta.addEventListener('click', e => { if (scFeedArticle(c) || (!DATA_LOADED && pstate !== 'failed')) { e.preventDefault(); pickedOpen(c); } }); }   // DATA(articles.json) 로드 전엔 scFeedArticle이 무조건 null이라 preventDefault가 안 걸려 원문 href(외신=영문)로 새던 버그 → pre-DATA 픽카드는 요약 경로로(feedOpenBy가 await load 후 재매칭·미요약이면 '피드 반영 중' 토스트) · 실패카드(pstate==='failed')는 '제목=원문' 계약 유지 · 운영자 260713
+  { const ta = el.querySelector('.sc-title a'); if (ta) ta.addEventListener('click', e => { if (scFeedArticle(c) || (!DATA_LOADED && pstate !== 'failed')) { e.preventDefault(); pickedOpen(c); } }); }
+  { const gb = el.querySelector('.sc-grade'); if (gb) gb.onclick = e => { e.stopPropagation(); askGrade(c, el); }; }   // grade 칩 탭 = 교정 선택지(운영자 260807)   // DATA(articles.json) 로드 전엔 scFeedArticle이 무조건 null이라 preventDefault가 안 걸려 원문 href(외신=영문)로 새던 버그 → pre-DATA 픽카드는 요약 경로로(feedOpenBy가 await load 후 재매칭·미요약이면 '피드 반영 중' 토스트) · 실패카드(pstate==='failed')는 '제목=원문' 계약 유지 · 운영자 260713
   if (triage) {   // 최신 = [👎][PASS][PICK] → 각각 사유(객관식) 받고 처리. PICK은 잔류(PICKED 비활성), down/pass는 접힘.
     if (!pstate) {
       el.querySelector('.sc-tg.pass').onclick = () => askReason('pass', c, el);
@@ -12673,6 +12682,35 @@ function closeRsn(p) {
   if (p._cleanup) { try { p._cleanup(); } catch (e) {} }
   const o = p._owner; if (o && o._rsn === p) o._rsn = null;
   p.remove();
+}
+// ── grade 교정 팝(운영자 260807 "번호 토글할 때마다 선택지 — PASS 누르면 나오는 것처럼") — .sc-rsn 정본 100% 계승(앵커 메뉴 문법·placeRsn/closeRsn 공용 · 신규 CSS 0) ──
+function askGrade(c, el) {
+  if (!el) return;
+  const ex = el._rsn;
+  if (ex) { const same = ex.dataset.act === 'grade'; closeRsn(ex); if (same) return; }
+  document.querySelectorAll('.sc-rsn').forEach(closeRsn);
+  const cur = gEff(c), fixed = !!gfixOf(c);
+  const p = document.createElement('div'); p.className = 'sc-rsn rsn-grade'; p.dataset.act = 'grade';
+  const opts = [[0, '0 비뉴스'], [1, '1 경미'], [2, '2 주목'], [3, '3 대형']];
+  p.innerHTML = `<div class="sc-rsn-q"><b>경중 교정 — AI ${c.grade == null ? '미채점' : 'G' + c.grade}${fixed ? ' → 교정 G' + cur : ''}</b><button type="button" class="sc-rsn-x" aria-label="취소"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 6 18 18M18 6 6 18"/></svg></button></div>
+    <div class="sc-rsn-chips">${opts.map(([n, k]) => `<button type="button" class="sc-rsn-c" data-g="${n}">${cur === n ? '✓ ' : ''}${k}</button>`).join('')}${fixed ? '<button type="button" class="sc-rsn-c" data-g="x">AI 원복</button>' : ''}</div>`;
+  document.body.appendChild(p);
+  el._rsn = p; p._owner = el;
+  placeRsn(p, el.querySelector('.sc-top') || el);
+  const onDown = e => { if (!p.contains(e.target) && !el.contains(e.target)) closeRsn(p); };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); closeRsn(p); } };
+  setTimeout(() => document.addEventListener('pointerdown', onDown), 0);
+  document.addEventListener('keydown', onKey);
+  p._cleanup = () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  p.querySelector('.sc-rsn-x').onclick = () => closeRsn(p);
+  p.querySelectorAll('.sc-rsn-c').forEach(b => b.onclick = () => {
+    const v = b.dataset.g; closeRsn(p);
+    const id = candId(c), all = gfixAll();
+    if (v === 'x') delete all[id]; else all[id] = { g: +v, ai: c.grade ?? null, ts: Date.now() };
+    try { localStorage.setItem(GFIX_KEY, JSON.stringify(all)); } catch {}
+    postRate({ id, url: c.url || '', title: c.title || '', score: 0, picked: false, action: 'grade', reason: (v === 'x' ? 'x' : v) + ':' + (c.grade == null ? 'x' : c.grade) });   // 원장 적재 = rate.yml → rate_record(action='grade' 분기) → scraper/grade_votes.jsonl → 12h 소비(grade_fix_report)
+    _scrapSig = ''; renderScrap();   // 시그니처 리셋 = 칩 텍스트·순위 즉시 재렌더
+  });
 }
 function askReason(act, c, el) {
   if (!el) return;
