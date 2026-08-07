@@ -85,12 +85,17 @@ jobs:
           python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 실패(스킵) — 평점 기록은 계속"
           # 썸네일 투표 리포트도 같은 fail-open 관용구 — 부속 기능이 본체(별점 적재)를 인질로 잡지 않는다.
           python3 scraper/thumb_vote_report.py || echo "::warning::thumb_vote_report 실패(스킵) — 평점 기록은 계속"
+          # grade 수기 교정 12h 스윕(운영자 260807) — 같은 fail-open 관용구.
+          python3 scraper/grade_fix_report.py || echo "::warning::grade_fix_report 실패(스킵) — 평점 기록은 계속"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scraper/ratings.jsonl
           # 썸네일 화풍 투표(action=thumb)는 thumb_votes.jsonl 로 분기한다 — 여기 안 실으면 적재는 되고
           # 커밋이 안 돼 다음 체크아웃에서 **조용히 증발**한다(운영자 260805 "남게끔" = 남는 게 이 기능의 전부).
           git add scraper/thumb_votes.jsonl 2>/dev/null || true
+          # grade 교정(action=grade)도 별도 원장 — 안 실으면 적재 후 다음 체크아웃서 조용히 증발(thumb 선례 · 260807).
+          git add scraper/grade_votes.jsonl 2>/dev/null || true
+          git add scraper/grade_fix_report.json 2>/dev/null || true
           git add -A messages 2>/dev/null || true
           git add scraper/brk_misfire.json 2>/dev/null || true
           git add scraper/thumb_vote_report.json 2>/dev/null || true

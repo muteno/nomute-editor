@@ -56,6 +56,11 @@ jobs:
         # 30분 타이머인 이 워크플로가 상시 갱신 = 운영자 행동과 무관하게 알림이 살아있다. 실패 = 무시(fail-open).
         run: python3 scraper/brk_misfire.py || echo "::warning::brk_misfire 스킵"
 
+      - name: grade 교정 12h 스윕(운영자 260807 — 별점 안 눌러도 30분 타이머가 주기 보장)
+        # rate.yml 동행만으론 운영자가 별점을 안 누르는 구간에 12h 스윕이 영영 안 돈다(brk_misfire TTL 동축).
+        # fail-open — rc≠0 이 아래 원장 커밋을 죽이면 방금 찍은 도장이 증발한다.
+        run: python3 scraper/grade_fix_report.py || echo "::warning::grade_fix_report 스킵"
+
       - name: 묻힘 감시(중요한 게 화면에서 사라졌나 · 260805)
         # §1 "중요한 게 묻히면 안 됨"의 자동감시. 발단(260805 8인 평의회 통합관) = 이 계측을 담은
         # scraper/daily_health.py 가 ⓐ 워크플로 어디에도 등재되지 않은 **수동 전용**(전수 grep 호출 0건)
@@ -76,6 +81,7 @@ jobs:
           git add scraper/obs/incidents.jsonl 2>/dev/null || true   # 사고 이력 원장(운영자 260727 한 수) — ⚠ 러너는 매 런 새 체크아웃이라 **커밋 안 하면 기록이 통째로 증발**한다(변화 있을 때만 몇 줄 증가 = 리포 부담 0)
           git add scraper/obs/deploy_obs.jsonl 2>/dev/null || true   # ⑦-b 배포 관측 원장(260803) — 배포 주기(μ)·미반영 추세 시계열. 위와 같은 이유로 커밋 필수(안 하면 매 런 1줄짜리 원장 = 추세 영영 불가)
           git add scraper/brk_misfire.json 2>/dev/null || true   # 긴급 오발 신고 처리 원장(위 TTL 갱신 스텝 산출 · 260803)
+          git add scraper/grade_fix_report.json 2>/dev/null || true   # grade 교정 12h 스윕 처리 원장(위 스텝 산출 · 260807)
           git diff --cached --quiet && { echo "원장 변동 없음 — 커밋 생략"; exit 0; }
           PFX=""; [ "${PAGES_COALESCE:-1}" != "0" ] && PFX="[CF-Pages-Skip] "   # CF 빌드만 스킵(코얼레싱 · 정본 = git_land.sh 헤더 · Q1331 — GitHub 발화 무손상 토큰)
           git commit -m "${PFX}watchdog: 경보 쿨다운 도장"

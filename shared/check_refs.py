@@ -4375,6 +4375,38 @@ def _has_exec_line(text, needle):
     return False
 
 
+def check_grade_fix_chain():
+    """grade 수기 교정 폐루프 게이트(하드 · 운영자 260807 "어긋났을 때 고칠 수 있게 · 12시간마다 고쳐진 것만 기록" —
+    check_thumb_vote_chain의 짝). 교정은 두 방식으로 조용히 죽는다: ⓐ 적재는 되는데 커밋 줄이 없어 다음 체크아웃서
+    증발 ⓑ 쌓이는데 아무도 안 읽는 죽은 원장. 화면은 둘 다 멀쩡해 보인다(칩이 눌리고 초록이 켜진다) → 5층 정적 생존 강제.
+    체인: 뷰어 .sc-grade 칩 → askGrade → postRate(action='grade') → rate.yml → rate_record.py(grade 분기)
+    → scraper/grade_votes.jsonl → grade_fix_report.py(12h 스윕 · rate.yml+watchdog 동행) → msg.py 알림."""
+    rc = 0
+    try:
+        vw = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
+        rr = open(os.path.join(ROOT, '.github', 'scripts', 'rate_record.py'), encoding='utf-8').read()
+        ry = open(os.path.join(ROOT, '.github', 'workflows', 'rate.yml'), encoding='utf-8').read()
+        wd = open(os.path.join(ROOT, '.github', 'workflows', 'watchdog.yml'), encoding='utf-8').read()
+        rp = open(os.path.join(ROOT, 'scraper', 'grade_fix_report.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ grade 교정 체인 게이트 — 층 파일 결손:', e)
+        return 1
+    checks = [
+        ('① 뷰어 grade 칩', all(k in vw for k in ('class="sc-grade', 'function askGrade', "action: 'grade'", 'GFIX_KEY'))),
+        ('② rate_record grade 분기', '"grade"' in rr and 'grade_votes.jsonl' in rr),
+        ('③ rate.yml 원장 커밋+소비', _has_exec_line(ry, 'git add scraper/grade_votes.jsonl') and _has_exec_line(ry, 'scraper/grade_fix_report.py')),
+        ('④ watchdog 12h 주기 보장', _has_exec_line(wd, 'scraper/grade_fix_report.py') and _has_exec_line(wd, 'git add scraper/grade_fix_report.json')),
+        ('⑤ 소비기 골격(주기·회전·커서)', all(k in rp for k in ('SWEEP_H', 'MSG_ID_BASE', '"seen"', 'run_msg'))),
+    ]
+    for name, ok in checks:
+        if not ok:
+            print('❌ grade 교정 체인 게이트 — %s 결손(한 층만 빠져도 교정이 조용히 죽는 원장이 된다)' % name)
+            rc = 1
+    if rc == 0:
+        print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→알림) 전 층 생존.')
+    return rc
+
+
 def check_thumb_vote_chain():
     """AI 썸네일 화풍 투표 폐루프 게이트(하드 · 운영자 260805 "그게 남게끔 해서 나중에 한번 보자" → "ㄱㄱ").
 
@@ -5811,6 +5843,11 @@ def main():
             rc = 1
         if check_thumb_redo_append() != 0:   # 썸네일 '수정 = +1 슬롯'(운영자 260807 "1/2 2/2 면 1/3 2/3 3/3" — 구판은 원본을 지우고 같은 R2 키에 덮어써 되돌릴 방법이 0이었다 · 파생 보존이 빠지면 수정본이 며칠 뒤 혼자 사라진다)
             rc = 1
+        if check_grade_fix_chain() != 0:   # grade 수기 교정 폐루프(운영자 260807 — 12h 스윕 기록 체인 5층 생존 강제)
+            rc = 1
+    except Exception as e:
+        print('⚠️ grade 교정 체인 게이트 스킵:', e)
+    try:
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1
         if check_ask_srcimg_chain() != 0:   # 출처 글 본문 이미지 수확(운영자 260804 — 본문이 그림뿐인 커뮤니티 글이 '읽을 글 0'으로 ANALYSIS_FAILED 되던 축 봉합 · 층 빠지면 무증상 재발)

@@ -17,6 +17,7 @@ LEDGER = Path(__file__).resolve().parent.parent.parent / "scraper" / "ratings.js
 # ⚠️ 워크플로 inputs 신설 0 — rate.yml inputs 는 이미 10/10 = GitHub 상한이라 11번째를 늘리면 디스패치
 #    400 = 평점 레일 전체 사망. 그래서 action='thumb' + reason='<up|down|clear>:<sid>' 로 태운다(예약키 문법).
 THUMB_LEDGER = Path(__file__).resolve().parent.parent.parent / "scraper" / "thumb_votes.jsonl"
+GRADE_LEDGER = Path(__file__).resolve().parent.parent.parent / "scraper" / "grade_votes.jsonl"   # grade 수기 교정 원장(운영자 260807 · 소비 = grade_fix_report.py)
 
 
 def main():
@@ -37,6 +38,22 @@ def main():
     }
     if not rec["id"] and not rec["url"]:
         print("빈 레코드 — 스킵")
+        return
+    # grade 수기 교정 = 별도 원장으로 분기(기사 취향 원장 무접촉 · 운영자 260807 "어긋났을 때 고칠 수 있게 · 12시간마다 고쳐진 것만 기록").
+    # reason='<fix|x>:<ai|x>' (fix=운영자 등급 0~3 · x=원복/미채점). 소비 = scraper/grade_fix_report.py(12h 스윕 · rate.yml+watchdog 동행).
+    # CONTRACT: check_grade_fix_chain
+    if rec["action"] == "grade":
+        m = re.match(r"^([0-3x]):([0-3x])$", rec["reason"])
+        if not m:
+            print("grade 교정 형식 불량 — 스킵: %r" % rec["reason"])
+            return
+        fix, ai = m.group(1), m.group(2)
+        grec = {"ts": rec["ts"], "id": rec["id"], "url": rec["url"], "title": rec["title"],
+                "fix": (None if fix == "x" else int(fix)), "ai": (None if ai == "x" else int(ai))}
+        GRADE_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+        with open(GRADE_LEDGER, "a", encoding="utf-8") as f:
+            f.write(json.dumps(grec, ensure_ascii=False) + "\n")
+        print("grade 교정 적재: AI %s → %s | %s" % (ai, fix, rec["title"][:40]))
         return
     # 썸네일 화풍 투표 = 별도 원장으로 분기(기사 취향 원장 무접촉). reason='<up|down|clear>:<sid>'.
     if rec["action"] == "thumb":
