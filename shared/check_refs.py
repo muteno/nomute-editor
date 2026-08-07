@@ -4433,6 +4433,87 @@ def check_thumb_vote_chain():
     return 0
 
 
+def check_thumb_redo_append():
+    """썸네일 '수정 = 덮어쓰기 아닌 +1 슬롯' 체인 게이트(하드 · 운영자 260807 "수정하면 원래 이미지는
+    계속 보이게하고 수정된 이미지가 +1개로 생기는 개념이여야 되거든? 1/2 2/2 면 1/3 2/3 3/3").
+
+    구판 = 연필 '수정'이 gen.json 에서 그 sid 를 **지우고** 같은 R2 키(gen-<sid>)에 **덮어썼다**
+      → 원본 바이트가 영구 소멸하고 슬롯 수가 화풍 수(2)에 영영 고정됐다(1/2 2/2 가 계속 1/2 2/2).
+      원본이 더 나았어도 되돌릴 방법이 0이었다.
+    신판 = 파생 sid `<base>_rN`(photo_r2…)로 **새 슬롯을 추가**한다 → R2 키가 자연 분리돼 원본 무접촉.
+
+    ⚠️ 신설 사유 = 이 체인은 **세 층 중 하나만 빠져도 조용히 죽는데, 셋 다 증상이 다르고 셋 다 화면은
+       멀쩡해 보인다**:
+      ⓐ `process_one` 파생 보존이 빠지면 — 그 루프는 STYLES 만 순회하며 gen.json 을 **재조립**하므로
+         파생 sid 가 리스트에 안 실려 **다음 실행에서 소리 없이 사라진다**(thumb_gen 78행이 명시한
+         '자동 드롭'). 수정 직후엔 멀쩡히 보이다가 며칠 뒤 혼자 없어진다 = 최고 추적난도.
+      ⓑ `thumbredo.js` 화이트리스트가 숫자를 막으면 — sid 가 '' 로 떨어져 **전 화풍 재생성**이 된다
+         (Gemini 재과금 2배). 새 그림이 나오니 오작동으로 안 보인다.
+      ⓒ 뷰어 완료 판정이 구판(원본 img ?v= 변화)이면 — 이제 원본은 안 바뀌므로 **10분 타임아웃까지
+         완료를 못 낸다**(제작중 슬롯 잔류 + '지연됐을 수 있어' 토스트).
+    기존 게이트는 전부 다른 축이다(`check_image_format` = 포맷·품질 · `check_thumb_vote_chain` = 투표 층 ·
+    `smoke_*` = 화면 렌더) → 「수정이 덮어쓰기인가 누적인가」는 축 자체가 없었다.
+
+    판정 = 정적(렌더·LLM·네트워크 0) · **면책표 없이 하드 0** · 주석 줄 제외(주석 처리 우회 차단).
+    """
+    tg = os.path.join(ROOT, '.github', 'scripts', 'thumb_gen.py')
+    api = os.path.join(ROOT, 'functions', 'api', 'thumbredo.js')
+    v = os.path.join(ROOT, 'viewer', 'index.html')
+    bad = []
+    try:
+        gt = open(tg, encoding='utf-8').read()
+        at = open(api, encoding='utf-8').read()
+        vt = open(v, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 썸네일 수정 누적 게이트 — 파일 읽기 실패:', e)
+        return 1
+
+    def _live(text, needle, cmt):
+        """주석 줄을 뺀 실행줄에 needle 이 있나(평문 substring 이면 주석 처리로 조용히 우회된다)."""
+        for ln in text.splitlines():
+            s = ln.strip()
+            if not s or s.startswith(cmt):
+                continue
+            if needle in s:
+                return True
+        return False
+
+    # ① 러너 — 파생 sid 문법 3종 + 보존 루프 + process_one 인자.
+    for needle, why in (
+            ('def _base_sid(', '파생→베이스 정규화(라벨·특칙·투표 집계 공용)'),
+            ('def _is_redo_sid(', '파생 판별(보존 대상 식별)'),
+            ('def _next_redo_sid(', '다음 세대 sid 할당'),
+            ('_is_redo_sid(_s)', 'STYLES 밖 파생 보존 — 없으면 다음 실행에서 수정본이 조용히 드롭'),
+            ('def process_one(md, stem, redo_new', '파생 발사 인자')):
+        if not _live(gt, needle, '#'):
+            bad.append('러너 결손 — thumb_gen.py `%s` (%s)' % (needle, why))
+    # ①-b 구판 파괴 문법 부활 차단 = 이 게이트의 핵심(원본을 지우면 +1 개념이 통째로 무너진다).
+    if _live(gt, '!= redo_sid', '#'):
+        bad.append('러너 구판 부활 — gen.json 에서 원본 sid 를 제거하는 필터(`!= redo_sid`)가 되살아났다')
+
+    # ② API — sid 화이트리스트가 숫자를 허용해야 파생 sid(photo_r2)가 통과한다.
+    if not _live(at, '[a-z0-9_]', '//'):
+        bad.append('API 결손 — thumbredo.js sid 화이트리스트가 숫자 불허(파생 sid 거절 → sid="" → 전 화풍 재과금)')
+
+    # ③ 뷰어 — 대기 슬롯 배선 + 완료 판정이 '장수' 축.
+    for needle, why in (
+            ('function thumbBaseSid(', '파생→베이스 정규화(러너 미러)'),
+            ('function genGenCount(', '그 화풍 계열 장수 = 완료 판정 기준'),
+            ('function thumbRedoPendList(', '대기 슬롯 수'),
+            ('_pendH', '트랙 끝 제작중 슬롯 마크업'),
+            ('genGenCount(a, base) > rec.snap[base]', '완료 판정 = +1장 도착(구판 img ?v= 축이면 영영 미완료)')):
+        if not _live(vt, needle, '//'):
+            bad.append('뷰어 결손 — index.html `%s` (%s)' % (needle, why))
+
+    if bad:
+        print('❌ 썸네일 수정 누적 게이트 — 층 결손 %d건(수정본이 조용히 사라지거나 재과금된다):' % len(bad))
+        for b in bad:
+            print('   ·', b)
+        return 1
+    print('✅ 썸네일 수정 누적 게이트 — 파생 sid 3종·보존 루프·API 화이트리스트·뷰어 대기슬롯/완료판정 생존(원본 무접촉).')
+    return 0
+
+
 def check_ask_srcimg_chain():
     """출처 글 본문 이미지 수확 체인 게이트(하드 · 운영자 260804 "확인해줘" → 사고 fail-2026-08-04-0239-297it).
 
@@ -5687,6 +5768,8 @@ def main():
         print('⚠️ 긴급 오발 신고 체인 게이트 스킵:', e)
     try:
         if check_vote_btn_canon() != 0:   # 👍/👎 투표 부품 = 한 벌 계승(운영자 260805 "고정으로 박아줘 다른데서 만들면 참조하도록" · 계약 전문 = CII 「👍/👎 선호 투표」 행)
+            rc = 1
+        if check_thumb_redo_append() != 0:   # 썸네일 '수정 = +1 슬롯'(운영자 260807 "1/2 2/2 면 1/3 2/3 3/3" — 구판은 원본을 지우고 같은 R2 키에 덮어써 되돌릴 방법이 0이었다 · 파생 보존이 빠지면 수정본이 며칠 뒤 혼자 사라진다)
             rc = 1
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1

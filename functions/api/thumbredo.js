@@ -16,8 +16,11 @@ export async function onRequestPost({ request, env }) {
   // 대상 = queue stem(.md 유무 무관 · ASCII). 워크플로가 .md 떼고 THUMB_ONLY로 처리.
   const article = /^[A-Za-z0-9._-]+$/.test(body.article || '') ? body.article : '';
   if (!article) return json({ error: '대상(article) 오류' }, 400);
-  // 화풍 sid(선택) — 주면 그 화풍 1개만 재생성. 화이트리스트(알파벳·언더스코어)만.
-  const sid = /^[a-z_]+$/.test(body.sid || '') ? body.sid : '';
+  // 화풍 sid(선택) — 주면 그 화풍만 대상. 화이트리스트(소문자·숫자·언더스코어)만.
+  // ⚠️ 숫자 허용이 load-bearing = 수정본 파생 sid `<base>_rN`(photo_r2…)이 통과해야 한다(운영자 260807 '+1장' 개념).
+  //    구판 정규식 [a-z_]+ 는 photo_r2 를 거절해 sid='' 로 떨어뜨렸고, 그건 **전 화풍 재생성**(Gemini 재과금 2배)이 되는
+  //    조용한 오작동이었다. 길이 상한 = 워크플로 input·R2 키 방어.
+  const sid = /^[a-z0-9_]{1,40}$/.test(body.sid || '') ? body.sid : '';
   // 재생성 지시(자연어·선택) — Gemini 프롬프트에 얹어 반영. 비우면 기존 프롬프트로 재추첨(깜깜이 재생성).
   // 제어문자 제거 + 500자 상한. 워크플로가 env(WISH)로 받아 셸 비보간 → 인젝션 안전.
   const wish = String(body.wish || '').replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 500);

@@ -60,6 +60,12 @@ def age_h(ts):
         return 0.0
 
 
+_REDO_SUF = re.compile(r"_r\d+$")
+def base_sid(sid):
+    """파생 sid → 베이스 화풍(photo_r3 → photo) · thumb_gen.py `_base_sid` 미러."""
+    return _REDO_SUF.sub("", sid or "")
+
+
 def load_votes():
     """thumb_votes.jsonl → [{ts,stem,title,sid,vote}] (clear = 취소분이라 그 stem#sid 의 앞선 표를 무효화).
     같은 stem#sid 를 여러 번 눌렀으면 **마지막 표만** 센다(취소→재투표 이력이 중복 집계되는 것 차단)."""
@@ -125,9 +131,12 @@ def build_text(votes, why, rnd):
              "전체: 👍%d · 👎%d" % (up, dn), ""]
 
     # ① 화풍별 승률 — 「어느 화풍이 실제로 쓸 만한가」. 여기가 갈리면 STYLES 자체를 손볼 근거가 된다.
+    # ⚠️ 수정본 파생 sid(photo_r2·photo_r3…)는 **베이스 화풍으로 합산**한다(운영자 260807 '수정 = +1장').
+    #    안 합치면 세대마다 별개 화풍으로 세어 표본이 쪼개지고, 260805에 만든 이 정답지가 그대로 희석된다.
+    #    (세대별 원본은 아래 👎 발췌에서 sid 그대로 보이므로 어느 회차가 나빴는지는 따로 읽힌다.)
     per = defaultdict(lambda: [0, 0])
     for v in votes:
-        per[v["sid"]][0 if v["vote"] == "up" else 1] += 1
+        per[base_sid(v["sid"])][0 if v["vote"] == "up" else 1] += 1
     lines.append("■ 화풍별")
     for sid, (u, d) in sorted(per.items(), key=lambda kv: -(kv[1][0] + kv[1][1])):
         lines.append("  · %-9s %s" % (sid, rate(u, d)[0]))

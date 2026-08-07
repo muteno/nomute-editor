@@ -77,6 +77,32 @@ STYLES = [
     # 복귀 대비 dormant 보존(호출 0 = 무해 · photo_close 폐지 전례와 동일 = STYLES에서 빼면 신규 발사 0·기존 gen.json 그 sid는 자동 드롭).
     # 옛 sid(watercolor·cartoon) 정의 원문은 _versions 백업·git 이력에 있음(재추가 시 재과금 0).
 ]
+_STYLE_SIDS = {s[0] for s in STYLES}
+
+# ── 수정본 = 덮어쓰기가 아니라 +1 슬롯(운영자 260807 "수정하면 원래 이미지는 계속 보이게 하고 수정된 이미지가 +1개로 생기는 개념") ──
+# 구판 = 연필 '수정'이 gen.json에서 그 sid를 지우고 **같은 R2 키(gen-<sid>)에 덮어썼다** → 원본 바이트가 영구 소멸하고
+#   슬롯 수가 화풍 수(2)에 영영 고정(1/2 2/2가 계속 1/2 2/2). 원본이 더 나았어도 되돌릴 방법이 0이었다.
+# 신판 = 파생 sid `<base>_r<N>`(photo_r2·photo_r3…)로 **새 슬롯을 추가**한다 → R2 키가 자연 분리되어 원본 무접촉,
+#   화면은 1/3 2/3 3/3으로 늘어난다. [61행 'sid 리네임 금지 = 추가만 허용' 계약 준수 — 기존 sid 무변경·재과금 0.]
+# ⚠️ sid 문법은 `functions/api/thumbredo.js` 화이트리스트(^[a-z0-9_]+$)와 동기 — 숫자를 못 넘기면 sid가 ''로 떨어져
+#   **전 화풍 재생성(재과금 2배)** 이 되는 조용한 오작동이 된다.
+# CONTRACT: check_thumb_redo_append
+_REDO_SUF = re.compile(r"_r(\d+)$")
+def _base_sid(sid):
+    """파생 sid → 베이스 화풍 sid (photo_r3 → photo). STYLES 조회·라벨 상속·투표 집계 공용."""
+    return _REDO_SUF.sub("", sid or "")
+def _is_redo_sid(sid):
+    """수정 파생 슬롯인가 = 베이스가 STYLES에 실재하는 `_rN` 접미(유령 sid는 제외)."""
+    b = _base_sid(sid)
+    return b != sid and b in _STYLE_SIDS
+def _next_redo_sid(sids, base):
+    """그 화풍의 다음 세대 sid(photo → photo_r2 → photo_r3). 세대는 2부터(원본이 1세대)."""
+    n = 2
+    for s in sids or ():
+        m = _REDO_SUF.search(s or "")
+        if m and _base_sid(s) == base:
+            n = max(n, int(m.group(1)) + 1)
+    return "{}_r{}".format(base, n)
 
 # 지배 조건(맨 앞·최상위) — 화풍·구도보다 먼저 읽혀 "무엇을·어떻게"의 우선순위를 잡는다(프롬프트 위계 = 나열보다 준수율↑).
 GOVERNING = (
@@ -1001,7 +1027,7 @@ def _load_ref_face(tdir):
         print("  🖼 참조 얼굴 확보(대표 og:image {}…)".format(rep["url"][-32:]))
     return b
 
-def process_one(md, stem):
+def process_one(md, stem, redo_new=""):
     """기사 1건 = 검색이미지(기사 og:image + 유사) + AI 2화풍. 저장 = R2(공개 URL) 또는 git 폴백."""
     head, lead, iq, thumb_scene, art_url, alt_urls, image_sources, dispatch, extras = parse_md(md)
     if not head:
@@ -1062,27 +1088,44 @@ def process_one(md, stem):
         gen = []
         prompts_rec = {}   # sid → 실제 발사 프롬프트(역추적용 · 운영자 260703 "합격점 되면 역추적해서 프롬프트를 뽑아낼 수 있게")
         ref_face = _load_ref_face(tdir) if REF_ON else None   # 참조 얼굴(극화·수채 = 실제 얼굴 재현 · THUMB_REF)
-        for sid, label, look, cam_default in STYLES:
+        # 발사·보존 목록 = STYLES(원본 화풍) + 기존 수정 파생(보존) + 이번 수정 파생 1건(신규 발사).
+        # ⚠️ 이 루프는 STYLES만 순회하며 gen.json을 **재조립**한다 → 파생 sid를 여기 넣지 않으면 리스트에 안 실려
+        #    다음 실행(검색 이미지 보충 등 배치 경로 포함)에서 **소리 없이 사라진다**(78행 '자동 드롭' 메커니즘).
+        #    그래서 보존은 선택이 아니라 필수다. 순서 = 원본 → 기존 수정본 → 이번 수정본(= 새 게 항상 마지막 = N/N).
+        jobs = list(STYLES)
+        for _s in existing:
+            if _is_redo_sid(_s) and _s != redo_new:
+                _st = next((x for x in STYLES if x[0] == _base_sid(_s)), None)
+                if _st:
+                    jobs.append((_s, _st[1], _st[2], _st[3]))   # 라벨·룩·카메라 = 베이스 화풍 상속(신규 정의 창작 0)
+        if redo_new:
+            _st = next((x for x in STYLES if x[0] == _base_sid(redo_new)), None)
+            if _st:
+                jobs.append((redo_new, _st[1], _st[2], _st[3]))
+            else:
+                print("  ⚠️ 수정 대상 화풍 '{}' 미정의 — 파생 발사 생략".format(_base_sid(redo_new)))
+        for sid, label, look, cam_default in jobs:
+            bsid = _base_sid(sid)                    # 화풍별 특칙은 **베이스 sid**로 판정(파생도 같은 화풍 규칙을 그대로 탄다)
             if sid in existing:                      # 이미 완료(R2 URL or 로컬) → 보존
                 gen.append(existing[sid]); continue
             # v2 프롬프트(라벨+개행·영어 고정문·hook/emotion 상속·해외 지역 스위치). 1K(토큰 절감 · 운영자 260621).
             # 장면(WHAT)=충돌장면(thumb_scene) 1순위→entity(iq)→한줄요약 + 연출(HOW)=dispatch 버킷 + wish=재생성 지시.
             # 화풍별 특칙(운영자 260703): cartoon=시사점 은유(사건 장면 미사용·insight/hook 없으면 일반 폴백) /
             # watercolor=카메라 잠금(항상 초근접) / webtoon·watercolor=조명 변조(_LIGHT_MOD).
-            if sid == "cartoon" and (extras.get("insight") or extras.get("hook")):
+            if bsid == "cartoon" and (extras.get("insight") or extras.get("hook")):
                 prompt = build_cartoon_prompt(look, cam_default, extras.get("insight", ""),
                                               hook=extras.get("hook", ""), lead=lead, wish=redo_wish,
                                               foreign=extras.get("foreign", False))
             else:
-                like = sid in ("webtoon", "watercolor")   # 일러스트 계열 = 공인 닮음 허용(운영자 260703 · photo=익명 유지)
+                like = bsid in ("webtoon", "watercolor")   # 일러스트 계열 = 공인 닮음 허용(운영자 260703 · photo=익명 유지)
                 prompt = build_prompt(look, cam_default, thumb_scene or iq or lead, dispatch, redo_wish,
                                       hook=extras.get("hook", ""), emotion=extras.get("emotion", ""),
                                       foreign=extras.get("foreign", False),
-                                      cam_lock=(sid == "watercolor"), light_mod=_LIGHT_MOD.get(sid, ""),
+                                      cam_lock=(bsid == "watercolor"), light_mod=_LIGHT_MOD.get(bsid, ""),
                                       likeness=like, subject=(_subject_name(lead) if like else ""))
             # 참조 체이닝(THUMB_REF · 극화·수채만) — 대표 실사진을 첨부하고 "이 얼굴로 그려라" 프리픽스(앞=최우선).
             #   ⚠️ 안전 하한: 사인·피해자·미성년이면 익명 유지(모델 판단 지시) — photo는 애초 REF 대상 아님·cartoon은 이번 제외.
-            use_ref = ref_face if (REF_ON and sid in ("webtoon", "watercolor")) else None
+            use_ref = ref_face if (REF_ON and bsid in ("webtoon", "watercolor")) else None
             if use_ref:
                 prompt = ("REFERENCE FACE: the attached photo is the REAL face of the public figure this "
                           "story is about. Redraw THAT exact person — same face, hairstyle and build, "
@@ -1171,28 +1214,30 @@ def main():
     # (검색은 md frontmatter alt_urls 있으면 유사까지 채움·없으면 대표 og 재fetch). SINCE/MAX_BATCH 무관.
     only = os.environ.get("THUMB_ONLY", "").strip()
     redo_sid = os.environ.get("THUMB_REDO_SID", "").strip()   # 지정 시 = 그 화풍 1개만 재생성(per-image · 검색·타화풍 보존)
+    redo_new = ""   # 이번 수정이 만들 파생 슬롯 sid(<base>_rN) — 원본은 손대지 않고 +1장으로 추가(운영자 260807)
     if only:
         md = os.path.join("queue", only + ".md")
         if not os.path.exists(md):
             print("THUMB_ONLY 대상 없음:", md); return 0
         tdir = os.path.join("cards", only, "thumbs")
         if redo_sid:
-            # 단일 화풍만 — gen.json에서 그 sid만 제거(나머지·search 보존) → process_one이 그 sid만 재생성
+            # 단일 화풍 '수정' = **원본을 지우지 않는다**(운영자 260807) — 파생 슬롯 <base>_rN 을 새로 만들어 +1장으로 늘린다.
+            # 구판은 여기서 gen.json 항목과 로컬 폴백 파일을 지웠고 process_one이 같은 R2 키에 덮어써서 원본이 영구 소멸했다.
             gp = os.path.join(tdir, "gen.json")
-            try:
-                g = json.load(open(gp, encoding="utf-8"))
-                g2 = [x for x in g if x.get("sid") != redo_sid]
-                if len(g2) != len(g):
-                    json.dump(g2, open(gp, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
-                    print("  ↻ gen.json '{}' 화풍만 제거 → 재생성: {}".format(redo_sid, only))
+            base = _base_sid(redo_sid)
+            if base not in _STYLE_SIDS:
+                print("  ⚠️ '{}' 화풍 미정의 — 재생성 생략".format(base))
+            else:
+                try:
+                    g = json.load(open(gp, encoding="utf-8"))
+                    sids = [x.get("sid") for x in g if x.get("sid")]
+                except Exception:
+                    g, sids = [], []
+                if sids:
+                    redo_new = _next_redo_sid(sids, base)
+                    print("  ＋ '{}' 수정본을 새 슬롯 '{}'로 추가 — 기존 {}장 전부 보존: {}".format(base, redo_new, len(sids), only))
                 else:
-                    print("  ℹ️ '{}' 화풍이 gen.json에 없음 — 미존재분 보완으로 진행".format(redo_sid))
-                for _ext in ("jpg", "png", "webp"):   # 로컬 폴백 파일도 제거(있으면) — 260805 확장자 전환 전 잔재 .png까지 같이 청소
-                    fp = os.path.join(tdir, "gen-{}.{}".format(redo_sid, _ext))
-                    if os.path.exists(fp):
-                        os.remove(fp)
-            except Exception as e:
-                print("  ⚠️ 단일 화풍 제거 실패: {}".format(e))
+                    print("  ℹ️ gen.json 비어있음 — '{}' 신규 생성으로 진행".format(base))   # 원본이 없으면 파생이 아니라 그 화풍 자체를 만든다
         else:
             for jf, lbl in (("gen.json", "2화풍"), ("search.json", "검색이미지")):
                 p = os.path.join(tdir, jf)
@@ -1201,7 +1246,7 @@ def main():
                         os.remove(p); print("  ↻ {} 비움 → {} 재생성: {}".format(jf, lbl, only))
                 except Exception as e:
                     print("  ⚠️ {} 제거 실패: {}".format(jf, e))
-        process_one(md, only)
+        process_one(md, only, redo_new=redo_new)
         # wish 원장 적립(TH-07 · 분신술⑦ 260703) — 재생성 지시(운영자 불만의 유일한 자연어 1차 사료)가 Actions
         # 로그 90일 소멸로 증발하지 않게 jsonl append(rate_record 패턴). 실패해도 무시(fail-soft·재생성 자체는 무영향).
         try:
@@ -1212,7 +1257,7 @@ def main():
             if wish_raw:   # 빈 wish(무코멘트 재추첨)는 스킵 — 원장 = 자연어 불만 사료(검증2·4·7·8 수렴 지적)
                 os.makedirs("scraper", exist_ok=True)
                 with open("scraper/thumb_wishes.jsonl", "a", encoding="utf-8") as wf:
-                    wf.write(json.dumps({"ts": ts_kst, "article": only, "sid": redo_sid or "all",
+                    wf.write(json.dumps({"ts": ts_kst, "article": only, "sid": redo_new or redo_sid or "all",
                                          "wish": wish_raw}, ensure_ascii=False) + "\n")
                 print("  📒 wish 원장 적립: scraper/thumb_wishes.jsonl")
         except Exception as e:

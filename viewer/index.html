@@ -4520,9 +4520,8 @@ async function load() {
     const a = DATA.find(x => x.file === CUR);
     if (a) {
       const rec = THUMB_REDO.get(CUR); let dirty = false;
-      for (const sid of Object.keys(rec.snap || {})) {
-        const now = genImgOf(a, sid);
-        if (now && now !== rec.snap[sid]) { delete rec.snap[sid]; dirty = true; }   // 그 화풍 새 이미지(?v=) 도착 = 완료
+      for (const base of Object.keys(rec.snap || {})) {
+        if (genGenCount(a, base) > rec.snap[base]) { delete rec.snap[base]; dirty = true; }   // 그 화풍 계열이 +1장 = 수정본 도착(운영자 260807) — 구판은 원본 img ?v= 변화를 봤는데 이제 원본은 안 바뀐다
       }
       if (Date.now() - rec.t0 > 600000) {   // 10분 타임아웃(러너 큐+Pages 배포로 6분 초과 가능·평의회 async)
         THUMB_REDO.delete(CUR); dirty = true;
@@ -5294,8 +5293,12 @@ const REFRESH_SVG = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none"
 const SEARCH_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>';
 // 정적 캐러셀(thumb_search/thumb_gen) — items=[{img,label?,sid?}]. 탭=확대 · 우상단 액션행 .sbtn(저장 · 생성슬롯=재생성+저장 · §🎨 .slide-acts 계승). usage={gen,search}.
 function thumbStatic(label, items, kind, href, usage, kwData) {
-  const list = items.slice(0, kind === 'search' ? 60 : 7);   // 검색이미지 = '+5장 더'로 누적되니 cap 해제(7→60, 12장↑ 표시) · AI 생성은 2화풍(영향 0) · 운영자 260622
+  const list = items.slice(0, kind === 'search' ? 60 : 40);   // 검색이미지 = '+5장 더'로 누적되니 cap 해제(7→60, 12장↑ 표시) · 운영자 260622   // AI 생성 cap 7→40(운영자 260807): 수정본이 덮어쓰기가 아니라 +1장으로 쌓이므로(1/2→1/3→1/4…) 구 7은 수정 5회면 도달해 그 뒤 수정본이 **조용히 잘린다**
   const wrap = document.createElement('div'); wrap.className = 'cref';
+  // 수정 대기 슬롯 = 아직 도착 안 한 수정본의 자리(운영자 260807 "1/3 2/3 3/3(새로 만들어지고 있는 중인 거)").
+  // 원본 위에 진행바를 덮던 구판(markSlotReshooting)과 달리 **원본은 그대로 보이고** 트랙 끝에 제작중 슬롯이 붙는다.
+  const _pend = (kind === 'gen' && CUR_A) ? thumbRedoPendList(CUR_A.file).length : 0;
+  const _total = list.length + _pend;   // 순번 분모 = 실존분 + 대기분(= 발사 즉시 1/3 2/3 3/3으로 늘어난다)
   const kd = kwData || {};
   const _moreFile = (kind === 'search' && CUR_A) ? CUR_A.file : '';   // '+5장 더' = 현재 모달 기사(CUR_A)에 관련 뉴스이미지 더 검색(api/moreimg · 운영자 260622)
   const hasKw = kind === 'search' && (kd.ko || kd.en);
@@ -5319,11 +5322,19 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
   const kwHtml = hasKw ? '<span class="cref-kw"></span>' : '';   // 키워드 칩(검정 글래스) — 텍스트·색은 언어따라 JS가 채움
   // 키워드(좌) + 전체저장(우)을 한 줄에 세로중앙 — 키워드를 '전체' 버튼과 같은 중앙선에(운영자 260622: 더는 별도 줄로 안 내려감)
   const kwRow = (kwHtml || dlAll) ? '<div class="cref-kwrow">' + kwHtml + dlAll + '</div>' : '';
+  // 대기 슬롯 = imgFetchGo 로딩 슬라이드(.cref-slot.cref-loading + .cref-ld + nmLoader) **100% 계승**(새 부품 창작 0).
+  // 다른 점 두 가지뿐 = ⓐ 자리가 맨 좌측이 아니라 **트랙 끝**(수정본은 마지막 N/N으로 붙는다) ⓑ .tredo-ld 마커 —
+  // imgFetchGo 의 중복발사 가드(`track.querySelector('.cref-loading')`)가 이 슬롯을 '진행 중'으로 오인해
+  // AI 생성 버튼을 조용히 잠그는 것을 막는다(수정 대기 ≠ 생성 진행). 로더 종류 solving = 구 markSlotReshooting 동값.
+  const _pendH = Array.from({ length: _pend }, (_, k) =>
+    '<div class="cref-slot cref-loading tredo-ld chin" style="animation-delay:0ms,0s">'
+    + '<span class="cref-no"><b>' + (list.length + k + 1) + '</b>/' + _total + '</span>'
+    + '<div class="cref-ld">' + (window.nmLoader ? nmLoader('solving', '제작중…') : '<span class="cref-ld-tx">제작중…</span>') + '</div></div>').join('');
   wrap.innerHTML = '<div class="cref-h"><span class="cref-lblrow"><span class="cref-lbl">' + esc(label) + '</span>' + usageText(bucket, kind) + '</span>' + acts + '</div>'
     + kwRow   // 키워드(좌)+전체(우) 한 줄·세로중앙(운영자 260622)
     + '<div class="cref-track">' + (list.map((it, i) => {
         const cap = ((kind === 'gen' || it.label === '생성') && it.label) ? '<span class="tgen-cap">' + esc(it.label) + '</span>' : '';   // gen=화풍명 유지 · search '유사' 라벨 제거(의미없음·운영자 260622) · '생성'(genimg 제미나이 생성물)은 검색 카러셀 안에서 구분 표기(운영자 260707)
-        const no = '<span class="cref-no"><b>' + (i + 1) + '</b>/' + list.length + '</span>';   // 좌상단 순번 = 카드 캐러셀 '1/N'(현재 초록·총개수) 동일
+        const no = '<span class="cref-no"><b>' + (i + 1) + '</b>/' + _total + '</span>';   // 좌상단 순번 = 카드 캐러셀 '1/N'(현재 초록·총개수) 동일
         const dname = thumbDlName(label, it, i);
         const sidAttr = (kind === 'gen' && it.sid) ? ' data-sid="' + esc(it.sid) + '"' : '';   // 생성 슬롯 = 화풍 sid(재생성 진행바 타깃·복원용)
         // 저장 = 진짜 <a download href=api/dl 프록시>(같은-출처 attachment) = 모바일/인앱 브라우저 네이티브 다운로드(합성 a.click()보다 안정 · 운영자 260622).
@@ -5340,13 +5351,13 @@ function thumbStatic(label, items, kind, href, usage, kwData) {
           + '<div class="timg-acts">' + voteH
           +   '<a class="sbtn timg-dl dlbtn" href="' + escUrl(dlSrc(it.img, dname)) + '" download="' + esc(dname) + '" aria-label="이미지 저장" title="이미지 저장">' + DOWNLOAD_SVG + '</a>'
           + '</div></div>';
-      }).join('') || '<div class="cref-empty">이미지 없음</div>') + '</div>';
+      }).join('') + _pendH || '<div class="cref-empty">이미지 없음</div>') + '</div>';
   wrap.querySelectorAll('.cref-slot').forEach(slot => {
     const i = +slot.dataset.i, it = list[i]; if (!it) return;
     const acts = slot.querySelector('.timg-acts');
     if (kind === 'gen') { slot.classList.add('chin'); slot.style.animationDelay = Math.min(i, 14) * 32 + 'ms'; }   // 생성물 등장 촤르륵 = cardIn + i×32ms 스태거(4223 산식 그대로 · 운영자 260801 "추가되는 거 촤르륵으로") — 검색 슬롯은 무접촉(재검색 5장 누적이라 매번 전체 재생 = 과함)
     if (kind === 'gen' && it.sid) acts.insertBefore(thumbRedoSbtn(it.sid), acts.firstChild);   // 생성 슬롯마다 수정 .sbtn(저장 앞)
-    if (kind === 'gen' && it.sid && CUR_A && thumbRedoPending(CUR_A.file, it.sid)) markSlotReshooting(slot);   // 재생성 대기 중 화풍이면 진행바 오버레이 복원(재렌더 후에도 유지)
+    // (구) 재생성 대기 화풍 = 원본 슬롯에 진행바 오버레이 → 폐지(운영자 260807) : 수정은 원본을 덮지 않으므로 원본은 끝까지 깨끗하게 보인다.   // 대기 표시는 트랙 끝 .tredo-ld 슬롯(_pendH)이 담당 — markSlotReshooting은 dormant 보존.
     if (kind === 'gen' && it.sid && CUR_A) thVoteWire(slot, CUR_A, it.sid);   // 화풍 선호 투표(👍/👎) — 상태 복원 + 1탭 기록 + 2탭 취소
     const _tdl = slot.querySelector('.timg-dl'); if (dlSeen(it.img)) _tdl.classList.add('dl-done');   // 재렌더 시 '받음' mut 복원
     _tdl.addEventListener('click', e => { e.stopPropagation(); dlMark(it.img, _tdl); });   // 저장 앵커 탭 = 네이티브 다운로드(확대 라이트박스로 안 번지게만) + '받음' mut
@@ -5403,7 +5414,7 @@ function genTrackOf(wrap) {
 async function imgFetchGo(file, wrap, btn, o) {   // o = { url, body, ld(로딩 문구), ticks, field(완료 폴링 대상) }
   const track = (o.field === 'thumb_gen') ? genTrackOf(wrap) : wrap.querySelector('.cref-track'); if (!track) return false;
   const field = o.field || 'thumb_search';   // 완료 감지 대상 = moreimg(재검색)=thumb_search / genimg(생성)=thumb_gen (운영자 260713 정합 봉합 — genimg가 thumb_search 폴링해 완료 영영 미감지=로딩 잔류·화면 이상 버그)
-  if (track.querySelector('.cref-loading')) return 'busy';   // 이미 진행 중(중복 발사 가드) — 발사측이 조용히 처리
+  if (track.querySelector('.cref-loading:not(.tredo-ld)')) return 'busy';   // 이미 진행 중(중복 발사 가드) — 발사측이 조용히 처리   // :not(.tredo-ld) = 수정 대기 슬롯은 '생성 진행 중'이 아니다(운영자 260807) — 안 빼면 수정 대기 동안 AI 생성 버튼이 조용히 잠긴다
   const a0 = DATA.find(x => x && x.file === file);
   const before = ((a0 && a0.cards && a0.cards[field]) || []).length;   // 기준 = 현재 해당 카러셀(검색/생성) 이미지 수
   // 로딩 슬라이드를 await 전에 먼저(동기) 꽂는다 = .cref-loading 가드 즉시 작동 → 연타 레이스 차단(평의회 검증·260622)
@@ -17404,8 +17415,14 @@ $('#revSend').addEventListener('click', async () => {
 // 연필 버튼 탭 → #tredodlg 팝업(코멘트) → 1차=재확인·2차=전송(초록 게이지) → 그 슬롯에 진행바 오버레이(markSlotReshooting) → load 폴이 새 이미지(?v=) 오면 섹션 교체.
 // 헬퍼 3종(genImgOf·thumbRedoPending·markSlotReshooting)은 load()/thumbStatic가 먼저 호출하므로 function 선언(호이스팅)으로 둠.
 let TREDO_SID = '', TREDO_LAST = '', tredoConfirmT = null;   // TREDO_LAST = 직전 연 화풍(슬롯 전환 시 코멘트 잔류 차단·평의회 UX)
-function genImgOf(a, sid) { return (((a && a.cards && a.cards.thumb_gen) || []).find(g => g && g.sid === sid) || {}).img || ''; }   // 그 화풍의 현재 이미지 URL(?v= 포함) — 완료 판정 기준
-function thumbRedoPending(file, sid) { const r = THUMB_REDO.get(file); return !!(r && r.snap && r.snap[sid]); }   // 그 화풍이 재생성 대기 중?
+function genImgOf(a, sid) { return (((a && a.cards && a.cards.thumb_gen) || []).find(g => g && g.sid === sid) || {}).img || ''; }   // 그 화풍의 현재 이미지 URL(?v= 포함) — 구 완료 판정 기준(260807 '수정 = +1장' 전환으로 호출 0 · dormant 보존)
+// ── 수정본 = +1 슬롯(운영자 260807) 판정 3종 ──
+// 구판은 '원본 img(?v=)가 바뀌면 완료'였는데, 이제 수정은 원본을 덮지 않고 파생 슬롯(photo_r2…)을 **추가**한다
+// → 원본 URL이 영영 안 바뀌므로 그 판정은 10분 타임아웃까지 완료를 못 낸다. 기준을 '그 화풍 계열 장수'로 옮긴다.
+function thumbBaseSid(sid) { return String(sid || '').replace(/_r\d+$/, ''); }   // 파생 → 베이스(photo_r3 → photo) · thumb_gen.py `_base_sid` 미러
+function genGenCount(a, base) { return ((a && a.cards && a.cards.thumb_gen) || []).filter(g => g && g.sid && thumbBaseSid(g.sid) === base).length; }   // 그 화풍 계열(원본+수정본) 장수
+function thumbRedoPendList(file) { const r = THUMB_REDO.get(file); return (r && r.snap) ? Object.keys(r.snap) : []; }   // 도착 대기 중인 수정본 화풍들 = 트랙 끝 '제작중' 슬롯 수
+function thumbRedoPending(file, sid) { const r = THUMB_REDO.get(file); return !!(r && r.snap && r.snap[thumbBaseSid(sid)] !== undefined); }   // 그 화풍이 수정 대기 중?(키 = 베이스 화풍 — 같은 화풍 연타 발사 차단)
 function markSlotReshooting(slot) {   // 슬롯 진행바 오버레이(카드 .reshoot-badge 계승 + 움직이는 바)
   if (!slot || slot.classList.contains('reshooting')) return;
   slot.classList.add('reshooting');
@@ -17451,11 +17468,13 @@ $('#tredoSend').addEventListener('click', async () => {
     if (r.ok && d.ok) {
       gaugeDone(btn);   // 게이지 현재위치→100% 급속 마무리
       setTimeout(() => askShowCheck(btn), 300);   // 게이지 채움완료(gdone .3s)와 물려 ✓ 팝(멈칫 제거·운영자 260703)
-      const rec = THUMB_REDO.get(CUR) || { t0: Date.now(), snap: {} };   // per-sid 등록(동일 기사 다화풍 동시 재생성 추적)
+      const rec = THUMB_REDO.get(CUR) || { t0: Date.now(), snap: {} };   // per-화풍 등록(동일 기사 다화풍 동시 수정 추적)
       rec.t0 = Date.now();
-      rec.snap[TREDO_SID] = genImgOf(DATA.find(x => x.file === CUR) || CUR_A, TREDO_SID);   // ⚠️ fresh 소스(완료비교와 동일) — CUR_A는 open서 동결이라 재발사 시 stale→조기완료(260630 클래스) 방지(평의회 async)
+      const _rb = thumbBaseSid(TREDO_SID), _fa = DATA.find(x => x.file === CUR) || CUR_A;
+      rec.snap[_rb] = genGenCount(_fa, _rb);   // 완료 기준 = 그 화풍 계열 장수(수정본이 +1되면 도착) · ⚠️ fresh 소스 — CUR_A는 open서 동결이라 재발사 시 stale→조기완료(260630 클래스) 방지(평의회 async)
       THUMB_REDO.set(CUR, rec);
-      const slot = $('#mdbody .cref-slot.gen[data-sid="' + TREDO_SID + '"]'); if (slot) markSlotReshooting(slot);   // 그 슬롯 진행바 오버레이
+      const _old = $('#mdbody .thumbsec'), _fresh = thumbSec(_fa);
+      if (_old && _fresh) _old.replaceWith(_fresh);   // 즉시 재렌더 = 원본은 그대로 두고 트랙 끝에 '제작중' 슬롯이 붙는다(1/2 2/2 → 1/3 2/3 3/3 · 운영자 260807)
       setTimeout(() => { $('#tredodlg').close(); resetTredoSend(); $('#tredoText').value = ''; updateTredoClip(); }, 1600);   // 게이지 후 닫기 + 입력 리셋(닫은 뒤 = 빈칸 불안 차단)
       return;
     }
