@@ -1849,16 +1849,22 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
       const jsp = JJ_OV[cur.fmt === 'reels' ? 'reels' : 'post'];
       h += `<img class="cpv-bg" data-logo src="assets/brand/jinjja_${cur.fmt === 'reels' ? 'reels' : 'post'}_preview.webp" alt="">`;
       if (lines.length) {
-        const trJ = estTracking(lines, cur.fmt === 'reels' ? 'jjreels' : 'jjpost').tr;   // 노뮤트 동값 축(TRK.jj* = limit 844/920 · floor -30/-45)
-        h += `<div class="cpv" style="left:${px(jsp.lm)};right:${px(jsp.ctr ? jsp.rm : 40)};top:${py(jsp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};${jsp.ctr ? 'text-align:center;' : ''}color:${CPV_WHITE};font-size:${px(jsp.fs)};font-weight:800;line-height:${(jsp.lh / jsp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${lines.map(l => renderEmph2(l).map(([k, v]) => k === 'h' ? `<b style="color:${CPV_BLUE};font-weight:inherit">${esc(v)}</b>` : esc(v)).join('')).join('<br>')}</div>`;   // 릴스 = 가운데 정렬(운영자 260730 · 좌/우 마지노선 lm 101·rm 135 박스 안에서 센터 = nomute_jinjja.OV_CENTER 미러) / 포스트 = 좌측정렬 유지(260728 "노뮤트때 나오는거랑 똑같이" · left lm·right 40)
+        const rJ = estTracking(lines, cur.fmt === 'reels' ? 'jjreels' : 'jjpost'); const trJ = rJ.tr;   // 노뮤트 동값 축(TRK.jj* = limit 844/920 · floor -30/-45)
+        const jClip = rJ.over ? 'overflow:hidden;' : '';   // 초과 안전망 = 노뮤트 오버레이와 동축(운영자 260807)
+        h += `<div class="cpv" style="${jClip}left:${px(jsp.lm)};right:${px(jsp.ctr ? jsp.rm : 40)};top:${py(jsp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};${jsp.ctr ? 'text-align:center;' : ''}color:${CPV_WHITE};font-size:${px(jsp.fs)};font-weight:800;line-height:${(jsp.lh / jsp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trJ / 1000).toFixed(4)}em">${lines.map(l => renderEmph2(l).map(([k, v]) => k === 'h' ? `<b style="color:${CPV_BLUE};font-weight:inherit">${esc(v)}</b>` : esc(v)).join('')).join('<br>')}</div>`;   // 릴스 = 가운데 정렬(운영자 260730 · 좌/우 마지노선 lm 101·rm 135 박스 안에서 센터 = nomute_jinjja.OV_CENTER 미러) / 포스트 = 좌측정렬 유지(260728 "노뮤트때 나오는거랑 똑같이" · left lm·right 40)
       }
     } else {   // 구 early return 폐기(260728 검수 · 헤더와 동축) — 저작권·안내문 미리보기 누락 봉합. 아래 노뮤트 자막 블록은 else로 감싸기만
     const lg = cur.fmt === 'reels' ? { x: 104, y: 1008, w: 139, h: 102 } : { x: 98, y: 720, w: 127, h: 93 };   // SPECS.logo_rect 그대로(1080 기준)
     h += `<img class="cpv-logo" data-logo src="assets/brand/overlay_logo_preview.webp" alt="" style="left:${px(lg.x)};top:${py(lg.y)};width:${px(lg.w)};height:${py(lg.h)}">`;
     if (lines.length) {
       const sp = cur.fmt === 'reels' ? { fs: 78, lh: 96, lm: 101, ty: 1119 } : { fs: 76, lh: 89, lm: 85, ty: 822 };
-      const trO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post').tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
-      h += `<div class="cpv" style="left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'adv'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
+      const rO = estTracking(lines, cur.fmt === 'reels' ? 'reels' : 'post'); const trO = rO.tr;   // 자간 = fit_tracking 쌍둥이(estTracking · 전역 sweep · '자간 -N 적용' 힌트와 동일 계산기) 미러(운영자 260716) — over(floor 초과)도 합성기의 최대압축 렌더와 동일하게 floor 표시
+      // ⭐ 초과 안전망(운영자 260807 "미리보기에도 넘어가서 나오는 일 없도록") — over면 여백 박스에 가둔다(white-space:pre라 기본은 박스를 뚫고 나간다).
+      //   1차 방어는 입력 차단(_rowOverAfter)이라 타이핑으로는 도달 불가 · 이건 **타이핑 아닌 경로** 전용 안전망:
+      //   {한글 조합 중 확정 전 과도상태 · 스냅샷 복원(프로그램 주입 = isTrusted false = 차단 비대상) · 포맷 토글 post(920)→릴스(844) 한도 축소}.
+      //   ⚠ 글자를 지우지 않는다(데이터 무손상) — 넘친 사실은 빨강 '${'N'}자 줄여줘' 힌트가 계속 말한다.
+      const ovClip = rO.over ? 'overflow:hidden;' : '';
+      h += `<div class="cpv" style="${ovClip}left:${px(sp.lm)};right:${px(40)};top:${py(sp.ty)};margin-top:${px(cur.fmt === 'reels' ? 8 : 11)};color:${CPV_WHITE};font-size:${px(sp.fs)};font-weight:800;line-height:${(sp.lh / sp.fs).toFixed(3)};white-space:pre;letter-spacing:${(trO / 1000).toFixed(4)}em">${lines.map(l => { const ls = prevLetterSpace(l, trO, sp.fs, TRK[ovTrkKey()] ? TRK[ovTrkKey()].basis : 'adv'); return ls == null ? emph(l) : `<span style="letter-spacing:${px(ls)}">${emph(l)}</span>`; }).join('<br>')}</div>`;   // white-space:pre = 합성기 무줄바꿈 미러(접힘 왜곡 차단) · margin-top = 세로 잉크탑 보정(PIL 앵커 vs CSS 라인박스 실측 Δ post+11·reels+8@1080 — 골든 픽셀 대조 260716)
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
@@ -4506,6 +4512,35 @@ function estTracking(lines, fmt) {   // 전 줄이 마진 안에 드는 전역 t
   for (let x = cfg.start; x >= cfg.floor; x--) if (widest(x) <= cfg.limit) return { tr: x, swept: true, over: false };
   return { tr: cfg.floor, swept: true, over: true };
 }
+// ── 축약량(몇 자 줄여야 들어가나) 산출 · 운영자 260807 승인("추천으로 pick") ──
+// ⚑ 왜 '자간 -45로도 초과'가 아니라 '**N자** 줄여줘'인가 = 자간 하한이 구조적으로 한 글자도 못 벌기 때문(260807 실측):
+//   한 음절 69.9px vs 자간 0→-45 전체가 버는 폭 44.5px(gap당 3.42 × 13) = **한 음절의 64%** → sweep이 흡수하는 음절 수 0.
+//   (실측 = 13자 914px 통과 / 14자 984px → -45로 다 당겨도 940px > 한도 920 · 서버 PIL·클라 캔버스 오차 0.1px)
+//   → 초과 시 운영자에게 남은 행동은 '축약' 하나뿐이라, -45라는 무의미한 숫자 대신 **뺄 글자 수**를 직접 준다.
+// ⚑ over 판정 = sweep 불요 — over ⟺ '하한 자간에서도 한도 초과'라 폭 1패스로 동치(46패스 sweep 대비 O(n) · C15 입력 1타 예산 축).
+function _ovCharW(ch, cfg) {   // 글자폭 1자 — lineWidthPx/estHeaderTr와 **동일 소스**(캔버스 1순위 · 상수 폴백) = 값 드리프트 0
+  const w = _trkChW(ch, cfg.fs, cfg.basis);
+  return (w != null) ? w : (/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(ch) ? cfg.H : ch === ' ' ? cfg.S : cfg.N);
+}
+// 공통 산식 = 앞에서부터 한 글자씩 쌓으며 '하한 자간에서 한도 안에 드는 최장 프리픽스'를 찾는다 → 뺄 수 = 전체 − 그 길이.
+// pad = lineWidthPx의 +5(워크플로 measure 동일 패드) / 헤더는 0(estHeaderTr 산식엔 패드 없음) — 두 산식을 그대로 미러한다.
+function _cutToFit(chars, cfg, limit, pad) {
+  const n = chars.length; if (!n) return 0;
+  const fl = cfg.floor / 1000 * cfg.fs;
+  let s = 0, fit = 0;
+  for (let m = 1; m <= n; m++) { s += _ovCharW(chars[m - 1], cfg); if (s + fl * (m - 1) + pad <= limit) fit = m; }
+  return n - fit;
+}
+function ovCut(lines, fmt) {   // 오버레이(자막) — 전 줄 중 최대 축약 필요 글자수(0 = 안 넘침 · estTracking().over와 1:1)
+  const cfg = TRK[fmt];
+  let cut = 0;
+  for (const l of lines) cut = Math.max(cut, _cutToFit([...String(l).replace(/\*/g, '')], cfg, cfg.limit, 5));
+  return cut;
+}
+function hdrCut(text, cfg) {   // 헤더(부제·제목·진짜예요 문구) — estHeaderTr().over와 1:1(별표 폭 0 정규화까지 동일 순서)
+  if (cfg.emph) text = renderEmph2(normEmph(stripStrayStars(text))).map(s => s[1]).join('');
+  return _cutToFit([...String(text)], cfg, cfg.avail, 0);
+}
 // 자막 자간 축 키 — 노뮤트 = effOvFmt()(post 920/-45 · reels 844/-30) / 진짜예요 = jj*(같은 한도 계승 · fs 76만 고유 · 운영자 260728)
 function ovTrkKey() { const f = effOvFmt() === 'post' ? 'post' : 'reels'; return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? ('jj' + f) : f; }
 function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하면 그때부터 '자간 -N' · 한도 초과 빨강
@@ -4513,7 +4548,7 @@ function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하�
   const lines = ($('#' + taId).value || '').split('\n').map(s => s.trim()).filter(Boolean);
   const r = lines.length ? estTracking(lines, fmt) : null;
   if (!r || (!r.swept && !r.over)) { el.textContent = ''; el._icon = ''; el.classList.remove('on', 'over'); return; }   // 여유 = 숨김 (base 클래스 trk·cmtrk 보존 = classList 토글)
-  if (r.over) { if (el._icon !== 'warn') { el.innerHTML = WARN_SVG + '<span class="trkmsg"></span>'; el._icon = 'warn'; } el.querySelector('.trkmsg').textContent = ` 자간 ${TRK[fmt].floor}로도 초과 — 축약 필요`; el.classList.remove('on'); el.classList.add('over'); }   // 번쩍임 차단 — over 유지 중엔 텍스트만 갱신(WARN SVG 재생성 X·260630 QA)
+  if (r.over) { if (el._icon !== 'warn') { el.innerHTML = WARN_SVG + '<span class="trkmsg"></span>'; el._icon = 'warn'; } const c = ovCut(lines, fmt); el.querySelector('.trkmsg').textContent = c ? ` ${c}자 줄여줘 (자간 ${TRK[fmt].floor}로도 초과)` : ` 자간 ${TRK[fmt].floor}로도 초과 — 축약 필요`; el.classList.remove('on'); el.classList.add('over'); }   // 번쩍임 차단 — over 유지 중엔 텍스트만 갱신(WARN SVG 재생성 X·260630 QA) · 문구 = 뺄 글자수 명시(운영자 260807 "추천으로 pick" — 자간 하한이 한 음절도 못 버는 게 실측이라 -45는 행동지침이 못 된다) · c=0 폴백 = 산출 불가 시 구 문구(거짓 수치 금지)
   else { el.textContent = `· 자간 ${r.tr} 적용`; el._icon = ''; el.classList.remove('over'); el.classList.add('on'); }
 }
 $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', 'post'));
@@ -4549,15 +4584,17 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   // 진짜예요 = 문구 1줄(제목칸만·부제는 로고가 대신) → HDR.jinjja(880/-10~-45) 단일 힌트. 노뮤트 = 종전 부제·제목 2줄.
   if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') {
     const j = estHeaderTr($(titleSel).value.trim(), HDR.jinjja);
-    el.textContent = j.over ? `· 축약필요(${HDR.jinjja.avail} 초과 — 자간 ${HDR.jinjja.floor}로도 안 들어감)` : (j.tr < HDR.jinjja.start ? `· 자간${j.tr} 적용` : '');   /* 표기 = spec 산출(운영자 260802 "정확히 표현도 된거지" · 구 하드코딩 '880/-45/-10'은 규격을 바꾸면 표기만 옛말로 남는 거짓말원) */
+    const jc = j.over ? hdrCut($(titleSel).value.trim(), HDR.jinjja) : 0;
+    el.textContent = j.over ? (jc ? `· ${jc}자 줄여줘 (자간 ${HDR.jinjja.floor}로도 ${HDR.jinjja.avail} 초과)` : `· 축약필요(${HDR.jinjja.avail} 초과 — 자간 ${HDR.jinjja.floor}로도 안 들어감)`) : (j.tr < HDR.jinjja.start ? `· 자간${j.tr} 적용` : '');   /* 표기 = spec 산출(운영자 260802 "정확히 표현도 된거지" · 구 하드코딩 '880/-45/-10'은 규격을 바꾸면 표기만 옛말로 남는 거짓말원) · 뺄 글자수 명시 = 운영자 260807 */
     el.classList.remove('on', 'over');
     if (j.over) el.classList.add('over'); else if (j.tr < HDR.jinjja.start) el.classList.add('on');
     return;
   }
   const s = estHeaderTr($(subSel).value.trim(), HDR.sub), t = estHeaderTr($(titleSel).value.trim(), HDR.title);
   const parts = [];
-  if (s.over) parts.push('부제 축약필요'); else if (s.tr < 0) parts.push(`부제 자간${s.tr} 적용`);
-  if (t.over) parts.push('제목 축약필요'); else if (t.tr < 0) parts.push(`제목 자간${t.tr} 적용`);
+  // 뺄 글자수 명시(운영자 260807) — 산출 0이면 구 문구 폴백(거짓 수치 금지 · 오버레이 축과 동일 규칙)
+  if (s.over) { const c = hdrCut($(subSel).value.trim(), HDR.sub); parts.push(c ? `부제 ${c}자 줄여줘` : '부제 축약필요'); } else if (s.tr < 0) parts.push(`부제 자간${s.tr} 적용`);
+  if (t.over) { const c = hdrCut($(titleSel).value.trim(), HDR.title); parts.push(c ? `제목 ${c}자 줄여줘` : '제목 축약필요'); } else if (t.tr < 0) parts.push(`제목 자간${t.tr} 적용`);
   el.textContent = parts.length ? '· ' + parts.join(' · ') : '';
   el.classList.remove('on', 'over');
   if (s.over || t.over) el.classList.add('over'); else if (parts.length) el.classList.add('on');
@@ -4593,16 +4630,35 @@ $('#cLines').addEventListener('input', updateComboTrk);
 // ── '축약 필요'(자간 하한으로도 초과) 행 = 그 행 추가 입력 차단(운영자 260729 "축약필요 뜨면 더 글자가 입력할 수 없게 · 그 행에서") ──
 // 판정기 = 기존 estHeaderTr/estTracking 재사용(빨강 힌트와 동일 계산기 = 힌트 뜨는 순간이 곧 차단 시점 · 새 한도·새 UI 0).
 // 지우기·수정은 항상 허용(초과분을 줄일 길을 막으면 잠김) · 프로그램 주입(복원·축약·맞춤법 교정)은 비대상(isTrusted 게이트 = 값 유실 차단).
-function _rowOverText(el) {   // 그 행의 초과 여부 — 헤더 = 칸 1개가 1행 / 자막 = 캐럿이 놓인 줄만(다른 줄 초과는 이 줄 입력을 막지 않음)
-  const id = el.id;
-  if (id === 'cSub') return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? false : estHeaderTr(el.value.trim(), HDR.sub).over;   // 진짜예요 = 부제 잠금(로고 대신) → 판정 제외
-  if (id === 'cTitle') return estHeaderTr(el.value.trim(), (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? HDR.jinjja : HDR.title).over;
-  const fmt = (id === 'cLines') ? ovTrkKey() : 'post';
-  const v = el.value, i = el.selectionStart ?? v.length;
+function _lineAt(v, i) {   // 캐럿이 놓인 줄(헤더는 칸 1개가 1행이라 무관)
   const s = i === 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1;
   let e = v.indexOf('\n', i); if (e < 0) e = v.length;
-  const line = v.slice(s, e).trim();
-  return !!line && estTracking([line], fmt).over;
+  return v.slice(s, e);
+}
+function _isOverLine(el, line) {   // 그 칸 규격으로 '이 줄이 자간 하한에서도 초과인가' — 판정기 = 힌트와 같은 *Cut 산식(>0 ⟺ over)
+  const id = el.id, t = String(line).trim();
+  if (id === 'cSub') return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? false : hdrCut(t, HDR.sub) > 0;   // 진짜예요 = 부제 잠금(로고 대신) → 판정 제외
+  if (id === 'cTitle') return hdrCut(t, (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? HDR.jinjja : HDR.title) > 0;
+  return !!t && ovCut([t], (id === 'cLines') ? ovTrkKey() : 'post') > 0;
+}
+function _rowOverText(el) { return _isOverLine(el, _lineAt(el.value, el.selectionStart ?? el.value.length)); }
+// ⭐ 260807 개정(운영자 "자간 넘어가면 입력이 즉시 안되게 · 미리보기에도 넘어가서 나오는 일 없도록") —
+//   구판은 '변경 **전**' 초과만 차단해 초과를 *만드는* 그 글자를 통과시켰다(260729 "빨강 힌트가 먼저 떠야 한다"는 취지).
+//   그 결과 넘친 텍스트가 실제로 칸에 들어가 **미리보기까지 흘러나갔다**(운영자 스크린샷 진범).
+//   → 판정을 '변경 **후**'로 옮겨 넘치는 글자부터 막는다. 260729의 "안내 없이 먹통 = 금지" 계약은 폐기가 아니라
+//     **차단하는 순간 안내를 띄우는 것**으로 이행한다(_blockNotice) — 막히되 이유는 항상 보인다.
+function _rowOverAfter(el, ins) {
+  const v = el.value, a = el.selectionStart ?? v.length, b = el.selectionEnd ?? a;
+  const nv = v.slice(0, a) + ins + v.slice(b);
+  return _isOverLine(el, _lineAt(nv, a + String(ins).length));
+}
+const _TRK_HINT_OF = { cSub: '#cHdrTrk', cTitle: '#cHdrTrk', cLines: '#cLinesTrk', lines: '#linesTrk' };
+function _blockNotice(el) {   // 차단 순간 안내 = 기존 .over(빨강) 스타일 재사용 — 새 색·새 UI 창작 0
+  const sel = _TRK_HINT_OF[el.id]; if (!sel) return;
+  const h = $(sel); if (!h) return;
+  if (h._icon !== 'warn') { h.innerHTML = WARN_SVG + '<span class="trkmsg"></span>'; h._icon = 'warn'; }
+  const m = h.querySelector('.trkmsg'); if (m) m.textContent = ' 한도 꽉 찼어 — 더는 안 들어가';
+  h.classList.remove('on'); h.classList.add('over');
 }
 function bindOverClamp(sel) {
   const el = $(sel); if (!el) return;
@@ -4615,16 +4671,19 @@ function bindOverClamp(sel) {
     if (composing) return;
     if (!e.isTrusted || !e.inputType || !e.inputType.startsWith('insert')) return;
     if (e.inputType === 'insertLineBreak' || e.inputType === 'insertParagraph') { sync(); return; }   // 개행 = 차단 대상 아님(막는 건 '그 행'뿐 — 다음 줄로 넘어갈 길은 열어둔다)
-    snap = el.value; preOver = _rowOverText(el);
-    if (preOver) e.preventDefault();
+    snap = el.value;
+    const ins = (e.data != null) ? e.data : (e.dataTransfer ? (e.dataTransfer.getData('text') || '') : '');   // 붙여넣기 = dataTransfer 실문자열(빈 문자열이면 삽입폭 0 = 통과 = 종전과 동일)
+    preOver = _rowOverAfter(el, ins);   // 260807: '변경 전' → '변경 후' 판정(넘치는 그 글자부터 차단)
+    if (preOver) { e.preventDefault(); _blockNotice(el); }   // 막되 이유는 보인다(260729 '안내 없이 먹통 금지' 이행)
   });
-  const clamp = () => {   // 취소 불가 경로(한글 조합 확정본) 되돌림 — 이미 초과였고 길이가 늘어난 경우만
-    if (preOver && el.value.length > snap.length) {
+  const clamp = () => {   // 취소 불가 경로(한글 조합 확정본) 되돌림 — 확정 결과가 초과이고 길이가 늘어난 경우
+    if (el.value.length > snap.length && _rowOverText(el)) {
       const p = Math.min(el.selectionStart ?? snap.length, snap.length);
       el.value = snap;
       try { el.setSelectionRange(p, p); } catch (_) {}
       preOver = false;
       el.dispatchEvent(new Event('input', { bubbles: true }));   // 힌트·미리보기 = 되돌린 값으로 재동기(비신뢰 이벤트라 재차단 없음)
+      _blockNotice(el);   // ⚠ 재동기 **뒤**에 = updateTrkHint가 되돌린(=안 넘치는) 값으로 힌트를 지운 다음이라야 안내가 살아남는다
       return;
     }
     sync();
