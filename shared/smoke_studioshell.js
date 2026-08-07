@@ -467,8 +467,62 @@ async function railRowSweep(browser, port) {
   return out;
 }
 
-async function runOnce(pg, gap, clone, railRow) {
-  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {} };
+// ── C15 재료 = 「입력 1타에 미리보기를 그리는 **비용**」 스윕(운영자 260807 폰 발열 · 평의회 8인) ──
+//   ⚠ 신설 사유 = 이 레포 게이트 92개가 전부 **끝난 그림**을 잰다 — check_* = 정적 문자열 · C1~C14 = 렌더가
+//     **끝난 뒤의** 기하·잉크·색·부품. 「그 그림을 만드는 데 얼마가 드는가」는 **축 자체가 없었다.**
+//     그 틈에서 미리보기가 ⓐ 매 타 1.6MB innerHTML 재조립 ⓑ 글자마다 document.fonts.check(자간 sweep 46패스 ×
+//     전 글자 = 1타 3,384회)로 6주간 자라는 동안 **한 게이트도 안 울렸고 운영자 손의 발열이 유일한 검출기였다**
+//     (insta-thumb-miss·brk_misfire 동축 = 조용히 나빠지는 것을 숫자로 드러낸다).
+//   판정 = **정규화 비율**(render_ms ÷ 같은 런 CPU 캘리브레이션 루프) ≤ RENDER_BUDGET.
+//   ⚠ **절대 ms 금지** — 260807 실측에서 같은 코드의 절대 ms가 병렬 풀 부하에 따라 7배(14~98ms) 흔들렸다.
+//     절대 임계는 그대로 가짜 빨강 공장이 된다(C14가 「자는 줄바꿈 무관 축이어야 한다」로 배운 것과 같은 축).
+//   ⚠ **폰트 게이트 선행 + SKIP 분기** — fonts.check가 false면 _trkChW가 상수 폴백으로 빠져 **다른 코드 경로**를
+//     측정하게 된다(그 숫자는 비교 불가). PASS와 합치지 않고 SKIP으로 **명시 기록**한다 — 관측이 지워지면
+//     다음 세션이 추측으로 메운다(스레드 `[1차 실측]`·틱톡 `_e1`이 남긴 교훈).
+//   ⚠ **전용 페이지**(thumb.html 직접) = 사진 시드가 코어 판(1280)을 안 건드린다(C14 전용 페이지 원칙 계승).
+//   ⚠ **직접 호출 축** — input 이벤트 경유가 아니다. 경유하면 리스너 개수·rAF 병합 같은 **배선** 변화가
+//     「렌더 1회가 비싼가」와 한 숫자로 뭉개진다(배선 축은 별개 게이트 몫).
+//   실측 근거(430×900 · 4032×3024 JPEG q90 · 자간 sweep 발동 17자) — 봉합 전 ratio **20.52** / 봉합 후 **0.126**.
+//   임계 1.0 = 현행 대비 8배 여유(환경 변동 흡수) · 실사고 대비 20배 검출 마진.
+const RENDER_BUDGET = 1.0;   // ⚠ 면책표(_BASE/_EXEMPT) 아님 = 단일 임계 상수(부채 원장 증가 0). 낮추는 건 자유·올리는 건 사유 명기.
+const BUDGET_PROBE = () => {
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+  const cal = () => { const t = performance.now(); let x = 0; for (let i = 0; i < 3e6; i++) x = (x + i) % 97; return performance.now() - t + (x ? 0 : 0); };
+  if (typeof renderCpPrev !== 'function' || typeof CIMG === 'undefined') return { err: 'renderCpPrev/CIMG 미검출' };
+  const cv = document.createElement('canvas'); cv.width = 4032; cv.height = 3024;   // 폰 원본급 = 발열이 실제로 사는 크기 · 캔버스 생성 = 네트워크 0
+  const cx = cv.getContext('2d'); if (!cx) return { err: '2d 컨텍스트 없음' };
+  const g = cx.createLinearGradient(0, 0, 4032, 3024); g.addColorStop(0, '#3a6'); g.addColorStop(1, '#a36');
+  cx.fillStyle = g; cx.fillRect(0, 0, 4032, 3024);
+  for (let i = 0; i < 3000; i++) { cx.fillStyle = 'rgb(' + (i * 7 % 255) + ',' + (i * 13 % 255) + ',' + (i * 29 % 255) + ')'; cx.fillRect((i * 37) % 4032, (i * 91) % 3024, 60, 60); }
+  const b64 = cv.toDataURL('image/jpeg', 0.9);
+  const slot = document.querySelector('#cImgSlot');
+  if (slot && slot._set) slot._set(b64, 'budget.jpg'); else { CIMG.b64 = b64; CIMG.name = 'budget.jpg'; }   // 뷰어 자신의 주입 경로(가짜 DOM 0)
+  const ta = document.querySelector('#cLines'); if (!ta) return { err: '#cLines 없음' };
+  const TXT = '국회의원 황희 이건 어떻게 봐야 하나';   // 자간 sweep이 실제로 발동하는 길이(폭 한도 초과 = 운영자가 겪던 그 구간)
+  ta.value = TXT;
+  const fontOK = !!(document.fonts && typeof CP_PREV_FONT !== 'undefined' && document.fonts.check('700 78px "' + CP_PREV_FONT + '"'));
+  if (!fontOK) return { skip: '웹폰트 미로드 = 상수 폴백 경로(다른 코드) → 측정 무효' };
+  const payload0 = CIMG.b64.length;
+  for (let i = 0; i < 10; i++) renderCpPrev();   // 워밍업 = JIT·레이아웃 캐시 안정화
+  const rounds = []; for (let r = 0; r < 3; r++) { const t0 = performance.now(); for (let i = 0; i < 15; i++) { ta.value = TXT + '가'.repeat(i % 4); renderCpPrev(); } rounds.push((performance.now() - t0) / 15); }
+  const cals = []; for (let r = 0; r < 3; r++) cals.push(cal());
+  const rm = med(rounds), cm = med(cals);
+  // 보조축 = 발사 payload 무손상. 미리보기 최적화가 서버로 가는 바이트를 건드리면 즉시 FAIL([7-2] 라이브 축의 기계화 ·
+  //   260807 처방 검토에서 「미리보기 축소 사본」 안이 실제로 이 지점을 위험하게 했다).
+  return { render_ms: +rm.toFixed(3), cal_ms: +cm.toFixed(3), ratio: +(rm / cm).toFixed(4), payloadKeep: CIMG.b64.length === payload0 };
+};
+async function budgetSweep(browser, port) {
+  const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });   // 폰 티어 = 발열이 실제로 사는 자리
+  try {
+    await pg.goto('http://127.0.0.1:' + port + '/thumb.html', { waitUntil: 'load', timeout: 25000 });
+    await pg.waitForTimeout(2500);   // 웹폰트 도착 대기(아래 fontOK가 실판정 · 못 오면 SKIP)
+    return await pg.evaluate(BUDGET_PROBE);
+  } catch (e) { return { err: String(e.message).slice(0, 90) }; }
+  finally { await pg.close().catch(() => {}); }
+}
+
+async function runOnce(pg, gap, clone, railRow, budget) {
+  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {}, budget: budget || {} };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -647,6 +701,17 @@ async function runOnce(pg, gap, clone, railRow) {
       : rowBad.length ? '이탈 ' + rowBad.join(' · ') + ' vs 카드생성 잉크' + rRef[0] + '·상자' + rRef[1]
         : RTABS.length + '탭 정합(잉크 윗변 ' + rRef[0] + ' · 행 상자 ' + rRef[1] + ')');
 
+  // ── C15 입력 1타 렌더 예산 = 정규화 비율 ≤ RENDER_BUDGET(운영자 260807 폰 발열 · 위 재료 주석 참조) ──
+  //   err/skip = **FAIL 아님**(측정 불가와 위반은 다른 것) · 하지만 무출력도 아니다 = 사유를 화면에 그대로 남긴다.
+  const BG = out.budget || {};
+  core('C15 입력 1타 렌더 예산(카드 제작 · 폰 430 · 정규화 비율 ≤ ' + RENDER_BUDGET + ')',
+    (BG.skip || BG.err) ? true : (typeof BG.ratio === 'number' && BG.ratio <= RENDER_BUDGET && BG.payloadKeep !== false),
+    BG.err ? 'SKIP(측정 불가) ' + BG.err
+      : BG.skip ? 'SKIP ' + BG.skip
+        : BG.payloadKeep === false ? '발사 payload 변조 — 미리보기 최적화가 CIMG.b64를 건드렸다([7-2] 라이브 축)'
+          : '비율 ' + BG.ratio + ' (렌더 ' + BG.render_ms + 'ms ÷ 기준루프 ' + BG.cal_ms + 'ms · payload 무손상)'
+            + (BG.ratio > RENDER_BUDGET * 0.5 ? ' ⚠ 임계 절반 초과 — 회귀 진행 중' : ''));
+
   return out;
 }
 
@@ -662,6 +727,7 @@ async function runOnce(pg, gap, clone, railRow) {
     const gap = await gapSweep(browser, st.port);
     const clone = await cloneSweep(browser, st.port);   // C11 = 미리보기 창 클론 스윕(gap과 같은 이유로 런 1회 공유 = 순수 레이아웃 측정)
     const railRow = await railRowSweep(browser, st.port);   // C14 = 결과 요약 줄 스윕(전용 페이지 = 이력 시드가 코어 판을 안 건드린다 · gap·clone과 같은 이유로 런 1회 공유)
+    const budget = await budgetSweep(browser, st.port);   // C15 = 입력 1타 렌더 예산(전용 thumb 페이지 = 사진 시드가 코어 판을 안 건드린다 · 위 3개와 같은 이유로 런 1회 공유)
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
       const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -670,7 +736,7 @@ async function runOnce(pg, gap, clone, railRow) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg, gap, clone, railRow);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
+      const o = await runOnce(pg, gap, clone, railRow, budget);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);
