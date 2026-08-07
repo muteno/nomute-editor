@@ -64,6 +64,8 @@ jobs:
           VIDEOS: ${{ inputs.videos }}
           PRECISIONS: ${{ inputs.precisions }}
           MAX_SEC: ${{ inputs.max_sec }}
+          # 대안 엔진 레인 — 키가 없으면 스크립트가 조용히 스킵한다(fail-soft = 종전 동작 100% 보존)
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
           set -e
           python3 - <<'PY'
@@ -137,13 +139,56 @@ jobs:
                         % (rows[-1]["video"], prec, load, inf, rows[-1]["rt"], len(low), len(probs),
                            " · ⚠VAD폴백" if vad_fb else ""))
                   del m
+
+              # ── 대안 엔진 레인 = ElevenLabs Scribe v2 API(운영자 260807 "large-v3 대안 확인") ──
+              #   ⚠ 같은 wav(16k mono · 같은 컷)를 그대로 보낸다 = 오디오 조건 동일 = 시간·정확도 비교가 성립.
+              #   ⚠ 어절 확률 축 통일 = 응답 words[].logprob 를 exp() 로 환산해 Whisper 확률과 **같은 <0.70 임계**로 읽는다
+              #      (다른 축으로 재면 두 엔진 표가 나란히 있어도 비교가 안 된다 = 이 A/B의 존재 이유가 사라짐).
+              #   ⚠ 키 부재 = 조용히 스킵(fail-soft) — 이 레인이 whisper 실측을 죽이지 않는다.
+              #   ⚠ 판정 대상 = 한국어 실오디오. 리더보드 평균 WER(영어 중심)은 우리 축이 아니다.
+              _k = os.environ.get("ELEVENLABS_API_KEY") or ""
+              if _k:
+                  import math
+                  t_api = time.time()
+                  cp = subprocess.run(["curl", "-sS", "--max-time", "900", "-X", "POST",
+                                       "https://api.elevenlabs.io/v1/speech-to-text",
+                                       "-H", "xi-api-key: %s" % _k,
+                                       "-F", "file=@%s" % wav,
+                                       "-F", "model_id=scribe_v2",
+                                       "-F", "timestamps_granularity=word"],
+                                      capture_output=True, text=True)
+                  api_s = time.time() - t_api
+                  try:
+                      j = json.loads(cp.stdout or "{}")
+                  except Exception:
+                      j = {}
+                  if not isinstance(j, dict) or j.get("text") is None:
+                      print("::warning::Scribe v2 실패(%s) — %s" % (os.path.basename(v), (cp.stdout or cp.stderr or "")[:200]))
+                  else:
+                      ws = [w for w in (j.get("words") or []) if (w.get("type") or "word") == "word" and (w.get("text") or "").strip()]
+                      probs = [round(math.exp(w["logprob"]), 2) for w in ws if isinstance(w.get("logprob"), (int, float))]
+                      low = [p for p in probs if p < 0.70]
+                      rows.append({"video": os.path.basename(v)[:44], "prec": "scribe_v2(API)", "audio_sec": round(dur, 1),
+                                   "extract_s": round(extract, 1), "load_s": 0.0, "infer_s": round(api_s, 1),
+                                   "rt": round(api_s / dur, 2) if dur else 0, "lang": j.get("language_code") or "?",
+                                   "segs": 0, "words": len(ws),
+                                   "p_med": round(st.median(probs), 3) if probs else 0,
+                                   "p_min": round(min(probs), 2) if probs else 0,
+                                   "low70": len(low), "low70_pct": round(100.0 * len(low) / len(probs), 1) if probs else 0,
+                                   "vad_fb": False, "usd": round(dur / 3600.0 * 0.22, 4),
+                                   "text": (j.get("text") or "").strip()})
+                      print("  %-44s %-14s API %6.1fs (%.2fxRT) · 저확률<0.70 %d/%d · $%.4f"
+                            % (rows[-1]["video"], "scribe_v2", api_s, rows[-1]["rt"], len(low), len(probs), rows[-1]["usd"]))
+              else:
+                  print("  (Scribe v2 스킵 — ELEVENLABS_API_KEY 미등록)")
               os.remove(wav)
 
           os.makedirs("docs/reports", exist_ok=True)
           stamp = kst().strftime("%y%m%d_%H%M")
           p = "docs/reports/%s_STT정밀도AB.md" % stamp
           L = ["# STT 연산 정밀도 A/B 실측 — %s KST" % kst().strftime("%Y-%m-%d %H:%M"), "",
-               "러너 = ubuntu-latest(4코어 CPU) · 모델 = large-v3 · vad_filter=True · word_timestamps=True",
+               "러너 = ubuntu-latest(4코어 CPU) · 로컬 모델 = large-v3(vad_filter=True · word_timestamps=True)",
+               "대안 엔진 레인 = ElevenLabs Scribe v2 API(`model_id=scribe_v2` · `timestamps_granularity=word` · 어절확률 = exp(logprob)) — 키 미등록이면 행 없음",
                "", "## 소요 시간", "",
                "| 영상 | 정밀도 | 오디오 | 추출 | 모델로드 | 추론 | 실시간배수 | 조각 |",
                "|---|---|---|---|---|---|---|---|"]
@@ -151,6 +196,9 @@ jobs:
               L.append("| %s | `%s` | %.1f초 | %.1fs | %.1fs | **%.1fs** | %.2f×RT | %d%s |"
                        % (r["video"], r["prec"], r["audio_sec"], r["extract_s"], r["load_s"], r["infer_s"], r["rt"], r["segs"],
                           " ⚠VAD폴백" if r.get("vad_fb") else ""))
+          _usd = sum(r.get("usd") or 0 for r in rows)
+          if _usd:
+              L += ["", "API 과금(Scribe v2 $0.22/시간 기준) = **$%.4f**" % _usd]
           L += ["", "## 인식 품질(어절 확률)", "",
                 "`p` = Whisper가 그 어절에 준 확률. **0.70 미만 = 오인식 의심**(`ly_stt.py` `is_unc` ① 신호와 동일 임계).", "",
                 "| 영상 | 정밀도 | 어절 | 확률 중앙값 | 최저 | <0.70 개수 | 비율 |", "|---|---|---|---|---|---|---|"]
