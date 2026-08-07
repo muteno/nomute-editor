@@ -754,6 +754,72 @@ def check_thumb_chain():
     return 0
 
 
+def check_idle_timer_guard():
+    """유휴 타이머 가드 게이트 — C16(런타임)의 정적 짝(운영자 260807 "정적 짝 게이트도 ㄱㄱ").
+
+    계약 = 「셸(viewer/index.html)의 `setInterval` 콜백이 DOM을 쓰는데 **영원히 돈다면**,
+           가시성·모달 가드(`document.hidden`/`visibilityState`/`isComposingModalOpen()`/`.open`)를 동반한다」
+
+    ⚠ 신설 사유 = `smoke_studioshell` C16은 **런타임**이라 「그날 실제로 돈 것」만 잡는다 — 조건이 안 맞아
+    측정 창에서 잠자던 타이머는 그냥 통과한다. 260807 실사고(금융 전광판 5초 인터벌이 화면에 안 보이는
+    DOM[실측 0×0px]을 계속 갈아끼움)의 구조적 원인은 **형제는 가드를 갖는데 자기만 안 가진 것**이었고
+    (10줄 아래 `_tu`가 그 가드를 보유 · 260727 시계 봉합에도 안 따라왔다), 그건 **정적으로 보이는 모양**이다.
+    런타임(C16) + 정적(이 게이트) 두 겹이라야 새 타이머가 조용히 빠질 구멍이 사라진다.
+
+    ⚠ 스코프 = `viewer/index.html` **단독**. 도구 뷰어(thumb·tr·edit…)는 iframe으로 모달 **안**에 뜬다 =
+    운영자가 실제로 보고 있는 화면이라 판정 대상이 아니다(C16의 「모달 안은 비대상」과 같은 경계).
+
+    ⚠ **유한 수명 면제가 실효 조건**(위양성 3겹 중 핵심 · 260807 실측으로 정한 경계) — 술어를
+    「DOM 쓰기 ∧ 무가드」로만 두면 현행 4건이 걸리는데 **전건 판독 결과 위양성**이었다:
+      · `iv`(13970) `++n > 40` = 자기 해제·최대 10초  · `fr._er`(15261) `++n > 180` = 최대 18초
+      · `_tvPoll`(13944) `Date.now() - t0 > 420e3` = 예산 상한 보유
+    전부 **사용자가 시작한 작업의 유한 수명 타이머**다(작업이 끝나면 사라진다). 금융 티커와의 결정적
+    차이가 바로 이 축이고 — 그쪽 `clearInterval`은 「DOM에서 사라졌을 때」뿐이라 **화면이 살아있는 한 영원**이다.
+    → 횟수 상한(`++n >`)·경과 상한(`Date.now() - t0 >`) 표식을 가진 콜백은 면제한다.
+
+    ⚠ **면책표 없이 하드 0** — 술어를 좁힌 뒤 남은 유일 잔여였던 `_tvTick`(영상 받기 진행 표시)은
+    baseline에 박지 않고 **가드를 실제로 넣어 해소**했다(경과가 t0 기준 산식이라 스킵분은 복귀 즉시
+    정확히 따라잡는다 = 표시 손실 0). 부채 원장 증가 0.
+
+    ⚠ 주석 줄 제외(주석 처리 우회 차단) · 정적(렌더·LLM·네트워크 0)."""
+    path = os.path.join(ROOT, 'viewer', 'index.html')
+    try:
+        src = open(path, encoding='utf-8').read()
+    except Exception as e:
+        print('❌ check_idle_timer_guard 읽기 실패(fail-closed):', e); return 1
+    lines = src.split('\n')
+    WRITE = re.compile(r'\.(innerHTML|outerHTML|textContent|innerText|className|classList|setAttribute|'
+                       r'removeAttribute|append|appendChild|replaceChildren|prepend|insertAdjacentHTML)\b'
+                       r'|\.style\.|\.hidden\s*=')
+    GUARD = re.compile(r'document\.hidden|visibilityState|isComposingModalOpen|\.open\b|_trRotVis')
+    FINITE = re.compile(r'\+\+\w+\s*>|\w+\+\+\s*>|Date\.now\(\)\s*-\s*\w+\s*>')   # 유한 수명 표식
+    bad = []
+    for m in re.finditer(r'setInterval\s*\(', src):
+        ln = src[:m.start()].count('\n') + 1
+        head = lines[ln - 1].strip()
+        if head.startswith('//') or head.startswith('*'):
+            continue                                            # 주석 줄 = 비대상
+        i = m.end() - 1; depth = 0; j = i
+        while j < len(src):                                     # 괄호 균형으로 인자 본문 절취
+            if src[j] == '(': depth += 1
+            elif src[j] == ')':
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        body = src[i:j + 1]
+        if WRITE.search(body) and not GUARD.search(body) and not FINITE.search(body):
+            bad.append((ln, head[:70]))
+    if bad:
+        print('❌ 유휴 타이머 가드 게이트 — 모달 뒤 DOM을 만지는 영구 타이머에 가시성·모달 가드가 없다:')
+        for ln, h in bad:
+            print(f'   · viewer/index.html:{ln} — {h}')
+        print('   → 형제 타이머 정본 계승 = `if (document.visibilityState !== \'visible\' || isComposingModalOpen()) return;`'
+              ' (스킵분은 다음 틱 따라잡음 · #13447 유지보수 규칙) · 유한 수명 작업 타이머면 횟수·경과 상한을 콜백에 둔다.')
+        return 1
+    print('✅ 유휴 타이머 가드 게이트 — 셸 영구 타이머 전건 가드 보유(유한 수명 작업 타이머는 면제 · 면책표 없음 · C16 런타임 축의 정적 짝).')
+    return 0
+
+
 def check_boot_bg_parity():
     """OS 스플래시→앱 배경 연속 3값 정합 게이트(운영자 260805 승인 "아이디어도 진행하구").
 
@@ -5992,6 +6058,8 @@ def main():
     except Exception as e:
         print('❌ check_shell_put_integrity 예외(fail-closed):', e); rc = 1
     try:
+        if check_idle_timer_guard() != 0:   # 유휴 타이머 가드(C16 런타임 축의 정적 짝 · 260807 — 모달 뒤 DOM을 만지는 영구 타이머는 가시성·모달 가드 동반 · 형제는 갖는데 자기만 안 가진 사고가 6주 잠복했다)
+            rc = 1
         if check_boot_bg_parity() != 0:   # 스플래시→앱 배경 3값 정합(theme는 하드·background는 WARN — CSS가 manifest를 못 읽어 손복사인 축 · 260805 실측 불일치)
             rc = 1
     except Exception as e:

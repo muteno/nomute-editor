@@ -13940,7 +13940,8 @@ $('#tvDl').addEventListener('click', async () => {
     id = j.id;
   } catch (e2) { st.textContent = '실패 — ' + (e2 && e2.message ? e2.message : '네트워크'); st.classList.add('err'); b.disabled = false; return; }
   const t0 = Date.now(), outP = 'conv_out/' + id + '/video.json', errP = 'conv_out/' + id + '/error.log';
-  _tvTick = setInterval(() => { st.textContent = '받는 중 (' + Math.round((Date.now() - t0) / 1000) + 's)'; }, 1000);
+  _tvTick = setInterval(() => { if (document.visibilityState !== 'visible' || isComposingModalOpen()) return;   // 모달 뒤 DOM 접촉 가드(13447행 유지보수 규칙 · 260807) — 경과는 t0 기준 산식이라 스킵분은 복귀 즉시 정확히 따라잡는다(표시 손실 0)
+    st.textContent = '받는 중 (' + Math.round((Date.now() - t0) / 1000) + 's)'; }, 1000);
   _tvPoll = setInterval(async () => {
     if (Date.now() - t0 > 420e3) { tvReset(); st.textContent = '시간 초과 — 잠시 후 다시'; st.classList.add('err'); return; }   // 420s = conv 일반 예산(300s)+여유
     try {
