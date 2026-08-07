@@ -4380,7 +4380,7 @@ def check_grade_fix_chain():
     check_thumb_vote_chain의 짝). 교정은 두 방식으로 조용히 죽는다: ⓐ 적재는 되는데 커밋 줄이 없어 다음 체크아웃서
     증발 ⓑ 쌓이는데 아무도 안 읽는 죽은 원장. 화면은 둘 다 멀쩡해 보인다(칩이 눌리고 초록이 켜진다) → 5층 정적 생존 강제.
     체인: 뷰어 .sc-grade 칩 → askGrade → postRate(action='grade') → rate.yml → rate_record.py(grade 분기)
-    → scraper/grade_votes.jsonl → grade_fix_report.py(12h 스윕 · rate.yml+watchdog 동행) → msg.py 알림."""
+    → scraper/grade_votes.jsonl → grade_fix_report.py(12h 스윕 · rate.yml+watchdog 동행) → grade_fix_reports.jsonl 내부 축적(260808 알림 제거)."""
     rc = 0
     try:
         vw = open(os.path.join(ROOT, 'viewer', 'index.html'), encoding='utf-8').read()
@@ -4396,14 +4396,14 @@ def check_grade_fix_chain():
         ('② rate_record grade 분기', '"grade"' in rr and 'grade_votes.jsonl' in rr),
         ('③ rate.yml 원장 커밋+소비', _has_exec_line(ry, 'git add scraper/grade_votes.jsonl') and _has_exec_line(ry, 'scraper/grade_fix_report.py')),
         ('④ watchdog 12h 주기 보장', _has_exec_line(wd, 'scraper/grade_fix_report.py') and _has_exec_line(wd, 'git add scraper/grade_fix_report.json')),
-        ('⑤ 소비기 골격(주기·회전·커서)', all(k in rp for k in ('SWEEP_H', 'MSG_ID_BASE', '"seen"', 'run_msg'))),
+        ('⑤ 소비기 골격(주기·축적·커서)', all(k in rp for k in ('SWEEP_H', 'grade_fix_reports.jsonl', '"seen"', 'build_round'))),   # 260808 개정 = 알림 발화 축 제거 → 내부 축적 원장(REPORTS) 실존이 생존 조건
     ]
     for name, ok in checks:
         if not ok:
             print('❌ grade 교정 체인 게이트 — %s 결손(한 층만 빠져도 교정이 조용히 죽는 원장이 된다)' % name)
             rc = 1
     if rc == 0:
-        print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→알림) 전 층 생존.')
+        print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→내부 축적) 전 층 생존.')
     return rc
 
 
