@@ -521,8 +521,62 @@ async function budgetSweep(browser, port) {
   finally { await pg.close().catch(() => {}); }
 }
 
-async function runOnce(pg, gap, clone, railRow, budget) {
-  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {}, budget: budget || {} };
+// ── C16 재료 = 「스튜디오를 열어두고 **손을 뗐을 때** 셸이 조용한가」 스윕(운영자 260807 3차 · C15의 짝) ──
+//   ⚠ 신설 사유 = C15가 「1타를 그리는 비용」을 잠갔지만 **「아무것도 안 할 때의 비용」은 여전히 축이 없다.**
+//     260807 실사고 2건이 정확히 그 자리에 살았다 — ⓐ 금융 전광판 5초 인터벌이 **화면에 안 보이는 DOM**(실측
+//     0×0px)을 계속 갈아끼웠고 ⓑ 물결 rAF 루프가 모달로 100% 가려진 동안에도 주사율로 계속 깨어 있었다
+//     (draw 0인데 콜백 5초 147회 = 모달 없을 때 91회보다 **더 많다**). 둘 다 화면에 아무 증상이 없어
+//     **운영자 손의 발열이 유일한 검출기였다**(C15와 같은 병 · 다른 자리).
+//   ⚠ **가드가 있는 형제와 없는 형제가 같은 파일에 공존한다**는 게 이 축의 존재 이유다 — 금융 티커는 10줄 아래
+//     형제(_tu)가 갖고 있는 가드를 자기만 안 가졌고, 260727 시계 봉합에도 안 따라왔다. 사람 검토로는 매번 샌다.
+//   판정 = 스튜디오 모달을 연 채 유휴 IDLE_WINDOW_MS 동안 ⓐ rAF 콜백 **하드 0** ⓑ **모달 밖** DOM 변이 ≤ IDLE_MUT_MAX.
+//   ⚠ rAF가 하드 0인 이유 = 루프는 「멈췄으면 0 · 안 멈췄으면 수십~수백」이라 **중간이 없다**(임계에 걸칠 여지 0).
+//     실측 = 봉합본 0·0·0 vs 봉합 전 229·235·231(3회 재현).
+//   ⚠ 변이 임계 8 = **실측으로 정한 값**(추측 아님). 봉합본 3회 = 3·0·0(그 3건은 부팅 직후 지연 도착 1회분이고
+//     재현되지 않는다 = 주기 타이머 아님) vs 봉합 전 3회 = 50·49·49(`span.fin-v×12`·`div.fin-row×8` =
+//     금융 티커를 이름으로 정확 지목). 정상 최대 3 ↔ 사고 49 사이에서 정상 쪽에 2.7배·사고 쪽에 6배 여유를 남긴 자리.
+//     ⚠ 임계를 2로 두면 그 지연 도착 1회가 **가짜 빨강**이 된다(첫 실행이 실제로 그렇게 떴다 = 실측 봉합).
+//   ⚠ **모달 안은 대상이 아니다** — 그건 운영자가 실제로 보고 있는 화면이고 제작 진행 표시 등이 정당하게 움직인다.
+//     판정 대상은 오직 「가려져서 아무도 못 보는데 계속 일하는 것」.
+const IDLE_WINDOW_MS = 8000, IDLE_MUT_MAX = 8;   // ⚠ 면책표(_BASE/_EXEMPT) 아님 = 단일 임계 상수(부채 원장 증가 0)
+const IDLE_HOOK = () => {   // rAF 계수기 = **문서 스크립트보다 먼저** 심어야 잡힌다(addInitScript 경로)
+  window.__nmIdle = { raf: 0, muts: 0, mut: {} };
+  const _r = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = cb => _r(t => { window.__nmIdle.raf++; return cb(t); });
+};
+const IDLE_ARM = () => {   // 관찰 개시 = 모달을 연 **뒤**(여는 동작 자체의 전이·리플로는 정당)
+  const m = window.__nmIdle; if (!m) return false;
+  m.raf = 0; m.muts = 0; m.mut = {};
+  const dlg = document.querySelector('#tooldlg');
+  const key = n => { const e = n.nodeType === 1 ? n : n.parentElement; if (!e) return '(text)';
+    return (e.tagName || '?').toLowerCase() + (e.id ? '#' + e.id : '')
+      + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).slice(0, 2).join('.') : ''); };
+  window.__nmMo = new MutationObserver(rs => rs.forEach(r => {
+    if (dlg && dlg.contains(r.target)) return;   // 모달 안 = 보이는 화면 = 정당
+    m.muts++; const k = key(r.target); m.mut[k] = (m.mut[k] || 0) + 1;
+  }));
+  window.__nmMo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true });
+  return true;
+};
+async function idleSweep(browser, port) {
+  const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });   // 폰 티어 = 배터리가 실제로 닳는 자리
+  try {
+    await pg.addInitScript(IDLE_HOOK);
+    await pg.goto('http://127.0.0.1:' + port + '/index.html', { waitUntil: 'load', timeout: 25000 });
+    await pg.waitForTimeout(4500);   // 부팅 폴·초기 렌더가 끝나기를 기다린다(그 소음을 유휴로 세면 가짜 빨강)
+    const opened = await pg.evaluate(() => { const d = document.querySelector('#tooldlg'); if (!d) return false; try { if (!d.open) d.showModal(); } catch (_) {} return !!d.open; });
+    if (!opened) return { err: '#tooldlg 열기 실패' };
+    await pg.waitForTimeout(1200);   // 여는 전이 종료 대기
+    if (!await pg.evaluate(IDLE_ARM)) return { err: 'IDLE_HOOK 미주입' };
+    await pg.waitForTimeout(IDLE_WINDOW_MS);
+    return await pg.evaluate(() => { const m = window.__nmIdle;
+      return { raf: m.raf, muts: m.muts, top: Object.entries(m.mut).sort((a, b) => b[1] - a[1]).slice(0, 4).map(e => e[0] + '×' + e[1]) }; });
+  } catch (e) { return { err: String(e.message).slice(0, 90) }; }
+  finally { await pg.close().catch(() => {}); }
+}
+
+async function runOnce(pg, gap, clone, railRow, budget, idle) {
+  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {}, budget: budget || {}, idle: idle || {} };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -712,6 +766,18 @@ async function runOnce(pg, gap, clone, railRow, budget) {
           : '비율 ' + BG.ratio + ' (렌더 ' + BG.render_ms + 'ms ÷ 기준루프 ' + BG.cal_ms + 'ms · payload 무손상)'
             + (BG.ratio > RENDER_BUDGET * 0.5 ? ' ⚠ 임계 절반 초과 — 회귀 진행 중' : ''));
 
+  // ── C16 유휴 정숙 = 스튜디오 열어두고 손 뗀 동안 셸이 조용한가(운영자 260807 3차 · 위 재료 주석 참조) ──
+  //   err = SKIP(측정 불가 ≠ 위반) · 그 외는 하드(rAF 0 · 모달 밖 변이 ≤ IDLE_MUT_MAX).
+  const ID = out.idle || {};
+  const idleBad = ID.err ? [] : []
+    .concat(typeof ID.raf === 'number' && ID.raf > 0 ? ['rAF ' + ID.raf + '회(가려진 동안 루프가 안 멈췄다)'] : [])
+    .concat(typeof ID.muts === 'number' && ID.muts > IDLE_MUT_MAX ? ['모달 밖 DOM 변이 ' + ID.muts + '건 > ' + IDLE_MUT_MAX + (ID.top && ID.top.length ? ' [' + ID.top.join(' · ') + ']' : '')] : []);
+  core('C16 유휴 정숙(스튜디오 모달 ' + (IDLE_WINDOW_MS / 1000) + 's · rAF 0 · 모달 밖 변이 ≤ ' + IDLE_MUT_MAX + ')',
+    ID.err ? true : idleBad.length === 0,
+    ID.err ? 'SKIP(측정 불가) ' + ID.err
+      : idleBad.length ? idleBad.join(' · ') + ' — 가드 없는 타이머·루프가 배터리를 먹는다(형제 타이머의 visibilityState+isComposingModalOpen 가드 계승)'
+        : '정숙(rAF ' + ID.raf + ' · 모달 밖 변이 ' + ID.muts + ')');
+
   return out;
 }
 
@@ -728,6 +794,7 @@ async function runOnce(pg, gap, clone, railRow, budget) {
     const clone = await cloneSweep(browser, st.port);   // C11 = 미리보기 창 클론 스윕(gap과 같은 이유로 런 1회 공유 = 순수 레이아웃 측정)
     const railRow = await railRowSweep(browser, st.port);   // C14 = 결과 요약 줄 스윕(전용 페이지 = 이력 시드가 코어 판을 안 건드린다 · gap·clone과 같은 이유로 런 1회 공유)
     const budget = await budgetSweep(browser, st.port);   // C15 = 입력 1타 렌더 예산(전용 thumb 페이지 = 사진 시드가 코어 판을 안 건드린다 · 위 3개와 같은 이유로 런 1회 공유)
+    const idle = await idleSweep(browser, st.port);   // C16 = 유휴 정숙(모달 연 채 손 뗀 상태 = 배터리가 닳는 자리 · 전용 페이지 = addInitScript 계수기 주입 필요)
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
       const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -736,7 +803,7 @@ async function runOnce(pg, gap, clone, railRow, budget) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg, gap, clone, railRow, budget);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
+      const o = await runOnce(pg, gap, clone, railRow, budget, idle);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);
