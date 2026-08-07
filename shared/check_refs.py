@@ -3836,6 +3836,76 @@ def _anchor_menu_block(src, sel):
         return src[i + len(needle):j] if j > 0 else ''
 
 
+# ── 클립 4문법 SSOT 게이트 (운영자 260807 "정본1개를 참조해서 불러오는 개념으로 쓰셈") ──
+#   왜 = 같은 클립 부품이 **접두만 달리해 4벌로 복사**돼 있었다(`.iobtn-edge` 이미지·요약 / `.scnclip` tr·sb·k·vd /
+#   `.urlclip` ly·track·conv / `.askclip` index). 값이 같으니 무해해 보이지만 한 곳을 고치면 나머지가 조용히 낡는다 —
+#   260807 실측에서 이미 세 축이 갈라져 있었다{z-index 2↔5 · transition 3갈래(raw .15s ↔ 토큰) · tap-highlight 유무}
+#   + **tr만 backdrop-filter 잔류**(나머지 8표면은 260701 "타이핑마다 번쩍" 계약으로 전부 제거된 상태 = 계약 위반이
+#   6주 무증상). 운영자 표현 = "원래는 해놓고 몰랐어" — 사람 눈이 유일한 검출기였다.
+#   ⚠ 기존 게이트는 전부 다른 축이다 — `check_clip_coverage` = **클립이 붙었나**(존재) · `check_design` = raw **개수** ·
+#   팔레트 핀 = 뷰어 **간 색** 동값 → 「같은 부품이 **한 원천에서 오는가**」는 축 자체가 없었다.
+#   판정 = 정적(렌더·LLM·네트워크 0) · 3축 = ① 그룹 셀렉터 실존(해체·개명 = fail-closed) ② 클립 문법 보유 뷰어의
+#   nm-clip.css link 실존 ③ 각 뷰어 **단독 규칙**에서 SSOT 축 재선언 0.
+#   ⚠ 면제는 **구조적 사유가 있는 것만** — 늘리려면 사유 1줄 동반(값 사본 복귀의 뒷문이 되면 이 게이트가 죽는다).
+_CLIP_CANON_SEL = '.iobtn-edge, .scnclip, .urlclip, .askclip'
+_CLIP_CANON_MEMBERS = ('.iobtn-edge', '.scnclip', '.urlclip', '.askclip')
+_CLIP_CANON_AXES = ('width', 'height', 'border-radius', 'background', 'color', 'opacity', 'z-index',
+                    'box-shadow', 'transition', 'cursor', 'display', 'place-items', 'padding', 'position')
+_CLIP_CANON_EXEMPT = {
+    ('viewer/index.html', '.askclip'):
+        '`.sbtn`과 합성되는 유일 표면 — head link SSOT가 **같은 특이도**의 인라인 `.sbtn`에게 캐스케이드로 진다'
+        '(260807 실측 = 인라인 제거 시 width/height 26→34·radius 50%→10px 등 10축 붕괴). 특이도 재설계 = 별건.',
+    ('viewer/edit.html', '.urlclip'):
+        '칸 **안** 세로중앙 배치(top:50% · right:12) = 상단 걸침 계열과 다른 문법 — 옮기면 URL 글자를 덮는다.',
+    ('viewer/thumb.html', '.iobtn-edge'):
+        '`.iobtn` 베이스가 raw판(9px·.15s)↔토큰판(--r-s·--dur)으로 갈려 **값 정리가 선행 조건** — 미이관(다음 단계).',
+}
+
+
+def check_clip_canon():
+    """클립 4문법 = 한 벌(nm-clip.css 단일정본 참조). rc=1 = 커밋 차단."""
+    bad = []
+    css_rel = 'viewer/nm-clip.css'
+    css_path = os.path.join(ROOT, css_rel)
+    if not os.path.exists(css_path):
+        print('❌ 클립 SSOT 게이트 — 정본 %s 가 없다.' % css_rel)
+        return 1
+    css = open(css_path, encoding='utf-8').read()
+    # ① 그룹 셀렉터 실존
+    if _CLIP_CANON_SEL + ' {' not in css:
+        bad.append('SSOT 그룹 소실 — `%s` 셀렉터가 %s 에 없다(그룹 해체·이름 변경 = 4문법이 다시 갈라진다).'
+                   % (_CLIP_CANON_SEL, css_rel))
+    # ②·③ 표면 자동 발견
+    for path in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+        src = open(path, encoding='utf-8').read()
+        owns = [m for m in _CLIP_CANON_MEMBERS if m + ' ' in src or m + '"' in src or m + "'" in src]
+        if not owns:
+            continue
+        declares = [m for m in owns if _anchor_menu_block(src, m) is not None]
+        if declares and 'href="nm-clip.css"' not in src:
+            bad.append('%s — 클립 문법 %s 를 쓰면서 `nm-clip.css` link이 없다(사본으로 사는 중).'
+                       % (rel, '·'.join(declares)))
+        for m in declares:
+            if (rel, m) in _CLIP_CANON_EXEMPT:
+                continue
+            body = _anchor_menu_block(src, m)
+            clean = re.sub(r'/\*.*?\*/', ' ', body, flags=re.S)
+            hit = [a for a in _CLIP_CANON_AXES if re.search(r'(?:^|;)\s*' + re.escape(a) + r'\s*:', clean)]
+            if hit:
+                bad.append('%s `%s` 단독 규칙이 SSOT 축 재선언 — %s (정본은 %s 그룹 하나뿐이어야 한다).'
+                           % (rel, m, ', '.join(hit), css_rel))
+    if bad:
+        print('❌ 클립 4문법 갈라짐 — 같은 부품은 **정본 1개를 참조**한다(운영자 260807 "정본1개를 참조해서 불러오는 개념"):')
+        for b in bad:
+            print('   · ' + b)
+        print('   고쳐라 = 값은 `%s` 그룹에만 두고, 각 뷰어는 <link rel="stylesheet" href="nm-clip.css"> 1줄 + 표면 고유 오버라이드만.' % _CLIP_CANON_SEL)
+        return 1
+    print('✅ 클립 4문법 SSOT 게이트 — %s 단일 원천 · 사본 재선언 0(면제 %d = 구조적 사유 명문).'
+          % (_CLIP_CANON_SEL, len(_CLIP_CANON_EXEMPT)))
+    return 0
+
+
 def check_anchor_menu_canon():
     """앵커 메뉴 문법 = 한 벌(위 주석). rc=1 = 커밋 차단."""
     rel = 'viewer/index.html'
@@ -6023,6 +6093,8 @@ def main():
     except Exception as e:
         print('⚠️ 죽은 상태 오버라이드 게이트 스킵:', e)
     try:
+        if check_clip_canon() != 0:   # 클립 4문법 = 정본 1개 참조(운영자 260807 "정본1개를 참조해서 불러오는 개념으로 쓰셈" — 접두만 다른 사본 4벌이 z-index·transition·tap-highlight·backdrop-filter 4축으로 이미 갈라져 있던 것의 기계화 · 기존 클립 게이트는 「붙었나」만 봐서 「한 원천에서 오는가」가 사각)
+            rc = 1
         if check_anchor_menu_canon() != 0:   # 앵커 메뉴 문법 = 한 벌(운영자 260805 "아이디어 ㄱ" — 설정·스튜디오 헤더 메뉴·PASS 사유 3표면이 값을 각자 베껴 쓰다 PASS 창만 혼자 다른 문법으로 갈라진 실사고의 기계화 · 기존 게이트는 raw 개수·뷰어 간 동값·모달 헤더 기하 축이라 「같은 결의 메뉴가 한 벌인가」가 사각)
             rc = 1
     except Exception as e:

@@ -16,19 +16,36 @@
    버튼 사이가 갈린다 → 그 값들은 100% 보존하고 묶음 **전체**만 이 한 값으로 민다(되돌리기 = 이 줄 0으로).
    ⚠ 왜 %인가 = 운영자 지정이 "화면의 길이를 기준으로" = 폭 비례. 기준 = `.iowrap`(입력칸 폭) → 폰 430도 같은 비율.
    실측 대조(뷰포트 552 · 입력칸 폭 520) = 지우개 right 159.6 → 묶음 우측 끝 376.4 = 첨부 캡처 노란 박스 우측 376. */
-.iobtn-edge { --clip-x:28%; top:0; right:calc(var(--clip-x) + 14px); transform:translateY(-50%); width:26px; height:26px; border-radius:50%; opacity:.6;
-  background:rgba(26,28,26,.3); border-color:rgba(255,255,255,.17); color:var(--mut); box-shadow:inset 0 1px 0 rgba(255,255,255,.2); }   /* 오버레이 backdrop-filter 없음(규칙①) = 입력칸 위 떠 타이핑마다 재샘플 번쩍 방지 · editdlg/pastedlg/slide-fb 클립 전부 flicker 차단(옛 .revdlg 스코프만 끄던 것 base로 승격 = .askclip과 동형·감사8인 260704) */
-.iobtn-edge:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
-.iobtn-edge:active { transform:translateY(-50%) scale(var(--press-s,.85)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
-.iobtn-edge.ok { background:rgba(26,28,26,.3); color:var(--accent); border-color:rgba(255,255,255,.17); }
-.iobtn-edge svg { width:13px; height:13px; }
-.iobtn-pp { right:calc(var(--clip-x,0px) + 46px); }     /* 붙여넣기 = 항상 노출 · 지우개 좌측 */
-.iobtn-erase { right:calc(var(--clip-x,0px) + 14px); }  /* 지우개 = 최우측 · 누르면 입력 비움 */
-.iobtn-off { opacity:.3; pointer-events:none; }    /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
-.iobtn-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
-.iobtn-copy { right:calc(var(--clip-x,0px) + 46px); }   /* 지우개 없는 입력 = [복사 46 | 붙여넣기 14] */
-.iobtn-copy-e { right:calc(var(--clip-x,0px) + 78px); } /* 지우개 동반 = [복사 78 | 붙여넣기 46 | 지우개 14] */
-.iobtn-hide { display:none; }                      /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
+/* ══ 클립 = 4문법 한 벌(운영자 260807 "정본1개를 참조해서 불러오는 개념으로") ══════════════════
+   ⚠ 왜 그룹인가 = 같은 부품이 접두만 달리해 4벌로 **복사**돼 있었다(`.iobtn-edge` 이미지·요약 / `.scnclip`
+   tr·sb·k·vd / `.urlclip` ly·track·conv / `.askclip` index). 값이 같으니 무해해 보이지만, 한 곳을 고치면
+   나머지 3벌이 조용히 낡는다 — 실제로 260807 실측에서 세 축이 이미 갈라져 있었다:
+     ⓐ `z-index` 2(iobtn) ↔ 5(나머지)  ⓑ `transition` 3갈래(raw .15s ↔ 토큰 var(--dur))
+     ⓒ `-webkit-tap-highlight-color` 유무  → 셋 다 여기서 **토큰판으로 통일**(raw .15s = 창작값 폐기).
+   ⚠ 통일에서 **뺀** 축 = `backdrop-filter` — `.iobtn` 베이스가 blur를 갖고 `.iobtn-edge`가 그걸 안 꺼서
+   이미지·요약 계열만 blur가 살아 있다(주석은 "base로 승격"이라 하는데 선언이 없다 = 코드·주석 불일치).
+   끄면 **화면이 실제로 바뀐다** → [4-3] 운영자 승인 축이라 현행 유지하고 이 줄로 드러내 둔다.
+   ⚠ 표면 고유(위치·걸침 방향)만 각 뷰어 인라인 잔류 = index `.askclip` 하단 걸침 · edit `.urlclip` 칸 안 중앙.
+   새 뷰어 = `<link rel="stylesheet" href="nm-clip.css">` 1줄 + `<script src="nm-clip.js">` (사본 금지). */
+.iobtn-edge, .scnclip, .urlclip, .askclip {
+  --clip-x:28%; position:absolute; top:0; right:calc(var(--clip-x) + 14px); transform:translateY(-50%);
+  display:grid; place-items:center; width:26px; height:26px; padding:0; z-index:5; opacity:.6; border-radius:50%;
+  background:rgba(26,28,26,.3); border:1px solid rgba(255,255,255,.17); color:var(--mut); cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2); -webkit-tap-highlight-color:transparent;
+  transition:transform var(--dur-fast), color var(--dur), border-color var(--dur); }   /* G1 글래스모피즘(260625) */
+.iobtn-edge svg, .scnclip svg, .urlclip svg, .askclip svg { display:block; width:13px; height:13px; }
+.scnclip::before, .urlclip::before { content:""; position:absolute; inset:-8px; }   /* 히트슬롭 ±8 = 26→42px 탭존 */
+.iobtn-edge:hover, .scnclip:hover, .urlclip:hover, .askclip:hover { color:var(--fg); border-color:rgba(255,255,255,.27); }
+.iobtn-edge:active, .scnclip:active, .urlclip:active, .askclip:active { transform:translateY(-50%) scale(var(--press-s,.85)); color:var(--accent); border-color:rgba(var(--accent-rgb),.6); }
+.iobtn-edge.ok, .scnclip.ok, .urlclip.ok, .askclip.ok { background:rgba(26,28,26,.3); color:var(--accent); border-color:rgba(255,255,255,.17); }
+/* ── 묶음 안 자리 = 역할별 한 줄(접두는 표면마다 다르지만 **값은 한 곳**) ── */
+.iobtn-pp, .scn-pp, .url-pp, .ask-pp { right:calc(var(--clip-x,0px) + 46px); }        /* 붙여넣기 = 항상 노출 · 지우개 좌측 */
+.iobtn-erase, .scn-erase, .url-erase, .ask-erase { right:calc(var(--clip-x,0px) + 14px); }   /* 지우개 = 최우측 · 누르면 입력 비움 */
+.iobtn-copy-e, .scn-copy, .url-cp, .ask-cp { right:calc(var(--clip-x,0px) + 78px); }  /* 지우개 동반 = [복사 78 | 붙여넣기 46 | 지우개 14] */
+.iobtn-copy { right:calc(var(--clip-x,0px) + 46px); }   /* 지우개 없는 입력 = [복사 46 | 붙여넣기 14] (iobtn 전용 자리) */
+.iobtn-off, .scn-erase.scn-off, .url-erase.url-off, .ask-off { opacity:.3; pointer-events:none; }   /* 빈칸 = 지울 것 없음 → 흐리게·비활성 */
+.iobtn-undo, .scn-erase.scn-undo, .url-erase.url-undo, .ask-undo { color:var(--fg); border-color:rgba(255,255,255,.34); }   /* 지움 직후 ~10초 = 되돌리기(흰 픽토그램·또렷한 링) */
+.iobtn-hide, .scn-hide, .url-hide, .ask-cphide { display:none; }   /* 내용 비면 복사 숨김(붙여넣기·지우개는 유지) */
 
 /* 붙여넣기 폴백 모달 = readText 막힌 환경(모바일 iframe·칩)에서 '길게 눌러 붙여넣기' (통일 기틀·운영자 260628) · dialog=top-layer(카드변경 모달 위) */
 .pastefb { border:none; outline:none; background:transparent; max-width:100vw; max-height:100dvh; width:auto; padding:0; margin:auto; }
