@@ -32,14 +32,14 @@ jobs:
           bash shared/smoke_all.sh > smoke.log 2>&1; RC=$?
           echo "── smoke_all rc=$RC ── 로그 꼬리:"
           tail -30 smoke.log
-          FAIL=$(grep -E '^❌' smoke.log | head -4 | tr '\n' ' | ' | cut -c1-360)
+          # 실패 사유 추출 = .github/scripts/smoke_obs.py 단일 정본(운영자 260807).
+          #   ⚠ 구판은 여기서 `grep -E '^❌' smoke.log`로 뽑았는데 **스모크 24종 중 15종이 ❌를 안 쓰고**
+          #     smoke_all 요약줄도 `──`로 시작해 매치 0 → 사유가 **구조적으로 빈 문자열**이었다(실측
+          #     {"rc":1,"fail":""} · 260731~0807 8일 연속). watchdog ⑥이 그 빈 칸을 그대로 발화해
+          #     「UI 스모크 FAIL(rc=1) —  」만 나갔고 운영자는 조치할 대상을 알 수 없었다.
+          #     정본 파서는 종목별 rc·사유·플레이키를 구조화해 싣고 **빈 사유를 금지**한다(fail-closed).
           mkdir -p scraper/obs
-          RC="$RC" FAIL="$FAIL" python3 -c "
-          import json, os
-          from datetime import datetime, timedelta, timezone
-          KST = timezone(timedelta(hours=9))
-          json.dump({'updated': datetime.now(KST).isoformat(timespec='seconds'), 'rc': int(os.environ['RC']), 'fail': os.environ.get('FAIL', '').strip()}, open('scraper/obs/smoke_last.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
-          "
+          RC="$RC" python3 .github/scripts/smoke_obs.py smoke.log scraper/obs/smoke_last.json
           echo "RC=$RC" >> "$GITHUB_ENV"
       - name: 관측 커밋(변동 시만 · watchdog 쿨다운 원장 문법 계승)
         run: |

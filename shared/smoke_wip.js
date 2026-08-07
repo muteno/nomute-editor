@@ -54,10 +54,21 @@ function serve() {
   });
 }
 
+// 크로미엄 경로 = shared/smoke_parity.js `chromiumPath()` 정본 사본(창작 0 · 운영자 260807 봉합).
+//   ⚠ 구판은 '/opt/pw-browsers/chromium' 을 **하드 폴백**으로 박아, 그 경로가 없는 GitHub 러너에서
+//     `browserType.launch: executable doesn't exist` 로 **매 나이틀리 확정 실패**했다(260731~0807 8일 연속 ·
+//     러너 정본은 google-chrome 내장 · 형제 스모크 23종은 전부 which 폴백을 갖고 있어 이 한 종만 갈렸다).
+function chromiumPath() {
+  const cands = [process.env.PW_CHROMIUM, process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium'];
+  try { cands.push(require('child_process').execSync('which chromium chromium-browser google-chrome 2>/dev/null | head -1').toString().trim()); } catch (_) {}
+  for (const c of cands) { if (c && require('fs').existsSync(c)) return c; }
+  throw new Error('크로미엄 실행 파일을 못 찾음 — CHROMIUM_PATH env로 지정해라');
+}
+
 (async () => {
   const pw = loadPlaywright();
   const { srv, port } = await serve();
-  const browser = await pw.chromium.launch({ executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium' });
+  const browser = await pw.chromium.launch({ executablePath: chromiumPath() });
   const page = await browser.newPage({ viewport: { width: 412, height: 915 } });
   const errs = [];
   page.on('pageerror', e => errs.push(String(e)));

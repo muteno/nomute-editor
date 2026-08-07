@@ -4471,6 +4471,81 @@ def check_grade_fix_chain():
     if rc == 0:
         print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→내부 축적) 전 층 생존.')
     return rc
+def check_smoke_obs_chain():
+    """UI 스모크 관측·알림 체인 게이트(하드 · 운영자 260807 "알림 메세지에 그 내용이 쌓이게 ·
+    웹앱 푸쉬알림까지는 안오게 · 다운로드해서 클코에 전달하면 개선할 수 있도록").
+
+    ⚠️ 신설 사유 = **사유 0자 경보가 8일 연속 무증상으로 살았다**(260731~0807 실측 · 나이틀리 런
+       8건 전건 failure). 구판 smoke-nightly.yml 은 `grep -E '^❌' smoke.log` 로 실패 사유를 뽑았는데
+       **스모크 24종 중 15종이 ❌ 를 한 번도 안 쓰고** smoke_all 요약줄도 `──` 로 시작해 매치가 0이었다
+       → 산출물이 {"rc":1,"fail":""} 가 되고 watchdog ⑥ 이 그 빈 칸을 그대로 발화해
+       「UI 스모크 FAIL(rc=1) —  」만 나갔다. **감지는 정확했는데 무엇이 실패했는지가 어디에도 없어서**
+       운영자가 조치할 수 없었다 = 이 레포가 반복해 겪은 「관측이 구조적으로 지워지는 병」과 같은 축
+       (스레드 `[1차 실측]` · 틱톡 `_e1` · 요약실패 `_fk=code`).
+    기존 게이트는 전부 다른 축이다 — check_refs 계열 = 정적 **문자열·경로 실존** · smoke_* = **화면 렌더**
+       → 「경보가 **사유를 갖고 나가는가**」는 축 자체가 없었다.
+
+    4축 = ① 나이틀리가 정본 파서를 실행줄로 호출(구판 `^❌` grep 부활 = 차단)
+          ② **정본 함수 재판정** — smoke_obs.summarize 를 import 해 rc≠0 4케이스에서 사유가
+             0자가 아님을 실제로 확인(사전·정규식 사본 0 · 네트워크·LLM·렌더 0)
+          ③ watchdog 진단서·메시지함 점등 배선(_smoke_report + wd-smoke set/clear)
+          ④ 웹푸시 면제 배선(PUSH_EXEMPT 에 smoke ∧ due 계산이 그것을 참조) — 면제가 조용히 풀리면
+             운영자가 다시 조치 불가 푸시를 받는다."""
+    y = os.path.join(ROOT, '.github', 'workflows', 'smoke-nightly.yml')
+    o = os.path.join(ROOT, '.github', 'scripts', 'smoke_obs.py')
+    w = os.path.join(ROOT, 'scraper', 'watchdog.py')
+    bad = []
+    try:
+        yt = open(y, encoding='utf-8').read()
+        wt = open(w, encoding='utf-8').read()
+        if not os.path.exists(o):
+            raise FileNotFoundError(o)
+    except Exception as e:   # noqa: BLE001 — 앵커 파일 소실 = fail-closed
+        print(f"❌ [smoke-obs] 체인 파일 읽기 실패: {e}")
+        return 1
+    # ① 나이틀리 배선 + 구판 문법 부활 차단
+    if not _has_exec_line(yt, 'smoke_obs.py'):
+        bad.append('smoke-nightly.yml 이 .github/scripts/smoke_obs.py 를 실행줄로 호출하지 않는다(사유 추출 정본 미배선)')
+    if _has_exec_line(yt, "grep -E '^❌'"):
+        bad.append("smoke-nightly.yml 에 구판 사유 추출(grep -E '^❌') 부활 — 스모크 24종 중 15종이 ❌ 를 안 써 사유가 빈다")
+    # ② 정본 함수 재판정 — 어떤 실패 입력에도 사유 0자가 나오면 안 된다(fail-closed 계약)
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('_smoke_obs_gate', o)
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        cases = [
+            ('빈 로그', ''),
+            ('요약줄만', '── smoke_all FAIL ( a=1 ) · [*] = 1차 병렬 FAIL'),
+            ('사유 없는 블록', '════ a (rc=1) ════\n\n── smoke_all FAIL ( a=1 )'),
+            ('전 종목 rc=0인데 rc≠0', '════ a (rc=0) ════\nok'),
+        ]
+        for name, log in cases:
+            jobs, failed, flaky, details = m.parse(log)
+            why = m.summarize(1, jobs, failed, flaky, details, log)
+            if not str(why).strip():
+                bad.append(f'smoke_obs.summarize 가 「{name}」 입력에서 사유 0자 반환 — 빈 사유 금지 계약 위반')
+    except Exception as e:   # noqa: BLE001
+        bad.append(f'smoke_obs 재판정 실패({type(e).__name__}: {e}) — 파서 정본 손상')
+    # ③ 진단서·메시지함 점등
+    if 'def _smoke_report(' not in wt:
+        bad.append('watchdog.py 에 _smoke_report(진단서 본문) 정의 없음 — 메시지함이 한 줄만 받는다')
+    if not _has_exec_line(wt, "'wd-smoke'") and not _has_exec_line(wt, '"wd-smoke"'):
+        bad.append('watchdog.py 가 메시지함 슬롯 wd-smoke 를 점등/해제하지 않는다')
+    if not _has_exec_line(wt, '_smoke_report('):
+        bad.append('watchdog.py 점등부가 _smoke_report 를 쓰지 않는다 — 진단서가 아니라 한 줄만 나간다')
+    # ④ 웹푸시 면제(운영자 260807) — 면제가 풀리면 조치 불가 푸시가 되살아난다
+    if not re.search(r"PUSH_EXEMPT\s*=\s*\{[^}]*['\"]smoke['\"]", wt):
+        bad.append("watchdog.py PUSH_EXEMPT 에 'smoke' 없음 — UI 스모크가 다시 웹푸시를 탄다")
+    if 'PUSH_EXEMPT' not in (re.search(r'due\s*=\s*\{.*?\}', wt, re.S).group(0) if re.search(r'due\s*=\s*\{.*?\}', wt, re.S) else ''):
+        bad.append('watchdog.py due(웹푸시 대상) 계산이 PUSH_EXEMPT 를 참조하지 않는다 — 면제 사문화')
+    if bad:
+        print('❌ [smoke-obs] UI 스모크 관측·알림 체인 결손:')
+        for b in bad:
+            print(f'   · {b}')
+        return 1
+    print('✅ [smoke-obs] 스모크 사유 기록·진단서 점등·푸시 면제 체인 정상')
+    return 0
 
 
 def check_thumb_vote_chain():
@@ -5914,6 +5989,8 @@ def main():
     except Exception as e:
         print('⚠️ grade 교정 체인 게이트 스킵:', e)
     try:
+        if check_smoke_obs_chain() != 0:   # UI 스모크 경보가 사유를 갖고 나가는가(운영자 260807 — 사유 0자 경보가 8일 연속 무증상으로 살아 운영자가 조치할 수 없던 실사고 봉합 · 웹푸시 면제·메시지함 진단서 점등 동반 강제)
+            rc = 1
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1
         if check_ask_srcimg_chain() != 0:   # 출처 글 본문 이미지 수확(운영자 260804 — 본문이 그림뿐인 커뮤니티 글이 '읽을 글 0'으로 ANALYSIS_FAILED 되던 축 봉합 · 층 빠지면 무증상 재발)

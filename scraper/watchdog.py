@@ -64,6 +64,11 @@ SMOKE = os.path.join(ROOT, "scraper", "obs", "smoke_last.json")
 SMOKE_MIN = float(os.environ.get("WD_SMOKE_MIN", "1560"))   # 26h = 일 1회(03:30 크론) 1결번 + 2h 여유(⑤ 산정 문법 계승)
 COOLDOWN_MIN = float(os.environ.get("WD_COOLDOWN_MIN", "360"))
 NOTIFY = (os.environ.get("WATCHDOG_NOTIFY") or "").strip() == "1"
+# 웹푸시 면제 지표(운영자 260807 "웹앱 푸쉬알림까지는 안오게") — 기기 알림으로 깨워도 그 자리에서
+#   운영자가 할 수 있는 조치가 없는(= 조치 주체가 코드/세션인) 축. 면제해도 **감지는 그대로**이며
+#   메시지함 `wd-<지표>` 슬롯에 진단서로 상시 점등된다(main()의 점등부 · 무증상화 아님).
+#   ⚠ 여기 넣는 기준 = 「푸시를 받은 운영자가 폰에서 할 수 있는 게 있는가」 — 없으면 면제가 정직하다.
+PUSH_EXEMPT = {"smoke"}
 
 
 def _age_min(iso):
@@ -233,12 +238,20 @@ def check_brief():
 
 def check_smoke():
     """⑥ UI 스모크 실패/정체 — smoke-nightly가 커밋한 관측 파일로 감지(⑤ check_brief 관용구 미러).
-    rc≠0 = 스모크 FAIL(드리프트·회귀 검출) 즉시 경보 · 나이 초과 = 나이틀리 레인 자체 사망(cancelled 사각) 경보."""
+    rc≠0 = 스모크 FAIL(드리프트·회귀 검출) 즉시 경보 · 나이 초과 = 나이틀리 레인 자체 사망(cancelled 사각) 경보.
+
+    ⚠ 이 지표는 **웹푸시를 타지 않는다**(운영자 260807 "웹앱 푸쉬알림까지는 안오게") — 조치가 코드 축이라
+      기기 알림으로 깨워도 그 자리에서 할 수 있는 게 없다. 대신 메시지함 `wd-smoke` 슬롯에 **진단서**로
+      상시 점등한다(_smoke_report) → 뷰어 메시지함 [↓]가 그대로 HTML로 내보내고, 그 한 장이 다음
+      클로드 코드 세션의 착수 문서가 된다. 발송 분기 정본 = main()의 PUSH_EXEMPT."""
     try:
         d = json.load(open(SMOKE, encoding="utf-8"))
         age = _age_min(d.get("updated"))
         if d.get("rc") not in (0, "0"):
-            return f"UI 스모크 FAIL(rc={d.get('rc')}) — {str(d.get('fail') or '')[:160]} (smoke-nightly 런 로그 확인)"
+            why = str(d.get("fail") or "").strip()
+            if not why:   # 구판 산출물(사유 0자 · 260731~260807 실사고) 대비 — 빈 칸을 그대로 내보내지 않는다
+                why = "사유 미기록(구판 관측 산출물) — 다음 나이틀리부터 상세 기록됨"
+            return f"UI 스모크 FAIL(rc={d.get('rc')}) — {why[:160]}"
         if age is None or age > SMOKE_MIN:
             return (f"UI 스모크 정체 {('%.0f시간' % (age / 60)) if age is not None else '나이 불명'}"
                     f"(임계 {SMOKE_MIN / 60:.0f}h) — smoke-nightly.yml 레인(cancelled/타임아웃) 확인")
@@ -247,6 +260,57 @@ def check_smoke():
     except Exception as e:  # noqa: BLE001
         return f"smoke_last.json 파싱 실패({type(e).__name__})"
     return None
+
+
+def _smoke_report(head):
+    """⑥ 메시지함 본문 = **다른 세션이 이 알림만 받아 바로 고칠 수 있는 진단서**
+       (운영자 260807 "세부적으로 적게해주고 · 다운로드해서 클코에 전달하면 개선할 수 있도록").
+       구성 = insta-thumb-miss 진단서 문법 100% 계승(증상·실측·이미 시도한 층·다음 확인 순서·재현·코드 위치).
+       ⚠ 전 경로 fail-soft — 진단서 조립 실패가 점등 자체를 못 죽인다(그 경우 head 한 줄만 남는다)."""
+    try:
+        d = json.load(open(SMOKE, encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return head
+    jobs = d.get("jobs") or {}
+    failed, flaky = d.get("failed") or [], d.get("flaky") or []
+    details = d.get("details") or []
+    run = (d.get("run") or {}).get("url") or ""
+    L = [head, ""]
+    L.append(f"[회차] {d.get('updated', '?')} · 종목 {len(jobs)}개 중 실패 {len(failed)}종"
+             + (f" · 플레이키 {len(flaky)}종(1차 병렬 FAIL→단독 재시도 PASS = 가짜 빨강)" if flaky else ""))
+    if run:
+        L.append(f"[런] {run}")
+    if details:
+        L += ["", "[실패 종목 · 사유 실물]"]
+        for x in details:
+            L.append(f" ▸ {x.get('job')} (rc={x.get('rc')})")
+            for ln in (x.get("lines") or [])[:3]:
+                L.append(f"    {ln}")
+    elif failed:
+        L += ["", "[실패 종목] " + ", ".join(failed)]
+    if flaky:
+        L += ["", "[플레이키(조치 불요)] " + ", ".join(flaky)
+              + " — 4코어 병렬 경합으로 1차 FAIL 후 단독 재시도 PASS. smoke_all이 이미 흡수했다."]
+    L += [
+        "",
+        "[이미 있는 층 · 여기까지는 자동]",
+        " ① smoke_all 자동발견(shared/smoke_*.js) ② 1차 FAIL 종목 단독 재시도 1회(플레이키 흡수)",
+        " ③ 관측 산출물 기록(.github/scripts/smoke_obs.py → scraper/obs/smoke_last.json)",
+        " ④ 워치독 ⑥이 rc≠0/정체를 읽어 이 메시지함 점등(웹푸시는 의도적 제외 = 조치가 코드 축)",
+        "",
+        "[다음 확인 순서]",
+        " 1) 로컬에서 `bash shared/smoke_all.sh` — 여기서도 FAIL이면 **진짜 회귀**(코드 축).",
+        " 2) 로컬 PASS인데 CI만 FAIL이면 **환경 축** — 러너에 없는 것(크로미엄 경로·폰트·코어 수)을",
+        "    그 스모크가 요구하는지 확인. 정본 = 러너는 google-chrome 내장, 로컬은 /opt/pw-browsers.",
+        " 3) 특정 종목만 반복 실패면 단독 실행으로 좁힌다 — `node shared/<종목>.js`.",
+        " 4) 디자인을 **의도적으로** 바꿔 baseline이 갈린 경우 = 그 스모크의 면책표(*_BASE)를 갱신하고",
+        "    원장 사유를 남긴다(shared/debt_ledger.json 래칫이 증감을 감시).",
+        "",
+        "[재현] bash shared/smoke_all.sh   /   단일: node shared/<종목>.js",
+        "[코드] .github/workflows/smoke-nightly.yml · .github/scripts/smoke_obs.py"
+        " · scraper/watchdog.py `check_smoke`·`_smoke_report` · 게이트 = shared/check_refs.py `check_smoke_obs_chain`",
+    ]
+    return "\n".join(L)
 
 
 def _deploy_obs(live, miss, worst):
@@ -417,6 +481,16 @@ def main():
                 subprocess.run([sys.executable, mp, "set", "wd-kwsrc", alerts["kwsrc"], "warn", "sns-recollect"], timeout=30)
             else:
                 subprocess.run([sys.executable, mp, "clear", "wd-kwsrc"], timeout=30)
+            # UI 스모크(운영자 260807 "알림 메세지에 그 내용이 쌓이게 · 웹앱 푸쉬알림까지는 안오게") —
+            #   조치가 **코드 축**이라 기기 푸시로 깨워도 그 자리에서 할 게 없다(260731~0807 실사고 = 8일 연속
+            #   푸시가 왔는데 본문이 「rc=1 —  」 사유 0자라 운영자가 조치 불가). → 푸시는 PUSH_EXEMPT로 빼고
+            #   메시지함엔 **진단서 전문**으로 점등한다: 뷰어 메시지함 [↓]가 그대로 HTML로 내보내므로 그 한 장이
+            #   다음 클로드 코드 세션의 착수 문서가 된다(insta-thumb-miss 인수인계 진단서 문법 계승).
+            #   액션 버튼 없음 = 뷰어에서 눌러 고칠 수 있는 게 없다(오도 방지 · wd-phone 관용구).
+            if alerts.get("smoke"):
+                subprocess.run([sys.executable, mp, "set", "wd-smoke", _smoke_report(alerts["smoke"]), "warn"], timeout=30)
+            else:
+                subprocess.run([sys.executable, mp, "clear", "wd-smoke"], timeout=30)
         except Exception as e:  # noqa: BLE001
             print(f"::warning::watchdog 메시지함 점등 실패(무시): {e}")
     if not alerts:
@@ -432,9 +506,12 @@ def main():
         a = _age_min(st.get(k, ""))
         return a if a is not None else 1e9   # 0.0분도 유효값(or-falsy 함정 금지 — fable검5 R4·check_collect과 동일 원칙)
 
-    due = {k: m for k, m in alerts.items() if _cool_age(k) > COOLDOWN_MIN}
+    due = {k: m for k, m in alerts.items()
+           if k not in PUSH_EXEMPT and _cool_age(k) > COOLDOWN_MIN}
     if not due:
-        print(f"워치독: 이상 {len(alerts)}건 전부 쿨다운({COOLDOWN_MIN:.0f}분) 내 — 재알림 억제")
+        _ex = [k for k in alerts if k in PUSH_EXEMPT]
+        print(f"워치독: 이상 {len(alerts)}건 — 웹푸시 대상 0건"
+              + (f"(푸시 면제 {','.join(_ex)} = 메시지함 점등만)" if _ex else f" · 전부 쿨다운({COOLDOWN_MIN:.0f}분) 내"))
         return
     # 발송 가능 사전 체크(fable검5 R2) — push_send는 구독자 0·VAPID 없음도 rc=0 "생략"이라,
     # 미발송인데 쿨다운 도장을 찍고 6h 억제하던 semantics 오류 봉합: 불가 상태 = 도장 없이 로그만.
