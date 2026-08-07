@@ -1842,7 +1842,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     h += `<div class="cpv" style="left:0;right:0;top:${py(385)};margin-top:${px(15)};text-align:center;color:${CPV_GREEN};font-size:${px(90)};font-weight:800;line-height:1.15;white-space:pre;letter-spacing:${(trT / 1000).toFixed(4)}em">${esc(ctitle)}</div>`;   // margin-top = 세로 잉크탑 보정(PIL 'la' 앵커 vs CSS 라인박스 실측 Δ 부제+9·제목+15@1080 — 골든 픽셀 대조 260716)
     }
   } else if (cur.k === 'ov') {                                      // 자막 = nomute_overlay SPECS 미러(reels ty1119/fs78 · post ty822/fs76) — 그라데·로고 = generate() 무조건 합성이라 변형 표시 = 항상 동반(운영자 260716) · 오버레이만 ON = 사진 미표시(산출 미러 · 운영자 260718)
-    if (CIMG.b64 && !ovOnly) h += `<img class="cpv-bg cpv-pan" draggable="false" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;   // .cpv-pan = 배치(이동·확대축소) 대상 표식(운영자 260805) — 로고·베이스(data-logo)는 산출 고정물이라 비대상
+    if (CIMG.b64 && !ovOnly) h += CPV_PANSLOT;   // .cpv-pan = 배치(이동·확대축소) 대상 표식(운영자 260805) — 로고·베이스(data-logo)는 산출 고정물이라 비대상 · 노드 실물은 아래 자리표시자 치환(260807)
     h += `<div class="cpv-scrim ${cur.fmt === 'reels' ? 'g-reels' : 'g-post'}" style="opacity:${(((v0 => Number.isFinite(v0) ? v0 : 60)(opaHi())) / 100).toFixed(2)}"></div>`;   // 정규화 스탑 × opacity(op/100) = generate() OPA 스케일 수식 등가 · 표시 = 최고 OPA 변형(운영자 260803 "네비게이션에 뜨는거는 높은 opa 하나만" — 레일이 최고값 1개만 띄우고 그걸 조절하니 미리보기도 같은 값이어야 조절 피드백이 맞다 · 구 '첫 값'은 선택 순서 종속이라 레일 조절 중 미리보기가 안 변하는 구간이 생겼다) · OPA 0 = falsy라 || 폴백 금지(0 스크림 정상 미러 · 260718 2차)   /* 260727 되돌림(운영자 "한 수로 지시한 거 다 되돌려") = OPA 2장 좌/우 분할 비교(Q684) 철거 → 첫 값 1장 단일 스크림 원형 복귀 */
     // 진짜예요 = CI가 베이스에 구워져 있어 전면 레이어로 깔린다(운영자 "로고만 교체하면 되니까") · 노뮤트는 logo_rect 조각 로고 그대로
     if (cTpl === 'jinjja') {
@@ -1862,7 +1862,7 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     }
     }
   } else if (cur.k === 'card') {                                    // 카드뉴스 = card_news.py 미러(1080×1350·START 87/888·fs54 lh88·우마진56·그라데 상단38.6% 투명→하단 α236) — 썸네일 hdr/ov 좌표와 값 공유 0(상호 간섭 금지 정본 · 운영자 260712) · 로고 없음 = 합성기 그대로(card_news.py 로고 미합성)
-    if (CIMG.b64) h += `<img class="cpv-bg cpv-pan" draggable="false" src="${CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64}" alt="">`;   // 카드뉴스 배경도 같은 배치 축(운영자 260805)
+    if (CIMG.b64) h += CPV_PANSLOT;   // 카드뉴스 배경도 같은 배치 축(운영자 260805) · 노드 실물은 아래 자리표시자 치환(260807)
     h += `<div class="cpv-scrim g-card"></div>`;
     const cl = cur.cl || [];
     if (cl.length) h += `<div class="cpv" style="left:${px(87)};right:${px(56)};top:${py(888)};color:${CPV_WHITE};font-size:${px(54)};font-weight:700;line-height:${(88 / 54).toFixed(3)};white-space:pre">${cl.map(emph).join('<br>')}</div>`;   // 자간 없음 = card_news.py 그대로(통줄 렌더·tracking 미적용) · white-space:pre = 무줄바꿈 미러
@@ -1883,12 +1883,31 @@ function renderCpPrev() {   // app2 상시 표시(운영자 260714 Q03②) + 편
     });
   }
   st.innerHTML = h;
+  const _ps = st.querySelector('[data-panslot]'); if (_ps) _ps.replaceWith(cpvPanNode());   // 사진 노드 = 재조립 제외(260807) — 자리표시자를 살려둔 <img>로 되꽂는다(클래스·속성·DOM 순서 종전 동일)
   cpPanFmt = cur.fmt === 'reels' ? 'reels' : 'post'; cpPanApply();   // 배치 기하 = 지금 그린 산출 포맷 기준 재계산(포맷이 바뀌면 cover 환산 배수도 바뀐다) + 레일 재동기(방금 만든 .cpv-pan을 보고 판정 = 순서 의존 0)
   cpToolSync(false);   // 변형 렌더 = 교체 상시(텍스트 변형 중에도 사진 넣을 입구 유지) · 삭제 = 사진 있을 때만
 }
 // 첨부↔교체 픽토 한 쌍(운영자 260802 "첫 첨부 전에는 교체가 아니라 이미지 첨부 픽토그램") — 첨부 = .cpv-photobtn/PHOTO 정본 동일 SVG(stroke 1.5) · 교체 = index RT_SVG 정본(stroke 2 = 옆 휴지통 동값)
 const CPSW_ADD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M21 16l-5-5L5 20"></path></svg>';
 const CPSW_SWAP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
+// 사진 노드 1벌 = 문자열 재조립에서 분리(운영자 260807 발열 · 평의회 8인 실측) —
+//   구판은 `st.innerHTML = h`의 h 안에 `src="data:image/jpeg;base64,…"`(폰 사진 통짜 1.6MB)를 박아,
+//   키를 한 번 칠 때마다 1.6MB 문자열을 새로 만들고 HTML 파서에 다시 먹이고 <img>를 파괴·재생성했다(= JPEG 재디코드).
+//   → 자리표시자(`<i data-panslot>`)만 문자열에 굽고, 살려둔 노드를 그 자리에 되꽂는다. 실측 렌더 38.1ms → 16.0ms.
+//   ⚠ 노드를 살려두므로 「탭을 나가도 남는 상태」가 생긴다 → src가 바뀌면(교체·삭제·재첨부) 새로 만든다(_cpvPanSrc 대조).
+//   클래스·draggable·alt·DOM 순서는 구 문자열과 **동일**(smoke_studioshell C7·C10·C11 기하 무변경 실증).
+const CPV_PANSLOT = '<i data-panslot hidden></i>';
+function cpvPanSrc() { return CIMG.b64.startsWith('data:') ? CIMG.b64 : 'data:image/jpeg;base64,' + CIMG.b64; }
+let _cpvPanEl = null, _cpvPanSrc = '';
+function cpvPanNode() {
+  const url = cpvPanSrc();
+  if (!_cpvPanEl || _cpvPanSrc !== url) {
+    _cpvPanEl = new Image();
+    _cpvPanEl.className = 'cpv-bg cpv-pan'; _cpvPanEl.draggable = false; _cpvPanEl.alt = '';
+    _cpvPanEl.src = url; _cpvPanSrc = url;
+  }
+  return _cpvPanEl;
+}
 function cpToolSync(empty) {   // 미리보기 사진 도구(교체·삭제) 상태 동기 — 노출은 상시(구 `empty` 게이트 폐지 · 인자는 호출부 4곳 무접촉을 위해 유지) — 구 슬롯(#cImgSlot) 이주분(운영자 260716)
   const sw = $('#cpImgSwap'), dl = $('#cpImgDel');
   if (sw) { sw.hidden = false; sw.disabled = false;   /* 버튼 = **상시 노출·상시 활성** — 빈 상태에서도 첨부 입구(중앙 업로드 픽토와 같은 #cFile 위임) · 사라지지 않으니 자리(레일 높이)가 흔들리지 않는다 */
@@ -4408,14 +4427,26 @@ const TRK = {
 // 진짜예요 오버레이 좌표(운영자 플레이그라운드 선택값) — nomute_jinjja.OV_SPEC과 1:1 미러 · lm = 노뮤트 SPECS lm 계승(260728 좌측정렬 개정)
 // ctr = 가운데 정렬(릴스만 · 운영자 260730) · rm = 우 마지노선(워크플로 fit_tracking "post lm85/rm75 · reels lm101/rm135" 미러) = nomute_jinjja.OV_CENTER/OV_RM와 1:1
 const JJ_OV = { reels: { ty: 1214, fs: 76, lh: 96, lm: 101, rm: 135, ctr: true }, post: { ty: 856, fs: 76, lh: 96, lm: 85, rm: 75, ctr: false } };
+// 폰트 준비 판정 = **크기(fs)별 1회 도장** — `document.fonts.check()`는 호출당 0.213ms(실측)라 글자마다 부르면
+//   `estTracking` 자간 sweep 1회(최대 46패스 × 전 글자)에 **1,200발 = 286ms**가 든다(260807 평의회 8인 실측 · 진범 확정).
+//   true는 비가역이다(로드된 웹폰트는 언로드되지 않는다) → 한 번 통과하면 도장을 찍고 다시 안 묻는다.
+//   ⚠ false는 절대 담지 않는다 — 로드 전 판정을 영구화하면 폰트가 도착해도 영영 상수 폴백에 갇힌다(자간이 틀어진 채 고착).
+const _trkFontOk = (() => {
+  const ok = new Set();
+  return (fs) => {
+    if (ok.has(fs)) return true;
+    if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return false;
+    ok.add(fs); return true;
+  };
+})();
 const _trkChW = (() => {   // 글자폭 실측(fs별 캐시) — draw_t/getlength의 글자별 진행폭 미러 · 실패 = null(상수 폴백)
   let cx = null; const cache = new Map();
   return (ch, fs, basis) => {
     try {
-      if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;   // 실폰트 로드 전 = 대체폰트 폭 오염 차단
-      if (!cx) cx = document.createElement('canvas').getContext('2d');
       const key = basis + fs + ch;
-      if (cache.has(key)) return cache.get(key);
+      if (cache.has(key)) return cache.get(key);   // ⭐ 캐시 선조회 = 적중 시 폰트 조회 0(캐시엔 아래 게이트를 통과한 값만 들어가므로 순서 교환이 값을 오염시킬 수 없다)
+      if (!_trkFontOk(fs)) return null;   // 실폰트 로드 전 = 대체폰트 폭 오염 차단
+      if (!cx) cx = document.createElement('canvas').getContext('2d');
       cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
       const m = cx.measureText(ch);
       // 측정 기준 = basis 선언이 정하는 **한 자**(운영자 260802 "잴 때 항상 한개의 기준") — 현재 전 축 'adv'(advance).
@@ -4433,10 +4464,10 @@ const _trkAdvW = (() => {   // 글자 **advance**(브라우저 배치폭) 캐시
   let cx = null; const cache = new Map();
   return (ch, fs) => {
     try {
-      if (!document.fonts || !document.fonts.check('700 ' + fs + 'px "' + CP_PREV_FONT + '"')) return null;
-      if (!cx) cx = document.createElement('canvas').getContext('2d');
       const key = fs + ch;
-      if (cache.has(key)) return cache.get(key);
+      if (cache.has(key)) return cache.get(key);   // ⭐ 캐시 선조회(위 _trkChW와 동축 · 260807)
+      if (!_trkFontOk(fs)) return null;
+      if (!cx) cx = document.createElement('canvas').getContext('2d');
       cx.font = '700 ' + fs + 'px "' + CP_PREV_FONT + '"';
       const w = cx.measureText(ch).width;
       cache.set(key, w); return w;
