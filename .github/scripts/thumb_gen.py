@@ -553,12 +553,16 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
     aspect: 화면비("4:5" 기본=카드/썸네일 · "16:9"/"9:16"=영상 레퍼런스 등).
     ref_png: 참조 얼굴 사진 bytes(운영자 260703 참조 체이닝) — 있으면 parts 앞에 inline_data로 첨부해
              "이 실제 얼굴로 그려라". 실사진→일러스트 = 공인 캐리커처 전통(안전 하한은 프롬프트가 유지). 없으면 텍스트 전용.
+             ⚠ **bytes 또는 bytes 리스트**(260807) — 3.1 Flash Image는 입력 이미지 다장을 받는데 구판은
+             1장으로 고정돼 있었다. 리사이즈 아웃페인팅이 「원본 + 씨앗」 2장을 보내려면 필요하고,
+             bytes 단건은 종전과 **바이트 동일**하게 동작한다(기존 호출부 전건 무접촉).
     """
     global LAST_ERR
     LAST_ERR = ""
     parts = []
-    if ref_png:
-        parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(ref_png).decode()}})
+    for _rp in (ref_png if isinstance(ref_png, (list, tuple)) else [ref_png] if ref_png else []):
+        if _rp:
+            parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(_rp).decode()}})
     parts.append({"text": prompt})
     payload = {
         "contents": [{"parts": parts}],

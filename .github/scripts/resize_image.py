@@ -45,6 +45,7 @@ SIZES = ("1K", "2K")
 FILLS = ("auto", "solid", "blur", "ai")   # 채움 오버라이드(운영자 260803) — api/resize FILLS와 한 쌍 · auto = 종전 자동 라우팅
 SEED_ON = os.environ.get("RESIZE_SEED", "1") != "0"   # 씨앗 다듬기 모드(260806 기본 ON · RESIZE_SEED=0 = 구 회색 빈칸 방식으로 즉시 원복)
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
+STREAK_MAX = 0.50   # 여백 clamp 줄무늬 잔류 상한 — 초과 = 「모델 무동작」(260807 실측: 무동작 0.983 vs 정상 재작성 0.000 · JPEG 왕복 후에도 성립)
 
 P_PADFILL = (
     "This is a mechanical uncrop / continuation task, NOT a creative one — you are revealing more "
@@ -78,24 +79,58 @@ P_PADFILL = (
 
 
 P_SEEDFILL = (
-    "This image has already been mechanically extended {where} — those margins were filled by "
-    "stretching the last row/column of pixels outward, so the colours and layout there are already "
-    "correct but the texture is smeared into obvious streaks. Your ONLY job is to replace those "
-    "streaks with the proper texture so the whole frame reads as one single continuous photograph. "
-    "Do NOT reimagine or replace the scene. Do NOT add any object, person, body part, star, light "
-    "effect, furniture, wall, panel, text or watermark that is not already present. Keep the "
-    "composition and every colour region exactly where it is. "
-    "Work only on the extended margins {where}: keep each streak's colour and position, but rebuild "
-    "its detail by continuing the neighbouring texture — if the adjacent area is a city skyline at "
-    "night, the streaks become more of that same skyline at the same scale and density; if it is "
-    "fabric, more of that same fabric. Never leave a smooth flat area where the neighbouring "
-    "pixels have texture. Straighten lines and horizons so they run continuously across the joins, "
-    "and even out brightness so no seam or band remains. "
-    "Preserve the existing lighting direction, perspective, grain and depth of field — if the "
-    "neighbouring pixels are out of focus, the repaired margins must be equally out of focus. "
-    "Keep every pixel of the central original area exactly unchanged. "
+    # ⓞ 두 장을 준다 = 「진짜 사진」이 그림 증거로 들어간다(개수·정체를 말로 주장하지 않고 보여준다)
+    "You are given two pictures. Picture 1 is the REAL PHOTOGRAPH and is the only source of truth for "
+    "what exists in this scene: every subject in your output must come from Picture 1, and nothing "
+    "absent from Picture 1 may appear. Picture 2 is that same photograph placed on a larger canvas, "
+    "and it is the canvas you must repair. "
+    # ① 캔버스 실측 서술 — 대명사 없이 %로 지목(구판 "extended above and below **it**" = 선행사 없는 순환문)
+    "In Picture 2 the real photograph occupies only {keep}. {where} — those bands are not photographed "
+    "content at all: each was produced by taking the single last row or column of the real photograph "
+    "and repeating it outward, so their colours and layout are already correct but the texture is "
+    "smeared into one-pixel streaks. Your ONLY job is to rebuild real texture inside those bands so "
+    "the whole frame reads as one single continuous photograph. "
+    # ② 줄무늬 해석 고정 — 「줄무늬는 물체가 아니다」
+    "Read every streak as EMPTY space still waiting to be filled, never as an object. A streak depicts "
+    "nothing: it is one pixel repeated hundreds of times. A tall streak that happens to be skin-, hair- "
+    "or suit-coloured is NOT a person, NOT a body and NOT a garment. "
+    # ③ 개수 = 원본 대비 상대(절대수 금지 = 2명·0명 사진에서 거짓 지시가 된다)
+    "Your output must contain exactly the same subjects as Picture 1 — the same people, the same number "
+    "of people, the same faces, the same objects. Creating a second copy of anything that already exists "
+    "is the single worst failure of this task: no second person, no second face, no second head, no "
+    "second torso, no second pair of shoulders, no second collar or tie, nowhere in the frame. "
+    # ④ 잘린 피사체의 정당한 연장 = 「한 몸」으로만(이 절이 없으면 몸이 허공에서 끊기는 새 실패가 난다)
+    "If a person or object is cut off by the edge of the real photograph and its streak runs into a "
+    "band, you may continue that ONE body outward so it stays a single, anatomically attached, "
+    "correctly proportioned body that simply leaves the frame, with the background continuing around "
+    "it. Continuing one body is correct; starting a second body is not. "
+    # ⑤ 텍스처 재건 — ⚠ 구판의 "if it is fabric, more of that same fabric" 삭제(진범)
+    "Work only inside the bands: keep each streak's colour and position, but rebuild its detail by "
+    "continuing the neighbouring texture at the same scale, density, grain and focus. Background "
+    "continues as background — a night skyline becomes more of that same skyline, a wall more of that "
+    "same wall, out-of-focus bokeh more of that same bokeh. Never leave a smooth flat area where the "
+    "neighbouring pixels have texture; but everything you add must be either background texture or the "
+    "single continuation described above — never a new subject. {edgerule} "
+    # ⑥ 종전 유지 절(회귀 0) — 「that is not already present」 꼬리절은 제거(유령을 면책하던 구멍)
+    "Do NOT reimagine or replace the scene. Apart from background texture and that single continuation, "
+    "do NOT add anything at all — no extra object, person, body part, star, light effect, furniture, "
+    "wall, panel, text or watermark. Keep the composition and every colour region exactly where it is. "
+    "Straighten lines and horizons so they run continuously across the joins, and even out brightness "
+    "so no seam or band remains. Preserve the existing lighting direction, perspective, grain and depth "
+    "of field — if the neighbouring pixels are out of focus, the repaired bands must be equally out of "
+    "focus. Keep every pixel of the real photograph exactly unchanged. "
     "The result must look like the camera simply captured a wider view of the exact same scene."
 )   # 씨앗 다듬기 프롬프트(260806 · 운영자 "firefly로 만들때 명령어 아예 입력안해도 자연스럽게 채우기는 잘하던데")
+#   ⚠ 260807 평의회 개정 = **구판이 유령을 「금지 못한」 게 아니라 「주문했다」**. 진범 3문장:
+#     ⓐ `if it is fabric, more of that same fabric.` — 하단 204px 밴드의 이웃 텍스처가 **정장**이라
+#        「그 자리에 정장 천을 더 만들어라」가 된다. 204px에 정장 천을 이행하는 물리적 방법은 **또 한 사람**뿐.
+#        (이 레포가 `check_thumb_prompt_sanity`로 이미 이름 붙인 병 = 한 프롬프트 안의 자기모순)
+#     ⓑ `... that is not already present` 꼬리절 — 유령 몸통은 「이미 있는 것」(사람·정장)이라 금지 목록을
+#        문자 그대로 **빠져나간다**. 실패 모드 이름이 `ghosting/duplication`인데 금지어에 second·copy가 0개였다.
+#     ⓒ `Keep ... every colour region exactly where it is` — 204px 정장색 영역을 「올바른 것」으로 승인해
+#        모델에게 남은 자유도가 「그 영역에 디테일 주기」뿐이 된다 = 몸통.
+#     + `extended {where} ... it` = 선행사 없는 순환문이라 모델이 원본/밴드 경계를 문장으로 알 수 없었다.
+#   슬롯 3개({keep}·{where}·{edgerule})는 `seed_dirs()`가 **실측 %**로 채운다(구 box_dirs는 P_PADFILL 전용 문법).
 #   ⚠ P_PADFILL(회색 빈칸 → 채워라)과 **과업이 다르다**: 여기선 seed_pad가 이미 메꿔 놓았고 모델은 **결함 제거만** 한다.
 #   실호출 근거(260806 앵커 3비율) = 회색 빈칸 방식의 실패 사유가 「seam + severe ghosting/duplication」(4:5 QA 2회 FAIL)이라
 #   그 결함 이름을 그대로 과업으로 준다 = 모델이 「무엇을 그릴까」를 결정할 여지 자체를 없앤다.
@@ -105,20 +140,58 @@ P_SEEDFILL = (
 #     요구하고, 「가구·벽·패널」을 발명 금지 목록에 명시(16:9 실측 = 없던 스튜디오 기둥·조명 발명).
 
 
-def gemini_judge(png_bytes):
+def gemini_judge(png_bytes, ref_bytes=None):
     """생성 결과 자가 QA(exp r8 검증 이식 — 운영자 '검증하면서 뽑는 프롬프팅') — 같은 모델 TEXT 판정.
-    (passed, reason) · 판정 콜 실패 = None(fail-soft·렌더는 살림)."""
+    (passed, reason) · 판정 콜 실패 = None(fail-soft·렌더는 살림).
+
+    ⚠ 260807 평의회 4개 렌즈가 **독립적으로 같은 결론**에 도달한 봉합 — 구판은 **결과 1장만** 보냈다.
+      그래서 「duplicated objects」는 **원리적으로 판정 불가능한 술어**였다: 원본에 사람이 몇이었는지
+      모르는 심판에게 「복제됐나」를 물은 셈이다. 260806 9:16 유령이 QA를 **통과해서 출고된** 직접 원인이고,
+      잡혔더라면 파이프는 설계대로 씨앗 폴백으로 내려가 **유령 대신 줄무늬**가 나갔다(안전망이 안 돈 게 아니라
+      안전망에 눈이 없었다). 이식원 = `exp_resize_v0.gemini_judge`의 2이미지 분기(**신설 아님 · 사본**).
+      추가 과금 = 입력 이미지 1장 ≈ $0.0006(생성 콜의 1/100).
+    ⚠ 위양성 3겹이 실효 조건 = 언크롭은 **원래 더 보이는 게 정상**이라 그걸 결함으로 읽으면 게이트가
+      성공본을 죽인다: ⓐ 프레이밍 면책을 FAIL 목록 **앞**에 선언 ⓑ 「이어진 한 몸」은 복제가 아님을 명문화
+      ⓒ 개수는 **절대수가 아니라 원본 대비 상대**(원본이 2명이면 2명이 정답 · 0명·N명에서도 자동으로 옳다)."""
     import base64
     import urllib.request
-    prompt = ("You are a strict photo QA judge. Answer in EXACTLY this format:\n"
-              "VERDICT: PASS or FAIL\nREASON: <one short sentence>\n"
-              "FAIL if any of these are visible: anatomically wrong human body, unnatural body proportions, "
-              "duplicated objects or duplicated text, watermarks, leftover flat gray areas, an obvious "
-              "visible seam or brightness band, or brand-new elements in the filled margins (stars, "
-              "light effects, body parts, objects) that do not continue anything present in the "
-              "original photo. Otherwise PASS.")
-    parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
-             {"text": prompt}]
+    if ref_bytes:
+        prompt = (
+            "You are a strict photo QA judge. Image 1 is the ORIGINAL photograph. Image 2 is that same "
+            "photograph after its frame was extended (uncropped) to a different aspect ratio.\n"
+            "Answer in EXACTLY this format:\nVERDICT: PASS or FAIL\nREASON: <one short sentence>\n"
+            "Image 2 legitimately shows MORE of the scene than Image 1 — a larger frame, more background, "
+            "and more of a body or object that was cut off by the edge of Image 1. A different crop, a "
+            "different framing and more visible background are all EXPECTED and are never failures.\n"
+            "FAIL only if one of these is visible in Image 2:\n"
+            "(a) DUPLICATED SUBJECT — a person, face, head, torso, pair of shoulders, limb, building or "
+            "object that has NO counterpart in Image 1 and is spatially separate from the subjects of "
+            "Image 1; that is, the number of distinct people, or of distinct main objects, is higher in "
+            "Image 2 than in Image 1. A body that is simply continued from a body in Image 1 and stays "
+            "attached to it is NOT a duplicate and must PASS. If Image 1 shows a crowd of more than six "
+            "people, do not count them — in that case FAIL only if a clearly separate new figure appears "
+            "in an area that was plain empty background in Image 1.\n"
+            "(b) anatomically wrong human body, or unnatural body proportions (for example a torso "
+            "stretched far longer than a real human torso).\n"
+            "(c) duplicated text, watermarks, leftover flat gray areas, smeared one-pixel streaks left "
+            "unrepaired, or an obvious visible seam or brightness band.\n"
+            "(d) brand-new elements in the extended margins (stars, light effects, body parts, objects) "
+            "that do not continue anything present in Image 1.\n"
+            "Otherwise PASS. If you FAIL, REASON must say WHERE the defect is — for example "
+            "\"a second torso appears in the lower left\".")
+        parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(ref_bytes).decode()}},
+                 {"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
+                 {"text": prompt}]
+    else:
+        prompt = ("You are a strict photo QA judge. Answer in EXACTLY this format:\n"
+                  "VERDICT: PASS or FAIL\nREASON: <one short sentence>\n"
+                  "FAIL if any of these are visible: anatomically wrong human body, unnatural body proportions, "
+                  "duplicated objects or duplicated text, watermarks, leftover flat gray areas, an obvious "
+                  "visible seam or brightness band, or brand-new elements in the filled margins (stars, "
+                  "light effects, body parts, objects) that do not continue anything present in the "
+                  "original photo. Otherwise PASS.")
+        parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
+                 {"text": prompt}]
     payload = {"contents": [{"parts": parts}], "generationConfig": {"responseModalities": ["TEXT"]}}
     req = urllib.request.Request(tg.API + "?key=" + tg.KEY, data=json.dumps(payload).encode(),
                                  headers={"Content-Type": "application/json"})
@@ -246,21 +319,55 @@ def pad_canvas(img, ar, fill=(127, 127, 127)):
     return canvas, (x, y, x + W, y + H)
 
 
-def pixel_lock(gen_png, canvas_size, src_img, box, feather=32):
-    """생성 결과 위 원본 재부착 + 경계 페더(v0 검증 · 실사 톤 단차 완화로 24→32px)."""
-    gen = Image.open(io.BytesIO(gen_png)).convert("RGB").resize(canvas_size, Image.LANCZOS)
+def pixel_lock(gen_png, canvas_size, src_img, box, seed_img=None, feather=16):
+    """생성 결과 위 원본 재부착 — **원본 박스는 무손실**, 페더는 여백이 있는 변의 **바깥**으로만.
+
+    ⚠ 260807 평의회 실측 봉합(확정 결함 · 유령과 무관하게 상시 발동하던 라이브 사고) —
+      구판은 `mask`를 박스 **안쪽**으로 4변 무조건 램프했다. 그래서
+        ⓐ `ramp[0]=0` = 박스 최외곽 1px이 **모델 출력 100%** → 원본 화소의 **38.3%가 alpha<1**
+           (실측 = 순빨강 가짜 생성본 주입 후 원본 대조 · 변조 33,728/87,965 · **최대오차 254**)
+        ⓑ **여백이 0인 밀착 변에도** 램프를 걸었다 — 섞을 여백이 없는데 원본만 양보한다.
+      실물 피해 = 260806 16:9 「성공」본의 **원본 하단 12행이 크림색 가로 막대로 덮였다**
+      (모델이 그린 데스크·자막바가 페더를 타고 원본 안으로 들어왔고 QA는 그걸 통과시켰다).
+      파일 머리말 「픽셀락 = 문구·얼굴 100% 보장」은 그 상태에서 **거짓 서술**이었다.
+    수리 = ① 박스 안 = 항상 원본 그대로(마지막에 무조건 덮는다 = 무손실 계약 복원 · 실측 변조 **0.0%**)
+           ② 페더는 `gap_sides` 논리와 같은 술어로 **여백이 실재하는 변의 바깥**으로만 편다
+              (붙이는 그림 = 씨앗 = 박스 안 원본 + 밖 연장이라 색이 이어진다 · 씨앗 없으면 하드 부착)
+           ③ 감쇠 = smoothstep(C¹ 연속) — 선형 램프는 양 끝 기울기가 꺾여 마하 밴드가 보인다
+           ④ feather 32→16 — 32는 **회색 빈칸 시대**의 톤 단차를 지우려 24→32로 키운 값이고,
+              씨앗 시대엔 모델이 경계 색을 이어받으므로 근거가 사라졌다(밖으로만 펴므로 원본 손실은 어차피 0).
+    """
+    gen = (gen_png if isinstance(gen_png, Image.Image)
+           else Image.open(io.BytesIO(gen_png)).convert("RGB"))
+    if gen.size != canvas_size:   # 이미 같은 크기면 LANCZOS 공회전 금지(래더·재판정 경로에서 세대 손실 0)
+        gen = gen.resize(canvas_size, Image.LANCZOS)
     x0, y0, x1, y1 = box
-    w, h = x1 - x0, y1 - y0
-    mask = np.ones((h, w), dtype=np.float32)
-    f = max(1, min(feather, w // 4, h // 4))
-    ramp = np.linspace(0.0, 1.0, f, dtype=np.float32)
-    mask[:, :f] = np.minimum(mask[:, :f], ramp[None, :])
-    mask[:, -f:] = np.minimum(mask[:, -f:], ramp[::-1][None, :])
-    mask[:f, :] = np.minimum(mask[:f, :], ramp[:, None])
-    mask[-f:, :] = np.minimum(mask[-f:, :], ramp[::-1][:, None])
-    m = Image.fromarray((mask * 255).astype("uint8"), "L")
+    cw, ch = canvas_size
+    gap = {"left": x0 > 0, "right": x1 < cw, "top": y0 > 0, "bottom": y1 < ch}
     out = gen.copy()
-    out.paste(src_img, (x0, y0), m)
+    if seed_img is not None and any(gap.values()):
+        fx = min(feather, x0 if gap["left"] else feather, cw - x1 if gap["right"] else feather)
+        fy = min(feather, y0 if gap["top"] else feather, ch - y1 if gap["bottom"] else feather)
+        fx, fy = max(0, int(fx)), max(0, int(fy))
+        ex0, ey0 = x0 - (fx if gap["left"] else 0), y0 - (fy if gap["top"] else 0)
+        ex1, ey1 = x1 + (fx if gap["right"] else 0), y1 + (fy if gap["bottom"] else 0)
+        m = np.ones((ey1 - ey0, ex1 - ex0), dtype=np.float32)
+
+        def _smooth(n):
+            t = np.linspace(0.0, 1.0, n, dtype=np.float32)
+            return t * t * (3 - 2 * t)
+
+        if gap["left"] and fx:
+            m[:, :fx] = np.minimum(m[:, :fx], _smooth(fx)[None, :])
+        if gap["right"] and fx:
+            m[:, -fx:] = np.minimum(m[:, -fx:], _smooth(fx)[::-1][None, :])
+        if gap["top"] and fy:
+            m[:fy, :] = np.minimum(m[:fy, :], _smooth(fy)[:, None])
+        if gap["bottom"] and fy:
+            m[-fy:, :] = np.minimum(m[-fy:, :], _smooth(fy)[::-1][:, None])
+        out.paste(seed_img.crop((ex0, ey0, ex1, ey1)), (ex0, ey0),
+                  Image.fromarray((m * 255).astype("uint8"), "L"))
+    out.paste(src_img, (x0, y0))   # ⚠ 순서 불변 — 박스는 **마지막에** 원본으로 덮는다(무손실 계약)
     return out
 
 
@@ -292,6 +399,98 @@ def gap_sides(img, ar, box):
     W, H = img.size            # 중앙 배치(pad_canvas) = 한 축만 늘어난다
     aw, ah = (int(v) for v in ar.split(":"))
     return {"left", "right"} if aw / ah >= W / H else {"top", "bottom"}
+
+
+def streak_frac(out_img, box_px, tol=1.0):
+    """여백에 **clamp 줄무늬가 그대로 남은** 비율 — 「모델 무동작」 결정론 검출(과금 0).
+
+    ⚠ 260807 평의회 5 실측 = 실제로 `route="gemini"`로 출고된 산출 하나가 **여백의 90.6%를 입력 그대로**
+      내보냈다(`9x16-fb4f9112`). 같은 모델 QA는 자기 판정 목록에 「leftover flat gray areas」를 글자
+      그대로 갖고도 그걸 통과시켰다 = **씨앗 방식의 가장 흔한 실패(모델이 아무것도 안 함)를 LLM 판정이
+      원리적으로 못 잡는다**. 그래서 결정론 축이 필요하다.
+    ⚠ 축 선택 = 「입력과 같은 색인가」가 아니라 **「줄무늬인가」**. 평의회 5의 원안(입력 캔버스 대비
+      동일 화소 비율)을 이 세션의 드라이런에 걸었더니 **정상 재작성본에서 12~34%가 나왔다** — 밴드가
+      넓은 단색 하늘이면 모델이 옳게 그려도 색이 우연히 일치하기 때문이다(그 상태로 하드 거부하면
+      좋은 산출을 버리고 줄무늬 폴백으로 내려간다 = 개악). clamp는 **이웃 행/열과의 차가 수학적으로
+      정확히 0**이라 이 축은 그 혼동이 구조적으로 없다.
+      실측(같은 앵커·JPEG 왕복 후) = 무동작 **0.983** vs 정상 재작성 **0.000** → 임계 0.5(양쪽 여유 ≈2배·∞).
+    ⚠ 축별로 방향이 다르다 — 상/하 밴드는 clamp가 **행** 복제, 좌/우 밴드는 **열** 복제다.
+    """
+    a = np.asarray(out_img.convert("RGB"), dtype=np.float32)
+    x0, y0, x1, y1 = box_px
+    ch, cw = a.shape[:2]
+    tot = flat = 0
+    for seg in (a[:y0], a[y1:]):                       # 세로 밴드 = 행 방향 복제
+        if seg.shape[0] > 1:
+            dv = np.abs(np.diff(seg, axis=0)).max(axis=(1, 2))
+            tot += dv.size
+            flat += int((dv <= tol).sum())
+    for seg in (a[:, :x0], a[:, x1:]):                 # 가로 밴드 = 열 방향 복제
+        if seg.shape[1] > 1:
+            dh = np.abs(np.diff(seg, axis=1)).max(axis=(0, 2))
+            tot += dh.size
+            flat += int((dh <= tol).sum())
+    return float(flat) / tot if tot else 0.0
+
+
+def _join_en(xs):
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+
+
+def seed_dirs(box_px, canvas_size, src_img, plain_std=EDGE_SOLID_STD):
+    """P_SEEDFILL 3슬롯(keep·where·edgerule) — 실측 기하를 **%로** 문장화.
+
+    ⚠ `box_dirs`를 그대로 쓰면 안 된다 — 그건 P_PADFILL 문법 전용이라 선행사("an original photo")가
+      그 프롬프트 안에 있다. 씨앗 프롬프트엔 없어서 "extended above and below **it**" = 순환문이 됐다.
+      게다가 P_SEEDFILL은 {place}·{dirhint}를 안 쓰므로 배치 지정(box) 발사에서 고정 문구 "central"이
+      **거짓말**을 했고(원본이 중앙이 아닌데 중앙이라 단언), dirhint의 가장 강한 잠금 절이 통째로 버려졌다.
+    변별(`edgerule`)은 기존 `edge_stats`를 그 변에만 재사용 = 새 값·새 의존성·과금 0.
+      · 변이 단색 → 「그 밴드는 같은 민무늬 배경 그대로, 아무것도 넣지 마라」(P_PADFILL의 검증된 룰 이식)
+      · 변이 복잡 → 「배경으로 이어라 · 피사체가 닿았으면 **한 몸으로만** 연장」
+    """
+    x0, y0, x1, y1 = box_px
+    cw, ch = canvas_size
+
+    def pct(n, d):
+        return "{:.0f}%".format(100.0 * n / d)
+
+    bands = []
+    if y0 > 1:
+        bands.append(("top", "the top " + pct(y0, ch) + " of the frame"))
+    if ch - y1 > 1:
+        bands.append(("bottom", "the bottom " + pct(ch - y1, ch) + " of the frame"))
+    if x0 > 1:
+        bands.append(("left", "the left " + pct(x0, cw) + " of the frame"))
+    if cw - x1 > 1:
+        bands.append(("right", "the right " + pct(cw - x1, cw) + " of the frame"))
+    if not bands:   # 여백 0 = 이 경로에 안 온다(방어)
+        return "the whole frame", "There are no stretched bands", ""
+
+    txt = _join_en([t for _, t in bands])
+    where = (txt[0].upper() + txt[1:]) + (" is a stretched band" if len(bands) == 1 else " are stretched bands")
+
+    vert, horz = (y0 > 1 or ch - y1 > 1), (x0 > 1 or cw - x1 > 1)
+    hp, wp = pct(y1 - y0, ch), pct(x1 - x0, cw)
+    if vert and not horz:
+        keep = "the middle " + hp + " of the frame — a horizontal band spanning the full width"
+    elif horz and not vert:
+        keep = "the middle " + wp + " of the frame — a vertical band spanning the full height"
+    else:
+        keep = "a rectangle in the middle covering " + wp + " of the width and " + hp + " of the height"
+
+    rules = []
+    for side, _ in bands:
+        std, _mean = edge_stats(src_img, {side})
+        if std < plain_std:
+            rules.append("Along the {} edge of the real photograph the pixels are plain, even background, "
+                         "so the {} band must stay that same plain background and contain nothing at all."
+                         .format(side, side))
+        else:
+            rules.append("Along the {} edge of the real photograph the pixels are busy, so the {} band must "
+                         "be rebuilt as more of that same background — and if part of a subject touches that "
+                         "edge, extend that one subject as a single continuous body, never as a second one."
+                         .format(side, side))
+    return keep, where, " ".join(rules)
 
 
 def solid_pad(img, ar, color, box=None):
@@ -408,6 +607,7 @@ def main():
     print("라우팅: edge_std={:.1f}(변 {}) fill={} → {} (aspect={} size={} lock={})".format(std, ",".join(sorted(gs)), fill, route, aspect, size, lock), flush=True)
 
     out_img = None
+    qa_note = "N/A"   # 원장 기록용 — 결정론 경로는 판정 대상이 아니다(gemini 경로만 PASS/FAIL/SKIP/DET-FAIL)
     if route == "solid_pad":
         out_img = solid_pad(img, aspect, mean_color, box)
     elif route == "blur_pad":   # 명시 블러(fill=blur) — 종전엔 폴백 전용 경로였다(결정론·과금 0)
@@ -425,15 +625,24 @@ def main():
                 src_img = img
             place, where, dirhint = box_dirs(bpx, canvas.size)
             seed = seed_pad(canvas, bpx)   # 빈칸을 먼저 메꾼다(과금 0) → 모델은 「채우기」가 아니라 「다듬기」만 한다
-            base_prompt = P_SEEDFILL.format(where=where) if SEED_ON else P_PADFILL.format(place=place, where=where, dirhint=dirhint)
+            if SEED_ON:
+                s_keep, s_where, s_edge = seed_dirs(bpx, canvas.size, src_img)
+                base_prompt = P_SEEDFILL.format(keep=s_keep, where=s_where, edgerule=s_edge)
+                print("씨앗 문구: 원본={} / {} / {}".format(s_keep, s_where, s_edge), flush=True)
+            else:
+                base_prompt = P_PADFILL.format(place=place, where=where, dirhint=dirhint)
+                print("배치 문구: {} / 여백 {}".format(place, where), flush=True)   # 프롬프트가 캔버스를 정확히 묘사하는지 런 로그로 사후 대조(운영자 260806 "프롬프팅이 어떻게 고정되어있는지")
             feed = seed if SEED_ON else canvas
-            print("배치 문구: {} / 여백 {}".format(place, where), flush=True)   # 프롬프트가 캔버스를 정확히 묘사하는지 런 로그로 사후 대조(운영자 260806 "프롬프팅이 어떻게 고정되어있는지")
-            png, fb, qa_fail = None, "", False
+            ref_jpg = jpg_bytes(src_img)   # 원본 = 「피사체가 몇인가」의 정답지(생성·판정 양쪽에 같은 장을 준다)
+            # ⚠ 씨앗 경로는 [원본, 씨앗] 2장 — 씨앗만 주면 모델이 보는 유일한 증거가 「정장색 세로 밴드」라
+            #   텍스트로 "두 번째 몸통 금지"라고 말해도 시각 증거가 이긴다(260806 실사고).
+            feed_parts = [ref_jpg, jpg_bytes(feed)] if SEED_ON else jpg_bytes(feed)
+            out_cand, fb, qa_fail, qa_note = None, "", False, "NONE"   # NONE = 렌더 자체가 0회 성공
             for attempt in (1, 2):   # 생성→자가 QA→실패 사유 피드백 재생성 1회(exp r8 검증 · 운영자 '검증하면서 뽑기')
                 p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
                                     "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
                 cand = tg.gemini_image(p, image_size=size, tag="resize:t{}".format(attempt),
-                                       aspect=aspect, ref_png=jpg_bytes(feed))
+                                       aspect=aspect, ref_png=feed_parts)
                 if not cand:
                     continue
                 try:
@@ -441,18 +650,38 @@ def main():
                 except Exception:
                     print("::warning::렌더 디코드 실패(t{})".format(attempt))
                     continue
-                v = gemini_judge(cand)
-                if v is None or v[0]:   # 판정 스킵(fail-soft) 또는 PASS
-                    png, qa_fail = cand, False
+                # ⚠ 판정 대상 = **출고물**(pixel_lock 이후). 구판은 락 이전 원시 렌더를 심사해서
+                #   페더가 만드는 단차·원본 침범이 영영 미심사였다(260807 평의회 = 16:9 크림 막대 실사고).
+                shipped = pixel_lock(cand, canvas.size, src_img, bpx, seed_img=seed) if lock else \
+                    Image.open(io.BytesIO(cand)).convert("RGB").resize(canvas.size, Image.LANCZOS)
+                # ── ⓐ 결정론 검문 먼저(과금 0) — 「모델 무동작」은 LLM 판정이 원리적으로 못 잡는다 ──
+                sk = streak_frac(shipped, bpx)
+                if sk > STREAK_MAX:
+                    out_cand, fb, qa_fail = shipped, "the stretched bands were left as raw streaks, not repaired", True
+                    qa_note = "DET-FAIL"
+                    print("  QA t{}: DET-FAIL — 줄무늬 잔류 {:.1%} > {:.0%}(모델 무동작)".format(attempt, sk, STREAK_MAX), flush=True)
+                    continue   # 같은 사유 2연속이면 아래 폴백 — 모델 거부 서명이라 더 조를 이유가 없다
+                # ── ⓑ 의미 판정(원본 동봉 2장 비교) ──
+                v = gemini_judge(jpg_bytes(shipped), ref_bytes=ref_jpg)
+                if v is None:
+                    # ⚠ 260807 봉합 = 구판은 PASS와 **판정 불가**를 같은 가지로 합치고 **둘 다 무출력**이라,
+                    #   유령이 「통과했는지 조용히 스킵됐는지」가 로그·원장 어디에도 안 남았다(평의회 5 실측).
+                    #   이 레포가 스레드 `[1차 실측]`·틱톡 `_e1`에서 두 번 진단한 「관측이 지워진다」와 같은 병.
+                    out_cand, qa_fail, qa_note = shipped, False, "SKIP"
+                    print("  QA t{}: SKIP(판정 불가 — 형식 불량·콜 실패) → fail-soft 통과".format(attempt), flush=True)
                     break
-                png, fb, qa_fail = cand, v[1], True   # FAIL — 사유 피드백 재시도(최종 FAIL이면 아래서 폴백)
+                if v[0]:
+                    out_cand, qa_fail, qa_note = shipped, False, "PASS"
+                    print("  QA t{}: PASS — {}".format(attempt, v[1][:80]), flush=True)
+                    break
+                out_cand, fb, qa_fail = shipped, v[1], True   # FAIL — 사유 피드백 재시도(최종 FAIL이면 아래서 폴백)
+                qa_note = "FAIL"
                 print("  QA t{}: FAIL — {}".format(attempt, fb), flush=True)
-            if png and qa_fail:   # 재시도까지 전부 FAIL = 불합격본 출력 금지 → 결정론 폴백(분신11 260709)
-                print("::warning::QA 최종 FAIL({}) — blur-pad 폴백".format(fb[:80]))
-                png = None
-            if png:
-                out_img = pixel_lock(png, canvas.size, src_img, bpx) if lock else \
-                    Image.open(io.BytesIO(png)).convert("RGB").resize(canvas.size, Image.LANCZOS)
+            if out_cand is not None and qa_fail:   # 재시도까지 전부 FAIL = 불합격본 출력 금지 → 결정론 폴백(분신11 260709)
+                print("::warning::QA 최종 FAIL({}) — 씨앗 폴백".format(fb[:80]))
+                out_cand, qa_note = None, (qa_note if qa_note == "DET-FAIL" else "FAIL")
+            if out_cand is not None:
+                out_img = out_cand
             else:
                 if SEED_ON:   # 씨앗은 「있는 픽셀만 재배치」라 블러 유령보다 언제나 선이 살아 있다(과금 0 · 260806 실호출 4:5 폴백 품질 봉합)
                     print("::warning::Gemini 렌더/QA 실패 — seed-pad 폴백(가장자리 연장 씨앗 그대로)")
@@ -482,7 +711,11 @@ def main():
         url = "gen_out/" + fname
         print("  ⚠️ R2 불가 — git 폴백 저장: " + url, flush=True)
 
+    # ⚠ qa = 판정 결과를 **원장에 남긴다**(260807 평의회 5) — 구판은 PASS와 「판정 불가」가 같은 가지로
+    #   합쳐진 채 둘 다 무출력이라, 유령이 통과였는지 조용한 스킵이었는지 사후에 알 방법이 0이었다.
+    #   이 레포가 스레드 `[1차 실측]`·틱톡 `_e1`에서 두 번 겪은 「관측이 지워진다」와 같은 병이다.
     item = {"url": url, "srcUrl": src, "aspect": aspect, "size": size, "lock": lock, "route": route, "fill": fill,
+            "qa": qa_note,
             "box": list(box) if box else None,
             "id": rid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
     sjson = os.path.join(tdir, "resize.json")
@@ -494,7 +727,7 @@ def main():
             cur = []
     json.dump(([item] + cur)[:24], open(sjson, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     json.dump([item], open("/tmp/resize_new.json", "w", encoding="utf-8"), ensure_ascii=False)   # race-heal(imggen 계승)
-    print("✅ 완료 route={} → {}".format(route, url), flush=True)
+    print("✅ 완료 route={} qa={} → {}".format(route, qa_note, url), flush=True)
 
 
 if __name__ == "__main__":
