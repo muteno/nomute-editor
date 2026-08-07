@@ -4881,6 +4881,41 @@ def check_rubric_regress():
     return 0
 
 
+def check_grade_regress():
+    """grade 룰북 회귀 게이트(하드 · 운영자 260807 "전부 반영" — 평의회 8인 · check_rubric_regress[breaking 전용]의 짝).
+    gate_judge RUBRIC(경중 0~3 채점 프롬프트)이 바뀌면 운영자 수기 재채점 정답지(grade_regress_cases.json ·
+    260807 ~58행)를 드라이런 재채점해 정답 뒤집힘 0을 확인해야 커밋이 열린다 —
+    통과 도장 = grade_regress_stamp.json(rubric_ver·cases). 게이트 자체는 정적 해시 대조뿐(네트워크·LLM 0) ·
+    LLM 1콜은 `python3 .github/scripts/grade_regress.py` 실행 시점에만. RUBRIC 무변경 커밋 = 도장 유효 = 무비용 통과.
+    ⚠️ 신설 사유 = breaking 룰북엔 이 보호가 있는데 grade 룰북은 무게이트였다(오채점 = 운영자 "큐레이션 의미가 사라짐")."""
+    import importlib.util as _ilu
+    gj_p = os.path.join(ROOT, '.github', 'scripts', 'gate_judge.py')
+    st_p = os.path.join(ROOT, '.github', 'scripts', 'grade_regress_stamp.json')
+    cs_p = os.path.join(ROOT, '.github', 'scripts', 'grade_regress_cases.json')
+    spec = _ilu.spec_from_file_location('gate_judge_gate', gj_p)
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        cases = json.loads(open(cs_p, encoding='utf-8').read())['cases']
+        assert cases and all(c.get('t') and c.get('expect') in (0, 1, 2, 3) for c in cases)
+    except Exception as e:
+        print('❌ grade 회귀 게이트 — 케이스 원장 파손/누락(%s): %s' % (os.path.basename(cs_p), e))
+        return 1
+    try:
+        st = json.loads(open(st_p, encoding='utf-8').read())
+    except Exception:
+        st = {}
+    # 케이스 **개수**도 함께 본다(check_rubric_regress 평의회2 260803 교훈 계승) — ver만 보면 「케이스만 추가하고
+    # 회귀는 안 돌린 커밋」이 통과했다가 다음 RUBRIC 개정 세션이 미검증 케이스의 뒤집힘으로 영구 rc=1에 갇힌다.
+    if st.get('rubric_ver') != mod.RUBRIC_VER or st.get('cases') != len(cases):
+        print('❌ grade 회귀 게이트 — RUBRIC/케이스 변경 후 회귀 미실행(운영자 정답지 뒤집힘 미확인 = 커밋 차단).')
+        print('   → python3 .github/scripts/grade_regress.py 실행(케이스 %d건 드라이런·전건 통과 시 도장) 후 스탬프 함께 커밋.' % len(cases))
+        print('   (stamp=%s · now=%s)' % (st.get('rubric_ver'), mod.RUBRIC_VER))
+        return 1
+    print('✅ grade 회귀 게이트 — RUBRIC %s = 회귀 도장 일치(케이스 %d건 · 운영자 260807 정답지 뒤집힘 확인 완료분).' % (mod.RUBRIC_VER, len(cases)))
+    return 0
+
+
 def check_gate_docs():
     src = open(os.path.join(ROOT, 'shared', 'check_refs.py'), encoding='utf-8').read()
     gates = re.findall(r'^def (check_[a-z_]+)\(', src, re.M)
@@ -5761,6 +5796,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 루브릭 회귀 게이트 스킵:', e)
+    try:
+        if check_grade_regress() != 0:   # grade 회귀 도장(운영자 260807 — gate_judge RUBRIC 개정 = 운영자 재채점 정답지 드라이런 통과 도장 필수 · 게이트 자체는 정적 해시 대조 = LLM 0)
+            rc = 1
+    except Exception as e:
+        print('⚠️ grade 회귀 게이트 스킵:', e)
     try:
         if check_brk_misfire_chain() != 0:   # 긴급 오발 신고 폐루프(운영자 260803 4차 — 신고가 쌓이기만 하고 안 읽히는 죽은 원장 차단)
             rc = 1

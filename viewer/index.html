@@ -12315,7 +12315,25 @@ const fbJunk = c => {
   if (c.cat === '문화' && FB_CELEB.test(t)) return true;                                 // 연예 가십·신변잡기(문화 한정·마커)
   return false;
 };
-const gradeW = c => fbJunk(c) ? 0.5 : (c.grade == null ? 1 : (GRADE_W[c.grade] ?? 1));   // 피드백 잡음 = grade0 floor(0.5) 취급(우선순위 감점 — 누적서 하강)
+// ── SNS 대세 랭킹 보정(운영자 260807 "1.4는 세다, 1.2 정도 · 문화가 주 조회수 창출이지만 문화매체는 아님") ──
+//    문화 grade0 카드 제목이 sns_trends 실검(gtrends·gtrends_pool·xtrends) 키워드와 매칭되면 랭킹 배율만 ×1.2(0.5→0.6 = grade1[0.7] 미만 유지).
+//    grade 원값·⚡배지·긴급·푸시·자동픽 전부 무접촉(랭킹 전용) — 시변 신호(대세)는 정적 룰북(RUBRIC)에 안 박는다(평의회 8인 260807 만장일치 · 리센느류 축).
+const BUZZ_W = 1.2;   // 조정 가능
+let _buzzKw = null, _buzzTs = 0;
+const _buzzSet = () => {   // 실검 키워드 집합(5분 캐시) — TRENDS는 livePoll이 이미 물어오는 같은 데이터(추가 fetch 0)
+  if (_buzzKw && Date.now() - _buzzTs < 300e3) return _buzzKw;
+  const s = new Set();
+  try {
+    if (TRENDS) {
+      for (const t of (TRENDS.gtrends || [])) { const q = String(t.query || '').trim(); if (q.length >= 2) s.add(q); }
+      for (const t of (TRENDS.gtrends_pool || [])) { const q = String(t.q || '').trim(); if (q.length >= 2) s.add(q); }
+      for (const t of (TRENDS.xtrends || [])) { const q = String(t.name || t.q || t.query || '').trim(); if (q.length >= 2) s.add(q); }
+    }
+  } catch { /* 실검 미로드 = 빈 집합 = 보정 없음(fail-soft) */ }
+  _buzzKw = s; _buzzTs = Date.now(); return s;
+};
+const snsBuzz = c => { const t = c.title || ''; for (const k of _buzzSet()) { if (t.includes(k)) return true; } return false; };
+const gradeW = c => { const g = fbJunk(c) ? 0.5 : (c.grade == null ? 1 : (GRADE_W[c.grade] ?? 1)); return (g === 0.5 && c.grade === 0 && c.cat === '문화' && snsBuzz(c)) ? g * BUZZ_W : g; };   // 피드백 잡음 = grade0 floor(0.5) 취급(우선순위 감점 — 누적서 하강) · 문화 grade0 + 실검 매칭만 ×BUZZ_W(0.5→0.6 — grade1 미만 유지 = 대세라도 경미 이하)
 // 최신 정렬 = (긴급도[burst+breaking] + 보도량[cross]) × 시간 반감 decay × 연속보도 가점 × AI 경중. 옛·후속끊긴·비뉴스 자연 하강.
 const FRESH_CROSS_W = 0.4;   // 신규 칼럼 보도량 가중 = base에 +W×cross(운영자 260803 "보도 지표 13인데 너무 아래 — 묻히면 신뢰도 하락으로 사용을 안 하게 됨"): 종전 base=burst+breaking뿐이라 cross(매체 수)가 신규(0~4h) 랭킹에 0% 반영 → cr13·25건 대형(경산 방화 수사경찰 사망)이 cr2 보도자료 밑 9/173위 실측. cross축 = 누적 crossConvex와 동일 _rankCross(병합 댐핑 반영) · 진입 게이트(scFast)·검증대기 접기·핀·시간반감 전부 무접촉 = 순수 정렬항 추가. 평의회 260803 W 검증. 조정 가능.
 const fastScore = c => ((c.burst || 0) + (c.breaking ? 5 : 0) + FRESH_CROSS_W * (c._rankCross ?? (c.cross || 0))) * Math.pow(0.5, Math.max(0, (Date.now() - scTs(c)) / 3600000) / FAST_HALF_H) * scFollow(c) * gradeW(c) * fpW(c);
