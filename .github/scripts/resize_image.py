@@ -303,20 +303,43 @@ def box_dirs(box_px, canvas_size):
             "so nothing there may be redrawn, shifted, or cropped")
 
 
-def pad_canvas(img, ar, fill=(127, 127, 127)):
-    """타겟 비율 캔버스에 원본 중앙 배치. (canvas, box) · 치수 8배수. (v0 검증 함수)"""
+RENDER_MP = {"1K": 1.0, "2K": 4.0}   # 렌더 티어 화소수(백만) — 「1K」·「2K」 이름의 정의값(창작 아님)
+
+
+def pad_canvas(img, ar, fill=(127, 127, 127), size=None):
+    """타겟 비율 캔버스에 원본 중앙 배치. (canvas, box) · 치수 8배수. (v0 검증 함수)
+
+    ⚠ 260807 봉합(운영자 "기준거를 키우지말고 폭이 맞는 가로 세로가 있으면 축소시켜서") —
+      구판은 캔버스에 **상한이 없었다**(`MAX_CANVAS` 캡은 `place_canvas`에만 있다). 세로 원본을 가로
+      비율로 늘리면 캔버스가 원본보다 훨씬 커지는데(실측 1200×1800 → 16:9 = **3200×1800 = 5.76MP**),
+      모델은 `size` 티어만큼만 그려 돌려준다(1K ≈ 1MP) → `pixel_lock`이 그 렌더를 캔버스로
+      **LANCZOS 업스케일**한다 = **AI가 채운 여백만 2.4배 확대 = 흐릿함**. 원본 자리는 무손실로
+      다시 붙으니 가운데만 선명하고 가장자리가 무른 그림이 나온다.
+    수리 = 캔버스가 렌더 티어를 넘으면 **원본을 줄여서** 맞춘다(캔버스를 키우지 않는다 · 확대는 절대 안 한다).
+      `k = min(1, sqrt(티어화소 / 캔버스화소))` — k≥1이면 무동작이라 **작은 원본은 종전과 바이트 동일**
+      (실측: 앵커 365×241의 3비율 전건 무변 = 5세대 검증 회귀 0).
+    """
     W, H = img.size
     aw, ah = (int(x) for x in ar.split(":"))
-    if aw / ah >= W / H:
-        ch = H
-        cw = int(round(H * aw / ah / 8) * 8)
-    else:
-        cw = W
-        ch = int(round(W * ah / aw / 8) * 8)
+
+    def _canvas_wh(w, h):
+        if aw / ah >= w / h:
+            return int(round(h * aw / ah / 8) * 8), h
+        return w, int(round(w * ah / aw / 8) * 8)
+
+    cw, ch = _canvas_wh(W, H)
+    cap = RENDER_MP.get(size or "", 0) * 1e6
+    if cap and cw * ch > cap:
+        k = (cap / (cw * ch)) ** 0.5          # 항상 <1 (확대 분기 없음)
+        W, H = max(8, int(round(W * k))), max(8, int(round(H * k)))
+        img = img.resize((W, H), Image.LANCZOS)
+        cw, ch = _canvas_wh(W, H)
+        print("캔버스 캡: {} 티어({:.0f}MP) 초과 → 원본 {}×{}로 축소 · 캔버스 {}×{}".format(
+            size, cap / 1e6, W, H, cw, ch), flush=True)
     canvas = Image.new("RGB", (cw, ch), fill)
     x, y = (cw - W) // 2, (ch - H) // 2
     canvas.paste(img, (x, y))
-    return canvas, (x, y, x + W, y + H)
+    return canvas, (x, y, x + W, y + H), img
 
 
 def pixel_lock(gen_png, canvas_size, src_img, box, seed_img=None, feather=16):
@@ -496,7 +519,7 @@ def seed_dirs(box_px, canvas_size, src_img, plain_std=EDGE_SOLID_STD):
 def solid_pad(img, ar, color, box=None):
     if box:
         return place_canvas(img, ar, box, fill=color)[0]
-    canvas, _ = pad_canvas(img, ar, fill=color)
+    canvas, _b, _s = pad_canvas(img, ar, fill=color)
     return canvas
 
 
@@ -621,8 +644,7 @@ def main():
             if box:
                 canvas, bpx, src_img = place_canvas(img, aspect, box)
             else:
-                canvas, bpx = pad_canvas(img, aspect)
-                src_img = img
+                canvas, bpx, src_img = pad_canvas(img, aspect, size=size)   # 캡 걸리면 src_img = 축소본(픽셀락도 이걸 되붙인다)
             place, where, dirhint = box_dirs(bpx, canvas.size)
             seed = seed_pad(canvas, bpx)   # 빈칸을 먼저 메꾼다(과금 0) → 모델은 「채우기」가 아니라 「다듬기」만 한다
             if SEED_ON:
