@@ -3836,6 +3836,76 @@ def _anchor_menu_block(src, sel):
         return src[i + len(needle):j] if j > 0 else ''
 
 
+# ── 공용 부품 CSS SSOT 게이트 (운영자 260807 "다른 모든 공간에도 이와 동일하게") ──
+#   왜 = nm-clip.css(클립 4문법)와 같은 축. 260807 전수 스캔 실측 = **3파일 이상에 값이 완전히 같은 사본**으로
+#   흩어진 규칙이 83종·387개였다. 그 중 **전역·원자 규칙 5종(59규칙)** 을 nm-shared.css로 승격했다.
+#   ⚠ 왜 5종만인가 = **CSS 캐스케이드는 규칙을 옮기는 순간 전역 재배치된다**. 83종을 한꺼번에 올렸더니
+#   회차마다 새 불일치가 났다(`.pvsec` height 261→522 · `.geni-opt.on` 700→800 · edit `.cpv-tool` transition).
+#   부품 가족은 **하나씩** 이관하고 매번 computed 대조하는 수밖에 없다(클립이 그 방식이었다).
+#   ⚠ noscript 안 <style>은 **대상 밖** — 「JS가 죽었을 때만」이라는 조건부 정본이라 공용 SSOT로 올리면
+#   정상 상태에서도 적용된다(260807 실사고 = 스크롤바 폴백 10px이 되살아나 260726 "스크롤 없애" 계약 위반 ·
+#   computed 대조는 의사요소를 못 재서 **못 잡는 사각**이었고 스크롤바 실폭 측정으로만 검출됐다).
+#   판정 = 정적 · 3축 = ① 정본 파일·규칙 실존(fail-closed) ② 승격 규칙의 뷰어 인라인 재선언 0 ③ link 실존.
+def _decl_set(body):
+    b = re.sub(r'/\*.*?\*/', ' ', body or '', flags=re.S)
+    return frozenset(d.strip() for d in b.split(';') if d.strip())
+
+
+_SHARED_CSS = 'viewer/nm-shared.css'
+_SHARED_SELS = (
+    'html::-webkit-scrollbar, body::-webkit-scrollbar',
+    '::-webkit-scrollbar',
+    '::-webkit-scrollbar-thumb:hover',
+    'button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible',
+    'button, input, textarea, select',
+)
+
+
+def check_shared_canon():
+    """공용 부품 CSS = nm-shared.css 단일정본 참조. rc=1 = 커밋 차단."""
+    path = os.path.join(ROOT, _SHARED_CSS)
+    if not os.path.exists(path):
+        print('❌ 공용 CSS SSOT 게이트 — 정본 %s 가 없다.' % _SHARED_CSS)
+        return 1
+    css = open(path, encoding='utf-8').read()
+    bad = [s for s in _SHARED_SELS if _anchor_menu_block(css, s) is None]
+    if bad:
+        print('❌ 공용 CSS SSOT 게이트 — 정본에서 규칙이 사라졌다(사본 시대로 회귀):')
+        for b in bad:
+            print('   · ' + b)
+        return 1
+    # 승격분이 뷰어 인라인으로 되돌아왔는가(noscript 폴백은 조건부 정본 = 대상 밖)
+    dup, nolink = [], []
+    for p in sorted(glob.glob(os.path.join(ROOT, 'viewer', '*.html'))):
+        rel = os.path.relpath(p, ROOT).replace(os.sep, '/')
+        src = open(p, encoding='utf-8').read()
+        body = re.sub(r'<noscript[^>]*>.*?</noscript>', ' ', src, flags=re.S)
+        # ⚠ 단독 규칙 판정 — bare substring이면 `#geniOut::-webkit-scrollbar {` 가
+        #   `::-webkit-scrollbar {` 로 잡혀 위양성이 난다(첫 실행 실측 · _anchor_menu_block 문법 계승).
+        # ⚠ **값이 SSOT와 같을 때만** 사본이다 — 값이 다른 인라인은 그 표면의 정당한 고유 선언이다
+        #   (실측 = index `button, input, textarea, select` 는 12표면 동값 그룹에 애초에 안 들어간 별값).
+        hit = []
+        for sel in _SHARED_SELS:
+            b = _anchor_menu_block(body, sel)
+            if b is None:
+                continue
+            if _decl_set(b) == _decl_set(_anchor_menu_block(css, sel) or ''):
+                hit.append(sel)
+        if hit:
+            dup.append('%s — %s' % (rel, ' / '.join(h[:44] for h in hit)))
+        if 'href="nm-shared.css"' not in src and hit:
+            nolink.append(rel)
+    if dup:
+        print('❌ 공용 CSS 사본 부활 — 값은 %s 에만 둔다(운영자 260807 "정본1개를 참조해서 불러오는 개념"):' % _SHARED_CSS)
+        for d in dup:
+            print('   · ' + d)
+        print('   고쳐라 = 인라인 규칙을 지우고 <link rel="stylesheet" href="nm-shared.css"> 1줄로 상속받아라.')
+        return 1
+    print('✅ 공용 CSS SSOT 게이트 — %s 규칙 %d종 단일 원천 · 뷰어 인라인 사본 0(noscript 폴백 = 조건부 정본 = 대상 밖).'
+          % (_SHARED_CSS, len(_SHARED_SELS)))
+    return 0
+
+
 # ── 클립 4문법 SSOT 게이트 (운영자 260807 "정본1개를 참조해서 불러오는 개념으로 쓰셈") ──
 #   왜 = 같은 클립 부품이 **접두만 달리해 4벌로 복사**돼 있었다(`.iobtn-edge` 이미지·요약 / `.scnclip` tr·sb·k·vd /
 #   `.urlclip` ly·track·conv / `.askclip` index). 값이 같으니 무해해 보이지만 한 곳을 고치면 나머지가 조용히 낡는다 —
@@ -4301,7 +4371,13 @@ def check_form_font_inherit():
         p = os.path.join(ROOT, rel)
         if not os.path.exists(p):
             miss.append((rel, '파일 없음')); continue
-        if not _FORM_FONT_RE.search(open(p, encoding='utf-8').read()):
+        src = open(p, encoding='utf-8').read()
+        # 260807 = 이 규칙이 nm-shared.css 공용 SSOT로 승격됐다 → **link 상속도 보유로 인정**한다.
+        #   (인라인만 인정하면 SSOT 이관 자체를 게이트가 막는 자기모순 = check_clip_canon 선례와 동축)
+        if 'href="nm-shared.css"' in src and _FORM_FONT_RE.search(
+                open(os.path.join(ROOT, 'viewer', 'nm-shared.css'), encoding='utf-8').read()):
+            continue
+        if not _FORM_FONT_RE.search(src):
             miss.append((rel, '리셋 규칙 없음'))
     if miss:
         print('❌ 폼 활자 계승 게이트 — 상속 리셋 누락(UA 기본이 글꼴·자간 상속을 끊어 같은 부품끼리 갈린다):')
@@ -6093,6 +6169,8 @@ def main():
     except Exception as e:
         print('⚠️ 죽은 상태 오버라이드 게이트 스킵:', e)
     try:
+        if check_shared_canon() != 0:   # 공용 부품 CSS = 정본 1개 참조(운영자 260807 "다른 모든 공간에도 이와 동일하게" — 3파일+ 완전동값 사본 83종 중 전역·원자 5종 승격 · 나머지는 캐스케이드 전역 재배치 때문에 가족 단위 순차 이관 필요)
+            rc = 1
         if check_clip_canon() != 0:   # 클립 4문법 = 정본 1개 참조(운영자 260807 "정본1개를 참조해서 불러오는 개념으로 쓰셈" — 접두만 다른 사본 4벌이 z-index·transition·tap-highlight·backdrop-filter 4축으로 이미 갈라져 있던 것의 기계화 · 기존 클립 게이트는 「붙었나」만 봐서 「한 원천에서 오는가」가 사각)
             rc = 1
         if check_anchor_menu_canon() != 0:   # 앵커 메뉴 문법 = 한 벌(운영자 260805 "아이디어 ㄱ" — 설정·스튜디오 헤더 메뉴·PASS 사유 3표면이 값을 각자 베껴 쓰다 PASS 창만 혼자 다른 문법으로 갈라진 실사고의 기계화 · 기존 게이트는 raw 개수·뷰어 간 동값·모달 헤더 기하 축이라 「같은 결의 메뉴가 한 벌인가」가 사각)
