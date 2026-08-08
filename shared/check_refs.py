@@ -3852,13 +3852,13 @@ def _decl_set(body):
 
 
 _SHARED_CSS = 'viewer/nm-shared.css'
-_SHARED_SELS = (
-    'html::-webkit-scrollbar, body::-webkit-scrollbar',
-    '::-webkit-scrollbar',
-    '::-webkit-scrollbar-thumb:hover',
-    'button:focus-visible, a:focus-visible, [tabindex]:focus-visible, [role=button]:focus-visible, label.file:focus-visible',
-    'button, input, textarea, select',
-)
+def _shared_sels(css):
+    """정본 파일에서 승격된 셀렉터를 **자동 발견**한다.
+    ⚠ 손 목록이면 새 승격이 게이트에 조용히 안 실린다 — 이 레포가 반복해 겪은 병(손 레지스트리 드리프트).
+      css_hoist.py 가 규칙을 덧붙이면 이 게이트가 **다음 실행부터 자동으로** 그 셀렉터를 지킨다."""
+    return [m.group(1).strip() for m in re.finditer(r'(?m)^([^\s@/][^{\n]*?) \{', css)]
+
+
 
 
 def check_shared_canon():
@@ -3868,7 +3868,11 @@ def check_shared_canon():
         print('❌ 공용 CSS SSOT 게이트 — 정본 %s 가 없다.' % _SHARED_CSS)
         return 1
     css = open(path, encoding='utf-8').read()
-    bad = [s for s in _SHARED_SELS if _anchor_menu_block(css, s) is None]
+    sels = _shared_sels(css)
+    if len(sels) < 5:
+        print('❌ 공용 CSS SSOT 게이트 — 정본 규칙이 %d종뿐이다(사본 시대로 회귀 · 하한 5).' % len(sels))
+        return 1
+    bad = []
     if bad:
         print('❌ 공용 CSS SSOT 게이트 — 정본에서 규칙이 사라졌다(사본 시대로 회귀):')
         for b in bad:
@@ -3885,7 +3889,7 @@ def check_shared_canon():
         # ⚠ **값이 SSOT와 같을 때만** 사본이다 — 값이 다른 인라인은 그 표면의 정당한 고유 선언이다
         #   (실측 = index `button, input, textarea, select` 는 12표면 동값 그룹에 애초에 안 들어간 별값).
         hit = []
-        for sel in _SHARED_SELS:
+        for sel in sels:
             b = _anchor_menu_block(body, sel)
             if b is None:
                 continue
@@ -3901,8 +3905,8 @@ def check_shared_canon():
             print('   · ' + d)
         print('   고쳐라 = 인라인 규칙을 지우고 <link rel="stylesheet" href="nm-shared.css"> 1줄로 상속받아라.')
         return 1
-    print('✅ 공용 CSS SSOT 게이트 — %s 규칙 %d종 단일 원천 · 뷰어 인라인 사본 0(noscript 폴백 = 조건부 정본 = 대상 밖).'
-          % (_SHARED_CSS, len(_SHARED_SELS)))
+    print('✅ 공용 CSS SSOT 게이트 — %s 규칙 %d종 단일 원천(자동 발견) · 뷰어 인라인 사본 0(noscript 폴백 = 조건부 정본 = 대상 밖).'
+          % (_SHARED_CSS, len(sels)))
     return 0
 
 
