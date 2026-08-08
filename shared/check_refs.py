@@ -6059,7 +6059,7 @@ def check_brief_lib():
         fails.append('정본 모듈 부재: %s — 지식 라이브러리가 통째로 사라졌다(fail-closed)' % MOD)
     else:
         for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS',
-                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H'):
+                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H', 'def stalled'):
             if sym not in src:
                 fails.append('%s: 핵심 심볼 「%s」 소실 — 라이브러리 골격이 깨졌다' % (MOD, sym))
         # ⚠ 구문 검사 = 실효 조건 — 셸 배선이 `2>/dev/null || true` fail-soft라 **구문 오류가 그대로 빈 블록**이 된다
@@ -6095,6 +6095,12 @@ def check_brief_lib():
         elif '${LIB_BLOCK}' not in tail:
             fails.append('%s: PROMPT에 ${LIB_BLOCK} 미주입 — 라이브러리를 만들어놓고 안 쓴다'
                          '(호출은 살아 있어 rc0·로그 정상 = 가장 조용한 죽음)' % sh)
+        # ⑥ 정체 축 계약(운영자 260808 3차) — 라이브러리가 「반복했는데 안 옮겨진 축」을 짚어줘도
+        #   프롬프트가 그걸 오늘의 행동으로 바꾸라고 요구하지 않으면 모델은 같은 방침을 또 적는다
+        #   (260808 실측 = 07-30~31 제안 4건 전건 실행 ▼ · ②에 「릴스 올리자 ×4회」가 그렇게 쌓였다).
+        #   블록만 있고 계약이 없으면 = 정보를 보여주고 아무것도 안 시키는 것 = 반복 고리가 그대로 돈다.
+        elif '오늘의 행동 한 개' not in tail:
+            fails.append('%s: PROMPT에 ⑥ 정체 축 → 오늘의 행동 계약 소실 — 반복만 하고 안 옮겨지던 고리가 되살아난다' % sh)
         if log not in s:
             fails.append('%s: 아카이브 적재 경로 「%s」 소실 — 다음 회차 원료가 안 쌓인다' % (sh, log))
         # ④ 구판 = 직전 1회차 text 앞 1500자(전문의 36% · [3개월]·[전체]·[총론] 증발) 부활 차단

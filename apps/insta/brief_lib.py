@@ -370,6 +370,38 @@ def outcomes(props, posts):
     return out
 
 
+def stalled(repeats, outs):
+    """② 반복 × ⑤ 성패 교차 = **말은 여러 번 했는데 실제로는 안 옮겨진 축**
+    (운영자 260808 3차 "아이디어 ㄱ").
+
+    ⚠ 이 교차가 필요한 이유 = 260808 첫 실측이 드러낸 게 「제안이 틀렸다」가 아니라 「제안이 안 옮겨졌다」였다
+      (07-30~31 제안 4건 전건 실행 ▼ · 그래서 ②에 「릴스 올리자 ×4회」가 쌓였다 = 논쟁이 아니라 미실행).
+      ②만 보면 「확신이 굳은 축」으로 읽히고 ⑤만 보면 개별 제안의 전후일 뿐이라, 「반복 ∧ 미실행」은
+      두 층을 곱해야만 보인다. 그리고 그게 다음 브리프가 **방침 대신 오늘 행동**을 내야 할 정확한 지점이다.
+
+    술어 = 반복 2회+ ∧ 평가된 회차에서 실행이 **오르지 않음**(after ≤ before) ∧ 평가 표본 1건 이상.
+    ⚠ 평가 못 한 제안(창 미충족·표본 미달)은 **여기 안 넣는다** — 안 옮겨진 건지 아직 모르는 건지 구분이 안 되고,
+      모르는 걸 「안 했다」로 밀면 그 자체가 거짓 신호다([1] 정직 · ⑤ 보류 분리와 같은 축).
+    """
+    by = {}
+    for o in outs:
+        if o.get('short') or not o.get('move'):
+            continue
+        by.setdefault(_norm_key(o['line']), []).append(o)
+    out = []
+    for r in repeats:
+        ev = by.get(_norm_key(r['line']))
+        if not ev:
+            continue
+        flat = [o for o in ev if (o['move'][2] or 0) <= (o['move'][1] or 0)]
+        if len(flat) == len(ev):                      # 평가된 전 회차에서 한 번도 안 올랐다
+            last = sorted(ev, key=lambda x: x['date'])[-1]
+            out.append({'axis': r['axis'], 'n': r['n'], 'line': r['line'],
+                        'move': last['move'], 'date': last['date'], 'n_eval': len(ev)})
+    out.sort(key=lambda x: -x['n'])
+    return out
+
+
 def sec_text(row, key):
     for s in (row.get('sections') or []):
         if s.get('k') == key:
@@ -547,6 +579,19 @@ def build_block(rows, scope):
             L.append("→ ⚠ 이건 **인과가 아니라 전후 실측**이다(그 사이 사건·시류가 같이 움직였다). "
                      "다만 **말만 하고 안 옮겨진 제안**(실행 수치가 그대로거나 반대로 간 것)은 오늘 다시 꺼낼 때 "
                      "'왜 안 됐는지'부터 짚어라 — 같은 말을 세 번째 반복하는 건 제안이 아니라 소음이다.")
+            st = stalled(repeats, outs)
+            if st:
+                L.append('')
+                L.append('[⑥ ⚠ 말은 반복했는데 한 번도 안 옮겨진 축 — 오늘은 방침 말고 **행동**으로 바꿔라]')
+                for e in st[:3]:
+                    lb, b, a, unit = e['move']
+                    L.append(f"×{e['n']}회 말했고, 마지막 평가({e['date'][5:]})에서 {lb} {b} → {a} {unit.split('(')[0].strip()} = 안 올랐다")
+                    L.append("   %s" % e['line'][:104])
+                L.append("→ 이 축은 **제안이 틀린 게 아니라 실행이 안 된 것**이다. 같은 방침을 또 적으면 다섯 번째 반복일 뿐이다. "
+                         "[전체]의 '→ ' 전략 줄 **하나는 반드시** 이 축을 '오늘 올릴 그 한 장을 어떻게'로 좁혀 써라 "
+                         "— 예: '릴스 비중을 올리자'(방침·금지) 대신 '오늘 첫 장은 릴스 평서로'(행동·필수). "
+                         "무엇을·언제·어떤 모양으로가 한 줄에 들어가야 한다.")
+
             young = [o for o in outs if o['short'] and o.get('why') == 'young']
             samp = [o for o in outs if o['short'] and o.get('why') == 'sample']
             if young:
