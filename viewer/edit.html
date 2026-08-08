@@ -874,7 +874,13 @@ function prm(k){
     +'<div class="scard cyc"><div class="hd st" title="ON = 원문이 50% 작게 위 · 한국어 자막이 아래(원문+한글 동시 표기)">'+cyv('trn','번역')+'</div></div>'   // 번역 = 자막 **안** 첫 카드로 이주(운영자 260803 7차 "어짜피 자막에 포함되어 있는거니까 없애고 자막 안으로 삽입") — 부품·워딩·핸들러 = 구 hl3 3분할 행 tg3 그대로(생김새 창작 0 · 워드 점등 정본) · 축 계약 불변(setAxis trn: ON = 자막 자동 ON · 자막 OFF = 번역 동반 OFF)
     /* 언어·톤 행 = 폐지(운영자 260803 8차 "톤 > 의역 고정 · 언어 > 원문 포함 고정") — 값은 P 기본값(lang:'dual' · tone:'sns')으로 상시 고정 · setAxis('lang'/'tone') 핸들러·발사 경로는 도먼트 보존(복원 = 이 자리 srow 두 줄) */
     +C(srow('글자 형태', ['gothic','serif','paper'].map(f=>pc('font',f,P.font===f,false,FONT_PV[f].lbl))))   // 운영자 260805 "기본은 본고딕 · 명조랑 페이퍼 줄임말로 고를수있게" — 고딕(본고딕·기본)·명조(본명조)·페이퍼(페이퍼로지 5 Medium · 레포 동봉) 3종 · 나눔고딕(260731 19차)·손글씨(260805) = 도먼트(러너 화이트리스트 불변 · 복원 = 배열에 키 한 줄)
-    /* 모양·강조 행 = 폐지(운영자 260731 19차 "모양-강조 없애자 · 모양 = 깔끔(기본)으로 가고 나머진 다 숨김") — style 기본값이 'clean'으로 고정(아래 P 기본값) · karaoke·pop·keyword 축은 도먼트 보존 */
+    /* 모양 행 = 폐지 잔존(운영자 260731 19차 "모양-강조 없애자 · 모양 = 깔끔(기본)으로 가고 나머진 다 숨김") — style 기본값 'clean' 고정 · pop·keyword 축은 도먼트 보존 */
+    /* (260808 복원 · 운영자 «강조점이 이동하는 기능, 그리고 의성어 같은거 쳐내기 onoff 가 있었는데 없어짐») 두 축을 화면에 되돌린다.
+       ⚠ 축은 죽은 적이 없다 — `functions/api/edit.js` 화이트리스트(karaoke·filler)·러너 `ly_burn.build_line(karaoke…)`·재입히기 `lyOptsNow()`가 셋 다 상시 통과시켜 왔고,
+         260731 19차에 **선택자만** 사라져 P 기본값(karaoke:false · filler:true)이 고정 발사되던 상태였다 = 화면에서만 증발한 6주.
+       문법 = 컷 카드 서브 토글(`pc('cutfill',…,'필러')`) 정본 사본 = 워드 자체 점등(`check_onoff_literal` 계약 · ON/OFF 리터럴 0 · 신규 부품 0). */
+    +C(srow('강조', [pc('karaoke',P.karaoke?'0':'1',P.karaoke,false,'말 따라 이동'), pc('pop',P.pop?'0':'1',P.pop,false,'툭 튀어나오기')])
+       +srow('군더더기', [pc('filler',P.filler?'0':'1',P.filler,false,'의성어·추임새 빼기')]))   // karaoke = 발화 진행에 맞춰 강조색이 옮겨붙는 축(러너 build_line 카라오케 채색) · pop = 조각마다 툭 나왔다 사라지는 릴스 등장 모션(러너 build_pop_frames) · filler = 의역 단계에서 군말을 걷어내는 축(소리 축인 컷 카드 '필러'와 독립 — 지침 e-1 ①) · karaoke↔pop 배타는 setAxis가 이미 담당(신규 배타 로직 0)
     +C(gauge('bg','배경',0,100,P.bg,'%')+gauge('pos','위치',0,100,P.pos,'%')+gauge('size','크기',20,70,P.size,'‰'))   // 위치·크기 3형제 = 한 카드(같은 축 묶음)
     +C(srow('음영', [['none','기본'],['box','음영'],['stroke','획'],['shadow','그림자']].map(a=>pc('shtype',a[0],P.shtype===a[0],false,a[1])))
        +(P.shtype==='none'?'':gauge('sh', P.shtype==='box'?'여백':P.shtype==='stroke'?'획 굵기':'그림자',0,300,P.sh,'%','선택한 음영 종류의 세기 — 100% = 기본')))   // 종류 + 세기 = 한 카드(무엇을/얼마나가 붙어 있어야 읽힌다)
@@ -1034,12 +1040,27 @@ function dockSync(){
   //   _pollLive 합류 = 구 `_ps.hidden=true`(하드 숨김)가 막던 **대기 스테이지 ↔ 미리보기 중복 화면**도 같은 축으로 차단(하드 숨김 대신 부드러운 접힘).
   const res=(vw&&!vw.hidden&&!vw.querySelector('.scanline'))||(lb&&!lb.hidden&&lv&&!lv.hidden);   // (260804) `_pollLive` 이탈 = **대기 중엔 안 접는다**(운영자 "계속 그 전 미리보기 화면처럼 유지") — 접힘 트리거는 260728 원문 그대로 「완성본이 보이는 타이밍」만 남긴다 · 대기·완성 동시 표시 걱정(구 1001행 '중복 화면')은 이제 위 도크 = 입력 미리보기 / 아래 = 진행·결과로 자리가 갈려 중복이 아니라 공존이다
   if(res&&_dockHold==='src'&&resSig()!==_srcSig) _dockHold=null;   // 소스 첨부 펼침은 **새** 완성본 등장에만 양보(수동 'open'은 유지) — ⚠ 사고 260731(운영자 "편집에 영상 넣으면 아예 영상 사라짐"): 구 조건은 `res`만 봐서, **직전 제작 결과가 화면에 남아 있는 상태**에서 새 영상을 첨부하면 첨부 그 틱의 dockSync가 곧바로 'src' 홀드를 벗겨 미리보기가 max-height:0으로 접힌 채 남았다(실측: 2회차 첨부부터 항상 pvsec 높이 0·opacity 0 = 넣은 영상이 통째로 안 보임 · 첫 첨부만 정상이라 상비 스모크 fresh 경로가 못 잡았다). 서명 비교 = 첨부 시점의 결과와 **다른** 결과가 떴을 때만 접힘(발사 경로는 _dockHold=null 리셋이 이미 담당 = 이중 방어)
-  const fold=(_dockHold==='open'||_dockHold==='src')?false:_dockHold==='fold'?true:!!res;
+  /* (260808 봉합 · 운영자 «하나 제작하고 나면 위에 미리보기 창이 아예 사라져서 다음걸 제작할 수가 없는데») 접힘 전면 정지 = `false` 고정.
+     ⚠ 260728 접힘 계약("완성본 보이는 타이밍에 자동으로 접히게")은 **레일이 창 밖 형제였던 시절**의 것이다 — 그 전제가 3연타 이주로 사라졌다:
+       260803 요약 스트립 → 코너 레일 안 · 260806 발사바 → 창 안 오버레이 · 260807 발사 → 레일 캡슐③.
+     지금은 [요약 스트립 · 생성 버튼 · 교체/삭제 픽토]가 전부 `.pvsec` **안**이라 `.topdock.fold .pvsec{opacity:0;pointer-events:none}`이
+     그 셋을 통째로 먹는다(260808 실측 = 제작 완료 후 #editGo·#optStrip 둘 다 pe:none·클릭이 뒤 옵션 카드 `.pc`에 가로채임)
+       → **다음 제작 불가 + 재펼침 경로(스트립 탭)까지 동반 사망 = 복구 수단 0**. CSS 296행이 명시한 계약
+       "미리보기만 접고 요약 스트립·생성 버튼은 유지(연속 제작)"가 마크업 이주로 깨진 것 = 접힘의 전제 소멸.
+     ⚠ 접힘 대상을 창(.cpprev-box)으로 좁히는 안은 **실측 폐기** — 레일이 창 밖 우측 절대배치라 창이 0이 되면 도크 밖으로 떠서
+       아래 옵션 카드가 클릭을 그대로 가로챈다(실측 hit=`pc`·`stack`). 구조적으로 성립 불가.
+     계약 정합 = 운영자 260804 "제작한 후에도 처음 input 메뉴에서 추가로 계속 제작할 수 있어야 해"(재발사 허용 축과 같은 방향).
+     ⚠ 도먼트 보존 = `_dockHold`·`res`·`resSig`·`.topdock.fold` CSS·스트립 탭 핸들러 전부 그대로(복원 = 이 줄을 구 산식으로 되돌리는 1줄).
+       단 되돌릴 땐 **레일·발사를 `.pvsec` 밖으로 먼저 빼야** 같은 사고가 재발하지 않는다. */
+  const fold=false;
   d.classList.toggle('fold', fold);
   const ps=document.querySelector('.pvsec'); if(ps){ try{ ps.inert=fold; }catch(_){} }   // 접힘 = SR·Tab 제거(CII §접이 정본 — pointer-events:none은 키보드를 못 막아 안 보이는 첨부·교체·삭제 버튼에 포커스가 들어가던 것)
   const s=document.getElementById('optStrip'); if(s) s.setAttribute('aria-expanded', String(!fold));
 }
-(function(){ const s=document.getElementById('optStrip'); if(!s) return;
+(function(){ return;   /* (260808) 접힘 정지(위 dockSync) 동반 = 스트립 탭 **어포던스 회수**. 접힘이 없는데 role=button·cursor:pointer·"탭 = 접기/펼치기" title을 두면
+                          「손가락 커서가 뜨는데 누를 게 없는 자리」 = `smoke_hitzone` H3가 이름 붙인 어포던스 거짓말이고, [1] 정직 위반이다.
+                          스트립은 260803 레일 이주 이후 이미 **값 칩 리드백**이 본업 → 표시에 전념. 도먼트 = 아래 원문 그대로(복원 = 이 `return;` 한 줄 제거). */
+  const s=document.getElementById('optStrip'); if(!s) return;
   s.title='탭 = 미리보기 접기/펼치기'; s.setAttribute('role','button'); s.tabIndex=0; s.setAttribute('aria-controls','pvsec'); s.style.cursor='pointer';   // CII §접이 = aria-expanded+aria-controls 필수 · 구 <div>+title은 폰에 표식 0·키보드 도달 0(평의회⑥⑨ 260728)
   let _mv=false, _x0=0;
   s.addEventListener('pointerdown',e=>{ _mv=false; _x0=e.clientX; });

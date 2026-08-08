@@ -119,10 +119,21 @@ async function runOnce(browser, port) {
     });
     await pg.waitForTimeout(900);
   };
-  const dockState = () => pg.evaluate(() => ({
-    fold: document.getElementById('topDock').classList.contains('fold'),
-    h: +document.getElementById('pvsec').getBoundingClientRect().height.toFixed(1)
-  }));
+  //   ⚠ (260808 축 증설) 구판은 `.pvsec` **높이**만 쟀다 — 그 사각에서 실사고가 났다(운영자 «하나 제작하고 나면 위에 미리보기 창이 아예 사라져서 다음걸 제작할 수가 없는데»):
+  //     260803 스트립 → 코너 레일 · 260806 발사바 → 창 안 · 260807 발사 → 레일 캡슐③ 3연타 이주로 [스트립·생성·교체/삭제]가 전부 `.pvsec` **안**이 됐는데,
+  //     `.topdock.fold .pvsec{opacity:0;pointer-events:none}`은 그대로라 접힘이 **조작 수단을 통째로** 먹었다(실측 = #editGo·#optStrip 둘 다 pe:none · 클릭이 뒤 옵션 카드 `.pc`에 가로채임).
+  //     구 C12는 그 상태를 「결과 접힘(0px) = 계약대로」로 **PASS 처리**했다 — 높이는 계약대로였고 갈라진 건 **눌리는가**였다. → 판정축에 실클릭 도달(elementFromPoint)을 더한다.
+  const dockState = () => pg.evaluate(() => {
+    const hit = s => { const e = document.querySelector(s); if (!e) return 'none';
+      const r = e.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0)) return 'none';
+      const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return t ? ((t === e || e.contains(t)) ? 'self' : 'steal:' + (t.id || String(t.className).split(' ')[0])) : 'none'; };
+    return {
+      fold: document.getElementById('topDock').classList.contains('fold'),
+      h: +document.getElementById('pvsec').getBoundingClientRect().height.toFixed(1),
+      go: hit('#editGo'), strip: hit('#optStrip')   // 「보이는 버튼 = 눌리는 버튼」(smoke_hitzone 정본 술어 계승) — 연속 제작의 실제 조건
+    };
+  });
   await attach();                       // ① 첫 첨부 = 펼침
   m.d1 = await dockState();
   await pg.evaluate(() => { const vw = document.getElementById('vwrap'); vw.innerHTML = '<video></video>'; vw.hidden = false; dockSync(); });
@@ -172,9 +183,15 @@ async function runOnce(browser, port) {
     ck('C8 라벨 잉크 중심 = 4분할 중심 Δ≤0.5', r1.inkD[0] <= 0.5 && r1.inkD[1] <= 0.5, JSON.stringify(r1.inkD));
     ck('C9 sticky 도크 = 스크롤 후 top 0 + 스트립 가시(따라다님)', r1.stick && r2.stick, String(r1.stick));
     ck('C10 폰트 = Pretendard 로드+자간 정본', r1.font && r2.font, String(r1.font));
-    const dOK = x => x.d1.fold === false && x.d1.h > 0 && x.d2.fold === true && x.d2.h === 0 && x.d3.fold === false && x.d3.h > 0 && x.d4.fold === false && x.d4.h > 0;   // d4 = 접힘→펼침(260804 개정)
-    ck('C12 도크 홀드 = 첨부 펼침→결과 접힘→**재첨부 펼침**→새 발사 **펼침 유지**(사고 260731 "영상 넣으면 사라짐" 회귀 + 260804 "제작 후에도 미리보기 유지")',
-      dOK(r1) && dOK(r2), ['첨부', '결과', '재첨부', '발사'].map((n, i) => n + ' ' + (r1['d' + (i + 1)].fold ? '접힘' : '펼침') + '(' + r1['d' + (i + 1)].h + 'px)').join(' → '));
+    /* (260808 계약 개정) 구 기대 = d2에서 `fold===true && h===0`(결과 뜨면 접힘 · 운영자 260728).
+       그 계약의 **전제**는 「접히는 건 미리보기뿐이고 요약 스트립·생성 버튼은 밖에 남는다」(edit.html CSS `.topdock.fold .pvsec` 주석 원문)였는데,
+       260803~260807 이주 3연타로 그 셋이 전부 `.pvsec` 안으로 들어가며 전제가 소멸했다 → 접힘 = **연속 제작 불가 + 재펼침 경로 동반 사망**.
+       접힘 대상을 창(.cpprev-box)으로 좁히는 안은 실측 폐기(레일이 창 밖 절대배치 = 창이 0이 되면 도크 밖으로 떠 아래 카드가 클릭을 가로챈다).
+       → 새 계약 = **4단 전부 펼침 유지 + 생성 버튼·요약 스트립 실클릭 도달**. 운영자 260804 "제작한 후에도 계속 제작할 수 있어야 해"와 같은 축. */
+    const dOK = x => ['d1', 'd2', 'd3', 'd4'].every(k => x[k].fold === false && x[k].h > 0 && x[k].go === 'self' && x[k].strip === 'self');
+    ck('C12 도크 = 첨부→**제작 완료**→재첨부→새 발사 4단 **전부 펼침 + 생성 버튼·요약 스트립 실클릭 도달**(사고 260731 "영상 넣으면 사라짐" + 260808 "제작 후 미리보기가 사라져 다음걸 제작 못함" 동시 회귀)',
+      dOK(r1) && dOK(r2), ['첨부', '완료', '재첨부', '발사'].map((n, i) => { const s = r1['d' + (i + 1)];
+        return n + ' ' + (s.fold ? '접힘' : '펼침') + '(' + s.h + 'px·생성' + s.go + '·스트립' + s.strip + ')'; }).join(' → '));
     const det = JSON.stringify({ a: r1.goTriple, b: r1.stripBox, c: r1.readback, d: r1.inkD }) === JSON.stringify({ a: r2.goTriple, b: r2.stripBox, c: r2.readback, d: r2.inkD });
     ck('C11 결정론 = 2런 측정 동일', det, det ? '일치' : 'run1≠run2');
     console.log('── smoke_editdock ' + (FAIL ? 'FAIL ' + FAIL : '코어 전부 PASS'));
