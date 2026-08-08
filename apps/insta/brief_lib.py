@@ -46,6 +46,11 @@ LOGS = {
 SCOPE_NM = {'ig': '인스타', 'fb': '페이스북'}
 
 MAX_RUNS = 30          # 읽을 최근 회차 상한(프롬프트 비대 가드 — 로그 캡은 180회차)
+OUT_WIN = 7            # ⑤ 성패 대조 창(제안일 전 7일 vs 후 7일)
+OUT_MIN_N = 3          # ⑤ 창당 최소 게시물(미만 = [표본부족] — 없는 결론을 지어내지 않는다)
+OUT_SHOW = 5           # ⑤ 표시 제안 수
+RIPE_H = 48            # ⑤ 성과 비교에 넣을 최소 나이(h) — 조회는 며칠에 걸쳐 쌓인다(나이 편향 차단)
+LEDGER_GLOB = 'apps/insta/data/algo_runs/*.jsonl'   # 회차 원장(게시물 절대값 · 기록자 = insta-fetch 단독)
 IDENT_SHOW = 10        # ① 정체성 궤적 표시 회차
 REPEAT_MIN = 2         # ② 반복 제안 하한(1회 = 일시 관측이라 '굳은 축'이 아니다)
 REPEAT_SHOW = 8        # ② 표시 개수
@@ -196,6 +201,175 @@ def load_rows(path, max_runs=MAX_RUNS):
     return rows[-max_runs:]
 
 
+# ── ⑤ 회차 원장 조인 — 「그 제안, 그 뒤 어떻게 됐나」 ──────────────────────────
+# ⚠ 이 층만 `algo_runs` 원장(게시물 절대값)을 읽는다. 브리핑 로그는 「무슨 말을 했나」만 알고
+#   「그래서 그게 맞았나」는 모르기 때문 — 그 조인이 없으면 라이브러리는 일기장이지 지식본이 아니다.
+def load_posts(root=ROOT):
+    """원장 전 샤드에서 게시물 풀 구성(id 유일) — **필드별 최신 비결측** 채택.
+
+    ⚠ 통짜 최신 레코드로 덮으면 안 된다 — 260808 실측 = 같은 게시물이 회차마다 다시 실리는데
+      분류 필드(fmt·st·cat)가 **뒤 회차에서 None으로 비어 오는 경우가 있어**(실측 2건) 통짜 덮어쓰기는
+      멀쩡히 관측됐던 값을 지운다. 지워진 값은 「분류 결측」과 구분이 안 돼 비중 통계를 그대로 거짓말시킨다.
+    """
+    import glob as _g
+    pool = {}
+    for f in sorted(_g.glob(os.path.join(root, LEDGER_GLOB))):
+        try:
+            fh = open(f, encoding='utf-8')
+        except Exception:
+            continue
+        with fh:
+            for ln in fh:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    r = json.loads(ln)
+                except Exception:
+                    continue
+                for p in ((r.get('ig') or {}).get('posts') or []):
+                    pid = p.get('id')
+                    if not pid:
+                        continue
+                    cur = pool.setdefault(pid, {})
+                    for k, v in p.items():
+                        if v is not None and v != '':
+                            cur[k] = v                 # 비결측만 갱신 = 관측된 값이 안 지워진다
+    return list(pool.values())
+
+
+def _pdate(p):
+    t = p.get('ts_post')
+    if not t:
+        return None
+    try:
+        dt = __import__('datetime').datetime.fromisoformat(str(t).replace('Z', '+00:00'))
+        return dt.astimezone(__import__('datetime').timezone(__import__('datetime').timedelta(hours=9)))
+    except Exception:
+        return None
+
+
+def _med(xs):
+    xs = sorted(x for x in xs if x is not None)
+    if not xs:
+        return None
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def _fv(v):
+    """조회수 → 만 단위 한국식(chan_brief.sh fv() 표기 계승 — 프롬프트 안 표기 통일)."""
+    if v is None:
+        return '—'
+    v = round(v)
+    return '{:,}만'.format(round(v / 10000)) if v >= 10000 else '{:,}'.format(v)
+
+
+# 축 → (원장 필드, 제안값 → 필드값 정규화) · 못 재는 축(시리즈·기획)은 아예 안 넣는다
+_OUT_FIELD = {'게시 포맷': 'fmt', '제목·네이밍': 'st', '소재 주제': 'cat'}
+_VAL_NORM = {'질문형': '질문', '평서': '평서', '이모지': '이모지브리핑', '숫자형': '숫자'}
+
+
+def _share(posts, axis, val):
+    """창 안에서 「제안이 가리킨 값」의 비중(%) — **분류 결측은 분모에서 뺀다**.
+
+    ⚠ 결측을 0으로 세면 「릴스 비중이 떨어졌다」는 거짓 신호가 난다(260808 실측 = 34건 중 12건이
+      원장에 분류값 자체가 없다). 분모는 「그 축이 실제로 분류된 게시물」뿐이고, 뺀 수는 호출부가 같이 낸다.
+    """
+    if axis == '업로드 시간대':
+        m = re.match(r'(\d{1,2})-(\d{1,2})시', val or '')
+        if not m:
+            return None, 0
+        lo, hi = int(m.group(1)), int(m.group(2))
+        ds = [d for d in (_pdate(p) for p in posts) if d]
+        if not ds:
+            return None, 0
+        hit = sum(1 for d in ds if lo <= d.hour <= hi)
+        return round(hit / len(ds) * 100), len(ds)
+    if axis == '게시 빈도':
+        return None, 0                                   # 비중이 아니라 일평균 = 호출부가 따로 낸다
+    fld = _OUT_FIELD.get(axis)
+    if not fld:
+        return None, 0
+    want = {_VAL_NORM.get(x, x) for x in (val or '').split('·') if x}
+    known = [p for p in posts if p.get(fld)]
+    if not known:
+        return None, 0
+    hit = sum(1 for p in known if p.get(fld) in want)
+    return round(hit / len(known) * 100), len(known)
+
+
+def outcomes(props, posts):
+    """제안별 전/후 창 대조 — 사실만 낸다(인과 단정 0).
+
+    ⚠ 파이썬은 「그 제안이 먹혔다」라고 말하지 않는다 — 제안 뒤 실제로 어느 쪽으로 움직였는지와
+      그때 성과가 얼마였는지까지만 사실로 내고, 인과 판정은 데이터를 쥔 모델 몫([1] 정직 · ③ 갈린 축과 같은 축).
+    """
+    import datetime as _dt
+    dated = [(d.date(), p) for d, p in ((_pdate(p), p) for p in posts) if d]
+    if not dated:
+        return []
+    last = max(d for d, _ in dated)          # 원장이 아는 마지막 발행일 = 관측 지평
+    out = []
+    for pr in props:
+        if not pr.get('axis'):
+            continue
+        try:
+            D = _dt.date.fromisoformat(pr['date'])
+        except Exception:
+            continue
+        # ⚠ 창이 아직 안 찼으면 **평가 자체를 보류**한다(260808 첫 실행 실측 봉합) —
+        #   후 창을 OUT_WIN 고정으로 나누면 실경과 2일을 7로 나눠 「일평균 1.71 → 0.43」 같은
+        #   급감 신호를 만든다. 게시를 줄인 적이 없는데 줄인 것처럼 보이는 = 순수 거짓말.
+        elapsed = (last - D).days
+        if elapsed < OUT_WIN:
+            out.append({'axis': pr['axis'], 'date': pr['date'], 'line': pr['line'],
+                        'short': True, 'why': 'young', 'elapsed': max(elapsed, 0),
+                        'nb': 0, 'na': 0})
+            continue
+        before = [p for d, p in dated if D - _dt.timedelta(days=OUT_WIN) <= d < D]
+        after = [p for d, p in dated if D < d <= D + _dt.timedelta(days=OUT_WIN)]
+        if len(before) < OUT_MIN_N or len(after) < OUT_MIN_N:
+            out.append({'axis': pr['axis'], 'date': pr['date'], 'line': pr['line'],
+                        'short': True, 'why': 'sample', 'nb': len(before), 'na': len(after)})
+            continue
+        e = {'axis': pr['axis'], 'date': pr['date'], 'line': pr['line'], 'short': False,
+             'nb': len(before), 'na': len(after)}
+        if pr['axis'] == '게시 빈도':
+            e['move'] = ('일평균 게시', round(len(before) / OUT_WIN, 2), round(len(after) / OUT_WIN, 2), '개/일')
+        elif pr.get('val'):
+            sb, kb = _share(before, pr['axis'], pr['val'])
+            sa, ka = _share(after, pr['axis'], pr['val'])
+            if sb is None or sa is None:
+                e['move'] = None
+            else:
+                e['move'] = ('%s 비중' % pr['val'], sb, sa, '%%(분류된 %d→%d건)' % (kb, ka))
+        else:
+            e['move'] = None
+        # ⚠ 성과 비교는 **익은 게시물끼리만**(age_h ≥ RIPE_H) — 조회는 발행 후 며칠에 걸쳐 쌓이므로
+        #   갓 올린 글을 성숙분과 나란히 세우면 「조회 중앙 56만 → 14만」처럼 **나이 차를 성과 하락으로**
+        #   읽는다(260808 첫 실행 실측 = 후 창 게시물 age_h 10.5h). 표본이 모자라면 성과는 안 낸다.
+        rb = [p for p in before if (p.get('age_h') or 0) >= RIPE_H]
+        ra = [p for p in after if (p.get('age_h') or 0) >= RIPE_H]
+        e['nrb'], e['nra'] = len(rb), len(ra)
+        def spm(ps):
+            xs = []
+            for p in ps:
+                i = p.get('ins') or {}
+                v, s = i.get('views'), i.get('shares')
+                if v and s is not None:
+                    xs.append(s / v * 1000)
+            return _med(xs)
+        if len(rb) >= OUT_MIN_N and len(ra) >= OUT_MIN_N:
+            e['vb'], e['va'] = _med([p.get('ins', {}).get('views') for p in rb]), _med([p.get('ins', {}).get('views') for p in ra])
+            e['sb'], e['sa'] = spm(rb), spm(ra)
+        else:
+            e['vb'] = e['va'] = e['sb'] = e['sa'] = None
+        out.append(e)
+    out.sort(key=lambda x: x['date'], reverse=True)
+    return out
+
+
 def sec_text(row, key):
     for s in (row.get('sections') or []):
         if s.get('k') == key:
@@ -285,14 +459,14 @@ def analyze(rows):
         ps = sorted(ps, key=lambda x: x['date'], reverse=True)
         splits.append({'axis': ax, 'vals': sorted(vals), 'items': ps[:SPLIT_LINES]})
     splits.sort(key=lambda s: (-len(s['vals']), -len(s['items'])))
-    return ident, direction, repeats, splits
+    return ident, direction, repeats, splits, props
 
 
 # ── 블록 조립 ────────────────────────────────────────────────────────────────
 def build_block(rows, scope):
     if len(rows) < 2:
         return ''                                       # 1회차 = 라이브러리가 아니다(종전 동작 유지)
-    ident, direction, repeats, splits = analyze(rows)
+    ident, direction, repeats, splits, props = analyze(rows)
     d0 = str(rows[0].get('date') or '')[:10]
     d1 = str(rows[-1].get('date') or '')[:10]
     nm = SCOPE_NM.get(scope, scope)
@@ -344,6 +518,42 @@ def build_block(rows, scope):
                  "오늘은 **어느 쪽인지 데이터로 결론을 내거나**, 조건이 갈리는 축이면 '무엇일 땐 A · 무엇일 땐 B'로 정리해라. "
                  "근거 없이 또 뒤집지 마라.")
 
+    # ⑤ 제안 성패 대조(IG 전용 — 원장 게시물이 IG 축이다 · FB는 조인 원료 없음 = 자동 생략)
+    if scope == 'ig':
+        try:
+            outs = outcomes(props, load_posts())
+        except Exception:
+            outs = []
+        shown = [o for o in outs if not o['short']][:OUT_SHOW]
+        if shown:
+            L.append('')
+            L.append(f"[⑤ 그 제안, 그 뒤 어떻게 됐나 — 회차 원장 실측(제안일 기준 전 {OUT_WIN}일 vs 후 {OUT_WIN}일)]")
+            for o in shown:
+                L.append(f"{o['date'][5:]} [{o['axis']}] {o['line'][:88]}")
+                if o.get('move'):
+                    lb, b, a, unit = o['move']
+                    arrow = '▲' if (a or 0) > (b or 0) else ('▼' if (a or 0) < (b or 0) else '—')
+                    L.append(f"   실행: {lb} {b} → {a} {unit} {arrow}")
+                else:
+                    L.append('   실행: 이 축은 원장으로 못 잰다(분류 결측 또는 측정 불가 축)')
+                if o.get('vb') is not None:
+                    L.append(f"   성과: 조회 중앙 {_fv(o['vb'])} → {_fv(o['va'])}"
+                             f" · 1천뷰당 공유 {('%.1f' % o['sb']) if o['sb'] is not None else '—'}"
+                             f" → {('%.1f' % o['sa']) if o['sa'] is not None else '—'}"
+                             f"  (익은 게시물 {o['nrb']}→{o['nra']}건 · 발행 {RIPE_H}h 경과분만)")
+                else:
+                    L.append(f"   성과: 아직 못 잰다 — 후 창에 {RIPE_H}h 이상 익은 게시물이 {OUT_MIN_N}건 미만"
+                             f"(익은 {o.get('nrb', 0)}→{o.get('nra', 0)}건). 조회는 며칠에 걸쳐 쌓이니 지금 비교하면 나이 차를 성과로 오독한다.")
+            L.append("→ ⚠ 이건 **인과가 아니라 전후 실측**이다(그 사이 사건·시류가 같이 움직였다). "
+                     "다만 **말만 하고 안 옮겨진 제안**(실행 수치가 그대로거나 반대로 간 것)은 오늘 다시 꺼낼 때 "
+                     "'왜 안 됐는지'부터 짚어라 — 같은 말을 세 번째 반복하는 건 제안이 아니라 소음이다.")
+            young = [o for o in outs if o['short'] and o.get('why') == 'young']
+            samp = [o for o in outs if o['short'] and o.get('why') == 'sample']
+            if young:
+                L.append(f"   (아직 {OUT_WIN}일이 안 지나 평가 보류 {len(young)}건 — 가장 최근 것은 제안 후 {max(o['elapsed'] for o in young)}일차)")
+            if samp:
+                L.append(f"   (창 게시물 {OUT_MIN_N}건 미만으로 평가 보류 {len(samp)}건)")
+
     prev = rows[-1]
     ptxt = (prev.get('text') or '').strip()
     if not ptxt:
@@ -364,9 +574,10 @@ def main():
     try:
         rows = load_rows(os.path.join(ROOT, LOGS[a.scope]), a.max_runs)
         if a.json:
-            ident, direction, repeats, splits = analyze(rows) if len(rows) >= 2 else ([], [], [], [])
+            ident, direction, repeats, splits, props = analyze(rows) if len(rows) >= 2 else ([], [], [], [], [])
             json.dump({'scope': a.scope, 'runs': len(rows),
                        'identity': ident, 'direction': direction, 'repeats': repeats,
+                       'outcomes': [{k: v for k, v in o.items() if k != 'line'} for o in (outcomes(props, load_posts()) if a.scope == 'ig' else [])],
                        'splits': [{'axis': s['axis'], 'vals': s['vals'],
                                    'items': [{'date': p['date'], 'line': p['line']} for p in s['items']]} for s in splits]},
                       sys.stdout, ensure_ascii=False)

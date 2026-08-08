@@ -6058,9 +6058,17 @@ def check_brief_lib():
     if not src:
         fails.append('정본 모듈 부재: %s — 지식 라이브러리가 통째로 사라졌다(fail-closed)' % MOD)
     else:
-        for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS'):
+        for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS',
+                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H'):
             if sym not in src:
                 fails.append('%s: 핵심 심볼 「%s」 소실 — 라이브러리 골격이 깨졌다' % (MOD, sym))
+        # ⚠ 구문 검사 = 실효 조건 — 셸 배선이 `2>/dev/null || true` fail-soft라 **구문 오류가 그대로 빈 블록**이 된다
+        #   (260808 실측 = ⑤ 층 작업 중 IndentationError가 났는데 셸 경로에선 rc0·무출력으로 조용히 통과했다).
+        #   fail-soft는 「원장이 부족할 때」를 위한 것이지 「코드가 깨졌을 때」를 덮으라고 있는 게 아니다.
+        try:
+            compile(src, MOD, 'exec')
+        except SyntaxError as e:
+            fails.append('%s: 구문 오류 %s행 「%s」 — 셸 fail-soft가 이걸 조용한 빈 블록으로 삼킨다' % (MOD, e.lineno, e.msg))
         for ban in ('import urllib', 'import requests', 'import socket', 'import subprocess',
                     'http.client', 'os.system(', 'import anthropic', 'from anthropic'):
             if _has_exec_line(src, ban):
