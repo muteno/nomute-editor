@@ -2677,8 +2677,33 @@ def check_track_parity():
                   % (fmt, j.group(1), j.group(2), j.group(3), j.group(4), w['fs'], w['limit'], w['tr'], w['floor'])); rc = 1
     if ('limit = 920 if fmt' not in yml) or ('floor = -45 if fmt' not in yml):
         print('❌ 자간 기준 게이트 — thumb-make.yml fit_tracking 한도(920/-45) 표기 이탈 = 3면 동기 깨짐'); rc = 1
+    # ── ③ 미리보기 렌더 = 절단 통과분 강제(운영자 260807 3차 "입력 불가인 거는 아예 출력 안 되게 · 출력이 텍스트 끊김과 동일하게 동기화") ──
+    #   계약 = 「자간을 그리는 미리보기 줄」은 **원문이 아니라 절단 함수(ovFit/hdrFit) 통과분**을 렌더한다
+    #          = 입력 차단(_rowOverAfter)이 허용하는 글자 수 ≡ 화면에 보이는 글자 수(1:1 동기).
+    #   ⚠ 신설 사유 = 260807에 이 축이 **세 세대**를 거쳤는데(유출 → 상자 클립[반 글자 잔여] → 글자 절단) 전부
+    #     운영자 눈이 유일한 검출기였다. 기존 축은 전부 **다른 것**을 본다 — ①은 폭 재는 **자**, ②는 한도 **상수**,
+    #     `smoke_*`는 **렌더된 그림** → 「렌더가 **어떤 텍스트**를 먹는가」는 축 자체가 없었다.
+    #     현재 5줄(헤더 진짜예요 1 · 헤더 부제/제목 2 · 오버레이 진짜예요 1 · 오버레이 노뮤트 1)을 손으로 맞춰둔 상태라
+    #     새 자간 축(새 템플릿·새 포맷)이 생기면 조용히 원문 렌더로 빠질 수 있다 = 레일·클립 SSOT가 겪은 그 축.
+    #   판정 = 원문 식별자(lines·csub·ctitle)가 **내용 슬롯**에 직접 나타나면 FAIL(절단분 변수명은 자유 = 리네임 허용).
+    #   ⚠ 자간 없는 `.cpv`(카드뉴스 = card_news.py가 tracking 미적용)는 대상 밖 = letter-spacing 보유 줄만 고른다.
+    _fit_defs = [n for n in ('function ovFit(', 'function hdrFit(', 'function _sliceKeep(', 'function _cutToFit(') if n not in js]
+    if _fit_defs:
+        print('❌ 자간 기준 게이트 — 절단 함수 소실: %s (미리보기가 원문을 그대로 그리게 된다)' % ', '.join(_fit_defs)); rc = 1
+    _trk_rows = [(i + 1, ln) for i, ln in enumerate(js.split('\n'))
+                 if 'class="cpv"' in ln and 'letter-spacing:${(' in ln and not ln.lstrip().startswith('//')]
+    _TRK_ROWS_MIN = 5   # 하한 고정 = 시그니처 드리프트·줄 소실이 「위반 0」으로 거짓 통과하는 것 차단(fail-closed)
+    if len(_trk_rows) < _TRK_ROWS_MIN:
+        print('❌ 자간 기준 게이트 — 자간 렌더 줄 %d개 < 하한 %d(시그니처 드리프트 또는 축 소실 = 판정 불능)'
+              % (len(_trk_rows), _TRK_ROWS_MIN)); rc = 1
+    for _ln, _row in _trk_rows:
+        _body = _row.split('">', 1)[1] if '">' in _row else _row   # 내용 슬롯 = 스타일 속성이 닫힌 뒤
+        _raw = [t for t in ('lines', 'csub', 'ctitle') if re.search(r'\b%s\b' % t, _body)]
+        if _raw:
+            print('❌ 자간 기준 게이트 — thumb.html:%d 미리보기가 **원문**(%s)을 그대로 그린다 = 입력 차단 한도와 화면이 어긋난다 '
+                  '→ ovFit()/hdrFit() 통과분을 렌더해라(운영자 260807 "입력 불가인 거는 아예 출력 안 되게")' % (_ln, '·'.join(_raw))); rc = 1
     if rc == 0:
-        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(오버레이 4 + 헤더 3 = 전부 advance = 서버 draw_t getbbox·getlength와 1:1) · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0.')
+        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(전부 advance = 서버 draw_t getbbox·getlength와 1:1) · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0 · 미리보기 자간 렌더 %d줄 전건 절단 통과분(원문 직렌더 0).' % len(_trk_rows))
     return rc
 
 
