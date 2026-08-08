@@ -68,6 +68,25 @@ jobs:
         with:
           fetch-depth: 0
           filter: blob:none   # 부분 클론(260721 속도) — 커밋 그래프는 전부(rebase·push 종전 그대로)·역사 블롭만 지연 회수 = 무거운 레포(이미지·zip 히스토리) 체크아웃 65s→수십초. 미회수 블롭은 필요 시 자동 fetch(promisor)
+          # ⚡ 260808 sparse-checkout(평의회8 실측) — filter:blob:none 뒤 남은 시간의 정체는 **워킹트리 블롭 회수**다
+          #   (로그 분해 = fetch 2.96s + 무출력 16.27s + 파일쓰기 2.91s · 1,424.7MiB ÷ 16.27s ≈ 87MB/s 로 정확히 맞는다).
+          #   이 잡이 실제로 읽고 쓰는 경로는 **124.1MiB(8.7%)** 뿐이라 나머지는 순수 낭비였다.
+          #   ⚠ 치명 실패 모드 = 「out-of-cone 파일이 인덱스에서 빠진 채 커밋 → push가 1만 파일을 삭제」.
+          #     cone 모드는 그것들을 SKIP_WORKTREE로 인덱스에 남기므로 안 일어나고, **이 워크플로의 git add 는
+          #     전부 명시 경로**(413·509·668·669행 · 무경로 `git add -A`/`git add .` 0건 = 전 워크플로 실측)라 전제도 성립한다.
+          #     그 전제가 깨지면 사고가 나므로 신규 add 는 반드시 경로 지정으로 쓴다.
+          #   ⚠ uploads 는 cone 에 **남긴다** — `Commit output` 의 `git rm -r uploads/<id>` 가 여기 의존한다
+          #     (빼면 `|| true` 로 조용히 실패해 업로드가 영구 잔류 = 레포 비대).
+          sparse-checkout: |
+            .github
+            shared
+            apps/ly
+            prompts
+            assets/fonts
+            viewer/ly_out
+            metrics
+            uploads
+            .claude
 
       - name: Setup Node
         uses: actions/setup-node@v5
