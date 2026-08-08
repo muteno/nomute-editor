@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""채널 요약 지식 라이브러리 — 브리핑 아카이브를 '다음 회차의 참고 지식'으로 굽는다
+(운영자 260808 "매번 판단이 그때그때 참고 지식이 없어서 새로 시작하는 것 같다 · 채널 요약의 라이브러리가 있으면 좋을듯 · 쌓이면 경쟁력").
+
+⚠ 신설 사유 = **아카이브는 이미 쌓이는데 아무도 안 읽고 있었다.**
+  실측 260808 = `viewer/chan_brief_log.jsonl` 24회차(3.5주)·215KB가 git 추적으로 살아 있는데,
+  다음 회차 프롬프트에 들어가는 건 `chan_brief.sh`의 PREV_TXT = **직전 1회차 text 앞 1500자**뿐이었다.
+  현 브리프 전문이 4,187자라 **64%가 잘리고 컷 지점이 [28일] 중간** = [3개월]·[전체]·[총론]이 통째로 증발.
+  총론 = 채널 정체성·비전·미션 = 가장 오래 가는 판단인데 **매 회차 백지에서 다시 썼다.**
+  그 결과가 실측 2종:
+    ⓐ 정체성 표현이 8일 8변(08-01 "가장 먼저 가장 짧게 옮기는 곳" → 08-02 "퍼나르는 속보" →
+       08-03 "속보 반사신경" → 08-04 "속보 번역기" → 08-05 "퍼나르기 속보 채널" → 08-06 없음 →
+       08-07 "말을 얹지 않아서 퍼지는 뉴스 채널" → 08-08 "해석 없는 1차 기록소") = 같은 채널을 매일 다른 이름으로 부른다.
+    ⓑ 하루 만의 정반대 제안(08-06 "업로드 시계를 21~22시로" → 08-07 "오후 2~6시로 당기자" → 08-08 다시 "21~22시")
+       = 어제 뭐라 했는지 모르니 뒤집는다. 운영자에겐 '축적'이 아니라 '리셋'으로 보인다.
+  기존 축은 전부 다른 것을 본다 — `algo_ledger`/`algo_insight` = **수치 패턴**(트렌드 일치·선행시차·초기속도),
+  아카이브 로그 = **저장만**(뷰어 미노출·소비처 0) → 「과거 회차의 *판단*이 다음 판단에 들어가는가」는 축 자체가 없었다.
+  이 레포가 반복해 겪은 「쌓이는데 아무도 안 읽는 죽은 원장」(brk_misfire·thumb_votes가 막으려던 바로 그 축)의 재발이다.
+
+분업 = **파이썬이 추출·집계·대조 전부(LLM 0콜·네트워크 0·stdlib only)** · 모델은 이 블록을 읽고 판단만.
+⚠ 파이썬은 「모순이다」라고 단정하지 않는다 — 축 분류는 사전 기반이라 오탐 가능이 구조적이므로,
+  「같은 축에서 이런 제안들이 나왔다」까지만 사실로 제시하고 판정은 데이터를 쥔 모델에게 넘긴다([1] 정직).
+  값이 안 뽑히는 제안은 **갈림 판정 대상에서 제외**(반복 카운트에만 참여) = 안전측 실패.
+
+스코프 = ig(`viewer/chan_brief_log.jsonl`) · fb(`viewer/chan_brief_fb_log.jsonl`) — 두 로그는 같은 스키마
+(`{date, updated, sections:[{k,label,text}], text}`)라 빌더 1개가 양쪽을 굽는다(사본 0 = 미러 드리프트 차단).
+
+사용 = `python3 apps/insta/brief_lib.py --scope ig` → stdout에 프롬프트 주입 블록(없으면 빈 출력·rc0)
+       `--json` = 기계 JSON · `--max-runs N` = 읽을 최근 회차 상한.
+전 경로 fail-soft(rc0 · 라이브러리 실패가 브리프를 못 죽인다 = 실패 시 빈 블록 → 종전 동작).
+CONTRACT: check_brief_lib
+"""
+import argparse
+import json
+import os
+import re
+import sys
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+LOGS = {
+    'ig': 'viewer/chan_brief_log.jsonl',
+    'fb': 'viewer/chan_brief_fb_log.jsonl',
+}
+SCOPE_NM = {'ig': '인스타', 'fb': '페이스북'}
+
+MAX_RUNS = 30          # 읽을 최근 회차 상한(프롬프트 비대 가드 — 로그 캡은 180회차)
+IDENT_SHOW = 10        # ① 정체성 궤적 표시 회차
+REPEAT_MIN = 2         # ② 반복 제안 하한(1회 = 일시 관측이라 '굳은 축'이 아니다)
+REPEAT_SHOW = 8        # ② 표시 개수
+SPLIT_WIN = 7          # ③ 갈림 판정 창(최근 N회차 — 더 넓히면 낡은 방침 변경까지 모순으로 읽는다)
+SPLIT_SHOW = 3         # ③ 표시 축 수
+SPLIT_LINES = 4        # ③ 축당 표시 줄 수
+PREV_CHARS = 3000      # ④ 직전 전문 상한(구판 1500 → 전 섹션이 들어가는 크기 = 이 모듈의 존재 이유)
+
+
+# ── 축 사전 — 제안 줄이 '무엇에 대한 제안인가' ────────────────────────────────
+# ⚠ 확실한 것만 담는다. 못 잡으면 축 없음(= 반복·갈림 판정 밖) = 안전측 실패.
+# ⚠ 판정은 **첫 매치가 아니라 최다 매치**다 — 첫 매치 우선으로 두면 사전 순서가 곧 답이 되어
+#   「문화 소재를 주 1회 고정」·「질문형 제목을 주 2회」가 둘 다 [게시 빈도]로 묶여 **거짓 갈림**이 난다(260808 첫 실행 실측).
+#   동점이면 판정을 포기(None)한다 — 억지로 한 축에 밀어넣는 것보다 빠지는 쪽이 싸다([1] 정직).
+AXES = [
+    ('업로드 시간대', ('시간대', '시계', '피크', '업로드 시간', '몇 시', '시에 올', '시에 걸', '시에 물', '오후', '오전', '저녁', '심야')),
+    ('게시 포맷',     ('릴스', '피드', '카루셀', '캐러셀', '슬라이드')),
+    ('게시 빈도',     ('하루', '주 1', '주 2', '주 3', '배급', '게시 수', '무게시', '쉬는 날', '연속 게시')),
+    ('소재 주제',     ('문화', '정치', '사회', '스포츠', '연예', '경제', '국제', '소재를', '주제를')),
+    ('제목·네이밍',   ('제목', '네이밍', '질문형', '평서', '캡션', '카피')),
+    ('시리즈·기획',   ('시리즈', '연재', '고정 코너', '정기', '기획')),
+]
+
+_RE_RANGE = re.compile(r'(\d{1,2})\s*[~–—-]\s*(\d{1,2})\s*시')
+_RE_HOUR = re.compile(r'(\d{1,2})\s*시')
+_RE_AFTN = re.compile(r'오후\s*(\d{1,2})')
+_FMT_WORDS = ('릴스', '피드', '카루셀', '캐러셀')
+_TOPIC_WORDS = ('문화', '정치', '사회', '스포츠', '연예', '경제', '국제')
+_NAME_WORDS = ('질문형', '평서', '이모지', '숫자형')
+_RE_PERDAY = re.compile(r'하루\s*(\d+)\s*장')
+_RE_PERWEEK = re.compile(r'주\s*(\d+)\s*(?:회|장|번)')
+
+
+def _hours(s):
+    """제안 줄에서 시각 집합 추출 — '오후 2~6시' 같은 표현도 24시간제로 정규화.
+
+    ⚠ 범위 매치를 **먼저 소비하고 그 자리를 지운 뒤** 단독 시각을 훑는다 — 순서를 뒤집으면
+      '오후 2~6시'의 `6시`가 단독 시각으로 재매치돼 값이 `6-18시`로 망가진다(260808 첫 실행 실측).
+    """
+    pm = bool(_RE_AFTN.search(s)) or ('저녁' in s) or ('밤' in s)
+    hs, rest = set(), s
+    for m in list(_RE_RANGE.finditer(s)):
+        try:
+            a, b = int(m.group(1)), int(m.group(2))
+        except ValueError:
+            continue
+        if pm and a < 12 and b < 12:                     # '오후 2~6시' → 14~18시
+            a, b = a + 12, b + 12
+        hs.update({a, b})
+        rest = rest.replace(m.group(0), ' ', 1)          # 소비분 제거 = 단독 매치 오염 차단
+    for m in _RE_AFTN.finditer(rest):                    # '오후 N'(범위 밖 단독) → N+12
+        try:
+            h = int(m.group(1))
+        except ValueError:
+            continue
+        hs.add(h + 12 if h < 12 else h)
+    for m in _RE_HOUR.finditer(rest):
+        try:
+            h = int(m.group(1))
+        except ValueError:
+            continue
+        hs.add(h + 12 if (pm and h < 12) else h)
+    return {h for h in hs if 0 <= h <= 24}
+
+
+def axis_of(line):
+    """제안 줄 → 축 이름(못 잡으면 None) — **최다 매치** 판정 · 동점이면 포기.
+
+    ⚠ 판정 대상은 제안절(' — ' 앞)뿐이다 — 근거절엔 다른 축의 수치가 인용되므로
+      전문을 훑으면 축이 근거에 끌려간다(예: 포맷 제안의 근거에 '피크 21시'가 붙는다).
+    """
+    head = re.split(r'\s—\s', line, 1)[0]
+    best, bn, tie = None, 0, False
+    for name, keys in AXES:
+        n = sum(1 for k in keys if k in head)
+        if name == '업로드 시간대' and _hours(head):
+            n += 1                                       # 시각 표기 자체가 이 축의 강한 증거
+        if n > bn:
+            best, bn, tie = name, n, False
+        elif n == bn and n > 0:
+            tie = True
+    return None if (bn == 0 or tie) else best
+
+
+def value_of(axis, line):
+    """제안 줄 → 그 축에서 가리키는 '방향값'(못 뽑으면 None = 갈림 판정 제외)."""
+    if axis == '업로드 시간대':
+        hs = _hours(line)
+        # 근거절(— 뒤)의 '피크가 21·22·20시' 인용까지 삼키면 전 회차가 같은 값이 된다 → 제안절(— 앞)만 본다
+        head = re.split(r'\s—\s', line, 1)[0]
+        hh = _hours(head) or hs
+        if not hh:
+            return None
+        return '%d-%d시' % (min(hh), max(hh))
+    if axis == '게시 포맷':
+        head = re.split(r'\s—\s', line, 1)[0]
+        hit = [w for w in _FMT_WORDS if w in head]
+        return '·'.join(hit) if hit else None
+    if axis == '게시 빈도':
+        head = re.split(r'\s—\s', line, 1)[0]
+        m = _RE_PERDAY.search(head)
+        if m:
+            return '하루 %s장' % m.group(1)
+        m = _RE_PERWEEK.search(head)
+        if m:
+            return '주 %s회' % m.group(1)
+        return None
+    if axis == '소재 주제':
+        head = re.split(r'\s—\s', line, 1)[0]
+        hit = [w for w in _TOPIC_WORDS if w in head]
+        return '·'.join(hit) if hit else None
+    if axis == '제목·네이밍':
+        head = re.split(r'\s—\s', line, 1)[0]
+        hit = [w for w in _NAME_WORDS if w in head]
+        return '·'.join(hit) if hit else None
+    return None
+
+
+def _norm_key(line):
+    """반복 판정 키 — 제안절(— 앞)에서 조사·수식 흔들림을 걷어낸 뼈대.
+
+    ⚠ 24자로 자르면 서로 다른 제안이 한 키로 뭉친다(260808 첫 실행 실측 = 총론 결론들이
+      전부 '그래서무엇을…' 접두를 공유해 **×15 거짓 반복**이 났다) → 40자 + 축 결합.
+    """
+    head = re.split(r'\s—\s', line, 1)[0]
+    head = head.lstrip('→ ').strip()
+    # 정도부사 제거 — '릴스 비중을 **더** 올리자'와 '**다시** 올리자'는 같은 제안인데 글자로는 갈린다(260808 실측)
+    head = re.sub(r'(더|다시|좀|계속|또|조금|확실히|반드시|무조건|이제|아예)', '', head)
+    head = re.sub(r'[^0-9A-Za-z가-힣]+', '', head)
+    return (axis_of(line) or '기타') + '|' + head[:40]
+
+
+# ── 로그 읽기 ────────────────────────────────────────────────────────────────
+def load_rows(path, max_runs=MAX_RUNS):
+    rows = []
+    if not os.path.exists(path):
+        return rows
+    with open(path, encoding='utf-8') as f:
+        for ln in f:
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                rows.append(json.loads(ln))
+            except Exception:
+                continue                       # 손상 줄 = 건너뛴다(fail-soft)
+    rows.sort(key=lambda r: str(r.get('date') or ''))
+    return rows[-max_runs:]
+
+
+def sec_text(row, key):
+    for s in (row.get('sections') or []):
+        if s.get('k') == key:
+            return s.get('text') or ''
+    return ''
+
+
+def arrows(row):
+    """회차의 '→ ' 전략 줄 — (섹션 라벨, 줄) 목록."""
+    out = []
+    secs = row.get('sections') or []
+    if not secs and row.get('text'):
+        secs = [{'label': '전문', 'text': row['text']}]
+    for s in secs:
+        for ln in (s.get('text') or '').split('\n'):
+            ln = ln.strip()
+            if ln.startswith('→'):
+                out.append((s.get('label') or '', ln))
+    return out
+
+
+def identity(row):
+    """총론의 1층 강조(*…*) = 그 회차가 이 채널을 규정한 말.
+
+    ⚠ 1층 강조는 프롬프트상 「튄 수치 **또는** 채널을 규정하는 핵심어」 둘 다 허용이라 수치가 섞여 들어온다
+      (260808 실측 = FB 판에 «30대 중반에서 50대 초반이 절반 이상»이 정체성으로 잡혔다) →
+      **숫자로 시작하는 강조는 수치 쪽**으로 보고 뺀다. 규정어가 숫자로 여는 경우는 드물어 손실이 작고,
+      섞이면 「이 채널을 뭐라 불러왔나」 목록이 통계 나열로 오염돼 블록의 목적 자체가 죽는다.
+    """
+    t = sec_text(row, 'overview')
+    if not t:
+        return []
+    out = []
+    for m in re.findall(r'(?<!\*)\*([^*\n]{2,60})\*(?!\*)', t):
+        m = m.strip()
+        if not m or re.match(r'^[0-9]', m):
+            continue
+        out.append(m)
+    return out
+
+
+# ── 집계 ─────────────────────────────────────────────────────────────────────
+def analyze(rows):
+    """회차 목록 → (정체성 궤적, 총론 방향 궤적, 반복 제안, 갈린 축).
+
+    ⚠ 총론의 '→ ' 줄과 [전체]의 '→ ' 줄은 **성격이 다르다** — 총론은 「반년~1년 방향 한 문장」이고
+      전체는 「지금 실행할 전략」이다(chan_brief.sh 프롬프트 계약). 섞으면 방향 문장들이 서로
+      반복·모순으로 잡혀 실행 전략 목록을 오염시킨다(260808 첫 실행 실측 = ×15 거짓 반복의 진범).
+      → 총론 줄은 ②·③에서 빼고 ①-b 방향 궤적으로 따로 세운다.
+    """
+    ident, direction, props = [], [], []
+    for r in rows:
+        d = str(r.get('date') or '')[:10]
+        for nm in identity(r):
+            ident.append({'date': d, 'name': nm})
+        for lb, ln in arrows(r):
+            if lb == '총론':
+                direction.append({'date': d, 'line': ln})
+                continue
+            ax = axis_of(ln)
+            props.append({'date': d, 'sec': lb, 'line': ln,
+                          'axis': ax, 'val': value_of(ax, ln) if ax else None,
+                          'key': _norm_key(ln)})
+
+    # ② 반복 제안 — 같은 뼈대가 몇 회차에 걸쳐 나왔나(회차 단위 집계 = 한 회차 중복은 1로)
+    rep = {}
+    for p in props:
+        e = rep.setdefault(p['key'], {'line': p['line'], 'dates': set(), 'axis': p['axis']})
+        e['dates'].add(p['date'])
+        e['line'] = p['line']                          # 최신 표현으로 갱신
+    repeats = sorted(({'line': v['line'], 'axis': v['axis'], 'n': len(v['dates']),
+                       'dates': sorted(v['dates'])} for v in rep.values() if len(v['dates']) >= REPEAT_MIN),
+                     key=lambda x: (-x['n'], x['dates'][-1]))
+
+    # ③ 갈린 축 — 최근 창에서 같은 축인데 값이 2종 이상
+    recent = {str(r.get('date') or '')[:10] for r in rows[-SPLIT_WIN:]}
+    byax = {}
+    for p in props:
+        if not p['axis'] or not p['val'] or p['date'] not in recent:
+            continue
+        byax.setdefault(p['axis'], []).append(p)
+    splits = []
+    for ax, ps in byax.items():
+        vals = {p['val'] for p in ps}
+        if len(vals) < 2:
+            continue
+        ps = sorted(ps, key=lambda x: x['date'], reverse=True)
+        splits.append({'axis': ax, 'vals': sorted(vals), 'items': ps[:SPLIT_LINES]})
+    splits.sort(key=lambda s: (-len(s['vals']), -len(s['items'])))
+    return ident, direction, repeats, splits
+
+
+# ── 블록 조립 ────────────────────────────────────────────────────────────────
+def build_block(rows, scope):
+    if len(rows) < 2:
+        return ''                                       # 1회차 = 라이브러리가 아니다(종전 동작 유지)
+    ident, direction, repeats, splits = analyze(rows)
+    d0 = str(rows[0].get('date') or '')[:10]
+    d1 = str(rows[-1].get('date') or '')[:10]
+    nm = SCOPE_NM.get(scope, scope)
+    L = []
+    L.append(f"[누적 지식 라이브러리 — 이 {nm} 채널 브리핑 {len(rows)}회차({d0}~{d1})에서 *네가 직접 내린 판단*의 원장이다. "
+             "백지에서 시작하지 마라: 아래는 이미 쌓인 지식이고, 오늘 할 일은 이걸 **이어받아 갱신**하는 것이다. "
+             "새로 발견한 게 있으면 그것대로 쓰되, 이미 확립된 축은 매번 새로 지어내지 말고 계승하거나 '왜 바꾸는지'를 밝혀라.]")
+
+    if ident:
+        L.append('')
+        L.append(f"[① 이 채널을 뭐라고 불러왔나 — 총론이 규정한 정체성(최근 {IDENT_SHOW}회차 · 최신 위)]")
+        seen_d = []
+        for e in reversed(ident):
+            if len(seen_d) >= IDENT_SHOW:
+                break
+            seen_d.append(f"{e['date'][5:]} {e['name']}")
+        L.extend(seen_d)
+        uniq = len({e['name'] for e in ident})
+        if uniq >= 3:
+            L.append(f"⚠ {len(ident)}회 규정 중 표현이 {uniq}종으로 갈렸다 — 같은 채널을 매번 다른 이름으로 부르면 축적이 안 된다. "
+                     "위 표현 중 가장 정확한 하나를 **이어받아 굳히거나**, 바꿀 거면 오늘 데이터의 어느 근거로 바꾸는지 총론에 밝혀라.")
+
+    if direction:
+        L.append('')
+        L.append(f"[①-b 총론이 가리킨 방향(마지막 '→' 결론 · 최근 {IDENT_SHOW}회차 · 최신 위)]")
+        for e in list(reversed(direction))[:IDENT_SHOW]:
+            L.append(f"{e['date'][5:]} {e['line'][:120]}")
+        L.append("→ 이건 반년~1년짜리 나침반이라 매 회차 새로 지어낼 물건이 아니다. 방향이 그대로면 **표현을 굳혀 이어받고**, "
+                 "틀어야 하면 무엇이 바뀌어서 트는지 한 줄로 밝혀라.")
+
+    if repeats:
+        L.append('')
+        L.append(f"[② 반복해서 내린 제안 = 확신이 굳은 축(같은 제안이 나온 회차 수 · {REPEAT_MIN}회 이상)]")
+        for e in repeats[:REPEAT_SHOW]:
+            ds = ','.join(x[5:] for x in e['dates'][-5:])
+            more = '…' if len(e['dates']) > 5 else ''
+            L.append(f"×{e['n']}회 [{e['axis'] or '기타'}] {e['line'][:110]}  (최근: {ds}{more})")
+        L.append("→ 3회 이상 반복된 제안은 이미 여러 번 말한 것이다. 오늘 또 같은 말을 할 거면 그대로 복창하지 말고 "
+                 "**실행됐는지 데이터로 확인**하거나, 아직 안 굳었으면 '왜 아직인지'를 짚어라. 새 제안은 이 목록과 겹치지 않는 자리에서 꺼내라.")
+
+    if splits:
+        L.append('')
+        L.append(f"[③ ⚠ 회차마다 답이 갈린 축 — 최근 {SPLIT_WIN}회차 안에서 같은 축인데 방향이 달랐다]")
+        for s in splits[:SPLIT_SHOW]:
+            L.append(f"[{s['axis']}] 제시된 값: {' vs '.join(s['vals'])}")
+            for p in s['items']:
+                L.append(f"  {p['date'][5:]} {p['line'][:105]}")
+        L.append("→ 같은 축인데 회차마다 다른 답을 냈다는 뜻이다(과거의 네가 어제 뭐라 했는지 모른 채 뒤집었을 수 있다). "
+                 "오늘은 **어느 쪽인지 데이터로 결론을 내거나**, 조건이 갈리는 축이면 '무엇일 땐 A · 무엇일 땐 B'로 정리해라. "
+                 "근거 없이 또 뒤집지 마라.")
+
+    prev = rows[-1]
+    ptxt = (prev.get('text') or '').strip()
+    if not ptxt:
+        ptxt = '\n\n'.join(f"[{s.get('label')}]\n{s.get('text')}" for s in (prev.get('sections') or []) if s.get('text'))
+    if ptxt:
+        L.append('')
+        L.append(f"[④ 직전 회차 전문({str(prev.get('date') or '')[:10]}) — 반복 말고 이어서. 그때 짚은 흐름이 이어지는지 꺾였는지 비교해 연재처럼 읽히게(직전 표현 복붙 금지)]")
+        L.append(ptxt[:PREV_CHARS])
+    return '\n'.join(L)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--scope', default='ig', choices=sorted(LOGS))
+    ap.add_argument('--json', action='store_true')
+    ap.add_argument('--max-runs', type=int, default=MAX_RUNS)
+    a = ap.parse_args()
+    try:
+        rows = load_rows(os.path.join(ROOT, LOGS[a.scope]), a.max_runs)
+        if a.json:
+            ident, direction, repeats, splits = analyze(rows) if len(rows) >= 2 else ([], [], [], [])
+            json.dump({'scope': a.scope, 'runs': len(rows),
+                       'identity': ident, 'direction': direction, 'repeats': repeats,
+                       'splits': [{'axis': s['axis'], 'vals': s['vals'],
+                                   'items': [{'date': p['date'], 'line': p['line']} for p in s['items']]} for s in splits]},
+                      sys.stdout, ensure_ascii=False)
+            print()
+        else:
+            b = build_block(rows, a.scope)
+            if b:
+                print(b)
+    except Exception as e:                                # fail-soft — 라이브러리가 브리프를 죽이지 않는다
+        print('brief_lib: 실패(%s) — 빈 블록' % e, file=sys.stderr)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

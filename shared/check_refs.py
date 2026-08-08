@@ -6025,6 +6025,84 @@ def check_gate_hits():
           % (days, len(gates), fired))
     return 0
 
+def check_brief_lib():
+    """채널 요약 지식 라이브러리 층 생존(하드 · 운영자 260808 "매번 판단이 그때그때 참고 지식이 없어서 새로 시작하는 것 같다 ·
+    채널 요약의 라이브러리가 있으면 좋을듯 · 쌓이면 경쟁력" — 정본 = `apps/insta/brief_lib.py`).
+
+    ⚠️ 신설 사유 = **이 축은 두 가지 서로 다른 방식으로 조용히 죽는데 화면은 둘 다 멀쩡해 보인다**
+      ⓐ 아카이브는 쌓이는데 아무도 안 읽음 — 260808 실측 이전 상태가 정확히 그랬다:
+         `viewer/chan_brief_log.jsonl` 24회차·215KB가 git 추적으로 살아 있는데 소비처가 0이었고,
+         프롬프트에 들어가는 건 직전 1회차 앞 **1500자**(전문 4,187자의 36%)뿐이라 [3개월]·[전체]·[총론]이 통째로 증발.
+         브리프는 매일 정상 생성되니 **아무도 눈치 못 챈다** — 운영자가 "매번 새로 시작하는 것 같다"고 말할 때까지.
+      ⓑ 호출은 사는데 프롬프트에 안 실림 — 셸이 `LIB_BLOCK`을 만들고도 `${LIB_BLOCK}`을 PROMPT에서 빼면
+         라이브러리는 **매 회차 정상 실행되고 정상 폐기**된다(rc0 · 로그 정상 · 무증상).
+      기존 게이트는 전부 다른 축이다 — `check_algo_ledger` = 회차 원장의 **수치** 불변식 ·
+      `check_gate_docs`/`check_contract_anchors` = 게이트 자신의 등재·배선 → 「과거 회차의 *판단*이
+      다음 판단에 실제로 실리는가」는 축 자체가 없었다(brk_misfire·thumb_votes가 막으려던 죽은 원장과 동축).
+
+    4축 = ① 정본 모듈 실존 + 핵심 심볼 + 금지 심볼 부재(네트워크·LLM·외부 프로세스 0 = 브리프 잡 예산 보호 ·
+    `check_algo_ledger` ① 관례 계승) ② 두 셸(IG·FB)이 **실행줄에서** 라이브러리를 호출 ③ 그 산출이
+    **PROMPT 안에 실제로 실림**(ⓑ 봉합 = 이 게이트의 실효 조건) ④ 구판 절단 문법 부활 차단.
+    ⚠️ IG·FB **양쪽 동시 강제** — 한쪽만 고치면 나머지가 조용히 구판으로 남는 게 이 레포의 가장 흔한 미러 드리프트다.
+    정적 · 렌더·LLM·네트워크 0 · **면책표 없이 하드 0**(현행 위반 0 = 부채 원장 증가 0)."""
+    fails = []
+
+    def _read(rel):
+        try:
+            return open(os.path.join(ROOT, rel), encoding='utf-8').read()
+        except Exception:
+            return ''
+
+    MOD = 'apps/insta/brief_lib.py'
+    src = _read(MOD)
+    if not src:
+        fails.append('정본 모듈 부재: %s — 지식 라이브러리가 통째로 사라졌다(fail-closed)' % MOD)
+    else:
+        for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS'):
+            if sym not in src:
+                fails.append('%s: 핵심 심볼 「%s」 소실 — 라이브러리 골격이 깨졌다' % (MOD, sym))
+        for ban in ('import urllib', 'import requests', 'import socket', 'import subprocess',
+                    'http.client', 'os.system(', 'import anthropic', 'from anthropic'):
+            if _has_exec_line(src, ban):
+                fails.append('%s: 금지 심볼 「%s」 — 이 모듈은 네트워크·LLM·외부 프로세스 0 계약이다'
+                             '(브리프 잡 벽시계 예산 안에서 도는 전제)' % (MOD, ban))
+        # 로그 경로 정합 — 라이브러리가 읽는 파일과 셸이 쓰는 파일이 갈리면 영원히 빈 블록(무증상)
+        for log in ('viewer/chan_brief_log.jsonl', 'viewer/chan_brief_fb_log.jsonl'):
+            if log not in src:
+                fails.append('%s: 아카이브 경로 「%s」 미참조 — 원료를 못 읽는다' % (MOD, log))
+    for sh, scope, log in (('.github/scripts/chan_brief.sh', 'ig', 'viewer/chan_brief_log.jsonl'),
+                           ('.github/scripts/fb_brief.sh', 'fb', 'viewer/chan_brief_fb_log.jsonl')):
+        s = _read(sh)
+        if not s:
+            fails.append('%s: 파일 부재' % sh)
+            continue
+        if not _has_exec_line(s, 'brief_lib.py'):
+            fails.append('%s: 라이브러리 호출 소실 — 아카이브가 다시 「쌓이는데 아무도 안 읽는 원장」이 된다' % sh)
+        if ('--scope %s' % scope) not in s:
+            fails.append('%s: 스코프 인자(--scope %s) 불일치 — 남의 채널 원장을 읽는다' % (sh, scope))
+        # ③ 실효 조건 — 호출만 살고 프롬프트에서 빠지면 매 회차 정상 실행되고 정상 폐기된다(무증상)
+        head, _, tail = s.partition('PROMPT="')
+        if not tail:
+            fails.append('%s: PROMPT 앵커 소실 — 주입 지점을 판정할 수 없다(fail-closed)' % sh)
+        elif '${LIB_BLOCK}' not in tail:
+            fails.append('%s: PROMPT에 ${LIB_BLOCK} 미주입 — 라이브러리를 만들어놓고 안 쓴다'
+                         '(호출은 살아 있어 rc0·로그 정상 = 가장 조용한 죽음)' % sh)
+        if log not in s:
+            fails.append('%s: 아카이브 적재 경로 「%s」 소실 — 다음 회차 원료가 안 쌓인다' % (sh, log))
+        # ④ 구판 = 직전 1회차 text 앞 1500자(전문의 36% · [3개월]·[전체]·[총론] 증발) 부활 차단
+        if _has_exec_line(s, '[:1500]'):
+            fails.append('%s: 구판 절단 문법 「[:1500]」 부활 — 총론·전체가 다시 증발한다' % sh)
+        if _has_exec_line(s, 'PREV_BLOCK'):
+            fails.append('%s: 구판 PREV_BLOCK 부활 — 라이브러리로 대체된 축이다' % sh)
+    if fails:
+        print('❌ 채널 요약 지식 라이브러리 결손 %d건 — 과거 회차의 판단이 다음 판단에 안 실린다:' % len(fails))
+        for f in fails:
+            print('   ·', f)
+        print('   → 정본 = apps/insta/brief_lib.py · 배선 = chan_brief.sh/fb_brief.sh의 LIB_BLOCK → PROMPT.')
+        return 1
+    print('✅ 채널 요약 지식 라이브러리 — 정본 1 + 2셸(IG·FB) 호출·주입·적재 전 층 생존.')
+    return 0
+
 def check_algo_ledger():
     """알고리즘 인사이트 회차 원장 불변식(하드 · 운영자 260802 · 평의회 합의 — 정본 = `.github/scripts/algo_ledger.py` ·
     집계 = `apps/insta/algo_insight.py` · 원장 = apps/insta/data/algo_runs/**).
@@ -6153,6 +6231,11 @@ def main():
             rc = 1
     except Exception as e:
         print('⚠️ 회차 원장 게이트 스킵:', e)
+    try:
+        if check_brief_lib() != 0:   # 채널 요약 지식 라이브러리(운영자 260808 — 아카이브 24회차가 쌓이는데 프롬프트엔 직전 1회차 1500자[전문의 36%]만 실려 [3개월]·[전체]·[총론]이 매 회차 증발하던 축 · 「호출은 사는데 프롬프트에서 빠지는」 무증상 죽음까지 봉합)
+            rc = 1
+    except Exception as e:
+        print('⚠️ 지식 라이브러리 게이트 스킵:', e)
     try:
         if check_thumb_prompt_sanity() != 0:   # 뉴스 픽 AI 썸네일 = 발사 프롬프트 자기모순 0(운영자 260805 — 「지시 vs 금지」가 한 줄에 공존해 그림이 평균으로 도망가던 축 · 정본 함수 재판정)
             rc = 1

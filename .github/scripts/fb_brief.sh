@@ -118,7 +118,7 @@ if aud.get('gender') or aud.get('age_full'):
     if _ap:
         L.append('[팔로워 인구통계(수기 config)] ' + ' / '.join(_ap) + ' — ⚠기타(25~54 밖=청년+55세↑ 합산)가 크면 연령 폭이 넓다는 신호. IG(25-44 집중) 대비 FB 관객 폭·연령을 총론의 소재·톤 방향 근거로.' + _stale)
 body = '\n'.join(L)
-PVER = 'fbbrief-v3-260726-demo-asof'   # v3 = 인구통계 기준일 밀림 딱지(운영자 260726 — 굳은 스냅샷을 '오늘의 관객'으로 오독 방지) · v2 = 팔로워 인구통계(연령 폭·성별) 총론 반영(운영자 260724) · v1 = chan_brief v9.3 구조 미러+FB 반응 기반 · 바뀌면 해시 불일치 = 강제 재생성
+PVER = 'fbbrief-v4-260808-lib'   # v4 = 누적 지식 라이브러리(운영자 260808 · IG chan_brief v10 동반 이관 — 직전 1회차 1500자 → 회차 판단 원장: 정체성 궤적·총론 방향·반복 제안·갈린 축 · 정본 apps/insta/brief_lib.py)   # v3 = 인구통계 기준일 밀림 딱지(운영자 260726 — 굳은 스냅샷을 '오늘의 관객'으로 오독 방지) · v2 = 팔로워 인구통계(연령 폭·성별) 총론 반영(운영자 260724) · v1 = chan_brief v9.3 구조 미러+FB 반응 기반 · 바뀌면 해시 불일치 = 강제 재생성
 print(hashlib.sha256((PVER + '\n' + body).encode()).hexdigest()[:16])
 print(body)
 PY
@@ -134,26 +134,12 @@ fi
 
 KST_NOW="$(TZ='Asia/Seoul' date '+%Y-%m-%d %H:%M %A')"
 
-# 직전 브리핑 동봉(연재 축 · chan_brief.sh 계승)
-PREV_TXT="$(python3 - <<'PY' 2>/dev/null || true
-import json
-try:
-    d = json.load(open('viewer/chan_brief_fb.json'))
-    t = (d.get('text') or '').strip()
-    if t:
-        print(str(d.get('updated') or '')[:10])
-        print(t[:1500])
-except Exception:
-    pass
-PY
-)"
-PREV_BLOCK=""
-if [ -n "$PREV_TXT" ]; then
-  PREV_BLOCK="
-[직전 브리핑($(printf '%s\n' "$PREV_TXT" | head -1)) — 참고: 반복 말고 이어서. 그때 짚은 흐름이 이어지는지 꺾였는지 비교해 연재처럼(단, 직전 표현 복붙 금지)]
-$(printf '%s\n' "$PREV_TXT" | tail -n +2)
+# 누적 지식 라이브러리 동봉(운영자 260808 · chan_brief.sh 계승 — 구판 '직전 1회차 1500자'는 전문의 36%라 총론·전체가 통째로 증발했다)
+# ⚠ IG와 **같은 커밋에서 같이** 옮긴다 — 한쪽만 고치면 나머지가 조용히 구판으로 남는 게 이 레포의 가장 흔한 미러 드리프트다.
+LIB_BLOCK="$(python3 apps/insta/brief_lib.py --scope fb 2>/dev/null || true)"
+[ -n "$LIB_BLOCK" ] && LIB_BLOCK="
+$LIB_BLOCK
 "
-fi
 
 PROMPT="너는 이 페이스북 뉴스 페이지(Nomute)를 운영자와 같이 키우는 친한 그로스 애널리스트다. 아래는 이 페이지의 실제 지표 데이터다. 지표 나열이 아니라, 이걸 읽고 '이 페이지가 어떻게 성장해왔고 · 지금 무슨 일이 벌어지고 있고 · 그래서 뭘 하면 되는지'를 이야기해준다. 지금 시각(한국): ${KST_NOW}.
 
@@ -195,7 +181,7 @@ PROMPT="너는 이 페이스북 뉴스 페이지(Nomute)를 운영자와 같이 
 - 강조 2층: 제일 튄 수치·전환점·핵심어 = *별표 하나*(1층 강조색 · 섹션당 0~1) · 눈이 먼저 갈 핵심 명사·동사 = **별표 둘**(2층 볼드 · 짧은 창 2~3 · 긴 [전체]·[총론] 4~6). 별표 사이 줄바꿈 금지·짝 닫기.
 - 헤더·번호목록·마크다운 제목·이모지 금지(섹션 마커 6줄과 '→ '만 예외).
 
-${PREV_BLOCK}
+${LIB_BLOCK}
 [데이터 = 이 페이지의 실제 지표]
 $BODY"
 
