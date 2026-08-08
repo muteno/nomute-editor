@@ -615,11 +615,15 @@ jobs:
           #     (이 스텝은 continue-on-error 라 자막 텍스트 산출은 그대로 살아난다 = fail-soft 계약 보존).
           NEEDF="$(OPTS="${OPTS:-}" python3 -c 'import json,os;r=(os.environ.get("OPTS") or "").strip();o=json.loads(r) if r else {};print("0" if o.get("burn", True) is False else "1")' 2>/dev/null || echo 1)"
           if [ "$NEEDF" = "1" ]; then
-            fc-list | grep -qi "noto sans cjk" || {
+            # ⚠ 검문 축 = **noto ∧ nanum 둘 다**(260808 실런 적발) — 러너 기본 이미지에 Noto CJK가 이미 있어
+            #   noto만 보면 검문이 통과해버리고, 그 상태에서 style=nanum/pen 자막은 그대로 두부가 난다.
+            #   (나눔 2종 = 편집기 폰트 축 nanum·pen = ly_burn 스타일 옵션. reburn 정본이 3종을 같이 까는 이유.)
+            { fc-list | grep -qi "noto sans cjk" && fc-list | grep -qi "nanum"; } || {
               timeout 300 sudo apt-get update -qq || true
               timeout 300 sudo apt-get install -y -qq fonts-noto-cjk fonts-nanum fonts-nanum-extra || { echo "::error::한글 폰트 설치 실패"; exit 1; }
             }
             fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
+            fc-list | grep -qi "nanum" || { echo "::error::나눔 폰트 미탐지 — style=nanum/pen 두부 번인 차단"; exit 1; }
           else
             echo "번인 OFF(opts.burn=false) — 폰트 설치 생략"
           fi
