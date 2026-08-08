@@ -4736,6 +4736,123 @@ def check_grade_fix_chain():
     if rc == 0:
         print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→내부 축적) 전 층 생존.')
     return rc
+_SEAL_SKIP_DIR = ('_versions/', 'docs/', 'cards/', '.claude/', 'node_modules/', 'scraper/obs/')
+_SEAL_SKIP_FILE = ('shared/check_refs.py',)   # 자기참조(이 게이트의 처방문·정규식이 곧 심볼로 읽힌다 · check_ytdlp_aac 선례)
+_SEAL_EXT = ('.py', '.js', '.sh', '.mjs')     # 텍스트 소스만(html = 1.85MB 셸이 섞여 심볼 잡음이 크다 · 축소 지향)
+_SEAL_FAM_MIN = 5          # 가족이 이만큼은 돼야 「다수가 쓰는 문법」이라는 말이 성립
+_SEAL_HAVE_RATIO = 0.70    # 가족의 이 비율 이상이 이미 가졌으면 = 사실상 표준 문법
+_SEAL_MISS_MAX = 3         # 미보유가 이보다 많으면 = 아직 이관 중인 문법(=봉합 누락이 아니다) → 침묵
+_SEAL_SYM_CAP = 40         # 파일당 심볼 상한(성능 · 대형 diff 폭주 차단)
+
+
+def _seal_family(rel, tracked):
+    """이 파일의 '형제 집합' = 같은 디렉터리·같은 확장자 · 접두(`smoke_`)를 공유하면 그 부분집합으로 좁힌다."""
+    d, base = os.path.dirname(rel), os.path.basename(rel)
+    ext = os.path.splitext(base)[1]
+    same = [f for f in tracked if os.path.dirname(f) == d and f.endswith(ext) and f != rel]
+    if '_' in base:
+        pre = base.split('_')[0] + '_'
+        sub = [f for f in same if os.path.basename(f).startswith(pre)]
+        if len(sub) + 1 >= _SEAL_FAM_MIN:
+            return sub, d + '/' + pre + '*' + ext
+    return same, d + '/*' + ext
+
+
+def _seal_symbols(added):
+    """추가된 줄에서 '공유 문법이 될 수 있는 것'만 뽑는다 = 함수 호출 · 대문자 상수 · 문자열 리터럴 앞조각."""
+    syms = set()
+    for ln in added:
+        s = ln.strip()
+        if not s or s.startswith(('#', '//', '*', '/*')):
+            continue   # 주석 줄 = 비대상(주석 처리 우회·처방문 인용 차단)
+        for m in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]{2,})\s*\(', s):
+            syms.add(m.group(1) + '(')
+        for m in re.finditer(r'\b([A-Z][A-Z0-9_]{3,})\b', s):
+            syms.add(m.group(1))
+        for m in re.finditer(r'''(['"])((?:\\.|(?!\1).){8,120})\1''', s):
+            frag = re.sub(r'\\[nt]', ' ', m.group(2)).strip()[:14].strip()
+            if len(frag) >= 8:
+                syms.add(frag)
+    return syms
+
+
+def check_seal_completeness():
+    """봉합 완결성(WARN·비차단 · 운영자 260808 "idea go") — **「같은 병의 형제를 놓쳤나」를 커밋 그 자리에서 센다.**
+
+    ⚠️ 신설 사유 = **260808 하루에 같은 모양의 사고가 두 건 드러났고, 둘 다 봉합 커밋이 형제를 빼먹은 것이었다.**
+       ⓐ 260807 크로미엄 경로 봉합이 `smoke_wip` 한 종만 고쳤다 — 그 커밋 주석은 「형제 23종은 전부 which
+          폴백 보유 = **이 한 종만** 갈렸다」고 단언했지만 실측은 2종(`smoke_photoflow` 잔여)이라, 봉합
+          **다음** 나이틀리도 그대로 붉었다(8일 연속 실패의 마지막 하루가 순전히 이것 때문이었다).
+       ⓑ 260728 알림 조치주체 봉합이 `wd-phone` 한 종만 고쳤다 — `yt-cookie-dead`·`fire-*` 생산자는
+          안 따라와, 코드로 못 고치는 건과 완료 보고가 「클로드가 볼 일」 칸에 6주간 앉아 진짜 코드 건을 가렸다.
+    ⚠️ **이 레포 게이트 102개가 전부 「최종 상태가 옳은가」만 본다** — 정적 문자열·화면 렌더·값 대조 →
+       「**방금 한 수정이 완결됐는가**」는 축 자체가 없었다. 그래서 반쪽 봉합이 rc=0으로 통과하고,
+       남은 절반은 다음 사고가 터질 때까지 무증상으로 산다(insta-thumb-miss·brk_misfire 동축).
+
+    술어 = 「이번 커밋이 파일 F에 심볼 S를 **추가**했는데, F의 형제 가족 중 **압도적 다수**(≥70%)가 S를
+       이미 갖고 있고 **소수**(≤3)만 없다」 → 그 소수를 이름으로 지목한다. 어제 이 게이트가 있었다면
+       wip 봉합 커밋이 곧바로 「같은 문법 미보유: shared/smoke_photoflow.js」를 띄웠고 오늘 이 세션은 필요 없었다.
+    ⚠️ **다수결이 실효 조건** = 「먼저 고친 쪽이 소수」인 시점엔 그게 표준인지 기계가 알 방법이 없다
+       (260728 당시 👉 보유는 1종뿐 = 정당하게 침묵). 표준이 굳은 **뒤에** 새 형제가 빠지면 그때 잡는다.
+    ⚠️ **WARN·비차단이 정확한 역할** = 정당한 단독 도입(그 파일에만 필요한 헬퍼)이 섞이므로 하드면 레포가
+       언다(check_component_lock·check_gate_hits 선례). 판정은 사람이 하고, 게이트는 **보이게만** 한다.
+    ⚠️ 전 경로 fail-soft — git 없음·초기 커밋·diff 실패가 게이트를 못 죽인다."""
+    try:
+        staged = subprocess.run(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM'],
+                                cwd=ROOT, capture_output=True, text=True, timeout=30)
+        if staged.returncode != 0:
+            return 0
+        files = [f for f in (staged.stdout or '').splitlines()
+                 if f.endswith(_SEAL_EXT) and f not in _SEAL_SKIP_FILE
+                 and not any(f.startswith(d) for d in _SEAL_SKIP_DIR)]
+        if not files:
+            return 0
+        tracked = [f for f in subprocess.run(['git', 'ls-files'], cwd=ROOT, capture_output=True,
+                                             text=True, timeout=60).stdout.splitlines()
+                   if f.endswith(_SEAL_EXT) and f not in _SEAL_SKIP_FILE
+                   and not any(f.startswith(d) for d in _SEAL_SKIP_DIR)]
+    except Exception:  # noqa: BLE001
+        return 0
+    cache, hits = {}, []
+    for rel in files[:20]:
+        try:
+            d = subprocess.run(['git', 'diff', '--cached', '-U0', '--', rel],
+                               cwd=ROOT, capture_output=True, text=True, timeout=30).stdout
+        except Exception:  # noqa: BLE001
+            continue
+        added = [ln[1:] for ln in d.splitlines() if ln.startswith('+') and not ln.startswith('+++')]
+        if not added:
+            continue
+        fam, label = _seal_family(rel, tracked)
+        if len(fam) + 1 < _SEAL_FAM_MIN:
+            continue
+        for sym in sorted(_seal_symbols(added))[:_SEAL_SYM_CAP]:
+            probe = sym[:-1] + '(' if sym.endswith('(') else sym
+            miss, have = [], 0
+            for f in fam:
+                if f not in cache:
+                    try:
+                        cache[f] = open(os.path.join(ROOT, f), encoding='utf-8', errors='replace').read()
+                    except OSError:
+                        cache[f] = ''
+                if probe in cache[f]:
+                    have += 1
+                else:
+                    miss.append(f)
+            if not miss or len(miss) > _SEAL_MISS_MAX:
+                continue
+            if have / float(len(fam)) >= _SEAL_HAVE_RATIO:
+                hits.append((rel, sym, label, len(fam), miss))
+    if hits:
+        print('⚠️ 봉합 완결성(WARN·비차단) — 이번 커밋이 넣은 문법을 **형제 일부가 아직 안 가졌다**(반쪽 봉합 후보):')
+        for rel, sym, label, n, miss in hits[:8]:
+            print('   · %s 에 `%s` 추가 — 가족 %s(%d) 중 미보유 %d: %s'
+                  % (rel, sym, label, n, len(miss), ', '.join(miss)))
+        print('   → 같은 병이면 **이 커밋 안에서** 같이 고쳐라(260807 크로미엄 1/2 · 260728 조치문 1/3 = 반쪽 봉합이 다음 사고가 됐다).')
+        print('   → 정당한 단독 도입이면 무시해도 된다(이 축은 보이게만 한다 · 차단 안 함).')
+    return 0
+
+
 def check_smoke_chromium_path():
     """스모크 크로미엄 경로 = 폴백 해석기 경유(하드 · 260808 실사고 봉합 · check_smoke_obs_chain 의 짝).
 
@@ -6529,6 +6646,7 @@ def main():
             rc = 1
         if check_smoke_chromium_path() != 0:   # 그 스모크가 러너에서 뜨기는 하는가(260808 — 260807 봉합이 같은 병 2종 중 1종만 고쳐 다음 나이틀리도 그대로 붉었는데 아무 게이트도 안 울린 축)
             rc = 1
+        check_seal_completeness()   # 봉합 완결성(WARN·비차단 · 운영자 260808 "idea go") — 「같은 병의 형제를 놓쳤나」를 커밋 그 자리에서 센다(102게이트가 전부 '최종 상태'만 보고 '방금 한 수정이 완결됐나'는 축이 없었다)
         if check_stt_engine_chain() != 0:   # STT 엔진 교체 계약(260808 · 평의회 8인 후속) — 층 하나가 빠져도 화면은 멀쩡한 채 조용히 죽는 축
             rc = 1
         if check_edit_track_chain() != 0:   # 편집 생성 = 자동 가림·키잉·크로마키(운영자 260808) — 구판은 옵션이 켜지는데 생성엔 아무 일도 안 생겼다(무증상 = 운영자 눈이 유일한 검출기)
