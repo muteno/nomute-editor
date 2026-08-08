@@ -4775,6 +4775,40 @@ def check_smoke_chromium_path():
     return 0
 
 
+def check_edit_track_chain():
+    """편집 생성 = 자동 가림·키잉·크로마키 게이트(하드 · 운영자 260808 "모자이크 누르고 옵션 선택한 다음에 생성 누르면
+    트래킹해서 모자이크까지 자동으로"). ⚠ 신설 사유 = **이 축은 화면이 멀쩡한 채로 조용히 죽는다** — 260808 이전 상태가
+    정확히 그랬다: 편집 폼의 추가 옵션(모자이크·키잉·크로마키)은 토글이 켜지고 세부 게이지까지 그려지는데 발사 페이로드엔
+    안 실려서, 생성을 눌러도 **아무 일도 안 일어났다**(오류도 안 뜬다 = 운영자 눈이 유일한 검출기). 층이 4개라 어느 하나만
+    빠져도 같은 무증상 사고로 되돌아간다 = 정적 층별 생존 강제.
+    체인: 뷰어 xtrOpts()→buildOpts o.xtr → api/edit.js 화이트리스트(+발사 게이트 유효 인정) → edit_track.py → edit-make.yml 2스텝.
+    ⑤ = 크로마키 강도 단위 회귀 차단(실측 사고 = 뷰어 1~50%를 0.01~0.5로 클램프해 전 구간 0.5 = 화면 전체 소거)."""
+    rc = 0
+    try:
+        vw = open(os.path.join(ROOT, 'viewer', 'edit.html'), encoding='utf-8').read()
+        ae = open(os.path.join(ROOT, 'functions', 'api', 'edit.js'), encoding='utf-8').read()
+        at = open(os.path.join(ROOT, 'functions', 'api', 'track.js'), encoding='utf-8').read()
+        et = open(os.path.join(ROOT, '.github', 'scripts', 'edit_track.py'), encoding='utf-8').read()
+        wf = open(os.path.join(ROOT, '.github', 'workflows', 'edit-make.yml'), encoding='utf-8').read()
+        lb = open(os.path.join(ROOT, '.github', 'scripts', 'ly_burn.py'), encoding='utf-8').read()
+    except Exception as e:
+        print('❌ 편집 자동 가림 체인 게이트 — 층 파일 결손:', e)
+        return 1
+    checks = [
+        ('① 뷰어 송신', 'function xtrOpts(' in vw and 'o.xtr=xo' in vw),
+        ('② api 화이트리스트', 'opts.xtr = xt' in ae and '!opts.xtr' in ae),   # 후자 = 발사 게이트가 xtr 단독을 유효로 인정(빠지면 "적용할 처리가 없어" 400 = 주 시나리오 전면 거절)
+        ('③ 러너 스크립트 골격', all(k in et for k in ('def norm_xtr', 'LOCAL_OUT', 'track_analyze.py', 'track_render.py', 'ly_out'))),
+        ('④ 워크플로 배선', _has_exec_line(wf, '.github/scripts/edit_track.py') and 'apps/track' in wf and 'ly_final_path.txt' in wf),
+        ('⑤ 컴포즈 산출 도장', 'ly_final_path.txt' in lb),   # 후속 스텝의 입력 앵커 — 빠지면 폴백 경로 추정에 의존(음량 통일 분기로 경로가 갈린다)
+        ('⑥ 크로마 강도 단위', 'o.similarity > 1' in at),   # 구판 직접 클램프 부활 = 크로마키 전면 무동작 회귀
+    ]
+    for name, ok in checks:
+        if not ok:
+            print('❌ 편집 자동 가림 체인 게이트 — %s 결손(한 층만 빠져도 옵션이 켜지는데 생성엔 아무 일이 안 생긴다)' % name)
+            rc = 1
+    if rc == 0:
+        print('✅ 편집 자동 가림 체인 게이트 — 6축(뷰어 송신→api→러너→워크플로→산출 도장→크로마 단위) 전 층 생존.')
+    return rc
 def check_smoke_obs_chain():
     """UI 스모크 관측·알림 체인 게이트(하드 · 운영자 260807 "알림 메세지에 그 내용이 쌓이게 ·
     웹앱 푸쉬알림까지는 안오게 · 다운로드해서 클코에 전달하면 개선할 수 있도록").
@@ -6496,6 +6530,8 @@ def main():
         if check_smoke_chromium_path() != 0:   # 그 스모크가 러너에서 뜨기는 하는가(260808 — 260807 봉합이 같은 병 2종 중 1종만 고쳐 다음 나이틀리도 그대로 붉었는데 아무 게이트도 안 울린 축)
             rc = 1
         if check_stt_engine_chain() != 0:   # STT 엔진 교체 계약(260808 · 평의회 8인 후속) — 층 하나가 빠져도 화면은 멀쩡한 채 조용히 죽는 축
+            rc = 1
+        if check_edit_track_chain() != 0:   # 편집 생성 = 자동 가림·키잉·크로마키(운영자 260808) — 구판은 옵션이 켜지는데 생성엔 아무 일도 안 생겼다(무증상 = 운영자 눈이 유일한 검출기)
             rc = 1
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1

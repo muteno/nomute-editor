@@ -65,6 +65,7 @@ jobs:
             shared
             apps/ly
             apps/conv
+            apps/track
             prompts
             assets/fonts
             viewer/ly_out
@@ -453,6 +454,44 @@ jobs:
           [ -n "$IN_ID" ] || { echo "::error::id 없음"; exit 1; }
           case "$IN_ID" in *[!0-9a-f-]*) echo "::error::잘못된 id"; exit 1;; esac
           python3 .github/scripts/ly_burn.py "$IN_ID" "${EDIT_SRC:-}"
+
+      # ── 자동 가림·키잉·크로마키(운영자 260808 "모자이크 누르고 옵션 선택한 다음에 생성 누르면 트래킹해서 모자이크까지 자동으로")
+      #   구판 = 편집 폼의 추가 옵션이 발사에 안 실려서, 켜도 생성엔 아무 일이 없고 [트래킹] 버튼으로 넘어가 재첨부·재분석·수동선택을
+      #   다시 해야 했다. 아래 2스텝이 그걸 이 잡 안에서 잇는다 — 컴포즈 **뒤**에 도는 이유 = 크롭·해상도가 바뀐 **완성본 좌표**로
+      #   분석해야 박스가 맞기 때문(원본 기준 분석은 크롭 시 어긋난다).
+      #   전면 fail-soft = 자동 가림이 실패해도 편집 산출물은 그대로 살아 있다(스크립트 rc 항상 0 · video.json url 무접촉).
+      - name: 트래킹 환경 (자동 가림·키잉·크로마키)
+        if: ${{ contains(inputs.opts, '"xtr"') && !contains(inputs.opts, '"clip":true') && !contains(inputs.opts, '"cutscan":true') }}
+        timeout-minutes: 15   # 콜드런 pip+모델 다운 여유(이후 캐시히트 즉시) — track-make 동문
+        continue-on-error: true   # 환경 설치 실패 = 자동 가림만 스킵(편집 잡은 살린다)
+        uses: ./.github/actions/runner-setup
+        with:
+          setup: apps/track/setup.sh
+          apt: ffmpeg fonts-noto-cjk   # 핀셋 이름표 한글 폰트(모자이크·크로마키는 불요지만 .deb 캐시 공유라 비용 0)
+        env:
+          TRACK_HEAVY: ${{ (contains(inputs.opts, '"keying":true') || contains(inputs.opts, '"silh":true')) && '1' || '' }}   # 키잉·실루엣만 torch+SAM2(모자이크·핀셋·크로마키 = 경량)
+
+      - name: 자동 가림 적용 (분석 → 전대상 → 편집 산출 교체)
+        if: ${{ contains(inputs.opts, '"xtr"') && !contains(inputs.opts, '"clip":true') && !contains(inputs.opts, '"cutscan":true') }}
+        timeout-minutes: 45   # 분석 300s캡 + 모자이크 최악 ~17분 · 키잉 ≈25분(track-make 실측) — 잡 105분 캡 전 우아한 실패 창
+        continue-on-error: true   # 스크립트가 이미 전면 fail-soft지만 이중 안전벨트(네이티브 크래시·OOM도 편집본을 못 죽이게)
+        env:
+          IN_ID: ${{ inputs.id }}
+          OPTS: ${{ inputs.opts }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          [ -n "$IN_ID" ] || exit 0
+          case "$IN_ID" in *[!0-9a-f-]*) exit 0;; esac
+          # 입력 = 컴포즈 최종본(ly_burn이 도장한 경로 · 없으면 음량통일본 → 합성본 순 폴백)
+          SRC_IN=""
+          if [ -s /tmp/ly_final_path.txt ]; then SRC_IN="$(cat /tmp/ly_final_path.txt)"; fi
+          if [ ! -s "$SRC_IN" ]; then for c in /tmp/ly_an.mp4 /tmp/ly_subbed.mp4; do [ -s "$c" ] && SRC_IN="$c" && break; done; fi
+          [ -s "$SRC_IN" ] || { echo "::warning::컴포즈 산출을 못 찾아 자동 가림 스킵"; exit 0; }
+          python3 .github/scripts/edit_track.py "$IN_ID" "$SRC_IN"
 
       - name: 실패 기록(error.log) — 프론트가 폴링해 즉시 표시
         if: failure()

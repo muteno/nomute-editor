@@ -1495,6 +1495,11 @@ def run(vid_id, video, outdir):
         if ok_a:
             out_mp4 = "/tmp/ly_an.mp4"
         edit_notes.append(a_note)
+    try:   # 컴포즈 최종본 경로 도장(260808) — 후속 스텝(edit_track = 자동 가림·키잉·크로마키)이 **순서 규칙 추정 없이**
+        with open("/tmp/ly_final_path.txt", "w", encoding="utf-8") as _fp:   # 이 파일 하나로 입력을 잡는다(음량 통일 분기로 경로가 갈리는 축을 여기서 확정)
+            _fp.write(out_mp4)
+    except Exception:
+        pass   # fail-soft — 도장 실패는 본 산출과 무관(후속 스텝이 폴백 경로로 찾는다)
     data = open(out_mp4, "rb").read()
     ed_note = {"1": "편집 자막 반영", "fail": "편집 반영 실패 — 이전 자막으로 합성", "restore": "원본 의역 복원", "early": "합성 전 조기 교정 반영"}.get(os.environ.get("LY_EDITED") or "", "")   # 편집분 번인 결과 표면화(기능평의회9 P1 — 반영/실패/복원이 무신호로 수렴하던 침묵 봉합 · env = ly-make '편집 자막 반영' 스텝)
     note = " · ".join(p for p in [

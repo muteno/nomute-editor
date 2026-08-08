@@ -93,6 +93,29 @@ export async function onRequestPost({ request, env }) {
     if (cf.length > 900) { const t = cf.split(','); while (t.length && t.join(',').length > 900) t.pop(); cf = t.join(','); }
     if (cf) opts.cutoff = cf;
   }
+  // ── 추가 옵션(가림·키잉·크로마키) — 생성에 동봉되면 러너가 컴포즈 뒤에 [인물 분석 → 자동 전대상 적용]까지 잇는다(운영자 260808
+  //   "모자이크 누르고 옵션 선택한 다음에 생성 누르면 트래킹해서 모자이크까지 자동으로"). 소비 = .github/scripts/edit_track.py
+  //   ⚠ 값 단위 = **폼 그대로**(size 75~250% · cksim 1~50%) — 배율(1.15)·비율(0.18) 환산은 러너 1곳에서만 한다.
+  //     단위 변환을 여기서도 하면 반드시 갈린다(실측 260808 = api/track.js가 뷰어의 1~50 강도를 0.01~0.5로 클램프해
+  //     **전 구간이 0.5로 붙어** 크로마키가 화면을 통째로 지웠다 = 라이브 무동작).
+  if (o.xtr && typeof o.xtr === 'object') {
+    const x = o.xtr, xt = {};
+    for (const k of ['mosaic', 'pinset', 'keying', 'silh', 'chroma']) { if (x[k] === true) xt[k] = true; }
+    if (Object.keys(xt).length) {
+      if (x.shape === 'ellipse' || x.shape === 'rect') xt.shape = x.shape;
+      const xsz = num(x.size, 75, 250); if (xsz !== null) xt.size = Math.round(xsz);              // 가림 크기 %
+      const xfe = num(x.feather, 0, 40); if (xfe !== null) xt.feather = Math.round(xfe);          // 모자이크 페더
+      const xkf = num(x.kfe, 0, 40); if (xkf !== null) xt.kfe = Math.round(xkf);                  // 키잉 페더
+      const xsf = num(x.sfe, 0, 40); if (xsf !== null) xt.sfe = Math.round(xsf);                  // 실루엣 페더
+      if (x.fill === 'image' || x.fill === 'mosaic') xt.fill = x.fill;
+      if (['smile', 'black', 'heart'].includes(x.preset)) xt.preset = x.preset;                   // 가면 프리셋(py 화이트리스트와 이중)
+      if (x.ckcolor === 'blue' || x.ckcolor === 'green') xt.ckcolor = x.ckcolor;
+      const xcs = num(x.cksim, 1, 50); if (xcs !== null) xt.cksim = Math.round(xcs);              // 크로마 강도 %
+      const xcc = num(x.ckchoke, -4, 4); if (xcc !== null) xt.ckchoke = Math.round(xcc);
+      const xcf = num(x.ckfe, 0, 10); if (xcf !== null) xt.ckfe = Math.round(xcf);
+      opts.xtr = xt;
+    }
+  }
   if (!opts.cutref) delete opts.cutoff;   // 참조 없는 제외 목록 = 무의미(잔여 키 청소 = clip_model 선례)
   if (opts.cutscan === true) { opts.clip = false; delete opts.clip; delete opts.clip_model; delete opts.cutref; delete opts.cutoff;
     for (const k of Object.keys(opts)) { if (!['cutscan', 'cut', 'cutlv', 'cutfill', 'take'].includes(k)) delete opts[k]; }   // 컷 미리보기 = 분석 전용 스캔(렌더 축 무시 = 러너 컴포즈 스킵과 계약 일치)
@@ -101,7 +124,7 @@ export async function onRequestPost({ request, env }) {
   if (opts.clip === true) { for (const k of Object.keys(opts)) { if (k !== 'clip' && k !== 'clip_model') delete opts[k]; } }   // 클리퍼 = 배타 스캔 모드(후보만 뽑음 · 렌더 옵션 무시 = 서버 정규화 — 러너 스텝 게이트와 계약 일치) · clip_model은 감독 선택이라 보존
   else { delete opts.clip; delete opts.clip_model; }   // clip:false 잔여 키 제거 = 워크플로 contains 게이트 오발동 차단 · clip_model도 동반 삭제(clip 없이 잔존 방지·평의회 260722 P2 청결성)
   if (!opts.clip && !opts.cutscan && !opts.cutref && !opts.burn && !opts.cut && !opts.cutfill && !opts.take && !opts.vid_ar && !opts.vid_res && !opts.vid_fps && !opts.aud_norm && !opts.bgm
-    && opts.vid_t0 === undefined && opts.vid_t1 === undefined && !opts.vid_segs) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // vid_segs 단독 = 유효(n구간 이어붙기 · 260728)   // cut 단독 = 유효(STT-only 컷 260711) · 필러·테이크 단독도 유효(260727)
+    && !opts.xtr && opts.vid_t0 === undefined && opts.vid_t1 === undefined && !opts.vid_segs) return json({ error: '적용할 처리가 없어 — 스택에 하나는 넣어줘' }, 400);   // xtr 단독 = 유효(가림·키잉·크로마키만 켜고 생성 = 운영자 260808 주 시나리오)   // vid_segs 단독 = 유효(n구간 이어붙기 · 260728)   // cut 단독 = 유효(STT-only 컷 260711) · 필러·테이크 단독도 유효(260727)
 
   const optsStr = JSON.stringify(opts);   // 구 .slice(0,900) = 초과 시 *깨진 JSON*을 러너에 넘겨 옵션이 통째로 증발했다(조용한 무력화) → 길이 초과는 정직 거절(260727)
   if (optsStr.length > 1400) return json({ error: '옵션이 너무 많아 — 처리를 몇 개 빼고 다시' }, 400);

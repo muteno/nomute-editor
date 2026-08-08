@@ -43,7 +43,13 @@ export async function onRequestPost({ request, env }) {
       const copts = { despill: 0.5, blend: 0.05, edge: 'high' };   // 고정 = 그린물 제거·경계 전이·테두리 우선(속도 대가 수용 — 운영자 "테두리" 우선)
       const CKC = { green: '#00FF00', blue: '#0000FF' };   // 뷰어 = 키워드만(디자인 게이트 hex 0) → 여기서 hex 해석 · 직접 hex도 허용(직접 dispatch)
       copts.color = CKC[o.color] || ((typeof o.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(o.color)) ? o.color : CKC.green);
-      const si = num(o.similarity, 0.01, 0.5); copts.similarity = si === null ? 0.18 : Math.round(si * 100) / 100;
+      // ⚠ 단위 봉합(260808 실측 사고) — 뷰어 강도 슬라이더는 **1~50 정수(%)** 인데 이 줄이 0.01~0.5로 클램프해서
+      //   슬라이더를 어디에 두든 전부 **0.5(최대)** 로 붙었다 → 그린/블루 유사도가 극단이라 크로마키가 **화면 전체를
+      //   투명하게** 지웠다(실호출 실측: similarity 0.5 = 알파 전면 0 = 빈 영상 / 0.18 = 배경만 정확히 제거).
+      //   슬라이더가 죽어 있었을 뿐 아니라 크로마키 자체가 라이브에서 늘 실패였다. 1보다 크면 %로 해석해 환산한다
+      //   (직접 dispatch로 0.18 같은 비율을 주는 경로도 종전 그대로 = 하위호환).
+      const sraw = (typeof o.similarity === 'number' && Number.isFinite(o.similarity)) ? (o.similarity > 1 ? o.similarity / 100 : o.similarity) : null;
+      const si = num(sraw, 0.01, 0.5); copts.similarity = si === null ? 0.18 : Math.round(si * 1000) / 1000;
       const ch = num(o.choke, -4, 4); copts.choke = ch === null ? 0 : Math.round(ch);
       const fe = num(o.feather, 0, 10); copts.feather = fe === null ? 1 : Math.round(fe);
       const payload = JSON.stringify({ mode, opts: copts });

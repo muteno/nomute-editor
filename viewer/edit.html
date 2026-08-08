@@ -1426,7 +1426,17 @@ function renderXtr(){   // 가로 3분할 + 라벨|OFF·ON 순환값 문법(운�
     /* 실루엣 = 숨김(운영자 260728 Q12 "일단 숨김 — 내가 어떻게 할지 알려줌" · XTR.silh 상태·세부 카드·트래킹 핸드오프 전부 보존 · 복원 = tg('silh','실루엣','픽셀 실루엣 추종 모자이크·가면') 1줄) · 번역(trans) 카드 = 삭제(운영자 260728 Q06 "아래에 있는 번역은 삭제" — 하이라이트 자막 번역 토글이 대체 · XTR.trans 배타 코드 보존) */
     +(det?'<div class="scard"><div class="prm">'+det+'</div></div>':'')
     +'</div>'
-    +'<button class="xgo" id="xtrGo" type="button"'+(any?'':' disabled')+'>트래킹</button>';   // 라벨 = 한 단어(운영자 260712 "'트래킹에서 이어서~' 말 필요없음") · 미선택 = disabled 흐림(어포던스가 설명)
+    +(any?'<div class="xnote">켠 옵션은 <strong>생성</strong>에 그대로 실려 — 인물을 자동으로 찾아 처리해. 인물을 직접 골라 세밀하게 하려면 아래.</div>':'')   // 운영자 260808 "모자이크 누르고 옵션 선택한 다음에 생성 누르면 트래킹해서 모자이크까지 자동으로" — 구판은 이 카드가 발사 옵션이 아니어서 켜도 생성에 안 실렸고, [트래킹] 버튼으로 넘어가 재첨부·재분석·수동선택을 다시 해야 했다(= "목업만 뜨고 진행 불가"의 실체). 부품 = 기존 .xnote 계승(신규 창작 0)
+    +'<button class="xgo" id="xtrGo" type="button"'+(any?'':' disabled')+'>트래킹</button>';   // 라벨 = 한 단어(운영자 260712 "'트래킹에서 이어서~' 말 필요없음") · 미선택 = disabled 흐림(어포던스가 설명) · 260808부터 = **선택 경로**(자동이 기본 · 인물 개별 선택·수동 지정이 필요할 때만)
+}
+function xtrOpts(){   // 발사 페이로드 축(운영자 260808) — 켠 축만 담고 값은 **폼 단위 그대로**(러너 edit_track이 배율·비율로 환산 = 단위 변환 1곳)
+  if(!(XTR.mosaic||XTR.pinset||XTR.keying||XTR.silh||XTR.chroma)) return null;
+  const x={mosaic:!!XTR.mosaic, pinset:!!XTR.pinset, keying:!!XTR.keying, silh:!!XTR.silh, chroma:!!XTR.chroma};
+  if(XTR.mosaic||XTR.pinset){ x.shape=XTR.shape; x.size=XTR.size; x.feather=XTR.feather; }
+  if(XTR.keying) x.kfe=XTR.kfe;
+  if(XTR.silh){ x.fill=XTR.fill; x.preset=XTR.preset; x.sfe=XTR.sfe; }
+  if(XTR.chroma){ x.ckcolor=XTR.ckcolor; x.cksim=XTR.cksim; x.ckchoke=XTR.ckchoke; x.ckfe=XTR.ckfe; }
+  return x;
 }
 /* 추가 옵션 워드 토글 = 캡슐 전면이 히트존(smoke_hitzone H1·H2 · 운영자 260803 "기본 아냐 저건?") — 위 document 위임(1246행)은 `.hd.st > .cyv:only-child`를 찾아 doCyc()를 부르는데 추가 옵션 칩은 `data-cyc`가 아니라 `data-xo` 축이라 doCyc가 `CYC[undefined]`로 즉시 반환 = **캡슐 여백 탭이 통째로 죽어 있었다**(실측 260804 = 히트 27px / 캡슐 37.2px · 260803 봉합이 #stack 축만 덮은 잔여).
    술어 = 위 위임과 **같은 문법**(헤더의 유일한 자식이 워드 칩일 때만) → 라벨|값·칩 나열 헤더는 자식 2개 이상이라 미적중 = 종전 100% 불변. */
@@ -1699,6 +1709,7 @@ function buildOpts(scan){   // scan = 이번 발사가 '컷 미리보기 스캔'
   if(ON.res) o.vid_res=P.res;
   if(ON.fps) o.vid_fps=P.fps;
   if(ON.anorm) o.aud_norm=true;
+  { const xo=xtrOpts(); if(xo) o.xtr=xo; }   // 추가 옵션(가림·키잉·크로마키) 동봉(운영자 260808) — 러너 edit_track이 컴포즈 산출에 인물 분석→자동 전대상 적용까지 이어 붙인다(트래킹 탭 경유 0) · 스캔 경로(clip·cutscan)는 위에서 early return = 미동봉(렌더가 아니라 분석이라 얹을 그림이 없다)
   if(CUT_REF){   // 승인 컷 렌더(260727 ③) — 자를 곳은 스캔 승인본이 정본이라 자동 컷 축을 뺀다 = **전사 재실행 0**(자막 ON이면 자막 몫으로만 돎)
     delete o.cut; delete o.cutlv; delete o.cutfill; delete o.take;
     o.cutref=CUT_REF.id; if(CUT_REF.off.length) o.cutoff=CUT_REF.off.join(',');
