@@ -6211,7 +6211,7 @@ def check_brief_lib():
         fails.append('정본 모듈 부재: %s — 지식 라이브러리가 통째로 사라졌다(fail-closed)' % MOD)
     else:
         for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS',
-                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H', 'def stalled'):
+                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H', 'def stalled', 'def viewcard'):
             if sym not in src:
                 fails.append('%s: 핵심 심볼 「%s」 소실 — 라이브러리 골격이 깨졌다' % (MOD, sym))
         # ⚠ 구문 검사 = 실효 조건 — 셸 배선이 `2>/dev/null || true` fail-soft라 **구문 오류가 그대로 빈 블록**이 된다
@@ -6255,11 +6255,20 @@ def check_brief_lib():
             fails.append('%s: PROMPT에 ⑥ 정체 축 → 오늘의 행동 계약 소실 — 반복만 하고 안 옮겨지던 고리가 되살아난다' % sh)
         if log not in s:
             fails.append('%s: 아카이브 적재 경로 「%s」 소실 — 다음 회차 원료가 안 쌓인다' % (sh, log))
+        # ⑦ 화면 배송(운영자 260808 4차) — 라이브러리를 뷰어에도 태우는 축. 카드 조립(viewcard)은 살아 있는데
+        #   doc['lib'] 주입이 빠지면 뷰어는 영원히 판을 안 그린다(에러 0·로그 정상 = ⓑ와 같은 무증상 죽음).
+        if "doc['lib']" not in s:
+            fails.append('%s: doc[\'lib\'] 배송 소실 — 카드를 만들어놓고 화면에 안 싣는다' % sh)
         # ④ 구판 = 직전 1회차 text 앞 1500자(전문의 36% · [3개월]·[전체]·[총론] 증발) 부활 차단
         if _has_exec_line(s, '[:1500]'):
             fails.append('%s: 구판 절단 문법 「[:1500]」 부활 — 총론·전체가 다시 증발한다' % sh)
         if _has_exec_line(s, 'PREV_BLOCK'):
             fails.append('%s: 구판 PREV_BLOCK 부활 — 라이브러리로 대체된 축이다' % sh)
+    v = _read('viewer/index.html')
+    if v:
+        for sym in ('function libCard', 'tb-libwrap', '+ libCard(CB)'):
+            if sym not in v:
+                fails.append('viewer/index.html: 판단 이력 판 심볼 「%s」 소실 — 라이브러리가 화면에서 사라진다' % sym)
     if fails:
         print('❌ 채널 요약 지식 라이브러리 결손 %d건 — 과거 회차의 판단이 다음 판단에 안 실린다:' % len(fails))
         for f in fails:

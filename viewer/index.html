@@ -14712,6 +14712,20 @@ function chThFail(img) {
   const s = document.createElement('span'); s.className = 'cap'; s.textContent = a.dataset.cap || '';
   a.appendChild(s);
 }
+// 판단 이력 카드(운영자 260808 4차) — brief_lib.viewcard 산출(doc.lib)을 총론 판 문법 그대로 그린다.
+// ⚠ 수치·판정은 파이썬이 이미 끝냈다 — 여기선 문자열 조립만(뷰어가 계산하면 py↔js 미러 드리프트가 생긴다).
+function libCard(CB) {
+  const L = CB && CB.lib; if (!L) return '';
+  const rows = [];
+  (L.stalled || []).forEach(e => rows.push('<b>\u00d7' + e.n + '회 말했는데 안 옮겨짐</b> · ' + esc(e.axis) + ' — ' + esc(e.lb) + ' ' + e.b + ' \u2192 ' + e.a));
+  (L.splits || []).forEach(e => rows.push('<b>회차마다 답이 갈림</b> · ' + esc(e.axis) + ' — ' + (e.vals || []).map(esc).join(' vs ')));
+  (L.repeats || []).forEach(e => rows.push('<b>\u00d7' + e.n + '회 반복</b> · ' + esc(e.axis) + ' — ' + esc(e.line)));
+  (L.ident || []).forEach(e => rows.push('<b>' + esc(String(e.d).slice(5)) + ' 정체성</b> · ' + esc(e.nm)));
+  if (!rows.length) return '';
+  return '<div class="tbrief tb-libwrap"><span class="tbrief-lbl">판단 이력 (' + L.runs + '회차 · '
+       + esc(String(L.from).slice(5)) + '~' + esc(String(L.to).slice(5)) + ')</span>'
+       + '<p class="tbrief-t tb-libl">' + rows.join('<br>') + '</p></div>';
+}
 function renderChan() {
   const box = $('#chanBox'); if (!box) return;
   // 채널 소스 세그(1-1/1-2) = 헤더 .vh-acts 정적 요소로 이주(Q157 · 운영자 260718 "우상단 픽토그램과 같은 라인") — 여기선 on 상태 동기만(콘텐츠부 인라인 주입 폐지 · 배선 = 하단 전역 1회)
@@ -14844,7 +14858,11 @@ function renderChan() {
     // ⑤ (3) 총론 = 항상 고정 노출(운영자 260714 "채널 전체 아우르는 비전·방향성·미션 큰 그림 · 마인드셋 · 기간 무관") — 총론(overview)은 세그 '전체'(기간 분석)와 별개 글이라 어느 탭에서도 안 숨김 · 구 데이터(overview 부재) = all 폴백 + '전체' 선택 시 중복 숨김(하위호환)
     // ⑥ 판 분리(운영자 260729 "기간 요약과 총론은 엄연히 두 div → 도형을 둘로") — 구 = 한 .tbrief 안에서 .tb-div 헤어라인으로만 구획 → 신 = 총론이 자기 .tbrief 판을 가짐(셸·톤·패딩·라운드 = 위 판 100% 계승 · 판 간격 = .tbrief margin-bottom 14 그대로) · 클래스·id·JS 훅(.tb-allwrap/.tb-allt/hidden 토글) 전부 불변
     (bov ? `<div class="tbrief tb-allwrap"><span class="tbrief-lbl">총론</span><p class="tbrief-t tb-allt"></p></div>`
-         : (bhasAll ? `<div class="tbrief tb-allwrap"${CHAN_BSEC === 'all' ? ' hidden' : ''}><span class="tbrief-lbl">전체 총론</span><p class="tbrief-t tb-allt"></p></div>` : '')),
+         : (bhasAll ? `<div class="tbrief tb-allwrap"${CHAN_BSEC === 'all' ? ' hidden' : ''}><span class="tbrief-lbl">전체 총론</span><p class="tbrief-t tb-allt"></p></div>` : ''))
+    // ⑦ 판단 이력(운영자 260808 4차 "라이브러리를 화면에도") — brief_lib가 굽고 브리프 저장 때 doc.lib로 실려온 컴팩트 카드.
+    // ⚠ 셸·라벨·간격 = **바로 위 총론 판(.tbrief/.tbrief-lbl) 100% 사본**(새 클래스·CSS·토큰 0 = [4] 창작금지) · 본문만 목록 조립.
+    // ⚠ 데이터 없으면 판 자체를 안 그린다(빈 소제목만 남는 것 차단 = 조용한 공백 관례) · 구 데이터(lib 부재) = 종전 화면 = 하위호환.
+    + libCard(CB),
     bseg, chanStale);   // bseg = 헤더 우측 기간 칩(extra · 운영자 260716) · chanStale = insta 수집 26h+ 죽음 → 스파크 빛 멎음(메뉴3 대칭)
   const pfSeg = `<span class="ch-rangeseg ch-hdrseg pf-seg">` + [['7', '7일'], ['30', '30일'], ['90', '90일'], ['all', '전체']].map(r => `<button type="button" data-pr="${r[0]}"${CHAN_PROF_R === r[0] ? ' class="on"' : ''}>${r[1]}</button>`).join('') + '</span>';   // 프로필 공통 기간 세그(운영자 260720 Q290 · 일일추이 .ch-rangeseg.ch-hdrseg 디자인 계승 · data-pr 별축 · CHAN_PROF_R 연동) — 헤더 우측 extra
   h += gsec('prof', `<b class="ch-nm"></b>`, '<div class="ch-stats">' +   // 헤더 수집시각 제거(운영자 260720 Q290 "1번 대분류에도 시각 없애 · 최상단 헤더에 1회로 갈음") — 시각 = #vhTime(좌상단 라임)로 이관

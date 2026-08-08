@@ -610,15 +610,53 @@ def build_block(rows, scope):
     return '\n'.join(L)
 
 
+def viewcard(rows, scope):
+    """뷰어 표시용 컴팩트 요약(운영자 260808 4차 "라이브러리를 화면에도") — 프롬프트 블록과 **같은 원천·다른 분량**.
+
+    ⚠ 화면은 프롬프트가 아니다 — 모델은 전문을 받아야 판단하지만, 운영자는 「아 이거 또 그 얘기네」를
+      확인하는 게 목적이라 **정체 축·갈린 축·정체성 최근치**만 있으면 된다. 전문을 그대로 실으면
+      채널 요약 판이 라이브러리에 잡아먹힌다(판 위계 역전).
+    ⚠ 없는 축은 키 자체를 안 넣는다 — 뷰어가 `[]`를 「0건」으로 그리면 빈 소제목만 남는다.
+    """
+    if len(rows) < 2:
+        return None
+    ident, direction, repeats, splits, props = analyze(rows)
+    card = {'runs': len(rows), 'from': str(rows[0].get('date') or '')[:10],
+            'to': str(rows[-1].get('date') or '')[:10]}
+    if scope == 'ig':
+        try:
+            st = stalled(repeats, outcomes(props, load_posts()))
+        except Exception:
+            st = []
+        if st:
+            card['stalled'] = [{'axis': e['axis'], 'n': e['n'], 'lb': e['move'][0],
+                                'b': e['move'][1], 'a': e['move'][2]} for e in st[:2]]
+    if splits:
+        card['splits'] = [{'axis': s['axis'], 'vals': s['vals'][:4]} for s in splits[:2]]
+    if repeats:
+        card['repeats'] = [{'axis': r['axis'] or '기타', 'n': r['n'],
+                            'line': re.split(r'\s—\s', r['line'], 1)[0].lstrip('→ ').strip()[:46]}
+                           for r in repeats[:3]]
+    if ident:
+        card['ident'] = [{'d': e['date'], 'nm': e['name'][:44]} for e in list(reversed(ident))[:3]]
+    return card
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--scope', default='ig', choices=sorted(LOGS))
     ap.add_argument('--json', action='store_true')
+    ap.add_argument('--card', action='store_true')   # 뷰어 표시용 컴팩트 JSON(운영자 260808 4차)
     ap.add_argument('--max-runs', type=int, default=MAX_RUNS)
     a = ap.parse_args()
     try:
         rows = load_rows(os.path.join(ROOT, LOGS[a.scope]), a.max_runs)
-        if a.json:
+        if a.card:
+            c = viewcard(rows, a.scope)
+            if c:
+                json.dump(c, sys.stdout, ensure_ascii=False)
+                print()
+        elif a.json:
             ident, direction, repeats, splits, props = analyze(rows) if len(rows) >= 2 else ([], [], [], [], [])
             json.dump({'scope': a.scope, 'runs': len(rows),
                        'identity': ident, 'direction': direction, 'repeats': repeats,

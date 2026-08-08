@@ -216,8 +216,19 @@ for i in range(1, len(parts) - 1, 2):
 secs = [{'k': k, 'label': lb, 'text': seen[lb][:1800]} for k, lb in SECS if seen.get(lb)]
 if secs and parts[0].strip():
     secs[0]['text'] = (parts[0].strip() + '\n' + secs[0]['text'])[:1800]
+# 판단 이력 카드(운영자 260808 4차 "라이브러리를 화면에도") — 뷰어 표시용 컴팩트(전문 아님 = 판 위계 보호)
+# ⚠ fail-soft: 카드 실패가 브리프 저장을 못 막는다(키 자체를 안 넣음 → 뷰어는 블록 미표시 = 조용한 공백 = 종전 화면)
+_libcard = None
+try:
+    import importlib.util as _ilu
+    _sp = _ilu.spec_from_file_location('brief_lib', 'apps/insta/brief_lib.py')
+    _bl = _ilu.module_from_spec(_sp); _sp.loader.exec_module(_bl)
+    _libcard = _bl.viewcard(_bl.load_rows(_bl.LOGS['fb']), 'fb')
+except Exception as _e:
+    print('lib card skip:', _e)
 doc = {'text': t[:6000], 'updated': datetime.datetime.now(KST).isoformat(timespec='seconds'),
        'src_hash': os.environ.get('BRIEF_SHA') or ''}
+if _libcard: doc['lib'] = _libcard
 if len(secs) >= 2: doc['sections'] = secs
 json.dump(doc, open('viewer/chan_brief_fb.json', 'w', encoding='utf-8'), ensure_ascii=False)
 import os.path
