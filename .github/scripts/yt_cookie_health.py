@@ -34,6 +34,14 @@ LEDGER = ROOT / "push" / "yt_cookie_health.json"   # 원장(기계산출물)
 MSG_PY = ROOT / "shared" / "msg.py"
 MSG_ID_BASE = "yt-cookie-dead"
 DEAD_MIN = 2      # 이 횟수 연속 사망부터 발화(1회성 딸꾹질 제외)
+
+# 조치문 규약(👉 문단 · scraper/watchdog.py `PHONE_TODO` 문법 100% 계승 · 창작 0) — 알림 리포트의 조치주체
+#   분류(viewer/index.html `_rptWho`)는 **👉 문단이 있어야** '운영자가 할 일'로 가른다. 없으면 폴백이 '클로드가
+#   볼 일'이라, 코드로는 한 글자도 못 고치는 이 건(= GitHub Secrets 교체)이 클로드 칸에 앉는다.
+#   ⚠ 260808 실측 = 리포트 3건이 전부 '클로드 3 · 운영자 0'인데 실제 코드 축은 1건뿐이었다. 같은 병이 260728에
+#     이미 진단돼 `wd-phone` 한 종만 고쳐졌고(watchdog.py 188행 주석), 이 생산자는 그때 안 따라왔다.
+COOKIE_TODO = ("\n\n👉 네가 할 일: 위 3동작으로 쿠키를 새로 뽑아 GitHub Secrets 의 YT_T_COOKIES 를 갈아 줘. "
+               "코드로는 못 고치는 축이야(유튜브가 쿠키를 무효 처리한 상태라 재시도·폴백이 다 같은 벽에 막혀).")
 KEEP = 90         # 원장 보존 회차(12시간 주기 = 약 45일)
 
 
@@ -113,7 +121,8 @@ def main():
                     "쿠키 내보내기(Get cookies.txt LOCALLY) → 창 닫기 → ③ GitHub Settings ▸ Secrets ▸ Actions 의 "
                     "YT_T_COOKIES 교체(youtube.com 줄만 · 48KB 상한).\n"
                     "확인: Actions ▸ yt-cookie-whoami ▸ Run workflow → 「④ LOGGED_IN: true」면 복구. "
-                    "⚠ 로그인 창을 열어둔 채 내보내면 쿠키가 회전해 몇 시간 만에 또 죽어요(260804 실측).")
+                    "⚠ 로그인 창을 열어둔 채 내보내면 쿠키가 회전해 몇 시간 만에 또 죽어요(260804 실측)."
+                    + COOKIE_TODO)
             msg("set", mid, body, "warn")
             meta["alert_id"] = mid
     else:

@@ -4736,6 +4736,45 @@ def check_grade_fix_chain():
     if rc == 0:
         print('✅ grade 교정 체인 게이트 — 5층(뷰어 칩→분기→커밋→12h 스윕→내부 축적) 전 층 생존.')
     return rc
+def check_smoke_chromium_path():
+    """스모크 크로미엄 경로 = 폴백 해석기 경유(하드 · 260808 실사고 봉합 · check_smoke_obs_chain 의 짝).
+
+    계약 = 「`shared/smoke_*.js` 가 브라우저를 띄울 때 `executablePath` 에 **리터럴 경로를 박지 않는다**」
+       = 정본 해석기 `chromiumPath()`(env → /opt/pw-browsers → `which` 폴백) 를 경유한다.
+
+    ⚠️ 신설 사유 = **260807 봉합이 같은 병을 앓던 두 종 중 한 종만 고쳤고, 아무 게이트도 안 울렸다.**
+       그 커밋 주석은 「형제 23종은 전부 which 폴백 보유 = 이 한 종만 갈렸다」고 단언했는데 **실측은 2종**
+       (`smoke_wip` ∧ `smoke_photoflow`)이었다 → 봉합 **다음** 나이틀리(런 31211705342 · 260808 04:29 KST)도
+       `smoke_photoflow=1` 로 그대로 붉었고, 운영자는 8일째 「UI 스모크 FAIL」 알림을 또 받았다.
+    ⚠️ 짝 게이트 `check_smoke_obs_chain` 은 **경보가 사유를 갖고 나가는가**만 본다(관측 축) —
+       「그 스모크가 러너에서 **뜨기는 하는가**」는 축 자체가 없었다. 그래서 실행 환경 축의 회귀는
+       나이틀리가 붉어진 뒤 사람이 로그를 열어야만 보였다(insta-thumb-miss·brk_misfire 동축).
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동 발견(새 스모크가 조용히 못 빠진다) · 주석 줄 제외
+       (주석 처리 우회 차단 · check_thumb_redo_append 관용구) · **면책표 없이 하드 0**(부채 원장 증가 0)."""
+    bad = []
+    for p in sorted(glob.glob(os.path.join(ROOT, 'shared', 'smoke_*.js'))):
+        rel = os.path.relpath(p, ROOT)
+        try:
+            src = open(p, encoding='utf-8').read()
+        except OSError:
+            continue
+        for i, ln in enumerate(src.splitlines(), 1):
+            if ln.lstrip().startswith('//'):
+                continue   # 주석 줄 = 비대상(처방문·구판 인용이 곧 위반으로 읽히는 자기참조 차단)
+            m = re.search(r'''executablePath\s*:\s*['"]([^'"]+)['"]''', ln)
+            if m:
+                bad.append('%s:%d  executablePath:%r = 리터럴 경로(폴백 0)' % (rel, i, m.group(1)))
+    if bad:
+        print('❌ 스모크 크로미엄 경로 게이트 — 리터럴 경로 하드코딩(러너에 그 경로가 없으면 매 나이틀리 확정 실패):')
+        for b in bad:
+            print('   -', b)
+        print('   → 처방: `chromiumPath()` 정본 사본(shared/smoke_parity.js)을 이식하고 '
+              'executablePath: chromiumPath() 로 바꿔라 — env → /opt/pw-browsers → which 순 폴백.')
+        return 1
+    print('✅ 스모크 크로미엄 경로 게이트 — smoke_*.js 전건 폴백 해석기 경유(리터럴 하드코딩 0).')
+    return 0
+
+
 def check_smoke_obs_chain():
     """UI 스모크 관측·알림 체인 게이트(하드 · 운영자 260807 "알림 메세지에 그 내용이 쌓이게 ·
     웹앱 푸쉬알림까지는 안오게 · 다운로드해서 클코에 전달하면 개선할 수 있도록").
@@ -6453,6 +6492,8 @@ def main():
         print('⚠️ grade 교정 체인 게이트 스킵:', e)
     try:
         if check_smoke_obs_chain() != 0:   # UI 스모크 경보가 사유를 갖고 나가는가(운영자 260807 — 사유 0자 경보가 8일 연속 무증상으로 살아 운영자가 조치할 수 없던 실사고 봉합 · 웹푸시 면제·메시지함 진단서 점등 동반 강제)
+            rc = 1
+        if check_smoke_chromium_path() != 0:   # 그 스모크가 러너에서 뜨기는 하는가(260808 — 260807 봉합이 같은 병 2종 중 1종만 고쳐 다음 나이틀리도 그대로 붉었는데 아무 게이트도 안 울린 축)
             rc = 1
         if check_stt_engine_chain() != 0:   # STT 엔진 교체 계약(260808 · 평의회 8인 후속) — 층 하나가 빠져도 화면은 멀쩡한 채 조용히 죽는 축
             rc = 1

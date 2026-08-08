@@ -338,6 +338,14 @@ def search(ev):
     return None
 
 
+# 조치문 규약(👉 문단 · scraper/watchdog.py `PHONE_TODO` 문법 100% 계승 · 창작 0) — 이 알림은 **완료 보고**다
+#   (기계가 이미 찾아서 큐까지 넘겼다) = 운영자가 고칠 게 없다. 그런데 👉 문단이 없으면 알림 리포트의
+#   조치주체 분류(viewer/index.html `_rptWho`)가 폴백으로 '클로드가 볼 일'에 앉힌다 — 코드 축이 아닌데도.
+#   ⚠ 260808 실측 = 리포트가 '클로드 3 · 자동대기 0' 인데 실제 코드 축은 1건뿐이었고, 이 완료 보고까지
+#     클로드 칸에 섞여 진짜 코드 건을 가렸다(같은 병의 260728 진단 = watchdog.py 188행 · 그땐 wd-phone만 고쳤다).
+FIRE_TODO = ("\n\n👉 네가 할 일: 없어요 — 기계가 이미 긴급보도 큐로 넘겨놨어요. 수집함에서 확인만 하면 돼요.")
+
+
 def notify(ev, art):
     """사상자 확인 = **그 자리에서 알린다**(운영자 260803 "이 같은 상황을 더 빨리 알려고 하는거지").
     구판은 큐잉만 했다 = 운영자가 큐를 열어봐야 안다. 08:20 사건의 10:00 사망 보도를 기계가 10:15에 잡아도,
@@ -351,7 +359,8 @@ def notify(ev, art):
     try:
         subprocess.run([sys.executable, str(ROOT / "shared" / "msg.py"), "set",
                         "fire-" + re.sub(r"[^A-Za-z0-9._-]", "_", str(ev.get("wide") or "") + str(int(ev.get("t0") or 0))),
-                        f"{head}\n{body}\n\n발령 +{int((datetime.now(KST).timestamp() - (ev.get('t0') or 0)) / 60)}분 만에 확인 — 긴급보도 큐로 넘겼어요.",
+                        f"{head}\n{body}\n\n발령 +{int((datetime.now(KST).timestamp() - (ev.get('t0') or 0)) / 60)}분 만에 확인 — 긴급보도 큐로 넘겼어요."
+                        + FIRE_TODO,
                         "warn"], timeout=30)
     except Exception as e:  # noqa: BLE001
         print(f"::warning::메시지함 점등 실패(무시): {e}", file=sys.stderr)

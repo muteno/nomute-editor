@@ -32,9 +32,22 @@ function png(w, h, rgb) {
 }
 [['p1', [220, 40, 40]], ['p2', [40, 140, 220]], ['p3', [240, 200, 40]]].forEach(([n, c], i) => fs.writeFileSync(path.join(SC, n + '.jpg'), png(96 + i * 16, 96, c)));
 function lp(){try{return require('playwright-core')}catch(_){}return require(path.join(os.tmpdir(),'nomute-smoke-deps','node_modules','playwright-core'))}
+// 크로미엄 경로 = shared/smoke_parity.js `chromiumPath()` 정본 사본(창작 0 · 운영자 260807 봉합 문법 계승).
+//   ⚠ 이 파일은 '/opt/pw-browsers/chromium' 을 **하드 폴백**으로 박아, 그 경로가 없는 GitHub 러너에서
+//     `browserType.launch: executable doesn't exist` 로 **매 나이틀리 확정 실패**했다(러너 정본 = google-chrome 내장).
+//   ⚠ 260807 봉합은 같은 병을 앓던 `smoke_wip` **한 종만** 고치고 이 파일을 놓쳤다 — 그 커밋 주석이
+//     「형제 23종은 전부 which 폴백 보유 = 이 한 종만 갈렸다」고 단언했지만 **실측은 2종**이었고,
+//     그래서 봉합 다음 나이틀리(런 31211705342 · 260808 04:29 KST)도 `smoke_photoflow=1` 로 그대로 붉었다.
+//     재발 차단 = 정적 게이트 `check_refs.check_smoke_chromium_path`(표면 자동 발견 · 하드 0).
+function chromiumPath() {
+  const cands = [process.env.PW_CHROMIUM, process.env.CHROMIUM_PATH, '/opt/pw-browsers/chromium'];
+  try { cands.push(require('child_process').execSync('which chromium chromium-browser google-chrome 2>/dev/null | head -1').toString().trim()); } catch (_) {}
+  for (const c of cands) { if (c && fs.existsSync(c)) return c; }
+  throw new Error('크로미엄 실행 파일을 못 찾음 — CHROMIUM_PATH env로 지정해라');
+}
 async function srvUp(){for(let p=8911;p<8916;p++){const s=spawn('python3',['-m','http.server',String(p),'-d',VIEWER],{stdio:'ignore'});const ok=await new Promise(r=>{let d=false;s.on('exit',()=>{if(!d){d=true;r(false)}});setTimeout(async()=>{if(d)return;try{const x=await fetch('http://127.0.0.1:'+p+'/thumb.html',{method:'HEAD'});d=true;r(x.ok)}catch(_){d=true;try{s.kill()}catch(e){};r(false)}},700)});if(ok)return{s,p};try{s.kill()}catch(_){}}throw new Error('srv')}
 const R=[]; const ok=(n,c,d)=>{R.push(c);console.log((c?'PASS':'FAIL')+' | '+n+(d?' | '+d:''));};
-(async()=>{const{chromium}=lp();const st=await srvUp();const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
+(async()=>{const{chromium}=lp();const st=await srvUp();const b=await chromium.launch({executablePath:chromiumPath()});
 const pg=await b.newPage({viewport:{width:1280,height:900}});
 const errs=[];pg.on('pageerror',e=>errs.push(String(e.message).slice(0,140)));
 await pg.goto('http://127.0.0.1:'+st.p+'/thumb.html',{waitUntil:'networkidle',timeout:25000});await pg.waitForTimeout(2000);
