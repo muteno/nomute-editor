@@ -599,6 +599,23 @@ def build_block(rows, scope):
             if samp:
                 L.append(f"   (창 게시물 {OUT_MIN_N}건 미만으로 평가 보류 {len(samp)}건)")
 
+    # ⑦ 터진 게시물 × 그 시각의 바깥 시류(IG 전용 — 원장 tr이 IG 회차 축)
+    if scope == 'ig':
+        try:
+            tc = trendctx()
+        except Exception:
+            tc = []
+        if tc:
+            L.append('')
+            L.append('[⑦ 크게 터진 게시물과 **그 시각 바깥에서 돌던 것**(회차 원장 실측 · ±24h)]')
+            for e in tc:
+                L.append(f"{e['when']} · 조회 {_fv(e['views'])} · {e.get('fmt') or '—'}/{e.get('cat') or '—'} — {e['cap']}")
+                L.append('   그 무렵 시류: ' + ' · '.join(e['near'][:7]))
+            L.append("→ ⚠ 파이썬은 **겹친다고 말하지 않았다** — 그 시각에 실제로 돌던 것을 그대로 옮겼을 뿐이다"
+                     "(토큰 겹침 자동매칭은 260808 실측에서 전건 오탐이라 폐기했다: 캡션의 '3시'가 «새벽 3시 소아과»에 걸렸다). "
+                     "**그 게시물이 이 흐름을 탄 것인지, 무관하게 자체 사건으로 터진 것인지는 네가 캡션과 이 목록을 같이 보고 판단해라.** "
+                     "탔다고 보이면 「무엇이 어떻게 겹쳤는지」를 문장으로 쓰고, 무관하면 무관하다고 써라 — 억지로 잇지 마라.")
+
     prev = rows[-1]
     ptxt = (prev.get('text') or '').strip()
     if not ptxt:
@@ -608,6 +625,85 @@ def build_block(rows, scope):
         L.append(f"[④ 직전 회차 전문({str(prev.get('date') or '')[:10]}) — 반복 말고 이어서. 그때 짚은 흐름이 이어지는지 꺾였는지 비교해 연재처럼 읽히게(직전 표현 복붙 금지)]")
         L.append(ptxt[:PREV_CHARS])
     return '\n'.join(L)
+
+
+# ── ⑦ 터진 게시물 × 그 시각의 바깥 시류 ─────────────────────────────────────
+# ⚠ 신설 사유(운영자 260808 5차 "어떤 게시물이 임팩트를 보인다, 이거는 이유는 ~고, 이런 sns 대세 키워드의
+#   경향성이 나타난 것과 같아서, 알고리즘의 영향도를 받은 것 같다") = 브리프는 **채널 안 숫자만** 봤다.
+#   「이 게시물이 왜 터졌나」의 절반은 바깥 시류인데 그 원료가 프롬프트에 0이었고, 그래서 총론이
+#   「남의 인스타 뒤지는」 느낌으로 얇아졌다(운영자 실측 지적).
+#   ⚠ 원료는 이미 회차 원장에 **박제돼 있다** — tr.gt(구글 실검)·gtp(급상승)·sig·xt(X)·soc(커뮤니티).
+#   또 「쌓이는데 아무도 안 읽는」 축이었다(브리프 아카이브와 같은 병).
+#
+# ⚠⚠ **토큰 겹침 매칭은 실측으로 폐기했다**(260808 첫 실행) — 34게시물 × 25일 트렌드에서 매칭 1건이
+#   나왔는데 **전건 오탐**이었다: 캡션의 「3시」(사건 시각)가 «새벽 3시 소아과 대기줄»에, 「서울」이
+#   «JO1 서울 콘서트 취소»에 걸렸다. 이걸 프롬프트에 먹이면 모델이 「신림 화재가 소아과 트렌드를 탔다」는
+#   **날조를 근거 있는 말투로** 한다 = 지금보다 나쁘다. 불용어를 더 늘려도 표본이 얇아 신호가 안 선다.
+#   → **매칭을 하지 않는다.** 파이썬은 「이 게시물이 올라간 무렵 바깥에선 이런 게 돌고 있었다」는
+#   **사실 스냅샷**까지만 내고, 「그 흐름을 탄 것인가 / 알고리즘 영향인가」는 캡션과 목록을 같이 쥔
+#   모델이 판단한다(③⑤⑥과 같은 축 · [1] 정직 = 파이썬은 단정하지 않는다).
+def trendctx(root=ROOT, top=5, win_h=24, kw=8):
+    """터진 게시물 상위 N + 각 게시 시각 ±win_h에 실제로 돌던 대세 키워드 목록(원장 tr 조인 · 네트워크 0)."""
+    import datetime as _dt, glob as _g
+    KST = _dt.timezone(_dt.timedelta(hours=9))
+    posts, trends = {}, []
+    for f in sorted(_g.glob(os.path.join(root, LEDGER_GLOB))):
+        try:
+            fh = open(f, encoding='utf-8')
+        except Exception:
+            continue
+        with fh:
+            for ln in fh:
+                ln = ln.strip()
+                if not ln:
+                    continue
+                try:
+                    r = json.loads(ln)
+                except Exception:
+                    continue
+                for p in ((r.get('ig') or {}).get('posts') or []):
+                    if p.get('id'):
+                        cur = posts.setdefault(p['id'], {})
+                        for k, v in p.items():
+                            if v is not None and v != '':
+                                cur[k] = v
+                tr = r.get('tr') or {}
+                seen_at = str(r.get('ts') or '')
+                for key, nm in (('gt', '구글 실검'), ('gtp', '급상승'), ('sig', '시그널'), ('xt', 'X 트렌드')):
+                    for t in (tr.get(key) or []):
+                        if t.get('q'):
+                            trends.append({'q': str(t['q'])[:34], 'at': t.get('st') or t.get('fs') or seen_at, 'src': nm})
+                for t in (tr.get('soc') or []):
+                    if t.get('t'):
+                        trends.append({'q': str(t['t'])[:34], 'at': seen_at, 'src': '커뮤니티'})
+    if not posts or not trends:
+        return []
+    def _dt_of(v):
+        try:
+            return _dt.datetime.fromisoformat(str(v).replace('Z', '+00:00')).astimezone(KST)
+        except Exception:
+            return None
+    tl = [(d, t) for d, t in ((_dt_of(t['at']), t) for t in trends) if d]
+    out = []
+    for p in sorted(posts.values(), key=lambda p: -((p.get('ins') or {}).get('views') or 0))[:top]:
+        pd = _pdate(p)
+        if not pd:
+            continue
+        near, seen = [], set()
+        for d, t in sorted(tl, key=lambda x: abs((x[0] - pd).total_seconds())):
+            if abs((d - pd).total_seconds()) > win_h * 3600:
+                continue
+            if t['q'] in seen:
+                continue
+            seen.add(t['q'])
+            near.append('%s(%s)' % (t['q'], t['src']))
+            if len(near) >= kw:
+                break
+        if near:
+            out.append({'cap': str(p.get('cap') or '')[:56], 'views': (p.get('ins') or {}).get('views'),
+                        'fmt': p.get('fmt'), 'cat': p.get('cat'), 'when': pd.strftime('%m-%d %H시'),
+                        'near': near})
+    return out
 
 
 def viewcard(rows, scope):

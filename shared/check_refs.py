@@ -6211,7 +6211,7 @@ def check_brief_lib():
         fails.append('정본 모듈 부재: %s — 지식 라이브러리가 통째로 사라졌다(fail-closed)' % MOD)
     else:
         for sym in ('def build_block', 'def analyze', 'def axis_of', 'def identity', 'def arrows', 'LOGS',
-                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H', 'def stalled', 'def viewcard'):
+                    'def load_posts', 'def outcomes', 'LEDGER_GLOB', 'RIPE_H', 'def stalled', 'def viewcard', 'def trendctx'):
             if sym not in src:
                 fails.append('%s: 핵심 심볼 「%s」 소실 — 라이브러리 골격이 깨졌다' % (MOD, sym))
         # ⚠ 구문 검사 = 실효 조건 — 셸 배선이 `2>/dev/null || true` fail-soft라 **구문 오류가 그대로 빈 블록**이 된다
@@ -6251,6 +6251,10 @@ def check_brief_lib():
         #   프롬프트가 그걸 오늘의 행동으로 바꾸라고 요구하지 않으면 모델은 같은 방침을 또 적는다
         #   (260808 실측 = 07-30~31 제안 4건 전건 실행 ▼ · ②에 「릴스 올리자 ×4회」가 그렇게 쌓였다).
         #   블록만 있고 계약이 없으면 = 정보를 보여주고 아무것도 안 시키는 것 = 반복 고리가 그대로 돈다.
+        # ⑦ 총론 디테일 계약(운영자 260808 5차) — 구판 「수치 나열 금지」가 게시물 실명·근거를 통째로 빼게 만들어
+        #   총론이 정체성 선언문만 남았다(운영자 실측 "남의 인스타 뒤지는 느낌"). 계약이 빠지면 그 얇음이 그대로 재발한다.
+        elif '임팩트 문단(필수)' not in tail:
+            fails.append('%s: PROMPT에 총론 임팩트 문단 계약 소실 — 총론이 다시 게시물 실명·근거 없는 선언문으로 얇아진다' % sh)
         elif '오늘의 행동 한 개' not in tail:
             fails.append('%s: PROMPT에 ⑥ 정체 축 → 오늘의 행동 계약 소실 — 반복만 하고 안 옮겨지던 고리가 되살아난다' % sh)
         if log not in s:
