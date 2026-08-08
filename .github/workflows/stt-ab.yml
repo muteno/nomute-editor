@@ -83,7 +83,26 @@ jobs:
           vids = [v.strip() for v in raw.split("\n") if v.strip()]
           if not vids:
               vids = sorted(glob.glob("*.mp4"))
-          vids = [v for v in vids if os.path.isfile(v)][:6]        # 상한 = 잡 캡 방어
+          # URL 입력 허용(260808) — 레포에 영상을 커밋하지 않고 공개 링크(R2 등)로 A/B.
+          #   ⚠ 읽기 전용 성격 유지: 받은 파일은 /tmp에만 두고 레포에 아무것도 안 쓴다.
+          #   ⚠ 라벨 = URL의 <부모디렉터리>_<파일명> — 리포트에서 어느 클립인지 식별 가능해야 한다(/tmp/ab_0.mp4 같은 익명 이름 금지).
+          local = []
+          for i, v in enumerate(vids):
+              if v.startswith("http://") or v.startswith("https://"):
+                  parts = [x for x in v.split("?")[0].split("/") if x]
+                  label = ("_".join(parts[-2:]) if len(parts) >= 2 else parts[-1]) or "src.mp4"
+                  dst = "/tmp/%s" % label.replace(" ", "_")
+                  cp = subprocess.run(["curl", "-sSL", "--max-time", "300", "-o", dst, v], capture_output=True, text=True)
+                  sz = os.path.getsize(dst) if os.path.exists(dst) else 0
+                  if cp.returncode == 0 and sz > 10000:
+                      local.append(dst); print("  회수 %s → %s (%.2fMB)" % (v[:64], dst, sz / 1e6))
+                  else:
+                      print("::warning::URL 회수 실패(rc=%s · %dB) — %s" % (cp.returncode, sz, v[:100]))
+              elif os.path.isfile(v):
+                  local.append(v)
+              else:
+                  print("::warning::파일 없음 — %s" % v[:100])
+          vids = local[:6]        # 상한 = 잡 캡 방어
           precs = [p.strip() for p in (os.environ.get("PRECISIONS") or "int8,int8_float32").split(",") if p.strip()][:3]
           cap = int(os.environ.get("MAX_SEC") or "0")
           if not vids:
