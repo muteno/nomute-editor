@@ -71,11 +71,16 @@ if [ "$ROWS" -lt 5 ]; then
   if [ "${DUR:-0}" -gt "$STT_MAX_SEC" ] 2>/dev/null; then
     echo "자막 없음 + 길이 ${DUR}s > STT 상한 ${STT_MAX_SEC}s — 전사 거절" >&2; exit 1
   fi
-  bash apps/ly/setup.sh >&2 || { echo "STT 환경 준비 실패" >&2; exit 1; }   # ffmpeg+faster-whisper+yt-dlp+large-v3(멱등·단일출처)
+    # ⚠ 평의회 4인 공통 지적 — 이 호출은 runner-setup 밖이라 LY_WHISPER_PREFETCH가 안 와서 기본 'true'로 떨어졌고,
+  #   같은 잡은 HF 캐시 스텝을 껐으므로 **매 런 3.1GB를 새로 받고 저장도 안 했다**(= 최적화의 정반대). 여기서 자체 판정한다.
+  LY_WHISPER_PREFETCH="${LY_WHISPER_PREFETCH:-$([ -n "${ELEVENLABS_API_KEY:-}" ] && [ "${LY_STT_ENGINE:-auto}" != "whisper" ] && echo false || echo true)}" \
+    bash apps/ly/setup.sh >&2 || { echo "STT 환경 준비 실패" >&2; exit 1; }   # ffmpeg+faster-whisper+yt-dlp+large-v3(멱등·단일출처)
   python3 -m yt_dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES -o "$WD/audio.%(ext)s" "$URL" >/dev/null 2>&1 \
     || python3 -m yt_dlp -x --audio-format mp3 --postprocessor-args "ffmpeg:-ar 16000 -ac 1 -b:a 48k" --no-playlist --socket-timeout 30 $COOKIES --extractor-args "youtube:player_client=tv,mweb,web_safari,default" -o "$WD/audio.%(ext)s" "$URL" >/dev/null 2>&1 \
     || { echo "오디오 다운로드 실패" >&2; exit 1; }
-  python3 .github/scripts/ly_stt.py "$WD/audio.mp3" "" > "$WD/stt.txt" 2>/dev/null || { echo "Whisper large-v3 전사 실패" >&2; exit 1; }
+  # ⚠ 평의회1 F5 — 구본 `2>/dev/null` 은 STT 폴백 사유(::warning::Scribe 실패 HTTP …)까지 통째로 버렸다.
+  #   벤더가 죽어도 아무 신호가 안 남는 축(레포 관례 = 경보는 사유를 갖고 나간다) → stderr 통과시킨다.
+  python3 .github/scripts/ly_stt.py "$WD/audio.mp3" "" > "$WD/stt.txt" || { echo "STT 전사 실패(엔진 로그는 위 stderr)" >&2; exit 1; }
   python3 .github/scripts/nb_sub.py --stt "$WD/stt.txt" > "$WD/tr.json" || { echo "전사 파싱 실패" >&2; exit 1; }
   ROWS="$(python3 -c "import json;print(len(json.load(open('$WD/tr.json')).get('rows') or []))" 2>/dev/null || echo 0)"
   echo "Whisper large-v3 전사 ${ROWS}줄" >&2
@@ -88,7 +93,7 @@ import json, os
 wd, out = os.environ["WD"], os.environ["OUT"]
 m = json.load(open(f"{wd}/meta.json", encoding="utf-8"))
 d = json.load(open(f"{wd}/tr.json", encoding="utf-8"))
-src = {"subs": "제작자 자막", "subs-auto": "자동 자막", "stt": "Whisper large-v3 전사"}.get(d.get("src") or "", d.get("src") or "")
+src = {"subs": "제작자 자막", "subs-auto": "자동 자막", "stt": "음성 전사"}.get(d.get("src") or "", d.get("src") or "")
 L = [f"제목: {m.get('title','')}" + (f" · {m['channel']}" if m.get("channel") else ""),
      f"원본: {m.get('url','')} · 길이 {int(m.get('dur') or 0)//60}분 · 전사 출처: {src}", ""]
 for r in d.get("rows") or []:

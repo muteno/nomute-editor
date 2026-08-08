@@ -352,7 +352,14 @@ def stt_fallback(outdir):
         return {"on": False, "why": "길이 판독 실패 — 받아쓰기 생략"}
     if dur > STT_MAX_DUR:
         return {"on": False, "why": f"영상 {int(dur // 60)}분 — 받아쓰기는 {STT_MAX_DUR // 60}분 이하만"}
-    need = dur * 2.5 + 180   # large-v3 CPU ~2x실시간(ly 실측) + 모델 로드·오디오 추출 여유
+    # ⚠ 260808 — STT 기본이 Scribe v2(API)로 바뀌면서 이 예산이 두 몫을 더 져야 한다(평의회1 F2 · 평의회3 #3):
+    #   ① Scribe 스톨 창(LY_SCRIBE_MAX_SEC 기본 180s) ② 폴백 시 large-v3 콜드 회수(3.1GB · prefetch 조건부화 이후).
+    #   구 산식(+180)이면 5분 미만 영상에서 **Scribe 스톨만으로 서브프로세스 타임아웃** → whisper가 한 줄도 못 돌고
+    #   「받아쓰기 시간 초과」로 오표기됐다(진짜 원인은 벤더 스톨). = 폴백 계약이 이 축에서만 조용히 무효.
+    #   ⚠ 평의회2 C7 — 고정 가산만 하면 408~600초 영상이 「예산 부족」으로 통째 스킵된다(Scribe는 ~30초면 끝낼 일).
+    #     엔진을 실제로 보고 배율을 가른다: Scribe 0.05×RT 실측 → 여유 3배 0.15 · 폴백 창(Scribe 상한+콜드 회수)은 상수로.
+    _sc = bool((os.environ.get("ELEVENLABS_API_KEY") or "").strip()) and (os.environ.get("LY_STT_ENGINE") or "auto").strip().lower() != "whisper"
+    need = dur * (0.15 if _sc else 2.5) + (180 + 180 + 300 if _sc else 180)
     if budget_left() - STT_RESERVE < need:
         return {"on": False, "why": "시간 예산 부족 — 영상 납품 우선(받아쓰기 생략)"}
     wav = "/tmp/vidl_stt.wav"   # 16kHz 모노(ly STEP 0-1 정본 미러)

@@ -211,6 +211,7 @@ jobs:
           #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
+          LY_STT_MAX_SEC: ${{ vars.LY_STT_MAX_SEC }}   # 전사 길이 하드 캡(빈값 = 3600s) — Scribe 속도가 종전 비용 브레이크를 없앤 자리 방어
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
           IN_ID: ${{ inputs.id }}
@@ -265,8 +266,18 @@ jobs:
             fi
             echo "::warning::캐시 재구성 실패 — 정상 전사로 진행"; rm -f "$SEGJSON" /tmp/transcript.txt
           fi
+          # ⚠ 비용 브레이크(평의회4 [높]) — 종전엔 large-v3 ~1.4×RT 라 **50분 스텝 백스톱이 곧 지출 상한**이었다
+          #   (4시간 영상 = 물리적으로 실패 = 지출 $0). Scribe는 0.05×RT라 그 브레이크가 사라졌고 대체 캡이 없었다
+          #   → 4시간 VOD 1건 $0.88 · 10시간 $2.20이 **성공한다**. 형제(nb-make)와 같은 문법으로 하드 캡을 세운다.
+          LY_STT_MAX_SEC="${LY_STT_MAX_SEC:-3600}"
+          ADUR="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/audio.mp3 2>/dev/null | cut -d. -f1)"
+          case "$ADUR" in ''|*[!0-9]*) ADUR=0;; esac
+          if [ "$ADUR" -gt "$LY_STT_MAX_SEC" ] 2>/dev/null; then
+            echo "소리 길이가 $((ADUR/60))분이라 전사 상한($((LY_STT_MAX_SEC/60))분)을 넘어 — 구간을 잘라서 다시 해줘." > /tmp/ly_err.txt
+            echo "::error::STT 길이 상한 초과(${ADUR}s > ${LY_STT_MAX_SEC}s)"; exit 1
+          fi
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
-            || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+            || { echo "전사에 실패했어 — 소리가 또렷한 소스로 다시 해줘(엔진 로그는 Actions 참조)." > /tmp/ly_err.txt; echo "::error::STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT 완료 — $(wc -l < /tmp/transcript.txt)줄"
           if [ -n "$CKEY" ] && [ -s "$SEGJSON" ]; then
@@ -304,6 +315,7 @@ jobs:
           #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
+          LY_STT_MAX_SEC: ${{ vars.LY_STT_MAX_SEC }}   # 전사 길이 하드 캡(빈값 = 3600s) — Scribe 속도가 종전 비용 브레이크를 없앤 자리 방어
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
           UP_BRANCH: ${{ inputs.up_branch }}
@@ -359,8 +371,18 @@ jobs:
             fi
             echo "::warning::캐시 재구성 실패 — 정상 전사로 진행"; rm -f "$SEGJSON" /tmp/transcript.txt
           fi
+          # ⚠ 비용 브레이크(평의회4 [높]) — 종전엔 large-v3 ~1.4×RT 라 **50분 스텝 백스톱이 곧 지출 상한**이었다
+          #   (4시간 영상 = 물리적으로 실패 = 지출 $0). Scribe는 0.05×RT라 그 브레이크가 사라졌고 대체 캡이 없었다
+          #   → 4시간 VOD 1건 $0.88 · 10시간 $2.20이 **성공한다**. 형제(nb-make)와 같은 문법으로 하드 캡을 세운다.
+          LY_STT_MAX_SEC="${LY_STT_MAX_SEC:-3600}"
+          ADUR="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 /tmp/audio.mp3 2>/dev/null | cut -d. -f1)"
+          case "$ADUR" in ''|*[!0-9]*) ADUR=0;; esac
+          if [ "$ADUR" -gt "$LY_STT_MAX_SEC" ] 2>/dev/null; then
+            echo "소리 길이가 $((ADUR/60))분이라 전사 상한($((LY_STT_MAX_SEC/60))분)을 넘어 — 구간을 잘라서 다시 해줘." > /tmp/ly_err.txt
+            echo "::error::STT 길이 상한 초과(${ADUR}s > ${LY_STT_MAX_SEC}s)"; exit 1
+          fi
           python3 .github/scripts/ly_stt.py /tmp/audio.mp3 "$SEGJSON" > /tmp/transcript.txt \
-            || { echo "Whisper STT 실패 — 오디오 인식 불가. 다른 링크·파일이나 SRT 텍스트로 해줘." > /tmp/ly_err.txt; echo "::error::Whisper STT 실패"; exit 1; }
+            || { echo "전사에 실패했어 — 소리가 또렷한 소스로 다시 해줘(엔진 로그는 Actions 참조)." > /tmp/ly_err.txt; echo "::error::STT 실패"; exit 1; }
           echo "LY_TRANSCRIPT=/tmp/transcript.txt" >> "$GITHUB_ENV"
           echo "STT(파일) 완료 — $(wc -l < /tmp/transcript.txt)줄"
           if [ -n "$CKEY" ] && [ -s "$SEGJSON" ]; then

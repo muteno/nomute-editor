@@ -96,6 +96,10 @@ jobs:
           #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
+          # ⚠ 평의회1 F3 — 이 경로만 `ask_link_stt.sh`가 **setup.sh를 다시 부른다**. 그 셸엔 runner-setup이 주입한
+          #   LY_WHISPER_PREFETCH가 없어 기본 'true'로 떨어지고, 캐시는 꺼져 있으니 **매 런 3.1GB 신규 다운로드**가 된다
+          #   (= 이 최적화의 정반대 · 그것도 Scribe 성공 여부와 무관하게 ly_stt 실행 **전에** 지불).
+          LY_WHISPER_PREFETCH: ${{ (vars.LY_STT_ENGINE == 'whisper' || secrets.ELEVENLABS_API_KEY == '') && 'true' || 'false' }}
           # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)

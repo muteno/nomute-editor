@@ -11,7 +11,23 @@ import json
 import os
 import sys
 
-MODEL_TAG = os.environ.get("STT_MODEL_TAG") or "large-v3"   # 모델 바뀌면 키가 바뀌어야 한다(구 전사 오염 차단)
+def _engine_tag():
+    """⚠ 평의회1 F4 · 평의회2 C1 — 구본은 `STT_MODEL_TAG`(레포 어디서도 주입 안 됨) 폴백 'large-v3' 고정이라
+    ⓐ 260808 이전 whisper 전사가 Scribe 런에 그대로 히트 = **정확도 승격이 조용히 무효**
+    ⓑ Scribe 산출이 large-v3 키에 적재 = 킬스위치를 켜도 Scribe 전사가 되돌아옴 = **「즉시 원복」이 거짓**.
+    이 파일 자기 주석이 정밀도 축에서 이미 봉합했다고 적은 그 사고의 재발이라, 키가 엔진을 담게 한다."""
+    t = (os.environ.get("STT_MODEL_TAG") or "").strip()
+    if t:
+        return t
+    eng = (os.environ.get("LY_STT_ENGINE") or "auto").strip().lower()
+    if eng not in ("auto", "scribe", "whisper"):
+        eng = "auto"
+    if eng != "whisper" and (os.environ.get("ELEVENLABS_API_KEY") or "").strip():
+        return "scribe_v2"
+    return "large-v3"
+
+
+MODEL_TAG = _engine_tag()   # 모델 바뀌면 키가 바뀌어야 한다(구 전사 오염 차단)
 # 연산 정밀도도 키의 일부다(운영자 260728 정밀도 승격 때 적발) — 구본 키는 모델명만 담아서, int8 시절 캐시가
 #   int8_float32 런에 그대로 히트하면 **승격이 조용히 무효화**된다(같은 오디오 = 같은 sha256 = 같은 키).
 #   ly_stt.py와 같은 env·같은 기본값을 읽어 키에 합류시킨다 = 정밀도가 바뀌면 자연 미스 → 새 정밀도로 재전사.
