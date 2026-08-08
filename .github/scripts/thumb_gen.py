@@ -571,7 +571,7 @@ def classify_err(code, msg):
     return "제미나이 오류(HTTP {})".format(code)
 
 
-def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None):
+def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None, model=None):
     """Gemini 이미지 1장 생성 → 이미지 bytes(실측: 모델이 보통 JPEG 반환 — 'PNG' 가정 금지 · 실패 시 None, fail-soft).
     usageMetadata는 _USAGE에 기록.
 
@@ -596,7 +596,11 @@ def gemini_image(prompt, image_size="1K", tag="img", aspect="4:5", ref_png=None)
                              "imageConfig": {"aspectRatio": aspect, "imageSize": image_size}},
     }
     data = json.dumps(payload).encode()
-    req = urllib.request.Request(API + "?key=" + KEY, data=data,
+    # model = 호출별 모델 오버라이드(260808 · 기본 None = MODEL 정본 그대로 = 기존 호출부 전건 바이트 동일).
+    #   신설 사유 = 리사이즈 아웃페인팅이 Flash↔Pro를 **같은 씨앗·같은 판정으로** 비교해야 하는데
+    #   API가 모듈 상수라 실험 축이 아예 없었다(운영자 260808 "3.1 pro를 쓰든 3.1 flash를 쓰든 다 테스트해서").
+    _api = API if not model else API.replace("/models/" + MODEL + ":", "/models/" + model + ":")
+    req = urllib.request.Request(_api + "?key=" + KEY, data=data,
                                 headers={"Content-Type": "application/json"})
     for attempt in range(2):
         try:

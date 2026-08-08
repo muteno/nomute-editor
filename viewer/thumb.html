@@ -2890,6 +2890,11 @@ function rszJob(rid, payload, autoAttach) {   // autoAttach = 완료 시 결과�
       if (job.status !== 'run') return;   // fetch 왕복 중 취소 = 결과 귀속 중단(260727)
       if (hit) {
         o.path = hit.url;
+        // 어느 경로로 나온 그림인지 표기(운영자 260808 "실패해도 과금이 나갈텐데") — 구판은 AI가 실제로 그렸는지
+        // 무과금 폴백이 나갔는지 화면 단서가 **0**이라, AI가 두 번 다 실패해 씨앗(가장자리 늘리기)이 그대로
+        // 나간 것까지 「AI가 이 정도밖에 못 한다」로 읽혔다(260808 실사고 = route seed_pad · qa FAIL).
+        const _R = { gemini: 'AI', solid_pad: '단색', blur_pad: '블러', seed_pad: 'AI 실패·원본 확장' }[hit.route];
+        if (_R) o.label += ' · ' + _R;
         job.done[0] = true; job.status = 'done';
         carAppend(hit.url + (hit.url.indexOf('?') < 0 ? '?t=' + Date.now() : ''), dlStamp(job.t0) + '_리사이즈_' + pad3(job.n) + '_' + payload.aspect.replace(':', 'x') + '.jpg', '리사이즈 #' + job.n, job, ' · ' + payload.aspect, o, false, payload.name || ('리사이즈 #' + job.n));   // 파일명·캐러셀 캡션 = 현행 고정(축8·12 — 잡 라벨과 분리) · 이전 제작 캡션 = 원본 파일명(축5 · histCap)
         renderJob(job);

@@ -45,6 +45,12 @@ SIZES = ("1K", "2K")
 FILLS = ("auto", "solid", "blur", "ai")   # 채움 오버라이드(운영자 260803) — api/resize FILLS와 한 쌍 · auto = 종전 자동 라우팅
 SEED_ON = os.environ.get("RESIZE_SEED", "1") != "0"   # 씨앗 다듬기 모드(260806 기본 ON · RESIZE_SEED=0 = 구 회색 빈칸 방식으로 즉시 원복)
 EDGE_SOLID_STD = 6.0   # 가장자리 픽셀 표준편차 임계 — 이하 = 단색/그라데(PIL 공짜 경로)
+IMG_MODEL = os.environ.get("RESIZE_IMG_MODEL", "").strip()   # 이미지 모델 오버라이드(260808 · 빈값 = thumb_gen MODEL 정본 = 종전 동작 바이트 동일)
+#   ⚠ 신설 사유 = 260808 실사고까지 이 파이프는 **Flash Image 한 종만** 써봤다(원장 24건 전건). 운영자
+#     260808 «3.1 pro를 쓰든 3.1 flash를 쓰든 다 테스트해서 최대한 자연스럽게» — 비교하려면 씨앗·프롬프트·
+#     판정을 고정한 채 모델만 갈아끼우는 축이 있어야 하는데, API가 모듈 상수라 실험 축 자체가 없었다.
+JUDGE_MODEL = os.environ.get("RESIZE_JUDGE_MODEL", "").strip()   # 판정 모델(빈값 = 생성과 같은 모델 = 종전)
+_CALLS = {"gen": 0, "judge": 0}   # 회차 과금 실측(생성·판정 발사 수 · 성패 무관 = 실제 청구 단위)
 STREAK_MAX = 0.50   # 여백 clamp 줄무늬 잔류 상한 — 초과 = 「모델 무동작」(260807 실측: 무동작 0.983 vs 정상 재작성 0.000 · JPEG 왕복 후에도 성립)
 
 P_PADFILL = (
@@ -140,7 +146,7 @@ P_SEEDFILL = (
 #     요구하고, 「가구·벽·패널」을 발명 금지 목록에 명시(16:9 실측 = 없던 스튜디오 기둥·조명 발명).
 
 
-def gemini_judge(png_bytes, ref_bytes=None):
+def gemini_judge(png_bytes, ref_bytes=None, model=None):
     """생성 결과 자가 QA(exp r8 검증 이식 — 운영자 '검증하면서 뽑는 프롬프팅') — 같은 모델 TEXT 판정.
     (passed, reason) · 판정 콜 실패 = None(fail-soft·렌더는 살림).
 
@@ -193,7 +199,8 @@ def gemini_judge(png_bytes, ref_bytes=None):
         parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(png_bytes).decode()}},
                  {"text": prompt}]
     payload = {"contents": [{"parts": parts}], "generationConfig": {"responseModalities": ["TEXT"]}}
-    req = urllib.request.Request(tg.API + "?key=" + tg.KEY, data=json.dumps(payload).encode(),
+    _api = tg.API if not model else tg.API.replace("/models/" + tg.MODEL + ":", "/models/" + model + ":")
+    req = urllib.request.Request(_api + "?key=" + tg.KEY, data=json.dumps(payload).encode(),
                                  headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -494,12 +501,27 @@ def seed_dirs(box_px, canvas_size, src_img, plain_std=EDGE_SOLID_STD):
 
     vert, horz = (y0 > 1 or ch - y1 > 1), (x0 > 1 or cw - x1 > 1)
     hp, wp = pct(y1 - y0, ch), pct(x1 - x0, cw)
+    # ⚠ 260808 봉합 = 구판은 세 갈래 전부 **"the middle"** 하드코딩이라, 원본이 한쪽 변에 붙어 있어도
+    #   「가운데 사각형」이라고 단언했다(실사고 로그 = box x0=0.226·x1=1.0[우변 밀착]인데 "a rectangle in
+    #   the middle"). 모델은 그 말대로 사방 대칭 여백을 상정하고 좌측 23% 밴드를 「원본에 없던 새 영역」으로
+    #   다뤄 **건물을 복제**했다(QA t1 실패 사유 그대로). 이 파일 seed_dirs 독스트링이 box_dirs의 고정 문구
+    #   "central"을 두고 이미 「거짓말」이라 지목했는데, 봉합본이 같은 병을 그대로 안고 있었다.
+    #   → 위치를 **실측 구간 %**로 서술하고 맞닿은 변을 명시한다(가운데면 25%~75%로 저절로 드러난다 = 창작 0).
     if vert and not horz:
-        keep = "the middle " + hp + " of the frame — a horizontal band spanning the full width"
+        keep = ("the horizontal strip from " + pct(y0, ch) + " to " + pct(y1, ch)
+                + " of the frame height, spanning the full width")
     elif horz and not vert:
-        keep = "the middle " + wp + " of the frame — a vertical band spanning the full height"
+        keep = ("the vertical strip from " + pct(x0, cw) + " to " + pct(x1, cw)
+                + " of the frame width, spanning the full height")
     else:
-        keep = "a rectangle in the middle covering " + wp + " of the width and " + hp + " of the height"
+        keep = ("the rectangle spanning " + pct(x0, cw) + " to " + pct(x1, cw) + " of the width and "
+                + pct(y0, ch) + " to " + pct(y1, ch) + " of the height")
+    keep += " (" + wp + " of the width by " + hp + " of the height)"
+    flush = [sd for sd, on in (("left", x0 <= 1), ("right", cw - x1 <= 1),
+                               ("top", y0 <= 1), ("bottom", ch - y1 <= 1)) if on]
+    if flush:   # 밀착 변 = 「그쪽엔 채울 것이 없다」 = 모델이 그 변을 건드릴 이유를 없앤다
+        keep += (", already flush against the " + _join_en(flush)
+                 + (" edge" if len(flush) == 1 else " edges") + " of the frame")
 
     rules = []
     for side, _ in bands:
@@ -602,6 +624,11 @@ def main():
     size = opts.get("size") if opts.get("size") in SIZES else "1K"
     lock = bool(opts.get("lock", True))
     fill = opts.get("fill") if opts.get("fill") in FILLS else "auto"   # 채움 오버라이드(운영자 260803) — 미지정·구 이력 재발사 = auto(종전)
+    _m = opts.get("model")
+    if isinstance(_m, str) and re.match(r"^gemini-[0-9][0-9a-z.\-]*$", _m.strip()):
+        globals()["IMG_MODEL"] = _m.strip()   # dispatch opts 우선(실험 축 = repo variable 없이 1콜로 모델 교체)
+        # ⚠ family 정규식으로 제한 = 임의 문자열 주입으로 엉뚱한 모델에 과금되는 길 차단(models.json vendors
+        #   gemini_image.family와 같은 술어 · 승인 안 된 벤더로는 못 넘어간다).
     box = parse_box(opts)   # 운영자 지정 배치(운영자 260805 · 카드 생성 미리보기의 이동·축소 그대로) — None = 종전 중앙 배치
 
     src_path = os.path.join(ROOT, src)
@@ -664,7 +691,8 @@ def main():
                 p = base_prompt + ((" IMPORTANT — the previous attempt FAILED quality review for this "
                                     "reason: \"" + fb + "\". Fix exactly that issue this time.") if fb else "")
                 cand = tg.gemini_image(p, image_size=size, tag="resize:t{}".format(attempt),
-                                       aspect=aspect, ref_png=feed_parts)
+                                       aspect=aspect, ref_png=feed_parts, model=IMG_MODEL or None)
+                _CALLS["gen"] += 1   # 과금 실측(운영자 260808 "실패해도 과금이 나갈텐데") — 성공·실패 무관 발사 수
                 if not cand:
                     continue
                 try:
@@ -684,7 +712,7 @@ def main():
                     print("  QA t{}: DET-FAIL — 줄무늬 잔류 {:.1%} > {:.0%}(모델 무동작)".format(attempt, sk, STREAK_MAX), flush=True)
                     continue   # 같은 사유 2연속이면 아래 폴백 — 모델 거부 서명이라 더 조를 이유가 없다
                 # ── ⓑ 의미 판정(원본 동봉 2장 비교) ──
-                v = gemini_judge(jpg_bytes(shipped), ref_bytes=ref_jpg)
+                v = gemini_judge(jpg_bytes(shipped), ref_bytes=ref_jpg, model=JUDGE_MODEL or None); _CALLS["judge"] += 1
                 if v is None:
                     # ⚠ 260807 봉합 = 구판은 PASS와 **판정 불가**를 같은 가지로 합치고 **둘 다 무출력**이라,
                     #   유령이 「통과했는지 조용히 스킵됐는지」가 로그·원장 어디에도 안 남았다(평의회 5 실측).
@@ -737,7 +765,7 @@ def main():
     #   합쳐진 채 둘 다 무출력이라, 유령이 통과였는지 조용한 스킵이었는지 사후에 알 방법이 0이었다.
     #   이 레포가 스레드 `[1차 실측]`·틱톡 `_e1`에서 두 번 겪은 「관측이 지워진다」와 같은 병이다.
     item = {"url": url, "srcUrl": src, "aspect": aspect, "size": size, "lock": lock, "route": route, "fill": fill,
-            "qa": qa_note,
+            "qa": qa_note, "calls": {"gen": _CALLS["gen"], "judge": _CALLS["judge"]}, "model": IMG_MODEL or tg.MODEL,
             "box": list(box) if box else None,
             "id": rid, "ts": datetime.datetime.now(KST).isoformat(timespec="seconds")}
     sjson = os.path.join(tdir, "resize.json")
@@ -749,7 +777,11 @@ def main():
             cur = []
     json.dump(([item] + cur)[:24], open(sjson, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     json.dump([item], open("/tmp/resize_new.json", "w", encoding="utf-8"), ensure_ascii=False)   # race-heal(imggen 계승)
-    print("✅ 완료 route={} qa={} → {}".format(route, qa_note, url), flush=True)
+    # ⚠ 과금은 **성패와 무관**하게 나간다 — seed_pad 폴백(=무과금 결과물과 똑같은 그림)이 나가도
+    #   그 앞의 생성·판정 콜은 이미 청구된다. 구판은 그 사실이 로그·원장 어디에도 안 남아 「실패했는데
+    #   얼마 썼나」를 아무도 몰랐다(운영자 260808 지적). 이제 회차마다 남는다.
+    print("✅ 완료 route={} qa={} model={} 콜(생성 {} · 판정 {}) → {}".format(
+        route, qa_note, IMG_MODEL or tg.MODEL, _CALLS["gen"], _CALLS["judge"], url), flush=True)
 
 
 if __name__ == "__main__":
