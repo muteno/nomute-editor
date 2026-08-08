@@ -67,6 +67,21 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          filter: blob:none   # 부분 클론(ly-make 260721 정본 계승) — 커밋 그래프는 전부(rebase·push 종전)·역사 블롭만 지연 회수
+          # ⚡ 260808 sparse-checkout(ly-make 카나리아 run 31234731214 = Checkout 21s→6s · 삭제 0건 실증)
+          #   ⚠ 전제 = 무경로 `git add -A`/`git add .` 0건(check_stt_engine_chain ⑥이 강제) · 신규 add 는 경로 지정.
+          #   ⚠ uploads·metrics 는 cone 유지 — 업로드 정리·계측 shard 가 의존한다.
+          sparse-checkout: |
+            .github
+            shared
+            apps/ly
+            apps/nb
+            prompts
+            assets/fonts
+            viewer/nb_out
+            metrics
+            uploads
+            .claude
 
       # claude CLI — song-make 미러(노트 생성이 무조건 claude 1콜 = 무조건 설치)
       - name: Setup Node (claude)

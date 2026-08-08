@@ -4749,6 +4749,94 @@ def check_smoke_obs_chain():
     return 0
 
 
+def check_stt_engine_chain():
+    """STT 엔진 교체 계약 게이트(하드 · 운영자 260808 "위험 점검 다 반영" · 평의회 8인 후속).
+
+    260808에 STT 기본 엔진을 로컬 large-v3 → ElevenLabs Scribe v2(+폴백)로 바꾸며 **손으로 복사한 계약이
+    10군데 넘게** 생겼다(5워크플로 env 2줄 · prefetch 게이트 · 폴백 · 캐시 키 · 폰트 검문 · sparse 전제).
+    ⚠️ 이 축은 전부 **주석으로만** 선언돼 있었다 = 이 레포가 반복해 겪은 「강제 없는 선언은 조용히 낡는다」
+       (check_contract_anchors 가 이름 붙인 병). 그리고 한 층만 빠져도 **화면은 멀쩡한 채** 이렇게 죽는다:
+         ⓐ env 2줄 누락 → 그 파이프만 조용히 whisper 로 돈다(느려질 뿐 산출은 나온다)
+         ⓑ prefetch 게이트 누락 → 매 런 3.1GB 신규 다운(= 최적화의 정반대 · 260808 실사고 news-ask)
+         ⓒ 폴백 try 제거 → 벤더 스키마 한 번 흔들리면 자막 파이프 전체 사망
+         ⓓ 캐시 키 엔진 축 제거 → 구 whisper 전사 재사용 = 승격 무효 + 킬스위치가 거짓말
+         ⓔ 폰트 검문 완화 → libass 가 에러 없이 두부(□)로 굽는다
+         ⓕ 무경로 `git add -A` 유입 → sparse-checkout 잡이 cone 밖 1만 파일을 삭제 커밋한다
+    판정 = 정적(렌더·LLM·네트워크 0) · 면책표 없이 하드 0."""
+    bad = []
+    wf = os.path.join(ROOT, '.github', 'workflows')
+
+    def _read(fp):   # ⚠ 전역 헬퍼가 아니라 지역 정의 — 이 파일의 _read 는 다른 게이트 안에 갇혀 있다(실측)
+        try:
+            with open(fp, encoding='utf-8') as f:
+                return f.read()
+        except OSError:
+            return ''
+
+    # ① STT 5경로가 키·엔진 env 를 보유 (누락 = 그 파이프만 조용히 whisper)
+    for name in ('ly-make.yml', 'edit-make.yml', 'nb-make.yml', 'news-ask.yml', 'vidl-make.yml'):
+        t = _read(os.path.join(wf, name))
+        # ⚠ bare substring 금지(킬테스트 자기적발) — `ELEVENLABS_API_KEY_X` 같은 개명이 그대로 통과했다.
+        #   YAML 키 형태(`이름:`)로 못박는다.
+        if 'ELEVENLABS_API_KEY:' not in t or 'LY_STT_ENGINE:' not in t:
+            bad.append('%s: STT env 2줄(ELEVENLABS_API_KEY·LY_STT_ENGINE) 누락' % name)
+
+    # ② apps/ly/setup.sh 호출부는 prefetch 를 명시한다(runner-setup 주입 ∨ 자체 판정)
+    #    ⚠ 260808 실사고 = ask_link_stt.sh 가 runner-setup 밖에서 재호출해 기본값 true 로 떨어졌다.
+    for rel in ('.github/scripts/ask_link_stt.sh',):
+        t = _read(os.path.join(ROOT, *rel.split('/')))
+        if 'apps/ly/setup.sh' in t and 'LY_WHISPER_PREFETCH=' not in t:
+            bad.append('%s: setup.sh 호출에 LY_WHISPER_PREFETCH 미명시(매 런 3.1GB 신규 다운)' % rel)
+    act = _read(os.path.join(ROOT, '.github', 'actions', 'runner-setup', 'action.yml'))
+    if 'LY_WHISPER_PREFETCH:' not in act:
+        bad.append('runner-setup/action.yml: whisper 입력을 setup.sh 로 주입하는 줄 소실')
+    setup = _read(os.path.join(ROOT, 'apps', 'ly', 'setup.sh'))
+    if 'LY_WHISPER_PREFETCH:-' not in setup:
+        bad.append('apps/ly/setup.sh: prefetch 게이트 소실(캐시 없이 3.1GB 다운)')
+
+    # ③ 폴백 계약 = 조립 예외까지 감싼다 + 폴백 사유가 표면화된다 + 언어 추측 폴백은 부활 금지
+    st = _read(os.path.join(ROOT, '.github', 'scripts', 'ly_stt.py'))
+    for sym, why in (('def _fb(', '폴백 사유 표면화 함수'),
+                     ('except Exception as _e:', '조립 예외 폴백(파이프 사망 차단)'),
+                     ('_load_whisper', 'large-v3 폴백 경로')):
+        if sym not in st:
+            bad.append('ly_stt.py: %s 소실 — %s' % (sym, why))
+    if '_L3.get(c, c[:2])' in st:
+        bad.append('ly_stt.py: 언어 앞2자 추측 폴백 부활(jav→ja 자바어=일본어 오진 = 자막 어절 전부 붙음)')
+
+    # ④ STT 캐시 키가 엔진을 담는다(구 whisper 전사 재사용·킬스위치 거짓 차단)
+    cc = _read(os.path.join(ROOT, '.github', 'scripts', 'stt_cache.py'))
+    if 'def _engine_tag(' not in cc or 'scribe_v2' not in cc:   # ⚠ 정의 형태로 판정(개명 통과 차단)
+        bad.append('stt_cache.py: 캐시 키 엔진 축 소실(승격 무효 + 킬스위치 거짓)')
+
+    # ⑤ 번인 폰트 하드게이트 = noto ∧ nanum 둘 다(한쪽만 보면 style=nanum/pen 이 두부로 샌다)
+    ly = _read(os.path.join(wf, 'ly-make.yml'))
+    if ly.count('noto sans cjk') < 2 or 'grep -qi "nanum"' not in ly:
+        bad.append('ly-make.yml: 번인 폰트 검문(noto ∧ nanum) 완화 — 두부(□) 번인 위험')
+
+    # ⑥ sparse-checkout 안전 전제 = 무경로 `git add -A` / `git add .` 0건
+    #    (경로 지정형 `git add -A messages` 는 정상 — cone 밖을 건드리지 않는다)
+    import re as _re
+    pat = _re.compile(r'^\s*git add\s+(-A|\.)\s*(?:$|[#;&|])')
+    for d in (wf, os.path.join(ROOT, '.github', 'scripts')):
+        for fn in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+            if not fn.endswith(('.yml', '.yaml', '.sh')):
+                continue
+            for i, ln in enumerate(_read(os.path.join(d, fn)).split('\n'), 1):
+                if ln.lstrip().startswith('#'):
+                    continue
+                if pat.search(ln):
+                    bad.append('%s:%d 무경로 `git add %s` — sparse-checkout 잡이 cone 밖을 삭제 커밋한다'
+                               % (fn, i, '-A' if '-A' in ln else '.'))
+    if bad:
+        print('❌ STT 엔진 계약 게이트:')
+        for b in bad:
+            print('   · %s' % b)
+        return 1
+    print('✅ STT 엔진 계약 게이트 — 5경로 env · prefetch 게이트 · 폴백 3심볼 · 캐시 엔진축 · 폰트 2중검문 · 무경로 add 0.')
+    return 0
+
+
 def check_thumb_vote_chain():
     """AI 썸네일 화풍 투표 폐루프 게이트(하드 · 운영자 260805 "그게 남게끔 해서 나중에 한번 보자" → "ㄱㄱ").
 
@@ -6288,6 +6376,8 @@ def main():
         print('⚠️ grade 교정 체인 게이트 스킵:', e)
     try:
         if check_smoke_obs_chain() != 0:   # UI 스모크 경보가 사유를 갖고 나가는가(운영자 260807 — 사유 0자 경보가 8일 연속 무증상으로 살아 운영자가 조치할 수 없던 실사고 봉합 · 웹푸시 면제·메시지함 진단서 점등 동반 강제)
+            rc = 1
+        if check_stt_engine_chain() != 0:   # STT 엔진 교체 계약(260808 · 평의회 8인 후속) — 층 하나가 빠져도 화면은 멀쩡한 채 조용히 죽는 축
             rc = 1
         if check_thumb_vote_chain() != 0:   # 썸네일 화풍 투표 폐루프(운영자 260805 — 적재는 되는데 커밋이 없어 증발하거나, 쌓이는데 아무도 안 읽는 죽은 원장이 되는 두 축을 함께 막는다)
             rc = 1

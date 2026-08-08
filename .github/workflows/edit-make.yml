@@ -57,6 +57,20 @@ jobs:
         with:
           fetch-depth: 0
           filter: blob:none   # 부분 클론 — ly-make(260721)엔 있는데 여기만 빠져 있던 누락(260728 Q1001 실측: 편집 실런 Checkout 81s = 전체의 26%로 STT보다 큼). 커밋 그래프는 전부 받으므로 rebase·push 종전 그대로 · 역사 블롭만 지연 회수(필요 시 promisor 자동 fetch)
+          # ⚡ 260808 sparse-checkout(ly-make 정본 계승 · 카나리아 run 31234731214 = Checkout 21s→6s · 삭제 0건 실증)
+          #   ⚠ 전제 = 무경로 `git add -A`/`git add .` 0건(check_stt_engine_chain ⑥이 강제) · 신규 add 는 경로 지정.
+          #   ⚠ uploads·metrics 는 cone 유지 — 커밋 스텝의 `git rm -r uploads/<id>`·metrics shard 가 의존한다.
+          sparse-checkout: |
+            .github
+            shared
+            apps/ly
+            apps/conv
+            prompts
+            assets/fonts
+            viewer/ly_out
+            metrics
+            uploads
+            .claude
 
       # ── 자막·클리퍼 ON 경로 전용 준비(claude 의역/구간픽) — 둘 다 아니면 Node·claude 설치 안 함(러너 분 절약)
       - name: Setup Node (자막)

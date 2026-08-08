@@ -44,6 +44,7 @@ PRECISION = os.environ.get("LY_STT_PRECISION", "int8_float32").strip() or "int8_
 #   → 미지 값은 **auto**로 흡수(안전측: 키 있으면 Scribe, 없으면 whisper) = 두 축이 같은 집합을 본다.
 _ENG_RAW = (os.environ.get("LY_STT_ENGINE") or "").lower()
 ENGINE = _ENG_RAW if _ENG_RAW in ("auto", "scribe", "whisper") else "auto"
+# CONTRACT: check_stt_engine_chain
 EL_KEY = (os.environ.get("ELEVENLABS_API_KEY") or "").strip()
 SCRIBE_MODEL = "scribe_v2"
 _SENT_END = ".?!。？！…।۔።։။។"   # ⚠ 평의회5 D6 — 비라틴 종지부(danda·우르두·암하라·아르메니아·버마·크메르) 미포함이면
