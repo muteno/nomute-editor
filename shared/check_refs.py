@@ -2687,23 +2687,48 @@ def check_track_parity():
     #     새 자간 축(새 템플릿·새 포맷)이 생기면 조용히 원문 렌더로 빠질 수 있다 = 레일·클립 SSOT가 겪은 그 축.
     #   판정 = 원문 식별자(lines·csub·ctitle)가 **내용 슬롯**에 직접 나타나면 FAIL(절단분 변수명은 자유 = 리네임 허용).
     #   ⚠ 자간 없는 `.cpv`(카드뉴스 = card_news.py가 tracking 미적용)는 대상 밖 = letter-spacing 보유 줄만 고른다.
-    _fit_defs = [n for n in ('function ovFit(', 'function hdrFit(', 'function _sliceKeep(', 'function _cutToFit(') if n not in js]
+    _fit_defs = [n for n in ('function ovFit(', 'function hdrFit(', 'function _fitPrefix(', 'function _cutToFit(', 'function _inkScan(') if n not in js]
     if _fit_defs:
         print('❌ 자간 기준 게이트 — 절단 함수 소실: %s (미리보기가 원문을 그대로 그리게 된다)' % ', '.join(_fit_defs)); rc = 1
-    _trk_rows = [(i + 1, ln) for i, ln in enumerate(js.split('\n'))
-                 if 'class="cpv"' in ln and 'letter-spacing:${(' in ln and not ln.lstrip().startswith('//')]
+    # 절단분 식별자 = ovFit/hdrFit/_fitPrefix 반환을 받는 이름(리네임 자유 · 이름을 박제하지 않는다)
+    _fit_names = set(re.findall(r'([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?(?:ovFit|hdrFit|_fitPrefix)\s*\(', js))   # 다중 선언자(const a = f(), b = f()) 포함
+    _fit_names |= set(re.findall(r'([A-Za-z_$][\w$]*)\s*=\s*(?:lines|[A-Za-z_$][\w$]*)\.map\([^)]*?(?:ovFit|hdrFit)\s*\(', js))
+    _RAW_SRC = ('lines', 'csub', 'ctitle')
+    # ⚠ 줄 단위가 아니라 **구간**으로 본다(평의회7 우회 B2 = 내용 슬롯만 다음 줄로 내리면 한 줄 스캔을 빠져나갔다)
+    _lines_js = js.split('\n')
+    _trk_rows = []
+    for _i, _ln in enumerate(_lines_js):
+        if not re.search(r'class="cpv[" ]', _ln) or _ln.lstrip().startswith('//'):
+            continue   # ⚠ 정확 토큰 = `class="cpv"` 또는 `class="cpv …"` — 구판 접두 매칭은 cpv-bg·cpv-band·cpv-scrim까지 먹었다(첫 실행 실측 위양성)
+        _reg = _ln                                       # 구간 = 그 줄부터 </div>까지(내용 슬롯만 다음 줄로 내리는 우회 B2 흡수)
+        for _k in range(_i + 1, min(_i + 4, len(_lines_js))):
+            if '</div>' in _reg:
+                break
+            _reg += '\n' + _lines_js[_k]
+        if '</div>' in _reg:
+            _reg = _reg.split('</div>')[0] + '</div>'
+        if 'letter-spacing:${(' not in _reg and 'letter-spacing:${' not in _reg:
+            continue                                     # 자간 없는 .cpv(카드뉴스 = tracking 미적용) = 대상 밖
+        _trk_rows.append((_i + 1, _reg))
     _TRK_ROWS_MIN = 5   # 하한 고정 = 시그니처 드리프트·줄 소실이 「위반 0」으로 거짓 통과하는 것 차단(fail-closed)
     if len(_trk_rows) < _TRK_ROWS_MIN:
-        print('❌ 자간 기준 게이트 — 자간 렌더 줄 %d개 < 하한 %d(시그니처 드리프트 또는 축 소실 = 판정 불능)'
+        print('❌ 자간 기준 게이트 — 자간 렌더 구간 %d개 < 하한 %d(시그니처 드리프트 또는 축 소실 = 판정 불능)'
               % (len(_trk_rows), _TRK_ROWS_MIN)); rc = 1
     for _ln, _row in _trk_rows:
         _body = _row.split('">', 1)[1] if '">' in _row else _row   # 내용 슬롯 = 스타일 속성이 닫힌 뒤
-        _raw = [t for t in ('lines', 'csub', 'ctitle') if re.search(r'\b%s\b' % t, _body)]
+        _raw = [t for t in _RAW_SRC if re.search(r'\b%s\b' % t, _body)]
         if _raw:
             print('❌ 자간 기준 게이트 — thumb.html:%d 미리보기가 **원문**(%s)을 그대로 그린다 = 입력 차단 한도와 화면이 어긋난다 '
                   '→ ovFit()/hdrFit() 통과분을 렌더해라(운영자 260807 "입력 불가인 거는 아예 출력 안 되게")' % (_ln, '·'.join(_raw))); rc = 1
+            continue
+        # ⭐ 양성 축(평의회7 우회 B1·B4·B6 봉합) — 「원문 이름이 없다」로는 부족하다:
+        #   중간 변수 세탁(`const x = lines`)·데코이 줄·호출 제거가 전부 그 술어를 빠져나갔다(우회 7종 실증).
+        #   → 내용 슬롯이 **절단 함수 반환을 받은 이름**을 실제로 쓰는지 본다(이름 자체는 자유 = 리네임 허용).
+        if not any(re.search(r'\b%s\b' % re.escape(_n), _body) for _n in _fit_names):
+            print('❌ 자간 기준 게이트 — thumb.html:%d 자간 렌더가 절단 통과분을 안 쓴다(ovFit/hdrFit 반환 식별자 0) '
+                  '→ 원문 세탁·데코이·호출 누락 중 하나다' % _ln); rc = 1
     if rc == 0:
-        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(전부 advance = 서버 draw_t getbbox·getlength와 1:1) · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0 · 미리보기 자간 렌더 %d줄 전건 절단 통과분(원문 직렌더 0).' % len(_trk_rows))
+        print('✅ 자간 기준 게이트 — 축별 자 선언 7개(전부 advance = 서버 draw_t getbbox·getlength와 1:1) · 한도 3면(TRK·SPECS·워크플로) 동일 · 표기 하드코딩 0 · 미리보기 자간 렌더 %d줄 전건 절단 통과분(원문 직렌더 0 · 절단 식별자 실사용 확인).' % len(_trk_rows))
     return rc
 
 
