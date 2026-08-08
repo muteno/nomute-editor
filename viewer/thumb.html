@@ -1637,8 +1637,8 @@ const CP_PREV_FONT = 'Noto Sans KR';     // 미리보기 폰트 정본 선언(�
 let cpPrevSel = 0;
 let cpFocus = null;   // 액티브 입력칸(운영자 260727 "액티브하게 입력하는 상황이 그 미리보기를 갱신") — 'hdr'(부제·제목) | 'ov'(자막·카드칩) | null(미접촉=종전 우선순위). 값이 아니라 *지금 만지는 칸*이 미리보기 장을 고른다: 헤더 타이핑=흰칸장(릴스 강제는 effOvFmt가 전담) / 오버레이 타이핑=자막장(헤더가 채워져 있어도)
 function cpPrevVariants() {   // 현재 입력으로 발사될 변형 목록(미리보기 선택 칩 원천) — 발사 매트릭스와 동형
-  const csub = $('#cSub').value.trim(), ctitle = $('#cTitle').value.trim();
-  const lines = normEmph(stripStrayStars($('#cLines').value)).split('\n').map(s => s.trim()).filter(Boolean);   // 오타 단일 *(빗금) 자동삭제 후 강조 정규화 = 미리보기 == 산출물
+  const csub = abbrOn($('#cSub').value.trim()), ctitle = abbrOn($('#cTitle').value.trim());   // 축약 = 발사와 같은 텍스트(260807 6차 · abbrOn 주석 참조)
+  const lines = normEmph(stripStrayStars($('#cLines').value)).split('\n').map(s => abbrOn(s.trim())).filter(Boolean);   // 오타 단일 *(빗금) 자동삭제 후 강조 정규화 = 미리보기 == 산출물
   const v = [];
   // 진짜예요 = 문구 1줄(부제 잠금)이라 제목만으로 헤더 성립 · nobg 변형 없음(하부가 이미 투명 = 배경 자리)
   // 노뮤트 = **한 칸만 채워도 헤더 변형 성립**(운영자 260727 "부제 입력할 때는 미리보기가 작동을 안 해") — 부제·제목을 순서대로 치는 동안 반쪽 헤더 그대로 미러(빈 칸은 빈 줄로 렌더 = 지금 만든 상태의 정직한 미리보기 · headerActive()·syncCnTog의 OR 축과 동일).
@@ -4624,13 +4624,17 @@ function hdrFit(text, cfg) {   // 헤더 칸 — 진짜예요(emph)는 델리미
 function ovTrkKey() { const f = effOvFmt() === 'post' ? 'post' : 'reels'; return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? ('jj' + f) : f; }
 function updateTrkHint(taId, hintId, fmt) {   // 자간 줄어들기 시작하면 그때부터 '자간 -N' · 한도 초과 빨강
   const el = $('#' + hintId); if (!el) return;
-  const lines = ($('#' + taId).value || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const lines = ($('#' + taId).value || '').split('\n').map(s => abbrOn(s.trim())).filter(Boolean);   // 축약 = 발사와 같은 텍스트(260807 6차)
   const r = lines.length ? estTracking(lines, fmt) : null;
   if (!r || (!r.swept && !r.over)) { el.textContent = ''; el._icon = ''; el.classList.remove('on', 'over'); return; }   // 여유 = 숨김 (base 클래스 trk·cmtrk 보존 = classList 토글)
   if (r.over) { if (el._icon !== 'warn') { el.innerHTML = WARN_SVG + '<span class="trkmsg"></span>'; el._icon = 'warn'; } const c = ovCut(lines, fmt); el.querySelector('.trkmsg').textContent = c ? ` ${c}자 줄여줘 (자간 ${TRK[fmt].floor}로도 초과)` : ` 자간 ${TRK[fmt].floor}로도 초과 — 축약 필요`; el.classList.remove('on'); el.classList.add('over'); }   // 번쩍임 차단 — over 유지 중엔 텍스트만 갱신(WARN SVG 재생성 X·260630 QA) · 문구 = 뺄 글자수 명시(운영자 260807 "추천으로 pick" — 자간 하한이 한 음절도 못 버는 게 실측이라 -45는 행동지침이 못 된다) · c=0 폴백 = 산출 불가 시 구 문구(거짓 수치 금지)
   else { el.textContent = `· 자간 ${r.tr} 적용`; el._icon = ''; el.classList.remove('over'); el.classList.add('on'); }
 }
 $('#lines').addEventListener('input', () => updateTrkHint('lines', 'linesTrk', 'post'));
+// ⚠ 260807 봉합(평의회5 F2) — `_trkFontOk`가 웹폰트 도착 전 false면 힌트를 **상수 폴백**으로 굽는데 재렌더 훅이 없었다.
+//   → 복원(draftRestore)이 부팅 즉시 힌트를 확정하면 숫자가 틀린 채 고착됐다(실측 "18자 줄여줘"인데 실제 20).
+//   폰트가 도착하면 한 번 다시 그린다(타이핑 1타로도 자가 교정되지만 그때까지 거짓 숫자가 보인다).
+try { document.fonts && document.fonts.ready.then(() => { try { if (typeof updateComboTrk === 'function') updateComboTrk(); updateTrkHint('lines', 'linesTrk', 'post'); } catch (_) {} }); } catch (_) {}
 // 릴스 자막(cLines) 자간 안내 = updateComboTrk(아래)에서 처리
 
 // ---- 릴스 헤더(부제/제목) 실시간 자간 — reels2 _fit_tr 추정(getlength 기준 · AVAIL 960) ----
@@ -4660,8 +4664,8 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
   const el = $(elSel); if (!el) return;
   // 진짜예요 = 문구 1줄(제목칸만·부제는 로고가 대신) → HDR.jinjja(880/-10~-45) 단일 힌트. 노뮤트 = 종전 부제·제목 2줄.
   if (typeof cTpl !== 'undefined' && cTpl === 'jinjja') {
-    const j = estHeaderTr($(titleSel).value.trim(), HDR.jinjja);
-    const jc = j.over ? hdrCut($(titleSel).value.trim(), HDR.jinjja) : 0;
+    const j = estHeaderTr(abbrOn($(titleSel).value.trim()), HDR.jinjja);   // 축약 = 발사와 같은 텍스트(260807 6차)
+    const jc = j.over ? hdrCut(abbrOn($(titleSel).value.trim()), HDR.jinjja) : 0;
     el.textContent = j.over ? (jc ? `· ${jc}자 줄여줘 (자간 ${HDR.jinjja.floor}로도 ${HDR.jinjja.avail} 초과)` : `· 축약필요(${HDR.jinjja.avail} 초과 — 자간 ${HDR.jinjja.floor}로도 안 들어감)`) : (j.tr < HDR.jinjja.start ? `· 자간${j.tr} 적용` : '');   /* 표기 = spec 산출(운영자 260802 "정확히 표현도 된거지" · 구 하드코딩 '880/-45/-10'은 규격을 바꾸면 표기만 옛말로 남는 거짓말원) · 뺄 글자수 명시 = 운영자 260807 */
     el._icon = '';   /* ⚠ 260807 봉합(평의회 1·2) — textContent= 가 _blockNotice의 `.trkmsg` span을 부수는데 _icon이 'warn'으로 남으면
                         다음 차단부터 재조립 분기를 건너뛰어 querySelector가 null → **안내가 영영 안 뜨고** 정상 문구가 빨강으로 오표시된다.
@@ -4670,11 +4674,11 @@ function renderHdrTrk(elSel, subSel, titleSel) {   // 헤더(부제/제목) reel
     if (j.over) el.classList.add('over'); else if (j.tr < HDR.jinjja.start) el.classList.add('on');
     return;
   }
-  const s = estHeaderTr($(subSel).value.trim(), HDR.sub), t = estHeaderTr($(titleSel).value.trim(), HDR.title);
+  const s = estHeaderTr(abbrOn($(subSel).value.trim()), HDR.sub), t = estHeaderTr(abbrOn($(titleSel).value.trim()), HDR.title);   // 축약 = 발사와 같은 텍스트(260807 6차)
   const parts = [];
   // 뺄 글자수 명시(운영자 260807) — 산출 0이면 구 문구 폴백(거짓 수치 금지 · 오버레이 축과 동일 규칙)
-  if (s.over) { const c = hdrCut($(subSel).value.trim(), HDR.sub); parts.push(c ? `부제 ${c}자 줄여줘` : '부제 축약필요'); } else if (s.tr < 0) parts.push(`부제 자간${s.tr} 적용`);
-  if (t.over) { const c = hdrCut($(titleSel).value.trim(), HDR.title); parts.push(c ? `제목 ${c}자 줄여줘` : '제목 축약필요'); } else if (t.tr < 0) parts.push(`제목 자간${t.tr} 적용`);
+  if (s.over) { const c = hdrCut(abbrOn($(subSel).value.trim()), HDR.sub); parts.push(c ? `부제 ${c}자 줄여줘` : '부제 축약필요'); } else if (s.tr < 0) parts.push(`부제 자간${s.tr} 적용`);
+  if (t.over) { const c = hdrCut(abbrOn($(titleSel).value.trim()), HDR.title); parts.push(c ? `제목 ${c}자 줄여줘` : '제목 축약필요'); } else if (t.tr < 0) parts.push(`제목 자간${t.tr} 적용`);
   el.textContent = parts.length ? '· ' + parts.join(' · ') : '';
   el._icon = '';   /* 위와 동축 = _blockNotice 재조립 프로토콜 정합(260807) */
   el.classList.remove('on', 'over');
@@ -4717,12 +4721,25 @@ function _lineAt(v, i) {   // 캐럿이 놓인 줄(헤더는 칸 1개가 1행이
   return v.slice(s, e);
 }
 function _isOverLine(el, line) {   // 그 칸 규격으로 '이 줄이 자간 하한에서도 초과인가' — 판정기 = 힌트와 같은 *Cut 산식(>0 ⟺ over)
-  const id = el.id, t = String(line).trim();
+  const id = el.id, t = abbrOn(String(line).trim());   // 축약 = 발사·힌트·미리보기와 같은 텍스트(260807 6차)
   if (id === 'cSub') return (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? false : hdrCut(t, HDR.sub) > 0;   // 진짜예요 = 부제 잠금(로고 대신) → 판정 제외
   if (id === 'cTitle') return hdrCut(t, (typeof cTpl !== 'undefined' && cTpl === 'jinjja') ? HDR.jinjja : HDR.title) > 0;
   return !!t && ovCut([t], (id === 'cLines') ? ovTrkKey() : 'post') > 0;
 }
 function _rowOverText(el) { return _isOverLine(el, _lineAt(el.value, el.selectionStart ?? el.value.length)); }
+// 캐럿이 놓인 줄만 그 칸 규격으로 자른 **전체 값**(안 넘치면 현재값 그대로 = 무동작) · 절단기는 미리보기와 같은 ovFit/hdrFit
+function _fitRow(el) {
+  const v = el.value, i = el.selectionStart ?? v.length, id = el.id;
+  const st = i === 0 ? 0 : v.lastIndexOf('\n', i - 1) + 1;
+  let en = v.indexOf('\n', i); if (en < 0) en = v.length;
+  const line = v.slice(st, en);
+  if (!_isOverLine(el, line)) return v;
+  // ⚠ 절단은 **원문 인덱스**로 한다(축약본을 칸에 되쓰면 운영자가 친 글자가 바뀐다 = 데이터 훼손) —
+  //   판정만 축약 기준(_isOverLine)이고, 자를 글자 수는 그 판정이 남긴 cut을 원문에 되짚어 적용한다.
+  let out = line;
+  for (let guard = 0; guard < 64 && out.length && _isOverLine(el, out); guard++) out = out.slice(0, -1);
+  return out === line ? v : v.slice(0, st) + out + v.slice(en);
+}
 // ⭐ 260807 개정(운영자 "자간 넘어가면 입력이 즉시 안되게 · 미리보기에도 넘어가서 나오는 일 없도록") —
 //   구판은 '변경 **전**' 초과만 차단해 초과를 *만드는* 그 글자를 통과시켰다(260729 "빨강 힌트가 먼저 떠야 한다"는 취지).
 //   그 결과 넘친 텍스트가 실제로 칸에 들어가 **미리보기까지 흘러나갔다**(운영자 스크린샷 진범).
@@ -4767,12 +4784,34 @@ function bindOverClamp(sel) {
     snap = el.value;
     const ins = (e.data != null) ? e.data : (e.dataTransfer ? (e.dataTransfer.getData('text') || '') : '');   // 붙여넣기 = dataTransfer 실문자열(빈 문자열이면 삽입폭 0 = 통과 = 종전과 동일)
     preOver = _rowOverAfter(el, ins);   // 260807: '변경 전' → '변경 후' 판정(넘치는 그 글자부터 차단)
-    if (preOver) { e.preventDefault(); _blockNotice(el); }   // 막되 이유는 보인다(260729 '안내 없이 먹통 금지' 이행)
+    if (preOver) {
+      e.preventDefault(); _blockNotice(el);
+      // ⭐ 붙여넣기·드롭은 **들어가는 만큼만** 넣는다(260807 봉합 · 평의회 1 F4·5 F4) —
+      //   구판은 통째 취소라 빈 칸에 17자를 붙여도 0자가 들어가고 「한도 꽉 찼어」가 떴다(빈칸인데 꽉 참 = 거짓 안내).
+      //   ⚠ 단일 글자 입력(insertText 1자)은 대상 밖 = 종전대로 통째 차단(자를 게 없다).
+      if (ins.length > 1) {
+        const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a;
+        let take = ins;
+        for (let g = 0; g < 512 && take.length && _rowOverAfter(el, take); g++) take = take.slice(0, -1);
+        if (take.length) {
+          el.value = el.value.slice(0, a) + take + el.value.slice(b);
+          try { el.setSelectionRange(a + take.length, a + take.length); } catch (_) {}
+          el.dispatchEvent(new Event('input', { bubbles: true }));   // 비신뢰 = 재차단 없음 · 힌트·미리보기 재동기
+          _blockNotice(el);   // 재동기 뒤 = 잘렸다는 사실이 화면에 남는다
+        }
+      }
+    }
   });
-  const clamp = () => {   // 취소 불가 경로(한글 조합 확정본) 되돌림 — 확정 결과가 초과이고 길이가 늘어난 경우
-    if (el.value.length > snap.length && _rowOverText(el)) {
-      const p = Math.min(el.selectionStart ?? snap.length, snap.length);
-      el.value = snap;
+  const clamp = () => {   // 취소 불가 경로(한글 조합 확정본) 되돌림 — 확정 결과가 초과면 **넘치는 만큼만** 자른다
+    // ⭐ 260807 봉합(평의회 1·2) — 구판은 `el.value = snap`(조합 시작값)으로 되돌려 **세션에 담긴 N자를 통째로** 날렸다
+    //   (실측 최대 13자 유실 · 여유가 2자 남아 있어도 N≥3이면 그 2자까지 같이 삭제 · `el.value=` 대입이 네이티브 undo 스택을
+    //   지워 Ctrl+Z 복구도 0). 게다가 `length > snap.length` 길이 가드가 **선택 치환**을 못 봐서 반대 방향으로 초과가 새기도 했다.
+    //   → 표적을 절단본(_fitRow)으로 바꾸면 ⓐ 유실 = 넘치는 만큼만 ⓑ 길이 가드 불요(안 넘치면 절단본 == 현재값 = 무동작)
+    //     ⓒ 조합 중 과도상태의 칸↔미리보기 괴리도 확정 시점에 소멸 — 세 사고가 한 축으로 닫힌다.
+    const fixed = _fitRow(el);
+    if (fixed !== el.value) {
+      const p = Math.min(el.selectionStart ?? fixed.length, fixed.length);
+      el.value = fixed;
       try { el.setSelectionRange(p, p); } catch (_) {}
       preOver = false;
       el.dispatchEvent(new Event('input', { bubbles: true }));   // 힌트·미리보기 = 되돌린 값으로 재동기(비신뢰 이벤트라 재차단 없음)
@@ -4838,6 +4877,15 @@ function abbrStandalone(s, from, to) {   // 앞이 문장 시작·공백·기호
   let prev; do { prev = s; s = s.replace(re, rep); } while (s !== prev);
   return s;
 }
+// ⭐ 260807 6차(운영자 "a ㄱㄱ") — 판정·미리보기가 **발사와 같은 텍스트**를 보게 하는 단일 진입점.
+//   ⚠ 진단 = 축약은 발사 직전에만 적용됐고(`$('#abbr').checked` 분기 2곳) 힌트·차단·미리보기는 **원문**을 재서
+//     세 면이 다른 글자의 길이를 쟀다(평의회 5·7 실측 · 실 POST payload로 확정).
+//   ⚠ 실측상 기본 4종은 폭을 **늘린다**(`윤,`→`尹,` +6.1px · `•`→`·` +16.3px · `...`→`⋯` +1.9px = 한자·중점이 더 넓다)
+//     → 증상 = 「화면은 멀쩡한데 생성 버튼만 안 눌린다」(커스텀 등록 없이 **누구에게나**).
+//     커스텀이 글자를 줄이는 경우엔 반대로 「화면은 잘렸는데 산출물엔 다 들어간다」가 났다.
+//   ⚠ 조건은 발사와 **동일**하게 `#abbr` 체크박스를 본다(끄면 종전 동작 100% 복귀 = 롤백 스위치가 화면에 이미 있다).
+//   비용 = 미리보기 1회 렌더의 0.2%(커스텀 20개여도 0.4%) 실측 = C15 예산 무영향.
+function abbrOn(s) { try { const c = $('#abbr'); return (c && c.checked) ? abbr(s) : String(s); } catch (_) { return String(s); } }
 function abbr(s) {
   let out = String(s);
   for (const [from, to] of ABBR_BUILTIN) out = ABBR_STANDALONE.has(from) ? abbrStandalone(out, from, to) : out.split(from).join(to);   // 성씨는 단독만·나머지(…·•)는 리터럴

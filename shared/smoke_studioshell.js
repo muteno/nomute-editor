@@ -511,6 +511,39 @@ const BUDGET_PROBE = () => {
   //   260807 처방 검토에서 「미리보기 축소 사본」 안이 실제로 이 지점을 위험하게 했다).
   return { render_ms: +rm.toFixed(3), cal_ms: +cm.toFixed(3), ratio: +(rm / cm).toFixed(4), payloadKeep: CIMG.b64.length === payload0 };
 };
+// ── C17 재료 = 「사진을 붙여둔 채 손을 뗐을 때 **끝나지 않는 CSS 애니**가 도는가」(운영자 260807 5차 "없앨게 렉 안걸리는게 최선") ──
+//   ⚠ 신설 사유 = **C15·C16이 원리적으로 못 보는 자리**다. C15는 renderCpPrev() **동기 JS**만 재서 CSS 애니 기여가 0이고,
+//     C16은 판정 축이 **rAF 콜백 수 + DOM 변이 수**라 선언형 CSS 애니가 **둘 다 0**을 낸다. 게다가 C16 idleSweep은
+//     사진을 안 붙여 `:has(.cpv-pan)` 조건이 미성립 = 링이 **애초에 렌더되지도 않았다**(원리·절차 이중 사각).
+//   실사고 260807 = `.cpprev-stage::after{animation:cpvRing 1.6s linear infinite}`가 사진 첨부 중 **영원히** 돌아
+//     손 뗀 유휴에서 메인스레드 0.20%→**6.16%(31배)** · RecalcStyle 0.1→**60.1회/s(541배)**. 화면 증상 0 = 운영자 발열이 유일한 검출기.
+//   판정 = 사진 시드 후 `getAnimations()`에서 **iterations===Infinity ∧ playState==='running'** 하드 0.
+//   ⚠ **전용 페이지**(thumb.html 직접) = C14·C15 원칙 계승(시드가 코어 판 무접촉).
+//   ⚠ 유한 반복(진행바·펄스 N회)은 대상 밖 = 「끝나지 않는 것」만 본다(유휴 타이머 게이트의 유한 수명 면제와 동축).
+const ANIM_PROBE = () => {
+  if (typeof CIMG === 'undefined' || typeof renderCpPrev !== 'function') return { err: 'renderCpPrev/CIMG 미검출' };
+  const cv = document.createElement('canvas'); cv.width = 640; cv.height = 480;
+  const cx = cv.getContext('2d'); if (!cx) return { err: '2d 컨텍스트 없음' };
+  cx.fillStyle = '#3a6'; cx.fillRect(0, 0, 640, 480);
+  const b64 = cv.toDataURL('image/jpeg', 0.9);
+  const slot = document.querySelector('#cImgSlot');
+  if (slot && slot._set) slot._set(b64, 'anim.jpg'); else { CIMG.b64 = b64; CIMG.name = 'anim.jpg'; }   // 뷰어 자신의 주입 경로(가짜 DOM 0)
+  renderCpPrev();
+  const pan = !!document.querySelector('.cpv-pan');   // 사진 경로가 실제로 렌더됐는지 = 관측 유효성 도장(미성립이면 판정 무의미)
+  const live = document.getAnimations().filter(a => {
+    try { return a.playState === 'running' && a.effect && a.effect.getTiming().iterations === Infinity; } catch (_) { return false; }
+  }).map(a => (a.animationName || a.transitionProperty || '?') + '@' + ((a.effect.target && a.effect.target.className) || '?'));
+  return { pan: pan, live: live.slice(0, 6), n: live.length };
+};
+async function animSweep(browser, port) {
+  const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });   // 폰 티어 = 배터리가 실제로 닳는 자리
+  try {
+    await pg.goto('http://127.0.0.1:' + port + '/thumb.html', { waitUntil: 'load', timeout: 25000 });
+    await pg.waitForTimeout(2500);
+    return await pg.evaluate(ANIM_PROBE);
+  } catch (e) { return { err: String(e.message).slice(0, 90) }; }
+  finally { await pg.close().catch(() => {}); }
+}
 async function budgetSweep(browser, port) {
   const pg = await browser.newPage({ viewport: { width: 430, height: 900 } });   // 폰 티어 = 발열이 실제로 사는 자리
   try {
@@ -575,8 +608,8 @@ async function idleSweep(browser, port) {
   finally { await pg.close().catch(() => {}); }
 }
 
-async function runOnce(pg, gap, clone, railRow, budget, idle) {
-  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {}, budget: budget || {}, idle: idle || {} };
+async function runOnce(pg, gap, clone, railRow, budget, idle, anim) {
+  const out = { core: [], m: {}, gap: gap || {}, clone: clone || { tiers: {} }, railRow: railRow || {}, budget: budget || {}, anim: anim || {}, idle: idle || {} };
   const core = (n, c, d) => out.core.push({ n, c: !!c, d });
 
   for (const s of SHELLS) {
@@ -776,6 +809,16 @@ async function runOnce(pg, gap, clone, railRow, budget, idle) {
   const idleBad = ID.err ? [] : []
     .concat(typeof ID.raf === 'number' && ID.raf > 0 ? ['rAF ' + ID.raf + '회(가려진 동안 루프가 안 멈췄다)'] : [])
     .concat(typeof ID.muts === 'number' && ID.muts > IDLE_MUT_MAX ? ['모달 밖 DOM 변이 ' + ID.muts + '건 > ' + IDLE_MUT_MAX + (ID.top && ID.top.length ? ' [' + ID.top.join(' · ') + ']' : '')] : []);
+  // ── C17 상시 CSS 애니 = 사진 붙여둔 채 끝나지 않는 애니가 도는가(운영자 260807 5차 · 위 재료 주석 참조) ──
+  //   err = SKIP(측정 불가 ≠ 위반) · pan 미성립도 SKIP(사진 경로가 안 떴으면 판정 대상이 애초에 없다 = 관측 무효를 PASS와 합치지 않는다).
+  const AN = out.anim || {};
+  core('C17 상시 CSS 애니 0(사진 첨부 · iterations=∞ ∧ running)',
+    (AN.err || AN.pan === false) ? true : !(AN.n > 0),
+    AN.err ? 'SKIP(측정 불가) ' + AN.err
+      : AN.pan === false ? 'SKIP(사진 경로 미렌더 = .cpv-pan 없음 → 판정 대상 0)'
+        : AN.n > 0 ? '끝나지 않는 애니 ' + AN.n + '개 [' + (AN.live || []).join(' · ') + '] — 손 뗀 화면에서 주사율로 스타일 재계산이 돈다(발열·배터리 · C15/C16이 못 보는 축)'
+          : '상시 애니 0(사진 첨부 상태 실측)');
+
   core('C16 유휴 정숙(스튜디오 모달 ' + (IDLE_WINDOW_MS / 1000) + 's · rAF 0 · 모달 밖 변이 ≤ ' + IDLE_MUT_MAX + ')',
     ID.err ? true : idleBad.length === 0,
     ID.err ? 'SKIP(측정 불가) ' + ID.err
@@ -798,6 +841,7 @@ async function runOnce(pg, gap, clone, railRow, budget, idle) {
     const clone = await cloneSweep(browser, st.port);   // C11 = 미리보기 창 클론 스윕(gap과 같은 이유로 런 1회 공유 = 순수 레이아웃 측정)
     const railRow = await railRowSweep(browser, st.port);   // C14 = 결과 요약 줄 스윕(전용 페이지 = 이력 시드가 코어 판을 안 건드린다 · gap·clone과 같은 이유로 런 1회 공유)
     const budget = await budgetSweep(browser, st.port);   // C15 = 입력 1타 렌더 예산(전용 thumb 페이지 = 사진 시드가 코어 판을 안 건드린다 · 위 3개와 같은 이유로 런 1회 공유)
+    const anim = await animSweep(browser, st.port);   // C17 = 상시 CSS 애니(사진 첨부 상태 = C16 idleSweep이 구조적으로 못 닿던 자리 · 전용 페이지)
     const idle = await idleSweep(browser, st.port);   // C16 = 유휴 정숙(모달 연 채 손 뗀 상태 = 배터리가 닳는 자리 · 전용 페이지 = addInitScript 계수기 주입 필요)
     const runs = [];
     for (let i = 0; i < 2; i++) {   // 결정론 2회 — 1280 = 2단 그리드 티어(이미지 ≥900·영상 ≥1100)가 둘 다 사는 폭
@@ -807,7 +851,7 @@ async function runOnce(pg, gap, clone, railRow, budget, idle) {
       pg.on('request', rq => { const u = rq.url(); if (!u.startsWith('http://127.0.0.1:') && !u.startsWith('data:') && !u.startsWith('blob:')) ext.push(u.slice(0, 60)); });
       await pg.goto('http://127.0.0.1:' + st.port + '/index.html', { waitUntil: 'domcontentloaded', timeout: 25000 });
       await pg.waitForTimeout(1600);
-      const o = await runOnce(pg, gap, clone, railRow, budget, idle);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
+      const o = await runOnce(pg, gap, clone, railRow, budget, idle, anim);   // gap = 위에서 1회 측정한 폰 티어 세로축(C9) · clone = 5탭 창 클론(C11) · railRow = 결과 요약 줄(C14 · 이력 시드 전용 판) · 코어 페이지(1280)와 티어·상태 분리
       o.core.push({ n: 'C5 페이지 에러 0', c: errs.length === 0, d: errs.slice(0, 2).join(' · ') || '0건' });
       o.core.push({ n: 'C6 외부 호스트 유출 0', c: ext.length === 0, d: ext.slice(0, 2).join(' · ') || '0건' });
       runs.push(o);

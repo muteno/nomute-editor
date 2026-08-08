@@ -119,7 +119,22 @@ jobs:
               limit = 920 if fmt == 'post' else 844      # §운영자 단일 진실: post lm85/rm75, reels lm101/rm135
               floor = -45 if fmt == 'post' else -30      # sweep 하한 (post 0→-45, reels -1→-30)
               def measure(text, tr):                     # §픽셀 검증: 알파 bbox (getbbox 폐기 — 부정확)
-                  plain = text.replace('*', '')
+                  # ⚠ 260807 봉합 — 구 `text.replace('*','')`는 **3+ 리터럴까지 통째로 지워** 폭을 과소측정했다.
+                  #   parse()는 1~2 = 델리미터 · 3+ = 리터럴(마스킹 `010-****` 보존)로 그리는데 측정만 전부 지운 것.
+                  #   실측 = `*`×60 → 모델 5px vs 실렌더 2304px · `010-****-1234 …` +84.6px 초과인데 sweep이 무경보 →
+                  #   fit_tracking이 기본 자간을 돌려주고 generate()가 별표를 그려 **산출물이 실제로 마진을 넘었다**.
+                  #   → 델리미터(1~2)만 제거하고 3+ 런은 남긴다 = 뷰어 `_inkScan`과 1:1 계약.
+                  def _plain(t):        # 런 단위 스캔(정규식 불가 — `****`에서 2개만 지우는 오답이 난다) · 뷰어 _inkScan과 1:1
+                      out = []; i = 0; n = len(t)
+                      while i < n:
+                          if t[i] == '*':
+                              j = i
+                              while j < n and t[j] == '*': j += 1
+                              if j - i >= 3: out.append(t[i:j])   # 3+ = 리터럴 = parse()가 실제로 그린다 → 폭에 계상
+                              i = j; continue
+                          out.append(t[i]); i += 1
+                      return ''.join(out)
+                  plain = _plain(text)
                   im = _I.new('RGBA', (5000, 300), (0, 0, 0, 0))
                   draw_t(_D.Draw(im), 100, 100, plain, font, (255, 255, 255), tr / 1000 * spec['fs'], spec['stroke'])
                   bb = im.getchannel('A').getbbox()
