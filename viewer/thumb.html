@@ -4823,9 +4823,18 @@ function bindOverClamp(sel) {
       _blockNotice(el);   // ⚠ 재동기 **뒤**에 = updateTrkHint가 되돌린(=안 넘치는) 값으로 힌트를 지운 다음이라야 안내가 살아남는다
       return;
     }
-    sync();
+    if (!composing) sync();   // 조합 중엔 snap 갱신 금지(compositionstart 계약 = 되돌림 표적 고정) — 절단은 위에서 이미 끝났다
   };
-  el.addEventListener('input', e => { if (composing) return; if (!e.isTrusted) { sync(); return; } clamp(); });
+  // ⭐ 260808 봉합(운영자 "글자가 한계지점에서 한 글자 더 써진다 헤더 · ㅇ이 10개까지가 마지노선이면 화면은 딱 멈추는데 타이핑은 11개까지 들어감") —
+  //   구판은 `if (composing) return`으로 **조합 세션 전체를 무검문 통과**시켜 한글 마지막 한 자가 조합 상태 그대로 칸에 남았다
+  //   (실측 = 부제 한도 16자인데 조합 중 칸 17 / 미리보기 16 · 확정되면 16으로 복귀 = 조합이 살아 있는 동안만 어긋난다).
+  //   260807이 선언한 「입력 가능한 텍스트 ≡ 보이는 텍스트」 1:1 동기가 **한글에서만** 깨진 경로 — 영문·숫자는 beforeinput이 이미 정확히 막는다.
+  //   ⚠ 조합 중 `beforeinput`(insertCompositionText)은 Chrome에서 cancelable=false라 취소가 원리적으로 불가 →
+  //     막을 수 있는 자리는 '값이 들어온 직후'(input)뿐이다. 그래서 판정을 조합 중에도 돌린다.
+  //   ⚠ 정상 타이핑 IME 무간섭 = _fitRow가 **안 넘치면 현재값을 그대로 반환**(무동작)하므로 값 대입이 아예 없다 —
+  //     조합이 끊기는 건 한도를 넘기는 그 순간뿐이고, 그게 곧 운영자가 요구한 "더는 안 들어감"이다.
+  //   ⚠ 자간(estHeaderTr·estTracking) 축은 무접촉 = 하한까지 당겨 넣는 기능 그대로(차단 시점 = 종전과 같은 '자간 하한에서도 초과').
+  el.addEventListener('input', e => { if (!e.isTrusted) { if (!composing) sync(); return; } clamp(); });
   el.addEventListener('compositionend', () => { composing = false; clamp(); });
 }
 ['#cSub', '#cTitle', '#cLines', '#lines'].forEach(bindOverClamp);   // 축약필요 힌트를 내는 행 전부(헤더 부제·제목 + 릴스 자막 + 포스트 텍스트) = 같은 축 통일
