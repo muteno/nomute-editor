@@ -3591,6 +3591,70 @@ def _kf_regions(rel, src):
     return out
 
 
+def check_comment_seam():
+    """CSS 주석 이음매 하드 0 — 「주석 안에서 새 주석이 열리는가 · 주석 밖에서 닫히는가」.
+
+    ⚠ 신설 사유(운영자 260807 «아이디어도 적용하고» · 같은 날 실사고 2건의 기계화) = 이 레포는 규칙 뒤에
+      **여러 줄에 걸친 미종료 주석**이 붙는 관례라, 개정 사유를 「줄 끝」에 붙이면 그 `*/`가 **선행 주석을
+      조기 종료**시켜 남은 주석 본문이 라이브 CSS로 새어 나온다. 실측 = ⓐ song `:where(#optGo)` 테두리
+      정본이 먹혀 .2 → .15 ⓑ edit `.pvfire` 블록이 깨져 히트슬롭 소멸(보이는 버튼 30px인데 위 5px가 남의 것).
+      **중괄호 균형·주석 개수 균형·`bash -n`급 문법 검사가 전부 통과**하는 무증상 사고고, 그날은 런타임
+      스모크(C6·C7)가 우연히 그 자리를 덮고 있어서 잡혔다 — 스모크가 안 덮는 자리에서 나면 그냥 라이브로 나간다.
+      기존 게이트는 전부 다른 축이다(`check_design` = 토큰 값 · `check_keyframes_dup` = 이름 중복 ·
+      `check_css_dead_state` = 특이도) → 「주석이 앞 주석을 조기 종료했는가」는 축 자체가 없었다.
+
+    판정 = 정적(렌더·LLM·네트워크 0) · 표면 자동발견(`viewer/*.html`+`viewer/*.css`) ·
+      구간 선분리(`_kf_regions`) = HTML 주석 교차오염 구조 차단(그 계약 계승) · **면책표 없이 하드 0**.
+    ⚠ 문자열 리터럴 안의 `/*`는 대상 밖 — CSS 값에 들어가는 `url("…/*…")`·`content:"/*"` 오탐 차단(따옴표 추적).
+    CONTRACT: check_comment_seam
+    """
+    import glob as _g
+    bad = []
+    for fp in sorted(_g.glob(os.path.join(ROOT, 'viewer', '*.html')) + _g.glob(os.path.join(ROOT, 'viewer', '*.css'))):
+        rel = os.path.relpath(fp, ROOT).replace(os.sep, '/')
+        try:
+            with open(fp, encoding='utf-8') as _f:
+                src = _f.read()
+        except (OSError, UnicodeDecodeError):
+            continue   # ⚠ 예외를 넓게 잡지 마라 — 첫 판이 `io.open`(check_refs는 io 미import)이라 NameError가 통째로 삼켜져
+                       #    전 파일 스킵 = **항상 PASS하는 죽은 게이트**가 됐다(킬테스트가 잡았다 · 260807 실측).
+        for off, region in _kf_regions(rel, src):
+            i, n, incom, quote = 0, len(region), False, ''
+            while i < n:
+                c = region[i]
+                if incom:
+                    if c == '*' and region[i + 1:i + 2] == '/':
+                        incom = False; i += 2; continue
+                    if c == '/' and region[i + 1:i + 2] == '*':
+                        bad.append('%s:%d 주석 안에서 새 주석이 열린다(= 앞 주석이 이 자리에서 조기 종료된다)'
+                                   % (rel, off + region.count('\n', 0, i) + 1))
+                        i += 2; continue
+                    i += 1; continue
+                if quote:
+                    if c == '\\':
+                        i += 2; continue
+                    if c == quote:
+                        quote = ''
+                    i += 1; continue
+                if c in '"\'':
+                    quote = c; i += 1; continue
+                if c == '/' and region[i + 1:i + 2] == '*':
+                    incom = True; i += 2; continue
+                if c == '*' and region[i + 1:i + 2] == '/':
+                    bad.append('%s:%d 주석 밖에서 `*/`가 닫힌다(= 짝 없는 종료)'
+                               % (rel, off + region.count('\n', 0, i) + 1))
+                    i += 2; continue
+                i += 1
+    if bad:
+        print('\u274c CSS 주석 이음매 게이트(차단) — 주석이 앞 주석을 조기 종료했다(무증상 · 남은 본문이 라이브 CSS로 샌다):')
+        for b in bad[:12]:
+            print('  - ' + b)
+        print('  처방 = 개정 사유 주석의 거처는 **규칙 닫는 중괄호 직후 · 다음 주석 열기 전**(줄 끝 금지).')
+        return 1
+    print('\u2705 CSS 주석 이음매 게이트 — 중첩 열기·짝 없는 닫기 0(줄 끝 사유 주석이 앞 주석을 조기 종료하는 무증상 사고 차단).')
+    return 0
+
+
 def check_keyframes_dup():
     """@keyframes 중복 정의 하드 0(위 주석 참조). rc=1 = 커밋 차단."""
     import glob as _g
@@ -6402,6 +6466,8 @@ def main():
         print('⚠️ 잰크 전이 게이트 스킵:', e)
     try:
         if check_keyframes_dup() != 0:   # @keyframes 중복 정의 0(평의회 260804 4·5·8번 — 재선언은 앞 선언을 통째로 대체한다[CSS Animations L1 §2] · 실사고 = 260710에 폐지된 .filterpop 잔해 popOut 사본이 살아있는 팝업 3종의 퇴장 모션을 지배 · 동값이라 6주 무증상)
+            rc = 1
+        if check_comment_seam() != 0:   # CSS 주석 이음매 0(운영자 260807 «아이디어도 적용하고» — 줄 끝 사유 주석의 `*/`가 선행 미종료 주석을 조기 종료시켜 남은 본문이 라이브 CSS로 새던 무증상 사고 · 실측 2건 = song 발사 테두리 .2→.15 · edit 히트슬롭 소멸)
             rc = 1
     except Exception as e:
         print('⚠️ @keyframes 중복 게이트 스킵:', e)
