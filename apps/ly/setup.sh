@@ -12,7 +12,9 @@ fi
 
 # Whisper(로컬 STT — 키 불필요) / yt-dlp(영상 URL Case C)
 python3 -c "import faster_whisper" 2>/dev/null || timeout 300 pip3 install -q faster-whisper
-command -v yt-dlp >/dev/null 2>&1 || timeout 180 pip3 install -q yt-dlp
+# ⚠ 평의회8 F — site-packages 캐시는 `bin/yt-dlp` 콘솔 스크립트를 안 담아 `command -v`가 **매 런 무조건 실패**했다
+#   (워크플로는 `python3 -m yt_dlp`로만 부르므로 콘솔 스크립트는 애초에 안 쓴다) → import 판정으로 교체 = 캐시 히트 시 pip 0.
+python3 -c "import yt_dlp" 2>/dev/null || timeout 180 pip3 install -q yt-dlp
 
 # 작업 경로 (Claude Code 임시 파일 — 러너선 /tmp 사용하므로 실패해도 무방)
 mkdir -p /home/claude 2>/dev/null || true

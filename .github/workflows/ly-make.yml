@@ -200,7 +200,13 @@ jobs:
           #   'true'로 되돌아가는 조건 = 킬스위치(vars.LY_STT_ENGINE=whisper) ∨ 키 부재 = **폴백이 유일 경로인 상황**.
           #   ⚠ ffmpeg·yt-dlp·faster_whisper(pip)는 그대로 설치된다 — 빠지는 건 모델 파일 3.1GB뿐(폴백 시 그 자리에서 회수).
           whisper: ${{ (vars.LY_STT_ENGINE == 'whisper' || secrets.ELEVENLABS_API_KEY == '') && 'true' || 'false' }}
-          apt: ffmpeg fonts-noto-cjk fonts-nanum fonts-nanum-extra   # ffmpeg+한글폰트(자막 번인 libass용) .deb 7일 캐시 → 매 런 재다운·미러행 차단 · 나눔 2종 = edit-make와 apt 문자열 통일(캐시 키 공유 = 재다운 1회 합산 · ly fresh는 font 미송신이라 현재 미사용 = 선제 설치 — ⚠ 재입히기(reburn)는 이 스텝을 안 탄다(url·file 공백 게이트) → reburn 폰트는 94행 재합성 스텝이 담당 · v2평의회3 260711)
+          # ⚡ 260808 폰트 분리(운영자 지시) — 폰트 3종 88.3MiB(apt 페이로드의 47.3%)는 **번인 전용**이다
+          #   (소비자 = ly_burn.py 단독 · STT·의역·커밋 경로는 폰트를 한 번도 안 읽는다 = 평의회8 전수 확인).
+          #   받아쓰기만 하는 런에 매번 딸려오던 짐을 뺀다 → 복원 −1.8s + unpack −1.6s.
+          #   ⚠ 평의회6·8이 공통 경고한 대가 = 「fonts-noto-cjk 없으면 libass가 **에러 없이 두부(□)로 조용히 렌더**」.
+          #     그래서 폰트는 **번인 직전에 설치 + fc-list 하드게이트**로 옮겼다(아래 번인 스텝 · reburn 정본 100% 모방).
+          #   ⚠ 부수이득 = apt 문자열이 nb·vidl·news-ask 와 같아져 **캐시 키를 공유**한다(콜드 다운 합산 1회).
+          apt: ffmpeg
 
       - name: STT (영상 URL → Whisper 트랜스크립트)
         if: ${{ inputs.url != '' }}
@@ -602,6 +608,21 @@ jobs:
           [ -z "${LY_NOBURN:-}" ] || { echo "번인 선-스킵(길이 초과 · video.json 선기록 유지)"; exit 0; }
           BURN="$(printf '%s' "${OPTS:-}" | jq -r 'try .burn catch empty' 2>/dev/null || true)"
           [ "$BURN" = "true" ] || { echo "번인 OFF"; exit 0; }
+          # ── 한글 폰트 = 번인이 실제로 돌 때만 설치(260808 폰트 분리 · 부품 = 100행 reburn 스텝 100% 모방) ──
+          #   ⚠ burn 판정은 **JSON 파싱**으로 한다 — `contains(opts,'"burn":true')` 문자열 판정은 260711 Demucs 게이트에서
+          #     평의회가 적발한 문법이고, 오판의 대가가 「무증상 두부 번인」이라 추측 판정을 쓰면 안 된다.
+          #   ⚠ 파싱 실패·opts 빈값 = **설치**(안전측) = 종전 동작. 설치·검문 실패는 exit 1 = 두부 대신 정직한 실패
+          #     (이 스텝은 continue-on-error 라 자막 텍스트 산출은 그대로 살아난다 = fail-soft 계약 보존).
+          NEEDF="$(OPTS="${OPTS:-}" python3 -c 'import json,os;r=(os.environ.get("OPTS") or "").strip();o=json.loads(r) if r else {};print("0" if o.get("burn", True) is False else "1")' 2>/dev/null || echo 1)"
+          if [ "$NEEDF" = "1" ]; then
+            fc-list | grep -qi "noto sans cjk" || {
+              timeout 300 sudo apt-get update -qq || true
+              timeout 300 sudo apt-get install -y -qq fonts-noto-cjk fonts-nanum fonts-nanum-extra || { echo "::error::한글 폰트 설치 실패"; exit 1; }
+            }
+            fc-list | grep -qi "noto sans cjk" || { echo "::error::Noto Sans CJK 미탐지 — 두부 번인 차단"; exit 1; }
+          else
+            echo "번인 OFF(opts.burn=false) — 폰트 설치 생략"
+          fi
           python3 .github/scripts/ly_burn.py "$IN_ID" "${LY_VIDEO:-}" || echo "::warning::번인 실패 — 자막 텍스트는 정상"
 
       # 번인 기록 백필(평의회6 260709) — 번인 스텝 하드킬(timeout SIGKILL)은 continue-on-error라 실패 기록 스텝도 안 돎
