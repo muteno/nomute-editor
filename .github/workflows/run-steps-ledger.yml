@@ -1,0 +1,96 @@
+name: run-steps-ledger
+
+# 제작 파이프 **스텝별 소요** 원장(운영자 260808 "아이디어 하고").
+#   ⚠ 신설 사유 = 260808 실사고 = 나(세션)가 ly-make **런 1건**만 보고 병목을 「의역」으로 지목했는데,
+#     9건을 펼쳐보니 그건 260721 지침 인라인화로 **이미 죽은 문제**였다(350~555s → 14~22s).
+#     추측이 아니라 표를 먼저 보게 하려면 회차마다 숫자가 남아 있어야 한다.
+#   판정 0 · LLM 0 · 네트워크 = GitHub API 1콜(자기 런 조회) · 산출 = scraper/obs/run_steps.jsonl 1줄/런.
+#   ⚠ 원장 = 기계산출물 = 손편집 금지.
+on:
+  workflow_run:
+    workflows: [ly-make, edit-make, nb-make, news-ask, vidl-make, stt-ab]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:                      # 원장 1파일 append = 동시 커밋 경합 방지(직렬화)
+  group: run-steps-ledger
+  cancel-in-progress: false
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 1 }
+
+      - name: 스텝 소요 적재
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          WF: ${{ github.event.workflow_run.name }}
+          CONCL: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from datetime import datetime, timedelta, timezone
+
+          rid, wf, concl = os.environ["RUN_ID"], os.environ["WF"], os.environ.get("CONCL") or "?"
+          req = urllib.request.Request(
+              "https://api.github.com/repos/%s/actions/runs/%s/jobs" % (os.environ["GITHUB_REPOSITORY"], rid),
+              headers={"Authorization": "Bearer %s" % os.environ["GH_TOKEN"],
+                       "Accept": "application/vnd.github+json"})
+          try:
+              jobs = json.loads(urllib.request.urlopen(req, timeout=30).read()).get("jobs") or []
+          except Exception as e:                      # fail-open — 관측이 파이프를 못 죽인다
+              print("::warning::jobs 조회 실패 %s" % e); raise SystemExit(0)
+          if not jobs:
+              print("::warning::jobs 0건"); raise SystemExit(0)
+
+          def sec(a, b):
+              if not a or not b:
+                  return None
+              f = lambda x: datetime.fromisoformat(x.replace("Z", "+00:00"))
+              return round((f(b) - f(a)).total_seconds(), 1)
+
+          j = jobs[0]
+          steps = {}
+          for s in j.get("steps") or []:
+              if s.get("conclusion") == "skipped":     # 스킵 = 0초 = 표를 흐린다
+                  continue
+              d = sec(s.get("started_at"), s.get("completed_at"))
+              if d is not None:
+                  steps[s.get("name", "?")[:60]] = d
+          row = {"ts": (j.get("completed_at") or ""), "wf": wf, "run": int(rid), "concl": concl,
+                 "total_s": sec(j.get("started_at"), j.get("completed_at")), "steps": steps}
+
+          p = "scraper/obs/run_steps.jsonl"
+          os.makedirs(os.path.dirname(p), exist_ok=True)
+          old = []
+          if os.path.exists(p):
+              old = [l for l in open(p, encoding="utf-8").read().split("\n") if l.strip()]
+          if any(('"run": %s,' % rid) in l or ('"run":%s,' % rid) in l for l in old):
+              print("이미 적재된 런 %s — 스킵" % rid); raise SystemExit(0)
+          old.append(json.dumps(row, ensure_ascii=False))
+          open(p, "w", encoding="utf-8").write("\n".join(old[-2000:]) + "\n")   # 롤링 2000줄(gate_hits 관례)
+          print("적재: %s run=%s 총%ss 스텝%d개" % (wf, rid, row["total_s"], len(steps)))
+          PY
+
+      - name: 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scraper/obs/run_steps.jsonl 2>/dev/null || true
+          git diff --cached --quiet && { echo "변경 없음"; exit 0; }
+          # [CF-Pages-Skip] = 화면에 수 분 늦게 떠도 되는 데이터 churn(원장은 뷰어 표면이 아니다 · CLAUDE [Pages 코얼레싱])
+          PFX=""; [ "${{ vars.PAGES_COALESCE }}" != "0" ] && PFX="[CF-Pages-Skip] "
+          git commit -m "${PFX}run-steps: 스텝 소요 원장 +1 (bot)"
+          for i in 1 2 3 4; do
+            git pull --rebase --autostash -q origin main && git push -q origin HEAD:main && exit 0
+            sleep $((i*3))
+          done
+          echo "::warning::원장 push 실패 — 다음 회차에 합류"

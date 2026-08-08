@@ -90,7 +90,11 @@ jobs:
         uses: ./.github/actions/runner-setup
         with:
           setup: apps/ly/setup.sh
-          whisper: 'true'
+          # ⚡ 260808 — STT 기본 = Scribe v2(ly_stt.py) → large-v3는 **폴백 전용**이라 3.1GB 캐시·prefetch를 평소엔 안 붙인다.
+          #   실측 = 이 스텝 48s(총 112s의 43%)가 Scribe 경로에선 한 번도 안 쓰이는 짐이었다(run 31231381993 분해).
+          #   'true'로 되돌아가는 조건 = 킬스위치(vars.LY_STT_ENGINE=whisper) ∨ 키 부재 = **폴백이 유일 경로인 상황**.
+          #   ⚠ ffmpeg·yt-dlp·faster_whisper(pip)는 그대로 설치된다 — 빠지는 건 모델 파일 3.1GB뿐(폴백 시 그 자리에서 회수).
+          whisper: ${{ (vars.LY_STT_ENGINE == 'whisper' || secrets.ELEVENLABS_API_KEY == '') && 'true' || 'false' }}
           apt: ffmpeg fonts-noto-cjk fonts-nanum fonts-nanum-extra   # 나눔 2종 = 자막 폰트 축(gothic/serif = noto-cjk 안 · nanum=나눔고딕 · pen=Nanum Pen Script는 -extra) — apt 캐시 키에 목록 포함 = 첫 런만 다운(260711)
 
       - name: 변환 환경 (자막·컷·클리퍼 없음 = ffmpeg+yt-dlp만)
