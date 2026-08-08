@@ -12,7 +12,6 @@
 import sys
 import json
 import os
-from faster_whisper import WhisperModel
 
 audio = sys.argv[1]
 seg_json = sys.argv[2] if len(sys.argv) > 2 else ""
@@ -28,15 +27,129 @@ seg_json = sys.argv[2] if len(sys.argv) > 2 else ""
 #   진짜 후보는 오디오 조건 쪽이다(짧은 클립 전사 0개 = VAD 과필터 의심 · 배경음 분리 선행 미적용 · 원장 Q996).
 #   ⚠️ 이 파일은 ly·edit·nb 3개 워크플로 공용이라 여기 한 줄이 3파이프를 동시에 움직인다.
 PRECISION = os.environ.get("LY_STT_PRECISION", "int8_float32").strip() or "int8_float32"
-model = WhisperModel("large-v3", device="cpu", compute_type=PRECISION)
+
+# ── 엔진 = Scribe v2(기본) → 실패 시 large-v3 폴백(운영자 260808 "무조건 반영") ──────────────
+#   실측 근거(run 31230435185 · docs/reports/260808_0936_STT정밀도AB.md · 한국어 19.6s):
+#     추론 28.1s→1.0s(1.43×RT→0.05×RT) · 저확률(<0.70) 어절 3/26(11.5%)→1/29(3.4%)
+#     · large-v3가 틀린 「검찰서가」를 Scribe가 「경찰서 가서」로 정확히 · 누락 어절(제가·여러분들)·구두점 회수
+#     · 과금 $0.0012/19.6초($0.22/시간). ⚠ 표본 1클립 = 확률 개선의 증거이지 재현 보증 아님.
+#   ⚠ 폴백이 계약이다 — 키 부재·API 오류·응답 이상·어절 0개 = **그 자리에서 large-v3로 내려앉는다**(종전 동작 100%).
+#     외부 벤더가 죽어도 자막 파이프는 안 죽는다(fail-soft = 이 레포 관례).
+#   ⚠ 킬스위치 = 레포 변수 `LY_STT_ENGINE=whisper`(즉시 종전 경로 · 코드 변경 0). `scribe` = 폴백 없이 강제(A/B용).
+#   ⚠ 지연 import = Scribe가 성공하면 faster_whisper·3.1GB 모델을 **아예 안 올린다**(로드 4.2s·메모리 절감).
+ENGINE = (os.environ.get("LY_STT_ENGINE") or "auto").strip().lower() or "auto"
+EL_KEY = (os.environ.get("ELEVENLABS_API_KEY") or "").strip()
+SCRIBE_MODEL = "scribe_v2"
+_SENT_END = ".?!。？！…"
+# ⚠ 언어코드 정규화가 **실효 조건**이다 — Scribe는 ISO-639-3(`kor`)로 주는데 whisper는 2자(`ko`)를 주고,
+#   소비자가 2자 리터럴로 분기한다: 뷰어 `LY_LANG !== 'ko'` = 「외국어 영상」 판정(편집분을 번인에 안 싣는 방벽 · ly.html)
+#   · `lyJoin`의 무공백 문자권 집합(ja|zh|yue|th|lo|my|km). 정규화를 빼면 **한국어 영상이 외국어로 오판**된다.
+#   3자→2자 사본은 위 소비자가 실제로 쓰는 코드 + 상위 사용 언어만(전체 ISO 표 복제 금지 · 미지 코드는 앞 2자 폴백).
+_L3 = {"kor": "ko", "eng": "en", "jpn": "ja", "zho": "zh", "cmn": "zh", "yue": "yue", "tha": "th",
+       "lao": "lo", "mya": "my", "bur": "my", "khm": "km", "vie": "vi", "ind": "id", "spa": "es",
+       "por": "pt", "fra": "fr", "fre": "fr", "deu": "de", "ger": "de", "rus": "ru", "ara": "ar",
+       "hin": "hi", "ita": "it", "nld": "nl", "dut": "nl", "tur": "tr", "pol": "pl", "ukr": "uk"}
+
+
+def _lang2(code):
+    c = (code or "").strip().lower().split("-")[0]
+    if len(c) <= 2:
+        return c
+    return _L3.get(c, c[:2])
+
+
+def _scribe_rows():
+    """ElevenLabs Scribe v2 전사 → whisper 경로와 **같은 rows 구조**로 환산(소비자 코드 무접촉).
+    실패 = None 반환(호출부가 whisper로 폴백)."""
+    import math
+    import subprocess
+    cp = subprocess.run(["curl", "-sS", "--max-time", "900", "-X", "POST",
+                         "https://api.elevenlabs.io/v1/speech-to-text",
+                         "-H", "xi-api-key: %s" % EL_KEY,
+                         "-F", "file=@%s" % audio,
+                         "-F", "model_id=%s" % SCRIBE_MODEL,
+                         "-F", "timestamps_granularity=word"],
+                        capture_output=True, text=True)
+    if cp.returncode != 0:
+        print("# Scribe 실패(curl rc=%s) — %s" % (cp.returncode, (cp.stderr or "")[:200]), file=sys.stderr)
+        return None
+    try:
+        j = json.loads(cp.stdout or "{}")
+    except Exception as e:
+        print("# Scribe 응답 파싱 실패(%s) — %s" % (e, (cp.stdout or "")[:200]), file=sys.stderr)
+        return None
+    if not isinstance(j, dict) or j.get("text") is None:
+        print("# Scribe 응답 이상 — %s" % (cp.stdout or "")[:200], file=sys.stderr)
+        return None
+    ws = [w for w in (j.get("words") or [])
+          if (w.get("type") or "word") == "word" and (w.get("text") or "").strip()
+          and isinstance(w.get("start"), (int, float)) and isinstance(w.get("end"), (int, float))]
+    if not ws:
+        print("# Scribe 어절 0개 — 폴백", file=sys.stderr)
+        return None
+
+    # 조각(세그먼트) 조립 — Scribe는 words만 준다(whisper의 segment 개념 없음).
+    #   ⚠ 경계 술어 = ① 문장부호 종료 ② 발화 공백 GAP_S 이상 ③ 길이 상한(초·글자) — 자막 조각의 통상 규격.
+    #     구두점이 실제로 오는 게 Scribe의 이점이라 ①이 1순위(large-v3는 구두점 0개라 이 축이 아예 없었다).
+    #   ⚠ 조각 경계는 어차피 claude 의역 단계가 `# 어절:` 실측 타임스탬프로 다시 나눈다(260728 계약) —
+    #     여기 값은 그 입력의 뼈대이지 최종 자막 경계가 아니다.
+    GAP_S, MAX_S, MAX_CH = 0.8, 12.0, 80
+    rows, cur = [], []
+
+    def _flush():
+        if not cur:
+            return
+        t = " ".join(w["t"] for w in cur).strip()
+        if not t:
+            cur.clear(); return
+        lps = [w["lp"] for w in cur if w["lp"] is not None]
+        rows.append({"s": cur[0]["s"], "e": cur[-1]["e"], "t": t,
+                     "w": [{"t": w["t"], "s": round(w["s"], 2), "e": round(w["e"], 2), "p": w["p"]} for w in cur],
+                     "lp": (sum(lps) / len(lps)) if lps else None,   # whisper avg_logprob 자리 = is_unc ② 축 보존
+                     "ns": None})                                    # Scribe는 no_speech 축 없음 = is_unc ③ 미적용
+        cur.clear()
+
+    for i, w in enumerate(ws):
+        lp = w.get("logprob")
+        lp = float(lp) if isinstance(lp, (int, float)) else None
+        p = round(math.exp(lp), 2) if lp is not None else 1.0        # 어절 확률 = exp(logprob) → is_unc ① 임계 0.70 그대로
+        cur.append({"t": (w.get("text") or "").strip(), "s": float(w["start"]), "e": float(w["end"]),
+                    "p": min(p, 1.0), "lp": lp})
+        nxt = ws[i + 1] if i + 1 < len(ws) else None
+        gap = (float(nxt["start"]) - float(w["end"])) if nxt else 0.0
+        span = cur[-1]["e"] - cur[0]["s"]
+        chars = sum(len(x["t"]) for x in cur)
+        if (nxt is None or cur[-1]["t"][-1:] in _SENT_END or gap >= GAP_S
+                or span >= MAX_S or chars >= MAX_CH):
+            _flush()
+    _flush()
+    return rows, _lang2(j.get("language_code"))
+
+
+class _Info:   # whisper info 객체 자리 — 소비자(로그·segments.json)가 쓰는 속성만 갖춘다
+    def __init__(self, lang, dur):
+        self.language = lang or "?"
+        self.language_probability = 1.0
+        self.duration = dur
+
+
+model = None
+
+
+def _load_whisper():
+    global model
+    if model is None:
+        from faster_whisper import WhisperModel
+        model = WhisperModel("large-v3", device="cpu", compute_type=PRECISION)
+    return model
 
 
 def transcribe(vad):
     # word_timestamps는 JSON 요청 시에만(미요청 = 종전과 완전 동일 동작·비용)
     # condition_on_previous_text=False = 반복 환각 루프 억제(지침 STEP 0-2 정본 — 소음·노래 입력 방어 · 평의회4)
-    segments, info = model.transcribe(audio, language=None, vad_filter=vad,
-                                      condition_on_previous_text=False,
-                                      word_timestamps=bool(seg_json))
+    segments, info = _load_whisper().transcribe(audio, language=None, vad_filter=vad,
+                                                    condition_on_previous_text=False,
+                                                    word_timestamps=bool(seg_json))
     rows = []
     for seg in segments:
         t = seg.text.strip()
@@ -63,12 +176,29 @@ def is_unc(r):
             or any(w.get("p", 1.0) < 0.70 for w in (r.get("w") or [])))
 
 
-rows, info = transcribe(True)
-if not rows:   # VAD 과필터(전 구간 무음 오판 → 0개 = 지침 STEP 0-2 실측 모드) 폴백 — 그래도 0개면 종전대로 rc 3
-    print("# VAD 0개 → vad_filter=False 재시도(과필터 폴백)", file=sys.stderr)
-    rows, info = transcribe(False)
-print(f"# STT: Whisper large-v3 · {PRECISION} · lang={info.language} ({info.language_probability:.2f})",
-      file=sys.stderr)   # 정밀도 표기 = A/B 판정 근거(어느 설정으로 뽑힌 자막인지 로그·산출물 양쪽에 남긴다)
+ENGINE_USED = "large-v3"
+rows, info = None, None
+if ENGINE in ("auto", "scribe") and EL_KEY:
+    got = _scribe_rows()
+    if got:
+        rows, lang = got
+        info = _Info(lang, max((r["e"] for r in rows), default=0.0))
+        ENGINE_USED = SCRIBE_MODEL
+    elif ENGINE == "scribe":
+        print("::error::Scribe 강제 모드에서 실패 — 폴백 금지 설정", file=sys.stderr)
+        sys.exit(4)
+elif ENGINE == "scribe" and not EL_KEY:
+    print("::error::LY_STT_ENGINE=scribe 인데 ELEVENLABS_API_KEY 없음", file=sys.stderr)
+    sys.exit(4)
+
+if rows is None:   # ── large-v3 경로(폴백 또는 LY_STT_ENGINE=whisper) ──
+    rows, info = transcribe(True)
+    if not rows:   # VAD 과필터(전 구간 무음 오판 → 0개 = 지침 STEP 0-2 실측 모드) 폴백 — 그래도 0개면 종전대로 rc 3
+        print("# VAD 0개 → vad_filter=False 재시도(과필터 폴백)", file=sys.stderr)
+        rows, info = transcribe(False)
+
+print(f"# STT: {ENGINE_USED} · {PRECISION if ENGINE_USED == 'large-v3' else 'api'} · lang={info.language} ({info.language_probability:.2f})",
+      file=sys.stderr)   # 어느 엔진으로 뽑힌 자막인지 로그·산출물 양쪽에 남긴다(폴백 발생 여부 = 이 한 줄로 사후 판정)
 n = 0
 segs = []
 unc = []
@@ -101,7 +231,7 @@ if seg_json and segs:
         created = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
     except Exception:
         created = datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
-    doc = {"v": 1, "model": "large-v3", "prec": PRECISION, "lang": info.language,   # prec = 이 전사가 어느 연산 정밀도로 나왔는지(A/B 대조 · 미지 키는 뷰어·번인 파서가 무시)
+    doc = {"v": 1, "model": ENGINE_USED, "prec": PRECISION if ENGINE_USED == "large-v3" else "api", "lang": info.language,   # prec = 이 전사가 어느 연산 정밀도로 나왔는지(A/B 대조 · 미지 키는 뷰어·번인 파서가 무시)
            "dur": round(float(getattr(info, "duration", 0) or 0), 2),
            "created": created,
            "segs": segs}

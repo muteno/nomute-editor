@@ -87,6 +87,11 @@ jobs:
 
       - name: Process asks
         env:
+          # STT 엔진 = Scribe v2 우선 → 실패·키부재 시 large-v3 자동 폴백(ly_stt.py · 운영자 260808 승인)
+          #   실측 = run 31230435185(한국어 19.6s): 28.1s→1.0s · 오인식 의심 11.5%→3.4% · 「검찰서가」→「경찰서 가서」 교정.
+          #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
           # 인증 = 구독 OAuth(API 키 미사용) — analyze와 동일 동적 계정 선택
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets[format('CLAUDE_CODE_OAUTH_TOKEN_{0}', inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO')] }}
           CLAUDE_CODE_OAUTH_TOKEN_ALT: ${{ (inputs.account || vars.ACTIVE_ACCOUNT || 'MUTENO') == 'NOMUTEFB' && secrets.CLAUDE_CODE_OAUTH_TOKEN_EMS1130G || secrets.CLAUDE_CODE_OAUTH_TOKEN_NOMUTEFB }}   # 서브1 폴오버(활성 다음 우선순위 · 체인 MUTENO→NOMUTEFB→EMS1130G→MUTENONA)

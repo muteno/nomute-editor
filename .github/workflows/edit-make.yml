@@ -179,6 +179,11 @@ jobs:
         if: ${{ contains(inputs.opts, '"burn":true') || contains(inputs.opts, '"cut":true') || contains(inputs.opts, '"clip":true') || contains(inputs.opts, '"cutfill":true') || contains(inputs.opts, '"take":true') || contains(inputs.opts, '"cutscan":true') }}
         timeout-minutes: 45   # large-v3 승격(260726) — 원본 20분 캡 × ~2×RT 최악 + 여유. 무한 행만 차단
         env:
+          # STT 엔진 = Scribe v2 우선 → 실패·키부재 시 large-v3 자동 폴백(ly_stt.py · 운영자 260808 승인)
+          #   실측 = run 31230435185(한국어 19.6s): 28.1s→1.0s · 오인식 의심 11.5%→3.4% · 「검찰서가」→「경찰서 가서」 교정.
+          #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
           IN_ID: ${{ inputs.id }}
           OPTS: ${{ inputs.opts }}
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}

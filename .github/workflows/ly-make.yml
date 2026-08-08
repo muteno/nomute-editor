@@ -202,6 +202,11 @@ jobs:
         if: ${{ inputs.url != '' }}
         timeout-minutes: 50   # 다운로드+Whisper 백스톱(평의회9 260709 · 260726 large-v3 40 · 260728 40→50 · ⚠ 당초 근거였던 '정밀도 승격 감속'은 러너 A/B로 반증(int8과 동일~미세 빠름 · docs/reports/260728_1447_STT정밀도AB.md) → 현 근거 = 초장영상·콜드캐시 보수 여유) — 스톨 링크·초장영상 무한 행이 잡 캡까지 먹던 구멍 차단. ⚠ float32 A/B는 10분 영상서 이 백스톱을 위협(짧은 클립으로 대조할 것)
         env:
+          # STT 엔진 = Scribe v2 우선 → 실패·키부재 시 large-v3 자동 폴백(ly_stt.py · 운영자 260808 승인)
+          #   실측 = run 31230435185(한국어 19.6s): 28.1s→1.0s · 오인식 의심 11.5%→3.4% · 「검찰서가」→「경찰서 가서」 교정.
+          #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
           URL: ${{ inputs.url }}
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
           IN_ID: ${{ inputs.id }}
@@ -290,6 +295,11 @@ jobs:
         if: ${{ inputs.file != '' || inputs.r2_src != '' }}
         timeout-minutes: 50   # Whisper 백스톱(평의회9 260709 · 260726 large-v3 25→40 · 260728 40→50(정밀도 근거는 A/B 반증 · 보수 여유로 유지)) — URL 스텝과 동일 원칙
         env:
+          # STT 엔진 = Scribe v2 우선 → 실패·키부재 시 large-v3 자동 폴백(ly_stt.py · 운영자 260808 승인)
+          #   실측 = run 31230435185(한국어 19.6s): 28.1s→1.0s · 오인식 의심 11.5%→3.4% · 「검찰서가」→「경찰서 가서」 교정.
+          #   킬스위치 = 레포 변수 LY_STT_ENGINE=whisper(즉시 종전 경로) · 미설정 = auto(키 있으면 Scribe).
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          LY_STT_ENGINE: ${{ vars.LY_STT_ENGINE }}
           FILE: ${{ inputs.file }}
           IN_ID: ${{ inputs.id }}
           UP_BRANCH: ${{ inputs.up_branch }}
