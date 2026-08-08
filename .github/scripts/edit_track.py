@@ -248,15 +248,9 @@ def main():
         url = _upload(cur, f"ly_out/{vid_id}/subbed.{ext}", ctype) or ""
     except Exception as e:
         log("R2 업로드 실패: " + str(e)[:120])
-    if not url:
-        if os.path.getsize(cur) <= GIT_FALLBACK_MAX:
-            shutil.copyfile(cur, os.path.join(outdir, f"subbed.{ext}"))
-            url = f"ly_out/{vid_id}/subbed.{ext}"
-        else:
-            log("업로드 실패 + git 폴백 초과 — 편집본 그대로 둔다")
-            vj["xtr_note"] = "가림은 됐는데 결과를 못 올렸어 — 다시 생성해줘."
-            json.dump(vj, open(vj_p, "w", encoding="utf-8"), ensure_ascii=False)
-            return 0
+    if not url and os.path.getsize(cur) <= GIT_FALLBACK_MAX:
+        shutil.copyfile(cur, os.path.join(outdir, f"subbed.{ext}"))
+        url = f"ly_out/{vid_id}/subbed.{ext}"
     pv = ""
     if prev:   # 알파 산출(키잉·크로마키) = 뷰어 <video>가 재생할 수 있는 webm 프리뷰 동반(MOV는 브라우저 재생 불가)
         try:
@@ -266,12 +260,19 @@ def main():
         if not pv and os.path.getsize(prev) <= GIT_FALLBACK_MAX:
             shutil.copyfile(prev, os.path.join(outdir, "preview.webm"))
             pv = f"ly_out/{vid_id}/preview.webm"
+    if not url and not pv:
+        log("업로드 실패 + git 폴백 초과 — 편집본 그대로 둔다")
+        vj["xtr_note"] = "가림은 됐는데 결과를 못 올렸어 — 다시 생성해줘."
+        json.dump(vj, open(vj_p, "w", encoding="utf-8"), ensure_ascii=False)
+        return 0
 
-    vj["url"] = f"{url}?v={bust}"
-    vj["bytes"] = os.path.getsize(cur)
+    vj["url"] = (f"{url}?v={bust}" if url else f"{pv}?v={bust}")   # 마스터 유실 = 프리뷰라도 살린다(정본 계약 = track_keying "master-lost" 계승 — 알파 마스터는 수백 MB라 R2 미설정·대용량에서 흔히 못 올리는데, 구판은 그때 **프리뷰(1MB대)까지 통째로 버려** 운영자가 결과를 아예 못 봤다 · 실측 260808 = MOV 38MB 유실 ↔ webm 0.97MB 멀쩡)
+    vj["bytes"] = os.path.getsize(cur if url else prev)
     vj["xtr"] = done
     if pv:
         vj["preview"] = f"{pv}?v={bust}"
+    if not url:
+        vj["note"] = "master-lost"   # 뷰어가 정직 표시(다운로드용 알파 마스터 없음 · 화면 재생은 프리뷰) — track_keying·track_chroma 동일 문자열
     vj.pop("xtr_note", None)
     json.dump(vj, open(vj_p, "w", encoding="utf-8"), ensure_ascii=False)
     log("완료 — " + ",".join(done) + " · " + str(os.path.getsize(cur) // 1048576) + "MB")
